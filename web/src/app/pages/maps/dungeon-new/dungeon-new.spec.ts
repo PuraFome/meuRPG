@@ -27,8 +27,8 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
-          { path: 'campanhas/:id/mapas/masmorra', component: DungeonNew },
-          { path: 'campanhas/:id/mapas/:mapId', component: Stub },
+          { path: 'campaigns/:id/maps/dungeon', component: DungeonNew },
+          { path: 'campaigns/:id/maps/:mapId', component: Stub },
         ]),
         { provide: DungeonsClient, useValue: api },
         {
@@ -46,7 +46,7 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
     });
     router = TestBed.inject(Router);
     const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/campanhas/camp-1/mapas/masmorra', DungeonNew);
+    await harness.navigateByUrl('/campaigns/camp-1/maps/dungeon', DungeonNew);
     const settle = async () => {
       for (let i = 0; i < 4; i++) {
         harness.detectChanges();
@@ -326,7 +326,7 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
       await settle();
       expect(api.calls).toContain('create A cripta 48213');
       expect(api.createdOptions).toMatchObject({ width: 31, height: 21, stairs: 2 });
-      expect(navigate).toHaveBeenCalledWith(['/campanhas', 'camp-1', 'mapas', 'dungeon-1']);
+      expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1', 'maps', 'dungeon-1']);
     });
 
     it('shows one status line after a moment (no scripted steps), the bar and "Parar de esperar", with the options locked', async () => {
@@ -410,7 +410,7 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
       harness.fixture.destroy();
       release();
       await vi.advanceTimersByTimeAsync(10);
-      expect(navigate).not.toHaveBeenCalledWith(['/campanhas', 'camp-1', 'mapas', 'dungeon-1']);
+      expect(navigate).not.toHaveBeenCalledWith(['/campaigns', 'camp-1', 'maps', 'dungeon-1']);
     });
 
     it('sends the options and the seed of the preview on screen, not what the form says now', async () => {

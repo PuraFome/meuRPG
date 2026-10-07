@@ -20,8 +20,8 @@
 // The numbers 00118 and 00119 do not exist (see docs/dados.md): goose accepts
 // gaps, and no new migration may take them.
 //
-// Nothing stops two `migrate up` runs from overlapping (goose has no lock for
-// CockroachDB): the deploy must start only one.
+// goose has no lock for CockroachDB, so cmd/migrate takes a lease lock before
+// `up` and `down` (lock.go): a second run waits for the first.
 //
 // sqlc reads these files too (backend/sqlc.yaml), with a PostgreSQL parser,
 // to learn the schema. So write SQL that both PostgreSQL and CockroachDB

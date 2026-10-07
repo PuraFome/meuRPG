@@ -60,7 +60,7 @@ function watchAnswers(page: Page): string[] {
 
 /** The player's page on a puzzle, once its title is there. */
 async function playerOpens(player: Page, campaignId: string, puzzleId: string, name: string): Promise<void> {
-  await player.goto(`/campanhas/${campaignId}/sessao?quebra-cabeca=${puzzleId}`);
+  await player.goto(`/campaigns/${campaignId}/session?puzzle=${puzzleId}`);
   await expect(player.getByRole('heading', { level: 1, name })).toBeVisible({ timeout: 30_000 });
 }
 
@@ -70,7 +70,7 @@ test('o enigma: o mestre o faz no formulário, o jogador erra e depois acerta, e
   const table = await tableForPuzzles(master, player, `Enigma ${Date.now()}`);
   try {
     // The master's form: the riddle, the accepted answers one by one, and "Ao errar": two attempts for each player.
-    await master.goto(puzzleRoute(table.campaignId, 'quebra-cabecas', 'novo'));
+    await master.goto(puzzleRoute(table.campaignId, 'puzzles', 'new'));
     await master.getByRole('radio', { name: /^Enigma/ }).check();
     await master.getByLabel('Nome').fill('A porta da Cripta pergunta');
     await master.getByLabel('O enigma').fill(RIDDLE.text);
@@ -100,7 +100,7 @@ test('o enigma: o mestre o faz no formulário, o jogador erra e depois acerta, e
     await expect(player.getByRole('heading', { level: 1, name: 'A porta da Cripta pergunta' })).toBeVisible();
     await expect(player.getByText(RIDDLE.text)).toBeVisible();
     await expect(player.getByText('Suas tentativas')).toBeVisible();
-    const puzzleId = new URL(player.url()).searchParams.get('quebra-cabeca')!;
+    const puzzleId = new URL(player.url()).searchParams.get('puzzle')!;
     const before = await playerRunText(player, table.campaignId, puzzleId);
     for (const answer of RIDDLE.answers) {
       expect(before).not.toContain(answer);
@@ -239,7 +239,7 @@ test('a cifra: a chave é uma pista da cena que o grupo acha, e o jogador decifr
     const clueId = await sceneClueRPC(master, table.campaignId, table.map.mapId, 'A biblioteca', clueText);
 
     // The master's form: the server ciphers the message for him ("Como os jogadores a veem"), and the key is a scene clue.
-    await master.goto(puzzleRoute(table.campaignId, 'quebra-cabecas', 'novo'));
+    await master.goto(puzzleRoute(table.campaignId, 'puzzles', 'new'));
     await master.getByRole('radio', { name: /^Cifra/ }).check();
     await master.getByLabel('Nome').fill('A carta do Capitão');
     await master.getByLabel('Mensagem', { exact: true }).fill(CIPHER.message);
@@ -257,7 +257,7 @@ test('a cifra: a chave é uma pista da cena que o grupo acha, e o jogador decifr
     await openSessionPage(player, table.campaignId);
     await player.getByRole('link', { name: 'Abrir o quebra-cabeça' }).click();
     await expect(player.getByRole('heading', { level: 1, name: 'A carta do Capitão' })).toBeVisible();
-    const puzzleId = new URL(player.url()).searchParams.get('quebra-cabeca')!;
+    const puzzleId = new URL(player.url()).searchParams.get('puzzle')!;
     await expect(player.locator('.cipher')).toHaveText(CIPHER.ciphertext);
     // The letter, a column for each of its letters, and the field: the table is the player's own helper.
     await expect(player.locator('.col__bet')).toHaveCount(9);
@@ -393,7 +393,7 @@ test('a informação dividida: o mestre dá uma parte a cada jogador e cada um s
     const mine = '“…os tambores ecoam três vezes antes de a porta ceder.”';
     const hers = '“A porta ouve o que o chão esconde…”';
     // The master's form: two parts, each for one player's character.
-    await master.goto(puzzleRoute(table.campaignId, 'quebra-cabecas', 'novo'));
+    await master.goto(puzzleRoute(table.campaignId, 'puzzles', 'new'));
     await master.getByRole('radio', { name: /^Enigma/ }).check();
     await master.getByLabel('Nome').fill('A porta da Cripta pergunta');
     await master.getByLabel('O enigma').fill(RIDDLE.text);
@@ -417,7 +417,7 @@ test('a informação dividida: o mestre dá uma parte a cada jogador e cada um s
     await openSessionPage(player, table.campaignId);
     await player.getByRole('link', { name: 'Abrir o quebra-cabeça' }).click();
     await expect(player.getByRole('heading', { level: 1, name: 'A porta da Cripta pergunta' })).toBeVisible();
-    const puzzleId = new URL(player.url()).searchParams.get('quebra-cabeca')!;
+    const puzzleId = new URL(player.url()).searchParams.get('puzzle')!;
     // Pensantus's phone: his own part, labelled as only his, and who else has one (a name, never the text).
     await expect(player.getByRole('region', { name: 'A sua parte da pista' })).toContainText(mine.replace(/[“”]/g, ''));
     await expect(player.getByText('Só você vê esta parte.')).toBeVisible();

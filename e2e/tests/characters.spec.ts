@@ -38,7 +38,7 @@ test('o jogador entra pelo convite, cria o personagem e o mestre o vê na campan
     // No living character yet: the CTA offers creating one
     // (campaign-characters.html).
     await joinedPage.getByRole('link', { name: 'Criar meu personagem' }).click();
-    await expect(joinedPage).toHaveURL(new RegExp(`/campanhas/${campaignId}/personagens/novo$`));
+    await expect(joinedPage).toHaveURL(new RegExp(`/campaigns/${campaignId}/characters/new$`));
 
     const characterId = await createCharacterViaUI(joinedPage, campaignId, pensantus);
     expect(characterId).toBeTruthy();
@@ -81,7 +81,7 @@ test(
       expect(created.status()).toBe(200);
       const characterId = (await created.json()).character.id as string;
 
-      await joinedPage.goto(`/campanhas/${campaignId}/personagens/${characterId}`);
+      await joinedPage.goto(`/campaigns/${campaignId}/characters/${characterId}`);
 
       // The official sheet's sections (character-sheet.html and its child
       // components), each an <h2>. "Atributos" and "Combate" are for screen
@@ -119,20 +119,20 @@ test('o mestre cria um inimigo com ficha completa e um minion com ficha básica'
   const campaignId = await createCampaign(page, `NPCs ${Date.now()}`);
 
   // The "Novo NPC" menu (campaign-characters.html) routes to
-  // /campanhas/:id/npcs/novo/:tipo, one per NPC kind.
-  await page.goto(`/campanhas/${campaignId}`);
+  // /campaigns/:id/npcs/new/:kind, one per NPC kind.
+  await page.goto(`/campaigns/${campaignId}`);
   await page.getByRole('button', { name: 'Novo NPC' }).click();
   await page.getByRole('menuitem', { name: 'Inimigo' }).click();
-  await expect(page).toHaveURL(new RegExp(`/campanhas/${campaignId}/npcs/novo/inimigo$`));
+  await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}/npcs/new/enemy$`));
 
   // Inimigo (ENEMY): full sheet, the same stepper as a player's.
   const enemyId = await createCharacterViaUI(page, campaignId, { ...pensantus, name: 'Goblin Chefe' }, page.url());
   expect(enemyId).toBeTruthy();
 
-  await page.goto(`/campanhas/${campaignId}`);
+  await page.goto(`/campaigns/${campaignId}`);
   await page.getByRole('button', { name: 'Novo NPC' }).click();
   await page.getByRole('menuitem', { name: 'Minion' }).click();
-  await expect(page).toHaveURL(new RegExp(`/campanhas/${campaignId}/npcs/novo/minion$`));
+  await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}/npcs/new/minion$`));
 
   // Minion: a flat basic-sheet form, no stepper (character-editor.html).
   await page.getByLabel('Nome do personagem').fill('Bandido');
@@ -153,13 +153,13 @@ test('o mestre cria um inimigo com ficha completa e um minion com ficha básica'
   await page.getByRole('option', { name: 'Cortante' }).click();
   await expect(page.getByText('Na ficha: Cimitarra, +4 para acertar, 1d6 + 2 de dano cortante')).toBeVisible();
   await page.getByRole('button', { name: 'Criar NPC' }).click();
-  await expect(page).toHaveURL(/\/campanhas\/[^/]+\/personagens\/[^/]+$/);
+  await expect(page).toHaveURL(/\/campaigns\/[^/]+\/characters\/[^/]+$/);
 
   // The sheet shows initiative and the attack as the master typed them.
   await expect(page.locator('dt:text-is("Iniciativa") + dd')).toHaveText('+2');
   await expect(page.getByText('Cimitarra +4 · 1d6 + 2 cortante')).toBeVisible();
 
-  await page.goto(`/campanhas/${campaignId}`);
+  await page.goto(`/campaigns/${campaignId}`);
   // "NPCs" is an <h3> (campaign-characters.html), not an <h2>.
   await expect(page.getByRole('heading', { name: 'NPCs', level: 3 })).toBeVisible();
   await expect(page.getByText('Goblin Chefe')).toBeVisible();

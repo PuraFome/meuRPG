@@ -59,7 +59,7 @@ export interface PoolCardRow {
   readonly affected: boolean;
 }
 
-/** What only the master reads under a Sono or a Borrifo de Cores (E8-03). */
+/** What only the master reads under a Sono or a Leque Cromático (E8-03). */
 export interface PoolCard {
   /** "5d8 (2, 4, 1, 5, 3) = 15": the total is the pool of hit points. */
   readonly roll: string;

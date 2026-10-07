@@ -2,7 +2,7 @@ package play
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -13,6 +13,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -93,27 +94,42 @@ func (s *Service) ListCombatLog(
 	if err != nil {
 		return nil, err
 	}
-	session, err := s.openSession(ctx, m.CampaignID)
+	// The combat's events, its combatants and the master's undo marker are one
+	// snapshot (audit D-03): a log line whose actor is missing, or an "undo" that
+	// points at an event the list does not have, would be a torn read.
+	var (
+		enc    playdb.Encounter
+		events []playdb.ListEncounterEventsRow
+		cs     []playdb.Combatant
+		recent []playdb.ListRecentSessionEventsRow
+	)
+	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		session, err := openSessionWith(ctx, q, m.CampaignID)
+		if err != nil {
+			return err
+		}
+		if enc, err = encounterInSessionWith(ctx, q, session.ID, encID); err != nil {
+			return err
+		}
+		if events, err = q.ListEncounterEvents(ctx, playdb.ListEncounterEventsParams{EncounterID: &enc.ID, Limit: logEventLimit}); err != nil {
+			return fmt.Errorf("list the combat's events: %w", err)
+		}
+		// With the dismissed creatures: their lines survive a concentration ending.
+		if cs, err = q.ListCombatantsWithDismissed(ctx, enc.ID); err != nil {
+			return fmt.Errorf("list the combatants: %w", err)
+		}
+		if m.Role == authz.RoleMaster {
+			if recent, err = q.ListRecentSessionEvents(ctx, playdb.ListRecentSessionEventsParams{GameSessionID: session.ID, Limit: recentEvents}); err != nil {
+				return fmt.Errorf("read the latest events: %w", err)
+			}
+		}
+		return nil
+	})
 	if err != nil {
-		return nil, err
-	}
-	enc, err := s.queries.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: session.ID, ID: encID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("encounter not found"))
-	}
-	if err != nil {
-		return nil, s.dbError(ctx, "find the encounter", err)
-	}
-	events, err := s.queries.ListEncounterEvents(ctx, playdb.ListEncounterEventsParams{EncounterID: &enc.ID, Limit: logEventLimit})
-	if err != nil {
-		return nil, s.dbError(ctx, "list the combat's events", err)
+		return nil, s.dbError(ctx, "read the combat log", err)
 	}
 	slices.Reverse(events) // oldest first, as buildLog reads them
-	// With the dismissed creatures: their lines survive a concentration ending.
-	cs, err := s.queries.ListCombatantsWithDismissed(ctx, enc.ID)
-	if err != nil {
-		return nil, s.dbError(ctx, "list the combatants", err)
-	}
 	// The log's lines are filtered by who could see them when they happened
 	// (actionEvent.SeenBy), not by what the viewer sees now; only the current
 	// rules about hidden combatants are worked out from the combatants as they are.
@@ -130,10 +146,6 @@ func (s *Service) ListCombatLog(
 	res := &playv1.ListCombatLogResponse{}
 	var lastID string
 	if v.master {
-		recent, err := s.queries.ListRecentSessionEvents(ctx, playdb.ListRecentSessionEventsParams{GameSessionID: session.ID, Limit: recentEvents})
-		if err != nil {
-			return nil, s.dbError(ctx, "read the latest events", err)
-		}
 		if last, ok := lastAction(recent, enc.ID); ok {
 			lastID = last.ID
 			res.UndoableEventId = last.ID

@@ -3740,7 +3740,7 @@ export type SummonSpellOptions = Message<"meurpg.characters.v1.SummonSpellOption
   spellKey: string;
 
   /**
-   * Its Portuguese name ("Encontrar Familiar").
+   * Its Portuguese name ("Convocar Familiar").
    *
    * @generated from field: string name_pt = 2;
    */
@@ -3775,7 +3775,7 @@ export type SummonSpellOptions = Message<"meurpg.characters.v1.SummonSpellOption
   /**
    * Whether this character can cast it as a ritual (no slot): a wizard from the
    * spellbook, another caster from its prepared list, a warlock with the Pact
-   * of the Chain for Encontrar Familiar. Always false for a spell that is not a
+   * of the Chain for Convocar Familiar. Always false for a spell that is not a
    * ritual.
    *
    * @generated from field: bool can_ritual = 7;
@@ -3856,7 +3856,7 @@ export const SummonCircleSchema: GenMessage<SummonCircle> = /*@__PURE__*/
 export type SummonOption = Message<"meurpg.characters.v1.SummonOption"> & {
   /**
    * How many creatures, already counting the circle (Conjurar Animais doubles at
-   * the 5th, Animar os Mortos adds two for each circle above the 3rd).
+   * the 5th, Animar Mortos adds two for each circle above the 3rd).
    *
    * @generated from field: int32 count = 1;
    */
@@ -5012,14 +5012,14 @@ export enum CreatureSource {
   UNSPECIFIED = 0,
 
   /**
-   * Encontrar Familiar: at most one at a time.
+   * Convocar Familiar: at most one at a time.
    *
    * @generated from enum value: CREATURE_SOURCE_FAMILIAR = 1;
    */
   FAMILIAR = 1,
 
   /**
-   * Animar os Mortos: skeletons and zombies.
+   * Animar Mortos: skeletons and zombies.
    *
    * @generated from enum value: CREATURE_SOURCE_ANIMATE_DEAD = 2;
    */
@@ -5803,7 +5803,7 @@ export const CharacterService: GenService<{
   /**
    * GetSummonOptions says what a character can summon from its sheet (MR-037,
    * Etapa 9), for the "Criaturas" panel's casting sheet: the summoning spells
-   * it can cast (Encontrar Familiar, Animar os Mortos, Conjurar Animais), how
+   * it can cast (Convocar Familiar, Animar Mortos, Conjurar Animais), how
    * (as a ritual, with a slot, or both), what each one may bring at each circle
    * it can use, the slots it has, and what a casting would send away. The
    * server works all of it out (the spell on the sheet, prepared or in the

@@ -79,8 +79,8 @@ export class PlayerMap {
   });
   protected readonly backLink = computed(() =>
     this.fromSession()
-      ? { path: ['/campanhas', this.campaignId(), 'sessao'], label: 'Voltar para a sessão' }
-      : { path: ['/campanhas', this.campaignId()], label: 'Voltar para a campanha' },
+      ? { path: ['/campaigns', this.campaignId(), 'session'], label: 'Voltar para a sessão' }
+      : { path: ['/campaigns', this.campaignId()], label: 'Voltar para a campanha' },
   );
 
   constructor() {
@@ -115,7 +115,7 @@ export class PlayerMap {
 
   /** "Abrir <mapa>": the sheet's button; the next page loads the map. */
   protected openMap(mapId: string): void {
-    void this.router.navigate(['/campanhas', this.campaignId(), 'mapas', mapId], {
+    void this.router.navigate(['/campaigns', this.campaignId(), 'maps', mapId], {
       queryParamsHandling: 'preserve',
     });
   }

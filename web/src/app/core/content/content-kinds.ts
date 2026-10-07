@@ -13,7 +13,7 @@ import { metersText } from '../units';
  * "Raças" group holds them) but they are entries too: they sit in "Raças", after the races. */
 export interface ContentNavKind {
   /** The URL segment of "Nova …" and the list's key. */
-  readonly slug: 'classes' | 'subclasses' | 'racas' | 'antecedentes' | 'magias';
+  readonly slug: 'classes' | 'subclasses' | 'races' | 'backgrounds' | 'spells';
   /** Plural, the nav item and the panel title. */
   readonly plural: string;
   /** Singular with its article, for "Nova raça" and "Voltar para Raças". */
@@ -31,11 +31,11 @@ export interface ContentNavKind {
 }
 
 export const CONTENT_NAV: readonly ContentNavKind[] = [
-  { slug: 'classes', plural: 'Classes', singular: 'classe', kinds: [TableContentKind.CLASS], newLabel: 'Nova classe', aOne: 'uma classe', editable: true, createSegment: 'classe' },
-  { slug: 'subclasses', plural: 'Subclasses', singular: 'subclasse', kinds: [TableContentKind.SUBCLASS], newLabel: 'Nova subclasse', aOne: 'uma subclasse', editable: true, createSegment: 'subclasse' },
-  { slug: 'racas', plural: 'Raças', singular: 'raça', kinds: [TableContentKind.RACE, TableContentKind.SUBRACE], newLabel: 'Nova raça', aOne: 'uma raça', editable: true, createSegment: 'raca' },
-  { slug: 'antecedentes', plural: 'Antecedentes', singular: 'antecedente', kinds: [TableContentKind.BACKGROUND], newLabel: 'Novo antecedente', aOne: 'um antecedente', editable: true, createSegment: 'antecedente' },
-  { slug: 'magias', plural: 'Magias', singular: 'magia', kinds: [TableContentKind.SPELL], newLabel: 'Nova magia', aOne: 'uma magia', editable: true, createSegment: 'magia' },
+  { slug: 'classes', plural: 'Classes', singular: 'classe', kinds: [TableContentKind.CLASS], newLabel: 'Nova classe', aOne: 'uma classe', editable: true, createSegment: 'class' },
+  { slug: 'subclasses', plural: 'Subclasses', singular: 'subclasse', kinds: [TableContentKind.SUBCLASS], newLabel: 'Nova subclasse', aOne: 'uma subclasse', editable: true, createSegment: 'subclass' },
+  { slug: 'races', plural: 'Raças', singular: 'raça', kinds: [TableContentKind.RACE, TableContentKind.SUBRACE], newLabel: 'Nova raça', aOne: 'uma raça', editable: true, createSegment: 'race' },
+  { slug: 'backgrounds', plural: 'Antecedentes', singular: 'antecedente', kinds: [TableContentKind.BACKGROUND], newLabel: 'Novo antecedente', aOne: 'um antecedente', editable: true, createSegment: 'background' },
+  { slug: 'spells', plural: 'Magias', singular: 'magia', kinds: [TableContentKind.SPELL], newLabel: 'Nova magia', aOne: 'uma magia', editable: true, createSegment: 'spell' },
 ];
 
 export function navOfKind(kind: TableContentKind): ContentNavKind | undefined {

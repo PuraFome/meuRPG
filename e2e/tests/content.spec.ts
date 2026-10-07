@@ -23,7 +23,7 @@ test(
       await Promise.all([m.goto('/'), p.goto('/')]);
       const campaignId = await campaignWithEmptyPlayer(m, p, `Conteúdo magias ${Date.now()}`);
 
-      await m.goto(`/campanhas/${campaignId}/conteudo?tipo=magias`);
+      await m.goto(`/campaigns/${campaignId}/content?kind=spells`);
       await expect(m.getByRole('heading', { level: 1, name: 'Conteúdo da mesa' })).toBeVisible();
       await expect(m.getByText('Nada cadastrado ainda.')).toBeVisible();
       await m.getByRole('link', { name: 'Nova magia' }).click();
@@ -44,11 +44,11 @@ test(
       await expect(preview.getByText('Uma criatura')).toBeVisible();
       await expect(preview.getByText('Ataque de magia à distância')).toBeVisible();
       await m.getByRole('button', { name: 'Salvar magia' }).click();
-      await expect(m).toHaveURL(/\/conteudo\/entrada\//);
+      await expect(m).toHaveURL(/\/content\/entries\//);
       await expect(m.getByText('A magia Lâmina de Nanquim foi salva.')).toBeVisible();
 
       // An area spell: the size label follows the shape.
-      await m.goto(`/campanhas/${campaignId}/conteudo/novo/magia`);
+      await m.goto(`/campaigns/${campaignId}/content/new/spell`);
       await m.getByLabel('Nome', { exact: true }).fill('Sopro de Nanquim');
       await m.getByLabel('Alcance', { exact: true }).selectOption({ label: 'Pessoal' });
       await pickRadio(m, 'Área');
@@ -65,7 +65,7 @@ test(
       await m.getByRole('button', { name: 'Salvar magia' }).click();
       await expect(m.getByText('A magia Sopro de Nanquim foi salva.')).toBeVisible();
 
-      await m.goto(`/campanhas/${campaignId}/conteudo?tipo=magias`);
+      await m.goto(`/campaigns/${campaignId}/content?kind=spells`);
       const rows = m.locator('a.row');
       await expect(rows).toHaveCount(2);
       await expect(rows.nth(0)).toContainText('Lâmina de Nanquim');
@@ -92,7 +92,7 @@ test('uma recusa do servidor volta no campo, e o que foi digitado fica @MR-025',
     const campaignId = await campaignWithEmptyPlayer(m, p, `Conteúdo recusa ${Date.now()}`);
     await createEntryRPC(m, campaignId, 'tableSpell', spellBody('Lâmina de Nanquim'));
 
-    await m.goto(`/campanhas/${campaignId}/conteudo/novo/magia`);
+    await m.goto(`/campaigns/${campaignId}/content/new/spell`);
     await m.getByLabel('Nome', { exact: true }).fill('Lâmina de Nanquim');
     await m.getByLabel('Distância').fill('18');
     await m.getByRole('button', { name: 'Salvar magia' }).click();
@@ -102,7 +102,7 @@ test('uma recusa do servidor volta no campo, e o que foi digitado fica @MR-025',
     await expect(m.getByRole('alert').filter({ hasText: 'Não foi possível salvar a magia.' })).toContainText('1 campo precisa de ajuste');
     await expect(name).toBeFocused();
     await expect(name).toHaveValue('Lâmina de Nanquim');
-    await expect(m).toHaveURL(/\/conteudo\/novo\/magia$/);
+    await expect(m).toHaveURL(/\/content\/new\/spell$/);
 
     // Another name saves: the refusal is gone.
     await name.fill('Lâmina de Tinta');
@@ -110,7 +110,7 @@ test('uma recusa do servidor volta no campo, e o que foi digitado fica @MR-025',
     await expect(m.getByText('A magia Lâmina de Tinta foi salva.')).toBeVisible();
 
     // A dice the server cannot read is refused on the damage field.
-    await m.goto(`/campanhas/${campaignId}/conteudo/novo/magia`);
+    await m.goto(`/campaigns/${campaignId}/content/new/spell`);
     await m.getByLabel('Nome', { exact: true }).fill('Lâmina Torta');
     await m.getByLabel('Distância').fill('18');
     await pickRadio(m, 'Ataque');
@@ -135,7 +135,7 @@ test(
       await Promise.all([m.goto('/'), p.goto('/')]);
       const campaignId = await campaignWithEmptyPlayer(m, p, `Conteúdo raça ${Date.now()}`);
 
-      await m.goto(`/campanhas/${campaignId}/conteudo/novo/raca`);
+      await m.goto(`/campaigns/${campaignId}/content/new/race`);
       await m.getByLabel('Nome', { exact: true }).fill('Corujeiro');
       await m.getByLabel('Deslocamento').fill('9');
       await m.getByLabel('Visão no escuro').fill('18');
@@ -159,7 +159,7 @@ test(
       expect(stored.traits[0].effects).toEqual([{ type: 'proficiency', proficiency: 'skill:perception' }]);
 
       // The player sees the race in the content page, in full, and makes a character with it.
-      await p.goto(`/campanhas/${campaignId}/conteudo`);
+      await p.goto(`/campaigns/${campaignId}/content`);
       await p.getByRole('link', { name: /Corujeiro/ }).click();
       await expect(p.getByRole('heading', { level: 1, name: 'Corujeiro' })).toBeVisible();
       await expect(p.getByText('Olhos de caçador.')).toBeVisible();
@@ -206,7 +206,7 @@ test(
       // The player no longer sees it, and the server never sent it: read the JSON.
       const list = await listEntriesJSON(p, campaignId);
       expect(list.entries ?? []).toEqual([]);
-      await p.goto(`/campanhas/${campaignId}/conteudo`);
+      await p.goto(`/campaigns/${campaignId}/content`);
       await expect(p.getByText('O mestre ainda não criou nada para esta mesa.')).toBeVisible();
       await expect(p.getByText('Corujeiro')).toHaveCount(0);
       const content = await callRPC(p, 'meurpg.rules.v1.ContentService/ListContent', { campaignId });
@@ -215,7 +215,7 @@ test(
       // The sheet that uses it keeps working.
       const sheet = await callRPC(p, 'meurpg.characters.v1.CharacterService/GetCharacter', { campaignId, characterId });
       expect(sheet.ok(), await sheet.text()).toBeTruthy();
-      await p.goto(`/campanhas/${campaignId}/personagens/${characterId}`);
+      await p.goto(`/campaigns/${campaignId}/characters/${characterId}`);
       await expect(p.getByRole('heading', { level: 1, name: pensantus.name })).toBeVisible();
 
       // "Desarquivar" brings it back, with no question.
@@ -280,7 +280,7 @@ test(
       await Promise.all([m.goto('/'), p.goto('/')]);
       const campaignId = await campaignWithEmptyPlayer(m, p, `Conteúdo antecedente ${Date.now()}`);
 
-      await m.goto(`/campanhas/${campaignId}/conteudo/novo/antecedente`);
+      await m.goto(`/campaigns/${campaignId}/content/new/background`);
       await m.getByLabel('Nome', { exact: true }).fill('Cartógrafo do Vale');
       await m.getByLabel('Primeira perícia').selectOption({ label: 'Investigação' });
       await m.getByLabel('Segunda perícia').selectOption({ label: 'Sobrevivência' });
@@ -301,7 +301,7 @@ test(
       // A note with no text of its own takes the trait's.
       expect(stored.feature.effects ?? []).toEqual([]);
 
-      await p.goto(`/campanhas/${campaignId}/conteudo`);
+      await p.goto(`/campaigns/${campaignId}/content`);
       await p.getByRole('link', { name: /Cartógrafo do Vale/ }).click();
       await expect(p.getByRole('heading', { level: 1, name: 'Cartógrafo do Vale' })).toBeVisible();
       await expect(p.getByText('Ferramentas de ladrão')).toBeVisible();
@@ -326,7 +326,7 @@ test(
       const campaignId = await campaignWithEmptyPlayer(m, p, `Conteúdo sub-raça ${Date.now()}`);
       await createEntryRPC(m, campaignId, 'tableRace', raceBody());
 
-      await m.goto(`/campanhas/${campaignId}/conteudo?tipo=racas`);
+      await m.goto(`/campaigns/${campaignId}/content?kind=races`);
       await m.getByRole('link', { name: 'Nova sub-raça' }).click();
       await expect(m.getByRole('heading', { level: 1, name: 'Nova sub-raça' })).toBeVisible();
       await m.getByLabel('Raça da sub-raça').selectOption({ label: 'Anão' });
@@ -338,7 +338,7 @@ test(
       const stored = (await listEntriesJSON(m, campaignId)).entries!.find((e) => e.namePt === 'Anão das Brumas')!;
       expect(stored.tableSubrace.raceKey).toBe('race:dwarf');
       expect(stored.tableSubrace.abilityBonuses).toMatchObject({ constitution: 1 });
-      await m.goto(`/campanhas/${campaignId}/conteudo?tipo=racas`);
+      await m.goto(`/campaigns/${campaignId}/content?kind=races`);
       await expect(m.locator('a.row').filter({ hasText: 'Anão das Brumas' })).toContainText('Sub-raça de Anão');
     } finally {
       await Promise.all([master.close(), player.close()]);
@@ -403,7 +403,7 @@ test(
       await expect(m.getByText('A magia Lâmina de Nanquim foi salva.')).toBeVisible();
       const warning = m.getByRole('status').filter({ hasText: 'ficha ficou com aviso' });
       await expect(warning).toBeVisible();
-      await expect(warning.getByRole('link', { name: pensantus.name })).toHaveAttribute('href', `/campanhas/${campaignId}/personagens/${characterId}`);
+      await expect(warning.getByRole('link', { name: pensantus.name })).toHaveAttribute('href', `/campaigns/${campaignId}/characters/${characterId}`);
     } finally {
       await Promise.all([master.close(), player.close()]);
     }

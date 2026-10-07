@@ -40,19 +40,19 @@ describe('edit actions', () => {
 
   it('writes a link with the selection as its label, or the name', () => {
     const t = 'veja Mirathel agora';
-    const e = insertLink(t, 5, 13, 'Outro nome', 'mapa:abc');
-    expect(applyEdit(t, e)).toBe('veja [Mirathel](mapa:abc) agora');
-    expect(applyEdit('x ', insertLink('x ', 2, 2, 'Capitão [Goblin]', 'ficha:abc'))).toBe(
-      'x [Capitão Goblin](ficha:abc)',
+    const e = insertLink(t, 5, 13, 'Outro nome', 'map:abc');
+    expect(applyEdit(t, e)).toBe('veja [Mirathel](map:abc) agora');
+    expect(applyEdit('x ', insertLink('x ', 2, 2, 'Capitão [Goblin]', 'character:abc'))).toBe(
+      'x [Capitão Goblin](character:abc)',
     );
   });
 
   it('puts an image on a paragraph of its own', () => {
     const t = 'antes depois';
     const e = insertImage(t, 6, 6, 'A Taverna', ID);
-    expect(applyEdit(t, e)).toBe(`antes \n\n![A Taverna](imagem:${ID})\n\ndepois`);
-    expect(applyEdit('', insertImage('', 0, 0, 'x', ID))).toBe(`![x](imagem:${ID})\n\n`);
-    expect(applyEdit('a\n\n', insertImage('a\n\n', 3, 3, 'x', ID))).toBe(`a\n\n![x](imagem:${ID})\n\n`);
+    expect(applyEdit(t, e)).toBe(`antes \n\n![A Taverna](image:${ID})\n\ndepois`);
+    expect(applyEdit('', insertImage('', 0, 0, 'x', ID))).toBe(`![x](image:${ID})\n\n`);
+    expect(applyEdit('a\n\n', insertImage('a\n\n', 3, 3, 'x', ID))).toBe(`a\n\n![x](image:${ID})\n\n`);
   });
 
   it('counts bytes of UTF-8 after normalising line breaks, and warns from 90%', () => {

@@ -17,7 +17,7 @@ import { describeInviteErrorCode } from '../../core/campaigns/invite-errors';
 const REASONS_WITH_OWN_ADVICE = new Set(['used_up', 'not_found', 'unavailable']);
 
 /**
- * "/convite/erro?motivo=<code>" (public): where the server redirects after
+ * "/invite/error?reason=<code>" (public): where the server redirects after
  * the sign-in-through-invite flow when the invite could not be accepted —
  * `expired`, `revoked`, `used_up`, `not_found` or `invalid`
  * (docs/arquitetura.md#frontend-web).
@@ -31,14 +31,14 @@ const REASONS_WITH_OWN_ADVICE = new Set(['used_up', 'not_found', 'unavailable'])
 export class InviteError {
   private readonly route = inject(ActivatedRoute);
 
-  private readonly motivo = toSignal(
-    this.route.queryParamMap.pipe(map((params) => params.get('motivo'))),
+  private readonly reason = toSignal(
+    this.route.queryParamMap.pipe(map((params) => params.get('reason'))),
     { initialValue: null },
   );
 
-  protected readonly message = computed(() => describeInviteErrorCode(this.motivo()));
+  protected readonly message = computed(() => describeInviteErrorCode(this.reason()));
 
   protected readonly nextStep = computed(() =>
-    REASONS_WITH_OWN_ADVICE.has(this.motivo() ?? '') ? null : 'Peça um novo link a quem te convidou.',
+    REASONS_WITH_OWN_ADVICE.has(this.reason() ?? '') ? null : 'Peça um novo link a quem te convidou.',
   );
 }

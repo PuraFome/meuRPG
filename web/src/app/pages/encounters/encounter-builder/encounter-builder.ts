@@ -27,14 +27,14 @@ import type { DraftNpc } from '../../../core/encounters/encounter-draft';
 type PageState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready' };
 
 /**
- * "/campanhas/:id/encontros" (MR-043, RN-29, E10-09): the master's encounter builder. The party (the living player
+ * "/campaigns/:id/encounters" (MR-043, RN-29, E10-09): the master's encounter builder. The party (the living player
  * characters, plus NPCs he adds with a level), the bar of the difficulty, the creatures and their counts, "Gerar encontro"
  * and "Guardar no ponto de batalha". The browser does no maths: every change asks the server to measure the encounter
  * (`EncounterDraft`: debounced, one at a time, stale answers dropped) and the page draws the budgets, the band, the total
  * and the warnings it answers. Past the high budget the band is "Acima de alta": allowed, warned, never "mortal".
  *
  * Only the master gets the page: the builder and a saved encounter are his secret (RN-10), and the server answers a player
- * with `not_found`. `?mapa=&ponto=` (from a battle point of the map editor) opens "Guardar" on that point.
+ * with `not_found`. `?map=&point=` (from a battle point of the map editor) opens "Guardar" on that point.
  */
 @Component({
   selector: 'app-encounter-builder',
@@ -54,7 +54,7 @@ export class EncounterBuilder {
   private readonly injector = inject(Injector);
   private readonly encounters = inject(EncountersClient);
   protected readonly draft = new EncounterDraft(this.encounters, this.campaignId);
-  /** The battle point whose saved encounter is on screen (`?ponto=`), and the question "Tirar o encontro?" in place. */
+  /** The battle point whose saved encounter is on screen (`?point=`), and the question "Tirar o encontro?" in place. */
   protected readonly keptAt = signal<{ readonly mapId: string; readonly pointId: string } | null>(null);
   protected readonly clearing = signal(false);
   protected readonly clearBusy = signal(false);
@@ -113,7 +113,7 @@ export class EncounterBuilder {
     inject(DestroyRef).onDestroy(() => this.draft.stop());
     void this.start();
     const query = this.route.snapshot.queryParamMap;
-    this.fromPoint = { mapId: query.get('mapa') ?? '', pointId: query.get('ponto') ?? '' };
+    this.fromPoint = { mapId: query.get('map') ?? '', pointId: query.get('point') ?? '' };
   }
 
   private readonly fromPoint: { mapId: string; pointId: string };
@@ -129,7 +129,7 @@ export class EncounterBuilder {
     }
   }
 
-  /** A link from a battle point (`?mapa=&ponto=`) brings its saved encounter into the draft, so the master changes it, replaces it or takes it off. */
+  /** A link from a battle point (`?map=&point=`) brings its saved encounter into the draft, so the master changes it, replaces it or takes it off. */
   private async loadPoint(): Promise<void> {
     const { mapId, pointId } = this.fromPoint;
     if (!pointId) {

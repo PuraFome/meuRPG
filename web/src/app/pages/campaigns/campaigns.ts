@@ -101,7 +101,7 @@ export class Campaigns {
       this.createState.set({ status: 'idle' });
       const id = res.campaign?.id;
       if (id) {
-        await this.router.navigate(['/campanhas', id]);
+        await this.router.navigate(['/campaigns', id]);
       }
     } catch (err) {
       this.createState.set({

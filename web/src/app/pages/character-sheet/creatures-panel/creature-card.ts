@@ -93,7 +93,7 @@ export class CreatureCard {
     return { main: tight(main), extra: tight(extras.join(', ')) };
   });
 
-  protected readonly link = computed(() => ['/campanhas', this.campaignId(), 'personagens', this.characterId(), 'criaturas', this.creature().id]);
+  protected readonly link = computed(() => ['/campaigns', this.campaignId(), 'characters', this.characterId(), 'creatures', this.creature().id]);
 
   constructor() {
     effect(() => {

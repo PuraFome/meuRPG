@@ -1,0 +1,80 @@
+{
+  "description": "MeuRPG API log line (the backend log contract, backend/internal/platform/logging) to ECS. Accepts a line already parsed by Filebeat (`json`) or a raw JSON string in `message` (Pub/Sub, curl). Unknown keys are kept under meurpg.*; no step fails the document.",
+  "version": 1,
+  "_meta": { "contract": "2026-10-07" },
+  "processors": [
+    {
+      "json": {
+        "description": "A raw JSON line in `message` (not parsed by Filebeat) becomes `json`.",
+        "if": "ctx.json == null && ctx.message instanceof String && ctx.message.trim().startsWith('{')",
+        "field": "message",
+        "target_field": "json",
+        "ignore_failure": true
+      }
+    },
+    {
+      "remove": {
+        "description": "The raw line is replaced by the contract's `message`.",
+        "if": "ctx.json instanceof Map && ctx.json.message instanceof String",
+        "field": "message",
+        "ignore_missing": true
+      }
+    },
+    {
+      "script": {
+        "description": "duration_ms (float) to event.duration (ns); the Cloud Logging trace key to trace.id. Both keys are removed from `json` so they do not land under meurpg.*.",
+        "if": "ctx.json instanceof Map",
+        "lang": "painless",
+        "ignore_failure": true,
+        "source": "def j = ctx.json;\nif (j.containsKey('duration_ms')) {\n  def d = j.remove('duration_ms');\n  if (d instanceof Number) {\n    if (!(ctx.event instanceof Map)) { ctx.event = new HashMap(); }\n    ctx.event.duration = (long) (((Number) d).doubleValue() * 1000000.0);\n  }\n}\nString k = 'logging.googleapis.com/trace';\nif (j.containsKey(k)) {\n  def t = j.remove(k);\n  if (t instanceof String) {\n    if (!(ctx.trace instanceof Map)) { ctx.trace = new HashMap(); }\n    ctx.trace.id = t.substring(t.lastIndexOf('/') + 1);\n    j.gcp_trace = t;\n  }\n}"
+      }
+    },
+    {
+      "date": {
+        "description": "time (RFC 3339, nanoseconds) to @timestamp, keeping the nanoseconds.",
+        "if": "ctx.json instanceof Map && ctx.json.time != null",
+        "field": "json.time",
+        "target_field": "@timestamp",
+        "formats": ["ISO8601"],
+        "output_format": "strict_date_optional_time_nanos",
+        "on_failure": [{ "append": { "field": "tags", "value": "meurpg_time_parse_failure" } }]
+      }
+    },
+    { "remove": { "field": "json.time", "ignore_missing": true } },
+    { "rename": { "field": "json.severity", "target_field": "log.level", "ignore_missing": true, "ignore_failure": true } },
+    { "lowercase": { "field": "log.level", "ignore_missing": true, "ignore_failure": true } },
+    { "rename": { "field": "json.message", "target_field": "message", "ignore_missing": true, "ignore_failure": true } },
+    { "rename": { "field": "json.service", "target_field": "service.name", "ignore_missing": true, "ignore_failure": true } },
+    { "rename": { "field": "json.version", "target_field": "service.version", "ignore_missing": true, "ignore_failure": true } },
+    { "rename": { "field": "json.request_id", "target_field": "http.request.id", "ignore_missing": true, "ignore_failure": true } },
+    { "rename": { "field": "json.user_id", "target_field": "user.id", "ignore_missing": true, "ignore_failure": true } },
+    { "rename": { "field": "json.method", "target_field": "http.request.method", "ignore_missing": true, "ignore_failure": true } },
+    { "rename": { "field": "json.path", "target_field": "url.path", "ignore_missing": true, "ignore_failure": true } },
+    { "rename": { "field": "json.status", "target_field": "http.response.status_code", "ignore_missing": true, "ignore_failure": true } },
+    { "rename": { "field": "json.error", "target_field": "error.message", "ignore_missing": true, "ignore_failure": true } },
+    {
+      "remove": {
+        "description": "Nothing left to keep.",
+        "if": "ctx.json instanceof Map && ctx.json.isEmpty()",
+        "field": "json",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "description": "Everything else in the contract (procedure, code, reason, campaign_id, event, ...) keeps its name under meurpg.*.",
+        "field": "json",
+        "target_field": "meurpg",
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    { "set": { "field": "event.ingested", "copy_from": "_ingest.timestamp" } },
+    { "set": { "field": "event.dataset", "value": "meurpg.api", "override": false } }
+  ],
+  "on_failure": [
+    { "append": { "field": "tags", "value": "meurpg_pipeline_failure" } },
+    { "set": { "field": "event.kind", "value": "pipeline_error" } },
+    { "set": { "field": "meurpg_pipeline_error", "value": "{{{ _ingest.on_failure_message }}}" } }
+  ]
+}

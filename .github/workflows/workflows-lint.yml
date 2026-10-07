@@ -1,0 +1,65 @@
+# Lints the workflows themselves: actionlint (syntax, expressions, shell in
+# `run:` through shellcheck) and zizmor (security: template injection,
+# excessive permissions, unpinned actions, missing Dependabot cooldown).
+#
+# Both tools are release binaries pinned by version and sha256, downloaded
+# straight from GitHub: no extra third-party action to trust. To update one,
+# change its version and the checksum together (the release page lists it).
+name: workflows-lint
+
+on:
+  pull_request:
+    paths:
+      - ".github/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/**"
+
+# Only a pull request's runs cancel each other; a push to main runs to the end.
+concurrency:
+  group: workflows-lint-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  ACTIONLINT_VERSION: "1.7.12"
+  ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+  ZIZMOR_VERSION: "1.30.1"
+  ZIZMOR_SHA256: e65324f4430c2717591937edcec90ccbefaf14c174f8ec9415e03ca875b46e1a
+
+jobs:
+  lint:
+    name: actionlint and zizmor
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install actionlint
+        run: |
+          curl -fsSL -o actionlint.tar.gz \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  actionlint.tar.gz" | sha256sum --check --strict
+          tar -xzf actionlint.tar.gz actionlint
+
+      - name: Install zizmor
+        run: |
+          curl -fsSL -o zizmor.tar.gz \
+            "https://github.com/zizmorcore/zizmor/releases/download/v${ZIZMOR_VERSION}/zizmor-x86_64-unknown-linux-gnu.tar.gz"
+          echo "${ZIZMOR_SHA256}  zizmor.tar.gz" | sha256sum --check --strict
+          tar -xzf zizmor.tar.gz zizmor
+
+      - name: actionlint
+        # .github/actionlint.yaml is picked up on its own.
+        run: ./actionlint -color
+
+      - name: zizmor
+        # --offline: no GitHub API calls (and so no token); the audits that
+        # need the network are left out.
+        run: ./zizmor --offline .github

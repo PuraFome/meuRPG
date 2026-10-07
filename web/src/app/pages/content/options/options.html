@@ -74,7 +74,7 @@
                   <a
                     class="menu__item"
                     [routerLink]="[]"
-                    [queryParams]="{ tipo: n.slug }"
+                    [queryParams]="{ kind: n.slug }"
                     [attr.aria-current]="slug() === n.slug ? 'page' : null"
                     [class.menu__item--on]="slug() === n.slug"
                   >
@@ -135,7 +135,7 @@
             <button matButton="outlined" type="button" [disabled]="turnOnDisabled()" (click)="setAll(false)">Ligar {{ allWord() }}{{ bulkSuffix() }}</button>
             <button matButton="outlined" type="button" [disabled]="turnOffDisabled()" (click)="setAll(true)">Desligar {{ allWord() }}{{ bulkSuffix() }}</button>
           </div>
-          @if (current().slug === 'racas' && subraceTotal() > 0) {
+          @if (current().slug === 'races' && subraceTotal() > 0) {
             <p class="muted bulk-note">“Desligar todas” também desliga as sub-raças ({{ subraceTotal() }}); “Ligar todas” também as liga.</p>
           }
           @if (rows().length === 0) {

@@ -198,11 +198,11 @@ export class RaceEditor {
   }
 
   protected newSubraceLink(): string[] {
-    return ['/campanhas', this.campaignId(), 'conteudo', 'novo', 'subraca'];
+    return ['/campaigns', this.campaignId(), 'content', 'new', 'subrace'];
   }
 
   protected subraceLink(e: TableEntry): string[] {
-    return ['/campanhas', this.campaignId(), 'conteudo', 'entrada', e.key];
+    return ['/campaigns', this.campaignId(), 'content', 'entries', e.key];
   }
 
   protected setParent(raceKey: string): void {

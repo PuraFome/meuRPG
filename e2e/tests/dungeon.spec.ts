@@ -40,7 +40,7 @@ test('o mestre vê a prévia do servidor e a mesma semente dá a mesma prévia, 
     const table = await tableForMaps(master, player, `Masmorra ${Date.now()}`);
 
     // The campaign's maps lead to the page.
-    await master.goto(`/campanhas/${table.campaignId}`);
+    await master.goto(`/campaigns/${table.campaignId}`);
     await master.getByRole('link', { name: 'Gerar masmorra' }).click();
     await expect(master.getByRole('heading', { level: 1, name: 'Gerar masmorra' })).toBeVisible();
     await expect(drawing(master)).toBeVisible();
@@ -79,7 +79,7 @@ test('o mestre vê a prévia do servidor e a mesma semente dá a mesma prévia, 
     await seedField(master, SEED);
     await expect(drawing(master)).toBeVisible();
     await master.getByRole('button', { name: 'Criar o mapa' }).click();
-    await expect(master).toHaveURL(/\/mapas\/[0-9a-f-]{36}$/);
+    await expect(master).toHaveURL(/\/maps\/[0-9a-f-]{36}$/);
     const mapId = master.url().split('/').pop()!;
     await expect(master.getByRole('heading', { level: 1, name: `Masmorra de ${table.campaignName}` })).toBeVisible();
     await expect(master.getByRole('heading', { name: 'Salas', exact: true })).toBeVisible();

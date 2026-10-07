@@ -4,15 +4,22 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"io/fs"
 	"net/url"
-	"os"
+	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+
+	"github.com/PuraFome/meuRPG/backend/internal/platform/testenv"
 )
 
 // TestMigrationsUpDownUp applies every migration to a brand-new database,
@@ -73,10 +80,7 @@ var freshCounter atomic.Int64
 func freshDatabase(t *testing.T) *sql.DB {
 	t.Helper()
 
-	rawURL := os.Getenv("MEURPG_TEST_DATABASE_URL")
-	if rawURL == "" {
-		t.Skip("MEURPG_TEST_DATABASE_URL is not set; skipping database test")
-	}
+	rawURL := testenv.DatabaseURL(t)
 
 	admin := open(t, rawURL)
 	// The clock alone is not unique: on macOS it ticks in microseconds, and two
@@ -331,4 +335,109 @@ func TestMigrationsBackfillAChainOfEditsOfAnyDepth(t *testing.T) {
 	if got := marked(chain[len(chain)-1]); got != "textured_map" {
 		t.Errorf("the deepest edit after a second run is %q", got)
 	}
+}
+
+// TestEveryEventKindOfTheCodeIsInTheTable: (it also checks that the kind is limited
+// by a foreign key and no longer by the CHECK of D-02.) A session event the Go code can write
+// has a row in session_event_kinds, or its INSERT would fail the foreign key. The
+// kinds are the `event...` string constants of internal/ (play, maps, progression);
+// a new one without its migration fails here, not at a table.
+func TestEveryEventKindOfTheCodeIsInTheTable(t *testing.T) {
+	t.Parallel()
+	db := freshDatabase(t)
+	provider, err := NewProvider(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.Up(t.Context()); err != nil {
+		t.Fatalf("Up() error = %v", err)
+	}
+
+	var create string
+	var name string
+	if err := db.QueryRowContext(t.Context(), `SHOW CREATE TABLE session_events`).Scan(&name, &create); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(create, "session_events_kind_valid") {
+		t.Error("session_events still has the kind CHECK")
+	}
+	if !strings.Contains(create, "session_events_kind_fkey FOREIGN KEY (kind) REFERENCES public.session_event_kinds(kind)") {
+		t.Errorf("session_events has no foreign key on kind:\n%s", create)
+	}
+
+	inTable := map[string]bool{}
+	rows, err := db.QueryContext(t.Context(), `SELECT kind FROM session_event_kinds`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var k string
+		if err := rows.Scan(&k); err != nil {
+			t.Fatal(err)
+		}
+		inTable[k] = true
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	kinds := eventKindsInCode(t, "../internal")
+	if len(kinds) < 50 {
+		t.Fatalf("found only %d event kinds in the code; the scan is broken", len(kinds))
+	}
+	for kind, where := range kinds {
+		if !inTable[kind] {
+			t.Errorf("event kind %q (%s) is not in session_event_kinds: add an INSERT in a new migration", kind, where)
+		}
+	}
+	// And the other way: a row nobody writes is a stale list.
+	for kind := range inTable {
+		if _, ok := kinds[kind]; !ok {
+			t.Errorf("session_event_kinds has %q, which no event... constant in the code writes", kind)
+		}
+	}
+}
+
+// eventKindsInCode returns every string constant named event<Something> in the
+// non-test Go files under dir, with where it is.
+func eventKindsInCode(t *testing.T, dir string) map[string]string {
+	t.Helper()
+	out := map[string]string{}
+	fset := token.NewFileSet()
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return err
+		}
+		file, err := parser.ParseFile(fset, path, nil, 0)
+		if err != nil {
+			return err
+		}
+		for _, decl := range file.Decls {
+			gen, ok := decl.(*ast.GenDecl)
+			if !ok || gen.Tok != token.CONST {
+				continue
+			}
+			for _, spec := range gen.Specs {
+				vs := spec.(*ast.ValueSpec)
+				for i, name := range vs.Names {
+					if !strings.HasPrefix(name.Name, "event") || i >= len(vs.Values) {
+						continue
+					}
+					lit, ok := vs.Values[i].(*ast.BasicLit)
+					if !ok || lit.Kind != token.STRING {
+						continue
+					}
+					if v, err := strconv.Unquote(lit.Value); err == nil {
+						out[v] = filepath.ToSlash(path) + " " + name.Name
+					}
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("scan the code for event kinds: %v", err)
+	}
+	return out
 }

@@ -62,7 +62,7 @@ describe('LevelUpBanner (MR-040)', () => {
     expect(text).toContain('Você chegou a 2.700 XP. Você pode subir para o nível 4.');
     const link = (f.nativeElement as HTMLElement).querySelector('a') as HTMLAnchorElement;
     expect(link.textContent?.trim()).toBe('Subir para o nível 4');
-    expect(link.getAttribute('href')).toBe('/campanhas/camp-1/personagens/ch-1/subir-de-nivel');
+    expect(link.getAttribute('href')).toBe('/campaigns/camp-1/characters/ch-1/level-up');
     expect(link.classList.contains('mat-mdc-unelevated-button')).toBe(true);
     expect(listAwards).not.toHaveBeenCalled();
   });

@@ -32,7 +32,7 @@ const MASTER_ONLY_MESSAGES = {
 };
 
 /**
- * The master's "Convites" section on `/campanhas/:id` (MR-002): create an
+ * The master's "Convites" section on `/campaigns/:id` (MR-002): create an
  * invite, see its link exactly once, and list/revoke existing invites.
  * Only rendered by `CampaignDetail` when `my_role` is master.
  *
@@ -134,7 +134,7 @@ export class CampaignInvites implements OnInit {
         const invites = current.status === 'ready' ? current.invites : [];
         this.listState.set({ status: 'ready', invites: [res.invite, ...invites] });
       }
-      this.revealedLink.set(`${window.location.origin}/convite#t=${res.token}`);
+      this.revealedLink.set(`${window.location.origin}/invite#t=${res.token}`);
       this.revealedRequiresApproval.set(requiresApproval);
       this.form.reset({ maxUses: 1, validityDays: 7, requiresApproval: false });
     } catch (err) {

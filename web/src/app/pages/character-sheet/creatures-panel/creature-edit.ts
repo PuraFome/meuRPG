@@ -152,7 +152,7 @@ export class CreatureEdit {
     const gone = `${c.name} some ${from} e do mapa.`;
     switch (c.source) {
       case CreatureSource.FAMILIAR:
-        return tight(`${gone} Para ter um familiar de novo, é preciso conjurar Encontrar Familiar outra vez (ritual de 1 hora).`);
+        return tight(`${gone} Para ter um familiar de novo, é preciso conjurar Convocar Familiar outra vez (ritual de 1 hora).`);
       case CreatureSource.MASTER:
         return `${gone} Para ter essa criatura de novo, ${this.ownerView() ? 'é preciso pedir ao mestre' : 'é preciso dar a criatura outra vez'}.`;
       default:

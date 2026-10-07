@@ -134,7 +134,7 @@ describe('LiveSession', () => {
   const xpExperience = vi.fn();
   let scenes: FakeSceneClient;
   let puzzles: FakePuzzlesClient;
-  /** The query string of the page's address: `?quebra-cabeca=ID` opens a puzzle for a player. */
+  /** The query string of the page's address: `?puzzle=ID` opens a puzzle for a player. */
   const query = new BehaviorSubject(convertToParamMap({}));
   /** The summary of the ended session (MR-032); by default it cannot be read, so the page shows the plain notice. */
   const summary = vi.fn();
@@ -293,7 +293,7 @@ describe('LiveSession', () => {
     it('opens the puzzle in the board\'s place when the address names it, with the way back to the session', async () => {
       puzzles.shownResult = [summary(selo)];
       puzzles.playerRunResult = playerRun(selo, { clue: 'Só o selo apagado abre o caminho.' });
-      query.next(convertToParamMap({ 'quebra-cabeca': 'a' }));
+      query.next(convertToParamMap({ 'puzzle': 'a' }));
       const el = await render();
       expect(el.querySelector('app-puzzle-play h1')?.textContent).toBe('O selo da Capela');
       expect(el.querySelector('app-puzzle-play a.back')?.textContent).toContain('Voltar para a sessão');
@@ -353,7 +353,7 @@ describe('LiveSession', () => {
     expect(el.textContent).toContain('+5 temporários');
     expect(el.textContent).toContain('Abaixo da metade');
     expect(el.querySelector<HTMLInputElement>('#session-link')?.value).toBe(
-      `${location.origin}/campanhas/mirathel/sessao`,
+      `${location.origin}/campaigns/mirathel/session`,
     );
     expect(el.textContent).toContain('Copiar link da sessão');
     expect(el.textContent).toContain('Encerrar sessão');

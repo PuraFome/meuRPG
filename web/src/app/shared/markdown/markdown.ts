@@ -15,8 +15,8 @@
  * - `**bold**` and `*italic*`, nested up to {@link MAX_INLINE_DEPTH} deep;
  * - unordered lists (`- ` or `* `) and ordered lists (`1. `), one level;
  * - `[text](https://...)`, an external link (https only);
- * - `[text](mapa:<uuid>)` and `[text](ficha:<uuid>)`, the app's own links;
- * - `![caption](imagem:<uuid>)` alone on its line, a gallery image.
+ * - `[text](map:<uuid>)` and `[text](character:<uuid>)`, the app's own links;
+ * - `![caption](image:<uuid>)` alone on its line, a gallery image.
  * - `\` before a punctuation mark writes it literally.
  *
  * The parser is linear for any input: link text and URLs have a length
@@ -24,7 +24,7 @@
  * text instead of letting it run long.
  */
 
-export type RefKind = 'mapa' | 'ficha';
+export type RefKind = 'map' | 'character';
 
 export type Inline =
   | { readonly type: 'text'; readonly text: string }
@@ -103,7 +103,7 @@ export function parseMarkdown(source: string): Block[] {
       continue;
     }
 
-    const image = /^ {0,3}!\[([^\]\n]{0,500})\]\(imagem:([^)\s]{1,64})\)$/.exec(line.trim());
+    const image = /^ {0,3}!\[([^\]\n]{0,500})\]\(image:([^)\s]{1,64})\)$/.exec(line.trim());
     if (image && UUID.test(image[2])) {
       flushParagraph();
       flushList();
@@ -299,7 +299,7 @@ function readLink(
 function linkToken(label: string, target: string): Inline | null {
   const colon = target.indexOf(':');
   const scheme = colon === -1 ? '' : target.slice(0, colon).toLowerCase();
-  if (scheme === 'mapa' || scheme === 'ficha') {
+  if (scheme === 'map' || scheme === 'character') {
     const id = target.slice(colon + 1);
     return UUID.test(id) ? { type: 'ref', kind: scheme, id: id.toLowerCase(), text: label } : null;
   }
@@ -350,7 +350,7 @@ export function collectReferences(blocks: readonly Block[]): {
   const visit = (children: readonly Inline[]) => {
     for (const c of children) {
       if (c.type === 'ref') {
-        (c.kind === 'mapa' ? refs.maps : refs.characters).add(c.id);
+        (c.kind === 'map' ? refs.maps : refs.characters).add(c.id);
       } else if (c.type === 'bold' || c.type === 'italic') {
         visit(c.children);
       }

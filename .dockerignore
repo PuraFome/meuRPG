@@ -2,6 +2,9 @@
 # web/). Keep the context small and the layer cache stable: only what
 # `go build` and `npm run build` actually need goes into the image build.
 *
+!LICENSE
+!NOTICE
+!third_party/licenses/
 !backend/go.mod
 !backend/go.sum
 !backend/cmd/

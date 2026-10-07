@@ -52,7 +52,7 @@ const (
 	// is a handful of players, and the list must stay small.
 	maxRevealCharacters = 50
 	// eventClueRevealed is the session event kind of a reveal. The kind is
-	// play's (session_events_kind_valid lists it); this package only names it.
+	// play's (session_event_kinds lists it); this package only names it.
 	eventClueRevealed = "clue_revealed"
 )
 

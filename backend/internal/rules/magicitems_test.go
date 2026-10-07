@@ -91,7 +91,7 @@ func TestMagicItemSpotChecks(t *testing.T) {
 	if got := get("item:holy-avenger").AttunementBy; got != "by a paladin" {
 		t.Errorf("Holy Avenger attunement by %q", got)
 	}
-	if got := get("item:amulet-of-health"); got.NamePT != "Amuleto da saúde" || got.Name != "Amulet of Health" {
+	if got := get("item:amulet-of-health"); got.NamePT != "Amuleto de saúde" || got.Name != "Amulet of Health" {
 		t.Errorf("Amulet of Health names: %q, %q", got.Name, got.NamePT)
 	}
 	if _, ok := c.MagicItem("item:nope"); ok {

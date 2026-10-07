@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 # MeuRPG image: the Go API server plus the Angular web app it serves on the
 # same origin (see docs/arquitetura.md#frontend-web). Build context: the
 # repo root, because this needs both backend/ and web/. The Dockerfile
@@ -12,6 +13,10 @@
 # the same line works on amd64 and arm64). A tag can be moved to a different
 # image; a digest cannot. Refresh them with:
 #   docker buildx imagetools inspect <image:tag> --format '{{.Manifest.Digest}}'
+# The Node major (22) must match .node-version, and the Go version
+# (1.27.1) must match backend/go.mod: CI tests on the versions in those two
+# files and ships what is pinned here. The `# syntax` line above is pinned
+# by digest too, so the build does not depend on a moving frontend image.
 
 # ---- build stage: compile the Angular app -----------------------------------
 FROM node:22-trixie-slim@sha256:b26b04c123d9ff8ab646ceb18b9d75a1173acf64b9a401094b906d27b29338d4 AS web-build
@@ -33,11 +38,17 @@ FROM golang:1.27.1-trixie@sha256:433790e515d27dc6003e847e644cc0af956985cf315c1c5
 
 WORKDIR /src
 
+# Never let the go command fetch another toolchain: if go.mod asks for a
+# newer Go than this image has, the build fails instead of silently
+# compiling with a toolchain nobody pinned.
+ENV GOTOOLCHAIN=local
+
 # Download modules first, in their own layer: it is only rebuilt when
-# go.mod/go.sum change, not on every code change.
+# go.mod/go.sum change, not on every code change. `go mod verify` checks
+# the downloaded modules against go.sum.
 COPY backend/go.mod backend/go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod \
-    go mod download
+    go mod download && go mod verify
 
 COPY backend/ .
 
@@ -68,6 +79,10 @@ RUN mkdir -p /out/meurpg/images
 FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
 
 COPY --from=build /out/api /out/migrate /app/
+# The licence and the third-party notices travel with the binary (Apache 2.0
+# section 4; the SRD is CC BY 4.0, the fonts OFL), as the NOTICE file asks.
+COPY LICENSE NOTICE /licenses/
+COPY third_party/licenses/ /licenses/third_party/
 # Matches config.DefaultWebDir; override with $WEB_DIR if it ever moves.
 COPY --from=web-build /src/dist/web/browser /app/web
 # The images folder, owned by nonroot (uid and gid 65532) so the API can
@@ -76,6 +91,17 @@ COPY --from=web-build /src/dist/web/browser /app/web
 # volume takes this folder's owner. Production will store images in Cloud
 # Storage instead (docs/operacao.md).
 COPY --from=build --chown=65532:65532 /out/meurpg/ /var/lib/meurpg/
+
+# OCI image labels (https://github.com/opencontainers/image-spec/blob/main/annotations.md),
+# from the same build args as the binary. Last, so a new commit only
+# rebuilds this tiny layer, not the COPYs above.
+ARG VERSION=dev
+ARG COMMIT=unknown
+LABEL org.opencontainers.image.title="meurpg-api" \
+      org.opencontainers.image.source="https://github.com/PuraFome/meuRPG" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${COMMIT}"
 
 USER nonroot:nonroot
 EXPOSE 8080

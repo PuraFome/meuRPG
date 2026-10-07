@@ -1,9 +1,9 @@
 /**
- * The session link (RN-07, D3): `/campanhas/<id>/sessao` on this site. It
+ * The session link (RN-07, D3): `/campaigns/<id>/session` on this site. It
  * carries no secret: the server decides who gets in, on every call.
  */
 export function sessionLink(campaignId: string, origin: string = location.origin): string {
-  return `${origin}/campanhas/${campaignId}/sessao`;
+  return `${origin}/campaigns/${campaignId}/session`;
 }
 
 /**

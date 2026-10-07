@@ -21,7 +21,7 @@ test(
       const table = await tableForSpells(master, player, `Mirathel ${Date.now()}`);
 
       // The way in: the campaign page has the panel, for a player too.
-      await player.goto(`/campanhas/${table.campaignId}`);
+      await player.goto(`/campaigns/${table.campaignId}`);
       await expect(player.getByRole('heading', { name: 'Magias', level: 2 })).toBeVisible();
       await player.getByRole('link', { name: 'Abrir as magias' }).click();
       await expect(player.getByRole('heading', { name: 'Magias', level: 1 })).toBeVisible();
@@ -71,7 +71,7 @@ test(
       const expected = catalog.filter((s) => (s.classKeys ?? []).includes('class:wizard') && (s.level ?? 0) <= 1).length;
       expect(expected).toBeGreaterThan(20);
 
-      await player.goto(`/campanhas/${table.campaignId}/magias`);
+      await player.goto(`/campaigns/${table.campaignId}/spells`);
       // At 1280 px the filters are in the panel.
       await player.getByRole('switch', { name: 'Só as que posso aprender' }).click();
       await expect(player.getByRole('switch', { name: 'Só as que posso aprender' })).toHaveAttribute('aria-checked', 'true');
@@ -94,7 +94,7 @@ test(
       // The server agrees with the screen.
       const mine = await listSpellsRPC(player, table.campaignId, { characterId: table.characterId });
       expect(mine.total).toBe(expected);
-      expect(player.url()).toContain('minhas=1');
+      expect(player.url()).toContain('mine=1');
     } finally {
       await masterContext.close();
       await playerContext.close();
@@ -117,7 +117,7 @@ test(
       const key = await createInkBladeRPC(master, table.campaignId);
 
       // Live: the player sees it, with "Da mesa", and reads the master's own text in Portuguese.
-      await player.goto(`/campanhas/${table.campaignId}/magias?q=nanquim`);
+      await player.goto(`/campaigns/${table.campaignId}/spells?q=nanquim`);
       const row = player.locator('button.row', { hasText: 'Lâmina de Nanquim' });
       await expect(row).toBeVisible();
       await expect(row).toContainText('Da mesa');
@@ -135,14 +135,14 @@ test(
       // The spell's key (not a slug of its name) is what must be missing from every answer.
       expect(JSON.stringify(await listSpellsRPC(player, table.campaignId))).not.toContain(key);
       expect(JSON.stringify(await listSpellsRPC(player, table.campaignId))).not.toContain('Nanquim');
-      await player.goto(`/campanhas/${table.campaignId}/magias?q=nanquim`);
+      await player.goto(`/campaigns/${table.campaignId}/spells?q=nanquim`);
       await expect(player.getByText('Nenhuma magia com “nanquim”.')).toBeVisible();
       await expect(player.locator('button.row')).toHaveCount(0);
 
       // The master still reads it, marked "Arquivada".
       const asMaster = await listSpellsRPC(master, table.campaignId, { query: 'nanquim' });
       expect(asMaster.spells.map((s) => [s.key, s.archived])).toEqual([[key, true]]);
-      await master.goto(`/campanhas/${table.campaignId}/magias?q=nanquim`);
+      await master.goto(`/campaigns/${table.campaignId}/spells?q=nanquim`);
       const archived = master.locator('button.row', { hasText: 'Lâmina de Nanquim' });
       await expect(archived).toContainText('Arquivada');
       await expect(archived).toContainText('Da mesa');
@@ -165,18 +165,18 @@ test(
       await master.goto('/');
       await player.goto('/');
       const table = await tableForSpells(master, player, `Mirathel ${Date.now()}`);
-      await player.goto(`/campanhas/${table.campaignId}/magias?q=escudo`);
+      await player.goto(`/campaigns/${table.campaignId}/spells?q=escudo`);
       const rows = player.locator('button.row');
       await expect(rows.first()).toBeVisible();
       await rows.first().click();
       await expect(player.locator('#spell-card-title')).toHaveText('Escudo Arcano');
       await expect(rows).toHaveCount(0);
-      expect(player.url()).toContain('magia=');
+      expect(player.url()).toContain('spell=');
 
       // The browser's Back closes the spell: the same search, the row that was open has the focus.
       await player.goBack();
       await expect(rows.first()).toBeVisible();
-      expect(player.url()).not.toContain('magia=');
+      expect(player.url()).not.toContain('spell=');
       expect(player.url()).toContain('q=escudo');
       await expect(rows.first()).toBeFocused();
 

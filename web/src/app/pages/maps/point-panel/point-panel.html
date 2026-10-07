@@ -42,7 +42,7 @@
 
   @if (point().kind === Battle && draft().kind === Battle && campaignId() && mapId()) {
     <!-- The encounter a battle point keeps (MR-043): the builder opens "Guardar" on this point. -->
-    <a class="pp__enc" [routerLink]="['/campanhas', campaignId(), 'encontros']" [queryParams]="{ mapa: mapId(), ponto: point().id }">
+    <a class="pp__enc" [routerLink]="['/campaigns', campaignId(), 'encounters']" [queryParams]="{ map: mapId(), point: point().id }">
       <mat-icon aria-hidden="true">swords</mat-icon>Montar o encontro deste ponto
     </a>
   }

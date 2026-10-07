@@ -92,14 +92,14 @@ export class MapGrid {
   protected readonly hadGrid = computed(() => (this.map()?.gridColumns ?? 0) > 0);
   protected readonly backLink = computed(() =>
     this.fromSession()
-      ? { path: ['/campanhas', this.campaignId(), 'sessao'], label: 'Voltar à sessão' }
-      : { path: ['/campanhas', this.campaignId(), 'mapas', this.mapId()], label: 'Voltar ao mapa' },
+      ? { path: ['/campaigns', this.campaignId(), 'session'], label: 'Voltar à sessão' }
+      : { path: ['/campaigns', this.campaignId(), 'maps', this.mapId()], label: 'Voltar ao mapa' },
   );
 
   constructor() {
     const destroyRef = inject(DestroyRef);
     this.route.queryParamMap.pipe(takeUntilDestroyed(destroyRef)).subscribe((q) => {
-      this.fromSession.set(q.get('de') === 'sessao');
+      this.fromSession.set(q.get('from') === 'session');
     });
     this.route.paramMap.pipe(takeUntilDestroyed(destroyRef)).subscribe((params) => {
       const id = params.get('id');

@@ -82,7 +82,7 @@ describe('Campaigns', () => {
 
     // Each row is one link, with the name and the role tag inside it.
     const links = Array.from(el.querySelectorAll('a[href]'));
-    const first = links.find((a) => a.getAttribute('href') === '/campanhas/c1');
+    const first = links.find((a) => a.getAttribute('href') === '/campaigns/c1');
     expect(first?.textContent).toContain('Mirathel');
     expect(first?.querySelector('.mr-tag')?.textContent?.trim()).toBe('Mestre');
     expect(first?.textContent).toContain('XP por inimigos derrotados');
@@ -99,8 +99,8 @@ describe('Campaigns', () => {
     const el = await render();
 
     const links = Array.from(el.querySelectorAll('a[href]'));
-    const live = links.find((a) => a.getAttribute('href') === '/campanhas/c1');
-    const quiet = links.find((a) => a.getAttribute('href') === '/campanhas/c2');
+    const live = links.find((a) => a.getAttribute('href') === '/campaigns/c1');
+    const quiet = links.find((a) => a.getAttribute('href') === '/campaigns/c2');
     expect(live?.textContent).toContain('Sessão ao vivo');
     expect(live?.textContent).toContain('Jogador');
     expect(quiet?.textContent).not.toContain('Sessão ao vivo');
@@ -145,7 +145,7 @@ describe('Campaigns', () => {
     await instance['submit']();
 
     expect(fake.createCampaign).toHaveBeenCalledWith('Mirathel', XpMode.ENEMIES, expect.any(String));
-    expect(navigateSpy).toHaveBeenCalledWith(['/campanhas', 'new-id']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/campaigns', 'new-id']);
   });
 
   it('shows a clear message when creating a campaign fails with invalid_argument', async () => {

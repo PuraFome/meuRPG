@@ -51,3 +51,27 @@ func inTx(ctx context.Context, conn TxStarter, policy crdb.RetryPolicy, fn func(
 	ctx = crdb.WithRetryPolicy(ctx, policy)
 	return crdbpgx.ExecuteTx(ctx, conn, pgx.TxOptions{}, fn)
 }
+
+// ReadTx runs fn inside one read-only transaction, so every statement of fn
+// sees the same snapshot of the database. Use it for a read RPC that runs two
+// or more queries and puts their results in one response: as separate
+// autocommit statements, each picks its own timestamp, and a write committed
+// between them would give a view that mixes two states (audit D-03).
+//
+// Why not AS OF SYSTEM TIME follower_read_timestamp(): it reads data a few
+// seconds old, and a live game must show what the table just did (a player who
+// moved a token must not see it back where it was). A read-only SERIALIZABLE
+// transaction in CockroachDB reads at its start time and sees every write
+// committed before it, and it never blocks writers. It can still be asked to
+// restart (40001), so it goes through the same retry helper as InTx: fn may
+// run more than once, and must follow the same rules (only tx, %w on errors,
+// no side effects). Inside fn use only the transaction's queries
+// (queries.WithTx(tx)), never the pool: that is a second connection.
+func ReadTx(ctx context.Context, conn TxStarter, fn func(pgx.Tx) error) error {
+	return readTx(ctx, conn, defaultRetryPolicy, fn)
+}
+
+func readTx(ctx context.Context, conn TxStarter, policy crdb.RetryPolicy, fn func(pgx.Tx) error) error {
+	ctx = crdb.WithRetryPolicy(ctx, policy)
+	return crdbpgx.ExecuteTx(ctx, conn, pgx.TxOptions{AccessMode: pgx.ReadOnly}, fn)
+}

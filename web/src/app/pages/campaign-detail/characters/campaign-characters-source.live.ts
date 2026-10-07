@@ -46,7 +46,7 @@ function toListItemVm(c: CharacterSummary): CampaignCharacterListItemVm {
 /**
  * `CampaignCharactersSource` over the generated `CharacterService` client
  * (`meurpg.characters.v1`, phase 2). Provided at the route level for
- * `/campanhas/:id` — see `../campaign-detail.routes.ts` — so this client
+ * `/campaigns/:id` — see `../campaign-detail.routes.ts` — so this client
  * stays out of the eager bundle.
  *
  * `ListCharacters` already returns only what the caller may see (a player

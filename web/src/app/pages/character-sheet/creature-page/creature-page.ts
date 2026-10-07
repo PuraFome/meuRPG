@@ -26,7 +26,7 @@ type PageState =
   | { status: 'ready'; creature: CharacterCreature; block: Creature; ownerName: string; isMaster: boolean };
 
 /**
- * "/campanhas/:id/personagens/:characterId/criaturas/:creatureId" (E9-10,
+ * "/campaigns/:id/characters/:characterId/creatures/:creatureId" (E9-10,
  * quadro 3): a creature's stat block as a page of its own. Read-only, in the
  * language of the paper sheet: the name the table gave it, the kind, its size
  * and where it came from; CA, PV (its own, "1 de 1"), the speeds, the six
@@ -59,7 +59,7 @@ export class CreaturePage {
   protected readonly state = signal<PageState>({ status: 'loading' });
   protected readonly mode = signal<EditMode | null>(null);
 
-  protected readonly back = computed(() => ['/campanhas', this.campaignId(), 'personagens', this.characterId()]);
+  protected readonly back = computed(() => ['/campaigns', this.campaignId(), 'characters', this.characterId()]);
 
   protected readonly subtitle = computed(() => {
     const s = this.state();

@@ -308,7 +308,7 @@ export type CastSummonRequest = Message<"meurpg.play.v1.CastSummonRequest"> & {
   spellKey: string;
 
   /**
-   * True: cast as a ritual, spending no slot (Encontrar Familiar, by a
+   * True: cast as a ritual, spending no slot (Convocar Familiar, by a
    * character that casts rituals). False: cast with `slot`.
    *
    * @generated from field: bool ritual = 4;
@@ -3141,8 +3141,8 @@ export const PlayService: GenService<{
   },
   /**
    * CastSummon casts a spell that summons creatures outside a combat (MR-037,
-   * Etapa 9): Encontrar Familiar (1 hour, a ritual: no slot is spent),
-   * Animar os Mortos (1 minute: it spends the slot) and Conjurar Animais
+   * Etapa 9): Convocar Familiar (1 hour, a ritual: no slot is spent),
+   * Animar Mortos (1 minute: it spends the slot) and Conjurar Animais
    * (1 action). The caster is a player's character; its player casts for it,
    * and the master for anyone. The spell must be one the character has (a
    * ritual one from its spellbook when cast as a ritual), the slot a free one

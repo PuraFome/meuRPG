@@ -24,7 +24,7 @@
               <ul class="mr-list" aria-labelledby="awaiting-approval-heading">
                 @for (c of waiting; track c.id) {
                   <li>
-                    <a class="mr-list__row" [routerLink]="['/campanhas', campaignId(), 'personagens', c.id]">
+                    <a class="mr-list__row" [routerLink]="['/campaigns', campaignId(), 'characters', c.id]">
                       <span class="pending-dot" aria-hidden="true"></span>
                       <span class="mr-list__text">
                         <span class="mr-list__name">{{ c.name }}</span>
@@ -67,7 +67,7 @@
             <ul class="mr-list">
               @for (c of listed; track c.id) {
                 <li>
-                  <a class="mr-list__row" [routerLink]="['/campanhas', campaignId(), 'personagens', c.id]">
+                  <a class="mr-list__row" [routerLink]="['/campaigns', campaignId(), 'characters', c.id]">
                     <span class="mr-list__text">
                       <span class="mr-list__name">{{ c.name }}</span>
                       @if (characterRowSub(c, isMaster()); as sub) {
@@ -130,7 +130,7 @@
             <a
               mat-flat-button
               class="panel-action panel-action--primary"
-              [routerLink]="['/campanhas', campaignId(), 'personagens', 'novo']"
+              [routerLink]="['/campaigns', campaignId(), 'characters', 'new']"
             >
               Criar meu personagem
             </a>
@@ -146,7 +146,7 @@
               <ul class="mr-list">
                 @for (c of s.vm.npcs; track c.id) {
                   <li>
-                    <a class="mr-list__row" [routerLink]="['/campanhas', campaignId(), 'personagens', c.id]">
+                    <a class="mr-list__row" [routerLink]="['/campaigns', campaignId(), 'characters', c.id]">
                       <span class="mr-list__text">
                         <span class="mr-list__name">{{ c.name }}</span>
                         @if (characterRowSub(c, true); as sub) {
@@ -168,8 +168,8 @@
               Novo NPC
             </button>
             <mat-menu #npcMenu="matMenu">
-              @for (option of npcKinds; track option.tipo) {
-                <a mat-menu-item [routerLink]="['/campanhas', campaignId(), 'npcs', 'novo', option.tipo]">
+              @for (option of npcKinds; track option.segment) {
+                <a mat-menu-item [routerLink]="['/campaigns', campaignId(), 'npcs', 'new', option.segment]">
                   {{ characterKindLabel(option.kind) }}
                 </a>
               }

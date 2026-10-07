@@ -43,7 +43,7 @@ type PageState =
 type AfterLightbox = { kind: 'rename' | 'delete'; imageId: string } | null;
 
 /**
- * "/campanhas/:id/galeria" (MR-019): the master's gallery. E5-20 (desktop),
+ * "/campaigns/:id/gallery" (MR-019): the master's gallery. E5-20 (desktop),
  * E5-21 (phone) and E5-22 (empty).
  *
  * The images come newest first from `ListGalleryImages`, with the quota

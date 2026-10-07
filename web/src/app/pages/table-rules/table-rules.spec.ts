@@ -141,7 +141,7 @@ describe('TableRulesPage', () => {
     expect(cards[3].textContent).toContain('de 3 a 18, antes do bônus da raça');
     expect(text(el)).toContain('15, 14, 13, 12, 10 e 8, um para cada atributo.');
     expect(text(el)).toContain('27 pontos; cada valor vai de 8 a 15.');
-    expect(el.querySelector('app-method-cards')?.parentElement?.querySelector('a[href="/creditos"]')).not.toBeNull();
+    expect(el.querySelector('app-method-cards')?.parentElement?.querySelector('a[href="/credits"]')).not.toBeNull();
   });
 
   it('choosing a style fills the three choices in place, says what it changed, and lights "Salvar regras"', async () => {
@@ -240,9 +240,9 @@ describe('TableRulesPage', () => {
 
   it('links to the maps, and shows no link to the table content until that page exists', async () => {
     const { el } = await setup();
-    expect(el.querySelector('a[href="/campanhas/camp-1/conteudo"]')).toBeNull();
+    expect(el.querySelector('a[href="/campaigns/camp-1/content"]')).toBeNull();
     expect(text(el)).not.toContain('Conteúdo da mesa');
-    expect(el.querySelector('a[href="/campanhas/camp-1#mapas"]')?.textContent).toContain('Abrir os mapas');
+    expect(el.querySelector('a[href="/campaigns/camp-1#maps"]')?.textContent).toContain('Abrir os mapas');
   });
 
   it('puts "Dados" beside "Estilo da mesa", and the style cards in a grid', async () => {

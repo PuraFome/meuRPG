@@ -87,12 +87,12 @@ import { NpcShortForm } from './npc-short-form/npc-short-form';
 import { SkillPicker } from './skill-picker/skill-picker';
 import { SpellPicker } from './spell-picker/spell-picker';
 
-/** The NPC route's `:tipo` segment (plan §5) to `CharacterKind`. */
-const TIPO_TO_KIND: Record<string, CharacterKind> = {
-  inimigo: 'enemy',
+/** The NPC route's `:kind` segment (plan §5) to `CharacterKind`. */
+const NPC_ROUTE_KINDS: Record<string, CharacterKind> = {
+  enemy: 'enemy',
   boss: 'boss',
   minion: 'minion',
-  historia: 'story',
+  story: 'story',
 };
 
 type ReadyState = {
@@ -157,9 +157,9 @@ function filterByName<T extends { readonly namePt: string }>(
  * or a single short form for a basic sheet (minion, story, `NpcShortForm`),
  * routed from three places (plan §5):
  *
- * - `/campanhas/:id/personagens/novo` — a player creates their character.
- * - `/campanhas/:id/npcs/novo/:tipo` — a master creates an NPC.
- * - `/campanhas/:id/personagens/:characterId/editar` — either edits.
+ * - `/campaigns/:id/characters/new` — a player creates their character.
+ * - `/campaigns/:id/npcs/new/:kind` — a master creates an NPC.
+ * - `/campaigns/:id/characters/:characterId/edit` — either edits.
  *
  * The submit action sits outside the stepper, right under the open step,
  * so the whole form can be saved from any step. A submit with an invalid
@@ -641,7 +641,7 @@ export class CharacterEditor {
   /** "Ver em Magias", for a spell the lists leave out. */
   protected readonly magiasLink = computed(() => {
     const s = this.state();
-    return s.status === 'ready' ? ['/campanhas', s.campaignId, 'magias'] : [];
+    return s.status === 'ready' ? ['/campaigns', s.campaignId, 'spells'] : [];
   });
 
   /** The race's "+2 e +1 à sua escolha": where the player puts them (the server's numbers, from the catalog). */
@@ -808,8 +808,8 @@ export class CharacterEditor {
       return ['/'];
     }
     return s.characterId
-      ? ['/campanhas', s.campaignId, 'personagens', s.characterId]
-      : ['/campanhas', s.campaignId];
+      ? ['/campaigns', s.campaignId, 'characters', s.characterId]
+      : ['/campaigns', s.campaignId];
   });
 
   /** What the buttons do, in one line next to them. */
@@ -863,14 +863,14 @@ export class CharacterEditor {
       return;
     }
     const characterId = params.get('characterId');
-    const tipo = params.get('tipo');
+    const npcKind = params.get('kind');
     this.campaignIdSignal.set(campaignId);
 
     if (characterId) {
       this.loadForEdit(campaignId, characterId);
       return;
     }
-    const kind: CharacterKind = tipo ? (TIPO_TO_KIND[tipo] ?? 'enemy') : 'player';
+    const kind: CharacterKind = npcKind ? (NPC_ROUTE_KINDS[npcKind] ?? 'enemy') : 'player';
     this.loadForCreate(campaignId, kind);
   }
 
@@ -908,7 +908,7 @@ export class CharacterEditor {
         this.state.set({
           status: 'error',
           message: describeCharacterError(err),
-          backLink: ['/campanhas', campaignId],
+          backLink: ['/campaigns', campaignId],
           backLabel: 'Voltar para a campanha',
         }),
     );
@@ -937,7 +937,7 @@ export class CharacterEditor {
           this.state.set({
             status: 'error',
             message: characterBlockedMessage(existing.blocked),
-            backLink: ['/campanhas', campaignId, 'personagens', characterId],
+            backLink: ['/campaigns', campaignId, 'characters', characterId],
             backLabel: 'Voltar para a ficha',
             blocked: { title: existing.blocked === 'character_dead' ? 'Personagem morto' : 'Ficha travada' },
           });
@@ -967,7 +967,7 @@ export class CharacterEditor {
         this.state.set({
           status: 'error',
           message: describeCharacterError(err),
-          backLink: ['/campanhas', campaignId, 'personagens', characterId],
+          backLink: ['/campaigns', campaignId, 'characters', characterId],
           backLabel: 'Voltar para a ficha',
         });
       });
@@ -1274,7 +1274,7 @@ export class CharacterEditor {
         // A retry of the same form (a lost answer, a second tap) sends the same key and makes one character.
         const res = await this.source.createCharacter({ ...input, idempotencyKey: this.createKey.keyFor(input) });
         this.createKey.renew();
-        await this.router.navigate(['/campanhas', s.campaignId, 'personagens', res.characterId]);
+        await this.router.navigate(['/campaigns', s.campaignId, 'characters', res.characterId]);
       } else if (s.characterId) {
         await this.source.updateCharacter({
           campaignId: s.campaignId,
@@ -1284,7 +1284,7 @@ export class CharacterEditor {
           full: isBasic ? null : this.buildFullValue(),
           basic: isBasic ? basicFormToValue(this.basicForm) : null,
         });
-        await this.router.navigate(['/campanhas', s.campaignId, 'personagens', s.characterId]);
+        await this.router.navigate(['/campaigns', s.campaignId, 'characters', s.characterId]);
       }
       this.saveState.set({ status: 'idle' });
     } catch (err) {

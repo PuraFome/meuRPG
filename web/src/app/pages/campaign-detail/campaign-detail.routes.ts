@@ -8,7 +8,7 @@ import { GameSessionSource } from './game-session/game-session-card.types';
 import { GameSessionSourceLive } from './game-session/game-session-source.live';
 
 /**
- * Lazily loaded from `app.routes.ts` via `loadChildren` for `/campanhas/:id`
+ * Lazily loaded from `app.routes.ts` via `loadChildren` for `/campaigns/:id`
  * — see `../character-sheet/character-sheet.routes.ts`'s doc comment for
  * why. `CampaignDetail` renders `<app-campaign-characters>` and (for the
  * master) `<app-game-session-card>` directly in its template, and both

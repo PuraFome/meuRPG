@@ -20,7 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/secret"
 )
 
-// An invite link is https://<app>/convite#t=<token>. The token is a random
+// An invite link is https://<app>/invite#t=<token>. The token is a random
 // secret (package secret) that the server returns once, to the master, and
 // then only knows as a SHA-256 hash. It travels in the URL fragment, which
 // browsers never send to a server, and the app posts it to AcceptInvite in

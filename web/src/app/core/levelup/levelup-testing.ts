@@ -81,7 +81,7 @@ const sp = (key: string, namePt: string, level: number, school: string, extra: M
 /** A small slice of the wizard's list: enough to pick, search and prepare. */
 export const SPELLS: Spell[] = [
   sp('spell:prestidigitation', 'Prestidigitação', 0, 'Transmutação'),
-  sp('spell:mage-hand', 'Mão Mágica', 0, 'Conjuração'),
+  sp('spell:mage-hand', 'Mãos Mágicas', 0, 'Conjuração'),
   sp('spell:light', 'Luz', 0, 'Evocação'),
   sp('spell:shocking-grasp', 'Toque Chocante', 0, 'Evocação'),
   sp('spell:fire-bolt', 'Raio de Fogo', 0, 'Evocação'),
@@ -89,7 +89,7 @@ export const SPELLS: Spell[] = [
   sp('spell:detect-magic', 'Detectar Magia', 1, 'Adivinhação', { ritual: true }),
   sp('spell:thunderwave', 'Onda Trovejante', 1, 'Evocação'),
   sp('spell:misty-step', 'Passo Nebuloso', 2, 'Conjuração'),
-  sp('spell:mirror-image', 'Imagem Espelhada', 2, 'Ilusão'),
+  sp('spell:mirror-image', 'Reflexos', 2, 'Ilusão'),
   sp('spell:invisibility', 'Invisibilidade', 2, 'Ilusão'),
   sp('spell:fireball', 'Bola de Fogo', 3, 'Evocação'),
   sp('spell:cure-wounds', 'Curar Ferimentos', 1, 'Evocação', { classKeys: ['class:cleric'] }),

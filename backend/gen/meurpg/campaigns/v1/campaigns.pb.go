@@ -1617,7 +1617,7 @@ func (x *CreateInviteRequest) GetRequiresApproval() bool {
 type CreateInviteResponse struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Invite *Invite                `protobuf:"bytes,1,opt,name=invite,proto3" json:"invite,omitempty"`
-	// The secret that goes into the link's fragment: /convite#t=<token>.
+	// The secret that goes into the link's fragment: /invite#t=<token>.
 	// Never log it and never put it in a query string.
 	Token         string `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1860,7 +1860,7 @@ func (x *RevokeInviteResponse) GetInvite() *Invite {
 // AcceptInviteRequest carries the invite's token.
 type AcceptInviteRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The token from the invite link's fragment (/convite#t=<token>).
+	// The token from the invite link's fragment (/invite#t=<token>).
 	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

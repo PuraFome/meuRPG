@@ -1,6 +1,6 @@
 {
   "level 1": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.17+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.18+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -638,7 +638,7 @@
     "Issues": null
   },
   "level 11": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.17+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.18+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -940,6 +940,34 @@
     "Spells": [
       {
         "Spell": {
+          "Key": "spell:mending",
+          "Name": "Mending",
+          "NamePT": "Consertar",
+          "Level": 0,
+          "School": "school:transmutation",
+          "SchoolNamePT": "Transmutação",
+          "Classes": [
+            "class:cleric",
+            "class:bard",
+            "class:druid",
+            "class:sorcerer",
+            "class:wizard",
+            "class:gen-full-known@mesa",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "minute",
+            "Trigger": "",
+            "Raw": "1 minute"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
           "Key": "spell:faisca-de-teste@mesa",
           "Name": "Faísca de teste",
           "NamePT": "Faísca de teste",
@@ -1007,34 +1035,6 @@
             "Unit": "action",
             "Trigger": "",
             "Raw": "1 action"
-          }
-        },
-        "Prepared": true
-      },
-      {
-        "Spell": {
-          "Key": "spell:mending",
-          "Name": "Mending",
-          "NamePT": "Remendar",
-          "Level": 0,
-          "School": "school:transmutation",
-          "SchoolNamePT": "Transmutação",
-          "Classes": [
-            "class:cleric",
-            "class:bard",
-            "class:druid",
-            "class:sorcerer",
-            "class:wizard",
-            "class:gen-full-known@mesa",
-            "class:gen-full-prepared@mesa"
-          ],
-          "Ritual": false,
-          "Concentration": false,
-          "CastingTime": {
-            "Amount": 1,
-            "Unit": "minute",
-            "Trigger": "",
-            "Raw": "1 minute"
           }
         },
         "Prepared": true
@@ -1139,6 +1139,31 @@
       },
       {
         "Spell": {
+          "Key": "spell:aid",
+          "Name": "Aid",
+          "NamePT": "Ajuda",
+          "Level": 2,
+          "School": "school:abjuration",
+          "SchoolNamePT": "Abjuração",
+          "Classes": [
+            "class:cleric",
+            "class:paladin",
+            "class:gen-full-prepared@mesa",
+            "class:gen-half-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
           "Key": "spell:augury",
           "Name": "Augury",
           "NamePT": "Augúrio",
@@ -1162,34 +1187,9 @@
       },
       {
         "Spell": {
-          "Key": "spell:aid",
-          "Name": "Aid",
-          "NamePT": "Auxílio",
-          "Level": 2,
-          "School": "school:abjuration",
-          "SchoolNamePT": "Abjuração",
-          "Classes": [
-            "class:cleric",
-            "class:paladin",
-            "class:gen-full-prepared@mesa",
-            "class:gen-half-prepared@mesa"
-          ],
-          "Ritual": false,
-          "Concentration": false,
-          "CastingTime": {
-            "Amount": 1,
-            "Unit": "action",
-            "Trigger": "",
-            "Raw": "1 action"
-          }
-        },
-        "Prepared": true
-      },
-      {
-        "Spell": {
           "Key": "spell:animate-dead",
           "Name": "Animate Dead",
-          "NamePT": "Animar os Mortos",
+          "NamePT": "Animar Mortos",
           "Level": 3,
           "School": "school:necromancy",
           "SchoolNamePT": "Necromancia",
@@ -1258,14 +1258,16 @@
       },
       {
         "Spell": {
-          "Key": "spell:beacon-of-hope",
-          "Name": "Beacon of Hope",
-          "NamePT": "Farol de Esperança",
+          "Key": "spell:bestow-curse",
+          "Name": "Bestow Curse",
+          "NamePT": "Rogar Maldição",
           "Level": 3,
-          "School": "school:abjuration",
-          "SchoolNamePT": "Abjuração",
+          "School": "school:necromancy",
+          "SchoolNamePT": "Necromancia",
           "Classes": [
+            "class:bard",
             "class:cleric",
+            "class:wizard",
             "class:gen-full-prepared@mesa"
           ],
           "Ritual": false,
@@ -1281,16 +1283,14 @@
       },
       {
         "Spell": {
-          "Key": "spell:bestow-curse",
-          "Name": "Bestow Curse",
-          "NamePT": "Rogar Maldição",
+          "Key": "spell:beacon-of-hope",
+          "Name": "Beacon of Hope",
+          "NamePT": "Sinal de Esperança",
           "Level": 3,
-          "School": "school:necromancy",
-          "SchoolNamePT": "Necromancia",
+          "School": "school:abjuration",
+          "SchoolNamePT": "Abjuração",
           "Classes": [
-            "class:bard",
             "class:cleric",
-            "class:wizard",
             "class:gen-full-prepared@mesa"
           ],
           "Ritual": false,
@@ -1716,7 +1716,7 @@
     "Issues": null
   },
   "level 5": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.17+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.18+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -2018,6 +2018,34 @@
     "Spells": [
       {
         "Spell": {
+          "Key": "spell:mending",
+          "Name": "Mending",
+          "NamePT": "Consertar",
+          "Level": 0,
+          "School": "school:transmutation",
+          "SchoolNamePT": "Transmutação",
+          "Classes": [
+            "class:cleric",
+            "class:bard",
+            "class:druid",
+            "class:sorcerer",
+            "class:wizard",
+            "class:gen-full-known@mesa",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "minute",
+            "Trigger": "",
+            "Raw": "1 minute"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
           "Key": "spell:faisca-de-teste@mesa",
           "Name": "Faísca de teste",
           "NamePT": "Faísca de teste",
@@ -2085,34 +2113,6 @@
             "Unit": "action",
             "Trigger": "",
             "Raw": "1 action"
-          }
-        },
-        "Prepared": true
-      },
-      {
-        "Spell": {
-          "Key": "spell:mending",
-          "Name": "Mending",
-          "NamePT": "Remendar",
-          "Level": 0,
-          "School": "school:transmutation",
-          "SchoolNamePT": "Transmutação",
-          "Classes": [
-            "class:cleric",
-            "class:bard",
-            "class:druid",
-            "class:sorcerer",
-            "class:wizard",
-            "class:gen-full-known@mesa",
-            "class:gen-full-prepared@mesa"
-          ],
-          "Ritual": false,
-          "Concentration": false,
-          "CastingTime": {
-            "Amount": 1,
-            "Unit": "minute",
-            "Trigger": "",
-            "Raw": "1 minute"
           }
         },
         "Prepared": true
@@ -2193,6 +2193,31 @@
       },
       {
         "Spell": {
+          "Key": "spell:aid",
+          "Name": "Aid",
+          "NamePT": "Ajuda",
+          "Level": 2,
+          "School": "school:abjuration",
+          "SchoolNamePT": "Abjuração",
+          "Classes": [
+            "class:cleric",
+            "class:paladin",
+            "class:gen-full-prepared@mesa",
+            "class:gen-half-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
           "Key": "spell:augury",
           "Name": "Augury",
           "NamePT": "Augúrio",
@@ -2210,31 +2235,6 @@
             "Unit": "minute",
             "Trigger": "",
             "Raw": "1 minute"
-          }
-        },
-        "Prepared": true
-      },
-      {
-        "Spell": {
-          "Key": "spell:aid",
-          "Name": "Aid",
-          "NamePT": "Auxílio",
-          "Level": 2,
-          "School": "school:abjuration",
-          "SchoolNamePT": "Abjuração",
-          "Classes": [
-            "class:cleric",
-            "class:paladin",
-            "class:gen-full-prepared@mesa",
-            "class:gen-half-prepared@mesa"
-          ],
-          "Ritual": false,
-          "Concentration": false,
-          "CastingTime": {
-            "Amount": 1,
-            "Unit": "action",
-            "Trigger": "",
-            "Raw": "1 action"
           }
         },
         "Prepared": true

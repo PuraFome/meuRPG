@@ -24,7 +24,7 @@ import (
 // summoned animals and undead, the master's gift, and the creatures in a combat.
 // These tests need the database (MEURPG_TEST_DATABASE_URL). The fixture is the
 // party of the Etapa 9 designs: Toren, a level 5 fighter; Pensantus, a wizard
-// who knows Encontrar Familiar and Animar os Mortos (level 9, so he has
+// who knows Convocar Familiar and Animar Mortos (level 9, so he has
 // 5th-circle slots); and Sálvia, a level 5 druid with Conjurar Animais.
 
 const (
@@ -222,7 +222,7 @@ func TestMR037_TheRitualFamiliarSpendsNoSlotAndANewOneReplacesTheOld(t *testing.
 	}
 }
 
-// TestMR037_AnimateDeadAtTheThirdAndFifthCircles: Animar os Mortos takes 1
+// TestMR037_AnimateDeadAtTheThirdAndFifthCircles: Animar Mortos takes 1
 // minute and the slot; 1 creature at the 3rd circle, 2 more for each circle
 // above it.
 func TestMR037_AnimateDeadAtTheThirdAndFifthCircles(t *testing.T) {
@@ -236,7 +236,7 @@ func TestMR037_AnimateDeadAtTheThirdAndFifthCircles(t *testing.T) {
 	}
 	// A ritual is only for a ritual spell.
 	if _, err := a.castSummon(t, a.ana, a.pens, animateDead, nil, 0, []string{"monster:skeleton"}); connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Errorf("CastSummon(ritual Animar os Mortos) error = %v, want invalid_argument", err)
+		t.Errorf("CastSummon(ritual Animar Mortos) error = %v, want invalid_argument", err)
 	}
 
 	res := a.mustCastSummon(t, a.ana, a.pens, animateDead, slotOfLevel(3), 0, []string{"monster:skeleton"})
@@ -255,7 +255,7 @@ func TestMR037_AnimateDeadAtTheThirdAndFifthCircles(t *testing.T) {
 	for _, c := range list {
 		groups[c.GetSummonGroupId()]++
 		if c.GetSource() != charactersv1.CreatureSource_CREATURE_SOURCE_ANIMATE_DEAD || c.GetAttack() != 3 {
-			t.Errorf("creature = %v, want an Animar os Mortos creature that attacks", c)
+			t.Errorf("creature = %v, want an Animar Mortos creature that attacks", c)
 		}
 	}
 	if len(groups) != 2 {
@@ -280,13 +280,13 @@ func TestMR037_ConjureAnimalsInCombat(t *testing.T) {
 	a := newSummoners(t)
 	e := a.summonersFight(t)
 
-	// Pensantus's turn: Encontrar Familiar takes an hour (a combat has no room
+	// Pensantus's turn: Convocar Familiar takes an hour (a combat has no room
 	// for it).
 	_, err := a.cast(t, a.ana, e, "Pensantus", findFamiliar, slotOfLevel(1), nil, func(r *playv1.CastSpellRequest) {
 		r.Roll = &playv1.CastSpellRequest_D20Face{D20Face: 10}
 		r.Summon = &playv1.SummonChoice{CreatureKeys: []string{"monster:owl"}}
 	})
-	wantBlockedBy(t, "CastSpell(Encontrar Familiar)", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CASTING_TIME_TOO_LONG)
+	wantBlockedBy(t, "CastSpell(Convocar Familiar)", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CASTING_TIME_TOO_LONG)
 	e = a.toSalvia(t, e)
 
 	// The choices the rules refuse: a creature above the challenge rating, the

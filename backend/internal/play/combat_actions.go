@@ -200,21 +200,11 @@ func (s *Service) GetTurnOptions(
 	if err != nil {
 		return nil, err
 	}
-	session, err := s.openSession(ctx, m.CampaignID)
+	_, d, err := s.readEncounter(ctx, m.CampaignID, encID)
 	if err != nil {
 		return nil, err
 	}
-	enc, err := s.queries.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: session.ID, ID: encID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("encounter not found"))
-	}
-	if err != nil {
-		return nil, s.dbError(ctx, "find the encounter", err)
-	}
-	d, err := loadEncounter(ctx, s.queries, enc)
-	if err != nil {
-		return nil, s.dbError(ctx, "read the encounter", err)
-	}
+	enc := d.enc
 	v, sight, err := s.viewerWith(ctx, m, enc, d.cs)
 	if err != nil {
 		return nil, s.dbError(ctx, "work out what the player sees", err)

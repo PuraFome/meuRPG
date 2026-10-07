@@ -581,7 +581,7 @@ type CastSummonRequest struct {
 	// The spell, "spell:find-familiar", "spell:animate-dead" or
 	// "spell:conjure-animals".
 	SpellKey string `protobuf:"bytes,3,opt,name=spell_key,json=spellKey,proto3" json:"spell_key,omitempty"`
-	// True: cast as a ritual, spending no slot (Encontrar Familiar, by a
+	// True: cast as a ritual, spending no slot (Convocar Familiar, by a
 	// character that casts rituals). False: cast with `slot`.
 	Ritual bool `protobuf:"varint,4,opt,name=ritual,proto3" json:"ritual,omitempty"`
 	// The slot, for a cast that is not a ritual.

@@ -41,7 +41,7 @@ const MASTER_ONLY_MESSAGES = {
 };
 
 /**
- * The "Sessão" panel on `/campanhas/:id` (artboard E5-09).
+ * The "Sessão" panel on `/campaigns/:id` (artboard E5-09).
  *
  * For the master: "Iniciar sessão" (RN-01: starting locks every player's
  * sheet; ending never unlocks them) or, while one is open, "Sessão 4 em

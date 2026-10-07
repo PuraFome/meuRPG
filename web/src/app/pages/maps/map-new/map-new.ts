@@ -97,7 +97,7 @@ export class MapNew {
       const name = this.nameControl.value.trim();
       const map = await this.api.create(this.campaignId(), name, imageId, this.createKey.keyFor([name, imageId]));
       this.createKey.renew();
-      await this.router.navigate(['/campanhas', this.campaignId(), 'mapas', map.id]);
+      await this.router.navigate(['/campaigns', this.campaignId(), 'maps', map.id]);
     } catch (err) {
       this.saving.set(false);
       this.failure.set(

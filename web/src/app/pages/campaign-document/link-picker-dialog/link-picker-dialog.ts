@@ -27,7 +27,7 @@ type State =
  * "Link para mapa" and "Link para ficha" (the editor toolbar): lists the
  * campaign's maps (`ListMaps`) or characters (`ListCharacters`); choosing a
  * row hands its id and name to the editor, which writes
- * `[nome](mapa:<id>)` or `[nome](ficha:<id>)` at the cursor, so the master
+ * `[nome](map:<id>)` or `[nome](character:<id>)` at the cursor, so the master
  * never types an id.
  */
 @Component({
@@ -39,13 +39,13 @@ type State =
 export class LinkPickerDialog implements OnInit {
   private readonly links = inject(DocumentLinks);
 
-  readonly kind = input.required<'mapa' | 'ficha'>();
+  readonly kind = input.required<'map' | 'character'>();
   readonly campaignId = input.required<string>();
   readonly picked = output<PickedLink>();
   readonly closed = output<void>();
 
   protected readonly state = signal<State>({ status: 'loading' });
-  protected readonly isMap = computed(() => this.kind() === 'mapa');
+  protected readonly isMap = computed(() => this.kind() === 'map');
 
   ngOnInit(): void {
     this.load();
@@ -54,7 +54,7 @@ export class LinkPickerDialog implements OnInit {
   protected load(): void {
     this.state.set({ status: 'loading' });
     const rows =
-      this.kind() === 'mapa'
+      this.kind() === 'map'
         ? this.links.listMaps(this.campaignId()).then((maps) =>
             maps.map<Row>((m) => ({
               id: m.id,

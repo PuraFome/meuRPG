@@ -326,7 +326,7 @@ describe('CharacterSheetPage', () => {
               },
               {
                 key: 'spell:poison-spray',
-                namePt: 'Borrifo Venenoso',
+                namePt: 'Rajada de Veneno',
                 kind: 'spell',
                 attackBonus: 0,
                 damage: '1d12',
@@ -345,7 +345,7 @@ describe('CharacterSheetPage', () => {
     expect(el.textContent).toContain('1d6+3 concussão');
     expect(el.textContent).toContain('Raio de Fogo');
     expect(el.textContent).toContain('+6');
-    expect(el.textContent).toContain('Borrifo Venenoso');
+    expect(el.textContent).toContain('Rajada de Veneno');
     expect(el.textContent).toContain('CD 14');
     expect(el.textContent).toContain('Constituição');
     expect(el.textContent).toContain('1d12 veneno');
@@ -1111,7 +1111,7 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
     fixture.detectChanges();
 
     expect(fake.rejectCharacterCalls).toEqual(['char-1']);
-    expect(navigate).toHaveBeenCalledWith(['/campanhas', 'camp-1']);
+    expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1']);
   });
 
   it('shows the server\'s reason when the rejection fails', async () => {
