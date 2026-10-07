@@ -248,12 +248,14 @@ export class NpcCard {
       const keys = this.attacks().map((a) => a.key);
       if (!keys.includes(this.attackKey())) {
         this.attackKey.set(keys[0] ?? '');
+        this.key = newKey();
       }
     });
     effect(() => {
       const ids = this.targets().map((t) => t.combatantId);
       if (!ids.includes(this.targetId())) {
         this.targetId.set(ids[0] ?? '');
+        this.key = newKey();
       }
     });
   }
