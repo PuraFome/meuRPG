@@ -2316,6 +2316,46 @@ O filtro roda no servidor, em `visibility.go`, e o que o jogador não vê fica d
 
 Quem não é membro ativo (e o membro pendente) recebe `not_found` em tudo, como no resto do app (`TestMapServiceAuthorizationMatrix`).
 
+### Os testes de vazamento (RN-10)
+
+`TestLeakMatrix` (`backend/internal/leaktest`) prova, num teste só, que o jogador nunca recebe o que o mestre escondeu, em toda leitura e em todo evento do stream. Os testes de cada funcionalidade (`TestRN10_*`, `TestMR009_*`...) continuam: este fica por cima deles e não deixa uma leitura nova escapar. Ele é de integração: roda contra o CockroachDB (o job `go-db`) e contra todos os módulos ligados como no `cmd/api`, com os mesmos construtores e `Set*`, a fonte de conteúdo da mesa de produção e a pilha HTTP de verdade. Só o login é trocado, por um cabeçalho de teste.
+
+**O cenário** (`world_test.go`) é uma campanha em que o mestre criou uma coisa escondida de cada tipo. Todo campo de texto livre de cada coisa leva um marcador (`LEAKCANARY-<tipo>-<n>`), os números secretos são improváveis (4.321 PV, 7.777 PO, CDs de 25 a 29) e os IDs das coisas escondidas ficam registrados. As pessoas são o mestre, Ana (o personagem dela vê o oeste do mapa com névoa), Caio (o dele vê a sala do sul), Bia (membro pendente, com um personagem esperando aprovação), Eva (estranha) e alguém sem sessão. A sessão está aberta, há um combate rodando, uma cena aberta com o palco e quebra-cabeças na tela.
+
+| Tipo | O que o cenário esconde |
+| --- | --- |
+| Mapas | Um mapa escondido, a masmorra gerada (mapa, imagem, semente, salas), um ponto revelado que leva a um mapa escondido, as camadas pintadas de luz, o mapa com névoa |
+| Pontos | Um de cada tipo escondido (cena, submapa, batalha, armadilha, tesouro, luz), com descrição, ganchos, ações com CD e pistas; os revelados num lugar que ninguém vê |
+| Armadilhas | Uma que ninguém conhece, uma só do personagem da Ana, uma só do personagem do Caio, uma que um personagem nota ao passar; CDs de notar, achar e de resistência, o efeito, o gatilho |
+| Tesouros | Escondido, revelado e ainda não achado (sem descrição nem valor), um sorteado e posto no mapa (a semente) |
+| Pessoas e criaturas | NPC com 4.321 PV, CA e XP secretos, NPC escondido, NPC de uma criatura do bestiário (a chave), NPC fora do palco com retrato, notas do mestre sobre cada personagem, a criatura de um jogador |
+| Combate | NPCs revelados que nenhum personagem vê, NPCs e monstros escondidos, o ponto de batalha e o encontro guardado nele, os testes contra a morte de um jogador (a mesa os guarda para o dono e o mestre) |
+| Cena | Ganchos, CD e pistas não reveladas da cena aberta; uma cena nunca aberta, com tudo isso |
+| Quebra-cabeças | Solução, dicas não liberadas, CD da dica, "Ao resolver" (o ponto que abre), "Ao errar" (a armadilha), respostas do enigma e da cifra, a parte de cada jogador numa informação dividida, um quebra-cabeça nunca mostrado e outro arquivado |
+| Imagens | A galeria (nomes e IDs), uma imagem não mostrada, uma gerada e não mostrada (o pedido e o texto), o retrato de um NPC fora de cena, a imagem de um mapa com névoa |
+| Mesa | Conteúdo arquivado e desligado (a chave também), opção do SRD desligada, marcos não alcançados, o documento da campanha, o token de um convite, a nota privada de cada jogador |
+
+**A tabela de leituras** (`reads_test.go`) tem uma linha para cada leitura que importa: o procedimento (a constante gerada, como `mapsv1connect.MapServiceGetMapProcedure`), o pedido e quem pode ler. Cada linha é pedida por cada pessoa, pelo mesmo caminho do app (Connect com JSON). O mestre é o controle positivo: a leitura funciona e a coisa está lá. Quem não pode ler recebe um erro, e a leitura que só o mestre faz também é uma linha (`masterOnlyRead`): o teste prova que ninguém mais recebe resposta e que o erro não diz nada. Cada resposta, de sucesso ou de erro, passa por três conferências (`inspect_test.go`):
+
+1. **o corpo cru**, como o app o recebe: nenhum marcador e nenhum ID de uma coisa escondida;
+2. **a mensagem lida campo a campo** (`protoreflect`): nenhum número secreto num campo numérico. Um número pequeno, como uma CD, só vale em campos cujo nome tem `dc`; um número grande vale em qualquer campo. Nunca se procura um número no texto da resposta;
+3. **os campos só do mestre** (`masteronly_test.go`): uma lista explícita de mensagem e campo, cada um com o motivo, que o jogador lê vazios seja qual for o valor (o campo `hooks` do ponto, a CA de um combatente, a solução). `TestMasterOnlyFieldsExist` falha se o nome de uma entrada deixar de existir nos `.proto`.
+
+Um marcador que o jogador pode ler (a pista que o mestre revelou a ele, a armadilha que o personagem dele conhece) tem leitores; vale só para eles, e o teste exige achá-lo nas respostas deles (`TestLeakMatrix/canaries_are_reachable`). Do mesmo jeito, todo marcador precisa aparecer em alguma resposta do mestre, ou o tipo vai para a lista `unreachable`, com o motivo: uma agulha que ninguém encontra não prova nada. `inspect_unit_test.go` testa a própria conferência, sem banco: cada camada recebe uma resposta com um vazamento plantado e precisa achá-lo.
+
+**O resto do teste**, em ordem:
+
+- **As ações dos jogadores** (`actions_test.go`): rolar a cena, procurar armadilhas, tentar uma dica, mexer num quebra-cabeça, acender uma luz. Passam pelo mesmo corredor das leituras, antes delas, para as leituras verem o que as ações deixaram.
+- **As imagens e as peças da névoa**: `GET /images/{id}` e a miniatura de cada imagem (mostrada, deixada, de retrato no palco, e as escondidas), e cada peça do mapa com névoa, para cada pessoa. Quem pode recebe `200`; os outros, `404`, igual a uma imagem que não existe. Ana e Caio precisam receber peças diferentes, senão o teste não distingue uma peça deles de uma que não é.
+- **O que não é leitura** (`classify_test.go`): cada RPC que escreve é pedido por quem não é o mestre, com os IDs das coisas escondidas, pelos nomes dos campos (`probe_test.go`). O que é só do mestre nunca responde `OK`; nenhum erro diz o que o pedido mirava.
+- **O stream** (`stream_test.go`): Ana, Caio e o mestre abrem `WatchGameSession`; Bia, Eva e quem não tem sessão são recusados. O mestre e os jogadores fazem tudo o que o stream anuncia (um evento de cada tipo, e mudanças só em coisas escondidas, que não devem chegar a ninguém), todas as leituras são pedidas de novo com as mudanças feitas, o combate e a sessão terminam, e cada evento passa pelas mesmas três conferências. Um tipo de evento que o roteiro não causa faz o teste falhar, a não ser que esteja em `notTriggered`, com o motivo.
+
+**O guarda de completude** (`TestEveryProcedureIsClassified`, sem banco) lê os descritores dos serviços e falha para um procedimento que não esteja numa só das tabelas: as leituras (`reads`, `readsAfterTheCombat`, `readsAfterTheSession`), as ações (`actions`) e o resto (`notReads`, com a classe e o motivo: só do mestre, ação do jogador, nada de campanha, stream). Um RPC novo precisa ser classificado para o teste passar. Ele também falha para um procedimento em duas tabelas e para uma linha que aponta para um procedimento que não existe mais.
+
+**Para acrescentar uma leitura**, ponha uma linha em `reads`. Se a resposta pode conter algo que o mestre escondeu e o cenário ainda não tem essa coisa, acrescente-a em `world_test.go`, com um marcador em cada campo de texto. **Para acrescentar um RPC que escreve**, ponha uma linha em `notReads`. Uma conferência que acha um vazamento dá o procedimento, a pessoa, o campo e a agulha; se for uma decisão do produto e não um defeito, a linha leva `ignore` com o motivo, nunca um teste mais frouxo.
+
+**Medidas.** São uns 2.500 pedidos HTTP pequenos contra o CockroachDB dos testes. Medido em 07/10/2026 num Mac com a carga em 50 a 100 (outros testes rodando ao mesmo tempo): 172 s de relógio, dos quais só 6 s de CPU do processo do teste; o resto é espera do banco. O alvo, num Mac sem carga ou no `go-db`, é abaixo de 60 s. `LEAKTEST_LOG=1` mostra o log dos servidores (avisos e erros), para descobrir por que uma chamada do cenário falhou. O que o teste achou na primeira rodada, e ficou como exceção explícita com motivo: `ListNoteScenes` (MR-030) lista o nome de um ponto de cena que o mestre revelou mesmo num lugar que a névoa esconde de todos os personagens, porque a cena "descoberta" vale para o grupo todo (pergunta 61); a linha da tabela leva `ignore` e o motivo.
+
 ### Camadas, névoa e os novos tipos de ponto (Etapa 9)
 
 A fatia 9.3 põe no servidor tudo que os mapas da Etapa 9 guardam; as telas vieram em 9.12 a 9.14, a leitura da névoa por jogador em 9.4, as armadilhas em jogo em 9.8 e a conversão do tesouro em XP em 9.11. O código está em `layers.go` (camadas e névoa), `spec.go` (os dados dos tipos novos), `traps.go` (revelar armadilha, tesouro achado) e `carriedlight.go`.

@@ -407,7 +407,9 @@ func TestMR035_Searching(t *testing.T) {
 		if len(got.GetFoundPointIds()) != 0 || got.GetSpentAction() {
 			t.Errorf("%s: %v, want no trap found and no action spent", name, got)
 		}
-		if js, _ := protojson.Marshal(got); strings.Contains(strings.ToLower(string(js)), "dc") || strings.Contains(string(js), "Fosso") {
+		// A JSON key that holds a DC ("noticeDc", "findDc", "dc"), never the letters "dc" anywhere in the text:
+		// a UUID in the answer would contain them one time in 65 and fail this test by chance (testing audit T7).
+		if js, _ := protojson.Marshal(got); dcKey.MatchString(string(js)) || strings.Contains(string(js), "Fosso") {
 			t.Errorf("%s: the answer %s tells a DC or a name", name, js)
 		}
 	}
