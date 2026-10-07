@@ -110,6 +110,8 @@ export type LiveEventVm =
   | { readonly kind: 'heartbeat' }
   | { readonly kind: 'vitals'; readonly vitals: VitalsVm }
   | { readonly kind: 'ended' }
+  /** `content_changed` (RN-23, RN-10): the table's content changed; no content travels, each screen reads what it shows again. */
+  | { readonly kind: 'contentChanged' }
   /** `puzzle_changed` (MR-038): a puzzle of the session changed; the hint names only its ID, the apps read it again. */
   | { readonly kind: 'puzzleChanged'; readonly puzzleId: string }
   /** `current_map_changed`; `mapId` is `null` when the map was cleared. */
@@ -152,7 +154,9 @@ export type LiveEventVm =
   /** `trap_noticed` (MR-035): this player's character noticed a trap by passing near it. Only they get it. */
   | { readonly kind: 'trapNoticed'; readonly mapId: string; readonly pointId: string }
   /** `creatures_changed` (MR-037): the character's creatures changed outside a combat; read them again. */
-  | { readonly kind: 'creaturesChanged' };
+  | { readonly kind: 'creaturesChanged' }
+  /** `content_changed` (10.1d): the table's content changed; read the catalog again with this member's role. */
+  | { readonly kind: 'contentChanged' };
 
 /**
  * What a failed call means for the page, from its Connect code and typed

@@ -1102,7 +1102,7 @@ func TestPlayerCatalogWithoutArchived(t *testing.T) {
 		ContentVersion: "v", Races: []*rulesv1.Race{{Key: "a"}, {Key: "b", Archived: true}},
 		Spells: []*rulesv1.Spell{{Key: "s", Archived: true}}, Classes: []*rulesv1.CharacterClass{{Key: "c"}},
 	}
-	p := withoutArchived(c)
+	p := withoutArchived(c, nil)
 	if len(p.GetRaces()) != 1 || p.GetRaces()[0].GetKey() != "a" || len(p.GetSpells()) != 0 || len(p.GetClasses()) != 1 || p.GetContentVersion() != "v" {
 		t.Errorf("withoutArchived() = %v", p)
 	}

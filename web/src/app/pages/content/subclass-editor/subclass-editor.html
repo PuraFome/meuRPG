@@ -106,8 +106,9 @@
     <p class="hint">As sempre preparadas não gastam o limite de magias preparadas. A escolha mostra as magias do SRD e as da mesa.</p>
   </section>
 
-  <!-- Seam for slice 10.11c: the "Para os jogadores" panel with the switch "Disponível para os jogadores" (TableEntry.off) goes here,
-       before the save bar, as in E10-02 state 4. The subclass body never carries it: the switch is the entry's. -->
+  @if (entry(); as saved) {
+    <app-players-switch [campaignId]="campaignId()" [entry]="saved" (switched)="switched.emit($event)" />
+  }
 
   <app-editor-bar [sticky]="true" saveLabel="Salvar subclasse" [saving]="saver.saving()" [blocked]="saveBlocked()" (save)="save()" (cancel)="cancelled.emit()" />
 </div>

@@ -4,8 +4,8 @@ import { SpellOptionVm } from '../character-editor.types';
 import { SpellPicker } from './spell-picker';
 
 const SPELLS: SpellOptionVm[] = [
-  { key: 'spell:fire-bolt', namePt: 'Raio de Fogo', level: 0, classKeys: ['class:wizard'] },
-  { key: 'spell:light', namePt: 'Luz', level: 0, classKeys: ['class:wizard'] },
+  { key: 'spell:fire-bolt', namePt: 'Raio de Fogo', level: 0, classKeys: ['class:wizard'], fromTable: false, archived: false, off: false },
+  { key: 'spell:light', namePt: 'Luz', level: 0, classKeys: ['class:wizard'], fromTable: false, archived: false, off: false },
 ];
 
 describe('SpellPicker', () => {
@@ -80,5 +80,24 @@ describe('SpellPicker', () => {
     fixture.componentInstance.toggle.subscribe((key) => ticked.push(key));
     el.querySelector<HTMLButtonElement>('.picker__help')!.click();
     expect(ticked).toEqual([]);
+  });
+
+  it('tags the master\'s own spell "Da mesa", and a retired one with its word', () => {
+    const ink: SpellOptionVm = { key: 'spell:ink@mesa', namePt: 'Lâmina de Nanquim', level: 0, classKeys: ['class:wizard'], fromTable: true, archived: true, off: false };
+    const { el } = render({ filtered: [SPELLS[0], ink] });
+    const rows = Array.from(el.querySelectorAll('.picker__row'));
+    expect(rows[0].querySelector('.mr-tag')).toBeNull();
+    expect(rows[1].textContent).toContain('Da mesa');
+    expect(rows[1].textContent).toContain('Arquivada');
+  });
+
+  it('says a spell outside the lists without a class the catalog cannot name: never "é de ." nor a key', () => {
+    const { fixture, el } = render({});
+    fixture.componentRef.setInput('outside', [{ spell: SPELLS[0], classes: '' }]);
+    fixture.detectChanges();
+    const text = (el.querySelector('.picker__out')?.textContent ?? '').replace(/\s+/g, ' ');
+    expect(text).toContain('Fora da lista das suas classes');
+    expect(text).toContain('Você a lê em “Magias”, mas não a escolhe nesta ficha.');
+    expect(text).not.toContain('Esta magia é de');
   });
 });

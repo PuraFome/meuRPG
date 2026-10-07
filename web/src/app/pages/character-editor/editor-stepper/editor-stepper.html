@@ -44,7 +44,9 @@
         <h2 class="stepper__title" tabindex="-1">{{ step.label }}</h2>
       </header>
 
-      <ng-container [ngTemplateOutlet]="step.content" />
+      @if (rendered(i)) {
+        <ng-container [ngTemplateOutlet]="step.content" />
+      }
 
       <div class="stepper__nav">
         @if (!first) {

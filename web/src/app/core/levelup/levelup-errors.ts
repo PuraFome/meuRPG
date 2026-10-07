@@ -13,8 +13,12 @@ import { formatInt, tight } from '../format/text';
 import type { StepKey } from './levelup-flow';
 
 /** The step a refused rule belongs to, so the message can send the player there. */
-export function refusalStep(reason: LevelUpRefusalReason): StepKey | null {
+export function refusalStep(reason: LevelUpRefusalReason, field = ''): StepKey | null {
   switch (reason) {
+    case LevelUpRefusalReason.ARCHIVED_CHOICE:
+    case LevelUpRefusalReason.SWITCHED_OFF_CHOICE:
+      // A retired option sits in the step of the field it is chosen in.
+      return /class|feature_choice/.test(field) ? 'picks' : /spell|cantrip/.test(field) ? 'spells' : null;
     case LevelUpRefusalReason.ABILITY_NOT_DUE:
     case LevelUpRefusalReason.ABILITY_SHAPE:
     case LevelUpRefusalReason.ABILITY_ABOVE_20:
@@ -41,6 +45,10 @@ export function refusalStep(reason: LevelUpRefusalReason): StepKey | null {
 /** What a rule the level broke says, by its reason (never by the server's message). */
 export function refusalMessage(refusal: Pick<LevelUpRefusal, 'reason'>): string {
   switch (refusal.reason) {
+    case LevelUpRefusalReason.ARCHIVED_CHOICE:
+      return 'O mestre arquivou uma das opções que você escolheu, e ela não vale mais como escolha nova. Volte e escolha outra.';
+    case LevelUpRefusalReason.SWITCHED_OFF_CHOICE:
+      return 'O mestre desligou uma das opções que você escolheu para os jogadores. Volte e escolha outra.';
     case LevelUpRefusalReason.CLASS:
       return 'Esse nível não vale para a classe escolhida. Volte para a ficha e comece de novo.';
     case LevelUpRefusalReason.MAX_LEVEL:
@@ -131,7 +139,7 @@ export function describeLevelUpFailure(err: unknown): LevelUpFailure {
   if (e.code === Code.FailedPrecondition) {
     const [refusal] = e.findDetails(LevelUpRefusalSchema);
     if (refusal) {
-      return { kind: 'refusal', message: refusalMessage(refusal), step: refusalStep(refusal.reason) };
+      return { kind: 'refusal', message: refusalMessage(refusal), step: refusalStep(refusal.reason, refusal.field) };
     }
     const [blocked] = e.findDetails(CharacterBlockedSchema);
     return { kind: 'blocked', message: blockedMessage(blocked?.reason), reason: blocked?.reason };

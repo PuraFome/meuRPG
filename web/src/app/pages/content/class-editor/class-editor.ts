@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
 import { Ability } from '../../../../gen/meurpg/rules/v1/rules_pb';
+import { PlayersSwitch } from '../players-switch/players-switch';
 import type { GetClassTableDefaultsResponse, TableEntry } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import type { CatalogVm } from '../../../core/content/catalog';
 import {
@@ -76,6 +77,7 @@ type TableAsk = { readonly kind: 'casting'; readonly next: CastingDraft } | { re
     MatIconModule,
     NumberStepper,
     PickList,
+    PlayersSwitch,
     RouterLink,
     SectionNav,
     SelectField,
@@ -99,6 +101,8 @@ export class ClassEditor {
   readonly saveBlocked = input('');
 
   readonly saved = output<EditorSaved>();
+  /** The entry's switch "Disponível para os jogadores" was turned (it saves at once, apart from the form). */
+  readonly switched = output<TableEntry>();
   readonly reload = output<void>();
   readonly cancelled = output<void>();
 

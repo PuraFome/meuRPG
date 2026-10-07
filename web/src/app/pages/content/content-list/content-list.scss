@@ -56,6 +56,12 @@
     outline: none;
   }
 
+  &__actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: var(--mr-space-2);
+  }
+
   .mr-page-lead {
     margin-bottom: 0;
   }
@@ -320,4 +326,8 @@
   .filters {
     grid-template-columns: 1fr;
   }
+}
+
+.head__action {
+  min-height: 44px;
 }

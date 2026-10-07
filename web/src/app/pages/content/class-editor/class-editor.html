@@ -4,8 +4,9 @@
 <div class="page">
   <aside class="side">
     <app-section-nav [sections]="sections()" label="Seções da classe" />
-    <!-- Seam for slice 10.11c: the "Para os jogadores" panel with the switch "Disponível para os jogadores" (TableEntry.off) goes here,
-         under the section list, as in E10-02 state 1. The class body never carries it: the switch is the entry's, not the class's. -->
+    @if (entry(); as saved) {
+      <app-players-switch [campaignId]="campaignId()" [entry]="saved" (switched)="switched.emit($event)" />
+    }
   </aside>
 
   <div class="main">

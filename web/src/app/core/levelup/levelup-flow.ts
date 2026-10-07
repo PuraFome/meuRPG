@@ -6,6 +6,7 @@ import {
 import { Ability as GenAbility, type Skill, type Spell } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { abilityLabel, spellLevelLabel } from '../characters/character-labels';
 import type { AbilityKey } from '../characters/characters.types';
+import { isTableKey } from '../content/catalog';
 import { joinDots } from '../format/text';
 
 /**
@@ -43,10 +44,33 @@ export function totalsFor(o: LevelUpOptions, subclassKey: string): Totals {
   const sub = o.subclasses.find((s) => s.key === subclassKey);
   return {
     cantrips: o.cantrips + (sub?.cantrips ?? 0),
-    spells: o.spells,
+    spells: o.spells + (sub?.spells ?? 0),
     skills: o.skillChoices + (sub?.skillChoices ?? 0),
     expertise: o.expertiseChoices + (sub?.expertiseChoices ?? 0),
     featureChoices: [...o.featureChoices, ...(sub?.featureChoices ?? [])],
+  };
+}
+
+/**
+ * The level's options once `subclassKey` is picked: a third caster's subclass (the table's, or a
+ * fighter's or rogue's) brings its own spells, the list they come from, the highest circle and
+ * whether it prepares (slice 10.3's `LevelUpSubclass` fields 8 to 13). Before the pick, or for a
+ * subclass that casts nothing, the options are the server's own, untouched. The browser only picks
+ * which of the server's numbers to read; none is worked out.
+ */
+export function withSubclass(o: LevelUpOptions, subclassKey: string): LevelUpOptions {
+  const sub = o.subclasses.find((s) => s.key === subclassKey);
+  if (!sub || (sub.spells === 0 && !sub.spellListClassKey && !sub.prepares)) {
+    return o;
+  }
+  return {
+    ...o,
+    spells: o.spells + sub.spells,
+    spellsKind: sub.spellsKind || o.spellsKind,
+    spellListClassKey: sub.spellListClassKey || o.spellListClassKey,
+    maxSpellLevel: sub.maxSpellLevel || o.maxSpellLevel,
+    prepares: o.prepares || sub.prepares,
+    preparedMaxAfter: sub.prepares ? sub.preparedMaxAfter : o.preparedMaxAfter,
   };
 }
 
@@ -79,6 +103,8 @@ export interface PickItem {
   readonly sub: string;
   /** A spell off the class's own list (a Bard's Magical Secrets). */
   readonly outside?: boolean;
+  /** The master's own spell ("Da mesa"). */
+  readonly table?: boolean;
   /** Why the row cannot be picked now ("Limite de 2 de outra classe"); empty or unset when it can. */
   readonly disabled?: string;
 }
@@ -95,7 +121,7 @@ export function spellSub(spell: Spell, ...extras: string[]): string {
 }
 
 function toItem(spell: Spell, ...extras: string[]): PickItem {
-  return { key: spell.key, name: spell.namePt, sub: spellSub(spell, ...extras) };
+  return { key: spell.key, name: spell.namePt, sub: spellSub(spell, ...extras), ...(isTableKey(spell.key) ? { table: true } : {}) };
 }
 
 /** What the sheet has today, by content key: the pickers never offer it twice. */

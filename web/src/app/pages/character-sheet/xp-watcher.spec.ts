@@ -100,6 +100,24 @@ describe('XpWatcher (E7-10)', () => {
     watcher.follow(null, vi.fn());
   });
 
+  it('reads the sheet again when the table\'s content changes (RN-23, "A classe mudou"), on the same stream, and on a reconnection', async () => {
+    const onContent = vi.fn();
+    const onChange = vi.fn();
+    const watcher = TestBed.inject(XpWatcher);
+    watcher.follow('camp-1', onChange, undefined, onContent);
+    await flush();
+    calls[0].push({ kind: 'ready' });
+    calls[0].push({ kind: 'contentChanged' });
+    await flush();
+    expect(onContent).toHaveBeenCalledTimes(1);
+    expect(onChange).not.toHaveBeenCalled();
+    calls[0].push({ kind: 'ready' });
+    await flush();
+    expect(onContent).toHaveBeenCalledTimes(2);
+    expect(calls).toHaveLength(1);
+    watcher.follow(null, onChange);
+  });
+
   it('does not open a second stream for the same campaign, and closes the first for another', async () => {
     const watcher = TestBed.inject(XpWatcher);
     watcher.follow('camp-1', vi.fn());

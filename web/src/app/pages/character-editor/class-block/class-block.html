@@ -1,0 +1,89 @@
+<section class="block" role="group" [attr.aria-labelledby]="titleId()">
+  <header class="block__head">
+    <h3 class="block__title" [id]="titleId()">{{ title() }}</h3>
+    @if (removable()) {
+      <button matButton type="button" class="block__remove" (click)="removed.emit()">
+        <mat-icon aria-hidden="true">close</mat-icon>Remover<span class="mr-visually-hidden"> a {{ title().toLowerCase() }}</span>
+      </button>
+    }
+  </header>
+  <div class="block__grid">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="block__class">
+      <mat-label>Classe</mat-label>
+      <mat-select required panelWidth="" [formControl]="classControl" (selectionChange)="pickClass($event.value)">
+        <mat-select-trigger>
+          {{ cls()?.namePt }}
+          <app-table-mark [fromTable]="cls()?.fromTable ?? false" [archived]="cls()?.archived ?? false" [off]="cls()?.off ?? false" />
+        </mat-select-trigger>
+        @if (classUnlisted()) {
+          <mat-option [value]="block().classKey">Classe que saiu da lista</mat-option>
+        }
+        @for (c of classChoices(); track c.key) {
+          <mat-option [value]="c.key">
+            {{ c.namePt }}
+            <app-table-mark [fromTable]="c.fromTable" [archived]="c.archived" [off]="c.off" />
+          </mat-option>
+        }
+      </mat-select>
+      <mat-error>{{ problem() || 'Escolha a classe.' }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="block__level">
+      <mat-label>Nível</mat-label>
+      <input
+        matInput
+        required
+        type="number"
+        inputmode="numeric"
+        min="1"
+        max="20"
+        [value]="block().level"
+        (input)="setLevel($any($event.target).valueAsNumber)"
+      />
+    </mat-form-field>
+
+    @if (!cls()) {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="block__sub">
+        <mat-label>Subclasse</mat-label>
+        <mat-select disabled />
+        <mat-hint>Escolha a classe antes.</mat-hint>
+      </mat-form-field>
+    } @else if (subclasses().length > 0) {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="block__sub">
+        <mat-label>Subclasse</mat-label>
+        <mat-select
+          panelWidth=""
+          [value]="block().subclassKey"
+          [disabled]="subclassWaits()"
+          (selectionChange)="changed.emit({ subclassKey: $event.value, customSubclassName: '' })"
+        >
+          <mat-select-trigger>
+            {{ chosenSubclass()?.namePt ?? 'Nenhuma' }}
+            <app-table-mark [fromTable]="chosenSubclass()?.fromTable ?? false" [archived]="chosenSubclass()?.archived ?? false" [off]="chosenSubclass()?.off ?? false" />
+          </mat-select-trigger>
+          <mat-option value="">Nenhuma</mat-option>
+          @for (sc of subclassChoices(); track sc.key) {
+            <mat-option [value]="sc.key">
+              {{ sc.namePt }}
+              <app-table-mark [fromTable]="sc.fromTable" [archived]="sc.archived" [off]="sc.off" />
+            </mat-option>
+          }
+        </mat-select>
+        @if (subclassHint()) {
+          <mat-hint>{{ subclassHint() }}</mat-hint>
+        }
+      </mat-form-field>
+    } @else {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="block__sub">
+        <mat-label>Subclasse</mat-label>
+        <input
+          matInput
+          autocomplete="off"
+          [value]="block().customSubclassName"
+          (input)="changed.emit({ customSubclassName: $any($event.target).value, subclassKey: '' })"
+        />
+        <mat-hint>{{ subclassHint() || 'Escreva o nome, se houver.' }}</mat-hint>
+      </mat-form-field>
+    }
+  </div>
+</section>

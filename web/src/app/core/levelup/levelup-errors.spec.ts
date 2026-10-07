@@ -31,6 +31,18 @@ describe('the failures of the guided level-up', () => {
     expect(describeLevelUpFailure(refused(LevelUpRefusalReason.SUBCLASS))).toMatchObject({ step: 'picks' });
   });
 
+  it('says a choice the master switched off is not available any more, and sends it to the step that holds it (RN-23)', () => {
+    const off = (field: string) =>
+      new ConnectError('x', Code.FailedPrecondition, undefined, [
+        { desc: LevelUpRefusalSchema, value: create(LevelUpRefusalSchema, { reason: LevelUpRefusalReason.SWITCHED_OFF_CHOICE, field }) },
+      ]);
+    const subclass = describeLevelUpFailure(off('full.subclass_key'));
+    expect(subclass).toMatchObject({ kind: 'refusal', step: 'picks' });
+    expect(subclass.message).toBe('O mestre desligou uma das opções que você escolheu para os jogadores. Volte e escolha outra.');
+    expect(describeLevelUpFailure(off('full.cantrip_keys'))).toMatchObject({ step: 'spells' });
+    expect(describeLevelUpFailure(off('full.known_spell_keys'))).toMatchObject({ step: 'spells' });
+  });
+
   it('gives every reason words, and the ones no step owns no step', () => {
     for (const reason of Object.values(LevelUpRefusalReason).filter((v): v is LevelUpRefusalReason => typeof v === 'number' && v > 0)) {
       expect(refusalMessage({ reason }).length).toBeGreaterThan(10);
@@ -52,5 +64,26 @@ describe('the failures of the guided level-up', () => {
     expect(describeLevelUpFailure(new ConnectError('x', Code.PermissionDenied)).message).toContain('dono do personagem');
     expect(describeLevelUpFailure(new ConnectError('x', Code.NotFound)).message).toContain('não existe');
     expect(describeLevelUpFailure(new Error('network')).kind).toBe('other');
+  });
+});
+
+describe('an option the master retired (RN-23, 10.1d)', () => {
+  const refusedAt = (reason: LevelUpRefusalReason, field: string) =>
+    new ConnectError('x', Code.FailedPrecondition, undefined, [
+      { desc: LevelUpRefusalSchema, value: create(LevelUpRefusalSchema, { reason, field }) },
+    ]);
+
+  it('says an archived choice and sends the player to the step of its field', () => {
+    const f = describeLevelUpFailure(refusedAt(LevelUpRefusalReason.ARCHIVED_CHOICE, 'subclass_key'));
+    expect(f).toMatchObject({ kind: 'refusal', step: 'picks' });
+    expect(f.message).toContain('O mestre arquivou uma das opções que você escolheu');
+    expect(describeLevelUpFailure(refusedAt(LevelUpRefusalReason.ARCHIVED_CHOICE, 'full.known_spell_keys'))).toMatchObject({ step: 'spells' });
+  });
+
+  it('says a switched-off choice too, never the generic line', () => {
+    const f = describeLevelUpFailure(refusedAt(LevelUpRefusalReason.SWITCHED_OFF_CHOICE, 'full.cantrip_keys'));
+    expect(f.message).toContain('desligou uma das opções');
+    expect(f.message).not.toContain('As regras não aceitaram');
+    expect(refusalStep(LevelUpRefusalReason.SWITCHED_OFF_CHOICE)).toBeNull();
   });
 });

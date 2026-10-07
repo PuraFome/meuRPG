@@ -233,3 +233,83 @@ describe('adopt: the picks that survive a re-read of the sheet', () => {
     expect([...fresh.spells()]).toEqual(['spell:mirror-image']);
   });
 });
+
+describe("a third caster's subclass picked at its level (slice 10.3's LevelUpSubclass fields 8 to 13)", () => {
+  const WIZARD_LIST = SPELLS.filter((s) => s.classKeys.includes('class:wizard'));
+  const ink = create(LevelUpSubclassSchema, {
+    key: 'subclass:ink@mesa',
+    namePt: 'Lâmina de Tinta',
+    cantrips: 2,
+    spells: 3,
+    spellsKind: LevelUpSpellsKind.KNOWN,
+    spellListClassKey: 'class:wizard',
+    maxSpellLevel: 1,
+  });
+  const champion = create(LevelUpSubclassSchema, { key: 'subclass:champion', namePt: 'Campeão' });
+  // A fighter at level 3: nothing casts before the subclass is chosen.
+  const fighter = () =>
+    fighterOptions({ fromLevel: 2, toLevel: 3, totalFromLevel: 2, totalToLevel: 3, subclassDue: true, subclasses: [champion, ink], spellListClassKey: '', maxSpellLevel: 0, spells: 0, cantrips: 0 });
+  const have = { cantrips: [], known: [], prepared: [], skills: [], expertise: [] };
+  const draft = () => new LevelUpDraft(fighter(), have, { spells: SPELLS, skills: SKILLS, classes: [{ key: 'class:wizard', namePt: 'Mago' }, { key: 'class:fighter', namePt: 'Guerreiro' }] });
+
+  it('has no spells step until the subclass that casts is picked', () => {
+    const d = draft();
+    expect(d.steps()).toEqual(['hp', 'picks', 'summary']);
+    d.setSubclass('subclass:champion');
+    expect(d.steps()).toEqual(['hp', 'picks', 'summary']);
+    d.setSubclass('subclass:ink@mesa');
+    expect(d.steps()).toEqual(['hp', 'picks', 'spells', 'summary']);
+  });
+
+  it("asks for the subclass's cantrips and spells, from the list it casts from, up to its highest circle", () => {
+    const d = draft();
+    d.setSubclass('subclass:ink@mesa');
+    expect(d.cantripsAsked()).toBe(2);
+    expect(d.spellsAsked()).toBe(3);
+    expect(d.listName()).toBe('Mago');
+    // The wizard's cantrips and 1st-circle spells: nothing from the 2nd circle, nothing of another class.
+    expect(d.cantripItems().map((i) => i.key)).toEqual(['spell:light', 'spell:mage-hand', 'spell:prestidigitation', 'spell:fire-bolt', 'spell:shocking-grasp'].sort((a, b) => d.cantripItems().findIndex((i) => i.key === a) - d.cantripItems().findIndex((i) => i.key === b)));
+    expect(d.spellItems().map((i) => i.key).sort()).toEqual(['spell:detect-magic', 'spell:magic-missile', 'spell:thunderwave']);
+    expect(d.spellItems().every((i) => !i.outside)).toBe(true);
+    expect(d.missing().filter((m) => m.step === 'spells').map((m) => m.id)).toEqual(['cantrips', 'spells']);
+    d.toggleCantrip('spell:light');
+    d.toggleCantrip('spell:mage-hand');
+    d.toggleSpell('spell:magic-missile');
+    d.toggleSpell('spell:detect-magic');
+    d.toggleSpell('spell:thunderwave');
+    expect(d.missing().filter((m) => m.step === 'spells')).toEqual([]);
+    expect(d.choices()).toMatchObject({ subclassKey: 'subclass:ink@mesa', cantripKeys: ['spell:light', 'spell:mage-hand'], knownSpellKeys: ['spell:magic-missile', 'spell:detect-magic', 'spell:thunderwave'] });
+  });
+
+  it('drops the picks of the subclass when another is chosen, and the spells step goes with them', () => {
+    const d = draft();
+    d.setSubclass('subclass:ink@mesa');
+    d.toggleCantrip('spell:light');
+    d.toggleSpell('spell:magic-missile');
+    d.setSubclass('subclass:champion');
+    expect(d.steps()).toEqual(['hp', 'picks', 'summary']);
+    expect(d.cantripsAsked()).toBe(0);
+    expect(d.cantrips().size).toBe(0);
+    expect(d.spells().size).toBe(0);
+  });
+
+  it('leaves the server\'s options as they are when the subclass casts nothing', () => {
+    const d = draft();
+    d.setSubclass('subclass:champion');
+    expect(d.effective()).toBe(d.options);
+    expect(WIZARD_LIST.length).toBeGreaterThan(0);
+  });
+
+  it('prepares instead of knowing when the subclass prepares (a rogue-like third caster), up to the maximum it states', () => {
+    const preparing = create(LevelUpSubclassSchema, { key: 'subclass:prep@mesa', namePt: 'Tecelão', spells: 0, prepares: true, preparedMaxAfter: 3, spellListClassKey: 'class:wizard', maxSpellLevel: 1, spellsKind: LevelUpSpellsKind.KNOWN });
+    const o = fighterOptions({ subclassDue: true, subclasses: [preparing] });
+    const d = new LevelUpDraft(o, have, { spells: SPELLS, skills: SKILLS });
+    expect(d.steps()).toEqual(['hp', 'picks', 'summary']);
+    d.setSubclass('subclass:prep@mesa');
+    expect(d.preparedMaxAfter()).toBe(3);
+    expect(d.more()).toBe(3);
+    expect(d.steps()).toEqual(['hp', 'picks', 'spells', 'summary']);
+    expect(d.preparedItems().map((i) => i.key).sort()).toEqual(['spell:detect-magic', 'spell:magic-missile', 'spell:thunderwave']);
+    expect(d.preparedAsked()).toBe(3);
+  });
+});

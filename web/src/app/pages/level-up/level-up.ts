@@ -9,9 +9,11 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CharacterBlockedReason, type Character } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { LevelUpClient } from '../../core/levelup/levelup-client';
+import { LiveSessionSourceLive } from '../live-session/live-session-source.live';
 import { LevelUpDraft } from '../../core/levelup/levelup-draft';
 import { cannotLevelUpMessage, describeLevelUpFailure, refusalMessage, refusalStep, type LevelUpFailure } from '../../core/levelup/levelup-errors';
 import { STEP_LABELS, type LevelUpDone, type SheetKeys, type StepKey } from '../../core/levelup/levelup-flow';
+import { ContentWatcher } from '../../core/content/content-watcher';
 import { openSpellDetails } from '../../shared/spell-details/open-spell-details';
 import { AbilitiesStep } from './abilities-step/abilities-step';
 import { HpStep } from './hp-step/hp-step';
@@ -65,6 +67,9 @@ function sheetKeys(character: Character): SheetKeys {
     StepsBar,
     SummaryStep,
   ],
+  // Its own client: the catalog and the spell descriptions it keeps live as long as the page, never past a reload of the
+  // table's content. The session's stream tells the page when the content changes (`ContentWatcher`: one stream, debounced).
+  providers: [LevelUpClient, LiveSessionSourceLive, ContentWatcher],
   templateUrl: './level-up.html',
   styleUrl: './level-up.scss',
 })
@@ -76,6 +81,7 @@ export class LevelUpPage {
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly injector = inject(Injector);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly watcher = inject(ContentWatcher);
 
   protected readonly state = signal<PageState>({ status: 'loading' });
   protected readonly campaignId = signal('');
@@ -107,7 +113,7 @@ export class LevelUpPage {
       return first.text;
     }
     const p = s?.preview.state();
-    if (p && !p.loading && p.refusal && this.step() !== 'summary' && refusalStep(p.refusal.reason) === this.step()) {
+    if (p && !p.loading && p.refusal && this.step() !== 'summary' && refusalStep(p.refusal.reason, p.refusal.field) === this.step()) {
       return refusalMessage(p.refusal);
     }
     return '';
@@ -136,6 +142,7 @@ export class LevelUpPage {
         void this.load(campaignId, characterId);
       }
     });
+    this.watcher.whileLive(this.campaignId, () => void this.contentChanged());
     destroyRef.onDestroy(() => {
       this.session()?.stop();
       this.footObserver?.disconnect();
@@ -161,7 +168,7 @@ export class LevelUpPage {
     effect(() => {
       const s = this.session();
       const after = s?.preview.state().after;
-      if (s && after && s.options.prepares) {
+      if (s && after && s.draft.effective().prepares) {
         const max = after.spellcasting.find((c) => c.classKey === s.options.classKey)?.preparedMax ?? 0;
         if (max > 0) {
           untracked(() => s.draft.preparedMaxAfter.set(max));
@@ -189,7 +196,7 @@ export class LevelUpPage {
       }
       const [options, catalog, preference] = await Promise.all([
         this.client.options(campaignId, characterId),
-        this.client.catalog(campaignId),
+        this.client.catalog(campaignId, characterId),
         this.client.dicePreference(campaignId).catch(() => 0),
       ]);
       const draft = new LevelUpDraft(options, sheetKeys(character), catalog);
@@ -378,19 +385,47 @@ export class LevelUpPage {
     );
   }
 
-  /** After a stale revision: the sheet and what the level gives are read again (the master may have changed
-   * either), the session is made anew, and the picks that are still valid are carried over. */
-  protected async rereadSheet(): Promise<void> {
+  /** What the page says after the table's content changed under the person: that the lists changed, or that a choice left
+   * them. It stays empty while what the page shows (the offers and the lists) is the same. */
+  protected readonly contentNote = signal('');
+
+  /** `content_changed` (RN-23): the options and the lists are read again with this person's role; the choices that are still
+   * offered stay (`adopt`), and one that is not any more is said, so the person picks again before confirming. */
+  private async contentChanged(): Promise<void> {
     const old = this.session();
     if (!old) {
       return;
     }
+    const before = pickedCount(old.draft);
+    const offers = offerSignature(old);
+    const changed = await this.rereadSheet(true);
+    const now = this.session();
+    if (!changed || !now) {
+      return;
+    }
+    if (pickedCount(now.draft) < before) {
+      this.contentNote.set('O mestre mudou as opções da mesa e uma das suas escolhas saiu da lista. Escolha de novo antes de confirmar.');
+    } else if (offerSignature(now) !== offers) {
+      this.contentNote.set('O mestre mudou as opções da mesa. As listas deste nível estão atualizadas.');
+    }
+  }
+
+  /** After a stale revision or a content change: the sheet, what the level gives and the lists (read fresh, never from the
+   * client's memory) are read again, the session is made anew, and the picks that are still offered are carried over.
+   * Resolves true when the page now shows the new reading. */
+  protected async rereadSheet(afterContent = false): Promise<boolean> {
+    const old = this.session();
+    if (!old) {
+      return false;
+    }
     try {
-      const [character, options] = await Promise.all([
+      // The table's content is read again too: the master may have retired an option, or written a new one.
+      const [character, options, catalog] = await Promise.all([
         this.client.character(this.campaignId(), this.characterId()),
         this.client.options(this.campaignId(), this.characterId()),
+        this.client.catalog(this.campaignId(), this.characterId(), true),
       ]);
-      const draft = new LevelUpDraft(options, sheetKeys(character), old.draft.catalog);
+      const draft = new LevelUpDraft(options, sheetKeys(character), catalog);
       draft.adopt(old.draft);
       const session = new LevelUpSession(this.campaignId(), character, options, draft, this.client, old.preference, (key, name) =>
         this.describeSpell(key, name),
@@ -398,14 +433,16 @@ export class LevelUpPage {
       old.stop();
       this.failure.set(null);
       this.state.set({ status: 'ready', session });
+      return true;
     } catch (err) {
       const failure = describeLevelUpFailure(err);
       if (failure.kind === 'blocked') {
         old.stop();
         this.state.set({ status: 'blocked', message: failure.message });
-      } else {
+      } else if (!afterContent) {
         this.show(failure);
       }
+      return false;
     }
   }
 
@@ -422,4 +459,19 @@ export class LevelUpPage {
     return step ? STEP_LABELS[step] : '';
   }
 
+}
+
+/** How many choices the person has made, to tell whether a re-read dropped one. */
+function pickedCount(d: LevelUpDraft): number {
+  return (d.subclassKey() ? 1 : 0) + d.cantrips().size + d.spells().size + d.prepared().size + d.features().size + d.skills().size + d.expertise().size;
+}
+
+/** What the page offers to choose from (the subclasses, the spells, the classes): a change in it is what the note is about. */
+function offerSignature(s: LevelUpSession): string {
+  const c = s.draft.catalog;
+  return JSON.stringify([
+    s.options.subclasses.map((k) => [k.key, k.off, k.archived]),
+    c.spells.map((x) => x.key),
+    (c.classes ?? []).map((x) => x.key),
+  ]);
 }

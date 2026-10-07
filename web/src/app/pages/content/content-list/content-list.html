@@ -46,8 +46,13 @@
           <p class="mr-page-lead">{{ s.ctx.campaignName }} · O que você cadastra aqui vale só nesta campanha. O SRD continua valendo.</p>
         }
       </div>
-      @if (isMaster() && !phone()) {
-        <a matButton="outlined" class="head__action" [routerLink]="['/campanhas', campaignId(), 'regras']">Regras da mesa</a>
+      @if (isMaster()) {
+        <span class="head__actions">
+          <a matButton="outlined" class="head__action" [routerLink]="['/campanhas', campaignId(), 'conteudo', 'opcoes']"><mat-icon aria-hidden="true">visibility</mat-icon>Opções para os jogadores</a>
+          @if (!phone()) {
+            <a matButton="outlined" class="head__action" [routerLink]="['/campanhas', campaignId(), 'regras']">Regras da mesa</a>
+          }
+        </span>
       }
     </header>
 

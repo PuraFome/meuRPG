@@ -28,8 +28,8 @@ describe('hitPointsPreview', () => {
 
   it('adds the Constitution modifier to each roll', () => {
     expect(preview.levels).toEqual([
-      { level: 2, roll: 8, gain: 11 },
-      { level: 3, roll: null, gain: null },
+      { level: 2, roll: 8, gain: 11, die: 12 },
+      { level: 3, roll: null, gain: null, die: 12 },
     ]);
     expect(preview.total).toBe(26);
   });

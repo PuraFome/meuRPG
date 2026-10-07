@@ -51,7 +51,7 @@
             }
           </span>
           <span class="row__text">
-            <span class="row__name">{{ item.name }}</span>
+            <span class="row__name">{{ item.name }}@if (item.table) {<span class="mr-tag"><mat-icon aria-hidden="true">menu_book</mat-icon>Da mesa</span>}</span>
             @if (off && (item.disabled || fullNote())) {
               <span class="row__sub">{{ item.disabled || fullNote() }}</span>
             } @else if (item.sub) {

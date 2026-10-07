@@ -8,7 +8,7 @@ import { ContentSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { TableContentKind } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { TableContentClient } from '../../../core/content/content-client';
-import { entry, mirathel } from '../../../core/content/content-testing';
+import { entry, fakeContentWatcher, mirathel } from '../../../core/content/content-testing';
 import { ContentList } from './content-list';
 
 describe('ContentList', () => {
@@ -22,6 +22,7 @@ describe('ContentList', () => {
   const unarchive = vi.fn();
   const archive = vi.fn();
   const getCampaign = vi.fn();
+  let watcher = fakeContentWatcher();
 
   async function setup(role: Role, opts: { entries?: ReturnType<typeof mirathel>; phone?: boolean; tipo?: string } = {}) {
     list.mockReset().mockResolvedValue({ entries: opts.entries ?? mirathel(), tableRevision: 7 });
@@ -31,6 +32,8 @@ describe('ContentList', () => {
     getCampaign.mockReset().mockResolvedValue({ campaign: { id: 'camp-1', name: 'Mirathel', myRole: role, awaitingApproval: false } });
     window.matchMedia = ((q: string) => ({ matches: !!opts.phone && q.includes('max-width'), addEventListener: () => undefined, removeEventListener: () => undefined })) as never;
     TestBed.resetTestingModule();
+    watcher = fakeContentWatcher();
+    TestBed.overrideComponent(ContentList, { set: { providers: [watcher.provider] } });
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -41,7 +44,7 @@ describe('ContentList', () => {
     });
     const fixture = TestBed.createComponent(ContentList);
     await settle(fixture);
-    return { fixture, el: fixture.nativeElement as HTMLElement };
+    return { fixture, el: fixture.nativeElement as HTMLElement, settle: () => settle(fixture) };
   }
 
   async function settle(fixture: { detectChanges(): void; whenStable(): Promise<unknown> }) {
@@ -183,5 +186,43 @@ describe('ContentList', () => {
     await settle(fixture);
     expect(text(fixture.nativeElement)).toContain('Campanha não encontrada');
     expect(entry(TableContentKind.CLASS, 'x')).toBeDefined();
+  });
+  it('gives the master "Opções para os jogadores", on a laptop and on a phone', async () => {
+    const laptop = await setup(Role.MASTER);
+    const link = Array.from(laptop.el.querySelectorAll('a')).find((a) => text(a).includes('Opções para os jogadores'));
+    expect(link?.getAttribute('href')).toBe('/campanhas/camp-1/conteudo/opcoes');
+    const phone = await setup(Role.MASTER, { phone: true });
+    expect(Array.from(phone.el.querySelectorAll('a')).some((a) => text(a).includes('Opções para os jogadores'))).toBe(true);
+    // A player has no switches to turn.
+    const player = await setup(Role.PLAYER);
+    expect(text(player.el)).not.toContain('Opções para os jogadores');
+  });
+
+  it('flags an entry the master switched off, in words, and says how many sheets still use it (RN-23)', async () => {
+    const entries = [{ ...entry(TableContentKind.RACE, 'Corujeiro', { charactersUsing: 2 }), off: true }] as ReturnType<typeof mirathel>;
+    const { el } = await setup(Role.MASTER, { entries, tipo: 'racas' });
+    expect(text(el.querySelector('.row')!)).toContain('Desligada para os jogadores · 2 fichas usam');
+  });
+
+  it('reads the list again when the table changed (content_changed), keeping the kind and the search', async () => {
+    const { el, settle } = await setup(Role.MASTER, { tipo: 'racas' });
+    expect(watcher.following()).toBe('camp-1');
+    expect(el.querySelectorAll('a.row')).toHaveLength(1);
+    list.mockResolvedValue({ entries: [...mirathel(), entry(TableContentKind.RACE, 'Gnomo do Vale')], tableRevision: 8 });
+    watcher.hint();
+    await settle();
+    expect(Array.from(el.querySelectorAll('a.row')).map((r) => text(r))).toEqual([expect.stringContaining('Corujeiro'), expect.stringContaining('Gnomo do Vale')]);
+    expect(list).toHaveBeenCalledTimes(2);
+    // No spinner replaced the page.
+    expect(el.querySelector('mat-spinner')).toBeNull();
+  });
+
+  it('keeps what is on screen when the read after a change fails', async () => {
+    const { el, settle } = await setup(Role.MASTER, { tipo: 'racas' });
+    list.mockRejectedValue(new Error('offline'));
+    watcher.hint();
+    await settle();
+    expect(el.querySelectorAll('a.row')).toHaveLength(1);
+    expect(text(el)).not.toContain('Não foi possível');
   });
 });

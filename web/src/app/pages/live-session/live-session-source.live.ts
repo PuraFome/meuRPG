@@ -224,8 +224,14 @@ export class LiveSessionSourceLive implements LiveSessionSource {
         case 'creaturesChanged':
           yield { kind: 'creaturesChanged' };
           break;
+        case 'contentChanged':
+          yield { kind: 'contentChanged' };
+          break;
         case 'puzzleChanged':
           yield { kind: 'puzzleChanged', puzzleId: res.event.value.puzzleId };
+          break;
+        case 'contentChanged':
+          yield { kind: 'contentChanged' };
           break;
         default:
           // A newer server's event this app doesn't know yet: still proof
