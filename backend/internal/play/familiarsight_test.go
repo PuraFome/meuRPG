@@ -344,14 +344,13 @@ func TestMR036_FamiliarSightEndsConditionsWhenTheFamiliarIsDismissed(t *testing.
 	s := newShapers(t)
 	a := s.armed
 	owl := s.nanquim(t)
-	e := s.pensantusFirst(t, nil)
+	s.pensantusFirst(t, nil)
 	a.mustSight(t, s.ana, s.pens, true)
 	if _, err := s.ana.characters.DismissCreature(t.Context(), connect.NewRequest(&charactersv1.DismissCreatureRequest{CampaignId: s.campaignID, CreatureId: owl})); err != nil {
 		t.Fatalf("DismissCreature() error = %v", err)
 	}
 	// His next turn starts.
-	e = a.passTo(t, a.mustEndTurn(t, s.ana, a.get(t, s.ana)), "Pensantus")
-	_ = e
+	a.passTo(t, a.mustEndTurn(t, s.ana, a.get(t, s.ana)), "Pensantus")
 	if got := byLabel(t, a.get(t, s.master), "Pensantus").GetConditions(); len(got) != 0 {
 		t.Errorf("conditions at the start of his next turn after the familiar was dismissed = %v, want none (the sight's blinded/deafened)", got)
 	}
