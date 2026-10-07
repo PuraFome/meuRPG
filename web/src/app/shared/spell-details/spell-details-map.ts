@@ -113,7 +113,10 @@ export function spellDetailsFromGen(d: GenSpellDetails): SpellDetailsVm {
           ? 'ranged'
           : 'none',
     damage: d.damage
-      .map((x) => ({ dice: firstDice(x.bySlotLevel) || firstDice(x.byCharacterLevel), typePt: x.damageTypePt }))
+      .map((x) => ({
+        dice: firstDice(x.bySlotLevel) || firstDice(x.byCharacterLevel),
+        typePt: x.damageTypePt,
+      }))
       .filter((x) => x.dice !== ''),
   };
 }

@@ -5,7 +5,12 @@ import { provideRouter } from '@angular/router';
 import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import { flat } from '../../../core/creatures/creatures-testing';
 import { EncountersClient } from '../../../core/encounters/encounters-client';
-import { FakeEncountersClient, GOBLIN, evaluation, line } from '../../../core/encounters/encounters-testing';
+import {
+  FakeEncountersClient,
+  GOBLIN,
+  evaluation,
+  line,
+} from '../../../core/encounters/encounters-testing';
 import { PartyNpcSheet, type PartyNpcData } from './party-npc-sheet';
 
 describe('PartyNpcSheet: "Pôr um NPC no grupo" (MR-043, question 86, E10-09 state 2)', () => {
@@ -19,8 +24,26 @@ describe('PartyNpcSheet: "Pôr um NPC no grupo" (MR-043, question 86, E10-09 sta
     const data: PartyNpcData = {
       campaignId: 'camp-1',
       npcs: [
-        { id: 'npc-1', name: 'Orin, o guia', kind: CharacterKind.STORY, playerUserId: '', classSummary: '', raceName: '', playerName: null, portraitImageId: '' },
-        { id: 'npc-2', name: 'Velha Odra', kind: CharacterKind.STORY, playerUserId: '', classSummary: '', raceName: '', playerName: null, portraitImageId: '' },
+        {
+          id: 'npc-1',
+          name: 'Orin, o guia',
+          kind: CharacterKind.STORY,
+          playerUserId: '',
+          classSummary: '',
+          raceName: '',
+          playerName: null,
+          portraitImageId: '',
+        },
+        {
+          id: 'npc-2',
+          name: 'Velha Odra',
+          kind: CharacterKind.STORY,
+          playerUserId: '',
+          classSummary: '',
+          raceName: '',
+          playerName: null,
+          portraitImageId: '',
+        },
       ],
       entries: [{ creatureKey: GOBLIN.key, count: 2 }],
       party: [],
@@ -43,7 +66,10 @@ describe('PartyNpcSheet: "Pôr um NPC no grupo" (MR-043, question 86, E10-09 sta
     };
     await settle();
     const el = fixture.nativeElement as HTMLElement;
-    const button = (name: string) => Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => (flat(b) ?? '').includes(name) || b.getAttribute('aria-label')?.includes(name))!;
+    const button = (name: string) =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find(
+        (b) => (flat(b) ?? '').includes(name) || b.getAttribute('aria-label')?.includes(name),
+      )!;
     return { el, settle, button };
   }
 
@@ -58,10 +84,15 @@ describe('PartyNpcSheet: "Pôr um NPC no grupo" (MR-043, question 86, E10-09 sta
     expect(el.querySelector<HTMLInputElement>('input[name=pn-who]:checked')?.value).toBe('npc-1');
     expect(flat(el.querySelector('output'))).toBe('3');
     // The server's budget for the party with Orin at level 3: the browser adds nothing.
-    expect(api.evaluateCalls.at(-1)).toEqual({ entries: [{ creatureKey: 'monster:goblin', count: 2 }], party: [{ characterId: 'npc-1', name: '', level: 3 }] });
+    expect(api.evaluateCalls.at(-1)).toEqual({
+      entries: [{ creatureKey: 'monster:goblin', count: 2 }],
+      party: [{ characterId: 'npc-1', name: '', level: 3 }],
+    });
     expect(flat(el.querySelector('.budget__n'))).toBe('Baixa 1.400 Moderada 2.100 Alta 3.000 XP');
     expect(flat(el.querySelector('.budget__b'))).toBe('Antes: 1.250 · 1.875 · 2.600.');
-    expect(flat(el.querySelector('.guide'))).toBe('Guia de dificuldade do SRD 5.2.1 (regras de 2024) · Créditos');
+    expect(flat(el.querySelector('.guide'))).toBe(
+      'Guia de dificuldade do SRD 5.2.1 (regras de 2024) · Créditos',
+    );
   });
 
   it('a new level asks the server again; "Pôr no grupo" closes with the NPC and its level', async () => {
@@ -70,7 +101,12 @@ describe('PartyNpcSheet: "Pôr um NPC no grupo" (MR-043, question 86, E10-09 sta
     await settle();
     expect(api.evaluateCalls.at(-1)?.party).toEqual([{ characterId: 'npc-1', name: '', level: 4 }]);
     button('Pôr no grupo').click();
-    expect(close).toHaveBeenCalledWith({ characterId: 'npc-1', name: '', level: 4, label: 'Orin, o guia' });
+    expect(close).toHaveBeenCalledWith({
+      characterId: 'npc-1',
+      name: '',
+      level: 4,
+      label: 'Orin, o guia',
+    });
     expect(el.textContent).not.toContain('mortal');
   });
 
@@ -101,7 +137,14 @@ describe('PartyNpcSheet: "Pôr um NPC no grupo" (MR-043, question 86, E10-09 sta
     input.dispatchEvent(new Event('input'));
     await settle();
     button('Pôr no grupo').click();
-    expect(close).toHaveBeenCalledWith({ characterId: '', name: 'Mestre-de-armas', level: 3, label: 'Mestre-de-armas' });
-    expect(api.evaluateCalls.at(-1)?.party).toEqual([{ characterId: '', name: 'Mestre-de-armas', level: 3 }]);
+    expect(close).toHaveBeenCalledWith({
+      characterId: '',
+      name: 'Mestre-de-armas',
+      level: 3,
+      label: 'Mestre-de-armas',
+    });
+    expect(api.evaluateCalls.at(-1)?.party).toEqual([
+      { characterId: '', name: 'Mestre-de-armas', level: 3 },
+    ]);
   });
 });

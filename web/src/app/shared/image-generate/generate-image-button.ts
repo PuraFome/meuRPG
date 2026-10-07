@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, afterNextRender, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  afterNextRender,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -91,7 +99,10 @@ export class GenerateImageButton {
       return;
     }
     const { openImageGenerate } = await import('./image-generate-dialog');
-    openImageGenerate(this.dialog, this.sheet, { campaignId: this.campaignId(), origin: this.origin() }).subscribe((outcome) => {
+    openImageGenerate(this.dialog, this.sheet, {
+      campaignId: this.campaignId(),
+      origin: this.origin(),
+    }).subscribe((outcome) => {
       if (outcome && (outcome.generated > 0 || outcome.map)) {
         this.done.emit(outcome);
       }

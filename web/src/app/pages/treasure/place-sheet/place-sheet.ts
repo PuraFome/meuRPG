@@ -7,7 +7,12 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import type { XpMode } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { DungeonRoom } from '../../../../gen/meurpg/maps/v1/dungeons_pb';
-import { type Map as MapMessage, type MapPoint, MapPointKind, MapPointSchema } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import {
+  type Map as MapMessage,
+  type MapPoint,
+  MapPointKind,
+  MapPointSchema,
+} from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { type Treasure, TreasureMode } from '../../../../gen/meurpg/maps/v1/treasure_pb';
 import { newKey } from '../../../core/connect/idempotency';
 import { type Square, squareAt } from '../../../core/combat/combat-grid';
@@ -15,8 +20,19 @@ import { DungeonsClient } from '../../../core/maps/dungeons-client';
 import { type MapLayers, NO_LAYERS, decodeLayers } from '../../../core/maps/layers';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { TreasureClient } from '../../../core/treasure/treasure-client';
-import { NO_GRID_TEXT, type PlaceFailure, placeFailure } from '../../../core/treasure/treasure-errors';
-import { coinRows, goldKinds, goldLine, groupItems, pieceRows, po } from '../../../core/treasure/treasure-format';
+import {
+  NO_GRID_TEXT,
+  type PlaceFailure,
+  placeFailure,
+} from '../../../core/treasure/treasure-errors';
+import {
+  coinRows,
+  goldKinds,
+  goldLine,
+  groupItems,
+  pieceRows,
+  po,
+} from '../../../core/treasure/treasure-format';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
 import { TextField } from '../../../shared/form-fields/text-field';
 import { MapLayersLegend } from '../../../shared/map-layers/map-layers-legend';
@@ -48,11 +64,18 @@ export type PlaceSheetResult =
     }
   | { readonly kind: 'again' };
 
-type MapsState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; maps: readonly MapMessage[] };
+type MapsState =
+  { status: 'loading' } | { status: 'error' } | { status: 'ready'; maps: readonly MapMessage[] };
 type DetailState =
   | { status: 'loading' }
   | { status: 'error' }
-  | { status: 'ready'; map: MapMessage; points: readonly MapPoint[]; layers: MapLayers; rooms: readonly DungeonRoom[] };
+  | {
+      status: 'ready';
+      map: MapMessage;
+      points: readonly MapPoint[];
+      layers: MapLayers;
+      rooms: readonly DungeonRoom[];
+    };
 
 const NAME_MAX = 80;
 const SHIFT_STEP = 5;
@@ -70,7 +93,18 @@ const SHIFT_STEP = 5;
  */
 @Component({
   selector: 'app-place-sheet',
-  imports: [EditorOverlay, MapLayersLegend, MapPinsLegend, MapView, MatButtonModule, MatIconModule, MatProgressSpinnerModule, SelectField, SheetFrame, TextField],
+  imports: [
+    EditorOverlay,
+    MapLayersLegend,
+    MapPinsLegend,
+    MapView,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    SelectField,
+    SheetFrame,
+    TextField,
+  ],
   templateUrl: './place-sheet.html',
   styleUrl: './place-sheet.scss',
 })
@@ -98,7 +132,12 @@ export class PlaceSheet {
 
   protected readonly mapOptions = computed<SelectOption[]>(() => {
     const s = this.mapsState();
-    return s.status === 'ready' ? s.maps.map((m) => ({ value: m.id, label: m.gridColumns > 0 ? m.name : `${m.name} · sem grade` })) : [];
+    return s.status === 'ready'
+      ? s.maps.map((m) => ({
+          value: m.id,
+          label: m.gridColumns > 0 ? m.name : `${m.name} · sem grade`,
+        }))
+      : [];
   });
   protected readonly map = computed(() => {
     const d = this.detail();
@@ -142,19 +181,36 @@ export class PlaceSheet {
   protected readonly outline = computed(() => {
     const sq = this.square();
     const f = this.room()?.floor;
-    return f ? { x: f.x, y: f.y, width: f.width, height: f.height } : sq ? { x: sq.col, y: sq.row, width: 1, height: 1 } : null;
+    return f
+      ? { x: f.x, y: f.y, width: f.width, height: f.height }
+      : sq
+        ? { x: sq.col, y: sq.row, width: 1, height: 1 }
+        : null;
   });
   /** The room the chosen square is in ("Sala 3"), `null` when it is in none. */
   protected readonly room = computed(() => {
     const sq = this.square();
-    return sq ? (this.rooms().find((r) => r.floor && sq.col >= r.floor.x && sq.col < r.floor.x + r.floor.width && sq.row >= r.floor.y && sq.row < r.floor.y + r.floor.height) ?? null) : null;
+    return sq
+      ? (this.rooms().find(
+          (r) =>
+            r.floor &&
+            sq.col >= r.floor.x &&
+            sq.col < r.floor.x + r.floor.width &&
+            sq.row >= r.floor.y &&
+            sq.row < r.floor.y + r.floor.height,
+        ) ?? null)
+      : null;
   });
   protected readonly placeText = computed(() => {
     const r = this.room();
     return r ? `Sala ${r.id}` : '';
   });
-  protected readonly modeName = computed(() => (this.data.treasure.mode === TreasureMode.HOARD ? 'Tesouro de covil' : 'Tesouro individual'));
-  protected readonly kindsText = computed(() => goldKinds(this.data.treasure.mode === TreasureMode.HOARD));
+  protected readonly modeName = computed(() =>
+    this.data.treasure.mode === TreasureMode.HOARD ? 'Tesouro de covil' : 'Tesouro individual',
+  );
+  protected readonly kindsText = computed(() =>
+    goldKinds(this.data.treasure.mode === TreasureMode.HOARD),
+  );
   protected readonly goldText = computed(() => po(this.data.treasure.goldPo));
   protected readonly itemCount = computed(() => this.data.treasure.items.length);
   protected readonly inside = computed(() => {
@@ -167,13 +223,20 @@ export class PlaceSheet {
     ];
     return parts.join(', ');
   });
-  protected readonly goldSentence = computed(() => goldLine(this.data.xpMode, this.data.campaignName));
-  protected readonly canPlace = computed(() => this.detail().status === 'ready' && this.hasGrid() && this.square() !== null && !this.busy());
+  protected readonly goldSentence = computed(() =>
+    goldLine(this.data.xpMode, this.data.campaignName),
+  );
+  protected readonly canPlace = computed(
+    () =>
+      this.detail().status === 'ready' && this.hasGrid() && this.square() !== null && !this.busy(),
+  );
   protected readonly noGridText = NO_GRID_TEXT;
   /** What a screen reader hears about the chosen square (never drawn: the artboard says no coordinates on screen). */
   protected readonly squareSpeech = computed(() => {
     const sq = this.square();
-    return sq ? `Quadrado escolhido: coluna ${sq.col + 1}, linha ${sq.row + 1}${this.placeText() ? `, na ${this.placeText()}` : ''}.` : '';
+    return sq
+      ? `Quadrado escolhido: coluna ${sq.col + 1}, linha ${sq.row + 1}${this.placeText() ? `, na ${this.placeText()}` : ''}.`
+      : '';
   });
 
   constructor() {
@@ -212,8 +275,18 @@ export class PlaceSheet {
       }
       // The layers and the rooms only dress the map: a failed read still lets the master pick a square.
       const [layers, rooms] = await Promise.all([
-        map.gridColumns > 0 ? this.mapsApi.layers(this.data.campaignId, id).then((l) => decodeLayers(l), () => NO_LAYERS) : Promise.resolve(NO_LAYERS),
-        map.generatedDungeon ? this.dungeons.rooms(this.data.campaignId, id).then((r) => r.rooms, () => [] as DungeonRoom[]) : Promise.resolve([] as DungeonRoom[]),
+        map.gridColumns > 0
+          ? this.mapsApi.layers(this.data.campaignId, id).then(
+              (l) => decodeLayers(l),
+              () => NO_LAYERS,
+            )
+          : Promise.resolve(NO_LAYERS),
+        map.generatedDungeon
+          ? this.dungeons.rooms(this.data.campaignId, id).then(
+              (r) => r.rooms,
+              () => [] as DungeonRoom[],
+            )
+          : Promise.resolve([] as DungeonRoom[]),
       ]);
       if (generation !== this.detailGeneration) {
         return;
@@ -233,7 +306,9 @@ export class PlaceSheet {
       return null;
     }
     const first = rooms[0];
-    return first ? { col: first.centerCol, row: first.centerRow } : { col: Math.floor(map.gridColumns / 2), row: Math.floor(map.gridRows / 2) };
+    return first
+      ? { col: first.centerCol, row: first.centerRow }
+      : { col: Math.floor(map.gridColumns / 2), row: Math.floor(map.gridRows / 2) };
   }
 
   protected pickRoom(room: DungeonRoom): void {
@@ -258,7 +333,12 @@ export class PlaceSheet {
       return;
     }
     const step = event.shiftKey ? SHIFT_STEP : 1;
-    const by: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+    const by: Record<string, [number, number]> = {
+      ArrowLeft: [-step, 0],
+      ArrowRight: [step, 0],
+      ArrowUp: [0, -step],
+      ArrowDown: [0, step],
+    };
     const move = by[event.key];
     if (!move) {
       return;
@@ -337,5 +417,4 @@ export class PlaceSheet {
   protected cancel(): void {
     this.sheet.close();
   }
-
 }

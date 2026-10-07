@@ -6,7 +6,8 @@ import { SceneState } from '../../../../core/play/scene-state';
 import { FakeSceneClient, masterScene, sceneRoll } from '../../../../core/play/scene-testing';
 import { SceneRollLine } from './scene-roll-line';
 
-const flat = (e: Element | null | undefined) => e?.textContent?.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const flat = (e: Element | null | undefined) =>
+  e?.textContent?.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
 /** The words of an element, without its icons' ligature names. */
 const words = (e: Element | null | undefined) => {
   if (!e) {
@@ -24,7 +25,10 @@ describe('SceneRollLine, "Dar mais uma tentativa" (MR-015, question 55)', () => 
   async function setup(scene = masterScene([failed]), roll = failed) {
     const api = new FakeSceneClient();
     api.granted = masterScene([failed], [], {});
-    const state = new SceneState(() => api.get(), () => true);
+    const state = new SceneState(
+      () => api.get(),
+      () => true,
+    );
     state.apply(scene);
     TestBed.configureTestingModule({ providers: [{ provide: SceneClient, useValue: api }] });
     const fixture = TestBed.createComponent(SceneRollLine);
@@ -49,13 +53,17 @@ describe('SceneRollLine, "Dar mais uma tentativa" (MR-015, question 55)', () => 
   it('puts the action on a failed roll of a player with no attempts left, named for the player and the action', async () => {
     const { el } = await setup();
     expect(words(opener(el))).toBe('Dar mais uma tentativa');
-    expect(opener(el)?.getAttribute('aria-label')).toBe('Dar mais uma tentativa a Toren em Seguir os rastros dos goblins');
+    expect(opener(el)?.getAttribute('aria-label')).toBe(
+      'Dar mais uma tentativa a Toren em Seguir os rastros dos goblins',
+    );
     expect(words(el.querySelector('.rl__line'))).toBe('Não passou · CD 13 Tentativa 1 de 1');
   });
 
   it('is not there for a roll that passed with the DC shown, nor for one with attempts left', async () => {
     const passed = sceneRoll('r2', 'a1', 'Pensantus', 17, { passed: true, attemptsLeft: 0 });
-    expect(opener((await setup(masterScene([passed], [], { showDc: true }), passed)).el)).toBeNull();
+    expect(
+      opener((await setup(masterScene([passed], [], { showDc: true }), passed)).el),
+    ).toBeNull();
     TestBed.resetTestingModule();
     const left = sceneRoll('r3', 'a4', 'Pensantus', 9, { attemptsLeft: 2 });
     expect(opener((await setup(masterScene([left]), left)).el)).toBeNull();
@@ -67,7 +75,9 @@ describe('SceneRollLine, "Dar mais uma tentativa" (MR-015, question 55)', () => 
     await settle();
     const ask = el.querySelector('[role="alertdialog"]')!;
     expect(words(ask.querySelector('h4'))).toBe('Dar mais uma tentativa a Toren?');
-    expect(flat(ask.querySelector('.rl__ask-text'))).toContain('Em “Seguir os rastros dos goblins”. Passa de 1 para 2 tentativas');
+    expect(flat(ask.querySelector('.rl__ask-text'))).toContain(
+      'Em “Seguir os rastros dos goblins”. Passa de 1 para 2 tentativas',
+    );
     expect(ask.getAttribute('aria-labelledby')).toBe(ask.querySelector('h4')!.id);
     expect(ask.getAttribute('aria-describedby')).toBe(ask.querySelector('.rl__ask-text')!.id);
     const buttons = Array.from(ask.querySelectorAll('button'));
@@ -104,7 +114,9 @@ describe('SceneRollLine, "Dar mais uma tentativa" (MR-015, question 55)', () => 
     expect(state.scene()).toBe(api.granted);
     expect(el.querySelector('[role="alertdialog"]')).toBeNull();
     const status = el.querySelector('[role="status"]')!;
-    expect(flat(status)).toMatch(/Mais uma tentativa dada a Toren às \d\d:\d\d\. Agora são 2 tentativas em “Seguir os rastros dos goblins”; 1 já usada\./);
+    expect(flat(status)).toMatch(
+      /Mais uma tentativa dada a Toren às \d\d:\d\d\. Agora são 2 tentativas em “Seguir os rastros dos goblins”; 1 já usada\./,
+    );
     expect(document.activeElement).toBe(status);
   });
 
@@ -131,7 +143,11 @@ describe('SceneRollLine, "Dar mais uma tentativa" (MR-015, question 55)', () => 
     fixture.detectChanges();
     expect(el.querySelector('[role="status"]')).not.toBeNull();
     // The player rolled again: the scene now has a second roll of Toren at the action.
-    const again = sceneRoll('r9', 'a2', 'Toren', 12, { passed: false, attemptsLeft: 0, rolledAt: new Date(2026, 9, 3, 21, 30) });
+    const again = sceneRoll('r9', 'a2', 'Toren', 12, {
+      passed: false,
+      attemptsLeft: 0,
+      rolledAt: new Date(2026, 9, 3, 21, 30),
+    });
     const scene = masterScene([again, failed]);
     fixture.componentRef.setInput('scene', scene);
     fixture.detectChanges();

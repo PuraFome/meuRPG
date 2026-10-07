@@ -36,7 +36,10 @@ export class TreasureAccessCheck {
         ? { status: 'not-found' }
         : {
             status: 'error',
-            message: describeConnectError(err, { [Code.Unavailable]: 'Não deu para abrir o tesouro: o servidor não respondeu. Tente de novo.' }),
+            message: describeConnectError(err, {
+              [Code.Unavailable]:
+                'Não deu para abrir o tesouro: o servidor não respondeu. Tente de novo.',
+            }),
           };
     }
   }

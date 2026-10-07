@@ -19,7 +19,13 @@ export interface SpellFilter {
   readonly onlyMine: boolean;
 }
 
-export const NO_FILTER: SpellFilter = { query: '', classKey: '', levels: [], schoolKey: '', onlyMine: false };
+export const NO_FILTER: SpellFilter = {
+  query: '',
+  classKey: '',
+  levels: [],
+  schoolKey: '',
+  onlyMine: false,
+};
 
 /** How many rows a page asks for (the most the server gives); the SRD's 319 spells and the table's up to 300 come in two pages, "Mostrar mais" asks for the next. */
 export const PAGE_SIZE = 400;
@@ -37,10 +43,11 @@ export const SCHOOLS: readonly { readonly key: string; readonly label: string }[
 ];
 
 /** The circle chips: "Truque", "1º"... "9º". */
-export const LEVEL_CHIPS: readonly { readonly level: number; readonly label: string }[] = Array.from({ length: 10 }, (_, level) => ({
-  level,
-  label: level === 0 ? 'Truque' : `${level}º`,
-}));
+export const LEVEL_CHIPS: readonly { readonly level: number; readonly label: string }[] =
+  Array.from({ length: 10 }, (_, level) => ({
+    level,
+    label: level === 0 ? 'Truque' : `${level}º`,
+  }));
 
 /** The `ListSpells` request for a filter and a page. `characterId` goes only with "Só as que posso aprender". */
 export function toListRequest(
@@ -63,7 +70,12 @@ export function toListRequest(
 
 /** How many filters beyond the name are on: the number in "Filtros (2)". */
 export function activeFilters(filter: SpellFilter): number {
-  return (filter.classKey ? 1 : 0) + (filter.levels.length > 0 ? 1 : 0) + (filter.schoolKey ? 1 : 0) + (filter.onlyMine ? 1 : 0);
+  return (
+    (filter.classKey ? 1 : 0) +
+    (filter.levels.length > 0 ? 1 : 0) +
+    (filter.schoolKey ? 1 : 0) +
+    (filter.onlyMine ? 1 : 0)
+  );
 }
 
 /** Whether anything narrows the list, the name included. */
@@ -73,7 +85,9 @@ export function isFiltered(filter: SpellFilter): boolean {
 
 /** The circles toggled: one more, or one less, kept in order. */
 export function toggleLevel(levels: readonly number[], level: number): number[] {
-  return levels.includes(level) ? levels.filter((l) => l !== level) : [...levels, level].sort((a, b) => a - b);
+  return levels.includes(level)
+    ? levels.filter((l) => l !== level)
+    : [...levels, level].sort((a, b) => a - b);
 }
 
 export interface FilterChip {
@@ -89,10 +103,16 @@ export function filterChips(filter: SpellFilter, className: (key: string) => str
     chips.push({ id: 'class', label: className(filter.classKey) });
   }
   if (filter.levels.length > 0) {
-    chips.push({ id: 'level', label: filter.levels.map((l) => (l === 0 ? 'Truque' : `${l}º nível`)).join(', ') });
+    chips.push({
+      id: 'level',
+      label: filter.levels.map((l) => (l === 0 ? 'Truque' : `${l}º nível`)).join(', '),
+    });
   }
   if (filter.schoolKey) {
-    chips.push({ id: 'school', label: SCHOOLS.find((s) => s.key === filter.schoolKey)?.label ?? '' });
+    chips.push({
+      id: 'school',
+      label: SCHOOLS.find((s) => s.key === filter.schoolKey)?.label ?? '',
+    });
   }
   if (filter.onlyMine) {
     chips.push({ id: 'mine', label: 'Só as que posso aprender' });

@@ -14,19 +14,34 @@ import {
 } from './combat-view';
 
 describe('combat view helpers', () => {
-  it('finds the player\'s own combatant by `mine`, never a creature of theirs (MR-037)', () => {
+  it("finds the player's own combatant by `mine`, never a creature of theirs (MR-037)", () => {
     // The server marks a character's creature `controlledByMe`, never `mine`: a
     // combat with a familiar must not make the screen pick the owl as "me".
     const e = encounter({
       combatants: [
-        combatant({ id: 'nanquim', label: 'Nanquim', kind: CombatantKind.CREATURE, mine: false, controlledByMe: true, ownerCharacterId: 'pens' }),
-        combatant({ id: 'pens', label: 'Pensantus', kind: CombatantKind.PLAYER, mine: true, controlledByMe: true }),
+        combatant({
+          id: 'nanquim',
+          label: 'Nanquim',
+          kind: CombatantKind.CREATURE,
+          mine: false,
+          controlledByMe: true,
+          ownerCharacterId: 'pens',
+        }),
+        combatant({
+          id: 'pens',
+          label: 'Pensantus',
+          kind: CombatantKind.PLAYER,
+          mine: true,
+          controlledByMe: true,
+        }),
         combatant({ id: 'toren', label: 'Toren', kind: CombatantKind.PLAYER }),
       ],
     });
     expect(ownCombatant(e)?.label).toBe('Pensantus');
     // A player whose character is not in the fight but whose creature is has no "own" combatant.
-    expect(ownCombatant(encounter({ combatants: [e.combatants[0]!, e.combatants[2]!] }))).toBeNull();
+    expect(
+      ownCombatant(encounter({ combatants: [e.combatants[0]!, e.combatants[2]!] })),
+    ).toBeNull();
   });
 
   it('says how hurt an NPC is in words, never numbers (RN-20)', () => {
@@ -43,9 +58,21 @@ describe('combat view helpers', () => {
   });
 
   it('writes the initiative as the artboard does', () => {
-    const c = combatant({ id: 'a', label: 'Brisa', initiative: 19, initiativeFace: 15, initiativeBonus: 4 });
+    const c = combatant({
+      id: 'a',
+      label: 'Brisa',
+      initiative: 19,
+      initiativeFace: 15,
+      initiativeBonus: 4,
+    });
     expect(initiativeFormula(c)).toBe('1d20 (15) + 4 = 19');
-    const low = combatant({ id: 'b', label: 'Toren', initiative: 14, initiativeFace: 15, initiativeBonus: -1 });
+    const low = combatant({
+      id: 'b',
+      label: 'Toren',
+      initiative: 14,
+      initiativeFace: 15,
+      initiativeBonus: -1,
+    });
     expect(initiativeFormula(low)).toBe('1d20 (15) − 1 = 14');
     const waiting = combatant({ id: 'c', label: 'Toren', initiativeBonus: 2 });
     expect(initiativeFormula(waiting)).toBeNull();
@@ -55,8 +82,20 @@ describe('combat view helpers', () => {
   describe('ties', () => {
     const list = [
       combatant({ id: 'brisa', label: 'Brisa', initiative: 19, initiativeBonus: 4 }),
-      combatant({ id: 'g1', label: 'Goblin 1', initiative: 12, initiativeBonus: 2, tieUnresolved: true }),
-      combatant({ id: 'g2', label: 'Goblin 2', initiative: 12, initiativeBonus: 2, tieUnresolved: true }),
+      combatant({
+        id: 'g1',
+        label: 'Goblin 1',
+        initiative: 12,
+        initiativeBonus: 2,
+        tieUnresolved: true,
+      }),
+      combatant({
+        id: 'g2',
+        label: 'Goblin 2',
+        initiative: 12,
+        initiativeBonus: 2,
+        tieUnresolved: true,
+      }),
       combatant({ id: 'g3', label: 'Goblin 3', initiative: 9, initiativeBonus: 2 }),
     ];
 
@@ -72,7 +111,10 @@ describe('combat view helpers', () => {
         combatant({ id: 'c', label: 'C', initiative: 10, initiativeBonus: 0, tieUnresolved: true }),
         combatant({ id: 'd', label: 'D', initiative: 10, initiativeBonus: 0, tieUnresolved: true }),
       ];
-      expect(tieGroups(two)).toEqual([['a', 'b'], ['c', 'd']]);
+      expect(tieGroups(two)).toEqual([
+        ['a', 'b'],
+        ['c', 'd'],
+      ]);
     });
 
     it('moves a combatant inside its group only: the outer arrows do nothing', () => {
@@ -86,7 +128,9 @@ describe('combat view helpers', () => {
       expect(tieSentence(['Goblin 1', 'Goblin 2'], 12)).toBe(
         'Empate em 12: Goblin 1 e Goblin 2. Escolha a ordem com as setas.',
       );
-      expect(tieSentence(['A', 'B', 'C'], 7)).toBe('Empate em 7: A, B e C. Escolha a ordem com as setas.');
+      expect(tieSentence(['A', 'B', 'C'], 7)).toBe(
+        'Empate em 7: A, B e C. Escolha a ordem com as setas.',
+      );
     });
   });
 
@@ -117,7 +161,9 @@ describe('combat view helpers', () => {
     });
 
     it('says "Vez do mestre" for a hidden turn, with no name and no next', () => {
-      const banner = turnBanner(encounter({ combatants: order, currentCombatantId: '', masterTurn: true }));
+      const banner = turnBanner(
+        encounter({ combatants: order, currentCombatantId: '', masterTurn: true }),
+      );
       expect(banner.title).toBe('Vez do mestre');
       expect(banner.who).toBeNull();
       expect(banner.next).toBeNull();

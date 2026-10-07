@@ -75,7 +75,9 @@ export class LightPanel {
       this.state().upsertToken(next);
       const option = this.all().find((o) => o.key === key) ?? null;
       this.line.set(
-        key === '' ? `${token.name} deixou de carregar luz.` : `${carriedLine(token.name, option)} Muda na hora no mapa de todos que enxergam esse lugar.`,
+        key === ''
+          ? `${token.name} deixou de carregar luz.`
+          : `${carriedLine(token.name, option)} Muda na hora no mapa de todos que enxergam esse lugar.`,
       );
     } catch (err) {
       select.value = token.carriedLight;

@@ -49,7 +49,9 @@ describe('Home', () => {
     expect(text).toContain('v0.1.0');
     expect(text).toContain('abc123');
     // The smoke test reads the version as the <dd> right after "Versão".
-    const versionTerm = Array.from(el.querySelectorAll('dt')).find((dt) => dt.textContent === 'Versão');
+    const versionTerm = Array.from(el.querySelectorAll('dt')).find(
+      (dt) => dt.textContent === 'Versão',
+    );
     expect(versionTerm?.nextElementSibling?.textContent).toBe('v0.1.0');
   });
 
@@ -71,10 +73,14 @@ describe('Home', () => {
 
     expect(el.querySelectorAll('h1').length).toBe(1);
     expect(el.textContent).toContain('ficha');
-    const entrar = Array.from(el.querySelectorAll('a')).find((a) => a.textContent?.trim() === 'Entrar');
+    const entrar = Array.from(el.querySelectorAll('a')).find(
+      (a) => a.textContent?.trim() === 'Entrar',
+    );
     expect(entrar?.getAttribute('href')).toBe('/auth/login?return_to=%2Fcampaigns');
     // A link, so it never doubles the app bar's "Entrar" button.
-    expect(Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.includes('Entrar'))).toBe(false);
+    expect(
+      Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.includes('Entrar')),
+    ).toBe(false);
   });
 
   it('greets someone signed in by name, with the way to "Minhas campanhas"', async () => {

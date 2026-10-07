@@ -4,8 +4,14 @@ import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/ca
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { DicePreferencePanel } from './dice-preference-panel';
 
-function render(mode: DiceMode, preference = DicePreference.APP, setDicePreference = (_id: string, p: DicePreference) => Promise.resolve({ preference: p })) {
-  TestBed.configureTestingModule({ providers: [{ provide: CampaignsService, useValue: { setDicePreference } }] });
+function render(
+  mode: DiceMode,
+  preference = DicePreference.APP,
+  setDicePreference = (_id: string, p: DicePreference) => Promise.resolve({ preference: p }),
+) {
+  TestBed.configureTestingModule({
+    providers: [{ provide: CampaignsService, useValue: { setDicePreference } }],
+  });
   const fixture = TestBed.createComponent(DicePreferencePanel);
   fixture.componentRef.setInput('campaignId', 'camp-1');
   fixture.componentRef.setInput('campaignName', 'Mirathel');

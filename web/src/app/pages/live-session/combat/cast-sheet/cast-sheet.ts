@@ -1,4 +1,13 @@
-import { Component, ElementRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -42,7 +51,13 @@ import {
   targetRule,
   toggled,
 } from '../../../../core/combat/cast-flow';
-import { type AttackDie, type DamageDie, type PoolDie, CombatClient, newKey } from '../../../../core/combat/combat-client';
+import {
+  type AttackDie,
+  type DamageDie,
+  type PoolDie,
+  CombatClient,
+  newKey,
+} from '../../../../core/combat/combat-client';
 import { diceName, sumRange } from '../../../../core/combat/combat-dice';
 import { criticalHint, criticalTypedHint, fixedParts } from '../../../../core/combat/critical';
 import { poolDice, poolRollText } from '../../../../core/combat/hp-effects';
@@ -78,8 +93,16 @@ export interface CastSheetData {
   /** The free slots the spell can be cast with (`SpellOption.slots`). */
   readonly slots: readonly SlotChoice[];
   /** The caster's slots by level and the pact slots, for "1 livre de 4". */
-  readonly usage: readonly { readonly level: number; readonly total: number; readonly used: number }[];
-  readonly pact: { readonly slotLevel: number; readonly total: number; readonly used: number } | null;
+  readonly usage: readonly {
+    readonly level: number;
+    readonly total: number;
+    readonly used: number;
+  }[];
+  readonly pact: {
+    readonly slotLevel: number;
+    readonly total: number;
+    readonly used: number;
+  } | null;
   /** Who it can target, with the distance (`GetTurnOptions.spell_targets`). */
   readonly targets: SpellTargets | undefined;
   /** How many free slots Escudo could still be cast with; `null` without Escudo. */
@@ -114,7 +137,17 @@ export interface CastSheetData {
  */
 @Component({
   selector: 'app-cast-sheet',
-  imports: [CastResult, CastSlots, CastTargets, MatButtonModule, MatIconModule, RollPicker, SheetFrame, SlotPicker, SpellHelp],
+  imports: [
+    CastResult,
+    CastSlots,
+    CastTargets,
+    MatButtonModule,
+    MatIconModule,
+    RollPicker,
+    SheetFrame,
+    SlotPicker,
+    SpellHelp,
+  ],
   templateUrl: './cast-sheet.html',
   styleUrl: './cast-sheet.scss',
 })
@@ -155,20 +188,28 @@ export class CastSheet {
   protected readonly preferApp =
     effectivePreference(this.data.diceMode, this.data.preference) === DicePreference.APP;
 
-  protected readonly rows = computed(() => slotRows(this.data.level, this.data.slots, this.data.usage, this.data.pact));
+  protected readonly rows = computed(() =>
+    slotRows(this.data.level, this.data.slots, this.data.usage, this.data.pact),
+  );
   protected readonly kind = computed(() => spellKind(this.data.spellKey, this.details()));
   /** Sono and Leque Cromático roll a pool of dice: the dice at this slot. */
-  protected readonly pool = computed(() => (this.kind() === 'pool' ? poolDice(this.details(), this.slotLevel()) : null));
+  protected readonly pool = computed(() =>
+    this.kind() === 'pool' ? poolDice(this.details(), this.slotLevel()) : null,
+  );
   /** The roll the sheet asks for before the cast: the d20 of a spell attack, or the pool when the
    * table's dice may be typed (with the app rolling every die, "Conjurar" is enough). */
-  protected readonly usesPicker = computed(() => this.kind() === 'attack' || (this.kind() === 'pool' && this.canTypeDamage));
+  protected readonly usesPicker = computed(
+    () => this.kind() === 'attack' || (this.kind() === 'pool' && this.canTypeDamage),
+  );
   /** A spell that reads hit points says its area: who is in it is for the caster to say. */
   protected readonly hpArea = computed(() => this.kind() === 'pool');
   protected readonly slotLevel = computed(() => this.slot()?.level ?? this.data.level);
   protected readonly rule = computed(() =>
     targetRule(this.data.targets, this.data.casterId, this.data.level, this.slotLevel()),
   );
-  protected readonly dartsTotal = computed(() => dartsAt(this.data.targets?.darts ?? [], this.slotLevel()));
+  protected readonly dartsTotal = computed(() =>
+    dartsAt(this.data.targets?.darts ?? [], this.slotLevel()),
+  );
   protected readonly reachFt = computed(() => {
     const r = this.details()?.range;
     return r?.kind === SpellRangeKind.RANGED ? r.distanceFt : null;
@@ -177,7 +218,9 @@ export class CastSheet {
    * (a blessing): a dart, a ray or a fireball at oneself is never the choice. */
   protected readonly targetRows = computed(() => {
     const self = this.kind() === 'heal' || this.kind() === 'plain';
-    const list = (this.data.targets?.targets ?? []).filter((t) => self || t.combatantId !== this.data.casterId);
+    const list = (this.data.targets?.targets ?? []).filter(
+      (t) => self || t.combatantId !== this.data.casterId,
+    );
     return castTargetRows(list, this.data.casterId, this.reachFt());
   });
   protected readonly npcs = computed(() => {
@@ -195,19 +238,36 @@ export class CastSheet {
   protected readonly endsConcentration = computed(() => {
     const e = this.data.state.encounter();
     const caster = e?.combatants.find((c) => c.id === this.data.casterId);
-    if (!e || !caster || !this.data.concentration || !caster.concentrationSpell || caster.concentrationSpell === this.data.spellKey) {
+    if (
+      !e ||
+      !caster ||
+      !this.data.concentration ||
+      !caster.concentrationSpell ||
+      caster.concentrationSpell === this.data.spellKey
+    ) {
       return null;
     }
-    const held = e.combatants.filter((c) => isCreature(c) && c.ownerCharacterId === caster.characterId && !!c.summonGroupId && !c.defeated);
+    const held = e.combatants.filter(
+      (c) =>
+        isCreature(c) &&
+        c.ownerCharacterId === caster.characterId &&
+        !!c.summonGroupId &&
+        !c.defeated,
+    );
     let goes = '';
     if (held.length === 1) {
       goes = `${article(held[0].label) === 'a' ? 'A' : 'O'} ${held[0].label} some.`;
     } else if (held.length > 1) {
       goes = `${groupFeminine(held) ? 'As' : 'Os'} ${held.length} ${groupName(held)} somem.`;
     }
-    return { ends: `${this.data.name} encerra a concentração em ${caster.concentrationSpellNamePt || 'a magia'}.`, goes };
+    return {
+      ends: `${this.data.name} encerra a concentração em ${caster.concentrationSpellNamePt || 'a magia'}.`,
+      goes,
+    };
   });
-  protected readonly warning = computed(() => lastSlotWarning(this.slot(), this.data.shieldFree, this.data.shieldName));
+  protected readonly warning = computed(() =>
+    lastSlotWarning(this.slot(), this.data.shieldFree, this.data.shieldName),
+  );
   /** Why "Conjurar" is not ready yet, in words; empty when it is. */
   protected readonly missing = computed(() => {
     if (!this.details() && !this.detailsFailed()) {
@@ -221,7 +281,9 @@ export class CastSheet {
     }
     const r = this.rule();
     if (r.kind === 'darts') {
-      return dartsPlaced(this.dealt()) === this.dartsTotal() ? '' : dartsStatus(this.dartsTotal(), this.dealt());
+      return dartsPlaced(this.dealt()) === this.dartsTotal()
+        ? ''
+        : dartsStatus(this.dartsTotal(), this.dealt());
     }
     if ((r.kind === 'single' || r.kind === 'multi') && this.chosen().length < r.min) {
       return r.kind === 'single' ? 'Escolha o alvo.' : 'Escolha pelo menos um alvo.';
@@ -242,7 +304,9 @@ export class CastSheet {
   });
   /** The d20 of a spell attack may be typed only for a single target (the server). */
   protected readonly canType = computed(
-    () => this.data.diceMode !== DiceMode.APP && (this.kind() !== 'attack' || this.chosen().length <= 1),
+    () =>
+      this.data.diceMode !== DiceMode.APP &&
+      (this.kind() !== 'attack' || this.chosen().length <= 1),
   );
 
   protected readonly title = computed(() => {
@@ -259,18 +323,28 @@ export class CastSheet {
   });
   /** "Sono conjurado", "Palavra de Poder Atordoar conjurada": the sheet of a spell that
    * reads hit points says what was done, then who it touched. */
-  private readonly hpDone = computed(() => this.done() && (this.kind() === 'pool' || this.kind() === 'hp'));
+  private readonly hpDone = computed(
+    () => this.done() && (this.kind() === 'pool' || this.kind() === 'hp'),
+  );
   protected readonly subtitle = computed(() => {
     if (this.done()) {
       const s = this.cast()?.slot;
       const circle = s ? circleLabel(s.level) : this.data.level === 0 ? 'Truque' : '';
       const n = this.cast()?.targets.length ?? 0;
-      return this.kind() === 'pool' && n > 0 ? `${circle} · ${n} ${n === 1 ? 'criatura' : 'criaturas'} na área` : circle;
+      return this.kind() === 'pool' && n > 0
+        ? `${circle} · ${n} ${n === 1 ? 'criatura' : 'criaturas'} na área`
+        : circle;
     }
     if (this.typing()) {
       return `${this.data.name} · Rodada ${this.data.round}`;
     }
-    return castSubtitle(this.data.economy, this.kind(), this.details(), this.slotLevel(), this.dartsTotal());
+    return castSubtitle(
+      this.data.economy,
+      this.kind(),
+      this.details(),
+      this.slotLevel(),
+      this.dartsTotal(),
+    );
   });
 
   // ---- the result ----
@@ -300,7 +374,13 @@ export class CastSheet {
   protected readonly owed = computed(() => this.groups().length > 0);
   protected readonly plain = computed(() => {
     const c = this.cast();
-    return !!c && this.kind() === 'plain' && c.targets.every((t) => !t.pendingDamageId && t.outcome === AttackOutcome.UNSPECIFIED && !t.save);
+    return (
+      !!c &&
+      this.kind() === 'plain' &&
+      c.targets.every(
+        (t) => !t.pendingDamageId && t.outcome === AttackOutcome.UNSPECIFIED && !t.save,
+      )
+    );
   });
   protected readonly after = computed<SlotAfter | null>(() => {
     const s = this.cast()?.slot;
@@ -318,7 +398,9 @@ export class CastSheet {
   });
   protected readonly shieldLost = computed(() => {
     const s = this.cast()?.slot;
-    return s && this.data.shieldFree === 1 ? `${this.data.shieldName} indisponível: sem espaço de ${circleLabel(s.level)}.` : '';
+    return s && this.data.shieldFree === 1
+      ? `${this.data.shieldName} indisponível: sem espaço de ${circleLabel(s.level)}.`
+      : '';
   });
   protected readonly notes = computed(() => {
     const c = this.cast();
@@ -352,12 +434,22 @@ export class CastSheet {
       pending: p,
       name,
       range: sumRange(p.diceCount, p.diceSides),
-      label: p.diceCount > 1 ? `Role ${name} para o dano: some os dois` : `Role ${name} para o dano`,
+      label:
+        p.diceCount > 1 ? `Role ${name} para o dano: some os dois` : `Role ${name} para o dano`,
       what: p.healing ? `Cura em ${who.join(', ')}` : `Dano em ${who.join(', ')}`,
       count: this.groups().length,
       // A critical spell attack follows the table's rule: what to roll, said the way it asks (RN-24).
-      crit: p.critical ? (criticalHint(p.criticalRule, p.diceCount, p.diceSides, p.criticalMax)?.line ?? 'Acerto crítico: os dados dobram.') : '',
-      typedHint: criticalTypedHint(p.criticalRule, name, sumRange(p.diceCount, p.diceSides).min, sumRange(p.diceCount, p.diceSides).max, p.criticalMax),
+      crit: p.critical
+        ? (criticalHint(p.criticalRule, p.diceCount, p.diceSides, p.criticalMax)?.line ??
+          'Acerto crítico: os dados dobram.')
+        : '',
+      typedHint: criticalTypedHint(
+        p.criticalRule,
+        name,
+        sumRange(p.diceCount, p.diceSides).min,
+        sumRange(p.diceCount, p.diceSides).max,
+        p.criticalMax,
+      ),
       // The modifier and the critical's fixed maximum, the server's numbers, added in the total before it is sent.
       modifier: p.bonus + p.criticalMax,
       fixedText: fixedParts(p.criticalMax, p.bonus),
@@ -381,14 +473,25 @@ export class CastSheet {
     effect(() => {
       // When the targets list or the slot changes the choice may no longer fit.
       const r = this.rule();
-      const ok = new Set(this.targetRows().filter((t) => !t.blocked).map((t) => t.id));
-      const kept = this.chosen().filter((id) => ok.has(id)).slice(0, Math.max(r.max, 0));
+      const ok = new Set(
+        this.targetRows()
+          .filter((t) => !t.blocked)
+          .map((t) => t.id),
+      );
+      const kept = this.chosen()
+        .filter((id) => ok.has(id))
+        .slice(0, Math.max(r.max, 0));
       if (kept.length !== this.chosen().length) {
         this.chosen.set(kept);
       }
       if (r.kind === 'darts') {
         const only = [...ok];
-        if (only.length === 1 && dartsPlaced(this.dealt()) === 0 && this.dartsTotal() > 0 && !this.cast()) {
+        if (
+          only.length === 1 &&
+          dartsPlaced(this.dealt()) === 0 &&
+          this.dartsTotal() > 0 &&
+          !this.cast()
+        ) {
           this.dealt.set(new Map([[only[0], this.dartsTotal()]]));
         }
         if (dartsPlaced(this.dealt()) > this.dartsTotal()) {
@@ -526,7 +629,13 @@ export class CastSheet {
         key = newKey();
         this.damageKeys.set(p.id, key);
       }
-      const res = await this.api.rollDamage(this.data.campaignId, this.data.encounterId, p.id, die, key);
+      const res = await this.api.rollDamage(
+        this.data.campaignId,
+        this.data.encounterId,
+        p.id,
+        die,
+        key,
+      );
       this.data.state.apply(res.encounter);
       const next = new Map(this.pendings());
       for (const settled of [res.pending, ...res.cast]) {

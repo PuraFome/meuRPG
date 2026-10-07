@@ -42,7 +42,9 @@ export class StageFigure {
 
   protected readonly failed = signal(false);
   protected readonly initials = computed(() => initialsOf(this.name()));
-  protected readonly label = computed(() => (this.src() && !this.failed() ? `Retrato de ${this.name()}` : `Sem retrato: ${this.name()}`));
+  protected readonly label = computed(() =>
+    this.src() && !this.failed() ? `Retrato de ${this.name()}` : `Sem retrato: ${this.name()}`,
+  );
 
   constructor() {
     effect(() => {

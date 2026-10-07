@@ -1,5 +1,14 @@
 import { create } from '@bufbuild/protobuf';
-import { Component, ElementRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -7,7 +16,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 
 import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { type GetSummonOptionsResponse, GetSummonOptionsResponseSchema, type SummonOption, SummonSlot, SummonSpellOptions } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import {
+  type GetSummonOptionsResponse,
+  GetSummonOptionsResponseSchema,
+  type SummonOption,
+  SummonSlot,
+  SummonSpellOptions,
+} from '../../../../gen/meurpg/characters/v1/characters_pb';
 import type { Combatant } from '../../../../gen/meurpg/play/v1/combat_pb';
 import type { Creature, CreatureSummary } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { effectivePreference } from '../../../core/campaigns/dice-labels';
@@ -25,9 +40,20 @@ import { CreatureArt } from '../../../shared/creatures/creature-art';
 import { newKey } from '../../../core/connect/idempotency';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { creatureErrorMessage } from '../../../core/creatures/creature-errors';
-import { CREATURE_NAME_MAX, beastAttacks, beastLine, formSubtitle, nameCounter } from '../../../core/creatures/creature-format';
+import {
+  CREATURE_NAME_MAX,
+  beastAttacks,
+  beastLine,
+  formSubtitle,
+  nameCounter,
+} from '../../../core/creatures/creature-format';
 import { readBlocks } from '../../../core/creatures/read-blocks';
-import { FIND_FAMILIAR, castVerb, creaturesText, replacesText } from '../../../core/creatures/summon-labels';
+import {
+  FIND_FAMILIAR,
+  castVerb,
+  creaturesText,
+  replacesText,
+} from '../../../core/creatures/summon-labels';
 import { tight } from '../../../core/format/text';
 import { SlotPicker } from '../../live-session/combat/cast-sheet/slot-picker';
 import { SheetFrame } from '../../live-session/combat/sheet-frame/sheet-frame';
@@ -81,7 +107,17 @@ export interface SummonSheetResult {
  */
 @Component({
   selector: 'app-summon-sheet',
-  imports: [CreatureArt, CreatureChoiceList, FormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, SheetFrame, SlotPicker],
+  imports: [
+    CreatureArt,
+    CreatureChoiceList,
+    FormsModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    SheetFrame,
+    SlotPicker,
+  ],
   templateUrl: './summon-sheet.html',
   styleUrl: './summon-sheet.scss',
 })
@@ -93,15 +129,23 @@ export class SummonSheet {
   /** Set when the spell is cast in a combat. */
   protected readonly combat = this.data.combat;
   /** The result stage of a casting in a combat: the sentence and the creatures that joined. */
-  protected readonly result = signal<{ readonly text: string; readonly creatures: readonly Combatant[]; readonly title: string } | null>(null);
+  protected readonly result = signal<{
+    readonly text: string;
+    readonly creatures: readonly Combatant[];
+    readonly title: string;
+  } | null>(null);
   /** The book's armor class of each creature of the result (the combat sends none to a player). */
   protected readonly resultAc = signal<ReadonlyMap<string, number>>(new Map());
   /** The group's initiative d20 typed from a physical die (a combat only). */
   protected readonly canApp = this.combat ? this.combat.diceMode !== DiceMode.PHYSICAL : true;
   protected readonly canType = this.combat ? this.combat.diceMode !== DiceMode.APP : false;
-  protected readonly preferApp = this.combat ? effectivePreference(this.combat.diceMode, this.combat.preference) === DicePreference.APP : true;
+  protected readonly preferApp = this.combat
+    ? effectivePreference(this.combat.diceMode, this.combat.preference) === DicePreference.APP
+    : true;
   /** The group's initiative d20 comes from a physical die: the campaign allows no other (RN-18), or the player prefers it where both are allowed. */
-  protected readonly typing = signal(this.combat ? !this.canApp || (this.canType && !this.preferApp) : false);
+  protected readonly typing = signal(
+    this.combat ? !this.canApp || (this.canType && !this.preferApp) : false,
+  );
   protected readonly typed = signal('');
   /** The face field shows, and the cast needs and sends the face. */
   protected readonly needsFace = computed(() => !!this.combat && (this.typing() || !this.canApp));
@@ -128,7 +172,9 @@ export class SummonSheet {
   private key = newKey();
   private beastSeq = 0;
 
-  protected readonly spell = computed<SummonSpellOptions | null>(() => this.options()?.spells.find((s) => s.spellKey === this.data.spellKey) ?? null);
+  protected readonly spell = computed<SummonSpellOptions | null>(
+    () => this.options()?.spells.find((s) => s.spellKey === this.data.spellKey) ?? null,
+  );
   /** A ritual spends no slot: the server says whether the character can cast this one as one. */
   protected readonly ritual = computed(() => !this.combat && (this.spell()?.canRitual ?? false));
   protected readonly familiar = computed(() => this.data.spellKey === FIND_FAMILIAR);
@@ -137,11 +183,25 @@ export class SummonSheet {
     const s = this.spell();
     if (this.result()) {
       const slot = this.slot();
-      return s ? tight(joinDotsOf([s.namePt, slot ? circleLabel(slot.level) : '', s.concentration ? 'concentração' : ''])) : '';
+      return s
+        ? tight(
+            joinDotsOf([
+              s.namePt,
+              slot ? circleLabel(slot.level) : '',
+              s.concentration ? 'concentração' : '',
+            ]),
+          )
+        : '';
     }
-    return s ? tight(`Magia de ${circleLabel(s.level)}${this.ritual() ? ' · ritual' : ''} · ${s.castingTimePt}${this.combat && s.concentration ? ' · concentração' : ''}`) : '';
+    return s
+      ? tight(
+          `Magia de ${circleLabel(s.level)}${this.ritual() ? ' · ritual' : ''} · ${s.castingTimePt}${this.combat && s.concentration ? ' · concentração' : ''}`,
+        )
+      : '';
   });
-  protected readonly title = computed(() => this.result()?.title ?? this.spell()?.namePt ?? this.data.spellKey);
+  protected readonly title = computed(
+    () => this.result()?.title ?? this.spell()?.namePt ?? this.data.spellKey,
+  );
   /** The d20 typed for the group's initiative: a number from 1 to 20, or `null`. */
   protected readonly face = computed(() => parseSum(this.typed(), 1, 20));
   /** In a combat: what losing the concentration does, and what casting it ends now, in the footer where it is always in view. */
@@ -155,9 +215,16 @@ export class SummonSheet {
     // "os 2 Lobos atrozes" once the player chose one kind; "as 2 criaturas" until then.
     const name = kinds.length === 1 ? pluralName(kinds[0].title) : '';
     const fem = kinds.length === 1 && /a$/i.test(kinds[0].title.split(/\s+/)[0]);
-    const them = n === 1 ? 'a criatura' : name ? `${fem ? 'as' : 'os'} ${n} ${name}` : `as ${n} criaturas`;
-    const ends = this.combat.concentrating ? `${s.namePt} encerra a concentração em ${this.combat.concentrating}.` : '';
-    return { lead: 'Concentração.', text: tight(`Se você perder a concentração, ${them} ${n > 1 ? 'somem' : 'some'}.`), ends: tight(ends) };
+    const them =
+      n === 1 ? 'a criatura' : name ? `${fem ? 'as' : 'os'} ${n} ${name}` : `as ${n} criaturas`;
+    const ends = this.combat.concentrating
+      ? `${s.namePt} encerra a concentração em ${this.combat.concentrating}.`
+      : '';
+    return {
+      lead: 'Concentração.',
+      text: tight(`Se você perder a concentração, ${them} ${n > 1 ? 'somem' : 'some'}.`),
+      ends: tight(ends),
+    };
   });
 
   /** The slots this spell can use: from its circle up, only the circles the server lists for it. */
@@ -167,29 +234,52 @@ export class SummonSheet {
       return [];
     }
     return (this.options()?.slots ?? [])
-      .filter((sl) => sl.level >= s.level && sl.total > 0 && s.circles.some((c) => c.circle === sl.level))
+      .filter(
+        (sl) => sl.level >= s.level && sl.total > 0 && s.circles.some((c) => c.circle === sl.level),
+      )
       .map((sl) => slotRow(sl));
   });
-  protected readonly slot = computed(() => this.slotRows().find((r) => slotId(r) === this.slotKey()) ?? null);
+  protected readonly slot = computed(
+    () => this.slotRows().find((r) => slotId(r) === this.slotKey()) ?? null,
+  );
   /** The circle the cast is made at: the slot's, or the spell's own for a ritual. */
-  protected readonly circle = computed(() => (this.ritual() ? (this.spell()?.level ?? 0) : (this.slot()?.level ?? 0)));
-  protected readonly circleOptions = computed<readonly SummonOption[]>(() => this.spell()?.circles.find((c) => c.circle === this.circle())?.options ?? []);
-  protected readonly opt = computed<SummonOption | null>(() => this.circleOptions()[this.option()] ?? null);
+  protected readonly circle = computed(() =>
+    this.ritual() ? (this.spell()?.level ?? 0) : (this.slot()?.level ?? 0),
+  );
+  protected readonly circleOptions = computed<readonly SummonOption[]>(
+    () => this.spell()?.circles.find((c) => c.circle === this.circle())?.options ?? [],
+  );
+  protected readonly opt = computed<SummonOption | null>(
+    () => this.circleOptions()[this.option()] ?? null,
+  );
   protected readonly count = computed(() => this.opt()?.count ?? 0);
-  protected readonly total = computed(() => Object.values(this.counts()).reduce((a, b) => a + b, 0));
+  protected readonly total = computed(() =>
+    Object.values(this.counts()).reduce((a, b) => a + b, 0),
+  );
   protected readonly several = computed(() => this.count() > 1);
   /** The one creature chosen, for the radios. */
-  protected readonly single = computed(() => (this.several() ? '' : (Object.keys(this.counts())[0] ?? '')));
+  protected readonly single = computed(() =>
+    this.several() ? '' : (Object.keys(this.counts())[0] ?? ''),
+  );
 
   /** Is there a slot or a quantity to choose at all (a ritual of one creature has none)? */
-  protected readonly hasSetup = computed(() => !this.ritual() && (this.slotRows().length > 0 || this.circleOptions().length > 1));
+  protected readonly hasSetup = computed(
+    () => !this.ritual() && (this.slotRows().length > 0 || this.circleOptions().length > 1),
+  );
   /** A creature was chosen: the slot and the quantity fold into one line, so the list gets the room. */
-  protected readonly collapsed = computed(() => this.hasSetup() && this.total() > 0 && !this.editing());
+  protected readonly collapsed = computed(
+    () => this.hasSetup() && this.total() > 0 && !this.editing(),
+  );
   /** "3º nível · 2 feras de ND 1 ou menos". */
   protected readonly setupLine = computed(() => {
     const slot = this.slot();
     const o = this.opt();
-    return tight(joinDotsOf([slot ? `${circleLabel(slot.level)}${slot.pact ? ' (pacto)' : ''}` : '', o ? (o.maxCr ? this.optionLabel(o) : creaturesText(o.count)) : '']));
+    return tight(
+      joinDotsOf([
+        slot ? `${circleLabel(slot.level)}${slot.pact ? ' (pacto)' : ''}` : '',
+        o ? (o.maxCr ? this.optionLabel(o) : creaturesText(o.count)) : '',
+      ]),
+    );
   });
 
   protected readonly replacesNote = computed(() => {
@@ -205,7 +295,12 @@ export class SummonSheet {
     if (o.forms.length === 0) {
       return (this.beasts() ?? []).map((b) => {
         const block = this.beastBlocks().get(b.key);
-        return { key: b.key, title: b.namePt, subtitle: beastLine(b, block), attacks: block ? beastAttacks(block) : undefined };
+        return {
+          key: b.key,
+          title: b.namePt,
+          subtitle: beastLine(b, block),
+          attacks: block ? beastAttacks(block) : undefined,
+        };
       });
     }
     const blocks = new Map((this.forms() ?? []).map((c) => [c.summary?.key ?? '', c]));
@@ -239,7 +334,13 @@ export class SummonSheet {
     }
     const need = this.count() - this.total();
     if (this.opt() && need > 0) {
-      parts.push(this.several() ? `escolha mais ${creaturesText(need)}` : this.familiar() ? 'escolha a forma' : 'escolha a criatura');
+      parts.push(
+        this.several()
+          ? `escolha mais ${creaturesText(need)}`
+          : this.familiar()
+            ? 'escolha a forma'
+            : 'escolha a criatura',
+      );
     } else if (need < 0) {
       parts.push(`tire ${creaturesText(-need)}`);
     }
@@ -248,10 +349,19 @@ export class SummonSheet {
     }
     // "Escolha a forma e dê um nome ao familiar.": the choice first, then the name.
     parts.sort((a, b) => (a.startsWith('dê') ? 1 : 0) - (b.startsWith('dê') ? 1 : 0));
-    const text = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} e ${parts[parts.length - 1]}`;
+    const text =
+      parts.length === 1
+        ? parts[0]
+        : `${parts.slice(0, -1).join(', ')} e ${parts[parts.length - 1]}`;
     return `${text[0].toUpperCase()}${text.slice(1)}.`;
   });
-  protected readonly ready = computed(() => this.missing() === '' && !this.busy() && this.spell() !== null && (!this.needsFace() || this.face() !== null));
+  protected readonly ready = computed(
+    () =>
+      this.missing() === '' &&
+      !this.busy() &&
+      this.spell() !== null &&
+      (!this.needsFace() || this.face() !== null),
+  );
 
   /** "Conjurar como ritual · 1 hora · sem gastar espaço", or what the slot costs. */
   protected readonly costLine = computed(() => {
@@ -263,12 +373,16 @@ export class SummonSheet {
       return tight(`Conjurar como ritual · ${s.castingTimePt} · sem gastar espaço`);
     }
     const slot = this.slot();
-    const spend = slot ? `gasta um espaço de ${circleLabel(slot.level)}${slot.pact ? ' (pacto)' : ''}` : 'gasta um espaço de magia';
+    const spend = slot
+      ? `gasta um espaço de ${circleLabel(slot.level)}${slot.pact ? ' (pacto)' : ''}`
+      : 'gasta um espaço de magia';
     const made = this.count() > 1 ? `${creaturesText(this.count())} · ` : '';
     return tight(`${made}${s.castingTimePt} · ${spend}`);
   });
 
-  protected readonly buttonLabel = computed(() => castVerb(this.data.spellKey, this.spell()?.namePt ?? ''));
+  protected readonly buttonLabel = computed(() =>
+    castVerb(this.data.spellKey, this.spell()?.namePt ?? ''),
+  );
 
   constructor() {
     void this.load();
@@ -314,7 +428,9 @@ export class SummonSheet {
 
   private async loadForms(o: SummonOption): Promise<void> {
     // A form whose numbers cannot be read still shows its name; only the line under it is missing.
-    const read = await Promise.allSettled(o.forms.map((f) => this.client.statBlock(this.data.campaignId, f.monsterKey)));
+    const read = await Promise.allSettled(
+      o.forms.map((f) => this.client.statBlock(this.data.campaignId, f.monsterKey)),
+    );
     this.forms.set(read.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : [])));
   }
 
@@ -322,7 +438,9 @@ export class SummonSheet {
     const seq = ++this.beastSeq;
     this.beasts.set(null);
     try {
-      const found = (await this.client.search(this.data.campaignId, { type: o.type, maxCr: o.maxCr })).creatures;
+      const found = (
+        await this.client.search(this.data.campaignId, { type: o.type, maxCr: o.maxCr })
+      ).creatures;
       // An answer that arrives after another option was picked is for a list nobody looks at.
       if (seq === this.beastSeq) {
         this.beasts.set(found);
@@ -388,7 +506,10 @@ export class SummonSheet {
   /** The chosen option's label: "4 criaturas de ND 1/2 ou menos". */
   protected optionLabel(o: SummonOption): string {
     // The spell asks for beasts ("2 feras de ND 1 ou menos"); any other kind says "criaturas".
-    const what = o.type === 'beast' ? `${o.count} ${o.count === 1 ? 'fera' : 'feras'}` : creaturesText(o.count);
+    const what =
+      o.type === 'beast'
+        ? `${o.count} ${o.count === 1 ? 'fera' : 'feras'}`
+        : creaturesText(o.count);
     return tight(`${what} de ND ${o.maxCr} ou menos`);
   }
 
@@ -406,7 +527,9 @@ export class SummonSheet {
     this.busy.set(true);
     this.error.set('');
     // The kinds in the list's order, each as many times as it was chosen.
-    const keys = this.rows().flatMap((r) => Array.from({ length: this.counts()[r.key] ?? 0 }, () => r.key));
+    const keys = this.rows().flatMap((r) =>
+      Array.from({ length: this.counts()[r.key] ?? 0 }, () => r.key),
+    );
     // Only a familiar is named by the table; any other creature takes the book's name, numbered when several.
     const names = this.familiar() && this.name().trim() !== '' ? [this.name().trim()] : [];
     const slot = this.slot();
@@ -433,7 +556,11 @@ export class SummonSheet {
         dismissed: res.replacedIds.length,
       });
     } catch (err) {
-      this.error.set(this.combat ? combatErrorMessage(err, 'conjurar a magia') : creatureErrorMessage(err, 'cast'));
+      this.error.set(
+        this.combat
+          ? combatErrorMessage(err, 'conjurar a magia')
+          : creatureErrorMessage(err, 'cast'),
+      );
       // The refusal is at the top of the body: scroll there, where it is seen.
       setTimeout(() => this.frame().scrollToTop());
     } finally {
@@ -442,7 +569,11 @@ export class SummonSheet {
   }
 
   /** In a combat the cast goes through `CastSpell`: the d20 of the group's initiative (the app's, or the one typed), the slot and the choice. */
-  private async castInCombat(spell: SummonSpellOptions, keys: readonly string[], names: readonly string[]): Promise<void> {
+  private async castInCombat(
+    spell: SummonSpellOptions,
+    keys: readonly string[],
+    names: readonly string[],
+  ): Promise<void> {
     const combat = this.combat;
     const slot = this.slot();
     if (!combat || !slot) {
@@ -484,7 +615,10 @@ export class SummonSheet {
   /** "CA 14 · PV 37 de 37 · 15 m" for a creature of the result (its numbers are the owner's). */
   protected line(c: Combatant): string {
     const ac = this.resultAc().get(c.monsterKey);
-    const hp = c.hitPointsCurrent !== undefined && c.hitPointsMax !== undefined ? `PV ${c.hitPointsCurrent} de ${c.hitPointsMax}` : '';
+    const hp =
+      c.hitPointsCurrent !== undefined && c.hitPointsMax !== undefined
+        ? `PV ${c.hitPointsCurrent} de ${c.hitPointsMax}`
+        : '';
     return tight(joinDotsOf([ac === undefined ? '' : `CA ${ac}`, hp, metersText(c.speedFt)]));
   }
 

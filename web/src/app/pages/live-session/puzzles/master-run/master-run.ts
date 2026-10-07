@@ -1,12 +1,41 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, computed, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 
-import { type MasterPuzzleRun, PuzzleKind, PuzzleRunStatus, PuzzleSolveAction, PuzzleStopReason } from '../../../../../gen/meurpg/play/v1/puzzles_pb';
+import {
+  type MasterPuzzleRun,
+  PuzzleKind,
+  PuzzleRunStatus,
+  PuzzleSolveAction,
+  PuzzleStopReason,
+} from '../../../../../gen/meurpg/play/v1/puzzles_pb';
 import { focusWithRing } from '../../../../core/creatures/focus-ring';
 import { joinDots } from '../../../../core/format/text';
-import { clockOf, kindIcon, kindName, lastMoveParts, limitRows, litCount, litWords, moveWord, agoText, outcomeText, trapFired } from '../../../../core/puzzles/puzzle-format';
+import {
+  clockOf,
+  kindIcon,
+  kindName,
+  lastMoveParts,
+  limitRows,
+  litCount,
+  litWords,
+  moveWord,
+  agoText,
+  outcomeText,
+  trapFired,
+} from '../../../../core/puzzles/puzzle-format';
 import { puzzleErrorMessage } from '../../../../core/puzzles/puzzle-errors';
 import { PuzzlesClient } from '../../../../core/puzzles/puzzles-client';
 import { LockBoard } from '../../../../shared/puzzle-boards/lock-board';
@@ -40,7 +69,18 @@ type Action = 'hint' | 'reseed' | 'reset' | 'close' | 'play';
 @Component({
   selector: 'app-master-run',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DoorCrop, LimitCounters, LockBoard, MapAsk, MatButtonModule, MatIconModule, PillarsBoard, PuzzleHost, SecretPill, SequenceStrip],
+  imports: [
+    DoorCrop,
+    LimitCounters,
+    LockBoard,
+    MapAsk,
+    MatButtonModule,
+    MatIconModule,
+    PillarsBoard,
+    PuzzleHost,
+    SecretPill,
+    SequenceStrip,
+  ],
   templateUrl: './master-run.html',
   styleUrl: './master-run.scss',
 })
@@ -93,11 +133,17 @@ export class MasterRun {
     const at = p?.solvedAt ? ` às ${clockOf(timestampDate(p.solvedAt))}` : '';
     return `${p?.solvedByName || 'Alguém'} resolveu “${this.name()}”${at}.`;
   });
-  protected readonly stoppedLine = computed(() => (this.run().stopReason === PuzzleStopReason.TIME ? 'O tempo acabou: ninguém joga mais até você recomeçar ou fechar.' : 'O limite de jogadas foi atingido: ninguém joga mais até você recomeçar ou fechar.'));
+  protected readonly stoppedLine = computed(() =>
+    this.run().stopReason === PuzzleStopReason.TIME
+      ? 'O tempo acabou: ninguém joga mais até você recomeçar ou fechar.'
+      : 'O limite de jogadas foi atingido: ninguém joga mais até você recomeçar ou fechar.',
+  );
   protected readonly outcome = computed(() => outcomeText(this.run().outcome));
   protected readonly doorTarget = computed(() => {
     const on = this.puzzle()?.onSolve;
-    return this.solved() && on?.action === PuzzleSolveAction.OPEN_DOOR && on.target.case === 'door' ? on.target.value : null;
+    return this.solved() && on?.action === PuzzleSolveAction.OPEN_DOOR && on.target.case === 'door'
+      ? on.target.value
+      : null;
   });
   /** "Ao resolver" in words, for the meta line. */
   protected readonly onSolveWords = computed(() => {
@@ -141,16 +187,26 @@ export class MasterRun {
       const config = this.puzzle()?.config?.kind;
       return config?.case === 'lights' ? config.value.size : 0;
     })();
-    if (this.kind() !== PuzzleKind.LIGHTS || this.ringsHidden() || this.frozen() || this.closed() || size === 0) {
+    if (
+      this.kind() !== PuzzleKind.LIGHTS ||
+      this.ringsHidden() ||
+      this.frozen() ||
+      this.closed() ||
+      size === 0
+    ) {
       return [];
     }
-    return (this.minimum()?.path ?? []).flatMap((m) => (m.kind.case === 'lights' ? [m.kind.value.row * size + m.kind.value.col] : []));
+    return (this.minimum()?.path ?? []).flatMap((m) =>
+      m.kind.case === 'lights' ? [m.kind.value.row * size + m.kind.value.col] : [],
+    );
   });
   protected readonly solutionWheels = computed(() => {
     const solution = this.puzzle()?.solution?.kind;
     return solution?.case === 'lock' ? solution.value.wheels : [];
   });
-  protected readonly faces = computed(() => (this.puzzle()?.symbols ?? []).map((s) => ({ key: s.key, namePt: s.namePt })));
+  protected readonly faces = computed(() =>
+    (this.puzzle()?.symbols ?? []).map((s) => ({ key: s.key, namePt: s.namePt })),
+  );
   /** "Pilar 1 × 2 · Pilar 3 × 1": the shortest turns, as the server lists them. */
   protected readonly turns = computed(() => {
     const counts = new Map<number, number>();
@@ -159,18 +215,29 @@ export class MasterRun {
         counts.set(m.kind.value.pillar, (counts.get(m.kind.value.pillar) ?? 0) + 1);
       }
     }
-    return joinDots([...counts].sort((a, b) => a[0] - b[0]).map(([pillar, n]) => `Pilar\u00a0${pillar + 1}\u00a0×\u00a0${n}`));
+    return joinDots(
+      [...counts]
+        .sort((a, b) => a[0] - b[0])
+        .map(([pillar, n]) => `Pilar\u00a0${pillar + 1}\u00a0×\u00a0${n}`),
+    );
   });
   protected readonly muralPillars = computed(() => this.player()?.mural?.pillars ?? []);
   protected readonly hintCount = computed(() => this.puzzle()?.hints.length ?? 0);
   protected readonly released = computed(() => this.run().releasedHints);
   protected readonly hintsLeft = computed(() => this.hintCount() - this.released());
-  protected readonly canReseed = computed(() => this.kind() === PuzzleKind.LIGHTS || this.kind() === PuzzleKind.PILLARS);
+  protected readonly canReseed = computed(
+    () => this.kind() === PuzzleKind.LIGHTS || this.kind() === PuzzleKind.PILLARS,
+  );
   protected readonly clue = computed(() => this.puzzle()?.clue ?? '');
 
   /** "Pista: “…” · Dicas: 1 de 2 soltas · Ao resolver: abrir uma porta." with the dots tied to the word before them (a line never starts on "·"). */
   protected readonly meta = computed(() => {
-    const hints = this.hintCount() > 0 ? [`Dicas: ${this.released()} de ${this.hintCount()} ${this.hintCount() === 1 ? 'solta' : 'soltas'}`] : [];
+    const hints =
+      this.hintCount() > 0
+        ? [
+            `Dicas: ${this.released()} de ${this.hintCount()} ${this.hintCount() === 1 ? 'solta' : 'soltas'}`,
+          ]
+        : [];
     return `${joinDots([...(this.clue() ? [`Pista: “${this.clue()}”`] : []), ...hints, `Ao resolver: ${this.onSolveWords()}`])}.`;
   });
 
@@ -211,7 +278,11 @@ export class MasterRun {
   /** Every player's attempts, "Brisa 3 de 3 · Pensantus 3 de 3". */
   protected readonly attemptsLine = computed(() => {
     const per = this.puzzle()?.onWrong?.attemptsPerPlayer ?? 0;
-    return per > 0 ? joinDots(this.run().attempts.map((a) => `${a.characterName}\u00a0${a.left}\u00a0de\u00a0${per}`)) : '';
+    return per > 0
+      ? joinDots(
+          this.run().attempts.map((a) => `${a.characterName}\u00a0${a.left}\u00a0de\u00a0${per}`),
+        )
+      : '';
   });
   /** The counters of the limits: moves and time (the attempts are said player by player). */
   protected readonly counters = computed(() => {
@@ -222,7 +293,12 @@ export class MasterRun {
   protected readonly movesCounted = computed(() => this.counters().some((c) => c.key === 'moves'));
   protected readonly trap = computed(() => trapFired(this.run().lastMove));
   protected readonly trapWho = computed(() => this.run().lastMove?.characterName ?? '');
-  protected readonly judged = computed(() => this.kind() === PuzzleKind.RIDDLE || this.kind() === PuzzleKind.SEQUENCE || this.kind() === PuzzleKind.CIPHER);
+  protected readonly judged = computed(
+    () =>
+      this.kind() === PuzzleKind.RIDDLE ||
+      this.kind() === PuzzleKind.SEQUENCE ||
+      this.kind() === PuzzleKind.CIPHER,
+  );
 
   protected readonly id = computed(() => `mr-${this.puzzle()?.id ?? ''}`);
 
@@ -233,7 +309,11 @@ export class MasterRun {
 
   protected back(what: Ask): void {
     this.ask.set(null);
-    afterNextRender(() => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`[data-act="${what}"]`)), { injector: this.injector });
+    afterNextRender(
+      () =>
+        focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`[data-act="${what}"]`)),
+      { injector: this.injector },
+    );
   }
 
   protected async act(action: Action): Promise<void> {
@@ -251,21 +331,38 @@ export class MasterRun {
           : action === 'play'
             ? await this.api.playSequence(campaign, id)
             : action === 'reseed'
-            ? await this.api.reseed(campaign, id)
-            : action === 'reset'
-              ? await this.api.reset(campaign, id)
-              : await this.api.close(campaign, id);
+              ? await this.api.reseed(campaign, id)
+              : action === 'reset'
+                ? await this.api.reset(campaign, id)
+                : await this.api.close(campaign, id);
       this.ask.set(null);
       if (action === 'reset' || action === 'reseed') {
         this.solutionShown.set(false);
       }
       this.updated.emit(next);
       if (action === 'reset' || action === 'close') {
-        afterNextRender(() => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`[data-act="${action}"]`)), { injector: this.injector });
+        afterNextRender(
+          () =>
+            focusWithRing(
+              this.host.nativeElement.querySelector<HTMLElement>(`[data-act="${action}"]`),
+            ),
+          { injector: this.injector },
+        );
       }
     } catch (err) {
       this.ask.set(null);
-      this.notice.set(puzzleErrorMessage(err, action === 'hint' ? 'soltar a dica' : action === 'play' ? 'tocar a sequência' : action === 'close' ? 'fechar o quebra-cabeça' : 'recomeçar o quebra-cabeça'));
+      this.notice.set(
+        puzzleErrorMessage(
+          err,
+          action === 'hint'
+            ? 'soltar a dica'
+            : action === 'play'
+              ? 'tocar a sequência'
+              : action === 'close'
+                ? 'fechar o quebra-cabeça'
+                : 'recomeçar o quebra-cabeça',
+        ),
+      );
     } finally {
       this.busy.set(null);
     }

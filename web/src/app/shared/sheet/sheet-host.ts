@@ -1,6 +1,11 @@
 import { type ComponentType } from '@angular/cdk/portal';
 import { inject } from '@angular/core';
-import { MAT_BOTTOM_SHEET_DATA, MatBottomSheet, type MatBottomSheetConfig, MatBottomSheetRef } from '@angular/material/bottom-sheet';
+import {
+  MAT_BOTTOM_SHEET_DATA,
+  MatBottomSheet,
+  type MatBottomSheetConfig,
+  MatBottomSheetRef,
+} from '@angular/material/bottom-sheet';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import type { Observable } from 'rxjs';
 

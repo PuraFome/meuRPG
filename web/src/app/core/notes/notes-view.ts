@@ -15,7 +15,9 @@ export const isClue = (note: Note): boolean => note.kind === NoteKind.CLUE;
 export function noteStamp(at: Date, now: Date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   const sameDay = (a: Date, b: Date) =>
-    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
   const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
   if (sameDay(at, now)) {
     return `Hoje, ${formatClock(at)}`;
@@ -48,11 +50,18 @@ export interface FilterOption {
 /** "Todas as anotações", each discovered scene, and "Sem cena", each with its
  * count. The scenes are only the discovered ones (a note can only carry
  * those), so an undiscovered scene's name appears nowhere. */
-export function filterOptions(notes: readonly Note[], scenes: readonly NoteScene[]): readonly FilterOption[] {
+export function filterOptions(
+  notes: readonly Note[],
+  scenes: readonly NoteScene[],
+): readonly FilterOption[] {
   const count = (match: (n: Note) => boolean) => notes.filter(match).length;
   return [
     { value: FILTER_ALL, label: 'Todas as anotações', count: notes.length },
-    ...scenes.map((s) => ({ value: s.id, label: s.name, count: count((n) => n.scenePointId === s.id) })),
+    ...scenes.map((s) => ({
+      value: s.id,
+      label: s.name,
+      count: count((n) => n.scenePointId === s.id),
+    })),
     { value: FILTER_NONE, label: 'Sem cena', count: count((n) => n.scenePointId === '') },
   ];
 }
@@ -62,7 +71,9 @@ export function applyFilter(notes: readonly Note[], filter: string): readonly No
   if (filter === FILTER_ALL) {
     return notes;
   }
-  return notes.filter((n) => (filter === FILTER_NONE ? n.scenePointId === '' : n.scenePointId === filter));
+  return notes.filter((n) =>
+    filter === FILTER_NONE ? n.scenePointId === '' : n.scenePointId === filter,
+  );
 }
 
 /** "2.000 de 2.000". */

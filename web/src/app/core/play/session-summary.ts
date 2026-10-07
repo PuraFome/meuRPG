@@ -60,7 +60,9 @@ export function sessionSpan(summary: SessionSummary): string {
   if (!summary.startedAt || !summary.endedAt) {
     return '';
   }
-  return tight(`das ${formatClock(timestampDate(summary.startedAt))} às ${formatClock(timestampDate(summary.endedAt))}`);
+  return tight(
+    `das ${formatClock(timestampDate(summary.startedAt))} às ${formatClock(timestampDate(summary.endedAt))}`,
+  );
 }
 
 /** How long the session lasted, in seconds (the server's `duration`). */
@@ -71,7 +73,9 @@ export function durationSeconds(summary: SessionSummary): number {
 /** The session's highlight tiles: the combats' categories summed, then the
  * checks passed. The master's tile also says how many the winner tried. */
 export function summaryTiles(summary: SessionSummary): HighlightTile[] {
-  const tried = new Map(summary.players.map((p) => [p.highlights?.characterId ?? '', p.checksTried] as const));
+  const tried = new Map(
+    summary.players.map((p) => [p.highlights?.characterId ?? '', p.checksTried] as const),
+  );
   return highlightTiles(summary, tried);
 }
 
@@ -88,7 +92,11 @@ export function treasureRows(summary: SessionSummary): HighlightsTableRow[] {
   // The most first; a tie by name, and the server's order otherwise (the sort is stable).
   return summary.players
     .filter((p) => p.treasureFoundPo > 0)
-    .sort((a, b) => b.treasureFoundPo - a.treasureFoundPo || (a.highlights?.name ?? '').localeCompare(b.highlights?.name ?? '', 'pt-BR'))
+    .sort(
+      (a, b) =>
+        b.treasureFoundPo - a.treasureFoundPo ||
+        (a.highlights?.name ?? '').localeCompare(b.highlights?.name ?? '', 'pt-BR'),
+    )
     .map((p) => ({
       id: p.highlights?.characterId ?? '',
       name: p.highlights?.name ?? '',
@@ -102,12 +110,14 @@ export function treasureRows(summary: SessionSummary): HighlightsTableRow[] {
 export function summaryRows(summary: SessionSummary): HighlightsTableRow[] {
   // A character that only found treasure fought and tried nothing: no row of zeros
   // for it here ("Mais tesouro encontrado" is its own block).
-  return summary.players.filter((p) => p.checksTried > 0 || foughtIn(p)).map((p) => ({
-    id: p.highlights?.characterId ?? '',
-    name: p.highlights?.name ?? '',
-    cells: [p.checksTried === 0 ? 'nenhum teste' : checksRatio(p.checksPassed, p.checksTried)],
-    muted: p.checksTried === 0,
-  }));
+  return summary.players
+    .filter((p) => p.checksTried > 0 || foughtIn(p))
+    .map((p) => ({
+      id: p.highlights?.characterId ?? '',
+      name: p.highlights?.name ?? '',
+      cells: [p.checksTried === 0 ? 'nenhum teste' : checksRatio(p.checksPassed, p.checksTried)],
+      muted: p.checksTried === 0,
+    }));
 }
 
 function foughtIn(p: SessionCharacterSummary): boolean {
@@ -124,7 +134,10 @@ export function summaryOwn(mine: SessionCharacterSummary | undefined): OwnNumber
   const h = mine.highlights;
   const own: OwnNumber[] = foughtIn(mine) && h ? ownNumbers([h], h.characterId) : [];
   if (mine.checksTried > 0) {
-    own.push({ label: 'Testes passados fora do combate', value: checksRatio(mine.checksPassed, mine.checksTried) });
+    own.push({
+      label: 'Testes passados fora do combate',
+      value: checksRatio(mine.checksPassed, mine.checksTried),
+    });
   }
   if (mine.treasureFoundPo > 0) {
     own.push({ label: 'Tesouro encontrado', value: `${formatInt(mine.treasureFoundPo)}${NBSP}PO` });

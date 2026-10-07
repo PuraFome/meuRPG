@@ -104,13 +104,20 @@ export class PuzzleHost {
   protected readonly lightsOf = computed(() => {
     const config = this.run().config?.kind;
     const state = this.state()?.kind;
-    return { size: config?.case === 'lights' ? config.value.size : 0, lit: state?.case === 'lights' ? state.value.lit : [] };
+    return {
+      size: config?.case === 'lights' ? config.value.size : 0,
+      lit: state?.case === 'lights' ? state.value.lit : [],
+    };
   });
 
   /** The wheels or the pillars, from the state. */
   protected readonly positions = computed<readonly number[]>(() => {
     const state = this.state()?.kind;
-    return state?.case === 'lock' ? state.value.wheels : state?.case === 'pillars' ? state.value.pillars : [];
+    return state?.case === 'lock'
+      ? state.value.wheels
+      : state?.case === 'pillars'
+        ? state.value.pillars
+        : [];
   });
 
   protected readonly riddleText = computed(() => {
@@ -126,14 +133,20 @@ export class PuzzleHost {
     return state?.case === 'sequence' ? state.value.progress : 0;
   });
 
-  protected readonly faces = computed<readonly SymbolFace[]>(() => this.run().symbols.map((s) => ({ key: s.key, namePt: s.namePt })));
+  protected readonly faces = computed<readonly SymbolFace[]>(() =>
+    this.run().symbols.map((s) => ({ key: s.key, namePt: s.namePt })),
+  );
 
   protected onPress(press: LightPress): void {
     this.move.emit({ kind: { case: 'lights', value: { row: press.row, col: press.col } } });
   }
 
   protected onAnswer(kind: 'riddle' | 'cipher', text: string): void {
-    this.move.emit(kind === 'riddle' ? { kind: { case: 'riddle', value: { answer: text } } } : { kind: { case: 'cipher', value: { text } } });
+    this.move.emit(
+      kind === 'riddle'
+        ? { kind: { case: 'riddle', value: { answer: text } } }
+        : { kind: { case: 'cipher', value: { text } } },
+    );
   }
 
   protected onStrike(bell: number): void {

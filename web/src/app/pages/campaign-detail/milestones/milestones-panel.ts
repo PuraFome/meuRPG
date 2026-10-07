@@ -48,7 +48,14 @@ import { ReachedMilestones } from './reached-milestones';
  */
 @Component({
   selector: 'app-milestones-panel',
-  imports: [MatButtonModule, MatIconModule, MilestoneCharacters, NgTemplateOutlet, PlannedMilestones, ReachedMilestones],
+  imports: [
+    MatButtonModule,
+    MatIconModule,
+    MilestoneCharacters,
+    NgTemplateOutlet,
+    PlannedMilestones,
+    ReachedMilestones,
+  ],
   providers: [MilestonesStore],
   templateUrl: './milestones-panel.html',
   styleUrl: './milestones-panel.scss',
@@ -90,15 +97,24 @@ export class MilestonesPanel implements OnInit {
 
   /** The characters that can be listed: the master's whole group, a player's own. */
   protected readonly characters = computed(() =>
-    this.isMaster() ? this.experience.rows() : this.experience.rows().filter((r) => r.playerUserId === this.viewerId()),
+    this.isMaster()
+      ? this.experience.rows()
+      : this.experience.rows().filter((r) => r.playerUserId === this.viewerId()),
   );
   /** The reached milestones some living character does not have yet. */
   protected readonly giveable = computed(() => {
     const rows = this.experience.rows();
-    return new Set(this.store.reached().filter((m) => !m.offList && rows.some((r) => !markedIds(m).has(r.id))).map((m) => m.id));
+    return new Set(
+      this.store
+        .reached()
+        .filter((m) => !m.offList && rows.some((r) => !markedIds(m).has(r.id)))
+        .map((m) => m.id),
+    );
   });
   /** Nothing is said about anyone before the first milestone. */
-  protected readonly showCharacters = computed(() => this.store.reached().length > 0 && this.characters().length > 0);
+  protected readonly showCharacters = computed(
+    () => this.store.reached().length > 0 && this.characters().length > 0,
+  );
   protected readonly showReached = computed(
     () => !this.isMaster() || this.store.planned().length > 0 || this.store.reached().length > 0,
   );
@@ -170,7 +186,9 @@ export class MilestonesPanel implements OnInit {
       rows: this.experience.rows(),
     }).subscribe((award) => {
       if (award) {
-        this.confirmed.emit(milestoneText(award, award.shares.length === this.experience.rows().length));
+        this.confirmed.emit(
+          milestoneText(award, award.shares.length === this.experience.rows().length),
+        );
         void this.reload();
       }
     });
@@ -207,5 +225,6 @@ export class MilestonesPanel implements OnInit {
   }
 }
 
-const reachedConfirmationOf = (r: MarkReachedResult): string => reachedConfirmation(r.marked, r.left);
+const reachedConfirmationOf = (r: MarkReachedResult): string =>
+  reachedConfirmation(r.marked, r.left);
 const givenConfirmationOf = (r: MarkReachedResult): string => givenConfirmation(r.marked);

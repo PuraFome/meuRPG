@@ -4,7 +4,10 @@ import { create } from '@bufbuild/protobuf';
 import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { type TreasureToConvert, TreasureToConvertSchema } from '../../../gen/meurpg/progression/v1/progression_pb';
+import {
+  type TreasureToConvert,
+  TreasureToConvertSchema,
+} from '../../../gen/meurpg/progression/v1/progression_pb';
 import type { LoadState } from '../../core/progression/experience-store';
 import { TreasureStrip } from './treasure-strip';
 
@@ -54,7 +57,11 @@ describe('TreasureStrip (E9-09)', () => {
     fixture.detectChanges();
     return { fixture, el: fixture.nativeElement as HTMLElement, host: fixture.componentInstance };
   }
-  const text = (el: HTMLElement, s: string) => el.querySelector(s)?.textContent?.replace(/[ \t\r\n]+/g, ' ').trim();
+  const text = (el: HTMLElement, s: string) =>
+    el
+      .querySelector(s)
+      ?.textContent?.replace(/[ \t\r\n]+/g, ' ')
+      .trim();
 
   it('in a campaign by gold: "Encontrado, ainda não convertido", the count, the PO and each find', () => {
     const { el } = setup();
@@ -81,16 +88,23 @@ describe('TreasureStrip (E9-09)', () => {
 
   it('invites the next find when nothing waits, in a campaign by gold', () => {
     const { el } = setup({ treasures: [], total: 0 });
-    expect(text(el, '.strip__line')).toBe('Nenhum tesouro esperando. Os que o grupo encontrar aparecem aqui.');
+    expect(text(el, '.strip__line')).toBe(
+      'Nenhum tesouro esperando. Os que o grupo encontrar aparecem aqui.',
+    );
     expect(el.querySelector('.strip__big')).toBeNull();
   });
 
   it('names the first five finds and counts the rest, and says when the server holds more (100 at most)', () => {
-    const many = Array.from({ length: 7 }, (_, i) => treasure(i, `Tesouro ${i + 1}`, 10, ['Brisa']));
+    const many = Array.from({ length: 7 }, (_, i) =>
+      treasure(i, `Tesouro ${i + 1}`, 10, ['Brisa']),
+    );
     const { el } = setup({ treasures: many, total: 130 });
     expect(el.querySelectorAll('.strip__list li')).toHaveLength(5);
     const more = Array.from(el.querySelectorAll('.strip__more'), (p) => p.textContent);
-    expect(more).toEqual(['e mais 2', 'Há mais 123\u00a0tesouros encontrados, que ficam para depois.']);
+    expect(more).toEqual([
+      'e mais 2',
+      'Há mais 123\u00a0tesouros encontrados, que ficam para depois.',
+    ]);
     expect(text(el, '.strip__big')).toBe(`7\u00a0tesouros · 70${nbsp}PO`);
   });
 
@@ -105,13 +119,17 @@ describe('TreasureStrip (E9-09)', () => {
   });
 
   it('is not there at all for a campaign by enemies with nothing found, or by milestones', () => {
-    expect(setup({ mode: XpMode.ENEMIES, treasures: [], total: 0 }).el.querySelector('.strip')).toBeNull();
+    expect(
+      setup({ mode: XpMode.ENEMIES, treasures: [], total: 0 }).el.querySelector('.strip'),
+    ).toBeNull();
     TestBed.resetTestingModule();
     expect(setup({ mode: XpMode.MILESTONES }).el.querySelector('.strip')).toBeNull();
   });
 
   it('says while it reads, and offers to try again when it cannot', () => {
-    expect(text(setup({ treasures: [], total: 0, state: 'loading' }).el, '.strip__line')).toBe('Lendo os tesouros encontrados...');
+    expect(text(setup({ treasures: [], total: 0, state: 'loading' }).el, '.strip__line')).toBe(
+      'Lendo os tesouros encontrados...',
+    );
     TestBed.resetTestingModule();
     const { el, host, fixture } = setup({ treasures: [], total: 0, state: 'error' });
     expect(text(el, '.strip__line')).toContain('Não foi possível ler os tesouros.');

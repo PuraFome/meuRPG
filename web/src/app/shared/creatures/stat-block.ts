@@ -112,12 +112,24 @@ export class StatBlock {
     const hp = this.hp();
     const full = this.full();
     const out: Tile[] = [
-      { label: 'CA', value: String(c.armorClass), note: full ? c.armorClassNote || c.armorClassLabelPt : undefined },
+      {
+        label: 'CA',
+        value: String(c.armorClass),
+        note: full ? c.armorClassNote || c.armorClassLabelPt : undefined,
+      },
       hp
         ? { label: 'PV', value: String(hp.current), of: `de ${hp.max}` }
         : full
-          ? { label: 'PV', value: String(c.hitPoints), note: c.hitPointsRoll.replace(/([+-])/g, '\u00a0$1\u00a0') }
-          : { label: 'PV', value: String(c.hitPoints), of: c.hitPointsRoll ? `(${c.hitPointsRoll})` : '' },
+          ? {
+              label: 'PV',
+              value: String(c.hitPoints),
+              note: c.hitPointsRoll.replace(/([+-])/g, '\u00a0$1\u00a0'),
+            }
+          : {
+              label: 'PV',
+              value: String(c.hitPoints),
+              of: c.hitPointsRoll ? `(${c.hitPointsRoll})` : '',
+            },
     ];
     const speeds: [number, string][] = [
       [c.speedWalkFt, 'Deslocamento'],
@@ -129,11 +141,19 @@ export class StatBlock {
     const anySpeed = speeds.some(([ft]) => ft > 0);
     for (const [ft, label] of speeds) {
       if (ft > 0 || (!anySpeed && label === 'Deslocamento')) {
-        out.push({ label, value: tight(metersText(ft)), note: full && ft > 0 ? `${ft}\u00a0pés` : undefined });
+        out.push({
+          label,
+          value: tight(metersText(ft)),
+          note: full && ft > 0 ? `${ft}\u00a0pés` : undefined,
+        });
       }
     }
     if (full) {
-      out.push({ label: 'Nível de desafio', value: c.summary?.challengeRating ?? '0', note: `${formatInt(c.summary?.xp ?? 0)} XP` });
+      out.push({
+        label: 'Nível de desafio',
+        value: c.summary?.challengeRating ?? '0',
+        note: `${formatInt(c.summary?.xp ?? 0)} XP`,
+      });
     }
     return out;
   });
@@ -141,9 +161,13 @@ export class StatBlock {
   protected readonly lines = computed(() => {
     const c = this.creature();
     const out: { term: string; parts: { text: string; en?: boolean }[] }[] = [];
-    const line = (term: string, text: string, en = false) => out.push({ term, parts: [{ text, en }] });
+    const line = (term: string, text: string, en = false) =>
+      out.push({ term, parts: [{ text, en }] });
     if (c.savingThrows.length > 0) {
-      line('Testes de resistência', c.savingThrows.map((b) => `${b.namePt} ${signed(b.bonus)}`).join(', '));
+      line(
+        'Testes de resistência',
+        c.savingThrows.map((b) => `${b.namePt} ${signed(b.bonus)}`).join(', '),
+      );
     }
     if (c.skills.length > 0) {
       line('Perícias', c.skills.map((b) => `${b.namePt} ${signed(b.bonus)}`).join(', '));
@@ -175,7 +199,10 @@ export class StatBlock {
 
   protected readonly groups = computed(() => {
     const c = this.creature();
-    const groups: { title: string; entries: readonly { name: string; text: string; usage: string }[] }[] = [];
+    const groups: {
+      title: string;
+      entries: readonly { name: string; text: string; usage: string }[];
+    }[] = [];
     if (c.traits.length > 0) {
       groups.push({ title: 'Características', entries: c.traits });
     }

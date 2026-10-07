@@ -2,7 +2,13 @@ import { Component, ElementRef, computed, effect, input, output, viewChild } fro
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { creatureTurnTitle, endLabel as endLabelOf, groupFeminine, groupName, partLeftSentence } from '../../../../core/combat/creature-names';
+import {
+  creatureTurnTitle,
+  endLabel as endLabelOf,
+  groupFeminine,
+  groupName,
+  partLeftSentence,
+} from '../../../../core/combat/creature-names';
 import { roundLabel, turnBanner } from '../../../../core/combat/combat-view';
 import { type MineTab } from '../../../../core/combat/mine';
 import { tieNumbers } from '../../../../core/format/text';
@@ -86,8 +92,12 @@ export class CreatureHero {
     }
     const several = t.members.length > 1;
     const fem = groupFeminine(t.members);
-    const who = several ? `${fem ? 'As suas' : 'Os seus'} ${this.name()}` : `${fem ? 'A sua' : 'O seu'} ${this.name()}`;
-    return t.state === 'done' ? `${who} já ${several ? 'agiram' : 'agiu'}` : `${who} ${several ? 'esperam' : 'espera'} a vez ${several ? 'deles' : 'dele'}`;
+    const who = several
+      ? `${fem ? 'As suas' : 'Os seus'} ${this.name()}`
+      : `${fem ? 'A sua' : 'O seu'} ${this.name()}`;
+    return t.state === 'done'
+      ? `${who} já ${several ? 'agiram' : 'agiu'}`
+      : `${who} ${several ? 'esperam' : 'espera'} a vez ${several ? 'deles' : 'dele'}`;
   });
   /** "Depois de vocês: Nanquim": who plays after this turn. */
   protected readonly after = computed(() => {

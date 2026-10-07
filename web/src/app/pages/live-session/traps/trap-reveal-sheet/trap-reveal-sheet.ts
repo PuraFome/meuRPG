@@ -32,13 +32,18 @@ export function openTrapReveal(
   bottomSheet: MatBottomSheet,
   data: TrapRevealData,
 ): Observable<MapPoint | undefined> {
-  return openSheet<TrapRevealSheet, TrapRevealData, MapPoint>(dialog, bottomSheet, TrapRevealSheet, {
-    data,
-    ariaLabel: 'Revelar armadilha',
-    labelledBy: 'trap-reveal-t',
-    width: '520px',
-    restoreFocus: false, // the opener takes it back with the focus ring
-  });
+  return openSheet<TrapRevealSheet, TrapRevealData, MapPoint>(
+    dialog,
+    bottomSheet,
+    TrapRevealSheet,
+    {
+      data,
+      ariaLabel: 'Revelar armadilha',
+      labelledBy: 'trap-reveal-t',
+      width: '520px',
+      restoreFocus: false, // the opener takes it back with the focus ring
+    },
+  );
 }
 
 /** The button's words, by who is checked ("Revelar para Toren", "Revelar para 2 jogadores", "Revelar para
@@ -127,11 +132,16 @@ export class TrapRevealSheet {
   private readonly frame = viewChild(SheetFrame);
 
   protected readonly subtitle = firstLine(this.data.point.description);
-  private readonly knows = new Map(this.data.point.trapRevealedTo.map((r) => [r.characterId, r.how]));
+  private readonly knows = new Map(
+    this.data.point.trapRevealedTo.map((r) => [r.characterId, r.how]),
+  );
   protected readonly rows = computed<readonly PickRow[]>(() =>
     this.data.players.map((p) => {
       const how = this.knows.get(p.id);
-      const sub = how !== undefined ? joinDots([p.playerName, knownReason(how)].filter(Boolean)) : p.playerName;
+      const sub =
+        how !== undefined
+          ? joinDots([p.playerName, knownReason(how)].filter(Boolean))
+          : p.playerName;
       return { id: p.id, name: p.name, sub, locked: how !== undefined };
     }),
   );
@@ -139,7 +149,11 @@ export class TrapRevealSheet {
   private readonly open = computed(() => this.data.players.filter((p) => !this.knows.has(p.id)));
   protected readonly chosen = computed(() => this.open().filter((p) => this.picked().has(p.id)));
   protected readonly label = computed(() =>
-    trapRevealLabel(this.chosen().map((p) => p.name), this.open().length, this.data.players.length),
+    trapRevealLabel(
+      this.chosen().map((p) => p.name),
+      this.open().length,
+      this.data.players.length,
+    ),
   );
   protected readonly summary = computed(() => {
     const picked = this.chosen();
@@ -151,7 +165,9 @@ export class TrapRevealSheet {
         ? `A armadilha vai para todos os ${this.data.players.length} jogadores.`
         : `A armadilha vai para os outros ${this.open().length} jogadores.`;
     }
-    return tight(`A armadilha vai para ${picked.length} de ${this.open().length} ${this.open().length === 1 ? 'jogador' : 'jogadores'}: ${listNames(picked.map((p) => p.name))}.`);
+    return tight(
+      `A armadilha vai para ${picked.length} de ${this.open().length} ${this.open().length === 1 ? 'jogador' : 'jogadores'}: ${listNames(picked.map((p) => p.name))}.`,
+    );
   });
   protected readonly busy = signal(false);
   protected readonly error = signal('');

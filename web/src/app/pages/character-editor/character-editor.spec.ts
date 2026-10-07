@@ -66,7 +66,10 @@ class FakeCharacterEditorSource {
   rollCalls: (readonly (readonly number[])[] | undefined)[] = [];
   rollFn: (typed?: readonly (readonly number[])[]) => Promise<AbilityRollsVm> = () =>
     Promise.resolve(STORED_ROLLS);
-  rollAbilityScores(_campaignId: string, typed?: readonly (readonly number[])[]): Promise<AbilityRollsVm> {
+  rollAbilityScores(
+    _campaignId: string,
+    typed?: readonly (readonly number[])[],
+  ): Promise<AbilityRollsVm> {
     this.rollCalls.push(typed);
     return this.rollFn(typed);
   }
@@ -132,7 +135,9 @@ function catalog(): RulesCatalogVm {
         fromTable: false,
         archived: false,
         off: false,
-        subraces: [{ key: 'subrace:rock-gnome', namePt: 'Gnomo da Rocha', constitutionBonus: 1, ...SRD }],
+        subraces: [
+          { key: 'subrace:rock-gnome', namePt: 'Gnomo da Rocha', constitutionBonus: 1, ...SRD },
+        ],
       },
     ],
     classes: [
@@ -146,7 +151,15 @@ function catalog(): RulesCatalogVm {
         savingThrows: ['int', 'wis'],
         spellListClassKey: 'class:wizard',
         preparation: 'spellbook',
-        subclasses: [{ key: 'subclass:evocation', namePt: 'Evocação', casting: null, alwaysPrepared: [], ...SRD }],
+        subclasses: [
+          {
+            key: 'subclass:evocation',
+            namePt: 'Evocação',
+            casting: null,
+            alwaysPrepared: [],
+            ...SRD,
+          },
+        ],
         subclassLevel: 2,
         spellcastingFirstLevel: 1,
         // Levels 1-5: circles 1, 1, 2, 2, 3.
@@ -162,7 +175,15 @@ function catalog(): RulesCatalogVm {
         savingThrows: ['wis', 'cha'],
         spellListClassKey: 'class:paladin',
         preparation: 'prepared',
-        subclasses: [{ key: 'subclass:devotion', namePt: 'Devoção', casting: null, alwaysPrepared: [], ...SRD }],
+        subclasses: [
+          {
+            key: 'subclass:devotion',
+            namePt: 'Devoção',
+            casting: null,
+            alwaysPrepared: [],
+            ...SRD,
+          },
+        ],
         subclassLevel: 3,
         spellcastingFirstLevel: 2,
         // No leveled spells at level 1.
@@ -180,23 +201,69 @@ function catalog(): RulesCatalogVm {
       { key: 'equipment:dagger', namePt: 'Adaga' },
     ],
     spells: [
-      { key: 'spell:fire-bolt', namePt: 'Raio de Fogo', level: 0, classKeys: ['class:wizard'], fromTable: false, archived: false, off: false },
-      { key: 'spell:ray-of-frost', namePt: 'Raio de Gelo', level: 0, classKeys: ['class:wizard'], fromTable: false, archived: false, off: false },
+      {
+        key: 'spell:fire-bolt',
+        namePt: 'Raio de Fogo',
+        level: 0,
+        classKeys: ['class:wizard'],
+        fromTable: false,
+        archived: false,
+        off: false,
+      },
+      {
+        key: 'spell:ray-of-frost',
+        namePt: 'Raio de Gelo',
+        level: 0,
+        classKeys: ['class:wizard'],
+        fromTable: false,
+        archived: false,
+        off: false,
+      },
       {
         key: 'spell:magic-missile',
         namePt: 'Mísseis Mágicos',
         level: 1,
-        classKeys: ['class:wizard'], fromTable: false, archived: false, off: false,
+        classKeys: ['class:wizard'],
+        fromTable: false,
+        archived: false,
+        off: false,
       },
-      { key: 'spell:shield', namePt: 'Escudo Arcano', level: 1, classKeys: ['class:wizard'], fromTable: false, archived: false, off: false },
-      { key: 'spell:fireball', namePt: 'Bola de Fogo', level: 3, classKeys: ['class:wizard'], fromTable: false, archived: false, off: false },
-      { key: 'spell:bless', namePt: 'Bênção', level: 1, classKeys: ['class:paladin'], fromTable: false, archived: false, off: false },
+      {
+        key: 'spell:shield',
+        namePt: 'Escudo Arcano',
+        level: 1,
+        classKeys: ['class:wizard'],
+        fromTable: false,
+        archived: false,
+        off: false,
+      },
+      {
+        key: 'spell:fireball',
+        namePt: 'Bola de Fogo',
+        level: 3,
+        classKeys: ['class:wizard'],
+        fromTable: false,
+        archived: false,
+        off: false,
+      },
+      {
+        key: 'spell:bless',
+        namePt: 'Bênção',
+        level: 1,
+        classKeys: ['class:paladin'],
+        fromTable: false,
+        archived: false,
+        off: false,
+      },
       // Not on the Wizard's list — proves the picker filters by class.
       {
         key: 'spell:cure-wounds',
         namePt: 'Curar Ferimentos',
         level: 1,
-        classKeys: ['class:cleric'], fromTable: false, archived: false, off: false,
+        classKeys: ['class:cleric'],
+        fromTable: false,
+        archived: false,
+        off: false,
       },
     ],
     viewerIsMaster: false,
@@ -228,9 +295,9 @@ function flush(): Promise<void> {
 /** Opens a step by its tab, like a click. A step's content is built the first time it opens (EditorStepper), so a
  * spec that reads a step other than "Básico" opens it first. */
 async function openStep(fixture: ComponentFixture<CharacterEditor>, label: string): Promise<void> {
-  const tab = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('[role="tab"]')).find(
-    (t) => t.textContent?.includes(label),
-  );
+  const tab = Array.from(
+    (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('[role="tab"]'),
+  ).find((t) => t.textContent?.includes(label));
   if (!tab) {
     throw new Error(`no step "${label}"`);
   }
@@ -412,7 +479,12 @@ describe('CharacterEditor', () => {
       fixture.detectChanges();
       expect(cmp.fullForm.controls.subclassName.enabled).toBe(true);
       // Once chosen it stays open (and sent) even if the level is lowered again; creating without opening any other step works.
-      cmp.fullForm.patchValue({ subclassName: 'subclass:evocation', name: 'Lia', race: 'race:gnome', background: 'background:acolyte' });
+      cmp.fullForm.patchValue({
+        subclassName: 'subclass:evocation',
+        name: 'Lia',
+        race: 'race:gnome',
+        background: 'background:acolyte',
+      });
       cmp.fullForm.patchValue({ level: 1 });
       fixture.detectChanges();
       expect(cmp.fullForm.controls.subclassName.enabled).toBe(true);
@@ -504,9 +576,15 @@ describe('CharacterEditor', () => {
       const cmp = fixture.componentInstance as any;
 
       cmp.fullForm.patchValue({ className: 'class:wizard', level: 1 });
-      expect(keys(cmp.sectionViews()[0].known.shown)).toEqual(['spell:shield', 'spell:magic-missile']);
+      expect(keys(cmp.sectionViews()[0].known.shown)).toEqual([
+        'spell:shield',
+        'spell:magic-missile',
+      ]);
       // Cantrips are not gated by level, and sort by name.
-      expect(keys(cmp.sectionViews()[0].cantrips.shown)).toEqual(['spell:fire-bolt', 'spell:ray-of-frost']);
+      expect(keys(cmp.sectionViews()[0].cantrips.shown)).toEqual([
+        'spell:fire-bolt',
+        'spell:ray-of-frost',
+      ]);
 
       cmp.fullForm.patchValue({ level: 5 });
       expect(keys(cmp.sectionViews()[0].prepared.shown)).toEqual([
@@ -630,11 +708,16 @@ describe('CharacterEditor', () => {
     });
     // A spell the catalog knows that the class's list does not have (Bênção is the paladin's) never goes; a key the
     // catalog does not know at all is kept for the server to judge, not dropped quietly (RN-23: a retired entry).
-    cmp.selectedCantrips.set(new Set(['spell:fire-bolt', 'spell:bless', 'spell:not-in-the-catalog']));
+    cmp.selectedCantrips.set(
+      new Set(['spell:fire-bolt', 'spell:bless', 'spell:not-in-the-catalog']),
+    );
 
     await cmp.submit();
 
-    expect(fake.createCharacterCalls[0].full?.cantrips).toEqual(['spell:fire-bolt', 'spell:not-in-the-catalog']);
+    expect(fake.createCharacterCalls[0].full?.cantrips).toEqual([
+      'spell:fire-bolt',
+      'spell:not-in-the-catalog',
+    ]);
   });
 
   it('shows the fiction notice on every free-text group of a full sheet', async () => {
@@ -678,7 +761,12 @@ describe('CharacterEditor', () => {
           level: 3,
           background: 'background:acolyte',
           customBackgroundName: '',
-          customBackgroundSkills: null, customBackgroundProficiencies: [], customBackgroundFeatureName: '', customBackgroundFeatureText: '', customBackgroundEquipment: '', extraClasses: [],
+          customBackgroundSkills: null,
+          customBackgroundProficiencies: [],
+          customBackgroundFeatureName: '',
+          customBackgroundFeatureText: '',
+          customBackgroundEquipment: '',
+          extraClasses: [],
           skillProficiencies: ['skill:arcana'],
           expertiseSkillKeys: [],
           abilities: { str: 8, dex: 14, con: 16, int: 18, wis: 12, cha: 10 },
@@ -736,22 +824,40 @@ describe('CharacterEditor', () => {
   it('shows the lock instead of the form when the player may no longer edit the sheet (RN-01)', async () => {
     configure({ id: 'camp-1', characterId: 'char-1' });
     fake.loadCharacterForEditFn = () =>
-      Promise.resolve({ kind: 'player', revision: 3, blocked: 'sheet_locked', sheetLocked: true, full: null, basic: null });
+      Promise.resolve({
+        kind: 'player',
+        revision: 3,
+        blocked: 'sheet_locked',
+        sheetLocked: true,
+        full: null,
+        basic: null,
+      });
 
     const { el } = await render();
     expect(el.querySelector('h1')?.textContent).toContain('Ficha travada');
-    expect(el.querySelector('[role="status"].mr-notice')?.textContent).toContain('A ficha está travada');
+    expect(el.querySelector('[role="status"].mr-notice')?.textContent).toContain(
+      'A ficha está travada',
+    );
     expect(el.querySelector('[role="alert"]')).toBeNull();
     expect(el.querySelector('form')).toBeNull();
     expect(el.querySelector('button[mat-flat-button]')).toBeNull();
-    const back = Array.from(el.querySelectorAll('a')).find((a) => a.textContent?.includes('Voltar para a ficha'));
+    const back = Array.from(el.querySelectorAll('a')).find((a) =>
+      a.textContent?.includes('Voltar para a ficha'),
+    );
     expect(back?.getAttribute('href')).toBe('/campaigns/camp-1/characters/char-1');
   });
 
   it("says a dead character's sheet can't change, without a form (RN-03)", async () => {
     configure({ id: 'camp-1', characterId: 'char-1' });
     fake.loadCharacterForEditFn = () =>
-      Promise.resolve({ kind: 'player', revision: 3, blocked: 'character_dead', sheetLocked: true, full: null, basic: null });
+      Promise.resolve({
+        kind: 'player',
+        revision: 3,
+        blocked: 'character_dead',
+        sheetLocked: true,
+        full: null,
+        basic: null,
+      });
 
     const { el } = await render();
     expect(el.querySelector('h1')?.textContent).toContain('Personagem morto');
@@ -1016,7 +1122,9 @@ describe('CharacterEditor', () => {
       await openStep(fixture, 'Habilidades');
 
       const summary = el.querySelector('.bonuses__summary');
-      expect(summary?.textContent).toContain('Incremento no Valor de Habilidade, escolhas de raça, item mágico.');
+      expect(summary?.textContent).toContain(
+        'Incremento no Valor de Habilidade, escolhas de raça, item mágico.',
+      );
       expect(el.querySelector('.bonuses__state')?.textContent).toContain('Nenhum em uso');
 
       cmp.fullForm.patchValue({
@@ -1347,7 +1455,12 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
       level: 3,
       background: 'background:acolyte',
       customBackgroundName: '',
-      customBackgroundSkills: null, customBackgroundProficiencies: [], customBackgroundFeatureName: '', customBackgroundFeatureText: '', customBackgroundEquipment: '', extraClasses: [],
+      customBackgroundSkills: null,
+      customBackgroundProficiencies: [],
+      customBackgroundFeatureName: '',
+      customBackgroundFeatureText: '',
+      customBackgroundEquipment: '',
+      extraClasses: [],
       skillProficiencies: [],
       expertiseSkillKeys: [],
       abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
@@ -1381,7 +1494,9 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
       expect(defeat(el)).not.toBeNull();
       expect(cmp(fixture).fullForm.controls.challengeRating.value).toBe('0');
       expect(cmp(fixture).fullForm.controls.xpValue.value).toBe(10);
-      expect(el.textContent).toContain('Só você vê o ND e o XP. Os jogadores só ganham o XP quando o combate acaba e você dá.');
+      expect(el.textContent).toContain(
+        'Só você vê o ND e o XP. Os jogadores só ganham o XP quando o combate acaba e você dá.',
+      );
     });
 
     it('has no "Pontos de experiência" of its own: an NPC has no XP to level with', async () => {
@@ -1394,7 +1509,14 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
     it('sends the ND and the XP it was given, with the table at hand', async () => {
       configure({ id: 'camp-1', kind: 'enemy' });
       const { fixture } = await render();
-      cmp(fixture).fullForm.patchValue({ name: 'Capitão', race: 'race:gnome', className: 'class:wizard', background: 'background:acolyte', challengeRating: '1', xpValue: 200 });
+      cmp(fixture).fullForm.patchValue({
+        name: 'Capitão',
+        race: 'race:gnome',
+        className: 'class:wizard',
+        background: 'background:acolyte',
+        challengeRating: '1',
+        xpValue: 200,
+      });
       await cmp(fixture).submit();
 
       const req = fake.createCharacterCalls[0];
@@ -1431,7 +1553,9 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
       configure({ id: 'camp-1', kind: 'minion' });
       const { fixture, el } = await render();
       expect(el.querySelector('#defeat-heading')?.textContent).toBe('Ao ser derrotado');
-      expect(el.textContent).toContain('O XP que o grupo ganha quando este NPC é derrotado. Só você vê o ND e o XP.');
+      expect(el.textContent).toContain(
+        'O XP que o grupo ganha quando este NPC é derrotado. Só você vê o ND e o XP.',
+      );
       expect(cmp(fixture).basicForm.controls.challengeRating.value).toBe('0');
       expect(cmp(fixture).basicForm.controls.xpValue.value).toBe(10);
     });
@@ -1441,7 +1565,10 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
       const { fixture } = await render();
       cmp(fixture).basicForm.patchValue({ name: 'Goblin', challengeRating: '1/4', xpValue: 50 });
       await cmp(fixture).submit();
-      expect(fake.createCharacterCalls[0].basic).toMatchObject({ challengeRating: '1/4', xpValue: 50 });
+      expect(fake.createCharacterCalls[0].basic).toMatchObject({
+        challengeRating: '1/4',
+        xpValue: 50,
+      });
     });
 
     it('does not wipe the ND and the XP when an edit is saved', async () => {
@@ -1453,11 +1580,28 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
           blocked: null,
           sheetLocked: false,
           full: null,
-          basic: { name: 'Goblin', hitPointsMax: 7, armorClass: 15, speedFt: 30, initiativeBonus: 2, attacks: [], legacyDamage: '', legacyAttackBonus: 0, description: '', challengeRating: '1/4', xpValue: 50, portraitImageId: '', size: 0 },
+          basic: {
+            name: 'Goblin',
+            hitPointsMax: 7,
+            armorClass: 15,
+            speedFt: 30,
+            initiativeBonus: 2,
+            attacks: [],
+            legacyDamage: '',
+            legacyAttackBonus: 0,
+            description: '',
+            challengeRating: '1/4',
+            xpValue: 50,
+            portraitImageId: '',
+            size: 0,
+          },
         });
       const { fixture } = await render();
       await cmp(fixture).submit();
-      expect(fake.updateCharacterCalls[0].basic).toMatchObject({ challengeRating: '1/4', xpValue: 50 });
+      expect(fake.updateCharacterCalls[0].basic).toMatchObject({
+        challengeRating: '1/4',
+        xpValue: 50,
+      });
     });
 
     it('asks for the XP when it is left empty', async () => {
@@ -1492,7 +1636,12 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
     it('sends no ND and no defeat XP', async () => {
       configure({ id: 'camp-1' });
       const { fixture } = await render();
-      cmp(fixture).fullForm.patchValue({ name: 'Pensantus', race: 'race:gnome', className: 'class:wizard', background: 'background:acolyte' });
+      cmp(fixture).fullForm.patchValue({
+        name: 'Pensantus',
+        race: 'race:gnome',
+        className: 'class:wizard',
+        background: 'background:acolyte',
+      });
       await cmp(fixture).submit();
       expect(fake.createCharacterCalls[0].full).toMatchObject({ challengeRating: '', xpValue: 0 });
     });
@@ -1500,7 +1649,9 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
     it('shows the XP as a number to read once the sheet is locked, and keeps it on save (MR-016: only awards change it)', async () => {
       configure({ id: 'camp-1', characterId: 'char-1' });
       fake.loadCharacterForEditFn = () =>
-        Promise.resolve(fullNpc({ experiencePoints: 2716, challengeRating: '', xpValue: 0 })).then((v) => ({ ...v, kind: 'player' as const, sheetLocked: true }));
+        Promise.resolve(fullNpc({ experiencePoints: 2716, challengeRating: '', xpValue: 0 })).then(
+          (v) => ({ ...v, kind: 'player' as const, sheetLocked: true }),
+        );
       const { fixture, el } = await render();
 
       expect(el.querySelector('.xp-read__value')?.textContent).toBe(`2.716${nbsp}XP`);
@@ -1517,7 +1668,10 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
 // rebuild, so saving an NPC never loses it: the short form once dropped it.
 describe('CharacterEditor, the NPC portrait', () => {
   let fake: FakeCharacterEditorSource;
-  const images = [galleryImage('img-1', 'Retrato da Mira'), galleryImage('img-2', 'Capitão Goblin')];
+  const images = [
+    galleryImage('img-1', 'Retrato da Mira'),
+    galleryImage('img-2', 'Capitão Goblin'),
+  ];
 
   function configure(params: Record<string, string>): void {
     TestBed.configureTestingModule({
@@ -1526,7 +1680,10 @@ describe('CharacterEditor, the NPC portrait', () => {
         provideRouter([]),
         { provide: CharacterEditorSource, useClass: FakeCharacterEditorSource },
         { provide: ActivatedRoute, useValue: routeParams(params) },
-        { provide: GalleryClient, useValue: { list: () => Promise.resolve({ images, usage: galleryUsage(images) }) } },
+        {
+          provide: GalleryClient,
+          useValue: { list: () => Promise.resolve({ images, usage: galleryUsage(images) }) },
+        },
       ],
     });
     fake = TestBed.inject(CharacterEditorSource) as unknown as FakeCharacterEditorSource;
@@ -1550,7 +1707,21 @@ describe('CharacterEditor, the NPC portrait', () => {
     blocked: null,
     sheetLocked: false,
     full: null,
-    basic: { name: 'Mira', hitPointsMax: 9, armorClass: 11, speedFt: 30, initiativeBonus: 2, attacks: [], legacyDamage: '', legacyAttackBonus: 0, description: '', challengeRating: '', xpValue: 0, portraitImageId, size: 0 },
+    basic: {
+      name: 'Mira',
+      hitPointsMax: 9,
+      armorClass: 11,
+      speedFt: 30,
+      initiativeBonus: 2,
+      attacks: [],
+      legacyDamage: '',
+      legacyAttackBonus: 0,
+      description: '',
+      challengeRating: '',
+      xpValue: 0,
+      portraitImageId,
+      size: 0,
+    },
   });
 
   it('shows "Retrato" on the short form of a new NPC, with the initials and "Escolher retrato"', async () => {
@@ -1573,7 +1744,10 @@ describe('CharacterEditor, the NPC portrait', () => {
     cmp(fixture).basicForm.patchValue({ hitPointsMax: 12 });
     await cmp(fixture).submit();
     expect(fake.updateCharacterCalls).toHaveLength(1);
-    expect(fake.updateCharacterCalls[0].basic).toMatchObject({ hitPointsMax: 12, portraitImageId: 'img-1' });
+    expect(fake.updateCharacterCalls[0].basic).toMatchObject({
+      hitPointsMax: 12,
+      portraitImageId: 'img-1',
+    });
   });
 
   it('saves a portrait chosen on a new NPC, a changed one and a removed one', async () => {
@@ -1608,12 +1782,43 @@ describe('CharacterEditor, the NPC portrait', () => {
         kind: 'enemy',
         basic: null,
         full: {
-          name: 'Capitão Goblin', race: 'race:gnome', subrace: '', className: 'class:wizard', subclassName: '', customSubclassName: '', level: 3,
-          background: 'background:acolyte', customBackgroundName: '', customBackgroundSkills: null, customBackgroundProficiencies: [], customBackgroundFeatureName: '', customBackgroundFeatureText: '', customBackgroundEquipment: '', extraClasses: [], skillProficiencies: [], expertiseSkillKeys: [],
-          abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }, extraAbilityBonuses: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
-          hitPointsMethod: 'average', hitPointsRolls: [], isCaster: false, cantrips: [], spellsKnown: [], spellsPrepared: [], armor: '', shield: false,
-          weapons: [], equipmentText: '', languagesText: '', toolProficienciesText: '', experiencePoints: 0, challengeRating: '1', xpValue: 200, portraitImageId,
-          alignment: '', customFeaturesText: '',
+          name: 'Capitão Goblin',
+          race: 'race:gnome',
+          subrace: '',
+          className: 'class:wizard',
+          subclassName: '',
+          customSubclassName: '',
+          level: 3,
+          background: 'background:acolyte',
+          customBackgroundName: '',
+          customBackgroundSkills: null,
+          customBackgroundProficiencies: [],
+          customBackgroundFeatureName: '',
+          customBackgroundFeatureText: '',
+          customBackgroundEquipment: '',
+          extraClasses: [],
+          skillProficiencies: [],
+          expertiseSkillKeys: [],
+          abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
+          extraAbilityBonuses: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+          hitPointsMethod: 'average',
+          hitPointsRolls: [],
+          isCaster: false,
+          cantrips: [],
+          spellsKnown: [],
+          spellsPrepared: [],
+          armor: '',
+          shield: false,
+          weapons: [],
+          equipmentText: '',
+          languagesText: '',
+          toolProficienciesText: '',
+          experiencePoints: 0,
+          challengeRating: '1',
+          xpValue: 200,
+          portraitImageId,
+          alignment: '',
+          customFeaturesText: '',
         },
       };
     };
@@ -1644,7 +1849,7 @@ describe('CharacterEditor, the NPC portrait', () => {
   });
 });
 
-describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN-24)', () => {
+describe("CharacterEditor, a player making a new sheet by the table's rules (RN-24)", () => {
   let fake: FakeCharacterEditorSource;
 
   const table: AbilityTableVm = {
@@ -1664,7 +1869,10 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
     rolls: null,
   };
 
-  function configure(params: Record<string, string>, abilityTable: AbilityTableVm | null = table): void {
+  function configure(
+    params: Record<string, string>,
+    abilityTable: AbilityTableVm | null = table,
+  ): void {
     TestBed.configureTestingModule({
       imports: [CharacterEditor],
       providers: [
@@ -1687,16 +1895,21 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
   }
 
   function fillBasics(cmp: any): void {
-    cmp.fullForm.patchValue({ name: 'Ícaro', race: 'race:gnome', className: 'class:wizard', background: 'background:acolyte' });
+    cmp.fullForm.patchValue({
+      name: 'Ícaro',
+      race: 'race:gnome',
+      className: 'class:wizard',
+      background: 'background:acolyte',
+    });
   }
 
-  it('asks for the table\'s ways for a player', async () => {
+  it("asks for the table's ways for a player", async () => {
     configure({ id: 'camp-1' });
     await render();
     expect(fake.loadAbilityTableCalls).toEqual(['camp-1']);
   });
 
-  it('does not ask for the table\'s ways for an NPC of the master', async () => {
+  it("does not ask for the table's ways for an NPC of the master", async () => {
     configure({ id: 'camp-1', kind: 'enemy' });
     await render();
     expect(fake.loadAbilityTableCalls).toEqual([]);
@@ -1738,19 +1951,27 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
 
     // Typed values: complete, and the method goes with the request.
     const step = fixture.nativeElement.querySelector('app-table-ability-scores') as HTMLElement;
-    const typed = Array.from(step.querySelectorAll<HTMLInputElement>('input[name="ability-method"]')).find((i) => i.closest('label')?.textContent?.includes('Digitar'))!;
+    const typed = Array.from(
+      step.querySelectorAll<HTMLInputElement>('input[name="ability-method"]'),
+    ).find((i) => i.closest('label')?.textContent?.includes('Digitar'))!;
     typed.click();
     fixture.detectChanges();
     await flush();
-    cmp.fullForm.get('abilities')?.patchValue({ str: 12, dex: 14, con: 13, int: 8, wis: 16, cha: 10 });
+    cmp.fullForm
+      .get('abilities')
+      ?.patchValue({ str: 12, dex: 14, con: 13, int: 8, wis: 16, cha: 10 });
     fixture.detectChanges();
     await cmp.submit();
     expect(fake.createCharacterCalls).toHaveLength(1);
     expect(fake.createCharacterCalls[0].abilityMethod).toBe('typed');
-    expect(fake.createCharacterCalls[0].full?.abilities).toMatchObject({ str: 12, dex: 14, wis: 16 });
+    expect(fake.createCharacterCalls[0].full?.abilities).toMatchObject({
+      str: 12,
+      dex: 14,
+      wis: 16,
+    });
   });
 
-  it('shows the server\'s refusal of the scores by its reason', async () => {
+  it("shows the server's refusal of the scores by its reason", async () => {
     configure({ id: 'camp-1' });
     const { fixture } = await render();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1758,13 +1979,20 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
     fillBasics(cmp);
     fixture.detectChanges();
     const step = fixture.nativeElement.querySelector('app-table-ability-scores') as HTMLElement;
-    Array.from(step.querySelectorAll<HTMLInputElement>('input[name="ability-method"]')).find((i) => i.closest('label')?.textContent?.includes('Digitar'))!.click();
+    Array.from(step.querySelectorAll<HTMLInputElement>('input[name="ability-method"]'))
+      .find((i) => i.closest('label')?.textContent?.includes('Digitar'))!
+      .click();
     fixture.detectChanges();
     await flush();
     fake.createCharacterFn = () =>
       Promise.reject(
         new ConnectError('x', Code.FailedPrecondition, undefined, [
-          { desc: AbilityScoresRefusalSchema, value: create(AbilityScoresRefusalSchema, { reason: AbilityScoresRefusalReason.METHOD_NOT_ALLOWED }) },
+          {
+            desc: AbilityScoresRefusalSchema,
+            value: create(AbilityScoresRefusalSchema, {
+              reason: AbilityScoresRefusalReason.METHOD_NOT_ALLOWED,
+            }),
+          },
         ]),
       );
     await cmp.submit();
@@ -1775,22 +2003,28 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
     });
   });
 
-  it('offers only the hit points the table\'s rule allows, and starts on the one it leaves', async () => {
+  it("offers only the hit points the table's rule allows, and starts on the one it leaves", async () => {
     configure({ id: 'camp-1' }, { ...table, hitPoints: 'roll' });
     const { fixture, el } = await render();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cmp = fixture.componentInstance as any;
     expect(cmp.fullForm.controls.hitPointsMethod.value).toBe('rolled');
     expect(el.querySelector('mat-radio-group.hp-methods')).toBeNull();
-    expect(el.textContent).toContain('A mesa pede que os pontos de vida dos níveis acima do 1º sejam rolados: a média não é oferecida.');
+    expect(el.textContent).toContain(
+      'A mesa pede que os pontos de vida dos níveis acima do 1º sejam rolados: a média não é oferecida.',
+    );
 
     TestBed.resetTestingModule();
     configure({ id: 'camp-1' }, { ...table, hitPoints: 'average' });
     const avg = await render();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((avg.fixture.componentInstance as any).fullForm.controls.hitPointsMethod.value).toBe('average');
+    expect((avg.fixture.componentInstance as any).fullForm.controls.hitPointsMethod.value).toBe(
+      'average',
+    );
     expect(avg.el.querySelector('mat-radio-group.hp-methods')).toBeNull();
-    expect(avg.el.textContent).toContain('A mesa usa a média nos pontos de vida: o dado não é oferecido.');
+    expect(avg.el.textContent).toContain(
+      'A mesa usa a média nos pontos de vida: o dado não é oferecido.',
+    );
 
     TestBed.resetTestingModule();
     configure({ id: 'camp-1' });
@@ -1798,7 +2032,7 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
     expect(both.el.querySelectorAll('mat-radio-group.hp-methods mat-radio-button')).toHaveLength(2);
   });
 
-  it('says the table\'s hit points rule when the server refuses a new sheet for it', async () => {
+  it("says the table's hit points rule when the server refuses a new sheet for it", async () => {
     configure({ id: 'camp-1' });
     const { fixture } = await render();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1806,17 +2040,24 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
     fillBasics(cmp);
     fixture.detectChanges();
     const step = fixture.nativeElement.querySelector('app-table-ability-scores') as HTMLElement;
-    Array.from(step.querySelectorAll<HTMLInputElement>('input[name="ability-method"]')).find((i) => i.closest('label')?.textContent?.includes('Digitar'))!.click();
+    Array.from(step.querySelectorAll<HTMLInputElement>('input[name="ability-method"]'))
+      .find((i) => i.closest('label')?.textContent?.includes('Digitar'))!
+      .click();
     fixture.detectChanges();
     await flush();
     fake.createCharacterFn = () =>
       Promise.reject(
         new ConnectError('x', Code.FailedPrecondition, undefined, [
-          { desc: LevelUpRefusalSchema, value: create(LevelUpRefusalSchema, { reason: LevelUpRefusalReason.HIT_POINTS_RULE }) },
+          {
+            desc: LevelUpRefusalSchema,
+            value: create(LevelUpRefusalSchema, { reason: LevelUpRefusalReason.HIT_POINTS_RULE }),
+          },
         ]),
       );
     await cmp.submit();
-    expect(cmp.saveState().message).toContain('A mesa decidiu como se ganham os pontos de vida dos níveis acima do 1º');
+    expect(cmp.saveState().message).toContain(
+      'A mesa decidiu como se ganham os pontos de vida dos níveis acima do 1º',
+    );
   });
 
   it('a player editing their own draft keeps the method its scores were made by, with its limits', async () => {
@@ -1842,7 +2083,15 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
     TestBed.resetTestingModule();
     configure({ id: 'camp-1', characterId: 'ch-1' }, null);
     fake.loadCharacterForEditFn = () =>
-      Promise.resolve({ kind: 'player' as const, revision: 2, blocked: null, sheetLocked: false, full: null, basic: null, abilityOrigin: { method: 'point_buy' as const, rolls: null } });
+      Promise.resolve({
+        kind: 'player' as const,
+        revision: 2,
+        blocked: null,
+        sheetLocked: false,
+        full: null,
+        basic: null,
+        abilityOrigin: { method: 'point_buy' as const, rolls: null },
+      });
     const free = await render();
     await openStep(free.fixture, 'Habilidades');
     expect(free.el.querySelector('app-table-ability-scores')).toBeNull();
@@ -1850,7 +2099,7 @@ describe('CharacterEditor, a player making a new sheet by the table\'s rules (RN
   });
 });
 
-describe('CharacterEditor, the master\'s switches (RN-23: an option switched off, and the live content hint)', () => {
+describe("CharacterEditor, the master's switches (RN-23: an option switched off, and the live content hint)", () => {
   let fake: FakeCharacterEditorSource;
   let watcher = fakeContentWatcher();
 
@@ -1879,12 +2128,30 @@ describe('CharacterEditor, the master\'s switches (RN-23: an option switched off
 
   const withElf = (): RulesCatalogVm => ({
     ...catalog(),
-    races: [...catalog().races, { key: 'race:elf', namePt: 'Elfo', constitutionBonus: 0, subraces: [], choiceBonuses: [], fromTable: false, archived: false, off: false }],
+    races: [
+      ...catalog().races,
+      {
+        key: 'race:elf',
+        namePt: 'Elfo',
+        constitutionBonus: 0,
+        subraces: [],
+        choiceBonuses: [],
+        fromTable: false,
+        archived: false,
+        off: false,
+      },
+    ],
   });
 
   function switchedOff(key: string): ConnectError {
     return new ConnectError('x', Code.FailedPrecondition, undefined, [
-      { desc: CharacterBlockedSchema, value: create(CharacterBlockedSchema, { reason: CharacterBlockedReason.SWITCHED_OFF_CONTENT, contentKey: key }) },
+      {
+        desc: CharacterBlockedSchema,
+        value: create(CharacterBlockedSchema, {
+          reason: CharacterBlockedReason.SWITCHED_OFF_CONTENT,
+          contentKey: key,
+        }),
+      },
     ]);
   }
 
@@ -1899,8 +2166,13 @@ describe('CharacterEditor, the master\'s switches (RN-23: an option switched off
     watcher.hint();
     await flush();
     fixture.detectChanges();
-    expect(cmp.state().catalog.races.map((r: { key: string }) => r.key)).toEqual(['race:gnome', 'race:elf']);
-    expect(el.querySelector('[role="status"].mr-notice')?.textContent).toContain('O mestre mudou as opções da mesa');
+    expect(cmp.state().catalog.races.map((r: { key: string }) => r.key)).toEqual([
+      'race:gnome',
+      'race:elf',
+    ]);
+    expect(el.querySelector('[role="status"].mr-notice')?.textContent).toContain(
+      'O mestre mudou as opções da mesa',
+    );
     expect(cmp.fullForm.value.name).toBe('Ícaro');
     expect(cmp.fullForm.value.race).toBe('race:gnome');
   });
@@ -1914,7 +2186,14 @@ describe('CharacterEditor, the master\'s switches (RN-23: an option switched off
     expect(el.textContent).not.toContain('O mestre mudou as opções da mesa');
   });
 
-  const fill = (cmp: any) => cmp.fullForm.patchValue({ name: 'Ícaro', race: 'race:gnome', className: 'class:wizard', background: 'background:acolyte', level: 3 });
+  const fill = (cmp: any) =>
+    cmp.fullForm.patchValue({
+      name: 'Ícaro',
+      race: 'race:gnome',
+      className: 'class:wizard',
+      background: 'background:acolyte',
+      level: 3,
+    });
 
   it('shows the refusal of a newly chosen switched-off option as an error of the field that holds it, by the typed reason (E10-01 state 5)', async () => {
     configure({ id: 'camp-1' });
@@ -1936,7 +2215,9 @@ describe('CharacterEditor, the master\'s switches (RN-23: an option switched off
     const select = el.querySelector('mat-select[formcontrolname="race"]') as HTMLElement;
     expect(select.getAttribute('aria-invalid')).toBe('true');
     const error = select.closest('mat-form-field')!.querySelector('mat-error');
-    expect(error?.textContent).toContain('A raça “Gnomo” foi desligada pelo mestre para os jogadores. Escolha outra opção.');
+    expect(error?.textContent).toContain(
+      'A raça “Gnomo” foi desligada pelo mestre para os jogadores. Escolha outra opção.',
+    );
     // The step is marked, the notice above the buttons names the field, and the focus is on it.
     expect(cmp.stepHasError('basico')).toBe(true);
     expect(cmp.invalidSummary()).toContain('Raça');
@@ -1962,7 +2243,9 @@ describe('CharacterEditor, the master\'s switches (RN-23: an option switched off
     await flush();
     fixture.detectChanges();
     expect(cmp.state().catalog.races).toEqual([]);
-    expect(cmp.fullForm.controls.race.getError('switchedOff')).toContain('A raça “Gnomo” foi desligada');
+    expect(cmp.fullForm.controls.race.getError('switchedOff')).toContain(
+      'A raça “Gnomo” foi desligada',
+    );
     expect(el.textContent).not.toContain('Esta opção');
     expect(el.textContent).not.toContain('Uma das opções');
   });

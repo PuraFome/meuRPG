@@ -1,7 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 
-import { ContentService, type ListTrapPresetsResponse } from '../../../gen/meurpg/rules/v1/rules_pb';
+import {
+  ContentService,
+  type ListTrapPresetsResponse,
+} from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
 /**

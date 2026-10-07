@@ -13,7 +13,12 @@ describe('NoteEditing', () => {
   beforeEach(async () => {
     api = new FakeNotesClient();
     api.scenesList = [scene('s1', 'A carroça tombada'), scene('s2', 'A ponte do rio')];
-    api.notes = [note('n1', 'Brisa me deve 5 PO', new Date(2026, 9, 1, 22, 3), { sceneId: 's2', sceneName: 'A ponte do rio' })];
+    api.notes = [
+      note('n1', 'Brisa me deve 5 PO', new Date(2026, 9, 1, 22, 3), {
+        sceneId: 's2',
+        sceneName: 'A ponte do rio',
+      }),
+    ];
     state = new NotesState(api as never, () => 'c1');
     open = '';
     editing = new NoteEditing(state, () => open);

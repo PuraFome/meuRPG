@@ -29,7 +29,9 @@ import { formatClock } from '../../shared/session-time/session-time';
 /** Whether a map point is a trap, a treasure or a light: the kinds the session page keeps off the
  * old markers and draws as its own marks (`app-map-pins`). */
 export function isPinKind(kind: MapPointKind): boolean {
-  return kind === MapPointKind.TRAP || kind === MapPointKind.TREASURE || kind === MapPointKind.LIGHT;
+  return (
+    kind === MapPointKind.TRAP || kind === MapPointKind.TREASURE || kind === MapPointKind.LIGHT
+  );
 }
 
 export function trapPoints(points: readonly MapPoint[]): readonly MapPoint[] {
@@ -89,7 +91,13 @@ export function trapVisibility(point: MapPoint): TrapVisibility {
   if (point.trapRevealedTo.length === 0) {
     return { kind: 'secret', label: 'Só você vê' };
   }
-  return { kind: 'some', label: names.length > 0 ? `Só ${listNames(names)} ${names.length === 1 ? 'sabe' : 'sabem'}` : 'Alguns jogadores sabem' };
+  return {
+    kind: 'some',
+    label:
+      names.length > 0
+        ? `Só ${listNames(names)} ${names.length === 1 ? 'sabe' : 'sabem'}`
+        : 'Alguns jogadores sabem',
+  };
 }
 
 /** Why a character already has the trap, in the reveal dialog. */
@@ -144,7 +152,9 @@ export function effectText(effect: TrapEffect | undefined): string {
     ].filter(Boolean);
     const pass = s.onPass === TrapPassOutcome.HALF ? 'metade do dano' : 'nada';
     const who = s.appliesTo === TrapSaveApplies.HIT ? ' (de quem foi atingido)' : '';
-    parts.push(`Resistência de ${ABILITY[s.ability] ?? 'habilidade'} CD ${s.dc}${who}: ${fail.join(' e ') || 'sem efeito'}; quem passa leva ${pass}`);
+    parts.push(
+      `Resistência de ${ABILITY[s.ability] ?? 'habilidade'} CD ${s.dc}${who}: ${fail.join(' e ') || 'sem efeito'}; quem passa leva ${pass}`,
+    );
   }
   if (effect.conditions.length > 0) {
     parts.push(`Deixa ${listNames(effect.conditions.map((c) => c.conditionPt))}`);

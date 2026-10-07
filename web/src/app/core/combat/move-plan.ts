@@ -71,7 +71,8 @@ export function refusalText(
         case MoveRefusal.WALL:
           return {
             title: 'Sem caminho reto',
-            detail: 'Uma parede bloqueia esse caminho, no meio da linha ou no próprio quadrado. Escolha outro quadrado; para contornar uma parede no caminho, mova em partes.',
+            detail:
+              'Uma parede bloqueia esse caminho, no meio da linha ou no próprio quadrado. Escolha outro quadrado; para contornar uma parede no caminho, mova em partes.',
           };
         case MoveRefusal.ENEMY:
           return {
@@ -79,7 +80,10 @@ export function refusalText(
             detail: 'Não dá para passar por um inimigo. Escolha outro quadrado ou mova em partes.',
           };
         case MoveRefusal.OCCUPIED:
-          return { title: 'Ocupado', detail: 'Há alguém nesse quadrado. Escolha um quadrado destacado.' };
+          return {
+            title: 'Ocupado',
+            detail: 'Há alguém nesse quadrado. Escolha um quadrado destacado.',
+          };
         default:
           return tooCostly(leftDft);
       }
@@ -111,13 +115,17 @@ export function afterText(leftDft: number, costDft: number): string {
 /** Who a square's exit may provoke, by name: only combatants the caller sees
  * (the server never lists a hidden one). */
 export function provokedBy(square: ReachableSquare, combatants: readonly Combatant[]): string[] {
-  return square.provokesReactorIds.flatMap((id) => combatants.find((c) => c.id === id)?.label ?? []);
+  return square.provokesReactorIds.flatMap(
+    (id) => combatants.find((c) => c.id === id)?.label ?? [],
+  );
 }
 
 /** "do Goblin 2", "da Brisa", "do Goblin 1 e do Goblin 2". */
 export function ofThe(labels: readonly string[]): string {
   const each = labels.map((l) => `${article(l) === 'a' ? 'da' : 'do'} ${l}`);
-  return tieNumbers(each.length <= 1 ? each.join('') : `${each.slice(0, -1).join(', ')} e ${each[each.length - 1]}`);
+  return tieNumbers(
+    each.length <= 1 ? each.join('') : `${each.slice(0, -1).join(', ')} e ${each[each.length - 1]}`,
+  );
 }
 
 /** The warning before a move that may provoke: a warning, since the server says "pode". */
@@ -132,8 +140,16 @@ export function trapQuestion(name: string): string {
 
 /** The line under the title: "Restam 6,0 m de 9,0 m (4 quadrados de 1,5 m). Você já andou 3,0 m."
  * `squares` is the count of whole squares left, or `null` to leave it out. */
-export function leftLine(leftDft: number, totalDft: number, usedDft: number, squares: number | null = null): string {
-  const count = squares === null ? '' : ` (${squares} ${squares === 1 ? 'quadrado' : 'quadrados'} de 1,5\u00a0m)`;
+export function leftLine(
+  leftDft: number,
+  totalDft: number,
+  usedDft: number,
+  squares: number | null = null,
+): string {
+  const count =
+    squares === null
+      ? ''
+      : ` (${squares} ${squares === 1 ? 'quadrado' : 'quadrados'} de 1,5\u00a0m)`;
   const walked = usedDft > 0 ? ` Você já andou ${metersFixed(usedDft / 10)}.` : '';
   return `Restam ${metersFixed(leftDft / 10)} de ${metersFixed(totalDft / 10)}${count}.${walked}`;
 }

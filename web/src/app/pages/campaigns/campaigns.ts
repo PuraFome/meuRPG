@@ -96,7 +96,11 @@ export class Campaigns {
     try {
       // One key per create: a retry of the same form sends the same key, so a lost answer or a second tap
       // makes one campaign.
-      const res = await this.campaigns.createCampaign(name.trim(), xpMode!, this.createKey.keyFor([name.trim(), xpMode]));
+      const res = await this.campaigns.createCampaign(
+        name.trim(),
+        xpMode!,
+        this.createKey.keyFor([name.trim(), xpMode]),
+      );
       this.createKey.renew();
       this.createState.set({ status: 'idle' });
       const id = res.campaign?.id;

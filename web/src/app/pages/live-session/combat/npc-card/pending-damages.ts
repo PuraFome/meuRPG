@@ -1,4 +1,16 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, inject, input, output, signal, viewChild, viewChildren } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -71,7 +83,12 @@ export class PendingDamages {
 
   protected readonly items = computed(() =>
     this.pendings()
-      .filter((p) => p.status === PendingDamageStatus.ROLLED || p.status === PendingDamageStatus.AWAITING_ROLL || p.status === PendingDamageStatus.AWAITING_REACTION)
+      .filter(
+        (p) =>
+          p.status === PendingDamageStatus.ROLLED ||
+          p.status === PendingDamageStatus.AWAITING_ROLL ||
+          p.status === PendingDamageStatus.AWAITING_REACTION,
+      )
       .map((p) => this.describe(p)),
   );
 
@@ -83,7 +100,9 @@ export class PendingDamages {
     const range = sumRange(p.diceCount, p.diceSides);
     // The reaction prompt of this hit: Escudo is cast with the lowest free slot.
     const prompt = e.reactionPrompts.find((r) => r.pendingDamageId === p.id);
-    const slot = [...(prompt?.slots ?? [])].filter((x) => x.free > 0).sort((a, b) => a.level - b.level)[0];
+    const slot = [...(prompt?.slots ?? [])]
+      .filter((x) => x.free > 0)
+      .sort((a, b) => a.level - b.level)[0];
     return {
       p,
       rolled,
@@ -98,11 +117,22 @@ export class PendingDamages {
       target: target?.label ?? '',
       dice: diceName(p.diceCount, p.diceSides),
       range,
-      label: p.diceCount > 1 ? `Role ${diceName(p.diceCount, p.diceSides)} para o dano: some os dois` : `Role ${diceName(p.diceCount, p.diceSides)} para o dano`,
+      label:
+        p.diceCount > 1
+          ? `Role ${diceName(p.diceCount, p.diceSides)} para o dano: some os dois`
+          : `Role ${diceName(p.diceCount, p.diceSides)} para o dano`,
       line: p.roll ? damageFormula(p.roll, p.damageTypePt) : '',
       // A critical hit follows the table's rule: what to roll, said the way it asks, and what the typed sum is (RN-24).
-      crit: p.critical ? (criticalHint(p.criticalRule, p.diceCount, p.diceSides, p.criticalMax)?.line ?? '') : '',
-      typedHint: criticalTypedHint(p.criticalRule, diceName(p.diceCount, p.diceSides), range.min, range.max, p.criticalMax),
+      crit: p.critical
+        ? (criticalHint(p.criticalRule, p.diceCount, p.diceSides, p.criticalMax)?.line ?? '')
+        : '',
+      typedHint: criticalTypedHint(
+        p.criticalRule,
+        diceName(p.diceCount, p.diceSides),
+        range.min,
+        range.max,
+        p.criticalMax,
+      ),
       modifier: p.bonus + p.criticalMax,
       fixedText: fixedParts(p.criticalMax, p.bonus),
       effect:
@@ -111,7 +141,11 @@ export class PendingDamages {
               target.label,
               target.hitPointsCurrent ?? 0,
               target.hitPointsMax,
-              hitPointsAfter(target.hitPointsCurrent ?? 0, target.hitPointsTemporary ?? 0, p.amount),
+              hitPointsAfter(
+                target.hitPointsCurrent ?? 0,
+                target.hitPointsTemporary ?? 0,
+                p.amount,
+              ),
             )
           : '',
     };
@@ -151,7 +185,13 @@ export class PendingDamages {
 
   private rolled(p: PendingDamage, die: { inApp: true } | { sum: number }): Promise<void> {
     return this.run(async () => {
-      const res = await this.api.rollDamage(this.campaignId(), this.encounter().id, p.id, die, this.keyFor(p.id));
+      const res = await this.api.rollDamage(
+        this.campaignId(),
+        this.encounter().id,
+        p.id,
+        die,
+        this.keyFor(p.id),
+      );
       this.state().apply(res.encounter);
     });
   }
@@ -159,11 +199,21 @@ export class PendingDamages {
   /** "Usar Escudo por ele": the master answers for the player. */
   protected useShield(p: PendingDamage, slot: { level: number; pact: boolean }): Promise<void> {
     return this.run(async () => {
-      const res = await this.api.useReaction(this.campaignId(), this.encounter().id, p.id, slot, this.keyFor(`reaction:${p.id}`));
+      const res = await this.api.useReaction(
+        this.campaignId(),
+        this.encounter().id,
+        p.id,
+        slot,
+        this.keyFor(`reaction:${p.id}`),
+      );
       this.state().apply(res.encounter);
       const stopped = res.outcome === ReactionOutcome.STOPPED;
-      const name = this.encounter().reactionPrompts.find((r) => r.pendingDamageId === p.id)?.spellNamePt ?? 'Escudo Arcano';
-      this.settled.set(stopped ? `${name} usado: o ataque errou.` : `${name} usado: o ataque ainda acerta.`);
+      const name =
+        this.encounter().reactionPrompts.find((r) => r.pendingDamageId === p.id)?.spellNamePt ??
+        'Escudo Arcano';
+      this.settled.set(
+        stopped ? `${name} usado: o ataque errou.` : `${name} usado: o ataque ainda acerta.`,
+      );
       this.reacted.emit(stopped ? 'stopped' : 'still');
     });
   }
@@ -171,7 +221,14 @@ export class PendingDamages {
   /** "Seguir sem Escudo": the hit goes on to its damage roll. */
   protected declineShield(p: PendingDamage): Promise<void> {
     return this.run(async () => {
-      this.state().apply(await this.api.declineReaction(this.campaignId(), this.encounter().id, p.id, this.keyFor(`reaction:${p.id}`)));
+      this.state().apply(
+        await this.api.declineReaction(
+          this.campaignId(),
+          this.encounter().id,
+          p.id,
+          this.keyFor(`reaction:${p.id}`),
+        ),
+      );
       this.reacted.emit('declined');
     });
   }
@@ -205,7 +262,10 @@ export class PendingDamages {
   protected closeOther(id: string): void {
     this.other.set(null);
     afterNextRender(
-      () => this.otherLinks().find((b) => b.nativeElement.dataset['pending'] === id)?.nativeElement.focus(),
+      () =>
+        this.otherLinks()
+          .find((b) => b.nativeElement.dataset['pending'] === id)
+          ?.nativeElement.focus(),
       { injector: this.injector },
     );
   }
@@ -218,11 +278,20 @@ export class PendingDamages {
   protected apply(p: PendingDamage, amount?: number): Promise<void> {
     return this.run(async () => {
       const key = this.keyFor(`apply:${p.id}:${amount ?? 'rolled'}`);
-      const res = await this.api.applyDamage(this.campaignId(), this.encounter().id, p.id, amount, key);
+      const res = await this.api.applyDamage(
+        this.campaignId(),
+        this.encounter().id,
+        p.id,
+        amount,
+        key,
+      );
       this.state().apply(res.encounter);
       const done = amount ?? p.amount;
       const target = res.encounter.combatants.find((c) => c.id === p.targetId);
-      const hp = target?.hitPointsMax !== undefined ? ` ${target.label}: ${target.hitPointsCurrent ?? 0} de ${target.hitPointsMax} PV.` : '';
+      const hp =
+        target?.hitPointsMax !== undefined
+          ? ` ${target.label}: ${target.hitPointsCurrent ?? 0} de ${target.hitPointsMax} PV.`
+          : '';
       this.settled.set(
         amount === undefined || amount === p.amount
           ? `Dano de ${done} aplicado.${hp}`
@@ -235,7 +304,10 @@ export class PendingDamages {
   }
 
   /** "Toren está concentrado em Bênção. Teste de Constituição, CD 10. ..." */
-  private reminderFor(dc: number | undefined, target: { label: string; concentrationSpellNamePt: string } | undefined): string {
+  private reminderFor(
+    dc: number | undefined,
+    target: { label: string; concentrationSpellNamePt: string } | undefined,
+  ): string {
     if (dc === undefined || !target) {
       return '';
     }

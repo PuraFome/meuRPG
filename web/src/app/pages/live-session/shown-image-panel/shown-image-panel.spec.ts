@@ -35,16 +35,32 @@ describe('hiddenMapImages', () => {
 
 describe('showErrorMessage', () => {
   it('maps the codes of SetShownImage', () => {
-    expect(showErrorMessage(new ConnectError('x', Code.FailedPrecondition))).toContain('A sessão acabou');
-    expect(showErrorMessage(new ConnectError('x', Code.NotFound))).toContain('não está mais na galeria');
+    expect(showErrorMessage(new ConnectError('x', Code.FailedPrecondition))).toContain(
+      'A sessão acabou',
+    );
+    expect(showErrorMessage(new ConnectError('x', Code.NotFound))).toContain(
+      'não está mais na galeria',
+    );
     expect(showErrorMessage(new ConnectError('x', Code.PermissionDenied))).toContain('Só o mestre');
     expect(showErrorMessage(new TypeError('Failed to fetch'))).toContain('Tente de novo');
   });
 });
 
 describe('ShownImagePanel, "Deixar com os jogadores" (E6-25)', () => {
-  const carta = { id: 'img-1', name: 'Capitão Goblin', width: 400, height: 500, url: '/images/img-1' };
-  const planta = { id: 'img-2', name: 'Planta da torre', width: 800, height: 600, url: '/images/img-2' };
+  const carta = {
+    id: 'img-1',
+    name: 'Capitão Goblin',
+    width: 400,
+    height: 500,
+    url: '/images/img-1',
+  };
+  const planta = {
+    id: 'img-2',
+    name: 'Planta da torre',
+    width: 800,
+    height: 600,
+    url: '/images/img-2',
+  };
   const source = {
     setShownImage: vi.fn(() => Promise.resolve(null)),
     takeBackLeftImage: vi.fn(() => Promise.resolve()),
@@ -95,11 +111,15 @@ describe('ShownImagePanel, "Deixar com os jogadores" (E6-25)', () => {
     const { fixture, el } = await render({ keep: true });
     let left = 0;
     fixture.componentInstance.leftChanged.subscribe(() => left++);
-    const stop = [...el.querySelectorAll('button')].find((b) => b.textContent?.includes('Parar de mostrar'));
+    const stop = [...el.querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Parar de mostrar'),
+    );
     await click(fixture, stop ?? null);
     expect(source.setShownImage).toHaveBeenCalledWith('c1', null);
     expect(left).toBe(1);
-    expect(el.querySelector('[role="status"]')?.textContent).toContain('Capitão Goblin continua com os jogadores.');
+    expect(el.querySelector('[role="status"]')?.textContent).toContain(
+      'Capitão Goblin continua com os jogadores.',
+    );
   });
 
   it('lists the left images and takes one back at once, with a status', async () => {
@@ -107,16 +127,23 @@ describe('ShownImagePanel, "Deixar com os jogadores" (E6-25)', () => {
     expect(el.querySelector('#left-heading')?.textContent).toContain('Deixadas com os jogadores');
     const taken: ShownImageVm[] = [];
     fixture.componentInstance.taken.subscribe((i) => taken.push(i));
-    await click(fixture, el.querySelector('button[aria-label="Tirar Planta da torre dos jogadores"]'));
+    await click(
+      fixture,
+      el.querySelector('button[aria-label="Tirar Planta da torre dos jogadores"]'),
+    );
     expect(source.takeBackLeftImage).toHaveBeenCalledWith('c1', 'img-2');
     expect(taken).toEqual([planta]);
-    expect(el.querySelector('[role="status"]')?.textContent).toContain('Planta da torre foi tirada.');
+    expect(el.querySelector('[role="status"]')?.textContent).toContain(
+      'Planta da torre foi tirada.',
+    );
   });
 });
 
 describe('takeBackErrorMessage', () => {
   it('maps the codes of TakeBackLeftImage', () => {
     expect(takeBackErrorMessage(new ConnectError('x', Code.NotFound))).toContain('já não estava');
-    expect(takeBackErrorMessage(new ConnectError('x', Code.PermissionDenied))).toContain('Só o mestre');
+    expect(takeBackErrorMessage(new ConnectError('x', Code.PermissionDenied))).toContain(
+      'Só o mestre',
+    );
   });
 });

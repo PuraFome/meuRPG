@@ -3,20 +3,43 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { MarkMilestoneResponseSchema, XPAwardSchema, XPBlockedReason, XPBlockedSchema } from '../../../gen/meurpg/progression/v1/progression_pb';
+import {
+  MarkMilestoneResponseSchema,
+  XPAwardSchema,
+  XPBlockedReason,
+  XPBlockedSchema,
+} from '../../../gen/meurpg/progression/v1/progression_pb';
 import type { ExperienceRow } from '../../core/progression/experience-store';
 import { ProgressionClient } from '../../core/progression/progression-client';
 import { type MilestoneData, MilestoneSheet } from './milestone-sheet';
 
-const row = (id: string, name: string, sub: string): ExperienceRow => ({ id, name, playerUserId: "", sub, level: 3, xp: 0, nextLevelXp: 2700, canLevelUp: false, levelUpReason: 0 });
-const PARTY = [row('p1', 'Pensantus', 'Mago 3 · de Vinicius'), row('t1', 'Toren', 'Guerreiro 3'), row('b1', 'Brisa', 'Ladina 3')];
+const row = (id: string, name: string, sub: string): ExperienceRow => ({
+  id,
+  name,
+  playerUserId: '',
+  sub,
+  level: 3,
+  xp: 0,
+  nextLevelXp: 2700,
+  canLevelUp: false,
+  levelUpReason: 0,
+});
+const PARTY = [
+  row('p1', 'Pensantus', 'Mago 3 · de Vinicius'),
+  row('t1', 'Toren', 'Guerreiro 3'),
+  row('b1', 'Brisa', 'Ladina 3'),
+];
 
 describe('MilestoneSheet (E7-08)', () => {
   const markMilestone = vi.fn();
   const close = vi.fn();
 
   beforeEach(() => {
-    markMilestone.mockReset().mockResolvedValue(create(MarkMilestoneResponseSchema, { award: create(XPAwardSchema, { id: 'a1' }) }));
+    markMilestone
+      .mockReset()
+      .mockResolvedValue(
+        create(MarkMilestoneResponseSchema, { award: create(XPAwardSchema, { id: 'a1' }) }),
+      );
     close.mockReset();
   });
 
@@ -36,9 +59,15 @@ describe('MilestoneSheet (E7-08)', () => {
   }
 
   const reason = (el: HTMLElement) => el.querySelector<HTMLInputElement>('app-xp-reason input')!;
-  const boxes = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLInputElement>('app-xp-recipients input[type="checkbox"]'));
-  const primary = (el: HTMLElement) => el.querySelector<HTMLButtonElement>('app-xp-actions .primary')!;
-  const line = (el: HTMLElement) => el.querySelector('.effect')?.textContent?.replace(/[ \t\r\n]+/g, ' ').trim();
+  const boxes = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll<HTMLInputElement>('app-xp-recipients input[type="checkbox"]'));
+  const primary = (el: HTMLElement) =>
+    el.querySelector<HTMLButtonElement>('app-xp-actions .primary')!;
+  const line = (el: HTMLElement) =>
+    el
+      .querySelector('.effect')
+      ?.textContent?.replace(/[ \t\r\n]+/g, ' ')
+      .trim();
   function type(fixture: ComponentFixture<MilestoneSheet>, value: string) {
     const input = fixture.nativeElement.querySelector('app-xp-reason input') as HTMLInputElement;
     input.value = value;
@@ -49,7 +78,9 @@ describe('MilestoneSheet (E7-08)', () => {
   it('says there is no XP, shows no XP number, and asks "O que aconteceu"', () => {
     const { el } = setup();
     expect(el.querySelector('h2')?.textContent).toBe('Registrar marco');
-    expect(el.textContent).toContain('Sombras de Valdor · campanha por marcos: não há XP para contar.');
+    expect(el.textContent).toContain(
+      'Sombras de Valdor · campanha por marcos: não há XP para contar.',
+    );
     expect(el.textContent).toContain('O que aconteceu');
     expect(el.textContent).not.toMatch(/\d+\s*XP/);
     expect(reason(el).hasAttribute('data-initial-focus')).toBe(true);
@@ -75,7 +106,9 @@ describe('MilestoneSheet (E7-08)', () => {
     boxes(el).forEach((b) => b.click());
     fixture.detectChanges();
 
-    expect(el.querySelector('app-xp-actions .reason')?.textContent?.trim()).toBe('Marque pelo menos um personagem');
+    expect(el.querySelector('app-xp-actions .reason')?.textContent?.trim()).toBe(
+      'Marque pelo menos um personagem',
+    );
     expect(primary(el).getAttribute('aria-disabled')).toBe('true');
     expect(line(el)).toBe('');
   });
@@ -100,14 +133,22 @@ describe('MilestoneSheet (E7-08)', () => {
     primary(el).click();
     await fixture.whenStable();
 
-    expect(markMilestone).toHaveBeenCalledWith('camp-1', 'Marco: a ponte do rio foi salva', ['p1', 't1'], expect.stringMatching(/^[0-9a-f-]{36}$/));
+    expect(markMilestone).toHaveBeenCalledWith(
+      'camp-1',
+      'Marco: a ponte do rio foi salva',
+      ['p1', 't1'],
+      expect.stringMatching(/^[0-9a-f-]{36}$/),
+    );
     expect(close).toHaveBeenCalledWith(expect.objectContaining({ id: 'a1' }));
   });
 
   it('says why in words when the server refuses, and keeps the key for a retry', async () => {
     markMilestone.mockRejectedValueOnce(
       new ConnectError('x', Code.FailedPrecondition, undefined, [
-        { desc: XPBlockedSchema, value: { reason: XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE } },
+        {
+          desc: XPBlockedSchema,
+          value: { reason: XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE },
+        },
       ]),
     );
     const { fixture, el } = setup();

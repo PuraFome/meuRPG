@@ -76,7 +76,9 @@ export class StageMaster {
         this.state(),
         () => this.campaignId(),
         (id) =>
-          this.state().stage().find((n) => n.characterId === id)?.name ??
+          this.state()
+            .stage()
+            .find((n) => n.characterId === id)?.name ??
           this.candidates().find((c) => c.characterId === id)?.name ??
           'O NPC',
       ),
@@ -119,7 +121,8 @@ export class StageMaster {
     afterNextRender(
       () => {
         const cards = this.host.nativeElement.querySelectorAll<HTMLElement>('[data-stage-card]');
-        const target = cards[Math.min(index, cards.length - 1)]?.querySelector<HTMLElement>('button');
+        const target =
+          cards[Math.min(index, cards.length - 1)]?.querySelector<HTMLElement>('button');
         (target ?? this.putButton()?.nativeElement)?.focus();
       },
       { injector: this.injector },
@@ -143,10 +146,15 @@ export class StageMaster {
         ctl,
         rosterError: this.rosterError,
       };
-      openSheet<StagePickerSheet, StagePickerData, void>(this.dialog, this.bottomSheet, StagePickerSheet, {
-        data,
-        ariaLabel: 'Pôr em cena',
-      }).subscribe(() => this.putButton()?.nativeElement.focus());
+      openSheet<StagePickerSheet, StagePickerData, void>(
+        this.dialog,
+        this.bottomSheet,
+        StagePickerSheet,
+        {
+          data,
+          ariaLabel: 'Pôr em cena',
+        },
+      ).subscribe(() => this.putButton()?.nativeElement.focus());
       return;
     }
     this.listOpen.set(true);

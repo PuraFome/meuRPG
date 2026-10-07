@@ -112,9 +112,7 @@ export class ScenePlayer {
   private focusRow(actionId: string): void {
     afterNextRender(
       () =>
-        this.host.nativeElement
-          .querySelector<HTMLElement>(`[data-action="${actionId}"]`)
-          ?.focus(),
+        this.host.nativeElement.querySelector<HTMLElement>(`[data-action="${actionId}"]`)?.focus(),
       { injector: this.injector },
     );
   }

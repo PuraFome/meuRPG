@@ -171,7 +171,8 @@ export class CharacterSheetPage {
       // Only a player character has XP, or a level-up tag, to keep fresh.
       const s = this.state();
       const player = s.status === 'ready' && s.vm.characterKind === 'player';
-      const live = player && id !== '' && this.openSessions.sessions().some((o) => o.campaignId === id);
+      const live =
+        player && id !== '' && this.openSessions.sessions().some((o) => o.campaignId === id);
       untracked(() =>
         this.xpWatcher.follow(
           live ? id : null,
@@ -325,12 +326,16 @@ export class CharacterSheetPage {
    * `@if` but cannot carry that narrowing into a `@let` binding. */
   /** The skills the sheet is trained in, by name (the line of "O que mudou"). */
   protected trainedSkills(full: FullSheetVm): string[] {
-    return full.skills.filter((s) => s.proficiency === 'proficient' || s.proficiency === 'expertise').map((s) => s.namePt);
+    return full.skills
+      .filter((s) => s.proficiency === 'proficient' || s.proficiency === 'expertise')
+      .map((s) => s.namePt);
   }
 
   /** The sheet's own issues: the ones "A classe mudou" tells (code `table_content_changed`) are not repeated in the list. */
   protected ownIssues(full: FullSheetVm): readonly IssueVm[] {
-    return full.changedContent.length > 0 ? full.issues.filter((i) => i.code !== 'table_content_changed') : full.issues;
+    return full.changedContent.length > 0
+      ? full.issues.filter((i) => i.code !== 'table_content_changed')
+      : full.issues;
   }
 
   protected asFullSheet(sheet: FullSheetVm | BasicSheetVm): FullSheetVm {

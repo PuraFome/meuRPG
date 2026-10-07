@@ -13,7 +13,11 @@ function clue(id: string, text: string, to: string[] = []): SceneClue {
   return create(SceneClueSchema, {
     id,
     text,
-    revealedTo: to.map((characterId) => ({ characterId, characterName: characterId, revealedAt: timestampFromDate(new Date()) })),
+    revealedTo: to.map((characterId) => ({
+      characterId,
+      characterName: characterId,
+      revealedAt: timestampFromDate(new Date()),
+    })),
   });
 }
 
@@ -67,8 +71,11 @@ describe('ClueList', () => {
   const control = (id: string, which: 'text' | 'up' | 'down' | 'remove') =>
     el.querySelector<HTMLButtonElement>(`[data-clue="${id}"][data-control="${which}"]`)!;
   const button = (name: string) =>
-    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.includes(name))!;
-  const flat = (e: Element | null | undefined) => e?.textContent?.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+      b.textContent?.includes(name),
+    )!;
+  const flat = (e: Element | null | undefined) =>
+    e?.textContent?.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
   function type(value: string): HTMLTextAreaElement {
     const field = el.querySelector<HTMLTextAreaElement>('textarea')!;
     field.value = value;
@@ -80,13 +87,23 @@ describe('ClueList', () => {
   it('lists the clues in order with a count and who has each one', () => {
     setup([...THREE]);
     expect(flat(el.querySelector('.cl__count'))).toBe('3 de 30');
-    expect(rows().map((r) => r.querySelector('.cl__text')?.textContent?.replace('Editar a pista', '').trim())).toHaveLength(3);
-    expect(rows().map((r) => flat(r.querySelector('.cl__who')))).toEqual(['groupsTodos', 'visibility_offNinguém ainda', 'personSó Brisa']);
+    expect(
+      rows().map((r) =>
+        r.querySelector('.cl__text')?.textContent?.replace('Editar a pista', '').trim(),
+      ),
+    ).toHaveLength(3);
+    expect(rows().map((r) => flat(r.querySelector('.cl__who')))).toEqual([
+      'groupsTodos',
+      'visibility_offNinguém ainda',
+      'personSó Brisa',
+    ]);
   });
 
   it('says in the first line what the section is for', () => {
     setup([...THREE]);
-    expect(flat(el.querySelector('.cl__privacy'))).toContain('Os jogadores só recebem uma pista quando você a revela, na sessão.');
+    expect(flat(el.querySelector('.cl__privacy'))).toContain(
+      'Os jogadores só recebem uma pista quando você a revela, na sessão.',
+    );
   });
 
   it('names every control by its clue, and quiets the first ↑ and the last ↓', () => {
@@ -102,7 +119,9 @@ describe('ClueList', () => {
 
   it('invites the first clue when there is none', () => {
     setup([]);
-    expect(el.textContent).toContain('Nenhuma pista ainda. Escreva o que os jogadores podem descobrir aqui.');
+    expect(el.textContent).toContain(
+      'Nenhuma pista ainda. Escreva o que os jogadores podem descobrir aqui.',
+    );
     expect(flat(el.querySelector('.cl__count'))).toBe('0 de 30');
     expect(el.querySelector('.cl__list')).toBeNull();
   });
@@ -196,8 +215,12 @@ describe('ClueList', () => {
     button('Adicionar pista').click();
     await settle();
     type('Uma moeda de prata suja de lama.');
-    expect(flat(el.querySelector('.cf mat-hint[align="end"], .cf .mat-mdc-form-field-hint-wrapper'))).toContain('32 de 500');
-    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    expect(
+      flat(el.querySelector('.cf mat-hint[align="end"], .cf .mat-mdc-form-field-hint-wrapper')),
+    ).toContain('32 de 500');
+    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(
+      new Event('submit', { cancelable: true }),
+    );
     await settle();
     expect(api.calls).toEqual(['addSceneClue p1 Uma moeda de prata suja de lama.']);
     expect(emitted.at(-1)).toHaveLength(4);
@@ -211,10 +234,14 @@ describe('ClueList', () => {
     setup([...THREE]);
     button('Adicionar pista').click();
     await settle();
-    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(
+      new Event('submit', { cancelable: true }),
+    );
     await settle();
     const alert = el.querySelector('[role="alert"]')!;
-    expect(flat(alert)).toContain('Escreva a pista antes de salvar. Ela pode ter até 500 caracteres.');
+    expect(flat(alert)).toContain(
+      'Escreva a pista antes de salvar. Ela pode ter até 500 caracteres.',
+    );
     expect(alert.querySelector('mat-icon')?.textContent).toBe('error');
     expect(document.activeElement).toBe(el.querySelector('textarea'));
     expect(api.calls).toEqual([]);
@@ -230,9 +257,13 @@ describe('ClueList', () => {
     await settle();
     type('x'.repeat(512));
     expect(el.querySelector('.cf__over')?.textContent).toContain('512 de 500');
-    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(
+      new Event('submit', { cancelable: true }),
+    );
     await settle();
-    expect(flat(el.querySelector('[role="alert"]'))).toContain('A pista passa de 500 caracteres: tem 512, tire 12.');
+    expect(flat(el.querySelector('[role="alert"]'))).toContain(
+      'A pista passa de 500 caracteres: tem 512, tire 12.',
+    );
     expect(api.calls).toEqual([]);
   });
 
@@ -250,9 +281,13 @@ describe('ClueList', () => {
     await settle();
     type('Algo');
     api.failWith = new ConnectError('x', Code.NotFound);
-    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(
+      new Event('submit', { cancelable: true }),
+    );
     await settle();
-    expect(flat(el.querySelector('.cf [role="alert"]'))).toContain('Essa pista ou esse ponto não existe mais. Recarregue a página.');
+    expect(flat(el.querySelector('.cf [role="alert"]'))).toContain(
+      'Essa pista ou esse ponto não existe mais. Recarregue a página.',
+    );
     expect(el.querySelector('form')).not.toBeNull();
   });
 
@@ -266,7 +301,9 @@ describe('ClueList', () => {
     expect(document.activeElement).toBe(field);
     type('Rastros de dois goblins.');
     expect(flat(button('Salvar pista'))).toBe('Salvar pista');
-    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(
+      new Event('submit', { cancelable: true }),
+    );
     await settle();
     expect(api.calls).toEqual(['updateSceneClue p1 k2 Rastros de dois goblins.']);
     expect(el.querySelector('form')).toBeNull();
@@ -277,11 +314,16 @@ describe('ClueList', () => {
   it('at 30 of 30 says the limit in words above a disabled button, tied to it, and folds the list', () => {
     setup(Array.from({ length: 30 }, (_, i) => clue(`x${i}`, `Pista ${i + 1}`)));
     expect(flat(el.querySelector('.cl__count'))).toBe('30 de 30');
-    expect(flat(el.querySelector('.cl__limit'))).toBe('Limite de 30 pistas. Remova uma para adicionar outra.');
+    expect(flat(el.querySelector('.cl__limit'))).toBe(
+      'Limite de 30 pistas. Remova uma para adicionar outra.',
+    );
     const add = button('Adicionar pista');
     expect(add.getAttribute('aria-describedby')).toBe('cl-limit');
     expect(add.disabled || add.getAttribute('aria-disabled') === 'true').toBe(true);
-    expect(el.querySelector('.cl__limit')!.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      el.querySelector('.cl__limit')!.compareDocumentPosition(add) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     // Past eight rows the list folds, and says how many are not on screen.
     expect(rows()).toHaveLength(8);
     expect(flat(el.querySelector('.cl__more'))).toContain('Mais 22 pistas na lista.');
@@ -296,6 +338,8 @@ describe('ClueList', () => {
     api.failWith = new ConnectError('x', Code.ResourceExhausted);
     control('k2', 'up').click();
     await settle();
-    expect(flat(el.querySelector('[role="alert"]'))).toContain('Limite de 30 pistas. Remova uma para adicionar outra.');
+    expect(flat(el.querySelector('[role="alert"]'))).toContain(
+      'Limite de 30 pistas. Remova uma para adicionar outra.',
+    );
   });
 });

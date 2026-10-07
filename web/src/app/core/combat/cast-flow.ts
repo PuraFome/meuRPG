@@ -52,7 +52,10 @@ export function spellKind(key: string, details: SpellDetails | null): SpellKind 
   if (!details) {
     return 'plain';
   }
-  if (details.attackType === SpellAttackType.MELEE || details.attackType === SpellAttackType.RANGED) {
+  if (
+    details.attackType === SpellAttackType.MELEE ||
+    details.attackType === SpellAttackType.RANGED
+  ) {
     return 'attack';
   }
   if (details.save) {
@@ -113,12 +116,21 @@ export function slotRows(
   if (pactChoice || (pact && pact.slotLevel >= level)) {
     const l = pactChoice?.level ?? pact?.slotLevel ?? 0;
     const free = pactChoice?.free ?? (pact ? pact.total - pact.used : 0);
-    rows.push(row(l, true, free, pact?.total ?? null, pact?.used ?? 0, !!pactChoice && pactChoice.free > 0));
+    rows.push(
+      row(l, true, free, pact?.total ?? null, pact?.used ?? 0, !!pactChoice && pactChoice.free > 0),
+    );
   }
   return rows;
 }
 
-function row(level: number, pact: boolean, free: number, total: number | null, used: number, enabled: boolean): SlotRow {
+function row(
+  level: number,
+  pact: boolean,
+  free: number,
+  total: number | null,
+  used: number,
+  enabled: boolean,
+): SlotRow {
   return {
     level,
     pact,
@@ -140,7 +152,11 @@ export function defaultSlot(rows: readonly SlotRow[]): SlotRow | null {
  * espaço." The shield part only when Escudo is prepared and this slot is the
  * last one it could be cast with (`shieldFree` is the free slots of Escudo's
  * own options; `null` when the character has no Escudo). */
-export function lastSlotWarning(slot: SlotRow | null, shieldFree: number | null, shieldName = 'Escudo Arcano'): string {
+export function lastSlotWarning(
+  slot: SlotRow | null,
+  shieldFree: number | null,
+  shieldName = 'Escudo Arcano',
+): string {
   if (!slot || slot.free !== 1) {
     return '';
   }
@@ -205,7 +221,11 @@ export interface CastTargetRow {
 
 /** The rows of the target step. `reach` is "Longe demais: alcance de 36 m"
  * for a target the spell cannot reach. */
-export function castTargetRows(targets: readonly TargetInReach[], casterId: string, reachFt: number | null): CastTargetRow[] {
+export function castTargetRows(
+  targets: readonly TargetInReach[],
+  casterId: string,
+  reachFt: number | null,
+): CastTargetRow[] {
   return targets.flatMap((t) => {
     const cover = listing(t);
     if (cover.kind === 'left-out') {
@@ -279,7 +299,12 @@ export function dartsStatus(total: number, dealt: Dealt): string {
 }
 
 /** The dealt darts with one more or one less on a target, inside 0 and the total. */
-export function dealOne(dealtNow: Dealt, id: string, delta: 1 | -1, total: number): Map<string, number> {
+export function dealOne(
+  dealtNow: Dealt,
+  id: string,
+  delta: 1 | -1,
+  total: number,
+): Map<string, number> {
   const next = new Map(dealtNow);
   const now = next.get(id) ?? 0;
   const value = now + delta;
@@ -292,7 +317,9 @@ export function dealOne(dealtNow: Dealt, id: string, delta: 1 | -1, total: numbe
 
 /** The targets of the request: who got at least one dart, each with its darts. */
 export function dartTargets(dealtNow: Dealt): { combatantId: string; darts: number }[] {
-  return [...dealtNow].filter(([, n]) => n > 0).map(([combatantId, darts]) => ({ combatantId, darts }));
+  return [...dealtNow]
+    .filter(([, n]) => n > 0)
+    .map(([combatantId, darts]) => ({ combatantId, darts }));
 }
 
 // ---- what the sheet says ----
@@ -312,7 +339,12 @@ export function damageDice(details: SpellDetails | null, slotLevel: number): str
   if (!d) {
     return '';
   }
-  return d.bySlotLevel[slotLevel] ?? d.bySlotLevel[details?.spell?.level ?? 0] ?? Object.values(d.byCharacterLevel)[0] ?? '';
+  return (
+    d.bySlotLevel[slotLevel] ??
+    d.bySlotLevel[details?.spell?.level ?? 0] ??
+    Object.values(d.byCharacterLevel)[0] ??
+    ''
+  );
 }
 
 /** "Ação · alcance 36 m · 3 dardos de 1d4 + 1 de energia, sempre acertam". */
@@ -323,7 +355,13 @@ export function castSubtitle(
   slotLevel: number,
   darts: number,
 ): string {
-  const parts = [economy === ActionEconomy.BONUS_ACTION ? 'Ação bônus' : economy === ActionEconomy.REACTION ? 'Reação' : 'Ação'];
+  const parts = [
+    economy === ActionEconomy.BONUS_ACTION
+      ? 'Ação bônus'
+      : economy === ActionEconomy.REACTION
+        ? 'Reação'
+        : 'Ação',
+  ];
   const range = details?.range;
   if (range?.kind === SpellRangeKind.RANGED && range.distanceFt > 0) {
     parts.push(`alcance ${metersText(range.distanceFt)}`);
@@ -344,7 +382,9 @@ export function castSubtitle(
     case 'save': {
       const ability = ABILITY_PT[details?.save?.ability ?? Ability.UNSPECIFIED];
       const half = details?.save?.onSuccess === SpellSaveSuccess.HALF ? ', metade se resistir' : '';
-      parts.push(`resistência${ability ? ` de ${ability}` : ''}${dice ? ` · ${dice}${type ? ` de ${type}` : ''}${half}` : ''}`);
+      parts.push(
+        `resistência${ability ? ` de ${ability}` : ''}${dice ? ` · ${dice}${type ? ` de ${type}` : ''}${half}` : ''}`,
+      );
       break;
     }
     case 'heal':
@@ -388,7 +428,10 @@ export function dartLines(roll: DiceRoll, darts: number): string[] {
     return [`${darts} ${darts === 1 ? 'dardo' : 'dardos'}: ${rollFormula(roll)} · dado físico`];
   }
   const each = roll.modifier / darts;
-  return roll.faces.map((f, i) => `Dardo ${i + 1}: 1d${roll.diceSides} (${f}) ${each < 0 ? '−' : '+'} ${Math.abs(each)} = ${f + each}`);
+  return roll.faces.map(
+    (f, i) =>
+      `Dardo ${i + 1}: 1d${roll.diceSides} (${f}) ${each < 0 ? '−' : '+'} ${Math.abs(each)} = ${f + each}`,
+  );
 }
 
 function savedWord(saved: boolean, half: boolean): string {
@@ -403,7 +446,9 @@ export function castRows(
   pendings: ReadonlyMap<string, PendingDamage>,
   labels: ReadonlyMap<string, { label: string; state: CombatantState }>,
 ): CastRow[] {
-  return cast.targets.map((t) => castRow(t, pendings.get(t.pendingDamageId), labels.get(t.combatantId), cast));
+  return cast.targets.map((t) =>
+    castRow(t, pendings.get(t.pendingDamageId), labels.get(t.combatantId), cast),
+  );
 }
 
 /** What a spell that reads hit points did, as one live sentence for the whole
@@ -464,7 +509,9 @@ function castRow(
     word = savedWord(saved, !!p?.half);
     tone = saved ? 'plain' : 'good';
     if (t.save.roll) {
-      lines.push(`${tight(`Resistência: ${rollFormula(t.save.roll)}`)}${t.save.dc > 0 ? `, CD ${t.save.dc}` : ''}`);
+      lines.push(
+        `${tight(`Resistência: ${rollFormula(t.save.roll)}`)}${t.save.dc > 0 ? `, CD ${t.save.dc}` : ''}`,
+      );
     } else if (t.save.dc > 0) {
       lines.push(`CD ${t.save.dc}`);
     }
@@ -520,5 +567,7 @@ export function rollGroups(pendings: readonly PendingDamage[]): PendingDamage[][
 
 /** "Sua ação foi usada." for an action spell; "Sua ação bônus foi usada." */
 export function spentLine(economy: ActionEconomy): string {
-  return economy === ActionEconomy.BONUS_ACTION ? 'Sua ação bônus foi usada.' : 'Sua ação foi usada.';
+  return economy === ActionEconomy.BONUS_ACTION
+    ? 'Sua ação bônus foi usada.'
+    : 'Sua ação foi usada.';
 }

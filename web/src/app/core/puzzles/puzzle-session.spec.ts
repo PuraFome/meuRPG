@@ -1,22 +1,39 @@
 import { PuzzleRunStatus } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { PuzzleSessionState } from './puzzle-session';
-import { FakePuzzlesClient, asClient, lightsPuzzle, lockPuzzle, masterRun, summary } from './puzzles-testing';
+import {
+  FakePuzzlesClient,
+  asClient,
+  lightsPuzzle,
+  lockPuzzle,
+  masterRun,
+  summary,
+} from './puzzles-testing';
 
 const a = lightsPuzzle('a', 'O selo da Capela');
 const b = lockPuzzle('b', 'O cofre do Refeitório');
 
 function setup(master: boolean) {
   const fake = new FakePuzzlesClient();
-  const state = new PuzzleSessionState(asClient(fake), () => 'camp-1', () => master);
+  const state = new PuzzleSessionState(
+    asClient(fake),
+    () => 'camp-1',
+    () => master,
+  );
   return { fake, state };
 }
 
 describe('PuzzleSessionState (MR-038)', () => {
-  it('reads the master\'s menu with where each puzzle stands', async () => {
+  it("reads the master's menu with where each puzzle stands", async () => {
     const { fake, state } = setup(true);
-    fake.sessionResult = [masterRun(a, PuzzleRunStatus.SHOWN), masterRun(b, PuzzleRunStatus.NOT_SHOWN)];
+    fake.sessionResult = [
+      masterRun(a, PuzzleRunStatus.SHOWN),
+      masterRun(b, PuzzleRunStatus.NOT_SHOWN),
+    ];
     await state.refresh();
-    expect(state.runs().map((r) => r.puzzle?.name)).toEqual(['O selo da Capela', 'O cofre do Refeitório']);
+    expect(state.runs().map((r) => r.puzzle?.name)).toEqual([
+      'O selo da Capela',
+      'O cofre do Refeitório',
+    ]);
     expect(state.status()).toBe('ready');
   });
 
@@ -30,7 +47,10 @@ describe('PuzzleSessionState (MR-038)', () => {
 
   it('reads one puzzle again on puzzle_changed (the hint names only its ID), not the whole menu', async () => {
     const { fake, state } = setup(true);
-    fake.sessionResult = [masterRun(a, PuzzleRunStatus.SHOWN), masterRun(b, PuzzleRunStatus.NOT_SHOWN)];
+    fake.sessionResult = [
+      masterRun(a, PuzzleRunStatus.SHOWN),
+      masterRun(b, PuzzleRunStatus.NOT_SHOWN),
+    ];
     await state.refresh();
     fake.calls = [];
     fake.runResults.set('a', masterRun(a, PuzzleRunStatus.SOLVED));
@@ -82,7 +102,7 @@ describe('PuzzleSessionState (MR-038)', () => {
     expect(state.status()).toBe('error');
   });
 
-  it('puts an action\'s answer in place at once, and a read that started before it never wins', async () => {
+  it("puts an action's answer in place at once, and a read that started before it never wins", async () => {
     const { fake, state } = setup(true);
     fake.sessionResult = [masterRun(a, PuzzleRunStatus.SHOWN)];
     await state.refresh();

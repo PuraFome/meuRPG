@@ -35,14 +35,25 @@ export interface MarkReachedResult {
 
 /** Opens the sheet: a dialog on a desktop, a bottom sheet on a phone. It
  * answers the result, or `undefined` when the master cancelled. */
-export function openMarkReached(dialog: MatDialog, bottomSheet: MatBottomSheet, data: MarkReachedData) {
-  return openSheet<MarkReachedSheet, MarkReachedData, MarkReachedResult | undefined>(dialog, bottomSheet, MarkReachedSheet, {
-    data,
-    // The phone's sheet has no aria-labelledby: its label is the title.
-    ariaLabel: data.give ? `Dar “${data.text}” a mais alguém` : `Marcar “${data.text}” como alcançado`,
-    labelledBy: 'sheet-t',
-    width: '560px',
-  });
+export function openMarkReached(
+  dialog: MatDialog,
+  bottomSheet: MatBottomSheet,
+  data: MarkReachedData,
+) {
+  return openSheet<MarkReachedSheet, MarkReachedData, MarkReachedResult | undefined>(
+    dialog,
+    bottomSheet,
+    MarkReachedSheet,
+    {
+      data,
+      // The phone's sheet has no aria-labelledby: its label is the title.
+      ariaLabel: data.give
+        ? `Dar “${data.text}” a mais alguém`
+        : `Marcar “${data.text}” como alcançado`,
+      labelledBy: 'sheet-t',
+      width: '560px',
+    },
+  );
 }
 
 /**
@@ -67,7 +78,9 @@ export class MarkReachedSheet {
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
 
-  protected readonly checked = signal<ReadonlySet<string>>(new Set(this.data.rows.map((r) => r.id)));
+  protected readonly checked = signal<ReadonlySet<string>>(
+    new Set(this.data.rows.map((r) => r.id)),
+  );
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   private readonly frame = viewChild.required(SheetFrame);
@@ -85,10 +98,18 @@ export class MarkReachedSheet {
     : 'A marca “Pode subir de nível” some quando o jogador sobe o nível na ficha. Quem ficou de fora pode receber depois.';
 
   protected readonly recipients = computed<Recipient[]>(() =>
-    this.data.rows.map((r) => ({ id: r.id, name: r.name, sub: r.sub, checked: this.checked().has(r.id), amount: '' })),
+    this.data.rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      sub: r.sub,
+      checked: this.checked().has(r.id),
+      amount: '',
+    })),
   );
   protected readonly effect = computed(() => reachedEffect(this.checked().size));
-  protected readonly reasonToWait = computed(() => (this.checked().size === 0 ? 'Marque pelo menos um personagem' : ''));
+  protected readonly reasonToWait = computed(() =>
+    this.checked().size === 0 ? 'Marque pelo menos um personagem' : '',
+  );
   protected readonly blocked = computed(() => this.reasonToWait() !== '');
 
   private key = newKey();

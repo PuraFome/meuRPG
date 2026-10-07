@@ -100,10 +100,20 @@
   // Drawn only while the body overflows: a body that fits has no edge to warn about.
   &--scrolls {
     background:
-    linear-gradient(var(--mr-surface) 30%, transparent) top / 100% 24px no-repeat local,
-    linear-gradient(transparent, var(--mr-surface) 70%) bottom / 100% 24px no-repeat local,
-    radial-gradient(farthest-side at 50% 0, color-mix(in srgb, var(--mr-ink) 22%, transparent), transparent) top / 100% 10px no-repeat scroll,
-    radial-gradient(farthest-side at 50% 100%, color-mix(in srgb, var(--mr-ink) 22%, transparent), transparent) bottom / 100% 10px no-repeat scroll;
+      linear-gradient(var(--mr-surface) 30%, transparent) top / 100% 24px no-repeat local,
+      linear-gradient(transparent, var(--mr-surface) 70%) bottom / 100% 24px no-repeat local,
+      radial-gradient(
+          farthest-side at 50% 0,
+          color-mix(in srgb, var(--mr-ink) 22%, transparent),
+          transparent
+        )
+        top / 100% 10px no-repeat scroll,
+      radial-gradient(
+          farthest-side at 50% 100%,
+          color-mix(in srgb, var(--mr-ink) 22%, transparent),
+          transparent
+        )
+        bottom / 100% 10px no-repeat scroll;
   }
 
   > * {

@@ -1,6 +1,10 @@
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 
-import type { OpenSceneInfo, SceneActionView, SceneRoll } from '../../../gen/meurpg/play/v1/scene_pb';
+import type {
+  OpenSceneInfo,
+  SceneActionView,
+  SceneRoll,
+} from '../../../gen/meurpg/play/v1/scene_pb';
 import { rollFormula } from '../combat/combat-dice';
 import { joinDots, tight } from '../format/text';
 import { formatClock } from '../../shared/session-time/session-time';
@@ -49,7 +53,10 @@ export function passText(passed: boolean, dc: number): string {
 /** What the master's screen reader hears for a new roll: "Toren: Seguir os
  * rastros dos goblins, 7, não passou". */
 export function rollAnnouncement(scene: OpenSceneInfo, roll: SceneRoll): string {
-  const parts = [`${roll.characterName}: ${rollActionTitle(scene, roll)}`, `${roll.roll?.total ?? ''}`];
+  const parts = [
+    `${roll.characterName}: ${rollActionTitle(scene, roll)}`,
+    `${roll.roll?.total ?? ''}`,
+  ];
   if (roll.passed !== undefined) {
     parts.push(roll.passed ? 'passou' : 'não passou');
   }
@@ -79,14 +86,18 @@ export function ownRollOf(scene: OpenSceneInfo, actionId: string): SceneRoll | u
 }
 
 function rolledMs(roll: SceneRoll): number {
-  return roll.rolledAt ? Number(roll.rolledAt.seconds) * 1000 + Math.floor(roll.rolledAt.nanos / 1e6) : 0;
+  return roll.rolledAt
+    ? Number(roll.rolledAt.seconds) * 1000 + Math.floor(roll.rolledAt.nanos / 1e6)
+    : 0;
 }
 
 /** What the player's row says about the attempts (MR-015, question 55):
  * "1 tentativa" before rolling, "Restam 2 de 3 tentativas", "Restam N
  * tentativas" when a grant pushed N above the limit, "Sem mais tentativas" at
  * 0, and nothing for an unlimited action (or for no living character). */
-export function playerAttempts(action: SceneActionView): { text: string; out: boolean; left: boolean } | null {
+export function playerAttempts(
+  action: SceneActionView,
+): { text: string; out: boolean; left: boolean } | null {
   const left = action.attemptsLeft;
   if (action.maxAttempts === 0 || left === undefined) {
     return null;
@@ -100,7 +111,11 @@ export function playerAttempts(action: SceneActionView): { text: string; out: bo
   if (action.maxAttempts === 1) {
     return { text: '1 tentativa', out: false, left: false };
   }
-  return { text: tight(`Restam ${left} de ${action.maxAttempts} tentativas`), out: false, left: true };
+  return {
+    text: tight(`Restam ${left} de ${action.maxAttempts} tentativas`),
+    out: false,
+    left: true,
+  };
 }
 
 /** What a player's screen reader hears when an action of the same scene got

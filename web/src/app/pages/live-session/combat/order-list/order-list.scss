@@ -91,7 +91,6 @@
   background: var(--mr-danger-surface);
 }
 
-
 .row__token {
   grid-area: token;
 }
@@ -275,7 +274,6 @@
   grid-area: extra;
 }
 
-
 .row__extra {
   display: flex;
   flex-wrap: wrap;
@@ -319,4 +317,3 @@
     --mat-button-outlined-outline-color: var(--mr-danger-ink);
   }
 }
-

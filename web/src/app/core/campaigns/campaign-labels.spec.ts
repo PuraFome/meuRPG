@@ -24,4 +24,3 @@ describe('inviteStateLabel', () => {
     expect(inviteStateLabel(InviteState.REVOKED)).toBe('revogado');
   });
 });
-

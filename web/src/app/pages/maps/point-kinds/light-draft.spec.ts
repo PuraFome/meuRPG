@@ -18,11 +18,24 @@ import {
 } from './light-draft';
 
 const presets: LightOption[] = [
-  { key: 'light:torch', name: 'Tocha', radii: '6 m claro + 6 m de penumbra', brightFt: 20, dimFt: 20 },
-  { key: 'light:daylight', name: 'Luz do Dia', radii: '18 m claro + 18 m de penumbra', brightFt: 60, dimFt: 60 },
+  {
+    key: 'light:torch',
+    name: 'Tocha',
+    radii: '6 m claro + 6 m de penumbra',
+    brightFt: 20,
+    dimFt: 20,
+  },
+  {
+    key: 'light:daylight',
+    name: 'Luz do Dia',
+    radii: '18 m claro + 18 m de penumbra',
+    brightFt: 60,
+    dimFt: 60,
+  },
 ];
 
-const point = (light: { presetKey: string; brightFt: number; dimFt: number }) => create(MapPointSchema, { id: 'l1', name: 'Tocha da guarita', light });
+const point = (light: { presetKey: string; brightFt: number; dimFt: number }) =>
+  create(MapPointSchema, { id: 'l1', name: 'Tocha da guarita', light });
 
 describe('metres', () => {
   it('reads a comma or a dot, and only whole squares of 1,5 m turn into feet (5 ft each)', () => {
@@ -41,7 +54,9 @@ describe('the light form', () => {
   it('shows a saved preset as its radio, with the radii in metres', () => {
     const d = lightDraftOf(point({ presetKey: 'light:torch', brightFt: 20, dimFt: 20 }), presets);
     expect(d).toMatchObject({ presetKey: 'light:torch', brightM: '6', dimM: '6' });
-    expect(isLightDirty(d, point({ presetKey: 'light:torch', brightFt: 20, dimFt: 20 }), presets)).toBe(false);
+    expect(
+      isLightDirty(d, point({ presetKey: 'light:torch', brightFt: 20, dimFt: 20 }), presets),
+    ).toBe(false);
   });
 
   it('shows a custom light as "Personalizada"', () => {
@@ -53,7 +68,11 @@ describe('the light form', () => {
     const d = lightDraftOf(point({ presetKey: 'light:torch', brightFt: 20, dimFt: 20 }), presets);
     const day = withPreset(d, 'light:daylight', presets);
     expect(day).toMatchObject({ presetKey: 'light:daylight', brightM: '18', dimM: '18' });
-    expect(withPreset(day, '', presets)).toMatchObject({ presetKey: CUSTOM_KEY, brightM: '18', dimM: '18' });
+    expect(withPreset(day, '', presets)).toMatchObject({
+      presetKey: CUSTOM_KEY,
+      brightM: '18',
+      dimM: '18',
+    });
   });
 
   it('says how many squares the radii are', () => {
@@ -67,14 +86,18 @@ describe('the light form', () => {
     expect(hasLightErrors(lightErrors(base))).toBe(false);
     expect(lightErrors({ ...base, brightM: '4' }).brightM).toContain('múltiplos de 1,5 m');
     expect(lightErrors({ ...base, dimM: '37,5' }).dimM).toContain('0 a 36 m');
-    expect(lightErrors({ ...base, brightM: '0', dimM: '0' }).both).toBe('Os dois raios não podem ser 0.');
+    expect(lightErrors({ ...base, brightM: '0', dimM: '0' }).both).toBe(
+      'Os dois raios não podem ser 0.',
+    );
     expect(lightErrors({ ...base, name: ' ' }).name).toBe('Dê um nome ao ponto.');
   });
 
   it('saves the preset key with the radii in feet, and the name only when it changed', () => {
     const p = point({ presetKey: 'light:torch', brightFt: 20, dimFt: 20 });
     const d = withPreset(lightDraftOf(p, presets), 'light:daylight', presets);
-    expect(lightChangesOf(d, p, presets)).toEqual({ light: { presetKey: 'light:daylight', brightFt: 60, dimFt: 60 } });
+    expect(lightChangesOf(d, p, presets)).toEqual({
+      light: { presetKey: 'light:daylight', brightFt: 60, dimFt: 60 },
+    });
     expect(lightChangesOf({ ...d, name: ' Sol ' }, p, presets)?.name).toBe('Sol');
     expect(lightChangesOf(lightDraftOf(p, presets), p, presets)).toBeNull();
   });

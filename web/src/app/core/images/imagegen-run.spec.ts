@@ -16,7 +16,12 @@ describe('ImageRun: from the click to the picture', () => {
   let api: FakeImageGenClient;
 
   function run(): ImageRun {
-    return new ImageRun(api as unknown as ImageGenClient, 'camp-1', (signal) => api.generateScene('camp-1', {} as never, signal), instant);
+    return new ImageRun(
+      api as unknown as ImageGenClient,
+      'camp-1',
+      (signal) => api.generateScene('camp-1', {} as never, signal),
+      instant,
+    );
   }
 
   beforeEach(() => {
@@ -91,13 +96,19 @@ describe('ImageRun: from the click to the picture', () => {
   it('tells a refusal by the service as a failure in words, and says whether the slot came back', async () => {
     api.polls = [
       create(GetImageGenerationResponseSchema, {
-        generation: generation({ state: ImageGenerationState.REFUSED, failure: ImageGenerationFailure.REFUSED, slotSpent: false }),
+        generation: generation({
+          state: ImageGenerationState.REFUSED,
+          failure: ImageGenerationFailure.REFUSED,
+          slotSpent: false,
+        }),
       }),
     ];
     const r = run();
     await r.start();
     expect(r.phase()).toBe('failed');
-    expect(r.failure()).toBe('O serviço recusou este texto. Tente descrever a cena de outro jeito. Esta tentativa não gastou nenhuma imagem do mês.');
+    expect(r.failure()).toBe(
+      'O serviço recusou este texto. Tente descrever a cena de outro jeito. Esta tentativa não gastou nenhuma imagem do mês.',
+    );
   });
 
   it('keeps waiting through a failed poll, tries again, and gives up after three in a row, saying the request is still there', async () => {
@@ -134,7 +145,10 @@ describe('ImageRun: from the click to the picture', () => {
     it('after it left: the wait stops, the slot stays spent and the picture, if it comes, goes to the gallery', async () => {
       let release!: () => void;
       api.hold = new Promise<void>((r) => (release = r));
-      api.cancelResult = { generation: generation({ state: ImageGenerationState.CANCELED, slotSpent: true }), status: imageStatus() };
+      api.cancelResult = {
+        generation: generation({ state: ImageGenerationState.CANCELED, slotSpent: true }),
+        status: imageStatus(),
+      };
       const r = run();
       const finished = r.start();
       await vi.waitFor(() => expect(r.phase()).toBe('waiting'));
@@ -142,10 +156,12 @@ describe('ImageRun: from the click to the picture', () => {
       release();
       await finished;
       expect(r.phase()).toBe('canceled');
-      expect(r.note()).toBe('Você parou de esperar. A vaga do mês continua gasta e a imagem, se chegar, vai para a galeria.');
+      expect(r.note()).toBe(
+        'Você parou de esperar. A vaga do mês continua gasta e a imagem, se chegar, vai para a galeria.',
+      );
     });
 
-    it('pressed while the app\'s own ask is still on its way: waits for the answer and cancels the request it made, never leaving one behind', async () => {
+    it("pressed while the app's own ask is still on its way: waits for the answer and cancels the request it made, never leaving one behind", async () => {
       let answer!: () => void;
       const asking = new Promise<void>((r) => (answer = r));
       const slow = new ImageRun(
@@ -170,7 +186,10 @@ describe('ImageRun: from the click to the picture', () => {
     it('when the request had already ended by the time the cancel arrived, says what happened (the picture) instead of "canceled"', async () => {
       let release!: () => void;
       api.hold = new Promise<void>((r) => (release = r));
-      api.cancelResult = { generation: generation({ state: ImageGenerationState.DONE, imageId: 'img-7' }), status: imageStatus() };
+      api.cancelResult = {
+        generation: generation({ state: ImageGenerationState.DONE, imageId: 'img-7' }),
+        status: imageStatus(),
+      };
       api.polls = [done('img-7', 1)];
       const r = run();
       const finished = r.start();
@@ -196,17 +215,27 @@ describe('ImageRun: an answer lost on the way', () => {
     const api = new FakeImageGenClient();
     api.loseNextAnswer = true;
     api.polls = [done('img-1', 1)];
-    const run = new ImageRun(api as unknown as ImageGenClient, 'camp-1', (signal) => api.generateScene('camp-1', { idempotencyKey: 'k-1' } as never, signal), instant);
+    const run = new ImageRun(
+      api as unknown as ImageGenClient,
+      'camp-1',
+      (signal) => api.generateScene('camp-1', { idempotencyKey: 'k-1' } as never, signal),
+      instant,
+    );
     await run.start();
     expect(api.keys).toEqual(['k-1', 'k-1']);
     expect(api.slotsSpent).toBe(1);
     expect(run.phase()).toBe('done');
   });
 
-  it('gives up after the second lost answer: the ask is refused, and the key is the dialog\'s to keep', async () => {
+  it("gives up after the second lost answer: the ask is refused, and the key is the dialog's to keep", async () => {
     const api = new FakeImageGenClient();
     api.started = new ConnectError('down', Code.Unavailable);
-    const run = new ImageRun(api as unknown as ImageGenClient, 'camp-1', (signal) => api.generateScene('camp-1', { idempotencyKey: 'k-2' } as never, signal), instant);
+    const run = new ImageRun(
+      api as unknown as ImageGenClient,
+      'camp-1',
+      (signal) => api.generateScene('camp-1', { idempotencyKey: 'k-2' } as never, signal),
+      instant,
+    );
     await expect(run.start()).rejects.toBeInstanceOf(ConnectError);
     // The app asked twice, with the same key, and the key is the dialog's to keep for the next press.
     expect(api.keys).toEqual(['k-2', 'k-2']);
@@ -217,7 +246,15 @@ describe('ImageRun: an answer lost on the way', () => {
     const api = new FakeImageGenClient();
     api.started = new ConnectError('no', Code.FailedPrecondition);
     let calls = 0;
-    const counted = new ImageRun(api as unknown as ImageGenClient, 'camp-1', (signal) => (calls++, api.generateScene('camp-1', { idempotencyKey: 'k-3' } as never, signal)), instant);
+    const counted = new ImageRun(
+      api as unknown as ImageGenClient,
+      'camp-1',
+      (signal) => (
+        calls++,
+        api.generateScene('camp-1', { idempotencyKey: 'k-3' } as never, signal)
+      ),
+      instant,
+    );
     await expect(counted.start()).rejects.toBeInstanceOf(ConnectError);
     expect(calls).toBe(1);
   });

@@ -1,7 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 
 import { flat } from '../../../core/creatures/creatures-testing';
-import { BUGBEAR, GOBLIN, HOBGOBLIN, OGRE, evaluation, line } from '../../../core/encounters/encounters-testing';
+import {
+  BUGBEAR,
+  GOBLIN,
+  HOBGOBLIN,
+  OGRE,
+  evaluation,
+  line,
+} from '../../../core/encounters/encounters-testing';
 import { BudgetBar } from './budget-bar';
 
 describe('BudgetBar: the difficulty bar of the encounter builder (MR-043, RN-29, E10-09)', () => {
@@ -12,8 +19,10 @@ describe('BudgetBar: the difficulty bar of the encounter builder (MR-043, RN-29,
     fixture.detectChanges();
     return fixture.nativeElement as HTMLElement;
   }
-  const moderate = () => evaluation([line(OGRE, 1), line(BUGBEAR, 2), line(HOBGOBLIN, 4), line(GOBLIN, 6)]);
-  const over = () => evaluation([line(OGRE, 4), line(BUGBEAR, 2), line(HOBGOBLIN, 4), line(GOBLIN, 6)]);
+  const moderate = () =>
+    evaluation([line(OGRE, 1), line(BUGBEAR, 2), line(HOBGOBLIN, 4), line(GOBLIN, 6)]);
+  const over = () =>
+    evaluation([line(OGRE, 4), line(BUGBEAR, 2), line(HOBGOBLIN, 4), line(GOBLIN, 6)]);
 
   it('draws nothing before the server has answered', () => {
     expect(bar(null).querySelector('.bar')).toBeNull();
@@ -21,19 +30,33 @@ describe('BudgetBar: the difficulty bar of the encounter builder (MR-043, RN-29,
 
   it('puts the three budgets above the bar, the total on the marker and the band in an outlined word', () => {
     const el = bar(moderate());
-    expect(Array.from(el.querySelectorAll('.bar__budget')).map((n) => flat(n))).toEqual(['1.250', '1.875', '2.600']);
+    expect(Array.from(el.querySelectorAll('.bar__budget')).map((n) => flat(n))).toEqual([
+      '1.250',
+      '1.875',
+      '2.600',
+    ]);
     expect(flat(el.querySelector('.bar__marker'))).toBe('1.550 XP');
     expect(flat(el.querySelector('.bar__word--on'))).toBe('Moderada');
-    expect(Array.from(el.querySelectorAll('.bar__word')).map((n) => flat(n))).toEqual(['Baixa', 'Moderada', 'Alta', 'Acima de alta']);
+    expect(Array.from(el.querySelectorAll('.bar__word')).map((n) => flat(n))).toEqual([
+      'Baixa',
+      'Moderada',
+      'Alta',
+      'Acima de alta',
+    ]);
     expect(el.querySelector('[role=img]')?.getAttribute('aria-label')).toBe(
       'Dificuldade Moderada: 1.550 XP. Orçamentos: baixa até 1.250, moderada até 1.875, alta até 2.600 XP.',
     );
   });
 
-  it('the phone\'s list of bands has the limit of each, the current one marked for assistive technology and by its dot and bold word', () => {
+  it("the phone's list of bands has the limit of each, the current one marked for assistive technology and by its dot and bold word", () => {
     const el = bar(moderate());
     const items = Array.from(el.querySelectorAll('.band'));
-    expect(items.map((i) => flat(i))).toEqual(['Baixa até 1.250 XP', 'Moderada até 1.875 XP', 'Alta até 2.600 XP', 'Acima de alta mais de 2.600 XP']);
+    expect(items.map((i) => flat(i))).toEqual([
+      'Baixa até 1.250 XP',
+      'Moderada até 1.875 XP',
+      'Alta até 2.600 XP',
+      'Acima de alta mais de 2.600 XP',
+    ]);
     expect(items.map((i) => i.getAttribute('aria-current'))).toEqual([null, 'true', null, null]);
   });
 

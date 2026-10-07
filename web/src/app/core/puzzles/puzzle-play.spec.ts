@@ -1,14 +1,33 @@
 import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { PuzzleBlockedReason, PuzzleBlockedSchema, type PuzzleRun } from '../../../gen/meurpg/play/v1/puzzles_pb';
+import {
+  PuzzleBlockedReason,
+  PuzzleBlockedSchema,
+  type PuzzleRun,
+} from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { PuzzlePlay, RETRY_WAITS_MS } from './puzzle-play';
-import { type FakePuzzlesClient as Fake, FakePuzzlesClient, at, cipherPuzzle, hintAnswer, lightsPuzzle, playerRun, riddlePuzzle, sequencePuzzle } from './puzzles-testing';
+import {
+  type FakePuzzlesClient as Fake,
+  FakePuzzlesClient,
+  at,
+  cipherPuzzle,
+  hintAnswer,
+  lightsPuzzle,
+  playerRun,
+  riddlePuzzle,
+  sequencePuzzle,
+} from './puzzles-testing';
 
 const puzzle = lightsPuzzle('p1', 'O selo da Capela');
 const press = { kind: { case: 'lights' as const, value: { row: 1, col: 1 } } };
 
-function setup(own = ''): { fake: Fake; play: PuzzlePlay; waits: number[]; timers: { ms: number; fn: () => void; cancelled: boolean }[] } {
+function setup(own = ''): {
+  fake: Fake;
+  play: PuzzlePlay;
+  waits: number[];
+  timers: { ms: number; fn: () => void; cancelled: boolean }[];
+} {
   const fake = new FakePuzzlesClient();
   const waits: number[] = [];
   const timers: { ms: number; fn: () => void; cancelled: boolean }[] = [];
@@ -29,7 +48,11 @@ function setup(own = ''): { fake: Fake; play: PuzzlePlay; waits: number[]; timer
   return { fake, play, waits, timers };
 }
 
-const run = (revision: number, partial: Partial<PuzzleRun> = {}): PuzzleRun => ({ ...playerRun(puzzle), revision, ...partial });
+const run = (revision: number, partial: Partial<PuzzleRun> = {}): PuzzleRun => ({
+  ...playerRun(puzzle),
+  revision,
+  ...partial,
+});
 
 describe('PuzzlePlay (MR-038, RN-27)', () => {
   it('opens a puzzle with the run the server sends', async () => {
@@ -51,11 +74,15 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
     expect(play.run()?.revision).toBe(6);
   });
 
-  it('makes a move with its own key and follows the server\'s answer, not its own guess', async () => {
+  it("makes a move with its own key and follows the server's answer, not its own guess", async () => {
     const { fake, play } = setup();
     fake.playerRunResult = run(1);
     await play.open('p1');
-    fake.moveResult = () => ({ run: run(2, { name: 'do servidor' }), replayed: false, solvedByThisMove: false });
+    fake.moveResult = () => ({
+      run: run(2, { name: 'do servidor' }),
+      replayed: false,
+      solvedByThisMove: false,
+    });
     await play.move(press);
     expect(fake.moveKeys).toEqual(['key-1']);
     expect(play.run()?.revision).toBe(2);
@@ -101,7 +128,12 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
     await play.open('p1');
     fake.playerRunResult = run(3, { solved: true });
     fake.moveResult = () => {
-      throw new ConnectError('x', Code.FailedPrecondition, undefined, [{ desc: PuzzleBlockedSchema, value: create(PuzzleBlockedSchema, { reason: PuzzleBlockedReason.SOLVED }) }]);
+      throw new ConnectError('x', Code.FailedPrecondition, undefined, [
+        {
+          desc: PuzzleBlockedSchema,
+          value: create(PuzzleBlockedSchema, { reason: PuzzleBlockedReason.SOLVED }),
+        },
+      ]);
     };
     await play.move(press);
     expect(fake.moveKeys.length).toBe(1);
@@ -123,7 +155,11 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
     const { fake, play } = setup();
     fake.playerRunResult = run(1);
     await play.open('p1');
-    fake.moveResult = () => ({ run: run(2, { solved: true }), replayed: false, solvedByThisMove: true });
+    fake.moveResult = () => ({
+      run: run(2, { solved: true }),
+      replayed: false,
+      solvedByThisMove: true,
+    });
     await play.move(press);
     await play.move(press);
     expect(fake.moveKeys.length).toBe(1);
@@ -143,12 +179,15 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
     const { fake, play } = setup();
     fake.playerRunResult = run(1);
     await play.open('p1');
-    const open: ((v: { run: PuzzleRun; replayed: boolean; solvedByThisMove: boolean }) => void)[] = [];
+    const open: ((v: { run: PuzzleRun; replayed: boolean; solvedByThisMove: boolean }) => void)[] =
+      [];
     fake.moveResult = () => new Promise((resolve) => open.push(resolve));
     const a = play.move(press);
     const b = play.move(press);
     expect(play.pending()).toBe(2);
-    open.forEach((resolve, i) => resolve({ run: run(2 + i), replayed: false, solvedByThisMove: false }));
+    open.forEach((resolve, i) =>
+      resolve({ run: run(2 + i), replayed: false, solvedByThisMove: false }),
+    );
     await Promise.all([a, b]);
     expect(play.pending()).toBe(0);
     expect(play.run()?.revision).toBe(3);
@@ -157,23 +196,39 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
   describe('the riddle and the cipher (a typed answer is judged, not applied)', () => {
     const riddle = riddlePuzzle('p1', 'A porta da Cripta pergunta');
     const answer = { kind: { case: 'riddle' as const, value: { answer: 'escuridão' } } };
-    const riddleRun = (revision: number, partial: Partial<PuzzleRun> = {}): PuzzleRun => ({ ...playerRun(riddle), revision, ...partial });
+    const riddleRun = (revision: number, partial: Partial<PuzzleRun> = {}): PuzzleRun => ({
+      ...playerRun(riddle),
+      revision,
+      ...partial,
+    });
 
-    it('says the answer was wrong when the server\'s last move is the player\'s own wrong one', async () => {
+    it("says the answer was wrong when the server's last move is the player's own wrong one", async () => {
       const { fake, play } = setup('Toren');
       fake.playerRunResult = riddleRun(1);
       await play.open('p1');
-      fake.moveResult = () => ({ run: riddleRun(2, { lastMove: { characterName: 'Toren', wrong: true, changed: [], at: at(0) } as never }), replayed: false, solvedByThisMove: false });
+      fake.moveResult = () => ({
+        run: riddleRun(2, {
+          lastMove: { characterName: 'Toren', wrong: true, changed: [], at: at(0) } as never,
+        }),
+        replayed: false,
+        solvedByThisMove: false,
+      });
       const verdict = await play.move(answer);
       expect(verdict).toEqual({ sent: true, wrong: true, solved: false });
       expect(fake.calls.find((c) => c[0] === 'move')![3]).toEqual(answer);
     });
 
-    it('does not take another player\'s wrong answer for its own', async () => {
+    it("does not take another player's wrong answer for its own", async () => {
       const { fake, play } = setup('Toren');
       fake.playerRunResult = riddleRun(1);
       await play.open('p1');
-      fake.moveResult = () => ({ run: riddleRun(2, { lastMove: { characterName: 'Lia', wrong: true, changed: [], at: at(0) } as never }), replayed: false, solvedByThisMove: false });
+      fake.moveResult = () => ({
+        run: riddleRun(2, {
+          lastMove: { characterName: 'Lia', wrong: true, changed: [], at: at(0) } as never,
+        }),
+        replayed: false,
+        solvedByThisMove: false,
+      });
       expect((await play.move(answer)).wrong).toBe(false);
     });
 
@@ -181,7 +236,11 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
       const { fake, play } = setup('Toren');
       fake.playerRunResult = riddleRun(1);
       await play.open('p1');
-      fake.moveResult = () => ({ run: riddleRun(2, { solved: true }), replayed: false, solvedByThisMove: true });
+      fake.moveResult = () => ({
+        run: riddleRun(2, { solved: true }),
+        replayed: false,
+        solvedByThisMove: true,
+      });
       expect(await play.move(answer)).toEqual({ sent: true, wrong: false, solved: true });
     });
 
@@ -190,33 +249,66 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
       fake.playerRunResult = riddleRun(1);
       await play.open('p1');
       fake.moveResult = () => {
-        throw new ConnectError('x', Code.FailedPrecondition, undefined, [{ desc: PuzzleBlockedSchema, value: create(PuzzleBlockedSchema, { reason: PuzzleBlockedReason.NO_ATTEMPTS_LEFT }) }]);
+        throw new ConnectError('x', Code.FailedPrecondition, undefined, [
+          {
+            desc: PuzzleBlockedSchema,
+            value: create(PuzzleBlockedSchema, { reason: PuzzleBlockedReason.NO_ATTEMPTS_LEFT }),
+          },
+        ]);
       };
       expect((await play.move(answer)).sent).toBe(false);
       expect(play.message()).toBe('Você não tem mais tentativas nesta rodada.');
     });
 
-    it('sends the cipher\'s message as it was typed, with a key of its own', async () => {
+    it("sends the cipher's message as it was typed, with a key of its own", async () => {
       const { fake, play } = setup('Toren');
       fake.playerRunResult = { ...playerRun(cipherPuzzle('p1', 'A carta')), revision: 1 };
       await play.open('p1');
-      fake.moveResult = () => ({ run: { ...playerRun(cipherPuzzle('p1', 'A carta')), revision: 2 }, replayed: false, solvedByThisMove: false });
-      await play.move({ kind: { case: 'cipher', value: { text: 'o tesouro esta sobre o altar' } } });
-      expect(fake.calls.find((c) => c[0] === 'move')![3]).toEqual({ kind: { case: 'cipher', value: { text: 'o tesouro esta sobre o altar' } } });
+      fake.moveResult = () => ({
+        run: { ...playerRun(cipherPuzzle('p1', 'A carta')), revision: 2 },
+        replayed: false,
+        solvedByThisMove: false,
+      });
+      await play.move({
+        kind: { case: 'cipher', value: { text: 'o tesouro esta sobre o altar' } },
+      });
+      expect(fake.calls.find((c) => c[0] === 'move')![3]).toEqual({
+        kind: { case: 'cipher', value: { text: 'o tesouro esta sobre o altar' } },
+      });
       expect(fake.moveKeys).toEqual(['key-1']);
     });
   });
 
   describe('"Tentar uma dica" (a skill check, RN-18)', () => {
-    const base = playerRun(riddlePuzzle('p1', 'A porta'), { hintByCheck: true, hintSkillKey: 'skill:investigation', canTryHint: true, hints: [], sharedHints: 0 });
+    const base = playerRun(riddlePuzzle('p1', 'A porta'), {
+      hintByCheck: true,
+      hintSkillKey: 'skill:investigation',
+      canTryHint: true,
+      hints: [],
+      sharedHints: 0,
+    });
 
     it('tries with the d20 rolled in the app, with its own key, and keeps the hint the player won', async () => {
       const { fake, play } = setup();
       fake.playerRunResult = { ...base, revision: 1 };
       await play.open('p1');
-      fake.hintResult = () => hintAnswer({ ...base, revision: 2, hints: ['Pense no que acompanha você ao meio-dia.'], sharedHints: 0 }, true, 17);
+      fake.hintResult = () =>
+        hintAnswer(
+          {
+            ...base,
+            revision: 2,
+            hints: ['Pense no que acompanha você ao meio-dia.'],
+            sharedHints: 0,
+          },
+          true,
+          17,
+        );
       await play.tryHint({ inApp: true });
-      expect(fake.calls.find((c) => c[0] === 'tryHint')!.slice(1, 4)).toEqual(['camp-1', 'p1', { inApp: true }]);
+      expect(fake.calls.find((c) => c[0] === 'tryHint')!.slice(1, 4)).toEqual([
+        'camp-1',
+        'p1',
+        { inApp: true },
+      ]);
       expect(fake.hintKeys).toEqual(['key-1']);
       expect(play.run()?.hints).toEqual(['Pense no que acompanha você ao meio-dia.']);
       expect(play.hintTry()).toMatchObject({ passed: true });
@@ -261,7 +353,12 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
       fake.playerRunResult = { ...base, revision: 3 };
       await play.refresh();
       fake.hintResult = () => {
-        throw new ConnectError('x', Code.FailedPrecondition, undefined, [{ desc: PuzzleBlockedSchema, value: create(PuzzleBlockedSchema, { reason: PuzzleBlockedReason.HINT_ALREADY_TRIED }) }]);
+        throw new ConnectError('x', Code.FailedPrecondition, undefined, [
+          {
+            desc: PuzzleBlockedSchema,
+            value: create(PuzzleBlockedSchema, { reason: PuzzleBlockedReason.HINT_ALREADY_TRIED }),
+          },
+        ]);
       };
       await play.tryHint({ inApp: true });
       expect(play.message()).toContain('Você já tentou esta dica');
@@ -270,8 +367,15 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
 
   describe('the sequence played step by step (a fake clock, no real sleeps)', () => {
     const seq = sequencePuzzle('p1', 'Os sinos');
-    const playing = (revision: number, shown: number[], nextInMs: number, plays = 1): PuzzleRun => ({
-      ...playerRun(seq, { sequence: { totalSteps: 6, plays, playing: nextInMs > 0, shown, stepMs: 1200, nextInMs } }),
+    const playing = (
+      revision: number,
+      shown: number[],
+      nextInMs: number,
+      plays = 1,
+    ): PuzzleRun => ({
+      ...playerRun(seq, {
+        sequence: { totalSteps: 6, plays, playing: nextInMs > 0, shown, stepMs: 1200, nextInMs },
+      }),
       revision,
     });
 
@@ -321,7 +425,7 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
       expect(timers[0].cancelled).toBe(true);
     });
 
-    it('takes the run when the player found the cipher\'s key (a clue in the notes moves no revision)', async () => {
+    it("takes the run when the player found the cipher's key (a clue in the notes moves no revision)", async () => {
       const { fake, play } = setup();
       const cipher = playerRun(cipherPuzzle('p1', 'x'), { hasKeyClue: true });
       fake.playerRunResult = { ...cipher, revision: 3 };
@@ -334,15 +438,24 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
       const { fake, play } = setup();
       fake.playerRunResult = { ...playerRun(riddlePuzzle('p1', 'x')), revision: 4 };
       await play.open('p1');
-      expect(play.apply({ ...playerRun(riddlePuzzle('p1', 'x')), revision: 4, stopped: true })).toBe(true);
+      expect(
+        play.apply({ ...playerRun(riddlePuzzle('p1', 'x')), revision: 4, stopped: true }),
+      ).toBe(true);
       expect(play.run()?.stopped).toBe(true);
     });
   });
 
   describe('bell taps go one at a time, in order (slice 10.15b fix round 1)', () => {
     const seq = sequencePuzzle('p1', 'Os sinos');
-    const ready = (revision: number, progress = 0, partial: Partial<PuzzleRun> = {}): PuzzleRun => ({
-      ...playerRun(seq, { sequence: { totalSteps: 6, plays: 1, playing: false, shown: [], stepMs: 1200, nextInMs: 0 }, state: { kind: { case: 'sequence', value: { progress } } } }),
+    const ready = (
+      revision: number,
+      progress = 0,
+      partial: Partial<PuzzleRun> = {},
+    ): PuzzleRun => ({
+      ...playerRun(seq, {
+        sequence: { totalSteps: 6, plays: 1, playing: false, shown: [], stepMs: 1200, nextInMs: 0 },
+        state: { kind: { case: 'sequence', value: { progress } } },
+      }),
       revision,
       ...partial,
     });
@@ -352,7 +465,11 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
       const { fake, play } = setup('Toren');
       fake.playerRunResult = ready(1);
       await play.open('p1');
-      const release: ((a: { run: PuzzleRun; replayed: boolean; solvedByThisMove: boolean }) => void)[] = [];
+      const release: ((a: {
+        run: PuzzleRun;
+        replayed: boolean;
+        solvedByThisMove: boolean;
+      }) => void)[] = [];
       fake.moveResult = () => new Promise((resolve) => release.push(resolve));
       const first = play.move(bell(0));
       const second = play.move(bell(1));
@@ -365,14 +482,22 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
       await first;
       await Promise.resolve();
       await Promise.resolve();
-      expect(fake.calls.filter((c) => c[0] === 'move').map((c) => (c[3] as { kind: { value: { bell: number } } }).kind.value.bell)).toEqual([0, 1]);
+      expect(
+        fake.calls
+          .filter((c) => c[0] === 'move')
+          .map((c) => (c[3] as { kind: { value: { bell: number } } }).kind.value.bell),
+      ).toEqual([0, 1]);
       release[1]({ run: ready(3, 2), replayed: false, solvedByThisMove: false });
       await second;
       await Promise.resolve();
       await Promise.resolve();
       release[2]({ run: ready(4, 3), replayed: false, solvedByThisMove: false });
       await third;
-      expect(fake.calls.filter((c) => c[0] === 'move').map((c) => (c[3] as { kind: { value: { bell: number } } }).kind.value.bell)).toEqual([0, 1, 3]);
+      expect(
+        fake.calls
+          .filter((c) => c[0] === 'move')
+          .map((c) => (c[3] as { kind: { value: { bell: number } } }).kind.value.bell),
+      ).toEqual([0, 1, 3]);
       expect(play.pending()).toBe(0);
     });
 
@@ -387,7 +512,11 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
         return { run: ready(1 + n, n), replayed: false, solvedByThisMove: false };
       };
       await Promise.all([play.move(bell(0)), play.move(bell(1))]);
-      expect(fake.calls.filter((c) => c[0] === 'move').map((c) => (c[3] as { kind: { value: { bell: number } } }).kind.value.bell)).toEqual([0, 0, 1]);
+      expect(
+        fake.calls
+          .filter((c) => c[0] === 'move')
+          .map((c) => (c[3] as { kind: { value: { bell: number } } }).kind.value.bell),
+      ).toEqual([0, 0, 1]);
       expect(fake.moveKeys[0]).toBe(fake.moveKeys[1]);
     });
 
@@ -395,8 +524,24 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
       const { fake, play } = setup('Toren');
       fake.playerRunResult = ready(1);
       await play.open('p1');
-      fake.moveResult = () => ({ run: ready(2, 0, { lastMove: { characterName: 'Toren', wrong: true, step: 1, changed: [], at: at(0) } as never }), replayed: false, solvedByThisMove: false });
-      const [a, b, c] = await Promise.all([play.move(bell(2)), play.move(bell(0)), play.move(bell(1))]);
+      fake.moveResult = () => ({
+        run: ready(2, 0, {
+          lastMove: {
+            characterName: 'Toren',
+            wrong: true,
+            step: 1,
+            changed: [],
+            at: at(0),
+          } as never,
+        }),
+        replayed: false,
+        solvedByThisMove: false,
+      });
+      const [a, b, c] = await Promise.all([
+        play.move(bell(2)),
+        play.move(bell(0)),
+        play.move(bell(1)),
+      ]);
       expect(a.wrong).toBe(true);
       expect([b.sent, c.sent]).toEqual([false, false]);
       expect(fake.calls.filter((c2) => c2[0] === 'move')).toHaveLength(1);
@@ -410,7 +555,11 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
       const { fake, play } = setup('Toren');
       fake.playerRunResult = ready(1);
       await play.open('p1');
-      fake.moveResult = () => ({ run: ready(2, 6, { solved: true }), replayed: false, solvedByThisMove: true });
+      fake.moveResult = () => ({
+        run: ready(2, 6, { solved: true }),
+        replayed: false,
+        solvedByThisMove: true,
+      });
       const [a, b] = await Promise.all([play.move(bell(1)), play.move(bell(1))]);
       expect(a.solved).toBe(true);
       expect(b.sent).toBe(false);
@@ -420,7 +569,10 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
 
   describe('what only moves forward never steps back (slice 10.15b fix round 1)', () => {
     const seq = sequencePuzzle('p1', 'Os sinos');
-    const at3 = (revision: number, playback: object): PuzzleRun => ({ ...playerRun(seq, { sequence: { totalSteps: 6, plays: 1, stepMs: 1200, ...playback } }), revision });
+    const at3 = (revision: number, playback: object): PuzzleRun => ({
+      ...playerRun(seq, { sequence: { totalSteps: 6, plays: 1, stepMs: 1200, ...playback } }),
+      revision,
+    });
 
     it('does not bring a play back after it ended: a late read from the middle of it is ignored', async () => {
       const { fake, play } = setup();
@@ -442,7 +594,13 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
   });
 
   describe('the hint try, the timer and the dice mode (slice 10.15b fix round 1)', () => {
-    const base = playerRun(riddlePuzzle('p1', 'A porta'), { hintByCheck: true, hintSkillKey: 'skill:investigation', canTryHint: true, hints: [], sharedHints: 0 });
+    const base = playerRun(riddlePuzzle('p1', 'A porta'), {
+      hintByCheck: true,
+      hintSkillKey: 'skill:investigation',
+      canTryHint: true,
+      hints: [],
+      sharedHints: 0,
+    });
 
     it('clears the line of the last try when the master releases a hint, and when the player may try again', async () => {
       const { fake, play } = setup();
@@ -455,7 +613,13 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
       play.apply({ ...base, revision: 3, canTryHint: false, hints: [] });
       expect(play.hintTry()).not.toBeNull();
       // The master released one: the line is about a hint that is gone.
-      play.apply({ ...base, revision: 4, canTryHint: true, hints: ['Pense no meio-dia.'], sharedHints: 1 });
+      play.apply({
+        ...base,
+        revision: 4,
+        canTryHint: true,
+        hints: ['Pense no meio-dia.'],
+        sharedHints: 1,
+      });
       expect(play.hintTry()).toBeNull();
     });
 
@@ -464,7 +628,12 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
       fake.playerRunResult = { ...base, revision: 1 };
       await play.open('p1');
       fake.hintResult = () => {
-        throw new ConnectError('x', Code.FailedPrecondition, undefined, [{ desc: PuzzleBlockedSchema, value: create(PuzzleBlockedSchema, { reason: PuzzleBlockedReason.WRONG_DICE_MODE }) }]);
+        throw new ConnectError('x', Code.FailedPrecondition, undefined, [
+          {
+            desc: PuzzleBlockedSchema,
+            value: create(PuzzleBlockedSchema, { reason: PuzzleBlockedReason.WRONG_DICE_MODE }),
+          },
+        ]);
       };
       await play.tryHint({ inApp: true });
       expect(play.diceModeStale()).toBe(1);
@@ -473,7 +642,19 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
 
     it('never starts the reveal timer after the page left', async () => {
       const { fake, play, timers } = setup();
-      fake.playerRunResult = { ...playerRun(sequencePuzzle('p1', 's'), { sequence: { totalSteps: 6, plays: 1, playing: true, shown: [0], stepMs: 1200, nextInMs: 900 } }), revision: 2 };
+      fake.playerRunResult = {
+        ...playerRun(sequencePuzzle('p1', 's'), {
+          sequence: {
+            totalSteps: 6,
+            plays: 1,
+            playing: true,
+            shown: [0],
+            stepMs: 1200,
+            nextInMs: 900,
+          },
+        }),
+        revision: 2,
+      };
       play.dispose();
       play.apply(fake.playerRunResult);
       expect(timers).toHaveLength(0);

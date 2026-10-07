@@ -1,6 +1,10 @@
 import { create } from '@bufbuild/protobuf';
 
-import { LevelUpFeatureChoiceSchema, LevelUpHitPointsMethod, LevelUpSubclassSchema } from '../../../gen/meurpg/characters/v1/characters_pb';
+import {
+  LevelUpFeatureChoiceSchema,
+  LevelUpHitPointsMethod,
+  LevelUpSubclassSchema,
+} from '../../../gen/meurpg/characters/v1/characters_pb';
 import { LevelUpDraft } from './levelup-draft';
 import { SKILLS, SPELLS, WIZARD_KEYS, fighterOptions, wizardOptions } from './levelup-testing';
 
@@ -41,7 +45,11 @@ describe('LevelUpDraft: what is missing', () => {
   });
 
   it('asks what the server asks, even from a list that has fewer rows, and says so instead of letting it through', () => {
-    const few = new LevelUpDraft(wizardOptions({ cantrips: 5, preparedMaxAfter: 3 }), WIZARD_KEYS, catalog);
+    const few = new LevelUpDraft(
+      wizardOptions({ cantrips: 5, preparedMaxAfter: 3 }),
+      WIZARD_KEYS,
+      catalog,
+    );
     expect(few.cantripsAsked()).toBe(5);
     few.toggleAbility('int');
     for (const item of few.cantripItems()) few.toggleCantrip(item.key);
@@ -84,11 +92,17 @@ describe('LevelUpDraft: hit points', () => {
     expect(d.choices()).toMatchObject({ hitPoints: { method: LevelUpHitPointsMethod.AVERAGE } });
     d.rolled.set({ kind: 'app', value: 5 });
     expect(d.missingIn('hp')).toEqual([]);
-    expect(d.choices()).toMatchObject({ hitPoints: { method: LevelUpHitPointsMethod.ROLLED_IN_APP, value: 5 } });
+    expect(d.choices()).toMatchObject({
+      hitPoints: { method: LevelUpHitPointsMethod.ROLLED_IN_APP, value: 5 },
+    });
     d.rolled.set({ kind: 'physical', value: 3 });
-    expect(d.choices()).toMatchObject({ hitPoints: { method: LevelUpHitPointsMethod.ROLLED_PHYSICAL, value: 3 } });
+    expect(d.choices()).toMatchObject({
+      hitPoints: { method: LevelUpHitPointsMethod.ROLLED_PHYSICAL, value: 3 },
+    });
     // The average card still gives its own choices, whichever card is open.
-    expect(d.averageChoices()).toMatchObject({ hitPoints: { method: LevelUpHitPointsMethod.AVERAGE } });
+    expect(d.averageChoices()).toMatchObject({
+      hitPoints: { method: LevelUpHitPointsMethod.AVERAGE },
+    });
   });
 });
 
@@ -138,7 +152,17 @@ describe('LevelUpDraft: subclass, feature options, skills and expertise', () => 
           key: 'sub:lore',
           namePt: 'Colégio do Conhecimento',
           skillChoices: 1,
-          featureChoices: [create(LevelUpFeatureChoiceSchema, { feature: { key: 'feature:x', namePt: 'Estilo' }, choose: 2, options: [{ key: 'o:a', namePt: 'A' }, { key: 'o:b', namePt: 'B' }, { key: 'o:c', namePt: 'C' }] })],
+          featureChoices: [
+            create(LevelUpFeatureChoiceSchema, {
+              feature: { key: 'feature:x', namePt: 'Estilo' },
+              choose: 2,
+              options: [
+                { key: 'o:a', namePt: 'A' },
+                { key: 'o:b', namePt: 'B' },
+                { key: 'o:c', namePt: 'C' },
+              ],
+            }),
+          ],
         }),
         create(LevelUpSubclassSchema, { key: 'sub:champion', namePt: 'Campeão' }),
       ],
@@ -169,7 +193,10 @@ describe('LevelUpDraft: subclass, feature options, skills and expertise', () => 
     d.toggleFeature('o:b', group, 2);
     d.toggleFeature('o:c', group, 2);
     expect([...d.features()]).toEqual(['o:a', 'o:b']);
-    expect(d.choices()).toMatchObject({ featureChoiceKeys: ['o:a', 'o:b'], subclassKey: 'sub:lore' });
+    expect(d.choices()).toMatchObject({
+      featureChoiceKeys: ['o:a', 'o:b'],
+      subclassKey: 'sub:lore',
+    });
   });
 
   it('offers expertise in a skill just picked, and drops it when the skill is unpicked', () => {

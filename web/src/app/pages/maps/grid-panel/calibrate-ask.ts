@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -51,8 +60,12 @@ export class CalibrateAsk implements OnInit {
   readonly closed = output<void>();
 
   protected readonly oldFactor = computed(() => Math.max(1, this.map().squareFactor));
-  protected readonly drawnColumns = computed(() => this.map().drawnColumns || this.map().gridColumns / this.oldFactor());
-  protected readonly drawnRows = computed(() => this.map().drawnRows || this.map().gridRows / this.oldFactor());
+  protected readonly drawnColumns = computed(
+    () => this.map().drawnColumns || this.map().gridColumns / this.oldFactor(),
+  );
+  protected readonly drawnRows = computed(
+    () => this.map().drawnRows || this.map().gridRows / this.oldFactor(),
+  );
 
   /** The choice starts on what the map has now: one of the four, or "Outro" with its value in the field. */
   protected readonly pick = signal<number>(OTHER);
@@ -65,13 +78,22 @@ export class CalibrateAsk implements OnInit {
     ...PRESET_FACTORS.map((f) => ({
       value: f,
       title: factorLabel(f),
-      description: f === 1 ? 'O desenho já está na escala das regras (5 pés).' : `Cada quadrado do desenho vira ${f} × ${f} quadrados de 1,5 m.`,
+      description:
+        f === 1
+          ? 'O desenho já está na escala das regras (5 pés).'
+          : `Cada quadrado do desenho vira ${f} × ${f} quadrados de 1,5 m.`,
     })),
-    { value: OTHER, title: 'Outro', description: `Um múltiplo de 1,5 m, até ${factorLabel(MAX_FACTOR)}.` },
+    {
+      value: OTHER,
+      title: 'Outro',
+      description: `Um múltiplo de 1,5 m, até ${factorLabel(MAX_FACTOR)}.`,
+    },
   ]);
 
   /** The factor the question stands on now, or `null` while "Outro" holds something that is not one. */
-  protected readonly factor = computed<number | null>(() => (this.pick() === OTHER ? factorFromMeters(this.other()) : this.pick()));
+  protected readonly factor = computed<number | null>(() =>
+    this.pick() === OTHER ? factorFromMeters(this.other()) : this.pick(),
+  );
   protected readonly effect = computed(() => {
     const f = this.factor();
     return f === null ? null : effectOf(this.oldFactor(), f);
@@ -84,7 +106,9 @@ export class CalibrateAsk implements OnInit {
     const f = this.factor();
     return f !== null && !fits(this.drawnColumns(), this.drawnRows(), f);
   });
-  protected readonly ready = computed(() => this.factor() !== null && this.effect() !== 'same' && !this.tooBig());
+  protected readonly ready = computed(
+    () => this.factor() !== null && this.effect() !== 'same' && !this.tooBig(),
+  );
   protected readonly clears = computed(() => this.effect() === 'clears');
   protected readonly times = computed(() => {
     const f = this.factor();
@@ -117,7 +141,9 @@ export class CalibrateAsk implements OnInit {
     if (value === OTHER && this.other() === '') {
       // "Outro" starts at a value the four cards do not already offer (5 × 1,5 m = 7,5 m, or the next one if that is the map's own).
       const first = PRESET_FACTORS[PRESET_FACTORS.length - 1] + 1;
-      this.other.set(metersField(Math.min(MAX_FACTOR, this.oldFactor() === first ? first + 1 : first)));
+      this.other.set(
+        metersField(Math.min(MAX_FACTOR, this.oldFactor() === first ? first + 1 : first)),
+      );
     }
   }
 
@@ -156,7 +182,9 @@ export class CalibrateAsk implements OnInit {
     this.error.set('');
     try {
       const map = this.map();
-      this.changed.emit(await this.api.setGrid(this.campaignId(), map.id, this.drawnColumns(), factor));
+      this.changed.emit(
+        await this.api.setGrid(this.campaignId(), map.id, this.drawnColumns(), factor),
+      );
     } catch (err) {
       this.stage.set('pick');
       this.error.set(editorErrorMessage(err, 'grid', 'mudar a grade'));

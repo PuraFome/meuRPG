@@ -25,7 +25,16 @@ import { XpSplit } from './xp-split';
 class Host {
   readonly rows = signal<Recipient[]>([
     { id: 'p', name: 'Pensantus', sub: 'Mago 3', checked: true, amount: '+116 XP' },
-    { id: 'b', name: 'Brisa', sub: 'Ladina 3', checked: false, amount: 'Não recebe', tag: { label: 'Caída', icon: 'warning' }, note: 'Morreu: não recebe XP.', disabled: true },
+    {
+      id: 'b',
+      name: 'Brisa',
+      sub: 'Ladina 3',
+      checked: false,
+      amount: 'Não recebe',
+      tag: { label: 'Caída', icon: 'warning' },
+      note: 'Morreu: não recebe XP.',
+      disabled: true,
+    },
   ]);
   readonly split = signal(splitXp(350, 3));
   readonly first = signal(true);
@@ -61,7 +70,9 @@ describe('the XP pieces', () => {
       const { el, host } = setup();
       el.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[0].click();
       expect(host.toggled).toEqual(['p']);
-      expect(el.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[1].disabled).toBe(true);
+      expect(el.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[1].disabled).toBe(
+        true,
+      );
     });
   });
 
@@ -85,11 +96,15 @@ describe('the XP pieces', () => {
   });
 
   describe('XpActions', () => {
-    const buttons = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLButtonElement>('app-xp-actions button'));
+    const buttons = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('app-xp-actions button'));
 
     it('has two real buttons, the filled one first when it leads', () => {
       const { el } = setup();
-      expect(buttons(el).map((b) => b.textContent?.trim())).toEqual(['Dar 116 XP a cada um', 'Agora não']);
+      expect(buttons(el).map((b) => b.textContent?.trim())).toEqual([
+        'Dar 116 XP a cada um',
+        'Agora não',
+      ]);
       expect(buttons(el)[0].classList.contains('mat-mdc-unelevated-button')).toBe(true);
       expect(buttons(el)[1].classList.contains('mat-mdc-outlined-button')).toBe(true);
     });
@@ -98,7 +113,10 @@ describe('the XP pieces', () => {
       const { fixture, el, host } = setup();
       host.first.set(false);
       fixture.detectChanges();
-      expect(buttons(el).map((b) => b.textContent?.trim())).toEqual(['Agora não', 'Dar 116 XP a cada um']);
+      expect(buttons(el).map((b) => b.textContent?.trim())).toEqual([
+        'Agora não',
+        'Dar 116 XP a cada um',
+      ]);
     });
 
     it('says why it waits, linked to the button, and still lets a press through', () => {

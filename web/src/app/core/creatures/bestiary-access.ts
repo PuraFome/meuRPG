@@ -28,7 +28,9 @@ export class BestiaryAccessCheck {
       if (!campaign) {
         return { status: 'not-found' };
       }
-      return campaign.myRole === Role.MASTER && !campaign.awaitingApproval ? { status: 'master', campaignName: campaign.name } : { status: 'forbidden' };
+      return campaign.myRole === Role.MASTER && !campaign.awaitingApproval
+        ? { status: 'master', campaignName: campaign.name }
+        : { status: 'forbidden' };
     } catch (err) {
       return ConnectError.from(err, Code.Unavailable).code === Code.NotFound
         ? { status: 'not-found' }

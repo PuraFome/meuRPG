@@ -2,7 +2,14 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 
 import type { DungeonDoor, DungeonStair } from '../../../gen/meurpg/maps/v1/dungeons_pb';
 import type { MapLayers } from '../../core/maps/layers';
-import { doorCountText, doorSquaresOf, dungeonSizeText, roomCountText, stairCountText, wallPath } from '../../core/maps/dungeon-layout';
+import {
+  doorCountText,
+  doorSquaresOf,
+  dungeonSizeText,
+  roomCountText,
+  stairCountText,
+  wallPath,
+} from '../../core/maps/dungeon-layout';
 import { MapLayersOverlay } from '../map-layers/map-layers';
 import { MapLayersLegend } from '../map-layers/map-layers-legend';
 import { StairMark } from '../map-layers/stair-mark';
@@ -67,7 +74,9 @@ export class DungeonPreview {
   protected readonly patternId = `dp-hatch-${nextId++}`;
   protected readonly roomCountText = roomCountText;
 
-  protected readonly walls = computed(() => wallPath(this.layout().open, this.layout().width, this.layout().height));
+  protected readonly walls = computed(() =>
+    wallPath(this.layout().open, this.layout().width, this.layout().height),
+  );
   protected readonly doorLayers = computed<MapLayers>(() => ({
     columns: this.layout().width,
     rows: this.layout().height,
@@ -77,7 +86,10 @@ export class DungeonPreview {
     threeQuarters: [],
     doors: doorSquaresOf(this.layout().doors),
   }));
-  protected readonly stairKinds = computed(() => ({ up: this.layout().stairs.some((s) => s.up), down: this.layout().stairs.some((s) => !s.up) }));
+  protected readonly stairKinds = computed(() => ({
+    up: this.layout().stairs.some((s) => s.up),
+    down: this.layout().stairs.some((s) => !s.up),
+  }));
   protected readonly gridPath = computed(() => {
     const { width, height } = this.layout();
     const parts: string[] = [];
@@ -91,8 +103,11 @@ export class DungeonPreview {
   });
   protected readonly doorsText = computed(() => doorCountText(this.layout().doors));
   protected readonly stairsText = computed(() => stairCountText(this.layout().stairs.length));
-  protected readonly sizeText = computed(() => `${this.layout().width} × ${this.layout().height} quadrados`);
+  protected readonly sizeText = computed(
+    () => `${this.layout().width} × ${this.layout().height} quadrados`,
+  );
   protected readonly description = computed(
-    () => `Prévia da masmorra: ${roomCountText(this.layout().roomCount)}, ${this.doorsText()}, ${this.stairsText()}, ${this.sizeText()} (${dungeonSizeText(this.layout().width, this.layout().height)}).`,
+    () =>
+      `Prévia da masmorra: ${roomCountText(this.layout().roomCount)}, ${this.doorsText()}, ${this.stairsText()}, ${this.sizeText()} (${dungeonSizeText(this.layout().width, this.layout().height)}).`,
   );
 }

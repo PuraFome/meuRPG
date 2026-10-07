@@ -126,7 +126,9 @@ export class CastTargets {
 
   protected readonly id = `cast-targets-${nextId++}`;
   protected readonly placed = computed(() => dartsPlaced(this.dealt()));
-  protected readonly full = computed(() => this.rule().kind === 'multi' && this.chosen().length >= this.rule().max);
+  protected readonly full = computed(
+    () => this.rule().kind === 'multi' && this.chosen().length >= this.rule().max,
+  );
   protected readonly caption = computed(() => {
     const r = this.rule();
     switch (r.kind) {
@@ -138,7 +140,9 @@ export class CastTargets {
         if (this.area()) {
           return 'Quem está na área da magia';
         }
-        return r.min === 0 ? 'Quem a magia atinge (pode ser ninguém)' : `Escolha até ${r.max} alvos (só quem você vê)`;
+        return r.min === 0
+          ? 'Quem a magia atinge (pode ser ninguém)'
+          : `Escolha até ${r.max} alvos (só quem você vê)`;
     }
   });
 

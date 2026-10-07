@@ -16,7 +16,10 @@ describe('StageViewer', () => {
   const aldo = stageNpc('s2', 'Aldo');
 
   function setup(entryId = 's1') {
-    const state = new SceneState(() => Promise.resolve(null), () => false);
+    const state = new SceneState(
+      () => Promise.resolve(null),
+      () => false,
+    );
     state.apply(playerScene([], [mira, aldo]));
     const close = vi.fn();
     const data: StageViewerData = { state, entryId };
@@ -41,7 +44,10 @@ describe('StageViewer', () => {
   it('has only "Fechar" and the ✕, both closing it', () => {
     const { el, close } = setup();
     const buttons = Array.from(el.querySelectorAll<HTMLButtonElement>('button'));
-    expect(buttons.map((b) => b.getAttribute('aria-label') ?? flat(b))).toEqual(['Fechar', 'Fechar']);
+    expect(buttons.map((b) => b.getAttribute('aria-label') ?? flat(b))).toEqual([
+      'Fechar',
+      'Fechar',
+    ]);
     buttons[0].click();
     buttons[1].click();
     expect(close).toHaveBeenCalledTimes(2);

@@ -4,7 +4,14 @@ import { TestBed } from '@angular/core/testing';
 import type { PickItem } from '../../../core/levelup/levelup-flow';
 import { PickList } from './pick-list';
 
-const items: PickItem[] = ['Alarme', 'Armadura Arcana', 'Leque Cromático', 'Luz', 'Passo Nebuloso', 'Sono'].map((name) => ({
+const items: PickItem[] = [
+  'Alarme',
+  'Armadura Arcana',
+  'Leque Cromático',
+  'Luz',
+  'Passo Nebuloso',
+  'Sono',
+].map((name) => ({
   key: `k:${name}`,
   name,
   sub: '1º nível',
@@ -29,7 +36,12 @@ describe('PickList', () => {
     Object.assign(fixture.componentInstance, over);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    return { fixture, el, host: fixture.componentInstance, text: () => el.textContent?.replace(/\s+/g, ' ') ?? '' };
+    return {
+      fixture,
+      el,
+      host: fixture.componentInstance,
+      text: () => el.textContent?.replace(/\s+/g, ' ') ?? '',
+    };
   }
 
   it('says how many of how many, with the warning words while one is missing', () => {
@@ -70,7 +82,9 @@ describe('PickList', () => {
 
   it('keeps a picked row visible even when it is past the first ones', () => {
     const { el } = setup({ picked: new Set(['k:Sono']) });
-    expect(Array.from(el.querySelectorAll('.row__name')).map((n) => n.textContent)).toContain('Sono');
+    expect(Array.from(el.querySelectorAll('.row__name')).map((n) => n.textContent)).toContain(
+      'Sono',
+    );
   });
 
   it('searches by name, and says so when nothing matches', () => {
@@ -79,7 +93,9 @@ describe('PickList', () => {
     input.value = 'nebu';
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
-    expect(Array.from(el.querySelectorAll('.row__name')).map((n) => n.textContent)).toEqual(['Passo Nebuloso']);
+    expect(Array.from(el.querySelectorAll('.row__name')).map((n) => n.textContent)).toEqual([
+      'Passo Nebuloso',
+    ]);
     input.value = 'zzz';
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
@@ -92,7 +108,9 @@ describe('PickList', () => {
     expect(boxes.filter((b) => b.disabled)).toHaveLength(boxes.length - 2);
     host.picked = new Set(['k:Luz']);
     fixture.changeDetectorRef.detectChanges();
-    const open = Array.from(el.querySelectorAll<HTMLInputElement>('input[type=checkbox]')).find((b) => !b.checked)!;
+    const open = Array.from(el.querySelectorAll<HTMLInputElement>('input[type=checkbox]')).find(
+      (b) => !b.checked,
+    )!;
     open.dispatchEvent(new Event('change'));
     expect(host.events).toHaveLength(1);
   });

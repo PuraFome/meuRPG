@@ -45,7 +45,9 @@ export class StageViewer {
   private readonly sheet = injectSheet<StageViewerData, void>();
   protected readonly inSheet = this.sheet.inSheet;
   /** The entry on the stage right now, or `undefined` once the NPC left. */
-  private readonly onStage = computed(() => this.sheet.data.state.stage().find((n) => n.id === this.sheet.data.entryId));
+  private readonly onStage = computed(() =>
+    this.sheet.data.state.stage().find((n) => n.id === this.sheet.data.entryId),
+  );
   /** The last entry seen, so the title does not empty while the view closes. */
   private readonly last = signal<StageNpc | undefined>(undefined);
   protected readonly npc = computed(() => this.onStage() ?? this.last());

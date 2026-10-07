@@ -7,7 +7,14 @@ import { textOf } from '../../../../core/format/text-testing';
 import { MapsClient } from '../../../../core/maps/maps-client';
 import { PuzzleSessionState } from '../../../../core/puzzles/puzzle-session';
 import { PuzzlesClient } from '../../../../core/puzzles/puzzles-client';
-import { FakePuzzlesClient, asClient, lightsPuzzle, lockPuzzle, masterRun, pillarsPuzzle } from '../../../../core/puzzles/puzzles-testing';
+import {
+  FakePuzzlesClient,
+  asClient,
+  lightsPuzzle,
+  lockPuzzle,
+  masterRun,
+  pillarsPuzzle,
+} from '../../../../core/puzzles/puzzles-testing';
 import { MasterPuzzles } from './master-puzzles';
 
 describe('MasterPuzzles (MR-038, E10-06 states 3 and 4)', () => {
@@ -20,10 +27,21 @@ describe('MasterPuzzles (MR-038, E10-06 states 3 and 4)', () => {
   async function render(runs: ReturnType<typeof masterRun>[]) {
     api = new FakePuzzlesClient();
     api.sessionResult = runs;
-    state = new PuzzleSessionState(asClient(api), () => 'camp-1', () => true);
+    state = new PuzzleSessionState(
+      asClient(api),
+      () => 'camp-1',
+      () => true,
+    );
     await state.refresh();
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), { provide: PuzzlesClient, useValue: api }, { provide: MapsClient, useValue: { list: async () => [], get: async () => ({}), layers: async () => ({}) } }],
+      providers: [
+        provideRouter([]),
+        { provide: PuzzlesClient, useValue: api },
+        {
+          provide: MapsClient,
+          useValue: { list: async () => [], get: async () => ({}), layers: async () => ({}) },
+        },
+      ],
     });
     const fixture = TestBed.createComponent(MasterPuzzles);
     fixture.componentRef.setInput('campaignId', 'camp-1');
@@ -41,7 +59,11 @@ describe('MasterPuzzles (MR-038, E10-06 states 3 and 4)', () => {
   }
 
   it('lists each puzzle with where it stands, and "Mostrar aos jogadores" on the ones not shown', async () => {
-    const { el } = await render([masterRun(a, PuzzleRunStatus.SHOWN), masterRun(b, PuzzleRunStatus.NOT_SHOWN), masterRun(c, PuzzleRunStatus.NOT_SHOWN)]);
+    const { el } = await render([
+      masterRun(a, PuzzleRunStatus.SHOWN),
+      masterRun(b, PuzzleRunStatus.NOT_SHOWN),
+      masterRun(c, PuzzleRunStatus.NOT_SHOWN),
+    ]);
     const rows = Array.from(el.querySelectorAll('.mr-list li')).map((r) => textOf(r));
     expect(rows[0]).toContain('O selo da Capela');
     expect(rows[0]).toContain('Mostrado agora');
@@ -52,10 +74,17 @@ describe('MasterPuzzles (MR-038, E10-06 states 3 and 4)', () => {
   });
 
   it('offers "Ver ao vivo" on what is shown or solved (the card itself is in the main column), and the first one is chosen', async () => {
-    const { el, fixture } = await render([masterRun(a, PuzzleRunStatus.SHOWN), masterRun(b, PuzzleRunStatus.SOLVED), masterRun(c, PuzzleRunStatus.CLOSED)]);
+    const { el, fixture } = await render([
+      masterRun(a, PuzzleRunStatus.SHOWN),
+      masterRun(b, PuzzleRunStatus.SOLVED),
+      masterRun(c, PuzzleRunStatus.CLOSED),
+    ]);
     expect(el.querySelector('app-master-run')).toBeNull();
     const live = Array.from(el.querySelectorAll('[aria-label^="Ver ao vivo"]'));
-    expect(live.map((l) => l.getAttribute('aria-label'))).toEqual(['Ver ao vivo O selo da Capela', 'Ver ao vivo O cofre do Refeitório']);
+    expect(live.map((l) => l.getAttribute('aria-label'))).toEqual([
+      'Ver ao vivo O selo da Capela',
+      'Ver ao vivo O cofre do Refeitório',
+    ]);
     expect(state.selectedId()).toBe('a');
     expect(live[0].getAttribute('aria-pressed')).toBe('true');
     expect(live[1].getAttribute('aria-pressed')).toBe('false');
@@ -70,7 +99,9 @@ describe('MasterPuzzles (MR-038, E10-06 states 3 and 4)', () => {
   it('shows a puzzle on one tap: the answer opens its card and the row follows', async () => {
     const { el, settle } = await render([masterRun(b, PuzzleRunStatus.NOT_SHOWN)]);
     api.runResults.set('b', masterRun(b, PuzzleRunStatus.SHOWN));
-    (el.querySelector('[aria-label="Mostrar aos jogadores O cofre do Refeitório"]') as HTMLElement).click();
+    (
+      el.querySelector('[aria-label="Mostrar aos jogadores O cofre do Refeitório"]') as HTMLElement
+    ).click();
     await settle();
     expect(api.calls.find((c) => c[0] === 'show')).toEqual(['show', 'camp-1', 'b']);
     expect(state.selectedId()).toBe('b');
@@ -81,9 +112,13 @@ describe('MasterPuzzles (MR-038, E10-06 states 3 and 4)', () => {
   it('says why it could not show it, by code', async () => {
     const { el, settle } = await render([masterRun(b, PuzzleRunStatus.NOT_SHOWN)]);
     api.failWith = new ConnectError('x', Code.Unavailable);
-    (el.querySelector('[aria-label="Mostrar aos jogadores O cofre do Refeitório"]') as HTMLElement).click();
+    (
+      el.querySelector('[aria-label="Mostrar aos jogadores O cofre do Refeitório"]') as HTMLElement
+    ).click();
     await settle();
-    expect(el.querySelector('[role="alert"]')?.textContent).toContain('Não deu para mostrar o quebra-cabeça');
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+      'Não deu para mostrar o quebra-cabeça',
+    );
   });
 
   it('follows the stream: a change of a shown puzzle reads it again and the row follows', async () => {
@@ -97,13 +132,21 @@ describe('MasterPuzzles (MR-038, E10-06 states 3 and 4)', () => {
   it('says when the list could not be read', async () => {
     api = new FakePuzzlesClient();
     api.failWith = new Error('down');
-    state = new PuzzleSessionState(asClient(api), () => 'camp-1', () => true);
+    state = new PuzzleSessionState(
+      asClient(api),
+      () => 'camp-1',
+      () => true,
+    );
     await state.refresh();
-    TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: PuzzlesClient, useValue: api }] });
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: PuzzlesClient, useValue: api }],
+    });
     const fixture = TestBed.createComponent(MasterPuzzles);
     fixture.componentRef.setInput('campaignId', 'camp-1');
     fixture.componentRef.setInput('state', state);
     fixture.detectChanges();
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Não deu para ler os quebra-cabeças.');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Não deu para ler os quebra-cabeças.',
+    );
   });
 });

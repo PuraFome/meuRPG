@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { create } from '@bufbuild/protobuf';
 
 import { JumpLimitsSchema } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { HEIGHT_STEP_DFT, lineLengthDft, limitFor, limitsLine, maxHeight, runSeal, stepHeight } from './jump-plan';
+import {
+  HEIGHT_STEP_DFT,
+  lineLengthDft,
+  limitFor,
+  limitsLine,
+  maxHeight,
+  runSeal,
+  stepHeight,
+} from './jump-plan';
 
 // Toren, Força 16: 16 ft running / 8 ft standing, high 6 / 3 ft (README-B, "Numbers").
 const toren = create(JumpLimitsSchema, {
@@ -35,7 +43,9 @@ describe('jump plan', () => {
     expect(plain(limitsLine(160, 80))).toBe('4,8 m com corrida · 2,4 m parado');
     expect(runSeal(toren).word).toBe('Com corrida');
     expect(runSeal(brisa).word).toBe('Parado');
-    expect(plain(runSeal(brisa).reason)).toBe('Você ainda não andou pelo menos 3,0 m a pé neste turno.');
+    expect(plain(runSeal(brisa).reason)).toBe(
+      'Você ainda não andou pelo menos 3,0 m a pé neste turno.',
+    );
   });
 
   it('steps the high jump by 0,3 m, rounded down, never above the limit', () => {

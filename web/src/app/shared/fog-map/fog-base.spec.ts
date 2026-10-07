@@ -48,7 +48,9 @@ describe('FogBase', () => {
     expect(el.querySelectorAll('[data-shade="remembered"]').length).toBe(1);
     expect(el.querySelectorAll('[data-shade="dim"]').length).toBe(1);
     // "Visto" (bright light) is the image as it is: no shade of its own.
-    expect(el.querySelectorAll('[data-shade]').length).toBe(el.querySelectorAll('[data-shade="unseen"]').length + 3);
+    expect(el.querySelectorAll('[data-shade]').length).toBe(
+      el.querySelectorAll('[data-shade="unseen"]').length + 3,
+    );
   });
 
   it('puts "já visto" under dots and "no escuro" under a filter that takes the colour away', () => {
@@ -60,7 +62,10 @@ describe('FogBase', () => {
   it('draws each tile the server made at its place, with its revision in the URL, and never the whole image', () => {
     const { el } = create(tiled());
     const tiles = Array.from(el.querySelectorAll<HTMLImageElement>('.fb__tile'));
-    expect(tiles.map((t) => t.getAttribute('src'))).toEqual(['/images/maps/m1/tiles/0/0?r=3', '/images/maps/m1/tiles/1/1?r=1']);
+    expect(tiles.map((t) => t.getAttribute('src'))).toEqual([
+      '/images/maps/m1/tiles/0/0?r=3',
+      '/images/maps/m1/tiles/1/1?r=1',
+    ]);
     expect(tiles[1].style.left).toBe('50%');
     expect(tiles[1].style.top).toBe('50%');
     expect(tiles[1].style.width).toBe('50%');
@@ -69,7 +74,9 @@ describe('FogBase', () => {
 
   it('asks as the character the master reads as', () => {
     const { el } = create(tiled(), { forCharacter: 'toren-id' });
-    expect(el.querySelector('.fb__tile')?.getAttribute('src')).toBe('/images/maps/m1/tiles/0/0?r=3&as=toren-id');
+    expect(el.querySelector('.fb__tile')?.getAttribute('src')).toBe(
+      '/images/maps/m1/tiles/0/0?r=3&as=toren-id',
+    );
   });
 
   it('shows a still, striped place with a dashed border until a tile arrives, and counts them in', () => {
@@ -88,20 +95,37 @@ describe('FogBase', () => {
 
   it('does not wait for a tile that failed: its place is black, not a spinner that never ends', () => {
     const { fixture, el } = create(tiled());
-    el.querySelectorAll<HTMLImageElement>('.fb__tile').forEach((t) => t.dispatchEvent(new Event('error')));
+    el.querySelectorAll<HTMLImageElement>('.fb__tile').forEach((t) =>
+      t.dispatchEvent(new Event('error')),
+    );
     fixture.detectChanges();
     expect(el.querySelectorAll('[data-pending]').length).toBe(0);
   });
 
   it('keeps the old pixels of a tile while a changed one is fetched: the place is not waiting again', () => {
     const { fixture, el } = create(tiled());
-    el.querySelectorAll<HTMLImageElement>('.fb__tile').forEach((t) => t.dispatchEvent(new Event('load')));
-    fixture.componentRef.setInput('vision', tiled({ revision: 2, tiles: [{ $typeName: 'meurpg.maps.v1.MapTile', tx: 0, ty: 0, revision: 9 }, { $typeName: 'meurpg.maps.v1.MapTile', tx: 1, ty: 1, revision: 1 }] }));
+    el.querySelectorAll<HTMLImageElement>('.fb__tile').forEach((t) =>
+      t.dispatchEvent(new Event('load')),
+    );
+    fixture.componentRef.setInput(
+      'vision',
+      tiled({
+        revision: 2,
+        tiles: [
+          { $typeName: 'meurpg.maps.v1.MapTile', tx: 0, ty: 0, revision: 9 },
+          { $typeName: 'meurpg.maps.v1.MapTile', tx: 1, ty: 1, revision: 1 },
+        ],
+      }),
+    );
     fixture.detectChanges();
-    expect(el.querySelector('.fb__tile')?.getAttribute('src')).toBe('/images/maps/m1/tiles/0/0?r=9');
+    expect(el.querySelector('.fb__tile')?.getAttribute('src')).toBe(
+      '/images/maps/m1/tiles/0/0?r=9',
+    );
     expect(el.querySelectorAll('[data-pending]').length).toBe(0);
     // The unchanged tile keeps its URL, so the browser does not fetch it again.
-    expect(el.querySelectorAll<HTMLImageElement>('.fb__tile')[1].getAttribute('src')).toBe('/images/maps/m1/tiles/1/1?r=1');
+    expect(el.querySelectorAll<HTMLImageElement>('.fb__tile')[1].getAttribute('src')).toBe(
+      '/images/maps/m1/tiles/1/1?r=1',
+    );
   });
 
   it('draws the whole image for a viewer that reads it whole, with no tile and no waiting', () => {

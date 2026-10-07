@@ -24,7 +24,9 @@ import {
 const SRD = { fromTable: false, archived: false, off: false };
 const TABLE = { fromTable: true, archived: false, off: false };
 
-const cls = (over: Partial<ClassOptionVm> & Pick<ClassOptionVm, 'key' | 'namePt'>): ClassOptionVm => ({
+const cls = (
+  over: Partial<ClassOptionVm> & Pick<ClassOptionVm, 'key' | 'namePt'>,
+): ClassOptionVm => ({
   hitDie: 8,
   isCaster: false,
   preparation: null,
@@ -38,28 +40,97 @@ const cls = (over: Partial<ClassOptionVm> & Pick<ClassOptionVm, 'key' | 'namePt'
   ...SRD,
   ...over,
 });
-const sub = (over: Partial<SubclassOptionVm> & Pick<SubclassOptionVm, 'key' | 'namePt'>): SubclassOptionVm => ({ casting: null, alwaysPrepared: [], ...SRD, ...over });
-const spell = (key: string, namePt: string, level: number, classKeys: string[]): SpellOptionVm => ({ key, namePt, level, classKeys, fromTable: key.endsWith('@mesa'), archived: false, off: false });
+const sub = (
+  over: Partial<SubclassOptionVm> & Pick<SubclassOptionVm, 'key' | 'namePt'>,
+): SubclassOptionVm => ({ casting: null, alwaysPrepared: [], ...SRD, ...over });
+const spell = (key: string, namePt: string, level: number, classKeys: string[]): SpellOptionVm => ({
+  key,
+  namePt,
+  level,
+  classKeys,
+  fromTable: key.endsWith('@mesa'),
+  archived: false,
+  off: false,
+});
 
 const CIRCLES = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 9, 9];
 
 function catalog(): RulesCatalogVm {
   return {
     races: [
-      { key: 'race:gnome', namePt: 'Gnomo', constitutionBonus: 0, choiceBonuses: [], subraces: [], ...SRD },
-      { key: 'race:corujeiro@mesa', namePt: 'Corujeiro', constitutionBonus: 0, choiceBonuses: [2, 1], subraces: [], ...TABLE },
+      {
+        key: 'race:gnome',
+        namePt: 'Gnomo',
+        constitutionBonus: 0,
+        choiceBonuses: [],
+        subraces: [],
+        ...SRD,
+      },
+      {
+        key: 'race:corujeiro@mesa',
+        namePt: 'Corujeiro',
+        constitutionBonus: 0,
+        choiceBonuses: [2, 1],
+        subraces: [],
+        ...TABLE,
+      },
     ],
     classes: [
-      cls({ key: 'class:wizard', namePt: 'Mago', hitDie: 6, isCaster: true, preparation: 'spellbook', spellcastingFirstLevel: 1, maxSpellLevelByLevel: CIRCLES, spellListClassKey: 'class:wizard', subclassLevel: 2, savingThrows: ['int', 'wis'], subclasses: [sub({ key: 'subclass:evocation', namePt: 'Escola de Evocação' }), sub({ key: 'subclass:ink@mesa', namePt: 'Tradição da Tinta', ...TABLE })] }),
-      cls({ key: 'class:cleric', namePt: 'Clérigo', isCaster: true, preparation: 'prepared', spellcastingFirstLevel: 1, maxSpellLevelByLevel: CIRCLES, spellListClassKey: 'class:cleric', subclassLevel: 1, subclasses: [sub({ key: 'subclass:life', namePt: 'Domínio da Vida' }), sub({ key: 'subclass:path@mesa', namePt: 'Domínio do Caminho', ...TABLE })] }),
-      cls({ key: 'class:guardiao@mesa', namePt: 'Guardião do Vale', hitDie: 10, skillChoose: 2, savingThrows: ['str', 'wis'], ...TABLE }),
+      cls({
+        key: 'class:wizard',
+        namePt: 'Mago',
+        hitDie: 6,
+        isCaster: true,
+        preparation: 'spellbook',
+        spellcastingFirstLevel: 1,
+        maxSpellLevelByLevel: CIRCLES,
+        spellListClassKey: 'class:wizard',
+        subclassLevel: 2,
+        savingThrows: ['int', 'wis'],
+        subclasses: [
+          sub({ key: 'subclass:evocation', namePt: 'Escola de Evocação' }),
+          sub({ key: 'subclass:ink@mesa', namePt: 'Tradição da Tinta', ...TABLE }),
+        ],
+      }),
+      cls({
+        key: 'class:cleric',
+        namePt: 'Clérigo',
+        isCaster: true,
+        preparation: 'prepared',
+        spellcastingFirstLevel: 1,
+        maxSpellLevelByLevel: CIRCLES,
+        spellListClassKey: 'class:cleric',
+        subclassLevel: 1,
+        subclasses: [
+          sub({ key: 'subclass:life', namePt: 'Domínio da Vida' }),
+          sub({ key: 'subclass:path@mesa', namePt: 'Domínio do Caminho', ...TABLE }),
+        ],
+      }),
+      cls({
+        key: 'class:guardiao@mesa',
+        namePt: 'Guardião do Vale',
+        hitDie: 10,
+        skillChoose: 2,
+        savingThrows: ['str', 'wis'],
+        ...TABLE,
+      }),
       cls({
         key: 'class:fighter',
         namePt: 'Guerreiro',
         hitDie: 10,
         subclasses: [
           sub({ key: 'subclass:champion', namePt: 'Campeão' }),
-          sub({ key: 'subclass:ink-blade@mesa', namePt: 'Lâmina de Tinta', ...TABLE, casting: { preparation: 'known', listClassKey: 'class:wizard', firstLevel: 3, maxSpellLevelByLevel: [0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4] } }),
+          sub({
+            key: 'subclass:ink-blade@mesa',
+            namePt: 'Lâmina de Tinta',
+            ...TABLE,
+            casting: {
+              preparation: 'known',
+              listClassKey: 'class:wizard',
+              firstLevel: 3,
+              maxSpellLevelByLevel: [0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4],
+            },
+          }),
         ],
       }),
       cls({ key: 'class:bard', namePt: 'Bardo' }),
@@ -67,7 +138,12 @@ function catalog(): RulesCatalogVm {
     ],
     backgrounds: [
       { key: 'background:acolyte', namePt: 'Acólito', equipmentPt: '', ...SRD },
-      { key: 'background:cartografo@mesa', namePt: 'Cartógrafo do Vale', equipmentPt: 'Uma luneta e um rolo de corda', ...TABLE },
+      {
+        key: 'background:cartografo@mesa',
+        namePt: 'Cartógrafo do Vale',
+        equipmentPt: 'Uma luneta e um rolo de corda',
+        ...TABLE,
+      },
     ],
     skills: [
       { key: 'skill:arcana', namePt: 'Arcanismo', ability: 'int' },
@@ -130,7 +206,10 @@ class FakeSource {
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-async function render(params: Record<string, string> = { id: 'camp-1' }, setup: (fake: FakeSource) => void = () => undefined) {
+async function render(
+  params: Record<string, string> = { id: 'camp-1' },
+  setup: (fake: FakeSource) => void = () => undefined,
+) {
   TestBed.configureTestingModule({
     imports: [CharacterEditor],
     providers: [
@@ -146,8 +225,13 @@ async function render(params: Record<string, string> = { id: 'camp-1' }, setup: 
   await flush();
   await fixture.whenStable();
   fixture.detectChanges();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return { fixture, fake, el: fixture.nativeElement as HTMLElement, cmp: fixture.componentInstance as any };
+  return {
+    fixture,
+    fake,
+    el: fixture.nativeElement as HTMLElement,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    cmp: fixture.componentInstance as any,
+  };
 }
 
 async function settle(fixture: ComponentFixture<CharacterEditor>) {
@@ -157,12 +241,17 @@ async function settle(fixture: ComponentFixture<CharacterEditor>) {
 }
 
 async function openStep(fixture: ComponentFixture<CharacterEditor>, label: string) {
-  const tab = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('[role="tab"]')).find((t) => t.textContent?.includes(label));
+  const tab = Array.from(
+    (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('[role="tab"]'),
+  ).find((t) => t.textContent?.includes(label));
   tab!.click();
   await settle(fixture);
 }
 
-const button = (el: HTMLElement, text: string) => Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.includes(text));
+const button = (el: HTMLElement, text: string) =>
+  Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+    b.textContent?.includes(text),
+  );
 
 // A warm-up render outside any test, so the cold first render never lands on whichever test runs first.
 beforeAll(async () => {
@@ -173,10 +262,20 @@ beforeAll(async () => {
 describe('a table class, race and background in the editor (E10-02 state 5)', () => {
   it('sends the keys of the table content, never their names', async () => {
     const { fake, cmp } = await render();
-    cmp.fullForm.patchValue({ name: 'Ícaro', race: 'race:corujeiro@mesa', className: 'class:guardiao@mesa', level: 1, background: 'background:cartografo@mesa' });
+    cmp.fullForm.patchValue({
+      name: 'Ícaro',
+      race: 'race:corujeiro@mesa',
+      className: 'class:guardiao@mesa',
+      level: 1,
+      background: 'background:cartografo@mesa',
+    });
     await cmp.submit();
     const full = fake.created[0].full!;
-    expect([full.race, full.className, full.background]).toEqual(['race:corujeiro@mesa', 'class:guardiao@mesa', 'background:cartografo@mesa']);
+    expect([full.race, full.className, full.background]).toEqual([
+      'race:corujeiro@mesa',
+      'class:guardiao@mesa',
+      'background:cartografo@mesa',
+    ]);
     expect(full.extraClasses).toEqual([]);
   });
 
@@ -187,22 +286,32 @@ describe('a table class, race and background in the editor (E10-02 state 5)', ()
     const text = (el.textContent ?? '').replace(/\s+/g, ' ');
     expect(text).toContain('Dá +2 e +1 nas habilidades que você escolher');
     await openStep(fixture, 'Perícias');
-    expect((el.textContent ?? '').replace(/\s+/g, ' ')).toContain('O Guardião do Vale escolhe 2 perícias ao começar e dá proficiência nos testes de resistência de Força e Sabedoria.');
+    expect((el.textContent ?? '').replace(/\s+/g, ' ')).toContain(
+      'O Guardião do Vale escolhe 2 perícias ao começar e dá proficiência nos testes de resistência de Força e Sabedoria.',
+    );
   });
 
   it("shows a table background's equipment as the master wrote it", async () => {
     const { fixture, el, cmp } = await render();
     cmp.fullForm.patchValue({ background: 'background:cartografo@mesa' });
     await settle(fixture);
-    expect((el.textContent ?? '')).toContain('Equipamento: Uma luneta e um rolo de corda');
+    expect(el.textContent ?? '').toContain('Equipamento: Uma luneta e um rolo de corda');
   });
 
   it('marks the entries of the table with "Da mesa" in the lists, and nothing else', async () => {
     const { fixture, el } = await render();
-    const trigger = (label: string) => Array.from(el.querySelectorAll<HTMLElement>('mat-form-field')).find((f) => f.querySelector('mat-label')?.textContent?.includes(label))!.querySelector<HTMLElement>('.mat-mdc-select-trigger')!;
+    const trigger = (label: string) =>
+      Array.from(el.querySelectorAll<HTMLElement>('mat-form-field'))
+        .find((f) => f.querySelector('mat-label')?.textContent?.includes(label))!
+        .querySelector<HTMLElement>('.mat-mdc-select-trigger')!;
     trigger('Classe').click();
     await settle(fixture);
-    const options = Array.from(document.querySelectorAll('mat-option')).map((o) => (o.textContent ?? '').replace(/menu_book|inventory_2/g, '').replace(/\s+/g, ' ').trim());
+    const options = Array.from(document.querySelectorAll('mat-option')).map((o) =>
+      (o.textContent ?? '')
+        .replace(/menu_book|inventory_2/g, '')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    );
     expect(options).toContain('Guardião do Vale Da mesa');
     expect(options).toContain('Mago');
     expect(options.filter((o) => o.includes('Da mesa'))).toEqual(['Guardião do Vale Da mesa']);
@@ -224,7 +333,11 @@ describe('the "Outro" background (E10-02 state 5, question 82)', () => {
     });
     cmp.toggleCustomBackgroundSkill('skill:perception');
     cmp.toggleCustomBackgroundSkill('skill:survival');
-    cmp.setCustomProficiencies(['proficiency:cartographers-tools', 'language:elvish', 'language:dwarvish']);
+    cmp.setCustomProficiencies([
+      'proficiency:cartographers-tools',
+      'language:elvish',
+      'language:dwarvish',
+    ]);
     await settle(fixture);
     const text = (el.textContent ?? '').replace(/\s+/g, ' ');
     expect(text).toContain('Personalizar um antecedente');
@@ -244,22 +357,38 @@ describe('the "Outro" background (E10-02 state 5, question 82)', () => {
 
   it('sends fewer than two as they are: the server shows an issue on the sheet, never an error', async () => {
     const { fake, cmp } = await render();
-    cmp.fullForm.patchValue({ name: 'Davi', race: 'race:gnome', className: 'class:fighter', background: 'custom', customBackgroundName: 'Batedor' });
+    cmp.fullForm.patchValue({
+      name: 'Davi',
+      race: 'race:gnome',
+      className: 'class:fighter',
+      background: 'custom',
+      customBackgroundName: 'Batedor',
+    });
     cmp.setCustomProficiencies(['language:elvish']);
     await cmp.submit();
-    expect(fake.created[0].full).toMatchObject({ customBackgroundProficiencies: ['language:elvish'], customBackgroundSkills: null });
+    expect(fake.created[0].full).toMatchObject({
+      customBackgroundProficiencies: ['language:elvish'],
+      customBackgroundSkills: null,
+    });
   });
 });
 
 describe('several classes at creation (E10-02 state 6)', () => {
   async function maga() {
     const r = await render();
-    r.cmp.fullForm.patchValue({ name: 'Corvina', race: 'race:gnome', className: 'class:wizard', level: 3, subclassName: 'subclass:ink@mesa', background: 'background:acolyte' });
+    r.cmp.fullForm.patchValue({
+      name: 'Corvina',
+      race: 'race:gnome',
+      className: 'class:wizard',
+      level: 3,
+      subclassName: 'subclass:ink@mesa',
+      background: 'background:acolyte',
+    });
     await settle(r.fixture);
     return r;
   }
 
-  it('adds a block per class, with the total level and the table\'s subclass in each', async () => {
+  it("adds a block per class, with the total level and the table's subclass in each", async () => {
     const { fixture, fake, el, cmp } = await maga();
     expect(el.querySelectorAll('app-class-block').length).toBe(0);
     button(el, 'Adicionar classe')!.click();
@@ -278,7 +407,14 @@ describe('several classes at creation (E10-02 state 6)', () => {
       className: 'class:wizard',
       level: 3,
       subclassName: 'subclass:ink@mesa',
-      extraClasses: [{ classKey: 'class:cleric', level: 1, subclassKey: 'subclass:path@mesa', customSubclassName: '' }],
+      extraClasses: [
+        {
+          classKey: 'class:cleric',
+          level: 1,
+          subclassKey: 'subclass:path@mesa',
+          customSubclassName: '',
+        },
+      ],
     });
   });
 
@@ -290,10 +426,14 @@ describe('several classes at creation (E10-02 state 6)', () => {
     await settle(fixture);
     const second = el.querySelectorAll('app-class-block')[1];
     expect(second.textContent).toContain('O Guerreiro escolhe a subclasse no nível 3.');
-    expect(second.querySelector('mat-select[aria-disabled="true"], .mat-mdc-select-disabled')).not.toBeNull();
+    expect(
+      second.querySelector('mat-select[aria-disabled="true"], .mat-mdc-select-disabled'),
+    ).not.toBeNull();
     cmp.changeBlock(1, { level: 3 });
     await settle(fixture);
-    expect(el.querySelectorAll('app-class-block')[1].textContent).not.toContain('O Guerreiro escolhe a subclasse no nível 3.');
+    expect(el.querySelectorAll('app-class-block')[1].textContent).not.toContain(
+      'O Guerreiro escolhe a subclasse no nível 3.',
+    );
   });
 
   it('removes a class and refuses a blank block or a total above 20 before saving', async () => {
@@ -334,7 +474,13 @@ describe('several classes at creation (E10-02 state 6)', () => {
 describe('the spell step per class (E10-11 state 4)', () => {
   async function corvina() {
     const r = await render();
-    r.cmp.fullForm.patchValue({ name: 'Corvina', race: 'race:gnome', className: 'class:wizard', level: 3, background: 'background:acolyte' });
+    r.cmp.fullForm.patchValue({
+      name: 'Corvina',
+      race: 'race:gnome',
+      className: 'class:wizard',
+      level: 3,
+      background: 'background:acolyte',
+    });
     r.cmp.addClass();
     r.cmp.changeBlock(1, { classKey: 'class:cleric', level: 1 });
     await settle(r.fixture);
@@ -344,11 +490,30 @@ describe('the spell step per class (E10-11 state 4)', () => {
 
   it("gives each class its own section: the wizard's list up to the 2nd circle, the cleric's up to the 1st", async () => {
     const { el } = await corvina();
-    const headings = Array.from(el.querySelectorAll('.spell-section__title')).map((h) => h.textContent?.trim());
-    expect(headings).toEqual(['Mago · até o 2º nível de magia', 'Clérigo · até o 1º nível de magia']);
+    const headings = Array.from(el.querySelectorAll('.spell-section__title')).map((h) =>
+      h.textContent?.trim(),
+    );
+    expect(headings).toEqual([
+      'Mago · até o 2º nível de magia',
+      'Clérigo · até o 1º nível de magia',
+    ]);
     const sections = Array.from(el.querySelectorAll('.spell-section'));
-    const names = (s: Element) => Array.from(s.querySelectorAll('mat-checkbox')).map((c) => c.textContent?.replace(/menu_book|inventory_2|visibility_off|Da mesa/g, '').replace(/\s+/g, ' ').trim());
-    expect(names(sections[0])).toEqual(['Raio de Fogo', 'Detectar Magia (1º nível)', 'Escudo Arcano (1º nível)', 'Lâmina de Nanquim (1º nível)', 'Detectar Magia (1º nível)', 'Escudo Arcano (1º nível)', 'Lâmina de Nanquim (1º nível)']);
+    const names = (s: Element) =>
+      Array.from(s.querySelectorAll('mat-checkbox')).map((c) =>
+        c.textContent
+          ?.replace(/menu_book|inventory_2|visibility_off|Da mesa/g, '')
+          .replace(/\s+/g, ' ')
+          .trim(),
+      );
+    expect(names(sections[0])).toEqual([
+      'Raio de Fogo',
+      'Detectar Magia (1º nível)',
+      'Escudo Arcano (1º nível)',
+      'Lâmina de Nanquim (1º nível)',
+      'Detectar Magia (1º nível)',
+      'Escudo Arcano (1º nível)',
+      'Lâmina de Nanquim (1º nível)',
+    ]);
     expect(names(sections[1])).toEqual(['Bênção (1º nível)', 'Detectar Magia (1º nível)']);
   });
 
@@ -360,7 +525,9 @@ describe('the spell step per class (E10-11 state 4)', () => {
     const out = clericSection.querySelector('.picker__out')!;
     expect(out.textContent).toContain('Amizade Animal');
     expect(out.textContent).toContain('Fora da lista das suas classes');
-    expect(out.textContent).toContain('Esta magia é de Bardo e Druida. Você a lê em “Magias”, mas não a escolhe nesta ficha.');
+    expect(out.textContent).toContain(
+      'Esta magia é de Bardo e Druida. Você a lê em “Magias”, mas não a escolhe nesta ficha.',
+    );
     expect(out.querySelector('mat-checkbox')).toBeNull();
     expect(out.querySelector('a')?.getAttribute('href')).toBe('/campaigns/camp-1/spells');
   });
@@ -377,14 +544,30 @@ describe('the spell step per class (E10-11 state 4)', () => {
 
   it("offers a third caster's subclass the list it casts from, from its level on", async () => {
     const { fixture, el, cmp } = await render();
-    cmp.fullForm.patchValue({ name: 'Rúnico', race: 'race:gnome', className: 'class:fighter', level: 2, subclassName: 'subclass:ink-blade@mesa', background: 'background:acolyte' });
+    cmp.fullForm.patchValue({
+      name: 'Rúnico',
+      race: 'race:gnome',
+      className: 'class:fighter',
+      level: 2,
+      subclassName: 'subclass:ink-blade@mesa',
+      background: 'background:acolyte',
+    });
     await settle(fixture);
     // Level 2: the subclass does not cast yet, so there is no Magias step.
-    expect(Array.from(el.querySelectorAll('[role="tab"]')).some((t) => t.textContent?.includes('Magias'))).toBe(false);
+    expect(
+      Array.from(el.querySelectorAll('[role="tab"]')).some((t) =>
+        t.textContent?.includes('Magias'),
+      ),
+    ).toBe(false);
     cmp.fullForm.patchValue({ level: 3 });
     await settle(fixture);
     await openStep(fixture, 'Magias');
-    const names = Array.from(el.querySelectorAll('.spell-section mat-checkbox')).map((c) => c.textContent?.replace(/menu_book|inventory_2|visibility_off|Da mesa/g, '').replace(/\s+/g, ' ').trim());
+    const names = Array.from(el.querySelectorAll('.spell-section mat-checkbox')).map((c) =>
+      c.textContent
+        ?.replace(/menu_book|inventory_2|visibility_off|Da mesa/g, '')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    );
     expect(names).toContain('Escudo Arcano (1º nível)');
     expect(names).toContain('Lâmina de Nanquim (1º nível)');
     expect(names).not.toContain('Bênção (1º nível)');
@@ -398,7 +581,10 @@ describe('an edit of a sheet of several classes', () => {
       providers: [
         provideRouter([]),
         { provide: CharacterEditorSource, useClass: FakeSource },
-        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: 'camp-1', characterId: 'ch-1' })) } },
+        {
+          provide: ActivatedRoute,
+          useValue: { paramMap: of(convertToParamMap({ id: 'camp-1', characterId: 'ch-1' })) },
+        },
       ],
     });
     const fake = TestBed.inject(CharacterEditorSource) as unknown as FakeSource;
@@ -424,7 +610,14 @@ describe('an edit of a sheet of several classes', () => {
         customBackgroundFeatureName: '',
         customBackgroundFeatureText: '',
         customBackgroundEquipment: '',
-        extraClasses: [{ classKey: 'class:cleric', level: 1, subclassKey: 'subclass:path@mesa', customSubclassName: '' }],
+        extraClasses: [
+          {
+            classKey: 'class:cleric',
+            level: 1,
+            subclassKey: 'subclass:path@mesa',
+            customSubclassName: '',
+          },
+        ],
         skillProficiencies: [],
         expertiseSkillKeys: [],
         abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
@@ -466,22 +659,51 @@ describe('an edit of a sheet of several classes', () => {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (fixture.componentInstance as any).submit();
-    expect(fake.updated[0].full?.extraClasses).toEqual([{ classKey: 'class:cleric', level: 1, subclassKey: 'subclass:path@mesa', customSubclassName: '' }]);
+    expect(fake.updated[0].full?.extraClasses).toEqual([
+      {
+        classKey: 'class:cleric',
+        level: 1,
+        subclassKey: 'subclass:path@mesa',
+        customSubclassName: '',
+      },
+    ]);
   });
 });
 
 describe('what the master retired or switched off (RN-23, 10.1d)', () => {
   const withRetired = (c: RulesCatalogVm): RulesCatalogVm => ({
     ...c,
-    races: [...c.races, { key: 'race:velha@mesa', namePt: 'Velha raça', constitutionBonus: 0, choiceBonuses: [], subraces: [], fromTable: true, archived: true, off: false }],
+    races: [
+      ...c.races,
+      {
+        key: 'race:velha@mesa',
+        namePt: 'Velha raça',
+        constitutionBonus: 0,
+        choiceBonuses: [],
+        subraces: [],
+        fromTable: true,
+        archived: true,
+        off: false,
+      },
+    ],
     classes: [
       ...c.classes,
       cls({ key: 'class:arquivada@mesa', namePt: 'Classe arquivada', ...TABLE, archived: true }),
       cls({ key: 'class:desligada@mesa', namePt: 'Classe desligada', ...TABLE, off: true }),
     ],
   });
-  const optionsOf = () => Array.from(document.querySelectorAll('mat-option')).map((o) => (o.textContent ?? '').replace(/menu_book|inventory_2|visibility_off/g, '').replace(/\s+/g, ' ').trim());
-  const openSelect = async (fixture: ComponentFixture<CharacterEditor>, el: HTMLElement, label: string) => {
+  const optionsOf = () =>
+    Array.from(document.querySelectorAll('mat-option')).map((o) =>
+      (o.textContent ?? '')
+        .replace(/menu_book|inventory_2|visibility_off/g, '')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    );
+  const openSelect = async (
+    fixture: ComponentFixture<CharacterEditor>,
+    el: HTMLElement,
+    label: string,
+  ) => {
     Array.from(el.querySelectorAll<HTMLElement>('mat-form-field'))
       .find((f) => f.querySelector('mat-label')?.textContent?.includes(label))!
       .querySelector<HTMLElement>('.mat-mdc-select-trigger')!
@@ -490,7 +712,10 @@ describe('what the master retired or switched off (RN-23, 10.1d)', () => {
   };
 
   it('never offers an archived entry as a new choice, not even to the master', async () => {
-    const { fixture, el } = await render({ id: 'camp-1' }, (f) => (f.catalogOver = (c) => ({ ...withRetired(c), viewerIsMaster: true })));
+    const { fixture, el } = await render(
+      { id: 'camp-1' },
+      (f) => (f.catalogOver = (c) => ({ ...withRetired(c), viewerIsMaster: true })),
+    );
     await openSelect(fixture, el, 'Classe');
     expect(optionsOf()).not.toContain('Classe arquivada Arquivada');
     expect(optionsOf().some((o) => o.includes('Classe arquivada'))).toBe(false);
@@ -498,17 +723,33 @@ describe('what the master retired or switched off (RN-23, 10.1d)', () => {
   });
 
   it('offers a switched-off one to the master, tagged, and to nobody else', async () => {
-    const master = await render({ id: 'camp-1' }, (f) => (f.catalogOver = (c) => ({ ...withRetired(c), viewerIsMaster: true })));
+    const master = await render(
+      { id: 'camp-1' },
+      (f) => (f.catalogOver = (c) => ({ ...withRetired(c), viewerIsMaster: true })),
+    );
     await openSelect(master.fixture, master.el, 'Classe');
-    expect(optionsOf().some((o) => o.includes('Classe desligada') && o.includes('Desligada para os jogadores') && o.includes('Da mesa'))).toBe(true);
+    expect(
+      optionsOf().some(
+        (o) =>
+          o.includes('Classe desligada') &&
+          o.includes('Desligada para os jogadores') &&
+          o.includes('Da mesa'),
+      ),
+    ).toBe(true);
     TestBed.resetTestingModule();
-    const player = await render({ id: 'camp-1' }, (f) => (f.catalogOver = (c) => ({ ...withRetired(c), viewerIsMaster: false })));
+    const player = await render(
+      { id: 'camp-1' },
+      (f) => (f.catalogOver = (c) => ({ ...withRetired(c), viewerIsMaster: false })),
+    );
     await openSelect(player.fixture, player.el, 'Classe');
     expect(optionsOf().some((o) => o.includes('Classe desligada'))).toBe(false);
   });
 
   it('keeps what the form already has, with its tag, so the field is never blank', async () => {
-    const { fixture, el, cmp } = await render({ id: 'camp-1' }, (f) => (f.catalogOver = withRetired));
+    const { fixture, el, cmp } = await render(
+      { id: 'camp-1' },
+      (f) => (f.catalogOver = withRetired),
+    );
     cmp.fullForm.patchValue({ className: 'class:arquivada@mesa', race: 'race:velha@mesa' });
     await settle(fixture);
     const text = (el.textContent ?? '').replace(/\s+/g, ' ');
@@ -596,7 +837,9 @@ describe('the class blocks (10.12b fix round 1)', () => {
     const second = el.querySelectorAll('app-class-block')[1];
     second.querySelector<HTMLElement>('.mat-mdc-select-trigger')!.click();
     await settle(fixture);
-    const options = Array.from(document.querySelectorAll('mat-option')).map((o) => (o.textContent ?? '').replace(/\s+/g, ' ').trim());
+    const options = Array.from(document.querySelectorAll('mat-option')).map((o) =>
+      (o.textContent ?? '').replace(/\s+/g, ' ').trim(),
+    );
     expect(options).not.toContain('Mago');
     expect(options).toContain('Clérigo');
     document.body.click();
@@ -608,13 +851,21 @@ describe('the class blocks (10.12b fix round 1)', () => {
 
   it('marks the block a refusal points at', async () => {
     const { fixture, el, cmp } = await render();
-    cmp.fullForm.patchValue({ name: 'X', race: 'race:gnome', className: 'class:wizard', level: 2, background: 'background:acolyte' });
+    cmp.fullForm.patchValue({
+      name: 'X',
+      race: 'race:gnome',
+      className: 'class:wizard',
+      level: 2,
+      background: 'background:acolyte',
+    });
     cmp.addClass();
     cmp.changeBlock(1, { classKey: 'class:cleric', level: 1 });
     cmp.serverClassProblem.set(1);
     await settle(fixture);
     await settle(fixture);
-    expect(el.querySelectorAll('app-class-block')[1].querySelector('mat-error')?.textContent).toContain('Essa classe se repete ou não existe.');
+    expect(
+      el.querySelectorAll('app-class-block')[1].querySelector('mat-error')?.textContent,
+    ).toContain('Essa classe se repete ou não existe.');
     expect(el.querySelectorAll('app-class-block')[0].querySelector('mat-error')).toBeNull();
   });
 });
@@ -624,20 +875,41 @@ describe('the always-prepared spells in a class section (E10-11 state 4)', () =>
     ...c,
     classes: c.classes.map((k) =>
       k.key === 'class:cleric'
-        ? { ...k, subclasses: k.subclasses.map((s) => (s.key === 'subclass:path@mesa' ? { ...s, alwaysPrepared: [{ spellKey: 'spell:detect-magic', classLevel: 1 }, { spellKey: 'spell:bless', classLevel: 5 }] } : s)) }
+        ? {
+            ...k,
+            subclasses: k.subclasses.map((s) =>
+              s.key === 'subclass:path@mesa'
+                ? {
+                    ...s,
+                    alwaysPrepared: [
+                      { spellKey: 'spell:detect-magic', classLevel: 1 },
+                      { spellKey: 'spell:bless', classLevel: 5 },
+                    ],
+                  }
+                : s,
+            ),
+          }
         : k,
     ),
   });
 
   it('shows them locked inside the class that has the subclass, from the catalog, at creation, from the class level they start at', async () => {
-    const { fixture, el, cmp } = await render({ id: 'camp-1' }, (f) => (f.catalogOver = withDomain));
+    const { fixture, el, cmp } = await render(
+      { id: 'camp-1' },
+      (f) => (f.catalogOver = withDomain),
+    );
     cmp.fullForm.patchValue({ className: 'class:wizard', level: 3 });
     cmp.addClass();
     cmp.changeBlock(1, { classKey: 'class:cleric', level: 1, subclassKey: 'subclass:path@mesa' });
     await settle(fixture);
     await openStep(fixture, 'Magias');
     const cleric = el.querySelectorAll('.spell-section')[1];
-    const locked = Array.from(cleric.querySelectorAll('.granted__row')).map((r) => (r.textContent ?? '').replace(/lock|help_outline/g, '').replace(/\s+/g, ' ').trim());
+    const locked = Array.from(cleric.querySelectorAll('.granted__row')).map((r) =>
+      (r.textContent ?? '')
+        .replace(/lock|help_outline/g, '')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    );
     // Detectar Magia from level 1; Bênção waits for class level 5.
     expect(locked).toEqual(['Detectar Magia (1º nível)Domínio do CaminhoSempre preparada']);
     expect(cleric.querySelector('.granted mat-checkbox')).toBeNull();
@@ -647,23 +919,42 @@ describe('the always-prepared spells in a class section (E10-11 state 4)', () =>
   });
 
   it('never offers an always-prepared spell as a pick: not in the lists of its class, at creation or on an edit, in one class or several', async () => {
-    const names = (el: Element) => Array.from(el.querySelectorAll('mat-checkbox')).map((c) => (c.textContent ?? '').replace(/\s+/g, ' ').trim());
+    const names = (el: Element) =>
+      Array.from(el.querySelectorAll('mat-checkbox')).map((c) =>
+        (c.textContent ?? '').replace(/\s+/g, ' ').trim(),
+      );
     // Several classes, at creation: the cleric's section lists Bênção but not Detectar Magia (always prepared); the wizard's list still has it.
     const multi = await render({ id: 'camp-1' }, (f) => (f.catalogOver = withDomain));
     multi.cmp.fullForm.patchValue({ className: 'class:wizard', level: 3 });
     multi.cmp.addClass();
-    multi.cmp.changeBlock(1, { classKey: 'class:cleric', level: 1, subclassKey: 'subclass:path@mesa' });
+    multi.cmp.changeBlock(1, {
+      classKey: 'class:cleric',
+      level: 1,
+      subclassKey: 'subclass:path@mesa',
+    });
     await settle(multi.fixture);
     await openStep(multi.fixture, 'Magias');
     const cleric = multi.el.querySelectorAll('.spell-section')[1];
     expect(names(cleric).some((n) => n.startsWith('Bênção'))).toBe(true);
     expect(names(cleric).some((n) => n.startsWith('Detectar Magia'))).toBe(false);
-    expect(names(multi.el.querySelectorAll('.spell-section')[0]).some((n) => n.startsWith('Detectar Magia'))).toBe(true);
+    expect(
+      names(multi.el.querySelectorAll('.spell-section')[0]).some((n) =>
+        n.startsWith('Detectar Magia'),
+      ),
+    ).toBe(true);
     TestBed.resetTestingModule();
     // One class, on an edit, even when the sheet already carries it in its prepared list: still not a pick, and never counted.
     const edit = await render({ id: 'camp-1', characterId: 'ch-1' }, (f) => {
       f.catalogOver = withDomain;
-      f.forEdit = { ...emptyEdit({ className: 'class:cleric', level: 1, subclassName: 'subclass:path@mesa', spellsPrepared: ['spell:bless', 'spell:detect-magic'] }), preparedMax: { 'class:cleric': 5 } };
+      f.forEdit = {
+        ...emptyEdit({
+          className: 'class:cleric',
+          level: 1,
+          subclassName: 'subclass:path@mesa',
+          spellsPrepared: ['spell:bless', 'spell:detect-magic'],
+        }),
+        preparedMax: { 'class:cleric': 5 },
+      };
     });
     await openStep(edit.fixture, 'Magias');
     const lists = Array.from(edit.el.querySelectorAll('app-spell-picker')).flatMap((p) => names(p));
@@ -675,7 +966,12 @@ describe('the always-prepared spells in a class section (E10-11 state 4)', () =>
     const { fixture, el } = await render({ id: 'camp-1', characterId: 'ch-1' }, (f) => {
       f.catalogOver = withDomain;
       f.forEdit = {
-        ...emptyEdit({ className: 'class:cleric', level: 1, subclassName: 'subclass:path@mesa', spellsPrepared: ['spell:bless', 'spell:detect-magic'] }),
+        ...emptyEdit({
+          className: 'class:cleric',
+          level: 1,
+          subclassName: 'subclass:path@mesa',
+          spellsPrepared: ['spell:bless', 'spell:detect-magic'],
+        }),
         preparedMax: { 'class:cleric': 3 },
       };
     });
@@ -705,7 +1001,10 @@ describe('the catalog read again (10.1d)', () => {
       providers: [
         provideRouter([]),
         { provide: CharacterEditorSource, useClass: FakeSource },
-        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: 'camp-1', characterId: 'ch-9' })) } },
+        {
+          provide: ActivatedRoute,
+          useValue: { paramMap: of(convertToParamMap({ id: 'camp-1', characterId: 'ch-9' })) },
+        },
       ],
     });
     const fake = TestBed.inject(CharacterEditorSource) as unknown as FakeSource;
@@ -726,7 +1025,7 @@ describe('the catalog read again (10.1d)', () => {
     expect(cmp.fullForm.value.name).toBe('Mudei o nome');
   });
 
-  it('does not open the session\'s stream for the master\'s editor: a stream would keep the page from ever being quiet', async () => {
+  it("does not open the session's stream for the master's editor: a stream would keep the page from ever being quiet", async () => {
     const run = async (master: boolean) => {
       TestBed.resetTestingModule();
       const watcher = fakeContentWatcher();
@@ -736,10 +1035,16 @@ describe('the catalog read again (10.1d)', () => {
         providers: [
           provideRouter([]),
           { provide: CharacterEditorSource, useClass: FakeSource },
-          { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: 'camp-1' })) } },
+          {
+            provide: ActivatedRoute,
+            useValue: { paramMap: of(convertToParamMap({ id: 'camp-1' })) },
+          },
         ],
       });
-      (TestBed.inject(CharacterEditorSource) as unknown as FakeSource).catalogOver = (c) => ({ ...c, viewerIsMaster: master });
+      (TestBed.inject(CharacterEditorSource) as unknown as FakeSource).catalogOver = (c) => ({
+        ...c,
+        viewerIsMaster: master,
+      });
       const fixture = TestBed.createComponent(CharacterEditor);
       fixture.detectChanges();
       await flush();

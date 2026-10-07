@@ -1,4 +1,15 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -52,7 +63,11 @@ export class TrapDamages {
   /** An apply or a discard went through: the board reads again. */
   readonly settled = output<string>();
 
-  protected readonly waiting = computed(() => this.damages().filter((d) => d.status === PendingDamageStatus.ROLLED).map((d) => this.describe(d)));
+  protected readonly waiting = computed(() =>
+    this.damages()
+      .filter((d) => d.status === PendingDamageStatus.ROLLED)
+      .map((d) => this.describe(d)),
+  );
   protected readonly typed = signal<ReadonlyMap<string, string>>(new Map());
   protected readonly discarding = signal<string | null>(null);
   protected readonly busy = signal(false);
@@ -77,7 +92,9 @@ export class TrapDamages {
       d,
       title: `${d.trapName || 'A armadilha'} pegou ${d.characterName || 'um personagem'}`,
       formula: d.roll ? damageFormula(d.roll, d.damageTypePt) : `${d.amount} de dano`,
-      sub: joinDots([d.half ? 'metade, o teste passou' : '', 'esperando você aplicar'].filter(Boolean)),
+      sub: joinDots(
+        [d.half ? 'metade, o teste passou' : '', 'esperando você aplicar'].filter(Boolean),
+      ),
       label: d.damageTypePt ? `Dano ${typeWord} a aplicar` : 'Dano a aplicar',
       text,
       amount,
@@ -86,7 +103,10 @@ export class TrapDamages {
             name: d.characterName,
             now: vitals.hitPointsCurrent,
             max: vitals.hitPointsMax,
-            after: amount === null ? vitals.hitPointsCurrent : hitPointsAfter(vitals.hitPointsCurrent, vitals.hitPointsTemporary, amount),
+            after:
+              amount === null
+                ? vitals.hitPointsCurrent
+                : hitPointsAfter(vitals.hitPointsCurrent, vitals.hitPointsTemporary, amount),
           }
         : null,
     };
@@ -120,10 +140,21 @@ export class TrapDamages {
     const changed = amount !== d.amount ? amount : undefined;
     await this.run(async () => {
       if (d.encounterId) {
-        const res = await this.combatApi.applyDamage(this.campaignId(), d.encounterId, d.id, changed, this.keyFor(`apply-${amount}`, d.id));
+        const res = await this.combatApi.applyDamage(
+          this.campaignId(),
+          d.encounterId,
+          d.id,
+          changed,
+          this.keyFor(`apply-${amount}`, d.id),
+        );
         this.combat()?.apply(res.encounter);
       } else {
-        await this.traps.applyDamage(this.campaignId(), d.id, changed, this.keyFor(`apply-${amount}`, d.id));
+        await this.traps.applyDamage(
+          this.campaignId(),
+          d.id,
+          changed,
+          this.keyFor(`apply-${amount}`, d.id),
+        );
       }
       this.done.set(`Dano de ${amount} aplicado a ${d.characterName}.`);
       this.settled.emit(d.id);

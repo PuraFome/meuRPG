@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, inject, input, output, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  inject,
+  input,
+  output,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 
 import { focusWithRing } from '../../../core/creatures/focus-ring';

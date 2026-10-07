@@ -8,3 +8,7 @@ node_modules/
 package-lock.json
 # The suppressions file is written by ESLint.
 eslint-suppressions.json
+# The Angular templates keep their hand formatting (and .prettierrc leaves the inline templates of .ts files alone): Prettier's HTML printer adds and removes whitespace between
+# elements and text, which changes what renders when CSS makes an element inline (measured on 07/10/2026: a space
+# before a comma, two pills that sat together drifting apart, padding in text the tests compare).
+*.html

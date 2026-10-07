@@ -1,4 +1,16 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -50,7 +62,11 @@ export class DungeonImage {
 
   protected readonly summary = computed(() => {
     const i = this.info();
-    return [`Semente ${i.seed}`, `${i.width} × ${i.height} quadrados (${dungeonSizeText(i.width, i.height)})`, doorCountText(i.doors)];
+    return [
+      `Semente ${i.seed}`,
+      `${i.width} × ${i.height} quadrados (${dungeonSizeText(i.width, i.height)})`,
+      doorCountText(i.doors),
+    ];
   });
 
   protected start(): void {
@@ -84,7 +100,9 @@ export class DungeonImage {
       }
       const map = await this.api.redraw(this.campaignId(), this.map().id);
       this.asking.set(false);
-      this.done.set('A imagem foi desenhada de novo. As camadas, os pontos e os tokens continuam como estavam.');
+      this.done.set(
+        'A imagem foi desenhada de novo. As camadas, os pontos e os tokens continuam como estavam.',
+      );
       this.redrawn.emit(map);
       this.focusOpener();
     } catch (err) {

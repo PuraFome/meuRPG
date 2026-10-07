@@ -31,18 +31,42 @@ export const MASKS: readonly { readonly value: DungeonMask; readonly label: stri
   { value: DungeonMask.DIAMOND, label: 'Losango' },
 ];
 
-export const CORRIDORS: readonly { readonly value: DungeonCorridorStyle; readonly label: string }[] = [
+export const CORRIDORS: readonly {
+  readonly value: DungeonCorridorStyle;
+  readonly label: string;
+}[] = [
   { value: DungeonCorridorStyle.TWISTY, label: 'Labirinto' },
   { value: DungeonCorridorStyle.MEANDERING, label: 'Sinuosos' },
   { value: DungeonCorridorStyle.LONG_RUNS, label: 'Retos' },
 ];
 
 /** The door mixes, each with the one line that says what it means (my wording; the generator spec decides the numbers). */
-export const DOOR_MIXES: readonly { readonly value: DungeonDoorMix; readonly label: string; readonly about: string }[] = [
-  { value: DungeonDoorMix.OPEN, label: 'Só passagens', about: 'Só passagens: vãos sem porta, quase nenhuma porta de verdade.' },
-  { value: DungeonDoorMix.TYPICAL, label: 'Comuns', about: 'Comuns: a maioria fechada, umas trancadas, uma grade, uma porta secreta e algumas passagens sem porta.' },
-  { value: DungeonDoorMix.SECURED, label: 'Seguras', about: 'Seguras: mais portas trancadas, grades e portas secretas.' },
-  { value: DungeonDoorMix.PARANOID, label: 'Paranoicas', about: 'Paranoicas: muitas trancadas, grades e portas secretas.' },
+export const DOOR_MIXES: readonly {
+  readonly value: DungeonDoorMix;
+  readonly label: string;
+  readonly about: string;
+}[] = [
+  {
+    value: DungeonDoorMix.OPEN,
+    label: 'Só passagens',
+    about: 'Só passagens: vãos sem porta, quase nenhuma porta de verdade.',
+  },
+  {
+    value: DungeonDoorMix.TYPICAL,
+    label: 'Comuns',
+    about:
+      'Comuns: a maioria fechada, umas trancadas, uma grade, uma porta secreta e algumas passagens sem porta.',
+  },
+  {
+    value: DungeonDoorMix.SECURED,
+    label: 'Seguras',
+    about: 'Seguras: mais portas trancadas, grades e portas secretas.',
+  },
+  {
+    value: DungeonDoorMix.PARANOID,
+    label: 'Paranoicas',
+    about: 'Paranoicas: muitas trancadas, grades e portas secretas.',
+  },
 ];
 
 /** What the form holds. A number field holds its text, so a half-typed value is never lost. */

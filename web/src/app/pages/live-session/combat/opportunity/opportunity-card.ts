@@ -160,11 +160,19 @@ export class OpportunityCard {
     // A prompt that appears puts the focus on the safe answer ("Não atacar").
     let seen = '';
     effect(() => {
-      const ids = this.offers().map((o) => o.id).join(',');
+      const ids = this.offers()
+        .map((o) => o.id)
+        .join(',');
       if (ids !== '' && ids !== seen) {
-        afterNextRender(() => this.host.nativeElement.querySelector<HTMLButtonElement>('[data-safe]')?.focus({ focusVisible: true } as FocusOptions), {
-          injector: this.injector,
-        });
+        afterNextRender(
+          () =>
+            this.host.nativeElement
+              .querySelector<HTMLButtonElement>('[data-safe]')
+              ?.focus({ focusVisible: true } as FocusOptions),
+          {
+            injector: this.injector,
+          },
+        );
       }
       seen = ids;
     });
@@ -183,7 +191,9 @@ export class OpportunityCard {
     const reactor = this.encounter().combatants.find((c) => c.id === o.reactorId);
     const name = reactor ? (this.info().get(reactor.characterId)?.playerName ?? '') : '';
     const who = name ? `${article(name)} ${name}` : 'o jogador';
-    return tieNumbers(`${capitalize(`${article(o.moverLabel)} ${o.moverLabel}`)} sai do alcance ${ofThe([o.reactorLabel])}: espera ${who}.`);
+    return tieNumbers(
+      `${capitalize(`${article(o.moverLabel)} ${o.moverLabel}`)} sai do alcance ${ofThe([o.reactorLabel])}: espera ${who}.`,
+    );
   }
 
   protected ask(o: OpportunityOffer): string {
@@ -212,21 +222,27 @@ export class OpportunityCard {
 
   /** "O Goblin 1 saiu do alcance dele.": the master's offer, with the name of the one whose reach it was. */
   protected leavingBy(o: OpportunityOffer): string {
-    return tieNumbers(`${capitalize(`${article(o.moverLabel)} ${o.moverLabel}`)} saiu do alcance ${article(o.reactorLabel) === 'a' ? 'dela' : 'dele'}.`);
+    return tieNumbers(
+      `${capitalize(`${article(o.moverLabel)} ${o.moverLabel}`)} saiu do alcance ${article(o.reactorLabel) === 'a' ? 'dela' : 'dele'}.`,
+    );
   }
 
   /** "Ele já andou 4,5 m: o movimento valeu." */
   protected walked(o: OpportunityOffer): string {
     const mover = this.encounter().combatants.find((c) => c.id === o.moverId);
     const used = mover?.movementUsedDft ?? 0;
-    return used > 0 ? `Já andou ${metersFixed(used / 10)}: o movimento valeu.` : 'O movimento valeu.';
+    return used > 0
+      ? `Já andou ${metersFixed(used / 10)}: o movimento valeu.`
+      : 'O movimento valeu.';
   }
 
   /** "do Caio (Toren)": the player's name when the roster has it. */
   protected waitingFor(o: OpportunityOffer): string {
     const reactor = this.encounter().combatants.find((c) => c.id === o.reactorId);
     const name = reactor ? (this.info().get(reactor.characterId)?.playerName ?? '') : '';
-    return tieNumbers(name ? `${ofThe([name])} (${o.reactorLabel})` : `do jogador de ${o.reactorLabel}`);
+    return tieNumbers(
+      name ? `${ofThe([name])} (${o.reactorLabel})` : `do jogador de ${o.reactorLabel}`,
+    );
   }
 }
 

@@ -21,16 +21,16 @@ import {
 
 @Injectable()
 class FakeCharacterSheetSource {
-  getCharacterSheetFn: (campaignId: string, characterId: string) => Promise<CharacterSheetVm> = () =>
-    Promise.reject(new Error('not stubbed'));
+  getCharacterSheetFn: (campaignId: string, characterId: string) => Promise<CharacterSheetVm> =
+    () => Promise.reject(new Error('not stubbed'));
   xpMode: CampaignXpMode = 'enemies';
   getMasterNotesCalls: string[] = [];
   getMasterNotesFn: (campaignId: string, characterId: string) => Promise<string> = () =>
     Promise.resolve('');
   updateMasterNotesFn: (campaignId: string, characterId: string, notes: string) => Promise<void> =
     () => Promise.resolve();
-  markCharacterDeadFn: (campaignId: string, characterId: string) => Promise<CharacterSheetVm> = () =>
-    Promise.reject(new Error('not stubbed'));
+  markCharacterDeadFn: (campaignId: string, characterId: string) => Promise<CharacterSheetVm> =
+    () => Promise.reject(new Error('not stubbed'));
   updateCharacterStoryFn: (
     campaignId: string,
     characterId: string,
@@ -209,7 +209,17 @@ function vm(overrides: Partial<CharacterSheetVm> = {}): CharacterSheetVm {
 
 /** What the XP block listens with: no open session, so no stream. */
 const openSessions = signal<readonly OpenSessionVm[]>([]);
-const xpWatcher = { follow: vi.fn<(campaignId: string | null, onChange: () => void, onCreatures?: () => void, onContent?: () => void) => void>() };
+const xpWatcher = {
+  follow:
+    vi.fn<
+      (
+        campaignId: string | null,
+        onChange: () => void,
+        onCreatures?: () => void,
+        onContent?: () => void,
+      ) => void
+    >(),
+};
 /** The player's notes panel reads this; nothing here talks to a server. */
 const notesApi = {
   list: vi.fn(() => Promise.resolve({ notes: [], noteCount: 0, maxNotes: 300 })),
@@ -219,7 +229,14 @@ function xpProviders() {
   return [
     { provide: NotesClient, useValue: notesApi },
     // No creatures: the panel stays out of these tests (its own spec covers it).
-    { provide: CreaturesClient, useValue: { list: () => Promise.resolve([]), summonOptions: () => Promise.resolve({ spells: [], slots: [] }), statBlock: () => Promise.reject(new Error('none')) } },
+    {
+      provide: CreaturesClient,
+      useValue: {
+        list: () => Promise.resolve([]),
+        summonOptions: () => Promise.resolve({ spells: [], slots: [] }),
+        statBlock: () => Promise.reject(new Error('none')),
+      },
+    },
     { provide: OpenSessions, useValue: { sessions: openSessions } },
     { provide: XpWatcher, useValue: xpWatcher },
   ];
@@ -241,7 +258,9 @@ function ddAfter(el: HTMLElement, term: string): HTMLElement | null {
 }
 
 function sectionTitled(el: HTMLElement, title: string): HTMLElement {
-  const heading = Array.from(el.querySelectorAll('h2')).find((h) => h.textContent?.trim() === title);
+  const heading = Array.from(el.querySelectorAll('h2')).find(
+    (h) => h.textContent?.trim() === title,
+  );
   return heading!.closest('section')!;
 }
 
@@ -391,7 +410,7 @@ describe('CharacterSheetPage', () => {
     expect(el.textContent).not.toContain('nível: 4');
   });
 
-  it('renders every official-sheet section as an <h2>, in the paper sheet\'s column order', async () => {
+  it("renders every official-sheet section as an <h2>, in the paper sheet's column order", async () => {
     configure();
     fake.getCharacterSheetFn = () =>
       Promise.resolve(
@@ -442,10 +461,13 @@ describe('CharacterSheetPage', () => {
     TestBed.resetTestingModule();
     notesApi.list.mockClear();
     configure();
-    fake.getCharacterSheetFn = () => Promise.resolve(vm({ isMaster: true, canAccessMasterNotes: true }));
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ isMaster: true, canAccessMasterNotes: true }));
     const asMaster = await render();
     expect(asMaster.querySelector('app-notes-panel')).toBeNull();
-    expect(Array.from(asMaster.querySelectorAll('h2')).map((h) => h.textContent?.trim())).not.toContain('Anotações');
+    expect(
+      Array.from(asMaster.querySelectorAll('h2')).map((h) => h.textContent?.trim()),
+    ).not.toContain('Anotações');
     expect(notesApi.list).not.toHaveBeenCalled();
   });
 
@@ -489,9 +511,27 @@ describe('CharacterSheetPage', () => {
         vm({
           sheet: fullSheet({
             skills: [
-              { key: 'skill:arcana', namePt: 'Arcanismo', ability: 'int', bonus: 6, proficiency: 'proficient' },
-              { key: 'skill:history', namePt: 'História', ability: 'int', bonus: 8, proficiency: 'expertise' },
-              { key: 'skill:stealth', namePt: 'Furtividade', ability: 'dex', bonus: 3, proficiency: 'none' },
+              {
+                key: 'skill:arcana',
+                namePt: 'Arcanismo',
+                ability: 'int',
+                bonus: 6,
+                proficiency: 'proficient',
+              },
+              {
+                key: 'skill:history',
+                namePt: 'História',
+                ability: 'int',
+                bonus: 8,
+                proficiency: 'expertise',
+              },
+              {
+                key: 'skill:stealth',
+                namePt: 'Furtividade',
+                ability: 'dex',
+                bonus: 3,
+                proficiency: 'none',
+              },
             ],
           }),
         }),
@@ -573,7 +613,9 @@ describe('CharacterSheetPage', () => {
   it('hides "Editar história" for a player once the sheet has locked it', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
-      Promise.resolve(vm({ isMaster: false, state: 'locked', canEdit: false, canEditStory: false }));
+      Promise.resolve(
+        vm({ isMaster: false, state: 'locked', canEdit: false, canEditStory: false }),
+      );
 
     const el = await render();
     expect(el.textContent).not.toContain('Editar história');
@@ -588,7 +630,7 @@ describe('CharacterSheetPage', () => {
     expect(el.textContent).toContain('Editar história');
   });
 
-  it('shows the master\'s story toggle, labeled by storyEditingAllowed, and flips it on click', async () => {
+  it("shows the master's story toggle, labeled by storyEditingAllowed, and flips it on click", async () => {
     configure();
     fake.getCharacterSheetFn = () =>
       Promise.resolve(
@@ -815,7 +857,11 @@ describe('CharacterSheetPage', () => {
   it('says "Sem armadura" when a feature, not armor, gives the AC (Unarmored Defense)', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
-      Promise.resolve(vm({ sheet: fullSheet({ armorClassDescription: 'Defesa sem Armadura', wearsArmor: false }) }));
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({ armorClassDescription: 'Defesa sem Armadura', wearsArmor: false }),
+        }),
+      );
 
     const el = await render();
     const section = sectionTitled(el, 'Equipamento');
@@ -861,7 +907,9 @@ describe('CharacterSheetPage', () => {
     expect(summary.querySelector('.feature__source')?.textContent?.trim()).toBe('Mago 1');
     expect(details!.open).toBe(false);
     const description = details!.querySelector('p')!;
-    expect(description.textContent).toContain('You have learned to regain some of your magical energy.');
+    expect(description.textContent).toContain(
+      'You have learned to regain some of your magical energy.',
+    );
     // The SRD text is English: marked so, for screen readers and translators.
     expect(description.getAttribute('lang')).toBe('en');
 
@@ -876,7 +924,9 @@ describe('CharacterSheetPage', () => {
       (h) => h.textContent?.trim() === 'Lembretes',
     );
     expect(lembretes).toBeTruthy();
-    expect(features.textContent).toContain('Vantagem em testes de resistência de INT, SAB e CAR contra magia.');
+    expect(features.textContent).toContain(
+      'Vantagem em testes de resistência de INT, SAB e CAR contra magia.',
+    );
   });
 
   it('"A classe mudou": the changed entry\'s sentences above the sheet, and the same issue never listed twice (RN-23)', async () => {
@@ -886,10 +936,25 @@ describe('CharacterSheetPage', () => {
       Promise.resolve(
         vm({
           sheet: fullSheet({
-            changedContent: [{ key: 'class:guardiao-do-vale@mesa', namePt: 'Guardião do Vale', changedAt: new Date(2026, 9, 5), messages: [sentence] }],
+            changedContent: [
+              {
+                key: 'class:guardiao-do-vale@mesa',
+                namePt: 'Guardião do Vale',
+                changedAt: new Date(2026, 9, 5),
+                messages: [sentence],
+              },
+            ],
             issues: [
-              { code: 'table_content_changed', field: 'full.classes[0].class_key', message: sentence },
-              { code: 'unknown_key', field: 'full.armor_key', message: 'A armadura escolhida não existe no conteúdo srd51@test.' },
+              {
+                code: 'table_content_changed',
+                field: 'full.classes[0].class_key',
+                message: sentence,
+              },
+              {
+                code: 'unknown_key',
+                field: 'full.armor_key',
+                message: 'A armadura escolhida não existe no conteúdo srd51@test.',
+              },
             ],
           }),
         }),
@@ -918,13 +983,16 @@ describe('CharacterSheetPage', () => {
 
     const el = await render();
     expect(el.querySelector('.mr-notice--warning')).toBeNull();
-    const lembretes = Array.from(el.querySelectorAll('h3')).find((h) => h.textContent?.trim() === 'Lembretes');
+    const lembretes = Array.from(el.querySelectorAll('h3')).find(
+      (h) => h.textContent?.trim() === 'Lembretes',
+    );
     expect(lembretes).toBeUndefined();
   });
 
   it('never shows the rules content version (nothing internal on screen)', async () => {
     configure();
-    fake.getCharacterSheetFn = () => Promise.resolve(vm({ sheet: fullSheet({ contentVersion: 'srd51@abc123' }) }));
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ sheet: fullSheet({ contentVersion: 'srd51@abc123' }) }));
 
     const el = await render();
     expect(el.textContent).not.toContain('srd51@abc123');
@@ -939,7 +1007,12 @@ describe('CharacterSheetPage', () => {
     fake.markCharacterDeadFn = () => {
       calls++;
       return Promise.resolve(
-        vm({ state: 'dead', isMaster: true, canMarkDead: false, diedAt: new Date(2026, 8, 30, 21, 0) }),
+        vm({
+          state: 'dead',
+          isMaster: true,
+          canMarkDead: false,
+          diedAt: new Date(2026, 8, 30, 21, 0),
+        }),
       );
     };
     const fixture = TestBed.createComponent(CharacterSheetPage);
@@ -999,7 +1072,9 @@ describe('CharacterSheetPage', () => {
   it('tells a player whose story is locked that the master can unlock it', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
-      Promise.resolve(vm({ isMaster: false, state: 'locked', canEdit: false, canEditStory: false }));
+      Promise.resolve(
+        vm({ isMaster: false, state: 'locked', canEdit: false, canEditStory: false }),
+      );
     const el = await render();
     expect(sectionTitled(el, 'História').textContent).toContain(
       'A história está travada. O mestre pode liberar a edição até a próxima sessão.',
@@ -1012,7 +1087,9 @@ describe('CharacterSheetPage', () => {
     let saved: { revision: number; backstory: string } | null = null;
     fake.updateCharacterStoryFn = (_c, _id, revision, story) => {
       saved = { revision, backstory: story.backstory };
-      return Promise.resolve(vm({ revision: 5, story: { ...emptyStory(), backstory: 'Do servidor.' } }));
+      return Promise.resolve(
+        vm({ revision: 5, story: { ...emptyStory(), backstory: 'Do servidor.' } }),
+      );
     };
     const fixture = TestBed.createComponent(CharacterSheetPage);
     fixture.detectChanges();
@@ -1071,7 +1148,9 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
     fake.getCharacterSheetFn = () => Promise.resolve(vm({ state: 'pending', canApprove: false }));
     const el = (await render()).nativeElement as HTMLElement;
 
-    expect(el.querySelector('[aria-label="Estado do personagem"]')?.textContent).toContain('Pendente');
+    expect(el.querySelector('[aria-label="Estado do personagem"]')?.textContent).toContain(
+      'Pendente',
+    );
     expect(el.textContent).toContain('Esperando a aprovação do mestre');
     expect(button(el, 'Aprovar personagem')).toBeUndefined();
     expect(button(el, 'Recusar personagem')).toBeUndefined();
@@ -1082,7 +1161,9 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
   it('"Aprovar personagem" approves and shows the character as a draft', async () => {
     fake.getCharacterSheetFn = () => Promise.resolve(pendingForMaster());
     fake.approveCharacterFn = () =>
-      Promise.resolve(vm({ state: 'draft', canApprove: false, isMaster: true, canAccessMasterNotes: true }));
+      Promise.resolve(
+        vm({ state: 'draft', canApprove: false, isMaster: true, canAccessMasterNotes: true }),
+      );
     const fixture = await render();
     const el = fixture.nativeElement as HTMLElement;
 
@@ -1090,7 +1171,9 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
     await flush();
     fixture.detectChanges();
 
-    expect(el.querySelector('[aria-label="Estado do personagem"]')?.textContent).toContain('Rascunho');
+    expect(el.querySelector('[aria-label="Estado do personagem"]')?.textContent).toContain(
+      'Rascunho',
+    );
     expect(button(el, 'Aprovar personagem')).toBeUndefined();
   });
 
@@ -1114,7 +1197,7 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
     expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1']);
   });
 
-  it('shows the server\'s reason when the rejection fails', async () => {
+  it("shows the server's reason when the rejection fails", async () => {
     fake.getCharacterSheetFn = () => Promise.resolve(pendingForMaster());
     fake.rejectCharacterFn = () => Promise.reject(new ConnectError('gone', Code.NotFound));
     const fixture = await render();
@@ -1130,7 +1213,8 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
   });
 
   it('a sheet the server does not show (not_found) reads "Personagem não encontrado", not an error (RN-20)', async () => {
-    fake.getCharacterSheetFn = () => Promise.reject(new ConnectError('character not found', Code.NotFound));
+    fake.getCharacterSheetFn = () =>
+      Promise.reject(new ConnectError('character not found', Code.NotFound));
     const fixture = await render();
     const el = fixture.nativeElement as HTMLElement;
 
@@ -1195,17 +1279,29 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
 
   it('says "Pode subir de nível" and what to do when the XP reached the next level', async () => {
     fake.getCharacterSheetFn = () =>
-      Promise.resolve(vm({ experiencePoints: 2716, totalLevel: 3, nextLevelXp: 2700, canLevelUp: true }));
+      Promise.resolve(
+        vm({ experiencePoints: 2716, totalLevel: 3, nextLevelXp: 2700, canLevelUp: true }),
+      );
     const el = (await render()).nativeElement as HTMLElement;
 
-    expect(block(el)!.querySelector('app-level-up-tag')?.textContent).toContain('Pode subir de nível');
-    expect(block(el)!.querySelector('.xp__line')?.textContent).toContain('O mestre sobe o seu nível na ficha.');
+    expect(block(el)!.querySelector('app-level-up-tag')?.textContent).toContain(
+      'Pode subir de nível',
+    );
+    expect(block(el)!.querySelector('.xp__line')?.textContent).toContain(
+      'O mestre sobe o seu nível na ficha.',
+    );
   });
 
   it("tells the master the same, in the master's words", async () => {
     fake.getCharacterSheetFn = () =>
       Promise.resolve(
-        vm({ experiencePoints: 2716, nextLevelXp: 2700, canLevelUp: true, isMaster: true, canAccessMasterNotes: true }),
+        vm({
+          experiencePoints: 2716,
+          nextLevelXp: 2700,
+          canLevelUp: true,
+          isMaster: true,
+          canAccessMasterNotes: true,
+        }),
       );
     const el = (await render()).nativeElement as HTMLElement;
 
@@ -1223,21 +1319,27 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
 
   it('has no XP block in a milestones campaign, only the tag when it can level up', async () => {
     fake.xpMode = 'milestones';
-    fake.getCharacterSheetFn = () => Promise.resolve(vm({ canLevelUp: true, state: 'locked', isMaster: true }));
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ canLevelUp: true, state: 'locked', isMaster: true }));
     const el = (await render()).nativeElement as HTMLElement;
 
     expect(block(el)).toBeNull();
     expect(el.textContent).not.toContain('XP');
-    expect(el.querySelector('.head__tags app-level-up-tag')?.textContent).toContain('Pode subir de nível');
+    expect(el.querySelector('.head__tags app-level-up-tag')?.textContent).toContain(
+      'Pode subir de nível',
+    );
   });
 
   it('leaves the tag to the level-up block when the owner of a locked sheet can level up (MR-040)', async () => {
     fake.xpMode = 'milestones';
-    fake.getCharacterSheetFn = () => Promise.resolve(vm({ canLevelUp: true, state: 'locked', levelUpReason: 'milestone' }));
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ canLevelUp: true, state: 'locked', levelUpReason: 'milestone' }));
     const el = (await render()).nativeElement as HTMLElement;
 
     expect(el.querySelector('.head__tags app-level-up-tag')).toBeNull();
-    expect(el.querySelector('app-level-up-banner a')?.textContent).toContain('Subir para o nível 4');
+    expect(el.querySelector('app-level-up-banner a')?.textContent).toContain(
+      'Subir para o nível 4',
+    );
   });
 
   it('has no tag in a milestones campaign when the character cannot level up', async () => {
@@ -1270,7 +1372,15 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
 
   it("never shows a player the NPC's ND or XP (RN-20)", async () => {
     fake.getCharacterSheetFn = () =>
-      Promise.resolve(vm({ characterKind: 'enemy', experiencePoints: 0, challengeRating: '1', xpValue: 200, isMaster: false }));
+      Promise.resolve(
+        vm({
+          characterKind: 'enemy',
+          experiencePoints: 0,
+          challengeRating: '1',
+          xpValue: 200,
+          isMaster: false,
+        }),
+      );
     const el = (await render()).nativeElement as HTMLElement;
 
     expect(ddAfter(el, 'XP ao derrotar')).toBeNull();
@@ -1282,33 +1392,70 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
     openSessions.set([]);
     const fixture = await render();
     // No open session: it follows nothing.
-    expect(xpWatcher.follow).toHaveBeenLastCalledWith(null, expect.any(Function), expect.any(Function), expect.any(Function));
+    expect(xpWatcher.follow).toHaveBeenLastCalledWith(
+      null,
+      expect.any(Function),
+      expect.any(Function),
+      expect.any(Function),
+    );
 
     openSessions.set([
-      { sessionId: 's1', campaignId: 'camp-1', campaignName: 'Mirathel', sessionNumber: 5, startedAt: new Date(), isMaster: false },
+      {
+        sessionId: 's1',
+        campaignId: 'camp-1',
+        campaignName: 'Mirathel',
+        sessionNumber: 5,
+        startedAt: new Date(),
+        isMaster: false,
+      },
     ]);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(xpWatcher.follow).toHaveBeenLastCalledWith('camp-1', expect.any(Function), expect.any(Function), expect.any(Function));
+    expect(xpWatcher.follow).toHaveBeenLastCalledWith(
+      'camp-1',
+      expect.any(Function),
+      expect.any(Function),
+      expect.any(Function),
+    );
 
     fixture.destroy();
     expect(xpWatcher.follow).toHaveBeenLastCalledWith(null, expect.any(Function));
   });
 
-  it('does not listen for an NPC\'s sheet: it has no XP to keep fresh', async () => {
-    fake.getCharacterSheetFn = () => Promise.resolve(vm({ characterKind: 'enemy', experiencePoints: 0 }));
+  it("does not listen for an NPC's sheet: it has no XP to keep fresh", async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ characterKind: 'enemy', experiencePoints: 0 }));
     openSessions.set([
-      { sessionId: 's1', campaignId: 'camp-1', campaignName: 'Mirathel', sessionNumber: 5, startedAt: new Date(), isMaster: true },
+      {
+        sessionId: 's1',
+        campaignId: 'camp-1',
+        campaignName: 'Mirathel',
+        sessionNumber: 5,
+        startedAt: new Date(),
+        isMaster: true,
+      },
     ]);
     await render();
-    expect(xpWatcher.follow).not.toHaveBeenCalledWith('camp-1', expect.any(Function), expect.any(Function));
+    expect(xpWatcher.follow).not.toHaveBeenCalledWith(
+      'camp-1',
+      expect.any(Function),
+      expect.any(Function),
+    );
   });
 
   it('reads the character again, without the loading state, when the master gives XP', async () => {
     let xp = 2366;
-    fake.getCharacterSheetFn = () => Promise.resolve(vm({ experiencePoints: xp, nextLevelXp: 2700 }));
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ experiencePoints: xp, nextLevelXp: 2700 }));
     openSessions.set([
-      { sessionId: 's1', campaignId: 'camp-1', campaignName: 'Mirathel', sessionNumber: 5, startedAt: new Date(), isMaster: false },
+      {
+        sessionId: 's1',
+        campaignId: 'camp-1',
+        campaignName: 'Mirathel',
+        sessionNumber: 5,
+        startedAt: new Date(),
+        isMaster: false,
+      },
     ]);
     const fixture = await render();
     const el = fixture.nativeElement as HTMLElement;
@@ -1333,7 +1480,14 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
       return Promise.resolve(vm());
     };
     openSessions.set([
-      { sessionId: 's1', campaignId: 'camp-1', campaignName: 'Mirathel', sessionNumber: 5, startedAt: new Date(), isMaster: false },
+      {
+        sessionId: 's1',
+        campaignId: 'camp-1',
+        campaignName: 'Mirathel',
+        sessionNumber: 5,
+        startedAt: new Date(),
+        isMaster: false,
+      },
     ]);
     const fixture = await render();
     const before = reads;

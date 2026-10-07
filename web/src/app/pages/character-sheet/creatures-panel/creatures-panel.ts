@@ -1,4 +1,15 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -77,12 +88,20 @@ export class CreaturesPanel {
   private castInFlight = false;
   private seq = 0;
 
-  protected readonly live = computed(() => this.openSessions.sessions().some((s) => s.campaignId === this.campaignId()));
+  protected readonly live = computed(() =>
+    this.openSessions.sessions().some((s) => s.campaignId === this.campaignId()),
+  );
   protected readonly casts = computed(() => (this.isMaster() ? [] : this.spells()));
   protected readonly visible = computed(
-    () => this.state() === 'failed' || (this.state() === 'ready' && (this.creatures().length > 0 || (!this.isMaster() && (this.casts().length > 0 || this.wildShape())))),
+    () =>
+      this.state() === 'failed' ||
+      (this.state() === 'ready' &&
+        (this.creatures().length > 0 ||
+          (!this.isMaster() && (this.casts().length > 0 || this.wildShape())))),
   );
-  protected readonly countText = computed(() => (this.creatures().length === 0 ? '' : creaturesText(this.creatures().length)));
+  protected readonly countText = computed(() =>
+    this.creatures().length === 0 ? '' : creaturesText(this.creatures().length),
+  );
   protected readonly emptyText = computed(() => {
     const names = this.casts().map((c) => c.namePt);
     if (names.length === 0) {
@@ -93,7 +112,11 @@ export class CreaturesPanel {
 
   /** Wild Shape on the sheet (E9-11): the beast the druid is now (`''` in its own shape), the uses and a refusal in words. */
   protected readonly form = signal('');
-  protected readonly uses = signal<{ readonly left: number; readonly total: number; readonly recharge: string } | null>(null);
+  protected readonly uses = signal<{
+    readonly left: number;
+    readonly total: number;
+    readonly recharge: string;
+  } | null>(null);
   protected readonly wildError = signal('');
   /** "restam 2 de 2 usos · volta no descanso curto ou longo", or what stops it outside a session. */
   protected readonly wildLine = computed(() => {
@@ -104,8 +127,13 @@ export class CreaturesPanel {
     if (!u) {
       return '';
     }
-    const back = u.recharge === 'long_rest' ? 'volta no descanso longo' : 'volta no descanso curto ou longo';
-    return tight(u.left === 0 ? `Sem usos · ${back}` : `Restam ${u.left} de ${u.total} ${u.total === 1 ? 'uso' : 'usos'} · ${back}`);
+    const back =
+      u.recharge === 'long_rest' ? 'volta no descanso longo' : 'volta no descanso curto ou longo';
+    return tight(
+      u.left === 0
+        ? `Sem usos · ${back}`
+        : `Restam ${u.left} de ${u.total} ${u.total === 1 ? 'uso' : 'usos'} · ${back}`,
+    );
   });
 
   private async loadWild(): Promise<void> {
@@ -115,7 +143,15 @@ export class CreaturesPanel {
     try {
       const v = await this.client.vitalsOf(this.campaignId(), this.characterId());
       const r = v?.resources.find((x) => x.key === 'wild_shape');
-      this.uses.set(r ? { left: r.total - r.used, total: r.total, recharge: r.recharge === 2 ? 'long_rest' : 'short_rest' } : null);
+      this.uses.set(
+        r
+          ? {
+              left: r.total - r.used,
+              total: r.total,
+              recharge: r.recharge === 2 ? 'long_rest' : 'short_rest',
+            }
+          : null,
+      );
       this.form.set(v?.wildShape?.beastNamePt ?? '');
     } catch {
       this.uses.set(null);
@@ -182,7 +218,9 @@ export class CreaturesPanel {
       }
       return null;
     }
-    this.spells.set(options.status === 'fulfilled' && options.value ? [...options.value.spells] : []);
+    this.spells.set(
+      options.status === 'fulfilled' && options.value ? [...options.value.spells] : [],
+    );
     this.announceArrivals(list.value);
     this.creatures.set(list.value);
     this.state.set('ready');
@@ -201,7 +239,11 @@ export class CreaturesPanel {
       return;
     }
     const gift = fresh.find((c) => c.source === CreatureSource.MASTER);
-    this.notice.set(gift ? `O mestre deu uma criatura a você: ${gift.name}.` : `${fresh.map((c) => c.name).join(', ')} chegou.`);
+    this.notice.set(
+      gift
+        ? `O mestre deu uma criatura a você: ${gift.name}.`
+        : `${fresh.map((c) => c.name).join(', ')} chegou.`,
+    );
   }
 
   protected costText(spell: SummonSpellOptions): string {
@@ -218,12 +260,21 @@ export class CreaturesPanel {
     }
     this.notice.set('');
     this.castInFlight = true;
-    openSheet<SummonSheet, SummonSheetData, SummonSheetResult>(this.dialog, this.bottomSheet, SummonSheet, {
-      data: { campaignId: this.campaignId(), characterId: this.characterId(), spellKey: spell.spellKey },
-      ariaLabel: spell.namePt,
-      labelledBy: 'summon-t',
-      width: '520px',
-    }).subscribe((result) => {
+    openSheet<SummonSheet, SummonSheetData, SummonSheetResult>(
+      this.dialog,
+      this.bottomSheet,
+      SummonSheet,
+      {
+        data: {
+          campaignId: this.campaignId(),
+          characterId: this.characterId(),
+          spellKey: spell.spellKey,
+        },
+        ariaLabel: spell.namePt,
+        labelledBy: 'summon-t',
+        width: '520px',
+      },
+    ).subscribe((result) => {
       if (!result) {
         this.castInFlight = false;
         return;
@@ -237,7 +288,12 @@ export class CreaturesPanel {
   }
 
   private confirmation(r: SummonSheetResult): string {
-    const arrived = r.names.length === 1 ? `${r.names[0]} chegou.` : r.count === 1 ? 'A criatura chegou.' : `${creaturesText(r.count)} chegaram.`;
+    const arrived =
+      r.names.length === 1
+        ? `${r.names[0]} chegou.`
+        : r.count === 1
+          ? 'A criatura chegou.'
+          : `${creaturesText(r.count)} chegaram.`;
     return castNotice(arrived, r.spellName, r.ritual, r.castingTime, r.dismissed);
   }
 
@@ -250,7 +306,10 @@ export class CreaturesPanel {
     }
     if (mode === 'dismiss') {
       // The card is gone: the next one (the same place in the list), or the panel's title.
-      this.focusAfterRender(this.creatures().length > 0 ? 'app-creature-card .name' : '.js-title', index);
+      this.focusAfterRender(
+        this.creatures().length > 0 ? 'app-creature-card .name' : '.js-title',
+        index,
+      );
     } else {
       // The card stays: its name is where the person was.
       this.focusAfterRender(`#creature-${id}`);

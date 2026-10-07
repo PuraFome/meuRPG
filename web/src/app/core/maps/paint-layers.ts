@@ -96,13 +96,16 @@ export class PaintedLayers {
         this.wall[n >> 3] = (this.wall[n >> 3] & ~(1 << (n & 7))) | ((value & 1) << (n & 7));
         break;
       case MapLayer.COVER:
-        this.cover[n >> 2] = (this.cover[n >> 2] & ~(3 << (2 * (n & 3)))) | ((value & 3) << (2 * (n & 3)));
+        this.cover[n >> 2] =
+          (this.cover[n >> 2] & ~(3 << (2 * (n & 3)))) | ((value & 3) << (2 * (n & 3)));
         break;
       case MapLayer.LIGHT:
-        this.light[n >> 2] = (this.light[n >> 2] & ~(3 << (2 * (n & 3)))) | ((value & 3) << (2 * (n & 3)));
+        this.light[n >> 2] =
+          (this.light[n >> 2] & ~(3 << (2 * (n & 3)))) | ((value & 3) << (2 * (n & 3)));
         break;
       case MapLayer.DOORS:
-        this.doors[n >> 1] = (this.doors[n >> 1] & ~(15 << (4 * (n & 1)))) | ((value & 15) << (4 * (n & 1)));
+        this.doors[n >> 1] =
+          (this.doors[n >> 1] & ~(15 << (4 * (n & 1)))) | ((value & 15) << (4 * (n & 1)));
         break;
     }
   }

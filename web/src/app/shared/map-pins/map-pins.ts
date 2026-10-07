@@ -107,14 +107,24 @@ export class MapPins {
       const base = { id: p.id, x, y, n, remembered: p.remembered, secret: false, area: null };
       switch (p.kind) {
         case MapPointKind.TRAP: {
-          const state = p.trap?.state === TrapState.TRIGGERED ? 'fired' : p.trap?.state === TrapState.DISARMED ? 'disarmed' : 'armed';
+          const state =
+            p.trap?.state === TrapState.TRIGGERED
+              ? 'fired'
+              : p.trap?.state === TrapState.DISARMED
+                ? 'disarmed'
+                : 'armed';
           const area = trapArea(p.xBp, p.yBp, p.trap?.areaSize ?? 1, this.columns(), this.rows());
           const secret = this.isMaster() && state === 'armed' && pointHidden(p);
           out.push({ ...base, kind: 'trap', state, area, secret, icon: 'warning' });
           break;
         }
         case MapPointKind.TREASURE:
-          out.push({ ...base, kind: 'treasure', state: p.treasureFoundAt !== undefined ? 'found' : 'hidden', icon: 'inventory_2' });
+          out.push({
+            ...base,
+            kind: 'treasure',
+            state: p.treasureFoundAt !== undefined ? 'found' : 'hidden',
+            icon: 'inventory_2',
+          });
           break;
         case MapPointKind.LIGHT:
           if (this.isMaster()) {

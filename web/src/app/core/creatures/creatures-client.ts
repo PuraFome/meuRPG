@@ -43,7 +43,11 @@ export interface SummonCast {
   /** The slot of a cast that is not a ritual. */
   readonly slot?: { readonly level: number; readonly pact: boolean };
   /** The option and the kind of each creature; a name for each, or none. */
-  readonly summon: { readonly option: number; readonly creatureKeys: readonly string[]; readonly names: readonly string[] };
+  readonly summon: {
+    readonly option: number;
+    readonly creatureKeys: readonly string[];
+    readonly names: readonly string[];
+  };
   readonly idempotencyKey: string;
 }
 
@@ -76,28 +80,69 @@ export class CreaturesClient {
   }
 
   /** The beasts the druid's Wild Shape allows now, by Portuguese name, with the limit that decided the list (`ListWildShapeForms`). */
-  async wildShapeForms(campaignId: string, characterId: string): Promise<ListWildShapeFormsResponse> {
+  async wildShapeForms(
+    campaignId: string,
+    characterId: string,
+  ): Promise<ListWildShapeFormsResponse> {
     return this.characters.listWildShapeForms({ campaignId, characterId });
   }
 
   /** "Virar Lobo": the action and one use (`AssumeWildShape`). The answer is the vitals with the form and, in a combat, the combat. */
-  async assumeWildShape(campaignId: string, characterId: string, beastKey: string, idempotencyKey: string): Promise<{ readonly vitals: CharacterVitals | undefined; readonly encounter: Encounter | undefined }> {
-    const res = await this.play.assumeWildShape({ campaignId, characterId, beastKey, idempotencyKey });
+  async assumeWildShape(
+    campaignId: string,
+    characterId: string,
+    beastKey: string,
+    idempotencyKey: string,
+  ): Promise<{
+    readonly vitals: CharacterVitals | undefined;
+    readonly encounter: Encounter | undefined;
+  }> {
+    const res = await this.play.assumeWildShape({
+      campaignId,
+      characterId,
+      beastKey,
+      idempotencyKey,
+    });
     return { vitals: res.vitals, encounter: res.encounter };
   }
 
   /** "Voltar à forma normal" (`LeaveWildShape`): a bonus action in a combat. */
-  async leaveWildShape(campaignId: string, characterId: string, idempotencyKey: string): Promise<{ readonly vitals: CharacterVitals | undefined; readonly encounter: Encounter | undefined }> {
+  async leaveWildShape(
+    campaignId: string,
+    characterId: string,
+    idempotencyKey: string,
+  ): Promise<{
+    readonly vitals: CharacterVitals | undefined;
+    readonly encounter: Encounter | undefined;
+  }> {
     const res = await this.play.leaveWildShape({ campaignId, characterId, idempotencyKey });
     return { vitals: res.vitals, encounter: res.encounter };
   }
 
   /** The master gives a character a creature; a blank name takes the Portuguese name of the kind. */
-  async give(campaignId: string, characterId: string, monsterKey: string, name: string, idempotencyKey: string): Promise<CharacterCreature | undefined> {
-    return (await this.characters.giveCreature({ campaignId, characterId, monsterKey, name, idempotencyKey })).creature;
+  async give(
+    campaignId: string,
+    characterId: string,
+    monsterKey: string,
+    name: string,
+    idempotencyKey: string,
+  ): Promise<CharacterCreature | undefined> {
+    return (
+      await this.characters.giveCreature({
+        campaignId,
+        characterId,
+        monsterKey,
+        name,
+        idempotencyKey,
+      })
+    ).creature;
   }
 
-  async rename(campaignId: string, creatureId: string, name: string): Promise<CharacterCreature | undefined> {
+  async rename(
+    campaignId: string,
+    creatureId: string,
+    name: string,
+  ): Promise<CharacterCreature | undefined> {
     return (await this.characters.renameCreature({ campaignId, creatureId, name })).creature;
   }
 
@@ -106,7 +151,11 @@ export class CreaturesClient {
   }
 
   /** The master's correction outside a combat: the hit points themselves. */
-  async setHitPoints(campaignId: string, creatureId: string, hitPoints: number): Promise<CharacterCreature | undefined> {
+  async setHitPoints(
+    campaignId: string,
+    creatureId: string,
+    hitPoints: number,
+  ): Promise<CharacterCreature | undefined> {
     return (
       await this.characters.adjustCreatureHitPoints({
         campaignId,
@@ -137,7 +186,13 @@ export class CreaturesClient {
    * The bestiary's "Criar NPC" (MR-042, RN-29): a named NPC with a basic sheet made from the creature.
    * `idempotencyKey` is made once per open dialog, so a retry or a double tap makes one NPC.
    */
-  async createNpc(campaignId: string, creatureKey: string, name: string, role: NpcRole, idempotencyKey: string): Promise<Character | undefined> {
+  async createNpc(
+    campaignId: string,
+    creatureKey: string,
+    name: string,
+    role: NpcRole,
+    idempotencyKey: string,
+  ): Promise<Character | undefined> {
     return (
       await this.characters.createNpcFromCreature({
         campaignId,
@@ -174,14 +229,20 @@ export class CreaturesClient {
   }
 
   /** Casts Convocar Familiar, Animar Mortos or Conjurar Animais outside a combat. */
-  async castSummon(cast: SummonCast): Promise<{ readonly creatureIds: readonly string[]; readonly replacedIds: readonly string[] }> {
+  async castSummon(
+    cast: SummonCast,
+  ): Promise<{ readonly creatureIds: readonly string[]; readonly replacedIds: readonly string[] }> {
     const res = await this.play.castSummon({
       campaignId: cast.campaignId,
       characterId: cast.characterId,
       spellKey: cast.spellKey,
       ritual: cast.ritual,
       slot: cast.slot,
-      summon: { option: cast.summon.option, creatureKeys: [...cast.summon.creatureKeys], names: [...cast.summon.names] },
+      summon: {
+        option: cast.summon.option,
+        creatureKeys: [...cast.summon.creatureKeys],
+        names: [...cast.summon.names],
+      },
       idempotencyKey: cast.idempotencyKey,
     });
     return { creatureIds: res.creatureIds, replacedIds: res.dismissedCreatureIds };

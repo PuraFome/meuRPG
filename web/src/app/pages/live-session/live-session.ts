@@ -19,7 +19,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import type { Map as MapMessage } from '../../../gen/meurpg/maps/v1/maps_pb';
-import { type Encounter, EncounterMode, EncounterStatus } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type Encounter,
+  EncounterMode,
+  EncounterStatus,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import { AuthService } from '../../core/auth/auth.service';
 import { CombatClient } from '../../core/combat/combat-client';
 import { CombatState } from '../../core/combat/combat-state';
@@ -198,9 +202,7 @@ export class LiveSession {
   /** What a player's screen reader hears when the master shows or stops. */
   protected readonly shownNotice = signal('');
   protected readonly campaignMaps = signal<readonly MapMessage[]>([]);
-  protected readonly mapState = new MapState((mapId) =>
-    this.mapsApi.get(this.campaignId(), mapId),
-  );
+  protected readonly mapState = new MapState((mapId) => this.mapsApi.get(this.campaignId(), mapId));
 
   /** What traps did and the damage that waits (MR-035): the master's panel and the players' "Registro". */
   protected readonly trapBoard = new TrapBoard(
@@ -238,9 +240,15 @@ export class LiveSession {
   protected readonly seeingFamiliar = computed(() => !!this.vitals().at(0)?.familiarSight);
   private readonly familiarEyes = inject(FamiliarEyesClient);
   private visionTimer: ReturnType<typeof setTimeout> | undefined;
-  protected readonly fogMaster = computed(() => this.isMaster() && !!this.mapState.map()?.fogEnabled);
-  protected readonly fogPlayer = computed(() => !this.isMaster() && !!this.mapState.map()?.fogEnabled);
-  protected readonly ownToken = computed(() => this.mapState.tokens().find((t) => t.mine && !t.creatureId) ?? null);
+  protected readonly fogMaster = computed(
+    () => this.isMaster() && !!this.mapState.map()?.fogEnabled,
+  );
+  protected readonly fogPlayer = computed(
+    () => !this.isMaster() && !!this.mapState.map()?.fogEnabled,
+  );
+  protected readonly ownToken = computed(
+    () => this.mapState.tokens().find((t) => t.mine && !t.creatureId) ?? null,
+  );
 
   /** The session's combat (MR-013): read on every `ready` and after each
    * `encounter_changed`; `turn_changed` and `combatant_moved` apply in place. */
@@ -263,13 +271,19 @@ export class LiveSession {
     () => this.isMaster(),
   );
   /** A combat is running (not ended): the player's open puzzle page keeps a notice for it, and says when it is their turn. */
-  protected readonly combatRunning = computed(() => !this.isMaster() && this.combat.encounter()?.status === EncounterStatus.ACTIVE);
+  protected readonly combatRunning = computed(
+    () => !this.isMaster() && this.combat.encounter()?.status === EncounterStatus.ACTIVE,
+  );
   protected readonly yourTurn = computed(() => {
     const e = this.combat.encounter();
-    return !!e && e.status === EncounterStatus.ACTIVE && mineTabs(e).some((tab) => tab.state === 'turn');
+    return (
+      !!e && e.status === EncounterStatus.ACTIVE && mineTabs(e).some((tab) => tab.state === 'turn')
+    );
   });
   /** The master's puzzle panel is on the board when the campaign has puzzles (or when they could not be read). */
-  protected readonly puzzlesShown = computed(() => this.puzzles.runs().length > 0 || this.puzzles.status() === 'error');
+  protected readonly puzzlesShown = computed(
+    () => this.puzzles.runs().length > 0 || this.puzzles.status() === 'error',
+  );
   /** The puzzle a player has open (`?puzzle=ID`), in the place of the board; the master plays none. */
   protected readonly openPuzzle = signal<string | null>(null);
 
@@ -286,7 +300,12 @@ export class LiveSession {
 
   /** The players' names by character, for "de Caio" on the session's highlights (master only). */
   protected readonly playerNames = computed(
-    () => new Map([...this.partyInfo()].flatMap(([id, p]) => (p.playerName ? [[id, p.playerName] as const] : []))),
+    () =>
+      new Map(
+        [...this.partyInfo()].flatMap(([id, p]) =>
+          p.playerName ? [[id, p.playerName] as const] : [],
+        ),
+      ),
   );
 
   protected readonly ownCharacterId = computed(() => this.vitals().at(0)?.characterId ?? '');
@@ -296,7 +315,11 @@ export class LiveSession {
   /** The players' "O combate acabou" card: the combat that ended, until they close it. */
   protected readonly highlightsFor = computed(() => {
     const e = this.combat.encounter();
-    return !this.isMaster() && e?.status === EncounterStatus.ENDED && e.id !== this.highlightsClosed() ? e : null;
+    return !this.isMaster() &&
+      e?.status === EncounterStatus.ENDED &&
+      e.id !== this.highlightsClosed()
+      ? e
+      : null;
   });
   protected readonly highlightsSub = computed(() => {
     const e = this.highlightsFor();
@@ -335,13 +358,22 @@ export class LiveSession {
       .filter((v) => v.playerUserId !== '')
       .map((v) => {
         const info = this.partyInfo().get(v.characterId);
-        return { id: v.characterId, name: v.name, sub: [info?.classSummary ?? '', info?.playerName ? `de ${info.playerName}` : ''].filter(Boolean).join(', ') };
+        return {
+          id: v.characterId,
+          name: v.name,
+          sub: [info?.classSummary ?? '', info?.playerName ? `de ${info.playerName}` : '']
+            .filter(Boolean)
+            .join(', '),
+        };
       }),
   );
   /** The player's bonuses for "Procurar armadilhas" (the derived sheet). */
   protected readonly trapSkills = computed(() => this.playerSheet()?.skills ?? null);
   /** The player may search the map for traps: a character of theirs, on a map with a grid. */
-  protected readonly searchable = computed(() => !this.isMaster() && this.ownVitals() !== null && (this.mapState.map()?.gridColumns ?? 0) > 0);
+  protected readonly searchable = computed(
+    () =>
+      !this.isMaster() && this.ownVitals() !== null && (this.mapState.map()?.gridColumns ?? 0) > 0,
+  );
 
   /** The campaign of the current load; `null` once it turned out the page
    * can't show it (no access, a pending member, an error). */
@@ -415,7 +447,9 @@ export class LiveSession {
           this.familiarNameNow.set(null);
           return;
         }
-        void this.familiarEyes.name(campaignId, characterId, sight.creatureId).then((n) => this.familiarNameNow.set(n));
+        void this.familiarEyes
+          .name(campaignId, characterId, sight.creatureId)
+          .then((n) => this.familiarNameNow.set(n));
       });
     });
 
@@ -514,7 +548,9 @@ export class LiveSession {
         },
         onVitals: (v) => {
           // Looking through a familiar's eyes, or coming back, changes what the player sees.
-          const before = this.vitals().find((x) => x.characterId === v.characterId)?.familiarSight?.creatureId ?? '';
+          const before =
+            this.vitals().find((x) => x.characterId === v.characterId)?.familiarSight?.creatureId ??
+            '';
           this.vitals.update((list) => applyVitals(list, v));
           if ((v.familiarSight?.creatureId ?? '') !== before) {
             this.scheduleVision();
@@ -550,7 +586,12 @@ export class LiveSession {
           // made to them, or any change on a fog map, where each player has a revision of their own
           // (ADR-0007). It is always read.
           const current = this.combat.encounter();
-          if (!current || current.id !== change.encounterId || change.revision === 0 || change.revision > current.revision) {
+          if (
+            !current ||
+            current.id !== change.encounterId ||
+            change.revision === 0 ||
+            change.revision > current.revision
+          ) {
             void this.loadCombat(generation);
           }
           // A trap that fired in the combat leaves damage that waits for the master.
@@ -749,7 +790,9 @@ export class LiveSession {
 
   /** "Voltar aos seus olhos" worked: the band goes at once; the stream's newer vitals confirm it. */
   protected familiarStopped(characterId: string): void {
-    this.vitals.update((list) => list.map((v) => (v.characterId === characterId ? { ...v, familiarSight: null } : v)));
+    this.vitals.update((list) =>
+      list.map((v) => (v.characterId === characterId ? { ...v, familiarSight: null } : v)),
+    );
     void this.mapState.refresh();
     this.scheduleVision();
   }
@@ -810,7 +853,11 @@ export class LiveSession {
       await this.mapState.refresh();
     }
     const name = this.mapState.points().find((p) => p.id === pointId)?.name;
-    this.toasts.push('visibility', 'Você notou uma armadilha.', name ? `${name}, no mapa.` : 'Ela já aparece no seu mapa.');
+    this.toasts.push(
+      'visibility',
+      'Você notou uma armadilha.',
+      name ? `${name}, no mapa.` : 'Ela já aparece no seu mapa.',
+    );
     void this.trapBoard.refreshActivity();
   }
 

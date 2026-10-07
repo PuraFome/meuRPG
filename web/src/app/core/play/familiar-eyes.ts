@@ -2,7 +2,10 @@ import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 
 import { CharacterService } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { EncounterBlockedReason, FamiliarSightBlockedReason } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  EncounterBlockedReason,
+  FamiliarSightBlockedReason,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   PlayService,
   type StartFamiliarSightResponse,
@@ -35,11 +38,19 @@ export class FamiliarEyesClient {
   private readonly names = new Map<string, Promise<string | null>>();
 
   /** A key for each press, kept until the answer comes, so a retry after a lost answer never starts it twice. */
-  start(campaignId: string, characterId: string, key = newKey()): Promise<StartFamiliarSightResponse> {
+  start(
+    campaignId: string,
+    characterId: string,
+    key = newKey(),
+  ): Promise<StartFamiliarSightResponse> {
     return this.play.startFamiliarSight({ campaignId, characterId, idempotencyKey: key });
   }
 
-  stop(campaignId: string, characterId: string, key = newKey()): Promise<StopFamiliarSightResponse> {
+  stop(
+    campaignId: string,
+    characterId: string,
+    key = newKey(),
+  ): Promise<StopFamiliarSightResponse> {
     return this.play.stopFamiliarSight({ campaignId, characterId, idempotencyKey: key });
   }
 

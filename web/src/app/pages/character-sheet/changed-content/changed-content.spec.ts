@@ -1,7 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 
 import type { ChangedContentVm } from '../character-sheet.types';
-import { changeAnnouncement, changeIntro, changeSheetTitle, changeTitle } from './changed-content-format';
+import {
+  changeAnnouncement,
+  changeIntro,
+  changeSheetTitle,
+  changeTitle,
+} from './changed-content-format';
 import { ChangedContentNotice } from './changed-content';
 
 // "A classe mudou" (E10-02 state 8, RN-23 question 80): the sentences are the server's, shown as they come.
@@ -30,7 +35,9 @@ describe('the words around the change sentences', () => {
     expect(changeIntro(change())).toBe(
       'O mestre mudou a classe Guardião do Vale em 05/10/2026. Os números da ficha já usam as regras novas. O que não combina mais:',
     );
-    expect(changeIntro(change({ changedAt: null }))).toBe('O mestre mudou a classe Guardião do Vale. Os números da ficha já usam as regras novas. O que não combina mais:');
+    expect(changeIntro(change({ changedAt: null }))).toBe(
+      'O mestre mudou a classe Guardião do Vale. Os números da ficha já usam as regras novas. O que não combina mais:',
+    );
   });
 
   it('writes the title of the sheet and the live-region sentence', () => {
@@ -54,14 +61,25 @@ describe('ChangedContentNotice', () => {
     const notice = el.querySelector('.mr-notice--warning')!;
     expect(notice.textContent).toContain('A classe mudou.');
     expect(notice.textContent).toContain('O mestre mudou a classe Guardião do Vale em 05/10/2026.');
-    expect(Array.from(notice.querySelectorAll('li')).map((li) => li.textContent)).toEqual([SENTENCE]);
+    expect(Array.from(notice.querySelectorAll('li')).map((li) => li.textContent)).toEqual([
+      SENTENCE,
+    ]);
     // A live region says it once, in a few words, for a screen reader.
     expect(notice.querySelector('[role="status"]')?.textContent).toBe('A classe mudou: 1 aviso.');
   });
 
   it('makes a notice per changed entry, the same for a race', () => {
-    const { el } = render([change(), change({ key: 'race:corujeiro@mesa', namePt: 'Corujeiro', messages: ['Corujeiro agora tem 2 traços; esta ficha tem 3.'] })]);
-    const titles = Array.from(el.querySelectorAll('.change__text strong')).map((s) => s.textContent);
+    const { el } = render([
+      change(),
+      change({
+        key: 'race:corujeiro@mesa',
+        namePt: 'Corujeiro',
+        messages: ['Corujeiro agora tem 2 traços; esta ficha tem 3.'],
+      }),
+    ]);
+    const titles = Array.from(el.querySelectorAll('.change__text strong')).map(
+      (s) => s.textContent,
+    );
     expect(titles).toEqual(['A classe mudou.', 'A raça mudou.']);
   });
 
@@ -78,8 +96,14 @@ describe('ChangedContentNotice', () => {
     const sheet = document.querySelector('app-changed-content-sheet')!;
     expect(sheet.querySelector('h2')?.textContent).toBe('O que mudou: Guardião do Vale');
     expect(sheet.textContent).toContain(SENTENCE);
-    expect(sheet.textContent).toContain('Quem ajusta: o mestre, na ficha. O aviso some sozinho quando os números voltam a combinar.');
-    (Array.from(sheet.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Fechar') as HTMLButtonElement).click();
+    expect(sheet.textContent).toContain(
+      'Quem ajusta: o mestre, na ficha. O aviso some sozinho quando os números voltam a combinar.',
+    );
+    (
+      Array.from(sheet.querySelectorAll('button')).find(
+        (b) => b.textContent?.trim() === 'Fechar',
+      ) as HTMLButtonElement
+    ).click();
     await fixture.whenStable();
     await new Promise((r) => setTimeout(r, 0));
     expect(document.querySelector('app-changed-content-sheet')).toBeNull();
@@ -90,28 +114,55 @@ describe('ChangedContentNotice', () => {
     (el.querySelector('.change__open') as HTMLButtonElement).click();
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(document.querySelector('app-changed-content-sheet')?.textContent).toContain('Quem ajusta: você, na ficha.');
-    (Array.from(document.querySelectorAll('app-changed-content-sheet button')).find((b) => b.textContent?.trim() === 'Fechar') as HTMLButtonElement).click();
+    expect(document.querySelector('app-changed-content-sheet')?.textContent).toContain(
+      'Quem ajusta: você, na ficha.',
+    );
+    (
+      Array.from(document.querySelectorAll('app-changed-content-sheet button')).find(
+        (b) => b.textContent?.trim() === 'Fechar',
+      ) as HTMLButtonElement
+    ).click();
     await new Promise((r) => setTimeout(r, 0));
   });
 
-  it('says the sheet\'s skills under a sentence about skills, as drawn, and not under another', async () => {
+  it("says the sheet's skills under a sentence about skills, as drawn, and not under another", async () => {
     const fixture = TestBed.createComponent(ChangedContentNotice);
-    fixture.componentRef.setInput('changes', [change(), change({ key: 'race:x@mesa', namePt: 'X', messages: ['X agora tem 2 traços; esta ficha tem 3.'] })]);
+    fixture.componentRef.setInput('changes', [
+      change(),
+      change({
+        key: 'race:x@mesa',
+        namePt: 'X',
+        messages: ['X agora tem 2 traços; esta ficha tem 3.'],
+      }),
+    ]);
     fixture.componentRef.setInput('skills', ['Atletismo', 'Natureza', 'Sobrevivência']);
     fixture.detectChanges();
-    const buttons = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.change__open'));
+    const buttons = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.change__open'),
+    );
     buttons[0].click();
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(document.querySelector('app-changed-content-sheet')?.textContent).toContain('Perícias da ficha: Atletismo, Natureza e Sobrevivência.');
-    (Array.from(document.querySelectorAll('app-changed-content-sheet button')).find((b) => b.textContent?.trim() === 'Fechar') as HTMLButtonElement).click();
+    expect(document.querySelector('app-changed-content-sheet')?.textContent).toContain(
+      'Perícias da ficha: Atletismo, Natureza e Sobrevivência.',
+    );
+    (
+      Array.from(document.querySelectorAll('app-changed-content-sheet button')).find(
+        (b) => b.textContent?.trim() === 'Fechar',
+      ) as HTMLButtonElement
+    ).click();
     await new Promise((r) => setTimeout(r, 0));
     buttons[1].click();
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(document.querySelector('app-changed-content-sheet')?.textContent).not.toContain('Perícias da ficha');
-    (Array.from(document.querySelectorAll('app-changed-content-sheet button')).find((b) => b.textContent?.trim() === 'Fechar') as HTMLButtonElement).click();
+    expect(document.querySelector('app-changed-content-sheet')?.textContent).not.toContain(
+      'Perícias da ficha',
+    );
+    (
+      Array.from(document.querySelectorAll('app-changed-content-sheet button')).find(
+        (b) => b.textContent?.trim() === 'Fechar',
+      ) as HTMLButtonElement
+    ).click();
     await new Promise((r) => setTimeout(r, 0));
   });
 
@@ -120,8 +171,14 @@ describe('ChangedContentNotice', () => {
     (el.querySelector('.change__open') as HTMLButtonElement).click();
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(document.querySelector('app-changed-content-sheet')?.textContent).toContain('Quem ajusta: você, na ficha.');
-    (Array.from(document.querySelectorAll('app-changed-content-sheet button')).find((b) => b.textContent?.trim() === 'Fechar') as HTMLButtonElement).click();
+    expect(document.querySelector('app-changed-content-sheet')?.textContent).toContain(
+      'Quem ajusta: você, na ficha.',
+    );
+    (
+      Array.from(document.querySelectorAll('app-changed-content-sheet button')).find(
+        (b) => b.textContent?.trim() === 'Fechar',
+      ) as HTMLButtonElement
+    ).click();
     await new Promise((r) => setTimeout(r, 0));
   });
 });

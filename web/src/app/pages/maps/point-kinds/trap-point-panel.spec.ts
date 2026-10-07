@@ -1,7 +1,14 @@
 import { create } from '@bufbuild/protobuf';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { type GetTrapNoticersResponse, GetTrapNoticersResponseSchema, MapPointKind, MapPointSchema, TrapNoticerSchema, TrapState } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import {
+  type GetTrapNoticersResponse,
+  GetTrapNoticersResponseSchema,
+  MapPointKind,
+  MapPointSchema,
+  TrapNoticerSchema,
+  TrapState,
+} from '../../../../gen/meurpg/maps/v1/maps_pb';
 import {
   Ability,
   ListTrapPresetsResponseSchema,
@@ -18,7 +25,21 @@ import { TrapPointPanel } from './trap-point-panel';
 
 const presets = create(ListTrapPresetsResponseSchema, {
   presets: [
-    create(TrapPresetSchema, { key: 'trap:simple-pit', namePt: 'Fosso simples', descriptionPt: 'Um fosso.', noticeDc: 10, findDc: 10, trigger: TrapTrigger.ENTER, areaSize: 1, fallFt: 10, effect: { damage: [{ dice: '1d6', damageTypeKey: 'damage-type:bludgeoning', damageTypePt: 'concussão' }] } }),
+    create(TrapPresetSchema, {
+      key: 'trap:simple-pit',
+      namePt: 'Fosso simples',
+      descriptionPt: 'Um fosso.',
+      noticeDc: 10,
+      findDc: 10,
+      trigger: TrapTrigger.ENTER,
+      areaSize: 1,
+      fallFt: 10,
+      effect: {
+        damage: [
+          { dice: '1d6', damageTypeKey: 'damage-type:bludgeoning', damageTypePt: 'concussão' },
+        ],
+      },
+    }),
     create(TrapPresetSchema, {
       key: 'trap:poison-needle',
       namePt: 'Agulha envenenada',
@@ -32,14 +53,41 @@ const presets = create(ListTrapPresetsResponseSchema, {
           { dice: '1', damageTypeKey: 'damage-type:piercing', damageTypePt: 'perfurante' },
           { dice: '2d10', damageTypeKey: 'damage-type:poison', damageTypePt: 'veneno' },
         ],
-        save: { ability: Ability.CONSTITUTION, dc: 15, appliesTo: TrapSaveApplies.CAUGHT, onFail: { condition: { conditionKey: 'condition:poisoned', durationPt: '1 hora' } }, onPass: TrapPassOutcome.NONE },
+        save: {
+          ability: Ability.CONSTITUTION,
+          dc: 15,
+          appliesTo: TrapSaveApplies.CAUGHT,
+          onFail: { condition: { conditionKey: 'condition:poisoned', durationPt: '1 hora' } },
+          onPass: TrapPassOutcome.NONE,
+        },
       },
     }),
   ],
   severities: [
-    { key: 'setback', namePt: 'Revés', saveDcMin: 10, saveDcMax: 11, attackBonusMin: 3, attackBonusMax: 5 },
-    { key: 'dangerous', namePt: 'Perigosa', saveDcMin: 12, saveDcMax: 15, attackBonusMin: 6, attackBonusMax: 8 },
-    { key: 'deadly', namePt: 'Mortal', saveDcMin: 16, saveDcMax: 20, attackBonusMin: 9, attackBonusMax: 12 },
+    {
+      key: 'setback',
+      namePt: 'Revés',
+      saveDcMin: 10,
+      saveDcMax: 11,
+      attackBonusMin: 3,
+      attackBonusMax: 5,
+    },
+    {
+      key: 'dangerous',
+      namePt: 'Perigosa',
+      saveDcMin: 12,
+      saveDcMax: 15,
+      attackBonusMin: 6,
+      attackBonusMax: 8,
+    },
+    {
+      key: 'deadly',
+      namePt: 'Mortal',
+      saveDcMin: 16,
+      saveDcMax: 20,
+      attackBonusMin: 9,
+      attackBonusMax: 12,
+    },
   ],
 });
 
@@ -49,14 +97,40 @@ const trapPoint = create(MapPointSchema, {
   kind: MapPointKind.TRAP,
   name: 'Fosso escondido',
   description: 'No corredor.',
-  trap: { presetKey: 'trap:simple-pit', noticeDc: 15, findDc: 15, areaSize: 2, trigger: TrapTrigger.ENTER, state: TrapState.ARMED, effect: { damage: [{ dice: '2d6', damageTypeKey: 'damage-type:bludgeoning' }] } },
+  trap: {
+    presetKey: 'trap:simple-pit',
+    noticeDc: 15,
+    findDc: 15,
+    areaSize: 2,
+    trigger: TrapTrigger.ENTER,
+    state: TrapState.ARMED,
+    effect: { damage: [{ dice: '2d6', damageTypeKey: 'damage-type:bludgeoning' }] },
+  },
 });
 
 const noticers = create(GetTrapNoticersResponseSchema, {
   noticeDc: 15,
   noticers: [
-    create(TrapNoticerSchema, { characterId: 'c1', characterName: 'Sálvia', passivePerception: 16, lightPenalty: 0, onMap: true, inRange: true, sees: true, wouldNotice: true, passesDc: true }),
-    create(TrapNoticerSchema, { characterId: 'c2', characterName: 'Toren', passivePerception: 11, lightPenalty: -5, onMap: true, inRange: false, passesDc: false }),
+    create(TrapNoticerSchema, {
+      characterId: 'c1',
+      characterName: 'Sálvia',
+      passivePerception: 16,
+      lightPenalty: 0,
+      onMap: true,
+      inRange: true,
+      sees: true,
+      wouldNotice: true,
+      passesDc: true,
+    }),
+    create(TrapNoticerSchema, {
+      characterId: 'c2',
+      characterName: 'Toren',
+      passivePerception: 11,
+      lightPenalty: -5,
+      onMap: true,
+      inRange: false,
+      passesDc: false,
+    }),
   ],
 });
 
@@ -88,11 +162,19 @@ describe('TrapPointPanel', () => {
     await fixture.whenStable();
     fixture.detectChanges();
   };
-  const text = () => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
-  const button = (t: string) => Array.from(el.querySelectorAll<HTMLElement>('button')).find((b) => b.textContent?.trim().endsWith(t))!;
-  const radio = (t: string) => Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]')).find((b) => b.textContent?.trim().includes(t))!;
+  const text = () => (el.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
+  const button = (t: string) =>
+    Array.from(el.querySelectorAll<HTMLElement>('button')).find((b) =>
+      b.textContent?.trim().endsWith(t),
+    )!;
+  const radio = (t: string) =>
+    Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]')).find((b) =>
+      b.textContent?.trim().includes(t),
+    )!;
   const field = (label: string) => {
-    const f = Array.from(el.querySelectorAll('mat-form-field')).find((x) => x.querySelector('mat-label')?.textContent?.trim() === label)!;
+    const f = Array.from(el.querySelectorAll('mat-form-field')).find(
+      (x) => x.querySelector('mat-label')?.textContent?.trim() === label,
+    )!;
     return f.querySelector('input, textarea, select') as HTMLInputElement;
   };
   function type(label: string, value: string): void {
@@ -107,7 +189,9 @@ describe('TrapPointPanel', () => {
     await setup();
     expect(text()).toContain('Predefinições do SRD');
     expect(radio('Fosso simples').textContent).toContain('Queda de 3\u00a0m, 1d6');
-    expect(radio('Agulha envenenada').textContent).toContain('1 perfurante, 2d10 veneno · resistência de Constituição');
+    expect(radio('Agulha envenenada').textContent).toContain(
+      '1 perfurante, 2d10 veneno · resistência de Constituição',
+    );
     expect(button('Começar do zero')).toBeTruthy();
     expect(radio('Fosso simples').getAttribute('aria-checked')).toBe('true');
   });
@@ -121,7 +205,9 @@ describe('TrapPointPanel', () => {
     expect(field('CD para achar (Investigação)').value).toBe('20');
     expect(text()).toContain('Dano que sempre acontece');
     expect(text()).toContain('Teste de resistência');
-    expect(text()).toContain('CDs de resistência do SRD: revés 10 a 11 · perigosa 12 a 15 · mortal 16 a 20.');
+    expect(text()).toContain(
+      'CDs de resistência do SRD: revés 10 a 11 · perigosa 12 a 15 · mortal 16 a 20.',
+    );
     // The severity words judge nothing: there is no "A sua é perigosa".
     expect(text()).not.toMatch(/a sua,? .* é/i);
     expect(radio('Manual').getAttribute('aria-checked')).toBe('true');
@@ -140,7 +226,9 @@ describe('TrapPointPanel', () => {
     await setup(trapPoint);
     expect(el.querySelectorAll('[role="group"][aria-labelledby^="part-damage-"]')).toHaveLength(1);
     expect(text()).toContain('Acrescentar ao efeito');
-    el.querySelector<HTMLElement>('button[aria-label="Acrescentar dano que sempre acontece"]')!.click();
+    el.querySelector<HTMLElement>(
+      'button[aria-label="Acrescentar dano que sempre acontece"]',
+    )!.click();
     await settle();
     expect(el.querySelectorAll('[role="group"][aria-labelledby^="part-damage-"]')).toHaveLength(2);
     button('Ataque').click();
@@ -148,11 +236,15 @@ describe('TrapPointPanel', () => {
     await settle();
     expect(el.querySelector('#part-attack')).not.toBeNull();
     expect(el.querySelector('#part-save')).not.toBeNull();
-    expect(text()).toContain('Bônus de ataque do SRD: revés +3 a +5 · perigosa +6 a +8 · mortal +9 a +12.');
+    expect(text()).toContain(
+      'Bônus de ataque do SRD: revés +3 a +5 · perigosa +6 a +8 · mortal +9 a +12.',
+    );
     el.querySelector<HTMLElement>('button[aria-label="Remover a parte Ataque"]')!.click();
     await settle();
     expect(el.querySelector('#part-attack')).toBeNull();
-    el.querySelector<HTMLElement>('button[aria-label="Remover a parte Dano que sempre acontece 2"]')!.click();
+    el.querySelector<HTMLElement>(
+      'button[aria-label="Remover a parte Dano que sempre acontece 2"]',
+    )!.click();
     await settle();
     expect(el.querySelectorAll('[role="group"][aria-labelledby^="part-damage-"]')).toHaveLength(1);
   });
@@ -166,7 +258,12 @@ describe('TrapPointPanel', () => {
     await settle();
     expect(dirty.at(-1)).toBe(true);
     const changes = panel().changes();
-    expect(changes?.trap).toMatchObject({ findDc: 12, noticeDc: 15, areaSize: 2, presetKey: 'trap:simple-pit' });
+    expect(changes?.trap).toMatchObject({
+      findDc: 12,
+      noticeDc: 15,
+      areaSize: 2,
+      presetKey: 'trap:simple-pit',
+    });
     panel().discard();
     await settle();
     expect(field('CD para achar (Investigação)').value).toBe('15');

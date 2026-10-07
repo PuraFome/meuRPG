@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  afterNextRender,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 
 import { CoverDegree } from '../../../../../gen/meurpg/play/v1/combat_pb';
@@ -83,7 +91,10 @@ export class CoverMark {
     // Opens on the one that is marked.
     afterNextRender(() => {
       const root = this.host.nativeElement;
-      (root.querySelector<HTMLInputElement>('input:checked') ?? root.querySelector<HTMLInputElement>('input'))?.focus();
+      (
+        root.querySelector<HTMLInputElement>('input:checked') ??
+        root.querySelector<HTMLInputElement>('input')
+      )?.focus();
     });
   }
 }

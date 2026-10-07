@@ -155,7 +155,13 @@ export class ClueList {
     this.busy.set(true);
     this.formError.set('');
     try {
-      const clues = await this.api.addSceneClue(this.campaignId(), this.mapId(), this.pointId(), text, this.addKey.keyFor([this.pointId(), text]));
+      const clues = await this.api.addSceneClue(
+        this.campaignId(),
+        this.mapId(),
+        this.pointId(),
+        text,
+        this.addKey.keyFor([this.pointId(), text]),
+      );
       this.addKey.renew();
       this.cluesChange.emit(clues);
       this.adding.set(false);
@@ -175,7 +181,13 @@ export class ClueList {
     this.busy.set(true);
     this.formError.set('');
     try {
-      const clues = await this.api.updateSceneClue(this.campaignId(), this.mapId(), this.pointId(), clue.id, text);
+      const clues = await this.api.updateSceneClue(
+        this.campaignId(),
+        this.mapId(),
+        this.pointId(),
+        clue.id,
+        text,
+      );
       this.cluesChange.emit(clues);
       this.editingId.set(null);
       this.status.set('Pista salva.');
@@ -197,10 +209,18 @@ export class ClueList {
     this.busy.set(true);
     this.error.set('');
     try {
-      const clues = await this.api.moveSceneClue(this.campaignId(), this.mapId(), this.pointId(), clue.id, direction);
+      const clues = await this.api.moveSceneClue(
+        this.campaignId(),
+        this.mapId(),
+        this.pointId(),
+        clue.id,
+        direction,
+      );
       this.cluesChange.emit(clues);
       const place = clues.findIndex((c) => c.id === clue.id) + 1;
-      this.status.set(`Pista ${index + 1} ${direction === 'up' ? 'subiu' : 'desceu'} para a posição ${place}.`);
+      this.status.set(
+        `Pista ${index + 1} ${direction === 'up' ? 'subiu' : 'desceu'} para a posição ${place}.`,
+      );
       // The moved row keeps the same button, as soon as it is drawn.
       this.focusRow(clue.id, direction);
     } catch (err) {
@@ -218,7 +238,12 @@ export class ClueList {
     this.busy.set(true);
     this.error.set('');
     try {
-      const clues = await this.api.removeSceneClue(this.campaignId(), this.mapId(), this.pointId(), clue.id);
+      const clues = await this.api.removeSceneClue(
+        this.campaignId(),
+        this.mapId(),
+        this.pointId(),
+        clue.id,
+      );
       this.cluesChange.emit(clues);
       this.confirmingId.set(null);
       this.status.set(`Pista ${index + 1} removida.`);

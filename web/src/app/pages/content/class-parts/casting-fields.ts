@@ -4,7 +4,11 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { Ability } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import type { CatalogVm } from '../../../core/content/catalog';
-import { type CastingDraft, type CastingKind, type Preparation } from '../../../core/content/class-draft';
+import {
+  type CastingDraft,
+  type CastingKind,
+  type Preparation,
+} from '../../../core/content/class-draft';
 import { FieldNote } from '../../../shared/form-fields/field-note';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
 import { SwitchField } from '../../../shared/form-fields/switch-field';
@@ -28,7 +32,15 @@ const KINDS: readonly Segment<KindChoice>[] = [
  */
 @Component({
   selector: 'app-casting-fields',
-  imports: [FieldNote, MatIconModule, NgTemplateOutlet, Segmented, SelectField, SwitchField, TextField],
+  imports: [
+    FieldNote,
+    MatIconModule,
+    NgTemplateOutlet,
+    Segmented,
+    SelectField,
+    SwitchField,
+    TextField,
+  ],
   template: `
     <!-- The question about the table (the parent's) comes under the control that asked it: the kind for a class, the way of preparing for a third caster. -->
     <ng-template #question><ng-content /></ng-template>
@@ -246,14 +258,28 @@ export class CastingFields {
     const k = this.casting().kind;
     return k === 'full' || k === 'half' || k === 'pact' ? k : 'none';
   });
-  protected readonly abilityOptions = computed<SelectOption<number>[]>(() => this.catalog().abilities.map((a) => ({ value: a.ability as number, label: a.name })));
+  protected readonly abilityOptions = computed<SelectOption<number>[]>(() =>
+    this.catalog().abilities.map((a) => ({ value: a.ability as number, label: a.name })),
+  );
   protected readonly listOptions = computed<SelectOption[]>(() => {
-    const own: SelectOption[] = this.third() ? [] : [{ value: '', label: 'A própria lista da classe' }];
-    const classes = this.catalog().castingClasses.filter((c) => c.key !== this.selfKey()).map((c) => ({ value: c.key, label: c.table ? `A lista do ${c.name} (da mesa)` : `A lista do ${c.name}` }));
+    const own: SelectOption[] = this.third()
+      ? []
+      : [{ value: '', label: 'A própria lista da classe' }];
+    const classes = this.catalog()
+      .castingClasses.filter((c) => c.key !== this.selfKey())
+      .map((c) => ({
+        value: c.key,
+        label: c.table ? `A lista do ${c.name} (da mesa)` : `A lista do ${c.name}`,
+      }));
     return [...own, ...classes];
   });
   /** "Mais opções" starts open when something in it was refused or is not the default. */
-  protected readonly moreOpen = computed(() => this.issuesOf()(this.basePath() + '.start_level').length + this.issuesOf()(this.basePath() + '.prepared_max').length > 0);
+  protected readonly moreOpen = computed(
+    () =>
+      this.issuesOf()(this.basePath() + '.start_level').length +
+        this.issuesOf()(this.basePath() + '.prepared_max').length >
+      0,
+  );
 
   protected setStart(text: string): void {
     const n = Number(text.trim());

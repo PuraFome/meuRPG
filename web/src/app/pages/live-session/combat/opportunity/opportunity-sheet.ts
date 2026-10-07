@@ -1,13 +1,29 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { GetTurnOptionsResponse, OpportunityOffer } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type {
+  GetTurnOptionsResponse,
+  OpportunityOffer,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { ownCombatant } from '../../../../core/combat/combat-view';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
-import { type ReactorAttack, attackLabel, playerQuestion, spendText } from '../../../../core/combat/opportunity';
+import {
+  type ReactorAttack,
+  attackLabel,
+  playerQuestion,
+  spendText,
+} from '../../../../core/combat/opportunity';
 import { tieNumbers } from '../../../../core/format/text';
 import { SheetFrame } from '../sheet-frame/sheet-frame';
 import { injectSheet } from '../sheet-host';
@@ -19,12 +35,18 @@ export interface OpportunitySheetData {
   readonly offer: OpportunityOffer;
   readonly round: number;
   /** Reads the reactor's melee attacks with their numbers (its own `GetTurnOptions`) and the options they came from. */
-  readonly load: () => Promise<{ readonly attacks: readonly ReactorAttack[]; readonly options: GetTurnOptionsResponse }>;
+  readonly load: () => Promise<{
+    readonly attacks: readonly ReactorAttack[];
+    readonly options: GetTurnOptionsResponse;
+  }>;
   readonly state: CombatState;
 }
 
 /** What the prompt closes with: the attack the player chose (with the options it comes from), or nothing for "Não atacar". */
-export type OpportunityAnswer = { readonly attackKey: string; readonly options: GetTurnOptionsResponse } | null;
+export type OpportunityAnswer = {
+  readonly attackKey: string;
+  readonly options: GetTurnOptionsResponse;
+} | null;
 
 /**
  * "O Goblin 2 está saindo do seu alcance. Ataque de oportunidade?" (E9-13): the
@@ -106,11 +128,15 @@ export class OpportunitySheet {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   /** The attacks, once read; `null` while they come or when the read failed. */
-  protected readonly attacks = signal<readonly (ReactorAttack & { numbers: string })[] | null>(null);
+  protected readonly attacks = signal<readonly (ReactorAttack & { numbers: string })[] | null>(
+    null,
+  );
   protected readonly readFailed = signal(false);
   private options: GetTurnOptionsResponse | null = null;
 
-  protected readonly subtitle = computed(() => tieNumbers(`${this.data.offer.moverLabel} · Rodada ${this.data.round}`));
+  protected readonly subtitle = computed(() =>
+    tieNumbers(`${this.data.offer.moverLabel} · Rodada ${this.data.round}`),
+  );
   /** The reactor is the player's character (not one of their creatures): the page's own combatant is the reactor. */
   private readonly charReacts = computed(() => {
     const e = this.data.state.encounter();
@@ -121,7 +147,11 @@ export class OpportunitySheet {
   protected readonly spend = computed(() => spendText(this.data.offer, this.charReacts()));
   /** The offer is no longer in the combat: the master (or the turn) answered it. */
   protected readonly gone = computed(
-    () => !this.busy() && !(this.data.state.encounter()?.opportunityOffers ?? []).some((o) => o.id === this.data.offer.id),
+    () =>
+      !this.busy() &&
+      !(this.data.state.encounter()?.opportunityOffers ?? []).some(
+        (o) => o.id === this.data.offer.id,
+      ),
   );
 
   constructor() {
@@ -129,7 +159,9 @@ export class OpportunitySheet {
     // The safe answer has the focus, and its ring: the sheet opens for a keyboard-style answer.
     afterNextRender(
       () =>
-        (this.host.nativeElement.querySelector('[data-initial-focus]') as HTMLButtonElement | null)?.focus({
+        (
+          this.host.nativeElement.querySelector('[data-initial-focus]') as HTMLButtonElement | null
+        )?.focus({
           focusVisible: true,
         } as FocusOptions),
       { injector: this.injector },
@@ -159,7 +191,13 @@ export class OpportunitySheet {
     this.busy.set(true);
     this.error.set('');
     try {
-      this.data.state.apply(await this.api.declineOpportunity(this.data.campaignId, this.data.encounterId, this.data.offer.id));
+      this.data.state.apply(
+        await this.api.declineOpportunity(
+          this.data.campaignId,
+          this.data.encounterId,
+          this.data.offer.id,
+        ),
+      );
       this.sheet.close(null);
     } catch (err) {
       this.error.set(combatErrorMessage(err, 'responder'));

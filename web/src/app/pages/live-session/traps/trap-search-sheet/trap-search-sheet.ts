@@ -1,4 +1,14 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, effect, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -40,7 +50,11 @@ export interface TrapSearchData {
 }
 
 /** "Procurar armadilhas": a bottom sheet on a phone, a dialog from a tablet up. It answers `true` when a search was made. */
-export function openTrapSearch(dialog: MatDialog, bottomSheet: MatBottomSheet, data: TrapSearchData): Observable<boolean | undefined> {
+export function openTrapSearch(
+  dialog: MatDialog,
+  bottomSheet: MatBottomSheet,
+  data: TrapSearchData,
+): Observable<boolean | undefined> {
   return openSheet<TrapSearchSheet, TrapSearchData, boolean>(dialog, bottomSheet, TrapSearchSheet, {
     data,
     ariaLabel: 'Procurar armadilhas',
@@ -79,28 +93,42 @@ export class TrapSearchSheet {
   protected readonly steps = SEARCH_STEPS;
   protected readonly options = skillOptions(this.data.skills);
   protected readonly skill = signal<SearchSkill>('perception');
-  protected readonly chosen = computed(() => this.options.find((o) => o.skill === this.skill()) ?? this.options[0]);
+  protected readonly chosen = computed(
+    () => this.options.find((o) => o.skill === this.skill()) ?? this.options[0],
+  );
   protected readonly typing = signal(false);
   /** The server asked for a second die: the first face typed waits here. */
   protected readonly firstFace = signal<number | null>(null);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
-  protected readonly result = signal<{ res: SearchForTrapsResponse; names: readonly string[]; skill: SearchSkill } | null>(null);
+  protected readonly result = signal<{
+    res: SearchForTrapsResponse;
+    names: readonly string[];
+    skill: SearchSkill;
+  } | null>(null);
   protected readonly step = computed(() => searchStep(this.result() !== null, this.typing()));
 
   protected readonly canApp = this.data.diceMode !== DiceMode.PHYSICAL;
   protected readonly canType = this.data.diceMode !== DiceMode.APP;
-  protected readonly preferApp = effectivePreference(this.data.diceMode, this.data.preference) === DicePreference.APP;
+  protected readonly preferApp =
+    effectivePreference(this.data.diceMode, this.data.preference) === DicePreference.APP;
 
   protected readonly message = computed(() => resultMessage(this.result()?.names ?? []));
   /** What the server rolled, written as it counts: "1d20 (13) + 4 (Investigação) = 17". */
   protected readonly rolls = computed(() => {
     const r = this.result();
-    return r ? [r.res.roll, r.res.secondRoll].filter((x) => x !== undefined).map((x) => this.formula(x, r.skill)) : [];
+    return r
+      ? [r.res.roll, r.res.secondRoll]
+          .filter((x) => x !== undefined)
+          .map((x) => this.formula(x, r.skill))
+      : [];
   });
   protected readonly total = computed(() => {
     const r = this.result()?.res;
-    return [r?.roll, r?.secondRoll].filter((x) => x !== undefined).map((x) => x.total).join(' · ');
+    return [r?.roll, r?.secondRoll]
+      .filter((x) => x !== undefined)
+      .map((x) => x.total)
+      .join(' · ');
   });
   protected readonly skillWord = computed(() => skillName(this.result()?.skill ?? this.skill()));
   protected readonly label = computed(() =>
@@ -121,7 +149,9 @@ export class TrapSearchSheet {
     const f = this.face();
     return f === null ? '' : typedTotal(f, this.chosen().bonus);
   });
-  protected readonly confirmLabel = computed(() => (this.face() === null ? 'Confirmar' : `Confirmar ${this.face()}`));
+  protected readonly confirmLabel = computed(() =>
+    this.face() === null ? 'Confirmar' : `Confirmar ${this.face()}`,
+  );
 
   private readonly key = newKey();
   private readonly frame = viewChild(SheetFrame);
@@ -146,7 +176,9 @@ export class TrapSearchSheet {
 
   protected startTyping(): void {
     this.typing.set(true);
-    afterNextRender(() => this.field()?.nativeElement.focus({ preventScroll: false }), { injector: this.injector });
+    afterNextRender(() => this.field()?.nativeElement.focus({ preventScroll: false }), {
+      injector: this.injector,
+    });
   }
 
   protected backToApp(): void {
@@ -178,7 +210,8 @@ export class TrapSearchSheet {
     this.error.set('');
     try {
       const first = this.firstFace();
-      const sent: SearchDie = 'face' in die && first !== null ? { face: first, face2: die.face } : die;
+      const sent: SearchDie =
+        'face' in die && first !== null ? { face: first, face2: die.face } : die;
       const res = await this.api.search(this.data.campaignId, this.skill(), sent, this.key);
       // Read the map again: what was found now shows on it, and its name is the map's to give.
       await this.data.state.refresh();

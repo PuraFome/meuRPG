@@ -13,7 +13,13 @@ export interface PinArea {
  * (`pointSquares` in `maps/fog.go`); the app decides nothing with it, who stands in the area is the
  * server's to say.
  */
-export function trapArea(xBp: number, yBp: number, size: number, columns: number, rows: number): PinArea | null {
+export function trapArea(
+  xBp: number,
+  yBp: number,
+  size: number,
+  columns: number,
+  rows: number,
+): PinArea | null {
   if (columns <= 0 || rows <= 0) {
     return null;
   }
@@ -25,5 +31,10 @@ export function trapArea(xBp: number, yBp: number, size: number, columns: number
   const r0 = Math.max(0, row - first);
   const c1 = Math.min(columns, col - first + side);
   const r1 = Math.min(rows, row - first + side);
-  return { left: (c0 / columns) * 100, top: (r0 / rows) * 100, width: ((c1 - c0) / columns) * 100, height: ((r1 - r0) / rows) * 100 };
+  return {
+    left: (c0 / columns) * 100,
+    top: (r0 / rows) * 100,
+    width: ((c1 - c0) / columns) * 100,
+    height: ((r1 - r0) / rows) * 100,
+  };
 }

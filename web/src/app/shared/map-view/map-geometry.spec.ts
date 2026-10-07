@@ -91,7 +91,7 @@ describe('zoom and pan', () => {
   });
 
   it('says the zoom as a percentage', () => {
-    expect(scaleLabel(1.25).replace(' ', ' ')).toBe('125 %');
+    expect(scaleLabel(1.25).replace('\u00a0', ' ')).toBe('125 %');
   });
 
   it('puts a centre in the middle of the viewport', () => {
@@ -180,9 +180,15 @@ describe('what each person sees', () => {
 describe('labelBounds', () => {
   it('keeps a label inside the image and inside what the viewport shows of it', () => {
     // A zoomed preview: the image runs past both sides of the viewport.
-    expect(labelBounds({ left: -120, right: 700 }, { left: 0, right: 350 })).toEqual({ minLeft: 4, maxRight: 346 });
+    expect(labelBounds({ left: -120, right: 700 }, { left: 0, right: 350 })).toEqual({
+      minLeft: 4,
+      maxRight: 346,
+    });
     // A small map in a big viewport: the image's own edges.
-    expect(labelBounds({ left: 40, right: 300 }, { left: 0, right: 500 })).toEqual({ minLeft: 44, maxRight: 296 });
+    expect(labelBounds({ left: 40, right: 300 }, { left: 0, right: 500 })).toEqual({
+      minLeft: 44,
+      maxRight: 296,
+    });
   });
 
   it('slides a label that sticks out of the preview back into it', () => {
@@ -192,10 +198,14 @@ describe('labelBounds', () => {
   });
 });
 
-
 describe('where a label goes', () => {
   const bounds = { minLeft: 0, maxRight: 400, minTop: 0, maxBottom: 300 };
-  const box = (left: number, top: number, right: number, bottom: number) => ({ left, top, right, bottom });
+  const box = (left: number, top: number, right: number, bottom: number) => ({
+    left,
+    top,
+    right,
+    bottom,
+  });
   const size = { width: 100, height: 24 };
 
   it('puts it beside what it names, centred on it, when nothing is in the way', () => {
@@ -240,7 +250,14 @@ describe('a label stays with its own point', () => {
     const token = { left: 192, top: 144, right: 218, bottom: 170 };
     const at = placeLabel(anchor, { width: 100, height: 24 }, [token], bounds);
     const label = { left: at.left, top: at.top, right: at.left + 100, bottom: at.top + 24 };
-    expect(overlapArea(label, { left: token.left - 12, top: token.top - 12, right: token.right + 12, bottom: token.bottom + 12 })).toBe(0);
+    expect(
+      overlapArea(label, {
+        left: token.left - 12,
+        top: token.top - 12,
+        right: token.right + 12,
+        bottom: token.bottom + 12,
+      }),
+    ).toBe(0);
   });
 });
 
@@ -256,7 +273,12 @@ describe('one label per square', () => {
   });
 
   it('unionBox is the box that holds them all', () => {
-    expect(unionBox([{ left: 1, top: 2, right: 3, bottom: 4 }, { left: 0, top: 3, right: 5, bottom: 9 }])).toEqual({ left: 0, top: 2, right: 5, bottom: 9 });
+    expect(
+      unionBox([
+        { left: 1, top: 2, right: 3, bottom: 4 },
+        { left: 0, top: 3, right: 5, bottom: 9 },
+      ]),
+    ).toEqual({ left: 0, top: 2, right: 5, bottom: 9 });
     expect(unionBox([])).toBeNull();
   });
 });

@@ -5,8 +5,17 @@ import { provideRouter } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
 
 import { XpMode } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { CombatantKind, CombatantState, EncounterStatus, GetCombatHighlightsResponseSchema } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { CharacterExperienceSchema, GetCampaignExperienceResponseSchema, ListXPAwardsResponseSchema } from '../../../../../gen/meurpg/progression/v1/progression_pb';
+import {
+  CombatantKind,
+  CombatantState,
+  EncounterStatus,
+  GetCombatHighlightsResponseSchema,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  CharacterExperienceSchema,
+  GetCampaignExperienceResponseSchema,
+  ListXPAwardsResponseSchema,
+} from '../../../../../gen/meurpg/progression/v1/progression_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { RosterClient } from '../../../../core/maps/roster-client';
@@ -16,8 +25,20 @@ import { CombatSummary } from './combat-summary';
 const nbsp = ' ';
 const combatants = [
   combatant({ id: 'p', label: 'Pensantus', kind: CombatantKind.PLAYER, characterId: 'cp' }),
-  combatant({ id: 'g1', label: 'Goblin 1', defeated: true, state: CombatantState.DEFEATED, xpValue: 50 }),
-  combatant({ id: 'g2', label: 'Goblin 2', defeated: true, state: CombatantState.DEFEATED, xpValue: 50 }),
+  combatant({
+    id: 'g1',
+    label: 'Goblin 1',
+    defeated: true,
+    state: CombatantState.DEFEATED,
+    xpValue: 50,
+  }),
+  combatant({
+    id: 'g2',
+    label: 'Goblin 2',
+    defeated: true,
+    state: CombatantState.DEFEATED,
+    xpValue: 50,
+  }),
 ];
 
 describe('CombatSummary and the XP (E7-06)', () => {
@@ -29,13 +50,28 @@ describe('CombatSummary and the XP (E7-06)', () => {
     experience.mockReset().mockResolvedValue(
       create(GetCampaignExperienceResponseSchema, {
         xpMode: XpMode.ENEMIES,
-        characters: [create(CharacterExperienceSchema, { characterId: 'cp', name: 'Pensantus', level: 3, experiencePoints: 0, nextLevelXp: 300 })],
+        characters: [
+          create(CharacterExperienceSchema, {
+            characterId: 'cp',
+            name: 'Pensantus',
+            level: 3,
+            experiencePoints: 0,
+            nextLevelXp: 300,
+          }),
+        ],
       }),
     );
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        { provide: ProgressionClient, useValue: { experience, listAwards: () => Promise.resolve(create(ListXPAwardsResponseSchema, {})), award: vi.fn() } },
+        {
+          provide: ProgressionClient,
+          useValue: {
+            experience,
+            listAwards: () => Promise.resolve(create(ListXPAwardsResponseSchema, {})),
+            award: vi.fn(),
+          },
+        },
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
         { provide: CombatClient, useValue: { highlights } },
         { provide: MatDialog, useValue: { open: vi.fn() } },
@@ -46,7 +82,10 @@ describe('CombatSummary and the XP (E7-06)', () => {
 
   function setup(master: boolean) {
     const fixture = TestBed.createComponent(CombatSummary);
-    fixture.componentRef.setInput('encounter', encounter({ id: 'enc', status: EncounterStatus.ENDED, combatants }));
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ id: 'enc', status: EncounterStatus.ENDED, combatants }),
+    );
     fixture.componentRef.setInput('isMaster', master);
     fixture.componentRef.setInput('campaignId', 'camp-1');
     fixture.componentRef.setInput('sessionNumber', 5);
@@ -72,7 +111,9 @@ describe('CombatSummary and the XP (E7-06)', () => {
     expect(leave(el).classList.contains('mat-mdc-outlined-button')).toBe(true);
     // Exactly one filled button on the screen.
     expect(Array.from(el.querySelectorAll('button')).filter(filled)).toHaveLength(1);
-    expect(el.querySelector('app-combat-xp .primary')?.textContent?.trim()).toBe(`Dar 100${nbsp}XP a cada um`);
+    expect(el.querySelector('app-combat-xp .primary')?.textContent?.trim()).toBe(
+      `Dar 100${nbsp}XP a cada um`,
+    );
   });
 
   it('turns it filled once the XP is left for later', async () => {
@@ -86,7 +127,9 @@ describe('CombatSummary and the XP (E7-06)', () => {
   });
 
   it('is filled at once when the campaign has no XP for enemies (and no block takes room)', async () => {
-    experience.mockResolvedValue(create(GetCampaignExperienceResponseSchema, { xpMode: XpMode.MILESTONES, characters: [] }));
+    experience.mockResolvedValue(
+      create(GetCampaignExperienceResponseSchema, { xpMode: XpMode.MILESTONES, characters: [] }),
+    );
     const { fixture, el } = setup(true);
     await ready(fixture);
     expect(filled(leave(el))).toBe(true);
@@ -98,7 +141,10 @@ describe('CombatSummary and the XP (E7-06)', () => {
   it('shows the master what each defeated NPC is worth, and not a player', async () => {
     const master = setup(true);
     await ready(master.fixture);
-    expect(Array.from(master.el.querySelectorAll('.line__xp')).map((x) => x.textContent)).toEqual([`50${nbsp}XP`, `50${nbsp}XP`]);
+    expect(Array.from(master.el.querySelectorAll('.line__xp')).map((x) => x.textContent)).toEqual([
+      `50${nbsp}XP`,
+      `50${nbsp}XP`,
+    ]);
 
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({ providers: [provideRouter([])] });

@@ -9,9 +9,25 @@ const PEOPLE = [
   { id: 'p', name: 'Pensantus', sub: 'Mago 4, de Vinicius' },
   { id: 'b', name: 'Brisa', sub: 'Ladina 4, de Lia' },
 ];
-const hidden = () => create(MapPointSchema, { id: 't', kind: MapPointKind.TREASURE, name: 'Baú de moedas', treasureValuePo: 250, description: '250 PO e uma adaga de prata.' });
+const hidden = () =>
+  create(MapPointSchema, {
+    id: 't',
+    kind: MapPointKind.TREASURE,
+    name: 'Baú de moedas',
+    treasureValuePo: 250,
+    description: '250 PO e uma adaga de prata.',
+  });
 const found = (extra = {}) =>
-  create(MapPointSchema, { id: 't', kind: MapPointKind.TREASURE, name: 'Baú de moedas', treasureValuePo: 250, description: '250 PO e uma adaga de prata.', treasureFoundAt: timestampFromDate(new Date(2026, 9, 4, 21, 40)), treasureFoundBy: [{ characterId: 'b', characterName: 'Brisa' }], ...extra });
+  create(MapPointSchema, {
+    id: 't',
+    kind: MapPointKind.TREASURE,
+    name: 'Baú de moedas',
+    treasureValuePo: 250,
+    description: '250 PO e uma adaga de prata.',
+    treasureFoundAt: timestampFromDate(new Date(2026, 9, 4, 21, 40)),
+    treasureFoundBy: [{ characterId: 'b', characterName: 'Brisa' }],
+    ...extra,
+  });
 
 function setup(point = hidden()) {
   const fixture = TestBed.createComponent(TreasureCard);
@@ -23,12 +39,13 @@ function setup(point = hidden()) {
   fixture.componentInstance.unmark.subscribe((p) => unmarks.push(p.id));
   fixture.detectChanges();
   const el = fixture.nativeElement as HTMLElement;
-  const button = (t: string) => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes(t))!;
+  const button = (t: string) =>
+    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes(t))!;
   return { fixture, el, marks, unmarks, button };
 }
 
 describe('TreasureCard', () => {
-  it('a hidden treasure says it is the master\'s alone until found', () => {
+  it("a hidden treasure says it is the master's alone until found", () => {
     const { el } = setup();
     expect(el.textContent).toContain('Escondido');
     expect(el.textContent).toContain('O que tem dentro · só você vê até achar');
@@ -65,7 +82,9 @@ describe('TreasureCard', () => {
     expect(el.textContent?.replace(/\s+/g, ' ')).toContain('Encontrado por Brisa às 21:40');
     button('Desmarcar').click();
     fixture.detectChanges();
-    expect(el.querySelector('[role=alertdialog]')?.textContent).toContain('Desmarcar o Baú de moedas?');
+    expect(el.querySelector('[role=alertdialog]')?.textContent).toContain(
+      'Desmarcar o Baú de moedas?',
+    );
     const buttons = Array.from(el.querySelectorAll('.tr__pair button')) as HTMLButtonElement[];
     buttons[1].click();
     expect(unmarks).toEqual(['t']);
@@ -75,6 +94,8 @@ describe('TreasureCard', () => {
     const { el } = setup(found({ treasureConverted: true }));
     expect(el.textContent).toContain('Convertido em XP');
     expect(el.textContent).toContain('desfaça esse XP na página da campanha');
-    expect(Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.includes('Desmarcar'))).toBe(false);
+    expect(
+      Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.includes('Desmarcar')),
+    ).toBe(false);
   });
 });

@@ -6,7 +6,14 @@ import { type Encounter, EncounterStatus } from '../../../../gen/meurpg/play/v1/
 import type { CreatureSummary } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { CombatClient, type MonsterHp } from '../../../core/combat/combat-client';
 import { sessionClosed } from '../../../core/combat/combat-errors';
-import { ADD_MAX, AddKeys, MONSTER_NAME_MAX, addMonstersErrorMessage, monsterSentence, roomFor } from '../../../core/combat/monsters';
+import {
+  ADD_MAX,
+  AddKeys,
+  MONSTER_NAME_MAX,
+  addMonstersErrorMessage,
+  monsterSentence,
+  roomFor,
+} from '../../../core/combat/monsters';
 import { capitalized, listWithE } from '../../../core/creatures/bestiary-format';
 import { nameCounter } from '../../../core/creatures/creature-format';
 import { SheetFrame } from '../../../pages/live-session/combat/sheet-frame/sheet-frame';
@@ -65,7 +72,15 @@ const HP_SEGMENTS = (average: number): readonly Segment<MonsterHp>[] => [
  */
 @Component({
   selector: 'app-put-monsters-sheet',
-  imports: [CountStepper, CreatureArt, HiddenSwitch, MatButtonModule, MatIconModule, Segmented, SheetFrame],
+  imports: [
+    CountStepper,
+    CreatureArt,
+    HiddenSwitch,
+    MatButtonModule,
+    MatIconModule,
+    Segmented,
+    SheetFrame,
+  ],
   templateUrl: './put-sheet.html',
   styleUrl: './put-sheet.scss',
 })
@@ -97,13 +112,21 @@ export class PutMonstersSheet {
   protected readonly c = this.data.creature;
   protected readonly typeLabel = capitalized(this.data.creature.typePt);
   protected readonly meta = computed(() =>
-    tieNumbers(`ND ${this.c.challengeRating} · CA ${this.c.armorClass} · PV ${this.c.hitPoints}${this.hp() === 'average' ? ' (média)' : ''}`),
+    tieNumbers(
+      `ND ${this.c.challengeRating} · CA ${this.c.armorClass} · PV ${this.c.hitPoints}${this.hp() === 'average' ? ' (média)' : ''}`,
+    ),
   );
   /** How many more the combat takes (the cap is 40 in all); a combat still to make takes one add's 10. */
-  protected readonly room = computed(() => (this.target() ? roomFor(this.target()!.existing) : ADD_MAX));
+  protected readonly room = computed(() =>
+    this.target() ? roomFor(this.target()!.existing) : ADD_MAX,
+  );
   protected readonly full = computed(() => this.target() !== null && this.room() === 0);
-  protected readonly sentence = computed(() => monsterSentence(this.name() || this.c.namePt, this.count()));
-  protected readonly starting = computed(() => !this.loading() && this.target() === null && !this.noSession());
+  protected readonly sentence = computed(() =>
+    monsterSentence(this.name() || this.c.namePt, this.count()),
+  );
+  protected readonly starting = computed(
+    () => !this.loading() && this.target() === null && !this.noSession(),
+  );
   protected readonly goLabel = computed(() => {
     if (this.busy()) {
       return this.starting() ? 'Criando...' : 'Pondo...';
@@ -139,7 +162,9 @@ export class PutMonstersSheet {
       if (sessionClosed(err)) {
         this.noSession.set(true);
       } else {
-        this.error.set('Não deu para ler o combate da sessão: o servidor não respondeu. Feche e abra a folha de novo.');
+        this.error.set(
+          'Não deu para ler o combate da sessão: o servidor não respondeu. Feche e abra a folha de novo.',
+        );
         this.noSession.set(true);
       }
     } finally {
@@ -170,7 +195,13 @@ export class PutMonstersSheet {
       return;
     }
     const target = this.target();
-    const add = { creatureKey: this.c.key, count: this.count(), name: base, hp: this.hp(), hidden: this.hidden() };
+    const add = {
+      creatureKey: this.c.key,
+      count: this.count(),
+      name: base,
+      hp: this.hp(),
+      hidden: this.hidden(),
+    };
     const key = this.keys.keyFor({ ...add, target: target?.id ?? '' });
     this.busy.set(true);
     this.error.set('');
@@ -182,11 +213,17 @@ export class PutMonstersSheet {
         encounter = made.encounter;
         ids = made.combatantIds;
       } else {
-        encounter = await this.combat.start(this.data.campaignId, `Combate: ${this.c.namePt}`, [], key, {
-          monsters: [{ creatureKey: add.creatureKey, count: add.count, name: add.name }],
-          monsterHp: add.hp,
-          monstersHidden: add.hidden,
-        });
+        encounter = await this.combat.start(
+          this.data.campaignId,
+          `Combate: ${this.c.namePt}`,
+          [],
+          key,
+          {
+            monsters: [{ creatureKey: add.creatureKey, count: add.count, name: add.name }],
+            monsterHp: add.hp,
+            monstersHidden: add.hidden,
+          },
+        );
       }
       this.sheet.close({
         count: add.count,
@@ -210,8 +247,12 @@ export class PutMonstersSheet {
   private namesMade(encounter: Encounter, ids: readonly string[]): string {
     const labels =
       ids.length > 0
-        ? ids.map((id) => encounter.combatants.find((c) => c.id === id)?.label ?? '').filter((l) => l !== '')
-        : encounter.combatants.filter((c) => c.bestiaryCreatureKey === this.c.key && !c.defeated).map((c) => c.label);
+        ? ids
+            .map((id) => encounter.combatants.find((c) => c.id === id)?.label ?? '')
+            .filter((l) => l !== '')
+        : encounter.combatants
+            .filter((c) => c.bestiaryCreatureKey === this.c.key && !c.defeated)
+            .map((c) => c.label);
     return listWithE([...labels].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })));
   }
 
@@ -224,5 +265,10 @@ function targetOf(e: Encounter): Target | null {
   if (e.status !== EncounterStatus.SETUP && e.status !== EncounterStatus.ACTIVE) {
     return null;
   }
-  return { id: e.id, name: e.name, running: e.status === EncounterStatus.ACTIVE, existing: e.combatants.length };
+  return {
+    id: e.id,
+    name: e.name,
+    running: e.status === EncounterStatus.ACTIVE,
+    existing: e.combatants.length,
+  };
 }

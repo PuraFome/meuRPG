@@ -1,11 +1,4 @@
-import {
-  Component,
-  ElementRef,
-  computed,
-  input,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { Component, ElementRef, computed, input, signal, viewChild } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -36,7 +29,13 @@ const FOOTER_HEIGHT = 32;
  */
 @Component({
   selector: 'app-defeat-xp',
-  imports: [MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, ReactiveFormsModule],
+  imports: [
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    ReactiveFormsModule,
+  ],
   templateUrl: './defeat-xp.html',
   styleUrl: './defeat-xp.scss',
 })
@@ -63,7 +62,9 @@ export class DefeatXp {
   protected readonly tableXp = computed<number | null>(
     () => this.table().find((row) => row.rating === this.ratingValue())?.xp ?? null,
   );
-  protected readonly isTable = computed(() => this.tableXp() !== null && this.xpValue() === this.tableXp());
+  protected readonly isTable = computed(
+    () => this.tableXp() !== null && this.xpValue() === this.tableXp(),
+  );
   protected readonly hasRating = computed(() => this.ratingValue() !== '');
   protected readonly tableText = computed(() => {
     const xp = this.tableXp();
@@ -78,7 +79,9 @@ export class DefeatXp {
     if (this.xpValue() === table) {
       return `${base} O mestre pode digitar outro valor.`;
     }
-    return this.xpValue() === 0 ? `Este NPC não dá XP. ${base}` : `${base} Você digitou outro valor.`;
+    return this.xpValue() === 0
+      ? `Este NPC não dá XP. ${base}`
+      : `${base} Você digitou outro valor.`;
   });
   protected readonly moreText = computed(() => {
     const n = this.remaining();

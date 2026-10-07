@@ -31,14 +31,15 @@ import {
   toggled,
 } from './cast-flow';
 
-const choice = (level: number, free: number, pact = false) => create(SlotChoiceSchema, { level, free, pact });
+const choice = (level: number, free: number, pact = false) =>
+  create(SlotChoiceSchema, { level, free, pact });
 const usage = [
   { level: 1, total: 4, used: 3 },
   { level: 2, total: 2, used: 2 },
 ];
 
 describe('the slot step (E6-09)', () => {
-  it('lists every circle from the spell\'s own up, the full one disabled', () => {
+  it("lists every circle from the spell's own up, the full one disabled", () => {
     const rows = slotRows(1, [choice(1, 1)], usage);
     expect(rows.map((r) => [r.title, r.count, r.enabled])).toEqual([
       ['1º\u00a0nível', '1 livre de 4', true],
@@ -58,9 +59,13 @@ describe('the slot step (E6-09)', () => {
 
   it('warns about the last slot, and about Escudo only when it is the last one it has', () => {
     const [first] = slotRows(1, [choice(1, 1)], usage);
-    expect(lastSlotWarning(first, 1)).toBe('É o seu último espaço de 1º\u00a0nível: depois dele, o Escudo Arcano fica sem espaço.');
+    expect(lastSlotWarning(first, 1)).toBe(
+      'É o seu último espaço de 1º\u00a0nível: depois dele, o Escudo Arcano fica sem espaço.',
+    );
     expect(lastSlotWarning(first, 3)).toBe('É o seu último espaço de 1º\u00a0nível.');
-    expect(lastSlotWarning(slotRows(1, [choice(1, 2)], [{ level: 1, total: 4, used: 2 }])[0], 2)).toBe('');
+    expect(
+      lastSlotWarning(slotRows(1, [choice(1, 2)], [{ level: 1, total: 4, used: 2 }])[0], 2),
+    ).toBe('');
   });
 });
 
@@ -69,11 +74,36 @@ describe('the target step', () => {
 
   it('knows who takes one target, several, an area, only the caster and the darts', () => {
     const self = [{ combatantId: 'me' }];
-    expect(targetRule(st({ maxTargets: 1 }), 'me', 1, 1)).toEqual({ kind: 'single', max: 1, min: 1 });
-    expect(targetRule(st({ maxTargets: 1, extraTargetPerLevel: true }), 'me', 1, 3)).toEqual({ kind: 'multi', max: 3, min: 1 });
-    expect(targetRule(st({ maxTargets: 0, targets: [{ combatantId: 'g' }] }), 'me', 1, 1)).toEqual({ kind: 'multi', max: 10, min: 0 });
+    expect(targetRule(st({ maxTargets: 1 }), 'me', 1, 1)).toEqual({
+      kind: 'single',
+      max: 1,
+      min: 1,
+    });
+    expect(targetRule(st({ maxTargets: 1, extraTargetPerLevel: true }), 'me', 1, 3)).toEqual({
+      kind: 'multi',
+      max: 3,
+      min: 1,
+    });
+    expect(targetRule(st({ maxTargets: 0, targets: [{ combatantId: 'g' }] }), 'me', 1, 1)).toEqual({
+      kind: 'multi',
+      max: 10,
+      min: 0,
+    });
     expect(targetRule(st({ maxTargets: 0, targets: self }), 'me', 2, 2).kind).toBe('none');
-    expect(targetRule(st({ maxTargets: 3, darts: [{ slotLevel: 1, darts: 3 }, { slotLevel: 2, darts: 4 }] }), 'me', 1, 2)).toEqual({ kind: 'darts', max: 4, min: 1 });
+    expect(
+      targetRule(
+        st({
+          maxTargets: 3,
+          darts: [
+            { slotLevel: 1, darts: 3 },
+            { slotLevel: 2, darts: 4 },
+          ],
+        }),
+        'me',
+        1,
+        2,
+      ),
+    ).toEqual({ kind: 'darts', max: 4, min: 1 });
     expect(targetRule(undefined, 'me', 1, 1).kind).toBe('none');
   });
 
@@ -87,7 +117,13 @@ describe('the target step', () => {
     const rows = castTargetRows(
       [
         { combatantId: 'me', label: 'Pensantus', state: CombatantState.UNSPECIFIED, tooFar: false },
-        { combatantId: 'g', label: 'Goblin 1', state: CombatantState.HURT, distanceFt: 25, tooFar: true },
+        {
+          combatantId: 'g',
+          label: 'Goblin 1',
+          state: CombatantState.HURT,
+          distanceFt: 25,
+          tooFar: true,
+        },
       ] as never,
       'me',
       120,
@@ -98,12 +134,15 @@ describe('the target step', () => {
   });
 });
 
-describe('Magic Missile\'s darts', () => {
+describe("Magic Missile's darts", () => {
   it('deals the darts, one at a time, never past the total or below 0', () => {
     let d = dealOne(new Map(), 'a', 1, 3);
     d = dealOne(d, 'a', 1, 3);
     d = dealOne(d, 'b', 1, 3);
-    expect(dartTargets(d)).toEqual([{ combatantId: 'a', darts: 2 }, { combatantId: 'b', darts: 1 }]);
+    expect(dartTargets(d)).toEqual([
+      { combatantId: 'a', darts: 2 },
+      { combatantId: 'b', darts: 1 },
+    ]);
     expect([...dealOne(d, 'c', 1, 3)]).toEqual([...d]); // all three placed
     expect(dealOne(d, 'b', -1, 3).get('b')).toBe(0);
     expect(dartTargets(dealOne(d, 'b', -1, 3))).toEqual([{ combatantId: 'a', darts: 2 }]);
@@ -116,11 +155,25 @@ describe('Magic Missile\'s darts', () => {
   });
 
   it('writes each dart: the face plus the bonus of one dart', () => {
-    expect(dartLines({ diceCount: 2, diceSides: 4, faces: [3, 2], modifier: 2, total: 7, physical: false } as never, 2)).toEqual([
-      'Dardo 1: 1d4 (3) + 1 = 4',
-      'Dardo 2: 1d4 (2) + 1 = 3',
-    ]);
-    expect(dartLines({ diceCount: 2, diceSides: 4, faces: [], modifier: 2, total: 7, physical: true } as never, 2)[0]).toMatch(/dado físico/);
+    expect(
+      dartLines(
+        {
+          diceCount: 2,
+          diceSides: 4,
+          faces: [3, 2],
+          modifier: 2,
+          total: 7,
+          physical: false,
+        } as never,
+        2,
+      ),
+    ).toEqual(['Dardo 1: 1d4 (3) + 1 = 4', 'Dardo 2: 1d4 (2) + 1 = 3']);
+    expect(
+      dartLines(
+        { diceCount: 2, diceSides: 4, faces: [], modifier: 2, total: 7, physical: true } as never,
+        2,
+      )[0],
+    ).toMatch(/dado físico/);
   });
 });
 
@@ -135,8 +188,12 @@ describe('the result of a cast', () => {
     expect(spellKind('spell:spare-the-dying', fx(SpellHitPointEffectKind.ZERO_HP))).toBe('hp');
     expect(spellKind('spell:heal', fx(SpellHitPointEffectKind.FLAT_HEAL))).toBe('hp');
     expect(spellKind('spell:x', { attackType: 3 } as never)).toBe('attack');
-    expect(spellKind('spell:x', { attackType: 1, save: { ability: 2 }, healBySlotLevel: {} } as never)).toBe('save');
-    expect(spellKind('spell:x', { attackType: 1, healBySlotLevel: { 1: '1d8 + MOD' } } as never)).toBe('heal');
+    expect(
+      spellKind('spell:x', { attackType: 1, save: { ability: 2 }, healBySlotLevel: {} } as never),
+    ).toBe('save');
+    expect(
+      spellKind('spell:x', { attackType: 1, healBySlotLevel: { 1: '1d8 + MOD' } } as never),
+    ).toBe('heal');
   });
 
   it('writes the save, the damage and who is still to roll', () => {
@@ -148,24 +205,53 @@ describe('the result of a cast', () => {
       ],
     });
     const rolled = (id: string, amount: number, half: boolean) =>
-      ({ id, status: PendingDamageStatus.APPLIED, amount, half, damageTypePt: 'fogo', roll: { diceCount: 3, diceSides: 6, faces: [4, 4, 2], modifier: 0, total: 10 } }) as unknown as PendingDamage;
+      ({
+        id,
+        status: PendingDamageStatus.APPLIED,
+        amount,
+        half,
+        damageTypePt: 'fogo',
+        roll: { diceCount: 3, diceSides: 6, faces: [4, 4, 2], modifier: 0, total: 10 },
+      }) as unknown as PendingDamage;
     const labels = new Map([
       ['g1', { label: 'Goblin 1', state: CombatantState.DEFEATED }],
       ['g2', { label: 'Goblin 2', state: CombatantState.BADLY_HURT }],
       ['g3', { label: 'Goblin 3', state: CombatantState.UNHURT }],
     ]);
-    const rows = castRows(cast, new Map([['p1', rolled('p1', 10, false)], ['p2', rolled('p2', 5, true)]]), labels);
+    const rows = castRows(
+      cast,
+      new Map([
+        ['p1', rolled('p1', 10, false)],
+        ['p2', rolled('p2', 5, true)],
+      ]),
+      labels,
+    );
     expect(rows[0]).toMatchObject({ word: 'Falhou', summary: '10 de fogo', state: 'Derrotado' });
-    expect(rows[1]).toMatchObject({ word: 'Resistiu: metade', summary: '5 de fogo', state: 'Muito ferido' });
+    expect(rows[1]).toMatchObject({
+      word: 'Resistiu: metade',
+      summary: '5 de fogo',
+      state: 'Muito ferido',
+    });
     expect(rows[2]).toMatchObject({ word: 'Errou', tone: 'bad', summary: '' });
-    const owed = castRows(cast, new Map([['p1', { id: 'p1', status: PendingDamageStatus.AWAITING_ROLL } as PendingDamage]]), labels);
+    const owed = castRows(
+      cast,
+      new Map([['p1', { id: 'p1', status: PendingDamageStatus.AWAITING_ROLL } as PendingDamage]]),
+      labels,
+    );
     expect(owed[0].owed).toBe(true);
   });
 
-  it('rolls one group for an area spell and one for each of Magic Missile\'s targets', () => {
-    const p = (id: string, castId: string) => ({ id, castId, status: PendingDamageStatus.AWAITING_ROLL }) as PendingDamage;
-    expect(rollGroups([p('a', 'c1'), p('b', 'c1'), p('c', ''), p('d', '')]).map((g) => g.map((x) => x.id))).toEqual([['a', 'b'], ['c'], ['d']]);
-    expect(rollGroups([{ id: 'x', castId: '', status: PendingDamageStatus.APPLIED } as PendingDamage])).toEqual([]);
+  it("rolls one group for an area spell and one for each of Magic Missile's targets", () => {
+    const p = (id: string, castId: string) =>
+      ({ id, castId, status: PendingDamageStatus.AWAITING_ROLL }) as PendingDamage;
+    expect(
+      rollGroups([p('a', 'c1'), p('b', 'c1'), p('c', ''), p('d', '')]).map((g) =>
+        g.map((x) => x.id),
+      ),
+    ).toEqual([['a', 'b'], ['c'], ['d']]);
+    expect(
+      rollGroups([{ id: 'x', castId: '', status: PendingDamageStatus.APPLIED } as PendingDamage]),
+    ).toEqual([]);
   });
 });
 
@@ -187,13 +273,15 @@ describe('what a spell that reads hit points did (E8-03)', () => {
     ],
   });
 
-  it("tells a player who fell asleep and who was not affected, in words and an icon", () => {
+  it('tells a player who fell asleep and who was not affected, in words and an icon', () => {
     const rows = castRows(sleep, new Map(), labels);
     expect(rows.map((r) => [r.label, r.word, r.icon])).toEqual([
       ['Goblin 1', 'Adormeceu', 'bedtime'],
       ['Capitão Goblin', 'Não foi afetado', 'block'],
     ]);
-    expect(effectSentence(sleep, labels, isNpc)).toBe('O Goblin 1 adormeceu. O Capitão Goblin não foi afetado.');
+    expect(effectSentence(sleep, labels, isNpc)).toBe(
+      'O Goblin 1 adormeceu. O Capitão Goblin não foi afetado.',
+    );
   });
 
   it('shows a player no enemy hit points, no order of the pool and no reason', () => {
@@ -213,7 +301,15 @@ describe('what a spell that reads hit points did (E8-03)', () => {
     const missed = create(SpellCastSchema, {
       spellKey: 'spell:spare-the-dying',
       effectKind: SpellEffectKind.ZERO_HP,
-      targets: [{ combatantId: 'b', effect: { outcome: SpellEffectOutcome.NOT_AFFECTED, reason: SpellEffectReason.NOT_AT_ZERO } }],
+      targets: [
+        {
+          combatantId: 'b',
+          effect: {
+            outcome: SpellEffectOutcome.NOT_AFFECTED,
+            reason: SpellEffectReason.NOT_AT_ZERO,
+          },
+        },
+      ],
     });
     expect(effectSentence(missed, labels, isNpc)).toBe('Brisa não foi afetada.');
   });

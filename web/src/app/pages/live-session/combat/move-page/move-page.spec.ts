@@ -13,7 +13,11 @@ import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import type { MapLayers } from '../../../../core/maps/layers';
 import { type JumpRequest, MovePage } from './move-page';
 
-const plain = (t: string | null | undefined) => (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const plain = (t: string | null | undefined) =>
+  (t ?? '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 // Toren at (8, 7) with 9,0 m: Goblin 2 stands at (7, 7), the wall is at (8, 5).
 const toren = combatant({
@@ -35,17 +39,43 @@ const options = create(GetMoveOptionsResponseSchema, {
   reachable: [
     create(ReachableSquareSchema, { col: 9, row: 8, costDft: 71 }),
     create(ReachableSquareSchema, { col: 10, row: 7, costDft: 100, provokesReactorIds: ['g2'] }),
-    create(ReachableSquareSchema, { col: 8, row: 9, costDft: 100, knownTrapName: 'Fosso escondido', knownTrapPointId: 'p' }),
+    create(ReachableSquareSchema, {
+      col: 8,
+      row: 9,
+      costDft: 100,
+      knownTrapName: 'Fosso escondido',
+      knownTrapPointId: 'p',
+    }),
   ],
   refused: [create(RefusedSquareSchema, { col: 8, row: 5, reason: MoveRefusal.WALL })],
 });
 
-const layers: MapLayers = { columns: 20, rows: 14, walls: [{ col: 8, row: 5 }], terrain: [{ col: 9, row: 8 }], half: [], threeQuarters: [] };
+const layers: MapLayers = {
+  columns: 20,
+  rows: 14,
+  walls: [{ col: 8, row: 5 }],
+  terrain: [{ col: 9, row: 8 }],
+  half: [],
+  threeQuarters: [],
+};
 
-function setup(over: { options?: typeof options | null; jumps?: ReturnType<typeof create<typeof JumpLimitsSchema>>; canDisengage?: boolean } = {}) {
+function setup(
+  over: {
+    options?: typeof options | null;
+    jumps?: ReturnType<typeof create<typeof JumpLimitsSchema>>;
+    canDisengage?: boolean;
+  } = {},
+) {
   const fixture = TestBed.createComponent(MovePage);
   const ref = fixture.componentRef;
-  ref.setInput('encounter', encounter({ combatants: [toren, goblin], currentCombatantId: 'toren', turnGroupIds: ['toren'] }));
+  ref.setInput(
+    'encounter',
+    encounter({
+      combatants: [toren, goblin],
+      currentCombatantId: 'toren',
+      turnGroupIds: ['toren'],
+    }),
+  );
   ref.setInput('image', { url: '/images/x', width: 2000, height: 1400 });
   ref.setInput('mapName', 'A caverna do Vale Seco');
   ref.setInput('sessionNumber', 6);
@@ -64,19 +94,33 @@ function setup(over: { options?: typeof options | null; jumps?: ReturnType<typeo
   const choose = (col: number, row: number) => {
     const surface = el.querySelector<HTMLElement>('.cm__surface')!;
     // The map is one focus stop: a click picks the square under it.
-    surface.getBoundingClientRect = () => ({ left: 0, top: 0, width: 200, height: 140, right: 200, bottom: 140, x: 0, y: 0, toJSON: () => '' });
-    surface.dispatchEvent(new MouseEvent('click', { clientX: col * 10 + 5, clientY: row * 10 + 5, bubbles: true }));
+    surface.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      width: 200,
+      height: 140,
+      right: 200,
+      bottom: 140,
+      x: 0,
+      y: 0,
+      toJSON: () => '',
+    });
+    surface.dispatchEvent(
+      new MouseEvent('click', { clientX: col * 10 + 5, clientY: row * 10 + 5, bubbles: true }),
+    );
     fixture.detectChanges();
   };
   const press = (name: string) => {
-    Array.from(el.querySelectorAll('button')).find((b) => plain(b.textContent).includes(name))!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => plain(b.textContent).includes(name))!
+      .click();
     fixture.detectChanges();
   };
   return { fixture, el, choose, press, confirmed, jumped, disengaged: () => disengaged };
 }
 
 describe('MovePage', () => {
-  it('draws the server\'s reach: one tinted square for each reachable one, the ring and the layers', () => {
+  it("draws the server's reach: one tinted square for each reachable one, the ring and the layers", () => {
     const { el } = setup();
     expect(el.querySelectorAll('.cm__cell').length).toBe(3);
     expect(el.querySelector('.cm__ring ellipse')).not.toBeNull();
@@ -86,14 +130,20 @@ describe('MovePage', () => {
     const legend = Array.from(el.querySelectorAll('.mr-legend li'), (li) => plain(li.textContent));
     // The chosen square is named only once there is one.
     expect(legend).toEqual(['Parede', 'Terreno difícil', 'Você alcança', 'Alcance de 9,0 m']);
-    expect(plain(el.textContent)).toContain('Dentro do círculo, o que fica sem cor não dá para alcançar: parede, inimigo ou custo a mais.');
+    expect(plain(el.textContent)).toContain(
+      'Dentro do círculo, o que fica sem cor não dá para alcançar: parede, inimigo ou custo a mais.',
+    );
   });
 
   it('says what is left before anything is chosen', () => {
     const { el } = setup();
     expect(plain(el.querySelector('h1')?.textContent)).toBe('Mover Toren');
-    expect(plain(el.querySelector('.move__lead')?.textContent)).toBe('Restam 9,0 m de 9,0 m (6 quadrados de 1,5 m). Toque num quadrado destacado.');
-    expect(el.querySelector<HTMLButtonElement>('.move__go')?.getAttribute('aria-disabled')).toBe('true');
+    expect(plain(el.querySelector('.move__lead')?.textContent)).toBe(
+      'Restam 9,0 m de 9,0 m (6 quadrados de 1,5 m). Toque num quadrado destacado.',
+    );
+    expect(el.querySelector<HTMLButtonElement>('.move__go')?.getAttribute('aria-disabled')).toBe(
+      'true',
+    );
   });
 
   it('says the cost the server sent and what is left, with the cost beside the square', () => {
@@ -111,7 +161,9 @@ describe('MovePage', () => {
     choose(8, 5);
     const alert = el.querySelector('[role="alert"]');
     expect(plain(alert?.textContent)).toContain('Sem caminho reto');
-    expect(plain(alert?.textContent)).toContain('para contornar uma parede no caminho, mova em partes.');
+    expect(plain(alert?.textContent)).toContain(
+      'para contornar uma parede no caminho, mova em partes.',
+    );
     expect(plain(el.querySelector('.cm__cost')?.textContent)).toBe('Sem caminho');
     press('Mover para cá');
     expect(confirmed).toEqual([]);
@@ -127,8 +179,12 @@ describe('MovePage', () => {
   it('warns that leaving a reach may provoke, and offers Desengajar', () => {
     const { el, choose, press, disengaged } = setup();
     choose(10, 7);
-    expect(plain(el.textContent)).toContain('Sair do alcance do Goblin 2 pode provocar um ataque de oportunidade.');
-    expect(plain(el.textContent)).toContain('Com Desengajar, nenhum movimento deste turno provoca isso.');
+    expect(plain(el.textContent)).toContain(
+      'Sair do alcance do Goblin 2 pode provocar um ataque de oportunidade.',
+    );
+    expect(plain(el.textContent)).toContain(
+      'Com Desengajar, nenhum movimento deste turno provoca isso.',
+    );
     press('Desengajar (gasta a ação)');
     expect(disengaged()).toBe(1);
   });
@@ -145,7 +201,9 @@ describe('MovePage', () => {
     choose(8, 9);
     expect(plain(el.textContent)).toContain('Esse quadrado fica dentro do Fosso escondido.');
     press('Mover para cá');
-    expect(plain(el.querySelector('.move__ask')?.textContent)).toBe('Isso entra no Fosso escondido. Mover assim mesmo?');
+    expect(plain(el.querySelector('.move__ask')?.textContent)).toBe(
+      'Isso entra no Fosso escondido. Mover assim mesmo?',
+    );
     expect(confirmed).toEqual([]);
     fixture.detectChanges();
     press('Mover assim mesmo');
@@ -214,7 +272,9 @@ describe('MovePage', () => {
       fixture.detectChanges();
       choose(11, 7);
       expect(plain(el.querySelector('.status__title')?.textContent)).toBe('Saltar 4,5 m');
-      expect(plain(el.querySelector('.status__text')?.textContent)).toContain('Depois restam 4,5 m.');
+      expect(plain(el.querySelector('.status__text')?.textContent)).toContain(
+        'Depois restam 4,5 m.',
+      );
       press('Saltar para cá');
       expect(jumped).toEqual([{ kind: 'long', square: { col: 11, row: 7 } }]);
     });
@@ -226,7 +286,9 @@ describe('MovePage', () => {
       radios[1].dispatchEvent(new Event('change'));
       fixture.detectChanges();
       // "Altura" is the second kind of the second group.
-      const kinds = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]')).slice(2);
+      const kinds = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]')).slice(
+        2,
+      );
       kinds[1].click();
       kinds[1].dispatchEvent(new Event('change'));
       fixture.detectChanges();
@@ -241,14 +303,27 @@ describe('MovePage', () => {
   });
 
   describe('Saltar never promises what the server refuses', () => {
-    const jumps = create(JumpLimitsSchema, { longRunningDft: 160, longStandingDft: 80, highRunningDft: 60, highStandingDft: 30, runningStart: true });
+    const jumps = create(JumpLimitsSchema, {
+      longRunningDft: 160,
+      longStandingDft: 80,
+      highRunningDft: 60,
+      highStandingDft: 30,
+      runningStart: true,
+    });
 
     function jumpMode(left: number) {
       const t = setup({ jumps });
-      t.fixture.componentRef.setInput('options', create(GetMoveOptionsResponseSchema, { ...options, movementLeftDft: left } as never));
+      t.fixture.componentRef.setInput(
+        'options',
+        create(GetMoveOptionsResponseSchema, { ...options, movementLeftDft: left } as never),
+      );
       t.fixture.componentRef.setInput(
         'encounter',
-        encounter({ combatants: [{ ...toren, movementLeftDft: left } as never, goblin], currentCombatantId: 'toren', turnGroupIds: ['toren'] }),
+        encounter({
+          combatants: [{ ...toren, movementLeftDft: left } as never, goblin],
+          currentCombatantId: 'toren',
+          turnGroupIds: ['toren'],
+        }),
       );
       t.fixture.detectChanges();
       const radios = Array.from(t.el.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
@@ -268,7 +343,9 @@ describe('MovePage', () => {
       const alert = el.querySelector('[role="alert"]');
       expect(plain(alert?.textContent)).toContain('Longe demais');
       expect(plain(alert?.textContent)).toContain('Você só tem 1,8 m de movimento');
-      expect(el.querySelector<HTMLButtonElement>('.move__go')?.getAttribute('aria-disabled')).toBe('true');
+      expect(el.querySelector<HTMLButtonElement>('.move__go')?.getAttribute('aria-disabled')).toBe(
+        'true',
+      );
       expect(fixture.componentInstance).toBeTruthy();
     });
 
@@ -282,7 +359,9 @@ describe('MovePage', () => {
 
     it('caps the high jump at the movement left, and does not start above it', () => {
       const { el, fixture } = jumpMode(30);
-      const kinds = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]')).slice(2);
+      const kinds = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]')).slice(
+        2,
+      );
       kinds[1].click();
       fixture.detectChanges();
       expect(plain(el.querySelector('.high__val')?.textContent)).toBe('0,9 m');
@@ -298,7 +377,9 @@ describe('MovePage', () => {
       const { el, choose, press, jumped, fixture } = jumpMode(300);
       choose(8, 9); // the options know a trap there ("Fosso escondido")
       press('Saltar para cá');
-      expect(plain(el.querySelector('.move__ask')?.textContent)).toBe('Isso entra no Fosso escondido. Mover assim mesmo?');
+      expect(plain(el.querySelector('.move__ask')?.textContent)).toBe(
+        'Isso entra no Fosso escondido. Mover assim mesmo?',
+      );
       expect(jumped).toEqual([]);
       press('Saltar assim mesmo');
       expect(jumped).toEqual([{ kind: 'long', square: { col: 8, row: 9 } }]);
@@ -335,7 +416,9 @@ describe('MovePage', () => {
       expect(plain(fixture.nativeElement.textContent)).not.toContain('Mover 2,1 m');
       expect((fixture.nativeElement as HTMLElement).querySelector('.move__go--off')).not.toBeNull();
       expect(plain(notice?.querySelector('strong')?.textContent)).toBe('A porta está trancada.');
-      expect(plain(notice?.textContent)).toContain('O movimento para antes dela. Só o mestre a destranca.');
+      expect(plain(notice?.textContent)).toContain(
+        'O movimento para antes dela. Só o mestre a destranca.',
+      );
     });
   });
 });

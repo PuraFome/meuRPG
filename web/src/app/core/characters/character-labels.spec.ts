@@ -42,7 +42,7 @@ describe('characterKindLabel', () => {
 });
 
 describe('characterStateLabel', () => {
-  it('matches docs/product/rules.md\'s lifecycle names', () => {
+  it("matches docs/product/rules.md's lifecycle names", () => {
     expect(characterStateLabel('draft')).toBe('Rascunho');
     expect(characterStateLabel('locked')).toBe('Travada');
     expect(characterStateLabel('dead')).toBe('Morto');

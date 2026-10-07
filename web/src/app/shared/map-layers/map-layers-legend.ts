@@ -125,7 +125,9 @@ export class MapLayersLegend {
   readonly label = input('Legenda do mapa');
   /** A drawing with no wall squares of its own (the dungeon preview draws its walls as one shape) still names "Parede". */
   readonly showWalls = input<boolean | null>(null);
-  protected readonly wallsShown = computed(() => this.showWalls() ?? this.layers().walls.length > 0);
+  protected readonly wallsShown = computed(
+    () => this.showWalls() ?? this.layers().walls.length > 0,
+  );
   /** Which stairs the map has (a generated dungeon's): the legend names those, after the doors. */
   readonly stairs = input<{ up: boolean; down: boolean }>({ up: false, down: false });
   /** The swatches sit on a sample of the map's floor (a fog map's legend). */

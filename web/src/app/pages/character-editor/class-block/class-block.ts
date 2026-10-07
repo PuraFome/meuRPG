@@ -19,7 +19,15 @@ import type { RulesCatalogVm } from '../character-editor.types';
  */
 @Component({
   selector: 'app-class-block',
-  imports: [MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, ReactiveFormsModule, TableMark],
+  imports: [
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatSelectModule,
+    ReactiveFormsModule,
+    TableMark,
+  ],
   templateUrl: './class-block.html',
   styleUrl: './class-block.scss',
 })
@@ -63,21 +71,36 @@ export class ClassBlockFields {
    * ones another block has. */
   protected readonly classChoices = computed(() => {
     const own = this.block().classKey;
-    return offered(this.catalog().classes, [own], this.master()).filter((c) => c.key === own || !this.others().includes(c.key));
+    return offered(this.catalog().classes, [own], this.master()).filter(
+      (c) => c.key === own || !this.others().includes(c.key),
+    );
   });
-  protected readonly classUnlisted = computed(() => unlisted(this.catalog().classes, this.block().classKey));
-  protected readonly subclassChoices = computed(() => offered(this.subclasses(), [this.block().subclassKey], this.master()));
+  protected readonly classUnlisted = computed(() =>
+    unlisted(this.catalog().classes, this.block().classKey),
+  );
+  protected readonly subclassChoices = computed(() =>
+    offered(this.subclasses(), [this.block().subclassKey], this.master()),
+  );
 
-  protected readonly cls = computed(() => this.catalog().classes.find((c) => c.key === this.block().classKey));
+  protected readonly cls = computed(() =>
+    this.catalog().classes.find((c) => c.key === this.block().classKey),
+  );
   protected readonly title = computed(() => `Classe ${this.index() + 1}`);
   protected readonly titleId = computed(() => `class-block-${this.index()}`);
   protected readonly subclasses = computed(() => this.cls()?.subclasses ?? []);
-  protected readonly chosenSubclass = computed(() => this.subclasses().find((c) => c.key === this.block().subclassKey));
+  protected readonly chosenSubclass = computed(() =>
+    this.subclasses().find((c) => c.key === this.block().subclassKey),
+  );
 
   /** The subclass field stays shut until the class's level for it, unless one is already chosen. */
   protected readonly subclassWaits = computed(() => {
     const c = this.cls();
-    return !!c && c.subclassLevel > 0 && this.block().level < c.subclassLevel && this.block().subclassKey === '';
+    return (
+      !!c &&
+      c.subclassLevel > 0 &&
+      this.block().level < c.subclassLevel &&
+      this.block().subclassKey === ''
+    );
   });
   protected readonly subclassHint = computed(() => {
     const c = this.cls();

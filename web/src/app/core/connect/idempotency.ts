@@ -22,7 +22,9 @@ export class ActionKey {
 
   keyFor(what: unknown): string {
     // BigInt values (a seed) have no JSON form of their own.
-    const print = JSON.stringify(what, (_name, value: unknown) => (typeof value === 'bigint' ? value.toString() : value));
+    const print = JSON.stringify(what, (_name, value: unknown) =>
+      typeof value === 'bigint' ? value.toString() : value,
+    );
     if (print !== this.last) {
       this.key = newKey();
       this.last = print;

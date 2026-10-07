@@ -8,7 +8,12 @@ import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { TreasureToConvert, XPAward } from '../../../gen/meurpg/progression/v1/progression_pb';
 import type { ExperienceRow, LoadState } from '../../core/progression/experience-store';
 import { openSheet } from '../../pages/live-session/combat/sheet-host';
-import { type AwardXpData, type AwardXpResult, AwardXpSheet, type TownRequest } from './award-xp-sheet';
+import {
+  type AwardXpData,
+  type AwardXpResult,
+  AwardXpSheet,
+  type TownRequest,
+} from './award-xp-sheet';
 import { type MilestoneData, MilestoneSheet } from './milestone-sheet';
 import { type TownData, TownSheet } from './town-sheet';
 
@@ -25,14 +30,19 @@ export function openAwardXp(
   data: AwardXpData,
   restoreFocus = true,
 ) {
-  return openSheet<AwardXpSheet, AwardXpData, AwardXpResult | TownRequest | undefined>(dialog, bottomSheet, AwardXpSheet, {
-    data,
-    ariaLabel: 'Dar XP',
-    labelledBy: 'sheet-t',
-    width: '560px',
-    focus: '[data-initial-focus]',
-    restoreFocus,
-  });
+  return openSheet<AwardXpSheet, AwardXpData, AwardXpResult | TownRequest | undefined>(
+    dialog,
+    bottomSheet,
+    AwardXpSheet,
+    {
+      data,
+      ariaLabel: 'Dar XP',
+      labelledBy: 'sheet-t',
+      width: '560px',
+      focus: '[data-initial-focus]',
+      restoreFocus,
+    },
+  );
 }
 
 /** Opens "Voltar à cidade" (E9-09): the treasures to convert, who receives, the
@@ -48,15 +58,25 @@ export function openTown(dialog: MatDialog, bottomSheet: MatBottomSheet, data: T
 }
 
 /** Opens "Registrar marco". */
-export function openMilestone(dialog: MatDialog, bottomSheet: MatBottomSheet, data: MilestoneData, restoreFocus = true) {
-  return openSheet<MilestoneSheet, MilestoneData, XPAward | undefined>(dialog, bottomSheet, MilestoneSheet, {
-    data,
-    ariaLabel: 'Registrar marco',
-    labelledBy: 'sheet-t',
-    width: '560px',
-    focus: '[data-initial-focus]',
-    restoreFocus,
-  });
+export function openMilestone(
+  dialog: MatDialog,
+  bottomSheet: MatBottomSheet,
+  data: MilestoneData,
+  restoreFocus = true,
+) {
+  return openSheet<MilestoneSheet, MilestoneData, XPAward | undefined>(
+    dialog,
+    bottomSheet,
+    MilestoneSheet,
+    {
+      data,
+      ariaLabel: 'Registrar marco',
+      labelledBy: 'sheet-t',
+      width: '560px',
+      focus: '[data-initial-focus]',
+      restoreFocus,
+    },
+  );
 }
 
 /**
@@ -182,13 +202,18 @@ export class XpGiveButton {
 
   protected openXp(): void {
     const opener = this.giveButton();
-    openAwardXp(this.dialog, this.bottomSheet, {
-      campaignId: this.campaignId(),
-      xpMode: this.xpMode(),
-      rows: this.rows(),
-      treasures: this.xpMode() === XpMode.GOLD ? this.knownTreasures() : undefined,
-      treasuresTotal: this.treasuresTotal(),
-    }, false).subscribe((result) => {
+    openAwardXp(
+      this.dialog,
+      this.bottomSheet,
+      {
+        campaignId: this.campaignId(),
+        xpMode: this.xpMode(),
+        rows: this.rows(),
+        treasures: this.xpMode() === XpMode.GOLD ? this.knownTreasures() : undefined,
+        treasuresTotal: this.treasuresTotal(),
+      },
+      false,
+    ).subscribe((result) => {
       if (!result) {
         this.focusBack(opener);
         return;
@@ -202,7 +227,9 @@ export class XpGiveButton {
     });
   }
 
-  protected openTownSheet(back: ElementRef<HTMLButtonElement> | undefined = this.townButton()): void {
+  protected openTownSheet(
+    back: ElementRef<HTMLButtonElement> | undefined = this.townButton(),
+  ): void {
     openTown(this.dialog, this.bottomSheet, {
       campaignId: this.campaignId(),
       xpMode: this.xpMode(),
@@ -219,11 +246,16 @@ export class XpGiveButton {
 
   protected openMark(): void {
     const opener = this.markButton();
-    openMilestone(this.dialog, this.bottomSheet, {
-      campaignId: this.campaignId(),
-      campaignName: this.campaignName(),
-      rows: this.rows(),
-    }, false).subscribe((award) => {
+    openMilestone(
+      this.dialog,
+      this.bottomSheet,
+      {
+        campaignId: this.campaignId(),
+        campaignName: this.campaignName(),
+        rows: this.rows(),
+      },
+      false,
+    ).subscribe((award) => {
       if (award) {
         this.given.emit({ kind: 'milestone', award });
       }

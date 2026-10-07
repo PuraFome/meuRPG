@@ -110,7 +110,9 @@ export class PickList {
   readonly removed = output<string>();
 
   protected readonly noteId = `fn-p${nextId++}`;
-  protected readonly available = computed(() => this.options().filter((o) => !this.values().includes(o.value)));
+  protected readonly available = computed(() =>
+    this.options().filter((o) => !this.values().includes(o.value)),
+  );
 
   protected nameOf(key: string): string {
     return this.options().find((o) => o.value === key)?.label ?? key;

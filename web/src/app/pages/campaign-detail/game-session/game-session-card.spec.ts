@@ -5,7 +5,11 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import { OpenSessions } from '../../../shell/live-notice/open-sessions';
 import { GameSessionCard } from './game-session-card';
-import { GameSessionSource, GameSessionVm, StartGameSessionResultVm } from './game-session-card.types';
+import {
+  GameSessionSource,
+  GameSessionVm,
+  StartGameSessionResultVm,
+} from './game-session-card.types';
 
 @Injectable()
 class FakeGameSessionSource {

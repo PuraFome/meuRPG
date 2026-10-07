@@ -14,16 +14,36 @@ import { ProgressionClient } from '../../core/progression/progression-client';
 import { XpChanges } from '../../core/progression/xp-changes';
 import { PuzzlesClient } from '../../core/puzzles/puzzles-client';
 import { SceneChecks } from '../../core/maps/scene-actions';
-import { FakePuzzlesClient, fakeChecks, lightsPuzzle, masterRun, playerRun } from '../../core/puzzles/puzzles-testing';
+import {
+  FakePuzzlesClient,
+  fakeChecks,
+  lightsPuzzle,
+  masterRun,
+  playerRun,
+} from '../../core/puzzles/puzzles-testing';
 import { PuzzleRunStatus } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { create } from '@bufbuild/protobuf';
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { CharacterExperienceSchema, GetCampaignExperienceResponseSchema } from '../../../gen/meurpg/progression/v1/progression_pb';
-import { FakeMapsClient, mapMessage, mapPoint, mapResponse, mapToken } from '../../core/maps/maps-testing';
+import {
+  CharacterExperienceSchema,
+  GetCampaignExperienceResponseSchema,
+} from '../../../gen/meurpg/progression/v1/progression_pb';
+import {
+  FakeMapsClient,
+  mapMessage,
+  mapPoint,
+  mapResponse,
+  mapToken,
+} from '../../core/maps/maps-testing';
 import { SceneClient } from '../../core/play/scene-client';
 import { SessionSummaryClient } from '../../core/play/session-summary';
 import { SessionSummarySchema } from '../../../gen/meurpg/play/v1/summary_pb';
-import { FakeSceneClient, masterScene, playerScene, sceneRoll } from '../../core/play/scene-testing';
+import {
+  FakeSceneClient,
+  masterScene,
+  playerScene,
+  sceneRoll,
+} from '../../core/play/scene-testing';
 import { SceneActionSchema } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { OpenSessions } from '../../shell/live-notice/open-sessions';
 import { LiveSession } from './live-session';
@@ -48,7 +68,13 @@ class KindError extends Error {
 /** A `LiveSessionSource` whose stream the test feeds by hand. */
 @Injectable()
 class FakeLiveSessionSource implements LiveSessionSource {
-  campaign: CampaignInfoVm | Error = { name: 'Mirathel', isMaster: false, awaitingApproval: false, diceMode: 1, dicePreference: 1 };
+  campaign: CampaignInfoVm | Error = {
+    name: 'Mirathel',
+    isMaster: false,
+    awaitingApproval: false,
+    diceMode: 1,
+    dicePreference: 1,
+  };
   snapshot: LiveSnapshotVm | Error = {
     session: { sessionId: 's4', sessionNumber: 4, startedAt: new Date(2026, 8, 30, 20, 5) },
     vitals: [pensantusVitals()],
@@ -56,7 +82,11 @@ class FakeLiveSessionSource implements LiveSessionSource {
     shownImage: null,
     shownImageKeep: false,
   };
-  sheet: PlayerSheetVm = { armorClass: 14, summary: 'Mago 3, Gnomo das Rochas', senses: ['Visão no escuro: 18 m'] };
+  sheet: PlayerSheetVm = {
+    armorClass: 14,
+    summary: 'Mago 3, Gnomo das Rochas',
+    senses: ['Visão no escuro: 18 m'],
+  };
   party = new Map<string, PartyMemberInfoVm>([
     ['pensantus', { classSummary: 'Mago 3', playerName: 'Vinicius' }],
     ['brisa', { classSummary: 'Ladina 3', playerName: 'Ana' }],
@@ -150,7 +180,15 @@ describe('LiveSession', () => {
     xpExperience.mockReset().mockResolvedValue(
       create(GetCampaignExperienceResponseSchema, {
         xpMode: XpMode.ENEMIES,
-        characters: [create(CharacterExperienceSchema, { characterId: 'pensantus', name: 'Pensantus', level: 3, experiencePoints: 2600, nextLevelXp: 2700 })],
+        characters: [
+          create(CharacterExperienceSchema, {
+            characterId: 'pensantus',
+            name: 'Pensantus',
+            level: 3,
+            experiencePoints: 2600,
+            nextLevelXp: 2700,
+          }),
+        ],
       }),
     );
     signIn.mockClear();
@@ -166,8 +204,19 @@ describe('LiveSession', () => {
         provideRouter([]),
         { provide: LiveSessionSource, useClass: FakeLiveSessionSource },
         { provide: MapsClient, useClass: FakeMapsClient },
-        { provide: LightPresets, useValue: { list: () => Promise.resolve([{ key: 'light:torch', name: 'Tocha', radii: '6 m claro + 6 m de penumbra' }]) } },
-        { provide: FamiliarEyesClient, useValue: { name: () => Promise.resolve('Nanquim'), start: vi.fn(), stop: vi.fn() } },
+        {
+          provide: LightPresets,
+          useValue: {
+            list: () =>
+              Promise.resolve([
+                { key: 'light:torch', name: 'Tocha', radii: '6 m claro + 6 m de penumbra' },
+              ]),
+          },
+        },
+        {
+          provide: FamiliarEyesClient,
+          useValue: { name: () => Promise.resolve('Nanquim'), start: vi.fn(), stop: vi.fn() },
+        },
         { provide: ProgressionClient, useValue: { experience: xpExperience, listAwards: vi.fn() } },
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
         { provide: SceneClient, useValue: scenes },
@@ -178,7 +227,10 @@ describe('LiveSession', () => {
         { provide: OpenSessions, useValue: openSessions },
         {
           provide: ActivatedRoute,
-          useValue: { paramMap: new BehaviorSubject(convertToParamMap({ id: 'mirathel' })), queryParamMap: query },
+          useValue: {
+            paramMap: new BehaviorSubject(convertToParamMap({ id: 'mirathel' })),
+            queryParamMap: query,
+          },
         },
       ],
     });
@@ -225,7 +277,13 @@ describe('LiveSession', () => {
 
   describe('XP (MR-016)', () => {
     const asMaster = () => {
-      source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false, diceMode: 1, dicePreference: 1 };
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: true,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
     };
 
     it('gives the master "Dar XP" in the party panel', async () => {
@@ -237,7 +295,9 @@ describe('LiveSession', () => {
 
     it('says "Registrar marco" instead in a campaign that levels by milestones', async () => {
       asMaster();
-      xpExperience.mockResolvedValue(create(GetCampaignExperienceResponseSchema, { xpMode: XpMode.MILESTONES, characters: [] }));
+      xpExperience.mockResolvedValue(
+        create(GetCampaignExperienceResponseSchema, { xpMode: XpMode.MILESTONES, characters: [] }),
+      );
       const el = await render();
       expect(button(el, 'Registrar marco')).toBeTruthy();
       expect(button(el, 'Dar XP')).toBeUndefined();
@@ -270,8 +330,12 @@ describe('LiveSession', () => {
     it('tells a player the master showed a puzzle, with the way in, above the board', async () => {
       puzzles.shownResult = [summary(selo)];
       const el = await render();
-      expect(el.querySelector('app-puzzle-notice')?.textContent).toContain('O mestre mostrou um quebra-cabeça');
-      expect(el.querySelector('app-puzzle-notice a')?.textContent).toContain('Abrir o quebra-cabeça');
+      expect(el.querySelector('app-puzzle-notice')?.textContent).toContain(
+        'O mestre mostrou um quebra-cabeça',
+      );
+      expect(el.querySelector('app-puzzle-notice a')?.textContent).toContain(
+        'Abrir o quebra-cabeça',
+      );
       expect(el.querySelector('app-master-puzzles')).toBeNull();
     });
 
@@ -290,38 +354,59 @@ describe('LiveSession', () => {
       expect(el.querySelector('app-puzzle-notice section')).not.toBeNull();
     });
 
-    it('opens the puzzle in the board\'s place when the address names it, with the way back to the session', async () => {
+    it("opens the puzzle in the board's place when the address names it, with the way back to the session", async () => {
       puzzles.shownResult = [summary(selo)];
       puzzles.playerRunResult = playerRun(selo, { clue: 'Só o selo apagado abre o caminho.' });
-      query.next(convertToParamMap({ 'puzzle': 'a' }));
+      query.next(convertToParamMap({ puzzle: 'a' }));
       const el = await render();
       expect(el.querySelector('app-puzzle-play h1')?.textContent).toBe('O selo da Capela');
-      expect(el.querySelector('app-puzzle-play a.back')?.textContent).toContain('Voltar para a sessão');
+      expect(el.querySelector('app-puzzle-play a.back')?.textContent).toContain(
+        'Voltar para a sessão',
+      );
       // The session's own header and board are not drawn under it.
       expect(el.querySelector('app-session-header')).toBeNull();
       expect(el.querySelector('app-puzzle-notice')).toBeNull();
       // The session's own notices stay above the puzzle.
-      expect(el.querySelector('app-puzzle-play')?.previousElementSibling?.tagName.toLowerCase()).toBeDefined();
+      expect(
+        el.querySelector('app-puzzle-play')?.previousElementSibling?.tagName.toLowerCase(),
+      ).toBeDefined();
       expect(el.querySelector('app-live-toast')).not.toBeNull();
       expect(el.querySelector('app-clue-notice')).not.toBeNull();
     });
 
     it('gives the master the panel with each puzzle and where it stands, and a live card for the shown one', async () => {
-      source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false, diceMode: 1, dicePreference: 1 };
-      puzzles.sessionResult = [masterRun(selo, PuzzleRunStatus.SHOWN), masterRun(lightsPuzzle('b', 'O cofre'), PuzzleRunStatus.NOT_SHOWN)];
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: true,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
+      puzzles.sessionResult = [
+        masterRun(selo, PuzzleRunStatus.SHOWN),
+        masterRun(lightsPuzzle('b', 'O cofre'), PuzzleRunStatus.NOT_SHOWN),
+      ];
       const el = await render();
       const panel = el.querySelector('app-master-puzzles')!;
       expect(panel.textContent).toContain('O selo da Capela');
       expect(panel.textContent).toContain('Mostrar aos jogadores');
       // The live card is in the main column, not in the rail: one at a time, the shown one chosen.
       expect(panel.querySelector('app-master-run')).toBeNull();
-      expect(el.querySelector('.board__left app-master-live app-master-run h3')?.textContent).toBe('O selo da Capela');
+      expect(el.querySelector('.board__left app-master-live app-master-run h3')?.textContent).toBe(
+        'O selo da Capela',
+      );
       // A master never gets the player's way in.
       expect(el.querySelector('app-puzzle-notice')).toBeNull();
     });
 
     it('leaves the board without a puzzle panel when the campaign has no puzzles', async () => {
-      source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false, diceMode: 1, dicePreference: 1 };
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: true,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
       const el = await render();
       expect(el.querySelector('app-master-puzzles')).toBeNull();
     });
@@ -337,7 +422,13 @@ describe('LiveSession', () => {
   });
 
   it('shows the master the party with "Ajustar" per character, and the session link (E5-04)', async () => {
-    source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false, diceMode: 1, dicePreference: 1 };
+    source.campaign = {
+      name: 'Mirathel',
+      isMaster: true,
+      awaitingApproval: false,
+      diceMode: 1,
+      dicePreference: 1,
+    };
     source.snapshot = {
       session: { sessionId: 's4', sessionNumber: 4, startedAt: new Date(2026, 8, 30, 20, 5) },
       vitals: [pensantusVitals(), brisaVitals()],
@@ -367,7 +458,13 @@ describe('LiveSession', () => {
   });
 
   it('says the same to a pending member (RN-15)', async () => {
-    source.campaign = { name: 'Mirathel', isMaster: false, awaitingApproval: true, diceMode: 1, dicePreference: 1 };
+    source.campaign = {
+      name: 'Mirathel',
+      isMaster: false,
+      awaitingApproval: true,
+      diceMode: 1,
+      dicePreference: 1,
+    };
     const el = await render();
     expect(el.querySelector('h1')?.textContent).toContain('Peça um convite ao mestre');
     expect(el.textContent).not.toContain('Mirathel');
@@ -395,7 +492,9 @@ describe('LiveSession', () => {
   });
 
   it('reads the summary of the session that ended and shows the player the card "A sessão acabou" (MR-032)', async () => {
-    summary.mockResolvedValue(create(SessionSummarySchema, { duration: { seconds: 3600n, nanos: 0 } }));
+    summary.mockResolvedValue(
+      create(SessionSummarySchema, { duration: { seconds: 3600n, nanos: 0 } }),
+    );
     const fixture = TestBed.createComponent(LiveSession);
     const el = await settle(fixture);
     source.push({ kind: 'ended' });
@@ -406,8 +505,21 @@ describe('LiveSession', () => {
   });
 
   it('lands the master on "Sessão encerrada" after confirming the end (MR-032)', async () => {
-    source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false, diceMode: 1, dicePreference: 1 };
-    summary.mockResolvedValue(create(SessionSummarySchema, { combats: 1, scenesOpened: 3, checksPassed: 9, checksTried: 12 }));
+    source.campaign = {
+      name: 'Mirathel',
+      isMaster: true,
+      awaitingApproval: false,
+      diceMode: 1,
+      dicePreference: 1,
+    };
+    summary.mockResolvedValue(
+      create(SessionSummarySchema, {
+        combats: 1,
+        scenesOpened: 3,
+        checksPassed: 9,
+        checksTried: 12,
+      }),
+    );
     const fixture = TestBed.createComponent(LiveSession);
     const el = await settle(fixture);
     button(el, 'Encerrar sessão').click();
@@ -415,13 +527,21 @@ describe('LiveSession', () => {
     button(el, 'Confirmar encerramento').click();
     await settle(fixture);
     expect(el.querySelector('#se-title')?.textContent).toBe('Sessão encerrada');
-    expect(Array.from(el.querySelectorAll('.stat dd'), (d) => d.textContent?.replace(/\u00a0/g, ' '))).toEqual(['menos de 1 min', '1', '3', '9 de 12']);
+    expect(
+      Array.from(el.querySelectorAll('.stat dd'), (d) => d.textContent?.replace(/\u00a0/g, ' ')),
+    ).toEqual(['menos de 1 min', '1', '3', '9 de 12']);
     expect(el.querySelectorAll('button')).toHaveLength(0);
     expect(el.querySelector('.end__leave')?.textContent).toContain('Voltar à campanha');
   });
 
   it('the master ends the session after confirming in place', async () => {
-    source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false, diceMode: 1, dicePreference: 1 };
+    source.campaign = {
+      name: 'Mirathel',
+      isMaster: true,
+      awaitingApproval: false,
+      diceMode: 1,
+      dicePreference: 1,
+    };
     const fixture = TestBed.createComponent(LiveSession);
     const el = await settle(fixture);
 
@@ -480,9 +600,13 @@ describe('LiveSession', () => {
 
     it('draws the current map from the snapshot, with the party and a link to the full map', async () => {
       const el = await render();
-      expect(el.querySelector('#session-map-heading')?.textContent).toContain('Mirathel e arredores');
+      expect(el.querySelector('#session-map-heading')?.textContent).toContain(
+        'Mirathel e arredores',
+      );
       expect(maps.calls).toContain('get map-1');
-      expect(el.querySelector('[role="img"][aria-label="Prévia do mapa Mirathel e arredores"]')).not.toBeNull();
+      expect(
+        el.querySelector('[role="img"][aria-label="Prévia do mapa Mirathel e arredores"]'),
+      ).not.toBeNull();
       expect(el.textContent).toContain('Pensantus');
       expect(el.textContent).toContain('(você)');
       expect(el.textContent).toContain('Ver mapa');
@@ -492,7 +616,13 @@ describe('LiveSession', () => {
     it('moves a token from the stream without reading the map again', async () => {
       const el = await render();
       const gets = maps.calls.filter((c) => c.startsWith('get')).length;
-      source.push({ kind: 'tokenMoved', mapId: 'map-1', characterId: 'pensantus', xBp: 6200, yBp: 5400 });
+      source.push({
+        kind: 'tokenMoved',
+        mapId: 'map-1',
+        characterId: 'pensantus',
+        xBp: 6200,
+        yBp: 5400,
+      });
       await new Promise((r) => setTimeout(r));
       TestBed.inject(ApplicationRef).tick();
       expect(el.querySelector('app-map-token')?.getAttribute('style')).toContain('left: 62%');
@@ -530,13 +660,21 @@ describe('LiveSession', () => {
     it('shows the player the image on show, announces it, and takes it away when it stops', async () => {
       const el = await render();
       expect(el.textContent).not.toContain('O mestre está mostrando');
-      const image = { id: 'img-1', name: 'Capitão Goblin', width: 400, height: 500, url: '/images/img-1' };
+      const image = {
+        id: 'img-1',
+        name: 'Capitão Goblin',
+        width: 400,
+        height: 500,
+        url: '/images/img-1',
+      };
       source.push({ kind: 'shownImage', image });
       await new Promise((r) => setTimeout(r));
       TestBed.inject(ApplicationRef).tick();
       expect(el.querySelector('#shown-title')?.textContent).toContain('O mestre está mostrando');
       expect(el.querySelector('.block__name')?.textContent).toContain('Capitão Goblin');
-      expect(el.querySelector('img[alt="Capitão Goblin"]')?.getAttribute('src')).toBe('/images/img-1');
+      expect(el.querySelector('img[alt="Capitão Goblin"]')?.getAttribute('src')).toBe(
+        '/images/img-1',
+      );
       expect(el.querySelector('[role="status"]:not(.status)')).not.toBeNull();
       expect(el.textContent).toContain('O mestre está mostrando Capitão Goblin.');
 
@@ -547,14 +685,24 @@ describe('LiveSession', () => {
     });
 
     it('shows the player the images the master left, live, with no announcement (E6-25b)', async () => {
-      const tower = { id: 'img-2', name: 'Planta da torre', width: 800, height: 600, url: '/images/img-2' };
+      const tower = {
+        id: 'img-2',
+        name: 'Planta da torre',
+        width: 800,
+        height: 600,
+        url: '/images/img-2',
+      };
       source.left = [tower];
       const el = await render();
       expect(el.querySelector('#left-title')).not.toBeNull();
       expect(el.querySelector('.row__name')?.textContent).toContain('Planta da torre');
       expect(el.querySelector('.row__thumb')?.getAttribute('src')).toBe('/images/img-2/thumb');
-      expect(el.querySelector('button[aria-label="Ver Planta da torre em tela cheia"]')).not.toBeNull();
-      expect(el.querySelector('.block__note')?.textContent).toContain('Ficam aqui até o mestre tirar.');
+      expect(
+        el.querySelector('button[aria-label="Ver Planta da torre em tela cheia"]'),
+      ).not.toBeNull();
+      expect(el.querySelector('.block__note')?.textContent).toContain(
+        'Ficam aqui até o mestre tirar.',
+      );
 
       source.left = [];
       source.push({ kind: 'leftImages' });
@@ -619,11 +767,9 @@ describe('LiveSession', () => {
       scenes.scene = playerScene();
       const el = await render();
       expect(el.querySelectorAll('.sc__roll')).toHaveLength(5);
-      scenes.scene = playerScene(
-        [sceneRoll('r1', 'a1', 'Pensantus', 17)],
-        [],
-        { actions: playerScene().actions.map((a) => (a.id === 'a1' ? { ...a, attemptsLeft: 0 } : a)) },
-      );
+      scenes.scene = playerScene([sceneRoll('r1', 'a1', 'Pensantus', 17)], [], {
+        actions: playerScene().actions.map((a) => (a.id === 'a1' ? { ...a, attemptsLeft: 0 } : a)),
+      });
       source.push({ kind: 'sceneCheckRolled' });
       await tick();
       await tick();
@@ -633,7 +779,13 @@ describe('LiveSession', () => {
 
     describe('the master', () => {
       beforeEach(() => {
-        source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false, diceMode: 1, dicePreference: 1 };
+        source.campaign = {
+          name: 'Mirathel',
+          isMaster: true,
+          awaitingApproval: false,
+          diceMode: 1,
+          dicePreference: 1,
+        };
         source.snapshot = {
           session: { sessionId: 's4', sessionNumber: 4, startedAt: new Date(2026, 8, 30, 20, 5) },
           vitals: [pensantusVitals(), brisaVitals()],
@@ -644,7 +796,9 @@ describe('LiveSession', () => {
         const maps = TestBed.inject(MapsClient) as unknown as FakeMapsClient;
         maps.responses.set(
           'map-1',
-          mapResponse(mapMessage('map-1', 'Estrada do Vale', { revealed: true, current: true }), [mapPoint('p1', 'A carroça tombada')]),
+          mapResponse(mapMessage('map-1', 'Estrada do Vale', { revealed: true, current: true }), [
+            mapPoint('p1', 'A carroça tombada'),
+          ]),
         );
       });
 
@@ -685,7 +839,10 @@ describe('LiveSession', () => {
         maps.responses.set(
           'map-1',
           mapResponse(mapMessage('map-1', 'Estrada do Vale', { revealed: true, current: true }), [
-            mapPoint('p1', 'A carroça tombada', { revealed: true, sceneActions: [create(SceneActionSchema, { id: 'a1', key: 'skill:arcana' })] }),
+            mapPoint('p1', 'A carroça tombada', {
+              revealed: true,
+              sceneActions: [create(SceneActionSchema, { id: 'a1', key: 'skill:arcana' })],
+            }),
           ]),
         );
         scenes.scene = masterScene();
@@ -696,7 +853,9 @@ describe('LiveSession', () => {
         source.push({ kind: 'sceneChanged' });
         await tick();
         await tick();
-        const open = el.querySelector<HTMLButtonElement>('button[aria-label="Abrir cena A carroça tombada"]')!;
+        const open = el.querySelector<HTMLButtonElement>(
+          'button[aria-label="Abrir cena A carroça tombada"]',
+        )!;
         scenes.scene = masterScene();
         open.click();
         await tick();
@@ -725,7 +884,12 @@ describe('LiveSession', () => {
       await new Promise((r) => setTimeout(r));
       TestBed.inject(ApplicationRef).tick();
     };
-    const tile = (tx: number, ty: number, revision: number) => ({ $typeName: 'meurpg.maps.v1.MapTile' as const, tx, ty, revision });
+    const tile = (tx: number, ty: number, revision: number) => ({
+      $typeName: 'meurpg.maps.v1.MapTile' as const,
+      tx,
+      ty,
+      revision,
+    });
 
     beforeEach(() => {
       maps = TestBed.inject(MapsClient) as unknown as FakeMapsClient;
@@ -736,12 +900,37 @@ describe('LiveSession', () => {
         gridColumns: 4,
         gridRows: 4,
         // A player gets no picture of a fog map: only its size.
-        image: { $typeName: 'meurpg.maps.v1.MapImage', id: '', url: '', thumbnailUrl: '', width: 960, height: 640, name: '' },
+        image: {
+          $typeName: 'meurpg.maps.v1.MapImage',
+          id: '',
+          url: '',
+          thumbnailUrl: '',
+          width: 960,
+          height: 640,
+          name: '',
+        },
         imageWithheld: true,
       });
       maps.maps = [map];
-      maps.responses.set('map-1', mapResponse(map, [], [mapToken('pensantus', 'Pensantus', { mine: true, xBp: 1250, yBp: 6250 }), mapToken('brisa', 'Brisa', { xBp: 3750, yBp: 6250 })]));
-      maps.visions.set('', visionResponse(['....', 'gBd.', '..r.', '....'], { tilesPath: '/images/maps/map-1/tiles/', tileSquares: 16, tiles: [tile(0, 0, 4)] }));
+      maps.responses.set(
+        'map-1',
+        mapResponse(
+          map,
+          [],
+          [
+            mapToken('pensantus', 'Pensantus', { mine: true, xBp: 1250, yBp: 6250 }),
+            mapToken('brisa', 'Brisa', { xBp: 3750, yBp: 6250 }),
+          ],
+        ),
+      );
+      maps.visions.set(
+        '',
+        visionResponse(['....', 'gBd.', '..r.', '....'], {
+          tilesPath: '/images/maps/map-1/tiles/',
+          tileSquares: 16,
+          tiles: [tile(0, 0, 4)],
+        }),
+      );
       source.snapshot = { ...(source.snapshot as LiveSnapshotVm), currentMapId: 'map-1' };
     });
 
@@ -769,14 +958,20 @@ describe('LiveSession', () => {
 
     it('offers the player the row "Luz que você carrega" for their own character', async () => {
       const el = await render();
-      expect(textOf(el.querySelector('app-carried-light'))).toBe('lightbulb Luz que você carrega Nenhuma Mudar');
+      expect(textOf(el.querySelector('app-carried-light'))).toBe(
+        'lightbulb Luz que você carrega Nenhuma Mudar',
+      );
     });
 
     it('reads the vision and the map again on vision_changed, and only for the current map', async () => {
       await render();
       const reads = () => maps.calls.filter((c) => c.startsWith('vision map-1 ')).length;
       const gets = () => maps.calls.filter((c) => c.startsWith('get map-1')).length;
-      const before = { reads: reads(), gets: gets(), layers: maps.calls.filter((c) => c.startsWith('layers map-1 ')).length };
+      const before = {
+        reads: reads(),
+        gets: gets(),
+        layers: maps.calls.filter((c) => c.startsWith('layers map-1 ')).length,
+      };
       source.push({ kind: 'visionChanged', mapId: 'other-map' });
       await tick();
       expect(reads()).toBe(before.reads);
@@ -788,43 +983,91 @@ describe('LiveSession', () => {
       await tick();
       // Every hint costs one read of the vision (and the layers); a burst of them is one.
       expect(reads()).toBe(before.reads + 1);
-      expect(maps.calls.filter((c) => c.startsWith('layers map-1 ')).length).toBe(before.layers + 1);
+      expect(maps.calls.filter((c) => c.startsWith('layers map-1 ')).length).toBe(
+        before.layers + 1,
+      );
       expect(gets()).toBe(before.gets + 2);
     });
 
     it('says in words that the character is not on the map', async () => {
-      maps.visions.set('', visionResponse(['....', '..r.', '....', '....'], { characterOnMap: false }));
+      maps.visions.set(
+        '',
+        visionResponse(['....', '..r.', '....', '....'], { characterOnMap: false }),
+      );
       const el = await render();
-      expect(textOf(el.querySelector('[data-testid="fog-off-map"]'))).toContain('Seu personagem não está neste mapa.');
+      expect(textOf(el.querySelector('[data-testid="fog-off-map"]'))).toContain(
+        'Seu personagem não está neste mapa.',
+      );
     });
 
     it('keeps a map without fog as it was: the preview, with the image', async () => {
       const plain = mapMessage('map-1', 'Mirathel e arredores', { revealed: true, current: true });
-      maps.responses.set('map-1', mapResponse(plain, [], [mapToken('pensantus', 'Pensantus', { mine: true })]));
+      maps.responses.set(
+        'map-1',
+        mapResponse(plain, [], [mapToken('pensantus', 'Pensantus', { mine: true })]),
+      );
       const el = await render();
       expect(el.querySelector('app-fog-map')).toBeNull();
       expect(maps.calls.some((c) => c.startsWith('vision'))).toBe(false);
-      expect(el.querySelector('[role="img"][aria-label="Prévia do mapa Mirathel e arredores"]')).not.toBeNull();
+      expect(
+        el.querySelector('[role="img"][aria-label="Prévia do mapa Mirathel e arredores"]'),
+      ).not.toBeNull();
     });
 
-    it('shows the band while the player looks through the familiar\'s eyes, with its name and the way back', async () => {
+    it("shows the band while the player looks through the familiar's eyes, with its name and the way back", async () => {
       source.snapshot = {
         ...(source.snapshot as LiveSnapshotVm),
         vitals: [pensantusVitals({ familiarSight: { creatureId: 'nanquim', inCombat: false } })],
       };
       const el = await render();
-      expect(textOf(el.querySelector('[data-testid="familiar-band"]'))).toBe('visibility Você está vendo pelos olhos do Nanquim. Pensantus está cego e surdo.');
+      expect(textOf(el.querySelector('[data-testid="familiar-band"]'))).toBe(
+        'visibility Você está vendo pelos olhos do Nanquim. Pensantus está cego e surdo.',
+      );
       expect(button(el, 'Voltar aos seus olhos')).toBeTruthy();
     });
 
     describe('the master', () => {
       beforeEach(() => {
-        source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false, diceMode: 1, dicePreference: 1 };
-        source.snapshot = { ...(source.snapshot as LiveSnapshotVm), vitals: [pensantusVitals(), brisaVitals()] };
-        maps.responses.set('map-1', mapResponse(maps.maps[0], [], [mapToken('pensantus', 'Pensantus'), mapToken('brisa', 'Brisa'), mapToken('goblin', 'Goblin 1', { kind: 3 })]));
-        maps.responses.set('map-1@brisa', mapResponse(maps.maps[0], [], [mapToken('pensantus', 'Pensantus'), mapToken('brisa', 'Brisa', { mine: true })]));
+        source.campaign = {
+          name: 'Mirathel',
+          isMaster: true,
+          awaitingApproval: false,
+          diceMode: 1,
+          dicePreference: 1,
+        };
+        source.snapshot = {
+          ...(source.snapshot as LiveSnapshotVm),
+          vitals: [pensantusVitals(), brisaVitals()],
+        };
+        maps.responses.set(
+          'map-1',
+          mapResponse(
+            maps.maps[0],
+            [],
+            [
+              mapToken('pensantus', 'Pensantus'),
+              mapToken('brisa', 'Brisa'),
+              mapToken('goblin', 'Goblin 1', { kind: 3 }),
+            ],
+          ),
+        );
+        maps.responses.set(
+          'map-1@brisa',
+          mapResponse(
+            maps.maps[0],
+            [],
+            [mapToken('pensantus', 'Pensantus'), mapToken('brisa', 'Brisa', { mine: true })],
+          ),
+        );
         maps.visions.set('pensantus', visionResponse(['BBBB', '....', '....', '....']));
-        maps.visions.set('brisa', visionResponse(['dd..', '....', '....', '....'], { tilesPath: '/images/maps/map-1/tiles/', tileSquares: 16, tiles: [tile(0, 0, 2)] }));
+        maps.visions.set(
+          'brisa',
+          visionResponse(['dd..', '....', '....', '....'], {
+            tilesPath: '/images/maps/map-1/tiles/',
+            tileSquares: 16,
+            tiles: [tile(0, 0, 2)],
+          }),
+        );
       });
 
       it('keeps his own map whole, and lists "Ver como" with the squares each character sees', async () => {
@@ -835,8 +1078,14 @@ describe('LiveSession', () => {
         expect(el.querySelector('app-fog-map')).not.toBeNull();
         expect(el.querySelector('app-fog-base img.fb__img')).not.toBeNull();
         expect(el.querySelector('app-view-as-map')).toBeNull();
-        const rows = Array.from(el.querySelectorAll('app-view-as-list [role="radio"]'), (r) => textOf(r));
-        expect(rows).toEqual(['Todos Sem névoa: o seu mapa de mestre', 'Pensantus Vinicius 4 quadrados vistos', 'Brisa Ana 2 quadrados vistos']);
+        const rows = Array.from(el.querySelectorAll('app-view-as-list [role="radio"]'), (r) =>
+          textOf(r),
+        );
+        expect(rows).toEqual([
+          'Todos Sem névoa: o seu mapa de mestre',
+          'Pensantus Vinicius 4 quadrados vistos',
+          'Brisa Ana 2 quadrados vistos',
+        ]);
         // Next to the map: the panel is the first block of the right column.
         expect(el.querySelector('.board__fog app-view-as-list')).not.toBeNull();
       });
@@ -845,27 +1094,37 @@ describe('LiveSession', () => {
         const el = await render();
         await new Promise((r) => setTimeout(r, 300));
         await tick();
-        (el.querySelector('app-view-as-list [data-character="brisa"]') as HTMLButtonElement).click();
+        (
+          el.querySelector('app-view-as-list [data-character="brisa"]') as HTMLButtonElement
+        ).click();
         await tick();
         await tick();
         await tick();
         expect(maps.calls).toContain('get map-1 brisa');
         expect(maps.calls).toContain('vision map-1 brisa');
         expect(maps.calls).toContain('layers map-1 brisa');
-        expect(textOf(el.querySelector('app-view-as-map .band'))).toBe('visibility Você está vendo o mapa como Brisa . Para voltar ao seu mapa, escolha “Todos”. Voltar ao seu mapa');
-        expect(el.querySelector('app-fog-base')?.querySelector('img')?.getAttribute('src')).toBe('/images/maps/map-1/tiles/0/0?r=2&as=brisa');
+        expect(textOf(el.querySelector('app-view-as-map .band'))).toBe(
+          'visibility Você está vendo o mapa como Brisa . Para voltar ao seu mapa, escolha “Todos”. Voltar ao seu mapa',
+        );
+        expect(el.querySelector('app-fog-base')?.querySelector('img')?.getAttribute('src')).toBe(
+          '/images/maps/map-1/tiles/0/0?r=2&as=brisa',
+        );
         expect(el.querySelector('app-map-view [data-item]')).toBeNull();
 
         // "Voltar ao seu mapa" is the way back; so is choosing "Todos".
         (el.querySelector('app-view-as-map .band__back') as HTMLButtonElement).click();
         await tick();
         expect(el.querySelector('app-view-as-map')).toBeNull();
-        expect(el.querySelector('app-view-as-list [role="radio"][aria-checked="true"]')?.textContent).toContain('Todos');
+        expect(
+          el.querySelector('app-view-as-list [role="radio"][aria-checked="true"]')?.textContent,
+        ).toContain('Todos');
       });
 
       it('has "Luz dos personagens" with a select for each player character on the map', async () => {
         const el = await render();
-        expect(Array.from(el.querySelectorAll('app-light-panel .row__name'), (n) => textOf(n))).toEqual(['Pensantus', 'Brisa']);
+        expect(
+          Array.from(el.querySelectorAll('app-light-panel .row__name'), (n) => textOf(n)),
+        ).toEqual(['Pensantus', 'Brisa']);
       });
     });
   });

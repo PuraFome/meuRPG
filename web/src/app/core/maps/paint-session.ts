@@ -26,16 +26,26 @@ export class PaintSession {
   private lastRefused = 0;
 
   constructor(private readonly api: Pick<MapsClient, 'layers' | 'paint'>) {
-    this.queue = new PaintQueue((t, layer, value, squares) => this.api.paint(t.campaignId, t.mapId, layer, value, squares).then(() => undefined));
+    this.queue = new PaintQueue((t, layer, value, squares) =>
+      this.api.paint(t.campaignId, t.mapId, layer, value, squares).then(() => undefined),
+    );
   }
 
   /** Shows the painted layers of a map: a new map or a new grid starts again; the same key is a plain read only when forced. */
-  async open(campaignId: string, mapId: string, columns: number, revision: number, force = false): Promise<void> {
+  async open(
+    campaignId: string,
+    mapId: string,
+    columns: number,
+    revision: number,
+    force = false,
+  ): Promise<void> {
     const key = `${campaignId}|${mapId}|${columns}|${revision}`;
     if (!force && key === this.key) {
       return;
     }
-    const gridChanged = this.key !== '' && key.split('|').slice(0, 3).join('|') !== this.key.split('|').slice(0, 3).join('|');
+    const gridChanged =
+      this.key !== '' &&
+      key.split('|').slice(0, 3).join('|') !== this.key.split('|').slice(0, 3).join('|');
     this.key = key;
     if (gridChanged || columns <= 0) {
       // The strokes that wait belong to a grid that is gone.

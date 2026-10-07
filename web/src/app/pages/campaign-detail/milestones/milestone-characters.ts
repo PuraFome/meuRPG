@@ -47,5 +47,4 @@ export class MilestoneCharacters {
   readonly rows = input.required<readonly ExperienceRow[]>();
   /** Show "Abrir a ficha" on a row that can level up (the player's own). */
   readonly openable = input(false);
-
 }

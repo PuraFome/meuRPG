@@ -20,7 +20,15 @@ const damage = (extra = {}) =>
     roll: { diceCount: 2, diceSides: 6, faces: [3, 4], total: 7 },
     ...extra,
   });
-const VITALS = [{ characterId: 'ct', name: 'Toren', hitPointsCurrent: 40, hitPointsMax: 40, hitPointsTemporary: 0 } as VitalsVm];
+const VITALS = [
+  {
+    characterId: 'ct',
+    name: 'Toren',
+    hitPointsCurrent: 40,
+    hitPointsMax: 40,
+    hitPointsTemporary: 0,
+  } as VitalsVm,
+];
 
 describe('parseAmount', () => {
   it('takes a whole number from 0 to 1000', () => {
@@ -36,10 +44,18 @@ describe('TrapDamages', () => {
   function setup(d = damage()) {
     const calls: string[] = [];
     const traps = {
-      applyDamage: async (_c: string, id: string, amount?: number) => (calls.push(`apply ${id} ${amount}`), {}),
+      applyDamage: async (_c: string, id: string, amount?: number) => (
+        calls.push(`apply ${id} ${amount}`),
+        {}
+      ),
       discardDamage: async (_c: string, id: string) => (calls.push(`discard ${id}`), {}),
     };
-    TestBed.configureTestingModule({ providers: [{ provide: TrapsClient, useValue: traps }, { provide: CombatClient, useValue: {} }] });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: TrapsClient, useValue: traps },
+        { provide: CombatClient, useValue: {} },
+      ],
+    });
     const fixture = TestBed.createComponent(TrapDamages);
     fixture.componentRef.setInput('damages', [d]);
     fixture.componentRef.setInput('campaignId', 'c');
@@ -48,7 +64,8 @@ describe('TrapDamages', () => {
     fixture.componentInstance.settled.subscribe((id) => settled.push(id));
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    const button = (t: string) => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes(t))!;
+    const button = (t: string) =>
+      Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes(t))!;
     return { fixture, el, calls, settled, button };
   }
 
@@ -76,21 +93,34 @@ describe('TrapDamages', () => {
     expect(settled).toEqual(['d1']);
   });
 
-  it('in a combat applies and discards through the combat\'s own call, and the combat on screen reads the answer', async () => {
+  it("in a combat applies and discards through the combat's own call, and the combat on screen reads the answer", async () => {
     const calls: string[] = [];
     const applied: unknown[] = [];
     const combatApi = {
-      applyDamage: async (_c: string, enc: string, id: string, amount?: number) => (calls.push(`combat-apply ${enc} ${id} ${amount}`), { encounter: { id: 'enc' } }),
-      discardDamage: async (_c: string, enc: string, id: string) => (calls.push(`combat-discard ${enc} ${id}`), { encounter: { id: 'enc' } }),
+      applyDamage: async (_c: string, enc: string, id: string, amount?: number) => (
+        calls.push(`combat-apply ${enc} ${id} ${amount}`),
+        { encounter: { id: 'enc' } }
+      ),
+      discardDamage: async (_c: string, enc: string, id: string) => (
+        calls.push(`combat-discard ${enc} ${id}`),
+        { encounter: { id: 'enc' } }
+      ),
     };
-    TestBed.configureTestingModule({ providers: [{ provide: TrapsClient, useValue: {} }, { provide: CombatClient, useValue: combatApi }] });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: TrapsClient, useValue: {} },
+        { provide: CombatClient, useValue: combatApi },
+      ],
+    });
     const fixture = TestBed.createComponent(TrapDamages);
     fixture.componentRef.setInput('damages', [damage({ encounterId: 'enc' })]);
     fixture.componentRef.setInput('campaignId', 'c');
     fixture.componentRef.setInput('combat', { apply: (e: unknown) => applied.push(e) });
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Aplicar 7 de dano'))!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Aplicar 7 de dano'))!
+      .click();
     await fixture.whenStable();
     expect(calls).toEqual(['combat-apply enc d1 undefined']);
     expect(applied).toHaveLength(1);

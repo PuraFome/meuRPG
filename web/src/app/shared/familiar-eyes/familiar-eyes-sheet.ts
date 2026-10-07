@@ -20,13 +20,22 @@ export interface FamiliarEyesData {
 }
 
 /** Opens "Ver pelos olhos do ...?": a bottom sheet on a phone, a dialog from a tablet up. It answers `true` when the sight started. */
-export function openFamiliarEyes(dialog: MatDialog, bottomSheet: MatBottomSheet, data: FamiliarEyesData) {
-  return openSheet<FamiliarEyesSheet, FamiliarEyesData, boolean>(dialog, bottomSheet, FamiliarEyesSheet, {
-    data,
-    ariaLabel: `Ver pelos olhos do ${data.familiarName}?`,
-    labelledBy: 'sheet-t',
-    width: '480px',
-  });
+export function openFamiliarEyes(
+  dialog: MatDialog,
+  bottomSheet: MatBottomSheet,
+  data: FamiliarEyesData,
+) {
+  return openSheet<FamiliarEyesSheet, FamiliarEyesData, boolean>(
+    dialog,
+    bottomSheet,
+    FamiliarEyesSheet,
+    {
+      data,
+      ariaLabel: `Ver pelos olhos do ${data.familiarName}?`,
+      labelledBy: 'sheet-t',
+      width: '480px',
+    },
+  );
 }
 
 /**

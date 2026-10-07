@@ -4,7 +4,11 @@ import { describeConnectError } from '../connect/connect-errors';
 import { type LightOption, NO_LIGHT } from './light-presets';
 
 /** The lights a character carries (D6): a torch, a hooded lantern, the spell Luz. The other SRD sources (a candle, a lamp, Chama Contínua, Luz do Dia) are lights of the place, set by the master as points. */
-export const CARRIED_KEYS: readonly string[] = ['light:torch', 'light:hooded-lantern', 'light:light-spell'];
+export const CARRIED_KEYS: readonly string[] = [
+  'light:torch',
+  'light:hooded-lantern',
+  'light:light-spell',
+];
 
 /** The options of the sheet and of the master's select: the three, and whatever the character carries now if it is something else (set by another route), so the list never hides it. */
 export function carriedOptions(all: readonly LightOption[], current: string): LightOption[] {
@@ -25,7 +29,9 @@ export function litToast(option: LightOption | null): string {
 
 /** The master's line under his select: what the character carries, and how far it reaches. */
 export function carriedLine(name: string, option: LightOption | null): string {
-  return option === null ? `${name} não carrega luz.` : `${name} carrega ${option.name.toLocaleLowerCase('pt-BR')} (${option.radii}).`;
+  return option === null
+    ? `${name} não carrega luz.`
+    : `${name} carrega ${option.name.toLocaleLowerCase('pt-BR')} (${option.radii}).`;
 }
 
 export function carriedErrorMessage(err: unknown): string {

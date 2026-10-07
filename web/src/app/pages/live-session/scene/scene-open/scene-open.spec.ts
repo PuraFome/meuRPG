@@ -7,7 +7,11 @@ import { SceneState } from '../../../../core/play/scene-state';
 import { FakeSceneClient, masterScene, sceneRoll } from '../../../../core/play/scene-testing';
 import { SceneOpen } from './scene-open';
 
-const flat = (e: Element | null | undefined) => e?.textContent?.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const flat = (e: Element | null | undefined) =>
+  e?.textContent
+    ?.replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 describe('SceneOpen', () => {
   const toren = sceneRoll('r1', 'a2', 'Toren', 7, { passed: false });
@@ -21,10 +25,15 @@ describe('SceneOpen', () => {
 
   async function setup(scene = masterScene([toren, brisa, pens])) {
     const api = new FakeSceneClient();
-    const state = new SceneState(() => api.get(), () => true);
+    const state = new SceneState(
+      () => api.get(),
+      () => true,
+    );
     state.apply(scene);
     const mapState = new MapState(() =>
-      Promise.resolve(mapResponse(mapMessage('m1', 'Estrada do Vale'), [mapPoint('p1', 'A carroça tombada')])),
+      Promise.resolve(
+        mapResponse(mapMessage('m1', 'Estrada do Vale'), [mapPoint('p1', 'A carroça tombada')]),
+      ),
     );
     await mapState.open('m1');
     TestBed.configureTestingModule({ providers: [{ provide: SceneClient, useValue: api }] });
@@ -47,9 +56,15 @@ describe('SceneOpen', () => {
 
   it('lists the rolls newest first, each with its formula', async () => {
     const { el } = await setup();
-    expect(lines(el).map((l) => flat(l.querySelector('.rl__who')))).toEqual(['Toren', 'Brisa', 'Pensantus']);
+    expect(lines(el).map((l) => flat(l.querySelector('.rl__who')))).toEqual([
+      'Toren',
+      'Brisa',
+      'Pensantus',
+    ]);
     expect(lines(el).map((l) => flat(l.querySelector('.rl__formula')))).toEqual([
-      '1d20 (6) + 1 = 7', '14 + 3 = 17', '1d20 (11) + 6 = 17',
+      '1d20 (6) + 1 = 7',
+      '14 + 3 = 17',
+      '1d20 (11) + 6 = 17',
     ]);
     expect(flat(lines(el)[0].querySelector('.rl__time'))).toBe('21:14');
   });
@@ -64,7 +79,12 @@ describe('SceneOpen', () => {
     expect(noDc.querySelector('.mr-tag')).toBeNull();
     // The pill follows the formula in the DOM, in the same column.
     const body = failed.querySelector('.rl__body')!;
-    expect(Array.from(body.children).map((c) => c.className.split(' ')[0])).toEqual(['rl__top', 'rl__action', 'rl__formula', 'rl__line']);
+    expect(Array.from(body.children).map((c) => c.className.split(' ')[0])).toEqual([
+      'rl__top',
+      'rl__action',
+      'rl__formula',
+      'rl__line',
+    ]);
     // A typed die is named on the action line, not in the pill slot.
     expect(flat(noDc.querySelector('.rl__action'))).toBe('Percepção · dado físico');
   });
@@ -73,8 +93,18 @@ describe('SceneOpen', () => {
     const { el } = await setup();
     const items = Array.from(el.querySelectorAll('.so__action'));
     expect(items).toHaveLength(5);
-    expect(items.map((i) => flat(i.querySelector('.mr-tag')) ?? null)).toEqual(['CD 12', 'CD 13', null, null, 'CD 10']);
-    expect(Array.from(items[3].children, (c) => flat(c))).toEqual(['Percepção', 'Perícia', '3 tentativas por jogador']);
+    expect(items.map((i) => flat(i.querySelector('.mr-tag')) ?? null)).toEqual([
+      'CD 12',
+      'CD 13',
+      null,
+      null,
+      'CD 10',
+    ]);
+    expect(Array.from(items[3].children, (c) => flat(c))).toEqual([
+      'Percepção',
+      'Perícia',
+      '3 tentativas por jogador',
+    ]);
     expect(flat(el.querySelector('.so__hint'))).toBe('Chegam aqui na hora, a mais nova em cima');
   });
 
@@ -86,7 +116,9 @@ describe('SceneOpen', () => {
 
   it('closes the scene asking nothing, and hands focus to "Abrir cena"', async () => {
     const { fixture, api, state, el } = await setup();
-    const close = Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Fechar cena'))!;
+    const close = Array.from(el.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Fechar cena'),
+    )!;
     close.click();
     for (let i = 0; i < 3; i++) {
       await fixture.whenStable();
@@ -136,7 +168,9 @@ describe('SceneOpen', () => {
     it('says each action\'s limit: "1 tentativa por jogador", "3 tentativas por jogador", "Sem limite de tentativas"', async () => {
       const { el } = await setup();
       const items = Array.from(el.querySelectorAll('.so__action'));
-      expect(items.map((i) => flat(i.querySelector('.so__acheck:last-child, .so__dcline .so__acheck')))).toEqual([
+      expect(
+        items.map((i) => flat(i.querySelector('.so__acheck:last-child, .so__dcline .so__acheck'))),
+      ).toEqual([
         '1 tentativa por jogador',
         '1 tentativa por jogador',
         'Sem limite de tentativas',

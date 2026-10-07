@@ -11,8 +11,14 @@ export interface TreasureDraft {
   readonly valuePo: string;
 }
 
-export function treasureDraftOf(point: Pick<MapPoint, 'name' | 'description' | 'treasureValuePo'>): TreasureDraft {
-  return { name: point.name, description: point.description, valuePo: String(point.treasureValuePo) };
+export function treasureDraftOf(
+  point: Pick<MapPoint, 'name' | 'description' | 'treasureValuePo'>,
+): TreasureDraft {
+  return {
+    name: point.name,
+    description: point.description,
+    valuePo: String(point.treasureValuePo),
+  };
 }
 
 /** The value as a number: `.` or space as a thousands separator is ignored ("1.000" is 1000). */
@@ -54,12 +60,22 @@ export function hasTreasureErrors(e: TreasureErrors): boolean {
   return Object.keys(e).length > 0;
 }
 
-export function isTreasureDirty(d: TreasureDraft, point: Pick<MapPoint, 'name' | 'description' | 'treasureValuePo'>): boolean {
+export function isTreasureDirty(
+  d: TreasureDraft,
+  point: Pick<MapPoint, 'name' | 'description' | 'treasureValuePo'>,
+): boolean {
   const before = treasureDraftOf(point);
-  return d.name !== before.name || d.description !== before.description || parsePo(d.valuePo) !== point.treasureValuePo;
+  return (
+    d.name !== before.name ||
+    d.description !== before.description ||
+    parsePo(d.valuePo) !== point.treasureValuePo
+  );
 }
 
-export function treasureChangesOf(d: TreasureDraft, point: Pick<MapPoint, 'name' | 'description' | 'treasureValuePo'>): PointChanges | null {
+export function treasureChangesOf(
+  d: TreasureDraft,
+  point: Pick<MapPoint, 'name' | 'description' | 'treasureValuePo'>,
+): PointChanges | null {
   if (!isTreasureDirty(d, point)) {
     return null;
   }

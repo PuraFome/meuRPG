@@ -30,7 +30,9 @@ import type { MapRequest, SceneRequest, Started } from './imagegen-client';
  * each state, a map's reference with its NPCs, the typed refusals as the server sends them, and an `ImageGenClient` that remembers its calls
  * and answers what the test sets.
  */
-export function imageStatus(partial: MessageInitShape<typeof ImageGenerationStatusSchema> = {}): ImageGenerationStatus {
+export function imageStatus(
+  partial: MessageInitShape<typeof ImageGenerationStatusSchema> = {},
+): ImageGenerationStatus {
   return create(ImageGenerationStatusSchema, {
     enabled: true,
     monthlyLimit: 20,
@@ -46,7 +48,9 @@ export function imageStatus(partial: MessageInitShape<typeof ImageGenerationStat
   });
 }
 
-export function generation(partial: MessageInitShape<typeof ImageGenerationSchema> = {}): ImageGeneration {
+export function generation(
+  partial: MessageInitShape<typeof ImageGenerationSchema> = {},
+): ImageGeneration {
   return create(ImageGenerationSchema, {
     id: 'gen-1',
     campaignId: 'camp-1',
@@ -58,7 +62,9 @@ export function generation(partial: MessageInitShape<typeof ImageGenerationSchem
   });
 }
 
-export function reference(partial: MessageInitShape<typeof GetMapImageReferenceResponseSchema> = {}): GetMapImageReferenceResponse {
+export function reference(
+  partial: MessageInitShape<typeof GetMapImageReferenceResponseSchema> = {},
+): GetMapImageReferenceResponse {
   return create(GetMapImageReferenceResponseSchema, {
     // A one-pixel PNG: the app only turns the bytes into a data URL.
     preview: Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]),
@@ -73,9 +79,17 @@ export function reference(partial: MessageInitShape<typeof GetMapImageReferenceR
 }
 
 export const NPCS = [
-  create(MapImageCreatureSchema, { characterId: 'npc-capitao', name: 'Capitão Goblin', portraitImageId: 'img-capitao' }),
+  create(MapImageCreatureSchema, {
+    characterId: 'npc-capitao',
+    name: 'Capitão Goblin',
+    portraitImageId: 'img-capitao',
+  }),
   create(MapImageCreatureSchema, { characterId: 'npc-goblin1', name: 'Goblin 1' }),
-  create(MapImageCreatureSchema, { characterId: 'npc-vesna', name: 'Vesna, a capitã', portraitImageId: 'img-vesna' }),
+  create(MapImageCreatureSchema, {
+    characterId: 'npc-vesna',
+    name: 'Vesna, a capitã',
+    portraitImageId: 'img-vesna',
+  }),
 ];
 
 export function edit(image: GalleryImage, number: number, prompt = ''): ImageEdit {
@@ -83,27 +97,45 @@ export function edit(image: GalleryImage, number: number, prompt = ''): ImageEdi
 }
 
 /** The error the server sends for a refusal with a typed `ImageGenerationBlocked`. */
-export function blocked(reason: ImageGenerationBlockedReason, status: ImageGenerationStatus = imageStatus()): ConnectError {
+export function blocked(
+  reason: ImageGenerationBlockedReason,
+  status: ImageGenerationStatus = imageStatus(),
+): ConnectError {
   return new ConnectError('blocked', Code.FailedPrecondition, undefined, [
-    { desc: ImageGenerationBlockedSchema, value: create(ImageGenerationBlockedSchema, { reason, status }) },
+    {
+      desc: ImageGenerationBlockedSchema,
+      value: create(ImageGenerationBlockedSchema, { reason, status }),
+    },
   ]);
 }
 
 /** The error for a field that breaks a rule (`invalid_argument` with `ImageGenerationInvalidField`). */
 export function invalid(field: string): ConnectError {
   return new ConnectError('invalid', Code.InvalidArgument, undefined, [
-    { desc: ImageGenerationInvalidFieldSchema, value: create(ImageGenerationInvalidFieldSchema, { field }) },
+    {
+      desc: ImageGenerationInvalidFieldSchema,
+      value: create(ImageGenerationInvalidFieldSchema, { field }),
+    },
   ]);
 }
 
-export type FakeAsk = { readonly via: 'scene'; readonly request: SceneRequest } | { readonly via: 'map'; readonly request: MapRequest } | { readonly via: 'edit'; readonly imageId: string; readonly instruction: string };
+export type FakeAsk =
+  | { readonly via: 'scene'; readonly request: SceneRequest }
+  | { readonly via: 'map'; readonly request: MapRequest }
+  | { readonly via: 'edit'; readonly imageId: string; readonly instruction: string };
 
 /** An `ImageGenClient` stand-in. `started` answers the asking calls; `polls` are the answers of the long polls, in order (the last one repeats). */
 export class FakeImageGenClient {
   statusResult: ImageGenerationStatus | Error = imageStatus();
-  started: Started | Error = { generation: generation(), status: imageStatus({ usedThisMonth: 4, remaining: 16 }) };
+  started: Started | Error = {
+    generation: generation(),
+    status: imageStatus({ usedThisMonth: 4, remaining: 16 }),
+  };
   polls: (GetImageGenerationResponse | Error)[] = [];
-  cancelResult: Started | Error = { generation: generation({ state: ImageGenerationState.CANCELED, slotSpent: false }), status: imageStatus() };
+  cancelResult: Started | Error = {
+    generation: generation({ state: ImageGenerationState.CANCELED, slotSpent: false }),
+    status: imageStatus(),
+  };
   editsResult: ImageEdit[] = [];
   references = new Map<ImageGenerationKind, GetMapImageReferenceResponse | Error>();
   useResult: MapMessage | Error | null = null;
@@ -144,22 +176,41 @@ export class FakeImageGenClient {
     return started;
   }
 
-  async generateScene(_campaignId: string, request: SceneRequest, _signal?: AbortSignal): Promise<Started> {
+  async generateScene(
+    _campaignId: string,
+    request: SceneRequest,
+    _signal?: AbortSignal,
+  ): Promise<Started> {
     this.asks.push({ via: 'scene', request });
     return this.answer(request.idempotencyKey);
   }
 
-  async generateMap(_campaignId: string, request: MapRequest, _signal?: AbortSignal): Promise<Started> {
+  async generateMap(
+    _campaignId: string,
+    request: MapRequest,
+    _signal?: AbortSignal,
+  ): Promise<Started> {
     this.asks.push({ via: 'map', request });
     return this.answer(request.idempotencyKey);
   }
 
-  async edit(_campaignId: string, imageId: string, instruction: string, key = '', _signal?: AbortSignal): Promise<Started> {
+  async edit(
+    _campaignId: string,
+    imageId: string,
+    instruction: string,
+    key = '',
+    _signal?: AbortSignal,
+  ): Promise<Started> {
     this.asks.push({ via: 'edit', imageId, instruction });
     return this.answer(key);
   }
 
-  async poll(_campaignId: string, generationId: string, waitSeconds: number, signal?: AbortSignal): Promise<GetImageGenerationResponse> {
+  async poll(
+    _campaignId: string,
+    generationId: string,
+    waitSeconds: number,
+    signal?: AbortSignal,
+  ): Promise<GetImageGenerationResponse> {
     this.polled.push({ generationId, waitSeconds });
     if (this.hold && waitSeconds > 0) {
       await new Promise<void>((resolve, reject) => {
@@ -185,7 +236,11 @@ export class FakeImageGenClient {
     return this.editsResult;
   }
 
-  async reference(_campaignId: string, _mapId: string, kind: ImageGenerationKind): Promise<GetMapImageReferenceResponse> {
+  async reference(
+    _campaignId: string,
+    _mapId: string,
+    kind: ImageGenerationKind,
+  ): Promise<GetMapImageReferenceResponse> {
     this.referenced.push(kind);
     const res = this.references.get(kind) ?? reference();
     return unwrap(res);

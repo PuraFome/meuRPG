@@ -72,7 +72,9 @@ export function plural(n: number, one: string, many: string): string {
 }
 
 /** Whether the pillars turn their neighbours too (any link). */
-export function pillarsLinked(links: readonly { readonly alsoTurns: readonly number[] }[]): boolean {
+export function pillarsLinked(
+  links: readonly { readonly alsoTurns: readonly number[] }[],
+): boolean {
   return links.some((l) => l.alsoTurns.length > 0);
 }
 
@@ -83,18 +85,39 @@ export function puzzleSummary(puzzle: Puzzle): string {
     case 'lights':
       return joinDots([kindName(puzzle.kind), `${config.value.size} × ${config.value.size}`]);
     case 'lock':
-      return joinDots([kindName(puzzle.kind), `${plural(config.value.wheels, 'roda', 'rodas')} de ${alphabetWord(config.value.alphabet)}`]);
+      return joinDots([
+        kindName(puzzle.kind),
+        `${plural(config.value.wheels, 'roda', 'rodas')} de ${alphabetWord(config.value.alphabet)}`,
+      ]);
     case 'pillars':
       return joinDots([
         kindName(puzzle.kind),
         `${plural(config.value.pillars, 'pilar', 'pilares')}, ${pillarsLinked(config.value.links) ? 'girando juntos' : 'sem ligações'}`,
       ]);
     case 'riddle':
-      return joinDots([kindName(puzzle.kind), puzzle.solution?.kind.case === 'riddle' ? plural(puzzle.solution.kind.value.answers.length, 'resposta aceita', 'respostas aceitas') : '']);
+      return joinDots([
+        kindName(puzzle.kind),
+        puzzle.solution?.kind.case === 'riddle'
+          ? plural(
+              puzzle.solution.kind.value.answers.length,
+              'resposta aceita',
+              'respostas aceitas',
+            )
+          : '',
+      ]);
     case 'sequence':
-      return joinDots([kindName(puzzle.kind), `${plural(config.value.steps, 'passo', 'passos')}, ${plural(config.value.bells, 'sino', 'sinos')}`]);
+      return joinDots([
+        kindName(puzzle.kind),
+        `${plural(config.value.steps, 'passo', 'passos')}, ${plural(config.value.bells, 'sino', 'sinos')}`,
+      ]);
     case 'cipher':
-      return joinDots([kindName(puzzle.kind), puzzle.solution?.kind.case === 'cipher' && puzzle.solution.kind.value.method.case === 'keyword' ? 'palavra-chave' : 'deslocamento']);
+      return joinDots([
+        kindName(puzzle.kind),
+        puzzle.solution?.kind.case === 'cipher' &&
+        puzzle.solution.kind.value.method.case === 'keyword'
+          ? 'palavra-chave'
+          : 'deslocamento',
+      ]);
     default:
       return kindName(puzzle.kind);
   }
@@ -150,7 +173,10 @@ function wheelOrdinal(n: number): string {
 }
 
 /** Who made the last move and what they did: "Lia" and "tocou numa luz". `own` is the reader's own character: "Você". */
-export function lastMoveParts(last: PuzzleLastMove | undefined, own = ''): { readonly who: string; readonly what: string } | null {
+export function lastMoveParts(
+  last: PuzzleLastMove | undefined,
+  own = '',
+): { readonly who: string; readonly what: string } | null {
   if (!last) {
     return null;
   }
@@ -164,11 +190,22 @@ export function lastMoveParts(last: PuzzleLastMove | undefined, own = ''): { rea
       return { who, what: `girou o pilar ${last.move.kind.value.pillar + 1}` };
     // The master's own read keeps what was typed or struck; a player's never does (puzzles.proto, `PuzzleLastMove.move`).
     case 'riddle':
-      return { who, what: `${last.wrong ? 'tentou' : 'respondeu'} “${last.move.kind.value.answer}”: ${last.wrong ? 'errou' : 'acertou'}` };
+      return {
+        who,
+        what: `${last.wrong ? 'tentou' : 'respondeu'} “${last.move.kind.value.answer}”: ${last.wrong ? 'errou' : 'acertou'}`,
+      };
     case 'cipher':
-      return { who, what: `digitou “${last.move.kind.value.text}”: ${last.wrong ? 'errou' : 'acertou'}` };
+      return {
+        who,
+        what: `digitou “${last.move.kind.value.text}”: ${last.wrong ? 'errou' : 'acertou'}`,
+      };
     case 'sequence':
-      return { who, what: last.wrong ? `errou no passo ${last.step}. A tentativa recomeçou` : `acertou o passo ${last.step}` };
+      return {
+        who,
+        what: last.wrong
+          ? `errou no passo ${last.step}. A tentativa recomeçou`
+          : `acertou o passo ${last.step}`,
+      };
     default:
       return null;
   }
@@ -258,16 +295,34 @@ export function limitRows(run: PuzzleRun, now: Date): CounterRow[] {
   }
   const rows: CounterRow[] = [];
   if (limits.attemptsPerPlayer > 0) {
-    rows.push({ key: 'attempts', label: 'Suas tentativas', value: `${limits.attemptsLeft} de ${limits.attemptsPerPlayer}`, spent: limits.attemptsLeft <= 0 && !run.solved });
+    rows.push({
+      key: 'attempts',
+      label: 'Suas tentativas',
+      value: `${limits.attemptsLeft} de ${limits.attemptsPerPlayer}`,
+      spent: limits.attemptsLeft <= 0 && !run.solved,
+    });
   }
   if (limits.maxMoves > 0) {
-    rows.push({ key: 'moves', label: 'Jogadas', value: `${limits.movesMade} de ${limits.maxMoves}`, spent: limits.movesMade >= limits.maxMoves && !run.solved });
+    rows.push({
+      key: 'moves',
+      label: 'Jogadas',
+      value: `${limits.movesMade} de ${limits.maxMoves}`,
+      spent: limits.movesMade >= limits.maxMoves && !run.solved,
+    });
   }
   if (limits.timeLimitSeconds > 0) {
     // Once the puzzle is over (solved, or a limit stopped it) the clock stands where the server read it: a solved puzzle is not "acabou".
     const over = run.solved || run.stopped;
-    const left = over || !limits.deadline ? limits.secondsLeft : secondsUntil(timestampDate(limits.deadline), now);
-    rows.push({ key: 'time', label: 'Tempo', value: `${clockSeconds(left)} de ${clockSeconds(limits.timeLimitSeconds)}`, spent: left <= 0 && !run.solved });
+    const left =
+      over || !limits.deadline
+        ? limits.secondsLeft
+        : secondsUntil(timestampDate(limits.deadline), now);
+    rows.push({
+      key: 'time',
+      label: 'Tempo',
+      value: `${clockSeconds(left)} de ${clockSeconds(limits.timeLimitSeconds)}`,
+      spent: left <= 0 && !run.solved,
+    });
   }
   return rows;
 }

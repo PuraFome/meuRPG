@@ -16,7 +16,8 @@ import { SequenceBoard } from './sequence-board';
 import { SequenceStrip } from './sequence-strip';
 import type { Turn } from './symbol-columns';
 
-const flat = (n: number, on: readonly number[]) => Array.from({ length: n * n }, (_, i) => on.includes(i));
+const flat = (n: number, on: readonly number[]) =>
+  Array.from({ length: n * n }, (_, i) => on.includes(i));
 
 function lights(inputs: Record<string, unknown>) {
   const fixture = TestBed.createComponent(LightsBoard);
@@ -32,11 +33,15 @@ function lights(inputs: Record<string, unknown>) {
 describe('LightsBoard (E10-06 states 6 to 9)', () => {
   it('names every light by its row, column and state, so no light is only a color', () => {
     const { el } = lights({ size: 3, lit: flat(3, [4]), mode: 'play' });
-    const labels = Array.from(el.querySelectorAll('button')).map((b) => b.getAttribute('aria-label'));
+    const labels = Array.from(el.querySelectorAll('button')).map((b) =>
+      b.getAttribute('aria-label'),
+    );
     expect(labels).toHaveLength(9);
     expect(labels[0]).toBe('Luz na linha 1, coluna 1, apagada');
     expect(labels[4]).toBe('Luz na linha 2, coluna 2, acesa');
-    expect(el.querySelector('[role="group"]')?.getAttribute('aria-label')).toBe('Painel de luzes, 3 por 3');
+    expect(el.querySelector('[role="group"]')?.getAttribute('aria-label')).toBe(
+      'Painel de luzes, 3 por 3',
+    );
   });
 
   it('draws a lit light as a sun and an off one as a ring', () => {
@@ -79,17 +84,23 @@ describe('LightsBoard (E10-06 states 6 to 9)', () => {
     first.focus();
     first.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
     expect(document.activeElement).toBe(el.querySelector('[data-i="1"]'));
-    (document.activeElement as HTMLElement).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    (document.activeElement as HTMLElement).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }),
+    );
     expect(document.activeElement).toBe(el.querySelector('[data-i="4"]'));
-    (document.activeElement as HTMLElement).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
-    (document.activeElement as HTMLElement).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    (document.activeElement as HTMLElement).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }),
+    );
+    (document.activeElement as HTMLElement).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }),
+    );
     expect(document.activeElement).toBe(el.querySelector('[data-i="3"]')); // the edge holds
     fixture.detectChanges();
     expect(stops()).toHaveLength(1);
     el.remove();
   });
 
-  it('marks what just changed (dashed) and the master\'s hints (solid garnet)', () => {
+  it("marks what just changed (dashed) and the master's hints (solid garnet)", () => {
     const { el } = lights({ size: 3, lit: flat(3, []), mode: 'view', changed: [1, 2], hints: [8] });
     const cells = Array.from(el.querySelectorAll('.cell'));
     expect(cells[1].classList).toContain('cell--changed');
@@ -100,7 +111,7 @@ describe('LightsBoard (E10-06 states 6 to 9)', () => {
 });
 
 describe('LockBoard and PillarsBoard (E10-06 states 4 and 7)', () => {
-  it('shows each wheel\'s face with its name written, and turns it a face at a time', () => {
+  it("shows each wheel's face with its name written, and turns it a face at a time", () => {
     const fixture = TestBed.createComponent(LockBoard);
     fixture.componentRef.setInput('wheels', [0, 0, 2, 5]);
     fixture.componentRef.setInput('faces', RUNES);
@@ -109,8 +120,17 @@ describe('LockBoard and PillarsBoard (E10-06 states 4 and 7)', () => {
     fixture.componentInstance.turn.subscribe((t) => turns.push(t));
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    expect(Array.from(el.querySelectorAll('.name')).map((n) => n.textContent?.trim())).toEqual(['Lua', 'Lua', 'Onda', 'Estrela']);
-    expect(Array.from(el.querySelectorAll('[role="group"][aria-label^="Roda "]')).map((g) => g.getAttribute('aria-label'))).toEqual(['Roda 1: Lua', 'Roda 2: Lua', 'Roda 3: Onda', 'Roda 4: Estrela']);
+    expect(Array.from(el.querySelectorAll('.name')).map((n) => n.textContent?.trim())).toEqual([
+      'Lua',
+      'Lua',
+      'Onda',
+      'Estrela',
+    ]);
+    expect(
+      Array.from(el.querySelectorAll('[role="group"][aria-label^="Roda "]')).map((g) =>
+        g.getAttribute('aria-label'),
+      ),
+    ).toEqual(['Roda 1: Lua', 'Roda 2: Lua', 'Roda 3: Onda', 'Roda 4: Estrela']);
     (el.querySelector('[aria-label="Próximo símbolo: Roda 3"]') as HTMLElement).click();
     (el.querySelector('[aria-label="Símbolo anterior: Roda 1"]') as HTMLElement).click();
     expect(turns).toEqual([
@@ -122,14 +142,19 @@ describe('LockBoard and PillarsBoard (E10-06 states 4 and 7)', () => {
   it('draws a digit as the character, with no second name beside it', () => {
     const fixture = TestBed.createComponent(LockBoard);
     fixture.componentRef.setInput('wheels', [3]);
-    fixture.componentRef.setInput('faces', [{ key: '0', namePt: '0' }, { key: '1', namePt: '1' }, { key: '2', namePt: '2' }, { key: '3', namePt: '3' }]);
+    fixture.componentRef.setInput('faces', [
+      { key: '0', namePt: '0' },
+      { key: '1', namePt: '1' },
+      { key: '2', namePt: '2' },
+      { key: '3', namePt: '3' },
+    ]);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('.ch')?.textContent).toBe('3');
     expect(el.querySelector('.name')).toBeNull();
   });
 
-  it('has no control in the master\'s static view', () => {
+  it("has no control in the master's static view", () => {
     const fixture = TestBed.createComponent(LockBoard);
     fixture.componentRef.setInput('wheels', [1, 2]);
     fixture.componentRef.setInput('faces', RUNES);
@@ -149,8 +174,18 @@ describe('LockBoard and PillarsBoard (E10-06 states 4 and 7)', () => {
     fixture.componentInstance.turn.subscribe((t) => turns.push(t));
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    expect(Array.from(el.querySelectorAll('.head')).map((h) => h.textContent?.trim())).toEqual(['Pilar 1', 'Pilar 2', 'Pilar 3', 'Pilar 4']);
-    expect(Array.from(el.querySelectorAll('.name')).map((n) => n.textContent?.trim())).toEqual(['Coruja', 'Corvo', 'Serpente', 'Lobo']);
+    expect(Array.from(el.querySelectorAll('.head')).map((h) => h.textContent?.trim())).toEqual([
+      'Pilar 1',
+      'Pilar 2',
+      'Pilar 3',
+      'Pilar 4',
+    ]);
+    expect(Array.from(el.querySelectorAll('.name')).map((n) => n.textContent?.trim())).toEqual([
+      'Coruja',
+      'Corvo',
+      'Serpente',
+      'Lobo',
+    ]);
     const girar = Array.from(el.querySelectorAll<HTMLButtonElement>('.turn'));
     expect(girar).toHaveLength(4);
     expect(girar[0].getAttribute('aria-label')).toBe('Girar o pilar 1');
@@ -182,17 +217,35 @@ describe('PuzzleHost (the one place that knows the boards)', () => {
     return { el: fixture.nativeElement as HTMLElement, moves };
   }
 
-  it('turns a press on the lights into the server\'s move', () => {
-    const { el, moves } = host(create(PuzzleRunSchema, { kind: PuzzleKind.LIGHTS, config: { kind: { case: 'lights', value: { size: 3 } } }, state: { kind: { case: 'lights', value: { lit: flat(3, [0]) } } } }));
+  it("turns a press on the lights into the server's move", () => {
+    const { el, moves } = host(
+      create(PuzzleRunSchema, {
+        kind: PuzzleKind.LIGHTS,
+        config: { kind: { case: 'lights', value: { size: 3 } } },
+        state: { kind: { case: 'lights', value: { lit: flat(3, [0]) } } },
+      }),
+    );
     (el.querySelector('[data-i="5"]') as HTMLElement).click();
     expect(moves).toEqual([{ kind: { case: 'lights', value: { row: 1, col: 2 } } }]);
   });
 
-  it('turns a wheel and a pillar into the server\'s moves', () => {
-    const lock = host(create(PuzzleRunSchema, { kind: PuzzleKind.LOCK, symbols: RUNES.map((s) => ({ key: s.key, namePt: s.namePt })), state: { kind: { case: 'lock', value: { wheels: [0, 1] } } } }));
+  it("turns a wheel and a pillar into the server's moves", () => {
+    const lock = host(
+      create(PuzzleRunSchema, {
+        kind: PuzzleKind.LOCK,
+        symbols: RUNES.map((s) => ({ key: s.key, namePt: s.namePt })),
+        state: { kind: { case: 'lock', value: { wheels: [0, 1] } } },
+      }),
+    );
     (lock.el.querySelector('[aria-label="Símbolo anterior: Roda 2"]') as HTMLElement).click();
     expect(lock.moves).toEqual([{ kind: { case: 'lock', value: { wheel: 1, delta: -1 } } }]);
-    const pillars = host(create(PuzzleRunSchema, { kind: PuzzleKind.PILLARS, symbols: GLYPHS.slice(0, 3).map((s) => ({ key: s.key, namePt: s.namePt })), state: { kind: { case: 'pillars', value: { pillars: [0, 1, 2] } } } }));
+    const pillars = host(
+      create(PuzzleRunSchema, {
+        kind: PuzzleKind.PILLARS,
+        symbols: GLYPHS.slice(0, 3).map((s) => ({ key: s.key, namePt: s.namePt })),
+        state: { kind: { case: 'pillars', value: { pillars: [0, 1, 2] } } },
+      }),
+    );
     (pillars.el.querySelector('[aria-label="Girar o pilar 3"]') as HTMLElement).click();
     expect(pillars.moves).toEqual([{ kind: { case: 'pillars', value: { pillar: 2, delta: 1 } } }]);
   });
@@ -202,12 +255,24 @@ describe('PuzzleHost (the one place that knows the boards)', () => {
     expect(el.textContent).toContain('ainda não abre aqui');
   });
 
-  it('turns a typed answer, a deciphered message and a bell into the server\'s moves', () => {
-    const riddle = host(create(PuzzleRunSchema, { kind: PuzzleKind.RIDDLE, config: { kind: { case: 'riddle', value: { text: 'O que sou?' } } }, state: { kind: { case: 'riddle', value: {} } } }));
+  it("turns a typed answer, a deciphered message and a bell into the server's moves", () => {
+    const riddle = host(
+      create(PuzzleRunSchema, {
+        kind: PuzzleKind.RIDDLE,
+        config: { kind: { case: 'riddle', value: { text: 'O que sou?' } } },
+        state: { kind: { case: 'riddle', value: {} } },
+      }),
+    );
     typeInto(riddle.el.querySelector('input[name="answer"]')!, '  escuridão ');
     riddle.el.querySelector('form')!.dispatchEvent(new Event('submit'));
     expect(riddle.moves).toEqual([{ kind: { case: 'riddle', value: { answer: 'escuridão' } } }]);
-    const cipher = host(create(PuzzleRunSchema, { kind: PuzzleKind.CIPHER, config: { kind: { case: 'cipher', value: { ciphertext: 'R WHVRXUR' } } }, state: { kind: { case: 'cipher', value: {} } } }));
+    const cipher = host(
+      create(PuzzleRunSchema, {
+        kind: PuzzleKind.CIPHER,
+        config: { kind: { case: 'cipher', value: { ciphertext: 'R WHVRXUR' } } },
+        state: { kind: { case: 'cipher', value: {} } },
+      }),
+    );
     typeInto(cipher.el.querySelector('textarea')!, 'o tesouro');
     cipher.el.querySelector('form')!.dispatchEvent(new Event('submit'));
     expect(cipher.moves).toEqual([{ kind: { case: 'cipher', value: { text: 'o tesouro' } } }]);
@@ -223,9 +288,16 @@ describe('PuzzleHost (the one place that knows the boards)', () => {
     expect(sequence.moves).toEqual([{ kind: { case: 'sequence', value: { bell: 2 } } }]);
   });
 
-  it('is the master\'s static view for the riddle and the cipher: the text alone, no field', () => {
+  it("is the master's static view for the riddle and the cipher: the text alone, no field", () => {
     const fixture = TestBed.createComponent(PuzzleHost);
-    fixture.componentRef.setInput('run', create(PuzzleRunSchema, { kind: PuzzleKind.RIDDLE, config: { kind: { case: 'riddle', value: { text: 'O que sou?' } } }, state: { kind: { case: 'riddle', value: {} } } }));
+    fixture.componentRef.setInput(
+      'run',
+      create(PuzzleRunSchema, {
+        kind: PuzzleKind.RIDDLE,
+        config: { kind: { case: 'riddle', value: { text: 'O que sou?' } } },
+        state: { kind: { case: 'riddle', value: {} } },
+      }),
+    );
     fixture.componentRef.setInput('mode', 'view');
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
@@ -278,7 +350,9 @@ describe('RiddleBoard (E10-12 state 6)', () => {
   });
 
   it('keeps the field and the button together (they are the foot of a short screen) and the counters with the notes, apart', () => {
-    const rows: CounterRow[] = [{ key: 'attempts', label: 'Suas tentativas', value: '2 de 3', spent: false }];
+    const rows: CounterRow[] = [
+      { key: 'attempts', label: 'Suas tentativas', value: '2 de 3', spent: false },
+    ];
     const { el } = riddle({ mode: 'play', counters: rows, verdict: 'wrong' });
     const form = el.querySelector('form')!;
     const stick = form.querySelector('.ask__stick')!;
@@ -291,7 +365,7 @@ describe('RiddleBoard (E10-12 state 6)', () => {
     expect(notes.querySelector('.mr-notice--danger')?.textContent).toContain('Não é isso.');
   });
 
-  it('has no field in the master\'s view', () => {
+  it("has no field in the master's view", () => {
     const { el } = riddle({ mode: 'view' });
     expect(el.querySelector('form')).toBeNull();
   });
@@ -313,7 +387,9 @@ describe('CipherBoard (E10-12 state 8)', () => {
   it('draws the letter and a decoding column for each distinct letter of it, in order', () => {
     const { el } = cipher({ mode: 'play' });
     expect(el.querySelector('.cipher')?.textContent).toBe('R WHVRXUR HVWD VRE R DOWDU');
-    const letters = Array.from(el.querySelectorAll('.col__letter')).map((l) => l.textContent?.trim());
+    const letters = Array.from(el.querySelectorAll('.col__letter')).map((l) =>
+      l.textContent?.trim(),
+    );
     expect(letters).toEqual(['D', 'E', 'H', 'O', 'R', 'U', 'V', 'W', 'X']);
     const bets = Array.from(el.querySelectorAll<HTMLInputElement>('.col__bet'));
     expect(bets[0].getAttribute('aria-label')).toBe('Sua aposta para a letra D');
@@ -334,7 +410,9 @@ describe('CipherBoard (E10-12 state 8)', () => {
   });
 
   it('says "Não é isso." and points at the table, and has no table in the master\'s view', () => {
-    expect(cipher({ mode: 'play', verdict: 'wrong' }).el.textContent).toContain('Não é isso. Confira as letras da tabela.');
+    expect(cipher({ mode: 'play', verdict: 'wrong' }).el.textContent).toContain(
+      'Não é isso. Confira as letras da tabela.',
+    );
     const view = cipher({ mode: 'view' }).el;
     expect(view.querySelector('.col__bet')).toBeNull();
     expect(view.textContent).toContain('Os jogadores veem');
@@ -354,11 +432,21 @@ describe('BellsBoard and SequenceStrip (E10-12 states 2 and 7)', () => {
     return { el: fixture.nativeElement as HTMLElement, struck };
   }
 
-  it('is a button for each bell, named by its full name, that emits the bell\'s number', () => {
+  it("is a button for each bell, named by its full name, that emits the bell's number", () => {
     const { el, struck } = bells({ mode: 'play' });
     const buttons = Array.from(el.querySelectorAll('button'));
-    expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual(['Sino redondo', 'Sino alto', 'Sino largo', 'Sino pequeno']);
-    expect(buttons.map((b) => b.textContent?.trim())).toEqual(['Redondo', 'Alto', 'Largo', 'Pequeno']);
+    expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Sino redondo',
+      'Sino alto',
+      'Sino largo',
+      'Sino pequeno',
+    ]);
+    expect(buttons.map((b) => b.textContent?.trim())).toEqual([
+      'Redondo',
+      'Alto',
+      'Largo',
+      'Pequeno',
+    ]);
     buttons[3].click();
     expect(struck).toEqual([3]);
   });
@@ -386,7 +474,12 @@ describe('BellsBoard and SequenceStrip (E10-12 states 2 and 7)', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     const items = Array.from(el.querySelectorAll('li'));
-    expect(items.map((i) => i.getAttribute('aria-label'))).toEqual(['Passo 1: Sino redondo', 'Passo 2: Sino pequeno', 'Passo 3: ainda não mostrado', 'Passo 4: ainda não mostrado']);
+    expect(items.map((i) => i.getAttribute('aria-label'))).toEqual([
+      'Passo 1: Sino redondo',
+      'Passo 2: Sino pequeno',
+      'Passo 3: ainda não mostrado',
+      'Passo 4: ainda não mostrado',
+    ]);
     expect(items[1].classList).toContain('slot--lit');
     expect(items[2].classList).toContain('slot--empty');
   });
@@ -395,7 +488,15 @@ describe('BellsBoard and SequenceStrip (E10-12 states 2 and 7)', () => {
 describe('SequenceBoard (E10-12 state 7)', () => {
   function board(playback: Record<string, unknown>, extra: Record<string, unknown> = {}) {
     const fixture = TestBed.createComponent(SequenceBoard);
-    fixture.componentRef.setInput('playback', { totalSteps: 6, plays: 1, playing: false, shown: [], stepMs: 1200, nextInMs: 0, ...playback });
+    fixture.componentRef.setInput('playback', {
+      totalSteps: 6,
+      plays: 1,
+      playing: false,
+      shown: [],
+      stepMs: 1200,
+      nextInMs: 0,
+      ...playback,
+    });
     fixture.componentRef.setInput('faces', bellFaces(4));
     for (const [k, v] of Object.entries(extra)) {
       fixture.componentRef.setInput(k, v);
@@ -421,7 +522,9 @@ describe('SequenceBoard (E10-12 state 7)', () => {
     expect(items).toHaveLength(6);
     expect(items.filter((i) => !i.classList.contains('slot--empty'))).toHaveLength(3);
     expect(el.querySelector('.big__name')?.textContent).toBe('Sino pequeno');
-    expect(el.querySelector('[aria-live="polite"]')?.textContent).toContain('Passo 3 de 6: Sino pequeno.');
+    expect(el.querySelector('[aria-live="polite"]')?.textContent).toContain(
+      'Passo 3 de 6: Sino pequeno.',
+    );
     // No bell to tap while it plays.
     expect(el.querySelectorAll('app-bells-board button')).toHaveLength(0);
   });
@@ -436,7 +539,10 @@ describe('SequenceBoard (E10-12 state 7)', () => {
   });
 
   it('says which step was wrong and who erred, above the bells', () => {
-    const { el } = board({ plays: 2 }, { note: { lead: 'Errou o passo 4.', text: 'A tentativa recomeçou; Lia errou.' } });
+    const { el } = board(
+      { plays: 2 },
+      { note: { lead: 'Errou o passo 4.', text: 'A tentativa recomeçou; Lia errou.' } },
+    );
     const notice = el.querySelector('.mr-notice--danger')!;
     expect(notice.textContent).toContain('Errou o passo 4. A tentativa recomeçou; Lia errou.');
     expect(notice.getAttribute('role')).toBe('alert');
@@ -454,7 +560,9 @@ describe('LimitCounters', () => {
     const el = fixture.nativeElement as HTMLElement;
     const rows = Array.from(el.querySelectorAll('.row'));
     expect(rows[0].querySelector('dt')?.textContent).toBe('Jogadas');
-    expect(rows[0].querySelector('dd')?.textContent?.replace(/\s+/g, ' ').trim()).toBe('10 de 10 · acabou');
+    expect(rows[0].querySelector('dd')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      '10 de 10 · acabou',
+    );
     expect(rows[1].querySelector('dt')?.textContent).toBe('Tempo');
     expect(rows[1].querySelector('dd')?.textContent?.trim()).toBe('4:48 de 5:00');
   });

@@ -110,11 +110,19 @@ export class ProgressionClient {
     return this.client.listMilestones({ campaignId });
   }
 
-  addMilestone(campaignId: string, text: string, idempotencyKey: string): Promise<AddMilestoneResponse> {
+  addMilestone(
+    campaignId: string,
+    text: string,
+    idempotencyKey: string,
+  ): Promise<AddMilestoneResponse> {
     return this.client.addMilestone({ campaignId, text, idempotencyKey });
   }
 
-  updateMilestone(campaignId: string, milestoneId: string, text: string): Promise<UpdateMilestoneResponse> {
+  updateMilestone(
+    campaignId: string,
+    milestoneId: string,
+    text: string,
+  ): Promise<UpdateMilestoneResponse> {
     return this.client.updateMilestone({ campaignId, milestoneId, text });
   }
 
@@ -126,8 +134,7 @@ export class ProgressionClient {
     return this.client.moveMilestone({
       campaignId,
       milestoneId,
-      direction:
-        direction === 'up' ? MilestoneDirection.UP : MilestoneDirection.DOWN,
+      direction: direction === 'up' ? MilestoneDirection.UP : MilestoneDirection.DOWN,
     });
   }
 
@@ -157,7 +164,12 @@ export class ProgressionClient {
     characterIds: readonly string[],
     idempotencyKey: string,
   ): Promise<GiveMilestoneToResponse> {
-    return this.client.giveMilestoneTo({ campaignId, milestoneId, characterIds: [...characterIds], idempotencyKey });
+    return this.client.giveMilestoneTo({
+      campaignId,
+      milestoneId,
+      characterIds: [...characterIds],
+      idempotencyKey,
+    });
   }
 
   experience(campaignId: string): Promise<GetCampaignExperienceResponse> {

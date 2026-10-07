@@ -18,7 +18,11 @@ import { MatIconModule } from '@angular/material/icon';
 import type { CampaignDocument } from '../../../../gen/meurpg/campaigns/v1/campaign_document_pb';
 import type { GalleryImage } from '../../../../gen/meurpg/maps/v1/gallery_pb';
 import { FictionNotice } from '../../../shared/fiction-notice/fiction-notice';
-import { MarkdownView, type MarkdownRefs, type RefOpen } from '../../../shared/markdown/markdown-view';
+import {
+  MarkdownView,
+  type MarkdownRefs,
+  type RefOpen,
+} from '../../../shared/markdown/markdown-view';
 import { formatClock } from '../../../shared/session-time/session-time';
 import { DocumentClient } from '../document-clients';
 import { CONFLICT_MESSAGE, isConflict, saveErrorMessage } from '../document-copy';
@@ -106,7 +110,9 @@ export class DocumentEditor {
   protected readonly maxKb = Math.round(MAX_BODY_BYTES / 1024);
 
   private readonly textarea = viewChild.required<ElementRef<HTMLTextAreaElement>>('textarea');
-  private readonly discardButton = viewChild('confirmDiscard', { read: ElementRef<HTMLButtonElement> });
+  private readonly discardButton = viewChild('confirmDiscard', {
+    read: ElementRef<HTMLButtonElement>,
+  });
   private readonly conflictNotice = viewChild<ElementRef<HTMLElement>>('conflictNotice');
   private selection = { start: 0, end: 0 };
   private trigger: HTMLElement | null = null;

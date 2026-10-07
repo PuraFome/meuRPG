@@ -175,11 +175,17 @@ export function spellRows(d: SpellDetailsVm): SpellRow[] {
     if (d.attack === 'melee' || d.attack === 'ranged') {
       rows.push({
         label: 'Ataque',
-        value: { text: d.attack === 'melee' ? 'Ataque de magia corpo a corpo' : 'Ataque de magia à distância' },
+        value: {
+          text:
+            d.attack === 'melee' ? 'Ataque de magia corpo a corpo' : 'Ataque de magia à distância',
+        },
       });
     }
     if (d.damage && d.damage.length > 0) {
-      rows.push({ label: 'Dano', value: { text: d.damage.map((x) => `${x.dice} ${x.typePt}`.trim()).join(' e ') } });
+      rows.push({
+        label: 'Dano',
+        value: { text: d.damage.map((x) => `${x.dice} ${x.typePt}`.trim()).join(' e ') },
+      });
     }
   }
   return rows;

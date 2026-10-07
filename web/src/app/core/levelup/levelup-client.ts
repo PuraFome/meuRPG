@@ -2,7 +2,11 @@ import { Injectable, inject } from '@angular/core';
 import type { MessageInitShape } from '@bufbuild/protobuf';
 import { createClient } from '@connectrpc/connect';
 
-import { CampaignService, DicePreference, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import {
+  CampaignService,
+  DicePreference,
+  XpMode,
+} from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
   CharacterService,
   type Character,
@@ -78,7 +82,12 @@ export class LevelUpClient {
     classKey: string,
     idempotencyKey: string,
   ): Promise<RollLevelUpHitPointsResponse> {
-    return this.characters.rollLevelUpHitPoints({ campaignId, characterId, classKey, idempotencyKey });
+    return this.characters.rollLevelUpHitPoints({
+      campaignId,
+      characterId,
+      classKey,
+      idempotencyKey,
+    });
   }
 
   async levelUp(
@@ -87,7 +96,12 @@ export class LevelUpClient {
     revision: number,
     choices: LevelUpChoicesInit,
   ): Promise<Character> {
-    const res = await this.characters.levelUpCharacter({ campaignId, characterId, revision, choices });
+    const res = await this.characters.levelUpCharacter({
+      campaignId,
+      characterId,
+      revision,
+      choices,
+    });
     return res.character!;
   }
 

@@ -44,7 +44,14 @@ export interface PaintedLight {
   readonly bright: readonly Square[];
 }
 
-export const NO_LAYERS: MapLayers = { columns: 0, rows: 0, walls: [], terrain: [], half: [], threeQuarters: [] };
+export const NO_LAYERS: MapLayers = {
+  columns: 0,
+  rows: 0,
+  walls: [],
+  terrain: [],
+  half: [],
+  threeQuarters: [],
+};
 
 /** The squares set in a one-bit layer: square n = row * columns + col is bit
  * n % 8 (least significant first) of byte n / 8 (the layout `rules/grid`
@@ -82,11 +89,18 @@ function crumbSquares(bytes: Uint8Array, columns: number, rows: number, value: n
  * down, so the bar lies left to right (`h`); otherwise floor left and right turns it (`v`). Doors of one corridor point the same way.
  * `player` is the guard for a player's view (RN-10): the server never sends a locked or a secret door to a player, and if one ever
  * came, a locked door is drawn closed and a secret one is not drawn at all. */
-function doorSquares(bytes: Uint8Array, columns: number, rows: number, walls: readonly Square[], player: boolean): DoorSquare[] {
+function doorSquares(
+  bytes: Uint8Array,
+  columns: number,
+  rows: number,
+  walls: readonly Square[],
+  player: boolean,
+): DoorSquare[] {
   const out: DoorSquare[] = [];
   const squares = columns * rows;
   const wallAt = new Set(walls.map((w) => w.row * columns + w.col));
-  const floor = (col: number, row: number) => col >= 0 && row >= 0 && col < columns && row < rows && !wallAt.has(row * columns + col);
+  const floor = (col: number, row: number) =>
+    col >= 0 && row >= 0 && col < columns && row < rows && !wallAt.has(row * columns + col);
   for (let n = 0; n < squares; n++) {
     const byte = bytes[n >> 1];
     let state = byte === undefined ? 0 : (n & 1 ? byte >> 4 : byte) & 15;
@@ -118,7 +132,10 @@ export function decodeLayers(packed: PackedLayers, player = false): MapLayers {
   }
   const light = packed.light;
   const walls = bitSquares(packed.wall, columns, rows);
-  const doors = packed.doors !== undefined && packed.doors.length > 0 ? doorSquares(packed.doors, columns, rows, walls, player) : [];
+  const doors =
+    packed.doors !== undefined && packed.doors.length > 0
+      ? doorSquares(packed.doors, columns, rows, walls, player)
+      : [];
   return {
     columns,
     rows,
@@ -141,7 +158,14 @@ export function decodeLayers(packed: PackedLayers, player = false): MapLayers {
 
 /** Whether there is anything to draw or to name in a legend. */
 export function hasLayers(layers: MapLayers): boolean {
-  return layers.walls.length + layers.terrain.length + layers.half.length + layers.threeQuarters.length + (layers.doors?.length ?? 0) > 0;
+  return (
+    layers.walls.length +
+      layers.terrain.length +
+      layers.half.length +
+      layers.threeQuarters.length +
+      (layers.doors?.length ?? 0) >
+    0
+  );
 }
 
 /** The doors of each kind, for the legend and the "Camadas" row. */

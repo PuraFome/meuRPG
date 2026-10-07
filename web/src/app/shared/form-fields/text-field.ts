@@ -88,5 +88,7 @@ export class TextField {
 
   protected readonly noteId = `fn-${nextId++}`;
   protected readonly invalid = computed(() => this.issues().length > 0);
-  protected readonly describedBy = computed(() => (this.issues().length > 0 || this.hint() ? this.noteId : null));
+  protected readonly describedBy = computed(() =>
+    this.issues().length > 0 || this.hint() ? this.noteId : null,
+  );
 }

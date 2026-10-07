@@ -11,14 +11,30 @@ import {
 import { spellDetailsFromGen } from './spell-details-map';
 
 describe('spellDetailsFromGen', () => {
-  it('turns the generated message into the sheet\'s gen-free view (Sono)', () => {
+  it("turns the generated message into the sheet's gen-free view (Sono)", () => {
     const vm = spellDetailsFromGen(
       create(SpellDetailsSchema, {
-        spell: { key: 'spell:sleep', name: 'Sleep', namePt: 'Sono', level: 1, schoolNamePt: 'Encantamento' },
+        spell: {
+          key: 'spell:sleep',
+          name: 'Sleep',
+          namePt: 'Sono',
+          level: 1,
+          schoolNamePt: 'Encantamento',
+        },
         castingTime: { amount: 1, unit: CastingTimeUnit.ACTION, raw: '1 action' },
         range: { kind: SpellRangeKind.RANGED, distanceFt: 90, raw: '90 feet' },
-        components: { verbal: true, somatic: true, material: true, materialText: 'a pinch of fine sand' },
-        duration: { kind: SpellDurationKind.TIMED, amount: 1, unit: SpellDurationUnit.MINUTE, raw: '1 minute' },
+        components: {
+          verbal: true,
+          somatic: true,
+          material: true,
+          materialText: 'a pinch of fine sand',
+        },
+        duration: {
+          kind: SpellDurationKind.TIMED,
+          amount: 1,
+          unit: SpellDurationUnit.MINUTE,
+          raw: '1 minute',
+        },
         description: ['This spell sends creatures into a magical slumber.'],
         higherLevel: ['When you cast this spell using a spell slot of 2nd level or higher...'],
       }),
@@ -37,10 +53,16 @@ describe('spellDetailsFromGen', () => {
     expect(vm.higherLevel).toHaveLength(1);
   });
 
-  it('carries the target, the attack, the damage and whether it is the table\'s (E10-11)', () => {
+  it("carries the target, the attack, the damage and whether it is the table's (E10-11)", () => {
     const vm = spellDetailsFromGen(
       create(SpellDetailsSchema, {
-        spell: { key: 'spell:lamina-de-nanquim@mesa', namePt: 'Lâmina de Nanquim', level: 1, classKeys: ['class:wizard'], archived: true },
+        spell: {
+          key: 'spell:lamina-de-nanquim@mesa',
+          namePt: 'Lâmina de Nanquim',
+          level: 1,
+          classKeys: ['class:wizard'],
+          archived: true,
+        },
         target: { labelPt: 'Uma criatura' },
         attackType: SpellAttackType.RANGED,
         damage: [{ damageTypePt: 'necrótico', bySlotLevel: { 2: '3d8', 1: '2d8' } }],
@@ -54,6 +76,8 @@ describe('spellDetailsFromGen', () => {
       attack: 'ranged',
       damage: [{ dice: '2d8', typePt: 'necrótico' }],
     });
-    expect(spellDetailsFromGen(create(SpellDetailsSchema, { spell: { key: 'spell:shield' } })).table).toBe(false);
+    expect(
+      spellDetailsFromGen(create(SpellDetailsSchema, { spell: { key: 'spell:shield' } })).table,
+    ).toBe(false);
   });
 });

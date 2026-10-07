@@ -116,7 +116,14 @@ describe('Campaigns', () => {
 
   it("shows a campaign that awaits the master's approval as such, not as jogador (MR-024)", async () => {
     fake.listMyCampaignsResult = Promise.resolve({
-      campaigns: [{ ...campaign('c1', 'Mirathel', Role.PLAYER), awaitingApproval: true, diceMode: 1, dicePreference: 1 }],
+      campaigns: [
+        {
+          ...campaign('c1', 'Mirathel', Role.PLAYER),
+          awaitingApproval: true,
+          diceMode: 1,
+          dicePreference: 1,
+        },
+      ],
     });
     const el = await render();
     expect(el.textContent).toContain('Esperando a aprovação do mestre');
@@ -152,7 +159,11 @@ describe('Campaigns', () => {
     instance['form'].setValue({ name: 'Mirathel', xpMode: XpMode.ENEMIES });
     await instance['submit']();
 
-    expect(fake.createCampaign).toHaveBeenCalledWith('Mirathel', XpMode.ENEMIES, expect.any(String));
+    expect(fake.createCampaign).toHaveBeenCalledWith(
+      'Mirathel',
+      XpMode.ENEMIES,
+      expect.any(String),
+    );
     expect(navigateSpy).toHaveBeenCalledWith(['/campaigns', 'new-id']);
   });
 
@@ -199,7 +210,9 @@ describe('Campaigns', () => {
 
   it('sends the same idempotency key when the same form is retried, and a new one for the next campaign', async () => {
     fake.createCampaign.mockRejectedValueOnce(new ConnectError('down', Code.Unavailable));
-    fake.createCampaign.mockResolvedValue({ campaign: campaign('new-id', 'Mirathel', Role.MASTER) });
+    fake.createCampaign.mockResolvedValue({
+      campaign: campaign('new-id', 'Mirathel', Role.MASTER),
+    });
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
     const fixture = TestBed.createComponent(Campaigns);

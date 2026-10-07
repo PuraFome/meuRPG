@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 
 import { type MapLayers, hasLayers } from '../../core/maps/layers';
 import { Sight } from '../../core/maps/vision';
@@ -96,7 +105,8 @@ export class FogBase {
     if (!l || l.columns !== v.columns) {
       return null;
     }
-    const on = (s: { col: number; row: number }) => v.states[s.row * v.columns + s.col] === Sight.Remembered;
+    const on = (s: { col: number; row: number }) =>
+      v.states[s.row * v.columns + s.col] === Sight.Remembered;
     const out = {
       ...l,
       walls: l.walls.filter(on),
@@ -135,7 +145,9 @@ export class FogBase {
         untracked(() => this.initial.set(false));
       }
     });
-    effect(() => this.loadingChange.emit(this.initial() && this.progress().done < this.progress().total));
+    effect(() =>
+      this.loadingChange.emit(this.initial() && this.progress().done < this.progress().total),
+    );
     effect(() => this.settledChange.emit(this.settled()));
   }
 

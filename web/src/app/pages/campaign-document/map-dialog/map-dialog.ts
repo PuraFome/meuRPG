@@ -23,7 +23,16 @@ import { type LookupState, lookupFailure } from '../document-copy';
  */
 @Component({
   selector: 'app-document-map-dialog',
-  imports: [DocDialog, MapLegend, MapPicture, MapPins, MapPinsLegend, MatButtonModule, MatIconModule, RouterLink],
+  imports: [
+    DocDialog,
+    MapLegend,
+    MapPicture,
+    MapPins,
+    MapPinsLegend,
+    MatButtonModule,
+    MatIconModule,
+    RouterLink,
+  ],
   templateUrl: './map-dialog.html',
   styleUrl: './map-dialog.scss',
 })
@@ -47,7 +56,9 @@ export class DocumentMapDialog implements OnInit {
     }
     const visibility = s.value.revealed ? 'Revelado aos jogadores.' : 'Escondido dos jogadores.';
     const session = this.session();
-    return session?.mapId === s.value.id ? `${visibility} Mapa atual da Sessão ${session.sessionNumber}.` : visibility;
+    return session?.mapId === s.value.id
+      ? `${visibility} Mapa atual da Sessão ${session.sessionNumber}.`
+      : visibility;
   });
 
   protected readonly pointLabel = pointAriaLabel;

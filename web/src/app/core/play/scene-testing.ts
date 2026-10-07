@@ -33,7 +33,13 @@ export function sceneRoll(
   actionId: string,
   characterName: string,
   total: number,
-  partial: { roll?: MessageInitShape<typeof DiceRollSchema>; passed?: boolean; attemptsLeft?: number; rolledAt?: Date; characterId?: string } = {},
+  partial: {
+    roll?: MessageInitShape<typeof DiceRollSchema>;
+    passed?: boolean;
+    attemptsLeft?: number;
+    rolledAt?: Date;
+    characterId?: string;
+  } = {},
 ): SceneRoll {
   const init: MessageInitShape<typeof SceneRollSchema> = {
     id,
@@ -69,7 +75,8 @@ export function stageNpc(
 
 /** "A carroça tombada" as the master sees it: five actions with their DCs. */
 export function masterScene(
-  rolls: SceneRoll[] = [], stage: StageNpc[] = [],
+  rolls: SceneRoll[] = [],
+  stage: StageNpc[] = [],
   extra: MessageInitShape<typeof OpenSceneInfoSchema> = {},
 ): OpenSceneInfo {
   return create(OpenSceneInfoSchema, {
@@ -78,11 +85,25 @@ export function masterScene(
     name: 'A carroça tombada',
     description: 'Uma carroça de mercador tombada na estrada.',
     actions: [
-      sceneAction('a1', 'Investigação', { name: 'Procurar pistas na carroça', dc: 12, maxAttempts: 1, key: 'skill:investigation' }),
-      sceneAction('a2', 'Sobrevivência', { name: 'Seguir os rastros dos goblins', dc: 13, maxAttempts: 1 }),
+      sceneAction('a1', 'Investigação', {
+        name: 'Procurar pistas na carroça',
+        dc: 12,
+        maxAttempts: 1,
+        key: 'skill:investigation',
+      }),
+      sceneAction('a2', 'Sobrevivência', {
+        name: 'Seguir os rastros dos goblins',
+        dc: 13,
+        maxAttempts: 1,
+      }),
       sceneAction('a3', 'Adestrar Animais', { name: 'Acalmar os cavalos', maxAttempts: 0 }),
       sceneAction('a4', 'Percepção', { maxAttempts: 3 }),
-      sceneAction('a5', 'Teste de resistência de Constituição', { name: 'Resistir ao cheiro de fumaça', dc: 10, maxAttempts: 1, key: 'save:con' }),
+      sceneAction('a5', 'Teste de resistência de Constituição', {
+        name: 'Resistir ao cheiro de fumaça',
+        dc: 10,
+        maxAttempts: 1,
+        key: 'save:con',
+      }),
     ],
     rolls,
     openedAt: timestampFromDate(new Date(2026, 9, 3, 21, 10)),
@@ -102,11 +123,35 @@ export function playerScene(
     name: 'A carroça tombada',
     description: 'Uma carroça de mercador tombada na estrada.',
     actions: [
-      sceneAction('a1', 'Investigação', { name: 'Procurar pistas na carroça', bonus: 6, passive: 16, maxAttempts: 1, attemptsLeft: 1, key: 'skill:investigation' }),
-      sceneAction('a2', 'Sobrevivência', { name: 'Seguir os rastros dos goblins', bonus: 1, maxAttempts: 1, attemptsLeft: 1 }),
+      sceneAction('a1', 'Investigação', {
+        name: 'Procurar pistas na carroça',
+        bonus: 6,
+        passive: 16,
+        maxAttempts: 1,
+        attemptsLeft: 1,
+        key: 'skill:investigation',
+      }),
+      sceneAction('a2', 'Sobrevivência', {
+        name: 'Seguir os rastros dos goblins',
+        bonus: 1,
+        maxAttempts: 1,
+        attemptsLeft: 1,
+      }),
       sceneAction('a3', 'Adestrar Animais', { name: 'Acalmar os cavalos', bonus: 1 }),
-      sceneAction('a4', 'Percepção', { bonus: 1, passive: 11, maxAttempts: 3, attemptsLeft: 3, key: 'skill:perception' }),
-      sceneAction('a5', 'Teste de resistência de Constituição', { name: 'Resistir ao cheiro de fumaça', bonus: 3, maxAttempts: 1, attemptsLeft: 1, key: 'save:con' }),
+      sceneAction('a4', 'Percepção', {
+        bonus: 1,
+        passive: 11,
+        maxAttempts: 3,
+        attemptsLeft: 3,
+        key: 'skill:perception',
+      }),
+      sceneAction('a5', 'Teste de resistência de Constituição', {
+        name: 'Resistir ao cheiro de fumaça',
+        bonus: 3,
+        maxAttempts: 1,
+        attemptsLeft: 1,
+        key: 'save:con',
+      }),
     ],
     rolls,
     openedAt: timestampFromDate(new Date(2026, 9, 3, 21, 10)),
@@ -155,7 +200,13 @@ export class FakeSceneClient {
     this.record(`put ${characterId}`);
     await this.hold;
     if (!this.stage.some((n) => n.characterId === characterId)) {
-      this.stage = [...this.stage, stageNpc(`s-${characterId}`, this.names[characterId] ?? characterId, { master: true, characterId })];
+      this.stage = [
+        ...this.stage,
+        stageNpc(`s-${characterId}`, this.names[characterId] ?? characterId, {
+          master: true,
+          characterId,
+        }),
+      ];
     }
     return this.stage;
   }
@@ -174,7 +225,12 @@ export class FakeSceneClient {
     return this.stage;
   }
 
-  async roll(_campaignId: string, actionId: string, die: SceneDie, key: string): Promise<SceneRoll> {
+  async roll(
+    _campaignId: string,
+    actionId: string,
+    die: SceneDie,
+    key: string,
+  ): Promise<SceneRoll> {
     this.record(`roll ${actionId} ${'inApp' in die ? 'app' : die.face} ${key}`);
     return this.made;
   }
@@ -182,7 +238,12 @@ export class FakeSceneClient {
   /** The scene `grantAttempt` answers with. */
   granted: OpenSceneInfo | null = null;
 
-  async grantAttempt(_campaignId: string, actionId: string, characterId: string, key: string): Promise<OpenSceneInfo> {
+  async grantAttempt(
+    _campaignId: string,
+    actionId: string,
+    characterId: string,
+    key: string,
+  ): Promise<OpenSceneInfo> {
     this.record(`grant ${actionId} ${characterId} ${key}`);
     return this.granted ?? masterScene();
   }

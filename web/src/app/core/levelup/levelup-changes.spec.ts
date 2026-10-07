@@ -1,13 +1,22 @@
 import { create } from '@bufbuild/protobuf';
 
-import { LevelUpChoicesSchema, LevelUpHitPointsMethod, LevelUpSchema } from '../../../gen/meurpg/characters/v1/characters_pb';
+import {
+  LevelUpChoicesSchema,
+  LevelUpHitPointsMethod,
+  LevelUpSchema,
+} from '../../../gen/meurpg/characters/v1/characters_pb';
 import { choiceRows } from './levelup-changes';
 
 const levelUp = (choices: object) =>
   create(LevelUpSchema, {
     characterName: 'Pensantus',
     toLevel: 4,
-    namesPt: { 'spell:light': 'Luz', 'spell:misty-step': 'Passo Nebuloso', 'spell:mirror-image': 'Reflexos', 'sub:x': 'Escola X' },
+    namesPt: {
+      'spell:light': 'Luz',
+      'spell:misty-step': 'Passo Nebuloso',
+      'spell:mirror-image': 'Reflexos',
+      'sub:x': 'Escola X',
+    },
     choices: create(LevelUpChoicesSchema, choices),
   });
 
@@ -33,7 +42,11 @@ describe('choiceRows: the master\'s "O que mudou"', () => {
 
   it('says how the die was rolled, and +1 in two', () => {
     const rows = choiceRows(
-      levelUp({ abilityIncrease: { strength: 1, wisdom: 1 }, hitPoints: { method: LevelUpHitPointsMethod.ROLLED_PHYSICAL, value: 5 }, subclassKey: 'sub:x' }),
+      levelUp({
+        abilityIncrease: { strength: 1, wisdom: 1 },
+        hitPoints: { method: LevelUpHitPointsMethod.ROLLED_PHYSICAL, value: 5 },
+        subclassKey: 'sub:x',
+      }),
     );
     expect(rows[0].value).toBe('+1 em Força e +1 em Sabedoria');
     expect(rows[1].value).toContain('Dado físico: 5');
@@ -41,6 +54,10 @@ describe('choiceRows: the master\'s "O que mudou"', () => {
   });
 
   it('leaves out what was not chosen', () => {
-    expect(choiceRows(levelUp({ hitPoints: { method: LevelUpHitPointsMethod.ROLLED_IN_APP, value: 3 } })).map((r) => r.label)).toEqual(['Pontos de vida']);
+    expect(
+      choiceRows(
+        levelUp({ hitPoints: { method: LevelUpHitPointsMethod.ROLLED_IN_APP, value: 3 } }),
+      ).map((r) => r.label),
+    ).toEqual(['Pontos de vida']);
   });
 });

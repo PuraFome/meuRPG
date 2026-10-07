@@ -103,7 +103,17 @@ export function planFor(paper: Paper, orientation: Orientation, map: MapSizeCm):
   const usableH = paperH - 2 * MARGIN_CM;
   const columns = sheetsAlong(map.width, usableW);
   const rows = sheetsAlong(map.height, usableH);
-  return { paper, orientation, paperW, paperH, usableW, usableH, columns, rows, sheets: columns * rows };
+  return {
+    paper,
+    orientation,
+    paperW,
+    paperH,
+    usableW,
+    usableH,
+    columns,
+    rows,
+    sheets: columns * rows,
+  };
 }
 
 export interface PaperPlans {
@@ -117,7 +127,12 @@ export interface PaperPlans {
 export function plansForPaper(paper: Paper, map: MapSizeCm): PaperPlans {
   const landscape = planFor(paper, 'landscape', map);
   const portrait = planFor(paper, 'portrait', map);
-  return { paper, landscape, portrait, best: portrait.sheets < landscape.sheets ? portrait : landscape };
+  return {
+    paper,
+    landscape,
+    portrait,
+    best: portrait.sheets < landscape.sheets ? portrait : landscape,
+  };
 }
 
 /** The paper that spends the fewest sheets, the first of the list on a tie. */
@@ -152,7 +167,9 @@ export function sheetLabel(row: number, column: number): string {
     glue.push(`abaixo da ${sheetName(row - 1, column)}`);
   }
   const title = `Página ${sheetName(row, column)}`;
-  return glue.length === 0 ? `${title} · canto de cima, à esquerda` : `${title} · cole ${glue.join(' e ')}`;
+  return glue.length === 0
+    ? `${title} · canto de cima, à esquerda`
+    : `${title} · cole ${glue.join(' e ')}`;
 }
 
 /** Where a sheet's content starts on the map, in cm. */

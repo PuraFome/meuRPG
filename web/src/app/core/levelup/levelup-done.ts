@@ -9,8 +9,12 @@ import type { LevelUpDone } from './levelup-flow';
  * over the key is taken out of the history entry: the status shows after the level-up and not again on a
  * reload. (The router writes its own state at the end of the navigation, so the clean-up waits for it.)
  */
-export function takeLevelUpDone(router: Router, win: Pick<Window, 'history'> = window): LevelUpDone | null {
-  const done = (router.currentNavigation()?.extras.state?.['levelUp'] as LevelUpDone | undefined) ?? null;
+export function takeLevelUpDone(
+  router: Router,
+  win: Pick<Window, 'history'> = window,
+): LevelUpDone | null {
+  const done =
+    (router.currentNavigation()?.extras.state?.['levelUp'] as LevelUpDone | undefined) ?? null;
   if (done) {
     router.events
       .pipe(

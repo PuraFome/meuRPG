@@ -9,7 +9,10 @@ const layers: MapLayers = {
   rows: 16,
   walls: Array.from({ length: 242 }, (_, i) => ({ col: i % 24, row: Math.floor(i / 24) })),
   terrain: [1, 2, 3, 4].map((col) => ({ col, row: 9 })),
-  half: [{ col: 19, row: 7 }, { col: 19, row: 8 }],
+  half: [
+    { col: 19, row: 7 },
+    { col: 19, row: 8 },
+  ],
   threeQuarters: [{ col: 20, row: 4 }],
   doors: [
     { col: 3, row: 3, state: 2, axis: 'h' },
@@ -25,7 +28,11 @@ describe('LayersPanel', () => {
   let changes: LayerVisibility[];
   let retries: number;
 
-  function setup(status: PaintSaveStatus = 'saved', visible = all, extra: Record<string, unknown> = {}) {
+  function setup(
+    status: PaintSaveStatus = 'saved',
+    visible = all,
+    extra: Record<string, unknown> = {},
+  ) {
     changes = [];
     retries = 0;
     TestBed.resetTestingModule();
@@ -42,9 +49,9 @@ describe('LayersPanel', () => {
     fixture.detectChanges();
     el = fixture.nativeElement;
   }
-  const text = () => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const text = () => (el.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
 
-  it('lists the five layers with what each holds, in the artboard\'s words', () => {
+  it("lists the five layers with what each holds, in the artboard's words", () => {
     setup();
     for (const name of ['Terreno difícil', 'Parede', 'Cobertura', 'Luz', 'Portas']) {
       expect(text()).toContain(name);
@@ -73,17 +80,31 @@ describe('LayersPanel', () => {
     expect(text()).toContain('Tudo salvo');
     setup('saving');
     expect(text()).toContain('Salvando');
-    setup('error', all, { problem: 'Não foi possível falar com o servidor agora.', retryable: true });
+    setup('error', all, {
+      problem: 'Não foi possível falar com o servidor agora.',
+      retryable: true,
+    });
     expect(text()).toContain('Não salvou');
-    expect(el.querySelector('[role="alert"]')?.textContent).toContain('Não foi possível falar com o servidor');
-    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Tentar de novo'))!.click();
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+      'Não foi possível falar com o servidor',
+    );
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Tentar de novo'))!
+      .click();
     expect(retries).toBe(1);
   });
 
   it('a refusal no retry fixes says what happened and offers no "Tentar de novo"', () => {
-    setup('error', all, { problem: 'Defina a grade para pintar e ligar a névoa.', retryable: false });
+    setup('error', all, {
+      problem: 'Defina a grade para pintar e ligar a névoa.',
+      retryable: false,
+    });
     expect(text()).toContain('Defina a grade para pintar e ligar a névoa.');
-    expect(Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.includes('Tentar de novo'))).toBe(false);
+    expect(
+      Array.from(el.querySelectorAll('button')).some((b) =>
+        b.textContent?.includes('Tentar de novo'),
+      ),
+    ).toBe(false);
   });
 
   it('never says "Tudo salvo" while painting is off (no grid, or the layers not read yet)', () => {

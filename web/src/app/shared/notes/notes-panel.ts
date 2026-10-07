@@ -50,7 +50,9 @@ export class NotesPanel implements OnInit {
   protected readonly state = new NotesState(inject(NotesClient), () => this.campaignId());
   protected readonly editing = new NoteEditing(this.state);
   protected readonly filter = signal(FILTER_ALL);
-  protected readonly options = computed(() => filterOptions(this.state.notes(), this.state.scenes()));
+  protected readonly options = computed(() =>
+    filterOptions(this.state.notes(), this.state.scenes()),
+  );
   protected readonly visible = computed(() => applyFilter(this.state.notes(), this.filter()));
   protected readonly chosen = computed(() => this.options().find((o) => o.value === this.filter()));
   protected readonly count = computed(() => entryCount(this.state.notes().length));

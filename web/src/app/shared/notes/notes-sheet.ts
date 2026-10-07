@@ -90,12 +90,18 @@ export class NotesSheet implements OnInit {
   protected readonly editing = new NoteEditing(this.state, this.data.openScene);
 
   protected readonly filter = signal(FILTER_ALL);
-  protected readonly options = computed(() => filterOptions(this.state.notes(), this.state.scenes()));
+  protected readonly options = computed(() =>
+    filterOptions(this.state.notes(), this.state.scenes()),
+  );
   protected readonly visible = computed(() => applyFilter(this.state.notes(), this.filter()));
   protected readonly chosen = computed(() => this.options().find((o) => o.value === this.filter()));
   protected readonly empty = computed(() => this.state.notes().length === 0);
   protected readonly title = computed(() =>
-    this.editing.stage() === 'list' ? 'Anotações' : this.editing.editing() ? 'Editar anotação' : 'Nova anotação',
+    this.editing.stage() === 'list'
+      ? 'Anotações'
+      : this.editing.editing()
+        ? 'Editar anotação'
+        : 'Nova anotação',
   );
   /** What a screen reader hears after the filter changes. */
   protected readonly announce = signal('');
@@ -115,7 +121,9 @@ export class NotesSheet implements OnInit {
     });
     effect(() => {
       if (this.editing.confirmingDiscard()) {
-        afterNextRender(() => this.keepButton()?.nativeElement.focus(), { injector: this.injector });
+        afterNextRender(() => this.keepButton()?.nativeElement.focus(), {
+          injector: this.injector,
+        });
       }
     });
   }
@@ -190,7 +198,9 @@ export class NotesSheet implements OnInit {
       () => {
         const view = this.document.defaultView;
         const viewport = view?.visualViewport;
-        const container = this.host.nativeElement.closest<HTMLElement>('.mat-bottom-sheet-container');
+        const container = this.host.nativeElement.closest<HTMLElement>(
+          '.mat-bottom-sheet-container',
+        );
         if (!view || !viewport || !container) {
           return;
         }

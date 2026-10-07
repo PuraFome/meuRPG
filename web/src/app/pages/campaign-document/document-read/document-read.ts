@@ -3,7 +3,11 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { FictionNotice } from '../../../shared/fiction-notice/fiction-notice';
 import { outline, parseMarkdown } from '../../../shared/markdown/markdown';
-import { MarkdownView, type MarkdownRefs, type RefOpen } from '../../../shared/markdown/markdown-view';
+import {
+  MarkdownView,
+  type MarkdownRefs,
+  type RefOpen,
+} from '../../../shared/markdown/markdown-view';
 import { DocumentToc } from '../document-toc/document-toc';
 
 /**
@@ -40,7 +44,8 @@ export class DocumentRead {
     if (!heading) {
       return;
     }
-    const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reduce =
+      typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     heading.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     heading.tabIndex = -1;
     heading.focus({ preventScroll: true });

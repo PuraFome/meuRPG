@@ -59,7 +59,14 @@ describe('CampaignCharacters', () => {
         },
       ],
       npcs: [
-        { id: 'n1', name: 'Goblin', kind: 'minion', state: 'draft', classSummary: '', playerDisplayName: null },
+        {
+          id: 'n1',
+          name: 'Goblin',
+          kind: 'minion',
+          state: 'draft',
+          classSummary: '',
+          playerDisplayName: null,
+        },
       ],
       hasLivingCharacter: false,
     });
@@ -78,8 +85,22 @@ describe('CampaignCharacters', () => {
   it('shows the master the characters waiting for approval, apart, each linking to its sheet (MR-024)', async () => {
     fake.listCharactersResult = Promise.resolve({
       playerCharacters: [
-        { id: 'c1', name: 'Pensantus', kind: 'player', state: 'draft', classSummary: 'Mago 3', playerDisplayName: 'Vinicius' },
-        { id: 'c2', name: 'Novata', kind: 'player', state: 'pending', classSummary: 'Ladina 1', playerDisplayName: 'Samuel' },
+        {
+          id: 'c1',
+          name: 'Pensantus',
+          kind: 'player',
+          state: 'draft',
+          classSummary: 'Mago 3',
+          playerDisplayName: 'Vinicius',
+        },
+        {
+          id: 'c2',
+          name: 'Novata',
+          kind: 'player',
+          state: 'pending',
+          classSummary: 'Ladina 1',
+          playerDisplayName: 'Samuel',
+        },
       ],
       npcs: [],
       hasLivingCharacter: false,
@@ -87,9 +108,13 @@ describe('CampaignCharacters', () => {
 
     const { el } = await render(true);
 
-    const heading = Array.from(el.querySelectorAll('h3')).find((h) => h.textContent?.includes('Esperando aprovação'));
+    const heading = Array.from(el.querySelectorAll('h3')).find((h) =>
+      h.textContent?.includes('Esperando aprovação'),
+    );
     expect(heading).toBeTruthy();
-    const queue = el.querySelector('ul[aria-labelledby="awaiting-approval-heading"]') as HTMLElement;
+    const queue = el.querySelector(
+      'ul[aria-labelledby="awaiting-approval-heading"]',
+    ) as HTMLElement;
     expect(queue.textContent).toContain('Novata');
     expect(queue.textContent).toContain('Samuel');
     expect(queue.textContent).not.toContain('Pensantus');
@@ -99,7 +124,14 @@ describe('CampaignCharacters', () => {
   it('shows no "Esperando aprovação" when nobody waits', async () => {
     fake.listCharactersResult = Promise.resolve({
       playerCharacters: [
-        { id: 'c1', name: 'Pensantus', kind: 'player', state: 'draft', classSummary: 'Mago 3', playerDisplayName: 'Vinicius' },
+        {
+          id: 'c1',
+          name: 'Pensantus',
+          kind: 'player',
+          state: 'draft',
+          classSummary: 'Mago 3',
+          playerDisplayName: 'Vinicius',
+        },
       ],
       npcs: [],
       hasLivingCharacter: false,
@@ -111,7 +143,14 @@ describe('CampaignCharacters', () => {
   it('shows a pending player their character as "Pendente de aprovação", without the create button', async () => {
     fake.listCharactersResult = Promise.resolve({
       playerCharacters: [
-        { id: 'c2', name: 'Novata', kind: 'player', state: 'pending', classSummary: 'Ladina 1', playerDisplayName: 'Samuel' },
+        {
+          id: 'c2',
+          name: 'Novata',
+          kind: 'player',
+          state: 'pending',
+          classSummary: 'Ladina 1',
+          playerDisplayName: 'Samuel',
+        },
       ],
       npcs: [],
       hasLivingCharacter: true,
@@ -160,12 +199,36 @@ describe('CampaignCharacters', () => {
   });
 
   describe('"Pode subir de nível" (RN-12, D4)', () => {
-    const row = (id: string, canLevelUp: boolean): ExperienceRow => ({ id, name: id, playerUserId: '', sub: '', level: 3, xp: 2716, nextLevelXp: 2700, canLevelUp, levelUpReason: 1 });
+    const row = (id: string, canLevelUp: boolean): ExperienceRow => ({
+      id,
+      name: id,
+      playerUserId: '',
+      sub: '',
+      level: 3,
+      xp: 2716,
+      nextLevelXp: 2700,
+      canLevelUp,
+      levelUpReason: 1,
+    });
     const list = (state = 'locked' as const) =>
       Promise.resolve({
         playerCharacters: [
-          { id: 'c1', name: 'Pensantus', kind: 'player' as const, state, classSummary: 'Mago 3', playerDisplayName: 'Vinicius' },
-          { id: 'c2', name: 'Toren', kind: 'player' as const, state, classSummary: 'Guerreiro 3', playerDisplayName: 'Caio' },
+          {
+            id: 'c1',
+            name: 'Pensantus',
+            kind: 'player' as const,
+            state,
+            classSummary: 'Mago 3',
+            playerDisplayName: 'Vinicius',
+          },
+          {
+            id: 'c2',
+            name: 'Toren',
+            kind: 'player' as const,
+            state,
+            classSummary: 'Guerreiro 3',
+            playerDisplayName: 'Caio',
+          },
         ],
         npcs: [],
         hasLivingCharacter: true,
@@ -191,7 +254,9 @@ describe('CampaignCharacters', () => {
       const { el } = await render(true);
 
       const rows = Array.from(el.querySelectorAll('li'));
-      expect(rows[0].querySelector('app-level-up-tag')?.textContent).toContain('Pode subir de nível');
+      expect(rows[0].querySelector('app-level-up-tag')?.textContent).toContain(
+        'Pode subir de nível',
+      );
       expect(rows[0].textContent).toContain('Travada');
       expect(rows[1].querySelector('app-level-up-tag')).toBeNull();
     });

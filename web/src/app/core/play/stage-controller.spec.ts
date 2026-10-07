@@ -10,9 +10,17 @@ describe('StageController', () => {
     const api = new FakeSceneClient();
     api.stage = stage;
     api.names = { aldo: 'Aldo', ivo: 'Barão Ivo', mira: 'Mira' };
-    const state = new SceneState(() => Promise.resolve(masterScene([], api.stage)), () => true);
+    const state = new SceneState(
+      () => Promise.resolve(masterScene([], api.stage)),
+      () => true,
+    );
     state.apply(masterScene([], stage));
-    const ctl = new StageController(api, state, () => 'c1', (id) => api.names[id] ?? id);
+    const ctl = new StageController(
+      api,
+      state,
+      () => 'c1',
+      (id) => api.names[id] ?? id,
+    );
     return { api, state, ctl };
   }
 
@@ -63,7 +71,10 @@ describe('StageController', () => {
     const { api, ctl } = setup();
     const refresh = vi.spyOn(ctl['state'], 'refresh');
     api.failWith = new ConnectError('full', Code.FailedPrecondition, undefined, [
-      { desc: SceneBlockedSchema, value: create(SceneBlockedSchema, { reason: SceneBlockedReason.STAGE_FULL }) },
+      {
+        desc: SceneBlockedSchema,
+        value: create(SceneBlockedSchema, { reason: SceneBlockedReason.STAGE_FULL }),
+      },
     ]);
     expect(await ctl.put('aldo')).toBe(false);
     expect(ctl.error()).toBe('A cena comporta 4 NPCs. Tire um para pôr outro.');
@@ -75,7 +86,10 @@ describe('StageController', () => {
   it('says the scene is gone when it closed meanwhile', async () => {
     const { api, ctl } = setup();
     api.failWith = new ConnectError('gone', Code.FailedPrecondition, undefined, [
-      { desc: SceneBlockedSchema, value: create(SceneBlockedSchema, { reason: SceneBlockedReason.NO_OPEN_SCENE }) },
+      {
+        desc: SceneBlockedSchema,
+        value: create(SceneBlockedSchema, { reason: SceneBlockedReason.NO_OPEN_SCENE }),
+      },
     ]);
     await ctl.take('mira');
     expect(ctl.error()).toContain('Não há cena aberta');

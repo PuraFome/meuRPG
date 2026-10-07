@@ -23,7 +23,12 @@ describe('TurnOptionsState', () => {
 
   it('keeps what it had when a question fails, and forgets on clear', async () => {
     const state = new TurnOptionsState();
-    await state.load(api([Promise.resolve({ yourTurn: true } as GetTurnOptionsResponse)]), 'c', 'e', 'x');
+    await state.load(
+      api([Promise.resolve({ yourTurn: true } as GetTurnOptionsResponse)]),
+      'c',
+      'e',
+      'x',
+    );
     await state.load(api([Promise.reject(new Error('down'))]), 'c', 'e', 'x');
     expect(state.data()?.yourTurn).toBe(true);
     state.clear();

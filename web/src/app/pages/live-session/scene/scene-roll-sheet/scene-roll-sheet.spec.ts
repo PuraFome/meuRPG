@@ -22,7 +22,10 @@ describe('SceneRollSheet', () => {
   function setup(overrides: Partial<SceneRollSheetData> = {}) {
     api = new FakeSceneClient();
     close = vi.fn();
-    const state = new SceneState(() => api.get(), () => false);
+    const state = new SceneState(
+      () => api.get(),
+      () => false,
+    );
     const data: SceneRollSheetData = {
       campaignId: 'c1',
       action: playerScene().actions[0],
@@ -48,7 +51,9 @@ describe('SceneRollSheet', () => {
       }
     };
     const button = (name: string) =>
-      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.includes(name));
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+        b.textContent?.includes(name),
+      );
     const type = (text: string) => {
       const field = el.querySelector<HTMLInputElement>('input')!;
       field.value = text;
@@ -58,12 +63,12 @@ describe('SceneRollSheet', () => {
     return { fixture, el, button, type, settle, state };
   }
 
-  it('shows the check and the player\'s own bonus, with the app\'s roll as the one filled button', () => {
+  it("shows the check and the player's own bonus, with the app's roll as the one filled button", () => {
     const { el, button } = setup();
     expect(el.querySelector('h2')?.textContent).toBe('Procurar pistas na carroça');
     expect(el.textContent).toContain('Investigação');
     expect(el.textContent).toContain('bônus +6');
-    expect(el.textContent?.replace(/ /g, ' ')).toContain('1d20 + 6');
+    expect(el.textContent?.replace(/\u00a0/g, ' ')).toContain('1d20 + 6');
     expect(el.textContent).toContain('O mestre vê o resultado e diz o que acontece.');
     expect(button('Rolar no app')?.classList).not.toContain('pick__main--quiet');
     expect(button('Digitar o resultado')?.classList).toContain('pick__link');
@@ -82,14 +87,18 @@ describe('SceneRollSheet', () => {
     api.made = { ...api.made, passed: false } as never;
     again.button('Rolar no app')!.click();
     await again.settle();
-    expect(again.el.querySelector('.res__pass')?.textContent?.replace(/\u00a0/g, ' ')).toContain('Não passou · CD 12');
+    expect(again.el.querySelector('.res__pass')?.textContent?.replace(/\u00a0/g, ' ')).toContain(
+      'Não passou · CD 12',
+    );
     expect(again.el.querySelector('.res__pass.mr-tag--danger mat-icon')?.textContent).toBe('close');
   });
 
   it('opens on the typed way when the player prefers their own dice', () => {
     const { el } = setup({ preference: DicePreference.PHYSICAL });
     expect(el.querySelector('input')).toBeNull();
-    const [app, typed] = Array.from(el.querySelectorAll('button')).filter((b) => b.classList.contains('pick__main'));
+    const [app, typed] = Array.from(el.querySelectorAll('button')).filter((b) =>
+      b.classList.contains('pick__main'),
+    );
     expect(app.classList).toContain('pick__main--quiet');
     expect(typed.classList).not.toContain('pick__main--quiet');
   });
@@ -101,7 +110,7 @@ describe('SceneRollSheet', () => {
     expect(api.calls.filter((c) => c.startsWith('roll '))).toHaveLength(1);
     expect(api.calls[0]).toMatch(/^roll a1 app [0-9a-f-]{36}$/);
     expect(el.querySelector('.res__sum')?.textContent).toBe('17');
-    expect(el.textContent?.replace(/ /g, ' ')).toContain('1d20 (11) + 6 = 17');
+    expect(el.textContent?.replace(/\u00a0/g, ' ')).toContain('1d20 (11) + 6 = 17');
     expect(el.textContent).toContain('Seu total em Investigação');
     expect(el.textContent).toContain('O mestre vê o resultado.');
     expect(el.textContent).toContain('rolado no app');
@@ -116,14 +125,20 @@ describe('SceneRollSheet', () => {
     button('Digitar o resultado')!.click();
     fixture.detectChanges();
     expect(el.querySelector('h2')?.textContent).toBe('Digite o resultado do dado');
-    expect(el.querySelector('.type__bonus')?.textContent?.replace(/ /g, ' ')).toBe('+ 6 de bônus');
+    expect(el.querySelector('.type__bonus')?.textContent?.replace(/\u00a0/g, ' ')).toBe(
+      '+ 6 de bônus',
+    );
     type('27');
-    expect(el.querySelector('[role="alert"]')?.textContent?.replace(/ /g, ' ')).toContain('Digite um número de 1 a 20');
+    expect(el.querySelector('[role="alert"]')?.textContent?.replace(/\u00a0/g, ' ')).toContain(
+      'Digite um número de 1 a 20',
+    );
     expect(button('Confirmar')?.getAttribute('aria-disabled')).toBe('true');
     type('0');
     expect(el.querySelector('[role="alert"]')).not.toBeNull();
     type('11');
-    expect(el.querySelector('.type__sum')?.textContent?.replace(/ /g, ' ')).toContain('11 + 6 = 17 · dado físico');
+    expect(el.querySelector('.type__sum')?.textContent?.replace(/\u00a0/g, ' ')).toContain(
+      '11 + 6 = 17 · dado físico',
+    );
     button('Confirmar 11')!.click();
     await settle();
     expect(api.calls[0]).toMatch(/^roll a1 11 /);
@@ -140,11 +155,16 @@ describe('SceneRollSheet', () => {
   it('says why a roll was refused, from the typed reason', async () => {
     const { el, button, settle } = setup();
     api.failWith = new ConnectError('x', Code.FailedPrecondition, undefined, [
-      { desc: SceneBlockedSchema, value: create(SceneBlockedSchema, { reason: SceneBlockedReason.ALREADY_ROLLED }) },
+      {
+        desc: SceneBlockedSchema,
+        value: create(SceneBlockedSchema, { reason: SceneBlockedReason.ALREADY_ROLLED }),
+      },
     ]);
     button('Rolar no app')!.click();
     await settle();
-    expect(el.querySelector('[role="alert"]')?.textContent).toContain('Você não tem mais tentativas nessa ação');
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+      'Você não tem mais tentativas nessa ação',
+    );
     expect(el.querySelector('.res')).toBeNull();
   });
 
@@ -173,9 +193,13 @@ describe('SceneRollSheet', () => {
   });
 
   it('names a check with no name of its own by the check, and the kind under it', () => {
-    const { el } = setup({ action: sceneAction('a4', 'Percepção', { bonus: -1, key: 'skill:perception' }) });
+    const { el } = setup({
+      action: sceneAction('a4', 'Percepção', { bonus: -1, key: 'skill:perception' }),
+    });
     expect(el.querySelector('h2')?.textContent).toBe('Percepção');
-    expect(el.querySelector('.frame__sub')?.textContent?.replace(/ /g, ' ')).toBe('Perícia · bônus −1');
-    expect(el.textContent?.replace(/ /g, ' ')).toContain('1d20 − 1');
+    expect(el.querySelector('.frame__sub')?.textContent?.replace(/\u00a0/g, ' ')).toBe(
+      'Perícia · bônus −1',
+    );
+    expect(el.textContent?.replace(/\u00a0/g, ' ')).toContain('1d20 − 1');
   });
 });

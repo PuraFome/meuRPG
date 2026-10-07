@@ -30,7 +30,10 @@ export function blocksOf(first: ClassBlock, extras: readonly ExtraClassValue[]):
 
 /** The sum of the levels (a level that is not a whole number counts as 0 until it is fixed). */
 export function totalLevel(blocks: readonly ClassBlock[]): number {
-  return blocks.reduce((sum, b) => sum + (Number.isInteger(b.level) && b.level > 0 ? b.level : 0), 0);
+  return blocks.reduce(
+    (sum, b) => sum + (Number.isInteger(b.level) && b.level > 0 ? b.level : 0),
+    0,
+  );
 }
 
 /** The most levels a sheet has (the SRD's 20); more is refused by the server. */
@@ -39,11 +42,9 @@ export const MAX_TOTAL_LEVEL = 20;
 /** An entry the master retired or switched off is offered as a new choice to nobody who cannot use it: only when it is
  * what the form already has (so the current value shows), or, for a switched-off one, to the master (who is never
  * refused). An archived one is never offered new, not even to the master (the server refuses it). */
-export function offered<T extends { readonly key: string; readonly archived: boolean; readonly off: boolean }>(
-  items: readonly T[],
-  current: readonly string[],
-  master: boolean,
-): T[] {
+export function offered<
+  T extends { readonly key: string; readonly archived: boolean; readonly off: boolean },
+>(items: readonly T[], current: readonly string[], master: boolean): T[] {
   return items.filter((i) => current.includes(i.key) || (!i.archived && (master || !i.off)));
 }
 
@@ -56,14 +57,21 @@ export function classOf(catalog: RulesCatalogVm, key: string): ClassOptionVm | u
   return catalog.classes.find((c) => c.key === key);
 }
 
-export function subclassOf(catalog: RulesCatalogVm, classKey: string, subclassKey: string): SubclassOptionVm | undefined {
+export function subclassOf(
+  catalog: RulesCatalogVm,
+  classKey: string,
+  subclassKey: string,
+): SubclassOptionVm | undefined {
   return classOf(catalog, classKey)?.subclasses.find((s) => s.key === subclassKey);
 }
 
 /** The hit die of every level after the first, in the order of the blocks (every level of the first
  * class, then the next class): the order `HitPoints.rolls` follow. A class not in the catalog counts
  * as a d8 only for the row's label, the server rejects the sheet anyway. */
-export function hitDiceAfterFirst(catalog: RulesCatalogVm, blocks: readonly ClassBlock[]): number[] {
+export function hitDiceAfterFirst(
+  catalog: RulesCatalogVm,
+  blocks: readonly ClassBlock[],
+): number[] {
   const dice: number[] = [];
   blocks.forEach((b, i) => {
     const die = classOf(catalog, b.classKey)?.hitDie ?? 0;
@@ -108,7 +116,10 @@ function circleAt(table: readonly number[], level: number): number | null {
 }
 
 /** The casting sections of a sheet, in block order: a class that casts, or a subclass that casts from its level on. */
-export function casterSections(catalog: RulesCatalogVm, blocks: readonly ClassBlock[]): CasterSection[] {
+export function casterSections(
+  catalog: RulesCatalogVm,
+  blocks: readonly ClassBlock[],
+): CasterSection[] {
   const out: CasterSection[] = [];
   blocks.forEach((b, index) => {
     const cls = classOf(catalog, b.classKey);
@@ -116,7 +127,9 @@ export function casterSections(catalog: RulesCatalogVm, blocks: readonly ClassBl
       return;
     }
     const chosen = cls.subclasses.find((c) => c.key === b.subclassKey);
-    const always = (chosen?.alwaysPrepared ?? []).filter((a) => a.classLevel <= b.level).map((a) => a.spellKey);
+    const always = (chosen?.alwaysPrepared ?? [])
+      .filter((a) => a.classLevel <= b.level)
+      .map((a) => a.spellKey);
     const alwaysSourcePt = chosen && always.length > 0 ? chosen.namePt : '';
     if (cls.isCaster) {
       out.push({
@@ -165,13 +178,28 @@ function listed(sp: SpellOptionVm, selected: ReadonlySet<string>, master: boolea
 }
 
 /** The cantrips of a section's list, sorted by Portuguese name. */
-export function cantripsOf(spells: readonly SpellOptionVm[], s: CasterSection, selected: ReadonlySet<string> = new Set(), master = false): SpellOptionVm[] {
-  return sorted(spells.filter((sp) => sp.level === 0 && sp.classKeys.includes(s.listClassKey) && listed(sp, selected, master)));
+export function cantripsOf(
+  spells: readonly SpellOptionVm[],
+  s: CasterSection,
+  selected: ReadonlySet<string> = new Set(),
+  master = false,
+): SpellOptionVm[] {
+  return sorted(
+    spells.filter(
+      (sp) =>
+        sp.level === 0 && sp.classKeys.includes(s.listClassKey) && listed(sp, selected, master),
+    ),
+  );
 }
 
 /** The leveled spells of a section's list: circle first, then name. `selected` stays listed above the
  * limit (the level was lowered) so it can be unchecked instead of vanishing. */
-export function leveledOf(spells: readonly SpellOptionVm[], s: CasterSection, selected: ReadonlySet<string> = new Set(), master = false): SpellOptionVm[] {
+export function leveledOf(
+  spells: readonly SpellOptionVm[],
+  s: CasterSection,
+  selected: ReadonlySet<string> = new Set(),
+  master = false,
+): SpellOptionVm[] {
   return sorted(
     spells.filter(
       (sp) =>
@@ -216,7 +244,16 @@ export function outsideTheLists(
   const lists = new Set(sections.map((s) => s.listClassKey));
   const names = new Map(catalog.classes.map((c) => [c.key, c.namePt]));
   return catalog.spells
-    .filter((sp) => (cantrips ? sp.level === 0 : sp.level >= 1) && !sp.archived && sp.namePt.toLowerCase().includes(q) && !sp.classKeys.some((k) => lists.has(k)))
+    .filter(
+      (sp) =>
+        (cantrips ? sp.level === 0 : sp.level >= 1) &&
+        !sp.archived &&
+        sp.namePt.toLowerCase().includes(q) &&
+        !sp.classKeys.some((k) => lists.has(k)),
+    )
     .slice(0, 6)
-    .map((spell) => ({ spell, classes: LIST.format(spell.classKeys.flatMap((k) => (names.get(k) ? [names.get(k)!] : []))) }));
+    .map((spell) => ({
+      spell,
+      classes: LIST.format(spell.classKeys.flatMap((k) => (names.get(k) ? [names.get(k)!] : []))),
+    }));
 }

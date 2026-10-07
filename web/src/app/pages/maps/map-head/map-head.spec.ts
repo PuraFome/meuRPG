@@ -166,7 +166,10 @@ describe('MapHead: "Imprimir com a grade" (MR-033, E8-12)', () => {
     TestBed.configureTestingModule({ providers: [provideRouter([])] });
     const fixture = TestBed.createComponent(MapHead);
     fixture.componentRef.setInput('campaignId', 'camp-1');
-    fixture.componentRef.setInput('map', mapMessage('map-1', 'Estrada do Vale', { gridColumns, gridRows: gridColumns > 0 ? 20 : 0 }));
+    fixture.componentRef.setInput(
+      'map',
+      mapMessage('map-1', 'Estrada do Vale', { gridColumns, gridRows: gridColumns > 0 ? 20 : 0 }),
+    );
     fixture.componentRef.setInput('saveName', () => Promise.resolve());
     fixture.componentRef.setInput('deleteMap', () => Promise.resolve());
     fixture.detectChanges();
@@ -195,13 +198,18 @@ describe('MapHead: "Trocar imagem" asks before it erases (E9-01 4)', () => {
   let el: HTMLElement;
   let changes: number;
 
-  function render(inputs: { imageErases?: boolean; combatRunning?: boolean; showImage?: boolean } = {}) {
+  function render(
+    inputs: { imageErases?: boolean; combatRunning?: boolean; showImage?: boolean } = {},
+  ) {
     changes = 0;
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({ providers: [provideRouter([])] });
     fixture = TestBed.createComponent(MapHead);
     fixture.componentRef.setInput('campaignId', 'camp-1');
-    fixture.componentRef.setInput('map', mapMessage('map-1', 'A caverna do Vale Seco', { gridColumns: 24, gridRows: 16 }));
+    fixture.componentRef.setInput(
+      'map',
+      mapMessage('map-1', 'A caverna do Vale Seco', { gridColumns: 24, gridRows: 16 }),
+    );
     fixture.componentRef.setInput('saveName', () => Promise.resolve());
     fixture.componentRef.setInput('deleteMap', () => Promise.resolve());
     fixture.componentRef.setInput('imageErases', inputs.imageErases ?? false);
@@ -211,7 +219,8 @@ describe('MapHead: "Trocar imagem" asks before it erases (E9-01 4)', () => {
     fixture.detectChanges();
     el = fixture.nativeElement;
   }
-  const button = (text: string) => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim().endsWith(text))!;
+  const button = (text: string) =>
+    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim().endsWith(text))!;
   const settle = async () => {
     fixture.detectChanges();
     await new Promise((r) => setTimeout(r));
@@ -239,8 +248,13 @@ describe('MapHead: "Trocar imagem" asks before it erases (E9-01 4)', () => {
     expect(ask.querySelector('h3')?.textContent).toContain('Trocar a imagem?');
     expect(document.activeElement).toBe(ask.querySelector('h3'));
     expect(ask.textContent).toContain('Imagem agora: Imagem de A caverna do Vale Seco');
-    expect(ask.textContent).toContain('apaga o terreno, as paredes, a cobertura e a luz pintados, e o que os jogadores já viram. Os pontos e os tokens ficam.');
-    expect(Array.from(ask.querySelectorAll('button'), (b) => b.textContent?.trim())).toEqual(['Voltar', 'Apagar e trocar a imagem']);
+    expect(ask.textContent).toContain(
+      'apaga o terreno, as paredes, a cobertura e a luz pintados, e o que os jogadores já viram. Os pontos e os tokens ficam.',
+    );
+    expect(Array.from(ask.querySelectorAll('button'), (b) => b.textContent?.trim())).toEqual([
+      'Voltar',
+      'Apagar e trocar a imagem',
+    ]);
     expect(changes).toBe(0);
     ask.querySelectorAll('button')[1].click();
     await settle();
@@ -252,7 +266,9 @@ describe('MapHead: "Trocar imagem" asks before it erases (E9-01 4)', () => {
     render({ imageErases: true });
     button('Trocar imagem').click();
     await settle();
-    el.querySelector('app-map-ask button')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    el.querySelector('app-map-ask button')!.dispatchEvent(
+      new MouseEvent('click', { bubbles: true }),
+    );
     await settle();
     expect(changes).toBe(0);
     expect(document.activeElement?.textContent?.trim()).toBe('Trocar imagem');

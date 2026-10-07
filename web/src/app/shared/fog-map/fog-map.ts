@@ -1,4 +1,13 @@
-import { Component, computed, effect, input, output, signal, untracked, viewChild } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  input,
+  output,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { CharacterKind } from '../../../gen/meurpg/characters/v1/characters_pb';
@@ -49,7 +58,16 @@ export interface FogViewer {
  */
 @Component({
   selector: 'app-fog-map',
-  imports: [CombatantToken, DoorPicks, FogBase, MapLayersLegend, MapPins, MapPinsLegend, MapView, MatIconModule],
+  imports: [
+    CombatantToken,
+    DoorPicks,
+    FogBase,
+    MapLayersLegend,
+    MapPins,
+    MapPinsLegend,
+    MapView,
+    MatIconModule,
+  ],
   templateUrl: './fog-map.html',
   styleUrl: './fog-map.scss',
 })
@@ -107,21 +125,31 @@ export class FogMap {
   private readonly settled = signal<ReadonlySet<string>>(new Set());
   private readonly firstLoad = signal(true);
 
-  protected readonly frame = computed<FogImage>(() => ({ url: '', width: this.imageWidth(), height: this.imageHeight() }));
+  protected readonly frame = computed<FogImage>(() => ({
+    url: '',
+    width: this.imageWidth(),
+    height: this.imageHeight(),
+  }));
   protected readonly noLayers = NO_LAYERS;
   protected readonly layerSet = computed(() => this.layers() ?? NO_LAYERS);
 
   /** The points the plain markers draw: with the pins on, the traps, chests and lights have their own drawing. */
-  protected readonly markerPoints = computed(() => (this.pins() ? this.points().filter((p) => !isPinKind(p.kind)) : this.points()));
+  protected readonly markerPoints = computed(() =>
+    this.pins() ? this.points().filter((p) => !isPinKind(p.kind)) : this.points(),
+  );
 
   protected readonly rects = computed(() => {
     const v = this.vision();
     return v ? tileRects(v) : [];
   });
   /** The tile at the first load: "parte N de M". */
-  protected readonly part = computed(() => Math.min(this.rects().length, this.rects().filter((r) => this.settled().has(r.key)).length + 1));
+  protected readonly part = computed(() =>
+    Math.min(this.rects().length, this.rects().filter((r) => this.settled().has(r.key)).length + 1),
+  );
   private readonly route = computed(() => this.vision()?.tilesPath ?? '');
-  protected readonly loading = computed(() => this.status() === 'loading' || (this.vision() !== null && this.firstLoad()));
+  protected readonly loading = computed(
+    () => this.status() === 'loading' || (this.vision() !== null && this.firstLoad()),
+  );
 
   /** The tokens the map draws. The party always; an NPC's only over a place whose tile has arrived (a square with no tile is black and has no wait). */
   protected readonly shownTokens = computed(() => {
@@ -139,16 +167,21 @@ export class FogMap {
       return !this.settled().has(key) && this.rects().some((r) => r.key === key);
     };
     // The viewer's own token last, so it is drawn on top of its neighbours.
-    const rank = (t: MapToken) => (t.mine && !t.creatureId ? 3 : t.creatureId ? 2 : isParty(t) ? 1 : 0);
+    const rank = (t: MapToken) =>
+      t.mine && !t.creatureId ? 3 : t.creatureId ? 2 : isParty(t) ? 1 : 0;
     return this.tokens()
       .filter((t) => !waiting(t))
       .sort((a, b) => rank(a) - rank(b));
   });
 
-  protected readonly party = computed(() => this.tokens().filter((t) => isParty(t) && !t.creatureId));
+  protected readonly party = computed(() =>
+    this.tokens().filter((t) => isParty(t) && !t.creatureId),
+  );
   protected readonly enemies = computed(() => this.shownTokens().filter((t) => isNpc(t)));
   protected readonly creatures = computed(() => this.shownTokens().filter((t) => !!t.creatureId));
-  protected readonly mine = computed(() => this.tokens().find((t) => t.mine && !t.creatureId) ?? null);
+  protected readonly mine = computed(
+    () => this.tokens().find((t) => t.mine && !t.creatureId) ?? null,
+  );
   protected readonly companions = computed(() => this.party().filter((t) => !t.mine));
   protected readonly hiddenTokens = computed(() => this.tokens().filter((t) => t.hidden));
   protected readonly offMap = computed(() => {
@@ -168,14 +201,19 @@ export class FogMap {
     const l = visionLegend(v);
     // The viewer's own square is always seen, in grey in the dark: one square under the viewer's own token is not "No escuro, em cinza".
     const me = this.mine();
-    const ownSquare = me ? Math.min(v.rows - 1, Math.floor((me.yBp / 10000) * v.rows)) * v.columns + Math.min(v.columns - 1, Math.floor((me.xBp / 10000) * v.columns)) : -1;
+    const ownSquare = me
+      ? Math.min(v.rows - 1, Math.floor((me.yBp / 10000) * v.rows)) * v.columns +
+        Math.min(v.columns - 1, Math.floor((me.xBp / 10000) * v.columns))
+      : -1;
     const grey = v.states.some((s, n) => s === Sight.Grey && n !== ownSquare);
     const shown = { ...l, grey };
     // A map with nothing but "Visto" (the master's own) has no shading to explain.
     return shown.dim || shown.grey || shown.remembered || shown.unseen ? shown : null;
   });
   protected readonly hasLayerMarks = computed(() => hasLayers(this.layerSet()));
-  protected readonly youLabel = computed(() => (this.viewer()?.own === false ? this.viewer()!.name : 'Você'));
+  protected readonly youLabel = computed(() =>
+    this.viewer()?.own === false ? this.viewer()!.name : 'Você',
+  );
   protected readonly ownView = computed(() => this.viewer()?.own !== false);
   /** The spot a phone opens on: the party, at 2x (the person pans and zooms from there). */
   protected readonly startAt = computed(() => {
@@ -183,7 +221,9 @@ export class FogMap {
     return this.phone() && v && !this.isMaster() && !this.empty() ? centroid(this.party()) : null;
   });
 
-  protected readonly cardTitle = computed(() => (this.familiar() ? `O que o ${this.familiar()} vê` : 'Você vê'));
+  protected readonly cardTitle = computed(() =>
+    this.familiar() ? `O que o ${this.familiar()} vê` : 'Você vê',
+  );
   /** What the player can use: senses, light, who is in sight, and what grey and remembered mean. */
   protected readonly lines = computed<readonly string[]>(() => {
     const v = this.vision();
@@ -198,7 +238,9 @@ export class FogMap {
       }
     }
     const names = this.enemies().map((t) => t.name);
-    lines.push(names.length > 0 ? `Inimigos à vista: ${names.join(', ')}.` : 'Nenhum inimigo à vista.');
+    lines.push(
+      names.length > 0 ? `Inimigos à vista: ${names.join(', ')}.` : 'Nenhum inimigo à vista.',
+    );
     const l = this.legend();
     if (l?.grey) {
       lines.push('Em cinza: visto no escuro, pela visão no escuro.');
@@ -271,5 +313,10 @@ function isParty(t: { kind?: number; creatureId?: string }): boolean {
 }
 
 function isNpc(t: { kind?: number; creatureId?: string }): boolean {
-  return !t.creatureId && t.kind !== undefined && t.kind !== CharacterKind.PLAYER && t.kind !== CharacterKind.UNSPECIFIED;
+  return (
+    !t.creatureId &&
+    t.kind !== undefined &&
+    t.kind !== CharacterKind.PLAYER &&
+    t.kind !== CharacterKind.UNSPECIFIED
+  );
 }

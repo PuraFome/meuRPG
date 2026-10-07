@@ -2,19 +2,34 @@ import { ApplicationRef } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
 
-import { type Milestone, MilestoneSchema } from '../../../../gen/meurpg/progression/v1/progression_pb';
+import {
+  type Milestone,
+  MilestoneSchema,
+} from '../../../../gen/meurpg/progression/v1/progression_pb';
 import { MilestonesStore } from '../../../core/progression/milestones-store';
 import { ProgressionClient } from '../../../core/progression/progression-client';
 import { PlannedMilestones } from './planned-milestones';
 
 const ms = (id: string, text: string): Milestone => create(MilestoneSchema, { id, text });
-const three = [ms('a', 'Salvar o mercador'), ms('b', 'Chegar ao Vale Seco'), ms('c', 'Derrotar o Barão Ivo')];
+const three = [
+  ms('a', 'Salvar o mercador'),
+  ms('b', 'Chegar ao Vale Seco'),
+  ms('c', 'Derrotar o Barão Ivo'),
+];
 
 describe('PlannedMilestones (E8-14)', () => {
-  const api = { addMilestone: vi.fn(), updateMilestone: vi.fn(), moveMilestone: vi.fn(), removeMilestone: vi.fn(), listMilestones: vi.fn() };
+  const api = {
+    addMilestone: vi.fn(),
+    updateMilestone: vi.fn(),
+    moveMilestone: vi.fn(),
+    removeMilestone: vi.fn(),
+    listMilestones: vi.fn(),
+  };
 
   async function setup(list: Milestone[] = three, total = list.length) {
-    TestBed.configureTestingModule({ providers: [MilestonesStore, { provide: ProgressionClient, useValue: api }] });
+    TestBed.configureTestingModule({
+      providers: [MilestonesStore, { provide: ProgressionClient, useValue: api }],
+    });
     const fixture = TestBed.createComponent(PlannedMilestones);
     fixture.componentRef.setInput('campaignId', 'c1');
     fixture.componentRef.setInput('milestones', list);
@@ -47,9 +62,15 @@ describe('PlannedMilestones (E8-14)', () => {
       'Marcar “Chegar ao Vale Seco” como alcançado',
       'Marcar “Derrotar o Barão Ivo” como alcançado',
     ]);
-    expect(el.querySelector('[data-id="a"][data-act="up"]')?.getAttribute('aria-disabled')).toBe('true');
-    expect(el.querySelector('[data-id="c"][data-act="down"]')?.getAttribute('aria-disabled')).toBe('true');
-    expect(el.querySelector('[data-id="b"][data-act="up"]')?.getAttribute('aria-label')).toBe('Subir Chegar ao Vale Seco');
+    expect(el.querySelector('[data-id="a"][data-act="up"]')?.getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+    expect(el.querySelector('[data-id="c"][data-act="down"]')?.getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+    expect(el.querySelector('[data-id="b"][data-act="up"]')?.getAttribute('aria-label')).toBe(
+      'Subir Chegar ao Vale Seco',
+    );
   });
 
   it('invites the first milestone when the list is empty', async () => {
@@ -69,7 +90,9 @@ describe('PlannedMilestones (E8-14)', () => {
 
     el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
     await settle();
-    expect(el.querySelector('#name-error')?.textContent).toContain('Escreva o nome do marco. Ele pode ter até 120 caracteres.');
+    expect(el.querySelector('#name-error')?.textContent).toContain(
+      'Escreva o nome do marco. Ele pode ter até 120 caracteres.',
+    );
     expect(document.activeElement).toBe(input);
     expect(api.addMilestone).not.toHaveBeenCalled();
   });
@@ -160,7 +183,9 @@ describe('PlannedMilestones (E8-14)', () => {
     api.removeMilestone.mockResolvedValue({ milestones: [three[0], three[2]] });
     btn(el, '[data-id="b"][data-act="remove"]').click();
     await settle();
-    const go = Array.from(el.querySelectorAll<HTMLButtonElement>('app-milestone-ask button')).find((b) => b.textContent?.includes('Remover'))!;
+    const go = Array.from(el.querySelectorAll<HTMLButtonElement>('app-milestone-ask button')).find(
+      (b) => b.textContent?.includes('Remover'),
+    )!;
     go.click();
     await settle();
     expect(api.removeMilestone).toHaveBeenCalledWith('c1', 'b');
@@ -169,7 +194,9 @@ describe('PlannedMilestones (E8-14)', () => {
 
   it('edits the name in place of the row, filled, and saves it', async () => {
     const { el, settle } = await setup();
-    api.updateMilestone.mockResolvedValue({ milestones: [ms('a', 'Salvar a mercadora'), three[1], three[2]] });
+    api.updateMilestone.mockResolvedValue({
+      milestones: [ms('a', 'Salvar a mercadora'), three[1], three[2]],
+    });
     btn(el, '[data-id="a"][data-act="edit"]').click();
     await settle();
     const input = el.querySelector<HTMLInputElement>('app-milestone-name-form input')!;

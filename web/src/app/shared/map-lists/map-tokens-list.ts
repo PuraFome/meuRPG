@@ -55,7 +55,9 @@ export class MapTokensList {
 
   /** The owner's name for a creature's token, from the owner's own token on the map. */
   private ownerName(t: MapToken): string {
-    return t.creatureId ? (this.tokens().find((o) => !o.creatureId && o.characterId === t.characterId)?.name ?? '') : '';
+    return t.creatureId
+      ? (this.tokens().find((o) => !o.creatureId && o.characterId === t.characterId)?.name ?? '')
+      : '';
   }
   protected initial(t: MapToken): string {
     return tokenInitial(t, this.tokens());

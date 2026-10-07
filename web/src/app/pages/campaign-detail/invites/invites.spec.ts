@@ -17,7 +17,13 @@ class FakeCampaignsService {
   }
 }
 
-function invite(id: string, state: InviteState, useCount = 0, maxUses = 1, requiresApproval = false): Invite {
+function invite(
+  id: string,
+  state: InviteState,
+  useCount = 0,
+  maxUses = 1,
+  requiresApproval = false,
+): Invite {
   return {
     id,
     state,
@@ -166,7 +172,10 @@ describe('CampaignInvites', () => {
   });
 
   it('"Copiar link" copies the revealed link and says so', async () => {
-    fake.createInvite.mockResolvedValue({ invite: invite('new-invite', InviteState.ACTIVE), token: 'tok' });
+    fake.createInvite.mockResolvedValue({
+      invite: invite('new-invite', InviteState.ACTIVE),
+      token: 'tok',
+    });
     const writeText = vi.fn().mockResolvedValue(undefined);
     const original = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });

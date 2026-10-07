@@ -16,7 +16,10 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 
-import { type CharacterCreature, CreatureSource } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import {
+  type CharacterCreature,
+  CreatureSource,
+} from '../../../../gen/meurpg/characters/v1/characters_pb';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { creatureErrorMessage } from '../../../core/creatures/creature-errors';
 import { CREATURE_NAME_MAX, nameCounter } from '../../../core/creatures/creature-format';
@@ -118,8 +121,12 @@ export class CreatureEdit {
   private readonly first = viewChild('first', { read: ElementRef<HTMLElement> });
 
   protected readonly counter = computed(() => nameCounter(this.name().length, this.max));
-  protected readonly canSave = computed(() => this.name().trim().length > 0 && this.name().trim() !== this.creature().name);
-  protected readonly renameWhy = computed(() => (this.name().trim().length === 0 ? 'Escreva um nome.' : 'Escreva um nome diferente do atual.'));
+  protected readonly canSave = computed(
+    () => this.name().trim().length > 0 && this.name().trim() !== this.creature().name,
+  );
+  protected readonly renameWhy = computed(() =>
+    this.name().trim().length === 0 ? 'Escreva um nome.' : 'Escreva um nome diferente do atual.',
+  );
   protected readonly hpValid = computed(() => {
     const v = this.hp();
     return v !== null && Number.isInteger(v) && v >= 0 && v <= this.creature().hitPointsMax;
@@ -152,7 +159,9 @@ export class CreatureEdit {
     const gone = `${c.name} some ${from} e do mapa.`;
     switch (c.source) {
       case CreatureSource.FAMILIAR:
-        return tight(`${gone} Para ter um familiar de novo, é preciso conjurar Convocar Familiar outra vez (ritual de 1 hora).`);
+        return tight(
+          `${gone} Para ter um familiar de novo, é preciso conjurar Convocar Familiar outra vez (ritual de 1 hora).`,
+        );
       case CreatureSource.MASTER:
         return `${gone} Para ter essa criatura de novo, ${this.ownerView() ? 'é preciso pedir ao mestre' : 'é preciso dar a criatura outra vez'}.`;
       default:
@@ -164,7 +173,9 @@ export class CreatureEdit {
     if (this.busy() || !this.canSave()) {
       return;
     }
-    await this.run('rename', () => this.client.rename(this.campaignId(), this.creature().id, this.name().trim()));
+    await this.run('rename', () =>
+      this.client.rename(this.campaignId(), this.creature().id, this.name().trim()),
+    );
   }
 
   protected async dismiss(): Promise<void> {
@@ -175,10 +186,15 @@ export class CreatureEdit {
     if (this.busy() || !this.hpValid()) {
       return;
     }
-    await this.run('adjust', () => this.client.setHitPoints(this.campaignId(), this.creature().id, this.hp() ?? 0));
+    await this.run('adjust', () =>
+      this.client.setHitPoints(this.campaignId(), this.creature().id, this.hp() ?? 0),
+    );
   }
 
-  private async run(action: 'rename' | 'dismiss' | 'adjust', call: () => Promise<unknown>): Promise<void> {
+  private async run(
+    action: 'rename' | 'dismiss' | 'adjust',
+    call: () => Promise<unknown>,
+  ): Promise<void> {
     this.busy.set(true);
     this.error.set('');
     try {

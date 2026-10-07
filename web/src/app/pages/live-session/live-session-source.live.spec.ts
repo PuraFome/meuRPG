@@ -11,7 +11,12 @@ import { TestBed } from '@angular/core/testing';
 import type { Transport } from '@connectrpc/connect';
 
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
-import { LiveSessionSourceLive, classifyLiveError, toShownImageVm, toVitalsVm } from './live-session-source.live';
+import {
+  LiveSessionSourceLive,
+  classifyLiveError,
+  toShownImageVm,
+  toVitalsVm,
+} from './live-session-source.live';
 
 function blocked(reason: GameSessionBlockedReason): ConnectError {
   return new ConnectError('blocked', Code.FailedPrecondition, undefined, [
@@ -78,14 +83,22 @@ describe('toShownImageVm', () => {
         url: '/images/img-1',
         thumbnailUrl: '/images/img-1/thumb',
       }),
-    ).toEqual({ id: 'img-1', name: 'Capitão Goblin', width: 400, height: 500, url: '/images/img-1' });
+    ).toEqual({
+      id: 'img-1',
+      name: 'Capitão Goblin',
+      width: 400,
+      height: 500,
+      url: '/images/img-1',
+    });
     expect(toShownImageVm(undefined)).toBeNull();
   });
 });
 
 describe('LiveSessionSourceLive.watch', () => {
   /** A transport whose one stream answers `responses`, so the mapping is tested through the real client. */
-  function sourceAnswering(responses: ReturnType<typeof create<typeof WatchGameSessionResponseSchema>>[]) {
+  function sourceAnswering(
+    responses: ReturnType<typeof create<typeof WatchGameSessionResponseSchema>>[],
+  ) {
     const transport = {
       stream: async () => ({
         stream: true,
@@ -96,13 +109,18 @@ describe('LiveSessionSourceLive.watch', () => {
         })(),
       }),
     } as unknown as Transport;
-    TestBed.configureTestingModule({ providers: [LiveSessionSourceLive, { provide: CONNECT_TRANSPORT, useValue: transport }] });
+    TestBed.configureTestingModule({
+      providers: [LiveSessionSourceLive, { provide: CONNECT_TRANSPORT, useValue: transport }],
+    });
     return TestBed.inject(LiveSessionSourceLive);
   }
 
   async function events(responses: Parameters<typeof sourceAnswering>[0]) {
     const out = [];
-    for await (const e of sourceAnswering(responses).watch('camp-1', new AbortController().signal)) {
+    for await (const e of sourceAnswering(responses).watch(
+      'camp-1',
+      new AbortController().signal,
+    )) {
       out.push(e.kind);
     }
     return out;
@@ -126,13 +144,18 @@ describe('LiveSessionSourceLive.watch', () => {
     ).toEqual(['ready', 'creaturesChanged']);
   });
 
-  it('maps `puzzle_changed` to its own event, with the puzzle\'s ID and nothing else (MR-038)', async () => {
+  it("maps `puzzle_changed` to its own event, with the puzzle's ID and nothing else (MR-038)", async () => {
     const out = [];
     const responses = [
       create(WatchGameSessionResponseSchema, { event: { case: 'ready', value: {} } }),
-      create(WatchGameSessionResponseSchema, { event: { case: 'puzzleChanged', value: { puzzleId: 'p-1' } } }),
+      create(WatchGameSessionResponseSchema, {
+        event: { case: 'puzzleChanged', value: { puzzleId: 'p-1' } },
+      }),
     ];
-    for await (const e of sourceAnswering(responses).watch('camp-1', new AbortController().signal)) {
+    for await (const e of sourceAnswering(responses).watch(
+      'camp-1',
+      new AbortController().signal,
+    )) {
       out.push(e);
     }
     expect(out).toEqual([{ kind: 'ready' }, { kind: 'puzzleChanged', puzzleId: 'p-1' }]);

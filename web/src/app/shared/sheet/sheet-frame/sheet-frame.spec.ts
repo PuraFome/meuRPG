@@ -36,7 +36,10 @@ describe('SheetFrame', () => {
     await fixture.whenStable();
     const body = fixture.nativeElement.querySelector('.frame__body') as HTMLElement;
     let tall = false;
-    Object.defineProperty(body, 'scrollHeight', { get: () => (tall ? 500 : 100), configurable: true });
+    Object.defineProperty(body, 'scrollHeight', {
+      get: () => (tall ? 500 : 100),
+      configurable: true,
+    });
     Object.defineProperty(body, 'clientHeight', { get: () => 200, configurable: true });
     expect(body.classList.contains('frame__body--scrolls')).toBe(false);
 

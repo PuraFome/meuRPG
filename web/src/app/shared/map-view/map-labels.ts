@@ -79,9 +79,12 @@ export function pointHidden(p: PointVisibility): boolean {
 
 /** The marker's accessible name: "Taverna do Javali, Cena de RP, escondido"; a Luz says "só você vê". */
 export function pointAriaLabel(point: PointVisibility & { name: string }): string {
-  const state = point.kind === MapPointKind.LIGHT ? ', só você vê' : pointHidden(point) ? ', escondido' : '';
+  const state =
+    point.kind === MapPointKind.LIGHT ? ', só você vê' : pointHidden(point) ? ', escondido' : '';
   // A stair's name already says what it is ("Escada para cima").
-  return point.stairs ? `${point.name}${state}` : `${point.name}, ${pointKindLabel(point.kind)}${state}`;
+  return point.stairs
+    ? `${point.name}${state}`
+    : `${point.name}, ${pointKindLabel(point.kind)}${state}`;
 }
 
 /** What a token is, for the lists: "NPC, inimigo" (a player's character

@@ -52,20 +52,30 @@ export class EffectPicker {
   });
   protected readonly typeHint = computed(() => {
     const t = this.effect().type;
-    return t === '' ? 'Só o texto aparece na ficha; o app não faz conta com ele.' : (this.menu().typeOf(t)?.hintPt ?? '');
+    return t === ''
+      ? 'Só o texto aparece na ficha; o app não faz conta com ele.'
+      : (this.menu().typeOf(t)?.hintPt ?? '');
   });
   protected readonly allFields = computed(() => this.menu().fieldsOf(this.effect().type));
   /** "Mais opções": the optional fields stay folded until they hold something, a refusal points at them, or the person opens them. */
   protected readonly expanded = signal(false);
   protected readonly fields = computed(() =>
-    this.allFields().filter((f) => this.expanded() || f.required || this.filled(f) || this.issues(f.name).length > 0),
+    this.allFields().filter(
+      (f) => this.expanded() || f.required || this.filled(f) || this.issues(f.name).length > 0,
+    ),
   );
   protected readonly hidden = computed(() => this.allFields().length - this.fields().length);
   protected readonly typeIssues = computed(() => this.issuesOf()(`${this.basePath()}.type`));
 
   private filled(f: EffectMenuField): boolean {
     const v = this.effect()[camel(f.name)];
-    return Array.isArray(v) ? v.length > 0 : typeof v === 'number' ? v > 0 : typeof v === 'string' ? v.trim() !== '' : false;
+    return Array.isArray(v)
+      ? v.length > 0
+      : typeof v === 'number'
+        ? v > 0
+        : typeof v === 'string'
+          ? v.trim() !== ''
+          : false;
   }
 
   protected path(field: string): string {
@@ -110,7 +120,12 @@ export class EffectPicker {
   /** The options of a closed list, with the menu's one-line explanation of each. */
   protected optionsOf(f: EffectMenuField): (SelectOption & { hint: string })[] {
     const menu = this.menu();
-    const list = f.name === 'from' ? menu.fromOptions(this.effect().choice) : f.name === 'spells' ? [] : menu.list(f.list);
+    const list =
+      f.name === 'from'
+        ? menu.fromOptions(this.effect().choice)
+        : f.name === 'spells'
+          ? []
+          : menu.list(f.list);
     return list.map((o) => ({ value: o.key, label: o.namePt, hint: o.hintPt }));
   }
 
@@ -159,7 +174,10 @@ export class EffectPicker {
 
   protected setNumber(name: string, text: string): void {
     const n = Number(text.trim());
-    this.effectChange.emit({ ...this.effect(), [camel(name)]: Number.isInteger(n) && n > 0 ? n : 0 });
+    this.effectChange.emit({
+      ...this.effect(),
+      [camel(name)]: Number.isInteger(n) && n > 0 ? n : 0,
+    });
   }
 
   protected setMeters(text: string): void {
@@ -177,7 +195,10 @@ export class EffectPicker {
   }
 
   protected remove(name: string, key: string): void {
-    this.effectChange.emit({ ...this.effect(), [camel(name)]: this.list(name).filter((k) => k !== key) });
+    this.effectChange.emit({
+      ...this.effect(),
+      [camel(name)]: this.list(name).filter((k) => k !== key),
+    });
   }
 }
 

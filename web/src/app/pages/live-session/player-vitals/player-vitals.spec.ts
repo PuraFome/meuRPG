@@ -8,7 +8,10 @@ describe('PlayerVitals as a beast (MR-037, E9-11)', () => {
   function render(over: Parameters<typeof pensantusVitals>[0], beastAc: number | null) {
     TestBed.configureTestingModule({ providers: [provideRouter([])] });
     const fixture = TestBed.createComponent(PlayerVitals);
-    fixture.componentRef.setInput('vitals', pensantusVitals({ name: 'Sálvia', hitPointsCurrent: 38, hitPointsMax: 38, ...over }));
+    fixture.componentRef.setInput(
+      'vitals',
+      pensantusVitals({ name: 'Sálvia', hitPointsCurrent: 38, hitPointsMax: 38, ...over }),
+    );
     fixture.componentRef.setInput('sheet', { armorClass: 12, summary: 'Druida 5', senses: [] });
     fixture.componentRef.setInput('campaignId', 'camp');
     fixture.componentRef.setInput('beastAc', beastAc);
@@ -19,8 +22,21 @@ describe('PlayerVitals as a beast (MR-037, E9-11)', () => {
   const flat = (n: Element | null) => n?.textContent?.replace(/\s+/g, ' ').trim();
 
   it('shows the two reserves where the hit points box is, the beast\'s armor class, and "Sem magias" in place of the slots', () => {
-    const el = render({ wildShape: { beastKey: 'monster:wolf', beastNamePt: 'Lobo', hitPointsCurrent: 11, hitPointsMax: 11 } }, 13);
-    expect(Array.from(el.querySelectorAll('app-wild-pools .pool'), flat)).toEqual(['PV do Lobo11 de 11', 'PV da Sálvia38 de 38']);
+    const el = render(
+      {
+        wildShape: {
+          beastKey: 'monster:wolf',
+          beastNamePt: 'Lobo',
+          hitPointsCurrent: 11,
+          hitPointsMax: 11,
+        },
+      },
+      13,
+    );
+    expect(Array.from(el.querySelectorAll('app-wild-pools .pool'), flat)).toEqual([
+      'PV do Lobo11 de 11',
+      'PV da Sálvia38 de 38',
+    ]);
     expect(el.querySelector('.hp')).toBeNull();
     // One armor class on the page, the beast's: not the druid's own 12.
     expect(flat(el.querySelector('.shield'))).toContain('13');

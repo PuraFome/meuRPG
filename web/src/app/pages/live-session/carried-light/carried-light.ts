@@ -1,4 +1,13 @@
-import { Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -50,7 +59,9 @@ export class CarriedLight {
   private readonly all = signal<readonly LightOption[] | null>(null);
   protected readonly failed = signal(false);
   protected readonly ready = computed(() => this.all() !== null);
-  protected readonly name = computed(() => carriedName(this.all() ?? [], this.token().carriedLight));
+  protected readonly name = computed(() =>
+    carriedName(this.all() ?? [], this.token().carriedLight),
+  );
 
   constructor() {
     // A required input has no value in the constructor: read the presets once it has.

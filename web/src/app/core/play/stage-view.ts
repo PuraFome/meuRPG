@@ -11,7 +11,9 @@ export const STAGE_LIMIT = 4;
 export function initialsOf(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
   const letters =
-    words.length >= 2 ? `${firstLetter(words[0])}${firstLetter(words[1])}` : [...(words[0] ?? '')].slice(0, 2).join('');
+    words.length >= 2
+      ? `${firstLetter(words[0])}${firstLetter(words[1])}`
+      : [...(words[0] ?? '')].slice(0, 2).join('');
   return letters.toLocaleUpperCase('pt-BR') || '?';
 }
 

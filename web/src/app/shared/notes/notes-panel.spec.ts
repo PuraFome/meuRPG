@@ -7,10 +7,19 @@ import { NotesPanel } from './notes-panel';
 describe('NotesPanel (the character sheet)', () => {
   let api: FakeNotesClient;
 
-  async function setup(notes = [
-    note('n1', 'Perguntar ao ferreiro', new Date(2026, 9, 3, 21, 24), { sceneId: 's1', sceneName: 'A carroça tombada' }),
-    note('c1', 'Um brasão de lobo', new Date(2026, 9, 3, 21, 20), { sceneId: 's1', sceneName: 'A carroça tombada', clue: true }),
-  ]) {
+  async function setup(
+    notes = [
+      note('n1', 'Perguntar ao ferreiro', new Date(2026, 9, 3, 21, 24), {
+        sceneId: 's1',
+        sceneName: 'A carroça tombada',
+      }),
+      note('c1', 'Um brasão de lobo', new Date(2026, 9, 3, 21, 20), {
+        sceneId: 's1',
+        sceneName: 'A carroça tombada',
+        clue: true,
+      }),
+    ],
+  ) {
     api = new FakeNotesClient();
     api.notes = notes;
     api.scenesList = [scene('s1', 'A carroça tombada')];
@@ -29,7 +38,9 @@ describe('NotesPanel (the character sheet)', () => {
     };
     await settle();
     const button = (name: string) =>
-      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.trim().includes(name))!;
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+        b.textContent?.trim().includes(name),
+      )!;
     const flat = (e: Element | null | undefined) => e?.textContent?.replace(/\s+/g, ' ').trim();
     const type = (value: string) => {
       const field = el.querySelector<HTMLTextAreaElement>('textarea')!;
@@ -44,7 +55,9 @@ describe('NotesPanel (the character sheet)', () => {
     const { el, flat } = await setup();
     expect(el.querySelector('section')?.getAttribute('aria-labelledby')).toBe('np-title');
     expect(flat(el.querySelector('.np__count'))).toBe('2 anotações');
-    expect(flat(el.querySelector('.np__lock'))).toContain('Só você lê as suas anotações. O mestre não vê.');
+    expect(flat(el.querySelector('.np__lock'))).toContain(
+      'Só você lê as suas anotações. O mestre não vê.',
+    );
     expect(el.querySelectorAll('.nl__row')).toHaveLength(2);
     expect(flat(el.querySelector('.nl__tag'))).toContain('Pista do mestre');
     expect(api.calls).toContain('list');
@@ -89,14 +102,20 @@ describe('NotesPanel (the character sheet)', () => {
     type('Algo');
     button('Cancelar').click();
     await settle();
-    expect(el.querySelector('[role="alertdialog"]')?.textContent).toContain('Descartar o que você escreveu?');
+    expect(el.querySelector('[role="alertdialog"]')?.textContent).toContain(
+      'Descartar o que você escreveu?',
+    );
     expect(document.activeElement).toBe(button('Continuar'));
   });
 
   it('says the limit in words above a disabled "Nova anotação" at 300 notes', async () => {
-    const many = Array.from({ length: 300 }, (_, i) => note(`x${i}`, `n${i}`, new Date(2026, 9, 1)));
+    const many = Array.from({ length: 300 }, (_, i) =>
+      note(`x${i}`, `n${i}`, new Date(2026, 9, 1)),
+    );
     const { el, flat, button } = await setup(many);
-    expect(flat(el.querySelector('.np__limit'))).toBe('Limite de 300 anotações. Apague uma para escrever outra.');
+    expect(flat(el.querySelector('.np__limit'))).toBe(
+      'Limite de 300 anotações. Apague uma para escrever outra.',
+    );
     expect(button('Nova anotação').getAttribute('aria-describedby')).toBe('np-limit');
     // 300 rows render in about half a second alone, but past the 5 s default while the whole suite runs in parallel on a busy machine.
   }, 20_000);

@@ -3,7 +3,12 @@ import type { MessageInitShape } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import type { DiceRoll } from '../../../gen/meurpg/play/v1/combat_pb';
-import { PuzzleBlockedReason, type PuzzleMoveSchema, type PuzzleRun, type TryPuzzleHintResponse } from '../../../gen/meurpg/play/v1/puzzles_pb';
+import {
+  PuzzleBlockedReason,
+  type PuzzleMoveSchema,
+  type PuzzleRun,
+  type TryPuzzleHintResponse,
+} from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { newKey } from '../connect/idempotency';
 import { isTransient, puzzleBlocked, puzzleErrorMessage } from './puzzle-errors';
@@ -12,8 +17,18 @@ import type { HintDie, MoveAnswer } from './puzzles-client';
 /** What the player's page needs from the client; `PuzzlesClient` is one. */
 export interface PlayApi {
   run(campaignId: string, puzzleId: string): Promise<PuzzleRun>;
-  move(campaignId: string, puzzleId: string, move: MessageInitShape<typeof PuzzleMoveSchema>, idempotencyKey: string): Promise<MoveAnswer>;
-  tryHint(campaignId: string, puzzleId: string, die: HintDie, idempotencyKey: string): Promise<TryPuzzleHintResponse>;
+  move(
+    campaignId: string,
+    puzzleId: string,
+    move: MessageInitShape<typeof PuzzleMoveSchema>,
+    idempotencyKey: string,
+  ): Promise<MoveAnswer>;
+  tryHint(
+    campaignId: string,
+    puzzleId: string,
+    die: HintDie,
+    idempotencyKey: string,
+  ): Promise<TryPuzzleHintResponse>;
 }
 
 /** What a move came to, for the page that sent it: a typed answer or a deciphered message is judged, not applied. */
@@ -79,7 +94,8 @@ export class PuzzlePlay {
   constructor(
     private readonly api: PlayApi,
     private readonly campaignId: () => string,
-    private readonly wait: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    private readonly wait: (ms: number) => Promise<void> = (ms) =>
+      new Promise((resolve) => setTimeout(resolve, ms)),
     private readonly makeKey: () => string = newKey,
     /** The player's own character, to tell their wrong answer from another player's. */
     private readonly ownName: () => string = () => '',
@@ -144,12 +160,23 @@ export class PuzzlePlay {
       return false;
     }
     const current = this.run();
-    if (current && current.puzzleId === next.puzzleId && next.revision <= current.revision && !movedOn(current, next)) {
+    if (
+      current &&
+      current.puzzleId === next.puzzleId &&
+      next.revision <= current.revision &&
+      !movedOn(current, next)
+    ) {
       return false;
     }
     // What a player tried for a hint is about the hint they were at: once it moves on (the master released one, the player may try again),
     // or the puzzle is over, the line goes.
-    if (current && (next.hints.length !== current.hints.length || (next.canTryHint && !current.canTryHint) || next.solved || next.stopped)) {
+    if (
+      current &&
+      (next.hints.length !== current.hints.length ||
+        (next.canTryHint && !current.canTryHint) ||
+        next.solved ||
+        next.stopped)
+    ) {
       this.hintTry.set(null);
     }
     this.run.set(next);
@@ -162,7 +189,10 @@ export class PuzzlePlay {
     this.stopReveal();
     const playback = run.sequence;
     if (!this.disposed && playback?.playing && playback.nextInMs > 0) {
-      this.cancelReveal = this.schedule(playback.nextInMs + REVEAL_SLACK_MS, () => void this.refresh());
+      this.cancelReveal = this.schedule(
+        playback.nextInMs + REVEAL_SLACK_MS,
+        () => void this.refresh(),
+      );
     }
   }
 
@@ -194,7 +224,10 @@ export class PuzzlePlay {
     return turn;
   }
 
-  private async send(move: MessageInitShape<typeof PuzzleMoveSchema>, counted = false): Promise<MoveVerdict> {
+  private async send(
+    move: MessageInitShape<typeof PuzzleMoveSchema>,
+    counted = false,
+  ): Promise<MoveVerdict> {
     const run = this.run();
     if (!run || run.solved || run.stopped) {
       if (counted) {
@@ -214,8 +247,13 @@ export class PuzzlePlay {
       const last = answer.run.lastMove;
       const at = last?.at ? timestampDate(last.at).getTime() : 0;
       const own = this.ownName();
-      const mine = !!last && last.wrong && at !== before && (own === '' || last.characterName === own);
-      return { sent: true, wrong: !answer.run.solved && mine, solved: answer.solvedByThisMove || answer.run.solved };
+      const mine =
+        !!last && last.wrong && at !== before && (own === '' || last.characterName === own);
+      return {
+        sent: true,
+        wrong: !answer.run.solved && mine,
+        solved: answer.solvedByThisMove || answer.run.solved,
+      };
     } catch (err) {
       this.message.set(puzzleErrorMessage(err, 'fazer essa jogada', 'player'));
       const blocked = puzzleBlocked(err);
@@ -260,7 +298,11 @@ export class PuzzlePlay {
     }
   }
 
-  private async sendHintWithRetry(puzzleId: string, die: HintDie, key: string): Promise<TryPuzzleHintResponse> {
+  private async sendHintWithRetry(
+    puzzleId: string,
+    die: HintDie,
+    key: string,
+  ): Promise<TryPuzzleHintResponse> {
     for (let attempt = 0; ; attempt++) {
       try {
         return await this.api.tryHint(this.campaignId(), puzzleId, die, key);
@@ -274,7 +316,11 @@ export class PuzzlePlay {
     }
   }
 
-  private async sendWithRetry(puzzleId: string, move: MessageInitShape<typeof PuzzleMoveSchema>, key: string): Promise<MoveAnswer> {
+  private async sendWithRetry(
+    puzzleId: string,
+    move: MessageInitShape<typeof PuzzleMoveSchema>,
+    key: string,
+  ): Promise<MoveAnswer> {
     for (let attempt = 0; ; attempt++) {
       try {
         return await this.api.move(this.campaignId(), puzzleId, move, key);

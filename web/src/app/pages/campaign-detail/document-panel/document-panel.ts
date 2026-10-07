@@ -41,7 +41,9 @@ export class DocumentPanel implements OnInit {
     if (s.status !== 'ready') {
       return '';
     }
-    const when = s.doc.updatedAt ? `Editado ${whenText(timestampDate(s.doc.updatedAt))}.` : 'Ainda sem texto.';
+    const when = s.doc.updatedAt
+      ? `Editado ${whenText(timestampDate(s.doc.updatedAt))}.`
+      : 'Ainda sem texto.';
     return `${when} Só você vê este documento.`;
   });
 

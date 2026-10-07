@@ -1,4 +1,15 @@
-import { Component, ElementRef, Injector, afterNextRender, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -11,7 +22,11 @@ import { sourceShort } from '../../../core/creatures/creature-format';
 import { CreatureArt } from '../../../shared/creatures/creature-art';
 import { CreatureEdit } from '../../character-sheet/creatures-panel/creature-edit';
 import { openSheet } from '../../live-session/combat/sheet-host';
-import { GiveCreatureSheet, type GiveCreatureData, type GiveCreatureResult } from './give-creature-sheet';
+import {
+  GiveCreatureSheet,
+  type GiveCreatureData,
+  type GiveCreatureResult,
+} from './give-creature-sheet';
 
 /**
  * The master's "Criaturas" of one character in the campaign's list (E9-10,
@@ -81,15 +96,27 @@ export class CharacterCreatures {
   }
 
   protected give(): void {
-    openSheet<GiveCreatureSheet, GiveCreatureData, GiveCreatureResult>(this.dialog, this.bottomSheet, GiveCreatureSheet, {
-      data: { campaignId: this.campaignId(), characterId: this.characterId(), characterName: this.characterName() },
-      ariaLabel: `Dar uma criatura a ${this.characterName()}`,
-      labelledBy: 'give-t',
-      width: '720px',
-      focus: 'input[type=search]',
-    }).subscribe((result) => {
+    openSheet<GiveCreatureSheet, GiveCreatureData, GiveCreatureResult>(
+      this.dialog,
+      this.bottomSheet,
+      GiveCreatureSheet,
+      {
+        data: {
+          campaignId: this.campaignId(),
+          characterId: this.characterId(),
+          characterName: this.characterName(),
+        },
+        ariaLabel: `Dar uma criatura a ${this.characterName()}`,
+        labelledBy: 'give-t',
+        width: '720px',
+        focus: 'input[type=search]',
+      },
+    ).subscribe((result) => {
       // The dialog gives the focus back to the button that opened it; the ring is drawn here.
-      afterNextRender(() => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>('.give')), { injector: this.injector });
+      afterNextRender(
+        () => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>('.give')),
+        { injector: this.injector },
+      );
       if (result) {
         void this.load(this.campaignId(), this.characterId());
         this.given.emit(result.name);
@@ -106,10 +133,16 @@ export class CharacterCreatures {
     if (changed) {
       // The dismissed line is gone: the focus goes to "Dar uma criatura", which is always there.
       void this.load(this.campaignId(), this.characterId()).then(() =>
-        afterNextRender(() => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>('.give')), { injector: this.injector }),
+        afterNextRender(
+          () => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>('.give')),
+          { injector: this.injector },
+        ),
       );
       return;
     }
-    afterNextRender(() => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`#dismiss-${id}`)), { injector: this.injector });
+    afterNextRender(
+      () => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`#dismiss-${id}`)),
+      { injector: this.injector },
+    );
   }
 }

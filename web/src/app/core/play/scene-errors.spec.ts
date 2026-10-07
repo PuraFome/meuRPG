@@ -1,7 +1,10 @@
 import { Code, ConnectError } from '@connectrpc/connect';
 import { create } from '@bufbuild/protobuf';
 
-import { GameSessionBlockedReason, GameSessionBlockedSchema } from '../../../gen/meurpg/play/v1/play_pb';
+import {
+  GameSessionBlockedReason,
+  GameSessionBlockedSchema,
+} from '../../../gen/meurpg/play/v1/play_pb';
 import { SceneBlockedReason, SceneBlockedSchema } from '../../../gen/meurpg/play/v1/scene_pb';
 import { sceneBlockedMessage, sceneErrorMessage, stageErrorMessage } from './scene-errors';
 
@@ -30,7 +33,9 @@ describe('scene errors', () => {
     }
     expect(sceneBlockedMessage(SceneBlockedReason.NO_ACTIONS)).toContain('não tem ações');
     expect(sceneBlockedMessage(SceneBlockedReason.NO_OPEN_SCENE)).toContain('fechou a cena');
-    expect(sceneBlockedMessage(SceneBlockedReason.ALREADY_ROLLED)).toContain('não tem mais tentativas');
+    expect(sceneBlockedMessage(SceneBlockedReason.ALREADY_ROLLED)).toContain(
+      'não tem mais tentativas',
+    );
     expect(sceneBlockedMessage(SceneBlockedReason.WRONG_DICE_MODE)).toContain('forma de rolar');
     expect(sceneBlockedMessage(SceneBlockedReason.NO_CHARACTER)).toContain('personagem vivo');
   });
@@ -50,7 +55,9 @@ describe('scene errors', () => {
     const err = new ConnectError('x', Code.FailedPrecondition, undefined, [
       {
         desc: GameSessionBlockedSchema,
-        value: create(GameSessionBlockedSchema, { reason: GameSessionBlockedReason.NO_OPEN_SESSION }),
+        value: create(GameSessionBlockedSchema, {
+          reason: GameSessionBlockedReason.NO_OPEN_SESSION,
+        }),
       },
     ]);
     expect(sceneErrorMessage(err)).toContain('A sessão acabou');
@@ -59,14 +66,24 @@ describe('scene errors', () => {
   it('maps the other codes', () => {
     expect(sceneErrorMessage(new ConnectError('x', Code.NotFound))).toContain('não existe mais');
     expect(sceneErrorMessage(new ConnectError('x', Code.PermissionDenied))).toContain('não pode');
-    expect(sceneErrorMessage(new ConnectError('x', Code.Unavailable), 'rolar')).toContain('Não deu para rolar');
+    expect(sceneErrorMessage(new ConnectError('x', Code.Unavailable), 'rolar')).toContain(
+      'Não deu para rolar',
+    );
     expect(sceneErrorMessage(new Error('network'), 'rolar')).toContain('Não deu para rolar');
   });
 
   it('says why the stage refused, for the master', () => {
-    expect(stageErrorMessage(blocked(SceneBlockedReason.STAGE_FULL))).toBe('A cena comporta 4 NPCs. Tire um para pôr outro.');
-    expect(stageErrorMessage(blocked(SceneBlockedReason.NO_OPEN_SCENE))).toContain('Não há cena aberta');
-    expect(stageErrorMessage(new ConnectError('x', Code.NotFound))).toContain('A tela foi atualizada');
-    expect(stageErrorMessage(new ConnectError('x', Code.PermissionDenied))).toBe('Você não pode fazer isso agora.');
+    expect(stageErrorMessage(blocked(SceneBlockedReason.STAGE_FULL))).toBe(
+      'A cena comporta 4 NPCs. Tire um para pôr outro.',
+    );
+    expect(stageErrorMessage(blocked(SceneBlockedReason.NO_OPEN_SCENE))).toContain(
+      'Não há cena aberta',
+    );
+    expect(stageErrorMessage(new ConnectError('x', Code.NotFound))).toContain(
+      'A tela foi atualizada',
+    );
+    expect(stageErrorMessage(new ConnectError('x', Code.PermissionDenied))).toBe(
+      'Você não pode fazer isso agora.',
+    );
   });
 });

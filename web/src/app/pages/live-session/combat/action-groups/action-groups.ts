@@ -77,7 +77,10 @@ export class ActionGroups {
   /** The player's familiar ('Nanquim'): "Ver pelos olhos do Nanquim" is an action (MR-036, E9-04). `null`: none, or already looking. */
   readonly familiar = input<string | null>(null);
   /** The character's slots, for the rows above the spells ("1º nível ○ ✕ ✕ ✕ 1 livre de 4"). */
-  readonly slots = input<{ readonly usage: readonly SlotUsageVm[]; readonly pact: PactSlotsVm | null }>({
+  readonly slots = input<{
+    readonly usage: readonly SlotUsageVm[];
+    readonly pact: PactSlotsVm | null;
+  }>({
     usage: [],
     pact: null,
   });
@@ -89,7 +92,11 @@ export class ActionGroups {
    * · restam 2 de 2 usos · volta no descanso curto ou longo") and, when it cannot be used, the reason. `null` for a
    * character without it, or already in a beast form (then `leaveForm` is the bonus action).
    */
-  readonly wild = input<{ readonly key: string; readonly detail: string; readonly reason: string } | null>(null);
+  readonly wild = input<{
+    readonly key: string;
+    readonly detail: string;
+    readonly reason: string;
+  } | null>(null);
   /** The beast the character is in ("Lobo"): no spells, and "Voltar à forma normal" is a bonus action. */
   readonly beast = input('');
   /** The combat is played without a map (RN-25): Movimento says so and its button is "Gastar movimento". */
@@ -123,7 +130,6 @@ export class ActionGroups {
   /** "Voltar" (to the normal shape), a bonus action. */
   readonly leaveForm = output<void>();
 
-
   /** From 1024px the economy tiles are the panel's first thing (E6-14). */
   protected readonly desktop = mediaQuery('(min-width: 1024px)');
 
@@ -135,7 +141,12 @@ export class ActionGroups {
     const { usage, pact } = this.slots();
     const rows = usage
       .filter((u) => u.total > 0)
-      .map((u) => ({ title: circleLabel(u.level), total: u.total, used: u.used, text: freeText(u.total - u.used, u.total) }));
+      .map((u) => ({
+        title: circleLabel(u.level),
+        total: u.total,
+        used: u.used,
+        text: freeText(u.total - u.used, u.total),
+      }));
     if (pact && pact.total > 0) {
       rows.push({
         title: `${circleLabel(pact.slotLevel)} (pacto)`,
@@ -150,7 +161,9 @@ export class ActionGroups {
   protected readonly reaction = computed(() => optionsFor(this.options(), 'reaction'));
   /** Atacar and Conjurar are not repeated here: they are the rows above. */
   protected readonly standard = computed(() =>
-    this.options().standardActions.filter((a) => !/^standard:(attack|cast-a-spell)$/.test(a.action?.key ?? '')),
+    this.options().standardActions.filter(
+      (a) => !/^standard:(attack|cast-a-spell)$/.test(a.action?.key ?? ''),
+    ),
   );
   protected readonly standardWhy = computed(() => {
     const first = this.standard().find((a) => !a.enabled);
@@ -184,7 +197,10 @@ export class ActionGroups {
     const used = this.own().actionUsed;
     const left = this.attacksLeft();
     if (used && left > 0 && this.attacksPerAction() > 1) {
-      return { word: `${left} ${left === 1 ? 'ataque restante' : 'ataques restantes'}`, used: false };
+      return {
+        word: `${left} ${left === 1 ? 'ataque restante' : 'ataques restantes'}`,
+        used: false,
+      };
     }
     return { word: groupState(used), used };
   });
@@ -223,7 +239,11 @@ export class ActionGroups {
   }
 
   /** The features of the Ação but Wild Shape (a row of its own after the attacks), and none of it as a beast: the form's own way out is "Voltar à forma normal". */
-  protected readonly otherFeatures = computed(() => this.action_().features.filter((f) => !this.isWild(f) && !(this.beast() && f.action?.key?.startsWith('feature:wild-shape'))));
+  protected readonly otherFeatures = computed(() =>
+    this.action_().features.filter(
+      (f) => !this.isWild(f) && !(this.beast() && f.action?.key?.startsWith('feature:wild-shape')),
+    ),
+  );
 
   /** The SRD's own text of a creature's attack, under it (English); a character's attack has none shown. */
   protected rider(a: Attack): string {

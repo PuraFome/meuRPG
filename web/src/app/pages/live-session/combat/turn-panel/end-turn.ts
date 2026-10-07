@@ -1,4 +1,15 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -117,7 +128,9 @@ export class EndTurn {
   readonly endTurn = output<void>();
 
   protected readonly asking = signal(false);
-  protected readonly primary = computed(() => endTurnIsPrimary(this.own()) && this.attacksLeft() === 0);
+  protected readonly primary = computed(
+    () => endTurnIsPrimary(this.own()) && this.attacksLeft() === 0,
+  );
   protected readonly question = computed(() => {
     const left = this.attacksLeft();
     return this.own().actionUsed && left > 0

@@ -1,6 +1,13 @@
 import { Component, computed, input } from '@angular/core';
 
-import { type Split, divisionSentence, eachLine, lostShort, shortDivision, splitAnnouncement } from '../../core/progression/xp-math';
+import {
+  type Split,
+  divisionSentence,
+  eachLine,
+  lostShort,
+  shortDivision,
+  splitAnnouncement,
+} from '../../core/progression/xp-math';
 
 /**
  * The live division of an award (E7-06, E7-07): the big "116 XP para cada" and
@@ -51,6 +58,8 @@ export class XpSplit {
   );
   protected readonly lost = computed(() => lostShort(this.split().lost));
   protected readonly announcement = computed(() =>
-    this.total() === 0 && this.emptyText() && this.split().count > 0 ? '' : splitAnnouncement(this.split()),
+    this.total() === 0 && this.emptyText() && this.split().count > 0
+      ? ''
+      : splitAnnouncement(this.split()),
   );
 }

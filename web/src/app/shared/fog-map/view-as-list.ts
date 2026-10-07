@@ -50,8 +50,18 @@ export class ViewAsList {
   private readonly cursor = signal<number | null>(null);
 
   protected readonly rows = computed(() => [
-    { id: null as string | null, name: 'Todos', sub: 'Sem névoa: o seu mapa de mestre', count: null as string | null },
-    ...this.people().map((p) => ({ id: p.id as string | null, name: p.name, sub: p.sub, count: this.countText(p.id) })),
+    {
+      id: null as string | null,
+      name: 'Todos',
+      sub: 'Sem névoa: o seu mapa de mestre',
+      count: null as string | null,
+    },
+    ...this.people().map((p) => ({
+      id: p.id as string | null,
+      name: p.name,
+      sub: p.sub,
+      count: this.countText(p.id),
+    })),
   ]);
   protected readonly groupText = computed(() =>
     this.groupVision()
@@ -82,7 +92,9 @@ export class ViewAsList {
   }
 
   protected onKey(event: KeyboardEvent): void {
-    const buttons = Array.from(this.host.nativeElement.querySelectorAll<HTMLElement>('[role="radio"]'));
+    const buttons = Array.from(
+      this.host.nativeElement.querySelectorAll<HTMLElement>('[role="radio"]'),
+    );
     const here = buttons.findIndex((b) => b === event.target);
     if (here < 0) {
       return;

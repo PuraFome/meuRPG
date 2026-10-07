@@ -38,5 +38,6 @@ export class AttackChoice {
   readonly pick = output<string>();
 
   protected readonly title = attackTitle;
-  protected readonly detail = (a: Attack) => attackDetail(a, true).split(' · ').slice(1).join(' · ');
+  protected readonly detail = (a: Attack) =>
+    attackDetail(a, true).split(' · ').slice(1).join(' · ');
 }

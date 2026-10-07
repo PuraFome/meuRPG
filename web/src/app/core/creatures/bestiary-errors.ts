@@ -16,7 +16,10 @@ export function invalidFieldOf(err: unknown): string | undefined {
  * already used for another request with `invalid_argument` on `idempotency_key`.
  */
 export function npcAlreadyMade(err: unknown): boolean {
-  return ConnectError.from(err, Code.Unavailable).code === Code.InvalidArgument && invalidFieldOf(err) === 'idempotency_key';
+  return (
+    ConnectError.from(err, Code.Unavailable).code === Code.InvalidArgument &&
+    invalidFieldOf(err) === 'idempotency_key'
+  );
 }
 
 /**
@@ -26,12 +29,18 @@ export function npcAlreadyMade(err: unknown): boolean {
  * `permission_denied` and a bad request with `invalid_argument` naming the field.
  */
 export function bestiaryErrorMessage(err: unknown, action: BestiaryAction): string {
-  const what = action === 'create' ? 'criar o NPC' : action === 'read' ? 'abrir a ficha da criatura' : 'abrir o bestiário';
+  const what =
+    action === 'create'
+      ? 'criar o NPC'
+      : action === 'read'
+        ? 'abrir a ficha da criatura'
+        : 'abrir o bestiário';
   let invalid = `Não deu para ${what}: confira a busca e tente de novo.`;
   if (action === 'create') {
     switch (invalidFieldOf(err)) {
       case 'name':
-        invalid = 'Não deu para criar o NPC: o nome precisa ter de 1 a 80 letras, numa linha só. Confira e tente de novo.';
+        invalid =
+          'Não deu para criar o NPC: o nome precisa ter de 1 a 80 letras, numa linha só. Confira e tente de novo.';
         break;
       case 'creature_key':
         invalid = 'Essa criatura não está no bestiário. Volte à lista e escolha outra.';

@@ -118,7 +118,9 @@ export class ShownImageBlock {
   }
 
   private reduced(): boolean {
-    return this.document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    return (
+      this.document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+    );
   }
 
   private clearTimer(): void {

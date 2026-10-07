@@ -23,7 +23,9 @@ export interface GenerateIssue {
 }
 
 /** The typed reason of a refused call (`ImageGenerationBlocked`), or `null`. Never the message. */
-export function blockedOf(err: unknown): { reason: ImageGenerationBlockedReason; status: ImageGenerationStatus | null } | null {
+export function blockedOf(
+  err: unknown,
+): { reason: ImageGenerationBlockedReason; status: ImageGenerationStatus | null } | null {
   const e = ConnectError.from(err, Code.Unavailable);
   if (e.code !== Code.FailedPrecondition) {
     return null;
@@ -33,7 +35,10 @@ export function blockedOf(err: unknown): { reason: ImageGenerationBlockedReason;
 }
 
 /** The words of a refusal that made no slot move, by the typed detail of the call. `monthly` fills in "Você usou as 20 imagens de outubro". */
-export function blockedText(reason: ImageGenerationBlockedReason, status: ImageGenerationStatus | null): string {
+export function blockedText(
+  reason: ImageGenerationBlockedReason,
+  status: ImageGenerationStatus | null,
+): string {
   switch (reason) {
     case ImageGenerationBlockedReason.OFF:
       return 'A geração de imagens não está ligada neste servidor.';
@@ -73,11 +78,21 @@ export function invalidField(err: unknown): string | null {
 export function generateIssue(err: unknown, what: 'generate' | 'edit' = 'generate'): GenerateIssue {
   const blocked = blockedOf(err);
   if (blocked) {
-    return { text: blockedText(blocked.reason, blocked.status), field: null, reason: blocked.reason, status: blocked.status };
+    return {
+      text: blockedText(blocked.reason, blocked.status),
+      field: null,
+      reason: blocked.reason,
+      status: blocked.status,
+    };
   }
   const field = invalidField(err);
   if (field !== null) {
-    return { text: invalidText(field), field: field === '' ? null : field, reason: null, status: null };
+    return {
+      text: invalidText(field),
+      field: field === '' ? null : field,
+      reason: null,
+      status: null,
+    };
   }
   return {
     text: describeConnectError(err, {
@@ -105,8 +120,12 @@ function invalidText(field: string): string {
 }
 
 /** How a request that ended without a picture is told (E10-07 8): the sentence and whether the slot came back. */
-export function failureText(generation: Pick<ImageGeneration, 'failure' | 'slotSpent' | 'reasonPt'>): string {
-  const back = generation.slotSpent ? 'Esta tentativa gastou uma imagem do mês.' : 'Esta tentativa não gastou nenhuma imagem do mês.';
+export function failureText(
+  generation: Pick<ImageGeneration, 'failure' | 'slotSpent' | 'reasonPt'>,
+): string {
+  const back = generation.slotSpent
+    ? 'Esta tentativa gastou uma imagem do mês.'
+    : 'Esta tentativa não gastou nenhuma imagem do mês.';
   switch (generation.failure) {
     case ImageGenerationFailure.NO_IMAGE:
       return `O serviço não gerou esta imagem. Tente descrever a cena de outro jeito. ${back}`;
@@ -135,6 +154,7 @@ export function useIssue(err: unknown): string {
   }
   return describeConnectError(err, {
     [Code.NotFound]: 'Esta imagem não é um mapa com textura de um mapa da campanha. Gere de novo.',
-    [Code.ResourceExhausted]: 'A galeria está cheia e o mapa precisaria de uma cópia da imagem. Apague imagens que você não usa e tente de novo.',
+    [Code.ResourceExhausted]:
+      'A galeria está cheia e o mapa precisaria de uma cópia da imagem. Apague imagens que você não usa e tente de novo.',
   });
 }

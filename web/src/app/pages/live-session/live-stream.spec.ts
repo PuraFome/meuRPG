@@ -158,7 +158,7 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     expect(handlers.onVitals).toHaveBeenCalledWith(vitals(3));
   });
 
-  it('hands a puzzle\'s ID to the page on `puzzle_changed` (MR-038)', async () => {
+  it("hands a puzzle's ID to the page on `puzzle_changed` (MR-038)", async () => {
     stream.start();
     last().push({ kind: 'ready' });
     last().push({ kind: 'puzzleChanged', puzzleId: 'p-1' });
@@ -166,7 +166,7 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     expect(handlers.onPuzzleChanged).toHaveBeenCalledWith('p-1');
   });
 
-  it('tells the page the table\'s content changed (RN-23, content_changed), with nothing in it', async () => {
+  it("tells the page the table's content changed (RN-23, content_changed), with nothing in it", async () => {
     stream.start();
     last().push({ kind: 'ready' });
     last().push({ kind: 'contentChanged' });
@@ -195,7 +195,7 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     expect(handlers.onSceneChanged).toHaveBeenCalledTimes(2);
   });
 
-  it('tells the page a clue arrived in the player\'s notes (MR-030), and keeps the stream alive', async () => {
+  it("tells the page a clue arrived in the player's notes (MR-030), and keeps the stream alive", async () => {
     stream.start();
     last().push({ kind: 'ready' });
     last().push({ kind: 'notesChanged' });
@@ -222,18 +222,30 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     expect(handlers.onSceneChanged).not.toHaveBeenCalled();
   });
 
-  it('hands the combat\'s events to the page (MR-013)', async () => {
+  it("hands the combat's events to the page (MR-013)", async () => {
     stream.start();
     last().push({ kind: 'ready' });
     last().push({ kind: 'encounterChanged', encounterId: 'e1', revision: 4 });
-    last().push({ kind: 'turnChanged', encounterId: 'e1', round: 2, currentCombatantId: '', masterTurn: true });
+    last().push({
+      kind: 'turnChanged',
+      encounterId: 'e1',
+      round: 2,
+      currentCombatantId: '',
+      masterTurn: true,
+    });
     last().push({ kind: 'combatantMoved', encounterId: 'e1', combatantId: 'c1', col: 3, row: 5 });
     last().push({ kind: 'combatLogChanged' });
     await flush();
     expect(handlers.onCombatLogChanged).toHaveBeenCalledTimes(1);
-    expect(handlers.onEncounterChanged).toHaveBeenCalledWith(expect.objectContaining({ encounterId: 'e1', revision: 4 }));
-    expect(handlers.onTurnChanged).toHaveBeenCalledWith(expect.objectContaining({ round: 2, masterTurn: true }));
-    expect(handlers.onCombatantMoved).toHaveBeenCalledWith(expect.objectContaining({ combatantId: 'c1', col: 3, row: 5 }));
+    expect(handlers.onEncounterChanged).toHaveBeenCalledWith(
+      expect.objectContaining({ encounterId: 'e1', revision: 4 }),
+    );
+    expect(handlers.onTurnChanged).toHaveBeenCalledWith(
+      expect.objectContaining({ round: 2, masterTurn: true }),
+    );
+    expect(handlers.onCombatantMoved).toHaveBeenCalledWith(
+      expect.objectContaining({ combatantId: 'c1', col: 3, row: 5 }),
+    );
   });
 
   it('`session_ended` ends it for good, without reconnecting', async () => {

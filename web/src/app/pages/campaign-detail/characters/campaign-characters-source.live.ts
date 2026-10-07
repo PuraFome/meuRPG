@@ -63,9 +63,7 @@ export class CampaignCharactersSourceLive implements CampaignCharactersSource {
     const playerCharacters = res.characters
       .filter((c) => c.kind === GenCharacterKind.PLAYER)
       .map(toListItemVm);
-    const npcs = res.characters
-      .filter((c) => c.kind !== GenCharacterKind.PLAYER)
-      .map(toListItemVm);
+    const npcs = res.characters.filter((c) => c.kind !== GenCharacterKind.PLAYER).map(toListItemVm);
     return {
       playerCharacters,
       npcs,

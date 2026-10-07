@@ -26,7 +26,8 @@ describe('MapAsk: an in-place question', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement, host: fixture.componentInstance };
   }
 
-  const button = (el: HTMLElement, text: string) => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === text)!;
+  const button = (el: HTMLElement, text: string) =>
+    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === text)!;
 
   it('puts the focus on its title, with the ring', async () => {
     const { el } = await open();
@@ -48,7 +49,9 @@ describe('MapAsk: an in-place question', () => {
 
   it('closes on Esc', async () => {
     const { el, host } = await open();
-    el.querySelector('section')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    el.querySelector('section')!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    );
     expect(host.events).toEqual(['cancel']);
   });
 

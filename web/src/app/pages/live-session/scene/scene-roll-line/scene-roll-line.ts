@@ -83,7 +83,10 @@ export class SceneRollLine {
   protected readonly granted = signal<{ at: string; total: number; used: number } | null>(null);
   /** How many attempts the character has now, for the question: "de 1 para 2". */
   protected readonly attemptsNow = computed(
-    () => this.scene().rolls.filter((r) => r.actionId === this.roll().actionId && r.characterId === this.roll().characterId).length,
+    () =>
+      this.scene().rolls.filter(
+        (r) => r.actionId === this.roll().actionId && r.characterId === this.roll().characterId,
+      ).length,
   );
 
   private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
@@ -113,7 +116,12 @@ export class SceneRollLine {
     const roll = this.roll();
     const before = this.attemptsNow();
     try {
-      const scene = await this.api.grantAttempt(this.campaignId(), roll.actionId, roll.characterId, this.key);
+      const scene = await this.api.grantAttempt(
+        this.campaignId(),
+        roll.actionId,
+        roll.characterId,
+        this.key,
+      );
       this.granted.set({ at: formatClock(new Date()), total: before + 1, used: before });
       this.step.set('idle');
       this.state().apply(scene);
@@ -126,14 +134,15 @@ export class SceneRollLine {
   }
 
   private focusAfterRender(target: () => ElementRef<HTMLElement> | undefined): void {
-    afterNextRender(() => target()?.nativeElement.focus({ preventScroll: true }), { injector: this.injector });
+    afterNextRender(() => target()?.nativeElement.focus({ preventScroll: true }), {
+      injector: this.injector,
+    });
   }
 
   /** The whole question, below the sticky app bar (`scroll-margin-top`). */
   private scrollIntoView(): void {
-    afterNextRender(
-      () => this.host.nativeElement.scrollIntoView({ block: 'nearest' }),
-      { injector: this.injector },
-    );
+    afterNextRender(() => this.host.nativeElement.scrollIntoView({ block: 'nearest' }), {
+      injector: this.injector,
+    });
   }
 }

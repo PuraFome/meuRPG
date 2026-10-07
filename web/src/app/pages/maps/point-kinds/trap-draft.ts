@@ -1,6 +1,10 @@
 import type { MessageInitShape } from '@bufbuild/protobuf';
 
-import { type MapPoint, TrapState, type TrapSpecSchema } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import {
+  type MapPoint,
+  TrapState,
+  type TrapSpecSchema,
+} from '../../../../gen/meurpg/maps/v1/maps_pb';
 import {
   Ability,
   type TrapEffect,
@@ -70,10 +74,11 @@ export const MAX_DAMAGE_PARTS = 4;
 export const MAX_CONDITION_PARTS = 4;
 
 /** The damage types the SRD names, by the server's key (`damage-type:poison`), with the words the rest of the app uses (`character-labels`). */
-export const DAMAGE_TYPES: readonly { readonly key: string; readonly name: string }[] = DAMAGE_TYPE_OPTIONS.map((o) => ({
-  key: `damage-type:${o.key}`,
-  name: o.label,
-}));
+export const DAMAGE_TYPES: readonly { readonly key: string; readonly name: string }[] =
+  DAMAGE_TYPE_OPTIONS.map((o) => ({
+    key: `damage-type:${o.key}`,
+    name: o.label,
+  }));
 
 export const ABILITIES: readonly { readonly value: Ability; readonly name: string }[] = [
   { value: Ability.STRENGTH, name: 'Força' },
@@ -133,7 +138,9 @@ function damageDraft(d: { dice: string; damageTypeKey: string }): DamageDraft {
   return { dice: d.dice, typeKey: d.damageTypeKey };
 }
 
-function effectDraft(effect: TrapEffect | undefined): Pick<TrapDraft, 'targets' | 'attack' | 'damage' | 'conditions' | 'save'> {
+function effectDraft(
+  effect: TrapEffect | undefined,
+): Pick<TrapDraft, 'targets' | 'attack' | 'damage' | 'conditions' | 'save'> {
   return {
     targets: effect?.targets === TrapTargets.MANUAL ? TrapTargets.MANUAL : TrapTargets.AREA,
     attack: effect?.attack
@@ -144,17 +151,29 @@ function effectDraft(effect: TrapEffect | undefined): Pick<TrapDraft, 'targets' 
         }
       : null,
     damage: (effect?.damage ?? []).map(damageDraft),
-    conditions: (effect?.conditions ?? []).map((c) => ({ key: c.conditionKey, duration: c.durationPt })),
+    conditions: (effect?.conditions ?? []).map((c) => ({
+      key: c.conditionKey,
+      duration: c.durationPt,
+    })),
     save: effect?.save
       ? {
           ability: effect.save.ability,
           dc: String(effect.save.dc),
-          appliesTo: effect.save.appliesTo === TrapSaveApplies.HIT ? TrapSaveApplies.HIT : TrapSaveApplies.CAUGHT,
+          appliesTo:
+            effect.save.appliesTo === TrapSaveApplies.HIT
+              ? TrapSaveApplies.HIT
+              : TrapSaveApplies.CAUGHT,
           failDamage: (effect.save.onFail?.damage ?? []).map(damageDraft),
           failCondition: effect.save.onFail?.condition
-            ? { key: effect.save.onFail.condition.conditionKey, duration: effect.save.onFail.condition.durationPt }
+            ? {
+                key: effect.save.onFail.condition.conditionKey,
+                duration: effect.save.onFail.condition.durationPt,
+              }
             : null,
-          onPass: effect.save.onPass === TrapPassOutcome.HALF ? TrapPassOutcome.HALF : TrapPassOutcome.NONE,
+          onPass:
+            effect.save.onPass === TrapPassOutcome.HALF
+              ? TrapPassOutcome.HALF
+              : TrapPassOutcome.NONE,
         }
       : null,
   };
@@ -190,7 +209,10 @@ export function trapDraftOf(point: Pick<MapPoint, 'name' | 'description' | 'trap
     findDc: t ? String(t.findDc) : '',
     areaSize: clampArea(t?.areaSize ?? 1),
     trigger: t?.trigger === TrapTrigger.MANUAL ? TrapTrigger.MANUAL : TrapTrigger.ENTER,
-    state: t?.state === TrapState.TRIGGERED || t?.state === TrapState.DISARMED ? t.state : TrapState.ARMED,
+    state:
+      t?.state === TrapState.TRIGGERED || t?.state === TrapState.DISARMED
+        ? t.state
+        : TrapState.ARMED,
     ...effectDraft(t?.effect),
   };
 }
@@ -285,7 +307,8 @@ export function trapErrors(d: TrapDraft): TrapErrors {
       parts['save'] = 'Metade do dano precisa de dano para quem falha.';
     }
     if (d.save.appliesTo === TrapSaveApplies.HIT && !d.attack) {
-      parts['save'] = 'Só quem foi atingido faz a resistência: acrescente um ataque ou escolha quem foi pego.';
+      parts['save'] =
+        'Só quem foi atingido faz a resistência: acrescente um ataque ou escolha quem foi pego.';
     }
   }
   return { ...errors, parts };
@@ -315,7 +338,13 @@ export function trapSpecOf(d: TrapDraft): MessageInitShape<typeof TrapSpecSchema
     effect: {
       targets: d.targets,
       ...(d.attack
-        ? { attack: { bonus: Number(d.attack.bonus), count: Number(d.attack.count), damage: damageSpec(d.attack.damage) } }
+        ? {
+            attack: {
+              bonus: Number(d.attack.bonus),
+              count: Number(d.attack.count),
+              damage: damageSpec(d.attack.damage),
+            },
+          }
         : {}),
       damage: d.damage.map(damageSpec),
       conditions: d.conditions.map(conditionSpec),
@@ -338,12 +367,18 @@ export function trapSpecOf(d: TrapDraft): MessageInitShape<typeof TrapSpecSchema
 }
 
 /** Whether the form differs from what the point has (the page asks before leaving it). */
-export function isTrapDirty(d: TrapDraft, point: Pick<MapPoint, 'name' | 'description' | 'trap'>): boolean {
+export function isTrapDirty(
+  d: TrapDraft,
+  point: Pick<MapPoint, 'name' | 'description' | 'trap'>,
+): boolean {
   return JSON.stringify(d) !== JSON.stringify(trapDraftOf(point));
 }
 
 /** What "Salvar ponto" sends; `null` when nothing changed. The spec goes whole, as `UpdateMapPoint` replaces it. */
-export function trapChangesOf(d: TrapDraft, point: Pick<MapPoint, 'name' | 'description' | 'trap'>): PointChanges | null {
+export function trapChangesOf(
+  d: TrapDraft,
+  point: Pick<MapPoint, 'name' | 'description' | 'trap'>,
+): PointChanges | null {
   if (!isTrapDirty(d, point)) {
     return null;
   }

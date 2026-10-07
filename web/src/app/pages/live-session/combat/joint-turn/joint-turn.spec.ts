@@ -8,10 +8,22 @@ import { JointOthers } from './joint-others';
 
 const P = CombatantKind.PLAYER;
 const brisa = combatant({ id: 'b', label: 'Brisa', kind: P, initiative: 19, actionUsed: false });
-const toren = combatant({ id: 't', label: 'Toren', kind: P, initiative: 19, mine: true, actionUsed: true, turnPartEnded: true });
-const joint = encounter({ combatants: [brisa, toren], turnGroupIds: ['b', 't'], currentCombatantId: 'b' });
+const toren = combatant({
+  id: 't',
+  label: 'Toren',
+  kind: P,
+  initiative: 19,
+  mine: true,
+  actionUsed: true,
+  turnPartEnded: true,
+});
+const joint = encounter({
+  combatants: [brisa, toren],
+  turnGroupIds: ['b', 't'],
+  currentCombatantId: 'b',
+});
 
-describe('JointCard (the master\'s)', () => {
+describe("JointCard (the master's)", () => {
   it('has a block per member, a button only for who still acts, and says who is missing', () => {
     const fixture = TestBed.createComponent(JointCard);
     fixture.componentRef.setInput('encounter', joint);
@@ -20,7 +32,9 @@ describe('JointCard (the master\'s)', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('h2')?.textContent).toBe('Turno conjunto: Brisa e Toren');
-    expect(el.textContent).toContain('Falta a Brisa. O turno passa quando ela encerrar a parte dela.');
+    expect(el.textContent).toContain(
+      'Falta a Brisa. O turno passa quando ela encerrar a parte dela.',
+    );
     expect(el.querySelectorAll('.member')).toHaveLength(2);
     expect(el.textContent).toContain('Ainda age');
     expect(el.textContent).toContain('Encerrou');
@@ -34,16 +48,22 @@ describe('JointCard (the master\'s)', () => {
     const fixture = TestBed.createComponent(JointCard);
     fixture.componentRef.setInput('encounter', joint);
     fixture.detectChanges();
-    const alone = encounter({ combatants: [combatant({ id: 'c', label: 'Capitão Goblin' })], turnGroupIds: ['c'], currentCombatantId: 'c' });
+    const alone = encounter({
+      combatants: [combatant({ id: 'c', label: 'Capitão Goblin' })],
+      turnGroupIds: ['c'],
+      currentCombatantId: 'c',
+    });
     fixture.componentRef.setInput('encounter', alone);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('.member')).toBeNull();
-    expect(el.querySelector('[role="status"]')?.textContent).toBe('A vez passou para Capitão Goblin');
+    expect(el.querySelector('[role="status"]')?.textContent).toBe(
+      'A vez passou para Capitão Goblin',
+    );
   });
 });
 
-describe('JointOthers (the player\'s)', () => {
+describe("JointOthers (the player's)", () => {
   it('says what the others still have, in words, and a summary after the own part ended', () => {
     const fixture = TestBed.createComponent(JointOthers);
     fixture.componentRef.setInput('encounter', joint);

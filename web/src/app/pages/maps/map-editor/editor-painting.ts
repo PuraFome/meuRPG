@@ -1,13 +1,32 @@
-import { DestroyRef, type Signal, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  DestroyRef,
+  type Signal,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 
 import { MapLayer, type Map as MapMessage } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import type { Square } from '../../../core/combat/combat-grid';
 import { type DoorKind, type MapLayers, hasPainted } from '../../../core/maps/layers';
 import { editorErrorMessage } from '../../../core/maps/map-errors';
 import { MapsClient } from '../../../core/maps/maps-client';
-import { type DoorPlan, NO_GAP_TEXT, hidesWhoStands, planDoor } from '../../../core/maps/door-paint';
+import {
+  type DoorPlan,
+  NO_GAP_TEXT,
+  hidesWhoStands,
+  planDoor,
+} from '../../../core/maps/door-paint';
 import { PaintSession } from '../../../core/maps/paint-session';
-import { DEFAULT_SETTINGS, DOOR_LABEL, type PaintSettings, brushSquares, strokeOf } from '../../../core/maps/paint-tools';
+import {
+  DEFAULT_SETTINGS,
+  DOOR_LABEL,
+  type PaintSettings,
+  brushSquares,
+  strokeOf,
+} from '../../../core/maps/paint-tools';
 import { type LayerVisibility } from '../layers-panel/layers-panel';
 import type { EditorMode } from '../editor-bar/editor-bar';
 import type { Stroke } from '../paint-surface/paint-surface';
@@ -25,7 +44,13 @@ interface DoorAsk {
   readonly erase: boolean;
 }
 
-const ALL_VISIBLE: LayerVisibility = { terrain: true, wall: true, cover: true, light: true, door: true };
+const ALL_VISIBLE: LayerVisibility = {
+  terrain: true,
+  wall: true,
+  cover: true,
+  light: true,
+  door: true,
+};
 
 /**
  * Everything the map editor does when the master paints (MR-034), apart from the screen: the tool and the brush, which layers are on,
@@ -98,11 +123,17 @@ export class EditorPainting {
     };
   });
   /** Something is painted or seen: a new grid or a new image would erase it. */
-  readonly erases = computed(() => hasPainted(this.painted.layers()) || (this.map()?.fogEnabled ?? false));
+  readonly erases = computed(
+    () => hasPainted(this.painted.layers()) || (this.map()?.fogEnabled ?? false),
+  );
   /** Which painted light levels are on the map: the legend names only those. */
   readonly lightLevels = computed(() => {
     const l = this.shown().light;
-    return { bright: (l?.bright.length ?? 0) > 0, dim: (l?.dim.length ?? 0) > 0, dark: (l?.dark.length ?? 0) > 0 };
+    return {
+      bright: (l?.bright.length ?? 0) > 0,
+      dim: (l?.dim.length ?? 0) > 0,
+      dark: (l?.dark.length ?? 0) > 0,
+    };
   });
   /** The squares the next stroke would cover, for the outline on the map. */
   readonly cursor = computed(() => {
@@ -150,14 +181,24 @@ export class EditorPainting {
       if (!map) {
         return;
       }
-      untracked(() => void this.session.open(this.campaignId(), map.id, map.gridColumns, map.layersRevision));
+      untracked(
+        () =>
+          void this.session.open(this.campaignId(), map.id, map.gridColumns, map.layersRevision),
+      );
     });
     // A refusal dropped strokes: read what the server has. One that says a combat runs, or that the map changed, makes the flags stale.
     effect(() => {
       this.queue.refused();
       const map = untracked(() => this.map());
       if (map) {
-        untracked(() => this.session.syncAfterRefusal(this.campaignId(), map.id, map.gridColumns, map.layersRevision));
+        untracked(() =>
+          this.session.syncAfterRefusal(
+            this.campaignId(),
+            map.id,
+            map.gridColumns,
+            map.layersRevision,
+          ),
+        );
       }
       untracked(() => {
         if (this.queue.failure() !== null && !this.queue.retryable()) {
@@ -213,14 +254,19 @@ export class EditorPainting {
     if (s.erase) {
       return here === 0 ? 'Sem porta' : 'Tirar a porta';
     }
-    return here === 0 || here === s.door ? DOOR_LABEL[s.door] : `${DOOR_LABEL[here]} → ${DOOR_LABEL[s.door]}`;
+    return here === 0 || here === s.door
+      ? DOOR_LABEL[s.door]
+      : `${DOOR_LABEL[here]} → ${DOOR_LABEL[s.door]}`;
   }
 
   /** A stroke of the door tool: each square gets what `planDoor` says; one that cannot take a door says why, and a blocking door where
    * someone stands waits for the master's answer. */
   private doorStroke(centers: readonly Square[], kind: DoorKind | 0, mapId: string): void {
     const read = (layer: MapLayer, col: number, row: number) => this.painted.value(layer, col, row);
-    const plans = centers.map((square) => ({ square, plan: planDoor(read, this.columns(), this.rows(), square.col, square.row, kind) }));
+    const plans = centers.map((square) => ({
+      square,
+      plan: planDoor(read, this.columns(), this.rows(), square.col, square.row, kind),
+    }));
     const refused = plans.some((p) => !p.plan.ok);
     this.doorRefusal.set(refused && plans.every((p) => !p.plan.ok) ? NO_GAP_TEXT : '');
     this.doorAsk.set(null);
@@ -228,7 +274,11 @@ export class EditorPainting {
     if (hidesWhoStands(kind) || kind === 0) {
       const names = plans
         .filter((p) => p.plan.ok && p.plan.writes.length > 0)
-        .flatMap((p) => this.occupants().filter((o) => o.col === p.square.col && o.row === p.square.row).map((o) => o.name));
+        .flatMap((p) =>
+          this.occupants()
+            .filter((o) => o.col === p.square.col && o.row === p.square.row)
+            .map((o) => o.name),
+        );
       if (names.length > 0) {
         this.doorAsk.set({ plans, names: [...new Set(names)], erase: kind === 0 });
         return;

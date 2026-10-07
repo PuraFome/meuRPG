@@ -26,7 +26,10 @@ export class ToastQueue {
   push(icon: string, title: string, text = ''): void {
     const id = this.next++;
     this.toasts.update((list) => [...list, { id, icon, title, text }]);
-    this.timers.set(id, setTimeout(() => this.dismiss(id), TOAST_MS));
+    this.timers.set(
+      id,
+      setTimeout(() => this.dismiss(id), TOAST_MS),
+    );
   }
 
   dismiss(id: number): void {

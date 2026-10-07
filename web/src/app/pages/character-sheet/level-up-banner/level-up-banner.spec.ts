@@ -3,7 +3,11 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
 
-import { ListXPAwardsResponseSchema, XPAwardMode, XPAwardSchema } from '../../../../gen/meurpg/progression/v1/progression_pb';
+import {
+  ListXPAwardsResponseSchema,
+  XPAwardMode,
+  XPAwardSchema,
+} from '../../../../gen/meurpg/progression/v1/progression_pb';
 import { ProgressionClient } from '../../../core/progression/progression-client';
 import type { CharacterSheetVm } from '../character-sheet.types';
 import { LevelUpBanner } from './level-up-banner';
@@ -37,13 +41,28 @@ describe('LevelUpBanner (MR-040)', () => {
     listAwards.mockReset().mockResolvedValue(
       create(ListXPAwardsResponseSchema, {
         awards: [
-          create(XPAwardSchema, { mode: XPAwardMode.XP_AWARD_MODE_MILESTONE, reason: 'Chegar ao Vale Seco', undone: true, shares: [{ characterId: 'ch-1' }] }),
-          create(XPAwardSchema, { mode: XPAwardMode.XP_AWARD_MODE_MILESTONE, reason: 'Cruzar a ponte', shares: [{ characterId: 'outro' }] }),
-          create(XPAwardSchema, { mode: XPAwardMode.XP_AWARD_MODE_MILESTONE, reason: 'Chegar ao Vale Seco', shares: [{ characterId: 'ch-1' }] }),
+          create(XPAwardSchema, {
+            mode: XPAwardMode.XP_AWARD_MODE_MILESTONE,
+            reason: 'Chegar ao Vale Seco',
+            undone: true,
+            shares: [{ characterId: 'ch-1' }],
+          }),
+          create(XPAwardSchema, {
+            mode: XPAwardMode.XP_AWARD_MODE_MILESTONE,
+            reason: 'Cruzar a ponte',
+            shares: [{ characterId: 'outro' }],
+          }),
+          create(XPAwardSchema, {
+            mode: XPAwardMode.XP_AWARD_MODE_MILESTONE,
+            reason: 'Chegar ao Vale Seco',
+            shares: [{ characterId: 'ch-1' }],
+          }),
         ],
       }),
     );
-    TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: ProgressionClient, useValue: { listAwards } }] });
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: ProgressionClient, useValue: { listAwards } }],
+    });
     const fixture = TestBed.createComponent(Host);
     fixture.componentInstance.vm = { ...base, ...over };
     fixture.detectChanges();
@@ -71,7 +90,9 @@ describe('LevelUpBanner (MR-040)', () => {
     const f = setup({ levelUpReason: 'milestone' });
     await settle(f);
     await f.whenStable();
-    expect(await settle(f)).toContain('O mestre marcou “Chegar ao Vale Seco”. Você pode subir para o nível 4.');
+    expect(await settle(f)).toContain(
+      'O mestre marcou “Chegar ao Vale Seco”. Você pode subir para o nível 4.',
+    );
   });
 
   it('asks the history once per character, not on every re-read of the sheet', async () => {
@@ -79,7 +100,11 @@ describe('LevelUpBanner (MR-040)', () => {
     await settle(f);
     expect(listAwards).toHaveBeenCalledTimes(1);
     // The sheet is read again (the XP block, the stream) with other numbers: same character, same reason.
-    f.componentInstance.vm = { ...f.componentInstance.vm, revision: 9, nextLevelXp: 2800 } as CharacterSheetVm;
+    f.componentInstance.vm = {
+      ...f.componentInstance.vm,
+      revision: 9,
+      nextLevelXp: 2800,
+    } as CharacterSheetVm;
     f.changeDetectorRef.detectChanges();
     await settle(f);
     expect(listAwards).toHaveBeenCalledTimes(1);
@@ -111,7 +136,9 @@ describe('LevelUpDoneNotice', () => {
     fixture.componentInstance.dismissed.subscribe(dismissed);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('[role=status]')?.textContent?.replace(/\s+/g, ' ')).toContain('Pensantus subiu para o nível 4. O mestre foi avisado.');
+    expect(el.querySelector('[role=status]')?.textContent?.replace(/\s+/g, ' ')).toContain(
+      'Pensantus subiu para o nível 4. O mestre foi avisado.',
+    );
     (el.querySelector('button[aria-label="Dispensar o aviso"]') as HTMLButtonElement).click();
     expect(dismissed).toHaveBeenCalled();
   });

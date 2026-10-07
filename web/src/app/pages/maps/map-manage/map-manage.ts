@@ -1,4 +1,14 @@
-import { Component, afterNextRender, computed, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
+import {
+  Component,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { PaintedLayers } from '../../../core/maps/paint-layers';
@@ -35,7 +45,19 @@ import { FogPanel } from '../fog-panel/fog-panel';
  */
 @Component({
   selector: 'app-map-manage',
-  imports: [DungeonRooms, EditorOverlay, FogPanel, GenerateImageButton, MapLayersLegend, MapLegend, MapPinsLegend, MapPointsList, MapTokensList, MapView, MatIconModule],
+  imports: [
+    DungeonRooms,
+    EditorOverlay,
+    FogPanel,
+    GenerateImageButton,
+    MapLayersLegend,
+    MapLegend,
+    MapPinsLegend,
+    MapPointsList,
+    MapTokensList,
+    MapView,
+    MatIconModule,
+  ],
   templateUrl: './map-manage.html',
   styleUrl: './map-manage.scss',
 })
@@ -50,7 +72,9 @@ export class MapManage {
   );
 
   /** Class lines and player names for the token rows, best effort. */
-  protected readonly info = signal<ReadonlyMap<string, { classSummary: string; playerName: string | null }>>(new Map());
+  protected readonly info = signal<
+    ReadonlyMap<string, { classSummary: string; playerName: string | null }>
+  >(new Map());
 
   /** A generated dungeon's rooms (the master reads them on a phone too, `GetDungeonRooms`): the list, with "Pôr uma cena nesta sala". */
   protected readonly dungeon = new DungeonInfo(inject(DungeonsClient));
@@ -75,7 +99,11 @@ export class MapManage {
   /** Which painted light levels the map has: the legend names only those. */
   protected readonly lightLevels = computed(() => {
     const l = this.painted.layers().light;
-    return { bright: (l?.bright.length ?? 0) > 0, dim: (l?.dim.length ?? 0) > 0, dark: (l?.dark.length ?? 0) > 0 };
+    return {
+      bright: (l?.bright.length ?? 0) > 0,
+      dim: (l?.dim.length ?? 0) > 0,
+      dark: (l?.dark.length ?? 0) > 0,
+    };
   });
 
   /** "Gerar imagem" made the textured map the map's image: show it and read the rest of the map again. */
@@ -126,7 +154,11 @@ export class MapManage {
           this.finders.set(
             list
               .filter((c) => c.kind === CharacterKind.PLAYER && c.playerUserId !== '')
-              .map((c) => ({ id: c.id, name: c.name, sub: [c.classSummary, c.playerName].filter(Boolean).join(' · ') })),
+              .map((c) => ({
+                id: c.id,
+                name: c.name,
+                sub: [c.classSummary, c.playerName].filter(Boolean).join(' · '),
+              })),
           );
         },
         () => undefined,
@@ -146,7 +178,12 @@ export class MapManage {
     this.markBusy.set(true);
     this.markError.set('');
     try {
-      const point = await this.mapsApi.markTreasureFound(this.campaignId(), mark.point.mapId, mark.point.id, [...mark.characterIds]);
+      const point = await this.mapsApi.markTreasureFound(
+        this.campaignId(),
+        mark.point.mapId,
+        mark.point.id,
+        [...mark.characterIds],
+      );
       this.state().upsertPoint(point);
       this.list()?.closeMarking();
     } catch (err) {
@@ -164,7 +201,13 @@ export class MapManage {
       return;
     }
     const scale = Math.min(3, Math.max(1.2, (0.55 * m.gridColumns) / room.width));
-    this.mapView()?.focusOn({ xBp: ((room.x + room.width / 2) / m.gridColumns) * 10000, yBp: ((room.y + room.height / 2) / m.gridRows) * 10000 }, scale);
+    this.mapView()?.focusOn(
+      {
+        xBp: ((room.x + room.width / 2) / m.gridColumns) * 10000,
+        yBp: ((room.y + room.height / 2) / m.gridRows) * 10000,
+      },
+      scale,
+    );
   }
 
   protected reloadDungeon(): void {

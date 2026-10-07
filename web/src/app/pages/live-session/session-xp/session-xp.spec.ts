@@ -22,7 +22,11 @@ const nbsp = ' ';
 describe('SessionXp: the session\'s "Dar XP" (E9-09 state 6c)', () => {
   const experience = vi.fn();
   const listTreasures = vi.fn();
-  const chest = create(TreasureToConvertSchema, { pointId: 'c', name: 'Baú de moedas', valuePo: 250 });
+  const chest = create(TreasureToConvertSchema, {
+    pointId: 'c',
+    name: 'Baú de moedas',
+    valuePo: 250,
+  });
 
   async function setup() {
     TestBed.configureTestingModule({
@@ -48,21 +52,33 @@ describe('SessionXp: the session\'s "Dar XP" (E9-09 state 6c)', () => {
     experience.mockReset().mockResolvedValue(
       create(GetCampaignExperienceResponseSchema, {
         xpMode: XpMode.GOLD,
-        characters: [create(CharacterExperienceSchema, { characterId: 'p', name: 'Pensantus', level: 3, nextLevelXp: 2700 })],
+        characters: [
+          create(CharacterExperienceSchema, {
+            characterId: 'p',
+            name: 'Pensantus',
+            level: 3,
+            nextLevelXp: 2700,
+          }),
+        ],
       }),
     );
-    listTreasures.mockReset().mockResolvedValue(create(ListTreasuresToConvertResponseSchema, { treasures: [chest], total: 1 }));
+    listTreasures
+      .mockReset()
+      .mockResolvedValue(
+        create(ListTreasuresToConvertResponseSchema, { treasures: [chest], total: 1 }),
+      );
   });
 
   it('hands the button the treasures the store read, with their state, so "Voltar à cidade" never opens on a false "nenhum"', async () => {
     const { fixture } = await setup();
-    const button = fixture.debugElement.query((d) => d.componentInstance instanceof XpGiveButton).componentInstance as XpGiveButton;
+    const button = fixture.debugElement.query((d) => d.componentInstance instanceof XpGiveButton)
+      .componentInstance as XpGiveButton;
     expect(button.treasures().map((t) => t.name)).toEqual(['Baú de moedas']);
     expect(button.treasuresTotal()).toBe(1);
     expect(button.treasuresState()).toBe('ready');
   });
 
-  it('says what a conversion did, in the conversion\'s words', async () => {
+  it("says what a conversion did, in the conversion's words", async () => {
     const { fixture, el } = await setup();
     const award = create(XPAwardSchema, {
       id: 'a1',

@@ -12,15 +12,21 @@ import { FakeCreaturesClient, flat, ogre } from '../../../core/creatures/creatur
 import { BestiaryCreature } from './bestiary-creature';
 
 /** The "Criar NPC" button of the panel (the outlined one). */
-const createNpc = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLButtonElement>('.act button')).find((b) => flat(b) === 'Criar NPC')!;
+const createNpc = (el: HTMLElement) =>
+  Array.from(el.querySelectorAll<HTMLButtonElement>('.act button')).find(
+    (b) => flat(b) === 'Criar NPC',
+  )!;
 
-describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', () => {
+describe("BestiaryCreature: the Ogre's stat block (MR-042, E10-08 state 3)", () => {
   let api: FakeCreaturesClient;
   let access: BestiaryAccess;
   let dialogResult: unknown;
   let opened: unknown[];
 
-  async function open(url = '/campaigns/camp-1/bestiary/ogre?q=ogro', prep: (api: FakeCreaturesClient) => void = () => undefined) {
+  async function open(
+    url = '/campaigns/camp-1/bestiary/ogre?q=ogro',
+    prep: (api: FakeCreaturesClient) => void = () => undefined,
+  ) {
     api = new FakeCreaturesClient();
     api.blocks.set('monster:ogre', ogre());
     prep(api);
@@ -66,7 +72,7 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
     vi.useRealTimers();
   });
 
-  it('shows the name, the SRD\'s in English, the size, the type and the alignment in Portuguese', async () => {
+  it("shows the name, the SRD's in English, the size, the type and the alignment in Portuguese", async () => {
     const { el } = await open();
     expect(flat(el.querySelector('h1'))).toBe('Ogro');
     expect(flat(el.querySelector('.head__sub'))).toBe('Ogre · Grande · Gigante · caótico e mau');
@@ -80,8 +86,15 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
   it('the tiles say where each number comes from: CA 11 (gibão de peles), PV 59 (7d10 + 21), 12 m (40 pés), ND 2 (450 XP)', async () => {
     const { el } = await open();
     const tiles = Array.from(el.querySelectorAll('.tile')).map((t) => flat(t));
-    expect(tiles).toEqual(['CA 11 gibão de peles', 'PV 59 7d10 + 21', 'Deslocamento 12 m 40 pés', 'Nível de desafio 2 450 XP']);
-    expect(Array.from(el.querySelectorAll('.ability')).map((a) => flat(a))).toContain('Força +4 valor 19');
+    expect(tiles).toEqual([
+      'CA 11 gibão de peles',
+      'PV 59 7d10 + 21',
+      'Deslocamento 12 m 40 pés',
+      'Nível de desafio 2 450 XP',
+    ]);
+    expect(Array.from(el.querySelectorAll('.ability')).map((a) => flat(a))).toContain(
+      'Força +4 valor 19',
+    );
     const lines = Array.from(el.querySelectorAll('.line')).map((l) => flat(l));
     expect(lines).toContain('Sentidos Visão no escuro 18 m, Percepção passiva 8');
     expect(lines).toContain('Idiomas Common, Giant');
@@ -90,9 +103,11 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
     expect(lines.some((l) => l?.startsWith('Perícias'))).toBe(false);
   });
 
-  it('the actions are the SRD\'s text in English, marked, with the line that says so', async () => {
+  it("the actions are the SRD's text in English, marked, with the line that says so", async () => {
     const { el } = await open();
-    expect(flat(el.querySelector('.srd'))).toBe('Os textos abaixo são do livro de regras (SRD 5.1), em inglês.');
+    expect(flat(el.querySelector('.srd'))).toBe(
+      'Os textos abaixo são do livro de regras (SRD 5.1), em inglês.',
+    );
     const entries = Array.from(el.querySelectorAll('.entry'));
     expect(entries.map((e) => flat(e.querySelector('h3')))).toEqual(['Greatclub', 'Javelin']);
     expect(entries.every((e) => e.getAttribute('lang') === 'en')).toBe(true);
@@ -101,46 +116,85 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
 
   it('credits the SRD, and has "Pôr no combate" (the filled one) and "Criar NPC" in the same panel', async () => {
     const { el } = await open();
-    expect(flat(el.querySelector('.act__srd'))).toBe('Dados do SRD 5.1 (CC BY 4.0). Os alcances do texto ficam em pés, como no livro.');
+    expect(flat(el.querySelector('.act__srd'))).toBe(
+      'Dados do SRD 5.1 (CC BY 4.0). Os alcances do texto ficam em pés, como no livro.',
+    );
     expect(el.querySelector('.act__srd a')?.getAttribute('href')).toBe('/credits');
-    expect(Array.from(el.querySelectorAll('.act button')).map((b) => flat(b))).toEqual(['Pôr no combate', 'Criar NPC']);
+    expect(Array.from(el.querySelectorAll('.act button')).map((b) => flat(b))).toEqual([
+      'Pôr no combate',
+      'Criar NPC',
+    ]);
     expect(flat(el.querySelector('#act-h'))).toBe('Usar esta criatura');
   });
 
   it('"Pôr no combate" opens the sheet with the creature; with monsters put in, the page confirms and links to the session', async () => {
-    dialogResult = { count: 3, names: 'Ogro 1, Ogro 2 e Ogro 3', combatName: 'Emboscada na ponte', started: false, hidden: true, encounterId: 'enc-1' };
+    dialogResult = {
+      count: 3,
+      names: 'Ogro 1, Ogro 2 e Ogro 3',
+      combatName: 'Emboscada na ponte',
+      started: false,
+      hidden: true,
+      encounterId: 'enc-1',
+    };
     const { el, settle } = await open();
     el.querySelector<HTMLButtonElement>('.act__go')!.click();
     await settle();
     expect(opened).toHaveLength(1);
-    expect((opened[0] as { data: { campaignId: string; creature: { key: string } } }).data.campaignId).toBe('camp-1');
-    expect((opened[0] as { data: { creature: { key: string } } }).data.creature.key).toBe('monster:ogre');
+    expect(
+      (opened[0] as { data: { campaignId: string; creature: { key: string } } }).data.campaignId,
+    ).toBe('camp-1');
+    expect((opened[0] as { data: { creature: { key: string } } }).data.creature.key).toBe(
+      'monster:ogre',
+    );
     const made = el.querySelector('.made')!;
-    expect(flat(made.querySelector('p'))).toBe('Entraram no combate: Ogro 1, Ogro 2 e Ogro 3. Combate “Emboscada na ponte”. Estão escondidos: só você os vê até revelar.');
+    expect(flat(made.querySelector('p'))).toBe(
+      'Entraram no combate: Ogro 1, Ogro 2 e Ogro 3. Combate “Emboscada na ponte”. Estão escondidos: só você os vê até revelar.',
+    );
     const links = Array.from(made.querySelectorAll('a'));
     expect(links.map((a) => flat(a))).toEqual(['Ir para a sessão', 'Voltar ao Bestiário']);
     expect(links[0].getAttribute('href')).toBe('/campaigns/camp-1/session');
   });
 
   it('a combat made by the sheet says so, and one monster says "Entrou"', async () => {
-    dialogResult = { count: 1, names: 'Ogro', combatName: 'Combate: Ogro', started: true, hidden: false, encounterId: 'enc-2' };
+    dialogResult = {
+      count: 1,
+      names: 'Ogro',
+      combatName: 'Combate: Ogro',
+      started: true,
+      hidden: false,
+      encounterId: 'enc-2',
+    };
     const { el, settle } = await open();
     el.querySelector<HTMLButtonElement>('.act__go')!.click();
     await settle();
-    expect(flat(el.querySelector('.made p'))).toBe('Entrou no combate: Ogro. O combate “Combate: Ogro” foi criado agora. Os jogadores já os veem pelo estado.');
+    expect(flat(el.querySelector('.made p'))).toBe(
+      'Entrou no combate: Ogro. O combate “Combate: Ogro” foi criado agora. Os jogadores já os veem pelo estado.',
+    );
   });
 
   it('"Criar NPC" opens the dialog with the creature; with an NPC made, the page confirms and links to its sheet', async () => {
-    dialogResult = { id: 'npc-9', name: 'Capitão bandido', attacks: ['Clava grande', 'Azagaia'], existed: false };
+    dialogResult = {
+      id: 'npc-9',
+      name: 'Capitão bandido',
+      attacks: ['Clava grande', 'Azagaia'],
+      existed: false,
+    };
     const { el, settle } = await open();
     createNpc(el).click();
     await settle();
     expect(opened).toHaveLength(1);
-    expect((opened[0] as { data: { campaignId: string; creature: { summary: { key: string } } } }).data.campaignId).toBe('camp-1');
-    expect((opened[0] as { data: { creature: { summary: { key: string } } } }).data.creature.summary.key).toBe('monster:ogre');
+    expect(
+      (opened[0] as { data: { campaignId: string; creature: { summary: { key: string } } } }).data
+        .campaignId,
+    ).toBe('camp-1');
+    expect(
+      (opened[0] as { data: { creature: { summary: { key: string } } } }).data.creature.summary.key,
+    ).toBe('monster:ogre');
     const made = el.querySelector('.made')!;
     expect(made.getAttribute('role')).toBe('group');
-    expect(flat(made.querySelectorAll('p')[0])).toBe('NPC criado: Capitão bandido. Já está na lista de NPCs.');
+    expect(flat(made.querySelectorAll('p')[0])).toBe(
+      'NPC criado: Capitão bandido. Já está na lista de NPCs.',
+    );
     // The attacks are the ones the NPC really got, from the server's answer.
     expect(flat(made.querySelectorAll('p')[1])).toBe('Ataques da ficha: Clava grande e Azagaia.');
     // One live region only: the confirmation is focused, not announced twice.
@@ -157,8 +211,13 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
     createNpc(el).click();
     await settle();
     const made = el.querySelector('.made')!;
-    expect(flat(made.querySelector('p'))).toBe('Já foi criado. O NPC desta tentativa já está na lista de NPCs.');
-    expect(Array.from(made.querySelectorAll('a')).map((a) => flat(a))).toEqual(['Ver os NPCs', 'Voltar ao Bestiário']);
+    expect(flat(made.querySelector('p'))).toBe(
+      'Já foi criado. O NPC desta tentativa já está na lista de NPCs.',
+    );
+    expect(Array.from(made.querySelectorAll('a')).map((a) => flat(a))).toEqual([
+      'Ver os NPCs',
+      'Voltar ao Bestiário',
+    ]);
     expect(made.querySelectorAll('a')[0].getAttribute('href')).toBe('/campaigns/camp-1');
   });
 
@@ -175,14 +234,18 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
   it('a "Pôr no combate" sheet closed with nothing put in gives the focus back to its button', async () => {
     dialogResult = undefined;
     const { el, settle } = await open();
-    const put = Array.from(el.querySelectorAll<HTMLButtonElement>('.act button')).find((b) => flat(b) === 'Pôr no combate')!;
+    const put = Array.from(el.querySelectorAll<HTMLButtonElement>('.act button')).find(
+      (b) => flat(b) === 'Pôr no combate',
+    )!;
     put.click();
     await settle();
     expect(document.activeElement).toBe(put);
   });
 
   it('a creature that is not in the book says so; the stat block is not asked of a player', async () => {
-    const found = await open('/campaigns/camp-1/bestiary/wyrm', (a) => a.statBlock.mockRejectedValueOnce(new ConnectError('no', Code.NotFound)));
+    const found = await open('/campaigns/camp-1/bestiary/wyrm', (a) =>
+      a.statBlock.mockRejectedValueOnce(new ConnectError('no', Code.NotFound)),
+    );
     expect(flat(found.el.querySelector('h1'))).toBe('Criatura não encontrada');
     TestBed.resetTestingModule();
     access = { status: 'forbidden' };
@@ -192,9 +255,15 @@ describe('BestiaryCreature: the Ogre\'s stat block (MR-042, E10-08 state 3)', ()
   });
 
   it('a failed read says what to do, by code, and "Tentar de novo" reads again', async () => {
-    const { el, settle } = await open('/campaigns/camp-1/bestiary/ogre', (a) => a.statBlock.mockRejectedValueOnce(new ConnectError('down', Code.Unavailable)));
-    expect(el.querySelector('[role=alert]')?.textContent).toContain('Não deu para abrir a ficha da criatura: o servidor não respondeu. Tente de novo.');
-    Array.from(el.querySelectorAll('button')).find((b) => flat(b) === 'Tentar de novo')!.click();
+    const { el, settle } = await open('/campaigns/camp-1/bestiary/ogre', (a) =>
+      a.statBlock.mockRejectedValueOnce(new ConnectError('down', Code.Unavailable)),
+    );
+    expect(el.querySelector('[role=alert]')?.textContent).toContain(
+      'Não deu para abrir a ficha da criatura: o servidor não respondeu. Tente de novo.',
+    );
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => flat(b) === 'Tentar de novo')!
+      .click();
     await settle();
     expect(flat(el.querySelector('h1'))).toBe('Ogro');
   });

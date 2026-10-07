@@ -7,7 +7,10 @@ export function textOf(node: Node | null | undefined): string {
   const parts: string[] = [];
   const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-    const text = (n.textContent ?? '').replace(/\s+/g, ' ').replace(/ /g, ' ').trim();
+    const text = (n.textContent ?? '')
+      .replace(/\s+/g, ' ')
+      .replace(/\u00a0/g, ' ')
+      .trim();
     if (text) {
       parts.push(text);
     }

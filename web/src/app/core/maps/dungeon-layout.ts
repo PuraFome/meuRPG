@@ -38,7 +38,12 @@ export function doorSquaresOf(doors: readonly DungeonDoor[]): DoorSquare[] {
   for (const d of doors) {
     const state = layerKindOf(d.kind);
     if (state !== null) {
-      out.push({ col: d.x, row: d.y, state, axis: d.axis === DungeonAxis.VERTICAL_WALL ? 'v' : 'h' });
+      out.push({
+        col: d.x,
+        row: d.y,
+        state,
+        axis: d.axis === DungeonAxis.VERTICAL_WALL ? 'v' : 'h',
+      });
     }
   }
   return out;
@@ -90,7 +95,9 @@ function isOpen(open: Uint8Array, n: number): boolean {
 
 /** A room's size in meters, "10,5 × 7,5 m" (a square is 1,5 m). */
 export function roomSizeText(floor: { width: number; height: number }): string {
-  return tight(`${metersNumber(floor.width * SQUARE_FT)} × ${metersNumber(floor.height * SQUARE_FT)} m`);
+  return tight(
+    `${metersNumber(floor.width * SQUARE_FT)} × ${metersNumber(floor.height * SQUARE_FT)} m`,
+  );
 }
 
 /** A dungeon's size in meters: "46,5 × 31,5 m". */
@@ -130,7 +137,10 @@ export function behindSecretDoor(room: DungeonRoom): boolean {
 }
 
 /** The stairs that stand outside every room (at the end of a corridor): the list names them apart, and the entrance among them. */
-export function stairsOutsideRooms(rooms: readonly DungeonRoom[], stairs: readonly DungeonStair[]): DungeonStair[] {
+export function stairsOutsideRooms(
+  rooms: readonly DungeonRoom[],
+  stairs: readonly DungeonStair[],
+): DungeonStair[] {
   return stairs.filter((s) => !rooms.some((r) => stairsInRoom(r, [s]).length > 0));
 }
 
@@ -140,5 +150,7 @@ export function stairsInRoom(room: DungeonRoom, stairs: readonly DungeonStair[])
   if (!f) {
     return [];
   }
-  return stairs.filter((s) => s.x >= f.x && s.x < f.x + f.width && s.y >= f.y && s.y < f.y + f.height);
+  return stairs.filter(
+    (s) => s.x >= f.x && s.x < f.x + f.width && s.y >= f.y && s.y < f.y + f.height,
+  );
 }

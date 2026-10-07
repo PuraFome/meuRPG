@@ -6,7 +6,15 @@ import { describeConnectError } from '../connect/connect-errors';
 import { mapBlockedReason } from './map-errors';
 
 /** The options the page has a control for, by the name the server uses in `DungeonOptionRefused`. */
-export type OptionField = 'size' | 'room_side_min' | 'room_side_max' | 'mask' | 'corridor_style' | 'door_mix' | 'deadend_removal' | 'stairs';
+export type OptionField =
+  | 'size'
+  | 'room_side_min'
+  | 'room_side_max'
+  | 'mask'
+  | 'corridor_style'
+  | 'door_mix'
+  | 'deadend_removal'
+  | 'stairs';
 
 /** What the server refused in the options: the option it names (`''` when no single option is at fault), or `null` when it was another error. */
 export function refusedOption(err: unknown): string | null {
@@ -49,7 +57,8 @@ const OPTION_TEXT: Readonly<Record<OptionField, string>> = {
 };
 
 /** Said when the options are refused as a whole (the silhouette and the size leave no room for a room). */
-export const NO_ROOM_TEXT = 'Com esse tamanho e esse formato não cabe nenhuma sala. Aumente o tamanho ou mude o formato.';
+export const NO_ROOM_TEXT =
+  'Com esse tamanho e esse formato não cabe nenhuma sala. Aumente o tamanho ou mude o formato.';
 
 /** What a failed preview looks like to the page: a refusal it can put on a field, or a failure with "Tentar de novo". */
 export type PreviewFailure =
@@ -69,7 +78,10 @@ export function previewFailure(err: unknown): PreviewFailure {
     return { kind: 'busy' };
   }
   if (code === Code.DeadlineExceeded) {
-    return { kind: 'failed', text: 'O gerador demorou demais com essas opções. Diminua o tamanho ou mude o formato.' };
+    return {
+      kind: 'failed',
+      text: 'O gerador demorou demais com essas opções. Diminua o tamanho ou mude o formato.',
+    };
   }
   return { kind: 'failed', text: 'Não deu para gerar a prévia.' };
 }
@@ -88,9 +100,11 @@ export function createFailure(err: unknown): { field: OptionField | null; text: 
       [Code.NotFound]: 'Essa campanha não existe, ou você não é o mestre dela.',
       [Code.ResourceExhausted]:
         'A campanha chegou ao limite de 200 mapas ou da galeria, ou foram criadas masmorras demais agora há pouco. Espere um pouco e tente de novo; se continuar, apague um mapa ou uma imagem.',
-      [Code.DeadlineExceeded]: 'O gerador demorou demais com essas opções. Diminua o tamanho ou mude o formato.',
+      [Code.DeadlineExceeded]:
+        'O gerador demorou demais com essas opções. Diminua o tamanho ou mude o formato.',
       [Code.Aborted]: 'O servidor estava ocupado. Tente de novo.',
-      [Code.Unavailable]: 'As imagens estão desligadas neste servidor, ou o servidor não respondeu. Tente de novo em instantes.',
+      [Code.Unavailable]:
+        'As imagens estão desligadas neste servidor, ou o servidor não respondeu. Tente de novo em instantes.',
     }),
   };
 }
@@ -106,10 +120,14 @@ export function redrawFailure(err: unknown): string {
       break;
   }
   return describeConnectError(err, {
-    [Code.NotFound]: 'Este mapa não é mais uma masmorra gerada, ou não existe mais. Recarregue a página.',
-    [Code.Aborted]: 'As paredes ou as portas mudaram enquanto a imagem era desenhada. Tente de novo.',
-    [Code.ResourceExhausted]: 'Foram criadas ou redesenhadas masmorras demais nesta campanha agora há pouco. Espere uns 15 segundos e tente de novo.',
-    [Code.Unavailable]: 'As imagens estão desligadas neste servidor, ou o servidor não respondeu. Tente de novo em instantes.',
+    [Code.NotFound]:
+      'Este mapa não é mais uma masmorra gerada, ou não existe mais. Recarregue a página.',
+    [Code.Aborted]:
+      'As paredes ou as portas mudaram enquanto a imagem era desenhada. Tente de novo.',
+    [Code.ResourceExhausted]:
+      'Foram criadas ou redesenhadas masmorras demais nesta campanha agora há pouco. Espere uns 15 segundos e tente de novo.',
+    [Code.Unavailable]:
+      'As imagens estão desligadas neste servidor, ou o servidor não respondeu. Tente de novo em instantes.',
   });
 }
 

@@ -19,7 +19,9 @@ describe('campaign characters copy', () => {
   });
 
   it('never says "Sem nome" for a player with no display name', () => {
-    expect(characterRowSub(item({ playerDisplayName: null }), true)).toBe('Mago 3, de\u00a0um\u00a0jogador\u00a0sem\u00a0nome');
+    expect(characterRowSub(item({ playerDisplayName: null }), true)).toBe(
+      'Mago 3, de\u00a0um\u00a0jogador\u00a0sem\u00a0nome',
+    );
   });
 
   it('shows a player only the class of their own character', () => {
@@ -27,10 +29,15 @@ describe('campaign characters copy', () => {
   });
 
   it('says nothing about the player of an NPC, and nothing at all for a basic sheet', () => {
-    expect(characterRowSub(item({ kind: 'enemy', classSummary: 'Guerreiro 2', playerDisplayName: null }), true)).toBe(
-      'Guerreiro 2',
-    );
-    expect(characterRowSub(item({ kind: 'minion', classSummary: '', playerDisplayName: null }), true)).toBe('');
+    expect(
+      characterRowSub(
+        item({ kind: 'enemy', classSummary: 'Guerreiro 2', playerDisplayName: null }),
+        true,
+      ),
+    ).toBe('Guerreiro 2');
+    expect(
+      characterRowSub(item({ kind: 'minion', classSummary: '', playerDisplayName: null }), true),
+    ).toBe('');
   });
 
   it('gives pending the warning tone and dead the danger tone', () => {

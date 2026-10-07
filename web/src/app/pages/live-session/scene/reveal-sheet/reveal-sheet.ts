@@ -95,9 +95,15 @@ export class RevealSheet {
   });
   protected readonly picked = signal<ReadonlySet<string>>(new Set());
   protected readonly chosen = computed(() => this.open().filter((p) => this.picked().has(p.id)));
-  protected readonly allPicked = computed(() => this.open().length > 0 && this.chosen().length === this.open().length);
-  protected readonly label = computed(() => revealLabel(this.chosen(), this.open().length, this.data.players.length));
-  protected readonly summary = computed(() => revealSummary(this.chosen(), this.open().length, this.data.players.length));
+  protected readonly allPicked = computed(
+    () => this.open().length > 0 && this.chosen().length === this.open().length,
+  );
+  protected readonly label = computed(() =>
+    revealLabel(this.chosen(), this.open().length, this.data.players.length),
+  );
+  protected readonly summary = computed(() =>
+    revealSummary(this.chosen(), this.open().length, this.data.players.length),
+  );
   /** The pair stacks, both full width, when a label does not fit half the width. */
   protected readonly stacked = signal(false);
   protected readonly busy = signal(false);
@@ -187,7 +193,10 @@ function needsStack(foot: HTMLElement): boolean {
   return buttons.some((button) => {
     const style = getComputedStyle(button);
     const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
-    const content = Array.from(button.children).reduce((sum, child) => sum + child.getBoundingClientRect().width, 0);
+    const content = Array.from(button.children).reduce(
+      (sum, child) => sum + child.getBoundingClientRect().width,
+      0,
+    );
     return content + padding > half;
   });
 }

@@ -21,7 +21,9 @@ describe('RollPicker', () => {
       fixture.detectChanges();
     };
     const button = (name: string) =>
-      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.includes(name));
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+        b.textContent?.includes(name),
+      );
     return { fixture, el, rolled, type, button };
   }
 
@@ -38,7 +40,11 @@ describe('RollPicker', () => {
   });
 
   it('hides the way a forced mode does not allow', () => {
-    expect(Array.from(setup({ canType: false }).el.querySelectorAll('button'), (b) => b.textContent?.trim())).toEqual(['casinoRolar no app']);
+    expect(
+      Array.from(setup({ canType: false }).el.querySelectorAll('button'), (b) =>
+        b.textContent?.trim(),
+      ),
+    ).toEqual(['casinoRolar no app']);
     const typeOnly = setup({ canApp: false }).el;
     expect(typeOnly.querySelector('input')).not.toBeNull();
     expect(typeOnly.textContent).not.toContain('Rolar no app');
@@ -56,7 +62,9 @@ describe('RollPicker', () => {
     fixture.detectChanges();
     expect(button('Confirmar')?.getAttribute('aria-disabled')).toBe('true');
     type('27');
-    expect(el.querySelector('[role="alert"]')?.textContent?.replace(/\u00a0/g, ' ')).toContain('Digite um número de 1 a 20');
+    expect(el.querySelector('[role="alert"]')?.textContent?.replace(/\u00a0/g, ' ')).toContain(
+      'Digite um número de 1 a 20',
+    );
     expect(el.querySelector('input')?.getAttribute('aria-invalid')).toBe('true');
     type('16');
     expect(el.querySelector('[role="alert"]')).toBeNull();
@@ -67,11 +75,18 @@ describe('RollPicker', () => {
   });
 
   it('types the sum of a damage roll inside N to N times the faces (Q38)', () => {
-    const { fixture, el, type, button, rolled } = setup({ min: 2, max: 12, modifier: 2, label: 'Role 2d6 para o dano: some os dois' });
+    const { fixture, el, type, button, rolled } = setup({
+      min: 2,
+      max: 12,
+      modifier: 2,
+      label: 'Role 2d6 para o dano: some os dois',
+    });
     button('Digitar o resultado')!.click();
     fixture.detectChanges();
     type('13');
-    expect(el.querySelector('[role="alert"]')?.textContent?.replace(/\u00a0/g, ' ')).toContain('Digite um número de 2 a 12');
+    expect(el.querySelector('[role="alert"]')?.textContent?.replace(/\u00a0/g, ' ')).toContain(
+      'Digite um número de 2 a 12',
+    );
     type('9');
     expect(el.querySelector('[role="status"]')?.textContent).toContain('9 + 2 = 11');
     button('Confirmar 9')!.click();
@@ -106,8 +121,15 @@ describe('RollPicker', () => {
     type('27');
     const alert = el.querySelector('[role="alert"]')!;
     expect(alert.closest('.actions')).toBeNull();
-    const order = Array.from(el.querySelectorAll('.type__row, [role="alert"], .type__sum, .actions'));
-    expect(order.map((n) => n.className.split(' ')[0])).toEqual(['type__row', 'type__err', 'type__sum', 'actions']);
+    const order = Array.from(
+      el.querySelectorAll('.type__row, [role="alert"], .type__sum, .actions'),
+    );
+    expect(order.map((n) => n.className.split(' ')[0])).toEqual([
+      'type__row',
+      'type__err',
+      'type__sum',
+      'actions',
+    ]);
   });
 
   it('by default the sticky footer carries the error, as the combat sheets draw it', () => {

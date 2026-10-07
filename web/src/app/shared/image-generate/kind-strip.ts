@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, ElementRef, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { KIND_LABEL, type KindChoice, type KindKey } from '../../core/images/imagegen-copy';
@@ -57,19 +64,29 @@ export class KindStrip {
   }
 
   protected onKey(event: KeyboardEvent): void {
-    const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
+    const step =
+      event.key === 'ArrowRight' || event.key === 'ArrowDown'
+        ? 1
+        : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+          ? -1
+          : 0;
     if (step === 0) {
       return;
     }
     event.preventDefault();
     const all = this.choices();
-    const at = Math.max(0, all.findIndex((c) => c.key === this.value()));
+    const at = Math.max(
+      0,
+      all.findIndex((c) => c.key === this.value()),
+    );
     for (let n = 1; n <= all.length; n++) {
       const i = (at + step * n + all.length * n) % all.length;
       const next = all[i];
       if (next?.available) {
         this.valueChange.emit(next.key);
-        setTimeout(() => this.host.nativeElement.querySelectorAll<HTMLElement>('[role="radio"]')[i]?.focus());
+        setTimeout(() =>
+          this.host.nativeElement.querySelectorAll<HTMLElement>('[role="radio"]')[i]?.focus(),
+        );
         return;
       }
     }

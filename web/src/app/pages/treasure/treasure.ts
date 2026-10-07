@@ -1,4 +1,13 @@
-import { Component, ElementRef, afterNextRender, computed, inject, Injector, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  afterNextRender,
+  computed,
+  inject,
+  Injector,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -12,7 +21,13 @@ import { focusWithRing } from '../../core/creatures/focus-ring';
 import { type TreasureAccess, TreasureAccessCheck } from '../../core/treasure/treasure-access';
 import { TreasureClient } from '../../core/treasure/treasure-client';
 import { generateFailure } from '../../core/treasure/treasure-errors';
-import { goldLine, modeText, partyHelp, placedSummary, placedXpLine } from '../../core/treasure/treasure-format';
+import {
+  goldLine,
+  modeText,
+  partyHelp,
+  placedSummary,
+  placedXpLine,
+} from '../../core/treasure/treasure-format';
 import { NumberStepper } from '../../shared/form-fields/number-stepper';
 import { Segmented, type Segment } from '../../shared/segmented/segmented';
 import { openSheet } from '../../shared/sheet/sheet-host';
@@ -21,7 +36,11 @@ import { PlaceSheet, type PlaceSheetData, type PlaceSheetResult } from './place-
 import { type ItemOpen, TreasureResult } from './treasure-result';
 
 type Party = { livingCount: number; lowestLevel: number; highestLevel: number };
-type Generation = { status: 'idle' } | { status: 'busy' } | { status: 'error'; message: string } | { status: 'ready'; treasure: Treasure };
+type Generation =
+  | { status: 'idle' }
+  | { status: 'busy' }
+  | { status: 'error'; message: string }
+  | { status: 'ready'; treasure: Treasure };
 
 /** What was put on a map, for the confirmation under the result. */
 interface Placed {
@@ -50,7 +69,15 @@ const MAX_LEVEL = 20;
  */
 @Component({
   selector: 'app-treasure',
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, NumberStepper, RouterLink, Segmented, TreasureResult],
+  imports: [
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    NumberStepper,
+    RouterLink,
+    Segmented,
+    TreasureResult,
+  ],
   templateUrl: './treasure.html',
   styleUrl: './treasure.scss',
 })
@@ -99,7 +126,9 @@ export class TreasurePage {
   });
   protected readonly help = computed(() => (this.partyFailed() ? '' : partyHelp(this.party())));
   protected readonly modeHint = computed(() =>
-    this.mode() === 'hoard' ? 'De covil: o tesouro guardado num esconderijo.' : 'Individual: o que uma criatura carrega.',
+    this.mode() === 'hoard'
+      ? 'De covil: o tesouro guardado num esconderijo.'
+      : 'Individual: o que uma criatura carrega.',
   );
   protected readonly generated = computed(() => {
     const g = this.generation();
@@ -107,11 +136,15 @@ export class TreasurePage {
   });
   protected readonly announce = computed(() => {
     const g = this.generation();
-    return g.status === 'ready' ? `${modeText(g.treasure.mode)}: tesouro gerado, semente ${g.treasure.seed}.` : '';
+    return g.status === 'ready'
+      ? `${modeText(g.treasure.mode)}: tesouro gerado, semente ${g.treasure.seed}.`
+      : '';
   });
   protected readonly placedSummary = computed(() => {
     const p = this.placed();
-    return p ? placedSummary(p.goldPo, p.itemCount, this.generated()?.mode === TreasureMode.HOARD) : '';
+    return p
+      ? placedSummary(p.goldPo, p.itemCount, this.generated()?.mode === TreasureMode.HOARD)
+      : '';
   });
   protected readonly placedXp = computed(() => {
     const p = this.placed();
@@ -141,7 +174,11 @@ export class TreasurePage {
     this.partyFailed.set(false);
     try {
       const p = await this.api.party(this.campaignId);
-      this.party.set({ livingCount: p.livingCount, lowestLevel: p.lowestLevel, highestLevel: p.highestLevel });
+      this.party.set({
+        livingCount: p.livingCount,
+        lowestLevel: p.lowestLevel,
+        highestLevel: p.highestLevel,
+      });
       if (p.livingCount > 0 && p.lowestLevel >= MIN_LEVEL) {
         this.level.set(Math.min(MAX_LEVEL, p.lowestLevel));
       }
@@ -172,7 +209,11 @@ export class TreasurePage {
       this.generation.set({ status: 'busy' });
     }
     try {
-      const res = await this.api.generate(this.campaignId, this.mode() === 'hoard' ? TreasureMode.HOARD : TreasureMode.INDIVIDUAL, this.level());
+      const res = await this.api.generate(
+        this.campaignId,
+        this.mode() === 'hoard' ? TreasureMode.HOARD : TreasureMode.INDIVIDUAL,
+        this.level(),
+      );
       if (id !== this.generationId) {
         return;
       }
@@ -183,7 +224,13 @@ export class TreasurePage {
       this.generation.set({ status: 'ready', treasure: res.treasure });
       if (again) {
         // The new title is where the person looks next.
-        afterNextRender(() => focusWithRing(this.resultBox()?.nativeElement.querySelector<HTMLElement>('.result__title')), { injector: this.injector });
+        afterNextRender(
+          () =>
+            focusWithRing(
+              this.resultBox()?.nativeElement.querySelector<HTMLElement>('.result__title'),
+            ),
+          { injector: this.injector },
+        );
       }
     } catch (err) {
       if (id === this.generationId) {
@@ -213,18 +260,34 @@ export class TreasurePage {
     if (!treasure) {
       return;
     }
-    openSheet<PlaceSheet, PlaceSheetData, PlaceSheetResult>(this.dialog, this.bottomSheet, PlaceSheet, {
-      data: { campaignId: this.campaignId, treasure, xpMode: this.xpMode(), campaignName: this.campaignName() },
-      ariaLabel: 'Pôr no mapa',
-      labelledBy: 'place-t',
-      width: '1140px',
-      tall: true,
-      restoreFocus: false,
-    }).subscribe((result) => {
+    openSheet<PlaceSheet, PlaceSheetData, PlaceSheetResult>(
+      this.dialog,
+      this.bottomSheet,
+      PlaceSheet,
+      {
+        data: {
+          campaignId: this.campaignId,
+          treasure,
+          xpMode: this.xpMode(),
+          campaignName: this.campaignName(),
+        },
+        ariaLabel: 'Pôr no mapa',
+        labelledBy: 'place-t',
+        width: '1140px',
+        tall: true,
+        restoreFocus: false,
+      },
+    ).subscribe((result) => {
       if (result?.kind === 'again') {
         void this.generate();
       } else if (result?.kind === 'placed') {
-        this.placed.set({ mapId: result.mapId, mapName: result.mapName, place: result.place, goldPo: result.goldPo, itemCount: result.itemCount });
+        this.placed.set({
+          mapId: result.mapId,
+          mapName: result.mapName,
+          place: result.place,
+          goldPo: result.goldPo,
+          itemCount: result.itemCount,
+        });
         // The confirmation is where the person looks next: it comes into view and takes the focus.
         afterNextRender(
           () => {

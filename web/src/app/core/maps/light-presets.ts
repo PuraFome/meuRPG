@@ -29,7 +29,13 @@ export function lightRadii(brightFt: number, dimFt: number): string {
 }
 
 export function lightOption(p: LightPreset): LightOption {
-  return { key: p.key, name: p.namePt, radii: lightRadii(p.brightFt, p.dimFt), brightFt: p.brightFt, dimFt: p.dimFt };
+  return {
+    key: p.key,
+    name: p.namePt,
+    radii: lightRadii(p.brightFt, p.dimFt),
+    brightFt: p.brightFt,
+    dimFt: p.dimFt,
+  };
 }
 
 /**

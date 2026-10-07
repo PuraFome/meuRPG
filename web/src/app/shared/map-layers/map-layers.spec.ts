@@ -36,23 +36,32 @@ describe('MapLayersOverlay', () => {
 });
 
 describe('MapLayersLegend', () => {
-  it('names only the marks the map has, in the order of MAP-LANGUAGE.md, and projects the screen\'s own', () => {
+  it("names only the marks the map has, in the order of MAP-LANGUAGE.md, and projects the screen's own", () => {
     const fixture = TestBed.createComponent(MapLayersLegend);
     fixture.componentRef.setInput('layers', layers);
     fixture.detectChanges();
-    const items = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('li'), (li) => plain(li.textContent));
+    const items = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('li'), (li) =>
+      plain(li.textContent),
+    );
     expect(items).toEqual(['Parede', 'Terreno difícil', 'Meia cobertura']);
   });
 
   it('is empty for a map with nothing painted', () => {
     const fixture = TestBed.createComponent(MapLayersLegend);
-    fixture.componentRef.setInput('layers', { columns: 4, rows: 4, walls: [], terrain: [], half: [], threeQuarters: [] });
+    fixture.componentRef.setInput('layers', {
+      columns: 4,
+      rows: 4,
+      walls: [],
+      terrain: [],
+      half: [],
+      threeQuarters: [],
+    });
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).querySelectorAll('li').length).toBe(0);
   });
 });
 
-describe('MapLayersOverlay: the editor\'s marks', () => {
+describe("MapLayersOverlay: the editor's marks", () => {
   const lit: MapLayers = {
     ...layers,
     light: { bright: [{ col: 1, row: 1 }], dim: [{ col: 2, row: 1 }], dark: [{ col: 3, row: 1 }] },
@@ -67,12 +76,16 @@ describe('MapLayersOverlay: the editor\'s marks', () => {
     fixture.componentRef.setInput('lightGlyphs', true);
     fixture.detectChanges();
     // One plain element a square (the font's ligature is drawn by its stylesheet): a sun, a half moon, a moon.
-    expect(Array.from(el.querySelectorAll('.sq--light .lg'), (g) => g.className)).toEqual(['lg lg--bright', 'lg lg--dim', 'lg lg--dark']);
+    expect(Array.from(el.querySelectorAll('.sq--light .lg'), (g) => g.className)).toEqual([
+      'lg lg--bright',
+      'lg lg--dim',
+      'lg lg--dark',
+    ]);
     // A glyph, never a texture: no hatch on the square.
     expect(el.querySelector('.sq--light')?.classList.contains('sq--wall')).toBe(false);
   });
 
-  it('draws no light for a map whose layers carry none (a player\'s)', () => {
+  it("draws no light for a map whose layers carry none (a player's)", () => {
     const fixture = TestBed.createComponent(MapLayersOverlay);
     fixture.componentRef.setInput('layers', layers);
     fixture.componentRef.setInput('lightGlyphs', true);
@@ -135,10 +148,17 @@ describe('the doors on a map', () => {
     expect(marks[4].querySelector('.dm__key')).not.toBeNull();
   });
 
-  it('a player\'s view draws no padlock and no keyhole even if the layer carried a locked and a secret door (RN-10)', () => {
+  it("a player's view draws no padlock and no keyhole even if the layer carried a locked and a secret door (RN-10)", () => {
     // Squares 0 (locked), 1 (secret) and 2 (grade) of a 3 x 1 grid, decoded as a player.
     const decoded = decodeLayers(
-      { gridColumns: 3, gridRows: 1, difficultTerrain: new Uint8Array(), wall: new Uint8Array(), cover: new Uint8Array(), doors: Uint8Array.of(0x53, 0x04) },
+      {
+        gridColumns: 3,
+        gridRows: 1,
+        difficultTerrain: new Uint8Array(),
+        wall: new Uint8Array(),
+        cover: new Uint8Array(),
+        doors: Uint8Array.of(0x53, 0x04),
+      },
       true,
     );
     const fixture = TestBed.createComponent(MapLayersOverlay);
@@ -151,7 +171,9 @@ describe('the doors on a map', () => {
     const legend = TestBed.createComponent(MapLayersLegend);
     legend.componentRef.setInput('layers', decoded);
     legend.detectChanges();
-    const items = Array.from((legend.nativeElement as HTMLElement).querySelectorAll('li'), (li) => plain(li.textContent));
+    const items = Array.from((legend.nativeElement as HTMLElement).querySelectorAll('li'), (li) =>
+      plain(li.textContent),
+    );
     expect(items).toEqual(['Porta fechada', 'Grade']);
   });
 
@@ -176,18 +198,29 @@ describe('the doors on a map', () => {
 
   it('lists a kind only when the map has one: a player\'s map with a closed door says "Porta fechada" and nothing about a lock', () => {
     const fixture = TestBed.createComponent(MapLayersLegend);
-    fixture.componentRef.setInput('layers', { ...layers, doors: [{ col: 1, row: 1, state: 2, axis: 'h' }] });
+    fixture.componentRef.setInput('layers', {
+      ...layers,
+      doors: [{ col: 1, row: 1, state: 2, axis: 'h' }],
+    });
     fixture.detectChanges();
-    const items = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('li'), (li) => plain(li.textContent));
+    const items = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('li'), (li) =>
+      plain(li.textContent),
+    );
     expect(items).toContain('Porta fechada');
     expect(items.join('|')).not.toContain('trancada');
     expect(items.join('|')).not.toContain('secreta');
   });
 
-  it('the door tool\'s cursor holds the kind it would paint, and says it in words', () => {
+  it("the door tool's cursor holds the kind it would paint, and says it in words", () => {
     const fixture = TestBed.createComponent(MapLayersOverlay);
     fixture.componentRef.setInput('layers', layers);
-    fixture.componentRef.setInput('cursor', { col: 2, row: 2, w: 1, h: 1, door: { state: 3, label: 'Fechada → Trancada' } });
+    fixture.componentRef.setInput('cursor', {
+      col: 2,
+      row: 2,
+      w: 1,
+      h: 1,
+      door: { state: 3, label: 'Fechada → Trancada' },
+    });
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('.cursor .cursor__door')).not.toBeNull();

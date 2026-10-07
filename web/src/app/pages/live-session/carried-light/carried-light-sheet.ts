@@ -24,13 +24,22 @@ export interface CarriedLightData {
 }
 
 /** Opens "Luz que você carrega": a bottom sheet on a phone, a dialog from a tablet up. It answers nothing: each choice is applied at once. */
-export function openCarriedLight(dialog: MatDialog, bottomSheet: MatBottomSheet, data: CarriedLightData) {
-  return openSheet<CarriedLightSheet, CarriedLightData, void>(dialog, bottomSheet, CarriedLightSheet, {
-    data,
-    ariaLabel: 'Luz que você carrega',
-    labelledBy: 'sheet-t',
-    width: '480px',
-  });
+export function openCarriedLight(
+  dialog: MatDialog,
+  bottomSheet: MatBottomSheet,
+  data: CarriedLightData,
+) {
+  return openSheet<CarriedLightSheet, CarriedLightData, void>(
+    dialog,
+    bottomSheet,
+    CarriedLightSheet,
+    {
+      data,
+      ariaLabel: 'Luz que você carrega',
+      labelledBy: 'sheet-t',
+      width: '480px',
+    },
+  );
 }
 
 let nextId = 0;
@@ -69,13 +78,20 @@ export class CarriedLightSheet {
     this.busy.set(true);
     this.error.set('');
     try {
-      const token = await this.api.setCarriedLight(this.data.campaignId, this.data.mapId, this.data.characterId, key);
+      const token = await this.api.setCarriedLight(
+        this.data.campaignId,
+        this.data.mapId,
+        this.data.characterId,
+        key,
+      );
       this.chosen.set(key);
       this.data.changed(token, this.data.options.find((o) => o.key === key) ?? null);
     } catch (err) {
       this.error.set(carriedErrorMessage(err));
       // The radio the person pressed is checked on screen; the choice they had is still the one in force.
-      this.host.nativeElement.querySelectorAll<HTMLInputElement>('input[type=radio]').forEach((r) => (r.checked = r.dataset['key'] === this.chosen()));
+      this.host.nativeElement
+        .querySelectorAll<HTMLInputElement>('input[type=radio]')
+        .forEach((r) => (r.checked = r.dataset['key'] === this.chosen()));
     } finally {
       this.busy.set(false);
     }

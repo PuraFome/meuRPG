@@ -8,14 +8,25 @@ import { create } from '@bufbuild/protobuf';
 import { of } from 'rxjs';
 
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { TreasureBlockedReason, TreasureBlockedSchema, TreasureMode } from '../../../gen/meurpg/maps/v1/treasure_pb';
+import {
+  TreasureBlockedReason,
+  TreasureBlockedSchema,
+  TreasureMode,
+} from '../../../gen/meurpg/maps/v1/treasure_pb';
 import { flat, isOff } from '../../core/creatures/creatures-testing';
 import { type TreasureAccess, TreasureAccessCheck } from '../../core/treasure/treasure-access';
 import { TreasureClient } from '../../core/treasure/treasure-client';
-import { FakeTreasureClient, hoardItems, partyResponse, sampleHoard, sampleIndividual, treasureItem } from '../../core/treasure/treasure-testing';
+import {
+  FakeTreasureClient,
+  hoardItems,
+  partyResponse,
+  sampleHoard,
+  sampleIndividual,
+  treasureItem,
+} from '../../core/treasure/treasure-testing';
 import { TreasurePage } from './treasure';
 
-const plain = (s: string | undefined) => s?.replace(/ /g, ' ');
+const plain = (s: string | undefined) => s?.replace(/\u00a0/g, ' ');
 
 describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 5)', () => {
   let api: FakeTreasureClient;
@@ -57,7 +68,9 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     await settle();
     const el = harness.routeNativeElement as HTMLElement;
     const button = (name: string) =>
-      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => flat(b)?.startsWith(name) || b.getAttribute('aria-label')?.startsWith(name))!;
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find(
+        (b) => flat(b)?.startsWith(name) || b.getAttribute('aria-label')?.startsWith(name),
+      )!;
     return { el, settle, button };
   }
 
@@ -81,19 +94,27 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     expect(flat(el.querySelector('.step__value'))).toBe('4');
     expect(flat(el.querySelector('.empty'))).toContain('Nada gerado ainda.');
     expect(el.querySelector<HTMLInputElement>('.seg__item input:checked')?.value).toBe('hoard');
-    expect(flat(el.querySelector('[data-testid=mode-hint]'))).toBe('De covil: o tesouro guardado num esconderijo.');
+    expect(flat(el.querySelector('[data-testid=mode-hint]'))).toBe(
+      'De covil: o tesouro guardado num esconderijo.',
+    );
     expect(api.calls).toEqual(['party']);
   });
 
   it('with no living character the level starts at 1 and the page says to choose it', async () => {
-    const { el } = await open((a) => (a.partyAnswer = partyResponse({ livingCount: 0, lowestLevel: 0, highestLevel: 0 })));
+    const { el } = await open(
+      (a) => (a.partyAnswer = partyResponse({ livingCount: 0, lowestLevel: 0, highestLevel: 0 })),
+    );
     expect(flat(el.querySelector('.sub'))).toBe('Mirathel');
-    expect(flat(el.querySelector('[data-testid=party-help]'))).toContain('Escolha o nível, de 1 a 20');
+    expect(flat(el.querySelector('[data-testid=party-help]'))).toContain(
+      'Escolha o nível, de 1 a 20',
+    );
     expect(flat(el.querySelector('.step__value'))).toBe('1');
   });
 
   it('the level is a counter between 1 and 20', async () => {
-    const { el, settle, button } = await open((a) => (a.partyAnswer = partyResponse({ lowestLevel: 20, highestLevel: 20 })));
+    const { el, settle, button } = await open(
+      (a) => (a.partyAnswer = partyResponse({ lowestLevel: 20, highestLevel: 20 })),
+    );
     expect(button('Mais').getAttribute('aria-disabled')).toBe('true');
     button('Menos').click();
     await settle();
@@ -123,7 +144,9 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     const { el, settle, button } = await open();
     button('Gerar tesouro').click();
     await settle();
-    const rows = Array.from(el.querySelectorAll('#tr-coins-h ~ .rows .row')).map((r) => plain(flat(r)));
+    const rows = Array.from(el.querySelectorAll('#tr-coins-h ~ .rows .row')).map((r) =>
+      plain(flat(r)),
+    );
     expect(rows).toEqual(['1.200 PP 10 PP valem 1 PO 120 PO', '340 PO 340 PO']);
     expect(plain(flat(el.querySelector('#tr-coins-h')))).toBe('Moedas 460 PO');
   });
@@ -132,33 +155,59 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     const { el, settle, button } = await open();
     button('Gerar tesouro').click();
     await settle();
-    const gems = Array.from(el.querySelectorAll('#tr-gems-h ~ .rows .row')).map((r) => plain(flat(r)));
-    expect(gems).toEqual(['2 × Ágata 6 PO cada 12 PO', 'Quartzo azul 18 PO', 'Cálice de prata gravado 27 PO']);
+    const gems = Array.from(el.querySelectorAll('#tr-gems-h ~ .rows .row')).map((r) =>
+      plain(flat(r)),
+    );
+    expect(gems).toEqual([
+      '2 × Ágata 6 PO cada 12 PO',
+      'Quartzo azul 18 PO',
+      'Cálice de prata gravado 27 PO',
+    ]);
   });
 
   it('the magic items are grouped, with their English name (lang="en"), rarity, value and attunement', async () => {
     const { el, settle, button } = await open((a) => {
       const potion = hoardItems()[0]!;
-      a.next = sampleHoard({ items: [potion, potion, hoardItems()[3]!, treasureItem({ key: 'item:x', name: 'Deck of Many Things', namePt: 'Baralho', valuePo: 0, rarity: 6, attunement: false })] });
+      a.next = sampleHoard({
+        items: [
+          potion,
+          potion,
+          hoardItems()[3]!,
+          treasureItem({
+            key: 'item:x',
+            name: 'Deck of Many Things',
+            namePt: 'Baralho',
+            valuePo: 0,
+            rarity: 6,
+            attunement: false,
+          }),
+        ],
+      });
     });
     button('Gerar tesouro').click();
     await settle();
     const rows = Array.from(el.querySelectorAll('.row--item'));
     expect(rows).toHaveLength(3);
-    expect(plain(flat(rows[0]))).toBe('2 × Poção de Cura Potion of Healing 100 PO 50 PO cada metade de 100 PO Comum Consumível Ver descrição');
+    expect(plain(flat(rows[0]))).toBe(
+      '2 × Poção de Cura Potion of Healing 100 PO 50 PO cada metade de 100 PO Comum Consumível Ver descrição',
+    );
     expect(rows[0]!.querySelector('.item__en')?.getAttribute('lang')).toBe('en');
     expect(plain(flat(rows[1]))).toContain('Raro Exige sintonização');
   });
 
-  it('the gold that becomes the point\'s gold and the items\' value are apart, and the items do not become XP', async () => {
+  it("the gold that becomes the point's gold and the items' value are apart, and the items do not become XP", async () => {
     const { el, settle, button } = await open();
     button('Gerar tesouro').click();
     await settle();
     expect(plain(flat(el.querySelector('[data-testid=treasure-gold]')))).toBe('517 PO');
     expect(plain(flat(el.querySelector('[data-testid=treasure-items]')))).toBe('4.850 PO');
-    expect(plain(flat(el.querySelector('.totals__row--items dt')))).toContain('ficam como itens, não viram XP');
+    expect(plain(flat(el.querySelector('.totals__row--items dt')))).toContain(
+      'ficam como itens, não viram XP',
+    );
     expect(plain(flat(el.querySelector('.totals__row--total')))).toBe('Valor total 5.367 PO');
-    expect(plain(flat(el.querySelector('.kinds .note')))).toBe('Valores do SRD 5.2.1 (regras de 2024) · Créditos (abre em outra aba). Itens que se gastam valem a metade, menos os pergaminhos de magia.');
+    expect(plain(flat(el.querySelector('.kinds .note')))).toBe(
+      'Valores do SRD 5.2.1 (regras de 2024) · Créditos (abre em outra aba). Itens que se gastam valem a metade, menos os pergaminhos de magia.',
+    );
   });
 
   it('an individual treasure is coins only: no gems, no art, no items, and the total is the gold', async () => {
@@ -190,13 +239,17 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     let page = await open();
     page.button('Gerar tesouro').click();
     await page.settle();
-    expect(flat(page.el.querySelector('[data-testid=treasure-gold-line]'))).toBe('Mirathel dá XP por inimigos: o ouro do tesouro não vira XP.');
+    expect(flat(page.el.querySelector('[data-testid=treasure-gold-line]'))).toBe(
+      'Mirathel dá XP por inimigos: o ouro do tesouro não vira XP.',
+    );
     TestBed.resetTestingModule();
     access = { status: 'master', campaignName: 'Estrada de Ouro', xpMode: XpMode.GOLD };
     page = await open();
     page.button('Gerar tesouro').click();
     await page.settle();
-    expect(flat(page.el.querySelector('[data-testid=treasure-gold-line]'))).toBe('Estrada de Ouro dá XP por ouro: o grupo converte isto em XP em “Voltar à cidade”.');
+    expect(flat(page.el.querySelector('[data-testid=treasure-gold-line]'))).toBe(
+      'Estrada de Ouro dá XP por ouro: o grupo converte isto em XP em “Voltar à cidade”.',
+    );
   });
 
   it('while the server rolls, the button says "Gerando..." and rests (still focusable)', async () => {
@@ -232,8 +285,12 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
   });
 
   it('a party that could not be read says so, with its own sentence and a way to try again, never "sem personagem vivo"', async () => {
-    const { el, settle } = await open((a) => a.failWith.set('party', new ConnectError('down', Code.Unavailable)));
-    expect(flat(el.querySelector('[data-testid=party-failed]'))).toContain('Não deu para ler o nível do grupo');
+    const { el, settle } = await open((a) =>
+      a.failWith.set('party', new ConnectError('down', Code.Unavailable)),
+    );
+    expect(flat(el.querySelector('[data-testid=party-failed]'))).toContain(
+      'Não deu para ler o nível do grupo',
+    );
     expect(el.querySelector('[data-testid=party-help]')).toBeNull();
     expect(flat(el.querySelector('.options'))).not.toContain('ainda não tem personagem');
     api.failWith.clear();
@@ -247,7 +304,12 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     const { el, settle, button } = await open();
     api.failWith.set(
       'generate',
-      new ConnectError('x', Code.FailedPrecondition, undefined, [{ desc: TreasureBlockedSchema, value: create(TreasureBlockedSchema, { reason: TreasureBlockedReason.NO_PARTY }) }]),
+      new ConnectError('x', Code.FailedPrecondition, undefined, [
+        {
+          desc: TreasureBlockedSchema,
+          value: create(TreasureBlockedSchema, { reason: TreasureBlockedReason.NO_PARTY }),
+        },
+      ]),
     );
     button('Gerar tesouro').click();
     await settle();
@@ -265,7 +327,9 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     el.querySelectorAll<HTMLButtonElement>('.item__desc')[3]!.click();
     await settle();
     expect(opened).toHaveLength(1);
-    expect((opened[0]!.config.data as { key: string; campaignId: string }).key).toBe('item:ring-of-protection');
+    expect((opened[0]!.config.data as { key: string; campaignId: string }).key).toBe(
+      'item:ring-of-protection',
+    );
     expect((opened[0]!.config.data as { campaignId: string }).campaignId).toBe('camp-1');
   });
 
@@ -273,17 +337,34 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     const { el, settle, button } = await open();
     button('Gerar tesouro').click();
     await settle();
-    dialogResult = { kind: 'placed', point: {}, mapId: 'map-1', mapName: 'Masmorra de Mirathel', place: 'Sala 3', goldPo: 517, itemCount: 4 };
+    dialogResult = {
+      kind: 'placed',
+      point: {},
+      mapId: 'map-1',
+      mapName: 'Masmorra de Mirathel',
+      place: 'Sala 3',
+      goldPo: 517,
+      itemCount: 4,
+    };
     button('Pôr no mapa').click();
     await settle();
-    const data = opened[0]!.config.data as { treasure: { seed: bigint; contentVersion: string }; xpMode: XpMode };
+    const data = opened[0]!.config.data as {
+      treasure: { seed: bigint; contentVersion: string };
+      xpMode: XpMode;
+    };
     expect(data.treasure.seed).toBe(2209n);
     expect(data.treasure.contentVersion).toBe('srd51@a8abc93b235c+fx.17');
     const done = el.querySelector('[data-testid=treasure-placed]')!;
-    expect(plain(flat(done))).toContain('Tesouro posto na Sala 3. 517 PO em moedas, gemas e arte e 4 itens, escondido: só você vê.');
+    expect(plain(flat(done))).toContain(
+      'Tesouro posto na Sala 3. 517 PO em moedas, gemas e arte e 4 itens, escondido: só você vê.',
+    );
     // The treasure is on the map: "Abrir o mapa" is the main button and "Pôr no mapa" is gone, so a second point cannot be made by accident.
-    expect(flat(el.querySelector('[data-testid=treasure-placed-line]'))).toBe('Mirathel dá XP por inimigos: o ouro do tesouro não vira XP. Os 4 itens ficam na descrição.');
-    expect(Array.from(el.querySelectorAll('button')).some((b) => flat(b)?.startsWith('Pôr no mapa'))).toBe(false);
+    expect(flat(el.querySelector('[data-testid=treasure-placed-line]'))).toBe(
+      'Mirathel dá XP por inimigos: o ouro do tesouro não vira XP. Os 4 itens ficam na descrição.',
+    );
+    expect(
+      Array.from(el.querySelectorAll('button')).some((b) => flat(b)?.startsWith('Pôr no mapa')),
+    ).toBe(false);
     const openLink = el.querySelector<HTMLAnchorElement>('.actions a.act--go')!;
     expect(flat(openLink)).toBe('Abrir o mapa');
     expect(openLink.getAttribute('href')).toBe('/campaigns/camp-1/maps/map-1');
@@ -291,7 +372,9 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     // A new treasure brings "Pôr no mapa" back.
     button('Gerar outro').click();
     await settle();
-    expect(Array.from(el.querySelectorAll('button')).some((b) => flat(b)?.startsWith('Pôr no mapa'))).toBe(true);
+    expect(
+      Array.from(el.querySelectorAll('button')).some((b) => flat(b)?.startsWith('Pôr no mapa')),
+    ).toBe(true);
     expect(el.querySelector('[data-testid=treasure-placed]')).toBeNull();
   });
 
@@ -320,7 +403,9 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
   it('a player is told only the master generates the treasure, and nothing is asked of the server', async () => {
     access = { status: 'forbidden' };
     const { el } = await open();
-    expect(flat(el.querySelector('.mr-notice'))).toContain('Só o mestre gera o tesouro da campanha.');
+    expect(flat(el.querySelector('.mr-notice'))).toContain(
+      'Só o mestre gera o tesouro da campanha.',
+    );
     expect(api.calls).toEqual([]);
   });
 

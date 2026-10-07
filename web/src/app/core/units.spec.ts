@@ -14,7 +14,7 @@ import {
 } from './units';
 
 /** The text ties numbers to their units with no-break spaces; the tests read it with plain ones. */
-const plain = (s: string) => s.replace(/ /g, ' ');
+const plain = (s: string) => s.replace(/\u00a0/g, ' ');
 
 describe('units: feet, meters and squares (1 quadrado = 1,5 m = 5 pés)', () => {
   it('turns feet into meters at the table rate, to one decimal', () => {

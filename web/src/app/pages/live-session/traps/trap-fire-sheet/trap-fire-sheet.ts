@@ -49,12 +49,16 @@ export function openTrapFire(
 /** The button's words: "Disparar para quem está na área" (nobody picked), "Disparar para Toren", "Disparar para 2 personagens". */
 export function fireLabel(picked: readonly string[], extend: boolean): string {
   if (extend) {
-    return picked.length === 0 ? 'Incluir' : `Incluir ${picked.length === 1 ? picked[0] : `${picked.length} personagens`}`;
+    return picked.length === 0
+      ? 'Incluir'
+      : `Incluir ${picked.length === 1 ? picked[0] : `${picked.length} personagens`}`;
   }
   if (picked.length === 0) {
     return 'Disparar para quem está na área';
   }
-  return picked.length === 1 ? `Disparar para ${picked[0]}` : `Disparar para ${picked.length} personagens`;
+  return picked.length === 1
+    ? `Disparar para ${picked[0]}`
+    : `Disparar para ${picked.length} personagens`;
 }
 
 /**
@@ -116,7 +120,9 @@ export class TrapFireSheet {
   private readonly key = newKey();
 
   protected readonly extend = this.data.extendFiringId !== '';
-  protected readonly title = this.extend ? `Pegar mais gente no\u00a0${this.data.point.name}` : `Disparar o\u00a0${this.data.point.name}`;
+  protected readonly title = this.extend
+    ? `Pegar mais gente no\u00a0${this.data.point.name}`
+    : `Disparar o\u00a0${this.data.point.name}`;
   protected readonly subtitle = firstLine(this.data.point.description);
   protected readonly picked = signal<ReadonlySet<string>>(new Set());
   protected readonly rows = computed(() => this.data.targets() ?? []);
@@ -128,12 +134,19 @@ export class TrapFireSheet {
         : 'Ninguém com token no mapa.',
   );
   private readonly chosen = computed(() => this.rows().filter((t) => this.picked().has(t.id)));
-  protected readonly label = computed(() => fireLabel(this.chosen().map((t) => t.name), this.extend));
+  protected readonly label = computed(() =>
+    fireLabel(
+      this.chosen().map((t) => t.name),
+      this.extend,
+    ),
+  );
   /** A new firing needs nobody (the area); adding to one needs someone. */
   protected readonly ready = computed(() => !this.extend || this.chosen().length > 0);
   protected readonly note = computed(() => {
     if (this.extend) {
-      return this.chosen().length === 0 ? 'Ninguém marcado. Escolha quem entra no disparo que já aconteceu.' : '';
+      return this.chosen().length === 0
+        ? 'Ninguém marcado. Escolha quem entra no disparo que já aconteceu.'
+        : '';
     }
     return this.chosen().length === 0
       ? 'Ninguém marcado. Dispara para quem estiver na área da armadilha; quem está lá, o servidor sabe.'

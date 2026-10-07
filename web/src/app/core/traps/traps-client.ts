@@ -15,7 +15,8 @@ import { CONNECT_TRANSPORT } from '../connect/transport';
 
 /** How the search's d20 comes (RN-18): the app rolls it, or the player typed the face of a real
  * die; for a Perception search with disadvantage a second face goes with it. */
-export type SearchDie = { readonly inApp: true } | { readonly face: number; readonly face2?: number };
+export type SearchDie =
+  { readonly inApp: true } | { readonly face: number; readonly face2?: number };
 
 export type SearchSkill = 'perception' | 'investigation';
 
@@ -29,15 +30,18 @@ export class TrapsClient {
   private readonly client = createClient(PlayService, inject(CONNECT_TRANSPORT));
 
   /** "Procurar armadilhas". The key is made once per search and sent again on a retry. */
-  search(campaignId: string, skill: SearchSkill, die: SearchDie, idempotencyKey: string): Promise<SearchForTrapsResponse> {
+  search(
+    campaignId: string,
+    skill: SearchSkill,
+    die: SearchDie,
+    idempotencyKey: string,
+  ): Promise<SearchForTrapsResponse> {
     return this.client.searchForTraps({
       campaignId,
       skill: skill === 'perception' ? TrapSearchSkill.PERCEPTION : TrapSearchSkill.INVESTIGATION,
       idempotencyKey,
       roll:
-        'inApp' in die
-          ? { case: 'rollInApp', value: true }
-          : { case: 'd20Face', value: die.face },
+        'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
       d20Face2: 'inApp' in die ? undefined : die.face2,
     });
   }
@@ -52,7 +56,14 @@ export class TrapsClient {
     idempotencyKey: string,
     extendFiringId = '',
   ): Promise<FireTrapResponse> {
-    return this.client.fireTrap({ campaignId, mapId, pointId, targetIds: [...targetIds], idempotencyKey, extendFiringId });
+    return this.client.fireTrap({
+      campaignId,
+      mapId,
+      pointId,
+      targetIds: [...targetIds],
+      idempotencyKey,
+      extendFiringId,
+    });
   }
 
   /** The firings, searches and notices of the open session outside a combat, as the caller reads them. */
@@ -66,11 +77,20 @@ export class TrapsClient {
   }
 
   /** Outside a combat. In a combat the damage is a pending one: `CombatClient.applyDamage`. */
-  applyDamage(campaignId: string, id: string, amount: number | undefined, idempotencyKey: string): Promise<ApplyTrapDamageResponse> {
+  applyDamage(
+    campaignId: string,
+    id: string,
+    amount: number | undefined,
+    idempotencyKey: string,
+  ): Promise<ApplyTrapDamageResponse> {
     return this.client.applyTrapDamage({ campaignId, trapDamageId: id, amount, idempotencyKey });
   }
 
-  discardDamage(campaignId: string, id: string, idempotencyKey: string): Promise<DiscardTrapDamageResponse> {
+  discardDamage(
+    campaignId: string,
+    id: string,
+    idempotencyKey: string,
+  ): Promise<DiscardTrapDamageResponse> {
     return this.client.discardTrapDamage({ campaignId, trapDamageId: id, idempotencyKey });
   }
 }

@@ -43,7 +43,7 @@ describe('DungeonRooms (E10-05 5)', () => {
     fixture.detectChanges();
   };
 
-  it('says it is the master\'s list and that the image carries no room numbers', async () => {
+  it("says it is the master's list and that the image carries no room numbers", async () => {
     await setup();
     expect(text()).toContain('Só você vê');
     expect(text()).toContain('A imagem não leva números de sala.');
@@ -54,8 +54,8 @@ describe('DungeonRooms (E10-05 5)', () => {
     await setup();
     expect(rooms()).toHaveLength(3);
     expect(text(rooms()[0]!)).toContain('Sala 1');
-    expect(text(rooms()[0]!).replace(/ /g, ' ')).toContain('4,5 × 4,5 m');
-    expect(text(rooms()[1]!).replace(/ /g, ' ')).toContain('7,5 × 4,5 m');
+    expect(text(rooms()[0]!).replace(/\u00a0/g, ' ')).toContain('4,5 × 4,5 m');
+    expect(text(rooms()[1]!).replace(/\u00a0/g, ' ')).toContain('7,5 × 4,5 m');
   });
 
   it('keeps its live region in the page, hidden while empty (not display: none)', async () => {
@@ -78,7 +78,9 @@ describe('DungeonRooms (E10-05 5)', () => {
     await setup();
     const trapped = rooms()[0]!.querySelectorAll('.room__exits li .room__trap');
     expect(trapped).toHaveLength(1);
-    expect(trapped[0]!.closest('li')?.textContent).toContain('Porta trancada ao sul, para um corredor');
+    expect(trapped[0]!.closest('li')?.textContent).toContain(
+      'Porta trancada ao sul, para um corredor',
+    );
     expect(trapped[0]!.textContent).toContain('Porta com armadilha');
     expect(trapped[0]!.querySelector('mat-icon')?.textContent).toBe('warning');
     expect(el.querySelectorAll('.room__trap')).toHaveLength(1);
@@ -130,15 +132,20 @@ describe('DungeonRooms (E10-05 5)', () => {
   });
 
   describe('"Pôr uma cena nesta sala"', () => {
-    const place = (i: number) => Array.from(rooms()[i]!.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Pôr uma cena nesta sala')!;
+    const place = (i: number) =>
+      Array.from(rooms()[i]!.querySelectorAll('button')).find(
+        (b) => b.textContent?.trim() === 'Pôr uma cena nesta sala',
+      )!;
 
-    it('puts the scene on the server\'s answer, shows it on the map at once and says so', async () => {
+    it("puts the scene on the server's answer, shows it on the map at once and says so", async () => {
       await setup();
       place(0).click();
       await settle();
       expect(api.calls).toContain('placeScene dungeon-1 1');
       expect(state.points().map((p) => p.name)).toEqual(['Sala 1']);
-      expect(el.querySelector('.rooms__done')?.textContent).toBe('Cena “Sala 1” posta no mapa, escondida dos jogadores.');
+      expect(el.querySelector('.rooms__done')?.textContent).toBe(
+        'Cena “Sala 1” posta no mapa, escondida dos jogadores.',
+      );
       // The list is read again (the room now counts its scene).
       expect(changed).toBe(1);
     });

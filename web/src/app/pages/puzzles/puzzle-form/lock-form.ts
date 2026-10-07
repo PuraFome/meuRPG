@@ -92,13 +92,21 @@ export class LockForm {
   protected setWheels(wheels: number): void {
     const d = this.draft();
     // A new wheel starts on the first face and the start of a new wheel on the second: never solved by accident.
-    this.patch.emit({ wheels, lockSolution: resized(d.lockSolution, wheels), lockStart: resized(d.lockStart, wheels, 1) });
+    this.patch.emit({
+      wheels,
+      lockSolution: resized(d.lockSolution, wheels),
+      lockStart: resized(d.lockStart, wheels, 1),
+    });
   }
 
   protected setAlphabet(alphabet: PuzzleAlphabet): void {
     const d = this.draft();
     const n = alphabetSize(alphabet);
-    this.patch.emit({ alphabet, lockSolution: clamped(d.lockSolution, n), lockStart: clamped(d.lockStart, n) });
+    this.patch.emit({
+      alphabet,
+      lockSolution: clamped(d.lockSolution, n),
+      lockStart: clamped(d.lockStart, n),
+    });
   }
 
   protected turnSolution(turn: Turn): void {

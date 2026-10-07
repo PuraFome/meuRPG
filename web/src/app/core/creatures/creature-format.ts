@@ -1,5 +1,9 @@
 import { CreatureSource } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { Ability, type Creature, type CreatureSummary } from '../../../gen/meurpg/rules/v1/rules_pb';
+import {
+  Ability,
+  type Creature,
+  type CreatureSummary,
+} from '../../../gen/meurpg/rules/v1/rules_pb';
 import { joinDots, tieNumbers, tight } from '../format/text';
 import { metersText } from '../units';
 
@@ -34,7 +38,12 @@ export function sourceShort(source: CreatureSource): string {
 }
 
 /** The speeds as the card and the form list say them: "3 m, voo 15 m", "nada 9 m", "1,5 m, voo 18 m". */
-export function speedsText(c: Pick<Creature, 'speedWalkFt' | 'speedFlyFt' | 'speedSwimFt' | 'speedClimbFt' | 'speedBurrowFt'>): string {
+export function speedsText(
+  c: Pick<
+    Creature,
+    'speedWalkFt' | 'speedFlyFt' | 'speedSwimFt' | 'speedClimbFt' | 'speedBurrowFt'
+  >,
+): string {
   const parts: string[] = [];
   if (c.speedWalkFt > 0) {
     parts.push(metersText(c.speedWalkFt));
@@ -119,9 +128,21 @@ export function beastAttacks(c: Creature): readonly AttackLine[] {
   return c.actions
     .filter((a) => a.hasAttack)
     .map((a) => {
-      const damage = a.damage.map((d) => `${d.dice.replace(/([+-])/g, ' $1 ').replace(/\s+/g, ' ').trim()} ${d.damageTypePt}`.trim()).join(' + ');
+      const damage = a.damage
+        .map((d) =>
+          `${d.dice
+            .replace(/([+-])/g, ' $1 ')
+            .replace(/\s+/g, ' ')
+            .trim()} ${d.damageTypePt}`.trim(),
+        )
+        .join(' + ');
       // "Força CD 11" as one block: a line never breaks inside it.
       const save = a.save ? ` · ${ABILITY_PT[a.save.ability] ?? ''}\u00a0CD\u00a0${a.save.dc}` : '';
-      return { name: a.namePt || a.name, english: !a.namePt, detail: tight(joinDots([signed(a.attackBonus), damage]) + save), text: a.text };
+      return {
+        name: a.namePt || a.name,
+        english: !a.namePt,
+        detail: tight(joinDots([signed(a.attackBonus), damage]) + save),
+        text: a.text,
+      };
     });
 }

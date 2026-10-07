@@ -1,7 +1,11 @@
 import { create } from '@bufbuild/protobuf';
 import { describe, expect, it } from 'vitest';
 
-import { CombatantKind, OpportunityAttackSchema, OpportunityOfferSchema } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  CombatantKind,
+  OpportunityAttackSchema,
+  OpportunityOfferSchema,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import { AttackKind, AttackSchema } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { combatant, encounter } from './combat-testing';
 import {
@@ -18,7 +22,7 @@ import {
   waitingText,
 } from './opportunity';
 
-const plain = (t: string) => t.replace(/ /g, ' ');
+const plain = (t: string) => t.replace(/\u00a0/g, ' ');
 
 // E9-13: Toren leaves the reach of Goblin 2.
 const toGoblin = create(OpportunityOfferSchema, {
@@ -41,9 +45,22 @@ const toToren = create(OpportunityOfferSchema, {
   forYou: true,
   attacks: [create(OpportunityAttackSchema, { key: 'attack:longsword', namePt: 'Espada longa' })],
 });
-const unseen = create(OpportunityOfferSchema, { id: 'o3', moverId: 'toren', moverLabel: 'Toren', reactorId: '', reactorLabel: '', forYou: false });
+const unseen = create(OpportunityOfferSchema, {
+  id: 'o3',
+  moverId: 'toren',
+  moverLabel: 'Toren',
+  reactorId: '',
+  reactorLabel: '',
+  forYou: false,
+});
 
-const toren = combatant({ id: 'toren', label: 'Toren', kind: CombatantKind.PLAYER, mine: true, characterId: 'toren-c' });
+const toren = combatant({
+  id: 'toren',
+  label: 'Toren',
+  kind: CombatantKind.PLAYER,
+  mine: true,
+  characterId: 'toren-c',
+});
 const g2 = combatant({ id: 'g2', label: 'Goblin 2' });
 
 describe('opportunity attacks in words', () => {
@@ -57,13 +74,17 @@ describe('opportunity attacks in words', () => {
 
   it('names the creature that would react when it is not the character: "do alcance do Lobo atroz 1", "Gasta a reação do Lobo atroz 1"', () => {
     const toWolf = { ...toToren, reactorLabel: 'Lobo atroz 1' } as typeof toToren;
-    expect(playerQuestion(toWolf, false)).toBe('O Goblin 2 está saindo do alcance do Lobo atroz 1. Ataque de oportunidade?');
+    expect(playerQuestion(toWolf, false)).toBe(
+      'O Goblin 2 está saindo do alcance do Lobo atroz 1. Ataque de oportunidade?',
+    );
     expect(spendText(toWolf, false)).toBe('Gasta a reação do Lobo atroz 1.');
     expect(spendText(toToren)).toBe('Gasta a sua reação.');
   });
 
   it('asks the player, and tells the master', () => {
-    expect(playerQuestion(toToren)).toBe('O Goblin 2 está saindo do seu alcance. Ataque de oportunidade?');
+    expect(playerQuestion(toToren)).toBe(
+      'O Goblin 2 está saindo do seu alcance. Ataque de oportunidade?',
+    );
     expect(plain(masterNews(toGoblin))).toBe('O Toren saiu do alcance do Goblin 2.');
     expect(plain(masterAsk(toGoblin))).toBe('Goblin 2 ataca o Toren?');
   });
@@ -80,11 +101,13 @@ describe('opportunity attacks in words', () => {
     });
     expect(hidden?.detail).not.toContain('Goblin');
     expect(waitingText(e, [])).toBeNull();
-    const aPlayer = waitingText(e, [create(OpportunityOfferSchema, { ...toToren, moverId: 'x', forYou: false })]);
+    const aPlayer = waitingText(e, [
+      create(OpportunityOfferSchema, { ...toToren, moverId: 'x', forYou: false }),
+    ]);
     expect(aPlayer?.title).toBe('Esperando a reação do jogador de Toren');
   });
 
-  it('says the master\'s wait on the bar', () => {
+  it("says the master's wait on the bar", () => {
     const e = encounter({ combatants: [toren, g2], opportunityOffers: [toGoblin] });
     expect(barText(e, () => '')).toBe('Esperando a sua reação: Goblin 2');
     const player = encounter({ combatants: [toren, g2], opportunityOffers: [toToren] });
@@ -92,7 +115,7 @@ describe('opportunity attacks in words', () => {
     expect(barText(encounter({ combatants: [toren] }), () => '')).toBe('');
   });
 
-  it('puts numbers on the offer\'s attacks from the reactor\'s options', () => {
+  it("puts numbers on the offer's attacks from the reactor's options", () => {
     const scimitar = create(AttackSchema, {
       key: 'attack:scimitar',
       name: 'Scimitar',

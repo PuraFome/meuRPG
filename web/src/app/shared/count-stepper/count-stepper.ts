@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+  linkedSignal,
+  output,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 /**
@@ -103,11 +110,15 @@ export class CountStepper {
   protected readonly shown = linkedSignal(() => this.value());
 
   protected readonly minusText = computed(() =>
-    this.shown() <= this.minAt() && this.minLabel() ? this.minLabel() : this.minusLabel() || `Menos um ${this.noun()}`,
+    this.shown() <= this.minAt() && this.minLabel()
+      ? this.minLabel()
+      : this.minusLabel() || `Menos um ${this.noun()}`,
   );
   protected readonly plusText = computed(() => this.plusLabel() || `Mais um ${this.noun()}`);
   protected readonly valueText = computed(() =>
-    this.valueLabel() ? this.valueLabel().replace('{n}', String(this.shown())) : `${this.shown()} ${this.noun()}`,
+    this.valueLabel()
+      ? this.valueLabel().replace('{n}', String(this.shown()))
+      : `${this.shown()} ${this.noun()}`,
   );
 
   protected step(delta: number): void {

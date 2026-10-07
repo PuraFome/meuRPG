@@ -18,7 +18,11 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 
-import { type GetTrapNoticersResponse, type MapPoint, TrapState } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import {
+  type GetTrapNoticersResponse,
+  type MapPoint,
+  TrapState,
+} from '../../../../gen/meurpg/maps/v1/maps_pb';
 import {
   type TrapPreset,
   type TrapSeverity,
@@ -69,7 +73,14 @@ import { PointFoot } from './point-foot';
  */
 @Component({
   selector: 'app-trap-point-panel',
-  imports: [MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, PointFoot, TrapNoticers],
+  imports: [
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    PointFoot,
+    TrapNoticers,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './trap-point-panel.html',
   styleUrls: ['./point-panel-kinds.scss', './trap-point-panel.scss'],
@@ -116,7 +127,9 @@ export class TrapPointPanel {
   protected readonly noticersFailed = signal(false);
 
   protected readonly errors = computed(() => trapErrors(this.draft()));
-  protected readonly shown = computed(() => (this.show() ? this.errors() : { parts: {} as Record<string, string> }));
+  protected readonly shown = computed(() =>
+    this.show() ? this.errors() : { parts: {} as Record<string, string> },
+  );
   protected readonly dirty = computed(() => isTrapDirty(this.draft(), this.point()));
   protected readonly saved = computed(() => this.point().trap !== undefined);
   protected readonly saveSeverity = computed(() =>
@@ -126,7 +139,9 @@ export class TrapPointPanel {
   );
   protected readonly attackSeverity = computed(() =>
     this.severities()
-      .map((s) => `${s.namePt.toLocaleLowerCase('pt-BR')} +${s.attackBonusMin} a +${s.attackBonusMax}`)
+      .map(
+        (s) => `${s.namePt.toLocaleLowerCase('pt-BR')} +${s.attackBonusMin} a +${s.attackBonusMax}`,
+      )
       .join(' · '),
   );
   protected readonly areaWords = computed(() => {
@@ -160,7 +175,9 @@ export class TrapPointPanel {
           this.currentId = point.id;
           this.reset();
           if (this.focusName()) {
-            afterNextRender(() => this.nameField()?.nativeElement.focus(), { injector: this.injector });
+            afterNextRender(() => this.nameField()?.nativeElement.focus(), {
+              injector: this.injector,
+            });
           }
         }
       });
@@ -261,7 +278,9 @@ export class TrapPointPanel {
   }
 
   protected patchCondition(i: number, change: Partial<ConditionDraft>): void {
-    this.patch({ conditions: this.draft().conditions.map((c, n) => (n === i ? { ...c, ...change } : c)) });
+    this.patch({
+      conditions: this.draft().conditions.map((c, n) => (n === i ? { ...c, ...change } : c)),
+    });
   }
 
   protected addSave(): void {
@@ -296,14 +315,19 @@ export class TrapPointPanel {
   protected patchFailDamage(i: number, change: Partial<DamageDraft>): void {
     const s = this.draft().save;
     if (s) {
-      this.patchSave({ failDamage: s.failDamage.map((d, n) => (n === i ? { ...d, ...change } : d)) });
+      this.patchSave({
+        failDamage: s.failDamage.map((d, n) => (n === i ? { ...d, ...change } : d)),
+      });
     }
   }
 
   protected patchFailCondition(change: Partial<ConditionDraft> | null): void {
     const s = this.draft().save;
     if (s) {
-      this.patchSave({ failCondition: change === null ? null : { ...(s.failCondition ?? newCondition()), ...change } });
+      this.patchSave({
+        failCondition:
+          change === null ? null : { ...(s.failCondition ?? newCondition()), ...change },
+      });
     }
   }
 
@@ -341,7 +365,9 @@ export class TrapPointPanel {
     }
     event.preventDefault();
     const step = event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 1;
-    const buttons = Array.from((event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="radio"]'));
+    const buttons = Array.from(
+      (event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="radio"]'),
+    );
     const here = buttons.findIndex((b) => b === document.activeElement);
     const next = buttons[(Math.max(0, here) + step + buttons.length) % buttons.length];
     next?.focus();

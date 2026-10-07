@@ -7,7 +7,9 @@ import { CombatOnMap } from './combat-on-map';
 
 function lookup(answer: () => Promise<Encounter | null>): CombatOnMap {
   TestBed.resetTestingModule();
-  TestBed.configureTestingModule({ providers: [{ provide: CombatClient, useValue: { get: answer } }] });
+  TestBed.configureTestingModule({
+    providers: [{ provide: CombatClient, useValue: { get: answer } }],
+  });
   return TestBed.inject(CombatOnMap);
 }
 
@@ -15,13 +17,33 @@ const encounter = (mapId: string, status: EncounterStatus) => ({ mapId, status }
 
 describe('CombatOnMap', () => {
   it('is true for a combat that has not ended on this map', async () => {
-    expect(await lookup(async () => encounter('map-1', EncounterStatus.ACTIVE)).running('camp-1', 'map-1')).toBe(true);
-    expect(await lookup(async () => encounter('map-1', EncounterStatus.SETUP)).running('camp-1', 'map-1')).toBe(true);
+    expect(
+      await lookup(async () => encounter('map-1', EncounterStatus.ACTIVE)).running(
+        'camp-1',
+        'map-1',
+      ),
+    ).toBe(true);
+    expect(
+      await lookup(async () => encounter('map-1', EncounterStatus.SETUP)).running(
+        'camp-1',
+        'map-1',
+      ),
+    ).toBe(true);
   });
 
   it('is false for an ended combat, a combat on another map, no combat and a failed read', async () => {
-    expect(await lookup(async () => encounter('map-1', EncounterStatus.ENDED)).running('camp-1', 'map-1')).toBe(false);
-    expect(await lookup(async () => encounter('map-2', EncounterStatus.ACTIVE)).running('camp-1', 'map-1')).toBe(false);
+    expect(
+      await lookup(async () => encounter('map-1', EncounterStatus.ENDED)).running(
+        'camp-1',
+        'map-1',
+      ),
+    ).toBe(false);
+    expect(
+      await lookup(async () => encounter('map-2', EncounterStatus.ACTIVE)).running(
+        'camp-1',
+        'map-1',
+      ),
+    ).toBe(false);
     expect(await lookup(async () => null).running('camp-1', 'map-1')).toBe(false);
     expect(
       await lookup(async () => {

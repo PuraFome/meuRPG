@@ -10,7 +10,10 @@ import { CONTENT_DEBOUNCE_MS, ContentWatcher } from './content-watcher';
 class Call {
   private queue: LiveEventVm[] = [];
   private wake: (() => void) | null = null;
-  constructor(readonly campaignId: string, readonly signal: AbortSignal) {}
+  constructor(
+    readonly campaignId: string,
+    readonly signal: AbortSignal,
+  ) {}
   push(event: LiveEventVm) {
     this.queue.push(event);
     this.wake?.();
@@ -43,7 +46,11 @@ describe('ContentWatcher (RN-23, RN-10: the live content hint)', () => {
       classifyError: () => 'transient',
     };
     TestBed.configureTestingModule({
-      providers: [ContentWatcher, { provide: LiveSessionSourceLive, useValue: source }, { provide: OpenSessions, useValue: { sessions } }],
+      providers: [
+        ContentWatcher,
+        { provide: LiveSessionSourceLive, useValue: source },
+        { provide: OpenSessions, useValue: { sessions } },
+      ],
     });
   });
 

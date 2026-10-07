@@ -64,7 +64,11 @@ export class FogPanel {
   protected readonly on = computed(() => this.map().fogEnabled);
   protected readonly base = computed(() => this.map().baseLight);
 
-  protected async set(changes: { fogEnabled?: boolean; baseLight?: LightLevel; groupVision?: boolean }): Promise<void> {
+  protected async set(changes: {
+    fogEnabled?: boolean;
+    baseLight?: LightLevel;
+    groupVision?: boolean;
+  }): Promise<void> {
     if (this.busy()) {
       return;
     }
@@ -101,7 +105,9 @@ export class FogPanel {
       this.asking.set(false);
       this.note.set('Pronto: os jogadores voltaram a ver só o que o personagem deles vê agora.');
       this.forgotten.emit();
-      afterNextRender(() => focusWithRing(this.opener()?.nativeElement), { injector: this.injector });
+      afterNextRender(() => focusWithRing(this.opener()?.nativeElement), {
+        injector: this.injector,
+      });
     } catch (err) {
       this.error.set(editorErrorMessage(err, 'forget', 'esquecer o que foi visto'));
     } finally {
@@ -117,7 +123,9 @@ export class FogPanel {
     }
     event.preventDefault();
     const step = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1;
-    const buttons = Array.from((event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="radio"]'));
+    const buttons = Array.from(
+      (event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="radio"]'),
+    );
     const here = buttons.findIndex((b) => b === document.activeElement);
     const next = buttons[(Math.max(0, here) + step + buttons.length) % buttons.length];
     next?.focus();

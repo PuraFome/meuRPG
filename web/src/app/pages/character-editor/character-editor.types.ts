@@ -1,4 +1,8 @@
-import { AbilityKey, CharacterBlockedReason, CharacterKind } from '../../core/characters/characters.types';
+import {
+  AbilityKey,
+  CharacterBlockedReason,
+  CharacterKind,
+} from '../../core/characters/characters.types';
 import { DamageTypeKey } from '../../core/characters/character-labels';
 import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
 
@@ -437,7 +441,10 @@ export interface CharacterForEdit {
    * here, because only awards change it (MR-016). */
   readonly sheetLocked: boolean;
   /** How the base scores were made, as the server recorded it at creation (RN-24); `null` for NPCs and sheets made before the rules. */
-  readonly abilityOrigin?: { readonly method: AbilityMethodKey; readonly rolls: AbilityRollsVm | null } | null;
+  readonly abilityOrigin?: {
+    readonly method: AbilityMethodKey;
+    readonly rolls: AbilityRollsVm | null;
+  } | null;
   /** The leveled spells the server's derived sheet has prepared that none of the sheet's own lists holds: the ones a
    * subclass always prepares (a domain's, an oath's), which never count against the limit. Read from the saved sheet,
    * so only an edit has them (a new sheet has no derived sheet yet). */

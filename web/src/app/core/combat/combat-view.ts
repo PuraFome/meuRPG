@@ -47,7 +47,11 @@ export function stateWord(state: CombatantState, label = ''): string {
 /** Whether a player's character is at 0 hit points and still in the story:
  * down, stable or dying. */
 export function isDown(c: Combatant): boolean {
-  return c.state === CombatantState.DOWN || c.state === CombatantState.DYING || c.state === CombatantState.STABLE;
+  return (
+    c.state === CombatantState.DOWN ||
+    c.state === CombatantState.DYING ||
+    c.state === CombatantState.STABLE
+  );
 }
 
 /** The second line of a chip or a row for another player: "Jogador" (their
@@ -176,7 +180,11 @@ export interface TurnBanner {
   readonly nextIsMine: boolean;
   /** Who follows the turn that is running: a name, "os Goblins" for a group of
    * NPCs. `null` when nobody follows. */
-  readonly after: { readonly name: string; readonly mine: boolean; readonly plural: boolean } | null;
+  readonly after: {
+    readonly name: string;
+    readonly mine: boolean;
+    readonly plural: boolean;
+  } | null;
   /** The joint turn that is running, or `null` for a turn of one. */
   readonly joint: JointTurn | null;
   /** The caller's own part of the joint turn ended. */
@@ -229,7 +237,13 @@ export function turnBanner(e: Encounter): TurnBanner {
   const who = currentCombatant(e);
   const next = nextCombatant(e);
   return {
-    title: who ? (who.mine ? `Sua vez, ${who.label}` : who.kind === CombatantKind.CREATURE ? creatureTurnTitle(e, [who], false) : `Vez d${article(who.label) === 'a' ? 'a' : 'o'} ${who.label}`) : 'Ninguém está na vez',
+    title: who
+      ? who.mine
+        ? `Sua vez, ${who.label}`
+        : who.kind === CombatantKind.CREATURE
+          ? creatureTurnTitle(e, [who], false)
+          : `Vez d${article(who.label) === 'a' ? 'a' : 'o'} ${who.label}`
+      : 'Ninguém está na vez',
     who,
     mine: who?.mine ?? false,
     masterTurn: false,

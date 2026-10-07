@@ -130,7 +130,9 @@ export function needsStack(foot: HTMLElement): boolean {
     const style = getComputedStyle(button);
     const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
     // Only the words and the icon: the ripple, the focus indicator and the touch target of a Material button are as wide as the button.
-    const content = Array.from(button.querySelectorAll<HTMLElement>('.mdc-button__label, .mat-icon')).filter((el) => !el.parentElement?.closest('.mdc-button__label'));
+    const content = Array.from(
+      button.querySelectorAll<HTMLElement>('.mdc-button__label, .mat-icon'),
+    ).filter((el) => !el.parentElement?.closest('.mdc-button__label'));
     return content.reduce((sum, child) => sum + child.getBoundingClientRect().width, 0) + padding;
   };
   if (foot.ownerDocument.defaultView?.matchMedia?.('(min-width: 768px)').matches) {

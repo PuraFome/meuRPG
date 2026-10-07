@@ -1,4 +1,8 @@
-import { type Combatant, CombatantKind, type Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type Combatant,
+  CombatantKind,
+  type Encounter,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import { article } from './combat-log';
 
 /**
@@ -53,7 +57,11 @@ export function isCreature(c: Combatant): boolean {
 
 /** The combatant a creature belongs to: its owner's, in the same combat. */
 export function ownerOf(e: Encounter, c: Combatant): Combatant | null {
-  return c.ownerCharacterId ? (e.combatants.find((x) => x.characterId === c.ownerCharacterId && x.kind === CombatantKind.PLAYER) ?? null) : null;
+  return c.ownerCharacterId
+    ? (e.combatants.find(
+        (x) => x.characterId === c.ownerCharacterId && x.kind === CombatantKind.PLAYER,
+      ) ?? null)
+    : null;
 }
 
 /** "da Sálvia", "do Pensantus": the owner for a line like "Fera · CA 14 · da Sálvia". */
@@ -65,7 +73,9 @@ export function ofOwner(e: Encounter, c: Combatant): string {
 /** The kind of a creature as its line says it: the book's name when it is not already the combatant's own name. */
 export function kindWord(c: Combatant): string {
   const base = c.label.replace(/\s+\d+$/, '');
-  return c.monsterNamePt && c.monsterNamePt.toLowerCase() !== base.toLowerCase() ? c.monsterNamePt : 'Criatura';
+  return c.monsterNamePt && c.monsterNamePt.toLowerCase() !== base.toLowerCase()
+    ? c.monsterNamePt
+    : 'Criatura';
 }
 
 /** What a group of creatures is called: "Lobos atrozes" when they are all of one kind, else "Criaturas"; a creature alone keeps its name. */
@@ -92,13 +102,19 @@ export function groupFeminine(members: readonly Combatant[]): boolean {
  * The title of a creature group's turn: "Vez dos seus Lobos atrozes" for their player, "Vez dos Lobos
  * atrozes da Sálvia" for the others, "Vez do seu Nanquim" and "Vez do Nanquim" for one creature.
  */
-export function creatureTurnTitle(e: Encounter, members: readonly Combatant[], mine: boolean): string {
+export function creatureTurnTitle(
+  e: Encounter,
+  members: readonly Combatant[],
+  mine: boolean,
+): string {
   const name = groupName(members);
   const several = members.length > 1;
   const f = groupFeminine(members);
   const owner = ofOwner(e, members[0]);
   if (mine) {
-    return several ? `Vez ${f ? 'das suas' : 'dos seus'} ${name}` : `Vez ${f ? 'da sua' : 'do seu'} ${name}`;
+    return several
+      ? `Vez ${f ? 'das suas' : 'dos seus'} ${name}`
+      : `Vez ${f ? 'da sua' : 'do seu'} ${name}`;
   }
   if (several) {
     return `Vez ${f ? 'das' : 'dos'} ${name}${owner ? ` ${owner}` : ''}`;
@@ -122,7 +138,10 @@ export function partLeftSentence(acting: readonly Combatant[]): string {
   if (acting.length === 0) {
     return '';
   }
-  const items = [...(acting.some((m) => !m.actionUsed) ? ['ação'] : []), ...(acting.some((m) => m.movementLeftDft > 0) ? ['movimento'] : [])];
+  const items = [
+    ...(acting.some((m) => !m.actionUsed) ? ['ação'] : []),
+    ...(acting.some((m) => m.movementLeftDft > 0) ? ['movimento'] : []),
+  ];
   if (items.length === 0) {
     return '';
   }

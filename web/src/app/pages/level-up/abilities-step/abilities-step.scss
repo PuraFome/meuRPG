@@ -127,7 +127,9 @@
 
   :checked ~ &--radio {
     background: var(--mr-surface);
-    box-shadow: inset 0 0 0 4px var(--mr-surface), inset 0 0 0 12px var(--mr-accent);
+    box-shadow:
+      inset 0 0 0 4px var(--mr-surface),
+      inset 0 0 0 12px var(--mr-accent);
   }
 
   :disabled ~ & {

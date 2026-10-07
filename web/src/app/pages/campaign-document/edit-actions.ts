@@ -104,11 +104,18 @@ export function insertLink(
 
 /** Writes `![name](image:<id>)` on a paragraph of its own, with the caret
  * on the paragraph after it. */
-export function insertImage(text: string, selStart: number, selEnd: number, name: string, id: string): Edit {
+export function insertImage(
+  text: string,
+  selStart: number,
+  selEnd: number,
+  name: string,
+  id: string,
+): Edit {
   const line = `![${cleanLabel(name)}](image:${id})`;
   const before = text.slice(0, selStart);
   const after = text.slice(selEnd);
-  const lead = before === '' || before.endsWith('\n\n') ? '' : before.endsWith('\n') ? '\n' : '\n\n';
+  const lead =
+    before === '' || before.endsWith('\n\n') ? '' : before.endsWith('\n') ? '\n' : '\n\n';
   // Always a blank line after, so what the master writes next is a new paragraph.
   const tail = after.startsWith('\n\n') ? '' : after.startsWith('\n') ? '\n' : '\n\n';
   const insert = lead + line + tail;
@@ -118,7 +125,10 @@ export function insertImage(text: string, selStart: number, selEnd: number, name
 
 /** A label that cannot break the link: no brackets, no line breaks. */
 function cleanLabel(label: string): string {
-  return label.replace(/[[\]]+/g, '').replace(/\s+/g, ' ').trim();
+  return label
+    .replace(/[[\]]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /** The most the server takes (UpdateCampaignDocumentRequest.body). */

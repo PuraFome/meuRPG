@@ -15,8 +15,13 @@ import { StageRoster } from './stage-roster';
 describe('StageRoster', () => {
   it('lists the living NPCs from ONE ListCharacters call, with the portrait from the row (no sheet is read)', async () => {
     const calls: string[] = [];
-    const row = (id: string, name: string, kind: CharacterKind, state: CharacterState, portraitUrl = '') =>
-      create(CharacterSummarySchema, { id, name, kind, state, portraitUrl });
+    const row = (
+      id: string,
+      name: string,
+      kind: CharacterKind,
+      state: CharacterState,
+      portraitUrl = '',
+    ) => create(CharacterSummarySchema, { id, name, kind, state, portraitUrl });
     const transport = createRouterTransport(({ service }) => {
       service(CharacterService, {
         listCharacters: () => {
@@ -36,10 +41,17 @@ describe('StageRoster', () => {
         },
       });
     });
-    TestBed.configureTestingModule({ providers: [{ provide: CONNECT_TRANSPORT, useValue: transport }] });
+    TestBed.configureTestingModule({
+      providers: [{ provide: CONNECT_TRANSPORT, useValue: transport }],
+    });
     const list = await TestBed.inject(StageRoster).list('c1');
     expect(list).toEqual([
-      { characterId: 'm', name: 'Mira', kindLabel: 'NPC de história', portraitUrl: '/images/i1/thumb' },
+      {
+        characterId: 'm',
+        name: 'Mira',
+        kindLabel: 'NPC de história',
+        portraitUrl: '/images/i1/thumb',
+      },
       { characterId: 'c', name: 'Capitão Goblin', kindLabel: 'Inimigo', portraitUrl: '' },
     ]);
     expect(calls).toEqual(['list']);

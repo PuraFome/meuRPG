@@ -17,12 +17,22 @@ describe('NotesSheet', () => {
   let state: NotesState;
   let close: ReturnType<typeof vi.fn>;
 
-  async function setup(notes = [
-    note('n1', 'Perguntar ao ferreiro sobre o brasão de lobo', at(3, 21, 24), { sceneId: 's1', sceneName: 'A carroça tombada' }),
-    note('c1', 'Um brasão de lobo queimado na lona da carroça.', at(3, 21, 20), { sceneId: 's1', sceneName: 'A carroça tombada', clue: true }),
-    note('n2', 'Brisa me deve 5 PO', at(1, 22, 3)),
-    note('n3', 'Comprar tinta e pergaminho para o grimório', at(1, 18, 40)),
-  ], openScene = '') {
+  async function setup(
+    notes = [
+      note('n1', 'Perguntar ao ferreiro sobre o brasão de lobo', at(3, 21, 24), {
+        sceneId: 's1',
+        sceneName: 'A carroça tombada',
+      }),
+      note('c1', 'Um brasão de lobo queimado na lona da carroça.', at(3, 21, 20), {
+        sceneId: 's1',
+        sceneName: 'A carroça tombada',
+        clue: true,
+      }),
+      note('n2', 'Brisa me deve 5 PO', at(1, 22, 3)),
+      note('n3', 'Comprar tinta e pergaminho para o grimório', at(1, 18, 40)),
+    ],
+    openScene = '',
+  ) {
     api = new FakeNotesClient();
     api.notes = notes;
     api.scenesList = [scene('s1', 'A carroça tombada'), scene('s2', 'A ponte do rio')];
@@ -49,7 +59,9 @@ describe('NotesSheet', () => {
       }
     };
     const button = (name: string) =>
-      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.trim().includes(name))!;
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+        b.textContent?.trim().includes(name),
+      )!;
     const flat = (e: Element | null | undefined) => e?.textContent?.replace(/\s+/g, ' ').trim();
     const type = (value: string) => {
       const field = el.querySelector<HTMLTextAreaElement>('textarea')!;
@@ -62,7 +74,9 @@ describe('NotesSheet', () => {
 
   it('starts with the lock line and lists notes and clues newest first, with where and when', async () => {
     const { el, flat } = await setup();
-    expect(flat(el.querySelector('.ns__lock'))).toContain('Só você lê as suas anotações. O mestre não vê.');
+    expect(flat(el.querySelector('.ns__lock'))).toContain(
+      'Só você lê as suas anotações. O mestre não vê.',
+    );
     const rows = Array.from(el.querySelectorAll('.nl__row'));
     expect(rows).toHaveLength(4);
     expect(flat(rows[0])).toContain('Perguntar ao ferreiro sobre o brasão de lobo');
@@ -80,7 +94,9 @@ describe('NotesSheet', () => {
     expect(clue.querySelector('.nl__edit')).toBeNull();
     // The pencils of the notes are named with the notes' own words.
     expect(el.querySelectorAll('.nl__edit')).toHaveLength(3);
-    expect(el.querySelector('.nl__edit')?.getAttribute('aria-label')).toBe('Editar a anotação: Perguntar ao ferreiro sobre o brasão de lobo');
+    expect(el.querySelector('.nl__edit')?.getAttribute('aria-label')).toBe(
+      'Editar a anotação: Perguntar ao ferreiro sobre o brasão de lobo',
+    );
   });
 
   it('opening it marks the news as seen', async () => {
@@ -102,8 +118,15 @@ describe('NotesSheet', () => {
     select.click();
     fixture.detectChanges();
     await settle();
-    const options = Array.from(document.querySelectorAll('.mr-notes-panel mat-option'), (o) => flat(o));
-    expect(options).toEqual(['Todas as anotações4', 'A carroça tombada2', 'A ponte do rio0', 'Sem cena2']);
+    const options = Array.from(document.querySelectorAll('.mr-notes-panel mat-option'), (o) =>
+      flat(o),
+    );
+    expect(options).toEqual([
+      'Todas as anotações4',
+      'A carroça tombada2',
+      'A ponte do rio0',
+      'Sem cena2',
+    ]);
     (document.querySelectorAll('.mr-notes-panel mat-option')[1] as HTMLElement).click();
     await settle();
     expect(el.querySelectorAll('.nl__row')).toHaveLength(2);
@@ -118,14 +141,18 @@ describe('NotesSheet', () => {
     (document.querySelectorAll('.mr-notes-panel mat-option')[2] as HTMLElement).click();
     await settle();
     expect(flat(el.querySelector('.ns__empty'))).toContain('Nada nesta cena ainda');
-    expect(flat(el.querySelector('.ns__empty'))).toContain('Você ainda não anotou nada sobre “A ponte do rio”.');
+    expect(flat(el.querySelector('.ns__empty'))).toContain(
+      'Você ainda não anotou nada sobre “A ponte do rio”.',
+    );
     expect(el.querySelector('mat-select')).not.toBeNull();
   });
 
   it('with no notes at all invites the first one and shows no filter', async () => {
     const { el, flat, button } = await setup([]);
     expect(flat(el.querySelector('.ns__empty'))).toContain('Nenhuma anotação ainda');
-    expect(flat(el.querySelector('.ns__empty'))).toContain('As pistas que ele revelar para você aparecem aqui também.');
+    expect(flat(el.querySelector('.ns__empty'))).toContain(
+      'As pistas que ele revelar para você aparecem aqui também.',
+    );
     expect(el.querySelector('mat-select')).toBeNull();
     expect(button('Nova anotação')).toBeTruthy();
   });
@@ -159,7 +186,9 @@ describe('NotesSheet', () => {
     await settle();
     button('Salvar anotação').click();
     await settle();
-    expect(el.querySelector('[role="alert"]')?.textContent).toContain('Escreva a anotação antes de salvar.');
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+      'Escreva a anotação antes de salvar.',
+    );
   });
 
   it('cancels at once when nothing was written, and asks in place when there is text', async () => {
@@ -174,7 +203,9 @@ describe('NotesSheet', () => {
     type('Algo');
     button('Cancelar').click();
     await settle();
-    expect(el.querySelector('[role="alertdialog"]')?.textContent).toContain('Descartar o que você escreveu?');
+    expect(el.querySelector('[role="alertdialog"]')?.textContent).toContain(
+      'Descartar o que você escreveu?',
+    );
     expect(document.activeElement).toBe(button('Continuar'));
     button('Continuar').click();
     await settle();
@@ -201,7 +232,9 @@ describe('NotesSheet', () => {
     button('Apagar anotação').click();
     await settle();
     expect(document.activeElement).toBe(button('Voltar'));
-    (Array.from(el.querySelectorAll<HTMLButtonElement>('.nf__ask button')).find((b) => b.textContent?.includes('Apagar anotação')))!.click();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.nf__ask button'))
+      .find((b) => b.textContent?.includes('Apagar anotação'))!
+      .click();
     await settle();
     expect(api.calls.some((c) => c.startsWith('delete'))).toBe(true);
     expect(el.querySelectorAll('.nl__row')).toHaveLength(3);
@@ -210,9 +243,14 @@ describe('NotesSheet', () => {
   it('at 300 notes says the limit above a disabled "Nova anotação" tied to it', async () => {
     const many = Array.from({ length: 300 }, (_, i) => note(`x${i}`, `n${i}`, at(1, 10, 0)));
     const { el, button, flat } = await setup(many);
-    expect(flat(el.querySelector('.ns__limit'))).toBe('Limite de 300 anotações. Apague uma para escrever outra.');
+    expect(flat(el.querySelector('.ns__limit'))).toBe(
+      'Limite de 300 anotações. Apague uma para escrever outra.',
+    );
     expect(button('Nova anotação').getAttribute('aria-describedby')).toBe('ns-limit');
-    expect(button('Nova anotação').disabled || button('Nova anotação').getAttribute('aria-disabled') === 'true').toBe(true);
+    expect(
+      button('Nova anotação').disabled ||
+        button('Nova anotação').getAttribute('aria-disabled') === 'true',
+    ).toBe(true);
     // 300 rows render in about half a second alone, but past the 5 s default while the whole suite runs in parallel on a busy machine.
   }, 20_000);
 
@@ -224,6 +262,8 @@ describe('NotesSheet', () => {
     api.failWith = new ConnectError('x', Code.ResourceExhausted);
     button('Salvar anotação').click();
     await settle();
-    expect(el.querySelector('[role="alert"]')?.textContent).toContain('Limite de 300 anotações. Apague uma para escrever outra.');
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+      'Limite de 300 anotações. Apague uma para escrever outra.',
+    );
   });
 });

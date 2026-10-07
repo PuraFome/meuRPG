@@ -17,7 +17,14 @@ const SLEEP = {
   castingTime: { amount: 1, unit: 'action', trigger: '', raw: '1 action' },
   range: { kind: 'ranged', distanceFt: 90, raw: '90 feet' },
   components: { verbal: true, somatic: true, material: true, materialText: 'a pinch of fine sand' },
-  duration: { kind: 'timed', amount: 1, unit: 'minute', upTo: false, concentration: false, raw: '1 minute' },
+  duration: {
+    kind: 'timed',
+    amount: 1,
+    unit: 'minute',
+    upTo: false,
+    concentration: false,
+    raw: '1 minute',
+  },
   description: ['This spell sends creatures into a magical slumber.'],
   higherLevel: [],
 } as SpellDetailsVm;
@@ -45,7 +52,10 @@ describe('openSpellDetails (the "?" in the session, E8-02)', () => {
     const openSheet = vi.spyOn(sheet, 'open');
     const openDialog = vi.spyOn(dialog, 'open');
     openSpellDetails(dialog, sheet, data);
-    expect(openSheet).toHaveBeenCalledWith(SpellDetails, expect.objectContaining({ data, ariaLabel: 'Descrição de Sono' }));
+    expect(openSheet).toHaveBeenCalledWith(
+      SpellDetails,
+      expect.objectContaining({ data, ariaLabel: 'Descrição de Sono' }),
+    );
     expect(openDialog).not.toHaveBeenCalled();
     sheet.dismiss();
   });
@@ -57,7 +67,10 @@ describe('openSpellDetails (the "?" in the session, E8-02)', () => {
     const openSheet = vi.spyOn(sheet, 'open');
     const openDialog = vi.spyOn(dialog, 'open');
     openSpellDetails(dialog, sheet, data);
-    expect(openDialog).toHaveBeenCalledWith(SpellDetails, expect.objectContaining({ width: '560px' }));
+    expect(openDialog).toHaveBeenCalledWith(
+      SpellDetails,
+      expect.objectContaining({ width: '560px' }),
+    );
     expect(openSheet).not.toHaveBeenCalled();
     dialog.closeAll();
   });
@@ -72,7 +85,11 @@ describe('openSpellDetails (the "?" in the session, E8-02)', () => {
     expect(openSheet).not.toHaveBeenCalled();
     expect(openDialog).toHaveBeenCalledWith(
       SpellDetails,
-      expect.objectContaining({ position: { bottom: '0' }, panelClass: 'mr-sheet-over', data: { ...data, sheet: true } }),
+      expect.objectContaining({
+        position: { bottom: '0' },
+        panelClass: 'mr-sheet-over',
+        data: { ...data, sheet: true },
+      }),
     );
     dialog.closeAll();
   });

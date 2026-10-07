@@ -26,7 +26,9 @@ import type { PlaceTreasureArgs } from './treasure-client';
  */
 export const CONTENT_VERSION = 'srd51@a8abc93b235c+fx.17';
 
-export function treasureItem(partial: MessageInitShape<typeof TreasureItemSchema> = {}): TreasureItem {
+export function treasureItem(
+  partial: MessageInitShape<typeof TreasureItemSchema> = {},
+): TreasureItem {
   return create(TreasureItemSchema, {
     key: 'item:ring-of-protection',
     name: 'Ring of Protection',
@@ -42,9 +44,34 @@ export function treasureItem(partial: MessageInitShape<typeof TreasureItemSchema
 /** The four items of the artboard: a Potion of Healing (50 PO, half of 100), a Cloak of Elvenkind, a Wand of Magic Missiles and a Ring of Protection. */
 export function hoardItems(): TreasureItem[] {
   return [
-    treasureItem({ key: 'item:potion-of-healing-1', name: 'Potion of Healing', namePt: 'Poção de Cura', category: 'potion', rarity: MagicItemRarity.COMMON, valuePo: 50, consumable: true, halved: true, attunement: false }),
-    treasureItem({ key: 'item:cloak-of-elvenkind', name: 'Cloak of Elvenkind', namePt: 'Capa Élfica', category: 'wondrous-item', rarity: MagicItemRarity.UNCOMMON, valuePo: 400 }),
-    treasureItem({ key: 'item:wand-of-magic-missiles', name: 'Wand of Magic Missiles', namePt: 'Varinha de Mísseis Mágicos', category: 'wand', rarity: MagicItemRarity.UNCOMMON, valuePo: 400, attunement: false }),
+    treasureItem({
+      key: 'item:potion-of-healing-1',
+      name: 'Potion of Healing',
+      namePt: 'Poção de Cura',
+      category: 'potion',
+      rarity: MagicItemRarity.COMMON,
+      valuePo: 50,
+      consumable: true,
+      halved: true,
+      attunement: false,
+    }),
+    treasureItem({
+      key: 'item:cloak-of-elvenkind',
+      name: 'Cloak of Elvenkind',
+      namePt: 'Capa Élfica',
+      category: 'wondrous-item',
+      rarity: MagicItemRarity.UNCOMMON,
+      valuePo: 400,
+    }),
+    treasureItem({
+      key: 'item:wand-of-magic-missiles',
+      name: 'Wand of Magic Missiles',
+      namePt: 'Varinha de Mísseis Mágicos',
+      category: 'wand',
+      rarity: MagicItemRarity.UNCOMMON,
+      valuePo: 400,
+      attunement: false,
+    }),
     treasureItem(),
   ];
 }
@@ -92,11 +119,20 @@ export function sampleIndividual(partial: MessageInitShape<typeof TreasureSchema
   });
 }
 
-export function partyResponse(partial: MessageInitShape<typeof GetTreasurePartyResponseSchema> = {}): GetTreasurePartyResponse {
-  return create(GetTreasurePartyResponseSchema, { livingCount: 2, lowestLevel: 4, highestLevel: 5, ...partial });
+export function partyResponse(
+  partial: MessageInitShape<typeof GetTreasurePartyResponseSchema> = {},
+): GetTreasurePartyResponse {
+  return create(GetTreasurePartyResponseSchema, {
+    livingCount: 2,
+    lowestLevel: 4,
+    highestLevel: 5,
+    ...partial,
+  });
 }
 
-export function magicItemResponse(partial: MessageInitShape<typeof GetMagicItemResponseSchema> = {}): GetMagicItemResponse {
+export function magicItemResponse(
+  partial: MessageInitShape<typeof GetMagicItemResponseSchema> = {},
+): GetMagicItemResponse {
   return create(GetMagicItemResponseSchema, {
     key: 'item:ring-of-protection',
     name: 'Ring of Protection',
@@ -106,7 +142,10 @@ export function magicItemResponse(partial: MessageInitShape<typeof GetMagicItemR
     attunement: true,
     valuePo: 4000,
     valueLabel: 'Valores do SRD 5.2.1 (regras de 2024)',
-    description: ['Ring, rare (requires attunement)', 'You gain a +1 bonus to AC and saving throws while wearing this ring.'],
+    description: [
+      'Ring, rare (requires attunement)',
+      'You gain a +1 bonus to AC and saving throws while wearing this ring.',
+    ],
     ...partial,
   });
 }
@@ -128,7 +167,11 @@ export class FakeTreasureClient {
   /** What a call waits for before it answers (to hold the busy state). */
   gate: Promise<void> | null = null;
   /** The point `place` answers with. */
-  point: MapPoint = mapPoint('treasure-1', 'Tesouro de covil', { kind: MapPointKind.TREASURE, treasureValuePo: 517, revealed: false });
+  point: MapPoint = mapPoint('treasure-1', 'Tesouro de covil', {
+    kind: MapPointKind.TREASURE,
+    treasureValuePo: 517,
+    revealed: false,
+  });
 
   private fail(method: string): void {
     const err = this.failWith.get(method);
@@ -143,13 +186,31 @@ export class FakeTreasureClient {
     return this.partyAnswer;
   }
 
-  async generate(_campaignId: string, mode: TreasureMode, level: number, seed?: bigint): Promise<GenerateTreasureResponse> {
+  async generate(
+    _campaignId: string,
+    mode: TreasureMode,
+    level: number,
+    seed?: bigint,
+  ): Promise<GenerateTreasureResponse> {
     this.calls.push(`generate ${mode} ${level} ${seed === undefined ? 'no seed' : seed}`);
     this.generated.push({ mode, level, seed });
     await this.gate;
     this.fail('generate');
-    const base = mode === this.next.mode ? this.next : mode === TreasureMode.HOARD ? sampleHoard() : sampleIndividual();
-    return { $typeName: 'meurpg.maps.v1.GenerateTreasureResponse', treasure: create(TreasureSchema, { ...base, mode, partyLevel: level, seed: seed ?? this.drawSeed }) };
+    const base =
+      mode === this.next.mode
+        ? this.next
+        : mode === TreasureMode.HOARD
+          ? sampleHoard()
+          : sampleIndividual();
+    return {
+      $typeName: 'meurpg.maps.v1.GenerateTreasureResponse',
+      treasure: create(TreasureSchema, {
+        ...base,
+        mode,
+        partyLevel: level,
+        seed: seed ?? this.drawSeed,
+      }),
+    };
   }
 
   async item(_campaignId: string, key: string): Promise<GetMagicItemResponse> {
@@ -171,7 +232,12 @@ export class FakeTreasureClient {
     return {
       $typeName: 'meurpg.maps.v1.PlaceTreasureResponse',
       point: this.point,
-      treasure: create(TreasureSchema, { ...this.next, mode: args.mode, partyLevel: args.partyLevel, seed: args.seed }),
+      treasure: create(TreasureSchema, {
+        ...this.next,
+        mode: args.mode,
+        partyLevel: args.partyLevel,
+        seed: args.seed,
+      }),
     };
   }
 }

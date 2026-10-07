@@ -32,7 +32,11 @@ const TOOLS: readonly { tool: PaintTool; icon: string }[] = [
   { tool: 'light', icon: 'lightbulb' },
   { tool: 'door', icon: 'door_front' },
 ];
-const LIGHT_ICON: Readonly<Record<LightDegree, string>> = { 3: 'light_mode', 2: 'contrast', 1: 'dark_mode' };
+const LIGHT_ICON: Readonly<Record<LightDegree, string>> = {
+  3: 'light_mode',
+  2: 'contrast',
+  1: 'dark_mode',
+};
 
 /**
  * The map editor's bar (E9-01, E9-02): "Pontos | Pintar", and, by mode, either "Adicionar ponto" (Batalha,
@@ -107,7 +111,9 @@ export class EditorBar {
     }
     event.preventDefault();
     const step = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1;
-    const buttons = Array.from((event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="radio"]'));
+    const buttons = Array.from(
+      (event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="radio"]'),
+    );
     const here = buttons.findIndex((b) => b === document.activeElement);
     const next = buttons[(Math.max(0, here) + step + buttons.length) % buttons.length];
     next?.focus();

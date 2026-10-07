@@ -227,7 +227,9 @@ export class GalleryPage {
 
   /** "Editada de Imagem 1": the name of the image an adjustment came from, when it is still in the gallery. */
   protected parentNameOf(image: GalleryImage): string {
-    return image.parentImageId === '' ? '' : (this.images().find((i) => i.id === image.parentImageId)?.name ?? '');
+    return image.parentImageId === ''
+      ? ''
+      : (this.images().find((i) => i.id === image.parentImageId)?.name ?? '');
   }
 
   /** "Pedir um ajuste" in the lightbox: it closes, and the generate dialog opens on that image (its chain, "Mostrar aos jogadores", the adjustment). */
@@ -235,7 +237,11 @@ export class GalleryPage {
     this.afterLightbox = null;
     this.viewingId.set(null);
     const { openImageGenerate } = await import('../../shared/image-generate/image-generate-dialog');
-    openImageGenerate(this.dialog, this.bottomSheet, { campaignId: this.campaignId(), origin: { kind: 'gallery' }, image }).subscribe((outcome) => {
+    openImageGenerate(this.dialog, this.bottomSheet, {
+      campaignId: this.campaignId(),
+      origin: { kind: 'gallery' },
+      image,
+    }).subscribe((outcome) => {
       if (outcome && outcome.generated > 0) {
         this.refresh();
       }

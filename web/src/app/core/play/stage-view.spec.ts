@@ -1,5 +1,11 @@
 import { stageNpc } from './scene-testing';
-import { STAGE_FULL_REASON, initialsOf, joinNames, stageAnnouncement, stageCount } from './stage-view';
+import {
+  STAGE_FULL_REASON,
+  initialsOf,
+  joinNames,
+  stageAnnouncement,
+  stageCount,
+} from './stage-view';
 
 describe('stage-view', () => {
   it('draws the initials: two letters of one word, one of each of the first two words', () => {
@@ -39,24 +45,34 @@ describe('stage-view', () => {
     });
 
     it('joins several that came or left at once in one sentence each', () => {
-      expect(stageAnnouncement([mira], [mira, aldo, ivo])).toBe('Aldo e Barão Ivo entraram na cena.');
+      expect(stageAnnouncement([mira], [mira, aldo, ivo])).toBe(
+        'Aldo e Barão Ivo entraram na cena.',
+      );
       expect(stageAnnouncement([mira, aldo, ivo], [mira])).toBe('Aldo e Barão Ivo saíram da cena.');
-      expect(stageAnnouncement([mira, capitao], [aldo, ivo])).toBe('Aldo e Barão Ivo entraram na cena. Mira e Capitão Goblin saíram da cena.');
+      expect(stageAnnouncement([mira, capitao], [aldo, ivo])).toBe(
+        'Aldo e Barão Ivo entraram na cena. Mira e Capitão Goblin saíram da cena.',
+      );
     });
 
     it('says who speaks, and when nobody does', () => {
       const speaking = { ...capitao, speaking: true };
       expect(stageAnnouncement([mira, capitao], [mira, speaking])).toBe('Capitão Goblin fala.');
       expect(stageAnnouncement([mira, speaking], [mira, capitao])).toBe('Ninguém fala.');
-      expect(stageAnnouncement([mira, speaking], [{ ...mira, speaking: true }, capitao])).toBe('Mira fala.');
+      expect(stageAnnouncement([mira, speaking], [{ ...mira, speaking: true }, capitao])).toBe(
+        'Mira fala.',
+      );
     });
 
     it('says both when an NPC comes in speaking', () => {
-      expect(stageAnnouncement([mira], [mira, { ...aldo, speaking: true }])).toBe('Aldo entrou na cena. Aldo fala.');
+      expect(stageAnnouncement([mira], [mira, { ...aldo, speaking: true }])).toBe(
+        'Aldo entrou na cena. Aldo fala.',
+      );
     });
 
     it('does not say "Ninguém fala" when the speaker simply left', () => {
-      expect(stageAnnouncement([mira, { ...capitao, speaking: true }], [mira])).toBe('Capitão Goblin saiu da cena.');
+      expect(stageAnnouncement([mira, { ...capitao, speaking: true }], [mira])).toBe(
+        'Capitão Goblin saiu da cena.',
+      );
     });
   });
 });

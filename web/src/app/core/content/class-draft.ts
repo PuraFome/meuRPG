@@ -124,18 +124,34 @@ export function emptyRow(): RowDraft {
 }
 
 export function emptyCasting(kind: CastingKind = ''): CastingDraft {
-  return { kind, ability: Ability.UNSPECIFIED, preparation: 'prepared', listFrom: '', preparedMax: '', startLevel: 0, ritual: false };
+  return {
+    kind,
+    ability: Ability.UNSPECIFIED,
+    preparation: 'prepared',
+    listFrom: '',
+    preparedMax: '',
+    startLevel: 0,
+    ritual: false,
+  };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 // The server's defaults.
 
 /** The default table of one way of casting: `kind` '' is a class that does not cast. */
-export function tableFor(defaults: GetClassTableDefaultsResponse, kind: CastingKind, preparation: Preparation): CastingTableDefault | undefined {
-  return defaults.tables.find((t) => t.kind === kind && (kind === '' || t.preparation === preparation));
+export function tableFor(
+  defaults: GetClassTableDefaultsResponse,
+  kind: CastingKind,
+  preparation: Preparation,
+): CastingTableDefault | undefined {
+  return defaults.tables.find(
+    (t) => t.kind === kind && (kind === '' || t.preparation === preparation),
+  );
 }
 
-function rowOf(r: Pick<TableClassLevel, 'cantripsKnown' | 'spellsKnown' | 'slots'> & { profBonus?: number }): RowDraft {
+function rowOf(
+  r: Pick<TableClassLevel, 'cantripsKnown' | 'spellsKnown' | 'slots'> & { profBonus?: number },
+): RowDraft {
   const slots = Array<number>(CIRCLES).fill(0);
   r.slots.forEach((n, i) => {
     if (i < CIRCLES) slots[i] = n;
@@ -144,15 +160,24 @@ function rowOf(r: Pick<TableClassLevel, 'cantripsKnown' | 'spellsKnown' | 'slots
 }
 
 /** The 20 rows of a default table, as drafts: the server's numbers, copied. */
-export function rowsOfTable(table: CastingTableDefault | undefined, defaults: GetClassTableDefaultsResponse): RowDraft[] {
+export function rowsOfTable(
+  table: CastingTableDefault | undefined,
+  defaults: GetClassTableDefaultsResponse,
+): RowDraft[] {
   if (table && table.rows.length === LEVEL_COUNT) {
     return table.rows.map(rowOf);
   }
-  return Array.from({ length: LEVEL_COUNT }, (_, i) => ({ ...emptyRow(), profBonus: defaults.profBonus[i] ?? 0 }));
+  return Array.from({ length: LEVEL_COUNT }, (_, i) => ({
+    ...emptyRow(),
+    profBonus: defaults.profBonus[i] ?? 0,
+  }));
 }
 
 /** The table of the casting the draft has now. */
-export function defaultTableOf(c: CastingDraft, defaults: GetClassTableDefaultsResponse): CastingTableDefault | undefined {
+export function defaultTableOf(
+  c: CastingDraft,
+  defaults: GetClassTableDefaultsResponse,
+): CastingTableDefault | undefined {
   return tableFor(defaults, c.kind, c.preparation);
 }
 
@@ -163,25 +188,46 @@ export function sameRows(a: readonly RowDraft[], b: readonly RowDraft[], bonus =
     a.length === b.length &&
     a.every((r, i) => {
       const o = b[i];
-      return (!bonus || r.profBonus === o.profBonus) && r.cantrips === o.cantrips && r.spells === o.spells && r.slots.every((n, k) => n === o.slots[k]);
+      return (
+        (!bonus || r.profBonus === o.profBonus) &&
+        r.cantrips === o.cantrips &&
+        r.spells === o.spells &&
+        r.slots.every((n, k) => n === o.slots[k])
+      );
     })
   );
 }
 
 /** Whether the master changed the table from the default of the casting it has now (asked about before it is replaced). A third
  * caster compares the casting columns only: the rows of a stored subclass carry no bonus. */
-export function rowsEdited(rows: readonly RowDraft[], c: CastingDraft, defaults: GetClassTableDefaultsResponse): boolean {
+export function rowsEdited(
+  rows: readonly RowDraft[],
+  c: CastingDraft,
+  defaults: GetClassTableDefaultsResponse,
+): boolean {
   return !sameRows(rows, rowsOfTable(defaultTableOf(c, defaults), defaults), c.kind !== 'third');
 }
 
 /** The casting a kind starts with: its own default preparation, the table's start level, nothing else chosen yet. */
-export function castingOfKind(kind: CastingKind, previous: CastingDraft, defaults: GetClassTableDefaultsResponse): CastingDraft {
+export function castingOfKind(
+  kind: CastingKind,
+  previous: CastingDraft,
+  defaults: GetClassTableDefaultsResponse,
+): CastingDraft {
   if (kind === '') {
     return emptyCasting('');
   }
-  const preparation = tableFor(defaults, kind, previous.preparation) ? previous.preparation : 'prepared';
+  const preparation = tableFor(defaults, kind, previous.preparation)
+    ? previous.preparation
+    : 'prepared';
   const table = tableFor(defaults, kind, preparation);
-  return { ...previous, kind, preparation, startLevel: table?.startLevel ?? 0, preparedMax: preparation === 'prepared' ? previous.preparedMax : '' };
+  return {
+    ...previous,
+    kind,
+    preparation,
+    startLevel: table?.startLevel ?? 0,
+    preparedMax: preparation === 'prepared' ? previous.preparedMax : '',
+  };
 }
 
 export function emptyClass(defaults: GetClassTableDefaultsResponse): ClassDraft {
@@ -208,7 +254,10 @@ export function emptyClass(defaults: GetClassTableDefaultsResponse): ClassDraft 
 // From the entry and back.
 
 /** A stored casting as a draft. A start level of 0 means "the kind's own" to the server; the draft holds the table's number. */
-function castingToDraft(c: TableCasting | undefined, defaults: GetClassTableDefaultsResponse): CastingDraft {
+function castingToDraft(
+  c: TableCasting | undefined,
+  defaults: GetClassTableDefaultsResponse,
+): CastingDraft {
   if (!c || c.kind === '') {
     return emptyCasting('');
   }
@@ -219,7 +268,10 @@ function castingToDraft(c: TableCasting | undefined, defaults: GetClassTableDefa
     preparation,
     listFrom: c.listFrom,
     preparedMax: c.preparedMax,
-    startLevel: c.startLevel > 0 ? c.startLevel : (tableFor(defaults, c.kind as CastingKind, preparation)?.startLevel ?? 1),
+    startLevel:
+      c.startLevel > 0
+        ? c.startLevel
+        : (tableFor(defaults, c.kind as CastingKind, preparation)?.startLevel ?? 1),
     ritual: c.ritual,
   };
 }
@@ -247,9 +299,15 @@ function hasMinimums(m: Minimums): boolean {
 }
 
 export function classToDraft(c: TableClass, defaults: GetClassTableDefaultsResponse): ClassDraft {
-  const rows = Array.from({ length: LEVEL_COUNT }, (_, i) => (c.levels[i] ? rowOf(c.levels[i]) : emptyRow()));
+  const rows = Array.from({ length: LEVEL_COUNT }, (_, i) =>
+    c.levels[i] ? rowOf(c.levels[i]) : emptyRow(),
+  );
   const features: LevelFeature[] = [];
-  c.levels.forEach((lv, i) => lv.features.forEach((f) => features.push({ id: newLevelFeatureId(), level: i + 1, feature: featureToDraft(f) })));
+  c.levels.forEach((lv, i) =>
+    lv.features.forEach((f) =>
+      features.push({ id: newLevelFeatureId(), level: i + 1, feature: featureToDraft(f) }),
+    ),
+  );
   return {
     name: c.namePt,
     hitDie: c.hitDie,
@@ -278,7 +336,11 @@ function slotsOf(r: RowDraft): number[] {
   return r.slots.some((n) => n !== 0) ? [...r.slots] : [];
 }
 
-function featuresAt(features: readonly LevelFeature[], level: number, menu: EffectMenuVm): ReturnType<typeof draftToFeature>[] {
+function featuresAt(
+  features: readonly LevelFeature[],
+  level: number,
+  menu: EffectMenuVm,
+): ReturnType<typeof draftToFeature>[] {
   return features.filter((f) => f.level === level).map((f) => draftToFeature(f.feature, menu));
 }
 
@@ -319,12 +381,17 @@ export function classFeatureBase(features: readonly LevelFeature[], index: numbe
 
 /** The inputs of every feature of a class, by path (the known set the violations are placed against). */
 export function classFeaturePaths(features: readonly LevelFeature[], menu: EffectMenuVm): string[] {
-  return features.flatMap((f, i) => featureOwnPaths(classFeatureBase(features, i), f.feature, menu));
+  return features.flatMap((f, i) =>
+    featureOwnPaths(classFeatureBase(features, i), f.feature, menu),
+  );
 }
 
 /** The features in the order of their level, keeping the order inside a level (a stable sort; what the request sends). */
 export function sortedFeatures(features: readonly LevelFeature[]): LevelFeature[] {
-  return features.map((f, i) => ({ f, i })).sort((a, b) => a.f.level - b.f.level || a.i - b.i).map((x) => x.f);
+  return features
+    .map((f, i) => ({ f, i }))
+    .sort((a, b) => a.f.level - b.f.level || a.i - b.i)
+    .map((x) => x.f);
 }
 
 /** The levels the request has a row for: all 20 for a class; for a subclass, the ones that cast or have a feature, ascending. */
@@ -357,17 +424,32 @@ export function subclassRowBase(d: SubclassDraft, level: number): string {
 }
 
 export function emptySubclass(classKey: string): SubclassDraft {
-  return { name: '', classKey, level: 0, text: '', conjures: false, casting: emptyCasting(''), rows: Array.from({ length: LEVEL_COUNT }, emptyRow), features: [], alwaysPrepared: [] };
+  return {
+    name: '',
+    classKey,
+    level: 0,
+    text: '',
+    conjures: false,
+    casting: emptyCasting(''),
+    rows: Array.from({ length: LEVEL_COUNT }, emptyRow),
+    features: [],
+    alwaysPrepared: [],
+  };
 }
 
-export function subclassToDraft(s: TableSubclass, defaults: GetClassTableDefaultsResponse): SubclassDraft {
+export function subclassToDraft(
+  s: TableSubclass,
+  defaults: GetClassTableDefaultsResponse,
+): SubclassDraft {
   const rows = Array.from({ length: LEVEL_COUNT }, emptyRow);
   const features: LevelFeature[] = [];
   for (const lv of s.levels) {
     if (lv.level >= 1 && lv.level <= LEVEL_COUNT) {
       rows[lv.level - 1] = rowOf(lv);
     }
-    lv.features.forEach((f) => features.push({ id: newLevelFeatureId(), level: lv.level, feature: featureToDraft(f) }));
+    lv.features.forEach((f) =>
+      features.push({ id: newLevelFeatureId(), level: lv.level, feature: featureToDraft(f) }),
+    );
   }
   const groups = new Map<number, string[]>();
   for (const a of s.alwaysPrepared) {
@@ -382,13 +464,18 @@ export function subclassToDraft(s: TableSubclass, defaults: GetClassTableDefault
     casting: castingToDraft(s.casting, defaults),
     rows,
     features,
-    alwaysPrepared: [...groups].sort((a, b) => a[0] - b[0]).map(([level, spells]) => ({ level, spells })),
+    alwaysPrepared: [...groups]
+      .sort((a, b) => a[0] - b[0])
+      .map(([level, spells]) => ({ level, spells })),
   };
 }
 
 /** The paragraphs of a text: blank lines split them. */
 function paragraphsOf(text: string): string[] {
-  return text.split(/\n\s*\n/).map((p) => p.trim()).filter((p) => p !== '');
+  return text
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter((p) => p !== '');
 }
 
 export function draftToSubclass(d: SubclassDraft, menu: EffectMenuVm): SubclassInit {
@@ -414,7 +501,9 @@ export function draftToSubclass(d: SubclassDraft, menu: EffectMenuVm): SubclassI
 }
 
 /** The request's list: a class level and a spell each, in the order of the groups. */
-export function flattenAlwaysPrepared(groups: readonly AlwaysPreparedGroup[]): { classLevel: number; spellKey: string }[] {
+export function flattenAlwaysPrepared(
+  groups: readonly AlwaysPreparedGroup[],
+): { classLevel: number; spellKey: string }[] {
   return groups.flatMap((g) => g.spells.map((spellKey) => ({ classLevel: g.level, spellKey })));
 }
 
@@ -433,12 +522,25 @@ export interface GridColumns {
 
 /** The columns of the table of a casting. The circles shown are the highest one any row of the default or of the draft has
  * a slot at, so a half caster shows 5 and a full caster 9; `all` shows the nine (to give a half caster a 6th circle). */
-export function gridColumns(c: CastingDraft, rows: readonly RowDraft[], defaults: GetClassTableDefaultsResponse, all: boolean): GridColumns {
+export function gridColumns(
+  c: CastingDraft,
+  rows: readonly RowDraft[],
+  defaults: GetClassTableDefaultsResponse,
+  all: boolean,
+): GridColumns {
   if (c.kind === '') {
     return { casts: false, cantrips: false, spells: false, circles: 0 };
   }
   const table = defaultTableOf(c, defaults);
-  const highest = (rs: readonly RowDraft[]): number => rs.reduce((m, r) => Math.max(m, r.slots.reduce((h, n, i) => (n > 0 ? i + 1 : h), 0)), 0);
+  const highest = (rs: readonly RowDraft[]): number =>
+    rs.reduce(
+      (m, r) =>
+        Math.max(
+          m,
+          r.slots.reduce((h, n, i) => (n > 0 ? i + 1 : h), 0),
+        ),
+      0,
+    );
   const fromDefault = table ? highest(table.rows.map(rowOf)) : 0;
   const circles = all ? CIRCLES : Math.max(fromDefault, highest(rows), 1);
   return { casts: true, cantrips: true, spells: c.preparation === 'known', circles };
@@ -451,7 +553,11 @@ export function circleLabel(i: number): string {
 
 /** "4 de 1º, 2 de 2º": the slots of a row in words; '' when there are none. */
 export function slotsText(r: RowDraft, pact: boolean): string {
-  const parts = r.slots.map((n, i) => (n > 0 ? (pact ? `${n} de ${circleLabel(i)} (pacto)` : `${n} de ${circleLabel(i)}`) : '')).filter((p) => p !== '');
+  const parts = r.slots
+    .map((n, i) =>
+      n > 0 ? (pact ? `${n} de ${circleLabel(i)} (pacto)` : `${n} de ${circleLabel(i)}`) : '',
+    )
+    .filter((p) => p !== '');
   return parts.join(', ');
 }
 
@@ -460,9 +566,18 @@ export function slotsText(r: RowDraft, pact: boolean): string {
 
 /** Whether `path` is the input of a cell of the grid at `prefix` ("table_class.levels"), a row of it or the grid itself: the cells
  * of the columns drawn (`cols`), and the row and its slots as a whole (their message is shown with the level). */
-export function isGridPath(path: string, prefix: string, cols: GridColumns, bonus: boolean): boolean {
+export function isGridPath(
+  path: string,
+  prefix: string,
+  cols: GridColumns,
+  bonus: boolean,
+): boolean {
   if (path === prefix) return true;
-  const m = new RegExp('^' + prefix.replace(/\./g, '\\.') + '\\[(\\d+)\\](?:\\.(prof_bonus|cantrips_known|spells_known|slots)|\\.slots\\[(\\d)\\])?$').exec(path);
+  const m = new RegExp(
+    '^' +
+      prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
+      '\\[(\\d+)\\](?:\\.(prof_bonus|cantrips_known|spells_known|slots)|\\.slots\\[(\\d)\\])?$',
+  ).exec(path);
   if (!m) return false;
   if (m[2] === undefined && m[3] === undefined) return true;
   switch (m[2]) {
@@ -480,7 +595,11 @@ export function isGridPath(path: string, prefix: string, cols: GridColumns, bonu
 }
 
 /** The feature a refused path is in (the id of the row to open), or '' when the path is not in one. */
-export function featureIdOfPath(features: readonly LevelFeature[], baseOf: (index: number) => string, path: string): string {
+export function featureIdOfPath(
+  features: readonly LevelFeature[],
+  baseOf: (index: number) => string,
+  path: string,
+): string {
   const i = features.findIndex((_, k) => {
     const base = baseOf(k);
     return path === base || path.startsWith(base + '.') || path.startsWith(base + '[');
@@ -490,7 +609,10 @@ export function featureIdOfPath(features: readonly LevelFeature[], baseOf: (inde
 
 /** The refusals of one always-prepared group: the request lists the spells flat (`always_prepared[3].spell_key`), the screen by
  * class level; a path in the flat list belongs to the group the index falls in. Returns the group's level, or -1. */
-export function groupOfAlwaysPrepared(groups: readonly AlwaysPreparedGroup[], path: string): number {
+export function groupOfAlwaysPrepared(
+  groups: readonly AlwaysPreparedGroup[],
+  path: string,
+): number {
   const m = /^table_subclass\.always_prepared\[(\d+)\]/.exec(path);
   if (!m) return -1;
   let n = Number(m[1]);

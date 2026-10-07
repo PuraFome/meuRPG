@@ -19,7 +19,10 @@ describe('CountStepper', () => {
 
   it('names its buttons by the noun and says the count', () => {
     const { el, buttons } = setup(3);
-    expect(buttons().map((b) => b.getAttribute('aria-label'))).toEqual(['Menos um Bandido', 'Mais um Bandido']);
+    expect(buttons().map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Menos um Bandido',
+      'Mais um Bandido',
+    ]);
     expect(el.querySelector('output')?.textContent).toBe('3');
     expect(el.querySelector('output')?.getAttribute('aria-label')).toBe('3 Bandido');
   });
@@ -51,13 +54,16 @@ describe('CountStepper', () => {
     expect(emitted).toEqual([0]);
   });
 
-  it('takes its own wording for a noun that is not masculine, with the count in the number\'s label', () => {
+  it("takes its own wording for a noun that is not masculine, with the count in the number's label", () => {
     const { fixture, el, buttons } = setup(3);
     fixture.componentRef.setInput('minusLabel', 'Menos uma peça');
     fixture.componentRef.setInput('plusLabel', 'Mais uma peça');
     fixture.componentRef.setInput('valueLabel', '{n} peças');
     fixture.detectChanges();
-    expect(buttons().map((b) => b.getAttribute('aria-label'))).toEqual(['Menos uma peça', 'Mais uma peça']);
+    expect(buttons().map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Menos uma peça',
+      'Mais uma peça',
+    ]);
     expect(el.querySelector('output')?.getAttribute('aria-label')).toBe('3 peças');
   });
 });

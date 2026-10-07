@@ -69,14 +69,23 @@ export class GenerateResult {
   readonly pickChain = output<string>();
 
   protected readonly privacy = EDIT_PRIVACY;
-  protected readonly ratio = computed(() => (this.view().image.height > 0 ? this.view().image.width / this.view().image.height : 1.78));
+  protected readonly ratio = computed(() =>
+    this.view().image.height > 0 ? this.view().image.width / this.view().image.height : 1.78,
+  );
   protected readonly texture = computed(() => this.view().texture);
   protected readonly wholeMap = computed(() => this.view().wholeMap);
-  protected readonly asking = computed(() => this.useStage() === 'asking' || this.useStage() === 'busy' || this.showStage() === 'asking');
-  protected readonly alt = computed(() => `${this.numbered()}${this.view().caption ? `: ${this.view().caption}` : ''}`);
+  protected readonly asking = computed(
+    () =>
+      this.useStage() === 'asking' || this.useStage() === 'busy' || this.showStage() === 'asking',
+  );
+  protected readonly alt = computed(
+    () => `${this.numbered()}${this.view().caption ? `: ${this.view().caption}` : ''}`,
+  );
   protected readonly cost = computed(() => {
     const s = this.status();
-    return s ? `O ajuste parte desta imagem e do seu pedido de antes. Gera uma imagem nova ao lado desta e gasta 1 das suas ${s.remaining}.` : 'O ajuste parte desta imagem e do seu pedido de antes. Gera uma imagem nova ao lado desta e gasta 1 imagem do mês.';
+    return s
+      ? `O ajuste parte desta imagem e do seu pedido de antes. Gera uma imagem nova ao lado desta e gasta 1 das suas ${s.remaining}.`
+      : 'O ajuste parte desta imagem e do seu pedido de antes. Gera uma imagem nova ao lado desta e gasta 1 imagem do mês.';
   });
   protected readonly remaining = computed(() => {
     const s = this.status();

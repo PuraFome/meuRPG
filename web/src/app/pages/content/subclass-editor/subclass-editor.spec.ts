@@ -29,7 +29,14 @@ describe('SubclassEditor', () => {
           namePt: 'Tradição da Tinta',
           classKey: 'class:wizard',
           alwaysPrepared: [{ classLevel: 3, spellKey: 'spell:light' }],
-          levels: [{ level: 2, features: [{ key: 'feature:x', namePt: 'Traço arcano', descPt: ['Texto.'], effects: [] }] }],
+          levels: [
+            {
+              level: 2,
+              features: [
+                { key: 'feature:x', namePt: 'Traço arcano', descPt: ['Texto.'], effects: [] },
+              ],
+            },
+          ],
         }),
       },
     });
@@ -37,7 +44,9 @@ describe('SubclassEditor', () => {
   function setup(e: ReturnType<typeof tinta> | null = tinta(), parentKey = '') {
     save.mockReset();
     TestBed.resetTestingModule();
-    TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: TableContentClient, useValue: { save } }] });
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: TableContentClient, useValue: { save } }],
+    });
     const fixture = TestBed.createComponent(SubclassEditor);
     fixture.componentRef.setInput('campaignId', 'camp-1');
     fixture.componentRef.setInput('catalog', cat);
@@ -59,19 +68,28 @@ describe('SubclassEditor', () => {
   }
 
   const text = (el: Element) => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
-  const field = (el: HTMLElement, path: string) => el.querySelector<HTMLElement>(`[data-field="${path}"]`)!;
-  const click = (el: HTMLElement, label: string) => Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => text(b).includes(label))!.click();
-  const cell = (el: HTMLElement, label: string) => el.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)!;
+  const field = (el: HTMLElement, path: string) =>
+    el.querySelector<HTMLElement>(`[data-field="${path}"]`)!;
+  const click = (el: HTMLElement, label: string) =>
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button'))
+      .find((b) => text(b).includes(label))!
+      .click();
+  const cell = (el: HTMLElement, label: string) =>
+    el.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)!;
   const pick = (select: HTMLSelectElement, label: string) => {
     select.selectedIndex = Array.from(select.options).findIndex((o) => o.text.trim() === label);
     select.dispatchEvent(new Event('change'));
   };
 
-  it('says which class it is of and that the choice happens at the class\'s level (an SRD class here)', () => {
+  it("says which class it is of and that the choice happens at the class's level (an SRD class here)", () => {
     const { el } = setup();
-    expect(text(el)).toContain('Subclasse de Mago, escolhida no nível 2 (o da classe). A classe não muda depois de criada.');
+    expect(text(el)).toContain(
+      'Subclasse de Mago, escolhida no nível 2 (o da classe). A classe não muda depois de criada.',
+    );
     expect(el.querySelector('[data-field="table_subclass.class_key"]')).toBeNull();
-    expect((field(el, 'table_subclass.name_pt') as HTMLInputElement).value).toBe('Tradição da Tinta');
+    expect((field(el, 'table_subclass.name_pt') as HTMLInputElement).value).toBe(
+      'Tradição da Tinta',
+    );
     expect(text(el)).toContain('Nível 2');
     expect(text(el)).toContain('Traço arcano');
   });
@@ -102,13 +120,27 @@ describe('SubclassEditor', () => {
     await settle(fixture);
     const body = save.mock.calls[0][2];
     expect(body.case).toBe('tableSubclass');
-    expect(body.value.casting).toMatchObject({ kind: 'third', ability: Ability.INTELLIGENCE, listFrom: 'class:wizard', preparation: 'known', startLevel: 3 });
-    expect(body.value.levels.map((l: { level: number }) => l.level)).toEqual([2, ...Array.from({ length: 18 }, (_, i) => i + 3)].filter((v, i, a) => a.indexOf(v) === i));
-    expect(body.value.levels.find((l: { level: number }) => l.level === 3)).toMatchObject({ cantripsKnown: 2, spellsKnown: 3, slots: [2, 0, 0, 0, 0, 0, 0, 0, 0] });
-    expect(body.value.levels.find((l: { level: number }) => l.level === 2).features[0].key).toBe('feature:x');
+    expect(body.value.casting).toMatchObject({
+      kind: 'third',
+      ability: Ability.INTELLIGENCE,
+      listFrom: 'class:wizard',
+      preparation: 'known',
+      startLevel: 3,
+    });
+    expect(body.value.levels.map((l: { level: number }) => l.level)).toEqual(
+      [2, ...Array.from({ length: 18 }, (_, i) => i + 3)].filter((v, i, a) => a.indexOf(v) === i),
+    );
+    expect(body.value.levels.find((l: { level: number }) => l.level === 3)).toMatchObject({
+      cantripsKnown: 2,
+      spellsKnown: 3,
+      slots: [2, 0, 0, 0, 0, 0, 0, 0, 0],
+    });
+    expect(body.value.levels.find((l: { level: number }) => l.level === 2).features[0].key).toBe(
+      'feature:x',
+    );
   });
 
-  it('asks before the third caster\'s table is replaced by another way of preparing, once it was edited', async () => {
+  it("asks before the third caster's table is replaced by another way of preparing, once it was edited", async () => {
     const { fixture, el } = setup();
     (el.querySelector('[role="switch"]') as HTMLButtonElement).click();
     await settle(fixture);
@@ -116,7 +148,9 @@ describe('SubclassEditor', () => {
     c.value = '1';
     c.dispatchEvent(new Event('input'));
     await settle(fixture);
-    (el.querySelector('input[type="radio"][value="prepared"]') as HTMLInputElement).dispatchEvent(new Event('change'));
+    (el.querySelector('input[type="radio"][value="prepared"]') as HTMLInputElement).dispatchEvent(
+      new Event('change'),
+    );
     await settle(fixture);
     expect(text(el.querySelector('.ask')!)).toContain('Refazer a tabela?');
     click(el.querySelector('.ask') as HTMLElement, 'Refazer a tabela');
@@ -135,12 +169,18 @@ describe('SubclassEditor', () => {
     const select = el.querySelector('.group[aria-label="Nível 1"] select') as HTMLSelectElement;
     pick(select, 'Luz');
     await settle(fixture);
-    (el.querySelector('.group[aria-label="Nível 3"] button[aria-label="Tirar Luz"]') as HTMLButtonElement).click();
+    (
+      el.querySelector(
+        '.group[aria-label="Nível 3"] button[aria-label="Tirar Luz"]',
+      ) as HTMLButtonElement
+    ).click();
     await settle(fixture);
     save.mockResolvedValue({ entry: tinta(), affected: [] });
     click(el, 'Salvar subclasse');
     await settle(fixture);
-    expect(save.mock.calls[0][2].value.alwaysPrepared).toEqual([{ classLevel: 1, spellKey: 'spell:light' }]);
+    expect(save.mock.calls[0][2].value.alwaysPrepared).toEqual([
+      { classLevel: 1, spellKey: 'spell:light' },
+    ]);
   });
 
   it('lands the refusal of an always-prepared spell on the group, and a refused third-caster cell on its input', async () => {
@@ -153,8 +193,14 @@ describe('SubclassEditor', () => {
           desc: TableContentRefusalSchema,
           value: create(TableContentRefusalSchema, {
             violations: [
-              create(TableContentViolationSchema, { field: 'table_subclass.always_prepared[0].spell_key', reason: 'bad_value' }),
-              create(TableContentViolationSchema, { field: 'table_subclass.levels[2].slots[0]', reason: 'bad_table' }),
+              create(TableContentViolationSchema, {
+                field: 'table_subclass.always_prepared[0].spell_key',
+                reason: 'bad_value',
+              }),
+              create(TableContentViolationSchema, {
+                field: 'table_subclass.levels[2].slots[0]',
+                reason: 'bad_table',
+              }),
             ],
           }),
         },
@@ -162,30 +208,51 @@ describe('SubclassEditor', () => {
     );
     click(el, 'Salvar subclasse');
     await settle(fixture);
-    expect(text(el.querySelector('[data-field="table_subclass.always_prepared"]')!.parentElement!)).toContain('Uma magia sempre preparada é de 1º nível ou mais, nunca um truque.');
+    expect(
+      text(el.querySelector('[data-field="table_subclass.always_prepared"]')!.parentElement!),
+    ).toContain('Uma magia sempre preparada é de 1º nível ou mais, nunca um truque.');
     // Levels 2 (a feature) and 3, 4...: level 4 is the third row, `levels[2]`.
-    expect(cell(el, 'Nível 4, espaços de magia de 1º nível').getAttribute('aria-invalid')).toBe('true');
+    expect(cell(el, 'Nível 4, espaços de magia de 1º nível').getAttribute('aria-invalid')).toBe(
+      'true',
+    );
   });
 
-  it('a stored third caster switches Preparadas and Conhecidas with no question: its rows are the server\'s, which carry no bonus', async () => {
+  it("a stored third caster switches Preparadas and Conhecidas with no question: its rows are the server's, which carry no bonus", async () => {
     const stored = entry(TableContentKind.SUBCLASS, 'Tradição da Tinta', {
       body: {
         case: 'tableSubclass',
         value: create(TableSubclassSchema, {
           namePt: 'Tradição da Tinta',
           classKey: 'class:fighter',
-          casting: { kind: 'third', ability: Ability.INTELLIGENCE, preparation: 'known', listFrom: 'class:wizard', startLevel: 3 },
-          levels: defaults.tables[7].rows.filter((_r, i) => i >= 2).map((r, i) => ({ level: i + 3, cantripsKnown: r.cantripsKnown, spellsKnown: r.spellsKnown, slots: r.slots })),
+          casting: {
+            kind: 'third',
+            ability: Ability.INTELLIGENCE,
+            preparation: 'known',
+            listFrom: 'class:wizard',
+            startLevel: 3,
+          },
+          levels: defaults.tables[7].rows
+            .filter((_r, i) => i >= 2)
+            .map((r, i) => ({
+              level: i + 3,
+              cantripsKnown: r.cantripsKnown,
+              spellsKnown: r.spellsKnown,
+              slots: r.slots,
+            })),
         }),
       },
     });
     const { fixture, el } = setup(stored);
-    (el.querySelector('input[type="radio"][value="prepared"]') as HTMLInputElement).dispatchEvent(new Event('change'));
+    (el.querySelector('input[type="radio"][value="prepared"]') as HTMLInputElement).dispatchEvent(
+      new Event('change'),
+    );
     await settle(fixture);
     expect(el.querySelector('app-table-question')).toBeNull();
     // Prepared: no "Magias" column; the table is the prepared default (no spells known).
     expect(Array.from(el.querySelectorAll('th')).map((th) => text(th))).not.toContain('Magias');
-    (el.querySelector('input[type="radio"][value="known"]') as HTMLInputElement).dispatchEvent(new Event('change'));
+    (el.querySelector('input[type="radio"][value="known"]') as HTMLInputElement).dispatchEvent(
+      new Event('change'),
+    );
     await settle(fixture);
     expect(el.querySelector('app-table-question')).toBeNull();
     expect(cell(el, 'Nível 3, magias conhecidas').value).toBe('3');
@@ -201,14 +268,26 @@ describe('SubclassEditor', () => {
     // The request lists level 1's spell first (index 0), then level 3's (index 1).
     save.mockRejectedValue(
       new ConnectError('refused', Code.InvalidArgument, undefined, [
-        { desc: TableContentRefusalSchema, value: create(TableContentRefusalSchema, { violations: [create(TableContentViolationSchema, { field: 'table_subclass.always_prepared[1].spell_key', reason: 'dangling_reference' })] }) },
+        {
+          desc: TableContentRefusalSchema,
+          value: create(TableContentRefusalSchema, {
+            violations: [
+              create(TableContentViolationSchema, {
+                field: 'table_subclass.always_prepared[1].spell_key',
+                reason: 'dangling_reference',
+              }),
+            ],
+          }),
+        },
       ]),
     );
     click(el, 'Salvar subclasse');
     await settle(fixture);
     const group3 = el.querySelector('[data-field="table_subclass.always_prepared#3"]')!;
     expect(text(group3)).toContain('Esta magia não existe mais. Escolha outra.');
-    expect(text(el.querySelector('[data-field="table_subclass.always_prepared#1"]')!)).not.toContain('Esta magia não existe');
+    expect(
+      text(el.querySelector('[data-field="table_subclass.always_prepared#1"]')!),
+    ).not.toContain('Esta magia não existe');
     expect(group3.contains(document.activeElement)).toBe(true);
   });
 
@@ -216,11 +295,25 @@ describe('SubclassEditor', () => {
     const { fixture, el } = setup();
     save.mockRejectedValue(
       new ConnectError('refused', Code.InvalidArgument, undefined, [
-        { desc: TableContentRefusalSchema, value: create(TableContentRefusalSchema, { violations: [create(TableContentViolationSchema, { field: 'table_subclass.levels[0].features[0]', reason: 'limit' })] }) },
+        {
+          desc: TableContentRefusalSchema,
+          value: create(TableContentRefusalSchema, {
+            violations: [
+              create(TableContentViolationSchema, {
+                field: 'table_subclass.levels[0].features[0]',
+                reason: 'limit',
+              }),
+            ],
+          }),
+        },
       ]),
     );
     click(el, 'Salvar subclasse');
     await settle(fixture);
-    expect(text(el.querySelector('[data-field="table_subclass.features"]')!.parentElement!)).toContain('Esta subclasse tem 1. Uma subclasse da mesa não pode ter mais de 60 características.');
+    expect(
+      text(el.querySelector('[data-field="table_subclass.features"]')!.parentElement!),
+    ).toContain(
+      'Esta subclasse tem 1. Uma subclasse da mesa não pode ter mais de 60 características.',
+    );
   });
 });

@@ -23,7 +23,9 @@ export function switchedOffKey(err: unknown): string | null {
     return null;
   }
   const [detail] = e.findDetails(CharacterBlockedSchema);
-  return detail?.reason === GenCharacterBlockedReason.SWITCHED_OFF_CONTENT ? detail.contentKey || '' : null;
+  return detail?.reason === GenCharacterBlockedReason.SWITCHED_OFF_CONTENT
+    ? detail.contentKey || ''
+    : null;
 }
 
 /**
@@ -32,7 +34,10 @@ export function switchedOffKey(err: unknown): string | null {
  * be unit-tested without a `ConnectError` in hand — this one takes the
  * already-decoded local reason, not a wire enum.
  */
-export function characterBlockedMessage(reason: CharacterBlockedReason | undefined, content?: ContentRef): string {
+export function characterBlockedMessage(
+  reason: CharacterBlockedReason | undefined,
+  content?: ContentRef,
+): string {
   switch (reason) {
     case 'archived_content':
       return `${contentWords(content)} foi arquivad${content?.masculine ? 'o' : 'a'} pelo mestre e não vale mais como escolha nova. Escolha outra opção${content?.step ? `, no passo ${content.step}` : ''}.`;
@@ -86,7 +91,9 @@ function contentWords(content: ContentRef | undefined): string {
     return 'Uma das opções';
   }
   const article = content.masculine ? 'O' : 'A';
-  return content.name ? `${article} ${content.noun} “${content.name}”` : `${article} ${content.noun} escolhid${content.masculine ? 'o' : 'a'}`;
+  return content.name
+    ? `${article} ${content.noun} “${content.name}”`
+    : `${article} ${content.noun} escolhid${content.masculine ? 'o' : 'a'}`;
 }
 
 /** The sheet field an `invalid_argument` points at ("full.classes[1].class_key"), from its typed detail; `null` when it has none. */
@@ -103,7 +110,9 @@ export function invalidFieldPath(err: unknown): string | null {
  * any future value this app does not know about yet fall through to
  * `undefined`, which `characterBlockedMessage` already turns into a safe
  * generic message instead of throwing. */
-function mapBlockedReason(reason: GenCharacterBlockedReason | undefined): CharacterBlockedReason | undefined {
+function mapBlockedReason(
+  reason: GenCharacterBlockedReason | undefined,
+): CharacterBlockedReason | undefined {
   switch (reason) {
     case GenCharacterBlockedReason.SHEET_LOCKED:
       return 'sheet_locked';
@@ -161,7 +170,10 @@ export function abilityRefusalMessage(reason: AbilityScoresRefusalReason): strin
  * the error itself (`findDetails(CharacterBlockedSchema)`) — the caller
  * never needs to guess or pass a reason in.
  */
-export function describeCharacterError(err: unknown, nameOf?: (key: string) => string | undefined): string {
+export function describeCharacterError(
+  err: unknown,
+  nameOf?: (key: string) => string | undefined,
+): string {
   const connectErr = ConnectError.from(err, Code.Unavailable);
 
   if (connectErr.code === Code.FailedPrecondition) {
@@ -175,7 +187,9 @@ export function describeCharacterError(err: unknown, nameOf?: (key: string) => s
       return 'A mesa decidiu como se ganham os pontos de vida dos níveis acima do 1º. Use o jeito que ela deixa, no passo "Habilidades".';
     }
     const [detail] = connectErr.findDetails(CharacterBlockedSchema);
-    const content = detail?.contentKey ? contentRef(detail.contentKey, nameOf ?? (() => undefined)) : undefined;
+    const content = detail?.contentKey
+      ? contentRef(detail.contentKey, nameOf ?? (() => undefined))
+      : undefined;
     return characterBlockedMessage(mapBlockedReason(detail?.reason), content);
   }
   if (connectErr.code === Code.Aborted) {

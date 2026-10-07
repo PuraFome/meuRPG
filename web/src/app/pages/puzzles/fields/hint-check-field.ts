@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
@@ -120,6 +128,8 @@ export class HintCheckField implements OnInit {
 
   protected pick(skillKey: string): void {
     // "Nenhuma" clears the DC too: both or neither.
-    this.checkChange.emit(skillKey === '' ? { skillKey: '', dcText: '' } : { ...this.check(), skillKey });
+    this.checkChange.emit(
+      skillKey === '' ? { skillKey: '', dcText: '' } : { ...this.check(), skillKey },
+    );
   }
 }

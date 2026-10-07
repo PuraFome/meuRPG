@@ -4,7 +4,10 @@ import { provideRouter } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { AbilityScoresRefusalReason, AbilityScoresRefusalSchema } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import {
+  AbilityScoresRefusalReason,
+  AbilityScoresRefusalSchema,
+} from '../../../../gen/meurpg/characters/v1/characters_pb';
 import { AbilityKey } from '../../../core/characters/characters.types';
 import type { AbilityFormGroup } from '../ability-fields/ability-fields';
 import {
@@ -67,7 +70,10 @@ describe('TableAbilityScores', () => {
     roll = vi.fn().mockResolvedValue(STORED);
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), { provide: CharacterEditorSource, useValue: { rollAbilityScores: roll } }],
+      providers: [
+        provideRouter([]),
+        { provide: CharacterEditorSource, useValue: { rollAbilityScores: roll } },
+      ],
     });
     fixture = TestBed.createComponent(TableAbilityScores);
     fixture.componentRef.setInput('campaignId', 'camp-1');
@@ -92,15 +98,23 @@ describe('TableAbilityScores', () => {
     fixture.detectChanges();
   }
 
-  const text = () => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const text = () => (el.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
   const tab = (label: string) =>
-    Array.from(el.querySelectorAll<HTMLInputElement>('input[name="ability-method"]')).find((i) => i.closest('label')?.textContent?.replace('check', '').trim() === label)!;
-  const button = (label: string) => Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.replace(/\s+/g, ' ').trim().includes(label))!;
-  const scores = (): number[] => (['str', 'dex', 'con', 'int', 'wis', 'cha'] as AbilityKey[]).map((k) => g.controls[k].value);
+    Array.from(el.querySelectorAll<HTMLInputElement>('input[name="ability-method"]')).find(
+      (i) => i.closest('label')?.textContent?.replace('check', '').trim() === label,
+    )!;
+  const button = (label: string) =>
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+      b.textContent?.replace(/\s+/g, ' ').trim().includes(label),
+    )!;
+  const scores = (): number[] =>
+    (['str', 'dex', 'con', 'int', 'wis', 'cha'] as AbilityKey[]).map((k) => g.controls[k].value);
 
   it('offers only the ways the master allows, in order, with the first one chosen', async () => {
     await setup(table({ standardArray: false, typed: false }));
-    const tabs = Array.from(el.querySelectorAll('input[name="ability-method"]')).map((i) => i.closest('label')?.textContent?.replace('check', '').trim());
+    const tabs = Array.from(el.querySelectorAll('input[name="ability-method"]')).map((i) =>
+      i.closest('label')?.textContent?.replace('check', '').trim(),
+    );
     expect(tabs).toEqual(['Pontos', '4d6']);
     expect(method).toBe('point_buy');
     expect(el.querySelector('input[name="ability-method"]')).toHaveProperty('checked', true);
@@ -122,14 +136,22 @@ describe('TableAbilityScores', () => {
   });
 
   describe('the standard array', () => {
-    it('lists the server\'s six values, and is incomplete until each one is on an ability', async () => {
+    it("lists the server's six values, and is incomplete until each one is on an ability", async () => {
       await setup();
       expect(method).toBe('standard_array');
       expect(incomplete).toBe(true);
       expect(problem).toBe('coloque cada valor do conjunto numa habilidade');
       expect(text()).toContain('Faltam 6 habilidades');
       const select = el.querySelectorAll('select')[0] as HTMLSelectElement;
-      expect(Array.from(select.options).map((o) => o.textContent?.trim())).toEqual(['Escolher', '15', '14', '13', '12', '10', '8']);
+      expect(Array.from(select.options).map((o) => o.textContent?.trim())).toEqual([
+        'Escolher',
+        '15',
+        '14',
+        '13',
+        '12',
+        '10',
+        '8',
+      ]);
     });
 
     it('writes each placed value into the form and completes after the sixth', async () => {
@@ -152,8 +174,10 @@ describe('TableAbilityScores', () => {
       tab('Pontos').click();
       await settle();
     }
-    const plus = (name: string) => el.querySelector<HTMLButtonElement>(`button[aria-label="Aumentar ${name}"]`)!;
-    const minus = (name: string) => el.querySelector<HTMLButtonElement>(`button[aria-label="Diminuir ${name}"]`)!;
+    const plus = (name: string) =>
+      el.querySelector<HTMLButtonElement>(`button[aria-label="Aumentar ${name}"]`)!;
+    const minus = (name: string) =>
+      el.querySelector<HTMLButtonElement>(`button[aria-label="Diminuir ${name}"]`)!;
 
     it('starts every score at 8 with all 27 points left, and "−" dashed at 8', async () => {
       await pointBuy();
@@ -167,19 +191,27 @@ describe('TableAbilityScores', () => {
       expect(incomplete).toBe(false);
     });
 
-    it('starts every score at the lowest of the server\'s table, not at a fixed 8', async () => {
-      await pointBuy(table({ pointBuyMinScore: 6, pointBuyCosts: [0, 1, 2, 3, 4, 5, 7, 9], pointBuyBudget: 20 }));
+    it("starts every score at the lowest of the server's table, not at a fixed 8", async () => {
+      await pointBuy(
+        table({ pointBuyMinScore: 6, pointBuyCosts: [0, 1, 2, 3, 4, 5, 7, 9], pointBuyBudget: 20 }),
+      );
       expect(scores()).toEqual([6, 6, 6, 6, 6, 6]);
       expect(text()).toContain('Restam 20 pontos');
       expect(text()).toContain('Cada valor vai de 6 a 13');
     });
 
-    it('adds the server\'s costs: 15, 14, 13, 10, 10 and 8 leaves 2 points', async () => {
+    it("adds the server's costs: 15, 14, 13, 10, 10 and 8 leaves 2 points", async () => {
       await pointBuy();
       const set = (name: string, to: number) => {
         for (let v = 8; v < to; v++) plus(name).click();
       };
-      for (const [name, to] of [['Sabedoria', 15], ['Destreza', 14], ['Constituição', 13], ['Força', 10], ['Carisma', 10]] as const) {
+      for (const [name, to] of [
+        ['Sabedoria', 15],
+        ['Destreza', 14],
+        ['Constituição', 13],
+        ['Força', 10],
+        ['Carisma', 10],
+      ] as const) {
         set(name, to);
         fixture.detectChanges();
       }
@@ -261,7 +293,14 @@ describe('TableAbilityScores', () => {
       expect(text()).toContain('Digite os quatro dados de cada rolagem.');
       expect(text()).toContain('Falta o primeiro dado da rolagem 1.');
       expect(button('Guardar os dados').classList).toContain('mr-button--off');
-      const typed = [[6, 5, 5, 2], [5, 5, 4, 1], [5, 4, 4, 3], [4, 4, 4, 2], [4, 3, 3, 2], [3, 3, 2, null]];
+      const typed = [
+        [6, 5, 5, 2],
+        [5, 5, 4, 1],
+        [5, 4, 4, 3],
+        [4, 4, 4, 2],
+        [4, 3, 3, 2],
+        [3, 3, 2, null],
+      ];
       const inputs = Array.from(el.querySelectorAll<HTMLInputElement>('.roll__die'));
       expect(inputs).toHaveLength(24);
       typed.flat().forEach((v, i) => {
@@ -297,7 +336,14 @@ describe('TableAbilityScores', () => {
       await settle();
       button('Guardar as rolagens').click();
       await settle();
-      expect(roll).toHaveBeenCalledWith('camp-1', [[6, 5, 5, 2], [5, 5, 4, 1], [5, 4, 4, 3], [4, 4, 4, 2], [4, 3, 3, 2], [3, 3, 2, 1]]);
+      expect(roll).toHaveBeenCalledWith('camp-1', [
+        [6, 5, 5, 2],
+        [5, 5, 4, 1],
+        [5, 4, 4, 3],
+        [4, 4, 4, 2],
+        [4, 3, 3, 2],
+        [3, 3, 2, 1],
+      ]);
       expect(text()).toContain('Dados digitados em 05/10 20:14. Ficam guardados');
       expect(el.querySelectorAll('app-dice-result')).toHaveLength(6);
     });
@@ -306,22 +352,40 @@ describe('TableAbilityScores', () => {
       await dice(table());
       roll.mockRejectedValueOnce(
         new ConnectError('x', Code.FailedPrecondition, undefined, [
-          { desc: AbilityScoresRefusalSchema, value: create(AbilityScoresRefusalSchema, { reason: AbilityScoresRefusalReason.DICE_FORCED_PHYSICAL }) },
+          {
+            desc: AbilityScoresRefusalSchema,
+            value: create(AbilityScoresRefusalSchema, {
+              reason: AbilityScoresRefusalReason.DICE_FORCED_PHYSICAL,
+            }),
+          },
         ]),
       );
       button('Rolar as habilidades').click();
       await settle();
-      expect(text()).toContain('Nesta campanha todos usam os próprios dados: digite os dados que você tirou.');
+      expect(text()).toContain(
+        'Nesta campanha todos usam os próprios dados: digite os dados que você tirou.',
+      );
     });
   });
 
   describe('a draft that already has a recorded method (RN-24)', () => {
-    async function locked(method: AbilityMethodKey, values: number[], rolls: AbilityRollsVm | null = null) {
+    async function locked(
+      method: AbilityMethodKey,
+      values: number[],
+      rolls: AbilityRollsVm | null = null,
+    ) {
       g = group();
-      (['str', 'dex', 'con', 'int', 'wis', 'cha'] as AbilityKey[]).forEach((k, i) => g.controls[k].setValue(values[i]));
+      (['str', 'dex', 'con', 'int', 'wis', 'cha'] as AbilityKey[]).forEach((k, i) =>
+        g.controls[k].setValue(values[i]),
+      );
       roll = vi.fn();
       TestBed.resetTestingModule();
-      TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: CharacterEditorSource, useValue: { rollAbilityScores: roll } }] });
+      TestBed.configureTestingModule({
+        providers: [
+          provideRouter([]),
+          { provide: CharacterEditorSource, useValue: { rollAbilityScores: roll } },
+        ],
+      });
       fixture = TestBed.createComponent(TableAbilityScores);
       fixture.componentRef.setInput('campaignId', 'camp-1');
       fixture.componentRef.setInput('group', g);

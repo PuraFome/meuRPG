@@ -17,7 +17,12 @@ import {
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { formatMeters, feetToMeters } from '../units';
 import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
-import { formatCastingTime, formatComponents, formatDuration, formatRange } from '../../shared/spell-details/spell-details-format';
+import {
+  formatCastingTime,
+  formatComponents,
+  formatDuration,
+  formatRange,
+} from '../../shared/spell-details/spell-details-format';
 import { rangeFeet, rangeMeters } from './effect-draft';
 
 /**
@@ -220,7 +225,10 @@ export function sizeLabel(shape: SpellDraft['shape']): string {
   }
 }
 
-export const SAVE_SUCCESS_OPTIONS: readonly { value: SpellDraft['saveOnSuccess']; label: string }[] = [
+export const SAVE_SUCCESS_OPTIONS: readonly {
+  value: SpellDraft['saveOnSuccess'];
+  label: string;
+}[] = [
   { value: 'half', label: 'Metade do dano' },
   { value: 'none', label: 'Nada' },
 ];
@@ -236,7 +244,9 @@ export function circleLabel(level: number): string {
 
 /** "Mais dano por nível acima do 1º", or at the truque's tiers. */
 export function moreLabel(level: number): string {
-  return level === 0 ? 'Mais dano a cada degrau do truque' : `Mais dano por nível acima do ${level}º`;
+  return level === 0
+    ? 'Mais dano a cada degrau do truque'
+    : `Mais dano por nível acima do ${level}º`;
 }
 
 export function moreHint(level: number): string {
@@ -250,15 +260,23 @@ export function spellToDraft(s: TableSpell): SpellDraft {
   d.level = s.level;
   d.schoolKey = s.schoolKey;
   const ct = s.castingTime;
-  d.time = (Object.entries(TIME_TO_UNIT).find(([, u]) => u === ct?.unit)?.[0] ?? 'action') as TimeChoice;
+  d.time = (Object.entries(TIME_TO_UNIT).find(([, u]) => u === ct?.unit)?.[0] ??
+    'action') as TimeChoice;
   d.timeAmount = ct?.amount || 1;
   d.trigger = ct?.triggerPt ?? '';
-  d.range = (Object.entries(RANGE_TO_KIND).find(([, k]) => k === s.range?.kind)?.[0] ?? 'ranged') as RangeChoice;
+  d.range = (Object.entries(RANGE_TO_KIND).find(([, k]) => k === s.range?.kind)?.[0] ??
+    'ranged') as RangeChoice;
   d.rangeM = rangeMeters(s.range?.distanceFt ?? 0);
   const du = s.duration;
-  d.duration = du?.kind === SpellDurationKind.TIMED ? 'timed' : du?.kind === SpellDurationKind.UNTIL_DISPELLED ? 'until_dispelled' : 'instant';
+  d.duration =
+    du?.kind === SpellDurationKind.TIMED
+      ? 'timed'
+      : du?.kind === SpellDurationKind.UNTIL_DISPELLED
+        ? 'until_dispelled'
+        : 'instant';
   d.durationAmount = du?.amount || 1;
-  d.durationUnit = (Object.entries(DURATION_UNIT).find(([, u]) => u === du?.unit)?.[0] ?? 'minute') as SpellDraft['durationUnit'];
+  d.durationUnit = (Object.entries(DURATION_UNIT).find(([, u]) => u === du?.unit)?.[0] ??
+    'minute') as SpellDraft['durationUnit'];
   d.upTo = du?.upTo ?? false;
   d.verbal = s.components?.verbal ?? false;
   d.somatic = s.components?.somatic ?? false;
@@ -285,7 +303,8 @@ export function spellToDraft(s: TableSpell): SpellDraft {
   }
   d.count = t?.count || 2;
   d.perSlot = t?.perSlotLevel ?? 0;
-  d.shape = (Object.entries(SHAPE_TO_ENUM).find(([, e]) => e === t?.shape)?.[0] ?? 'cone') as SpellDraft['shape'];
+  d.shape = (Object.entries(SHAPE_TO_ENUM).find(([, e]) => e === t?.shape)?.[0] ??
+    'cone') as SpellDraft['shape'];
   d.sizeM = rangeMeters(t?.sizeFt ?? 0);
   if (s.attack) {
     d.mechanic = 'attack';
@@ -302,7 +321,12 @@ export function spellToDraft(s: TableSpell): SpellDraft {
     d.dice = first.dice;
     d.damageType = first.damageTypeKey;
     d.more = s.level === 0 ? first.perTier : first.perSlotLevel;
-    d.otherDamage = rest.map((r) => ({ damageTypeKey: r.damageTypeKey, dice: r.dice, perSlotLevel: r.perSlotLevel, perTier: r.perTier }));
+    d.otherDamage = rest.map((r) => ({
+      damageTypeKey: r.damageTypeKey,
+      dice: r.dice,
+      perSlotLevel: r.perSlotLevel,
+      perTier: r.perTier,
+    }));
   }
   if (s.heal) {
     d.healDice = s.heal.dice;
@@ -365,7 +389,12 @@ export function draftToSpell(d: SpellDraft): SpellInit {
         ? { kind: SpellDurationKind.INSTANTANEOUS }
         : d.duration === 'until_dispelled'
           ? { kind: SpellDurationKind.UNTIL_DISPELLED }
-          : { kind: SpellDurationKind.TIMED, amount: d.durationAmount, unit: DURATION_UNIT[d.durationUnit], upTo: d.upTo || d.concentration },
+          : {
+              kind: SpellDurationKind.TIMED,
+              amount: d.durationAmount,
+              unit: DURATION_UNIT[d.durationUnit],
+              upTo: d.upTo || d.concentration,
+            },
     components: {
       verbal: d.verbal,
       somatic: d.somatic,
@@ -383,7 +412,10 @@ export function draftToSpell(d: SpellDraft): SpellInit {
   if (d.mechanic === 'attack') {
     body.attack = d.attack;
   } else if (d.mechanic === 'save') {
-    body.save = { ability: d.saveAbility, onSuccess: d.saveOnSuccess === 'none' ? SpellSaveSuccess.NONE : SpellSaveSuccess.HALF };
+    body.save = {
+      ability: d.saveAbility,
+      onSuccess: d.saveOnSuccess === 'none' ? SpellSaveSuccess.NONE : SpellSaveSuccess.HALF,
+    };
   } else if (d.mechanic === 'heal') {
     body.heal = {
       dice: d.healDice.trim(),
@@ -419,7 +451,9 @@ export function targetText(d: SpellDraft): string {
     case 'creature':
       return d.perSlot > 0 ? `Uma criatura, mais ${d.perSlot} por nível de espaço` : 'Uma criatura';
     case 'creatures':
-      return d.perSlot > 0 ? `${d.count} criaturas, mais ${d.perSlot} por nível de espaço` : `${d.count} criaturas`;
+      return d.perSlot > 0
+        ? `${d.count} criaturas, mais ${d.perSlot} por nível de espaço`
+        : `${d.count} criaturas`;
     case 'self':
       return 'Só quem conjura';
     case 'area': {
@@ -447,14 +481,23 @@ export function damageText(d: SpellDraft, nameOf: NameOf = keyName): string {
     return '';
   }
   const type = nameOf(d.damageType);
-  const more = d.more.trim() ? (d.level === 0 ? `, +${d.more.trim().replace(/^\+/, '')} por degrau do truque` : `, +${d.more.trim().replace(/^\+/, '')} por nível acima do ${d.level}º`) : '';
+  const more = d.more.trim()
+    ? d.level === 0
+      ? `, +${d.more.trim().replace(/^\+/, '')} por degrau do truque`
+      : `, +${d.more.trim().replace(/^\+/, '')} por nível acima do ${d.level}º`
+    : '';
   return `${d.dice.trim()}${type ? ` ${type}` : ''}${more}`;
 }
 
 /** What a player reads of the spell, written as the app writes an SRD spell (the shared formatters of the "?"). */
 export function previewRows(d: SpellDraft, nameOf: NameOf = keyName): PreviewRow[] {
   const rows: PreviewRow[] = [];
-  const time = formatCastingTime({ amount: d.time === 'minute' || d.time === 'hour' ? d.timeAmount : 1, unit: d.time, trigger: '', raw: '' });
+  const time = formatCastingTime({
+    amount: d.time === 'minute' || d.time === 'hour' ? d.timeAmount : 1,
+    unit: d.time,
+    trigger: '',
+    raw: '',
+  });
   rows.push({ label: 'Tempo', value: time.text || '—' });
   const range = formatRange({
     kind: d.range,
@@ -463,10 +506,24 @@ export function previewRows(d: SpellDraft, nameOf: NameOf = keyName): PreviewRow
   } satisfies SpellDetailsVm['range']);
   rows.push({ label: 'Alcance', value: range.text || '—' });
   rows.push({ label: 'Alvo', value: targetText(d) });
-  const comps = formatComponents({ verbal: d.verbal, somatic: d.somatic, material: d.material, materialText: '' });
-  rows.push({ label: 'Componentes', value: d.material && d.materialPt.trim() ? `${comps.text} (${d.materialPt.trim()})` : comps.text });
+  const comps = formatComponents({
+    verbal: d.verbal,
+    somatic: d.somatic,
+    material: d.material,
+    materialText: '',
+  });
+  rows.push({
+    label: 'Componentes',
+    value:
+      d.material && d.materialPt.trim() ? `${comps.text} (${d.materialPt.trim()})` : comps.text,
+  });
   const duration = formatDuration({
-    kind: d.duration === 'instant' ? 'instantaneous' : d.duration === 'timed' ? 'timed' : 'until_dispelled',
+    kind:
+      d.duration === 'instant'
+        ? 'instantaneous'
+        : d.duration === 'timed'
+          ? 'timed'
+          : 'until_dispelled',
     amount: d.durationAmount,
     unit: d.durationUnit,
     upTo: d.upTo,
@@ -475,10 +532,16 @@ export function previewRows(d: SpellDraft, nameOf: NameOf = keyName): PreviewRow
   });
   rows.push({ label: 'Duração', value: duration.text || '—' });
   if (d.mechanic === 'attack') {
-    rows.push({ label: 'Ataque', value: d.attack === 'melee' ? 'Ataque de magia corpo a corpo' : 'Ataque de magia à distância' });
+    rows.push({
+      label: 'Ataque',
+      value: d.attack === 'melee' ? 'Ataque de magia corpo a corpo' : 'Ataque de magia à distância',
+    });
   } else if (d.mechanic === 'save') {
     const ab = nameOf(`ability:${d.saveAbility}`);
-    rows.push({ label: 'Teste de resistência', value: `${ab}, ${d.saveOnSuccess === 'half' ? 'metade do dano ao passar' : 'nada ao passar'}` });
+    rows.push({
+      label: 'Teste de resistência',
+      value: `${ab}, ${d.saveOnSuccess === 'half' ? 'metade do dano ao passar' : 'nada ao passar'}`,
+    });
   }
   if (d.mechanic === 'attack' || d.mechanic === 'save') {
     const dmg = damageText(d, nameOf);
@@ -487,8 +550,13 @@ export function previewRows(d: SpellDraft, nameOf: NameOf = keyName): PreviewRow
     }
   }
   if (d.mechanic === 'heal' && d.healDice.trim()) {
-    const more = d.healMore.trim() ? `, +${d.healMore.trim().replace(/^\+/, '')} por nível de espaço` : '';
-    rows.push({ label: 'Cura', value: `${d.healDice.trim()}${d.healModifier ? ' + modificador' : ''}${more}` });
+    const more = d.healMore.trim()
+      ? `, +${d.healMore.trim().replace(/^\+/, '')} por nível de espaço`
+      : '';
+    rows.push({
+      label: 'Cura',
+      value: `${d.healDice.trim()}${d.healModifier ? ' + modificador' : ''}${more}`,
+    });
   }
   return rows;
 }
@@ -498,9 +566,21 @@ export function previewRows(d: SpellDraft, nameOf: NameOf = keyName): PreviewRow
 export function spellFieldPaths(d: SpellDraft): Set<string> {
   const p = 'table_spell';
   const set = new Set<string>([
-    `${p}.name_pt`, `${p}.level`, `${p}.school_key`, `${p}.casting_time.unit`, `${p}.range.kind`, `${p}.duration.kind`,
-    `${p}.components.verbal`, `${p}.components.somatic`, `${p}.components.material`,
-    `${p}.concentration`, `${p}.ritual`, `${p}.class_keys`, `${p}.desc_pt`, `${p}.higher_level_pt`, `${p}.target.kind`,
+    `${p}.name_pt`,
+    `${p}.level`,
+    `${p}.school_key`,
+    `${p}.casting_time.unit`,
+    `${p}.range.kind`,
+    `${p}.duration.kind`,
+    `${p}.components.verbal`,
+    `${p}.components.somatic`,
+    `${p}.components.material`,
+    `${p}.concentration`,
+    `${p}.ritual`,
+    `${p}.class_keys`,
+    `${p}.desc_pt`,
+    `${p}.higher_level_pt`,
+    `${p}.target.kind`,
   ]);
   const add = (...paths: string[]) => paths.forEach((x) => set.add(`${p}.${x}`));
   if (d.time === 'minute' || d.time === 'hour') add('casting_time.amount');
@@ -514,7 +594,11 @@ export function spellFieldPaths(d: SpellDraft): Set<string> {
   if (d.mechanic === 'attack') add('attack');
   if (d.mechanic === 'save') add('save.ability', 'save.on_success');
   if (d.mechanic === 'attack' || d.mechanic === 'save') {
-    add('damage[0].dice', 'damage[0].damage_type_key', d.level === 0 ? 'damage[0].per_tier' : 'damage[0].per_slot_level');
+    add(
+      'damage[0].dice',
+      'damage[0].damage_type_key',
+      d.level === 0 ? 'damage[0].per_tier' : 'damage[0].per_slot_level',
+    );
   }
   if (d.mechanic === 'heal') add('heal.dice', 'heal.per_slot_level', 'heal.adds_modifier');
   return set;

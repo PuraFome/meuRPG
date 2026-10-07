@@ -47,25 +47,47 @@ export class ImageGenClient {
   }
 
   /** `GenerateSceneImage`: the scene art from the text alone. Answers at once with a PENDING request. */
-  async generateScene(campaignId: string, request: SceneRequest, signal?: AbortSignal): Promise<Started> {
+  async generateScene(
+    campaignId: string,
+    request: SceneRequest,
+    signal?: AbortSignal,
+  ): Promise<Started> {
     const res = await this.client.generateSceneImage({ campaignId, ...request }, { signal });
     return started(res.generation, res.status);
   }
 
   /** `GenerateMapImage`: the scene art, the isometric view or the textured map of a map. */
-  async generateMap(campaignId: string, request: MapRequest, signal?: AbortSignal): Promise<Started> {
+  async generateMap(
+    campaignId: string,
+    request: MapRequest,
+    signal?: AbortSignal,
+  ): Promise<Started> {
     const res = await this.client.generateMapImage({ campaignId, ...request }, { signal });
     return started(res.generation, res.status);
   }
 
   /** `EditGeneratedImage`: "Pedir o ajuste". A new request that costs one slot. */
-  async edit(campaignId: string, imageId: string, instruction: string, idempotencyKey: string, signal?: AbortSignal): Promise<Started> {
-    const res = await this.client.editGeneratedImage({ campaignId, imageId, instruction, idempotencyKey }, { signal });
+  async edit(
+    campaignId: string,
+    imageId: string,
+    instruction: string,
+    idempotencyKey: string,
+    signal?: AbortSignal,
+  ): Promise<Started> {
+    const res = await this.client.editGeneratedImage(
+      { campaignId, imageId, instruction, idempotencyKey },
+      { signal },
+    );
     return started(res.generation, res.status);
   }
 
   /** `GetImageGeneration` with `wait_seconds`: a long poll that answers when the state changes (0 to 25 seconds). */
-  poll(campaignId: string, generationId: string, waitSeconds: number, signal?: AbortSignal): Promise<GetImageGenerationResponse> {
+  poll(
+    campaignId: string,
+    generationId: string,
+    waitSeconds: number,
+    signal?: AbortSignal,
+  ): Promise<GetImageGenerationResponse> {
     return this.client.getImageGeneration({ campaignId, generationId, waitSeconds }, { signal });
   }
 
@@ -81,7 +103,12 @@ export class ImageGenClient {
   }
 
   /** `GetMapImageReference`: what a request made from a map would send, and the NPCs the players see. Uses no slot. */
-  reference(campaignId: string, mapId: string, kind: ImageGenerationKind, signal?: AbortSignal): Promise<GetMapImageReferenceResponse> {
+  reference(
+    campaignId: string,
+    mapId: string,
+    kind: ImageGenerationKind,
+    signal?: AbortSignal,
+  ): Promise<GetMapImageReferenceResponse> {
     return this.client.getMapImageReference({ campaignId, mapId, kind }, { signal });
   }
 
@@ -95,10 +122,12 @@ export class ImageGenClient {
   }
 }
 
-function started(generation: ImageGeneration | undefined, status: ImageGenerationStatus | undefined): Started {
+function started(
+  generation: ImageGeneration | undefined,
+  status: ImageGenerationStatus | undefined,
+): Started {
   if (!generation) {
     throw new Error('The image service answered without the request');
   }
   return { generation, status };
 }
-

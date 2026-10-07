@@ -23,7 +23,9 @@ describe('deleteMapConsequences (E6-27)', () => {
   });
 
   it('leaves the list out of an empty map', () => {
-    expect(deleteMapConsequences(0, 0, null)).toBe('A imagem continua na galeria. Não dá para desfazer.');
+    expect(deleteMapConsequences(0, 0, null)).toBe(
+      'A imagem continua na galeria. Não dá para desfazer.',
+    );
   });
 
   it("warns when it is the open session's map", () => {

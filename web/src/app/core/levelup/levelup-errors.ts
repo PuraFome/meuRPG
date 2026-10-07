@@ -18,7 +18,11 @@ export function refusalStep(reason: LevelUpRefusalReason, field = ''): StepKey |
     case LevelUpRefusalReason.ARCHIVED_CHOICE:
     case LevelUpRefusalReason.SWITCHED_OFF_CHOICE:
       // A retired option sits in the step of the field it is chosen in.
-      return /class|feature_choice/.test(field) ? 'picks' : /spell|cantrip/.test(field) ? 'spells' : null;
+      return /class|feature_choice/.test(field)
+        ? 'picks'
+        : /spell|cantrip/.test(field)
+          ? 'spells'
+          : null;
     case LevelUpRefusalReason.ABILITY_NOT_DUE:
     case LevelUpRefusalReason.ABILITY_SHAPE:
     case LevelUpRefusalReason.ABILITY_ABOVE_20:
@@ -119,7 +123,11 @@ export type LevelUpFailure =
   /** The rules refused the choices, with the step to go to. */
   | { readonly kind: 'refusal'; readonly message: string; readonly step: StepKey | null }
   /** The character cannot level up (any more): no choice fixes it. */
-  | { readonly kind: 'blocked'; readonly message: string; readonly reason: CharacterBlockedReason | undefined }
+  | {
+      readonly kind: 'blocked';
+      readonly message: string;
+      readonly reason: CharacterBlockedReason | undefined;
+    }
   | { readonly kind: 'other'; readonly message: string };
 
 /**
@@ -133,13 +141,18 @@ export function describeLevelUpFailure(err: unknown): LevelUpFailure {
   if (e.code === Code.Aborted) {
     return {
       kind: 'stale',
-      message: 'A ficha mudou enquanto você escolhia: o mestre mexeu nela ou entrou XP. Leia a ficha de novo e confirme.',
+      message:
+        'A ficha mudou enquanto você escolhia: o mestre mexeu nela ou entrou XP. Leia a ficha de novo e confirme.',
     };
   }
   if (e.code === Code.FailedPrecondition) {
     const [refusal] = e.findDetails(LevelUpRefusalSchema);
     if (refusal) {
-      return { kind: 'refusal', message: refusalMessage(refusal), step: refusalStep(refusal.reason, refusal.field) };
+      return {
+        kind: 'refusal',
+        message: refusalMessage(refusal),
+        step: refusalStep(refusal.reason, refusal.field),
+      };
     }
     const [blocked] = e.findDetails(CharacterBlockedSchema);
     return { kind: 'blocked', message: blockedMessage(blocked?.reason), reason: blocked?.reason };
@@ -147,7 +160,8 @@ export function describeLevelUpFailure(err: unknown): LevelUpFailure {
   return {
     kind: 'other',
     message: describeConnectError(e, {
-      [Code.PermissionDenied]: 'Só o jogador dono do personagem sobe o nível. O mestre edita a ficha.',
+      [Code.PermissionDenied]:
+        'Só o jogador dono do personagem sobe o nível. O mestre edita a ficha.',
       [Code.NotFound]: 'Esse personagem não existe, ou você não pode vê-lo.',
       [Code.InvalidArgument]: 'Alguma escolha não vale. Confira cada passo.',
     }),
@@ -158,7 +172,12 @@ export function describeLevelUpFailure(err: unknown): LevelUpFailure {
  * Why a character cannot level up now, in words that say what is missing: a milestone the master has not marked, or
  * the XP still to come, from the sheet's own numbers (the campaign's mode is known). A character at level 20 is done.
  */
-export function cannotLevelUpMessage(mode: XpMode, xp: number, nextLevelXp: number, level: number): string {
+export function cannotLevelUpMessage(
+  mode: XpMode,
+  xp: number,
+  nextLevelXp: number,
+  level: number,
+): string {
   if (level >= 20) {
     return 'Este personagem já está no nível máximo.';
   }
@@ -166,7 +185,9 @@ export function cannotLevelUpMessage(mode: XpMode, xp: number, nextLevelXp: numb
     return 'Falta o mestre marcar um marco para este personagem. Quando ele marcar, o botão aparece na ficha.';
   }
   if (nextLevelXp > xp) {
-    return tight(`Faltam ${formatInt(nextLevelXp - xp)} XP para o nível ${level + 1} (${formatInt(nextLevelXp)} XP). Quando o XP chegar, o botão aparece na ficha.`);
+    return tight(
+      `Faltam ${formatInt(nextLevelXp - xp)} XP para o nível ${level + 1} (${formatInt(nextLevelXp)} XP). Quando o XP chegar, o botão aparece na ficha.`,
+    );
   }
   return blockedMessage(CharacterBlockedReason.CANNOT_LEVEL_UP);
 }

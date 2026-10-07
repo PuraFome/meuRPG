@@ -14,7 +14,11 @@ export function characterRowSub(c: CampaignCharacterListItemVm, isMaster: boolea
   }
   if (isMaster && c.kind === 'player') {
     // No-break spaces: the line never ends on an orphan word ("Mago 4, de um jogador sem" / "nome").
-    parts.push(c.playerDisplayName ? `de ${c.playerDisplayName}`.replace(/ /g, '\u00a0') : 'de\u00a0um\u00a0jogador\u00a0sem\u00a0nome');
+    parts.push(
+      c.playerDisplayName
+        ? `de ${c.playerDisplayName}`.replace(/ /g, '\u00a0')
+        : 'de\u00a0um\u00a0jogador\u00a0sem\u00a0nome',
+    );
   }
   return parts.join(', ');
 }

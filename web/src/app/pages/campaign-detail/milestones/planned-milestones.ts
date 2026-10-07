@@ -87,7 +87,12 @@ export class PlannedMilestones {
 
   protected async add(text: string): Promise<void> {
     // A retry of the same milestone (a lost answer, a second tap) sends the same key and adds it once.
-    if (!(await this.run(() => this.api.addMilestone(this.campaignId(), text, this.addKey.keyFor(text)), 'adicionar o marco'))) {
+    if (
+      !(await this.run(
+        () => this.api.addMilestone(this.campaignId(), text, this.addKey.keyFor(text)),
+        'adicionar o marco',
+      ))
+    ) {
       return;
     }
     this.addKey.renew();
@@ -112,7 +117,12 @@ export class PlannedMilestones {
       this.closeEdit(m.id);
       return;
     }
-    if (!(await this.run(() => this.api.updateMilestone(this.campaignId(), m.id, text), 'salvar o marco'))) {
+    if (
+      !(await this.run(
+        () => this.api.updateMilestone(this.campaignId(), m.id, text),
+        'salvar o marco',
+      ))
+    ) {
       return;
     }
     this.editing.set(null);
@@ -134,7 +144,9 @@ export class PlannedMilestones {
   protected async remove(m: Milestone): Promise<void> {
     const list = this.milestones();
     const at = list.findIndex((x) => x.id === m.id);
-    if (!(await this.run(() => this.api.removeMilestone(this.campaignId(), m.id), 'remover o marco'))) {
+    if (
+      !(await this.run(() => this.api.removeMilestone(this.campaignId(), m.id), 'remover o marco'))
+    ) {
       return;
     }
     this.removing.set(null);
@@ -149,7 +161,12 @@ export class PlannedMilestones {
       return; // already first or last: nothing to do
     }
     const act = direction === 'up' ? 'up' : 'down';
-    if (await this.run(() => this.api.moveMilestone(this.campaignId(), m.id, direction), 'mudar a ordem')) {
+    if (
+      await this.run(
+        () => this.api.moveMilestone(this.campaignId(), m.id, direction),
+        'mudar a ordem',
+      )
+    ) {
       this.notice.set(`${m.text} foi ${direction === 'up' ? 'para cima' : 'para baixo'}.`);
       this.focus(`[data-id="${m.id}"][data-act="${act}"]`);
     }
@@ -157,7 +174,10 @@ export class PlannedMilestones {
 
   /** Runs a change that answers with the whole list and adopts it. False, with
    * `error` set, when it failed. */
-  private async run(call: () => Promise<{ milestones: readonly Milestone[] }>, what: string): Promise<boolean> {
+  private async run(
+    call: () => Promise<{ milestones: readonly Milestone[] }>,
+    what: string,
+  ): Promise<boolean> {
     if (this.busy()) {
       return false;
     }
@@ -187,6 +207,8 @@ export class PlannedMilestones {
 
   /** Focus on the first match once the screen has drawn what it will show. */
   private focus(selector: string): void {
-    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>(selector)?.focus(), { injector: this.injector });
+    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>(selector)?.focus(), {
+      injector: this.injector,
+    });
   }
 }

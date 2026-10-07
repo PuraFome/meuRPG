@@ -32,9 +32,17 @@ import { MapsClient } from '../../core/maps/maps-client';
 import { RosterClient, type RosterEntry } from '../../core/maps/roster-client';
 import { OpenSessionLookup } from '../../core/play/open-session';
 import { mapMessage } from '../../core/maps/maps-testing';
-import { type GenerateOutcome, type ImageGenerateData, ImageGenerateDialog } from './image-generate-dialog';
+import {
+  type GenerateOutcome,
+  type ImageGenerateData,
+  ImageGenerateDialog,
+} from './image-generate-dialog';
 
-const plain = (t: string | null | undefined) => (t ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+const plain = (t: string | null | undefined) =>
+  (t ?? '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 const flush = async () => {
   for (let i = 0; i < 6; i++) {
     await new Promise((r) => setTimeout(r));
@@ -61,7 +69,13 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
   let roster: RosterEntry[];
   let mapTokens: { characterId: string }[];
 
-  const mapOrigin: ImageGenerateData['origin'] = { kind: 'map', mapId: 'map-1', name: 'Masmorra de Mirathel', hasGrid: true, revealed: true };
+  const mapOrigin: ImageGenerateData['origin'] = {
+    kind: 'map',
+    mapId: 'map-1',
+    name: 'Masmorra de Mirathel',
+    hasGrid: true,
+    revealed: true,
+  };
 
   async function setup(data: Partial<ImageGenerateData> = {}) {
     closed = [];
@@ -72,11 +86,24 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       providers: [
         { provide: ImageGenClient, useValue: api },
         { provide: ShownImageClient, useValue: shown },
-        { provide: OpenSessionLookup, useValue: { currentMap: async () => (sessionOpen ? { sessionNumber: 7, mapId: '' } : null) } },
+        {
+          provide: OpenSessionLookup,
+          useValue: {
+            currentMap: async () => (sessionOpen ? { sessionNumber: 7, mapId: '' } : null),
+          },
+        },
         { provide: RosterClient, useValue: { list: async () => roster } },
         { provide: MapsClient, useValue: { get: async () => ({ tokens: mapTokens }) } },
         { provide: MAT_DIALOG_DATA, useValue: dialogData },
-        { provide: MatDialogRef, useValue: { close: (r: GenerateOutcome) => closed.push(r), keydownEvents: () => escape, backdropClick: () => new Subject(), disableClose: false } },
+        {
+          provide: MatDialogRef,
+          useValue: {
+            close: (r: GenerateOutcome) => closed.push(r),
+            keydownEvents: () => escape,
+            backdropClick: () => new Subject(),
+            disableClose: false,
+          },
+        },
       ],
     });
     const fixture = TestBed.createComponent(ImageGenerateDialog);
@@ -101,13 +128,19 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       async press(text: string) {
         const b = button(text);
         if (!b) {
-          throw new Error(`no button "${text}" in: ${buttons().map((x) => plain(x.textContent)).join(' | ')}`);
+          throw new Error(
+            `no button "${text}" in: ${buttons()
+              .map((x) => plain(x.textContent))
+              .join(' | ')}`,
+          );
         }
         b.click();
         await settle(fixture);
       },
       async type(label: string, value: string) {
-        const area = Array.from(el.querySelectorAll('mat-form-field')).find((f) => plain(f.querySelector('mat-label')?.textContent) === label)?.querySelector('textarea');
+        const area = Array.from(el.querySelectorAll('mat-form-field'))
+          .find((f) => plain(f.querySelector('mat-label')?.textContent) === label)
+          ?.querySelector('textarea');
         if (!area) {
           throw new Error(`no field "${label}"`);
         }
@@ -115,7 +148,10 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
         area.dispatchEvent(new Event('input'));
         await settle(fixture);
       },
-      radio: (name: string) => Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]')).find((r) => plain(r.textContent).includes(name)),
+      radio: (name: string) =>
+        Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]')).find((r) =>
+          plain(r.textContent).includes(name),
+        ),
       text: () => plain(el.textContent),
       title: () => plain(el.querySelector('h2')?.textContent),
       sub: () => plain(el.querySelector('.frame__sub')?.textContent),
@@ -143,13 +179,17 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       const { ui: u } = await setup();
       expect(u.title()).toBe('Gerar imagem');
       expect(u.sub()).toBe('Masmorra de Mirathel');
-      expect(['Arte da cena', 'Vista isométrica', 'O mapa com textura'].map((n) => u.radio(n)?.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false']);
+      expect(
+        ['Arte da cena', 'Vista isométrica', 'O mapa com textura'].map((n) =>
+          u.radio(n)?.getAttribute('aria-checked'),
+        ),
+      ).toEqual(['true', 'false', 'false']);
       expect(u.text()).toContain('O que vai junto');
       expect(u.text()).toContain('A imagem parte do que os jogadores veem agora.');
       expect(u.text()).toContain('Quem aparece na imagem');
       expect(u.text()).toContain('0 de 3 marcados');
       expect(u.text()).toContain('Capitão Goblin');
-      expect(u.text()).toContain('Uma criatura que eles não veem não está na lista'.toLowerCase().replace('uma', 'uma'));
+      expect(u.text()).toContain('uma criatura que eles não veem não está na lista');
       expect(u.text()).toContain('Referências da galeria');
       expect(u.text()).toContain('Objetos: 0 de 10 · Personagens: 0 de 4.');
       expect(u.text()).toContain('Descreva o lugar');
@@ -161,23 +201,33 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
 
     it('says under every field what goes to Google: the text and references, the style, the ratio and the references', async () => {
       const { ui: u } = await setup();
-      expect(u.text()).toContain('vão para o Google (API do Gemini) para gerar a imagem. Não escreva nomes de pessoas.');
+      expect(u.text()).toContain(
+        'vão para o Google (API do Gemini) para gerar a imagem. Não escreva nomes de pessoas.',
+      );
       expect(u.text()).toContain('O estilo vai ao Google como uma palavra');
       expect(u.text()).toContain('A proporção vai ao Google');
-      expect(u.text()).toContain('As imagens escolhidas vão ao Google como referência. Não use foto de pessoa.');
+      expect(u.text()).toContain(
+        'As imagens escolhidas vão ao Google como referência. Não use foto de pessoa.',
+      );
     });
 
-    it('draws the server\'s drawing of the players\' view, and asked for it for the scene art and for the textured map', async () => {
+    it("draws the server's drawing of the players' view, and asked for it for the scene art and for the textured map", async () => {
       const { el } = await setup();
-      expect(el.querySelector('img.along__shot')?.getAttribute('src')).toMatch(/^data:image\/png;base64,/);
-      expect(api.referenced.sort()).toEqual([ImageGenerationKind.MAP_SCENE, ImageGenerationKind.TEXTURED_MAP].sort());
+      expect(el.querySelector('img.along__shot')?.getAttribute('src')).toMatch(
+        /^data:image\/png;base64,/,
+      );
+      expect(api.referenced.sort()).toEqual(
+        [ImageGenerationKind.MAP_SCENE, ImageGenerationKind.TEXTURED_MAP].sort(),
+      );
     });
 
     it('keeps "Gerar imagem" dashed (aria-disabled, with the reason beside it) until there is text', async () => {
       const { ui: u } = await setup();
       const generate = u.button('Gerar imagem')!;
       expect(generate.getAttribute('aria-disabled')).toBe('true');
-      expect(plain(document.getElementById(generate.getAttribute('aria-describedby')!)?.textContent)).toBe('Escreva o que a imagem mostra para gerar.');
+      expect(
+        plain(document.getElementById(generate.getAttribute('aria-describedby')!)?.textContent),
+      ).toBe('Escreva o que a imagem mostra para gerar.');
       generate.click();
       await flush();
       expect(api.asks).toEqual([]);
@@ -185,7 +235,7 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       expect(u.button('Gerar imagem')!.getAttribute('aria-disabled')).not.toBe('true');
     });
 
-    it('counts the text against the server\'s limit', async () => {
+    it("counts the text against the server's limit", async () => {
       const { ui: u } = await setup();
       await u.type('Descreva o lugar', 'Uma cripta úmida, tochas apagadas');
       expect(u.text()).toContain('33 de 500 caracteres');
@@ -204,8 +254,11 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       expect(u.text()).toContain('ajustado à grade de 31 × 21 quadrados');
     });
 
-    it('the textured map is dashed, with the reason, when the map\'s image is over 16 megapixels (`texture_too_large`)', async () => {
-      api.references.set(ImageGenerationKind.TEXTURED_MAP, reference({ textureTooLarge: true, maxTexturePixels: 16000000n }));
+    it("the textured map is dashed, with the reason, when the map's image is over 16 megapixels (`texture_too_large`)", async () => {
+      api.references.set(
+        ImageGenerationKind.TEXTURED_MAP,
+        reference({ textureTooLarge: true, maxTexturePixels: 16000000n }),
+      );
       const { ui: u } = await setup();
       const texture = u.radio('O mapa com textura')!;
       expect(texture.getAttribute('aria-disabled')).toBe('true');
@@ -215,11 +268,19 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       expect(u.text()).toContain('A imagem deste mapa tem mais de 16 megapixels');
     });
 
-    it('from a scene (no map) only the scene art is on, the others are dashed with the reason, and the text starts with the scene\'s name', async () => {
-      const { ui: u, el } = await setup({ origin: { kind: 'scene', name: 'Taverna do Corvo Branco' } });
+    it("from a scene (no map) only the scene art is on, the others are dashed with the reason, and the text starts with the scene's name", async () => {
+      const { ui: u, el } = await setup({
+        origin: { kind: 'scene', name: 'Taverna do Corvo Branco' },
+      });
       expect(u.sub()).toBe('Cena: Taverna do Corvo Branco');
-      expect(['Vista isométrica', 'O mapa com textura'].map((n) => u.radio(n)?.getAttribute('aria-disabled'))).toEqual(['true', 'true']);
-      expect(u.text()).toContain('As outras duas precisam de um mapa com grade. Abra o diálogo a partir de um mapa para usá\u2011las.');
+      expect(
+        ['Vista isométrica', 'O mapa com textura'].map((n) =>
+          u.radio(n)?.getAttribute('aria-disabled'),
+        ),
+      ).toEqual(['true', 'true']);
+      expect(u.text()).toContain(
+        'As outras duas precisam de um mapa com grade. Abra o diálogo a partir de um mapa para usá\u2011las.',
+      );
       expect(u.text()).toContain('Descreva a cena');
       expect(el.querySelector('textarea')?.value).toBe('Taverna do Corvo Branco');
       expect(u.text()).not.toContain('Quem aparece na imagem');
@@ -235,20 +296,27 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
     it('arrow keys move to the next way that can be chosen, skipping the dashed one', async () => {
       api.references.set(ImageGenerationKind.TEXTURED_MAP, reference({ textureTooLarge: true }));
       const { ui: u, el } = await setup();
-      el.querySelector('[role="radiogroup"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      el.querySelector('[role="radiogroup"]')!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }),
+      );
       await flush();
       expect(u.radio('Vista isométrica')!.getAttribute('aria-checked')).toBe('true');
-      el.querySelector('[role="radiogroup"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      el.querySelector('[role="radiogroup"]')!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }),
+      );
       await flush();
       // The textured map is dashed: it wraps to the scene art.
       expect(u.radio('Arte da cena')!.getAttribute('aria-checked')).toBe('true');
     });
   });
 
-  describe('the players\' view', () => {
+  describe("the players' view", () => {
     it('lists only the NPCs the players see, marks them, and counts the portraits that go as references', async () => {
       const { ui: u } = await setup();
-      const chip = (name: string) => Array.from(document.querySelectorAll<HTMLElement>('[role="checkbox"]')).find((c) => plain(c.textContent).includes(name))!;
+      const chip = (name: string) =>
+        Array.from(document.querySelectorAll<HTMLElement>('[role="checkbox"]')).find((c) =>
+          plain(c.textContent).includes(name),
+        )!;
       chip('Capitão Goblin').click();
       await flush();
       chip('Goblin 1').click();
@@ -337,7 +405,12 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       await ask(u);
       expect(api.asks[0]).toMatchObject({
         via: 'map',
-        request: { kind: ImageGenerationKind.TEXTURED_MAP, npcCharacterIds: [], characterImageIds: [], aspectRatio: ImageAspectRatio.IMAGE_ASPECT_RATIO_UNSPECIFIED },
+        request: {
+          kind: ImageGenerationKind.TEXTURED_MAP,
+          npcCharacterIds: [],
+          characterImageIds: [],
+          aspectRatio: ImageAspectRatio.IMAGE_ASPECT_RATIO_UNSPECIFIED,
+        },
       });
     });
 
@@ -349,7 +422,10 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       select.dispatchEvent(new Event('change'));
       await flush();
       await u.press('Gerar imagem');
-      expect(api.asks[0]).toMatchObject({ via: 'scene', request: { prompt: 'Taverna', aspectRatio: ImageAspectRatio.IMAGE_ASPECT_RATIO_21_9 } });
+      expect(api.asks[0]).toMatchObject({
+        via: 'scene',
+        request: { prompt: 'Taverna', aspectRatio: ImageAspectRatio.IMAGE_ASPECT_RATIO_21_9 },
+      });
     });
 
     it('"Cancelar" before the request left gives the slot back: back to the form, the text kept, and a calm line says so', async () => {
@@ -368,13 +444,18 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
     it('"Parar de esperar" after it left: the slot stays spent and the line says the picture, if it comes, goes to the gallery', async () => {
       let release!: () => void;
       api.hold = new Promise<void>((r) => (release = r));
-      api.cancelResult = { generation: generation({ state: ImageGenerationState.CANCELED, slotSpent: true }), status: imageStatus({ remaining: 16 }) };
+      api.cancelResult = {
+        generation: generation({ state: ImageGenerationState.CANCELED, slotSpent: true }),
+        status: imageStatus({ remaining: 16 }),
+      };
       const { ui: u } = await setup();
       await ask(u);
       await u.press('Parar de esperar');
       release();
       await flush();
-      expect(u.text()).toContain('A vaga do mês continua gasta e a imagem, se chegar, vai para a galeria.');
+      expect(u.text()).toContain(
+        'A vaga do mês continua gasta e a imagem, se chegar, vai para a galeria.',
+      );
     });
 
     it('closing while the request is in the air asks first ("Parar de esperar a imagem?"); "Continuar esperando" goes on', async () => {
@@ -422,7 +503,10 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
     }
 
     it('the month\'s limit: says how many were used and when they come back, the count goes to 0 and "Gerar imagem" is dashed', async () => {
-      api.started = blocked(ImageGenerationBlockedReason.LIMIT_REACHED, imageStatus({ usedThisMonth: 20, remaining: 0 }));
+      api.started = blocked(
+        ImageGenerationBlockedReason.LIMIT_REACHED,
+        imageStatus({ usedThisMonth: 20, remaining: 0 }),
+      );
       const { ui: u } = await setup();
       await writeAndAsk(u);
       expect(u.alert()).toBe('Você usou as 20 imagens de outubro. Volta em 1º de novembro.');
@@ -433,12 +517,18 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
     it('a service that will not generate: the form returns with the words, the text kept and the slot said to be back', async () => {
       api.polls = [
         create(GetImageGenerationResponseSchema, {
-          generation: generation({ state: ImageGenerationState.FAILED, failure: ImageGenerationFailure.NO_IMAGE, slotSpent: false }),
+          generation: generation({
+            state: ImageGenerationState.FAILED,
+            failure: ImageGenerationFailure.NO_IMAGE,
+            slotSpent: false,
+          }),
         }),
       ];
       const { ui: u, el } = await setup();
       await writeAndAsk(u);
-      expect(u.alert()).toBe('O serviço não gerou esta imagem. Tente descrever a cena de outro jeito. Esta tentativa não gastou nenhuma imagem do mês.');
+      expect(u.alert()).toBe(
+        'O serviço não gerou esta imagem. Tente descrever a cena de outro jeito. Esta tentativa não gastou nenhuma imagem do mês.',
+      );
       expect(el.querySelector('textarea')?.value).toBe('Uma cripta');
     });
 
@@ -528,9 +618,16 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       expect(u.text()).toContain('gasta 1 das suas 16.');
       await u.type('Pedir um ajuste', 'mais escura, com uma ponte sobre o poço');
       api.polls = [done('img-2', 2)];
-      api.editsResult = [edit(galleryImage('img-1', 'Imagem 1'), 1, 'Uma cripta úmida'), edit(galleryImage('img-2', 'Imagem 2'), 2, 'mais escura, com uma ponte sobre o poço')];
+      api.editsResult = [
+        edit(galleryImage('img-1', 'Imagem 1'), 1, 'Uma cripta úmida'),
+        edit(galleryImage('img-2', 'Imagem 2'), 2, 'mais escura, com uma ponte sobre o poço'),
+      ];
       await u.press('Pedir o ajuste');
-      expect(api.asks.at(-1)).toEqual({ via: 'edit', imageId: 'img-1', instruction: 'mais escura, com uma ponte sobre o poço' });
+      expect(api.asks.at(-1)).toEqual({
+        via: 'edit',
+        imageId: 'img-1',
+        instruction: 'mais escura, com uma ponte sobre o poço',
+      });
       expect(u.title()).toBe('Imagem 2');
       expect(u.sub()).toContain('Ajuste');
       expect(u.text()).toContain('A cadeia de ajustes');
@@ -547,7 +644,15 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       const { ui: u, el } = await setup();
       await generate(u);
       await u.type('Pedir um ajuste', 'mais escura');
-      api.polls = [create(GetImageGenerationResponseSchema, { generation: generation({ state: ImageGenerationState.REFUSED, failure: ImageGenerationFailure.REFUSED, slotSpent: false }) })];
+      api.polls = [
+        create(GetImageGenerationResponseSchema, {
+          generation: generation({
+            state: ImageGenerationState.REFUSED,
+            failure: ImageGenerationFailure.REFUSED,
+            slotSpent: false,
+          }),
+        }),
+      ];
       await u.press('Pedir o ajuste');
       expect(u.title()).toBe('Imagem 1');
       expect(u.alert()).toContain('O serviço recusou este texto');
@@ -572,7 +677,9 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       await generate(u, 'O mapa com textura');
       await u.press('Usar como imagem do mapa');
       expect(u.text()).toContain('Usar como imagem do mapa?');
-      expect(u.text()).toContain('A grade, as camadas e o que os jogadores já viram continuam. Os jogadores veem a nova imagem.');
+      expect(u.text()).toContain(
+        'A grade, as camadas e o que os jogadores já viram continuam. Os jogadores veem a nova imagem.',
+      );
       // The adjustment's footer is out of the way while the question is open.
       expect(u.button('Pedir o ajuste')).toBeUndefined();
       expect(api.used).toEqual([]);
@@ -606,7 +713,10 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
 
   describe('opened on an older generated image (the gallery, E10-07 7)', () => {
     it('opens on its result with the chain and the adjustment, no form', async () => {
-      api.editsResult = [edit(galleryImage('img-1', 'Imagem 1'), 1, 'Uma cripta'), edit(galleryImage('img-2', 'Imagem 2', { generated: true }), 2, 'mais escura')];
+      api.editsResult = [
+        edit(galleryImage('img-1', 'Imagem 1'), 1, 'Uma cripta'),
+        edit(galleryImage('img-2', 'Imagem 2', { generated: true }), 2, 'mais escura'),
+      ];
       const image = galleryImage('img-2', 'Imagem 2', { generated: true, parentImageId: 'img-1' });
       const { ui: u } = await setup({ origin: { kind: 'gallery' }, image });
       expect(u.title()).toBe('Imagem 2');
@@ -630,11 +740,16 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       await ask(u);
       expect(u.button('Mostrar aos jogadores')).toBeUndefined();
       expect(u.button('Usar como imagem do mapa')).toBeDefined();
-      expect(u.text()).toContain('Mostra o mapa inteiro, também o que os jogadores ainda não descobriram.');
+      expect(u.text()).toContain(
+        'Mostra o mapa inteiro, também o que os jogadores ainda não descobriram.',
+      );
       // The edit of it is made at the map's size, says the same, and gets the grid too.
       await u.type('Pedir um ajuste', 'pedra mais clara');
       api.polls = [done('img-t2', 4, {}, { showsWholeMap: true })];
-      api.editsResult = [edit(galleryImage('img-t', 'a', { showsWholeMap: true }), 3), edit(galleryImage('img-t2', 'b', { showsWholeMap: true }), 4)];
+      api.editsResult = [
+        edit(galleryImage('img-t', 'a', { showsWholeMap: true }), 3),
+        edit(galleryImage('img-t2', 'b', { showsWholeMap: true }), 4),
+      ];
       await u.press('Pedir o ajuste');
       expect(u.title()).toBe('Imagem 4');
       expect(u.button('Mostrar aos jogadores')).toBeUndefined();
@@ -655,13 +770,21 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
     });
 
     it('from the gallery, showing a picture of the whole map asks first, in place, and shows only on the second press', async () => {
-      api.editsResult = [edit(galleryImage('img-t', 'Mapa', { generated: true, showsWholeMap: true }), 3, 'a caverna')];
+      api.editsResult = [
+        edit(
+          galleryImage('img-t', 'Mapa', { generated: true, showsWholeMap: true }),
+          3,
+          'a caverna',
+        ),
+      ];
       const image = galleryImage('img-t', 'Mapa', { generated: true, showsWholeMap: true });
       const { ui: u } = await setup({ origin: { kind: 'gallery' }, image });
       expect(u.button('Usar como imagem do mapa')).toBeUndefined();
       await u.press('Mostrar aos jogadores');
       expect(u.text()).toContain('Mostrar o mapa inteiro?');
-      expect(u.text()).toContain('Esta imagem mostra o mapa inteiro, também o que os jogadores ainda não descobriram.');
+      expect(u.text()).toContain(
+        'Esta imagem mostra o mapa inteiro, também o que os jogadores ainda não descobriram.',
+      );
       expect(shown.shown).toEqual([]);
       // The adjustment's button is out of the way while the question is open.
       expect(u.button('Pedir o ajuste')).toBeUndefined();
@@ -681,7 +804,9 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       await ask(u);
       const button = u.button('Mostrar aos jogadores')!;
       expect(button.getAttribute('aria-disabled')).toBe('true');
-      expect(plain(document.getElementById(button.getAttribute('aria-describedby')!)?.textContent)).toContain('Não há uma sessão aberta');
+      expect(
+        plain(document.getElementById(button.getAttribute('aria-describedby')!)?.textContent),
+      ).toContain('Não há uma sessão aberta');
       button.click();
       await flush();
       expect(shown.shown).toEqual([]);
@@ -702,13 +827,17 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       api.started = blocked(ImageGenerationBlockedReason.GALLERY_FULL);
       const { ui: u } = await setup();
       await ask(u);
-      const firstKey = (api.asks[0] as { request: { idempotencyKey: string } }).request.idempotencyKey;
+      const firstKey = (api.asks[0] as { request: { idempotencyKey: string } }).request
+        .idempotencyKey;
       await u.press('Gerar imagem');
-      const secondKey = (api.asks[1] as { request: { idempotencyKey: string } }).request.idempotencyKey;
+      const secondKey = (api.asks[1] as { request: { idempotencyKey: string } }).request
+        .idempotencyKey;
       expect(secondKey).not.toBe(firstKey);
       await u.type('Descreva o lugar', 'Outra cripta');
       await u.press('Gerar imagem');
-      expect((api.asks[2] as { request: { idempotencyKey: string } }).request.idempotencyKey).not.toBe(secondKey);
+      expect(
+        (api.asks[2] as { request: { idempotencyKey: string } }).request.idempotencyKey,
+      ).not.toBe(secondKey);
     });
 
     it('the same lost-answer try pressed again reuses its key', async () => {
@@ -716,7 +845,9 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       const { ui: u } = await setup();
       await ask(u);
       await u.press('Gerar imagem');
-      const keys = api.asks.map((a) => (a as { request: { idempotencyKey: string } }).request.idempotencyKey);
+      const keys = api.asks.map(
+        (a) => (a as { request: { idempotencyKey: string } }).request.idempotencyKey,
+      );
       expect(keys.length).toBe(4); // two asks per press: the app tries once more
       expect(new Set(keys).size).toBe(1);
     });
@@ -730,8 +861,13 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       escape.next(new KeyboardEvent('keydown', { key: 'Escape' }));
       await settle(fixture);
       const foot = el.querySelector('.frame__foot')!;
-      expect(Array.from(foot.querySelectorAll('button')).map((b) => plain(b.textContent))).toEqual(['Continuar esperando', 'Parar de esperar']);
-      const stops = Array.from(el.querySelectorAll('button')).filter((b) => plain(b.textContent) === 'Parar de esperar');
+      expect(Array.from(foot.querySelectorAll('button')).map((b) => plain(b.textContent))).toEqual([
+        'Continuar esperando',
+        'Parar de esperar',
+      ]);
+      const stops = Array.from(el.querySelectorAll('button')).filter(
+        (b) => plain(b.textContent) === 'Parar de esperar',
+      );
       expect(stops).toHaveLength(1);
       expect(el.querySelector('.ask__title')?.textContent).toContain('Parar de esperar a imagem?');
       // Esc again answers "Continuar esperando".
@@ -758,7 +894,10 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
 
     it('the picture is named: the form carries the name the master sees, and it follows the way until he writes one', async () => {
       const { ui: u, el } = await setup();
-      const name = () => (Array.from(el.querySelectorAll('mat-form-field')).find((f) => plain(f.querySelector('mat-label')?.textContent) === 'Nome da imagem')?.querySelector('input') as HTMLInputElement);
+      const name = () =>
+        Array.from(el.querySelectorAll('mat-form-field'))
+          .find((f) => plain(f.querySelector('mat-label')?.textContent) === 'Nome da imagem')
+          ?.querySelector('input') as HTMLInputElement;
       expect(name().value).toBe('Masmorra de Mirathel · arte da cena');
       await u.radio('Vista isométrica')!.click();
       await flush();
@@ -771,12 +910,22 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       api.polls = [done('img-1', 1)];
       expect(u.text()).toContain('Os jogadores leem este nome');
       await ask(u);
-      expect(api.asks[0]).toMatchObject({ via: 'map', request: { name: 'A cripta vista de cima' } });
+      expect(api.asks[0]).toMatchObject({
+        via: 'map',
+        request: { name: 'A cripta vista de cima' },
+      });
     });
 
-    it('from a revealed scene the name starts as the scene\'s; a hidden scene, a hidden map and the gallery start with the way and the day, never a secret name (RN-10)', async () => {
-      const nameOf = (el: HTMLElement) => (el.querySelector('mat-form-field input[matinput]:not(textarea)') as HTMLInputElement | null)?.value ?? '';
-      const scene = await setup({ origin: { kind: 'scene', name: 'Taverna do Corvo Branco', revealed: true } });
+    it("from a revealed scene the name starts as the scene's; a hidden scene, a hidden map and the gallery start with the way and the day, never a secret name (RN-10)", async () => {
+      const nameOf = (el: HTMLElement) =>
+        (
+          el.querySelector(
+            'mat-form-field input[matinput]:not(textarea)',
+          ) as HTMLInputElement | null
+        )?.value ?? '';
+      const scene = await setup({
+        origin: { kind: 'scene', name: 'Taverna do Corvo Branco', revealed: true },
+      });
       expect(nameOf(scene.el)).toBe('Taverna do Corvo Branco');
       const hiddenScene = await setup({ origin: { kind: 'scene', name: 'O covil secreto' } });
       expect(nameOf(hiddenScene.el)).toMatch(/^Arte da cena · \d\d\/\d\d$/);
@@ -817,26 +966,58 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
 
     it('the portraits of NPCs on the map that the players do not see are known, to leave them out of the reference picker', async () => {
       roster = [
-        { id: 'npc-capitao', name: 'Capitão Goblin', kind: 2, playerUserId: '', classSummary: '', raceName: '', playerName: null, portraitImageId: 'img-capitao' },
-        { id: 'npc-emboscado', name: 'Emboscado', kind: 2, playerUserId: '', classSummary: '', raceName: '', playerName: null, portraitImageId: 'img-emboscado' },
-        { id: 'npc-longe', name: 'Longe', kind: 2, playerUserId: '', classSummary: '', raceName: '', playerName: null, portraitImageId: 'img-longe' },
+        {
+          id: 'npc-capitao',
+          name: 'Capitão Goblin',
+          kind: 2,
+          playerUserId: '',
+          classSummary: '',
+          raceName: '',
+          playerName: null,
+          portraitImageId: 'img-capitao',
+        },
+        {
+          id: 'npc-emboscado',
+          name: 'Emboscado',
+          kind: 2,
+          playerUserId: '',
+          classSummary: '',
+          raceName: '',
+          playerName: null,
+          portraitImageId: 'img-emboscado',
+        },
+        {
+          id: 'npc-longe',
+          name: 'Longe',
+          kind: 2,
+          playerUserId: '',
+          classSummary: '',
+          raceName: '',
+          playerName: null,
+          portraitImageId: 'img-longe',
+        },
       ];
       // Capitão is on the list the players see; Emboscado is on the map but not seen; Longe has no token here.
       mapTokens = [{ characterId: 'npc-capitao' }, { characterId: 'npc-emboscado' }];
       const { fixture } = await setup();
-      const hidden = (fixture.componentInstance as unknown as { hiddenPortraits: () => ReadonlySet<string> }).hiddenPortraits();
+      const hidden = (
+        fixture.componentInstance as unknown as { hiddenPortraits: () => ReadonlySet<string> }
+      ).hiddenPortraits();
       expect([...hidden]).toEqual(['img-emboscado']);
     });
   });
   describe('fix round 2: the footer, the names', () => {
-    it('the result\'s main action is in the fixed footer, after "Pedir o ajuste"; the question\'s two answers take the footer\'s place', async () => {
+    it("the result's main action is in the fixed footer, after \"Pedir o ajuste\"; the question's two answers take the footer's place", async () => {
       api.polls = [done('img-t', 3, {}, { showsWholeMap: true })];
       const { ui: u, el } = await setup();
       await u.radio('O mapa com textura')!.click();
       await u.type('Descreva o lugar', 'Uma caverna');
       await u.press('Gerar imagem');
       // The words of each footer button, without the name of its icon.
-      const foot = () => Array.from(el.querySelector('.frame__foot')!.querySelectorAll('button')).map((b) => plain(b.textContent).replace(/^(auto_awesome|map|visibility)/, ''));
+      const foot = () =>
+        Array.from(el.querySelector('.frame__foot')!.querySelectorAll('button')).map((b) =>
+          plain(b.textContent).replace(/^(auto_awesome|map|visibility)/, ''),
+        );
       expect(foot()).toEqual(['Pedir o ajuste', 'Usar como imagem do mapa']);
       await u.press('Usar como imagem do mapa');
       expect(foot()).toEqual(['Voltar', 'Usar como imagem do mapa']);
@@ -850,23 +1031,30 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       const { ui: u, el } = await setup();
       await u.type('Descreva o lugar', 'Uma sala');
       await u.press('Gerar imagem');
-      expect(Array.from(el.querySelector('.frame__foot')!.querySelectorAll('button')).map((b) => plain(b.textContent).replace(/^(auto_awesome|map|visibility)/, ''))).toEqual(['Pedir o ajuste', 'Mostrar aos jogadores']);
+      expect(
+        Array.from(el.querySelector('.frame__foot')!.querySelectorAll('button')).map((b) =>
+          plain(b.textContent).replace(/^(auto_awesome|map|visibility)/, ''),
+        ),
+      ).toEqual(['Pedir o ajuste', 'Mostrar aos jogadores']);
     });
 
-    it('the heading is the image\'s name, never its number; from the gallery a textured map says its way', async () => {
+    it("the heading is the image's name, never its number; from the gallery a textured map says its way", async () => {
       api.polls = [done('img-1', 7)];
       const first = await setup();
       await first.ui.type('Descreva o lugar', 'Uma sala');
       await first.ui.press('Gerar imagem');
       expect(first.ui.title()).toBe('Imagem 7');
-      const image = galleryImage('img-t', 'Masmorra de Mirathel · mapa com textura', { generated: true, showsWholeMap: true });
+      const image = galleryImage('img-t', 'Masmorra de Mirathel · mapa com textura', {
+        generated: true,
+        showsWholeMap: true,
+      });
       api.editsResult = [edit(image, 5, 'a caverna')];
       const gallery = await setup({ origin: { kind: 'gallery' }, image });
       expect(gallery.ui.title()).toBe('Masmorra de Mirathel · mapa com textura');
       expect(gallery.ui.sub()).toBe('O mapa com textura');
     });
 
-    it('the close question\'s buttons are the stacked pair (one over the other at 320)', async () => {
+    it("the close question's buttons are the stacked pair (one over the other at 320)", async () => {
       api.hold = new Promise<void>(() => undefined);
       const { ui: u, fixture, el } = await setup();
       await u.type('Descreva o lugar', 'Uma sala');
@@ -879,7 +1067,10 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
   describe('fix round 3', () => {
     it('while a question is open the body is its title and words only: no adjust field, no chain', async () => {
       api.polls = [done('img-t', 3, {}, { showsWholeMap: true })];
-      api.editsResult = [edit(galleryImage('img-t0', 'a', { showsWholeMap: true }), 2), edit(galleryImage('img-t', 'b', { showsWholeMap: true }), 3)];
+      api.editsResult = [
+        edit(galleryImage('img-t0', 'a', { showsWholeMap: true }), 2),
+        edit(galleryImage('img-t', 'b', { showsWholeMap: true }), 3),
+      ];
       const { ui: u, el } = await setup();
       await u.radio('O mapa com textura')!.click();
       await u.type('Descreva o lugar', 'Uma caverna');
@@ -894,7 +1085,14 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
     });
 
     it('every footer pair that can squeeze a label is the stacked pair, and the subtitle does not repeat the map in the heading', async () => {
-      api.polls = [done('img-t', 3, {}, { showsWholeMap: true, name: 'Masmorra de Mirathel · mapa com textura' })];
+      api.polls = [
+        done(
+          'img-t',
+          3,
+          {},
+          { showsWholeMap: true, name: 'Masmorra de Mirathel · mapa com textura' },
+        ),
+      ];
       const { ui: u, el } = await setup();
       await u.radio('O mapa com textura')!.click();
       await u.type('Descreva o lugar', 'Uma caverna');

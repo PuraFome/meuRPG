@@ -32,7 +32,12 @@ import {
   type AbilityTableVm,
 } from '../character-editor.types';
 
-const WHEN = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+const WHEN = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+});
 
 const WORDS: Readonly<Record<AbilityMethodKey, { tab: string; title: string; srd: boolean }>> = {
   standard_array: { tab: 'Padrão', title: 'Conjunto padrão', srd: true },
@@ -59,7 +64,16 @@ const ORDER: readonly AbilityMethodKey[] = ['standard_array', 'point_buy', 'roll
  */
 @Component({
   selector: 'app-table-ability-scores',
-  imports: [AbilityFields, AbilityPlacing, MapAsk, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, RouterLink],
+  imports: [
+    AbilityFields,
+    AbilityPlacing,
+    MapAsk,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    RouterLink,
+  ],
   templateUrl: './table-ability-scores.html',
   styleUrl: './table-ability-scores.scss',
 })
@@ -71,7 +85,10 @@ export class TableAbilityScores {
   readonly table = input.required<AbilityTableVm>();
   /** The chosen way, which the page sends with `CreateCharacter`. */
   /** A player's own draft that already has a recorded method (RN-24): only that method, with its limits, and the dice it used. */
-  readonly locked = input<{ readonly method: AbilityMethodKey; readonly rolls: AbilityRollsVm | null } | null>(null);
+  readonly locked = input<{
+    readonly method: AbilityMethodKey;
+    readonly rolls: AbilityRollsVm | null;
+  } | null>(null);
   readonly method = model<AbilityMethodKey>('typed');
   readonly incomplete = model(false);
   readonly problem = model('');
@@ -87,7 +104,13 @@ export class TableAbilityScores {
       return [locked.method];
     }
     return ORDER.filter((k) =>
-      k === 'standard_array' ? this.table().standardArray : k === 'point_buy' ? this.table().pointBuy : k === 'rolled_4d6' ? this.table().rolled4d6 : this.table().typed,
+      k === 'standard_array'
+        ? this.table().standardArray
+        : k === 'point_buy'
+          ? this.table().pointBuy
+          : k === 'rolled_4d6'
+            ? this.table().rolled4d6
+            : this.table().typed,
     );
   });
   protected readonly words = WORDS;
@@ -97,14 +120,25 @@ export class TableAbilityScores {
   protected readonly arrayResults = computed(() => this.table().standardValues.map(resultOfValue));
 
   // Point buy: every score starts at the lowest.
-  protected readonly bought = signal<Record<AbilityKey, number>>({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
-  protected readonly spent = computed(() => pointsSpent(this.bought(), this.table().pointBuyCosts, this.table().pointBuyMinScore));
+  protected readonly bought = signal<Record<AbilityKey, number>>({
+    str: 0,
+    dex: 0,
+    con: 0,
+    int: 0,
+    wis: 0,
+    cha: 0,
+  });
+  protected readonly spent = computed(() =>
+    pointsSpent(this.bought(), this.table().pointBuyCosts, this.table().pointBuyMinScore),
+  );
   protected readonly left = computed(() => this.table().pointBuyBudget - this.spent());
   protected readonly costRows = computed(() => {
     const t = this.table();
     return t.pointBuyCosts.map((cost, i) => ({ score: t.pointBuyMinScore + i, cost }));
   });
-  protected readonly cells = computed(() => Array.from({ length: this.table().pointBuyBudget }, (_, i) => i < this.spent()));
+  protected readonly cells = computed(() =>
+    Array.from({ length: this.table().pointBuyBudget }, (_, i) => i < this.spent()),
+  );
 
   // The 4d6.
   protected readonly rolls = signal<AbilityRollsVm | null>(null);
@@ -159,9 +193,21 @@ export class TableAbilityScores {
       this.bought.set({ str: min, dex: min, con: min, int: min, wis: min, cha: min });
       return;
     }
-    this.bought.set({ str: clamp(have.str), dex: clamp(have.dex), con: clamp(have.con), int: clamp(have.int), wis: clamp(have.wis), cha: clamp(have.cha) });
+    this.bought.set({
+      str: clamp(have.str),
+      dex: clamp(have.dex),
+      con: clamp(have.con),
+      int: clamp(have.int),
+      wis: clamp(have.wis),
+      cha: clamp(have.cha),
+    });
     this.arrayPlacement.set(placementFromScores(have, t.standardValues));
-    this.rollPlacement.set(placementFromScores(have, (locked.rolls?.sets ?? []).map((x) => x.total)));
+    this.rollPlacement.set(
+      placementFromScores(
+        have,
+        (locked.rolls?.sets ?? []).map((x) => x.total),
+      ),
+    );
   }
 
   protected choose(method: AbilityMethodKey): void {
@@ -175,10 +221,18 @@ export class TableAbilityScores {
     const set = (key: AbilityKey, value: number) => g.controls[key].setValue(value);
     switch (this.method()) {
       case 'standard_array':
-        this.writePlacement(this.arrayPlacement(), this.arrayResults().map((r) => r.total), set);
+        this.writePlacement(
+          this.arrayPlacement(),
+          this.arrayResults().map((r) => r.total),
+          set,
+        );
         break;
       case 'rolled_4d6':
-        this.writePlacement(this.rollPlacement(), this.rollResults().map((r) => r.total), set);
+        this.writePlacement(
+          this.rollPlacement(),
+          this.rollResults().map((r) => r.total),
+          set,
+        );
         break;
       case 'point_buy':
         ABILITY_KEYS.forEach((k) => set(k, this.bought()[k]));
@@ -187,14 +241,23 @@ export class TableAbilityScores {
         const t = this.table();
         ABILITY_KEYS.forEach((k) => {
           const now = g.controls[k].value;
-          set(k, typedInRange(now, t.typedMin, t.typedMax) ? now : Math.min(t.typedMax, Math.max(t.typedMin, 10)));
+          set(
+            k,
+            typedInRange(now, t.typedMin, t.typedMax)
+              ? now
+              : Math.min(t.typedMax, Math.max(t.typedMin, 10)),
+          );
         });
       }
     }
     this.report();
   }
 
-  private writePlacement(p: Placement, totals: readonly number[], set: (k: AbilityKey, v: number) => void): void {
+  private writePlacement(
+    p: Placement,
+    totals: readonly number[],
+    set: (k: AbilityKey, v: number) => void,
+  ): void {
     for (const key of ABILITY_KEYS) {
       const at = p[key];
       set(key, at === null ? 10 : totals[at]);
@@ -206,13 +269,20 @@ export class TableAbilityScores {
     let problem = '';
     switch (this.method()) {
       case 'standard_array':
-        problem = freeCount(this.arrayPlacement()) > 0 ? 'coloque cada valor do conjunto numa habilidade' : '';
+        problem =
+          freeCount(this.arrayPlacement()) > 0
+            ? 'coloque cada valor do conjunto numa habilidade'
+            : '';
         break;
       case 'rolled_4d6':
         problem =
           this.rolls() === null
-            ? this.table().physicalDice ? 'digite os dados e guarde as rolagens' : 'role as habilidades'
-            : freeCount(this.rollPlacement()) > 0 ? 'coloque cada resultado numa habilidade' : '';
+            ? this.table().physicalDice
+              ? 'digite os dados e guarde as rolagens'
+              : 'role as habilidades'
+            : freeCount(this.rollPlacement()) > 0
+              ? 'coloque cada resultado numa habilidade'
+              : '';
         break;
       case 'typed': {
         const t = this.table();
@@ -242,7 +312,9 @@ export class TableAbilityScores {
 
   // Point buy.
   protected costText(key: AbilityKey): number {
-    return costOf(this.bought()[key], this.table().pointBuyCosts, this.table().pointBuyMinScore) ?? 0;
+    return (
+      costOf(this.bought()[key], this.table().pointBuyCosts, this.table().pointBuyMinScore) ?? 0
+    );
   }
 
   protected up(key: AbilityKey): boolean {
@@ -302,6 +374,8 @@ export class TableAbilityScores {
   }
 
   protected setDie(row: number, die: number, value: string): void {
-    this.dice.update((all) => all.map((r, i) => (i === row ? r.map((d, j) => (j === die ? value : d)) : r)));
+    this.dice.update((all) =>
+      all.map((r, i) => (i === row ? r.map((d, j) => (j === die ? value : d)) : r)),
+    );
   }
 }
