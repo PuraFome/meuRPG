@@ -1,0 +1,7 @@
+# Commits that only reformat code, skipped by `git blame` so it shows who wrote
+# each line, not who formatted it. GitHub reads this file by itself; locally:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# A new entry is the full hash of a commit that changes formatting only.
+
+# style(web): format the TypeScript, SCSS and JSON with Prettier
+67e76f4e7414e40d202bb7f630654a066e704437
