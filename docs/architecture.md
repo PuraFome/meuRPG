@@ -302,14 +302,16 @@ A guard in the *handler* enforces this even when a code point errs: it drops eve
 
 ### Session state and the sign-in/sign-out flow
 
-An `AuthService` (`web/src/app/core/auth/auth.service.ts`) calls `IdentityService.GetMe` once at startup (in practice as soon as the always-present account menu in the navigation bar injects the service) and keeps the result in a signal with four states:
+An `AuthService` (`web/src/app/core/auth/auth.service.ts`) calls `IdentityService.GetMe` at startup (in practice as soon as the always-present account menu in the navigation bar injects the service) and again whenever a call learns the login session ended (below), and keeps the result in a signal with four states:
 
 | State | When |
 | --- | --- |
 | `unknown` | `GetMe` has not returned yet. |
-| `signed-out` | `GetMe` answered with code `unauthenticated`. |
+| `signed-out` | `GetMe` answered with code `unauthenticated`: at startup, or after another call answered `unauthenticated` (signed out in another tab, "Sair dos outros dispositivos", expiry). |
 | `signed-in` | `GetMe` answered with the user and `sessionExpiresAt`. |
 | `unavailable` | Any other Connect code, or a network failure. Never becomes `signed-out`: a server or database being down must not look like a signed-out user. |
+
+A login session that ends while a tab is open is learned from any unary call: an interceptor in the transport (`sessionEndedInterceptor`) answers `unauthenticated` from any call except `GetMe` and `SignOut` (the reader itself, which would loop) by asking `AuthService.refresh()` to read `GetMe` again; calls that arrive while it is in flight share it. The state settles to `signed-out`, so the account menu shows "Entrar", the open-sessions poll stops (it also calls `refresh()` itself on `unauthenticated`) and guarded routes send to sign-in on the next navigation. Every screen that maps errors through `describeConnectError` shows "Sua sessão acabou. Entre de novo para continuar." for `unauthenticated` unless it has its own wording, never the "server unavailable, try again" text, which no retry fixes.
 
 The app's single Connect transport (`web/src/app/core/connect/transport.ts`) forces `credentials: 'same-origin'` on `fetch`, so the session cookie goes on every call, and every unary call already gets `Connect-Protocol-Version: 1` by default from `@connectrpc/connect` (see [CSRF](#csrf)). The transport also gives **every unary call a 60 s deadline** that does not set its own (`withUnaryDeadline` in `transport.ts`): a hung call ends in `deadline_exceeded`, which screens treat like any server failure (the message and the "try again" they already have), instead of an eternal loading indicator. The deadline also goes in the `Connect-Timeout-Ms` header, and the server cancels the work. **Streams** (the live session) are excluded, because they stay open on purpose. 60 s is above the longest legitimate long poll, `GetImageGeneration` with `wait_seconds` (at most 25 s on the server); a call that needs more passes its own `timeoutMs`.
 

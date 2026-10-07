@@ -267,5 +267,7 @@ export function showErrorMessage(err: unknown): string {
   return describeConnectError(err, {
     [Code.NotFound]: 'Essa imagem não está mais na galeria. Escolha outra.',
     [Code.PermissionDenied]: 'Só o mestre da campanha mostra imagens.',
+    [Code.ResourceExhausted]:
+      'A galeria da campanha está cheia: apague uma imagem para mostrar o fundo deste mapa.',
   });
 }
