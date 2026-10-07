@@ -47,4 +47,12 @@ describe('MapReveals', () => {
     expect(reveals.error()).toContain('Só o mestre');
     expect(reveals.pendingId()).toBeNull();
   });
+
+  it("never hides a creature's token: its character is the owner's, whose token would change", async () => {
+    const { api, state, reveals } = await setup();
+    const creature = mapToken('t1', 'Corvo', { creatureId: 'raven' });
+    await reveals.toggleToken(creature, true);
+    expect(api.calls.filter((c) => c.startsWith('setTokenHidden'))).toEqual([]);
+    expect(state.tokens()[0].hidden).toBe(true);
+  });
 });
