@@ -30,6 +30,8 @@ export interface MoveAnswer {
   readonly run: PuzzleRun;
   readonly replayed: boolean;
   readonly solvedByThisMove: boolean;
+  /** This move was judged wrong: the server's verdict, also on a replay of it. */
+  readonly wrong: boolean;
 }
 
 /**
@@ -164,6 +166,7 @@ export class PuzzlesClient {
       run: need(res.run, 'MakePuzzleMove'),
       replayed: res.replayed,
       solvedByThisMove: res.solvedByThisMove,
+      wrong: res.wrong,
     };
   }
 
