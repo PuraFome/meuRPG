@@ -451,7 +451,7 @@ func TestLoginRejectsOpenRedirects(t *testing.T) {
 		"/%2F%2Fevil.example":    "/%2F%2Fevil.example", // a path on this site
 		// The fragment is dropped: the app keeps secrets there, and the
 		// login state must not store one.
-		"/invite#t=segredo": "/invite",
+		"/invite#t=segredo":  "/invite",
 		"/campaigns?aba=1#x": "/campaigns?aba=1",
 	}
 	for in, want := range safe {
