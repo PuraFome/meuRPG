@@ -1,0 +1,92 @@
+:host {
+  display: block;
+}
+
+.granted {
+  margin-bottom: var(--mr-space-5);
+}
+
+.granted__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 21px;
+  line-height: 26px;
+}
+
+.granted__hint {
+  margin: 2px 0 var(--mr-space-2);
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.granted__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.granted__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--mr-space-3);
+  min-height: 52px;
+  border-top: 1px solid var(--mr-rule);
+
+  > .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.granted__name {
+  flex: 1 1 8em;
+  min-width: 0;
+  padding: var(--mr-space-2) 0;
+}
+
+// On a narrow screen the tag drops under the name, in line with it.
+@media (max-width: 480px) {
+  .granted__row .mr-tag {
+    margin-left: calc(20px + var(--mr-space-3));
+  }
+}
+
+.granted__level {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.granted__help {
+  margin-left: auto;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--mr-ink-muted);
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -4px;
+  }
+}
+
+
+.granted__source {
+  display: block;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}

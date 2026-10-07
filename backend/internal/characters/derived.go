@@ -340,6 +340,9 @@ func catalogToProto(c rules.Catalog) *rulesv1.Content {
 				ListClassKey: c.SpellList, FirstLevel: i32(c.StartLevel), MaxSpellLevelByLevel: int32s(c.MaxSpellLevelByLevel),
 			}
 		}
+		for _, ap := range s.AlwaysPrepared {
+			p.AlwaysPrepared = append(p.AlwaysPrepared, &rulesv1.SubclassAlwaysPrepared{SpellKey: ap.Spell, ClassLevel: i32(ap.ClassLevel)})
+		}
 		out.Subclasses = append(out.Subclasses, p)
 	}
 	for _, b := range c.Backgrounds {
@@ -367,12 +370,23 @@ func catalogToProto(c rules.Catalog) *rulesv1.Content {
 	named := func(in []rules.NamedEntry) []*rulesv1.NamedKey {
 		var list []*rulesv1.NamedKey
 		for _, n := range in {
-			list = append(list, &rulesv1.NamedKey{Key: n.Key, NamePt: n.NamePT})
+			list = append(list, &rulesv1.NamedKey{Key: n.Key, NamePt: n.NamePT, Kind: namedKeyKindToProto[n.Kind]})
 		}
 		return list
 	}
 	out.Languages, out.Proficiencies, out.DamageTypes = named(c.Languages), named(c.Proficiencies), named(c.DamageTypes)
 	return out
+}
+
+// namedKeyKindToProto maps NamedEntry.Kind (the SRD's proficiency kinds and "language").
+var namedKeyKindToProto = map[string]rulesv1.NamedKeyKind{
+	"tool":         rulesv1.NamedKeyKind_NAMED_KEY_KIND_TOOL,
+	"armor":        rulesv1.NamedKeyKind_NAMED_KEY_KIND_ARMOR,
+	"weapon":       rulesv1.NamedKeyKind_NAMED_KEY_KIND_WEAPON,
+	"skill":        rulesv1.NamedKeyKind_NAMED_KEY_KIND_SKILL,
+	"saving-throw": rulesv1.NamedKeyKind_NAMED_KEY_KIND_SAVING_THROW,
+	"language":     rulesv1.NamedKeyKind_NAMED_KEY_KIND_LANGUAGE,
+	"other":        rulesv1.NamedKeyKind_NAMED_KEY_KIND_OTHER,
 }
 
 // i32 converts a number from package rules for the API. Those numbers are

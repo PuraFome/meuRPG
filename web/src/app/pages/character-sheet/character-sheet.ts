@@ -31,6 +31,7 @@ import {
   CharacterSheetSource,
   CharacterSheetVm,
   FullSheetVm,
+  IssueVm,
 } from './character-sheet.types';
 import { CombatColumn } from './combat-column/combat-column';
 import { CreaturesPanel } from './creatures-panel/creatures-panel';
@@ -39,6 +40,7 @@ import { MasterNotes } from './master-notes/master-notes';
 import { NotesPanel } from '../../shared/notes/notes-panel';
 import { ProficiencyColumn } from './proficiency-column/proficiency-column';
 import { SheetHeader } from './sheet-header/sheet-header';
+import { ChangedContentNotice } from './changed-content/changed-content';
 import { issueTitle } from './sheet-format';
 import { StoryPanel } from './story-panel/story-panel';
 import { XpWatcher } from './xp-watcher';
@@ -87,6 +89,7 @@ type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'
   imports: [
     AbilityMedallions,
     BasicSheet,
+    ChangedContentNotice,
     CombatColumn,
     CreaturesPanel,
     FeaturesPanel,
@@ -312,6 +315,16 @@ export class CharacterSheetPage {
 
   /** Explicit casts for the template, which narrows `vm.sheet.kind` in an
    * `@if` but cannot carry that narrowing into a `@let` binding. */
+  /** The skills the sheet is trained in, by name (the line of "O que mudou"). */
+  protected trainedSkills(full: FullSheetVm): string[] {
+    return full.skills.filter((s) => s.proficiency === 'proficient' || s.proficiency === 'expertise').map((s) => s.namePt);
+  }
+
+  /** The sheet's own issues: the ones "A classe mudou" tells (code `table_content_changed`) are not repeated in the list. */
+  protected ownIssues(full: FullSheetVm): readonly IssueVm[] {
+    return full.changedContent.length > 0 ? full.issues.filter((i) => i.code !== 'table_content_changed') : full.issues;
+  }
+
   protected asFullSheet(sheet: FullSheetVm | BasicSheetVm): FullSheetVm {
     return sheet as FullSheetVm;
   }

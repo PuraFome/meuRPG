@@ -15,6 +15,8 @@ import {
   LevelUpRefusalSchema,
   type LevelUpOptions,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
+import { OpenSessions } from '../../shell/live-notice/open-sessions';
+import { XpWatcher } from '../character-sheet/xp-watcher';
 import { LevelUpClient } from '../../core/levelup/levelup-client';
 import { SKILLS, SPELLS, WIZARD_KEYS, fighterOptions, pensantus, wizardOptions } from '../../core/levelup/levelup-testing';
 import { LevelUpPage } from './level-up';
@@ -55,6 +57,8 @@ describe('LevelUpPage', () => {
     spellDetails: vi.fn(),
     xpMode: vi.fn(),
   };
+  const watcher = { follow: vi.fn() };
+  const live = { on: false, next: false };
   let navigate: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -64,6 +68,9 @@ describe('LevelUpPage', () => {
   });
 
   async function setup(options: LevelUpOptions = wizardOptions({ preparedMaxAfter: 3 }), char = character(), optionsError?: Error) {
+    live.on = live.next;
+    live.next = false;
+    watcher.follow.mockReset();
     client.character.mockReset().mockResolvedValue(char);
     client.options.mockReset();
     if (optionsError) {
@@ -84,7 +91,13 @@ describe('LevelUpPage', () => {
       providers: [
         provideRouter([]),
         { provide: LevelUpClient, useValue: client },
+        { provide: OpenSessions, useValue: { sessions: () => (live.on ? [{ campaignId: 'camp-1' }] : []) } },
       ],
+    });
+    // The page makes its own client (so the catalog never outlives it): the test's takes its place there too, and the
+    // session's stream is not opened.
+    TestBed.overrideComponent(LevelUpPage, {
+      set: { providers: [{ provide: LevelUpClient, useValue: client }, { provide: XpWatcher, useValue: watcher }] },
     });
     // The route's params, read the way the page reads them.
     const { ActivatedRoute } = await import('@angular/router');
@@ -478,5 +491,29 @@ describe('LevelUpPage', () => {
       expect(text(f)).toContain('Quem sobe o nível é o jogador');
       expect(client.options).not.toHaveBeenCalled();
     });
+  });
+
+  it('reads the catalog with the character, so a sheet keeps what the master retired since', async () => {
+    await setup();
+    expect(client.catalog).toHaveBeenCalledWith('camp-1', 'ch-1');
+  });
+
+  it('reads the sheet, the level and the content again on a content_changed hint, while a session is open', async () => {
+    live.next = true;
+    const f = await setup();
+    // The page follows the session's stream for the hint (the 4th callback).
+    const follow = watcher.follow.mock.calls.find((c) => c[0] === 'camp-1');
+    expect(follow).toBeTruthy();
+    client.catalog.mockClear();
+    client.options.mockClear();
+    follow![3]();
+    await load(f);
+    expect(client.catalog).toHaveBeenCalledWith('camp-1', 'ch-1', true);
+    expect(client.options).toHaveBeenCalled();
+  });
+
+  it('does not follow the stream without an open session', async () => {
+    await setup();
+    expect(watcher.follow.mock.calls.every((c) => c[0] === null)).toBe(true);
   });
 });

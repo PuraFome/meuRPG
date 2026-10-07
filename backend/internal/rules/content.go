@@ -635,6 +635,12 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 	for _, k := range sortedKeys(c.subclasses) {
 		s := c.subclasses[k]
 		e := SubclassEntry{Key: k, Name: s.Name, NamePT: c.namePT(k), Class: s.Class, Archived: c.archived[k], Off: c.off[k]}
+		for _, ss := range s.Spells {
+			// A spell that needs a feature's choice is not always prepared for everyone.
+			if len(ss.WithFeatures) == 0 {
+				e.AlwaysPrepared = append(e.AlwaysPrepared, SubclassSpellRef{Spell: ss.Spell, ClassLevel: ss.ClassLevel})
+			}
+		}
 		if cast, ok := c.subCasting[k]; ok {
 			sc := &SubclassCasting{
 				Kind: cast.effect.Progression, Ability: Ability(cast.effect.Ability), Preparation: preparation(cast.effect),
@@ -729,10 +735,10 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 	sortPT(cat.Spells, func(e SpellEntry) string { return e.NamePT })
 	cat.ChallengeRatings = slices.Clone(c.ratings)
 	for _, k := range sortedKeys(c.languages) {
-		cat.Languages = append(cat.Languages, NamedEntry{Key: k, NamePT: c.namePT(k)})
+		cat.Languages = append(cat.Languages, NamedEntry{Key: k, NamePT: c.namePT(k), Kind: "language"})
 	}
 	for _, k := range sortedKeys(c.proficiencies) {
-		cat.Proficiencies = append(cat.Proficiencies, NamedEntry{Key: k, NamePT: c.proficiencyNamePT(k)})
+		cat.Proficiencies = append(cat.Proficiencies, NamedEntry{Key: k, NamePT: c.proficiencyNamePT(k), Kind: c.proficiencies[k].Kind})
 	}
 	for _, k := range sortedKeys(c.named) {
 		if strings.HasPrefix(k, "damage-type:") {

@@ -44,7 +44,7 @@ export function choiceRows(levelUp: LevelUp): ChoiceRow[] {
   if (!c) {
     return [];
   }
-  const names = (keys: readonly string[]) => LIST.format(keys.map((k) => levelUp.namesPt[k] ?? k));
+  const names = (keys: readonly string[]) => LIST.format(keys.map((k) => levelUp.namesPt[k] ?? 'uma opção que saiu da lista'));
   const rows: ChoiceRow[] = [];
   const up = increases(levelUp);
   if (up.length > 0) {

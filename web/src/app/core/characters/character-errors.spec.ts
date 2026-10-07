@@ -4,7 +4,8 @@ import {
   CharacterBlockedReason,
   CharacterBlockedSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { characterBlockedMessage, describeCharacterError } from './character-errors';
+import { InvalidFieldSchema } from '../../../gen/meurpg/characters/v1/characters_pb';
+import { characterBlockedMessage, contentRef, describeCharacterError, invalidFieldPath } from './character-errors';
 
 function blockedError(reason: CharacterBlockedReason, characterId = 'char-1'): ConnectError {
   return new ConnectError('blocked', Code.FailedPrecondition, undefined, [
@@ -88,5 +89,41 @@ describe('describeCharacterError', () => {
     expect(describeCharacterError(new Error('network down'))).toContain(
       'Não foi possível falar com o servidor',
     );
+  });
+});
+
+describe('the content the master retired (RN-23, 10.1d)', () => {
+  const retired = (reason: CharacterBlockedReason, contentKey: string) =>
+    new ConnectError('blocked', Code.FailedPrecondition, undefined, [{ desc: CharacterBlockedSchema, value: { reason, contentKey } }]);
+  const names = (key: string) => ({ 'class:guardiao@mesa': 'Guardião do Vale', 'background:cartografo@mesa': 'Cartógrafo do Vale', 'spell:ink@mesa': 'Lâmina de Nanquim' })[key as 'class:guardiao@mesa'];
+
+  it('says an archived class by its name and where to change it, never "Não foi possível concluir a ação"', () => {
+    const msg = describeCharacterError(retired(CharacterBlockedReason.ARCHIVED_CONTENT, 'class:guardiao@mesa'), names);
+    expect(msg).toBe('A classe “Guardião do Vale” foi arquivada pelo mestre e não vale mais como escolha nova. Escolha outra opção, no passo Básico.');
+  });
+
+  it('writes the masculine of an antecedente, and a spell on its own step', () => {
+    expect(describeCharacterError(retired(CharacterBlockedReason.ARCHIVED_CONTENT, 'background:cartografo@mesa'), names)).toContain('O antecedente “Cartógrafo do Vale” foi arquivado');
+    expect(describeCharacterError(retired(CharacterBlockedReason.ARCHIVED_CONTENT, 'spell:ink@mesa'), names)).toContain('no passo Magias');
+  });
+
+  it('says a switched-off option, with its name', () => {
+    expect(describeCharacterError(retired(CharacterBlockedReason.SWITCHED_OFF_CONTENT, 'class:guardiao@mesa'), names)).toBe(
+      'A classe “Guardião do Vale” foi desligada pelo mestre para os jogadores. Escolha outra opção, no passo Básico.',
+    );
+  });
+
+  it('never prints the key when the catalog does not know it', () => {
+    const msg = describeCharacterError(retired(CharacterBlockedReason.ARCHIVED_CONTENT, 'class:some-key@mesa'), () => undefined);
+    expect(msg).not.toContain('some-key');
+    expect(msg).toContain('A classe escolhida foi arquivada');
+    expect(contentRef('thing', () => undefined).noun).toBe('opção');
+  });
+
+  it('points a refusal at the class block it is about', () => {
+    const err = new ConnectError('x', Code.InvalidArgument, undefined, [{ desc: InvalidFieldSchema, value: { field: 'full.classes[1].class_key' } }]);
+    expect(invalidFieldPath(err)).toBe('full.classes[1].class_key');
+    expect(describeCharacterError(err)).toContain('Classe 2: essa classe se repete ou não existe');
+    expect(invalidFieldPath(new ConnectError('x', Code.NotFound))).toBeNull();
   });
 });

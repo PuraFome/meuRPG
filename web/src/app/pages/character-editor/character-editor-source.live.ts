@@ -21,11 +21,13 @@ import {
 import {
   Ability as GenAbility,
   ContentService,
+  NamedKeyKind,
   SpellPreparation as GenSpellPreparation,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { AbilityKey, CharacterKind } from '../../core/characters/characters.types';
 import { damageTypeFromGen, damageTypeToGen } from '../../core/characters/damage-type-gen';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
+import { isTableKey } from '../../core/content/catalog';
 import { spellDetailsFromGen } from '../../shared/spell-details/spell-details-map';
 import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
 import { effectivePreference } from '../../core/campaigns/dice-labels';
@@ -90,6 +92,17 @@ function abilityOriginFromGen(origin: GenAbilityOrigin | undefined): CharacterFo
         ? { sets: origin.rolls.map((s) => ({ dice: [...s.dice], total: s.total })), typed: origin.typed, rolledAt: null }
         : null,
   };
+}
+
+/** The prepared leveled spells of the derived sheet that the sheet's own lists do not name: granted by a subclass. */
+function grantedSpellKeys(derived: { spells: readonly { spell?: { key: string; level: number }; prepared: boolean }[] } | undefined, full: GenFullSheet | undefined): string[] {
+  if (!derived || !full) {
+    return [];
+  }
+  const own = new Set([...full.cantripKeys, ...full.knownSpellKeys, ...full.preparedSpellKeys]);
+  return derived.spells
+    .filter((s) => s.prepared && s.spell && s.spell.level > 0 && !own.has(s.spell.key))
+    .map((s) => s.spell!.key);
 }
 
 function rollsFromGen(rolls: GenAbilityRolls): AbilityRollsVm {
@@ -184,17 +197,19 @@ function lineFromItem(item: { name: string; quantity: number }): string {
  * Exported for `character-editor-source.live.spec.ts`'s round-trip test.
  */
 export function toFullSheetInit(v: CharacterFormValue) {
-  const firstClass = v.className
+  const subclassOf = (subclassKey: string, customName: string) =>
+    subclassKey
+      ? { case: 'subclassKey' as const, value: subclassKey }
+      : customName
+        ? { case: 'customSubclassName' as const, value: customName }
+        : { case: undefined, value: undefined };
+  // The first class gives the saving throws; the others follow in the order the blocks are on screen.
+  const classes = v.className
     ? [
-        {
-          classKey: v.className,
-          level: v.level,
-          subclass: v.subclassName
-            ? { case: 'subclassKey' as const, value: v.subclassName }
-            : v.customSubclassName
-              ? { case: 'customSubclassName' as const, value: v.customSubclassName }
-              : { case: undefined, value: undefined },
-        },
+        { classKey: v.className, level: v.level, subclass: subclassOf(v.subclassName, v.customSubclassName) },
+        ...v.extraClasses
+          .filter((c) => c.classKey)
+          .map((c) => ({ classKey: c.classKey, level: c.level, subclass: subclassOf(c.subclassKey, c.customSubclassName) })),
       ]
     : [];
 
@@ -205,6 +220,10 @@ export function toFullSheetInit(v: CharacterFormValue) {
           value: {
             name: v.customBackgroundName,
             skillKeys: v.customBackgroundSkills ?? [],
+            proficiencyKeys: v.customBackgroundProficiencies,
+            featureName: v.customBackgroundFeatureName,
+            featureText: v.customBackgroundFeatureText,
+            equipment: v.customBackgroundEquipment,
           } satisfies Partial<CustomBackground>,
         }
       : { case: 'backgroundKey' as const, value: v.background };
@@ -220,7 +239,7 @@ export function toFullSheetInit(v: CharacterFormValue) {
     },
     raceKey: v.race,
     subraceKey: v.subrace,
-    classes: firstClass,
+    classes,
     background,
     skillProficiencyKeys: v.skillProficiencies,
     expertiseSkillKeys: v.expertiseSkillKeys,
@@ -275,9 +294,8 @@ export function mergeFullSheetInit(original: GenFullSheet | undefined, v: Charac
   // return value, not a re-branded `FullSheet` instance.
   const { $typeName: _typeName, ...rest } = original;
   const init = toFullSheetInit(v);
-  // The form edits a custom background's name and skills only: the tools or
-  // languages, the feature and the equipment the server holds go back as read
-  // (until the editor shows them), or the save would wipe them.
+  // The form edits every field of a custom background now; this only keeps a field a later
+  // version of the message adds, so a save never wipes what the editor does not know.
   if (init.background.case === 'customBackground' && original.background.case === 'customBackground') {
     const { $typeName: _bg, ...kept } = original.background.value;
     init.background = {
@@ -339,6 +357,20 @@ export function toFormFullSheet(name: string, full: GenFullSheet): CharacterForm
       full.background.case === 'customBackground' && full.background.value.skillKeys.length === 2
         ? [full.background.value.skillKeys[0], full.background.value.skillKeys[1]]
         : null,
+    customBackgroundProficiencies:
+      full.background.case === 'customBackground' ? [...full.background.value.proficiencyKeys] : [],
+    customBackgroundFeatureName:
+      full.background.case === 'customBackground' ? full.background.value.featureName : '',
+    customBackgroundFeatureText:
+      full.background.case === 'customBackground' ? full.background.value.featureText : '',
+    customBackgroundEquipment:
+      full.background.case === 'customBackground' ? full.background.value.equipment : '',
+    extraClasses: full.classes.slice(1).map((c) => ({
+      classKey: c.classKey,
+      level: c.level,
+      subclassKey: c.subclass.case === 'subclassKey' ? c.subclass.value : '',
+      customSubclassName: c.subclass.case === 'customSubclassName' ? c.subclass.value : '',
+    })),
     skillProficiencies: full.skillProficiencyKeys,
     expertiseSkillKeys: full.expertiseSkillKeys,
     abilities: {
@@ -429,8 +461,15 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
    * `character-editor.routes.ts`) means this never outlives the page. */
   private readonly loadedFullSheets = new Map<string, GenFullSheet>();
 
-  async loadCatalog(campaignId: string): Promise<RulesCatalogVm> {
-    const res = await this.contentClient.listContent({ campaignId });
+  async loadCatalog(campaignId: string, characterId?: string): Promise<RulesCatalogVm> {
+    // With the character, the entries the sheet already has come back even when the master retired them, marked.
+    const [res, viewerIsMaster] = await Promise.all([
+      this.contentClient.listContent({ campaignId, characterId: characterId ?? '' }),
+      this.campaignClient
+        .getCampaign({ campaignId })
+        .then((r) => r.campaign?.myRole === Role.MASTER)
+        .catch(() => false),
+    ]);
     const content = res.content!;
 
     const subracesByRace = new Map<string, SubraceOptionVm[]>();
@@ -440,13 +479,32 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         key: sr.key,
         namePt: sr.namePt,
         constitutionBonus: sr.abilityBonuses?.constitution ?? 0,
+        fromTable: isTableKey(sr.key),
+        archived: sr.archived,
+        off: sr.off,
       });
       subracesByRace.set(sr.raceKey, list);
     }
     const subclassesByClass = new Map<string, SubclassOptionVm[]>();
     for (const sc of content.subclasses) {
       const list = subclassesByClass.get(sc.classKey) ?? [];
-      list.push({ key: sc.key, namePt: sc.namePt });
+      const casting = sc.spellcasting;
+      list.push({
+        key: sc.key,
+        namePt: sc.namePt,
+        fromTable: isTableKey(sc.key),
+        archived: sc.archived,
+        off: sc.off,
+        alwaysPrepared: sc.alwaysPrepared.map((a) => ({ spellKey: a.spellKey, classLevel: a.classLevel })),
+        casting: casting
+          ? {
+              preparation: PREPARATION_FROM_GEN[casting.preparation],
+              listClassKey: casting.listClassKey,
+              firstLevel: casting.firstLevel,
+              maxSpellLevelByLevel: casting.maxSpellLevelByLevel,
+            }
+          : null,
+      });
       subclassesByClass.set(sc.classKey, list);
     }
 
@@ -456,6 +514,10 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         namePt: r.namePt,
         constitutionBonus: r.abilityBonuses?.constitution ?? 0,
         subraces: subracesByRace.get(r.key) ?? [],
+        choiceBonuses: r.choiceBonuses,
+        fromTable: isTableKey(r.key),
+        archived: r.archived,
+        off: r.off,
       })),
       classes: content.classes.map((c) => ({
         key: c.key,
@@ -467,8 +529,22 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         subclassLevel: c.subclassLevel,
         spellcastingFirstLevel: c.spellcasting?.firstLevel ?? 0,
         maxSpellLevelByLevel: c.spellcasting?.maxSpellLevelByLevel ?? [],
+        fromTable: isTableKey(c.key),
+        archived: c.archived,
+        off: c.off,
+        skillChoose: c.skillChoice?.count ?? 0,
+        savingThrows: c.savingThrows.map((a) => ABILITY_FROM_GEN[a]),
+        // A table class may reuse another class's list ("Guardião do Vale" casts from the druid's).
+        spellListClassKey: c.spellcasting ? c.spellcasting.listClassKey || c.key : '',
       })),
-      backgrounds: content.backgrounds.map((b) => ({ key: b.key, namePt: b.namePt })),
+      backgrounds: content.backgrounds.map((b) => ({
+        key: b.key,
+        namePt: b.namePt,
+        fromTable: isTableKey(b.key),
+        archived: b.archived,
+        off: b.off,
+        equipmentPt: b.equipmentPt,
+      })),
       skills: content.skills.map((s) => ({
         key: s.key,
         namePt: s.namePt,
@@ -483,7 +559,18 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         namePt: sp.namePt,
         level: sp.level,
         classKeys: sp.classKeys,
+        fromTable: isTableKey(sp.key),
+        archived: sp.archived,
+        off: sp.off,
       })),
+      // The "Outro" background's tools and languages, as the catalog names them (a vehicle or a kit counts as a tool).
+      toolsAndLanguages: [
+        ...content.proficiencies
+          .filter((p) => p.kind === NamedKeyKind.TOOL || p.kind === NamedKeyKind.OTHER)
+          .map((p) => ({ key: p.key, namePt: p.namePt, kind: 'tool' as const })),
+        ...content.languages.map((l) => ({ key: l.key, namePt: l.namePt, kind: 'language' as const })),
+      ],
+      viewerIsMaster,
       challengeRatings: content.challengeRatings.map((c) => ({ rating: c.rating, xp: c.xp })),
     };
   }
@@ -519,6 +606,8 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
           : 'sheet_locked',
       sheetLocked:
         character.state === GenCharacterState.LOCKED || character.state === GenCharacterState.DEAD,
+      preparedMax: Object.fromEntries((character.derived?.spellcasting ?? []).filter((c) => c.preparedMax > 0).map((c) => [c.classKey, c.preparedMax])),
+      grantedSpellKeys: grantedSpellKeys(character.derived, sheetCase === 'full' ? (character.sheet!.content.value as GenFullSheet) : undefined),
       abilityOrigin: abilityOriginFromGen(sheetCase === 'full' ? (character.sheet!.content.value as GenFullSheet).abilityOrigin : undefined),
       full,
       basic:

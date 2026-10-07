@@ -81,3 +81,45 @@
   font-size: 14px;
   color: var(--mr-ink-muted);
 }
+
+// A spell outside every list of the sheet: a dashed, empty box (nothing to tick), the name muted,
+// and the reason in words, so it never reads as a spell you can pick.
+.picker__out {
+  display: flex;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-3) var(--mr-space-2);
+  border-top: 1px solid var(--mr-rule);
+  color: var(--mr-ink-muted);
+}
+
+.picker__box {
+  flex: none;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  border: 1px dashed var(--mr-control-line);
+  border-radius: 4px;
+}
+
+.picker__out-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 19px;
+}
+
+.picker__out-name {
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.picker__out-link {
+  align-self: flex-start;
+  min-height: 44px;
+  padding-top: var(--mr-space-2);
+  color: var(--mr-accent-text);
+  text-decoration: underline;
+}

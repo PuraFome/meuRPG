@@ -54,6 +54,17 @@ import { archiveEntryRPC, createEntryRPC, entryRoute, raceBody, spellBody, updat
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
 import { classBody, createClassRPC, createSubclassRPC, halfCasterBody } from './classes-support';
+import {
+  changeGuardianSkillsRPC,
+  createGuardianRPC,
+  createInkBladeSubclassRPC,
+  createOwlRaceRPC,
+  createPlainSubclassRPC,
+  createSheetRPC,
+  emptyTable,
+  icaroSheetBody,
+  lockAndMilestone,
+} from './table-sheet-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -5284,4 +5295,187 @@ test('as classes da mesa passam no axe e nas conferências de layout no tema esc
 
 test('as classes da mesa passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
   await scanTableClasses(browser, 'light', 320);
+});
+
+// MR-025, RN-23, MR-040 (slice 10.12b): the character editor with the table's content (the "Da mesa" tags, the
+// "Outro" background, a sheet of several classes and its spell step per class), the level-up with a table class
+// and "A classe mudou" on the sheet, with its sheet "O que mudou".
+async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number, height = 900): Promise<void> {
+  const masterContext = await newSignedInContext(browser, 'Mestre Teste');
+  const context = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height } });
+  const m = await masterContext.newPage();
+  const page = await context.newPage();
+  // A click on something that is not there fails in 20 s with its name, not at the end of the test.
+  page.setDefaultTimeout(20_000);
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await page.goto('/');
+    const table = await emptyTable(m, page, `Acessibilidade da mesa ${Date.now()}`);
+    campaignId = table.campaignId;
+    const guardian = await createGuardianRPC(m, campaignId);
+    await createOwlRaceRPC(m, campaignId);
+    await createPlainSubclassRPC(m, campaignId, 'class:wizard', 'Tradição da Tinta', 2);
+    await createPlainSubclassRPC(m, campaignId, 'class:cleric', 'Domínio do Caminho', 1);
+    const characterId = await createSheetRPC(page, campaignId, icaroSheetBody(guardian));
+
+    // The editor: a table class, race and the "Outro" background.
+    const pick = async (label: string, option: string | RegExp) => {
+      const control = page.getByRole('combobox', { name: label, exact: true });
+      await control.focus();
+      await control.press('Enter');
+      await page.getByRole('option', { name: option }).click();
+    };
+    await open(page, `/campanhas/${campaignId}/personagens/novo`);
+    await page.getByLabel('Nome do personagem', { exact: true }).fill('Davi');
+    await pick('Raça', /^Corujeiro/);
+    await pick('Classe', /^Guardião do Vale/);
+    await expect(page.getByText('O Guardião do Vale escolhe a subclasse no nível 3.')).toBeVisible();
+    await expectScreenPasses(page, `Editor com a classe e a raça da mesa ${where}`);
+    // The open list, with the tag on the table's entries.
+    const classSelect = page.getByRole('combobox', { name: 'Classe', exact: true });
+    await classSelect.focus();
+    await classSelect.press('Enter');
+    await expect(page.getByRole('option', { name: /^Guardião do Vale/ })).toContainText('Da mesa');
+    await expectScreenPasses(page, `Editor, a lista de classes aberta ${where}`);
+    await page.keyboard.press('Escape');
+    await pick('Antecedente', 'Outro (personalizado)');
+    await expect(page.getByRole('heading', { name: 'Personalizar um antecedente' })).toBeVisible();
+    await expectScreenPasses(page, `Editor, o antecedente Outro ${where}`);
+
+    // Perícias: the class's count from the server's entry.
+    await page.getByRole('tab', { name: 'Perícias' }).click();
+    await expect(page.getByText('O Guardião do Vale escolhe 2 perícias')).toBeVisible();
+    await expectScreenPasses(page, `Editor, a perícias da classe ${where}`);
+
+    // Several classes.
+    await open(page, `/campanhas/${campaignId}/personagens/novo`);
+    await page.getByLabel('Nome do personagem', { exact: true }).fill('Corvina');
+    await pick('Classe', 'Mago');
+    await page.getByLabel('Nível', { exact: true }).fill('3');
+    await page.getByRole('button', { name: 'Adicionar classe' }).click();
+    const second = page.locator('app-class-block').nth(1);
+    const secondClass = second.getByRole('combobox', { name: 'Classe', exact: true });
+    await secondClass.focus();
+    await secondClass.press('Enter');
+    await page.getByRole('option', { name: 'Clérigo' }).click();
+    await second.getByLabel('Nível', { exact: true }).fill('1');
+    await expect(page.locator('app-class-block')).toHaveCount(2);
+    await expectScreenPasses(page, `Editor, dois blocos de classe ${where}`);
+    const secondSub = second.getByRole('combobox', { name: 'Subclasse', exact: true });
+    await secondSub.focus();
+    await secondSub.press('Enter');
+    await expect(page.getByRole('option', { name: /^Domínio do Caminho/ })).toContainText('Da mesa');
+    await expectScreenPasses(page, `Editor, a subclasse da mesa aberta ${where}`);
+    await page.keyboard.press('Escape');
+    await page.getByRole('tab', { name: 'Magias' }).click();
+    await expect(page.getByRole('heading', { name: 'Clérigo · até o 1º círculo' })).toBeVisible();
+    await page.locator('.spell-section').nth(1).getByPlaceholder('Buscar magia').fill('amizade');
+    await expect(page.locator('.picker__out')).toBeVisible();
+    await expectScreenPasses(page, `Editor, as magias de cada classe e uma fora da lista ${where}`);
+
+    // The level-up with the table class: the session locks the sheet. An open session keeps a stream going, so
+    // the screens from here on are loaded by their heading, not by a quiet network.
+    await lockAndMilestone(m, campaignId, characterId);
+    const openLive = async (route: string) => {
+      await page.goto(route);
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    };
+    await openLive(`/campanhas/${campaignId}/personagens/${characterId}/subir-de-nivel`);
+    await expect(page.getByText(/Passo 1 de \d · Vida/)).toBeVisible();
+    await expectScreenPasses(page, `Subir de nível, a vida ${where}`);
+    await page.getByRole('button', { name: 'Próximo' }).click();
+    await expect(page.getByText(/Escolhas/).first()).toBeVisible();
+    await page.locator('#pick-feature-0').getByRole('radio').first().click();
+    await expectScreenPasses(page, `Subir de nível, as escolhas ${where}`);
+    await page.getByRole('button', { name: 'Próximo' }).click();
+    const prepare = page.locator('#pick-prepared');
+    await expect(prepare).toBeVisible();
+    const reason = (await page.locator('#foot-reason').textContent()) ?? '';
+    for (const name of ['Amizade Animal', 'Bom Fruto', 'Criar ou Destruir Água', 'Curar Ferimentos'].slice(0, Number(/(\d+)/.exec(reason)?.[1] ?? '1'))) {
+      await prepare.getByRole('checkbox', { name: new RegExp(`^${name}`) }).check();
+    }
+    await expectScreenPasses(page, `Subir de nível, as magias ${where}`);
+    await page.getByRole('button', { name: 'Próximo' }).click();
+    const slots = page.getByRole('region', { name: 'O que muda', exact: true }).locator('li').filter({ hasText: 'Espaços de 1º círculo' });
+    await expect(slots).toContainText('Da mesa');
+    await expectScreenPasses(page, `Subir de nível, o resumo com "Da mesa" ${where}`);
+
+    // The third caster's Magias step at level 3 (the master's subclass casts from the wizard's list).
+    const campaignD = (await emptyTable(m, page, `Acessibilidade do conjurador ${Date.now()}`)).campaignId;
+    await createInkBladeSubclassRPC(m, campaignD);
+    const fighter = icaroSheetBody('class:fighter');
+    fighter.name = 'Rúnico';
+    (fighter.sheet as any).full.classes = [{ classKey: 'class:fighter', level: 2 }];
+    (fighter.sheet as any).full.experiencePoints = 900;
+    (fighter.sheet as any).full.skillProficiencyKeys = ['skill:athletics', 'skill:perception'];
+    const runico = await createSheetRPC(page, campaignD, fighter);
+    await lockAndMilestone(m, campaignD, runico);
+    await openLive(`/campanhas/${campaignD}/personagens/${runico}/subir-de-nivel`);
+    await page.getByRole('button', { name: 'Próximo' }).click();
+    await page.locator('#pick-subclass').getByRole('radio', { name: /Lâmina de Tinta/ }).click();
+    await page.getByRole('button', { name: 'Próximo' }).click();
+    await expect(page.getByText(/truques de Mago/)).toBeVisible();
+    await expectScreenPasses(page, `Subir de nível, as magias do conjurador de um terço ${where}`);
+
+    // The edit of a sheet whose domain always prepares a spell: "Sempre preparadas", in the class's section.
+    const campaignB = (await emptyTable(m, page, `Acessibilidade das sempre preparadas ${Date.now()}`)).campaignId;
+    const domain = await createPlainSubclassRPC(m, campaignB, 'class:cleric', 'Domínio do Caminho', 1, [{ classLevel: 1, spellKey: 'spell:detect-magic' }]);
+    const cleric = await createSheetRPC(page, campaignB, {
+      kind: 'CHARACTER_KIND_PLAYER',
+      name: 'Clara',
+      sheet: { full: {
+        baseScores: { strength: 10, dexterity: 12, constitution: 14, intelligence: 10, wisdom: 15, charisma: 8 },
+        raceKey: 'race:gnome',
+        classes: [{ classKey: 'class:cleric', level: 3, subclassKey: domain }],
+        backgroundKey: 'background:acolyte',
+        hitPoints: { method: 'HIT_POINTS_METHOD_AVERAGE' },
+        preparedSpellKeys: ['spell:bless'],
+      } },
+    });
+    await openLive(`/campanhas/${campaignB}/personagens/${cleric}/editar`);
+    await page.getByRole('tab', { name: 'Magias' }).click();
+    await expect(page.locator('.granted')).toContainText('Sempre preparada');
+    await expect(page.getByText(/Preparadas \d+ de \d+/)).toBeVisible();
+    await expectScreenPasses(page, `Editar, as magias sempre preparadas ${where}`);
+
+    // "A classe mudou" on the sheet, and its sheet.
+    await changeGuardianSkillsRPC(m, campaignId, guardian, 1);
+    await openLive(`/campanhas/${campaignId}/personagens/${characterId}`);
+    await expect(page.getByText('A classe mudou.')).toBeVisible();
+    await expectScreenPasses(page, `Ficha com "A classe mudou" ${where}`);
+    await page.getByRole('button', { name: 'Ver o que mudou' }).click();
+    await expect(page.getByRole('heading', { name: 'O que mudou: Guardião do Vale' })).toBeVisible();
+    await expectScreenPasses(page, `"O que mudou", a folha ${where}`);
+  } finally {
+    if (campaignId) await endOpenSessionRPC(m, campaignId);
+    await masterContext.close();
+    await context.close();
+  }
+}
+
+test('o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(360_000);
+  await scanTableSheetScreens(browser, 'light', 1280);
+});
+
+test('o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(360_000);
+  await scanTableSheetScreens(browser, 'dark', 390);
+});
+
+test('o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(360_000);
+  await scanTableSheetScreens(browser, 'light', 320, 568);
+});
+
+test('o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema escuro, no celular de 320', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanTableSheetScreens(browser, 'dark', 320, 568);
+});
+
+test('o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(360_000);
+  await scanTableSheetScreens(browser, 'dark', 1024, 768);
 });

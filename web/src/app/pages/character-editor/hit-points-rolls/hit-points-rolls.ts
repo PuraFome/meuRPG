@@ -32,13 +32,15 @@ export class HitPointsRolls {
   private readonly rollDie = inject(ROLL_DIE);
   /** Faces of the class's hit die. */
   readonly hitDie = input.required<number>();
+  /** The die of each level after the first when the classes differ (a multiclass); index 0 = level 2. */
+  readonly levelDice = input<readonly number[] | null>(null);
   readonly level = input.required<number>();
   readonly constitution = input.required<number>();
   /** One entry per level after the first, index 0 = level 2; 0 means "not rolled yet". */
   readonly rolls = model.required<readonly number[]>();
 
   protected readonly preview = computed(() =>
-    hitPointsPreview(this.hitDie(), this.level(), this.constitution(), this.rolls()),
+    hitPointsPreview(this.hitDie(), this.level(), this.constitution(), this.rolls(), this.levelDice()),
   );
   protected readonly modifier = computed(() => formatModifier(this.preview().constitutionModifier));
   /** "+ 3" or "− 1", the way the formula line writes it. */
@@ -52,7 +54,11 @@ export class HitPointsRolls {
   );
 
   protected rollOf(level: number): number | null {
-    return validRoll(this.rolls()[level - 2], this.hitDie());
+    return validRoll(this.rolls()[level - 2], this.dieOf(level));
+  }
+
+  protected dieOf(level: number): number {
+    return this.levelDice()?.[level - 2] || this.hitDie();
   }
 
   protected typed(level: number, value: number): void {
@@ -60,14 +66,14 @@ export class HitPointsRolls {
   }
 
   protected roll(level: number): void {
-    this.set(level, this.rollDie(this.hitDie()));
+    this.set(level, this.rollDie(this.dieOf(level)));
   }
 
   /** Rolls only the rows that are still empty. */
   protected rollMissing(): void {
     const next = Array.from({ length: Math.max(this.level() - 1, 0) }, (_, i) =>
-      validRoll(this.rolls()[i], this.hitDie()) === null
-        ? this.rollDie(this.hitDie())
+      validRoll(this.rolls()[i], this.dieOf(i + 2)) === null
+        ? this.rollDie(this.dieOf(i + 2))
         : this.rolls()[i],
     );
     this.rolls.set(next);

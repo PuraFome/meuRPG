@@ -286,12 +286,20 @@ export async function acceptInvite(context: BrowserContext, link: string): Promi
  * option listbox shares the same `aria-labelledby` as the trigger (both
  * point at the form field's floating label), so `getByLabel` matches both
  * and turns strict mode against itself the moment the panel opens.
+ *
+ * An option of the table's own content carries its mark's words in its
+ * accessible name ("Corujeiro Da mesa", table-mark.ts), on purpose: a screen
+ * reader hears where the option comes from. So the option matches the name
+ * alone or the name followed by those words, and nothing else ("Anão" never
+ * matches "Anão da Colina").
  */
 async function selectMatOption(page: Page, label: string, optionName: string): Promise<void> {
   const control = page.getByRole('combobox', { name: label, exact: true });
   await control.focus();
   await control.press('Enter');
-  await page.getByRole('option', { name: optionName, exact: true }).click();
+  const name = optionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const marks = '(?:\\s*(?:Da mesa|Arquivada|Arquivado|Desligada para os jogadores))*';
+  await page.getByRole('option', { name: new RegExp(`^${name}${marks}$`) }).click();
   await expect(control).toHaveAttribute('aria-expanded', 'false');
 }
 
@@ -326,11 +334,11 @@ export async function createCharacterViaUI(
 ): Promise<string> {
   await page.goto(entryPath);
 
-  // `exact: true` throughout: the editor's stepper renders every step's
-  // content in the DOM at once (only the active one is visible), so a loose
-  // substring match can hit another step's field, e.g. "Raça" also matching
-  // "Sub-raça", and "Força" also matching the manual bonus field
-  // "Força (bônus manual)".
+  // `exact: true` throughout: a loose substring match can hit another field
+  // of the same step, e.g. "Raça" also matching "Sub-raça", and "Força" also
+  // matching the manual bonus field "Força (bônus manual)". (A step's content
+  // is built when the step first opens, so this helper opens each one it
+  // needs by its tab.)
 
   // Passo "Básico" (selected by default).
   await page.getByLabel('Nome do personagem', { exact: true }).fill(build.name);
@@ -339,10 +347,11 @@ export async function createCharacterViaUI(
     await selectMatOption(page, 'Sub-raça', build.subrace);
   }
   await selectMatOption(page, 'Classe', build.class);
+  // The subclass field waits for the level the class chooses it at: the level goes in first.
+  await page.getByLabel('Nível', { exact: true }).fill(String(build.level));
   if (build.subclass) {
     await selectMatOption(page, 'Subclasse', build.subclass);
   }
-  await page.getByLabel('Nível', { exact: true }).fill(String(build.level));
   await selectMatOption(page, 'Antecedente', build.background ? 'Outro (personalizado)' : 'Acólito');
   if (build.background) {
     await page.getByLabel('Nome do antecedente', { exact: true }).fill(build.background);

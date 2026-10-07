@@ -9,6 +9,9 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CharacterBlockedReason, type Character } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { LevelUpClient } from '../../core/levelup/levelup-client';
+import { LiveSessionSourceLive } from '../live-session/live-session-source.live';
+import { XpWatcher } from '../character-sheet/xp-watcher';
+import { OpenSessions } from '../../shell/live-notice/open-sessions';
 import { LevelUpDraft } from '../../core/levelup/levelup-draft';
 import { cannotLevelUpMessage, describeLevelUpFailure, refusalMessage, refusalStep, type LevelUpFailure } from '../../core/levelup/levelup-errors';
 import { STEP_LABELS, type LevelUpDone, type SheetKeys, type StepKey } from '../../core/levelup/levelup-flow';
@@ -65,11 +68,16 @@ function sheetKeys(character: Character): SheetKeys {
     StepsBar,
     SummaryStep,
   ],
+  // Its own client: the catalog and the spell descriptions it keeps live as long as the page, never past a reload of the
+  // table's content. The session's stream tells it when the content changes.
+  providers: [LevelUpClient, LiveSessionSourceLive, XpWatcher],
   templateUrl: './level-up.html',
   styleUrl: './level-up.scss',
 })
 export class LevelUpPage {
   private readonly client = inject(LevelUpClient);
+  private readonly openSessions = inject(OpenSessions);
+  private readonly watcher = inject(XpWatcher);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
@@ -107,7 +115,7 @@ export class LevelUpPage {
       return first.text;
     }
     const p = s?.preview.state();
-    if (p && !p.loading && p.refusal && this.step() !== 'summary' && refusalStep(p.refusal.reason) === this.step()) {
+    if (p && !p.loading && p.refusal && this.step() !== 'summary' && refusalStep(p.refusal.reason, p.refusal.field) === this.step()) {
       return refusalMessage(p.refusal);
     }
     return '';
@@ -161,13 +169,20 @@ export class LevelUpPage {
     effect(() => {
       const s = this.session();
       const after = s?.preview.state().after;
-      if (s && after && s.options.prepares) {
+      if (s && after && s.draft.effective().prepares) {
         const max = after.spellcasting.find((c) => c.classKey === s.options.classKey)?.preparedMax ?? 0;
         if (max > 0) {
           untracked(() => s.draft.preparedMaxAfter.set(max));
         }
       }
     });
+    // While the campaign has an open session, a `content_changed` hint reads the sheet and the content again.
+    effect(() => {
+      const id = this.campaignId();
+      const live = this.session() !== null && id !== '' && this.openSessions.sessions().some((o) => o.campaignId === id);
+      untracked(() => this.watcher.follow(live ? id : null, () => undefined, undefined, () => void this.rereadSheet()));
+    });
+    destroyRef.onDestroy(() => this.watcher.follow(null, () => undefined));
     // A step that goes away (the subclass changed what the level asks) never leaves the index past the end.
     effect(() => {
       const n = this.steps().length;
@@ -189,7 +204,7 @@ export class LevelUpPage {
       }
       const [options, catalog, preference] = await Promise.all([
         this.client.options(campaignId, characterId),
-        this.client.catalog(campaignId),
+        this.client.catalog(campaignId, characterId),
         this.client.dicePreference(campaignId).catch(() => 0),
       ]);
       const draft = new LevelUpDraft(options, sheetKeys(character), catalog);
@@ -386,11 +401,13 @@ export class LevelUpPage {
       return;
     }
     try {
-      const [character, options] = await Promise.all([
+      // The table's content is read again too: the master may have retired an option, or written a new one.
+      const [character, options, catalog] = await Promise.all([
         this.client.character(this.campaignId(), this.characterId()),
         this.client.options(this.campaignId(), this.characterId()),
+        this.client.catalog(this.campaignId(), this.characterId(), true),
       ]);
-      const draft = new LevelUpDraft(options, sheetKeys(character), old.draft.catalog);
+      const draft = new LevelUpDraft(options, sheetKeys(character), catalog);
       draft.adopt(old.draft);
       const session = new LevelUpSession(this.campaignId(), character, options, draft, this.client, old.preference, (key, name) =>
         this.describeSpell(key, name),

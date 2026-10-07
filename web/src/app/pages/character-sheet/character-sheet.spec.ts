@@ -131,6 +131,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     coins: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
     customFeaturesText: '',
     issues: [],
+    changedContent: [],
     hints: [],
     hasWildShape: false,
     contentVersion: 'srd51@test',
@@ -876,6 +877,39 @@ describe('CharacterSheetPage', () => {
     );
     expect(lembretes).toBeTruthy();
     expect(features.textContent).toContain('Vantagem em testes de resistência de INT, SAB e CAR contra magia.');
+  });
+
+  it('"A classe mudou": the changed entry\'s sentences above the sheet, and the same issue never listed twice (RN-23)', async () => {
+    configure();
+    const sentence = 'Guardião do Vale agora dá 2 perícias no nível 1; esta ficha tem 3.';
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({
+            changedContent: [{ key: 'class:guardiao-do-vale@mesa', namePt: 'Guardião do Vale', changedAt: new Date(2026, 9, 5), messages: [sentence] }],
+            issues: [
+              { code: 'table_content_changed', field: 'full.classes[0].class_key', message: sentence },
+              { code: 'unknown_key', field: 'full.armor_key', message: 'A armadura escolhida não existe no conteúdo srd51@test.' },
+            ],
+          }),
+        }),
+      );
+
+    const el = await render();
+    const change = el.querySelector('app-changed-content')!;
+    expect(change.textContent).toContain('A classe mudou.');
+    expect(change.textContent).toContain(sentence);
+    // The other issue stays in its own notice; the sentence is not repeated there.
+    const issues = el.querySelector('[aria-label="Pendências de regra"]')!;
+    expect(issues.textContent).toContain('A armadura escolhida não existe');
+    expect(issues.textContent).not.toContain(sentence);
+  });
+
+  it('shows no "A classe mudou" notice for a sheet nothing changed under', async () => {
+    configure();
+    fake.getCharacterSheetFn = () => Promise.resolve(vm());
+    const el = await render();
+    expect(el.querySelector('app-changed-content')?.textContent?.trim() ?? '').toBe('');
   });
 
   it('shows no rules notice and no reminders when there are no issues or hints', async () => {
