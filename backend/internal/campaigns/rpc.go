@@ -77,12 +77,15 @@ func (s *Service) CreateCampaign(
 				// made returns it, even at the cap), in the transaction that inserts:
 				// two creations at the same time cannot both slip under it
 				// (SERIALIZABLE makes one retry and count again) (RN-30).
-				mastered, err := q.CountMasteredCampaigns(ctx, userID)
-				if err != nil {
-					return campaignsdb.Campaign{}, fmt.Errorf("count the campaigns the caller is master of: %w", err)
-				}
-				if int(mastered) >= s.maxCampaigns {
-					return campaignsdb.Campaign{}, errCreationRefused(campaignsv1.CampaignCreationRefusedReason_CAMPAIGN_CREATION_REFUSED_REASON_LIMIT_REACHED, s.maxCampaigns)
+				// A negative cap is MAX_CAMPAIGNS_PER_USER=off (local and CI stacks only).
+				if s.maxCampaigns > 0 {
+					mastered, err := q.CountMasteredCampaigns(ctx, userID)
+					if err != nil {
+						return campaignsdb.Campaign{}, fmt.Errorf("count the campaigns the caller is master of: %w", err)
+					}
+					if int(mastered) >= s.maxCampaigns {
+						return campaignsdb.Campaign{}, errCreationRefused(campaignsv1.CampaignCreationRefusedReason_CAMPAIGN_CREATION_REFUSED_REASON_LIMIT_REACHED, s.maxCampaigns)
+					}
 				}
 				c, err := q.InsertCampaign(ctx, campaignsdb.InsertCampaignParams{
 					Name:       name,

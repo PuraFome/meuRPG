@@ -465,3 +465,16 @@ func TestListenHost(t *testing.T) {
 		t.Errorf("LISTEN_HOST=127.0.0.1: %q, err %v; want 127.0.0.1", local.ListenHost, err)
 	}
 }
+
+// MAX_CAMPAIGNS_PER_USER=off lifts the cap for the local and CI stacks, and is
+// refused on Cloud Run.
+func TestCampaignCapOff(t *testing.T) {
+	t.Parallel()
+	local, err := Load(env(map[string]string{"MAX_CAMPAIGNS_PER_USER": "off"}))
+	if err != nil || local.Limits.MaxCampaignsPerUser != CampaignCapOff {
+		t.Errorf("off locally: %d, err %v; want CampaignCapOff", local.Limits.MaxCampaignsPerUser, err)
+	}
+	if _, err := Load(env(map[string]string{"MAX_CAMPAIGNS_PER_USER": "off", "K_SERVICE": "meurpg-api"})); err == nil {
+		t.Error("off on Cloud Run was accepted")
+	}
+}

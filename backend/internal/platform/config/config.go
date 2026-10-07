@@ -281,6 +281,9 @@ func Load(getenv func(string) string) (Config, error) {
 	limits, limitErrs := loadLimits(getenv)
 	cfg.Limits = limits
 	errs = append(errs, limitErrs...)
+	if cfg.CloudRun && limits.MaxCampaignsPerUser == CampaignCapOff {
+		errs = append(errs, errors.New("MAX_CAMPAIGNS_PER_USER=off is for the local and CI stacks only, never on Cloud Run"))
+	}
 
 	oidc, oidcErrs := loadOIDC(getenv)
 	cfg.OIDC = oidc
@@ -511,6 +514,9 @@ func loadImages(getenv func(string) string, cloudRun bool) (Images, []error) {
 	return img, errs
 }
 
+// CampaignCapOff is MAX_CAMPAIGNS_PER_USER=off: no cap on campaigns per master.
+const CampaignCapOff = -1
+
 // loadLimits reads RATE_LIMIT_MULTIPLIER, MAX_CAMPAIGNS_PER_USER and
 // CAMPAIGN_CREATORS. An e-mail in the list is not a secret, but it is
 // personal data: the error for a bad entry never repeats it.
@@ -533,6 +539,10 @@ func loadLimits(getenv func(string) string) (Limits, []error) {
 	if raw := strings.TrimSpace(getenv("MAX_CAMPAIGNS_PER_USER")); raw != "" {
 		n, err := strconv.Atoi(raw)
 		switch {
+		case strings.EqualFold(raw, "off"):
+			// No cap: for the local and CI stacks, where the e2e suite makes
+			// hundreds of campaigns as one test master. Refused on Cloud Run (Load).
+			l.MaxCampaignsPerUser = CampaignCapOff
 		case err != nil:
 			errs = append(errs, fmt.Errorf("MAX_CAMPAIGNS_PER_USER must be a number, got %q", raw))
 		case n < 1 || n > maxCampaignsPerUserLimit:

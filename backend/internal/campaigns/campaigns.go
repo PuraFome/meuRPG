@@ -104,7 +104,8 @@ type Config struct {
 	// Profiles gives members' display names. Required.
 	Profiles Profiles
 	// MaxCampaignsPerUser is how many campaigns one account may be master of
-	// (RN-30). Zero means DefaultMaxCampaignsPerUser.
+	// (RN-30). Zero means DefaultMaxCampaignsPerUser; negative means no cap
+	// (MAX_CAMPAIGNS_PER_USER=off, for the local and CI stacks only).
 	MaxCampaignsPerUser int
 	// Creators are the verified e-mails, in lower case, allowed to create
 	// campaigns (RN-30). Empty means anyone.
@@ -159,7 +160,7 @@ func New(cfg Config) (*Service, error) {
 		maxCampaigns: cfg.MaxCampaignsPerUser,
 		creators:     cfg.Creators,
 	}
-	if s.maxCampaigns <= 0 {
+	if s.maxCampaigns == 0 {
 		s.maxCampaigns = DefaultMaxCampaignsPerUser
 	}
 	if s.logger == nil {

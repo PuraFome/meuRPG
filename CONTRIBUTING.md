@@ -190,7 +190,7 @@ O backend limita a taxa de requisições (por IP e por usuário, em memória) e 
 
 | Variável | Obrigatória | O que é |
 | --- | --- | --- |
-| `MAX_CAMPAIGNS_PER_USER` | Não | Campanhas de que uma conta pode ser mestre; padrão 10 (RN-30) |
+| `MAX_CAMPAIGNS_PER_USER` | Não | Campanhas de que uma conta pode ser mestre; padrão 10 (RN-30). Os ambientes locais e o CI usam `off` (sem teto), porque o e2e cria centenas de campanhas com o mesmo mestre de teste; a API recusa `off` no Cloud Run |
 | `CAMPAIGN_CREATORS` | Não | E-mails verificados, separados por vírgula, que podem criar campanhas; vazia, qualquer um cria. No `make up`, o "Mestre Teste" é `mestre@example.com` |
 | `RATE_LIMIT_MULTIPLIER` | Não | Multiplica todos os limites de taxa; padrão 1. O `make up` (Docker e nativo) usa 10, porque a suíte e2e manda as requisições de várias contas do mesmo endereço e divide algumas contas entre os workers |
 
