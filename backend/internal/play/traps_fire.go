@@ -203,12 +203,44 @@ func (s *Service) fireByHandInCombat(ctx context.Context, m authz.Membership, ke
 			return nil, s.dbError(ctx, "read the firing", err)
 		}
 		firingID = row.ID
+		if res.repeated { // the answer of the first call listed every creature, whatever the events it took
+			if ev.Trap, err = s.firingWithParts(ctx, res.session.ID, row.ID, ev.Trap); err != nil {
+				return nil, s.dbError(ctx, "read the firing", err)
+			}
+		}
 	}
 	label := s.membersOf(ctx, res)
 	return connect.NewResponse(&playv1.FireTrapResponse{Firing: firingProto(ev.Trap, firingID, trap.Name, trapView{master: true, label: func(id string) string {
 		c, _ := label(id)
 		return c.Label
 	}})}), nil
+}
+
+// firingWithParts adds to a firing, as its event holds it, the creatures of the
+// events written after it for the ones that did not fit (trapFireEvent.Part).
+func (s *Service) firingWithParts(ctx context.Context, sessionID, hostID string, fired *trapFireEvent) (*trapFireEvent, error) {
+	if fired == nil {
+		return nil, nil
+	}
+	recent, err := s.queries.ListRecentSessionEvents(ctx, playdb.ListRecentSessionEventsParams{GameSessionID: sessionID, Limit: recentEvents})
+	if err != nil {
+		return nil, fmt.Errorf("read the latest events: %w", err)
+	}
+	group := fired.ExtendsID
+	if group == "" {
+		group = hostID
+	}
+	whole := *fired
+	whole.Caught = slices.Clone(fired.Caught)
+	at := slices.IndexFunc(recent, func(e playdb.ListRecentSessionEventsRow) bool { return e.ID == hostID })
+	for i := at - 1; i >= 0; i-- { // the events after it, oldest first: its parts follow it back to back
+		ev, err := readEvent(recent[i].Payload)
+		if recent[i].Kind != eventTrapTriggered || err != nil || ev.Trap == nil || !ev.Trap.Part || ev.Trap.ExtendsID != group {
+			break
+		}
+		whole.Caught = append(whole.Caught, ev.Trap.Caught...)
+	}
+	return &whole, nil
 }
 
 // afterFiring tells the streams, after the commit, what a firing changed: the trap

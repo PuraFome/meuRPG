@@ -322,6 +322,9 @@ func (s *Service) MoveCombatant(
 			case !placed(target):
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "you are not on the map yet; ask the master")
 			}
+			if err := s.mustNotBeDown(ctx, c.tx, m.CampaignID, target); err != nil {
+				return nil, err
+			}
 		}
 
 		if th, err = s.newTrapHook(ctx, c.tx, m.CampaignID, c.enc, target); err != nil {
@@ -658,6 +661,9 @@ func (s *Service) GetMoveOptions(
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
 		case !actsNow(enc, who):
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
+		}
+		if err := s.mustNotBeDown(ctx, nil, m.CampaignID, who); err != nil {
+			return nil, err
 		}
 	}
 	if isTheatre(enc) {

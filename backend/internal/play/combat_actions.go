@@ -85,7 +85,9 @@ func (s *Service) gate(ctx context.Context, tx pgx.Tx, campaignID string, e play
 }
 
 // isDown says whether a player's character is at 0 hit points ("Caído"): its
-// vitals say so. An NPC and a creature are never down: they are defeated.
+// vitals say so. A character that left the sheet's active state (it died, and the
+// combat was not told) is out of the fight too: down, never an error. An NPC and a
+// creature are never down: they are defeated.
 // A write passes its transaction, so it reads what it will overwrite; a read
 // passes nil.
 func (s *Service) isDown(ctx context.Context, tx pgx.Tx, campaignID string, c playdb.Combatant) (bool, error) {
@@ -98,6 +100,9 @@ func (s *Service) isDown(ctx context.Context, tx pgx.Tx, campaignID string, c pl
 		v, err = s.vitals.GetVitalsTx(ctx, tx, campaignID, c.CharacterID)
 	} else {
 		v, err = s.vitals.GetVitals(ctx, campaignID, c.CharacterID)
+	}
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return true, nil
 	}
 	if err != nil {
 		return false, err
@@ -116,6 +121,19 @@ func gateError(code rulesv1.DisabledReasonCode) error {
 	}
 	// Not on turn, or out of the fight (a defeated combatant has no turn).
 	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not this combatant's turn")
+}
+
+// mustNotBeDown refuses a player's character at 0 hit points: a down character
+// does not move (RN-03, RN-21). tx is the open transaction, or nil for a read.
+func (s *Service) mustNotBeDown(ctx context.Context, tx pgx.Tx, campaignID string, who playdb.Combatant) error {
+	down, err := s.isDown(ctx, tx, campaignID, who)
+	if err != nil {
+		return err
+	}
+	if down {
+		return gateError(rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN)
+	}
+	return nil
 }
 
 // mustActNow checks, inside a write, that the combatant is the one that may

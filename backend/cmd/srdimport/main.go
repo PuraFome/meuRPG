@@ -45,6 +45,9 @@ const (
 	sourceCommit = "a8abc93b235c158bb8cbf042e54425b9c2fd79b8"
 )
 
+// reachWeaponFt is the reach of a melee weapon with the reach property.
+const reachWeaponFt = 10
+
 // inputHashes is the sha256 of every file the tool reads, at sourceCommit.
 var inputHashes = map[string]string{
 	"5e-SRD-Ability-Scores.json":    "23f08ea89e30f3d4e1cab80b3f57b61188b7894fbcab3b583177b66e9711e090",
@@ -896,6 +899,11 @@ func convertEquipment(in *inputs) (output, error) {
 			}
 			if r.Range != nil {
 				w.NormalRangeFt, w.LongRangeFt = r.Range.Normal, r.Range.Long
+			}
+			if w.Range == "melee" && slices.Contains(w.Properties, "weapon-property:reach") {
+				// The source gives a reach weapon the 5 ft of any melee
+				// weapon; the property is what makes it 10.
+				w.NormalRangeFt = reachWeaponFt
 			}
 			if r.ThrowRange != nil {
 				w.ThrowNormalFt, w.ThrowLongFt = r.ThrowRange.Normal, r.ThrowRange.Long
