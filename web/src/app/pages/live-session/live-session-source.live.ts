@@ -230,6 +230,9 @@ export class LiveSessionSourceLive implements LiveSessionSource {
         case 'puzzleChanged':
           yield { kind: 'puzzleChanged', puzzleId: res.event.value.puzzleId };
           break;
+        case 'contentChanged':
+          yield { kind: 'contentChanged' };
+          break;
         default:
           // A newer server's event this app doesn't know yet: still proof
           // that the stream is alive.

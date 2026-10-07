@@ -5,7 +5,7 @@ import {
   CharacterBlockedSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { InvalidFieldSchema } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { characterBlockedMessage, contentRef, describeCharacterError, invalidFieldPath } from './character-errors';
+import { characterBlockedMessage, contentRef, describeCharacterError, invalidFieldPath, switchedOffKey } from './character-errors';
 
 function blockedError(reason: CharacterBlockedReason, characterId = 'char-1'): ConnectError {
   return new ConnectError('blocked', Code.FailedPrecondition, undefined, [
@@ -89,6 +89,24 @@ describe('describeCharacterError', () => {
     expect(describeCharacterError(new Error('network down'))).toContain(
       'Não foi possível falar com o servidor',
     );
+  });
+});
+
+describe('an option the master switched off (RN-23, SWITCHED_OFF_CONTENT)', () => {
+  const off = (key: string) =>
+    new ConnectError('blocked', Code.FailedPrecondition, undefined, [
+      { desc: CharacterBlockedSchema, value: { reason: CharacterBlockedReason.SWITCHED_OFF_CONTENT, contentKey: key } },
+    ]);
+
+  it('reads the key of the refused choice off the typed detail', () => {
+    expect(switchedOffKey(off('race:tiefling'))).toBe('race:tiefling');
+    expect(switchedOffKey(off(''))).toBe('');
+  });
+
+  it('is null for any other error, so no other refusal is read as this one', () => {
+    expect(switchedOffKey(blockedError(CharacterBlockedReason.SHEET_LOCKED))).toBeNull();
+    expect(switchedOffKey(new ConnectError('x', Code.Aborted))).toBeNull();
+    expect(switchedOffKey(new Error('offline'))).toBeNull();
   });
 });
 

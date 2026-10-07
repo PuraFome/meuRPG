@@ -209,7 +209,7 @@ function vm(overrides: Partial<CharacterSheetVm> = {}): CharacterSheetVm {
 
 /** What the XP block listens with: no open session, so no stream. */
 const openSessions = signal<readonly OpenSessionVm[]>([]);
-const xpWatcher = { follow: vi.fn<(campaignId: string | null, onChange: () => void, onCreatures?: () => void) => void>() };
+const xpWatcher = { follow: vi.fn<(campaignId: string | null, onChange: () => void, onCreatures?: () => void, onContent?: () => void) => void>() };
 /** The player's notes panel reads this; nothing here talks to a server. */
 const notesApi = {
   list: vi.fn(() => Promise.resolve({ notes: [], noteCount: 0, maxNotes: 300 })),
@@ -1282,14 +1282,14 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
     openSessions.set([]);
     const fixture = await render();
     // No open session: it follows nothing.
-    expect(xpWatcher.follow).toHaveBeenLastCalledWith(null, expect.any(Function), expect.any(Function));
+    expect(xpWatcher.follow).toHaveBeenLastCalledWith(null, expect.any(Function), expect.any(Function), expect.any(Function));
 
     openSessions.set([
       { sessionId: 's1', campaignId: 'camp-1', campaignName: 'Mirathel', sessionNumber: 5, startedAt: new Date(), isMaster: false },
     ]);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(xpWatcher.follow).toHaveBeenLastCalledWith('camp-1', expect.any(Function), expect.any(Function));
+    expect(xpWatcher.follow).toHaveBeenLastCalledWith('camp-1', expect.any(Function), expect.any(Function), expect.any(Function));
 
     fixture.destroy();
     expect(xpWatcher.follow).toHaveBeenLastCalledWith(null, expect.any(Function));
@@ -1324,5 +1324,25 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
 
     expect(block(el)!.querySelector('.xp__n')?.textContent?.trim()).toBe(`2.716${nbsp}XP`);
     expect(el.textContent).not.toContain('Carregando a ficha');
+  });
+
+  it('reads the character again when the table\'s content changes (content_changed, "A classe mudou"), on the same stream', async () => {
+    let reads = 0;
+    fake.getCharacterSheetFn = () => {
+      reads++;
+      return Promise.resolve(vm());
+    };
+    openSessions.set([
+      { sessionId: 's1', campaignId: 'camp-1', campaignName: 'Mirathel', sessionNumber: 5, startedAt: new Date(), isMaster: false },
+    ]);
+    const fixture = await render();
+    const before = reads;
+    const onContent = xpWatcher.follow.mock.calls.at(-1)![3]!;
+    onContent();
+    await flush();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(reads).toBe(before + 1);
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Carregando a ficha');
   });
 });

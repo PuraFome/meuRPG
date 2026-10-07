@@ -1,4 +1,4 @@
-import { Component, DestroyRef, ViewChild, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, ElementRef, Injector, ViewChild, afterNextRender, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CdkStep } from '@angular/cdk/stepper';
@@ -14,14 +14,15 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 
-import { characterBlockedMessage, describeCharacterError, invalidFieldPath } from '../../core/characters/character-errors';
+import { characterBlockedMessage, contentRef, describeCharacterError, invalidFieldPath, switchedOffKey } from '../../core/characters/character-errors';
+import { ContentWatcher } from '../../core/content/content-watcher';
+import { LiveSessionSourceLive } from '../live-session/live-session-source.live';
+import { catalogChanged, offControlOf } from './catalog-changes';
 import { abilityLabel, characterKindLabel, spellLevelLabel } from '../../core/characters/character-labels';
 import { CharacterKind, isFullSheetKind } from '../../core/characters/characters.types';
 import { formatXp } from '../../core/format/text';
 import { FictionNotice } from '../../shared/fiction-notice/fiction-notice';
 import { TableMark } from '../../shared/table-mark/table-mark';
-import { OpenSessions } from '../../shell/live-notice/open-sessions';
-import { XpWatcher } from '../character-sheet/xp-watcher';
 import { AbilityFields } from './ability-fields/ability-fields';
 import { AbilityScores } from './ability-scores/ability-scores';
 import { TableAbilityScores } from './table-ability-scores/table-ability-scores';
@@ -230,6 +231,7 @@ function filterByName<T extends { readonly namePt: string }>(
     SkillPicker,
     SpellPicker,
   ],
+  providers: [ContentWatcher, LiveSessionSourceLive],
   templateUrl: './character-editor.html',
   styleUrl: './character-editor.scss',
 })
@@ -241,9 +243,10 @@ export class CharacterEditor {
   private readonly fb = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
-  // The session's stream says when the table's content changes (10.1d): optional, only the route provides it.
-  private readonly watcher = inject(XpWatcher, { optional: true });
-  private readonly openSessions = inject(OpenSessions, { optional: true });
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+  // The session's stream says when the table's content changes (10.1d, RN-23): one stream, one read per hint, with the debounce.
+  private readonly watcher = inject(ContentWatcher);
   /** The spell descriptions already fetched, by spell key, for the life of
    * the page (a second "?" on the same spell is instant; nothing is stored
    * in the browser). A failed fetch is dropped so "Tentar de novo" asks again. */
@@ -828,7 +831,14 @@ export class CharacterEditor {
     return this.stepsWithErrors().has(step);
   }
 
+  /** What the page says after the table's content changed under the person ("" when nothing did). */
+  protected readonly contentNote = signal('');
+  private readonly campaignIdSignal = signal('');
+
   constructor() {
+    // Only a player's editor follows the hint: the master writes the content himself, and an open stream would keep the
+    // page from ever being quiet (every NPC editor of a live campaign would hold one).
+    this.watcher.whileLive(() => (this.master() ? '' : this.campaignIdSignal()), () => void this.refreshCatalog());
     // The subclass of a one-class sheet waits for the level the class chooses it at (as in a block), unless one is chosen.
     effect(() => {
       const c = this.selectedClass();
@@ -843,16 +853,6 @@ export class CharacterEditor {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       this.resolveAndLoad(params);
     });
-    // While the campaign has an open session, a `content_changed` hint reads the catalog again (the form stays as it is).
-    effect(() => {
-      const s = this.state();
-      const id = s.status === 'ready' ? s.campaignId : '';
-      // Only a player's editor listens: the master writes the content himself, and an open stream would keep the page
-      // from ever being quiet (every screen of an NPC's editor in a live campaign would hold one).
-      const live = id !== '' && !this.master() && !!this.openSessions?.sessions().some((o) => o.campaignId === id);
-      untracked(() => this.watcher?.follow(live ? id : null, () => undefined, undefined, () => void this.reloadCatalog()));
-    });
-    this.destroyRef.onDestroy(() => this.watcher?.follow(null, () => undefined));
   }
 
   private resolveAndLoad(params: ParamMap): void {
@@ -862,6 +862,7 @@ export class CharacterEditor {
     }
     const characterId = params.get('characterId');
     const tipo = params.get('tipo');
+    this.campaignIdSignal.set(campaignId);
 
     if (characterId) {
       this.loadForEdit(campaignId, characterId);
@@ -869,23 +870,6 @@ export class CharacterEditor {
     }
     const kind: CharacterKind = tipo ? (TIPO_TO_KIND[tipo] ?? 'enemy') : 'player';
     this.loadForCreate(campaignId, kind);
-  }
-
-  /** The catalog again, with the sheet when editing, so a retired option never stays offered and a new one shows up. */
-  private async reloadCatalog(): Promise<void> {
-    const s = this.state();
-    if (s.status !== 'ready') {
-      return;
-    }
-    try {
-      const catalog = await this.source.loadCatalog(s.campaignId, s.characterId ?? undefined);
-      const now = this.state();
-      if (now.status === 'ready') {
-        this.state.set({ ...now, catalog });
-      }
-    } catch {
-      // Keep what is on screen: the next change reads again.
-    }
   }
 
   private loadForCreate(campaignId: string, kind: CharacterKind): void {
@@ -1303,10 +1287,63 @@ export class CharacterEditor {
       const field = invalidFieldPath(err);
       const block = field ? /^full\.classes\[(\d+)\]/.exec(field) : null;
       this.serverClassProblem.set(block ? Number(block[1]) : null);
+      // An option the master switched off after the lists were read is an error on its field (E10-01 state 5). The name is
+      // taken before the lists are read again, because the entry may be gone from them.
+      const refused = switchedOffKey(err);
+      if (refused !== null && this.markSwitchedOff(refused)) {
+        void this.refreshCatalog();
+        return;
+      }
       this.saveState.set({
         status: 'error',
         message: describeCharacterError(err, (key) => this.nameOfKey(key)),
       });
+    }
+  }
+
+  /**
+   * The server refused a key the master switched off: its field gets the error (`switchedOff`, so it is invalid, red and
+   * `aria-invalid`), the step is marked "(com erro)", the editor opens it and the focus goes to the field. Returns false when
+   * no field holds the key (a spell, say): the notice above the buttons says it by name instead.
+   */
+  private markSwitchedOff(key: string): boolean {
+    const control = offControlOf(key, this.fullForm.getRawValue());
+    if (!control) {
+      return false;
+    }
+    const ref = contentRef(key, (k) => this.nameOfKey(k));
+    this.fullForm.controls[control].setErrors({ switchedOff: characterBlockedMessage('switched_off_content', { ...ref, step: '' }) });
+    this.fullForm.controls[control].markAsTouched();
+    this.showErrors.set(true);
+    this.saveState.set({ status: 'idle' });
+    this.openFirstInvalidStep();
+    afterNextRender(
+      () => this.host.nativeElement.querySelector<HTMLElement>(`[formcontrolname="${control}"]`)?.focus(),
+      { injector: this.injector },
+    );
+    return true;
+  }
+
+  /** The sentence of a switched-off option on its field, for the template. */
+  protected switchedOff(control: 'className' | 'race' | 'subrace' | 'subclassName' | 'background'): string {
+    return (this.fullForm.controls[control].getError('switchedOff') as string | null) ?? '';
+  }
+
+  /** `content_changed` (RN-23): the lists are read again with this person's role; what was typed stays. Resolves when done. */
+  private async refreshCatalog(): Promise<void> {
+    const s = this.state();
+    if (s.status !== 'ready') {
+      return;
+    }
+    try {
+      const catalog = await this.source.loadCatalog(s.campaignId, s.characterId ?? undefined);
+      const now = this.state();
+      if (now.status === 'ready' && catalogChanged(now.catalog, catalog)) {
+        this.state.set({ ...now, catalog });
+        this.contentNote.set('O mestre mudou as opções da mesa. As listas foram atualizadas: confira o que você escolheu antes de salvar.');
+      }
+    } catch {
+      // Keep the lists on screen: the next change reads again.
     }
   }
 }

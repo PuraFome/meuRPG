@@ -166,12 +166,13 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     expect(handlers.onPuzzleChanged).toHaveBeenCalledWith('p-1');
   });
 
-  it('tells the page the table\'s content changed (10.1d), so it reads the catalog again', async () => {
+  it('tells the page the table\'s content changed (RN-23, content_changed), with nothing in it', async () => {
     stream.start();
     last().push({ kind: 'ready' });
     last().push({ kind: 'contentChanged' });
     await flush();
     expect(handlers.onContentChanged).toHaveBeenCalledTimes(1);
+    expect(handlers.onContentChanged).toHaveBeenCalledWith();
     expect(stream.status()).toBe('live');
   });
 

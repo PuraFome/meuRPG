@@ -38,6 +38,12 @@
 
     <div class="layout">
       <div class="main">
+        @if (contentNote(); as note) {
+          <div class="mr-notice mr-notice--neutral" role="status">
+            <mat-icon aria-hidden="true">info</mat-icon>
+            <p>{{ note }}</p>
+          </div>
+        }
         <div class="body" (change)="onPick()">
           @if (failure(); as f) {
             <div class="mr-notice mr-notice--danger js-failure" role="alert" tabindex="-1">

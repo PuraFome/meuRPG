@@ -18,7 +18,7 @@ export function refusalStep(reason: LevelUpRefusalReason, field = ''): StepKey |
     case LevelUpRefusalReason.ARCHIVED_CHOICE:
     case LevelUpRefusalReason.SWITCHED_OFF_CHOICE:
       // A retired option sits in the step of the field it is chosen in.
-      return /subclass|feature_choice/.test(field) ? 'picks' : /spell|cantrip/.test(field) ? 'spells' : null;
+      return /class|feature_choice/.test(field) ? 'picks' : /spell|cantrip/.test(field) ? 'spells' : null;
     case LevelUpRefusalReason.ABILITY_NOT_DUE:
     case LevelUpRefusalReason.ABILITY_SHAPE:
     case LevelUpRefusalReason.ABILITY_ABOVE_20:

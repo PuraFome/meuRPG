@@ -15,8 +15,13 @@ import {
   LevelUpRefusalSchema,
   type LevelUpOptions,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { OpenSessions } from '../../shell/live-notice/open-sessions';
-import { XpWatcher } from '../character-sheet/xp-watcher';
+import { fakeContentWatcher } from '../../core/content/content-testing';
+import { createRouterTransport } from '@connectrpc/connect';
+
+import { CampaignService } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { CharacterService } from '../../../gen/meurpg/characters/v1/characters_pb';
+import { ContentSchema, ContentService, ListContentResponseSchema } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import { LevelUpClient } from '../../core/levelup/levelup-client';
 import { SKILLS, SPELLS, WIZARD_KEYS, fighterOptions, pensantus, wizardOptions } from '../../core/levelup/levelup-testing';
 import { LevelUpPage } from './level-up';
@@ -57,9 +62,8 @@ describe('LevelUpPage', () => {
     spellDetails: vi.fn(),
     xpMode: vi.fn(),
   };
-  const watcher = { follow: vi.fn() };
-  const live = { on: false, next: false };
   let navigate: ReturnType<typeof vi.spyOn>;
+  let watcher = fakeContentWatcher();
 
   beforeEach(() => {
     // jsdom has no layout: scrolling does nothing.
@@ -68,9 +72,6 @@ describe('LevelUpPage', () => {
   });
 
   async function setup(options: LevelUpOptions = wizardOptions({ preparedMaxAfter: 3 }), char = character(), optionsError?: Error) {
-    live.on = live.next;
-    live.next = false;
-    watcher.follow.mockReset();
     client.character.mockReset().mockResolvedValue(char);
     client.options.mockReset();
     if (optionsError) {
@@ -87,18 +88,11 @@ describe('LevelUpPage', () => {
     client.xpMode.mockReset().mockResolvedValue(XpMode.MILESTONES);
     client.rollHitPoints.mockReset().mockResolvedValue({ die: 6, value: 5, alreadyRolled: false });
     client.levelUp.mockReset().mockResolvedValue(character({ canLevelUp: false }, pensantus(true)));
-    TestBed.configureTestingModule({
-      providers: [
-        provideRouter([]),
-        { provide: LevelUpClient, useValue: client },
-        { provide: OpenSessions, useValue: { sessions: () => (live.on ? [{ campaignId: 'camp-1' }] : []) } },
-      ],
-    });
+    watcher = fakeContentWatcher();
+    TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: LevelUpClient, useValue: client }] });
     // The page makes its own client (so the catalog never outlives it): the test's takes its place there too, and the
-    // session's stream is not opened.
-    TestBed.overrideComponent(LevelUpPage, {
-      set: { providers: [{ provide: LevelUpClient, useValue: client }, { provide: XpWatcher, useValue: watcher }] },
-    });
+    // session's stream is not opened (the fake watcher plays the hint).
+    TestBed.overrideComponent(LevelUpPage, { set: { providers: [{ provide: LevelUpClient, useValue: client }, watcher.provider] } });
     // The route's params, read the way the page reads them.
     const { ActivatedRoute } = await import('@angular/router');
     TestBed.overrideProvider(ActivatedRoute, { useValue: { paramMap: (await import('rxjs')).of({ get: (k: string) => (k === 'id' ? 'camp-1' : 'ch-1') }) } });
@@ -492,28 +486,119 @@ describe('LevelUpPage', () => {
       expect(client.options).not.toHaveBeenCalled();
     });
   });
+  describe('the table\'s content changed (content_changed, RN-23)', () => {
+    it('reads the options and the lists again, keeps the choices that are still offered, and says so', async () => {
+      const f = await setup();
+      expect(watcher.following()).toBe('camp-1');
+      await click(f, pickRow(f, 'Inteligência').querySelector('input'));
+      await click(f, button(f, 'Próximo'));
+      await click(f, button(f, 'Próximo'));
+      await click(f, pickRow(f, 'Prestidigitação').querySelector('input'));
+      expect(client.options).toHaveBeenCalledTimes(1);
+      // A spell the wizard is offered is gone from the lists, and this one was not picked: the choices all stay.
+      client.catalog.mockResolvedValue({ spells: SPELLS.filter((sp) => sp.key !== 'spell:detect-magic'), skills: SKILLS });
+      watcher.hint();
+      await load(f);
+      expect(client.options).toHaveBeenCalledTimes(2);
+      expect(client.catalog).toHaveBeenCalledTimes(2);
+      expect(text(f)).toContain('O mestre mudou as opções da mesa. As listas deste nível estão atualizadas.');
+      // Still on the same step, and the cantrip is still picked.
+      expect(text(f)).toContain('Passo 3 de 4 · Magias');
+      expect((pickRow(f, 'Prestidigitação').querySelector('input') as HTMLInputElement).checked).toBe(true);
+    });
 
-  it('reads the catalog with the character, so a sheet keeps what the master retired since', async () => {
-    await setup();
-    expect(client.catalog).toHaveBeenCalledWith('camp-1', 'ch-1');
+    it('says a choice left the list when the master switched it off, and the row is gone', async () => {
+      const f = await setup();
+      await click(f, pickRow(f, 'Inteligência').querySelector('input'));
+      await click(f, button(f, 'Próximo'));
+      await click(f, button(f, 'Próximo'));
+      await click(f, pickRow(f, 'Prestidigitação').querySelector('input'));
+      client.catalog.mockResolvedValue({ spells: SPELLS.filter((sp) => sp.key !== 'spell:prestidigitation'), skills: SKILLS });
+      watcher.hint();
+      await load(f);
+      expect(text(f)).toContain('uma das suas escolhas saiu da lista');
+      expect(Array.from(el(f).querySelectorAll('.row__main, .row')).some((r) => r.textContent?.includes('Prestidigitação'))).toBe(false);
+    });
+
+    it('keeps the page as it was when the read fails', async () => {
+      const f = await setup();
+      client.options.mockRejectedValue(new Error('offline'));
+      watcher.hint();
+      await load(f);
+      expect(text(f)).toContain('Passo 1 de 4 · Atributos');
+      expect(el(f).querySelector('.js-failure')).toBeNull();
+      expect(text(f)).not.toContain('O mestre mudou');
+    });
+
+    it('reads the catalog with the character, so a sheet keeps what the master retired since', async () => {
+      await setup();
+      expect(client.catalog).toHaveBeenCalledWith('camp-1', 'ch-1');
+    });
+
+    it('reads the content fresh on a hint: the catalog is asked again with `fresh`', async () => {
+      const f = await setup();
+      client.catalog.mockClear();
+      watcher.hint();
+      await load(f);
+      expect(client.catalog).toHaveBeenCalledWith('camp-1', 'ch-1', true);
+    });
+
+    it('says nothing when what the page shows did not change', async () => {
+      const f = await setup();
+      watcher.hint();
+      await load(f);
+      expect(text(f)).not.toContain('O mestre mudou');
+    });
   });
+});
 
-  it('reads the sheet, the level and the content again on a content_changed hint, while a session is open', async () => {
-    live.next = true;
-    const f = await setup();
-    // The page follows the session's stream for the hint (the 4th callback).
-    const follow = watcher.follow.mock.calls.find((c) => c[0] === 'camp-1');
-    expect(follow).toBeTruthy();
-    client.catalog.mockClear();
-    client.options.mockClear();
-    follow![3]();
-    await load(f);
-    expect(client.catalog).toHaveBeenCalledWith('camp-1', 'ch-1', true);
-    expect(client.options).toHaveBeenCalled();
-  });
-
-  it('does not follow the stream without an open session', async () => {
-    await setup();
-    expect(watcher.follow.mock.calls.every((c) => c[0] === null)).toBe(true);
+describe('LevelUpPage with the real client: a content_changed hint really reads the lists again (RN-23)', () => {
+  it('a spell the master switched off leaves the lists, though the client had already read the catalog', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    window.scrollTo = vi.fn();
+    let spells = [...SPELLS];
+    const listContent = vi.fn(async () => create(ListContentResponseSchema, { tableRevision: spells.length, content: create(ContentSchema, { spells, skills: SKILLS }) }));
+    const transport = createRouterTransport(({ service }) => {
+      service(ContentService, { listContent });
+      service(CharacterService, {
+        getCharacter: async () => ({ character: character() }),
+        getLevelUpOptions: async () => ({ options: wizardOptions({ preparedMaxAfter: 3 }) }),
+        previewLevelUp: async () => ({ after: pensantus(true) }),
+      });
+      service(CampaignService, { getCampaign: async () => ({ campaign: { id: 'camp-1', myDicePreference: DicePreference.APP, xpMode: XpMode.MILESTONES } }) });
+    });
+    const watcher = fakeContentWatcher();
+    TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: CONNECT_TRANSPORT, useValue: transport }] });
+    TestBed.overrideComponent(LevelUpPage, { set: { providers: [LevelUpClient, watcher.provider] } });
+    const { ActivatedRoute } = await import('@angular/router');
+    TestBed.overrideProvider(ActivatedRoute, { useValue: { paramMap: (await import('rxjs')).of({ get: (k: string) => (k === 'id' ? 'camp-1' : 'ch-1') }) } });
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const f = TestBed.createComponent(LevelUpPage);
+    const go = async () => {
+      f.detectChanges();
+      await f.whenStable();
+      await settle();
+      f.detectChanges();
+    };
+    await go();
+    const root = f.nativeElement as HTMLElement;
+    const click = async (t: Element | null | undefined) => {
+      (t as HTMLElement).click();
+      await go();
+    };
+    const row = (name: string) => Array.from(root.querySelectorAll<HTMLElement>('.row__main, .row')).find((r) => r.textContent?.includes(name));
+    const next = () => Array.from(root.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.trim() === 'Próximo')!;
+    await click(row('Inteligência')?.querySelector('input'));
+    await click(next());
+    await click(next());
+    expect(row('Prestidigitação')).toBeTruthy();
+    expect(listContent).toHaveBeenCalledTimes(1);
+    // The master switches the spell off; the hint arrives.
+    spells = spells.filter((sp) => sp.key !== 'spell:prestidigitation');
+    watcher.hint();
+    await go();
+    expect(listContent).toHaveBeenCalledTimes(2);
+    expect(row('Prestidigitação')).toBeUndefined();
+    expect(root.textContent).toContain('O mestre mudou as opções da mesa');
   });
 });

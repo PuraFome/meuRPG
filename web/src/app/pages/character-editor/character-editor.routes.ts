@@ -2,8 +2,6 @@ import { Routes } from '@angular/router';
 
 import { CharacterEditorSource } from './character-editor.types';
 import { CharacterEditorSourceLive } from './character-editor-source.live';
-import { LiveSessionSourceLive } from '../live-session/live-session-source.live';
-import { XpWatcher } from '../character-sheet/xp-watcher';
 
 /**
  * Lazily loaded from `app.routes.ts` via `loadChildren`, from all three
@@ -17,9 +15,6 @@ export const CHARACTER_EDITOR_ROUTES: Routes = [
     path: '',
     providers: [
       { provide: CharacterEditorSource, useClass: CharacterEditorSourceLive },
-      // The session's stream, for `content_changed` (10.1d): the catalog is read again.
-      LiveSessionSourceLive,
-      XpWatcher,
     ],
     loadComponent: () => import('./character-editor').then((m) => m.CharacterEditor),
   },

@@ -13,6 +13,20 @@ import { describeConnectError } from '../connect/connect-errors';
 import { CharacterBlockedReason } from './characters.types';
 
 /**
+ * The content key a player's save was refused for because the master switched it off in "Opções para os jogadores" (RN-23):
+ * `failed_precondition` with `CharacterBlocked` `SWITCHED_OFF_CONTENT` and the key ("race:tiefling", "class:wizard"). `null` for
+ * any other error. The editor shows it on the field that holds the key, by the typed reason and never by the message.
+ */
+export function switchedOffKey(err: unknown): string | null {
+  const e = ConnectError.from(err, Code.Unavailable);
+  if (e.code !== Code.FailedPrecondition) {
+    return null;
+  }
+  const [detail] = e.findDetails(CharacterBlockedSchema);
+  return detail?.reason === GenCharacterBlockedReason.SWITCHED_OFF_CONTENT ? detail.contentKey || '' : null;
+}
+
+/**
  * Turns a `CharacterBlocked.reason` into the message the sheet and the
  * editor show as-is. Kept separate from `describeCharacterError` so both can
  * be unit-tested without a `ConnectError` in hand — this one takes the

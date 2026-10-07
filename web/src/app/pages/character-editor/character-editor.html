@@ -29,6 +29,12 @@
         <a mat-stroked-button class="editor__back" [routerLink]="s.backLink">{{ s.backLabel }}</a>
       }
       @case ('ready') {
+        @if (contentNote(); as note) {
+          <div class="mr-notice mr-notice--neutral editor__notice" role="status">
+            <mat-icon aria-hidden="true">info</mat-icon>
+            <p>{{ note }}</p>
+          </div>
+        }
         @if (isFullSheetKind(s.kind)) {
           <form [formGroup]="fullForm">
             <app-editor-stepper [eager]="abilityTable() ? [stepLabels.atributos] : []">
@@ -141,7 +147,7 @@
                         </mat-option>
                       }
                     </mat-select>
-                    <mat-error>Escolha a classe.</mat-error>
+                    <mat-error>{{ switchedOff('className') || 'Escolha a classe.' }}</mat-error>
                   </mat-form-field>
 
                   @if (!selectedClass()) {
@@ -169,6 +175,7 @@
                       @if (subclassHint()) {
                         <mat-hint>{{ subclassHint() }}</mat-hint>
                       }
+                      <mat-error>{{ switchedOff('subclassName') }}</mat-error>
                     </mat-form-field>
                   } @else {
                     <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -200,7 +207,7 @@
                     @if (choiceBonusesHint()) {
                       <mat-hint>{{ choiceBonusesHint() }}</mat-hint>
                     }
-                    <mat-error>Escolha a raça.</mat-error>
+                    <mat-error>{{ switchedOff('race') || 'Escolha a raça.' }}</mat-error>
                   </mat-form-field>
 
                   @if (availableSubraces().length > 0) {
@@ -218,6 +225,7 @@
                           </mat-option>
                         }
                       </mat-select>
+                      <mat-error>{{ switchedOff('subrace') }}</mat-error>
                     </mat-form-field>
                   }
 
@@ -242,7 +250,7 @@
                     @if (backgroundEquipment()) {
                       <mat-hint>Equipamento: {{ backgroundEquipment() }}</mat-hint>
                     }
-                    <mat-error>Escolha o antecedente.</mat-error>
+                    <mat-error>{{ switchedOff('background') || 'Escolha o antecedente.' }}</mat-error>
                   </mat-form-field>
 
                   <mat-form-field appearance="outline" subscriptSizing="dynamic">

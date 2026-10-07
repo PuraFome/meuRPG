@@ -39,6 +39,7 @@ import { type GridEdit, type GridRowVm, LevelGrid } from '../../../shared/level-
 import { CastingFields } from '../class-parts/casting-fields';
 import { TableQuestion } from '../class-parts/table-question';
 import { ClassFeatures } from '../class-parts/class-features';
+import { PlayersSwitch } from '../players-switch/players-switch';
 import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
 import type { EditorSaved } from '../spell-editor/spell-editor';
 
@@ -51,7 +52,7 @@ import type { EditorSaved } from '../spell-editor/spell-editor';
  */
 @Component({
   selector: 'app-subclass-editor',
-  imports: [CastingFields, ClassFeatures, TableQuestion, EditorAlerts, EditorBar, FieldNote, LevelGrid, MatButtonModule, MatIconModule, PickList, SelectField, SwitchField, TextField],
+  imports: [CastingFields, ClassFeatures, TableQuestion, EditorAlerts, EditorBar, FieldNote, LevelGrid, MatButtonModule, MatIconModule, PickList, PlayersSwitch, SelectField, SwitchField, TextField],
   templateUrl: './subclass-editor.html',
   styleUrl: './subclass-editor.scss',
 })
@@ -71,6 +72,8 @@ export class SubclassEditor {
   readonly saveBlocked = input('');
 
   readonly saved = output<EditorSaved>();
+  /** The entry's switch "Disponível para os jogadores" was turned (it saves at once, apart from the form). */
+  readonly switched = output<TableEntry>();
   readonly reload = output<void>();
   readonly cancelled = output<void>();
 

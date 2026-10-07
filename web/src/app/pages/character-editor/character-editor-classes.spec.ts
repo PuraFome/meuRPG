@@ -3,8 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 
-import { OpenSessions } from '../../shell/live-notice/open-sessions';
-import { XpWatcher } from '../character-sheet/xp-watcher';
+import { fakeContentWatcher } from '../../core/content/content-testing';
 import { CharacterEditor } from './character-editor';
 import {
   CharacterEditorSource,
@@ -699,15 +698,14 @@ describe('the always-prepared spells in a class section (E10-11 state 4)', () =>
 
 describe('the catalog read again (10.1d)', () => {
   it('reads it again, with the sheet, on a content_changed hint while a session is open, keeping the form', async () => {
-    const follow = vi.fn();
+    const watcher = fakeContentWatcher();
+    TestBed.overrideComponent(CharacterEditor, { set: { providers: [watcher.provider] } });
     TestBed.configureTestingModule({
       imports: [CharacterEditor],
       providers: [
         provideRouter([]),
         { provide: CharacterEditorSource, useClass: FakeSource },
         { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: 'camp-1', characterId: 'ch-9' })) } },
-        { provide: OpenSessions, useValue: { sessions: () => [{ campaignId: 'camp-1' }] } },
-        { provide: XpWatcher, useValue: { follow } },
       ],
     });
     const fake = TestBed.inject(CharacterEditorSource) as unknown as FakeSource;
@@ -716,13 +714,12 @@ describe('the catalog read again (10.1d)', () => {
     fixture.detectChanges();
     await flush();
     await settle(fixture);
-    const watch = follow.mock.calls.find((c) => c[0] === 'camp-1');
-    expect(watch).toBeTruthy();
+    expect(watcher.following()).toBe('camp-1');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cmp = fixture.componentInstance as any;
     cmp.fullForm.patchValue({ name: 'Mudei o nome' });
     fake.catalogCalls.length = 0;
-    watch![3]();
+    watcher.hint();
     await flush();
     await settle(fixture);
     expect(fake.catalogCalls).toEqual(['ch-9']);
@@ -730,22 +727,27 @@ describe('the catalog read again (10.1d)', () => {
   });
 
   it('does not open the session\'s stream for the master\'s editor: a stream would keep the page from ever being quiet', async () => {
-    const follow = vi.fn();
-    TestBed.configureTestingModule({
-      imports: [CharacterEditor],
-      providers: [
-        provideRouter([]),
-        { provide: CharacterEditorSource, useClass: FakeSource },
-        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: 'camp-1' })) } },
-        { provide: OpenSessions, useValue: { sessions: () => [{ campaignId: 'camp-1' }] } },
-        { provide: XpWatcher, useValue: { follow } },
-      ],
-    });
-    (TestBed.inject(CharacterEditorSource) as unknown as FakeSource).catalogOver = (c) => ({ ...c, viewerIsMaster: true });
-    const fixture = TestBed.createComponent(CharacterEditor);
-    fixture.detectChanges();
-    await flush();
-    await settle(fixture);
-    expect(follow.mock.calls.every((c) => c[0] === null)).toBe(true);
+    const run = async (master: boolean) => {
+      TestBed.resetTestingModule();
+      const watcher = fakeContentWatcher();
+      TestBed.overrideComponent(CharacterEditor, { set: { providers: [watcher.provider] } });
+      TestBed.configureTestingModule({
+        imports: [CharacterEditor],
+        providers: [
+          provideRouter([]),
+          { provide: CharacterEditorSource, useClass: FakeSource },
+          { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: 'camp-1' })) } },
+        ],
+      });
+      (TestBed.inject(CharacterEditorSource) as unknown as FakeSource).catalogOver = (c) => ({ ...c, viewerIsMaster: master });
+      const fixture = TestBed.createComponent(CharacterEditor);
+      fixture.detectChanges();
+      await flush();
+      await settle(fixture);
+      return watcher.following();
+    };
+    // The master's editor follows nothing; a player's follows the campaign while it has an open session.
+    expect(await run(true)).toBe('');
+    expect(await run(false)).toBe('camp-1');
   });
 });
