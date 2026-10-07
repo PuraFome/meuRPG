@@ -1212,7 +1212,7 @@ func (s *Service) run(campaignID, id string, prep prepared) {
 	}
 	if err != nil {
 		s.logger.WarnContext(fin, "maps: the generated picture cannot be used", "error", err)
-		s.finishFailed(campaignID, id, stateFailed, reasonNoImage)
+		s.finishSpent(campaignID, id, reasonNoImage)
 		return
 	}
 	var parent *string
@@ -1245,7 +1245,7 @@ func (s *Service) run(campaignID, id string, prep prepared) {
 			return
 		}
 		s.logger.ErrorContext(fin, "maps: cannot store a generated image", "error", err, "reason", why)
-		s.finishFailed(campaignID, id, stateFailed, why)
+		s.finishSpent(campaignID, id, why)
 		return
 	}
 	s.logger.InfoContext(fin, "maps: an image was generated", "campaign", campaignID, "request", id, "image", stored.ID)
@@ -1282,11 +1282,28 @@ func endReason(base context.Context) string {
 
 // finishFailed ends a request that made no picture: the slot goes back.
 func (s *Service) finishFailed(campaignID, id, state, reason string) {
+	s.finish(campaignID, id, state, reason, true)
+}
+
+// finishSpent ends a request whose picture the model returned but the server could
+// not store: the call was made, so the slot stays spent.
+func (s *Service) finishSpent(campaignID, id, reason string) {
+	s.finish(campaignID, id, stateFailed, reason, false)
+}
+
+func (s *Service) finish(campaignID, id, state, reason string, refund bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	err := s.queries.FinishImageRequestFailed(ctx, mapsdb.FinishImageRequestFailedParams{
-		Now: new(s.now()), Status: state, Reason: reason, CampaignID: campaignID, ID: id,
-	})
+	var err error
+	if refund {
+		err = s.queries.FinishImageRequestFailed(ctx, mapsdb.FinishImageRequestFailedParams{
+			Now: new(s.now()), Status: state, Reason: reason, CampaignID: campaignID, ID: id,
+		})
+	} else {
+		err = s.queries.FinishImageRequestSpent(ctx, mapsdb.FinishImageRequestSpentParams{
+			Now: new(s.now()), Status: state, Reason: reason, CampaignID: campaignID, ID: id,
+		})
+	}
 	if err != nil {
 		s.logger.ErrorContext(ctx, "maps: cannot record a failed image request", "error", err)
 		return
