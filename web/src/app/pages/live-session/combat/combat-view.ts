@@ -1167,8 +1167,9 @@ export class CombatView {
       code === Code.Unavailable ||
       code === Code.DeadlineExceeded
     ) {
+      const ticket = this.state().beginRead();
       try {
-        this.state().apply(await this.api.get(this.campaignId()));
+        this.state().applyRead(ticket, await this.api.get(this.campaignId()));
       } catch {
         // The stream's next `ready` reads it again.
       }
