@@ -10,6 +10,7 @@ import {
   MapPointSchema,
   TrapState,
 } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import type { MapPoint } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { TrapTrigger } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { Code, ConnectError } from '@connectrpc/connect';
 import type { GetDungeonRoomsResponse } from '../../../../gen/meurpg/maps/v1/dungeons_pb';
@@ -1051,6 +1052,52 @@ describe('MapEditor', () => {
       const names = Array.from(el.querySelectorAll('.pl__name'), (n) => n.textContent);
       expect(names).toContain('Fosso escondido');
       expect(names).toContain('Baú de moedas');
+    });
+  });
+
+  describe('saving a point that is being moved', () => {
+    it('keeps the dragged position when the answer to "Salvar ponto" was computed before the move committed', async () => {
+      await setup();
+      const updates: { resolve: (p: MapPoint) => void }[] = [];
+      api.updatePoint = () => new Promise((resolve) => updates.push({ resolve }));
+      Array.from(el.querySelectorAll<HTMLElement>('button.pl__row'))
+        .find((r) => r.textContent?.includes('Fosso escondido'))!
+        .click();
+      await settle();
+      const field = Array.from(el.querySelectorAll('mat-form-field'))
+        .find(
+          (f) =>
+            f.querySelector('mat-label')?.textContent?.trim() === 'CD para achar (Investigação)',
+        )!
+        .querySelector('input')!;
+      field.value = '12';
+      field.dispatchEvent(new Event('input'));
+      await settle();
+      const comp = fixture.componentInstance as unknown as {
+        onMoved(m: unknown): Promise<void>;
+        save(): Promise<boolean>;
+      };
+
+      // The master drags the trap; the move request stays in flight.
+      const moving = comp.onMoved({ kind: 'point', id: 'pit', xBp: 1000, yBp: 2000 });
+      await settle();
+      expect(state.points().find((p) => p.id === 'pit')!.xBp).toBe(1000);
+      // Still in flight, "Salvar ponto" for the panel change; the server answers it with the old place first.
+      const saving = comp.save();
+      await settle();
+      expect(updates).toHaveLength(2);
+      updates[1].resolve(
+        mapPoint('pit', 'Fosso escondido', { xBp: 4800, yBp: 5000, kind: MapPointKind.TRAP }),
+      );
+      await saving;
+      updates[0].resolve(
+        mapPoint('pit', 'Fosso escondido', { xBp: 1000, yBp: 2000, kind: MapPointKind.TRAP }),
+      );
+      await moving;
+      await settle();
+
+      const shown = state.points().find((p) => p.id === 'pit')!;
+      expect([shown.xBp, shown.yBp]).toEqual([1000, 2000]);
     });
   });
 

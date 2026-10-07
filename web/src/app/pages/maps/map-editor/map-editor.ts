@@ -635,7 +635,7 @@ export class MapEditor {
     this.panelError.set(null);
     try {
       const saved = await this.api.updatePoint(this.campaignId(), mapId, point.id, changes);
-      this.state().upsertPoint(saved);
+      this.setPoint(saved);
       this.message.set(`${saved.name} salvo.`);
       return true;
     } catch (err) {
@@ -675,7 +675,11 @@ export class MapEditor {
 
   /** A treasure marked or unmarked found (saved at once): the map carries the point the server answered. */
   protected setPoint(point: MapPoint): void {
-    this.state().upsertPoint(point);
+    const state = this.state();
+    // A move of this point still on its way: the answer was computed before it, so the screen keeps the place the master dragged to.
+    const shown = state.points().find((p) => p.id === point.id);
+    const ahead = shown && this.moves.isPending(`${this.mapId()}/point/${point.id}`);
+    state.upsertPoint(ahead ? { ...point, xBp: shown.xBp, yBp: shown.yBp } : point);
   }
 
   protected async remove(): Promise<void> {
