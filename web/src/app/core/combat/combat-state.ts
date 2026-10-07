@@ -126,14 +126,23 @@ export class CombatState {
     if (!e || e.id !== turn.encounterId) {
       return false;
     }
+    // A part that ended inside a joint turn moves "current" to another member of the same group, in the same
+    // round: the group and who already ended their part stay. Only a turn that moves on starts over.
+    const sameGroup = turn.round === e.round && e.turnGroupIds.includes(turn.currentCombatantId);
     this.encounter.set({
       ...e,
       round: turn.round,
       currentCombatantId: turn.currentCombatantId,
       masterTurn: turn.masterTurn,
-      // The group belongs to the turn that ended; until the combat is read again the turn is the current combatant's.
-      turnGroupIds: [],
-      combatants: e.combatants.map((c) => (c.turnPartEnded ? { ...c, turnPartEnded: false } : c)),
+      ...(sameGroup
+        ? {}
+        : {
+            // The group belongs to the turn that ended; until the combat is read again the turn is the current combatant's.
+            turnGroupIds: [],
+            combatants: e.combatants.map((c) =>
+              c.turnPartEnded ? { ...c, turnPartEnded: false } : c,
+            ),
+          }),
     });
     return true;
   }
