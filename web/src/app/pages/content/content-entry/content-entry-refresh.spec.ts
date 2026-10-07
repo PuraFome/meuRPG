@@ -1,4 +1,3 @@
-// Finding U16-04 in review/unit-16-web-content-campaigns.md
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
@@ -16,7 +15,7 @@ import {
 } from '../../../core/content/content-testing';
 import { ContentEntry } from './content-entry';
 
-describe('Review16 U16-04: refresh keeps the old body for a reading player', () => {
+describe('ContentEntry refresh after a content change', () => {
   const KEY = 'race:corujeiro@mesa';
 
   it('a player who has the entry open reads the new name after content_changed bumps its revision', async () => {
