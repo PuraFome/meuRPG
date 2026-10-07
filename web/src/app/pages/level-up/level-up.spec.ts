@@ -364,6 +364,21 @@ describe('LevelUpPage', () => {
         expect(client.preview.mock.calls.some((c) => c[2].hitPoints.value === 5)).toBe(true);
       });
 
+      it('keeps a roll the server answers after a content change read the level again (the click was on the old reading)', async () => {
+        const f = await atVidaWith(LevelUpHitPointsRule.ROLL_ONLY);
+        let answer!: (v: { die: number; value: number; alreadyRolled: boolean }) => void;
+        client.rollHitPoints.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+        await click(f, button(f, /Rolar no app/));
+        // The master's change arrives while the roll is on its way: the page reads everything again.
+        watcher.hint();
+        await load(f);
+        expect(client.options).toHaveBeenCalledTimes(2);
+        answer({ die: 6, value: 4, alreadyRolled: false });
+        await load(f);
+        expect(text(f)).toContain('Rolado no app: 4 no d6');
+        expect(text(f)).not.toContain('Falta rolar o dado de vida.');
+      });
+
       it('with "rolar" takes back a roll the server kept, with no click', async () => {
         const f = await atVidaWith(LevelUpHitPointsRule.ROLL_ONLY, { keptHitPointRoll: 3 });
         expect(text(f)).toContain('Rolado no app: 3 no d6');
