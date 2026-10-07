@@ -3,7 +3,7 @@
 // characters module (who is in the party, the XP on their sheets) and the
 // play module (the combat's defeated NPCs, the session's log).
 //
-// Modules never import each other's code (docs/arquitetura.md), so the types
+// Modules never import each other's code (docs/architecture.md), so the types
 // both sides agree on live here, in a package that imports nothing of the
 // project. Package progression declares the interfaces that use them;
 // cmd/api connects the real services (the same arrangement as play/link).

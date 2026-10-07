@@ -5994,7 +5994,7 @@ export const DisabledReasonCodeSchema: GenEnum<DisabledReasonCode> = /*@__PURE__
  *
  * Responses carry `Cache-Control: no-store`. Reads carry a campaign ID, so
  * they are IDEMPOTENT and POST-only: a GET would put the ID in the URL, and
- * URLs end up in the platform's request logs (docs/privacidade.md).
+ * URLs end up in the platform's request logs (docs/privacy.md).
  *
  * @generated from service meurpg.rules.v1.ContentService
  */

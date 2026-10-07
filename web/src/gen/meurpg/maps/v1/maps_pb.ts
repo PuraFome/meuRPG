@@ -3949,7 +3949,7 @@ export const SceneActionDirectionSchema: GenEnum<SceneActionDirection> = /*@__PU
  * with no control characters. A point's description is 0 to 2,000
  * characters and may have line breaks and tabs, but no other control
  * characters. Every text is fiction the master writes: the server never
- * logs it (docs/privacidade.md).
+ * logs it (docs/privacy.md).
  *
  * Every method needs a valid session cookie and fails with `unauthenticated`
  * without one. For a campaign the caller is not a member of (a pending
@@ -3969,7 +3969,7 @@ export const SceneActionDirectionSchema: GenEnum<SceneActionDirection> = /*@__PU
  * Responses carry `Cache-Control: no-store`. Every request carries a
  * campaign ID, so reads are IDEMPOTENT and POST-only: a GET would put the
  * IDs in the URL, and URLs end up in the platform's request logs
- * (docs/privacidade.md).
+ * (docs/privacy.md).
  *
  * @generated from service meurpg.maps.v1.MapService
  */

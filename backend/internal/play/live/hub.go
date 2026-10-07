@@ -17,7 +17,7 @@
 // The hub lives in the server's memory. With more than one server
 // instance, a change made on one instance would never reach the streams
 // open on another, so the service runs with Cloud Run max-instances = 1
-// while fan-out stays in memory (docs/operacao.md). A shared channel, such
+// while fan-out stays in memory (docs/operations.md). A shared channel, such
 // as CockroachDB changefeeds or Pub/Sub, replaces it when one instance is no
 // longer enough.
 package live

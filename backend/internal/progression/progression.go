@@ -232,7 +232,7 @@ func (s *Service) dbError(ctx context.Context, action string, err error) error {
 
 // queriesIn is the queries on the transaction, or on the pool when tx is nil. A
 // read made while the caller holds a transaction must use the transaction: a
-// read through the pool takes a second connection (see docs/arquitetura.md,
+// read through the pool takes a second connection (see docs/architecture.md,
 // "Dentro de uma transação, nenhuma leitura pelo pool").
 func (s *Service) queriesIn(tx pgx.Tx) *progressiondb.Queries {
 	if tx == nil {

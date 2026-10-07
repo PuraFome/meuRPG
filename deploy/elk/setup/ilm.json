@@ -18,7 +18,7 @@
       }
     },
     "_meta": {
-      "description": "MeuRPG API logs: roll over daily (or at 5 GB), delete after 14 days. The retention is a privacy decision: docs/operacao.md and docs/privacidade.md."
+      "description": "MeuRPG API logs: roll over daily (or at 5 GB), delete after 14 days. The retention is a privacy decision: docs/operations.md and docs/privacy.md."
     }
   }
 }

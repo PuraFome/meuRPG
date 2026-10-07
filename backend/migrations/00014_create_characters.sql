@@ -26,7 +26,7 @@
 --     (RN-04) and go with the account.
 -- campaign_id is the one campaign of a player character (RN-03) and the
 -- campaign an NPC was created in. SET NULL: when a campaign is deleted, its
--- player characters stay with their players (docs/privacidade.md).
+-- player characters stay with their players (docs/privacy.md).
 --
 -- status is 'active', 'dead' or 'pending'. A dead character is never deleted
 -- (RN-03): it changes status, never row. 'pending' is for a character that

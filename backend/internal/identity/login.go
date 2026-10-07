@@ -141,7 +141,7 @@ func parseLoginForm(w http.ResponseWriter, r *http.Request, readTimeout time.Dur
 
 // allowLogin applies the sign-in rate limit. It comes before anything else,
 // so a refused request costs nothing. The client IP is not logged
-// (docs/privacidade.md); the request log line already shows the 429.
+// (docs/privacy.md); the request log line already shows the 429.
 func (s *Service) allowLogin(w http.ResponseWriter, r *http.Request) bool {
 	ok, wait := s.loginLimiter.Allow(ratelimit.ClientKey(r, s.behindCloudRun))
 	if !ok {

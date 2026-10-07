@@ -22,7 +22,7 @@ export interface UploadOptions {
  * other call is Connect), and adding it for one request would be heavier
  * than these lines. The request is same-origin, so the session cookie goes
  * with it, and the browser's own `Origin`/`Sec-Fetch-Site` headers satisfy
- * the server's CSRF guard (docs/arquitetura.md#csrf).
+ * the server's CSRF guard (docs/architecture.md#csrf).
  *
  * The form's fields go in the order the server requires: `campaign_id`,
  * then `file`. The browser sets the multipart `Content-Type` with its

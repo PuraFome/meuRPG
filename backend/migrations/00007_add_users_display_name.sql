@@ -2,7 +2,7 @@
 -- display_name is how other members of a campaign see this user. The user
 -- types it in the app (IdentityService.UpdateProfile); it is never copied
 -- from the sign-in provider, which is why sign-in asks only for "openid
--- email" (docs/privacidade.md). NULL until the user sets one.
+-- email" (docs/privacy.md). NULL until the user sets one.
 --
 -- At most 40 characters (ADR-0009). The application trims and validates the
 -- name first; the CHECK is the last line of defense.

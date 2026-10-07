@@ -3,7 +3,7 @@
 // the scenes: the scenes the group discovered and the clues the master
 // revealed to the player.
 //
-// Modules never import each other's code (docs/arquitetura.md), so the types
+// Modules never import each other's code (docs/architecture.md), so the types
 // both sides agree on live here, in a package that imports nothing of the
 // project. Package notes declares the interface (notes.Scenes) that uses them;
 // cmd/api connects the real one (maps.SessionMaps).

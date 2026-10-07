@@ -2646,7 +2646,7 @@ export const TableContentBlockedReasonSchema: GenEnum<TableContentBlockedReason>
  * `not_found`, exactly as for a campaign that does not exist (ADR-0011). An ID
  * that is not a UUID is answered like an ID that does not exist. Responses carry
  * `Cache-Control: no-store`. Reads carry a campaign ID, so they are IDEMPOTENT
- * and POST-only (docs/privacidade.md).
+ * and POST-only (docs/privacy.md).
  *
  * @generated from service meurpg.rules.v1.TableContentService
  */

@@ -17,8 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// The live session (Etapa 5; ADR-0005, docs/arquitetura.md "Sessão ao
-// vivo").
+// The live session (Etapa 5; ADR-0005, docs/architecture.md#live-session).
 //
 //   - The notice (RN-06) is a light poll, not a stream: the app calls
 //     ListOpenGameSessions about every 30 seconds while its tab is visible.

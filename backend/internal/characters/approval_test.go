@@ -13,7 +13,7 @@ import (
 )
 
 // Acceptance tests for MR-024 and RN-15 (invites with approval), one per
-// criterion in docs/produto/historias.md. The invite's flag and the
+// criterion in docs/product/stories.md. The invite's flag and the
 // pending membership themselves are tested in package campaigns
 // (approval_test.go there).
 

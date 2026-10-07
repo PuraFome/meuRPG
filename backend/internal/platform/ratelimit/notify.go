@@ -12,7 +12,7 @@ import (
 // fill the log (and the bill). The line carries what the request's context
 // already carries (request id, and user id for a signed-in user), plus the
 // limiter's name and how many hits the interval swallowed. It never carries
-// the client's IP address (docs/privacidade.md).
+// the client's IP address (docs/privacy.md).
 type Notifier struct {
 	logger   *slog.Logger
 	name     string

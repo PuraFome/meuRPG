@@ -37,7 +37,7 @@ import (
 // matrices of both packages have a "pending" caller that checks every method.
 //
 // Changing this list changes RN-15: it needs the product decision, the
-// matrices' rows, and docs/arquitetura.md ("Membro pendente").
+// matrices' rows, and docs/architecture.md#pending-member).
 
 // pendingMayCall lists every RPC that lets a pending member in, and why.
 // ListMyCampaigns is not here because it needs no campaign check at all:

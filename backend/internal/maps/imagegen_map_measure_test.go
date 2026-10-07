@@ -16,7 +16,7 @@ import (
 // (200 x 400 squares) costs the server before the call: the layers, the floor plan, the
 // sight of two characters (the union), the players' view as a plan, and the two
 // drawings, as playersSeenOf and prepareMap do them, without the database. Run it with
-// MEURPG_MEASURE=1 -v (docs/operacao.md has the numbers).
+// MEURPG_MEASURE=1 -v (docs/operations.md has the numbers).
 func TestMeasureTheBiggestMapReference(t *testing.T) {
 	if os.Getenv("MEURPG_MEASURE") == "" {
 		t.Skip("set MEURPG_MEASURE=1 to measure")

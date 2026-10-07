@@ -45,7 +45,7 @@ func peakHeap(f func()) (peak, total uint64) {
 
 // TestShrinkMemory measures the worst reference a campaign can hold: a stored
 // image of 40 megapixels, shrunk to 1024 px. Run it with MEURPG_MEASURE=1 -v
-// (docs/operacao.md has the numbers).
+// (docs/operations.md has the numbers).
 func TestShrinkMemory(t *testing.T) {
 	if os.Getenv("MEURPG_MEASURE") == "" {
 		t.Skip("set MEURPG_MEASURE=1 to measure")
@@ -95,7 +95,7 @@ func TestShrinkMemory(t *testing.T) {
 // TestCropFitMemory measures the textured map's worst case (MR-039): the model's
 // biggest answer (a 4096 x 4096 PNG, the 4K of a 1:1 ratio) cropped to a map image of
 // 16 megapixels (MaxFitPixels, 4000 x 4000), the most the server makes. Run it with
-// MEURPG_MEASURE=1 -v (docs/operacao.md has the numbers).
+// MEURPG_MEASURE=1 -v (docs/operations.md has the numbers).
 func TestCropFitMemory(t *testing.T) {
 	if os.Getenv("MEURPG_MEASURE") == "" {
 		t.Skip("set MEURPG_MEASURE=1 to measure")

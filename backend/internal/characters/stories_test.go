@@ -15,7 +15,7 @@ import (
 )
 
 // Acceptance tests: one per acceptance criterion in
-// docs/produto/historias.md and per rule in docs/produto/regras.md, named
+// docs/product/stories.md and per rule in docs/product/rules.md, named
 // after the story or the rule. A story's backend part is done when its
 // tests pass.
 
@@ -533,7 +533,7 @@ func TestRN16_DeletingAccountsKeepsPlayerCharacters(t *testing.T) {
 		t.Errorf("master's list after the player left = %d characters, want 3", len(list))
 	}
 
-	// The master's account takes the campaign with it (docs/privacidade.md),
+	// The master's account takes the campaign with it (docs/privacy.md),
 	// and the master's NPCs and notes; the other player's character stays,
 	// without a campaign.
 	h.deleteUser(mestre.id)

@@ -11,9 +11,9 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// The payload of the events the actions of a turn write (docs/dados.md,
+// The payload of the events the actions of a turn write (docs/data.md,
 // session_events): IDs and numbers only, never a name or a free text
-// (docs/privacidade.md), at most 4 KiB. The combat log (combat_log.go) is
+// (docs/privacy.md), at most 4 KiB. The combat log (combat_log.go) is
 // built from these events, and the undo (combat_undo.go) puts back what they
 // say was before, so they carry both.
 

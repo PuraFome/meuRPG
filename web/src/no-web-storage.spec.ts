@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url';
 /**
  * Vinicius's hard rule: nothing in this app may read or write Web Storage
  * (localStorage, sessionStorage, IndexedDB), set a cookie from JavaScript,
- * or use a Worker to hold a token or personal data (docs/privacidade.md,
- * docs/arquitetura.md#frontend-web). The only place a session lives is the
+ * or use a Worker to hold a token or personal data (docs/privacy.md,
+ * docs/architecture.md#web-app-web). The only place a session lives is the
  * httpOnly `__Host-meurpg_session` cookie, which this app's own code never
  * reads or writes — `AuthService` only ever calls `IdentityService`.
  *
@@ -49,7 +49,7 @@ const files = listFiles(SRC_ROOT)
   .map((path) => ({ path, rel: relative(SRC_ROOT, path).split(sep).join('/') }))
   .filter(({ rel }) => (rel.endsWith('.ts') || rel.endsWith('.html')) && !rel.endsWith('.spec.ts'));
 
-describe("no Web Storage (Vinicius's hard rule — see docs/privacidade.md)", () => {
+describe("no Web Storage (Vinicius's hard rule — see docs/privacy.md)", () => {
   it('scanned at least a handful of source files (the scan is not a no-op)', () => {
     expect(files.length).toBeGreaterThan(10);
   });

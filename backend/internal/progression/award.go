@@ -55,7 +55,7 @@ const (
 )
 
 // eventPayload is what the session events of an award keep: IDs and numbers
-// only, never the reason or a name (docs/privacidade.md).
+// only, never the reason or a name (docs/privacy.md).
 type eventPayload struct {
 	AwardID      string   `json:"award_id"`
 	Mode         string   `json:"mode"`

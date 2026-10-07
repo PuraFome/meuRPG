@@ -10,5 +10,5 @@
 // rules this one is pure: no database, no network, no clock and no randomness of
 // its own. A seed is an input, and the same seed gives the same encounter
 // (ADR-0008). The generator is our own algorithm, written for this app and
-// described in docs/arquitetura.md (ADR-0015).
+// described in docs/architecture.md (ADR-0015).
 package encounter

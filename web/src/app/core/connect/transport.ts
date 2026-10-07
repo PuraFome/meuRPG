@@ -31,7 +31,7 @@ export const rateLimitInterceptor: Interceptor = (next) => async (req) => {
  * The Connect transport every generated client uses to reach the backend.
  *
  * `baseUrl: '/'` relies on the app being served from the same origin as the
- * API (see docs/arquitetura.md#frontend-web): in production the Go server
+ * API (see docs/architecture.md#web-app-web): in production the Go server
  * serves both, and in dev `proxy.conf.json` forwards RPC paths to it. There
  * is deliberately no separate "API URL" to configure per environment.
  *
@@ -44,7 +44,7 @@ export const rateLimitInterceptor: Interceptor = (next) => async (req) => {
  *
  * Every unary call also carries `Connect-Protocol-Version: 1` already,
  * unconditionally, from `@connectrpc/connect`'s own request-header code —
- * nothing to add here for that (see docs/arquitetura.md#csrf).
+ * nothing to add here for that (see docs/architecture.md#csrf).
  *
  * Unary calls also get a deadline (`UNARY_DEADLINE_MS`), so a request that
  * hangs ends in a `deadline_exceeded` error the screens already handle

@@ -157,7 +157,7 @@ type LiveSession interface {
 	PublishToUsersCoalesced(campaignID string, userIDs []string, key string, ev *playv1.WatchGameSessionResponse)
 	// AppendEvent appends an event to the history of the campaign's open
 	// session inside tx, and says whether there was one. The payload holds
-	// IDs only (docs/privacidade.md).
+	// IDs only (docs/privacy.md).
 	AppendEvent(ctx context.Context, tx pgx.Tx, campaignID, kind, actorUserID string, payload []byte, at time.Time) (bool, error)
 	// OpenSessionID returns the ID of the campaign's open game session, locking
 	// its row inside tx, or "" when none is open: a treasure found remembers it
@@ -332,7 +332,7 @@ type Service struct {
 
 // queriesIn is q on the transaction, or q itself (the pool) when tx is nil. A
 // read made while the caller holds a transaction must use the transaction: a
-// read through the pool takes a second connection (see docs/arquitetura.md,
+// read through the pool takes a second connection (see docs/architecture.md,
 // "Dentro de uma transação, nenhuma leitura pelo pool").
 func queriesIn(q *mapsdb.Queries, tx pgx.Tx) *mapsdb.Queries {
 	if tx == nil {

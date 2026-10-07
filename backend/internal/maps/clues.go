@@ -57,7 +57,7 @@ const (
 )
 
 // clueRevealedEvent is the payload of clue_revealed: IDs only, never the
-// clue's text nor a character's name (docs/privacidade.md).
+// clue's text nor a character's name (docs/privacy.md).
 type clueRevealedEvent struct {
 	ClueID       string   `json:"clue_id"`
 	PointID      string   `json:"point_id"`

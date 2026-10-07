@@ -39,7 +39,7 @@ function describeInviteUnusable(state: InviteState | undefined): string {
 
 /**
  * The `/invite/error?reason=<code>` codes the server redirects to once the
- * sign-in-through-invite flow (docs/arquitetura.md#frontend-web) cannot
+ * sign-in-through-invite flow (docs/architecture.md#web-app-web) cannot
  * accept the invite: `expired`, `revoked`, `used_up`, `not_found`,
  * `invalid` and `unavailable` (the database failed while accepting).
  */

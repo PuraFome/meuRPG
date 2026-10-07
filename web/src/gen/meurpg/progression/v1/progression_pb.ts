@@ -1485,7 +1485,7 @@ export const MilestoneDirectionSchema: GenEnum<MilestoneDirection> = /*@__PURE__
  *
  * Responses carry `Cache-Control: no-store`. Every request carries a campaign
  * ID, so reads are IDEMPOTENT and POST-only: a GET would put the ID in the URL,
- * and URLs end up in the platform's request logs (docs/privacidade.md).
+ * and URLs end up in the platform's request logs (docs/privacy.md).
  *
  * @generated from service meurpg.progression.v1.ProgressionService
  */

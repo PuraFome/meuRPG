@@ -203,7 +203,7 @@ func New(cfg Config) (*Service, error) {
 // interceptor that finds the caller's session, and the authz.Caller that
 // reads it back. *identity.Service is the real one. Tests pass a fake, so
 // nothing here, or in package authz, can set the caller itself
-// (docs/arquitetura.md, "Quem está chamando").
+// (docs/architecture.md#who-is-calling).
 type Sessions interface {
 	// Interceptor finds the caller's session (from the session cookie).
 	Interceptor() connect.Interceptor
