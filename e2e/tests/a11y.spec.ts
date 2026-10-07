@@ -15,7 +15,7 @@ import { tableForLevelUp } from './levelup-support';
 import { paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
-import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, signIn } from './support';
+import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
@@ -137,12 +137,12 @@ async function scanMasterScreens(browser: Browser, colorScheme: 'light' | 'dark'
     const { campaignId, npcId } = await campaignWithNpc(page);
     const screens: [string, string][] = [
       ['Início', '/'],
-      ['Campanha', `/campanhas/${campaignId}`],
-      ['Ficha do NPC', `/campanhas/${campaignId}/personagens/${npcId}`],
-      ['Editar a ficha do NPC', `/campanhas/${campaignId}/personagens/${npcId}/editar`],
-      ['Novo NPC básico', `/campanhas/${campaignId}/npcs/novo/minion`],
-      ['Meu perfil', '/perfil'],
-      ['Créditos', '/creditos'],
+      ['Campanha', `/campaigns/${campaignId}`],
+      ['Ficha do NPC', `/campaigns/${campaignId}/characters/${npcId}`],
+      ['Editar a ficha do NPC', `/campaigns/${campaignId}/characters/${npcId}/edit`],
+      ['Novo NPC básico', `/campaigns/${campaignId}/npcs/new/minion`],
+      ['Meu perfil', '/profile'],
+      ['Créditos', '/credits'],
     ];
     for (const [screen, route] of screens) {
       await open(page, route);
@@ -215,7 +215,7 @@ async function scanGallery(browser: Browser, colorScheme: 'light' | 'dark', widt
   try {
     await page.goto('/');
     const campaignId = await newCampaign(page, `Acessibilidade galeria ${Date.now()}`);
-    await open(page, `/campanhas/${campaignId}/galeria`);
+    await open(page, `/campaigns/${campaignId}/gallery`);
     await expect(page.getByRole('heading', { name: 'Nenhuma imagem ainda' })).toBeVisible();
     await expectScreenPasses(page, `Galeria vazia ${where}`);
 
@@ -239,7 +239,7 @@ async function scanGallery(browser: Browser, colorScheme: 'light' | 'dark', widt
     await expectScreenPasses(page, `Galeria, imagem aberta ${where}`);
     await page.keyboard.press('Escape');
 
-    await open(page, `/campanhas/${campaignId}`);
+    await open(page, `/campaigns/${campaignId}`);
     await expect(page.getByRole('link', { name: 'Abrir galeria' })).toBeVisible();
     await expectScreenPasses(page, `Campanha com o painel Galeria ${where}`);
   } finally {
@@ -277,10 +277,10 @@ async function scanDocument(browser: Browser, colorScheme: 'light' | 'dark', wid
     await saveDocumentRPC(
       page,
       t.campaignId,
-      `## Arco 1\n\nVeja [Mirathel e arredores](mapa:${t.mapId}) e [Capitão Goblin](ficha:${t.npcId}), com **negrito** e *itálico*.\n\n![Taverna do Javali](imagem:${t.imageId})\n\n## Segredos\n\n- um\n- dois`,
+      `## Arco 1\n\nVeja [Mirathel e arredores](map:${t.mapId}) e [Capitão Goblin](character:${t.npcId}), com **negrito** e *itálico*.\n\n![Taverna do Javali](image:${t.imageId})\n\n## Segredos\n\n- um\n- dois`,
       0,
     );
-    await open(page, `/campanhas/${t.campaignId}/documento`);
+    await open(page, `/campaigns/${t.campaignId}/document`);
     await expect(page.getByRole('button', { name: 'Mirathel e arredores' })).toBeVisible();
     await expectScreenPasses(page, `Documento, leitura ${where}`);
 
@@ -321,7 +321,7 @@ test('as telas de quem não entrou passam no axe, nos dois temas', { tag: '@a11y
     try {
       for (const [screen, route] of [
         ['Início', '/'],
-        ['Créditos', '/creditos'],
+        ['Créditos', '/credits'],
         ['Página não encontrada', '/nao-existe'],
       ]) {
         await open(page, route);
@@ -390,7 +390,7 @@ async function scanLiveSessionScreens(browser: Browser, colorScheme: 'light' | '
       name: `Mesa fechada ${Date.now()}`,
       xpMode: 'XP_MODE_ENEMIES',
     });
-    await playerPage.goto(`/campanhas/${(await closed.json()).campaign.id}/sessao`);
+    await playerPage.goto(`/campaigns/${(await closed.json()).campaign.id}/session`);
     await expect(playerPage.getByRole('heading', { level: 1, name: 'Peça um convite ao mestre' })).toBeVisible();
     await expectScreenPasses(playerPage, `Sessão sem acesso ${suffix}`);
 
@@ -442,14 +442,14 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
     await placeTokenRPC(masterPage, campaignId, world, table.characterId, 5200, 5400);
     await placeTokenRPC(masterPage, campaignId, world, table.npcId!, 3700, 6000);
 
-    await open(masterPage, `/campanhas/${campaignId}/mapas/novo`);
+    await open(masterPage, `/campaigns/${campaignId}/maps/new`);
     await expectScreenPasses(masterPage, `Novo mapa ${suffix}`);
     await masterPage.getByRole('button', { name: 'Criar mapa' }).click();
     await expect(masterPage.getByText('Dê um nome ao mapa.')).toBeVisible();
     await masterPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
     await expectScreenPasses(masterPage, `Novo mapa com erros ${suffix}`);
 
-    await open(masterPage, `/campanhas/${campaignId}/mapas/${world}`);
+    await open(masterPage, `/campaigns/${campaignId}/maps/${world}`);
     await expectScreenPasses(masterPage, `Mapa, mestre ${suffix}`);
     // E6-27: the header renaming, and asking before deleting.
     await masterPage.getByRole('button', { name: 'Renomear' }).click();
@@ -466,7 +466,7 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
       await expectScreenPasses(masterPage, `Editor com um ponto escolhido ${suffix}`);
     }
 
-    await open(playerPage, `/campanhas/${campaignId}/mapas/${world}`);
+    await open(playerPage, `/campaigns/${campaignId}/maps/${world}`);
     await expectScreenPasses(playerPage, `Mapa, jogador ${suffix}`);
     await playerPage.getByRole('button', { name: 'Torre de Mirathel, Submapa' }).first().click();
     await expect(playerPage.getByRole('button', { name: 'Abrir Torre de Mirathel' })).toBeVisible();
@@ -537,9 +537,9 @@ async function scanPrintScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await masterPage.goto('/');
     const table = await tableForPrinting(masterPage, playerPage, `Acessibilidade impressão ${Date.now()}`);
 
-    await open(masterPage, `/campanhas/${table.campaignId}/mapas/${table.gridMapId}`);
+    await open(masterPage, `/campaigns/${table.campaignId}/maps/${table.gridMapId}`);
     await expectScreenPasses(masterPage, `Mapa com grade, entrada de impressão ${suffix}`);
-    await open(masterPage, `/campanhas/${table.campaignId}/mapas/${table.plainMapId}`);
+    await open(masterPage, `/campaigns/${table.campaignId}/maps/${table.plainMapId}`);
     await expect(masterPage.getByText('Defina a grade do mapa para imprimir em escala')).toBeVisible();
     await expectScreenPasses(masterPage, `Mapa sem grade, entrada de impressão ${suffix}`);
 
@@ -607,16 +607,16 @@ async function scanDiceScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await playerPage.goto('/');
     const { campaignId } = await tableWithPensantus(masterPage, playerPage, `Acessibilidade dados ${Date.now()}`);
     const suffix = `(${colorScheme}, ${width}px)`;
-    await open(masterPage, `/campanhas/${campaignId}`);
+    await open(masterPage, `/campaigns/${campaignId}`);
     await expectScreenPasses(masterPage, `Campanha com Dados, mestre ${suffix}`);
-    await open(playerPage, `/campanhas/${campaignId}`);
+    await open(playerPage, `/campaigns/${campaignId}`);
     await expectScreenPasses(playerPage, `Campanha com Como você rola os dados, jogador ${suffix}`);
 
     const set = await callRPC(masterPage, 'meurpg.campaigns.v1.CampaignService/SetCampaignDiceMode', { campaignId, mode: 'DICE_MODE_APP' });
     expect(set.ok()).toBeTruthy();
-    await open(masterPage, `/campanhas/${campaignId}`);
+    await open(masterPage, `/campaigns/${campaignId}`);
     await expectScreenPasses(masterPage, `Campanha com Dados, todos no app, mestre ${suffix}`);
-    await open(playerPage, `/campanhas/${campaignId}`);
+    await open(playerPage, `/campaigns/${campaignId}`);
     await expectScreenPasses(playerPage, `Como você rola os dados, decidido pelo mestre ${suffix}`);
   } finally {
     await master.close();
@@ -662,7 +662,7 @@ async function scanPendingMembers(browser: Browser, colorScheme: 'light' | 'dark
     const accepted = await callRPC(playerPage, 'meurpg.campaigns.v1.CampaignService/AcceptInvite', { token });
     expect(accepted.ok()).toBeTruthy();
 
-    await open(page, `/campanhas/${campaignId}`);
+    await open(page, `/campaigns/${campaignId}`);
     await expect(page.getByRole('list', { name: 'Esperando para criar o personagem' })).toBeVisible();
     await expectScreenPasses(page, `Campanha com alguém sem personagem ${where}`);
     await page.getByRole('button', { name: /^Remover .* da campanha$/ }).click();
@@ -698,7 +698,7 @@ async function scanEditorRolls(browser: Browser, colorScheme: 'light' | 'dark', 
     const created = await callRPC(page, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', { name: `Acessibilidade rolagens ${Date.now()}`, xpMode: 'XP_MODE_ENEMIES' });
     expect(created.ok()).toBeTruthy();
     const campaignId = (await created.json()).campaign.id as string;
-    await open(page, `/campanhas/${campaignId}/personagens/novo`);
+    await open(page, `/campaigns/${campaignId}/characters/new`);
     await page.getByLabel('Nome do personagem', { exact: true }).fill('Zézinho');
     const classSelect = page.getByRole('combobox', { name: 'Classe', exact: true });
     await classSelect.focus();
@@ -758,10 +758,10 @@ async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark'
     const table = await tableForCombat(m, p, `Acessibilidade combate ${Date.now()}`, false);
     campaignId = table.campaignId;
 
-    await open(m, `/campanhas/${campaignId}/mapas/${table.mapId}/grade?de=sessao`);
+    await open(m, `/campaigns/${campaignId}/maps/${table.mapId}/grid?from=session`);
     await expectScreenPasses(m, `Grade do mapa sem grade ${where}`);
     await m.getByRole('button', { name: 'Salvar grade' }).click();
-    await expect(m).toHaveURL(/\/sessao$/);
+    await expect(m).toHaveURL(/\/session$/);
 
     await expect(m.getByRole('button', { name: 'Iniciar combate' })).toBeVisible();
     await expectScreenPasses(m, `Sessão com o convite ao combate ${where}`);
@@ -1385,7 +1385,7 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
     const campaignId = combat.table.campaignId;
     campaigns.push(campaignId);
     await winCombatRPC(m, combat);
-    await openLive(m, `/campanhas/${campaignId}/sessao`, 'Combate encerrado');
+    await openLive(m, `/campaigns/${campaignId}/session`, 'Combate encerrado');
     const block = m.getByRole('region', { name: 'Experiência do combate' });
     await expect(block.getByRole('button', { name: /^Dar 350 XP/ })).toBeVisible();
     await expectScreenPasses(m, `Fim do combate com Dar XP ${where}`);
@@ -1416,7 +1416,7 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
     // The campaign page: the panel with its history, the question, the player's view and the sheet.
     await awardXpRPC(m, campaignId, { mode: 'MANUAL', reason: 'Pela ajuda ao ferreiro', characterIds: [combat.table.characterId], amount: 40 });
     // The campaign page of a master with a session open keeps the session's stream (MR-040): not `open`.
-    await openLive(m, `/campanhas/${campaignId}`);
+    await openLive(m, `/campaigns/${campaignId}`);
     await expect(m.getByRole('region', { name: 'Experiência', exact: true })).toContainText('Pela ajuda ao ferreiro');
     await expectScreenPasses(m, `Campanha com Experiência, mestre ${where}`);
     await m.getByRole('button', { name: /^Desfazer/ }).click();
@@ -1429,10 +1429,10 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
     await m.getByRole('dialog').getByLabel('XP para o grupo').fill('150');
     await expectScreenPasses(m, `Dar XP, a qualquer hora ${where}`);
     await m.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click();
-    await open(p, `/campanhas/${campaignId}`);
+    await open(p, `/campaigns/${campaignId}`);
     await expect(p.getByRole('region', { name: 'Experiência', exact: true })).toContainText('Todos da campanha veem este histórico.');
     await expectScreenPasses(p, `Campanha com Experiência, jogador ${where}`);
-    await openLive(p, `/campanhas/${campaignId}/personagens/${combat.table.characterId}`);
+    await openLive(p, `/campaigns/${campaignId}/characters/${combat.table.characterId}`);
     // The level-up block says it (MR-040), not the XP block's tag.
     await expect(p.getByRole('heading', { name: 'Pensantus pode subir de nível' })).toBeVisible();
     await expectScreenPasses(p, `Ficha com XP e Pode subir de nível ${where}`);
@@ -1441,7 +1441,7 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
     const marks = await tableForXp(m, p, `Acessibilidade marcos ${Date.now()}`, 'XP_MODE_MILESTONES');
     campaigns.push(marks.campaignId);
     await startSessionRPC(m, marks.campaignId);
-    await openLive(m, `/campanhas/${marks.campaignId}`);
+    await openLive(m, `/campaigns/${marks.campaignId}`);
     await expectScreenPasses(m, `Experiência por marcos, sem marcos ${where}`);
     await m.getByRole('button', { name: 'Registrar um marco fora da lista' }).click();
     const markDialog = m.getByRole('dialog', { name: 'Registrar marco' });
@@ -1450,13 +1450,13 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
     await markDialog.getByRole('button', { name: 'Registrar marco' }).click();
     await expect(m.getByRole('status').filter({ hasText: 'Marco registrado' })).toBeVisible();
     await expectScreenPasses(m, `Experiência por marcos, depois do marco ${where}`);
-    await openLive(p, `/campanhas/${marks.campaignId}/personagens/${marks.characterId}`);
+    await openLive(p, `/campaigns/${marks.campaignId}/characters/${marks.characterId}`);
     await expect(p.getByRole('heading', { name: /pode subir de nível/ })).toBeVisible();
     await expectScreenPasses(p, `Ficha por marcos, o bloco de subir de nível ${where}`);
 
     // The NPC: the minion's section with the list open, "Usar 50 XP", and the enemy's header fields.
     const npc = await createEnemyRPC(m, campaignId, 'Capitão Goblin', '1', 200);
-    await open(m, `/campanhas/${campaignId}/npcs/novo/minion`);
+    await open(m, `/campaigns/${campaignId}/npcs/new/minion`);
     await expectScreenPasses(m, `NPC curto com Ao ser derrotado ${where}`);
     const nd = m.getByRole('combobox', { name: 'Nível de desafio (ND)' });
     await nd.click();
@@ -1466,10 +1466,10 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
     await m.getByLabel('XP ao derrotar').fill('0');
     await expect(m.getByRole('button', { name: 'Usar 50 XP' })).toBeVisible();
     await expectScreenPasses(m, `NPC curto, XP zero com Usar ${where}`);
-    await open(m, `/campanhas/${campaignId}/personagens/${npc}/editar`);
+    await open(m, `/campaigns/${campaignId}/characters/${npc}/edit`);
     await expect(m.getByLabel('XP ao derrotar')).toHaveValue('200');
     await expectScreenPasses(m, `Inimigo, ND e XP no passo Básico ${where}`);
-    await openLive(m, `/campanhas/${campaignId}/personagens/${npc}`);
+    await openLive(m, `/campaigns/${campaignId}/characters/${npc}`);
     await expectScreenPasses(m, `Ficha do inimigo com ND e XP ${where}`);
   } finally {
     for (const id of campaigns) {
@@ -1515,7 +1515,7 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
 
     // The editor is for a computer: a phone has the lists of points instead.
     if (width >= 768) {
-      await open(m, `/campanhas/${campaignId}/mapas/${table.mapId}`);
+      await open(m, `/campaigns/${campaignId}/maps/${table.mapId}`);
       await m.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
       await expect(m.getByRole('heading', { name: 'Ações da cena' })).toBeVisible();
       await expectScreenPasses(m, `Ações da cena no ponto ${where}`);
@@ -1533,7 +1533,7 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
       for (let i = 0; i < 20; i++) {
         await addActionRPC(m, table, table.fordId, { key: 'skill:arcana' });
       }
-      await open(m, `/campanhas/${campaignId}/mapas/${table.mapId}`);
+      await open(m, `/campaigns/${campaignId}/maps/${table.mapId}`);
       await m.getByRole('button', { name: /^Vau do riacho, Cena de RP/ }).click();
       await expect(m.getByText('Limite de 20 ações. Remova uma para adicionar outra.')).toBeVisible();
       await expectScreenPasses(m, `Ações da cena, lista cheia ${where}`);
@@ -1654,7 +1654,7 @@ async function scanMilestoneScreens(browser: Browser, colorScheme: 'light' | 'da
     await m.goto('/');
     await p.goto('/');
     const table = await tableForXp(m, p, `Acessibilidade marcos planejados ${Date.now()}`, 'XP_MODE_MILESTONES');
-    const route = `/campanhas/${table.campaignId}`;
+    const route = `/campaigns/${table.campaignId}`;
 
     // Nothing planned yet, and the player's empty state.
     await open(m, route);
@@ -1755,14 +1755,14 @@ async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark',
 
     // The editor is for a computer: "Pistas" and "Ganchos e anotações" in the point panel.
     if (width >= 768) {
-      await open(m, `/campanhas/${campaignId}/mapas/${table.mapId}`);
+      await open(m, `/campaigns/${campaignId}/maps/${table.mapId}`);
       await m.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
       await expect(m.getByText('Nenhuma pista ainda')).toBeVisible();
       await expectScreenPasses(m, `Pistas e ganchos, vazios ${where}`);
       for (const text of cartClues) {
         await addClueRPC(m, table, table.cartId, text);
       }
-      await open(m, `/campanhas/${campaignId}/mapas/${table.mapId}`);
+      await open(m, `/campaigns/${campaignId}/maps/${table.mapId}`);
       await m.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
       await expect(m.getByText('3 de 30', { exact: true })).toBeVisible();
       await m.getByRole('textbox', { name: 'Ganchos e anotações' }).fill(cartHooks);
@@ -1785,7 +1785,7 @@ async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark',
       for (let i = 1; i <= 30; i++) {
         await addClueRPC(m, table, table.fordId, `Pista número ${i}`);
       }
-      await open(m, `/campanhas/${campaignId}/mapas/${table.mapId}`);
+      await open(m, `/campaigns/${campaignId}/maps/${table.mapId}`);
       await m.getByRole('button', { name: /^Vau do riacho, Cena de RP/ }).click();
       await expect(m.getByText('Limite de 30 pistas. Remova uma para adicionar outra.')).toBeVisible();
       await expectScreenPasses(m, `Pistas, lista cheia ${where}`);
@@ -1878,7 +1878,7 @@ async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark',
     // The panel on the player's sheet; the master's own sheet page has none.
     await createNoteRPC(p, campaignId, 'Brisa me deve 5 PO');
     // Not `open()`: with a session open the sheet follows its stream, so the network is never idle.
-    await p.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+    await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
     const panel = p.getByRole('region', { name: 'Anotações' });
     await expect(panel.getByText('Brisa me deve 5 PO')).toBeVisible();
     await expectScreenPasses(p, `Ficha com as anotações ${where}`);
@@ -1886,7 +1886,7 @@ async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await expect(panel.getByRole('heading', { name: 'Nova anotação' })).toBeVisible();
     await expectScreenPasses(p, `Ficha, nova anotação ${where}`);
     await panel.getByRole('button', { name: 'Cancelar' }).click();
-    await m.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+    await m.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
     await expect(m.getByRole('heading', { name: 'Pensantus' }).first()).toBeVisible();
     await expect(m.getByRole('heading', { name: 'Anotações' })).toHaveCount(0);
   } finally {
@@ -1936,7 +1936,7 @@ async function scanJointTurnScreens(browser: Browser, colorScheme: 'light' | 'da
     campaignId = joint.table.campaignId;
     await beginJointCombat(m, joint);
 
-    await m.goto(`/campanhas/${campaignId}/sessao`);
+    await m.goto(`/campaigns/${campaignId}/session`);
     await expect(m.getByRole('heading', { name: /^Turno conjunto: / })).toBeVisible();
     await expectScreenPasses(m, `Turno conjunto, visto pelo mestre ${where}`);
     await openSessionPage(p, campaignId);
@@ -2002,7 +2002,7 @@ async function scanStageScreens(browser: Browser, colorScheme: 'light' | 'dark',
     const ids = [miraId, capitaoId, aldoId];
 
     // The portrait field: with an image, the gallery picker, the question, and without.
-    await open(m, `/campanhas/${campaignId}/personagens/${miraId}/editar`);
+    await open(m, `/campaigns/${campaignId}/characters/${miraId}/edit`);
     await expectScreenPasses(m, `Retrato do NPC ${where}`);
     await m.getByRole('button', { name: 'Trocar retrato' }).click();
     await expect(m.getByRole('dialog', { name: 'Escolher o retrato de Mira' })).toBeVisible();
@@ -2015,9 +2015,9 @@ async function scanStageScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await expect(m.getByText('A imagem continua na galeria.')).toBeVisible();
     await expectScreenPasses(m, `Remover o retrato, a pergunta ${where}`);
     await m.getByRole('button', { name: 'Voltar' }).click();
-    await open(m, `/campanhas/${campaignId}/personagens/${capitaoId}/editar`);
+    await open(m, `/campaigns/${campaignId}/characters/${capitaoId}/edit`);
     await expectScreenPasses(m, `Retrato do inimigo ${where}`);
-    await open(m, `/campanhas/${campaignId}/personagens/${capitaoId}`);
+    await open(m, `/campaigns/${campaignId}/characters/${capitaoId}`);
     await expectScreenPasses(m, `Ficha do inimigo com o retrato ${where}`);
 
     // The stage: the master's cards and list, then the players' stage.
@@ -2218,7 +2218,7 @@ async function scanSceneOptionsScreens(browser: Browser, colorScheme: 'light' | 
     await setAttemptsRPC(m, table, table.cartId, ids['Acalmar os cavalos'], 0);
 
     // The editor: the switch off and on, and every action with its attempts.
-    await open(m, `/campanhas/${campaignId}/mapas/${table.mapId}`);
+    await open(m, `/campaigns/${campaignId}/maps/${table.mapId}`);
     const cart = m.getByRole('button', { name: /^A carroça tombada, Cena de RP/ });
     if (await cart.isVisible()) {
       await cart.click();
@@ -2382,7 +2382,7 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     await p.goto('/');
     const table = await tableForLevelUp(m, p, `Acessibilidade subida ${Date.now()}`);
     campaignId = table.campaignId;
-    const sheet = `/campanhas/${campaignId}/personagens/${table.characterId}`;
+    const sheet = `/campaigns/${campaignId}/characters/${table.characterId}`;
 
     // Not `open`: with a session open the page keeps its stream, so the network is never idle.
     await p.goto(sheet);
@@ -2419,8 +2419,8 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     await row('Prestidigitação').click();
     await p.getByLabel('Buscar magia').fill('nebuloso');
     await row('Passo Nebuloso').click();
-    await p.getByLabel('Buscar magia').fill('espelhada');
-    await row('Imagem Espelhada').click();
+    await p.getByLabel('Buscar magia').fill('reflexos');
+    await row('Reflexos').click();
     await p.getByLabel('Buscar magia').fill('');
     await expectScreenPasses(p, `Magias, o livro completo e as preparadas faltando ${where}`);
     await p.getByRole('button', { name: 'Descrição de Passo Nebuloso' }).first().click();
@@ -2428,6 +2428,7 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `O "?" de uma magia do subir de nível ${where}`);
     await p.keyboard.press('Escape');
     const prepare = p.locator('#pick-prepared');
+    await showAllPicks(prepare);
     await prepare.locator('.row__main').filter({ hasText: 'Passo Nebuloso' }).click();
     await prepare.locator('.row__main').filter({ hasText: 'Detectar Magia' }).click();
     await expectScreenPasses(p, `Magias, tudo escolhido ${where}`);
@@ -2439,11 +2440,11 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expect(p.getByText('Pensantus subiu para o nível 4.').first()).toBeVisible();
     await expectScreenPasses(p, `A ficha depois de subir ${where}`);
 
-    await p.goto(`${sheet}/subir-de-nivel`);
+    await p.goto(`${sheet}/level-up`);
     await expect(p.getByRole('heading', { name: 'Ainda não dá para subir de nível' })).toBeVisible();
     await expectScreenPasses(p, `A rota sem a marca ${where}`);
 
-    await m.goto(`/campanhas/${campaignId}`);
+    await m.goto(`/campaigns/${campaignId}`);
     await expect(m.getByRole('status').filter({ hasText: 'Pensantus subiu para o nível 4.' })).toBeVisible();
     await expectScreenPasses(m, `O mestre, o aviso da subida ${where}`);
     await m.getByRole('button', { name: 'O que mudou: Pensantus' }).click();
@@ -2500,7 +2501,7 @@ async function scanGoldScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     // Nothing found yet: the strip invites, and the dialog explains.
     const gold = await tableForGold(m, p, `Acessibilidade ouro ${Date.now()}`);
     campaigns.push(gold.campaignId);
-    await open(m, `/campanhas/${gold.campaignId}`);
+    await open(m, `/campaigns/${gold.campaignId}`);
     await expect(panel(m)).toContainText('Nenhum tesouro esperando.');
     await expectScreenPasses(m, `Experiência por ouro, nada esperando ${where}`);
     await panel(m).getByRole('button', { name: 'Voltar à cidade', exact: true }).click();
@@ -2511,7 +2512,7 @@ async function scanGoldScreens(browser: Browser, colorScheme: 'light' | 'dark', 
 
     // Three finds: the strip, the dialog and its calculation in each state.
     const ids = await threeTreasuresRPC(m, gold);
-    await open(m, `/campanhas/${gold.campaignId}`);
+    await open(m, `/campaigns/${gold.campaignId}`);
     await expect(panel(m).getByText('3 tesouros · 420 PO')).toBeVisible();
     await expectScreenPasses(m, `Experiência por ouro, três tesouros esperando ${where}`);
     await panel(m).getByRole('button', { name: 'Voltar à cidade', exact: true }).click();
@@ -2563,7 +2564,7 @@ async function scanGoldScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await panel(m).getByRole('button', { name: 'Voltar à cidade', exact: true }).click();
     await m.getByRole('dialog', { name: 'Voltar à cidade' }).getByRole('button', { name: /^Dar 170 XP/ }).click();
     await expect(panel(m).getByRole('status').filter({ hasText: 'foram convertidos' })).toContainText('Os 2 tesouros foram convertidos.');
-    await open(p, `/campanhas/${gold.campaignId}`);
+    await open(p, `/campaigns/${gold.campaignId}`);
     await expect(panel(p)).toContainText('Voltar à cidade · 170 PO em 2 tesouros');
     await expectScreenPasses(p, `Experiência por ouro, jogador ${where}`);
 
@@ -2571,7 +2572,7 @@ async function scanGoldScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     const enemies = await tableForGold(m, p, `Acessibilidade inimigos ${Date.now()}`, 'XP_MODE_ENEMIES');
     campaigns.push(enemies.campaignId);
     await treasureFoundRPC(m, enemies, { name: 'Baú de moedas', valuePo: 250, finders: [enemies.characterIds[0]] });
-    await open(m, `/campanhas/${enemies.campaignId}`);
+    await open(m, `/campaigns/${enemies.campaignId}`);
     await expect(panel(m)).toContainText('Esta campanha dá XP por inimigos, então o tesouro não vira XP.');
     await expectScreenPasses(m, `Experiência por inimigos, com tesouro ${where}`);
 
@@ -2652,25 +2653,25 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
     await m.goto('/');
     await p.goto('/');
     const closed = await tableForCreatures(m, p, `Criaturas fechada ${Date.now()}`, false);
-    await p.goto(`/campanhas/${closed.campaignId}/personagens/${closed.characterId}`);
+    await p.goto(`/campaigns/${closed.campaignId}/characters/${closed.characterId}`);
     await expect(p.locator('app-creatures-panel').getByRole('heading', { name: 'Criaturas' })).toBeVisible();
     await expectScreenPasses(p, `Criaturas, fora de uma sessão ${where}`);
 
     const table = await tableForCreatures(m, p, `Criaturas ${Date.now()}`);
     campaignId = table.campaignId;
     const panel = p.locator('app-creatures-panel');
-    await p.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+    await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
     await expect(panel.getByRole('heading', { name: 'Criaturas' })).toBeVisible();
     await expectScreenPasses(p, `Criaturas, vazio ${where}`);
 
-    await panel.getByRole('button', { name: 'Encontrar Familiar' }).click();
-    const sheet = p.getByRole('dialog', { name: 'Encontrar Familiar' }).or(p.locator('mat-bottom-sheet-container'));
+    await panel.getByRole('button', { name: 'Convocar Familiar' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Convocar Familiar' }).or(p.locator('mat-bottom-sheet-container'));
     await expect(sheet.getByText('Escolha a forma e dê um nome ao familiar.')).toBeVisible();
-    await expectScreenPasses(p, `Encontrar Familiar, faltando o nome ${where}`);
+    await expectScreenPasses(p, `Convocar Familiar, faltando o nome ${where}`);
     await sheet.getByLabel('Nome do familiar').fill('Nanquim');
     await sheet.locator('label', { hasText: /Corvo/ }).click();
     await expect(sheet.getByText('Conjurar como ritual · 1 hora · sem gastar espaço')).toBeVisible();
-    await expectScreenPasses(p, `Encontrar Familiar, pronto ${where}`);
+    await expectScreenPasses(p, `Convocar Familiar, pronto ${where}`);
     await sheet.getByRole('button', { name: 'Convocar o familiar' }).click();
     await expect(panel.getByText('Nanquim chegou.')).toBeVisible();
     await expectScreenPasses(p, `Criaturas, com o Nanquim e o aviso ${where}`);
@@ -2691,7 +2692,7 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expect(p.getByRole('alertdialog', { name: 'Dispensar Nanquim?' })).toBeVisible();
     await expectScreenPasses(p, `A ficha da criatura, dispensar pergunta ${where}`);
 
-    await m.goto(`/campanhas/${campaignId}`);
+    await m.goto(`/campaigns/${campaignId}`);
     const row = m.locator('app-character-creatures');
     await expect(row.locator('.item__name', { hasText: 'Nanquim' })).toBeVisible();
     await expectScreenPasses(m, `O mestre, a lista de personagens com a criatura ${where}`);
@@ -2716,14 +2717,14 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expectScreenPasses(m, `O mestre, dispensar pergunta ${where}`);
     await row.getByRole('button', { name: 'Voltar' }).click();
 
-    await m.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+    await m.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
     const mc = m.locator('app-creatures-panel app-creature-card').first();
     await mc.getByRole('button', { name: 'Corrigir PV' }).click();
     await expect(mc.getByLabel(/PV de /)).toBeFocused();
     await expectScreenPasses(m, `O mestre, corrigir os PV da criatura ${where}`);
 
     // A creature that is not there (or that the viewer may not read): the page's not-found state.
-    await p.goto(`/campanhas/${campaignId}/personagens/${table.characterId}/criaturas/6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e001`);
+    await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}/creatures/6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e001`);
     await expect(p.getByRole('heading', { name: 'Criatura não encontrada', level: 1 })).toBeVisible();
     await expectScreenPasses(p, `A ficha da criatura, não encontrada ${where}`);
 
@@ -2732,7 +2733,7 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
     const druid = await tableForCaster(m, p, `Criaturas druida ${Date.now()}`, 'druid');
     const druidCampaign = druid.campaignId;
     try {
-      await p.goto(`/campanhas/${druidCampaign}/personagens/${druid.characterId}`);
+      await p.goto(`/campaigns/${druidCampaign}/characters/${druid.characterId}`);
       const dpanel = p.locator('app-creatures-panel');
       await dpanel.getByRole('button', { name: 'Conjurar Animais' }).click();
       const cast = p.getByRole('dialog', { name: 'Conjurar Animais' }).or(p.locator('mat-bottom-sheet-container'));
@@ -3549,7 +3550,7 @@ async function scanBestiaryScreens(browser: Browser, colorScheme: 'light' | 'dar
       await held;
       await route.continue();
     });
-    await page.goto(`/campanhas/${campaignId}/bestiario`);
+    await page.goto(`/campaigns/${campaignId}/bestiary`);
     await expect(page.getByText('Buscando as criaturas...')).toBeVisible();
     await expectScreenPasses(page, `Bestiário, carregando ${where}`);
     release();
@@ -3580,7 +3581,7 @@ async function scanBestiaryScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expect(page.getByRole('button', { name: 'Limpar filtros' }).first()).toBeVisible();
     await expectScreenPasses(page, `Bestiário, filtros ligados ${where}`);
 
-    await page.goto(`/campanhas/${campaignId}/bestiario/ogre`);
+    await page.goto(`/campaigns/${campaignId}/bestiary/ogre`);
     await expect(page.getByText('Os textos abaixo são do livro de regras (SRD 5.1), em inglês.')).toBeVisible();
     await expectScreenPasses(page, `Bestiário, a ficha do Ogro ${where}`);
 
@@ -3600,14 +3601,14 @@ async function scanBestiaryScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expect(page.locator('.made')).toContainText('NPC criado: Capitão bandido.');
     await expectScreenPasses(page, `Criar NPC, a confirmação ${where}`);
 
-    await page.goto(`/campanhas/${campaignId}`);
+    await page.goto(`/campaigns/${campaignId}`);
     const panel = page.getByRole('link', { name: 'Abrir o bestiário' });
     await panel.scrollIntoViewIfNeeded();
     await expect(panel).toBeVisible();
     await expectScreenPasses(page, `Campanha com o painel Bestiário ${where}`);
 
     // A player: no panel on the campaign page, and a calm notice on the page itself.
-    await player.goto(`/campanhas/${campaignId}/bestiario`);
+    await player.goto(`/campaigns/${campaignId}/bestiary`);
     await expect(player.getByText('Só o mestre usa o bestiário da campanha.')).toBeVisible();
     await expectScreenPasses(player, `Bestiário, o aviso do jogador ${where}`);
   } finally {
@@ -3654,12 +3655,12 @@ async function scanTableRules(browser: Browser, colorScheme: 'light' | 'dark', w
     await setTableRulesRPC(m, table.campaignId, { houseRules: ['Beber uma poção é uma ação bônus', 'Quem cai fica caído até o fim do turno'] });
     const where = `(${colorScheme}, ${width}px)`;
 
-    await m.goto(`/campanhas/${table.campaignId}`);
+    await m.goto(`/campaigns/${table.campaignId}`);
     await expect(m.getByRole('heading', { level: 1 })).toBeVisible();
     await m.waitForLoadState('networkidle');
     await expectScreenPasses(m, `Campanha com o painel Regras da mesa ${where}`);
 
-    await open(m, `/campanhas/${table.campaignId}/regras`);
+    await open(m, `/campaigns/${table.campaignId}/rules`);
     await expectScreenPasses(m, `Regras da mesa ${where}`);
     await pickRadio(m, /Mesa física/);
     await expect(m.getByText(/o estilo preencheu/)).toBeVisible();
@@ -3670,7 +3671,7 @@ async function scanTableRules(browser: Browser, colorScheme: 'light' | 'dark', w
     await expectScreenPasses(m, `Regras da mesa, mudar o modo de XP ${where}`);
 
     // A player is told it is the master's page.
-    await open(p, `/campanhas/${table.campaignId}/regras`);
+    await open(p, `/campaigns/${table.campaignId}/rules`);
     await expect(p.getByText('Só o mestre muda as regras da mesa.')).toBeVisible();
     await expectScreenPasses(p, `Regras da mesa, visto por um jogador ${where}`);
   } finally {
@@ -3705,7 +3706,7 @@ async function scanTableAbilities(browser: Browser, colorScheme: 'light' | 'dark
     await Promise.all([m.goto('/'), p.goto('/')]);
     const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade atributos ${Date.now()}`);
     const where = `(${colorScheme}, ${width}px)`;
-    await open(p, `/campanhas/${campaignId}/personagens/novo`);
+    await open(p, `/campaigns/${campaignId}/characters/new`);
     await p.getByLabel('Nome do personagem', { exact: true }).fill('Ícaro');
     await p.getByRole('tab', { name: 'Atributos' }).click();
     await expect(p.getByRole('radio', { name: 'Padrão' })).toBeChecked();
@@ -3731,7 +3732,7 @@ async function scanTableAbilities(browser: Browser, colorScheme: 'light' | 'dark
     // Physical dice: a second campaign where everybody rolls their own.
     const physical = await campaignWithEmptyPlayer(m, p, `Acessibilidade dados ${Date.now()}`);
     await setTableRulesRPC(m, physical, { diceMode: 'DICE_MODE_PHYSICAL' });
-    await open(p, `/campanhas/${physical}/personagens/novo`);
+    await open(p, `/campaigns/${physical}/characters/new`);
     await p.getByRole('tab', { name: 'Atributos' }).click();
     await method(p, '4d6');
     await expect(p.getByText('Digite os quatro dados de cada rolagem.')).toBeVisible();
@@ -3807,7 +3808,7 @@ test('a página Créditos, com a atribuição do SRD 5.2.1, passa no axe nos doi
     const context = await browser.newContext({ colorScheme: scheme, viewport: { width, height: 900 } });
     try {
       const page = await context.newPage();
-      await open(page, '/creditos');
+      await open(page, '/credits');
       await expect(page.getByText('System Reference Document 5.2.1', { exact: false }).first()).toBeVisible();
       await expectScreenPasses(page, `Créditos (${scheme}, ${width}px)`);
     } finally {
@@ -3834,10 +3835,10 @@ async function scanDungeonScreens(browser: Browser, colorScheme: 'light' | 'dark
     const made = await callRPC(m, 'meurpg.maps.v1.DungeonService/CreateDungeonMap', { campaignId, name: 'A masmorra do teste', seed: '48213', options: { width: 31, height: 21, roomSideMin: 3, roomSideMax: 9 } });
     expect(made.ok(), await made.text()).toBeTruthy();
     const mapId = (await made.json()).map.id as string;
-    const route = `/campanhas/${campaignId}/mapas/masmorra`;
+    const route = `/campaigns/${campaignId}/maps/dungeon`;
     const preview = m.getByRole('img', { name: /^Prévia da masmorra/ });
 
-    await open(m, `/campanhas/${campaignId}`);
+    await open(m, `/campaigns/${campaignId}`);
     await expect(m.getByRole('link', { name: 'Gerar masmorra' })).toBeVisible();
     await expectScreenPasses(m, `Campanha, "Gerar masmorra" ao lado de "Novo mapa" ${where}`);
 
@@ -3877,7 +3878,7 @@ async function scanDungeonScreens(browser: Browser, colorScheme: 'light' | 'dark
     }
 
     // The generated map: on a computer the editor with the rooms list; on a phone the list under the map.
-    await open(m, `/campanhas/${campaignId}/mapas/${mapId}`);
+    await open(m, `/campaigns/${campaignId}/maps/${mapId}`);
     await expect(m.getByRole('heading', { name: 'Salas', exact: true })).toBeVisible();
     await expectScreenPasses(m, `Mapa gerado, a lista das salas ${where}`);
     await m.locator('app-dungeon-rooms .room__head').nth(1).click();
@@ -3967,7 +3968,7 @@ async function scanPuzzleScreens(browser: Browser, colorScheme: 'light' | 'dark'
       await stepPasses(master, `Arquivar na lista ${where}`);
       await master.getByRole('button', { name: 'Voltar' }).click();
 
-      await openPage(master, puzzleRoute(campaignId, 'quebra-cabecas', 'novo'));
+      await openPage(master, puzzleRoute(campaignId, 'puzzles', 'new'));
       await expect(master.getByText(/\d+ acesas?, \d+ apagadas?\./)).toBeVisible({ timeout: 30_000 });
       await stepPasses(master, `Novo quebra-cabeça: as luzes ${where}`);
       await master.getByRole('radio', { name: /^Fechadura de combinação/ }).check();
@@ -3980,7 +3981,7 @@ async function scanPuzzleScreens(browser: Browser, colorScheme: 'light' | 'dark'
       await master.getByRole('button', { name: 'Criar quebra-cabeça' }).click();
       await expect(master.getByText('Dê um nome ao quebra-cabeça.')).toBeVisible();
       await stepPasses(master, `Formulário com erro ${where}`);
-      await openPage(master, puzzleRoute(campaignId, 'quebra-cabecas', lock, 'editar'));
+      await openPage(master, puzzleRoute(campaignId, 'puzzles', lock, 'edit'));
       await expect(master.getByLabel('Nome')).toHaveValue('O cofre do Refeitório');
       await stepPasses(master, `Editar a fechadura ${where}`);
 
@@ -4026,7 +4027,7 @@ async function scanPuzzleScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expect(player.getByText('O mestre mostrou um quebra-cabeça').first()).toBeVisible({ timeout: 30_000 });
     await stepPasses(player, `Aviso do quebra-cabeça mostrado ${where}`);
     const playTo = async (id: string, name: string) => {
-      await player.goto(`/campanhas/${campaignId}/sessao?quebra-cabeca=${id}`);
+      await player.goto(`/campaigns/${campaignId}/session?puzzle=${id}`);
       await expect(player.getByRole('heading', { level: 1, name })).toBeVisible({ timeout: 30_000 });
     };
     await playTo(lights, 'O selo da Capela');
@@ -4164,7 +4165,7 @@ async function scanMorePuzzleScreens(browser: Browser, colorScheme: 'light' | 'd
 
     if (masterToo) {
       // The three forms (states 1 to 3), with "Ao errar", the skill check and the split information.
-      await openPage(master, puzzleRoute(campaignId, 'quebra-cabecas', 'novo'));
+      await openPage(master, puzzleRoute(campaignId, 'puzzles', 'new'));
       await master.getByRole('radio', { name: /^Enigma/ }).check();
       await stepPasses(master, `Novo quebra-cabeça: o enigma, vazio ${where}`);
       await master.getByLabel('Nome').fill('A porta da Cripta pergunta');
@@ -4236,7 +4237,7 @@ async function scanMorePuzzleScreens(browser: Browser, colorScheme: 'light' | 'd
     await showPuzzleRPC(master, campaignId, done);
 
     const playTo = async (id: string, name: string) => {
-      await player.goto(`/campanhas/${campaignId}/sessao?quebra-cabeca=${id}`);
+      await player.goto(`/campaigns/${campaignId}/session?puzzle=${id}`);
       await expect(player.getByRole('heading', { level: 1, name })).toBeVisible({ timeout: 30_000 });
     };
 
@@ -4347,7 +4348,7 @@ async function scanMorePuzzleScreens(browser: Browser, colorScheme: 'light' | 'd
     }
 
     // Toren's phone: the split information from the other side.
-    await openPage(toren.page, `/campanhas/${campaignId}/sessao?quebra-cabeca=${riddle}`);
+    await openPage(toren.page, `/campaigns/${campaignId}/session?puzzle=${riddle}`);
   } finally {
     if (toren) {
       await toren.close();
@@ -4397,7 +4398,7 @@ async function scanSpellsScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await page.goto('/');
     const table = await tableForSpells(master, page, `Acessibilidade magias ${Date.now()}`);
     await createInkBladeRPC(master, table.campaignId);
-    const url = `/campanhas/${table.campaignId}/magias`;
+    const url = `/campaigns/${table.campaignId}/spells`;
     const rows = page.locator('button.row');
 
     // Loading: the answer is held until the scan is done.
@@ -4416,7 +4417,7 @@ async function scanSpellsScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expectScreenPasses(page, `Magias, a lista ${where}`);
 
     // The filters on: the class and "Só as que posso aprender" (the panel at 1280 px, the sheet on a phone).
-    await page.goto(`${url}?classe=class:wizard&minhas=1`);
+    await page.goto(`${url}?class=class:wizard&mine=1`);
     await expect(rows.first()).toBeVisible();
     await expectScreenPasses(page, `Magias, filtros ligados ${where}`);
     if (phone) {
@@ -4449,7 +4450,7 @@ async function scanSpellsScreens(browser: Browser, colorScheme: 'light' | 'dark'
         ? route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: 'failed_precondition', message: 'x' }) })
         : route.continue(),
     );
-    await page.goto(`${url}?minhas=1`);
+    await page.goto(`${url}?mine=1`);
     await expect(page.getByText('Essa ficha é básica e não tem classes que conjuram', { exact: false })).toBeVisible();
     await expectScreenPasses(page, `Magias, ficha básica ${where}`);
     await page.unroute('**/meurpg.rules.v1.ContentService/ListSpells');
@@ -4466,7 +4467,7 @@ async function scanSpellsScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expect(rows.first()).toBeVisible();
 
     // The campaign page with its "Magias" panel.
-    await page.goto(`/campanhas/${table.campaignId}`);
+    await page.goto(`/campaigns/${table.campaignId}`);
     const open = page.getByRole('link', { name: 'Abrir as magias' });
     await open.scrollIntoViewIfNeeded();
     await expect(open).toBeVisible();
@@ -4731,10 +4732,10 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
     });
     await archiveEntryRPC(m, campaignId, archived);
 
-    await open(m, `/campanhas/${campaignId}/conteudo?tipo=magias`);
+    await open(m, `/campaigns/${campaignId}/content?kind=spells`);
     await expectScreenPasses(m, `Conteúdo da mesa, as magias ${where}`);
     if (width >= 768) {
-      await open(m, `/campanhas/${campaignId}/conteudo`);
+      await open(m, `/campaigns/${campaignId}/content`);
       await expectScreenPasses(m, `Conteúdo da mesa, a lista inicial ${where}`);
       await open(m, entryRoute(campaignId, spell));
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Lâmina de Nanquim');
@@ -4754,12 +4755,12 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       // It comes back at once, so the player's screens below still have it.
       await m.getByRole('button', { name: 'Desarquivar' }).click();
       await expect(m.getByText('A raça Corujeiro está arquivada.')).toHaveCount(0);
-      await open(m, `/campanhas/${campaignId}/conteudo/novo/subraca`);
+      await open(m, `/campaigns/${campaignId}/content/new/subrace`);
       await expectScreenPasses(m, `Editor de sub-raça, a raça a escolher ${where}`);
       await open(m, entryRoute(campaignId, background));
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Cartógrafo do Vale');
       await expectScreenPasses(m, `Editor de antecedente ${where}`);
-      await open(m, `/campanhas/${campaignId}/conteudo/novo/magia`);
+      await open(m, `/campaigns/${campaignId}/content/new/spell`);
       await m.getByLabel('Nome', { exact: true }).fill('Lâmina de Nanquim');
       await m.getByLabel('Distância').fill('18');
       await m.getByRole('button', { name: 'Salvar magia' }).click();
@@ -4781,7 +4782,7 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await expectScreenPasses(m, `Raça lida pelo mestre no celular ${where}`);
     }
 
-    await open(p, `/campanhas/${campaignId}/conteudo`);
+    await open(p, `/campaigns/${campaignId}/content`);
     await expect(p.getByText('Da mesa').first()).toBeVisible();
     await expectScreenPasses(p, `Conteúdo da mesa, visto por um jogador ${where}`);
     await open(p, entryRoute(campaignId, race));
@@ -4888,7 +4889,7 @@ async function scanImageScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await d.getByRole('button', { name: 'Fechar' }).click();
 
     // The gallery: the tags, the chain, a refusal in words.
-    await open(m, `/campanhas/${table.campaignId}/galeria`);
+    await open(m, `/campaigns/${table.campaignId}/gallery`);
     await expectScreenPasses(m, `Galeria com imagens geradas ${where}`);
     await m.getByRole('button', { name: 'Gerar imagem com IA' }).click();
     await expect(d.getByRole('heading', { level: 2, name: 'Gerar imagem' })).toBeVisible();
@@ -4903,7 +4904,7 @@ async function scanImageScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await m.route('**/meurpg.maps.v1.ImageGenerationService/GetImageGenerationStatus', (r) =>
       r.fulfill({ contentType: 'application/json', body: JSON.stringify({ status: { enabled: false, monthlyLimit: 20, remaining: 20, month: '2026-10' } }) }),
     );
-    await open(m, `/campanhas/${table.campaignId}/galeria`);
+    await open(m, `/campaigns/${table.campaignId}/gallery`);
     await expect(m.getByText('A geração de imagens não está ligada neste servidor.')).toBeVisible();
     await expectScreenPasses(m, `Galeria, geração desligada ${where}`);
     await endOpenSessionRPC(m, table.campaignId).catch(() => undefined);
@@ -4956,7 +4957,7 @@ async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark
     expect(orin.ok(), await orin.text()).toBeTruthy();
 
     // "Pôr no combate" from the list, with no combat open: the sheet starts one.
-    await m.goto(`/campanhas/${campaignId}/bestiario`);
+    await m.goto(`/campaigns/${campaignId}/bestiary`);
     await m.getByRole('searchbox', { name: 'Nome' }).fill('bandit');
     await expect(m.locator('.list__n')).toContainText('de 334 criaturas');
     await expectScreenPasses(m, `Bestiário com "Pôr no combate" ${where}`);
@@ -5008,12 +5009,12 @@ async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark
       await combatRPC(m, 'AdjustCombatantHitPoints', { campaignId, encounterId: enc.id, combatantId: c.id, damage: 999 });
     }
     await combatRPC(m, 'EndEncounter', { campaignId, encounterId: enc.id });
-    await m.goto(`/campanhas/${campaignId}/sessao`);
+    await m.goto(`/campaigns/${campaignId}/session`);
     await expect(m.getByRole('region', { name: 'Experiência do combate' }).locator('.kind').first()).toContainText('ND 1/8');
     await expectScreenPasses(m, `Fim do combate, o XP por ND ${where}`);
 
     // The builder: empty, then filled, above high, with an NPC, and a failed measure.
-    await m.goto(`/campanhas/${campaignId}/encontros`);
+    await m.goto(`/campaigns/${campaignId}/encounters`);
     await expect(m.locator('.head-xp')).toContainText('Baixa · 0 de');
     await expectScreenPasses(m, `Encontros, vazio ${where}`);
     const add = async (search: string, namePt: string) => {
@@ -5098,7 +5099,7 @@ async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark
     expect(battle).not.toBe('');
 
     // A player: the builder is the master's.
-    await p.goto(`/campanhas/${campaignId}/encontros`);
+    await p.goto(`/campaigns/${campaignId}/encounters`);
     await expect(p.getByText('Só o mestre monta encontros.')).toBeVisible();
     await expectScreenPasses(p, `Encontros, o aviso do jogador ${where}`);
   } finally {
@@ -5156,7 +5157,7 @@ async function scanTreasureScreens(browser: Browser, colorScheme: 'light' | 'dar
     const generate = m.getByRole('button', { name: 'Gerar tesouro' });
     const dialogOrSheet = m.locator('mat-dialog-container, mat-bottom-sheet-container').last();
 
-    await open(m, `/campanhas/${campaignId}`);
+    await open(m, `/campaigns/${campaignId}`);
     await expect(m.getByRole('link', { name: 'Gerar tesouro' })).toBeVisible();
     await expectScreenPasses(m, `Campanha, "Gerar tesouro" no painel Mapas ${where}`);
 
@@ -5295,12 +5296,12 @@ async function scanTableClasses(browser: Browser, colorScheme: 'light' | 'dark',
       await expect(m.getByRole('alertdialog', { name: 'Refazer a tabela dos 20 níveis?' })).toBeVisible();
       await expectScreenPasses(m, `Editor de classe, a pergunta antes de refazer a tabela ${where}`);
       await m.getByRole('button', { name: 'Manter a minha tabela' }).click();
-      await open(m, `/campanhas/${campaignId}/conteudo/novo/classe`);
+      await open(m, `/campaigns/${campaignId}/content/new/class`);
       await expectScreenPasses(m, `Editor de classe, uma classe nova ${where}`);
       await open(m, entryRoute(campaignId, tinta));
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Tradição da Tinta');
       await expectScreenPasses(m, `Editor de subclasse de um terço ${where}`);
-      await open(m, `/campanhas/${campaignId}/conteudo/novo/subclasse`);
+      await open(m, `/campaigns/${campaignId}/content/new/subclass`);
       await expectScreenPasses(m, `Editor de subclasse, uma nova ${where}`);
     } else {
       await open(m, entryRoute(campaignId, guardiao));
@@ -5310,7 +5311,7 @@ async function scanTableClasses(browser: Browser, colorScheme: 'light' | 'dark',
       await expectScreenPasses(m, `Subclasse lida pelo mestre no celular ${where}`);
     }
 
-    await open(p, `/campanhas/${campaignId}/conteudo?tipo=classes`);
+    await open(p, `/campaigns/${campaignId}/content?kind=classes`);
     await expectScreenPasses(p, `Classes, vistas por um jogador ${where}`);
     await open(p, entryRoute(campaignId, guardiao));
     await expect(p.getByText('Testes de resistência', { exact: true })).toBeVisible();
@@ -5366,7 +5367,7 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
       await control.press('Enter');
       await page.getByRole('option', { name: option }).click();
     };
-    await open(page, `/campanhas/${campaignId}/personagens/novo`);
+    await open(page, `/campaigns/${campaignId}/characters/new`);
     await page.getByLabel('Nome do personagem', { exact: true }).fill('Davi');
     await pick('Raça', /^Corujeiro/);
     await pick('Classe', /^Guardião do Vale/);
@@ -5389,7 +5390,7 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
     await expectScreenPasses(page, `Editor, a perícias da classe ${where}`);
 
     // Several classes.
-    await open(page, `/campanhas/${campaignId}/personagens/novo`);
+    await open(page, `/campaigns/${campaignId}/characters/new`);
     await page.getByLabel('Nome do personagem', { exact: true }).fill('Corvina');
     await pick('Classe', 'Mago');
     await page.getByLabel('Nível', { exact: true }).fill('3');
@@ -5421,7 +5422,7 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
       await page.goto(route);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     };
-    await openLive(`/campanhas/${campaignId}/personagens/${characterId}/subir-de-nivel`);
+    await openLive(`/campaigns/${campaignId}/characters/${characterId}/level-up`);
     await expect(page.getByText(/Passo 1 de \d · Vida/)).toBeVisible();
     await expectScreenPasses(page, `Subir de nível, a vida ${where}`);
     await page.getByRole('button', { name: 'Próximo' }).click();
@@ -5431,6 +5432,7 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
     await page.getByRole('button', { name: 'Próximo' }).click();
     const prepare = page.locator('#pick-prepared');
     await expect(prepare).toBeVisible();
+    await showAllPicks(prepare);
     const reason = (await page.locator('#foot-reason').textContent()) ?? '';
     for (const name of ['Amizade Animal', 'Bom Fruto', 'Criar ou Destruir Água', 'Curar Ferimentos'].slice(0, Number(/(\d+)/.exec(reason)?.[1] ?? '1'))) {
       await prepare.getByRole('checkbox', { name: new RegExp(`^${name}`) }).check();
@@ -5451,7 +5453,7 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
     (fighter.sheet as any).full.skillProficiencyKeys = ['skill:athletics', 'skill:perception'];
     const runico = await createSheetRPC(page, campaignD, fighter);
     await lockAndMilestone(m, campaignD, runico);
-    await openLive(`/campanhas/${campaignD}/personagens/${runico}/subir-de-nivel`);
+    await openLive(`/campaigns/${campaignD}/characters/${runico}/level-up`);
     await page.getByRole('button', { name: 'Próximo' }).click();
     await page.locator('#pick-subclass').getByRole('radio', { name: /Lâmina de Tinta/ }).click();
     await page.getByRole('button', { name: 'Próximo' }).click();
@@ -5473,7 +5475,7 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
         preparedSpellKeys: ['spell:bless'],
       } },
     });
-    await openLive(`/campanhas/${campaignB}/personagens/${cleric}/editar`);
+    await openLive(`/campaigns/${campaignB}/characters/${cleric}/edit`);
     await page.getByRole('tab', { name: 'Magias' }).click();
     await expect(page.locator('.granted')).toContainText('Sempre preparada');
     await expect(page.getByText(/Preparadas \d+ de \d+/)).toBeVisible();
@@ -5481,7 +5483,7 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
 
     // "A classe mudou" on the sheet, and its sheet.
     await changeGuardianSkillsRPC(m, campaignId, guardian, 1);
-    await openLive(`/campanhas/${campaignId}/personagens/${characterId}`);
+    await openLive(`/campaigns/${campaignId}/characters/${characterId}`);
     await expect(page.getByText('A classe mudou.')).toBeVisible();
     await expectScreenPasses(page, `Ficha com "A classe mudou" ${where}`);
     await page.getByRole('button', { name: 'Ver o que mudou' }).click();
@@ -5543,16 +5545,16 @@ async function scanOptions(browser: Browser, colorScheme: 'light' | 'dark', widt
       { key: race, off: false },
     ]);
 
-    await open(m, `/campanhas/${campaignId}/conteudo/opcoes?tipo=racas`);
+    await open(m, `/campaigns/${campaignId}/content/options?kind=races`);
     await expect(m.getByRole('switch', { name: 'Tiefling' })).toHaveAttribute('aria-checked', 'false');
     await expectScreenPasses(m, `Opções para os jogadores, as raças ${where}`);
     await m.getByRole('switch', { name: 'Gnomo', exact: true }).click();
     await expect(m.getByText('Tudo salvo')).toBeVisible();
     await expectScreenPasses(m, `Opções para os jogadores, uma ficha usa a raça desligada ${where}`);
-    await open(m, `/campanhas/${campaignId}/conteudo/opcoes?tipo=subclasses`);
+    await open(m, `/campaigns/${campaignId}/content/options?kind=subclasses`);
     await expect(m.getByText('Some para os jogadores: a classe Clérigo está desligada.').first()).toBeVisible();
     await expectScreenPasses(m, `Opções para os jogadores, as subclasses de uma classe desligada ${where}`);
-    await open(m, `/campanhas/${campaignId}/conteudo/opcoes?tipo=magias`);
+    await open(m, `/campaigns/${campaignId}/content/options?kind=spells`);
     if (colorScheme === 'light' && width === 1280) {
       // Once, the whole list: the 320 spells of the SRD and the table's own, as the master reads it.
       await expect(m.locator('.orow')).toHaveCount(320);
@@ -5561,7 +5563,7 @@ async function scanOptions(browser: Browser, colorScheme: 'light' | 'dark', widt
     await m.getByLabel('Buscar pelo nome').fill('zzzz');
     await expect(m.getByText('Nenhuma opção com esta busca.')).toBeVisible();
     await expectScreenPasses(m, `Opções para os jogadores, a busca sem resultado ${where}`);
-    await open(m, `/campanhas/${campaignId}/conteudo`);
+    await open(m, `/campaigns/${campaignId}/content`);
     await expectScreenPasses(m, `Conteúdo da mesa, com o caminho para as opções ${where}`);
     if (width >= 768) {
       await open(m, entryRoute(campaignId, spell));
@@ -5570,12 +5572,12 @@ async function scanOptions(browser: Browser, colorScheme: 'light' | 'dark', widt
     }
 
     // What a player reads: the race list without the Tiefling, on the screen where the master's phone is small.
-    await open(p, `/campanhas/${campaignId}/conteudo`);
+    await open(p, `/campaigns/${campaignId}/content`);
     await expectScreenPasses(p, `Conteúdo da mesa do jogador, com opções desligadas ${where}`);
-    await open(p, `/campanhas/${campaignId}/magias?q=nanquim`);
+    await open(p, `/campaigns/${campaignId}/spells?q=nanquim`);
     await expect(p.getByText('Nenhuma magia com “nanquim”.')).toBeVisible();
     await expectScreenPasses(p, `Magias do jogador, a magia desligada não aparece ${where}`);
-    await open(p, `/campanhas/${campaignId}/conteudo/opcoes`);
+    await open(p, `/campaigns/${campaignId}/content/options`);
     await expect(p.getByText('Só o mestre escolhe o que os jogadores veem.')).toBeVisible();
     await expectScreenPasses(p, `Opções para os jogadores, o que um jogador vê ${where}`);
   } finally {

@@ -1,0 +1,9 @@
+{
+  "cluster": ["monitor"],
+  "indices": [
+    {
+      "names": ["logs-meurpg-*"],
+      "privileges": ["auto_configure", "create_doc", "view_index_metadata"]
+    }
+  ]
+}

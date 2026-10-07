@@ -229,7 +229,7 @@
   {
    "key": "falling-net",
    "kind": "mechanical",
-   "description_pt": "Um fio de tropeço solta uma rede sobre 3 m por 3 m. Quem está embaixo fica Contido, e quem falha em Força CD 10 também fica Derrubado. Soltar-se: Força CD 10, uma ação. A rede tem CA 10 e 20 PV.",
+   "description_pt": "Um fio de tropeço solta uma rede sobre 3 m por 3 m. Quem está embaixo fica Impedido, e quem falha em Força CD 10 também fica Derrubado. Soltar-se: Força CD 10, uma ação. A rede tem CA 10 e 20 PV.",
    "notice_dc": 10,
    "find_dc": 10,
    "trigger": "enter",

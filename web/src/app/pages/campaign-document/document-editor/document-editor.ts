@@ -172,7 +172,7 @@ export class DocumentEditor {
     this.finishPicker(insertImage(this.draft(), start, end, image.name, image.id));
   }
 
-  protected onLink(kind: 'mapa' | 'ficha', link: PickedLink): void {
+  protected onLink(kind: 'map' | 'character', link: PickedLink): void {
     const { start, end } = this.selection;
     this.finishPicker(insertLink(this.draft(), start, end, link.name, `${kind}:${link.id}`));
   }

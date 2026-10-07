@@ -28,7 +28,7 @@ import { formatDateAt } from '../campaign-detail.copy';
       <p class="changes__when">
         Confirmado em {{ when() }}. Nada fica à espera do seu OK: as regras já conferiram cada escolha.
       </p>
-      <a matButton="outlined" [routerLink]="['/campanhas', campaignId(), 'personagens', levelUp().characterId]">Abrir a ficha</a>
+      <a matButton="outlined" [routerLink]="['/campaigns', campaignId(), 'characters', levelUp().characterId]">Abrir a ficha</a>
     </section>
   `,
   styleUrl: './level-up-changes.scss',

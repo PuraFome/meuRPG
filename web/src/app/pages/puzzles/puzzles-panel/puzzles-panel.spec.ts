@@ -53,16 +53,16 @@ describe('PuzzlesPanel (MR-038, E10-06 state 1)', () => {
     expect(textOf(rows[2])).toContain('Símbolos giratórios · 4 pilares, girando juntos');
     expect(textOf(rows[3])).toContain('Apagar as luzes · 7 × 7');
     const add = Array.from(el.querySelectorAll('a')).find((a) => a.textContent?.includes('Novo quebra-cabeça'))!;
-    expect(add.getAttribute('href')).toBe('/campanhas/camp-1/quebra-cabecas/novo');
+    expect(add.getAttribute('href')).toBe('/campaigns/camp-1/puzzles/new');
     expect(el.textContent).toContain('Só você vê estes quebra-cabeças.');
-    expect(named(el, 'Editar O selo da Capela').getAttribute('href')).toBe('/campanhas/camp-1/quebra-cabecas/a/editar');
+    expect(named(el, 'Editar O selo da Capela').getAttribute('href')).toBe('/campaigns/camp-1/puzzles/a/edit');
   });
 
   it('invites the first puzzle when there is none', async () => {
     const { el } = await render();
     expect(el.textContent).toContain('Nenhum quebra-cabeça ainda. Crie o primeiro para mostrar aos jogadores numa sessão.');
     expect(el.querySelector('.mr-list')).toBeNull();
-    expect(el.querySelector('a')?.getAttribute('href')).toBe('/campanhas/camp-1/quebra-cabecas/novo');
+    expect(el.querySelector('a')?.getAttribute('href')).toBe('/campaigns/camp-1/puzzles/new');
   });
 
   it('has no "Editar" for a puzzle already shown: the server would refuse', async () => {

@@ -35,7 +35,7 @@ test('jogador já logado abre o link do convite, entra na campanha e o mestre o 
       await playerPage.goto(link!);
       // AcceptInvite runs as soon as the page loads (already signed in), then
       // the app navigates to the campaign.
-      await expect(playerPage).toHaveURL(new RegExp(`/campanhas/${campaignId}$`));
+      await expect(playerPage).toHaveURL(new RegExp(`/campaigns/${campaignId}$`));
       await expect(playerPage.getByRole('heading', { level: 1 })).toContainText('Mesa conjunta');
     } finally {
       await playerContext.close();
@@ -91,7 +91,7 @@ test(
         await expect(guestPage).toHaveURL((url) => url.origin === idpOrigin && url.pathname === '/authorize');
         await guestPage.getByRole('button', { name: 'Jogador Teste', exact: true }).click();
 
-        await expect(guestPage).toHaveURL(new RegExp(`/campanhas/${campaignId}$`));
+        await expect(guestPage).toHaveURL(new RegExp(`/campaigns/${campaignId}$`));
         // Playwright reports the URL without the fragment, so the invite page's
         // own URL does not count; any other appearance would be a leak.
         expect(requestedURLs.filter((url) => url.includes(token))).toEqual([]);

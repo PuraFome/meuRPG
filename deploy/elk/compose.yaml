@@ -1,0 +1,167 @@
+# ELK stack for MeuRPG's API logs: Elasticsearch + Kibana + Filebeat.
+#
+# Usage: `make elk-up` from the repo root (or `docker compose -f deploy/elk/compose.yaml up -d`).
+# Needs deploy/elk/.env (`make elk-up` creates it with random passwords).
+# How to verify it and how production differs: docs/operacao.md, section "Logs no ELK".
+#
+# Services, in start order:
+#   certs        - one-shot: makes a CA and the TLS certificates (HTTP and transport) into the
+#                  "certs" volume, and copies the public CA to deploy/elk/certs/ca.crt for logs.sh.
+#   es01         - Elasticsearch, single node, security and TLS on, heap 1 GiB.
+#   setup        - one-shot, idempotent: passwords, roles, ILM policy (14 days), ingest pipeline,
+#                  index template and the data stream logs-meurpg-default.
+#   kibana       - Kibana, talks to Elasticsearch over TLS.
+#   kibana-setup - one-shot, idempotent: the data view and the saved searches.
+#   filebeat     - ships the API's JSON lines (Docker containers and native ~/.meurpg/run*/api.log).
+#
+# Every host port is bound to 127.0.0.1. Nothing here is distributed with MeuRPG:
+# the images are external services (licences: docs/operacao.md).
+name: meurpg-elk
+
+x-es-image: &es-image docker.elastic.co/elasticsearch/elasticsearch:9.5.5@sha256:13b4a40bb095774f5fda635e45fd5677cc6a26565e42b24997b0c72b88e75984
+x-kibana-image: &kibana-image docker.elastic.co/kibana/kibana:9.5.5@sha256:13b72ce7222c36e4213229004ae62a87aeb32fd372ebfa6fb38f7a3285fdbb78
+
+services:
+  certs:
+    image: *es-image
+    user: "0"
+    entrypoint: ["/bin/bash", "/setup/certs.sh"]
+    volumes:
+      - certs:/certs
+      - ./setup:/setup:ro
+      - ./certs:/host-certs
+    restart: "no"
+
+  es01:
+    image: *es-image
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+    environment:
+      node.name: es01
+      cluster.name: meurpg-logs
+      discovery.type: single-node
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?run make elk-up (or deploy/elk/init-env.sh) to create deploy/elk/.env}
+      xpack.security.enabled: "true"
+      xpack.license.self_generated.type: basic
+      xpack.security.http.ssl.enabled: "true"
+      xpack.security.http.ssl.key: certs/es01/es01.key
+      xpack.security.http.ssl.certificate: certs/es01/es01.crt
+      xpack.security.http.ssl.certificate_authorities: certs/ca/ca.crt
+      xpack.security.transport.ssl.enabled: "true"
+      xpack.security.transport.ssl.key: certs/es01/es01.key
+      xpack.security.transport.ssl.certificate: certs/es01/es01.crt
+      xpack.security.transport.ssl.certificate_authorities: certs/ca/ca.crt
+      xpack.security.transport.ssl.verification_mode: certificate
+      ES_JAVA_OPTS: -Xms1g -Xmx1g
+    mem_limit: 2g
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    ports:
+      - "127.0.0.1:${ES_PORT:-9200}:9200"
+    volumes:
+      - certs:/usr/share/elasticsearch/config/certs:ro
+      - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      # No password on the command line: an unauthenticated request must be answered with 401
+      # over TLS, which proves the node is up, secured and presenting a certificate from our CA.
+      test: ["CMD-SHELL", "curl -s --cacert config/certs/ca/ca.crt https://localhost:9200 | grep -q 'missing authentication credentials'"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 20s
+
+  setup:
+    image: *es-image
+    user: "0"
+    entrypoint: ["/bin/bash", "/setup/setup.sh"]
+    depends_on:
+      es01:
+        condition: service_healthy
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      KIBANA_PASSWORD: ${KIBANA_PASSWORD:?missing in deploy/elk/.env}
+      FILEBEAT_PASSWORD: ${FILEBEAT_PASSWORD:?missing in deploy/elk/.env}
+      READER_PASSWORD: ${READER_PASSWORD:?missing in deploy/elk/.env}
+    volumes:
+      - certs:/certs:ro
+      - ./setup:/setup:ro
+    restart: "no"
+
+  kibana:
+    image: *kibana-image
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    environment:
+      SERVER_NAME: kibana
+      SERVER_PUBLICBASEURL: http://localhost:${KIBANA_PORT:-5601}
+      ELASTICSEARCH_HOSTS: https://es01:9200
+      ELASTICSEARCH_USERNAME: kibana_system
+      ELASTICSEARCH_PASSWORD: ${KIBANA_PASSWORD}
+      ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES: config/certs/ca/ca.crt
+      XPACK_SECURITY_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY:?missing in deploy/elk/.env}
+      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY}
+      XPACK_REPORTING_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY}
+      TELEMETRY_OPTIN: "false"
+      NODE_OPTIONS: --max-old-space-size=768
+    mem_limit: 1g
+    ports:
+      - "127.0.0.1:${KIBANA_PORT:-5601}:5601"
+    volumes:
+      - certs:/usr/share/kibana/config/certs:ro
+    healthcheck:
+      # Kibana answers an unauthenticated request to / with a redirect to the login page.
+      test: ["CMD-SHELL", "curl -s -I http://localhost:5601 | grep -q 'HTTP/1.1 302 Found'"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+
+  kibana-setup:
+    image: *kibana-image
+    user: "1000"
+    entrypoint: ["/bin/bash", "/setup/kibana-setup.sh"]
+    depends_on:
+      kibana:
+        condition: service_healthy
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+    volumes:
+      - ./setup:/setup:ro
+    restart: "no"
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:9.5.5@sha256:4b2042fcbeb781800bc7271d400f764bb7d670310dfd4fe03ade53d6c7ab78aa
+    # root: it reads the Docker daemon's container logs and the Docker socket.
+    user: root
+    command: ["filebeat", "-e", "--strict.perms=false"]
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    environment:
+      FILEBEAT_PASSWORD: ${FILEBEAT_PASSWORD}
+    mem_limit: 512m
+    restart: unless-stopped
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - certs:/certs:ro
+      - filebeatdata:/usr/share/filebeat/data
+      # The API containers of the meurpg-local compose project (autodiscover by label).
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # The native stack (`make up LOCAL_STACK=native`): run/api.log and run-<port>/api.log.
+      - ${MEURPG_HOME:-${HOME}/.meurpg}:/native:ro
+    healthcheck:
+      test: ["CMD-SHELL", "filebeat test output >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  certs:
+  esdata:
+  filebeatdata:

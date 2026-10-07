@@ -1362,7 +1362,7 @@ const (
 	// A creature at or below a number of hit points is affected (Palavra de Poder:
 	// Atordoar, Matar).
 	SpellEffectKind_SPELL_EFFECT_KIND_THRESHOLD SpellEffectKind = 2
-	// Works only on a creature at 0 hit points (Poupar os Moribundos).
+	// Works only on a creature at 0 hit points (Estabilizar).
 	SpellEffectKind_SPELL_EFFECT_KIND_ZERO_HP SpellEffectKind = 3
 	// A fixed heal that also ends conditions (Cura Completa).
 	SpellEffectKind_SPELL_EFFECT_KIND_FLAT_HEAL SpellEffectKind = 4
@@ -8389,7 +8389,7 @@ type CastSpellRequest_D20Face struct {
 }
 
 type CastSpellRequest_PoolSum struct {
-	// A spell that rolls a pool of dice (Sono, Borrifo de Cores: effect_kind
+	// A spell that rolls a pool of dice (Sono, Leque Cromático: effect_kind
 	// SPELL_EFFECT_KIND_POOL): the sum of the physical dice, from the number of
 	// dice to the most they can show, without a modifier (the spell's dice are
 	// in the answer). The pool is rolled by the server with roll_in_app, and one
@@ -8410,8 +8410,8 @@ func (*CastSpellRequest_PoolSum) isCastSpellRequest_Roll() {}
 type SummonChoice struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The index of the option, from 0 (Conjurar Animais has four: one creature of
-	// challenge rating 2, two of 1, four of 1/2, eight of 1/4; Encontrar Familiar
-	// and Animar os Mortos have one).
+	// challenge rating 2, two of 1, four of 1/2, eight of 1/4; Convocar Familiar
+	// and Animar Mortos have one).
 	Option int32 `protobuf:"varint,1,opt,name=option,proto3" json:"option,omitempty"`
 	// One content key per creature ("monster:dire-wolf"; a key repeats for
 	// several of one kind), exactly the number the option and the slot allow.
@@ -8855,7 +8855,7 @@ type SpellCast struct {
 	PoolRoll *DiceRoll `protobuf:"bytes,9,opt,name=pool_roll,json=poolRoll,proto3" json:"pool_roll,omitempty"`
 	// The condition the spell gives the creatures it affects ("condition:
 	// unconscious"), a public tag. Empty when it gives none: a threshold spell that
-	// kills (Palavra de Poder: Matar), a zero-hit-point spell, a heal.
+	// kills (Palavra de Poder Matar), a zero-hit-point spell, a heal.
 	EffectConditionKey string `protobuf:"bytes,10,opt,name=effect_condition_key,json=effectConditionKey,proto3" json:"effect_condition_key,omitempty"`
 	// A threshold: the most hit points a creature may have to be affected (150,
 	// 100). Only the master.

@@ -249,7 +249,7 @@ describe('CombatXp (E7-06)', () => {
       expect(el.querySelectorAll('app-level-up-tag')).toHaveLength(1);
       expect(text(el)).toContain('Pensantus chegou ao XP do próximo nível.');
       expect(text(el)).toContain('Para desfazer este XP, use "Experiência" na página da campanha.');
-      expect(el.querySelector('a')?.getAttribute('href')).toBe('/campanhas/camp-1');
+      expect(el.querySelector('a')?.getAttribute('href')).toBe('/campaigns/camp-1');
       expect(states.at(-1)).toBe('given');
       // The form is gone: nothing left to give twice.
       expect(el.querySelector('app-xp-actions')).toBeNull();

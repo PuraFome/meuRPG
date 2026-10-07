@@ -43,7 +43,7 @@ export function spellKind(key: string, details: SpellDetails | null): SpellKind 
   if (key === 'spell:magic-missile') {
     return 'darts';
   }
-  // The spells that read hit points: Sono and Borrifo de Cores roll a pool before
+  // The spells that read hit points: Sono and Leque Cromático roll a pool before
   // the cast, the others only name who they touch (E8-03).
   const hp = hpSpellKind(details);
   if (hp) {

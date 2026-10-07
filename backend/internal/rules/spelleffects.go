@@ -8,7 +8,7 @@ import (
 )
 
 // Spells that read hit points (MR-014, Etapa 8): the effects/spells.json file.
-// Sono, Borrifo de Cores, the Palavras de Poder, Poupar os Moribundos and Cura
+// Sono, Leque Cromático, the Palavras de Poder, Estabilizar and Cura
 // Completa do not roll damage: what they do depends on the hit points the
 // creatures have now. Each spell takes one of four closed kinds, and the
 // loader refuses anything else (ADR-0008). The numbers of the kinds are
@@ -19,18 +19,18 @@ import (
 const (
 	// SpellKindHPPool: roll a pool (Dice) and affect the creatures in ascending
 	// order of current hit points, each one that fits in what is left of it
-	// (Sono, Borrifo de Cores).
+	// (Sono, Leque Cromático).
 	SpellKindHPPool = "hp_pool"
 	// SpellKindHPThreshold: a creature at or below Threshold hit points suffers
-	// the effect: a Condition, or death (Palavra de Poder: Atordoar, Matar).
+	// the effect: a Condition, or death (Palavra de Poder Atordoar, Matar).
 	SpellKindHPThreshold = "hp_threshold"
 	// SpellKindZeroHP: it works only on a creature at 0 hit points, and makes it
-	// stable (Poupar os Moribundos).
+	// stable (Estabilizar).
 	SpellKindZeroHP = "zero_hp_target"
 	// SpellKindFlatHeal: heals a fixed amount and ends the conditions in Ends
 	// (Cura Completa).
 	SpellKindFlatHeal = "flat_heal"
-	// SpellKindSummon: summons creatures (Encontrar Familiar, Animar os Mortos,
+	// SpellKindSummon: summons creatures (Convocar Familiar, Animar Mortos,
 	// Conjurar Animais); see summon.go. It reads no hit points: SpellEffect
 	// does not return it, and SummonOptions does.
 	SpellKindSummon = "summon"

@@ -4,7 +4,7 @@
   @if (liveSession(); as live) {
     <a
       class="app-bar__live app-bar__live--phone"
-      [routerLink]="['/campanhas', live.campaignId, 'sessao']"
+      [routerLink]="['/campaigns', live.campaignId, 'session']"
       [attr.aria-label]="liveLabel(live)"
       ><app-live-pill
     /></a>
@@ -35,7 +35,7 @@
       >
       <a
         class="app-bar__link"
-        routerLink="/campanhas"
+        routerLink="/campaigns"
         routerLinkActive="app-bar__link--active"
         ariaCurrentWhenActive="page"
         >Minhas campanhas</a
@@ -45,7 +45,7 @@
     @if (liveSession(); as live) {
       <a
         class="app-bar__live app-bar__live--wide"
-        [routerLink]="['/campanhas', live.campaignId, 'sessao']"
+        [routerLink]="['/campaigns', live.campaignId, 'session']"
         [attr.aria-label]="liveLabel(live)"
         ><app-live-pill
       /></a>
@@ -60,5 +60,5 @@
 </main>
 
 <footer class="app-footer">
-  <a routerLink="/creditos">Créditos</a>
+  <a routerLink="/credits">Créditos</a>
 </footer>

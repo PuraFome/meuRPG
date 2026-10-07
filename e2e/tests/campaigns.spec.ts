@@ -13,7 +13,7 @@ test.use({ storageState: authStatePath('Mestre Teste') });
 
 test.describe('criar campanha', () => {
   test('o mestre cria uma campanha pela tela e a vê como mestre na lista', { tag: '@MR-001' }, async ({ page }) => {
-    await page.goto('/campanhas');
+    await page.goto('/campaigns');
     const name = `Mirathel ${Date.now()}`;
 
     await expect(page.getByRole('heading', { name: 'Minhas campanhas' })).toBeVisible();
@@ -24,13 +24,13 @@ test.describe('criar campanha', () => {
     await page.getByRole('button', { name: 'Criar campanha' }).click();
 
     // MR-001's criterion: creating it makes the caller its master.
-    await expect(page).toHaveURL(/\/campanhas\/[^/]+$/);
+    await expect(page).toHaveURL(/\/campaigns\/[^/]+$/);
     await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible();
     await expect(page.getByText('Você é mestre nesta campanha')).toBeVisible();
 
     // And MR-001's other half: it shows up in "Minhas campanhas", tagged
     // "Mestre".
-    await page.goto('/campanhas');
+    await page.goto('/campaigns');
     const item = page.getByRole('link', { name });
     await expect(item).toBeVisible();
     await expect(item).toContainText('Mestre');
@@ -50,7 +50,7 @@ test.describe('convites', () => {
     // The link is shown exactly this once, with a clear warning.
     await expect(page.getByText('não será mostrado de novo')).toBeVisible();
     const linkText = (await page.locator('.invite-reveal__link').textContent())?.trim();
-    expect(linkText).toMatch(/\/convite#t=.+/);
+    expect(linkText).toMatch(/\/invite#t=.+/);
 
     // It shows up in the list, active.
     await expect(page.getByText('ativo')).toBeVisible();

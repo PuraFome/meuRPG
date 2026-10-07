@@ -76,9 +76,9 @@ describe('CreaturesPanel (E9-10, MR-037, RN-20)', () => {
   it('empty: invites the next action and offers the spell, with what it costs under the button', async () => {
     const { el, flat } = await setup({ access: FAMILIAR() });
     expect(flat(el.querySelector('h2'))).toBe('Criaturas');
-    expect(flat(el.querySelector('.empty'))).toBe('Nenhuma criatura ainda. Use Encontrar Familiar ou peça ao mestre para dar uma.');
+    expect(flat(el.querySelector('.empty'))).toBe('Nenhuma criatura ainda. Use Convocar Familiar ou peça ao mestre para dar uma.');
     const button = el.querySelector<HTMLButtonElement>('.cast__btn')!;
-    expect(flat(button)).toContain('Encontrar Familiar');
+    expect(flat(button)).toContain('Convocar Familiar');
     expect(button.classList).toContain('mat-mdc-outlined-button');
     expect(flat(el.querySelector('.cast__cost'))).toContain('Ritual de 1 hora: não gasta espaço de magia. Só durante uma sessão, fora de combate.');
     expect(el.querySelector('.count')).toBeNull();
@@ -113,7 +113,7 @@ describe('CreaturesPanel (E9-10, MR-037, RN-20)', () => {
     expect(tiles).toEqual(['CA 12', 'PV 1 de 1', 'Deslocamento 3 m voo 15 m']);
     const see = card.querySelector('a')!;
     expect(see.getAttribute('aria-label')).toBe('Ver a ficha de Nanquim');
-    expect(see.getAttribute('href')).toBe('/campanhas/camp-1/personagens/char-1/criaturas/cr-1');
+    expect(see.getAttribute('href')).toBe('/campaigns/camp-1/characters/char-1/creatures/cr-1');
   });
 
   it('the player renames and dismisses any of their creatures; only the master corrects the hit points', async () => {
@@ -148,13 +148,13 @@ describe('CreaturesPanel (E9-10, MR-037, RN-20)', () => {
 
   it('after a cast, reads the list and says what arrived in a live region, with no slot spent', async () => {
     const { fixture, el, flat, settle } = await setup({ access: FAMILIAR() });
-    dialogOpen.mockReturnValue({ afterClosed: () => of({ spellName: 'Encontrar Familiar', ritual: true, castingTime: '1 hora', names: ['Nanquim'], count: 1, dismissed: 0 }) });
+    dialogOpen.mockReturnValue({ afterClosed: () => of({ spellName: 'Convocar Familiar', ritual: true, castingTime: '1 hora', names: ['Nanquim'], count: 1, dismissed: 0 }) });
     api.creatures = [creature('cr-1', 'Nanquim')];
     el.querySelector<HTMLButtonElement>('.cast__btn')!.click();
     await settle();
     fixture.detectChanges();
     expect(el.querySelector('.live')?.getAttribute('role')).toBe('status');
-    expect(flat(el.querySelector('.live'))).toBe('Nanquim chegou. Encontrar Familiar, ritual de 1 hora. Nenhum espaço de magia foi gasto.');
+    expect(flat(el.querySelector('.live'))).toBe('Nanquim chegou. Convocar Familiar, ritual de 1 hora. Nenhum espaço de magia foi gasto.');
     expect(el.querySelectorAll('app-creature-card')).toHaveLength(1);
   });
 

@@ -165,7 +165,7 @@ export class CreatureChoiceList {
   }
 }
 
-/** Lower case without accents, so "aranha" finds "Aranha" and "cobra" finds "Cobra venenosa". */
+/** Lower case without accents, so "aranha" finds "Aranha" and "cobra" finds "Serpente venenosa". */
 function fold(text: string): string {
   return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
 }

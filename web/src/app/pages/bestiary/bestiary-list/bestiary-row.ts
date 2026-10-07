@@ -36,7 +36,7 @@ export interface BestiaryRowData {
     <div class="row">
       <app-creature-art class="row__art" [monsterKey]="row().key" [type]="row().type" />
       <span class="row__name">
-        <a class="row__link" [routerLink]="['/campanhas', campaignId(), 'bestiario', row().slug]" [queryParams]="queryParams()">
+        <a class="row__link" [routerLink]="['/campaigns', campaignId(), 'bestiary', row().slug]" [queryParams]="queryParams()">
           <span class="row__pt">{{ row().namePt }}</span>
         </a>
         <span class="row__en"><span lang="en">{{ row().name }}</span> · SRD</span>

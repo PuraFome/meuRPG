@@ -93,7 +93,7 @@ export class ContentOptions {
   protected readonly classFilter = signal('');
   protected readonly levelFilter = signal('');
   private readonly classSpells = signal<ReadonlyMap<string, ReadonlySet<string>>>(new Map());
-  protected readonly isSpells = computed(() => this.current().slug === 'magias');
+  protected readonly isSpells = computed(() => this.current().slug === 'spells');
   protected readonly classOptions = computed<SelectOption[]>(() => [
     { value: '', label: 'Todas as classes' },
     ...this.options()
@@ -120,14 +120,14 @@ export class ContentOptions {
   });
   /** What the list draws: the races with their sub-races under them, the rest as they come. */
   protected readonly shown = computed(() =>
-    this.current().slug === 'racas' ? nestRows(this.rows()) : this.rows().map((row) => ({ row, nested: false })),
+    this.current().slug === 'races' ? nestRows(this.rows()) : this.rows().map((row) => ({ row, nested: false })),
   );
   protected readonly counter = computed(
-    () => counterText(this.current(), mainCount(this.options(), this.current())) + (['subclasses', 'racas'].includes(this.current().slug) ? hiddenCounterText(this.current(), hiddenByParent(this.rowsAll())) : ''),
+    () => counterText(this.current(), mainCount(this.options(), this.current())) + (['subclasses', 'races'].includes(this.current().slug) ? hiddenCounterText(this.current(), hiddenByParent(this.rowsAll())) : ''),
   );
   protected readonly subraces = computed(() => {
     const c = subraceCount(this.options());
-    return this.current().slug === 'racas' && c.total > 0 ? subraceCounterText(c) : '';
+    return this.current().slug === 'races' && c.total > 0 ? subraceCounterText(c) : '';
   });
   protected readonly subraceTotal = computed(() => subraceCount(this.options()).total);
   protected readonly menuCounts = computed(() => new Map(CONTENT_NAV.map((n) => [n.slug, menuCount(this.options(), n)])));
@@ -139,9 +139,9 @@ export class ContentOptions {
   /** "Ligar todas" and "Desligar todas" are off when they would change nothing in the rows in view. */
   protected readonly turnOnDisabled = computed(() => this.rows().every((o) => !o.off));
   protected readonly turnOffDisabled = computed(() => this.rows().every((o) => o.off));
-  protected readonly allWord = computed(() => (this.current().slug === 'antecedentes' ? 'todos' : 'todas'));
-  protected readonly onWord = computed(() => (this.current().slug === 'antecedentes' ? 'Ligado' : 'Ligada'));
-  protected readonly offWord = computed(() => (this.current().slug === 'antecedentes' ? 'Desligado' : 'Desligada'));
+  protected readonly allWord = computed(() => (this.current().slug === 'backgrounds' ? 'todos' : 'todas'));
+  protected readonly onWord = computed(() => (this.current().slug === 'backgrounds' ? 'Ligado' : 'Ligada'));
+  protected readonly offWord = computed(() => (this.current().slug === 'backgrounds' ? 'Desligado' : 'Desligada'));
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe((params) => {
@@ -152,7 +152,7 @@ export class ContentOptions {
       }
     });
     this.route.queryParamMap.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe((params) => {
-      const n = navBySlug(params.get('tipo'));
+      const n = navBySlug(params.get('kind'));
       if (n) {
         this.slug.set(n.slug);
         this.query.set('');
@@ -198,7 +198,7 @@ export class ContentOptions {
   }
 
   protected back(): string[] {
-    return ['/campanhas', this.campaignId(), 'conteudo'];
+    return ['/campaigns', this.campaignId(), 'content'];
   }
 
   protected setQuery(text: string): void {

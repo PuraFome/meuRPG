@@ -237,7 +237,7 @@ type Spell struct {
 	// HP is set for a spell that reads hit points (Sono, Palavra de Poder...):
 	// Damage and Heal are nil for it, and the cast applies HP instead.
 	HP *HPEffect
-	// Summon says the spell brings creatures (Encontrar Familiar, Animar os
+	// Summon says the spell brings creatures (Convocar Familiar, Animar os
 	// Mortos, Conjurar Animais; MR-037): the cast takes a choice of creatures
 	// instead of targets.
 	Summon bool

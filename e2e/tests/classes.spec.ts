@@ -22,7 +22,7 @@ test(
       await Promise.all([m.goto('/'), p.goto('/')]);
       const campaignId = await campaignWithEmptyPlayer(m, p, `Classes criar ${Date.now()}`);
 
-      await m.goto(`/campanhas/${campaignId}/conteudo?tipo=classes`);
+      await m.goto(`/campaigns/${campaignId}/content?kind=classes`);
       await m.getByRole('link', { name: 'Nova classe' }).click();
       await expect(m.getByRole('heading', { level: 1, name: 'Nova classe' })).toBeVisible();
 
@@ -54,7 +54,7 @@ test(
       await m.getByLabel('Volta em').selectOption({ label: 'Descanso longo' });
       await m.getByLabel('Nome do recurso').fill('vigilia');
       await m.getByRole('button', { name: 'Salvar classe' }).click();
-      await expect(m).toHaveURL(/\/conteudo\/entrada\//);
+      await expect(m).toHaveURL(/\/content\/entries\//);
       await expect(m.getByText('A classe Guardião do Vale foi salva.')).toBeVisible();
 
       const stored = (await listEntries(m, campaignId)).find((e) => e.namePt === 'Guardião do Vale')!;
@@ -114,7 +114,7 @@ test(
       await Promise.all([m.goto('/'), p.goto('/')]);
       const campaignId = await campaignWithEmptyPlayer(m, p, `Subclasses criar ${Date.now()}`);
 
-      await m.goto(`/campanhas/${campaignId}/conteudo?tipo=subclasses`);
+      await m.goto(`/campaigns/${campaignId}/content?kind=subclasses`);
       await m.getByRole('link', { name: 'Nova subclasse' }).click();
       await expect(m.getByRole('heading', { level: 1, name: 'Nova subclasse' })).toBeVisible();
       await m.getByLabel('Nome', { exact: true }).fill('Tradição da Tinta');
@@ -130,7 +130,7 @@ test(
       await m.getByLabel('Adicionar nível').selectOption({ label: 'Nível 3' });
       await m.getByRole('group', { name: 'Nível 3' }).getByLabel('Adicionar magia').selectOption({ label: 'Detectar Magia' });
       await m.getByRole('button', { name: 'Salvar subclasse' }).click();
-      await expect(m).toHaveURL(/\/conteudo\/entrada\//);
+      await expect(m).toHaveURL(/\/content\/entries\//);
       await expect(m.getByText('A subclasse Tradição da Tinta foi salva.')).toBeVisible();
 
       const stored = (await listEntries(m, campaignId)).find((e) => e.namePt === 'Tradição da Tinta')!;
@@ -172,7 +172,7 @@ test('mudar a classe lista a ficha que ficou com aviso @MR-025', { tag: ['@MR-02
     await expect(m.getByText('A classe Guardião do Vale foi salva.')).toBeVisible();
     const warning = m.getByRole('status').filter({ hasText: 'ficha ficou com aviso' });
     await expect(warning).toBeVisible();
-    await expect(warning.getByRole('link', { name: pensantus.name })).toHaveAttribute('href', `/campanhas/${campaignId}/personagens/${characterId}`);
+    await expect(warning.getByRole('link', { name: pensantus.name })).toHaveAttribute('href', `/campaigns/${campaignId}/characters/${characterId}`);
   } finally {
     await Promise.all([master.close(), player.close()]);
   }
@@ -190,7 +190,7 @@ test('o jogador lê a classe por inteiro, sem contagem e sem uma arquivada @MR-0
     const old = await createClassRPC(m, campaignId, classBody('Bardo das Cinzas'));
     await archiveEntryRPC(m, campaignId, old);
 
-    await p.goto(`/campanhas/${campaignId}/conteudo?tipo=classes`);
+    await p.goto(`/campaigns/${campaignId}/content?kind=classes`);
     await expect(p.locator('a.row')).toHaveCount(1);
     await expect(p.locator('a.row')).toContainText('Guardião do Vale');
     await expect(p.getByText('Bardo das Cinzas')).toHaveCount(0);

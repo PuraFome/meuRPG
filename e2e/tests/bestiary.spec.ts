@@ -31,7 +31,7 @@ test(
       const campaignId = table.campaignId;
 
       // The way in: the campaign page has the panel, for the master.
-      await master.goto(`/campanhas/${campaignId}`);
+      await master.goto(`/campaigns/${campaignId}`);
       await expect(master.getByRole('heading', { name: 'Bestiário', level: 2 })).toBeVisible();
       await master.getByRole('link', { name: 'Abrir o bestiário' }).click();
       await expect(master.getByRole('heading', { name: 'Bestiário', level: 1 })).toBeVisible();
@@ -83,7 +83,7 @@ test(
       // Each number in its own tile, with the note that says where it comes from.
       const tile = (label: string) => master.locator('.tile').filter({ has: master.locator('.tile__l', { hasText: new RegExp(`^${label}$`) }) });
       await expect(tile('CA').locator('.tile__v')).toHaveText('11');
-      await expect(tile('CA').locator('.tile__n')).toHaveText('armadura de peles');
+      await expect(tile('CA').locator('.tile__n')).toHaveText('gibão de peles');
       await expect(tile('PV').locator('.tile__v')).toHaveText('59');
       await expect(tile('Deslocamento').locator('.tile__v')).toHaveText('12 m');
       await expect(tile('Deslocamento').locator('.tile__n')).toHaveText('40 pés');
@@ -131,7 +131,7 @@ test(
       expect((npc.sheet.basic.attacks as { name: string }[]).map((a) => a.name)).toEqual(['Clava grande', 'Azagaia']);
       const block = await callRPC(master, 'meurpg.rules.v1.ContentService/GetCreature', { campaignId, key: 'monster:ogre' });
       expect((await block.json()).creature.npcAttackNames).toEqual(['Clava grande', 'Azagaia']);
-      await master.goto(`/campanhas/${campaignId}`);
+      await master.goto(`/campaigns/${campaignId}`);
       const npcs = master.getByRole('region', { name: 'NPCs' });
       await expect(npcs.getByText('Capitão bandido')).toBeVisible();
       await expect(npcs.getByText('Minion')).toBeVisible();
@@ -148,13 +148,13 @@ test(
       expect(asPlayer.tokens ?? []).toHaveLength(0);
 
       // RN-04: the player has no entry point and no NPC list; the page says it is the master's.
-      await player.goto(`/campanhas/${campaignId}`);
+      await player.goto(`/campaigns/${campaignId}`);
       await expect(player.getByRole('heading', { name: 'Personagens', level: 3 }).first()).toBeVisible();
       await expect(player.getByText('Bestiário')).toHaveCount(0);
       await expect(player.getByRole('link', { name: /bestiário/i })).toHaveCount(0);
       await expect(player.getByText('Capitão bandido')).toHaveCount(0);
       await expect(player.getByRole('heading', { name: 'NPCs' })).toHaveCount(0);
-      await player.goto(`/campanhas/${campaignId}/bestiario`);
+      await player.goto(`/campaigns/${campaignId}/bestiary`);
       await expect(player.getByText('Só o mestre usa o bestiário da campanha.')).toBeVisible();
       await expect(player.getByRole('searchbox')).toHaveCount(0);
       const list = await callRPC(player, 'meurpg.characters.v1.CharacterService/ListCharacters', { campaignId });
@@ -187,7 +187,7 @@ test(
       await master.goto('/');
       await player.goto('/');
       const table = await tableForMaps(master, player, `Bestiário dois toques ${Date.now()}`);
-      await master.goto(`/campanhas/${table.campaignId}/bestiario/goblin`);
+      await master.goto(`/campaigns/${table.campaignId}/bestiary/goblin`);
       await expect(master.getByRole('heading', { name: 'Goblin', level: 1 })).toBeVisible();
       await master.getByRole('button', { name: 'Criar NPC' }).click();
       const dialog = master.getByRole('dialog', { name: 'Criar NPC' });

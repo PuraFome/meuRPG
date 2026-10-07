@@ -24,7 +24,7 @@ describe('ContentList', () => {
   const getCampaign = vi.fn();
   let watcher = fakeContentWatcher();
 
-  async function setup(role: Role, opts: { entries?: ReturnType<typeof mirathel>; phone?: boolean; tipo?: string } = {}) {
+  async function setup(role: Role, opts: { entries?: ReturnType<typeof mirathel>; phone?: boolean; kind?: string } = {}) {
     list.mockReset().mockResolvedValue({ entries: opts.entries ?? mirathel(), tableRevision: 7 });
     catalog.mockReset().mockResolvedValue(create(ContentSchema, {}));
     unarchive.mockReset().mockImplementation(async (_c: string, key: string) => ({ ...(opts.entries ?? mirathel()).find((e) => e.key === key)!, archived: false }));
@@ -37,7 +37,7 @@ describe('ContentList', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: 'camp-1' })), queryParamMap: of(convertToParamMap(opts.tipo ? { tipo: opts.tipo } : {})) } },
+        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: 'camp-1' })), queryParamMap: of(convertToParamMap(opts.kind ? { kind: opts.kind } : {})) } },
         { provide: CampaignsService, useValue: { getCampaign } },
         { provide: TableContentClient, useValue: { list, catalog, unarchive, archive } },
       ],
@@ -66,10 +66,10 @@ describe('ContentList', () => {
   });
 
   it('every kind has its "Nova …" link for the master, the subclass one included', async () => {
-    const { el } = await setup(Role.MASTER, { tipo: 'subclasses' });
+    const { el } = await setup(Role.MASTER, { kind: 'subclasses' });
     expect(text(el.querySelector('.list__head')!)).toContain('Nova subclasse');
-    expect(el.querySelector('a[href$="/novo/subclasse"]')).not.toBeNull();
-    const races = (await setup(Role.MASTER, { tipo: 'racas' })).el;
+    expect(el.querySelector('a[href$="/new/subclass"]')).not.toBeNull();
+    const races = (await setup(Role.MASTER, { kind: 'races' })).el;
     const head = text(races.querySelector('.list__head')!);
     expect(head).toContain('Nova raça');
     expect(head).toContain('Nova sub-raça');
@@ -81,7 +81,7 @@ describe('ContentList', () => {
   });
 
   it('gives the master the kinds with their counts, the limit, and the rows with the state in words', async () => {
-    const { el } = await setup(Role.MASTER, { tipo: 'classes' });
+    const { el } = await setup(Role.MASTER, { kind: 'classes' });
     const items = Array.from(el.querySelectorAll('.menu__item')).map((a) => text(a).trim());
     expect(items).toEqual(['Classes2', 'Subclasses2', 'Raças1', 'Antecedentes1', 'Magias1']);
     expect(text(el)).toContain('7 de 300 entradas · o limite de uma campanha');
@@ -97,21 +97,21 @@ describe('ContentList', () => {
   });
 
   it('links each row to its entry with the key once encoded (a double encoding found no entry)', async () => {
-    const { el } = await setup(Role.MASTER, { tipo: 'classes' });
+    const { el } = await setup(Role.MASTER, { kind: 'classes' });
     const hrefs = Array.from(el.querySelectorAll('a.row')).map((a) => a.getAttribute('href'));
-    expect(hrefs[0]).toMatch(/^\/campanhas\/camp-1\/conteudo\/entrada\/class(:|%3A)guardi-o-do-vale(@|%40)mesa$/);
+    expect(hrefs[0]).toMatch(/^\/campaigns\/camp-1\/content\/entries\/class(:|%3A)guardi-o-do-vale(@|%40)mesa$/);
     expect(hrefs.join('')).not.toContain('%25');
   });
 
   it('offers "Nova raça" and the search and filter for a kind that has an editor', async () => {
-    const { el } = await setup(Role.MASTER, { tipo: 'racas' });
+    const { el } = await setup(Role.MASTER, { kind: 'races' });
     expect(text(el.querySelector('.list__head')!)).toContain('Nova raça');
     expect(el.querySelector('select')).not.toBeNull();
     expect(text(el)).toContain('Corujeiro');
   });
 
   it('filters by "Mostrar" and by the name', async () => {
-    const { fixture, el } = await setup(Role.MASTER, { tipo: 'classes' });
+    const { fixture, el } = await setup(Role.MASTER, { kind: 'classes' });
     const select = el.querySelector('select') as HTMLSelectElement;
     select.selectedIndex = 3;
     select.dispatchEvent(new Event('change'));
@@ -127,7 +127,7 @@ describe('ContentList', () => {
   });
 
   it('draws the empty campaign: "Nada cadastrado ainda." with the SRD still valid, five kinds with 0', async () => {
-    const { el } = await setup(Role.MASTER, { entries: [], tipo: 'magias' });
+    const { el } = await setup(Role.MASTER, { entries: [], kind: 'spells' });
     expect(text(el)).toContain('Nada cadastrado ainda.');
     expect(text(el)).toContain('O SRD continua valendo');
     expect(Array.from(el.querySelectorAll('.menu__count')).map((c) => c.textContent)).toEqual(['0', '0', '0', '0', '0']);
@@ -156,7 +156,7 @@ describe('ContentList', () => {
   });
 
   it('gives the master on a phone the reading and the archive only: a notice, a "Tipo" select and one button per row', async () => {
-    const { fixture, el } = await setup(Role.MASTER, { phone: true, tipo: 'classes' });
+    const { fixture, el } = await setup(Role.MASTER, { phone: true, kind: 'classes' });
     expect(text(el)).toContain('Para criar ou editar, abra o conteúdo da mesa no notebook. Aqui você lê e arquiva.');
     expect(el.querySelector('.menu')).toBeNull();
     expect(text(el)).not.toContain('Nova classe');
@@ -190,7 +190,7 @@ describe('ContentList', () => {
   it('gives the master "Opções para os jogadores", on a laptop and on a phone', async () => {
     const laptop = await setup(Role.MASTER);
     const link = Array.from(laptop.el.querySelectorAll('a')).find((a) => text(a).includes('Opções para os jogadores'));
-    expect(link?.getAttribute('href')).toBe('/campanhas/camp-1/conteudo/opcoes');
+    expect(link?.getAttribute('href')).toBe('/campaigns/camp-1/content/options');
     const phone = await setup(Role.MASTER, { phone: true });
     expect(Array.from(phone.el.querySelectorAll('a')).some((a) => text(a).includes('Opções para os jogadores'))).toBe(true);
     // A player has no switches to turn.
@@ -200,12 +200,12 @@ describe('ContentList', () => {
 
   it('flags an entry the master switched off, in words, and says how many sheets still use it (RN-23)', async () => {
     const entries = [{ ...entry(TableContentKind.RACE, 'Corujeiro', { charactersUsing: 2 }), off: true }] as ReturnType<typeof mirathel>;
-    const { el } = await setup(Role.MASTER, { entries, tipo: 'racas' });
+    const { el } = await setup(Role.MASTER, { entries, kind: 'races' });
     expect(text(el.querySelector('.row')!)).toContain('Desligada para os jogadores · 2 fichas usam');
   });
 
   it('reads the list again when the table changed (content_changed), keeping the kind and the search', async () => {
-    const { el, settle } = await setup(Role.MASTER, { tipo: 'racas' });
+    const { el, settle } = await setup(Role.MASTER, { kind: 'races' });
     expect(watcher.following()).toBe('camp-1');
     expect(el.querySelectorAll('a.row')).toHaveLength(1);
     list.mockResolvedValue({ entries: [...mirathel(), entry(TableContentKind.RACE, 'Gnomo do Vale')], tableRevision: 8 });
@@ -218,7 +218,7 @@ describe('ContentList', () => {
   });
 
   it('keeps what is on screen when the read after a change fails', async () => {
-    const { el, settle } = await setup(Role.MASTER, { tipo: 'racas' });
+    const { el, settle } = await setup(Role.MASTER, { kind: 'races' });
     list.mockRejectedValue(new Error('offline'));
     watcher.hint();
     await settle();

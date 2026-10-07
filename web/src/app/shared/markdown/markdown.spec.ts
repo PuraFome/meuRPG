@@ -74,26 +74,26 @@ describe('parseMarkdown', () => {
 
   it('reads the three links of the app and https links', () => {
     const [p] = parseMarkdown(
-      `Veja [Mirathel](mapa:${MAP}), [Capitão](ficha:${CHAR}) e [o SRD](https://example.com/srd?a=1).`,
+      `Veja [Mirathel](map:${MAP}), [Capitão](character:${CHAR}) e [o SRD](https://example.com/srd?a=1).`,
     );
     const kinds = (p as Extract<Block, { type: 'paragraph' }>).children.map((c) => c.type);
     expect(kinds).toEqual(['text', 'ref', 'text', 'ref', 'text', 'link', 'text']);
     const refs = (p as Extract<Block, { type: 'paragraph' }>).children.filter((c) => c.type === 'ref');
     expect(refs).toEqual([
-      { type: 'ref', kind: 'mapa', id: MAP, text: 'Mirathel' },
-      { type: 'ref', kind: 'ficha', id: CHAR, text: 'Capitão' },
+      { type: 'ref', kind: 'map', id: MAP, text: 'Mirathel' },
+      { type: 'ref', kind: 'character', id: CHAR, text: 'Capitão' },
     ]);
   });
 
   it('reads an image alone on its line, with its caption', () => {
-    const [img] = parseMarkdown(`![A Taverna, onde Odra espera.](imagem:${IMG})`);
+    const [img] = parseMarkdown(`![A Taverna, onde Odra espera.](image:${IMG})`);
     expect(img).toEqual({ type: 'image', id: IMG, caption: 'A Taverna, onde Odra espera.' });
   });
 
   it('keeps an image inside a sentence, a bad id and an external image as text', () => {
     for (const src of [
-      `Veja ![x](imagem:${IMG}) aqui`,
-      '![x](imagem:nao-e-uuid)',
+      `Veja ![x](image:${IMG}) aqui`,
+      '![x](image:nao-e-uuid)',
       '![x](https://example.com/a.png)',
     ]) {
       const [b] = parseMarkdown(src);
@@ -137,8 +137,8 @@ describe('hostile input', () => {
       'file:///etc/passwd',
       '//example.com',
       '/relative',
-      'mapa:nao-uuid',
-      'ficha:',
+      'map:nao-uuid',
+      'character:',
       'https://user:pass@example.com',
       'https://',
     ]) {
@@ -196,7 +196,7 @@ describe('hostile input', () => {
       '**a '.repeat(51_200),
       '*a **b '.repeat(29_000),
       '[x](https://a.b/' + 'a'.repeat(204_000),
-      ('![x](imagem:' + 'a'.repeat(30) + ')\n').repeat(6_000),
+      ('![x](image:' + 'a'.repeat(30) + ')\n').repeat(6_000),
       '- '.repeat(100_000),
       ('# ' + 'h'.repeat(60) + '\n').repeat(3_000),
     ];
@@ -217,7 +217,7 @@ describe('hostile input', () => {
 describe('collectReferences and outline', () => {
   it('lists the maps, sheets and images a document points to, once each', () => {
     const blocks = parseMarkdown(
-      `# Título\n\n[a](mapa:${MAP}) e **[b](ficha:${CHAR})** de novo [a](mapa:${MAP}).\n\n- [c](mapa:${MAP})\n\n![x](imagem:${IMG})`,
+      `# Título\n\n[a](map:${MAP}) e **[b](character:${CHAR})** de novo [a](map:${MAP}).\n\n- [c](map:${MAP})\n\n![x](image:${IMG})`,
     );
     const refs = collectReferences(blocks);
     expect([...refs.maps]).toEqual([MAP]);

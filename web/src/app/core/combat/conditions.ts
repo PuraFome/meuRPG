@@ -18,11 +18,11 @@ export const CONDITIONS: readonly ConditionInfo[] = [
   { key: 'condition:frightened', name: 'Amedrontado' },
   { key: 'condition:stunned', name: 'Atordoado' },
   { key: 'condition:blinded', name: 'Cego' },
-  { key: 'condition:restrained', name: 'Contido' },
   { key: 'condition:prone', name: 'Derrubado' },
   { key: 'condition:charmed', name: 'Enfeitiçado' },
   { key: 'condition:poisoned', name: 'Envenenado' },
   { key: 'condition:exhaustion', name: 'Exaustão' },
+  { key: 'condition:restrained', name: 'Impedido' },
   { key: 'condition:incapacitated', name: 'Incapacitado' },
   { key: 'condition:unconscious', name: 'Inconsciente' },
   { key: 'condition:invisible', name: 'Invisível' },
@@ -51,7 +51,7 @@ export function sameKeys(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && [...a].sort().join('|') === [...b].sort().join('|');
 }
 
-/** "Envenenado e Derrubado", "Cego, Surdo e Contido": names read aloud. */
+/** "Envenenado e Derrubado", "Cego, Surdo e Impedido": names read aloud. */
 export function listNames(names: readonly string[]): string {
   if (names.length <= 1) {
     return names.join('');

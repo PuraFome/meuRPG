@@ -101,7 +101,7 @@ import { openTrapSearch } from './traps/trap-search-sheet/trap-search-sheet';
 type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error';
 
 /**
- * The session page, `/campanhas/:id/sessao` (MR-011, MR-012, RN-02, RN-06,
+ * The session page, `/campaigns/:id/session` (MR-011, MR-012, RN-02, RN-06,
  * RN-07; artboards E5-02 to E5-08).
  *
  * It asks for the campaign (its name, and whether the person is its
@@ -269,7 +269,7 @@ export class LiveSession {
   });
   /** The master's puzzle panel is on the board when the campaign has puzzles (or when they could not be read). */
   protected readonly puzzlesShown = computed(() => this.puzzles.runs().length > 0 || this.puzzles.status() === 'error');
-  /** The puzzle a player has open (`?quebra-cabeca=ID`), in the place of the board; the master plays none. */
+  /** The puzzle a player has open (`?puzzle=ID`), in the place of the board; the master plays none. */
   protected readonly openPuzzle = signal<string | null>(null);
 
   /** The player's notes and the clues the master revealed (MR-030): read after
@@ -360,7 +360,7 @@ export class LiveSession {
       });
     inject(ActivatedRoute)
       .queryParamMap.pipe(takeUntilDestroyed())
-      .subscribe((params) => this.openPuzzle.set(params.get('quebra-cabeca')));
+      .subscribe((params) => this.openPuzzle.set(params.get('puzzle')));
     this.destroyRef.onDestroy(() => {
       this.toasts.clear();
       clearTimeout(this.visionTimer);

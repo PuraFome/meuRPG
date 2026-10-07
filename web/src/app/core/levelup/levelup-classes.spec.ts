@@ -21,7 +21,7 @@ const BARD_SPELLS: Spell[] = [
   // Not on the Bard's list: a cleric's.
   create(SpellSchema, { key: 'spell:bless', namePt: 'Bênção', level: 1, schoolNamePt: 'Encantamento', classKeys: ['class:cleric'] }),
   create(SpellSchema, { key: 'spell:bane', namePt: 'Perdição', level: 1, schoolNamePt: 'Encantamento', classKeys: ['class:cleric'] }),
-  create(SpellSchema, { key: 'spell:guiding-bolt', namePt: 'Raio Guia', level: 1, schoolNamePt: 'Evocação', classKeys: ['class:cleric'] }),
+  create(SpellSchema, { key: 'spell:guiding-bolt', namePt: 'Raio Guiador', level: 1, schoolNamePt: 'Evocação', classKeys: ['class:cleric'] }),
 ];
 
 describe('a Bard at level 3: the college, and Expertise', () => {
@@ -143,7 +143,7 @@ describe('a cleric: it prepares from the class list, with no book', () => {
   it('offers every spell of the class list that is not prepared yet, circle by circle', () => {
     const d = new LevelUpDraft(cleric(4), have, { spells: clericSpells, skills: SKILLS });
     expect(d.steps()).toEqual(['hp', 'spells', 'summary']);
-    expect(d.preparedItems().map((i) => i.name)).toEqual(['Curar Ferimentos', 'Onda Trovejante', 'Imagem Espelhada', 'Invisibilidade', 'Passo Nebuloso']);
+    expect(d.preparedItems().map((i) => i.name)).toEqual(['Curar Ferimentos', 'Onda Trovejante', 'Invisibilidade', 'Passo Nebuloso', 'Reflexos']);
   });
 
   it('prepares exactly one more when the maximum goes up by one (one place: a second pick replaces the first)', () => {

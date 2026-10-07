@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { type PoolCard, article } from '../../../../core/combat/combat-log';
 
 /**
- * What the master reads under a Sono or a Borrifo de Cores in the log (E8-03):
+ * What the master reads under a Sono or a Leque Cromático in the log (E8-03):
  * the dice and the total they make (the pool of hit points), then each creature
  * of the area from the lowest hit points up, with its hit points now, the
  * account of what is left of the total and the result in a word and an icon (the

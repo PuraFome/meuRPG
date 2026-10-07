@@ -20,7 +20,7 @@
         <mat-icon aria-hidden="true">schedule</mat-icon>
         <p>Quando o mestre iniciar, a sessão abre aqui.</p>
       </div>
-      <a mat-flat-button [routerLink]="['/campanhas', campaignId()]">Voltar para a campanha</a>
+      <a mat-flat-button [routerLink]="['/campaigns', campaignId()]">Voltar para a campanha</a>
     </div>
   }
   @case ('ended') {
@@ -34,7 +34,7 @@
           Os pontos de vida, os espaços de magia e os dados de vida ficam como estão até a próxima.
         </p>
       </div>
-      <a mat-flat-button [routerLink]="['/campanhas', campaignId()]">Voltar para a campanha</a>
+      <a mat-flat-button [routerLink]="['/campaigns', campaignId()]">Voltar para a campanha</a>
     </div>
   }
 }

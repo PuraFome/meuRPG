@@ -44,7 +44,7 @@ test(
       await revealMapRPC(master, table.campaignId, towerId);
 
       // The new map form: a name and a tile of the gallery.
-      await master.goto(`/campanhas/${table.campaignId}`);
+      await master.goto(`/campaigns/${table.campaignId}`);
       await master.getByRole('link', { name: 'Novo mapa' }).click();
       await expect(master.getByRole('heading', { name: 'Novo mapa', level: 1 })).toBeVisible();
       await master.getByRole('button', { name: 'Criar mapa' }).click();
@@ -53,7 +53,7 @@ test(
       await master.getByLabel('Nome').fill('Mirathel e arredores');
       await master.getByRole('radio', { name: /Mapa de Mirathel/ }).click();
       await master.getByRole('button', { name: 'Criar mapa' }).click();
-      await expect(master).toHaveURL(/\/mapas\/[^/]+$/);
+      await expect(master).toHaveURL(/\/maps\/[^/]+$/);
       await expect(master.getByRole('heading', { name: 'Mirathel e arredores', level: 1 })).toBeVisible();
       await expect(master.getByText('Escondido dos jogadores')).toBeVisible();
       const mapUrl = master.url();
@@ -133,7 +133,7 @@ test(
       // The page's own GetMap response, read while the page is still on it.
       const [response] = await Promise.all([
         player.waitForResponse((res) => res.url().includes('meurpg.maps.v1.MapService/GetMap')),
-        player.goto(`/campanhas/${table.campaignId}/mapas/${mapId}`),
+        player.goto(`/campaigns/${table.campaignId}/maps/${mapId}`),
       ]);
       const body = await response.text();
       expect(body).toContain('Ponte velha');
@@ -148,12 +148,12 @@ test(
       await expect(player.getByRole('region', { name: 'Pontos deste mapa' }).getByRole('button')).toHaveCount(1);
 
       // The master sees both, the hidden one marked.
-      await master.goto(`/campanhas/${table.campaignId}/mapas/${mapId}`);
+      await master.goto(`/campaigns/${table.campaignId}/maps/${mapId}`);
       await expect(master.getByRole('button', { name: 'Covil secreto, Batalha, escondido' })).toBeVisible();
 
       // A hidden map is "not found" for the player, like one that does not exist.
       const hiddenMap = await createMapRPC(master, table.campaignId, 'Mapa escondido', image);
-      await player.goto(`/campanhas/${table.campaignId}/mapas/${hiddenMap}`);
+      await player.goto(`/campaigns/${table.campaignId}/maps/${hiddenMap}`);
       await expect(player.getByRole('heading', { name: 'Mapa não encontrado' })).toBeVisible();
       const direct = await callRPC(player, 'meurpg.maps.v1.MapService/GetMap', { campaignId: table.campaignId, mapId: hiddenMap });
       expect(direct.status()).toBe(404);
@@ -228,7 +228,7 @@ test(
       const mapId = await createMapRPC(master, table.campaignId, 'Mirathel e arredores', image);
       await createPointRPC(master, table.campaignId, mapId, { kind: 'BATTLE', name: 'Emboscada na estrada', xBp: 4000, yBp: 6000 });
 
-      await master.goto(`/campanhas/${table.campaignId}/mapas/${mapId}`);
+      await master.goto(`/campaigns/${table.campaignId}/maps/${mapId}`);
       await expect(master.getByRole('heading', { name: 'Mirathel e arredores', level: 1 })).toBeVisible();
 
       // Renomear: the title becomes the field; Esc gives it back unchanged.
@@ -257,7 +257,7 @@ test(
 
       await master.getByRole('button', { name: 'Apagar mapa' }).click();
       await master.getByRole('group', { name: /Apagar Arredores de Mirathel\?/ }).getByRole('button', { name: 'Apagar mapa' }).click();
-      await expect(master).toHaveURL(new RegExp(`/campanhas/${table.campaignId}$`));
+      await expect(master).toHaveURL(new RegExp(`/campaigns/${table.campaignId}$`));
       const res = await callRPC(master, 'meurpg.maps.v1.MapService/GetMap', { campaignId: table.campaignId, mapId });
       expect(res.status()).toBe(404);
     } finally {

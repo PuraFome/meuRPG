@@ -4,7 +4,7 @@
 
 // docs/design.md: three panels (regras, fontes, ícones), stacked at reading
 // width, each a self-contained subject.
-.creditos-page {
+.credits-page {
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-4);

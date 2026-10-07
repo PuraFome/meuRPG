@@ -22,7 +22,7 @@ export interface StartGameSessionResultVm {
 
 /**
  * The port `GameSessionCard` depends on, provided at the route level for
- * `/campanhas/:id` (`campaign-detail.routes.ts`) by `GameSessionSourceLive`,
+ * `/campaigns/:id` (`campaign-detail.routes.ts`) by `GameSessionSourceLive`,
  * which wraps the generated `PlayService` client. No root fallback: a route
  * reached without this provider fails loudly (NG0201) instead of silently
  * degrading — see `app.config.ts`.

@@ -580,7 +580,7 @@ export type CreateInviteResponse = Message<"meurpg.campaigns.v1.CreateInviteResp
   invite?: Invite | undefined;
 
   /**
-   * The secret that goes into the link's fragment: /convite#t=<token>.
+   * The secret that goes into the link's fragment: /invite#t=<token>.
    * Never log it and never put it in a query string.
    *
    * @generated from field: string token = 2;
@@ -684,7 +684,7 @@ export const RevokeInviteResponseSchema: GenMessage<RevokeInviteResponse> = /*@_
  */
 export type AcceptInviteRequest = Message<"meurpg.campaigns.v1.AcceptInviteRequest"> & {
   /**
-   * The token from the invite link's fragment (/convite#t=<token>).
+   * The token from the invite link's fragment (/invite#t=<token>).
    *
    * @generated from field: string token = 1;
    */
@@ -1719,7 +1719,7 @@ export const CampaignService: GenService<{
    *
    * The response carries the invite's secret token, and this is the only
    * time the server ever returns it: the database keeps only a hash. The app
-   * shares it as https://<app>/convite#t=<token>. The token goes in the URL
+   * shares it as https://<app>/invite#t=<token>. The token goes in the URL
    * fragment, which browsers never send to a server, so it stays out of
    * request logs and Referer headers (ADR-0009).
    *
@@ -1785,8 +1785,8 @@ export const CampaignService: GenService<{
    * (CharacterService.RejectCharacter), the pending membership is deleted
    * and they need a new invite. Accepting it through sign-in works the same
    * way: a new pending member lands on
-   * /campanhas/<campaign_id>/personagens/novo, and someone who was already
-   * in the campaign on /campanhas/<campaign_id>.
+   * /campaigns/<campaign_id>/characters/new, and someone who was already
+   * in the campaign on /campaigns/<campaign_id>.
    *
    * Errors:
    *   - `invalid_argument`: the token is empty.

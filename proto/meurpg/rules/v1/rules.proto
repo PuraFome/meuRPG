@@ -282,7 +282,7 @@ message TrapDamage {
 message TrapCondition {
   // The condition's key, "condition:restrained".
   string condition_key = 1;
-  // Its Portuguese name ("Contido"). Output only: ignored on input.
+  // Its Portuguese name ("Impedido"). Output only: ignored on input.
   string condition_pt = 2;
   // How long it lasts, as text for the master ("1 hora"), 0 to 60 characters;
   // empty for none.
@@ -1341,8 +1341,8 @@ message SpellDetails {
   // The SRD's "At Higher Levels" paragraphs, in English. Empty when the
   // spell has none.
   repeated string higher_level = 11;
-  // What a spell that reads hit points does (Sono, Borrifo de Cores, Palavra de
-  // Poder, Poupar os Moribundos, Cura Completa). Unset for any other spell.
+  // What a spell that reads hit points does (Sono, Leque Cromático, Palavra de
+  // Poder, Estabilizar, Cura Completa). Unset for any other spell.
   // These are public spell rules, like the rest of the message: every member
   // gets them, and the app reads them instead of keeping a copy of the table.
   SpellHitPointEffect hit_point_effect = 12;
@@ -1410,11 +1410,11 @@ message SpellTarget {
 enum SpellHitPointEffectKind {
   SPELL_HIT_POINT_EFFECT_KIND_UNSPECIFIED = 0;
   // A pool of dice is rolled and the creatures are affected in ascending order
-  // of current hit points (Sono, Borrifo de Cores).
+  // of current hit points (Sono, Leque Cromático).
   SPELL_HIT_POINT_EFFECT_KIND_POOL = 1;
   // A creature at or below a number of hit points is affected (Palavra de Poder).
   SPELL_HIT_POINT_EFFECT_KIND_THRESHOLD = 2;
-  // Works only on a creature at 0 hit points (Poupar os Moribundos).
+  // Works only on a creature at 0 hit points (Estabilizar).
   SPELL_HIT_POINT_EFFECT_KIND_ZERO_HP = 3;
   // A fixed heal that also ends conditions (Cura Completa).
   SPELL_HIT_POINT_EFFECT_KIND_FLAT_HEAL = 4;

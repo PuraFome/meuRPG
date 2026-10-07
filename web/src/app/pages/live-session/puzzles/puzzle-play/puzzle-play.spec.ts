@@ -80,7 +80,7 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
     expect(el.querySelector('app-live-pill')?.textContent).toContain('Ao vivo');
     const back = el.querySelector('a.back')!;
     expect(back.textContent).toContain('Voltar para a sessão');
-    expect(back.getAttribute('href')).toBe('/campanhas/camp-1/sessao');
+    expect(back.getAttribute('href')).toBe('/campaigns/camp-1/session');
   });
 
   it('reads the master\'s clue as a quote, the hints released, and how many lights are lit', async () => {

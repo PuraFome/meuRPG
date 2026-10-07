@@ -1,4 +1,4 @@
-<a class="back" [routerLink]="['/campanhas', campaignId]">
+<a class="back" [routerLink]="['/campaigns', campaignId]">
   <mat-icon aria-hidden="true">arrow_back</mat-icon>
   Voltar para a campanha
 </a>
@@ -57,7 +57,7 @@
         <p>
           <strong>Encontro guardado em “{{ s.pointName }}”.</strong>
           {{ savedLine() }}.
-          <a [routerLink]="['/campanhas', campaignId, 'mapas', s.mapId]">Abrir o mapa</a>
+          <a [routerLink]="['/campaigns', campaignId, 'maps', s.mapId]">Abrir o mapa</a>
         </p>
       </div>
     }
@@ -96,7 +96,7 @@
             <app-budget-bar [evaluation]="e" [stale]="draft.state() === 'measuring'" />
 
             <p class="head-xp" aria-live="polite">{{ head() }}</p>
-            <p class="guide"><strong>{{ guide }}</strong> · <a routerLink="/creditos" target="_blank">Créditos</a></p>
+            <p class="guide"><strong>{{ guide }}</strong> · <a routerLink="/credits" target="_blank">Créditos</a></p>
             <p class="guide guide--c">{{ caveat }}</p>
             @if (cap()) {
               <p class="cap">{{ cap() }}</p>

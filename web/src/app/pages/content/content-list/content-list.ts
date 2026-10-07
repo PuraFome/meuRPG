@@ -110,7 +110,7 @@ export class ContentList {
       }
     });
     this.route.queryParamMap.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe((params) => {
-      const nav = navBySlug(params.get('tipo'));
+      const nav = navBySlug(params.get('kind'));
       if (nav) {
         this.slug.set(nav.slug);
         this.query.set('');
@@ -161,7 +161,7 @@ export class ContentList {
   }
 
   protected link(e: TableEntry): string[] {
-    return ['/campanhas', this.campaignId(), 'conteudo', 'entrada', e.key];
+    return ['/campaigns', this.campaignId(), 'content', 'entries', e.key];
   }
 
   protected support(e: TableEntry): string {
@@ -178,12 +178,12 @@ export class ContentList {
   }
 
   protected newLink(n: ContentNavKind): string[] {
-    return ['/campanhas', this.campaignId(), 'conteudo', 'novo', n.createSegment];
+    return ['/campaigns', this.campaignId(), 'content', 'new', n.createSegment];
   }
 
   /** "Nova sub-raça" beside "Nova raça" in the Raças list: the race is picked on the page. */
   protected newSubraceLink(): string[] {
-    return ['/campanhas', this.campaignId(), 'conteudo', 'novo', 'subraca'];
+    return ['/campaigns', this.campaignId(), 'content', 'new', 'subrace'];
   }
 
   protected setQuery(text: string): void {

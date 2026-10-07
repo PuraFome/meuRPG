@@ -98,7 +98,7 @@ export function layoutSize(locator: Locator): Promise<{ width: number; height: n
 export const day = 24 * 60 * 60 * 1000;
 
 /**
- * Waits until `/campanhas` shows the caller's campaigns (or "Você ainda não
+ * Waits until `/campaigns` shows the caller's campaigns (or "Você ainda não
  * tem nenhuma campanha"), before anything touches the "Criar campanha" form.
  *
  * Before the redesign the list sat above the form and pushed it down when
@@ -117,8 +117,8 @@ export async function waitForCampaignList(page: Page): Promise<void> {
 }
 
 /**
- * Creates a campaign through the "Criar campanha" form on `/campanhas`, the
- * way MR-001 asks for, and returns its id from the `/campanhas/<id>` URL
+ * Creates a campaign through the "Criar campanha" form on `/campaigns`, the
+ * way MR-001 asks for, and returns its id from the `/campaigns/<id>` URL
  * the app navigates to afterwards.
  *
  * Tests whose own story is not campaign creation (MR-002, MR-003) use this
@@ -126,14 +126,14 @@ export async function waitForCampaignList(page: Page): Promise<void> {
  * about the form they don't need to prove again.
  */
 export async function createCampaign(page: Page, name: string): Promise<string> {
-  await page.goto('/campanhas');
+  await page.goto('/campaigns');
   await waitForCampaignList(page);
   await page.getByLabel('Nome da campanha').fill(name);
   await page.getByLabel('Modo de XP').click();
   await page.getByRole('option', { name: 'Por inimigos derrotados' }).click();
   await page.getByRole('button', { name: 'Criar campanha' }).click();
 
-  await expect(page).toHaveURL(/\/campanhas\/[^/]+$/);
+  await expect(page).toHaveURL(/\/campaigns\/[^/]+$/);
   return page.url().split('/').pop()!;
 }
 
@@ -270,7 +270,7 @@ export async function expectCharacterBlocked(res: APIResponse, reason: string): 
 export async function acceptInvite(context: BrowserContext, link: string): Promise<{ page: Page; campaignId: string }> {
   const page = await context.newPage();
   await page.goto(link);
-  await expect(page).toHaveURL(/\/campanhas\/[^/]+$/);
+  await expect(page).toHaveURL(/\/campaigns\/[^/]+$/);
   return { page, campaignId: page.url().split('/').pop()! };
 }
 
@@ -307,7 +307,7 @@ async function selectMatOption(page: Page, label: string, optionName: string): P
 
 /**
  * Creates a player character through the "Criar personagem" screen
- * (`/campanhas/:id/personagens/novo`), filling `build` (default:
+ * (`/campaigns/:id/characters/new`), filling `build` (default:
  * `pensantus`) into the real `character-editor` (`web/src/app/pages/
  * character-editor/character-editor.html`).
  *
@@ -321,18 +321,18 @@ async function selectMatOption(page: Page, label: string, optionName: string): P
  * "História" step: the story is its own screen/RPC (amendment A3).
  *
  * `entryPath` defaults to the player's own "criar personagem" route; pass
- * `/campanhas/:id/npcs/novo/:tipo` (tipo: inimigo/boss — the full-sheet NPC
+ * `/campaigns/:id/npcs/new/:kind` (kind: enemy/boss — the full-sheet NPC
  * kinds) to fill the same stepper from the master's "Novo NPC" menu
  * instead. Either way it lands on, and returns, the same kind of URL.
  *
  * Returns the created character's id, read from the sheet page's URL after
- * submit (`/campanhas/:id/personagens/:characterId`).
+ * submit (`/campaigns/:id/characters/:characterId`).
  */
 export async function createCharacterViaUI(
   page: Page,
   campaignId: string,
   build: CharacterBuild = pensantus,
-  entryPath: string = `/campanhas/${campaignId}/personagens/novo`,
+  entryPath: string = `/campaigns/${campaignId}/characters/new`,
 ): Promise<string> {
   await page.goto(entryPath);
 
@@ -400,10 +400,10 @@ export async function createCharacterViaUI(
   // "Criar personagem" for a player, "Criar NPC" from the master's menu.
   await page.getByRole('button', { name: /^Criar (personagem|NPC)$/ }).click();
 
-  // `(?!novo$)`: the player's own entry path, `/personagens/novo`, already
-  // matches `/personagens/<anything>`, so without it this would return
-  // "novo" whenever the check ran before the app navigated to the sheet.
-  await expect(page).toHaveURL(/\/campanhas\/[^/]+\/personagens\/(?!novo$)[^/]+$/);
+  // `(?!new$)`: the player's own entry path, `/characters/new`, already
+  // matches `/characters/<anything>`, so without it this would return
+  // "new" whenever the check ran before the app navigated to the sheet.
+  await expect(page).toHaveURL(/\/campaigns\/[^/]+\/characters\/(?!new$)[^/]+$/);
   return page.url().split('/').pop()!;
 }
 
@@ -469,14 +469,25 @@ export function characterRpcBody(kind: 'PLAYER' | 'ENEMY' | 'BOSS' | 'MINION' | 
  * the `play` stub). Master-only.
  *
  * Defaults to the campaign in the page's current URL
- * (`/campanhas/<id>/...`), so a spec already on the campaign page can just
+ * (`/campaigns/<id>/...`), so a spec already on the campaign page can just
  * call `startGameSession(page)`, as the plan's helper list (§6) has it; pass
  * `campaignId` explicitly from any other page.
  */
 export async function startGameSession(page: Page, campaignId?: string): Promise<APIResponse> {
-  const id = campaignId ?? page.url().match(/\/campanhas\/([^/]+)/)?.[1];
+  const id = campaignId ?? page.url().match(/\/campaigns\/([^/]+)/)?.[1];
   if (!id) {
     throw new Error('startGameSession: no campaignId given, and none found in the current page URL');
   }
   return callRPC(page, 'meurpg.play.v1.PlayService/StartGameSession', { campaignId: id });
+}
+
+/**
+ * Opens a long level-up pick list ("Ver os outros N ...", it shows 4 rows
+ * alphabetically) so a row picked by name is there whatever the names sort like.
+ */
+export async function showAllPicks(panel: import('@playwright/test').Locator): Promise<void> {
+  const more = panel.getByRole('button', { name: /^Ver os outros \d+/ });
+  if ((await more.count()) > 0) {
+    await more.click();
+  }
 }
