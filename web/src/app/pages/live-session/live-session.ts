@@ -473,11 +473,23 @@ export class LiveSession {
     // (RN-06) notices the new session, and the page opens it by itself.
     effect(() => {
       const id = this.campaignId();
-      if (this.phase() === 'no-session' && this.openSessions.liveCampaignIds().has(id)) {
+      const listed = this.openSessions.liveCampaignIds().has(id);
+      // Only a campaign that newly shows up in the list opens the page: a stale list still naming a session that
+      // ended would otherwise load, find none, and load again without end.
+      const appeared = this.listedCampaign.id === id && !this.listedCampaign.listed && listed;
+      this.listedCampaign = { id, listed };
+      if (this.phase() === 'no-session' && appeared) {
         untracked(() => this.load(id));
       }
     });
   }
+
+  /** Whether the open-sessions list named the campaign the last time the waiting effect looked. */
+  private listedCampaign: { id: string; listed: boolean } = { id: '', listed: false };
+  /** Counts the stream's news of the current map and of the shown image: a snapshot that began before one of them
+   * does not overwrite it. */
+  private mapEvents = 0;
+  private imageEvents = 0;
 
   private load(campaignId: string): void {
     const generation = ++this.generation;
@@ -619,7 +631,13 @@ export class LiveSession {
           }
         },
         onTrapNoticed: (notice) => void this.trapNoticed(notice.mapId, notice.pointId),
-        onXpChanged: () => this.xpChanges.bump(),
+        onXpChanged: () => {
+          this.xpChanges.bump();
+          // Converting a treasure to XP (and undoing it) changes its point on the map, with no map event.
+          if (this.isMaster()) {
+            void this.mapState.refresh();
+          }
+        },
         onSceneChanged: () => void this.scene.refresh(),
         onNotesChanged: () => {
           void this.notes.refresh(true);
@@ -645,6 +663,8 @@ export class LiveSession {
   }
 
   private async readSnapshot(campaignId: string, generation: number): Promise<void> {
+    const mapEvents = this.mapEvents;
+    const imageEvents = this.imageEvents;
     try {
       const [snapshot, campaign] = await Promise.all([
         this.source.getLiveSession(campaignId),
@@ -655,9 +675,15 @@ export class LiveSession {
       }
       this.session.set(snapshot.session);
       this.vitals.update((list) => applySnapshot(list, snapshot.vitals));
-      this.currentMapId.set(snapshot.currentMapId);
-      this.shownImage.set(snapshot.shownImage);
-      this.shownKeep.set(snapshot.shownImageKeep);
+      // News that came while the snapshot was on its way is newer than it: the snapshot only fills in what no event told.
+      const mapIsNews = mapEvents === this.mapEvents;
+      if (mapIsNews) {
+        this.currentMapId.set(snapshot.currentMapId);
+      }
+      if (imageEvents === this.imageEvents) {
+        this.shownImage.set(snapshot.shownImage);
+        this.shownKeep.set(snapshot.shownImageKeep);
+      }
       void this.reloadLeftImages();
       void this.loadCombat(generation);
       void this.scene.refresh();
@@ -668,7 +694,12 @@ export class LiveSession {
       }
       this.combat.touchLog(); // the log is read again too, after a reconnection
       // Each `ready` (a reconnection too) reads the map again: a missed event never leaves it stale.
-      void this.mapState.open(snapshot.currentMapId);
+      if (mapIsNews) {
+        void this.mapState.open(snapshot.currentMapId);
+      }
+      // What a player sees on a fog map, and the creatures, follow the server's current state too.
+      this.scheduleVision();
+      this.creaturesTick.update((n) => n + 1);
       if (this.isMaster()) {
         void this.reloadMaps();
       }
@@ -703,10 +734,11 @@ export class LiveSession {
   /** The session's combat, as this person may see it (best effort: the
    * screen keeps the copy it has until the next event or `ready`). */
   private async loadCombat(generation: number): Promise<void> {
+    const ticket = this.combat.beginRead();
     try {
       const encounter = await this.combatApi.get(this.campaignId());
       if (generation === this.generation) {
-        this.combat.apply(encounter);
+        this.combat.applyRead(ticket, encounter);
       }
     } catch {
       // The stream's next event, or reconnection, reads it again.
@@ -825,6 +857,7 @@ export class LiveSession {
 
   /** `current_map_changed`, or the master's own choice. */
   protected showMap(mapId: string | null): void {
+    this.mapEvents++;
     this.currentMapId.set(mapId);
     void this.mapState.open(mapId);
     if (this.isMaster()) {
@@ -885,6 +918,7 @@ export class LiveSession {
 
   /** `shown_image_changed`: the block appears, changes or goes away. */
   private shownImageChanged(image: ShownImageVm | null): void {
+    this.imageEvents++;
     if (!this.isMaster()) {
       const previous = this.shownImage();
       if (image) {
