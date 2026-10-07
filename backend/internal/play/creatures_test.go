@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -382,12 +383,7 @@ func (a *armed) mustAttackAsReaction(t *testing.T, e *playv1.Encounter, attacker
 }
 
 func contains(ids []string, id string) bool {
-	for _, i := range ids {
-		if i == id {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ids, id)
 }
 
 // TestMR037_TheMastersGiftRenameAndDismiss: the master gives any SRD creature to

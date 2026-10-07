@@ -93,6 +93,7 @@ func eventCase(ev *playv1.WatchGameSessionResponse) string {
 var notTriggered = map[string]string{}
 
 func checkStream(t *testing.T, w *world, got *answers) {
+	t.Helper()
 	watchers := map[*person]*streamWatcher{}
 	for _, p := range []*person{w.master, w.ana, w.caio} {
 		watchers[p] = w.watchStream(p)
@@ -186,7 +187,7 @@ func (w *world) streamScript() {
 
 	// -- hidden changes: the players hear nothing, or only a hint with no content.
 	x, y := at(7, 8)
-	must(m.maps.UpdateMapPoint(ctx, rq(&mapsv1.UpdateMapPointRequest{CampaignId: w.campaign, MapId: w.fogMap, PointId: w.pts["trap-hidden"].GetId(), XBp: proto.Int32(x), YBp: proto.Int32(y + 100)})))
+	must(m.maps.UpdateMapPoint(ctx, rq(&mapsv1.UpdateMapPointRequest{CampaignId: w.campaign, MapId: w.fogMap, PointId: w.pts["trap-hidden"].GetId(), XBp: new(x), YBp: new(y + 100)})))
 	must(m.maps.SetMapPointRevealed(ctx, rq(&mapsv1.SetMapPointRevealedRequest{CampaignId: w.campaign, MapId: w.fogMap, PointId: w.pts["treasure-hidden"].GetId(), Revealed: true})))
 	must(m.maps.SetMapPointRevealed(ctx, rq(&mapsv1.SetMapPointRevealedRequest{CampaignId: w.campaign, MapId: w.fogMap, PointId: w.pts["treasure-hidden"].GetId(), Revealed: false})))
 	w.place(w.fogMap, w.hiddenNPC.GetId(), 21, 8) // a hidden NPC walks in the guard room

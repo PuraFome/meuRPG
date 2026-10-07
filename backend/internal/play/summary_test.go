@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -45,8 +44,6 @@ func (h *harness) newScene(mapID, name string, showDC bool, maxAttempts int, spe
 	}
 	return pointID, actions
 }
-
-func dcOf(n int32) *int32 { return &n }
 
 func (a *armed) openScene(t *testing.T, pointID string) {
 	t.Helper()
@@ -104,7 +101,7 @@ func TestMR032_SessionSummary(t *testing.T) {
 	a := newArmed(t)
 	e := a.start(t, plan{
 		npcs: []*playv1.Participant{
-			{CharacterId: a.goblin.GetId(), Hidden: proto.Bool(false)},
+			{CharacterId: a.goblin.GetId(), Hidden: new(false)},
 			{CharacterId: a.capitao.GetId()}, // hidden: a new NPC starts hidden
 		},
 		npcRolls: []int{1, 2},
@@ -136,9 +133,9 @@ func TestMR032_SessionSummary(t *testing.T) {
 	// for Toren (Strength 16), Brisa's +0 everywhere.
 	mapID := a.mapID
 	cart, cartActions := a.h.newScene(mapID, "A carroça tombada", true, 0, // unlimited: a second try
-		sceneSpec{"skill:investigation", dcOf(12)}, sceneSpec{"skill:athletics", dcOf(10)}, sceneSpec{"ability:str", nil})
-	bridge, bridgeActions := a.h.newScene(mapID, "A ponte", true, 1, sceneSpec{"skill:perception", dcOf(14)})
-	tavern, tavernActions := a.h.newScene(mapID, "A taverna", false, 1, sceneSpec{"skill:persuasion", dcOf(10)})
+		sceneSpec{"skill:investigation", new(int32(12))}, sceneSpec{"skill:athletics", new(int32(10))}, sceneSpec{"ability:str", nil})
+	bridge, bridgeActions := a.h.newScene(mapID, "A ponte", true, 1, sceneSpec{"skill:perception", new(int32(14))})
+	tavern, tavernActions := a.h.newScene(mapID, "A taverna", false, 1, sceneSpec{"skill:persuasion", new(int32(10))})
 
 	a.openScene(t, cart)
 	a.checkRoll(t, a.ana, cartActions[0], 18) // 21 passes
@@ -250,7 +247,7 @@ func TestMR032_SummaryIncludesTheCombatActiveAtTheEndAndTheDead(t *testing.T) {
 	t.Parallel()
 	a := newArmed(t)
 	e := a.start(t, plan{
-		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId(), Hidden: proto.Bool(false)}},
+		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId(), Hidden: new(false)}},
 		npcRolls: []int{1},
 		players:  map[string]int32{"Toren": 20, "Pensantus": 15, "Brisa": 10},
 		at:       map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Pensantus": {10, 3}, "Brisa": {11, 3}},

@@ -109,7 +109,7 @@ func (s *Service) dbError(ctx context.Context, action string, err error) error {
 		return errCharacterNotFound()
 	}
 	if errors.Is(err, errCorruptDocument) {
-		s.logger.ErrorContext(ctx, "characters: cannot "+action, "error", err)
+		s.logger.ErrorContext(ctx, "characters: cannot "+action, "error", err) //nolint:sloglint // each call site passes a fixed action, so the message is fixed per site
 		return connect.NewError(connect.CodeInternal, errors.New("this character cannot be read right now"))
 	}
 	return rpcerr.FromDB(ctx, s.logger, "characters", action, err)

@@ -397,7 +397,7 @@ func (p *Provider) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	})
-	p.logger.Info("test user signed in", "user", user.Name)
+	p.logger.InfoContext(r.Context(), "test user signed in", "user", user.Name)
 	p.issueCode(w, r, req, user, now)
 }
 
@@ -519,16 +519,14 @@ func (p *Provider) redirectBack(w http.ResponseWriter, r *http.Request, req auth
 		return
 	}
 	q := back.Query()
-	for k, v := range params {
-		q[k] = v
-	}
+	maps.Copy(q, params)
 	back.RawQuery = q.Encode()
 	status := http.StatusFound
 	if r.Method == http.MethodPost {
 		// 303: the browser follows with a GET, not a second POST.
 		status = http.StatusSeeOther
 	}
-	http.Redirect(w, r, back.String(), status) //nolint:gosec // G710: redirect_uri is one of the registered ones (parseAuthRequest)
+	http.Redirect(w, r, back.String(), status)
 }
 
 // handleToken is the token endpoint: the authorization_code grant, with

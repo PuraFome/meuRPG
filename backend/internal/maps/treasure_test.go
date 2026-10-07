@@ -142,7 +142,7 @@ func TestMR044_GenerateAsTheMaster(t *testing.T) {
 	_, err = m.generateTreasure(&mapsv1.GenerateTreasureRequest{CampaignId: s.campaign})
 	wantCode(t, "no mode", err, connect.CodeInvalidArgument)
 	for _, level := range []int32{0, 21, -3} {
-		_, err = m.generateTreasure(&mapsv1.GenerateTreasureRequest{CampaignId: s.campaign, Mode: hoard, PartyLevel: proto.Int32(level)})
+		_, err = m.generateTreasure(&mapsv1.GenerateTreasureRequest{CampaignId: s.campaign, Mode: hoard, PartyLevel: new(level)})
 		wantCode(t, "party level out of range", err, connect.CodeInvalidArgument)
 	}
 }
@@ -351,7 +351,7 @@ func TestMR044_PlaceTreasureMakesAHiddenTreasurePoint(t *testing.T) {
 
 	// A name of the master's, and the individual mode.
 	ind, err := s.place(func(r *mapsv1.PlaceTreasureRequest) {
-		r.Mode, r.Name, r.IdempotencyKey, r.Column = mapsv1.TreasureMode_TREASURE_MODE_INDIVIDUAL, proto.String("A bolsa do bandido"), "dialogo-2", 8
+		r.Mode, r.Name, r.IdempotencyKey, r.Column = mapsv1.TreasureMode_TREASURE_MODE_INDIVIDUAL, new("A bolsa do bandido"), "dialogo-2", 8
 	})
 	if err != nil || ind.GetPoint().GetName() != "A bolsa do bandido" || strings.Contains(ind.GetPoint().GetDescription(), "Itens mágicos") {
 		t.Errorf("an individual treasure = %v, %v", ind.GetPoint(), err)
@@ -382,8 +382,8 @@ func TestMR044_PlaceTreasureRefusals(t *testing.T) {
 		"no seed":           {func(r *mapsv1.PlaceTreasureRequest) { r.Seed = nil }, connect.CodeInvalidArgument},
 		"no key":            {func(r *mapsv1.PlaceTreasureRequest) { r.IdempotencyKey = "" }, connect.CodeInvalidArgument},
 		"a key of 65":       {func(r *mapsv1.PlaceTreasureRequest) { r.IdempotencyKey = strings.Repeat("k", 65) }, connect.CodeInvalidArgument},
-		"a name too long":   {func(r *mapsv1.PlaceTreasureRequest) { r.Name = proto.String(strings.Repeat("n", 81)) }, connect.CodeInvalidArgument},
-		"an empty name":     {func(r *mapsv1.PlaceTreasureRequest) { r.Name = proto.String("  ") }, connect.CodeInvalidArgument},
+		"a name too long":   {func(r *mapsv1.PlaceTreasureRequest) { r.Name = new(strings.Repeat("n", 81)) }, connect.CodeInvalidArgument},
+		"an empty name":     {func(r *mapsv1.PlaceTreasureRequest) { r.Name = new("  ") }, connect.CodeInvalidArgument},
 		"a column off":      {func(r *mapsv1.PlaceTreasureRequest) { r.Column = 20 }, connect.CodeInvalidArgument},
 		"a row off":         {func(r *mapsv1.PlaceTreasureRequest) { r.Row = 15 }, connect.CodeInvalidArgument},
 		"a negative square": {func(r *mapsv1.PlaceTreasureRequest) { r.Row = -1 }, connect.CodeInvalidArgument},
@@ -455,7 +455,7 @@ func TestMR044_PlaceTreasureIsIdempotent(t *testing.T) {
 		"another seed":   func(r *mapsv1.PlaceTreasureRequest) { r.Seed = proto.Uint64(2210) },
 		"another mode":   func(r *mapsv1.PlaceTreasureRequest) { r.Mode = mapsv1.TreasureMode_TREASURE_MODE_INDIVIDUAL },
 		"another level":  func(r *mapsv1.PlaceTreasureRequest) { r.PartyLevel = 5 },
-		"another name":   func(r *mapsv1.PlaceTreasureRequest) { r.Name = proto.String("Outro nome") },
+		"another name":   func(r *mapsv1.PlaceTreasureRequest) { r.Name = new("Outro nome") },
 	}
 	for name, edit := range other {
 		_, err := s.place(edit)
@@ -481,7 +481,7 @@ func TestMR044_PlaceTreasureIsIdempotent(t *testing.T) {
 	}
 
 	// A replay returns the point as it is now: edited and revealed by the master.
-	if _, err := s.master.updatePoint(&mapsv1.UpdateMapPointRequest{CampaignId: s.campaign, MapId: s.mapID, PointId: first.GetPoint().GetId(), Name: proto.String("Renomeado")}); err != nil {
+	if _, err := s.master.updatePoint(&mapsv1.UpdateMapPointRequest{CampaignId: s.campaign, MapId: s.mapID, PointId: first.GetPoint().GetId(), Name: new("Renomeado")}); err != nil {
 		t.Fatal(err)
 	}
 	if replay, err := s.place(nil); err != nil || replay.GetPoint().GetName() != "Renomeado" {
@@ -606,7 +606,7 @@ func TestRN10_APlayerNeverSeesAPlacedTreasureUntilRevealed(t *testing.T) {
 	probeMap := m.createMap(s.campaign, "Sonda", m.newImage(s.campaign)).GetId()
 	anaWatch, caioWatch := s.ana.watch(s.campaign), s.caio.watch(s.campaign)
 
-	res, err := s.place(func(r *mapsv1.PlaceTreasureRequest) { r.Name = proto.String("TESOURO-SECRETO-X") })
+	res, err := s.place(func(r *mapsv1.PlaceTreasureRequest) { r.Name = new("TESOURO-SECRETO-X") })
 	if err != nil {
 		t.Fatal(err)
 	}

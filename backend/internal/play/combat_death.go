@@ -147,7 +147,7 @@ func (s *Service) RollDeathSave(
 				return nil, err
 			}
 			vitals = healed
-			made.Before, made.After = ptr(hpStateOf(before)), ptr(hpStateOf(healed))
+			made.Before, made.After = new(hpStateOf(before)), new(hpStateOf(healed))
 			after = deathState{Rolled: true}
 		}
 		made.Death = &after

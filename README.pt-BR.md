@@ -133,6 +133,7 @@ Todo código entra por PR, com o CI verde. O que cada job confere está em [CONT
 - **Cada critério de aceite vira um teste:** `go test` para a regra que roda no servidor, Playwright para o que aparece na tela, marcado com a história (`@MR-001`).
 - **Acessibilidade:** o [axe](https://github.com/dequelabs/axe-core) passa nas telas principais, no tema claro e no escuro, no computador e no celular, e o CI falha em qualquer violação séria ou crítica das regras WCAG 2.1 A e AA.
 - **Contrato e código gerado:** `buf lint`, `buf format` e `buf breaking` nos `.proto`; o CI gera de novo o código do buf e do sqlc e falha se aparecer diferença.
+- **Linters e cobertura:** o golangci-lint com conferências de complexidade, números mágicos, logs e helpers de teste, como catraca: o que é novo falha, o que é antigo fica numa lista para limpar. O CI mostra a cobertura do Go por pacote e exige 90 % nos pacotes puros de regras.
 - **Banco de verdade nos testes:** os testes de integração rodam contra o CockroachDB, na mesma imagem do ambiente local.
 - **Tudo com versão presa:** as actions pelo SHA do commit, as imagens pelo digest, os pacotes npm na versão exata e instalados sem scripts. O Dependabot abre toda semana os PRs que mantêm isso em dia, e o `govulncheck` confere as dependências Go.
 - **Nada escondido vaza:** um teste de vazamento faz cada leitura e pede cada evento do stream como cada pessoa, e confere que o que o mestre escondeu nunca chega a um jogador (RN-10). O CodeQL procura falhas de segurança no Go, no TypeScript e nos workflows.

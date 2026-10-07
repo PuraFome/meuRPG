@@ -807,7 +807,7 @@ func (s *Service) RollAttack(
 	coverKey, coverSource := ev.coverFor(v)
 	roll.Cover, roll.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
 	if v.master {
-		roll.TargetArmorClass = ptr(ev.TargetAC) // "Acertou contra CA 18": never a player's
+		roll.TargetArmorClass = new(ev.TargetAC) // "Acertou contra CA 18": never a player's
 	}
 	return connect.NewResponse(&playv1.RollAttackResponse{Encounter: out, PendingDamage: pending, Roll: roll}), nil
 }
@@ -1120,7 +1120,7 @@ func (s *Service) healCombatant(ctx context.Context, c *combatTx, target playdb.
 			return hit, nil, err
 		}
 		hit.DeathBefore = deathOf(target)
-		hit.Before, hit.After = ptr(hpStateOf(before)), ptr(hpStateOf(after))
+		hit.Before, hit.After = new(hpStateOf(before)), new(hpStateOf(after))
 		hit.Amount = clamp32(r.Healed, 0, math.MaxInt32)
 		return hit, after, nil
 	}
@@ -1131,8 +1131,8 @@ func (s *Service) healCombatant(ctx context.Context, c *combatTx, target playdb.
 		return hit, nil, err
 	}
 	hit.DeathBefore = deathOf(target)
-	hit.Before = ptr(hpStateOf(before))
-	hit.After = ptr(hpStateOf(after))
+	hit.Before = new(hpStateOf(before))
+	hit.After = new(hpStateOf(after))
 	hit.Amount = clamp32(r.Healed, 0, math.MaxInt32)
 	return hit, after, nil
 }
@@ -1265,7 +1265,7 @@ func (s *Service) ApplyPendingDamage(
 				return nil, err
 			}
 			made.DeathBefore, made.Death, made.FailuresAdded, made.DeathHidden = before, after, added, c.rules.DeathSavesHidden
-			made.Before = ptr(hpStateOf(now))
+			made.Before = new(hpStateOf(now))
 			made.After = made.Before
 		} else if now.GetWildShape() != nil {
 			// A druid in a beast form: the beast takes it, and what is left over when
@@ -1275,7 +1275,7 @@ func (s *Service) ApplyPendingDamage(
 				return nil, err
 			}
 			vitals = after
-			made.Before, made.After = ptr(hpStateOf(before)), ptr(hpStateOf(after))
+			made.Before, made.After = new(hpStateOf(before)), new(hpStateOf(after))
 			made.ConcentrationDC = concentrationDC(target, amount)
 			made.DeathBefore = deathOf(target)
 			// The 0 hit points rule, as below: the damage that carried over dropped
@@ -1296,8 +1296,8 @@ func (s *Service) ApplyPendingDamage(
 				return nil, err
 			}
 			vitals = after
-			made.Before = ptr(hpStateOf(before))
-			made.After = ptr(hpStateOf(after))
+			made.Before = new(hpStateOf(before))
+			made.After = new(hpStateOf(after))
 			made.ConcentrationDC = concentrationDC(target, amount-clamp32(dmg.Absorbed, 0, math.MaxInt32))
 			made.DeathBefore = deathOf(target) // the undo puts the turn's save back too
 			// The 0 hit points rule: an opportunity attack that drops its mover to 0

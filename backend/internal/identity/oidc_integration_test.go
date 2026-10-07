@@ -145,6 +145,7 @@ type providerBrowser struct {
 }
 
 func newProviderBrowser(t *testing.T, base *http.Client, env map[string]string) *providerBrowser {
+	t.Helper()
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		t.Fatalf("cookie jar: %v", err)

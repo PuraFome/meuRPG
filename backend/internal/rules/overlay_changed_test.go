@@ -74,6 +74,7 @@ func TestChangedClassSentences(t *testing.T) {
 	const none, fullPrepared, fullKnown = "class:gen-none@mesa", "class:gen-full-prepared@mesa", "class:gen-full-known@mesa"
 
 	t.Run("fewer skills", func(t *testing.T) {
+		t.Parallel()
 		b := sweepBase(t, c1, none, "subclass:gen-none-a@mesa") // chose 2
 		c2 := change(func(o *Overlay) { classOf(o, none).SkillChoose = 1 })
 		is := changeOf(t, b, c2, IssueSkillCount)
@@ -85,6 +86,7 @@ func TestChangedClassSentences(t *testing.T) {
 		}
 	})
 	t.Run("more skills", func(t *testing.T) {
+		t.Parallel()
 		b := sweepBase(t, c1, none, "subclass:gen-none-a@mesa")
 		c2 := change(func(o *Overlay) { classOf(o, none).SkillChoose = 3 })
 		if want := "agora dá 3 perícias no nível 1; esta ficha tem 2."; changeOf(t, b, c2, IssueSkillCount).ChangeMessage != want {
@@ -92,6 +94,7 @@ func TestChangedClassSentences(t *testing.T) {
 		}
 	})
 	t.Run("fewer cantrips", func(t *testing.T) {
+		t.Parallel()
 		b := sweepBase(t, c1, fullPrepared, "subclass:gen-full-prepared-a@mesa") // 3 cantrips
 		c2 := change(func(o *Overlay) { classOf(o, fullPrepared).Levels[0].CantripsKnown = 2 })
 		is := changeOf(t, b, c2, IssueSpellCount)
@@ -100,6 +103,7 @@ func TestChangedClassSentences(t *testing.T) {
 		}
 	})
 	t.Run("fewer known spells", func(t *testing.T) {
+		t.Parallel()
 		b := sweepBase(t, c1, fullKnown, "subclass:gen-full-known-a@mesa") // knows 2
 		c2 := change(func(o *Overlay) { classOf(o, fullKnown).Levels[0].SpellsKnown = 1 })
 		if want := "agora conhece 1 magia; esta ficha tem 2."; changeOf(t, b, c2, IssueSpellCount).ChangeMessage != want {
@@ -107,6 +111,7 @@ func TestChangedClassSentences(t *testing.T) {
 		}
 	})
 	t.Run("fewer prepared spells", func(t *testing.T) {
+		t.Parallel()
 		b := sweepBase(t, c1, fullPrepared, "subclass:gen-full-prepared-a@mesa")
 		b = sweepUp(t, c1, b, fullPrepared, "subclass:gen-full-prepared-a@mesa", 3)
 		prepared := len(b.SpellsPrepared)
@@ -117,6 +122,7 @@ func TestChangedClassSentences(t *testing.T) {
 		}
 	})
 	t.Run("a third caster's cantrips name the subclass", func(t *testing.T) {
+		t.Parallel()
 		sub := "subclass:cavaleiro-runico@mesa"
 		b := sweepBase(t, c1, "class:fighter", sub)
 		b = sweepUp(t, c1, b, "class:fighter", sub, 3)
@@ -126,6 +132,7 @@ func TestChangedClassSentences(t *testing.T) {
 		}
 	})
 	t.Run("the subclass level moved", func(t *testing.T) {
+		t.Parallel()
 		sub := "subclass:gen-none-a@mesa"
 		b := sweepBase(t, c1, none, sub)
 		b = sweepUp(t, c1, b, none, sub, 3)
@@ -143,6 +150,7 @@ func TestChangedClassSentences(t *testing.T) {
 		}
 	})
 	t.Run("an option the class stopped offering", func(t *testing.T) {
+		t.Parallel()
 		sub := "subclass:gen-none-a@mesa"
 		b := sweepBase(t, c1, none, sub)
 		b = sweepUp(t, c1, b, none, sub, 6) // the fighting style at level 6
@@ -170,6 +178,7 @@ func TestChangedClassSentences(t *testing.T) {
 		}
 	})
 	t.Run("an SRD option is not tied to a table subclass that has nothing to do with it", func(t *testing.T) {
+		t.Parallel()
 		// A Wizard with a table subclass and a Fighter's style: the style is invalid
 		// and the subclass is not where it comes from.
 		sub := "subclass:gen-none-a@mesa"
@@ -181,6 +190,7 @@ func TestChangedClassSentences(t *testing.T) {
 		}
 	})
 	t.Run("the multiclass prerequisite", func(t *testing.T) {
+		t.Parallel()
 		b := sweepBase(t, c1, none, "subclass:gen-none-a@mesa")
 		b.BaseScores = map[Ability]int{STR: 14, DEX: 14, CON: 14, INT: 14, WIS: 14, CHA: 14}
 		b = addClass(c1, b, "class:gen-half-prepared@mesa", 2)
@@ -194,6 +204,7 @@ func TestChangedClassSentences(t *testing.T) {
 		}
 	})
 	t.Run("the SRD never says changed", func(t *testing.T) {
+		t.Parallel()
 		b := sweepBase(t, srd, "class:wizard", "")
 		b.SkillProficiencies = append(b.SkillProficiencies, nextSkill(srd, b))
 		is := changeOf(t, b, srd, IssueSkillCount)
@@ -211,7 +222,7 @@ func TestChangeSentenceNeverNamesTheWrongEntry(t *testing.T) {
 	t.Parallel()
 	srd := loadForTest(t)
 	race := TableRace{
-		TableEntry: TableEntry{Key: "race:perito@mesa", NamePT: "Perito", Revision: 1}, Size: "Medium", SpeedFt: 30,
+		Key: "race:perito@mesa", NamePT: "Perito", Revision: 1, Size: "Medium", SpeedFt: 30,
 		Traits: []TableFeature{{Key: "trait:faro@mesa", NamePT: "Faro", Effects: []Effect{{Type: "choice", Choice: "skill", Count: 1}}}},
 	}
 	with := func(r TableRace) *Content { return withOverlayOn(t, srd, Overlay{Revision: 2, Races: []TableRace{r}}) }

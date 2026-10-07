@@ -18,9 +18,7 @@ func peakHeap(f func()) (peak, total uint64) {
 	done := make(chan struct{})
 	var wg sync.WaitGroup
 	var top uint64
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		var m runtime.MemStats
 		for {
 			runtime.ReadMemStats(&m)
@@ -31,7 +29,7 @@ func peakHeap(f func()) (peak, total uint64) {
 			case <-time.After(2 * time.Millisecond):
 			}
 		}
-	}()
+	})
 	f()
 	close(done)
 	wg.Wait()
@@ -51,7 +49,7 @@ func TestMeasureMemory(t *testing.T) {
 	req := Request{Prompt: strings.Repeat("a", 500), AspectRatio: "16:9"}
 	for i := range 14 {
 		// 420 KB each: 14 of them make 5.9 MB, 7.8 MB in base64, just under the cap.
-		req.References = append(req.References, Reference{Image: Image{MimeType: "image/jpeg", Data: make([]byte, 420<<10)}, Character: i >= 10})
+		req.References = append(req.References, Reference{MimeType: "image/jpeg", Data: make([]byte, 420<<10), Character: i >= 10})
 	}
 	held := req.References // the images are held by the caller anyway
 	peak, total := peakHeap(func() {

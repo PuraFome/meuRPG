@@ -17,6 +17,24 @@ linters:
     - sqlclosecheck # sql.Rows / sql.Stmt must be closed
     - unconvert # unnecessary type conversions
     - usestdlibvars # http.MethodGet instead of "GET", etc.
+    # Added 07/10/2026 (audit G8) with a ratchet: CI fails only on issues a
+    # change introduces (see the Makefile and backend.yml); `make lint-all`
+    # shows the whole backlog.
+    - sloglint # log calls: static message, snake_case keys, no mixed args
+    - nolintlint # every //nolint names its linter and says why
+    - thelper # test helpers call t.Helper() and name the param t/b/tb
+    - tparallel # t.Parallel in a subtest only with a parallel parent
+    - usetesting # t.TempDir, t.Setenv, t.Context instead of the os/context ones
+    - copyloopvar # no more `x := x` in loops (Go 1.22+)
+    - intrange # for i := range n
+    - errname # ErrFoo for sentinels, FooError for types
+    - gocritic # a few bug-prone and readability checks (see settings)
+    - forcetypeassert # x.(T) without the comma-ok form can panic
+    - gocyclo # branches per function
+    - gocognit # how hard a function is to read (nesting counts)
+    - mnd # magic numbers
+    - goconst # the same string repeated
+    - godot # comments end with a period
   settings:
     misspell:
       locale: US
@@ -24,6 +42,67 @@ linters:
       # combat on a map is `grid`, a combat without one is `theatre`.
       ignore-rules:
         - theatre
+    sloglint:
+      no-mixed-args: true
+      context: scope
+      static-msg: true
+      key-naming-case: snake
+    thelper:
+      # dbtest and friends take `t testing.TB`: naming it t is as clear as
+      # tb, and renaming 23 signatures would be churn for a convention.
+      tb:
+        name: false
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    gocritic:
+      # The default checks (ifElseChain, appendAssign, exitAfterDefer...)
+      # plus the tags that find real bugs and wasted work. The "style",
+      # "opinionated" and "experimental" tags stay off.
+      enabled-tags:
+        - diagnostic
+        - performance
+      disabled-checks:
+        # Copying a 100-byte struct in a range loop is not our bottleneck.
+        - rangeValCopy
+        - hugeParam
+    # Thresholds: the Go audit counted 128 functions over gocognit's default
+    # of 30. 50 flags only the worst (the god functions for the review);
+    # tighten it as they are split. gocyclo 30 is the same idea for branches.
+    gocyclo:
+      min-complexity: 30
+    gocognit:
+      min-complexity: 50
+    mnd:
+      # Argument and operation contexts are the noisy ones; the checks left
+      # (assign, case, condition, return) catch real magic numbers.
+      checks:
+        - assign
+        - case
+        - condition
+        - return
+      ignored-numbers:
+        - "0o600" # file modes
+        - "0o644"
+        - "0o700"
+        - "0o750"
+        - "0o755"
+        - "1000" # ms per s, bytes per kB
+        - "1024"
+      ignored-functions:
+        - "^time\\."
+        - "^context\\.With"
+        - "^strconv\\.(Parse|Format|Append)"
+        - "^make$"
+        - "^math\\."
+    goconst:
+      min-len: 5
+      min-occurrences: 5
+      ignore-string-values:
+        - "^[a-z_]+$" # snake_case identifiers: reasons, columns, enum names
+    godot:
+      scope: declarations
+      period: true
     revive:
       rules:
         # The defaults, listed explicitly so they are easy to discover.
@@ -55,6 +134,16 @@ linters:
     generated: strict
     paths:
       - ^gen/
+    rules:
+      # Tests are full of literals on purpose: a table of cases is the
+      # point. Magic-value checks and complexity are for production code.
+      - path: _test\.go
+        linters:
+          - mnd
+          - goconst
+          - gocyclo
+          - gocognit
+          - forcetypeassert
     presets:
       - std-error-handling # e.g. unchecked errors from Close/Fprintln
       - common-false-positives

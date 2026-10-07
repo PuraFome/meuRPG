@@ -75,7 +75,7 @@ func (s *Service) terrainOf(ctx context.Context, tx pgx.Tx, campaignID string, e
 	t, err := s.terrain.Terrain(ctx, tx, campaignID, *enc.MapID)
 	if err != nil {
 		if connect.CodeOf(err) == connect.CodeNotFound {
-			return open, nil //nolint:nilerr // a map the master deleted is open floor, not a failure
+			return open, nil
 		}
 		return grid.Terrain{}, fmt.Errorf("read the map's terrain: %w", err)
 	}

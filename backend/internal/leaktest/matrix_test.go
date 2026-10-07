@@ -217,6 +217,7 @@ var unreachable = map[string]string{ //nolint:gosec // G101: kinds of canary and
 // be found in the master's answers (it is there to be found), and in the answers of everyone
 // who may read it (the positive control of the player's read).
 func checkCanariesAreReachable(t *testing.T, w *world, got *answers) {
+	t.Helper()
 	for _, c := range w.secrets.list {
 		if _, ok := unreachable[c.kind]; !ok && !got.holds(w.master, c) {
 			t.Errorf("the master reads %s in no answer of the matrix: add a read that shows it, or list its kind in unreachable with the reason", c)

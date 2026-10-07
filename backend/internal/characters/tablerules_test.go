@@ -73,6 +73,7 @@ func TestRN24_TheLevelUpFollowsTheHitPointsRule(t *testing.T) {
 	}
 
 	t.Run("the default lets the player choose", func(t *testing.T) {
+		t.Parallel()
 		tb := newLevelUpTable(t, 2700, 5)
 		o, err := tb.options(tb.owner, tb.pc)
 		if err != nil || o.GetHitPointsRule() != charactersv1.LevelUpHitPointsRule_LEVEL_UP_HIT_POINTS_RULE_PLAYER_CHOOSES {
@@ -84,6 +85,7 @@ func TestRN24_TheLevelUpFollowsTheHitPointsRule(t *testing.T) {
 	})
 
 	t.Run("roll", func(t *testing.T) {
+		t.Parallel()
 		tb := newLevelUpTable(t, 2700, 5)
 		setRules(t, tb.master, tb.campaign, hitPointsRule(campaignsv1.HitPointsRule_HIT_POINTS_RULE_ROLL))
 		o, err := tb.options(tb.owner, tb.pc)
@@ -112,6 +114,7 @@ func TestRN24_TheLevelUpFollowsTheHitPointsRule(t *testing.T) {
 	})
 
 	t.Run("roll, with a physical die", func(t *testing.T) {
+		t.Parallel()
 		tb := newLevelUpTable(t, 2700)
 		setRules(t, tb.master, tb.campaign, hitPointsRule(campaignsv1.HitPointsRule_HIT_POINTS_RULE_ROLL))
 		if _, err := tb.levelUp(tb.owner, tb.pc, withMethod(phys, 3)); err != nil {
@@ -120,6 +123,7 @@ func TestRN24_TheLevelUpFollowsTheHitPointsRule(t *testing.T) {
 	})
 
 	t.Run("average", func(t *testing.T) {
+		t.Parallel()
 		tb := newLevelUpTable(t, 2700)
 		setRules(t, tb.master, tb.campaign, hitPointsRule(campaignsv1.HitPointsRule_HIT_POINTS_RULE_AVERAGE))
 		o, err := tb.options(tb.owner, tb.pc)
@@ -759,12 +763,10 @@ func TestRN24_TwoRollsOfTheSameCharacterStoreOneSet(t *testing.T) {
 	errs := make([]error, 4)
 	start := make(chan struct{})
 	for i := range results {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			<-start
 			results[i], errs[i] = ana.rollScores(campaign)
-		}()
+		})
 	}
 	close(start)
 	wg.Wait()

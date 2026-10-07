@@ -221,6 +221,7 @@ func TestListCreaturesBestiaryRequests(t *testing.T) {
 }
 
 func npcFromCreature(t *testing.T, u *user, campaign, key, name string, kind charactersv1.CharacterKind, idem string) (*charactersv1.Character, error) {
+	t.Helper()
 	res, err := u.api.CreateNpcFromCreature(t.Context(), connect.NewRequest(&charactersv1.CreateNpcFromCreatureRequest{
 		CampaignId: campaign, CreatureKey: key, Name: name, Kind: kind, IdempotencyKey: idem,
 	}))
@@ -358,15 +359,13 @@ func TestCreateNpcFromCreatureRace(t *testing.T) {
 		errs := make([]error, callers)
 		var wg sync.WaitGroup
 		for i := range callers {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				c, err := npcFromCreature(t, master, campaign, "monster:ogre", "Grak", minion, key)
 				errs[i] = err
 				if err == nil {
 					ids[i] = c.GetId()
 				}
-			}()
+			})
 		}
 		wg.Wait()
 		for i := range callers {

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -292,7 +291,7 @@ func TestMR034_AGridOrImageChangeClearsTheLayers(t *testing.T) {
 	current := m.mustGetMap(s.campaign, s.mapID).GetMap()
 	name := "Estrada de Mirathel II"
 	if _, err := m.maps.UpdateMap(t.Context(), connect.NewRequest(&mapsv1.UpdateMapRequest{
-		CampaignId: s.campaign, MapId: s.mapID, Revision: current.GetRevision(), Name: &name, ImageId: proto.String(current.GetImage().GetId()),
+		CampaignId: s.campaign, MapId: s.mapID, Revision: current.GetRevision(), Name: &name, ImageId: new(current.GetImage().GetId()),
 	})); err != nil {
 		t.Fatalf("UpdateMap() error = %v", err)
 	}
@@ -324,7 +323,7 @@ func TestMR034_AGridOrImageChangeClearsTheLayers(t *testing.T) {
 	// Removing the grid clears the layers and turns the fog off.
 	m.mustSetGrid(s.campaign, s.mapID, 20)
 	paintAll()
-	if _, err := m.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: s.campaign, MapId: s.mapID, FogEnabled: proto.Bool(true)})); err != nil {
+	if _, err := m.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: s.campaign, MapId: s.mapID, FogEnabled: new(true)})); err != nil {
 		t.Fatalf("SetMapFog(on) error = %v", err)
 	}
 	got := m.mustSetGrid(s.campaign, s.mapID, 0)
@@ -362,7 +361,7 @@ func TestMR034_NoGridOrImageChangeDuringACombat(t *testing.T) {
 	wantMapBlocked(t, "SetMapGrid(0) during a combat", err, mapsv1.MapBlockedReason_MAP_BLOCKED_REASON_COMBAT_RUNNING)
 	current := m.mustGetMap(s.campaign, s.mapID).GetMap()
 	_, err = m.maps.UpdateMap(t.Context(), connect.NewRequest(&mapsv1.UpdateMapRequest{
-		CampaignId: s.campaign, MapId: s.mapID, Revision: current.GetRevision(), ImageId: proto.String(m.newImage(s.campaign)),
+		CampaignId: s.campaign, MapId: s.mapID, Revision: current.GetRevision(), ImageId: new(m.newImage(s.campaign)),
 	}))
 	wantMapBlocked(t, "UpdateMap(image) during a combat", err, mapsv1.MapBlockedReason_MAP_BLOCKED_REASON_COMBAT_RUNNING)
 	if d := decode(t, m.mustLayers(s.campaign, s.mapID)); !d.walls.Get(1, 1) {
@@ -413,7 +412,7 @@ func TestMR036_FogSettings(t *testing.T) {
 	if def.GetFogEnabled() || def.GetBaseLight() != mapsv1.LightLevel_LIGHT_LEVEL_DARK || def.GetGroupVision() {
 		t.Errorf("a new map: fog %v, base light %v, group vision %v; want off, DARK, off", def.GetFogEnabled(), def.GetBaseLight(), def.GetGroupVision())
 	}
-	_, err := fog(m, func(r *mapsv1.SetMapFogRequest) { r.FogEnabled = proto.Bool(true) })
+	_, err := fog(m, func(r *mapsv1.SetMapFogRequest) { r.FogEnabled = new(true) })
 	wantMapBlocked(t, "fog on a map with no grid", err, mapsv1.MapBlockedReason_MAP_BLOCKED_REASON_NO_GRID)
 	// The other settings do not need a grid.
 	if got, err := fog(m, func(r *mapsv1.SetMapFogRequest) { r.BaseLight = mapsv1.LightLevel_LIGHT_LEVEL_DIM.Enum() }); err != nil || got.GetBaseLight() != mapsv1.LightLevel_LIGHT_LEVEL_DIM || got.GetFogEnabled() {
@@ -422,7 +421,7 @@ func TestMR036_FogSettings(t *testing.T) {
 	m.mustSetGrid(s.campaign, s.mapID, 20)
 	m.mustPaint(s.campaign, s.mapID, mapsv1.MapLayer_MAP_LAYER_WALL, 1, [2]int32{1, 1})
 
-	on, err := fog(m, func(r *mapsv1.SetMapFogRequest) { r.FogEnabled = proto.Bool(true); r.GroupVision = proto.Bool(true) })
+	on, err := fog(m, func(r *mapsv1.SetMapFogRequest) { r.FogEnabled = new(true); r.GroupVision = new(true) })
 	if err != nil || !on.GetFogEnabled() || !on.GetGroupVision() || on.GetBaseLight() != mapsv1.LightLevel_LIGHT_LEVEL_DIM {
 		t.Fatalf("fog on with group vision = %v, %v; want both on and the base light kept", on, err)
 	}
@@ -439,7 +438,7 @@ func TestMR036_FogSettings(t *testing.T) {
 	if got, err := fog(m, func(r *mapsv1.SetMapFogRequest) { r.BaseLight = mapsv1.LightLevel_LIGHT_LEVEL_BRIGHT.Enum() }); err != nil || got.GetBaseLight() != mapsv1.LightLevel_LIGHT_LEVEL_BRIGHT || !got.GetFogEnabled() {
 		t.Errorf("base light BRIGHT: %v, %v", got, err)
 	}
-	off, err := fog(m, func(r *mapsv1.SetMapFogRequest) { r.FogEnabled = proto.Bool(false) })
+	off, err := fog(m, func(r *mapsv1.SetMapFogRequest) { r.FogEnabled = new(false) })
 	if err != nil || off.GetFogEnabled() || !off.GetGroupVision() || off.GetBaseLight() != mapsv1.LightLevel_LIGHT_LEVEL_BRIGHT {
 		t.Errorf("fog off = %v, %v; want the other settings kept", off, err)
 	}
@@ -451,7 +450,7 @@ func TestMR036_FogSettings(t *testing.T) {
 	wantCode(t, "SetMapFog with nothing", err, connect.CodeInvalidArgument)
 	_, err = fog(m, func(r *mapsv1.SetMapFogRequest) { r.BaseLight = mapsv1.LightLevel_LIGHT_LEVEL_UNSPECIFIED.Enum() })
 	wantCode(t, "SetMapFog with an unspecified base light", err, connect.CodeInvalidArgument)
-	_, err = fog(s.ana, func(r *mapsv1.SetMapFogRequest) { r.FogEnabled = proto.Bool(true) })
+	_, err = fog(s.ana, func(r *mapsv1.SetMapFogRequest) { r.FogEnabled = new(true) })
 	wantCode(t, "a player sets the fog", err, connect.CodePermissionDenied)
 }
 
@@ -484,7 +483,7 @@ func TestMR034_PlayersReadOnlyWhatTheyMay(t *testing.T) {
 		}
 	}
 
-	if _, err := m.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: s.campaign, MapId: s.mapID, FogEnabled: proto.Bool(true)})); err != nil {
+	if _, err := m.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: s.campaign, MapId: s.mapID, FogEnabled: new(true)})); err != nil {
 		t.Fatal(err)
 	}
 	res := s.ana.mustLayers(s.campaign, s.mapID)
@@ -528,7 +527,7 @@ func TestMR034_LayerChangesReachTheRightStreams(t *testing.T) {
 	masterWatch.mapChanged(s.mapID)
 	// With the fog on, the layers are the master's: the switch itself reaches the
 	// players (the map has fog now), painting does not.
-	if _, err := m.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: s.campaign, MapId: s.mapID, FogEnabled: proto.Bool(true)})); err != nil {
+	if _, err := m.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: s.campaign, MapId: s.mapID, FogEnabled: new(true)})); err != nil {
 		t.Fatal(err)
 	}
 	masterWatch.mapChanged(s.mapID)

@@ -320,7 +320,7 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		out.Initiative = c.Initiative
 	}
 	if detail {
-		out.InitiativeBonus = ptr(c.InitiativeBonus)
+		out.InitiativeBonus = new(c.InitiativeBonus)
 		out.InitiativeFace = c.InitiativeFace
 		shareEconomy(out, c)
 		out.ArmorClassBonus = c.AcBonus
@@ -331,7 +331,7 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		// and its own player, like the character's (RN-20).
 		out.WildShapeBeastKey, out.WildShapeBeastNamePt = w.GetBeastKey(), w.GetBeastNamePt()
 		if detail {
-			out.WildShapeHitPointsCurrent, out.WildShapeHitPointsMax = ptr(w.GetHitPointsCurrent()), ptr(w.GetHitPointsMax())
+			out.WildShapeHitPointsCurrent, out.WildShapeHitPointsMax = new(w.GetHitPointsCurrent()), new(w.GetHitPointsMax())
 		}
 	}
 	if fs := vitals.GetFamiliarSight(); fs != nil && c.Kind == kindPlayer && detail {
@@ -346,15 +346,15 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		out.Hidden = c.Hidden
 		out.TieUnresolved = tieUnresolved
 		if armorClass > 0 {
-			out.ArmorClass = ptr(armorClass)
+			out.ArmorClass = new(armorClass)
 		}
 		out.HitPointsCurrent, out.HitPointsMax, out.HitPointsTemporary = c.HpCurrent, c.HpMax, c.HpTemp
 		out.XpValue = c.XpValue // an NPC's, the master's alone (RN-20); 0 for a player's character
 		out.PortraitUrl = portrait
 		if vitals != nil {
-			out.HitPointsCurrent = ptr(vitals.GetHitPointsCurrent())
-			out.HitPointsMax = ptr(vitals.GetHitPointsMax())
-			out.HitPointsTemporary = ptr(vitals.GetHitPointsTemporary())
+			out.HitPointsCurrent = new(vitals.GetHitPointsCurrent())
+			out.HitPointsMax = new(vitals.GetHitPointsMax())
+			out.HitPointsTemporary = new(vitals.GetHitPointsTemporary())
 		}
 	}
 	// A player's character at 0 hit points is down ("Caído"): everyone who
@@ -429,8 +429,6 @@ var (
 		"full":     playv1.CreatureAttack_CREATURE_ATTACK_FULL,
 	}
 )
-
-func ptr[T any](v T) *T { return &v }
 
 func timestampOrNil(t *time.Time) *timestamppb.Timestamp {
 	if t == nil {

@@ -348,7 +348,7 @@ func (s *Service) cleanLight(in *mapsv1.LightSpec) (lightData, error) {
 }
 
 func presetFt(n int) int32 {
-	return int32(min(max(n, 0), maxLightFt)) //nolint:gosec // G115: clamped to 0..120
+	return int32(min(max(n, 0), maxLightFt))
 }
 
 // lightOf reads a point's light back as the API message.

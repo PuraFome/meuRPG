@@ -95,7 +95,7 @@ func (g *gen) isOpen(i int) bool { return g.kind[i] != KindRock }
 func (g *gen) openDeg(i int) int {
 	x, y := i%g.w, i/g.w
 	n := 0
-	for d := 0; d < 4; d++ {
+	for d := range 4 {
 		nx, ny := x+dx[d], y+dy[d]
 		if g.inside(nx, ny) && g.isOpen(g.idx(nx, ny)) {
 			n++
@@ -116,7 +116,7 @@ func (g *gen) nodeOK(x, y int) bool {
 	if g.blocked[g.idx(x, y)] {
 		return false
 	}
-	for d := 0; d < 4; d++ {
+	for d := range 4 {
 		if g.blocked[g.idx(x+dx[d], y+dy[d])] {
 			return false
 		}

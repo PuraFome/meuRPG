@@ -51,7 +51,7 @@ func TestPhaseStreamsDiffer(t *testing.T) {
 func TestIntnBoundsAndUniformity(t *testing.T) {
 	r := newRNG(1)
 	for _, n := range []int{1, 2, 3, 7, 10, 100, 1 << 20} {
-		for i := 0; i < 2000; i++ {
+		for range 2000 {
 			if v := r.intn(n); v < 0 || v >= n {
 				t.Fatalf("intn(%d) = %d", n, v)
 			}
@@ -59,7 +59,7 @@ func TestIntnBoundsAndUniformity(t *testing.T) {
 	}
 	// A rough uniformity check on a non-power of two.
 	var count [6]int
-	for i := 0; i < 60000; i++ {
+	for range 60000 {
 		count[r.intn(6)]++
 	}
 	for k, c := range count {
@@ -80,7 +80,7 @@ func TestIntnOneConsumesNothing(t *testing.T) {
 
 func TestChanceDrawsNothingAtTheEnds(t *testing.T) {
 	a, b := newRNG(9), newRNG(9)
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		if a.chance(0) || !a.chance(100) {
 			t.Fatal("0 must never succeed and 100 must always")
 		}
@@ -91,7 +91,7 @@ func TestChanceDrawsNothingAtTheEnds(t *testing.T) {
 	// strictly less than: p percent succeeds on [0, p)
 	hits := 0
 	r := newRNG(3)
-	for i := 0; i < 20000; i++ {
+	for range 20000 {
 		if r.chance(25) {
 			hits++
 		}

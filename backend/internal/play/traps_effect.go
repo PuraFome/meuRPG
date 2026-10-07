@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
@@ -228,10 +229,8 @@ func resolveTrap(e *rulesv1.TrapEffect, targets []trapTarget, rule combat.Critic
 }
 
 func appendOnce(list []string, key string) []string {
-	for _, k := range list {
-		if k == key {
-			return list
-		}
+	if slices.Contains(list, key) {
+		return list
 	}
 	return append(list, key)
 }

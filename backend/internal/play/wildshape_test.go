@@ -451,7 +451,7 @@ func TestMR037_WildShapeExactDamageEndsTheFormWithNothingLeftOver(t *testing.T) 
 	a := s.armed
 	s.fight(t)
 	e := s.mustAssume(t, s.bia, s.bri, wolfKey).GetEncounter()
-	s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = ptrTo(int32(8)) })
+	s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = new(int32(8)) })
 	hit := a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Sálvia", func(r *playv1.RollAttackRequest) {
 		r.Roll = &playv1.RollAttackRequest_D20Face{D20Face: 15}
 		r.AsReaction = true
@@ -468,8 +468,6 @@ func TestMR037_WildShapeExactDamageEndsTheFormWithNothingLeftOver(t *testing.T) 
 		t.Errorf("wild_shape_ended = %v, want nothing carried", ended)
 	}
 }
-
-func ptrTo[T any](v T) *T { return &v }
 
 // TestMR037_WildShapeUndoOfTheActions: the master's undo of the action that started
 // the form ends it and gives the use, the action and the speed back; the undo of
@@ -491,7 +489,7 @@ func TestMR037_WildShapeUndoOfTheActions(t *testing.T) {
 
 	// Start again, hurt the wolf (the master's correction), leave, and undo the leaving.
 	s.mustAssume(t, s.bia, s.bri, wolfKey)
-	s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = ptrTo(int32(6)) })
+	s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = new(int32(6)) })
 	s.mustLeave(t, s.bia, s.bri)
 	if w := a.vitals(t, s.bri).GetWildShape(); w != nil {
 		t.Fatalf("form after leaving = %v, want none", w)
@@ -567,8 +565,8 @@ func TestMR037_WildShapeOutsideACombat(t *testing.T) {
 	}
 	// The master's correction takes the beast to 0: the form ends, the druid's own
 	// hit points stay. With no form, a correction of the beast is refused.
-	s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.HitPointsCurrent = ptrTo(int32(31)) })
-	_, err = s.master.adjust(t, s.campaignID, s.bri.GetId(), func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = ptrTo(int32(3)) })
+	s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.HitPointsCurrent = new(int32(31)) })
+	_, err = s.master.adjust(t, s.campaignID, s.bri.GetId(), func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = new(int32(3)) })
 	wantCode(t, "AdjustCharacterVitals of a beast pool with no form", err, connect.CodeInvalidArgument)
 	if _, err := s.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
 		CampaignId: s.campaignID, CharacterId: s.bri.GetId(), IdempotencyKey: newKey(), ResourcesUsed: []*playv1.ResourceUsed{{Key: wildShapeResource, Used: 0}},
@@ -576,13 +574,13 @@ func TestMR037_WildShapeOutsideACombat(t *testing.T) {
 		t.Fatalf("giving the uses back: %v", err)
 	}
 	s.mustAssume(t, s.bia, s.bri, wolfKey)
-	v := s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = ptrTo(int32(4)) })
+	v := s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = new(int32(4)) })
 	if v.GetWildShape().GetHitPointsCurrent() != 4 {
 		t.Errorf("beast after the correction = %v, want 4", v.GetWildShape())
 	}
-	_, err = s.master.adjust(t, s.campaignID, s.bri.GetId(), func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = ptrTo(int32(12)) })
+	_, err = s.master.adjust(t, s.campaignID, s.bri.GetId(), func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = new(int32(12)) })
 	wantCode(t, "a beast pool above the stat block's 11", err, connect.CodeInvalidArgument)
-	v = s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = ptrTo(int32(0)) })
+	v = s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = new(int32(0)) })
 	if v.GetWildShape() != nil || v.GetHitPointsCurrent() != 31 {
 		t.Errorf("after the beast went to 0: %v, want her own shape and 31 PV", v)
 	}

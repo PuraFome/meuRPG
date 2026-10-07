@@ -601,13 +601,11 @@ func TestMR016_TwoMarksAtOnceReachItOnce(t *testing.T) {
 	errs := make([]error, 2)
 	var wg sync.WaitGroup
 	for i := range errs {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			_, errs[i] = tb.master.xp.MarkMilestoneReached(context.Background(), connect.NewRequest(&progressionv1.MarkMilestoneReachedRequest{
 				CampaignId: tb.campaign, MilestoneId: ms.GetId(), CharacterIds: []string{tb.pcs[i].GetId()}, IdempotencyKey: newKey(),
 			}))
-		}()
+		})
 	}
 	wg.Wait()
 	ok, refused := 0, 0
@@ -642,11 +640,9 @@ func TestMR016_TwoAddsAtTheLimit(t *testing.T) {
 	errs := make([]error, 2)
 	var wg sync.WaitGroup
 	for i := range errs {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			_, errs[i] = tb.master.xp.AddMilestone(context.Background(), connect.NewRequest(&progressionv1.AddMilestoneRequest{CampaignId: tb.campaign, Text: "Último"}))
-		}()
+		})
 	}
 	wg.Wait()
 	ok := 0

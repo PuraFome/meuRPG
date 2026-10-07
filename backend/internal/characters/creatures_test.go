@@ -126,7 +126,7 @@ func TestListAndGetCreatures(t *testing.T) {
 	}
 	// Every page, once each.
 	seen, token := map[string]bool{}, ""
-	for pages := 0; pages < 10; pages++ {
+	for range 10 {
 		page, err := list(master, &rulesv1.ListCreaturesRequest{PageSize: 100, PageToken: token})
 		if err != nil {
 			t.Fatal(err)

@@ -29,7 +29,7 @@ func jointFight(t *testing.T, hideGoblins bool) (*armed, *playv1.Encounter) {
 	}
 	e := a.start(t, plan{
 		npcs: []*playv1.Participant{
-			{CharacterId: a.capitao.GetId(), Hidden: proto.Bool(false)},
+			{CharacterId: a.capitao.GetId(), Hidden: new(false)},
 			{CharacterId: a.goblin.GetId(), Count: 2},
 		},
 		npcRolls: []int{16, 12, 12},
@@ -366,7 +366,7 @@ func TestMR013_AReinforcementWithTheSameTotalActsFromTheNextTurn(t *testing.T) {
 	a.h.roller.queue(12)
 	res, err := a.master.combat.AddCombatants(t.Context(), connect.NewRequest(&playv1.AddCombatantsRequest{
 		CampaignId: a.campaignID, EncounterId: e.GetId(), IdempotencyKey: newKey(),
-		Participants: []*playv1.Participant{{CharacterId: a.goblin.GetId(), Hidden: proto.Bool(false)}},
+		Participants: []*playv1.Participant{{CharacterId: a.goblin.GetId(), Hidden: new(false)}},
 	}))
 	if err != nil {
 		t.Fatalf("AddCombatants() error = %v", err)
@@ -617,7 +617,7 @@ func TestMR013_OrderingATieKeepsTheGroup(t *testing.T) {
 	t.Parallel()
 	a := newArmed(t)
 	e := a.start(t, plan{
-		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId(), Count: 2, Hidden: proto.Bool(false)}},
+		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId(), Count: 2, Hidden: new(false)}},
 		npcRolls: []int{12, 12},
 		players:  map[string]int32{"Brisa": 16, "Toren": 17, "Pensantus": 12},
 		setup:    true,
@@ -772,7 +772,7 @@ func TestRN20_NPCGroupsAreNamedFromTheWholeOrder(t *testing.T) {
 	t.Parallel()
 	a := newArmed(t)
 	e := a.start(t, plan{
-		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId(), Count: 3}, {CharacterId: a.capitao.GetId(), Hidden: proto.Bool(false)}},
+		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId(), Count: 3}, {CharacterId: a.capitao.GetId(), Hidden: new(false)}},
 		npcRolls: []int{12, 12, 12, 9},
 		players:  map[string]int32{"Brisa": 5, "Toren": 5, "Pensantus": 5},
 		reveal:   []string{"Goblin 1", "Goblin 3"},

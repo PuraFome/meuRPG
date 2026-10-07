@@ -48,9 +48,9 @@ func (c *fakeConn) Begin(context.Context) (pgx.Tx, error) { return c.tx, nil }
 
 func (c *fakeConn) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) { return c.tx, nil }
 
-// serializationFailure is the error pgx returns when CockroachDB aborts a
+// errSerializationFailure is the error pgx returns when CockroachDB aborts a
 // transaction that must be retried.
-var serializationFailure = &pgconn.PgError{Code: "40001", Message: "restart transaction"}
+var errSerializationFailure = &pgconn.PgError{Code: "40001", Message: "restart transaction"}
 
 func TestInTxRetriesSerializationFailures(t *testing.T) {
 	t.Parallel()
@@ -62,7 +62,7 @@ func TestInTxRetriesSerializationFailures(t *testing.T) {
 		attempts++
 		if attempts < 3 {
 			// Wrapped on purpose: the helper must look through %w.
-			return fmt.Errorf("update character: %w", serializationFailure)
+			return fmt.Errorf("update character: %w", errSerializationFailure)
 		}
 		return nil
 	})
@@ -114,13 +114,13 @@ func TestInTxGivesUpAfterRetryLimit(t *testing.T) {
 
 	err := inTx(t.Context(), conn, policy, func(pgx.Tx) error {
 		attempts++
-		return serializationFailure
+		return errSerializationFailure
 	})
 
 	if _, ok := errors.AsType[*crdb.MaxRetriesExceededError](err); !ok {
 		t.Fatalf("InTx() error = %v, want *crdb.MaxRetriesExceededError", err)
 	}
-	if !errors.Is(err, serializationFailure) {
+	if !errors.Is(err, errSerializationFailure) {
 		t.Errorf("InTx() error = %v, want it to wrap the original 40001", err)
 	}
 	if attempts != 3 { // the first try + 2 retries
@@ -137,7 +137,7 @@ func TestDefaultRetryPolicyBacksOff(t *testing.T) {
 	next := defaultRetryPolicy.NewRetry()
 	var delays []int64
 	for {
-		delay, err := next(serializationFailure)
+		delay, err := next(errSerializationFailure)
 		if err != nil {
 			break
 		}

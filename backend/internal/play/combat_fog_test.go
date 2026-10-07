@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
@@ -138,7 +137,7 @@ func (f *fogCave) torch(t *testing.T, on bool) {
 // groupVision turns the map's "Visão do grupo" on or off.
 func (f *fogCave) groupVision(t *testing.T, on bool) {
 	t.Helper()
-	if _, err := f.mapsAs(f.master).SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: f.campaignID, MapId: f.mapID, GroupVision: proto.Bool(on)})); err != nil {
+	if _, err := f.mapsAs(f.master).SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: f.campaignID, MapId: f.mapID, GroupVision: new(on)})); err != nil {
 		t.Fatalf("SetMapFog(group vision) error = %v", err)
 	}
 }

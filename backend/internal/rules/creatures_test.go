@@ -81,6 +81,7 @@ func TestMonsterDerived(t *testing.T) {
 	}
 
 	t.Run("the wolf's bite and its Strength save", func(t *testing.T) {
+		t.Parallel()
 		d := monsterDerived(t, c, "monster:wolf")
 		if len(d.SaveActions) != 1 || d.SaveActions[0].Ability != STR || d.SaveActions[0].DC != 11 || d.SaveActions[0].Key != "monster:wolf#bite" {
 			t.Errorf("SaveActions = %+v, want the bite's Strength save, DC 11", d.SaveActions)
@@ -96,6 +97,7 @@ func TestMonsterDerived(t *testing.T) {
 		}
 	})
 	t.Run("a stat block's saves and a Multiattack", func(t *testing.T) {
+		t.Parallel()
 		dragon := monsterDerived(t, c, "monster:adult-black-dragon")
 		if got := saveOf(dragon, CON); got.Bonus != 10 || !got.Proficient {
 			t.Errorf("dragon Con save = %+v, want the stat block's +10", got)
@@ -125,6 +127,7 @@ func TestMonsterDerived(t *testing.T) {
 		}
 	})
 	t.Run("a ranged attack and the traits", func(t *testing.T) {
+		t.Parallel()
 		d := monsterDerived(t, c, "monster:goblin")
 		bow := d.Attacks[1]
 		if bow.Name != "Shortbow" || bow.Melee || bow.RangeFt != 80 || bow.LongRangeFt != 320 {

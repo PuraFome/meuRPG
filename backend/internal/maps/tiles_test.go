@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
@@ -284,7 +283,7 @@ func TestRN10_TileAuthorization(t *testing.T) {
 		t.Errorf("a revealed map's tile: status %d, want 200", r.status)
 	}
 	// With the fog off there are no tiles: the player reads the image.
-	if _, err := c.master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: c.mapID, FogEnabled: proto.Bool(false)})); err != nil {
+	if _, err := c.master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: c.mapID, FogEnabled: new(false)})); err != nil {
 		t.Fatal(err)
 	}
 	if r := c.ana.get(path); r.status != http.StatusNotFound {
@@ -372,7 +371,7 @@ func TestRN10_TilesAreInvalidated(t *testing.T) {
 	fetch()
 	filled("before the new image")
 	cur := m.mustGetMap(c.campaign, c.mapID).GetMap()
-	if _, err := m.maps.UpdateMap(t.Context(), connect.NewRequest(&mapsv1.UpdateMapRequest{CampaignId: c.campaign, MapId: c.mapID, Revision: cur.GetRevision(), ImageId: proto.String(img)})); err != nil {
+	if _, err := m.maps.UpdateMap(t.Context(), connect.NewRequest(&mapsv1.UpdateMapRequest{CampaignId: c.campaign, MapId: c.mapID, Revision: cur.GetRevision(), ImageId: new(img)})); err != nil {
 		t.Fatalf("UpdateMap(image) error = %v", err)
 	}
 	empty("after a new image")
@@ -485,13 +484,11 @@ func TestTileBudget_OneRenderAtATime(t *testing.T) {
 	for _, u := range []*user{c.ana, c.caio, c.bia, c.dani} {
 		view := u.mustVision(c.campaign, c.mapID)
 		for _, tile := range view.GetTiles() {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				if r := u.get(tileURL(view, tile)); r.status != http.StatusOK {
 					t.Errorf("tile status %d", r.status)
 				}
-			}()
+			})
 		}
 	}
 	wg.Wait()

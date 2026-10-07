@@ -163,15 +163,15 @@ type subject struct {
 	tokens     []mapsdb.MapToken
 }
 
-// errMapSubject is the typed reason a map cannot be the start of a picture.
-type errMapSubject struct {
+// mapSubjectError is the typed reason a map cannot be the start of a picture.
+type mapSubjectError struct {
 	reason mapsv1.ImageGenerationBlockedReason
 }
 
-func (e errMapSubject) Error() string { return "the map cannot be drawn: " + e.reason.String() }
+func (e mapSubjectError) Error() string { return "the map cannot be drawn: " + e.reason.String() }
 
 // loadSubject reads a map of the campaign for a picture: `not_found` for any other
-// map, errMapSubject when it has no grid. It reads through the pool (never inside a
+// map, mapSubjectError when it has no grid. It reads through the pool (never inside a
 // transaction).
 func (s *Service) loadSubject(ctx context.Context, campaignID, rawMapID string) (*subject, error) {
 	mapID, ok := parseID(rawMapID)
@@ -183,7 +183,7 @@ func (s *Service) loadSubject(ctx context.Context, campaignID, rawMapID string) 
 		return nil, s.dbError(ctx, "read a map", err)
 	}
 	if row.GridColumns == nil {
-		return nil, errMapSubject{mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_MAP_HAS_NO_GRID}
+		return nil, mapSubjectError{mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_MAP_HAS_NO_GRID}
 	}
 	img, err := s.queries.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: campaignID, ID: row.ImageID})
 	if err != nil {
@@ -191,7 +191,7 @@ func (s *Service) loadSubject(ctx context.Context, campaignID, rawMapID string) 
 	}
 	g := gridOf(row.GridColumns, row.GridFactor, img.Width, img.Height)
 	if !g.Valid() {
-		return nil, errMapSubject{mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_MAP_HAS_NO_GRID}
+		return nil, mapSubjectError{mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_MAP_HAS_NO_GRID}
 	}
 	solid, set, rec, err := s.planAt(ctx, s.queries, campaignID, row, g)
 	if err != nil {
@@ -382,7 +382,7 @@ func (s *Service) referenceOf(layout string, sub *subject, players *playersSeen,
 // errSubjectBlocked turns a loadSubject error into the typed refusal, with the month's
 // status.
 func (s *Service) errSubjectBlocked(ctx context.Context, campaignID string, err error) error {
-	if blocked, ok := errors.AsType[errMapSubject](err); ok {
+	if blocked, ok := errors.AsType[mapSubjectError](err); ok {
 		status, statusErr := s.freshStatus(ctx, campaignID)
 		if statusErr != nil {
 			return s.dbError(ctx, "read the image generation status", statusErr)
@@ -544,7 +544,7 @@ func cleanNpcIDs(ids []string) ([]string, error) {
 func (s *Service) prepareMap(ctx context.Context, campaignID string, n *newRequest, p *prepared, status *mapsv1.ImageGenerationStatus) error {
 	sub, err := s.loadSubject(ctx, campaignID, n.mapReq.mapID)
 	if err != nil {
-		if blocked, ok := errors.AsType[errMapSubject](err); ok {
+		if blocked, ok := errors.AsType[mapSubjectError](err); ok {
 			return errBlocked(blocked.reason, status)
 		}
 		return err

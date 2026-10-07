@@ -13,7 +13,7 @@ import (
 func bruteLights(n int, state uint64) (best int, solvable bool) {
 	masks := pressMasks(n)
 	best = n*n + 1
-	for set := uint64(0); set < 1<<(n*n); set++ {
+	for set := range uint64(1) << (n * n) {
 		lights := state
 		for c := range n * n {
 			if set>>c&1 == 1 {

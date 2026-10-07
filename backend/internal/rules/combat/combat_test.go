@@ -581,7 +581,7 @@ func TestMR014_SpellsSortByAvailabilityThenCircle(t *testing.T) {
 func TestSortSpellsOrderAndTies(t *testing.T) {
 	t.Parallel()
 	mk := func(key, pt string, level int, enabled bool) SpellOption {
-		return SpellOption{Option: Option{Enabled: enabled}, Spell: rules.SpellEntry{Key: key, NamePT: pt, Level: level}}
+		return SpellOption{Enabled: enabled, Spell: rules.SpellEntry{Key: key, NamePT: pt, Level: level}}
 	}
 	got := []SpellOption{
 		mk("c", "Zumbido", 0, true),

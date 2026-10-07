@@ -71,7 +71,7 @@ func TestClassRefusalsNameTheirField(t *testing.T) {
 		// The features.
 		{"a feature without a name", func(o *Overlay) { o.Classes[1].Levels[0].Features[1].NamePT = "" }, "classes[1].levels[0].features[1].name_pt", ReasonName},
 		{"the 61st feature", func(o *Overlay) {
-			for n := 0; n < 60; n++ {
+			for n := range 60 {
 				o.Classes[0].Levels[0].Features = append(o.Classes[0].Levels[0].Features, tf("extra-"+strconv.Itoa(n), "Extra"))
 			}
 		}, "classes[0].levels[0].features[60]", ReasonLimit},
@@ -130,6 +130,7 @@ func TestClassRefusalsNameTheirField(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			o := fullOverlay(t, srd)
 			tc.edit(&o)
 			// Everything here is a write: the stray fields are refused.

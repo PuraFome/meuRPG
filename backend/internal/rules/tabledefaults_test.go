@@ -147,7 +147,7 @@ func TestTableDefaultsFollowTheSRDTables(t *testing.T) {
 // features of every effect of the menu (genFeatures).
 func classFromDefaults(tab DefaultTable, slug string) TableClass {
 	tc := TableClass{
-		TableEntry:    TableEntry{Key: "class:" + slug + tableSuffix, NamePT: "Padrão " + slug},
+		Key: "class:" + slug + tableSuffix, NamePT: "Padrão " + slug,
 		HitDie:        8,
 		SavingThrows:  []Ability{CON, WIS},
 		SkillChoose:   2,
@@ -163,7 +163,7 @@ func classFromDefaults(tab DefaultTable, slug string) TableClass {
 		}
 	}
 	for i, r := range tab.Rows {
-		tc.Levels[i] = TableClassLevel{ProfBonus: r.ProfBonus, Features: genFeatures(slug, r.Level), TableLevel: TableLevel{CantripsKnown: r.CantripsKnown, SpellsKnown: r.SpellsKnown, Slots: r.Slots}}
+		tc.Levels[i] = TableClassLevel{ProfBonus: r.ProfBonus, Features: genFeatures(slug, r.Level), CantripsKnown: r.CantripsKnown, SpellsKnown: r.SpellsKnown, Slots: r.Slots}
 	}
 	return tc
 }
@@ -186,7 +186,7 @@ func TestTableDefaultsMakeValidClasses(t *testing.T) {
 		slug := "padrao-" + tab.Kind + "-" + tab.Preparation
 		tc := classFromDefaults(tab, slug)
 		sub := TableSubclass{
-			TableEntry: TableEntry{Key: "subclass:" + slug + "-a" + tableSuffix, NamePT: "Caminho"}, Class: tc.Key,
+			Key: "subclass:" + slug + "-a" + tableSuffix, NamePT: "Caminho", Class: tc.Key,
 			Levels: []TableSubclassLevel{{Level: 3, Features: []TableFeature{tf(slug+"-a3", "A3")}}},
 		}
 		o.Classes, o.Subclasses = append(o.Classes, tc), append(o.Subclasses, sub)
@@ -198,11 +198,11 @@ func TestTableDefaultsMakeValidClasses(t *testing.T) {
 		}
 		slug := "terco-" + tab.Preparation
 		sub := TableSubclass{
-			TableEntry: TableEntry{Key: "subclass:" + slug + tableSuffix, NamePT: "Terço " + tab.Preparation}, Class: "class:fighter",
+			Key: "subclass:" + slug + tableSuffix, NamePT: "Terço " + tab.Preparation, Class: "class:fighter",
 			Casting: &TableCasting{Kind: CastingThird, Ability: INT, Preparation: tab.Preparation, ListFrom: "class:wizard", StartLevel: tab.StartLevel},
 		}
 		for _, r := range tab.Rows[tab.StartLevel-1:] {
-			sub.Levels = append(sub.Levels, TableSubclassLevel{Level: r.Level, TableLevel: TableLevel{CantripsKnown: r.CantripsKnown, SpellsKnown: r.SpellsKnown, Slots: r.Slots}})
+			sub.Levels = append(sub.Levels, TableSubclassLevel{Level: r.Level, CantripsKnown: r.CantripsKnown, SpellsKnown: r.SpellsKnown, Slots: r.Slots})
 		}
 		o.Subclasses = append(o.Subclasses, sub)
 		swept = append(swept, [2]string{"class:fighter", sub.Key})

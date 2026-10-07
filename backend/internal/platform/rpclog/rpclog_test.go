@@ -59,7 +59,7 @@ func newRig(t *testing.T, unary func(context.Context) error, stream func(context
 func (r *rig) lines(t *testing.T) []map[string]any {
 	t.Helper()
 	var out []map[string]any
-	for _, l := range bytes.Split(bytes.TrimSpace(r.logs.Bytes()), []byte("\n")) {
+	for l := range bytes.SplitSeq(bytes.TrimSpace(r.logs.Bytes()), []byte("\n")) {
 		if len(l) == 0 {
 			continue
 		}

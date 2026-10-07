@@ -16,7 +16,7 @@ func (g *gen) stairSite(i int) (behind int, ok bool) {
 	}
 	x, y := i%g.w, i/g.w
 	behind = -1
-	for d := 0; d < 4; d++ {
+	for d := range 4 {
 		nx, ny := x+dx[d], y+dy[d]
 		if !g.inside(nx, ny) {
 			continue

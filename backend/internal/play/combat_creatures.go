@@ -165,7 +165,7 @@ func (s *Service) joinCreatures(ctx context.Context, c *combatTx, all []playdb.C
 			EncounterID: c.enc.ID, CharacterID: cr.CharacterID, Label: label,
 			InitiativeBonus: clamp32(cr.InitiativeBonus, -20, 40), OrderIndex: clamp32(len(all), 0, math.MaxInt32),
 			SpeedFt: clamp32(cr.SpeedFt, 0, 600), CreatedAt: c.now,
-			HpCurrent: ptr(clamp32(max(cr.HitPointsCurrent, 1), 1, math.MaxInt32)), HpMax: ptr(clamp32(max(cr.HitPointsMax, 1), 1, math.MaxInt32)),
+			HpCurrent: new(clamp32(max(cr.HitPointsCurrent, 1), 1, math.MaxInt32)), HpMax: new(clamp32(max(cr.HitPointsMax, 1), 1, math.MaxInt32)),
 			CreatureID: &cr.ID, MonsterKey: &cr.MonsterKey, SummonAttack: &cr.Attack, SummonGroupID: &cr.GroupID,
 			// A creature fights for the party (D7), with its stat block's size, fly speed and
 			// jump limits, as a character's are copied when it joins (slice 9.6).
@@ -182,7 +182,7 @@ func (s *Service) joinCreatures(ctx context.Context, c *combatTx, all []playdb.C
 			groupBonus[cr.GroupID] = row.InitiativeBonus
 		}
 		if roll, ok := rolls[cr.GroupID]; ok {
-			row.Initiative, row.InitiativeFace, row.InitiativeBonus = ptr(roll.Total), ptr(roll.Face), roll.Bonus
+			row.Initiative, row.InitiativeFace, row.InitiativeBonus = new(roll.Total), new(roll.Face), roll.Bonus
 		}
 		var owner *playdb.Combatant
 		for i := range all {

@@ -127,7 +127,7 @@ func (s *Service) AddSceneAction(
 		}
 		actions = current
 		if !replayed {
-			actions = append(current, added)
+			actions = append(actions, added)
 		}
 		return nil
 	})
@@ -274,7 +274,7 @@ func (s *Service) MoveSceneAction(
 		// Renumber the whole list from 0: positions may have gaps after a
 		// removal, and a swap of two values would leave equal ones.
 		for p := range actions {
-			want := int32(p) //nolint:gosec // G115: at most 20 actions
+			want := int32(p)
 			if actions[p].Position == want {
 				continue
 			}

@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -32,12 +33,7 @@ var Ratios = []string{"1:1", "3:2", "2:3", "3:4", "4:3", "4:5", "5:4", "9:16", "
 
 // ValidRatio reports whether ratio is one of Ratios.
 func ValidRatio(ratio string) bool {
-	for _, r := range Ratios {
-		if r == ratio {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(Ratios, ratio)
 }
 
 // Image is a picture's bytes with its type.

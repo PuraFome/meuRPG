@@ -109,8 +109,8 @@ func (g *gen) carveCorridors() {
 		x, y := l.idx%g.w, l.idx/g.w
 		stack = g.walk(r, stack, g.frameAt(r, x, y, l.away, true))
 	}
-	for j := 0; j < g.ny; j++ {
-		for i := 0; i < g.nx; i++ {
+	for j := range g.ny {
+		for i := range g.nx {
 			x, y := 2*i+1, 2*j+1
 			if !g.freeNode(x, y) {
 				continue

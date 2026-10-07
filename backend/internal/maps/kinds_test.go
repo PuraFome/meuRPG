@@ -68,7 +68,7 @@ func (s *scenes) newTreasure(name, description string, value int32, x, y int32) 
 	s.h.t.Helper()
 	return s.master.createPoint(&mapsv1.CreateMapPointRequest{
 		CampaignId: s.campaign, MapId: s.mapID, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_TREASURE, Name: name, Description: description,
-		TreasureValuePo: proto.Int32(value), XBp: x, YBp: y,
+		TreasureValuePo: new(value), XBp: x, YBp: y,
 	})
 }
 
@@ -244,10 +244,10 @@ func TestMR035_PointKindsAreValidated(t *testing.T) {
 
 	// Treasure and light.
 	for _, v := range []int32{-1, 1_000_001} {
-		wantCode(t, "a treasure worth "+strconv.Itoa(int(v)), create(treasureKind, func(r *mapsv1.CreateMapPointRequest) { r.TreasureValuePo = proto.Int32(v) }), connect.CodeInvalidArgument)
+		wantCode(t, "a treasure worth "+strconv.Itoa(int(v)), create(treasureKind, func(r *mapsv1.CreateMapPointRequest) { r.TreasureValuePo = new(v) }), connect.CodeInvalidArgument)
 	}
 	for _, v := range []int32{0, 1, 1_000_000} {
-		if err := create(treasureKind, func(r *mapsv1.CreateMapPointRequest) { r.TreasureValuePo = proto.Int32(v) }); err != nil {
+		if err := create(treasureKind, func(r *mapsv1.CreateMapPointRequest) { r.TreasureValuePo = new(v) }); err != nil {
 			t.Errorf("a treasure worth %d: %v", v, err)
 		}
 	}
@@ -341,7 +341,7 @@ func TestMR035_UpdatingPointsOfTheNewKinds(t *testing.T) {
 		t.Errorf("a battle that became a lamp = %v, %v; want 15 and 30", asLight.GetLight(), err)
 	}
 	// A light cannot be revealed: no player ever receives it.
-	_, err = update(chest, func(r *mapsv1.UpdateMapPointRequest) { r.Revealed = proto.Bool(true) })
+	_, err = update(chest, func(r *mapsv1.UpdateMapPointRequest) { r.Revealed = new(true) })
 	wantCode(t, "revealing a light", err, connect.CodeInvalidArgument)
 	_, err = m.maps.SetMapPointRevealed(t.Context(), connect.NewRequest(&mapsv1.SetMapPointRevealedRequest{CampaignId: s.campaign, MapId: s.mapID, PointId: chest.GetId(), Revealed: true}))
 	wantCode(t, "SetMapPointRevealed on a light", err, connect.CodeInvalidArgument)
@@ -815,7 +815,7 @@ func TestMR041_TreasureFound(t *testing.T) {
 	_, err = m.updatePoint(&mapsv1.UpdateMapPointRequest{CampaignId: s.campaign, MapId: s.mapID, PointId: chest.GetId(), Kind: mapsv1.MapPointKind_MAP_POINT_KIND_SCENE.Enum()})
 	wantMapBlocked(t, "change a converted treasure into a scene", err, mapsv1.MapBlockedReason_MAP_BLOCKED_REASON_TREASURE_CONVERTED)
 	// The same value, and other edits, are fine; the master sees the flag, a player does not.
-	if got, err := m.updatePoint(&mapsv1.UpdateMapPointRequest{CampaignId: s.campaign, MapId: s.mapID, PointId: chest.GetId(), TreasureValuePo: proto.Int32(250), Name: proto.String("Baú vazio")}); err != nil || !got.GetTreasureConverted() {
+	if got, err := m.updatePoint(&mapsv1.UpdateMapPointRequest{CampaignId: s.campaign, MapId: s.mapID, PointId: chest.GetId(), TreasureValuePo: proto.Int32(250), Name: new("Baú vazio")}); err != nil || !got.GetTreasureConverted() {
 		t.Errorf("an edit that keeps the value: %v, %v; want it allowed and the flag on", got, err)
 	}
 	if p := playerSees(s.ana); p == nil || p.GetTreasureConverted() {

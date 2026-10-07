@@ -70,9 +70,7 @@ func TestCreateCharacterIsIdempotent(t *testing.T) {
 	ids := make([]string, 4)
 	var wg sync.WaitGroup
 	for i := range ids {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			res, err := master.api.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
 				CampaignId: campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_ENEMY, Name: "Orc", Sheet: enemySheet(), IdempotencyKey: npcKey,
 			}))
@@ -81,7 +79,7 @@ func TestCreateCharacterIsIdempotent(t *testing.T) {
 				return
 			}
 			ids[i] = res.Msg.GetCharacter().GetId()
-		}()
+		})
 	}
 	wg.Wait()
 	for _, id := range ids {
@@ -186,16 +184,14 @@ func TestCreateTableEntryIsIdempotent(t *testing.T) {
 	var wg sync.WaitGroup
 	keys := make([]string, 4)
 	for i := range keys {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			res, err := create(racing)
 			if err != nil {
 				t.Errorf("CreateTableEntry() racing error = %v", err)
 				return
 			}
 			keys[i] = res.GetEntry().GetKey()
-		}()
+		})
 	}
 	wg.Wait()
 	for _, k := range keys {

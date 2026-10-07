@@ -381,14 +381,14 @@ func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Gr
 				if i < len(p.hitPoints) {
 					hp = clamp32(p.hitPoints[i], 1, math.MaxInt32)
 				}
-				row.HpCurrent, row.HpMax, row.HpTemp = &hp, &hp, ptr(int32(0))
+				row.HpCurrent, row.HpMax, row.HpTemp = &hp, &hp, new(int32(0))
 				row.XpValue = clamp32(p.char.XPValue, 0, 1_000_000) // MR-016: what it gives when defeated
 				// Each copy rolls for itself, in the app (RN-19).
 				face, total, err := s.rollInitiative(int(row.InitiativeBonus))
 				if err != nil {
 					return nil, nil, err
 				}
-				row.Initiative, row.InitiativeFace = ptr(clamp32(total, math.MinInt32, math.MaxInt32)), ptr(clamp32(face, 1, 20))
+				row.Initiative, row.InitiativeFace = new(clamp32(total, math.MinInt32, math.MaxInt32)), new(clamp32(face, 1, 20))
 			}
 			// Never on a square someone already stands on (reinforcements of
 			// an NPC already in the fight): the master places that one.

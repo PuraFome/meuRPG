@@ -61,9 +61,9 @@ var darkvision = vision.Senses{DarkvisionFt: 60}
 
 func picture(v *vision.View, g grid.Grid, own grid.Square) []string {
 	rows := make([]string, g.Rows)
-	for row := 0; row < g.Rows; row++ {
+	for row := range g.Rows {
 		var b strings.Builder
-		for col := 0; col < g.Columns; col++ {
+		for col := range g.Columns {
 			sq := grid.Square{Col: col, Row: row}
 			ch := byte(' ')
 			switch {
@@ -238,8 +238,8 @@ func TestUnionOfViewers(t *testing.T) {
 	a := lit.See(vision.Viewer{At: pensantus, Senses: darkvision})
 	b := lit.See(vision.Viewer{At: toren})
 	u := lit.Union(a, b)
-	for row := 0; row < caveGrid.Rows; row++ {
-		for col := 0; col < caveGrid.Columns; col++ {
+	for row := range caveGrid.Rows {
+		for col := range caveGrid.Columns {
 			sq := grid.Square{Col: col, Row: row}
 			if want := max(a.At(sq), b.At(sq)); u.At(sq) != want {
 				t.Fatalf("union at %v = %d, want %d", sq, u.At(sq), want)
@@ -325,8 +325,8 @@ func TestCanSeeMatchesSee(t *testing.T) {
 		{At: toren, Senses: vision.Senses{TruesightFt: 60}},
 	} {
 		view := torch.See(v)
-		for row := 0; row < caveGrid.Rows; row++ {
-			for col := 0; col < caveGrid.Columns; col++ {
+		for row := range caveGrid.Rows {
+			for col := range caveGrid.Columns {
 				sq := grid.Square{Col: col, Row: row}
 				if want := view.At(sq) >= vision.SeenGrey; torch.CanSee(v, sq) != want {
 					t.Fatalf("viewer %v, square %v: CanSee = %v, See = %v", v.At, sq, !want, view.At(sq))

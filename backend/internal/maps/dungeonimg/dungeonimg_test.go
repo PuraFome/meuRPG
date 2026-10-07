@@ -128,7 +128,7 @@ func BenchmarkRender(b *testing.B) {
 		}
 		w, h := Size(c.cols, c.rows)
 		b.Run(fmt.Sprintf("%dx%d", c.cols, c.rows), func(b *testing.B) {
-			for range b.N {
+			for b.Loop() {
 				if _, err := Render(f, w, h); err != nil {
 					b.Fatal(err)
 				}

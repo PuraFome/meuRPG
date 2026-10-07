@@ -45,7 +45,7 @@ var reasonWords = []struct{ words, reason string }{
 
 func reasonOf(msg string) string {
 	for _, r := range reasonWords {
-		for _, w := range strings.Split(r.words, "|") {
+		for w := range strings.SplitSeq(r.words, "|") {
 			if strings.Contains(msg, w) {
 				return r.reason
 			}

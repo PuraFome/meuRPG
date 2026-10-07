@@ -142,19 +142,19 @@ func (w *world) buildFogMap() {
 	w.paint(w.fogMap, mapsv1.MapLayer_MAP_LAYER_COVER, 1, crates)
 	// The master's painted light is never a player's.
 	w.paint(w.fogMap, mapsv1.MapLayer_MAP_LAYER_LIGHT, 3, [][2]int32{{17, 3}, {18, 3}, {17, 4}, {18, 4}})
-	must(m.maps.SetMapFog(ctx, rq(&mapsv1.SetMapFogRequest{CampaignId: w.campaign, MapId: w.fogMap, FogEnabled: proto.Bool(true), BaseLight: mapsv1.LightLevel_LIGHT_LEVEL_BRIGHT.Enum()})))
+	must(m.maps.SetMapFog(ctx, rq(&mapsv1.SetMapFogRequest{CampaignId: w.campaign, MapId: w.fogMap, FogEnabled: new(true), BaseLight: mapsv1.LightLevel_LIGHT_LEVEL_BRIGHT.Enum()})))
 
 	// What Ana's character sees (the west), the master made public.
 	w.pts["entrance"] = w.point(w.fogMap, mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, w.secrets.marker("entrance-name", w.ana), w.secrets.marker("entrance-description", w.ana), 2, 7, nil)
 	w.reveal(w.pts["entrance"])
 	w.pts["west-treasure"] = w.point(w.fogMap, mapsv1.MapPointKind_MAP_POINT_KIND_TREASURE, w.secrets.marker("treasure-revealed-name", w.ana), w.secrets.marker("treasure-revealed-description"), 2, 9, func(r *mapsv1.CreateMapPointRequest) {
-		r.TreasureValuePo = proto.Int32(w.value(treasurePO))
+		r.TreasureValuePo = new(w.value(treasurePO))
 	})
 	w.reveal(w.pts["west-treasure"])
 
 	// What only Caio's character sees (the south room): the same, for him.
 	w.pts["south-treasure"] = w.point(w.fogMap, mapsv1.MapPointKind_MAP_POINT_KIND_TREASURE, w.secrets.marker("south-treasure-name", w.caio), w.secrets.marker("south-treasure-description"), 10, 12, func(r *mapsv1.CreateMapPointRequest) {
-		r.TreasureValuePo = proto.Int32(w.value(treasurePO))
+		r.TreasureValuePo = new(w.value(treasurePO))
 	})
 	w.reveal(w.pts["south-treasure"])
 
@@ -162,7 +162,7 @@ func (w *world) buildFogMap() {
 	w.pts["guardhouse"] = w.point(w.fogMap, mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, w.secrets.marker("fog-point-name"), w.secrets.marker("fog-point-description"), 19, 3, nil)
 	w.reveal(w.pts["guardhouse"])
 	w.pts["fog-treasure"] = w.point(w.fogMap, mapsv1.MapPointKind_MAP_POINT_KIND_TREASURE, w.secrets.marker("fog-treasure-name"), w.secrets.marker("fog-treasure-description"), 20, 4, func(r *mapsv1.CreateMapPointRequest) {
-		r.TreasureValuePo = proto.Int32(w.value(treasurePO))
+		r.TreasureValuePo = new(w.value(treasurePO))
 	})
 	w.reveal(w.pts["fog-treasure"])
 
@@ -233,7 +233,7 @@ func (w *world) buildTraps() {
 
 	// A hidden treasure and a light, which a player never receives.
 	w.pts["treasure-hidden"] = w.point(w.fogMap, mapsv1.MapPointKind_MAP_POINT_KIND_TREASURE, w.secrets.marker("treasure-hidden-name"), w.secrets.marker("treasure-hidden-description"), 12, 13, func(r *mapsv1.CreateMapPointRequest) {
-		r.TreasureValuePo = proto.Int32(w.value(treasurePO))
+		r.TreasureValuePo = new(w.value(treasurePO))
 	})
 	w.secrets.id("treasure", w.pts["treasure-hidden"].GetId())
 	w.pts["light"] = w.point(w.fogMap, mapsv1.MapPointKind_MAP_POINT_KIND_LIGHT, w.secrets.marker("light-name"), w.secrets.marker("light-description"), 19, 4, func(r *mapsv1.CreateMapPointRequest) {
@@ -289,7 +289,7 @@ func (w *world) buildSession() {
 }
 
 func (w *world) addAction(p *mapsv1.MapPoint, key, name string, dc, attempts int32) {
-	must(w.master.maps.AddSceneAction(w.t.Context(), rq(&mapsv1.AddSceneActionRequest{CampaignId: w.campaign, MapId: p.GetMapId(), PointId: p.GetId(), Key: key, Name: name, Dc: dc, MaxAttempts: proto.Int32(attempts)})))
+	must(w.master.maps.AddSceneAction(w.t.Context(), rq(&mapsv1.AddSceneActionRequest{CampaignId: w.campaign, MapId: p.GetMapId(), PointId: p.GetId(), Key: key, Name: name, Dc: dc, MaxAttempts: new(attempts)})))
 }
 
 func (w *world) addClue(p *mapsv1.MapPoint, text string) string {
@@ -609,7 +609,7 @@ func (w *world) buildGenerated() {
 	rolled := must(m.treasure.GenerateTreasure(ctx, rq(&mapsv1.GenerateTreasureRequest{CampaignId: w.campaign, Mode: mapsv1.TreasureMode_TREASURE_MODE_HOARD, PartyLevel: proto.Int32(5), Seed: &tseed}))).GetTreasure()
 	placed := must(m.treasure.PlaceTreasure(ctx, rq(&mapsv1.PlaceTreasureRequest{
 		CampaignId: w.campaign, MapId: w.fogMap, Mode: mapsv1.TreasureMode_TREASURE_MODE_HOARD, PartyLevel: 5, Seed: &tseed, Column: 12, Row: 12,
-		Name: proto.String(w.secrets.marker("placed-treasure-name")), IdempotencyKey: newKey(), ContentVersion: rolled.GetContentVersion(),
+		Name: new(w.secrets.marker("placed-treasure-name")), IdempotencyKey: newKey(), ContentVersion: rolled.GetContentVersion(),
 	})))
 	if p := placed.GetPoint(); p != nil {
 		w.pts["placed-treasure"] = p

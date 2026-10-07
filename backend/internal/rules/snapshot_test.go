@@ -49,6 +49,7 @@ func TestSnapshot(t *testing.T) {
 	}
 
 	t.Run("every generated file matches the manifest", func(t *testing.T) {
+		t.Parallel()
 		files, err := fs.Glob(srd51.Files, "data/*.json")
 		if err != nil {
 			t.Fatal(err)
@@ -85,6 +86,7 @@ func TestSnapshot(t *testing.T) {
 	})
 
 	t.Run("effects revision matches the effects files", func(t *testing.T) {
+		t.Parallel()
 		var rev effectsRevision
 		if err := readJSON(srd51.Files, "effects/revision.json", &rev); err != nil {
 			t.Fatal(err)
@@ -99,6 +101,7 @@ func TestSnapshot(t *testing.T) {
 	})
 
 	t.Run("NOTICE has the attribution", func(t *testing.T) {
+		t.Parallel()
 		b, err := os.ReadFile("../../../NOTICE")
 		if err != nil {
 			t.Fatal(err)

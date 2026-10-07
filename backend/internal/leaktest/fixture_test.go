@@ -123,7 +123,7 @@ func pngOf(w, h int, seed uint8) []byte {
 	img := image.NewNRGBA(image.Rect(0, 0, w, h))
 	for y := range h {
 		for x := range w {
-			img.SetNRGBA(x, y, color.NRGBA{R: uint8(x*3) + seed, G: uint8(y*5) ^ seed, B: uint8(x+y) * 2, A: 255}) //nolint:gosec // G115: a pattern
+			img.SetNRGBA(x, y, color.NRGBA{R: uint8(x*3) + seed, G: uint8(y*5) ^ seed, B: uint8(x+y) * 2, A: 255})
 		}
 	}
 	var buf bytes.Buffer

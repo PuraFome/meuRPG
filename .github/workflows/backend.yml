@@ -15,6 +15,7 @@ on:
       - "Makefile"
       - ".github/workflows/backend.yml"
       - ".github/scripts/go-db-shard.sh"
+      - ".github/scripts/go-coverage.sh"
       - ".node-version"
   push:
     branches: [main]
@@ -25,6 +26,7 @@ on:
       - "Makefile"
       - ".github/workflows/backend.yml"
       - ".github/scripts/go-db-shard.sh"
+      - ".github/scripts/go-coverage.sh"
       - ".node-version"
 
 # Cancel a still-running run for the same PR when a new commit lands, so we
@@ -128,6 +130,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # The whole history: the lint ratchet below needs the merge base of
+          # the branch and main (a shallow clone has none).
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -136,11 +141,33 @@ jobs:
           cache: true
           cache-dependency-path: backend/go.sum
 
+      - name: Choose what the linters judge (the ratchet)
+        # The linters added on 07/10/2026 (complexity, magic values, test
+        # helpers...) have a backlog of old findings that nobody can fix in
+        # one PR. They are enforced on what a change ADDS: on a pull request,
+        # the lines changed since the merge base with the base branch; on a
+        # push to main, the lines of the pushed commits (before..after), so
+        # main is never judged as a whole. `make lint-all` shows the backlog.
+        id: ratchet
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            echo "args=--new-from-merge-base=origin/$BASE_REF" >> "$GITHUB_OUTPUT"
+          elif [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "args=--new-from-rev=$BEFORE" >> "$GITHUB_OUTPUT"
+          else
+            echo "args=--new-from-rev=HEAD~1" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: v2.14.0
           working-directory: backend
+          args: ${{ steps.ratchet.outputs.args }}
 
       - name: govulncheck
         # Invoked directly (rather than golang/govulncheck-action) so the
@@ -231,8 +258,22 @@ jobs:
           GROUP: ${{ matrix.group }}
         run: |
           # Package names have no spaces, so word-splitting the list is safe.
+          # -coverpkg=./... counts what the integration tests cover in OTHER
+          # packages too (a store tested through its service); -covermode=
+          # atomic is the only mode that is safe with -race.
           # shellcheck disable=SC2046
-          go test -race -timeout 25m $(../.github/scripts/go-db-shard.sh "$GROUP")
+          go test -race -timeout 25m -covermode=atomic -coverpkg=./... \
+            -coverprofile="cover-$GROUP.out" \
+            $(../.github/scripts/go-db-shard.sh "$GROUP")
+
+      - name: Keep this group's coverage profile
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: go-cover-${{ matrix.group }}
+          path: backend/cover-${{ matrix.group }}.out
+          if-no-files-found: ignore
+          retention-days: 3
 
 
   # One stable check for the whole matrix: the name below is the old job's, so
@@ -251,3 +292,39 @@ jobs:
         run: |
           echo "go-db groups: $RESULT"
           [ "$RESULT" = success ]
+
+  # Merges the groups' coverage profiles into one total and a per-package
+  # table in the job summary (no upload to any outside service), and holds
+  # the pure rules packages to a floor. Runs only when every group passed:
+  # the floor is judged on a full set of profiles, never on a partial one.
+  go-coverage:
+    name: go (coverage)
+    needs: go-db-shard
+    if: ${{ needs.go-db-shard.result == 'success' }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      - name: Download the groups' profiles
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: go-cover-*
+          path: backend/cover
+          merge-multiple: true
+
+      - name: Merge, report and check the floor
+        run: ../.github/scripts/go-coverage.sh cover/cover-*.out

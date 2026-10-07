@@ -131,6 +131,7 @@ All code goes in through a PR with green CI. What each CI job checks is in [CONT
 - **Every acceptance criterion is a test:** `go test` for server-side rules, Playwright for what shows on screen, tagged with the story (`@MR-001`).
 - **Accessibility:** [axe](https://github.com/dequelabs/axe-core) runs on the main screens, in light and dark themes, on desktop and phone; CI fails on any serious or critical WCAG 2.1 A and AA violation.
 - **Contract and generated code:** `buf lint`, `buf format` and `buf breaking` on the `.proto` files; CI regenerates the buf and sqlc code and fails on any diff.
+- **Linters and coverage:** golangci-lint with complexity, magic-number, logging and test-helper checks, as a ratchet: new findings fail, old ones are a backlog. CI reports the Go coverage per package and holds the pure rules packages to 90 %.
 - **A real database in tests:** integration tests run against CockroachDB, the same image as the local environment.
 - **Everything pinned:** actions by commit SHA, images by digest, npm packages at exact versions installed without scripts. Dependabot opens the PRs that keep this current every week, and `govulncheck` checks the Go dependencies.
 - **Nothing hidden leaks:** a leak test makes every read and asks for every stream event as each person, and checks that what the Game Master hid never reaches a player (RN-10). CodeQL scans the Go, TypeScript and workflow code for security bugs.

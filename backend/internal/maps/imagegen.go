@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -703,7 +704,7 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 	if created {
 		logging.Event(ctx, s.logger, "image.requested", slog.String("generation_id", row.ID), slog.String("kind", n.kind))
 		s.generations.Add(1)
-		go s.run(campaignID, row.ID, n.prepared) //nolint:gosec // G118: the request outlives the call that made it, on purpose (it has its own deadline)
+		go s.run(campaignID, row.ID, n.prepared)
 	}
 	return row, status, nil
 }
@@ -1161,7 +1162,7 @@ func (s *Service) run(campaignID, id string, prep prepared) {
 		return
 	}
 	// The request leaves now. A Cancel that came first wins: nothing is sent.
-	sent, err := s.queries.MarkImageRequestSent(ctx, mapsdb.MarkImageRequestSentParams{CampaignID: campaignID, ID: id, SentAt: ptr(s.now())})
+	sent, err := s.queries.MarkImageRequestSent(ctx, mapsdb.MarkImageRequestSentParams{CampaignID: campaignID, ID: id, SentAt: new(s.now())})
 	if err != nil {
 		s.logger.ErrorContext(ctx, "maps: cannot mark an image request as sent", "error", err)
 		s.finishFailed(campaignID, id, stateFailed, reasonUnavailable)
@@ -1225,7 +1226,7 @@ func (s *Service) run(campaignID, id string, prep prepared) {
 	// The gallery row and the request's end go in one transaction, allowed once.
 	stored, err := s.storeImage(fin, campaignID, row.RequestedBy, name, res, true, kind, parent,
 		func(ctx context.Context, q *mapsdb.Queries, imageID string) error {
-			n, err := q.FinishImageRequestDone(ctx, mapsdb.FinishImageRequestDoneParams{CampaignID: campaignID, ID: id, ImageID: &imageID, Now: ptr(s.now())})
+			n, err := q.FinishImageRequestDone(ctx, mapsdb.FinishImageRequestDoneParams{CampaignID: campaignID, ID: id, ImageID: &imageID, Now: new(s.now())})
 			if err != nil {
 				return fmt.Errorf("finish the request: %w", err)
 			}
@@ -1279,14 +1280,12 @@ func endReason(base context.Context) string {
 	return reasonTimeout
 }
 
-func ptr[T any](v T) *T { return &v }
-
 // finishFailed ends a request that made no picture: the slot goes back.
 func (s *Service) finishFailed(campaignID, id, state, reason string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	err := s.queries.FinishImageRequestFailed(ctx, mapsdb.FinishImageRequestFailedParams{
-		Now: ptr(s.now()), Status: state, Reason: reason, CampaignID: campaignID, ID: id,
+		Now: new(s.now()), Status: state, Reason: reason, CampaignID: campaignID, ID: id,
 	})
 	if err != nil {
 		s.logger.ErrorContext(ctx, "maps: cannot record a failed image request", "error", err)
@@ -1348,11 +1347,11 @@ func (s *Service) editOf(ctx context.Context, row mapsdb.ImageRequest, prep prep
 		cur, ok = byID[*cur.ParentImageID]
 	}
 	edit := &gen.Edit{Previous: *prep.previous, Instruction: row.Prompt}
-	for i := len(path) - 1; i >= 0; i-- {
+	for i, p := range slices.Backward(path) {
 		if i == len(path)-1 {
-			edit.Original = path[i].Prompt
+			edit.Original = p.Prompt
 		} else {
-			edit.Adjustments = append(edit.Adjustments, path[i].Prompt)
+			edit.Adjustments = append(edit.Adjustments, p.Prompt)
 		}
 	}
 	return edit, nil

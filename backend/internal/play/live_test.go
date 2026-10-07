@@ -310,7 +310,7 @@ func TestRN02_MasterAdjustsVitalsDuringSession(t *testing.T) {
 		field string
 		edit  func(*playv1.AdjustCharacterVitalsRequest)
 	}{
-		{"hit_points_current", func(r *playv1.AdjustCharacterVitalsRequest) { r.HitPointsCurrent = proto.Int32(hpMax + 1) }},
+		{"hit_points_current", func(r *playv1.AdjustCharacterVitalsRequest) { r.HitPointsCurrent = new(hpMax + 1) }},
 		{"hit_points_current", func(r *playv1.AdjustCharacterVitalsRequest) { r.HitPointsCurrent = proto.Int32(-1) }},
 		{"hit_points_temporary", func(r *playv1.AdjustCharacterVitalsRequest) { r.HitPointsTemporary = proto.Int32(1000) }},
 		{"spell_slots_used[0].used", func(r *playv1.AdjustCharacterVitalsRequest) {
@@ -377,7 +377,7 @@ func TestAdjustCharacterVitalsIsIdempotent(t *testing.T) {
 
 	call := func(key, characterID string, hp int32) (*playv1.CharacterVitals, error) {
 		res, err := master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
-			CampaignId: campaign, CharacterId: characterID, IdempotencyKey: key, HitPointsCurrent: proto.Int32(hp),
+			CampaignId: campaign, CharacterId: characterID, IdempotencyKey: key, HitPointsCurrent: new(hp),
 		}))
 		if err != nil {
 			return nil, err
@@ -448,7 +448,7 @@ func TestSessionEventsAreOrderedPerSession(t *testing.T) {
 		for _, temporary := range []int32{1, 2, 3} {
 			wg.Go(func() {
 				_, err := master.play.AdjustCharacterVitals(context.Background(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
-					CampaignId: campaign, CharacterId: pc.GetId(), IdempotencyKey: newKey(), HitPointsTemporary: proto.Int32(temporary),
+					CampaignId: campaign, CharacterId: pc.GetId(), IdempotencyKey: newKey(), HitPointsTemporary: new(temporary),
 				}))
 				errs <- err
 			})
