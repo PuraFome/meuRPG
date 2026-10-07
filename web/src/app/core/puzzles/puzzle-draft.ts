@@ -9,7 +9,7 @@ import {
   type PuzzleOnSolveSchema,
   type PuzzleOnWrongSchema,
 } from '../../../gen/meurpg/play/v1/puzzles_pb';
-import { alphabetFaces, pillarFaces } from './puzzle-symbols';
+import { alphabetFaces } from './puzzle-symbols';
 import { fold, hasCipherLetter, keywordLetters, keywordSwapsNothing } from './puzzle-text';
 import type { PuzzleInit } from './puzzles-client';
 
@@ -672,11 +672,6 @@ export function isValid(errors: DraftErrors): boolean {
   );
 }
 
-/** The pillars' faces for a draft, to size the mural's choices. */
-export function faceCount(draft: Draft): number {
-  return draft.kind === 'pillars' ? pillarFaces(draft.symbols).length : alphabetSize(draft.alphabet);
-}
-
 /** The kind a form builds, as the proto says it. */
 export function protoKindOf(kind: FormKind): PuzzleKind {
   switch (kind) {
@@ -693,9 +688,4 @@ export function protoKindOf(kind: FormKind): PuzzleKind {
     case 'cipher':
       return PuzzleKind.CIPHER;
   }
-}
-
-/** The form kind of a proto kind, or `null` for one the forms do not know. */
-export function formKindOf(kind: PuzzleKind): FormKind | null {
-  return FORM_KINDS.find((k) => protoKindOf(k) === kind) ?? null;
 }

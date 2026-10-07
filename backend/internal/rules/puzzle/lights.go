@@ -70,9 +70,6 @@ func LightsPress(n int, state uint64, row, col int) (next, changed uint64, err e
 // LightsSolved says whether every light is off.
 func LightsSolved(state uint64) bool { return state == 0 }
 
-// LightsLit counts the lit lights.
-func LightsLit(state uint64) int { return bits.OnesCount64(state) }
-
 // minStartPresses is how far from solved a drawn start must be, in presses, as the
 // pillars' start is in turns: a board one or two presses from solved is no puzzle.
 const minStartPresses = 3

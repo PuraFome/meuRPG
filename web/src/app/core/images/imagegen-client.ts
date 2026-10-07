@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 
-import type { GalleryImage } from '../../../gen/meurpg/maps/v1/gallery_pb';
 import {
   type GenerateMapImageRequest,
   type GenerateSceneImageRequest,
@@ -101,11 +100,5 @@ function started(generation: ImageGeneration | undefined, status: ImageGeneratio
     throw new Error('The image service answered without the request');
   }
   return { generation, status };
-}
-
-/** What the result needs from a finished request: the request and its gallery image. */
-export interface Finished {
-  readonly generation: ImageGeneration;
-  readonly image: GalleryImage;
 }
 

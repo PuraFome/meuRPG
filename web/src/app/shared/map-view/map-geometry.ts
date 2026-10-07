@@ -16,9 +16,6 @@ export const ZOOM_STEP = 0.25;
 export const NUDGE_BP = 50;
 export const NUDGE_SHIFT_BP = 500;
 
-/** The kinds of point, with the API's number kept out of the view's way. */
-export type PointKind = 'battle' | 'submap' | 'scene';
-
 /** What the view reads of a point (the generated `MapPoint` fits it). */
 export interface ViewPoint {
   readonly id: string;

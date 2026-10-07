@@ -41,10 +41,6 @@ WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND undone_at IS NULL
 ORDER BY created_at DESC, id DESC
 LIMIT 1;
 
--- name: GetXPAward :one
-SELECT * FROM xp_awards
-WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID;
-
 -- name: MarkXPAwardUndone :one
 -- undone_at IS NULL in the WHERE clause is a second guard: no row means it was
 -- undone meanwhile.

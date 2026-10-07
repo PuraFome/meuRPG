@@ -74,8 +74,3 @@ export function noteCounter(length: number, max: number): string {
 export function entryCount(n: number): string {
   return `${n} ${n === 1 ? 'anotação' : 'anotações'}`;
 }
-
-/** What a screen reader hears after the filter changes: "2 anotações". */
-export function filterAnnouncement(n: number): string {
-  return entryCount(n);
-}

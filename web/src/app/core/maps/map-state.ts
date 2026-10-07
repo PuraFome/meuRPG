@@ -154,7 +154,3 @@ export class MapState {
 export function tokenKey(token: { readonly characterId: string; readonly creatureId?: string }): string {
   return token.creatureId || token.characterId;
 }
-
-export function isGone(err: unknown): boolean {
-  return ConnectError.from(err).code === Code.NotFound;
-}

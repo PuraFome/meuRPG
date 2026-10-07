@@ -5,11 +5,9 @@ import (
 	"slices"
 )
 
-// Check runs every invariant of spec 5 on a dungeon and returns the first
+// check runs every invariant of spec 5 on a dungeon and returns the first
 // one that is broken. The generator's self-check (Options.SelfCheck) and the
 // property tests call it; it is linear in the size of the grid.
-func Check(d *Dungeon) error { return check(d) }
-
 func check(d *Dungeon) error {
 	w, h := d.Width, d.Height
 	o := d.Options

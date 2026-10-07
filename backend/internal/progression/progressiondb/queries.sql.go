@@ -119,39 +119,6 @@ func (q *Queries) GetPlannedMilestoneForUpdate(ctx context.Context, arg GetPlann
 	return i, err
 }
 
-const getXPAward = `-- name: GetXPAward :one
-SELECT id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key, milestone_id, milestone_again FROM xp_awards
-WHERE campaign_id = $1::UUID AND id = $2::UUID
-`
-
-type GetXPAwardParams struct {
-	CampaignID string
-	ID         string
-}
-
-func (q *Queries) GetXPAward(ctx context.Context, arg GetXPAwardParams) (XpAward, error) {
-	row := q.db.QueryRow(ctx, getXPAward, arg.CampaignID, arg.ID)
-	var i XpAward
-	err := row.Scan(
-		&i.ID,
-		&i.CampaignID,
-		&i.GivenBy,
-		&i.CreatedAt,
-		&i.Mode,
-		&i.Reason,
-		&i.EncounterID,
-		&i.Gold,
-		&i.TotalXp,
-		&i.IdempotencyKey,
-		&i.UndoneAt,
-		&i.UndoneBy,
-		&i.UndoKey,
-		&i.MilestoneID,
-		&i.MilestoneAgain,
-	)
-	return i, err
-}
-
 const getXPAwardByKey = `-- name: GetXPAwardByKey :one
 SELECT id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key, milestone_id, milestone_again FROM xp_awards
 WHERE campaign_id = $1::UUID AND idempotency_key = $2::UUID

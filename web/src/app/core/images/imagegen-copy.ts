@@ -4,8 +4,6 @@ import { tight } from '../format/text';
 /** The three ways to ask for a picture (E10-07), by the name the form uses. */
 export type KindKey = 'scene' | 'isometric' | 'texture';
 
-export const KIND_ORDER: readonly KindKey[] = ['scene', 'isometric', 'texture'];
-
 /** The kind's name on a computer and on a phone (the sheet's segments say "Cena", "Isométrica" and "Textura"). */
 export const KIND_LABEL: Readonly<Record<KindKey, { readonly long: string; readonly short: string }>> = {
   scene: { long: 'Arte da cena', short: 'Cena' },

@@ -256,18 +256,6 @@ func (q *Queries) CountOpenImageRequests(ctx context.Context, arg CountOpenImage
 	return column_1, err
 }
 
-const countSceneActions = `-- name: CountSceneActions :one
-SELECT count(*)::INT4 AS action_count FROM scene_actions
-WHERE point_id = $1
-`
-
-func (q *Queries) CountSceneActions(ctx context.Context, pointID string) (int32, error) {
-	row := q.db.QueryRow(ctx, countSceneActions, pointID)
-	var action_count int32
-	err := row.Scan(&action_count)
-	return action_count, err
-}
-
 const deleteGalleryImage = `-- name: DeleteGalleryImage :one
 DELETE FROM gallery_images
 WHERE campaign_id = $1 AND id = $2

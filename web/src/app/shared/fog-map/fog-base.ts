@@ -3,7 +3,6 @@ import { ChangeDetectionStrategy, Component, computed, effect, input, output, si
 import { type MapLayers, hasLayers } from '../../core/maps/layers';
 import { Sight } from '../../core/maps/vision';
 import {
-  type TileProgress,
   seenCount,
   type TileRect,
   type Vision,
