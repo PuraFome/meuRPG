@@ -8,6 +8,7 @@ import {
   emptyEffect,
   missingRequired,
   rangeFeet,
+  unreadableRange,
   rangeMeters,
   splitTags,
 } from './effect-draft';
@@ -141,5 +142,14 @@ describe("an effect from the server's menu (ADR-0018, section 4)", () => {
     expect(rangeMeters(15)).toBe('4,5');
     expect(rangeMeters(0)).toBe('');
     expect(splitTags(' a, ,b ')).toEqual(['a', 'b']);
+  });
+
+  it('tells a range field it cannot read from an empty one', () => {
+    for (const text of ['18 m', '18m', '1.000,5', 'abc', '-3']) {
+      expect(unreadableRange(text), text).toBe(true);
+    }
+    for (const text of ['', '  ', '0', '18', '4,5', '4.5']) {
+      expect(unreadableRange(text), text).toBe(false);
+    }
   });
 });

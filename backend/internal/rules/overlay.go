@@ -978,11 +978,11 @@ func slugOfKey(key string) string {
 func checkEntryName(key, name string) error {
 	switch {
 	case name == "" || strings.TrimSpace(name) != name:
-		return ovErr(key, "the name must not be empty or start or end with spaces")
+		return ovErr(key, "the name must not be empty or start or end with spaces").reason(ReasonName)
 	case utf8.RuneCountInString(name) > maxNameRunes:
-		return ovErr(key, "the name has more than %d characters", maxNameRunes)
+		return ovErr(key, "the name has more than %d characters", maxNameRunes).reason(ReasonName)
 	case strings.ContainsFunc(name, unicode.IsControl):
-		return ovErr(key, "the name must be one line, without control characters")
+		return ovErr(key, "the name must be one line, without control characters").reason(ReasonName)
 	}
 	return nil
 }
@@ -990,11 +990,11 @@ func checkEntryName(key, name string) error {
 // checkText bounds a text made of paragraphs.
 func checkText(key string, paragraphs []string) error {
 	if len(paragraphs) > maxTextParagraphs {
-		return ovErr(key, "the text has more than %d paragraphs", maxTextParagraphs)
+		return ovErr(key, "the text has more than %d paragraphs", maxTextParagraphs).reason(ReasonLimit)
 	}
 	for _, p := range paragraphs {
 		if utf8.RuneCountInString(p) > maxTextRunes {
-			return ovErr(key, "a paragraph has more than %d characters", maxTextRunes)
+			return ovErr(key, "a paragraph has more than %d characters", maxTextRunes).reason(ReasonText)
 		}
 	}
 	return nil

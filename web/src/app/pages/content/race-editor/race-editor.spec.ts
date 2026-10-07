@@ -112,6 +112,25 @@ describe('RaceEditor', () => {
     ]);
   });
 
+  it('says a darkvision it cannot read and does not save the race with none', async () => {
+    const { fixture, el } = setup();
+    const input = field(el, 'table_race.darkvision_ft') as HTMLInputElement;
+    input.value = '18 m';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(text(input.closest('app-text-field')!)).toContain('Escreva só o número de metros');
+    click(el, 'Salvar raça');
+    await settle(fixture);
+    expect(save).not.toHaveBeenCalled();
+    input.value = '18';
+    input.dispatchEvent(new Event('input'));
+    save.mockResolvedValue({ entry: corujeiro(), affected: [] });
+    click(el, 'Salvar raça');
+    await settle(fixture);
+    expect(save.mock.calls[0][2].value.darkvisionFt).toBe(60);
+  });
+
   it('puts "table_race.traits[1].effects[0].value" back on the formula field of the second trait', async () => {
     const { fixture, el } = setup();
     save.mockRejectedValue(
