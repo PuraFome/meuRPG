@@ -311,7 +311,8 @@ export class CombatClient {
    * square, or a high one by `jumpHeightDft` tenths of a foot). `stoppedEarly`
    * is "something you did not see stopped you"; `provoked` that an opportunity
    * offer now waits. The master's drags are plain moves too: only `forced`
-   * (never sent from here) skips the offers. */
+   * (never sent from here) skips the offers. `key` is the caller's, kept across
+   * the retries of one jump (a lost answer must not charge it twice). */
   async move(
     campaignId: string,
     encounterId: string,
@@ -319,12 +320,13 @@ export class CombatClient {
     col: number,
     row: number,
     jump?: { readonly kind: 'long' } | { readonly kind: 'high'; readonly heightDft: number },
+    key: string = newKey(),
   ): Promise<MoveResult> {
     const res = await this.client.moveCombatant({
       campaignId,
       encounterId,
       combatantId,
-      idempotencyKey: newKey(),
+      idempotencyKey: key,
       col,
       row,
       jump: jump ? (jump.kind === 'long' ? JumpKind.LONG : JumpKind.HIGH) : JumpKind.UNSPECIFIED,
@@ -486,11 +488,12 @@ export class CombatClient {
     campaignId: string,
     encounterId: string,
     participants: readonly JoinSpec[],
+    key: string = newKey(),
   ): Promise<Encounter> {
     const res = await this.client.addCombatants({
       campaignId,
       encounterId,
-      idempotencyKey: newKey(),
+      idempotencyKey: key,
       participants: participants.map(toParticipant),
     });
     return need(res.encounter, 'AddCombatants');
