@@ -1,4 +1,3 @@
-// Finding U16-11 in review/unit-16-web-content-campaigns.md
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
@@ -12,7 +11,7 @@ function flush(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-describe('Review16 U16-11: invite error state offers no retry', () => {
+describe('InviteAccept after a transient failure', () => {
   afterEach(() => {
     window.location.hash = '';
   });
