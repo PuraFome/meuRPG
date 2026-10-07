@@ -1,4 +1,3 @@
-// Finding U16-10 in review/unit-16-web-content-campaigns.md
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
@@ -57,7 +56,7 @@ const vm: TableRulesVm = {
   typedMax: 18,
 };
 
-describe('Review16 U16-10: an edit made while the save is in flight is not lost', () => {
+describe('TableRulesPage saving', () => {
   async function settle(fixture: { detectChanges(): void; whenStable(): Promise<unknown> }) {
     for (let i = 0; i < 3; i++) {
       fixture.detectChanges();
