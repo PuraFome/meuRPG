@@ -393,6 +393,16 @@ describe('CampaignDetail', () => {
     expect(el.textContent).toContain('Tente de novo');
   });
 
+  it('tells a person whose login session ended to sign in again, not to retry', async () => {
+    configure();
+    fake.getCampaignResult = Promise.reject(new ConnectError('', Code.Unauthenticated));
+
+    const el = await render();
+    const text = el.textContent ?? '';
+    expect(text).not.toContain('Tente de novo');
+    expect(text).toContain('Entre de novo');
+  });
+
   describe('"Experiência" (MR-016, E7-09)', () => {
     const asRole = (role: Role) => {
       configure();

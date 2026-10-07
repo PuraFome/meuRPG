@@ -1,11 +1,16 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
+import { Code, ConnectError } from '@connectrpc/connect';
 import { BehaviorSubject } from 'rxjs';
 
 import { Role } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { ContentSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
-import { TableContentKind } from '../../../../gen/meurpg/rules/v1/table_content_pb';
+import {
+  TableContentKind,
+  TableContentRefusalSchema,
+  TableContentViolationSchema,
+} from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { TableContentClient } from '../../../core/content/content-client';
 import {
@@ -290,6 +295,28 @@ describe('ContentEntry', () => {
     click(el, 'Desarquivar');
     await settle(fixture);
     expect(field().value).toBe('Corujeiro Pálido');
+  });
+
+  it('shows why the server refused an unarchive, not a connection problem', async () => {
+    const { fixture, el } = await setup(Role.MASTER, 'class:bardo-das-cinzas@mesa');
+    const refusal = create(TableContentRefusalSchema, {
+      violations: [
+        create(TableContentViolationSchema, {
+          field: 'table_class.name_pt',
+          reason: 'duplicate_name',
+        }),
+      ],
+    });
+    unarchive.mockRejectedValue(
+      new ConnectError('x', Code.InvalidArgument, undefined, [
+        { desc: TableContentRefusalSchema, value: refusal },
+      ]),
+    );
+    click(el, 'Desarquivar');
+    await settle(fixture);
+    expect(unarchive).toHaveBeenCalled();
+    expect(text(el)).toContain('Não foi possível desarquivar');
+    expect(text(el)).not.toContain('Confira a conexão');
   });
 
   it('leaves nothing of the last entry when the page goes to another one', async () => {

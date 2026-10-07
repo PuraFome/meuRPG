@@ -1,6 +1,12 @@
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { describeConnectError, isRateLimited, rateLimitedMessage } from './connect-errors';
+import { combatErrorMessage } from '../combat/combat-errors';
+import {
+  SESSION_ENDED,
+  describeConnectError,
+  isRateLimited,
+  rateLimitedMessage,
+} from './connect-errors';
 
 describe('describeConnectError', () => {
   it('uses the message given for the error code', () => {
@@ -70,5 +76,30 @@ describe('a rate-limited call', () => {
         [Code.ResourceExhausted]: 'A galeria está cheia.',
       }),
     ).toBe('Muitas ações em pouco tempo. Espere 3 segundos e tente de novo.');
+  });
+
+  describe('an ended login session', () => {
+    const ended = () => new ConnectError('no session', Code.Unauthenticated);
+    const GENERIC = 'Não foi possível falar com o servidor agora. Tente de novo em instantes.';
+
+    it('says to sign in again, not that the server is unavailable', () => {
+      const msg = describeConnectError(ended(), { [Code.Unavailable]: 'Servidor indisponível.' });
+      expect(msg).toBe(SESSION_ENDED);
+      expect(msg).not.toBe(GENERIC);
+    });
+
+    it('says so even when the screen gave no wording at all', () => {
+      expect(describeConnectError(ended(), {})).toBe(SESSION_ENDED);
+    });
+
+    it("keeps a screen's own wording for it", () => {
+      expect(describeConnectError(ended(), { [Code.Unauthenticated]: 'Entre para ver.' })).toBe(
+        'Entre para ver.',
+      );
+    });
+
+    it('is the wording a caller without an entry shows, combat included', () => {
+      expect(combatErrorMessage(ended(), 'atacar')).toBe(SESSION_ENDED);
+    });
   });
 });
