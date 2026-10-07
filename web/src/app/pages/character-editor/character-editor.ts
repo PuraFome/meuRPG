@@ -836,7 +836,9 @@ export class CharacterEditor {
   private readonly campaignIdSignal = signal('');
 
   constructor() {
-    this.watcher.whileLive(this.campaignIdSignal, () => void this.refreshCatalog());
+    // Only a player's editor follows the hint: the master writes the content himself, and an open stream would keep the
+    // page from ever being quiet (every NPC editor of a live campaign would hold one).
+    this.watcher.whileLive(() => (this.master() ? '' : this.campaignIdSignal()), () => void this.refreshCatalog());
     // The subclass of a one-class sheet waits for the level the class chooses it at (as in a block), unless one is chosen.
     effect(() => {
       const c = this.selectedClass();

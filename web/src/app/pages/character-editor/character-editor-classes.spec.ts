@@ -725,4 +725,29 @@ describe('the catalog read again (10.1d)', () => {
     expect(fake.catalogCalls).toEqual(['ch-9']);
     expect(cmp.fullForm.value.name).toBe('Mudei o nome');
   });
+
+  it('does not open the session\'s stream for the master\'s editor: a stream would keep the page from ever being quiet', async () => {
+    const run = async (master: boolean) => {
+      TestBed.resetTestingModule();
+      const watcher = fakeContentWatcher();
+      TestBed.overrideComponent(CharacterEditor, { set: { providers: [watcher.provider] } });
+      TestBed.configureTestingModule({
+        imports: [CharacterEditor],
+        providers: [
+          provideRouter([]),
+          { provide: CharacterEditorSource, useClass: FakeSource },
+          { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: 'camp-1' })) } },
+        ],
+      });
+      (TestBed.inject(CharacterEditorSource) as unknown as FakeSource).catalogOver = (c) => ({ ...c, viewerIsMaster: master });
+      const fixture = TestBed.createComponent(CharacterEditor);
+      fixture.detectChanges();
+      await flush();
+      await settle(fixture);
+      return watcher.following();
+    };
+    // The master's editor follows nothing; a player's follows the campaign while it has an open session.
+    expect(await run(true)).toBe('');
+    expect(await run(false)).toBe('camp-1');
+  });
 });

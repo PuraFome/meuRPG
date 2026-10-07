@@ -339,10 +339,11 @@ export async function createCharacterViaUI(
     await selectMatOption(page, 'Sub-raça', build.subrace);
   }
   await selectMatOption(page, 'Classe', build.class);
+  // The subclass field waits for the level the class chooses it at: the level goes in first.
+  await page.getByLabel('Nível', { exact: true }).fill(String(build.level));
   if (build.subclass) {
     await selectMatOption(page, 'Subclasse', build.subclass);
   }
-  await page.getByLabel('Nível', { exact: true }).fill(String(build.level));
   await selectMatOption(page, 'Antecedente', build.background ? 'Outro (personalizado)' : 'Acólito');
   if (build.background) {
     await page.getByLabel('Nome do antecedente', { exact: true }).fill(build.background);
