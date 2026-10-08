@@ -173,6 +173,7 @@ export class SummonSheet {
   private readonly frame = viewChild.required(SheetFrame);
   private key = newKey();
   private beastSeq = 0;
+  private formSeq = 0;
 
   protected readonly spell = computed<SummonSpellOptions | null>(
     () => this.options()?.spells.find((s) => s.spellKey === this.data.spellKey) ?? null,
@@ -429,10 +430,15 @@ export class SummonSheet {
   }
 
   private async loadForms(o: SummonOption): Promise<void> {
+    const seq = ++this.formSeq;
     // A form whose numbers cannot be read still shows its name; only the line under it is missing.
     const read = await Promise.allSettled(
       o.forms.map((f) => this.client.statBlock(this.data.campaignId, f.monsterKey)),
     );
+    // An answer that arrives after another option was picked is for a list nobody looks at.
+    if (seq !== this.formSeq) {
+      return;
+    }
     this.forms.set(read.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : [])));
   }
 

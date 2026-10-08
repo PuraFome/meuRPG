@@ -77,6 +77,9 @@ export class CreaturesPanel {
   readonly wildShape = input(false);
   /** Bumped by the page when the stream says the creatures changed. */
   readonly reload = input(0);
+  /** Bumped by the page when the character's vitals or the combat changed: the Wild Shape form is read again (it ends
+   * by damage, by sleep or by the master's hand, none of which is a creature change). */
+  readonly formReload = input(0);
 
   protected readonly state = signal<ListState>('loading');
   protected readonly creatures = signal<readonly CharacterCreature[]>([]);
@@ -86,6 +89,10 @@ export class CreaturesPanel {
   private known = new Set<string>();
   private first = true;
   private castInFlight = false;
+  /** What a gift from the master said while a cast sheet was open: it is told once the sheet is closed. */
+  private heldGift = '';
+  /** A read of a list that was already shown failed: the list stays, and the panel says it may be out of date. */
+  protected readonly refreshFailed = signal(false);
   private seq = 0;
   private wildSeq = 0;
 
@@ -211,6 +218,14 @@ export class CreaturesPanel {
 
   constructor() {
     effect(() => {
+      const ticks = this.formReload();
+      untracked(() => {
+        if (ticks > 0) {
+          void this.loadWild();
+        }
+      });
+    });
+    effect(() => {
       this.reload();
       this.live();
       untracked(() => void this.loadWild());
@@ -237,9 +252,12 @@ export class CreaturesPanel {
         this.state.set('hidden');
       } else if (this.state() !== 'ready') {
         this.state.set('failed');
+      } else {
+        this.refreshFailed.set(true);
       }
       return null;
     }
+    this.refreshFailed.set(false);
     this.spells.set(
       options.status === 'fulfilled' && options.value ? [...options.value.spells] : [],
     );
@@ -257,10 +275,17 @@ export class CreaturesPanel {
       this.first = false;
       return;
     }
-    if (fresh.length === 0 || this.castInFlight) {
+    if (fresh.length === 0) {
       return;
     }
     const gift = fresh.find((c) => c.source === CreatureSource.MASTER);
+    if (this.castInFlight) {
+      // What arrives from the cast is told by the cast; a gift made meanwhile is told after it.
+      if (gift) {
+        this.heldGift = `O mestre deu uma criatura a você: ${gift.name}.`;
+      }
+      return;
+    }
     this.notice.set(
       gift
         ? `O mestre deu uma criatura a você: ${gift.name}.`
@@ -281,6 +306,7 @@ export class CreaturesPanel {
       return;
     }
     this.notice.set('');
+    this.heldGift = '';
     this.castInFlight = true;
     openSheet<SummonSheet, SummonSheetData, SummonSheetResult>(
       this.dialog,
@@ -299,11 +325,14 @@ export class CreaturesPanel {
     ).subscribe((result) => {
       if (!result) {
         this.castInFlight = false;
+        this.notice.set(this.heldGift);
+        this.heldGift = '';
         return;
       }
       void this.load(this.campaignId(), this.characterId()).then(() => {
         this.castInFlight = false;
-        this.notice.set(this.confirmation(result));
+        this.notice.set([this.confirmation(result), this.heldGift].filter((t) => t).join(' '));
+        this.heldGift = '';
         this.focusAfterRender('.js-cast');
       });
     });
@@ -355,7 +384,9 @@ export class CreaturesPanel {
   }
 
   protected retry(): void {
-    this.state.set('loading');
+    if (this.state() === 'failed') {
+      this.state.set('loading');
+    }
     void this.load(this.campaignId(), this.characterId());
   }
 }

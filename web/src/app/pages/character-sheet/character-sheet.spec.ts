@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { BehaviorSubject, of } from 'rxjs';
@@ -9,6 +10,7 @@ import { OpenSessions, type OpenSessionVm } from '../../shell/live-notice/open-s
 import { CharacterSheetPage } from './character-sheet';
 import { NotesClient } from '../../core/notes/notes-client';
 import { CreaturesClient } from '../../core/creatures/creatures-client';
+import { CreaturesPanel } from './creatures-panel/creatures-panel';
 import { XpWatcher } from './xp-watcher';
 import {
   BasicSheetVm,
@@ -218,6 +220,7 @@ const xpWatcher = {
         onChange: () => void,
         onCreatures?: () => void,
         onContent?: () => void,
+        onForm?: (characterId: string | null) => void,
       ) => void
     >(),
 };
@@ -1428,6 +1431,7 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
       expect.any(Function),
       expect.any(Function),
       expect.any(Function),
+      expect.any(Function),
     );
 
     openSessions.set([
@@ -1444,6 +1448,7 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
     await fixture.whenStable();
     expect(xpWatcher.follow).toHaveBeenLastCalledWith(
       'camp-1',
+      expect.any(Function),
       expect.any(Function),
       expect.any(Function),
       expect.any(Function),
@@ -1502,6 +1507,37 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
 
     expect(block(el)!.querySelector('.xp__n')?.textContent?.trim()).toBe(`2.716${nbsp}XP`);
     expect(el.textContent).not.toContain('Carregando a ficha');
+  });
+
+  it("tells the creatures panel when this character's vitals or the combat change (a Wild Shape form ends that way), not another character's", async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ sheet: fullSheet({ hasWildShape: true }) }));
+    openSessions.set([
+      {
+        sessionId: 's1',
+        campaignId: 'camp-1',
+        campaignName: 'Mirathel',
+        sessionNumber: 5,
+        startedAt: new Date(),
+        isMaster: false,
+      },
+    ]);
+    const fixture = await render();
+    const ticks = () =>
+      fixture.debugElement.query(By.directive(CreaturesPanel)).componentInstance.formReload();
+    const onForm = xpWatcher.follow.mock.calls.at(-1)![4]!;
+    const bump = async (who: string | null) => {
+      onForm(who);
+      fixture.detectChanges();
+      await fixture.whenStable();
+    };
+    expect(ticks()).toBe(0);
+    await bump('char-2');
+    expect(ticks()).toBe(0);
+    await bump('char-1');
+    expect(ticks()).toBe(1);
+    await bump(null);
+    expect(ticks()).toBe(2);
   });
 
   it('reads the character again when the table\'s content changes (content_changed, "A classe mudou"), on the same stream', async () => {
