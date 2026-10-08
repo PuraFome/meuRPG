@@ -326,8 +326,9 @@ export class CombatClient {
     return need(res.encounter, 'BeginCombat');
   }
 
-  /** `expectedCombatantId` is whose turn the screen thinks it is, so a double
-   * tap never skips two turns; empty only when nobody is on turn. */
+  /** `expectedCombatantId` is whose turn the screen thinks it is: a tap from a screen that has not caught up with the
+   * turn is refused (`aborted`), never skipping another one; the same tap sent again keeps its key, so the server
+   * answers with the first. Empty only when nobody is on turn. */
   async endTurn(
     campaignId: string,
     encounterId: string,

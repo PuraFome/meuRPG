@@ -151,7 +151,9 @@ export class AwardHistory {
       } else {
         this.error.set(xpErrorMessage(err, 'desfazer o prêmio'));
         if (xpNothingToUndo(err)) {
-          // Its message says the screen was updated: the history is read again, so there is no award left to undo on it.
+          // Its message says the screen was updated: the history is read again, so there is no award left to undo on it,
+          // and whoever showed the XP of the party reads it again too (another tab changed it).
+          this.undone.emit();
           await this.store.refresh();
         }
         // A failed call is retried with the same key: it changes nothing twice.
