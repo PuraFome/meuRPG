@@ -181,6 +181,9 @@ func (i *interceptor) finish(ctx context.Context, procedure string, stream bool,
 	code := codeOf(err)
 	if !isConnect && code == connect.CodeUnknown {
 		connectErr = connect.NewError(connect.CodeInternal, errors.New("internal error"))
+		// Built here, outside the interceptors a module mounts, so the
+		// no-store they set on their own errors does not reach it.
+		connectErr.Meta().Set("Cache-Control", "no-store")
 		out, code = connectErr, connect.CodeInternal
 	}
 	attrs := []slog.Attr{

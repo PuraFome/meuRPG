@@ -1208,7 +1208,7 @@ The full list of migrations, with what each added, is in the [archive](archive/e
 
 ### Migration lock
 
-`migration_lock` is not a migration. It is the lock of `migrate up` and `migrate down` (one row, `id = 1`, with `holder` and `expires_at`), created by the lock's own code (`backend/migrations/lock.go`) before goose, because the lock must exist before the first migration. Whoever runs first writes the row with a validity of 60 s and renews it every 20 s; a second `migrate` waits (up to 10 minutes) and then exits with a clear message. A run that crashed leaves the row, and the next one takes it when the validity passes. Times are the database clock's (`now()`), not the runner's. See [Operations](operations.md#the-connection-pool).
+`migration_lock` is not a migration. It is the lock of `migrate up` and `migrate down` (one row, `id = 1`, with `holder` and `expires_at`), created by the lock's own code (`backend/migrations/lock.go`) before goose, because the lock must exist before the first migration. Whoever runs first writes the row with a validity of 60 s and renews it every 20 s, each renewal with 10 s to answer; a second `migrate` waits (up to 10 minutes) and then exits with a clear message. A run that cannot renew the lease cancels itself before the lease can end (when the next renewal could not finish in time), so goose stops between statements before another run can start; a statement already sent keeps going in CockroachDB (its schema-change job), which no lock holds back. A run that crashed leaves the row, and the next one takes it when the validity passes. Times are the database clock's (`now()`), not the runner's. See [Operations](operations.md#the-connection-pool).
 
 ## See also
 
