@@ -427,6 +427,7 @@ func buildOf(f *charactersv1.FullSheet) rules.Build {
 		SpellsKnown:         f.GetKnownSpellKeys(),
 		SpellsPrepared:      f.GetPreparedSpellKeys(),
 		FeatureChoices:      f.GetFeatureChoiceKeys(),
+		Feats:               f.GetFeatKeys(),
 	}
 	for _, c := range f.GetClasses() {
 		b.Classes = append(b.Classes, rules.ClassLevel{

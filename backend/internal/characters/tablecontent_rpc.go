@@ -228,6 +228,14 @@ func (s *Service) checkOverlay(entries []entryRow, revision int, key string, lea
 // data. It works on a clone of body, so a retried transaction starts from what the
 // request had.
 func prepare(key string, kind rulesv1.TableContentKind, body, old tableBody, lead ...*rulesv1.TableContentViolation) (stored, error) {
+	return prepareWith(featureKeys, key, kind, body, old, lead...)
+}
+
+// prepareWith is prepare with the way the features get their keys.
+func prepareWith(
+	keys func(entryKey string, body, old tableBody) []*rulesv1.TableContentViolation,
+	key string, kind rulesv1.TableContentKind, body, old tableBody, lead ...*rulesv1.TableContentViolation,
+) (stored, error) {
 	b := proto.Clone(body).(tableBody)
 	if v := checkShape(b); len(v) > 0 {
 		return stored{}, errRefusedContent(append(slices.Clone(lead), v...))
@@ -235,7 +243,7 @@ func prepare(key string, kind rulesv1.TableContentKind, body, old tableBody, lea
 	if v := checkFeatureCount(kind, b); len(v) > 0 {
 		return stored{}, errRefusedContent(append(slices.Clone(lead), v...))
 	}
-	if v := featureKeys(key, b, old); len(v) > 0 {
+	if v := keys(key, b, old); len(v) > 0 {
 		return stored{}, errRefusedContent(append(slices.Clone(lead), v...))
 	}
 	data, err := storedData(b)
