@@ -228,11 +228,19 @@ export class LevelUpPage {
     });
   }
 
+  /** Numbers every read that makes a session (the first one and each re-read): an answer older than the latest is dropped,
+   * so the reading on screen is always the newest one asked for. */
+  private reads = 0;
+
   private async load(campaignId: string, characterId: string): Promise<void> {
+    const seq = ++this.reads;
     this.state.set({ status: 'loading' });
     let character: Character | null = null;
     try {
       character = await this.client.character(campaignId, characterId);
+      if (seq !== this.reads) {
+        return;
+      }
       if (character.canAccessMasterNotes) {
         // The master's own call: the owning player levels up; the master edits the sheet.
         this.state.set({
@@ -247,6 +255,9 @@ export class LevelUpPage {
         this.client.catalog(campaignId, characterId),
         this.client.dicePreference(campaignId).catch(() => 0),
       ]);
+      if (seq !== this.reads) {
+        return;
+      }
       const draft = new LevelUpDraft(options, sheetKeys(character), catalog);
       const session = new LevelUpSession(
         campaignId,
@@ -260,6 +271,9 @@ export class LevelUpPage {
       this.state.set({ status: 'ready', session });
       afterNextRender(() => this.watchFoot(), { injector: this.injector });
     } catch (err) {
+      if (seq !== this.reads) {
+        return;
+      }
       const failure = describeLevelUpFailure(err);
       let message = failure.message;
       if (
@@ -269,6 +283,9 @@ export class LevelUpPage {
       ) {
         // The campaign's mode and the sheet's XP are known: say what is missing, not only that something is.
         const mode = await this.client.xpMode(campaignId).catch(() => XpMode.UNSPECIFIED);
+        if (seq !== this.reads) {
+          return;
+        }
         const full =
           character.sheet?.content.case === 'full' ? character.sheet.content.value : null;
         message = cannotLevelUpMessage(
@@ -513,6 +530,7 @@ export class LevelUpPage {
     if (!old) {
       return false;
     }
+    const seq = ++this.reads;
     try {
       // The table's content is read again too: the master may have retired an option, or written a new one.
       const [character, options, catalog] = await Promise.all([
@@ -520,6 +538,9 @@ export class LevelUpPage {
         this.client.options(this.campaignId(), this.characterId()),
         this.client.catalog(this.campaignId(), this.characterId(), true),
       ]);
+      if (seq !== this.reads) {
+        return false; // a newer reading was asked for: its answer is the one that counts
+      }
       const draft = new LevelUpDraft(options, sheetKeys(character), catalog);
       draft.adopt(old.draft);
       const session = new LevelUpSession(
@@ -537,6 +558,9 @@ export class LevelUpPage {
       this.state.set({ status: 'ready', session });
       return true;
     } catch (err) {
+      if (seq !== this.reads) {
+        return false;
+      }
       const failure = describeLevelUpFailure(err);
       if (failure.kind === 'blocked') {
         old.stop();
