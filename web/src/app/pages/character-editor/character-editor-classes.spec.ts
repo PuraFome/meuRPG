@@ -1076,6 +1076,76 @@ describe('the catalog read again (10.1d)', () => {
     expect(cmp.fullForm.value.name).toBe('Mudei o nome');
   });
 
+  it('keeps the newest reading when two reads of the lists answer out of order', async () => {
+    const watcher = fakeContentWatcher();
+    TestBed.overrideComponent(CharacterEditor, { set: { providers: [watcher.provider] } });
+    TestBed.configureTestingModule({
+      imports: [CharacterEditor],
+      providers: [
+        provideRouter([]),
+        { provide: CharacterEditorSource, useClass: FakeSource },
+        {
+          provide: ActivatedRoute,
+          useValue: { paramMap: of(convertToParamMap({ id: 'camp-1', characterId: 'ch-9' })) },
+        },
+      ],
+    });
+    const fake = TestBed.inject(CharacterEditorSource) as unknown as FakeSource;
+    fake.forEdit = emptyEdit();
+    const fixture = TestBed.createComponent(CharacterEditor);
+    fixture.detectChanges();
+    await flush();
+    await settle(fixture);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cmp = fixture.componentInstance as any;
+    const reads: ((c: RulesCatalogVm) => void)[] = [];
+    fake.loadCatalog = (() =>
+      new Promise<RulesCatalogVm>((resolve) => reads.push(resolve))) as never;
+    watcher.hint();
+    watcher.hint();
+    await flush();
+    expect(reads).toHaveLength(2);
+    const spells = () => cmp.state().catalog.spells.length as number;
+    const newer = catalog();
+    expect(newer.spells.length).toBeGreaterThan(0);
+    reads[1](newer);
+    await flush();
+    await settle(fixture);
+    // The older read lands last, with a catalog that has lost every spell: it must not win.
+    reads[0]({ ...newer, spells: [] });
+    await flush();
+    await settle(fixture);
+    expect(spells()).toBe(newer.spells.length);
+  });
+
+  it('shows the reading of a single read of the lists (positive control)', async () => {
+    const watcher = fakeContentWatcher();
+    TestBed.overrideComponent(CharacterEditor, { set: { providers: [watcher.provider] } });
+    TestBed.configureTestingModule({
+      imports: [CharacterEditor],
+      providers: [
+        provideRouter([]),
+        { provide: CharacterEditorSource, useClass: FakeSource },
+        {
+          provide: ActivatedRoute,
+          useValue: { paramMap: of(convertToParamMap({ id: 'camp-1', characterId: 'ch-9' })) },
+        },
+      ],
+    });
+    const fake = TestBed.inject(CharacterEditorSource) as unknown as FakeSource;
+    fake.forEdit = emptyEdit();
+    const fixture = TestBed.createComponent(CharacterEditor);
+    fixture.detectChanges();
+    await flush();
+    await settle(fixture);
+    fake.catalogOver = (c) => ({ ...c, spells: [] });
+    watcher.hint();
+    await flush();
+    await settle(fixture);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((fixture.componentInstance as any).state().catalog.spells).toHaveLength(0);
+  });
+
   it("does not open the session's stream for the master's editor: a stream would keep the page from ever being quiet", async () => {
     const run = async (master: boolean) => {
       TestBed.resetTestingModule();

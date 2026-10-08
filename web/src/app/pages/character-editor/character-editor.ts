@@ -989,6 +989,8 @@ export class CharacterEditor {
 
   /** Counts the loads, so a late answer for a route the person left is dropped, and a save that outlives its route does not navigate. */
   private loadSeq = 0;
+  /** Counts the reads of the lists after a `content_changed`, so an older answer never replaces a newer one. */
+  private catalogSeq = 0;
   private destroyed = false;
 
   /** A reused component starts every route from nothing: nothing of the previous character stays in the form or the pick sets. */
@@ -1602,8 +1604,14 @@ export class CharacterEditor {
     if (s.status !== 'ready') {
       return;
     }
+    // The newest read is the one that counts, and an answer for a route the person left does not count at all.
+    const seq = ++this.catalogSeq;
+    const route = this.loadSeq;
     try {
       const catalog = await this.source.loadCatalog(s.campaignId, s.characterId ?? undefined);
+      if (seq !== this.catalogSeq || route !== this.loadSeq) {
+        return;
+      }
       const now = this.state();
       if (now.status === 'ready' && catalogChanged(now.catalog, catalog)) {
         this.state.set({ ...now, catalog });
