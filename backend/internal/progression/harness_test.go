@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -14,6 +16,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
@@ -124,6 +127,52 @@ type harness struct {
 	users  *identity.PostgresStore
 	play   *play.Service
 	server *httptest.Server
+	// treasures is the maps' treasures, noting what is published about maps.
+	treasures *treasureSpy
+}
+
+// published is one PublishChanged call.
+type published struct {
+	campaignID string
+	mapIDs     []string
+}
+
+// treasureSpy is maps.Treasures that notes what progression publishes about
+// maps, and can fail the next conversion with a serialization conflict.
+type treasureSpy struct {
+	*maps.Treasures
+	mu        sync.Mutex
+	calls     []published
+	conflicts int // MarkConverted fails with 40001 this many more times
+}
+
+func (s *treasureSpy) MarkConverted(ctx context.Context, tx pgx.Tx, awardID string, pointIDs []string) error {
+	s.mu.Lock()
+	conflict := s.conflicts > 0
+	if conflict {
+		s.conflicts--
+	}
+	s.mu.Unlock()
+	if err := s.Treasures.MarkConverted(ctx, tx, awardID, pointIDs); err != nil {
+		return err
+	}
+	if conflict {
+		return fmt.Errorf("convert the treasures: %w", &pgconn.PgError{Code: "40001", Message: "restart transaction"})
+	}
+	return nil
+}
+
+func (s *treasureSpy) PublishChanged(campaignID string, mapIDs []string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.calls = append(s.calls, published{campaignID: campaignID, mapIDs: mapIDs})
+}
+
+// published returns the calls so far.
+func (s *treasureSpy) published() []published {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.calls)
 }
 
 // newHarness serves the progression, play, campaigns and characters services
@@ -154,7 +203,8 @@ func newHarness(t *testing.T) *harness {
 		t.Fatalf("play.New() error = %v", err)
 	}
 	h.play = pl
-	svc, err := New(Config{Pool: pool, Party: chars, Combats: pl, Log: pl, Treasures: maps.NewTreasures(pool), Campaigns: camps, Profiles: h.users, Logger: logger, Now: clock.Now})
+	h.treasures = &treasureSpy{Treasures: maps.NewTreasures(pool)}
+	svc, err := New(Config{Pool: pool, Party: chars, Combats: pl, Log: pl, Treasures: h.treasures, Campaigns: camps, Profiles: h.users, Logger: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
