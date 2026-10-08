@@ -687,7 +687,7 @@ func TestListGalleryImagesIsOneSnapshotWhileAnImageGoes(t *testing.T) {
 		}
 	})
 	got := master.list(campaign)
-	if n := len(got.GetImages()); int32(n) != got.GetUsage().GetImageCount() {
+	if n := len(got.GetImages()); n != int(got.GetUsage().GetImageCount()) {
 		t.Errorf("ListGalleryImages(): %d images listed, usage counts %d; want them to agree", n, got.GetUsage().GetImageCount())
 	}
 

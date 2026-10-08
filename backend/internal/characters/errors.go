@@ -130,9 +130,9 @@ const DefaultMaxCharactersPerCampaign = 1000
 
 // errCharacterCapReached is the refusal of every create when the campaign
 // already holds its most characters.
-func errCharacterCapReached(max int) error {
+func errCharacterCapReached(limit int) error {
 	return connect.NewError(connect.CodeResourceExhausted,
-		fmt.Errorf("the campaign already has %d characters and NPCs, the most it may have; delete one to create another", max))
+		fmt.Errorf("the campaign already has %d characters and NPCs, the most it may have; delete one to create another", limit))
 }
 
 // checkRoom refuses a create when the campaign has no room for one more
