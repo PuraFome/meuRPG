@@ -163,6 +163,36 @@ describe('ExperienceStore', () => {
     expect(api.listAwards).not.toHaveBeenCalled();
   });
 
+  it('reads one page at a time: a second request while one is on its way asks for nothing', async () => {
+    const s = store();
+    await s.load('c1', true);
+    api.listAwards.mockClear();
+    let finish: (v: unknown) => void = () => undefined;
+    api.listAwards.mockReturnValueOnce(new Promise((r) => (finish = r)));
+    const first = s.more();
+    const second = s.more();
+    finish(create(ListXPAwardsResponseSchema, { awards: [award('a0')], nextPageToken: '' }));
+    await Promise.all([first, second]);
+    expect(api.listAwards).toHaveBeenCalledTimes(1);
+    expect(s.awards().map((a) => a.id)).toEqual(['a2', 'a1', 'a0']);
+  });
+
+  it('drops the next page of the campaign it left', async () => {
+    const s = store();
+    await s.load('c1', true);
+    let finish: (v: unknown) => void = () => undefined;
+    api.listAwards.mockReturnValueOnce(new Promise((r) => (finish = r)));
+    const page = s.more();
+    api.listAwards.mockResolvedValue(
+      create(ListXPAwardsResponseSchema, { awards: [award('b1')], nextPageToken: '' }),
+    );
+    await s.load('c2', true);
+    finish(create(ListXPAwardsResponseSchema, { awards: [award('a0')], nextPageToken: 'late' }));
+    await page;
+    expect(s.awards().map((a) => a.id)).toEqual(['b1']);
+    expect(s.nextPageToken()).toBe('');
+  });
+
   it('goes back to loading when the host loads another campaign', async () => {
     const s = store();
     await s.load('c1', true);
