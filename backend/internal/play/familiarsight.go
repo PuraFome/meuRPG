@@ -41,6 +41,7 @@ const (
 	sightStopped      = "stopped" // the player stopped it
 	sightTurnStart    = "turn"    // the character's next turn started
 	sightCombatJoined = "combat"  // the character joined a combat, or its combat began
+	sightFamiliarGone = "gone"    // the familiar was dismissed
 )
 
 // sightConditions are the conditions a character looking through its familiar

@@ -261,6 +261,33 @@ func TestMR036_FamiliarSightInCombat(t *testing.T) {
 	}
 }
 
+// TestMR036_ADismissedFamiliarEndsTheSightInACombatAtOnce: the sight is the
+// familiar's, so when it is dismissed in the middle of a combat the player looks
+// through their own eyes again and the conditions the sight gave go away then,
+// not at the start of the character's next turn.
+func TestMR036_ADismissedFamiliarEndsTheSightInACombatAtOnce(t *testing.T) {
+	t.Parallel()
+	s := newShapers(t)
+	a := s.armed
+	owl := s.nanquim(t)
+	s.pensantusFirst(t, nil)
+	if v, _ := a.mustSight(t, s.ana, s.pens, true); v.GetFamiliarSight() == nil {
+		t.Fatal("setup: the sight did not start")
+	}
+	if _, err := s.ana.characters.DismissCreature(t.Context(), connect.NewRequest(&charactersv1.DismissCreatureRequest{CampaignId: s.campaignID, CreatureId: owl})); err != nil {
+		t.Fatalf("DismissCreature() error = %v", err)
+	}
+	if v := a.vitals(t, s.pens); v.GetFamiliarSight() != nil {
+		t.Errorf("sight after the dismissal = %v, want none", v.GetFamiliarSight())
+	}
+	if got := byLabel(t, a.get(t, s.master), "Pensantus").GetConditions(); len(got) != 0 {
+		t.Errorf("conditions after the dismissal = %v, want the sight's blinded and deafened gone", got)
+	}
+	if ev := a.lastPayload(t, eventFamiliarSight); ev["sight"] != "stop" || ev["reason"] != sightFamiliarGone || ev["creature_id"] != owl {
+		t.Errorf("familiar_sight = %v, want the stop because the familiar is gone", ev)
+	}
+}
+
 // TestMR036_FamiliarSightKeepsAConditionTheCharacterHad: a condition the character
 // already had is never given by the sight, so ending the sight never takes it away.
 func TestMR036_FamiliarSightKeepsAConditionTheCharacterHad(t *testing.T) {

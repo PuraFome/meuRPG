@@ -134,10 +134,10 @@ func (c *content) loadSpellEffects(fsys fs.FS) error {
 		def := spellEffectDef{spellLevel: sp.Level, base: SpellEffect{Kind: in.Kind, Condition: in.Condition, Threshold: in.Threshold, Dies: in.Dies, Ends: in.Ends}}
 		switch in.Kind {
 		case SpellKindHPPool:
-			dice, ok1 := ParseDice(in.Dice)
-			per, ok2 := ParseDice(in.DicePerLevel)
-			if !ok1 || !ok2 || dice.Count < 1 || dice.Bonus != 0 || dice.AddsModifier || per.Count < 1 || per.Sides != dice.Sides || per.Bonus != 0 || per.AddsModifier {
-				return fail("an hp_pool needs dice and dice_per_level of the same die, as in \"5d8\" and \"2d8\"")
+			dice, ok1 := plainDice(in.Dice)
+			per, ok2 := plainDice(in.DicePerLevel)
+			if !ok1 || !ok2 || per.Sides != dice.Sides {
+				return fail("an hp_pool needs dice and dice_per_level of the same die that exists at a table, as in \"5d8\" and \"2d8\"")
 			}
 			if in.Condition == "" || in.Threshold != 0 || in.Dies || in.Amount != 0 || in.AmountPerLvl != 0 || len(in.Ends) != 0 {
 				return fail("an hp_pool takes dice, dice_per_level and a condition only")

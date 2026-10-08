@@ -37,8 +37,10 @@ import {
   wizardOptions,
 } from '../../core/levelup/levelup-testing';
 import { LevelUpPage } from './level-up';
+import { QUIET_MS } from './level-up-preview';
 
-const settle = () => new Promise((r) => setTimeout(r, 220));
+/** Lets every pending answer land, quiet period of the preview included: the spec's fake clock moves, the wall clock does not. */
+const settle = () => vi.advanceTimersByTimeAsync(QUIET_MS * 2);
 
 function character(over: object = {}, derived = pensantus()) {
   return create(CharacterSchema, {
@@ -78,6 +80,7 @@ describe('LevelUpPage', () => {
   let watcher = fakeContentWatcher();
 
   beforeEach(() => {
+    vi.useFakeTimers();
     // jsdom has no layout: scrolling does nothing.
     Element.prototype.scrollIntoView = vi.fn();
     window.scrollTo = vi.fn();
@@ -810,7 +813,7 @@ describe('LevelUpPage', () => {
       confirm.click();
       expect(client.levelUp).toHaveBeenCalledTimes(1);
       answer(character({ canLevelUp: false }, pensantus(true)));
-      await f.whenStable();
+      await settle();
     });
 
     it('does not send an incomplete level-up even when the button still gets the click', async () => {
@@ -1049,6 +1052,7 @@ describe('LevelUpPage with the real client: a content_changed hint really reads 
       },
     });
     vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    vi.useFakeTimers();
     const f = TestBed.createComponent(LevelUpPage);
     const go = async () => {
       f.detectChanges();

@@ -28,7 +28,7 @@ describe('SessionMap dragging a token', () => {
     fixture.componentRef.setInput('isMaster', true);
     fixture.detectChanges();
     const view = fixture.debugElement.query(By.directive(MapView)).componentInstance as MapView;
-    return { state, view };
+    return { state, view, fixture };
   }
 
   const at = (state: MapState, key: string) =>
@@ -72,5 +72,19 @@ describe('SessionMap dragging a token', () => {
     await Promise.resolve();
     expect(at(state, 'raven')).toEqual([[2000, 2000]]);
     expect(at(state, 'pens')).toEqual([[7000, 7000]]);
+  });
+
+  it('drops the banner of a refused move once a later move is saved', async () => {
+    placeToken.mockRejectedValueOnce(new Error('refused'));
+    const { view, fixture } = await mount([owner]);
+    const banner = () => (fixture.nativeElement as HTMLElement).querySelector('[role="alert"]');
+    view.moved.emit({ kind: 'token', id: 'pens', xBp: 7000, yBp: 7000 });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(banner()).not.toBeNull();
+    view.moved.emit({ kind: 'token', id: 'pens', xBp: 7100, yBp: 7100 });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(banner()).toBeNull();
   });
 });

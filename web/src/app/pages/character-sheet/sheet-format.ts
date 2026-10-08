@@ -118,8 +118,9 @@ export function pactSlotRow(pact: PactSlotsVm | null): SpellSlotRow | null {
     : null;
 }
 
-/** "Até 3 truques e 7 magias preparadas.", from the class's own limits;
- * `''` when the class has neither. */
+/** "Até 3 truques e 7 magias preparadas." (or "... 5 magias conhecidas." for a
+ * class that knows its spells), from the class's own limits; `''` when the
+ * class has none. */
 export function spellLimitsText(sc: SpellcastingVm): string {
   const parts: string[] = [];
   if (sc.cantripsKnown > 0) {
@@ -130,6 +131,11 @@ export function spellLimitsText(sc: SpellcastingVm): string {
       sc.spellsPreparedMax === 1
         ? '1 magia preparada'
         : `${sc.spellsPreparedMax} magias preparadas`,
+    );
+  }
+  if (sc.spellsKnownMax > 0) {
+    parts.push(
+      sc.spellsKnownMax === 1 ? '1 magia conhecida' : `${sc.spellsKnownMax} magias conhecidas`,
     );
   }
   return parts.length === 0 ? '' : `Até ${parts.join(' e ')}.`;

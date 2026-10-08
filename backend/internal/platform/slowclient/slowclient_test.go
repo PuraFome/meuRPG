@@ -3,9 +3,11 @@ package slowclient_test
 import (
 	"bufio"
 	"context"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -184,5 +186,138 @@ func TestWriteBodyLeavesAWriterWithoutDeadlinesAlone(t *testing.T) {
 	slowclient.WriteBody(rec, time.Second)()
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d", rec.Code)
+	}
+}
+
+// postUnary opens a connection to srv and sends the head of a unary RPC that
+// promises length bytes, followed by sent of them.
+func postUnary(t *testing.T, srv *httptest.Server, contentType string, length int, sent string) net.Conn {
+	t.Helper()
+	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", srv.Listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	head := "POST " + procedure + " HTTP/1.1\r\nHost: x\r\nContent-Type: " + contentType + "\r\nContent-Length: " + strconv.Itoa(length) + "\r\n\r\n"
+	if _, err := conn.Write([]byte(head + sent)); err != nil {
+		t.Fatal(err)
+	}
+	return conn
+}
+
+// A unary RPC whose body stops arriving ends: the handler gets an error from
+// its read instead of holding the bytes and the goroutine for as long as the
+// platform lets a request live.
+func TestAStalledUnaryBodyEndsTheRead(t *testing.T) {
+	t.Parallel()
+	done := make(chan error, 1)
+	srv := httptest.NewServer(slowclient.MiddlewareWith(300 * time.Millisecond)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		_, err := io.ReadAll(r.Body)
+		done <- err
+	})))
+	t.Cleanup(srv.Close)
+
+	postUnary(t, srv, "application/proto", 4<<20, "0123456789")
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Error("the body read ended without an error")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the handler is still waiting for a body that stopped arriving")
+	}
+}
+
+// Positive control: a body that arrives in time is read whole, and the handler
+// then runs past the deadline without losing its request context (the
+// connection's background read must not inherit the body's deadline).
+func TestAUnaryBodyThatArrivesInTimeIsReadAndTheHandlerOutlivesTheDeadline(t *testing.T) {
+	t.Parallel()
+	const deadline = 300 * time.Millisecond
+	type outcome struct {
+		body      string
+		ctxErr    error
+		readError error
+	}
+	done := make(chan outcome, 1)
+	srv := httptest.NewServer(slowclient.MiddlewareWith(deadline)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := io.ReadAll(r.Body)
+		time.Sleep(3 * deadline) // the work after the read is not bounded by the body deadline
+		done <- outcome{body: string(b), ctxErr: r.Context().Err(), readError: err}
+		w.WriteHeader(http.StatusNoContent)
+	})))
+	t.Cleanup(srv.Close)
+
+	conn := postUnary(t, srv, "application/json", 10, "01234")
+	time.Sleep(deadline / 3)
+	if _, err := conn.Write([]byte("56789")); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case got := <-done:
+		if got.readError != nil || got.body != "0123456789" {
+			t.Errorf("body = %q, err = %v, want the whole body and no error", got.body, got.readError)
+		}
+		if got.ctxErr != nil {
+			t.Errorf("request context after the deadline = %v, want nil", got.ctxErr)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the handler never finished")
+	}
+}
+
+// A stream's request is not bounded by the unary body deadline: the client of
+// a live stream says nothing after its one message, for as long as it listens.
+func TestAStreamRequestKeepsNoBodyDeadline(t *testing.T) {
+	t.Parallel()
+	const deadline = 200 * time.Millisecond
+	ctxErr := make(chan error, 1)
+	srv := httptest.NewServer(slowclient.MiddlewareWith(deadline)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(3 * deadline)
+		ctxErr <- r.Context().Err()
+		w.WriteHeader(http.StatusNoContent)
+	})))
+	t.Cleanup(srv.Close)
+
+	// The body is incomplete on purpose: a stream's request may stay open.
+	postUnary(t, srv, "application/connect+proto", 5, "")
+
+	select {
+	case err := <-ctxErr:
+		if err != nil {
+			t.Errorf("stream request context = %v, want nil", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the handler never finished")
+	}
+}
+
+// Through Connect itself: a unary handler that works for longer than the body
+// deadline still answers, because the deadline is gone once Connect has read
+// the request.
+func TestAUnaryConnectHandlerOutlivesTheBodyDeadline(t *testing.T) {
+	t.Parallel()
+	const deadline = 200 * time.Millisecond
+	mux := http.NewServeMux()
+	mux.Handle(procedure, connect.NewUnaryHandler(procedure,
+		func(ctx context.Context, req *connect.Request[campaignsv1.GetCampaignRequest]) (*connect.Response[campaignsv1.GetCampaignRequest], error) {
+			time.Sleep(3 * deadline)
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			return connect.NewResponse(&campaignsv1.GetCampaignRequest{CampaignId: req.Msg.GetCampaignId()}), nil
+		}))
+	srv := httptest.NewServer(slowclient.MiddlewareWith(deadline)(mux))
+	t.Cleanup(srv.Close)
+
+	client := connect.NewClient[campaignsv1.GetCampaignRequest, campaignsv1.GetCampaignRequest](srv.Client(), srv.URL+procedure)
+	res, err := client.CallUnary(t.Context(), connect.NewRequest(&campaignsv1.GetCampaignRequest{CampaignId: "c1"}))
+	if err != nil {
+		t.Fatalf("CallUnary() error = %v", err)
+	}
+	if got := res.Msg.GetCampaignId(); got != "c1" {
+		t.Errorf("campaign_id = %q, want c1", got)
 	}
 }

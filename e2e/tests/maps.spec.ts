@@ -10,7 +10,7 @@ import {
   tableForMaps,
   uploadImageRPC,
 } from './maps-support';
-import { callRPC, newSignedInContext } from './support';
+import { boxOf, callRPC, newSignedInContext } from './support';
 
 import { movingTable } from './move-support';
 
@@ -25,7 +25,7 @@ async function clickMap(page: Page, x: number, y: number): Promise<void> {
   const map = page.getByRole('group', { name: /^Mapa / });
   // The editor's bar and header are above the map: bring it on screen first, or the click lands below the window.
   await map.evaluate((el) => el.scrollIntoView({ block: 'center' }));
-  const box = (await map.boundingBox())!;
+  const box = await boxOf(map);
   await page.mouse.click(box.x + box.width * x, box.y + box.height * y);
 }
 

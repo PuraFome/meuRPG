@@ -4,7 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Milestone } from '../../../../gen/meurpg/progression/v1/progression_pb';
-import { newKey } from '../../../core/connect/idempotency';
+import { ActionKey } from '../../../core/connect/idempotency';
 import type { ExperienceRow } from '../../../core/progression/experience-store';
 import { reachedEffect } from '../../../core/progression/milestones';
 import { ProgressionClient } from '../../../core/progression/progression-client';
@@ -114,8 +114,7 @@ export class MarkReachedSheet {
   );
   protected readonly blocked = computed(() => this.reasonToWait() !== '');
 
-  private key = newKey();
-  private keyFor = '';
+  private readonly key = new ActionKey();
 
   protected toggle(id: string): void {
     this.checked.update((set) => {
@@ -134,18 +133,14 @@ export class MarkReachedSheet {
     const chosen = this.data.rows.filter((r) => this.checked().has(r.id));
     const ids = chosen.map((r) => r.id);
     // The same people again are a retry; other people are another request.
-    const signature = ids.join(',');
-    if (signature !== this.keyFor) {
-      this.keyFor = signature;
-      this.key = newKey();
-    }
+    const key = this.key.keyFor([this.data.give, ids]);
     this.busy.set(true);
     this.error.set('');
     try {
       const { campaignId, milestoneId, give } = this.data;
       const res = give
-        ? await this.api.giveMilestoneTo(campaignId, milestoneId, ids, this.key)
-        : await this.api.markMilestoneReached(campaignId, milestoneId, ids, this.key);
+        ? await this.api.giveMilestoneTo(campaignId, milestoneId, ids, key)
+        : await this.api.markMilestoneReached(campaignId, milestoneId, ids, key);
       this.sheet.close({
         milestone: res.milestone,
         marked: chosen.map((r) => r.name),

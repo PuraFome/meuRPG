@@ -2,10 +2,13 @@ package dbtest
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -105,5 +108,73 @@ func TestPoolsHaveOneConnection(t *testing.T) {
 	defer pool.Close()
 	if got := pool.Config().MaxConns; got != 1 {
 		t.Errorf("MaxConns = %d, want 1: the guard needs a pool that deadlocks on a nested acquisition", got)
+	}
+}
+
+// TestSeededTablesAreTheOnesTheMigrationsFill: the tables a migration fills are
+// found in the migrated template, not listed by hand, and a test database has
+// their rows (and empties everything else).
+func TestSeededTablesAreTheOnesTheMigrationsFill(t *testing.T) {
+	rawURL := testenv.DatabaseURL(t)
+	ctx := t.Context()
+
+	scratch, err := sql.Open("pgx", rawURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = scratch.Close() }()
+	name := fmt.Sprintf("meurpg_dbtest_seeded_%d", time.Now().UnixNano())
+	if _, err := scratch.ExecContext(ctx, "CREATE DATABASE "+name); err != nil {
+		t.Fatalf("create the scratch database: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = scratch.ExecContext(context.WithoutCancel(ctx), "DROP DATABASE IF EXISTS "+name+" CASCADE")
+	})
+	dsn, err := withDatabase(rawURL, name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn, err := sql.Open("pgx", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	for _, stmt := range []string{
+		`CREATE TABLE seeded (id INT PRIMARY KEY)`,
+		`CREATE TABLE seeded_too (id INT PRIMARY KEY)`,
+		`CREATE TABLE written_by_the_game (id INT PRIMARY KEY)`,
+		`CREATE TABLE goose_db_version (id INT PRIMARY KEY)`,
+		`INSERT INTO seeded VALUES (1)`,
+		`INSERT INTO seeded_too VALUES (1)`,
+		`INSERT INTO goose_db_version VALUES (1)`,
+	} {
+		if _, err := conn.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("%s: %v", stmt, err)
+		}
+	}
+	got, err := seededTables(ctx, conn, []string{"goose_db_version", "seeded", "seeded_too", "written_by_the_game"})
+	if err != nil {
+		t.Fatalf("seededTables() error = %v", err)
+	}
+	if want := []string{"seeded", "seeded_too"}; !slices.Equal(got, want) {
+		t.Errorf("seededTables() = %v, want %v", got, want)
+	}
+
+	// The real template: its seeded tables are in every test database, with rows.
+	pool := NewPool(t, "meurpg_dbtest_seeded")
+	if len(template.reference) == 0 {
+		t.Fatal("the migrated template has no seeded table; session_event_kinds should be one")
+	}
+	for _, table := range template.reference {
+		var n int
+		if err := pool.QueryRow(ctx, "SELECT count(*) FROM "+pgx.Identifier{table}.Sanitize()).Scan(&n); err != nil {
+			t.Fatalf("count %s: %v", table, err)
+		}
+		if n == 0 {
+			t.Errorf("the test database has no rows in %s, which the migrations fill", table)
+		}
+	}
+	if !slices.Contains(template.reference, "session_event_kinds") {
+		t.Errorf("reference tables = %v, want session_event_kinds among them", template.reference)
 	}
 }

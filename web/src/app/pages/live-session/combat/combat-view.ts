@@ -162,6 +162,7 @@ import { MineTabs } from './mine-tabs/mine-tabs';
 import { openSheet } from './sheet-host';
 import { type DoorSheetData, openDoorSheet } from '../door-sheet/door-sheet';
 import type { DoorSquare } from '../../../core/maps/layers';
+import { wallUnderDoor } from '../../../core/maps/door-paint';
 import { type StartCombatData, StartCombatDialog } from './start-combat/start-combat-dialog';
 import { TrapDamages } from '../traps/trap-damages/trap-damages';
 import { openTrapSearch } from '../traps/trap-search-sheet/trap-search-sheet';
@@ -289,7 +290,9 @@ export class CombatView {
   private readonly settledTurn = signal('');
   /** The characters at three failures the master put away with "Ainda não". */
   protected readonly deathLater = signal<ReadonlySet<string>>(new Set());
-  private deathKey = newKey();
+  private readonly deathKey = new ActionKey();
+  private readonly confirmDeathKey = new ActionKey();
+  private readonly leaveFormKey = new ActionKey();
   private readonly shieldHandled = new Set<string>();
 
   protected readonly encounter = computed(() => this.state().shown());
@@ -445,8 +448,9 @@ export class CombatView {
       const res = await this.creaturesApi.leaveWildShape(
         this.campaignId(),
         own.characterId,
-        newKey(),
+        this.leaveFormKey.keyFor(own.characterId),
       );
+      this.leaveFormKey.renew();
       if (res.encounter) {
         this.state().apply(res.encounter);
       }
@@ -1477,7 +1481,13 @@ export class CombatView {
       campaignId: this.campaignId(),
       mapId: e.mapId,
       door,
-      wall: this.layers().walls.some((w) => w.col === door.col && w.row === door.row),
+      wallSquares: wallUnderDoor(
+        this.layers().walls,
+        this.layers().columns,
+        this.layers().rows,
+        this.mapState().map()?.squareFactor ?? 1,
+        door,
+      ),
     };
     openDoorSheet(this.dialog, this.bottomSheet, data).subscribe();
   }
@@ -1579,10 +1589,10 @@ export class CombatView {
     if (!own) {
       return;
     }
-    const key = this.deathKey;
     await this.run(async (e) => {
+      const key = this.deathKey.keyFor([e.id, own.id, die]);
       const res = await this.api.rollDeathSave(this.campaignId(), e.id, own.id, die, key);
-      this.deathKey = newKey();
+      this.deathKey.renew();
       const text = saveAnnouncement(res.save, own.label);
       this.deathResult.set(text);
       if (res.save.outcome === DeathSaveOutcome.REVIVED) {
@@ -1594,7 +1604,16 @@ export class CombatView {
 
   /** The master's "Confirmar a morte" (ConfirmDeath): the character is dead for good. */
   protected async confirmDeath(id: string): Promise<void> {
-    await this.run((e) => this.api.confirmDeath(this.campaignId(), e.id, id, newKey()));
+    await this.run(async (e) => {
+      const res = await this.api.confirmDeath(
+        this.campaignId(),
+        e.id,
+        id,
+        this.confirmDeathKey.keyFor([e.id, id]),
+      );
+      this.confirmDeathKey.renew();
+      return res;
+    });
   }
 
   protected deathLaterFor(id: string): void {

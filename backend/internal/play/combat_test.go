@@ -1199,3 +1199,43 @@ func TestTheLatestEncounterIsTheOpenOneWhateverTheClockSays(t *testing.T) {
 		t.Errorf("latest encounter = %q, want the open one, %q", got, second.GetId())
 	}
 }
+
+// TestStartEncounterAnswersNotFoundForACharacterDeletedMeanwhile: the participants
+// are read before the transaction, so a character the master deletes in between is
+// a missing character (not_found), never an internal error.
+func TestStartEncounterAnswersNotFoundForACharacterDeletedMeanwhile(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name   string
+		delete bool
+		want   connect.Code
+	}{
+		{"the character stays", false, 0},
+		{"the character is deleted meanwhile", true, connect.CodeNotFound},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			f := newFight(t)
+			if tc.delete {
+				f.h.svc.afterSightRead = func(string) {
+					if _, err := f.h.pool.Exec(t.Context(), `DELETE FROM characters WHERE id = $1`, f.goblin.GetId()); err != nil {
+						t.Errorf("delete the character: %v", err)
+					}
+				}
+			}
+			_, err := f.master.combat.StartEncounter(t.Context(), connect.NewRequest(&playv1.StartEncounterRequest{
+				CampaignId: f.campaignID, IdempotencyKey: newKey(), Name: "Emboscada",
+				Participants: []*playv1.Participant{{CharacterId: f.goblin.GetId()}},
+			}))
+			if tc.want == 0 {
+				if err != nil {
+					t.Fatalf("StartEncounter() error = %v", err)
+				}
+				return
+			}
+			if got := connect.CodeOf(err); got != tc.want {
+				t.Fatalf("StartEncounter() = %v, want %v", err, tc.want)
+			}
+		})
+	}
+}

@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -1042,6 +1043,15 @@ func TestMR010_AFailedCreationLeavesNothingBehind(t *testing.T) {
 func TestMR010_CreatingAndRedrawingAreRateLimited(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	// The limiter's clock only moves when the test moves it: a slow machine
+	// cannot refill the bucket in the middle of the burst.
+	var clockMu sync.Mutex
+	now := time.Now()
+	h.svc.dungeonLimit = newDungeonLimiter(func() time.Time {
+		clockMu.Lock()
+		defer clockMu.Unlock()
+		return now
+	})
 	master := h.newUser("Mestre")
 	campaign := h.newCampaign(master)
 	opts := &mapsv1.DungeonOptions{Width: proto.Int32(21), Height: proto.Int32(21)}
@@ -1058,6 +1068,15 @@ func TestMR010_CreatingAndRedrawingAreRateLimited(t *testing.T) {
 	if _, err := master.previewDungeon(campaign, opts, &seed); err != nil {
 		t.Errorf("a preview after the burst: %v", err)
 	}
+	// The bucket refills one creation every 15 seconds.
+	clockMu.Lock()
+	now = now.Add(15 * time.Second)
+	clockMu.Unlock()
+	if _, err := master.tryCreateDungeon(campaign, "Depois da espera", opts, &seed); err != nil {
+		t.Errorf("a creation after the refill: %v", err)
+	}
+	_, err = master.tryCreateDungeon(campaign, "Logo em seguida", opts, &seed)
+	wantCode(t, "a creation right after the refilled one", err, connect.CodeResourceExhausted)
 	// Another campaign has its own bucket.
 	other := h.newUser("Outro mestre")
 	otherCampaign := h.newCampaign(other)
@@ -1451,14 +1470,50 @@ func TestDungeonLimitsAreCheckedBeforeRendering(t *testing.T) {
 	}
 }
 
-// A redraw of a dungeon in a campaign whose gallery is full is refused before
-// the image is drawn, too.
+// A redraw whose old image goes away with it does not grow the gallery, so a full
+// gallery allows it; the control is the same gallery with the old image kept (left with
+// the players), where the redraw would add an image and is refused.
+func TestRedrawInAFullGalleryIsAllowedWhenTheOldImageGoes(t *testing.T) {
+	t.Parallel()
+	d := newDungeonTable(t, func(c *Config) { c.MaxImages = 2 })
+	seed, _ := testDungeonSeed(t)
+	made := d.master.createDungeon(d.campaign, "Primeira", testDungeonOptions(), seed)
+	d.master.newImage(d.campaign) // the dungeon's image and this one fill the gallery
+	old := made.GetMap().GetImage().GetId()
+	d.master.start(d.campaign)
+	if _, err := d.h.pool.Exec(t.Context(), `INSERT INTO campaign_left_images (campaign_id, image_id, left_at) VALUES ($1, $2, now())`, d.campaign, old); err != nil {
+		t.Fatal(err)
+	}
+	_, err := d.master.redraw(d.campaign, made.GetMap().GetId())
+	wantCode(t, "a redraw that would grow a full gallery", err, connect.CodeResourceExhausted)
+
+	if _, err := d.h.pool.Exec(t.Context(), `DELETE FROM campaign_left_images WHERE campaign_id = $1`, d.campaign); err != nil {
+		t.Fatal(err)
+	}
+	res, err := d.master.redraw(d.campaign, made.GetMap().GetId())
+	if err != nil {
+		t.Fatalf("a redraw whose old image goes away, in a full gallery: %v", err)
+	}
+	if res.GetMap().GetImage().GetId() == old {
+		t.Error("the map kept its old image")
+	}
+	if n := len(d.master.list(d.campaign).GetImages()); n != 2 {
+		t.Errorf("the gallery has %d images after the redraw, want 2", n)
+	}
+}
+
+// A redraw that would grow a full gallery is refused before the image is drawn, too.
 func TestRedrawIsRefusedBeforeRenderingWhenTheGalleryIsFull(t *testing.T) {
 	t.Parallel()
 	d := newDungeonTable(t, func(c *Config) { c.MaxImages = 2 })
 	seed, _ := testDungeonSeed(t)
 	made := d.master.createDungeon(d.campaign, "Primeira", testDungeonOptions(), seed)
 	d.master.newImage(d.campaign) // the dungeon's image and this one fill the gallery
+	d.master.start(d.campaign)
+	// The old image stays (left with the players), so the redraw would add an image.
+	if _, err := d.h.pool.Exec(t.Context(), `INSERT INTO campaign_left_images (campaign_id, image_id, left_at) VALUES ($1, $2, now())`, d.campaign, made.GetMap().GetImage().GetId()); err != nil {
+		t.Fatal(err)
+	}
 
 	d.h.svc.processing <- struct{}{}
 	released := false
