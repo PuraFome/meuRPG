@@ -188,7 +188,7 @@ func (s *Service) CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, 
 	d.SpeedWalkFt = turn.SpeedFt
 	opts := combat.Options(d, combat.TurnState{
 		ActionUsed: turn.ActionUsed, BonusActionUsed: turn.BonusActionUsed, ReactionUsed: turn.ReactionUsed,
-		MovementUsedFt: turn.MovementUsedFt, Dashed: turn.Dashed, AttacksMade: turn.AttacksMade, ActionSurged: turn.ActionSurged, SpellCast: turn.SpellCast, BonusSpellCast: turn.BonusSpellCast,
+		MovementUsedFt: turn.MovementUsedFt, Dashed: turn.Dashed, AttacksMade: turn.AttacksMade, LastAttackKey: turn.AttackKey, FlurryLeft: turn.FlurryLeft, ActionSurged: turn.ActionSurged, SpellCast: turn.SpellCast, BonusSpellCast: turn.BonusSpellCast,
 	}, usage)
 	out := turnOptionsToProto(opts)
 	// The movement is kept in tenths of a foot (RN-21): the feet fields are those
@@ -242,8 +242,16 @@ var reasonToProto = map[string]rulesv1.DisabledReasonCode{
 	combat.ReasonReactionOnly:        rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_REACTION_ONLY,
 	combat.ReasonTooLong:             rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG,
 	combat.ReasonAttacksUsed:         rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ATTACKS_USED,
+	combat.ReasonAttackActionFirst:   rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ATTACK_ACTION_FIRST,
 
 	combat.ReasonBonusActionSpellLimit: rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT,
+}
+
+var bonusRuleToProto = map[combat.BonusKind]rulesv1.BonusAttackRule{
+	combat.BonusNone:        rulesv1.BonusAttackRule_BONUS_ATTACK_RULE_UNSPECIFIED,
+	combat.BonusTwoWeapon:   rulesv1.BonusAttackRule_BONUS_ATTACK_RULE_OFF_HAND,
+	combat.BonusMartialArts: rulesv1.BonusAttackRule_BONUS_ATTACK_RULE_MARTIAL_ARTS,
+	combat.BonusFlurry:      rulesv1.BonusAttackRule_BONUS_ATTACK_RULE_FLURRY_OF_BLOWS,
 }
 
 // turnOptionsToProto copies package combat's TurnOptions into the API's.
@@ -257,7 +265,10 @@ func turnOptionsToProto(o combat.TurnOptions) *rulesv1.TurnOptions {
 		AttacksPerAction: i32(o.Economy.AttacksPerAction), AttacksLeft: i32(o.Economy.AttacksLeft),
 	}}
 	for _, a := range o.Attacks {
-		out.Attacks = append(out.Attacks, &rulesv1.AttackOption{Attack: attackToProto(a.Attack), Enabled: a.Enabled, Reason: reasonProto(a.Reason)})
+		out.Attacks = append(out.Attacks, &rulesv1.AttackOption{
+			Attack: attackToProto(a.Attack), Enabled: a.Enabled, Reason: reasonProto(a.Reason),
+			BonusRule: bonusRuleToProto[a.Bonus], BonusAttacksLeft: i32(a.FlurryLeft), BonusDropsModifier: a.DropsModifier, BeamsLeft: i32(a.BeamsLeft),
+		})
 	}
 	for _, sp := range o.Spells {
 		so := &rulesv1.SpellOption{

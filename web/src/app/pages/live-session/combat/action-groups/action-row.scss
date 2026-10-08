@@ -56,6 +56,11 @@
   color: var(--mr-ink-muted);
 }
 
+// Why an attack is a bonus action attack: the same size as the detail, in the ink of the name.
+.row__note {
+  color: var(--mr-ink);
+}
+
 // The SRD's English text of a creature's attack, as the stat block shows SRD text.
 .row__rider {
   text-wrap: pretty;

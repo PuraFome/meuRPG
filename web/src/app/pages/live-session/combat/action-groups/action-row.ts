@@ -37,6 +37,9 @@ let nextId = 0;
       @if (detail()) {
         <span class="row__detail">{{ detail() }}</span>
       }
+      @if (note()) {
+        <span class="row__detail row__note">{{ note() }}</span>
+      }
       @if (rider()) {
         <span class="row__rider" lang="en">{{ rider() }}</span>
       }
@@ -74,6 +77,8 @@ export class ActionRow {
   /** The spell's name, when the row has the "?": it names the button ("Detalhes de Sono"). */
   readonly helpName = input('');
   readonly detail = input('');
+  /** A short line of why under the detail ("Golpe desarmado das Artes Marciais"). */
+  readonly note = input('');
   /** The SRD's own text of a creature's attack (its rider), under the detail; English, as the book has it, and never translated here. */
   readonly rider = input('');
   /** "Atacar", "Conjurar"; empty for a row with no button. */

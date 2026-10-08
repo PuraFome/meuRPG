@@ -4,6 +4,9 @@ import { TestBed } from '@angular/core/testing';
 import { CombatantSchema } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
   ActionEconomy,
+  ActionOptionSchema,
+  AttackOptionSchema,
+  BonusAttackRule,
   DisabledReasonCode,
   SpellOptionSchema,
   TurnOptionsSchema,
@@ -377,5 +380,174 @@ describe('ActionGroups: the movement without a map (RN-25, E10-04 state 7)', () 
     const { el } = setup(30, false);
     expect(el.querySelector('.spend')).toBeNull();
     expect(text(el)).not.toContain('Gastar movimento');
+  });
+});
+
+interface AttackOver {
+  enabled?: boolean;
+  reason?: { code: DisabledReasonCode };
+  bonusRule?: BonusAttackRule;
+  bonusAttacksLeft?: number;
+  bonusDropsModifier?: boolean;
+  beamsLeft?: number;
+}
+
+describe('ActionGroups: the bonus action attacks', () => {
+  const attack = (key: string, namePt: string, over: AttackOver = {}) =>
+    create(AttackOptionSchema, {
+      attack: {
+        key,
+        name: namePt,
+        namePt,
+        attackBonus: 5,
+        damage: '1d4',
+        damageTypePt: 'perfurante',
+        rangeFt: 5,
+      },
+      enabled: true,
+      ...over,
+    });
+
+  function setup(attacks: ReturnType<typeof attack>[], attacksLeft = 0, attacksPerAction = 1) {
+    const fixture = TestBed.createComponent(ActionGroups);
+    fixture.componentRef.setInput('options', create(TurnOptionsSchema, { attacks }));
+    fixture.componentRef.setInput(
+      'own',
+      create(CombatantSchema, { movementLeftFt: 25, speedFt: 25, actionUsed: true }),
+    );
+    fixture.componentRef.setInput('attacksLeft', attacksLeft);
+    fixture.componentRef.setInput('attacksPerAction', attacksPerAction);
+    const attacked: string[] = [];
+    fixture.componentInstance.attack.subscribe((k) => attacked.push(k));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const row = (name: string) =>
+      ([...el.querySelectorAll('app-action-row')] as HTMLElement[]).find(
+        (r) => r.querySelector('.row__name')?.textContent?.trim() === name,
+      )!;
+    return { row, attacked };
+  }
+  const tags = (row: HTMLElement) =>
+    [...row.querySelectorAll('.row__pill')].map((t) => t.textContent!.trim());
+  const note = (row: HTMLElement) => row.querySelector('.row__note')?.textContent?.trim() ?? '';
+  const button = (row: HTMLElement) => row.querySelector<HTMLButtonElement>('button.row__btn')!;
+
+  it('offers the off-hand attack with the action spent: the tag, the line and a working button', () => {
+    const { row, attacked } = setup([
+      attack('equipment:dagger', 'Adaga', {
+        bonusRule: BonusAttackRule.OFF_HAND,
+        bonusDropsModifier: true,
+      }),
+      attack('equipment:longsword', 'Espada longa', {
+        enabled: false,
+        reason: { code: DisabledReasonCode.ACTION_USED },
+      }),
+    ]);
+    const dagger = row('Adaga');
+    expect(tags(dagger)).toEqual(['Ação bônus']);
+    expect(note(dagger)).toBe('Ataque com a outra mão, sem o modificador no dano');
+    expect(button(dagger).getAttribute('aria-disabled')).not.toBe('true');
+    button(dagger).click();
+    expect(attacked).toEqual(['equipment:dagger']);
+    expect(tags(row('Espada longa'))).toEqual([]);
+    expect(button(row('Espada longa')).getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('offers the Martial Arts strike, and Rajada de Golpes counting down', () => {
+    const martial = setup([
+      attack('attack:unarmed-strike', 'Golpe desarmado', {
+        bonusRule: BonusAttackRule.MARTIAL_ARTS,
+      }),
+    ]);
+    expect(note(martial.row('Golpe desarmado'))).toBe('Golpe desarmado das Artes Marciais');
+    for (const [left, text] of [
+      [2, 'Rajada de Golpes: 2 golpes restantes'],
+      [1, 'Rajada de Golpes: 1 golpe restante'],
+    ] as const) {
+      const flurry = setup([
+        attack('attack:unarmed-strike', 'Golpe desarmado', {
+          bonusRule: BonusAttackRule.FLURRY_OF_BLOWS,
+          bonusAttacksLeft: left,
+        }),
+      ]);
+      expect(tags(flurry.row('Golpe desarmado'))).toEqual(['Ação bônus']);
+      expect(note(flurry.row('Golpe desarmado'))).toBe(text);
+    }
+  });
+
+  it('keeps the attacks of the Attack action first: no tag while Extra Attack has an attack left', () => {
+    const { row } = setup([attack('equipment:dagger', 'Adaga')], 1, 2);
+    expect(tags(row('Adaga'))).toEqual([]);
+    expect(note(row('Adaga'))).toBe('');
+  });
+
+  it('turns the bonus action attack off with the bonus action reason once it is spent', () => {
+    const { row, attacked } = setup([
+      attack('equipment:dagger', 'Adaga', {
+        bonusRule: BonusAttackRule.OFF_HAND,
+        enabled: false,
+        reason: { code: DisabledReasonCode.BONUS_ACTION_USED },
+      }),
+    ]);
+    const dagger = row('Adaga');
+    expect(tags(dagger)).toEqual(['Ação bônus']);
+    expect(note(dagger)).toBe('');
+    expect(dagger.querySelector('.row__why')!.textContent).toContain('Ação bônus já usada');
+    button(dagger).click();
+    expect(attacked).toEqual([]);
+  });
+
+  it('offers the next beam of Eldritch Blast with the action spent, counting down', () => {
+    for (const [left, text] of [
+      [2, 'Rajada Mística: 2 raios restantes'],
+      [1, 'Rajada Mística: 1 raio restante'],
+    ] as const) {
+      const { row, attacked } = setup([
+        attack('spell:eldritch-blast', 'Rajada Mística', { beamsLeft: left }),
+        attack('equipment:dagger', 'Adaga', {
+          enabled: false,
+          reason: { code: DisabledReasonCode.ACTION_USED },
+        }),
+      ]);
+      const blast = row('Rajada Mística');
+      expect(note(blast)).toBe(text);
+      expect(button(blast).getAttribute('aria-disabled')).not.toBe('true');
+      button(blast).click();
+      expect(attacked).toEqual(['spell:eldritch-blast']);
+      expect(button(row('Adaga')).getAttribute('aria-disabled')).toBe('true');
+    }
+  });
+
+  it('shows Rajada de Golpes off with its reason before the Attack action', () => {
+    const fixture = TestBed.createComponent(ActionGroups);
+    fixture.componentRef.setInput(
+      'options',
+      create(TurnOptionsSchema, {
+        featureActions: [
+          create(ActionOptionSchema, {
+            action: {
+              key: 'feature:flurry-of-blows',
+              namePt: 'Rajada de Golpes',
+              economy: ActionEconomy.BONUS_ACTION,
+            },
+            enabled: false,
+            reason: { code: DisabledReasonCode.ATTACK_ACTION_FIRST },
+          }),
+        ],
+      }),
+    );
+    fixture.componentRef.setInput(
+      'own',
+      create(CombatantSchema, { movementLeftFt: 25, speedFt: 25 }),
+    );
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const flurry = ([...el.querySelectorAll('app-action-row')] as HTMLElement[]).find(
+      (r) => r.querySelector('.row__name')?.textContent?.trim() === 'Rajada de Golpes',
+    )!;
+    expect(flurry.querySelector('.row__why')!.textContent).toContain(
+      'Só depois de atacar com a ação',
+    );
+    expect(button(flurry).getAttribute('aria-disabled')).toBe('true');
   });
 });

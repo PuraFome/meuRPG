@@ -135,6 +135,8 @@ export function blockedMessage(blocked: EncounterBlocked): string {
       return 'Esse recurso só pode ser usado uma vez por turno, e já foi usado neste.';
     case EncounterBlockedReason.BONUS_ACTION_SPELL_LIMIT:
       return 'Quem conjura uma magia com ação bônus não conjura outra no mesmo turno, a não ser um truque de 1 ação.';
+    case EncounterBlockedReason.ATTACK_ACTION_FIRST:
+      return 'A Rajada de Golpes vem logo depois da ação de Atacar.';
     case EncounterBlockedReason.DEATH_SAVE_DUE:
       return 'Role o teste contra a morte antes de encerrar o turno.';
     case EncounterBlockedReason.DEATH_SAVE_NOT_DUE:

@@ -6,6 +6,7 @@ import type { Combatant, PendingDamage } from '../../../../../gen/meurpg/play/v1
 import {
   type ActionOption,
   type Attack,
+  type AttackOption,
   type SpellDetails,
   type SpellOption,
   type TurnOptions,
@@ -16,8 +17,11 @@ import { tight } from '../../../../core/format/text';
 import {
   attackDetail,
   attackName,
+  beamsLeftLine,
+  bonusAttackLine,
   circleLabel,
   groupState,
+  isBonusAttack,
   isCantrip,
   isReactionHint,
   optionsFor,
@@ -206,6 +210,19 @@ export class ActionGroups {
   });
 
   protected readonly attackName = attackName;
+
+  /** The line of why under an attack: its bonus action rule, or the beams of a cast still to fire. */
+  protected attackNote(o: AttackOption): string {
+    return bonusAttackLine(o) || beamsLeftLine(o);
+  }
+
+  /** The tags under an attack's name: "Truque" for a cantrip, "Ação bônus" for a bonus action attack. */
+  protected attackTags(o: AttackOption): string[] {
+    if (o.attack && isCantrip(o.attack)) {
+      return ['Truque'];
+    }
+    return isBonusAttack(o) ? ['Ação bônus'] : [];
+  }
   protected readonly attackDetail = (a: Parameters<typeof attackDetail>[0]) => attackDetail(a);
   protected readonly reasonText = reasonText;
   protected readonly state = groupState;

@@ -26,8 +26,9 @@ const (
 )
 
 var (
-	blockedBonusUsed = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED
-	blockedNoUses    = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES
+	blockedBonusUsed   = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED
+	blockedNoUses      = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES
+	blockedAttackFirst = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST
 )
 
 // heroWith creates a player's character with a subclass and the choices of
@@ -115,6 +116,11 @@ func TestEldritchBlastBeamsAreEachAnAttackRoll(t *testing.T) {
 	a.threeAndAGoblin(t)
 	e := a.turnOf(t, "Pensantus")
 	first := wantHit(t, "first beam", a.mustAttack(t, a.ana, e, "Pensantus", blast, "Goblin", d20(15)), hit)
+	// The turn options offer the next beam, with how many are left, and its targets.
+	opts := a.mustOptions(t, a.ana, e, "Pensantus")
+	if o := attackOption(opts, blast); !o.GetEnabled() || o.GetBeamsLeft() != 1 || targetOf(opts, blast, "Goblin") == nil {
+		t.Errorf("Eldritch Blast after the first beam = enabled %v, beams left %d, want enabled with 1 left and a target", o.GetEnabled(), o.GetBeamsLeft())
+	}
 	// The second beam: another attack roll, another damage; the cast spent the
 	// action but not the beams.
 	second := wantHit(t, "second beam", a.mustAttack(t, a.ana, e, "Pensantus", blast, "Goblin", d20(15)), hit)
@@ -126,6 +132,9 @@ func TestEldritchBlastBeamsAreEachAnAttackRoll(t *testing.T) {
 		if p.GetDiceCount() != 1 || p.GetDiceSides() != 10 || p.GetBonus() != 3 {
 			t.Errorf("beam %d damage = %dd%d%+d, want 1d10+3", i+1, p.GetDiceCount(), p.GetDiceSides(), p.GetBonus())
 		}
+	}
+	if o := attackOption(a.mustOptions(t, a.ana, e, "Pensantus"), blast); o.GetEnabled() || o.GetReason().GetCode() != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ACTION_USED {
+		t.Errorf("Eldritch Blast after the last beam = enabled %v, reason %v, want the action's", o.GetEnabled(), o.GetReason().GetCode())
 	}
 	_, err := a.attack(t, a.ana, e, "Pensantus", blast, "Goblin", d20(15))
 	wantBlockedBy(t, "a third beam at 5th level", err, blockedActionUsed)
@@ -179,6 +188,19 @@ func TestTwoWeaponFightingAttacksWithTheBonusAction(t *testing.T) {
 	if p := wantHit(t, "main hand", a.mustAttack(t, a.caio, e, "Toren", shortsword, "Goblin", d20(15)), hit); p.GetBonus() != 3 {
 		t.Errorf("main hand damage bonus = %d, want +3", p.GetBonus())
 	}
+	// The turn options offer the dagger as the off-hand attack, with the damage
+	// the server will roll, and its targets; the longsword is not offered.
+	opts := a.mustOptions(t, a.caio, e, "Toren")
+	off := attackOption(opts, dagger)
+	if !off.GetEnabled() || off.GetBonusRule() != rulesv1.BonusAttackRule_BONUS_ATTACK_RULE_OFF_HAND {
+		t.Errorf("dagger after the main hand = enabled %v, rule %v, want the enabled off hand", off.GetEnabled(), off.GetBonusRule())
+	}
+	if off.GetAttack().GetDamageDice().GetBonus() != 0 || targetOf(opts, dagger, "Goblin") == nil {
+		t.Errorf("off hand option damage bonus %d, goblin target %v, want no modifier and a target", off.GetAttack().GetDamageDice().GetBonus(), targetOf(opts, dagger, "Goblin"))
+	}
+	if sword := attackOption(opts, "equipment:longsword"); sword.GetEnabled() || sword.GetBonusRule() != rulesv1.BonusAttackRule_BONUS_ATTACK_RULE_UNSPECIFIED {
+		t.Errorf("longsword after the main hand = enabled %v, rule %v, want a disabled plain attack", sword.GetEnabled(), sword.GetBonusRule())
+	}
 	_, err := a.attack(t, a.caio, e, "Toren", "equipment:longsword", "Goblin", d20(15))
 	wantBlockedBy(t, "a longsword off hand", err, blockedActionUsed)
 	if p := wantHit(t, "off hand", a.mustAttack(t, a.caio, e, "Toren", dagger, "Goblin", d20(15)), hit); p.GetBonus() != 0 {
@@ -186,6 +208,10 @@ func TestTwoWeaponFightingAttacksWithTheBonusAction(t *testing.T) {
 	}
 	_, err = a.attack(t, a.caio, e, "Toren", dagger, "Goblin", d20(15))
 	wantBlockedBy(t, "a second off hand attack", err, blockedBonusUsed)
+	spent := attackOption(a.mustOptions(t, a.caio, e, "Toren"), dagger)
+	if spent.GetEnabled() || spent.GetReason().GetCode() != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_BONUS_ACTION_USED {
+		t.Errorf("off hand with the bonus action spent = enabled %v, reason %v, want BONUS_ACTION_USED", spent.GetEnabled(), spent.GetReason().GetCode())
+	}
 
 	// The undo of the off hand attack gives the bonus action back.
 	l := a.log(t, a.master, e)
@@ -197,6 +223,9 @@ func TestTwoWeaponFightingAttacksWithTheBonusAction(t *testing.T) {
 	// Brisa fights with two weapons: the modifier stays.
 	e = a.turnOf(t, "Brisa")
 	a.mustAttack(t, a.bia, e, "Brisa", shortsword, "Goblin", d20(15))
+	if got := attackOption(a.mustOptions(t, a.bia, e, "Brisa"), dagger).GetAttack().GetDamageDice().GetBonus(); got != 3 {
+		t.Errorf("off hand option damage bonus with the style = %d, want +3", got)
+	}
 	if p := wantHit(t, "style off hand", a.mustAttack(t, a.bia, e, "Brisa", dagger, "Goblin", d20(15)), hit); p.GetBonus() != 3 {
 		t.Errorf("off hand damage bonus with the style = %d, want +3", p.GetBonus())
 	}
@@ -221,6 +250,10 @@ func TestMonkBonusActionStrikesSpendKi(t *testing.T) {
 
 	// Round 1: Martial Arts. DEX 17 gives +3, and the martial die the 1d4.
 	strike("the Attack action")
+	opts := a.mustOptions(t, a.caio, e, "Toren")
+	if ma := attackOption(opts, unarmed); !ma.GetEnabled() || ma.GetBonusRule() != rulesv1.BonusAttackRule_BONUS_ATTACK_RULE_MARTIAL_ARTS || targetOf(opts, unarmed, "Goblin") == nil {
+		t.Errorf("unarmed strike after the Attack action = %v, want the enabled Martial Arts strike with a target", ma)
+	}
 	p := strike("the Martial Arts strike")
 	if p.GetDiceSides() != 4 || p.GetBonus() != 3 {
 		t.Errorf("Martial Arts strike damage = d%d%+d, want d4+3 (the modifier stays)", p.GetDiceSides(), p.GetBonus())
@@ -233,10 +266,11 @@ func TestMonkBonusActionStrikesSpendKi(t *testing.T) {
 
 	// Round 2: Flurry of Blows comes after the Attack action, not before.
 	e = a.turnOf(t, "Toren")
-	_, err = a.action(t, a.caio, e, "Toren", flurry)
-	if err == nil {
-		t.Fatal("Flurry of Blows before the Attack action succeeded")
+	if o := actionOption(a.mustOptions(t, a.caio, e, "Toren"), flurry); o.GetEnabled() || o.GetReason().GetCode() != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ATTACK_ACTION_FIRST {
+		t.Errorf("Flurry of Blows before the Attack action = enabled %v, reason %v, want ATTACK_ACTION_FIRST", o.GetEnabled(), o.GetReason().GetCode())
 	}
+	_, err = a.action(t, a.caio, e, "Toren", flurry)
+	wantBlockedBy(t, "Flurry of Blows before the Attack action", err, blockedAttackFirst)
 	if ki() != 0 {
 		t.Errorf("ki used = %d after a refused Flurry, want 0", ki())
 	}
@@ -247,7 +281,16 @@ func TestMonkBonusActionStrikesSpendKi(t *testing.T) {
 	if ki() != 1 {
 		t.Errorf("ki used = %d after Flurry of Blows, want 1", ki())
 	}
+	flurryLeft := func(want int32) {
+		t.Helper()
+		o := attackOption(a.mustOptions(t, a.caio, e, "Toren"), unarmed)
+		if !o.GetEnabled() || o.GetBonusRule() != rulesv1.BonusAttackRule_BONUS_ATTACK_RULE_FLURRY_OF_BLOWS || o.GetBonusAttacksLeft() != want {
+			t.Errorf("unarmed strike = enabled %v, rule %v, left %d, want an enabled Flurry of Blows strike with %d left", o.GetEnabled(), o.GetBonusRule(), o.GetBonusAttacksLeft(), want)
+		}
+	}
+	flurryLeft(2)
 	strike("first flurry strike")
+	flurryLeft(1)
 	strike("second flurry strike")
 	_, err = a.attack(t, a.caio, e, "Toren", unarmed, "Goblin", d20(15))
 	wantBlockedBy(t, "a third flurry strike", err, blockedBonusUsed)
@@ -277,4 +320,13 @@ func TestMonkBonusActionStrikesSpendKi(t *testing.T) {
 	e = a.turnOf(t, "Toren")
 	_, err = a.action(t, a.caio, e, "Toren", patient)
 	wantBlockedBy(t, "Patient Defense without ki", err, blockedNoUses)
+}
+
+func actionOption(o *playv1.GetTurnOptionsResponse, key string) *rulesv1.ActionOption {
+	for _, a := range o.GetOptions().GetFeatureActions() {
+		if a.GetAction().GetKey() == key {
+			return a
+		}
+	}
+	return nil
 }

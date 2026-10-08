@@ -14,7 +14,7 @@ const flurryStrikes = 2
 
 // flurryOfBlows is the monk's bonus action that spends 1 ki point for two
 // unarmed strikes.
-const flurryOfBlows = "feature:flurry-of-blows"
+const flurryOfBlows = combat.FlurryOfBlowsKey
 
 // traitsOf is what the bonus action rules read of a sheet attack.
 func traitsOf(a link.Attack) combat.AttackTraits {

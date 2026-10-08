@@ -1,7 +1,9 @@
 import {
   type ActionOption,
   type Attack,
+  type AttackOption,
   AttackKind,
+  BonusAttackRule,
   type DisabledReason,
   DisabledReasonCode,
   type SpellOption,
@@ -32,6 +34,8 @@ const REASON_TEXT: Partial<Record<DisabledReasonCode, string>> = {
   [DisabledReasonCode.ALREADY_USED_THIS_TURN]: 'Já usado neste turno',
   // A bonus action spell leaves no other spell this turn but a cantrip of 1 action.
   [DisabledReasonCode.BONUS_ACTION_SPELL_LIMIT]: 'Magia de ação bônus no turno',
+  // Rajada de Golpes comes right after the Attack action.
+  [DisabledReasonCode.ATTACK_ACTION_FIRST]: 'Só depois de atacar com a ação',
   // Short on purpose: it repeats on every spell row, and the slot rows above
   // the list are the one explanation of which circles are out (E8-02).
   [DisabledReasonCode.NO_SLOT]: 'Sem espaço',
@@ -80,6 +84,74 @@ export function damageText(attack: Attack): string {
   }
   // A cantrip's dice grow with the level and have no modifier: "de fogo".
   return /[+−]/.test(dice) || adjective ? `${dice} ${type}` : `${dice} de ${type}`;
+}
+
+/** Whether an attack is made with the bonus action now (off hand, Artes Marciais, Rajada de Golpes). */
+export function isBonusAttack(o: AttackOption): boolean {
+  return o.bonusRule !== BonusAttackRule.UNSPECIFIED;
+}
+
+/** The line under a bonus action attack that can be made now: which rule makes
+ * it one. `''` for an attack of the action, and for one that cannot be made
+ * (its reason says why). */
+export function bonusAttackLine(o: AttackOption): string {
+  if (!o.enabled) {
+    return '';
+  }
+  switch (o.bonusRule) {
+    case BonusAttackRule.OFF_HAND:
+      return o.bonusDropsModifier
+        ? 'Ataque com a outra mão, sem o modificador no dano'
+        : 'Ataque com a outra mão';
+    case BonusAttackRule.MARTIAL_ARTS:
+      return 'Golpe desarmado das Artes Marciais';
+    case BonusAttackRule.FLURRY_OF_BLOWS:
+      return `Rajada de Golpes: ${flurryLeftText(o.bonusAttacksLeft)}`;
+    default:
+      return '';
+  }
+}
+
+/** What a bonus action attack spent, once it is made: the bonus action, or one
+ * of the strikes of Rajada de Golpes (`left` is how many there were before it).
+ * `''` for an attack of the action. */
+export function bonusSpentText(rule: BonusAttackRule | undefined, left = 1): string {
+  switch (rule) {
+    case BonusAttackRule.FLURRY_OF_BLOWS:
+      return left > 1
+        ? `Rajada de Golpes: ${flurryLeftText(left - 1)}.`
+        : 'Rajada de Golpes: acabaram os golpes.';
+    case BonusAttackRule.OFF_HAND:
+    case BonusAttackRule.MARTIAL_ARTS:
+      return 'Sua ação bônus foi usada.';
+    default:
+      return '';
+  }
+}
+
+/** "Rajada Mística: 2 raios restantes": the beams of a cantrip cast (Eldritch
+ * Blast) still to fire, once the first one spent the action. `''` otherwise. */
+export function beamsLeftLine(o: AttackOption): string {
+  if (!o.enabled || o.beamsLeft <= 0 || !o.attack) {
+    return '';
+  }
+  return `${attackName(o.attack)}: ${o.beamsLeft === 1 ? '1 raio restante' : `${o.beamsLeft} raios restantes`}`;
+}
+
+/** What a beam spent, once it is fired: the beams still to fire, or the action
+ * with the last one. `before` is how many beams were to fire before this one
+ * (the option's `beamsLeft`, or the attack's `beams` for the first). */
+export function beamSpentText(name: string, before: number): string {
+  const left = before - 1;
+  if (left <= 0) {
+    return 'Sua ação foi usada.';
+  }
+  return `${name}: ${left === 1 ? '1 raio restante' : `${left} raios restantes`}.`;
+}
+
+/** "2 golpes restantes", "1 golpe restante": the unarmed strikes of Rajada de Golpes still to make. */
+export function flurryLeftText(left: number): string {
+  return left === 1 ? '1 golpe restante' : `${left} golpes restantes`;
 }
 
 /** "corpo a corpo" for a close attack, "alcance 36 m" for the rest. With

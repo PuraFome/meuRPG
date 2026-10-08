@@ -1461,6 +1461,10 @@ enum EncounterBlockedReason {
   // nothing more than a cantrip with a casting time of 1 action. The master may
   // cast it anyway (they correct the economy).
   ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT = 66;
+  // TakeAction (Flurry of Blows): it comes right after the Attack action, taken
+  // with a weapon or an unarmed strike, and that action has not been taken yet
+  // this turn. GetTurnOptions says it before, as ATTACK_ACTION_FIRST.
+  ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST = 67;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused

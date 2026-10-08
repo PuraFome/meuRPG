@@ -832,6 +832,10 @@ const (
 	// nothing more than a cantrip with a casting time of 1 action. The master may
 	// cast it anyway (they correct the economy).
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT EncounterBlockedReason = 66
+	// TakeAction (Flurry of Blows): it comes right after the Attack action, taken
+	// with a weapon or an unarmed strike, and that action has not been taken yet
+	// this turn. GetTurnOptions says it before, as ATTACK_ACTION_FIRST.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST EncounterBlockedReason = 67
 )
 
 // Enum value maps for EncounterBlockedReason.
@@ -898,6 +902,7 @@ var (
 		64: "ENCOUNTER_BLOCKED_REASON_NO_OPPORTUNITY",
 		65: "ENCOUNTER_BLOCKED_REASON_ALREADY_USED_THIS_TURN",
 		66: "ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT",
+		67: "ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST",
 	}
 	EncounterBlockedReason_value = map[string]int32{
 		"ENCOUNTER_BLOCKED_REASON_UNSPECIFIED":                  0,
@@ -961,6 +966,7 @@ var (
 		"ENCOUNTER_BLOCKED_REASON_NO_OPPORTUNITY":               64,
 		"ENCOUNTER_BLOCKED_REASON_ALREADY_USED_THIS_TURN":       65,
 		"ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT":     66,
+		"ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST":          67,
 	}
 )
 
@@ -13284,7 +13290,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x14COMBATANT_STATE_DOWN\x10\x05\x12\x19\n" +
 	"\x15COMBATANT_STATE_DYING\x10\x06\x12\x1a\n" +
 	"\x16COMBATANT_STATE_STABLE\x10\a\x12\x18\n" +
-	"\x14COMBATANT_STATE_DEAD\x10\b*\xca\x16\n" +
+	"\x14COMBATANT_STATE_DEAD\x10\b*\xfc\x16\n" +
 	"\x16EncounterBlockedReason\x12(\n" +
 	"$ENCOUNTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN\x10\x01\x12+\n" +
@@ -13347,7 +13353,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"+ENCOUNTER_BLOCKED_REASON_THEATRE_HAS_NO_MAP\x10?\x12+\n" +
 	"'ENCOUNTER_BLOCKED_REASON_NO_OPPORTUNITY\x10@\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ALREADY_USED_THIS_TURN\x10A\x125\n" +
-	"1ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT\x10B*\x91\x03\n" +
+	"1ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT\x10B\x120\n" +
+	",ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST\x10C*\x91\x03\n" +
 	"\x1aFamiliarSightBlockedReason\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR\x10\x01\x12,\n" +
