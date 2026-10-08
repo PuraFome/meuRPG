@@ -18,6 +18,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/maps"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 )
 
@@ -110,6 +111,64 @@ func (a *armed) give(t *testing.T, c *charactersv1.Character, key, name string) 
 		t.Fatalf("GiveCreature(%s) error = %v", key, err)
 	}
 	return res.Msg.GetCreature()
+}
+
+// TestGiveCreatureLocksTheSessionBeforeTheOwner: a gift waits for the open
+// session's lock before it locks the character, the order every combat write
+// uses (the session, then what it changes). Locking the character first and the
+// session later, when the gift writes its event, lets a gift and a combat start
+// each hold what the other wants.
+func TestGiveCreatureLocksTheSessionBeforeTheOwner(t *testing.T) {
+	t.Parallel()
+	a := newSummoners(t)
+	ctx := t.Context()
+	holder, err := dbtest.SideConnection(t, a.h.pool).Begin(ctx)
+	if err != nil {
+		t.Fatalf("Begin() error = %v", err)
+	}
+	defer holder.Rollback(ctx) //nolint:errcheck // the test never commits
+	if _, err := holder.Exec(ctx, `SELECT id FROM game_sessions WHERE campaign_id = $1 AND ended_at IS NULL FOR UPDATE`, a.campaignID); err != nil {
+		t.Fatalf("lock the open session: %v", err)
+	}
+
+	given := make(chan error, 1)
+	go func() {
+		_, err := a.master.characters.GiveCreature(ctx, connect.NewRequest(&charactersv1.GiveCreatureRequest{
+			CampaignId: a.campaignID, CharacterId: a.toren.GetId(), MonsterKey: "monster:wolf", IdempotencyKey: newKey(),
+		}))
+		given <- err
+	}()
+
+	// Wait, on a condition and not on a clock, until the gift is stopped at the
+	// session's lock.
+	observer := dbtest.SideConnection(t, a.h.pool)
+	for waiting := false; !waiting; {
+		if err := observer.QueryRow(ctx, `SELECT count(*) > 0 FROM crdb_internal.cluster_queries
+			WHERE query LIKE '%FROM game_sessions%FOR UPDATE%' AND query NOT LIKE '%cluster_queries%'`).Scan(&waiting); err != nil {
+			t.Fatalf("look for the waiting gift: %v", err)
+		}
+		select {
+		case err := <-given:
+			t.Fatalf("GiveCreature() returned while the session was locked: %v", err)
+		default:
+		}
+	}
+	tx, err := observer.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Begin() error = %v", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // the test never commits
+	if _, err := tx.Exec(ctx, `SELECT id FROM characters WHERE id = $1 FOR UPDATE NOWAIT`, a.toren.GetId()); err != nil {
+		t.Errorf("the character is locked while the gift waits for the session: %v", err)
+	}
+	_ = tx.Rollback(ctx)
+
+	if err := holder.Rollback(ctx); err != nil {
+		t.Fatalf("release the session: %v", err)
+	}
+	if err := <-given; err != nil {
+		t.Errorf("GiveCreature() error = %v once the session was free", err)
+	}
 }
 
 // eventCount counts the session's events of a kind.
