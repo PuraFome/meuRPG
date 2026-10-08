@@ -4,7 +4,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"time"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -455,18 +454,9 @@ func TestRN20_NPCOnlyGroupsStayTheMasters(t *testing.T) {
 	}
 	// Everything the player was sent, as JSON: no NPC total, no ended flag of an
 	// NPC-only group, nothing of the master's.
-	deadline := time.After(300 * time.Millisecond)
-drain:
-	for {
-		select {
-		case ev, ok := <-pens.events:
-			if !ok {
-				break drain
-			}
-			read("stream", ev)
-		case <-deadline:
-			break drain
-		}
+	a.master.markCurrentMap(t, a.campaignID, a.mapID, pens) // the visible event that ends the stream's part
+	for _, ev := range pens.beforeMarker(t) {
+		read("stream", ev)
 	}
 	all := strings.Join(seen, "\n")
 	for _, banned := range []string{`"initiative":12`, `"initiative": 12`, `"tieUnresolved"`, `"hitPoints`, `"armorClass"`} {

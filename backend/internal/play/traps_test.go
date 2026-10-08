@@ -5,10 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"slices"
 	"strings"
 	"testing"
-	"time"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -1034,8 +1032,9 @@ func TestRN10_NoPlayerResponseNamesAnUnrevealedTrap(t *testing.T) {
 	}
 	readStream := func(who string, w *watcher) {
 		t.Helper()
-		time.Sleep(300 * time.Millisecond) // the stream's events are delivered in the background
-		for _, ev := range r.drain(w) {
+		// What the stream carried up to a marker the hub keeps in order, however late.
+		r.master.markCurrentMap(t, r.campaignID, r.mapID, brisaStream, pensStream)
+		for _, ev := range w.beforeMarker(t) {
 			check(who, "stream", ev, nil)
 		}
 	}
@@ -1133,44 +1132,6 @@ func (r *trapRig) watch(t *testing.T, u *user, campaignID string) *watcher {
 	return w
 }
 
-// drain returns what the stream has delivered so far.
-func (r *trapRig) drain(w *watcher) []*playv1.WatchGameSessionResponse {
-	var out []*playv1.WatchGameSessionResponse
-	for {
-		select {
-		case ev, ok := <-w.events:
-			if !ok {
-				return out
-			}
-			if ev.GetHeartbeat() == nil {
-				out = append(out, ev)
-			}
-		default:
-			return out
-		}
-	}
-}
-
-// drainUntilMapChanged drains the stream until a map change has arrived, and
-// returns what it drained. The events travel through goroutines, so a fixed
-// pause does not tell when one has arrived; it gives up after waitLimit and
-// returns what came (no map change among it).
-func (r *trapRig) drainUntilMapChanged(w *watcher) []*playv1.WatchGameSessionResponse {
-	var out []*playv1.WatchGameSessionResponse
-	deadline := time.After(waitLimit)
-	for {
-		out = append(out, r.drain(w)...)
-		if slices.ContainsFunc(out, func(ev *playv1.WatchGameSessionResponse) bool { return ev.GetMapChanged() != nil }) {
-			return out
-		}
-		select {
-		case <-deadline:
-			return out
-		case <-time.After(5 * time.Millisecond):
-		}
-	}
-}
-
 // wantSceneBlocked checks the reason of a SceneBlocked failed_precondition.
 func wantSceneBlocked(t *testing.T, err error, want playv1.SceneBlockedReason) {
 	t.Helper()
@@ -1208,7 +1169,7 @@ func TestApplyingTrapDamageInACombatRaisesItsRevision(t *testing.T) {
 	// A combat starts later with Pensantus as a combatant.
 	r.fight(t)
 	w := r.watch(t, r.ana, r.campaignID)
-	r.drain(w)
+	r.settle(t, w) // what the combat's start sent is read, so it cannot pass for the hint below
 	before := r.get(t, r.master).GetRevision()
 	hp := r.vitals(t, r.pens).GetHitPointsCurrent()
 	if _, err := r.master.play.ApplyTrapDamage(t.Context(), connect.NewRequest(&playv1.ApplyTrapDamageRequest{
@@ -1226,8 +1187,9 @@ func TestApplyingTrapDamageInACombatRaisesItsRevision(t *testing.T) {
 	if e.GetRevision() <= before {
 		t.Errorf("encounter revision after = %d, before = %d; want it raised (as AdjustCharacterVitals does)", e.GetRevision(), before)
 	}
+	// The hint is published before the call returns, so it is on the stream before the marker.
 	seen := false
-	for _, ev := range r.drain(w) {
+	for _, ev := range r.settle(t, w)[0] {
 		if ev.GetEncounterChanged() != nil {
 			seen = true
 		}

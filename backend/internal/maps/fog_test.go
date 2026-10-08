@@ -1164,16 +1164,18 @@ func TestShowingAFogMapImageAgainReusesItsCopy(t *testing.T) {
 	if g3 != g2 {
 		t.Errorf("gallery grew from %d to %d on the keep call", g2, g3)
 	}
-	select {
-	case ev := <-pw.events:
-		if ev.GetHeartbeat() == nil {
-			t.Errorf("the player received %v on the keep call, want nothing", ev)
-		}
-	case <-time.After(700 * time.Millisecond):
-	}
-	// Stop showing: the kept image is left, exactly one.
+	// Stop showing: the kept image is left, exactly one. The player's
+	// shown_image_changed with no image is the marker that ends the wait, so anything
+	// the keep call sent comes before it (the hub keeps order) and cannot be missed.
 	if _, err := master.play.SetShownImage(t.Context(), connect.NewRequest(&playv1.SetShownImageRequest{CampaignId: campaign})); err != nil {
 		t.Fatal(err)
+	}
+	for {
+		ev := pw.next()
+		if ev.GetShownImageChanged() != nil && ev.GetShownImageChanged().GetImage() == nil {
+			break
+		}
+		t.Errorf("the player received %v on the keep call, want nothing", ev)
 	}
 	if n := left(); n != 1 {
 		t.Errorf("left images = %d, want 1", n)

@@ -723,13 +723,11 @@ func TestRN10_PlayersNeverGetTheBuilderOrTheSavedEncounter(t *testing.T) {
 		t.Fatalf("ClearBattleEncounter() error = %v", err)
 	}
 	m.save(t, bridge, &playv1.BattleEncounter{Monsters: artboardOne()})
-	// Saving, reading and clearing publish nothing at all to the table's stream.
-	select {
-	case ev := <-w.events:
-		if ev.GetHeartbeat() == nil {
-			t.Errorf("a player's stream got %v after the master saved an encounter", ev)
-		}
-	case <-time.After(700 * time.Millisecond):
+	// Saving, reading and clearing publish nothing at all to the table's stream: the
+	// marker comes first on it, with nothing before.
+	m.master.markCurrentMap(t, m.campaignID, m.mapID, w)
+	for _, ev := range w.beforeMarker(t) {
+		t.Errorf("a player's stream got %v after the master saved an encounter", ev)
 	}
 
 	if _, err := m.startFrom(t, newKey(), bridge, playv1.EncounterMode_ENCOUNTER_MODE_UNSPECIFIED); err != nil {

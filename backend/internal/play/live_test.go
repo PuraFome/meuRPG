@@ -62,6 +62,9 @@ type watcher struct {
 	events chan *playv1.WatchGameSessionResponse
 	done   chan error // the stream's end: nil, or its error
 	cancel context.CancelFunc
+	// markers is how many markers (markCurrentMap) the stream has been sent and
+	// beforeMarker has not read yet.
+	markers int
 }
 
 // watch opens WatchGameSession as u.
@@ -113,6 +116,43 @@ func (w *watcher) nextChange(t *testing.T) *playv1.WatchGameSessionResponse {
 			return ev
 		}
 	}
+}
+
+// markCurrentMap has the master show the map the table already shows: every stream
+// of the campaign gets a current_map_changed, the marker that ends a wait for nothing
+// (see beforeMarker). ws are all the watchers of the campaign that will be read with
+// beforeMarker, each of which gets to count the marker.
+func (u *user) markCurrentMap(t *testing.T, campaignID, mapID string, ws ...*watcher) {
+	t.Helper()
+	if _, err := u.play.SetCurrentMap(t.Context(), connect.NewRequest(&playv1.SetCurrentMapRequest{CampaignId: campaignID, MapId: mapID})); err != nil {
+		t.Fatalf("SetCurrentMap() error = %v", err)
+	}
+	for _, w := range ws {
+		w.markers++
+	}
+}
+
+// beforeMarker reads the stream up to the markers markCurrentMap has sent it, and
+// returns the events (heartbeats left out) that came before the last one. The hub
+// delivers in the order it published, so what an action before the marker sent is
+// among them however late it was delivered, and an empty result means it sent nothing.
+// It fails if a marker does not arrive.
+func (w *watcher) beforeMarker(t *testing.T) []*playv1.WatchGameSessionResponse {
+	t.Helper()
+	if w.markers == 0 {
+		t.Fatal("beforeMarker: no marker was sent to this stream (markCurrentMap)")
+	}
+	var before []*playv1.WatchGameSessionResponse
+	for w.markers > 0 {
+		ev := w.next(t)
+		switch {
+		case ev.GetCurrentMapChanged() != nil:
+			w.markers--
+		case ev.GetHeartbeat() == nil:
+			before = append(before, ev)
+		}
+	}
+	return before
 }
 
 // ready reads the first event, which must be ready, and returns its session.
@@ -687,8 +727,22 @@ func TestWatchGameSessionChecksAgain(t *testing.T) {
 
 	wantCode(t, "removed member's stream", removedStream.end(t), connect.CodeNotFound)
 	wantCode(t, "signed-out member's stream", signedOutStream.end(t), connect.CodeUnauthenticated)
-	// The others keep watching through several rechecks.
-	time.Sleep(200 * time.Millisecond)
+	// The others keep watching through several rechecks: wait until the member's
+	// stream has started eight more (each one starts with the session check the
+	// harness counts, and the recheck before it was finished by then), watching for
+	// it to end meanwhile.
+	const survived = 8
+	until := recheckCount(staying.id) + survived + 1
+	deadline := time.After(waitLimit)
+	for recheckCount(staying.id) < until {
+		select {
+		case err := <-stayingStream.done:
+			t.Fatalf("a member's stream ended: %v", err)
+		case <-deadline:
+			t.Fatalf("the member's stream was rechecked %d times in %v, want %d", recheckCount(staying.id)-until+survived+1, waitLimit, survived+1)
+		case <-time.After(5 * time.Millisecond):
+		}
+	}
 	select {
 	case err := <-stayingStream.done:
 		t.Fatalf("a member's stream ended: %v", err)
