@@ -502,6 +502,20 @@ ON CONFLICT (character_id) DO UPDATE SET beast = excluded.beast, hp = excluded.h
 -- The druid is itself again.
 DELETE FROM character_wild_shapes WHERE character_id = $1;
 
+-- name: CarryHitPoints :exec
+-- The sheet's maximum hit points changed from old_max to new_max (a level-up,
+-- an edit): a character whose current hit points are set gains what the maximum
+-- gained (gain, zero when it fell), so a wound stays a wound, and never ends
+-- above the new maximum. NULL is "full" and stays so. The revision moves only
+-- when the number does.
+UPDATE character_vitals
+SET hit_points_current = LEAST(LEAST(hit_points_current, sqlc.arg(old_max)::INT4) + sqlc.arg(gain)::INT4, sqlc.arg(new_max)::INT4),
+    revision = revision + 1,
+    updated_at = sqlc.arg(now)
+WHERE character_id = sqlc.arg(character_id)
+  AND hit_points_current IS NOT NULL
+  AND hit_points_current <> LEAST(LEAST(hit_points_current, sqlc.arg(old_max)::INT4) + sqlc.arg(gain)::INT4, sqlc.arg(new_max)::INT4);
+
 -- name: TouchVitals :one
 -- Bumps a character's vitals revision for a change made on a table of its own (the
 -- Wild Shape form): the first write creates the vitals row, as UpsertVitals does

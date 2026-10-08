@@ -484,6 +484,9 @@ func (s *Service) LevelUpCharacter(
 		if err != nil {
 			return wrap("update sheet", err)
 		}
+		if err := s.carryHitPoints(ctx, q, t.content, id, current.Sheet, doc); err != nil {
+			return err
+		}
 		record, err := storeJSON.Marshal(plan.record)
 		if err != nil {
 			return wrap("encode the level up", err)

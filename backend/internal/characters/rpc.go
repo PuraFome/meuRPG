@@ -485,7 +485,7 @@ func (s *Service) UpdateCharacter(
 		if err != nil {
 			return wrap("update sheet", err)
 		}
-		return nil
+		return s.carryHitPoints(ctx, q, content, id, current.Sheet, sheetDoc)
 	})
 	if portraitCopy != nil && (err != nil || !copyCreated) {
 		portraitCopy.Discard(ctx) // no gallery row: the copy's files go

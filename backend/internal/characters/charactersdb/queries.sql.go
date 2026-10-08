@@ -100,6 +100,40 @@ func (q *Queries) BumpContentRevision(ctx context.Context, arg BumpContentRevisi
 	return revision, err
 }
 
+const carryHitPoints = `-- name: CarryHitPoints :exec
+UPDATE character_vitals
+SET hit_points_current = LEAST(LEAST(hit_points_current, $1::INT4) + $2::INT4, $3::INT4),
+    revision = revision + 1,
+    updated_at = $4
+WHERE character_id = $5
+  AND hit_points_current IS NOT NULL
+  AND hit_points_current <> LEAST(LEAST(hit_points_current, $1::INT4) + $2::INT4, $3::INT4)
+`
+
+type CarryHitPointsParams struct {
+	OldMax      int32
+	Gain        int32
+	NewMax      int32
+	Now         time.Time
+	CharacterID string
+}
+
+// The sheet's maximum hit points changed from old_max to new_max (a level-up,
+// an edit): a character whose current hit points are set gains what the maximum
+// gained (gain, zero when it fell), so a wound stays a wound, and never ends
+// above the new maximum. NULL is "full" and stays so. The revision moves only
+// when the number does.
+func (q *Queries) CarryHitPoints(ctx context.Context, arg CarryHitPointsParams) error {
+	_, err := q.db.Exec(ctx, carryHitPoints,
+		arg.OldMax,
+		arg.Gain,
+		arg.NewMax,
+		arg.Now,
+		arg.CharacterID,
+	)
+	return err
+}
+
 const characterIsInCampaign = `-- name: CharacterIsInCampaign :one
 SELECT EXISTS (
     SELECT 1 FROM characters
