@@ -4,7 +4,8 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { hitPointsAfter } from '../../../../core/combat/attack-flow';
-import { CombatClient, type HpAdjust, newKey } from '../../../../core/combat/combat-client';
+import { CombatClient, type HpAdjust } from '../../../../core/combat/combat-client';
+import { ActionKey } from '../../../../core/connect/idempotency';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { VitalsStepper } from '../../vitals-stepper/vitals-stepper';
@@ -67,8 +68,7 @@ export class AdjustNpc {
   /** A request in the air: Esc and the backdrop do not close the sheet under it. */
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
-  private key = newKey();
-  private keyFor = '';
+  private readonly key = new ActionKey();
 
   protected readonly amountMax = computed(() =>
     this.mode() === 'exact' ? this.max() : MAX_AMOUNT,
@@ -115,6 +115,11 @@ export class AdjustNpc {
   protected readonly tempStep = (step: number) =>
     step < 0 ? 'Tirar 1 PV temporário' : 'Somar 1 PV temporário';
 
+  constructor() {
+    // A request in the air cannot be dismissed (Esc, the backdrop, ✕, Cancelar): its answer is always shown.
+    effect(() => this.sheet.lock(this.busy()));
+  }
+
   protected async save(): Promise<void> {
     const adjust = this.adjust();
     if (this.busy() || !this.valid()) {
@@ -125,11 +130,7 @@ export class AdjustNpc {
       return;
     }
     // New numbers are a new correction; the same numbers again are a retry.
-    const signature = JSON.stringify(adjust);
-    if (signature !== this.keyFor) {
-      this.keyFor = signature;
-      this.key = newKey();
-    }
+    const key = this.key.keyFor([this.c.id, adjust]);
     this.busy.set(true);
     this.error.set('');
     try {
@@ -139,7 +140,7 @@ export class AdjustNpc {
           this.data.encounterId,
           this.c.id,
           adjust,
-          this.key,
+          key,
         ),
       );
       this.sheet.close(true);
@@ -151,6 +152,9 @@ export class AdjustNpc {
   }
 
   protected close(): void {
+    if (this.busy()) {
+      return;
+    }
     this.sheet.close(false);
   }
 }
