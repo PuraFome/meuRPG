@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 	"sync"
+	"weak"
 
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/proto"
@@ -99,43 +100,58 @@ func (s *Service) TableRulesFor(ctx context.Context, tx pgx.Tx, campaignID strin
 const maxCatalogs = 8
 
 // catalogCache is ListContent's answer per content, built on first use and
-// bounded to maxCatalogs, so a content that is no longer in use is not kept alive.
+// bounded to maxCatalogs. It holds each content weakly: a catalog never keeps
+// alive a content the live source has let go, so the memory a table's text takes
+// is the live source's budget alone (maxLiveBytes), not that plus eight more.
 type catalogCache struct {
 	mu    sync.Mutex
-	order []*rules.Content // oldest first
+	order []weak.Pointer[rules.Content] // oldest first
 	// catalog is the master's catalog (every entry); players is the same without
 	// the archived entries, made when a player first asks.
-	catalog map[*rules.Content]*rulesv1.Content
-	players map[*rules.Content]*rulesv1.Content
+	catalog map[weak.Pointer[rules.Content]]*rulesv1.Content
+	players map[weak.Pointer[rules.Content]]*rulesv1.Content
+}
+
+// drop forgets a content's catalogs. The caller holds mu.
+func (cc *catalogCache) drop(w weak.Pointer[rules.Content]) {
+	delete(cc.catalog, w)
+	delete(cc.players, w)
 }
 
 // catalogFor is ListContent's answer for a content: the same content gives the
-// same catalog, built once (while it is among the last maxCatalogs).
+// same catalog, built once (while it is among the last maxCatalogs and alive).
 func (s *Service) catalogFor(c *rules.Content, master bool) *rulesv1.Content {
 	cc := &s.catalogs
 	cc.mu.Lock()
 	defer cc.mu.Unlock()
-	v, ok := cc.catalog[c]
+	w := weak.Make(c)
+	v, ok := cc.catalog[w]
 	if !ok {
 		v = catalogToProto(c.Catalog())
 		if cc.catalog == nil {
-			cc.catalog, cc.players = map[*rules.Content]*rulesv1.Content{}, map[*rules.Content]*rulesv1.Content{}
+			cc.catalog, cc.players = map[weak.Pointer[rules.Content]]*rulesv1.Content{}, map[weak.Pointer[rules.Content]]*rulesv1.Content{}
 		}
+		cc.order = slices.DeleteFunc(cc.order, func(o weak.Pointer[rules.Content]) bool {
+			if o.Value() != nil {
+				return false
+			}
+			cc.drop(o) // its content is gone
+			return true
+		})
 		if len(cc.order) >= maxCatalogs {
-			delete(cc.catalog, cc.order[0])
-			delete(cc.players, cc.order[0])
+			cc.drop(cc.order[0])
 			cc.order = cc.order[1:]
 		}
-		cc.order = append(cc.order, c)
-		cc.catalog[c] = v
+		cc.order = append(cc.order, w)
+		cc.catalog[w] = v
 	}
 	if master {
 		return v
 	}
-	p, ok := cc.players[c]
+	p, ok := cc.players[w]
 	if !ok {
 		p = withoutArchived(v, nil)
-		cc.players[c] = p
+		cc.players[w] = p
 	}
 	return p
 }

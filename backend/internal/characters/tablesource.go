@@ -15,9 +15,16 @@ import (
 )
 
 // maxLiveContents is how many campaign contents (the SRD plus one table's layer)
-// the live source keeps, the plan's budget (ADR-0018, section 5): about 3 MB each
-// with a real table, so 8 stay far below the instance's 512 MiB (docs/operations.md).
+// the live source keeps, the plan's budget (ADR-0018, section 5): about 1.5 MB each
+// with a real table (docs/operations.md).
 const maxLiveContents = 8
+
+// maxLiveBytes bounds the stored data (the entries' JSON, which the content keeps
+// about one for one) of all the contents the live source keeps. An entry holds up
+// to 64 KiB of text, so a table can reach 18 MB of it; eight such contents would
+// be 141 MB of the instance's memory. The least recently used goes first, and the
+// newest always stays, whatever its size.
+const maxLiveBytes = 24 << 20
 
 // TableSource is the ContentSource that gives a campaign what it plays with: the
 // SRD with the table's own entries on top (MR-025, RN-23, ADR-0018) and the table
@@ -44,8 +51,15 @@ type TableSource struct {
 	tables  TableRulesReader
 
 	mu    sync.Mutex
-	cache map[liveKey]*rules.Content
+	cache map[liveKey]liveEntry
 	order []liveKey // least recently used first
+	bytes int       // the sum of the cached entries' bytes
+}
+
+// liveEntry is a cached content and the bytes of stored data it was built from.
+type liveEntry struct {
+	content *rules.Content
+	bytes   int
 }
 
 type liveKey struct {
@@ -57,7 +71,7 @@ type liveKey struct {
 // and the reader of the saved table rules (campaigns.Service; nil for the SRD
 // defaults).
 func NewTableSource(pool *pgxpool.Pool, srd *rules.Content, tables TableRulesReader) *TableSource {
-	return &TableSource{pool: pool, queries: charactersdb.New(pool), srd: srd, tables: tables, cache: map[liveKey]*rules.Content{}}
+	return &TableSource{pool: pool, queries: charactersdb.New(pool), srd: srd, tables: tables, cache: map[liveKey]liveEntry{}}
 }
 
 // For implements ContentSource.
@@ -143,19 +157,23 @@ func (s *TableSource) contentIn(ctx context.Context, q *charactersdb.Queries, id
 		// passes): the campaign cannot be read, which is better than a silent SRD.
 		return nil, wrap("add the table's content to the rules", err)
 	}
-	s.store(key, c)
+	size := 0
+	for _, r := range rows {
+		size += len(r.Data)
+	}
+	s.store(key, c, size)
 	return c, nil
 }
 
 func (s *TableSource) cached(key liveKey) *rules.Content {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	c, ok := s.cache[key]
+	e, ok := s.cache[key]
 	if !ok {
 		return nil
 	}
 	s.touch(key)
-	return c
+	return e.content
 }
 
 // touch moves key to the most recent end. The caller holds mu.
@@ -169,14 +187,25 @@ func (s *TableSource) touch(key liveKey) {
 	s.order = append(s.order, key)
 }
 
-func (s *TableSource) store(key liveKey, c *rules.Content) {
+// store keeps c, built from size bytes of stored data, and lets go of the least
+// recently used contents until the count and the bytes fit.
+func (s *TableSource) store(key liveKey, c *rules.Content, size int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, ok := s.cache[key]; !ok && len(s.order) >= maxLiveContents {
+	if old, ok := s.cache[key]; ok {
+		s.bytes -= old.bytes
+	}
+	for len(s.order) > 0 && s.order[0] != key {
+		_, replacing := s.cache[key]
+		if (replacing || len(s.order) < maxLiveContents) && s.bytes+size <= maxLiveBytes {
+			break
+		}
+		s.bytes -= s.cache[s.order[0]].bytes
 		delete(s.cache, s.order[0])
 		s.order = s.order[1:]
 	}
-	s.cache[key] = c
+	s.cache[key] = liveEntry{content: c, bytes: size}
+	s.bytes += size
 	s.touch(key)
 }
 
