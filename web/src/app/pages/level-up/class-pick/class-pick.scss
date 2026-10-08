@@ -2,23 +2,29 @@
   display: block;
 }
 
-.dice-choice {
+.lead {
+  margin: 0 0 var(--mr-space-3);
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.cards {
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
 
-.dice-choice--grid {
   @media (min-width: 768px) {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-.dice-choice__card {
+// The same radio card as the dice choices: a 64px card, the checked one outlined in the accent with a filled dot.
+.card {
   position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 14px;
   box-sizing: border-box;
   min-height: 64px;
@@ -29,15 +35,12 @@
   color: var(--mr-ink);
   cursor: pointer;
 
-  // The checked card: a 2px accent border, a soft accent ground and a filled
-  // dot, so the state never rides on colour alone.
   &:has(:checked) {
     padding: 11px 15px;
     border: 2px solid var(--mr-accent);
     background: var(--mr-accent-soft);
   }
 
-  // The global focus ring, drawn on the card because the radio is hidden.
   &:has(:focus-visible) {
     outline: 2px solid var(--mr-focus);
     outline-offset: 2px;
@@ -46,25 +49,19 @@
   &:has(:disabled) {
     cursor: default;
   }
-
-  // Not in force: dashed and quiet, as the design draws an unavailable option.
-  &--off {
-    border-style: dashed;
-    color: var(--mr-ink-muted);
-  }
 }
 
-.dice-choice__dot {
+.card__dot {
   flex: none;
   box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 24px;
   height: 24px;
   border: 2px solid var(--mr-control-line);
   border-radius: 50%;
   background: var(--mr-surface);
-  display: flex;
-  align-items: center;
-  justify-content: center;
 
   :checked ~ & {
     border-color: var(--mr-ink);
@@ -79,38 +76,62 @@
   }
 }
 
-.dice-choice__text {
+.card__text {
   display: flex;
   flex-direction: column;
 }
 
-.dice-choice__title {
+.card__title {
   font-size: 17px;
   font-weight: 700;
   line-height: 22px;
 }
 
-.dice-choice__desc {
+.card__desc {
   font-size: 15px;
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
 
-// The reason an option cannot be chosen: the block icon and the sentence, inside the card.
-.dice-choice__reason {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--mr-space-2);
-  margin-top: 6px;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 19px;
-  color: var(--mr-ink);
+.ask {
+  margin-top: var(--mr-space-3);
 
-  .mat-icon {
-    flex: none;
-    width: 18px;
-    height: 18px;
-    font-size: 18px;
+  > .mat-icon {
+    align-self: flex-start;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.ask__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  min-width: 0;
+}
+
+// Two outlined buttons that answer one question: the same height (44px; on a phone 48px, side by side, the same width).
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+
+  > button {
+    --mat-button-outlined-container-height: 44px;
+    --mat-button-outlined-label-text-color: var(--mr-ink);
+    background: var(--mr-surface);
+  }
+
+  @media (max-width: 767.98px) {
+    flex-wrap: nowrap;
+
+    > button {
+      flex: 1 1 0;
+      min-width: 0;
+      --mat-button-outlined-container-height: 48px;
+    }
   }
 }
