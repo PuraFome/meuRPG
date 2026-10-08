@@ -33,7 +33,7 @@ import (
 //     form ends and the damage left over goes to the druid (the SRD).
 //   - Healing in the form heals the beast (healCombatant).
 //   - LeaveWildShape: a bonus action in a combat.
-//   - Casting is refused in the form (refuseInShape).
+//   - Casting is refused in the form (refuseInShape), unless the druid has Beast Spells.
 //
 // The events are wild_shape_started and wild_shape_ended: ids, keys and numbers
 // only. The master's undo takes back the action that started or ended the form
@@ -176,12 +176,21 @@ func (s *Service) refuseInShape(ctx context.Context, c *combatTx, who playdb.Com
 	if err != nil {
 		return err
 	}
-	return noSpellsIn(v)
+	if v.GetWildShape() == nil {
+		return nil
+	}
+	chars, err := s.roster.CombatCharacters(ctx, c.tx, c.session.CampaignID, []string{who.CharacterID})
+	if err != nil {
+		return err
+	}
+	return noSpellsIn(v, len(chars) == 1 && chars[0].CastsInBeastForm)
 }
 
 // noSpellsIn is the refusal for vitals that are in a beast form, nil otherwise.
-func noSpellsIn(v *playv1.CharacterVitals) error {
-	if v.GetWildShape() != nil {
+// A druid of level 18 (Beast Spells) casts in any form, so castsInForm lets it
+// pass.
+func noSpellsIn(v *playv1.CharacterVitals, castsInForm bool) error {
+	if v.GetWildShape() != nil && !castsInForm {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_NO_SPELLS, "a druid in a beast form cannot cast spells")
 	}
 	return nil

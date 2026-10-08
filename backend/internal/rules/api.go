@@ -35,6 +35,9 @@ const (
 	// any creature is 30).
 	MinScore = 1
 	MaxScore = 30
+	// MaxNormalScore is the highest score an Ability Score Improvement reaches;
+	// only a feature that says so (Primal Champion) takes a score higher.
+	MaxNormalScore = 20
 	// MaxLevel is the highest total character level.
 	MaxLevel = 20
 	// MaxManualBonus bounds each of Build.ExtraAbilityBonuses, in both

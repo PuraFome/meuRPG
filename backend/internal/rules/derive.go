@@ -77,6 +77,7 @@ func derive(b Build, c *content) Derived {
 	x.levelAndProficiency()
 	x.collectEffects()
 	x.buildEnv()
+	x.abilityEffects()
 	x.proficiencies()
 	x.savingThrows()
 	x.skills()

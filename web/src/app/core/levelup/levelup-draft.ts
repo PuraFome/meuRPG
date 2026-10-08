@@ -85,7 +85,11 @@ export class LevelUpDraft {
     readonly catalog: {
       readonly spells: readonly Spell[];
       readonly skills: readonly Skill[];
-      readonly classes?: readonly { readonly key: string; readonly namePt: string }[];
+      readonly classes?: readonly {
+        readonly key: string;
+        readonly namePt: string;
+        readonly hitDie?: number;
+      }[];
     },
   ) {
     this.preparedMax.set(options.preparedMaxAfter);

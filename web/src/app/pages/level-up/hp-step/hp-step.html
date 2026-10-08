@@ -20,12 +20,20 @@
       <mat-icon aria-hidden="true">info</mat-icon>
       <span>A mesa pede que todos rolem o dado de vida. A média não é oferecida.</span>
     </p>
+    @if (s().rollOtherClass(); as why) {
+      <p class="mr-notice mr-notice--warning" role="status">
+        <mat-icon aria-hidden="true">block</mat-icon>
+        <span>{{ why }}</span>
+      </p>
+    }
   } @else {
     <app-dice-choice
       name="level-up-hp"
       label="Como ganhar os pontos de vida do nível"
       [options]="options()"
       [value]="card()"
+      [inert]="rollBlocked()"
+      [reasons]="rollReasons()"
       (valueChange)="pick($event)"
     />
   }
@@ -84,7 +92,7 @@
 }
 
 <section class="mr-panel" aria-labelledby="gives-title">
-  <h2 class="mr-panel__title" id="gives-title">O que o nível {{ s().options.toLevel }} dá</h2>
+  <h2 class="mr-panel__title" id="gives-title">O que {{ s().levelWords }} dá</h2>
   <ul class="gives">
     @for (g of s().gives(); track $index) {
       <li class="gives__row">

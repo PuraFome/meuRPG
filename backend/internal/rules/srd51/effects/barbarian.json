@@ -28,6 +28,10 @@
     ],
     "feature:fast-movement": [
       {"type": "modifier", "target": "speed.walk", "mode": "add", "value": "10", "when": "armor() != \"heavy\""}
+    ],
+    "feature:primal-champion": [
+      {"type": "modifier", "target": "score.str", "mode": "add", "value": "4", "cap": 24},
+      {"type": "modifier", "target": "score.con", "mode": "add", "value": "4", "cap": 24}
     ]
   }
 }

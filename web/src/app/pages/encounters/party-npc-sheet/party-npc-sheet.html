@@ -18,7 +18,7 @@
       <legend class="mr-label">Qual NPC</legend>
       @for (n of data.npcs; track n.id) {
         <label class="opt" [class.opt--on]="pick() === n.id">
-          <input type="radio" name="pn-who" [value]="n.id" [checked]="pick() === n.id" (change)="pick.set(n.id)" />
+          <input type="radio" class="mr-check-input" name="pn-who" [value]="n.id" [checked]="pick() === n.id" (change)="pick.set(n.id)" />
           <span class="opt__tk" aria-hidden="true">{{ initial(n.name) }}</span>
           <span class="opt__t">
             <span class="opt__n">{{ n.name }}</span>
@@ -27,7 +27,7 @@
         </label>
       }
       <label class="opt" [class.opt--on]="pick() === nameOnly">
-        <input type="radio" name="pn-who" value="" [checked]="pick() === nameOnly" (change)="pick.set(nameOnly)" />
+        <input type="radio" class="mr-check-input" name="pn-who" value="" [checked]="pick() === nameOnly" (change)="pick.set(nameOnly)" />
         <span class="opt__tk opt__tk--plain" aria-hidden="true"><mat-icon>edit</mat-icon></span>
         <span class="opt__t">
           <span class="opt__n">Só um nome</span>

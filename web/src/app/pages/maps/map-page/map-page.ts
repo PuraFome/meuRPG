@@ -87,6 +87,13 @@ export class MapPage {
   protected readonly sessionNumber = signal<number | null>(null);
   /** A combat that has not ended runs on this map: the grid and the image cannot change. */
   protected readonly combatRunning = signal(false);
+  /** A treasure of this map is marked found, or was turned into XP: the server refuses to delete the map. */
+  protected readonly treasureFound = computed(() =>
+    this.state.points().some((p) => p.treasureFoundAt !== undefined),
+  );
+  protected readonly treasureConverted = computed(() =>
+    this.state.points().some((p) => p.treasureConverted),
+  );
   /** A new grid or a new image would erase painting or what the players saw (the editor tells). */
   protected readonly erases = signal(false);
 

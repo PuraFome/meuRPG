@@ -361,9 +361,10 @@ export class CombatClient {
   /** `MoveCombatant`: a walk to a square, or a jump (`jump`: a long one to the
    * square, or a high one by `jumpHeightDft` tenths of a foot). `stoppedEarly`
    * is "something you did not see stopped you"; `provoked` that an opportunity
-   * offer now waits. The master's drags are plain moves too: only `forced`
-   * (never sent from here) skips the offers. `key` is the caller's, kept across
-   * the retries of one jump (a lost answer must not charge it twice). */
+   * offer now waits. The master's drags are plain moves: only `forced` (the
+   * "Movimento forçado" box: a teleport, a push or a pull) skips the offers.
+   * `key` is the caller's, kept across the retries of one jump (a lost answer
+   * must not charge it twice). */
   async move(
     campaignId: string,
     encounterId: string,
@@ -372,9 +373,10 @@ export class CombatClient {
     row: number,
     jump?: { readonly kind: 'long' } | { readonly kind: 'high'; readonly heightDft: number },
     key?: string,
+    forced = false,
   ): Promise<MoveResult> {
     const res = await this.keyed(
-      ['moveCombatant', campaignId, encounterId, combatantId, col, row, jump],
+      ['moveCombatant', campaignId, encounterId, combatantId, col, row, jump, forced],
       (sent) =>
         this.client.moveCombatant({
           campaignId,
@@ -389,6 +391,7 @@ export class CombatClient {
               : JumpKind.HIGH
             : JumpKind.UNSPECIFIED,
           jumpHeightDft: jump?.kind === 'high' ? jump.heightDft : 0,
+          forced,
         }),
       key,
     );

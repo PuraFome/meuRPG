@@ -42,6 +42,12 @@
     ],
     "feature:stunning-strike": [
       {"type": "note"}
+    ],
+    "feature:perfect-self": [
+      {"type": "note", "text_pt": "Ao rolar iniciativa sem nenhum ponto de chi, você recupera 4 pontos de chi."}
+    ],
+    "feature:wholeness-of-body": [
+      {"type": "resource", "resource": "wholeness_of_body", "max": "1", "recharge": "long_rest"}
     ]
   }
 }

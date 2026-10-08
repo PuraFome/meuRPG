@@ -91,7 +91,9 @@ html {
   --mr-rule: light-dark(#e3e7ec, #262c38);
   --mr-ink: light-dark(#1b2230, #e6e9ef);
   --mr-ink-muted: light-dark(#525b6b, #a3abb9);
-  --mr-control-line: light-dark(#8a93a3, #6b7485);
+  // The outline of every unchecked box, ring, field and switch: at least 3:1 (WCAG 1.4.11) against the card, the page and the
+  // accent-soft ground, in both themes.
+  --mr-control-line: light-dark(#78818f, #7d879a);
   --mr-accent: light-dark(#9e2b3b, #e88593);
   --mr-accent-strong: light-dark(#7a1f2d, #f2a9b3);
   --mr-on-accent: light-dark(#ffffff, #2a0a10);
@@ -185,6 +187,23 @@ html {
       corner-small: var(--mr-radius-sm),
       corner-medium: var(--mr-radius-lg),
       corner-large: var(--mr-radius-xl),
+    )
+  );
+
+  // Material's checkboxes and radios draw their unchecked outline with the same token.
+  @include mat.checkbox-overrides(
+    (
+      unselected-icon-color: var(--mr-control-line),
+      unselected-hover-icon-color: var(--mr-control-line),
+      unselected-focus-icon-color: var(--mr-control-line),
+    )
+  );
+  @include mat.radio-overrides(
+    (
+      unselected-icon-color: var(--mr-control-line),
+      unselected-hover-icon-color: var(--mr-control-line),
+      unselected-focus-icon-color: var(--mr-control-line),
+      unselected-pressed-icon-color: var(--mr-control-line),
     )
   );
 

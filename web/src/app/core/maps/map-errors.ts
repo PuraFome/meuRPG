@@ -94,6 +94,16 @@ const BLOCKED_TEXT: Readonly<Record<number, string>> = {
   [MapBlockedReason.TREASURE_FOUND]: 'Esse tesouro foi encontrado. Desmarque antes de apagar.',
 };
 
+/** What each reason of `DeleteMap` says, in the map header before the click and in its question after a refusal; one text for both. */
+export const DELETE_BLOCKED_TEXT: Readonly<Record<number, string>> = {
+  [MapBlockedReason.COMBAT_RUNNING]:
+    'Há um combate neste mapa: ele só pode ser apagado depois do combate.',
+  [MapBlockedReason.TREASURE_CONVERTED]:
+    'Um tesouro deste mapa já virou XP. Para apagar o mapa, desfaça esse XP na página da campanha.',
+  [MapBlockedReason.TREASURE_FOUND]:
+    'Um tesouro deste mapa foi encontrado. Desmarque-o antes de apagar o mapa.',
+};
+
 const PROFILES: Readonly<
   Record<EditorCall, { blocked: readonly MapBlockedReason[]; exhausted?: string }>
 > = {
@@ -122,9 +132,7 @@ export function editorErrorMessage(err: unknown, call: EditorCall, what: string)
   const profile = PROFILES[call];
   const reason = mapBlockedReason(err);
   if (reason !== null && profile.blocked.includes(reason)) {
-    return call === 'delete' && reason === MapBlockedReason.COMBAT_RUNNING
-      ? 'Há um combate neste mapa: ele só pode ser apagado depois do combate.'
-      : BLOCKED_TEXT[reason];
+    return call === 'delete' ? DELETE_BLOCKED_TEXT[reason] : BLOCKED_TEXT[reason];
   }
   const connectErr = ConnectError.from(err, Code.Unavailable);
   if (connectErr.code === Code.ResourceExhausted && profile.exhausted !== undefined) {

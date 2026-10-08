@@ -87,6 +87,12 @@
     ],
     "feature:warlock-ability-score-improvement-1": [
       {"type": "choice", "choice": "ability_score_improvement", "count": 1}
+    ],
+    "feature:dark-ones-own-luck": [
+      {"type": "resource", "resource": "dark_ones_own_luck", "max": "1", "recharge": "short_rest"}
+    ],
+    "feature:hurl-through-hell": [
+      {"type": "resource", "resource": "hurl_through_hell", "max": "1", "recharge": "long_rest"}
     ]
   }
 }

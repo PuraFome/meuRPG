@@ -52,6 +52,8 @@
 
 .row__values {
   flex: none;
+  // A value that wraps under its label stays on the right, like every other row's.
+  margin-inline-start: auto;
   display: inline-flex;
   align-items: baseline;
   gap: 6px;

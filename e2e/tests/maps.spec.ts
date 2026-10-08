@@ -12,6 +12,8 @@ import {
 } from './maps-support';
 import { boxOf, callRPC, newSignedInContext } from './support';
 
+import { movingTable } from './move-support';
+
 // MR-008 (maps and points of interest), MR-009 (what the players see) and
 // MR-012 (the session's map), through the screens. Setup (campaigns, images,
 // maps, points, tokens) goes through the API; every test makes its own
@@ -263,6 +265,34 @@ test(
     } finally {
       await masterContext.close();
       await playerContext.close();
+    }
+  },
+);
+
+test(
+  'com um combate no mapa, "Apagar mapa" diz o motivo antes do clique, e a pergunta mostra a recusa do servidor com as mesmas palavras',
+  { tag: '@MR-008' },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    const { m, table, campaignId, done } = await movingTable(browser, 'Apagar com combate', { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    try {
+      await m.goto(`/campaigns/${campaignId}/maps/${table.mapId}`);
+      const reason = 'Há um combate neste mapa: ele só pode ser apagado depois do combate.';
+      const remove = m.getByRole('button', { name: 'Apagar mapa' });
+      // Grey but clickable, with the reason under it, tied by aria-describedby.
+      await expect(m.getByText(reason).first()).toBeVisible();
+      await expect(remove).toHaveAccessibleDescription(reason);
+      await remove.click();
+      const question = m.getByRole('group', { name: /Apagar .*\?/ });
+      await expect(question.getByRole('button', { name: 'Cancelar' })).toBeFocused();
+      await question.getByRole('button', { name: 'Apagar mapa' }).click();
+      await expect(question.getByRole('alert')).toHaveText(reason);
+      // The question stays open and nothing was deleted.
+      await expect(question).toBeVisible();
+      const res = await callRPC(m, 'meurpg.maps.v1.MapService/GetMap', { campaignId, mapId: table.mapId });
+      expect(res.ok()).toBeTruthy();
+    } finally {
+      await done();
     }
   },
 );

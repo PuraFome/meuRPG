@@ -217,7 +217,7 @@ func (s *Service) CastSummon(
 		if err != nil {
 			return nil, err
 		}
-		if err := noSpellsIn(now); err != nil { // no spells in a beast form (MR-037)
+		if err := noSpellsIn(now, chars[0].CastsInBeastForm); err != nil { // no spells in a beast form (MR-037)
 			return nil, err
 		}
 

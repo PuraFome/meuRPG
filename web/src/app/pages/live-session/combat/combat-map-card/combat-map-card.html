@@ -48,6 +48,7 @@
     [layers]="layers()"
     [offers]="offers()"
     [masterMoves]="isMaster()"
+    [forcedDrag]="forcedSwitch() && forced()"
     [ownMoveId]="ownMovable() ? (own()?.id ?? null) : null"
     [doorPicks]="doorTaps() && isMaster()"
     (doorPick)="doorPick.emit($event)"
@@ -55,10 +56,24 @@
   />
   }
 
+  @if (forcedSwitch() && !preview()) {
+    <div class="card__result" role="status">
+      @if (forcedNote(); as note) {
+        <p class="mr-notice mr-notice--success">
+          <mat-icon aria-hidden="true">check_circle</mat-icon>{{ note }}
+        </p>
+      }
+    </div>
+  }
+
   @if (isMaster() && hint() && !preview()) {
     <p class="card__hint">
       <mat-icon aria-hidden="true">drag_pan</mat-icon>
-      Arraste um token para movê-lo. O mestre anda sem limite.
+      @if (forcedSwitch() && forced()) {
+        Arraste um token: o movimento é forçado e não provoca ataque de oportunidade.
+      } @else {
+        Arraste um token para movê-lo. O mestre anda sem limite.
+      }
     </p>
   }
 
@@ -71,12 +86,28 @@
   @if (reachSwitch(); as sw) {
     <div class="card__reach">
       <label class="card__check">
-        <input type="checkbox" [checked]="sw.on" (change)="reachChange.emit($any($event.target).checked)" />
+        <input type="checkbox" class="mr-check-input" [checked]="sw.on" (change)="reachChange.emit($any($event.target).checked)" />
         Mostrar o alcance {{ sw.name }} no mapa
       </label>
       <p class="card__hint card__hint--text">
         O alcance é o círculo do movimento que resta, em linha reta, como o servidor o calcula. Terreno difícil e
         criaturas somam ao custo. Uma parede deixa sombra: ninguém passa por ela.
+      </p>
+    </div>
+  }
+
+  @if (forcedSwitch() && !preview()) {
+    <div class="card__reach">
+      <label class="card__check">
+        <input type="checkbox" class="mr-check-input" [checked]="forced()" (change)="forcedChange.emit($any($event.target).checked)" />
+        Movimento forçado
+        @if (forced()) {
+          <span class="card__state">Ligado para o próximo arrasto</span>
+        }
+      </label>
+      <p class="card__hint card__hint--text">
+        Para teletransporte (Passo Nebuloso), empurrão ou puxão: o token chega ao quadrado sem provocar ataque de
+        oportunidade. Vale só para o próximo arrasto.
       </p>
     </div>
   }
