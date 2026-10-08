@@ -95,14 +95,17 @@ func AddFailures(successes, failures, n int) DeathSaveResult {
 	return tally(successes, failures+n)
 }
 
-// tally caps both counts at 3 and names the state.
+// tally caps both counts at 3 and names the state. A character that becomes
+// stable has both counts back at zero (SRD 5.1): three successes stay as the
+// marker of the stable state, and the failures are cleared, so the next hit
+// starts from one failure.
 func tally(successes, failures int) DeathSaveResult {
 	r := DeathSaveResult{Successes: min(successes, 3), Failures: min(failures, 3), Outcome: DeathSaveContinues}
 	switch {
 	case r.Failures >= 3:
 		r.Outcome = DeathSaveDying
 	case r.Successes >= 3:
-		r.Outcome = DeathSaveStable
+		r.Outcome, r.Failures = DeathSaveStable, 0
 	}
 	return r
 }

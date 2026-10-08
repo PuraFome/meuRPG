@@ -1376,3 +1376,22 @@ func TestADownPlayerCannotMove(t *testing.T) {
 		t.Errorf("the master's GetMoveOptions(a down character) error = %v, want nil", err)
 	}
 }
+
+// A grappled or restrained combatant has no speed (SRD 5.1): the turn options
+// say the same movement left as the combatant's own view.
+func TestTurnOptionsMovementFollowsTheConditionsThatLeaveNoSpeed(t *testing.T) {
+	t.Parallel()
+	for _, key := range []string{"condition:grappled", "condition:restrained"} {
+		a := newArmed(t)
+		e := a.theatreThree(t)
+		if _, err := a.conditions(t, a.master, e, "Toren", []string{key}, true, false); err != nil {
+			t.Fatalf("SetCombatantConditions(%s) error = %v", key, err)
+		}
+		view := a.theatreCombatant(t, a.caio, "Toren")
+		m := a.mustOptions(t, a.caio, e, "Toren").GetOptions().GetEconomy().GetMovement()
+		if view.GetMovementLeftDft() != 0 || m.GetLeftDft() != 0 || m.GetLeftFt() != 0 || m.GetSpeedDft() != 0 {
+			t.Errorf("%s: combatant movement_left_dft=%d; turn options left_dft=%d left_ft=%d speed_dft=%d; want all 0",
+				key, view.GetMovementLeftDft(), m.GetLeftDft(), m.GetLeftFt(), m.GetSpeedDft())
+		}
+	}
+}
