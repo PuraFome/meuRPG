@@ -140,10 +140,11 @@ func (s *Service) GetMap(
 	// count the move (audit D-03). A hidden map is "not found" to a player
 	// exactly as a map that does not exist (RN-10), and its points are not read.
 	var (
-		cm     campaignMaps
-		row    mapsdb.ListMapDetailsRow
-		points []mapsdb.MapPoint
-		tokens []mapsdb.MapToken
+		cm      campaignMaps
+		row     mapsdb.ListMapDetailsRow
+		points  []mapsdb.MapPoint
+		tokens  []mapsdb.MapToken
+		details pointDetails
 	)
 	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
@@ -161,7 +162,10 @@ func (s *Service) GetMap(
 		if tokens, err = q.ListMapTokens(ctx, mapID); err != nil {
 			return fmt.Errorf("list a map's tokens: %w", err)
 		}
-		return nil
+		// Who found each treasure and who knows each trap belong to the same moment
+		// as the points.
+		details, err = readPointDetails(ctx, q, mapID, v.master)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "get a map", err)
@@ -187,7 +191,7 @@ func (s *Service) GetMap(
 	if pv != nil {
 		res.Map.PointCount = int32(len(res.Points)) //nolint:gosec // G115: a map has at most 200 points
 	}
-	if err := s.attachPointDetails(ctx, m.CampaignID, mapID, res.Points, v.master); err != nil {
+	if err := s.attachPointDetails(ctx, m.CampaignID, res.Points, details); err != nil {
 		return nil, s.dbError(ctx, "list a map's traps and treasures", err)
 	}
 	if err := s.attachActions(ctx, mapID, res.Points, v.master); err != nil {
@@ -1556,7 +1560,11 @@ func (s *Service) masterPoint(ctx context.Context, m authz.Membership, p mapsdb.
 		return nil, s.dbError(ctx, "read the maps", err)
 	}
 	out := s.pointToProto(cm, p, viewer{master: true, userID: m.UserID})
-	if err := s.attachPointDetails(ctx, m.CampaignID, p.MapID, []*mapsv1.MapPoint{out}, true); err != nil {
+	details, err := readPointDetails(ctx, s.queries, p.MapID, true)
+	if err != nil {
+		return nil, s.dbError(ctx, "list a point's traps and treasures", err)
+	}
+	if err := s.attachPointDetails(ctx, m.CampaignID, []*mapsv1.MapPoint{out}, details); err != nil {
 		return nil, s.dbError(ctx, "list a point's traps and treasures", err)
 	}
 	if err := s.attachActions(ctx, p.MapID, []*mapsv1.MapPoint{out}, true); err != nil {

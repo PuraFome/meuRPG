@@ -322,8 +322,15 @@ func (s *Service) CreateInvite(
 	now := s.now()
 	var invite campaignsdb.CampaignInvite
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		var err error
-		invite, err = s.queries.WithTx(tx).InsertInvite(ctx, campaignsdb.InsertInviteParams{
+		q := s.queries.WithTx(tx)
+		active, err := q.CountActiveInvites(ctx, campaignsdb.CountActiveInvitesParams{CampaignID: m.CampaignID, Now: now})
+		if err != nil {
+			return fmt.Errorf("count the active invites: %w", err)
+		}
+		if active >= MaxActiveInvites {
+			return errInviteCapReached()
+		}
+		invite, err = q.InsertInvite(ctx, campaignsdb.InsertInviteParams{
 			CampaignID:       m.CampaignID,
 			TokenHash:        tokenHash,
 			CreatedBy:        m.UserID,

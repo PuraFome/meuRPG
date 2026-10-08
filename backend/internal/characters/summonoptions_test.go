@@ -1,6 +1,7 @@
 package characters
 
 import (
+	"context"
 	"slices"
 	"strings"
 	"testing"
@@ -277,5 +278,57 @@ func TestRN20_SummonOptionsCarryNoHitPoints(t *testing.T) {
 		if strings.Contains(string(b), banned) {
 			t.Errorf("the response has %q: %s", banned, b)
 		}
+	}
+}
+
+// The summon options are one moment: a casting that commits while they are
+// being read (it spends a slot and makes the familiar together) never shows
+// the slot still free next to the familiar it just made.
+func TestMR037_TheSummonOptionsAreOneSnapshotWhileTheCasterCasts(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master, wizard := h.newUser("Mestre"), h.newUser("Maga")
+	campaign := h.newCampaign(master, "Mirathel", wizard)
+	pensantus := wizard.createPensantus(t, campaign)
+
+	h.hookAfterQuery("character_vitals", func() {
+		tx, err := h.pool.Begin(context.Background())
+		if err != nil {
+			t.Errorf("begin: %v", err)
+			return
+		}
+		defer func() { _ = tx.Rollback(context.Background()) }()
+		// A casting: a first circle slot spent and a familiar made, in one transaction.
+		if _, err := tx.Exec(context.Background(),
+			`INSERT INTO character_vitals (character_id, hit_points_current, spell_slots_used, revision, updated_at) VALUES ($1, NULL, '{1}', 1, now())`,
+			pensantus.GetId()); err != nil {
+			t.Errorf("spend the slot from the hook: %v", err)
+			return
+		}
+		if _, err := h.svc.SummonCreatures(context.Background(), tx, link.Summon{
+			CampaignID: campaign, CharacterID: pensantus.GetId(), Source: "familiar", GroupID: "6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e0aa",
+			Creatures: []link.CreatureSpec{{MonsterKey: "monster:raven", Name: "Nanquim", Attack: "none"}},
+		}); err != nil {
+			t.Errorf("summon from the hook: %v", err)
+			return
+		}
+		if err := tx.Commit(context.Background()); err != nil {
+			t.Errorf("commit: %v", err)
+		}
+	})
+	r, err := summonOptions(t, wizard, campaign, pensantus.GetId())
+	if err != nil {
+		t.Fatal(err)
+	}
+	free := r.GetSlots()[0].GetFree()
+	replaced := len(spellOf(t, r, "spell:find-familiar").GetReplaces())
+	if (free == 4) != (replaced == 0) {
+		t.Errorf("GetSummonOptions(): %d first circle slots free with %d familiars to replace; want the options as they were (4, 0) or as they became (3, 1)", free, replaced)
+	}
+
+	// Positive control: the hook did cast.
+	after, err := summonOptions(t, wizard, campaign, pensantus.GetId())
+	if err != nil || after.GetSlots()[0].GetFree() != 3 || len(spellOf(t, after, "spell:find-familiar").GetReplaces()) != 1 {
+		t.Errorf("options after the casting = %v, %v; want 3 free slots and one familiar", after, err)
 	}
 }

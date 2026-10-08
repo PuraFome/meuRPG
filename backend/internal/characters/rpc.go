@@ -182,6 +182,9 @@ func (s *Service) CreateCharacter(
 						return row, wrap("find the living character", err)
 					}
 				}
+				if err := s.checkRoom(ctx, q, m.CampaignID, false); err != nil {
+					return row, err
+				}
 				row, err := q.InsertCharacter(ctx, params)
 				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 					return row, wrap("insert character", err)
@@ -448,7 +451,7 @@ func (s *Service) UpdateCharacter(
 		if err != nil {
 			return wrap("update sheet", err)
 		}
-		return nil
+		return s.carryHitPoints(ctx, q, content, id, current.Sheet, sheetDoc)
 	})
 	if portraitCopy != nil && (err != nil || !copyCreated) {
 		portraitCopy.Discard(ctx) // no gallery row: the copy's files go

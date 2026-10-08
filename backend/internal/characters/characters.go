@@ -110,6 +110,10 @@ type Config struct {
 	// change and so needs no campaign: the conditions' names (RN-22) and the
 	// scene checks' names (the skills). Required.
 	SRD *rules.Content
+	// MaxCharactersPerCampaign is the most characters and NPCs one campaign
+	// may hold (RN-30). Zero means DefaultMaxCharactersPerCampaign; tests set
+	// a small one.
+	MaxCharactersPerCampaign int
 	// Dice tells what the campaign's dice setting makes a player do with the
 	// hit die of a level-up (RN-18). Nil means every player chooses.
 	Dice DiceRules
@@ -153,6 +157,8 @@ type Service struct {
 	// that holds a character's creatures and the history they are written to
 	// (MR-037). Nil until then.
 	creatureHost CreatureHost
+	// maxCharacters is the cap on a campaign's characters (RN-30).
+	maxCharacters int
 }
 
 // The compiler checks that Service implements both handlers.
@@ -186,6 +192,11 @@ func New(cfg Config) (*Service, error) {
 		now:      cfg.Now,
 		dice:     cfg.Dice,
 		roller:   cfg.Roller,
+
+		maxCharacters: cfg.MaxCharactersPerCampaign,
+	}
+	if s.maxCharacters == 0 {
+		s.maxCharacters = DefaultMaxCharactersPerCampaign
 	}
 	if s.roller == nil {
 		s.roller = dice.Crypto{}

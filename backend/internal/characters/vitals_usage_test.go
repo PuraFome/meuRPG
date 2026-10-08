@@ -140,13 +140,14 @@ func TestAFirstVitalsWriteThatLeavesHitPointsAloneKeepsThemFull(t *testing.T) {
 			t.Errorf("%s after the level-up: %d/%d hit points, want full (%d)", c.GetName(), v.GetHitPointsCurrent(), v.GetHitPointsMax(), v.GetHitPointsMax())
 		}
 	}
-	// What was set stays set: a wound is still a wound after the level-up.
+	// What was set rises with the maximum: a wound is still a wound after the level-up.
 	wounded := create("Ferida")
 	h.adjustVitals(campaign, wounded.GetId(), &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: new(int32(4))})
 	if _, err := master.update(t, wounded, wounded.GetName(), wizardAt(5)); err != nil {
 		t.Fatalf("raise the wounded: %v", err)
 	}
-	if v, err := h.svc.GetVitals(t.Context(), campaign, wounded.GetId()); err != nil || v.GetHitPointsCurrent() != 4 {
-		t.Errorf("a wounded character after the level-up: %d hit points (%v), want 4", v.GetHitPointsCurrent(), err)
+	v, err := h.svc.GetVitals(t.Context(), campaign, wounded.GetId())
+	if want := 4 + v.GetHitPointsMax() - wounded.GetDerived().GetHitPointsMax(); err != nil || v.GetHitPointsCurrent() != want {
+		t.Errorf("a wounded character after the level-up: %d hit points (%v), want %d: the 4 it had plus what the maximum gained", v.GetHitPointsCurrent(), err, want)
 	}
 }

@@ -39,18 +39,31 @@ func (s *Service) ListGalleryImages(
 	if s.blobs == nil {
 		return nil, errImagesOff()
 	}
-	rows, err := s.queries.ListGalleryImages(ctx, m.CampaignID)
+	// The images, their totals and the maps that use them are one moment: an
+	// upload, a delete or a redraw between the statements would show a total
+	// that does not match the list.
+	var (
+		rows  []mapsdb.GalleryImage
+		usage mapsdb.GetGalleryUsageRow
+		maps  []mapsdb.ListMapImageIDsRow
+	)
+	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		var err error
+		if rows, err = q.ListGalleryImages(ctx, m.CampaignID); err != nil {
+			return fmt.Errorf("list the gallery: %w", err)
+		}
+		if usage, err = q.GetGalleryUsage(ctx, m.CampaignID); err != nil {
+			return fmt.Errorf("read the gallery usage: %w", err)
+		}
+		// The maps that use each image ("Usada em Mirathel e arredores").
+		if maps, err = q.ListMapImageIDs(ctx, m.CampaignID); err != nil {
+			return fmt.Errorf("list the maps' images: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, s.dbError(ctx, "list the gallery", err)
-	}
-	usage, err := s.queries.GetGalleryUsage(ctx, m.CampaignID)
-	if err != nil {
-		return nil, s.dbError(ctx, "read the gallery usage", err)
-	}
-	// The maps that use each image ("Usada em Mirathel e arredores").
-	maps, err := s.queries.ListMapImageIDs(ctx, m.CampaignID)
-	if err != nil {
-		return nil, s.dbError(ctx, "list the maps' images", err)
 	}
 	usedIn := map[string][]*mapsv1.MapRef{}
 	for _, mp := range maps {

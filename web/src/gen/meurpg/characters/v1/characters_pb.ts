@@ -5199,6 +5199,9 @@ export const CharacterService: GenService<{
    *     scores of a player's sheet do not follow the way they say they were
    *     made, or the table does not allow that way (RN-24): an
    *     AbilityScoresRefusal detail.
+   *   - `resource_exhausted`: the campaign already has 1,000 characters and
+   *     NPCs, living and dead together (RN-30). A retry of a create that already
+   *     went through is answered, not refused.
    *
    * The base scores of a PLAYER's full sheet are checked against
    * `ability_method` (RN-24). Nothing else is: the master's NPCs and the
@@ -5301,6 +5304,9 @@ export const CharacterService: GenService<{
    *     MINION or STORY, name is not 1 to 80 characters on one line, the
    *     idempotency_key is not a UUID, or it was already used for another
    *     creature, name or kind.
+   *   - `resource_exhausted`: the campaign already has 1,000 characters and
+   *     NPCs, living and dead together (RN-30). A repeat of a call that already
+   *     made its NPC is answered, not refused.
    *   - `not_found`: the campaign does not exist, or the caller is not a
    *     member of it.
    *   - `permission_denied`: the caller is a player.
@@ -5370,6 +5376,11 @@ export const CharacterService: GenService<{
    * changed since, the call fails with `aborted` and changes nothing: the
    * app reloads the character and the person tries again. On success, the
    * revision goes up by one.
+   *
+   * When the save changes the sheet's maximum hit points, the character's
+   * current hit points follow in the same transaction (RN-12): set ones gain
+   * what the maximum gained, none ends above a lower maximum, and ones never
+   * set stay full.
    *
    * Errors:
    *   - `invalid_argument`: revision is less than 1, the sheet's type does
@@ -5733,6 +5744,10 @@ export const CharacterService: GenService<{
    *       campaign where everybody rolls in the app);
    *     - LevelUpRefusal: the choices break a rule of the level (the field
    *       and a reason code), or the in-app roll was never made.
+   *
+   * A character whose current hit points are set gains the same amount the
+   * maximum gained (RN-12), so a wound stays a wound; one whose hit points were
+   * never set stays full.
    *
    * @generated from rpc meurpg.characters.v1.CharacterService.LevelUpCharacter
    */

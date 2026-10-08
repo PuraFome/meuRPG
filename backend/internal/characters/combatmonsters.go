@@ -124,6 +124,8 @@ func (s *Service) MonsterNpc(ctx context.Context, tx pgx.Tx, campaignID, masterU
 			if row, err = q.GetCharacterByCreateKey(ctx, charactersdb.GetCharacterByCreateKeyParams{CampaignID: campaignID, CreateKey: key}); err != nil {
 				return link.Character{}, false, wrap("read the NPC of a monster", err)
 			}
+		} else if err := s.checkRoom(ctx, q, campaignID, true); err != nil {
+			return link.Character{}, false, err
 		}
 	}
 	out, err := combatCharacter(content, row.ID, row.Kind, row.Name, nil, row.Sheet, nil)

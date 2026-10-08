@@ -351,7 +351,28 @@ func (s *Service) GetDungeonRooms(
 	if !ok {
 		return nil, errMapNotFound()
 	}
-	rec, err := s.dungeonOf(ctx, s.queries, m.CampaignID, mapID)
+	// The record, the map it draws and the map's scenes are one moment: a redraw
+	// between the reads would report a dungeon whose image is no longer the
+	// generated one.
+	var (
+		rec    mapsdb.GeneratedDungeon
+		row    mapsdb.Map
+		points []mapsdb.MapPoint
+	)
+	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		var err error
+		if rec, err = s.dungeonOf(ctx, q, m.CampaignID, mapID); err != nil {
+			return err
+		}
+		if row, err = s.campaignMap(ctx, q, m.CampaignID, mapID); err != nil {
+			return err
+		}
+		if points, err = q.ListMapPoints(ctx, mapID); err != nil {
+			return fmt.Errorf("list the map's scenes: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, s.dbError(ctx, "read a dungeon's rooms", err)
 	}
@@ -363,16 +384,8 @@ func (s *Service) GetDungeonRooms(
 	if err := protojson.Unmarshal(rec.Options, res.Options); err != nil {
 		return nil, s.dbError(ctx, "read a dungeon's options", fmt.Errorf("decode the stored options: %w", err))
 	}
-	row, err := s.campaignMap(ctx, s.queries, m.CampaignID, mapID)
-	if err != nil {
-		return nil, s.dbError(ctx, "read the dungeon's map", err)
-	}
 	res.ImageIsGenerated = isGeneratedImage(rec, row)
 	// The scenes in each room: the map's scene points whose square is on its floor.
-	points, err := s.queries.ListMapPoints(ctx, mapID)
-	if err != nil {
-		return nil, s.dbError(ctx, "list the map's scenes", err)
-	}
 	g := grid.Grid{Columns: int(rec.Width), Rows: int(rec.Height)}
 	for _, p := range points {
 		if p.Kind != kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_SCENE] {
