@@ -3,6 +3,7 @@
 }
 
 .card {
+  container: card / inline-size;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -177,6 +178,22 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+// On a phone the tiles go two by two and an odd last one takes the whole row; in a wide
+// card the numbers read as one row (two even rows from six on).
+.own__tile:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+@container card (min-width: 560px) {
+  .own {
+    grid-template-columns: repeat(var(--own-wide, 2), minmax(0, 1fr));
+  }
+
+  .own__tile:last-child:nth-child(odd) {
+    grid-column: auto;
+  }
 }
 
 .own__tile {

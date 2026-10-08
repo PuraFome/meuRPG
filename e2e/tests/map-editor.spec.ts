@@ -183,7 +183,7 @@ test('mudar a grade pergunta no lugar quando há o que apagar: "Voltar" não apa
 
     await master.getByRole('button', { name: 'Mudar a grade' }).click();
     await expect(master.getByRole('heading', { name: 'Mudar a grade?' })).toBeFocused();
-    await expect(master.getByText('Mudar a grade apaga o terreno, as paredes, a cobertura e a luz pintados, e o que os jogadores já viram.')).toBeVisible();
+    await expect(master.getByText('Mudar a grade apaga o terreno, as paredes, a cobertura, a luz e as portas pintados, e o que os jogadores já viram.')).toBeVisible();
     await master.getByLabel('Colunas').fill('30');
     await expect(master.getByText('Linhas: 20, pela proporção da imagem. A grade ficaria com 30 × 20 quadrados.')).toBeVisible();
     // The first click asked; nothing is erased until the second.

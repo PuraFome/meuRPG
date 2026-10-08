@@ -52,9 +52,9 @@ test(
       await expect(m.getByRole('radio', { name: /Sem mapa \(teatro da mente\)/ })).toBeChecked();
       await m.getByRole('link', { name: 'Definir a grade' }).click();
       await expect(m.getByRole('heading', { name: 'Grade do mapa' })).toBeVisible();
-      // Columns 4 is below the screen's 5 to 60; 30 gives 21 rows for 2000 x 1400.
-      await m.getByLabel('Quadrados de 1,5 m na largura').fill('4');
-      await expect(m.getByText('Use um número inteiro de 5 a 60.')).toBeVisible();
+      // Columns 3 is below the server's 4 to 200; 30 gives 21 rows for 2000 x 1400.
+      await m.getByLabel('Quadrados de 1,5 m na largura').fill('3');
+      await expect(m.getByText('Use um número inteiro de 4 a 200.')).toBeVisible();
       await expect(m.getByRole('button', { name: 'Salvar grade' })).toHaveAttribute('aria-disabled', 'true');
       await m.getByLabel('Quadrados de 1,5 m na largura').fill('20');
       await expect(m.getByText('20 × 14')).toBeVisible();

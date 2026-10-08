@@ -49,7 +49,7 @@ export function doorSquaresOf(doors: readonly DungeonDoor[]): DoorSquare[] {
   return out;
 }
 
-/** "13 portas e 8 passagens": the passages are floor, so they are counted apart (MAP-LANGUAGE-E10.md). */
+/** "13 portas e 8 passagens": the passages are floor, so they are counted apart (docs/design.md). */
 export function doorCountText(doors: readonly DungeonDoor[]): string {
   const passages = doors.filter((d) => d.kind === DungeonDoorKind.ARCHWAY).length;
   const real = doors.length - passages;

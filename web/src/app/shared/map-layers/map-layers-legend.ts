@@ -5,18 +5,18 @@ import { type DoorKind, type MapLayers, doorCounts } from '../../core/maps/layer
 import { DOOR_NAME, DoorMark } from './door-mark';
 import { StairMark } from './stair-mark';
 
-/** The doors' entries in the order of MAP-LANGUAGE-E10.md: fechada, aberta, trancada, grade, secreta. */
+/** The doors' entries in the order of docs/design.md: fechada, aberta, trancada, grade, secreta. */
 const DOOR_ORDER: readonly DoorKind[] = [2, 1, 3, 4, 5];
 
 /**
- * The names of the layer marks on a map (MAP-LANGUAGE.md): "Parede", "Terreno
+ * The names of the layer marks on a map (docs/design.md): "Parede", "Terreno
  * difícil", "Meia cobertura", "Três quartos", each only when the map has one
  * (a legend lists what is drawn), and, after "Parede", the doors the map really has (`app-door-mark`: "Porta fechada", "Porta aberta",
  * "Porta trancada", "Grade", "Porta secreta"); the padlock and the secret door are the master's, and their entries say "(só você vê)" with the
  * crossed eye. The swatches are `.mr-swatch` (styles/_ui.scss),
  * which draws the overlay's own looks. The screen that shows the map projects
  * its other marks (fog states before, movement marks and tokens after) as `li`s
- * into the same list, so the order of MAP-LANGUAGE.md holds.
+ * into the same list, so the order of docs/design.md holds.
  */
 @Component({
   selector: 'app-map-layers-legend',

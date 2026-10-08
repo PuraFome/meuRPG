@@ -104,6 +104,7 @@ function toAttackVm(attack: GenAttack): AttackVm {
     attackBonus: attack.attackBonus,
     damage: attack.damage,
     damageTypePt: attack.damageTypePt,
+    versatileDamage: attack.versatileDamage,
     saveDc: attack.saveDc,
     saveAbility: attack.saveDc > 0 ? ABILITY_FROM_GEN[attack.saveAbility] : null,
     beams: attack.beams,
@@ -190,6 +191,7 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
       ...(derived.proficiencies?.tools ?? []),
     ],
     equipment: full.equipment.map((item) => ({ name: item.name, quantity: item.quantity || 1 })),
+    backgroundEquipment: derived.backgroundEquipmentPt,
     coins: {
       cp: full.coins?.copper ?? 0,
       sp: full.coins?.silver ?? 0,

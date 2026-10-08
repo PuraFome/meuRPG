@@ -145,5 +145,6 @@ export function ownNumbers(
     { label: 'Dano recebido', value: String(mine.damageTaken) },
     { label: 'Golpes finais', value: String(mine.finalBlows) },
     { label: 'Cura', value: String(mine.healingDone) },
+    { label: 'Acertos críticos', value: String(mine.criticalHits) },
   ];
 }

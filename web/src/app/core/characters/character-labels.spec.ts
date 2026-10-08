@@ -5,6 +5,7 @@ import {
   formatModifier,
   formatSpellSlots,
   lockedSheetCountLabel,
+  pactSlotsText,
   skillProficiencyLabel,
   spellLevelLabel,
   splitArmorDescription,
@@ -125,5 +126,18 @@ describe('lockedSheetCountLabel', () => {
     expect(lockedSheetCountLabel(0)).toBe('0 fichas travadas.');
     expect(lockedSheetCountLabel(2)).toBe('2 fichas travadas.');
     expect(lockedSheetCountLabel(4)).toBe('4 fichas travadas.');
+  });
+});
+
+describe('pactSlotsText', () => {
+  it('counts the slots in words, singular and plural, never as a fraction', () => {
+    expect(pactSlotsText({ count: 1, slotLevel: 1 })).toBe(
+      '1\u00a0espaço\u00a0de\u00a01º\u00a0nível',
+    );
+    expect(pactSlotsText({ count: 2, slotLevel: 2 })).toBe(
+      '2\u00a0espaços\u00a0de\u00a02º\u00a0nível',
+    );
+    expect(pactSlotsText(undefined)).toBe('nenhum espaço');
+    expect(pactSlotsText({ count: 0, slotLevel: 1 })).toBe('nenhum espaço');
   });
 });

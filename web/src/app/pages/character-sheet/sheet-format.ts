@@ -21,6 +21,12 @@ export const ABILITY_ABBREVIATIONS: Record<AbilityKey, string> = {
 
 /** "29/09/2026", local time: the header's lock and death lines show the day
  * only. */
+/** Joins a number and the unit after it ("10 PO", "15 m", "2 kg") with a no-break space, so a line never
+ * ends between them. Display only: the stored text is untouched. */
+export function keepUnitsTogether(text: string): string {
+  return text.replace(/(\d)\s+(PO|PP|PE|PL|PC|m|kg|pés)(?![\p{L}])/gu, '$1\u00a0$2');
+}
+
 export function formatDate(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;

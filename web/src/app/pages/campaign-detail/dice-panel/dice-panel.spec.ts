@@ -2,7 +2,6 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import type { MemberRowVm } from '../campaign-detail.copy';
 import { DicePanel } from './dice-panel';
 
@@ -10,12 +9,9 @@ function row(name: string, dicePreference: DicePreference, role = 'jogador'): Me
   return { userId: name, name, role, isViewer: false, hasName: true, dicePreference };
 }
 
-async function render(
-  mode: DiceMode,
-  setDiceMode = (_id: string, m: DiceMode) => Promise.resolve({ mode: m }),
-) {
+async function render(mode: DiceMode) {
   TestBed.configureTestingModule({
-    providers: [provideRouter([]), { provide: CampaignsService, useValue: { setDiceMode } }],
+    providers: [provideRouter([])],
   });
   const fixture = TestBed.createComponent(DicePanel);
   fixture.componentRef.setInput('campaignId', 'camp-1');

@@ -5,7 +5,12 @@ import type {
   Spellcasting,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { Ability as GenAbility } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { abilityLabel, formatModifier, spellLevelLabel } from '../characters/character-labels';
+import {
+  abilityLabel,
+  formatModifier,
+  pactSlotsText,
+  spellLevelLabel,
+} from '../characters/character-labels';
 import type { AbilityKey } from '../characters/characters.types';
 import { joinDots } from '../format/text';
 
@@ -241,8 +246,8 @@ export function changeRows(
       const pactRow = row(
         'pact',
         'Espaços do pacto',
-        p ? `${p.count} de ${spellLevelLabel(p.slotLevel)}` : '0',
-        `${after.pactMagic.count} de ${spellLevelLabel(after.pactMagic.slotLevel)}`,
+        pactSlotsText(p),
+        pactSlotsText(after.pactMagic),
         ctx.table ? 'Da tabela da classe' : '',
       );
       rows.push(pactRow && ctx.table ? { ...pactRow, table: true } : pactRow);

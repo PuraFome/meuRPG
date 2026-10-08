@@ -39,7 +39,7 @@ export interface FogImage {
 
 /**
  * The picture of a map with the fog of war on, as one viewer sees it (MR-036,
- * RN-10, MAP-LANGUAGE.md): the tiles the server made for them, the map's layers
+ * RN-10, docs/design.md): the tiles the server made for them, the map's layers
  * (walls, terrain, cover) over them, and every square shaded by what the viewer
  * sees of it. It sits inside a surface that is as big as the map (the map view's
  * stage, the combat map's surface) and fills it.

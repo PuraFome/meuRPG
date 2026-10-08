@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/maps/v1/treasure.proto.
  */
 export const file_meurpg_maps_v1_treasure: GenFile = /*@__PURE__*/
-  fileDesc("Ch1tZXVycGcvbWFwcy92MS90cmVhc3VyZS5wcm90bxIObWV1cnBnLm1hcHMudjEiSAoPVHJlYXN1cmVCbG9ja2VkEjUKBnJlYXNvbhgBIAEoDjIlLm1ldXJwZy5tYXBzLnYxLlRyZWFzdXJlQmxvY2tlZFJlYXNvbiJkChFUcmVhc3VyZUNvaW5TdGFjaxIuCgRjb2luGAEgASgOMiAubWV1cnBnLm1hcHMudjEuVHJlYXN1cmVDb2luS2luZBINCgVjb3VudBgCIAEoBRIQCgh2YWx1ZV9wbxgDIAEoBSJBCg1UcmVhc3VyZVBpZWNlEg8KB25hbWVfcHQYASABKAkSEAoIdmFsdWVfcG8YAiABKAUSDQoFY291bnQYAyABKAUi9wEKDFRyZWFzdXJlSXRlbRILCgNrZXkYASABKAkSDAoEbmFtZRgCIAEoCRIPCgduYW1lX3B0GAMgASgJEhAKCGNhdGVnb3J5GAQgASgJEi8KBnJhcml0eRgFIAEoDjIfLm1ldXJwZy5tYXBzLnYxLk1hZ2ljSXRlbVJhcml0eRIQCgh2YWx1ZV9wbxgGIAEoBRISCgpjb25zdW1hYmxlGAcgASgIEg4KBmhhbHZlZBgIIAEoCBIUCgxzcGVsbF9zY3JvbGwYCSABKAgSEgoKYXR0dW5lbWVudBgKIAEoCBIYChBhdHR1bmVtZW50X2J5X3B0GAsgASgJIoADCghUcmVhc3VyZRIqCgRtb2RlGAEgASgOMhwubWV1cnBnLm1hcHMudjEuVHJlYXN1cmVNb2RlEhMKC3BhcnR5X2xldmVsGAIgASgFEgwKBHNlZWQYAyABKAQSMAoFY29pbnMYBCADKAsyIS5tZXVycGcubWFwcy52MS5UcmVhc3VyZUNvaW5TdGFjaxIrCgRnZW1zGAUgAygLMh0ubWV1cnBnLm1hcHMudjEuVHJlYXN1cmVQaWVjZRIqCgNhcnQYBiADKAsyHS5tZXVycGcubWFwcy52MS5UcmVhc3VyZVBpZWNlEisKBWl0ZW1zGAcgAygLMhwubWV1cnBnLm1hcHMudjEuVHJlYXN1cmVJdGVtEhAKCGNvaW5zX3BvGAggASgFEg8KB2dlbXNfcG8YCSABKAUSDgoGYXJ0X3BvGAogASgFEg8KB2dvbGRfcG8YCyABKAUSEAoIaXRlbXNfcG8YDCABKAUSFwoPY29udGVudF92ZXJzaW9uGA0gASgJIi4KF0dldFRyZWFzdXJlUGFydHlSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIl0KGEdldFRyZWFzdXJlUGFydHlSZXNwb25zZRIUCgxsaXZpbmdfY291bnQYASABKAUSFAoMbG93ZXN0X2xldmVsGAIgASgFEhUKDWhpZ2hlc3RfbGV2ZWwYAyABKAUioAEKF0dlbmVyYXRlVHJlYXN1cmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEioKBG1vZGUYAiABKA4yHC5tZXVycGcubWFwcy52MS5UcmVhc3VyZU1vZGUSGAoLcGFydHlfbGV2ZWwYAyABKAVIAIgBARIRCgRzZWVkGAQgASgESAGIAQFCDgoMX3BhcnR5X2xldmVsQgcKBV9zZWVkIkYKGEdlbmVyYXRlVHJlYXN1cmVSZXNwb25zZRIqCgh0cmVhc3VyZRgBIAEoCzIYLm1ldXJwZy5tYXBzLnYxLlRyZWFzdXJlIjcKE0dldE1hZ2ljSXRlbVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSCwoDa2V5GAIgASgJIosDChRHZXRNYWdpY0l0ZW1SZXNwb25zZRILCgNrZXkYASABKAkSDAoEbmFtZRgCIAEoCRIPCgduYW1lX3B0GAMgASgJEhAKCGNhdGVnb3J5GAQgASgJEi8KBnJhcml0eRgFIAEoDjIfLm1ldXJwZy5tYXBzLnYxLk1hZ2ljSXRlbVJhcml0eRISCgphdHR1bmVtZW50GAYgASgIEhUKDWF0dHVuZW1lbnRfYnkYByABKAkSGAoQYXR0dW5lbWVudF9ieV9wdBgIIAEoCRISCgpjb25zdW1hYmxlGAkgASgIEhQKDHNwZWxsX3Njcm9sbBgKIAEoCBIVCgh2YWx1ZV9wbxgLIAEoBUgAiAEBEhEKCXByaWNlbGVzcxgMIAEoCBIOCgZoYWx2ZWQYDSABKAgSEwoLdmFsdWVfbGFiZWwYDiABKAkSEwoLZGVzY3JpcHRpb24YDyADKAkSEAoIdmFyaWFudHMYECADKAkSEgoKdmFyaWFudF9vZhgRIAEoCUILCglfdmFsdWVfcG8igwIKFFBsYWNlVHJlYXN1cmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIqCgRtb2RlGAMgASgOMhwubWV1cnBnLm1hcHMudjEuVHJlYXN1cmVNb2RlEhMKC3BhcnR5X2xldmVsGAQgASgFEhEKBHNlZWQYBSABKARIAIgBARIOCgZjb2x1bW4YBiABKAUSCwoDcm93GAcgASgFEhEKBG5hbWUYCCABKAlIAYgBARIXCg9pZGVtcG90ZW5jeV9rZXkYCSABKAkSFwoPY29udGVudF92ZXJzaW9uGAogASgJQgcKBV9zZWVkQgcKBV9uYW1lImwKFVBsYWNlVHJlYXN1cmVSZXNwb25zZRInCgVwb2ludBgBIAEoCzIYLm1ldXJwZy5tYXBzLnYxLk1hcFBvaW50EioKCHRyZWFzdXJlGAIgASgLMhgubWV1cnBnLm1hcHMudjEuVHJlYXN1cmUqZAoMVHJlYXN1cmVNb2RlEh0KGVRSRUFTVVJFX01PREVfVU5TUEVDSUZJRUQQABIcChhUUkVBU1VSRV9NT0RFX0lORElWSURVQUwQARIXChNUUkVBU1VSRV9NT0RFX0hPQVJEEAIq0wEKEFRyZWFzdXJlQ29pbktpbmQSIgoeVFJFQVNVUkVfQ09JTl9LSU5EX1VOU1BFQ0lGSUVEEAASHQoZVFJFQVNVUkVfQ09JTl9LSU5EX0NPUFBFUhABEh0KGVRSRUFTVVJFX0NPSU5fS0lORF9TSUxWRVIQAhIfChtUUkVBU1VSRV9DT0lOX0tJTkRfRUxFQ1RSVU0QAxIbChdUUkVBU1VSRV9DT0lOX0tJTkRfR09MRBAEEh8KG1RSRUFTVVJFX0NPSU5fS0lORF9QTEFUSU5VTRAFKo4CCg9NYWdpY0l0ZW1SYXJpdHkSIQodTUFHSUNfSVRFTV9SQVJJVFlfVU5TUEVDSUZJRUQQABIcChhNQUdJQ19JVEVNX1JBUklUWV9DT01NT04QARIeChpNQUdJQ19JVEVNX1JBUklUWV9VTkNPTU1PThACEhoKFk1BR0lDX0lURU1fUkFSSVRZX1JBUkUQAxIfChtNQUdJQ19JVEVNX1JBUklUWV9WRVJZX1JBUkUQBBIfChtNQUdJQ19JVEVNX1JBUklUWV9MRUdFTkRBUlkQBRIeChpNQUdJQ19JVEVNX1JBUklUWV9BUlRJRkFDVBAGEhwKGE1BR0lDX0lURU1fUkFSSVRZX1ZBUklFUxAHKpMBChVUcmVhc3VyZUJsb2NrZWRSZWFzb24SJwojVFJFQVNVUkVfQkxPQ0tFRF9SRUFTT05fVU5TUEVDSUZJRUQQABIkCiBUUkVBU1VSRV9CTE9DS0VEX1JFQVNPTl9OT19QQVJUWRABEisKJ1RSRUFTVVJFX0JMT0NLRURfUkVBU09OX0NPTlRFTlRfQ0hBTkdFRBACMqIDCg9UcmVhc3VyZVNlcnZpY2USagoQR2V0VHJlYXN1cmVQYXJ0eRInLm1ldXJwZy5tYXBzLnYxLkdldFRyZWFzdXJlUGFydHlSZXF1ZXN0GigubWV1cnBnLm1hcHMudjEuR2V0VHJlYXN1cmVQYXJ0eVJlc3BvbnNlIgOQAgISZQoQR2VuZXJhdGVUcmVhc3VyZRInLm1ldXJwZy5tYXBzLnYxLkdlbmVyYXRlVHJlYXN1cmVSZXF1ZXN0GigubWV1cnBnLm1hcHMudjEuR2VuZXJhdGVUcmVhc3VyZVJlc3BvbnNlEl4KDEdldE1hZ2ljSXRlbRIjLm1ldXJwZy5tYXBzLnYxLkdldE1hZ2ljSXRlbVJlcXVlc3QaJC5tZXVycGcubWFwcy52MS5HZXRNYWdpY0l0ZW1SZXNwb25zZSIDkAICElwKDVBsYWNlVHJlYXN1cmUSJC5tZXVycGcubWFwcy52MS5QbGFjZVRyZWFzdXJlUmVxdWVzdBolLm1ldXJwZy5tYXBzLnYxLlBsYWNlVHJlYXN1cmVSZXNwb25zZUK7AQoSY29tLm1ldXJwZy5tYXBzLnYxQg1UcmVhc3VyZVByb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9tYXBzL3YxO21hcHN2MaICA01NWKoCDk1ldXJwZy5NYXBzLlYxygIOTWV1cnBnXE1hcHNcVjHiAhpNZXVycGdcTWFwc1xWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6TWFwczo6VjFiBnByb3RvMw", [file_meurpg_maps_v1_maps]);
+  fileDesc("Ch1tZXVycGcvbWFwcy92MS90cmVhc3VyZS5wcm90bxIObWV1cnBnLm1hcHMudjEiSAoPVHJlYXN1cmVCbG9ja2VkEjUKBnJlYXNvbhgBIAEoDjIlLm1ldXJwZy5tYXBzLnYxLlRyZWFzdXJlQmxvY2tlZFJlYXNvbiIlChRUcmVhc3VyZUludmFsaWRGaWVsZBINCgVmaWVsZBgBIAEoCSJkChFUcmVhc3VyZUNvaW5TdGFjaxIuCgRjb2luGAEgASgOMiAubWV1cnBnLm1hcHMudjEuVHJlYXN1cmVDb2luS2luZBINCgVjb3VudBgCIAEoBRIQCgh2YWx1ZV9wbxgDIAEoBSJBCg1UcmVhc3VyZVBpZWNlEg8KB25hbWVfcHQYASABKAkSEAoIdmFsdWVfcG8YAiABKAUSDQoFY291bnQYAyABKAUi9wEKDFRyZWFzdXJlSXRlbRILCgNrZXkYASABKAkSDAoEbmFtZRgCIAEoCRIPCgduYW1lX3B0GAMgASgJEhAKCGNhdGVnb3J5GAQgASgJEi8KBnJhcml0eRgFIAEoDjIfLm1ldXJwZy5tYXBzLnYxLk1hZ2ljSXRlbVJhcml0eRIQCgh2YWx1ZV9wbxgGIAEoBRISCgpjb25zdW1hYmxlGAcgASgIEg4KBmhhbHZlZBgIIAEoCBIUCgxzcGVsbF9zY3JvbGwYCSABKAgSEgoKYXR0dW5lbWVudBgKIAEoCBIYChBhdHR1bmVtZW50X2J5X3B0GAsgASgJIoADCghUcmVhc3VyZRIqCgRtb2RlGAEgASgOMhwubWV1cnBnLm1hcHMudjEuVHJlYXN1cmVNb2RlEhMKC3BhcnR5X2xldmVsGAIgASgFEgwKBHNlZWQYAyABKAQSMAoFY29pbnMYBCADKAsyIS5tZXVycGcubWFwcy52MS5UcmVhc3VyZUNvaW5TdGFjaxIrCgRnZW1zGAUgAygLMh0ubWV1cnBnLm1hcHMudjEuVHJlYXN1cmVQaWVjZRIqCgNhcnQYBiADKAsyHS5tZXVycGcubWFwcy52MS5UcmVhc3VyZVBpZWNlEisKBWl0ZW1zGAcgAygLMhwubWV1cnBnLm1hcHMudjEuVHJlYXN1cmVJdGVtEhAKCGNvaW5zX3BvGAggASgFEg8KB2dlbXNfcG8YCSABKAUSDgoGYXJ0X3BvGAogASgFEg8KB2dvbGRfcG8YCyABKAUSEAoIaXRlbXNfcG8YDCABKAUSFwoPY29udGVudF92ZXJzaW9uGA0gASgJIi4KF0dldFRyZWFzdXJlUGFydHlSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIl0KGEdldFRyZWFzdXJlUGFydHlSZXNwb25zZRIUCgxsaXZpbmdfY291bnQYASABKAUSFAoMbG93ZXN0X2xldmVsGAIgASgFEhUKDWhpZ2hlc3RfbGV2ZWwYAyABKAUioAEKF0dlbmVyYXRlVHJlYXN1cmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEioKBG1vZGUYAiABKA4yHC5tZXVycGcubWFwcy52MS5UcmVhc3VyZU1vZGUSGAoLcGFydHlfbGV2ZWwYAyABKAVIAIgBARIRCgRzZWVkGAQgASgESAGIAQFCDgoMX3BhcnR5X2xldmVsQgcKBV9zZWVkIkYKGEdlbmVyYXRlVHJlYXN1cmVSZXNwb25zZRIqCgh0cmVhc3VyZRgBIAEoCzIYLm1ldXJwZy5tYXBzLnYxLlRyZWFzdXJlIjcKE0dldE1hZ2ljSXRlbVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSCwoDa2V5GAIgASgJIosDChRHZXRNYWdpY0l0ZW1SZXNwb25zZRILCgNrZXkYASABKAkSDAoEbmFtZRgCIAEoCRIPCgduYW1lX3B0GAMgASgJEhAKCGNhdGVnb3J5GAQgASgJEi8KBnJhcml0eRgFIAEoDjIfLm1ldXJwZy5tYXBzLnYxLk1hZ2ljSXRlbVJhcml0eRISCgphdHR1bmVtZW50GAYgASgIEhUKDWF0dHVuZW1lbnRfYnkYByABKAkSGAoQYXR0dW5lbWVudF9ieV9wdBgIIAEoCRISCgpjb25zdW1hYmxlGAkgASgIEhQKDHNwZWxsX3Njcm9sbBgKIAEoCBIVCgh2YWx1ZV9wbxgLIAEoBUgAiAEBEhEKCXByaWNlbGVzcxgMIAEoCBIOCgZoYWx2ZWQYDSABKAgSEwoLdmFsdWVfbGFiZWwYDiABKAkSEwoLZGVzY3JpcHRpb24YDyADKAkSEAoIdmFyaWFudHMYECADKAkSEgoKdmFyaWFudF9vZhgRIAEoCUILCglfdmFsdWVfcG8igwIKFFBsYWNlVHJlYXN1cmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIqCgRtb2RlGAMgASgOMhwubWV1cnBnLm1hcHMudjEuVHJlYXN1cmVNb2RlEhMKC3BhcnR5X2xldmVsGAQgASgFEhEKBHNlZWQYBSABKARIAIgBARIOCgZjb2x1bW4YBiABKAUSCwoDcm93GAcgASgFEhEKBG5hbWUYCCABKAlIAYgBARIXCg9pZGVtcG90ZW5jeV9rZXkYCSABKAkSFwoPY29udGVudF92ZXJzaW9uGAogASgJQgcKBV9zZWVkQgcKBV9uYW1lImwKFVBsYWNlVHJlYXN1cmVSZXNwb25zZRInCgVwb2ludBgBIAEoCzIYLm1ldXJwZy5tYXBzLnYxLk1hcFBvaW50EioKCHRyZWFzdXJlGAIgASgLMhgubWV1cnBnLm1hcHMudjEuVHJlYXN1cmUqZAoMVHJlYXN1cmVNb2RlEh0KGVRSRUFTVVJFX01PREVfVU5TUEVDSUZJRUQQABIcChhUUkVBU1VSRV9NT0RFX0lORElWSURVQUwQARIXChNUUkVBU1VSRV9NT0RFX0hPQVJEEAIq0wEKEFRyZWFzdXJlQ29pbktpbmQSIgoeVFJFQVNVUkVfQ09JTl9LSU5EX1VOU1BFQ0lGSUVEEAASHQoZVFJFQVNVUkVfQ09JTl9LSU5EX0NPUFBFUhABEh0KGVRSRUFTVVJFX0NPSU5fS0lORF9TSUxWRVIQAhIfChtUUkVBU1VSRV9DT0lOX0tJTkRfRUxFQ1RSVU0QAxIbChdUUkVBU1VSRV9DT0lOX0tJTkRfR09MRBAEEh8KG1RSRUFTVVJFX0NPSU5fS0lORF9QTEFUSU5VTRAFKo4CCg9NYWdpY0l0ZW1SYXJpdHkSIQodTUFHSUNfSVRFTV9SQVJJVFlfVU5TUEVDSUZJRUQQABIcChhNQUdJQ19JVEVNX1JBUklUWV9DT01NT04QARIeChpNQUdJQ19JVEVNX1JBUklUWV9VTkNPTU1PThACEhoKFk1BR0lDX0lURU1fUkFSSVRZX1JBUkUQAxIfChtNQUdJQ19JVEVNX1JBUklUWV9WRVJZX1JBUkUQBBIfChtNQUdJQ19JVEVNX1JBUklUWV9MRUdFTkRBUlkQBRIeChpNQUdJQ19JVEVNX1JBUklUWV9BUlRJRkFDVBAGEhwKGE1BR0lDX0lURU1fUkFSSVRZX1ZBUklFUxAHKpMBChVUcmVhc3VyZUJsb2NrZWRSZWFzb24SJwojVFJFQVNVUkVfQkxPQ0tFRF9SRUFTT05fVU5TUEVDSUZJRUQQABIkCiBUUkVBU1VSRV9CTE9DS0VEX1JFQVNPTl9OT19QQVJUWRABEisKJ1RSRUFTVVJFX0JMT0NLRURfUkVBU09OX0NPTlRFTlRfQ0hBTkdFRBACMqIDCg9UcmVhc3VyZVNlcnZpY2USagoQR2V0VHJlYXN1cmVQYXJ0eRInLm1ldXJwZy5tYXBzLnYxLkdldFRyZWFzdXJlUGFydHlSZXF1ZXN0GigubWV1cnBnLm1hcHMudjEuR2V0VHJlYXN1cmVQYXJ0eVJlc3BvbnNlIgOQAgISZQoQR2VuZXJhdGVUcmVhc3VyZRInLm1ldXJwZy5tYXBzLnYxLkdlbmVyYXRlVHJlYXN1cmVSZXF1ZXN0GigubWV1cnBnLm1hcHMudjEuR2VuZXJhdGVUcmVhc3VyZVJlc3BvbnNlEl4KDEdldE1hZ2ljSXRlbRIjLm1ldXJwZy5tYXBzLnYxLkdldE1hZ2ljSXRlbVJlcXVlc3QaJC5tZXVycGcubWFwcy52MS5HZXRNYWdpY0l0ZW1SZXNwb25zZSIDkAICElwKDVBsYWNlVHJlYXN1cmUSJC5tZXVycGcubWFwcy52MS5QbGFjZVRyZWFzdXJlUmVxdWVzdBolLm1ldXJwZy5tYXBzLnYxLlBsYWNlVHJlYXN1cmVSZXNwb25zZUK7AQoSY29tLm1ldXJwZy5tYXBzLnYxQg1UcmVhc3VyZVByb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9tYXBzL3YxO21hcHN2MaICA01NWKoCDk1ldXJwZy5NYXBzLlYxygIOTWV1cnBnXE1hcHNcVjHiAhpNZXVycGdcTWFwc1xWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6TWFwczo6VjFiBnByb3RvMw", [file_meurpg_maps_v1_maps]);
 
 /**
  * TreasureBlocked is the error detail of TreasureService's `failed_precondition`.
@@ -34,6 +34,29 @@ export type TreasureBlocked = Message<"meurpg.maps.v1.TreasureBlocked"> & {
  */
 export const TreasureBlockedSchema: GenMessage<TreasureBlocked> = /*@__PURE__*/
   messageDesc(file_meurpg_maps_v1_treasure, 0);
+
+/**
+ * TreasureInvalidField is the error detail of TreasureService's `invalid_argument`:
+ * it names the request field that breaks a rule, never the value.
+ *
+ * @generated from message meurpg.maps.v1.TreasureInvalidField
+ */
+export type TreasureInvalidField = Message<"meurpg.maps.v1.TreasureInvalidField"> & {
+  /**
+   * The request field, such as "column", "row", "name", "idempotency_key" or
+   * "content_version".
+   *
+   * @generated from field: string field = 1;
+   */
+  field: string;
+};
+
+/**
+ * Describes the message meurpg.maps.v1.TreasureInvalidField.
+ * Use `create(TreasureInvalidFieldSchema)` to create a new message.
+ */
+export const TreasureInvalidFieldSchema: GenMessage<TreasureInvalidField> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_treasure, 1);
 
 /**
  * TreasureCoinStack is a stack of one coin that came up.
@@ -66,7 +89,7 @@ export type TreasureCoinStack = Message<"meurpg.maps.v1.TreasureCoinStack"> & {
  * Use `create(TreasureCoinStackSchema)` to create a new message.
  */
 export const TreasureCoinStackSchema: GenMessage<TreasureCoinStack> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_treasure, 1);
+  messageDesc(file_meurpg_maps_v1_treasure, 2);
 
 /**
  * TreasurePiece is one kind of gem or art object, with how many of it.
@@ -101,7 +124,7 @@ export type TreasurePiece = Message<"meurpg.maps.v1.TreasurePiece"> & {
  * Use `create(TreasurePieceSchema)` to create a new message.
  */
 export const TreasurePieceSchema: GenMessage<TreasurePiece> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_treasure, 2);
+  messageDesc(file_meurpg_maps_v1_treasure, 3);
 
 /**
  * TreasureItem is a magic item of a treasure.
@@ -196,7 +219,7 @@ export type TreasureItem = Message<"meurpg.maps.v1.TreasureItem"> & {
  * Use `create(TreasureItemSchema)` to create a new message.
  */
 export const TreasureItemSchema: GenMessage<TreasureItem> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_treasure, 3);
+  messageDesc(file_meurpg_maps_v1_treasure, 4);
 
 /**
  * Treasure is a generated treasure. Everything in it follows from the mode, the
@@ -298,7 +321,7 @@ export type Treasure = Message<"meurpg.maps.v1.Treasure"> & {
  * Use `create(TreasureSchema)` to create a new message.
  */
 export const TreasureSchema: GenMessage<Treasure> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_treasure, 4);
+  messageDesc(file_meurpg_maps_v1_treasure, 5);
 
 /**
  * @generated from message meurpg.maps.v1.GetTreasurePartyRequest
@@ -317,7 +340,7 @@ export type GetTreasurePartyRequest = Message<"meurpg.maps.v1.GetTreasurePartyRe
  * Use `create(GetTreasurePartyRequestSchema)` to create a new message.
  */
 export const GetTreasurePartyRequestSchema: GenMessage<GetTreasurePartyRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_treasure, 5);
+  messageDesc(file_meurpg_maps_v1_treasure, 6);
 
 /**
  * @generated from message meurpg.maps.v1.GetTreasurePartyResponse
@@ -348,7 +371,7 @@ export type GetTreasurePartyResponse = Message<"meurpg.maps.v1.GetTreasurePartyR
  * Use `create(GetTreasurePartyResponseSchema)` to create a new message.
  */
 export const GetTreasurePartyResponseSchema: GenMessage<GetTreasurePartyResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_treasure, 6);
+  messageDesc(file_meurpg_maps_v1_treasure, 7);
 
 /**
  * @generated from message meurpg.maps.v1.GenerateTreasureRequest
@@ -389,7 +412,7 @@ export type GenerateTreasureRequest = Message<"meurpg.maps.v1.GenerateTreasureRe
  * Use `create(GenerateTreasureRequestSchema)` to create a new message.
  */
 export const GenerateTreasureRequestSchema: GenMessage<GenerateTreasureRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_treasure, 7);
+  messageDesc(file_meurpg_maps_v1_treasure, 8);
 
 /**
  * @generated from message meurpg.maps.v1.GenerateTreasureResponse
@@ -408,7 +431,7 @@ export type GenerateTreasureResponse = Message<"meurpg.maps.v1.GenerateTreasureR
  * Use `create(GenerateTreasureResponseSchema)` to create a new message.
  */
 export const GenerateTreasureResponseSchema: GenMessage<GenerateTreasureResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_treasure, 8);
+  messageDesc(file_meurpg_maps_v1_treasure, 9);
 
 /**
  * @generated from message meurpg.maps.v1.GetMagicItemRequest
@@ -434,7 +457,7 @@ export type GetMagicItemRequest = Message<"meurpg.maps.v1.GetMagicItemRequest"> 
  * Use `create(GetMagicItemRequestSchema)` to create a new message.
  */
 export const GetMagicItemRequestSchema: GenMessage<GetMagicItemRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_treasure, 9);
+  messageDesc(file_meurpg_maps_v1_treasure, 10);
 
 /**
  * @generated from message meurpg.maps.v1.GetMagicItemResponse
@@ -561,7 +584,7 @@ export type GetMagicItemResponse = Message<"meurpg.maps.v1.GetMagicItemResponse"
  * Use `create(GetMagicItemResponseSchema)` to create a new message.
  */
 export const GetMagicItemResponseSchema: GenMessage<GetMagicItemResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_treasure, 10);
+  messageDesc(file_meurpg_maps_v1_treasure, 11);
 
 /**
  * @generated from message meurpg.maps.v1.PlaceTreasureRequest
@@ -644,7 +667,7 @@ export type PlaceTreasureRequest = Message<"meurpg.maps.v1.PlaceTreasureRequest"
  * Use `create(PlaceTreasureRequestSchema)` to create a new message.
  */
 export const PlaceTreasureRequestSchema: GenMessage<PlaceTreasureRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_treasure, 11);
+  messageDesc(file_meurpg_maps_v1_treasure, 12);
 
 /**
  * @generated from message meurpg.maps.v1.PlaceTreasureResponse
@@ -672,7 +695,7 @@ export type PlaceTreasureResponse = Message<"meurpg.maps.v1.PlaceTreasureRespons
  * Use `create(PlaceTreasureResponseSchema)` to create a new message.
  */
 export const PlaceTreasureResponseSchema: GenMessage<PlaceTreasureResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_treasure, 12);
+  messageDesc(file_meurpg_maps_v1_treasure, 13);
 
 /**
  * TreasureMode is the kind of treasure.
@@ -921,7 +944,8 @@ export const TreasureService: GenService<{
    * server draws one and returns it ("Gerar outro" is a new call without a seed).
    *
    * Errors:
-   *   - `invalid_argument`: the mode is missing, or party_level is not 1 to 20.
+   *   - `invalid_argument`: the mode is missing, or party_level is not 1 to 20
+   *     (a TreasureInvalidField detail names which).
    *   - `failed_precondition` (TreasureBlocked NO_PARTY): no party_level was given
    *     and the campaign has no living player character.
    *
@@ -966,7 +990,8 @@ export const TreasureService: GenService<{
    *   - `invalid_argument`: the mode, the party level or the seed is missing or out
    *     of range, the square is outside the grid, the idempotency_key is not 1 to
    *     64 characters or was used for another change, or the name is longer than 80
-   *     characters, or the content_version is missing.
+   *     characters, or the content_version is missing. The error carries a
+   *     TreasureInvalidField detail naming the request field that broke the rule.
    *   - `failed_precondition` (MapBlocked NO_GRID): the map has no grid; a generated
    *     treasure needs a square, so it cannot be placed on a map without one.
    *   - `failed_precondition` (TreasureBlocked CONTENT_CHANGED): content_version is not

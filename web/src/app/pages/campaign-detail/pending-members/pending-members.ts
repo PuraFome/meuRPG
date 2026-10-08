@@ -28,7 +28,7 @@ import { PendingMemberVm, pendingMemberRows } from './pending-members.copy';
  * safe choice). After a removal, focus goes to the next row, and a status
  * line says who left. If the person created a character meanwhile, the
  * server answers `failed_precondition`: the list is refreshed and the master
- * is pointed to "Personagens pendentes", where that character is.
+ * is pointed to "Esperando aprovação", where that character is.
  */
 @Component({
   selector: 'app-pending-members',
@@ -97,7 +97,7 @@ export class PendingMembers implements OnInit {
       const code = ConnectError.from(err, Code.Unavailable).code;
       if (code === Code.FailedPrecondition) {
         this.error.set(
-          `${member.name} acabou de criar o personagem: aprove ou recuse em Personagens pendentes.`,
+          `${member.name} acabou de criar o personagem: aprove ou recuse em Esperando aprovação.`,
         );
         await this.load();
       } else if (code === Code.NotFound) {

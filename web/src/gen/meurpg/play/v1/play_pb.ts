@@ -2479,8 +2479,9 @@ export const PlayService: GenService<{
    * Only an ended session has a summary: a session still open is refused
    * (GameSessionBlocked, SESSION_NOT_ENDED), because its numbers keep moving
    * and each combat already has its own highlights. The app calls it after
-   * `session_ended` (every member's stream gets it, with the session's id) or
-   * when the master opens an older session from the list.
+   * `session_ended` (every member's stream gets it, with the session's id). It
+   * answers for any ended session of the campaign, though the app has no
+   * screen for an older one yet.
    *
    * What each one gets (RN-20): every member gets the session's times and the
    * categories with their winners and numbers, without the number tried.
@@ -2613,6 +2614,28 @@ export const PlayService: GenService<{
    *   - `puzzle_changed` when a puzzle of the session was shown, hidden, reset, got a
    *     hint or was played; a hint with no content, sent to everyone, and the app
    *     reads the puzzle again (PuzzleService.GetPuzzleRun);
+   *   - `xp_changed` when the campaign's XP changed (an award, an undo, a
+   *     milestone, or a character going up a level); a hint with no content,
+   *     sent to everyone, and the app reads ProgressionService again;
+   *   - `scene_changed` when the open scene changed (opened, closed, or one
+   *     of its actions or its point changed); a hint, and the app reads it
+   *     again (GetOpenScene). Sent to everyone, except a change only the
+   *     master reads (the clues and the hooks), which reaches the master
+   *     alone;
+   *   - `scene_check_rolled` when a character rolled an action of the open
+   *     scene; sent only to the master and to the roller, with no number;
+   *   - `stage_changed` when the stage changed (an NPC came in or went out,
+   *     the speaker changed, or the scene closed); a hint, sent to everyone,
+   *     and the app reads the open scene again (GetOpenScene);
+   *   - `notes_changed` when the master revealed a clue to a player; sent
+   *     only to the players who got it, and the app reads their notes again
+   *     (NotesService.ListNotes);
+   *   - `creatures_changed` when a character's creatures changed outside a
+   *     combat; sent only to the master and the creatures' owner, and the app
+   *     reads them again (CharacterService.ListCharacterCreatures);
+   *   - `trap_noticed` when a player's character noticed a trap by passing
+   *     near it; sent only to that player, never to the master or another
+   *     player (RN-10);
    *   - `session_ended` when the master ends the session; the stream then
    *     ends without an error.
    *

@@ -223,8 +223,10 @@ service MapService {
   // remember, as a grid change always did: the app asks first. Removing the grid
   // (0) also turns the fog of war off. Both ways the layers' revision goes up
   // when anything changed, and a player who sees the map gets `map_changed`.
-  // Either is refused while a combat that is not ended runs on the map (the
-  // combatants stand on squares of the old grid).
+  // A change of the grid the rules use (other columns or factor, or setting or
+  // removing the grid) is refused while a combat that is not ended runs on the
+  // map (the combatants stand on squares of the old grid); the same grid again
+  // is never refused.
   //
   // Errors:
   //   - `invalid_argument`: columns is neither 0 nor between 4 and 200;

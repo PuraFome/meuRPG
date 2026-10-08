@@ -40,7 +40,8 @@
   }
 }
 
-.attacks__save {
+.attacks__save,
+.attacks__versatile {
   display: block;
   font-size: 14px;
   color: var(--mr-ink-muted);
@@ -160,6 +161,12 @@
   flex-direction: column;
   gap: 2px;
   line-height: 22px;
+}
+
+.gear__background {
+  margin: var(--mr-space-2) 0 0;
+  line-height: 22px;
+  white-space: pre-line;
 }
 
 .coins {
