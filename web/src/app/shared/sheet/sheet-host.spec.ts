@@ -1,10 +1,10 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 import { type SheetHandle, injectSheet } from './sheet-host';
 
-@Component({ selector: 'app-probe', template: '' })
+@Component({ selector: 'app-probe', template: '', changeDetection: ChangeDetectionStrategy.OnPush })
 class Probe {
   readonly sheet: SheetHandle<string, void> = injectSheet<string>();
 }

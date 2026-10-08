@@ -1,10 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
 
-import {
-  type Milestone,
-  MilestoneSchema,
-} from '../../../gen/meurpg/progression/v1/progression_pb';
+import { type Milestone, MilestoneSchema } from '../../../gen/meurpg/progression/v1/progression_pb';
 import { MilestonesStore } from './milestones-store';
 import { ProgressionClient } from './progression-client';
 
