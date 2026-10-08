@@ -623,6 +623,33 @@ describe('MasterRun (MR-038, E10-06 states 3 to 5)', () => {
       );
     });
 
+    it('tells a second firing of the same trap from the first by the last move beside it', async () => {
+      const { el, settle, host } = await render(sequence());
+      const facts = () => textOf(el.querySelector('.facts'));
+      const notice = () => textOf(el.querySelector('.mr-notice--warning'));
+      expect(facts()).toContain('há 8 s');
+      const again = sequence(
+        {},
+        {
+          lastMove: {
+            characterName: 'Lia',
+            move: { kind: { case: 'sequence', value: { bell: 2 } } },
+            wrong: true,
+            step: 4,
+            changed: [],
+            at: at(2),
+            trapName: 'Dardos envenenados',
+          },
+        },
+      );
+      const before = notice();
+      host.run.set(again);
+      await settle();
+      expect(notice()).toBe(before);
+      expect(facts()).toContain('agora há pouco');
+      expect(facts()).not.toContain('há 8 s');
+    });
+
     it('plays it for the players with "Tocar a sequência", and the answer is the puzzle as it stands', async () => {
       const played = sequence();
       const { el, settle, host } = await render(played, (a) =>
