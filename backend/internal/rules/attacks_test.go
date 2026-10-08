@@ -30,7 +30,7 @@ func TestMartialArtsNeedsNoArmorOrShield(t *testing.T) {
 		if staff.Ability != STR {
 			t.Errorf("%s: quarterstaff ability = %s, want STR (DEX only while unarmored)", tc.name, staff.Ability)
 		}
-		unarmed, _ := attackOf(d, unarmedStrikeKey)
+		unarmed, _ := attackOf(d, UnarmedStrikeKey)
 		if unarmed.Ability != STR || unarmed.Damage != "1" {
 			t.Errorf("%s: unarmed strike = %s %q, want STR and 1 (no monk die with armor)", tc.name, unarmed.Ability, unarmed.Damage)
 		}
@@ -84,7 +84,7 @@ func TestUnarmedStrike(t *testing.T) {
 			Race:       "race:human", Classes: []ClassLevel{{Class: "class:wizard", Level: 1}},
 		}, STR, 5, "4"},
 	} {
-		a, ok := attackOf(Derive(tc.build, c), unarmedStrikeKey)
+		a, ok := attackOf(Derive(tc.build, c), UnarmedStrikeKey)
 		if !ok {
 			t.Errorf("%s: no unarmed strike line", tc.name)
 			continue
@@ -258,4 +258,97 @@ func TestFightingStyleCountAndRepeats(t *testing.T) {
 			t.Error("two pact boons: want a choice_count issue")
 		}
 	})
+}
+
+// Improved Critical (Champion 3) makes a weapon attack critical on 19 and 20,
+// and Superior Critical (Champion 15) on 18 to 20; anyone else needs a 20.
+func TestCriticalRangeFollowsTheChampionFeatures(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	champion := func(level int) Build {
+		b := standard("class:fighter", level)
+		b.Classes[0].Subclass = "subclass:champion"
+		return b
+	}
+	for _, tc := range []struct {
+		name  string
+		build Build
+		want  int
+	}{
+		{"fighter 3 without a subclass", standard("class:fighter", 3), 20},
+		{"champion 2", standard("class:fighter", 2), 20},
+		{"champion 3", champion(3), 19},
+		{"champion 14", champion(14), 19},
+		{"champion 15", champion(15), 18},
+		{"barbarian 20", standard("class:barbarian", 20), 20},
+	} {
+		if got := Derive(tc.build, c).CriticalRange; got != tc.want {
+			t.Errorf("%s: CriticalRange = %d, want %d", tc.name, got, tc.want)
+		}
+	}
+}
+
+// The bonus action attack rules read the weapon's light property, the Martial
+// Arts strike and whether the damage holds the ability modifier.
+func TestAttacksCarryWhatTheBonusActionAttacksRead(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	rogue := standard("class:rogue", 3)
+	rogue.Weapons = []string{"equipment:shortsword", "equipment:longsword", "equipment:shortbow"}
+	d := Derive(rogue, c)
+	for _, key := range rogue.Weapons {
+		if _, ok := attackOf(d, key); !ok {
+			t.Fatalf("no %s attack", key)
+		}
+	}
+	if sword, _ := attackOf(d, "equipment:shortsword"); !sword.Light || sword.AbilityMod != 3 {
+		t.Errorf("shortsword = Light %v, AbilityMod %d; want a light weapon with the better modifier, +3", sword.Light, sword.AbilityMod)
+	}
+	if long, _ := attackOf(d, "equipment:longsword"); long.Light {
+		t.Error("a longsword is not light")
+	}
+	if bow, _ := attackOf(d, "equipment:shortbow"); bow.Light {
+		t.Error("a ranged weapon is never a light melee weapon")
+	}
+
+	armedMonk := monkBuild(2, 9, 18)
+	armedMonk.Weapons = append(armedMonk.Weapons, "equipment:longsword")
+	monk := Derive(armedMonk, c)
+	if u, _ := attackOf(monk, UnarmedStrikeKey); !u.MartialArts {
+		t.Error("a monk's unarmed strike goes with the Martial Arts strike")
+	}
+	if sword, _ := attackOf(monk, "equipment:longsword"); sword.MartialArts {
+		t.Error("a longsword is not a monk weapon")
+	}
+	if staff, _ := attackOf(monk, "equipment:quarterstaff"); !staff.MartialArts {
+		t.Error("a quarterstaff is a monk weapon")
+	}
+	armored := monkBuild(2, 9, 18)
+	armored.Armor = "equipment:leather-armor"
+	if u, _ := attackOf(Derive(armored, c), UnarmedStrikeKey); u.MartialArts {
+		t.Error("an armored monk has no Martial Arts strike")
+	}
+	if u, _ := attackOf(Derive(standard("class:fighter", 1), c), UnarmedStrikeKey); u.MartialArts {
+		t.Error("a fighter has no Martial Arts strike")
+	}
+}
+
+// Two-Weapon Fighting, from either class, keeps the ability modifier on the
+// bonus action attack.
+func TestTwoWeaponFightingStyleIsOnTheSheet(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	if Derive(standard("class:fighter", 1), c).TwoWeaponFighting {
+		t.Error("a fighter without the style has TwoWeaponFighting")
+	}
+	f := standard("class:fighter", 1)
+	f.FeatureChoices = []string{"feature:fighter-fighting-style-two-weapon-fighting"}
+	if !Derive(f, c).TwoWeaponFighting {
+		t.Error("a fighter with the style lacks TwoWeaponFighting")
+	}
+	r := standard("class:ranger", 2)
+	r.FeatureChoices = []string{"feature:ranger-fighting-style-two-weapon-fighting"}
+	if !Derive(r, c).TwoWeaponFighting {
+		t.Error("a ranger with the style lacks TwoWeaponFighting")
+	}
 }

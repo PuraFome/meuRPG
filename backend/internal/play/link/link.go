@@ -124,6 +124,12 @@ type Sheet struct {
 	// AttacksPerAction is how many attacks the Attack action makes: 1, or more
 	// with Extra Attack.
 	AttacksPerAction int
+	// CriticalRange is the lowest natural d20 that is a critical hit with a
+	// weapon attack: 20, 19 with Improved Critical, 18 with Superior Critical.
+	// 0 (a basic sheet) is 20.
+	CriticalRange int
+	// TwoWeaponFighting says the character has the fighting style.
+	TwoWeaponFighting bool
 	// FeatureActions are the actions the sheet's class and race features grant
 	// (rules.Derived.Actions): their key, name, economy and resource.
 	FeatureActions []FeatureAction
@@ -167,6 +173,16 @@ type Attack struct {
 	// Melee says it is a melee weapon, thrown or not: the only kind an
 	// opportunity attack can use, with the melee reach.
 	Melee bool
+	// Beams is how many attack rolls the cantrip makes in one action (Eldritch
+	// Blast: 2, 3 and 4 beams from character levels 5, 11 and 17); 0 or 1 for
+	// anything else.
+	Beams int
+	// Light is a light melee weapon. Unarmed is the unarmed strike, and
+	// MartialArts says the Martial Arts strike goes with the attack. AbilityMod
+	// is the ability modifier inside DiceBonus. The bonus action attacks read
+	// them.
+	Light, Unarmed, MartialArts bool
+	AbilityMod                  int
 }
 
 // Action is a standard action: its key ("standard:dash") and Portuguese name.

@@ -11,13 +11,13 @@
       {"type": "note", "value": "8 + prof() + mod(\"wis\")", "text_pt": "CD dos poderes de ki: {n}."}
     ],
     "feature:flurry-of-blows": [
-      {"type": "grant_action", "economy": "bonus_action"}
+      {"type": "grant_action", "economy": "bonus_action", "resource": "ki"}
     ],
     "feature:patient-defense": [
-      {"type": "grant_action", "economy": "bonus_action"}
+      {"type": "grant_action", "economy": "bonus_action", "resource": "ki"}
     ],
     "feature:step-of-the-wind": [
-      {"type": "grant_action", "economy": "bonus_action"}
+      {"type": "grant_action", "economy": "bonus_action", "resource": "ki"}
     ],
     "feature:unarmored-movement-1": [
       {"type": "modifier", "target": "speed.walk", "mode": "add", "value": "classLevel(\"monk\") >= 18 ? 30 : classLevel(\"monk\") >= 14 ? 25 : classLevel(\"monk\") >= 10 ? 20 : classLevel(\"monk\") >= 6 ? 15 : 10", "when": "armor() == \"none\" and not shield()"}

@@ -16,21 +16,35 @@ type AttackResult struct {
 	// Total is the d20 plus the attack bonus.
 	Total int
 	Hit   bool
-	// Critical is a natural 20. A natural 1 never hits (Fumble).
+	// Critical is a natural 20 (or lower, with Improved Critical). A natural 1 never hits (Fumble).
 	Critical bool
 	Fumble   bool
 }
+
+// naturalTwenty is the d20 face that is always a critical hit.
+const naturalTwenty = 20
 
 // ResolveAttack compares an attack roll with the target's armor class. A
 // natural 20 always hits and is a critical hit; a natural 1 always misses;
 // anything else hits when the total reaches the armor class. d20Face is the
 // die itself (1 to 20), without the bonus; the caller checks the range.
 func ResolveAttack(attackBonus, targetAC, d20Face int) AttackResult {
+	return ResolveAttackFrom(attackBonus, targetAC, d20Face, naturalTwenty)
+}
+
+// ResolveAttackFrom is ResolveAttack for an attacker whose critical hits start
+// below 20 (Improved Critical: 19, Superior Critical: 18): a natural roll of
+// criticalFrom or more always hits and is a critical hit. A value above 20 or
+// below 2 counts as 20.
+func ResolveAttackFrom(attackBonus, targetAC, d20Face, criticalFrom int) AttackResult {
+	if criticalFrom < 2 || criticalFrom > naturalTwenty {
+		criticalFrom = naturalTwenty
+	}
 	r := AttackResult{Total: d20Face + attackBonus}
-	switch d20Face {
-	case 20:
+	switch {
+	case d20Face >= criticalFrom:
 		r.Hit, r.Critical = true, true
-	case 1:
+	case d20Face == 1:
 		r.Fumble = true
 	default:
 		r.Hit = r.Total >= targetAC
