@@ -60,13 +60,22 @@ func (x *deriver) hitPoints() {
 	slices.SortFunc(x.d.HitDice, func(a, b HitDice) int { return cmp.Compare(b.Die, a.Die) })
 }
 
+// heavyArmorSpeedPenaltyFt is the speed lost in armor the character is too weak for.
+const heavyArmorSpeedPenaltyFt = 10
+
 // speedAndSenses computes the walking speed and special senses.
 func (x *deriver) speedAndSenses() {
 	speed := 0
 	if x.race != nil {
 		speed = x.race.SpeedFt
 	}
-	x.d.SpeedWalkFt = max(x.modifiers("speed.walk", speed), 0)
+	speed = x.modifiers("speed.walk", speed)
+	// Armor whose Strength requirement the character does not meet costs 10
+	// ft of speed; dwarves ignore it.
+	if a := x.armor; a != nil && a.StrMinimum > 0 && x.scores[STR] < a.StrMinimum && (x.race == nil || x.race.Key != "race:dwarf") {
+		speed -= heavyArmorSpeedPenaltyFt
+	}
+	x.d.SpeedWalkFt = max(speed, 0)
 
 	best := map[string]int{}
 	source := map[string]string{}

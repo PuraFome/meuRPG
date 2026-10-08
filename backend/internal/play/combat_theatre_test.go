@@ -592,10 +592,15 @@ func TestRN25_OpportunityAttacksAreOfferedByTheMaster(t *testing.T) {
 	_, err = a.offer(t, a.master, e, "Goblin", "Toren")
 	wantBlockedBy(t, "a second offer in the same round", err, blockedReactionUsed)
 
-	// A reactor that cannot make the attack: Pensantus holds no melee attack; and the
-	// goblin is no reactor to itself or to its own side.
-	_, err = a.offer(t, a.master, e, "Goblin", "Pensantus")
-	wantBlockedBy(t, "an offer to a reactor with no melee attack", err, blockedNoOpportunity)
+	// A reactor with no weapon still has the unarmed strike, a melee attack: Pensantus
+	// can be offered one, and declines; and the goblin is no reactor to itself or to
+	// its own side.
+	offerP := a.mustOffer(t, e, "Goblin", "Pensantus").GetOpportunityOfferId()
+	if _, err := a.ana.combat.DeclineOpportunity(t.Context(), connect.NewRequest(&playv1.DeclineOpportunityRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), OpportunityOfferId: offerP, IdempotencyKey: newKey(),
+	})); err != nil {
+		t.Fatalf("Pensantus declining the offer, error = %v", err)
+	}
 	_, err = a.offer(t, a.master, e, "Goblin", "Goblin")
 	wantCode(t, "a combatant leaving its own reach", err, connect.CodeInvalidArgument)
 	// The mover is the one on turn.

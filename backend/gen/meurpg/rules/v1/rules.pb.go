@@ -4282,7 +4282,12 @@ type Attack struct {
 	// (the attack, the damage parts after the first, a saving throw, a rider).
 	// The engine rolls the to-hit and the first damage part; the master reads the
 	// rest in this text. Empty for a character's weapon or cantrip.
-	Notes         string `protobuf:"bytes,17,opt,name=notes,proto3" json:"notes,omitempty"`
+	Notes string `protobuf:"bytes,17,opt,name=notes,proto3" json:"notes,omitempty"`
+	// How many attack rolls the attack makes in one action, each with its own
+	// damage roll: Eldritch Blast fires 1, 2, 3 or 4 beams at warlock levels
+	// 1, 5, 11 and 17. 1 for the other cantrips; 0 (unset) for a weapon and for a
+	// creature's attack.
+	Beams         int32 `protobuf:"varint,18,opt,name=beams,proto3" json:"beams,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4434,6 +4439,13 @@ func (x *Attack) GetNotes() string {
 		return x.Notes
 	}
 	return ""
+}
+
+func (x *Attack) GetBeams() int32 {
+	if x != nil {
+		return x.Beams
+	}
+	return 0
 }
 
 // Feature is a class feature, racial trait or background feature.
@@ -9910,7 +9922,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x05count\x18\x02 \x01(\x05R\x05count\"Z\n" +
 	"\x0eCharacterSpell\x12,\n" +
 	"\x05spell\x18\x01 \x01(\v2\x16.meurpg.rules.v1.SpellR\x05spell\x12\x1a\n" +
-	"\bprepared\x18\x02 \x01(\bR\bprepared\"\xfe\x04\n" +
+	"\bprepared\x18\x02 \x01(\bR\bprepared\"\x94\x05\n" +
 	"\x06Attack\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -9930,7 +9942,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x15versatile_damage_dice\x18\x0e \x01(\v2\x1c.meurpg.rules.v1.DiceFormulaR\x13versatileDamageDice\x12&\n" +
 	"\x0fdamage_type_key\x18\x0f \x01(\tR\rdamageTypeKey\x12\x14\n" +
 	"\x05melee\x18\x10 \x01(\bR\x05melee\x12\x14\n" +
-	"\x05notes\x18\x11 \x01(\tR\x05notes\"\x87\x01\n" +
+	"\x05notes\x18\x11 \x01(\tR\x05notes\x12\x14\n" +
+	"\x05beams\x18\x12 \x01(\x05R\x05beams\"\x87\x01\n" +
 	"\aFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +

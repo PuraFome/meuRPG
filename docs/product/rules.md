@@ -278,7 +278,7 @@ On the map grid, each square is 1.5 m and movement is a **circle**: the distance
 
 **How the system meets it**
 
-The turn's speed comes from the rules engine (MR-013). The server checks the player's path and refuses what exceeds the movement. For the master the check does not apply. The grid belongs to the map (`MapService.SetMapGrid`) and combat does not start without it. The maths lives in `rules/grid`, and `play` calls it without redoing the geometry (see [Architecture](../architecture.md#grid-vision-and-presets) and [Movement in combat](../architecture.md#movement-in-combat)).
+The turn's speed comes from the rules engine (MR-013), which cuts it by 10 ft when the character wears heavy armor whose Strength requirement they do not meet (dwarves are not slowed). The server checks the player's path and refuses what exceeds the movement. For the master the check does not apply. The grid belongs to the map (`MapService.SetMapGrid`) and combat does not start without it. The maths lives in `rules/grid`, and `play` calls it without redoing the geometry (see [Architecture](../architecture.md#grid-vision-and-presets) and [Movement in combat](../architecture.md#movement-in-combat)).
 
 **Distance.** Movement distance is the straight line between centres (5 ft per square, exact to a tenth of a foot: a square's diagonal is 7.1 ft). A move is one straight line. To go around something, the player moves in parts, and the remaining movement still counts. What can be reached in one move is the circle of the remaining movement.
 

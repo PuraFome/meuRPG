@@ -872,6 +872,11 @@ message Attack {
   // The engine rolls the to-hit and the first damage part; the master reads the
   // rest in this text. Empty for a character's weapon or cantrip.
   string notes = 17;
+  // How many attack rolls the attack makes in one action, each with its own
+  // damage roll: Eldritch Blast fires 1, 2, 3 or 4 beams at warlock levels
+  // 1, 5, 11 and 17. 1 for the other cantrips; 0 (unset) for a weapon and for a
+  // creature's attack.
+  int32 beams = 18;
 }
 
 // AttackKind says whether an attack is a weapon or a spell.

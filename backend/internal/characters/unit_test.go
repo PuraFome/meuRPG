@@ -419,7 +419,9 @@ func TestDerivedToProto(t *testing.T) {
 	for _, a := range d.GetAttacks() {
 		switch a.GetKind() {
 		case rulesv1.AttackKind_ATTACK_KIND_WEAPON:
-			weapon = a
+			if a.GetKey() != "attack:unarmed-strike" {
+				weapon = a
+			}
 		case rulesv1.AttackKind_ATTACK_KIND_SPELL:
 			if a.GetKey() == "spell:fire-bolt" {
 				cantrip = a

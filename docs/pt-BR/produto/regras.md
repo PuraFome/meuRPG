@@ -278,7 +278,7 @@ Na grade do mapa, cada quadrado vale 1,5 m, e o movimento é um **círculo**: a 
 
 **Como o sistema cumpre**
 
-O deslocamento do turno vem do motor de regras (MR-013); o servidor confere o caminho do jogador e recusa o que passa do movimento. Para o mestre, a conferência não vale. A grade é do mapa (`MapService.SetMapGrid`) e o combate não começa sem ela. As contas ficam em `rules/grid` e o `play` as chama sem refazer a geometria (ver [Arquitetura](../../architecture.md#grid-vision-and-presets) e [Movimento no combate](../../architecture.md#movement-in-combat)).
+O deslocamento do turno vem do motor de regras (MR-013), que o reduz em 10 pés quando o personagem veste armadura pesada cujo requisito de Força ele não cumpre (anões não perdem); o servidor confere o caminho do jogador e recusa o que passa do movimento. Para o mestre, a conferência não vale. A grade é do mapa (`MapService.SetMapGrid`) e o combate não começa sem ela. As contas ficam em `rules/grid` e o `play` as chama sem refazer a geometria (ver [Arquitetura](../../architecture.md#grid-vision-and-presets) e [Movimento no combate](../../architecture.md#movement-in-combat)).
 
 **Distância.** A distância do movimento é a linha reta entre os centros (5 ft por quadrado, exata até o décimo de pé: a diagonal de um quadrado vale 7,1 ft). Um movimento é uma linha reta; para dar a volta em algo, o jogador anda em partes, e o movimento que sobra continua valendo. O que se alcança num movimento é o círculo do movimento que sobra.
 

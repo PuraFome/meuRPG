@@ -773,6 +773,10 @@ type Attack struct {
 	// (a dagger, a spear, a handaxe), and false for a ranged weapon and a spell:
 	// an opportunity attack needs a melee weapon.
 	Melee bool
+	// Beams is how many attack rolls the attack makes in one action, each with
+	// its own damage roll: 4 for Eldritch Blast at character level 17. It is 1
+	// for every other attack, and 0 for a weapon.
+	Beams int
 	// Notes is the rest of a creature's action, as the SRD wrote it (in
 	// English): the damage parts after the first, a saving throw, a rider.
 	// The engine rolls the to-hit and the first damage part; the master reads
@@ -879,6 +883,9 @@ const (
 	// IssueExpertise: expertise in a skill without proficiency, or more
 	// expertise than the features give.
 	IssueExpertise = "expertise"
+	// IssueChoiceCount: more options picked for a feature than it allows
+	// (two fighting styles at Fighter 1), or the same option picked twice.
+	IssueChoiceCount = "choice_count"
 	// IssueSpellNotOnList: a spell that is not on any of the build's class
 	// lists.
 	IssueSpellNotOnList = "spell_not_on_list"
