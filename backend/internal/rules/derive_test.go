@@ -828,10 +828,9 @@ func TestPaladinAuraOfProtectionAddsCharismaToEverySave(t *testing.T) {
 	}
 }
 
-// TestLevel20FeaturesRaiseScoresUpTo24: Primal Champion (STR and CON) and the
-// monk's level 20 feature (DEX and WIS) add 4 to a score, with 24 as the limit
-// of that increase; a score above 20 from them is not reported, and any other
-// score above 20 still is.
+// TestLevel20FeaturesRaiseScoresUpTo24: Primal Champion adds 4 to Strength and
+// Constitution, with 24 as the limit of that increase; a score above 20 from it
+// is not reported, and any other score above 20 still is.
 func TestLevel20FeaturesRaiseScoresUpTo24(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
@@ -860,11 +859,13 @@ func TestLevel20FeaturesRaiseScoresUpTo24(t *testing.T) {
 		t.Errorf("barbarian 19 STR = %d, want 16 (no Primal Champion yet)", got)
 	}
 
+	// The monk's level 20 feature in SRD 5.1 is Perfect Self (ki back on
+	// initiative): it raises no score.
 	m := Derive(standard("class:monk", 20), c) // DEX 15, WIS 11
-	if got, want := abilityOf(m, DEX).Score, 19; got != want {
+	if got, want := abilityOf(m, DEX).Score, 15; got != want {
 		t.Errorf("monk 20 DEX = %d, want %d", got, want)
 	}
-	if got, want := abilityOf(m, WIS).Score, 15; got != want {
+	if got, want := abilityOf(m, WIS).Score, 11; got != want {
 		t.Errorf("monk 20 WIS = %d, want %d", got, want)
 	}
 
