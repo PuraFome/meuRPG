@@ -241,7 +241,9 @@ describe('CreaturesPanel (E9-10, MR-037, RN-20)', () => {
     fixture.detectChanges();
     await settle();
     expect(el.querySelectorAll('app-creature-card')).toHaveLength(1);
-    expect(flat(el.querySelector('[role=alert]'))).toBe('Não deu para atualizar as criaturas agora.');
+    expect(flat(el.querySelector('[role=alert]'))).toBe(
+      'Não deu para atualizar as criaturas agora.',
+    );
     api.failWith = null;
     api.creatures = [creature('cr-1', 'Nanquim'), creature('cr-2', 'Pena')];
     el.querySelector<HTMLButtonElement>('.retry')!.click();

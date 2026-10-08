@@ -275,28 +275,35 @@ export class LevelUpPage {
         return;
       }
       const failure = describeLevelUpFailure(err);
-      let message = failure.message;
-      if (
-        failure.kind === 'blocked' &&
-        failure.reason === CharacterBlockedReason.CANNOT_LEVEL_UP &&
-        character
-      ) {
-        // The campaign's mode and the sheet's XP are known: say what is missing, not only that something is.
-        const mode = await this.client.xpMode(campaignId).catch(() => XpMode.UNSPECIFIED);
-        if (seq !== this.reads) {
-          return;
-        }
-        const full =
-          character.sheet?.content.case === 'full' ? character.sheet.content.value : null;
-        message = cannotLevelUpMessage(
-          mode,
-          full?.experiencePoints ?? 0,
-          character.derived?.nextLevelXp ?? 0,
-          character.derived?.totalLevel ?? 0,
-        );
+      const message = await this.refusalMessage(campaignId, character, failure);
+      if (seq !== this.reads) {
+        return;
       }
       this.state.set({ status: failure.kind === 'blocked' ? 'blocked' : 'error', message });
     }
+  }
+
+  /** The campaign's mode and the sheet's XP are known: say what is missing, not only that something is. */
+  private async refusalMessage(
+    campaignId: string,
+    character: Character | null,
+    failure: LevelUpFailure,
+  ): Promise<string> {
+    if (
+      failure.kind !== 'blocked' ||
+      failure.reason !== CharacterBlockedReason.CANNOT_LEVEL_UP ||
+      !character
+    ) {
+      return failure.message;
+    }
+    const mode = await this.client.xpMode(campaignId).catch(() => XpMode.UNSPECIFIED);
+    const full = character.sheet?.content.case === 'full' ? character.sheet.content.value : null;
+    return cannotLevelUpMessage(
+      mode,
+      full?.experiencePoints ?? 0,
+      character.derived?.nextLevelXp ?? 0,
+      character.derived?.totalLevel ?? 0,
+    );
   }
 
   private footObserver: ResizeObserver | undefined;
