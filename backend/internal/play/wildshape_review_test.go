@@ -197,8 +197,10 @@ func TestMR037_TwoAssumesAtOnceOneWins(t *testing.T) {
 	s := newShapers(t)
 	var wg sync.WaitGroup
 	errs := make([]error, 2)
+	start := dbtest.NewBarrier(len(errs))
 	for i := range errs {
 		wg.Go(func() {
+			start.Wait()
 			_, errs[i] = s.assume(t, s.bia, s.bri, wolfKey)
 		})
 	}

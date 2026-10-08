@@ -13,7 +13,16 @@ import {
   PendingDamageStatus,
   WildShapeEndReason,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import { entryCount, latestLine, logGroups, logLine, undoLabel, undoableEntry } from './combat-log';
+import {
+  article,
+  entryCount,
+  latestLine,
+  logGroups,
+  logLine,
+  truncateGroups,
+  undoLabel,
+  undoableEntry,
+} from './combat-log';
 
 type Over = Omit<MessageInitShape<typeof CombatLogEntrySchema>, 'damage' | '$typeName'> & {
   damage?: {
@@ -23,6 +32,8 @@ type Over = Omit<MessageInitShape<typeof CombatLogEntrySchema>, 'damage' | '$typ
     rolledAmount?: number;
     concentrationDc?: number;
     deathFailuresAdded?: number;
+    healing?: boolean;
+    down?: boolean;
   };
 };
 
@@ -31,7 +42,11 @@ function entry(over: Over): CombatLogEntry {
   return create(CombatLogEntrySchema, {
     id: Math.random().toString(36).slice(2),
     ...rest,
-    damage: damage && { ...damage, targetDefeated: damage.defeated ?? false },
+    damage: damage && {
+      ...damage,
+      targetDefeated: damage.defeated ?? false,
+      targetDown: damage.down ?? false,
+    },
   });
 }
 
@@ -183,6 +198,60 @@ describe('the combat log sentences (timeline.md, Rodadas 1 and 2)', () => {
     ).toBe(' atira no Goblin 2 com o Raio de Fogo: errou');
   });
 
+  it('says "atira" for a net, and a heal as hit points regained', () => {
+    expect(
+      logLine(
+        attack({
+          actorLabel: 'Brisa',
+          targetLabel: 'Toren',
+          key: 'equipment:net',
+          keyNamePt: 'Rede',
+          outcome: AttackOutcome.MISS,
+        }),
+      )?.text,
+    ).toBe(' atira no Toren com a Rede: errou');
+    expect(
+      logLine(
+        attack({
+          actorLabel: 'Brisa',
+          targetLabel: 'Toren',
+          damage: { status: PendingDamageStatus.APPLIED, amount: 7, healing: true },
+        }),
+      )?.text,
+    ).toBe(' ataca o Toren: acertou recupera 7 PV');
+  });
+
+  it('says who fell, apart from who was defeated', () => {
+    expect(
+      logLine(
+        attack({
+          actorLabel: 'Toren',
+          targetLabel: 'Brisa',
+          damage: { status: PendingDamageStatus.APPLIED, amount: 5, down: true },
+        }),
+      )?.text,
+    ).toBe(' ataca a Brisa: acertou, 5 de dano. Brisa caiu');
+  });
+
+  it("gives the cover sum only when the cover added to the armor class, and calls the mark the master's own", () => {
+    const base = {
+      kind: CombatLogKind.ATTACK,
+      actorLabel: 'Pensantus',
+      targetLabel: 'Goblin 2',
+      key: 'spell:fire-bolt',
+      keyNamePt: 'Raio de Fogo',
+      outcome: AttackOutcome.MISS,
+      targetArmorClass: 17,
+      cover: CoverDegree.HALF,
+    };
+    expect(logLine(entry({ ...base, coverBonus: 0, coverSource: CoverSource.MAP }))?.text).toBe(
+      ' atira no Goblin 2 com o Raio de Fogo: errou',
+    );
+    expect(logLine(entry({ ...base, coverBonus: 2, coverSource: CoverSource.MARK }))?.text).toBe(
+      ' atira no Goblin 2 com o Raio de Fogo: errou (CA 17: 15 + 2 de meia cobertura, marcada por você)',
+    );
+  });
+
   it("writes a jump with its length, a high one with its height, and the master's reminder for rubble (E9-06)", () => {
     const plain = (t: string | undefined) => (t ?? '').replace(/\u00a0/g, ' ');
     expect(
@@ -330,6 +399,43 @@ describe('the rounds of the log', () => {
     expect(groups[0].lines.at(-1)?.text).toBe('A rodada 2 começou');
     expect(latestLine(groups)?.actor).toBe('Pensantus');
     expect(entryCount(groups)).toBe(2);
+  });
+});
+
+describe('the articles of the names', () => {
+  it('knows the feminine words that do not end in "a"', () => {
+    expect(article('Mace')).toBe('a');
+    expect(article('Foice')).toBe('a');
+    expect(article('Machado')).toBe('o');
+  });
+});
+
+describe('the short view of the log', () => {
+  it('keeps the rounds it reaches and stops when the lines run out', () => {
+    const line = (text: string) => ({ text }) as never;
+    const groups = [
+      {
+        round: 2,
+        title: 'Rodada 2',
+        status: 'em andamento',
+        lines: [line('a'), line('b'), line('c')],
+      },
+      { round: 1, title: 'Rodada 1', status: 'encerrada', lines: [line('d'), line('e')] },
+    ];
+    expect(truncateGroups(groups, 2).map((g) => g.lines.length)).toEqual([2]);
+    expect(truncateGroups(groups, 3).map((g) => g.lines.length)).toEqual([3]);
+    expect(truncateGroups(groups, 4).map((g) => g.lines.length)).toEqual([3, 1]);
+    expect(truncateGroups(groups, 0)).toEqual([]);
+  });
+
+  it('finds the undoable entry past the ones that cannot be undone', () => {
+    const first = attack({ actorLabel: 'A', targetLabel: 'B', undoable: false });
+    const second = attack({ actorLabel: 'A', targetLabel: 'B', undoable: true });
+    const round = create(CombatLogRoundSchema, { round: 2, entries: [first, second] });
+    expect(undoableEntry([round])).toBe(second);
+    expect(
+      undoableEntry([create(CombatLogRoundSchema, { round: 1, entries: [first] })]),
+    ).toBeNull();
   });
 });
 
@@ -571,6 +677,15 @@ describe('the log of spells, reactions, the fallen and conditions (slice 6.5c)',
     expect(logLine(back)?.text).toBe(
       ' rola o teste contra a morte: 1d20 (20) = 20, volta com 1 PV',
     );
+  });
+
+  it('keeps the roll when a stable save still carries it', () => {
+    const stable = entry({
+      kind: CombatLogKind.DEATH_SAVE,
+      actorLabel: 'Brisa',
+      deathSave: { roll: roll([12], 0), stable: true, successes: 3, failures: 0 },
+    } as never);
+    expect(logLine(stable)?.text).toContain('rola o teste contra a morte');
   });
 
   it('writes the confirmed death and the conditions', () => {

@@ -4,6 +4,7 @@ import {
   Ability,
   CharacterSpellSchema,
   DerivedClassSchema,
+  HitDiceSchema,
   SpellSchema,
   SpellcastingSchema,
   type DerivedSheet,
@@ -159,6 +160,45 @@ describe('changeRows: a class that starts casting, and how it learns its spells 
     expect(rows.find((r) => r.key === 'attack')).toMatchObject({ before: '—', after: '+7' });
     expect(rows.find((r) => r.key === 'cantrips')).toMatchObject({ before: '—' });
     expect(rows.find((r) => r.key === 'prepared')).toMatchObject({ before: '—', after: '9' });
+  });
+
+  it('writes the hit dice of every class, joined by a plus', () => {
+    const after = pensantus(true);
+    after.hitDice = [...after.hitDice, create(HitDiceSchema, { faces: 10, count: 1 })];
+    const rows = changeRows(pensantus(false), after, ctx);
+    expect(rows.find((r) => r.key === 'hit-dice')).toMatchObject({
+      before: '3d6',
+      after: '4d6 + 1d10',
+    });
+  });
+
+  it('does not show the spells a class does not learn, even when the level names some', () => {
+    const rows = changeRows(pensantus(false), pensantus(true), { ...ctx, learnsSpells: false });
+    expect(ctx.spells.length).toBeGreaterThan(0);
+    expect(rows.some((r) => r.key === 'spells')).toBe(false);
+  });
+
+  it('counts the known spells from the spell list of the class that casts them, not from the class that levels up', () => {
+    const known = (n: number) =>
+      Array.from({ length: n }, (_, i) =>
+        create(CharacterSpellSchema, {
+          spell: create(SpellSchema, { key: `spell:s${i}`, level: 1, classKeys: ['class:wizard'] }),
+        }),
+      );
+    const subclassCaster = (sheet: DerivedSheet, spells: number) => {
+      sheet.spellcasting.forEach((c) => {
+        c.classKey = 'class:fighter';
+        c.spellsKnown = 0;
+      });
+      sheet.spells = known(spells);
+      return sheet;
+    };
+    const rows = changeRows(
+      subclassCaster(pensantus(false), 2),
+      subclassCaster(pensantus(true), 3),
+      { ...ctx, classKey: 'class:fighter', spellListClassKey: 'class:wizard' },
+    );
+    expect(rows.find((r) => r.key === 'spells')).toMatchObject({ before: '2', after: '3' });
   });
 
   it('a class that prepares from its list shows "Magias preparadas" and no "Magias conhecidas"', () => {

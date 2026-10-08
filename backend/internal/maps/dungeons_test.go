@@ -607,7 +607,7 @@ func TestRN10_PlayersReadNothingOfADungeon(t *testing.T) {
 	// square: standing on the entrance (the first, up stair), only that one. The master-only flag
 	// that says the map is a generated dungeon is never true for a player.
 	if !want.Entrance.OnStairs {
-		t.Skip("the fixture's entrance is not on the stairs")
+		t.Fatal("the fixture's entrance is not on the stairs")
 	}
 	seen, err := d.ana.getMap(d.campaign, created.GetId())
 	if err != nil {
@@ -826,7 +826,7 @@ func TestMR010_RedrawShowsTheMastersEditsAndKeepsTheLayers(t *testing.T) {
 	}
 	_, wantWalls := dungeon.WallsMask(want)
 	if !wantWalls[hole.Row*41+hole.Col] {
-		t.Skipf("the fixture's room %d has no wall at %v to clear", room.ID, hole)
+		t.Fatalf("the fixture's room %d has no wall at %v to clear", room.ID, hole)
 	}
 	m.mustPaint(d.campaign, created.GetId(), mapsv1.MapLayer_MAP_LAYER_WALL, 1, [2]int32{int32(wx), int32(wy)}) //nolint:gosec // G115: inside the grid
 	m.mustPaint(d.campaign, created.GetId(), mapsv1.MapLayer_MAP_LAYER_WALL, 0, [2]int32{int32(hole.Col), int32(hole.Row)})

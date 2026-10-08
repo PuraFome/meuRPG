@@ -62,6 +62,7 @@ func TestCreateMapIsIdempotent(t *testing.T) {
 
 func TestCreateMapPointIsIdempotent(t *testing.T) {
 	t.Parallel()
+	dbtest.PoolSize(t, 4) // the racing calls at the end must overlap: one connection would run them one by one
 	s := newScenes(t, false)
 	call := func(req *mapsv1.CreateMapPointRequest) (*mapsv1.MapPoint, error) {
 		res, err := s.master.maps.CreateMapPoint(t.Context(), connect.NewRequest(req))
@@ -101,13 +102,14 @@ func TestCreateMapPointIsIdempotent(t *testing.T) {
 	}
 
 	// Racing with the same key makes one point.
-	dbtest.PoolSize(t, 4)
 	racing := proto.Clone(req).(*mapsv1.CreateMapPointRequest)
 	racing.IdempotencyKey, racing.Name = "racing", "Torre"
 	ids := make([]string, 4)
 	var wg sync.WaitGroup
+	start := dbtest.NewBarrier(len(ids))
 	for i := range ids {
 		wg.Go(func() {
+			start.Wait()
 			p, err := call(racing)
 			if err != nil {
 				t.Errorf("CreateMapPoint() racing error = %v", err)
@@ -222,6 +224,7 @@ func TestCreateNoteIsIdempotent(t *testing.T) {
 
 func TestCreateDungeonMapAndPlaceSceneAreIdempotent(t *testing.T) {
 	t.Parallel()
+	dbtest.PoolSize(t, 4) // the racing calls must overlap: one connection would run them one by one
 	d := newDungeonTable(t)
 	seed, _ := testDungeonSeed(t)
 	call := func(name, key string, seed *uint64) (*mapsv1.CreateDungeonMapResponse, error) {
@@ -249,11 +252,12 @@ func TestCreateDungeonMapAndPlaceSceneAreIdempotent(t *testing.T) {
 		t.Errorf("maps = %d, want 1", len(got))
 	}
 	// Two at once with a new key: one dungeon (the race is decided in the transaction).
-	dbtest.PoolSize(t, 4)
 	ids := make([]string, 3)
 	var wg sync.WaitGroup
+	start := dbtest.NewBarrier(len(ids))
 	for i := range ids {
 		wg.Go(func() {
+			start.Wait()
 			res, err := call("Corrida", "racing", &seed)
 			if err != nil {
 				t.Errorf("CreateDungeonMap() racing error = %v", err)

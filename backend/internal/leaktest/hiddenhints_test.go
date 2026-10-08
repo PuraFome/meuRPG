@@ -11,15 +11,14 @@ import (
 )
 
 // hiddenOnlyEvents opens Ana's and Caio's streams, runs act (master actions on hidden things
-// only), then a visible marker, and returns the encounter/log hints each person (the master
-// included, as the positive control) got before it.
+// only), then a visible marker, and returns every event each person (the master included, as
+// the positive control) got before it: an event of any kind there is a hint.
 func (w *world) hiddenOnlyEvents(act func()) map[string][]string {
 	watchers := map[*person]*streamWatcher{w.master: w.watchStream(w.master), w.ana: w.watchStream(w.ana), w.caio: w.watchStream(w.caio)}
 	act()
 	// a visible marker, so the end of the hidden part is known by the stream's own order
 	must(w.master.maps.SetMapRevealed(w.t.Context(), rq(&mapsv1.SetMapRevealedRequest{CampaignId: w.campaign, MapId: w.map2, Revealed: true})))
 	must(w.master.play.SetCurrentMap(w.t.Context(), rq(&playv1.SetCurrentMapRequest{CampaignId: w.campaign, MapId: w.map2})))
-	time.Sleep(300 * time.Millisecond)
 	must(w.master.play.EndGameSession(w.t.Context(), rq(&playv1.EndGameSessionRequest{CampaignId: w.campaign, GameSessionId: w.session})))
 	out := map[string][]string{}
 	for p, sw := range watchers {
@@ -30,16 +29,29 @@ func (w *world) hiddenOnlyEvents(act func()) map[string][]string {
 		}
 		for _, ev := range sw.events {
 			c := eventCase(ev)
-			if c == "encounter_changed" || c == "combat_log_changed" {
-				out[p.name] = append(out[p.name], c+" "+shorten(mustJSON(ev)))
+			if c == "ready" || c == "heartbeat" {
 				continue
 			}
-			if c != "ready" && c != "heartbeat" {
+			if w.endsHiddenPart(ev) {
 				break // the marker: what follows is not the hidden part
 			}
+			out[p.name] = append(out[p.name], c+" "+shorten(mustJSON(ev)))
 		}
 	}
 	return out
+}
+
+// endsHiddenPart says whether ev is the visible marker's (the second map revealed or made
+// current, or the session's end). Any other event before it, of whatever kind, belongs to the
+// hidden part, so a hint of an unexpected kind cannot pass for the marker.
+func (w *world) endsHiddenPart(ev *playv1.WatchGameSessionResponse) bool {
+	switch {
+	case ev.GetMapChanged() != nil:
+		return ev.GetMapChanged().GetMapId() == w.map2
+	case ev.GetCurrentMapChanged() != nil:
+		return ev.GetCurrentMapChanged().GetMapId() == w.map2
+	}
+	return ev.GetSessionEnded() != nil
 }
 
 func mustJSON(ev *playv1.WatchGameSessionResponse) []byte {

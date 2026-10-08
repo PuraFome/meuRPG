@@ -134,6 +134,28 @@ describe('the concentration notice', () => {
     expect(watch.read('enc', 'Sono', [], null)).toBeUndefined();
   });
 
+  it('says "As" for a group of feminine creatures', () => {
+    const spider = (n: number) =>
+      combatant({
+        id: `s${n}`,
+        label: `Aranha gigante ${n}`,
+        kind: CombatantKind.CREATURE,
+        monsterKey: 'monster:giant-spider',
+        monsterNamePt: 'Aranha gigante',
+        summonGroupId: 'cast',
+      });
+    expect(plain(lostNoticeText(lost('Conjurar Animais', [spider(1), spider(2)])))).toMatch(
+      / As 2 /,
+    );
+  });
+
+  it('takes the notice away when the same spell is held again, even with no creature to come back', () => {
+    const watch = new ConcentrationWatch();
+    watch.read('enc', 'Teia', [], null);
+    expect(watch.read('enc', 'Teia', [], lost('Teia', []))).toBeNull();
+    expect(watch.read('enc', 'Sono', [], lost('Teia', []))).toBeUndefined();
+  });
+
   it('an undo that brings the creatures back takes it away, and another combat never inherits it', () => {
     const watch = new ConcentrationWatch();
     watch.read('enc', 'Conjurar Animais', [wolf(1), wolf(2)], null);

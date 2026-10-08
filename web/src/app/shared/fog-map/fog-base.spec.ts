@@ -131,6 +131,18 @@ describe('FogBase', () => {
       expect(el.querySelectorAll('[data-pending]').length).toBe(0);
     });
 
+    it('drops the wait of a tile when the map changes: the new map is never asked for with the old retry', () => {
+      const { fixture, el } = create(tiled());
+      fail(el);
+      fixture.componentRef.setInput('vision', tiled({ tilesPath: '/images/maps/m2/tiles/' }));
+      fixture.detectChanges();
+      vi.advanceTimersByTime(30_000);
+      fixture.detectChanges();
+      expect(el.querySelector('.fb__tile')?.getAttribute('src')).toBe(
+        '/images/maps/m2/tiles/0/0?r=3',
+      );
+    });
+
     it('does not ask again once the component is gone', () => {
       const { fixture, el } = create(tiled());
       fail(el);
@@ -165,6 +177,53 @@ describe('FogBase', () => {
     expect(el.querySelectorAll<HTMLImageElement>('.fb__tile')[1].getAttribute('src')).toBe(
       '/images/maps/m1/tiles/1/1?r=1',
     );
+  });
+
+  describe('what is remembered', () => {
+    const walls = (cols: number) => ({
+      columns: cols,
+      rows: 4,
+      walls: [
+        { col: 2, row: 2 },
+        { col: 0, row: 0 },
+        { col: 3, row: 3 },
+      ],
+      terrain: [],
+      half: [],
+      threeQuarters: [],
+    });
+
+    it('draws only the layers of the squares that are remembered, dimmed, and none of the unseen ones', () => {
+      const { el } = create(tiled(), { layers: walls(4) });
+      expect(el.querySelectorAll('.fb__mem .sq--wall')).toHaveLength(1);
+    });
+
+    it('draws nothing remembered from layers of another size than the vision', () => {
+      const { el } = create(tiled(), { layers: walls(5) });
+      expect(el.querySelector('.fb__mem')).toBeNull();
+    });
+  });
+
+  it('does not put a place that appears after the first load back to waiting', () => {
+    const { fixture, el } = create(tiled());
+    el.querySelectorAll<HTMLImageElement>('.fb__tile').forEach((t) =>
+      t.dispatchEvent(new Event('load')),
+    );
+    fixture.detectChanges();
+    fixture.componentRef.setInput(
+      'vision',
+      tiled({
+        revision: 2,
+        tiles: [
+          { $typeName: 'meurpg.maps.v1.MapTile', tx: 0, ty: 0, revision: 3 },
+          { $typeName: 'meurpg.maps.v1.MapTile', tx: 1, ty: 0, revision: 1 },
+          { $typeName: 'meurpg.maps.v1.MapTile', tx: 1, ty: 1, revision: 1 },
+        ],
+      }),
+    );
+    fixture.detectChanges();
+    expect(el.querySelectorAll('.fb__tile')).toHaveLength(3);
+    expect(el.querySelectorAll('[data-pending]')).toHaveLength(0);
   });
 
   it('draws the whole image for a viewer that reads it whole, with no tile and no waiting', () => {

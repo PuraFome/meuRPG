@@ -150,6 +150,22 @@ describe('FogMap', () => {
     );
   });
 
+  it('does not tell the master that a character is off the map: the master sees the whole of it', () => {
+    const { el } = create({ vision: tiled({ characterOnMap: false }), isMaster: true });
+    expect(el.querySelector('[data-testid="fog-off-map"]')).toBeNull();
+  });
+
+  it('does not open the master zoomed in on the party, even on a phone', () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    const { fixture } = create({ isMaster: true });
+    expect(fixture.componentInstance['startAt']()).toBeNull();
+  });
+
   it('says it of another character when the master reads as them', () => {
     const { el } = create({
       vision: tiled({ characterOnMap: false }),
@@ -248,6 +264,13 @@ describe('FogMap', () => {
     expect(card).toContain('Em cinza: visto no escuro, pela visão no escuro.');
     expect(card).toContain('O que você já viu fica escurecido e sem inimigos');
     expect(card).not.toMatch(/\d+ de \d+ quadrados/);
+  });
+
+  it('does not call grey the square the viewer stands on', () => {
+    const onGrey = mapToken('p', 'Pensantus', { mine: true, xBp: 3750, yBp: 3750 });
+    const { fixture, el } = create({ tokens: [onGrey] });
+    settle(fixture);
+    expect(plain(el.querySelector('[data-testid="fog-caption"]'))).not.toContain('Em cinza');
   });
 
   it('is "O que o Nanquim vê" while the player looks through the familiar, with no senses of the character', () => {

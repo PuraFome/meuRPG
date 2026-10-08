@@ -488,7 +488,7 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
       );
       expect(el.querySelector('input[name="answer"]')).toBeNull();
       expect(textOf(el.querySelector('app-limit-counters'))).toContain('Jogadas 10 de 10 · acabou');
-      expect(textOf(el.querySelector('app-limit-counters'))).toMatch(/Tempo 0:1[0-2] de 5:00/);
+      expect(textOf(el.querySelector('app-limit-counters'))).toMatch(/Tempo 0:12 de 5:00/);
     });
 
     it('says the trap that fired, by the name the master gave it, and that the master says what happens', async () => {
@@ -519,7 +519,7 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
           },
         }),
       );
-      expect(textOf(el.querySelector('app-limit-counters'))).toMatch(/Tempo 4:[45]\d de 5:00/);
+      expect(textOf(el.querySelector('app-limit-counters'))).toMatch(/Tempo 4:48 de 5:00/);
     });
   });
 

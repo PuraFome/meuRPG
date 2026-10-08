@@ -114,6 +114,14 @@ func NewPool(t testing.TB, prefix string) *pgxpool.Pool {
 	t.Helper()
 	wantedMu.Lock()
 	conns, ok := wanted[t]
+	if !pooled[t] {
+		pooled[t] = true
+		t.Cleanup(func() {
+			wantedMu.Lock()
+			delete(pooled, t)
+			wantedMu.Unlock()
+		})
+	}
 	wantedMu.Unlock()
 	if !ok {
 		conns = 1
@@ -121,10 +129,12 @@ func NewPool(t testing.TB, prefix string) *pgxpool.Pool {
 	return NewPoolConns(t, prefix, conns)
 }
 
-// The pool sizes tests asked for with PoolSize.
+// The pool sizes tests asked for with PoolSize, and the tests that already got a
+// pool from NewPool (a PoolSize after that would change nothing).
 var (
 	wantedMu sync.Mutex
 	wanted   = map[testing.TB]int32{}
+	pooled   = map[testing.TB]bool{}
 )
 
 // PoolSize makes the pool this test gets from NewPool (through any harness) have
@@ -137,13 +147,44 @@ var (
 func PoolSize(t testing.TB, conns int32) {
 	t.Helper()
 	wantedMu.Lock()
+	late := pooled[t]
 	wanted[t] = conns
 	wantedMu.Unlock()
+	if late {
+		t.Fatal("dbtest.PoolSize came after the test's pool was made (the harness): it changes nothing, and the racers run one by one; call it first")
+	}
 	t.Cleanup(func() {
 		wantedMu.Lock()
 		delete(wanted, t)
 		wantedMu.Unlock()
 	})
+}
+
+// Barrier lines up the racers of a test so they really overlap. NewBarrier(n) is made
+// before the goroutines are started, and each of the n calls Wait first: none goes on
+// until all n have reached it. Starting them and closing a channel right after does
+// not do that, since a goroutine may begin its call before the last one has even
+// been scheduled.
+type Barrier struct {
+	arrived sync.WaitGroup
+	open    chan struct{}
+}
+
+// NewBarrier returns a Barrier for n racers.
+func NewBarrier(n int) *Barrier {
+	b := &Barrier{open: make(chan struct{})}
+	b.arrived.Add(n)
+	go func() {
+		b.arrived.Wait()
+		close(b.open)
+	}()
+	return b
+}
+
+// Wait blocks until every racer has called it, and then lets them all go.
+func (b *Barrier) Wait() {
+	b.arrived.Done()
+	<-b.open
 }
 
 // NewPoolConns is NewPool with a pool of conns connections, for a test that

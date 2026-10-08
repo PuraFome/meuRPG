@@ -42,6 +42,18 @@ describe('the death saves (E6-13, RN-03)', () => {
         'Brisa',
       ),
     ).toContain('Estável: não rola mais.');
+    expect(
+      saveAnnouncement(
+        { roll: roll(5), outcome: DeathSaveOutcome.FAILURE, failures: 3 } as never,
+        'Brisa',
+      ),
+    ).toBe('Teste contra a morte: 1d20 (5) = 5. Falha. Três falhas.');
+    expect(
+      saveAnnouncement(
+        { roll: roll(5), outcome: DeathSaveOutcome.FAILURE, failures: 2 } as never,
+        'Brisa',
+      ),
+    ).toBe('Teste contra a morte: 1d20 (5) = 5. Falha.');
     expect(outcomeText(DeathSaveOutcome.FAILURE)).toBe('Falha');
   });
 });

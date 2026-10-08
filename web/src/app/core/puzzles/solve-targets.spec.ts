@@ -107,6 +107,70 @@ describe('SolveTargets (the choices of "Ao resolver")', () => {
   });
 });
 
+describe('SolveTargets with unnamed points and another campaign', () => {
+  function setup(api: Record<string, unknown>): SolveTargets {
+    TestBed.configureTestingModule({
+      providers: [SolveTargets, { provide: MapsClient, useValue: api }],
+    });
+    const t = TestBed.inject(SolveTargets);
+    t.use('camp-1');
+    return t;
+  }
+
+  const api = (calls: string[]) => ({
+    list: async (campaign: string) => {
+      calls.push(`list ${campaign}`);
+      return [create(MapSchema, { id: 'm1', name: 'A capela' })];
+    },
+    get: async () =>
+      create(GetMapResponseSchema, {
+        points: [
+          create(MapPointSchema, {
+            id: 'p1',
+            name: '',
+            kind: MapPointKind.SCENE,
+            clues: [create(SceneClueSchema, { id: 'c1', text: 'Uma pista.' })],
+          }),
+          create(MapPointSchema, { id: 'p2', name: '', kind: MapPointKind.TRAP }),
+          create(MapPointSchema, { id: 'p3', name: 'Dardos', kind: MapPointKind.TRAP }),
+          create(MapPointSchema, {
+            id: 'p4',
+            name: 'Baú',
+            kind: MapPointKind.BATTLE,
+            clues: [create(SceneClueSchema, { id: 'c2', text: 'Não é de uma cena.' })],
+          }),
+        ],
+      }),
+  });
+
+  it('names the points that have no name, and lists the traps apart from the other points', async () => {
+    const t = setup(api([]));
+    expect((await t.points('m1')).map((p) => p.name)).toEqual([
+      'Ponto sem nome',
+      'Ponto sem nome',
+      'Dardos',
+      'Baú',
+    ]);
+    expect(await t.traps()).toEqual([
+      { mapId: 'm1', mapName: 'A capela', pointId: 'p2', name: 'Armadilha sem nome' },
+      { mapId: 'm1', mapName: 'A capela', pointId: 'p3', name: 'Dardos' },
+    ]);
+    expect(await t.clues()).toEqual([{ id: 'c1', text: 'Uma pista.', pointName: 'Cena sem nome' }]);
+  });
+
+  it('forgets the maps of the campaign it leaves', async () => {
+    const calls: string[] = [];
+    const t = setup(api(calls));
+    await t.maps();
+    t.use('camp-1');
+    await t.maps();
+    expect(calls).toEqual(['list camp-1']);
+    t.use('camp-2');
+    await t.maps();
+    expect(calls).toEqual(['list camp-1', 'list camp-2']);
+  });
+});
+
 describe('SolveTargets after a failed read', () => {
   function setup(api: Record<string, unknown>): SolveTargets {
     TestBed.configureTestingModule({

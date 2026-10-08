@@ -13,6 +13,7 @@ import {
   barText,
   masterAsk,
   masterNews,
+  offersHolding,
   offersOn,
   offersToAnswer,
   playerQuestion,
@@ -79,6 +80,60 @@ describe('opportunity attacks in words', () => {
     );
     expect(spendText(toWolf, false)).toBe('Gasta a reação do Lobo atroz 1.');
     expect(spendText(toToren)).toBe('Gasta a sua reação.');
+  });
+
+  it('holds a mover for the offers on the whole turn of the caller, creatures they control included', () => {
+    const wolf = combatant({
+      id: 'wolf',
+      label: 'Lobo atroz 1',
+      kind: CombatantKind.CREATURE,
+      controlledByMe: true,
+    });
+    const onWolf = create(OpportunityOfferSchema, { ...toGoblin, id: 'o4', moverId: 'wolf' });
+    const onGoblin = create(OpportunityOfferSchema, { ...toGoblin, id: 'o5', moverId: 'g2' });
+    const e = encounter({
+      combatants: [toren, wolf, g2],
+      turnGroupIds: ['toren', 'wolf', 'g2'],
+      opportunityOffers: [toGoblin, onWolf, onGoblin],
+    });
+    expect(offersHolding(e, 'toren').map((o) => o.id)).toEqual(['o1', 'o4']);
+  });
+
+  it("counts a reactor the caller cannot see among the master's", () => {
+    const e = encounter({ combatants: [toren, g2] });
+    expect(reactorIsMasters(e, create(OpportunityOfferSchema, { reactorId: 'ghost' }))).toBe(true);
+    expect(reactorIsMasters(e, toGoblin)).toBe(true);
+    expect(reactorIsMasters(e, toToren)).toBe(false);
+  });
+
+  it('says "podem fazer ataques" when more than one of the master\'s can react', () => {
+    const g3 = combatant({ id: 'g3', label: 'Goblin 3' });
+    const e = encounter({ combatants: [toren, g2, g3] });
+    const two = [
+      create(OpportunityOfferSchema, { ...toGoblin, forYou: false }),
+      create(OpportunityOfferSchema, {
+        ...toGoblin,
+        id: 'o6',
+        reactorId: 'g3',
+        reactorLabel: 'Goblin 3',
+        forYou: false,
+      }),
+    ];
+    expect(plain(waitingText(e, two)!.detail)).toContain(
+      'O Goblin 2 e o Goblin 3 podem fazer ataques de oportunidade.',
+    );
+  });
+
+  it('adds what the master said only when the mover was moved by hand, in the gender of the mover', () => {
+    const byHand = (moverLabel: string) =>
+      create(OpportunityOfferSchema, { ...toToren, moverLabel, byHand: true });
+    expect(spendText(toToren)).toBe('Gasta a sua reação.');
+    expect(spendText(byHand('Goblin 2'))).toBe(
+      'Gasta a sua reação. O mestre disse que ele saiu do seu alcance.',
+    );
+    expect(spendText(byHand('Brisa'))).toBe(
+      'Gasta a sua reação. O mestre disse que ela saiu do seu alcance.',
+    );
   });
 
   it('asks the player, and tells the master', () => {

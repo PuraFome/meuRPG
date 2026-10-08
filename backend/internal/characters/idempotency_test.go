@@ -18,6 +18,7 @@ import (
 
 func TestCreateCharacterIsIdempotent(t *testing.T) {
 	t.Parallel()
+	dbtest.PoolSize(t, 4) // the NPC calls at the end must overlap: one connection would run them one by one
 	h := newHarness(t)
 	master, player := h.newUser("Mestre"), h.newUser("Jogadora")
 	campaign := h.newCampaign(master, "Mirathel", player)
@@ -64,13 +65,14 @@ func TestCreateCharacterIsIdempotent(t *testing.T) {
 	_, err = call(none)
 	wantCode(t, "CreateCharacter(no key, a living character)", err, connect.CodeFailedPrecondition)
 
-	// An NPC of the master, with the same two calls at once, is one NPC.
-	dbtest.PoolSize(t, 4)
+	// An NPC of the master, with the same calls at once, is one NPC.
 	npcKey := uuid.New().String()
 	ids := make([]string, 4)
 	var wg sync.WaitGroup
+	start := dbtest.NewBarrier(len(ids))
 	for i := range ids {
 		wg.Go(func() {
+			start.Wait()
 			res, err := master.api.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
 				CampaignId: campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_ENEMY, Name: "Orc", Sheet: enemySheet(), IdempotencyKey: npcKey,
 			}))
@@ -144,6 +146,7 @@ func TestGiveCreatureIsIdempotent(t *testing.T) {
 
 func TestCreateTableEntryIsIdempotent(t *testing.T) {
 	t.Parallel()
+	dbtest.PoolSize(t, 4) // the racing calls at the end must overlap: one connection would run them one by one
 	h := newHarness(t)
 	master := h.newUser("Mestre")
 	campaign := h.newCampaign(master, "Mirathel")
@@ -178,13 +181,14 @@ func TestCreateTableEntryIsIdempotent(t *testing.T) {
 		t.Errorf("ListTableEntries() = %v, %v; want 1 entry", list, err)
 	}
 	// Racing with the same key makes one entry too.
-	dbtest.PoolSize(t, 4)
 	racing := createReq(campaign, testBackground("faroleiro"))
 	racing.IdempotencyKey = "racing"
 	var wg sync.WaitGroup
 	keys := make([]string, 4)
+	start := dbtest.NewBarrier(len(keys))
 	for i := range keys {
 		wg.Go(func() {
+			start.Wait()
 			res, err := create(racing)
 			if err != nil {
 				t.Errorf("CreateTableEntry() racing error = %v", err)
@@ -220,16 +224,15 @@ func TestGiveCreatureSameKeyForTwoCharactersAtOnce(t *testing.T) {
 		key := uuid.New().String()
 		errs := make([]error, len(pcs))
 		var wg sync.WaitGroup
-		start := make(chan struct{})
+		start := dbtest.NewBarrier(len(pcs))
 		for i, pc := range pcs {
 			wg.Go(func() {
-				<-start
+				start.Wait()
 				_, errs[i] = master.api.GiveCreature(t.Context(), connect.NewRequest(&charactersv1.GiveCreatureRequest{
 					CampaignId: campaign, CharacterId: pc.GetId(), MonsterKey: "monster:wolf", IdempotencyKey: key,
 				}))
 			})
 		}
-		close(start)
 		wg.Wait()
 		var done, refused int
 		for _, err := range errs {
