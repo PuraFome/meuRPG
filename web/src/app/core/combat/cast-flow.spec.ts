@@ -6,7 +6,6 @@ import {
   type PendingDamage,
   PendingDamageStatus,
   SaveOutcome,
-  type SpellCast,
   SpellCastSchema,
   SpellEffectKind,
   SpellEffectOutcome,
@@ -16,7 +15,6 @@ import {
 import { SlotChoiceSchema, SpellHitPointEffectKind } from '../../../gen/meurpg/rules/v1/rules_pb';
 import {
   castRows,
-  NPC_SAVE_BONUS_UNKNOWN,
   castTargetRows,
   dartLines,
   dartsStatus,
@@ -249,37 +247,6 @@ describe('the result of a cast', () => {
       labels,
     );
     expect(owed[0].owed).toBe(true);
-  });
-
-  it("tells the master an NPC's saving throw has no known bonus, only for an NPC whose bonus is unknown", () => {
-    const roll = { diceCount: 1, diceSides: 20, faces: [13], modifier: 0, total: 13 };
-    const cast = {
-      targets: [
-        {
-          combatantId: 'n1',
-          save: { outcome: SaveOutcome.FAILED, dc: 14, roll, bonusKnown: false },
-        },
-        {
-          combatantId: 'n2',
-          save: { outcome: SaveOutcome.FAILED, dc: 14, roll, bonusKnown: true },
-        },
-        // The roll of a player's own character reaches that player, who never gets `bonus_known`.
-        {
-          combatantId: 'p1',
-          save: { outcome: SaveOutcome.FAILED, dc: 14, roll, bonusKnown: false },
-        },
-        // A player who cast the spell gets no roll of an NPC's, and nothing to explain.
-        { combatantId: 'n3', save: { outcome: SaveOutcome.FAILED, dc: 14, bonusKnown: false } },
-      ],
-    } as unknown as SpellCast;
-    const labels = new Map(
-      ['n1', 'n2', 'p1', 'n3'].map((id) => [id, { label: id, state: CombatantState.UNHURT }]),
-    );
-    const rows = castRows(cast, new Map(), labels, (id) => id.startsWith('n'));
-    expect(rows[0].lines).toContain(NPC_SAVE_BONUS_UNKNOWN);
-    expect(rows[1].lines).not.toContain(NPC_SAVE_BONUS_UNKNOWN);
-    expect(rows[2].lines).not.toContain(NPC_SAVE_BONUS_UNKNOWN);
-    expect(rows[3].lines).not.toContain(NPC_SAVE_BONUS_UNKNOWN);
   });
 
   it("rolls one group for an area spell and one for each of Magic Missile's targets", () => {

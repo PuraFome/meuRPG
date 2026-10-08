@@ -440,24 +440,16 @@ function savedWord(saved: boolean, half: boolean): string {
   return saved ? (half ? 'Resistiu: metade' : 'Resistiu') : 'Falhou';
 }
 
-/** What the master reads under an NPC's saving throw when its sheet has no
- * saving throw bonus: the roll is the bare d20. */
-export const NPC_SAVE_BONUS_UNKNOWN =
-  'Bônus de resistência desconhecido: só o d20. O mestre pode decidir o resultado.';
-
 /** The result of a cast, row by row. `pendings` is every damage or heal of the
  * cast as it is now (the rolled ones carry their dice); `states` the targets'
- * state words now; `isNpc` tells a copy of an NPC, the only target whose
- * saving throw can lack a known bonus (`bonus_known` is only sent to the
- * master, and a player's own character or creature never lacks one). */
+ * state words now. */
 export function castRows(
   cast: SpellCast,
   pendings: ReadonlyMap<string, PendingDamage>,
   labels: ReadonlyMap<string, { label: string; state: CombatantState }>,
-  isNpc: (id: string) => boolean = () => false,
 ): CastRow[] {
   return cast.targets.map((t) =>
-    castRow(t, pendings.get(t.pendingDamageId), labels.get(t.combatantId), cast, isNpc),
+    castRow(t, pendings.get(t.pendingDamageId), labels.get(t.combatantId), cast),
   );
 }
 
@@ -489,7 +481,6 @@ function castRow(
   p: PendingDamage | undefined,
   who: { label: string; state: CombatantState } | undefined,
   cast: SpellCast,
-  isNpc: (id: string) => boolean,
 ): CastRow {
   const label = who?.label ?? 'Alvo';
   const lines: string[] = [];
@@ -525,9 +516,6 @@ function castRow(
       );
     } else if (t.save.dc > 0) {
       lines.push(`CD ${t.save.dc}`);
-    }
-    if (t.save.roll && !t.save.bonusKnown && isNpc(t.combatantId)) {
-      lines.push(NPC_SAVE_BONUS_UNKNOWN);
     }
   }
   let summary = '';

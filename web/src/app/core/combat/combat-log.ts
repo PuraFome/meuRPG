@@ -192,14 +192,21 @@ function attackText(e: CombatLogEntry): string {
 }
 
 /** One target of a cast: what the roll, the save and the damage did to it. */
-function castTargetText(t: CombatLogSpellTarget): string {
+function castTargetText(t: CombatLogSpellTarget, ctx: LogContext): string {
   const who = t.targetLabel || 'alguém';
   const damage = t.damage ? damageText(t.damage) : '';
   let out: string;
   if (t.darts > 0) {
     out = `${t.darts} ${t.darts === 1 ? 'dardo' : 'dardos'} ${inThe(who)}${damage}`;
   } else if (t.save) {
-    const dc = t.save.dc > 0 ? ` (CD ${t.save.dc})` : '';
+    // Only the master gets `bonus_known`: false is an NPC with no saving throw bonus on its sheet, whose
+    // roll is the bare d20 and which the master may overrule. For anyone else it is always false.
+    const unknown =
+      ctx.master && t.save.roll && !t.save.bonusKnown
+        ? `d20 ${t.save.roll.total}, sem bônus de resistência conhecido`
+        : '';
+    const notes = [t.save.dc > 0 ? `CD ${t.save.dc}` : '', unknown].filter((n) => n !== '');
+    const dc = notes.length > 0 ? ` (${notes.join('; ')})` : '';
     out = `${the(who)} ${t.save.outcome === SaveOutcome.SAVED ? 'resistiu' : 'falhou'}${dc}${damage}`;
   } else if (t.outcome !== AttackOutcome.UNSPECIFIED) {
     out = `${inThe(who)}: ${t.outcome === AttackOutcome.CRITICAL_HIT ? 'crítico' : t.outcome === AttackOutcome.MISS ? 'errou' : 'acertou'}${t.outcome === AttackOutcome.MISS ? '' : damage}`;
@@ -227,8 +234,8 @@ function castText(e: CombatLogEntry, ctx: LogContext): { text: string; card?: Po
   let out = ` conjura ${e.keyNamePt || 'uma magia'}${circle}`;
   if (targets.length > 0) {
     out += plain
-      ? ` ${listNames(targets.map(castTargetText))}`
-      : `: ${targets.map(castTargetText).join('; ')}`;
+      ? ` ${listNames(targets.map((t) => castTargetText(t, ctx)))}`
+      : `: ${targets.map((t) => castTargetText(t, ctx)).join('; ')}`;
   }
   if (e.spell?.concentrationEndedKey) {
     out += '. A concentração anterior acabou';
