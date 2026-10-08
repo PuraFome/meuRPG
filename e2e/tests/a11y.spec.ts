@@ -16,7 +16,7 @@ import { tableForLevelUp } from './levelup-support';
 import { paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
-import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn } from './support';
+import { authStatePath, boxOf, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
@@ -845,7 +845,7 @@ async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expect(p.getByRole('heading', { name: 'Mover Pensantus' })).toBeVisible();
     await expectScreenPasses(p, `Mover, nada escolhido ${where}`);
     const map = p.getByRole('group', { name: /Mapa de batalha/ });
-    const box = (await map.boundingBox())!;
+    const box = await boxOf(map);
     const own = (await getEncounterRPC(p, campaignId)).combatants.find((c) => c.mine)!;
     const at = (dc: number, dr: number) => ({ x: ((own.col ?? 0) + dc + 0.5) * (box.width / 20), y: ((own.row ?? 0) + dr + 0.5) * (box.height / 14) });
     await map.click({ position: at(2, 1) });
@@ -2245,17 +2245,15 @@ async function scanSceneOptionsScreens(browser: Browser, colorScheme: 'light' | 
     // The editor: the switch off and on, and every action with its attempts.
     await open(m, `/campaigns/${campaignId}/maps/${table.mapId}`);
     const cart = m.getByRole('button', { name: /^A carroça tombada, Cena de RP/ });
-    if (await cart.isVisible()) {
-      await cart.click();
-      await expect(m.getByRole('switch', { name: 'Mostrar a CD aos jogadores' })).toBeVisible();
-      await expectScreenPasses(m, `Ações da cena com o interruptor da CD desligado ${where}`);
-      await m.getByRole('switch', { name: 'Mostrar a CD aos jogadores' }).click();
-      await expect(m.getByText('Como o jogador vê, antes e depois de rolar')).toBeVisible();
-      await expectScreenPasses(m, `Ações da cena com o interruptor da CD ligado ${where}`);
-      await expect(m.getByRole('status').filter({ hasText: 'Os jogadores agora veem a CD.' })).toHaveCount(1);
-      await expect(m.getByText('Sem limite: o jogador rola quantas vezes quiser')).toBeVisible();
-      await expectScreenPasses(m, `Ações da cena com "Sem limite" ${where}`);
-    }
+    await cart.click();
+    await expect(m.getByRole('switch', { name: 'Mostrar a CD aos jogadores' })).toBeVisible();
+    await expectScreenPasses(m, `Ações da cena com o interruptor da CD desligado ${where}`);
+    await m.getByRole('switch', { name: 'Mostrar a CD aos jogadores' }).click();
+    await expect(m.getByText('Como o jogador vê, antes e depois de rolar')).toBeVisible();
+    await expectScreenPasses(m, `Ações da cena com o interruptor da CD ligado ${where}`);
+    await expect(m.getByRole('status').filter({ hasText: 'Os jogadores agora veem a CD.' })).toHaveCount(1);
+    await expect(m.getByText('Sem limite: o jogador rola quantas vezes quiser')).toBeVisible();
+    await expectScreenPasses(m, `Ações da cena com "Sem limite" ${where}`);
 
     // The session: the scene is open with the DC shown. The player rolls (Percepção 4 + 1 = 5, Investigação 11 + 6 = 17, Constituição 3 + 3 = 6).
     await setShowDcRPC(m, table, table.cartId, true);
