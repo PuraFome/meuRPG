@@ -383,7 +383,7 @@ func New(cfg Config) (*Service, error) {
 		maxPoints:      cfg.MaxPointsPerMap,
 		processing:     make(chan struct{}, 1),
 		dungeonGate:    make(chan struct{}, dungeonGenerators),
-		dungeonLimit:   newDungeonLimiter(),
+		dungeonLimit:   newDungeonLimiter(nil),
 		tiles:          newTileRenderer(),
 		generator:      cfg.Generator,
 		monthlyImages:  cfg.MonthlyImages,

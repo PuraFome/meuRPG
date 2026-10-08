@@ -63,12 +63,14 @@ const (
 // newDungeonLimiter limits the creation and the redrawing of dungeons per
 // campaign, the heavy writes of this service (a render of up to 32 megapixels and
 // an image in the gallery): a burst of 4, then one every 15 seconds, and 20 at once
-// for the whole server. In memory, as every limiter of the server.
-func newDungeonLimiter() *ratelimit.Limiter {
+// for the whole server. In memory, as every limiter of the server. now is the
+// limiter's clock; nil means the wall clock.
+func newDungeonLimiter(now func() time.Time) *ratelimit.Limiter {
 	return ratelimit.New(ratelimit.Config{
 		PerClient:  ratelimit.Rate{Burst: 4, Every: 15 * time.Second},
 		Global:     ratelimit.Rate{Burst: 20, Every: time.Second},
 		MaxClients: 1024,
+		Now:        now,
 	})
 }
 
