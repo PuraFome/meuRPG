@@ -10,6 +10,7 @@ import {
   type Treasure,
   TreasureBlockedReason,
   TreasureBlockedSchema,
+  TreasureInvalidFieldSchema,
 } from '../../../../gen/meurpg/maps/v1/treasure_pb';
 import { flat, isOff } from '../../../core/creatures/creatures-testing';
 import { DungeonsClient } from '../../../core/maps/dungeons-client';
@@ -25,6 +26,13 @@ import {
 import { PlaceSheet, type PlaceSheetData } from './place-sheet';
 
 const plain = (s: string | undefined) => s?.replace(/\u00a0/g, ' ');
+
+/** An `invalid_argument` the way the server sends it: it names the request field that broke the rule. */
+function invalidField(field: string): ConnectError {
+  return new ConnectError('x', Code.InvalidArgument, undefined, [
+    { desc: TreasureInvalidFieldSchema, value: create(TreasureInvalidFieldSchema, { field }) },
+  ]);
+}
 
 describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', () => {
   let treasure: FakeTreasureClient;
@@ -218,13 +226,24 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
 
   it('a square the server refuses reads the map again, so a changed grid is drawn, and says so', async () => {
     const { el, button, settle } = await setup();
-    treasure.failWith.set('place', new ConnectError('x', Code.InvalidArgument));
+    treasure.failWith.set('place', invalidField('column'));
     const before = maps.calls.filter((c) => c === 'get map-1').length;
     button('Pôr no mapa').click();
     await settle();
     expect(maps.calls.filter((c) => c === 'get map-1').length).toBe(before + 1);
     expect(el.querySelector('[role=alert]')?.textContent).toContain('fora da grade');
     expect(el.querySelector('[role=alert]')?.textContent).not.toContain('80 letras');
+  });
+
+  it('a refusal that is not about the square does not read the map again, and says what is wrong', async () => {
+    const { el, button, settle } = await setup();
+    treasure.failWith.set('place', invalidField('name'));
+    const before = maps.calls.filter((c) => c === 'get map-1').length;
+    button('Pôr no mapa').click();
+    await settle();
+    expect(maps.calls.filter((c) => c === 'get map-1').length).toBe(before);
+    expect(el.querySelector('[role=alert]')?.textContent).toContain('1 a 80 caracteres');
+    expect(el.querySelector('[role=alert]')?.textContent).not.toContain('fora da grade');
   });
 
   it('an individual treasure says its gold is coins only', async () => {
@@ -265,7 +284,7 @@ describe('PlaceSheet: "Pôr no mapa" (MR-044, RN-10, E10-10 states 4 and 6)', ()
     button('Pôr no mapa').click();
     await settle();
     expect(el.querySelector('[role=alert]')?.textContent).toContain('limite de 200 pontos');
-    treasure.failWith.set('place', new ConnectError('x', Code.InvalidArgument));
+    treasure.failWith.set('place', invalidField('column'));
     button('Pôr no mapa').click();
     await settle();
     expect(el.querySelector('[role=alert]')?.textContent).toContain('fora da grade');
