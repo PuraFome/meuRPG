@@ -151,6 +151,11 @@ type Build struct {
 	// invocation. Derive applies an option only while the build has the
 	// feature or trait it belongs to.
 	FeatureChoices []string
+	// Feats are the feats the character took (an optional rule of the game, MR-025):
+	// "feat:grappler" or a table's "feat:<slug>@mesa". Derive treats each like a
+	// feature: its effects apply and the sheet lists it. The abilities a feat
+	// raises are in ExtraAbilityBonuses, like an Ability Score Improvement's.
+	Feats []string
 }
 
 // ClassLevel is one class of a Build and its level in that class.

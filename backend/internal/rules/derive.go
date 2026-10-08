@@ -387,6 +387,18 @@ func (x *deriver) collectEffects() {
 		}
 	}
 
+	// The feats the character took apply like features. A key the content does
+	// not have is an issue, not a failure: the sheet still opens.
+	for i, key := range x.b.Feats {
+		f, ok := c.feats[key]
+		if !ok {
+			x.issue(IssueUnknownKey, fmt.Sprintf("full.feat_keys[%d]", i), "O talento escolhido não existe no conteúdo %s.", c.version)
+			continue
+		}
+		add(key)
+		feature(key, f.Name, key, 0, f.Desc)
+	}
+
 	// Chosen options count only while their parent feature or trait is
 	// owned, so a fighting style disappears with the fighter levels.
 	pickedNames := map[string]bool{}
@@ -441,6 +453,8 @@ func (x *deriver) collectEffects() {
 func (x *deriver) sourcePT(source string, level int) string {
 	c := x.c
 	switch {
+	case strings.HasPrefix(source, "feat:"):
+		return "Talento"
 	case strings.HasPrefix(source, "class:"):
 		return fmt.Sprintf("%s %d", c.namePT(source), level)
 	case strings.HasPrefix(source, "subclass:"):

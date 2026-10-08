@@ -40,6 +40,12 @@ const (
 	LevelUpReasonAbilityShape = "ability_shape"
 	// LevelUpReasonAbilityAbove20: the increase takes an ability above 20.
 	LevelUpReasonAbilityAbove20 = "ability_above_20"
+	// LevelUpReasonFeat: a feat at a level that has no Ability Score Improvement, a
+	// feat removed or more than one, or a feat the content does not have.
+	LevelUpReasonFeat = "feat"
+	// LevelUpReasonFeatPrerequisite: the character does not meet the feat's
+	// prerequisite.
+	LevelUpReasonFeatPrerequisite = "feat_prerequisite"
 	// LevelUpReasonHitPoints: the new hit points entry is missing, outside 1 to
 	// the hit die, or the earlier levels changed.
 	LevelUpReasonHitPoints = "hit_points"
@@ -109,8 +115,13 @@ type LevelUpOffer struct {
 	// To choose.
 
 	// AbilityScoreImprovement says this level has one: +2 in one ability or
-	// +1 in two, none above 20. The SRD 5.1 has no feats.
+	// +1 in two, none above 20. When the table plays with feats (an optional
+	// rule), the player may take a feat from Feats in its place.
 	AbilityScoreImprovement bool
+	// Feats are the feats of the content with whether the character qualifies at
+	// the new level, at a level with an Ability Score Improvement; empty at the
+	// others. The server leaves them out when the table does not use feats.
+	Feats []FeatOption
 	// SubclassDue says the class picks its subclass now, from Subclasses.
 	SubclassDue bool
 	Subclasses  []LevelUpSubclass
@@ -214,8 +225,12 @@ type LevelUpFeatureChoice struct {
 type LevelUpChoices struct {
 	// Class is the class key that gains the level.
 	Class string
-	// AbilityIncrease is +2 in one ability or +1 in two; empty for none.
+	// AbilityIncrease is +2 in one ability or +1 in two; empty for none. With a
+	// Feat, it is the increase the feat gives (its ability_increase effect), or
+	// empty when it gives none.
 	AbilityIncrease map[Ability]int
+	// Feat is the feat taken in place of the Ability Score Improvement, or empty.
+	Feat string
 	// Subclass is the subclass key, when one is due.
 	Subclass string
 	// The new cantrips, known (or spellbook) spells and prepared spells.
@@ -254,6 +269,7 @@ func (b Build) clone() Build {
 	b.SpellsKnown = slices.Clone(b.SpellsKnown)
 	b.SpellsPrepared = slices.Clone(b.SpellsPrepared)
 	b.FeatureChoices = slices.Clone(b.FeatureChoices)
+	b.Feats = slices.Clone(b.Feats)
 	b.HitPoints.Rolls = slices.Clone(b.HitPoints.Rolls)
 	return b
 }
@@ -333,6 +349,9 @@ func levelUpOptionsWith(b Build, idx int, c *content, sub *srd51.Subclass) (Leve
 
 	row := c.classLevels[classKey][newLevel-1]
 	o.AbilityScoreImprovement = isASILevel(row)
+	if o.AbilityScoreImprovement {
+		o.Feats = featOptions(bare, c)
+	}
 
 	// Features the level adds, by name; and the ones the guided flow does not
 	// cover, which the master adds in the editor.
@@ -662,6 +681,9 @@ func ApplyLevelUp(before Build, ch LevelUpChoices, c *Content) (Build, error) {
 		}
 		after.ExtraAbilityBonuses[a] += v
 	}
+	if ch.Feat != "" {
+		after.Feats = append(after.Feats, ch.Feat)
+	}
 	after.Cantrips = append(after.Cantrips, ch.Cantrips...)
 	after.SpellsKnown = append(after.SpellsKnown, ch.Spells...)
 	after.SpellsPrepared = append(after.SpellsPrepared, ch.Prepared...)
@@ -689,7 +711,9 @@ func ApplyLevelUp(before Build, ch LevelUpChoices, c *Content) (Build, error) {
 //
 //   - exactly one existing class gains exactly one level;
 //   - the ability increase, only at an Ability Score Improvement level: +2 in
-//     one ability or +1 in two, none above 20, as extra_ability_bonuses;
+//     one ability or +1 in two, none above 20, as extra_ability_bonuses; or, in
+//     its place, one feat the character qualifies for, with the increase the feat
+//     gives (whether the table uses feats is the server's to check);
 //   - the new level's hit points, in 1 to the hit die, with the earlier
 //     levels unchanged (a fixed sheet that rolls takes their averages);
 //   - exactly the new cantrips, known or spellbook spells the level gives, and
@@ -722,7 +746,12 @@ func checkLevelUp(before, after Build, c *content) *LevelUpError {
 		return lerr
 	}
 	dBefore, dAfter := derive(before, c), derive(after, c)
-	if lerr := checkAbilities(before, after, dAfter, isASILevel(c.classLevels[classKey][newLevel-1])); lerr != nil {
+	asi := isASILevel(c.classLevels[classKey][newLevel-1])
+	feat, lerr := checkFeat(before, after, c, asi)
+	if lerr != nil {
+		return lerr
+	}
+	if lerr := checkAbilities(before, after, dAfter, asi, feat); lerr != nil {
 		return lerr
 	}
 	if lerr := checkHitPoints(before, after, idx, class.HitDie, c); lerr != nil {
@@ -886,9 +915,43 @@ func added(before, after []string) (fresh []string, removed bool) {
 	return fresh, removed
 }
 
+// checkFeat checks the feat of the new level: at most one, only at an Ability Score
+// Improvement level, one the content has, and one the character qualifies for
+// with the level gained and before the feat's own ability increase. It returns the
+// feat taken, or nil.
+func checkFeat(before, after Build, c *content, asi bool) (*FeatEntry, *LevelUpError) {
+	const field = "full.feat_keys"
+	fresh, removed := added(before.Feats, after.Feats)
+	switch {
+	case removed:
+		return nil, refuse(field, LevelUpReasonFeat, "a feat was removed")
+	case len(fresh) == 0:
+		return nil, nil
+	case len(fresh) > 1:
+		return nil, refuse(field, LevelUpReasonFeat, "one feat in place of one Ability Score Improvement")
+	case !asi:
+		return nil, refuse(field, LevelUpReasonFeat, "this level has no Ability Score Improvement")
+	}
+	f, ok := c.feats[fresh[0]]
+	if !ok {
+		return nil, refuse(field, LevelUpReasonFeat, "not a feat of the content")
+	}
+	entry := c.featEntry(f)
+	// The prerequisite is judged on the sheet with the level gained and without the
+	// feat and what it raises, as the guided level-up offered it.
+	pre := after.clone()
+	pre.Feats, pre.ExtraAbilityBonuses = slices.Clone(before.Feats), maps.Clone(before.ExtraAbilityBonuses)
+	if unmet := c.unmetFeat(entry, pre, derive(pre, c)); len(unmet) > 0 {
+		return nil, refuse(field, LevelUpReasonFeatPrerequisite, "the character does not meet the prerequisite of the feat (%s)", unmet[0].Kind)
+	}
+	return &entry, nil
+}
+
 // checkAbilities checks the ability increase: only at an ASI level, +2 in one
-// ability or +1 in two, and none above 20.
-func checkAbilities(before, after Build, dAfter Derived, asi bool) *LevelUpError {
+// ability or +1 in two, and none above 20. With a feat taken in its place the
+// increase is the feat's own: its ability_increase effect's count of different
+// abilities from its list with its value each, and nothing when it has none.
+func checkAbilities(before, after Build, dAfter Derived, asi bool, feat *FeatEntry) *LevelUpError {
 	const field = "full.extra_ability_bonuses"
 	var raised []Ability
 	total := 0
@@ -907,13 +970,26 @@ func checkAbilities(before, after Build, dAfter Derived, asi bool) *LevelUpError
 			return refuse(field, LevelUpReasonAbilityShape, "an unknown ability")
 		}
 	}
-	if total == 0 {
+	if total == 0 && (feat == nil || feat.Increase == nil) {
 		return nil
 	}
 	if !asi {
 		return refuse(field, LevelUpReasonAbilityNotDue, "this level has no Ability Score Improvement")
 	}
-	if total != 2 {
+	switch {
+	case feat != nil && feat.Increase == nil:
+		return refuse(field, LevelUpReasonAbilityShape, "the feat gives no ability increase")
+	case feat != nil:
+		inc := feat.Increase
+		if len(raised) != inc.Count || total != inc.Count*inc.Value {
+			return refuse(field, LevelUpReasonAbilityShape, "the feat raises %d different abilities by %d each", inc.Count, inc.Value)
+		}
+		for _, a := range raised {
+			if !slices.Contains(inc.From, a) || after.ExtraAbilityBonuses[a]-before.ExtraAbilityBonuses[a] != inc.Value {
+				return refuse(field+"."+protoAbility[a], LevelUpReasonAbilityShape, "the feat raises only the abilities it lists, by %d each", inc.Value)
+			}
+		}
+	case total != abilityScoreImprovementPoints:
 		return refuse(field, LevelUpReasonAbilityShape, "+2 in one ability or +1 in two")
 	}
 	for _, a := range raised {
@@ -996,6 +1072,7 @@ func checkDuplicates(b Build) *LevelUpError {
 		{"full.known_spell_keys", LevelUpReasonSpells, b.SpellsKnown},
 		{"full.prepared_spell_keys", LevelUpReasonPrepared, b.SpellsPrepared},
 		{"full.feature_choice_keys", LevelUpReasonFeatureChoice, b.FeatureChoices},
+		{"full.feat_keys", LevelUpReasonFeat, b.Feats},
 		{"full.skill_proficiency_keys", LevelUpReasonSkills, b.SkillProficiencies},
 		{"full.expertise_skill_keys", LevelUpReasonExpertise, b.Expertise},
 	} {
