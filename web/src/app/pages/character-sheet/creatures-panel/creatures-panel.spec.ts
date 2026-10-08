@@ -363,6 +363,24 @@ describe('CreaturesPanel, a druid in Wild Shape: the reads of her form', () => {
     expect(flat(el.querySelector('.js-wild'))).toContain('Voltar à forma normal');
   });
 
+  it('reads the form again when the page says the vitals changed, so a form that ended elsewhere leaves the panel', async () => {
+    const api = new FakeCreaturesClient();
+    api.vitals = vitals('Lobo');
+    const fixture = build(api);
+    fixture.detectChanges();
+    await settle(fixture);
+    const el = fixture.nativeElement as HTMLElement;
+    expect(flat(el.querySelector('.js-wild'))).toContain('Voltar à forma normal');
+
+    // The form ended in the master's hand: no creature changed, only the vitals did.
+    api.vitals = vitals('');
+    fixture.componentRef.setInput('formReload', 1);
+    fixture.detectChanges();
+    await settle(fixture);
+    expect(flat(el.querySelector('.js-wild'))).toContain('Transformar');
+    expect(flat(el.querySelector('.js-wild'))).not.toContain('Voltar à forma normal');
+  });
+
   it('sends one request when "Voltar à forma normal" is tapped twice, and shows no refusal', async () => {
     const api = new FakeCreaturesClient();
     api.vitals = vitals('Lobo');

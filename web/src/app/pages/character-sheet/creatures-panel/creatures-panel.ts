@@ -77,6 +77,9 @@ export class CreaturesPanel {
   readonly wildShape = input(false);
   /** Bumped by the page when the stream says the creatures changed. */
   readonly reload = input(0);
+  /** Bumped by the page when the character's vitals or the combat changed: the Wild Shape form is read again (it ends
+   * by damage, by sleep or by the master's hand, none of which is a creature change). */
+  readonly formReload = input(0);
 
   protected readonly state = signal<ListState>('loading');
   protected readonly creatures = signal<readonly CharacterCreature[]>([]);
@@ -210,6 +213,14 @@ export class CreaturesPanel {
   }
 
   constructor() {
+    effect(() => {
+      const ticks = this.formReload();
+      untracked(() => {
+        if (ticks > 0) {
+          void this.loadWild();
+        }
+      });
+    });
     effect(() => {
       this.reload();
       this.live();
