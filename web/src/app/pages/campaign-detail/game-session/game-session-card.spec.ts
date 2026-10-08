@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { OpenSessionVm, OpenSessions } from '../../../shell/live-notice/open-sessions';
+import { CampaignSessions } from './campaign-sessions';
 import { GameSessionCard } from './game-session-card';
 import {
   GameSessionSource,
@@ -17,8 +18,8 @@ class FakeGameSessionSource {
   readonly startGameSession = vi.fn();
   readonly endGameSession = vi.fn();
 
-  getCurrentSession(): Promise<GameSessionVm | null> {
-    return this.getCurrentSessionResult;
+  listSessions(): Promise<readonly GameSessionVm[]> {
+    return this.getCurrentSessionResult.then((open) => (open ? [open] : []));
   }
 }
 
@@ -50,6 +51,7 @@ describe('GameSessionCard', () => {
       imports: [GameSessionCard],
       providers: [
         provideRouter([]),
+        CampaignSessions,
         { provide: GameSessionSource, useClass: FakeGameSessionSource },
         { provide: OpenSessions, useValue: openSessions },
       ],
@@ -66,6 +68,8 @@ describe('GameSessionCard', () => {
     fixture.componentRef.setInput('isMaster', isMaster);
     fixture.detectChanges();
     await fixture.whenStable();
+    // The list of sessions comes through the shared store, a few promises deep.
+    await new Promise((resolve) => setTimeout(resolve));
     fixture.detectChanges();
     return { el: fixture.nativeElement as HTMLElement, fixture };
   }
@@ -257,6 +261,7 @@ describe('GameSessionCard', () => {
     polled.set([polledSession]);
     fixture.detectChanges();
     await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve));
     fixture.detectChanges();
 
     expect(el.textContent).toContain('Entrar na sessão');
@@ -272,6 +277,7 @@ describe('GameSessionCard', () => {
     polled.set([]);
     fixture.detectChanges();
     await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve));
     fixture.detectChanges();
 
     expect(el.textContent).not.toContain('Entrar na sessão');

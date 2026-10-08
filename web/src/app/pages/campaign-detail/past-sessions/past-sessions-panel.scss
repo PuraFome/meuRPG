@@ -1,0 +1,122 @@
+:host {
+  display: block;
+}
+
+// A player with nothing ended sees no panel, and no gap where it was.
+:host(.is-empty) {
+  display: none;
+}
+
+.past {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.past__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.past__count {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.past__text {
+  margin: 0;
+}
+
+// The master's empty panel: a dashed box with the sentence, nothing to press.
+.past__empty {
+  margin: 0;
+  padding: var(--mr-space-3) var(--mr-space-4);
+  color: var(--mr-ink-muted);
+  border: 1px dashed var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+}
+
+.past__list {
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 var(--mr-space-3);
+  padding: 4px 0;
+  border-top: 1px solid var(--mr-rule);
+
+  &:first-child {
+    border-top: 0;
+  }
+}
+
+.row__text {
+  display: flex;
+  flex: 1 1 200px;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row__name {
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.row__when {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+// The duration and the link share a line; on a narrow phone they drop below the name, to the right.
+.row__side {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: var(--mr-space-4);
+  margin-left: auto;
+}
+
+.row__duration {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+  white-space: nowrap;
+}
+
+.row__link {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  font-weight: 700;
+  color: var(--mr-accent-text);
+  text-decoration: none;
+  white-space: nowrap;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.past__more {
+  min-height: 44px;
+  color: var(--mr-accent-text);
+}
