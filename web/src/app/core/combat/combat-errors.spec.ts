@@ -51,6 +51,15 @@ describe('combat errors', () => {
     );
   });
 
+  it('says a wall is no place to stand and that the dead cannot be healed', () => {
+    expect(blockedMessage({ reason: EncounterBlockedReason.WALL_ON_SQUARE } as never)).toMatch(
+      /parede/,
+    );
+    expect(blockedMessage({ reason: EncounterBlockedReason.TARGET_DEAD } as never)).toBe(
+      'Não dá para curar quem já morreu.',
+    );
+  });
+
   it('says a locked door stopped the very first step: nothing moved, and only the master unlocks it (RN-26)', () => {
     expect(blockedMessage({ reason: EncounterBlockedReason.DOOR_LOCKED } as never)).toBe(
       'A porta está trancada: você não saiu do lugar. Só o mestre a destranca.',

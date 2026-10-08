@@ -11,6 +11,7 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
+import { CombatantState } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatantInitial, isPlayer } from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
@@ -85,8 +86,10 @@ export class CombatSummary {
           ),
         )
         .join(' · ');
+      // A dead character needs no healing: it is not "caída" either.
+      const dead = c.state === CombatantState.DEAD;
       const down =
-        v && v.hitPointsCurrent === 0
+        v && v.hitPointsCurrent === 0 && !dead
           ? `Caída: ${c.deathSuccesses} ${c.deathSuccesses === 1 ? 'sucesso' : 'sucessos'}, ${c.deathFailures} ${c.deathFailures === 1 ? 'falha' : 'falhas'}. Precisa de cura.`
           : '';
       return {

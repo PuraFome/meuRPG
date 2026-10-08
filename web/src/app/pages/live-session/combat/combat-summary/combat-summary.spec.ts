@@ -172,4 +172,41 @@ describe('CombatSummary and the XP (E7-06)', () => {
     expect(el.querySelector('app-combat-highlights')).toBeNull();
     expect(highlights).not.toHaveBeenCalled();
   });
+
+  it('does not say a dead character needs healing, and still says it of one who is only down', async () => {
+    const down = (id: string, label: string, state: CombatantState) =>
+      combatant({ id, label, kind: CombatantKind.PLAYER, characterId: `c-${id}`, state });
+    const fixture = TestBed.createComponent(CombatSummary);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        id: 'enc',
+        status: EncounterStatus.ENDED,
+        combatants: [
+          down('a', 'Brisa', CombatantState.DEAD),
+          down('b', 'Toren', CombatantState.DOWN),
+        ],
+      }),
+    );
+    fixture.componentRef.setInput('isMaster', true);
+    const zero = (characterId: string) =>
+      ({
+        characterId,
+        hitPointsCurrent: 0,
+        hitPointsMax: 10,
+        spellSlots: [],
+      }) as never;
+    fixture.componentRef.setInput('vitals', [zero('c-a'), zero('c-b')]);
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Toren está caída');
+    expect(text).not.toContain('Brisa está caída');
+  });
+
+  it('has no "Voltar à sessão" of its own while the highlights card above it has the one "Fechar"', async () => {
+    const { fixture, el } = setup(false);
+    fixture.componentRef.setInput('quietTitle', true);
+    fixture.detectChanges();
+    expect(el.querySelector('.end__leave')).toBeNull();
+  });
 });

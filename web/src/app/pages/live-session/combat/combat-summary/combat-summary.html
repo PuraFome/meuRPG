@@ -6,9 +6,11 @@
       </div>
       <p class="end__sub">{{ encounter().name }} · Sessão {{ sessionNumber() }}</p>
     </div>
-    <button [matButton]="leaveFilled() ? 'filled' : 'outlined'" type="button" class="end__leave" (click)="leave.emit()">
-      Voltar à sessão
-    </button>
+    @if (!quietTitle()) {
+      <button [matButton]="leaveFilled() ? 'filled' : 'outlined'" type="button" class="end__leave" (click)="leave.emit()">
+        Voltar à sessão
+      </button>
+    }
   </div>
 
   <dl class="end__stats">
