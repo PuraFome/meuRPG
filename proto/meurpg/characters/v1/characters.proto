@@ -47,7 +47,8 @@ import "meurpg/rules/v1/rules.proto";
 //     let them work on their one character while they wait: CreateCharacter
 //     (one player character, which starts PENDING), GetCharacter,
 //     ListCharacters, UpdateCharacter and UpdateCharacterStory (only their
-//     own PENDING character), and ContentService.ListContent. Inside those
+//     own PENDING character), PreviewCharacter (the numbers of the sheet
+//     they are making), and ContentService.ListContent. Inside those
 //     methods they are treated like a player.
 //   - An ID that is not a UUID is answered like an ID that does not exist.
 //   - The guided level-up (MR-040) is the player's own: GetLevelUpOptions and
@@ -431,6 +432,41 @@ service CharacterService {
   // that LevelUpCharacter would answer `invalid_argument` to (an unknown key,
   // a list too long) is `invalid_argument` here too.
   rpc PreviewLevelUp(PreviewLevelUpRequest) returns (PreviewLevelUpResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // PreviewCharacter derives the numbers of a sheet that is being created or
+  // edited, and writes nothing: the character editor's "Pontos de vida" box
+  // shows the server's maximum (the dice, the Constitution modifier and the
+  // "hp.max" effects, such as Dwarven Toughness) instead of adding it up in the
+  // browser, which has no rules engine. The sheet is the one CreateCharacter and
+  // UpdateCharacter take; the fields that do not change the numbers (name,
+  // portrait, story, idempotency key) are not part of the request.
+  //
+  // It accepts exactly the callers and sheets that the save it previews
+  // accepts, so a preview never shows a sheet the save would refuse and never
+  // tells anyone more than the save would. Without a character_id, what
+  // CreateCharacter checks: a member or a pending member; a player previews
+  // only a PLAYER sheet and the master only an NPC kind; the sheet's own rules,
+  // the sheet that fits the kind, a new choice of an archived table entry
+  // refused, and a choice the table switched off refused for a player. With a
+  // character_id, what UpdateCharacter checks: the caller sees the character,
+  // may edit its sheet now (RN-01) and the sheet fits the character's kind; an
+  // archived or switched-off choice is judged against the stored sheet, so a
+  // choice the character already has stays. The ability method (RN-24) is not
+  // checked here: the save does it.
+  //
+  // Errors:
+  //   - `not_found`: the character is not in this campaign or the caller may
+  //     not see it.
+  //   - `permission_denied`: a player previews an NPC kind, or the master a
+  //     PLAYER sheet.
+  //   - `invalid_argument`: the sheet, or the kind, breaks the rules of the
+  //     save.
+  //   - `failed_precondition`: with the CharacterBlocked detail, the character's
+  //     sheet is locked for the caller (RN-01), or a new choice is archived or
+  //     switched off (the same detail as the save).
+  rpc PreviewCharacter(PreviewCharacterRequest) returns (PreviewCharacterResponse) {
     option idempotency_level = IDEMPOTENT;
   }
 
@@ -1313,6 +1349,24 @@ message CreateCharacterRequest {
   // The key is unique in the campaign; the same key with another request is `invalid_argument`.
   // Empty: the call is not deduplicated. It must be a UUID.
   string idempotency_key = 7;
+}
+
+// PreviewCharacterRequest is a sheet to derive without saving it.
+message PreviewCharacterRequest {
+  string campaign_id = 1;
+  // The character being edited. Empty when creating.
+  string character_id = 2;
+  // Required when creating (it decides who may preview and which sheet fits).
+  // With a character_id the character's own kind is used and this is ignored.
+  CharacterKind kind = 3;
+  // Required: full for PLAYER, ENEMY and BOSS; basic for MINION and STORY.
+  CharacterSheet sheet = 4;
+}
+
+// PreviewCharacterResponse is what the sheet would be once saved.
+message PreviewCharacterResponse {
+  // The derived sheet, as Character.derived would carry it after the save.
+  meurpg.rules.v1.DerivedSheet derived = 1;
 }
 
 // CreateCharacterResponse returns the new character.

@@ -2076,3 +2076,75 @@ func TestUndoAfterTheSheetLostTheResourceIsNotAnInternalError(t *testing.T) {
 		t.Fatalf("UndoLastAction() = %v, want a handled outcome, not an internal error", err)
 	}
 }
+
+// A rogue's Cunning Action and a monk's Step of the Wind and Patient Defense are
+// the Dash, Disengage and Dodge actions taken as a bonus action: each choice
+// has the effect of the standard action, and the action of the turn stays free.
+func TestBonusActionFeaturesTakeTheStandardActionsEffect(t *testing.T) {
+	t.Parallel()
+	scores := &rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 14, Charisma: 8}
+	a := newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:rogue", "race:human", 2, scores, []string{rapier}, nil)
+		a.pens = a.ana.hero(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 1, scores, nil, []string{fireBolt})
+		a.bri = a.bia.hero(t, a.campaignID, "Brisa", "class:monk", "race:human", 2, scores, nil, nil)
+	})
+	e := a.theatreThree(t)
+
+	feature := func(who string, u *user, key string) *rulesv1.ActionOption {
+		t.Helper()
+		for _, f := range a.mustOptions(t, u, a.get(t, u), who).GetOptions().GetFeatureActions() {
+			if f.GetAction().GetKey() == key {
+				return f
+			}
+		}
+		return nil
+	}
+	for _, key := range []string{"feature:cunning-action:dash", "feature:cunning-action:disengage", "feature:cunning-action:hide"} {
+		if f := feature("Toren", a.caio, key); f == nil || !f.GetEnabled() || f.GetAction().GetEconomy() != rulesv1.ActionEconomy_ACTION_ECONOMY_BONUS_ACTION {
+			t.Fatalf("%s = %v, want an enabled bonus action", key, f)
+		}
+	}
+	if feature("Toren", a.caio, "feature:cunning-action") != nil {
+		t.Error("Cunning Action is offered as one action with no choice")
+	}
+
+	before := a.mustOptions(t, a.caio, e, "Toren").GetOptions().GetEconomy().GetMovement().GetLeftFt()
+	if _, err := a.action(t, a.caio, e, "Toren", "feature:cunning-action:dash"); err != nil {
+		t.Fatalf("TakeAction(Cunning Action: Dash) error = %v", err)
+	}
+	o := a.mustOptions(t, a.caio, a.get(t, a.caio), "Toren").GetOptions()
+	if got := o.GetEconomy().GetMovement().GetLeftFt(); got != 2*before {
+		t.Errorf("movement after Cunning Action: Dash = %d ft, want %d (doubled)", got, 2*before)
+	}
+	if !o.GetEconomy().GetBonusAction().GetUsed() || o.GetEconomy().GetAction().GetUsed() {
+		t.Errorf("economy after Cunning Action: Dash = %v, want the bonus action used and the action free", o.GetEconomy())
+	}
+	if a.theatreCombatant(t, a.caio, "Toren").GetDisengaged() {
+		t.Error("Cunning Action: Dash marked Toren as disengaged")
+	}
+	if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil {
+		t.Fatalf("UndoLastAction(Cunning Action) error = %v", err)
+	}
+	if got := a.mustOptions(t, a.caio, a.get(t, a.caio), "Toren").GetOptions().GetEconomy().GetMovement().GetLeftFt(); got != before {
+		t.Errorf("movement after the undo = %d ft, want %d", got, before)
+	}
+
+	if _, err := a.action(t, a.caio, e, "Toren", "feature:cunning-action:disengage"); err != nil {
+		t.Fatalf("TakeAction(Cunning Action: Disengage) error = %v", err)
+	}
+	if !a.theatreCombatant(t, a.caio, "Toren").GetDisengaged() {
+		t.Error("Cunning Action: Disengage left Toren open to opportunity attacks")
+	}
+
+	e = a.passTo(t, a.get(t, a.master), "Brisa")
+	stepSpeed := a.mustOptions(t, a.bia, e, "Brisa").GetOptions().GetEconomy().GetMovement().GetLeftFt()
+	if _, err := a.action(t, a.bia, e, "Brisa", "feature:step-of-the-wind:dash"); err != nil {
+		t.Fatalf("TakeAction(Step of the Wind: Dash) error = %v", err)
+	}
+	if got := a.mustOptions(t, a.bia, a.get(t, a.bia), "Brisa").GetOptions().GetEconomy().GetMovement().GetLeftFt(); got != 2*stepSpeed {
+		t.Errorf("movement after Step of the Wind: Dash = %d ft, want %d", got, 2*stepSpeed)
+	}
+	if feature("Brisa", a.bia, "feature:patient-defense") == nil || feature("Brisa", a.bia, "feature:step-of-the-wind:disengage") == nil {
+		t.Error("the monk is not offered Patient Defense and Step of the Wind: Disengage")
+	}
+}

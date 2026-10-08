@@ -527,3 +527,66 @@ func TestBasicDerivedFollowsTheCreaturesMultiattack(t *testing.T) {
 		}
 	}
 }
+
+// TestNpcMeleeAttacksStayMelee: a sheet made from a creature keeps a melee
+// attack melee when the sheet's single reach-or-range number would read as a
+// ranged one (a giant's club with reach 10 ft, a guard's spear that can also be
+// thrown), so the opportunity attack finds it and the thrown range is not a reach.
+func TestNpcMeleeAttacksStayMelee(t *testing.T) {
+	t.Parallel()
+	content := loadRules(t)
+	giant, err := npcSheetFromCreature(content, "monster:hill-giant")
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, a := range basicDerived(content, giant).Attacks {
+		if a.RangeFt == 10 {
+			found = true
+			if !a.Melee || a.LongRangeFt != 0 {
+				t.Errorf("hill giant %q (reach 10 ft): melee = %v, long range = %d; want a melee attack with no long range", a.Name, a.Melee, a.LongRangeFt)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("hill giant sheet has no attack with reach 10")
+	}
+
+	guard, err := npcSheetFromCreature(content, "monster:guard")
+	if err != nil {
+		t.Fatal(err)
+	}
+	spear := basicDerived(content, guard).Attacks
+	if len(spear) == 0 || !spear[0].Melee || spear[0].LongRangeFt == 0 {
+		t.Errorf("guard attacks = %+v, want a melee spear carrying its throwing range", spear)
+	}
+}
+
+// TestEveryCreatureWithAMeleeAttackKeepsOneOnItsSheet: no creature loses all its
+// melee attacks when it becomes a basic-sheet NPC in a combat.
+func TestEveryCreatureWithAMeleeAttackKeepsOneOnItsSheet(t *testing.T) {
+	t.Parallel()
+	content := loadRules(t)
+	entries, err := content.ListCreatures(rules.CreatureFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var lost []string
+	for _, e := range entries {
+		stat, ok := content.MonsterDerived(e.Key)
+		if !ok {
+			continue
+		}
+		hasMelee := slices.ContainsFunc(stat.Attacks, func(a rules.Attack) bool { return a.Melee })
+		sheet, err := npcSheetFromCreature(content, e.Key)
+		if !hasMelee || err != nil || len(sheet.GetAttacks()) == 0 {
+			continue
+		}
+		if !slices.ContainsFunc(basicDerived(content, sheet).Attacks, func(a rules.Attack) bool { return a.Melee }) {
+			lost = append(lost, e.Key)
+		}
+	}
+	if len(lost) > 0 {
+		t.Errorf("%d creatures lose every melee attack on the sheet: %v", len(lost), lost)
+	}
+}

@@ -245,7 +245,10 @@ func (s *Service) trapDamageInCombat(ctx context.Context, c *combatTx, pointID s
 	if holdsHP(*who) {
 		status, resolved = pendingApplied, &c.now
 	}
-	amount := clampInt32(d.amount)
+	amount, err := s.afterResistance(ctx, c, *who, d.damageType, clampInt32(d.amount))
+	if err != nil {
+		return trapDamageEvent{}, err
+	}
 	p, err := c.q.InsertTrapPendingDamage(ctx, playdb.InsertTrapPendingDamageParams{
 		EncounterID: c.enc.ID, TargetID: who.ID, Status: status, Critical: d.critical,
 		DiceCount: clamp32(d.count, 0, 100), DiceSides: clamp32(d.sides, 0, 100), DiceBonus: clamp32(d.bonus, -1000, 1000),

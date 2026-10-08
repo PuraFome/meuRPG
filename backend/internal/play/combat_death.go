@@ -280,19 +280,19 @@ func (s *Service) ConfirmDeath(
 // failuresWhileDown adds the death save failures a damage causes to a character
 // at 0 hit points (RN-03): one, two for a critical hit. A stable character that
 // takes damage starts over (the SRD: it must make death saves again), so its
-// successes reset first. It returns the state before and after, and the
+// both counts reset first. It returns the state before and after, and the
 // failures added; nothing changes for a damage of 0.
 func (s *Service) failuresWhileDown(ctx context.Context, c *combatTx, target playdb.Combatant, critical bool, amount int32) (before, after *deathState, added int32, err error) {
 	before = deathOf(target)
 	if amount <= 0 {
 		return before, before, 0, nil
 	}
-	successes := int(target.DeathSuccesses)
+	successes, failures := int(target.DeathSuccesses), int(target.DeathFailures)
 	if successes >= 3 {
-		successes = 0
+		successes, failures = 0, 0 // stable: both counts start over
 	}
 	n := combat.DamageWhileDown(critical)
-	r := combat.AddFailures(successes, int(target.DeathFailures), n)
+	r := combat.AddFailures(successes, failures, n)
 	after = &deathState{Successes: clamp32(r.Successes, 0, 3), Failures: clamp32(r.Failures, 0, 3), Rolled: target.DeathSaveRolled, Dead: target.Defeated}
 	if err := c.q.SetCombatantDeathSaves(ctx, playdb.SetCombatantDeathSavesParams{
 		ID: target.ID, DeathSuccesses: after.Successes, DeathFailures: after.Failures, DeathSaveRolled: after.Rolled, Defeated: after.Dead,

@@ -539,6 +539,12 @@ message PuzzleLastMove {
   // the square from them): they read nothing, not an empty name. A trap that fired is
   // public to who sees it (MR-035); its DCs and effect never are.
   string trap_name = 7;
+  // For a sequence, how many times the master had played it (SequencePlayback.plays) when
+  // this move was made; 0 for the other kinds. A wrong bell restarts the attempt, and the
+  // note that says so ("A tentativa recomeçou") holds only while SequencePlayback.plays
+  // is still this number: a later play of the sequence ends it. The same for every
+  // reader and after any reload, since both numbers are the server's.
+  int32 plays_at_move = 8;
 }
 
 // PuzzleRun is a puzzle in the open session as a player reads it, and nothing more
@@ -645,7 +651,8 @@ message SequencePlayback {
   // The number of steps (3 to 12).
   int32 total_steps = 1;
   // How many times the master has played it. 0: not yet, and moves are refused
-  // (SEQUENCE_NOT_PLAYED).
+  // (SEQUENCE_NOT_PLAYED). Compared with PuzzleLastMove.plays_at_move to know whether the
+  // sequence was played again since the last move.
   int32 plays = 2;
   // True while a play runs: moves are refused (SEQUENCE_PLAYING).
   bool playing = 3;

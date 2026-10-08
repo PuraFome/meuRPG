@@ -249,6 +249,7 @@
   "ArmorClass": 13,
   "ArmorClassDescription": "Sem armadura",
   "HitPointsMax": 23,
+  "HitPointsFromEffects": 0,
   "HitDice": [
     {
       "Die": 6,
@@ -719,70 +720,80 @@
       "NamePT": "Atacar",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     },
     {
       "Key": "standard:cast-a-spell",
       "NamePT": "Conjurar uma magia",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     },
     {
       "Key": "standard:dash",
       "NamePT": "Disparada",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     },
     {
       "Key": "standard:disengage",
       "NamePT": "Desengajar",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     },
     {
       "Key": "standard:dodge",
       "NamePT": "Esquivar",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     },
     {
       "Key": "standard:help",
       "NamePT": "Ajudar",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     },
     {
       "Key": "standard:hide",
       "NamePT": "Esconder",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     },
     {
       "Key": "standard:ready",
       "NamePT": "Preparar",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     },
     {
       "Key": "standard:search",
       "NamePT": "Procurar",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     },
     {
       "Key": "standard:use-an-object",
       "NamePT": "Usar um objeto",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     }
   ],
   "AttacksPerAction": 1,
