@@ -162,6 +162,7 @@ import { MineTabs } from './mine-tabs/mine-tabs';
 import { openSheet } from './sheet-host';
 import { type DoorSheetData, openDoorSheet } from '../door-sheet/door-sheet';
 import type { DoorSquare } from '../../../core/maps/layers';
+import { wallUnderDoor } from '../../../core/maps/door-paint';
 import { type StartCombatData, StartCombatDialog } from './start-combat/start-combat-dialog';
 import { TrapDamages } from '../traps/trap-damages/trap-damages';
 import { openTrapSearch } from '../traps/trap-search-sheet/trap-search-sheet';
@@ -1476,7 +1477,13 @@ export class CombatView {
       campaignId: this.campaignId(),
       mapId: e.mapId,
       door,
-      wall: this.layers().walls.some((w) => w.col === door.col && w.row === door.row),
+      wallSquares: wallUnderDoor(
+        this.layers().walls,
+        this.layers().columns,
+        this.layers().rows,
+        this.mapState().map()?.squareFactor ?? 1,
+        door,
+      ),
     };
     openDoorSheet(this.dialog, this.bottomSheet, data).subscribe();
   }

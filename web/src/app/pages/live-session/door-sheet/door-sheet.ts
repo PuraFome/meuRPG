@@ -15,6 +15,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import { MapLayer } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import type { Square } from '../../../core/combat/combat-grid';
 import type { DoorKind, DoorSquare } from '../../../core/maps/layers';
 import { mapErrorMessage } from '../../../core/maps/map-errors';
 import { MapsClient } from '../../../core/maps/maps-client';
@@ -22,12 +23,13 @@ import { DoorMark } from '../../../shared/map-layers/door-mark';
 import { SheetFrame } from '../combat/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../combat/sheet-host';
 
-/** What the page hands the door sheet: the door and whether a wall is painted under it (a revealed secret door clears it). */
+/** What the page hands the door sheet: the door and whether a wall is painted under it (a revealed secret door clears it, over the whole block of the drawing's square). */
 export interface DoorSheetData {
   readonly campaignId: string;
   readonly mapId: string;
   readonly door: DoorSquare;
-  readonly wall: boolean;
+  /** The squares of the door's block that have a wall painted under them. */
+  readonly wallSquares: readonly Square[];
 }
 
 const CHOICES: readonly {
@@ -229,8 +231,9 @@ export class DoorSheet {
 
   /** "Revelar": the secret door becomes a closed one (and a wall painted under it goes, or it would still be a wall). */
   protected async reveal(): Promise<void> {
+    const { wallSquares } = this.sheet.data;
     const writes = [
-      ...(this.sheet.data.wall ? [{ layer: MapLayer.WALL, value: 0 }] : []),
+      ...(wallSquares.length > 0 ? [{ layer: MapLayer.WALL, value: 0, squares: wallSquares }] : []),
       { layer: MapLayer.DOORS, value: 2 },
     ];
     if (await this.paint(writes)) {
@@ -242,15 +245,21 @@ export class DoorSheet {
     this.sheet.close(this.changed);
   }
 
-  private async paint(writes: readonly { layer: MapLayer; value: number }[]): Promise<boolean> {
+  private async paint(
+    writes: readonly { layer: MapLayer; value: number; squares?: readonly Square[] }[],
+  ): Promise<boolean> {
     const { campaignId, mapId, door } = this.sheet.data;
     this.busy.set(true);
     this.error.set('');
     try {
       for (const w of writes) {
-        await this.api.paint(campaignId, mapId, w.layer, w.value, [
-          { col: door.col, row: door.row },
-        ]);
+        await this.api.paint(
+          campaignId,
+          mapId,
+          w.layer,
+          w.value,
+          w.squares ?? [{ col: door.col, row: door.row }],
+        );
       }
       this.changed = true;
       return true;

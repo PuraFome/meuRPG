@@ -11,6 +11,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import type { Map as MapMessage, MapPoint } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { describeConnectError } from '../../../core/connect/connect-errors';
 import type { DoorSquare } from '../../../core/maps/layers';
+import { wallUnderDoor } from '../../../core/maps/door-paint';
 import { lightKeyName } from '../../../core/maps/carried-light';
 import type { FogView } from '../../../core/maps/fog-view';
 import { mapErrorMessage } from '../../../core/maps/map-errors';
@@ -185,8 +186,12 @@ export class SessionMap {
       campaignId: this.campaignId(),
       mapId,
       door,
-      wall: (this.fog()?.layers().walls ?? []).some(
-        (w) => w.col === door.col && w.row === door.row,
+      wallSquares: wallUnderDoor(
+        this.fog()?.layers().walls ?? [],
+        this.fog()?.layers().columns ?? 0,
+        this.fog()?.layers().rows ?? 0,
+        this.map()?.squareFactor ?? 1,
+        door,
       ),
     };
     openDoorSheet(this.dialog, this.bottomSheet, data).subscribe();
