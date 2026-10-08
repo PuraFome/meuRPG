@@ -175,6 +175,27 @@ func TestEffectsCoverLevels1To5(t *testing.T) {
 
 // TestNamesPT checks that everything the sheet and the editor name has our
 // Portuguese name.
+// TestNamesPTAreUnique: two spells (or creatures, items, races, classes,
+// subclasses or backgrounds) never share a Portuguese name, or a list would show
+// two different entries the same. Features are left out: the same feature of
+// several classes (Ataque Extra) has one name on purpose.
+func TestNamesPTAreUnique(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t).c
+	seen := map[string]string{}
+	for _, key := range sortedKeys(c.namesPT) {
+		kind, _, _ := strings.Cut(key, ":")
+		if !slices.Contains([]string{"spell", "monster", "item", "race", "subrace", "class", "subclass", "background"}, kind) {
+			continue
+		}
+		name := kind + ":" + strings.ToLower(c.namesPT[key])
+		if other, ok := seen[name]; ok {
+			t.Errorf("%s and %s are both %q", other, key, c.namesPT[key])
+		}
+		seen[name] = key
+	}
+}
+
 func TestNamesPT(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t).c
