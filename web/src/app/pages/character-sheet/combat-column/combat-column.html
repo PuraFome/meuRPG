@@ -37,7 +37,12 @@
             <td class="attacks__bonus">
               {{ atk.saveDc > 0 ? 'CD ' + atk.saveDc : formatModifier(atk.attackBonus) }}
             </td>
-            <td class="attacks__damage">{{ atk.damage }} {{ atk.damageTypePt }}</td>
+            <td class="attacks__damage">
+              {{ atk.damage }} {{ atk.damageTypePt }}
+              @if (atk.versatileDamage) {
+                <span class="attacks__versatile">Com duas mãos: {{ atk.versatileDamage }}</span>
+              }
+            </td>
           </tr>
         }
       </tbody>
@@ -148,6 +153,11 @@
       </li>
     }
   </ul>
+  @if (s.backgroundEquipment) {
+    <p class="gear__background">
+      <span class="mr-muted">Do antecedente:</span> {{ s.backgroundEquipment }}
+    </p>
+  }
   @if (coins().length > 0) {
     <ul class="coins" aria-label="Moedas">
       @for (coin of coins(); track coin.abbreviation) {

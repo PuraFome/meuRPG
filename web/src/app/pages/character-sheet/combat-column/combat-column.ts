@@ -14,7 +14,7 @@ import { coinEntries, pactSlotRow, spellLimitsText, spellSlotRows } from '../she
  * table: the weapons carried, then the damage cantrips, in the server's
  * order), "Magias" (per class: ability, DC and attack; the slots as circles;
  * the cantrips and spells) and "Equipamento" (armour, shield, weapons,
- * items, then the coins).
+ * items, the background's equipment as text, then the coins).
  */
 @Component({
   selector: 'app-combat-column',
