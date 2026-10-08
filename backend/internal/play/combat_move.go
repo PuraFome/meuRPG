@@ -784,6 +784,14 @@ func (s *Service) SetCombatantSide(
 		if err := c.q.SetCombatantSide(ctx, playdb.SetCombatantSideParams{ID: target.ID, Side: side}); err != nil {
 			return nil, fmt.Errorf("set the side: %w", err)
 		}
+		// An offer waits for a hostile reactor: one that is now an ally of the
+		// mover (or the mover, now an ally of the reactor) no longer attacks.
+		now := s.now()
+		if _, err := c.q.SkipPendingOpportunityOffersBetweenAllies(ctx, playdb.SkipPendingOpportunityOffersBetweenAlliesParams{
+			EncounterID: c.enc.ID, MoverID: target.ID, AnsweredAt: &now,
+		}); err != nil {
+			return nil, fmt.Errorf("pass over the offers between allies: %w", err)
+		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}

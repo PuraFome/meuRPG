@@ -449,6 +449,35 @@ describe('LevelUpPage', () => {
         return f;
       }
 
+      it('keeps the newest reading when two re-reads answer out of order', async () => {
+        const f = await atVida();
+        let older!: (o: LevelUpOptions) => void;
+        let newer!: (o: LevelUpOptions) => void;
+        client.options
+          .mockReset()
+          .mockReturnValueOnce(new Promise<LevelUpOptions>((r) => (older = r)))
+          .mockReturnValueOnce(new Promise<LevelUpOptions>((r) => (newer = r)));
+        client.character.mockResolvedValue(character({ revision: 6 }));
+        const first = reread(f);
+        const second = reread(f);
+        newer(wizardOptions({ fromLevel: 4, toLevel: 5, totalFromLevel: 4, totalToLevel: 5 }));
+        expect(await second).toBe(true);
+        older(wizardOptions({ preparedMaxAfter: 3 }));
+        expect(await first).toBe(false);
+        f.detectChanges();
+        expect(text(f)).toContain('Subir para o nível 5');
+      });
+
+      it('shows the reading of a re-read when it is the only one (positive control)', async () => {
+        const f = await atVida();
+        client.options.mockResolvedValue(
+          wizardOptions({ fromLevel: 4, toLevel: 5, totalFromLevel: 4, totalToLevel: 5 }),
+        );
+        expect(await reread(f)).toBe(true);
+        f.detectChanges();
+        expect(text(f)).toContain('Subir para o nível 5');
+      });
+
       it('drops an app roll made for one level when the options are now for the next', async () => {
         const f = await rolledInApp();
         // Another tab confirmed the level: the sheet and the options are the next level's, with no kept roll.
@@ -477,6 +506,37 @@ describe('LevelUpPage', () => {
         await reread(f);
         f.detectChanges();
         expect(text(f)).not.toContain('Rolado no app: 7');
+      });
+
+      it('drops an app roll on the Vida step that stays on screen when the class is another one', async () => {
+        const f = await rolledInApp();
+        client.character.mockResolvedValue(character({ revision: 6 }));
+        // Another class with the same steps, so the page is still on Vida; the server kept a 7 for the class that was left.
+        client.options.mockResolvedValue(
+          wizardOptions({
+            classKey: 'class:sorcerer',
+            classNamePt: 'Feiticeiro',
+            keptHitPointRoll: 7,
+            keptHitPointRollClassKey: 'class:wizard',
+          }),
+        );
+        await reread(f);
+        f.detectChanges();
+        expect(text(f)).toContain('Passo 2 de 4 · Vida');
+        expect(text(f)).not.toContain('Rolado no app: 7');
+        expect(el(f).querySelector('app-roll-picker')).not.toBeNull();
+      });
+
+      it('keeps the app roll on the Vida step when the server kept it for this class (positive control)', async () => {
+        const f = await rolledInApp();
+        client.character.mockResolvedValue(character({ revision: 6 }));
+        client.options.mockResolvedValue(
+          wizardOptions({ keptHitPointRoll: 7, keptHitPointRollClassKey: 'class:wizard' }),
+        );
+        await reread(f);
+        f.detectChanges();
+        expect(text(f)).toContain('Passo 2 de 4 · Vida');
+        expect(text(f)).toContain('Rolado no app: 7 no d6');
       });
     });
   });
@@ -597,6 +657,21 @@ describe('LevelUpPage', () => {
       expect(el(f).querySelector('.js-failure')).toBeNull();
       await click(f, button(f, 'Confirmar o nível 5'));
       expect(client.levelUp.mock.calls.at(-1)?.[2]).toBe(6);
+    });
+
+    it('takes the player to the sheet when a retry finds the level already applied', async () => {
+      const f = await atResumoOfToren();
+      // The first confirmation went through but its answer was lost: the retry is stale, and the sheet is already at level 5.
+      client.levelUp.mockRejectedValueOnce(new ConnectError('x', Code.Aborted));
+      client.character.mockResolvedValue(
+        character({ revision: 6, name: 'Toren' }, pensantus(true, { totalLevel: 5 })),
+      );
+      await click(f, button(f, 'Confirmar o nível 5'));
+      expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1', 'characters', 'ch-1'], {
+        replaceUrl: true,
+        state: { levelUp: { name: 'Toren', level: 5 } },
+      });
+      expect(el(f).querySelector('.js-failure')).toBeNull();
     });
 
     it('shows a refusal with its reason, and takes the player to the step that owns it', async () => {

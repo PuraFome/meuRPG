@@ -336,6 +336,7 @@ type actionEvent struct {
 
 	// The Disengage action, which an undo of the action takes back.
 	DisengagedBefore bool `json:"disengaged_before,omitempty"`
+	SurgedBefore     bool `json:"surged_before,omitempty"`
 	// RunBefore is the running start (tenths of a foot) an action, an attack or a
 	// spell broke: the undo puts it back.
 	RunBefore int32 `json:"run_before,omitempty"`

@@ -156,6 +156,13 @@ export class MapState {
     );
   }
 
+  /** A creature's token goes off the map. */
+  removeCreatureToken(creatureId: string): void {
+    this.edits++;
+    this.tokens.update((list) => list.filter((t) => t.creatureId !== creatureId));
+  }
+
+  /** A character's own token goes off the map (a creature's, which carries its owner's `character_id`, stays). */
   removeToken(characterId: string): void {
     this.edits++;
     this.tokens.update((list) => list.filter((t) => t.creatureId || t.characterId !== characterId));

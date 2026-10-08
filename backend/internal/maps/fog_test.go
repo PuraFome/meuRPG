@@ -19,6 +19,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -1225,6 +1226,100 @@ func TestShowingAFogMapImageLeavesNoStrayCopy(t *testing.T) {
 	t.Logf("images %d -> %d -> %d, files %d -> %d -> %d", imgs2, imgs3, imgs4, files2, files3, files4)
 	if imgs4 != imgs3 || files4 != files3 {
 		t.Errorf("showing the same fog image again grew images %d -> %d and files %d -> %d, want no growth", imgs3, imgs4, files3, files4)
+	}
+}
+
+// fogMapImage makes a map with the fog on and returns its (fog) image's ID.
+func (u *user) fogMapImage(campaignID, name string) string {
+	u.h.t.Helper()
+	m := u.createMap(campaignID, name, u.newImage(campaignID))
+	u.mustSetGrid(campaignID, m.GetId(), 12)
+	if _, err := u.maps.SetMapFog(u.h.t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: campaignID, MapId: m.GetId(), FogEnabled: new(true)})); err != nil {
+		u.h.t.Fatal(err)
+	}
+	return u.getMapImage(campaignID, m.GetId())
+}
+
+// A fog map's image is never an NPC's portrait as it is: the portrait is a copy of its
+// own, and the copy already made is the one every later portrait of that image gets, in
+// a new NPC and in a saved sheet alike.
+func TestAFogMapImageAsPortraitReusesItsCopy(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master)
+	fogImage := master.fogMapImage(campaign, "Com névoa")
+	before := len(master.list(campaign).GetImages())
+	first := master.createNPC(campaign, "Vigia", fogImage)
+	second := master.createNPC(campaign, "Guarda", "")
+	res, err := master.characters.UpdateCharacter(t.Context(), connect.NewRequest(&charactersv1.UpdateCharacterRequest{
+		CampaignId: campaign, CharacterId: second.GetId(), Revision: second.GetRevision(), Name: "Guarda",
+		Sheet: &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Basic{Basic: &charactersv1.BasicSheet{
+			HitPointsMax: 7, ArmorClass: 12, SpeedFt: 30, ChallengeRating: "2", PortraitImageId: fogImage,
+		}}},
+	}))
+	if err != nil {
+		t.Fatalf("UpdateCharacter() error = %v", err)
+	}
+	portrait := func(c *charactersv1.Character) string { return c.GetSheet().GetBasic().GetPortraitImageId() }
+	if portrait(first) == fogImage || portrait(res.Msg.GetCharacter()) == fogImage {
+		t.Fatalf("a portrait is the fog map's own image: %q, %q", portrait(first), portrait(res.Msg.GetCharacter()))
+	}
+	if portrait(first) != portrait(res.Msg.GetCharacter()) {
+		t.Errorf("the portraits are %q and %q, want the one copy", portrait(first), portrait(res.Msg.GetCharacter()))
+	}
+	if got := len(master.list(campaign).GetImages()); got != before+1 {
+		t.Errorf("the gallery has %d images, want %d (one copy)", got, before+1)
+	}
+}
+
+// Two shows of the same fog image at once both made their copy before the first
+// committed: the second finds the first's row inside its transaction, uses it and
+// deletes its own files, so the gallery gets one copy.
+func TestTwoCopiesOfAFogMapImageMadeAtOnceLeaveOne(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master)
+	fogImage := master.fogMapImage(campaign, "Com névoa")
+	sm := NewSessionMaps(h.pool)
+	sm.SetService(h.svc)
+	var copies []ShownCopy
+	var shown []string
+	for range 2 {
+		img, c, err := sm.PrepareShow(t.Context(), campaign, fogImage)
+		if err != nil || c == nil {
+			t.Fatalf("PrepareShow() = %v, %v, %v; want a copy to make", img, c, err)
+		}
+		copies, shown = append(copies, c), append(shown, img.GetId())
+	}
+	if shown[0] == shown[1] {
+		t.Fatal("both prepared the same copy, so the test proves nothing")
+	}
+	before, files := len(master.list(campaign).GetImages()), len(h.storedFiles())
+	var ids []string
+	for i, c := range copies {
+		var id string
+		var created bool
+		if err := db.InTx(t.Context(), h.pool, func(tx pgx.Tx) (err error) {
+			id, created, err = c.Insert(t.Context(), tx)
+			return err
+		}); err != nil {
+			t.Fatalf("Insert() of copy %d error = %v", i, err)
+		}
+		if !created {
+			c.Discard(t.Context())
+		}
+		ids = append(ids, id)
+	}
+	if ids[0] != shown[0] || ids[1] != shown[0] {
+		t.Errorf("the copies used %v, want both to use the first, %s", ids, shown[0])
+	}
+	if got := len(master.list(campaign).GetImages()); got != before+1 {
+		t.Errorf("the gallery has %d images, want %d (one copy)", got, before+1)
+	}
+	if got := len(h.storedFiles()); got != files-2 {
+		t.Errorf("the store has %d files, want %d (the second copy's were deleted)", got, files-2)
 	}
 }
 
