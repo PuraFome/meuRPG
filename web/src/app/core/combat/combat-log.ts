@@ -8,6 +8,7 @@ import {
   DeathSaveOutcome,
   JumpKind,
   PendingDamageStatus,
+  type SaveResult,
   SaveOutcome,
   SpellEffectKind,
   SpellEffectOutcome,
@@ -191,6 +192,19 @@ function attackText(e: CombatLogEntry): string {
   return out;
 }
 
+/** The parenthesis after a save: the DC, and for the master the d20 of an NPC whose sheet has no
+ * saving throw bonus. `bonus_known` is only sent to the master and is false for everyone else, and
+ * that false means nothing; for the master it is an NPC whose roll is the bare d20, which the
+ * master may overrule. */
+function saveNotes(save: SaveResult, ctx: LogContext): string {
+  const unknown =
+    ctx.master && save.roll && !save.bonusKnown
+      ? `d20 ${save.roll.total}, bônus de resistência desconhecido`
+      : '';
+  const notes = [save.dc > 0 ? `CD ${save.dc}` : '', unknown].filter((n) => n !== '');
+  return notes.length > 0 ? ` (${notes.join('; ')})` : '';
+}
+
 /** One target of a cast: what the roll, the save and the damage did to it. */
 function castTargetText(t: CombatLogSpellTarget, ctx: LogContext): string {
   const who = t.targetLabel || 'alguém';
@@ -199,14 +213,7 @@ function castTargetText(t: CombatLogSpellTarget, ctx: LogContext): string {
   if (t.darts > 0) {
     out = `${t.darts} ${t.darts === 1 ? 'dardo' : 'dardos'} ${inThe(who)}${damage}`;
   } else if (t.save) {
-    // Only the master gets `bonus_known`: false is an NPC with no saving throw bonus on its sheet, whose
-    // roll is the bare d20 and which the master may overrule. For anyone else it is always false.
-    const unknown =
-      ctx.master && t.save.roll && !t.save.bonusKnown
-        ? `d20 ${t.save.roll.total}, bônus de resistência desconhecido`
-        : '';
-    const notes = [t.save.dc > 0 ? `CD ${t.save.dc}` : '', unknown].filter((n) => n !== '');
-    const dc = notes.length > 0 ? ` (${notes.join('; ')})` : '';
+    const dc = saveNotes(t.save, ctx);
     out = `${the(who)} ${t.save.outcome === SaveOutcome.SAVED ? 'resistiu' : 'falhou'}${dc}${damage}`;
   } else if (t.outcome !== AttackOutcome.UNSPECIFIED) {
     out = `${inThe(who)}: ${t.outcome === AttackOutcome.CRITICAL_HIT ? 'crítico' : t.outcome === AttackOutcome.MISS ? 'errou' : 'acertou'}${t.outcome === AttackOutcome.MISS ? '' : damage}`;

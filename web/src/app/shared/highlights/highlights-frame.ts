@@ -4,6 +4,9 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { HighlightTile, OwnNumber } from '../../core/combat/combat-highlights';
 
+/** The most tiles of "Seu resultado" that share one row in a wide card. */
+const WIDE_ROW_MAX = 5;
+
 /**
  * The players' card of an ending (MR-032, E8-11 states 3 and 5): "O combate
  * acabou" for a combat and "A sessão acabou" for the session. At the top of
@@ -49,7 +52,7 @@ export class HighlightsFrame {
    * else two even rows, so no tile stands alone on its row. */
   protected readonly wideColumns = computed(() => {
     const n = this.own().length;
-    return n <= 5 ? Math.max(1, n) : Math.ceil(n / 2);
+    return n <= WIDE_ROW_MAX ? Math.max(1, n) : Math.ceil(n / 2);
   });
 
   readonly closed = output<void>();
