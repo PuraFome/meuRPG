@@ -127,7 +127,9 @@ describe('GenerateImageButton, two taps in a row', () => {
     await vi.waitFor(() => expect(opened.length + sheets.length).toBeGreaterThan(0), {
       timeout: 15_000,
     });
-    await new Promise((r) => setTimeout(r, 200));
+    // Both taps wait on the same import(): a second dialog would open in the same flush that opened the first, so
+    // one macrotask later is enough to know it did not.
+    await new Promise((r) => setTimeout(r));
     expect(opened.length + sheets.length).toBe(1);
   });
 });
