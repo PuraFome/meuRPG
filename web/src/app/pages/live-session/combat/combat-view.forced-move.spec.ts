@@ -67,7 +67,7 @@ function setup(move: (args: unknown[]) => Promise<void>) {
       get: (_t, name: string) => {
         if (name === 'move') {
           return async (...a: unknown[]) => {
-            sent.push({ forced: a[6] === true });
+            sent.push({ forced: a[7] === true });
             await move(a);
             return { encounter: e, stoppedEarly: false, lockedDoor: false, provoked: false };
           };

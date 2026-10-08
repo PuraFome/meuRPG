@@ -2038,6 +2038,7 @@ export class CombatView {
             to.xBp,
             to.yBp,
             undefined,
+            undefined,
             forced,
           );
           this.state().apply(res.encounter);
