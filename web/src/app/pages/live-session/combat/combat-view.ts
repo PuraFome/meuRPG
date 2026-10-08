@@ -18,6 +18,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import type { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import {
+  AreaPlacement,
   type Combatant,
   CombatLogKind,
   CombatantState,
@@ -121,7 +122,7 @@ import type { PartyMemberInfoVm, VitalsVm } from '../live-session.types';
 import { ActionGroups } from './action-groups/action-groups';
 import { AdjustNpc, type AdjustNpcData } from './adjust-npc/adjust-npc';
 import { AttackSheet, type AttackSheetData } from './attack-sheet/attack-sheet';
-import { CastSheet, type CastSheetData } from './cast-sheet/cast-sheet';
+import { CastSheet, type CastMapData, type CastSheetData } from './cast-sheet/cast-sheet';
 import { ConditionsDialog, type ConditionsData } from './conditions-dialog/conditions-dialog';
 import { DeathQuestion } from './death-question/death-question';
 import { DeathSaves } from './death-saves/death-saves';
@@ -1569,12 +1570,39 @@ export class CombatView {
       preference: this.dicePreference(),
       state: this.state(),
       resume,
+      map: this.castMap(),
     };
+    // A spell placed on the map opens on the map, its first step (PM-02a); any other on the title.
+    const placed =
+      !resume &&
+      !!data.map &&
+      !!data.targets &&
+      data.targets.placement !== AreaPlacement.UNSPECIFIED &&
+      data.targets.placement !== AreaPlacement.CASTER;
     openSheet<CastSheet, CastSheetData, boolean>(this.dialog, this.bottomSheet, CastSheet, {
       data,
       ariaLabel: resume ? `Rolar o dano de ${name}` : `Conjurar ${name}`,
       labelledBy: 'sheet-t',
+      ...(placed ? { focus: '[role="application"]' } : {}),
     }).subscribe();
+  }
+
+  /** The battle map an area spell is placed on: the picture, the grid, the layers and, for a player, what the fog lets them
+   * see. `null` without a map (theatre of the mind), where every area spell keeps its list. */
+  private castMap(): CastMapData | null {
+    const e = this.encounter();
+    const img = this.image();
+    if (!e || !img || this.theatre()) {
+      return null;
+    }
+    return {
+      image: img,
+      mapName: this.mapName(),
+      columns: e.gridColumns,
+      rows: e.gridRows,
+      layers: this.layers(),
+      fog: this.fogVision(),
+    };
   }
 
   /** The spell attack bonus, for a typed d20: the one of a spell attack in the
