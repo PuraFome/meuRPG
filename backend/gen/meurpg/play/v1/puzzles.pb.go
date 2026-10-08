@@ -3380,7 +3380,13 @@ type PuzzleLastMove struct {
 	// does not see the trap's point (its map is not on their screen, or a fog map hides
 	// the square from them): they read nothing, not an empty name. A trap that fired is
 	// public to who sees it (MR-035); its DCs and effect never are.
-	TrapName      string `protobuf:"bytes,7,opt,name=trap_name,json=trapName,proto3" json:"trap_name,omitempty"`
+	TrapName string `protobuf:"bytes,7,opt,name=trap_name,json=trapName,proto3" json:"trap_name,omitempty"`
+	// For a sequence, how many times the master had played it (SequencePlayback.plays) when
+	// this move was made; 0 for the other kinds. A wrong bell restarts the attempt, and the
+	// note that says so ("A tentativa recomeçou") holds only while SequencePlayback.plays
+	// is still this number: a later play of the sequence ends it. The same for every
+	// reader and after any reload, since both numbers are the server's.
+	PlaysAtMove   int32 `protobuf:"varint,8,opt,name=plays_at_move,json=playsAtMove,proto3" json:"plays_at_move,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3462,6 +3468,13 @@ func (x *PuzzleLastMove) GetTrapName() string {
 		return x.TrapName
 	}
 	return ""
+}
+
+func (x *PuzzleLastMove) GetPlaysAtMove() int32 {
+	if x != nil {
+		return x.PlaysAtMove
+	}
+	return 0
 }
 
 // PuzzleRun is a puzzle in the open session as a player reads it, and nothing more
@@ -3873,7 +3886,8 @@ type SequencePlayback struct {
 	// The number of steps (3 to 12).
 	TotalSteps int32 `protobuf:"varint,1,opt,name=total_steps,json=totalSteps,proto3" json:"total_steps,omitempty"`
 	// How many times the master has played it. 0: not yet, and moves are refused
-	// (SEQUENCE_NOT_PLAYED).
+	// (SEQUENCE_NOT_PLAYED). Compared with PuzzleLastMove.plays_at_move to know whether the
+	// sequence was played again since the last move.
 	Plays int32 `protobuf:"varint,2,opt,name=plays,proto3" json:"plays,omitempty"`
 	// True while a play runs: moves are refused (SEQUENCE_PLAYING).
 	Playing bool `protobuf:"varint,3,opt,name=playing,proto3" json:"playing,omitempty"`
@@ -6978,7 +6992,7 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\x12time_limit_seconds\x18\x04 \x01(\x05R\x10timeLimitSeconds\"D\n" +
 	"\x10PuzzleTrapTarget\x12\x15\n" +
 	"\x06map_id\x18\x01 \x01(\tR\x05mapId\x12\x19\n" +
-	"\bpoint_id\x18\x02 \x01(\tR\apointId\"\xf4\x01\n" +
+	"\bpoint_id\x18\x02 \x01(\tR\apointId\"\x98\x02\n" +
 	"\x0ePuzzleLastMove\x12%\n" +
 	"\x0echaracter_name\x18\x01 \x01(\tR\rcharacterName\x12.\n" +
 	"\x04move\x18\x02 \x01(\v2\x1a.meurpg.play.v1.PuzzleMoveR\x04move\x12\x18\n" +
@@ -6986,7 +7000,8 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\x02at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12\x14\n" +
 	"\x05wrong\x18\x05 \x01(\bR\x05wrong\x12\x12\n" +
 	"\x04step\x18\x06 \x01(\x05R\x04step\x12\x1b\n" +
-	"\ttrap_name\x18\a \x01(\tR\btrapName\"\xa9\b\n" +
+	"\ttrap_name\x18\a \x01(\tR\btrapName\x12\"\n" +
+	"\rplays_at_move\x18\b \x01(\x05R\vplaysAtMove\"\xa9\b\n" +
 	"\tPuzzleRun\x12\x1b\n" +
 	"\tpuzzle_id\x18\x01 \x01(\tR\bpuzzleId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12.\n" +
