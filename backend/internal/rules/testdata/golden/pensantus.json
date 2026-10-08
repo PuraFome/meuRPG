@@ -640,6 +640,7 @@
       "LongRangeFt": 0,
       "Melee": true,
       "Beams": 0,
+      "SpellDice": "",
       "Notes": ""
     },
     {
@@ -672,6 +673,7 @@
       "LongRangeFt": 0,
       "Melee": false,
       "Beams": 1,
+      "SpellDice": "1d10",
       "Notes": ""
     },
     {
@@ -704,6 +706,7 @@
       "LongRangeFt": 0,
       "Melee": false,
       "Beams": 1,
+      "SpellDice": "1d8",
       "Notes": ""
     },
     {
@@ -736,6 +739,7 @@
       "LongRangeFt": 0,
       "Melee": true,
       "Beams": 0,
+      "SpellDice": "",
       "Notes": ""
     }
   ],
