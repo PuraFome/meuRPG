@@ -140,6 +140,12 @@ export class NoteEditing {
     }
     this.error.set('');
     const note = this.editing();
+    // Nothing changed (whitespace around the text does not count): the server
+    // refuses an update with no field, so there is nothing to send.
+    if (note && !this.dirty()) {
+      this.close();
+      return true;
+    }
     try {
       const saved = note
         ? await this.notes.update(note.id, {

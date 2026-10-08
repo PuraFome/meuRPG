@@ -882,10 +882,10 @@ INSERT INTO image_requests (
     id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model,
     reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, created_at,
     map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height,
-    map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, image_name
+    map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, image_name, idempotency_hash
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending', '', false, $15,
-    $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+    $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
 RETURNING *;
 
 -- name: MarkImageRequestSent :execrows

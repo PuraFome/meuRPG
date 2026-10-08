@@ -131,6 +131,60 @@ func (q *Queries) ClearStageSpeakers(ctx context.Context, gameSessionID string) 
 	return err
 }
 
+const countSceneRolls = `-- name: CountSceneRolls :many
+SELECT character_id, COALESCE(payload->>'action_id', '')::TEXT AS action_id, count(*)::INT8 AS rolls
+FROM session_events
+WHERE game_session_id = $1 AND kind = 'scene_check_rolled' AND seq > $2
+GROUP BY character_id, 2
+`
+
+type CountSceneRollsParams struct {
+	GameSessionID string
+	Seq           int32
+}
+
+type CountSceneRollsRow struct {
+	CharacterID *string
+	ActionID    string
+	Rolls       int64
+}
+
+// How many scene checks each character rolled at each action since the
+// opening (seq): what the attempts left are counted from, without reading the
+// rows.
+func (q *Queries) CountSceneRolls(ctx context.Context, arg CountSceneRollsParams) ([]CountSceneRollsRow, error) {
+	rows, err := q.db.Query(ctx, countSceneRolls, arg.GameSessionID, arg.Seq)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountSceneRollsRow
+	for rows.Next() {
+		var i CountSceneRollsRow
+		if err := rows.Scan(&i.CharacterID, &i.ActionID, &i.Rolls); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countSessionScenesOpened = `-- name: CountSessionScenesOpened :one
+SELECT count(*)::INT8 FROM session_events
+WHERE game_session_id = $1 AND kind = 'scene_opened'
+`
+
+// The scenes the master opened in the session.
+func (q *Queries) CountSessionScenesOpened(ctx context.Context, gameSessionID string) (int64, error) {
+	row := q.db.QueryRow(ctx, countSessionScenesOpened, gameSessionID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countWrongPuzzleMoves = `-- name: CountWrongPuzzleMoves :many
 SELECT user_id, count(*)::int4 AS wrong FROM puzzle_moves
 WHERE run_id = $1 AND seq > $2 AND wrong AND user_id IS NOT NULL
@@ -325,7 +379,6 @@ func (q *Queries) GetBattleEncounter(ctx context.Context, arg GetBattleEncounter
 
 const getCampaignEncounterXP = `-- name: GetCampaignEncounterXP :one
 
-
 SELECT e.name, e.status,
        COALESCE(SUM(c.xp_value) FILTER (WHERE c.kind = 'npc' AND c.defeated), 0)::INT8 AS xp
 FROM encounters AS e
@@ -346,7 +399,6 @@ type GetCampaignEncounterXPRow struct {
 	Xp     int64
 }
 
-// one past maxSummaryEvents: the caller fails loudly rather than under-count
 // Progression (MR-016): what the XP awards read from the combats and the log.
 // A combat of the campaign (never another campaign's) with the XP its defeated
 // NPC combatants give. No row: no such combat in the campaign.
@@ -1173,7 +1225,7 @@ func (q *Queries) GetSessionEventByID(ctx context.Context, arg GetSessionEventBy
 }
 
 const getSessionEventByIdempotencyKey = `-- name: GetSessionEventByIdempotencyKey :one
-SELECT id, seq, kind, actor_user_id, character_id, payload, created_at FROM session_events
+SELECT id, seq, kind, actor_user_id, character_id, payload, created_at, idempotency_hash FROM session_events
 WHERE game_session_id = $1 AND idempotency_key = $2
 `
 
@@ -1183,16 +1235,18 @@ type GetSessionEventByIdempotencyKeyParams struct {
 }
 
 type GetSessionEventByIdempotencyKeyRow struct {
-	ID          string
-	Seq         int32
-	Kind        string
-	ActorUserID *string
-	CharacterID *string
-	Payload     []byte
-	CreatedAt   time.Time
+	ID              string
+	Seq             int32
+	Kind            string
+	ActorUserID     *string
+	CharacterID     *string
+	Payload         []byte
+	CreatedAt       time.Time
+	IdempotencyHash *string
 }
 
-// The event a change with this key already wrote, if any.
+// The event a change with this key already wrote, if any, with the hash of the request that
+// wrote it (NULL on an event made without one).
 func (q *Queries) GetSessionEventByIdempotencyKey(ctx context.Context, arg GetSessionEventByIdempotencyKeyParams) (GetSessionEventByIdempotencyKeyRow, error) {
 	row := q.db.QueryRow(ctx, getSessionEventByIdempotencyKey, arg.GameSessionID, arg.IdempotencyKey)
 	var i GetSessionEventByIdempotencyKeyRow
@@ -1204,6 +1258,7 @@ func (q *Queries) GetSessionEventByIdempotencyKey(ctx context.Context, arg GetSe
 		&i.CharacterID,
 		&i.Payload,
 		&i.CreatedAt,
+		&i.IdempotencyHash,
 	)
 	return i, err
 }
@@ -1953,21 +2008,22 @@ func (q *Queries) InsertPuzzleRun(ctx context.Context, arg InsertPuzzleRunParams
 
 const insertSessionEvent = `-- name: InsertSessionEvent :one
 INSERT INTO session_events
-    (game_session_id, seq, kind, actor_user_id, character_id, payload, idempotency_key, created_at, encounter_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    (game_session_id, seq, kind, actor_user_id, character_id, payload, idempotency_key, created_at, encounter_id, idempotency_hash)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING id, seq
 `
 
 type InsertSessionEventParams struct {
-	GameSessionID  string
-	Seq            int32
-	Kind           string
-	ActorUserID    *string
-	CharacterID    *string
-	Payload        []byte
-	IdempotencyKey *string
-	CreatedAt      time.Time
-	EncounterID    *string
+	GameSessionID   string
+	Seq             int32
+	Kind            string
+	ActorUserID     *string
+	CharacterID     *string
+	Payload         []byte
+	IdempotencyKey  *string
+	CreatedAt       time.Time
+	EncounterID     *string
+	IdempotencyHash *string
 }
 
 type InsertSessionEventRow struct {
@@ -1986,6 +2042,7 @@ func (q *Queries) InsertSessionEvent(ctx context.Context, arg InsertSessionEvent
 		arg.IdempotencyKey,
 		arg.CreatedAt,
 		arg.EncounterID,
+		arg.IdempotencyHash,
 	)
 	var i InsertSessionEventRow
 	err := row.Scan(&i.ID, &i.Seq)
@@ -3407,41 +3464,6 @@ func (q *Queries) ListSessionCombats(ctx context.Context, gameSessionID string) 
 	return items, nil
 }
 
-const listSessionSceneEvents = `-- name: ListSessionSceneEvents :many
-SELECT kind, character_id, payload FROM session_events
-WHERE game_session_id = $1 AND kind IN ('scene_opened', 'scene_check_rolled')
-ORDER BY seq
-LIMIT 20001
-`
-
-type ListSessionSceneEventsRow struct {
-	Kind        string
-	CharacterID *string
-	Payload     []byte
-}
-
-// The scenes opened and the checks rolled in them, oldest first: what the
-// summary counts outside combat.
-func (q *Queries) ListSessionSceneEvents(ctx context.Context, gameSessionID string) ([]ListSessionSceneEventsRow, error) {
-	rows, err := q.db.Query(ctx, listSessionSceneEvents, gameSessionID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListSessionSceneEventsRow
-	for rows.Next() {
-		var i ListSessionSceneEventsRow
-		if err := rows.Scan(&i.Kind, &i.CharacterID, &i.Payload); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listShownPuzzleIDs = `-- name: ListShownPuzzleIDs :many
 SELECT DISTINCT r.puzzle_id FROM puzzle_runs AS r
 JOIN puzzles AS p ON p.id = r.puzzle_id
@@ -3627,7 +3649,7 @@ func (q *Queries) ListTrapDamageStatuses(ctx context.Context, dollar_1 []string)
 const listTrapEventsOfSession = `-- name: ListTrapEventsOfSession :many
 SELECT id, kind, character_id, payload, created_at FROM session_events
 WHERE game_session_id = $1 AND encounter_id IS NULL AND kind IN ('trap_triggered', 'trap_searched', 'trap_noticed')
-ORDER BY seq
+ORDER BY seq DESC
 LIMIT 500
 `
 
@@ -3639,7 +3661,8 @@ type ListTrapEventsOfSessionRow struct {
 	CreatedAt   time.Time
 }
 
-// The trap firings, searches and passive notices of a session outside a combat, oldest first.
+// The trap firings, searches and passive notices of a session outside a combat, newest first,
+// at most 500: a long session keeps the latest ones, and the caller puts them back in order.
 // (A notice has no combat even in one: the maps module writes it after the move.)
 func (q *Queries) ListTrapEventsOfSession(ctx context.Context, gameSessionID string) ([]ListTrapEventsOfSessionRow, error) {
 	rows, err := q.db.Query(ctx, listTrapEventsOfSession, gameSessionID)
@@ -4853,6 +4876,47 @@ func (q *Queries) SkipPendingOpportunityOffersOfMover(ctx context.Context, arg S
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const tallySessionSceneChecks = `-- name: TallySessionSceneChecks :many
+SELECT character_id,
+       count(*)::INT8 AS tried,
+       (count(*) FILTER (WHERE payload->>'passed' = 'true'))::INT8 AS passed
+FROM session_events
+WHERE game_session_id = $1 AND kind = 'scene_check_rolled'
+  AND character_id IS NOT NULL
+  AND payload->>'dc_shown' = 'true' AND payload ? 'passed'
+GROUP BY character_id
+`
+
+type TallySessionSceneChecksRow struct {
+	CharacterID *string
+	Tried       int64
+	Passed      int64
+}
+
+// The checks rolled outside combat, per character: tried and passed, counting
+// only a roll the players could see the DC of, on an action that had one
+// (RN-20). Done in SQL, so a session with any number of rolls costs one row
+// per character.
+func (q *Queries) TallySessionSceneChecks(ctx context.Context, gameSessionID string) ([]TallySessionSceneChecksRow, error) {
+	rows, err := q.db.Query(ctx, tallySessionSceneChecks, gameSessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TallySessionSceneChecksRow
+	for rows.Next() {
+		var i TallySessionSceneChecksRow
+		if err := rows.Scan(&i.CharacterID, &i.Tried, &i.Passed); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const touchEncounter = `-- name: TouchEncounter :one

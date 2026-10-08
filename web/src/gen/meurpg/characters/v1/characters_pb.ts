@@ -5143,7 +5143,8 @@ export const CharacterService: GenService<{
    *
    * Safe to retry when the request carries an idempotency_key: a second call with the same key and
    * the same request returns what the first one made and makes nothing; the same key with another
-   * request is `invalid_argument`. Without a key the call is not deduplicated.
+   * request is `invalid_argument`. The key is the caller's: another member sending the same key
+   * makes a character of their own. Without a key the call is not deduplicated.
    *
    * @generated from rpc meurpg.characters.v1.CharacterService.CreateCharacter
    */

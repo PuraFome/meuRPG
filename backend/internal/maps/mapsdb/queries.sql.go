@@ -839,7 +839,7 @@ func (q *Queries) GetGeneratedDungeon(ctx context.Context, arg GetGeneratedDunge
 }
 
 const getImageRequest = `-- name: GetImageRequest :one
-SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id, image_name FROM image_requests
+SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id, image_name, idempotency_hash FROM image_requests
 WHERE campaign_id = $1 AND id = $2
 `
 
@@ -886,13 +886,14 @@ func (q *Queries) GetImageRequest(ctx context.Context, arg GetImageRequestParams
 		&i.PadY1,
 		&i.UsedMapImageID,
 		&i.ImageName,
+		&i.IdempotencyHash,
 	)
 	return i, err
 }
 
 const getImageRequestByKey = `-- name: GetImageRequestByKey :one
 
-SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id, image_name FROM image_requests
+SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id, image_name, idempotency_hash FROM image_requests
 WHERE campaign_id = $1 AND idempotency_key = $2
 `
 
@@ -943,12 +944,13 @@ func (q *Queries) GetImageRequestByKey(ctx context.Context, arg GetImageRequestB
 		&i.PadY1,
 		&i.UsedMapImageID,
 		&i.ImageName,
+		&i.IdempotencyHash,
 	)
 	return i, err
 }
 
 const getImageRequestForImage = `-- name: GetImageRequestForImage :one
-SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id, image_name FROM image_requests
+SELECT id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id, image_name, idempotency_hash FROM image_requests
 WHERE campaign_id = $1 AND image_id = $2
 `
 
@@ -996,6 +998,7 @@ func (q *Queries) GetImageRequestForImage(ctx context.Context, arg GetImageReque
 		&i.PadY1,
 		&i.UsedMapImageID,
 		&i.ImageName,
+		&i.IdempotencyHash,
 	)
 	return i, err
 }
@@ -1895,41 +1898,42 @@ INSERT INTO image_requests (
     id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model,
     reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, created_at,
     map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height,
-    map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, image_name
+    map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, image_name, idempotency_hash
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending', '', false, $15,
-    $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
-RETURNING id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id, image_name
+    $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
+RETURNING id, campaign_id, requested_by, idempotency_key, kind, prompt, style, aspect_ratio, model, reference_ids, character_ids, source_image_id, number, quota_month, status, reason, refunded, image_id, created_at, sent_at, finished_at, map_id, map_image_id, map_grid_columns, map_grid_factor, map_width, map_height, map_plan_hash, pad_x0, pad_y0, pad_x1, pad_y1, used_map_image_id, image_name, idempotency_hash
 `
 
 type InsertImageRequestParams struct {
-	ID             string
-	CampaignID     string
-	RequestedBy    *string
-	IdempotencyKey string
-	Kind           string
-	Prompt         string
-	Style          string
-	AspectRatio    string
-	Model          string
-	ReferenceIds   []string
-	CharacterIds   []string
-	SourceImageID  *string
-	Number         int32
-	QuotaMonth     string
-	CreatedAt      time.Time
-	MapID          *string
-	MapImageID     *string
-	MapGridColumns *int32
-	MapGridFactor  *int32
-	MapWidth       *int32
-	MapHeight      *int32
-	MapPlanHash    *string
-	PadX0          *float64
-	PadY0          *float64
-	PadX1          *float64
-	PadY1          *float64
-	ImageName      string
+	ID              string
+	CampaignID      string
+	RequestedBy     *string
+	IdempotencyKey  string
+	Kind            string
+	Prompt          string
+	Style           string
+	AspectRatio     string
+	Model           string
+	ReferenceIds    []string
+	CharacterIds    []string
+	SourceImageID   *string
+	Number          int32
+	QuotaMonth      string
+	CreatedAt       time.Time
+	MapID           *string
+	MapImageID      *string
+	MapGridColumns  *int32
+	MapGridFactor   *int32
+	MapWidth        *int32
+	MapHeight       *int32
+	MapPlanHash     *string
+	PadX0           *float64
+	PadY0           *float64
+	PadX1           *float64
+	PadY1           *float64
+	ImageName       string
+	IdempotencyHash *string
 }
 
 func (q *Queries) InsertImageRequest(ctx context.Context, arg InsertImageRequestParams) (ImageRequest, error) {
@@ -1961,6 +1965,7 @@ func (q *Queries) InsertImageRequest(ctx context.Context, arg InsertImageRequest
 		arg.PadX1,
 		arg.PadY1,
 		arg.ImageName,
+		arg.IdempotencyHash,
 	)
 	var i ImageRequest
 	err := row.Scan(
@@ -1998,6 +2003,7 @@ func (q *Queries) InsertImageRequest(ctx context.Context, arg InsertImageRequest
 		&i.PadY1,
 		&i.UsedMapImageID,
 		&i.ImageName,
+		&i.IdempotencyHash,
 	)
 	return i, err
 }

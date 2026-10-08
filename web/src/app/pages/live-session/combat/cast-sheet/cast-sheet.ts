@@ -628,8 +628,9 @@ export class CastSheet {
   protected async rollTyped(sum: number): Promise<void> {
     const group = this.groups()[0];
     if (group) {
-      await this.rollGroup(group, { sum });
-      this.typing.set(false);
+      if (await this.rollGroup(group, { sum })) {
+        this.typing.set(false);
+      }
     }
   }
 

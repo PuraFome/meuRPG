@@ -362,4 +362,39 @@ describe('CreaturesPanel, a druid in Wild Shape: the reads of her form', () => {
     await settle(fixture);
     expect(flat(el.querySelector('.js-wild'))).toContain('Voltar à forma normal');
   });
+
+  it('sends one request when "Voltar à forma normal" is tapped twice, and shows no refusal', async () => {
+    const api = new FakeCreaturesClient();
+    api.vitals = vitals('Lobo');
+    const fixture = build(api);
+    fixture.detectChanges();
+    await settle(fixture);
+    const el = fixture.nativeElement as HTMLElement;
+    const button = el.querySelector<HTMLButtonElement>('.js-wild')!;
+    expect(flat(button)).toContain('Voltar à forma normal');
+
+    // The server ends the form on the first call; any other call finds the druid in her own shape.
+    const first = deferred<{ vitals: undefined; encounter: undefined }>();
+    const keys: string[] = [];
+    api.leaveWildShape = vi.fn((async (_c: string, _ch: string, key: string) => {
+      keys.push(key);
+      if (keys.length === 1) {
+        return first.promise;
+      }
+      throw new Error('NOT_IN_WILD_SHAPE');
+    }) as never);
+    api.vitals = vitals('');
+
+    button.click();
+    await tick();
+    fixture.detectChanges();
+    button.click();
+    await tick();
+    fixture.detectChanges();
+    first.resolve({ vitals: undefined, encounter: undefined });
+    await settle(fixture);
+
+    expect(api.leaveWildShape).toHaveBeenCalledTimes(1);
+    expect(el.querySelector('[role="alert"]')).toBeNull();
+  });
 });

@@ -14,6 +14,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -189,7 +190,7 @@ func (s *Service) UseReaction(
 
 	var made actionEvent
 	var vitals *playv1.CharacterVitals
-	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventReactionUsed, encounterID: encID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventReactionUsed, encounterID: encID}, func(c *combatTx) (any, error) {
 		vitals = nil
 		p, attacker, target, err := s.reactionTarget(ctx, c, v, pendingID)
 		if err != nil {
@@ -345,7 +346,7 @@ func (s *Service) DeclineReaction(
 	}
 	v := viewerOf(m)
 
-	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventReactionDeclined, encounterID: encID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventReactionDeclined, encounterID: encID}, func(c *combatTx) (any, error) {
 		p, _, target, err := s.reactionTarget(ctx, c, v, pendingID)
 		if err != nil {
 			return nil, err

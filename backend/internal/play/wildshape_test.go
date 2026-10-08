@@ -7,8 +7,10 @@ import (
 	"net/http/httptest"
 	"slices"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
+	"uuid"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
@@ -17,6 +19,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/maps"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
 // Wild Shape (MR-037, Etapa 9, slice 9.10): a druid becomes an SRD beast, in a
@@ -690,5 +693,59 @@ func TestOutOfCombatTrapDamageGoesToTheBeastForm(t *testing.T) {
 				t.Errorf("druid lost %d own hp, want %d", got, tc.wantDruidLos)
 			}
 		})
+	}
+}
+
+// sessionEventCount counts the events of a kind written into one game session.
+func sessionEventCount(t *testing.T, h *harness, sessionID, kind string) int {
+	t.Helper()
+	var n int
+	if err := h.pool.QueryRow(t.Context(), `SELECT count(*) FROM session_events WHERE game_session_id = $1 AND kind = $2`, sessionID, kind).Scan(&n); err != nil {
+		t.Fatalf("count %s events: %v", kind, err)
+	}
+	return n
+}
+
+// A trap damage left from an ended session is settled in the open one: a beast form that falls under
+// it ends there, in the log and in the combat, not in the session where the trap fired.
+func TestTrapDamageOfAnEndedSessionEndsTheFormInTheOpenSession(t *testing.T) {
+	t.Parallel()
+	s := newShapers(t)
+	ctx := t.Context()
+	s1 := s.master.liveSession(t, s.campaignID).GetGameSession()
+	d, err := s.h.svc.queries.InsertTrapDamage(ctx, playdb.InsertTrapDamageParams{
+		GameSessionID: s1.GetId(), TrapPointID: uuid.New().String(), FireID: uuid.New().String(), CharacterID: s.bri.GetId(),
+		DiceCount: 0, DiceSides: 0, DiceBonus: 50, DamageType: "damage-type:piercing", Faces: []int32{}, RollTotal: 50, Amount: 50, CreatedAt: time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("InsertTrapDamage() error = %v", err)
+	}
+	s.master.end(t, s1)
+	s2 := s.master.start(t, s.campaignID).GetGameSession()
+	if s2.GetId() == s1.GetId() {
+		t.Fatalf("session 2 has session 1's ID")
+	}
+	s.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: s.goblin.GetId()}},
+		npcRolls: []int{1},
+		players:  map[string]int32{"Sálvia": 20, "Irmã": 15, "Pensantus": 12, "Toren": 10},
+		reveal:   []string{"Goblin"},
+		theatre:  true,
+	})
+	s.mustAssume(t, s.bia, s.bri, wolfKey)
+	if got := byLabel(t, s.get(t, s.master), "Sálvia"); got.GetSpeedFt() != 40 {
+		t.Fatalf("Sálvia as a wolf = %d ft, want 40", got.GetSpeedFt())
+	}
+	if _, err := s.master.play.ApplyTrapDamage(ctx, connect.NewRequest(&playv1.ApplyTrapDamageRequest{CampaignId: s.campaignID, TrapDamageId: d.ID, IdempotencyKey: newKey()})); err != nil {
+		t.Fatalf("ApplyTrapDamage() error = %v", err)
+	}
+	if v := s.vitals(t, s.bri); v.GetWildShape() != nil {
+		t.Fatalf("the beast is still on after 50 damage: %v", v)
+	}
+	if got := sessionEventCount(t, s.h, s2.GetId(), eventWildShapeEnded); got != 1 {
+		t.Errorf("wild_shape_ended events in the open session 2 = %d, want 1 (in session 1: %d)", got, sessionEventCount(t, s.h, s1.GetId(), eventWildShapeEnded))
+	}
+	if got := byLabel(t, s.get(t, s.master), "Sálvia"); got.GetSpeedFt() != 30 || got.GetWildShapeBeastKey() != "" {
+		t.Errorf("combatant in session 2's combat after the beast fell = %d ft, form %q, want her own 30 ft and no form", got.GetSpeedFt(), got.GetWildShapeBeastKey())
 	}
 }

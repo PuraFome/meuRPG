@@ -199,4 +199,60 @@ describe('NotesState', () => {
       expect(own.notice()).toBe(true);
     });
   });
+
+  describe('a write that answers after the campaign changed', () => {
+    it('leaves the list and the count of the new campaign alone', async () => {
+      let campaign = 'A';
+      let answer!: (n: ReturnType<typeof note>) => void;
+      const slow = {
+        list: (id: string) =>
+          Promise.resolve({
+            notes: id === 'B' ? [note('b1', 'De B', AT(1))] : [],
+            noteCount: id === 'B' ? 1 : 0,
+            maxNotes: 300,
+          }),
+        scenes: () => Promise.resolve([]),
+        create: () => new Promise<ReturnType<typeof note>>((r) => (answer = r)),
+        update: () => Promise.reject(new Error('unused')),
+        delete: () => Promise.resolve(),
+      };
+      const own = new NotesState(slow as never, () => campaign);
+      await own.refresh();
+
+      const creating = own.create('Segredo de A', '');
+      campaign = 'B';
+      own.clear();
+      await own.refresh();
+      answer(note('a1', 'Segredo de A', AT(40)));
+      await creating;
+
+      expect(own.notes().map((n) => n.id)).toEqual(['b1']);
+      expect(own.noteCount()).toBe(1);
+      expect(own.isWriting('new')).toBe(false);
+    });
+
+    it('does not free the mark of a write that began in the new campaign', async () => {
+      let campaign = 'A';
+      const answers: ((n: ReturnType<typeof note>) => void)[] = [];
+      const slow = {
+        list: () => Promise.resolve({ notes: [], noteCount: 0, maxNotes: 300 }),
+        scenes: () => Promise.resolve([]),
+        create: () => new Promise<ReturnType<typeof note>>((r) => answers.push(r)),
+        update: () => Promise.reject(new Error('unused')),
+        delete: () => Promise.resolve(),
+      };
+      const own = new NotesState(slow as never, () => campaign);
+      const first = own.create('De A', '');
+      campaign = 'B';
+      own.clear();
+      const second = own.create('De B', '');
+      answers[0](note('a1', 'De A', AT(1)));
+      await first;
+      expect(own.isWriting('new')).toBe(true);
+      answers[1](note('b1', 'De B', AT(2)));
+      await second;
+      expect(own.notes().map((n) => n.id)).toEqual(['b1']);
+      expect(own.isWriting('new')).toBe(false);
+    });
+  });
 });

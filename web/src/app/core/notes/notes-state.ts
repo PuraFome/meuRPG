@@ -42,6 +42,8 @@ export class NotesState {
   readonly atLimit = computed(() => this.noteCount() >= this.maxNotes());
 
   private generation = 0;
+  /** Moves with `clear()`: a write that began before it belongs to another campaign or session and leaves no trace. */
+  private session = 0;
   /** Moves with each write's answer: a read that began before it may lack the written note, so it is dropped and
    * made again (still announcing the clues it brings), not lost. */
   private edits = 0;
@@ -94,8 +96,12 @@ export class NotesState {
 
   /** Only the scenes (the tag picker), when a form opens: a scene may have been discovered since. */
   async refreshScenes(): Promise<void> {
+    const session = this.session;
     try {
-      this.scenes.set(await this.api.scenes(this.campaignId()));
+      const scenes = await this.api.scenes(this.campaignId());
+      if (session === this.session) {
+        this.scenes.set(scenes);
+      }
     } catch {
       // The picker keeps the list it had.
     }
@@ -114,6 +120,7 @@ export class NotesState {
   /** A new session or page: nothing is loaded, and the next read is silent. */
   clear(): void {
     this.generation++;
+    this.session++;
     this.notes.set([]);
     this.scenes.set([]);
     this.noteCount.set(0);
@@ -131,19 +138,34 @@ export class NotesState {
     return this.writing().has(id);
   }
 
-  private async write<T>(id: string, call: () => Promise<T>): Promise<T | null> {
+  /**
+   * `call` runs the request and returns what to do with the answer; the
+   * answer is applied only while the session it began in is still the current
+   * one, so a write of campaign A never lands in the list of campaign B.
+   */
+  private async write<T>(
+    id: string,
+    call: () => Promise<{ value: T; apply: () => void }>,
+  ): Promise<T | null> {
     if (this.isWriting(id)) {
       return null;
     }
+    const session = this.session;
     this.writing.update((set) => new Set(set).add(id));
     try {
-      return await call();
+      const { value, apply } = await call();
+      if (session === this.session) {
+        apply();
+      }
+      return value;
     } finally {
-      this.writing.update((set) => {
-        const next = new Set(set);
-        next.delete(id);
-        return next;
-      });
+      if (session === this.session) {
+        this.writing.update((set) => {
+          const next = new Set(set);
+          next.delete(id);
+          return next;
+        });
+      }
     }
   }
 
@@ -158,19 +180,27 @@ export class NotesState {
         this.createKey.keyFor([text, scenePointId]),
       );
       this.createKey.renew();
-      this.edits++;
-      this.notes.update((list) => sortNotes([note, ...list]));
-      this.noteCount.update((n) => n + 1);
-      return note;
+      return {
+        value: note,
+        apply: () => {
+          this.edits++;
+          this.notes.update((list) => sortNotes([note, ...list]));
+          this.noteCount.update((n) => n + 1);
+        },
+      };
     });
   }
 
   update(noteId: string, changes: { text?: string; scenePointId?: string }): Promise<Note | null> {
     return this.write(noteId, async () => {
       const note = await this.api.update(this.campaignId(), noteId, changes);
-      this.edits++;
-      this.notes.update((list) => sortNotes(list.map((n) => (n.id === noteId ? note : n))));
-      return note;
+      return {
+        value: note,
+        apply: () => {
+          this.edits++;
+          this.notes.update((list) => sortNotes(list.map((n) => (n.id === noteId ? note : n))));
+        },
+      };
     });
   }
 
@@ -178,10 +208,14 @@ export class NotesState {
   async remove(noteId: string): Promise<boolean> {
     const done = await this.write(noteId, async () => {
       await this.api.delete(this.campaignId(), noteId);
-      this.edits++;
-      this.notes.update((list) => list.filter((n) => n.id !== noteId));
-      this.noteCount.update((n) => Math.max(0, n - 1));
-      return true;
+      return {
+        value: true,
+        apply: () => {
+          this.edits++;
+          this.notes.update((list) => list.filter((n) => n.id !== noteId));
+          this.noteCount.update((n) => Math.max(0, n - 1));
+        },
+      };
     });
     return done === true;
   }

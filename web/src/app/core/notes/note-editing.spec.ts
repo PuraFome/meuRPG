@@ -161,4 +161,41 @@ describe('NoteEditing', () => {
     await first;
     expect(api.calls.filter((c) => c.startsWith('create'))).toHaveLength(1);
   });
+
+  describe('saving an edit that changed nothing', () => {
+    // The server refuses an UpdateNote with neither field as "nothing to change".
+    beforeEach(() => {
+      const update = api.update.bind(api);
+      api.update = async (campaignId, noteId, changes) => {
+        if (changes.text === undefined && changes.scenePointId === undefined) {
+          api.calls.push(`update ${noteId} {}`);
+          throw new ConnectError('nothing to change', Code.InvalidArgument);
+        }
+        return update(campaignId, noteId, changes);
+      };
+    });
+
+    it('closes the form without sending anything', async () => {
+      editing.openEdit(state.notes()[0]);
+      expect(await editing.save()).toBe(true);
+      expect(api.calls.filter((c) => c.startsWith('update'))).toEqual([]);
+      expect(editing.error()).toBe('');
+      expect(editing.stage()).toBe('list');
+    });
+
+    it('treats spaces around the text as no change', async () => {
+      editing.openEdit(state.notes()[0]);
+      type('  Brisa me deve 5 PO  ');
+      expect(await editing.save()).toBe(true);
+      expect(api.calls.filter((c) => c.startsWith('update'))).toEqual([]);
+      expect(editing.stage()).toBe('list');
+    });
+
+    it('still sends a real change', async () => {
+      editing.openEdit(state.notes()[0]);
+      type('Brisa me deve 10 PO');
+      expect(await editing.save()).toBe(true);
+      expect(api.calls).toContain('update n1 {"text":"Brisa me deve 10 PO"}');
+    });
+  });
 });

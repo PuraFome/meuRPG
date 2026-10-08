@@ -802,6 +802,12 @@ export class CombatView {
   });
 
   /** The table's rule on who sees the death saves (RN-24): read when a combat shows and again when someone falls, so a rule changed meanwhile is caught. */
+  /** Whose familiar to ask for: the character's id, so a re-read of the combat changes nothing. */
+  private readonly familiarOwner = computed(() =>
+    this.isMaster() || this.lookingThroughFamiliar() ? '' : (this.own()?.characterId ?? ''),
+  );
+  private familiarRequest = 0;
+
   private async readDeathRule(campaignId: string): Promise<void> {
     try {
       this.deathRule.set((await this.tableRules.get(campaignId)).saved.deathSaves);
@@ -822,6 +828,21 @@ export class CombatView {
         }
       });
     });
+    // "Ainda não" holds while the character stays dying: when they leave DYING the question is
+    // new the next time they fall.
+    effect(() => {
+      const dying = new Set(
+        (this.encounter()?.combatants ?? [])
+          .filter((c) => c.state === CombatantState.DYING)
+          .map((c) => c.id),
+      );
+      untracked(() => {
+        const later = this.deathLater();
+        if ([...later].some((id) => !dying.has(id))) {
+          this.deathLater.set(new Set([...later].filter((id) => dying.has(id))));
+        }
+      });
+    });
     // The offer's form belongs to a turn: when it passes, or the combat ends, it closes.
     effect(() => {
       void this.turnKey();
@@ -829,21 +850,28 @@ export class CombatView {
     });
     // The familiar's name, for the action "Ver pelos olhos do Nanquim" (the owner's list: RN-20).
     effect(() => {
-      const mine = this.own();
+      const characterId = this.familiarOwner();
       const campaignId = this.campaignId();
-      const looking = this.lookingThroughFamiliar();
-      if (this.isMaster() || !mine || looking) {
+      const request = ++this.familiarRequest;
+      if (!characterId) {
         untracked(() => this.familiar.set(null));
         return;
       }
       untracked(
         () =>
-          void this.creaturesApi.list(campaignId, mine.characterId).then(
-            (list) =>
-              this.familiar.set(
-                list.find((c) => c.source === CreatureSource.FAMILIAR)?.name ?? null,
-              ),
-            () => this.familiar.set(null),
+          void this.creaturesApi.list(campaignId, characterId).then(
+            (list) => {
+              if (request === this.familiarRequest) {
+                this.familiar.set(
+                  list.find((c) => c.source === CreatureSource.FAMILIAR)?.name ?? null,
+                );
+              }
+            },
+            () => {
+              if (request === this.familiarRequest) {
+                this.familiar.set(null);
+              }
+            },
           ),
       );
     });
@@ -2065,6 +2093,9 @@ export class CombatView {
     });
     if (ok) {
       this.jumpKey.renew();
+    }
+    // A jump that stopped short already said so (runMove's note): that is not "saltou".
+    if (ok && !this.moveNote()) {
       const spent = (this.mover()?.movementUsedDft ?? before) - before;
       this.moveNote.set(
         req.kind === 'long'

@@ -12,6 +12,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
@@ -170,7 +171,7 @@ func (s *Service) UndoLastAction(
 	var snapped string                   // and who it is
 	var rearmed *trapFireEvent           // the trap an undone firing armed again
 	var alsoUndone []string              // the older parts of a firing that went with it
-	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventActionUndone, encounterID: encID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventActionUndone, encounterID: encID}, func(c *combatTx) (any, error) {
 		vitals, undoneMove, snapBack, snapped, rearmed, alsoUndone = nil, nil, nil, "", nil, nil
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
