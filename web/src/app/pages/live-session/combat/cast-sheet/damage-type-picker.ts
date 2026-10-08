@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { SpellDamageChoice } from '../../../../../gen/meurpg/rules/v1/rules_pb';
@@ -20,6 +20,7 @@ let nextId = 0;
  */
 @Component({
   selector: 'app-damage-type-picker',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatIconModule],
   template: `
     <span class="cap" [id]="id + '-l'">Tipo de dano</span>
