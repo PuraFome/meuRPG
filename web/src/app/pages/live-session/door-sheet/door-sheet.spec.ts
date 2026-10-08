@@ -8,8 +8,7 @@ import { MapsClient } from '../../../core/maps/maps-client';
 import { FakeMapsClient } from '../../../core/maps/maps-testing';
 import { DoorSheet, type DoorSheetData } from './door-sheet';
 
-const plain = (t: string | null | undefined) =>
-  (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const plain = (t: string | null | undefined) => (t ?? '').replace(/\s+/g, ' ').trim();
 
 describe('DoorSheet', () => {
   let api: FakeMapsClient;

@@ -97,7 +97,7 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
     vi.unstubAllGlobals();
   });
 
-  const text = (el: HTMLElement) => (el.textContent ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ');
+  const text = (el: HTMLElement) => (el.textContent ?? '').replace(/\s+/g, ' ');
   const button = (el: HTMLElement, label: string) =>
     Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
       b.textContent?.trim().endsWith(label),

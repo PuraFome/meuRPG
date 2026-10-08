@@ -49,22 +49,28 @@ export class AdjustNpc {
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
   protected readonly c = this.data.combatant;
-  protected readonly hp = this.c.hitPointsCurrent ?? 0;
-  protected readonly max = this.c.hitPointsMax ?? 0;
-  protected readonly temp0 = this.c.hitPointsTemporary ?? 0;
+  /** The combatant as the combat has it now: the numbers move while the sheet is open. */
+  private readonly current = computed(
+    () => this.data.state.encounter()?.combatants.find((x) => x.id === this.c.id) ?? this.c,
+  );
+  protected readonly hp = computed(() => this.current().hitPointsCurrent ?? 0);
+  protected readonly max = computed(() => this.current().hitPointsMax ?? 0);
+  protected readonly temp0 = computed(() => this.current().hitPointsTemporary ?? 0);
   protected readonly modes = MODES;
   protected readonly maxAmount = MAX_AMOUNT;
   protected readonly maxTemporary = MAX_TEMPORARY;
 
   protected readonly mode = signal<Mode>('damage');
   protected readonly amount = signal(0);
-  protected readonly temporary = signal(this.temp0);
+  protected readonly temporary = signal(this.c.hitPointsTemporary ?? 0);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   private key = newKey();
   private keyFor = '';
 
-  protected readonly amountMax = computed(() => (this.mode() === 'exact' ? this.max : MAX_AMOUNT));
+  protected readonly amountMax = computed(() =>
+    this.mode() === 'exact' ? this.max() : MAX_AMOUNT,
+  );
   protected readonly amountLabel = computed(() =>
     this.mode() === 'damage' ? 'Dano sofrido' : this.mode() === 'heal' ? 'PV curados' : 'PV exatos',
   );
@@ -77,30 +83,30 @@ export class AdjustNpc {
     const kind = this.mode();
     const change =
       kind === 'exact'
-        ? this.amount() === this.hp
+        ? this.amount() === this.hp()
           ? undefined
           : { kind, value: this.amount() }
         : this.amount() > 0
           ? { kind, value: this.amount() }
           : undefined;
-    const temporary = this.temporary() !== this.temp0 ? this.temporary() : undefined;
+    const temporary = this.temporary() !== this.temp0() ? this.temporary() : undefined;
     return change || temporary !== undefined ? { change, temporary } : null;
   });
   protected readonly after = computed(() => {
     const a = this.amount();
     switch (this.mode()) {
       case 'damage':
-        return hitPointsAfter(this.hp, this.temp0, a);
+        return hitPointsAfter(this.hp(), this.temp0(), a);
       case 'heal':
-        return Math.min(this.max, this.hp + a);
+        return Math.min(this.max(), this.hp() + a);
       default:
         return a;
     }
   });
   protected readonly preview = computed(() =>
     this.adjust()?.change
-      ? `Depois: ${this.after()} de ${this.max} PV`
-      : `Agora: ${this.hp} de ${this.max} PV`,
+      ? `Depois: ${this.after()} de ${this.max()} PV`
+      : `Agora: ${this.hp()} de ${this.max()} PV`,
   );
 
   protected readonly amountStep = (step: number) => (step < 0 ? `Tirar ${-step}` : `Somar ${step}`);
