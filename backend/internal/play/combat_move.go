@@ -125,11 +125,16 @@ func squareOfCombatant(c playdb.Combatant) grid.Square {
 	return grid.Square{Col: int(*c.GridCol), Row: int(*c.GridRow)}
 }
 
-// moverOf says how a combatant moves: a creature with a fly speed moves as a
-// flier (difficult terrain costs it nothing). Swimming and climbing are out of
+// flies says whether the combatant moves on its fly speed: it has one and it is
+// the better of its speeds, the one speedDFt gives. A creature that walks faster
+// than it flies (walk 60, fly 10) walks.
+func flies(c playdb.Combatant) bool { return c.SpeedFlyFt > 0 && c.SpeedFlyFt >= c.SpeedFt }
+
+// moverOf says how a combatant moves: a creature that moves on its fly speed is
+// a flier (difficult terrain costs it nothing). Swimming and climbing are out of
 // scope.
 func moverOf(c playdb.Combatant) grid.Mover {
-	return grid.Mover{Flier: c.SpeedFlyFt > 0, Size: sizeToGrid[sizeKey(c.Size)]}
+	return grid.Mover{Flier: flies(c), Size: sizeToGrid[sizeKey(c.Size)]}
 }
 
 // noSpeed are the conditions that leave a creature with no speed (SRD 5.1):
@@ -667,7 +672,7 @@ func (s *Service) GetMoveOptions(
 	if isTheatre(enc) {
 		// Without a map there is nowhere to go: a valid, empty answer, with what
 		// SpendMovement can still spend.
-		return connect.NewResponse(&playv1.GetMoveOptionsResponse{MovementLeftDft: clamp32(movementLeftDFt(who), 0, math.MaxInt32), Flier: who.SpeedFlyFt > 0}), nil
+		return connect.NewResponse(&playv1.GetMoveOptionsResponse{MovementLeftDft: clamp32(movementLeftDFt(who), 0, math.MaxInt32), Flier: flies(who)}), nil
 	}
 	if !placed(who) {
 		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the combatant is not on the map yet")
