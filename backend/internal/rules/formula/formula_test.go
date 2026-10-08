@@ -37,7 +37,7 @@ func TestIntFormulas(t *testing.T) {
 		// ADR-0008's example: Arcane Recovery, half the wizard level rounded up.
 		{`ceil(classLevel("wizard") / 2)`, 2},
 		{`floor(classLevel("wizard") / 2)`, 1},
-		// "/" always returns a float in Expr; AsInt truncates it.
+		// "/" always returns a float in Expr; the result is rounded down.
 		{`classLevel("wizard") / 2`, 1},
 		{`8 + prof() + mod("int")`, 14},
 		{`prof() + mod("int")`, 6},
@@ -279,6 +279,35 @@ func TestProductsThatCouldOverflowAreRefused(t *testing.T) {
 		}
 		if got, err := p.Int(wizard3()); err != nil || got != want {
 			t.Errorf("%q = %d, %v; want %d", source, got, err, want)
+		}
+	}
+}
+
+// A fraction rounds down, as the rules round an ability modifier: subtract 10,
+// divide by 2, round down. Truncating toward zero would give -1 for a score of 7.
+func TestDivisionRoundsDown(t *testing.T) {
+	t.Parallel()
+	c := newCompiler()
+	for _, tt := range []struct {
+		source string
+		want   int
+	}{
+		{`(score("str") - 10) / 2`, -2},
+		{`-3 / 2`, -2},
+		{`3 / 2`, 1},
+	} {
+		p, err := c.Compile(tt.source, Int)
+		if err != nil {
+			t.Fatalf("Compile(%q): %v", tt.source, err)
+		}
+		env := wizard3()
+		env.Score = func(string) int { return 7 }
+		got, err := p.Int(env)
+		if err != nil {
+			t.Fatalf("Int(%q): %v", tt.source, err)
+		}
+		if got != tt.want {
+			t.Errorf("%s = %d, want %d", tt.source, got, tt.want)
 		}
 	}
 }

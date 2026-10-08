@@ -168,7 +168,7 @@ func TestMR035_PointKindsAreValidated(t *testing.T) {
 		"attack count 0":               func(t *mapsv1.TrapSpec) { t.Effect.Attack.Count = 0 },
 		"attack count 11":              func(t *mapsv1.TrapSpec) { t.Effect.Attack.Count = 11 },
 		"attack with no damage":        func(t *mapsv1.TrapSpec) { t.Effect.Attack.Damage = nil },
-		"21 dice":                      func(t *mapsv1.TrapSpec) { t.Effect.Damage[0].Dice = "21d6" },
+		"25 dice":                      func(t *mapsv1.TrapSpec) { t.Effect.Damage[0].Dice = "25d6" },
 		"a d7":                         func(t *mapsv1.TrapSpec) { t.Effect.Damage[0].Dice = "2d7" },
 		"a d20":                        func(t *mapsv1.TrapSpec) { t.Effect.Damage[0].Dice = "1d20" },
 		"dice with a bonus":            func(t *mapsv1.TrapSpec) { t.Effect.Damage[0].Dice = "2d6+1" },
