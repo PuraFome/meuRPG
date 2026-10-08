@@ -237,6 +237,7 @@ export class SessionMap {
     if (move.kind !== 'token' || !mapId || !before) {
       return;
     }
+    this.error.set(null);
     state.upsertToken({ ...before, xBp: move.xBp, yBp: move.yBp });
     await this.moves.move(
       `${mapId}/${move.id}`,
