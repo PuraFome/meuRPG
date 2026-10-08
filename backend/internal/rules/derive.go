@@ -389,6 +389,7 @@ func (x *deriver) collectEffects() {
 
 	// Chosen options count only while their parent feature or trait is
 	// owned, so a fighting style disappears with the fighter levels.
+	pickedNames := map[string]bool{}
 	for i, key := range x.b.FeatureChoices {
 		field := fmt.Sprintf("full.feature_choice_keys[%d]", i)
 		switch {
@@ -412,6 +413,13 @@ func (x *deriver) collectEffects() {
 				}
 				continue
 			}
+			// An option can be taken once: the same style from a second class
+			// (Defense from the fighter and the paladin) is not a second one.
+			if pickedNames[f.Name] {
+				x.issue(IssueChoiceCount, field, "%s já foi escolhida: ela vale uma vez só.", c.namePT(key))
+				continue
+			}
+			pickedNames[f.Name] = true
 			add(key)
 			feature(key, f.Name, parent, x.featureLevel(parent), f.Desc)
 		case strings.HasPrefix(key, "trait:"):

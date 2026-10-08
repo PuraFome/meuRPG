@@ -639,6 +639,7 @@
       "RangeFt": 5,
       "LongRangeFt": 0,
       "Melee": true,
+      "Beams": 0,
       "Notes": ""
     },
     {
@@ -670,6 +671,7 @@
       "RangeFt": 120,
       "LongRangeFt": 0,
       "Melee": false,
+      "Beams": 1,
       "Notes": ""
     },
     {
@@ -701,6 +703,39 @@
       "RangeFt": 60,
       "LongRangeFt": 0,
       "Melee": false,
+      "Beams": 1,
+      "Notes": ""
+    },
+    {
+      "Key": "attack:unarmed-strike",
+      "Name": "Unarmed Strike",
+      "NamePT": "Golpe desarmado",
+      "Kind": "weapon",
+      "Ability": "str",
+      "AttackBonus": 3,
+      "SaveDC": 0,
+      "SaveAbility": "",
+      "Damage": "2",
+      "DamageType": "damage-type:bludgeoning",
+      "DamageTypeNamePT": "concussão",
+      "VersatileDamage": "",
+      "DamageDice": {
+        "Count": 0,
+        "Sides": 0,
+        "Bonus": 2,
+        "AddsModifier": false
+      },
+      "VersatileDice": {
+        "Count": 0,
+        "Sides": 0,
+        "Bonus": 0,
+        "AddsModifier": false
+      },
+      "Proficient": true,
+      "RangeFt": 5,
+      "LongRangeFt": 0,
+      "Melee": true,
+      "Beams": 0,
       "Notes": ""
     }
   ],
