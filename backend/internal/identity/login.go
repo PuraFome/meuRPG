@@ -404,18 +404,18 @@ func (s *Service) completeLogin(r *http.Request) (login LoginState, token string
 		return LoginState{}, "", Session{}, unavailable("store_error", err)
 	}
 
-	// A browser that signs in again gets a new session (never the old
-	// token, which rules out session fixation), and the old one is revoked
-	// instead of lingering until it expires.
-	if old, ok := cookieValue(r.Header, SessionCookieName); ok {
-		s.revokeQuietly(ctx, old)
-	}
-
 	// The 30 days count from now, whatever auth_time says: it is recorded,
 	// not trusted (see verifiedIdentity).
 	token, session, err = s.startSession(ctx, userID, now, id.AuthTime)
 	if err != nil {
 		return LoginState{}, "", Session{}, unavailable("store_error", err)
+	}
+	// A browser that signs in again gets a new session (never the old
+	// token, which rules out session fixation), and the old one is revoked
+	// instead of lingering until it expires. It goes after the new session
+	// exists: if creating that fails, the user keeps the session they had.
+	if old, ok := cookieValue(r.Header, SessionCookieName); ok {
+		s.revokeQuietly(ctx, old)
 	}
 	return login, token, session, nil
 }
