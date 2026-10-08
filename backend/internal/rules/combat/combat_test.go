@@ -157,7 +157,7 @@ func TestDeathSave(t *testing.T) {
 		{"9 fails", 9, 1, 0, DeathSaveResult{Successes: 1, Failures: 1, Outcome: DeathSaveContinues}},
 		{"natural 1 is two failures", 1, 0, 0, DeathSaveResult{Failures: 2, Outcome: DeathSaveContinues}},
 		{"natural 1 on one failure kills", 1, 1, 1, DeathSaveResult{Successes: 1, Failures: 3, Outcome: DeathSaveDying}},
-		{"third success is stable", 12, 2, 1, DeathSaveResult{Successes: 3, Failures: 1, Outcome: DeathSaveStable}},
+		{"third success is stable and clears the failures", 12, 2, 1, DeathSaveResult{Successes: 3, Outcome: DeathSaveStable}},
 		{"third failure is dying, for the master to confirm", 5, 1, 2, DeathSaveResult{Successes: 1, Failures: 3, Outcome: DeathSaveDying}},
 		{"natural 20 brings back 1 HP and resets", 20, 1, 2, DeathSaveResult{Outcome: DeathSaveRevived, HP: 1}},
 	}
@@ -313,6 +313,19 @@ func TestOptionsPensantus(t *testing.T) {
 		t.Errorf("misty step after the bonus action = %+v", s)
 	}
 
+	// A spell cast with a bonus action leaves no other spell but a cantrip of 1 action.
+	afterBonus := Options(d, TurnState{BonusActionUsed: true, BonusSpellCast: true}, Usage{})
+	if s := spellOf(t, afterBonus, "spell:web"); s.Enabled || s.Reason.Code != ReasonBonusActionSpellLimit {
+		t.Errorf("web after a bonus action spell = %+v, want the bonus action spell limit", s)
+	}
+	afterAction := Options(d, TurnState{ActionUsed: false, SpellCast: true}, Usage{})
+	if s := spellOf(t, afterAction, "spell:misty-step"); s.Enabled || s.Reason.Code != ReasonBonusActionSpellLimit {
+		t.Errorf("misty step after another spell = %+v, want the bonus action spell limit", s)
+	}
+	if s := spellOf(t, afterAction, "spell:web"); !s.Enabled {
+		t.Errorf("web after another action spell = %+v, want it enabled (only a bonus action spell is limited)", s)
+	}
+
 	// Fresh rest: every slot is a choice, from the spell's level up.
 	fresh := Options(d, TurnState{}, Usage{})
 	if got := levels(spellOf(t, fresh, "spell:web")); !slices.Equal(got, []int{2}) {
@@ -366,7 +379,8 @@ func TestOptionsToren(t *testing.T) {
 	d := derive(t, b)
 	o := Options(d, TurnState{}, Usage{})
 
-	if len(o.Attacks) != 1 || o.Attacks[0].Attack.AttackBonus != 5 || o.Attacks[0].Attack.DamageDice != (rules.DiceFormula{Count: 1, Sides: 8, Bonus: 3}) {
+	// The battleaxe, then the unarmed strike every character has.
+	if len(o.Attacks) != 2 || o.Attacks[1].Attack.Key != "attack:unarmed-strike" || o.Attacks[0].Attack.AttackBonus != 5 || o.Attacks[0].Attack.DamageDice != (rules.DiceFormula{Count: 1, Sides: 8, Bonus: 3}) {
 		t.Errorf("attacks = %+v", o.Attacks)
 	}
 	if len(o.Spells) != 0 {
@@ -599,5 +613,70 @@ func TestSortSpellsOrderAndTies(t *testing.T) {
 	}
 	if want := []string{"a", "c", "t1", "t2", "e", "b", "d"}; !slices.Equal(keys, want) {
 		t.Errorf("order = %v, want %v", keys, want)
+	}
+}
+
+// A character that becomes stable has both counts back at zero (SRD 5.1): the
+// next hit while down is its first failure, not its third.
+func TestStableCharacterStartsTheCountsOverAfterAHit(t *testing.T) {
+	r := DeathSave(15, 2, 2)
+	if r.Outcome != DeathSaveStable || r.Failures != 0 {
+		t.Fatalf("third success = %+v, want stable with no failures", r)
+	}
+	hit := AddFailures(0, r.Failures, DamageWhileDown(false))
+	if hit.Failures != 1 || hit.Outcome != DeathSaveContinues {
+		t.Errorf("first hit on a stable character = %+v, want one failure and still alive", hit)
+	}
+}
+
+func TestAdjustForType(t *testing.T) {
+	skeleton := TypeModifiers{Vulnerable: []string{"damage-type:bludgeoning"}, Immune: []string{"damage-type:poison"}}
+	fireproof := TypeModifiers{Resistant: []string{"damage-type:fire"}, Vulnerable: []string{"damage-type:fire"}}
+	for _, tt := range []struct {
+		name   string
+		amount int
+		typ    string
+		m      TypeModifiers
+		want   int
+	}{
+		{"vulnerability doubles", 6, "damage-type:bludgeoning", skeleton, 12},
+		{"immunity is none", 9, "damage-type:poison", skeleton, 0},
+		{"another type is untouched", 7, "damage-type:slashing", skeleton, 7},
+		{"resistance halves down", 7, "damage-type:fire", TypeModifiers{Resistant: []string{"damage-type:fire"}}, 3},
+		{"one is half of nothing", 1, "damage-type:fire", TypeModifiers{Resistant: []string{"damage-type:fire"}}, 0},
+		{"resistant and vulnerable: halve, then double", 7, "damage-type:fire", fireproof, 6},
+		{"a typeless damage is untouched", 5, "", skeleton, 5},
+		{"nothing stays nothing", 0, "damage-type:bludgeoning", skeleton, 0},
+		{"no modifiers", 8, "damage-type:fire", TypeModifiers{}, 8},
+	} {
+		if got := AdjustForType(tt.amount, tt.typ, tt.m); got != tt.want {
+			t.Errorf("%s: AdjustForType(%d, %q) = %d, want %d", tt.name, tt.amount, tt.typ, got, tt.want)
+		}
+	}
+}
+
+// TestSpellLimited: the SRD's Casting Time rule for a spell cast with a bonus
+// action: no other spell in the turn, in either order, but a cantrip of 1 action.
+func TestSpellLimited(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name    string
+		turn    TurnState
+		economy string
+		level   int
+		want    bool
+	}{
+		{"nothing cast yet", TurnState{}, rules.EconomyAction, 1, false},
+		{"an action spell after a bonus action spell", TurnState{BonusSpellCast: true}, rules.EconomyAction, 1, true},
+		{"a bonus action spell after a bonus action spell", TurnState{BonusSpellCast: true}, rules.EconomyBonusAction, 1, true},
+		{"a bonus action cantrip after a bonus action spell", TurnState{BonusSpellCast: true}, rules.EconomyBonusAction, 0, true},
+		{"a cantrip of 1 action after a bonus action spell", TurnState{BonusSpellCast: true}, rules.EconomyAction, 0, false},
+		{"a bonus action spell after an action spell", TurnState{SpellCast: true}, rules.EconomyBonusAction, 1, true},
+		{"an action spell after an action spell", TurnState{SpellCast: true}, rules.EconomyAction, 1, false},
+		{"a bonus action spell after a cantrip of 1 action", TurnState{}, rules.EconomyBonusAction, 1, false},
+	} {
+		if got := SpellLimited(tc.turn, tc.economy, tc.level); got != tc.want {
+			t.Errorf("%s: SpellLimited = %v, want %v", tc.name, got, tc.want)
+		}
 	}
 }

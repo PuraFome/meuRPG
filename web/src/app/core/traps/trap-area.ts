@@ -7,7 +7,7 @@ export interface PinArea {
 }
 
 /**
- * The block of squares a trap covers, drawn only (MAP-LANGUAGE.md): its own square, or the
+ * The block of squares a trap covers, drawn only (docs/design.md): its own square, or the
  * `size` x `size` block around it, the point's square being the middle one (the first of the two
  * middle ones for an even side), clipped to the grid. The same rule the server fires by
  * (`pointSquares` in `maps/fog.go`); the app decides nothing with it, who stands in the area is the

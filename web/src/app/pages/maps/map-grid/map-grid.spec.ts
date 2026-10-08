@@ -63,13 +63,13 @@ describe('MapGrid, the older grid page, on a calibrated map (RN-25)', () => {
       }),
     );
     expect(text(el)).toContain('O quadrado marcado tem 6 m.');
-    expect(text(el)).toContain('De 5 a 50.');
+    expect(text(el)).toContain('De 4 a 50.');
     const input = el.querySelector<HTMLInputElement>('input')!;
     expect(input.value).toBe('20');
     input.value = '51';
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
-    expect(text(el)).toContain('Use um número inteiro de 5 a 50.');
+    expect(text(el)).toContain('Use um número inteiro de 4 a 50.');
     input.value = '30';
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
@@ -93,7 +93,33 @@ describe('MapGrid, the older grid page, on a calibrated map (RN-25)', () => {
       }),
     );
     expect(text(el)).toContain('O quadrado marcado tem 1,5 m.');
-    expect(text(el)).toContain('De 5 a 60.');
+    expect(text(el)).toContain('De 4 a 200.');
+  });
+
+  it('takes the whole range the server and the map editor take: 4 to 200 columns', async () => {
+    const { fixture, el } = await setup(
+      mapMessage('map-1', 'Caverna', {
+        gridColumns: 120,
+        gridRows: 80,
+        drawnColumns: 120,
+        drawnRows: 80,
+        squareFactor: 1,
+      }),
+    );
+    const input = el.querySelector<HTMLInputElement>('input')!;
+    const type = (value: string) => {
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    };
+    for (const ok of ['4', '120', '200']) {
+      type(ok);
+      expect(text(el)).not.toContain('Use um número inteiro');
+    }
+    for (const bad of ['3', '201']) {
+      type(bad);
+      expect(text(el)).toContain('Use um número inteiro de 4 a 200.');
+    }
   });
 
   it('does not send the factor it read when the page opened after another tab recalibrated the map', async () => {

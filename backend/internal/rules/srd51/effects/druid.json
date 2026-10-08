@@ -11,7 +11,7 @@
     ],
     "feature:wild-shape-cr-1-4-or-below-no-flying-or-swim-speed": [
       {"type": "grant_action", "economy": "action"},
-      {"type": "resource", "resource": "wild_shape", "max": "2", "recharge": "short_rest"},
+      {"type": "resource", "resource": "wild_shape", "max": "classLevel(\"druid\") >= 20 ? 99 : 2", "recharge": "short_rest"},
       {"type": "wild_shape", "max_cr": "1/4", "no_fly": true, "no_swim": true}
     ],
     "feature:wild-shape-cr-1-2-or-below-no-flying-speed": [
@@ -59,6 +59,9 @@
     ],
     "feature:druid-ability-score-improvement-1": [
       {"type": "choice", "choice": "ability_score_improvement", "count": 1}
+    ],
+    "feature:beast-spells": [
+      {"type": "beast_spells"}
     ]
   }
 }

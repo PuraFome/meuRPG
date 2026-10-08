@@ -45,6 +45,12 @@ describe('the reasons an option is disabled', () => {
     );
   });
 
+  it('says a bonus action spell limits the turn’s other spells', () => {
+    expect(reasonText(reason(DisabledReasonCode.BONUS_ACTION_SPELL_LIMIT))).toBe(
+      'Magia de ação bônus no turno',
+    );
+  });
+
   it('has a word for every code, and an empty one for none', () => {
     expect(reasonText(undefined)).toBe('');
     for (const code of Object.values(DisabledReasonCode).filter(

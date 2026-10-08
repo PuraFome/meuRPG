@@ -51,6 +51,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // SheetLocker locks a campaign's player sheets when a game session starts
@@ -231,7 +232,7 @@ type CombatRoster interface {
 	// at that level, with the character's attack bonus, save DC and
 	// spellcasting modifier. It does not check that the character may cast it
 	// (CombatTurnOptions does). `not_found` for any other character or spell.
-	CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, slotLevel int) (link.Spell, error)
+	CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, slotLevel int, damageType string) (link.Spell, error)
 	// CombatSave returns the character's saving throw bonus for an ability
 	// ("dex"). A basic-sheet NPC has none: Known is false.
 	CombatSave(ctx context.Context, tx pgx.Tx, campaignID, characterID, ability string) (link.Save, error)
@@ -291,6 +292,11 @@ type CombatRoster interface {
 	CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, attack string) (link.Sheet, bool, error)
 	CreatureTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, attack string, turn link.Turn) (*rulesv1.TurnOptions, bool, error)
 	CreatureSave(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, ability string) (link.Save, error)
+	// DamageModifiers are the damage types the target takes double, half or none
+	// of (SRD 5.1), from the stat block of the creature it is: the monsterKey when
+	// it is a character's creature, otherwise the one on the basic sheet of an NPC
+	// made from a creature. Empty for anyone else.
+	DamageModifiers(ctx context.Context, tx pgx.Tx, campaignID, characterID, monsterKey string) (combat.TypeModifiers, error)
 	// CreatureEyes is what a creature notices a trap with, from its stat block:
 	// its passive Perception and its senses (MR-035). False for a key that is not an
 	// SRD creature.

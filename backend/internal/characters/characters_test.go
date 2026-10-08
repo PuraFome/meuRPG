@@ -3,14 +3,19 @@ package characters
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
+	"uuid"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // TestStaleRevisionIsAborted: two people editing the same character cannot
@@ -339,6 +344,139 @@ func mustGet(t *testing.T, get func(*user, string, string) (*rulesv1.SpellDetail
 		t.Fatalf("GetSpellDetails(%s) error = %v", key, err)
 	}
 	return d
+}
+
+// RN-30: a campaign holds a limited number of characters and NPCs, of every
+// kind, living or dead. A refusal makes nothing, a replay of an NPC already
+// made is answered in a full campaign, and another campaign is not counted.
+func TestRN30_TheCharacterCapPerCampaign(t *testing.T) {
+	t.Parallel()
+	const capacity = 3
+	h := newHarnessWith(t, func(c *Config) { c.MaxCharactersPerCampaign = capacity })
+	master, player := h.newUser("Mestre"), h.newUser("Jogadora")
+	campaign := h.newCampaign(master, "Mirathel", player)
+	other := h.newCampaign(master, "Outra")
+
+	dead := player.createPensantus(t, campaign)
+	master.markDead(t, dead) // a dead character still counts
+	master.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_STORY, "Taverneiro", basicSheet())
+	const replayKey = "7d1c2a3e-4b5f-4a6b-8c7d-9e0f1a2b3c4d"
+	first, err := npcFromCreature(t, master, campaign, "monster:ogre", "Grak", charactersv1.CharacterKind_CHARACTER_KIND_MINION, replayKey) // the 3rd, within the cap
+	if err != nil {
+		t.Fatalf("the NPC at the cap: %v", err)
+	}
+
+	_, err = master.api.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+		CampaignId: campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_STORY, Name: "Um a mais", Sheet: basicSheet(),
+	}))
+	wantCode(t, "CreateCharacter() over the cap", err, connect.CodeResourceExhausted)
+	_, err = player.api.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+		CampaignId: campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Outra", Sheet: pensantusSheet(),
+	}))
+	wantCode(t, "a player's CreateCharacter() over the cap", err, connect.CodeResourceExhausted)
+	_, err = npcFromCreature(t, master, campaign, "monster:wolf", "Lobo", charactersv1.CharacterKind_CHARACTER_KIND_MINION, "0c9b8a7d-6e5f-4d3c-a2b1-0f9e8d7c6b5a")
+	wantCode(t, "CreateNpcFromCreature() over the cap", err, connect.CodeResourceExhausted)
+
+	// The same key and request still answers the NPC it made.
+	again, err := npcFromCreature(t, master, campaign, "monster:ogre", "Grak", charactersv1.CharacterKind_CHARACTER_KIND_MINION, replayKey)
+	if err != nil || again.GetId() != first.GetId() {
+		t.Fatalf("replay in a full campaign = %v, %v; want the first NPC %s", again.GetId(), err, first.GetId())
+	}
+	var n int
+	if err := h.pool.QueryRow(t.Context(), "SELECT count(*) FROM characters WHERE campaign_id = $1", campaign).Scan(&n); err != nil || n != capacity {
+		t.Fatalf("the campaign holds %d characters, %v; want %d", n, err, capacity)
+	}
+
+	// The cap is per campaign.
+	master.create(t, other, charactersv1.CharacterKind_CHARACTER_KIND_STORY, "Taverneiro", basicSheet())
+}
+
+// RN-30: two creates racing for the last place do not both pass, through
+// either create.
+func TestRN30_TheLastCharacterPlaceGoesToOneCreate(t *testing.T) {
+	t.Parallel()
+	dbtest.PoolSize(t, 14) // the racers must overlap: one connection would run them one by one
+	h := newHarnessWith(t, func(c *Config) { c.MaxCharactersPerCampaign = 3 })
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master, "Mirathel")
+	for _, name := range []string{"Taverneiro", "Ferreiro"} {
+		master.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_STORY, name, basicSheet())
+	}
+
+	const racers = 6
+	errs := make([]error, racers)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for i := range racers {
+		wg.Go(func() {
+			<-start
+			if i%2 == 0 {
+				_, errs[i] = master.api.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+					CampaignId: campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_STORY, Name: fmt.Sprintf("Corredor %d", i), Sheet: basicSheet(),
+				}))
+				return
+			}
+			_, errs[i] = npcFromCreature(t, master, campaign, "monster:wolf", fmt.Sprintf("Lobo %d", i), charactersv1.CharacterKind_CHARACTER_KIND_MINION, uuid.New().String())
+		})
+	}
+	close(start)
+	wg.Wait()
+
+	created := 0
+	for i, err := range errs {
+		switch {
+		case err == nil:
+			created++
+		case connect.CodeOf(err) != connect.CodeResourceExhausted:
+			t.Errorf("racer %d: error = %v", i, err)
+		}
+	}
+	var n int
+	if err := h.pool.QueryRow(t.Context(), "SELECT count(*) FROM characters WHERE campaign_id = $1", campaign).Scan(&n); err != nil || created != 1 || n != 3 {
+		t.Fatalf("%d of %d creates succeeded and the campaign holds %d characters, %v; want 1 and 3", created, racers, n, err)
+	}
+}
+
+// RN-30: the server's own cap is 1,000, the 1,000th place is the last.
+func TestRN30_TheDefaultCharacterCapIsAThousand(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master, "Mirathel")
+	if _, err := h.pool.Exec(t.Context(), `
+INSERT INTO characters (campaign_id, kind, master_user_id, status, name, sheet, story, created_at, updated_at)
+SELECT $1, 'story', $2, 'active', 'Figurante ' || n::STRING, '{}', '{}', now(), now()
+FROM generate_series(1, $3) AS n`, campaign, master.id, DefaultMaxCharactersPerCampaign-1); err != nil {
+		t.Fatalf("seed the campaign: %v", err)
+	}
+
+	master.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_STORY, "O milésimo", basicSheet())
+	_, err := master.api.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+		CampaignId: campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_STORY, Name: "O 1001º", Sheet: basicSheet(),
+	}))
+	wantCode(t, "the 1,001st character", err, connect.CodeResourceExhausted)
+}
+
+// RN-30: the NPC a combat makes for a monster counts too, and a monster
+// already made is found in a full campaign.
+func TestRN30_TheMonsterNpcOfACombatCountsInTheCap(t *testing.T) {
+	t.Parallel()
+	h := newHarnessWith(t, func(c *Config) { c.MaxCharactersPerCampaign = 1 })
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master, "Mirathel")
+	monsterNpc := func(key string) error {
+		return db.InTx(t.Context(), h.pool, func(tx pgx.Tx) error {
+			_, _, err := h.svc.MonsterNpc(t.Context(), tx, campaign, master.id, key, h.clock.Now())
+			return err
+		})
+	}
+	if err := monsterNpc("monster:ogre"); err != nil {
+		t.Fatalf("the monster at the cap: %v", err)
+	}
+	wantCode(t, "a second monster", monsterNpc("monster:wolf"), connect.CodeResourceExhausted)
+	if err := monsterNpc("monster:ogre"); err != nil {
+		t.Fatalf("the monster already made, in a full campaign: %v", err)
+	}
 }
 
 // hillDwarfSheet is a Hill Dwarf fighter of the given level, who takes the

@@ -10,6 +10,7 @@ import {
   type TargetInReach,
   AttackOutcome,
   SaveOutcome,
+  SpellEffectKind,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   Ability,
@@ -495,7 +496,13 @@ function castRow(
     icon = w.icon;
     tone = w.affected ? 'good' : 'plain';
     if (t.effect.healed !== undefined) {
-      lines.push(`${t.effect.healed} PV recuperados`);
+      lines.push(
+        cast.effectKind === SpellEffectKind.TEMP_HP
+          ? `${t.effect.healed} PV temporários`
+          : cast.effectKind === SpellEffectKind.MAX_HP
+            ? `PV máximo +${t.effect.healed}`
+            : `${t.effect.healed} PV recuperados`,
+      );
     }
   }
   if (t.attackRoll) {

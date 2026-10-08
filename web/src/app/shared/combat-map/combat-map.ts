@@ -66,7 +66,7 @@ export interface TokenDrop extends Square {
  *   shading of what they see) instead of the image; the combatants are what the server sends them.
  * - **Layers (Etapa 9):** the walls, the difficult terrain and the cover, drawn
  *   by `app-map-layers` over the image, and the doors (Etapa 10), one mark per kind; with `doorPicks` the master taps a door.
- * - **Reach (E6-10, MAP-LANGUAGE.md):** the squares the server says a combatant
+ * - **Reach (E6-10, docs/design.md):** the squares the server says a combatant
  *   can go to, tinted, inside a dashed circle of the movement left. A square the
  *   circle holds that is not tinted gets no mark of its own.
  * - **Offers (E9-13):** a dashed outline on the square of the reactor of a pending
@@ -103,6 +103,8 @@ export class CombatMap {
    * 1,5 m"), to judge the grid's size by. */
   readonly mark = input<Square | null>(null);
   readonly masterMoves = input(false);
+  /** The master's "Movimento forçado" is on: while a token is dragged, its square of origin is marked and a dashed line runs from it. */
+  readonly forcedDrag = input(false);
   readonly ownMoveId = input<string | null>(null);
   readonly pickSquares = input(false);
   /** Side of one square in pixels; `null` fits the map to its container. */
@@ -206,6 +208,27 @@ export class CombatMap {
     return { x1: from.x, y1: from.y, x2: to.x, y2: to.y };
   });
 
+  /** A forced drag in progress: the square the token left, and the line from it to where it is now. */
+  protected readonly forcedTrace = computed(() => {
+    const drag = this.drag();
+    const token =
+      drag && this.forcedDrag()
+        ? this.combatants().find((c) => c.id === drag.id && c.placed)
+        : undefined;
+    if (!drag || !token || (drag.col === token.col && drag.row === token.row)) {
+      return null;
+    }
+    const from = squareCenter({ col: token.col, row: token.row }, this.columns(), this.rows());
+    const to = squareCenter(drag, this.columns(), this.rows());
+    return {
+      origin: { col: token.col, row: token.row },
+      x1: from.x,
+      y1: from.y,
+      x2: to.x,
+      y2: to.y,
+    };
+  });
+
   protected readonly listed = computed(() =>
     this.shown().map((c) => ({
       id: c.id,
@@ -230,7 +253,7 @@ export class CombatMap {
     return combatantInitial(c.label);
   }
 
-  /** An NPC is the rounded square; a player's creature is round with a dashed outline (MAP-LANGUAGE.md). */
+  /** An NPC is the rounded square; a player's creature is round with a dashed outline (docs/design.md). */
   protected npc(c: Combatant): boolean {
     return !isPlayer(c) && !isCreature(c);
   }

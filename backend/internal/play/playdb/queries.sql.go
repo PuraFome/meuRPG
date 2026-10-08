@@ -1333,7 +1333,7 @@ INSERT INTO combatants (
     $10, $11, $12, $13, $14, $15, $16, $17, $18,
     $19, $20, $21, $22, $23
 )
-RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged
+RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left
 `
 
 type InsertCombatantParams struct {
@@ -1439,6 +1439,10 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 		&i.SummonGroupID,
 		&i.Dismissed,
 		&i.ActionSurged,
+		&i.SpellCast,
+		&i.BonusSpellCast,
+		&i.ActionAttackKey,
+		&i.BonusAttacksLeft,
 	)
 	return i, err
 }
@@ -1456,7 +1460,7 @@ INSERT INTO combatants (
     $15, $16, $17, $18,
     'party', $19, $20, $21, $22
 )
-RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged
+RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left
 `
 
 type InsertCreatureCombatantParams struct {
@@ -1565,6 +1569,10 @@ func (q *Queries) InsertCreatureCombatant(ctx context.Context, arg InsertCreatur
 		&i.SummonGroupID,
 		&i.Dismissed,
 		&i.ActionSurged,
+		&i.SpellCast,
+		&i.BonusSpellCast,
+		&i.ActionAttackKey,
+		&i.BonusAttacksLeft,
 	)
 	return i, err
 }
@@ -2500,7 +2508,7 @@ func (q *Queries) ListCastPendingDamages(ctx context.Context, arg ListCastPendin
 }
 
 const listCombatants = `-- name: ListCombatants :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left FROM combatants
 WHERE encounter_id = $1 AND NOT dismissed
 ORDER BY order_index, created_at, id
 `
@@ -2566,6 +2574,10 @@ func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Com
 			&i.SummonGroupID,
 			&i.Dismissed,
 			&i.ActionSurged,
+			&i.SpellCast,
+			&i.BonusSpellCast,
+			&i.ActionAttackKey,
+			&i.BonusAttacksLeft,
 		); err != nil {
 			return nil, err
 		}
@@ -2578,7 +2590,7 @@ func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Com
 }
 
 const listCombatantsWithDismissed = `-- name: ListCombatantsWithDismissed :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left FROM combatants
 WHERE encounter_id = $1
 ORDER BY order_index, created_at, id
 `
@@ -2643,6 +2655,10 @@ func (q *Queries) ListCombatantsWithDismissed(ctx context.Context, encounterID s
 			&i.SummonGroupID,
 			&i.Dismissed,
 			&i.ActionSurged,
+			&i.SpellCast,
+			&i.BonusSpellCast,
+			&i.ActionAttackKey,
+			&i.BonusAttacksLeft,
 		); err != nil {
 			return nil, err
 		}
@@ -2655,7 +2671,7 @@ func (q *Queries) ListCombatantsWithDismissed(ctx context.Context, encounterID s
 }
 
 const listCreatureCombatants = `-- name: ListCreatureCombatants :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left FROM combatants
 WHERE encounter_id = $1 AND kind = 'creature' AND NOT dismissed
 ORDER BY order_index, created_at, id
 `
@@ -2721,6 +2737,10 @@ func (q *Queries) ListCreatureCombatants(ctx context.Context, encounterID string
 			&i.SummonGroupID,
 			&i.Dismissed,
 			&i.ActionSurged,
+			&i.SpellCast,
+			&i.BonusSpellCast,
+			&i.ActionAttackKey,
+			&i.BonusAttacksLeft,
 		); err != nil {
 			return nil, err
 		}
@@ -2861,7 +2881,7 @@ func (q *Queries) ListGameSessions(ctx context.Context, campaignID string) ([]Ga
 }
 
 const listOpenCombatantsOfCreatures = `-- name: ListOpenCombatantsOfCreatures :many
-SELECT cb.id, cb.encounter_id, cb.character_id, cb.user_id, cb.label, cb.kind, cb.hidden, cb.initiative, cb.initiative_bonus, cb.initiative_face, cb.tie_ordered, cb.order_index, cb.grid_col, cb.grid_row, cb.speed_ft, cb.movement_used_ft, cb.dashed, cb.action_used, cb.bonus_action_used, cb.reaction_used, cb.hp_current, cb.hp_max, cb.hp_temp, cb.defeated, cb.death_successes, cb.death_failures, cb.conditions, cb.concentration_spell, cb.created_at, cb.attacks_made, cb.ac_bonus, cb.death_save_rolled, cb.xp_value, cb.turn_state, cb.movement_used_dft, cb.last_move_dft, cb.side, cb.size, cb.speed_fly_ft, cb.jump_long_dft, cb.jump_high_dft, cb.cover_mark, cb.disengaged, cb.creature_id, cb.monster_key, cb.summon_attack, cb.summon_group_id, cb.dismissed, cb.action_surged FROM combatants AS cb
+SELECT cb.id, cb.encounter_id, cb.character_id, cb.user_id, cb.label, cb.kind, cb.hidden, cb.initiative, cb.initiative_bonus, cb.initiative_face, cb.tie_ordered, cb.order_index, cb.grid_col, cb.grid_row, cb.speed_ft, cb.movement_used_ft, cb.dashed, cb.action_used, cb.bonus_action_used, cb.reaction_used, cb.hp_current, cb.hp_max, cb.hp_temp, cb.defeated, cb.death_successes, cb.death_failures, cb.conditions, cb.concentration_spell, cb.created_at, cb.attacks_made, cb.ac_bonus, cb.death_save_rolled, cb.xp_value, cb.turn_state, cb.movement_used_dft, cb.last_move_dft, cb.side, cb.size, cb.speed_fly_ft, cb.jump_long_dft, cb.jump_high_dft, cb.cover_mark, cb.disengaged, cb.creature_id, cb.monster_key, cb.summon_attack, cb.summon_group_id, cb.dismissed, cb.action_surged, cb.spell_cast, cb.bonus_spell_cast, cb.action_attack_key, cb.bonus_attacks_left FROM combatants AS cb
 JOIN encounters AS e ON e.id = cb.encounter_id
 JOIN game_sessions AS gs ON gs.id = e.game_session_id
 WHERE gs.campaign_id = $1::UUID
@@ -2937,6 +2957,10 @@ func (q *Queries) ListOpenCombatantsOfCreatures(ctx context.Context, arg ListOpe
 			&i.SummonGroupID,
 			&i.Dismissed,
 			&i.ActionSurged,
+			&i.SpellCast,
+			&i.BonusSpellCast,
+			&i.ActionAttackKey,
+			&i.BonusAttacksLeft,
 		); err != nil {
 			return nil, err
 		}
@@ -3855,8 +3879,8 @@ func (q *Queries) NextSessionNumber(ctx context.Context, campaignID string) (int
 
 const resetCombatantTurn = `-- name: ResetCombatantTurn :exec
 UPDATE combatants
-SET movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, action_surged = false, action_used = false, bonus_action_used = false, reaction_used = false,
-    attacks_made = 0, ac_bonus = 0, death_save_rolled = false, turn_state = 'acting'
+SET movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, action_surged = false, spell_cast = false, bonus_spell_cast = false, action_used = false, bonus_action_used = false, reaction_used = false,
+    attacks_made = 0, action_attack_key = NULL, bonus_attacks_left = 0, ac_bonus = 0, death_save_rolled = false, turn_state = 'acting'
 WHERE id = $1
 `
 
@@ -4012,6 +4036,25 @@ type SetCombatantActionSurgedParams struct {
 // Action Surge was used in this turn (true), or its undo (false).
 func (q *Queries) SetCombatantActionSurged(ctx context.Context, arg SetCombatantActionSurgedParams) error {
 	_, err := q.db.Exec(ctx, setCombatantActionSurged, arg.ID, arg.ActionSurged)
+	return err
+}
+
+const setCombatantAttackState = `-- name: SetCombatantAttackState :exec
+UPDATE combatants
+SET action_attack_key = $2, bonus_attacks_left = $3
+WHERE id = $1
+`
+
+type SetCombatantAttackStateParams struct {
+	ID               string
+	ActionAttackKey  *string
+	BonusAttacksLeft int32
+}
+
+// The attack of the action this turn and the Flurry of Blows strikes left, or
+// their undo.
+func (q *Queries) SetCombatantAttackState(ctx context.Context, arg SetCombatantAttackStateParams) error {
+	_, err := q.db.Exec(ctx, setCombatantAttackState, arg.ID, arg.ActionAttackKey, arg.BonusAttacksLeft)
 	return err
 }
 
@@ -4259,6 +4302,24 @@ func (q *Queries) SetCombatantHitPoints(ctx context.Context, arg SetCombatantHit
 	return err
 }
 
+const setCombatantHitPointsMax = `-- name: SetCombatantHitPointsMax :exec
+UPDATE combatants
+SET hp_max = $2
+WHERE id = $1
+`
+
+type SetCombatantHitPointsMaxParams struct {
+	ID    string
+	HpMax *int32
+}
+
+// An NPC's maximum hit points, when a spell raises them (Ajuda) or its undo
+// puts them back.
+func (q *Queries) SetCombatantHitPointsMax(ctx context.Context, arg SetCombatantHitPointsMaxParams) error {
+	_, err := q.db.Exec(ctx, setCombatantHitPointsMax, arg.ID, arg.HpMax)
+	return err
+}
+
 const setCombatantInitiative = `-- name: SetCombatantInitiative :exec
 UPDATE combatants
 SET initiative = $2, initiative_face = $3, tie_ordered = false
@@ -4359,6 +4420,25 @@ type SetCombatantSideParams struct {
 // Whose side the combatant fights on ('party' or 'enemy'), the master's "Aliado".
 func (q *Queries) SetCombatantSide(ctx context.Context, arg SetCombatantSideParams) error {
 	_, err := q.db.Exec(ctx, setCombatantSide, arg.ID, arg.Side)
+	return err
+}
+
+const setCombatantSpellsCast = `-- name: SetCombatantSpellsCast :exec
+UPDATE combatants
+SET spell_cast = $2, bonus_spell_cast = $3
+WHERE id = $1
+`
+
+type SetCombatantSpellsCastParams struct {
+	ID             string
+	SpellCast      bool
+	BonusSpellCast bool
+}
+
+// Which kinds of spell the combatant cast this turn (the bonus action spell
+// limit), or the cast's undo.
+func (q *Queries) SetCombatantSpellsCast(ctx context.Context, arg SetCombatantSpellsCastParams) error {
+	_, err := q.db.Exec(ctx, setCombatantSpellsCast, arg.ID, arg.SpellCast, arg.BonusSpellCast)
 	return err
 }
 

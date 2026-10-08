@@ -29,6 +29,7 @@ import { OpenSessions } from '../../../shell/live-notice/open-sessions';
 import { openSheet } from '../../live-session/combat/sheet-host';
 import { openWildShape } from '../../../shared/wild-shape/wild-shape-sheet';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
+import { isUnlimited } from '../../../core/combat/unlimited-uses';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { CreatureCard } from './creature-card';
 import type { EditMode } from './creature-edit';
@@ -143,7 +144,9 @@ export class CreaturesPanel {
     return tight(
       u.left === 0
         ? `Sem usos · ${back}`
-        : `Restam ${u.left} de ${u.total} ${u.total === 1 ? 'uso' : 'usos'} · ${back}`,
+        : isUnlimited(u.total)
+          ? `Usos ilimitados · ${back}`
+          : `Restam ${u.left} de ${u.total} ${u.total === 1 ? 'uso' : 'usos'} · ${back}`,
     );
   });
 

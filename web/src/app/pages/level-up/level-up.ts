@@ -41,6 +41,7 @@ import {
 import { ContentWatcher } from '../../core/content/content-watcher';
 import { openSpellDetails } from '../../shared/spell-details/open-spell-details';
 import { AbilitiesStep } from './abilities-step/abilities-step';
+import { ClassPick, type ClassOption } from './class-pick/class-pick';
 import { HpStep } from './hp-step/hp-step';
 import { LevelUpSession } from './level-up-session';
 import { PicksStep } from './picks-step/picks-step';
@@ -82,6 +83,7 @@ function sheetKeys(character: Character): SheetKeys {
   selector: 'app-level-up',
   imports: [
     AbilitiesStep,
+    ClassPick,
     HpStep,
     MatButtonModule,
     MatIconModule,
@@ -125,6 +127,22 @@ export class LevelUpPage {
   protected readonly step = computed<StepKey>(
     () => this.steps()[Math.min(this.index(), this.steps().length - 1)] ?? 'hp',
   );
+  /** The sheet's classes, with the level each would go to: the cards of "Qual classe sobe de nível?" (two or more only). */
+  protected readonly classOptions = computed<ClassOption[] | null>(() => {
+    const s = this.session();
+    const classes = s?.before.classes ?? [];
+    return classes.length >= 2
+      ? classes.map((c) => ({ key: c.classKey, name: c.namePt, from: c.level, to: c.level + 1 }))
+      : null;
+  });
+  /** The class a tap asked for while choices were made: the question "Trocar de classe?" is open for it. */
+  protected readonly classAsking = signal<string | null>(null);
+  /** The options of the other class are being read. */
+  protected readonly classBusy = signal(false);
+  /** What a screen reader hears after the class changes. */
+  protected readonly classStatus = signal('');
+  private classSwitches = 0;
+
   protected readonly stepLabel = computed(() => STEP_LABELS[this.step()]);
   protected readonly isLast = computed(() => this.step() === 'summary');
   protected readonly isFirst = computed(() => this.index() === 0);
@@ -269,7 +287,16 @@ export class LevelUpPage {
         (key, name) => this.describeSpell(key, name),
       );
       this.state.set({ status: 'ready', session });
-      afterNextRender(() => this.watchFoot(), { injector: this.injector });
+      afterNextRender(
+        () => {
+          this.watchFoot();
+          // Two classes or more: the focus opens on the checked card.
+          this.host.nativeElement
+            .querySelector<HTMLInputElement>('app-class-pick input:checked')
+            ?.focus({ preventScroll: true });
+        },
+        { injector: this.injector },
+      );
     } catch (err) {
       if (seq !== this.reads) {
         return;
@@ -565,7 +592,7 @@ export class LevelUpPage {
       // The table's content is read again too: the master may have retired an option, or written a new one.
       const [character, options, catalog] = await Promise.all([
         this.client.character(this.campaignId(), this.characterId()),
-        this.client.options(this.campaignId(), this.characterId()),
+        this.client.options(this.campaignId(), this.characterId(), old.options.classKey),
         this.client.catalog(this.campaignId(), this.characterId(), true),
       ]);
       if (seq !== this.reads) {
@@ -600,6 +627,96 @@ export class LevelUpPage {
       }
       return false;
     }
+  }
+
+  /** A tap on a class card: with nothing chosen yet the level goes to that class at once, else the page asks first. */
+  protected pickClass(key: string): void {
+    const s = this.session();
+    if (!s || this.classBusy() || key === s.options.classKey) {
+      return;
+    }
+    if (s.draft.dirty()) {
+      this.classAsking.set(key);
+      afterNextRender(
+        () => {
+          const keep = this.host.nativeElement.querySelector<HTMLElement>('.js-class-keep');
+          keep?.scrollIntoView({ block: 'center' });
+          keep?.focus({ preventScroll: true });
+        },
+        { injector: this.injector },
+      );
+      return;
+    }
+    void this.switchClass(key);
+  }
+
+  /** "Trocar para o ...": the choices of the draft go, and the options of the other class are read. */
+  protected confirmClass(): void {
+    const key = this.classAsking();
+    this.classAsking.set(null);
+    if (key) {
+      void this.switchClass(key);
+    }
+  }
+
+  /** "Continuar com o ...": the question closes and everything stays as it was. */
+  protected keepClass(): void {
+    this.classAsking.set(null);
+    this.focusClass();
+  }
+
+  private async switchClass(key: string): Promise<void> {
+    const old = this.session();
+    if (!old) {
+      return;
+    }
+    const turn = ++this.classSwitches;
+    this.classBusy.set(true);
+    this.failure.set(null);
+    try {
+      const options = await this.client.options(this.campaignId(), this.characterId(), key);
+      if (turn !== this.classSwitches) {
+        return;
+      }
+      const draft = new LevelUpDraft(options, sheetKeys(old.character), old.draft.catalog);
+      const session = new LevelUpSession(
+        this.campaignId(),
+        old.character,
+        options,
+        draft,
+        this.client,
+        old.preference,
+        (k, name) => this.describeSpell(k, name),
+      );
+      // A die rolled on its way for the old class lands on the old session, which is off screen: never on this class.
+      old.stop();
+      this.index.set(0);
+      this.state.set({ status: 'ready', session });
+      this.classStatus.set(
+        `${options.classNamePt} escolhido. Passo 1 de ${session.draft.steps().length}, ${STEP_LABELS[session.draft.steps()[0]]}.`,
+      );
+      this.focusClass();
+    } catch (err) {
+      if (turn === this.classSwitches) {
+        this.show(describeLevelUpFailure(err));
+        this.focusClass();
+      }
+    } finally {
+      if (turn === this.classSwitches) {
+        this.classBusy.set(false);
+      }
+    }
+  }
+
+  /** The focus returns to the checked class card. */
+  private focusClass(): void {
+    afterNextRender(
+      () =>
+        this.host.nativeElement
+          .querySelector<HTMLInputElement>('app-class-pick input:checked')
+          ?.focus({ preventScroll: true }),
+      { injector: this.injector },
+    );
   }
 
   /** A refusal names the step that owns the rule: the button goes there. */

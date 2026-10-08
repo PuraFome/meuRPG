@@ -22,7 +22,8 @@ import { GenerateImageButton } from '../../../shared/image-generate/generate-ima
 import type { GenerateOrigin } from '../../../core/images/imagegen-copy';
 import { MapAsk } from '../map-ask/map-ask';
 
-import type { Map as MapMessage } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import { MapBlockedReason, type Map as MapMessage } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import { DELETE_BLOCKED_TEXT } from '../../../core/maps/map-errors';
 import { deleteMapConsequences } from './map-head-copy';
 
 type Mode = 'view' | 'rename' | 'delete' | 'image';
@@ -35,6 +36,10 @@ type Mode = 'view' | 'rename' | 'delete' | 'image';
  * computer, also "Imagem: <nome>" with "Trocar imagem". The battle grid
  * (RN-21) has its own page: "Definir a grade" or "Mudar a grade" opens it.
  * "Apagar mapa" closes the line.
+ *
+ * "Apagar mapa" stays clickable when the server would refuse it, grey, with
+ * the reason under it (`aria-describedby`); the question still shows the
+ * server's refusal if the master insists.
  *
  * "Renomear" turns the title into the "Nome do mapa" field, with "Salvar
  * nome" and "Cancelar" under it. "Apagar mapa" asks in place of the state
@@ -77,6 +82,10 @@ export class MapHead {
   readonly imageErases = input(false);
   /** A combat that has not ended runs on the map: the image cannot change (the editor's banner says why). */
   readonly combatRunning = input(false);
+  /** A point of the map is a treasure marked found: the server refuses to delete the map (`TREASURE_FOUND`). */
+  readonly treasureFound = input(false);
+  /** A treasure of the map was turned into XP (`TREASURE_CONVERTED`). */
+  readonly treasureConverted = input(false);
   readonly toggleReveal = output<void>();
   readonly changeImage = output<void>();
   /** The generate dialog made pictures, or made one the map's image: the page reads the map again. */
@@ -89,6 +98,19 @@ export class MapHead {
     hasGrid: this.map().gridColumns > 0,
     revealed: this.map().revealed,
   }));
+  /** Why "Apagar mapa" would be refused, in the server's order (combat, treasure turned into XP, treasure found), or null. */
+  protected readonly deleteReason = computed<string | null>(() => {
+    if (this.combatRunning()) {
+      return DELETE_BLOCKED_TEXT[MapBlockedReason.COMBAT_RUNNING];
+    }
+    if (this.treasureConverted()) {
+      return DELETE_BLOCKED_TEXT[MapBlockedReason.TREASURE_CONVERTED];
+    }
+    if (this.treasureFound()) {
+      return DELETE_BLOCKED_TEXT[MapBlockedReason.TREASURE_FOUND];
+    }
+    return null;
+  });
   protected readonly mode = signal<Mode>('view');
   protected readonly working = signal(false);
   protected readonly error = signal<string | null>(null);

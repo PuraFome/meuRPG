@@ -241,7 +241,25 @@
   color: var(--mr-ink-muted);
 }
 
+// The row of an action being edited is the form's card.
+.sa__row--edit {
+  padding-block: var(--mr-space-3);
+}
+
 @media (max-width: 359.98px) {
+  // The name takes the whole width; the four icons go on the line under it, to the right.
+  .sa__main {
+    flex-wrap: wrap;
+  }
+
+  .sa__text {
+    flex-basis: 100%;
+  }
+
+  .sa__controls {
+    margin-inline-start: auto;
+  }
+
   .sa__select {
     width: 100%;
 

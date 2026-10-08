@@ -29,7 +29,7 @@ let nextId = 0;
 
 /**
  * The dungeon preview of "Gerar masmorra" (E10-05 1): the floor as paper with a faint grid, the walls and the rock behind them in the image's own colours (the flat dark of the generated image) with the wall mark the map draws over it (the veil and the
- * hatch of MAP-LANGUAGE-E10, the same direction as the editor's), as one shape, not a square each, the doors by kind and the stairs drawn over it exactly as the map will draw them
+ * hatch of docs/design.md, the same direction as the editor's), as one shape, not a square each, the doors by kind and the stairs drawn over it exactly as the map will draw them
  * (`app-door-mark`, `app-stair-mark`), and under it the counts and the legend of what the drawing shows. The secret door appears with its
  * mark and the crossed eye in the legend: this page is the master's. The picture is `role="img"` with the counts as its name; its parts
  * are decorative.

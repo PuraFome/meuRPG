@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
  * `ink` border. The two differ by shape and fill, never by colour. A
  * defeated one is grey with a ✕; a hidden one (the master only) is dashed
  * with the eye-off badge. A player's creature (a familiar, summoned animals) is
- * round like a character with a dashed outline (MAP-LANGUAGE.md). A combatant with conditions has a dot at its lower
+ * round like a character with a dashed outline (docs/design.md). A combatant with conditions has a dot at its lower
  * right corner (E6-29): the names are in the lists and the map's text list.
  * `current` adds the 3px accent ring and `mine` the
  * player's own accent halo. The "Vez" word above a token on the map belongs

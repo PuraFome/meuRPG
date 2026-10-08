@@ -33,6 +33,13 @@ export class HpStep {
   protected readonly rolled = computed(() =>
     this.s().draft.hpCard() === 'roll' ? this.s().draft.rolled() : null,
   );
+  /** The die card cannot be chosen when this level's die was rolled for another class, and says why inside the card. */
+  protected readonly rollBlocked = computed<readonly number[]>(() =>
+    this.s().rollOtherClass() ? [ROLL] : [],
+  );
+  protected readonly rollReasons = computed<Partial<Record<number, string>>>(() =>
+    this.s().rollOtherClass() ? { [ROLL]: this.s().rollOtherClass() } : {},
+  );
   protected readonly die = computed(() => this.s().die);
 
   protected readonly options = computed<readonly DiceOption<number>[]>(() => {
@@ -64,8 +71,7 @@ export class HpStep {
   });
 
   protected readonly lockLine = computed(
-    () =>
-      `Só o que o nível ${this.s().options.toLevel} dá fica aberto. O resto da ficha continua travado.`,
+    () => `Só o que ${this.s().levelWords} dá fica aberto. O resto da ficha continua travado.`,
   );
 
   protected pick(value: number): void {

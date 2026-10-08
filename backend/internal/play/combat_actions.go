@@ -155,7 +155,7 @@ func (s *Service) mustActNow(ctx context.Context, c *combatTx, who playdb.Combat
 
 func turnOf(c playdb.Combatant) link.Turn {
 	return link.Turn{
-		ActionUsed: c.ActionUsed, BonusActionUsed: c.BonusActionUsed, ReactionUsed: c.ReactionUsed, AttacksMade: int(c.AttacksMade), ActionSurged: c.ActionSurged,
+		ActionUsed: c.ActionUsed, BonusActionUsed: c.BonusActionUsed, ReactionUsed: c.ReactionUsed, AttacksMade: int(c.AttacksMade), ActionSurged: c.ActionSurged, SpellCast: c.SpellCast, BonusSpellCast: c.BonusSpellCast,
 		Dashed: c.Dashed, SpeedFt: int(max(c.SpeedFt, c.SpeedFlyFt)), MovementUsedFt: int(c.MovementUsedDft) / 10,
 		MovementUsedDFt: int(c.MovementUsedDft), LastMoveDFt: int(c.LastMoveDft), Disengaged: c.Disengaged,
 		JumpLongDFt: int(c.JumpLongDft), JumpHighDFt: int(c.JumpHighDft),
@@ -310,7 +310,7 @@ func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrai
 	}
 	var out []*playv1.SpellTargets
 	for _, e := range spells {
-		sp, err := s.roster.CombatSpell(ctx, nil, campaignID, who.CharacterID, e.key, e.level)
+		sp, err := s.roster.CombatSpell(ctx, nil, campaignID, who.CharacterID, e.key, e.level, "")
 		if err != nil {
 			return nil, err
 		}
@@ -665,19 +665,15 @@ func (s *Service) RollAttack(
 		// action's attacks, with Extra Attack), or the reaction for an opportunity
 		// attack. The master has the last word, and an NPC with several attacks is
 		// his to run.
-		perAction := max(attackerSheet.AttacksPerAction, 1)
+		bonusKind := combat.BonusNone
 		if !v.master {
 			switch {
 			case asReaction && attacker.ReactionUsed:
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is used")
-			case !asReaction && attack.Spell && attacker.ActionUsed:
-				// A cantrip takes the whole action, whatever the Attack action did.
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
-			case !asReaction && !attack.Spell && combat.AttacksLeft(perAction, combat.TurnState{ActionUsed: attacker.ActionUsed, AttacksMade: int(attacker.AttacksMade)}) == 0:
-				if attacker.AttacksMade > 0 && perAction > 1 {
-					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ATTACKS_USED, "the Attack action made all its attacks")
+			case !asReaction:
+				if bonusKind, err = attackEconomy(attacker, attackerSheet, attack); err != nil {
+					return nil, err
 				}
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
 			}
 			// RN-21: the reach is a player's limit on a map. Without one (RN-25) nobody
 			// has a square and the master judges the reach, so nothing is checked.
@@ -730,7 +726,12 @@ func (s *Service) RollAttack(
 			return nil, err
 		}
 		targetAC := targetSheet.ArmorClass + int(target.AcBonus) + cover.bonus()
-		result := combat.ResolveAttack(attack.ToHit, targetAC, face)
+		// Improved Critical and Superior Critical are for weapon attacks only.
+		criticalFrom := attackerSheet.CriticalRange
+		if attack.Spell {
+			criticalFrom = 0
+		}
+		result := combat.ResolveAttackFrom(attack.ToHit, targetAC, face, criticalFrom)
 
 		after := attacker
 		var run int32
@@ -743,22 +744,35 @@ func (s *Service) RollAttack(
 			RunBefore: run, Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: attackKey,
 			D20: clamp32(face, 1, 20), Modifier: clamp32(attack.ToHit, math.MinInt32, math.MaxInt32), Total: clamp32(result.Total, math.MinInt32, math.MaxInt32),
 			Physical: roll.Physical, Outcome: outcomeMiss, AsReaction: asReaction, CriticalMaxRule: c.rules.CriticalMaxPlusRoll,
-			ActionBefore: attacker.ActionUsed, ReactionBefore: attacker.ReactionUsed, AttacksBefore: attacker.AttacksMade,
+			ActionBefore: attacker.ActionUsed, BonusBefore: attacker.BonusActionUsed, ReactionBefore: attacker.ReactionUsed, AttacksBefore: attacker.AttacksMade,
+			AsBonus: bonusKind != combat.BonusNone, AttackKeyBefore: deref(attacker.ActionAttackKey), FlurryBefore: attacker.BonusAttacksLeft,
 			// The armor class the roll was compared with (an active Escudo's +5
 			// included): the master's answer shows it, a player's never does.
 			TargetAC: clamp32(targetAC, 0, math.MaxInt32),
 			Cover:    cover.key(), CoverSource: cover.sourceKey(), CoverBonus: clamp32(cover.bonus(), 0, 5),
 			CoverRestricted: cp.restricted, CoverSeenBy: cp.seenBy,
 		}
-		if asReaction {
+		switch {
+		case asReaction:
 			after.ReactionUsed = true
-		} else {
+		case bonusKind == combat.BonusFlurry:
+			// The bonus action went to Flurry of Blows: one of its strikes.
+			if err := c.q.SetCombatantAttackState(ctx, playdb.SetCombatantAttackStateParams{ID: attacker.ID, ActionAttackKey: attacker.ActionAttackKey, BonusAttacksLeft: attacker.BonusAttacksLeft - 1}); err != nil {
+				return nil, fmt.Errorf("count the flurry strike: %w", err)
+			}
+		case bonusKind != combat.BonusNone:
+			after.BonusActionUsed = true
+		default:
 			after.ActionUsed = true
-			// A cantrip is no attack of the Attack action: no Extra Attack count.
-			if !attack.Spell {
+			// A cantrip is no attack of the Attack action, but its beams are counted
+			// (Eldritch Blast), so a cast makes no more than its beams.
+			if !attack.Spell || attack.Beams > 1 {
 				if err := c.q.SetCombatantAttacksMade(ctx, playdb.SetCombatantAttacksMadeParams{ID: attacker.ID, AttacksMade: attacker.AttacksMade + 1}); err != nil {
 					return nil, fmt.Errorf("count the attack: %w", err)
 				}
+			}
+			if err := c.q.SetCombatantAttackState(ctx, playdb.SetCombatantAttackStateParams{ID: attacker.ID, ActionAttackKey: &attack.Key, BonusAttacksLeft: attacker.BonusAttacksLeft}); err != nil {
+				return nil, fmt.Errorf("remember the attack: %w", err)
 			}
 		}
 		if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
@@ -771,8 +785,14 @@ func (s *Service) RollAttack(
 			if result.Critical {
 				made.Outcome = outcomeCrit
 			}
+			bonus := attack.DiceBonus
+			if bonusKind == combat.BonusTwoWeapon {
+				// The off-hand attack adds no ability modifier to its damage (unless
+				// it is negative, or the character fights with two weapons).
+				bonus = combat.OffHandBonus(bonus, attack.AbilityMod, attackerSheet.TwoWeaponFighting)
+			}
 			p, err := s.openHit(ctx, c, m.CampaignID, attacker, target, attackKey,
-				link.Dice{Count: attack.DiceCount, Sides: attack.DiceSides, Bonus: attack.DiceBonus, DamageType: attack.DamageType}, result.Critical, result.Total, targetAC)
+				link.Dice{Count: attack.DiceCount, Sides: attack.DiceSides, Bonus: bonus, DamageType: attack.DamageType}, result.Critical, result.Total, targetAC)
 			if err != nil {
 				return nil, err
 			}
@@ -959,7 +979,11 @@ func (s *Service) RollDamage(
 			if err != nil {
 				return nil, fmt.Errorf("list the cast's pending damage: %w", err)
 			}
-			group = slices.DeleteFunc(all, func(o playdb.PendingDamage) bool { return o.Status != pendingAwaitingRoll })
+			// A spell with two damage types opens one roll for each: only the ones of
+			// this damage type settle together.
+			group = slices.DeleteFunc(all, func(o playdb.PendingDamage) bool {
+				return o.Status != pendingAwaitingRoll || o.DamageType != p.DamageType || o.Healing != p.Healing
+			})
 		}
 
 		// The damage: the dice (doubled on a critical hit under the SRD's rule, as the
@@ -1001,6 +1025,11 @@ func (s *Service) RollDamage(
 			amount := clamp32(total, 0, math.MaxInt32)
 			if g.Half {
 				amount = clamp32(combat.HalfDamage(total), 0, math.MaxInt32)
+			}
+			if !g.Healing {
+				if amount, err = s.afterResistance(ctx, c, tgt, g.DamageType, amount); err != nil {
+					return nil, err
+				}
 			}
 			hit, vit, err := s.landDamage(ctx, c, g, tgt, amount)
 			if err != nil {
@@ -1080,6 +1109,23 @@ func (s *Service) RollDamage(
 		}
 	}
 	return connect.NewResponse(resp), nil
+}
+
+// afterResistance is the damage that lands on the target once its stat block's
+// resistances, vulnerabilities and immunities to the damage type are applied, after
+// the bonuses and the half of a saving throw (SRD 5.1). Only a target that takes
+// the damage at once and has a stat block is adjusted: an NPC made from a creature
+// and a creature. A player's character keeps its Rage and other resistances as
+// notes, for the master to apply when he sets the amount (RN-02).
+func (s *Service) afterResistance(ctx context.Context, c *combatTx, target playdb.Combatant, damageType string, amount int32) (int32, error) {
+	if !holdsHP(target) || damageType == "" || amount <= 0 {
+		return amount, nil
+	}
+	mods, err := s.roster.DamageModifiers(ctx, c.tx, c.session.CampaignID, target.CharacterID, deref(target.MonsterKey))
+	if err != nil {
+		return 0, err
+	}
+	return clamp32(combat.AdjustForType(int(amount), damageType, mods), 0, math.MaxInt32), nil
 }
 
 // landDamage puts a rolled damage or heal on its target, as far as the target's
@@ -1603,6 +1649,7 @@ func (s *Service) TakeAction(
 			Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, Key: actionKey, RunBefore: run,
 			ActionBefore: who.ActionUsed, BonusBefore: who.BonusActionUsed, ReactionBefore: who.ReactionUsed, DashedBefore: who.Dashed,
 			AttacksBefore: who.AttacksMade, DisengagedBefore: who.Disengaged, SurgedBefore: who.ActionSurged,
+			AttackKeyBefore: deref(who.ActionAttackKey), FlurryBefore: who.BonusAttacksLeft,
 		}
 		after := who
 		switch economy {
@@ -1624,25 +1671,19 @@ func (s *Service) TakeAction(
 			if err := c.q.SetCombatantAttacksMade(ctx, playdb.SetCombatantAttacksMadeParams{ID: who.ID, AttacksMade: 0}); err != nil {
 				return nil, fmt.Errorf("give the action back: %w", err)
 			}
+			// The new Attack action starts from nothing.
+			if err := c.q.SetCombatantAttackState(ctx, playdb.SetCombatantAttackStateParams{ID: who.ID, BonusAttacksLeft: who.BonusAttacksLeft}); err != nil {
+				return nil, fmt.Errorf("forget the last attack: %w", err)
+			}
 		}
 		if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
 			ID: who.ID, ActionUsed: after.ActionUsed, BonusActionUsed: after.BonusActionUsed, ReactionUsed: after.ReactionUsed, Dashed: after.Dashed,
 		}); err != nil {
 			return nil, fmt.Errorf("spend the action: %w", err)
 		}
-		if actionKey == "standard:dash" {
-			if err := markDashed(ctx, c.q, who.ID); err != nil {
-				return nil, err
-			}
-		}
-		// Disengage: no opportunity attacks for the rest of the turn (slice 9.6b
-		// reads the flag).
-		if actionKey == "standard:disengage" {
-			if err := c.q.SetCombatantDisengaged(ctx, playdb.SetCombatantDisengagedParams{ID: who.ID, Disengaged: true}); err != nil {
-				return nil, fmt.Errorf("mark the disengage: %w", err)
-			}
-		}
-
+		// What the action does to the turn: a standard action's own, or the one a
+		// feature performs (Cunning Action's Dash, Step of the Wind's Disengage).
+		standard := actionKey
 		if feature {
 			sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, who)
 			if err != nil {
@@ -1653,6 +1694,9 @@ func (s *Service) TakeAction(
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("action_key is not one of the character's feature actions"))
 			}
 			fa := sheet.FeatureActions[fi]
+			if fa.Standard != "" {
+				standard = fa.Standard
+			}
 			// One use of its resource: only a player's character counts them, and a
 			// pool of points (Cura pelas mãos) is the master's.
 			if fa.Resource != "" && !fa.Pool && who.Kind == kindPlayer {
@@ -1660,6 +1704,17 @@ func (s *Service) TakeAction(
 					return nil, err
 				}
 				made.Resource = fa.Resource
+			}
+			if actionKey == flurryOfBlows {
+				// Flurry of Blows comes right after the Attack action; its two unarmed
+				// strikes are rolled as attacks (the master has the last word).
+				last, hasLast := lastAttack(sheet, who)
+				if !v.master && (!who.ActionUsed || who.AttacksMade == 0 || !hasLast || last.Spell) {
+					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNSPECIFIED, "Flurry of Blows comes after the Attack action")
+				}
+				if err := c.q.SetCombatantAttackState(ctx, playdb.SetCombatantAttackStateParams{ID: who.ID, ActionAttackKey: who.ActionAttackKey, BonusAttacksLeft: flurryStrikes}); err != nil {
+					return nil, fmt.Errorf("give the flurry strikes: %w", err)
+				}
 			}
 			if actionKey == secondWind {
 				vit, err := s.secondWind(ctx, c, m, v, who, sheet.FighterLevel, in, rolled, &made)
@@ -1669,6 +1724,18 @@ func (s *Service) TakeAction(
 				if vit != nil {
 					vitals = vit
 				}
+			}
+		}
+		if standard == "standard:dash" {
+			if err := markDashed(ctx, c.q, who.ID); err != nil {
+				return nil, err
+			}
+		}
+		// Disengage: no opportunity attacks for the rest of the turn (slice 9.6b
+		// reads the flag).
+		if standard == "standard:disengage" {
+			if err := c.q.SetCombatantDisengaged(ctx, playdb.SetCombatantDisengagedParams{ID: who.ID, Disengaged: true}); err != nil {
+				return nil, fmt.Errorf("mark the disengage: %w", err)
 			}
 		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {

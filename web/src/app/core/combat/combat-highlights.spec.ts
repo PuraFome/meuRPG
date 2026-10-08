@@ -154,6 +154,7 @@ describe('combat highlights', () => {
         name: 'Pensantus',
         damageDealt: 17,
         finalBlows: 2,
+        criticalHits: 1,
       }),
     ];
     expect(ownNumbers(own, 'pens')).toEqual([
@@ -161,6 +162,7 @@ describe('combat highlights', () => {
       { label: 'Dano recebido', value: '0' },
       { label: 'Golpes finais', value: '2' },
       { label: 'Cura', value: '0' },
+      { label: 'Acertos críticos', value: '1' },
     ]);
     expect(ownNumbers([], 'pens')).toEqual([]);
   });

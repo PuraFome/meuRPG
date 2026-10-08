@@ -30,7 +30,7 @@
   color: var(--mr-ink);
 }
 
-// A player's creature: round like a character, drawn hollow with a dashed ink outline (MAP-LANGUAGE.md).
+// A player's creature: round like a character, drawn hollow with a dashed ink outline (docs/design.md).
 :host(.tk--creature) {
   border: 2px dashed var(--mr-ink);
   background: var(--mr-surface);

@@ -90,11 +90,24 @@ func errContentChanged() error {
 }
 
 func errKeyUsedForAnotherChange() error {
-	return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was used for another change"))
+	return badTreasure("idempotency_key", "was used for another change")
 }
 
-func badTreasure(format string, a ...any) error {
-	return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf(format, a...))
+// badTreasure is `invalid_argument` with the TreasureInvalidField detail: it names the
+// request field that breaks a rule, never the value.
+func badTreasure(field, format string, a ...any) error {
+	return withTreasureField(connect.NewError(connect.CodeInvalidArgument, fmt.Errorf(field+" "+format, a...)), field)
+}
+
+// withTreasureField names the request field on an `invalid_argument` a shared check made.
+func withTreasureField(err error, field string) error {
+	var ce *connect.Error
+	if errors.As(err, &ce) && ce.Code() == connect.CodeInvalidArgument {
+		if detail, detailErr := connect.NewErrorDetail(&mapsv1.TreasureInvalidField{Field: field}); detailErr == nil {
+			ce.AddDetail(detail)
+		}
+	}
+	return err
 }
 
 // GetTreasureParty implements mapsv1connect.TreasureServiceHandler.
@@ -141,7 +154,7 @@ func (s *Service) GenerateTreasure(
 	}
 	t, err := s.rules.GenerateTreasure(mode, level, seed)
 	if err != nil {
-		return nil, badTreasure("party_level must be 1 to 20")
+		return nil, badTreasure("party_level", "must be 1 to 20")
 	}
 	return connect.NewResponse(&mapsv1.GenerateTreasureResponse{Treasure: treasureToProto(t)}), nil
 }
@@ -149,7 +162,7 @@ func (s *Service) GenerateTreasure(
 func treasureMode(m mapsv1.TreasureMode) (string, error) {
 	mode, ok := modeToRules[m]
 	if !ok {
-		return "", badTreasure("mode must be INDIVIDUAL or HOARD")
+		return "", badTreasure("mode", "must be INDIVIDUAL or HOARD")
 	}
 	return mode, nil
 }
@@ -159,7 +172,7 @@ func treasureMode(m mapsv1.TreasureMode) (string, error) {
 func (s *Service) partyLevel(ctx context.Context, campaignID string, given *int32) (int, error) {
 	if given != nil {
 		if *given < rules.MinTreasureLevel || *given > rules.MaxTreasureLevel {
-			return 0, badTreasure("party_level must be %d to %d", rules.MinTreasureLevel, rules.MaxTreasureLevel)
+			return 0, badTreasure("party_level", "must be %d to %d", rules.MinTreasureLevel, rules.MaxTreasureLevel)
 		}
 		return int(*given), nil
 	}
@@ -221,17 +234,17 @@ func (s *Service) PlaceTreasure(
 	}
 	level := req.Msg.GetPartyLevel()
 	if level < rules.MinTreasureLevel || level > rules.MaxTreasureLevel {
-		return nil, badTreasure("party_level must be %d to %d", rules.MinTreasureLevel, rules.MaxTreasureLevel)
+		return nil, badTreasure("party_level", "must be %d to %d", rules.MinTreasureLevel, rules.MaxTreasureLevel)
 	}
 	if req.Msg.Seed == nil {
-		return nil, badTreasure("seed is required: the treasure is rolled again from it")
+		return nil, badTreasure("seed", "is required: the treasure is rolled again from it")
 	}
 	key, err := cleanKey(req.Msg.GetIdempotencyKey())
 	if err != nil {
-		return nil, err
+		return nil, withTreasureField(err, "idempotency_key")
 	}
 	if req.Msg.GetContentVersion() == "" {
-		return nil, badTreasure("content_version is required: send the one the treasure came with")
+		return nil, badTreasure("content_version", "is required: send the one the treasure came with")
 	}
 	if req.Msg.GetContentVersion() != s.rules.Version() {
 		return nil, errContentChanged()
@@ -239,14 +252,14 @@ func (s *Service) PlaceTreasure(
 	name := defaultTreasureName(mode)
 	if req.Msg.Name != nil {
 		if name, err = cleanName("name", req.Msg.GetName()); err != nil {
-			return nil, err
+			return nil, withTreasureField(err, "name")
 		}
 	}
 	// The server rolls the treasure again: what the app computed or showed is never
 	// trusted, only the three inputs.
 	t, err := s.rules.GenerateTreasure(mode, int(level), req.Msg.GetSeed())
 	if err != nil {
-		return nil, badTreasure("party_level must be 1 to 20")
+		return nil, badTreasure("party_level", "must be 1 to 20")
 	}
 	description, err := cleanDescription(treasureDescription(t))
 	if err != nil {
@@ -289,7 +302,10 @@ func (s *Service) PlaceTreasure(
 		}
 		sq := grid.Square{Col: int(req.Msg.GetColumn()), Row: int(req.Msg.GetRow())}
 		if !g.Contains(sq) {
-			return badTreasure("the square is outside the map's grid")
+			if sq.Col < 0 || sq.Col >= g.Columns {
+				return badTreasure("column", "is outside the map's grid")
+			}
+			return badTreasure("row", "is outside the map's grid")
 		}
 		x, y := g.CenterOf(sq)
 		value := int32(t.GoldPO) //nolint:gosec // G115: at most 1,000,000

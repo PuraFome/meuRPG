@@ -176,7 +176,7 @@ describe('FogMap', () => {
     );
   });
 
-  it('names every state the map draws, in the order of MAP-LANGUAGE.md, then the layers and the tokens', () => {
+  it('names every state the map draws, in the order of docs/design.md, then the layers and the tokens', () => {
     const { fixture, el } = create({ tokens: [pensantus, toren, goblin, nanquim] });
     settle(fixture);
     const items = Array.from(el.querySelectorAll('.mr-legend li'), (li) => plain(li));

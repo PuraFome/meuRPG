@@ -76,17 +76,40 @@ func basicDerived(content *rules.Content, b *charactersv1.BasicSheet) rules.Deri
 	if m, ok := content.MonsterDerived(b.GetMonsterKey()); ok {
 		d.AttacksPerAction = max(m.AttacksPerAction, 1)
 	}
+	creature, _ := content.MonsterDerived(b.GetMonsterKey())
+	// Its saving throws are the stat block's (the ability modifier plus the
+	// proficiency the creature lists); a basic sheet with no creature has none.
+	d.SavingThrows = creature.SavingThrows
 	for i, a := range b.GetAttacks() {
 		typeKey := "damage-type:" + strings.ToLower(strings.TrimPrefix(a.GetDamageType().String(), "DAMAGE_TYPE_"))
 		dice := rules.DiceFormula{Count: int(a.GetDamageDiceCount()), Sides: int(a.GetDamageDiceSides()), Bonus: int(a.GetDamageBonus())}
-		d.Attacks = append(d.Attacks, rules.Attack{
+		attack := rules.Attack{
 			Key: fmt.Sprintf("basic:%d", i), Name: a.GetName(), NamePT: a.GetName(), Kind: "weapon",
 			AttackBonus: int(a.GetAttackBonus()), DamageDice: dice, Damage: diceText(dice),
 			DamageType: typeKey, DamageTypeNamePT: content.NamePT(typeKey), RangeFt: int(a.GetRangeFt()),
 			Melee: a.GetRangeFt() <= 5, // a basic sheet's attack that reaches 5 ft or less is a melee one
-		})
+		}
+		// The sheet writes a reach or a range in one number, so a melee attack with
+		// a longer reach (a giant's club) or a throwing range (a guard's spear)
+		// looks like a ranged one. The creature's stat block says which it is.
+		if from, ok := creatureAttackNamed(creature, a.GetName()); ok && from.Melee {
+			attack.Melee, attack.LongRangeFt = true, from.LongRangeFt
+		}
+		d.Attacks = append(d.Attacks, attack)
 	}
 	return d
+}
+
+// creatureAttackNamed is the attack of the creature's stat block that a basic
+// sheet's attack of that name was made from (the sheet cuts a name at its
+// limit).
+func creatureAttackNamed(creature rules.Derived, name string) (rules.Attack, bool) {
+	for _, a := range creature.Attacks {
+		if n := a.NamePT; n == name || (len([]rune(n)) > maxAttackNameLength && string([]rune(n)[:maxAttackNameLength]) == name) {
+			return a, true
+		}
+	}
+	return rules.Attack{}, false
 }
 
 // diceText writes a formula as the sheet shows it: "1d6+2", "2d8-1".
@@ -119,15 +142,17 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 			Key: a.Key, Name: name, Save: a.SaveDC > 0, Spell: a.Kind == "spell", ToHit: a.AttackBonus,
 			DiceCount: a.DamageDice.Count, DiceSides: a.DamageDice.Sides, DiceBonus: a.DamageDice.Bonus,
 			DamageType: a.DamageType, RangeFt: a.RangeFt, LongRangeFt: a.LongRangeFt, Melee: a.Melee,
+			Beams: a.Beams, Light: a.Light, Unarmed: a.Key == rules.UnarmedStrikeKey, MartialArts: a.MartialArts, AbilityMod: a.AbilityMod,
 		})
 	}
 	for _, a := range d.StandardActions {
 		out.Actions = append(out.Actions, link.Action{Key: a.Key, Name: a.NamePT})
 	}
 	out.AttacksPerAction = max(d.AttacksPerAction, 1)
+	out.CriticalRange, out.TwoWeaponFighting = d.CriticalRange, d.TwoWeaponFighting
 	for _, a := range d.Actions {
 		out.FeatureActions = append(out.FeatureActions, link.FeatureAction{
-			Key: a.Key, Name: a.NamePT, Economy: a.Economy, Resource: a.Resource, Pool: poolResources[a.Resource],
+			Key: a.Key, Name: a.NamePT, Economy: a.Economy, Resource: a.Resource, Pool: poolResources[a.Resource], Standard: a.Standard,
 		})
 	}
 	for _, cl := range d.Classes {
@@ -163,7 +188,7 @@ func (s *Service) CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, 
 	d.SpeedWalkFt = turn.SpeedFt
 	opts := combat.Options(d, combat.TurnState{
 		ActionUsed: turn.ActionUsed, BonusActionUsed: turn.BonusActionUsed, ReactionUsed: turn.ReactionUsed,
-		MovementUsedFt: turn.MovementUsedFt, Dashed: turn.Dashed, AttacksMade: turn.AttacksMade, ActionSurged: turn.ActionSurged,
+		MovementUsedFt: turn.MovementUsedFt, Dashed: turn.Dashed, AttacksMade: turn.AttacksMade, ActionSurged: turn.ActionSurged, SpellCast: turn.SpellCast, BonusSpellCast: turn.BonusSpellCast,
 	}, usage)
 	out := turnOptionsToProto(opts)
 	// The movement is kept in tenths of a foot (RN-21): the feet fields are those
@@ -217,6 +242,8 @@ var reasonToProto = map[string]rulesv1.DisabledReasonCode{
 	combat.ReasonReactionOnly:        rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_REACTION_ONLY,
 	combat.ReasonTooLong:             rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG,
 	combat.ReasonAttacksUsed:         rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ATTACKS_USED,
+
+	combat.ReasonBonusActionSpellLimit: rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT,
 }
 
 // turnOptionsToProto copies package combat's TurnOptions into the API's.

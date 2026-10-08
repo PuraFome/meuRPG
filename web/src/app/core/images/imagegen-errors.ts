@@ -101,6 +101,9 @@ export function generateIssue(err: unknown, what: 'generate' | 'edit' = 'generat
           ? 'A imagem que você quer ajustar não existe mais na galeria, ou não foi feita pelo app. Feche o diálogo e abra de novo.'
           : 'Esse mapa, ou uma das imagens escolhidas, não existe mais. Feche o diálogo e abra de novo.',
       [Code.Unauthenticated]: 'Sua sessão acabou. Entre de novo para gerar a imagem.',
+      // The monthly and daily limits come as a typed refusal above: a bare `resource_exhausted` is the server's cap on requests alive at once.
+      [Code.ResourceExhausted]:
+        'Muitas imagens sendo geradas agora. Espere uma terminar e tente de novo.',
     }),
     field: null,
     reason: null,

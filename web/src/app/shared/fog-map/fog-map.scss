@@ -111,7 +111,7 @@
   margin-block: calc(-1 * var(--mr-space-1));
 }
 
-// A character's creature in the legend: round, hollow, with a dashed ink outline (MAP-LANGUAGE.md): the token's own look.
+// A character's creature in the legend: round, hollow, with a dashed ink outline (docs/design.md): the token's own look.
 .fm__creature {
   box-sizing: border-box;
   display: inline-flex;

@@ -59,9 +59,6 @@ func (x *deriver) abilities() {
 		}
 		manual := min(max(x.b.ExtraAbilityBonuses[a], -MaxManualBonus), MaxManualBonus)
 		score := base + raceBonus[a] + manual
-		if score > 20 && manual <= 0 {
-			x.issue(IssueScoreAbove20, field, "%s passa de 20, o máximo normal de um personagem.", x.c.namePT(string(a)))
-		}
 		x.scores[a] = score
 		x.mods[a] = modifier(score)
 		x.d.Abilities = append(x.d.Abilities, AbilityScore{
@@ -88,6 +85,37 @@ func (x *deriver) abilities() {
 			Source: x.race.Key, Mode: "note",
 			TextPT: fmt.Sprintf("%s: some +1 em %d habilidades à escolha (%s) nos bônus manuais.", x.c.namePT(x.race.Key), ch.Choose, strings.Join(names, ", ")),
 		})
+	}
+}
+
+// abilityEffects adds the features that raise a score (Primal Champion) to the
+// scores abilities computed, up to each effect's cap, and then reports a score
+// above 20 that nothing explains: a positive manual bonus is where a magic item
+// that raises a score goes (the SRD lets an item pass 20), and a feature's cap
+// lifts the ceiling for the score it raised.
+func (x *deriver) abilityEffects() {
+	for i, ab := range x.d.Abilities {
+		ceiling, score := MaxNormalScore, ab.Score
+		for _, a := range x.active {
+			e := a.effect
+			if e.Type != "modifier" || e.Target != "score."+string(ab.Ability) || len(e.Tags) > 0 || !x.applies(a) {
+				continue
+			}
+			v, ok := x.value(a)
+			if !ok {
+				continue
+			}
+			ceiling = max(ceiling, e.Cap)
+			score = max(score, min(score+v, e.Cap))
+		}
+		if score != ab.Score {
+			x.d.Abilities[i].Bonus += score - ab.Score
+			x.d.Abilities[i].Score, x.d.Abilities[i].Modifier = score, modifier(score)
+			x.scores[ab.Ability], x.mods[ab.Ability] = score, modifier(score)
+		}
+		if score > ceiling && ab.ManualBonus <= 0 {
+			x.issue(IssueScoreAbove20, "full.base_scores."+protoAbility[ab.Ability], "%s passa de %d, o máximo normal de um personagem.", x.c.namePT(string(ab.Ability)), ceiling)
+		}
 	}
 }
 
@@ -197,7 +225,7 @@ func (x *deriver) savingThrows() {
 		if proficient[a] {
 			bonus += x.prof
 		}
-		bonus = x.modifiers("save."+string(a), bonus)
+		bonus = x.modifiers("save.all", x.modifiers("save."+string(a), bonus))
 		x.d.SavingThrows = append(x.d.SavingThrows, SavingThrow{
 			Ability: a, NamePT: x.c.namePT(string(a)), Proficient: proficient[a], Bonus: bonus,
 		})

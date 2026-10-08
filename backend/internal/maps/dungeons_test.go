@@ -2,6 +2,7 @@ package maps
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"image"
@@ -1537,5 +1538,51 @@ func TestRedrawIsRefusedBeforeRenderingWhenTheGalleryIsFull(t *testing.T) {
 		release()
 		err := <-done
 		t.Errorf("the refusal (%v) waited for the processing slot: the dungeon is drawn before the gallery is checked", err)
+	}
+}
+
+// GetDungeonRooms answers from one snapshot: a redraw that commits while the
+// rooms are being read never makes the dungeon look like it lost its own image
+// (the record from before the redraw next to the map from after it).
+func TestGetDungeonRoomsIsOneSnapshotWhileTheMasterRedraws(t *testing.T) {
+	t.Parallel()
+	d := newDungeonTable(t)
+	m := d.master
+	seed, _ := testDungeonSeed(t)
+	created := m.createDungeon(d.campaign, "Masmorra", testDungeonOptions(), seed).GetMap()
+	redrawn := m.mustUpload(d.campaign, "nova.png", pngImage(t, 41*24, 31*24))
+
+	d.h.hookAfterQuery("FROM generated_dungeons", func() {
+		// What a redraw commits: the new image on the record and on the map together.
+		tx, err := d.h.pool.Begin(context.Background())
+		if err != nil {
+			t.Errorf("begin: %v", err)
+			return
+		}
+		defer func() { _ = tx.Rollback(context.Background()) }()
+		for _, q := range []string{"UPDATE generated_dungeons SET image_id = $1 WHERE map_id = $2", "UPDATE maps SET image_id = $1 WHERE id = $2"} {
+			if _, err := tx.Exec(context.Background(), q, redrawn.GetId(), created.GetId()); err != nil {
+				t.Errorf("redraw from the hook: %v", err)
+				return
+			}
+		}
+		if err := tx.Commit(context.Background()); err != nil {
+			t.Errorf("commit: %v", err)
+		}
+	})
+	rooms, err := m.dungeonRooms(d.campaign, created.GetId())
+	if err != nil {
+		t.Fatalf("GetDungeonRooms() error = %v", err)
+	}
+	if !rooms.GetImageIsGenerated() {
+		t.Error("GetDungeonRooms(): the dungeon lost its own image while a redraw committed; want the rooms as they were or as they became, not a mix")
+	}
+
+	// Positive control: the hook did redraw, and the next read still has its image.
+	if rooms, err := m.dungeonRooms(d.campaign, created.GetId()); err != nil || !rooms.GetImageIsGenerated() {
+		t.Errorf("rooms after the redraw: %v, %v", rooms.GetImageIsGenerated(), err)
+	}
+	if got := m.mustGetMap(d.campaign, created.GetId()).GetMap().GetImage().GetId(); got != redrawn.GetId() {
+		t.Errorf("the hook did not move the map to the new image: %s", got)
 	}
 }

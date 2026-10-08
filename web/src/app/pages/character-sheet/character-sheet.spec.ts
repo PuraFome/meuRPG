@@ -131,6 +131,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     languages: [],
     proficiencies: [],
     equipment: [],
+    backgroundEquipment: '',
     coins: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
     customFeaturesText: '',
     issues: [],
@@ -334,8 +335,10 @@ describe('CharacterSheetPage', () => {
                 attackBonus: 5,
                 damage: '1d6+3',
                 damageTypePt: 'concussão',
+                versatileDamage: '',
                 saveDc: 0,
                 saveAbility: null,
+                beams: 0,
               },
               {
                 key: 'spell:fire-bolt',
@@ -344,8 +347,10 @@ describe('CharacterSheetPage', () => {
                 attackBonus: 6,
                 damage: '1d10',
                 damageTypePt: 'fogo',
+                versatileDamage: '',
                 saveDc: 0,
                 saveAbility: null,
+                beams: 0,
               },
               {
                 key: 'spell:poison-spray',
@@ -354,8 +359,10 @@ describe('CharacterSheetPage', () => {
                 attackBonus: 0,
                 damage: '1d12',
                 damageTypePt: 'veneno',
+                versatileDamage: '',
                 saveDc: 14,
                 saveAbility: 'con',
+                beams: 0,
               },
             ],
           }),
@@ -372,6 +379,48 @@ describe('CharacterSheetPage', () => {
     expect(el.textContent).toContain('CD 14');
     expect(el.textContent).toContain('Constituição');
     expect(el.textContent).toContain('1d12 veneno');
+  });
+
+  it('shows how many beams a cantrip fires, and keeps the unarmed strike out of the equipment', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({
+            attacks: [
+              {
+                key: 'attack:unarmed-strike',
+                namePt: 'Golpe desarmado',
+                kind: 'weapon',
+                attackBonus: 2,
+                damage: '1',
+                damageTypePt: 'concussão',
+                saveDc: 0,
+                saveAbility: null,
+                versatileDamage: '',
+                beams: 0,
+              },
+              {
+                key: 'spell:eldritch-blast',
+                namePt: 'Rajada Mística',
+                kind: 'spell',
+                attackBonus: 9,
+                damage: '1d10',
+                damageTypePt: 'energia',
+                saveDc: 0,
+                saveAbility: null,
+                versatileDamage: '',
+                beams: 3,
+              },
+            ],
+          }),
+        }),
+      );
+
+    const el = await render();
+    expect(el.textContent).toContain('3 raios, cada um com ataque e dano próprios');
+    expect(el.textContent).toContain('Golpe desarmado');
+    expect(sectionTitled(el, 'Equipamento').textContent).not.toContain('Golpe desarmado');
   });
 
   it('shows spell slots as a readable, separated list using "nível" (integrator fix)', async () => {
@@ -832,8 +881,10 @@ describe('CharacterSheetPage', () => {
                 attackBonus: 4,
                 damage: '1d6+2',
                 damageTypePt: 'perfurante',
+                versatileDamage: '',
                 saveDc: 0,
                 saveAbility: null,
+                beams: 0,
               },
               {
                 key: 'spell:fire-bolt',
@@ -842,8 +893,10 @@ describe('CharacterSheetPage', () => {
                 attackBonus: 6,
                 damage: '1d10',
                 damageTypePt: 'fogo',
+                versatileDamage: '',
                 saveDc: 0,
                 saveAbility: null,
+                beams: 0,
               },
             ],
             equipment: [{ name: 'Corda (15m)', quantity: 1 }],
@@ -864,6 +917,63 @@ describe('CharacterSheetPage', () => {
     expect(section.textContent).not.toContain('Nenhum item cadastrado');
     // No coins: said once, in words.
     expect(section.textContent).toContain('Sem moedas');
+  });
+
+  it('shows the background equipment text in "Equipamento", and nothing when there is none', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({ sheet: fullSheet({ backgroundEquipment: 'Um livro de orações e 15 PO' }) }),
+      );
+    const el = await render();
+    expect(sectionTitled(el, 'Equipamento').textContent).toContain(
+      'Do antecedente: Um livro de orações e 15\u00a0PO',
+    );
+
+    fake.getCharacterSheetFn = () => Promise.resolve(vm({ sheet: fullSheet() }));
+    const without = await render();
+    expect(sectionTitled(without, 'Equipamento').textContent).not.toContain('Do antecedente');
+  });
+
+  it('shows the two-handed damage of a versatile weapon under its damage', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({
+            attacks: [
+              {
+                key: 'equipment:quarterstaff',
+                namePt: 'Bordão',
+                kind: 'weapon',
+                attackBonus: 2,
+                damage: '1d6',
+                damageTypePt: 'concussão',
+                versatileDamage: '1d8',
+                saveDc: 0,
+                saveAbility: null,
+                beams: 1,
+              },
+              {
+                key: 'equipment:dagger',
+                namePt: 'Adaga',
+                kind: 'weapon',
+                attackBonus: 2,
+                damage: '1d4',
+                damageTypePt: 'perfurante',
+                versatileDamage: '',
+                saveDc: 0,
+                saveAbility: null,
+                beams: 1,
+              },
+            ],
+          }),
+        }),
+      );
+    const el = await render();
+    const rows = Array.from(sectionTitled(el, 'Ataques').querySelectorAll('tbody tr'));
+    expect(rows[0].textContent).toContain('Com duas mãos: 1d8');
+    expect(rows[1].textContent).not.toContain('duas mãos');
   });
 
   it('lists only the coins carried', async () => {

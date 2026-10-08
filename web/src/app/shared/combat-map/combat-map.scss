@@ -59,6 +59,7 @@
 .cm__cell,
 .cm__reactor,
 .cm__left,
+.cm__origin,
 .cm__mark {
   z-index: 2;
 }
@@ -76,6 +77,7 @@
 .cm__reactor,
 .cm__left,
 .cm__frame,
+.cm__origin,
 .cm__mark {
   position: absolute;
   box-sizing: border-box;
@@ -86,7 +88,7 @@
 
 // The marks drawn over the map use the map's own colours (`--mr-map-*`, the same
 // in both themes): the image under them does not change with the theme, so
-// neither do they (MAP-LANGUAGE.md). The legend swatches (`.mr-swatch`) use the same.
+// neither do they (docs/design.md). The legend swatches (`.mr-swatch`) use the same.
 // The squares the token can walk to: a tint, not a colour alone (the legend
 // names it, and the sentence under the map says how far).
 .cm__cell {
@@ -96,6 +98,12 @@
 .cm__mark {
   border: 2px solid var(--mr-map-accent);
   background: color-mix(in srgb, var(--mr-map-accent) 30%, transparent);
+}
+
+// Where a forced drag started: a dashed ring on the square the token left.
+.cm__origin {
+  border: 2px dashed var(--mr-map-accent);
+  border-radius: 50%;
 }
 
 // The circle of the movement left (or of a jump): a dashed garnet line over a pale

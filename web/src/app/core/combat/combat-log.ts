@@ -8,6 +8,7 @@ import {
   DeathSaveOutcome,
   JumpKind,
   PendingDamageStatus,
+  type SaveResult,
   SaveOutcome,
   SpellEffectKind,
   SpellEffectOutcome,
@@ -19,7 +20,7 @@ import { metersFixed, metersText } from '../units';
 import { circleLabel } from './combat-options';
 import { countsSentence } from './death-saves';
 import { degreeWord, sourceWord } from './cover';
-import { effectWords, poolRollText, reasonWords } from './hp-effects';
+import { effectWords, gainWords, poolRollText, reasonWords } from './hp-effects';
 import { trapLogText } from '../traps/trap-log';
 
 /**
@@ -191,15 +192,26 @@ function attackText(e: CombatLogEntry): string {
   return out;
 }
 
+/** The parenthesis after a save: the DC, and for the master the d20 of an NPC whose sheet has no
+ * saving throw bonus. `bonus_known` is only sent to the master and is false for everyone else, and
+ * that false means nothing; for the master it is an NPC whose roll is the bare d20, which the
+ * master may overrule. */
+function saveNotes(save: SaveResult, ctx: LogContext): string {
+  const unknown =
+    ctx.master && save.roll && !save.bonusKnown ? `d20 ${save.roll.total}, bônus desconhecido` : '';
+  const notes = [save.dc > 0 ? `CD ${save.dc}` : '', unknown].filter((n) => n !== '');
+  return notes.length > 0 ? ` (${notes.join('; ')})` : '';
+}
+
 /** One target of a cast: what the roll, the save and the damage did to it. */
-function castTargetText(t: CombatLogSpellTarget): string {
+function castTargetText(t: CombatLogSpellTarget, ctx: LogContext): string {
   const who = t.targetLabel || 'alguém';
   const damage = t.damage ? damageText(t.damage) : '';
   let out: string;
   if (t.darts > 0) {
     out = `${t.darts} ${t.darts === 1 ? 'dardo' : 'dardos'} ${inThe(who)}${damage}`;
   } else if (t.save) {
-    const dc = t.save.dc > 0 ? ` (CD ${t.save.dc})` : '';
+    const dc = saveNotes(t.save, ctx);
     out = `${the(who)} ${t.save.outcome === SaveOutcome.SAVED ? 'resistiu' : 'falhou'}${dc}${damage}`;
   } else if (t.outcome !== AttackOutcome.UNSPECIFIED) {
     out = `${inThe(who)}: ${t.outcome === AttackOutcome.CRITICAL_HIT ? 'crítico' : t.outcome === AttackOutcome.MISS ? 'errou' : 'acertou'}${t.outcome === AttackOutcome.MISS ? '' : damage}`;
@@ -227,8 +239,8 @@ function castText(e: CombatLogEntry, ctx: LogContext): { text: string; card?: Po
   let out = ` conjura ${e.keyNamePt || 'uma magia'}${circle}`;
   if (targets.length > 0) {
     out += plain
-      ? ` ${listNames(targets.map(castTargetText))}`
-      : `: ${targets.map(castTargetText).join('; ')}`;
+      ? ` ${listNames(targets.map((t) => castTargetText(t, ctx)))}`
+      : `: ${targets.map((t) => castTargetText(t, ctx)).join('; ')}`;
   }
   if (e.spell?.concentrationEndedKey) {
     out += '. A concentração anterior acabou';
@@ -307,7 +319,8 @@ function hpCastText(e: CombatLogEntry, ctx: LogContext): { text: string; card?: 
       facts.push(`limite de ${spell.effectThreshold}`);
     }
     const detail = facts.length > 0 ? ` (${facts.join(', ')})` : '';
-    const healed = fx?.healed !== undefined && w.affected ? `recupera ${fx.healed} PV` : '';
+    const healed =
+      fx?.healed !== undefined && w.affected ? gainWords(spell.effectKind, fx.healed) : '';
     const reason =
       !w.affected && fx
         ? reasonWords(fx.reason, fx.hitPointsBefore, fx.poolLeft, spell.effectThreshold)

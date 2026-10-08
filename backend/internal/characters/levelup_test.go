@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -11,10 +13,13 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 )
 
@@ -810,5 +815,240 @@ func TestMR040_ListLevelUpsPages(t *testing.T) {
 	} {
 		_, err := tb.master.api.ListLevelUps(t.Context(), connect.NewRequest(req))
 		wantCode(t, name, err, connect.CodeInvalidArgument)
+	}
+}
+
+// storedHitPoints is the character's stored current hit points: nil when never
+// set (full), and whether the vitals row exists.
+func (tb *levelUpTable) storedHitPoints(id string) (current *int32, found bool) {
+	tb.h.t.Helper()
+	err := tb.h.pool.QueryRow(tb.h.t.Context(), "SELECT hit_points_current FROM character_vitals WHERE character_id = $1", id).Scan(&current)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, false
+	}
+	if err != nil {
+		tb.h.t.Fatalf("read the vitals: %v", err)
+	}
+	return current, true
+}
+
+// setHitPoints writes the character's stored current hit points (nil: never set).
+func (tb *levelUpTable) setHitPoints(id string, current *int32) {
+	tb.h.t.Helper()
+	if _, err := tb.h.pool.Exec(tb.h.t.Context(),
+		`INSERT INTO character_vitals (character_id, hit_points_current, revision, updated_at) VALUES ($1, $2, 1, now())
+		 ON CONFLICT (character_id) DO UPDATE SET hit_points_current = excluded.hit_points_current`, id, current); err != nil {
+		tb.h.t.Fatalf("write the vitals: %v", err)
+	}
+}
+
+// MR-040, RN-12: the level-up raises the current hit points by what the maximum
+// gained: a wound stays a wound, a full character stays full, and a character
+// whose hit points were never set stays full without a number being written.
+func TestMR040_TheCurrentHitPointsRiseWithTheMaximum(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name    string
+		current *int32 // before; the maximum is 23 at level 3 and 30 at level 4
+		want    *int32
+	}{
+		{"wounded", new(int32(20)), new(int32(27))},
+		{"at the maximum", new(int32(23)), new(int32(30))},
+		{"dying", new(int32(0)), new(int32(7))},
+		{"never set", nil, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			tb := newLevelUpTable(t, 2700)
+			if tb.pc.GetDerived().GetHitPointsMax() != 23 {
+				t.Fatalf("maximum before = %d, want 23", tb.pc.GetDerived().GetHitPointsMax())
+			}
+			tb.setHitPoints(tb.pc.GetId(), c.current)
+			up, err := tb.levelUp(tb.owner, tb.pc, pensantusLevelUp())
+			if err != nil {
+				t.Fatalf("LevelUpCharacter() error = %v", err)
+			}
+			if up.GetDerived().GetHitPointsMax() != 30 {
+				t.Fatalf("maximum after = %d, want 30", up.GetDerived().GetHitPointsMax())
+			}
+			got, _ := tb.storedHitPoints(tb.pc.GetId())
+			if (got == nil) != (c.want == nil) || (got != nil && *got != *c.want) {
+				t.Errorf("stored current hit points = %v, want %v", deref32(got), deref32(c.want))
+			}
+		})
+	}
+}
+
+// deref32 prints a nullable number.
+func deref32(n *int32) string {
+	if n == nil {
+		return "unset"
+	}
+	return strconv.Itoa(int(*n))
+}
+
+// A level-up of a character with no vitals row writes none: it is full.
+func TestMR040_ACharacterWithoutVitalsGetsNone(t *testing.T) {
+	t.Parallel()
+	tb := newLevelUpTable(t, 2700)
+	if _, err := tb.levelUp(tb.owner, tb.pc, pensantusLevelUp()); err != nil {
+		t.Fatalf("LevelUpCharacter() error = %v", err)
+	}
+	if _, found := tb.storedHitPoints(tb.pc.GetId()); found {
+		t.Error("a level-up created a vitals row for a character that was full")
+	}
+}
+
+// The master's edit of the sheet moves the current hit points the same way: a
+// higher maximum lifts a wound's number, a lower one never leaves the current
+// above it.
+func TestMR040_TheMastersEditMovesTheCurrentHitPointsWithTheMaximum(t *testing.T) {
+	t.Parallel()
+	tb := newLevelUpTable(t, 0)
+	id := tb.pc.GetId()
+	edit := func(constitution int32) *charactersv1.Character {
+		t.Helper()
+		full := proto.Clone(tb.pc.GetSheet()).(*charactersv1.CharacterSheet)
+		full.GetFull().BaseScores.Constitution = constitution
+		cur := tb.master.get(t, tb.campaign, id)
+		out, err := tb.master.update(t, cur, cur.GetName(), full)
+		if err != nil {
+			t.Fatalf("master's UpdateCharacter() error = %v", err)
+		}
+		return out
+	}
+	start := tb.pc.GetDerived().GetHitPointsMax()
+
+	// Wounded: 6 below the maximum. A higher Constitution lifts both.
+	tb.setHitPoints(id, new(start-6))
+	raised := edit(18) // Con 15 -> 18: +1 per level
+	gain := raised.GetDerived().GetHitPointsMax() - start
+	if gain <= 0 {
+		t.Fatalf("the maximum went %d -> %d, want a rise", start, raised.GetDerived().GetHitPointsMax())
+	}
+	if got, _ := tb.storedHitPoints(id); got == nil || *got != start-6+gain {
+		t.Errorf("wounded, after a rise of %d: current = %v, want %d", gain, deref32(got), start-6+gain)
+	}
+
+	// At the maximum, a lower maximum pulls the current down with it.
+	tb.setHitPoints(id, new(raised.GetDerived().GetHitPointsMax()))
+	lowered := edit(8)
+	if lowered.GetDerived().GetHitPointsMax() >= raised.GetDerived().GetHitPointsMax() {
+		t.Fatalf("the maximum did not fall: %d", lowered.GetDerived().GetHitPointsMax())
+	}
+	if got, _ := tb.storedHitPoints(id); got == nil || *got != lowered.GetDerived().GetHitPointsMax() {
+		t.Errorf("at the maximum, after a fall: current = %v, want %d", deref32(got), lowered.GetDerived().GetHitPointsMax())
+	}
+
+	// A wound below the lower maximum is left alone (the fall is not charged to it).
+	tb.setHitPoints(id, new(int32(3)))
+	edit(6)
+	if got, _ := tb.storedHitPoints(id); got == nil || *got != 3 {
+		t.Errorf("a wound below the fallen maximum: current = %v, want 3", deref32(got))
+	}
+
+	// Never set stays never set.
+	tb.setHitPoints(id, nil)
+	edit(15)
+	if got, _ := tb.storedHitPoints(id); got != nil {
+		t.Errorf("never set: current = %v, want unset", deref32(got))
+	}
+}
+
+// afterQuery runs hook once, right after the first statement whose text
+// contains match finishes. The statements the hook itself makes pass.
+type afterQuery struct {
+	match string
+	hook  func()
+	fired atomic.Bool
+}
+
+type queryTextKey struct{}
+
+func (*afterQuery) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
+	return context.WithValue(ctx, queryTextKey{}, data.SQL)
+}
+
+func (a *afterQuery) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, _ pgx.TraceQueryEndData) {
+	if sql, _ := ctx.Value(queryTextKey{}).(string); strings.Contains(sql, a.match) && a.fired.CompareAndSwap(false, true) {
+		// From a goroutine of its own: a call that reaches this service again, or a
+		// write through another pool, from inside a transaction's closure would look
+		// like a nested acquisition.
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			a.hook()
+		}()
+		<-done
+	}
+}
+
+// hookAfterQuery makes the service read through a pool of its own whose
+// statements run hook once, after the first one that contains match: what the
+// hook commits lands exactly between two statements of a read.
+func (h *harness) hookAfterQuery(match string, hook func()) {
+	h.t.Helper()
+	pool, err := db.NewPoolWith(h.t.Context(), h.pool.Config().ConnString(), func(cfg *pgxpool.Config) {
+		cfg.MaxConns = 2
+		cfg.ConnConfig.Tracer = &afterQuery{match: match, hook: hook}
+	})
+	if err != nil {
+		h.t.Fatalf("NewPoolWith() error = %v", err)
+	}
+	h.t.Cleanup(pool.Close)
+	h.svc.pool, h.svc.queries = pool, charactersdb.New(pool)
+}
+
+// The level-up options are one moment: a player who levels up while the page
+// is being read never makes it offer the level just taken with its kept hit
+// point roll gone.
+func TestMR040_TheOptionsAreOneSnapshotWhileThePlayerLevelsUp(t *testing.T) {
+	t.Parallel()
+	tb := newLevelUpTable(t, 2700, 6)
+	if _, err := tb.roll(tb.owner, tb.pc); err != nil {
+		t.Fatalf("RollLevelUpHitPoints() error = %v", err)
+	}
+	ch := pensantusLevelUp()
+	ch.HitPoints = &charactersv1.LevelUpHitPoints{Method: charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_ROLLED_IN_APP}
+	tb.h.hookAfterQuery("FROM characters", func() {
+		if _, err := tb.levelUp(tb.owner, tb.pc, ch); err != nil {
+			t.Errorf("LevelUpCharacter() from the hook error = %v", err)
+		}
+	})
+	o, err := tb.options(tb.owner, tb.pc)
+	// As it was: the level and the roll the player had. As it became: no level left to take.
+	if err == nil && o.GetKeptHitPointRoll() != 6 {
+		t.Errorf("GetLevelUpOptions(): level %d to %d with the kept roll %d; want the options as they were, with the roll 6, or a refusal", o.GetFromLevel(), o.GetToLevel(), o.GetKeptHitPointRoll())
+	}
+
+	// Positive control: the hook did level the character up.
+	if got := tb.owner.get(t, tb.campaign, tb.pc.GetId()); got.GetDerived().GetTotalLevel() != 4 {
+		t.Errorf("level after the hook = %d, want 4", got.GetDerived().GetTotalLevel())
+	}
+}
+
+// The same for the preview: the roll the plan keeps and the character come
+// from one moment, so a level-up that commits between them never makes the
+// preview refuse a roll as missing.
+func TestMR040_ThePreviewIsOneSnapshotWhileThePlayerLevelsUp(t *testing.T) {
+	t.Parallel()
+	tb := newLevelUpTable(t, 2700, 6)
+	if _, err := tb.roll(tb.owner, tb.pc); err != nil {
+		t.Fatalf("RollLevelUpHitPoints() error = %v", err)
+	}
+	ch := pensantusLevelUp()
+	ch.HitPoints = &charactersv1.LevelUpHitPoints{Method: charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_ROLLED_IN_APP}
+	tb.h.hookAfterQuery("FROM characters", func() {
+		if _, err := tb.levelUp(tb.owner, tb.pc, ch); err != nil {
+			t.Errorf("LevelUpCharacter() from the hook error = %v", err)
+		}
+	})
+	p, err := tb.preview(tb.owner, tb.pc, ch)
+	if err == nil && p.GetRefusal() != nil {
+		t.Errorf("PreviewLevelUp() refused %v; want the preview as it was, with the roll kept, or an error", p.GetRefusal())
+	}
+	if got := tb.owner.get(t, tb.campaign, tb.pc.GetId()); got.GetDerived().GetTotalLevel() != 4 {
+		t.Errorf("level after the hook = %d, want 4", got.GetDerived().GetTotalLevel())
 	}
 }

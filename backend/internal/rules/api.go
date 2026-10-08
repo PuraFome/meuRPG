@@ -35,6 +35,9 @@ const (
 	// any creature is 30).
 	MinScore = 1
 	MaxScore = 30
+	// MaxNormalScore is the highest score an Ability Score Improvement reaches;
+	// only a feature that says so (Primal Champion) takes a score higher.
+	MaxNormalScore = 20
 	// MaxLevel is the highest total character level.
 	MaxLevel = 20
 	// MaxManualBonus bounds each of Build.ExtraAbilityBonuses, in both
@@ -620,6 +623,13 @@ type Derived struct {
 	// the extra_attack effect's count (Extra Attack: 2 at level 5), or a
 	// creature's Multiattack count.
 	AttacksPerAction int
+	// CriticalRange is the lowest natural d20 that is a critical hit with a
+	// weapon attack: 20, or 19 with Improved Critical and 18 with Superior
+	// Critical.
+	CriticalRange int
+	// TwoWeaponFighting says the character has the fighting style: the damage
+	// of the bonus action attack keeps the ability modifier.
+	TwoWeaponFighting bool
 	// SaveActions are a creature's actions that ask for a saving throw
 	// (a breath, a bite that knocks prone), with their DC. Empty for a
 	// character.
@@ -778,6 +788,20 @@ type Attack struct {
 	// (a dagger, a spear, a handaxe), and false for a ranged weapon and a spell:
 	// an opportunity attack needs a melee weapon.
 	Melee bool
+	// Beams is how many attack rolls the attack makes in one action, each with
+	// its own damage roll: 4 for Eldritch Blast at character level 17. It is 1
+	// for every other attack, and 0 for a weapon.
+	Beams int
+	// Light is a melee weapon with the light property: the only kind of
+	// Two-Weapon Fighting (the attack and the bonus action attack).
+	Light bool
+	// MartialArts says the Martial Arts bonus action unarmed strike goes with
+	// this attack: the unarmed strike, and a monk weapon, while the monk wears
+	// no armor and no shield.
+	MartialArts bool
+	// AbilityMod is the ability modifier inside Damage, which the bonus action
+	// attack of Two-Weapon Fighting leaves out when it is positive.
+	AbilityMod int
 	// Notes is the rest of a creature's action, as the SRD wrote it (in
 	// English): the damage parts after the first, a saving throw, a rider.
 	// The engine rolls the to-hit and the first damage part; the master reads
@@ -884,6 +908,9 @@ const (
 	// IssueExpertise: expertise in a skill without proficiency, or more
 	// expertise than the features give.
 	IssueExpertise = "expertise"
+	// IssueChoiceCount: more options picked for a feature than it allows
+	// (two fighting styles at Fighter 1), or the same option picked twice.
+	IssueChoiceCount = "choice_count"
 	// IssueSpellNotOnList: a spell that is not on any of the build's class
 	// lists.
 	IssueSpellNotOnList = "spell_not_on_list"

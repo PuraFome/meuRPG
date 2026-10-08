@@ -563,6 +563,10 @@ export class CombatView {
   protected readonly moveOptions = new MoveOptionsState();
   /** The master's "Mostrar o alcance": the reach of whoever is on turn, drawn on the map. */
   protected readonly reachOn = signal(false);
+  /** The master's "Movimento forçado" box: it is for one drag, and goes off when the drag is taken. */
+  protected readonly forcedMove = signal(false);
+  /** What the last forced drag did, for the live region; cleared by the next drag. */
+  protected readonly forcedNote = signal('');
   /** "Você parou antes: algo bloqueou o caminho.": what the last move said when it stopped short. */
   protected readonly moveNote = signal('');
   /** The last move stopped before a locked door: the "Mover" page stays open and says so (RN-26). */
@@ -2032,6 +2036,10 @@ export class CombatView {
       return;
     }
     this.error.set('');
+    // The box is for this drag only; a refusal gives it back.
+    const forced = this.forcedMove();
+    this.forcedMove.set(false);
+    this.forcedNote.set('');
     this.state().applyMove({ encounterId: e.id, combatantId: c.id, col: drop.col, row: drop.row });
     // One save at a time per combatant: `MoveSaves` is about positions, and
     // here a square's column and row stand in for x and y.
@@ -2042,16 +2050,38 @@ export class CombatView {
       {
         // The server decides every move (reach, walls, creatures): a refusal puts the token back.
         save: async (to) => {
-          const res = await this.api.move(this.campaignId(), e.id, c.id, to.xBp, to.yBp);
+          const res = await this.api.move(
+            this.campaignId(),
+            e.id,
+            c.id,
+            to.xBp,
+            to.yBp,
+            undefined,
+            undefined,
+            forced,
+          );
           this.state().apply(res.encounter);
+          if (forced) {
+            this.forcedNote.set(
+              `${c.label} foi mov${article(c.label) === 'a' ? 'ida' : 'ido'} à força. Ninguém recebeu oferta de ataque de oportunidade.`,
+            );
+          }
           if (res.lockedDoor) {
-            // The master walks through closed doors but a locked one stops him too (RN-26).
+            // The master walks through closed doors but a locked one stops them too (RN-26).
             this.error.set(
               'Uma porta trancada parou o movimento. Destranque a porta (toque nela no mapa) e mova de novo.',
+            );
+          } else if (res.stoppedEarly) {
+            // A barred or secret door stops it too: the token stands where it stopped.
+            this.error.set(
+              'Uma grade levadiça ou uma porta secreta parou o movimento. Abra a porta (toque nela no mapa) e mova de novo.',
             );
           }
         },
         failed: (saved, err) => {
+          if (forced) {
+            this.forcedMove.set(true);
+          }
           this.state().applyMove({
             encounterId: e.id,
             combatantId: c.id,

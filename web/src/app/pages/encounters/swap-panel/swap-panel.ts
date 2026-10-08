@@ -28,7 +28,7 @@ import { formatInt } from '../../../core/format/text';
         <div class="swap__list" role="radiogroup" aria-labelledby="swap-h">
           @for (c of options(); track c.key) {
             <label class="swap__opt" [class.swap__opt--on]="pick() === c.key">
-              <input type="radio" name="swap" [value]="c.key" [checked]="pick() === c.key" (change)="picked.emit(c.key)" />
+              <input type="radio" class="mr-check-input" name="swap" [value]="c.key" [checked]="pick() === c.key" (change)="picked.emit(c.key)" />
               <span class="swap__n">{{ c.namePt }}</span>
               <span class="swap__nd">ND {{ c.challengeRating }} · {{ format(c.xp) }} XP cada</span>
             </label>

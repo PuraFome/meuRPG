@@ -47,7 +47,7 @@ export interface FogViewer {
  *
  * - **Loading is for the first load only** (a map and a viewer): "Carregando o mapa" (`role="status"`,
  *   read once) with "parte N de M", still stripes where a tile has not come. A tile that arrives later
- *   brings back neither. **The party never vanishes** (MAP-LANGUAGE.md): its tokens are drawn over a
+ *   brings back neither. **The party never vanishes** (docs/design.md): its tokens are drawn over a
  *   place still on its way; only an NPC's waits for its tile.
  * - **Tokens:** NPCs first, the viewer's own last, on top. On a phone the map opens at 2x on the party,
  *   and the party's chips (44 px) take the view to a character.

@@ -463,3 +463,33 @@ func derefInt(n *int32) int32 {
 	}
 	return *n
 }
+
+// carryHitPoints keeps a character's current hit points in step with a change
+// of its maximum, inside the transaction that saved the sheet (RN-12): the
+// maximum `before` and `after` are derived from the two stored sheets with the
+// same content. A character whose current hit points are set gains what the
+// maximum gained, so a wound stays a wound and a character at full health
+// stays at full health; a maximum that fell never leaves the current above it.
+// A character whose current hit points were never set is full whatever the
+// maximum is, and needs nothing.
+func (s *Service) carryHitPoints(ctx context.Context, q *charactersdb.Queries, content *rules.Content, characterID string, before, after []byte) error {
+	was, err := maxima(content, characterID, before, nil)
+	if err != nil {
+		return err
+	}
+	now, err := maxima(content, characterID, after, nil)
+	if err != nil {
+		return err
+	}
+	if was.hitPoints == now.hitPoints {
+		return nil
+	}
+	err = q.CarryHitPoints(ctx, charactersdb.CarryHitPointsParams{
+		CharacterID: characterID, OldMax: i32(was.hitPoints), NewMax: i32(now.hitPoints),
+		Gain: max(i32(now.hitPoints-was.hitPoints), 0), Now: s.now(),
+	})
+	if err != nil {
+		return wrap("carry the current hit points", err)
+	}
+	return nil
+}

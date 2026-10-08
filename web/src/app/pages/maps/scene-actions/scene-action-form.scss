@@ -22,6 +22,14 @@
 
 .sf__kinds {
   display: flex;
+
+  // The legend is 13px (12 at least) and starts where the radios do.
+  legend {
+    float: none;
+    padding: 0;
+    font-size: 13px;
+    line-height: 16px;
+  }
   flex-direction: column;
   margin: 0;
   padding: 0;
@@ -40,7 +48,6 @@
     width: 20px;
     height: 20px;
     margin: 0;
-    accent-color: var(--mr-accent);
   }
 }
 
@@ -60,6 +67,10 @@ mat-error {
   display: flex;
   align-items: flex-start;
   gap: 6px;
+  // The icon sits on the helper text's inset, and the words take the whole width of the field.
+  margin-inline: -8px -16px;
+  font-size: 13px;
+  line-height: 18px;
 
   .mat-icon {
     flex: none;
@@ -74,4 +85,43 @@ mat-error {
   display: flex;
   align-items: center;
   gap: var(--mr-space-3);
+}
+
+// "Salvar ação" with nothing changed: dashed and quiet, still focusable, the reason in words under the buttons.
+.sf__off {
+  // Material fades a disabled button: this one is only "not yet", so its words and its border stay readable (3:1).
+  --mat-button-outlined-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  --mat-button-outlined-disabled-outline-color: var(--mr-control-line);
+  opacity: 1;
+  border-style: dashed;
+  cursor: default;
+}
+
+.sf__reason {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// On a phone the buttons take the width, side by side at 48px.
+@media (max-width: 767.98px) {
+  .sf__actions {
+    > button {
+      flex: 1 1 0;
+      min-width: 0;
+      --mat-button-outlined-container-height: 48px;
+    }
+  }
 }

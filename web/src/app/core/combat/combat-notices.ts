@@ -8,6 +8,7 @@ import { DisabledReasonCode, type ActionOption } from '../../../gen/meurpg/rules
 import type { ResourceUsageVm } from '../../pages/live-session/live-session.types';
 import { joinDots, tight } from '../format/text';
 import { article } from './combat-log';
+import { isUnlimited } from './unlimited-uses';
 import { reasonText } from './combat-options';
 import { groupFeminine, groupName } from './creature-names';
 
@@ -179,7 +180,9 @@ export function wildActionLine(
   }
   const n = feature.usesLeft;
   const uses = resource
-    ? `restam ${n} de ${resource.total} ${resource.total === 1 ? 'uso' : 'usos'}`
+    ? isUnlimited(resource.total)
+      ? 'usos ilimitados'
+      : `restam ${n} de ${resource.total} ${resource.total === 1 ? 'uso' : 'usos'}`
     : `restam ${n} ${n === 1 ? 'uso' : 'usos'}`;
   const back =
     resource?.recharge === 'long_rest'

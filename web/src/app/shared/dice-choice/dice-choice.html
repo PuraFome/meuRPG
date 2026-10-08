@@ -14,6 +14,9 @@
       <span class="dice-choice__text">
         <span class="dice-choice__title">{{ o.title }}</span>
         <span class="dice-choice__desc">{{ notes()[o.value] ?? o.description }}</span>
+        @if (reasons()[o.value]; as why) {
+          <span class="dice-choice__reason"><mat-icon aria-hidden="true">block</mat-icon>{{ why }}</span>
+        }
       </span>
     </label>
   }

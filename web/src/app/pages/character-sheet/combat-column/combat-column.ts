@@ -7,14 +7,20 @@ import {
 } from '../../../core/characters/character-labels';
 import { FullSheetVm } from '../character-sheet.types';
 import { CombatStats } from '../combat-stats/combat-stats';
-import { coinEntries, pactSlotRow, spellLimitsText, spellSlotRows } from '../sheet-format';
+import {
+  coinEntries,
+  keepUnitsTogether,
+  pactSlotRow,
+  spellLimitsText,
+  spellSlotRows,
+} from '../sheet-format';
 
 /**
  * The paper sheet's middle column: the combat numbers, "Ataques" (a real
  * table: the weapons carried, then the damage cantrips, in the server's
  * order), "Magias" (per class: ability, DC and attack; the slots as circles;
  * the cantrips and spells) and "Equipamento" (armour, shield, weapons,
- * items, then the coins).
+ * items, the background's equipment as text, then the coins).
  */
 @Component({
   selector: 'app-combat-column',
@@ -47,11 +53,16 @@ export class CombatColumn {
     return s.wearsArmor ? splitArmorDescription(s.armorClassDescription).armorNamePt : null;
   });
   /** The weapons are the attacks of kind `weapon` (a damage cantrip is not
-   * equipment): no separate request for `FullSheet.weapon_keys`' names. */
+   * equipment, and neither is the unarmed strike every character has): no
+   * separate request for `FullSheet.weapon_keys`' names. */
   protected readonly weaponNames = computed(() =>
     this.sheet()
-      .attacks.filter((a) => a.kind === 'weapon')
+      .attacks.filter((a) => a.kind === 'weapon' && a.key !== 'attack:unarmed-strike')
       .map((a) => a.namePt),
+  );
+  /** The background's equipment text, with each number kept beside its unit. */
+  protected readonly backgroundEquipment = computed(() =>
+    keepUnitsTogether(this.sheet().backgroundEquipment),
   );
   protected readonly coins = computed(() => coinEntries(this.sheet().coins));
 

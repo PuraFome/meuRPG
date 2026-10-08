@@ -90,27 +90,37 @@ func (s *Service) knownTraps(ctx context.Context, campaignID, userID string) (ma
 	return known, nil
 }
 
+// pointDetails are the rows attachPointDetails needs besides the points: who
+// found each treasure and, for the master, who knows each trap.
+type pointDetails struct {
+	finders []mapsdb.MapTreasureFinder
+	reveals []mapsdb.MapPointReveal
+}
+
+// readPointDetails reads a map's pointDetails through q. GetMap passes the
+// queries of the read transaction that read the points, so a treasure unmarked
+// or a trap changed between the reads is never shown with the wrong finders.
+func readPointDetails(ctx context.Context, q *mapsdb.Queries, mapID string, master bool) (pointDetails, error) {
+	var d pointDetails
+	var err error
+	if d.finders, err = q.ListTreasureFindersOfMap(ctx, mapID); err != nil {
+		return d, fmt.Errorf("list the treasure finders: %w", err)
+	}
+	if master {
+		if d.reveals, err = q.ListPointRevealsOfMap(ctx, mapID); err != nil {
+			return d, fmt.Errorf("list the trap reveals: %w", err)
+		}
+	}
+	return d, nil
+}
+
 // attachPointDetails fills what a point's read needs a second query for: who
 // found each found treasure (everyone who sees the treasure gets it) and, for
-// the master, who knows each trap.
-func (s *Service) attachPointDetails(ctx context.Context, campaignID, mapID string, points []*mapsv1.MapPoint, master bool) error {
-	wantFinders := slices.ContainsFunc(points, func(p *mapsv1.MapPoint) bool { return p.GetTreasureFoundAt() != nil })
-	wantReveals := master && slices.ContainsFunc(points, func(p *mapsv1.MapPoint) bool { return p.GetKind() == mapsv1.MapPointKind_MAP_POINT_KIND_TRAP })
-	if !wantFinders && !wantReveals {
+// the master, who knows each trap. The details were read with the points.
+func (s *Service) attachPointDetails(ctx context.Context, campaignID string, points []*mapsv1.MapPoint, d pointDetails) error {
+	finders, reveals := d.finders, d.reveals
+	if len(finders) == 0 && len(reveals) == 0 {
 		return nil
-	}
-	var finders []mapsdb.MapTreasureFinder
-	var reveals []mapsdb.MapPointReveal
-	var err error
-	if wantFinders {
-		if finders, err = s.queries.ListTreasureFindersOfMap(ctx, mapID); err != nil {
-			return err
-		}
-	}
-	if wantReveals {
-		if reveals, err = s.queries.ListPointRevealsOfMap(ctx, mapID); err != nil {
-			return err
-		}
 	}
 	var ids []string
 	for _, f := range finders {

@@ -51,6 +51,7 @@ const fight = {
       name: 'Pensantus',
       damageDealt: 17,
       finalBlows: 2,
+      criticalHits: 3,
     }),
     create(CharacterHighlightsSchema, {
       characterId: 'toren',
@@ -155,7 +156,7 @@ describe("CombatHighlights, the master's panel (E8-11)", () => {
     expect(
       rows.map((r) => Array.from(r.querySelectorAll('.tbl__num')).map((n) => n.textContent)),
     ).toEqual([
-      ['17', '0', '0', '2', '0'],
+      ['17', '0', '0', '2', '3'],
       ['23', '0', '10', '2', '0'],
       ['8', '0', '24', '0', '0'],
     ]);
@@ -277,7 +278,7 @@ describe("HighlightsCard, the players' card (E8-11)", () => {
     expect(el.querySelector('.row__you')?.closest('.row')).toBe(rows(el)[2]);
   });
 
-  it('gives "Seu resultado, Pensantus": the four numbers of their own row, zeros included', async () => {
+  it('gives "Seu resultado, Pensantus": the five numbers of their own row, zeros included', async () => {
     const { el } = await setup();
     expect(flat(el.querySelectorAll('.card__h')[1])).toBe('Seu resultado, Pensantus');
     expect(Array.from(el.querySelectorAll('.own__tile')).map((t) => flat(t))).toEqual([
@@ -285,6 +286,7 @@ describe("HighlightsCard, the players' card (E8-11)", () => {
       'Dano recebido0',
       'Golpes finais2',
       'Cura0',
+      'Acertos críticos3',
     ]);
   });
 
@@ -296,6 +298,7 @@ describe("HighlightsCard, the players' card (E8-11)", () => {
     const { el } = await setup(own, 'outra', 'Outra');
     expect(flat(el.querySelectorAll('.card__h')[1])).toBe('Seu resultado, Outra');
     expect(Array.from(el.querySelectorAll('.own__value')).map((v) => v.textContent)).toEqual([
+      '0',
       '0',
       '0',
       '0',

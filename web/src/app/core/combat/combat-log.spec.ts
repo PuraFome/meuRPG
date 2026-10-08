@@ -528,6 +528,48 @@ describe('the log of spells, reactions, the fallen and conditions (slice 6.5c)',
     );
   });
 
+  it("tells the master that an NPC's saving throw has no known bonus, and nobody else", () => {
+    const cast = entry({
+      kind: CombatLogKind.SPELL_CAST,
+      actorLabel: 'Pensantus',
+      keyNamePt: 'Mãos Flamejantes',
+      spell: {
+        slot: { level: 1, pact: false },
+        targets: [
+          {
+            targetId: 'g',
+            targetLabel: 'Goblin 1',
+            save: {
+              outcome: 2,
+              dc: 14,
+              bonusKnown: false,
+              roll: { diceCount: 1, diceSides: 20, faces: [13], modifier: 0, total: 13 },
+            },
+          },
+          {
+            targetId: 'c',
+            targetLabel: 'Capitão Goblin',
+            save: {
+              outcome: 1,
+              dc: 14,
+              bonusKnown: true,
+              roll: { diceCount: 1, diceSides: 20, faces: [15], modifier: 2, total: 17 },
+            },
+          },
+        ],
+      },
+    } as never);
+    const master = { master: true, players: new Set<string>() };
+    expect(logLine(cast, '', master)?.text).toContain(
+      'o Goblin 1 falhou (CD 14; d20 13, bônus desconhecido)',
+    );
+    // Positive control: a known bonus says nothing more.
+    expect(logLine(cast, '', master)?.text).toContain('o Capitão Goblin resistiu (CD 14)');
+    // A player reads `bonus_known` false on their own roll too, and it means nothing.
+    const player = { master: false, players: new Set(['Goblin 1']) };
+    expect(logLine(cast, '', player)?.text).not.toContain('sem bônus');
+  });
+
   it('names who a spell with no effect the app knows touches', () => {
     const sleep = entry({
       kind: CombatLogKind.SPELL_CAST,

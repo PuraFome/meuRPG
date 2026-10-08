@@ -5,7 +5,7 @@
     ],
     "feature:bardic-inspiration-d6": [
       {"type": "grant_action", "economy": "bonus_action"},
-      {"type": "resource", "resource": "bardic_inspiration", "max": "max(1, mod(\"cha\"))", "recharge": "long_rest"}
+      {"type": "resource", "resource": "bardic_inspiration", "max": "max(1, mod(\"cha\"))", "recharge": "long_rest", "recharge_if": "classLevel(\"bard\") >= 5", "recharge_then": "short_rest"}
     ],
     "feature:jack-of-all-trades": [
       {"type": "proficiency", "proficiency": "skill:*", "level": "half"},

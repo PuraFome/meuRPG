@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { endOpenSessionRPC } from './live-session-support';
-import { newSignedInContext } from './support';
+import { newSignedInContext, pensantus } from './support';
 import { markMilestoneRPC, tableForLevelUp, toren } from './levelup-support';
 
 // MR-040 (the guided level-up: Habilidades, Vida, Magias, Resumo; the master sees "O que mudou"), RN-01 (the
@@ -194,6 +194,69 @@ test(
       await markMilestoneRPC(m, campaignId, 'Chegar ao Vale Seco', [table.characterId]);
       await p.goto(`${sheetOf(campaignId, table.characterId)}/level-up`);
       await expect(p.getByText('Passo 1 de 4 · Habilidades')).toBeVisible();
+    } finally {
+      await endOpenSessionRPC(m, campaignId);
+      await master.close();
+      await player.close();
+    }
+  },
+);
+
+test(
+  'Corvina, Mago 3 e Clérigo 1, escolhe qual classe sobe: a primeira vem marcada, trocar depois de escolher pergunta, e o nível lê "o nível 2 de Clérigo" @MR-040 @RN-12',
+  { tag: ['@MR-040', '@RN-12'] },
+  async ({ browser }) => {
+    test.setTimeout(150_000);
+    const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 800 } });
+    const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 1280, height: 800 } });
+    const m = await master.newPage();
+    const p = await player.newPage();
+    let campaignId = '';
+    try {
+      await m.goto('/');
+      await p.goto('/');
+      const table = await tableForLevelUp(m, p, `Subida multiclasse ${Date.now()}`, {
+        build: { ...pensantus, name: 'Corvina', level: 3, scores: { ...pensantus.scores, sab: 14 } },
+        sheet: {
+          classes: [
+            { classKey: 'class:wizard', level: 3, subclassKey: 'subclass:evocation' },
+            { classKey: 'class:cleric', level: 1, subclassKey: 'subclass:life' },
+          ],
+          preparedSpellKeys: ['spell:magic-missile', 'spell:shield', 'spell:mage-armor', 'spell:burning-hands', 'spell:sleep', 'spell:scorching-ray', 'spell:web', 'spell:bless', 'spell:cure-wounds'],
+        },
+      });
+      campaignId = table.campaignId;
+      await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}/level-up`);
+
+      // The first class of the sheet is marked: it is what the server uses with no class.
+      await expect(p.getByRole('heading', { name: 'Subir para o nível 5' })).toBeVisible();
+      await expect(p.getByRole('heading', { name: 'Qual classe sobe de nível?' })).toBeVisible();
+      const mago = p.getByRole('radio', { name: /Mago/ });
+      const clerigo = p.getByRole('radio', { name: /Clérigo/ });
+      await expect(mago).toBeChecked();
+      await expect(mago).toBeFocused();
+      await expect(p.getByText('Corvina · Mago 3 → Mago 4')).toBeVisible();
+
+      // Something chosen: the other class asks first, and "Continuar" keeps everything.
+      await row(p, 'Inteligência').click();
+      await p.locator('app-class-pick label.card').filter({ hasText: 'Clérigo' }).click();
+      const ask = p.getByRole('group', { name: 'Trocar de classe?' });
+      await expect(ask).toBeVisible();
+      await expect(ask.getByRole('button', { name: 'Continuar com o Mago' })).toBeFocused();
+      await ask.getByRole('button', { name: 'Continuar com o Mago' }).click();
+      await expect(ask).toBeHidden();
+      await expect(mago).toBeChecked();
+      await expect(p.getByText('Corvina · Mago 3 → Mago 4')).toBeVisible();
+
+      // "Trocar": the draft goes, the options of the Clérigo are read and the level lines name the class.
+      await p.locator('app-class-pick label.card').filter({ hasText: 'Clérigo' }).click();
+      await ask.getByRole('button', { name: 'Trocar para o Clérigo' }).click();
+      await expect(clerigo).toBeChecked();
+      await expect(p.getByText('Corvina · Clérigo 1 → Clérigo 2')).toBeVisible();
+      await expect(p.getByRole('status').filter({ hasText: /^Clérigo escolhido\. Passo 1 de \d, / })).toBeAttached();
+      await expect(p.getByText(/Só o que o nível 2 de Clérigo dá fica aberto\./)).toBeVisible();
+      await expect(p.getByRole('heading', { name: 'O que o nível 2 de Clérigo dá' })).toBeVisible();
+      await expect(p.getByRole('heading', { name: 'Subir para o nível 5' })).toBeVisible();
     } finally {
       await endOpenSessionRPC(m, campaignId);
       await master.close();

@@ -133,6 +133,8 @@ export function blockedMessage(blocked: EncounterBlocked): string {
       return `Sem usos: ${rechargeText(blocked.recharge)}.`;
     case EncounterBlockedReason.ALREADY_USED_THIS_TURN:
       return 'Esse recurso só pode ser usado uma vez por turno, e já foi usado neste.';
+    case EncounterBlockedReason.BONUS_ACTION_SPELL_LIMIT:
+      return 'Quem conjura uma magia com ação bônus não conjura outra no mesmo turno, a não ser um truque de 1 ação.';
     case EncounterBlockedReason.DEATH_SAVE_DUE:
       return 'Role o teste contra a morte antes de encerrar o turno.';
     case EncounterBlockedReason.DEATH_SAVE_NOT_DUE:

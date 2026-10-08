@@ -65,15 +65,24 @@
           </span>
         }
       </span>
-      <button
-        #deleteButton
-        matButton
-        type="button"
-        class="state__action title__delete danger"
-        (click)="askDelete()"
-      >
-        <mat-icon aria-hidden="true">delete</mat-icon>Apagar mapa
-      </button>
+      <span class="remove">
+        <button
+          #deleteButton
+          matButton
+          type="button"
+          class="state__action title__delete danger"
+          [class.state__action--off]="deleteReason() !== null"
+          [attr.aria-describedby]="deleteReason() !== null ? 'delete-reason' : null"
+          (click)="askDelete()"
+        >
+          <mat-icon aria-hidden="true">delete</mat-icon>Apagar mapa
+        </button>
+        @if (deleteReason(); as reason) {
+          <span id="delete-reason" class="remove__reason">
+            <mat-icon aria-hidden="true">block</mat-icon><span>{{ reason }}</span>
+          </span>
+        }
+      </span>
     }
   </div>
 }
@@ -115,7 +124,7 @@
       <p class="ask__now">Imagem agora: {{ map().image?.name }}</p>
       <div class="mr-notice mr-notice--warning">
         <mat-icon aria-hidden="true">warning</mat-icon>
-        <p>Trocar a imagem apaga o terreno, as paredes, a cobertura e a luz pintados, e o que os jogadores já viram. Os pontos e os tokens ficam.</p>
+        <p>Trocar a imagem apaga o terreno, as paredes, a cobertura, a luz e as portas pintados, e o que os jogadores já viram. Os pontos e os tokens ficam.</p>
       </div>
     </app-map-ask>
   </div>

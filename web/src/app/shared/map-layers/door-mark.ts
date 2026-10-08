@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 import type { DoorKind } from '../../core/maps/layers';
 
-/** The words for a door's kind, as the legend and the sheet say them (MAP-LANGUAGE-E10.md). */
+/** The words for a door's kind, as the legend and the sheet say them (docs/design.md). */
 export const DOOR_NAME: Readonly<Record<DoorKind, string>> = {
   1: 'Porta aberta',
   2: 'Porta fechada',
@@ -12,7 +12,7 @@ export const DOOR_NAME: Readonly<Record<DoorKind, string>> = {
 };
 
 /**
- * One door, drawn in the one way MAP-LANGUAGE-E10.md gives its kind, on the map and in the legend:
+ * One door, drawn in the one way docs/design.md gives its kind, on the map and in the legend:
  *
  * - **Fechada:** a solid ink bar across the gap, the full width of the square, 4 px thick.
  * - **Aberta:** a leaf against one side, as long as the gap is wide, and the dashed quarter arc it swept, of the same radius.

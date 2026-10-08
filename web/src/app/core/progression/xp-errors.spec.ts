@@ -35,6 +35,12 @@ describe('XPBlocked: Portuguese for every reason', () => {
     expect(said(XPBlockedReason.XP_BLOCKED_REASON_MODE_NOT_ALLOWED)).toMatch(/não aceita/);
   });
 
+  it('says a milestone reached once and undone cannot be removed', () => {
+    const msg = said(XPBlockedReason.XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY);
+    expect(msg).toContain('não pode ser removido');
+    expect(msg).not.toMatch(/não pode ser feito agora/);
+  });
+
   it('says why a combat cannot be paid', () => {
     expect(said(XPBlockedReason.XP_BLOCKED_REASON_ENCOUNTER_NOT_ENDED)).toMatch(
       /ainda não terminou/,

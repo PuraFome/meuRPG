@@ -10,20 +10,29 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
 
-// attacks computes one line per carried weapon and per attack cantrip.
+// UnarmedStrikeKey is the attack line every character has, whatever they carry.
+const UnarmedStrikeKey = "attack:unarmed-strike"
+
+// attacks computes one line per carried weapon, one per attack cantrip and,
+// last, the unarmed strike.
 //
-// A weapon attacks with STR, or DEX if it is ranged; a finesse weapon (and
-// a monk weapon, with Martial Arts) takes the better of the two. The
-// proficiency bonus is added with proficiency in the weapon or its
-// category. The damage adds the same ability modifier. "attack.weapon.*"
-// and "damage.weapon.*" effects add on top (the Archery style).
+// A weapon attacks with STR, or DEX if it is ranged; a finesse weapon takes
+// the better of the two, melee or ranged, and so does a monk weapon while
+// Martial Arts applies (no armor and no shield). The proficiency bonus is
+// added with proficiency in the weapon or its category. The damage adds the
+// same ability modifier. "attack.weapon.*" and "damage.weapon.*" effects add
+// on top (the Archery style).
+//
+// The unarmed strike is always proficient and deals 1 + STR bludgeoning; with
+// Martial Arts it rolls the monk die and takes the better of DEX and STR.
 //
 // A cantrip that deals damage uses the damage for the character's total
 // level (Fire Bolt: 1d10, then 2d10 at level 5) and the spell attack or
 // save DC of a class that has it on its list.
 func (x *deriver) attacks() {
 	c := x.c
-	martialArts := x.hasHandler("monk.martial_arts")
+	// Martial Arts holds only while the monk wears no armor and no shield.
+	martialArts := x.hasHandler("monk.martial_arts") && x.armorCategory == "none" && !x.b.Shield
 	martialDie := x.martialArtsDie()
 	for i, key := range x.b.Weapons {
 		eq, ok := c.equipment[key]
@@ -38,8 +47,17 @@ func (x *deriver) attacks() {
 			ab = DEX
 		}
 		monkWeapon := martialArts && slices.Contains(w.Properties, "weapon-property:monk")
-		if (slices.Contains(w.Properties, "weapon-property:finesse") || monkWeapon) && x.mods[DEX] > x.mods[STR] {
-			ab = DEX
+		if slices.Contains(w.Properties, "weapon-property:finesse") || monkWeapon {
+			ab = STR
+			if x.mods[DEX] > x.mods[STR] {
+				ab = DEX
+			}
+		}
+		if slices.Contains(w.Properties, "weapon-property:heavy") && x.race != nil && x.race.Size == "Small" {
+			x.d.Hints = append(x.d.Hints, Hint{
+				Source: key, Target: "attack.weapon." + kind, Targets: []string{"attack.weapon." + kind}, Mode: "disadvantage",
+				TextPT: fmt.Sprintf("Desvantagem nas jogadas de ataque com %s: arma pesada para criaturas Pequenas.", strings.ToLower(c.namePT(key))),
+			})
 		}
 		proficient := x.weaponProficient(key, w.Category)
 		bonus := x.mods[ab]
@@ -55,13 +73,18 @@ func (x *deriver) attacks() {
 			Key: key, Name: eq.Name, NamePT: c.namePT(key), Kind: "weapon", Ability: ab,
 			AttackBonus: x.modifiers("attack.weapon."+kind, bonus), Proficient: proficient,
 			DamageType: w.DamageType, DamageTypeNamePT: c.namePT(w.DamageType),
-			Melee: kind == "melee",
+			Melee: kind == "melee", MartialArts: monkWeapon, AbilityMod: x.mods[ab],
+			Light: kind == "melee" && slices.Contains(w.Properties, "weapon-property:light"),
 		}
 		if dice != "" {
 			a.Damage = withModifier(dice, dmg)
 		}
 		if w.TwoHandedDamage != "" {
-			a.VersatileDamage = withModifier(w.TwoHandedDamage, dmg)
+			two := w.TwoHandedDamage
+			if monkWeapon && martialDie > 0 {
+				two = biggerDie(two, martialDie)
+			}
+			a.VersatileDamage = withModifier(two, dmg)
 		}
 		switch {
 		case w.ThrowNormalFt > 0:
@@ -88,7 +111,7 @@ func (x *deriver) attacks() {
 			Key: key, Name: s.Name, NamePT: c.namePT(key), Kind: "spell", Ability: sc.Ability,
 			Damage:     withModifier(damageAt(s.Damage[0].AtCharacterLevel, x.d.TotalLevel), dmg),
 			DamageType: s.Damage[0].DamageType, DamageTypeNamePT: c.namePT(s.Damage[0].DamageType),
-			Proficient: true, RangeFt: feet(s.Range),
+			Proficient: true, RangeFt: feet(s.Range), Beams: beamsAt(key, x.d.TotalLevel),
 		}
 		switch {
 		case s.AttackType != "":
@@ -100,7 +123,56 @@ func (x *deriver) attacks() {
 		a.DamageDice, _ = ParseDice(a.Damage)
 		x.d.Attacks = append(x.d.Attacks, a)
 	}
+
+	// Last, so the weapons and cantrips stay the first lines of the sheet.
+	x.unarmedStrike(martialArts, martialDie)
 }
+
+// unarmedReachFt is the reach of an unarmed strike.
+const unarmedReachFt = 5
+
+// unarmedStrike adds the unarmed strike line: STR (DEX too for a monk with
+// Martial Arts), proficient, 1 + modifier bludgeoning, or the monk die plus
+// modifier.
+func (x *deriver) unarmedStrike(martialArts bool, martialDie int) {
+	ab := STR
+	if martialArts && x.mods[DEX] > x.mods[STR] {
+		ab = DEX
+	}
+	mod := x.mods[ab]
+	a := Attack{
+		Key: UnarmedStrikeKey, Name: "Unarmed Strike", NamePT: x.c.namePT(UnarmedStrikeKey), Kind: "weapon", Ability: ab,
+		AttackBonus: mod + x.prof, Proficient: true,
+		DamageType: "damage-type:bludgeoning", DamageTypeNamePT: x.c.namePT("damage-type:bludgeoning"),
+		Melee: true, RangeFt: unarmedReachFt, MartialArts: martialArts, AbilityMod: mod,
+	}
+	if martialArts && martialDie > 0 {
+		a.Damage = withModifier("1d"+strconv.Itoa(martialDie), mod)
+	} else {
+		a.Damage = strconv.Itoa(max(1+mod, 0))
+	}
+	a.DamageDice, _ = ParseDice(a.Damage)
+	x.d.Attacks = append(x.d.Attacks, a)
+}
+
+// beamsAt is how many attack rolls a cantrip makes in one action at a character
+// level: Eldritch Blast fires one beam, and two, three and four from levels 5,
+// 11 and 17. Every other cantrip makes one.
+func beamsAt(key string, level int) int {
+	if key != "spell:eldritch-blast" {
+		return 1
+	}
+	beams := 1
+	for _, step := range eldritchBlastBeams {
+		if level >= step.level {
+			beams = step.beams
+		}
+	}
+	return beams
+}
+
+// eldritchBlastBeams is the beams Eldritch Blast fires from each character level.
+var eldritchBlastBeams = []struct{ level, beams int }{{5, 2}, {11, 3}, {17, 4}}
 
 // casterFor picks the Spellcasting of a class that has the spell on its
 // list, or the first one.

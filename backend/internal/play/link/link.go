@@ -63,6 +63,9 @@ type Character struct {
 	// CombatOnly marks the NPC the app keeps for a creature's monsters (RN-29):
 	// never a participant, a stage NPC or a token.
 	CombatOnly bool
+	// CastsInBeastForm says the character keeps its spells in a beast shape
+	// (a druid of level 18, Beast Spells); every other character has none there.
+	CastsInBeastForm bool
 	// MonsterKey and ChallengeRating are the SRD creature an NPC was made from
 	// ("monster:bandit") and its ND ("1/8"), "" for an NPC the master typed: the
 	// master's view of a monster.
@@ -121,6 +124,12 @@ type Sheet struct {
 	// AttacksPerAction is how many attacks the Attack action makes: 1, or more
 	// with Extra Attack.
 	AttacksPerAction int
+	// CriticalRange is the lowest natural d20 that is a critical hit with a
+	// weapon attack: 20, 19 with Improved Critical, 18 with Superior Critical.
+	// 0 (a basic sheet) is 20.
+	CriticalRange int
+	// TwoWeaponFighting says the character has the fighting style.
+	TwoWeaponFighting bool
 	// FeatureActions are the actions the sheet's class and race features grant
 	// (rules.Derived.Actions): their key, name, economy and resource.
 	FeatureActions []FeatureAction
@@ -164,6 +173,16 @@ type Attack struct {
 	// Melee says it is a melee weapon, thrown or not: the only kind an
 	// opportunity attack can use, with the melee reach.
 	Melee bool
+	// Beams is how many attack rolls the cantrip makes in one action (Eldritch
+	// Blast: 2, 3 and 4 beams from character levels 5, 11 and 17); 0 or 1 for
+	// anything else.
+	Beams int
+	// Light is a light melee weapon. Unarmed is the unarmed strike, and
+	// MartialArts says the Martial Arts strike goes with the attack. AbilityMod
+	// is the ability modifier inside DiceBonus. The bonus action attacks read
+	// them.
+	Light, Unarmed, MartialArts bool
+	AbilityMod                  int
 }
 
 // Action is a standard action: its key ("standard:dash") and Portuguese name.
@@ -181,6 +200,9 @@ type FeatureAction struct {
 	// Pool says the resource is a pool of points (Cura pelas mãos), not a count
 	// of uses: using the action spends no point.
 	Pool bool
+	// Standard is the standard action it performs ("standard:dash" for Cunning
+	// Action's Dash), or "".
+	Standard string
 }
 
 // Dice is a roll: Count d Sides plus Bonus (Count 0 is a flat number), with the
@@ -214,11 +236,19 @@ type Spell struct {
 	SaveAbility   string
 	SaveOnSuccess string
 	SaveDC        int
-	// Damage is the spell's damage at the slot level (one damage type), nil when
-	// it has none the engine can roll; Heal is its healing with the caster's
-	// spellcasting modifier already in Bonus, nil when it does not heal.
-	Damage *Dice
-	Heal   *Dice
+	// Damages are the spell's damage at the slot level, one part for each damage
+	// type it deals (Ice Storm has two), empty when it has none the engine can
+	// roll; Heal is its healing with the caster's spellcasting modifier already in
+	// Bonus, nil when it does not heal.
+	Damages []Dice
+	Heal    *Dice
+	// DamageChoice says what the caster picks among the damage types: "scale"
+	// (every part is dealt, the higher-slot dice go to the picked type),
+	// "alternative" (only the picked type is dealt) or "" (nothing to pick).
+	// DamageTypes are the types the caster may pick, and Damages already follow
+	// the pick the spell was resolved with.
+	DamageChoice string
+	DamageTypes  []string
 	// Area says the spell hits every creature in an area: any number of targets.
 	// ExtraTargetPerLevel says it takes one more target for each slot level
 	// above its own.
@@ -248,7 +278,8 @@ type Spell struct {
 
 // HPEffect is what a spell that reads hit points does at the slot level, from
 // the rules' effects/spells.json (rules.SpellEffect). Kind is the rules'
-// SpellKind: "hp_pool", "hp_threshold", "zero_hp_target" or "flat_heal".
+// SpellKind: "hp_pool", "hp_threshold", "zero_hp_target", "flat_heal", "temp_hp"
+// or "max_hp".
 type HPEffect struct {
 	Kind string
 	// Pool is the dice of an hp_pool spell, with the extra dice of the slot
@@ -264,6 +295,10 @@ type HPEffect struct {
 	// it ends.
 	Heal int
 	Ends []string
+	// Amount is what a temp_hp spell adds to its Pool dice (the spell's dice are
+	// in Pool, with no bonus) and what a max_hp spell raises the maximum by, at
+	// the slot level.
+	Amount int
 }
 
 // Save is a creature's saving throw: the bonus added to the d20, and whether
@@ -290,6 +325,9 @@ type Turn struct {
 	// ActionSurged says Action Surge was used this turn (once per turn, whatever
 	// the uses left).
 	ActionSurged bool
+	// SpellCast and BonusSpellCast say which kinds of spell were cast this turn
+	// (see combat.TurnState).
+	SpellCast, BonusSpellCast bool
 	// SpeedFt is the combatant's best speed in a combat (walking, or flying when
 	// it can), and MovementUsedFt the feet walked this turn, rounded down.
 	SpeedFt, MovementUsedFt int

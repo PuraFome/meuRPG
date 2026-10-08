@@ -30,6 +30,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 const allowed connect.Code = 0
@@ -577,7 +578,7 @@ func (noRoster) CombatTurnOptions(context.Context, pgx.Tx, string, string, link.
 	return nil, errors.New("not in this test")
 }
 
-func (noRoster) CombatSpell(context.Context, pgx.Tx, string, string, string, int) (link.Spell, error) {
+func (noRoster) CombatSpell(context.Context, pgx.Tx, string, string, string, int, string) (link.Spell, error) {
 	return link.Spell{}, errors.New("not in this test")
 }
 
@@ -647,6 +648,10 @@ func (noRoster) CreatureTurnOptions(context.Context, pgx.Tx, string, string, str
 
 func (noRoster) CreatureSave(context.Context, pgx.Tx, string, string, string) (link.Save, error) {
 	return link.Save{}, nil
+}
+
+func (noRoster) DamageModifiers(context.Context, pgx.Tx, string, string, string) (combat.TypeModifiers, error) {
+	return combat.TypeModifiers{}, nil
 }
 
 func (noRoster) CreatureEyes(context.Context, pgx.Tx, string, string) (maplink.Eyes, bool, error) {

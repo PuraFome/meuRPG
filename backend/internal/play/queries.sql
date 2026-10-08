@@ -228,8 +228,8 @@ WHERE id = $1;
 -- made come back, the Escudo bonus ends, a death save is due again, and the
 -- combatant acts ('acting') in the turn that starts.
 UPDATE combatants
-SET movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, action_surged = false, action_used = false, bonus_action_used = false, reaction_used = false,
-    attacks_made = 0, ac_bonus = 0, death_save_rolled = false, turn_state = 'acting'
+SET movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, action_surged = false, spell_cast = false, bonus_spell_cast = false, action_used = false, bonus_action_used = false, reaction_used = false,
+    attacks_made = 0, action_attack_key = NULL, bonus_attacks_left = 0, ac_bonus = 0, death_save_rolled = false, turn_state = 'acting'
 WHERE id = $1;
 
 -- name: ClearCombatTurns :exec
@@ -292,16 +292,37 @@ UPDATE combatants
 SET hp_current = $2, hp_temp = $3, defeated = $4
 WHERE id = $1;
 
+-- name: SetCombatantHitPointsMax :exec
+-- An NPC's maximum hit points, when a spell raises them (Ajuda) or its undo
+-- puts them back.
+UPDATE combatants
+SET hp_max = $2
+WHERE id = $1;
+
 -- name: SetCombatantEconomy :exec
 -- The turn's economy as an action, or its undo, leaves it.
 UPDATE combatants
 SET action_used = $2, bonus_action_used = $3, reaction_used = $4, dashed = $5
 WHERE id = $1;
 
+-- name: SetCombatantSpellsCast :exec
+-- Which kinds of spell the combatant cast this turn (the bonus action spell
+-- limit), or the cast's undo.
+UPDATE combatants
+SET spell_cast = $2, bonus_spell_cast = $3
+WHERE id = $1;
+
 -- name: SetCombatantAttacksMade :exec
 -- The attacks the Attack action made this turn (Extra Attack), or its undo.
 UPDATE combatants
 SET attacks_made = $2
+WHERE id = $1;
+
+-- name: SetCombatantAttackState :exec
+-- The attack of the action this turn and the Flurry of Blows strikes left, or
+-- their undo.
+UPDATE combatants
+SET action_attack_key = $2, bonus_attacks_left = $3
 WHERE id = $1;
 
 -- name: SetCombatantAcBonus :exec

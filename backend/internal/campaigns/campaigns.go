@@ -53,8 +53,8 @@ import (
 // campaigns_name_length CHECK says the same.
 const MaxNameLength = 80
 
-// Invite rules. RN-07 is still open, so the defaults follow ADR-0009's
-// proposal (one use, 7 days) and the master can change them within limits.
+// Invite rules (RN-07): by default an invite has one use and lasts 7 days
+// (ADR-0009), and the master can change both within limits.
 const (
 	DefaultInviteUses = 1
 	// MaxInviteUses keeps an invite from becoming a public link: a table

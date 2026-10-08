@@ -36,11 +36,29 @@
     "feature:improved-critical": [
       {"type": "note", "text_pt": "Crítico com 19 ou 20 nos ataques com arma."}
     ],
+    "feature:superior-critical": [
+      {"type": "note", "text_pt": "Crítico com 18, 19 ou 20 nos ataques com arma."}
+    ],
     "feature:fighter-ability-score-improvement-1": [
       {"type": "choice", "choice": "ability_score_improvement", "count": 1}
     ],
     "feature:extra-attack-1": [
       {"type": "extra_attack", "count": 2}
+    ],
+    "feature:extra-attack-2": [
+      {"type": "extra_attack", "count": 3}
+    ],
+    "feature:extra-attack-3": [
+      {"type": "extra_attack", "count": 4}
+    ],
+    "feature:indomitable-1-use": [
+      {"type": "resource", "resource": "indomitable", "max": "classLevel(\"fighter\") >= 17 ? 3 : classLevel(\"fighter\") >= 13 ? 2 : 1", "recharge": "long_rest"}
+    ],
+    "feature:indomitable-2-uses": [
+      {"type": "resource", "resource": "indomitable", "max": "classLevel(\"fighter\") >= 17 ? 3 : classLevel(\"fighter\") >= 13 ? 2 : 1", "recharge": "long_rest"}
+    ],
+    "feature:indomitable-3-uses": [
+      {"type": "resource", "resource": "indomitable", "max": "classLevel(\"fighter\") >= 17 ? 3 : classLevel(\"fighter\") >= 13 ? 2 : 1", "recharge": "long_rest"}
     ]
   }
 }

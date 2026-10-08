@@ -1,5 +1,5 @@
 {
-  "ContentVersion": "srd51@a8abc93b235c+fx.20",
+  "ContentVersion": "srd51@a8abc93b235c+fx.24",
   "RaceNamePT": "Gnomo",
   "SubraceNamePT": "Gnomo das Rochas",
   "BackgroundNamePT": "Sábio",
@@ -639,6 +639,10 @@
       "RangeFt": 5,
       "LongRangeFt": 0,
       "Melee": true,
+      "Beams": 0,
+      "Light": false,
+      "MartialArts": false,
+      "AbilityMod": 1,
       "Notes": ""
     },
     {
@@ -670,6 +674,10 @@
       "RangeFt": 120,
       "LongRangeFt": 0,
       "Melee": false,
+      "Beams": 1,
+      "Light": false,
+      "MartialArts": false,
+      "AbilityMod": 0,
       "Notes": ""
     },
     {
@@ -701,6 +709,45 @@
       "RangeFt": 60,
       "LongRangeFt": 0,
       "Melee": false,
+      "Beams": 1,
+      "Light": false,
+      "MartialArts": false,
+      "AbilityMod": 0,
+      "Notes": ""
+    },
+    {
+      "Key": "attack:unarmed-strike",
+      "Name": "Unarmed Strike",
+      "NamePT": "Golpe desarmado",
+      "Kind": "weapon",
+      "Ability": "str",
+      "AttackBonus": 3,
+      "SaveDC": 0,
+      "SaveAbility": "",
+      "Damage": "2",
+      "DamageType": "damage-type:bludgeoning",
+      "DamageTypeNamePT": "concussão",
+      "VersatileDamage": "",
+      "DamageDice": {
+        "Count": 0,
+        "Sides": 0,
+        "Bonus": 2,
+        "AddsModifier": false
+      },
+      "VersatileDice": {
+        "Count": 0,
+        "Sides": 0,
+        "Bonus": 0,
+        "AddsModifier": false
+      },
+      "Proficient": true,
+      "RangeFt": 5,
+      "LongRangeFt": 0,
+      "Melee": true,
+      "Beams": 0,
+      "Light": false,
+      "MartialArts": false,
+      "AbilityMod": 1,
       "Notes": ""
     }
   ],
@@ -720,73 +767,85 @@
       "NamePT": "Atacar",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     },
     {
       "Key": "standard:cast-a-spell",
       "NamePT": "Conjurar uma magia",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     },
     {
       "Key": "standard:dash",
       "NamePT": "Disparada",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     },
     {
       "Key": "standard:disengage",
       "NamePT": "Desengajar",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     },
     {
       "Key": "standard:dodge",
       "NamePT": "Esquivar",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     },
     {
       "Key": "standard:help",
       "NamePT": "Ajudar",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     },
     {
       "Key": "standard:hide",
       "NamePT": "Esconder",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     },
     {
       "Key": "standard:ready",
       "NamePT": "Preparar",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     },
     {
       "Key": "standard:search",
       "NamePT": "Procurar",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     },
     {
       "Key": "standard:use-an-object",
       "NamePT": "Usar um objeto",
       "Economy": "action",
       "Resource": "",
-      "Source": ""
+      "Source": "",
+      "Standard": ""
     }
   ],
   "AttacksPerAction": 1,
+  "CriticalRange": 20,
+  "TwoWeaponFighting": false,
   "SaveActions": null,
   "Features": [
     {

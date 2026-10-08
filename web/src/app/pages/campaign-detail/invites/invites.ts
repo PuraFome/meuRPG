@@ -147,6 +147,8 @@ export class CampaignInvites implements OnInit {
         message: describeConnectError(err, {
           ...MASTER_ONLY_MESSAGES,
           [Code.InvalidArgument]: 'Confira o número de usos (1 a 20) e a validade escolhida.',
+          [Code.ResourceExhausted]:
+            'A campanha já tem 50 convites valendo, o máximo. Revogue um convite para criar outro.',
         }),
       });
     }

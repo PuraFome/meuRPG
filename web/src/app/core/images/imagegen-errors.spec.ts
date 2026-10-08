@@ -86,6 +86,20 @@ describe('every refusal, by its typed detail (never by the message)', () => {
     );
   });
 
+  it('a bare resource_exhausted says too many images are being made, apart from the monthly and daily limits', () => {
+    const cap = generateIssue(new ConnectError('x', Code.ResourceExhausted));
+    expect(cap.text).toBe(
+      'Muitas imagens sendo geradas agora. Espere uma terminar e tente de novo.',
+    );
+    expect(cap.reason).toBeNull();
+    for (const reason of [
+      ImageGenerationBlockedReason.DAILY_LIMIT_REACHED,
+      ImageGenerationBlockedReason.GALLERY_FULL,
+    ]) {
+      expect(generateIssue(blocked(reason)).text).not.toBe(cap.text);
+    }
+  });
+
   it('the reason of a refused call is read from the detail, not the code alone: a `failed_precondition` without one is just an error', () => {
     expect(blockedOf(new ConnectError('x', Code.FailedPrecondition))).toBeNull();
     expect(blockedOf(blocked(ImageGenerationBlockedReason.OFF))?.reason).toBe(

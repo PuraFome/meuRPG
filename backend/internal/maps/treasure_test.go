@@ -373,27 +373,31 @@ func TestMR044_PlaceTreasureRefusals(t *testing.T) {
 	t.Parallel()
 	s := treasureTable(t)
 	cases := map[string]struct {
-		edit func(*mapsv1.PlaceTreasureRequest)
-		code connect.Code
+		edit  func(*mapsv1.PlaceTreasureRequest)
+		code  connect.Code
+		field string
 	}{
-		"no mode":           {func(r *mapsv1.PlaceTreasureRequest) { r.Mode = 0 }, connect.CodeInvalidArgument},
-		"no level":          {func(r *mapsv1.PlaceTreasureRequest) { r.PartyLevel = 0 }, connect.CodeInvalidArgument},
-		"level 21":          {func(r *mapsv1.PlaceTreasureRequest) { r.PartyLevel = 21 }, connect.CodeInvalidArgument},
-		"no seed":           {func(r *mapsv1.PlaceTreasureRequest) { r.Seed = nil }, connect.CodeInvalidArgument},
-		"no key":            {func(r *mapsv1.PlaceTreasureRequest) { r.IdempotencyKey = "" }, connect.CodeInvalidArgument},
-		"a key of 65":       {func(r *mapsv1.PlaceTreasureRequest) { r.IdempotencyKey = strings.Repeat("k", 65) }, connect.CodeInvalidArgument},
-		"a name too long":   {func(r *mapsv1.PlaceTreasureRequest) { r.Name = new(strings.Repeat("n", 81)) }, connect.CodeInvalidArgument},
-		"an empty name":     {func(r *mapsv1.PlaceTreasureRequest) { r.Name = new("  ") }, connect.CodeInvalidArgument},
-		"a column off":      {func(r *mapsv1.PlaceTreasureRequest) { r.Column = 20 }, connect.CodeInvalidArgument},
-		"a row off":         {func(r *mapsv1.PlaceTreasureRequest) { r.Row = 15 }, connect.CodeInvalidArgument},
-		"a negative square": {func(r *mapsv1.PlaceTreasureRequest) { r.Row = -1 }, connect.CodeInvalidArgument},
-		"no map":            {func(r *mapsv1.PlaceTreasureRequest) { r.MapId = "" }, connect.CodeNotFound},
-		"another map":       {func(r *mapsv1.PlaceTreasureRequest) { r.MapId = "00000000-0000-4000-8000-000000000000" }, connect.CodeNotFound},
+		"no mode":           {func(r *mapsv1.PlaceTreasureRequest) { r.Mode = 0 }, connect.CodeInvalidArgument, "mode"},
+		"no level":          {func(r *mapsv1.PlaceTreasureRequest) { r.PartyLevel = 0 }, connect.CodeInvalidArgument, "party_level"},
+		"level 21":          {func(r *mapsv1.PlaceTreasureRequest) { r.PartyLevel = 21 }, connect.CodeInvalidArgument, "party_level"},
+		"no seed":           {func(r *mapsv1.PlaceTreasureRequest) { r.Seed = nil }, connect.CodeInvalidArgument, "seed"},
+		"no key":            {func(r *mapsv1.PlaceTreasureRequest) { r.IdempotencyKey = "" }, connect.CodeInvalidArgument, "idempotency_key"},
+		"a key of 65":       {func(r *mapsv1.PlaceTreasureRequest) { r.IdempotencyKey = strings.Repeat("k", 65) }, connect.CodeInvalidArgument, "idempotency_key"},
+		"a name too long":   {func(r *mapsv1.PlaceTreasureRequest) { r.Name = new(strings.Repeat("n", 81)) }, connect.CodeInvalidArgument, "name"},
+		"an empty name":     {func(r *mapsv1.PlaceTreasureRequest) { r.Name = new("  ") }, connect.CodeInvalidArgument, "name"},
+		"a column off":      {func(r *mapsv1.PlaceTreasureRequest) { r.Column = 20 }, connect.CodeInvalidArgument, "column"},
+		"a row off":         {func(r *mapsv1.PlaceTreasureRequest) { r.Row = 15 }, connect.CodeInvalidArgument, "row"},
+		"a negative square": {func(r *mapsv1.PlaceTreasureRequest) { r.Row = -1 }, connect.CodeInvalidArgument, "row"},
+		"no map":            {func(r *mapsv1.PlaceTreasureRequest) { r.MapId = "" }, connect.CodeNotFound, ""},
+		"another map":       {func(r *mapsv1.PlaceTreasureRequest) { r.MapId = "00000000-0000-4000-8000-000000000000" }, connect.CodeNotFound, ""},
 	}
 	before := s.pointCount()
 	for name, c := range cases {
 		_, err := s.place(c.edit)
 		wantCode(t, name, err, c.code)
+		if got := treasureInvalidField(err); got != c.field {
+			t.Errorf("%s: the refusal names the field %q, want %q", name, got, c.field)
+		}
 	}
 	if s.pointCount() != before {
 		t.Errorf("a refused call made a point: %d points, want %d", s.pointCount(), before)
@@ -413,6 +417,22 @@ func TestMR044_PlaceTreasureRefusals(t *testing.T) {
 	foreign := s.master.createMap(otherCampaign, "De outra mesa", s.master.newImage(otherCampaign))
 	_, err = s.place(func(r *mapsv1.PlaceTreasureRequest) { r.MapId = foreign.GetId() })
 	wantCode(t, "a map of another campaign", err, connect.CodeNotFound)
+}
+
+// treasureInvalidField is the field a TreasureInvalidField detail names, "" without one.
+func treasureInvalidField(err error) string {
+	ce, ok := errors.AsType[*connect.Error](err)
+	if !ok {
+		return ""
+	}
+	for _, d := range ce.Details() {
+		if v, err := d.Value(); err == nil {
+			if f, ok := v.(*mapsv1.TreasureInvalidField); ok {
+				return f.GetField()
+			}
+		}
+	}
+	return ""
 }
 
 func hasMapBlocked(ce *connect.Error, reason mapsv1.MapBlockedReason) bool {
@@ -460,6 +480,9 @@ func TestMR044_PlaceTreasureIsIdempotent(t *testing.T) {
 	for name, edit := range other {
 		_, err := s.place(edit)
 		wantCode(t, "the key with "+name, err, connect.CodeInvalidArgument)
+		if got := treasureInvalidField(err); got != "idempotency_key" {
+			t.Errorf("the key with %s: the refusal names the field %q, want idempotency_key", name, got)
+		}
 	}
 	// Another map of the campaign: the key is the campaign's, so it is refused there too.
 	second := s.master.createMap(s.campaign, "Outro mapa", s.master.newImage(s.campaign))
@@ -583,6 +606,9 @@ func TestMR044_PlaceTreasureNeedsTheContentVersion(t *testing.T) {
 	}
 	_, err = s.place(func(r *mapsv1.PlaceTreasureRequest) { r.ContentVersion = "" })
 	wantCode(t, "no content version", err, connect.CodeInvalidArgument)
+	if got := treasureInvalidField(err); got != "content_version" {
+		t.Errorf("no content version: the refusal names the field %q, want content_version", got)
+	}
 	_, err = s.place(func(r *mapsv1.PlaceTreasureRequest) { r.ContentVersion = "srd51@old+fx.1" })
 	wantCode(t, "an old content version", err, connect.CodeFailedPrecondition)
 	if ce, ok := errors.AsType[*connect.Error](err); !ok || !hasTreasureBlocked(ce, mapsv1.TreasureBlockedReason_TREASURE_BLOCKED_REASON_CONTENT_CHANGED) {

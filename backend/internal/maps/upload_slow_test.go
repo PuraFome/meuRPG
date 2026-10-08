@@ -105,3 +105,102 @@ func TestQueuedUploadsDoNotReadTheirBodies(t *testing.T) {
 		t.Errorf("with the processing slot busy, the server read %d of %d bytes of %d queued uploads (about %d bodies of %d MiB held in memory); want at most about one body", got, total, k, got/fileSize, fileSize>>20)
 	}
 }
+
+// The processing slot is shared with the fog tiles and every image job, so an
+// upload that holds it has its own, shorter, deadline for the file: a client
+// that trickles the body is answered like any slow upload and the slot is
+// freed, long before the upload's whole two minutes.
+func TestATrickledUploadDoesNotHoldTheProcessingSlot(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	h.svc.slotReadTimeout = 300 * time.Millisecond
+	master := h.newUser("Master")
+	campaign := h.newCampaign(master)
+
+	// A prompt upload under the same short deadline passes: the deadline is
+	// for a trickle, not for a client that sends its file.
+	if res := master.upload(campaign, "a.png", pngImage(t, 8, 8)); res.status != http.StatusCreated {
+		t.Fatalf("prompt upload: status %d, body %s; want 201", res.status, res.body)
+	}
+
+	pr, pw := io.Pipe()
+	var head bytes.Buffer
+	form := multipart.NewWriter(&head)
+	_ = form.WriteField("campaign_id", campaign)
+	if _, err := form.CreateFormFile("file", "slow.png"); err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, h.server.URL+UploadPath, pr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", form.FormDataContentType())
+	req.Header.Set(testUserHeader, master.id)
+
+	stop := make(chan struct{})
+	defer close(stop)
+	go func() {
+		defer pw.Close()
+		if _, err := pw.Write(head.Bytes()); err != nil {
+			return
+		}
+		for { // one byte at a time: never enough for the file, never idle for long
+			select {
+			case <-stop:
+				return
+			case <-time.After(50 * time.Millisecond):
+				if _, err := pw.Write([]byte{0xff}); err != nil {
+					return
+				}
+			}
+		}
+	}()
+
+	type answer struct {
+		res httpResult
+		err error
+	}
+	answered := make(chan answer, 1)
+	started := time.Now()
+	go func() {
+		res, err := h.server.Client().Do(req)
+		if err != nil {
+			answered <- answer{err: err}
+			return
+		}
+		defer res.Body.Close()
+		body, _ := io.ReadAll(res.Body)
+		answered <- answer{res: httpResult{status: res.StatusCode, header: res.Header, body: body}}
+	}()
+
+	// While the client trickles, the slot is held (so the test sees what it guards).
+	for held := false; !held; {
+		select {
+		case h.svc.processing <- struct{}{}:
+			<-h.svc.processing
+			if time.Since(started) > 10*time.Second {
+				t.Fatal("the trickled upload never took the processing slot")
+			}
+			time.Sleep(10 * time.Millisecond)
+		default:
+			held = true
+		}
+	}
+
+	select {
+	case a := <-answered:
+		if a.err != nil || a.res.status != http.StatusBadRequest || !bytes.Contains(a.res.body, []byte(ReasonMalformedRequest)) {
+			t.Fatalf("trickled upload = %d %s, %v; want 400 %s", a.res.status, a.res.body, a.err, ReasonMalformedRequest)
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("a trickled upload kept the processing slot for more than the slot's deadline")
+	}
+
+	// The slot is free again.
+	select {
+	case h.svc.processing <- struct{}{}:
+		<-h.svc.processing
+	case <-time.After(5 * time.Second):
+		t.Fatal("the processing slot was not freed after the trickled upload")
+	}
+}

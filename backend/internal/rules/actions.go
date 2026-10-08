@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"slices"
+	"strings"
 )
 
 // Action economies, as in the grant_action effect.
@@ -30,7 +31,7 @@ type Resource struct {
 	Key string
 	// NamePT is the Portuguese name ("Retomar o Fôlego").
 	NamePT string
-	// Max is the number of uses. A barbarian's unlimited rage is 99.
+	// Max is the number of uses. Unlimited uses (a barbarian's Rage at 20, a druid's Wild Shape at 20) are 99; the screens say "ilimitado".
 	Max int
 	// Recharge is a Recharge* constant.
 	Recharge string
@@ -52,6 +53,23 @@ type Action struct {
 	// Source is the feature or trait key that grants it, "" for standard
 	// actions.
 	Source string
+	// Standard is the key of the standard action a feature action performs
+	// ("standard:dash" for Cunning Action's Dash), whose effect on the turn it
+	// has; "" for any other action.
+	Standard string
+}
+
+// featureStandards are the features whose action is a standard action taken
+// with another economy: Cunning Action (a rogue's bonus action to Dash,
+// Disengage or Hide), the monk's Step of the Wind (Disengage or Dash) and Patient
+// Defense (Dodge). Each choice is an action of its own, keyed "<feature>:<choice>",
+// so that taking it has the effect of the standard action (a Dash doubles the
+// movement, a Disengage ends the opportunity attacks). A feature with a single
+// choice keeps its own key.
+var featureStandards = map[string][]string{
+	"feature:cunning-action":   {"standard:dash", "standard:disengage", "standard:hide"},
+	"feature:step-of-the-wind": {"standard:disengage", "standard:dash"},
+	"feature:patient-defense":  {"standard:dodge"},
 }
 
 // standardAction is one entry of effects/standard_actions.json: the actions
@@ -93,20 +111,21 @@ func (c *content) loadStandardActions(fsys fs.FS) error {
 func (x *deriver) resourcesAndActions() {
 	x.d.StandardActions = slices.Clone(x.c.standardActions)
 	x.d.AttacksPerAction = 1
+	x.criticalAndStyles()
 	for _, a := range x.active {
 		if a.effect.Type == "extra_attack" && x.applies(a) {
 			x.d.AttacksPerAction = max(x.d.AttacksPerAction, a.effect.Count)
 		}
 	}
-	seen := map[string]bool{}
+	// Two classes may share a resource name (Channel Divinity of the cleric and
+	// the paladin); the session counts them as one pool, which has the larger
+	// Max: a second class gives new effects but no extra use (SRD Multiclassing).
+	at := map[string]int{}
 	for _, a := range x.active {
 		e := a.effect
-		if e.Type != "resource" || !x.applies(a) || seen[e.Resource] {
+		if e.Type != "resource" || !x.applies(a) {
 			continue
 		}
-		// Two classes may share a resource name (Channel Divinity of the
-		// cleric and the paladin); the session counts them as one pool, so
-		// the first one wins.
 		n, err := e.max.Int(x.env)
 		if err != nil {
 			x.issue(IssueFormula, "", "Um efeito de %s foi ignorado: a fórmula falhou.", x.c.namePT(a.owner))
@@ -115,12 +134,29 @@ func (x *deriver) resourcesAndActions() {
 		if n <= 0 {
 			continue
 		}
-		seen[e.Resource] = true
+		recharge := e.Recharge
+		if e.rechargeIf != nil {
+			switch ok, err := e.rechargeIf.Bool(x.env); {
+			case err != nil:
+				x.issue(IssueFormula, "", "Um efeito de %s foi ignorado: a condição falhou.", x.c.namePT(a.owner))
+				continue
+			case ok:
+				recharge = e.RechargeThen
+			}
+		}
 		name := x.c.namesPT["resource:"+e.Resource]
 		if name == "" {
 			name = x.c.namePT(a.owner)
 		}
-		x.d.Resources = append(x.d.Resources, Resource{Key: e.Resource, NamePT: name, Max: n, Recharge: e.Recharge, Source: a.owner})
+		r := Resource{Key: e.Resource, NamePT: name, Max: n, Recharge: recharge, Source: a.owner}
+		if i, shared := at[e.Resource]; shared {
+			if n > x.d.Resources[i].Max {
+				x.d.Resources[i] = r
+			}
+			continue
+		}
+		at[e.Resource] = len(x.d.Resources)
+		x.d.Resources = append(x.d.Resources, r)
 	}
 	for _, a := range x.active {
 		if a.effect.Type != "grant_action" || !x.applies(a) {
@@ -137,8 +173,74 @@ func (x *deriver) resourcesAndActions() {
 				break
 			}
 		}
-		if !slices.ContainsFunc(x.d.Actions, func(o Action) bool { return o.Key == act.Key && o.Economy == act.Economy }) {
-			x.d.Actions = append(x.d.Actions, act)
+		// A feature action may spend a resource of another feature (the monk's
+		// actions spend ki).
+		if spent := a.effect.Resource; spent != "" {
+			if i := slices.IndexFunc(x.d.Resources, func(r Resource) bool { return r.Key == spent }); i >= 0 {
+				act.Resource = spent
+			} else {
+				continue // the resource is not there: no ki, no ki action
+			}
+		}
+		for _, route := range x.routes(act) {
+			if !slices.ContainsFunc(x.d.Actions, func(o Action) bool { return o.Key == route.Key && o.Economy == route.Economy }) {
+				x.d.Actions = append(x.d.Actions, route)
+			}
+		}
+	}
+}
+
+// routes is the action as the character takes it: the action itself, or one
+// action for each standard action the feature performs (featureStandards).
+func (x *deriver) routes(act Action) []Action {
+	standards := featureStandards[act.Key]
+	if len(standards) == 0 {
+		return []Action{act}
+	}
+	var out []Action
+	for _, key := range standards {
+		route := act
+		route.Standard = key
+		if len(standards) > 1 {
+			route.Key = act.Key + ":" + strings.TrimPrefix(key, "standard:")
+		}
+		if i := slices.IndexFunc(x.c.standardActions, func(a Action) bool { return a.Key == key }); i >= 0 && len(standards) > 1 {
+			route.NamePT = act.NamePT + ": " + x.c.standardActions[i].NamePT
+		}
+		out = append(out, route)
+	}
+	return out
+}
+
+// Features that change the critical range or the bonus action attack.
+const (
+	improvedCriticalFeature = "feature:improved-critical"
+	superiorCriticalFeature = "feature:superior-critical"
+)
+
+// twoWeaponFightingStyles are the fighting styles that keep the ability
+// modifier on the damage of the bonus action attack.
+var twoWeaponFightingStyles = []string{
+	"feature:fighter-fighting-style-two-weapon-fighting",
+	"feature:ranger-fighting-style-two-weapon-fighting",
+}
+
+// criticalAndStyles fills Derived.CriticalRange (20, 19 with Improved
+// Critical, 18 with Superior Critical) and Derived.TwoWeaponFighting from the
+// features the character has.
+func (x *deriver) criticalAndStyles() {
+	x.d.CriticalRange = 20
+	for _, a := range x.active {
+		if !x.applies(a) {
+			continue
+		}
+		switch {
+		case a.owner == superiorCriticalFeature:
+			x.d.CriticalRange = min(x.d.CriticalRange, 18)
+		case a.owner == improvedCriticalFeature:
+			x.d.CriticalRange = min(x.d.CriticalRange, 19)
+		case slices.Contains(twoWeaponFightingStyles, a.owner):
+			x.d.TwoWeaponFighting = true
 		}
 	}
 }

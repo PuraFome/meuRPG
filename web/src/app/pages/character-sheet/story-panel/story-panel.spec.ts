@@ -47,6 +47,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     languages: [],
     proficiencies: [],
     equipment: [],
+    backgroundEquipment: '',
     coins: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
     customFeaturesText: '',
     issues: [],

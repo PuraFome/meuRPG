@@ -59,6 +59,8 @@ var effectKindToProto = map[string]playv1.SpellEffectKind{
 	rules.SpellKindHPThreshold: playv1.SpellEffectKind_SPELL_EFFECT_KIND_THRESHOLD,
 	rules.SpellKindZeroHP:      playv1.SpellEffectKind_SPELL_EFFECT_KIND_ZERO_HP,
 	rules.SpellKindFlatHeal:    playv1.SpellEffectKind_SPELL_EFFECT_KIND_FLAT_HEAL,
+	rules.SpellKindTempHP:      playv1.SpellEffectKind_SPELL_EFFECT_KIND_TEMP_HP,
+	rules.SpellKindMaxHP:       playv1.SpellEffectKind_SPELL_EFFECT_KIND_MAX_HP,
 }
 
 var effectReasonToProto = map[string]playv1.SpellEffectReason{
@@ -105,8 +107,8 @@ func effectHeader(ev actionEvent, v combatViewer, caster playdb.Combatant) (kind
 	if kind == playv1.SpellEffectKind_SPELL_EFFECT_KIND_UNSPECIFIED {
 		return kind, nil, "", nil
 	}
-	if kind == playv1.SpellEffectKind_SPELL_EFFECT_KIND_POOL && (v.master || v.owns(caster)) {
-		pool = diceRoll(ev.DiceCount, ev.DiceSides, ev.Faces, 0, ev.Total, ev.Physical)
+	if (kind == playv1.SpellEffectKind_SPELL_EFFECT_KIND_POOL || kind == playv1.SpellEffectKind_SPELL_EFFECT_KIND_TEMP_HP) && (v.master || v.owns(caster)) {
+		pool = diceRoll(ev.DiceCount, ev.DiceSides, ev.Faces, ev.Modifier, ev.Total, ev.Physical)
 	}
 	if v.master && ev.FxLimit > 0 {
 		limit = &ev.FxLimit
@@ -145,15 +147,20 @@ func (s *Service) castProto(ctx context.Context, res combatResult, ev actionEven
 		coverKey, coverSource := h.coverFor(v, ev.CoverUsers)
 		r.Cover, r.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
 		if h.Pending != "" && (v.master || v.owns(caster)) {
-			r.PendingDamageId = h.Pending
-			p, err := s.queries.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: res.encounterID, ID: h.Pending})
-			switch {
-			case errors.Is(err, pgx.ErrNoRows): // an undo took it away meanwhile
-				r.PendingDamageId = ""
-			case err != nil:
-				return nil, s.dbError(ctx, "read the pending damage", err)
-			default:
-				out.PendingDamages = append(out.PendingDamages, pendingProto(p, cs))
+			for i, id := range append([]string{h.Pending}, h.More...) {
+				p, err := s.queries.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: res.encounterID, ID: id})
+				switch {
+				case errors.Is(err, pgx.ErrNoRows): // an undo took it away meanwhile
+				case err != nil:
+					return nil, s.dbError(ctx, "read the pending damage", err)
+				default:
+					if i == 0 {
+						r.PendingDamageId = id
+					} else {
+						r.MorePendingDamageIds = append(r.MorePendingDamageIds, id)
+					}
+					out.PendingDamages = append(out.PendingDamages, pendingProto(p, cs))
+				}
 			}
 		}
 		out.Targets = append(out.Targets, r)

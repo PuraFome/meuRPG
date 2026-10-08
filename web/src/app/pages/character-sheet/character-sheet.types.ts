@@ -49,9 +49,14 @@ export interface AttackVm {
   readonly attackBonus: number;
   readonly damage: string;
   readonly damageTypePt: string;
+  /** The two-handed damage of a versatile weapon ("1d8+1"); empty otherwise. */
+  readonly versatileDamage: string;
   /** > 0 only for a spell that asks for a saving throw. */
   readonly saveDc: number;
   readonly saveAbility: AbilityKey | null;
+  /** How many attack rolls it makes in one action (Eldritch Blast: 1 to 4
+   * beams); 0 for a weapon. */
+  readonly beams: number;
 }
 
 export interface SpellcastingVm {
@@ -165,6 +170,9 @@ export interface FullSheetVm {
   readonly languages: readonly string[];
   readonly proficiencies: readonly string[];
   readonly equipment: readonly EquipmentItemVm[];
+  /** The background's equipment as text: a table background's, or what the
+   * player wrote for a custom ("Outro") background; empty otherwise. */
+  readonly backgroundEquipment: string;
   readonly coins: CoinsVm;
   /** Locks with the rest of the sheet, unlike `CharacterStoryVm` (A3). */
   readonly customFeaturesText: string;

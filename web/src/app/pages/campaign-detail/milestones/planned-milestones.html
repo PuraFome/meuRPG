@@ -91,16 +91,21 @@
           >
             <mat-icon aria-hidden="true">edit</mat-icon>
           </button>
-          <button
-            type="button"
-            class="tool tool--remove"
-            [attr.data-id]="m.id"
-            data-act="remove"
-            [attr.aria-label]="'Remover ' + m.text"
-            (click)="askRemove(m)"
-          >
-            <mat-icon aria-hidden="true">delete</mat-icon>
-          </button>
+          @if (!kept().has(m.id)) {
+            <button
+              type="button"
+              class="tool tool--remove"
+              [attr.data-id]="m.id"
+              data-act="remove"
+              [attr.aria-label]="'Remover ' + m.text"
+              (click)="askRemove(m)"
+            >
+              <mat-icon aria-hidden="true">delete</mat-icon>
+            </button>
+          } @else {
+            <!-- Keeps the other tools where the rows above and below have them. -->
+            <span class="tool tool--gap" aria-hidden="true"></span>
+          }
         </div>
       }
     </li>
