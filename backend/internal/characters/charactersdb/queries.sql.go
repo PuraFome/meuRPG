@@ -2410,8 +2410,8 @@ func (q *Queries) SetCharacterCreatureName(ctx context.Context, arg SetCharacter
 }
 
 const setFamiliarSight = `-- name: SetFamiliarSight :one
-INSERT INTO character_vitals (character_id, hit_points_current, familiar_sight_creature_id, familiar_sight_in_combat, familiar_sight_conditions, revision, updated_at)
-VALUES ($1, $2, $3, $4, $5::TEXT[], 1, $6)
+INSERT INTO character_vitals (character_id, familiar_sight_creature_id, familiar_sight_in_combat, familiar_sight_conditions, revision, updated_at)
+VALUES ($1, $2, $3, $4::TEXT[], 1, $5)
 ON CONFLICT (character_id) DO UPDATE SET
     familiar_sight_creature_id = excluded.familiar_sight_creature_id,
     familiar_sight_in_combat = excluded.familiar_sight_in_combat,
@@ -2422,12 +2422,11 @@ RETURNING revision, updated_at
 `
 
 type SetFamiliarSightParams struct {
-	CharacterID      string
-	HitPointsCurrent int32
-	CreatureID       *string
-	InCombat         bool
-	Conditions       []string
-	Now              time.Time
+	CharacterID string
+	CreatureID  *string
+	InCombat    bool
+	Conditions  []string
+	Now         time.Time
 }
 
 type SetFamiliarSightRow struct {
@@ -2441,7 +2440,6 @@ type SetFamiliarSightRow struct {
 func (q *Queries) SetFamiliarSight(ctx context.Context, arg SetFamiliarSightParams) (SetFamiliarSightRow, error) {
 	row := q.db.QueryRow(ctx, setFamiliarSight,
 		arg.CharacterID,
-		arg.HitPointsCurrent,
 		arg.CreatureID,
 		arg.InCombat,
 		arg.Conditions,
@@ -2529,7 +2527,7 @@ RETURNING revision, updated_at
 
 type TouchVitalsParams struct {
 	CharacterID      string
-	HitPointsCurrent int32
+	HitPointsCurrent *int32
 	Now              time.Time
 }
 
@@ -2745,7 +2743,7 @@ RETURNING revision, updated_at
 
 type UpsertVitalsParams struct {
 	CharacterID        string
-	HitPointsCurrent   int32
+	HitPointsCurrent   *int32
 	HitPointsTemporary int32
 	SpellSlotsUsed     []int32
 	PactSlotsUsed      int32
@@ -2760,7 +2758,8 @@ type UpsertVitalsRow struct {
 }
 
 // Saves a character's vitals: the first save creates the row with revision
-// 1, and every later one adds 1.
+// 1, and every later one adds 1. A NULL hit_points_current is "never set":
+// full hit points, whatever the maximum is.
 func (q *Queries) UpsertVitals(ctx context.Context, arg UpsertVitalsParams) (UpsertVitalsRow, error) {
 	row := q.db.QueryRow(ctx, upsertVitals,
 		arg.CharacterID,

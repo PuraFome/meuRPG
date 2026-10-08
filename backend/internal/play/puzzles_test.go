@@ -1386,7 +1386,7 @@ var playerRunKeys = map[string][]string{
 	".state.cipher":           {},
 	// A typed answer and a struck bell never reach the other players: the riddle, the
 	// sequence and the cipher are not in lastMove.move, whatever they say.
-	".lastMove":              {"characterName", "move", "changed", "at", "wrong", "step", "trapName"},
+	".lastMove":              {"characterName", "move", "changed", "at", "wrong", "step", "trapName", "playsAtMove"},
 	".lastMove.move":         {"lights", "lock", "pillars"},
 	".lastMove.move.lights":  {"row", "col"},
 	".lastMove.move.lock":    {"wheel", "delta"},

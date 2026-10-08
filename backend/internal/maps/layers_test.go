@@ -548,47 +548,67 @@ func TestMR034_LayerChangesReachTheRightStreams(t *testing.T) {
 func TestHintGateMergesTheHintsOfAnInterval(t *testing.T) {
 	t.Parallel()
 	const every = 300 * time.Millisecond
-	var gate hintGate
-	sent := make(chan bool, 10)
-	send := func(players bool) { sent <- players }
+	// The clock and the timer are the test's: an interval ends when the test
+	// says so, never because the machine was slow.
+	now := time.Now()
+	var timers []func()
+	gate := hintGate{
+		now: func() time.Time { return now },
+		afterFunc: func(_ time.Duration, f func()) *time.Timer {
+			timers = append(timers, f)
+			return time.NewTimer(time.Hour)
+		},
+	}
+	var sent []bool
+	send := func(players bool) { sent = append(sent, players) }
 	fire := func(key string, players bool) { gate.fire(key, every, players, send) }
+	expire := func() {
+		t.Helper()
+		if len(timers) != 1 {
+			t.Fatalf("%d timers are waiting, want exactly 1", len(timers))
+		}
+		f := timers[0]
+		timers = nil
+		now = now.Add(every)
+		f()
+	}
 
 	fire("a", false) // at once
-	if got := <-sent; got {
-		t.Error("the first hint went to the players, want the master only")
+	if len(sent) != 1 || sent[0] {
+		t.Fatalf("sent = %v, want the first hint at once, to the master only", sent)
 	}
 	fire("a", false) // these four merge into one
 	fire("a", true)
 	fire("a", false)
 	fire("a", false)
 	fire("b", true) // another key has its own interval
-	if got := <-sent; !got {
-		t.Error("the other key's hint did not go at once to the players")
+	if len(sent) != 2 || !sent[1] {
+		t.Fatalf("sent = %v, want the other key's hint at once, to the players", sent)
 	}
-	select {
-	case got := <-sent:
-		t.Fatalf("a hint %v went within the interval, want it held", got)
-	case <-time.After(every / 3):
+	if len(timers) != 1 {
+		t.Fatalf("%d timers are waiting, want one for the merged hints", len(timers))
 	}
-	select {
-	case got := <-sent:
-		if !got {
-			t.Error("the merged hint lost the players flag of one of them")
-		}
-	case <-time.After(5 * every):
-		t.Fatal("the merged hint never went: the last change would stay unannounced")
+	expire()
+	if len(sent) != 3 || !sent[2] {
+		t.Fatalf("sent = %v, want one merged hint that keeps the players flag of one of them", sent)
 	}
-	select {
-	case got := <-sent:
-		t.Fatalf("a second merged hint %v went, want one", got)
-	case <-time.After(every):
+	if len(timers) != 0 {
+		t.Fatalf("%d timers are waiting after the merged hint, want none", len(timers))
+	}
+	// A hint right after the merged one waits for the next interval.
+	fire("a", false)
+	if len(sent) != 3 || len(timers) != 1 {
+		t.Fatalf("sent = %v with %d timers, want the hint held", sent, len(timers))
+	}
+	expire()
+	if len(sent) != 4 || sent[3] {
+		t.Fatalf("sent = %v, want the held hint, to the master only", sent)
 	}
 	// After a quiet interval the next goes at once again.
+	now = now.Add(every)
 	fire("a", true)
-	select {
-	case <-sent:
-	case <-time.After(every / 3):
-		t.Error("a hint after a quiet interval was held")
+	if len(sent) != 5 || !sent[4] || len(timers) != 0 {
+		t.Errorf("sent = %v with %d timers, want a hint after a quiet interval at once", sent, len(timers))
 	}
 }
 

@@ -231,12 +231,13 @@ WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID AND c.id = sqlc.arg(id)
 
 -- name: UpsertVitals :one
 -- Saves a character's vitals: the first save creates the row with revision
--- 1, and every later one adds 1.
+-- 1, and every later one adds 1. A NULL hit_points_current is "never set":
+-- full hit points, whatever the maximum is.
 INSERT INTO character_vitals
     (character_id, hit_points_current, hit_points_temporary, spell_slots_used,
      pact_slots_used, hit_dice_used, resources_used, revision, updated_at)
 VALUES (
-    sqlc.arg(character_id), sqlc.arg(hit_points_current), sqlc.arg(hit_points_temporary),
+    sqlc.arg(character_id), sqlc.narg(hit_points_current), sqlc.arg(hit_points_temporary),
     sqlc.arg(spell_slots_used)::INT4[], sqlc.arg(pact_slots_used), sqlc.arg(hit_dice_used),
     sqlc.arg(resources_used)::JSONB, 1, sqlc.arg(now)
 )
@@ -511,8 +512,8 @@ RETURNING revision, updated_at;
 -- "Ver pelos olhos do familiar" (MR-036): the familiar the player looks through
 -- (NULL for none), whether it started in a combat and the conditions it gave the
 -- combatant. The first write creates the vitals row, as TouchVitals does.
-INSERT INTO character_vitals (character_id, hit_points_current, familiar_sight_creature_id, familiar_sight_in_combat, familiar_sight_conditions, revision, updated_at)
-VALUES (sqlc.arg(character_id), sqlc.arg(hit_points_current), sqlc.narg(creature_id), sqlc.arg(in_combat), sqlc.arg(conditions)::TEXT[], 1, sqlc.arg(now))
+INSERT INTO character_vitals (character_id, familiar_sight_creature_id, familiar_sight_in_combat, familiar_sight_conditions, revision, updated_at)
+VALUES (sqlc.arg(character_id), sqlc.narg(creature_id), sqlc.arg(in_combat), sqlc.arg(conditions)::TEXT[], 1, sqlc.arg(now))
 ON CONFLICT (character_id) DO UPDATE SET
     familiar_sight_creature_id = excluded.familiar_sight_creature_id,
     familiar_sight_in_combat = excluded.familiar_sight_in_combat,

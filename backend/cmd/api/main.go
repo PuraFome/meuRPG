@@ -519,14 +519,16 @@ func wireModules(
 	// progression and characters need each other too (the XP lives on the
 	// sheets, and a sheet shows "pode subir de nível"): characters gets
 	// progression once it exists.
+	treasures := maps.NewTreasures(pool)
+	treasures.SetService(mapsService) // a conversion or an undo tells the open maps
 	progressionService, err = progression.New(progression.Config{
 		Pool:      pool,
-		Party:     charactersService,       // the party, and the XP on the sheets (MR-016)
-		Combats:   playService,             // a combat's defeated NPCs and their XP
-		Log:       playService,             // the session's history and the xp_changed hint
-		Treasures: maps.NewTreasures(pool), // the found treasures "Voltar à cidade" converts (MR-041)
-		Campaigns: campaignsService,        // how the campaign levels (RN-09)
-		Profiles:  users,                   // who gave each award
+		Party:     charactersService, // the party, and the XP on the sheets (MR-016)
+		Combats:   playService,       // a combat's defeated NPCs and their XP
+		Log:       playService,       // the session's history and the xp_changed hint
+		Treasures: treasures,         // the found treasures "Voltar à cidade" converts (MR-041)
+		Campaigns: campaignsService,  // how the campaign levels (RN-09)
+		Profiles:  users,             // who gave each award
 		Logger:    logger,
 	})
 	if err != nil {
@@ -596,7 +598,10 @@ func recoverRPC(logger *slog.Logger) func(context.Context, connect.Spec, http.He
 			slog.String("procedure", spec.Procedure),
 			slog.Any("panic", panicValue),
 			slog.String("stack", string(debug.Stack())))
-		return connect.NewError(connect.CodeInternal, errors.New("internal error"))
+		// Built outside the interceptors a module mounts, so it says no-store itself.
+		err := connect.NewError(connect.CodeInternal, errors.New("internal error"))
+		err.Meta().Set("Cache-Control", "no-store")
+		return err
 	}
 }
 

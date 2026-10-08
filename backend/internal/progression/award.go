@@ -290,20 +290,11 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 	if !fits(campaignMode, g.mode) {
 		return progressiondb.XpAward{}, errBlocked(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_MODE_NOT_ALLOWED, "", campaignMode)
 	}
-	party, err := s.party.Party(ctx, m.CampaignID)
-	if err != nil {
-		return progressiondb.XpAward{}, s.dbError(ctx, "read the party", err)
-	}
-	for _, id := range g.characters {
-		if !slices.ContainsFunc(party, func(p link.Member) bool { return p.ID == id }) {
-			return progressiondb.XpAward{}, errBlocked(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE, id, 0)
-		}
-	}
-
 	var award progressiondb.XpAward
 	var repeated, logged bool
+	var changedMaps []string // the maps whose treasures this award converted
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		award, repeated, logged = progressiondb.XpAward{}, false, false // a retry starts over
+		award, repeated, logged, changedMaps = progressiondb.XpAward{}, false, false, nil // a retry starts over
 		q := s.queries.WithTx(tx)
 		if done, err := q.GetXPAwardByKey(ctx, progressiondb.GetXPAwardByKeyParams{CampaignID: m.CampaignID, IdempotencyKey: g.key}); err == nil {
 			repeated = true // a request that raced with its own retry
@@ -322,6 +313,17 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 		}
 		if !fits(txMode, g.mode) {
 			return errBlocked(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_MODE_NOT_ALLOWED, "", txMode)
+		}
+		// The party is read here, in the transaction: a character that died, or
+		// went up a level, since the request began is judged as it is now.
+		party, err := s.party.Party(ctx, tx, m.CampaignID)
+		if err != nil {
+			return fmt.Errorf("read the party: %w", err)
+		}
+		for _, id := range g.characters {
+			if !slices.ContainsFunc(party, func(p link.Member) bool { return p.ID == id }) {
+				return errBlocked(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE, id, 0)
+			}
 		}
 		reason := g.reason
 		if g.milestoneID != "" {
@@ -409,6 +411,11 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 			if err := s.treasures.MarkConverted(ctx, tx, award.ID, g.treasureIDs); err != nil {
 				return err
 			}
+			for _, tr := range treasures {
+				if !slices.Contains(changedMaps, tr.MapID) {
+					changedMaps = append(changedMaps, tr.MapID)
+				}
+			}
 		}
 		payload := eventPayload{AwardID: award.ID, Mode: g.mode, TotalXP: total, XPEach: each, CharacterIDs: g.characters, EncounterID: g.encounterID, MilestoneID: g.milestoneID}
 		_, payload.LostXP = xpEach(total, len(g.characters))
@@ -427,6 +434,9 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 	})
 	if err != nil {
 		return progressiondb.XpAward{}, s.dbError(ctx, "give XP", err)
+	}
+	if !repeated && len(changedMaps) > 0 {
+		s.treasures.PublishChanged(m.CampaignID, changedMaps) // after the commit, once per map
 	}
 	if logged && !repeated {
 		name := "xp.awarded"

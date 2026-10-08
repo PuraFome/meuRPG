@@ -161,6 +161,17 @@ func inGrid(e playdb.Encounter, col, row int32) bool {
 	return col >= 0 && col < e.GridColumns && row >= 0 && row < e.GridRows
 }
 
+// isNumberedCopy says whether label is base and a number, "Goblin 2": another
+// creature whose name only begins with base ("Goblin Boss") is not a copy.
+func isNumberedCopy(label, base string) bool {
+	n, ok := strings.CutPrefix(label, base+" ")
+	if !ok || n == "" {
+		return false
+	}
+	_, err := strconv.ParseUint(n, 10, 32)
+	return err == nil
+}
+
 // copyLabels gives the labels of count copies of an NPC called name: the
 // plain name for a single one that stands alone, "Goblin 1", "Goblin 2"...
 // otherwise, continuing after the labels the combat already has (taken) so
@@ -174,7 +185,7 @@ func copyLabels(name string, count int, taken map[string]bool) []string {
 	// A single copy keeps the plain name only when no other copy is there.
 	others := false
 	for label := range taken {
-		if label == base || strings.HasPrefix(label, base+" ") {
+		if label == base || isNumberedCopy(label, base) {
 			others = true
 		}
 	}

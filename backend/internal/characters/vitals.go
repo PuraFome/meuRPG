@@ -318,9 +318,15 @@ func (s *Service) AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, chara
 	if err != nil {
 		return nil, nil, wrap("encode the resources", err)
 	}
+	// A character whose hit points were never set, and this change leaves alone,
+	// keeps them unset: full, whatever the maximum becomes.
+	hitPoints := &after.HitPointsCurrent
+	if req.HitPointsCurrent == nil && row.HitPointsCurrent == nil {
+		hitPoints = nil
+	}
 	saved, err := q.UpsertVitals(ctx, charactersdb.UpsertVitalsParams{
 		CharacterID:        row.ID,
-		HitPointsCurrent:   after.GetHitPointsCurrent(),
+		HitPointsCurrent:   hitPoints,
 		HitPointsTemporary: after.GetHitPointsTemporary(),
 		SpellSlotsUsed:     used,
 		PactSlotsUsed:      pactUsed,

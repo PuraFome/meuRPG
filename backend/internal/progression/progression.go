@@ -48,8 +48,8 @@ import (
 // own authorization check.
 type Party interface {
 	// Party returns the campaign's living, active player characters, oldest
-	// first, with their level and XP.
-	Party(ctx context.Context, campaignID string) ([]link.Member, error)
+	// first, with their level and XP, read in tx (nil outside a transaction).
+	Party(ctx context.Context, tx pgx.Tx, campaignID string) ([]link.Member, error)
 	// Names returns the names of those of ids that are characters of the
 	// campaign, by ID, whatever their kind or status.
 	Names(ctx context.Context, campaignID string, ids []string) (map[string]string, error)
@@ -100,8 +100,13 @@ type Treasures interface {
 	// award inside tx.
 	MarkConverted(ctx context.Context, tx pgx.Tx, awardID string, pointIDs []string) error
 	// Release frees the treasures the award converted inside tx (it was
-	// undone): they are "found, not converted" again.
-	Release(ctx context.Context, tx pgx.Tx, awardID string) error
+	// undone): they are "found, not converted" again. It returns the IDs of the
+	// maps whose points it freed.
+	Release(ctx context.Context, tx pgx.Tx, awardID string) ([]string, error)
+	// PublishChanged tells the watching members that the points of those maps
+	// changed state, after a conversion or an undo committed. It carries no
+	// content: the app reads the map again, where it is allowed (RN-10).
+	PublishChanged(campaignID string, mapIDs []string)
 }
 
 // Campaigns tells how the campaign levels (the campaigns module implements it).

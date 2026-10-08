@@ -409,6 +409,59 @@ func TestMR038_SequencePlayedThenRepeatedWithAWrongStep(t *testing.T) {
 	wantPuzzleBlocked(t, "playing a solved sequence", err, playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_SOLVED)
 }
 
+// A move says how many plays of the sequence had happened when it was made, the
+// same to every reader: the note about a wrong bell holds only while the run's
+// plays are still that number, however many times the page is read again.
+func TestMR038_ASequenceMoveKeepsTheCountOfPlaysItWasMadeAt(t *testing.T) {
+	t.Parallel()
+	p := newPuzzleTable(t)
+	clock := p.movableClock()
+	puz := p.sequence(t, "Os sinos do Salão do trono")
+	p.show(t, puz.GetId())
+	playsAtMove := func(who string, u *user) int32 {
+		t.Helper()
+		r := p.read(t, u, puz.GetId())
+		if r.GetLastMove() == nil {
+			t.Fatalf("%s reads no last move: %v", who, r)
+		}
+		if got, plays := r.GetLastMove().GetPlaysAtMove(), r.GetSequence().GetPlays(); got > plays {
+			t.Errorf("%s reads a move made at play %d of %d", who, got, plays)
+		}
+		return r.GetLastMove().GetPlaysAtMove()
+	}
+
+	p.playSequence(t, puz.GetId())
+	clock.advance(10 * puzzle.SequenceStep)
+	p.mustMove(t, p.caio, puz.GetId(), bellMove(2))
+	if got := playsAtMove("Ana", p.ana); got != 1 {
+		t.Errorf("a bell after the first play reads plays_at_move = %d, want 1", got)
+	}
+	p.mustMove(t, p.bia, puz.GetId(), bellMove(3)) // the second step is bell 0
+	for who, u := range map[string]*user{"Ana": p.ana, "Caio": p.caio, "Brisa": p.bia} {
+		if r := p.read(t, u, puz.GetId()); !r.GetLastMove().GetWrong() || r.GetLastMove().GetPlaysAtMove() != 1 || r.GetSequence().GetPlays() != 1 {
+			t.Errorf("%s reads %v after the wrong bell, want it made at play 1 of 1", who, r)
+		}
+	}
+	if m := p.masterRun(t, puz.GetId()); m.GetLastMove().GetPlaysAtMove() != 1 {
+		t.Errorf("the master reads plays_at_move = %d, want 1", m.GetLastMove().GetPlaysAtMove())
+	}
+
+	// The master plays it again: the wrong bell is now before the last play.
+	p.playSequence(t, puz.GetId())
+	clock.advance(10 * puzzle.SequenceStep)
+	for who, u := range map[string]*user{"Ana": p.ana, "Caio": p.caio} {
+		r := p.read(t, u, puz.GetId())
+		if r.GetLastMove().GetPlaysAtMove() != 1 || r.GetSequence().GetPlays() != 2 {
+			t.Errorf("%s reads %v after the second play, want the move at play 1 and 2 plays", who, r)
+		}
+	}
+	// A new wrong bell is made at the second play.
+	p.mustMove(t, p.ana, puz.GetId(), bellMove(1)) // the first step is bell 2
+	if got := playsAtMove("Caio", p.caio); got != 2 {
+		t.Errorf("a wrong bell after the second play reads plays_at_move = %d, want 2", got)
+	}
+}
+
 func equalInt32(a, b []int32) bool {
 	if len(a) != len(b) {
 		return false
