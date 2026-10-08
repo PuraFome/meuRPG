@@ -1082,6 +1082,24 @@ export class CharacterEditor {
     );
   }
 
+  /** The table's rules for the scores changed under the person (the server refused the way of rolling the step offered):
+   * they are read again, so the step offers what is allowed now. */
+  protected async rereadAbilityTable(): Promise<void> {
+    const s = this.state();
+    if (s.status !== 'ready' || !this.abilityTable()) {
+      return;
+    }
+    const seq = this.loadSeq;
+    try {
+      const table = await this.source.loadAbilityTable(s.campaignId);
+      if (seq === this.loadSeq && table) {
+        this.abilityTable.set(table);
+      }
+    } catch {
+      // The refusal the step already shows stays; the next try reads the table again.
+    }
+  }
+
   private loadForEdit(campaignId: string, characterId: string): void {
     const seq = ++this.loadSeq;
     this.resetEditing();
