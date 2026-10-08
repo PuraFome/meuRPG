@@ -381,6 +381,31 @@ func TestCallbackRejects(t *testing.T) {
 	}
 }
 
+// A browser holds one login cookie, so a second sign-in started in it (another
+// tab, a link from another site) replaces the first: the first callback fails
+// closed, with no session, and the second completes. Nothing of one flow
+// reaches the other.
+func TestASecondSignInInTheSameBrowserReplacesTheFirst(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+
+	firstURL, _ := h.beginLogin("/first")
+	secondURL, secondCookie := h.beginLogin("/second")
+
+	rec := h.finishLogin(firstURL, secondCookie)
+	if rec.Code != http.StatusBadRequest || !strings.Contains(h.logs.String(), `"reason":"state_mismatch"`) {
+		t.Fatalf("first callback: status = %d, want 400 state_mismatch; logs: %s", rec.Code, h.logs)
+	}
+	if n := h.mem.sessionCount(); n != 0 {
+		t.Fatalf("sessions after the refused callback = %d, want 0", n)
+	}
+
+	rec = h.finishLogin(secondURL, secondCookie)
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/second" {
+		t.Errorf("second callback: status = %d, Location = %q, want 303 to /second", rec.Code, rec.Header().Get("Location"))
+	}
+}
+
 func mutateClaims(edit func(claims map[string]any)) func(h *harness) {
 	return func(h *harness) {
 		h.idp.Tweak(func(k *oidctest.Knobs) { k.MutateClaims = edit })

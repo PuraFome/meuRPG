@@ -596,7 +596,10 @@ func recoverRPC(logger *slog.Logger) func(context.Context, connect.Spec, http.He
 			slog.String("procedure", spec.Procedure),
 			slog.Any("panic", panicValue),
 			slog.String("stack", string(debug.Stack())))
-		return connect.NewError(connect.CodeInternal, errors.New("internal error"))
+		// Built outside the interceptors a module mounts, so it says no-store itself.
+		err := connect.NewError(connect.CodeInternal, errors.New("internal error"))
+		err.Meta().Set("Cache-Control", "no-store")
+		return err
 	}
 }
 

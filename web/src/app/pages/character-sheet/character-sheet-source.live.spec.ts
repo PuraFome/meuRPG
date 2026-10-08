@@ -394,4 +394,24 @@ describe("the sheet maps a Warlock's Pact Magic apart from the spell slots", () 
   it('has no pact slots without the feature', () => {
     expect(withDerived({}).pactSlots).toBeNull();
   });
+
+  it('keeps what a class prepares apart from what a class knows', () => {
+    const casting = (over: Record<string, number>) => ({
+      $typeName: 'meurpg.rules.v1.Spellcasting' as const,
+      classKey: 'class:x',
+      classNamePt: 'Classe',
+      ability: 0,
+      saveDc: 13,
+      attackBonus: 5,
+      cantripsKnown: 4,
+      preparedMax: 0,
+      spellsKnown: 0,
+      ...over,
+    });
+    const [wizard, sorcerer] = withDerived({
+      spellcasting: [casting({ preparedMax: 7 }), casting({ spellsKnown: 5 })],
+    }).spellcasting;
+    expect(wizard).toMatchObject({ spellsPreparedMax: 7, spellsKnownMax: 0 });
+    expect(sorcerer).toMatchObject({ spellsPreparedMax: 0, spellsKnownMax: 5 });
+  });
 });

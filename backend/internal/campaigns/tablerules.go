@@ -208,11 +208,23 @@ func (s *Service) GetTableRules(
 	if err != nil {
 		return nil, err
 	}
-	campaign, err := s.queries.GetCampaign(ctx, m.CampaignID)
-	if err != nil {
-		return nil, s.dbError(ctx, "get the campaign", err)
-	}
-	row, err := s.rowOf(ctx, nil, m.CampaignID)
+	// The dice mode is the campaign's, the rest is in the rules' row, and
+	// SetTableRules writes both in one transaction: one read transaction shows
+	// them from the same moment, never the new dice mode with the old rules.
+	var (
+		campaign campaignsdb.Campaign
+		row      campaignsdb.CampaignTableRule
+	)
+	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		if campaign, err = s.queries.WithTx(tx).GetCampaign(ctx, m.CampaignID); err != nil {
+			return fmt.Errorf("get the campaign: %w", err)
+		}
+		if row, err = s.rowOf(ctx, tx, m.CampaignID); err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, s.dbError(ctx, "get the table rules", err)
 	}

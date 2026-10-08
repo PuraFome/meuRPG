@@ -83,6 +83,7 @@ You can have **more than one in-memory test database** at the same time, each on
 The integration tests **reuse databases**: each package creates a few test databases and, between one test and the next, only empties them (`backend/internal/platform/dbtest`). Creating a database with all the tables takes about 5 seconds in CockroachDB (each table is a schema change), and dropping it another 1.5; emptying it with `DELETE` takes about 10 milliseconds. Measured on 04/10/2026: the `progression` tests dropped from 88 to 20 seconds.
 
 - The migrations run once, on a template database, `meurpg_tpl_<hash of the migrations>`. A new or changed migration generates another one. The templates of old migrations stay on the test server, empty, and can be dropped (`DROP DATABASE meurpg_tpl_... CASCADE`).
+- The tables a migration fills (a seeded table such as `session_event_kinds`) are found in the migrated template, not listed anywhere: a test database is created with their rows, and emptying one leaves them.
 - A test that needs a database takes a free one from the package (or creates one, copying the tables from the template) and returns it when it finishes; the next test deletes all the rows before using it (child tables first). Parallel tests never share a database: the package creates as many as run at the same time.
 - Every package that uses a database has a `TestMain` that calls `dbtest.Main(m)`: at the end of the run, it drops the databases the package created. A new package with integration tests needs it, or the databases are left behind.
 - If a run is interrupted midway, its databases stay on the server (`meurpg_<package>_test_...`) and can be dropped by hand. With `make db-test-start`, stopping the test database deletes everything.
@@ -205,7 +206,7 @@ The backend limits the request rate (per IP and per user, in memory) and what on
 | `CAMPAIGN_CREATORS` | No | Verified e-mails, comma-separated, that may create campaigns; empty, anyone creates. In `make up`, "Mestre Teste" is `mestre@example.com`. |
 | `RATE_LIMIT_MULTIPLIER` | No | Multiplies every rate limit; default 1. `make up` (Docker and native) uses 10, because the e2e suite sends the requests of several accounts from the same address and shares some accounts between workers. |
 
-The numbers, the answers (`429` with `Retry-After`, `resource_exhausted`) and how each limit counts are in [Architecture](docs/architecture.md#abuse-limits) and [Operations](docs/operations.md#abuse-limits). The limiters' tests use a fake clock (`go test ./internal/platform/ratelimit`); the campaign cap and the daily image cap run against the database, like the rest (`TestRN30_*` in `campaigns`, `TestMR039_TheServersDailyCap` and `TestRateLimitsOfTheImageRoutes` in `maps`).
+The numbers, the answers (`429` with `Retry-After`, `resource_exhausted`) and how each limit counts are in [Architecture](docs/architecture.md#abuse-limits) and [Operations](docs/operations.md#abuse-limits). The limiters' tests use a fake clock (`go test ./internal/platform/ratelimit`; the dungeon creation limit and the map hint gate in `maps` take a test clock too); the campaign cap and the daily image cap run against the database, like the rest (`TestRN30_*` in `campaigns`, `TestMR039_TheServersDailyCap` and `TestRateLimitsOfTheImageRoutes` in `maps`).
 
 ## End-to-end tests (Playwright)
 

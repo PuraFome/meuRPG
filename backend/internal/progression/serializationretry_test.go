@@ -94,4 +94,8 @@ func TestAddMilestoneRetriesASerializationConflict(t *testing.T) {
 	if err != nil {
 		t.Errorf("AddMilestone() after one 40001 error = %v (code %v), want success after a retry; tx reads = %d", err, connect.CodeOf(err), flaky.txCalls.Load())
 	}
+	// The conflict was really raised, and the read really ran again.
+	if !flaky.failed.Load() || flaky.txCalls.Load() < 2 {
+		t.Errorf("the XP mode was read %d time(s) inside the transaction (conflict raised: %v), want a failed read and its retry", flaky.txCalls.Load(), flaky.failed.Load())
+	}
 }

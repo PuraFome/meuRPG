@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -1042,6 +1043,15 @@ func TestMR010_AFailedCreationLeavesNothingBehind(t *testing.T) {
 func TestMR010_CreatingAndRedrawingAreRateLimited(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	// The limiter's clock only moves when the test moves it: a slow machine
+	// cannot refill the bucket in the middle of the burst.
+	var clockMu sync.Mutex
+	now := time.Now()
+	h.svc.dungeonLimit = newDungeonLimiter(func() time.Time {
+		clockMu.Lock()
+		defer clockMu.Unlock()
+		return now
+	})
 	master := h.newUser("Mestre")
 	campaign := h.newCampaign(master)
 	opts := &mapsv1.DungeonOptions{Width: proto.Int32(21), Height: proto.Int32(21)}
@@ -1058,6 +1068,15 @@ func TestMR010_CreatingAndRedrawingAreRateLimited(t *testing.T) {
 	if _, err := master.previewDungeon(campaign, opts, &seed); err != nil {
 		t.Errorf("a preview after the burst: %v", err)
 	}
+	// The bucket refills one creation every 15 seconds.
+	clockMu.Lock()
+	now = now.Add(15 * time.Second)
+	clockMu.Unlock()
+	if _, err := master.tryCreateDungeon(campaign, "Depois da espera", opts, &seed); err != nil {
+		t.Errorf("a creation after the refill: %v", err)
+	}
+	_, err = master.tryCreateDungeon(campaign, "Logo em seguida", opts, &seed)
+	wantCode(t, "a creation right after the refilled one", err, connect.CodeResourceExhausted)
 	// Another campaign has its own bucket.
 	other := h.newUser("Outro mestre")
 	otherCampaign := h.newCampaign(other)
