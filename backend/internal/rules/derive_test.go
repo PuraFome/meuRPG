@@ -769,6 +769,11 @@ func BenchmarkDerive(b *testing.B) {
 // TestHitPointsFromEffects: HitPointsFromEffects is what the "hp.max" effects
 // add to the dice and the Constitution modifier, with the floor of one hit
 // point per level kept inside the dice part.
+func tableRaceOf(b Build, race string) Build {
+	b.Race = race
+	return b
+}
+
 func TestHitPointsFromEffects(t *testing.T) {
 	t.Parallel()
 	srd := loadForTest(t)
@@ -792,6 +797,12 @@ func TestHitPointsFromEffects(t *testing.T) {
 	}
 	tableRace := human("class:fighter", 3, 14)
 	tableRace.Race = race.Key
+	// A table race whose trait takes hit points away without limit: the maximum stops at one per level.
+	draining := race
+	draining.Traits = []TableFeature{{
+		Key: "trait:dreno" + tableSuffix, NamePT: "Dreno", DescPT: []string{"Texto de teste."},
+		Effects: []Effect{{Type: "modifier", Target: "hp.max", Mode: "add", Value: "-1000"}},
+	}}
 	// Every build starts from standard()'s human, who adds 1 to each score.
 	tests := []struct {
 		name         string
@@ -804,7 +815,8 @@ func TestHitPointsFromEffects(t *testing.T) {
 		{"Dwarven Toughness adds one per level", srd, hillDwarf("class:fighter", 3, 12), 3, 12 + 2*(6+2) + 3}, // CON 14, modifier 2
 		{"a table effect may subtract", table, tableRace, -2, 12 + 2*(6+2) - 2},                               // CON 15, modifier 2
 		{"the floor of one per level is not an effect", srd, human("class:wizard", 3, 2), 0, 2 + 1 + 1},       // CON 3, modifier -4: 6-4, then 1 and 1
-		{"an effect on top of the floor", srd, hillDwarf("class:wizard", 3, 1), 3, 2 + 1 + 1 + 3},             // CON 3, modifier -4
+		{"an effect that takes everything stops at one per level", withOverlay(t, Overlay{Revision: 1, Races: []TableRace{draining}}), tableRaceOf(human("class:fighter", 3, 14), draining.Key), 3 - (12 + 2*(6+2)), 3},
+		{"an effect on top of the floor", srd, hillDwarf("class:wizard", 3, 1), 3, 2 + 1 + 1 + 3}, // CON 3, modifier -4
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -818,4 +830,40 @@ func TestHitPointsFromEffects(t *testing.T) {
 			}
 		})
 	}
+}
+
+// A table's hp.max modifier that takes hit points away (or sets the maximum to
+// 0) stops at one hit point per level, so a character is never born "down".
+func TestHitPointsMaxNeverFallsBelowOnePerLevel(t *testing.T) {
+	t.Parallel()
+	srd := loadForTest(t)
+	derive := func(t *testing.T, e Effect) Derived {
+		t.Helper()
+		tc := genClass(srd, genKinds[0])
+		tc.Levels[0].Features = append(tc.Levels[0].Features, tf("drain", "Dreno", e))
+		c, err := srd.With(Overlay{Classes: []TableClass{tc}})
+		if err != nil {
+			t.Fatalf("With refused the effect: %v", err)
+		}
+		return Derive(sweepBase(t, c, tc.Key, ""), c)
+	}
+	for name, e := range map[string]Effect{
+		"add -1000": {Type: "modifier", Target: "hp.max", Mode: "add", Value: "-1000"},
+		"set 0":     {Type: "modifier", Target: "hp.max", Mode: "set", Value: "0"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			d := derive(t, e)
+			if d.HitPointsMax != d.TotalLevel {
+				t.Errorf("HitPointsMax = %d at level %d, want %d", d.HitPointsMax, d.TotalLevel, d.TotalLevel)
+			}
+		})
+	}
+	t.Run("control: a bonus still adds", func(t *testing.T) {
+		t.Parallel()
+		d := derive(t, Effect{Type: "modifier", Target: "hp.max", Mode: "add", Value: "5"})
+		if d.HitPointsMax <= d.TotalLevel {
+			t.Errorf("HitPointsMax = %d with +5, want more than %d", d.HitPointsMax, d.TotalLevel)
+		}
+	})
 }

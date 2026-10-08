@@ -12,8 +12,9 @@ import (
 // Every later level takes the fixed average (half the die plus one) or the
 // player's roll, in the order of Build.Classes. The constitution modifier is
 // added at every level, and a level never adds less than 1. "hp.max"
-// effects add on top (Dwarven Toughness, Draconic Resilience); what they add
-// is kept apart as HitPointsFromEffects.
+// effects add on top (Dwarven Toughness, Draconic Resilience), and the maximum
+// never falls below one hit point per level. What the effects and that floor
+// add to the dice and the modifier is kept apart as HitPointsFromEffects.
 func (x *deriver) hitPoints() {
 	if len(x.classes) == 0 {
 		return
@@ -50,7 +51,9 @@ func (x *deriver) hitPoints() {
 	if rolled && len(rolls) != x.d.TotalLevel-1 {
 		x.issue(IssueHitPointRolls, "full.hit_points.rolls", "Há %d rolagens de pontos de vida para %d níveis depois do primeiro; os níveis sem rolagem usam a média.", len(rolls), x.d.TotalLevel-1)
 	}
-	x.d.HitPointsMax = x.modifiers("hp.max", hp)
+	// A level never gives less than 1 hit point, whatever the modifiers say: a
+	// table's effect that takes hit points away stops there.
+	x.d.HitPointsMax = max(x.modifiers("hp.max", hp), x.d.TotalLevel)
 	x.d.HitPointsFromEffects = x.d.HitPointsMax - hp
 
 	for die, count := range dice {
