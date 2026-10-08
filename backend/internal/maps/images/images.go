@@ -415,6 +415,11 @@ func readPNGInfo(data []byte) pngInfo {
 	return pi
 }
 
+// HasTransparencyChunk reports whether a PNG has a tRNS chunk before its pixels. For
+// a gray PNG, png.DecodeConfig names gray, but png.Decode returns NRGBA (NRGBA64 with
+// 16 bits): whoever sizes a decode from the header alone asks it.
+func HasTransparencyChunk(data []byte) bool { return readPNGInfo(data).transparency }
+
 // to8bit returns img with 8 bits a channel when it has 16 (a 16-bit PNG): the
 // stored image never keeps them, so what is decoded later (the fog's tiles,
 // MR-036) costs 4 bytes a pixel, not 8. An image that is already 8-bit is returned as it is.

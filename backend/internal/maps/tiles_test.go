@@ -2,8 +2,10 @@ package maps
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -411,6 +413,34 @@ func TestTileBudget_ADecodeOverTheLimitIsRefused(t *testing.T) {
 	}
 	if _, _, _, err := decodeWorkingCopy([]byte("GIF89a"), grid.Grid{Columns: 1, Rows: 1}); err == nil {
 		t.Error("a GIF was decoded")
+	}
+}
+
+// A gray PNG with a tRNS chunk decodes to NRGBA64 when it has 16 bits, though its header
+// names gray at 2 bytes a pixel: the budget counts the chunk.
+func TestTileBudget_AGrayPNGWithATransparentColorIsPricedAsDecoded(t *testing.T) {
+	t.Parallel()
+	const w, h = 4096, 8192 // 33 megapixels: 67 MB as gray16, 268 MB as the NRGBA64 it decodes to
+	var plain bytes.Buffer
+	if err := (&png.Encoder{CompressionLevel: png.BestSpeed}).Encode(&plain, image.NewGray16(image.Rect(0, 0, w, h))); err != nil {
+		t.Fatal(err)
+	}
+	g := grid.Grid{Columns: 64, Rows: 128}
+	// The same file with a tRNS chunk (the transparent gray value) after the header.
+	data := plain.Bytes()
+	const afterHeader = 8 + 4 + 4 + 13 + 4 // signature, IHDR's length, type, data and CRC
+	chunk := append(binary.BigEndian.AppendUint32(nil, 2), "tRNS\x00\x00"...)
+	chunk = binary.BigEndian.AppendUint32(chunk, crc32.ChecksumIEEE(chunk[4:]))
+	withKey := append(append(append([]byte{}, data[:afterHeader]...), chunk...), data[afterHeader:]...)
+	if cfg, err := png.DecodeConfig(bytes.NewReader(withKey)); err != nil || cfg.ColorModel != color.Gray16Model {
+		t.Fatalf("the fixture's header = %v, %v; want gray16", cfg.ColorModel, err)
+	}
+	if _, _, _, err := decodeWorkingCopy(withKey, g); !errors.Is(err, errTooBig) {
+		t.Errorf("a 16-bit gray PNG with a tRNS chunk of 33 megapixels: error = %v, want errTooBig", err)
+	}
+	// The control: without the chunk the same image is gray16 and fits.
+	if _, _, _, err := decodeWorkingCopy(data, g); err != nil {
+		t.Errorf("the same image without the chunk: error = %v, want it decoded", err)
 	}
 }
 

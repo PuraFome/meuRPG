@@ -241,8 +241,19 @@ export class MapsClient {
     return need(res.token, 'SetMapTokenHidden');
   }
 
-  async removeToken(campaignId: string, mapId: string, characterId: string): Promise<void> {
-    await this.client.removeMapToken({ campaignId, mapId, characterId });
+  /** Takes a token off the map: a character's by `characterId`, or a creature's by `creatureId` (its `character_id` is its owner's,
+   * so sending it would take the owner's token off instead). */
+  async removeToken(
+    campaignId: string,
+    mapId: string,
+    characterId: string,
+    creatureId = '',
+  ): Promise<void> {
+    await this.client.removeMapToken(
+      creatureId === ''
+        ? { campaignId, mapId, characterId }
+        : { campaignId, mapId, characterId: '', creatureId },
+    );
   }
 
   /** `RevealTrap` (MR-035): the trap goes to the chosen characters' players, or to

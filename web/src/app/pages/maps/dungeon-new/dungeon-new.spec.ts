@@ -530,3 +530,49 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
     });
   });
 });
+
+describe('DungeonNew: a resposta atrasada de outra campanha', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('não troca o nome da campanha nem a fase da que a página mostra', async () => {
+    const answers = new Map<string, (value: unknown) => void>();
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('767'),
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: 'campaigns/:id/maps/dungeon', component: DungeonNew }]),
+        { provide: DungeonsClient, useValue: new FakeDungeonsClient() },
+        {
+          provide: CampaignsService,
+          useValue: {
+            getCampaign: (id: string) =>
+              new Promise((resolve) => {
+                answers.set(id, resolve);
+              }),
+          },
+        },
+      ],
+    });
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/campaigns/camp-1/maps/dungeon', DungeonNew);
+    await harness.navigateByUrl('/campaigns/camp-2/maps/dungeon', DungeonNew);
+    const campaign = (name: string, myRole: Role) => ({
+      campaign: { name, myRole, awaitingApproval: false },
+    });
+    answers.get('camp-2')!(campaign('Segunda', Role.MASTER));
+    await harness.fixture.whenStable();
+    // The first campaign answers last, and it would read "gone" for a player.
+    answers.get('camp-1')!(campaign('Primeira', Role.PLAYER));
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    const el = harness.routeNativeElement as HTMLElement;
+    expect(el.textContent).toContain('Segunda');
+    expect(el.textContent).not.toContain('Primeira');
+  });
+});

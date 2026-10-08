@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -185,6 +185,8 @@ export class StartCombatDialog {
   }));
   protected readonly monsterTotal = (this.saved?.groups ?? []).reduce((sum, g) => sum + g.count, 0);
   protected readonly busy = signal(false);
+  /** The start is in the air: Esc and the backdrop do not close the dialog under it. */
+  protected readonly lockWhileBusy = effect(() => (this.ref.disableClose = this.busy()));
   protected readonly error = signal('');
   /** The server said the map has no grid (it may have been cleared meanwhile). */
   protected readonly noGridMap = signal<string | null>(null);

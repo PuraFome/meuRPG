@@ -64,6 +64,11 @@ const (
 	maxPromptCharacters = 500
 	// maxGenerating is how many calls to the model run at once on this server.
 	maxGenerating = 1
+	// maxPendingRequests is how many image requests may be alive at once on this
+	// server, the one calling the model and the ones waiting for its slot. Each
+	// keeps its shrunk references in memory (up to about 6 MiB) until its call goes
+	// out, so the wait is bounded to what the 512 MiB instance has room for.
+	maxPendingRequests = 5
 	// maxLongPoll is the longest wait_seconds of GetImageGeneration.
 	maxLongPoll = 25
 	// generationTimeout bounds a request from the goroutine's start to its end
@@ -574,6 +579,12 @@ func (s *Service) readBlob(ctx context.Context, key string, limit int64) ([]byte
 	return data, nil
 }
 
+// errTooManyImageRequests is `resource_exhausted` for an image request made while the
+// server already has as many alive as it holds in memory.
+func errTooManyImageRequests() error {
+	return connect.NewError(connect.CodeResourceExhausted, errors.New("too many images are being made right now; wait for one to finish"))
+}
+
 // reserve is step 1: in one short transaction it finds the request an earlier
 // try with the same key made, or checks the cap and the gallery and inserts the
 // row, which reserves the slot. It starts the goroutine of a new request after
@@ -683,6 +694,11 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 				hasInherited = true
 			}
 		}
+		// The server holds only so many requests alive. Two requests that pass this at
+		// once may both be taken: the cap is a bound on memory, not an exact count.
+		if s.pending.Load() >= maxPendingRequests {
+			return errTooManyImageRequests()
+		}
 		number, err := q.NextImageRequestNumber(ctx, campaignID)
 		if err != nil {
 			return fmt.Errorf("number the request: %w", err)
@@ -728,6 +744,7 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 	if created {
 		logging.Event(ctx, s.logger, "image.requested", slog.String("generation_id", row.ID), slog.String("kind", n.kind))
 		s.generations.Add(1)
+		s.pending.Add(1) // run gives it back
 		go s.run(campaignID, row.ID, n.prepared)
 	}
 	return row, status, nil
@@ -1144,6 +1161,7 @@ var errRequestClosed = errors.New("maps: the image request is closed")
 // context (the master may close the page): it derives from the service's.
 func (s *Service) run(campaignID, id string, prep prepared) {
 	defer s.generations.Done()
+	defer s.pending.Add(-1)
 	defer s.waiters.notify(id)
 	ctx, cancel := context.WithTimeout(s.baseCtx, generationTimeout)
 	defer cancel()

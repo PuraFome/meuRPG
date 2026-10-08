@@ -23,6 +23,7 @@ import (
 
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/maps/images"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/slowclient"
@@ -369,6 +370,9 @@ func decodeWorkingCopy(data []byte, g grid.Grid) (*image.RGBA, int, int, error) 
 		per = 8
 	case cfg.ColorModel == color.Gray16Model:
 		per = 2
+		if images.HasTransparencyChunk(data) {
+			per = 8 // png.Decode returns NRGBA64 for it
+		}
 	}
 	if len(data) > 28 && !isJPEG && data[28] == 1 {
 		per *= 2 // interlaced: each pass has its own image before they merge

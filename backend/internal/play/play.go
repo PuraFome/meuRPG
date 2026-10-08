@@ -113,7 +113,10 @@ type VitalsKeeper interface {
 // ShownCopy is a copy of a gallery image made to show it, not yet in the gallery
 // (see MapKeeper.PrepareShow).
 type ShownCopy = interface {
-	Insert(ctx context.Context, tx pgx.Tx) error
+	// Insert adds the copy's gallery row inside tx and returns the image to show:
+	// the copy, or the one another show committed first (created false: the
+	// caller then discards these files, as when the show does not happen).
+	Insert(ctx context.Context, tx pgx.Tx) (id string, created bool, err error)
 	Discard(ctx context.Context)
 }
 

@@ -1301,6 +1301,56 @@ func TestMR010_RedrawToleratesADoorOpenedWhileItDraws(t *testing.T) {
 	}
 }
 
+// The window between a redraw's reads and its transaction: the master shows the old
+// image to the players there. The redraw must keep the image, as it does when the image
+// was already shown, instead of deleting it from under the screen.
+func TestMR010_RedrawKeepsAnOldImageShownWhileItDraws(t *testing.T) {
+	t.Parallel()
+	d := newDungeonTable(t)
+	m := d.master
+	seed, _ := testDungeonSeed(t)
+	m.start(d.campaign)
+	created := m.createDungeon(d.campaign, "Masmorra de Vesna", testDungeonOptions(), seed).GetMap()
+	oldImage := created.GetImage().GetId()
+	d.h.svc.beforeRedrawTx = func() {
+		d.h.svc.beforeRedrawTx = nil
+		if _, err := d.h.pool.Exec(t.Context(), `UPDATE game_sessions SET shown_image_id = $1 WHERE campaign_id = $2`, oldImage, d.campaign); err != nil {
+			t.Errorf("show the image: %v", err)
+		}
+	}
+	if _, err := m.redraw(d.campaign, created.GetId()); err != nil {
+		t.Fatalf("RedrawDungeonMap() error = %v", err)
+	}
+	var shown *string
+	if err := d.h.pool.QueryRow(t.Context(), `SELECT shown_image_id::text FROM game_sessions WHERE campaign_id = $1`, d.campaign).Scan(&shown); err != nil {
+		t.Fatal(err)
+	}
+	if shown == nil || *shown != oldImage {
+		t.Errorf("the screen shows %v after the redraw, want the old image %s kept", shown, oldImage)
+	}
+}
+
+// A calibration that keeps the grid's squares but changes the factor (13 drawn squares
+// of 3 for 39 of 1), done while the redraw draws, leaves a map that is no longer drawn
+// the dungeon's way (RN-25): the redraw is refused, as when the factor was already not 1.
+func TestMR010_RedrawRefusesAFactorChangedWhileItDraws(t *testing.T) {
+	t.Parallel()
+	d := newDungeonTable(t)
+	m := d.master
+	opts := testDungeonOptions()
+	opts.Width, opts.Height = proto.Int32(39), proto.Int32(27)
+	seed, _ := testDungeonSeed(t)
+	created := m.createDungeon(d.campaign, "Masmorra de lado múltiplo", opts, seed).GetMap()
+	d.h.svc.beforeRedrawTx = func() {
+		d.h.svc.beforeRedrawTx = nil
+		if _, err := m.setCalibration(d.campaign, created.GetId(), 13, 3); err != nil {
+			t.Errorf("calibrate: %v", err)
+		}
+	}
+	_, err := m.redraw(d.campaign, created.GetId())
+	wantMapBlocked(t, "a redraw with the factor changed meanwhile", err, mapsv1.MapBlockedReason_MAP_BLOCKED_REASON_IMAGE_CHANGED)
+}
+
 // The walls layer of a generated dungeon covers every square that is not open (the walls
 // and all the rock behind them), so one wall mark covers the mass and no token can be put on
 // rock; the image's plan is solid on exactly those squares, and nowhere else but a secret door.

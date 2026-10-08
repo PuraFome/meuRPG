@@ -2,6 +2,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import { combatErrorMessage } from '../combat/combat-errors';
 import {
+  OUTCOME_UNKNOWN,
   SESSION_ENDED,
   describeConnectError,
   isRateLimited,
@@ -16,13 +17,30 @@ describe('describeConnectError', () => {
     );
   });
 
-  it('falls back to the unavailable message for a code with no specific wording', () => {
+  it('does not borrow the unavailable wording for another code with no wording of its own', () => {
     const err = new ConnectError('nope', Code.Internal);
     expect(
       describeConnectError(err, {
-        [Code.Unavailable]: 'Servidor indisponível.',
+        [Code.Unavailable]: 'As imagens estão desligadas.',
       }),
-    ).toBe('Servidor indisponível.');
+    ).toBe('Não foi possível falar com o servidor agora. Tente de novo em instantes.');
+  });
+
+  it('uses the unavailable message for unavailable', () => {
+    const err = new ConnectError('down', Code.Unavailable);
+    expect(describeConnectError(err, { [Code.Unavailable]: 'Servidor indisponível.' })).toBe(
+      'Servidor indisponível.',
+    );
+  });
+
+  it('tells the person to check an ambiguous outcome (unknown) before trying again', () => {
+    const err = new ConnectError('may or may not have been saved', Code.Unknown);
+    expect(describeConnectError(err, { [Code.Unavailable]: 'Servidor indisponível.' })).toBe(
+      OUTCOME_UNKNOWN,
+    );
+    expect(describeConnectError(err, { [Code.Unknown]: 'Do jeito da tela.' })).toBe(
+      'Do jeito da tela.',
+    );
   });
 
   it('falls back to a generic message when nothing else applies', () => {
