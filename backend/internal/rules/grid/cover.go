@@ -55,6 +55,14 @@ func LeavesReach(from, to, reactor Square, reachFt int) Reaction {
 	if inside(to) {
 		return Reaction{}
 	}
+	// A square inside the reach is at most reachFt/FeetPerSquare columns and rows
+	// from the reactor, and the line stays within the box of its two ends: a
+	// reactor farther than that from the box is never touched, and the line
+	// (the cost of a move's whole length) is not walked for it.
+	if reach := reachFt / FeetPerSquare; reactor.Col < min(from.Col, to.Col)-reach || reactor.Col > max(from.Col, to.Col)+reach ||
+		reactor.Row < min(from.Row, to.Row)-reach || reactor.Row > max(from.Row, to.Row)+reach {
+		return Reaction{}
+	}
 	var last Square
 	found := inside(from)
 	if found {

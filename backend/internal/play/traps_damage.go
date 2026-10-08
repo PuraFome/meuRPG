@@ -271,13 +271,15 @@ func (s *Service) settleTrapDamage(ctx context.Context, m authz.Membership, key,
 		return playdb.TrapDamage{}, nil, err
 	}
 	if !repeated {
+		pctx, stop := afterCommit(ctx) // the change is committed: a caller that hangs up must not leave the streams and the fog unheard
+		defer stop()
 		s.publishVitals(m.CampaignID, after)
 		s.Publish(m.CampaignID, false, mapChangedHint("")) // the trap card has one damage less
 		if touched != nil {
-			s.publishEncounterChanged(ctx, m.CampaignID, *touched)
+			s.publishEncounterChanged(pctx, m.CampaignID, *touched)
 		}
 		if shapeChanged { // the beast's senses went away: the fog hears of it (MR-036)
-			s.maps.VisionChanged(ctx, m.CampaignID, visionMap)
+			s.maps.VisionChanged(pctx, m.CampaignID, visionMap)
 		}
 	}
 	return row, after, nil

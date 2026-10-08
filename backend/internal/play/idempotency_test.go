@@ -1,6 +1,7 @@
 package play
 
 import (
+	"strings"
 	"sync"
 	"testing"
 
@@ -189,4 +190,72 @@ func TestACombatKeyReusedForAnotherRequestIsRefused(t *testing.T) {
 		}
 		wantCode(t, "MoveCombatant(same key, another square)", move("Toren", 9, 7), connect.CodeInvalidArgument)
 	})
+	t.Run("RollAttack", func(t *testing.T) {
+		t.Parallel()
+		a := newArmed(t)
+		e := a.threeAndAGoblin(t)
+		key := newKey()
+		attack := func(target string) error {
+			_, err := a.master.combat.RollAttack(t.Context(), connect.NewRequest(&playv1.RollAttackRequest{
+				CampaignId: a.campaignID, EncounterId: e.GetId(), AttackerId: a.id(t, "Toren"), AttackKey: battleaxe, TargetId: a.id(t, target), IdempotencyKey: key,
+				Roll: &playv1.RollAttackRequest_RollInApp{RollInApp: true},
+			}))
+			return err
+		}
+		a.h.roller.queue(15)
+		if err := attack("Goblin"); err != nil {
+			t.Fatalf("first RollAttack() error = %v", err)
+		}
+		if err := attack("Goblin"); err != nil {
+			t.Errorf("RollAttack(same key, same request) error = %v, want the first answer", err)
+		}
+		wantKeyReuse(t, "RollAttack(same key, another target)", attack("Brisa"))
+	})
+	t.Run("CastSpell with a summoning spell", func(t *testing.T) {
+		t.Parallel()
+		a := newSummoners(t)
+		e := a.toSalvia(t, a.summonersFight(t))
+		key := newKey()
+		cast := func(creature string) error {
+			_, err := a.castKey(t, a.bia, e, "Sálvia", conjureAnimals, slotOfLevel(3), nil, func(r *playv1.CastSpellRequest) {
+				r.Roll = &playv1.CastSpellRequest_D20Face{D20Face: 11}
+				r.Summon = &playv1.SummonChoice{Option: 1, CreatureKeys: []string{creature, creature}}
+			}, key)
+			return err
+		}
+		if err := cast(direWolf); err != nil {
+			t.Fatalf("first CastSpell() error = %v", err)
+		}
+		if err := cast(direWolf); err != nil {
+			t.Errorf("CastSpell(same key, same request) error = %v, want the first answer", err)
+		}
+		wantKeyReuse(t, "CastSpell(same key, other creatures)", cast("monster:wolf"))
+	})
+	t.Run("CastSummon", func(t *testing.T) {
+		t.Parallel()
+		a := newSummoners(t)
+		key := newKey()
+		cast := func(spell string) error {
+			_, err := a.ana.play.CastSummon(t.Context(), connect.NewRequest(&playv1.CastSummonRequest{
+				CampaignId: a.campaignID, CharacterId: a.pens.GetId(), SpellKey: spell, Ritual: true, IdempotencyKey: key,
+				Summon: &playv1.SummonChoice{CreatureKeys: []string{"monster:owl"}},
+			}))
+			return err
+		}
+		if err := cast(findFamiliar); err != nil {
+			t.Fatalf("first CastSummon() error = %v", err)
+		}
+		if err := cast(findFamiliar); err != nil {
+			t.Errorf("CastSummon(same key, same request) error = %v, want the first answer", err)
+		}
+		wantKeyReuse(t, "CastSummon(same key, another spell)", cast(animateDead))
+	})
+}
+
+// wantKeyReuse fails unless err is the refusal of a key sent again with another request.
+func wantKeyReuse(t *testing.T, what string, err error) {
+	t.Helper()
+	if connect.CodeOf(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), "idempotency_key was already used for another change") {
+		t.Errorf("%s error = %v, want invalid_argument for a key used for another change", what, err)
+	}
 }
