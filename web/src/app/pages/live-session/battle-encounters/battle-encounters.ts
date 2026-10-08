@@ -162,6 +162,10 @@ export class BattleEncounters {
 
   /** "Começar este combate": "Iniciar combate" opens filled from the point. */
   protected begin(k: Kept): void {
+    if (k.unknown.length > 0) {
+      // The button is only dimmed (it keeps focus), so the click still comes: a creature the SRD lost cannot start.
+      return;
+    }
     const map = combatMapInfo(this.state());
     const byKey = new Map(
       (k.evaluation?.lines ?? []).map((l) => [l.creature?.key, l.creature?.namePt ?? '']),
