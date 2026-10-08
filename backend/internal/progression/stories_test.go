@@ -896,3 +896,44 @@ func TestMR040_CanLevelUpClearsAfterwards(t *testing.T) {
 		})
 	}
 }
+
+// TestUndoGivesBackWhatTheSheetGained: a sheet holds at most 1,000,000 XP, so an
+// award past it gains less than its share; the share records the gain and the
+// undo takes back exactly that.
+func TestUndoGivesBackWhatTheSheetGained(t *testing.T) {
+	t.Parallel()
+	tb := newTable(t, enemies, 1)
+	pc := tb.pcs[0]
+
+	ch := tb.master.character(t, pc)
+	ch.GetSheet().GetFull().ExperiencePoints = 999_950
+	if _, err := tb.master.characters.UpdateCharacter(t.Context(), connect.NewRequest(&charactersv1.UpdateCharacterRequest{
+		CampaignId: tb.campaign, CharacterId: ch.GetId(), Revision: ch.GetRevision(), Name: ch.GetName(), Sheet: ch.GetSheet(),
+	})); err != nil {
+		t.Fatalf("UpdateCharacter() error = %v", err)
+	}
+
+	tb.master.manual(t, tb.campaign, 100, pc.GetId())
+	if got := tb.master.xpOf(t, pc); got != 1_000_000 {
+		t.Fatalf("sheet XP = %d after the award, want 1000000 (clamped)", got)
+	}
+	if shares := tb.master.history(t, tb.campaign)[0].GetShares(); len(shares) != 1 || shares[0].GetXp() != 50 {
+		t.Errorf("shares = %v, want one of 50 XP (what the sheet gained)", shares)
+	}
+
+	if _, err := tb.master.undo(tb.campaign, newKey()); err != nil {
+		t.Fatalf("UndoLastXPAward() error = %v", err)
+	}
+	if got := tb.master.xpOf(t, pc); got != 999_950 {
+		t.Errorf("sheet XP = %d after the undo, want 999950 (the XP before the award)", got)
+	}
+
+	// Positive control: an award that fits is taken back whole.
+	tb.master.manual(t, tb.campaign, 20, pc.GetId())
+	if _, err := tb.master.undo(tb.campaign, newKey()); err != nil {
+		t.Fatalf("UndoLastXPAward() error = %v", err)
+	}
+	if got := tb.master.xpOf(t, pc); got != 999_950 {
+		t.Errorf("sheet XP = %d after the second undo, want 999950", got)
+	}
+}
