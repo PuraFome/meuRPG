@@ -255,4 +255,12 @@ describe('NotesState', () => {
       expect(own.isWriting('new')).toBe(false);
     });
   });
+
+  it('sends no update that changes neither the text nor the tag, and returns the note as it is', async () => {
+    await state.refresh(true);
+    const calls = api.calls.length;
+    const same = await state.update('n1', {});
+    expect(same?.id).toBe('n1');
+    expect(api.calls).toHaveLength(calls);
+  });
 });

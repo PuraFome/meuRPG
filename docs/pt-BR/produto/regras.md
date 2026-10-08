@@ -35,7 +35,7 @@ Cada regra tem um ID (RN-xx) para as histórias, os testes e o código apontarem
 | RN-27 | **Quebra-cabeças.** O jogador nunca recebe a resposta de um quebra-cabeça: só o estado (as luzes, as rodas, os símbolos, a mensagem cifrada), a pista do mestre, as dicas soltas, quem fez a última jogada (o nome do personagem) e, depois de resolvido, o que aconteceu (o texto que o mestre escreveu em "Ao resolver" ou uma linha genérica). | [Detalhes](#rn-27-quebra-cabeças) |
 | RN-28 | **Imagens geradas por IA.** Só o mestre gera e edita, com um limite de imagens por campanha por mês. | [Detalhes](#rn-28-imagens-geradas-por-ia) |
 | RN-29 | **Monstros no combate.** Um monstro do bestiário (MR-042) entra no combate como um NPC: o jogador vê só a palavra do estado (RN-20), o mestre vê a ficha de criatura do SRD, e ele conta no XP por inimigos pelo ND. | [Detalhes](#rn-29-monstros-no-combate) |
-| RN-30 | **Limites do que uma conta cria.** Uma conta é mestre de no máximo 10 campanhas (`MAX_CAMPAIGNS_PER_USER`), e o servidor todo gera no máximo 100 imagens por dia (`IMAGE_DAILY_LIMIT`), além dos 20 por mês de cada campanha (RN-28). | [Detalhes](#rn-30-limites-do-que-uma-conta-cria) |
+| RN-30 | **Limites do que uma conta cria.** Uma conta é mestre de no máximo 10 campanhas (`MAX_CAMPAIGNS_PER_USER`), e o servidor todo gera no máximo 100 imagens por dia (`IMAGE_DAILY_LIMIT`) e mantém no máximo 5 pedidos de imagem vivos ao mesmo tempo (o que está sendo feito e quatro esperando), além dos 20 por mês de cada campanha (RN-28). | [Detalhes](#rn-30-limites-do-que-uma-conta-cria) |
 
 ## RN-01: Trava da ficha
 
@@ -418,7 +418,7 @@ Cada monstro posto num combate é um combatente `npc` com a chave da criatura do
 
 ## RN-30: Limites do que uma conta cria
 
-Uma conta é mestre de no máximo 10 campanhas (`MAX_CAMPAIGNS_PER_USER`), e o servidor todo gera no máximo 100 imagens por dia (`IMAGE_DAILY_LIMIT`), além dos 20 por mês de cada campanha (RN-28). Opcionalmente, só uma lista de e-mails verificados (`CAMPAIGN_CREATORS`) pode criar campanhas; quem entra por convite joga sem estar nela. Vazia, qualquer um cria. A tela diz o motivo no lugar, sem erro genérico. Esses números são padrões escolhidos pela engenharia, configuráveis pelas variáveis acima.
+Uma conta é mestre de no máximo 10 campanhas (`MAX_CAMPAIGNS_PER_USER`), e o servidor todo gera no máximo 100 imagens por dia (`IMAGE_DAILY_LIMIT`) e mantém no máximo 5 pedidos de imagem vivos ao mesmo tempo (o que está sendo feito e quatro esperando), além dos 20 por mês de cada campanha (RN-28). Opcionalmente, só uma lista de e-mails verificados (`CAMPAIGN_CREATORS`) pode criar campanhas; quem entra por convite joga sem estar nela. Vazia, qualquer um cria. A tela diz o motivo no lugar, sem erro genérico. Esses números são padrões escolhidos pela engenharia, configuráveis pelas variáveis acima.
 
 
 **Como o sistema cumpre**

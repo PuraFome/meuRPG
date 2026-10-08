@@ -656,6 +656,21 @@ describe('LevelUpPage', () => {
       expect(client.levelUp.mock.calls.at(-1)?.[2]).toBe(6);
     });
 
+    it('takes the player to the sheet when a retry finds the level already applied', async () => {
+      const f = await atResumoOfToren();
+      // The first confirmation went through but its answer was lost: the retry is stale, and the sheet is already at level 5.
+      client.levelUp.mockRejectedValueOnce(new ConnectError('x', Code.Aborted));
+      client.character.mockResolvedValue(
+        character({ revision: 6, name: 'Toren' }, pensantus(true, { totalLevel: 5 })),
+      );
+      await click(f, button(f, 'Confirmar o nível 5'));
+      expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1', 'characters', 'ch-1'], {
+        replaceUrl: true,
+        state: { levelUp: { name: 'Toren', level: 5 } },
+      });
+      expect(el(f).querySelector('.js-failure')).toBeNull();
+    });
+
     it('shows a refusal with its reason, and takes the player to the step that owns it', async () => {
       const f = await setup();
       await click(f, pickRow(f, 'Inteligência').querySelector('input'));

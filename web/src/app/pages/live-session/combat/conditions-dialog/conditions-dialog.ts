@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -103,6 +103,8 @@ export class ConditionsDialog {
   private readonly added = signal<ReadonlySet<string>>(new Set());
   private readonly removed = signal<ReadonlySet<string>>(new Set());
   protected readonly busy = signal(false);
+  /** A request in the air: Esc and the backdrop do not close the sheet under it. */
+  protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
   /** The combatant as the combat has it now (the concentration may end meanwhile). */
   protected readonly current = computed(
