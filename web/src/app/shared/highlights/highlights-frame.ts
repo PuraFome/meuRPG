@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -44,6 +44,13 @@ export class HighlightsFrame {
   readonly characterId = input('');
   readonly ownTitle = input('');
   readonly own = input<readonly OwnNumber[]>([]);
+
+  /** How many tiles share a row when the card is wide: all of them up to five,
+   * else two even rows, so no tile stands alone on its row. */
+  protected readonly wideColumns = computed(() => {
+    const n = this.own().length;
+    return n <= 5 ? Math.max(1, n) : Math.ceil(n / 2);
+  });
 
   readonly closed = output<void>();
 

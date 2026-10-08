@@ -43,7 +43,7 @@
 
   @if (own().length > 0) {
     <h3 class="card__h">{{ ownTitle() }}</h3>
-    <ul class="own">
+    <ul class="own" [style.--own-wide]="wideColumns()">
       @for (n of own(); track n.label) {
         <li class="own__tile">
           <span class="own__label">{{ n.label }}</span>
