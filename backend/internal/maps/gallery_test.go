@@ -670,3 +670,29 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 		}
 	}
 }
+
+// ListGalleryImages answers from one snapshot: an image deleted while the page
+// is being read never leaves a total that does not match the list.
+func TestListGalleryImagesIsOneSnapshotWhileAnImageGoes(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master)
+	first := master.mustUpload(campaign, "a.png", pngImage(t, 8, 8))
+	master.mustUpload(campaign, "b.png", pngImage(t, 9, 9))
+
+	h.hookAfterQuery("FROM gallery_images", func() {
+		if _, err := h.pool.Exec(context.Background(), "DELETE FROM gallery_images WHERE id = $1", first.GetId()); err != nil {
+			t.Errorf("delete the image from the hook: %v", err)
+		}
+	})
+	got := master.list(campaign)
+	if n := len(got.GetImages()); n != int(got.GetUsage().GetImageCount()) {
+		t.Errorf("ListGalleryImages(): %d images listed, usage counts %d; want them to agree", n, got.GetUsage().GetImageCount())
+	}
+
+	// Positive control: the hook did delete, so the next read has one image.
+	if got := master.list(campaign); len(got.GetImages()) != 1 || got.GetUsage().GetImageCount() != 1 {
+		t.Errorf("after the delete: %d images, usage %d; want 1 and 1", len(got.GetImages()), got.GetUsage().GetImageCount())
+	}
+}

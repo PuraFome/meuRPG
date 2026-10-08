@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/link"
 )
 
@@ -60,14 +61,21 @@ const treasureSelect = `
 // ListUnconverted returns the campaign's treasures that were found and no
 // award converted, the oldest find first.
 func (t *Treasures) ListUnconverted(ctx context.Context, campaignID string) ([]link.Treasure, error) {
-	rows, err := t.pool.Query(ctx, treasureSelect+`
+	// The treasures and their finders are one moment: a treasure unmarked between
+	// the two reads would be listed as found, with nobody who found it.
+	var out []link.Treasure
+	err := db.ReadTx(ctx, t.pool, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, treasureSelect+`
 		WHERE m.campaign_id = $1 AND p.kind = 'treasure'
 		  AND p.treasure_found_at IS NOT NULL AND p.treasure_converted_award_id IS NULL
 		ORDER BY p.treasure_found_at, p.id`, campaignID)
-	if err != nil {
-		return nil, fmt.Errorf("list the treasures to convert: %w", err)
-	}
-	return t.collect(ctx, t.pool, rows)
+		if err != nil {
+			return fmt.Errorf("list the treasures to convert: %w", err)
+		}
+		out, err = t.collect(ctx, tx, rows)
+		return err
+	})
+	return out, err
 }
 
 // LockForConversion returns, inside tx, those of pointIDs that are treasures of

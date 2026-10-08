@@ -210,6 +210,8 @@ export function describeCharacterError(
   return describeConnectError(connectErr, {
     [Code.PermissionDenied]: 'Você não tem permissão para fazer isso.',
     [Code.NotFound]: 'Personagem não encontrado.',
+    [Code.ResourceExhausted]:
+      'A campanha chegou ao limite de 1.000 personagens e NPCs. Apague um para criar outro.',
     [Code.InvalidArgument]: invalidArgumentMessage(connectErr),
   });
 }

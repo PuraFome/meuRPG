@@ -91,6 +91,12 @@ describe('describeCharacterError', () => {
     );
   });
 
+  it('tells the campaign holds the most characters and NPCs it may', () => {
+    expect(describeCharacterError(new ConnectError('full', Code.ResourceExhausted))).toContain(
+      '1.000 personagens e NPCs',
+    );
+  });
+
   it('falls back to the generic unavailable message for anything else', () => {
     expect(describeCharacterError(new Error('network down'))).toContain(
       'Não foi possível falar com o servidor',
