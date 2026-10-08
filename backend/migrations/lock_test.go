@@ -3,10 +3,14 @@ package migrations
 import (
 	"context"
 	"errors"
+	"net"
+	"net/url"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/PuraFome/meuRPG/backend/internal/platform/testenv"
 )
 
 // serializeUpTo is how many migrations the two runs of TestMigrateUpRunsSerialize
@@ -126,5 +130,116 @@ func TestLostLeaseStopsTheRun(t *testing.T) {
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("the run was not stopped after losing the lease")
+	}
+}
+
+// freezable is a TCP proxy to the test database whose traffic can be stopped
+// without closing anything: what a black-holed network does to a connection,
+// which never fails by itself.
+type freezable struct {
+	addr   string
+	frozen atomic.Bool
+}
+
+func newFreezable(t *testing.T, target string) *freezable {
+	t.Helper()
+	ln, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := &freezable{addr: ln.Addr().String()}
+	t.Cleanup(func() { _ = ln.Close() })
+	go func() {
+		for {
+			client, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			server, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", target)
+			if err != nil {
+				_ = client.Close()
+				continue
+			}
+			go f.pipe(server, client)
+			go f.pipe(client, server)
+		}
+	}()
+	return f
+}
+
+// pipe copies from src to dst, holding each chunk back while the proxy is frozen.
+func (f *freezable) pipe(dst, src net.Conn) {
+	defer func() { _ = dst.Close(); _ = src.Close() }()
+	buf := make([]byte, 32<<10)
+	for {
+		n, err := src.Read(buf)
+		for f.frozen.Load() {
+			time.Sleep(5 * time.Millisecond)
+		}
+		if n > 0 {
+			if _, werr := dst.Write(buf[:n]); werr != nil {
+				return
+			}
+		}
+		if err != nil {
+			return
+		}
+	}
+}
+
+// TestRunStopsBeforeTheLeaseEndsWhenTheDatabaseStopsAnswering: a heartbeat that
+// cannot reach the database, and gets no error either, cancels the run before
+// the lease runs out, so a second runner never starts on top of it. While the
+// database answers, the same lease is renewed past its first term.
+func TestRunStopsBeforeTheLeaseEndsWhenTheDatabaseStopsAnswering(t *testing.T) {
+	t.Parallel()
+	real := freshDatabase(t)
+	u, err := url.Parse(testenv.DatabaseURL(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var name string
+	if err := real.QueryRowContext(t.Context(), `SELECT current_database()`).Scan(&name); err != nil {
+		t.Fatal(err)
+	}
+	proxy := newFreezable(t, u.Host)
+	u.Host, u.Path = proxy.addr, "/"+name
+	viaProxy := open(t, u.String())
+
+	const ttl = 900 * time.Millisecond
+	ctx, release, err := AcquireLock(t.Context(), viaProxy, LockOptions{TTL: ttl})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	canceled := make(chan time.Time, 1)
+	go func() {
+		<-ctx.Done()
+		canceled <- time.Now()
+	}()
+
+	// Positive control: with the database answering, the lease outlives its first term.
+	select {
+	case <-canceled:
+		t.Fatalf("the run was canceled while the heartbeat could renew: %v", context.Cause(ctx))
+	case <-time.After(2 * ttl):
+	}
+
+	proxy.frozen.Store(true)
+	time.Sleep(200 * time.Millisecond) // anything already sent has landed or is held back
+	var expires, dbNow time.Time
+	if err := real.QueryRowContext(t.Context(), `SELECT expires_at, now() FROM migration_lock WHERE id = 1`).Scan(&expires, &dbNow); err != nil {
+		t.Fatal(err)
+	}
+	readAt := time.Now()
+
+	select {
+	case at := <-canceled:
+		// On the database's clock: its now() at the read, plus the time since.
+		if late := dbNow.Add(at.Sub(readAt)).Sub(expires); late > 0 {
+			t.Errorf("the run was canceled %v after its lease ended, want before", late)
+		}
+	case <-time.After(3 * ttl):
+		t.Fatal("the run was not canceled although the database stopped answering")
 	}
 }
