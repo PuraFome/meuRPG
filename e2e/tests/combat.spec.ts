@@ -1222,10 +1222,8 @@ test('monge 3: o golpe das Artes Marciais e a Rajada de Golpes aparecem como ata
       await groups.getByRole('button', { name: /^Atacar com Golpe desarmado/ }).click();
       const sheet = p.getByRole('dialog', { name: /Atacar com Golpe desarmado/ });
       await sheet.locator('label', { hasText: 'Goblin 1' }).click();
-      const typed = sheet.getByRole('button', { name: 'Digitar o resultado' });
-      if (await typed.isVisible()) {
-        await typed.click();
-      }
+      // Each attack sheet opens fresh, with the app's dice offered first (as the Raio de Fogo test above).
+      await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
       await sheet.getByLabel(/Role 1d20/).fill('1');
       await sheet.getByRole('button', { name: 'Confirmar 1' }).click();
       return sheet;
