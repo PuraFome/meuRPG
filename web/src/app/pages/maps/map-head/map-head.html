@@ -79,7 +79,7 @@
         </button>
         @if (deleteReason(); as reason) {
           <span id="delete-reason" class="remove__reason">
-            <mat-icon aria-hidden="true">block</mat-icon>{{ reason }}
+            <mat-icon aria-hidden="true">block</mat-icon><span>{{ reason }}</span>
           </span>
         }
       </span>

@@ -484,3 +484,64 @@ test(
     }
   },
 );
+
+test(
+  'o mestre edita a verificação, o nome e a CD de uma ação pelo lápis: o formulário abre preenchido, só salva com uma mudança, e a linha volta com o foco no lápis',
+  { tag: ['@MR-015'] },
+  async ({ browser }) => {
+    test.setTimeout(120_000);
+    const masterContext = await newSignedInContext(browser, 'Mestre Teste');
+    const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+    const master = await masterContext.newPage();
+    const player = await playerContext.newPage();
+    let campaignId = '';
+    try {
+      await master.goto('/');
+      const table = await tableForScenes(master, player, `Editar ação ${Date.now()}`);
+      campaignId = table.campaignId;
+      await master.goto(`/campaigns/${table.campaignId}/maps/${table.mapId}`);
+      await master.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
+      await expect(master.getByRole('heading', { name: 'Ações da cena' })).toBeVisible();
+
+      const pencil = master.getByRole('button', { name: 'Editar Procurar pistas na carroça' });
+      await pencil.click();
+      const form = master.getByRole('form', { name: 'Editar ação' });
+      // Filled in with today's values, the focus on the first choice; one form at a time.
+      await expect(form.getByRole('radio', { name: 'Perícia' })).toBeChecked();
+      await expect(form.getByRole('radio', { name: 'Perícia' })).toBeFocused();
+      await expect(form.getByRole('combobox')).toHaveValue('skill:investigation');
+      await expect(form.getByLabel('Nome (opcional)')).toHaveValue('Procurar pistas na carroça');
+      await expect(form.getByLabel('CD (opcional)')).toHaveValue('12');
+      // Nothing changed: "Salvar ação" is quiet and says why.
+      const save = form.getByRole('button', { name: 'Salvar ação' });
+      await expect(save).toHaveAttribute('aria-disabled', 'true');
+      await expect(form.getByText('Mude um campo para salvar.')).toBeVisible();
+
+      // A DC out of 1 to 30 is said under its field and nothing is sent.
+      await form.getByLabel('CD (opcional)').fill('35');
+      await save.click();
+      await expect(form.getByText('A CD vai de 1 a 30. Digite outro número ou deixe em branco.')).toBeVisible();
+      await expect(form.getByLabel('CD (opcional)')).toBeFocused();
+
+      await form.getByLabel('Nome (opcional)').fill('Procurar rastros na carroça');
+      await form.getByLabel('CD (opcional)').fill('14');
+      await form.getByRole('combobox').selectOption({ label: 'Percepção' });
+      await save.click();
+      await expect(form).toBeHidden();
+      const row = master.getByRole('listitem').filter({ hasText: 'Procurar rastros na carroça' });
+      await expect(row).toContainText('Percepção');
+      await expect(row).toContainText('CD 14');
+      await expect(master.getByRole('button', { name: 'Editar Procurar rastros na carroça' })).toBeFocused();
+      await expect(master.getByRole('status').filter({ hasText: 'Ação salva: Procurar rastros na carroça.' })).toBeAttached();
+
+      // The server has it.
+      await master.reload();
+      await master.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
+      await expect(master.getByRole('listitem').filter({ hasText: 'Procurar rastros na carroça' })).toContainText('CD 14');
+    } finally {
+      await endOpenSessionRPC(master, campaignId);
+      await masterContext.close();
+      await playerContext.close();
+    }
+  },
+);

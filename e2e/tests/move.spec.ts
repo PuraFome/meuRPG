@@ -431,3 +431,46 @@ test(
     }
   },
 );
+
+test(
+  'o mestre liga "Movimento forçado" e arrasta o goblin da vez para fora do alcance: ninguém recebe oferta, a caixa desliga e a frase confirma',
+  { tag: ['@MR-034', '@RN-21'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    const goblinFirst = { 'Goblin 1': 20, Pensantus: 15, 'Capitão Goblin': 10, 'Goblin 2': 4 };
+    const { m, campaignId, done } = await movingTable(browser, 'Movimento forçado', goblinFirst, {
+      at: adjacent,
+      character: { sheet: pensantusCasting },
+    });
+    try {
+      await openSessionPage(m, campaignId);
+      await expect(m.getByText('Vez do Goblin 1')).toBeVisible();
+      const forced = m.getByRole('checkbox', { name: /Movimento forçado/ });
+      await expect(forced).not.toBeChecked();
+      await expect(m.getByText('Arraste um token para movê-lo. O mestre anda sem limite.')).toBeVisible();
+      await forced.check();
+      await expect(m.getByText('Ligado para o próximo arrasto')).toBeVisible();
+      await expect(m.getByText('Arraste um token: o movimento é forçado e não provoca ataque de oportunidade.')).toBeVisible();
+
+      // The goblin on turn leaves Pensantus's reach: a plain drag would provoke (the test above); a forced one does not.
+      const start = await getEncounterRPC(m, campaignId);
+      const g1 = start.combatants.find((c) => c.label === 'Goblin 1')!;
+      const map = m.getByRole('group', { name: /Mapa de batalha/ });
+      const box = (await map.boundingBox())!;
+      const token = m.locator(`.cm__tk[data-id="${g1.id}"]`);
+      const from = (await token.boundingBox())!;
+      await m.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+      await m.mouse.down();
+      await m.mouse.move(box.x + (9.5 * box.width) / 20, box.y + (7.5 * box.height) / 14, { steps: 8 });
+      await m.mouse.up();
+
+      await expect(m.getByRole('status').filter({ hasText: 'Goblin 1 foi movido à força. Ninguém recebeu oferta de ataque de oportunidade.' })).toBeVisible();
+      await expect(forced).not.toBeChecked();
+      await expect(m.getByText('Ligado para o próximo arrasto')).toHaveCount(0);
+      await expect(m.getByText('Esperando a reação do jogador de Pensantus')).toHaveCount(0);
+      await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Goblin 1')?.col).toBe(9);
+    } finally {
+      await done();
+    }
+  },
+);
