@@ -35,4 +35,13 @@ export class SpellCatalog {
     }
     return known;
   }
+
+  /** The table's content changed (or may have, while the stream was down): the next read asks again. */
+  forget(campaignId: string): void {
+    for (const id of [...this.detailsByKey.keys()]) {
+      if (id.startsWith(`${campaignId}/`)) {
+        this.detailsByKey.delete(id);
+      }
+    }
+  }
 }

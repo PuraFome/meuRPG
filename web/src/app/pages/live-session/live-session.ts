@@ -11,6 +11,7 @@ import {
   viewChild,
   TemplateRef,
 } from '@angular/core';
+import { SpellCatalog } from '../../core/combat/spell-catalog';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
@@ -165,6 +166,7 @@ export class LiveSession {
   private readonly source = inject(LiveSessionSource);
   private readonly auth = inject(AuthService);
   private readonly xpChanges = inject(XpChanges);
+  private readonly spellCatalog = inject(SpellCatalog);
   private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
   private readonly dialog = inject(MatDialog);
@@ -557,9 +559,12 @@ export class LiveSession {
         onReady: () => {
           // A missed `xp_changed` while reconnecting leaves nothing stale.
           this.xpChanges.bump();
+          // A `content_changed` missed while reconnecting leaves the spells the page read before out of date.
+          this.spellCatalog.forget(campaignId);
           void this.trapBoard.refresh();
           void this.readSnapshot(campaignId, generation);
         },
+        onContentChanged: () => this.spellCatalog.forget(campaignId),
         onVitals: (v) => {
           // Looking through a familiar's eyes, or coming back, changes what the player sees.
           const before =
@@ -716,32 +721,34 @@ export class LiveSession {
       if (generation !== this.generation) {
         return;
       }
-      switch (this.source.classifyError(err)) {
-        case 'no-session':
-          this.ended();
-          return;
-        case 'no-access':
-          this.closeStream();
-          this.phase.set('no-access');
-          return;
-        case 'signed-out':
-          this.closeStream();
-          this.auth.signIn(this.router.url);
-          return;
-        case 'forbidden':
-          // The server will not give this person the session, however many times it is asked.
-          this.closeStream();
-          this.phase.set('no-access');
-          return;
-        case 'invalid':
-          // The request itself is wrong: asking again changes nothing, "Tentar de novo" starts over.
-          this.closeStream();
-          this.phase.set('error');
-          return;
-        default:
-          // Try the whole thing again: the next `ready` reads a new one.
-          this.stream()?.restart();
-      }
+      this.snapshotFailed(err);
+    }
+  }
+
+  /** What a snapshot that could not be read means: some answers end the page, only the others are worth asking again. */
+  private snapshotFailed(err: unknown): void {
+    switch (this.source.classifyError(err)) {
+      case 'no-session':
+        this.ended();
+        return;
+      case 'no-access':
+      case 'forbidden':
+        // The server will not give this person the session, however many times it is asked.
+        this.closeStream();
+        this.phase.set('no-access');
+        return;
+      case 'signed-out':
+        this.closeStream();
+        this.auth.signIn(this.router.url);
+        return;
+      case 'invalid':
+        // The request itself is wrong: asking again changes nothing, "Tentar de novo" starts over.
+        this.closeStream();
+        this.phase.set('error');
+        return;
+      default:
+        // Try the whole thing again: the next `ready` reads a new one.
+        this.stream()?.restart();
     }
   }
 

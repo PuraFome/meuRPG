@@ -37,6 +37,7 @@ import {
   mapToken,
 } from '../../core/maps/maps-testing';
 import { SceneClient } from '../../core/play/scene-client';
+import { SpellCatalog } from '../../core/combat/spell-catalog';
 import { SessionSummaryClient } from '../../core/play/session-summary';
 import { SessionSummarySchema } from '../../../gen/meurpg/play/v1/summary_pb';
 import {
@@ -477,6 +478,20 @@ describe('LiveSession', () => {
     expect(el.textContent).toContain('Não foi possível abrir a sessão');
     expect(button(el, 'Tentar de novo')).toBeDefined();
     expect(getLiveSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("forgets the spells it read when the table's content changes, and again on a reconnection", async () => {
+    const forget = vi.spyOn(TestBed.inject(SpellCatalog), 'forget');
+    const fixture = TestBed.createComponent(LiveSession);
+    await settle(fixture);
+    forget.mockClear();
+    source.push({ kind: 'contentChanged' });
+    await settle(fixture);
+    expect(forget).toHaveBeenCalledWith('mirathel');
+    forget.mockClear();
+    source.push({ kind: 'ready' });
+    await settle(fixture);
+    expect(forget).toHaveBeenCalledWith('mirathel');
   });
 
   it('says the same to a pending member (RN-15)', async () => {
