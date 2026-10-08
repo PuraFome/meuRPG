@@ -226,7 +226,7 @@
           }
         </div>
       }
-      @if (losing() === c.id) {
+      @if (losing() === c.id && c.concentrationSpell) {
         <app-lose-question
           class="row__confirm"
           [question]="loseQuestion(c)"

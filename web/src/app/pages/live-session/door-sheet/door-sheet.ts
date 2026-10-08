@@ -217,9 +217,11 @@ export class DoorSheet {
     });
   }
 
-  /** The option the master tapped: the door is painted that way at once. */
+  /** The option the master tapped: the door is painted that way at once. A tap on the one checked is sent too: the
+   * door may have changed since the sheet opened (a player opened it), and painting what is already there changes
+   * nothing on the server. */
   protected async choose(state: DoorKind): Promise<void> {
-    if (state === this.now() || this.busy()) {
+    if (this.busy()) {
       return;
     }
     if (await this.paint([{ layer: MapLayer.DOORS, value: state }])) {

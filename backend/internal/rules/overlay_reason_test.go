@@ -67,3 +67,45 @@ func TestEntryReasonOfALongNameOrParagraph(t *testing.T) {
 		})
 	}
 }
+
+// A name is one line: line and paragraph separators and invisible format
+// characters (text direction, zero width) are refused like control characters.
+func TestEntryNameRefusesSeparatorsAndInvisibleCharacters(t *testing.T) {
+	t.Parallel()
+	srd := loadForTest(t)
+	chars := []struct{ name, s string }{
+		{"U+2028", "a\u2028b"},
+		{"U+2029", "a\u2029b"},
+		{"U+200B", "a\u200bb"},
+		{"U+202E", "Espada\u202eodnoB"},
+		{"U+2066", "a\u2066b"},
+	}
+	targets := []struct {
+		name string
+		set  func(o *Overlay, s string)
+	}{
+		{"class", func(o *Overlay, s string) { overlayGenClass(t, o).NamePT = s }},
+		{"feature", func(o *Overlay, s string) { overlayGenClass(t, o).Levels[0].Features[0].NamePT = s }},
+		{"spell", func(o *Overlay, s string) { o.Spells[0].NamePT = s }},
+	}
+	for _, ch := range chars {
+		for _, tg := range targets {
+			t.Run(ch.name+"/"+tg.name, func(t *testing.T) {
+				t.Parallel()
+				o := fullOverlay(t, srd)
+				tg.set(&o, ch.s)
+				if got, _ := firstViolation(t, srd, o); got != ReasonName {
+					t.Errorf("%s name %q: Reason = %q, want %q", tg.name, ch.s, got, ReasonName)
+				}
+			})
+		}
+	}
+	t.Run("a joiner in an emoji name is fine", func(t *testing.T) {
+		t.Parallel()
+		o := fullOverlay(t, srd)
+		o.Spells[0].NamePT = "Família 👨‍👩‍👧"
+		if got, msg := firstViolation(t, srd, o); got != "" {
+			t.Errorf("Reason = %q (%q), want the name accepted", got, msg)
+		}
+	})
+}

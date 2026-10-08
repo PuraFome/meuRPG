@@ -226,7 +226,7 @@ WHERE id = $1;
 -- made come back, the Escudo bonus ends, a death save is due again, and the
 -- combatant acts ('acting') in the turn that starts.
 UPDATE combatants
-SET movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, action_used = false, bonus_action_used = false, reaction_used = false,
+SET movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, action_surged = false, action_used = false, bonus_action_used = false, reaction_used = false,
     attacks_made = 0, ac_bonus = 0, death_save_rolled = false, turn_state = 'acting'
 WHERE id = $1;
 
@@ -253,6 +253,12 @@ WHERE id = $1;
 -- The Disengage action of this turn (true), or its undo (false).
 UPDATE combatants
 SET disengaged = $2
+WHERE id = $1;
+
+-- name: SetCombatantActionSurged :exec
+-- Action Surge was used in this turn (true), or its undo (false).
+UPDATE combatants
+SET action_surged = $2
 WHERE id = $1;
 
 -- name: DeleteCombatant :exec
@@ -767,6 +773,16 @@ RETURNING *;
 UPDATE opportunity_offers
 SET state = 'skipped', answered_at = $3
 WHERE encounter_id = $1 AND mover_id = $2 AND state = 'pending';
+
+-- name: SkipPendingOpportunityOffersBetweenAllies :execrows
+-- A combatant changed side: the offers it is in (as mover or as reactor) whose
+-- two sides are now the same are passed over, since only a hostile reactor may
+-- attack.
+UPDATE opportunity_offers AS o
+SET state = 'skipped', answered_at = $3
+FROM combatants AS mover, combatants AS reactor
+WHERE o.encounter_id = $1 AND o.state = 'pending' AND (o.mover_id = $2 OR o.reactor_id = $2)
+  AND mover.id = o.mover_id AND reactor.id = o.reactor_id AND mover.side = reactor.side;
 
 -- name: DeleteOpportunityOffersOfMove :exec
 -- The master's undo of the move that made them.
