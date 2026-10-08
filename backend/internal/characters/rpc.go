@@ -211,6 +211,9 @@ func (s *Service) CreateCharacter(
 						return row, wrap("find the living character", err)
 					}
 				}
+				if err := s.checkRoom(ctx, q, m.CampaignID, false); err != nil {
+					return row, err
+				}
 				row, err := q.InsertCharacter(ctx, params)
 				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 					return row, wrap("insert character", err)

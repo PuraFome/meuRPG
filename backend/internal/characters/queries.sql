@@ -3,6 +3,11 @@
 -- campaign_id is nullable in the table (a deleted campaign sets it to NULL),
 -- so the argument is cast to UUID to make it a plain string in Go.
 
+-- name: CountCampaignCharacters :one
+-- Every character of the campaign, of any kind and status (dead ones too),
+-- for the cap on creating (RN-30). The index on campaign_id finds the rows.
+SELECT count(*)::INT4 FROM characters WHERE campaign_id = sqlc.arg(campaign_id)::UUID;
+
 -- name: InsertCharacter :one
 -- status is 'active', or 'pending' for a character created by a pending
 -- member (RN-15, MR-024).

@@ -59,6 +59,8 @@ export function bestiaryErrorMessage(err: unknown, action: BestiaryAction): stri
         ? 'Essa criatura não existe no bestiário, ou você não é mais da campanha.'
         : 'Essa campanha não existe, ou você não é mais membro dela. Volte para Minhas campanhas.',
     [Code.PermissionDenied]: 'Só o mestre da campanha usa o bestiário e faz NPCs.',
+    [Code.ResourceExhausted]:
+      'A campanha chegou ao limite de 1.000 personagens e NPCs. Apague um para criar outro.',
     [Code.Unavailable]: `Não deu para ${what}: o servidor não respondeu. Tente de novo.`,
   });
 }

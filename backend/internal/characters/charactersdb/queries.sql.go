@@ -155,6 +155,24 @@ func (q *Queries) ClearWildShape(ctx context.Context, characterID string) error 
 	return err
 }
 
+const countCampaignCharacters = `-- name: CountCampaignCharacters :one
+
+SELECT count(*)::INT4 FROM characters WHERE campaign_id = $1::UUID
+`
+
+// Every query names the campaign next to the character: a character ID of
+// another campaign matches no row, which the handlers answer as "not found".
+// campaign_id is nullable in the table (a deleted campaign sets it to NULL),
+// so the argument is cast to UUID to make it a plain string in Go.
+// Every character of the campaign, of any kind and status (dead ones too),
+// for the cap on creating (RN-30). The index on campaign_id finds the rows.
+func (q *Queries) CountCampaignCharacters(ctx context.Context, campaignID string) (int32, error) {
+	row := q.db.QueryRow(ctx, countCampaignCharacters, campaignID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countLiveCreaturesOfCharacter = `-- name: CountLiveCreaturesOfCharacter :one
 SELECT count(*)::INT4 FROM character_creatures
 WHERE campaign_id = $1::UUID AND character_id = $2::UUID AND dismissed_at IS NULL
@@ -927,7 +945,6 @@ func (q *Queries) InsertCampaignContentWithKey(ctx context.Context, arg InsertCa
 }
 
 const insertCharacter = `-- name: InsertCharacter :one
-
 INSERT INTO characters
     (campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, create_key, create_hash, created_at, updated_at)
 VALUES (
@@ -953,10 +970,6 @@ type InsertCharacterParams struct {
 	Now          time.Time
 }
 
-// Every query names the campaign next to the character: a character ID of
-// another campaign matches no row, which the handlers answer as "not found".
-// campaign_id is nullable in the table (a deleted campaign sets it to NULL),
-// so the argument is cast to UUID to make it a plain string in Go.
 // status is 'active', or 'pending' for a character created by a pending
 // member (RN-15, MR-024).
 // create_key (a UUID, unique in the campaign: characters_campaign_id_create_key_idx) and create_hash

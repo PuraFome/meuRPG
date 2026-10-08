@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/rpcerr"
 )
 
@@ -119,4 +120,37 @@ func (s *Service) dbError(ctx context.Context, action string, err error) error {
 // (%w), so db.InTx still sees a 40001 and retries.
 func wrap(what string, err error) error {
 	return fmt.Errorf("%s: %w", what, err)
+}
+
+// DefaultMaxCharactersPerCampaign is the most characters and NPCs, of every
+// kind and living or dead, one campaign may hold (RN-30). A table has a
+// handful of players and a few hundred NPCs at the most; the cap stops one
+// campaign from growing without end, and every list of the campaign with it.
+const DefaultMaxCharactersPerCampaign = 1000
+
+// errCharacterCapReached is the refusal of every create when the campaign
+// already holds its most characters.
+func errCharacterCapReached(max int) error {
+	return connect.NewError(connect.CodeResourceExhausted,
+		fmt.Errorf("the campaign already has %d characters and NPCs, the most it may have; delete one to create another", max))
+}
+
+// checkRoom refuses a create when the campaign has no room for one more
+// character. It counts inside the create's transaction, which is SERIALIZABLE:
+// two creates racing for the last place conflict, and the one that retries
+// counts again. inserted says the new row is already in the count (the NPC
+// creates insert first, so a replay of an old key, which inserts nothing, is
+// answered even in a full campaign).
+func (s *Service) checkRoom(ctx context.Context, q *charactersdb.Queries, campaignID string, inserted bool) error {
+	n, err := q.CountCampaignCharacters(ctx, campaignID)
+	if err != nil {
+		return wrap("count the campaign's characters", err)
+	}
+	if inserted {
+		n--
+	}
+	if int(n) >= s.maxCharacters {
+		return errCharacterCapReached(s.maxCharacters)
+	}
+	return nil
 }
