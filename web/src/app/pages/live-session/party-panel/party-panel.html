@@ -39,6 +39,11 @@
             @if (v.hitPointsTemporary > 0) {
               <span class="mr-tag">+{{ v.hitPointsTemporary }} temporários</span>
             }
+            @if (v.wildShape; as beast) {
+              <span class="mr-tag js-beast"
+                >{{ beast.beastNamePt }} {{ beast.hitPointsCurrent }} de {{ beast.hitPointsMax }} PV</span
+              >
+            }
             @if (hpState(v); as state) {
               <span class="mr-tag" [class]="'mr-tag--' + state.tone">{{ state.label }}</span>
             }
