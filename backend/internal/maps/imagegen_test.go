@@ -710,7 +710,12 @@ func TestMR039_TheRequestIsChecked(t *testing.T) {
 	call := func(mod func(*mapsv1.GenerateSceneImageRequest)) error {
 		req := &mapsv1.GenerateSceneImageRequest{CampaignId: campaign, IdempotencyKey: nextKey(), Prompt: "uma cena"}
 		mod(req)
-		_, err := master.imagegen.GenerateSceneImage(t.Context(), connect.NewRequest(req))
+		res, err := master.imagegen.GenerateSceneImage(t.Context(), connect.NewRequest(req))
+		if err == nil {
+			// Only a few requests may be alive at once: let this one end, so the
+			// next accepted case is not refused for the ones still running.
+			master.waitGeneration(campaign, res.Msg.GetGeneration().GetId())
+		}
 		return err
 	}
 	many := func(id string, n int) []string {
