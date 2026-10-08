@@ -410,7 +410,7 @@ func (q *Queries) GetCampaignEncounterXP(ctx context.Context, arg GetCampaignEnc
 }
 
 const getCampaignTrapDamageForUpdate = `-- name: GetCampaignTrapDamageForUpdate :one
-SELECT d.id, d.game_session_id, d.trap_point_id, d.fire_id, d.character_id, d.status, d.critical, d.dice_count, d.dice_sides, d.dice_bonus, d.damage_type, d.faces, d.roll_total, d.half, d.amount, d.applied_amount, d.created_at, d.resolved_at, d.critical_max, g.session_number, g.started_at AS session_started_at FROM trap_damages AS d
+SELECT d.id, d.game_session_id, d.trap_point_id, d.fire_id, d.character_id, d.status, d.critical, d.dice_count, d.dice_sides, d.dice_bonus, d.damage_type, d.faces, d.roll_total, d.half, d.amount, d.applied_amount, d.created_at, d.resolved_at, d.critical_max, d.settle_key, d.settle_hash, g.session_number, g.started_at AS session_started_at FROM trap_damages AS d
 JOIN game_sessions AS g ON g.id = d.game_session_id
 WHERE g.campaign_id = $1 AND d.id = $2
 FOR UPDATE OF d
@@ -441,6 +441,8 @@ type GetCampaignTrapDamageForUpdateRow struct {
 	CreatedAt        time.Time
 	ResolvedAt       *time.Time
 	CriticalMax      int32
+	SettleKey        *string
+	SettleHash       *string
 	SessionNumber    int32
 	SessionStartedAt time.Time
 }
@@ -469,6 +471,8 @@ func (q *Queries) GetCampaignTrapDamageForUpdate(ctx context.Context, arg GetCam
 		&i.CreatedAt,
 		&i.ResolvedAt,
 		&i.CriticalMax,
+		&i.SettleKey,
+		&i.SettleHash,
 		&i.SessionNumber,
 		&i.SessionStartedAt,
 	)
@@ -632,7 +636,7 @@ const getLatestEncounter = `-- name: GetLatestEncounter :one
 
 SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode FROM encounters
 WHERE game_session_id = $1
-ORDER BY created_at DESC, id DESC
+ORDER BY (status <> 'ended') DESC, created_at DESC, id DESC
 LIMIT 1
 `
 
@@ -640,7 +644,9 @@ LIMIT 1
 // session's row (GetOpenGameSessionForUpdate), so two changes to a combat take
 // turns, as for the vitals.
 // The session's latest combat, ended or not: GetEncounter shows it, so the app
-// can also show the end of a combat that just ended.
+// can also show the end of a combat that just ended. A session has at most one open
+// combat (encounters_one_open_per_session), and it is the latest whatever the clock that
+// stamped it said; the ended ones follow by the time they were made.
 func (q *Queries) GetLatestEncounter(ctx context.Context, gameSessionID string) (Encounter, error) {
 	row := q.db.QueryRow(ctx, getLatestEncounter, gameSessionID)
 	var i Encounter
@@ -1259,6 +1265,40 @@ func (q *Queries) GetSessionEventByIdempotencyKey(ctx context.Context, arg GetSe
 		&i.Payload,
 		&i.CreatedAt,
 		&i.IdempotencyHash,
+	)
+	return i, err
+}
+
+const getTrapDamageBySettleKey = `-- name: GetTrapDamageBySettleKey :one
+SELECT id, game_session_id, trap_point_id, fire_id, character_id, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, applied_amount, created_at, resolved_at, critical_max, settle_key, settle_hash FROM trap_damages WHERE settle_key = $1
+`
+
+// The damage settled by the call with this (scoped) key, for a retry.
+func (q *Queries) GetTrapDamageBySettleKey(ctx context.Context, settleKey *string) (TrapDamage, error) {
+	row := q.db.QueryRow(ctx, getTrapDamageBySettleKey, settleKey)
+	var i TrapDamage
+	err := row.Scan(
+		&i.ID,
+		&i.GameSessionID,
+		&i.TrapPointID,
+		&i.FireID,
+		&i.CharacterID,
+		&i.Status,
+		&i.Critical,
+		&i.DiceCount,
+		&i.DiceSides,
+		&i.DiceBonus,
+		&i.DamageType,
+		&i.Faces,
+		&i.RollTotal,
+		&i.Half,
+		&i.Amount,
+		&i.AppliedAmount,
+		&i.CreatedAt,
+		&i.ResolvedAt,
+		&i.CriticalMax,
+		&i.SettleKey,
+		&i.SettleHash,
 	)
 	return i, err
 }
@@ -2085,7 +2125,7 @@ INSERT INTO trap_damages (
     game_session_id, trap_point_id, fire_id, character_id, status, critical,
     dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, created_at, critical_max
 ) VALUES ($1, $2, $3, $4, 'rolled', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-RETURNING id, game_session_id, trap_point_id, fire_id, character_id, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, applied_amount, created_at, resolved_at, critical_max
+RETURNING id, game_session_id, trap_point_id, fire_id, character_id, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, applied_amount, created_at, resolved_at, critical_max, settle_key, settle_hash
 `
 
 type InsertTrapDamageParams struct {
@@ -2146,6 +2186,8 @@ func (q *Queries) InsertTrapDamage(ctx context.Context, arg InsertTrapDamagePara
 		&i.CreatedAt,
 		&i.ResolvedAt,
 		&i.CriticalMax,
+		&i.SettleKey,
+		&i.SettleHash,
 	)
 	return i, err
 }
@@ -2318,7 +2360,7 @@ func (q *Queries) ListCampaignEncounterNames(ctx context.Context, arg ListCampai
 }
 
 const listCampaignTrapDamages = `-- name: ListCampaignTrapDamages :many
-SELECT d.id, d.game_session_id, d.trap_point_id, d.fire_id, d.character_id, d.status, d.critical, d.dice_count, d.dice_sides, d.dice_bonus, d.damage_type, d.faces, d.roll_total, d.half, d.amount, d.applied_amount, d.created_at, d.resolved_at, d.critical_max, g.session_number, g.started_at AS session_started_at FROM trap_damages AS d
+SELECT d.id, d.game_session_id, d.trap_point_id, d.fire_id, d.character_id, d.status, d.critical, d.dice_count, d.dice_sides, d.dice_bonus, d.damage_type, d.faces, d.roll_total, d.half, d.amount, d.applied_amount, d.created_at, d.resolved_at, d.critical_max, d.settle_key, d.settle_hash, g.session_number, g.started_at AS session_started_at FROM trap_damages AS d
 JOIN game_sessions AS g ON g.id = d.game_session_id
 WHERE g.campaign_id = $1 AND d.status = 'rolled'
 ORDER BY d.created_at, d.id
@@ -2344,6 +2386,8 @@ type ListCampaignTrapDamagesRow struct {
 	CreatedAt        time.Time
 	ResolvedAt       *time.Time
 	CriticalMax      int32
+	SettleKey        *string
+	SettleHash       *string
 	SessionNumber    int32
 	SessionStartedAt time.Time
 }
@@ -2379,6 +2423,8 @@ func (q *Queries) ListCampaignTrapDamages(ctx context.Context, campaignID string
 			&i.CreatedAt,
 			&i.ResolvedAt,
 			&i.CriticalMax,
+			&i.SettleKey,
+			&i.SettleHash,
 			&i.SessionNumber,
 			&i.SessionStartedAt,
 		); err != nil {
@@ -4812,9 +4858,9 @@ func (q *Queries) SetStageSpeaker(ctx context.Context, arg SetStageSpeakerParams
 
 const setTrapDamageStatus = `-- name: SetTrapDamageStatus :one
 UPDATE trap_damages
-SET status = $2, resolved_at = $3, applied_amount = $4
+SET status = $2, resolved_at = $3, applied_amount = $4, settle_key = $5, settle_hash = $6
 WHERE id = $1
-RETURNING id, game_session_id, trap_point_id, fire_id, character_id, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, applied_amount, created_at, resolved_at, critical_max
+RETURNING id, game_session_id, trap_point_id, fire_id, character_id, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, applied_amount, created_at, resolved_at, critical_max, settle_key, settle_hash
 `
 
 type SetTrapDamageStatusParams struct {
@@ -4822,15 +4868,20 @@ type SetTrapDamageStatusParams struct {
 	Status        string
 	ResolvedAt    *time.Time
 	AppliedAmount *int32
+	SettleKey     *string
+	SettleHash    *string
 }
 
-// Applied (with the amount when it is not the rolled one) or discarded.
+// Applied (with the amount when it is not the rolled one) or discarded, with the key and the
+// request hash of the call that did it.
 func (q *Queries) SetTrapDamageStatus(ctx context.Context, arg SetTrapDamageStatusParams) (TrapDamage, error) {
 	row := q.db.QueryRow(ctx, setTrapDamageStatus,
 		arg.ID,
 		arg.Status,
 		arg.ResolvedAt,
 		arg.AppliedAmount,
+		arg.SettleKey,
+		arg.SettleHash,
 	)
 	var i TrapDamage
 	err := row.Scan(
@@ -4853,6 +4904,8 @@ func (q *Queries) SetTrapDamageStatus(ctx context.Context, arg SetTrapDamageStat
 		&i.CreatedAt,
 		&i.ResolvedAt,
 		&i.CriticalMax,
+		&i.SettleKey,
+		&i.SettleHash,
 	)
 	return i, err
 }
