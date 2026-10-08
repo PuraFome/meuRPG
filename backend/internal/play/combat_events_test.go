@@ -302,3 +302,22 @@ func TestRN10_PackedCoverTellsEachPlayerWhatTheListDid(t *testing.T) {
 		t.Errorf("a hit of a full table = mask %d, list %v; want its list kept", many.Hits[0].CoverSeenMask, many.Hits[0].CoverSeenBy)
 	}
 }
+
+// TestAfterCommitOutlivesTheCallerAndKeepsItsValues: what tells the streams about a
+// committed change keeps the request's values (the fog memo) but not its cancellation.
+func TestAfterCommitOutlivesTheCallerAndKeepsItsValues(t *testing.T) {
+	t.Parallel()
+	caller, hangUp := context.WithCancel(withFogMemo(t.Context(), nil, []actionEvent{{Fogged: true}}))
+	pctx, stop := afterCommit(caller)
+	defer stop()
+	hangUp()
+	if pctx.Err() != nil {
+		t.Errorf("the context after the commit = %v after the caller hung up, want it alive", pctx.Err())
+	}
+	if memo := fogMemoOf(pctx); memo == nil || len(memo.lines) != 1 {
+		t.Errorf("the fog memo = %v, want the caller's", memo)
+	}
+	if _, ok := pctx.Deadline(); !ok {
+		t.Error("the context after the commit has no deadline, want it bounded")
+	}
+}

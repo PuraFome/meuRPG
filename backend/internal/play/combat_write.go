@@ -526,6 +526,13 @@ func insertFiringInParts(ctx context.Context, c *combatTx, kind string, actor, k
 // no longer depends on the caller's patience.
 const publishTimeout = 10 * time.Second
 
+// afterCommit is the context for telling the streams about a change already committed:
+// the request's values (the fog memo, the log fields) without its cancellation, bounded
+// by publishTimeout. Call stop when done.
+func afterCommit(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), publishTimeout)
+}
+
 // finish builds the handler's answer after a change: it reads the combat
 // the change was about (the session's latest, for a retried start), lets
 // publish tell the streams, and returns the combat as the caller sees it.
@@ -537,7 +544,7 @@ const publishTimeout = 10 * time.Second
 // hints every change gives, because the first call may have died before
 // telling: a hint only says "read again", so a second one is harmless.
 func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResult, publish func(ctx context.Context, d *encounterData)) (*playv1.Encounter, error) {
-	pctx, stop := context.WithTimeout(context.WithoutCancel(ctx), publishTimeout)
+	pctx, stop := afterCommit(ctx)
 	defer stop()
 	var enc playdb.Encounter
 	var err error
