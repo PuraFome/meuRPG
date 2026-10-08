@@ -6884,7 +6884,7 @@ export enum EncounterBlockedReason {
    * CastSpell: the caster cast a spell with a bonus action this turn, or this
    * spell is cast with a bonus action and another spell was cast: the turn allows
    * nothing more than a cantrip with a casting time of 1 action. The master may
-   * cast it anyway (he corrects the economy).
+   * cast it anyway (they correct the economy).
    *
    * @generated from enum value: ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT = 66;
    */
@@ -7229,7 +7229,9 @@ export enum SpellEffectKind {
 
   /**
    * The targets' maximum and current hit points both rise (Ajuda); `healed` of
-   * a target is how much its maximum rose.
+   * a target is how much its maximum rose. A player's character gets the amount
+   * as temporary hit points (its maximum comes from the sheet), or as current
+   * hit points when it is at 0, which wakes it up.
    *
    * @generated from enum value: SPELL_EFFECT_KIND_MAX_HP = 6;
    */

@@ -321,12 +321,23 @@ func (s *Service) giveTempHP(ctx context.Context, c *combatTx, t fxTarget, amoun
 
 // raiseMaxHP raises a target's maximum and current hit points by amount (Ajuda). An
 // NPC's or a creature's maximum is on its combatant, so it rises (a target at 0 stays
-// at 0: the spell does not heal). A player's character's maximum is worked out from
-// its sheet and has no place for a bonus, so the character gets the amount as
-// temporary hit points, which absorb damage first and, like Ajuda, are not healing.
+// at 0: the master decides whether a fallen NPC is dead). A player's character's
+// maximum is worked out from its sheet and has no place for a bonus, so the character
+// gets the amount as temporary hit points, which absorb damage first; a character at
+// 0 gets it as current hit points instead, because the spell's current hit points
+// wake them up (SRD 5.1), and temporary ones would leave them dying.
 func (s *Service) raiseMaxHP(ctx context.Context, c *combatTx, t fxTarget, amount int, h *castHit) (*playv1.CharacterVitals, error) {
 	if !holdsHP(t.c) {
-		return s.giveTempHP(ctx, c, t, amount, h)
+		if t.hp > 0 {
+			return s.giveTempHP(ctx, c, t, amount, h)
+		}
+		hit, v, err := s.healCombatant(ctx, c, t.c, clamp32(amount, 0, math.MaxInt32))
+		if err != nil {
+			return nil, err
+		}
+		woke := hit.Amount
+		h.Healed, h.Restore, h.DeathBefore = &woke, hit.Before, hit.DeathBefore
+		return v, nil
 	}
 	rose := clamp32(amount, 0, math.MaxInt32)
 	h.Healed = &rose

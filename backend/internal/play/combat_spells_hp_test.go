@@ -629,3 +629,28 @@ func TestAidRaisesTheMaximumHitPoints(t *testing.T) {
 		t.Errorf("Toren has %d temporários, want 5", v.GetHitPointsTemporary())
 	}
 }
+
+// TestAidWakesACharacterAtZero: Aid raises current hit points, so a character at 0
+// gets up with 5 instead of 5 temporary hit points that would leave them dying
+// (SRD 5.1); the death saves reset, and the undo puts them back at 0.
+func TestAidWakesACharacterAtZero(t *testing.T) {
+	t.Parallel()
+	a := newTempHPCasters(t)
+	e := a.castersFight(t, 1)
+	a.passTo(t, e, "Brisa")
+	a.correct(t, a.toren, hpIs(0))
+	if got := combatantState(a.get(t, a.caio), "Toren"); got != playv1.CombatantState_COMBATANT_STATE_DOWN {
+		t.Fatalf("Toren's state at 0 PV = %v, want DOWN", got)
+	}
+
+	a.undoes(t, "Ajuda on a character at 0", func() {
+		a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(2), a.at(t, "Toren"), noCastRoll)
+	})
+	a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(2), a.at(t, "Toren"), noCastRoll)
+	if v := a.vitals(t, a.toren); v.GetHitPointsCurrent() != 5 || v.GetHitPointsTemporary() != 0 {
+		t.Errorf("Toren = %d PV and %d temporários, want 5 and 0", v.GetHitPointsCurrent(), v.GetHitPointsTemporary())
+	}
+	if c := byLabel(t, a.get(t, a.caio), "Toren"); c.GetState() == playv1.CombatantState_COMBATANT_STATE_DOWN || c.GetDeathFailures() != 0 || c.GetDeathSuccesses() != 0 {
+		t.Errorf("Toren after Ajuda = state %v, %d failures; want up and the death saves reset", c.GetState(), c.GetDeathFailures())
+	}
+}
