@@ -19,7 +19,11 @@ import type { TableEntry } from '../../../../gen/meurpg/rules/v1/table_content_p
 import { type CatalogVm } from '../../../core/content/catalog';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
 import { EntrySaver, focusField } from '../../../core/content/entry-saver';
-import type { EffectMenuVm } from '../../../core/content/effect-draft';
+import {
+  type EffectMenuVm,
+  UNREADABLE_RANGE,
+  unreadableRange,
+} from '../../../core/content/effect-draft';
 import { previewRead } from '../../../core/content/preview';
 import {
   ABILITY_FIELDS,
@@ -263,7 +267,22 @@ export class RaceEditor {
     ];
   }
 
-  protected readonly issuesOf = (path: string): readonly string[] => this.saver.issues(path);
+  /** The speed and darkvision fields whose text is not a number of metres, by path. */
+  private readonly unreadable = computed<readonly string[]>(() => {
+    const r = this.race();
+    const p = this.prefix();
+    return this.isRace()
+      ? [
+          ...(unreadableRange(r.speedM) ? [`${p}.speed_ft`] : []),
+          ...(unreadableRange(r.darkvisionM) ? [`${p}.darkvision_ft`] : []),
+        ]
+      : [];
+  });
+
+  protected readonly issuesOf = (path: string): readonly string[] => [
+    ...this.saver.issues(path),
+    ...(this.unreadable().includes(path) ? [UNREADABLE_RANGE] : []),
+  ];
 
   private readonly known = (path: string): boolean => {
     const p = this.prefix();
@@ -288,7 +307,7 @@ export class RaceEditor {
   };
 
   protected async save(): Promise<void> {
-    if (this.saver.saving() || this.saveBlocked()) {
+    if (this.saver.saving() || this.saveBlocked() || this.unreadable().length > 0) {
       return;
     }
     const menu = this.menu();

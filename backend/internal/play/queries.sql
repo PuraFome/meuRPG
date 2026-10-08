@@ -463,6 +463,15 @@ SELECT id, seq, character_id, payload, created_at FROM session_events
 WHERE game_session_id = $1 AND kind = 'scene_check_rolled' AND seq > $2
 ORDER BY seq DESC;
 
+-- name: CountSceneRolls :many
+-- How many scene checks each character rolled at each action since the
+-- opening (seq): what the attempts left are counted from, without reading the
+-- rows.
+SELECT character_id, COALESCE(payload->>'action_id', '')::TEXT AS action_id, count(*)::INT8 AS rolls
+FROM session_events
+WHERE game_session_id = $1 AND kind = 'scene_check_rolled' AND seq > $2
+GROUP BY character_id, 2;
+
 -- name: ListSceneAttemptGrantEvents :many
 -- The attempts the master granted since the opening (seq): which character, at
 -- which action (the payload's action_id).
@@ -536,13 +545,24 @@ SELECT * FROM encounters
 WHERE game_session_id = $1 AND started_at IS NOT NULL
 ORDER BY created_at, id;
 
--- name: ListSessionSceneEvents :many
--- The scenes opened and the checks rolled in them, oldest first: what the
--- summary counts outside combat.
-SELECT kind, character_id, payload FROM session_events
-WHERE game_session_id = $1 AND kind IN ('scene_opened', 'scene_check_rolled')
-ORDER BY seq
-LIMIT 20001; -- one past maxSummaryEvents: the caller fails loudly rather than under-count
+-- name: CountSessionScenesOpened :one
+-- The scenes the master opened in the session.
+SELECT count(*)::INT8 FROM session_events
+WHERE game_session_id = $1 AND kind = 'scene_opened';
+
+-- name: TallySessionSceneChecks :many
+-- The checks rolled outside combat, per character: tried and passed, counting
+-- only a roll the players could see the DC of, on an action that had one
+-- (RN-20). Done in SQL, so a session with any number of rolls costs one row
+-- per character.
+SELECT character_id,
+       count(*)::INT8 AS tried,
+       (count(*) FILTER (WHERE payload->>'passed' = 'true'))::INT8 AS passed
+FROM session_events
+WHERE game_session_id = $1 AND kind = 'scene_check_rolled'
+  AND character_id IS NOT NULL
+  AND payload->>'dc_shown' = 'true' AND payload ? 'passed'
+GROUP BY character_id;
 
 -- Progression (MR-016): what the XP awards read from the combats and the log.
 

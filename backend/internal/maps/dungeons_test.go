@@ -1006,7 +1006,7 @@ func TestMR010_RedrawNeverChangesTheSize(t *testing.T) {
 }
 
 // A failed creation leaves nothing: no map, no gallery image, no file. The map limit
-// is checked inside the transaction, after the files were written.
+// is checked before the dungeon is drawn and again inside the transaction.
 func TestMR010_AFailedCreationLeavesNothingBehind(t *testing.T) {
 	t.Parallel()
 	d := newDungeonTable(t, func(c *Config) { c.MaxMaps = 1 })
@@ -1345,5 +1345,92 @@ func TestDungeonOptionsFromProtoWithoutOptionsIsTheDefault(t *testing.T) {
 	}
 	if got != empty || got != dungeon.DefaultOptions(7) {
 		t.Errorf("nil options = %+v, want the defaults %+v", got, dungeon.DefaultOptions(7))
+	}
+}
+
+// A campaign at its map limit or with a full gallery is refused before the
+// dungeon is drawn: the test holds the server's one processing slot, so a
+// refusal decided before the render answers at once, and one decided after it
+// would block waiting for the slot.
+func TestDungeonLimitsAreCheckedBeforeRendering(t *testing.T) {
+	t.Parallel()
+	cases := map[string]func(*Config){
+		"map cap":       func(c *Config) { c.MaxMaps = 1 },
+		"gallery quota": func(c *Config) { c.MaxImages = 1 },
+	}
+	for name, configure := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			d := newDungeonTable(t, configure)
+			seed, _ := testDungeonSeed(t)
+			if name == "map cap" {
+				d.master.createDungeon(d.campaign, "Primeira", testDungeonOptions(), seed)
+			} else {
+				d.master.newImage(d.campaign)
+			}
+			// Another request holds the server's one image-processing slot.
+			d.h.svc.processing <- struct{}{}
+			released := false
+			release := func() {
+				if !released {
+					released = true
+					<-d.h.svc.processing
+				}
+			}
+			defer release()
+
+			type result struct{ err error }
+			done := make(chan result, 1)
+			go func() {
+				_, err := d.master.tryCreateDungeon(d.campaign, "Segunda", testDungeonOptions(), &seed)
+				done <- result{err}
+			}()
+			select {
+			case r := <-done:
+				wantCode(t, "over the limit", r.err, connect.CodeResourceExhausted)
+				// The refused try did not spend a token of the dungeon limit.
+				if ok, _ := d.h.svc.dungeonLimit.Allow(d.campaign); !ok {
+					t.Error("the refused creation spent a token of the dungeon limit")
+				}
+			case <-time.After(2 * time.Second):
+				release()
+				r := <-done
+				t.Errorf("the refusal (%v) waited for the processing slot: the dungeon is rendered before the %s is checked", r.err, name)
+			}
+		})
+	}
+}
+
+// A redraw of a dungeon in a campaign whose gallery is full is refused before
+// the image is drawn, too.
+func TestRedrawIsRefusedBeforeRenderingWhenTheGalleryIsFull(t *testing.T) {
+	t.Parallel()
+	d := newDungeonTable(t, func(c *Config) { c.MaxImages = 2 })
+	seed, _ := testDungeonSeed(t)
+	made := d.master.createDungeon(d.campaign, "Primeira", testDungeonOptions(), seed)
+	d.master.newImage(d.campaign) // the dungeon's image and this one fill the gallery
+
+	d.h.svc.processing <- struct{}{}
+	released := false
+	release := func() {
+		if !released {
+			released = true
+			<-d.h.svc.processing
+		}
+	}
+	defer release()
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := d.master.redraw(d.campaign, made.GetMap().GetId())
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		wantCode(t, "redraw with a full gallery", err, connect.CodeResourceExhausted)
+	case <-time.After(2 * time.Second):
+		release()
+		err := <-done
+		t.Errorf("the refusal (%v) waited for the processing slot: the dungeon is drawn before the gallery is checked", err)
 	}
 }
