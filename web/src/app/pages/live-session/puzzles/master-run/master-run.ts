@@ -16,6 +16,7 @@ import { timestampDate } from '@bufbuild/protobuf/wkt';
 
 import {
   type MasterPuzzleRun,
+  PuzzleBlockedReason,
   PuzzleKind,
   PuzzleRunStatus,
   PuzzleSolveAction,
@@ -36,7 +37,11 @@ import {
   outcomeText,
   trapFired,
 } from '../../../../core/puzzles/puzzle-format';
-import { isTransient, puzzleErrorMessage } from '../../../../core/puzzles/puzzle-errors';
+import {
+  isTransient,
+  puzzleBlocked,
+  puzzleErrorMessage,
+} from '../../../../core/puzzles/puzzle-errors';
 import { PuzzlesClient } from '../../../../core/puzzles/puzzles-client';
 import { LockBoard } from '../../../../shared/puzzle-boards/lock-board';
 import { PillarsBoard } from '../../../../shared/puzzle-boards/pillars-board';
@@ -339,15 +344,17 @@ export class MasterRun {
     this.notice.set('');
     try {
       const campaign = this.campaignId();
+      // The revision of the run this card shows: a run that moved since (a player, another tab) refuses the action.
+      const seen = this.player()?.revision ?? 0;
       const next =
         action === 'hint'
-          ? await this.api.releaseHint(campaign, id)
+          ? await this.api.releaseHint(campaign, id, seen)
           : action === 'play'
-            ? await this.api.playSequence(campaign, id)
+            ? await this.api.playSequence(campaign, id, seen)
             : action === 'reseed'
-              ? await this.api.reseed(campaign, id)
+              ? await this.api.reseed(campaign, id, seen)
               : action === 'reset'
-                ? await this.api.reset(campaign, id)
+                ? await this.api.reset(campaign, id, seen)
                 : await this.api.close(campaign, id);
       this.ask.set(null);
       if (action === 'reset' || action === 'reseed') {
@@ -373,8 +380,13 @@ export class MasterRun {
             : action === 'close'
               ? 'fechar o quebra-cabeça'
               : 'recomeçar o quebra-cabeça';
+      // A run that moved since the card was drawn: show it as it is now; the master chooses again, nothing is retried.
+      const stale = puzzleBlocked(err)?.reason === PuzzleBlockedReason.STALE_REVISION;
+      if (stale) {
+        await this.readAgain(id);
+      }
       this.notice.set(
-        isTransient(err) && (await this.readAgain(id))
+        !stale && isTransient(err) && (await this.readAgain(id))
           ? `O servidor não respondeu a tempo ao pedido de ${what}. O quebra-cabeça abaixo está como ele ficou: confira antes de tentar de novo.`
           : puzzleErrorMessage(err, what),
       );
