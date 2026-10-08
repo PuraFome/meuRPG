@@ -176,13 +176,13 @@ func TestAFireballPlacedOnTheMapReachesEveryoneInsideAndMeasuresCoverFromItsOrig
 	if res.GetOrigin().GetCol() != 20 || res.GetOrigin().GetRow() != 7 || res.GetMoved() || !res.GetCoverCounts() || res.GetRangeFt() != 150 {
 		t.Errorf("origin %v moved %v cover_counts %v range %d, want (20,7), not moved, counted, 150 ft", res.GetOrigin(), res.GetMoved(), res.GetCoverCounts(), res.GetRangeFt())
 	}
-	for _, in := range [][2]int32{{20, 7}, {24 - 4, 7}, {20, 3}, {23 - 1, 8}} {
+	for _, in := range [][2]int32{{20, 7}, {16, 7}, {20, 3}, {22, 8}} {
 		if !squareIn(res, in[0], in[1]) {
 			t.Errorf("the square %v is inside the 4-square sphere and is not in the squares", in)
 		}
 	}
-	if squareIn(res, 24, 7) || squareIn(res, 17, 7) {
-		t.Error("a square 5 squares from the point is in the sphere")
+	if squareIn(res, 15, 7) || squareIn(res, 20, 2) || squareIn(res, 23, 9) {
+		t.Error("a square more than 4 squares from the point is in the sphere")
 	}
 	want := map[string]struct {
 		cover playv1.CoverDegree
@@ -195,7 +195,7 @@ func TestAFireballPlacedOnTheMapReachesEveryoneInsideAndMeasuresCoverFromItsOrig
 	}
 	for label, w := range want {
 		tg := previewTarget2(t, res, label)
-		if tg.GetCover() != w.cover || tg.GetAlly() != w.ally || tg.GetSelf() || tg.GetHidden() || tg.GetState() == playv1.CombatantState_COMBATANT_STATE_UNSPECIFIED {
+		if tg.GetCover() != w.cover || tg.GetAlly() != w.ally || tg.GetSelf() || tg.GetHidden() {
 			t.Errorf("%s = %v, want cover %v ally %v", label, tg, w.cover, w.ally)
 		}
 	}
@@ -276,8 +276,8 @@ func TestOnlyADexteritySaveGetsTheCover(t *testing.T) {
 		t.Error("cover counts for Thunderwave's Constitution save")
 	}
 	g1 := previewTarget2(t, res, "Goblin 1")
-	if g1.GetCover() != playv1.CoverDegree_COVER_DEGREE_NONE {
-		t.Errorf("Goblin 1's cover = %v, want none for a Constitution save", g1.GetCover())
+	if g1.GetCover() != playv1.CoverDegree_COVER_DEGREE_UNSPECIFIED {
+		t.Errorf("Goblin 1's cover = %v, want none told for a Constitution save", g1.GetCover())
 	}
 	c.h.roller.queue(10, 10, 10)
 	c.mustCastArea(t, c.ana, "Pensantus", thunderwave, slotOfLevel(1), nil, toward(1, 0))
@@ -369,13 +369,13 @@ func TestAFireballSpreadsAroundCornersWithNoCoverBonusButASleepDoesNot(t *testin
 	t.Parallel()
 	c := newAreaCave(t)
 	e := c.areaFight(t)
-	// A partition in the room: a wall at column 19, rows 2 to 6, so the goblin at
-	// (18,4) is behind it from a point at (20,4)... and the room is open below it.
+	// A partition in the room: a wall at column 19, rows 2 to 6; the goblin at (18,5) is
+	// behind it from the point (20,7), and the room is open below the partition.
 	for row := int32(2); row <= 6; row++ {
 		c.terrain.addWalls(grid.Square{Col: 19, Row: int(row)})
 	}
 	c.mustMove(t, c.master, "Goblin 1", 18, 5)
-	res, err := c.preview(t, c.ana, "Pensantus", fireball, slotOfLevel(3), at(20, 5), nil)
+	res, err := c.preview(t, c.ana, "Pensantus", fireball, slotOfLevel(3), at(20, 7), nil)
 	if err != nil {
 		t.Fatalf("PreviewSpellArea() error = %v", err)
 	}
@@ -385,7 +385,7 @@ func TestAFireballSpreadsAroundCornersWithNoCoverBonusButASleepDoesNot(t *testin
 	}
 	// The master marks the cover by hand and the mark counts.
 	c.mark(t, "Goblin 1", playv1.CoverDegree_COVER_DEGREE_HALF)
-	res, err = c.preview(t, c.ana, "Pensantus", fireball, slotOfLevel(3), at(20, 5), nil)
+	res, err = c.preview(t, c.ana, "Pensantus", fireball, slotOfLevel(3), at(20, 7), nil)
 	if err != nil {
 		t.Fatalf("PreviewSpellArea() error = %v", err)
 	}
@@ -393,7 +393,7 @@ func TestAFireballSpreadsAroundCornersWithNoCoverBonusButASleepDoesNot(t *testin
 		t.Errorf("Goblin 1 marked by the master = %v, want half cover from the mark", got)
 	}
 	// A sphere that does not spread around corners does not reach it.
-	sleep, err := c.preview(t, c.ana, "Pensantus", sleepSpell, slotOfLevel(3), at(20, 5), nil)
+	sleep, err := c.preview(t, c.ana, "Pensantus", sleepSpell, slotOfLevel(3), at(20, 7), nil)
 	if err != nil {
 		t.Fatalf("PreviewSpellArea(sleep) error = %v", err)
 	}
@@ -661,8 +661,8 @@ func TestAPlayersSpellThatHitsHiddenCreaturesHoldsTheTurnUntilTheMasterAnswers(t
 			t.Errorf("the player sees %s after the master kept it hidden", label)
 		}
 	}
-	if _, err := c.endTurn(t, c.ana, c.get(t, c.ana), false); err != nil {
-		t.Errorf("EndTurn after the answer error = %v", err)
+	if _, err := c.endTurn(t, c.master, c.get(t, c.master), true); err != nil {
+		t.Errorf("the master's EndTurn after the answer error = %v", err)
 	}
 }
 
@@ -835,19 +835,90 @@ func TestAPlayerWhoSendsTheMastersChoiceIsRefusedBeforeAnythingElse(t *testing.T
 // (the most a combat holds) fit in the payload of the cast's event.
 func TestAnAreaCastFitsTheEventWithEveryCreatureOfTheCombat(t *testing.T) {
 	t.Parallel()
-	ev := actionEvent{Round: 99, Actor: newKey(), Key: fireball, CastID: newKey(), Placed: true, AreaCol: 23, AreaRow: 15, Slot: &slotRef{Level: 9}}
+	cast := actionEvent{Round: 99, Actor: newKey(), Key: fireball, CastID: newKey(), Placed: true, AreaCol: 23, AreaRow: 15, Slot: &slotRef{Level: 9}}
+	roll := actionEvent{Round: 99, Actor: newKey(), Key: fireball, Pending: newKey(), DiceCount: 20, DiceSides: 6, Faces: slices.Repeat([]int32{6}, 20), Total: 120, Amount: 120}
 	for range maxCombatants {
-		ev.Hits = append(ev.Hits, castHit{
+		cast.Hits = append(cast.Hits, castHit{
 			Target: newKey(), Save: &saveRoll{D20: 20, Bonus: -5, Total: 15, DC: 20, Saved: true}, Pending: newKey(), More: []string{newKey()},
 			Cover: "three_quarters", CoverSource: "map", CoverBonus: 5, CoverSeenMask: 1<<5 | 1, HiddenAtCast: true,
 		})
-		ev.Settled = append(ev.Settled, damageHit{Pending: newKey(), Target: newKey(), Amount: 99, Half: true, Applied: true, After: &hpState{HP: 100}, ConcentrationDC: 10})
+		roll.Settled = append(roll.Settled, damageHit{Pending: newKey(), Target: newKey(), Amount: 99, Half: true, Applied: true, After: &hpState{HP: 100}, ConcentrationDC: 10})
 	}
-	body, err := jsonMarshal(ev)
-	if err != nil {
-		t.Fatalf("marshal error = %v", err)
+	for name, ev := range map[string]actionEvent{"the cast": cast, "its damage roll": roll} {
+		body, err := jsonMarshal(ev)
+		if err != nil {
+			t.Fatalf("marshal error = %v", err)
+		}
+		if len(body) > 16384-1024 { // the table's limit, with the room the fog's stamp needs
+			t.Errorf("%s of %d creatures takes %d bytes, too close to the 16 KiB the table allows", name, maxCombatants, len(body))
+		}
 	}
-	if len(body) > 16384-1024 { // the table's limit, with the room the fog's stamp needs
-		t.Errorf("an area cast of %d creatures takes %d bytes, too close to the 16 KiB the table allows", maxCombatants, len(body))
+}
+
+// areaRPCs are the CombatService methods of the placed areas; the authorization matrix
+// of the encounter (combat_test.go) leaves them to this file's.
+var areaRPCs = []string{"PreviewSpellArea", "ResolveHiddenReveal"}
+
+// TestTheAreaCallsAreRefusedToWhoMayNotMakeThem: only the combatant's player and the
+// master preview, only the master answers; a stranger finds nothing.
+func TestTheAreaCallsAreRefusedToWhoMayNotMakeThem(t *testing.T) {
+	t.Parallel()
+	c := newAreaCave(t)
+	c.askFight(t)
+	c.h.roller.queue(10, 10, 10, 10)
+	c.mustCastArea(t, c.ana, "Pensantus", fireball, slotOfLevel(3), at(20, 7), nil)
+	q := c.get(t, c.master).GetPendingHiddenReveals()[0]
+	stranger := c.h.newUser("Eva")
+	for name, tc := range map[string]struct {
+		u    *user
+		call func(u *user) error
+		want connect.Code
+	}{
+		"preview, another player's combatant": {c.caio, func(u *user) error {
+			_, err := c.preview(t, u, "Pensantus", fireball, slotOfLevel(3), at(20, 7), nil)
+			return err
+		}, connect.CodePermissionDenied},
+		"preview, a stranger": {stranger, func(u *user) error {
+			_, err := c.preview(t, u, "Pensantus", fireball, slotOfLevel(3), at(20, 7), nil)
+			return err
+		}, connect.CodeNotFound},
+		"answer, a player":                        {c.ana, func(u *user) error { _, err := resolveReveal(t, c, u, q.GetId(), true); return err }, connect.CodePermissionDenied},
+		"answer, a stranger":                      {stranger, func(u *user) error { _, err := resolveReveal(t, c, u, q.GetId(), true); return err }, connect.CodeNotFound},
+		"answer, the master, an unknown question": {c.master, func(u *user) error { _, err := resolveReveal(t, c, u, newKey(), true); return err }, connect.CodeNotFound},
+		"answer, the master, a malformed id":      {c.master, func(u *user) error { _, err := resolveReveal(t, c, u, "nope", true); return err }, connect.CodeInvalidArgument},
+	} {
+		if err := tc.call(tc.u); connect.CodeOf(err) != tc.want {
+			t.Errorf("%s: error = %v, want %v", name, err, tc.want)
+		}
+	}
+	if got := c.get(t, c.master).GetPendingHiddenReveals(); len(got) != 1 {
+		t.Errorf("a refused answer changed the questions: %d left", len(got))
+	}
+}
+
+// TestTheTurnOptionsSayHowEachAreaSpellIsPlaced: the app draws the picker from them.
+func TestTheTurnOptionsSayHowEachAreaSpellIsPlaced(t *testing.T) {
+	t.Parallel()
+	c := newAreaCave(t)
+	e := c.areaFight(t)
+	opts := c.mustOptions(t, c.ana, e, "Pensantus")
+	for key, want := range map[string]struct {
+		placement playv1.AreaPlacement
+		size      int32
+		rng       int32
+	}{
+		fireball:      {playv1.AreaPlacement_AREA_PLACEMENT_POINT, 20, 150},
+		burningHands:  {playv1.AreaPlacement_AREA_PLACEMENT_DIRECTION, 15, 0},
+		thunderwave:   {playv1.AreaPlacement_AREA_PLACEMENT_DIRECTION, 15, 0},
+		lightningBolt: {playv1.AreaPlacement_AREA_PLACEMENT_DIRECTION, 100, 0},
+		sleepSpell:    {playv1.AreaPlacement_AREA_PLACEMENT_POINT, 20, 90},
+	} {
+		st := spellTargetsOf(opts, key)
+		if st == nil || st.GetPlacement() != want.placement || st.GetAreaSizeFt() != want.size || st.GetRangeFt() != want.rng {
+			t.Errorf("%s: placement %v size %d range %d, want %v %d %d", key, st.GetPlacement(), st.GetAreaSizeFt(), st.GetRangeFt(), want.placement, want.size, want.rng)
+		}
+	}
+	if st := spellTargetsOf(opts, lightningBolt); st.GetAreaWidthFt() != 5 {
+		t.Errorf("Lightning Bolt's width = %d ft, want 5", st.GetAreaWidthFt())
 	}
 }

@@ -52,7 +52,12 @@ func atBP(sq grid.Square) (x, y int32) {
 // torch. The base light is dark and no other light shines.
 func newFogCave(t *testing.T) *fogCave {
 	t.Helper()
-	c := newCave(t)
+	return newFogCaveWith(t, newCave(t))
+}
+
+// newFogCaveWith is newFogCave on a cave the test made (another level and spells for Pensantus).
+func newFogCaveWith(t *testing.T, c *cave) *fogCave {
+	t.Helper()
 	content, err := testRules()
 	if err != nil {
 		t.Fatalf("rules.LoadSRD() error = %v", err)
@@ -1466,7 +1471,7 @@ func TestRN10_FogCombatADroppedAttackOutOfSightPingsNoPlayer(t *testing.T) {
 // the table still fit the event, and the cast works.
 func TestRN10_FogCombatASaveSpellOnManyCoveredTargetsIsOneEvent(t *testing.T) {
 	t.Parallel()
-	f := newFogCave(t)
+	f := newFogCaveWith(t, newCaveWith(t, 5, []string{burningHands, fireball}))
 	var shelf []*mapsv1.MapSquare
 	for row := int32(2); row <= 9; row++ {
 		if row != 7 && row != 8 { // the crates are already there
@@ -1491,9 +1496,9 @@ func TestRN10_FogCombatASaveSpellOnManyCoveredTargetsIsOneEvent(t *testing.T) {
 		players:  map[string]int32{"Pensantus": 20, "Toren": 15, "Brisa": 10},
 		reveal:   reveal, at: at,
 	})
-	res, err := f.cast(t, f.ana, e, "Pensantus", burningHands, slotOfLevel(1), f.at(t, targets...), noCastRoll)
+	res, err := f.cast(t, f.ana, e, "Pensantus", fireball, slotOfLevel(3), f.at(t, targets...), noCastRoll)
 	if err != nil {
-		t.Fatalf("CastSpell(Mãos Flamejantes) on %d covered goblins error = %v, want it to work", goblins, err)
+		t.Fatalf("CastSpell(Bola de Fogo) on %d covered goblins error = %v, want it to work", goblins, err)
 	}
 	if got := len(res.GetEncounter().GetCombatants()); got < goblins {
 		t.Errorf("the answer has %d combatants, want at least the %d goblins", got, goblins)

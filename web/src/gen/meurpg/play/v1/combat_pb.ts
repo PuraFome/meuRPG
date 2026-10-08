@@ -4125,7 +4125,9 @@ export type AreaTarget = Message<"meurpg.play.v1.AreaTarget"> & {
   label: string;
 
   /**
-   * How hurt it is, as a word: never hit points (RN-20).
+   * How hurt it is, as a word: never hit points (RN-20). Unset for a player's
+   * character, as in the order: its hit points are on the table and the app reads
+   * them from the combatant.
    *
    * @generated from field: meurpg.play.v1.CombatantState state = 3;
    */
@@ -4133,8 +4135,9 @@ export type AreaTarget = Message<"meurpg.play.v1.AreaTarget"> & {
 
   /**
    * The cover it has against the point of origin (D4), where it comes from, and
-   * only when the save is Dexterity (see `cover_counts`); never TOTAL: a creature
-   * with total cover is not inside.
+   * only when the save is Dexterity (see `cover_counts`), NONE when it has none
+   * and unset when the save gets none; never TOTAL: a creature with total cover is not
+   * inside.
    *
    * @generated from field: meurpg.play.v1.CoverDegree cover = 4;
    */

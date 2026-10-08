@@ -406,7 +406,9 @@ func (ev actionEvent) combatantIDs() []string {
 	add(ev.Actor)
 	add(ev.Target)
 	for _, h := range ev.Hits {
-		add(h.Target)
+		if !h.HiddenAtCast { // the players' line never lists it: who sees it is no question of the line
+			add(h.Target)
+		}
 	}
 	for _, h := range ev.Settled {
 		add(h.Target)

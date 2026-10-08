@@ -873,7 +873,7 @@ func TestMR034_CoverRaisesTheArmorClassOfTheTarget(t *testing.T) {
 	// A Dexterity save gets the cover too: Mãos Flamejantes at Goblin 2 behind the
 	// crates. DC 14 (8 + 2 + 4: the gnome has Intelligence 18); the goblin rolls 12 +
 	// 2 of cover = 14 and saves, as 12 alone would not.
-	c.aim(t, map[string][2]int32{"Pensantus": {17, 7}, "Goblin 2": {20, 7}, "Toren": {6, 7}})
+	c.aim(t, map[string][2]int32{"Pensantus": {17, 7}, "Goblin 2": {20, 7}, "Goblin 3": {21, 3}, "Toren": {6, 7}})
 	c.h.roller.queue(12)
 	cast := c.mustCast(t, c.ana, c.get(t, c.ana), "Pensantus", burningHands, slotOfLevel(1), c.at(t, "Goblin 2"), noCastRoll)
 	res := cast.GetCast().GetTargets()[0]

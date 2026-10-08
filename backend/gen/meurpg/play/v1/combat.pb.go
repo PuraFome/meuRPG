@@ -9188,11 +9188,14 @@ type AreaTarget struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	CombatantId string                 `protobuf:"bytes,1,opt,name=combatant_id,json=combatantId,proto3" json:"combatant_id,omitempty"`
 	Label       string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
-	// How hurt it is, as a word: never hit points (RN-20).
+	// How hurt it is, as a word: never hit points (RN-20). Unset for a player's
+	// character, as in the order: its hit points are on the table and the app reads
+	// them from the combatant.
 	State CombatantState `protobuf:"varint,3,opt,name=state,proto3,enum=meurpg.play.v1.CombatantState" json:"state,omitempty"`
 	// The cover it has against the point of origin (D4), where it comes from, and
-	// only when the save is Dexterity (see `cover_counts`); never TOTAL: a creature
-	// with total cover is not inside.
+	// only when the save is Dexterity (see `cover_counts`), NONE when it has none
+	// and unset when the save gets none; never TOTAL: a creature with total cover is not
+	// inside.
 	Cover       CoverDegree `protobuf:"varint,4,opt,name=cover,proto3,enum=meurpg.play.v1.CoverDegree" json:"cover,omitempty"`
 	CoverSource CoverSource `protobuf:"varint,5,opt,name=cover_source,json=coverSource,proto3,enum=meurpg.play.v1.CoverSource" json:"cover_source,omitempty"`
 	// True for a creature on the caster's side: a player's character or creature
