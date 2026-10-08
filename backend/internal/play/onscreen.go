@@ -117,8 +117,10 @@ func (s *Service) SetShownImage(
 		imageID = &shownID
 	}
 
-	var moved bool   // an image went to the left list
-	var changed bool // another image (or none) is shown now
+	var moved bool       // an image went to the left list
+	var changed bool     // another image (or none) is shown now
+	var copyCreated bool // the shown copy's row is the one this call inserted
+	var showing string   // the image shown at the end of the transaction, "" for none
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
@@ -132,25 +134,37 @@ func (s *Service) SetShownImage(
 		// replaced by another, or by nothing. The same image again only
 		// moves the switch.
 		moved = false
-		changed = !equal(session.ShownImageID, imageID)
-		if session.ShownImageKeep && session.ShownImageID != nil && !equal(session.ShownImageID, imageID) {
+		copyCreated = false
+		showID := imageID
+		if shownCopy != nil {
+			// The copy's row first: another show of the same image may have made it meanwhile.
+			id, created, err := shownCopy.Insert(ctx, tx)
+			if err != nil {
+				return err
+			}
+			showID, copyCreated = &id, created
+		}
+		showing = deref(showID)
+		changed = !equal(session.ShownImageID, showID)
+		if session.ShownImageKeep && session.ShownImageID != nil && !equal(session.ShownImageID, showID) {
 			if err := s.maps.LeaveImage(ctx, tx, m.CampaignID, *session.ShownImageID, s.now()); err != nil {
 				return err
 			}
 			moved = true
 		}
-		if shownCopy != nil {
-			if err := shownCopy.Insert(ctx, tx); err != nil {
-				return err
-			}
-		}
-		if _, err := q.SetShownImage(ctx, playdb.SetShownImageParams{ID: session.ID, ShownImageID: imageID, ShownImageKeep: keep}); err != nil {
+		if _, err := q.SetShownImage(ctx, playdb.SetShownImageParams{ID: session.ID, ShownImageID: showID, ShownImageKeep: keep}); err != nil {
 			return fmt.Errorf("set the shown image: %w", err)
 		}
 		return nil
 	})
-	if err != nil && shownCopy != nil {
-		shownCopy.Discard(ctx)
+	if shownCopy != nil && (err != nil || !copyCreated) {
+		shownCopy.Discard(ctx) // no gallery row: the copy's files go
+	}
+	if err == nil && showing != shown.GetId() {
+		// Another show committed the copy first: its image is the one shown.
+		if shown, err = s.maps.ShownImage(ctx, m.CampaignID, showing); err != nil {
+			return nil, s.dbError(ctx, "find the shown image", err)
+		}
 	}
 	if isForeignKeyViolation(err) {
 		// The master deleted the image in another tab meanwhile.
