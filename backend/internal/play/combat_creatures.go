@@ -61,17 +61,39 @@ func (s *Service) sheetOf(ctx context.Context, tx pgx.Tx, campaignID string, c p
 // optionsOf works out what a combatant can do now, from its sheet or its stat
 // block and what it used this turn.
 func (s *Service) optionsOf(ctx context.Context, tx pgx.Tx, campaignID string, c playdb.Combatant) (*rulesv1.TurnOptions, error) {
+	var opts *rulesv1.TurnOptions
 	if !isCreature(c) {
-		return s.roster.CombatTurnOptions(ctx, tx, campaignID, c.CharacterID, turnOf(c))
+		var err error
+		if opts, err = s.roster.CombatTurnOptions(ctx, tx, campaignID, c.CharacterID, turnOf(c)); err != nil {
+			return nil, err
+		}
+	} else {
+		var ok bool
+		var err error
+		opts, ok, err = s.roster.CreatureTurnOptions(ctx, tx, campaignID, deref(c.MonsterKey), deref(c.SummonAttack), turnOf(c))
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, errCombatantNotFound()
+		}
 	}
-	opts, ok, err := s.roster.CreatureTurnOptions(ctx, tx, campaignID, deref(c.MonsterKey), deref(c.SummonAttack), turnOf(c))
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, errCombatantNotFound()
+	// The movement left is the combatant's own (speedDFt: the conditions that
+	// leave no speed, the Dash), the same number its view shows.
+	if opts.GetEconomy() != nil {
+		opts.Economy.Movement = movementLeftOf(c)
 	}
 	return opts, nil
+}
+
+// movementLeftOf is the combatant's speed, movement used and movement left this
+// turn, in tenths of a foot and in feet rounded down (RN-21).
+func movementLeftOf(c playdb.Combatant) *rulesv1.MovementLeft {
+	speed, left := speedDFt(c), movementLeftDFt(c)
+	return &rulesv1.MovementLeft{
+		SpeedFt: clamp32(speed/10, 0, math.MaxInt32), UsedFt: clamp32(int(c.MovementUsedDft)/10, 0, math.MaxInt32), LeftFt: clamp32(left/10, 0, math.MaxInt32),
+		SpeedDft: clamp32(speed, 0, math.MaxInt32), UsedDft: clamp32(int(c.MovementUsedDft), 0, math.MaxInt32), LeftDft: clamp32(left, 0, math.MaxInt32),
+	}
 }
 
 // saveOf is a combatant's saving throw bonus against an ability.
