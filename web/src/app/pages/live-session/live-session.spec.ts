@@ -1212,6 +1212,8 @@ describe('LiveSession', () => {
       await render();
       const reads = () => maps.calls.filter((c) => c.startsWith('vision map-1 ')).length;
       const gets = () => maps.calls.filter((c) => c.startsWith('get map-1')).length;
+      // Opening the page schedules one read of the vision; let it land so the counts below are only the hints'.
+      await vi.waitFor(() => expect(reads()).toBe(2));
       const before = {
         reads: reads(),
         gets: gets(),
@@ -1224,6 +1226,13 @@ describe('LiveSession', () => {
         await vi.advanceTimersByTimeAsync(1000);
         expect(reads()).toBe(before.reads);
         source.push({ kind: 'visionChanged', mapId: 'map-1' });
+        source.push({
+          kind: 'tokenMoved',
+          mapId: 'map-1',
+          characterId: 'pensantus',
+          xBp: 6200,
+          yBp: 5400,
+        });
         source.push({ kind: 'visionChanged', mapId: 'map-1' });
         await vi.advanceTimersByTimeAsync(1000);
       } finally {
