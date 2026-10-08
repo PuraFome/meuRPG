@@ -205,7 +205,7 @@ The backend limits the request rate (per IP and per user, in memory) and what on
 | `CAMPAIGN_CREATORS` | No | Verified e-mails, comma-separated, that may create campaigns; empty, anyone creates. In `make up`, "Mestre Teste" is `mestre@example.com`. |
 | `RATE_LIMIT_MULTIPLIER` | No | Multiplies every rate limit; default 1. `make up` (Docker and native) uses 10, because the e2e suite sends the requests of several accounts from the same address and shares some accounts between workers. |
 
-The numbers, the answers (`429` with `Retry-After`, `resource_exhausted`) and how each limit counts are in [Architecture](docs/architecture.md#abuse-limits) and [Operations](docs/operations.md#abuse-limits). The limiters' tests use a fake clock (`go test ./internal/platform/ratelimit`); the campaign cap and the daily image cap run against the database, like the rest (`TestRN30_*` in `campaigns`, `TestMR039_TheServersDailyCap` and `TestRateLimitsOfTheImageRoutes` in `maps`).
+The numbers, the answers (`429` with `Retry-After`, `resource_exhausted`) and how each limit counts are in [Architecture](docs/architecture.md#abuse-limits) and [Operations](docs/operations.md#abuse-limits). The limiters' tests use a fake clock (`go test ./internal/platform/ratelimit`; the dungeon creation limit and the map hint gate in `maps` take a test clock too); the campaign cap and the daily image cap run against the database, like the rest (`TestRN30_*` in `campaigns`, `TestMR039_TheServersDailyCap` and `TestRateLimitsOfTheImageRoutes` in `maps`).
 
 ## End-to-end tests (Playwright)
 
