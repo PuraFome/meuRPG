@@ -637,8 +637,10 @@ func TestMR015_ReplayAndRaceOnTheLastAttempt(t *testing.T) {
 
 	// Caio, one attempt, two calls at once.
 	errs := make(chan error, 2)
+	start := dbtest.NewBarrier(2)
 	for range 2 {
 		go func() {
+			start.Wait()
 			_, err := s.caio.rollWith(s.campaign, one.GetId(), 8, newKey())
 			errs <- err
 		}()

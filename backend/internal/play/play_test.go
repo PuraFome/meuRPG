@@ -326,8 +326,10 @@ func TestOnlyOneOpenSessionPerCampaign(t *testing.T) {
 
 	var wg sync.WaitGroup
 	results := make([]error, 5)
+	start := dbtest.NewBarrier(len(results))
 	for i := range results {
 		wg.Go(func() {
+			start.Wait()
 			_, results[i] = master.play.StartGameSession(t.Context(), connect.NewRequest(&playv1.StartGameSessionRequest{CampaignId: campaign}))
 		})
 	}

@@ -600,8 +600,10 @@ func TestMR016_TwoMarksAtOnceReachItOnce(t *testing.T) {
 	ms := tb.master.plan(t, tb.campaign, "Chegar ao Vale Seco")
 	errs := make([]error, 2)
 	var wg sync.WaitGroup
+	start := dbtest.NewBarrier(len(errs))
 	for i := range errs {
 		wg.Go(func() {
+			start.Wait()
 			_, errs[i] = tb.master.xp.MarkMilestoneReached(context.Background(), connect.NewRequest(&progressionv1.MarkMilestoneReachedRequest{
 				CampaignId: tb.campaign, MilestoneId: ms.GetId(), CharacterIds: []string{tb.pcs[i].GetId()}, IdempotencyKey: newKey(),
 			}))
@@ -639,8 +641,10 @@ func TestMR016_TwoAddsAtTheLimit(t *testing.T) {
 	}
 	errs := make([]error, 2)
 	var wg sync.WaitGroup
+	start := dbtest.NewBarrier(len(errs))
 	for i := range errs {
 		wg.Go(func() {
+			start.Wait()
 			_, errs[i] = tb.master.xp.AddMilestone(context.Background(), connect.NewRequest(&progressionv1.AddMilestoneRequest{CampaignId: tb.campaign, Text: "Último"}))
 		})
 	}

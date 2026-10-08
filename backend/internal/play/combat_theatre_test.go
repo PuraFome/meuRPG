@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -1272,7 +1271,7 @@ func TestRN10_AHiddenNPCIsNeverNamedInATheatreCombat(t *testing.T) {
 		t.Fatalf("SkipOpportunity() error = %v", err)
 	}
 
-	time.Sleep(500 * time.Millisecond)
+	a.master.markCurrentMap(t, a.campaignID, a.mapID, streams["Toren's player"], streams["Pensantus's player"]) // a visible event ends what the streams are read for
 	for who, u := range map[string]*user{"Toren's player": a.caio, "Pensantus's player": a.ana} {
 		for what, js := range map[string]string{
 			"the combat":  protojson.Format(a.get(t, u)),
@@ -1285,19 +1284,7 @@ func TestRN10_AHiddenNPCIsNeverNamedInATheatreCombat(t *testing.T) {
 		}
 	}
 	for who, w := range streams {
-		for {
-			var ev *playv1.WatchGameSessionResponse
-			select {
-			case got, ok := <-w.events:
-				if !ok {
-					t.Fatalf("%s's stream ended", who)
-				}
-				ev = got
-			default:
-			}
-			if ev == nil {
-				break
-			}
+		for _, ev := range w.beforeMarker(t) {
 			if js := protojson.Format(ev); strings.Contains(js, capitao) || strings.Contains(js, "Capitão") {
 				t.Errorf("%s's stream names the hidden Capitão: %s", who, js)
 			}

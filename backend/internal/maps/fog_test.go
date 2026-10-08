@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -1164,16 +1165,18 @@ func TestShowingAFogMapImageAgainReusesItsCopy(t *testing.T) {
 	if g3 != g2 {
 		t.Errorf("gallery grew from %d to %d on the keep call", g2, g3)
 	}
-	select {
-	case ev := <-pw.events:
-		if ev.GetHeartbeat() == nil {
-			t.Errorf("the player received %v on the keep call, want nothing", ev)
-		}
-	case <-time.After(700 * time.Millisecond):
-	}
-	// Stop showing: the kept image is left, exactly one.
+	// Stop showing: the kept image is left, exactly one. The player's
+	// shown_image_changed with no image is the marker that ends the wait, so anything
+	// the keep call sent comes before it (the hub keeps order) and cannot be missed.
 	if _, err := master.play.SetShownImage(t.Context(), connect.NewRequest(&playv1.SetShownImageRequest{CampaignId: campaign})); err != nil {
 		t.Fatal(err)
+	}
+	for {
+		ev := pw.next()
+		if ev.GetShownImageChanged() != nil && ev.GetShownImageChanged().GetImage() == nil {
+			break
+		}
+		t.Errorf("the player received %v on the keep call, want nothing", ev)
 	}
 	if n := left(); n != 1 {
 		t.Errorf("left images = %d, want 1", n)
@@ -1353,6 +1356,25 @@ type errRow struct{ err error }
 
 func (r errRow) Scan(...any) error { return r.err }
 
+// waitJoined waits until a request is parked in newSight's single flight, behind the
+// compile another request holds (the one blocked by blockLayers): the second request
+// has joined it, which nothing else shows from outside.
+func waitJoined(t *testing.T) {
+	t.Helper()
+	buf := make([]byte, 1<<22)
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		stacks := string(buf[:runtime.Stack(buf, true)])
+		for _, g := range strings.Split(stacks, "\n\n") {
+			if strings.Contains(g, ".newSight(") && strings.Contains(g, "sync.(*Once).") && strings.Contains(g, "sync.runtime_Semacquire") && !strings.Contains(g, "blockLayers") {
+				return
+			}
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatal("the second request never joined the first compile")
+}
+
 func TestSceneCompileSurvivesTheFirstAskerHangingUp(t *testing.T) {
 	c := newCave(t)
 	svc := c.h.svc
@@ -1391,7 +1413,7 @@ func TestSceneCompileSurvivesTheFirstAskerHangingUp(t *testing.T) {
 		defer wg.Done()
 		_, errB = svc.newSight(ctx, nil, in, points, tokens)
 	}()
-	time.Sleep(300 * time.Millisecond) // B joins the compile A started
+	waitJoined(t) // B is parked on the compile A started, so A's hang-up now comes with a waiter
 	cancelA()
 	close(bl.release)
 	wg.Wait()

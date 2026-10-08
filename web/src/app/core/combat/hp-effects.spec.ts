@@ -52,6 +52,8 @@ describe('the spells that read hit points (E8-03)', () => {
       poolDice({ hitPointEffect: { kind: SpellHitPointEffectKind.THRESHOLD } } as never, 7),
     ).toBeNull();
     expect(poolDice(null, 1)).toBeNull();
+    // A slot below the spell's own level adds no dice, and takes none away.
+    expect(poolDice(sleep, 0)).toEqual({ count: 5, sides: 8 });
   });
 
   it('says what happened in a word and an icon, by the condition the spell gives', () => {
@@ -89,6 +91,13 @@ describe('the spells that read hit points (E8-03)', () => {
     ).toBe('Foi curado');
   });
 
+  it('says a heal in the gender of the name', () => {
+    const heal = (label: string) =>
+      effectWords(SpellEffectKind.FLAT_HEAL, '', SpellEffectOutcome.AFFECTED, label);
+    expect(heal('Brisa')).toMatchObject({ present: 'é curada', past: 'Foi curada' });
+    expect(heal('Toren')).toMatchObject({ present: 'é curado', past: 'Foi curado' });
+  });
+
   it('says "não foi afetado" in the gender of the name, with the block icon', () => {
     const goblin = effectWords(
       SpellEffectKind.POOL,
@@ -110,6 +119,9 @@ describe('the spells that read hit points (E8-03)', () => {
   it('gives the master the reason a creature was not affected', () => {
     expect(reasonWords(SpellEffectReason.ABOVE_POOL, 27, 8, undefined)).toBe(
       '27 é mais que 8 restantes',
+    );
+    expect(reasonWords(SpellEffectReason.ABOVE_POOL, undefined, undefined, undefined)).toBe(
+      'mais PV do que sobrou do total',
     );
     expect(reasonWords(SpellEffectReason.ABOVE_LIMIT, 27, undefined, 150)).toBe(
       '27 PV, acima do limite de 150',

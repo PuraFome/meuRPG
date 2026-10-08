@@ -1293,7 +1293,8 @@ func TestMR038_ATimeLimitStopsThePuzzle(t *testing.T) {
 // run takes its lock.
 func TestMR038_ConcurrentWrongAnswersAreCountedExactly(t *testing.T) {
 	t.Parallel()
-	dbtest.PoolSize(t, 8)
+	const movers = 18 // three players, six moves each, in each of the two rounds
+	dbtest.PoolSize(t, movers)
 	p := newPuzzleTable(t)
 	attempts := p.riddle(t, "Tentativas", onWrong(func(o *playv1.PuzzleOnWrong) { o.AttemptsPerPlayer = 3 }))
 	limit := p.riddle(t, "Limite", onWrong(func(o *playv1.PuzzleOnWrong) { o.MaxMoves = 7 }))
@@ -1315,9 +1316,11 @@ func TestMR038_ConcurrentWrongAnswersAreCountedExactly(t *testing.T) {
 			t.Errorf("MakePuzzleMove() error = %v", err)
 		}
 	}
+	start := dbtest.NewBarrier(movers)
 	for _, u := range []*user{p.caio, p.ana, p.bia} {
 		for range 6 {
 			wg.Go(func() {
+				start.Wait()
 				_, err := p.move(t, u, attempts.GetId(), riddleMove("luz"))
 				count(err)
 			})
@@ -1333,9 +1336,11 @@ func TestMR038_ConcurrentWrongAnswersAreCountedExactly(t *testing.T) {
 		}
 	}
 	accepted.Store(0)
+	start = dbtest.NewBarrier(movers)
 	for _, u := range []*user{p.caio, p.ana, p.bia} {
 		for range 6 {
 			wg.Go(func() {
+				start.Wait()
 				_, err := p.move(t, u, limit.GetId(), riddleMove("luz"))
 				count(err)
 			})
@@ -1708,8 +1713,10 @@ func TestMR038_ConcurrentHintTriesRollOnce(t *testing.T) {
 	p.show(t, puz.GetId())
 	var wg sync.WaitGroup
 	errs := make([]error, 2)
-	for i := range 2 {
+	start := dbtest.NewBarrier(len(errs))
+	for i := range errs {
 		wg.Go(func() {
+			start.Wait()
 			_, errs[i] = p.tryHint(t, p.caio, puz.GetId(), 1) // a fail: the next try is for the same hint
 		})
 	}
@@ -1731,8 +1738,10 @@ func TestMR038_ConcurrentHintTriesRollOnce(t *testing.T) {
 	// The same key twice, at once: one roll, and the other answers the same.
 	key := newKey()
 	var replays atomic.Int32
-	for i := range 2 {
+	start = dbtest.NewBarrier(len(errs))
+	for i := range errs {
 		wg.Go(func() {
+			start.Wait()
 			res, err := p.tryHintKey(t, p.ana, puz.GetId(), 20, key)
 			errs[i] = err
 			if err == nil && res.GetReplayed() {

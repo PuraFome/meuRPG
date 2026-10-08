@@ -18,6 +18,12 @@ describe('the critical hint (RN-24)', () => {
     );
   });
 
+  it('does not name a maximum that is zero: the dice are simply rolled once', () => {
+    const hint = criticalHint(CriticalDamageRule.MAX_PLUS_ROLL, 1, 8, 0)!;
+    expect(hint.line).toBe('Acerto crítico: o máximo mais uma rolagem. Role 1d8 uma vez.');
+    expect(hint.fixed).toBe('');
+  });
+
   it('says nothing for a hit that is not a critical one', () => {
     expect(criticalHint(CriticalDamageRule.UNSPECIFIED, 1, 8, 0)).toBeNull();
   });
@@ -25,6 +31,9 @@ describe('the critical hint (RN-24)', () => {
   it('gives a physical roll one clear instruction: roll the dice and type only what came out; the app adds the rest', () => {
     expect(criticalTypedHint(CriticalDamageRule.MAX_PLUS_ROLL, '2d6', 2, 12, 12)).toBe(
       'Role 2d6 e digite só o que saiu, de 2 a 12. O app soma o resto.',
+    );
+    expect(criticalTypedHint(CriticalDamageRule.DOUBLED_DICE, '4d6', 4, 24, 5)).toBe(
+      'Digite a soma dos dados, de 4 a 24. O app soma o modificador.',
     );
     expect(criticalTypedHint(CriticalDamageRule.DOUBLED_DICE, '4d6', 4, 24, 0)).toBe(
       'Digite a soma dos dados, de 4 a 24. O app soma o modificador.',

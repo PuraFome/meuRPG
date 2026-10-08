@@ -15,10 +15,12 @@ import {
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { SlotChoiceSchema, SpellHitPointEffectKind } from '../../../gen/meurpg/rules/v1/rules_pb';
 import {
+  canPick,
   castRows,
   castTargetRows,
   dartLines,
   dartsStatus,
+  damageDice,
   dartTargets,
   dealOne,
   defaultSlot,
@@ -70,6 +72,26 @@ describe('the slot step (E6-09)', () => {
   });
 });
 
+describe('the slot step: the first free slot, the last-slot warning and the pact slots', () => {
+  it('starts on the first circle with a free slot, not on the first row', () => {
+    const rows = slotRows(1, [choice(2, 1)], usage);
+    expect(rows.map((r) => r.enabled)).toEqual([false, true]);
+    expect(defaultSlot(rows)?.level).toBe(2);
+    expect(defaultSlot(slotRows(1, [], usage))).toBeNull();
+  });
+
+  it('does not warn about a last slot when none is free', () => {
+    const [full] = slotRows(1, [choice(1, 0)], [{ level: 1, total: 4, used: 4 }]);
+    expect(lastSlotWarning(full, 1)).toBe('');
+  });
+
+  it('lists the pact slots only when they reach the level of the spell', () => {
+    const pact = { slotLevel: 1, total: 2, used: 0 };
+    expect(slotRows(2, [], [], pact)).toEqual([]);
+    expect(slotRows(1, [], [], pact)).toHaveLength(1);
+  });
+});
+
 describe('the target step', () => {
   const st = (over: object) => create(SpellTargetsSchema, { spellKey: 'spell:x', ...over });
 
@@ -114,6 +136,18 @@ describe('the target step', () => {
       ),
     ).toEqual({ kind: 'darts', max: 4, min: 1 });
     expect(targetRule(undefined, 'me', 1, 1).kind).toBe('none');
+  });
+
+  it('stops the darts at the most targets a cast takes', () => {
+    const many = st({ maxTargets: 3, darts: [{ slotLevel: 9, darts: 13 }] });
+    expect(targetRule(many, 'me', 1, 9)).toEqual({ kind: 'darts', max: 10, min: 1 });
+  });
+
+  it('allows a new choice only below the most, and always the ones already chosen', () => {
+    const rule = { kind: 'multi', max: 2, min: 1 } as const;
+    expect(canPick(rule, ['a', 'b'], 'a')).toBe(true);
+    expect(canPick(rule, ['a', 'b'], 'c')).toBe(false);
+    expect(canPick(rule, ['a'], 'c')).toBe(true);
   });
 
   it('a single choice replaces, several are limited', () => {
@@ -183,6 +217,18 @@ describe("Magic Missile's darts", () => {
         2,
       )[0],
     ).toMatch(/dado físico/);
+  });
+});
+
+describe('the dice of a spell', () => {
+  it('takes the dice of the slot level cast with, then those of the spell level', () => {
+    const details = {
+      spell: { level: 1 },
+      damage: [{ bySlotLevel: { 1: '1d6', 3: '3d6' }, byCharacterLevel: {} }],
+    } as never;
+    expect(damageDice(details, 3)).toBe('3d6');
+    expect(damageDice(details, 2)).toBe('1d6');
+    expect(damageDice(null, 1)).toBe('');
   });
 });
 

@@ -225,10 +225,16 @@ func TestWithConcurrently(t *testing.T) {
 	o := fullOverlay(t, srd)
 	var wg sync.WaitGroup
 	results := make([]*Content, 8)
+	// Every goroutine is parked before any begins, so the Withs and the Derives overlap.
+	var ready sync.WaitGroup
+	ready.Add(2 * len(results))
+	start := make(chan struct{})
 	for i := range results {
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
+			ready.Done()
+			<-start
 			c, err := srd.With(o)
 			if err != nil {
 				t.Error(err)
@@ -239,10 +245,14 @@ func TestWithConcurrently(t *testing.T) {
 		}()
 		go func() {
 			defer wg.Done()
+			ready.Done()
+			<-start
 			Derive(pensantus(), srd)
 			srd.Catalog()
 		}()
 	}
+	ready.Wait()
+	close(start)
 	wg.Wait()
 	if fingerprint(t, srd) != want {
 		t.Error("the base changed")

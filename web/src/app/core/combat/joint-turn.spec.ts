@@ -3,6 +3,8 @@ import { combatant, encounter } from './combat-testing';
 import { turnBanner } from './combat-view';
 import { distanceText } from '../units';
 import {
+  acts,
+  actingIds,
   afterTurn,
   jointTurn,
   leftSentence,
@@ -124,6 +126,21 @@ describe('joint turns (MR-013)', () => {
     expect(npcPlural(['Goblin 1', 'Goblin 2'])).toBe('os Goblins');
     expect(npcPlural(['Capitão Goblin', 'Goblin 1'])).toBeNull();
     expect(npcPlural(['Goblin 1'])).toBeNull();
+    expect(npcPlural(['Lutador 1', 'Lutador 2'])).toBe('os Lutadores');
+    expect(npcPlural(['Capataz 1', 'Capataz 2'])).toBe('os Capatazes');
+    expect(npcPlural(['Gás 1', 'Gás 2'])).toBe('os Gás');
+  });
+
+  it('lets act only the members whose part has not ended', () => {
+    const e = encounter({
+      combatants: [brisa, { ...toren, turnPartEnded: true }, cap],
+      turnGroupIds: ['b', 't'],
+      currentCombatantId: 'b',
+    });
+    expect(actingIds(e)).toEqual(['b']);
+    expect(acts(e, brisa)).toBe(true);
+    expect(acts(e, toren)).toBe(false);
+    expect(acts(e, cap)).toBe(false);
   });
 
   it('says who comes after the group, naming an NPC-only group by its plural', () => {

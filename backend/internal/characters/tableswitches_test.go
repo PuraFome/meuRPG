@@ -613,8 +613,10 @@ func TestRN23_ConcurrentSwitchesAreOrdered(t *testing.T) {
 	keys := []string{"spell:fireball", "spell:fire-bolt", "spell:light", "spell:shield", "class:wizard", "race:dwarf", "background:acolyte", "subclass:evocation"}
 	var wg sync.WaitGroup
 	errs := make([]error, n)
+	start := dbtest.NewBarrier(n)
 	for i := range n {
 		wg.Go(func() {
+			start.Wait()
 			_, errs[i] = master.table.SetOptionSwitches(context.Background(), connect.NewRequest(switchReq(campaign, true, keys[i])))
 		})
 	}
@@ -635,8 +637,10 @@ func TestRN23_ConcurrentSwitchesAreOrdered(t *testing.T) {
 	}
 	// Racing the same key both ways ends in a state one of them asked for, never both.
 	var wg2 sync.WaitGroup
+	start2 := dbtest.NewBarrier(n)
 	for i := range n {
 		wg2.Go(func() {
+			start2.Wait()
 			_, _ = master.table.SetOptionSwitches(context.Background(), connect.NewRequest(switchReq(campaign, i%2 == 0, "race:elf")))
 		})
 	}

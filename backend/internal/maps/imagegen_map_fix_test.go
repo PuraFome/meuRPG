@@ -257,9 +257,10 @@ func TestMR039_UseAfterAndRacingRedraw(t *testing.T) {
 	racing := wantDone(t, "textured map", d.master.mustGenerateFromMap(d.campaign, mapID, kindTexturedAPI, "Uma masmorra")).GetId()
 	var wg sync.WaitGroup
 	var useErr, redrawErr error
+	start := dbtest.NewBarrier(2)
 	wg.Add(2)
-	go func() { defer wg.Done(); _, useErr = d.master.useAsMapImage(d.campaign, racing) }()
-	go func() { defer wg.Done(); _, redrawErr = d.master.redraw(d.campaign, mapID) }()
+	go func() { defer wg.Done(); start.Wait(); _, useErr = d.master.useAsMapImage(d.campaign, racing) }()
+	go func() { defer wg.Done(); start.Wait(); _, redrawErr = d.master.redraw(d.campaign, mapID) }()
 	wg.Wait()
 	if useErr == nil && redrawErr == nil {
 		t.Error("Use and Redesenhar both succeeded on the same image")

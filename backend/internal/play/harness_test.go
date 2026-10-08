@@ -56,6 +56,17 @@ var testSessions Sessions = fakeSessions{}
 // IDs are random per test, so tests running in parallel never collide.
 var signedOut sync.Map
 
+// rechecks counts the RecheckSession calls per user ID (an *atomic.Int64), so a test
+// can tell how many rechecks a stream has been through instead of sleeping.
+var rechecks sync.Map
+
+func recheckCount(userID string) int64 {
+	if n, ok := rechecks.Load(userID); ok {
+		return n.(*atomic.Int64).Load()
+	}
+	return 0
+}
+
 func errSignIn() error {
 	return connect.NewError(connect.CodeUnauthenticated, errors.New("sign in to continue"))
 }
@@ -100,6 +111,8 @@ func (f fakeSessions) RecheckSession(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	n, _ := rechecks.LoadOrStore(userID, new(atomic.Int64))
+	n.(*atomic.Int64).Add(1)
 	if _, out := signedOut.Load(userID); out {
 		return errSignIn()
 	}

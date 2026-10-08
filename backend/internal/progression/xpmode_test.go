@@ -110,21 +110,20 @@ func TestRN09_AnAwardAndAChangeOfTheXPModeTakeTurns(t *testing.T) {
 		pc := ana.pc(t, campaign, "Pensantus")
 		var wg sync.WaitGroup
 		var changeErr, awardErr error
-		start := make(chan struct{})
+		start := dbtest.NewBarrier(2)
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			<-start
+			start.Wait()
 			changeErr = master.setXPMode(campaign, campaignsv1.XpMode_XP_MODE_MILESTONES, false)
 		}()
 		go func() {
 			defer wg.Done()
-			<-start
+			start.Wait()
 			_, awardErr = master.award(campaign, func(r *progressionv1.AwardXPRequest) {
 				r.Mode, r.Amount, r.CharacterIds = progressionv1.XPAwardMode_XP_AWARD_MODE_MANUAL, 50, []string{pc.GetId()}
 			})
 		}()
-		close(start)
 		wg.Wait()
 		live := len(master.history(t, campaign))
 		switch {

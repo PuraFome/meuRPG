@@ -1,6 +1,7 @@
 import { create } from '@bufbuild/protobuf';
 
 import {
+  PuzzleAlphabet,
   PuzzleKind,
   PuzzleLastMoveSchema,
   PuzzleSolveOutcome,
@@ -21,6 +22,7 @@ import {
 import {
   NOW,
   at,
+  cipherPuzzle,
   lightsPuzzle,
   lockPuzzle,
   pillarsPuzzle,
@@ -63,6 +65,63 @@ describe('puzzle words', () => {
     expect(plain(agoText(new Date(NOW.getTime() - 12_000), NOW))).toBe('há 12 s');
     expect(plain(agoText(new Date(NOW.getTime() - 180_000), NOW))).toBe('há 3 min');
     expect(agoText(new Date(NOW.getTime() + 5000), NOW)).toBe('agora há pouco');
+    // The edges: 5 s is "há 5 s", 60 s is "há 1 min", an hour is "há 1 h".
+    expect(plain(agoText(new Date(NOW.getTime() - 4000), NOW))).toBe('agora há pouco');
+    expect(plain(agoText(new Date(NOW.getTime() - 5000), NOW))).toBe('há 5 s');
+    expect(plain(agoText(new Date(NOW.getTime() - 59_000), NOW))).toBe('há 59 s');
+    expect(plain(agoText(new Date(NOW.getTime() - 60_000), NOW))).toBe('há 1 min');
+    expect(plain(agoText(new Date(NOW.getTime() - 3_540_000), NOW))).toBe('há 59 min');
+    expect(plain(agoText(new Date(NOW.getTime() - 3_600_000), NOW))).toBe('há 1 h');
+  });
+
+  it('names no one as "Você" when neither the move nor the reader has a name', () => {
+    const nameless = create(PuzzleLastMoveSchema, {
+      characterName: '',
+      move: { kind: { case: 'lights', value: { row: 1, col: 1 } } },
+    });
+    expect(lastMoveText(nameless, '')).not.toContain('Você');
+  });
+
+  it('writes the step of a sequence, and that a wrong one starts the attempt again', () => {
+    const move = (wrong: boolean) =>
+      create(PuzzleLastMoveSchema, {
+        characterName: 'Lia',
+        step: 3,
+        wrong,
+        move: { kind: { case: 'sequence', value: {} } },
+      });
+    expect(lastMoveText(move(false))).toBe('Lia acertou o passo 3');
+    expect(lastMoveText(move(true))).toBe('Lia errou no passo 3. A tentativa recomeçou');
+  });
+
+  it("writes the second line of a puzzle by what it is made of: the alphabet, the links, the cipher's method", () => {
+    const lock = (alphabet: PuzzleAlphabet) =>
+      puzzleSummary(
+        lockPuzzle('l', 'x', {
+          config: { kind: { case: 'lock', value: { wheels: 3, alphabet } } },
+        }),
+      );
+    expect(plain(lock(PuzzleAlphabet.DIGITS))).toBe('Fechadura de combinação · 3 rodas de dígitos');
+    expect(plain(lock(PuzzleAlphabet.LETTERS))).toBe('Fechadura de combinação · 3 rodas de letras');
+    const loose = pillarsPuzzle('p', 'x', {
+      config: {
+        kind: {
+          case: 'pillars',
+          value: { pillars: 2, symbols: 4, links: [{ alsoTurns: [] }, { alsoTurns: [] }] },
+        },
+      },
+    });
+    expect(plain(puzzleSummary(loose))).toBe('Símbolos giratórios · 2 pilares, sem ligações');
+    expect(plain(puzzleSummary(cipherPuzzle('c', 'x')))).toBe('Cifra · deslocamento');
+    const keyword = cipherPuzzle('k', 'x', {
+      solution: {
+        kind: {
+          case: 'cipher',
+          value: { message: 'a', method: { case: 'keyword', value: 'chave' } },
+        },
+      },
+    });
+    expect(plain(puzzleSummary(keyword))).toBe('Cifra · palavra-chave');
   });
 
   it('writes the last move of each kind, and "Você" for the reader\'s own character', () => {

@@ -1,4 +1,8 @@
-import { CombatantKind, EncounterStatus } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  CombatantKind,
+  EncounterMode,
+  EncounterStatus,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import { CombatState } from './combat-state';
 import { combatant, encounter } from './combat-testing';
 import { turnBanner } from './combat-view';
@@ -114,6 +118,18 @@ describe('CombatState', () => {
     expect(state.encounter()?.combatants[0]).toMatchObject({ placed: true, col: 7, row: 8 });
   });
 
+  it('does not move a combatant in a combat without a map', () => {
+    const state = new CombatState();
+    state.apply(
+      encounter({
+        mode: EncounterMode.THEATRE,
+        combatants: [combatant({ id: 'a', label: 'A', placed: false })],
+      }),
+    );
+    expect(state.applyMove({ encounterId: 'enc', combatantId: 'a', col: 7, row: 8 })).toBe(false);
+    expect(state.encounter()?.combatants[0]).toMatchObject({ placed: false });
+  });
+
   it('drops a read that started before turn_changed, which the read may not show, and says to read again', () => {
     const state = new CombatState();
     state.apply(encounter({ combatants: two, currentCombatantId: 'a', round: 1 }));
@@ -215,6 +231,28 @@ describe('CombatState', () => {
       expect(e.turnGroupIds).toEqual(['b', 't']);
       expect(e.combatants.find((c) => c.id === 'b')?.turnPartEnded).toBe(true);
       expect(turnMembers(e).map((c) => c.id)).toEqual(['b', 't']);
+    });
+
+    it('starts the same group again in the next round, with nobody having ended their part', () => {
+      const state = new CombatState();
+      state.apply(
+        encounter({
+          combatants: [{ ...brisa, turnPartEnded: true }, { ...toren, turnPartEnded: true }, pens],
+          currentCombatantId: 'b',
+          turnGroupIds: ['b', 't'],
+          revision: 5,
+        }),
+      );
+      const round = state.encounter()!.round;
+      state.applyTurn({
+        encounterId: 'enc',
+        round: round + 1,
+        currentCombatantId: 'b',
+        masterTurn: false,
+      });
+      const e = state.encounter()!;
+      expect(e.turnGroupIds).toEqual([]);
+      expect(e.combatants.some((c) => c.turnPartEnded)).toBe(false);
     });
   });
 });
