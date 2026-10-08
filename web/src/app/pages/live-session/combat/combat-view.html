@@ -124,8 +124,12 @@
                   [reachSwitch]="reachSwitch()"
                   [offers]="offerMarks()"
                   [doorTaps]="true"
+                  [forcedSwitch]="true"
+                  [forced]="forcedMove()"
+                  [forcedNote]="forcedNote()"
                   (doorPick)="openDoor($event)"
                   (reachChange)="reachOn.set($event)"
+                  (forcedChange)="forcedMove.set($event)"
                   (tokenDrop)="drop($event)"
                   (openMap)="state().mapOpen.set(true)"
                 />
