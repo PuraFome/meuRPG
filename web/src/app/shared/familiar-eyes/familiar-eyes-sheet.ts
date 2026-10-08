@@ -63,6 +63,11 @@ export class FamiliarEyesSheet {
   protected readonly error = signal('');
   private readonly key = newKey();
 
+  constructor() {
+    // A request in the air cannot be dismissed (Esc, the backdrop, ✕, Cancelar): its answer is always shown.
+    effect(() => this.sheet.lock(this.busy()));
+  }
+
   protected async confirm(): Promise<void> {
     if (this.busy()) {
       return;
@@ -80,6 +85,9 @@ export class FamiliarEyesSheet {
   }
 
   protected cancel(): void {
+    if (this.busy()) {
+      return;
+    }
     this.sheet.close(false);
   }
 }

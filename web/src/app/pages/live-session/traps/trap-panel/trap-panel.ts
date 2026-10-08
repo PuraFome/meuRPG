@@ -146,6 +146,7 @@ export class TrapPanel {
       .subscribe((point) => {
         focusWithRing(opener);
         if (point) {
+          this.error.set('');
           this.state().upsertPoint(point);
           this.announcement.set(`${point.name}: revelada.`);
           void this.board().refresh();
@@ -207,6 +208,7 @@ export class TrapPanel {
   }
 
   private fired(p: MapPoint, firing: TrapFiring, extend: boolean): void {
+    this.error.set('');
     const names = firing.caught.map((c) => c.targetLabel).filter(Boolean);
     this.announcement.set(
       names.length > 0

@@ -290,16 +290,6 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 	if !fits(campaignMode, g.mode) {
 		return progressiondb.XpAward{}, errBlocked(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_MODE_NOT_ALLOWED, "", campaignMode)
 	}
-	party, err := s.party.Party(ctx, m.CampaignID)
-	if err != nil {
-		return progressiondb.XpAward{}, s.dbError(ctx, "read the party", err)
-	}
-	for _, id := range g.characters {
-		if !slices.ContainsFunc(party, func(p link.Member) bool { return p.ID == id }) {
-			return progressiondb.XpAward{}, errBlocked(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE, id, 0)
-		}
-	}
-
 	var award progressiondb.XpAward
 	var repeated, logged bool
 	var changedMaps []string // the maps whose treasures this award converted
@@ -323,6 +313,17 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 		}
 		if !fits(txMode, g.mode) {
 			return errBlocked(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_MODE_NOT_ALLOWED, "", txMode)
+		}
+		// The party is read here, in the transaction: a character that died, or
+		// went up a level, since the request began is judged as it is now.
+		party, err := s.party.Party(ctx, tx, m.CampaignID)
+		if err != nil {
+			return fmt.Errorf("read the party: %w", err)
+		}
+		for _, id := range g.characters {
+			if !slices.ContainsFunc(party, func(p link.Member) bool { return p.ID == id }) {
+				return errBlocked(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE, id, 0)
+			}
 		}
 		reason := g.reason
 		if g.milestoneID != "" {

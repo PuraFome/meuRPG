@@ -442,6 +442,7 @@ func (s *Service) CastSpell(
 				hidden = hidden || t.Hidden
 			}
 		}
+		packCoverSeen(&made)
 		made.Secret = hidden
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)

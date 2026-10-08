@@ -171,7 +171,9 @@ func (c *Compiler) options(kind Kind) []expr.Option {
 	if kind == Bool {
 		return append(opts, expr.AsBool())
 	}
-	return append(opts, expr.AsInt())
+	// The result is read as a float and made an int here, by Int: expr's own
+	// conversion of NaN and the infinities to int is whatever the CPU does.
+	return append(opts, expr.AsFloat64())
 }
 
 // roundFunc is floor or ceil: one number in, an int out. It refuses NaN and
@@ -472,14 +474,17 @@ func (p *Program) Int(env *Env) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	n, ok := out.(int)
+	x, ok := out.(float64)
 	if !ok {
 		return 0, fmt.Errorf("formula returned %T, not a number", out)
 	}
-	if n > MaxResult || n < -MaxResult {
-		return 0, fmt.Errorf("formula returned %d, out of range", n)
+	if math.IsNaN(x) || math.IsInf(x, 0) {
+		return 0, errors.New("formula did not give a finite number")
 	}
-	return n, nil
+	if x > MaxResult || x < -MaxResult {
+		return 0, fmt.Errorf("formula returned %g, out of range", x)
+	}
+	return int(x), nil // truncates toward zero, as the whole numbers of a formula always did
 }
 
 // Bool runs a Bool formula.

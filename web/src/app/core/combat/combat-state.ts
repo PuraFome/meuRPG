@@ -23,6 +23,7 @@ export interface CombatantMove {
 export interface ReadTicket {
   readonly seq: number;
   readonly applied: number;
+  readonly patched: number;
 }
 
 /**
@@ -63,6 +64,8 @@ export class CombatState {
   private readsStarted = 0;
   private lastReadApplied = 0;
   private applied = 0;
+  /** `turn_changed` and `combatant_moved` applied in place: a read that began before one of them may not show it. */
+  private patched = 0;
 
   /** A fresh copy that is not a read: an answer to a call, or the combat
    * being started. Of two copies of the same combat the larger revision
@@ -83,19 +86,30 @@ export class CombatState {
   /** Call just before asking the server for the combat; give the ticket to
    * `applyRead` with the answer. */
   beginRead(): ReadTicket {
-    return { seq: ++this.readsStarted, applied: this.applied };
+    return { seq: ++this.readsStarted, applied: this.applied, patched: this.patched };
   }
 
   /** The answer to a read. It is dropped (`false`) when a read started later
    * was applied already, or a copy was applied since this one started: that
-   * copy is at least as new. */
+   * copy is at least as new. A stream event applied in place since it started
+   * drops it too (see `patchedSince`): the read may be older than the event. */
   applyRead(ticket: ReadTicket, next: Encounter | null): boolean {
-    if (ticket.seq < this.lastReadApplied || ticket.applied !== this.applied) {
+    if (
+      ticket.seq < this.lastReadApplied ||
+      ticket.applied !== this.applied ||
+      ticket.patched !== this.patched
+    ) {
       return false;
     }
     this.lastReadApplied = ticket.seq;
     this.encounter.set(next);
     return true;
+  }
+
+  /** Whether an event was applied in place since the read began: the combat on screen is newer than what the read
+   * may carry, so the page reads again (the next read begins after the event). */
+  patchedSince(ticket: ReadTicket): boolean {
+    return ticket.patched !== this.patched;
   }
 
   /** `combat_log_changed`, or a `ready`: read the log again. */
@@ -128,6 +142,7 @@ export class CombatState {
     }
     // A part that ended inside a joint turn moves "current" to another member of the same group, in the same
     // round: the group and who already ended their part stay. Only a turn that moves on starts over.
+    this.patched++;
     const sameGroup = turn.round === e.round && e.turnGroupIds.includes(turn.currentCombatantId);
     this.encounter.set({
       ...e,
@@ -161,6 +176,7 @@ export class CombatState {
     if (!e.combatants.some((c) => c.id === move.combatantId)) {
       return false;
     }
+    this.patched++;
     this.encounter.set({
       ...e,
       combatants: e.combatants.map((c) =>

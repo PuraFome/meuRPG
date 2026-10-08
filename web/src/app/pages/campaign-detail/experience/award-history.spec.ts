@@ -475,6 +475,8 @@ describe('the undo of an award that the history no longer has', () => {
     const fixture = TestBed.createComponent(AwardHistory);
     fixture.componentRef.setInput('campaignId', 'camp-1');
     fixture.componentRef.setInput('isMaster', true);
+    const undone = vi.fn();
+    fixture.componentInstance.undone.subscribe(undone);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     const click = async (name: string) => {
@@ -490,7 +492,7 @@ describe('the undo of an award that the history no longer has', () => {
     };
     await click('Desfazer');
     await click('Desfazer XP');
-    return { el, refresh };
+    return { el, refresh, undone };
   }
 
   it('re-reads the history after an undo the server aborts', async () => {
@@ -509,6 +511,18 @@ describe('the undo of an award that the history no longer has', () => {
     );
     expect(el.querySelector('[role="alert"]')?.textContent).toContain('A tela foi atualizada');
     expect(refresh).toHaveBeenCalled();
+  });
+
+  it('tells the page the XP moved when there is nothing to undo, as another tab undid it', async () => {
+    const { undone } = await run(
+      new ConnectError('x', Code.FailedPrecondition, undefined, [
+        {
+          desc: XPBlockedSchema,
+          value: { reason: XPBlockedReason.XP_BLOCKED_REASON_NOTHING_TO_UNDO },
+        },
+      ]),
+    );
+    expect(undone).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -80,7 +80,7 @@ export class AdjustVitals {
     .filter((r) => r.total > 0)
     .map((r) => ({
       key: r.key,
-      name: r.namePt || r.key,
+      name: r.namePt || 'Recurso',
       total: r.total,
       used: signal(r.used),
     }));

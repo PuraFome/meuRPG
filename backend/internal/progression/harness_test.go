@@ -129,6 +129,10 @@ type harness struct {
 	server *httptest.Server
 	// treasures is the maps' treasures, noting what is published about maps.
 	treasures *treasureSpy
+	// beforeAward, when set, runs once after an award's checks outside the
+	// transaction and before the transaction opens: the window where another
+	// request commits.
+	beforeAward func(ctx context.Context)
 }
 
 // published is one PublishChanged call.
@@ -175,6 +179,22 @@ func (s *treasureSpy) published() []published {
 	return slices.Clone(s.calls)
 }
 
+// racingCampaigns is the real campaigns service with a hook after the XP mode
+// is read outside a transaction, the last read before an award's transaction.
+type racingCampaigns struct {
+	*campaigns.Service
+	h *harness
+}
+
+func (c racingCampaigns) CampaignXPMode(ctx context.Context, tx pgx.Tx, campaignID string) (campaignsv1.XpMode, error) {
+	mode, err := c.Service.CampaignXPMode(ctx, tx, campaignID)
+	if hook := c.h.beforeAward; hook != nil && tx == nil && err == nil {
+		c.h.beforeAward = nil
+		hook(ctx)
+	}
+	return mode, err
+}
+
 // newHarness serves the progression, play, campaigns and characters services
 // through the API's real HTTP stack, wired as cmd/api wires them.
 func newHarness(t *testing.T) *harness {
@@ -204,7 +224,7 @@ func newHarness(t *testing.T) *harness {
 	}
 	h.play = pl
 	h.treasures = &treasureSpy{Treasures: maps.NewTreasures(pool)}
-	svc, err := New(Config{Pool: pool, Party: chars, Combats: pl, Log: pl, Treasures: h.treasures, Campaigns: camps, Profiles: h.users, Logger: logger, Now: clock.Now})
+	svc, err := New(Config{Pool: pool, Party: chars, Combats: pl, Log: pl, Treasures: h.treasures, Campaigns: racingCampaigns{Service: camps, h: h}, Profiles: h.users, Logger: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}

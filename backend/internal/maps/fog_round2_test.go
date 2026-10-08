@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -305,6 +306,33 @@ func TestMR036_APaintHeldByTheGateStillReachesThePlayers(t *testing.T) {
 	c := newCave(t)
 	m := c.master
 	c.h.svc.layerHintEvery = 300 * time.Millisecond // the harness makes it 0
+	// The gate's clock and timer are the test's: the interval ends when the
+	// test says so, never because the machine was slow.
+	var gateMu sync.Mutex
+	now := time.Now().Add(time.Second) // past the setup's own paints
+	var held []func()
+	c.h.svc.layerHints.now = func() time.Time {
+		gateMu.Lock()
+		defer gateMu.Unlock()
+		return now
+	}
+	c.h.svc.layerHints.afterFunc = func(_ time.Duration, f func()) *time.Timer {
+		gateMu.Lock()
+		defer gateMu.Unlock()
+		held = append(held, f)
+		return time.NewTimer(time.Hour)
+	}
+	endInterval := func() int {
+		gateMu.Lock()
+		now = now.Add(c.h.svc.layerHintEvery)
+		fs := held
+		held = nil
+		gateMu.Unlock()
+		for _, f := range fs {
+			f()
+		}
+		return len(fs)
+	}
 	ana := c.ana.watch(c.campaign)
 	visionHints := func() int {
 		m.setMapRevealed(c.campaign, c.probeMap, !m.mustGetMap(c.campaign, c.probeMap).GetMap().GetRevealed())
@@ -316,7 +344,6 @@ func TestMR036_APaintHeldByTheGateStillReachesThePlayers(t *testing.T) {
 		}
 		return n
 	}
-	time.Sleep(400 * time.Millisecond) // the setup's own paints are past the gate
 	visionHints()
 	// Rubble on the entrance, which Pensantus sees: told at once.
 	m.mustPaint(c.campaign, c.mapID, mapsv1.MapLayer_MAP_LAYER_DIFFICULT_TERRAIN, 1, [2]int32{2, 7})
@@ -325,7 +352,12 @@ func TestMR036_APaintHeldByTheGateStillReachesThePlayers(t *testing.T) {
 	}
 	// The rubble cleared within the gate's interval: held, then told when it ends.
 	m.mustPaint(c.campaign, c.mapID, mapsv1.MapLayer_MAP_LAYER_DIFFICULT_TERRAIN, 0, [2]int32{2, 7})
-	time.Sleep(700 * time.Millisecond)
+	if got := visionHints(); got != 0 {
+		t.Errorf("during the interval Ana got %d vision_changed, want the paint held", got)
+	}
+	if n := endInterval(); n != 1 {
+		t.Fatalf("%d hints were waiting for the gate, want 1", n)
+	}
 	if got := visionHints(); got != 1 {
 		t.Errorf("after the held paint Ana got %d vision_changed, want 1", got)
 	}

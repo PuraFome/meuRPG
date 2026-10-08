@@ -114,6 +114,46 @@ describe('CombatState', () => {
     expect(state.encounter()?.combatants[0]).toMatchObject({ placed: true, col: 7, row: 8 });
   });
 
+  it('drops a read that started before turn_changed, which the read may not show, and says to read again', () => {
+    const state = new CombatState();
+    state.apply(encounter({ combatants: two, currentCombatantId: 'a', round: 1 }));
+    const read = state.beginRead();
+    state.applyTurn({ encounterId: 'enc', round: 2, currentCombatantId: 'b', masterTurn: false });
+    expect(state.patchedSince(read)).toBe(true);
+    expect(
+      state.applyRead(read, encounter({ combatants: two, currentCombatantId: 'a', round: 1 })),
+    ).toBe(false);
+    expect(state.encounter()).toMatchObject({ round: 2, currentCombatantId: 'b' });
+    // The read that begins after the event is the one to trust.
+    const next = state.beginRead();
+    expect(state.patchedSince(next)).toBe(false);
+    expect(
+      state.applyRead(next, encounter({ combatants: two, currentCombatantId: 'b', round: 2 })),
+    ).toBe(true);
+  });
+
+  it('drops a read that started before combatant_moved', () => {
+    const state = new CombatState();
+    state.apply(encounter({ combatants: two }));
+    const read = state.beginRead();
+    state.applyMove({ encounterId: 'enc', combatantId: 'a', col: 7, row: 8 });
+    expect(state.applyRead(read, encounter({ combatants: two }))).toBe(false);
+    expect(state.encounter()?.combatants[0]).toMatchObject({ col: 7, row: 8 });
+  });
+
+  it('keeps a read that began after the patch', () => {
+    const state = new CombatState();
+    state.apply(encounter({ combatants: two }));
+    state.applyMove({ encounterId: 'enc', combatantId: 'a', col: 7, row: 8 });
+    const read = state.beginRead();
+    expect(
+      state.applyRead(
+        read,
+        encounter({ combatants: [combatant({ id: 'a', label: 'A', col: 7, row: 8 })] }),
+      ),
+    ).toBe(true);
+  });
+
   it('hides an ended combat once the person left it, and shows a new one', () => {
     const state = new CombatState();
     state.apply(encounter({ status: EncounterStatus.ENDED }));

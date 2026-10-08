@@ -412,9 +412,10 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
     q.dispatchEvent(new Event('input'));
     await settle();
     expect(location.path()).not.toContain('q=');
-    await new Promise((resolve) => setTimeout(resolve, 320));
-    await settle();
-    expect(location.path()).toContain('q=m');
+    await vi.waitFor(async () => {
+      await settle();
+      expect(location.path()).toContain('q=m');
+    });
   });
 
   it('puts the focus on the next chip when one is taken off, and on the search when none is left', async () => {

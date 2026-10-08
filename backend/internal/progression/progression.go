@@ -48,8 +48,8 @@ import (
 // own authorization check.
 type Party interface {
 	// Party returns the campaign's living, active player characters, oldest
-	// first, with their level and XP.
-	Party(ctx context.Context, campaignID string) ([]link.Member, error)
+	// first, with their level and XP, read in tx (nil outside a transaction).
+	Party(ctx context.Context, tx pgx.Tx, campaignID string) ([]link.Member, error)
 	// Names returns the names of those of ids that are characters of the
 	// campaign, by ID, whatever their kind or status.
 	Names(ctx context.Context, campaignID string, ids []string) (map[string]string, error)

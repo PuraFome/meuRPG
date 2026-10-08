@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { startWith } from 'rxjs';
 
 import { type XPAward, XPBlockedReason } from '../../../gen/meurpg/progression/v1/progression_pb';
-import { newKey } from '../../core/connect/idempotency';
+import { ActionKey } from '../../core/connect/idempotency';
 import type { ExperienceRow } from '../../core/progression/experience-store';
 import { ProgressionClient } from '../../core/progression/progression-client';
 import { xpBlocked, xpErrorMessage } from '../../core/progression/xp-errors';
@@ -89,8 +89,7 @@ export class MilestoneSheet {
     () => this.reasonToWait() !== '' || this.reasonText().trim() === '',
   );
 
-  private key = newKey();
-  private keyFor = '';
+  private readonly key = new ActionKey();
 
   protected toggle(id: string): void {
     this.checked.update((set) => {
@@ -119,15 +118,11 @@ export class MilestoneSheet {
       .filter((r) => this.checked().has(r.id))
       .map((r) => r.id);
     // New values are a new milestone; the same values again are a retry.
-    const signature = JSON.stringify([reason, ids]);
-    if (signature !== this.keyFor) {
-      this.keyFor = signature;
-      this.key = newKey();
-    }
+    const key = this.key.keyFor([reason, ids]);
     this.busy.set(true);
     this.error.set('');
     try {
-      const res = await this.api.markMilestone(this.data.campaignId, reason, ids, this.key);
+      const res = await this.api.markMilestone(this.data.campaignId, reason, ids, key);
       this.sheet.close(res.award);
     } catch (err) {
       this.error.set(xpErrorMessage(err, 'registrar o marco'));

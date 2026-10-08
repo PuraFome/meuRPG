@@ -169,6 +169,26 @@ func TestRN21_MovementLeftIsKeptInTenthsOfAFoot(t *testing.T) {
 	}
 }
 
+// TestRN21_AFlierIsWhoMovesOnItsFlySpeed: a creature that walks faster than it
+// flies moves by walking, so difficult terrain costs it.
+func TestRN21_AFlierIsWhoMovesOnItsFlySpeed(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name      string
+		walk, fly int32
+		want      bool
+	}{
+		{"flies faster than it walks", 10, 50, true},
+		{"flies as fast as it walks", 30, 30, true},
+		{"walks faster than it flies", 60, 10, false},
+		{"cannot fly", 30, 0, false},
+	} {
+		if got := moverOf(playdb.Combatant{SpeedFt: tc.walk, SpeedFlyFt: tc.fly}).Flier; got != tc.want {
+			t.Errorf("%s: moverOf(walk %d, fly %d).Flier = %v, want %v", tc.name, tc.walk, tc.fly, got, tc.want)
+		}
+	}
+}
+
 func TestRN20_StateWords(t *testing.T) {
 	t.Parallel()
 	npc := func(hp, hpMax int32, defeated bool) playdb.Combatant {
@@ -225,6 +245,13 @@ func TestRN19_CopyLabels(t *testing.T) {
 	}
 	if got := copyLabels("Orc", 3, map[string]bool{}); !slices.Equal(got, []string{"Orc 1", "Orc 2", "Orc 3"}) {
 		t.Errorf("three copies = %v", got)
+	}
+	// A name that only begins with the other's ("Goblin Boss") is not a copy of it.
+	if got := copyLabels("Goblin", 1, map[string]bool{"Goblin Boss": true}); !slices.Equal(got, []string{"Goblin"}) {
+		t.Errorf("one Goblin beside a Goblin Boss = %v, want [Goblin]", got)
+	}
+	if got := copyLabels("Goblin", 1, map[string]bool{"Goblin 1": true, "Goblin 2": true}); !slices.Equal(got, []string{"Goblin 3"}) {
+		t.Errorf("one Goblin beside numbered ones = %v, want [Goblin 3]", got)
 	}
 	long := "Um nome de monstro absurdamente comprido que passa do limite"
 	for _, l := range copyLabels(long, 10, map[string]bool{}) {

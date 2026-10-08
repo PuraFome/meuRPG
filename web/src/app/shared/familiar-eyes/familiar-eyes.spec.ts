@@ -156,6 +156,19 @@ describe('"Ver pelos olhos do Nanquim?" (E9-04 state 3)', () => {
     expect(close).toHaveBeenCalledWith(true);
   });
 
+  it('cannot be closed by the ✕ while the sight is being started, and shows the answer', async () => {
+    const { fixture, el } = setup();
+    let answer!: () => void;
+    api.start.mockReturnValue(new Promise<object>((resolve) => (answer = () => resolve({}))));
+    buttons(el)[1].click();
+    fixture.detectChanges();
+    (fixture.componentInstance as unknown as { cancel(): void }).cancel();
+    expect(close).not.toHaveBeenCalled();
+    answer();
+    await fixture.whenStable();
+    expect(close).toHaveBeenCalledWith(true);
+  });
+
   it('closes with false on "Cancelar"', () => {
     const { el } = setup();
     buttons(el)[0].click();
