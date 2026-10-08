@@ -484,7 +484,9 @@ func (p *Program) Int(env *Env) (int, error) {
 	if x > MaxResult || x < -MaxResult {
 		return 0, fmt.Errorf("formula returned %g, out of range", x)
 	}
-	return int(x), nil // truncates toward zero, as the whole numbers of a formula always did
+	// A fraction rounds down, as the rules round (-3 / 2 is -2, 3 / 2 is 1);
+	// ceil, floor and the integer functions already return whole numbers.
+	return int(math.Floor(x)), nil
 }
 
 // Bool runs a Bool formula.

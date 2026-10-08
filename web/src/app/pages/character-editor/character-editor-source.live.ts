@@ -46,8 +46,10 @@ import {
   CharacterEditorSource,
   CharacterForEdit,
   CharacterFormValue,
+  CharacterPreviewVm,
   CreateCharacterInput,
   HitPointsMethod,
+  PreviewCharacterInput,
   RulesCatalogVm,
   SpellPreparation,
   SubclassOptionVm,
@@ -721,6 +723,27 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
       typedDice: typedDice.map((dice) => ({ dice: [...dice] })),
     });
     return rollsFromGen(res.rolls!);
+  }
+
+  async previewCharacter(input: PreviewCharacterInput): Promise<CharacterPreviewVm> {
+    const res = await this.characterClient.previewCharacter({
+      campaignId: input.campaignId,
+      characterId: input.characterId ?? '',
+      kind: KIND_TO_GEN[input.kind],
+      sheet: {
+        content: {
+          case: 'full',
+          value: mergeFullSheetInit(
+            input.characterId ? this.loadedFullSheets.get(input.characterId) : undefined,
+            input.full,
+          ),
+        },
+      },
+    });
+    return {
+      hitPointsMax: res.derived?.hitPointsMax ?? 0,
+      hitPointsFromEffects: res.derived?.hitPointsFromEffects ?? 0,
+    };
   }
 
   async createCharacter(input: CreateCharacterInput): Promise<{ characterId: string }> {

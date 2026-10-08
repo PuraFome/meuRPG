@@ -51,6 +51,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // SheetLocker locks a campaign's player sheets when a game session starts
@@ -291,6 +292,11 @@ type CombatRoster interface {
 	CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, attack string) (link.Sheet, bool, error)
 	CreatureTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, attack string, turn link.Turn) (*rulesv1.TurnOptions, bool, error)
 	CreatureSave(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, ability string) (link.Save, error)
+	// DamageModifiers are the damage types the target takes double, half or none
+	// of (SRD 5.1), from the stat block of the creature it is: the monsterKey when
+	// it is a character's creature, otherwise the one on the basic sheet of an NPC
+	// made from a creature. Empty for anyone else.
+	DamageModifiers(ctx context.Context, tx pgx.Tx, campaignID, characterID, monsterKey string) (combat.TypeModifiers, error)
 	// CreatureEyes is what a creature notices a trap with, from its stat block:
 	// its passive Perception and its senses (MR-035). False for a key that is not an
 	// SRD creature.

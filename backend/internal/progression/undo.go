@@ -47,8 +47,9 @@ func (s *Service) UndoLastXPAward(
 
 	var undone progressiondb.XpAward
 	var repeated, logged bool
+	var freedMaps []string // the maps whose treasures the undo freed
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		undone, repeated, logged = progressiondb.XpAward{}, false, false // a retry starts over
+		undone, repeated, logged, freedMaps = progressiondb.XpAward{}, false, false, nil // a retry starts over
 		q := s.queries.WithTx(tx)
 		if done, err := q.GetXPAwardByUndoKey(ctx, progressiondb.GetXPAwardByUndoKeyParams{CampaignID: m.CampaignID, UndoKey: key.String()}); err == nil {
 			undone, repeated = done, true // a retry of an undo already made
@@ -92,7 +93,7 @@ func (s *Service) UndoLastXPAward(
 				treasures = append(treasures, eventTreasure{PointID: r.PointID, ValuePO: r.ValuePo})
 			}
 			if len(rows) > 0 {
-				if err := s.treasures.Release(ctx, tx, last.ID); err != nil {
+				if freedMaps, err = s.treasures.Release(ctx, tx, last.ID); err != nil {
 					return err
 				}
 			}
@@ -112,6 +113,9 @@ func (s *Service) UndoLastXPAward(
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "undo an XP award", err)
+	}
+	if !repeated && len(freedMaps) > 0 {
+		s.treasures.PublishChanged(m.CampaignID, freedMaps) // after the commit, once per map
 	}
 	if logged && !repeated {
 		logging.Event(ctx, s.logger, "xp.undone", slog.String("award_id", undone.ID))

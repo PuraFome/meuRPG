@@ -2722,8 +2722,15 @@ type DerivedSheet struct {
 	// the player wrote for a custom background (SRD 5.1 "Customizing a
 	// Background"). Empty for an SRD background and for a sheet without one.
 	BackgroundEquipmentPt string `protobuf:"bytes,42,opt,name=background_equipment_pt,json=backgroundEquipmentPt,proto3" json:"background_equipment_pt,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// What the "hp.max" effects add to hit_points_max: hit_points_max minus what
+	// the hit dice and the Constitution modifier give (the floor of one hit
+	// point per level included). Dwarven Toughness adds one per level; a table's
+	// effect may subtract, so it can be negative. Zero for a creature and for a
+	// beast form (Wild Shape). The character editor adds it to the per-level
+	// rows it shows, so the box never copies effect maths.
+	HitPointsFromEffects int32 `protobuf:"varint,43,opt,name=hit_points_from_effects,json=hitPointsFromEffects,proto3" json:"hit_points_from_effects,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *DerivedSheet) Reset() {
@@ -3048,6 +3055,13 @@ func (x *DerivedSheet) GetBackgroundEquipmentPt() string {
 		return x.BackgroundEquipmentPt
 	}
 	return ""
+}
+
+func (x *DerivedSheet) GetHitPointsFromEffects() int32 {
+	if x != nil {
+		return x.HitPointsFromEffects
+	}
+	return 0
 }
 
 // ChangedContent is a table entry a sheet uses that changed after the sheet was
@@ -9779,7 +9793,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\fconstitution\x18\x03 \x01(\x05R\fconstitution\x12\"\n" +
 	"\fintelligence\x18\x04 \x01(\x05R\fintelligence\x12\x16\n" +
 	"\x06wisdom\x18\x05 \x01(\x05R\x06wisdom\x12\x1a\n" +
-	"\bcharisma\x18\x06 \x01(\x05R\bcharisma\"\x83\x10\n" +
+	"\bcharisma\x18\x06 \x01(\x05R\bcharisma\"\xba\x10\n" +
 	"\fDerivedSheet\x12'\n" +
 	"\x0fcontent_version\x18\x01 \x01(\tR\x0econtentVersion\x12 \n" +
 	"\frace_name_pt\x18\x02 \x01(\tR\n" +
@@ -9831,7 +9845,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x05hover\x18' \x01(\bR\x05hover\x12>\n" +
 	"\fsave_actions\x18( \x03(\v2\x1b.meurpg.rules.v1.SaveActionR\vsaveActions\x12H\n" +
 	"\x0fchanged_content\x18) \x03(\v2\x1f.meurpg.rules.v1.ChangedContentR\x0echangedContent\x126\n" +
-	"\x17background_equipment_pt\x18* \x01(\tR\x15backgroundEquipmentPt\"\xeb\x01\n" +
+	"\x17background_equipment_pt\x18* \x01(\tR\x15backgroundEquipmentPt\x125\n" +
+	"\x17hit_points_from_effects\x18+ \x01(\x05R\x14hitPointsFromEffects\"\xeb\x01\n" +
 	"\x0eChangedContent\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x14\n" +

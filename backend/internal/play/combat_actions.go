@@ -1002,6 +1002,11 @@ func (s *Service) RollDamage(
 			if g.Half {
 				amount = clamp32(combat.HalfDamage(total), 0, math.MaxInt32)
 			}
+			if !g.Healing {
+				if amount, err = s.afterResistance(ctx, c, tgt, g.DamageType, amount); err != nil {
+					return nil, err
+				}
+			}
 			hit, vit, err := s.landDamage(ctx, c, g, tgt, amount)
 			if err != nil {
 				return nil, err
@@ -1080,6 +1085,23 @@ func (s *Service) RollDamage(
 		}
 	}
 	return connect.NewResponse(resp), nil
+}
+
+// afterResistance is the damage that lands on the target once its stat block's
+// resistances, vulnerabilities and immunities to the damage type are applied, after
+// the bonuses and the half of a saving throw (SRD 5.1). Only a target that takes
+// the damage at once and has a stat block is adjusted: an NPC made from a creature
+// and a creature. A player's character keeps its Rage and other resistances as
+// notes, for the master to apply when he sets the amount (RN-02).
+func (s *Service) afterResistance(ctx context.Context, c *combatTx, target playdb.Combatant, damageType string, amount int32) (int32, error) {
+	if !holdsHP(target) || damageType == "" || amount <= 0 {
+		return amount, nil
+	}
+	mods, err := s.roster.DamageModifiers(ctx, c.tx, c.session.CampaignID, target.CharacterID, deref(target.MonsterKey))
+	if err != nil {
+		return 0, err
+	}
+	return clamp32(combat.AdjustForType(int(amount), damageType, mods), 0, math.MaxInt32), nil
 }
 
 // landDamage puts a rolled damage or heal on its target, as far as the target's
@@ -1630,19 +1652,9 @@ func (s *Service) TakeAction(
 		}); err != nil {
 			return nil, fmt.Errorf("spend the action: %w", err)
 		}
-		if actionKey == "standard:dash" {
-			if err := markDashed(ctx, c.q, who.ID); err != nil {
-				return nil, err
-			}
-		}
-		// Disengage: no opportunity attacks for the rest of the turn (slice 9.6b
-		// reads the flag).
-		if actionKey == "standard:disengage" {
-			if err := c.q.SetCombatantDisengaged(ctx, playdb.SetCombatantDisengagedParams{ID: who.ID, Disengaged: true}); err != nil {
-				return nil, fmt.Errorf("mark the disengage: %w", err)
-			}
-		}
-
+		// What the action does to the turn: a standard action's own, or the one a
+		// feature performs (Cunning Action's Dash, Step of the Wind's Disengage).
+		standard := actionKey
 		if feature {
 			sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, who)
 			if err != nil {
@@ -1653,6 +1665,9 @@ func (s *Service) TakeAction(
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("action_key is not one of the character's feature actions"))
 			}
 			fa := sheet.FeatureActions[fi]
+			if fa.Standard != "" {
+				standard = fa.Standard
+			}
 			// One use of its resource: only a player's character counts them, and a
 			// pool of points (Cura pelas mãos) is the master's.
 			if fa.Resource != "" && !fa.Pool && who.Kind == kindPlayer {
@@ -1669,6 +1684,18 @@ func (s *Service) TakeAction(
 				if vit != nil {
 					vitals = vit
 				}
+			}
+		}
+		if standard == "standard:dash" {
+			if err := markDashed(ctx, c.q, who.ID); err != nil {
+				return nil, err
+			}
+		}
+		// Disengage: no opportunity attacks for the rest of the turn (slice 9.6b
+		// reads the flag).
+		if standard == "standard:disengage" {
+			if err := c.q.SetCombatantDisengaged(ctx, playdb.SetCombatantDisengagedParams{ID: who.ID, Disengaged: true}); err != nil {
+				return nil, fmt.Errorf("mark the disengage: %w", err)
 			}
 		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {

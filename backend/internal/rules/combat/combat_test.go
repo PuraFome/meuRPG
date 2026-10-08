@@ -157,7 +157,7 @@ func TestDeathSave(t *testing.T) {
 		{"9 fails", 9, 1, 0, DeathSaveResult{Successes: 1, Failures: 1, Outcome: DeathSaveContinues}},
 		{"natural 1 is two failures", 1, 0, 0, DeathSaveResult{Failures: 2, Outcome: DeathSaveContinues}},
 		{"natural 1 on one failure kills", 1, 1, 1, DeathSaveResult{Successes: 1, Failures: 3, Outcome: DeathSaveDying}},
-		{"third success is stable", 12, 2, 1, DeathSaveResult{Successes: 3, Failures: 1, Outcome: DeathSaveStable}},
+		{"third success is stable and clears the failures", 12, 2, 1, DeathSaveResult{Successes: 3, Outcome: DeathSaveStable}},
 		{"third failure is dying, for the master to confirm", 5, 1, 2, DeathSaveResult{Successes: 1, Failures: 3, Outcome: DeathSaveDying}},
 		{"natural 20 brings back 1 HP and resets", 20, 1, 2, DeathSaveResult{Outcome: DeathSaveRevived, HP: 1}},
 	}
@@ -600,5 +600,44 @@ func TestSortSpellsOrderAndTies(t *testing.T) {
 	}
 	if want := []string{"a", "c", "t1", "t2", "e", "b", "d"}; !slices.Equal(keys, want) {
 		t.Errorf("order = %v, want %v", keys, want)
+	}
+}
+
+// A character that becomes stable has both counts back at zero (SRD 5.1): the
+// next hit while down is its first failure, not its third.
+func TestStableCharacterStartsTheCountsOverAfterAHit(t *testing.T) {
+	r := DeathSave(15, 2, 2)
+	if r.Outcome != DeathSaveStable || r.Failures != 0 {
+		t.Fatalf("third success = %+v, want stable with no failures", r)
+	}
+	hit := AddFailures(0, r.Failures, DamageWhileDown(false))
+	if hit.Failures != 1 || hit.Outcome != DeathSaveContinues {
+		t.Errorf("first hit on a stable character = %+v, want one failure and still alive", hit)
+	}
+}
+
+func TestAdjustForType(t *testing.T) {
+	skeleton := TypeModifiers{Vulnerable: []string{"damage-type:bludgeoning"}, Immune: []string{"damage-type:poison"}}
+	fireproof := TypeModifiers{Resistant: []string{"damage-type:fire"}, Vulnerable: []string{"damage-type:fire"}}
+	for _, tt := range []struct {
+		name   string
+		amount int
+		typ    string
+		m      TypeModifiers
+		want   int
+	}{
+		{"vulnerability doubles", 6, "damage-type:bludgeoning", skeleton, 12},
+		{"immunity is none", 9, "damage-type:poison", skeleton, 0},
+		{"another type is untouched", 7, "damage-type:slashing", skeleton, 7},
+		{"resistance halves down", 7, "damage-type:fire", TypeModifiers{Resistant: []string{"damage-type:fire"}}, 3},
+		{"one is half of nothing", 1, "damage-type:fire", TypeModifiers{Resistant: []string{"damage-type:fire"}}, 0},
+		{"resistant and vulnerable: halve, then double", 7, "damage-type:fire", fireproof, 6},
+		{"a typeless damage is untouched", 5, "", skeleton, 5},
+		{"nothing stays nothing", 0, "damage-type:bludgeoning", skeleton, 0},
+		{"no modifiers", 8, "damage-type:fire", TypeModifiers{}, 8},
+	} {
+		if got := AdjustForType(tt.amount, tt.typ, tt.m); got != tt.want {
+			t.Errorf("%s: AdjustForType(%d, %q) = %d, want %d", tt.name, tt.amount, tt.typ, got, tt.want)
+		}
 	}
 }
