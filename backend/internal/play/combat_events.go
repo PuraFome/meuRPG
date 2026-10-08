@@ -260,6 +260,12 @@ type actionEvent struct {
 	// Extra Attack and the opportunity attack.
 	AttacksBefore int32 `json:"attacks_before,omitempty"`
 	AsReaction    bool  `json:"as_reaction,omitempty"`
+	// AsBonus says the attack was a bonus action attack (Two-Weapon Fighting,
+	// Martial Arts, Flurry of Blows). AttackKeyBefore and FlurryBefore are the
+	// attack of the action and the Flurry strikes left before the event.
+	AsBonus         bool   `json:"as_bonus,omitempty"`
+	AttackKeyBefore string `json:"attack_key_before,omitempty"`
+	FlurryBefore    int32  `json:"flurry_before,omitempty"`
 
 	// A death save, or damage at 0 hit points: the counts before and after,
 	// the outcome and the failures the damage caused.

@@ -67,6 +67,8 @@ type Combatant struct {
 	SummonGroupID      *string
 	Dismissed          bool
 	ActionSurged       bool
+	ActionAttackKey    *string
+	BonusAttacksLeft   int32
 }
 
 type Encounter struct {

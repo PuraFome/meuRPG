@@ -229,7 +229,7 @@ WHERE id = $1;
 -- combatant acts ('acting') in the turn that starts.
 UPDATE combatants
 SET movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, action_surged = false, action_used = false, bonus_action_used = false, reaction_used = false,
-    attacks_made = 0, ac_bonus = 0, death_save_rolled = false, turn_state = 'acting'
+    attacks_made = 0, action_attack_key = NULL, bonus_attacks_left = 0, ac_bonus = 0, death_save_rolled = false, turn_state = 'acting'
 WHERE id = $1;
 
 -- name: ClearCombatTurns :exec
@@ -302,6 +302,13 @@ WHERE id = $1;
 -- The attacks the Attack action made this turn (Extra Attack), or its undo.
 UPDATE combatants
 SET attacks_made = $2
+WHERE id = $1;
+
+-- name: SetCombatantAttackState :exec
+-- The attack of the action this turn and the Flurry of Blows strikes left, or
+-- their undo.
+UPDATE combatants
+SET action_attack_key = $2, bonus_attacks_left = $3
 WHERE id = $1;
 
 -- name: SetCombatantAcBonus :exec

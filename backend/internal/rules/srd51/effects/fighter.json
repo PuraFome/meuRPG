@@ -36,6 +36,9 @@
     "feature:improved-critical": [
       {"type": "note", "text_pt": "Crítico com 19 ou 20 nos ataques com arma."}
     ],
+    "feature:superior-critical": [
+      {"type": "note", "text_pt": "Crítico com 18, 19 ou 20 nos ataques com arma."}
+    ],
     "feature:fighter-ability-score-improvement-1": [
       {"type": "choice", "choice": "ability_score_improvement", "count": 1}
     ],

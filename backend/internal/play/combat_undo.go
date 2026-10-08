@@ -335,6 +335,16 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		}
 		return nil
 	}
+	setAttackState := func(who playdb.Combatant, key string, flurry int32) error {
+		var k *string
+		if key != "" {
+			k = &key
+		}
+		if err := c.q.SetCombatantAttackState(ctx, playdb.SetCombatantAttackStateParams{ID: who.ID, ActionAttackKey: k, BonusAttacksLeft: flurry}); err != nil {
+			return fmt.Errorf("put back the attack of the action: %w", err)
+		}
+		return nil
+	}
 	setHP := func(who playdb.Combatant, hp hpState) error {
 		if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: who.ID, HpCurrent: &hp.HP, HpTemp: &hp.Temp, Defeated: hp.Defeated}); err != nil {
 			return fmt.Errorf("put back the hit points: %w", err)
@@ -395,9 +405,17 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		if who, ok := find(ev.Actor); ok {
 			if ev.AsReaction {
 				err = setEconomy(who, who.ActionUsed, who.BonusActionUsed, ev.ReactionBefore, who.Dashed)
-			} else if err = setEconomy(who, ev.ActionBefore, who.BonusActionUsed, who.ReactionUsed, who.Dashed); err == nil {
-				if err = setAttacks(who, ev.AttacksBefore); err == nil {
-					err = setRun(who, ev.RunBefore)
+			} else {
+				bonus := who.BonusActionUsed
+				if ev.AsBonus {
+					bonus = ev.BonusBefore
+				}
+				if err = setEconomy(who, ev.ActionBefore, bonus, who.ReactionUsed, who.Dashed); err == nil {
+					if err = setAttacks(who, ev.AttacksBefore); err == nil {
+						if err = setAttackState(who, ev.AttackKeyBefore, ev.FlurryBefore); err == nil {
+							err = setRun(who, ev.RunBefore)
+						}
+					}
 				}
 			}
 			if err != nil {
@@ -531,6 +549,9 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			return nil, fmt.Errorf("put back the action surge: %w", err)
 		}
 		if err := setAttacks(who, ev.AttacksBefore); err != nil {
+			return nil, err
+		}
+		if err := setAttackState(who, ev.AttackKeyBefore, ev.FlurryBefore); err != nil {
 			return nil, err
 		}
 		if err := setRun(who, ev.RunBefore); err != nil {
