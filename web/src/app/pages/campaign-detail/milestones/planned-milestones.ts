@@ -12,7 +12,10 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { XPBlockedReason, type Milestone } from '../../../../gen/meurpg/progression/v1/progression_pb';
+import {
+  XPBlockedReason,
+  type Milestone,
+} from '../../../../gen/meurpg/progression/v1/progression_pb';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { MILESTONES_LIMIT, plannedCount } from '../../../core/progression/milestones';
 import { MilestonesStore } from '../../../core/progression/milestones-store';

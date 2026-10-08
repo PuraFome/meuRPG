@@ -249,7 +249,7 @@ describe('MapHead: "Trocar imagem" asks before it erases (E9-01 4)', () => {
     expect(document.activeElement).toBe(ask.querySelector('h3'));
     expect(ask.textContent).toContain('Imagem agora: Imagem de A caverna do Vale Seco');
     expect(ask.textContent).toContain(
-      'apaga o terreno, as paredes, a cobertura e a luz pintados, e o que os jogadores já viram. Os pontos e os tokens ficam.',
+      'apaga o terreno, as paredes, a cobertura, a luz e as portas pintados, e o que os jogadores já viram. Os pontos e os tokens ficam.',
     );
     expect(Array.from(ask.querySelectorAll('button'), (b) => b.textContent?.trim())).toEqual([
       'Voltar',

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
 /**
- * The treasure chest of MAP-LANGUAGE.md ("Tesouro: o ícone do baú"): a rounded body with the lid line and the latch, drawn with
+ * The treasure chest of docs/design.md ("Tesouro: o ícone do baú"): a rounded body with the lid line and the latch, drawn with
  * `currentColor` so it takes the ink of whatever holds it. 24 x 24, `aria-hidden`: the words around it carry the meaning.
  */
 @Component({

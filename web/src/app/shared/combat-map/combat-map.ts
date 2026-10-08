@@ -66,7 +66,7 @@ export interface TokenDrop extends Square {
  *   shading of what they see) instead of the image; the combatants are what the server sends them.
  * - **Layers (Etapa 9):** the walls, the difficult terrain and the cover, drawn
  *   by `app-map-layers` over the image, and the doors (Etapa 10), one mark per kind; with `doorPicks` the master taps a door.
- * - **Reach (E6-10, MAP-LANGUAGE.md):** the squares the server says a combatant
+ * - **Reach (E6-10, docs/design.md):** the squares the server says a combatant
  *   can go to, tinted, inside a dashed circle of the movement left. A square the
  *   circle holds that is not tinted gets no mark of its own.
  * - **Offers (E9-13):** a dashed outline on the square of the reactor of a pending
@@ -230,7 +230,7 @@ export class CombatMap {
     return combatantInitial(c.label);
   }
 
-  /** An NPC is the rounded square; a player's creature is round with a dashed outline (MAP-LANGUAGE.md). */
+  /** An NPC is the rounded square; a player's creature is round with a dashed outline (docs/design.md). */
   protected npc(c: Combatant): boolean {
     return !isPlayer(c) && !isCreature(c);
   }

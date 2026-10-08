@@ -177,7 +177,7 @@ export class PlaceSheet {
     const pts = this.points();
     return { up: pts.some((p) => p.stairs === 1), down: pts.some((p) => p.stairs === 2) };
   });
-  /** The solid outline (MAP-LANGUAGE-E10): the room of the chosen square, or the square itself where there is no room; the hidden chest marks the square. */
+  /** The solid outline (docs/design.md): the room of the chosen square, or the square itself where there is no room; the hidden chest marks the square. */
   protected readonly outline = computed(() => {
     const sq = this.square();
     const f = this.room()?.floor;

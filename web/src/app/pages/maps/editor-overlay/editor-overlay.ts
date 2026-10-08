@@ -81,7 +81,7 @@ export class EditorOverlay {
   /** The calibration (RN-25): how many squares of 1,5 m each square of the drawing is worth. Above 1, the drawing's own
    * lines are drawn solid, every `factor` squares, over the rules' grid, which turns dotted. */
   readonly factor = input(1);
-  /** A room chosen in a generated dungeon's list: its floor, in squares, outlined with the solid 3 px accent (MAP-LANGUAGE-E10.md). */
+  /** A room chosen in a generated dungeon's list: its floor, in squares, outlined with the solid 3 px accent (docs/design.md). */
   readonly highlight = input<{ x: number; y: number; width: number; height: number } | null>(null);
 
   protected readonly gridPath = computed(() => {

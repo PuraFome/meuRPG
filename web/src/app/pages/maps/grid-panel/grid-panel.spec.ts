@@ -67,7 +67,7 @@ describe('GridPanel', () => {
     expect(el.querySelector('h3')?.textContent).toContain('Mudar a grade?');
     expect(document.activeElement).toBe(el.querySelector('h3'));
     expect(text()).toContain(
-      'apaga o terreno, as paredes, a cobertura e a luz pintados, e o que os jogadores já viram',
+      'apaga o terreno, as paredes, a cobertura, a luz e as portas pintados, e o que os jogadores já viram',
     );
     expect(text()).toContain('Voltar');
     expect(api.calls).toEqual([]);

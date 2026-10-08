@@ -71,7 +71,7 @@ export class MapMarker {
   protected readonly left = computed(() => bpToPercent(this.at()?.xBp ?? this.point().xBp));
   protected readonly top = computed(() => bpToPercent(this.at()?.yBp ?? this.point().yBp));
   protected readonly hidden = computed(() => pointHidden(this.point()));
-  /** A generated dungeon's stair is drawn with its arrow, up or down (MAP-LANGUAGE-E10.md); any other point with its kind's glyph. */
+  /** A generated dungeon's stair is drawn with its arrow, up or down (docs/design.md); any other point with its kind's glyph. */
   protected readonly icon = computed(() => pointKindIcon(this.point().kind, this.point().stairs));
   protected readonly label = computed(() => pointAriaLabel(this.point()));
   /** A trap, a treasure or a light (kinds 4 to 6): the map's own marks (`app-map-pins`) draw it, and this is only the hit area and the selection ring. */

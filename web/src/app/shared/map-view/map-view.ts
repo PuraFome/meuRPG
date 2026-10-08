@@ -134,7 +134,7 @@ export class MapView {
   readonly hint = input<string | null>(null);
   /** A kind of point is waiting for a click: the cursor says so. */
   readonly placing = input(false);
-  /** NPCs as white rounded squares and creatures with a dashed ring (the fog map, MAP-LANGUAGE.md). */
+  /** NPCs as white rounded squares and creatures with a dashed ring (the fog map, docs/design.md). */
   readonly kindShapes = input(false);
   /** The screen draws traps, chests and lights itself (`app-map-pins`): their markers are then only hit areas. */
   readonly pinsDrawn = input(false);
@@ -142,7 +142,7 @@ export class MapView {
   readonly labels = input(true);
   /** Markers and tokens drawn at 40 %, so what is painted shows through (the editor while painting). */
   readonly faded = input(false);
-  /** The grid's columns, when the map has one: the tokens are then sized to the square (a fog map, MAP-LANGUAGE.md). */
+  /** The grid's columns, when the map has one: the tokens are then sized to the square (a fog map, docs/design.md). */
   readonly squares = input(0);
   /** Opens zoomed in on this spot, once the view has its size (the phone's fog map: the party at 2x). Read again only when it changes to another spot. */
   readonly startAt = input<{ xBp: number; yBp: number } | null>(null);
