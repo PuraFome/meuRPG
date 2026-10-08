@@ -461,6 +461,27 @@ func (c *combatTx) pendingOf(ctx context.Context, attackerID string) ([]playdb.P
 	return slices.DeleteFunc(open, func(p playdb.PendingDamage) bool { return deref(p.AttackerID) != attackerID }), nil
 }
 
+// linesSeenBy is who may see at least one of the lines a change wrote, on a map with
+// the fog of war: the union of their seen_by. It says scoped false when there is no
+// line or one of them is for every player (it has no NPC out of sight in it), and the
+// hint then goes to all of them.
+func linesSeenBy(lines []actionEvent) (seers []string, scoped bool) {
+	if len(lines) == 0 {
+		return nil, false
+	}
+	for _, ev := range lines {
+		if !ev.Fogged {
+			return nil, false
+		}
+		for _, u := range ev.SeenBy {
+			if !slices.Contains(seers, u) {
+				seers = append(seers, u)
+			}
+		}
+	}
+	return seers, true
+}
+
 // publishLogChanged tells the streams to read the combat log again: the
 // master's always, the players' only when the change touches a line they may
 // see.
@@ -476,11 +497,13 @@ func (s *Service) publishLogChanged(ctx context.Context, campaignID, encounterID
 	if !players {
 		return
 	}
-	if memo := fogMemoOf(ctx); memo != nil && memo.stamped != nil && memo.stamped.Fogged {
-		for _, u := range memo.stamped.SeenBy {
-			s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: msg})
+	if memo := fogMemoOf(ctx); memo != nil {
+		if seers, scoped := linesSeenBy(memo.lines); scoped {
+			for _, u := range seers {
+				s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: msg})
+			}
+			return
 		}
-		return
 	}
 	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: msg})
 }

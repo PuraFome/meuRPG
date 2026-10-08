@@ -234,3 +234,26 @@ func TestACommittedChangeIsAnnouncedEvenIfTheCallerLeaves(t *testing.T) {
 		}
 	}
 }
+
+// TestRN10_LinesSeenByIsTheUnionOfEveryLinesPlayers: the log hint of a change that
+// wrote several lines goes to everyone who may see one of them, and to all the
+// players as soon as one line is for all (or none is stamped).
+func TestRN10_LinesSeenByIsTheUnionOfEveryLinesPlayers(t *testing.T) {
+	t.Parallel()
+	door := actionEvent{Fogged: true, SeenBy: []string{"ana"}}
+	move := actionEvent{Fogged: true, SeenBy: []string{"bia", "ana"}}
+	plain := actionEvent{}
+
+	if seers, scoped := linesSeenBy([]actionEvent{door, move}); !scoped || len(seers) != 2 || !slices.Contains(seers, "ana") || !slices.Contains(seers, "bia") {
+		t.Errorf("linesSeenBy(door, move) = %v, %v; want ana and bia, scoped", seers, scoped)
+	}
+	if seers, scoped := linesSeenBy([]actionEvent{{Fogged: true}, {Fogged: true}}); !scoped || len(seers) != 0 {
+		t.Errorf("linesSeenBy(nobody saw) = %v, %v; want nobody, scoped", seers, scoped)
+	}
+	if _, scoped := linesSeenBy([]actionEvent{door, plain}); scoped {
+		t.Errorf("linesSeenBy(door, a line for everyone) is scoped, want every player")
+	}
+	if _, scoped := linesSeenBy(nil); scoped {
+		t.Errorf("linesSeenBy(no line) is scoped, want every player")
+	}
+}

@@ -1364,3 +1364,97 @@ func TestUndoOfAnUnseenMoveIsNotToldToPlayers(t *testing.T) {
 		}
 	}
 }
+
+// logHintsOf counts the combat_log_changed events in what a stream carried.
+func logHintsOf(evs []*playv1.WatchGameSessionResponse) int {
+	return len(slices.DeleteFunc(kinds(evs), func(k string) bool { return k != "combat_log_changed" }))
+}
+
+// fightInSeparateTurns is the cave's fight with each NPC in a turn of its own (in
+// fight they all roll the same and share one).
+func (f *fogCave) fightInSeparateTurns(t *testing.T) {
+	t.Helper()
+	f.start(t, plan{
+		npcs: []*playv1.Participant{
+			{CharacterId: f.capitao.GetId()}, {CharacterId: f.goblins.GetId(), Count: 3}, {CharacterId: f.ogre.GetId()}, {CharacterId: f.squire.GetId()},
+		},
+		npcRolls: []int{3, 5, 7, 9, 11, 13},
+		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1},
+		reveal:   []string{"Capitão Goblin", "Goblin 1", "Goblin 2", "Goblin 3", "Ogro", "Escudeiro"},
+		at: map[string][2]int32{
+			"Toren": {6, 7}, "Pensantus": {5, 8}, "Brisa": {4, 7}, "Escudeiro": {3, 8},
+			"Goblin 1": {18, 5}, "Goblin 2": {20, 7}, "Goblin 3": {21, 3}, "Capitão Goblin": {12, 13}, "Ogro": {22, 9},
+		},
+	})
+	f.side(t, "Escudeiro", playv1.CombatantSide_COMBATANT_SIDE_PARTY)
+}
+
+// stageNPCDuel puts the combat on an NPC's turn and the NPC beside another NPC far
+// from every player's eyes, and returns the two labels and the combat.
+func (f *fogCave) stageNPCDuel(t *testing.T, col int32, unseen bool) (attacker, target string, e *playv1.Encounter) {
+	t.Helper()
+	for range 6 {
+		e = f.get(t, f.master)
+		if byID(e, e.GetCurrentCombatantId()).GetKind() == playv1.CombatantKind_COMBATANT_KIND_NPC {
+			break
+		}
+		f.mustEndTurn(t, f.master, e)
+	}
+	e = f.get(t, f.master)
+	attacker = byID(e, e.GetCurrentCombatantId()).GetLabel()
+	target = "Ogro"
+	if attacker == target {
+		target = "Capitão Goblin"
+	}
+	f.mustMove(t, f.master, attacker, col, 7)
+	f.mustMove(t, f.master, target, col+1, 7)
+	for _, u := range []*user{f.caio, f.ana, f.bia} {
+		if seen := f.seesSquare(t, u, int(col), 7) || f.seesSquare(t, u, int(col)+1, 7); seen == unseen && u == f.caio {
+			t.Fatalf("the duel's squares are seen = %v by Toren's player, the fixture wants %v", seen, !unseen)
+		}
+	}
+	return attacker, target, f.get(t, f.master)
+}
+
+// TestRN10_FogCombatADroppedAttackOutOfSightPingsNoPlayer: the master passes the
+// turn of an NPC that attacked another, dropping the damage; the line "descartado"
+// is for those who saw the attack, so the stream of a player who did not see it
+// never hears of it, and one who did, does.
+func TestRN10_FogCombatADroppedAttackOutOfSightPingsNoPlayer(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name   string
+		col    int32
+		unseen bool
+	}{
+		{"in the dark", 21, true},
+		{"in Toren's light", 7, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			f := newFogCave(t)
+			f.fightInSeparateTurns(t)
+			attacker, target, e := f.stageNPCDuel(t, tc.col, tc.unseen)
+			f.h.roller.queue(15)
+			f.mustAttack(t, f.master, e, attacker, sword, target, inAppRoll) // hits: the damage waits
+
+			s := f.watchAll(t)
+			if _, err := f.endTurn(t, f.master, e, true); err != nil {
+				t.Fatalf("EndTurn(discard) error = %v", err)
+			}
+			f.markEnd(t, 3)
+			if got := logHintsOf(f.collect(t, s.master, 3)); got == 0 {
+				t.Errorf("the master got no combat_log_changed for the dropped damage, want one")
+			}
+			for name, w := range map[string]*watcher{"Toren's player": s.caio, "Pensantus's player": s.ana, "Brisa's player": s.bia} {
+				got := logHintsOf(f.collect(t, w, 3))
+				if tc.unseen && got != 0 {
+					t.Errorf("%s got %d combat_log_changed for a dropped attack %s, want none", name, got, tc.name)
+				}
+				if !tc.unseen && name == "Toren's player" && got == 0 {
+					t.Errorf("%s got no combat_log_changed for a dropped attack %s, want one", name, tc.name)
+				}
+			}
+		})
+	}
+}

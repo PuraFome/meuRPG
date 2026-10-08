@@ -157,8 +157,11 @@ type combatTx struct {
 	// transaction opened (nil without the fog of war): it filters what the change
 	// tells its caller and stamps who could see the event (combat_fog.go).
 	sight *fogSight
-	// stamped is the last event insertEvent stamped with who could see it.
+	// stamped is the last event insertEvent stamped with who could see it, and
+	// lines every one of them: a change can write several lines (a dropped damage
+	// for each attack, a door and the move), each seen by its own players.
 	stamped *actionEvent
+	lines   []actionEvent
 	// hash is the request hash kept with the event that carries the change's key.
 	hash *string
 	// rules are the table's rules (RN-24), read in this transaction when it
@@ -186,10 +189,11 @@ type combatResult struct {
 	characterID string
 	event       *actionEvent
 	// sight is what the players saw of the combat's map before the change (nil without
-	// the fog), and stamped the event the change wrote with who could see it: the
-	// publishers use both (withFogMemo).
+	// the fog), stamped the last event the change wrote with who could see it and
+	// lines all of them: the publishers use them (withFogMemo).
 	sight   *fogSight
 	stamped *actionEvent
+	lines   []actionEvent
 }
 
 // write runs one change to a combat, as AdjustCharacterVitals runs a vitals
@@ -320,6 +324,9 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 		return combatResult{}, err
 	}
 	res.stamped = last
+	if ended != nil {
+		res.lines = ended.lines
+	}
 	// A turn that started ended some familiar's sight (MR-036): the player's vitals
 	// and the fog's view change.
 	if ended != nil && len(ended.told) > 0 {
@@ -404,6 +411,7 @@ func insertEvent(ctx context.Context, c *combatTx, kind string, actor, key *stri
 			}
 		}
 		c.stamped = &ev
+		c.lines = append(c.lines, ev)
 		payload = ev
 	}
 	body, err := json.Marshal(payload)
@@ -547,7 +555,7 @@ func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResu
 	}
 	// The sight read after the commit is read once for the publishers and the answer;
 	// the one read before it says who could see the old squares.
-	pctx = withFogMemo(pctx, res.sight, res.stamped)
+	pctx = withFogMemo(pctx, res.sight, res.lines)
 	switch {
 	case publish == nil:
 	case res.repeated:
@@ -555,7 +563,7 @@ func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResu
 	default:
 		publish(pctx, d)
 	}
-	return s.viewFor(withFogMemo(ctx, res.sight, res.stamped), m, d)
+	return s.viewFor(withFogMemo(ctx, res.sight, res.lines), m, d)
 }
 
 // publishRetried is what a retry of a committed change tells the streams: the

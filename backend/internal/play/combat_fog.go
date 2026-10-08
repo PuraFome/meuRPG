@@ -74,11 +74,11 @@ type fogSight struct {
 
 // fogMemo shares, inside one request, the sights its handler needs after the
 // commit: the one read before the change (who could see the old squares) and, once
-// asked for, the one read after it. The change's stamped event is here too, for the
+// asked for, the one read after it. The lines the change wrote are here too, for the
 // log's hint.
 type fogMemo struct {
 	pre     *fogSight
-	stamped *actionEvent
+	lines   []actionEvent
 	mu      sync.Mutex
 	post    *fogSight
 	postErr error
@@ -88,8 +88,8 @@ type fogMemo struct {
 type fogMemoKey struct{}
 
 // withFogMemo gives a request's context the memo finish and the publishers share.
-func withFogMemo(ctx context.Context, pre *fogSight, stamped *actionEvent) context.Context {
-	return context.WithValue(ctx, fogMemoKey{}, &fogMemo{pre: pre, stamped: stamped})
+func withFogMemo(ctx context.Context, pre *fogSight, lines []actionEvent) context.Context {
+	return context.WithValue(ctx, fogMemoKey{}, &fogMemo{pre: pre, lines: lines})
 }
 
 func fogMemoOf(ctx context.Context) *fogMemo {
