@@ -350,6 +350,17 @@ type hintGate struct {
 	mu     sync.Mutex
 	keys   map[string]*gateState
 	logger *slog.Logger // for a panic in a send that runs on the timer's own goroutine
+	// now and afterFunc are the clock and the timer; nil means time.Now and
+	// time.AfterFunc. A test replaces them to drive the interval by hand.
+	now       func() time.Time
+	afterFunc func(d time.Duration, f func()) *time.Timer
+}
+
+func (g *hintGate) clock() time.Time {
+	if g.now != nil {
+		return g.now()
+	}
+	return time.Now()
 }
 
 type gateState struct {
@@ -374,20 +385,24 @@ func (g *hintGate) fire(key string, every time.Duration, players bool, send func
 		g.mu.Unlock()
 		return
 	}
-	if wait := every - time.Since(st.last); wait > 0 {
+	if wait := every - g.clock().Sub(st.last); wait > 0 {
 		st.players = players
-		st.timer = time.AfterFunc(wait, func() {
+		after := time.AfterFunc
+		if g.afterFunc != nil {
+			after = g.afterFunc
+		}
+		st.timer = after(wait, func() {
 			defer safego.Recover(g.logger, "map hint")
 			g.mu.Lock()
 			p := st.players
-			st.timer, st.players, st.last = nil, false, time.Now()
+			st.timer, st.players, st.last = nil, false, g.clock()
 			g.mu.Unlock()
 			send(p)
 		})
 		g.mu.Unlock()
 		return
 	}
-	st.last = time.Now()
+	st.last = g.clock()
 	g.mu.Unlock()
 	send(players)
 }
@@ -399,7 +414,7 @@ func (g *hintGate) forget(except string, every time.Duration) {
 		return
 	}
 	for k, st := range g.keys {
-		if k != except && st.timer == nil && time.Since(st.last) > max(time.Minute, every) {
+		if k != except && st.timer == nil && g.clock().Sub(st.last) > max(time.Minute, every) {
 			delete(g.keys, k)
 		}
 	}
