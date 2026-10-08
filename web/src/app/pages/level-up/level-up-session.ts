@@ -9,7 +9,11 @@ import {
   type LevelUpOptions,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { Ability, type DerivedSheet, type PactMagic } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { formatModifier, spellLevelLabel } from '../../core/characters/character-labels';
+import {
+  formatModifier,
+  pactSlotsText,
+  spellLevelLabel,
+} from '../../core/characters/character-labels';
 import { isTableKey } from '../../core/content/catalog';
 import { newKey } from '../../core/connect/idempotency';
 import { LevelUpClient } from '../../core/levelup/levelup-client';
@@ -19,6 +23,18 @@ import { changeRows, type ChangeRow } from '../../core/levelup/levelup-summary';
 import { LevelUpPreview } from './level-up-preview';
 
 const LIST = new Intl.ListFormat('pt-BR', { type: 'conjunction' });
+
+/** "1 magia conhecida", "2 magias conhecidas"; "1 magia para o livro", "2 magias para o livro"; empty for none. */
+export function newSpellsTitle(count: number, spellbook: boolean): string {
+  if (count < 1) {
+    return '';
+  }
+  const noun = count === 1 ? '1 magia' : `${count} magias`;
+  if (spellbook) {
+    return `${noun} para o livro`;
+  }
+  return `${noun} ${count === 1 ? 'conhecida' : 'conhecidas'}`;
+}
 
 /** One line of "O que o nível N dá": what it is, and whether it is chosen, still to choose, or automatic. */
 export interface GiveRow {
@@ -315,9 +331,7 @@ export class LevelUpSession {
     }
     const bits = [
       t.cantrips > 0 ? (t.cantrips === 1 ? 'Truque novo' : `${t.cantrips} truques novos`) : '',
-      t.spells > 0
-        ? `${t.spells === 1 ? '1 magia' : `${t.spells} magias`} ${d.effective().spellsKind === LevelUpSpellsKind.SPELLBOOK ? 'para o livro' : 'conhecidas'}`
-        : '',
+      newSpellsTitle(t.spells, d.effective().spellsKind === LevelUpSpellsKind.SPELLBOOK),
     ].filter((s) => s !== '');
     if (bits.length > 0) {
       choice(bits.join(' e '), 'spells', !pending('spells', ['cantrips', 'spells']));
@@ -338,8 +352,7 @@ export class LevelUpSession {
       const now = slots(o.spellSlotsAfter, i);
       if (was !== now) auto(`Espaços de ${spellLevelLabel(i + 1)}`, `${was} → ${now}`);
     }
-    const pact = (m: PactMagic | undefined) =>
-      m ? `${m.count} de ${spellLevelLabel(m.slotLevel)}` : '0';
+    const pact = (m: PactMagic | undefined) => pactSlotsText(m);
     if (pact(o.pactMagicBefore) !== pact(o.pactMagicAfter)) {
       auto('Espaços do pacto', `${pact(o.pactMagicBefore)} → ${pact(o.pactMagicAfter)}`);
     }

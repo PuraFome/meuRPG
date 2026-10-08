@@ -164,6 +164,17 @@ export function spellLevelLabel(level: number): string {
 }
 
 /**
+ * "1 espaço de 1º nível", "2 espaços de 2º nível": a Warlock's pact slots, counted in words so that
+ * "1 de 1º nível" is not read as a fraction. "nenhum espaço" without any.
+ */
+export function pactSlotsText(pact: { count: number; slotLevel: number } | undefined): string {
+  if (!pact || pact.count < 1) {
+    return 'nenhum espaço';
+  }
+  return `${pact.count} ${pact.count === 1 ? 'espaço' : 'espaços'} de ${spellLevelLabel(pact.slotLevel)}`;
+}
+
+/**
  * "1º nível: 4 · 2º nível: 2" — every spell level with at least one
  * slot, in order, index 0 = level 1 (`FullSheetVm.spellSlots`'s own
  * contract). A plain string instead of one `<span>` per level in the
