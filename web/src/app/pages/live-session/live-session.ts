@@ -11,6 +11,7 @@ import {
   viewChild,
   TemplateRef,
 } from '@angular/core';
+import { SpellCatalog } from '../../core/combat/spell-catalog';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
@@ -165,6 +166,7 @@ export class LiveSession {
   private readonly source = inject(LiveSessionSource);
   private readonly auth = inject(AuthService);
   private readonly xpChanges = inject(XpChanges);
+  private readonly spellCatalog = inject(SpellCatalog);
   private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
   private readonly dialog = inject(MatDialog);
@@ -557,9 +559,12 @@ export class LiveSession {
         onReady: () => {
           // A missed `xp_changed` while reconnecting leaves nothing stale.
           this.xpChanges.bump();
+          // A `content_changed` missed while reconnecting leaves the spells the page read before out of date.
+          this.spellCatalog.forget(campaignId);
           void this.trapBoard.refresh();
           void this.readSnapshot(campaignId, generation);
         },
+        onContentChanged: () => this.spellCatalog.forget(campaignId),
         onVitals: (v) => {
           // Looking through a familiar's eyes, or coming back, changes what the player sees.
           const before =
@@ -583,6 +588,7 @@ export class LiveSession {
         onPuzzleChanged: (id) => void this.puzzles.changed(id),
         onTokenMoved: (move) => {
           this.scheduleVision();
+          void this.trapBoard.tokensMoved();
           // A token the page doesn't know (a missed `map_changed`): read again.
           if (!this.mapState.moveToken(move.mapId, move.characterId, move.xBp, move.yBp)) {
             void this.mapState.refresh();
@@ -621,6 +627,7 @@ export class LiveSession {
         onCombatantMoved: (move) => {
           if (!this.inTheatre()) {
             this.scheduleVision();
+            void this.trapBoard.tokensMoved();
           }
           if (!this.combat.applyMove(move)) {
             void this.loadCombat(generation);
@@ -714,22 +721,34 @@ export class LiveSession {
       if (generation !== this.generation) {
         return;
       }
-      switch (this.source.classifyError(err)) {
-        case 'no-session':
-          this.ended();
-          return;
-        case 'no-access':
-          this.closeStream();
-          this.phase.set('no-access');
-          return;
-        case 'signed-out':
-          this.closeStream();
-          this.auth.signIn(this.router.url);
-          return;
-        default:
-          // Try the whole thing again: the next `ready` reads a new one.
-          this.stream()?.restart();
-      }
+      this.snapshotFailed(err);
+    }
+  }
+
+  /** What a snapshot that could not be read means: some answers end the page, only the others are worth asking again. */
+  private snapshotFailed(err: unknown): void {
+    switch (this.source.classifyError(err)) {
+      case 'no-session':
+        this.ended();
+        return;
+      case 'no-access':
+      case 'forbidden':
+        // The server will not give this person the session, however many times it is asked.
+        this.closeStream();
+        this.phase.set('no-access');
+        return;
+      case 'signed-out':
+        this.closeStream();
+        this.auth.signIn(this.router.url);
+        return;
+      case 'invalid':
+        // The request itself is wrong: asking again changes nothing, "Tentar de novo" starts over.
+        this.closeStream();
+        this.phase.set('error');
+        return;
+      default:
+        // Try the whole thing again: the next `ready` reads a new one.
+        this.stream()?.restart();
     }
   }
 
@@ -739,8 +758,11 @@ export class LiveSession {
     const ticket = this.combat.beginRead();
     try {
       const encounter = await this.combatApi.get(this.campaignId());
-      if (generation === this.generation) {
-        this.combat.applyRead(ticket, encounter);
+      if (generation === this.generation && !this.combat.applyRead(ticket, encounter)) {
+        // Dropped for a turn or a move that came while it was out: that read may be older than the event.
+        if (this.combat.patchedSince(ticket)) {
+          void this.loadCombat(generation);
+        }
       }
     } catch {
       // The stream's next event, or reconnection, reads it again.

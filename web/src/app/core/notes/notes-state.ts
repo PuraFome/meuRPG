@@ -191,7 +191,14 @@ export class NotesState {
     });
   }
 
-  update(noteId: string, changes: { text?: string; scenePointId?: string }): Promise<Note | null> {
+  /** Changes the fields given. With neither there is nothing to send (the server refuses it): the note stays as it is. */
+  async update(
+    noteId: string,
+    changes: { text?: string; scenePointId?: string },
+  ): Promise<Note | null> {
+    if (changes.text === undefined && changes.scenePointId === undefined) {
+      return this.notes().find((n) => n.id === noteId) ?? null;
+    }
     return this.write(noteId, async () => {
       const note = await this.api.update(this.campaignId(), noteId, changes);
       return {

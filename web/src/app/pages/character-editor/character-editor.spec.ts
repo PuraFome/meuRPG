@@ -1957,6 +1957,22 @@ describe("CharacterEditor, a player making a new sheet by the table's rules (RN-
     expect(fake.loadAbilityTableCalls).toEqual(['camp-1']);
   });
 
+  it("reads the table's ways again when the step says its rules changed, and the step offers the new ones", async () => {
+    configure({ id: 'camp-1' });
+    const { fixture } = await render();
+    expect(fake.loadAbilityTableCalls).toEqual(['camp-1']);
+    fake.abilityTable = { ...table, physicalDice: true, diceForced: true };
+    await (
+      fixture.componentInstance as unknown as { rereadAbilityTable(): Promise<void> }
+    ).rereadAbilityTable();
+    expect(fake.loadAbilityTableCalls).toEqual(['camp-1', 'camp-1']);
+    expect(
+      (
+        fixture.componentInstance as unknown as { abilityTable(): AbilityTableVm | null }
+      ).abilityTable()?.physicalDice,
+    ).toBe(true);
+  });
+
   it("does not ask for the table's ways for an NPC of the master", async () => {
     configure({ id: 'camp-1', kind: 'enemy' });
     await render();

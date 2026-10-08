@@ -1366,3 +1366,41 @@ func TestMR037_ADismissedCreatureBlocksNoSquare(t *testing.T) {
 		t.Errorf("MoveCombatant onto a dismissed wolf's square error = %v, want it free", err)
 	}
 }
+
+// TestMR037_ADismissedCreatureTakesNoWaitingDamageSilently: dismissing a creature
+// whose attack or whose wound still waits for the master writes the dropped damage
+// in the log, as passing the turn over it does, instead of letting the attack
+// vanish with the combatant.
+func TestMR037_ADismissedCreatureTakesNoWaitingDamageSilently(t *testing.T) {
+	t.Parallel()
+	a := newSummoners(t)
+	e := a.summonersFight(t)
+	e = a.toSalvia(t, e)
+	if _, err := a.summonWolves(t, a.bia, e, 11); err != nil {
+		t.Fatalf("CastSpell() error = %v", err)
+	}
+	a.h.roller.queue(15)
+	hit := a.mustAttackAsReaction(t, e, "Goblin", sword, "Lobo atroz 1")
+	if hit.GetPendingDamage().GetId() == "" {
+		t.Fatalf("attack = %v, want a hit that leaves its damage waiting", hit)
+	}
+	wolf := byLabel(t, a.get(t, a.master), "Lobo atroz 1").GetCreatureId()
+	before := a.eventCount(t, eventDamageDiscarded)
+	if _, err := a.bia.characters.DismissCreature(t.Context(), connect.NewRequest(&charactersv1.DismissCreatureRequest{CampaignId: a.campaignID, CreatureId: wolf})); err != nil {
+		t.Fatalf("DismissCreature() error = %v", err)
+	}
+	if got := a.eventCount(t, eventDamageDiscarded); got != before+1 {
+		t.Errorf("damage_discarded events = %d after the dismissal, want %d: the waiting damage must be written as dropped", got, before+1)
+	}
+	var entry *playv1.CombatLogEntry
+	for _, r := range a.log(t, a.master, e).GetRounds() {
+		for _, en := range r.GetEntries() {
+			if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK && en.GetActorLabel() == "Goblin" {
+				entry = en
+			}
+		}
+	}
+	if entry == nil || entry.GetDamage().GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_DISCARDED {
+		t.Errorf("the attack's log entry = %v, want it with its damage discarded", entry)
+	}
+}

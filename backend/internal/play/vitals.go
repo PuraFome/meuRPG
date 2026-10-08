@@ -167,11 +167,13 @@ func (s *Service) AdjustCharacterVitals(
 			VitalsChanged: &playv1.WatchGameSessionResponse_VitalsChanged{Vitals: after},
 		}},
 	})
+	pctx, stop := afterCommit(ctx) // the change is committed: a caller that hangs up must not leave the streams and the fog unheard
+	defer stop()
 	if touched != nil {
-		s.publishEncounterChanged(ctx, m.CampaignID, *touched)
+		s.publishEncounterChanged(pctx, m.CampaignID, *touched)
 	}
 	if shapeChanged { // the beast's senses went away: the fog hears of it (MR-036)
-		s.maps.VisionChanged(ctx, m.CampaignID, visionMap)
+		s.maps.VisionChanged(pctx, m.CampaignID, visionMap)
 	}
 	return connect.NewResponse(&playv1.AdjustCharacterVitalsResponse{Vitals: after}), nil
 }

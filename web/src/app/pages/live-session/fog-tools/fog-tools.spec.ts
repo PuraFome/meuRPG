@@ -91,6 +91,19 @@ describe("the familiar's row (E9-04)", () => {
     expect((seeing.nativeElement as HTMLElement).querySelector('.fr')).toBeNull();
   });
 
+  it("does not show the last character's familiar while another character's list is on its way", async () => {
+    list.mockResolvedValue([raven]);
+    const fixture = create_();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.fr')).not.toBeNull();
+    list.mockReturnValue(new Promise(() => undefined));
+    fixture.componentRef.setInput('characterId', 'brisa');
+    fixture.detectChanges();
+    expect(el.querySelector('.fr')).toBeNull();
+  });
+
   it('reads the list again when the stream says the creatures changed', async () => {
     list.mockResolvedValue([]);
     const fixture = create_();

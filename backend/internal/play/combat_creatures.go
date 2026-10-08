@@ -284,6 +284,38 @@ func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.C
 	return rest, turnPassed, nil
 }
 
+// discardDamageOf drops, inside the change's transaction, the damage still to roll or to
+// apply that names one of the combatants (as the attacker or as the target) before they
+// leave the combat, with a damage_discarded event for each as passing a turn over it
+// writes: the row goes with the combatant, and the log would keep an attack whose damage
+// never lands. cs are the combatants of the combat.
+func (s *Service) discardDamageOf(ctx context.Context, c *combatTx, cs, leaving []playdb.Combatant) error {
+	open, err := c.q.ListOpenPendingDamages(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the pending damage: %w", err)
+	}
+	named := func(id string) bool {
+		return slices.ContainsFunc(leaving, func(o playdb.Combatant) bool { return o.ID == id })
+	}
+	for _, p := range open {
+		if !named(p.TargetID) && !named(deref(p.AttackerID)) {
+			continue
+		}
+		if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: p.ID, Status: pendingDiscarded, ResolvedAt: &c.now}); err != nil {
+			return fmt.Errorf("discard the pending damage: %w", err)
+		}
+		attacker, _ := findCombatant(cs, deref(p.AttackerID), combatViewer{master: true})
+		target, _ := findCombatant(cs, p.TargetID, combatViewer{master: true})
+		if err := insertEvent(ctx, c, eventDamageDiscarded, &c.actorUserID, nil, actionEvent{
+			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: p.TargetID, Pending: p.ID, Key: p.AttackKey,
+			Amount: num(p.Amount), PrevStatus: p.Status,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // creatureIDsOf are the creature IDs of the combatants.
 func creatureIDsOf(cs []playdb.Combatant) []string {
 	var out []string

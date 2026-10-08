@@ -37,6 +37,7 @@ import {
   mapToken,
 } from '../../core/maps/maps-testing';
 import { SceneClient } from '../../core/play/scene-client';
+import { SpellCatalog } from '../../core/combat/spell-catalog';
 import { SessionSummaryClient } from '../../core/play/session-summary';
 import { SessionSummarySchema } from '../../../gen/meurpg/play/v1/summary_pb';
 import {
@@ -460,6 +461,37 @@ describe('LiveSession', () => {
     const el = await render();
     expect(el.querySelector('h1')?.textContent).toContain('Peça um convite ao mestre');
     expect(el.textContent).not.toContain('Mirathel');
+  });
+
+  it('stops asking, and says there is no access, when the server forbids the session snapshot', async () => {
+    source.snapshot = new KindError('forbidden') as never;
+    const getLiveSession = vi.spyOn(source, 'getLiveSession');
+    const el = await render();
+    expect(el.querySelector('h1')?.textContent).toContain('Peça um convite ao mestre');
+    expect(getLiveSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops asking, and offers "Tentar de novo", when the server calls the session snapshot request invalid', async () => {
+    source.snapshot = new KindError('invalid') as never;
+    const getLiveSession = vi.spyOn(source, 'getLiveSession');
+    const el = await render();
+    expect(el.textContent).toContain('Não foi possível abrir a sessão');
+    expect(button(el, 'Tentar de novo')).toBeDefined();
+    expect(getLiveSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("forgets the spells it read when the table's content changes, and again on a reconnection", async () => {
+    const forget = vi.spyOn(TestBed.inject(SpellCatalog), 'forget');
+    const fixture = TestBed.createComponent(LiveSession);
+    await settle(fixture);
+    forget.mockClear();
+    source.push({ kind: 'contentChanged' });
+    await settle(fixture);
+    expect(forget).toHaveBeenCalledWith('mirathel');
+    forget.mockClear();
+    source.push({ kind: 'ready' });
+    await settle(fixture);
+    expect(forget).toHaveBeenCalledWith('mirathel');
   });
 
   it('says the same to a pending member (RN-15)', async () => {
@@ -1192,8 +1224,10 @@ describe('LiveSession', () => {
       await tick();
       source.push({ kind: 'visionChanged', mapId: 'map-1' });
       await tick();
-      await new Promise((r) => setTimeout(r, 250));
-      await tick();
+      await vi.waitFor(async () => {
+        await tick();
+        expect(reads()).toBeGreaterThan(before.reads);
+      });
       // Every hint costs one read of the vision (and the layers); a burst of them is one.
       expect(reads()).toBe(before.reads + 1);
       expect(maps.calls.filter((c) => c.startsWith('layers map-1 ')).length).toBe(
@@ -1285,10 +1319,13 @@ describe('LiveSession', () => {
 
       it('keeps his own map whole, and lists "Ver como" with the squares each character sees', async () => {
         const el = await render();
-        // The counts are read 250 ms after the last vision tick, and the snapshot's own vision read ticks
-        // about 120 ms after the page opens: wait past both.
-        await new Promise((r) => setTimeout(r, 500));
-        await tick();
+        // The counts come with the vision read, a little after the page opens: wait for them.
+        await vi.waitFor(async () => {
+          await tick();
+          expect(textOf(el.querySelector('app-view-as-list'))).toContain(
+            'Brisa Ana 2 quadrados vistos',
+          );
+        });
         // The same map component as the players', with the whole image, and his tokens to drag.
         expect(el.querySelector('app-fog-map')).not.toBeNull();
         expect(el.querySelector('app-fog-base img.fb__img')).not.toBeNull();
@@ -1307,8 +1344,10 @@ describe('LiveSession', () => {
 
       it('shows the map as one character sees it, with the band and the badge, and comes back with "Todos"', async () => {
         const el = await render();
-        await new Promise((r) => setTimeout(r, 300));
-        await tick();
+        await vi.waitFor(async () => {
+          await tick();
+          expect(el.querySelector('app-view-as-list [data-character="brisa"]')).not.toBeNull();
+        });
         (
           el.querySelector('app-view-as-list [data-character="brisa"]') as HTMLButtonElement
         ).click();
@@ -1346,9 +1385,8 @@ describe('LiveSession', () => {
     it('reads the vision and its layers again when the stream says ready a second time', async () => {
       const fixture = TestBed.createComponent(LiveSession);
       await settle(fixture);
-      await new Promise((r) => setTimeout(r, 300));
       const count = (prefix: string) => maps.calls.filter((c) => c.startsWith(prefix)).length;
-      expect(count('vision map-1')).toBeGreaterThan(0);
+      await vi.waitFor(() => expect(count('vision map-1')).toBeGreaterThan(0));
       const before = {
         vision: count('vision map-1'),
         layers: count('layers map-1'),
@@ -1358,12 +1396,12 @@ describe('LiveSession', () => {
       // What a reconnection delivers: a new `ready` on the same stream.
       source.push({ kind: 'ready' });
       await settle(fixture);
-      await new Promise((r) => setTimeout(r, 400));
-      await settle(fixture);
-
+      await vi.waitFor(async () => {
+        await settle(fixture);
+        expect(count('vision map-1')).toBeGreaterThan(before.vision);
+        expect(count('layers map-1')).toBeGreaterThan(before.layers);
+      });
       expect(count('get map-1')).toBe(before.gets + 1);
-      expect(count('vision map-1')).toBeGreaterThan(before.vision);
-      expect(count('layers map-1')).toBeGreaterThan(before.layers);
     });
   });
 });

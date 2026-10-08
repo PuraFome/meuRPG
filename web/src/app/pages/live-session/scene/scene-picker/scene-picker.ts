@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, type Signal, viewChild } from '@angular/core';
+import { Component, computed, effect, inject, signal, type Signal, viewChild } from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -86,6 +86,8 @@ export class ScenePicker {
     return this.rows().some((r) => r.id === id) ? id : null;
   });
   protected readonly busy = signal(false);
+  /** A request in the air: Esc and the backdrop do not close the sheet under it. */
+  protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
 
   private readonly frame = viewChild(SheetFrame);

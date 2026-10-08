@@ -272,15 +272,17 @@ func (s *Service) SearchForTraps(
 		return nil, s.dbError(ctx, "search for traps", err)
 	}
 	if !repeated {
+		pctx, stop := afterCommit(ctx) // the change is committed: a caller that hangs up must not leave the players unheard
+		defer stop()
 		if len(ev.Found) > 0 {
 			logging.Event(ctx, s.logger, "trap.noticed", slog.String("map_id", place.mapID), slog.Int("found", len(ev.Found)), slog.Bool("physical_dice", ev.Physical))
 		}
 		if len(told) > 0 {
-			s.traps.Told(ctx, m.CampaignID, place.mapID, told)
+			s.traps.Told(pctx, m.CampaignID, place.mapID, told)
 		}
 		if place.spent {
-			s.publishEncounterChanged(ctx, m.CampaignID, place.enc)
-			s.publishLogChanged(ctx, m.CampaignID, place.enc.ID, false) // the master's log has the search
+			s.publishEncounterChanged(pctx, m.CampaignID, place.enc)
+			s.publishLogChanged(pctx, m.CampaignID, place.enc.ID, false) // the master's log has the search
 		}
 		s.Publish(m.CampaignID, false, mapChangedHint(place.mapID)) // the master's activity read has a new line: a hint with no content
 	}

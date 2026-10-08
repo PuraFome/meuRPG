@@ -193,6 +193,18 @@ describe('AdjustVitals (RN-02, E5-05)', () => {
     expect(adjustVitals.mock.calls[0][3]).toEqual({ resourcesUsed: [{ key: 'rage', used: 1 }] });
   });
 
+  it('never shows the internal key of a resource that has no Portuguese name', () => {
+    const { el } = setup(
+      brisaVitals({
+        resources: [
+          { key: 'feature:odd-pool', namePt: '', total: 1, used: 1, recharge: 'long_rest' },
+        ],
+      }),
+    );
+    expect(el.textContent).not.toContain('odd-pool');
+    expect(byLabel(el, 'Devolver 1 uso de Recurso')).toBeDefined();
+  });
+
   it("adjusts the beast's hit points apart from the character's, and 0 ends the form", async () => {
     adjustVitals.mockResolvedValue(brisaVitals());
     const wolf = {

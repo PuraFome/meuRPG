@@ -396,6 +396,7 @@
                     [(method)]="abilityMethod"
                     [(incomplete)]="abilitiesIncomplete"
                     [(problem)]="abilitiesProblem"
+                    (staleTable)="rereadAbilityTable()"
                   />
                 } @else {
                   <p class="step-lead">

@@ -74,11 +74,11 @@ type fogSight struct {
 
 // fogMemo shares, inside one request, the sights its handler needs after the
 // commit: the one read before the change (who could see the old squares) and, once
-// asked for, the one read after it. The change's stamped event is here too, for the
+// asked for, the one read after it. The lines the change wrote are here too, for the
 // log's hint.
 type fogMemo struct {
 	pre     *fogSight
-	stamped *actionEvent
+	lines   []actionEvent
 	mu      sync.Mutex
 	post    *fogSight
 	postErr error
@@ -88,8 +88,8 @@ type fogMemo struct {
 type fogMemoKey struct{}
 
 // withFogMemo gives a request's context the memo finish and the publishers share.
-func withFogMemo(ctx context.Context, pre *fogSight, stamped *actionEvent) context.Context {
-	return context.WithValue(ctx, fogMemoKey{}, &fogMemo{pre: pre, stamped: stamped})
+func withFogMemo(ctx context.Context, pre *fogSight, lines []actionEvent) context.Context {
+	return context.WithValue(ctx, fogMemoKey{}, &fogMemo{pre: pre, lines: lines})
 }
 
 func fogMemoOf(ctx context.Context) *fogMemo {
@@ -612,9 +612,47 @@ func (ev actionEvent) coverFor(v combatViewer) (string, string) {
 	return coverFor(v, ev.Cover, ev.CoverSource, ev.CoverRestricted, ev.CoverSeenBy)
 }
 
-func (h castHit) coverFor(v combatViewer) (string, string) {
-	return coverFor(v, h.Cover, h.CoverSource, h.CoverRestricted, h.CoverSeenBy)
+// coverFor is the cover the cast told the viewer for this target; users is the cast's
+// CoverUsers.
+func (h castHit) coverFor(v combatViewer, users []string) (string, string) {
+	seenBy := h.CoverSeenBy
+	for i, u := range users {
+		if h.CoverSeenMask&(1<<i) != 0 {
+			seenBy = append(slices.Clone(seenBy), u)
+		}
+	}
+	return coverFor(v, h.Cover, h.CoverSource, h.CoverRestricted, seenBy)
 }
+
+// packCoverSeen replaces, in a cast's hits, the list of users who may read the cover of
+// each target by a bit of the event's own list of users: the same few ids would
+// otherwise be written again for every target, and ten targets of a table of players
+// pass what one event can hold. A hit stays with its list when the table is too big for
+// the bits.
+func packCoverSeen(ev *actionEvent) {
+	for i := range ev.Hits {
+		h := &ev.Hits[i]
+		var mask uint64
+		for _, u := range h.CoverSeenBy {
+			j := slices.Index(ev.CoverUsers, u)
+			if j < 0 {
+				if len(ev.CoverUsers) >= maxCoverUsers {
+					mask = 0
+					break
+				}
+				ev.CoverUsers = append(ev.CoverUsers, u)
+				j = len(ev.CoverUsers) - 1
+			}
+			mask |= 1 << j
+		}
+		if mask != 0 || len(h.CoverSeenBy) == 0 {
+			h.CoverSeenMask, h.CoverSeenBy = mask, nil
+		}
+	}
+}
+
+// maxCoverUsers is how many players a cast's hits can name with the bits of a mask.
+const maxCoverUsers = 64
 
 // viewerAfter is the viewer to build a change's answer with. A replay (the same
 // idempotency key) never ran the change's closure, so its viewer knows nothing of the

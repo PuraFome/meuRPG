@@ -2,6 +2,7 @@ import type {
   DerivedSheet,
   DerivedSkill,
   SavingThrow,
+  Spellcasting,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { Ability as GenAbility } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { abilityLabel, formatModifier, spellLevelLabel } from '../characters/character-labels';
@@ -203,10 +204,15 @@ export function changeRows(
       );
     }
     const list = ctx.spellListClassKey || ctx.classKey;
-    const known = (s: DerivedSheet) =>
-      s.spells.filter((x) => (x.spell?.level ?? 0) > 0 && x.spell?.classKeys.includes(list)).length;
-    const knownBefore = known(before);
-    const knownAfter = known(after);
+    // A class that learns a fixed number of spells has it from the server, whichever list they came from (a Bard's Magical
+    // Secrets); the others (a spellbook, a table class) are counted among the spells of the sheet that are on the class list.
+    const known = (s: DerivedSheet, c: Spellcasting | undefined) =>
+      c && c.spellsKnown > 0
+        ? c.spellsKnown
+        : s.spells.filter((x) => (x.spell?.level ?? 0) > 0 && x.spell?.classKeys.includes(list))
+            .length;
+    const knownBefore = known(before, bc);
+    const knownAfter = known(after, ac);
     const missing = ctx.spellsMissing > 0 ? ` (falta ${ctx.spellsMissing})` : '';
     if (ctx.learnsSpells !== false && (knownAfter !== knownBefore || ctx.spells.length > 0)) {
       rows.push({
