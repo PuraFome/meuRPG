@@ -1,4 +1,12 @@
-import { Component, ElementRef, computed, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -36,6 +44,7 @@ const COUNT = [
  */
 @Component({
   selector: 'app-class-pick',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule, MatIconModule],
   templateUrl: './class-pick.html',
   styleUrl: './class-pick.scss',
