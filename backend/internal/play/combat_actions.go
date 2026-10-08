@@ -1349,7 +1349,8 @@ func (s *Service) ApplyPendingDamage(
 			return nil, err
 		}
 		down := isDownIn(now)
-		if down {
+		switch {
+		case down:
 			// RN-03: a damage at 0 hit points is a death save failure (two for a
 			// critical hit), and the hit points stay at 0.
 			before, after, added, err := s.failuresWhileDown(ctx, c, target, p.Critical, amount)
@@ -1359,7 +1360,7 @@ func (s *Service) ApplyPendingDamage(
 			made.DeathBefore, made.Death, made.FailuresAdded, made.DeathHidden = before, after, added, c.rules.DeathSavesHidden
 			made.Before = new(hpStateOf(now))
 			made.After = made.Before
-		} else if now.GetWildShape() != nil {
+		case now.GetWildShape() != nil:
 			// A druid in a beast form: the beast takes it, and what is left over when
 			// the beast falls goes to the druid (MR-037, SRD).
 			before, after, err := s.damageBeast(ctx, c, target, now, amount, &made)
@@ -1377,7 +1378,7 @@ func (s *Service) ApplyPendingDamage(
 					return nil, err
 				}
 			}
-		} else {
+		default:
 			// RN-02: the damage goes through the character's vitals, temporary hit
 			// points first, never below 0. At 0 it is down ("Caído") and makes death
 			// saves.

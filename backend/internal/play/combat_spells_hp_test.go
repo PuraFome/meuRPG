@@ -632,7 +632,7 @@ func TestAidRaisesTheMaximumHitPoints(t *testing.T) {
 	assertAidGain(t, res, a, "Toren", playv1.SpellEffectGain_SPELL_EFFECT_GAIN_TEMPORARY)
 }
 
-// assertAidGain checks what a cast of Aid says the labelled target got.
+// assertAidGain checks what a cast of Aid says the labeled target got.
 func assertAidGain(t *testing.T, res *playv1.CastSpellResponse, a *armed, label string, want playv1.SpellEffectGain) {
 	t.Helper()
 	id := byLabel(t, a.get(t, a.master), label).GetId()
