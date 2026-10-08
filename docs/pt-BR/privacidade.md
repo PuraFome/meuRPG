@@ -218,6 +218,8 @@ Quase tudo é autoatendimento, dentro do app e logado. A sessão já prova quem 
 
 ### Excluir a conta
 
+**Ainda não construído:** não há chamada nem tela para excluir uma conta ou exportar dados; só existem as cascatas do banco. O fluxo abaixo é o desenho.
+
 Jogador e mestre têm tratamentos diferentes (RN-16).
 
 - **Jogador:** a exclusão é imediata e definitiva. Conta, handles, senha, sessões e participação nas campanhas somem na hora. Os personagens dele **não são apagados**: ficam vinculados ao mestre da campanha, sem o dono original (ver a tensão com a identidade, abaixo).
