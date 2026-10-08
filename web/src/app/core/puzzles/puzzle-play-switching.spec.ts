@@ -55,7 +55,6 @@ function setup(): { api: Api; play: PuzzlePlay } {
     () => 'camp-1',
     async () => undefined,
     () => `key-${++key}`,
-    () => '',
     () => () => undefined,
   );
   return { api, play };
@@ -151,6 +150,7 @@ describe('PuzzlePlay: bell taps queued on the puzzle that was open before', () =
       run: runOf(seq, { sequence, revision: 2 }),
       replayed: false,
       solvedByThisMove: false,
+      wrong: false,
     });
     await flush();
     // Taps go one at a time, so each wrongly sent one releases the next: drain until nothing is left to answer (bounded).
@@ -167,6 +167,7 @@ describe('PuzzlePlay: bell taps queued on the puzzle that was open before', () =
           run: runOf(seqB, { sequence, revision: 2 + round }),
           replayed: false,
           solvedByThisMove: false,
+          wrong: false,
         });
       }
     }
@@ -200,7 +201,6 @@ function setup13(): { play: PuzzlePlay; calls: ReadCall[] } {
     () => 'camp-1',
     async () => undefined,
     () => 'key',
-    () => '',
     () => () => undefined,
   );
   return { play, calls };

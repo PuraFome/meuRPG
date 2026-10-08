@@ -21,7 +21,7 @@ import {
   undoMilestoneConsequence,
 } from '../../../core/progression/milestones';
 import { ProgressionClient } from '../../../core/progression/progression-client';
-import { xpAborted, xpErrorMessage } from '../../../core/progression/xp-errors';
+import { xpAborted, xpErrorMessage, xpNothingToUndo } from '../../../core/progression/xp-errors';
 import { MilestoneAsk } from './milestone-ask';
 
 /**
@@ -121,6 +121,10 @@ export class ReachedMilestones {
       } else {
         // A failed call is retried with the same key: it changes nothing twice.
         this.error.set(xpErrorMessage(err, 'desfazer o marco'));
+        if (xpNothingToUndo(err)) {
+          // Its message says the screen was updated: the list is read again.
+          this.undone.emit('');
+        }
       }
     } finally {
       this.busy.set(false);

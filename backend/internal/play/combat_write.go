@@ -411,7 +411,8 @@ func insertEvent(ctx context.Context, c *combatTx, kind string, actor, key *stri
 		return fmt.Errorf("encode the event payload: %w", err)
 	}
 	if ev, ok := payload.(actionEvent); ok && len(body) > eventPayloadBudget && ev.Trap != nil && len(ev.Trap.Caught) > 1 {
-		return insertFiringInParts(ctx, c, kind, actor, key, ev)
+		_, err := insertFiringInParts(ctx, c, kind, actor, key, ev)
+		return err
 	}
 	_, err = insertRaw(ctx, c, kind, actor, key, body)
 	return err
@@ -466,8 +467,9 @@ func insertRaw(ctx context.Context, c *combatTx, kind string, actor, key *string
 // as several, back to back: the first carries the firing (and the idempotency key,
 // so a retry finds it), and each next one adds the creatures that did not fit to
 // it, as the master's own "add creatures to a firing" does (ExtendsID), marked as a
-// part (trapFireEvent.Part) so that an undo takes the whole firing back at once.
-func insertFiringInParts(ctx context.Context, c *combatTx, kind string, actor, key *string, ev actionEvent) error {
+// part (trapFireEvent.Part) so that an undo takes the whole firing back at once. It
+// returns the ID of the first event, the firing's.
+func insertFiringInParts(ctx context.Context, c *combatTx, kind string, actor, key *string, ev actionEvent) (string, error) {
 	caught := ev.Trap.Caught
 	with := func(base actionEvent, trap trapFireEvent, from, to int) ([]byte, actionEvent, error) {
 		trap.Caught = caught[from:to]
@@ -487,11 +489,11 @@ func insertFiringInParts(ctx context.Context, c *combatTx, kind string, actor, k
 	n := fitPrefix(len(caught), size(ev, *ev.Trap, 0))
 	body, _, err := with(ev, *ev.Trap, 0, n)
 	if err != nil {
-		return err
+		return "", err
 	}
 	hostID, err := insertRaw(ctx, c, kind, actor, key, body)
 	if err != nil {
-		return err
+		return "", err
 	}
 	group := ev.Trap.ExtendsID // the firing the parts add to: this one, unless it extends another
 	if group == "" {
@@ -503,13 +505,13 @@ func insertFiringInParts(ctx context.Context, c *combatTx, kind string, actor, k
 		n = fitPrefix(len(caught)-at, size(part, trap, at))
 		body, _, err := with(part, trap, at, at+n)
 		if err != nil {
-			return err
+			return "", err
 		}
 		if _, err := insertRaw(ctx, c, kind, actor, nil, body); err != nil {
-			return err
+			return "", err
 		}
 	}
-	return nil
+	return hostID, nil
 }
 
 // publishTimeout bounds what finish reads and publishes after a commit, which
