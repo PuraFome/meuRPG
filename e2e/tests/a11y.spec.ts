@@ -2242,18 +2242,25 @@ async function scanSceneOptionsScreens(browser: Browser, colorScheme: 'light' | 
     await setAttemptsRPC(m, table, table.cartId, ids['Percepção'], 3);
     await setAttemptsRPC(m, table, table.cartId, ids['Acalmar os cavalos'], 0);
 
-    // The editor: the switch off and on, and every action with its attempts.
+    // The editor: the switch off and on, and every action with its attempts. On a phone the map is read-only (its
+    // points open nothing and the page says to edit them on a computer), so the editor is scanned at the desktop
+    // widths, and the phone checks that it gets the read-only map instead.
     await open(m, `/campaigns/${campaignId}/maps/${table.mapId}`);
     const cart = m.getByRole('button', { name: /^A carroça tombada, Cena de RP/ });
-    await cart.click();
-    await expect(m.getByRole('switch', { name: 'Mostrar a CD aos jogadores' })).toBeVisible();
-    await expectScreenPasses(m, `Ações da cena com o interruptor da CD desligado ${where}`);
-    await m.getByRole('switch', { name: 'Mostrar a CD aos jogadores' }).click();
-    await expect(m.getByText('Como o jogador vê, antes e depois de rolar')).toBeVisible();
-    await expectScreenPasses(m, `Ações da cena com o interruptor da CD ligado ${where}`);
-    await expect(m.getByRole('status').filter({ hasText: 'Os jogadores agora veem a CD.' })).toHaveCount(1);
-    await expect(m.getByText('Sem limite: o jogador rola quantas vezes quiser')).toBeVisible();
-    await expectScreenPasses(m, `Ações da cena com "Sem limite" ${where}`);
+    if (width < 768) {
+      await expect(m.getByText('Para mudar pontos e tokens de lugar, abra o mapa no computador.')).toBeVisible();
+      await expect(cart).toHaveCount(0);
+    } else {
+      await cart.click();
+      await expect(m.getByRole('switch', { name: 'Mostrar a CD aos jogadores' })).toBeVisible();
+      await expectScreenPasses(m, `Ações da cena com o interruptor da CD desligado ${where}`);
+      await m.getByRole('switch', { name: 'Mostrar a CD aos jogadores' }).click();
+      await expect(m.getByText('Como o jogador vê, antes e depois de rolar')).toBeVisible();
+      await expectScreenPasses(m, `Ações da cena com o interruptor da CD ligado ${where}`);
+      await expect(m.getByRole('status').filter({ hasText: 'Os jogadores agora veem a CD.' })).toHaveCount(1);
+      await expect(m.getByText('Sem limite: o jogador rola quantas vezes quiser')).toBeVisible();
+      await expectScreenPasses(m, `Ações da cena com "Sem limite" ${where}`);
+    }
 
     // The session: the scene is open with the DC shown. The player rolls (Percepção 4 + 1 = 5, Investigação 11 + 6 = 17, Constituição 3 + 3 = 6).
     await setShowDcRPC(m, table, table.cartId, true);
