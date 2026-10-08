@@ -3,6 +3,7 @@ package play
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"slices"
 	"sync/atomic"
@@ -255,5 +256,49 @@ func TestRN10_LinesSeenByIsTheUnionOfEveryLinesPlayers(t *testing.T) {
 	}
 	if _, scoped := linesSeenBy(nil); scoped {
 		t.Errorf("linesSeenBy(no line) is scoped, want every player")
+	}
+}
+
+// TestRN10_PackedCoverTellsEachPlayerWhatTheListDid: a cast writes the users who may
+// read a target's cover once, as a bit of the event's own list; every viewer reads
+// the same cover from the packed hits as from the lists, and the event is the
+// smaller for it.
+func TestRN10_PackedCoverTellsEachPlayerWhatTheListDid(t *testing.T) {
+	t.Parallel()
+	players := []string{"00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002", "00000000-0000-4000-8000-000000000003"}
+	hit := func(seenBy ...string) castHit {
+		return castHit{Target: "t", Cover: "half", CoverSource: "map", CoverRestricted: true, CoverSeenBy: seenBy}
+	}
+	listed := actionEvent{Hits: []castHit{hit(players[0], players[1]), hit(players[1]), hit(), hit(players...)}}
+	packed := actionEvent{Hits: slices.Clone(listed.Hits)}
+	for i := range packed.Hits {
+		packed.Hits[i].CoverSeenBy = slices.Clone(listed.Hits[i].CoverSeenBy)
+	}
+	packCoverSeen(&packed)
+
+	for i := range listed.Hits {
+		for _, v := range []combatViewer{{master: true}, {userID: players[0]}, {userID: players[1]}, {userID: players[2]}, {userID: "someone else"}} {
+			wantKey, wantSource := listed.Hits[i].coverFor(v, nil)
+			if gotKey, gotSource := packed.Hits[i].coverFor(v, packed.CoverUsers); gotKey != wantKey || gotSource != wantSource {
+				t.Errorf("hit %d read by %+v: packed cover = %q/%q, the list gave %q/%q", i, v, gotKey, gotSource, wantKey, wantSource)
+			}
+		}
+	}
+	if len(packed.CoverUsers) != 3 {
+		t.Errorf("CoverUsers = %v, want the three players once", packed.CoverUsers)
+	}
+	one, _ := json.Marshal(listed)
+	two, _ := json.Marshal(packed)
+	if len(two) >= len(one) {
+		t.Errorf("the packed event takes %d bytes, the listed one %d: packing saved nothing", len(two), len(one))
+	}
+	// A player the table has not told apart (more than the bits hold) stays listed.
+	many := actionEvent{Hits: []castHit{hit(append([]string{"extra"}, players...)...)}}
+	for i := range maxCoverUsers {
+		many.CoverUsers = append(many.CoverUsers, fmt.Sprintf("full-%d", i))
+	}
+	packCoverSeen(&many)
+	if many.Hits[0].CoverSeenMask != 0 || len(many.Hits[0].CoverSeenBy) != 4 {
+		t.Errorf("a hit of a full table = mask %d, list %v; want its list kept", many.Hits[0].CoverSeenMask, many.Hits[0].CoverSeenBy)
 	}
 }

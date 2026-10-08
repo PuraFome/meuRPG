@@ -2,6 +2,7 @@ package play
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -1456,5 +1457,53 @@ func TestRN10_FogCombatADroppedAttackOutOfSightPingsNoPlayer(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestRN10_FogCombatASaveSpellOnManyCoveredTargetsIsOneEvent: a spell that every
+// target saves against, on a fog map where all of them stand behind the map's cover,
+// records who may read that cover on each target; ten targets and every player of
+// the table still fit the event, and the cast works.
+func TestRN10_FogCombatASaveSpellOnManyCoveredTargetsIsOneEvent(t *testing.T) {
+	t.Parallel()
+	f := newFogCave(t)
+	var shelf []*mapsv1.MapSquare
+	for row := int32(2); row <= 9; row++ {
+		if row != 7 && row != 8 { // the crates are already there
+			shelf = append(shelf, &mapsv1.MapSquare{Col: 19, Row: row})
+		}
+	}
+	f.paint(t, mapsv1.MapLayer_MAP_LAYER_COVER, 1, shelf...)
+	f.groupVision(t, true) // every player knows the squares the wizard sees
+
+	const goblins = 10
+	at := map[string][2]int32{"Toren": {16, 4}, "Pensantus": {17, 5}, "Brisa": {16, 6}}
+	reveal := make([]string, 0, goblins)
+	targets := make([]string, 0, goblins)
+	for i := range goblins {
+		label := fmt.Sprintf("Goblin %d", i+1)
+		reveal, targets = append(reveal, label), append(targets, label)
+		at[label] = [2]int32{int32(20 + i/5), int32(3 + i%5)} //nolint:gosec // G115: a few squares
+	}
+	e := f.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: f.goblins.GetId(), Count: goblins}},
+		npcRolls: []int{2},
+		players:  map[string]int32{"Pensantus": 20, "Toren": 15, "Brisa": 10},
+		reveal:   reveal, at: at,
+	})
+	res, err := f.cast(t, f.ana, e, "Pensantus", burningHands, slotOfLevel(1), f.at(t, targets...), noCastRoll)
+	if err != nil {
+		t.Fatalf("CastSpell(Mãos Flamejantes) on %d covered goblins error = %v, want it to work", goblins, err)
+	}
+	if got := len(res.GetEncounter().GetCombatants()); got < goblins {
+		t.Errorf("the answer has %d combatants, want at least the %d goblins", got, goblins)
+	}
+	var cover int
+	if err := f.h.pool.QueryRow(t.Context(),
+		`SELECT count(*) FROM session_events WHERE kind = 'spell_cast' AND payload::TEXT LIKE '%cover_restricted%'`).Scan(&cover); err != nil {
+		t.Fatalf("count the events: %v", err)
+	}
+	if cover != 1 {
+		t.Errorf("%d spell events carry a restricted cover, want 1: the fixture does not put the targets behind the map's cover", cover)
 	}
 }

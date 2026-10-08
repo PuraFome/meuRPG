@@ -115,8 +115,11 @@ type castHit struct {
 	TargetAC    int32  `json:"target_ac,omitempty"`
 	// On a map with the fog of war, a cover the map gave is told to a player only if
 	// they knew its squares and saw its creatures: see actionEvent.CoverRestricted.
+	// A cast keeps them as a bit of the event's CoverUsers (CoverSeenMask) so that the
+	// ids are not repeated for each of ten targets; an older event keeps the list.
 	CoverRestricted bool     `json:"cover_restricted,omitempty"`
 	CoverSeenBy     []string `json:"cover_seen_by,omitempty"`
+	CoverSeenMask   uint64   `json:"cover_seen_mask,omitempty"`
 
 	// A spell that reads hit points (combat_spells_hp.go): whether it reached the
 	// target (the fx* values below), why not, the target's hit points when it did,
@@ -234,6 +237,7 @@ type actionEvent struct {
 	Slot        *slotRef    `json:"slot,omitempty"`
 	Resource    string      `json:"resource,omitempty"`
 	Hits        []castHit   `json:"hits,omitempty"`
+	CoverUsers  []string    `json:"cover_users,omitempty"` // the players the hits' CoverSeenMask counts, bit by bit
 	Settled     []damageHit `json:"settled,omitempty"`
 	Heal        bool        `json:"heal,omitempty"`
 	Concentrate bool        `json:"concentrate,omitempty"`
