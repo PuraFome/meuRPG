@@ -789,6 +789,26 @@ func TestMR038_AMoveWithTheSameKeyIsMadeOnce(t *testing.T) {
 	wantCode(t, "a key used by another player", err, connect.CodeInvalidArgument)
 }
 
+// A move's key stands for that move: the same key with another move is refused, and changes nothing.
+func TestMR038_AMoveKeyReusedForAnotherMoveIsRefused(t *testing.T) {
+	t.Parallel()
+	p := newPuzzleTable(t)
+	lights := p.lights(t, "O selo da Capela", 5)
+	p.show(t, lights.GetId())
+	key := newKey()
+	if _, err := p.moveKey(t, p.caio, lights.GetId(), lightsMove(2, 2), key); err != nil {
+		t.Fatalf("MakePuzzleMove() error = %v", err)
+	}
+	if again, err := p.moveKey(t, p.caio, lights.GetId(), lightsMove(2, 2), key); err != nil || !again.GetReplayed() {
+		t.Fatalf("the retry = %v, %v; want the first answer", again, err)
+	}
+	_, err := p.moveKey(t, p.caio, lights.GetId(), lightsMove(0, 0), key)
+	wantCode(t, "the key with another move", err, connect.CodeInvalidArgument)
+	if m := p.masterRun(t, lights.GetId()); m.GetMovesMade() != 1 {
+		t.Errorf("moves made = %d, want 1", m.GetMovesMade())
+	}
+}
+
 // The replay of the move that solved the puzzle still answers "solved by this move".
 func TestMR038_AReplayOfTheWinningMove(t *testing.T) {
 	t.Parallel()
@@ -1420,7 +1440,7 @@ func checkPlayerMove(t *testing.T, what string, res *playv1.MakePuzzleMoveRespon
 		t.Fatal(err)
 	}
 	for k := range top {
-		if k != "run" && k != "replayed" && k != "solvedByThisMove" {
+		if k != "run" && k != "replayed" && k != "solvedByThisMove" && k != "wrong" {
 			t.Errorf("%s: the key %q is not on the list", what, k)
 		}
 	}

@@ -313,6 +313,10 @@ export class EncounterBuilder {
   }
 
   protected openSave(): void {
+    if (this.draft.entries().length === 0) {
+      // The button is only dimmed while the draft is empty (it keeps focus), so a click still comes.
+      return;
+    }
     const data: SaveData = {
       campaignId: this.campaignId,
       entries: this.draft.specs(),

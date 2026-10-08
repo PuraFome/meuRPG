@@ -821,7 +821,11 @@ func (s *Service) UseGeneratedImageAsMapImage(
 			return nil
 		}
 		changed := errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_MAP_CHANGED, status)
-		if request.MapImageID == nil || locked.ImageID != *request.MapImageID || locked.GridColumns == nil ||
+		fits, err := mapImageFitsRequest(ctx, q, m.CampaignID, request, locked.ImageID)
+		if err != nil {
+			return err
+		}
+		if !fits || locked.GridColumns == nil ||
 			request.MapGridColumns == nil || *locked.GridColumns != *request.MapGridColumns ||
 			request.MapGridFactor == nil || locked.GridFactor != *request.MapGridFactor {
 			return changed
@@ -875,6 +879,41 @@ func (s *Service) UseGeneratedImageAsMapImage(
 		return nil, err
 	}
 	return connect.NewResponse(&mapsv1.UseGeneratedImageAsMapImageResponse{Map: out}), nil
+}
+
+// maxEditChain bounds the walk up the edits of an edit: far more than a master makes.
+const maxEditChain = 64
+
+// mapImageFitsRequest says whether the map's current image (imageID) is the one
+// the request was made over: the map's image when the request was made, or a
+// picture that "Usar" put on the map from the request itself or from an earlier
+// edit of the same chain (an edit keeps the basis of the picture it adjusts, and
+// after that picture is used the map's image is no longer the original). The grid,
+// size and walls checks that follow keep the rest of the basis.
+func mapImageFitsRequest(ctx context.Context, q *mapsdb.Queries, campaignID string, request mapsdb.ImageRequest, imageID string) (bool, error) {
+	if request.MapImageID == nil {
+		return false, nil
+	}
+	if imageID == *request.MapImageID {
+		return true, nil
+	}
+	for cur, steps := request, 0; cur.SourceImageID != nil && steps < maxEditChain; steps++ {
+		from, err := q.GetImageRequestForImage(ctx, mapsdb.GetImageRequestForImageParams{CampaignID: campaignID, ImageID: cur.SourceImageID})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		if err != nil {
+			return false, fmt.Errorf("read the request of an edited image: %w", err)
+		}
+		if from.MapImageID == nil || *from.MapImageID != *request.MapImageID {
+			return false, nil // not made over the same map image
+		}
+		if from.UsedMapImageID != nil && *from.UsedMapImageID == imageID {
+			return true, nil
+		}
+		cur = from
+	}
+	return false, nil
 }
 
 // basisParams are a basis's columns of the request's row; a request that is not

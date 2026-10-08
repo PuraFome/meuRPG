@@ -1,11 +1,12 @@
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
-  ElementRef,
-  Injector,
-  afterNextRender,
   computed,
+  effect,
+  ElementRef,
   inject,
+  Injector,
   signal,
 } from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
@@ -182,6 +183,8 @@ export class DoorSheet {
   /** The kind the door has now (the sheet stays open after a choice, showing it checked). */
   protected readonly now = signal<DoorKind>(this.door.state);
   protected readonly busy = signal(false);
+  /** A request in the air: Esc and the backdrop do not close the sheet under it. */
+  protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
   protected readonly saved = signal(false);
   private changed = false;
@@ -214,9 +217,11 @@ export class DoorSheet {
     });
   }
 
-  /** The option the master tapped: the door is painted that way at once. */
+  /** The option the master tapped: the door is painted that way at once. A tap on the one checked is sent too: the
+   * door may have changed since the sheet opened (a player opened it), and painting what is already there changes
+   * nothing on the server. */
   protected async choose(state: DoorKind): Promise<void> {
-    if (state === this.now() || this.busy()) {
+    if (this.busy()) {
       return;
     }
     if (await this.paint([{ layer: MapLayer.DOORS, value: state }])) {

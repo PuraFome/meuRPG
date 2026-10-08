@@ -381,6 +381,8 @@ export class LiveSession {
   private loadedSheetFor: string | null = null;
   private partyInfoIds = new Set<string>();
   private generation = 0;
+  /** Moves with each read of the images left with the players, and with each one taken back here. */
+  private leftSeq = 0;
 
   constructor() {
     // The tab's title carries the campaign's name once it is loaded.
@@ -932,17 +934,22 @@ export class LiveSession {
     this.shownImage.set(image);
   }
 
-  protected leftWithout(image: ShownImageVm): readonly ShownImageVm[] {
-    return this.leftImages().filter((i) => i.id !== image.id);
+  /** The master took an image back: it leaves the list now, and a read that began before this answer is dropped
+   * (it may still carry the image). */
+  protected takenBack(image: ShownImageVm): void {
+    this.leftSeq++;
+    this.leftImages.update((list) => list.filter((i) => i.id !== image.id));
   }
 
   /** The images left with the players, read again (best effort: the list
    * keeps what it had). */
   protected async reloadLeftImages(): Promise<void> {
     const generation = this.generation;
+    // Only the latest read lands: replies come in any order, and an older one holds an older list.
+    const seq = ++this.leftSeq;
     try {
       const images = await this.source.listLeftImages(this.campaignId());
-      if (generation === this.generation) {
+      if (generation === this.generation && seq === this.leftSeq) {
         this.leftImages.set(images);
       }
     } catch {

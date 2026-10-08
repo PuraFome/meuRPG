@@ -388,6 +388,7 @@ func (s *Service) UpdateCharacter(
 	// fails is the request's failure: an unchecked portrait never goes through.
 	var portraitErr error
 	var portraitCopy PortraitCopy
+	var copyCreated bool // the copy's row is the one this call inserted
 	if portraitOf(sheet) != "" {
 		pre, err := s.queries.GetCharacter(ctx, charactersdb.GetCharacterParams{CampaignID: m.CampaignID, ID: id})
 		switch {
@@ -457,10 +458,14 @@ func (s *Service) UpdateCharacter(
 		// A save never clears an issue that a change of the table's content flagged
 		// and that still stands.
 		carryFlags(content, storedSheet.GetFull(), sheet.GetFull())
+		copyCreated = false
 		if portraitCopy != nil { // the copy's gallery row, in this transaction
-			if err := portraitCopy.Insert(ctx, tx); err != nil {
+			id, created, err := portraitCopy.Insert(ctx, tx)
+			if err != nil {
 				return err
 			}
+			copyCreated = created
+			setPortrait(sheet, id)
 		}
 		// An NPC made from a creature keeps the link to it (MR-042): the
 		// client never sends it, so it is carried over from the saved sheet.
@@ -479,10 +484,10 @@ func (s *Service) UpdateCharacter(
 		}
 		return nil
 	})
+	if portraitCopy != nil && (err != nil || !copyCreated) {
+		portraitCopy.Discard(ctx) // no gallery row: the copy's files go
+	}
 	if err != nil {
-		if portraitCopy != nil {
-			portraitCopy.Discard(ctx) // no gallery row: the copy's files go
-		}
 		return nil, s.dbError(ctx, "update a character", err)
 	}
 	c, err := s.character(ctx, content, row, m)

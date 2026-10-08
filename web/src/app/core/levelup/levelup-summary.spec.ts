@@ -2,7 +2,9 @@ import { create } from '@bufbuild/protobuf';
 
 import {
   Ability,
+  CharacterSpellSchema,
   DerivedClassSchema,
+  SpellSchema,
   SpellcastingSchema,
   type DerivedSheet,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
@@ -259,5 +261,81 @@ describe('changeRows: a multiclass sheet reads the spellcasting of the class bei
       sub: 'Novo: Chama Sagrada',
     });
     expect(row('prepared')).toMatchObject({ before: '4', after: '5', sub: 'Nova: Bênção' });
+  });
+});
+
+// A Bard with Magical Secrets: spells off the Bard list count among the ones the class knows.
+describe('changeRows: the spells a class knows count the ones taken from another class list', () => {
+  const spell = (key: string, lists: string[]) =>
+    create(CharacterSpellSchema, {
+      spell: create(SpellSchema, { key, level: 1, classKeys: lists }),
+    });
+  const bard = (after: boolean): DerivedSheet => {
+    const sheet = pensantus(false);
+    sheet.classes = [
+      create(DerivedClassSchema, {
+        classKey: 'class:bard',
+        namePt: 'Bardo',
+        level: after ? 10 : 9,
+      }),
+    ];
+    sheet.spellcasting = [
+      create(SpellcastingSchema, {
+        classKey: 'class:bard',
+        classNamePt: 'Bardo',
+        ability: Ability.CHARISMA,
+        saveDc: 16,
+        attackBonus: 8,
+        cantripsKnown: 4,
+        spellsKnown: after ? 6 : 4,
+      }),
+    ];
+    sheet.spells = [
+      spell('spell:healing-word', ['class:bard', 'class:cleric']),
+      spell('spell:vicious-mockery', ['class:bard']),
+      spell('spell:thunderwave', ['class:bard', 'class:wizard']),
+      spell('spell:cure-wounds', ['class:bard', 'class:cleric']),
+    ];
+    if (after) {
+      // Magical Secrets: one of the Cleric list and one of the Wizard list, none of them on the Bard list.
+      sheet.spells.push(spell('spell:spiritual-weapon', ['class:cleric']));
+      sheet.spells.push(spell('spell:misty-step', ['class:wizard']));
+    }
+    return sheet;
+  };
+  const bardCtx: SummaryContext = {
+    classKey: 'class:bard',
+    hpSub: '',
+    cantrips: [],
+    spells: ['Arma Espiritual', 'Passo Nebuloso'],
+    prepared: [],
+    spellbook: false,
+    spellsMissing: 0,
+  };
+
+  it('shows the known spells as the server counts them, the ones off the class list included', () => {
+    const rows = changeRows(bard(false), bard(true), bardCtx);
+    expect(rows.find((r) => r.key === 'spells')).toMatchObject({
+      label: 'Magias conhecidas',
+      before: '4',
+      after: '6',
+      sub: 'Novas: Arma Espiritual e Passo Nebuloso',
+    });
+  });
+
+  it("counts a wizard's book from the spells on the sheet, since the server counts no fixed number for it (positive control)", () => {
+    const before = pensantus(false);
+    const after = pensantus(true);
+    before.spells = [spell('spell:shield', ['class:wizard'])];
+    after.spells = [
+      spell('spell:shield', ['class:wizard']),
+      spell('spell:misty-step', ['class:wizard']),
+    ];
+    const rows = changeRows(before, after, {
+      ...bardCtx,
+      classKey: 'class:wizard',
+      spellbook: true,
+    });
+    expect(rows.find((r) => r.key === 'spells')).toMatchObject({ before: '1', after: '2' });
   });
 });

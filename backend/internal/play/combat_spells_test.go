@@ -2322,3 +2322,58 @@ func TestShieldAlsoStopsTheOtherHitsAwaitingTheReaction(t *testing.T) {
 		t.Errorf("Pensantus HP = %d, want %d: a hit with total 13 against the Escudo's AC 17 must not land", got, before)
 	}
 }
+
+// TestActionSurgeIsUsedOncePerTurn: a fighter of level 17 has two uses of Surto
+// de ação, but only one in the same turn. The second is refused (the master may
+// correct the economy), the option says why, an undo gives the use back and the
+// next turn allows it again.
+func TestActionSurgeIsUsedOncePerTurn(t *testing.T) {
+	t.Parallel()
+	a := newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 17,
+			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
+		a.pens = a.ana.hero(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 1,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt})
+		a.bri = a.bia.hero(t, a.campaignID, "Brisa", "class:fighter", "race:human", 2,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{rapier}, nil)
+	})
+	e := a.start(t, plan{
+		npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId()}}, npcRolls: []int{1}, reveal: []string{"Goblin"},
+		at:      map[string][2]int32{"Pensantus": {5, 5}, "Toren": {6, 5}, "Brisa": {5, 6}, "Goblin": {7, 5}},
+		players: map[string]int32{"Toren": 20, "Pensantus": 15, "Brisa": 10},
+	})
+
+	o := a.mustOptions(t, a.caio, e, "Toren")
+	if surge := featureOption(o, actionSurgeKey); surge == nil || !surge.GetEnabled() || surge.GetUsesLeft() != 2 {
+		t.Fatalf("Surto de ação = %v, want enabled with 2 uses at fighter level 17", surge)
+	}
+	a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Goblin", d20(3))
+	if _, err := a.feature(t, a.caio, e, "Toren", actionSurgeKey, noTakeRoll); err != nil {
+		t.Fatalf("first Surto de ação error = %v", err)
+	}
+
+	o = a.mustOptions(t, a.caio, e, "Toren")
+	surge := featureOption(o, actionSurgeKey)
+	if surge == nil || surge.GetEnabled() || surge.GetUsesLeft() != 1 || surge.GetReason().GetCode() != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ALREADY_USED_THIS_TURN {
+		t.Errorf("Surto de ação after the first use = %v, want disabled as already used this turn, with 1 use left", surge)
+	}
+	_, err := a.feature(t, a.caio, e, "Toren", actionSurgeKey, noTakeRoll)
+	wantBlockedBy(t, "a second Surto de ação in the same turn", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ALREADY_USED_THIS_TURN)
+
+	// Undoing the first use gives the turn's use back.
+	a.undoLast(t, e)
+	if _, err := a.feature(t, a.caio, e, "Toren", actionSurgeKey, noTakeRoll); err != nil {
+		t.Fatalf("Surto de ação after undoing the first use error = %v, want it allowed", err)
+	}
+
+	// The next turn allows the last use.
+	for range 4 { // Toren (his damage is discarded), Pensantus, Brisa and the goblin
+		if _, err := a.endTurn(t, a.master, e, true); err != nil {
+			t.Fatalf("EndTurn(discard) error = %v", err)
+		}
+	}
+	o = a.mustOptions(t, a.caio, e, "Toren")
+	if surge := featureOption(o, actionSurgeKey); surge == nil || !surge.GetEnabled() || surge.GetUsesLeft() != 1 {
+		t.Errorf("Surto de ação in the next turn = %v, want enabled with 1 use left", surge)
+	}
+}

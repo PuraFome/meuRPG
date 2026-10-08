@@ -384,11 +384,17 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 				// The tag lasts until the sheet's level goes past this one.
 				level := party[slices.IndexFunc(party, func(p link.Member) bool { return p.ID == id })].Level
 				share.LevelAtMark = &level
-			} else if _, _, err := s.party.AddExperience(ctx, tx, m.CampaignID, id, each, now); err != nil {
-				if connect.CodeOf(err) == connect.CodeNotFound {
-					return errBlocked(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE, id, 0)
+			} else {
+				// The sheet holds at most 1,000,000 XP: the share keeps what the
+				// sheet gained, so an undo takes back exactly that.
+				before, after, err := s.party.AddExperience(ctx, tx, m.CampaignID, id, each, now)
+				if err != nil {
+					if connect.CodeOf(err) == connect.CodeNotFound {
+						return errBlocked(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE, id, 0)
+					}
+					return fmt.Errorf("add the XP to a sheet: %w", err)
 				}
-				return fmt.Errorf("add the XP to a sheet: %w", err)
+				share.Xp = after - before
 			}
 			if err := q.InsertXPShare(ctx, share); err != nil {
 				return fmt.Errorf("insert a share: %w", err)

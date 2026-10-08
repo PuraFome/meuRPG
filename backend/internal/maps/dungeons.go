@@ -535,7 +535,7 @@ func (s *Service) RedrawDungeonMap(
 		if err != nil {
 			return err
 		}
-		if !isGeneratedImage(again, locked) || locked.ImageID != row.ImageID || int32PtrValue(locked.GridColumns) != int32PtrValue(row.GridColumns) {
+		if !isGeneratedImage(again, locked) || locked.ImageID != row.ImageID || locked.GridFactor != row.GridFactor || int32PtrValue(locked.GridColumns) != int32PtrValue(row.GridColumns) {
 			return errImageChanged()
 		}
 		now, err := q.GetMapLayers(ctx, mapID)
@@ -567,6 +567,16 @@ func (s *Service) RedrawDungeonMap(
 			return fmt.Errorf("read whether the image is used elsewhere: %w", err)
 		}
 		if used || elsewhere {
+			return nil
+		}
+		// The screen is asked again here: the master may have shown the old image
+		// since the first read, and deleting it would blank the screen. (A portrait
+		// that raced in loses the image, as in DeleteGalleryImage.)
+		shown, err := s.live.ImageShown(ctx, tx, m.CampaignID, old.ID)
+		if err != nil {
+			return fmt.Errorf("read whether the image is shown: %w", err)
+		}
+		if shown {
 			return nil
 		}
 		// As DeleteGalleryImage does: a portrait that raced in loses the image.
