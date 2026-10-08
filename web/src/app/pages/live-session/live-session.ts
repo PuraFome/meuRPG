@@ -583,6 +583,7 @@ export class LiveSession {
         onPuzzleChanged: (id) => void this.puzzles.changed(id),
         onTokenMoved: (move) => {
           this.scheduleVision();
+          void this.trapBoard.tokensMoved();
           // A token the page doesn't know (a missed `map_changed`): read again.
           if (!this.mapState.moveToken(move.mapId, move.characterId, move.xBp, move.yBp)) {
             void this.mapState.refresh();
@@ -621,6 +622,7 @@ export class LiveSession {
         onCombatantMoved: (move) => {
           if (!this.inTheatre()) {
             this.scheduleVision();
+            void this.trapBoard.tokensMoved();
           }
           if (!this.combat.applyMove(move)) {
             void this.loadCombat(generation);
