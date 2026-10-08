@@ -1030,8 +1030,10 @@ func TestMR043_SavesAtOnceOnOnePoint(t *testing.T) {
 	bridge := m.point(t, "Emboscada na ponte")
 	var wg sync.WaitGroup
 	errs := make(chan error, 6)
+	start := dbtest.NewBarrier(6)
 	for i := range 6 {
 		wg.Go(func() {
+			start.Wait()
 			_, err := m.master.encounters.SaveBattleEncounter(t.Context(), connect.NewRequest(&playv1.SaveBattleEncounterRequest{
 				CampaignId: m.campaignID, MapPointId: bridge, Encounter: &playv1.BattleEncounter{Monsters: groups(goblin, i+1)},
 			}))

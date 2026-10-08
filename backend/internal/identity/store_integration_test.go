@@ -107,8 +107,12 @@ func TestPostgresStoreUpsertUserRace(t *testing.T) {
 	ids := make([]string, n)
 	errs := make([]error, n)
 	var wg sync.WaitGroup
+	start := dbtest.NewBarrier(n)
 	for i := range n {
-		wg.Go(func() { ids[i], errs[i] = store.UpsertUser(t.Context(), id) })
+		wg.Go(func() {
+			start.Wait()
+			ids[i], errs[i] = store.UpsertUser(t.Context(), id)
+		})
 	}
 	wg.Wait()
 

@@ -264,10 +264,15 @@ func TestRN15_ApproveAndRejectRace(t *testing.T) {
 
 		var wg sync.WaitGroup
 		var approveErr, rejectErr error
+		start := dbtest.NewBarrier(2)
 		wg.Go(func() {
+			start.Wait()
 			_, approveErr = mestre.api.ApproveCharacter(t.Context(), connect.NewRequest(&charactersv1.ApproveCharacterRequest{CampaignId: campaign, CharacterId: pending.GetId()}))
 		})
-		wg.Go(func() { rejectErr = mestre.reject(t, pending) })
+		wg.Go(func() {
+			start.Wait()
+			rejectErr = mestre.reject(t, pending)
+		})
 		wg.Wait()
 
 		var exists int

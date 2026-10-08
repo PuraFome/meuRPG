@@ -641,8 +641,10 @@ func TestMR039_TheLastSlotGoesToOneRequest(t *testing.T) {
 
 	var wg sync.WaitGroup
 	errs := make([]error, racers)
+	start := dbtest.NewBarrier(racers)
 	for i := range racers {
 		wg.Go(func() {
+			start.Wait()
 			_, errs[i] = master.generate(campaign, fmt.Sprintf("cena %d", i))
 		})
 	}
@@ -1199,8 +1201,10 @@ func TestMR039_TheSameKeyAtTheSameTime(t *testing.T) {
 	var wg sync.WaitGroup
 	ids := make([]string, racers)
 	errs := make([]error, racers)
+	start := dbtest.NewBarrier(racers)
 	for i := range racers {
 		wg.Go(func() {
+			start.Wait()
 			res, err := master.imagegen.GenerateSceneImage(t.Context(), connect.NewRequest(&mapsv1.GenerateSceneImageRequest{CampaignId: campaign, IdempotencyKey: "one-key", Prompt: "uma cena"}))
 			errs[i] = err
 			if err == nil {

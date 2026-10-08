@@ -85,8 +85,10 @@ func TestRN30_TheCapHoldsUnderConcurrentCreations(t *testing.T) {
 		mu   sync.Mutex
 		done int
 	)
+	start := dbtest.NewBarrier(racers)
 	for range racers {
 		wg.Go(func() {
+			start.Wait()
 			if err := ana.create(t); err == nil {
 				mu.Lock()
 				done++

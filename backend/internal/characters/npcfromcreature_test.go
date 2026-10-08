@@ -360,8 +360,10 @@ func TestCreateNpcFromCreatureRace(t *testing.T) {
 		ids := make([]string, callers)
 		errs := make([]error, callers)
 		var wg sync.WaitGroup
+		start := dbtest.NewBarrier(callers)
 		for i := range callers {
 			wg.Go(func() {
+				start.Wait()
 				c, err := npcFromCreature(t, master, campaign, "monster:ogre", "Grak", minion, key)
 				errs[i] = err
 				if err == nil {
@@ -398,10 +400,10 @@ func TestMonsterNpcRace(t *testing.T) {
 		ids := make([]string, callers)
 		errs := make([]error, callers)
 		var wg sync.WaitGroup
-		start := make(chan struct{})
+		start := dbtest.NewBarrier(callers)
 		for i := range callers {
 			wg.Go(func() {
-				<-start
+				start.Wait()
 				errs[i] = db.InTx(t.Context(), h.pool, func(tx pgx.Tx) error {
 					npc, ok, err := h.svc.MonsterNpc(t.Context(), tx, campaign, master.id, "monster:ogre", h.clock.Now())
 					if err == nil && !ok {
@@ -412,7 +414,6 @@ func TestMonsterNpcRace(t *testing.T) {
 				})
 			})
 		}
-		close(start)
 		wg.Wait()
 		for i := range callers {
 			if errs[i] != nil {

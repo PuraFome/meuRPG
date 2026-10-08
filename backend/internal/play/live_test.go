@@ -490,9 +490,11 @@ func TestSessionEventsAreOrderedPerSession(t *testing.T) {
 	const perCharacter = 3
 	var wg sync.WaitGroup
 	errs := make(chan error, len(pcs)*perCharacter)
+	start := dbtest.NewBarrier(len(pcs) * perCharacter)
 	for _, pc := range pcs {
 		for _, temporary := range []int32{1, 2, 3} {
 			wg.Go(func() {
+				start.Wait()
 				_, err := master.play.AdjustCharacterVitals(context.Background(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
 					CampaignId: campaign, CharacterId: pc.GetId(), IdempotencyKey: newKey(), HitPointsTemporary: new(temporary),
 				}))

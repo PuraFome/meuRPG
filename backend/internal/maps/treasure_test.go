@@ -501,11 +501,11 @@ func TestMR044_PlaceTreasureRacingCallsMakeOnePoint(t *testing.T) {
 		id  string
 		err error
 	}
-	start := make(chan struct{})
+	start := dbtest.NewBarrier(racers)
 	out := make(chan result, racers)
 	for range racers {
 		go func() {
-			<-start
+			start.Wait()
 			res, err := s.place(func(r *mapsv1.PlaceTreasureRequest) { r.IdempotencyKey = "corrida" })
 			if err != nil {
 				out <- result{err: err}
@@ -514,7 +514,6 @@ func TestMR044_PlaceTreasureRacingCallsMakeOnePoint(t *testing.T) {
 			out <- result{id: res.GetPoint().GetId()}
 		}()
 	}
-	close(start)
 	ids := map[string]bool{}
 	for range racers {
 		r := <-out

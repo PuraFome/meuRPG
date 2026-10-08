@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -177,4 +178,52 @@ func TestSeededTablesAreTheOnesTheMigrationsFill(t *testing.T) {
 	if !slices.Contains(template.reference, "session_event_kinds") {
 		t.Errorf("reference tables = %v, want session_event_kinds among them", template.reference)
 	}
+}
+
+// TestBarrierHoldsEveryRacerUntilTheLastArrives: no racer goes on from Wait before all
+// of them have reached it, so the calls after it really start together.
+func TestBarrierHoldsEveryRacerUntilTheLastArrives(t *testing.T) {
+	const racers = 16
+	var arrived, early atomic.Int32
+	var wg sync.WaitGroup
+	b := NewBarrier(racers)
+	for range racers {
+		wg.Go(func() {
+			arrived.Add(1)
+			b.Wait()
+			if arrived.Load() != racers {
+				early.Add(1)
+			}
+		})
+	}
+	wg.Wait()
+	if early.Load() != 0 {
+		t.Errorf("%d racers went on before the last one arrived", early.Load())
+	}
+}
+
+// failNow is a testing.TB whose Fatal panics instead of ending the test that checks it.
+type failNow struct{ testing.TB }
+
+func (failNow) Helper()        {}
+func (failNow) Cleanup(func()) {}
+func (failNow) Fatal(...any)   { panic("fatal") }
+
+// TestPoolSizeAfterThePoolIsMadeFails: a PoolSize that comes after the pool was made
+// would change nothing and leave the racers running one by one, so it fails the test.
+func TestPoolSizeAfterThePoolIsMadeFails(t *testing.T) {
+	rec := failNow{t}
+	wantedMu.Lock()
+	pooled[rec] = true
+	wantedMu.Unlock()
+	defer func() {
+		wantedMu.Lock()
+		delete(pooled, rec)
+		delete(wanted, rec)
+		wantedMu.Unlock()
+		if recover() == nil {
+			t.Error("PoolSize() after the pool was made did not fail the test")
+		}
+	}()
+	PoolSize(rec, 4)
 }

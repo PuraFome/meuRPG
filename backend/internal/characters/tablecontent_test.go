@@ -769,8 +769,10 @@ func TestTableContentConcurrentWrites(t *testing.T) {
 
 	var wg sync.WaitGroup
 	errs := make([]error, n)
+	start := dbtest.NewBarrier(n)
 	for i := range n {
 		wg.Go(func() {
+			start.Wait()
 			_, errs[i] = master.table.CreateTableEntry(context.Background(), connect.NewRequest(createReq(campaign, testBackground("Fundo "+strings.Repeat("z", i+1)))))
 		})
 	}

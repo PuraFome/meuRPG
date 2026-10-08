@@ -74,8 +74,10 @@ func TestStartGameSessionWithTheSameKeyAtOnceStartsOne(t *testing.T) {
 
 	ids := make([]string, 4)
 	var wg sync.WaitGroup
+	start := dbtest.NewBarrier(len(ids))
 	for i := range ids {
 		wg.Go(func() {
+			start.Wait()
 			res, err := master.startWithKey(t, campaign, "racing")
 			if err != nil {
 				t.Errorf("StartGameSession() error = %v", err)

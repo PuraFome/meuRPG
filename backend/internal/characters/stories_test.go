@@ -364,8 +364,10 @@ func TestRN03_OneLivingCharacterPerPlayerPerCampaign(t *testing.T) {
 	h.join(mestre, campaign, racer)
 	var wg sync.WaitGroup
 	results := make([]error, 5)
+	start := dbtest.NewBarrier(len(results))
 	for i := range results {
 		wg.Go(func() {
+			start.Wait()
 			_, results[i] = racer.api.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
 				CampaignId: campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Rápida", Sheet: pensantusSheet(),
 			}))
