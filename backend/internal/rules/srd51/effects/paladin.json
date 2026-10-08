@@ -53,6 +53,13 @@
     ],
     "feature:paladin-extra-attack": [
       {"type": "extra_attack", "count": 2}
+    ],
+    "feature:aura-of-protection": [
+      {"type": "modifier", "target": "save.all", "mode": "add", "value": "max(1, mod(\"cha\"))"},
+      {"type": "note", "text_pt": "Os aliados a até 3 m recebem o mesmo bônus nos testes de resistência: a mesa aplica."}
+    ],
+    "feature:cleansing-touch": [
+      {"type": "resource", "resource": "cleansing_touch", "max": "max(1, mod(\"cha\"))", "recharge": "long_rest"}
     ]
   }
 }

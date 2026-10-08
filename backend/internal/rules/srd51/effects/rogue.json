@@ -26,6 +26,9 @@
     ],
     "feature:uncanny-dodge": [
       {"type": "grant_action", "economy": "reaction"}
+    ],
+    "feature:stroke-of-luck": [
+      {"type": "resource", "resource": "stroke_of_luck", "max": "1", "recharge": "short_rest"}
     ]
   }
 }

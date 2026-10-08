@@ -1,4 +1,5 @@
 import { PartyMemberInfoVm, VitalsVm } from './live-session.types';
+import { isUnlimited } from '../../core/combat/unlimited-uses';
 
 /**
  * Applies a snapshot (`GetLiveSession`) to what is on screen. The snapshot
@@ -65,9 +66,9 @@ export function hitPointsState(
   return null;
 }
 
-/** "2 de 4 usados": every count on these screens says "usados" (README-A). */
+/** "2 de 4 usados": every count on these screens says "usados" (README-A); "ilimitado" when the uses never run out. */
 export function usedWords(used: number, total: number): string {
-  return `${used} de ${total} usados`;
+  return isUnlimited(total) ? 'ilimitado' : `${used} de ${total} usados`;
 }
 
 /** "1º nível". */

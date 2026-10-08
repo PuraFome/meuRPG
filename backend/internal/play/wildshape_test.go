@@ -2,6 +2,7 @@ package play
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -747,5 +748,41 @@ func TestTrapDamageOfAnEndedSessionEndsTheFormInTheOpenSession(t *testing.T) {
 	}
 	if got := byLabel(t, s.get(t, s.master), "Sálvia"); got.GetSpeedFt() != 30 || got.GetWildShapeBeastKey() != "" {
 		t.Errorf("combatant in session 2's combat after the beast fell = %d ft, form %q, want her own 30 ft and no form", got.GetSpeedFt(), got.GetWildShapeBeastKey())
+	}
+}
+
+// TestMR037_BeastSpellsLetADruidOfLevel18CastInBeastForm: from level 18 a druid casts
+// druid spells in a beast shape; below it the cast is refused with
+// WILD_SHAPE_NO_SPELLS. Needs the database (MEURPG_TEST_DATABASE_URL).
+func TestMR037_BeastSpellsLetADruidOfLevel18CastInBeastForm(t *testing.T) {
+	t.Parallel()
+	for _, level := range []int32{17, 18} {
+		t.Run(fmt.Sprintf("druid %d", level), func(t *testing.T) {
+			t.Parallel()
+			a := newArmedWith(t, func(a *armed) {
+				scores := &rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 14, Intelligence: 10, Wisdom: 18, Charisma: 8}
+				a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 2, scores, []string{battleaxe}, nil)
+				a.pens = a.ana.hero(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 1, scores, nil, []string{fireBolt})
+				a.bri = a.bia.caster(t, a.campaignID, "Sálvia", "class:druid", "race:half-elf", level, scores, nil, []string{"spell:produce-flame"}, nil, nil)
+			})
+			a.start(t, plan{
+				npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId()}}, npcRolls: []int{1},
+				players: map[string]int32{"Sálvia": 20, "Toren": 10, "Pensantus": 5},
+				reveal:  []string{"Goblin"},
+				at:      map[string][2]int32{"Sálvia": {6, 5}, "Goblin": {7, 5}, "Toren": {2, 2}, "Pensantus": {12, 2}},
+			})
+			e := a.mustAssume(t, a.bia, a.bri, wolfKey).GetEncounter()
+			e = a.passTo(t, a.mustEndTurn(t, a.bia, e), "Sálvia") // Wild Shape took this turn's action
+			_, err := a.cast(t, a.bia, e, "Sálvia", "spell:produce-flame", nil, nil, func(r *playv1.CastSpellRequest) {
+				r.Roll = &playv1.CastSpellRequest_D20Face{D20Face: 10}
+			})
+			if level < 18 {
+				wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_NO_SPELLS)
+				return
+			}
+			if err != nil {
+				t.Errorf("a level 18 druid in wolf form casting a cantrip: %v, want it allowed (Beast Spells)", err)
+			}
+		})
 	}
 }

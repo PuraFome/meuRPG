@@ -159,6 +159,7 @@ func combatCharacter(content *rules.Content, id, kind, name string, playerUserID
 		if beast != nil && *beast != "" {
 			c.Size = beastSize(content, *beast)
 		}
+		c.CastsInBeastForm = content.CastsInBeastForm(d)
 		jumps := combat.JumpLimits(d)
 		c.JumpLongDFt, c.JumpHighDFt = jumps.LongRunning, jumps.HighRunning
 		if !c.Player {
