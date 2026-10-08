@@ -16,6 +16,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
@@ -574,7 +575,7 @@ func (s *Service) RollAttack(
 	v := viewerOf(m)
 
 	var made actionEvent
-	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventAttackRolled, encounterID: encID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventAttackRolled, encounterID: encID}, func(c *combatTx) (any, error) {
 		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
@@ -913,7 +914,7 @@ func (s *Service) RollDamage(
 
 	var made actionEvent
 	var vitals []*playv1.CharacterVitals // the characters a heal or a death save touched
-	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventDamageRolled, encounterID: encID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventDamageRolled, encounterID: encID}, func(c *combatTx) (any, error) {
 		vitals = nil
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
@@ -1240,7 +1241,7 @@ func (s *Service) ApplyPendingDamage(
 
 	var made actionEvent
 	var vitals *playv1.CharacterVitals // the target's, after
-	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventDamageApplied, encounterID: encID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventDamageApplied, encounterID: encID}, func(c *combatTx) (any, error) {
 		vitals = nil
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
@@ -1421,7 +1422,7 @@ func (s *Service) DiscardPendingDamage(
 	}
 
 	var made actionEvent
-	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventDamageDiscarded, encounterID: encID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventDamageDiscarded, encounterID: encID}, func(c *combatTx) (any, error) {
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -1538,7 +1539,7 @@ func (s *Service) TakeAction(
 
 	var made actionEvent
 	var vitals *playv1.CharacterVitals // the resource spent, or the hit points healed
-	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventActionTaken, encounterID: encID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventActionTaken, encounterID: encID}, func(c *combatTx) (any, error) {
 		vitals = nil
 		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 		if err != nil {
@@ -1789,7 +1790,7 @@ func (s *Service) AdjustCombatantHitPoints(
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("hit_points_temporary must be 0 to %d", maxTempHitPoints))
 	}
 
-	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventHitPointsAdjusted, encounterID: encID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventHitPointsAdjusted, encounterID: encID}, func(c *combatTx) (any, error) {
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -1839,7 +1840,7 @@ func (s *Service) AdjustCombatantHitPoints(
 		return nil, s.dbError(ctx, "adjust a combatant's hit points", err)
 	}
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
-		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishEncounterChangedFor(ctx, m.CampaignID, d, combID)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, false) // the master's correction: his line only
 	})
 	if err != nil {

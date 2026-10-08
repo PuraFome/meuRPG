@@ -29,6 +29,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/refimg"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/safego"
@@ -238,8 +239,11 @@ func (s *Service) GetImageGenerationStatus(
 
 // newRequest is what a handler checked and reserve needs to insert a row.
 type newRequest struct {
-	kind        string
-	key         string
+	kind string
+	key  string
+	// hash is the hash of the whole request but its key (idem.Hash): a retry of the key has the
+	// very same one, and the key reused for another request is refused.
+	hash        *string
 	prompt      string
 	style       string
 	ratio       string
@@ -294,7 +298,7 @@ func (s *Service) GenerateSceneImage(
 		return nil, err
 	}
 	n := newRequest{
-		kind: kindScene, key: key, prompt: prompt, style: style, ratio: ratio,
+		kind: kindScene, key: key, hash: idem.Hash(req.Msg), prompt: prompt, style: style, ratio: ratio,
 		references: objects, characters: characters, requestedBy: m.UserID, name: name,
 	}
 	row, status, err := s.begin(ctx, n, m.CampaignID)
@@ -332,7 +336,7 @@ func (s *Service) EditGeneratedImage(
 	}
 	source := imageID.String()
 	row, status, err := s.begin(ctx, newRequest{
-		kind: kindEdit, key: key, prompt: instruction, source: &source, requestedBy: m.UserID, name: name,
+		kind: kindEdit, key: key, hash: idem.Hash(req.Msg), prompt: instruction, source: &source, requestedBy: m.UserID, name: name,
 	}, m.CampaignID)
 	if err != nil {
 		return nil, err
@@ -386,6 +390,15 @@ type prepared struct {
 	name string
 }
 
+// sameImageRequest says whether the request a key found is the one being retried: an image
+// request from before the hash was kept has none, and is replayed as it was.
+func sameImageRequest(existing mapsdb.ImageRequest, n newRequest) error {
+	if existing.IdempotencyHash == nil || (n.hash != nil && *existing.IdempotencyHash == *n.hash) {
+		return nil
+	}
+	return idem.ErrReused()
+}
+
 // begin checks what can be checked cheaply, prepares the images, and reserves
 // the slot. The order spares the server: an earlier try with the same key is
 // answered first, a server with generation off or a month with no slot left is
@@ -394,6 +407,9 @@ type prepared struct {
 // reserved, so a request too big for the service never costs one.
 func (s *Service) begin(ctx context.Context, n newRequest, campaignID string) (mapsdb.ImageRequest, *mapsv1.ImageGenerationStatus, error) {
 	if existing, err := s.queries.GetImageRequestByKey(ctx, mapsdb.GetImageRequestByKeyParams{CampaignID: campaignID, IdempotencyKey: n.key}); err == nil {
+		if err := sameImageRequest(existing, n); err != nil {
+			return mapsdb.ImageRequest{}, nil, err
+		}
 		status, err := s.freshStatus(ctx, campaignID)
 		if err != nil {
 			return mapsdb.ImageRequest{}, nil, s.dbError(ctx, "read the image generation status", err)
@@ -511,21 +527,23 @@ func (s *Service) shrunkImage(ctx context.Context, campaignID, id string) (gen.I
 		return gen.Image{}, errStorage()
 	}
 	key, _ := blobKeys(campaignID, id)
+	// The slot first, then the read: the file (at most 10 MiB) is in memory
+	// only while it holds the slot, so waiting requests hold none.
+	release, err := s.acquireProcessing(ctx)
+	if err != nil {
+		return gen.Image{}, err
+	}
 	data, err := s.readBlob(ctx, key, images.MaxBytes)
 	if err != nil {
+		release()
 		s.logger.ErrorContext(ctx, "maps: cannot read an image file", "error", err)
 		return gen.Image{}, errStorage()
-	}
-	select {
-	case s.processing <- struct{}{}:
-	case <-ctx.Done():
-		return gen.Image{}, ctx.Err()
 	}
 	if s.onReferenceDecode != nil {
 		s.onReferenceDecode()
 	}
 	small, resized, err := images.Shrink(data, images.ReferenceSide, images.ReferenceQuality)
-	<-s.processing
+	release()
 	if err != nil {
 		s.logger.ErrorContext(ctx, "maps: cannot shrink a reference image", "error", err)
 		return gen.Image{}, errStorage()
@@ -576,6 +594,9 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 		// A retry with the same key: the first request, whatever it became.
 		existing, err := q.GetImageRequestByKey(ctx, mapsdb.GetImageRequestByKeyParams{CampaignID: campaignID, IdempotencyKey: n.key})
 		if err == nil {
+			if err := sameImageRequest(existing, n); err != nil {
+				return err
+			}
 			row = existing
 			status, err = s.statusIn(ctx, q, campaignID)
 			return err
@@ -678,7 +699,7 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 			ReferenceIds: nonNil(n.references), CharacterIds: nonNil(n.characters), SourceImageID: n.source, Number: number, QuotaMonth: month, CreatedAt: s.now(),
 			MapID: basis.mapID, MapImageID: basis.imageID, MapGridColumns: basis.gridColumns, MapGridFactor: basis.gridFactor, MapWidth: basis.width, MapHeight: basis.height,
 			MapPlanHash: basis.planHash, PadX0: basis.pad[0], PadY0: basis.pad[1], PadX1: basis.pad[2], PadY1: basis.pad[3],
-			ImageName: imageNameFor(n),
+			ImageName: imageNameFor(n), IdempotencyHash: n.hash,
 		})
 		if err != nil {
 			return fmt.Errorf("insert the request: %w", err)
@@ -691,6 +712,9 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
 		// Two tries with the same key raced: the other one made the request.
 		if existing, getErr := s.queries.GetImageRequestByKey(ctx, mapsdb.GetImageRequestByKeyParams{CampaignID: campaignID, IdempotencyKey: n.key}); getErr == nil {
+			if err := sameImageRequest(existing, n); err != nil {
+				return mapsdb.ImageRequest{}, nil, err
+			}
 			status, statusErr := s.freshStatus(ctx, campaignID)
 			if statusErr != nil {
 				return mapsdb.ImageRequest{}, nil, s.dbError(ctx, "read the image generation status", statusErr)

@@ -14,6 +14,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -281,7 +282,7 @@ func (s *Service) MoveCombatant(
 	var moveID string        // the id of the opportunity offers the move made, if any
 	var opened []grid.Square // the closed doors the move opened (RN-26)
 	var lockedDoor bool      // a locked door stopped the move (a player only learns of one they know)
-	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventCombatantMoved, altKind: eventTrapTriggered, encounterID: encID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventCombatantMoved, altKind: eventTrapTriggered, encounterID: encID}, func(c *combatTx) (any, error) {
 		logged, stoppedEarly, moveID, opened, lockedDoor = false, false, "", nil, false
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
@@ -765,7 +766,7 @@ func (s *Service) SetCombatantSide(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("side must be PARTY or ENEMY"))
 	}
 
-	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventSideSet, encounterID: encID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventSideSet, encounterID: encID}, func(c *combatTx) (any, error) {
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -792,7 +793,7 @@ func (s *Service) SetCombatantSide(
 	if err != nil {
 		return nil, s.dbError(ctx, "set a combatant's side", err)
 	}
-	out, err := s.finish(ctx, m, res, s.changed(m.CampaignID))
+	out, err := s.finish(ctx, m, res, s.changedFor(m.CampaignID, combID))
 	if err != nil {
 		return nil, err
 	}
@@ -825,7 +826,7 @@ func (s *Service) SetCombatantCover(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("cover must be NONE, HALF, THREE_QUARTERS or TOTAL"))
 	}
 
-	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventCoverSet, encounterID: encID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventCoverSet, encounterID: encID}, func(c *combatTx) (any, error) {
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -849,7 +850,7 @@ func (s *Service) SetCombatantCover(
 	if err != nil {
 		return nil, s.dbError(ctx, "mark a combatant's cover", err)
 	}
-	out, err := s.finish(ctx, m, res, s.changed(m.CampaignID))
+	out, err := s.finish(ctx, m, res, s.changedFor(m.CampaignID, combID))
 	if err != nil {
 		return nil, err
 	}

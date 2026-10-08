@@ -9,6 +9,7 @@ import { ContentSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import {
   TableContentKind,
   TableContentRefusalSchema,
+  TableSubraceSchema,
   TableContentViolationSchema,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
@@ -436,5 +437,49 @@ describe('ContentEntry', () => {
       'Corujeiro dos Vales',
     );
     expect(text(el.querySelector('.tags')!)).toContain('Desligada para os jogadores');
+  });
+
+  describe('when the table changes under an open sub-race', () => {
+    const RACE = 'race:corujeiro@mesa';
+    const sub = () =>
+      entry(TableContentKind.SUBRACE, 'Corujeiro Pálido', {
+        body: {
+          case: 'tableSubrace',
+          value: create(TableSubraceSchema, { namePt: 'Corujeiro Pálido', raceKey: RACE }),
+        },
+      });
+    const race = (name: string) => entry(TableContentKind.RACE, name, { key: RACE });
+
+    it('shows the name of a race that became visible, not its key', async () => {
+      const { fixture, el } = await setup(Role.PLAYER, sub().key, [sub()]);
+      expect(text(el)).toContain('Sub-raça de');
+      expect(text(el)).toContain(RACE);
+      list.mockResolvedValue({ entries: [sub(), race('Corujeiro')], tableRevision: 8 });
+      watcher.hint();
+      await settle(fixture);
+      expect(text(el)).not.toContain(RACE);
+      expect(text(el)).toContain('Corujeiro');
+    });
+
+    it('lets the newest read win when two reads finish out of order', async () => {
+      const { fixture, el } = await setup(Role.PLAYER, sub().key, [sub()]);
+      const deferred = () => {
+        let resolve!: (v: unknown) => void;
+        const promise = new Promise((r) => (resolve = r));
+        return { promise, resolve };
+      };
+      const older = deferred();
+      const newer = deferred();
+      list.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise);
+      watcher.hint();
+      watcher.hint();
+      await settle(fixture);
+      newer.resolve({ entries: [sub(), race('Corujeiro Novo')], tableRevision: 9 });
+      await settle(fixture);
+      older.resolve({ entries: [sub(), race('Corujeiro Velho')], tableRevision: 8 });
+      await settle(fixture);
+      expect(text(el)).toContain('Corujeiro Novo');
+      expect(text(el)).not.toContain('Corujeiro Velho');
+    });
   });
 });

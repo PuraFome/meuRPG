@@ -2,10 +2,13 @@ package play
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 	"uuid"
 
@@ -110,8 +113,11 @@ const eventDoorOpened = "door_opened"
 // key, the kind of event it becomes, and the combat it is about (empty when
 // the change creates it).
 type combatWrite struct {
-	m           authz.Membership
-	key         string
+	m   authz.Membership
+	key string
+	// hash is the hash of the whole request but its key (idem.Hash): a retry of the key is
+	// the same request, and the same key for another one is refused.
+	hash        *string
 	kind        string
 	encounterID string
 	// altKind is the other kind the change may write instead of kind (EndTurn
@@ -153,6 +159,8 @@ type combatTx struct {
 	sight *fogSight
 	// stamped is the last event insertEvent stamped with who could see it.
 	stamped *actionEvent
+	// hash is the request hash kept with the event that carries the change's key.
+	hash *string
 	// rules are the table's rules (RN-24), read in this transaction when it
 	// opened: a critical hit and who sees the death saves follow them from the
 	// next roll on, and are never kept longer than the change.
@@ -246,6 +254,11 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 			if done.Kind != w.kind && (w.altKind == "" || done.Kind != w.altKind) {
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
 			}
+			// The key was used for another request of the same kind: a retry has the very same
+			// one. An event from before the hash was kept has none, and is replayed as it was.
+			if hashDiffers(done.IdempotencyHash, w.hash) {
+				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+			}
 			// A key is its author's: another member replaying it would be handed the
 			// answer to a change that was not theirs (the vitals of someone else's
 			// character, a roll).
@@ -259,7 +272,7 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 			return fmt.Errorf("find the event of this idempotency key: %w", err)
 		}
 
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind, actorUserID: w.m.UserID, svc: s, master: w.m.Role == authz.RoleMaster, sight: sight}
+		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind, actorUserID: w.m.UserID, svc: s, master: w.m.Role == authz.RoleMaster, sight: sight, hash: w.hash}
 		if c.rules, err = s.tableRules(ctx, tx, w.m.CampaignID); err != nil {
 			return err
 		}
@@ -404,6 +417,30 @@ func insertEvent(ctx context.Context, c *combatTx, kind string, actor, key *stri
 	return err
 }
 
+// requestHash is the request hash of a change whose handler builds its inputs apart from the
+// request message: the hash of the values that tell it from another change, in order.
+func requestHash(parts ...string) *string {
+	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
+	h := hex.EncodeToString(sum[:])
+	return &h
+}
+
+// hashDiffers says whether the hash kept with an event is not the request's: a change that
+// reuses a key for another request. An event from before the hash was kept has none, and is
+// replayed as it was.
+func hashDiffers(stored, hash *string) bool {
+	return stored != nil && (hash == nil || *stored != *hash)
+}
+
+// hashOf is the request hash to keep with an event: the change's own, on the event that
+// carries its key.
+func hashOf(c *combatTx, key *string) *string {
+	if key == nil {
+		return nil
+	}
+	return c.hash
+}
+
 // insertRaw writes an encoded event and returns its ID.
 func insertRaw(ctx context.Context, c *combatTx, kind string, actor, key *string, body []byte) (string, error) {
 	seq, err := c.q.NextSessionEventSeq(ctx, c.session.ID)
@@ -417,7 +454,7 @@ func insertRaw(ctx context.Context, c *combatTx, kind string, actor, key *string
 	}
 	row, err := c.q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
 		GameSessionID: c.session.ID, Seq: seq, Kind: kind, ActorUserID: actor, CharacterID: c.characterID,
-		Payload: body, IdempotencyKey: key, CreatedAt: c.now, EncounterID: encounterID,
+		Payload: body, IdempotencyKey: key, CreatedAt: c.now, EncounterID: encounterID, IdempotencyHash: hashOf(c, key),
 	})
 	if err != nil {
 		return "", fmt.Errorf("insert session event: %w", err)

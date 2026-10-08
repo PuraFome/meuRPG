@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strconv"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -382,7 +383,7 @@ func (s *Service) shapeChange(ctx context.Context, campaignID, rawCharacter, raw
 	var made actionEvent
 	var vitals *playv1.CharacterVitals
 	var mapID string
-	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: kind}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: requestHash(campaignID, rawCharacter, beast, strconv.FormatBool(leave)), kind: kind}, func(c *combatTx) (any, error) {
 		made, vitals, mapID = actionEvent{}, nil, deref(c.session.CurrentMapID)
 		_, who, _, err := s.playerCharacterOf(ctx, c, m, characterID)
 		if err != nil {

@@ -148,19 +148,21 @@ func Process(data []byte) (*Result, error) {
 	if contentType == PNG {
 		img = to8bit(img)
 	}
-	return finish(contentType, img, thumbnail)
+	return finish(contentType, img, thumbnail, makeReference)
 }
 
 // Encode is Process for an image the server drew itself (a generated dungeon's
 // map): there is nothing to decode or sniff, so it checks the size the way Process
 // does (MaxSide, MaxPixels), writes the pixels as a PNG, which carries no
-// metadata, and makes the thumbnail. The error is ErrDimensions or ErrTooLarge.
+// metadata, and makes the thumbnail. It makes no reference image: the dungeon
+// is stored without one and gets it the first time it is used as a reference
+// (Service.shrunkImage). The error is ErrDimensions or ErrTooLarge.
 func Encode(img image.Image) (*Result, error) {
 	b := img.Bounds()
 	if b.Dx() < 1 || b.Dy() < 1 || b.Dx() > MaxSide || b.Dy() > MaxSide || b.Dx()*b.Dy() > MaxPixels {
 		return nil, ErrDimensions
 	}
-	return finish(PNG, to8bit(img), thumbnailOfDrawing)
+	return finish(PNG, to8bit(img), thumbnailOfDrawing, false)
 }
 
 // MaxFitPixels is the most pixels CropFit makes: 16 megapixels, 64 MB as it is
@@ -230,12 +232,14 @@ func CropFit(data []byte, crop func(w, h int) image.Rectangle, outW, outH int) (
 	}
 	dst := image.NewRGBA(image.Rect(0, 0, outW, outH))
 	scaleBands(dst, sub.SubImage(rect), xdraw.Src)
-	return finish(JPEG, dst, thumbnail)
+	return finish(JPEG, dst, thumbnail, makeReference)
 }
 
 // finish encodes img as contentType, refuses a file over MaxBytes and adds the
-// thumbnail.
-func finish(contentType string, img image.Image, shrink func(image.Image) image.Image) (*Result, error) {
+// thumbnail, and the reference when withReference says so (the server's own
+// drawings go without: nothing stores it, and a reference is made when one is
+// first wanted).
+func finish(contentType string, img image.Image, shrink func(image.Image) image.Image, withReference bool) (*Result, error) {
 	out, err := encode(contentType, img)
 	if err != nil {
 		return nil, err
@@ -251,7 +255,7 @@ func finish(contentType string, img image.Image, shrink func(image.Image) image.
 			return nil, err
 		}
 	}
-	if makeReference && (b.Dx() > ReferenceSide || b.Dy() > ReferenceSide) {
+	if withReference && (b.Dx() > ReferenceSide || b.Dy() > ReferenceSide) {
 		if res.Reference, err = reference(img, ReferenceSide, ReferenceQuality); err != nil {
 			return nil, err
 		}

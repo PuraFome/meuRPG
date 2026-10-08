@@ -201,6 +201,13 @@ func (s *Service) CreateDungeonMap(
 	if err != nil {
 		return nil, err
 	}
+	// Whether there is room comes before the render and before a token of the
+	// dungeon limit: a campaign at its limits is refused without costing the
+	// server a drawing, or the table a try. The transaction below decides for
+	// good; this only refuses what it would refuse.
+	if err := s.checkDungeonRoom(ctx, m.CampaignID, true); err != nil {
+		return nil, err
+	}
 	if ok, _ := s.dungeonLimit.Allow(m.CampaignID); !ok {
 		return nil, errTooManyDungeons()
 	}
@@ -480,6 +487,10 @@ func (s *Service) RedrawDungeonMap(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the map's layers", err)
 	}
+	// As in CreateDungeonMap: a full gallery is refused before the render.
+	if err := s.checkDungeonRoom(ctx, m.CampaignID, false); err != nil {
+		return nil, err
+	}
 	if ok, _ := s.dungeonLimit.Allow(m.CampaignID); !ok {
 		return nil, errTooManyDungeons()
 	}
@@ -700,6 +711,31 @@ func (s *Service) drawDungeon(ctx context.Context, solid []bool, cols, rows, w, 
 		return nil, fmt.Errorf("encode the dungeon's image: %w", err)
 	}
 	return res, nil
+}
+
+// checkDungeonRoom refuses, before anything is drawn, a dungeon the transaction
+// would refuse: a campaign at its map limit (only for a new map) or whose
+// gallery has no room for one more image. It reads through the pool, so it
+// runs outside the transaction, and it is only a first look: the transaction
+// counts again under its own snapshot.
+func (s *Service) checkDungeonRoom(ctx context.Context, campaignID string, newMap bool) error {
+	if newMap {
+		count, err := s.queries.CountMaps(ctx, campaignID)
+		if err != nil {
+			return s.dbError(ctx, "count maps", err)
+		}
+		if count >= s.maxMaps {
+			return connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the campaign already has %d maps", s.maxMaps))
+		}
+	}
+	usage, err := s.queries.GetGalleryUsage(ctx, campaignID)
+	if err != nil {
+		return s.dbError(ctx, "read the gallery usage", err)
+	}
+	if usage.ImageCount >= s.maxImages || usage.ByteCount >= int64(s.maxBytes) {
+		return connect.NewError(connect.CodeResourceExhausted, errors.New("the campaign's gallery is full"))
+	}
+	return nil
 }
 
 // putImageFiles writes the image's two files, as an upload does before its row.

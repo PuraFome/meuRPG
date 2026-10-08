@@ -110,6 +110,7 @@ func (s *Service) AddMonsters(
 	asked := monstersEvent{CreatureKey: creatureKey, Count: count, NameHash: hex.EncodeToString(sum[:8]), Rolled: rolled, Hidden: hidden}
 
 	var done monstersEvent
+	// No request hash: the add is compared by its own digest, which reads the defaults written out as the same request.
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventCombatantsAdded, encounterID: encID}, func(c *combatTx) (any, error) {
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
@@ -153,13 +154,13 @@ func (s *Service) AddMonsters(
 		}
 		done = *ev.Monsters
 	}
-	out, err := s.finish(ctx, m, res, s.changed(m.CampaignID))
-	if err != nil {
-		return nil, err
-	}
 	ids := make([]string, len(done.Items))
 	for i, it := range done.Items {
 		ids[i] = it.ID
+	}
+	out, err := s.finish(ctx, m, res, s.changedFor(m.CampaignID, ids...))
+	if err != nil {
+		return nil, err
 	}
 	return connect.NewResponse(&playv1.AddMonstersResponse{Encounter: out, CombatantIds: ids}), nil
 }
