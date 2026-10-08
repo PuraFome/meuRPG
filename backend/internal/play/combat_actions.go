@@ -1652,19 +1652,9 @@ func (s *Service) TakeAction(
 		}); err != nil {
 			return nil, fmt.Errorf("spend the action: %w", err)
 		}
-		if actionKey == "standard:dash" {
-			if err := markDashed(ctx, c.q, who.ID); err != nil {
-				return nil, err
-			}
-		}
-		// Disengage: no opportunity attacks for the rest of the turn (slice 9.6b
-		// reads the flag).
-		if actionKey == "standard:disengage" {
-			if err := c.q.SetCombatantDisengaged(ctx, playdb.SetCombatantDisengagedParams{ID: who.ID, Disengaged: true}); err != nil {
-				return nil, fmt.Errorf("mark the disengage: %w", err)
-			}
-		}
-
+		// What the action does to the turn: a standard action's own, or the one a
+		// feature performs (Cunning Action's Dash, Step of the Wind's Disengage).
+		standard := actionKey
 		if feature {
 			sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, who)
 			if err != nil {
@@ -1675,6 +1665,9 @@ func (s *Service) TakeAction(
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("action_key is not one of the character's feature actions"))
 			}
 			fa := sheet.FeatureActions[fi]
+			if fa.Standard != "" {
+				standard = fa.Standard
+			}
 			// One use of its resource: only a player's character counts them, and a
 			// pool of points (Cura pelas mãos) is the master's.
 			if fa.Resource != "" && !fa.Pool && who.Kind == kindPlayer {
@@ -1691,6 +1684,18 @@ func (s *Service) TakeAction(
 				if vit != nil {
 					vitals = vit
 				}
+			}
+		}
+		if standard == "standard:dash" {
+			if err := markDashed(ctx, c.q, who.ID); err != nil {
+				return nil, err
+			}
+		}
+		// Disengage: no opportunity attacks for the rest of the turn (slice 9.6b
+		// reads the flag).
+		if standard == "standard:disengage" {
+			if err := c.q.SetCombatantDisengaged(ctx, playdb.SetCombatantDisengagedParams{ID: who.ID, Disengaged: true}); err != nil {
+				return nil, fmt.Errorf("mark the disengage: %w", err)
 			}
 		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
