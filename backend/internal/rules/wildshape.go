@@ -91,7 +91,7 @@ func (c *Content) WildShapeDerived(character Derived, beast string) (Derived, er
 	b := c.c.monsterDerived(m)
 	d := character
 	d.ArmorClass, d.ArmorClassDescription = b.ArmorClass, b.ArmorClassDescription
-	d.HitPointsMax, d.HitDice = b.HitPointsMax, b.HitDice
+	d.HitPointsMax, d.HitPointsFromEffects, d.HitDice = b.HitPointsMax, 0, b.HitDice
 	d.SpeedWalkFt, d.SpeedFlyFt, d.SpeedSwimFt, d.SpeedClimbFt, d.SpeedBurrowFt, d.Hover =
 		b.SpeedWalkFt, b.SpeedFlyFt, b.SpeedSwimFt, b.SpeedClimbFt, b.SpeedBurrowFt, b.Hover
 	d.Attacks, d.AttacksPerAction, d.SaveActions = b.Attacks, b.AttacksPerAction, b.SaveActions

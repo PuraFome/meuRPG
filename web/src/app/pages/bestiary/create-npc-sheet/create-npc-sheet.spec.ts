@@ -211,6 +211,10 @@ describe('CreateNpcSheet: "Criar NPC" from a creature (MR-042, RN-29, E10-08 sta
       'Só o mestre da campanha usa o bestiário e faz NPCs.',
     ],
     [
+      new ConnectError('full', Code.ResourceExhausted),
+      'A campanha chegou ao limite de 1.000 personagens e NPCs. Apague um para criar outro.',
+    ],
+    [
       invalidField('name'),
       'Não deu para criar o NPC: o nome precisa ter de 1 a 80 letras, numa linha só. Confira e tente de novo.',
     ],

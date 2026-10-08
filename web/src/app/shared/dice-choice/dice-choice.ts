@@ -1,4 +1,5 @@
 import { Component, input, model } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 
 import type { DiceOption } from '../../core/campaigns/dice-labels';
 
@@ -14,6 +15,7 @@ import type { DiceOption } from '../../core/campaigns/dice-labels';
  */
 @Component({
   selector: 'app-dice-choice',
+  imports: [MatIconModule],
   templateUrl: './dice-choice.html',
   styleUrl: './dice-choice.scss',
 })
@@ -31,6 +33,9 @@ export class DiceChoice<T extends number> {
   readonly notes = input<Partial<Record<number, string>>>({});
   /** Options that show what is, but cannot be chosen (the "Personalizado" style): dashed, never the one that takes the click. */
   readonly inert = input<readonly T[]>([]);
+
+  /** Why an inert option cannot be chosen, in words inside its card ("bloqueado" icon and the sentence), keyed by option value. */
+  readonly reasons = input<Partial<Record<number, string>>>({});
 
   protected isInert(value: T): boolean {
     return this.inert().includes(value);

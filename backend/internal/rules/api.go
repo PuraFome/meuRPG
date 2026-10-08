@@ -580,6 +580,11 @@ type Derived struct {
 	ArmorClass            int
 	ArmorClassDescription string
 	HitPointsMax          int
+	// HitPointsFromEffects is HitPointsMax minus what the hit dice and the
+	// Constitution modifier give (with the floor of one per level): what the
+	// "hp.max" effects add. It is negative for an effect that subtracts and 0
+	// for a creature or a beast form.
+	HitPointsFromEffects int
 	// HitDice has one entry per die size, largest first.
 	HitDice     []HitDice
 	SpeedWalkFt int

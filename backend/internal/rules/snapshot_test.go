@@ -447,7 +447,7 @@ func TestCreatureCorrectionsAreClosed(t *testing.T) {
 	}
 	for name, doc := range map[string]string{
 		"unknown creature": one("monster:nope", "attacks_per_action", "2"),
-		"unknown field":    one("monster:veteran", "hit_points", "2"),
+		"unknown field":    one("monster:veteran", "challenge_rating", "2"),
 		"no Multiattack":   one("monster:rat", "attacks_per_action", "2"),
 		"duplicate":        `{"creature_corrections":[{"creature":"monster:veteran","field":"attacks_per_action","value":3,"source":"SRD"},{"creature":"monster:veteran","field":"attacks_per_action","value":2,"source":"SRD"}]}`,
 		"value below 1":    one("monster:veteran", "attacks_per_action", "0"),
@@ -463,5 +463,113 @@ func TestCreatureCorrectionsAreClosed(t *testing.T) {
 	c := &content{classLevels: map[string][]*srd51.Level{}, monsters: monsters}
 	if err := c.applyCorrections(fstest.MapFS{"effects/corrections.json": {Data: []byte(one("monster:veteran", "attacks_per_action", "3"))}}); err != nil || c.attacksPerAction["monster:veteran"] != 3 {
 		t.Errorf("a good correction = %v, %v; want it applied", err, c.attacksPerAction)
+	}
+}
+
+// TestStatBlockCorrectionsAreClosed: the loader refuses a stat block correction
+// whose value does not fit its field, and writes a good one over the creature.
+func TestStatBlockCorrectionsAreClosed(t *testing.T) {
+	t.Parallel()
+	newContent := func() *content {
+		return &content{
+			classLevels: map[string][]*srd51.Level{},
+			skills:      map[string]*srd51.Skill{"skill:perception": {}},
+			named:       map[string]*srd51.Named{"damage-type:cold": {}, "condition:deafened": {}},
+			monsters: map[string]*srd51.Monster{"monster:ogre": {
+				HitDice: "6d8", HitPoints: 22, HitPointsRoll: "6d8-5", Darkvision: 30,
+				Immunities: []srd51.MonsterDamageMod{{Types: []string{"damage-type:fire"}, Note: "from nonmagical weapons"}},
+			}},
+		}
+	}
+	one := func(field, value string) string {
+		return `{"creature_corrections":[{"creature":"monster:ogre","field":"` + field + `","value":` + value + `,"source":"SRD"}]}`
+	}
+	for name, doc := range map[string]string{
+		"roll of other dice":         one("hit_points_roll", `"5d8+5"`),
+		"roll that is not a roll":    one("hit_points_roll", `"many"`),
+		"hit points of zero":         one("hit_points", "0"),
+		"speed that is not a number": one("speed_swim", `"fast"`),
+		"negative sense":             one("darkvision", "-1"),
+		"unknown skill":              one("skills", `{"skill:nope":2}`),
+		"unknown condition":          one("condition_immunities", `["condition:nope"]`),
+		"condition listed twice":     one("condition_immunities", `["condition:deafened","condition:deafened"]`),
+		"damage type as condition":   one("condition_immunities", `["damage-type:cold"]`),
+		"immunity that has a note":   one("damage_immunities", `["damage-type:cold"]`),
+	} {
+		if err := newContent().applyCorrections(fstest.MapFS{"effects/corrections.json": {Data: []byte(doc)}}); err == nil {
+			t.Errorf("%s: the loader accepted it", name)
+		}
+	}
+	c := newContent()
+	doc := `{"creature_corrections":[
+		{"creature":"monster:ogre","field":"hit_points","value":33,"source":"SRD"},
+		{"creature":"monster:ogre","field":"hit_points_roll","value":"6d8+6","source":"SRD"},
+		{"creature":"monster:ogre","field":"darkvision","value":0,"source":"SRD"},
+		{"creature":"monster:ogre","field":"blindsight","value":30,"source":"SRD"},
+		{"creature":"monster:ogre","field":"skills","value":{"skill:perception":3},"source":"SRD"},
+		{"creature":"monster:ogre","field":"condition_immunities","value":["condition:deafened"],"source":"SRD"}]}`
+	if err := c.applyCorrections(fstest.MapFS{"effects/corrections.json": {Data: []byte(doc)}}); err != nil {
+		t.Fatalf("good corrections: %v", err)
+	}
+	m := c.monsters["monster:ogre"]
+	if m.HitPoints != 33 || m.HitPointsRoll != "6d8+6" || m.Darkvision != 0 || m.Blindsight != 30 || m.Skills["skill:perception"] != 3 || len(m.ConditionImmunities) != 1 {
+		t.Errorf("corrected stat block = %+v, want every field written", m)
+	}
+}
+
+// TestSpellAndSubclassCorrectionsAreClosed: the loader refuses a spell or subclass
+// correction it does not know, and writes a good one over the snapshot.
+func TestSpellAndSubclassCorrectionsAreClosed(t *testing.T) {
+	t.Parallel()
+	newContent := func() *content {
+		return &content{
+			classLevels: map[string][]*srd51.Level{},
+			named:       map[string]*srd51.Named{"damage-type:fire": {}, "condition:deafened": {}},
+			spells: map[string]*srd51.Spell{
+				"spell:ray":  {Level: 2},
+				"spell:ward": {Level: 3},
+			},
+			subclasses: map[string]*srd51.Subclass{"subclass:life": {Spells: []srd51.SubclassSpell{{Spell: "spell:ray", ClassLevel: 3}}}},
+		}
+	}
+	spell := func(body string) string {
+		return `{"spell_corrections":[{"spell":"spell:ray",` + body + `,"source":"SRD"}]}`
+	}
+	for name, doc := range map[string]string{
+		"unknown spell":               `{"spell_corrections":[{"spell":"spell:nope","attack_type":"ranged","source":"SRD"}]}`,
+		"nothing to correct":          spell(`"attack_type":""`),
+		"attack that is not a type":   spell(`"attack_type":"thrown"`),
+		"save that is not an ability": spell(`"save_ability":"luck","save_success":"half"`),
+		"save without an outcome":     spell(`"save_ability":"dex"`),
+		"outcome without a save":      spell(`"save_success":"half"`),
+		"damage of a condition":       spell(`"damage":[{"damage_type":"condition:deafened","at_slot_level":{"2":"2d6"}}]`),
+		"damage without slot levels":  spell(`"damage":[{"damage_type":"damage-type:fire","at_slot_level":{}}]`),
+		"slot below the spell":        spell(`"damage":[{"damage_type":"damage-type:fire","at_slot_level":{"1":"2d6"}}]`),
+		"slot above the ninth":        spell(`"damage":[{"damage_type":"damage-type:fire","at_slot_level":{"10":"2d6"}}]`),
+		"dice that are not dice":      spell(`"damage":[{"damage_type":"damage-type:fire","at_slot_level":{"2":"lots"}}]`),
+		"without a source":            `{"spell_corrections":[{"spell":"spell:ray","attack_type":"ranged"}]}`,
+		"corrected twice":             `{"spell_corrections":[{"spell":"spell:ray","attack_type":"ranged","source":"SRD"},{"spell":"spell:ray","attack_type":"melee","source":"SRD"}]}`,
+		"unknown subclass":            `{"subclass_corrections":[{"subclass":"subclass:nope","add_spells":[{"spell":"spell:ray","class_level":7}],"source":"SRD"}]}`,
+		"subclass spell unknown":      `{"subclass_corrections":[{"subclass":"subclass:life","add_spells":[{"spell":"spell:nope","class_level":7}],"source":"SRD"}]}`,
+		"subclass level out":          `{"subclass_corrections":[{"subclass":"subclass:life","add_spells":[{"spell":"spell:ward","class_level":21}],"source":"SRD"}]}`,
+		"subclass spell already has":  `{"subclass_corrections":[{"subclass":"subclass:life","add_spells":[{"spell":"spell:ray","class_level":3}],"source":"SRD"}]}`,
+		"subclass without a source":   `{"subclass_corrections":[{"subclass":"subclass:life","add_spells":[{"spell":"spell:ward","class_level":7}]}]}`,
+	} {
+		if err := newContent().applyCorrections(fstest.MapFS{"effects/corrections.json": {Data: []byte(doc)}}); err == nil {
+			t.Errorf("%s: the loader accepted it", name)
+		}
+	}
+	c := newContent()
+	doc := `{"spell_corrections":[{"spell":"spell:ray","attack_type":"ranged","save_ability":"dex","save_success":"half",
+		"damage":[{"damage_type":"damage-type:fire","at_slot_level":{"2":"2d6","3":"3d6"}}],"source":"SRD"}],
+		"subclass_corrections":[{"subclass":"subclass:life","add_spells":[{"spell":"spell:ward","class_level":7}],"source":"SRD"}]}`
+	if err := c.applyCorrections(fstest.MapFS{"effects/corrections.json": {Data: []byte(doc)}}); err != nil {
+		t.Fatalf("good corrections: %v", err)
+	}
+	if s := c.spells["spell:ray"]; s.AttackType != "ranged" || s.SaveAbility != "dex" || s.SaveSuccess != "half" || len(s.Damage) != 1 || s.Damage[0].AtSlotLevel["3"] != "3d6" {
+		t.Errorf("corrected spell = %+v, want attack, save and damage written", s)
+	}
+	if got := c.subclasses["subclass:life"].Spells; len(got) != 2 || got[1].Spell != "spell:ward" || got[1].ClassLevel != 7 {
+		t.Errorf("corrected subclass spells = %+v, want the new spell at level 7 after the old one", got)
 	}
 }

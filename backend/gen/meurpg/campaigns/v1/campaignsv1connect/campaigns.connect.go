@@ -160,6 +160,10 @@ type CampaignServiceClient interface {
 	//
 	// With `requires_approval`, whoever accepts the invite becomes a pending
 	// member instead of a player (RN-15, MR-024): see AcceptInvite.
+	//
+	// A campaign has at most 50 invites that still work (not revoked, not
+	// expired, with uses left; RN-30): the 51st is `resource_exhausted`. Revoking
+	// an invite, or letting it expire or run out, frees a place.
 	CreateInvite(context.Context, *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error)
 	// ListInvites lists a campaign's invites, newest first, without their
 	// tokens. Only the campaign's master may call it. It only reads, and is
@@ -548,6 +552,10 @@ type CampaignServiceHandler interface {
 	//
 	// With `requires_approval`, whoever accepts the invite becomes a pending
 	// member instead of a player (RN-15, MR-024): see AcceptInvite.
+	//
+	// A campaign has at most 50 invites that still work (not revoked, not
+	// expired, with uses left; RN-30): the 51st is `resource_exhausted`. Revoking
+	// an invite, or letting it expire or run out, frees a place.
 	CreateInvite(context.Context, *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error)
 	// ListInvites lists a campaign's invites, newest first, without their
 	// tokens. Only the campaign's master may call it. It only reads, and is

@@ -36,6 +36,12 @@ const maxUploadBody = images.MaxBytes + 64<<10
 // 2 minutes is a little under 1 Mbit/s, which a phone on a bad connection reaches.
 const uploadReadTimeout = 2 * time.Minute
 
+// uploadSlotReadTimeout is how long an upload that holds the one processing slot
+// has to send its file. The slot is shared with the fog tiles and every other
+// image job, so a client that trickles its body must not hold it for the
+// whole uploadReadTimeout: 45 s is 10 MiB at a little under 2 Mbit/s.
+const uploadSlotReadTimeout = 45 * time.Second
+
 // downloadWriteTimeout is how long a client has to take a whole image,
 // thumbnail or tile: the same two minutes as the upload, for the same 10 MiB
 // on a slow phone. A client that stops reading is dropped after it.
@@ -112,12 +118,13 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request) (mapsdb.Gallery
 	// 10 MiB waiting for its turn would otherwise sit in memory, and a few of
 	// them would not fit the instance. So at most one uploaded file is in
 	// memory at a time, from the read to the end of the decode. The client's
-	// time to send the file starts when its turn does.
+	// time to send the file starts when its turn does, and is shorter than
+	// the upload's whole: the slot is not held for a trickle.
 	release, err := s.acquireProcessing(ctx)
 	if err != nil {
 		return mapsdb.GalleryImage{}, err
 	}
-	slowclient.ReadBody(w, uploadReadTimeout)
+	slowclient.ReadBody(w, s.slotReadTimeout)
 	name, data, err := readFile(form)
 	if err != nil {
 		release()

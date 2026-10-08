@@ -109,6 +109,13 @@ INSERT INTO campaign_invites
 VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
+-- name: CountActiveInvites :one
+-- The invites of a campaign that still work: not revoked, not expired, with
+-- uses left. The cap on creating counts them (RN-30); the index on
+-- campaign_id finds the campaign's rows.
+SELECT count(*)::INT4 FROM campaign_invites
+WHERE campaign_id = $1 AND revoked_at IS NULL AND expires_at > sqlc.arg(now) AND use_count < max_uses;
+
 -- name: ListInvites :many
 -- Newest first. Invites that expired more than 30 days ago are gone (TTL).
 SELECT * FROM campaign_invites

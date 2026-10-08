@@ -17,10 +17,12 @@ const LEVEL_LIST = new Intl.ListFormat('pt-BR', { type: 'conjunction' });
  * fills it (typing a roll made at the table is still allowed), the formula
  * the row adds, and a box with the total so far.
  *
- * The box is a preview. The server computes the real maximum when the sheet
- * is saved (`rules.Derive`), with the same arithmetic; this only shows the
- * player where the number comes from while they roll. `constitution` is the
- * final score (base, race and manual bonuses).
+ * The rows are the dice and the Constitution modifier, so the player sees where
+ * the number comes from while they roll. What the effects add (Dwarven Toughness,
+ * a table's own effect) is the server's number, `fromEffects`, derived for the
+ * draft by `PreviewCharacter`: the browser has no effect maths. Without it the
+ * box is only a preview of the dice and says so. `constitution` is the final
+ * score (base, race and manual bonuses).
  */
 @Component({
   selector: 'app-hit-points-rolls',
@@ -36,9 +38,16 @@ export class HitPointsRolls {
   readonly levelDice = input<readonly number[] | null>(null);
   readonly level = input.required<number>();
   readonly constitution = input.required<number>();
+  /**
+   * What the effects of the race, the class and the features add to the hit points (`DerivedSheet.hit_points_from_effects`),
+   * as the server derived it for this draft; `null` while there is none, and the box then adds up the dice and the
+   * Constitution modifier alone, with its note.
+   */
+  readonly fromEffects = input<number | null>(null);
   /** One entry per level after the first, index 0 = level 2; 0 means "not rolled yet". */
   readonly rolls = model.required<readonly number[]>();
 
+  /** The rows and the arithmetic of the dice; the effects' share is added in `total`, `min` and `max`. */
   protected readonly preview = computed(() =>
     hitPointsPreview(
       this.hitDie(),
@@ -48,6 +57,18 @@ export class HitPointsRolls {
       this.levelDice(),
     ),
   );
+  private readonly effects = computed(() => this.fromEffects() ?? 0);
+  protected readonly total = computed(() => this.preview().total + this.effects());
+  protected readonly min = computed(() => this.preview().min + this.effects());
+  protected readonly max = computed(() => this.preview().max + this.effects());
+  /** "+1" or "−1" for the line that names what the effects add; empty when the server has said nothing or they add nothing. */
+  protected readonly effectsWords = computed(() => {
+    const n = this.fromEffects();
+    if (!n) {
+      return '';
+    }
+    return n < 0 ? `−${-n}` : `+${n}`;
+  });
   protected readonly modifier = computed(() => formatModifier(this.preview().constitutionModifier));
   /** "+ 3" or "− 1", the way the formula line writes it. */
   protected readonly modifierWords = computed(() => {

@@ -710,6 +710,69 @@ func TestMR044_AGoldCampaignConvertsTheGoldOnly(t *testing.T) {
 	}
 }
 
+// xpChanged reads the next event, which must be xp_changed.
+func (w *watcher) xpChanged() {
+	w.t.Helper()
+	if ev := w.next(); ev.GetXpChanged() == nil {
+		w.t.Fatalf("event = %v, want xp_changed", ev)
+	}
+}
+
+// MR-041: converting a found treasure into XP, and undoing that award, change what
+// the master reads of the map (the converted state), so the master's open maps are
+// told; the players read nothing different, so they are told nothing (RN-10), and
+// what the event carries is the map's ID alone.
+func TestMR041_AConversionAndItsUndoTellTheMastersMapsOnly(t *testing.T) {
+	t.Parallel()
+	s := newScenes(t, true) // the streams need an open session
+	s.master.mustSetGrid(s.campaign, s.mapID, 20)
+	m := s.master
+	if _, err := m.campaigns.SetCampaignXpMode(t.Context(), connect.NewRequest(&campaignsv1.SetCampaignXpModeRequest{CampaignId: s.campaign, XpMode: campaignsv1.XpMode_XP_MODE_GOLD})); err != nil {
+		t.Fatalf("SetCampaignXpMode(gold) error = %v", err)
+	}
+	probeMap := m.createMap(s.campaign, "Sonda", m.newImage(s.campaign)).GetId()
+	res, err := s.place(func(r *mapsv1.PlaceTreasureRequest) {
+		r.Name, r.PartyLevel, r.Seed = new("LEAKCANARY-treasure-1"), 17, proto.Uint64(31)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	point := res.GetPoint()
+	m.setPointRevealed(s.campaign, point, true)
+	s.markFound(point, s.pens.GetId())
+	masterWatch, anaWatch := m.watch(s.campaign), s.ana.watch(s.campaign)
+
+	award, err := m.xp.AwardXP(t.Context(), connect.NewRequest(&progressionv1.AwardXPRequest{
+		CampaignId: s.campaign, Mode: progressionv1.XPAwardMode_XP_AWARD_MODE_GOLD, Reason: "Voltar à cidade",
+		CharacterIds: []string{s.pens.GetId()}, TreasurePointIds: []string{point.GetId()}, IdempotencyKey: uuid.New().String(),
+	}))
+	if err != nil {
+		t.Fatalf("AwardXP(Voltar à cidade) error = %v", err)
+	}
+	masterWatch.mapChanged(s.mapID)
+	masterWatch.xpChanged()
+	if _, err := m.xp.UndoLastXPAward(t.Context(), connect.NewRequest(&progressionv1.UndoLastXPAwardRequest{
+		CampaignId: s.campaign, IdempotencyKey: uuid.New().String(), ExpectedAwardId: award.Msg.GetAward().GetId(),
+	})); err != nil {
+		t.Fatalf("UndoLastXPAward() error = %v", err)
+	}
+	masterWatch.mapChanged(s.mapID)
+	masterWatch.xpChanged()
+
+	// The probe is the last change, and reaches the players: what came before it
+	// on their stream is all they were sent.
+	m.setMapRevealed(s.campaign, probeMap, true)
+	sent := anaWatch.drain(probeMap)
+	for _, ev := range sent {
+		if ev.GetXpChanged() == nil {
+			t.Errorf("Ana's stream got %v for a conversion, want nothing about the map", ev)
+		}
+		if saw := asJSON(t, ev); strings.Contains(saw, "LEAKCANARY-treasure-1") || strings.Contains(saw, point.GetId()) {
+			t.Errorf("Ana's stream carries the treasure: %s", saw)
+		}
+	}
+}
+
 // The description always fits a point's 2,000 characters: for every treasure the
 // tables can roll (many seeds, every level) and for the worst one the limits allow.
 func TestTreasureDescriptionAlwaysFits(t *testing.T) {

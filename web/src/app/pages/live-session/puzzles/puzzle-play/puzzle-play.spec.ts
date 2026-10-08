@@ -574,7 +574,7 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
     });
 
     it('says which step was wrong and who erred, until the master plays it again', async () => {
-      const wrong = seq({ plays: 2 }, { lastMove: wrongMove('Lia', { step: 4 }) });
+      const wrong = seq({ plays: 2 }, { lastMove: wrongMove('Lia', { step: 4, playsAtMove: 2 }) });
       const { el, settle } = await render(wrong);
       expect(el.querySelector('.board-card .mr-notice--danger')?.textContent).toContain(
         'Errou o passo 4. A tentativa recomeçou; Lia errou.',
@@ -582,15 +582,37 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
       // The master plays it again: the old note goes.
       api.playerRunResult = seq(
         { plays: 3 },
-        { revision: 5, lastMove: wrongMove('Lia', { step: 4, at: wrong.lastMove!.at }) },
+        {
+          revision: 5,
+          lastMove: wrongMove('Lia', { step: 4, playsAtMove: 2, at: wrong.lastMove!.at }),
+        },
       );
       await host.state.changed('a');
       await settle();
       expect(el.querySelector('.board-card .mr-notice--danger')).toBeNull();
     });
 
+    it('keeps the note after a reload while no play happened since the wrong bell', async () => {
+      // A page opened now (a reload, or a second player arriving late) reads the same counts.
+      const { el } = await render(
+        seq({ plays: 2 }, { lastMove: wrongMove('Lia', { step: 4, playsAtMove: 2 }) }),
+      );
+      expect(el.querySelector('.board-card .mr-notice--danger')?.textContent).toContain(
+        'Errou o passo 4. A tentativa recomeçou; Lia errou.',
+      );
+    });
+
+    it('shows no note after a reload when the master played it again since the wrong bell', async () => {
+      const { el } = await render(
+        seq({ plays: 3 }, { lastMove: wrongMove('Lia', { step: 4, playsAtMove: 2 }) }),
+      );
+      expect(el.querySelector('.board-card .mr-notice--danger')).toBeNull();
+    });
+
     it('says "você errou" when the wrong bell was the player\'s own', async () => {
-      const { el } = await render(seq({ plays: 2 }, { lastMove: wrongMove('Toren', { step: 2 }) }));
+      const { el } = await render(
+        seq({ plays: 2 }, { lastMove: wrongMove('Toren', { step: 2, playsAtMove: 2 }) }),
+      );
       expect(el.querySelector('.board-card .mr-notice--danger')?.textContent).toContain(
         'Errou o passo 2. A tentativa recomeçou; você errou.',
       );

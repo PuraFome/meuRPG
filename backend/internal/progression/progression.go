@@ -100,8 +100,13 @@ type Treasures interface {
 	// award inside tx.
 	MarkConverted(ctx context.Context, tx pgx.Tx, awardID string, pointIDs []string) error
 	// Release frees the treasures the award converted inside tx (it was
-	// undone): they are "found, not converted" again.
-	Release(ctx context.Context, tx pgx.Tx, awardID string) error
+	// undone): they are "found, not converted" again. It returns the IDs of the
+	// maps whose points it freed.
+	Release(ctx context.Context, tx pgx.Tx, awardID string) ([]string, error)
+	// PublishChanged tells the watching members that the points of those maps
+	// changed state, after a conversion or an undo committed. It carries no
+	// content: the app reads the map again, where it is allowed (RN-10).
+	PublishChanged(campaignID string, mapIDs []string)
 }
 
 // Campaigns tells how the campaign levels (the campaigns module implements it).

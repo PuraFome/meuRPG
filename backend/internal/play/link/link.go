@@ -184,6 +184,9 @@ type FeatureAction struct {
 	// Pool says the resource is a pool of points (Cura pelas mãos), not a count
 	// of uses: using the action spends no point.
 	Pool bool
+	// Standard is the standard action it performs ("standard:dash" for Cunning
+	// Action's Dash), or "".
+	Standard string
 }
 
 // Dice is a roll: Count d Sides plus Bonus (Count 0 is a flat number), with the

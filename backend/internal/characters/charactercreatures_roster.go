@@ -527,6 +527,58 @@ func (s *Service) CreatureSave(ctx context.Context, tx pgx.Tx, campaignID, monst
 	return link.Save{}, nil
 }
 
+// DamageModifiers implements play.CombatRoster: the damage types the target
+// takes double, half or none of, from its stat block. A creature's key is given;
+// an NPC made from a creature has it on its basic sheet; anyone else (a player's
+// character, an NPC typed by hand) has none. Only the plain entries count: one
+// with a condition in the SRD's words ("from nonmagical weapons") is left to the
+// master, who changes the amount that lands.
+func (s *Service) DamageModifiers(ctx context.Context, tx pgx.Tx, campaignID, characterID, monsterKey string) (combat.TypeModifiers, error) {
+	if monsterKey == "" {
+		id, ok := parseUUID(characterID)
+		if !ok {
+			return combat.TypeModifiers{}, nil
+		}
+		rows, err := s.queriesIn(tx).ListCombatCharacters(ctx, charactersdb.ListCombatCharactersParams{CampaignID: campaignID, Ids: []string{id}})
+		if err != nil {
+			return combat.TypeModifiers{}, s.dbError(ctx, "read a character for a damage", err)
+		}
+		if len(rows) == 0 || rows[0].Kind == kindPlayer {
+			return combat.TypeModifiers{}, nil
+		}
+		sheet, err := loadSheet(rows[0].ID, rows[0].Sheet)
+		if err != nil {
+			return combat.TypeModifiers{}, s.dbError(ctx, "read a character for a damage", err)
+		}
+		if monsterKey = sheet.GetBasic().GetMonsterKey(); monsterKey == "" {
+			return combat.TypeModifiers{}, nil
+		}
+	}
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return combat.TypeModifiers{}, wrap("read rules content", err)
+	}
+	c, ok := content.CreatureByKey(monsterKey)
+	if !ok {
+		return combat.TypeModifiers{}, nil
+	}
+	return combat.TypeModifiers{Vulnerable: plainTypes(c.Vulnerabilities), Resistant: plainTypes(c.Resistances), Immune: plainTypes(c.Immunities)}, nil
+}
+
+// plainTypes lists the damage types of the entries that carry no condition.
+func plainTypes(mods []rules.CreatureDamageMod) []string {
+	var out []string
+	for _, m := range mods {
+		if m.Note != "" {
+			continue
+		}
+		for _, t := range m.Types {
+			out = append(out, t.Key)
+		}
+	}
+	return out
+}
+
 // CreatureEyes implements play.CombatRoster: what a creature notices with, from
 // its stat block: the passive Perception it lists and its senses (MR-035, MR-037).
 // False for a key that is not an SRD creature.

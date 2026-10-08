@@ -34,6 +34,7 @@ const (
 	maxTreasurePO      = 1_000_000
 	maxLightFt         = 120
 	maxFlatDamage      = 100
+	maxTrapDice        = 24 // the SRD's deadliest trap at levels 17 to 20: 24d10
 )
 
 // The database's trap states (map_points.trap_state) and the API's.
@@ -212,7 +213,7 @@ func (s *Service) cleanDamages(where string, in []*rulesv1.TrapDamage) ([]*rules
 	return out, nil
 }
 
-// cleanDamage checks one damage part: 1 to 20 dice of d4, d6, d8, d10 or d12, or
+// cleanDamage checks one damage part: 1 to 24 dice of d4, d6, d8, d10 or d12, or
 // a flat number from 1 to 100, and a damage type of the rules.
 func (s *Service) cleanDamage(where string, in *rulesv1.TrapDamage) (*rulesv1.TrapDamage, error) {
 	if in == nil {
@@ -224,8 +225,8 @@ func (s *Service) cleanDamage(where string, in *rulesv1.TrapDamage) (*rulesv1.Tr
 		return nil, badSpec("%s.dice is not dice such as \"2d6\" or a flat number", where)
 	case d.Count == 0 && (d.Bonus < 1 || d.Bonus > maxFlatDamage):
 		return nil, badSpec("%s.dice: a flat number is 1 to %d", where, maxFlatDamage)
-	case d.Count > 0 && (d.Count > 20 || d.Bonus != 0 || !validSides(d.Sides)):
-		return nil, badSpec("%s.dice is 1 to 20 dice of d4, d6, d8, d10 or d12", where)
+	case d.Count > 0 && (d.Count > maxTrapDice || d.Bonus != 0 || !validSides(d.Sides)):
+		return nil, badSpec("%s.dice is 1 to %d dice of d4, d6, d8, d10 or d12", where, maxTrapDice)
 	}
 	if !strings.HasPrefix(in.GetDamageTypeKey(), "damage-type:") || s.rules.NamePT(in.GetDamageTypeKey()) == "" {
 		return nil, badSpec("%s.damage_type_key is not a damage type", where)

@@ -3,6 +3,7 @@ package progression
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -527,4 +528,87 @@ func asJSON(t *testing.T, m proto.Message) string {
 		t.Fatalf("protojson.Marshal() error = %v", err)
 	}
 	return string(b)
+}
+
+// TestMR041_AConversionAndItsUndoTellTheMapsOnceAfterTheCommit: converting
+// treasures of two maps publishes one change per map, only once the award is
+// committed (the conversion that retries after a serialization conflict
+// publishes once, and a refused one publishes nothing); the undo publishes for
+// the maps it freed.
+func TestMR041_AConversionAndItsUndoTellTheMapsOnceAfterTheCommit(t *testing.T) {
+	t.Parallel()
+	tb := newTable(t, gold, 2)
+	first, second := tb.newMap(), tb.newMap()
+	session := tb.startSession(t)
+	a := tb.treasure(t, first, "Bolsa", 120, &session, tb.pcs[0].GetId())
+	b := tb.treasure(t, first, "Ídolo", 80, &session, tb.pcs[1].GetId())
+	c := tb.treasure(t, second, "Cálice", 50, &session, tb.pcs[0].GetId())
+	unfound := tb.treasure(t, second, "Baú", 70, nil)
+
+	// A refused award changes no map: nothing is published.
+	if _, err := tb.backToTown("", tb.ids(2), a, unfound); err == nil {
+		t.Fatal("AwardXP(voltar à cidade) with a treasure not found yet succeeded, want a refusal")
+	}
+	if got := tb.h.treasures.published(); len(got) != 0 {
+		t.Fatalf("published after a refused award = %v, want nothing", got)
+	}
+
+	// The first attempt conflicts after writing; the retry commits, and one
+	// publish per map follows, for the committed write only.
+	tb.h.treasures.mu.Lock()
+	tb.h.treasures.conflicts = 1
+	tb.h.treasures.mu.Unlock()
+	key := newKey()
+	res, err := tb.backToTown(key, tb.ids(2), a, b, c)
+	if err != nil {
+		t.Fatalf("AwardXP(voltar à cidade) error = %v", err)
+	}
+	want := []published{{campaignID: tb.campaign, mapIDs: sortedCopy(first, second)}}
+	if got := tb.h.treasures.published(); !publishedEqual(got, want) {
+		t.Fatalf("published after the conversion = %v, want %v", got, want)
+	}
+
+	// The same request again is a repeat: no new publish.
+	if _, err := tb.backToTown(key, tb.ids(2), a, b, c); err != nil {
+		t.Fatalf("AwardXP(voltar à cidade) repeated error = %v", err)
+	}
+	if got := tb.h.treasures.published(); len(got) != 1 {
+		t.Fatalf("published after a repeated request = %v, want the one call", got)
+	}
+
+	undoKey := newKey()
+	if undone, err := tb.master.undo(tb.campaign, undoKey); err != nil || undone.GetId() != res.GetAward().GetId() {
+		t.Fatalf("UndoLastXPAward() = %v, %v; want the conversion undone", undone, err)
+	}
+	want = append(want, want[0])
+	if got := tb.h.treasures.published(); !publishedEqual(got, want) {
+		t.Fatalf("published after the undo = %v, want %v", got, want)
+	}
+	if _, err := tb.master.undo(tb.campaign, undoKey); err != nil { // a retry of the same undo
+		t.Fatalf("UndoLastXPAward() retried error = %v", err)
+	}
+	if got := tb.h.treasures.published(); len(got) != 2 {
+		t.Fatalf("published after a repeated undo = %v, want two calls in all", got)
+	}
+
+	// An award without treasures publishes nothing about maps.
+	tb.master.manual(t, tb.campaign, 10, tb.ids(2)...)
+	if _, err := tb.master.undo(tb.campaign, newKey()); err != nil {
+		t.Fatalf("UndoLastXPAward(manual) error = %v", err)
+	}
+	if got := tb.h.treasures.published(); len(got) != 2 {
+		t.Fatalf("published after a manual award = %v, want two calls in all", got)
+	}
+}
+
+func sortedCopy(ids ...string) []string {
+	out := slices.Clone(ids)
+	slices.Sort(out)
+	return out
+}
+
+func publishedEqual(got, want []published) bool {
+	return slices.EqualFunc(got, want, func(g, w published) bool {
+		return g.campaignID == w.campaignID && slices.Equal(sortedCopy(g.mapIDs...), sortedCopy(w.mapIDs...))
+	})
 }

@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -40,8 +41,10 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/characters"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/contenttest"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
+	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/notes"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
@@ -227,9 +230,11 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 		t.Fatalf("notes.New() error = %v", err)
 	}
 
+	treasures := NewTreasures(pool)
+	treasures.SetService(svc) // a conversion tells the open maps, as cmd/api wires it
 	// The XP: "Voltar à cidade" turns a found treasure into XP (MR-041, MR-044).
 	xp, err := progression.New(progression.Config{
-		Pool: pool, Party: chars, Combats: live, Log: live, Treasures: NewTreasures(pool), Campaigns: camps, Profiles: h.users, Logger: logger, Now: clock.Now,
+		Pool: pool, Party: chars, Combats: live, Log: live, Treasures: treasures, Campaigns: camps, Profiles: h.users, Logger: logger, Now: clock.Now,
 	})
 	if err != nil {
 		t.Fatalf("progression.New() error = %v", err)
@@ -588,4 +593,50 @@ func (d testDice) ForcedDice(ctx context.Context, tx pgx.Tx, campaignID, userID 
 		return play.DiceForcedPhysical, err
 	}
 	return play.DiceChoice, err
+}
+
+// afterQuery runs hook once, right after the first statement whose text
+// contains match finishes.
+type afterQuery struct {
+	match string
+	hook  func()
+	once  sync.Once
+}
+
+type queryTextKey struct{}
+
+func (*afterQuery) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
+	return context.WithValue(ctx, queryTextKey{}, data.SQL)
+}
+
+func (a *afterQuery) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, _ pgx.TraceQueryEndData) {
+	if sql, _ := ctx.Value(queryTextKey{}).(string); strings.Contains(sql, a.match) {
+		a.once.Do(func() {
+			// From a goroutine of its own: a write through another pool from
+			// inside a transaction's closure would look like a nested acquisition.
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				a.hook()
+			}()
+			<-done
+		})
+	}
+}
+
+// hookAfterQuery makes the maps service read through a pool of its own whose
+// statements run hook once, after the first one that contains match. The hook
+// must write through h.pool or the API, never through the service's pool: a
+// write committed there lands exactly between two statements of a read.
+func (h *harness) hookAfterQuery(match string, hook func()) {
+	h.t.Helper()
+	pool, err := db.NewPoolWith(h.t.Context(), h.pool.Config().ConnString(), func(cfg *pgxpool.Config) {
+		cfg.MaxConns = 2
+		cfg.ConnConfig.Tracer = &afterQuery{match: match, hook: hook}
+	})
+	if err != nil {
+		h.t.Fatalf("NewPoolWith() error = %v", err)
+	}
+	h.t.Cleanup(pool.Close)
+	h.svc.pool, h.svc.queries = pool, mapsdb.New(pool)
 }

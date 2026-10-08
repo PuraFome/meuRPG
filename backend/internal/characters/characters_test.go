@@ -3,13 +3,19 @@ package characters
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
+	"uuid"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // TestStaleRevisionIsAborted: two people editing the same character cannot
@@ -338,4 +344,365 @@ func mustGet(t *testing.T, get func(*user, string, string) (*rulesv1.SpellDetail
 		t.Fatalf("GetSpellDetails(%s) error = %v", key, err)
 	}
 	return d
+}
+
+// RN-30: a campaign holds a limited number of characters and NPCs, of every
+// kind, living or dead. A refusal makes nothing, a replay of an NPC already
+// made is answered in a full campaign, and another campaign is not counted.
+func TestRN30_TheCharacterCapPerCampaign(t *testing.T) {
+	t.Parallel()
+	const capacity = 3
+	h := newHarnessWith(t, func(c *Config) { c.MaxCharactersPerCampaign = capacity })
+	master, player := h.newUser("Mestre"), h.newUser("Jogadora")
+	campaign := h.newCampaign(master, "Mirathel", player)
+	other := h.newCampaign(master, "Outra")
+
+	dead := player.createPensantus(t, campaign)
+	master.markDead(t, dead) // a dead character still counts
+	master.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_STORY, "Taverneiro", basicSheet())
+	const replayKey = "7d1c2a3e-4b5f-4a6b-8c7d-9e0f1a2b3c4d"
+	first, err := npcFromCreature(t, master, campaign, "monster:ogre", "Grak", charactersv1.CharacterKind_CHARACTER_KIND_MINION, replayKey) // the 3rd, within the cap
+	if err != nil {
+		t.Fatalf("the NPC at the cap: %v", err)
+	}
+
+	_, err = master.api.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+		CampaignId: campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_STORY, Name: "Um a mais", Sheet: basicSheet(),
+	}))
+	wantCode(t, "CreateCharacter() over the cap", err, connect.CodeResourceExhausted)
+	_, err = player.api.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+		CampaignId: campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Outra", Sheet: pensantusSheet(),
+	}))
+	wantCode(t, "a player's CreateCharacter() over the cap", err, connect.CodeResourceExhausted)
+	_, err = npcFromCreature(t, master, campaign, "monster:wolf", "Lobo", charactersv1.CharacterKind_CHARACTER_KIND_MINION, "0c9b8a7d-6e5f-4d3c-a2b1-0f9e8d7c6b5a")
+	wantCode(t, "CreateNpcFromCreature() over the cap", err, connect.CodeResourceExhausted)
+
+	// The same key and request still answers the NPC it made.
+	again, err := npcFromCreature(t, master, campaign, "monster:ogre", "Grak", charactersv1.CharacterKind_CHARACTER_KIND_MINION, replayKey)
+	if err != nil || again.GetId() != first.GetId() {
+		t.Fatalf("replay in a full campaign = %v, %v; want the first NPC %s", again.GetId(), err, first.GetId())
+	}
+	var n int
+	if err := h.pool.QueryRow(t.Context(), "SELECT count(*) FROM characters WHERE campaign_id = $1", campaign).Scan(&n); err != nil || n != capacity {
+		t.Fatalf("the campaign holds %d characters, %v; want %d", n, err, capacity)
+	}
+
+	// The cap is per campaign.
+	master.create(t, other, charactersv1.CharacterKind_CHARACTER_KIND_STORY, "Taverneiro", basicSheet())
+}
+
+// RN-30: two creates racing for the last place do not both pass, through
+// either create.
+func TestRN30_TheLastCharacterPlaceGoesToOneCreate(t *testing.T) {
+	t.Parallel()
+	dbtest.PoolSize(t, 14) // the racers must overlap: one connection would run them one by one
+	h := newHarnessWith(t, func(c *Config) { c.MaxCharactersPerCampaign = 3 })
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master, "Mirathel")
+	for _, name := range []string{"Taverneiro", "Ferreiro"} {
+		master.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_STORY, name, basicSheet())
+	}
+
+	const racers = 6
+	errs := make([]error, racers)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for i := range racers {
+		wg.Go(func() {
+			<-start
+			if i%2 == 0 {
+				_, errs[i] = master.api.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+					CampaignId: campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_STORY, Name: fmt.Sprintf("Corredor %d", i), Sheet: basicSheet(),
+				}))
+				return
+			}
+			_, errs[i] = npcFromCreature(t, master, campaign, "monster:wolf", fmt.Sprintf("Lobo %d", i), charactersv1.CharacterKind_CHARACTER_KIND_MINION, uuid.New().String())
+		})
+	}
+	close(start)
+	wg.Wait()
+
+	created := 0
+	for i, err := range errs {
+		switch {
+		case err == nil:
+			created++
+		case connect.CodeOf(err) != connect.CodeResourceExhausted:
+			t.Errorf("racer %d: error = %v", i, err)
+		}
+	}
+	var n int
+	if err := h.pool.QueryRow(t.Context(), "SELECT count(*) FROM characters WHERE campaign_id = $1", campaign).Scan(&n); err != nil || created != 1 || n != 3 {
+		t.Fatalf("%d of %d creates succeeded and the campaign holds %d characters, %v; want 1 and 3", created, racers, n, err)
+	}
+}
+
+// RN-30: the server's own cap is 1,000, the 1,000th place is the last.
+func TestRN30_TheDefaultCharacterCapIsAThousand(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master, "Mirathel")
+	if _, err := h.pool.Exec(t.Context(), `
+INSERT INTO characters (campaign_id, kind, master_user_id, status, name, sheet, story, created_at, updated_at)
+SELECT $1, 'story', $2, 'active', 'Figurante ' || n::STRING, '{}', '{}', now(), now()
+FROM generate_series(1, $3) AS n`, campaign, master.id, DefaultMaxCharactersPerCampaign-1); err != nil {
+		t.Fatalf("seed the campaign: %v", err)
+	}
+
+	master.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_STORY, "O milésimo", basicSheet())
+	_, err := master.api.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+		CampaignId: campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_STORY, Name: "O 1001º", Sheet: basicSheet(),
+	}))
+	wantCode(t, "the 1,001st character", err, connect.CodeResourceExhausted)
+}
+
+// RN-30: the NPC a combat makes for a monster counts too, and a monster
+// already made is found in a full campaign.
+func TestRN30_TheMonsterNpcOfACombatCountsInTheCap(t *testing.T) {
+	t.Parallel()
+	h := newHarnessWith(t, func(c *Config) { c.MaxCharactersPerCampaign = 1 })
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master, "Mirathel")
+	monsterNpc := func(key string) error {
+		return db.InTx(t.Context(), h.pool, func(tx pgx.Tx) error {
+			_, _, err := h.svc.MonsterNpc(t.Context(), tx, campaign, master.id, key, h.clock.Now())
+			return err
+		})
+	}
+	if err := monsterNpc("monster:ogre"); err != nil {
+		t.Fatalf("the monster at the cap: %v", err)
+	}
+	wantCode(t, "a second monster", monsterNpc("monster:wolf"), connect.CodeResourceExhausted)
+	if err := monsterNpc("monster:ogre"); err != nil {
+		t.Fatalf("the monster already made, in a full campaign: %v", err)
+	}
+}
+
+// hillDwarfSheet is a Hill Dwarf fighter of the given level, who takes the
+// average at every level: the sheet whose maximum depends on Dwarven Toughness.
+func hillDwarfSheet(level int32) *charactersv1.CharacterSheet {
+	return &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
+		BaseScores: &rulesv1.AbilityScores{Strength: 15, Dexterity: 12, Constitution: 12, Intelligence: 10, Wisdom: 10, Charisma: 8},
+		RaceKey:    "race:dwarf",
+		SubraceKey: "subrace:hill-dwarf",
+		Classes:    []*charactersv1.ClassLevel{{ClassKey: "class:fighter", Level: level}},
+	}}}
+}
+
+// preview calls PreviewCharacter as u.
+func (u *user) preview(t *testing.T, campaignID, characterID string, kind charactersv1.CharacterKind, sheet *charactersv1.CharacterSheet) (*charactersv1.PreviewCharacterResponse, error) {
+	t.Helper()
+	res, err := u.api.PreviewCharacter(t.Context(), connect.NewRequest(&charactersv1.PreviewCharacterRequest{
+		CampaignId: campaignID, CharacterId: characterID, Kind: kind, Sheet: sheet,
+	}))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg, nil
+}
+
+// TestPreviewCharacterDerivesWhatTheSaveStores: the preview of a Hill Dwarf adds
+// Dwarven Toughness (one hit point per level) to the dice and the Constitution
+// modifier, and is the maximum that CreateCharacter then stores and GetCharacter
+// derives.
+func TestPreviewCharacterDerivesWhatTheSaveStores(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master, ana, bia := h.newUser("Samuel"), h.newUser("Ana"), h.newUser("Bia")
+	campaign := h.newCampaign(master, "Mirathel", ana, bia)
+	player := charactersv1.CharacterKind_CHARACTER_KIND_PLAYER
+	// Fighter d10, Constitution 12 + 2: modifier 2; the average of a later level is 6.
+	for _, tt := range []struct {
+		who          *user
+		level        int32
+		wantMax      int32
+		wantEffects  int32
+		wantFromDice int32
+	}{
+		{ana, 1, 12 + 1, 1, 12},
+		{bia, 3, 12 + 2*8 + 3, 3, 28},
+	} {
+		got, err := tt.who.preview(t, campaign, "", player, hillDwarfSheet(tt.level))
+		if err != nil {
+			t.Fatalf("PreviewCharacter(level %d) error = %v", tt.level, err)
+		}
+		d := got.GetDerived()
+		if d.GetHitPointsMax() != tt.wantMax || d.GetHitPointsFromEffects() != tt.wantEffects || d.GetHitPointsMax()-d.GetHitPointsFromEffects() != tt.wantFromDice {
+			t.Errorf("level %d: preview max = %d from effects = %d, want %d and %d", tt.level, d.GetHitPointsMax(), d.GetHitPointsFromEffects(), tt.wantMax, tt.wantEffects)
+		}
+		created := tt.who.create(t, campaign, player, "Gimli", hillDwarfSheet(tt.level))
+		if stored := tt.who.get(t, campaign, created.GetId()).GetDerived(); !proto.Equal(stored, d) {
+			t.Errorf("level %d: preview = %v, the saved sheet derives %v", tt.level, d, stored)
+		}
+	}
+}
+
+// TestPreviewCharacterCountsTheTablesHitPointEffect: a table race whose trait
+// changes the maximum hit points counts in the preview, negative or not.
+func TestPreviewCharacterCountsTheTablesHitPointEffect(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master, ana := h.newUser("Samuel"), h.newUser("Ana")
+	campaign := h.newCampaign(master, "Mirathel", ana)
+	race := testRace("Anão do Mar")
+	race.Traits = []*rulesv1.TableFeature{{NamePt: "Vigor frágil", Effects: []*rulesv1.TableEffect{{Type: "modifier", Target: "hp.max", Mode: "add", Value: "-2"}}}}
+	entry := master.addEntry(t, campaign, race)
+	sheet := hillDwarfSheet(2)
+	sheet.GetFull().RaceKey, sheet.GetFull().SubraceKey = entry.GetKey(), ""
+
+	got, err := ana.preview(t, campaign, "", charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, sheet)
+	if err != nil {
+		t.Fatalf("PreviewCharacter() error = %v", err)
+	}
+	if got.GetDerived().GetHitPointsFromEffects() != -2 {
+		t.Errorf("hit points from effects = %d, want -2", got.GetDerived().GetHitPointsFromEffects())
+	}
+	created := ana.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Gimli", sheet)
+	if want := created.GetDerived().GetHitPointsMax(); got.GetDerived().GetHitPointsMax() != want {
+		t.Errorf("preview max = %d, the saved sheet has %d", got.GetDerived().GetHitPointsMax(), want)
+	}
+}
+
+// TestPreviewCharacterWritesNothing: the character's row, revision and
+// campaign are the same after a preview of an edit.
+func TestPreviewCharacterWritesNothing(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master, ana := h.newUser("Samuel"), h.newUser("Ana")
+	campaign := h.newCampaign(master, "Mirathel", ana)
+	c := ana.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Gimli", hillDwarfSheet(1))
+	before := ana.get(t, campaign, c.GetId())
+	count := len(ana.list(t, campaign))
+
+	got, err := ana.preview(t, campaign, c.GetId(), 0, hillDwarfSheet(4))
+	if err != nil {
+		t.Fatalf("PreviewCharacter() error = %v", err)
+	}
+	if got.GetDerived().GetTotalLevel() != 4 {
+		t.Errorf("preview total level = %d, want the draft's 4", got.GetDerived().GetTotalLevel())
+	}
+	if _, err := ana.preview(t, campaign, "", charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, hillDwarfSheet(2)); err != nil {
+		t.Fatalf("PreviewCharacter() of a new sheet error = %v", err)
+	}
+	after := ana.get(t, campaign, c.GetId())
+	if !proto.Equal(before, after) || after.GetRevision() != 1 {
+		t.Errorf("the character changed: before %v, after %v", before, after)
+	}
+	if n := len(ana.list(t, campaign)); n != count {
+		t.Errorf("characters = %d after a preview, want %d", n, count)
+	}
+}
+
+// TestPreviewCharacterRefusesWhatTheSaveRefuses: each caller and sheet that
+// CreateCharacter or UpdateCharacter refuses gets the same answer from the
+// preview, and a character the caller cannot see is not_found.
+func TestPreviewCharacterRefusesWhatTheSaveRefuses(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master, ana, bia, pending := h.newUser("Samuel"), h.newUser("Ana"), h.newUser("Bia"), h.newUser("Pen")
+	campaign := h.newCampaign(master, "Mirathel", ana, bia)
+	h.joinPending(master, campaign, pending)
+	player, enemy := charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, charactersv1.CharacterKind_CHARACTER_KIND_ENEMY
+	anas := ana.create(t, campaign, player, "Gimli", hillDwarfSheet(1))
+	npc := master.create(t, campaign, enemy, "Orc", enemySheet())
+
+	create := func(u *user, kind charactersv1.CharacterKind, sheet *charactersv1.CharacterSheet) error {
+		_, err := u.api.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{CampaignId: campaign, Kind: kind, Name: "Teste", Sheet: sheet}))
+		return err
+	}
+	// reasonOf is the CharacterBlocked reason of a failed_precondition, or 0.
+	reasonOf := func(err error) charactersv1.CharacterBlockedReason {
+		if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+			return 0
+		}
+		return blocked(t, "call", err).GetReason()
+	}
+	same := func(name string, preview, save error) {
+		t.Helper()
+		if preview == nil || save == nil {
+			t.Errorf("%s: preview error = %v, save error = %v, want both refused", name, preview, save)
+			return
+		}
+		if connect.CodeOf(preview) != connect.CodeOf(save) || reasonOf(preview) != reasonOf(save) {
+			t.Errorf("%s: preview answers %v, the save answers %v", name, preview, save)
+		}
+	}
+	previewNew := func(u *user, kind charactersv1.CharacterKind, sheet *charactersv1.CharacterSheet) error {
+		_, err := u.preview(t, campaign, "", kind, sheet)
+		return err
+	}
+
+	same("the master with a PLAYER sheet", previewNew(master, player, hillDwarfSheet(1)), create(master, player, hillDwarfSheet(1)))
+	same("a player with an NPC kind", previewNew(bia, enemy, enemySheet()), create(bia, enemy, enemySheet()))
+	same("a player with a basic sheet for a player kind", previewNew(bia, player, basicSheet()), create(bia, player, basicSheet()))
+	same("an unknown kind", previewNew(bia, 0, hillDwarfSheet(1)), create(bia, 0, hillDwarfSheet(1)))
+	bad := hillDwarfSheet(1)
+	bad.GetFull().RaceKey = "race:fantasma"
+	same("an unknown race", previewNew(bia, player, bad), create(bia, player, bad))
+	stranger := h.newUser("Intruso")
+	same("a stranger", previewNew(stranger, player, hillDwarfSheet(1)), create(stranger, player, hillDwarfSheet(1)))
+	if _, err := pending.preview(t, campaign, "", player, hillDwarfSheet(1)); err != nil {
+		t.Errorf("a pending member's preview error = %v, want it accepted like their create", err)
+	}
+
+	// A character the caller cannot see.
+	_, err := bia.preview(t, campaign, anas.GetId(), 0, hillDwarfSheet(2))
+	wantCode(t, "another player's character", err, connect.CodeNotFound)
+	_, err = bia.preview(t, campaign, npc.GetId(), 0, enemySheet())
+	wantCode(t, "an NPC", err, connect.CodeNotFound)
+	_, err = bia.preview(t, campaign, "not-a-uuid", 0, hillDwarfSheet(2))
+	wantCode(t, "an ID that is not a UUID", err, connect.CodeNotFound)
+	if _, err := master.preview(t, campaign, anas.GetId(), 0, hillDwarfSheet(2)); err != nil {
+		t.Errorf("the master previewing a player's character error = %v", err)
+	}
+	// A sheet of the wrong shape for the character's kind.
+	_, err = ana.preview(t, campaign, anas.GetId(), 0, basicSheet())
+	_, saveErr := ana.update(t, anas, "Gimli", basicSheet())
+	same("a basic sheet for a player's character", err, saveErr)
+
+	// The switches and the archive: a choice the table switched off is refused for a player
+	// who adds it, never for the master, and never for one the sheet already has.
+	archived := master.addEntry(t, campaign, testRace("Anão Antigo"))
+	if _, err := master.table.ArchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: campaign, Key: archived.GetKey()})); err != nil {
+		t.Fatalf("ArchiveTableEntry() error = %v", err)
+	}
+	old := hillDwarfSheet(1)
+	old.GetFull().RaceKey, old.GetFull().SubraceKey = archived.GetKey(), ""
+	if blocked := reasonOf(previewNew(bia, player, old)); blocked != charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_ARCHIVED_CONTENT {
+		t.Errorf("a new archived choice: reason = %v, want ARCHIVED_CONTENT", blocked)
+	}
+	same("a new archived choice", previewNew(bia, player, old), create(bia, player, old))
+	_, err = ana.preview(t, campaign, anas.GetId(), 0, old)
+	_, saveErr = ana.update(t, anas, "Gimli", old)
+	same("a new archived choice on an edit", err, saveErr)
+
+	master.setOff(t, campaign, true, "race:dwarf")
+	same("a switched-off choice for a player", previewNew(bia, player, hillDwarfSheet(1)), create(bia, player, hillDwarfSheet(1)))
+	if reasonOf(previewNew(bia, player, hillDwarfSheet(1))) != charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_SWITCHED_OFF_CONTENT {
+		t.Error("a switched-off choice for a player is not SWITCHED_OFF_CONTENT")
+	}
+	if _, err := ana.preview(t, campaign, anas.GetId(), 0, hillDwarfSheet(2)); err != nil {
+		t.Errorf("an edit that keeps the choice the sheet already has error = %v, want it accepted like the save", err)
+	}
+	if _, err := master.preview(t, campaign, "", enemy, func() *charactersv1.CharacterSheet {
+		s := enemySheet()
+		s.GetFull().RaceKey, s.GetFull().SubraceKey = "race:dwarf", ""
+		return s
+	}()); err != nil {
+		t.Errorf("the master with a switched-off choice error = %v, want it accepted", err)
+	}
+	master.setOff(t, campaign, false, "race:dwarf")
+
+	// RN-01: once a game session starts, only the master edits the sheet.
+	h.lockSheets(campaign)
+	_, err = ana.preview(t, campaign, anas.GetId(), 0, hillDwarfSheet(2))
+	_, saveErr = ana.update(t, ana.get(t, campaign, anas.GetId()), "Gimli", hillDwarfSheet(2))
+	same("a locked character", err, saveErr)
+	if got := blocked(t, "PreviewCharacter", err).GetReason(); got != charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_SHEET_LOCKED {
+		t.Errorf("a locked character: reason = %v, want SHEET_LOCKED", got)
+	}
+	if _, err := master.preview(t, campaign, anas.GetId(), 0, hillDwarfSheet(2)); err != nil {
+		t.Errorf("the master previewing a locked character error = %v", err)
+	}
 }

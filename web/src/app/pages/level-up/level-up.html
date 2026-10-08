@@ -45,6 +45,22 @@
           </div>
         }
         <div class="body" (change)="onPick()">
+          @if (classOptions(); as classes) {
+            @if (classes.length >= 2 && isFirst()) {
+              <app-class-pick
+                [classes]="classes"
+                [selected]="s.options.classKey"
+                [characterName]="s.character.name"
+                [totalToLevel]="s.options.totalToLevel"
+                [busy]="classBusy()"
+                [asking]="classAsking()"
+                [status]="classStatus()"
+                (pick)="pickClass($event)"
+                (confirmSwitch)="confirmClass()"
+                (keep)="keepClass()"
+              />
+            }
+          }
           @if (failure(); as f) {
             <div class="mr-notice mr-notice--danger js-failure" role="alert" tabindex="-1">
               <mat-icon aria-hidden="true">error</mat-icon>

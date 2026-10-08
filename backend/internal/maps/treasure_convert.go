@@ -3,11 +3,13 @@ package maps
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/link"
 )
 
@@ -23,6 +25,26 @@ import (
 // maps' own calls then refuse to unmark or change it (errTreasureConverted).
 type Treasures struct {
 	pool *pgxpool.Pool
+	// svc tells the watching members a map changed. Connected by SetService;
+	// nil until then, and PublishChanged then does nothing.
+	svc *Service
+}
+
+// SetService connects the maps service, which is made after the progression
+// module needs this (see cmd/api).
+func (t *Treasures) SetService(s *Service) { t.svc = s }
+
+// PublishChanged tells the watching members that the points of those maps
+// changed state (converted into XP, or freed by an undo). Call it after the
+// transaction committed. Only the master reads a point's converted state, so
+// only the master is told: a player's view of the map did not change.
+func (t *Treasures) PublishChanged(campaignID string, mapIDs []string) {
+	if t.svc == nil {
+		return
+	}
+	for _, id := range mapIDs {
+		t.svc.publishMapChanged(campaignID, id, false)
+	}
 }
 
 // NewTreasures returns the Treasures for progression.
@@ -39,14 +61,21 @@ const treasureSelect = `
 // ListUnconverted returns the campaign's treasures that were found and no
 // award converted, the oldest find first.
 func (t *Treasures) ListUnconverted(ctx context.Context, campaignID string) ([]link.Treasure, error) {
-	rows, err := t.pool.Query(ctx, treasureSelect+`
+	// The treasures and their finders are one moment: a treasure unmarked between
+	// the two reads would be listed as found, with nobody who found it.
+	var out []link.Treasure
+	err := db.ReadTx(ctx, t.pool, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, treasureSelect+`
 		WHERE m.campaign_id = $1 AND p.kind = 'treasure'
 		  AND p.treasure_found_at IS NOT NULL AND p.treasure_converted_award_id IS NULL
 		ORDER BY p.treasure_found_at, p.id`, campaignID)
-	if err != nil {
-		return nil, fmt.Errorf("list the treasures to convert: %w", err)
-	}
-	return t.collect(ctx, t.pool, rows)
+		if err != nil {
+			return fmt.Errorf("list the treasures to convert: %w", err)
+		}
+		out, err = t.collect(ctx, tx, rows)
+		return err
+	})
+	return out, err
 }
 
 // LockForConversion returns, inside tx, those of pointIDs that are treasures of
@@ -82,12 +111,32 @@ func (t *Treasures) MarkConverted(ctx context.Context, tx pgx.Tx, awardID string
 }
 
 // Release frees the treasures the award converted inside tx (the award was
-// undone): they are "found, not converted" again.
-func (t *Treasures) Release(ctx context.Context, tx pgx.Tx, awardID string) error {
-	if _, err := tx.Exec(ctx, `UPDATE map_points SET treasure_converted_award_id = NULL WHERE treasure_converted_award_id = $1::UUID`, awardID); err != nil {
-		return fmt.Errorf("free the treasures: %w", err)
+// undone): they are "found, not converted" again. It returns the IDs of the
+// maps whose points it freed, each once.
+func (t *Treasures) Release(ctx context.Context, tx pgx.Tx, awardID string) ([]string, error) {
+	rows, err := tx.Query(ctx, `
+		UPDATE map_points SET treasure_converted_award_id = NULL
+		WHERE treasure_converted_award_id = $1::UUID
+		RETURNING map_id::TEXT`, awardID)
+	if err != nil {
+		return nil, fmt.Errorf("free the treasures: %w", err)
 	}
-	return nil
+	defer rows.Close()
+	var mapIDs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("read a freed treasure's map: %w", err)
+		}
+		if !slices.Contains(mapIDs, id) {
+			mapIDs = append(mapIDs, id)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("free the treasures: %w", err)
+	}
+	slices.Sort(mapIDs)
+	return mapIDs, nil
 }
 
 // querier is what pool and tx both do.
