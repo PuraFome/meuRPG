@@ -167,10 +167,12 @@ describe("the master's drag that a door stopped", () => {
     return view.error();
   }
 
-  it('says the way is blocked when a barred or secret door stopped the token, not "locked"', async () => {
-    expect(await dragStoppedBy({ stoppedEarly: true, lockedDoor: false })).toBe(
-      'O caminho está bloqueado.',
+  it('says a barred or secret door stopped the token and what to do, not "locked"', async () => {
+    const said = await dragStoppedBy({ stoppedEarly: true, lockedDoor: false });
+    expect(said).toBe(
+      'Uma grade levadiça ou uma porta secreta parou o movimento. Abra a porta (toque nela no mapa) e mova de novo.',
     );
+    expect(said).not.toContain('trancada');
   });
 
   it('says a locked door stopped it, as before, and nothing when the token arrived (positive controls)', async () => {

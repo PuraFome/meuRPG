@@ -2067,13 +2067,15 @@ export class CombatView {
             );
           }
           if (res.lockedDoor) {
-            // The master walks through closed doors but a locked one stops him too (RN-26).
+            // The master walks through closed doors but a locked one stops them too (RN-26).
             this.error.set(
               'Uma porta trancada parou o movimento. Destranque a porta (toque nela no mapa) e mova de novo.',
             );
           } else if (res.stoppedEarly) {
-            // A barred or secret door, as a wall, stops it too: the token stands where it stopped.
-            this.error.set('O caminho está bloqueado.');
+            // A barred or secret door stops it too: the token stands where it stopped.
+            this.error.set(
+              'Uma grade levadiça ou uma porta secreta parou o movimento. Abra a porta (toque nela no mapa) e mova de novo.',
+            );
           }
         },
         failed: (saved, err) => {
