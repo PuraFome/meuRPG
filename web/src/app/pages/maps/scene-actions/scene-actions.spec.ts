@@ -353,6 +353,223 @@ describe('SceneActions', () => {
     expect(api.calls).toEqual(['moveSceneAction p1 a3 up']);
   });
 
+  describe('editing an action', () => {
+    const EDITABLE = [
+      action('a1', 'Investigação', {
+        key: 'skill:investigation',
+        name: 'Procurar pistas na carroça',
+        dc: 12,
+      }),
+      action('a2', 'Sobrevivência', { key: 'skill:survival', name: 'Seguir os rastros', dc: 13 }),
+      action('a3', 'Teste de resistência de Constituição', { key: 'save:con', dc: 10 }),
+    ];
+    const pencil = (id: string) =>
+      el.querySelector<HTMLButtonElement>(`[data-action="${id}"][data-control="edit"]`)!;
+    const form = () => el.querySelector<HTMLFormElement>('form')!;
+    const nameField = () => form().querySelectorAll<HTMLInputElement>('input[matInput]')[0];
+    const dcField = () => form().querySelectorAll<HTMLInputElement>('input[matInput]')[1];
+    const saveButton = () =>
+      Array.from(form().querySelectorAll<HTMLButtonElement>('.sf__actions button'))[0];
+    const open = async (id: string) => {
+      pencil(id).click();
+      await settle();
+    };
+
+    it('gives each row a pencil named by its action, between "Descer" and "Remover"', () => {
+      setup([...EDITABLE]);
+      const labels = Array.from(rows()[0].querySelectorAll('.sa__controls button'), (b) =>
+        b.getAttribute('aria-label'),
+      );
+      expect(labels).toEqual([
+        'Subir Procurar pistas na carroça',
+        'Descer Procurar pistas na carroça',
+        'Editar Procurar pistas na carroça',
+        'Remover Procurar pistas na carroça',
+      ]);
+      expect(pencil('a1').textContent).toContain('edit');
+    });
+
+    it('opens in place of the row, filled with what the action has, with the focus on the first choice', async () => {
+      setup([...EDITABLE]);
+      await open('a1');
+      expect(rows()).toHaveLength(3);
+      expect(rows()[0].querySelector('form')).not.toBeNull();
+      expect(rows()[0].textContent).not.toContain('Tentativas por jogador');
+      expect(flat(form().querySelector('h4'))).toBe('Editar ação');
+      expect(form().querySelector<HTMLInputElement>('input[type="radio"]:checked')?.value).toBe(
+        'skill',
+      );
+      expect(form().querySelector<HTMLSelectElement>('select')?.value).toBe('skill:investigation');
+      expect(nameField().value).toBe('Procurar pistas na carroça');
+      expect(dcField().value).toBe('12');
+      expect(flat(form())).toContain('26 de 60');
+      expect(flat(form())).toContain('Em branco tira a CD da ação.');
+      expect(document.activeElement).toBe(form().querySelector('input[type="radio"]'));
+      expect(api.calls).toEqual([]);
+    });
+
+    it('deduces the kind and the list from the key: a saving throw opens as "Teste de resistência"', async () => {
+      setup([...EDITABLE]);
+      await open('a3');
+      expect(form().querySelector<HTMLInputElement>('input[type="radio"]:checked')?.value).toBe(
+        'save',
+      );
+      expect(form().querySelector<HTMLSelectElement>('select')?.value).toBe('save:con');
+      expect(nameField().value).toBe('');
+    });
+
+    it('keeps "Salvar ação" dashed, with its reason in words, until a field changes, and sends nothing before', async () => {
+      setup([...EDITABLE]);
+      await open('a1');
+      expect(flat(saveButton())).toBe('Salvar ação');
+      expect(saveButton().getAttribute('aria-disabled')).toBe('true');
+      expect(saveButton().classList).toContain('sf__off');
+      const reason = form().querySelector('.sf__reason')!;
+      expect(flat(reason)).toBe('blockMude um campo para salvar.');
+      expect(saveButton().getAttribute('aria-describedby')).toBe(reason.id);
+      saveButton().click();
+      await settle();
+      expect(api.calls).toEqual([]);
+      type(nameField(), 'Procurar rastros na carroça');
+      expect(saveButton().getAttribute('aria-disabled')).not.toBe('true');
+      expect(form().querySelector('.sf__reason')).toBeNull();
+      // Typing the old name back makes it quiet again.
+      type(nameField(), 'Procurar pistas na carroça');
+      expect(saveButton().getAttribute('aria-disabled')).toBe('true');
+    });
+
+    it('saves only the fields that changed, brings the row back with the new values and focuses its pencil', async () => {
+      setup([...EDITABLE]);
+      await open('a1');
+      type(nameField(), 'Procurar rastros na carroça');
+      type(dcField(), '14');
+      saveButton().click();
+      await settle();
+      expect(api.calls).toEqual([
+        'updateSceneAction p1 a1 {"name":"Procurar rastros na carroça","dc":14}',
+      ]);
+      expect(el.querySelector('form')).toBeNull();
+      expect(flat(rows()[0])).toContain('Procurar rastros na carroça');
+      expect(flat(rows()[0])).toContain('CD 14');
+      expect(document.activeElement).toBe(pencil('a1'));
+      expect(flat(el.querySelector('[role="status"]'))).toBe(
+        'Ação salva: Procurar rastros na carroça.',
+      );
+    });
+
+    it('takes the check to the first option of the new list, and sends its key', async () => {
+      setup([...EDITABLE]);
+      await open('a1');
+      form()
+        .querySelectorAll<HTMLInputElement>('input[type="radio"]')[1]
+        .dispatchEvent(new Event('change'));
+      await settle();
+      expect(form().querySelector<HTMLSelectElement>('select')?.value).toBe('ability:str');
+      saveButton().click();
+      await settle();
+      expect(api.calls).toEqual(['updateSceneAction p1 a1 {"key":"ability:str"}']);
+    });
+
+    it('a blank name takes the name off (empty) and a blank DC takes the DC off (0)', async () => {
+      setup([...EDITABLE]);
+      await open('a1');
+      type(nameField(), '');
+      type(dcField(), '');
+      saveButton().click();
+      await settle();
+      expect(api.calls).toEqual(['updateSceneAction p1 a1 {"name":"","dc":0}']);
+      expect(flat(rows()[0])).not.toContain('CD');
+    });
+
+    it('says a DC out of 1 to 30 under its field, marks it, focuses it and sends nothing', async () => {
+      setup([...EDITABLE]);
+      await open('a1');
+      type(dcField(), '35');
+      expect(saveButton().getAttribute('aria-disabled')).not.toBe('true');
+      saveButton().click();
+      await settle();
+      expect(flat(form().querySelector('mat-error'))).toContain(
+        'A CD vai de 1 a 30. Digite outro número ou deixe em branco.',
+      );
+      expect(document.activeElement).toBe(dcField());
+      expect(flat(form())).not.toContain('Em branco tira a CD da ação.');
+      expect(api.calls).toEqual([]);
+    });
+
+    it('keeps the form and what was typed when the server refuses, says why inside it, and can try again', async () => {
+      setup([...EDITABLE]);
+      await open('a1');
+      type(nameField(), 'Outro nome');
+      api.updateSceneActionError = new ConnectError('bad', Code.InvalidArgument);
+      saveButton().click();
+      await settle();
+      expect(form().querySelector('[role="alert"]')?.textContent).toContain(
+        'Não deu para salvar a ação: o nome vai até 60 caracteres e a CD de 1 a 30.',
+      );
+      expect(nameField().value).toBe('Outro nome');
+      api.updateSceneActionError = null;
+      saveButton().click();
+      await settle();
+      expect(el.querySelector('form')).toBeNull();
+      expect(flat(rows()[0])).toContain('Outro nome');
+    });
+
+    it('says a lost point and a master-only call in their own words', async () => {
+      setup([...EDITABLE]);
+      await open('a1');
+      type(nameField(), 'Outro nome');
+      api.updateSceneActionError = new ConnectError('gone', Code.NotFound);
+      saveButton().click();
+      await settle();
+      expect(form().querySelector('[role="alert"]')?.textContent).toContain(
+        'Esse ponto não existe mais. Recarregue a página.',
+      );
+      api.updateSceneActionError = new ConnectError('no', Code.PermissionDenied);
+      saveButton().click();
+      await settle();
+      expect(form().querySelector('[role="alert"]')?.textContent).toContain(
+        'Só o mestre da campanha muda as ações da cena.',
+      );
+    });
+
+    it('"Cancelar" closes without saving and gives the focus back to the pencil', async () => {
+      setup([...EDITABLE]);
+      await open('a1');
+      type(nameField(), 'Outro nome');
+      button('Cancelar').click();
+      await settle();
+      expect(el.querySelector('form')).toBeNull();
+      expect(document.activeElement).toBe(pencil('a1'));
+      expect(flat(rows()[0])).toContain('Procurar pistas na carroça');
+      expect(api.calls).toEqual([]);
+    });
+
+    it('keeps one form at a time: another pencil, or "Adicionar ação", closes this one with nothing saved', async () => {
+      setup([...EDITABLE]);
+      await open('a1');
+      await open('a2');
+      expect(el.querySelectorAll('form')).toHaveLength(1);
+      expect(rows()[1].querySelector('form')).not.toBeNull();
+      expect(rows()[0].querySelector('form')).toBeNull();
+      button('Adicionar ação').click();
+      await settle();
+      expect(el.querySelectorAll('form')).toHaveLength(1);
+      expect(flat(form().querySelector('h4'))).toBe('Nova ação');
+      await open('a1');
+      expect(flat(form().querySelector('h4'))).toBe('Editar ação');
+      expect(el.querySelectorAll('form')).toHaveLength(1);
+      expect(api.calls).toEqual([]);
+    });
+
+    it('answers nothing to a pencil while a write is in flight', async () => {
+      setup([...EDITABLE]);
+      control('a2', 'up').click();
+      pencil('a3').click();
+      await settle();
+      expect(el.querySelector('form')).toBeNull();
+    });
+  });
+
   describe('the DC switch and the attempts (E8-13, MR-015, RN-20)', () => {
     const select = (id: string) => el.querySelector<HTMLSelectElement>(`#sa-att-${id}`)!;
     const dcSwitch = () => el.querySelector<HTMLButtonElement>('.sa__dcswitch [role="switch"]')!;

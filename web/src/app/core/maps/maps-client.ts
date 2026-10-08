@@ -348,6 +348,25 @@ export class MapsClient {
     return res.actions;
   }
 
+  /** `UpdateSceneAction` for the check, the name or the DC: only the fields that changed are sent (`name` empty takes
+   * the name off, `dc` 0 takes the DC off). Answers with the point's actions. */
+  async updateSceneAction(
+    campaignId: string,
+    mapId: string,
+    pointId: string,
+    actionId: string,
+    changes: { key?: string; name?: string; dc?: number },
+  ): Promise<readonly SceneAction[]> {
+    const res = await this.client.updateSceneAction({
+      campaignId,
+      mapId,
+      pointId,
+      actionId,
+      ...changes,
+    });
+    return res.actions;
+  }
+
   /** `MoveSceneAction`: one place up or down. */
   async moveSceneAction(
     campaignId: string,

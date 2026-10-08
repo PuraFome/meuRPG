@@ -18,6 +18,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 
+import type { SceneAction } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import {
   CHECK_KINDS,
   type CheckKind,
@@ -41,6 +42,18 @@ export interface NewSceneAction {
   readonly dc: number;
 }
 
+/** The fields of an edited action that changed: what `UpdateSceneAction` is sent (`name` empty takes it off, `dc` 0 too). */
+export interface SceneActionChanges {
+  readonly key?: string;
+  readonly name?: string;
+  readonly dc?: number;
+}
+
+/** The kind of a check by its key: "ability:str" and "save:wis" say it, every skill key (the rules' or the table's) is a skill. */
+function kindOf(key: string): CheckKind {
+  return key.startsWith('ability:') ? 'ability' : key.startsWith('save:') ? 'save' : 'skill';
+}
+
 /**
  * "Nova ação" (E7-01): the form that opens in place inside the point panel.
  * "O que rolar" (skill, ability check or saving throw) picks the list of the
@@ -48,6 +61,10 @@ export interface NewSceneAction {
  * optional. The buttons are under the fields. A DC out of range is said under
  * its field, with icon and words, and focus goes to it. The panel runs the
  * call and shows what the server answered in `error`.
+ *
+ * With `initial` it is "Editar ação": the same card in the place of the action's row, filled with its
+ * check, name and DC; "Salvar ação" stays dashed, with its reason, until a field differs from what the
+ * action has, and then hands the panel only the fields that changed.
  */
 @Component({
   selector: 'app-scene-action-form',
@@ -71,8 +88,12 @@ export class SceneActionForm implements OnInit {
   /** An answer the server refused (the 20-action limit, a lost point). */
   readonly error = input('');
   readonly busy = input(false);
+  /** The action being edited; none means a new one. */
+  readonly initial = input<SceneAction | null>(null);
 
   readonly submitted = output<NewSceneAction>();
+  /** "Salvar ação": the fields that changed. */
+  readonly saved = output<SceneActionChanges>();
   readonly cancelled = output<void>();
 
   protected readonly id = `sa-form-${nextId++}`;
@@ -86,8 +107,42 @@ export class SceneActionForm implements OnInit {
   protected readonly nameControl = new FormControl('', { nonNullable: true });
   protected readonly dcControl = new FormControl('', { nonNullable: true });
   protected readonly nameLength = signal(0);
+  private readonly nameText = signal('');
+  private readonly dcText = signal('');
 
-  protected readonly options = computed(() => checkOptions(this.kind(), this.skills() ?? []));
+  /** An edit with no field changed: nothing to save (the server would refuse it as having nothing to change). */
+  protected readonly unchanged = computed(() => {
+    const a = this.initial();
+    return a !== null && this.changes() === null;
+  });
+  private readonly changes = computed<SceneActionChanges | null>(() => {
+    const a = this.initial();
+    if (!a) {
+      return null;
+    }
+    const dc = parseDc(this.dcText());
+    const out: { key?: string; name?: string; dc?: number } = {};
+    if (this.checkKey() !== a.key) {
+      out.key = this.checkKey();
+    }
+    if (this.nameText().trim() !== a.name) {
+      out.name = this.nameText().trim();
+    }
+    // A DC out of range counts as a change: saving says why it is not accepted.
+    if (dc === null || dc !== a.dc) {
+      out.dc = dc ?? 0;
+    }
+    return Object.keys(out).length > 0 ? out : null;
+  });
+
+  protected readonly options = computed(() => {
+    const list = checkOptions(this.kind(), this.skills() ?? []);
+    const a = this.initial();
+    // The check the action has stays on the list even if the table retired it.
+    return a && this.kind() === kindOf(a.key) && !list.some((o) => o.key === a.key)
+      ? [{ key: a.key, label: a.checkName }, ...list]
+      : list;
+  });
   protected readonly kindLabel = computed(
     () => this.kinds.find((k) => k.kind === this.kind())?.label ?? '',
   );
@@ -99,10 +154,12 @@ export class SceneActionForm implements OnInit {
   private readonly dcField = viewChild('dcField', { read: ElementRef<HTMLInputElement> });
 
   constructor() {
-    this.nameControl.valueChanges
-      .pipe(takeUntilDestroyed())
-      .subscribe((v) => this.nameLength.set(v.length));
-    this.dcControl.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+    this.nameControl.valueChanges.pipe(takeUntilDestroyed()).subscribe((v) => {
+      this.nameLength.set(v.length);
+      this.nameText.set(v);
+    });
+    this.dcControl.valueChanges.pipe(takeUntilDestroyed()).subscribe((v) => {
+      this.dcText.set(v);
       if (this.dcError()) {
         this.dcError.set('');
         this.dcControl.setErrors(null);
@@ -121,6 +178,13 @@ export class SceneActionForm implements OnInit {
 
   /** The skills load once the inputs are set (the campaign is one of them). */
   ngOnInit(): void {
+    const a = this.initial();
+    if (a) {
+      this.kind.set(kindOf(a.key));
+      this.checkKey.set(a.key);
+      this.nameControl.setValue(a.name);
+      this.dcControl.setValue(a.dc > 0 ? String(a.dc) : '');
+    }
     this.loadSkills();
   }
 
@@ -129,7 +193,10 @@ export class SceneActionForm implements OnInit {
     this.checks.skills(this.campaignId()).then(
       (skills) => {
         this.skills.set(skills);
-        this.pickFirst();
+        // Editing: the list loads under the check the action already has.
+        if (!this.initial()) {
+          this.pickFirst();
+        }
       },
       () => this.skillsFailed.set(true),
     );
@@ -157,6 +224,13 @@ export class SceneActionForm implements OnInit {
       return;
     }
     if (!this.checkKey()) {
+      return;
+    }
+    if (this.initial()) {
+      const changes = this.changes();
+      if (changes) {
+        this.saved.emit(changes);
+      }
       return;
     }
     this.submitted.emit({ key: this.checkKey(), name: this.nameControl.value.trim(), dc });

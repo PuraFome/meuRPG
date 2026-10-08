@@ -33,6 +33,18 @@
   } @else {
     <ul class="sa__list">
       @for (a of actions(); track a.id; let first = $first; let last = $last) {
+        @if (editing() === a.id) {
+          <li class="sa__row sa__row--edit">
+            <app-scene-action-form
+              [campaignId]="campaignId()"
+              [initial]="a"
+              [busy]="busy()"
+              [error]="editError()"
+              (saved)="save(a, $event)"
+              (cancelled)="closeEdit(a)"
+            />
+          </li>
+        } @else {
         <li class="sa__row">
           <div class="sa__main">
             <div class="sa__text">
@@ -69,6 +81,17 @@
               </button>
               <button
                 type="button"
+                class="sa__ib"
+                [attr.aria-label]="'Editar ' + title(a)"
+                [attr.aria-disabled]="busy()"
+                [attr.data-action]="a.id"
+                data-control="edit"
+                (click)="openEdit(a)"
+              >
+                <mat-icon aria-hidden="true">edit</mat-icon>
+              </button>
+              <button
+                type="button"
                 class="sa__ib sa__ib--danger"
                 [attr.aria-label]="'Remover ' + title(a)"
                 [attr.aria-disabled]="busy()"
@@ -101,6 +124,7 @@
             }
           </div>
         </li>
+        }
       }
     </ul>
   }

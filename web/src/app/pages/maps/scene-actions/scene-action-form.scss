@@ -75,3 +75,38 @@ mat-error {
   align-items: center;
   gap: var(--mr-space-3);
 }
+
+// "Salvar ação" with nothing changed: dashed and quiet, still focusable, the reason in words under the buttons.
+.sf__off {
+  --mat-button-outlined-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  border-style: dashed;
+  cursor: default;
+}
+
+.sf__reason {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// On a phone the buttons take the width, side by side at 48px.
+@media (max-width: 767.98px) {
+  .sf__actions {
+    > button {
+      flex: 1 1 0;
+      min-width: 0;
+      --mat-button-outlined-container-height: 48px;
+    }
+  }
+}
