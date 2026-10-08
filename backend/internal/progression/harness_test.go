@@ -124,6 +124,9 @@ type harness struct {
 	users  *identity.PostgresStore
 	play   *play.Service
 	server *httptest.Server
+	// cfg and camps are what the progression service was made from, so a test can make another over a pool of its own.
+	cfg   Config
+	camps *campaigns.Service
 	// beforeAward, when set, runs once after an award's checks outside the
 	// transaction and before the transaction opens: the window where another
 	// request commits.
@@ -174,7 +177,9 @@ func newHarness(t *testing.T) *harness {
 		t.Fatalf("play.New() error = %v", err)
 	}
 	h.play = pl
-	svc, err := New(Config{Pool: pool, Party: chars, Combats: pl, Log: pl, Treasures: maps.NewTreasures(pool), Campaigns: racingCampaigns{Service: camps, h: h}, Profiles: h.users, Logger: logger, Now: clock.Now})
+	h.camps = camps
+	h.cfg = Config{Pool: pool, Party: chars, Combats: pl, Log: pl, Treasures: maps.NewTreasures(pool), Campaigns: racingCampaigns{Service: camps, h: h}, Profiles: h.users, Logger: logger, Now: clock.Now}
+	svc, err := New(h.cfg)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}

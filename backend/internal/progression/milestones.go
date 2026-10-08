@@ -417,17 +417,32 @@ func cleanMilestoneText(text string) (string, error) {
 // for a player; then the ones marked off the list, oldest first. The marks are
 // the awards that are not undone, as the history shows them.
 func (s *Service) milestoneViews(ctx context.Context, m authz.Membership) ([]*progressionv1.Milestone, error) {
-	rows, err := s.queries.ListPlannedMilestones(ctx, m.CampaignID)
+	// The planned milestones, the marks and what the marks show are one moment:
+	// an undo between them would show a mark that is live next to a "Desfazer" on
+	// another one.
+	var rows []progressiondb.PlannedMilestone
+	var live []progressiondb.XpAward
+	var data awardData
+	err := db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		var err error
+		if rows, err = q.ListPlannedMilestones(ctx, m.CampaignID); err != nil {
+			return fmt.Errorf("list the milestones: %w", err)
+		}
+		if live, err = q.ListLiveMilestoneAwards(ctx, m.CampaignID); err != nil {
+			return fmt.Errorf("list the marks: %w", err)
+		}
+		if len(live) > 0 {
+			data, err = s.loadAwardData(ctx, q, m, live)
+		}
+		return err
+	})
 	if err != nil {
-		return nil, fmt.Errorf("list the milestones: %w", err)
-	}
-	live, err := s.queries.ListLiveMilestoneAwards(ctx, m.CampaignID)
-	if err != nil {
-		return nil, fmt.Errorf("list the marks: %w", err)
+		return nil, err
 	}
 	var marks []*progressionv1.XPAward
 	if len(live) > 0 {
-		if marks, err = s.awardViews(ctx, m, live...); err != nil {
+		if marks, err = s.viewsOf(ctx, m, data, live); err != nil {
 			return nil, err
 		}
 	}
