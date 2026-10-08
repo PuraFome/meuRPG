@@ -578,7 +578,7 @@ func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *
 			AttackRoll: attackRollView(h, v, caster), Save: saveView(h.Save, v, caster, target),
 			Effect: effectView(h, v, target),
 		}
-		coverKey, coverSource := h.coverFor(v)
+		coverKey, coverSource := h.coverFor(v, e.ev.CoverUsers)
 		t.Cover, t.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
 		if v.master && h.TargetAC > 0 {
 			t.TargetArmorClass, t.CoverBonus = &h.TargetAC, h.CoverBonus

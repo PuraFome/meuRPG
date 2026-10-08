@@ -8379,7 +8379,9 @@ export const CombatService: GenService<{
    * single-attack combatant gets ACTION_USED). An NPC's multiattack is the
    * master's, who may attack again. With as_reaction the attack is an
    * opportunity attack: a melee attack off turn that spends the reaction
-   * instead of the action. The server compares the total with the target's armor
+   * instead of the action. Without an opportunity_offer_id the server does not
+   * check the trigger: any target within reach, an ally included, is accepted,
+   * because the master rules on what provoked it at the table. The server compares the total with the target's armor
    * class (plus the +5 of an active Escudo): a
    * natural 20 hits and is a critical hit, a natural 1 misses, any other
    * roll hits when the total reaches the armor class. The answer carries the
