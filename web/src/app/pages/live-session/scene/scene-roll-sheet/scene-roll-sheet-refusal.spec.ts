@@ -72,4 +72,11 @@ describe('SceneRollSheet: a roll the server refuses', () => {
     expect(api.calls.filter((c) => c === 'get')).toHaveLength(1);
     expect(state.scene()).toBeNull();
   });
+
+  it('re-reads the scene after ALREADY_ROLLED, so the row stops offering a roll another tab already used', async () => {
+    const { api, state, el } = await run(SceneBlockedReason.ALREADY_ROLLED);
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain('mais tentativas');
+    expect(api.calls.filter((c) => c === 'get')).toHaveLength(1);
+    expect(state.scene()).toBeNull();
+  });
 });

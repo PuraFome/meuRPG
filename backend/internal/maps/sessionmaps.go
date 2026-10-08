@@ -111,7 +111,7 @@ func (sm *SessionMaps) ShownImage(ctx context.Context, campaignID, imageID strin
 // background: the same method set as play.ShownCopy, spelled out because modules do
 // not import each other.
 type ShownCopy = interface {
-	Insert(ctx context.Context, tx pgx.Tx) error
+	Insert(ctx context.Context, tx pgx.Tx) (id string, created bool, err error)
 	Discard(ctx context.Context)
 }
 
@@ -295,7 +295,7 @@ func (sm *SessionMaps) SetTokenPositions(ctx context.Context, tx pgx.Tx, mapID s
 // PortraitCopy is what PreparePortrait hands back: the same method set as
 // characters.PortraitCopy, spelled out because modules do not import each other.
 type PortraitCopy = interface {
-	Insert(ctx context.Context, tx pgx.Tx) error
+	Insert(ctx context.Context, tx pgx.Tx) (id string, created bool, err error)
 	Discard(ctx context.Context)
 }
 
@@ -315,14 +315,14 @@ func (sm *SessionMaps) PreparePortrait(ctx context.Context, campaignID, imageID 
 	if sm.svc == nil {
 		return img.ID, true, nil, nil
 	}
-	c, err := sm.svc.prepareReuseCopy(ctx, campaignID, img.ID)
+	use, c, err := sm.svc.prepareUseCopy(ctx, campaignID, img)
 	if err != nil {
 		return "", false, nil, err
 	}
 	if c == nil {
-		return img.ID, true, nil, nil
+		return use.ID, true, nil, nil
 	}
-	return c.id, true, &pendingCopy{c: c, s: sm.svc, campaignID: campaignID}, nil
+	return use.ID, true, &pendingCopy{c: c, s: sm.svc, campaignID: campaignID}, nil
 }
 
 // pendingCopy is a fogCopy whose gallery row is left to the transaction of the module that uses it (a portrait, the shown image).
@@ -332,9 +332,26 @@ type pendingCopy struct {
 	campaignID string
 }
 
-func (p *pendingCopy) Insert(ctx context.Context, tx pgx.Tx) error {
-	_, err := p.c.insertRow(ctx, queriesIn(p.s.queries, tx), p.s, p.campaignID, nil)
-	return err
+// Insert adds the copy's gallery row inside tx and returns the image to use. When
+// another use of the same image committed a copy meanwhile, that copy is the one to
+// use and created is false: the caller deletes these files (Discard) once the
+// transaction is over, so two uses at once leave one copy, not two.
+func (p *pendingCopy) Insert(ctx context.Context, tx pgx.Tx) (string, bool, error) {
+	q := queriesIn(p.s.queries, tx)
+	if p.c.remember {
+		existing, err := q.FindImageCopy(ctx, mapsdb.FindImageCopyParams{CampaignID: p.campaignID, CopyOfImageID: &p.c.source.ID})
+		if err == nil {
+			return existing.ID, false, nil
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return "", false, fmt.Errorf("find the image's copy: %w", err)
+		}
+	}
+	row, err := p.c.insertRow(ctx, q, p.s, p.campaignID, nil)
+	if err != nil {
+		return "", false, err
+	}
+	return row.ID, true, nil
 }
 
 func (p *pendingCopy) Discard(ctx context.Context) {

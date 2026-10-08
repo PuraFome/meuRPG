@@ -170,6 +170,8 @@ export class TrapFireSheet {
       : 'Só quem você marcou é pego, esteja na área ou não.';
   });
   protected readonly busy = signal(false);
+  /** A request in the air: Esc and the backdrop do not close the sheet under it. */
+  protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
 
   constructor() {

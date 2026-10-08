@@ -148,9 +148,11 @@ Vinicius answered for Samuel all the questions of Etapa 10: six as we suggested,
 
 ### Answered on 07/10/2026
 
-The full code review of 07/10 raised one product question; Vinicius answered it for Samuel.
+The full code review of 07/10 raised one product question, which Vinicius answered for Samuel, and two choices about AI images, which Vinicius decided.
 
 - **Question 87: the name of a trap the master fires by hand.** It stays public: once the master fires a trap, every player reads its name in the combat log, even a player whose character does not see the square, as at a physical table, where everyone hears the trap go off. The map still hides the square. This was already the behaviour, written into RN-10 by PR #226. See [RN-10](../product/rules.md).
+- **The monthly image slot of a failed request.** The slot comes back only when the call was certainly not billed: the model refused, the key was refused (401 or 403), or the answer had no image. A timeout, a connection cut after the request left and an unreadable answer keep the slot spent, because Gemini may have billed them. A panic in our own code still gives the slot back: it is a bug of the server, and the server's daily cap still bounds the cost. See [RN-28](../product/rules.md) and [Operations](../operations.md#generated-images-the-gemini-api).
+- **"Redesenhar" with a full gallery.** A redraw of a generated dungeon's map is allowed with the gallery full when the old image goes away with it (it is not shown, not a portrait and not used elsewhere), because the gallery does not grow; it is still refused when the old image stays. See [Architecture](../architecture.md#generated-dungeon-maps).
 
 
 ## Roadmap and scope decisions

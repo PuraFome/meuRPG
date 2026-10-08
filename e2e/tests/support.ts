@@ -96,6 +96,32 @@ export function layoutSize(locator: Locator): Promise<{ width: number; height: n
   return locator.evaluate((el: HTMLElement) => ({ width: el.offsetWidth, height: el.offsetHeight }));
 }
 
+/**
+ * The bounding box of an element, once it has one. boundingBox() answers null
+ * while the element is detached, hidden or being re-rendered, and a zero-sized
+ * box while it hasn't been laid out; this waits for a real one instead of
+ * letting the caller read a field of null.
+ */
+export async function boxOf(locator: Locator): Promise<{ x: number; y: number; width: number; height: number }> {
+  let box: { x: number; y: number; width: number; height: number } | null = null;
+  await expect
+    .poll(async () => {
+      box = await locator.boundingBox();
+      return box !== null && box.width > 0 && box.height > 0;
+    })
+    .toBe(true);
+  return box!;
+}
+
+/**
+ * Waits two animation frames: a click's handlers, and the render they cause,
+ * have run by then. Use it before asserting that a click did nothing, or the
+ * assertion passes before the click's effect could show.
+ */
+export async function afterRender(page: Page): Promise<void> {
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+}
+
 export const day = 24 * 60 * 60 * 1000;
 
 /**

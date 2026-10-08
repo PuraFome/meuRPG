@@ -360,7 +360,7 @@ describe('MovePage', () => {
     });
 
     it('refuses a landing the movement left does not pay, even inside the limit, and says what it has', () => {
-      const { el, choose, fixture } = jumpMode(60);
+      const { el, choose } = jumpMode(60);
       choose(10, 7); // 3 squares: 4,5 m, inside the 4,8 m limit, beyond the 1,8 m left
       const alert = el.querySelector('[role="alert"]');
       expect(plain(alert?.textContent)).toContain('Longe demais');
@@ -368,7 +368,6 @@ describe('MovePage', () => {
       expect(el.querySelector<HTMLButtonElement>('.move__go')?.getAttribute('aria-disabled')).toBe(
         'true',
       );
-      expect(fixture.componentInstance).toBeTruthy();
     });
 
     it('refuses a landing on a creature, and one the options show behind a wall', () => {
@@ -396,7 +395,7 @@ describe('MovePage', () => {
     });
 
     it('asks the trap question before a long jump that lands on a known trap square', () => {
-      const { el, choose, press, jumped, fixture } = jumpMode(300);
+      const { el, choose, press, jumped } = jumpMode(300);
       choose(8, 9); // the options know a trap there ("Fosso escondido")
       press('Saltar para cá');
       expect(plain(el.querySelector('.move__ask')?.textContent)).toBe(
@@ -405,7 +404,6 @@ describe('MovePage', () => {
       expect(jumped).toEqual([]);
       press('Saltar assim mesmo');
       expect(jumped).toEqual([{ kind: 'long', square: { col: 8, row: 9 } }]);
-      expect(fixture.componentInstance).toBeTruthy();
     });
   });
 
