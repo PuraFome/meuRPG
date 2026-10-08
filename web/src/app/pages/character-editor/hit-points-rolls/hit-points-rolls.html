@@ -57,7 +57,7 @@
 
   <aside class="hp__total" role="status" aria-label="Pontos de vida até agora">
     <p class="hp__sum">
-      <strong>{{ preview().total }}</strong> PV máximos até agora
+      <strong>{{ total() }}</strong> PV máximos até agora
     </p>
     <p class="hp__line">
       1º nível: {{ hitDie() }} {{ modifierWords() }} = {{ preview().firstLevel }} PV
@@ -70,6 +70,9 @@
         </p>
       }
     }
+    @if (effectsWords()) {
+      <p class="hp__line hp__effects">{{ effectsWords() }} PV de raça, classe ou característica</p>
+    }
     <p class="hp__note">
       @if (preview().missing.length > 0) {
         Falta rolar {{ preview().missing.length === 1 ? 'o nível' : 'os níveis' }}
@@ -77,9 +80,11 @@
       }
       Constituição {{ constitution() }} ({{ modifier() }} por nível).
       @if (preview().missing.length > 0) {
-        Com todos os níveis, o total final fica entre {{ preview().min }} e {{ preview().max }} PV.
+        Com todos os níveis, o total final fica entre {{ min() }} e {{ max() }} PV.
       }
-      É uma prévia: não conta os pontos de vida que a raça, a classe ou uma característica somam, que entram na ficha ao salvar, quando o servidor confere o máximo.
+      @if (fromEffects() === null) {
+        É uma prévia: não conta os pontos de vida que a raça, a classe ou uma característica somam, que entram na ficha ao salvar, quando o servidor confere o máximo.
+      }
     </p>
   </aside>
 </div>

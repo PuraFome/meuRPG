@@ -103,8 +103,6 @@ export class PuzzlePlayPage {
   protected readonly verdict = signal<'' | 'wrong'>('');
   /** The skills' names, to write "Investigação" from "skill:investigation". */
   private readonly skillNames = signal<ReadonlyMap<string, string>>(new Map());
-  /** The plays of the sequence when the wrong bell on screen was struck: a new play ends that note. */
-  private readonly playsAtWrong = signal<{ at: number; plays: number } | null>(null);
   protected readonly now = signal(new Date());
 
   protected readonly run = computed(() => this.play.run());
@@ -213,9 +211,8 @@ export class PuzzlePlayPage {
     if (this.kind() !== PuzzleKind.SEQUENCE || !last?.wrong || this.frozen()) {
       return null;
     }
-    const at = last.at ? timestampDate(last.at).getTime() : 0;
-    const seen = this.playsAtWrong();
-    if (seen && seen.at === at && (this.run()?.sequence?.plays ?? 0) > seen.plays) {
+    // Both counts are the server's: the note ends with the first play after the wrong bell, for every reader and after any reload.
+    if ((this.run()?.sequence?.plays ?? 0) > last.playsAtMove) {
       return null;
     }
     const own = this.ownName() !== '' && last.characterName === this.ownName();
@@ -308,19 +305,6 @@ export class PuzzlePlayPage {
     effect(() => {
       this.puzzleId();
       untracked(() => this.verdict.set(''));
-    });
-    // A wrong bell stays on screen until the master plays the sequence again: the plays when it was first seen are the mark.
-    effect(() => {
-      const run = this.run();
-      const last = run?.lastMove;
-      untracked(() => {
-        if (last?.wrong && last.at) {
-          const at = timestampDate(last.at).getTime();
-          if (this.playsAtWrong()?.at !== at) {
-            this.playsAtWrong.set({ at, plays: run?.sequence?.plays ?? 0 });
-          }
-        }
-      });
     });
     // The skills' names (once per campaign), for the hint button.
     effect(() => {
