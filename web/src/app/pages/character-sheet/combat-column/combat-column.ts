@@ -7,7 +7,13 @@ import {
 } from '../../../core/characters/character-labels';
 import { FullSheetVm } from '../character-sheet.types';
 import { CombatStats } from '../combat-stats/combat-stats';
-import { coinEntries, pactSlotRow, spellLimitsText, spellSlotRows } from '../sheet-format';
+import {
+  coinEntries,
+  keepUnitsTogether,
+  pactSlotRow,
+  spellLimitsText,
+  spellSlotRows,
+} from '../sheet-format';
 
 /**
  * The paper sheet's middle column: the combat numbers, "Ataques" (a real
@@ -53,6 +59,10 @@ export class CombatColumn {
     this.sheet()
       .attacks.filter((a) => a.kind === 'weapon' && a.key !== 'attack:unarmed-strike')
       .map((a) => a.namePt),
+  );
+  /** The background's equipment text, with each number kept beside its unit. */
+  protected readonly backgroundEquipment = computed(() =>
+    keepUnitsTogether(this.sheet().backgroundEquipment),
   );
   protected readonly coins = computed(() => coinEntries(this.sheet().coins));
 

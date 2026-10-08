@@ -923,11 +923,11 @@ describe('CharacterSheetPage', () => {
     configure();
     fake.getCharacterSheetFn = () =>
       Promise.resolve(
-        vm({ sheet: fullSheet({ backgroundEquipment: 'Um livro de orações, 15 po' }) }),
+        vm({ sheet: fullSheet({ backgroundEquipment: 'Um livro de orações e 15 PO' }) }),
       );
     const el = await render();
     expect(sectionTitled(el, 'Equipamento').textContent).toContain(
-      'Do antecedente: Um livro de orações, 15 po',
+      'Do antecedente: Um livro de orações e 15\u00a0PO',
     );
 
     fake.getCharacterSheetFn = () => Promise.resolve(vm({ sheet: fullSheet() }));
