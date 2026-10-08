@@ -464,70 +464,80 @@
         "NamePT": "Atacar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:cast-a-spell",
         "NamePT": "Conjurar uma magia",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:dash",
         "NamePT": "Disparada",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:disengage",
         "NamePT": "Desengajar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:dodge",
         "NamePT": "Esquivar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:help",
         "NamePT": "Ajudar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:hide",
         "NamePT": "Esconder",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:ready",
         "NamePT": "Preparar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:search",
         "NamePT": "Procurar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:use-an-object",
         "NamePT": "Usar um objeto",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       }
     ],
     "AttacksPerAction": 1,
@@ -1430,7 +1440,8 @@
         "NamePT": "Surto",
         "Economy": "bonus_action",
         "Resource": "gen_full_prepared_surto",
-        "Source": "feature:gen-full-prepared-surto@mesa"
+        "Source": "feature:gen-full-prepared-surto@mesa",
+        "Standard": ""
       }
     ],
     "StandardActions": [
@@ -1439,70 +1450,80 @@
         "NamePT": "Atacar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:cast-a-spell",
         "NamePT": "Conjurar uma magia",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:dash",
         "NamePT": "Disparada",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:disengage",
         "NamePT": "Desengajar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:dodge",
         "NamePT": "Esquivar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:help",
         "NamePT": "Ajudar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:hide",
         "NamePT": "Esconder",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:ready",
         "NamePT": "Preparar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:search",
         "NamePT": "Procurar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:use-an-object",
         "NamePT": "Usar um objeto",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       }
     ],
     "AttacksPerAction": 2,
@@ -2335,7 +2356,8 @@
         "NamePT": "Surto",
         "Economy": "bonus_action",
         "Resource": "gen_full_prepared_surto",
-        "Source": "feature:gen-full-prepared-surto@mesa"
+        "Source": "feature:gen-full-prepared-surto@mesa",
+        "Standard": ""
       }
     ],
     "StandardActions": [
@@ -2344,70 +2366,80 @@
         "NamePT": "Atacar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:cast-a-spell",
         "NamePT": "Conjurar uma magia",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:dash",
         "NamePT": "Disparada",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:disengage",
         "NamePT": "Desengajar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:dodge",
         "NamePT": "Esquivar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:help",
         "NamePT": "Ajudar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:hide",
         "NamePT": "Esconder",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:ready",
         "NamePT": "Preparar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:search",
         "NamePT": "Procurar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:use-an-object",
         "NamePT": "Usar um objeto",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       }
     ],
     "AttacksPerAction": 2,
