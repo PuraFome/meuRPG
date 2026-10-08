@@ -14,7 +14,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import { type XPAward, XPAwardMode } from '../../../../gen/meurpg/progression/v1/progression_pb';
-import { newKey } from '../../../core/connect/idempotency';
+import { ActionKey } from '../../../core/connect/idempotency';
 import { ExperienceStore } from '../../../core/progression/experience-store';
 import { ProgressionClient } from '../../../core/progression/progression-client';
 import { xpAborted, xpErrorMessage, xpNothingToUndo } from '../../../core/progression/xp-errors';
@@ -76,7 +76,7 @@ export class AwardHistory {
   protected readonly error = signal('');
   /** What happened after the question: "XP desfeito", or that the history changed. */
   protected readonly notice = signal('');
-  private key = newKey();
+  private readonly key = new ActionKey();
 
   private readonly voltar = viewChild('voltar', { read: ElementRef<HTMLButtonElement> });
   private readonly box = viewChild<ElementRef<HTMLElement>>('box');
@@ -97,7 +97,6 @@ export class AwardHistory {
     this.asking.set(award.id);
     this.error.set('');
     this.notice.set('');
-    this.key = newKey();
     afterNextRender(
       () => {
         // The whole question below the sticky app bar, then the focus on the safe answer.
@@ -129,7 +128,7 @@ export class AwardHistory {
     this.busy.set(true);
     this.error.set('');
     try {
-      await this.api.undoLast(this.campaignId(), award.id, this.key);
+      await this.api.undoLast(this.campaignId(), award.id, this.key.keyFor(award.id));
       this.asking.set(null);
       this.undone.emit();
       this.notice.set(

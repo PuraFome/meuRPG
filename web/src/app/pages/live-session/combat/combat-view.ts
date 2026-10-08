@@ -289,7 +289,9 @@ export class CombatView {
   private readonly settledTurn = signal('');
   /** The characters at three failures the master put away with "Ainda não". */
   protected readonly deathLater = signal<ReadonlySet<string>>(new Set());
-  private deathKey = newKey();
+  private readonly deathKey = new ActionKey();
+  private readonly confirmDeathKey = new ActionKey();
+  private readonly leaveFormKey = new ActionKey();
   private readonly shieldHandled = new Set<string>();
 
   protected readonly encounter = computed(() => this.state().shown());
@@ -445,8 +447,9 @@ export class CombatView {
       const res = await this.creaturesApi.leaveWildShape(
         this.campaignId(),
         own.characterId,
-        newKey(),
+        this.leaveFormKey.keyFor(own.characterId),
       );
+      this.leaveFormKey.renew();
       if (res.encounter) {
         this.state().apply(res.encounter);
       }
@@ -1575,10 +1578,10 @@ export class CombatView {
     if (!own) {
       return;
     }
-    const key = this.deathKey;
     await this.run(async (e) => {
+      const key = this.deathKey.keyFor([e.id, own.id, die]);
       const res = await this.api.rollDeathSave(this.campaignId(), e.id, own.id, die, key);
-      this.deathKey = newKey();
+      this.deathKey.renew();
       const text = saveAnnouncement(res.save, own.label);
       this.deathResult.set(text);
       if (res.save.outcome === DeathSaveOutcome.REVIVED) {
@@ -1590,7 +1593,16 @@ export class CombatView {
 
   /** The master's "Confirmar a morte" (ConfirmDeath): the character is dead for good. */
   protected async confirmDeath(id: string): Promise<void> {
-    await this.run((e) => this.api.confirmDeath(this.campaignId(), e.id, id, newKey()));
+    await this.run(async (e) => {
+      const res = await this.api.confirmDeath(
+        this.campaignId(),
+        e.id,
+        id,
+        this.confirmDeathKey.keyFor([e.id, id]),
+      );
+      this.confirmDeathKey.renew();
+      return res;
+    });
   }
 
   protected deathLaterFor(id: string): void {
