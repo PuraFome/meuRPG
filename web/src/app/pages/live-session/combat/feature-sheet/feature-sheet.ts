@@ -111,6 +111,8 @@ export class FeatureSheet {
 
   protected readonly typing = signal(false);
   protected readonly busy = signal(false);
+  /** A request in the air: Esc and the backdrop do not close the sheet under it. */
+  protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
   protected readonly roll = signal<DiceRoll | null>(null);
   protected readonly used = signal(false);

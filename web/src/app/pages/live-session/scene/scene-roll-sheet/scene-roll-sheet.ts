@@ -76,6 +76,8 @@ export class SceneRollSheet {
    * the live total and the footer all fit with nothing covered (E7-04). */
   protected readonly short = mediaQuery('(max-height: 600px)');
   protected readonly busy = signal(false);
+  /** A request in the air: Esc and the backdrop do not close the sheet under it. */
+  protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
   protected readonly roll = signal<SceneRoll | null>(null);
 
