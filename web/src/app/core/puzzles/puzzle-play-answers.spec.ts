@@ -8,7 +8,7 @@ const riddle = riddlePuzzle('p1', 'A porta da Cripta pergunta');
 const answer = { kind: { case: 'riddle' as const, value: { answer: 'escuridão' } } };
 const open = (revision: number): PuzzleRun => ({ ...playerRun(riddle), revision });
 
-type Reply = { run: PuzzleRun; replayed: boolean; solvedByThisMove: boolean };
+type Reply = { run: PuzzleRun; replayed: boolean; solvedByThisMove: boolean; wrong: boolean };
 
 async function setup(): Promise<{ fake: FakePuzzlesClient; play: PuzzlePlay }> {
   const fake = new FakePuzzlesClient();
@@ -18,7 +18,6 @@ async function setup(): Promise<{ fake: FakePuzzlesClient; play: PuzzlePlay }> {
     () => 'camp-1',
     async () => undefined,
     () => `key-${++key}`,
-    () => '',
     () => () => undefined,
   );
   fake.playerRunResult = open(1);
@@ -34,7 +33,7 @@ describe('PuzzlePlay: a riddle answer sent twice in one frame', () => {
     const a = play.move(answer);
     expect(fake.moveKeys.length).toBe(1);
     expect(play.pending()).toBe(1);
-    resolvers[0]({ run: open(2), replayed: false, solvedByThisMove: false });
+    resolvers[0]({ run: open(2), replayed: false, solvedByThisMove: false, wrong: false });
     await a;
     expect(play.pending()).toBe(0);
   });
@@ -47,7 +46,7 @@ describe('PuzzlePlay: a riddle answer sent twice in one frame', () => {
     const b = play.move(answer); // Enter held, or a double tap before `busy` reaches the board
     expect(fake.moveKeys.length).toBe(1);
     resolvers.forEach((resolve) =>
-      resolve({ run: open(2), replayed: false, solvedByThisMove: false }),
+      resolve({ run: open(2), replayed: false, solvedByThisMove: false, wrong: false }),
     );
     await Promise.all([a, b]);
   });
@@ -60,7 +59,6 @@ async function setupFirstRead(): Promise<{ fake: FakePuzzlesClient; play: Puzzle
     () => 'camp-1',
     async () => undefined,
     () => 'key',
-    () => '',
     () => () => undefined,
   );
   fake.playerRunResult = playerRun(riddlePuzzle('p1', 'A porta pergunta'));

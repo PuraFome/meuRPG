@@ -717,6 +717,57 @@ describe('LiveSession', () => {
       expect(el.querySelector('[role="status"]:not(.status)')?.textContent?.trim() ?? '').toBe('');
     });
 
+    describe('two reads of the images left with the players in flight', () => {
+      const tower = {
+        id: 'img-2',
+        name: 'Planta da torre',
+        width: 800,
+        height: 600,
+        url: '/images/img-2',
+      };
+
+      function deferred() {
+        let resolve!: (v: ShownImageVm[]) => void;
+        const promise = new Promise<ShownImageVm[]>((r) => (resolve = r));
+        return { promise, resolve };
+      }
+
+      /** Two reads start (the master took the image back in between); they answer in the order given. */
+      async function twoReads(newerFirst: boolean) {
+        source.left = [tower];
+        const el = await render();
+        expect(el.querySelector('#left-title')).not.toBeNull();
+        const older = deferred();
+        const newer = deferred();
+        source.listLeftImages
+          .mockReset()
+          .mockReturnValueOnce(older.promise)
+          .mockReturnValueOnce(newer.promise);
+        source.push({ kind: 'leftImages' });
+        await new Promise((r) => setTimeout(r));
+        source.push({ kind: 'leftImages' });
+        await new Promise((r) => setTimeout(r));
+        expect(source.listLeftImages).toHaveBeenCalledTimes(2);
+        const answers = [() => older.resolve([tower]), () => newer.resolve([])];
+        for (const answer of newerFirst ? answers.reverse() : answers) {
+          answer();
+          await new Promise((r) => setTimeout(r));
+        }
+        TestBed.inject(ApplicationRef).tick();
+        return el;
+      }
+
+      it('leaves a taken-back image hidden when the replies arrive in order', async () => {
+        const el = await twoReads(false);
+        expect(el.querySelector('#left-title')).toBeNull();
+      });
+
+      it('keeps a taken-back image hidden when the older reply arrives last', async () => {
+        const el = await twoReads(true);
+        expect(el.querySelector('#left-title')).toBeNull();
+      });
+    });
+
     it('draws the block without announcing it when it comes with the snapshot (a reload)', async () => {
       source.snapshot = {
         ...(source.snapshot as LiveSnapshotVm),

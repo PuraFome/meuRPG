@@ -1841,3 +1841,33 @@ func TestMR038_AMasterChangeForARunThatMovedOnIsRefused(t *testing.T) {
 // letters only. Searching the whole JSON for "dc" and "15" also matched the random
 // UUIDs in the answer, which carry both now and then.
 var dcKey = regexp.MustCompile(`"[A-Za-z]*[Dd][Cc][A-Za-z]*"\s*:`)
+
+// A wrong answer sent again answers wrong, as the first call did, even when another player's
+// move is the run's last one by then: the verdict is the move's own, not read from the run.
+func TestAReplayedWrongAnswerIsStillWrong(t *testing.T) {
+	t.Parallel()
+	p := newPuzzleTable(t)
+	puz := p.riddle(t, "Enigma")
+	p.show(t, puz.GetId())
+	key := newKey()
+	first, err := p.moveKey(t, p.caio, puz.GetId(), riddleMove("escuridão"), key)
+	if err != nil || first.GetReplayed() || !first.GetWrong() {
+		t.Fatalf("wrong answer = %v, %v; want wrong", first, err)
+	}
+	// Another player's wrong answer becomes the run's last move.
+	if other := p.mustMove(t, p.ana, puz.GetId(), riddleMove("nada")); !other.GetWrong() {
+		t.Fatalf("the other wrong answer = %v", other)
+	}
+	again, err := p.moveKey(t, p.caio, puz.GetId(), riddleMove("escuridão"), key)
+	if err != nil || !again.GetReplayed() || !again.GetWrong() {
+		t.Fatalf("replay = %v, %v; want replayed and wrong", again, err)
+	}
+	if again.GetRun().GetLastMove().GetCharacterName() == "Toren" {
+		t.Errorf("the run's last move is the replayed one, so the test proves nothing: %v", again.GetRun().GetLastMove())
+	}
+	// A right answer is not wrong.
+	right := p.mustMove(t, p.bia, puz.GetId(), riddleMove("sombra"))
+	if right.GetWrong() {
+		t.Errorf("a right answer came back wrong: %v", right)
+	}
+}

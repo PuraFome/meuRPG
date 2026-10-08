@@ -1440,7 +1440,7 @@ func checkPlayerMove(t *testing.T, what string, res *playv1.MakePuzzleMoveRespon
 		t.Fatal(err)
 	}
 	for k := range top {
-		if k != "run" && k != "replayed" && k != "solvedByThisMove" {
+		if k != "run" && k != "replayed" && k != "solvedByThisMove" && k != "wrong" {
 			t.Errorf("%s: the key %q is not on the list", what, k)
 		}
 	}

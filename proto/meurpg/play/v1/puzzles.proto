@@ -1321,6 +1321,9 @@ message MakePuzzleMoveResponse {
   bool replayed = 2;
   // True when this move is the one that solved the puzzle (also on a replay of it).
   bool solved_by_this_move = 3;
+  // True when this move was judged wrong (it spent an attempt), also on a replay of it: the verdict is the
+  // move's own, not read from the run, which may carry another player's move by then.
+  bool wrong = 4;
 }
 
 // PreviewPuzzleCipherRequest asks for a message to be ciphered.

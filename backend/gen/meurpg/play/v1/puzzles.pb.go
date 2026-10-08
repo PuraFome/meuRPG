@@ -6353,8 +6353,11 @@ type MakePuzzleMoveResponse struct {
 	Replayed bool `protobuf:"varint,2,opt,name=replayed,proto3" json:"replayed,omitempty"`
 	// True when this move is the one that solved the puzzle (also on a replay of it).
 	SolvedByThisMove bool `protobuf:"varint,3,opt,name=solved_by_this_move,json=solvedByThisMove,proto3" json:"solved_by_this_move,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// True when this move was judged wrong (it spent an attempt), also on a replay of it: the verdict is the
+	// move's own, not read from the run, which may carry another player's move by then.
+	Wrong         bool `protobuf:"varint,4,opt,name=wrong,proto3" json:"wrong,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MakePuzzleMoveResponse) Reset() {
@@ -6404,6 +6407,13 @@ func (x *MakePuzzleMoveResponse) GetReplayed() bool {
 func (x *MakePuzzleMoveResponse) GetSolvedByThisMove() bool {
 	if x != nil {
 		return x.SolvedByThisMove
+	}
+	return false
+}
+
+func (x *MakePuzzleMoveResponse) GetWrong() bool {
+	if x != nil {
+		return x.Wrong
 	}
 	return false
 }
@@ -7197,11 +7207,12 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"campaignId\x12\x1b\n" +
 	"\tpuzzle_id\x18\x02 \x01(\tR\bpuzzleId\x12.\n" +
 	"\x04move\x18\x03 \x01(\v2\x1a.meurpg.play.v1.PuzzleMoveR\x04move\x12'\n" +
-	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"\x90\x01\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"\xa6\x01\n" +
 	"\x16MakePuzzleMoveResponse\x12+\n" +
 	"\x03run\x18\x01 \x01(\v2\x19.meurpg.play.v1.PuzzleRunR\x03run\x12\x1a\n" +
 	"\breplayed\x18\x02 \x01(\bR\breplayed\x12-\n" +
-	"\x13solved_by_this_move\x18\x03 \x01(\bR\x10solvedByThisMove\"y\n" +
+	"\x13solved_by_this_move\x18\x03 \x01(\bR\x10solvedByThisMove\x12\x14\n" +
+	"\x05wrong\x18\x04 \x01(\bR\x05wrong\"y\n" +
 	"\x1aPreviewPuzzleCipherRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12:\n" +
