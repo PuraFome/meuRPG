@@ -352,6 +352,55 @@ func TestReachIsTheSameEveryTime(t *testing.T) {
 	}
 }
 
+// TestLeavesReachAgreesWithWalkingTheWholeLine: LeavesReach skips a reactor the
+// move's box cannot touch; the answer is the one the whole line gives.
+func TestLeavesReachAgreesWithWalkingTheWholeLine(t *testing.T) {
+	t.Parallel()
+	walk := func(from, to, reactor grid.Square, reachFt int) grid.Reaction {
+		inside := func(s grid.Square) bool { return grid.RangeFt(reactor, s) <= reachFt }
+		if inside(to) {
+			return grid.Reaction{}
+		}
+		var last grid.Square
+		found := inside(from)
+		if found {
+			last = from
+		}
+		for _, s := range grid.Line(from, to) {
+			if inside(s.Square) {
+				last, found = s.Square, true
+			}
+		}
+		return grid.Reaction{Leaves: found, LastInReach: last}
+	}
+	leaving := 0
+	for fc := 0; fc < 9; fc += 2 {
+		for fr := 0; fr < 9; fr += 3 {
+			for tc := 0; tc < 9; tc += 2 {
+				for tr := 0; tr < 9; tr += 3 {
+					for rc := 0; rc < 9; rc++ {
+						for rr := 0; rr < 9; rr++ {
+							for _, reach := range []int{5, 10, 15} {
+								from, to, reactor := sq(fc, fr), sq(tc, tr), sq(rc, rr)
+								want := walk(from, to, reactor, reach)
+								if got := grid.LeavesReach(from, to, reactor, reach); got != want {
+									t.Fatalf("LeavesReach(%v, %v, %v, %d) = %+v, want %+v", from, to, reactor, reach, got, want)
+								}
+								if want.Leaves {
+									leaving++
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	if leaving == 0 {
+		t.Fatal("no move left a reach: the comparison proves nothing")
+	}
+}
+
 func TestLeavesReachByPassingThrough(t *testing.T) {
 	t.Parallel()
 	// SRD: if you leave a hostile creature's reach during your move, you provoke,
