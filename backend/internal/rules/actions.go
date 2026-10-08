@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"slices"
+	"strings"
 )
 
 // Action economies, as in the grant_action effect.
@@ -52,6 +53,23 @@ type Action struct {
 	// Source is the feature or trait key that grants it, "" for standard
 	// actions.
 	Source string
+	// Standard is the key of the standard action a feature action performs
+	// ("standard:dash" for Cunning Action's Dash), whose effect on the turn it
+	// has; "" for any other action.
+	Standard string
+}
+
+// featureStandards are the features whose action is a standard action taken
+// with another economy: Cunning Action (a rogue's bonus action to Dash,
+// Disengage or Hide), the monk's Step of the Wind (Disengage or Dash) and Patient
+// Defense (Dodge). Each choice is an action of its own, keyed "<feature>:<choice>",
+// so that taking it has the effect of the standard action (a Dash doubles the
+// movement, a Disengage ends the opportunity attacks). A feature with a single
+// choice keeps its own key.
+var featureStandards = map[string][]string{
+	"feature:cunning-action":   {"standard:dash", "standard:disengage", "standard:hide"},
+	"feature:step-of-the-wind": {"standard:disengage", "standard:dash"},
+	"feature:patient-defense":  {"standard:dodge"},
 }
 
 // standardAction is one entry of effects/standard_actions.json: the actions
@@ -137,8 +155,32 @@ func (x *deriver) resourcesAndActions() {
 				break
 			}
 		}
-		if !slices.ContainsFunc(x.d.Actions, func(o Action) bool { return o.Key == act.Key && o.Economy == act.Economy }) {
-			x.d.Actions = append(x.d.Actions, act)
+		for _, route := range x.routes(act) {
+			if !slices.ContainsFunc(x.d.Actions, func(o Action) bool { return o.Key == route.Key && o.Economy == route.Economy }) {
+				x.d.Actions = append(x.d.Actions, route)
+			}
 		}
 	}
+}
+
+// routes is the action as the character takes it: the action itself, or one
+// action for each standard action the feature performs (featureStandards).
+func (x *deriver) routes(act Action) []Action {
+	standards := featureStandards[act.Key]
+	if len(standards) == 0 {
+		return []Action{act}
+	}
+	var out []Action
+	for _, key := range standards {
+		route := act
+		route.Standard = key
+		if len(standards) > 1 {
+			route.Key = act.Key + ":" + strings.TrimPrefix(key, "standard:")
+		}
+		if i := slices.IndexFunc(x.c.standardActions, func(a Action) bool { return a.Key == key }); i >= 0 && len(standards) > 1 {
+			route.NamePT = act.NamePT + ": " + x.c.standardActions[i].NamePT
+		}
+		out = append(out, route)
+	}
+	return out
 }

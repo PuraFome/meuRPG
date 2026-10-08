@@ -31,7 +31,11 @@ export interface LevelUpCatalog {
   readonly spells: readonly Spell[];
   readonly skills: readonly Skill[];
   /** The classes' names, for "da lista de Mago" when a table class or a third caster reads another class's list. */
-  readonly classes?: readonly { readonly key: string; readonly namePt: string }[];
+  readonly classes?: readonly {
+    readonly key: string;
+    readonly namePt: string;
+    readonly hitDie?: number;
+  }[];
 }
 
 /** One page of the master's "O que mudou". */
@@ -63,8 +67,9 @@ export class LevelUpClient {
     return res.character!;
   }
 
-  async options(campaignId: string, characterId: string): Promise<LevelUpOptions> {
-    const res = await this.characters.getLevelUpOptions({ campaignId, characterId });
+  /** What the next level of `classKey` gives; empty is the sheet's first class (the server's own default). */
+  async options(campaignId: string, characterId: string, classKey = ''): Promise<LevelUpOptions> {
+    const res = await this.characters.getLevelUpOptions({ campaignId, characterId, classKey });
     return res.options!;
   }
 
@@ -125,7 +130,11 @@ export class LevelUpClient {
         revision: res.tableRevision,
         spells: res.content?.spells ?? [],
         skills: res.content?.skills ?? [],
-        classes: (res.content?.classes ?? []).map((c) => ({ key: c.key, namePt: c.namePt })),
+        classes: (res.content?.classes ?? []).map((c) => ({
+          key: c.key,
+          namePt: c.namePt,
+          hitDie: c.hitDie,
+        })),
       }));
       this.catalogs.set(id, pending);
       pending.catch(() => this.catalogs.delete(id));

@@ -49,6 +49,9 @@ export class LevelUpSession {
   /** What the table's rule leaves of the hit points choice (RN-24): `null` while the player chooses, else the one way. */
   readonly hpFixed: 'roll' | 'average' | null;
 
+  /** The sheet has two or more classes: the level lines say which class's level they mean. */
+  readonly multiclass: boolean;
+
   readonly rolling = signal(false);
   readonly rollError = signal('');
 
@@ -70,6 +73,7 @@ export class LevelUpSession {
     this.draft = draft;
     this.before = character.derived!;
     this.revision.set(character.revision);
+    this.multiclass = (character.derived?.classes.length ?? 0) >= 2;
     this.preview = new LevelUpPreview(client, campaignId, character.id);
     const rule = options.diceRule;
     this.canApp = rule !== LevelUpDiceRule.FORCED_PHYSICAL;
@@ -87,6 +91,28 @@ export class LevelUpSession {
       this.chooseRoll();
     }
   }
+
+  /** "o nível 4", or "o nível 2 de Clérigo" on a sheet with two classes: the level the class gains, not the total. */
+  get levelWords(): string {
+    const o = this.options;
+    return this.multiclass ? `o nível ${o.toLevel} de ${o.classNamePt}` : `o nível ${o.toLevel}`;
+  }
+
+  /** A die was already rolled for this level in another class: the server keeps one die per level, so this class cannot roll
+   * another nor use that one. Empty when the die is free; else the words, with the class and the result of that die. */
+  readonly rollOtherClass = computed<string>(() => {
+    const o = this.options;
+    const keptClass = o.keptHitPointRollClassKey;
+    if (o.keptHitPointRoll <= 0 || keptClass === '' || keptClass === o.classKey) {
+      return '';
+    }
+    const other = this.before.classes.find((c) => c.classKey === keptClass)?.namePt ?? '';
+    const faces = this.draft.catalog.classes?.find((c) => c.key === keptClass)?.hitDie ?? 0;
+    const result = `${o.keptHitPointRoll}${faces > 0 ? ` no d${faces}` : ''}`;
+    return other === ''
+      ? `O dado deste nível já foi rolado para outra classe (${result}). Volte à outra classe para usar esse resultado, ou fique com a média.`
+      : `O dado deste nível já foi rolado para o ${other} (${result}). Volte ao ${other} para usar esse resultado, ou fique com a média.`;
+  });
 
   readonly after = computed<DerivedSheet>(() => this.preview.state().after ?? this.before);
 
@@ -184,7 +210,7 @@ export class LevelUpSession {
 
   /** The die was rolled in the app: the server keeps the result, and asking again returns the same one. */
   async rollInApp(): Promise<void> {
-    if (this.rolling()) {
+    if (this.rolling() || this.rollOtherClass() !== '') {
       return;
     }
     this.rolling.set(true);

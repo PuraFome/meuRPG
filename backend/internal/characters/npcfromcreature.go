@@ -70,7 +70,7 @@ func (s *Service) CreateNpcFromCreature(
 		var err error
 		row, err = q.InsertNpcFromCreature(ctx, params)
 		if err == nil {
-			return nil
+			return s.checkRoom(ctx, q, m.CampaignID, true)
 		}
 		if !errors.Is(err, pgx.ErrNoRows) {
 			return wrap("insert an NPC from a creature", err)

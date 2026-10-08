@@ -18,6 +18,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/progressiondb"
 )
 
@@ -62,19 +63,37 @@ func (s *Service) ListXPAwards(
 		}
 		params.BeforeCreatedAt, params.BeforeID = &at, &id
 	}
-	rows, err := s.queries.ListXPAwardsPage(ctx, params)
+	// The page, its shares and treasures and the latest award not undone are one
+	// moment: an undo or an award between them would show an award that is live
+	// next to a "Desfazer" on another one.
+	var rows []progressiondb.XpAward
+	var data awardData
+	var more bool
+	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		var err error
+		if rows, err = q.ListXPAwardsPage(ctx, params); err != nil {
+			return fmt.Errorf("list XP awards: %w", err)
+		}
+		more = int32(len(rows)) > size //nolint:gosec // at most maxPageSize+1
+		if more {
+			rows = rows[:size]
+		}
+		data, err = s.loadAwardData(ctx, q, m, rows)
+		return err
+	})
 	if err != nil {
-		return nil, s.dbError(ctx, "list XP awards", err)
+		return nil, s.dbError(ctx, "read XP awards", err)
 	}
 	res := &progressionv1.ListXPAwardsResponse{}
-	if int32(len(rows)) > size { //nolint:gosec // at most maxPageSize+1
-		rows = rows[:size]
+	if more {
 		last := rows[len(rows)-1]
 		res.NextPageToken = pageToken(last.CreatedAt, last.ID)
 	}
-	if res.Awards, err = s.awardViews(ctx, m, rows...); err != nil {
+	if res.Awards, err = s.viewsOf(ctx, m, data, rows); err != nil {
 		return nil, s.dbError(ctx, "read XP awards", err)
 	}
+
 	return connect.NewResponse(res), nil
 }
 
@@ -104,15 +123,65 @@ func parsePageToken(token string) (time.Time, string, bool) {
 	return time.UnixMicro(n).UTC(), u.String(), true
 }
 
-// awardViews builds the history's entries for the awards, in the order given:
-// who gave each, the characters' names, the combat's name, who undid it. A
-// name is the current one. Only the master gets can_undo, on the latest award
-// not undone.
-func (s *Service) awardViews(ctx context.Context, m authz.Membership, awards ...progressiondb.XpAward) ([]*progressionv1.XPAward, error) {
+// awardData is what the history's entries read from the database besides the
+// awards themselves: their shares and treasures, and the latest award not
+// undone (for the master's can_undo).
+type awardData struct {
+	shares    []progressiondb.XpAwardShare
+	treasures []progressiondb.XpAwardTreasure
+	lastID    string
+}
+
+// loadAwardData reads awardData for awards through q, which a caller that read
+// the awards in a read transaction passes bound to it, so the awards, their
+// shares and the latest award not undone are one moment: an undo that commits
+// between them would otherwise show a live award next to a "Desfazer" on an
+// older one.
+func (s *Service) loadAwardData(ctx context.Context, q *progressiondb.Queries, m authz.Membership, awards []progressiondb.XpAward) (awardData, error) {
 	awardIDs := make([]string, 0, len(awards))
-	var userIDs, encounterIDs []string
 	for _, a := range awards {
 		awardIDs = append(awardIDs, a.ID)
+	}
+	var d awardData
+	var err error
+	if d.shares, err = q.ListXPSharesOfAwards(ctx, awardIDs); err != nil {
+		return d, fmt.Errorf("list the shares: %w", err)
+	}
+	if d.treasures, err = q.ListXPAwardTreasures(ctx, awardIDs); err != nil {
+		return d, fmt.Errorf("list the converted treasures: %w", err)
+	}
+	if m.Role == authz.RoleMaster {
+		if d.lastID, err = q.GetLastXPAwardID(ctx, m.CampaignID); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return d, fmt.Errorf("find the last award: %w", err)
+		}
+	}
+	return d, nil
+}
+
+// awardViews builds the history's entries for awards that were just read or
+// written, in the order given. The rest of what they show is read in its own
+// read transaction.
+func (s *Service) awardViews(ctx context.Context, m authz.Membership, awards ...progressiondb.XpAward) ([]*progressionv1.XPAward, error) {
+	var d awardData
+	err := db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		d, err = s.loadAwardData(ctx, s.queries.WithTx(tx), m, awards)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return s.viewsOf(ctx, m, d, awards)
+}
+
+// viewsOf builds the history's entries for the awards, in the order given:
+// who gave each, the characters' names, the combat's name, who undid it. A
+// name is the current one. Only the master gets can_undo, on the latest award
+// not undone. The data was read in one snapshot (loadAwardData); the names come
+// from other modules and are read here, outside it.
+func (s *Service) viewsOf(ctx context.Context, m authz.Membership, d awardData, awards []progressiondb.XpAward) ([]*progressionv1.XPAward, error) {
+	var userIDs, encounterIDs []string
+	for _, a := range awards {
 		if a.GivenBy != nil {
 			userIDs = append(userIDs, *a.GivenBy)
 		}
@@ -123,13 +192,9 @@ func (s *Service) awardViews(ctx context.Context, m authz.Membership, awards ...
 			encounterIDs = append(encounterIDs, *a.EncounterID)
 		}
 	}
-	shares, err := s.queries.ListXPSharesOfAwards(ctx, awardIDs)
-	if err != nil {
-		return nil, fmt.Errorf("list the shares: %w", err)
-	}
-	characterIDs := make([]string, 0, len(shares))
+	characterIDs := make([]string, 0, len(d.shares))
 	byAward := map[string][]progressiondb.XpAwardShare{}
-	for _, sh := range shares {
+	for _, sh := range d.shares {
 		characterIDs = append(characterIDs, sh.CharacterID)
 		byAward[sh.AwardID] = append(byAward[sh.AwardID], sh)
 	}
@@ -145,20 +210,11 @@ func (s *Service) awardViews(ctx context.Context, m authz.Membership, awards ...
 	if err != nil {
 		return nil, fmt.Errorf("read the combats' names: %w", err)
 	}
-	treasureRows, err := s.queries.ListXPAwardTreasures(ctx, awardIDs)
-	if err != nil {
-		return nil, fmt.Errorf("list the converted treasures: %w", err)
-	}
 	treasuresOf := map[string][]*progressionv1.XPAwardTreasure{}
-	for _, tr := range treasureRows {
+	for _, tr := range d.treasures {
 		treasuresOf[tr.AwardID] = append(treasuresOf[tr.AwardID], &progressionv1.XPAwardTreasure{PointId: tr.PointID, ValuePo: tr.ValuePo})
 	}
-	lastID := ""
-	if m.Role == authz.RoleMaster {
-		if lastID, err = s.queries.GetLastXPAwardID(ctx, m.CampaignID); err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("find the last award: %w", err)
-		}
-	}
+	lastID := d.lastID
 
 	out := make([]*progressionv1.XPAward, 0, len(awards))
 	for _, a := range awards {

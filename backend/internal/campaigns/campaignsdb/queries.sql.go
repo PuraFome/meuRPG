@@ -61,6 +61,26 @@ func (q *Queries) ClearPendingExpiry(ctx context.Context, arg ClearPendingExpiry
 	return result.RowsAffected(), nil
 }
 
+const countActiveInvites = `-- name: CountActiveInvites :one
+SELECT count(*)::INT4 FROM campaign_invites
+WHERE campaign_id = $1 AND revoked_at IS NULL AND expires_at > $2 AND use_count < max_uses
+`
+
+type CountActiveInvitesParams struct {
+	CampaignID string
+	Now        time.Time
+}
+
+// The invites of a campaign that still work: not revoked, not expired, with
+// uses left. The cap on creating counts them (RN-30); the index on
+// campaign_id finds the campaign's rows.
+func (q *Queries) CountActiveInvites(ctx context.Context, arg CountActiveInvitesParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countActiveInvites, arg.CampaignID, arg.Now)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countMasteredCampaigns = `-- name: CountMasteredCampaigns :one
 SELECT count(*)::INT4 FROM campaign_members
 WHERE user_id = $1 AND role = 'master'

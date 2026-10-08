@@ -1,6 +1,6 @@
 {
   "level 1": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.20+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.21+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -465,70 +465,80 @@
         "NamePT": "Atacar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:cast-a-spell",
         "NamePT": "Conjurar uma magia",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:dash",
         "NamePT": "Disparada",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:disengage",
         "NamePT": "Desengajar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:dodge",
         "NamePT": "Esquivar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:help",
         "NamePT": "Ajudar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:hide",
         "NamePT": "Esconder",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:ready",
         "NamePT": "Preparar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:search",
         "NamePT": "Procurar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:use-an-object",
         "NamePT": "Usar um objeto",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       }
     ],
     "AttacksPerAction": 1,
@@ -639,7 +649,7 @@
     "Issues": null
   },
   "level 11": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.20+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.21+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -1432,7 +1442,8 @@
         "NamePT": "Surto",
         "Economy": "bonus_action",
         "Resource": "gen_full_prepared_surto",
-        "Source": "feature:gen-full-prepared-surto@mesa"
+        "Source": "feature:gen-full-prepared-surto@mesa",
+        "Standard": ""
       }
     ],
     "StandardActions": [
@@ -1441,70 +1452,80 @@
         "NamePT": "Atacar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:cast-a-spell",
         "NamePT": "Conjurar uma magia",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:dash",
         "NamePT": "Disparada",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:disengage",
         "NamePT": "Desengajar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:dodge",
         "NamePT": "Esquivar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:help",
         "NamePT": "Ajudar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:hide",
         "NamePT": "Esconder",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:ready",
         "NamePT": "Preparar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:search",
         "NamePT": "Procurar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:use-an-object",
         "NamePT": "Usar um objeto",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       }
     ],
     "AttacksPerAction": 2,
@@ -1718,7 +1739,7 @@
     "Issues": null
   },
   "level 5": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.20+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.21+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -2338,7 +2359,8 @@
         "NamePT": "Surto",
         "Economy": "bonus_action",
         "Resource": "gen_full_prepared_surto",
-        "Source": "feature:gen-full-prepared-surto@mesa"
+        "Source": "feature:gen-full-prepared-surto@mesa",
+        "Standard": ""
       }
     ],
     "StandardActions": [
@@ -2347,70 +2369,80 @@
         "NamePT": "Atacar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:cast-a-spell",
         "NamePT": "Conjurar uma magia",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:dash",
         "NamePT": "Disparada",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:disengage",
         "NamePT": "Desengajar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:dodge",
         "NamePT": "Esquivar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:help",
         "NamePT": "Ajudar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:hide",
         "NamePT": "Esconder",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:ready",
         "NamePT": "Preparar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:search",
         "NamePT": "Procurar",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       },
       {
         "Key": "standard:use-an-object",
         "NamePT": "Usar um objeto",
         "Economy": "action",
         "Resource": "",
-        "Source": ""
+        "Source": "",
+        "Standard": ""
       }
     ],
     "AttacksPerAction": 2,

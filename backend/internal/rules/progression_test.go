@@ -2,6 +2,7 @@ package rules
 
 import (
 	"errors"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -260,5 +261,36 @@ func TestSceneCheckName(t *testing.T) {
 		if got, ok := c.SceneCheckName(key); ok {
 			t.Errorf("SceneCheckName(%q) = %q, true; want false", key, got)
 		}
+	}
+}
+
+// TestLifeDomainAlwaysPreparesGuardianOfFaith: a Life cleric of level 7 always has
+// death ward and guardian of faith, the two spells the domain gives at that level.
+func TestLifeDomainAlwaysPreparesGuardianOfFaith(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	b := clericBuild(7)
+	b.SpellsPrepared = []string{"spell:cure-wounds", "spell:bless"}
+	d := Derive(b, c)
+	prepared := map[string]bool{}
+	for _, s := range d.Spells {
+		if s.Prepared {
+			prepared[s.Spell.Key] = true
+		}
+	}
+	for _, want := range []string{"spell:death-ward", "spell:guardian-of-faith"} {
+		if !prepared[want] {
+			t.Errorf("a level 7 Life cleric lacks %s among the always prepared spells", want)
+		}
+	}
+	var got []string
+	for _, s := range c.c.subclasses["subclass:life"].Spells {
+		if s.ClassLevel == 7 {
+			got = append(got, s.Spell)
+		}
+	}
+	slices.Sort(got)
+	if want := []string{"spell:death-ward", "spell:guardian-of-faith"}; !slices.Equal(got, want) {
+		t.Errorf("Life domain spells at level 7 = %v, want %v", got, want)
 	}
 }

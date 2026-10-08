@@ -192,3 +192,111 @@ func TestSpellDetailsExamples(t *testing.T) {
 		t.Errorf("acid arrow = %+v", mt)
 	}
 }
+
+// damageOfType is the roll of a damage type the spell makes at a slot level.
+func damageOfType(t *testing.T, c *Content, key, damageType string, slot int) (DamageRoll, bool) {
+	t.Helper()
+	d, ok := c.SpellDetails(key)
+	if !ok {
+		t.Fatalf("%s is not in the content", key)
+	}
+	for _, r := range d.DamageAt(slot, 20) {
+		if r.Type == damageType {
+			return r, true
+		}
+	}
+	return DamageRoll{}, false
+}
+
+// TestSpellDamageGrowsWithTheSlot: the damage of a spell that adds dice for
+// each slot level above its own follows the SRD's "At Higher Levels" text.
+func TestSpellDamageGrowsWithTheSlot(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for _, tc := range []struct {
+		key, damageType string
+		slot            int
+		want            string
+	}{
+		{"spell:disintegrate", "damage-type:force", 6, "10d6 + 40"},
+		{"spell:disintegrate", "damage-type:force", 7, "13d6 + 40"},
+		{"spell:disintegrate", "damage-type:force", 8, "16d6 + 40"},
+		{"spell:disintegrate", "damage-type:force", 9, "19d6 + 40"},
+		{"spell:freezing-sphere", "damage-type:cold", 6, "10d6"},
+		{"spell:freezing-sphere", "damage-type:cold", 7, "11d6"},
+		{"spell:freezing-sphere", "damage-type:cold", 9, "13d6"},
+		{"spell:phantasmal-killer", "damage-type:psychic", 4, "4d10"},
+		{"spell:phantasmal-killer", "damage-type:psychic", 5, "5d10"},
+		{"spell:phantasmal-killer", "damage-type:psychic", 9, "9d10"},
+		{"spell:wall-of-fire", "damage-type:fire", 4, "5d8"},
+		{"spell:wall-of-fire", "damage-type:fire", 5, "6d8"},
+		{"spell:wall-of-fire", "damage-type:fire", 9, "10d8"},
+		{"spell:spirit-guardians", "damage-type:radiant", 3, "3d8"},
+		{"spell:spirit-guardians", "damage-type:radiant", 5, "5d8"},
+		{"spell:spirit-guardians", "damage-type:necrotic", 9, "9d8"},
+		{"spell:arcane-hand", "damage-type:force", 5, "4d8"},
+		{"spell:arcane-hand", "damage-type:force", 7, "8d8"},
+		{"spell:glyph-of-warding", "damage-type:thunder", 3, "5d8"},
+		{"spell:glyph-of-warding", "damage-type:fire", 5, "7d8"},
+	} {
+		got, ok := damageOfType(t, c, tc.key, tc.damageType, tc.slot)
+		if !ok || got.Raw != tc.want || !got.Parsed {
+			t.Errorf("%s at slot %d, %s = %q (parsed %v, listed %v), want %s", tc.key, tc.slot, tc.damageType, got.Raw, got.Parsed, ok, tc.want)
+		}
+	}
+}
+
+// TestSpellsWithoutTheirDamageInTheSnapshot: spells whose damage the snapshot
+// lacks have it from the SRD text, and a spell whose effect comes on later turns
+// records no saving throw that a cast would open at once.
+func TestSpellsWithoutTheirDamageInTheSnapshot(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for _, tc := range []struct {
+		key, damageType, want string
+		slot                  int
+	}{
+		{"spell:spike-growth", "damage-type:piercing", "2d4", 2},
+		{"spell:web", "damage-type:fire", "2d4", 2},
+		{"spell:earthquake", "damage-type:bludgeoning", "5d6", 8},
+		{"spell:teleport", "damage-type:force", "3d10", 7},
+	} {
+		got, ok := damageOfType(t, c, tc.key, tc.damageType, tc.slot)
+		if !ok || got.Raw != tc.want {
+			t.Errorf("%s damage = %q (listed %v), want %s %s", tc.key, got.Raw, ok, tc.want, tc.damageType)
+		}
+	}
+	for _, key := range []string{"spell:spike-growth", "spell:web", "spell:earthquake", "spell:teleport", "spell:glyph-of-warding"} {
+		if d, _ := c.SpellDetails(key); d.Save != nil || d.AttackType != "" {
+			t.Errorf("%s records a saving throw or attack %+v / %q, which a cast would roll at once", key, d.Save, d.AttackType)
+		}
+	}
+	sg, _ := c.SpellDetails("spell:spirit-guardians")
+	if sg.Save == nil || sg.Save.Ability != WIS || sg.Save.OnSuccess != "half" {
+		t.Errorf("Spirit Guardians save = %+v, want Wisdom, half on a success", sg.Save)
+	}
+}
+
+// TestSpellAttacksAndSaves: spells the SRD makes attack rolls or saving throws
+// carry them with their damage.
+func TestSpellAttacksAndSaves(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for key, want := range map[string]string{"spell:scorching-ray": "ranged", "spell:flame-blade": "melee", "spell:arcane-hand": "melee"} {
+		d, ok := c.SpellDetails(key)
+		if !ok || d.AttackType != want {
+			t.Errorf("%s attack type = %q, want %q", key, d.AttackType, want)
+		}
+	}
+	sr, _ := c.SpellDetails("spell:scorching-ray")
+	if rolls := sr.DamageAt(2, 5); len(rolls) != 1 || rolls[0].Raw != "2d6" || rolls[0].Type != "damage-type:fire" {
+		t.Errorf("Scorching Ray damage = %+v, want 2d6 fire for each ray", rolls)
+	}
+	cl, _ := c.SpellDetails("spell:call-lightning")
+	if cl.Save == nil || cl.Save.Ability != DEX || cl.Save.OnSuccess != "half" {
+		t.Fatalf("Call Lightning save = %+v, want Dexterity, half on a success", cl.Save)
+	}
+	if rolls := cl.DamageAt(3, 5); len(rolls) != 1 || rolls[0].Raw != "3d10" {
+		t.Errorf("Call Lightning damage = %+v, want 3d10", rolls)
+	}
+}

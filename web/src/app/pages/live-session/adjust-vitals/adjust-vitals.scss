@@ -5,11 +5,21 @@
 .adjust {
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  max-height: calc(92dvh - 48px);
   padding: var(--mr-space-5) var(--mr-space-6) var(--mr-space-4);
 
   &--sheet {
+    max-height: calc(100dvh - 40px);
     padding: var(--mr-space-2) 2px var(--mr-space-2);
   }
+}
+
+// The numbers scroll when the screen is short; the title and the buttons stay in view.
+.adjust__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 // The bottom sheet's grab bar: decoration only (the sheet closes with
@@ -85,6 +95,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-1);
+  padding-top: var(--mr-space-2);
+  border-top: 1px solid var(--mr-rule);
+  background: var(--mr-surface);
 
   @media (min-width: 768px) {
     flex-direction: row-reverse;

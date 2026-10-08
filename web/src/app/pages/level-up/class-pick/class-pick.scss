@@ -1,0 +1,152 @@
+:host {
+  display: block;
+}
+
+.lead {
+  margin: 0 0 var(--mr-space-3);
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  @media (min-width: 768px) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+// The same radio card as the dice choices: a 64px card, the checked one outlined in the accent with a filled dot.
+.card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-sizing: border-box;
+  min-height: 64px;
+  padding: 12px 16px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  &:has(:checked) {
+    padding: 11px 15px;
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+
+  &:has(:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  &:has(:disabled) {
+    cursor: default;
+  }
+}
+
+.card__dot {
+  flex: none;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 50%;
+  background: var(--mr-surface);
+
+  :checked ~ & {
+    border-color: var(--mr-ink);
+
+    &::after {
+      content: '';
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--mr-ink);
+    }
+  }
+}
+
+.card__text {
+  display: flex;
+  flex-direction: column;
+}
+
+.card__title {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.card__desc {
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.ask {
+  margin-top: var(--mr-space-3);
+
+  > .mat-icon {
+    align-self: flex-start;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.ask__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  min-width: 0;
+}
+
+// Two outlined buttons that answer one question: the same height (44px; on a phone 48px, side by side, the same width).
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+
+  > button {
+    --mat-button-outlined-container-height: 44px;
+    --mat-button-outlined-label-text-color: var(--mr-ink);
+    background: var(--mr-surface);
+  }
+
+  @media (max-width: 767.98px) {
+    > button {
+      flex: 1 1 0;
+      min-width: 0;
+      --mat-button-outlined-container-height: 48px;
+    }
+  }
+
+  // Under about 480px the two labels do not fit side by side: the buttons stack at the full width, one line each. The safe
+  // one, "Continuar com ...", is drawn first (it has the focus when the question opens); the focus order is still the document's.
+  @media (max-width: 479.98px) {
+    flex-direction: column;
+
+    > button {
+      flex: none;
+      width: 100%;
+      min-height: 44px;
+      white-space: nowrap;
+    }
+
+    > .js-class-keep {
+      order: -1;
+    }
+  }
+}

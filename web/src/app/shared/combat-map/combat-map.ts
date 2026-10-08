@@ -103,6 +103,8 @@ export class CombatMap {
    * 1,5 m"), to judge the grid's size by. */
   readonly mark = input<Square | null>(null);
   readonly masterMoves = input(false);
+  /** The master's "Movimento forçado" is on: while a token is dragged, its square of origin is marked and a dashed line runs from it. */
+  readonly forcedDrag = input(false);
   readonly ownMoveId = input<string | null>(null);
   readonly pickSquares = input(false);
   /** Side of one square in pixels; `null` fits the map to its container. */
@@ -204,6 +206,27 @@ export class CombatMap {
     const from = squareCenter(token, this.columns(), this.rows());
     const to = squareCenter(frame.square, this.columns(), this.rows());
     return { x1: from.x, y1: from.y, x2: to.x, y2: to.y };
+  });
+
+  /** A forced drag in progress: the square the token left, and the line from it to where it is now. */
+  protected readonly forcedTrace = computed(() => {
+    const drag = this.drag();
+    const token =
+      drag && this.forcedDrag()
+        ? this.combatants().find((c) => c.id === drag.id && c.placed)
+        : undefined;
+    if (!drag || !token || (drag.col === token.col && drag.row === token.row)) {
+      return null;
+    }
+    const from = squareCenter({ col: token.col, row: token.row }, this.columns(), this.rows());
+    const to = squareCenter(drag, this.columns(), this.rows());
+    return {
+      origin: { col: token.col, row: token.row },
+      x1: from.x,
+      y1: from.y,
+      x2: to.x,
+      y2: to.y,
+    };
   });
 
   protected readonly listed = computed(() =>

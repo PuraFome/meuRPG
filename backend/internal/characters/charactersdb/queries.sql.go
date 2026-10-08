@@ -100,6 +100,40 @@ func (q *Queries) BumpContentRevision(ctx context.Context, arg BumpContentRevisi
 	return revision, err
 }
 
+const carryHitPoints = `-- name: CarryHitPoints :exec
+UPDATE character_vitals
+SET hit_points_current = LEAST(LEAST(hit_points_current, $1::INT4) + $2::INT4, $3::INT4),
+    revision = revision + 1,
+    updated_at = $4
+WHERE character_id = $5
+  AND hit_points_current IS NOT NULL
+  AND hit_points_current <> LEAST(LEAST(hit_points_current, $1::INT4) + $2::INT4, $3::INT4)
+`
+
+type CarryHitPointsParams struct {
+	OldMax      int32
+	Gain        int32
+	NewMax      int32
+	Now         time.Time
+	CharacterID string
+}
+
+// The sheet's maximum hit points changed from old_max to new_max (a level-up,
+// an edit): a character whose current hit points are set gains what the maximum
+// gained (gain, zero when it fell), so a wound stays a wound, and never ends
+// above the new maximum. NULL is "full" and stays so. The revision moves only
+// when the number does.
+func (q *Queries) CarryHitPoints(ctx context.Context, arg CarryHitPointsParams) error {
+	_, err := q.db.Exec(ctx, carryHitPoints,
+		arg.OldMax,
+		arg.Gain,
+		arg.NewMax,
+		arg.Now,
+		arg.CharacterID,
+	)
+	return err
+}
+
 const characterIsInCampaign = `-- name: CharacterIsInCampaign :one
 SELECT EXISTS (
     SELECT 1 FROM characters
@@ -153,6 +187,24 @@ DELETE FROM character_wild_shapes WHERE character_id = $1
 func (q *Queries) ClearWildShape(ctx context.Context, characterID string) error {
 	_, err := q.db.Exec(ctx, clearWildShape, characterID)
 	return err
+}
+
+const countCampaignCharacters = `-- name: CountCampaignCharacters :one
+
+SELECT count(*)::INT4 FROM characters WHERE campaign_id = $1::UUID
+`
+
+// Every query names the campaign next to the character: a character ID of
+// another campaign matches no row, which the handlers answer as "not found".
+// campaign_id is nullable in the table (a deleted campaign sets it to NULL),
+// so the argument is cast to UUID to make it a plain string in Go.
+// Every character of the campaign, of any kind and status (dead ones too),
+// for the cap on creating (RN-30). The index on campaign_id finds the rows.
+func (q *Queries) CountCampaignCharacters(ctx context.Context, campaignID string) (int32, error) {
+	row := q.db.QueryRow(ctx, countCampaignCharacters, campaignID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const countLiveCreaturesOfCharacter = `-- name: CountLiveCreaturesOfCharacter :one
@@ -927,7 +979,6 @@ func (q *Queries) InsertCampaignContentWithKey(ctx context.Context, arg InsertCa
 }
 
 const insertCharacter = `-- name: InsertCharacter :one
-
 INSERT INTO characters
     (campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, create_key, create_hash, created_at, updated_at)
 VALUES (
@@ -953,10 +1004,6 @@ type InsertCharacterParams struct {
 	Now          time.Time
 }
 
-// Every query names the campaign next to the character: a character ID of
-// another campaign matches no row, which the handlers answer as "not found".
-// campaign_id is nullable in the table (a deleted campaign sets it to NULL),
-// so the argument is cast to UUID to make it a plain string in Go.
 // status is 'active', or 'pending' for a character created by a pending
 // member (RN-15, MR-024).
 // create_key (a UUID, unique in the campaign: characters_campaign_id_create_key_idx) and create_hash

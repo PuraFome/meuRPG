@@ -1,6 +1,7 @@
 package maps
 
 import (
+	"context"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -288,5 +289,41 @@ func TestAFoundTreasureCannotChangeItsKindUntilItIsUnmarked(t *testing.T) {
 	}
 	if _, err := m.updatePoint(toScene); err != nil {
 		t.Errorf("change the kind of an unmarked treasure error = %v, want success", err)
+	}
+}
+
+// GetMap shows a found treasure with the characters who found it, from the
+// same moment as the points: a treasure the master unmarks while the map is
+// being read is never shown as found by nobody.
+func TestGetMapShowsATreasureWithItsFindersFromOneSnapshot(t *testing.T) {
+	t.Parallel()
+	s := newScenes(t, false)
+	m := s.master
+	chest := s.newTreasure("Baú", "Moedas", 250, 100, 100)
+	if _, err := m.maps.MarkTreasureFound(t.Context(), connect.NewRequest(&mapsv1.MarkTreasureFoundRequest{
+		CampaignId: s.campaign, MapId: s.mapID, PointId: chest.GetId(), CharacterIds: []string{s.pens.GetId()},
+	})); err != nil {
+		t.Fatal(err)
+	}
+
+	s.h.hookAfterQuery("FROM map_points", func() {
+		for _, q := range []string{"DELETE FROM map_treasure_finders WHERE point_id = $1", "UPDATE map_points SET treasure_found_at = NULL WHERE id = $1"} {
+			if _, err := s.h.pool.Exec(context.Background(), q, chest.GetId()); err != nil {
+				t.Errorf("unmark from the hook: %v", err)
+			}
+		}
+	})
+	got := m.mustGetMap(s.campaign, s.mapID)
+	for _, p := range got.GetPoints() {
+		if p.GetId() == chest.GetId() && p.GetTreasureFoundAt() != nil && len(p.GetTreasureFoundBy()) == 0 {
+			t.Error("GetMap(): the treasure is found by nobody; want it with its finders, or not found")
+		}
+	}
+
+	// Positive control: the hook did unmark it.
+	for _, p := range m.mustGetMap(s.campaign, s.mapID).GetPoints() {
+		if p.GetId() == chest.GetId() && p.GetTreasureFoundAt() != nil {
+			t.Error("the hook did not unmark the treasure")
+		}
 	}
 }
