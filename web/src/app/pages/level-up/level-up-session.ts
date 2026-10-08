@@ -8,7 +8,7 @@ import {
   type Character,
   type LevelUpOptions,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { Ability, type DerivedSheet } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { Ability, type DerivedSheet, type PactMagic } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { formatModifier, spellLevelLabel } from '../../core/characters/character-labels';
 import { isTableKey } from '../../core/content/catalog';
 import { newKey } from '../../core/connect/idempotency';
@@ -311,6 +311,11 @@ export class LevelUpSession {
       const was = slots(o.spellSlotsBefore, i);
       const now = slots(o.spellSlotsAfter, i);
       if (was !== now) auto(`Espaços de ${spellLevelLabel(i + 1)}`, `${was} → ${now}`);
+    }
+    const pact = (m: PactMagic | undefined) =>
+      m ? `${m.count} de ${spellLevelLabel(m.slotLevel)}` : '0';
+    if (pact(o.pactMagicBefore) !== pact(o.pactMagicAfter)) {
+      auto('Espaços do pacto', `${pact(o.pactMagicBefore)} → ${pact(o.pactMagicAfter)}`);
     }
     const pb = (n: number) => `${formatModifier(n)}`;
     if (o.proficiencyBonusBefore !== o.proficiencyBonusAfter) {

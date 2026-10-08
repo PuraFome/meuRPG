@@ -602,6 +602,27 @@ describe('LevelUpPage', () => {
       expect(text(f)).toContain('O mestre acrescenta pelo editor: Inimigo Favorito.');
     });
 
+    it('lists the pact slots the level changes among what the level gives', async () => {
+      const f = await setup(
+        fighterOptions({
+          pactMagicBefore: { slotLevel: 1, count: 1 },
+          pactMagicAfter: { slotLevel: 1, count: 2 },
+        }),
+      );
+      expect(text(f)).toContain('Espaços do pacto');
+      expect(text(f)).toMatch(/1 de [^→]*→ 2 de/);
+    });
+
+    it('lists no pact slots among what the level gives when they stay', async () => {
+      const f = await setup(
+        fighterOptions({
+          pactMagicBefore: { slotLevel: 1, count: 2 },
+          pactMagicAfter: { slotLevel: 1, count: 2 },
+        }),
+      );
+      expect(text(f)).not.toContain('Espaços do pacto');
+    });
+
     async function atResumoOfToren() {
       const f = await setup(fighterOptions());
       await click(f, button(f, 'Próximo'));
