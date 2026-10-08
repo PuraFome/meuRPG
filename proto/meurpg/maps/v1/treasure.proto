@@ -63,7 +63,8 @@ service TreasureService {
   // server draws one and returns it ("Gerar outro" is a new call without a seed).
   //
   // Errors:
-  //   - `invalid_argument`: the mode is missing, or party_level is not 1 to 20.
+  //   - `invalid_argument`: the mode is missing, or party_level is not 1 to 20
+  //     (a TreasureInvalidField detail names which).
   //   - `failed_precondition` (TreasureBlocked NO_PARTY): no party_level was given
   //     and the campaign has no living player character.
   rpc GenerateTreasure(GenerateTreasureRequest) returns (GenerateTreasureResponse);
@@ -96,7 +97,8 @@ service TreasureService {
   //   - `invalid_argument`: the mode, the party level or the seed is missing or out
   //     of range, the square is outside the grid, the idempotency_key is not 1 to
   //     64 characters or was used for another change, or the name is longer than 80
-  //     characters, or the content_version is missing.
+  //     characters, or the content_version is missing. The error carries a
+  //     TreasureInvalidField detail naming the request field that broke the rule.
   //   - `failed_precondition` (MapBlocked NO_GRID): the map has no grid; a generated
   //     treasure needs a square, so it cannot be placed on a map without one.
   //   - `failed_precondition` (TreasureBlocked CONTENT_CHANGED): content_version is not
@@ -160,6 +162,14 @@ enum TreasureBlockedReason {
 message TreasureBlocked {
   // Why the call was refused.
   TreasureBlockedReason reason = 1;
+}
+
+// TreasureInvalidField is the error detail of TreasureService's `invalid_argument`:
+// it names the request field that breaks a rule, never the value.
+message TreasureInvalidField {
+  // The request field, such as "column", "row", "name", "idempotency_key" or
+  // "content_version".
+  string field = 1;
 }
 
 // TreasureCoinStack is a stack of one coin that came up.

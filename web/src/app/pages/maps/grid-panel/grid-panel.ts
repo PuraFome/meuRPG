@@ -18,7 +18,7 @@ import { MatInputModule } from '@angular/material/input';
 
 import type { Map as MapMessage } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { focusWithRing } from '../../../core/creatures/focus-ring';
-import { gridRows } from '../../../core/combat/combat-grid';
+import { MAX_COLUMNS, MIN_COLUMNS, gridRows } from '../../../core/combat/combat-grid';
 import { MapBlockedReason } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { editorErrorMessage, mapBlockedReason } from '../../../core/maps/map-errors';
 import { MapsClient } from '../../../core/maps/maps-client';
@@ -26,9 +26,8 @@ import { MapAsk } from '../map-ask/map-ask';
 import { CalibrateAsk } from './calibrate-ask';
 import { factorLabel, maxDrawnColumns } from '../../../core/maps/calibration';
 
-/** The server takes 4 to 200 columns (`SetMapGrid`). */
-const MIN = 4;
-const MAX = 200;
+const MIN = MIN_COLUMNS;
+const MAX = MAX_COLUMNS;
 const DEFAULT = 20;
 
 /**

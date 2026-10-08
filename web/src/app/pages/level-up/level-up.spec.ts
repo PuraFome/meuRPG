@@ -37,6 +37,7 @@ import {
   wizardOptions,
 } from '../../core/levelup/levelup-testing';
 import { LevelUpPage } from './level-up';
+import { newSpellsTitle } from './level-up-session';
 import { QUIET_MS } from './level-up-preview';
 
 /** Lets every pending answer land, quiet period of the preview included: the spec's fake clock moves, the wall clock does not. */
@@ -797,6 +798,43 @@ describe('LevelUpPage', () => {
       expect(text(f)).toContain('O mestre acrescenta pelo editor: Inimigo Favorito.');
     });
 
+    it('lists the pact slots the level changes among what the level gives', async () => {
+      const f = await setup(
+        fighterOptions({
+          pactMagicBefore: { slotLevel: 1, count: 1 },
+          pactMagicAfter: { slotLevel: 1, count: 2 },
+        }),
+      );
+      expect(text(f)).toContain('Espaços do pacto');
+      expect(text(f)).toContain('1 espaço de 1º nível → 2 espaços de 1º nível');
+    });
+
+    it('words the pact slots by their count when the level of the slots changes too', async () => {
+      const f = await setup(
+        fighterOptions({
+          pactMagicBefore: { slotLevel: 1, count: 2 },
+          pactMagicAfter: { slotLevel: 2, count: 2 },
+        }),
+      );
+      expect(text(f)).toContain('2 espaços de 1º nível → 2 espaços de 2º nível');
+    });
+
+    it('says "1 magia conhecida" for one new spell and "2 magias conhecidas" for two', async () => {
+      const one = await setup(fighterOptions({ spells: 1 }));
+      expect(text(one)).toContain('1 magia conhecida');
+      expect(text(one)).not.toContain('1 magia conhecidas');
+    });
+
+    it('lists no pact slots among what the level gives when they stay', async () => {
+      const f = await setup(
+        fighterOptions({
+          pactMagicBefore: { slotLevel: 1, count: 2 },
+          pactMagicAfter: { slotLevel: 1, count: 2 },
+        }),
+      );
+      expect(text(f)).not.toContain('Espaços do pacto');
+    });
+
     async function atResumoOfToren() {
       const f = await setup(fighterOptions());
       await click(f, button(f, 'Próximo'));
@@ -1086,5 +1124,15 @@ describe('LevelUpPage with the real client: a content_changed hint really reads 
     expect(listContent).toHaveBeenCalledTimes(2);
     expect(row('Prestidigitação')).toBeUndefined();
     expect(root.textContent).toContain('O mestre mudou as opções da mesa');
+  });
+});
+
+describe('newSpellsTitle', () => {
+  it('agrees the participle with the count, and keeps "para o livro" for a spellbook', () => {
+    expect(newSpellsTitle(1, false)).toBe('1 magia conhecida');
+    expect(newSpellsTitle(2, false)).toBe('2 magias conhecidas');
+    expect(newSpellsTitle(1, true)).toBe('1 magia para o livro');
+    expect(newSpellsTitle(2, true)).toBe('2 magias para o livro');
+    expect(newSpellsTitle(0, false)).toBe('');
   });
 });

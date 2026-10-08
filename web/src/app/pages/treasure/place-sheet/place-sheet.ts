@@ -1,6 +1,5 @@
 import { Component, ElementRef, computed, effect, inject, signal } from '@angular/core';
 import { create } from '@bufbuild/protobuf';
-import { Code, ConnectError } from '@connectrpc/connect';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -177,7 +176,7 @@ export class PlaceSheet {
     const pts = this.points();
     return { up: pts.some((p) => p.stairs === 1), down: pts.some((p) => p.stairs === 2) };
   });
-  /** The solid outline (MAP-LANGUAGE-E10): the room of the chosen square, or the square itself where there is no room; the hidden chest marks the square. */
+  /** The solid outline (docs/design.md): the room of the chosen square, or the square itself where there is no room; the hidden chest marks the square. */
   protected readonly outline = computed(() => {
     const sq = this.square();
     const f = this.room()?.floor;
@@ -401,9 +400,10 @@ export class PlaceSheet {
         itemCount: res.treasure?.items.length ?? t.items.length,
       });
     } catch (err) {
-      this.failure.set(placeFailure(err));
+      const failure = placeFailure(err);
+      this.failure.set(failure);
       this.host.nativeElement.querySelector<HTMLElement>('.notice')?.focus?.();
-      if (ConnectError.from(err, Code.Unavailable).code === Code.InvalidArgument) {
+      if (failure.rereadMap) {
         // The square is outside the grid the server has now: the map changed under the dialog, so read it again and redraw.
         void this.chooseMap(m.id, true);
       }

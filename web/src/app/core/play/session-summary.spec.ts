@@ -136,6 +136,7 @@ describe('session summary (MR-032)', () => {
       ['Dano recebido', '0'],
       ['Golpes finais', '2'],
       ['Cura', '0'],
+      ['Acertos críticos', '0'],
       ['Testes passados fora do combate', '3 de 4'],
     ]);
     // Only a scene: just the checks. Nothing at all: no block.
@@ -186,6 +187,7 @@ describe('session summary (MR-032)', () => {
       'Dano recebido',
       'Golpes finais',
       'Cura',
+      'Acertos críticos',
       'Tesouro encontrado',
     ]);
   });

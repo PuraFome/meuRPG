@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 /**
- * A generated dungeon's stair, drawn in the one way MAP-LANGUAGE-E10.md gives it, on the map, in the preview and in the legend: a square
+ * A generated dungeon's stair, drawn in the one way docs/design.md gives it, on the map, in the preview and in the legend: a square
  * badge with an ink outline and a paper fill, and an arrow, up for "Escada para cima" and down for "Escada para baixo". It fills the box
  * its host gives it. Decorative: the lists, the legend and the points' labels say it in words.
  */

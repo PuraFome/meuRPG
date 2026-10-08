@@ -62,7 +62,7 @@ export class MapGrid {
     factorLabel(this.factor()).replace(/\u00a0/g, ' '),
   );
 
-  /** The number in the field, or `null` while it is not a whole 5 to 60. */
+  /** The number in the field, or `null` while it is not a whole number in the range. */
   protected readonly columns = computed(() => {
     const text = this.typed().trim();
     const n = /^\d{1,3}$/.test(text) ? Number(text) : NaN;

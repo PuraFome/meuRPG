@@ -61,7 +61,8 @@ type TreasureServiceClient interface {
 	// server draws one and returns it ("Gerar outro" is a new call without a seed).
 	//
 	// Errors:
-	//   - `invalid_argument`: the mode is missing, or party_level is not 1 to 20.
+	//   - `invalid_argument`: the mode is missing, or party_level is not 1 to 20
+	//     (a TreasureInvalidField detail names which).
 	//   - `failed_precondition` (TreasureBlocked NO_PARTY): no party_level was given
 	//     and the campaign has no living player character.
 	GenerateTreasure(context.Context, *connect.Request[v1.GenerateTreasureRequest]) (*connect.Response[v1.GenerateTreasureResponse], error)
@@ -90,7 +91,8 @@ type TreasureServiceClient interface {
 	//   - `invalid_argument`: the mode, the party level or the seed is missing or out
 	//     of range, the square is outside the grid, the idempotency_key is not 1 to
 	//     64 characters or was used for another change, or the name is longer than 80
-	//     characters, or the content_version is missing.
+	//     characters, or the content_version is missing. The error carries a
+	//     TreasureInvalidField detail naming the request field that broke the rule.
 	//   - `failed_precondition` (MapBlocked NO_GRID): the map has no grid; a generated
 	//     treasure needs a square, so it cannot be placed on a map without one.
 	//   - `failed_precondition` (TreasureBlocked CONTENT_CHANGED): content_version is not
@@ -181,7 +183,8 @@ type TreasureServiceHandler interface {
 	// server draws one and returns it ("Gerar outro" is a new call without a seed).
 	//
 	// Errors:
-	//   - `invalid_argument`: the mode is missing, or party_level is not 1 to 20.
+	//   - `invalid_argument`: the mode is missing, or party_level is not 1 to 20
+	//     (a TreasureInvalidField detail names which).
 	//   - `failed_precondition` (TreasureBlocked NO_PARTY): no party_level was given
 	//     and the campaign has no living player character.
 	GenerateTreasure(context.Context, *connect.Request[v1.GenerateTreasureRequest]) (*connect.Response[v1.GenerateTreasureResponse], error)
@@ -210,7 +213,8 @@ type TreasureServiceHandler interface {
 	//   - `invalid_argument`: the mode, the party level or the seed is missing or out
 	//     of range, the square is outside the grid, the idempotency_key is not 1 to
 	//     64 characters or was used for another change, or the name is longer than 80
-	//     characters, or the content_version is missing.
+	//     characters, or the content_version is missing. The error carries a
+	//     TreasureInvalidField detail naming the request field that broke the rule.
 	//   - `failed_precondition` (MapBlocked NO_GRID): the map has no grid; a generated
 	//     treasure needs a square, so it cannot be placed on a map without one.
 	//   - `failed_precondition` (TreasureBlocked CONTENT_CHANGED): content_version is not

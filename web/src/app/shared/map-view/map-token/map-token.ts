@@ -58,7 +58,7 @@ export class MapToken {
   readonly interactive = input(false);
   readonly selected = input(false);
   readonly raised = input(false);
-  /** Draw an NPC as the white rounded square and a character's creature with a dashed ring (MAP-LANGUAGE.md; the fog map). */
+  /** Draw an NPC as the white rounded square and a character's creature with a dashed ring (docs/design.md; the fog map). */
   readonly kindShapes = input(false);
   /** Drawn in a legend: in the flow of the line, at the legend's size, never positioned on a map. The drawing is the same one. */
   readonly legend = input(false);

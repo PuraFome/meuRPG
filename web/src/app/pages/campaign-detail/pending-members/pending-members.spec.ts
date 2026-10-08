@@ -128,7 +128,7 @@ describe('PendingMembers', () => {
     button('Remover Lia').click();
     await settle();
     expect(el.querySelector('[role="alert"]')!.textContent).toContain(
-      'Lia acabou de criar o personagem: aprove ou recuse em Personagens pendentes.',
+      'Lia acabou de criar o personagem: aprove ou recuse em Esperando aprovação.',
     );
     expect(el.querySelectorAll('li').length).toBe(1);
     expect(el.querySelector('[role="alertdialog"]')).toBeNull();

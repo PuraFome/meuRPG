@@ -24,7 +24,7 @@ interface Pin {
 }
 
 /**
- * The trap, treasure and light marks of a map (MAP-LANGUAGE.md "Points"), drawn over the image
+ * The trap, treasure and light marks of a map (docs/design.md), drawn over the image
  * inside the map's stage so they pan and zoom with it:
  * - **Armadilha:** a red dashed border around its area and the warning glyph; for the master, an
  *   unrevealed one adds the crossed eye ("Só você vê"). A fired one has a solid border, a disarmed
@@ -44,7 +44,7 @@ interface Pin {
   template: `
     @for (p of pins(); track p.id) {
       @if (p.kind === 'trap') {
-        <!-- One drawing in every state (MAP-LANGUAGE.md): a red dashed border around the area and the warning glyph, smaller than the
+        <!-- One drawing in every state (docs/design.md): a red dashed border around the area and the warning glyph, smaller than the
              square; what only the master sees adds the crossed eye, at the corner and never on the glyph. -->
         <span
           class="area"

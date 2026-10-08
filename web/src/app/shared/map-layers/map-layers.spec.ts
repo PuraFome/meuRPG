@@ -36,7 +36,7 @@ describe('MapLayersOverlay', () => {
 });
 
 describe('MapLayersLegend', () => {
-  it("names only the marks the map has, in the order of MAP-LANGUAGE.md, and projects the screen's own", () => {
+  it("names only the marks the map has, in the order of docs/design.md, and projects the screen's own", () => {
     const fixture = TestBed.createComponent(MapLayersLegend);
     fixture.componentRef.setInput('layers', layers);
     fixture.detectChanges();
@@ -114,7 +114,7 @@ describe("MapLayersOverlay: the editor's marks", () => {
   });
 });
 
-// The doors (RN-26, MAP-LANGUAGE-E10.md): one mark per kind, and the legend names only the doors the map really has.
+// The doors (RN-26, docs/design.md): one mark per kind, and the legend names only the doors the map really has.
 describe('the doors on a map', () => {
   const doors: MapLayers = {
     ...layers,

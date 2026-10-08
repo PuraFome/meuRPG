@@ -306,6 +306,54 @@ func (x *TreasureBlocked) GetReason() TreasureBlockedReason {
 	return TreasureBlockedReason_TREASURE_BLOCKED_REASON_UNSPECIFIED
 }
 
+// TreasureInvalidField is the error detail of TreasureService's `invalid_argument`:
+// it names the request field that breaks a rule, never the value.
+type TreasureInvalidField struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The request field, such as "column", "row", "name", "idempotency_key" or
+	// "content_version".
+	Field         string `protobuf:"bytes,1,opt,name=field,proto3" json:"field,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TreasureInvalidField) Reset() {
+	*x = TreasureInvalidField{}
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TreasureInvalidField) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TreasureInvalidField) ProtoMessage() {}
+
+func (x *TreasureInvalidField) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TreasureInvalidField.ProtoReflect.Descriptor instead.
+func (*TreasureInvalidField) Descriptor() ([]byte, []int) {
+	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *TreasureInvalidField) GetField() string {
+	if x != nil {
+		return x.Field
+	}
+	return ""
+}
+
 // TreasureCoinStack is a stack of one coin that came up.
 type TreasureCoinStack struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -320,7 +368,7 @@ type TreasureCoinStack struct {
 
 func (x *TreasureCoinStack) Reset() {
 	*x = TreasureCoinStack{}
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[1]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -332,7 +380,7 @@ func (x *TreasureCoinStack) String() string {
 func (*TreasureCoinStack) ProtoMessage() {}
 
 func (x *TreasureCoinStack) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[1]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -345,7 +393,7 @@ func (x *TreasureCoinStack) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TreasureCoinStack.ProtoReflect.Descriptor instead.
 func (*TreasureCoinStack) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{1}
+	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *TreasureCoinStack) GetCoin() TreasureCoinKind {
@@ -384,7 +432,7 @@ type TreasurePiece struct {
 
 func (x *TreasurePiece) Reset() {
 	*x = TreasurePiece{}
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[2]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -396,7 +444,7 @@ func (x *TreasurePiece) String() string {
 func (*TreasurePiece) ProtoMessage() {}
 
 func (x *TreasurePiece) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[2]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -409,7 +457,7 @@ func (x *TreasurePiece) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TreasurePiece.ProtoReflect.Descriptor instead.
 func (*TreasurePiece) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{2}
+	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *TreasurePiece) GetNamePt() string {
@@ -469,7 +517,7 @@ type TreasureItem struct {
 
 func (x *TreasureItem) Reset() {
 	*x = TreasureItem{}
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[3]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -481,7 +529,7 @@ func (x *TreasureItem) String() string {
 func (*TreasureItem) ProtoMessage() {}
 
 func (x *TreasureItem) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[3]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -494,7 +542,7 @@ func (x *TreasureItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TreasureItem.ProtoReflect.Descriptor instead.
 func (*TreasureItem) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{3}
+	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *TreasureItem) GetKey() string {
@@ -610,7 +658,7 @@ type Treasure struct {
 
 func (x *Treasure) Reset() {
 	*x = Treasure{}
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[4]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -622,7 +670,7 @@ func (x *Treasure) String() string {
 func (*Treasure) ProtoMessage() {}
 
 func (x *Treasure) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[4]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -635,7 +683,7 @@ func (x *Treasure) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Treasure.ProtoReflect.Descriptor instead.
 func (*Treasure) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{4}
+	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Treasure) GetMode() TreasureMode {
@@ -739,7 +787,7 @@ type GetTreasurePartyRequest struct {
 
 func (x *GetTreasurePartyRequest) Reset() {
 	*x = GetTreasurePartyRequest{}
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[5]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -751,7 +799,7 @@ func (x *GetTreasurePartyRequest) String() string {
 func (*GetTreasurePartyRequest) ProtoMessage() {}
 
 func (x *GetTreasurePartyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[5]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -764,7 +812,7 @@ func (x *GetTreasurePartyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTreasurePartyRequest.ProtoReflect.Descriptor instead.
 func (*GetTreasurePartyRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{5}
+	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetTreasurePartyRequest) GetCampaignId() string {
@@ -787,7 +835,7 @@ type GetTreasurePartyResponse struct {
 
 func (x *GetTreasurePartyResponse) Reset() {
 	*x = GetTreasurePartyResponse{}
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[6]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -799,7 +847,7 @@ func (x *GetTreasurePartyResponse) String() string {
 func (*GetTreasurePartyResponse) ProtoMessage() {}
 
 func (x *GetTreasurePartyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[6]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -812,7 +860,7 @@ func (x *GetTreasurePartyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTreasurePartyResponse.ProtoReflect.Descriptor instead.
 func (*GetTreasurePartyResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{6}
+	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetTreasurePartyResponse) GetLivingCount() int32 {
@@ -853,7 +901,7 @@ type GenerateTreasureRequest struct {
 
 func (x *GenerateTreasureRequest) Reset() {
 	*x = GenerateTreasureRequest{}
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[7]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -865,7 +913,7 @@ func (x *GenerateTreasureRequest) String() string {
 func (*GenerateTreasureRequest) ProtoMessage() {}
 
 func (x *GenerateTreasureRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[7]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -878,7 +926,7 @@ func (x *GenerateTreasureRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenerateTreasureRequest.ProtoReflect.Descriptor instead.
 func (*GenerateTreasureRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{7}
+	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GenerateTreasureRequest) GetCampaignId() string {
@@ -919,7 +967,7 @@ type GenerateTreasureResponse struct {
 
 func (x *GenerateTreasureResponse) Reset() {
 	*x = GenerateTreasureResponse{}
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[8]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -931,7 +979,7 @@ func (x *GenerateTreasureResponse) String() string {
 func (*GenerateTreasureResponse) ProtoMessage() {}
 
 func (x *GenerateTreasureResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[8]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -944,7 +992,7 @@ func (x *GenerateTreasureResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenerateTreasureResponse.ProtoReflect.Descriptor instead.
 func (*GenerateTreasureResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{8}
+	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GenerateTreasureResponse) GetTreasure() *Treasure {
@@ -966,7 +1014,7 @@ type GetMagicItemRequest struct {
 
 func (x *GetMagicItemRequest) Reset() {
 	*x = GetMagicItemRequest{}
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[9]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -978,7 +1026,7 @@ func (x *GetMagicItemRequest) String() string {
 func (*GetMagicItemRequest) ProtoMessage() {}
 
 func (x *GetMagicItemRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[9]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -991,7 +1039,7 @@ func (x *GetMagicItemRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMagicItemRequest.ProtoReflect.Descriptor instead.
 func (*GetMagicItemRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{9}
+	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetMagicItemRequest) GetCampaignId() string {
@@ -1051,7 +1099,7 @@ type GetMagicItemResponse struct {
 
 func (x *GetMagicItemResponse) Reset() {
 	*x = GetMagicItemResponse{}
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[10]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1063,7 +1111,7 @@ func (x *GetMagicItemResponse) String() string {
 func (*GetMagicItemResponse) ProtoMessage() {}
 
 func (x *GetMagicItemResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[10]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1076,7 +1124,7 @@ func (x *GetMagicItemResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMagicItemResponse.ProtoReflect.Descriptor instead.
 func (*GetMagicItemResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{10}
+	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetMagicItemResponse) GetKey() string {
@@ -1230,7 +1278,7 @@ type PlaceTreasureRequest struct {
 
 func (x *PlaceTreasureRequest) Reset() {
 	*x = PlaceTreasureRequest{}
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[11]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1242,7 +1290,7 @@ func (x *PlaceTreasureRequest) String() string {
 func (*PlaceTreasureRequest) ProtoMessage() {}
 
 func (x *PlaceTreasureRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[11]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1255,7 +1303,7 @@ func (x *PlaceTreasureRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlaceTreasureRequest.ProtoReflect.Descriptor instead.
 func (*PlaceTreasureRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{11}
+	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *PlaceTreasureRequest) GetCampaignId() string {
@@ -1342,7 +1390,7 @@ type PlaceTreasureResponse struct {
 
 func (x *PlaceTreasureResponse) Reset() {
 	*x = PlaceTreasureResponse{}
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[12]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1354,7 +1402,7 @@ func (x *PlaceTreasureResponse) String() string {
 func (*PlaceTreasureResponse) ProtoMessage() {}
 
 func (x *PlaceTreasureResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[12]
+	mi := &file_meurpg_maps_v1_treasure_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1367,7 +1415,7 @@ func (x *PlaceTreasureResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlaceTreasureResponse.ProtoReflect.Descriptor instead.
 func (*PlaceTreasureResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{12}
+	return file_meurpg_maps_v1_treasure_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *PlaceTreasureResponse) GetPoint() *MapPoint {
@@ -1390,7 +1438,9 @@ const file_meurpg_maps_v1_treasure_proto_rawDesc = "" +
 	"\n" +
 	"\x1dmeurpg/maps/v1/treasure.proto\x12\x0emeurpg.maps.v1\x1a\x19meurpg/maps/v1/maps.proto\"P\n" +
 	"\x0fTreasureBlocked\x12=\n" +
-	"\x06reason\x18\x01 \x01(\x0e2%.meurpg.maps.v1.TreasureBlockedReasonR\x06reason\"z\n" +
+	"\x06reason\x18\x01 \x01(\x0e2%.meurpg.maps.v1.TreasureBlockedReasonR\x06reason\",\n" +
+	"\x14TreasureInvalidField\x12\x14\n" +
+	"\x05field\x18\x01 \x01(\tR\x05field\"z\n" +
 	"\x11TreasureCoinStack\x124\n" +
 	"\x04coin\x18\x01 \x01(\x0e2 .meurpg.maps.v1.TreasureCoinKindR\x04coin\x12\x14\n" +
 	"\x05count\x18\x02 \x01(\x05R\x05count\x12\x19\n" +
@@ -1543,50 +1593,51 @@ func file_meurpg_maps_v1_treasure_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_maps_v1_treasure_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_meurpg_maps_v1_treasure_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_meurpg_maps_v1_treasure_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_meurpg_maps_v1_treasure_proto_goTypes = []any{
 	(TreasureMode)(0),                // 0: meurpg.maps.v1.TreasureMode
 	(TreasureCoinKind)(0),            // 1: meurpg.maps.v1.TreasureCoinKind
 	(MagicItemRarity)(0),             // 2: meurpg.maps.v1.MagicItemRarity
 	(TreasureBlockedReason)(0),       // 3: meurpg.maps.v1.TreasureBlockedReason
 	(*TreasureBlocked)(nil),          // 4: meurpg.maps.v1.TreasureBlocked
-	(*TreasureCoinStack)(nil),        // 5: meurpg.maps.v1.TreasureCoinStack
-	(*TreasurePiece)(nil),            // 6: meurpg.maps.v1.TreasurePiece
-	(*TreasureItem)(nil),             // 7: meurpg.maps.v1.TreasureItem
-	(*Treasure)(nil),                 // 8: meurpg.maps.v1.Treasure
-	(*GetTreasurePartyRequest)(nil),  // 9: meurpg.maps.v1.GetTreasurePartyRequest
-	(*GetTreasurePartyResponse)(nil), // 10: meurpg.maps.v1.GetTreasurePartyResponse
-	(*GenerateTreasureRequest)(nil),  // 11: meurpg.maps.v1.GenerateTreasureRequest
-	(*GenerateTreasureResponse)(nil), // 12: meurpg.maps.v1.GenerateTreasureResponse
-	(*GetMagicItemRequest)(nil),      // 13: meurpg.maps.v1.GetMagicItemRequest
-	(*GetMagicItemResponse)(nil),     // 14: meurpg.maps.v1.GetMagicItemResponse
-	(*PlaceTreasureRequest)(nil),     // 15: meurpg.maps.v1.PlaceTreasureRequest
-	(*PlaceTreasureResponse)(nil),    // 16: meurpg.maps.v1.PlaceTreasureResponse
-	(*MapPoint)(nil),                 // 17: meurpg.maps.v1.MapPoint
+	(*TreasureInvalidField)(nil),     // 5: meurpg.maps.v1.TreasureInvalidField
+	(*TreasureCoinStack)(nil),        // 6: meurpg.maps.v1.TreasureCoinStack
+	(*TreasurePiece)(nil),            // 7: meurpg.maps.v1.TreasurePiece
+	(*TreasureItem)(nil),             // 8: meurpg.maps.v1.TreasureItem
+	(*Treasure)(nil),                 // 9: meurpg.maps.v1.Treasure
+	(*GetTreasurePartyRequest)(nil),  // 10: meurpg.maps.v1.GetTreasurePartyRequest
+	(*GetTreasurePartyResponse)(nil), // 11: meurpg.maps.v1.GetTreasurePartyResponse
+	(*GenerateTreasureRequest)(nil),  // 12: meurpg.maps.v1.GenerateTreasureRequest
+	(*GenerateTreasureResponse)(nil), // 13: meurpg.maps.v1.GenerateTreasureResponse
+	(*GetMagicItemRequest)(nil),      // 14: meurpg.maps.v1.GetMagicItemRequest
+	(*GetMagicItemResponse)(nil),     // 15: meurpg.maps.v1.GetMagicItemResponse
+	(*PlaceTreasureRequest)(nil),     // 16: meurpg.maps.v1.PlaceTreasureRequest
+	(*PlaceTreasureResponse)(nil),    // 17: meurpg.maps.v1.PlaceTreasureResponse
+	(*MapPoint)(nil),                 // 18: meurpg.maps.v1.MapPoint
 }
 var file_meurpg_maps_v1_treasure_proto_depIdxs = []int32{
 	3,  // 0: meurpg.maps.v1.TreasureBlocked.reason:type_name -> meurpg.maps.v1.TreasureBlockedReason
 	1,  // 1: meurpg.maps.v1.TreasureCoinStack.coin:type_name -> meurpg.maps.v1.TreasureCoinKind
 	2,  // 2: meurpg.maps.v1.TreasureItem.rarity:type_name -> meurpg.maps.v1.MagicItemRarity
 	0,  // 3: meurpg.maps.v1.Treasure.mode:type_name -> meurpg.maps.v1.TreasureMode
-	5,  // 4: meurpg.maps.v1.Treasure.coins:type_name -> meurpg.maps.v1.TreasureCoinStack
-	6,  // 5: meurpg.maps.v1.Treasure.gems:type_name -> meurpg.maps.v1.TreasurePiece
-	6,  // 6: meurpg.maps.v1.Treasure.art:type_name -> meurpg.maps.v1.TreasurePiece
-	7,  // 7: meurpg.maps.v1.Treasure.items:type_name -> meurpg.maps.v1.TreasureItem
+	6,  // 4: meurpg.maps.v1.Treasure.coins:type_name -> meurpg.maps.v1.TreasureCoinStack
+	7,  // 5: meurpg.maps.v1.Treasure.gems:type_name -> meurpg.maps.v1.TreasurePiece
+	7,  // 6: meurpg.maps.v1.Treasure.art:type_name -> meurpg.maps.v1.TreasurePiece
+	8,  // 7: meurpg.maps.v1.Treasure.items:type_name -> meurpg.maps.v1.TreasureItem
 	0,  // 8: meurpg.maps.v1.GenerateTreasureRequest.mode:type_name -> meurpg.maps.v1.TreasureMode
-	8,  // 9: meurpg.maps.v1.GenerateTreasureResponse.treasure:type_name -> meurpg.maps.v1.Treasure
+	9,  // 9: meurpg.maps.v1.GenerateTreasureResponse.treasure:type_name -> meurpg.maps.v1.Treasure
 	2,  // 10: meurpg.maps.v1.GetMagicItemResponse.rarity:type_name -> meurpg.maps.v1.MagicItemRarity
 	0,  // 11: meurpg.maps.v1.PlaceTreasureRequest.mode:type_name -> meurpg.maps.v1.TreasureMode
-	17, // 12: meurpg.maps.v1.PlaceTreasureResponse.point:type_name -> meurpg.maps.v1.MapPoint
-	8,  // 13: meurpg.maps.v1.PlaceTreasureResponse.treasure:type_name -> meurpg.maps.v1.Treasure
-	9,  // 14: meurpg.maps.v1.TreasureService.GetTreasureParty:input_type -> meurpg.maps.v1.GetTreasurePartyRequest
-	11, // 15: meurpg.maps.v1.TreasureService.GenerateTreasure:input_type -> meurpg.maps.v1.GenerateTreasureRequest
-	13, // 16: meurpg.maps.v1.TreasureService.GetMagicItem:input_type -> meurpg.maps.v1.GetMagicItemRequest
-	15, // 17: meurpg.maps.v1.TreasureService.PlaceTreasure:input_type -> meurpg.maps.v1.PlaceTreasureRequest
-	10, // 18: meurpg.maps.v1.TreasureService.GetTreasureParty:output_type -> meurpg.maps.v1.GetTreasurePartyResponse
-	12, // 19: meurpg.maps.v1.TreasureService.GenerateTreasure:output_type -> meurpg.maps.v1.GenerateTreasureResponse
-	14, // 20: meurpg.maps.v1.TreasureService.GetMagicItem:output_type -> meurpg.maps.v1.GetMagicItemResponse
-	16, // 21: meurpg.maps.v1.TreasureService.PlaceTreasure:output_type -> meurpg.maps.v1.PlaceTreasureResponse
+	18, // 12: meurpg.maps.v1.PlaceTreasureResponse.point:type_name -> meurpg.maps.v1.MapPoint
+	9,  // 13: meurpg.maps.v1.PlaceTreasureResponse.treasure:type_name -> meurpg.maps.v1.Treasure
+	10, // 14: meurpg.maps.v1.TreasureService.GetTreasureParty:input_type -> meurpg.maps.v1.GetTreasurePartyRequest
+	12, // 15: meurpg.maps.v1.TreasureService.GenerateTreasure:input_type -> meurpg.maps.v1.GenerateTreasureRequest
+	14, // 16: meurpg.maps.v1.TreasureService.GetMagicItem:input_type -> meurpg.maps.v1.GetMagicItemRequest
+	16, // 17: meurpg.maps.v1.TreasureService.PlaceTreasure:input_type -> meurpg.maps.v1.PlaceTreasureRequest
+	11, // 18: meurpg.maps.v1.TreasureService.GetTreasureParty:output_type -> meurpg.maps.v1.GetTreasurePartyResponse
+	13, // 19: meurpg.maps.v1.TreasureService.GenerateTreasure:output_type -> meurpg.maps.v1.GenerateTreasureResponse
+	15, // 20: meurpg.maps.v1.TreasureService.GetMagicItem:output_type -> meurpg.maps.v1.GetMagicItemResponse
+	17, // 21: meurpg.maps.v1.TreasureService.PlaceTreasure:output_type -> meurpg.maps.v1.PlaceTreasureResponse
 	18, // [18:22] is the sub-list for method output_type
 	14, // [14:18] is the sub-list for method input_type
 	14, // [14:14] is the sub-list for extension type_name
@@ -1600,16 +1651,16 @@ func file_meurpg_maps_v1_treasure_proto_init() {
 		return
 	}
 	file_meurpg_maps_v1_maps_proto_init()
-	file_meurpg_maps_v1_treasure_proto_msgTypes[7].OneofWrappers = []any{}
-	file_meurpg_maps_v1_treasure_proto_msgTypes[10].OneofWrappers = []any{}
+	file_meurpg_maps_v1_treasure_proto_msgTypes[8].OneofWrappers = []any{}
 	file_meurpg_maps_v1_treasure_proto_msgTypes[11].OneofWrappers = []any{}
+	file_meurpg_maps_v1_treasure_proto_msgTypes[12].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_maps_v1_treasure_proto_rawDesc), len(file_meurpg_maps_v1_treasure_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   13,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
