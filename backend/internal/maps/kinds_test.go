@@ -1006,7 +1006,7 @@ func TestMR035_ARevealCrossingATriggerInPlayTakesTurns(t *testing.T) {
 		err = play.Commit(ctx)
 	}
 	var pg *pgconn.PgError
-	if err != nil && !(errors.As(err, &pg) && pg.Code == "40001") {
+	if err != nil && (!errors.As(err, &pg) || pg.Code != "40001") {
 		t.Fatalf("the move ended with %v, want success or a retryable abort", err)
 	}
 	_ = play.Rollback(ctx)

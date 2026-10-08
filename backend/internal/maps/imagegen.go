@@ -440,19 +440,6 @@ func (s *Service) begin(ctx context.Context, n newRequest, campaignID string) (m
 	} else if made >= s.dailyImages {
 		return mapsdb.ImageRequest{}, nil, errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_DAILY_LIMIT_REACHED, status)
 	}
-	// A spot among the requests alive: prepare holds the shrunk images, and so does
-	// the goroutine that waits for the call slot. run gives the spot back when it
-	// ends; a request that never starts one gives it back here.
-	if s.pending.Add(1) > maxPendingRequests {
-		s.pending.Add(-1)
-		return mapsdb.ImageRequest{}, nil, errTooManyImageRequests()
-	}
-	started := false
-	defer func() {
-		if !started {
-			s.pending.Add(-1)
-		}
-	}()
 	prep, err := s.prepare(ctx, campaignID, n, status)
 	if err != nil {
 		return mapsdb.ImageRequest{}, nil, err
@@ -473,9 +460,7 @@ func (s *Service) begin(ctx context.Context, n newRequest, campaignID string) (m
 	if size := stub.BodySize(); size > gen.MaxBodyBytes {
 		return mapsdb.ImageRequest{}, nil, errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_REQUEST_TOO_LARGE, status)
 	}
-	row, status, spawned, err := s.reserve(ctx, n, campaignID)
-	started = spawned
-	return row, status, err
+	return s.reserve(ctx, n, campaignID)
 }
 
 // editStub is an edit's previous image in a Request, only to size the body.
@@ -604,7 +589,7 @@ func errTooManyImageRequests() error {
 // try with the same key made, or checks the cap and the gallery and inserts the
 // row, which reserves the slot. It starts the goroutine of a new request after
 // the commit. Every read goes through the transaction (the #121 rule).
-func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) (mapsdb.ImageRequest, *mapsv1.ImageGenerationStatus, bool, error) {
+func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) (mapsdb.ImageRequest, *mapsv1.ImageGenerationStatus, error) {
 	var (
 		row     mapsdb.ImageRequest
 		status  *mapsv1.ImageGenerationStatus
@@ -709,6 +694,11 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 				hasInherited = true
 			}
 		}
+		// The server holds only so many requests alive. Two requests that pass this at
+		// once may both be taken: the cap is a bound on memory, not an exact count.
+		if s.pending.Load() >= maxPendingRequests {
+			return errTooManyImageRequests()
+		}
 		number, err := q.NextImageRequestNumber(ctx, campaignID)
 		if err != nil {
 			return fmt.Errorf("number the request: %w", err)
@@ -739,24 +729,25 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 		// Two tries with the same key raced: the other one made the request.
 		if existing, getErr := s.queries.GetImageRequestByKey(ctx, mapsdb.GetImageRequestByKeyParams{CampaignID: campaignID, IdempotencyKey: n.key}); getErr == nil {
 			if err := sameImageRequest(existing, n); err != nil {
-				return mapsdb.ImageRequest{}, nil, false, err
+				return mapsdb.ImageRequest{}, nil, err
 			}
 			status, statusErr := s.freshStatus(ctx, campaignID)
 			if statusErr != nil {
-				return mapsdb.ImageRequest{}, nil, false, s.dbError(ctx, "read the image generation status", statusErr)
+				return mapsdb.ImageRequest{}, nil, s.dbError(ctx, "read the image generation status", statusErr)
 			}
-			return existing, status, false, nil
+			return existing, status, nil
 		}
 	}
 	if err != nil {
-		return mapsdb.ImageRequest{}, nil, false, s.dbError(ctx, "reserve an image", err)
+		return mapsdb.ImageRequest{}, nil, s.dbError(ctx, "reserve an image", err)
 	}
 	if created {
 		logging.Event(ctx, s.logger, "image.requested", slog.String("generation_id", row.ID), slog.String("kind", n.kind))
 		s.generations.Add(1)
+		s.pending.Add(1) // run gives it back
 		go s.run(campaignID, row.ID, n.prepared)
 	}
-	return row, status, created, nil
+	return row, status, nil
 }
 
 // GetImageGeneration implements mapsv1connect.ImageGenerationServiceHandler.
