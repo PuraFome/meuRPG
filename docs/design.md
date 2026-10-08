@@ -80,6 +80,8 @@ Both families carry `ascent-override` and `descent-override` in `@font-face` (Al
 - on a single line, center both (`align-items: center`);
 - when the text can wrap, align to the top and center the icon on the first line: `margin-top` = (line height − icon size) / 2.
 
+**Checkboxes and radios.** The unchecked outline of every box and ring is `--mr-control-line`: Material's (`mat.checkbox-overrides` and `mat.radio-overrides` in `styles.scss`, `unselected-*-icon-color`), the drawn ones beside a hidden native input, and the native inputs that stay visible, which carry the class `mr-check-input` (`styles/_ui.scss`: `appearance: none`, a 2 px `control-line` outline, the accent when checked). The browser's own unchecked box is nearly invisible in the dark theme, so a visible native checkbox or radio always takes that class.
+
 ### Space and shape
 
 - Spaces: `--mr-space-1` 4, `-2` 8, `-3` 12, `-4` 16, `-5` 20, `-6` 24, `-8` 48 (px). `--mr-gutter` is the side margin: 16 on a phone, 48 from 768px.
