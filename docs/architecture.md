@@ -720,7 +720,7 @@ flowchart LR
 
 **What `Derive` computes**, for the 12 SRD classes and 9 races, from level 1 to 20:
 
-- ability scores with race, subrace and manual bonuses, and the modifiers. A score above 20 is accepted only with a manual bonus (a magic item, a boon the master granted); without one it is an `Issue` (`score_above_20`);
+- ability scores with race, subrace and manual bonuses, and the modifiers. A score above 20 is accepted only with a manual bonus (a magic item, a boon the master granted) or a feature that lifts its ceiling (Primal Champion, up to 24); without one it is an `Issue` (`score_above_20`). Level-up still refuses an increase above 20 (`ability_above_20`);
 - proficiency bonus, the 6 saving throws (from the first class), the 18 skills (none, half, proficient or expertise), the 3 passives and initiative;
 - AC with armor, shield and unarmored defenses, with a description of how it got there; maximum HP (fixed or rolled) and hit dice; speed and senses. Heavy armor whose Strength requirement the character does not meet cuts walking speed by 10 ft (dwarves keep theirs), and the sheet keeps the reminder;
 - spellcasting per class (DC, attack, cantrips, spells known or prepared), spell slots (with the multiclass table) and the warlock's pact magic;
