@@ -157,7 +157,7 @@ func TestDeathSave(t *testing.T) {
 		{"9 fails", 9, 1, 0, DeathSaveResult{Successes: 1, Failures: 1, Outcome: DeathSaveContinues}},
 		{"natural 1 is two failures", 1, 0, 0, DeathSaveResult{Failures: 2, Outcome: DeathSaveContinues}},
 		{"natural 1 on one failure kills", 1, 1, 1, DeathSaveResult{Successes: 1, Failures: 3, Outcome: DeathSaveDying}},
-		{"third success is stable", 12, 2, 1, DeathSaveResult{Successes: 3, Failures: 1, Outcome: DeathSaveStable}},
+		{"third success is stable and clears the failures", 12, 2, 1, DeathSaveResult{Successes: 3, Outcome: DeathSaveStable}},
 		{"third failure is dying, for the master to confirm", 5, 1, 2, DeathSaveResult{Successes: 1, Failures: 3, Outcome: DeathSaveDying}},
 		{"natural 20 brings back 1 HP and resets", 20, 1, 2, DeathSaveResult{Outcome: DeathSaveRevived, HP: 1}},
 	}
@@ -599,5 +599,18 @@ func TestSortSpellsOrderAndTies(t *testing.T) {
 	}
 	if want := []string{"a", "c", "t1", "t2", "e", "b", "d"}; !slices.Equal(keys, want) {
 		t.Errorf("order = %v, want %v", keys, want)
+	}
+}
+
+// A character that becomes stable has both counts back at zero (SRD 5.1): the
+// next hit while down is its first failure, not its third.
+func TestStableCharacterStartsTheCountsOverAfterAHit(t *testing.T) {
+	r := DeathSave(15, 2, 2)
+	if r.Outcome != DeathSaveStable || r.Failures != 0 {
+		t.Fatalf("third success = %+v, want stable with no failures", r)
+	}
+	hit := AddFailures(0, r.Failures, DamageWhileDown(false))
+	if hit.Failures != 1 || hit.Outcome != DeathSaveContinues {
+		t.Errorf("first hit on a stable character = %+v, want one failure and still alive", hit)
 	}
 }
