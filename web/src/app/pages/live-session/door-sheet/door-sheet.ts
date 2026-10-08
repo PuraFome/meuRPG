@@ -1,11 +1,12 @@
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
-  ElementRef,
-  Injector,
-  afterNextRender,
   computed,
+  effect,
+  ElementRef,
   inject,
+  Injector,
   signal,
 } from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
@@ -184,6 +185,8 @@ export class DoorSheet {
   /** The kind the door has now (the sheet stays open after a choice, showing it checked). */
   protected readonly now = signal<DoorKind>(this.door.state);
   protected readonly busy = signal(false);
+  /** A request in the air: Esc and the backdrop do not close the sheet under it. */
+  protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
   protected readonly saved = signal(false);
   private changed = false;

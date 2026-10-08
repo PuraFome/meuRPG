@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -82,6 +82,8 @@ export class MarkReachedSheet {
     new Set(this.data.rows.map((r) => r.id)),
   );
   protected readonly busy = signal(false);
+  /** A request in the air: Esc and the backdrop do not close the sheet under it. */
+  protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
   private readonly frame = viewChild.required(SheetFrame);
 

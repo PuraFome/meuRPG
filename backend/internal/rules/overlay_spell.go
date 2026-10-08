@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"unicode"
 	"unicode/utf8"
 
 	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
@@ -286,7 +285,7 @@ func castingTimeText(c *entryErrors, key, path string, ct TableCastingTime) stri
 		}
 		text := "1 " + strings.ReplaceAll(ct.Unit, "_", " ")
 		if ct.TriggerPT != "" && ct.Unit == CastReaction {
-			if utf8.RuneCountInString(ct.TriggerPT) > 200 || strings.ContainsFunc(ct.TriggerPT, unicode.IsControl) || strings.TrimSpace(ct.TriggerPT) != ct.TriggerPT {
+			if utf8.RuneCountInString(ct.TriggerPT) > 200 || strings.ContainsFunc(ct.TriggerPT, isHiddenRune) || strings.TrimSpace(ct.TriggerPT) != ct.TriggerPT {
 				c.at(key, path, ".casting_time.trigger_pt", ReasonText, "the casting time trigger is one line of at most 200 characters")
 			}
 			// parseCastingTime reads what follows the first comma as the trigger.

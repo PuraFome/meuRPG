@@ -710,7 +710,12 @@ func TestMR039_TheRequestIsChecked(t *testing.T) {
 	call := func(mod func(*mapsv1.GenerateSceneImageRequest)) error {
 		req := &mapsv1.GenerateSceneImageRequest{CampaignId: campaign, IdempotencyKey: nextKey(), Prompt: "uma cena"}
 		mod(req)
-		_, err := master.imagegen.GenerateSceneImage(t.Context(), connect.NewRequest(req))
+		res, err := master.imagegen.GenerateSceneImage(t.Context(), connect.NewRequest(req))
+		if err == nil {
+			// Only a few requests may be alive at once: let this one end, so the
+			// next accepted case is not refused for the ones still running.
+			master.waitGeneration(campaign, res.Msg.GetGeneration().GetId())
+		}
 		return err
 	}
 	many := func(id string, n int) []string {
@@ -1097,6 +1102,49 @@ func TestMR039_TheReferencesAreShrunkAndTheRequestIsCapped(t *testing.T) {
 	wantGenerationBlocked(t, "GenerateSceneImage with too many big references", err, mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_REQUEST_TOO_LARGE)
 	if got := master.imageStatus(campaign).GetUsedThisMonth(); got != before {
 		t.Errorf("a refused request used a slot: %d -> %d", before, got)
+	}
+}
+
+// A request keeps its shrunk references in memory until its call goes out, so the
+// server holds only so many alive at once: the one calling the model and the ones
+// waiting for its slot. Another is refused without spending the month's slot, and the
+// room comes back as the requests end.
+func TestMR039_OnlySoManyRequestsWaitForTheModel(t *testing.T) {
+	t.Parallel()
+	fake, entered, release := holdingFake()
+	h := newHarness(t, withFake(fake, 30))
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master)
+	ask := func() (string, error) {
+		res, err := master.generate(campaign, "x")
+		if err != nil {
+			return "", err
+		}
+		return res.GetGeneration().GetId(), nil
+	}
+	var ids []string
+	for range maxPendingRequests {
+		id, err := ask()
+		if err != nil {
+			t.Fatalf("a request among the first %d: %v", maxPendingRequests, err)
+		}
+		ids = append(ids, id)
+	}
+	<-entered
+	used := master.imageStatus(campaign).GetUsedThisMonth()
+	_, err := ask()
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("a request over %d alive = %v, want resource_exhausted", maxPendingRequests, err)
+	}
+	if got := master.imageStatus(campaign).GetUsedThisMonth(); got != used {
+		t.Errorf("a refused request used a slot: %d -> %d", used, got)
+	}
+	close(release)
+	for _, id := range ids {
+		master.waitGeneration(campaign, id)
+	}
+	if _, err := ask(); err != nil {
+		t.Errorf("a request after the others ended: %v", err)
 	}
 }
 

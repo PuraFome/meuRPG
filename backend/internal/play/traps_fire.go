@@ -134,6 +134,8 @@ func (s *Service) FireTrap(
 	}
 	if !repeated {
 		s.afterFiring(ctx, m.CampaignID, fired, playdb.Encounter{})
+	} else if fired, err = s.firingWithParts(ctx, session.ID, firingID, fired); err != nil {
+		return nil, s.dbError(ctx, "read the firing", err) // the answer of the first call listed every creature, whatever the events it took
 	}
 	names, err := s.characterLabels(ctx, m.CampaignID, fired)
 	if err != nil {
@@ -411,6 +413,9 @@ func (s *Service) fireOutsideCombat(ctx context.Context, campaignID, actorUserID
 		}
 	}
 
+	if s.afterTrapRead != nil {
+		s.afterTrapRead() // a test starts a combat here
+	}
 	var fired *trapFireEvent
 	var firingID string
 	var repeated bool
@@ -440,6 +445,19 @@ func (s *Service) fireOutsideCombat(ctx context.Context, campaignID, actorUserID
 			case !errors.Is(err, pgx.ErrNoRows):
 				return fmt.Errorf("find the event of this idempotency key: %w", err)
 			}
+		}
+		// What was read before the lock may be stale: a combat that began since is the
+		// one the trap fires in, and a firing outside one must not land beside it.
+		enc, err := q.GetLatestEncounter(ctx, session.ID)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("find the session's combat: %w", err)
+		}
+		switch {
+		case err != nil || enc.Status == statusEnded:
+		case isTheatre(enc):
+			return errNeedsAMap() // a combat without a map has no traps (RN-25)
+		case enc.MapID != nil && *enc.MapID == trap.MapID:
+			return errCombatBegan()
 		}
 		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), actorUserID: actorUserID, hash: hash})
 		if err != nil {
