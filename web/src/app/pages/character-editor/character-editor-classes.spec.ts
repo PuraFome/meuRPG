@@ -1005,6 +1005,42 @@ describe('the always-prepared spells in a class section (E10-11 state 4)', () =>
     expect(text).toContain('Vêm da raça, da classe ou de uma característica');
     expect(text).not.toContain('Vêm da subclasse');
   });
+
+  // "Já na ficha" on an edit
+  const edit = (f: FakeSource) => {
+    f.catalogOver = withDomain;
+    f.forEdit = {
+      ...emptyEdit({
+        className: 'class:cleric',
+        level: 1,
+        subclassName: 'subclass:path@mesa',
+        spellsPrepared: ['spell:bless', 'spell:detect-magic'],
+      }),
+      preparedMax: { 'class:cleric': 5 },
+      grantedSpellKeys: ['spell:detect-magic'],
+    };
+  };
+
+  it('does not list a spell of the subclass the sheet had once the subclass is changed: it is not from the race, the class or a feature', async () => {
+    const { fixture, el, cmp } = await render({ id: 'camp-1', characterId: 'ch-1' }, edit);
+    await openStep(fixture, 'Magias');
+    expect(el.querySelector('app-granted-spells[title="Já na ficha"]')).toBeNull();
+    cmp.fullForm.patchValue({ subclassName: 'subclass:life' });
+    await settle(fixture);
+    expect(el.querySelector('app-granted-spells[title="Já na ficha"]')).toBeNull();
+  });
+
+  it('lists a spell that no subclass of the sheet explains, whatever the subclass is (positive control)', async () => {
+    const { fixture, el, cmp } = await render({ id: 'camp-1', characterId: 'ch-1' }, (f) => {
+      edit(f);
+      f.forEdit = { ...f.forEdit!, grantedSpellKeys: ['spell:detect-magic', 'spell:bless'] };
+    });
+    await openStep(fixture, 'Magias');
+    expect(el.textContent).toContain('Já na ficha');
+    cmp.fullForm.patchValue({ subclassName: 'subclass:life' });
+    await settle(fixture);
+    expect(el.textContent).toContain('Já na ficha');
+  });
 });
 
 describe('the catalog read again (10.1d)', () => {

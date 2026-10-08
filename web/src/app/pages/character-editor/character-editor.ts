@@ -306,8 +306,8 @@ export class CharacterEditor {
   protected readonly selectedSpellsPrepared = signal<ReadonlySet<string>>(new Set());
   /** The search of each list, by `<section>:<list>`: "0:cantrips", "1:known", "1:prepared". */
   private readonly spellFilters = signal<Readonly<Record<string, string>>>({});
-  /** Spells the sheet has that no pick of this form gave it (a subclass's always-prepared spells):
-   * only known on an edit, from the server's own derived sheet. */
+  /** Spells the sheet has that neither a pick of this form nor its subclass gave it (a race's or a feature's spell):
+   * only known on an edit, from the server's own derived sheet, as it was when the sheet was opened. */
   protected readonly grantedSpells = signal<readonly SpellOptionVm[]>([]);
 
   protected readonly isFullSheetKind = isFullSheetKind;
@@ -704,10 +704,7 @@ export class CharacterEditor {
 
   /** What the sheet has that no pick of this form gave it and no subclass of the catalog explains (a race's or a
    * feature's spell): said apart, with where it comes from. */
-  protected readonly otherGranted = computed(() => {
-    const always = new Set(this.sections().flatMap((sec) => sec.alwaysPrepared));
-    return this.grantedSpells().filter((sp) => !always.has(sp.key));
-  });
+  protected readonly otherGranted = this.grantedSpells.asReadonly();
 
   protected setSpellFilter(
     section: number,
@@ -1141,8 +1138,13 @@ export class CharacterEditor {
         if (existing.full) {
           this.patchFullForm(existing.full);
           this.preparedMaxByClass.set(existing.preparedMax ?? {});
+          // What the sheet has from outside the form is told once, as the sheet has it: a spell of the subclass it
+          // has now stays out of this list, and stays out when the subclass is changed (the save drops it with the subclass).
           const granted = new Set(existing.grantedSpellKeys ?? []);
-          this.grantedSpells.set(catalog.spells.filter((sp) => granted.has(sp.key)));
+          const fromSubclass = new Set(this.sections().flatMap((sec) => sec.alwaysPrepared));
+          this.grantedSpells.set(
+            catalog.spells.filter((sp) => granted.has(sp.key) && !fromSubclass.has(sp.key)),
+          );
         }
         if (existing.basic) {
           patchBasicForm(this.fb, this.basicForm, existing.basic);
