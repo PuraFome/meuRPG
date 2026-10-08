@@ -142,12 +142,14 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 			Key: a.Key, Name: name, Save: a.SaveDC > 0, Spell: a.Kind == "spell", ToHit: a.AttackBonus,
 			DiceCount: a.DamageDice.Count, DiceSides: a.DamageDice.Sides, DiceBonus: a.DamageDice.Bonus,
 			DamageType: a.DamageType, RangeFt: a.RangeFt, LongRangeFt: a.LongRangeFt, Melee: a.Melee,
+			Beams: a.Beams, Light: a.Light, Unarmed: a.Key == rules.UnarmedStrikeKey, MartialArts: a.MartialArts, AbilityMod: a.AbilityMod,
 		})
 	}
 	for _, a := range d.StandardActions {
 		out.Actions = append(out.Actions, link.Action{Key: a.Key, Name: a.NamePT})
 	}
 	out.AttacksPerAction = max(d.AttacksPerAction, 1)
+	out.CriticalRange, out.TwoWeaponFighting = d.CriticalRange, d.TwoWeaponFighting
 	for _, a := range d.Actions {
 		out.FeatureActions = append(out.FeatureActions, link.FeatureAction{
 			Key: a.Key, Name: a.NamePT, Economy: a.Economy, Resource: a.Resource, Pool: poolResources[a.Resource], Standard: a.Standard,

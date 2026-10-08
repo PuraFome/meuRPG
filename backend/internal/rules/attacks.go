@@ -10,8 +10,8 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
 
-// unarmedStrikeKey is the attack line every character has, whatever they carry.
-const unarmedStrikeKey = "attack:unarmed-strike"
+// UnarmedStrikeKey is the attack line every character has, whatever they carry.
+const UnarmedStrikeKey = "attack:unarmed-strike"
 
 // attacks computes one line per carried weapon, one per attack cantrip and,
 // last, the unarmed strike.
@@ -73,7 +73,8 @@ func (x *deriver) attacks() {
 			Key: key, Name: eq.Name, NamePT: c.namePT(key), Kind: "weapon", Ability: ab,
 			AttackBonus: x.modifiers("attack.weapon."+kind, bonus), Proficient: proficient,
 			DamageType: w.DamageType, DamageTypeNamePT: c.namePT(w.DamageType),
-			Melee: kind == "melee",
+			Melee: kind == "melee", MartialArts: monkWeapon, AbilityMod: x.mods[ab],
+			Light: kind == "melee" && slices.Contains(w.Properties, "weapon-property:light"),
 		}
 		if dice != "" {
 			a.Damage = withModifier(dice, dmg)
@@ -140,10 +141,10 @@ func (x *deriver) unarmedStrike(martialArts bool, martialDie int) {
 	}
 	mod := x.mods[ab]
 	a := Attack{
-		Key: unarmedStrikeKey, Name: "Unarmed Strike", NamePT: x.c.namePT(unarmedStrikeKey), Kind: "weapon", Ability: ab,
+		Key: UnarmedStrikeKey, Name: "Unarmed Strike", NamePT: x.c.namePT(UnarmedStrikeKey), Kind: "weapon", Ability: ab,
 		AttackBonus: mod + x.prof, Proficient: true,
 		DamageType: "damage-type:bludgeoning", DamageTypeNamePT: x.c.namePT("damage-type:bludgeoning"),
-		Melee: true, RangeFt: unarmedReachFt,
+		Melee: true, RangeFt: unarmedReachFt, MartialArts: martialArts, AbilityMod: mod,
 	}
 	if martialArts && martialDie > 0 {
 		a.Damage = withModifier("1d"+strconv.Itoa(martialDie), mod)

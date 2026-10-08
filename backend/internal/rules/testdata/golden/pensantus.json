@@ -1,5 +1,5 @@
 {
-  "ContentVersion": "srd51@a8abc93b235c+fx.23",
+  "ContentVersion": "srd51@a8abc93b235c+fx.24",
   "RaceNamePT": "Gnomo",
   "SubraceNamePT": "Gnomo das Rochas",
   "BackgroundNamePT": "Sábio",
@@ -640,6 +640,9 @@
       "LongRangeFt": 0,
       "Melee": true,
       "Beams": 0,
+      "Light": false,
+      "MartialArts": false,
+      "AbilityMod": 1,
       "Notes": ""
     },
     {
@@ -672,6 +675,9 @@
       "LongRangeFt": 0,
       "Melee": false,
       "Beams": 1,
+      "Light": false,
+      "MartialArts": false,
+      "AbilityMod": 0,
       "Notes": ""
     },
     {
@@ -704,6 +710,9 @@
       "LongRangeFt": 0,
       "Melee": false,
       "Beams": 1,
+      "Light": false,
+      "MartialArts": false,
+      "AbilityMod": 0,
       "Notes": ""
     },
     {
@@ -736,6 +745,9 @@
       "LongRangeFt": 0,
       "Melee": true,
       "Beams": 0,
+      "Light": false,
+      "MartialArts": false,
+      "AbilityMod": 1,
       "Notes": ""
     }
   ],
@@ -832,6 +844,8 @@
     }
   ],
   "AttacksPerAction": 1,
+  "CriticalRange": 20,
+  "TwoWeaponFighting": false,
   "SaveActions": null,
   "Features": [
     {

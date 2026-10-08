@@ -1,6 +1,6 @@
 {
   "level 1": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.23+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.24+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -455,6 +455,9 @@
         "LongRangeFt": 0,
         "Melee": false,
         "Beams": 1,
+        "Light": false,
+        "MartialArts": false,
+        "AbilityMod": 0,
         "Notes": ""
       },
       {
@@ -487,6 +490,9 @@
         "LongRangeFt": 0,
         "Melee": true,
         "Beams": 0,
+        "Light": false,
+        "MartialArts": false,
+        "AbilityMod": 2,
         "Notes": ""
       }
     ],
@@ -575,6 +581,8 @@
       }
     ],
     "AttacksPerAction": 1,
+    "CriticalRange": 20,
+    "TwoWeaponFighting": false,
     "SaveActions": null,
     "Features": [
       {
@@ -682,7 +690,7 @@
     "Issues": null
   },
   "level 11": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.23+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.24+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -1458,6 +1466,9 @@
         "LongRangeFt": 0,
         "Melee": false,
         "Beams": 1,
+        "Light": false,
+        "MartialArts": false,
+        "AbilityMod": 0,
         "Notes": ""
       },
       {
@@ -1490,6 +1501,9 @@
         "LongRangeFt": 0,
         "Melee": true,
         "Beams": 0,
+        "Light": false,
+        "MartialArts": false,
+        "AbilityMod": 2,
         "Notes": ""
       }
     ],
@@ -1595,6 +1609,8 @@
       }
     ],
     "AttacksPerAction": 2,
+    "CriticalRange": 20,
+    "TwoWeaponFighting": false,
     "SaveActions": null,
     "Features": [
       {
@@ -1805,7 +1821,7 @@
     "Issues": null
   },
   "level 5": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.23+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.24+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -2408,6 +2424,9 @@
         "LongRangeFt": 0,
         "Melee": false,
         "Beams": 1,
+        "Light": false,
+        "MartialArts": false,
+        "AbilityMod": 0,
         "Notes": ""
       },
       {
@@ -2440,6 +2459,9 @@
         "LongRangeFt": 0,
         "Melee": true,
         "Beams": 0,
+        "Light": false,
+        "MartialArts": false,
+        "AbilityMod": 2,
         "Notes": ""
       }
     ],
@@ -2545,6 +2567,8 @@
       }
     ],
     "AttacksPerAction": 2,
+    "CriticalRange": 20,
+    "TwoWeaponFighting": false,
     "SaveActions": null,
     "Features": [
       {
