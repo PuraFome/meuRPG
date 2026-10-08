@@ -462,6 +462,23 @@ describe('LiveSession', () => {
     expect(el.textContent).not.toContain('Mirathel');
   });
 
+  it('stops asking, and says there is no access, when the server forbids the session snapshot', async () => {
+    source.snapshot = new KindError('forbidden') as never;
+    const getLiveSession = vi.spyOn(source, 'getLiveSession');
+    const el = await render();
+    expect(el.querySelector('h1')?.textContent).toContain('Peça um convite ao mestre');
+    expect(getLiveSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops asking, and offers "Tentar de novo", when the server calls the session snapshot request invalid', async () => {
+    source.snapshot = new KindError('invalid') as never;
+    const getLiveSession = vi.spyOn(source, 'getLiveSession');
+    const el = await render();
+    expect(el.textContent).toContain('Não foi possível abrir a sessão');
+    expect(button(el, 'Tentar de novo')).toBeDefined();
+    expect(getLiveSession).toHaveBeenCalledTimes(1);
+  });
+
   it('says the same to a pending member (RN-15)', async () => {
     source.campaign = {
       name: 'Mirathel',

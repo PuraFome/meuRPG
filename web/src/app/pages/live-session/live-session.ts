@@ -728,6 +728,16 @@ export class LiveSession {
           this.closeStream();
           this.auth.signIn(this.router.url);
           return;
+        case 'forbidden':
+          // The server will not give this person the session, however many times it is asked.
+          this.closeStream();
+          this.phase.set('no-access');
+          return;
+        case 'invalid':
+          // The request itself is wrong: asking again changes nothing, "Tentar de novo" starts over.
+          this.closeStream();
+          this.phase.set('error');
+          return;
         default:
           // Try the whole thing again: the next `ready` reads a new one.
           this.stream()?.restart();
