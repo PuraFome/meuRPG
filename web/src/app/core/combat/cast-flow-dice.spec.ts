@@ -1,6 +1,7 @@
 import { create } from '@bufbuild/protobuf';
 import {
   ActionEconomy,
+  SpellDamageChoice,
   SpellDamageSchema,
   SpellDetailsSchema,
   SpellRangeKind,
@@ -58,5 +59,46 @@ describe('a cantrip’s dice', () => {
     });
     expect(damageDice(fireball, 4)).toBe('9d6');
     expect(damageDice(fireball, 3)).toBe('8d6');
+  });
+});
+
+describe('the cast sheet subtitle of a spell with several damage types', () => {
+  const flameStrike = (damageChoice: SpellDamageChoice) =>
+    create(SpellDetailsSchema, {
+      spell: { key: 'spell:flame-strike', level: 5 },
+      damageChoice,
+      damage: [
+        create(SpellDamageSchema, {
+          damageTypeKey: 'damage-type:fire',
+          damageTypePt: 'fogo',
+          bySlotLevel: { 5: '4d6', 6: '5d6' },
+        }),
+        create(SpellDamageSchema, {
+          damageTypeKey: 'damage-type:radiant',
+          damageTypePt: 'radiante',
+          bySlotLevel: { 5: '4d6', 6: '5d6' },
+        }),
+      ],
+    });
+  const subtitle = (d: ReturnType<typeof flameStrike>, slot: number, pick: string) =>
+    castSubtitle(ActionEconomy.ACTION, 'save', d, slot, 0, '', pick);
+
+  it('gives the higher slot’s dice to the picked type and leaves the other at the spell’s own circle', () => {
+    const d = flameStrike(SpellDamageChoice.SCALE);
+    expect(subtitle(d, 6, 'damage-type:fire')).toContain('5d6 de fogo e 4d6 de radiante');
+    expect(subtitle(d, 6, 'damage-type:radiant')).toContain('4d6 de fogo e 5d6 de radiante');
+    expect(subtitle(d, 6, '')).toContain('5d6 de fogo e 4d6 de radiante');
+    expect(subtitle(d, 5, 'damage-type:radiant')).toContain('4d6 de fogo e 4d6 de radiante');
+  });
+
+  it('says only the picked type when the spell deals just that one', () => {
+    const d = flameStrike(SpellDamageChoice.ALTERNATIVE);
+    expect(subtitle(d, 5, 'damage-type:radiant')).toContain('4d6 de radiante');
+    expect(subtitle(d, 5, 'damage-type:radiant')).not.toContain('fogo');
+  });
+
+  it('says every type of a spell that deals them all', () => {
+    const d = flameStrike(SpellDamageChoice.UNSPECIFIED);
+    expect(subtitle(d, 6, '')).toContain('5d6 de fogo e 5d6 de radiante');
   });
 });

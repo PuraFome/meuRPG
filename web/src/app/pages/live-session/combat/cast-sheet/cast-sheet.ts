@@ -368,6 +368,7 @@ export class CastSheet {
       this.slotLevel(),
       this.dartsTotal(),
       this.data.cantripDice,
+      this.damageType(),
     );
   });
 

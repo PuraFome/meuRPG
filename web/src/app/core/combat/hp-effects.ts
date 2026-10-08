@@ -138,6 +138,7 @@ export function effectWords(
   condition: string,
   outcome: SpellEffectOutcome,
   label = '',
+  gain?: SpellEffectGain,
 ): EffectWords {
   if (outcome !== SpellEffectOutcome.AFFECTED) {
     return {
@@ -168,8 +169,32 @@ export function effectWords(
       };
     }
     case SpellEffectKind.TEMP_HP:
-    case SpellEffectKind.MAX_HP:
       return { present: 'ganha PV', past: 'Ganhou PV', icon: 'shield', affected: true };
+    case SpellEffectKind.MAX_HP:
+      // Ajuda: what the target got depends on who it is (maximum, temporary, or the hit points of one who got up).
+      switch (gain) {
+        case SpellEffectGain.TEMPORARY:
+          return {
+            present: 'ganha PV temporários',
+            past: 'Ganhou PV temporários',
+            icon: 'shield',
+            affected: true,
+          };
+        case SpellEffectGain.CURRENT:
+          return {
+            present: 'volta com PV',
+            past: 'Voltou com PV',
+            icon: 'favorite',
+            affected: true,
+          };
+        default:
+          return {
+            present: 'ganha PV máximos',
+            past: 'Ganhou PV máximos',
+            icon: 'shield',
+            affected: true,
+          };
+      }
     default:
       // A threshold with no condition is Palavra de Poder Matar.
       return { present: 'morre', past: 'Morreu', icon: 'heart_broken', affected: true };

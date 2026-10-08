@@ -331,7 +331,7 @@ O app marca as condições (derrubado, envenenado...) e a concentração, e lemb
 
 **Como o sistema cumpre**
 
-Condições e concentração ficam no combatente (ADR-0007, ADR-0008). O número do lembrete é `rules/combat.ConcentrationDC`: o maior entre 10 e metade do dano. Uma magia é uma só fonte de dano: quando causa dois tipos de dano (Coluna de Chamas, Tempestade de Gelo), o alvo recebe um só lembrete pela conjuração, depois que o último deles se resolve, a partir da soma do dano.
+Condições e concentração ficam no combatente (ADR-0007, ADR-0008). O número do lembrete é `rules/combat.ConcentrationDC`: o maior entre 10 e metade do dano. Uma magia é uma só fonte de dano: quando causa dois tipos de dano (Coluna de Chamas, Tempestade de Gelo), o alvo recebe um só lembrete pela conjuração, depois que o último deles se resolve (aplicado ou descartado), a partir da soma do que atingiu o alvo.
 
 **Servidor.** `SetCombatantConditions` troca o conjunto de condições de um combatente (chaves do SRD como `condition:poisoned`, só o mestre; o jogador só encerra a concentração do próprio personagem). Uma magia de concentração conjurada põe o nome dela em `concentration_spell` e uma segunda a troca (o registro diz qual terminou). Quando o mestre aplica dano a quem está concentrado, a resposta e o registro levam `concentration_dc` ("Teste de concentração: CD 10"), só para o mestre e o jogador do alvo. Os jogadores veem as condições (e os nomes em português) dos combatentes que veem, nunca as de um escondido. Nenhum efeito é aplicado. Teste: `TestRN22_ConditionsAndTheConcentrationReminder`.
 
