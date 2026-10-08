@@ -2049,6 +2049,9 @@ export class CombatView {
             this.error.set(
               'Uma porta trancada parou o movimento. Destranque a porta (toque nela no mapa) e mova de novo.',
             );
+          } else if (res.stoppedEarly) {
+            // A barred or secret door, as a wall, stops it too: the token stands where it stopped.
+            this.error.set('O caminho está bloqueado.');
           }
         },
         failed: (saved, err) => {
