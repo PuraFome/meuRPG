@@ -1548,6 +1548,13 @@ func (s *Service) DiscardPendingDamage(
 			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Pending: p.ID, Key: p.AttackKey,
 			Amount: num(p.Amount), PrevStatus: p.Status,
 		}
+		if p.CastID != nil && !p.Healing {
+			// The discard may settle the cast's last damage for the target: what landed
+			// before it still owes a concentration save.
+			if made.ConcentrationDC, err = s.castConcentrationDC(ctx, c, p, target, 0); err != nil {
+				return nil, err
+			}
+		}
 		return made, nil
 	})
 	if err != nil {
@@ -1568,6 +1575,7 @@ func (s *Service) DiscardPendingDamage(
 	if err != nil {
 		return nil, err
 	}
+	decorate(pending, ev, combatViewer{master: true}, s.membersOf(ctx, res))
 	return connect.NewResponse(&playv1.DiscardPendingDamageResponse{Encounter: out, PendingDamage: pending}), nil
 }
 

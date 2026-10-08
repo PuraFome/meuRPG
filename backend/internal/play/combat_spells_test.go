@@ -2573,6 +2573,68 @@ func TestFlameStrikeOnAConcentratingCharacterRemindsOneSave(t *testing.T) {
 	}
 }
 
+// TestFlameStrikeDiscardingTheLastDamageStillRemindsTheSave: the discard of the
+// cast's last pending damage for a concentrating character settles the cast as
+// much as an apply does, so the reminder comes with it, from what landed before;
+// when nothing landed there is none, and the undo of the discard takes it back.
+func TestFlameStrikeDiscardingTheLastDamageStillRemindsTheSave(t *testing.T) {
+	t.Parallel()
+	a, e := flameStrikeFixture(t)
+	a.concentrate(t, "Toren", webSpell)
+	fire, radiant := flameStrikeOn(t, a, e, "Toren")
+	a.h.roller.queue(5, 5, 5, 5) // 20 fire
+	a.mustDamage(t, a.master, e, fire, inAppDamage)
+	a.h.roller.queue(2, 2, 2, 2) // 8 radiant
+	a.mustDamage(t, a.master, e, radiant, inAppDamage)
+
+	if first, err := a.settle(t, a.master, e, fire, true); err != nil || first.GetConcentrationDc() != 0 {
+		t.Fatalf("applying the fire damage = %v, %v; want no reminder while the radiant damage waits", first, err)
+	}
+	last, err := a.settle(t, a.master, e, radiant, false)
+	if err != nil || last.GetConcentrationDc() != 10 {
+		t.Fatalf("discarding the radiant damage = %v, %v; want the DC 10 reminder (the fire's 20)", last, err)
+	}
+	dcInLog := func(u *user) int32 {
+		for _, r := range a.log(t, u, e).GetRounds() {
+			for _, en := range r.GetEntries() {
+				for _, tg := range en.GetSpell().GetTargets() {
+					for _, d := range append([]*playv1.CombatLogDamage{tg.GetDamage()}, tg.GetMoreDamages()...) {
+						if d.GetStatus() == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_DISCARDED && d.ConcentrationDc != nil {
+							return d.GetConcentrationDc()
+						}
+					}
+				}
+			}
+		}
+		return 0
+	}
+	if dc := dcInLog(a.master); dc != 10 {
+		t.Errorf("the master's log DC on the discarded damage = %d, want 10", dc)
+	}
+	if dc := dcInLog(a.bia); dc != 0 {
+		t.Errorf("another player's log DC = %d, want none", dc)
+	}
+	if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil {
+		t.Fatalf("UndoLastAction(the discard) error = %v", err)
+	}
+	if again, err := a.settle(t, a.master, e, radiant, false); err != nil || again.GetConcentrationDc() != 10 {
+		t.Errorf("discarding again = %v, %v; want the DC 10 reminder again", again, err)
+	}
+
+	// Nothing landed: no reminder.
+	b, e2 := flameStrikeFixture(t)
+	b.concentrate(t, "Toren", webSpell)
+	fire, radiant = flameStrikeOn(t, b, e2, "Toren")
+	b.h.roller.queue(5, 5, 5, 5)
+	b.mustDamage(t, b.master, e2, fire, inAppDamage)
+	b.h.roller.queue(2, 2, 2, 2)
+	b.mustDamage(t, b.master, e2, radiant, inAppDamage)
+	b.settle(t, b.master, e2, fire, false)
+	if none, err := b.settle(t, b.master, e2, radiant, false); err != nil || none.GetConcentrationDc() != 0 {
+		t.Errorf("discarding both damages = %v, %v; want no reminder", none, err)
+	}
+}
+
 // TestBonusActionSpellLeavesNoOtherSpellButACantrip: a caster that casts a spell
 // with a bonus action casts no other spell that turn except a cantrip with a
 // casting time of 1 action, whatever the order (SRD 5.1, Casting Time). The
