@@ -1,10 +1,10 @@
 /**
  * The "Pontos de vida" box of the editor (E6-21): what the rolls typed so
- * far add up to. It is a preview, not the sheet: the server computes the
- * real maximum when the character is saved (`rules.Derive`), and this
- * follows the same arithmetic only so the player sees where the number
- * comes from while rolling. Constitution here is the final score, the base
- * plus what the race gives (the manual bonuses are added by the caller).
+ * far add up to: the dice and the Constitution modifier. The `hp.max` effects
+ * are not here; the server derives them for the draft (`PreviewCharacter`) and
+ * the box adds its `hit_points_from_effects`. Constitution here is the final
+ * score, the base plus what the race gives (the manual bonuses are added by
+ * the caller).
  */
 
 export interface HitPointsLevel {

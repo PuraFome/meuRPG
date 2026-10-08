@@ -765,3 +765,57 @@ func BenchmarkDerive(b *testing.B) {
 		_ = Derive(build, c)
 	}
 }
+
+// TestHitPointsFromEffects: HitPointsFromEffects is what the "hp.max" effects
+// add to the dice and the Constitution modifier, with the floor of one hit
+// point per level kept inside the dice part.
+func TestHitPointsFromEffects(t *testing.T) {
+	t.Parallel()
+	srd := loadForTest(t)
+	race, _, _ := tableMisc()
+	race.Traits = []TableFeature{{
+		Key: "trait:vigor-fragil" + tableSuffix, NamePT: "Vigor frágil", DescPT: []string{"Texto de teste."},
+		Effects: []Effect{{Type: "modifier", Target: "hp.max", Mode: "add", Value: "-2"}},
+	}}
+	table := withOverlay(t, Overlay{Revision: 1, Races: []TableRace{race}})
+
+	hillDwarf := func(class string, level, con int) Build {
+		b := standard(class, level)
+		b.Race, b.Subrace = "race:dwarf", "subrace:hill-dwarf"
+		b.BaseScores[CON] = con
+		return b
+	}
+	human := func(class string, level, con int) Build {
+		b := standard(class, level)
+		b.BaseScores[CON] = con
+		return b
+	}
+	tableRace := human("class:fighter", 3, 14)
+	tableRace.Race = race.Key
+	// Every build starts from standard()'s human, who adds 1 to each score.
+	tests := []struct {
+		name         string
+		content      *Content
+		build        Build
+		fromEffects  int
+		hitPointsMax int
+	}{
+		{"no effect", srd, human("class:fighter", 3, 14), 0, 12 + 2*(6+2)},                                    // CON 15, modifier 2
+		{"Dwarven Toughness adds one per level", srd, hillDwarf("class:fighter", 3, 12), 3, 12 + 2*(6+2) + 3}, // CON 14, modifier 2
+		{"a table effect may subtract", table, tableRace, -2, 12 + 2*(6+2) - 2},                               // CON 15, modifier 2
+		{"the floor of one per level is not an effect", srd, human("class:wizard", 3, 2), 0, 2 + 1 + 1},       // CON 3, modifier -4: 6-4, then 1 and 1
+		{"an effect on top of the floor", srd, hillDwarf("class:wizard", 3, 1), 3, 2 + 1 + 1 + 3},             // CON 3, modifier -4
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			d := Derive(tt.build, tt.content)
+			if d.HitPointsFromEffects != tt.fromEffects {
+				t.Errorf("HitPointsFromEffects = %d, want %d", d.HitPointsFromEffects, tt.fromEffects)
+			}
+			if d.HitPointsMax != tt.hitPointsMax {
+				t.Errorf("HitPointsMax = %d, want %d", d.HitPointsMax, tt.hitPointsMax)
+			}
+		})
+	}
+}

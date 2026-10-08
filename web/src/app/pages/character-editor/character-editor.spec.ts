@@ -26,7 +26,9 @@ import {
   AbilityTableVm,
   CharacterEditorSource,
   CharacterForEdit,
+  CharacterPreviewVm,
   CreateCharacterInput,
+  PreviewCharacterInput,
   RulesCatalogVm,
   UpdateCharacterInput,
 } from './character-editor.types';
@@ -49,6 +51,13 @@ class FakeCharacterEditorSource {
   loadCatalogFn: (campaignId: string) => Promise<RulesCatalogVm> = () => Promise.resolve(catalog());
   loadCharacterForEditFn: (campaignId: string, characterId: string) => Promise<CharacterForEdit> =
     () => Promise.reject(new Error('not stubbed'));
+  previewCharacterCalls: PreviewCharacterInput[] = [];
+  previewCharacterFn: (input: PreviewCharacterInput) => Promise<CharacterPreviewVm> = () =>
+    Promise.reject(new Error('not stubbed'));
+  previewCharacter(input: PreviewCharacterInput): Promise<CharacterPreviewVm> {
+    this.previewCharacterCalls.push(input);
+    return this.previewCharacterFn(input);
+  }
   createCharacterCalls: CreateCharacterInput[] = [];
   createCharacterFn: (input: CreateCharacterInput) => Promise<{ characterId: string }> = () =>
     Promise.resolve({ characterId: 'new-char' });
@@ -1342,6 +1351,134 @@ describe('CharacterEditor', () => {
       expect(el.querySelector('app-hit-points-rolls .hp__note')?.textContent).toContain(
         'Constituição 16 (+3 por nível)',
       );
+    });
+
+    describe('the hit points the server derives', () => {
+      // The box adds the server's `hit_points_from_effects` to its own rows (level 1: 6 + 2; two rolls of 4 and 3 give 6 + 5).
+      const DICE_ONLY = 19;
+      const draft = {
+        race: 'race:gnome',
+        className: 'class:wizard',
+        level: 3,
+        hitPointsMethod: 'rolled',
+        abilities: { con: 14 },
+      };
+      const PAUSE = 300;
+
+      afterEach(() => vi.useRealTimers());
+
+      async function openBox() {
+        const view = await render();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cmp = view.fixture.componentInstance as any;
+        vi.useFakeTimers();
+        cmp.fullForm.patchValue(draft);
+        cmp.hitPointsRolls.set([4, 3]);
+        view.fixture.detectChanges();
+        await openStep(view.fixture, 'Habilidades');
+        return { ...view, cmp };
+      }
+      const sum = (el: HTMLElement) =>
+        el.querySelector('app-hit-points-rolls .hp__sum')?.textContent?.replace(/\s+/g, ' ').trim();
+      const note = (el: HTMLElement) =>
+        el.querySelector('app-hit-points-rolls .hp__note')?.textContent;
+
+      it('adds what the effects give, names it and drops the note that the server will check', async () => {
+        configure({ id: 'camp-1' });
+        fake.previewCharacterFn = () =>
+          Promise.resolve({ hitPointsMax: DICE_ONLY + 3, hitPointsFromEffects: 3 });
+        const { fixture, el } = await openBox();
+        expect(sum(el)).toBe(`${DICE_ONLY} PV máximos até agora`);
+        expect(note(el)).toContain('É uma prévia');
+
+        await vi.advanceTimersByTimeAsync(PAUSE);
+        fixture.detectChanges();
+
+        expect(fake.previewCharacterCalls.length).toBe(1);
+        expect(fake.previewCharacterCalls[0]).toMatchObject({
+          campaignId: 'camp-1',
+          characterId: null,
+          kind: 'player',
+          full: { race: 'race:gnome', className: 'class:wizard', level: 3, hitPointsRolls: [4, 3] },
+        });
+        expect(sum(el)).toBe(`${DICE_ONLY + 3} PV máximos até agora`);
+        expect(el.querySelector('app-hit-points-rolls .hp__effects')?.textContent?.trim()).toBe(
+          '+3 PV de raça, classe ou característica',
+        );
+        expect(note(el)).not.toContain('É uma prévia');
+      });
+
+      it('asks once for a run of changes, after the pause', async () => {
+        configure({ id: 'camp-1' });
+        fake.previewCharacterFn = () =>
+          Promise.resolve({ hitPointsMax: 20, hitPointsFromEffects: 1 });
+        const { cmp } = await openBox();
+        await vi.advanceTimersByTimeAsync(PAUSE - 1);
+        cmp.hitPointsRolls.set([5, 3]);
+        await vi.advanceTimersByTimeAsync(PAUSE - 1);
+        cmp.hitPointsRolls.set([5, 4]);
+        await vi.advanceTimersByTimeAsync(PAUSE - 1);
+        expect(fake.previewCharacterCalls.length).toBe(0);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(fake.previewCharacterCalls.length).toBe(1);
+        expect(fake.previewCharacterCalls[0].full.hitPointsRolls).toEqual([5, 4]);
+      });
+
+      it('shows its own arithmetic and its note when the call fails', async () => {
+        configure({ id: 'camp-1' });
+        fake.previewCharacterFn = () => Promise.reject(new Error('unavailable'));
+        const { fixture, el } = await openBox();
+        await vi.advanceTimersByTimeAsync(PAUSE);
+        fixture.detectChanges();
+        expect(fake.previewCharacterCalls.length).toBe(1);
+        expect(sum(el)).toBe(`${DICE_ONLY} PV máximos até agora`);
+        expect(el.querySelector('app-hit-points-rolls .hp__effects')).toBeNull();
+        expect(note(el)).toContain('É uma prévia');
+      });
+
+      it('keeps the last answer while a newer one is on the way, and drops a slow one that a newer one overtook', async () => {
+        configure({ id: 'camp-1' });
+        const answers: ((v: CharacterPreviewVm) => void)[] = [];
+        fake.previewCharacterFn = () => new Promise((resolve) => answers.push(resolve));
+        const { fixture, el, cmp } = await openBox();
+        await vi.advanceTimersByTimeAsync(PAUSE); // call 1, slow
+        cmp.hitPointsRolls.set([4, 4]);
+        await vi.advanceTimersByTimeAsync(PAUSE); // call 2
+        expect(answers.length).toBe(2);
+
+        answers[1]({ hitPointsMax: 0, hitPointsFromEffects: 2 });
+        await vi.advanceTimersByTimeAsync(0);
+        fixture.detectChanges();
+        answers[0]({ hitPointsMax: 0, hitPointsFromEffects: 9 }); // the answer of the older draft arrives last
+        await vi.advanceTimersByTimeAsync(0);
+        fixture.detectChanges();
+        expect(el.querySelector('app-hit-points-rolls .hp__effects')?.textContent?.trim()).toBe(
+          '+2 PV de raça, classe ou característica',
+        );
+
+        // A third draft is on the way: the box keeps the number it has until the answer comes.
+        cmp.hitPointsRolls.set([4, 5]);
+        await vi.advanceTimersByTimeAsync(PAUSE);
+        fixture.detectChanges();
+        expect(answers.length).toBe(3);
+        expect(el.querySelector('app-hit-points-rolls .hp__effects')?.textContent).toContain('+2');
+      });
+
+      it('asks nothing while the draft has no race or no class', async () => {
+        configure({ id: 'camp-1' });
+        fake.previewCharacterFn = () =>
+          Promise.resolve({ hitPointsMax: 20, hitPointsFromEffects: 1 });
+        const { fixture, cmp } = await openBox();
+        await vi.advanceTimersByTimeAsync(PAUSE);
+        expect(fake.previewCharacterCalls.length).toBe(1);
+
+        cmp.fullForm.patchValue({ race: '' });
+        fixture.detectChanges();
+        cmp.hitPointsRolls.set([2, 2]);
+        await vi.advanceTimersByTimeAsync(PAUSE * 3);
+        expect(fake.previewCharacterCalls.length).toBe(1);
+        expect(cmp.hitPointsFromEffects()).toBeNull();
+      });
     });
 
     it('asks for a class before offering hit-point dice', async () => {

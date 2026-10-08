@@ -9,6 +9,7 @@ import {
   effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -85,6 +86,7 @@ import { openSpellDetails } from '../../shared/spell-details/open-spell-details'
 import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
 import { EditorStepper } from './editor-stepper/editor-stepper';
 import { HitPointsRolls } from './hit-points-rolls/hit-points-rolls';
+import { ServerHitPoints } from './hit-points-server';
 import {
   EDITOR_STEP_LABELS,
   EditorField,
@@ -296,6 +298,23 @@ export class CharacterEditor {
   /** One roll per level after the first, index 0 = level 2. Only sent when
    * `hitPointsMethod` is "rolled" (integrator fix, phase 2b). */
   protected readonly hitPointsRolls = signal<readonly number[]>([]);
+  /** The hit points the server derives for the draft while the "Pontos de vida" box is on screen. */
+  private readonly serverHitPoints = new ServerHitPoints(() => {
+    const s = this.state();
+    if (s.status !== 'ready') {
+      return Promise.reject(new Error('the page is not ready'));
+    }
+    return this.source.previewCharacter({
+      campaignId: s.campaignId,
+      characterId: s.mode === 'edit' ? s.characterId : null,
+      kind: s.kind,
+      full: this.buildFullValue(),
+    });
+  });
+  /** What the server says the effects add to the hit points of the draft; `null` while it has no answer (the box adds up by itself). */
+  protected readonly hitPointsFromEffects = computed(
+    () => this.serverHitPoints.answer()?.hitPointsFromEffects ?? null,
+  );
 
   /** Catalog-backed pickers (integrator fix: the editor must never make a
    * person type a content key) — cantrips and the known/prepared spell
@@ -405,6 +424,8 @@ export class CharacterEditor {
       : 'player_chooses';
   });
 
+  /** Any change of the form's fields; the signals the draft is made of are read where it is built. */
+  private readonly formChanges = toSignal(this.fullForm.valueChanges);
   protected readonly selectedRaceKey = toSignal(this.fullForm.controls.race.valueChanges, {
     initialValue: '',
   });
@@ -980,6 +1001,28 @@ export class CharacterEditor {
         control.enable({ emitEvent: false });
       }
     });
+    // While the "Pontos de vida" box is on screen, the server derives the draft (a race and a class at least)
+    // and the box adds up what the effects give.
+    effect(() => {
+      const s = this.state();
+      const boxOn =
+        s.status === 'ready' &&
+        this.selectedHitPointsMethod() === 'rolled' &&
+        this.rollsNeeded() > 0 &&
+        this.hitDie() > 0;
+      if (!boxOn) {
+        untracked(() => this.serverHitPoints.stop());
+        return;
+      }
+      this.formChanges();
+      const ready = this.selectedRaceKey() !== '' && this.selectedClassKey() !== '';
+      // Reading the draft here makes every signal it is built from a reason to ask again.
+      if (ready) {
+        this.buildFullValue();
+      }
+      untracked(() => this.serverHitPoints.draftChanged(ready));
+    });
+    this.destroyRef.onDestroy(() => this.serverHitPoints.stop());
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       this.resolveAndLoad(params);
     });

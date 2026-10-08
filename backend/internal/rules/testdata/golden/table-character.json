@@ -250,6 +250,7 @@
     "ArmorClass": 12,
     "ArmorClassDescription": "Sem armadura",
     "HitPointsMax": 10,
+    "HitPointsFromEffects": 0,
     "HitDice": [
       {
         "Die": 8,
@@ -888,6 +889,7 @@
     "ArmorClass": 12,
     "ArmorClassDescription": "Sem armadura",
     "HitPointsMax": 80,
+    "HitPointsFromEffects": 0,
     "HitDice": [
       {
         "Die": 8,
@@ -1966,6 +1968,7 @@
     "ArmorClass": 12,
     "ArmorClassDescription": "Sem armadura",
     "HitPointsMax": 38,
+    "HitPointsFromEffects": 0,
     "HitDice": [
       {
         "Die": 8,

@@ -92,4 +92,38 @@ describe('HitPointsRolls (E6-21)', () => {
     const { el } = setup();
     expect(el.querySelector('.hp__note')?.textContent).toContain('É uma prévia');
   });
+
+  describe('with the effects the server derived', () => {
+    const text = (el: HTMLElement, selector: string) =>
+      el.querySelector(selector)?.textContent?.replace(/\s+/g, ' ').trim();
+
+    it('adds them to the total and to the range, names them and drops the note about the check', () => {
+      const { fixture, el } = setup([8, 0]);
+      // Level 1: 12 + 3 = 15; the 8 gives 11; one level is still to roll (5 to 15 PV).
+      fixture.componentRef.setInput('fromEffects', 3);
+      fixture.detectChanges();
+      expect(text(el, '.hp__sum')).toBe('29 PV máximos até agora');
+      expect(text(el, '.hp__effects')).toBe('+3 PV de raça, classe ou característica');
+      const note = text(el, '.hp__note');
+      expect(note).toContain('entre 33 e 44 PV');
+      expect(note).not.toContain('É uma prévia');
+    });
+
+    it('writes a negative number with the minus sign and counts it', () => {
+      const { fixture, el } = setup([8, 5]);
+      fixture.componentRef.setInput('fromEffects', -2);
+      fixture.detectChanges();
+      expect(text(el, '.hp__sum')).toBe('32 PV máximos até agora'); // 15 + 11 + 8 - 2
+      expect(text(el, '.hp__effects')).toBe('−2 PV de raça, classe ou característica');
+    });
+
+    it('has no line for effects that add nothing, and no note about a preview', () => {
+      const { fixture, el } = setup([8, 5]);
+      fixture.componentRef.setInput('fromEffects', 0);
+      fixture.detectChanges();
+      expect(el.querySelector('.hp__effects')).toBeNull();
+      expect(text(el, '.hp__sum')).toBe('34 PV máximos até agora');
+      expect(text(el, '.hp__note')).not.toContain('É uma prévia');
+    });
+  });
 });

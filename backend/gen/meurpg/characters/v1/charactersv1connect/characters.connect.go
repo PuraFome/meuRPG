@@ -98,6 +98,9 @@ const (
 	// CharacterServicePreviewLevelUpProcedure is the fully-qualified name of the CharacterService's
 	// PreviewLevelUp RPC.
 	CharacterServicePreviewLevelUpProcedure = "/meurpg.characters.v1.CharacterService/PreviewLevelUp"
+	// CharacterServicePreviewCharacterProcedure is the fully-qualified name of the CharacterService's
+	// PreviewCharacter RPC.
+	CharacterServicePreviewCharacterProcedure = "/meurpg.characters.v1.CharacterService/PreviewCharacter"
 	// CharacterServiceRollLevelUpHitPointsProcedure is the fully-qualified name of the
 	// CharacterService's RollLevelUpHitPoints RPC.
 	CharacterServiceRollLevelUpHitPointsProcedure = "/meurpg.characters.v1.CharacterService/RollLevelUpHitPoints"
@@ -468,6 +471,38 @@ type CharacterServiceClient interface {
 	// that LevelUpCharacter would answer `invalid_argument` to (an unknown key,
 	// a list too long) is `invalid_argument` here too.
 	PreviewLevelUp(context.Context, *connect.Request[v1.PreviewLevelUpRequest]) (*connect.Response[v1.PreviewLevelUpResponse], error)
+	// PreviewCharacter derives the numbers of a sheet that is being created or
+	// edited, and writes nothing: the character editor's "Pontos de vida" box
+	// shows the server's maximum (the dice, the Constitution modifier and the
+	// "hp.max" effects, such as Dwarven Toughness) instead of adding it up in the
+	// browser, which has no rules engine. The sheet is the one CreateCharacter and
+	// UpdateCharacter take; the fields that do not change the numbers (name,
+	// portrait, story, idempotency key) are not part of the request.
+	//
+	// It accepts exactly the callers and sheets that the save it previews
+	// accepts, so a preview never shows a sheet the save would refuse and never
+	// tells anyone more than the save would. Without a character_id, what
+	// CreateCharacter checks: a member or a pending member; a player previews
+	// only a PLAYER sheet and the master only an NPC kind; the sheet's own rules,
+	// the sheet that fits the kind, a new choice of an archived table entry
+	// refused, and a choice the table switched off refused for a player. With a
+	// character_id, what UpdateCharacter checks: the caller sees the character,
+	// may edit its sheet now (RN-01) and the sheet fits the character's kind; an
+	// archived or switched-off choice is judged against the stored sheet, so a
+	// choice the character already has stays. The ability method (RN-24) is not
+	// checked here: the save does it.
+	//
+	// Errors:
+	//   - `not_found`: the character is not in this campaign or the caller may
+	//     not see it.
+	//   - `permission_denied`: a player previews an NPC kind, or the master a
+	//     PLAYER sheet.
+	//   - `invalid_argument`: the sheet, or the kind, breaks the rules of the
+	//     save.
+	//   - `failed_precondition`: with the CharacterBlocked detail, the character's
+	//     sheet is locked for the caller (RN-01), or a new choice is archived or
+	//     switched off (the same detail as the save).
+	PreviewCharacter(context.Context, *connect.Request[v1.PreviewCharacterRequest]) (*connect.Response[v1.PreviewCharacterResponse], error)
 	// RollLevelUpHitPoints rolls the hit die of the class's next level, on the
 	// server, and keeps the result for this character, class and level:
 	// calling it again returns the same roll (it is not a reroll), so the
@@ -770,6 +805,13 @@ func NewCharacterServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		previewCharacter: connect.NewClient[v1.PreviewCharacterRequest, v1.PreviewCharacterResponse](
+			httpClient,
+			baseURL+CharacterServicePreviewCharacterProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("PreviewCharacter")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 		rollLevelUpHitPoints: connect.NewClient[v1.RollLevelUpHitPointsRequest, v1.RollLevelUpHitPointsResponse](
 			httpClient,
 			baseURL+CharacterServiceRollLevelUpHitPointsProcedure,
@@ -855,6 +897,7 @@ type characterServiceClient struct {
 	rejectCharacter         *connect.Client[v1.RejectCharacterRequest, v1.RejectCharacterResponse]
 	getLevelUpOptions       *connect.Client[v1.GetLevelUpOptionsRequest, v1.GetLevelUpOptionsResponse]
 	previewLevelUp          *connect.Client[v1.PreviewLevelUpRequest, v1.PreviewLevelUpResponse]
+	previewCharacter        *connect.Client[v1.PreviewCharacterRequest, v1.PreviewCharacterResponse]
 	rollLevelUpHitPoints    *connect.Client[v1.RollLevelUpHitPointsRequest, v1.RollLevelUpHitPointsResponse]
 	levelUpCharacter        *connect.Client[v1.LevelUpCharacterRequest, v1.LevelUpCharacterResponse]
 	listLevelUps            *connect.Client[v1.ListLevelUpsRequest, v1.ListLevelUpsResponse]
@@ -945,6 +988,11 @@ func (c *characterServiceClient) GetLevelUpOptions(ctx context.Context, req *con
 // PreviewLevelUp calls meurpg.characters.v1.CharacterService.PreviewLevelUp.
 func (c *characterServiceClient) PreviewLevelUp(ctx context.Context, req *connect.Request[v1.PreviewLevelUpRequest]) (*connect.Response[v1.PreviewLevelUpResponse], error) {
 	return c.previewLevelUp.CallUnary(ctx, req)
+}
+
+// PreviewCharacter calls meurpg.characters.v1.CharacterService.PreviewCharacter.
+func (c *characterServiceClient) PreviewCharacter(ctx context.Context, req *connect.Request[v1.PreviewCharacterRequest]) (*connect.Response[v1.PreviewCharacterResponse], error) {
+	return c.previewCharacter.CallUnary(ctx, req)
 }
 
 // RollLevelUpHitPoints calls meurpg.characters.v1.CharacterService.RollLevelUpHitPoints.
@@ -1336,6 +1384,38 @@ type CharacterServiceHandler interface {
 	// that LevelUpCharacter would answer `invalid_argument` to (an unknown key,
 	// a list too long) is `invalid_argument` here too.
 	PreviewLevelUp(context.Context, *connect.Request[v1.PreviewLevelUpRequest]) (*connect.Response[v1.PreviewLevelUpResponse], error)
+	// PreviewCharacter derives the numbers of a sheet that is being created or
+	// edited, and writes nothing: the character editor's "Pontos de vida" box
+	// shows the server's maximum (the dice, the Constitution modifier and the
+	// "hp.max" effects, such as Dwarven Toughness) instead of adding it up in the
+	// browser, which has no rules engine. The sheet is the one CreateCharacter and
+	// UpdateCharacter take; the fields that do not change the numbers (name,
+	// portrait, story, idempotency key) are not part of the request.
+	//
+	// It accepts exactly the callers and sheets that the save it previews
+	// accepts, so a preview never shows a sheet the save would refuse and never
+	// tells anyone more than the save would. Without a character_id, what
+	// CreateCharacter checks: a member or a pending member; a player previews
+	// only a PLAYER sheet and the master only an NPC kind; the sheet's own rules,
+	// the sheet that fits the kind, a new choice of an archived table entry
+	// refused, and a choice the table switched off refused for a player. With a
+	// character_id, what UpdateCharacter checks: the caller sees the character,
+	// may edit its sheet now (RN-01) and the sheet fits the character's kind; an
+	// archived or switched-off choice is judged against the stored sheet, so a
+	// choice the character already has stays. The ability method (RN-24) is not
+	// checked here: the save does it.
+	//
+	// Errors:
+	//   - `not_found`: the character is not in this campaign or the caller may
+	//     not see it.
+	//   - `permission_denied`: a player previews an NPC kind, or the master a
+	//     PLAYER sheet.
+	//   - `invalid_argument`: the sheet, or the kind, breaks the rules of the
+	//     save.
+	//   - `failed_precondition`: with the CharacterBlocked detail, the character's
+	//     sheet is locked for the caller (RN-01), or a new choice is archived or
+	//     switched off (the same detail as the save).
+	PreviewCharacter(context.Context, *connect.Request[v1.PreviewCharacterRequest]) (*connect.Response[v1.PreviewCharacterResponse], error)
 	// RollLevelUpHitPoints rolls the hit die of the class's next level, on the
 	// server, and keeps the result for this character, class and level:
 	// calling it again returns the same roll (it is not a reroll), so the
@@ -1634,6 +1714,13 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	characterServicePreviewCharacterHandler := connect.NewUnaryHandler(
+		CharacterServicePreviewCharacterProcedure,
+		svc.PreviewCharacter,
+		connect.WithSchema(characterServiceMethods.ByName("PreviewCharacter")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	characterServiceRollLevelUpHitPointsHandler := connect.NewUnaryHandler(
 		CharacterServiceRollLevelUpHitPointsProcedure,
 		svc.RollLevelUpHitPoints,
@@ -1732,6 +1819,8 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 			characterServiceGetLevelUpOptionsHandler.ServeHTTP(w, r)
 		case CharacterServicePreviewLevelUpProcedure:
 			characterServicePreviewLevelUpHandler.ServeHTTP(w, r)
+		case CharacterServicePreviewCharacterProcedure:
+			characterServicePreviewCharacterHandler.ServeHTTP(w, r)
 		case CharacterServiceRollLevelUpHitPointsProcedure:
 			characterServiceRollLevelUpHitPointsHandler.ServeHTTP(w, r)
 		case CharacterServiceLevelUpCharacterProcedure:
@@ -1823,6 +1912,10 @@ func (UnimplementedCharacterServiceHandler) GetLevelUpOptions(context.Context, *
 
 func (UnimplementedCharacterServiceHandler) PreviewLevelUp(context.Context, *connect.Request[v1.PreviewLevelUpRequest]) (*connect.Response[v1.PreviewLevelUpResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.PreviewLevelUp is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) PreviewCharacter(context.Context, *connect.Request[v1.PreviewCharacterRequest]) (*connect.Response[v1.PreviewCharacterResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.PreviewCharacter is not implemented"))
 }
 
 func (UnimplementedCharacterServiceHandler) RollLevelUpHitPoints(context.Context, *connect.Request[v1.RollLevelUpHitPointsRequest]) (*connect.Response[v1.RollLevelUpHitPointsResponse], error) {

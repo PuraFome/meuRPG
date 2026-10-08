@@ -130,6 +130,7 @@ function minimalDerivedSheet(): DerivedSheet {
     saveActions: [],
     changedContent: [],
     backgroundEquipmentPt: '',
+    hitPointsFromEffects: 0,
   };
 }
 
