@@ -758,8 +758,11 @@ export class LiveSession {
     const ticket = this.combat.beginRead();
     try {
       const encounter = await this.combatApi.get(this.campaignId());
-      if (generation === this.generation) {
-        this.combat.applyRead(ticket, encounter);
+      if (generation === this.generation && !this.combat.applyRead(ticket, encounter)) {
+        // Dropped for a turn or a move that came while it was out: that read may be older than the event.
+        if (this.combat.patchedSince(ticket)) {
+          void this.loadCombat(generation);
+        }
       }
     } catch {
       // The stream's next event, or reconnection, reads it again.

@@ -62,4 +62,34 @@ describe('ConditionsDialog', () => {
     await cmp.save();
     expect(sentKeys(setConditions.mock.calls[0] as unknown[])).toEqual([]);
   });
+
+  it('cannot be closed while the change is on its way', async () => {
+    const { cmp, setConditions } = open();
+    let answer!: (e: unknown) => void;
+    setConditions.mockReturnValue(new Promise((resolve) => (answer = resolve)) as never);
+    cmp.toggle('condition:prone');
+    const saving = cmp.save();
+    const closeNow = (cmp as unknown as { close(): void }).close;
+    closeNow.call(cmp);
+    expect(TestBed.inject(MatDialogRef).close).not.toHaveBeenCalled();
+    answer(encounter({ id: 'e1', revision: 3 }));
+    await saving;
+    expect(TestBed.inject(MatDialogRef).close).toHaveBeenCalledWith(true);
+  });
+
+  it('keeps one key for ending the concentration again after a lost answer, and a new one after it worked', async () => {
+    const { setConditions, cmp } = open();
+    const end = (cmp as unknown as { endConcentration(): Promise<void> }).endConcentration.bind(
+      cmp,
+    );
+    setConditions
+      .mockRejectedValueOnce(new Error('lost') as never)
+      .mockResolvedValue(encounter({ id: 'e1', revision: 3 }) as never);
+    await end();
+    await end();
+    await end();
+    const keys = setConditions.mock.calls.map((c) => (c as unknown[])[4]);
+    expect(keys[1]).toBe(keys[0]);
+    expect(keys[2]).not.toBe(keys[1]);
+  });
 });

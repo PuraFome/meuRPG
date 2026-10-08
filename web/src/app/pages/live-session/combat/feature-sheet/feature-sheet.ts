@@ -4,8 +4,9 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { DiceRoll } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { ActionKey } from '../../../../core/connect/idempotency';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
-import { type DamageDie, CombatClient, newKey } from '../../../../core/combat/combat-client';
+import { type DamageDie, CombatClient } from '../../../../core/combat/combat-client';
 import { rollFormula } from '../../../../core/combat/combat-dice';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
@@ -115,7 +116,7 @@ export class FeatureSheet {
   protected readonly roll = signal<DiceRoll | null>(null);
   protected readonly used = signal(false);
   protected readonly healed = signal(0);
-  private readonly key = newKey();
+  private readonly key = new ActionKey();
   private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
 
   protected readonly canApp = this.data.diceMode !== DiceMode.PHYSICAL;
@@ -132,6 +133,8 @@ export class FeatureSheet {
 
   constructor() {
     effect(() => this.back()?.nativeElement.focus());
+    // A use in the air cannot be dismissed: its answer is always shown.
+    effect(() => this.sheet.lock(this.busy()));
   }
 
   protected async use(die: DamageDie): Promise<void> {
@@ -147,8 +150,9 @@ export class FeatureSheet {
         this.data.combatantId,
         this.data.actionKey,
         die,
-        this.key,
+        this.key.keyFor([this.data.actionKey, die]),
       );
+      this.key.renew();
       this.data.state.apply(res.encounter);
       this.roll.set(res.roll ?? null);
       this.used.set(true);
@@ -162,6 +166,9 @@ export class FeatureSheet {
   }
 
   protected close(): void {
+    if (this.busy()) {
+      return;
+    }
     this.sheet.close(this.used());
   }
 }

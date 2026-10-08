@@ -1,9 +1,10 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { CombatClient, newKey } from '../../../../core/combat/combat-client';
+import { CombatClient } from '../../../../core/combat/combat-client';
+import { ActionKey } from '../../../../core/connect/idempotency';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { CONDITIONS, sameKeys } from '../../../../core/combat/conditions';
@@ -75,7 +76,7 @@ export interface ConditionsData {
       </section>
       <div foot>
         <div class="pair">
-          <button mat-stroked-button type="button" class="pair__btn" (click)="close()">Cancelar</button>
+          <button mat-stroked-button type="button" class="pair__btn" [disabled]="busy()" (click)="close()">Cancelar</button>
           <button
             mat-flat-button
             type="button"
@@ -125,7 +126,12 @@ export class ConditionsDialog {
   protected readonly changed = computed(
     () => !sameKeys([...this.chosen()], this.current().conditions),
   );
-  private key = newKey();
+  private readonly key = new ActionKey();
+
+  constructor() {
+    // A request in the air cannot be dismissed (Esc, the backdrop, ✕, Cancelar): its answer is always shown.
+    effect(() => this.sheet.lock(this.busy()));
+  }
 
   protected toggle(key: string): void {
     const on = !this.chosen().has(key);
@@ -136,7 +142,6 @@ export class ConditionsDialog {
     (on ? added : removed).add(key);
     this.added.set(added);
     this.removed.set(removed);
-    this.key = newKey();
   }
 
   /** The keys to save: the ones already marked keep their order, the new ones follow. */
@@ -167,7 +172,7 @@ export class ConditionsDialog {
     this.busy.set(true);
     this.error.set('');
     try {
-      const key = change.endConcentration ? newKey() : this.key;
+      const key = this.key.keyFor([this.data.combatant.id, change]);
       this.data.state.apply(
         await this.api.setConditions(
           this.data.campaignId,
@@ -177,6 +182,7 @@ export class ConditionsDialog {
           key,
         ),
       );
+      this.key.renew();
       if (closes) {
         this.sheet.close(true);
       }
@@ -188,6 +194,9 @@ export class ConditionsDialog {
   }
 
   protected close(): void {
+    if (this.busy()) {
+      return;
+    }
     this.sheet.close(false);
   }
 }
