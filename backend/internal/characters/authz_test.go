@@ -150,6 +150,21 @@ func TestAuthorizationMatrix(t *testing.T) {
 			return err
 		}, [6]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
 
+		// The editor's preview answers what the save would (RN-15 included): a new PLAYER sheet
+		// is the player's or the pending member's, and an existing character is read and
+		// edited by whoever sees it and may edit its sheet.
+		{"PreviewCharacter", "new player sheet", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.PreviewCharacter(ctx, connect.NewRequest(&charactersv1.PreviewCharacterRequest{CampaignId: campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Sheet: pensantusSheet()}))
+			return err
+		}, [6]connect.Code{connect.CodePermissionDenied, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
+		{"PreviewCharacter", "character", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.PreviewCharacter(ctx, connect.NewRequest(&charactersv1.PreviewCharacterRequest{CampaignId: campaign, CharacterId: pc.GetId(), Sheet: pensantusSheet()}))
+			return err
+		}, [6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"PreviewCharacter", "pending character", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.PreviewCharacter(ctx, connect.NewRequest(&charactersv1.PreviewCharacterRequest{CampaignId: campaign, CharacterId: pendingPC.GetId(), Sheet: pensantusSheet()}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
 		{
 			"UpdateCharacter", "draft", nil, update(pc.GetId()),
 			[6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound},
@@ -308,6 +323,10 @@ func TestAuthorizationMatrix(t *testing.T) {
 			"UpdateCharacter", "locked", func() { h.lockSheets(campaign) }, update(pc.GetId()),
 			[6]connect.Code{allowed, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound},
 		},
+		{"PreviewCharacter", "locked character", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.PreviewCharacter(ctx, connect.NewRequest(&charactersv1.PreviewCharacterRequest{CampaignId: campaign, CharacterId: pc.GetId(), Sheet: pensantusSheet()}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		{
 			"UpdateCharacterStory", "locked", nil, updateStory(pc.GetId()),
 			[6]connect.Code{allowed, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound},

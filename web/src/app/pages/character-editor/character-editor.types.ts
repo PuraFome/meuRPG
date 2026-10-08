@@ -427,6 +427,23 @@ export interface UpdateCharacterInput {
   readonly basic: BasicCharacterFormValue | null;
 }
 
+/** A draft sheet to derive without saving it (`PreviewCharacter`). */
+export interface PreviewCharacterInput {
+  readonly campaignId: string;
+  /** The character being edited; `null` while creating one. */
+  readonly characterId: string | null;
+  readonly kind: CharacterKind;
+  readonly full: CharacterFormValue;
+}
+
+/** What the server derives for a draft: the numbers the editor's "Pontos de vida" box shows. */
+export interface CharacterPreviewVm {
+  /** `DerivedSheet.hit_points_max`: what the saved sheet would have. */
+  readonly hitPointsMax: number;
+  /** `DerivedSheet.hit_points_from_effects`: what race, class and feature effects add (negative if one takes away). */
+  readonly hitPointsFromEffects: number;
+}
+
 export interface CharacterForEdit {
   readonly kind: CharacterKind;
   readonly revision: number;
@@ -471,6 +488,8 @@ export abstract class CharacterEditorSource {
     campaignId: string,
     typedDice?: readonly (readonly number[])[],
   ): Promise<AbilityRollsVm>;
+  /** `PreviewCharacter`: the server derives the draft and writes nothing. */
+  abstract previewCharacter(input: PreviewCharacterInput): Promise<CharacterPreviewVm>;
   abstract createCharacter(input: CreateCharacterInput): Promise<{ characterId: string }>;
   abstract updateCharacter(input: UpdateCharacterInput): Promise<{ revision: number }>;
 }

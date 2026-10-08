@@ -125,6 +125,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["RejectCharacter"] = c.RejectCharacter(ctx, connect.NewRequest(&charactersv1.RejectCharacterRequest{CampaignId: id, CharacterId: id}))
 	_, calls["GetLevelUpOptions"] = c.GetLevelUpOptions(ctx, connect.NewRequest(&charactersv1.GetLevelUpOptionsRequest{CampaignId: id, CharacterId: id}))
 	_, calls["PreviewLevelUp"] = c.PreviewLevelUp(ctx, connect.NewRequest(&charactersv1.PreviewLevelUpRequest{CampaignId: id, CharacterId: id}))
+	_, calls["PreviewCharacter"] = c.PreviewCharacter(ctx, connect.NewRequest(&charactersv1.PreviewCharacterRequest{CampaignId: id}))
 	_, calls["RollLevelUpHitPoints"] = c.RollLevelUpHitPoints(ctx, connect.NewRequest(&charactersv1.RollLevelUpHitPointsRequest{CampaignId: id, CharacterId: id}))
 	_, calls["LevelUpCharacter"] = c.LevelUpCharacter(ctx, connect.NewRequest(&charactersv1.LevelUpCharacterRequest{CampaignId: id, CharacterId: id}))
 	_, calls["GetAbilityRolls"] = c.GetAbilityRolls(ctx, connect.NewRequest(&charactersv1.GetAbilityRollsRequest{CampaignId: id}))
@@ -192,8 +193,8 @@ func TestReadsWithIDsArePostOnly(t *testing.T) {
 			}
 		}
 	}
-	if len(reads) != 21 {
-		t.Errorf("found %d reads, want 21 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListSpells, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries, ListOptionSwitches, GetClassTableDefaults, GetEffectMenu)", len(reads))
+	if len(reads) != 22 {
+		t.Errorf("found %d reads, want 22 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, PreviewCharacter, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListSpells, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries, ListOptionSwitches, GetClassTableDefaults, GetEffectMenu)", len(reads))
 	}
 	for procedure, method := range reads {
 		opts, _ := method.Options().(*descriptorpb.MethodOptions)
