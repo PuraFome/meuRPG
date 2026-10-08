@@ -75,19 +75,20 @@ The content the master registers (MR-025, RN-23; [Architecture](architecture.md#
 
 | Rule | Value | Where |
 | --- | --- | --- |
-| Contents in the cache | 8, for the whole server, per (campaign, revision); least recently used leaves first | `characters/tablesource.go`, `maxLiveContents` |
-| `ListContent` catalogs | Up to 8 contents, each with the master's catalog and the players' catalog | `characters/contentsource.go`, `maxCatalogs` |
+| Contents in the cache | 8, for the whole server, per (campaign, revision), and at most 24 MiB of their stored data (the newest always stays); least recently used leaves first | `characters/tablesource.go`, `maxLiveContents`, `maxLiveBytes` |
+| `ListContent` catalogs | Up to 8 contents, each with the master's catalog and the players' catalog; a catalog holds its content weakly, so it never keeps one the cache let go | `characters/contentsource.go`, `maxCatalogs` |
 | Entries per campaign | 300; 64 KiB of data per entry | `rules.MaxOverlayEntries`, `characters.MaxTableEntryBytes` |
 | One assembled content | About **1.4 MB** retained beyond the SRD (the SRD is one, shared), for a table of 300 entries (10 classes, 30 subclasses, 20 races, 40 subraces, 40 backgrounds and 160 spells, with 135 KB of data) | `TestLiveContentMemory` |
 | The catalogs of a content | About **0.14 MB** (the master's and the players'; 75 KB on the wire) | `TestLiveContentMemory` |
 | The 8 together | **About 12 MB** (11 MB of contents and 1 MB of catalogs), measured, in the case where both caches keep the same 8 contents | `TestLiveContentMemory` |
-| **The worst case** | **About 23 MB** (computed, not measured: 16 contents × 1.37 MB = 22 MB, plus 1.1 MB of catalogs). The catalog cache (`maxCatalogs`) uses the content as key and keeps it alive, and has its own eviction order. When the campaigns in play rotate faster than 8 revisions, the two caches keep different contents, up to 8 + 8. It fits in the 24 MB reserved for it and in the 400 MiB `GOMEMLIMIT` (add the 280 MB of the fog-tiles sum, in CONTRIBUTING) | derived |
-| Assembling after a write | **6 to 9 ms** per campaign, once per revision (read the data, build the overlay, `With`); the worst case the engine budgets let through takes about 31 ms | `TestLiveContentMemory`, `BenchmarkWith` |
+| One content at the most text | A table of 300 spells with 15 paragraphs of 4,000 characters each (the entry's 64 KiB): **about 17 MB** of stored data, **about 15 MB** retained and **about 65 ms** to assemble. Text is what the entry limit bounds, not the engine's budgets | `TestLiveContentMemoryAtMaximumText` |
+| **The worst case** | **About 24 MB plus the newest content** (the stored-data budget, `maxLiveBytes`; with normal tables the count of 8 binds first, at about 12 MB). The catalogs add about 1 MB and keep no content alive. Before the byte budget and the weak catalogs, eight contents at the most text and eight more pinned by the catalogs came to about 280 MB. It fits in the 400 MiB `GOMEMLIMIT` (add the 280 MB of the fog-tiles sum, in CONTRIBUTING) | `TestLiveContentsAreBoundedByTheBytesTheyHold`, `TestCatalogDoesNotKeepItsContentAlive` |
+| Assembling after a write | **6 to 9 ms** per campaign, once per revision (read the data, build the overlay, `With`); the worst case the engine budgets let through takes about 31 ms, and a table at the most text about 65 ms | `TestLiveContentMemory`, `BenchmarkWith` |
 
 - **None of this is a real database cache.** Restarting the server empties it and it rebuilds on the first read of each campaign. The campaign revision (`campaign_content_state`) is read on **every** content read, inside the reader's transaction: it is a primary-key lookup, and it is what makes a master's edit count immediately.
 - **With more than 8 campaigns with table content in play at the same time** the cache thrashes: each read of a campaign outside it assembles again (6 to 9 ms). With one instance and one table at a time this does not happen; when it does, the number to change is `maxLiveContents`, and each extra content costs about 1.5 MB.
 - **No personal data:** table content is names and texts the master writes for the game (see [Privacy](privacy.md)).
-- **To measure again:** `MEURPG_MEASURE=1 go test ./internal/characters -run TestLiveContentMemory -v` (in `backend/`, no database).
+- **To measure again:** `MEURPG_MEASURE=1 go test ./internal/characters -run TestLiveContentMemory -v` (in `backend/`, no database; it runs `TestLiveContentMemoryAtMaximumText` too).
 
 ## Environment variables and secrets
 

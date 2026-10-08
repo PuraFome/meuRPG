@@ -161,11 +161,11 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
       saveDc: sc.saveDc,
       attackBonus: sc.attackBonus,
       cantripsKnown: sc.cantripsKnown,
-      // The one number worth a single line on the sheet: how many the
-      // character can have ready, whichever the class's style calls it
-      // (prepared_max for Cleric/Druid/Wizard, spells_known for
-      // Bard/Ranger/Sorcerer/Warlock — see rules.proto's SpellPreparation).
-      spellsPreparedMax: sc.preparedMax > 0 ? sc.preparedMax : sc.spellsKnown,
+      // Only one of the two applies: prepared_max for Cleric/Druid/Wizard,
+      // spells_known for Bard/Ranger/Sorcerer/Warlock — see rules.proto's
+      // SpellPreparation. The sheet says which one in its words.
+      spellsPreparedMax: sc.preparedMax,
+      spellsKnownMax: sc.spellsKnown,
     })),
     spellSlots: toSpellSlotsVm(derived.spellSlots),
     pactSlots: derived.pactMagic
