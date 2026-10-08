@@ -134,17 +134,28 @@ export class GalleryPicker implements OnChanges {
     }
   }
 
+  /** Goes up on every load: an answer that comes after a newer load was asked is not drawn. */
+  private loadSeq = 0;
+
   protected load(campaignId = this.campaignId()): void {
+    const seq = ++this.loadSeq;
     this.state.set({ status: 'loading' });
     this.gallery.list(campaignId).then(
       ({ images: all, usage }) => {
+        if (seq !== this.loadSeq) {
+          return;
+        }
         const images = all.filter((i) => !this.excluded().has(i.id));
         this.images.set(images);
         this.usage.set(usage);
         this.state.set({ status: 'ready' });
         this.loaded.emit(images);
       },
-      (err: unknown) => this.state.set({ status: 'error', message: describeConnectError(err, {}) }),
+      (err: unknown) => {
+        if (seq === this.loadSeq) {
+          this.state.set({ status: 'error', message: describeConnectError(err, {}) });
+        }
+      },
     );
   }
 
