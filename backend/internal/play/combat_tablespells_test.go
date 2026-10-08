@@ -407,6 +407,21 @@ func TestMR025_ScorchingRayTakesOneMoreRayForEachCircle(t *testing.T) {
 	if len(cast.GetCast().GetTargets()) != 4 {
 		t.Errorf("rays at the 3rd circle = %d, want 4", len(cast.GetCast().GetTargets()))
 	}
+	// Each ray is its own spell attack (+6 against the goblins' 15: a 10 hits) for 2d6 fire.
+	for i, tg := range cast.GetCast().GetTargets() {
+		if tg.GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_HIT || tg.GetPendingDamageId() == "" {
+			t.Errorf("ray %d = %v, want a hit with damage to roll", i+1, tg)
+		}
+	}
+	pending := cast.GetCast().GetPendingDamages()
+	if len(pending) != 4 {
+		t.Fatalf("pending damages = %d, want one for each ray that hit", len(pending))
+	}
+	for i, p := range pending {
+		if p.GetDiceCount() != 2 || p.GetDiceSides() != 6 || p.GetDamageTypeKey() != "damage-type:fire" {
+			t.Errorf("ray %d damage = %v, want 2d6 fire", i+1, p)
+		}
+	}
 }
 
 // TestMR025_ASpellForTheCasterAloneHasNobodyToPick: Detectar Magia (Pessoal) lists only
