@@ -155,7 +155,7 @@ func (s *Service) mustActNow(ctx context.Context, c *combatTx, who playdb.Combat
 
 func turnOf(c playdb.Combatant) link.Turn {
 	return link.Turn{
-		ActionUsed: c.ActionUsed, BonusActionUsed: c.BonusActionUsed, ReactionUsed: c.ReactionUsed, AttacksMade: int(c.AttacksMade),
+		ActionUsed: c.ActionUsed, BonusActionUsed: c.BonusActionUsed, ReactionUsed: c.ReactionUsed, AttacksMade: int(c.AttacksMade), ActionSurged: c.ActionSurged,
 		Dashed: c.Dashed, SpeedFt: int(max(c.SpeedFt, c.SpeedFlyFt)), MovementUsedFt: int(c.MovementUsedDft) / 10,
 		MovementUsedDFt: int(c.MovementUsedDft), LastMoveDFt: int(c.LastMoveDft), Disengaged: c.Disengaged,
 		JumpLongDFt: int(c.JumpLongDft), JumpHighDFt: int(c.JumpHighDft),
@@ -1492,6 +1492,10 @@ func featureError(r *rulesv1.DisabledReason, master bool) error {
 		if !master {
 			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is used")
 		}
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ALREADY_USED_THIS_TURN:
+		if !master {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ALREADY_USED_THIS_TURN, "already used in this turn")
+		}
 	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_NO_USES:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES, "no uses left",
 			func(b *playv1.EncounterBlocked) { b.Recharge = r.GetRecharge() })
@@ -1598,7 +1602,7 @@ func (s *Service) TakeAction(
 		made = actionEvent{
 			Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, Key: actionKey, RunBefore: run,
 			ActionBefore: who.ActionUsed, BonusBefore: who.BonusActionUsed, ReactionBefore: who.ReactionUsed, DashedBefore: who.Dashed,
-			AttacksBefore: who.AttacksMade, DisengagedBefore: who.Disengaged,
+			AttacksBefore: who.AttacksMade, DisengagedBefore: who.Disengaged, SurgedBefore: who.ActionSurged,
 		}
 		after := who
 		switch economy {
@@ -1614,6 +1618,9 @@ func (s *Service) TakeAction(
 		if actionKey == actionSurge {
 			// An additional action this turn, with the attacks of the Attack action.
 			after.ActionUsed = false
+			if err := c.q.SetCombatantActionSurged(ctx, playdb.SetCombatantActionSurgedParams{ID: who.ID, ActionSurged: true}); err != nil {
+				return nil, fmt.Errorf("mark the action surge: %w", err)
+			}
 			if err := c.q.SetCombatantAttacksMade(ctx, playdb.SetCombatantAttacksMadeParams{ID: who.ID, AttacksMade: 0}); err != nil {
 				return nil, fmt.Errorf("give the action back: %w", err)
 			}
