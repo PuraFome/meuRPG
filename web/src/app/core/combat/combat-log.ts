@@ -20,7 +20,7 @@ import { metersFixed, metersText } from '../units';
 import { circleLabel } from './combat-options';
 import { countsSentence } from './death-saves';
 import { degreeWord, sourceWord } from './cover';
-import { effectWords, poolRollText, reasonWords } from './hp-effects';
+import { effectWords, gainWords, poolRollText, reasonWords } from './hp-effects';
 import { trapLogText } from '../traps/trap-log';
 
 /**
@@ -321,7 +321,8 @@ function hpCastText(e: CombatLogEntry, ctx: LogContext): { text: string; card?: 
       facts.push(`limite de ${spell.effectThreshold}`);
     }
     const detail = facts.length > 0 ? ` (${facts.join(', ')})` : '';
-    const healed = fx?.healed !== undefined && w.affected ? `recupera ${fx.healed} PV` : '';
+    const healed =
+      fx?.healed !== undefined && w.affected ? gainWords(spell.effectKind, fx.healed) : '';
     const reason =
       !w.affected && fx
         ? reasonWords(fx.reason, fx.hitPointsBefore, fx.poolLeft, spell.effectThreshold)

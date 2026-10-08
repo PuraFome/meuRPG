@@ -57,6 +57,8 @@ var hpEffectKindToProto = map[string]rulesv1.SpellHitPointEffectKind{
 	rules.SpellKindHPThreshold: rulesv1.SpellHitPointEffectKind_SPELL_HIT_POINT_EFFECT_KIND_THRESHOLD,
 	rules.SpellKindZeroHP:      rulesv1.SpellHitPointEffectKind_SPELL_HIT_POINT_EFFECT_KIND_ZERO_HP,
 	rules.SpellKindFlatHeal:    rulesv1.SpellHitPointEffectKind_SPELL_HIT_POINT_EFFECT_KIND_FLAT_HEAL,
+	rules.SpellKindTempHP:      rulesv1.SpellHitPointEffectKind_SPELL_HIT_POINT_EFFECT_KIND_TEMP_HP,
+	rules.SpellKindMaxHP:       rulesv1.SpellHitPointEffectKind_SPELL_HIT_POINT_EFFECT_KIND_MAX_HP,
 }
 
 // hitPointEffect is the rule of a spell that reads hit points, at its own circle
@@ -78,6 +80,8 @@ func hitPointEffect(content *rules.Content, key string, level int) *rulesv1.Spel
 		Dies:             base.Dies,
 		HealAmount:       i32(base.Heal),
 		HealPerLevel:     i32(next.Heal - base.Heal),
+		Amount:           i32(base.Amount),
+		AmountPerLevel:   i32(next.Amount - base.Amount),
 	}
 }
 
@@ -144,6 +148,7 @@ func spellDetailsToProto(d *rules.SpellDetails) *rulesv1.SpellDetails {
 		Description:     d.Description,
 		HigherLevel:     d.HigherLevel,
 		Target:          spellTargetToProto(d.Target),
+		DamageChoice:    damageChoiceToProto[d.DamageChoice],
 	}
 	if d.Save != nil {
 		out.Save = &rulesv1.SpellSave{Ability: abilityToProto[d.Save.Ability], OnSuccess: saveSuccessToProto[d.Save.OnSuccess]}
@@ -155,6 +160,11 @@ func spellDetailsToProto(d *rules.SpellDetails) *rulesv1.SpellDetails {
 		})
 	}
 	return out
+}
+
+var damageChoiceToProto = map[string]rulesv1.SpellDamageChoice{
+	rules.DamageChoiceScale:       rulesv1.SpellDamageChoice_SPELL_DAMAGE_CHOICE_SCALE,
+	rules.DamageChoiceAlternative: rulesv1.SpellDamageChoice_SPELL_DAMAGE_CHOICE_ALTERNATIVE,
 }
 
 var (

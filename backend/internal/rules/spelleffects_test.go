@@ -29,11 +29,15 @@ func TestSpellEffectsOfTheSRD(t *testing.T) {
 		{"spell:spare-the-dying", 0, SpellEffect{Kind: SpellKindZeroHP}},
 		{"spell:heal", 6, SpellEffect{Kind: SpellKindFlatHeal, Heal: 70, Ends: []string{"condition:blinded", "condition:deafened"}}},
 		{"spell:heal", 9, SpellEffect{Kind: SpellKindFlatHeal, Heal: 100, Ends: []string{"condition:blinded", "condition:deafened"}}},
+		{"spell:false-life", 1, SpellEffect{Kind: SpellKindTempHP, Dice: DiceFormula{Count: 1, Sides: 4}, Amount: 4}},
+		{"spell:false-life", 3, SpellEffect{Kind: SpellKindTempHP, Dice: DiceFormula{Count: 1, Sides: 4}, Amount: 14}},
+		{"spell:aid", 2, SpellEffect{Kind: SpellKindMaxHP, Amount: 5}},
+		{"spell:aid", 5, SpellEffect{Kind: SpellKindMaxHP, Amount: 20}},
 	}
 	for _, tt := range tests {
 		got, ok := c.SpellEffect(tt.key, tt.level)
 		if !ok || got.Kind != tt.want.Kind || got.Dice != tt.want.Dice || got.Condition != tt.want.Condition || got.Threshold != tt.want.Threshold ||
-			got.Dies != tt.want.Dies || got.Heal != tt.want.Heal || !slices.Equal(got.Ends, tt.want.Ends) {
+			got.Dies != tt.want.Dies || got.Heal != tt.want.Heal || got.Amount != tt.want.Amount || !slices.Equal(got.Ends, tt.want.Ends) {
 			t.Errorf("SpellEffect(%s, %d) = %+v, %v; want %+v", tt.key, tt.level, got, ok, tt.want)
 		}
 	}
@@ -87,6 +91,11 @@ func TestLoadSpellEffectsRefuses(t *testing.T) {
 		"a threshold with neither":    `{"spells":{"spell:sleep":{"kind":"hp_threshold","threshold":100}}}`,
 		"a threshold of 0":            `{"spells":{"spell:sleep":{"kind":"hp_threshold","dies":true}}}`,
 		"a heal that ends nothing":    `{"spells":{"spell:sleep":{"kind":"flat_heal","amount":70}}}`,
+		"a temp_hp with no dice":      `{"spells":{"spell:sleep":{"kind":"temp_hp","amount":4,"amount_per_level":5}}}`,
+		"a temp_hp that never grows":  `{"spells":{"spell:sleep":{"kind":"temp_hp","dice":"1d4","amount":4}}}`,
+		"a temp_hp with a condition":  `{"spells":{"spell:sleep":{"kind":"temp_hp","dice":"1d4","amount":4,"amount_per_level":5,"condition":"condition:blinded"}}}`,
+		"a max_hp of nothing":         `{"spells":{"spell:sleep":{"kind":"max_hp","amount_per_level":5}}}`,
+		"a max_hp with dice":          `{"spells":{"spell:sleep":{"kind":"max_hp","amount":5,"dice":"1d4"}}}`,
 		"a zero target with dice":     `{"spells":{"spell:sleep":{"kind":"zero_hp_target","dice":"1d4"}}}`,
 	}
 	for name, body := range bad {

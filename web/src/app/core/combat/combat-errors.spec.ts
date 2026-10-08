@@ -84,6 +84,7 @@ describe('the reasons slice 6.5c added', () => {
     );
     expect(said(EncounterBlockedReason.ALREADY_USED_THIS_TURN)).toMatch(/uma vez por turno/);
     expect(said(EncounterBlockedReason.BONUS_ACTION_USED)).toMatch(/ação bônus/);
+    expect(said(EncounterBlockedReason.BONUS_ACTION_SPELL_LIMIT)).toMatch(/truque de 1 ação/);
     expect(said(EncounterBlockedReason.ATTACKS_USED)).toMatch(/ataques/);
     expect(said(EncounterBlockedReason.REACTION_USED)).toMatch(/reação/);
     expect(said(EncounterBlockedReason.DEATH_SAVE_DUE)).toMatch(/teste contra a morte/);

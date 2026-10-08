@@ -28,6 +28,9 @@ const KIND_FROM_GEN: Partial<Record<SpellHitPointEffectKind, HpSpellKind>> = {
   [SpellHitPointEffectKind.THRESHOLD]: 'threshold',
   [SpellHitPointEffectKind.ZERO_HP]: 'zero',
   [SpellHitPointEffectKind.FLAT_HEAL]: 'heal',
+  // Vitalidade Falsa rolls a die before the cast, as a pool does; Ajuda only names who it touches.
+  [SpellHitPointEffectKind.TEMP_HP]: 'pool',
+  [SpellHitPointEffectKind.MAX_HP]: 'heal',
 };
 
 /** What kind of hit-point spell this is, from the rule `GetSpellDetails` sends, or `null` for any other spell. */
@@ -37,6 +40,19 @@ export function hpSpellKind(details: SpellDetails | null): HpSpellKind | null {
   );
 }
 
+/** What a spell that changes hit points gave one target, in words: "recupera 7 PV" for a heal, "ganha 7 PV
+ * temporários" for Vitalidade Falsa and "ganha 5 PV máximos" for Ajuda. */
+export function gainWords(kind: SpellEffectKind, amount: number): string {
+  switch (kind) {
+    case SpellEffectKind.TEMP_HP:
+      return `ganha ${amount} PV temporários`;
+    case SpellEffectKind.MAX_HP:
+      return `ganha ${amount} PV máximos`;
+    default:
+      return `recupera ${amount} PV`;
+  }
+}
+
 /** The pool a spell rolls when cast with a slot of `slotLevel`: Sono is 5d8 at
  * the 1st circle and 7d8 at the 2nd. `null` when the spell has no pool. */
 export function poolDice(
@@ -44,7 +60,10 @@ export function poolDice(
   slotLevel: number,
 ): { count: number; sides: number } | null {
   const fx = details?.hitPointEffect;
-  if (!fx || fx.kind !== SpellHitPointEffectKind.POOL) {
+  if (
+    !fx ||
+    (fx.kind !== SpellHitPointEffectKind.POOL && fx.kind !== SpellHitPointEffectKind.TEMP_HP)
+  ) {
     return null;
   }
   const own = details?.spell?.level ?? 1;
@@ -120,6 +139,9 @@ export function effectWords(
         affected: true,
       };
     }
+    case SpellEffectKind.TEMP_HP:
+    case SpellEffectKind.MAX_HP:
+      return { present: 'ganha PV', past: 'Ganhou PV', icon: 'shield', affected: true };
     default:
       // A threshold with no condition is Palavra de Poder Matar.
       return { present: 'morre', past: 'Morreu', icon: 'heart_broken', affected: true };

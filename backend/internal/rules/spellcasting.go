@@ -173,8 +173,8 @@ func (x *deriver) characterSpells(casters []caster) {
 	// The subclass's always-prepared spells at its class level.
 	alwaysPrepared := map[string]bool{}
 	for _, cs := range casters {
-		if cs.oc.subclass == nil {
-			continue
+		if cs.oc.subclass == nil || cs.oc.subclass.ExpandedList {
+			continue // an expanded list is spells to choose from, not spells given
 		}
 		for _, ss := range cs.oc.subclass.Spells {
 			if ss.ClassLevel > cs.oc.level {

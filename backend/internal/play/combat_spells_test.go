@@ -2377,3 +2377,232 @@ func TestActionSurgeIsUsedOncePerTurn(t *testing.T) {
 		t.Errorf("Surto de ação in the next turn = %v, want enabled with 1 use left", surge)
 	}
 }
+
+// pendingSummary lists the pending damages of a cast as "NdS+B type", sorted.
+func pendingSummary(res *playv1.CastSpellResponse) []string {
+	var out []string
+	for _, p := range res.GetCast().GetPendingDamages() {
+		out = append(out, fmt.Sprintf("%dd%d+%d %s", p.GetDiceCount(), p.GetDiceSides(), p.GetBonus(), p.GetDamageTypeKey()))
+	}
+	slices.Sort(out)
+	return out
+}
+
+// TestSpellWithTwoDamageTypesOpensBothAndRollsThemApart: Tempestade de Gelo deals
+// 2d8 bludgeoning and 4d6 cold; a cast at one target opens a pending damage for
+// each, in the order of the spell, and each is its own roll that lands with its own
+// type.
+func TestSpellWithTwoDamageTypesOpensBothAndRollsThemApart(t *testing.T) {
+	t.Parallel()
+	const iceStorm = "spell:ice-storm"
+	a := newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
+			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
+		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 7,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt},
+			[]string{iceStorm}, []string{iceStorm})
+		a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", "race:human", 3,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{maceKey}, []string{sacredFlame}, nil,
+			[]string{cureWounds})
+	})
+	e := a.castersFight(t, 1)
+	a.h.roller.queue(1) // the goblin fails its save
+	res := a.mustCast(t, a.ana, e, "Pensantus", iceStorm, slotOfLevel(4), a.at(t, "Goblin"), noCastRoll)
+	want := []string{"2d8+0 damage-type:bludgeoning", "4d6+0 damage-type:cold"}
+	if got := pendingSummary(res); !slices.Equal(got, want) {
+		t.Fatalf("Tempestade de Gelo at one target opens %v, want %v", got, want)
+	}
+	target := res.GetCast().GetTargets()[0]
+	if target.GetPendingDamageId() == "" || len(target.GetMorePendingDamageIds()) != 1 {
+		t.Fatalf("the target's pending damages = %q and %v, want one and one more", target.GetPendingDamageId(), target.GetMorePendingDamageIds())
+	}
+
+	// Each damage type is rolled by itself: the first roll leaves the other open.
+	a.h.roller.queue(1, 1) // 2d8 = 2
+	a.mustDamage(t, a.ana, e, target.GetPendingDamageId(), inAppDamage)
+	if cur, _, _ := a.hp(t, "Goblin"); cur != 5 {
+		t.Errorf("goblin after the bludgeoning = %d PV, want 5 (7 - 2)", cur)
+	}
+	a.h.roller.queue(1, 1, 1, 1) // 4d6 = 4
+	a.mustDamage(t, a.ana, e, target.GetMorePendingDamageIds()[0], inAppDamage)
+	if cur, _, _ := a.hp(t, "Goblin"); cur != 1 {
+		t.Errorf("goblin after the cold = %d PV, want 1 (5 - 4)", cur)
+	}
+}
+
+// TestFlameStrikeFromASixthLevelSlot: Coluna de Chamas deals 4d6 fire and 4d6
+// radiant, and a 6th-level slot adds 1d6 to the type the caster picks (the first
+// when none is picked); a type the spell does not offer is refused.
+func TestFlameStrikeFromASixthLevelSlot(t *testing.T) {
+	t.Parallel()
+	const flameStrike = "spell:flame-strike"
+	a := newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
+			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
+		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 3,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt},
+			[]string{magicMissileSpell}, []string{magicMissileSpell})
+		a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", "race:human", 11,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{maceKey}, []string{sacredFlame}, nil,
+			[]string{flameStrike})
+	})
+	e := a.castersFight(t, 1)
+	e = a.mustEndTurn(t, a.ana, e)  // Toren
+	e = a.mustEndTurn(t, a.caio, e) // Brisa
+
+	pick := func(key string) func(*playv1.CastSpellRequest) {
+		return func(r *playv1.CastSpellRequest) {
+			r.Roll = &playv1.CastSpellRequest_RollInApp{RollInApp: true}
+			r.DamageTypeKey = key
+		}
+	}
+	if _, err := a.cast(t, a.bia, e, "Brisa", flameStrike, slotOfLevel(6), a.at(t, "Goblin"), pick("damage-type:cold")); err == nil || connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("a damage type Coluna de Chamas does not offer: error = %v, want invalid_argument", err)
+	}
+	a.h.roller.queue(1)
+	res := a.mustCast(t, a.bia, e, "Brisa", flameStrike, slotOfLevel(6), a.at(t, "Goblin"), pick(""))
+	if got, want := pendingSummary(res), []string{"4d6+0 damage-type:radiant", "5d6+0 damage-type:fire"}; !slices.Equal(got, want) {
+		t.Errorf("Coluna de Chamas at slot 6 opens %v, want %v (9 dice, the extra one on the first type)", got, want)
+	}
+	if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil {
+		t.Fatalf("UndoLastAction(the cast) error = %v", err)
+	}
+	a.h.roller.queue(1)
+	res = a.mustCast(t, a.bia, e, "Brisa", flameStrike, slotOfLevel(6), a.at(t, "Goblin"), pick("damage-type:radiant"))
+	if got, want := pendingSummary(res), []string{"4d6+0 damage-type:fire", "5d6+0 damage-type:radiant"}; !slices.Equal(got, want) {
+		t.Errorf("Coluna de Chamas at slot 6 picking radiant opens %v, want %v", got, want)
+	}
+}
+
+// TestBonusActionSpellLeavesNoOtherSpellButACantrip: a caster that casts a spell
+// with a bonus action casts no other spell that turn except a cantrip with a
+// casting time of 1 action, whatever the order (SRD 5.1, Casting Time). The
+// turn's options say so, the master may override it, an undo gives the turn back,
+// and the next turn starts clean.
+func TestBonusActionSpellLeavesNoOtherSpellButACantrip(t *testing.T) {
+	t.Parallel()
+	limit := rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT
+	blockedLimit := playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT
+	a := newCasters(t)
+	e := a.castersFight(t, 1)
+	e = a.passTo(t, e, "Brisa")
+
+	// Healing Word (bonus action), then Cure Wounds (action): refused; the cantrip is not.
+	a.mustCast(t, a.bia, e, "Brisa", healingWord, slotOfLevel(1), a.at(t, "Toren"), noCastRoll)
+	if o := spellOption(a.mustOptions(t, a.bia, e, "Brisa"), cureWounds); o.GetEnabled() || o.GetReason().GetCode() != limit {
+		t.Errorf("Cure Wounds after Healing Word = %v, want it disabled by the bonus action spell limit", o)
+	}
+	_, err := a.cast(t, a.bia, e, "Brisa", cureWounds, slotOfLevel(1), a.at(t, "Toren"), noCastRoll)
+	wantBlockedBy(t, "Cure Wounds after Healing Word", err, blockedLimit)
+	a.h.roller.queue(20, 5) // the d20 and the Goblin's save
+	if _, err := a.cast(t, a.bia, e, "Brisa", sacredFlame, nil, a.at(t, "Goblin"), noCastRoll); err != nil {
+		t.Errorf("Sacred Flame (a cantrip of 1 action) after Healing Word error = %v, want it allowed", err)
+	}
+	// The master has the last word on the economy.
+	if _, err := a.cast(t, a.master, e, "Brisa", cureWounds, slotOfLevel(1), a.at(t, "Toren"), noCastRoll); err != nil {
+		t.Errorf("the master's Cure Wounds after Healing Word error = %v, want it allowed", err)
+	}
+}
+
+func TestSpellThenBonusActionSpellIsRefusedToo(t *testing.T) {
+	t.Parallel()
+	blockedLimit := playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT
+	a := newCasters(t)
+	e := a.castersFight(t, 1)
+	e = a.passTo(t, e, "Brisa")
+
+	// A cantrip of 1 action leaves the turn alone: Healing Word still goes, and
+	// its undo gives the turn back as it was.
+	a.h.roller.queue(20, 5)
+	a.mustCast(t, a.bia, e, "Brisa", sacredFlame, nil, a.at(t, "Goblin"), noCastRoll)
+	before := a.snapshot(t)
+	a.mustCast(t, a.bia, e, "Brisa", healingWord, slotOfLevel(1), a.at(t, "Toren"), noCastRoll)
+	if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil {
+		t.Fatalf("UndoLastAction(Healing Word) error = %v", err)
+	}
+	if got := a.snapshot(t); got != before {
+		t.Errorf("the undo of Healing Word left the combat different:\nbefore %s\nafter  %s", before, got)
+	}
+
+	// An action spell first, then a bonus action one: refused. The undo of the
+	// first gives the turn back.
+	e = a.passTo(t, e, "Toren")
+	e = a.passTo(t, e, "Brisa")
+	a.mustCast(t, a.bia, e, "Brisa", cureWounds, slotOfLevel(1), a.at(t, "Toren"), noCastRoll)
+	_, err := a.cast(t, a.bia, e, "Brisa", healingWord, slotOfLevel(1), a.at(t, "Toren"), noCastRoll)
+	wantBlockedBy(t, "Healing Word after Cure Wounds", err, blockedLimit)
+	if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil {
+		t.Fatalf("UndoLastAction(Cure Wounds) error = %v", err)
+	}
+	a.mustCast(t, a.bia, e, "Brisa", healingWord, slotOfLevel(1), a.at(t, "Toren"), noCastRoll)
+
+	// The next turn of the caster starts clean.
+	e = a.passTo(t, e, "Toren")
+	e = a.passTo(t, e, "Brisa")
+	a.mustCast(t, a.bia, e, "Brisa", cureWounds, slotOfLevel(1), a.at(t, "Toren"), noCastRoll)
+}
+
+// TestSpellSaveAgainstACreatureUsesItsStatBlock: a monster put in the combat saves
+// with its stat block (the Goblin, Dexterity 14, adds +2), and the master is told
+// the bonus is known; an NPC typed by hand has none.
+func TestSpellSaveAgainstACreatureUsesItsStatBlock(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.castersFight(t, 2) // Toren stands off the line to the goblins: no cover for their saves
+	added := a.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) {
+		r.CreatureKey, r.Count, r.Hidden = "monster:goblin", 1, new(false)
+	})
+	a.h.roller.queue(10, 10) // the monster's save and the typed Goblin's
+	res := a.mustCast(t, a.master, added.GetEncounter(), "Pensantus", burningHands, slotOfLevel(1),
+		[]*playv1.SpellTarget{{CombatantId: added.GetCombatantIds()[0]}, {CombatantId: a.id(t, "Goblin 1")}}, noCastRoll)
+	var monster, typed *playv1.SaveResult
+	for _, tg := range res.GetCast().GetTargets() {
+		if tg.GetCombatantId() == added.GetCombatantIds()[0] {
+			monster = tg.GetSave()
+		} else {
+			typed = tg.GetSave()
+		}
+	}
+	if monster.GetRoll().GetModifier() != 2 || monster.GetRoll().GetTotal() != 12 || !monster.GetBonusKnown() {
+		t.Errorf("the Goblin monster's save = %v, want d20 10 + 2 = 12 with a known bonus", monster)
+	}
+	if typed.GetRoll().GetModifier() != 0 || typed.GetBonusKnown() {
+		t.Errorf("the typed NPC's save = %v, want d20 + 0 with the bonus flagged unknown", typed)
+	}
+}
+
+// TestSpellWithTwoDamageTypesFitsTenTargets: a cast of Tempestade de Gelo at ten
+// targets writes two pending damages for each of them in one event, which still
+// fits the session event's payload; one roll of each damage type settles the ten.
+func TestSpellWithTwoDamageTypesFitsTenTargets(t *testing.T) {
+	t.Parallel()
+	const iceStorm = "spell:ice-storm"
+	a := newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
+			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
+		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 7,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt},
+			[]string{iceStorm}, []string{iceStorm})
+		a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", "race:human", 3,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{maceKey}, []string{sacredFlame}, nil,
+			[]string{cureWounds})
+	})
+	e := a.castersFight(t, 10)
+	var labels []string
+	for i := 1; i <= 10; i++ {
+		labels = append(labels, fmt.Sprintf("Goblin %d", i))
+	}
+	cast := a.mustCast(t, a.ana, e, "Pensantus", iceStorm, slotOfLevel(4), a.at(t, labels...), noCastRoll)
+	if len(cast.GetCast().GetPendingDamages()) != 20 {
+		t.Fatalf("pending damages = %d, want 2 for each of the 10 targets", len(cast.GetCast().GetPendingDamages()))
+	}
+	first := cast.GetCast().GetTargets()[0]
+	res := a.mustDamage(t, a.ana, e, first.GetPendingDamageId(), inAppDamage)
+	if len(res.GetCastPendingDamages()) != 9 {
+		t.Errorf("the first roll settled %d others, want the 9 of its own damage type", len(res.GetCastPendingDamages()))
+	}
+	res = a.mustDamage(t, a.ana, e, first.GetMorePendingDamageIds()[0], inAppDamage)
+	if len(res.GetCastPendingDamages()) != 9 {
+		t.Errorf("the second roll settled %d others, want the 9 of the other damage type", len(res.GetCastPendingDamages()))
+	}
+}

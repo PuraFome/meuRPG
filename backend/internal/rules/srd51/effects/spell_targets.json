@@ -35,6 +35,7 @@
     "spell:purify-food-and-drink": { "kind": "area", "shape": "sphere", "size_ft": 5 },
     "spell:glyph-of-warding": { "kind": "area", "shape": "sphere", "size_ft": 20 },
 
+    "spell:aid": { "kind": "creatures", "count": 3 },
     "spell:bless": { "kind": "creatures", "count": 3, "per_slot_level": 1 },
     "spell:bane": { "kind": "creatures", "count": 3, "per_slot_level": 1 },
     "spell:mass-healing-word": { "kind": "creatures", "count": 6 },

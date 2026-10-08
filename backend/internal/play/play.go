@@ -232,7 +232,7 @@ type CombatRoster interface {
 	// at that level, with the character's attack bonus, save DC and
 	// spellcasting modifier. It does not check that the character may cast it
 	// (CombatTurnOptions does). `not_found` for any other character or spell.
-	CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, slotLevel int) (link.Spell, error)
+	CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, slotLevel int, damageType string) (link.Spell, error)
 	// CombatSave returns the character's saving throw bonus for an ability
 	// ("dex"). A basic-sheet NPC has none: Known is false.
 	CombatSave(ctx context.Context, tx pgx.Tx, campaignID, characterID, ability string) (link.Save, error)
