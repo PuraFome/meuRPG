@@ -4,6 +4,8 @@ import {
   combatantInitial,
   ownCombatant,
   initiativeFormula,
+  isDown,
+  playerWord,
   moveInGroup,
   nextCombatant,
   pendingFormula,
@@ -49,6 +51,23 @@ describe('combat view helpers', () => {
     expect(stateWord(CombatantState.HURT)).toBe('Ferido');
     expect(stateWord(CombatantState.BADLY_HURT)).toBe('Muito ferido');
     expect(stateWord(CombatantState.DEFEATED)).toBe('Derrotado');
+  });
+
+  it('writes the word of the fallen in the gender of their name', () => {
+    expect(stateWord(CombatantState.DOWN, 'Brisa')).toBe('Caída');
+    expect(stateWord(CombatantState.DOWN, 'Toren')).toBe('Caído');
+    expect(stateWord(CombatantState.DEAD, 'Brisa')).toBe('Morta');
+    expect(stateWord(CombatantState.DEAD, 'Toren')).toBe('Morto');
+  });
+
+  it('counts the stable as down, and tells a player only what happened to a fallen one', () => {
+    const state = (s: CombatantState) => combatant({ id: 'x', label: 'Toren', state: s });
+    expect(isDown(state(CombatantState.STABLE))).toBe(true);
+    expect(isDown(state(CombatantState.DYING))).toBe(true);
+    expect(isDown(state(CombatantState.UNHURT))).toBe(false);
+    expect(playerWord(state(CombatantState.STABLE))).toBe('Estável');
+    expect(playerWord(state(CombatantState.DEAD))).toBe('Morto');
+    expect(playerWord(state(CombatantState.HURT))).toBe('Jogador');
   });
 
   it('puts the number of a numbered copy on its token', () => {
@@ -104,6 +123,14 @@ describe('combat view helpers', () => {
       expect(tieGroups(list.slice(0, 1))).toEqual([]);
     });
 
+    it('keeps two ties on the same total but another bonus apart', () => {
+      const two = [
+        combatant({ id: 'a', label: 'A', initiative: 12, initiativeBonus: 1, tieUnresolved: true }),
+        combatant({ id: 'b', label: 'B', initiative: 12, initiativeBonus: 3, tieUnresolved: true }),
+      ];
+      expect(tieGroups(two)).toEqual([['a'], ['b']]);
+    });
+
     it('keeps two ties on different totals apart', () => {
       const two = [
         combatant({ id: 'a', label: 'A', initiative: 12, initiativeBonus: 1, tieUnresolved: true }),
@@ -153,6 +180,30 @@ describe('combat view helpers', () => {
       const banner = turnBanner(encounter({ combatants: order, currentCombatantId: 'pen' }));
       expect(banner.title).toBe('Sua vez, Pensantus');
       expect(banner.mine).toBe(true);
+    });
+
+    it('tells the player who ended their part of a joint turn that they did', () => {
+      const P = CombatantKind.PLAYER;
+      const e = encounter({
+        combatants: [
+          combatant({
+            id: 'b',
+            label: 'Brisa',
+            kind: P,
+            initiative: 19,
+            mine: true,
+            turnPartEnded: true,
+          }),
+          combatant({ id: 't', label: 'Toren', kind: P, initiative: 19 }),
+        ],
+        turnGroupIds: ['b', 't'],
+        currentCombatantId: 't',
+      });
+      expect(turnBanner(e)).toMatchObject({
+        title: 'Você encerrou a sua parte',
+        ownEnded: true,
+        mine: false,
+      });
     });
 
     it('skips a defeated combatant and goes round the order', () => {
