@@ -1350,7 +1350,7 @@ export class CombatView {
     const note =
       option.action.resourceKey === 'action_surge'
         ? `${name}: você tem outra ação.`
-        : `${name}: usado.`;
+        : `Usou ${name}.`;
     if (
       await this.run(
         async (current) =>
