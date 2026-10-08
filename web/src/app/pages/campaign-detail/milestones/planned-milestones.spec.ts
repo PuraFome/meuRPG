@@ -215,6 +215,10 @@ describe('PlannedMilestones (E8-14)', () => {
     expect(el.querySelector('app-milestone-ask')).toBeNull();
     expect(el.querySelector('.problem')?.textContent).toContain('não pode ser removido');
     expect(el.querySelector('[data-id="b"][data-act="remove"]')).toBeNull();
+    // The row keeps its four places, so the other tools stay under the ones of the rows around it.
+    const tools = el.querySelector('[data-id="b"][data-act="edit"]')!.parentElement!;
+    expect(tools.querySelectorAll('.tool')).toHaveLength(4);
+    expect(tools.querySelector('.tool--gap')?.getAttribute('aria-hidden')).toBe('true');
     // Positive control: the others still offer it.
     expect(el.querySelector('[data-id="a"][data-act="remove"]')).not.toBeNull();
   });

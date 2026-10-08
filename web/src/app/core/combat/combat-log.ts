@@ -203,7 +203,7 @@ function castTargetText(t: CombatLogSpellTarget, ctx: LogContext): string {
     // roll is the bare d20 and which the master may overrule. For anyone else it is always false.
     const unknown =
       ctx.master && t.save.roll && !t.save.bonusKnown
-        ? `d20 ${t.save.roll.total}, sem bônus de resistência conhecido`
+        ? `d20 ${t.save.roll.total}, bônus de resistência desconhecido`
         : '';
     const notes = [t.save.dc > 0 ? `CD ${t.save.dc}` : '', unknown].filter((n) => n !== '');
     const dc = notes.length > 0 ? ` (${notes.join('; ')})` : '';
