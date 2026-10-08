@@ -10,7 +10,6 @@ import {
   type TargetInReach,
   AttackOutcome,
   SaveOutcome,
-  SpellEffectKind,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   Ability,
@@ -27,7 +26,7 @@ import { joinDots, tight } from '../format/text';
 import { circleLabel } from './combat-options';
 import { article } from './combat-log';
 import { listing } from './cover';
-import { effectWords, hpSpellKind, poolDice } from './hp-effects';
+import { effectWords, gainLine, hpSpellKind, poolDice } from './hp-effects';
 import { stateWord } from './combat-view';
 
 /**
@@ -505,13 +504,7 @@ function castRow(
     icon = w.icon;
     tone = w.affected ? 'good' : 'plain';
     if (t.effect.healed !== undefined) {
-      lines.push(
-        cast.effectKind === SpellEffectKind.TEMP_HP
-          ? `${t.effect.healed} PV temporários`
-          : cast.effectKind === SpellEffectKind.MAX_HP
-            ? `PV máximo +${t.effect.healed}`
-            : `${t.effect.healed} PV recuperados`,
-      );
+      lines.push(gainLine(cast.effectKind, t.effect.healed, t.effect.gain));
     }
   }
   if (t.attackRoll) {

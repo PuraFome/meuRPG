@@ -308,7 +308,7 @@ function hpCastText(e: CombatLogEntry, ctx: LogContext): { text: string; card?: 
     }
     const detail = facts.length > 0 ? ` (${facts.join(', ')})` : '';
     const healed =
-      fx?.healed !== undefined && w.affected ? gainWords(spell.effectKind, fx.healed) : '';
+      fx?.healed !== undefined && w.affected ? gainWords(spell.effectKind, fx.healed, fx.gain) : '';
     const reason =
       !w.affected && fx
         ? reasonWords(fx.reason, fx.hitPointsBefore, fx.poolLeft, spell.effectThreshold)

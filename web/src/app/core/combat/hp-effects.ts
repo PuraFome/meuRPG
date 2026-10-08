@@ -1,4 +1,5 @@
 import {
+  SpellEffectGain,
   SpellEffectKind,
   SpellEffectOutcome,
   SpellEffectReason,
@@ -41,15 +42,42 @@ export function hpSpellKind(details: SpellDetails | null): HpSpellKind | null {
 }
 
 /** What a spell that changes hit points gave one target, in words: "recupera 7 PV" for a heal, "ganha 7 PV
- * temporários" for Vitalidade Falsa and "ganha 5 PV máximos" for Ajuda. */
-export function gainWords(kind: SpellEffectKind, amount: number): string {
+ * temporários" for Vitalidade Falsa, and for Ajuda what that target got (`gain`): "ganha 5 PV máximos" for
+ * an NPC or a creature, "ganha 5 PV temporários" for a character standing, "volta com 5 PV" for one at 0. */
+export function gainWords(kind: SpellEffectKind, amount: number, gain?: SpellEffectGain): string {
   switch (kind) {
     case SpellEffectKind.TEMP_HP:
       return `ganha ${amount} PV temporários`;
     case SpellEffectKind.MAX_HP:
-      return `ganha ${amount} PV máximos`;
+      switch (gain) {
+        case SpellEffectGain.TEMPORARY:
+          return `ganha ${amount} PV temporários`;
+        case SpellEffectGain.CURRENT:
+          return `volta com ${amount} PV`;
+        default:
+          return `ganha ${amount} PV máximos`;
+      }
     default:
       return `recupera ${amount} PV`;
+  }
+}
+
+/** The line under a target of the cast sheet: the amount and what it became ("PV máximo +5"). */
+export function gainLine(kind: SpellEffectKind, amount: number, gain?: SpellEffectGain): string {
+  switch (kind) {
+    case SpellEffectKind.TEMP_HP:
+      return `${amount} PV temporários`;
+    case SpellEffectKind.MAX_HP:
+      switch (gain) {
+        case SpellEffectGain.TEMPORARY:
+          return `${amount} PV temporários`;
+        case SpellEffectGain.CURRENT:
+          return `volta com ${amount} PV`;
+        default:
+          return `PV máximo +${amount}`;
+      }
+    default:
+      return `${amount} PV recuperados`;
   }
 }
 

@@ -7,6 +7,7 @@ import {
   PendingDamageStatus,
   SaveOutcome,
   SpellCastSchema,
+  SpellEffectGain,
   SpellEffectKind,
   SpellEffectOutcome,
   SpellEffectReason,
@@ -290,6 +291,26 @@ describe('what a spell that reads hit points did (E8-03)', () => {
     expect(effectSentence(sleep, labels, isNpc)).toBe(
       'O Goblin 1 adormeceu. O Capitão Goblin não foi afetado.',
     );
+  });
+
+  it('says what Ajuda gave each target: maximum, temporary, or the hit points of one who got up', () => {
+    const aid = create(SpellCastSchema, {
+      spellKey: 'spell:aid',
+      effectKind: SpellEffectKind.MAX_HP,
+      targets: ['g1', 'cap', 'b'].map((combatantId, i) => ({
+        combatantId,
+        effect: {
+          outcome: SpellEffectOutcome.AFFECTED,
+          healed: 5,
+          gain: [SpellEffectGain.MAXIMUM, SpellEffectGain.TEMPORARY, SpellEffectGain.CURRENT][i],
+        },
+      })),
+    });
+    expect(castRows(aid, new Map(), labels).map((r) => [r.label, r.lines])).toEqual([
+      ['Goblin 1', ['PV máximo +5']],
+      ['Capitão Goblin', ['5 PV temporários']],
+      ['Brisa', ['volta com 5 PV']],
+    ]);
   });
 
   it('shows a player no enemy hit points, no order of the pool and no reason', () => {
