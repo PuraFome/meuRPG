@@ -292,3 +292,102 @@ describe('MapHead: "Trocar imagem" asks before it erases (E9-01 4)', () => {
     expect(el.textContent).not.toContain('O que está desenhado na imagem');
   });
 });
+
+describe('MapHead: "Apagar mapa" says why before the click', () => {
+  const COMBAT = 'Há um combate neste mapa: ele só pode ser apagado depois do combate.';
+  const CONVERTED =
+    'Um tesouro deste mapa já virou XP. Para apagar o mapa, desfaça esse XP na página da campanha.';
+  const FOUND = 'Um tesouro deste mapa foi encontrado. Desmarque-o antes de apagar o mapa.';
+  let fixture: ComponentFixture<MapHead>;
+  let el: HTMLElement;
+  let deleteResult: () => Promise<void>;
+  let deleted: number;
+
+  function render(
+    inputs: { combatRunning?: boolean; treasureConverted?: boolean; treasureFound?: boolean } = {},
+  ) {
+    deleted = 0;
+    deleteResult = () => Promise.resolve();
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    fixture = TestBed.createComponent(MapHead);
+    fixture.componentRef.setInput('campaignId', 'camp-1');
+    fixture.componentRef.setInput(
+      'map',
+      mapMessage('map-1', 'A caverna do Vale Seco', { gridColumns: 24, gridRows: 16 }),
+    );
+    fixture.componentRef.setInput('saveName', () => Promise.resolve());
+    fixture.componentRef.setInput('deleteMap', () => {
+      deleted++;
+      return deleteResult();
+    });
+    fixture.componentRef.setInput('combatRunning', inputs.combatRunning ?? false);
+    fixture.componentRef.setInput('treasureConverted', inputs.treasureConverted ?? false);
+    fixture.componentRef.setInput('treasureFound', inputs.treasureFound ?? false);
+    fixture.detectChanges();
+    el = fixture.nativeElement;
+  }
+  const deleteButton = () =>
+    Array.from(el.querySelectorAll('button')).find((b) =>
+      b.textContent?.trim().endsWith('Apagar mapa'),
+    )!;
+  const reason = () => el.querySelector('#delete-reason');
+  const settle = async () => {
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r));
+    await fixture.whenStable();
+    fixture.detectChanges();
+  };
+
+  it('with nothing in the way shows no reason and does not grey the button', () => {
+    render();
+    expect(reason()).toBeNull();
+    expect(deleteButton().getAttribute('aria-describedby')).toBeNull();
+    expect(deleteButton().classList).not.toContain('state__action--off');
+  });
+
+  it('while a combat runs greys the button, keeps it clickable and links the reason to it', async () => {
+    render({ combatRunning: true });
+    expect(reason()?.textContent).toContain(COMBAT);
+    expect(reason()?.querySelector('mat-icon')?.textContent).toBe('block');
+    expect(deleteButton().getAttribute('aria-describedby')).toBe('delete-reason');
+    expect(deleteButton().classList).toContain('state__action--off');
+    expect(deleteButton().disabled).toBe(false);
+    deleteButton().click();
+    await settle();
+    expect(el.querySelector('[role="group"]')?.textContent).toContain('Apagar A caverna');
+  });
+
+  it('a treasure found has its own reason', () => {
+    render({ treasureFound: true });
+    expect(reason()?.textContent).toContain(FOUND);
+  });
+
+  it('a treasure turned into XP has its own reason', () => {
+    render({ treasureConverted: true });
+    expect(reason()?.textContent).toContain(CONVERTED);
+  });
+
+  it('shows only the first reason, in the order of the server: combat, XP, found', () => {
+    render({ combatRunning: true, treasureConverted: true, treasureFound: true });
+    expect(reason()?.textContent).toContain(COMBAT);
+    render({ treasureConverted: true, treasureFound: true });
+    expect(reason()?.textContent).toContain(CONVERTED);
+    expect(reason()?.textContent).not.toContain(FOUND);
+  });
+
+  it('when the master insists, the question shows the refusal and stays open to try again', async () => {
+    render({ combatRunning: true });
+    deleteResult = () => Promise.reject(new Error(COMBAT));
+    deleteButton().click();
+    await settle();
+    expect(el.querySelector('#delete-reason')).toBeNull();
+    (el.querySelector('[role="group"] .danger') as HTMLButtonElement).click();
+    await settle();
+    expect(el.querySelector('[role="group"] [role="alert"]')?.textContent).toContain(COMBAT);
+    deleteResult = () => Promise.resolve();
+    (el.querySelector('[role="group"] .danger') as HTMLButtonElement).click();
+    await settle();
+    expect(deleted).toBe(2);
+  });
+});

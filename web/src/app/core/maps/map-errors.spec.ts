@@ -45,6 +45,21 @@ describe('editorErrorMessage: each call maps its own reasons and its own limit',
     ).toBe(combat);
   });
 
+  it('deleting the map says which of the three reasons holds it, in the words the header shows before the click', () => {
+    expect(
+      editorErrorMessage(blocked(MapBlockedReason.COMBAT_RUNNING), 'delete', 'apagar o mapa'),
+    ).toBe('Há um combate neste mapa: ele só pode ser apagado depois do combate.');
+    expect(
+      editorErrorMessage(blocked(MapBlockedReason.TREASURE_CONVERTED), 'delete', 'apagar o mapa'),
+    ).toContain('Para apagar o mapa, desfaça esse XP');
+    expect(
+      editorErrorMessage(blocked(MapBlockedReason.TREASURE_FOUND), 'delete', 'apagar o mapa'),
+    ).toContain('Desmarque-o antes de apagar o mapa');
+    expect(
+      editorErrorMessage(blocked(MapBlockedReason.NO_GRID), 'delete', 'apagar o mapa'),
+    ).toContain('Não foi possível falar com o servidor');
+  });
+
   it('a reason the call cannot give falls back to the words of the code', () => {
     expect(
       editorErrorMessage(blocked(MapBlockedReason.COMBAT_RUNNING), 'paint', 'pintar'),

@@ -44,8 +44,30 @@
   margin-inline-start: -12px;
 }
 
-.title__delete {
+// "Apagar mapa" and, when the server would refuse it, the reason under it.
+.remove {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--mr-space-2);
   margin-inline-start: auto;
+}
+
+.remove__reason {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  max-width: 300px;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: right;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
 }
 
 // "Imprimir com a grade" (MR-033, E8-12) sits at the right of the title, the
@@ -57,7 +79,7 @@
   gap: var(--mr-space-2);
   margin-inline-start: auto;
 
-  + .title__delete {
+  + .remove {
     margin-inline-start: 0;
   }
 
@@ -115,8 +137,16 @@
     }
   }
 
-  .title__delete {
-    margin-inline-start: 0;
+  // The button stays on the "Renomear" line; the reason takes the line under it.
+  .remove {
+    display: contents;
+  }
+
+  .remove__reason {
+    flex-basis: 100%;
+    max-width: none;
+    margin-top: var(--mr-space-2);
+    text-align: start;
   }
 }
 
@@ -279,6 +309,12 @@
       margin-inline-start: -12px;
     }
   }
+}
+
+// "Apagar mapa" with a reason: grey like "Trocar imagem", still clickable.
+.state__action.danger.state__action--off {
+  color: var(--mr-ink-muted);
+  --mat-button-text-label-text-color: var(--mr-ink-muted);
 }
 
 // "Trocar imagem" while a combat runs: grey, and the banner of the editor says why.
