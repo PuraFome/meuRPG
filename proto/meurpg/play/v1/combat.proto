@@ -1450,6 +1450,10 @@ enum EncounterBlockedReason {
   // action, or the same offer already waits. (The reactor's reaction being used is
   // REACTION_USED.)
   ENCOUNTER_BLOCKED_REASON_NO_OPPORTUNITY = 64;
+  // TakeAction: a feature that can be used once per turn (Action Surge) was
+  // already used in this turn. The master may use it again (he corrects the
+  // economy).
+  ENCOUNTER_BLOCKED_REASON_ALREADY_USED_THIS_TURN = 65;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
