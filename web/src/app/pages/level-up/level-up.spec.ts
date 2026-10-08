@@ -311,7 +311,7 @@ describe('LevelUpPage', () => {
       ]);
       expect(document.activeElement?.textContent?.trim()).toBe('Continuar com o Mago');
       // The class in force stays checked behind the question.
-      await new Promise((r) => setTimeout(r));
+      await vi.advanceTimersByTimeAsync(0);
       expect(radio(f, 'Mago').checked).toBe(true);
       expect(radio(f, 'Clérigo').checked).toBe(false);
       expect(client.options.mock.calls.length).toBe(reads);
