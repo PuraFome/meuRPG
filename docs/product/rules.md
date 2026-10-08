@@ -143,7 +143,7 @@ The player levels up through the guided edit of the sheet that RN-01 allows whil
 
 **How the system meets it**
 
-The system tells the master when a character reaches the XP of the next level. `DerivedSheet.next_level_xp` carries the XP of the next level (0 at level 20), calculated by `rules` from the total level (`NextLevelXP`: 300 for level 2, 900 for 3, 2,700 for 4...). `GetCharacter` carries `can_level_up` and `level_up_reason` (`XP` or `MILESTONE`) for the master and the owner, of a living player character, and `GetCampaignExperience` carries the same for the whole group. In a campaign by enemies or by gold, it holds when the sheet's `experience_points` reach the XP of the next level; in a milestones campaign, it holds with a milestone mark (planned or not) whose level the sheet's level has not yet passed (the mark goes away by itself when the level goes up). Nobody levels up from level 20. Who sees the notice: the master and the player. **The screens:** the label "Pode subir de nível" (arrow and words, never color alone) appears in the campaign's "Personagens dos jogadores" list, in "Experiência" and on the sheet. In a campaign by enemies or by gold, the sheet shows the "2.716 XP" block with the bar and the sentence "Chegou aos 2.700 XP do nível 4. O mestre sobe o seu nível na ficha." (for the master: "Suba o nível na ficha."); in a milestones campaign, only the label. The sheet listens to the session's `xp_changed` and updates by itself, and the mark goes away when the master raises the level in the editor. **The guided level-up:** when the player levels up through `LevelUpCharacter`, "Pode subir de nível" goes away by itself, as when the master raises the level in the editor: in an XP campaign because the sheet's XP no longer reaches the next level, in a milestones campaign because the sheet's level passed the mark's (`TestMR040_CanLevelUpClearsAfterwards`). The level-up sends the open sessions the same content-free notice as for XP, `xp_changed`, and the master reads what changed in `ListLevelUps`. **The level-up screen:** the button "Subir para o nível N" is the owner's only, on the locked sheet; the route without the mark answers that leveling up is not possible yet (the refusal `CANNOT_LEVEL_UP`), and the master, that the level-up is the player's. Tests: `TestDerivedNextLevelXP`, `TestLevelUpReason`, `TestXPCanLevelUpInAnXPCampaign`, `TestMR016_MilestoneMarksWithoutXP` and, on screen, the `@RN-12` tests of `e2e/tests/xp.spec.ts` and `e2e/tests/levelup.spec.ts`.
+The system tells the master when a character reaches the XP of the next level. `DerivedSheet.next_level_xp` carries the XP of the next level (0 at level 20), calculated by `rules` from the total level (`NextLevelXP`: 300 for level 2, 900 for 3, 2,700 for 4...). `GetCharacter` carries `can_level_up` and `level_up_reason` (`XP` or `MILESTONE`) for the master and the owner, of a living player character, and `GetCampaignExperience` carries the same for the whole group. In a campaign by enemies or by gold, it holds when the sheet's `experience_points` reach the XP of the next level; in a milestones campaign, it holds with a milestone mark (planned or not) whose level the sheet's level has not yet passed (the mark goes away by itself when the level goes up). Nobody levels up from level 20. Who sees the notice: the master and the player. **The screens:** the label "Pode subir de nível" (arrow and words, never color alone) appears in the campaign's "Personagens dos jogadores" list, in "Experiência" and on the sheet. In a campaign by enemies or by gold, the sheet shows the "2.716 XP" block with the bar and the sentence "Chegou aos 2.700 XP do nível 4." followed by "Suba o nível pelo botão abaixo." for the owner (the button of MR-040) or "Suba o nível na ficha." for the master; in a milestones campaign, only the label. The sheet listens to the session's `xp_changed` and updates by itself, and the mark goes away when the master raises the level in the editor. **The guided level-up:** when the player levels up through `LevelUpCharacter`, "Pode subir de nível" goes away by itself, as when the master raises the level in the editor: in an XP campaign because the sheet's XP no longer reaches the next level, in a milestones campaign because the sheet's level passed the mark's (`TestMR040_CanLevelUpClearsAfterwards`). The level-up sends the open sessions the same content-free notice as for XP, `xp_changed`, and the master reads what changed in `ListLevelUps`. **The level-up screen:** the button "Subir para o nível N" is the owner's only, on the locked sheet; the route without the mark answers that leveling up is not possible yet (the refusal `CANNOT_LEVEL_UP`), and the master, that the level-up is the player's. Tests: `TestDerivedNextLevelXP`, `TestLevelUpReason`, `TestXPCanLevelUpInAnXPCampaign`, `TestMR016_MilestoneMarksWithoutXP` and, on screen, the `@RN-12` tests of `e2e/tests/xp.spec.ts` and `e2e/tests/levelup.spec.ts`.
 
 ## RN-13: More than one master
 
@@ -152,7 +152,7 @@ A campaign can have more than one master, and a master can hand the campaign ove
 
 **How the system meets it**
 
-More than one `role = master` row in `campaign_members` for the same campaign. The campaign is deleted only when the last master leaves (see [Privacy](../privacy.md#delete-the-account)). See [ADR-0011](../adr/0011-autorizacao-papeis-por-campanha.md).
+**After the MVP ([MR-023](stories.md#mr-023-hand-over-or-share-the-campaign)).** Today a campaign has one master, its creator, and no call hands it over or adds a second one. The schema already allows more than one `role = master` row in `campaign_members` for the same campaign; the campaign will be deleted only when the last master leaves (see [Privacy](../privacy.md#delete-the-account)). See [ADR-0011](../adr/0011-autorizacao-papeis-por-campanha.md).
 
 ## RN-14: Creating a campaign needs a full master account
 
@@ -161,7 +161,7 @@ Any account can play. To create a campaign, the account must be a full master ac
 
 **How the system meets it**
 
-`CreateCampaign` refuses anyone without a linked Google identity. This confirms, for the MVP, the proposal of [ADR-0009](../adr/0009-login-do-jogador-sem-google.md).
+In the MVP every account comes from the OIDC sign-in (Google in production), so every account is a full master account and `CreateCampaign` has no check of its own for it. The only gate is the optional `CAMPAIGN_CREATORS` list (RN-30). When another way to sign in arrives (RN-17), `CreateCampaign` must start refusing accounts without a Google identity, as [ADR-0009](../adr/0009-login-do-jogador-sem-google.md) proposed.
 
 ## RN-15: Invite with approval
 
@@ -174,7 +174,7 @@ The character is born in a "pending approval" state, editable by the player; it 
 
 ## RN-16: Account deletion and inactivity
 
-When a player deletes their account, their characters stay linked to the campaign's master and are not deleted. When a master deletes their account, they have 30 days to come back by signing in again with the same account (the same `issuer`/`subject`, see [Privacy](../privacy.md#delete-the-account)); after that period, everything is deleted. In any deletion, everything is gone for good 30 days later. Each person chooses in their own profile how much inactivity leads to deleting the account; the default is 1 year.
+**Not built yet:** only the database cascades exist today; there is no call or screen to delete an account, and no inactivity setting. The rule below is the design. When a player deletes their account, their characters stay linked to the campaign's master and are not deleted. When a master deletes their account, they have 30 days to come back by signing in again with the same account (the same `issuer`/`subject`, see [Privacy](../privacy.md#delete-the-account)); after that period, everything is deleted. In any deletion, everything is gone for good 30 days later. Each person chooses in their own profile how much inactivity leads to deleting the account; the default is 1 year.
 
 
 **How the system meets it**
@@ -188,7 +188,7 @@ The player signs in with an anonymous login, with no e-mail or real name: the ma
 
 **How the system meets it**
 
-The handle lives in `table_handles`, unique within the master's table (`dm_user_id`). The password follows option 3 of ADR-0009.
+**Not built yet:** there is no player sign-in without Google in the MVP, and no `table_handles` table; every account signs in through the OIDC provider (RN-14). The design is: the handle lives in `table_handles`, unique within the master's table (`dm_user_id`), and the password follows option 3 of ADR-0009.
 
 ## RN-18: Physical or app dice
 
