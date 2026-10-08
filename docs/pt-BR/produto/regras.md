@@ -143,7 +143,7 @@ O jogador sobe de nível pela edição guiada da ficha que a RN-01 permite enqua
 
 **Como o sistema cumpre**
 
-O sistema avisa o mestre quando um personagem atinge o XP do próximo nível. `DerivedSheet.next_level_xp` traz o XP do próximo nível (0 no nível 20), calculado pelo `rules` a partir do nível total (`NextLevelXP`: 300 para o nível 2, 900 para o 3, 2.700 para o 4...). `GetCharacter` traz `can_level_up` e `level_up_reason` (`XP` ou `MILESTONE`) para o mestre e para o dono, de um personagem de jogador vivo, e `GetCampaignExperience` traz o mesmo para o grupo todo. Em campanha por inimigos ou por ouro, vale o `experience_points` da ficha chegar ao XP do próximo nível; em campanha por marcos, vale uma marca de marco (planejado ou não) cujo nível ainda não foi ultrapassado pelo nível da ficha (a marca some sozinha quando o mestre sobe o nível). Ninguém sobe do nível 20. Quem vê o aviso: o mestre e o jogador. **As telas:** a etiqueta "Pode subir de nível" (seta e palavras, nunca só a cor) aparece na lista "Personagens dos jogadores" da campanha, em "Experiência" e na ficha. Em campanha por inimigos ou por ouro, a ficha mostra o bloco "2.716 XP" com a barra e a frase "Chegou aos 2.700 XP do nível 4. O mestre sobe o seu nível na ficha." (para o mestre: "Suba o nível na ficha."); em campanha por marcos, só a etiqueta. A ficha escuta o `xp_changed` da sessão e se atualiza sozinha, e a marca some quando o mestre sobe o nível no editor. **A subida guiada:** quando o jogador sobe o nível pelo `LevelUpCharacter`, o "Pode subir de nível" some sozinho, como quando o mestre sobe o nível no editor: em campanha por XP porque o XP da ficha já não alcança o próximo nível, em campanha por marcos porque o nível da ficha passou o da marca (`TestMR040_CanLevelUpClearsAfterwards`). A subida manda às sessões abertas o mesmo aviso sem conteúdo do XP, o `xp_changed`, e o mestre lê o que mudou em `ListLevelUps`. **A tela da subida:** o botão "Subir para o nível N" é só do dono, na ficha travada; a rota sem a marca responde que ainda não dá para subir (a recusa `CANNOT_LEVEL_UP`), e o mestre, que a subida é do jogador. Testes: `TestDerivedNextLevelXP`, `TestLevelUpReason`, `TestXPCanLevelUpInAnXPCampaign`, `TestMR016_MilestoneMarksWithoutXP` e, na tela, os testes `@RN-12` de `e2e/tests/xp.spec.ts` e de `e2e/tests/levelup.spec.ts`.
+O sistema avisa o mestre quando um personagem atinge o XP do próximo nível. `DerivedSheet.next_level_xp` traz o XP do próximo nível (0 no nível 20), calculado pelo `rules` a partir do nível total (`NextLevelXP`: 300 para o nível 2, 900 para o 3, 2.700 para o 4...). `GetCharacter` traz `can_level_up` e `level_up_reason` (`XP` ou `MILESTONE`) para o mestre e para o dono, de um personagem de jogador vivo, e `GetCampaignExperience` traz o mesmo para o grupo todo. Em campanha por inimigos ou por ouro, vale o `experience_points` da ficha chegar ao XP do próximo nível; em campanha por marcos, vale uma marca de marco (planejado ou não) cujo nível ainda não foi ultrapassado pelo nível da ficha (a marca some sozinha quando o mestre sobe o nível). Ninguém sobe do nível 20. Quem vê o aviso: o mestre e o jogador. **As telas:** a etiqueta "Pode subir de nível" (seta e palavras, nunca só a cor) aparece na lista "Personagens dos jogadores" da campanha, em "Experiência" e na ficha. Em campanha por inimigos ou por ouro, a ficha mostra o bloco "2.716 XP" com a barra e a frase "Chegou aos 2.700 XP do nível 4." seguida de "Suba o nível pelo botão abaixo." para o dono (o botão da MR-040) ou "Suba o nível na ficha." para o mestre; em campanha por marcos, só a etiqueta. A ficha escuta o `xp_changed` da sessão e se atualiza sozinha, e a marca some quando o mestre sobe o nível no editor. **A subida guiada:** quando o jogador sobe o nível pelo `LevelUpCharacter`, o "Pode subir de nível" some sozinho, como quando o mestre sobe o nível no editor: em campanha por XP porque o XP da ficha já não alcança o próximo nível, em campanha por marcos porque o nível da ficha passou o da marca (`TestMR040_CanLevelUpClearsAfterwards`). A subida manda às sessões abertas o mesmo aviso sem conteúdo do XP, o `xp_changed`, e o mestre lê o que mudou em `ListLevelUps`. **A tela da subida:** o botão "Subir para o nível N" é só do dono, na ficha travada; a rota sem a marca responde que ainda não dá para subir (a recusa `CANNOT_LEVEL_UP`), e o mestre, que a subida é do jogador. Testes: `TestDerivedNextLevelXP`, `TestLevelUpReason`, `TestXPCanLevelUpInAnXPCampaign`, `TestMR016_MilestoneMarksWithoutXP` e, na tela, os testes `@RN-12` de `e2e/tests/xp.spec.ts` e de `e2e/tests/levelup.spec.ts`.
 
 ## RN-13: Mais de um mestre
 
@@ -152,7 +152,7 @@ Uma campanha pode ter mais de um mestre, e um mestre pode passar a campanha para
 
 **Como o sistema cumpre**
 
-Mais de uma linha com `role = master` em `campaign_members` da mesma campanha. A campanha só é apagada quando o último mestre sai (ver [Privacidade](../privacidade.md#excluir-a-conta)). Ver [ADR-0011](../../adr/0011-autorizacao-papeis-por-campanha.md).
+**Depois do MVP ([MR-023](historias.md#mr-023-passar-ou-dividir-a-campanha)).** Hoje a campanha tem um mestre, quem a criou, e nenhuma chamada a passa adiante nem põe um segundo. O esquema já permite mais de uma linha com `role = master` em `campaign_members` da mesma campanha; a campanha só será apagada quando o último mestre sair (ver [Privacidade](../privacidade.md#excluir-a-conta)). Ver [ADR-0011](../../adr/0011-autorizacao-papeis-por-campanha.md).
 
 ## RN-14: Criar campanha exige conta de mestre completa
 
@@ -161,7 +161,7 @@ Qualquer conta serve para jogar. Para criar campanha, a conta precisa ser uma co
 
 **Como o sistema cumpre**
 
-`CreateCampaign` recusa quem não tem uma identidade Google vinculada. Confirma, para o MVP, a proposta da [ADR-0009](../../adr/0009-login-do-jogador-sem-google.md).
+No MVP toda conta vem do login OIDC (Google em produção), então toda conta é de mestre completo e o `CreateCampaign` não tem uma checagem própria para isso. O único portão é a lista opcional `CAMPAIGN_CREATORS` (RN-30). Quando chegar outra forma de login (RN-17), o `CreateCampaign` precisa passar a recusar contas sem identidade Google, como propôs a [ADR-0009](../../adr/0009-login-do-jogador-sem-google.md).
 
 ## RN-15: Convite com aprovação
 
@@ -174,7 +174,7 @@ O personagem nasce num estado "pendente de aprovação", editável pelo jogador;
 
 ## RN-16: Exclusão de conta e inatividade
 
-Quando um jogador exclui a conta, os personagens dele ficam vinculados ao mestre da campanha, não apagados. Quando um mestre exclui a conta, ele tem 30 dias para voltar entrando de novo com a mesma conta (o mesmo `issuer`/`subject`, ver [Privacidade](../privacidade.md#excluir-a-conta)); passado esse prazo, tudo é apagado. Em qualquer exclusão, tudo some de vez 30 dias depois. Cada pessoa escolhe no próprio perfil quanto tempo de inatividade leva à exclusão da conta; padrão de 1 ano.
+**Ainda não construído:** hoje só existem as cascatas do banco; não há chamada nem tela para excluir uma conta, nem configuração de inatividade. A regra abaixo é o desenho. Quando um jogador exclui a conta, os personagens dele ficam vinculados ao mestre da campanha, não apagados. Quando um mestre exclui a conta, ele tem 30 dias para voltar entrando de novo com a mesma conta (o mesmo `issuer`/`subject`, ver [Privacidade](../privacidade.md#excluir-a-conta)); passado esse prazo, tudo é apagado. Em qualquer exclusão, tudo some de vez 30 dias depois. Cada pessoa escolhe no próprio perfil quanto tempo de inatividade leva à exclusão da conta; padrão de 1 ano.
 
 
 **Como o sistema cumpre**
@@ -188,7 +188,7 @@ O jogador entra por um login anônimo, sem e-mail nem nome real: o apelido do me
 
 **Como o sistema cumpre**
 
-O handle fica em `table_handles`, único dentro da mesa (`dm_user_id`) do mestre. A senha segue a opção 3 da ADR-0009.
+**Ainda não construído:** não há login de jogador sem Google no MVP, nem a tabela `table_handles`; toda conta entra pelo provedor OIDC (RN-14). O desenho é: o handle fica em `table_handles`, único dentro da mesa (`dm_user_id`) do mestre, e a senha segue a opção 3 da ADR-0009.
 
 ## RN-18: Dados físicos ou do app
 

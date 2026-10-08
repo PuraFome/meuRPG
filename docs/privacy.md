@@ -218,6 +218,8 @@ Almost everything is self-service, inside the app, signed in. The session alread
 
 ### Delete the account
 
+**Not built yet:** there is no call or screen to delete an account or export data; only the database cascades exist. The flow below is the design.
+
 Players and masters are treated differently (RN-16).
 
 - **Player:** deletion is immediate and final. Account, handles, password, sessions and campaign membership disappear at once. The player's characters are **not deleted**: they stay linked to the campaign master, without the original owner (see the tension with identity, below).
