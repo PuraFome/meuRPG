@@ -1,6 +1,9 @@
 package rules
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 // toren is the table's fighter (the canonical fight): STR 16, a battleaxe.
 func toren() Build {
@@ -323,6 +326,32 @@ func TestResourceAndScoreEffectsAreClosed(t *testing.T) {
 	} {
 		if err := c.compileEffect("feature:x", e); err != nil {
 			t.Errorf("%s: %v", name, err)
+		}
+	}
+}
+
+// Flurry of Blows, Patient Defense and Step of the Wind each spend 1 ki point;
+// a monk has none of them before level 2, when ki comes.
+func TestMonkBonusActionsSpendKi(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	d := Derive(standard("class:monk", 3), c)
+	for _, key := range []string{"feature:flurry-of-blows", "feature:patient-defense", "feature:step-of-the-wind:disengage", "feature:step-of-the-wind:dash"} {
+		i := slices.IndexFunc(d.Actions, func(a Action) bool { return a.Key == key })
+		if i < 0 {
+			t.Errorf("no %s action: %+v", key, d.Actions)
+			continue
+		}
+		if a := d.Actions[i]; a.Resource != "ki" || a.Economy != EconomyBonusAction {
+			t.Errorf("%s = %+v, want a bonus action that spends ki", key, a)
+		}
+	}
+	if i := slices.IndexFunc(d.Actions, func(a Action) bool { return a.Key == "feature:flurry-of-blows" }); i >= 0 && d.Actions[i].NamePT == "Ki" {
+		t.Error("the action took the name of the resource it spends")
+	}
+	for _, a := range Derive(standard("class:monk", 1), c).Actions {
+		if a.Resource == "ki" {
+			t.Errorf("a level 1 monk has the ki action %s", a.Key)
 		}
 	}
 }

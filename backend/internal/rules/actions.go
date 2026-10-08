@@ -111,6 +111,7 @@ func (c *content) loadStandardActions(fsys fs.FS) error {
 func (x *deriver) resourcesAndActions() {
 	x.d.StandardActions = slices.Clone(x.c.standardActions)
 	x.d.AttacksPerAction = 1
+	x.criticalAndStyles()
 	for _, a := range x.active {
 		if a.effect.Type == "extra_attack" && x.applies(a) {
 			x.d.AttacksPerAction = max(x.d.AttacksPerAction, a.effect.Count)
@@ -172,6 +173,15 @@ func (x *deriver) resourcesAndActions() {
 				break
 			}
 		}
+		// A feature action may spend a resource of another feature (the monk's
+		// actions spend ki).
+		if spent := a.effect.Resource; spent != "" {
+			if i := slices.IndexFunc(x.d.Resources, func(r Resource) bool { return r.Key == spent }); i >= 0 {
+				act.Resource = spent
+			} else {
+				continue // the resource is not there: no ki, no ki action
+			}
+		}
 		for _, route := range x.routes(act) {
 			if !slices.ContainsFunc(x.d.Actions, func(o Action) bool { return o.Key == route.Key && o.Economy == route.Economy }) {
 				x.d.Actions = append(x.d.Actions, route)
@@ -200,4 +210,37 @@ func (x *deriver) routes(act Action) []Action {
 		out = append(out, route)
 	}
 	return out
+}
+
+// Features that change the critical range or the bonus action attack.
+const (
+	improvedCriticalFeature = "feature:improved-critical"
+	superiorCriticalFeature = "feature:superior-critical"
+)
+
+// twoWeaponFightingStyles are the fighting styles that keep the ability
+// modifier on the damage of the bonus action attack.
+var twoWeaponFightingStyles = []string{
+	"feature:fighter-fighting-style-two-weapon-fighting",
+	"feature:ranger-fighting-style-two-weapon-fighting",
+}
+
+// criticalAndStyles fills Derived.CriticalRange (20, 19 with Improved
+// Critical, 18 with Superior Critical) and Derived.TwoWeaponFighting from the
+// features the character has.
+func (x *deriver) criticalAndStyles() {
+	x.d.CriticalRange = 20
+	for _, a := range x.active {
+		if !x.applies(a) {
+			continue
+		}
+		switch {
+		case a.owner == superiorCriticalFeature:
+			x.d.CriticalRange = min(x.d.CriticalRange, 18)
+		case a.owner == improvedCriticalFeature:
+			x.d.CriticalRange = min(x.d.CriticalRange, 19)
+		case slices.Contains(twoWeaponFightingStyles, a.owner):
+			x.d.TwoWeaponFighting = true
+		}
+	}
 }
