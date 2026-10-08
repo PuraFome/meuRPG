@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -788,18 +789,35 @@ func sortedKeys[T any](m map[string]T) []string {
 	return keys
 }
 
-// creatureCorrectionFields are the creature numbers effects/corrections.json may
+// creatureCorrectionFields are the creature fields effects/corrections.json may
 // correct. The set is closed.
-var creatureCorrectionFields = []string{"attacks_per_action"}
+var creatureCorrectionFields = []string{
+	"attacks_per_action", "armor_class", "hit_points", "hit_points_roll",
+	"speed_walk", "speed_fly", "speed_swim", "speed_climb", "speed_burrow",
+	"darkvision", "blindsight", "tremorsense", "truesight", "passive_perception",
+	"skills", "damage_immunities", "condition_immunities",
+}
 
 // correctionFields are the class table columns effects/corrections.json may
 // correct. The set is closed.
 var correctionFields = []string{"invocations_known"}
 
+// spellCorrectionSaveSuccess are the outcomes of a saving throw a spell
+// correction may name (the values of Spell.SaveSuccess).
+var spellCorrectionSaveSuccess = []string{"half", "none", "other"}
+
+// maxCorrectedSlot is the highest spell slot level a damage table may list.
+const maxCorrectedSlot = 9
+
+// hitPointsRollPattern is a creature's hit point roll, "6d8+6" or "3d8".
+var hitPointsRollPattern = regexp.MustCompile(`^(\d+d\d+)([+-]\d+)?$`)
+
 // applyCorrections reads effects/corrections.json and writes its numbers over
-// the class table rows of the snapshot (data/ is never edited by hand, so a
-// number the snapshot has wrong against the SRD 5.1 is fixed here). It refuses
-// an unknown class, field or level, and a row without the column.
+// the snapshot (data/ is never edited by hand, so a value the snapshot has
+// wrong against the SRD 5.1 is fixed here): class table rows, creature stat
+// blocks, spells and the spells a subclass always has. It refuses an unknown
+// class, creature, spell, subclass, field or level, a value that does not fit
+// the field, and a correction without a source.
 func (c *content) applyCorrections(fsys fs.FS) error {
 	const name = "effects/corrections.json"
 	var f struct {
@@ -811,16 +829,33 @@ func (c *content) applyCorrections(fsys fs.FS) error {
 			ByLevel map[string]int `json:"by_level"`
 		} `json:"corrections"`
 		Creatures []struct {
-			Creature string `json:"creature"`
-			Field    string `json:"field"`
-			Value    int    `json:"value"`
-			Source   string `json:"source"`
+			Creature string          `json:"creature"`
+			Field    string          `json:"field"`
+			Value    json.RawMessage `json:"value"`
+			Source   string          `json:"source"`
 		} `json:"creature_corrections"`
+		Spells []struct {
+			Spell       string `json:"spell"`
+			Source      string `json:"source"`
+			AttackType  string `json:"attack_type"`
+			SaveAbility string `json:"save_ability"`
+			SaveSuccess string `json:"save_success"`
+			Damage      []struct {
+				DamageType string            `json:"damage_type"`
+				AtSlot     map[string]string `json:"at_slot_level"`
+			} `json:"damage"`
+		} `json:"spell_corrections"`
+		Subclasses []struct {
+			Subclass string                `json:"subclass"`
+			Source   string                `json:"source"`
+			Spells   []srd51.SubclassSpell `json:"add_spells"`
+		} `json:"subclass_corrections"`
 	}
 	if err := readJSON(fsys, name, &f); err != nil {
 		return err
 	}
 	c.attacksPerAction = map[string]int{}
+	seen := map[string]bool{}
 	for _, corr := range f.Creatures {
 		m, ok := c.monsters[corr.Creature]
 		if !ok {
@@ -829,16 +864,98 @@ func (c *content) applyCorrections(fsys fs.FS) error {
 		if !slices.Contains(creatureCorrectionFields, corr.Field) {
 			return fmt.Errorf("%s: %s: field %q cannot be corrected", name, corr.Creature, corr.Field)
 		}
-		if corr.Value < 1 || corr.Value > 20 || corr.Source == "" {
-			return fmt.Errorf("%s: %s: %s needs a value of 1 to 20 and a source", name, corr.Creature, corr.Field)
+		if corr.Source == "" {
+			return fmt.Errorf("%s: %s: %s needs a source", name, corr.Creature, corr.Field)
 		}
-		if !slices.ContainsFunc(m.Actions, func(a srd51.MonsterAction) bool { return len(a.Multiattack) > 0 }) {
-			return fmt.Errorf("%s: %s has no Multiattack to correct", name, corr.Creature)
+		if seen[corr.Creature+"/"+corr.Field] {
+			return fmt.Errorf("%s: %s: %s is corrected twice", name, corr.Creature, corr.Field)
 		}
-		if _, dup := c.attacksPerAction[corr.Creature]; dup {
-			return fmt.Errorf("%s: %s is corrected twice", name, corr.Creature)
+		seen[corr.Creature+"/"+corr.Field] = true
+		if err := c.correctCreature(corr.Creature, m, corr.Field, corr.Value); err != nil {
+			return fmt.Errorf("%s: %s: %s: %w", name, corr.Creature, corr.Field, err)
 		}
-		c.attacksPerAction[corr.Creature] = corr.Value
+	}
+	seen = map[string]bool{}
+	for _, corr := range f.Spells {
+		s, ok := c.spells[corr.Spell]
+		if !ok {
+			return fmt.Errorf("%s: unknown spell %q", name, corr.Spell)
+		}
+		if corr.Source == "" {
+			return fmt.Errorf("%s: %s needs a source", name, corr.Spell)
+		}
+		if seen[corr.Spell] {
+			return fmt.Errorf("%s: %s is corrected twice", name, corr.Spell)
+		}
+		seen[corr.Spell] = true
+		if corr.AttackType == "" && corr.SaveAbility == "" && corr.Damage == nil {
+			return fmt.Errorf("%s: %s corrects nothing", name, corr.Spell)
+		}
+		if corr.AttackType != "" {
+			if corr.AttackType != "melee" && corr.AttackType != "ranged" {
+				return fmt.Errorf("%s: %s: attack_type %q is not melee or ranged", name, corr.Spell, corr.AttackType)
+			}
+			s.AttackType = corr.AttackType
+		}
+		if corr.SaveAbility != "" {
+			if _, ok := abilityIndex[Ability(corr.SaveAbility)]; !ok {
+				return fmt.Errorf("%s: %s: %q is not an ability", name, corr.Spell, corr.SaveAbility)
+			}
+			if !slices.Contains(spellCorrectionSaveSuccess, corr.SaveSuccess) {
+				return fmt.Errorf("%s: %s: save_success %q is not half, none or other", name, corr.Spell, corr.SaveSuccess)
+			}
+			s.SaveAbility, s.SaveSuccess = corr.SaveAbility, corr.SaveSuccess
+		} else if corr.SaveSuccess != "" {
+			return fmt.Errorf("%s: %s: save_success without save_ability", name, corr.Spell)
+		}
+		if corr.Damage != nil {
+			dmg := make([]srd51.SpellDamage, 0, len(corr.Damage))
+			for _, d := range corr.Damage {
+				if n, ok := c.named[d.DamageType]; !ok || n == nil || !strings.HasPrefix(d.DamageType, "damage-type:") {
+					return fmt.Errorf("%s: %s: %q is not a damage type", name, corr.Spell, d.DamageType)
+				}
+				if len(d.AtSlot) == 0 {
+					return fmt.Errorf("%s: %s: %s has no slot levels", name, corr.Spell, d.DamageType)
+				}
+				for slot, dice := range d.AtSlot {
+					n, err := strconv.Atoi(slot)
+					if err != nil || n < max(s.Level, 1) || n > maxCorrectedSlot {
+						return fmt.Errorf("%s: %s: slot %q is not %d to %d", name, corr.Spell, slot, max(s.Level, 1), maxCorrectedSlot)
+					}
+					if _, ok := ParseDice(dice); !ok {
+						return fmt.Errorf("%s: %s: %q is not dice", name, corr.Spell, dice)
+					}
+				}
+				dmg = append(dmg, srd51.SpellDamage{DamageType: d.DamageType, AtSlotLevel: d.AtSlot})
+			}
+			s.Damage = dmg
+		}
+	}
+	seen = map[string]bool{}
+	for _, corr := range f.Subclasses {
+		sub, ok := c.subclasses[corr.Subclass]
+		if !ok {
+			return fmt.Errorf("%s: unknown subclass %q", name, corr.Subclass)
+		}
+		if corr.Source == "" || len(corr.Spells) == 0 {
+			return fmt.Errorf("%s: %s needs spells and a source", name, corr.Subclass)
+		}
+		if seen[corr.Subclass] {
+			return fmt.Errorf("%s: %s is corrected twice", name, corr.Subclass)
+		}
+		seen[corr.Subclass] = true
+		for _, add := range corr.Spells {
+			if _, ok := c.spells[add.Spell]; !ok {
+				return fmt.Errorf("%s: %s: unknown spell %q", name, corr.Subclass, add.Spell)
+			}
+			if add.ClassLevel < 1 || add.ClassLevel > MaxLevel {
+				return fmt.Errorf("%s: %s: level %d is not 1 to %d", name, corr.Subclass, add.ClassLevel, MaxLevel)
+			}
+			if slices.ContainsFunc(sub.Spells, func(s srd51.SubclassSpell) bool { return s.Spell == add.Spell && s.ClassLevel == add.ClassLevel }) {
+				return fmt.Errorf("%s: %s already has %s at level %d", name, corr.Subclass, add.Spell, add.ClassLevel)
+			}
+			sub.Spells = append(sub.Spells, add)
+		}
 	}
 	for _, corr := range f.Corrections {
 		rows, ok := c.classLevels[corr.Class]
@@ -870,6 +987,119 @@ func (c *content) applyCorrections(fsys fs.FS) error {
 		}
 	}
 	return nil
+}
+
+// correctCreature writes one corrected field of a stat block. raw is the
+// field's JSON value: a number, a hit point roll, a skill map or a key list.
+func (c *content) correctCreature(key string, m *srd51.Monster, field string, raw json.RawMessage) error {
+	number := func(lo, hi int) (int, error) {
+		var v int
+		if err := json.Unmarshal(raw, &v); err != nil || v < lo || v > hi {
+			return 0, fmt.Errorf("needs a number of %d to %d", lo, hi)
+		}
+		return v, nil
+	}
+	const maxFeet, maxStat = 500, 100
+	// numbers are the fields that hold one number, with the range it may take.
+	numbers := map[string]struct {
+		dst    *int
+		lo, hi int
+	}{
+		"armor_class":        {&m.ArmorClass, 1, maxStat},
+		"hit_points":         {&m.HitPoints, 1, 1 << 16},
+		"speed_walk":         {&m.Speed.Walk, 0, maxFeet},
+		"speed_fly":          {&m.Speed.Fly, 0, maxFeet},
+		"speed_swim":         {&m.Speed.Swim, 0, maxFeet},
+		"speed_climb":        {&m.Speed.Climb, 0, maxFeet},
+		"speed_burrow":       {&m.Speed.Burrow, 0, maxFeet},
+		"darkvision":         {&m.Darkvision, 0, maxFeet},
+		"blindsight":         {&m.Blindsight, 0, maxFeet},
+		"tremorsense":        {&m.Tremorsense, 0, maxFeet},
+		"truesight":          {&m.Truesight, 0, maxFeet},
+		"passive_perception": {&m.PassivePerception, 1, maxStat},
+	}
+	if n, ok := numbers[field]; ok {
+		v, err := number(n.lo, n.hi)
+		if err == nil {
+			*n.dst = v
+		}
+		return err
+	}
+	switch field {
+	case "attacks_per_action":
+		if !slices.ContainsFunc(m.Actions, func(a srd51.MonsterAction) bool { return len(a.Multiattack) > 0 }) {
+			return fmt.Errorf("%s has no Multiattack to correct", key)
+		}
+		v, err := number(1, 20)
+		if err != nil {
+			return err
+		}
+		c.attacksPerAction[key] = v
+		return nil
+	case "hit_points_roll":
+		var roll string
+		if err := json.Unmarshal(raw, &roll); err != nil {
+			return fmt.Errorf("needs a roll such as 6d8+6")
+		}
+		if match := hitPointsRollPattern.FindStringSubmatch(roll); len(match) == 0 || match[1] != m.HitDice {
+			return fmt.Errorf("%q is not a roll of %s", roll, m.HitDice)
+		}
+		m.HitPointsRoll = roll
+		return nil
+	}
+	return c.correctCreatureLists(key, m, field, raw)
+}
+
+// correctCreatureLists writes the corrected fields of a stat block that hold a
+// map or a list: the skills and the immunities.
+func (c *content) correctCreatureLists(key string, m *srd51.Monster, field string, raw json.RawMessage) error {
+	switch field {
+	case "skills":
+		var skills map[string]int
+		if err := json.Unmarshal(raw, &skills); err != nil || len(skills) == 0 {
+			return fmt.Errorf("needs a map of skill keys to bonuses")
+		}
+		if m.Skills == nil {
+			m.Skills = map[string]int{}
+		}
+		for k, bonus := range skills {
+			if _, ok := c.skills[k]; !ok {
+				return fmt.Errorf("%q is not a skill", k)
+			}
+			m.Skills[k] = bonus
+		}
+		return nil
+	case "damage_immunities", "condition_immunities":
+		var keys []string
+		if err := json.Unmarshal(raw, &keys); err != nil || len(keys) == 0 {
+			return fmt.Errorf("needs a list of keys")
+		}
+		prefix := "condition:"
+		if field == "damage_immunities" {
+			prefix = "damage-type:"
+		}
+		for i, k := range keys {
+			if n, ok := c.named[k]; !ok || n == nil || !strings.HasPrefix(k, prefix) {
+				return fmt.Errorf("%q is not a %s key", k, strings.TrimSuffix(prefix, ":"))
+			}
+			if slices.Contains(keys[:i], k) {
+				return fmt.Errorf("%q is listed twice", k)
+			}
+		}
+		if field == "condition_immunities" {
+			m.ConditionImmunities = keys
+			return nil
+		}
+		if slices.ContainsFunc(m.Immunities, func(d srd51.MonsterDamageMod) bool { return d.Note != "" }) {
+			return fmt.Errorf("%s has an immunity with a note, which a corrected list would lose", key)
+		}
+		m.Immunities = nil
+		for _, k := range keys {
+			m.Immunities = append(m.Immunities, srd51.MonsterDamageMod{Types: []string{k}})
+		}
+		return nil
+	}
+	return fmt.Errorf("field %q cannot be corrected", field)
 }
 
 // isAttackName reports whether key is "attack:<slug>" for the name of an attack

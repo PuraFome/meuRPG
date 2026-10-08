@@ -1,13 +1,31 @@
 {
-  "_comment": "Corrections to data/ (never edited by hand): numbers the 5e-database snapshot has wrong against the SRD 5.1's own text and tables. The loader applies them over the class table rows (corrections) and over a creature's Multiattack count (creature_corrections), and refuses an unknown class, creature, field or level.",
+  "_comment": "Corrections to data/ (never edited by hand): values the 5e-database snapshot has wrong or lacks against the SRD 5.1's own text and tables. The loader applies them over the class table rows (corrections), over a creature's stat block (creature_corrections), over a spell's attack, saving throw and damage table (spell_corrections) and over the spells a subclass always has (subclass_corrections); it refuses an unknown class, creature, spell, subclass, field or level, a value that does not fit its field, and a correction without a source. A spell correction's damage replaces the spell's whole damage table; a spell with a damage table and no saving throw records the dice for display and for the master, and rolls nothing at cast.",
   "corrections": [
     {
       "class": "class:warlock",
       "field": "invocations_known",
       "source": "SRD 5.1, Warlock table, Invocations Known: 1 none, 2-4 two, 5-6 three, 7-8 four, 9-11 five, 12-14 six, 15-17 seven, 18-20 eight (the snapshot has 3 at level 4 and 4 at level 6)",
       "by_level": {
-        "1": 0, "2": 2, "3": 2, "4": 2, "5": 3, "6": 3, "7": 4, "8": 4, "9": 5, "10": 5,
-        "11": 5, "12": 6, "13": 6, "14": 6, "15": 7, "16": 7, "17": 7, "18": 8, "19": 8, "20": 8
+        "1": 0,
+        "2": 2,
+        "3": 2,
+        "4": 2,
+        "5": 3,
+        "6": 3,
+        "7": 4,
+        "8": 4,
+        "9": 5,
+        "10": 5,
+        "11": 5,
+        "12": 6,
+        "13": 6,
+        "14": 6,
+        "15": 7,
+        "16": 7,
+        "17": 7,
+        "18": 8,
+        "19": 8,
+        "20": 8
       }
     }
   ],
@@ -35,6 +53,436 @@
       "field": "attacks_per_action",
       "value": 3,
       "source": "SRD 5.1, Veteran, Multiattack: two longsword attacks and, with a shortsword drawn, one shortsword attack (the snapshot counts 2 shortsword attacks, 4 in all)"
+    },
+    {
+      "creature": "monster:cult-fanatic",
+      "field": "hit_points",
+      "value": 33,
+      "source": "SRD 5.1, Cult Fanatic: 33 hit points (the snapshot has 22)"
+    },
+    {
+      "creature": "monster:cult-fanatic",
+      "field": "hit_points_roll",
+      "value": "6d8+6",
+      "source": "SRD 5.1, Cult Fanatic: 6d8 + 6, Constitution 12 adds 1 per die (the snapshot has 6d8-5)"
+    },
+    {
+      "creature": "monster:basilisk",
+      "field": "armor_class",
+      "value": 15,
+      "source": "SRD 5.1, Basilisk: armor class 15 (natural armor); the snapshot has 12"
+    },
+    {
+      "creature": "monster:crocodile",
+      "field": "speed_swim",
+      "value": 30,
+      "source": "SRD 5.1, Crocodile: speed 20 ft., swim 30 ft. (the snapshot has swim 20)"
+    },
+    {
+      "creature": "monster:giant-wasp",
+      "field": "speed_swim",
+      "value": 0,
+      "source": "SRD 5.1, Giant Wasp: speed 10 ft., fly 50 ft., no swim speed"
+    },
+    {
+      "creature": "monster:adult-brass-dragon",
+      "field": "speed_burrow",
+      "value": 30,
+      "source": "SRD 5.1, Adult Brass Dragon: speed 40 ft., burrow 30 ft., fly 80 ft. (the snapshot has burrow 40)"
+    },
+    {
+      "creature": "monster:hunter-shark",
+      "field": "blindsight",
+      "value": 30,
+      "source": "SRD 5.1, Hunter Shark: blindsight 30 ft."
+    },
+    {
+      "creature": "monster:hunter-shark",
+      "field": "darkvision",
+      "value": 0,
+      "source": "SRD 5.1, Hunter Shark: senses are blindsight 30 ft. only, no darkvision (the snapshot has darkvision 30)"
+    },
+    {
+      "creature": "monster:black-pudding",
+      "field": "condition_immunities",
+      "value": [
+        "condition:blinded",
+        "condition:charmed",
+        "condition:deafened",
+        "condition:exhaustion",
+        "condition:frightened",
+        "condition:prone"
+      ],
+      "source": "SRD 5.1, Black Pudding: condition immunities blinded, charmed, deafened, exhaustion, frightened, prone (the snapshot lost deafened and, for some creatures, lists blinded twice)"
+    },
+    {
+      "creature": "monster:flying-sword",
+      "field": "condition_immunities",
+      "value": [
+        "condition:blinded",
+        "condition:charmed",
+        "condition:deafened",
+        "condition:frightened",
+        "condition:paralyzed",
+        "condition:petrified",
+        "condition:poisoned"
+      ],
+      "source": "SRD 5.1, Flying Sword: condition immunities blinded, charmed, deafened, frightened, paralyzed, petrified, poisoned (the snapshot lost deafened and, for some creatures, lists blinded twice)"
+    },
+    {
+      "creature": "monster:ochre-jelly",
+      "field": "condition_immunities",
+      "value": [
+        "condition:blinded",
+        "condition:charmed",
+        "condition:deafened",
+        "condition:exhaustion",
+        "condition:frightened",
+        "condition:prone"
+      ],
+      "source": "SRD 5.1, Ochre Jelly: condition immunities blinded, charmed, deafened, exhaustion, frightened, prone (the snapshot lost deafened and, for some creatures, lists blinded twice)"
+    },
+    {
+      "creature": "monster:rug-of-smothering",
+      "field": "condition_immunities",
+      "value": [
+        "condition:blinded",
+        "condition:charmed",
+        "condition:deafened",
+        "condition:frightened",
+        "condition:paralyzed",
+        "condition:petrified",
+        "condition:poisoned"
+      ],
+      "source": "SRD 5.1, Rug Of Smothering: condition immunities blinded, charmed, deafened, frightened, paralyzed, petrified, poisoned (the snapshot lost deafened and, for some creatures, lists blinded twice)"
+    },
+    {
+      "creature": "monster:shambling-mound",
+      "field": "condition_immunities",
+      "value": [
+        "condition:blinded",
+        "condition:deafened",
+        "condition:exhaustion"
+      ],
+      "source": "SRD 5.1, Shambling Mound: condition immunities blinded, deafened, exhaustion (the snapshot lost deafened and, for some creatures, lists blinded twice)"
+    },
+    {
+      "creature": "monster:shrieker",
+      "field": "condition_immunities",
+      "value": [
+        "condition:blinded",
+        "condition:deafened",
+        "condition:frightened"
+      ],
+      "source": "SRD 5.1, Shrieker: condition immunities blinded, deafened, frightened (the snapshot lost deafened and, for some creatures, lists blinded twice)"
+    },
+    {
+      "creature": "monster:violet-fungus",
+      "field": "condition_immunities",
+      "value": [
+        "condition:blinded",
+        "condition:deafened",
+        "condition:frightened"
+      ],
+      "source": "SRD 5.1, Violet Fungus: condition immunities blinded, deafened, frightened (the snapshot lost deafened and, for some creatures, lists blinded twice)"
+    },
+    {
+      "creature": "monster:ice-devil",
+      "field": "damage_immunities",
+      "value": [
+        "damage-type:cold",
+        "damage-type:fire",
+        "damage-type:poison"
+      ],
+      "source": "SRD 5.1, Ice Devil: damage immunities cold, fire, poison (the snapshot lacks cold)"
+    },
+    {
+      "creature": "monster:black-bear",
+      "field": "skills",
+      "value": {
+        "skill:perception": 3
+      },
+      "source": "SRD 5.1, Black Bear: Perception +3"
+    },
+    {
+      "creature": "monster:half-red-dragon-veteran",
+      "field": "skills",
+      "value": {
+        "skill:athletics": 5,
+        "skill:perception": 2
+      },
+      "source": "SRD 5.1, Half-Red Dragon Veteran: Athletics +5, Perception +2"
+    },
+    {
+      "creature": "monster:swarm-of-ravens",
+      "field": "skills",
+      "value": {
+        "skill:perception": 5
+      },
+      "source": "SRD 5.1, Swarm of Ravens: Perception +5"
+    },
+    {
+      "creature": "monster:blink-dog",
+      "field": "passive_perception",
+      "value": 13,
+      "source": "SRD 5.1, Blink Dog: passive Perception 13 (Perception +3; the snapshot has 10)"
+    }
+  ],
+  "spell_corrections": [
+    {
+      "spell": "spell:scorching-ray",
+      "attack_type": "ranged",
+      "source": "SRD 5.1, Scorching Ray: make a ranged spell attack for each ray (the snapshot has no attack type)"
+    },
+    {
+      "spell": "spell:flame-blade",
+      "attack_type": "melee",
+      "source": "SRD 5.1, Flame Blade: a melee spell attack with the fiery blade (the snapshot has no attack type)"
+    },
+    {
+      "spell": "spell:arcane-hand",
+      "attack_type": "melee",
+      "damage": [
+        {
+          "damage_type": "damage-type:force",
+          "at_slot_level": {
+            "5": "4d8",
+            "6": "6d8",
+            "7": "8d8",
+            "8": "10d8",
+            "9": "12d8"
+          }
+        }
+      ],
+      "source": "SRD 5.1, Arcane Hand: the clenched fist is a melee spell attack for 4d8 force, +2d8 for each slot level above 5th (the grasping hand's 2d6 + modifier is not a table row: it needs a grapple first)"
+    },
+    {
+      "spell": "spell:spirit-guardians",
+      "save_ability": "wis",
+      "save_success": "half",
+      "damage": [
+        {
+          "damage_type": "damage-type:radiant",
+          "at_slot_level": {
+            "3": "3d8",
+            "4": "4d8",
+            "5": "5d8",
+            "6": "6d8",
+            "7": "7d8",
+            "8": "8d8",
+            "9": "9d8"
+          }
+        },
+        {
+          "damage_type": "damage-type:necrotic",
+          "at_slot_level": {
+            "3": "3d8",
+            "4": "4d8",
+            "5": "5d8",
+            "6": "6d8",
+            "7": "7d8",
+            "8": "8d8",
+            "9": "9d8"
+          }
+        }
+      ],
+      "source": "SRD 5.1, Spirit Guardians: Wisdom save, 3d8 radiant (good or neutral caster) or necrotic (evil caster), half on a success, +1d8 for each slot level above 3rd"
+    },
+    {
+      "spell": "spell:spike-growth",
+      "damage": [
+        {
+          "damage_type": "damage-type:piercing",
+          "at_slot_level": {
+            "2": "2d4"
+          }
+        }
+      ],
+      "source": "SRD 5.1, Spike Growth: 2d4 piercing for every 5 feet a creature travels in the area; no saving throw"
+    },
+    {
+      "spell": "spell:web",
+      "damage": [
+        {
+          "damage_type": "damage-type:fire",
+          "at_slot_level": {
+            "2": "2d4"
+          }
+        }
+      ],
+      "source": "SRD 5.1, Web: webs burning away deal 2d4 fire to a creature that starts its turn in the fire; the Dexterity save is for being restrained, so none is recorded"
+    },
+    {
+      "spell": "spell:earthquake",
+      "damage": [
+        {
+          "damage_type": "damage-type:bludgeoning",
+          "at_slot_level": {
+            "8": "5d6"
+          }
+        }
+      ],
+      "source": "SRD 5.1, Earthquake: a creature near a collapsing structure takes 5d6 bludgeoning on a failed Dexterity save and is buried; the save is a later-turn effect, so none is recorded"
+    },
+    {
+      "spell": "spell:teleport",
+      "damage": [
+        {
+          "damage_type": "damage-type:force",
+          "at_slot_level": {
+            "7": "3d10"
+          }
+        }
+      ],
+      "source": "SRD 5.1, Teleport: a mishap deals 3d10 force damage to each traveller; no saving throw"
+    },
+    {
+      "spell": "spell:glyph-of-warding",
+      "damage": [
+        {
+          "damage_type": "damage-type:acid",
+          "at_slot_level": {
+            "3": "5d8",
+            "4": "6d8",
+            "5": "7d8",
+            "6": "8d8",
+            "7": "9d8",
+            "8": "10d8",
+            "9": "11d8"
+          }
+        },
+        {
+          "damage_type": "damage-type:cold",
+          "at_slot_level": {
+            "3": "5d8",
+            "4": "6d8",
+            "5": "7d8",
+            "6": "8d8",
+            "7": "9d8",
+            "8": "10d8",
+            "9": "11d8"
+          }
+        },
+        {
+          "damage_type": "damage-type:fire",
+          "at_slot_level": {
+            "3": "5d8",
+            "4": "6d8",
+            "5": "7d8",
+            "6": "8d8",
+            "7": "9d8",
+            "8": "10d8",
+            "9": "11d8"
+          }
+        },
+        {
+          "damage_type": "damage-type:lightning",
+          "at_slot_level": {
+            "3": "5d8",
+            "4": "6d8",
+            "5": "7d8",
+            "6": "8d8",
+            "7": "9d8",
+            "8": "10d8",
+            "9": "11d8"
+          }
+        },
+        {
+          "damage_type": "damage-type:thunder",
+          "at_slot_level": {
+            "3": "5d8",
+            "4": "6d8",
+            "5": "7d8",
+            "6": "8d8",
+            "7": "9d8",
+            "8": "10d8",
+            "9": "11d8"
+          }
+        }
+      ],
+      "source": "SRD 5.1, Glyph of Warding: explosive runes deal 5d8 of the chosen acid, cold, fire, lightning or thunder damage, +1d8 for each slot level above 3rd; the Dexterity save happens when the glyph triggers, not at cast, so none is recorded"
+    },
+    {
+      "spell": "spell:call-lightning",
+      "save_ability": "dex",
+      "save_success": "half",
+      "source": "SRD 5.1, Call Lightning: each creature within 5 feet of the bolt's point makes a Dexterity save, 3d10 lightning on a failure and half on a success (the snapshot has the dice and no saving throw)"
+    },
+    {
+      "spell": "spell:disintegrate",
+      "damage": [
+        {
+          "damage_type": "damage-type:force",
+          "at_slot_level": {
+            "6": "10d6 + 40",
+            "7": "13d6 + 40",
+            "8": "16d6 + 40",
+            "9": "19d6 + 40"
+          }
+        }
+      ],
+      "source": "SRD 5.1, Disintegrate: 10d6 + 40 force, +3d6 for each slot level above 6th"
+    },
+    {
+      "spell": "spell:freezing-sphere",
+      "damage": [
+        {
+          "damage_type": "damage-type:cold",
+          "at_slot_level": {
+            "6": "10d6",
+            "7": "11d6",
+            "8": "12d6",
+            "9": "13d6"
+          }
+        }
+      ],
+      "source": "SRD 5.1, Freezing Sphere: 10d6 cold, +1d6 for each slot level above 6th"
+    },
+    {
+      "spell": "spell:phantasmal-killer",
+      "damage": [
+        {
+          "damage_type": "damage-type:psychic",
+          "at_slot_level": {
+            "4": "4d10",
+            "5": "5d10",
+            "6": "6d10",
+            "7": "7d10",
+            "8": "8d10",
+            "9": "9d10"
+          }
+        }
+      ],
+      "source": "SRD 5.1, Phantasmal Killer: 4d10 psychic, +1d10 for each slot level above 4th"
+    },
+    {
+      "spell": "spell:wall-of-fire",
+      "damage": [
+        {
+          "damage_type": "damage-type:fire",
+          "at_slot_level": {
+            "4": "5d8",
+            "5": "6d8",
+            "6": "7d8",
+            "7": "8d8",
+            "8": "9d8",
+            "9": "10d8"
+          }
+        }
+      ],
+      "source": "SRD 5.1, Wall of Fire: 5d8 fire, +1d8 for each slot level above 4th"
+    }
+  ],
+  "subclass_corrections": [
+    {
+      "subclass": "subclass:life",
+      "add_spells": [
+        {
+          "spell": "spell:guardian-of-faith",
+          "class_level": 7
+        }
+      ],
+      "source": "SRD 5.1, Life Domain Spells: at 7th level a cleric always has death ward and guardian of faith (the snapshot lacks guardian of faith)"
     }
   ]
 }

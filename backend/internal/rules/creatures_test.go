@@ -2,6 +2,7 @@ package rules
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -506,6 +507,191 @@ func TestLoadMonstersRefuses(t *testing.T) {
 	for name, mutate := range bad {
 		if check(mutate) == nil {
 			t.Errorf("%s: the loader accepted it", name)
+		}
+	}
+}
+
+func creatureOf(t *testing.T, c *Content, key string) Creature {
+	t.Helper()
+	cr, ok := c.CreatureByKey(key)
+	if !ok {
+		t.Fatalf("%s: creature not found", key)
+	}
+	return cr
+}
+
+func senseRange(cr Creature, key string) int {
+	for _, s := range cr.Senses {
+		if s.Key == key {
+			return s.RangeFt
+		}
+	}
+	return 0
+}
+
+// TestCreatureStatBlocksFollowTheSRD: armor class, speeds and senses the
+// snapshot had wrong are the SRD stat block's.
+func TestCreatureStatBlocksFollowTheSRD(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	if cr := creatureOf(t, c, "monster:basilisk"); cr.ArmorClass != 15 {
+		t.Errorf("Basilisk armor class = %d, want 15", cr.ArmorClass)
+	}
+	if cr := creatureOf(t, c, "monster:crocodile"); cr.SpeedWalkFt != 20 || cr.SpeedSwimFt != 30 {
+		t.Errorf("Crocodile speed = walk %d, swim %d, want 20 and 30", cr.SpeedWalkFt, cr.SpeedSwimFt)
+	}
+	if cr := creatureOf(t, c, "monster:giant-wasp"); cr.SpeedWalkFt != 10 || cr.SpeedFlyFt != 50 || cr.SpeedSwimFt != 0 {
+		t.Errorf("Giant Wasp speed = walk %d, fly %d, swim %d, want 10, 50 and no swim", cr.SpeedWalkFt, cr.SpeedFlyFt, cr.SpeedSwimFt)
+	}
+	if cr := creatureOf(t, c, "monster:adult-brass-dragon"); cr.SpeedWalkFt != 40 || cr.SpeedBurrowFt != 30 || cr.SpeedFlyFt != 80 {
+		t.Errorf("Adult Brass Dragon speed = walk %d, burrow %d, fly %d, want 40, 30 and 80", cr.SpeedWalkFt, cr.SpeedBurrowFt, cr.SpeedFlyFt)
+	}
+	shark := creatureOf(t, c, "monster:hunter-shark")
+	if got := senseRange(shark, "blindsight"); got != 30 {
+		t.Errorf("Hunter Shark blindsight = %d ft, want 30", got)
+	}
+	if got := senseRange(shark, "darkvision"); got != 0 {
+		t.Errorf("Hunter Shark darkvision = %d ft, want none", got)
+	}
+}
+
+// TestCultFanaticHitPoints: Cult Fanatic has 33 hit points, 6d8 + 6 (Constitution
+// 12 adds 1 per die), and every creature's roll is its dice plus dice times its
+// Constitution modifier, with the average as hit points.
+func TestCultFanaticHitPoints(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	if cr := creatureOf(t, c, "monster:cult-fanatic"); cr.HitPoints != 33 || cr.HitPointsRoll != "6d8+6" {
+		t.Errorf("Cult Fanatic hit points = %d (%s), want 33 (6d8+6)", cr.HitPoints, cr.HitPointsRoll)
+	}
+	list, err := c.ListCreatures(CreatureFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) < 300 {
+		t.Fatalf("only %d creatures listed", len(list))
+	}
+	for _, e := range list {
+		cr := creatureOf(t, c, e.Key)
+		var n, sides, bonus int
+		var sign string
+		switch k, _ := fmt.Sscanf(cr.HitPointsRoll, "%dd%d%1s%d", &n, &sides, &sign, &bonus); k {
+		case 2:
+			sign, bonus = "+", 0
+		case 4:
+		default:
+			t.Errorf("%s: unreadable hit point roll %q", e.Key, cr.HitPointsRoll)
+			continue
+		}
+		if sign == "-" {
+			bonus = -bonus
+		}
+		con := 10
+		for _, a := range cr.Abilities {
+			if a.Ability == CON {
+				con = a.Base
+			}
+		}
+		mod := (con - 10) / 2
+		if con < 10 && (con-10)%2 != 0 {
+			mod = (con - 11) / 2
+		}
+		if want := n*(sides+1)/2 + bonus; cr.HitPoints != want || bonus != n*mod {
+			t.Errorf("%s: hit points %d, roll %q, Constitution %d; want the average %d and a bonus of %d", e.Key, cr.HitPoints, cr.HitPointsRoll, con, want, n*mod)
+		}
+	}
+}
+
+// TestCreatureImmunitiesFollowTheSRD: the condition immunities the snapshot lost
+// (deafened) and the Ice Devil's cold immunity.
+func TestCreatureImmunitiesFollowTheSRD(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	want := map[string][]string{
+		"monster:black-pudding":     {"blinded", "charmed", "deafened", "exhaustion", "frightened", "prone"},
+		"monster:flying-sword":      {"blinded", "charmed", "deafened", "frightened", "paralyzed", "petrified", "poisoned"},
+		"monster:rug-of-smothering": {"blinded", "charmed", "deafened", "frightened", "paralyzed", "petrified", "poisoned"},
+		"monster:ochre-jelly":       {"blinded", "charmed", "deafened", "exhaustion", "frightened", "prone"},
+		"monster:shambling-mound":   {"blinded", "deafened", "exhaustion"},
+		"monster:shrieker":          {"blinded", "deafened", "frightened"},
+		"monster:violet-fungus":     {"blinded", "deafened", "frightened"},
+	}
+	for key, conditions := range want {
+		var got []string
+		for _, ci := range creatureOf(t, c, key).ConditionImmunities {
+			got = append(got, strings.TrimPrefix(ci.Key, "condition:"))
+		}
+		slices.Sort(got)
+		if !slices.Equal(got, conditions) {
+			t.Errorf("%s condition immunities = %v, want %v", key, got, conditions)
+		}
+	}
+	var got []string
+	for _, m := range creatureOf(t, c, "monster:ice-devil").Immunities {
+		for _, ty := range m.Types {
+			got = append(got, ty.Key)
+		}
+	}
+	slices.Sort(got)
+	if want := []string{"damage-type:cold", "damage-type:fire", "damage-type:poison"}; !slices.Equal(got, want) {
+		t.Errorf("Ice Devil damage immunities = %v, want %v", got, want)
+	}
+}
+
+// TestCreaturePerceptionFollowsTheSRD: the skills the snapshot left out are
+// listed, and every creature's passive Perception is 10 plus its Perception
+// bonus (the listed skill, or else the Wisdom modifier).
+func TestCreaturePerceptionFollowsTheSRD(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for _, tc := range []struct {
+		key, skill string
+		bonus      int
+	}{
+		{"monster:black-bear", "skill:perception", 3},
+		{"monster:half-red-dragon-veteran", "skill:athletics", 5},
+		{"monster:half-red-dragon-veteran", "skill:perception", 2},
+		{"monster:swarm-of-ravens", "skill:perception", 5},
+	} {
+		got, listed := 0, false
+		for _, s := range creatureOf(t, c, tc.key).Skills {
+			if s.Key == tc.skill {
+				got, listed = s.Bonus, true
+			}
+		}
+		if !listed || got != tc.bonus {
+			t.Errorf("%s: %s = %+d (listed %v), want %+d", tc.key, tc.skill, got, listed, tc.bonus)
+		}
+	}
+	if cr := creatureOf(t, c, "monster:blink-dog"); cr.PassivePerception != 13 {
+		t.Errorf("Blink Dog passive Perception = %d, want 13", cr.PassivePerception)
+	}
+	list, err := c.ListCreatures(CreatureFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range list {
+		// The SRD's Spider says passive Perception 12 with Wisdom 10 and no
+		// Perception skill; the other transcription says 10, so it is left out.
+		if e.Key == "monster:spider" {
+			continue
+		}
+		cr := creatureOf(t, c, e.Key)
+		bonus, listed := 0, false
+		for _, s := range cr.Skills {
+			if s.Key == "skill:perception" {
+				bonus, listed = s.Bonus, true
+			}
+		}
+		if !listed {
+			for _, a := range cr.Abilities {
+				if a.Ability == WIS {
+					bonus = a.Modifier
+				}
+			}
+		}
+		if want := 10 + bonus; cr.PassivePerception != want {
+			t.Errorf("%s: passive Perception %d, want %d (Perception %+d, skill listed %v)", e.Key, cr.PassivePerception, want, bonus, listed)
 		}
 	}
 }
