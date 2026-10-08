@@ -564,7 +564,11 @@ export class LiveSession {
           void this.trapBoard.refresh();
           void this.readSnapshot(campaignId, generation);
         },
-        onContentChanged: () => this.spellCatalog.forget(campaignId),
+        onContentChanged: () => {
+          this.spellCatalog.forget(campaignId);
+          // The sheet the trap skills come from may have changed with the table's content.
+          this.loadPlayerSheet(campaignId, generation);
+        },
         onVitals: (v) => {
           // Looking through a familiar's eyes, or coming back, changes what the player sees.
           const before =
@@ -769,11 +773,12 @@ export class LiveSession {
     }
   }
 
-  /** "Fechar" on the players' "Destaques" card. */
+  /** "Fechar" on the players' "Destaques" card: it closes the summary under it too, which has no button of its own while the card is up. */
   protected closeHighlights(): void {
     const e = this.highlightsFor();
     if (e) {
       this.highlightsClosed.set(e.id);
+      this.combat.dismissEnded();
     }
   }
 
@@ -838,6 +843,15 @@ export class LiveSession {
       return;
     }
     this.loadedSheetFor = own.characterId;
+    this.loadPlayerSheet(campaignId, generation);
+  }
+
+  /** Reads the player's own sheet again; best effort, the page keeps the one it has when this fails. */
+  private loadPlayerSheet(campaignId: string, generation: number): void {
+    const own = this.ownVitals();
+    if (this.isMaster() || !own) {
+      return;
+    }
     this.source.getPlayerSheet(campaignId, own.characterId).then(
       (sheet) => generation === this.generation && this.playerSheet.set(sheet),
       () => undefined,

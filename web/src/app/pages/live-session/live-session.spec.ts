@@ -494,6 +494,19 @@ describe('LiveSession', () => {
     expect(forget).toHaveBeenCalledWith('mirathel');
   });
 
+  it("reads the player's sheet again when the table's content changes", async () => {
+    const fixture = TestBed.createComponent(LiveSession);
+    await settle(fixture);
+    const page = fixture.componentInstance as unknown as {
+      playerSheet(): PlayerSheetVm | null;
+    };
+    expect(page.playerSheet()?.armorClass).toBe(14);
+    source.sheet = { ...source.sheet, armorClass: 16 };
+    source.push({ kind: 'contentChanged' });
+    await settle(fixture);
+    expect(page.playerSheet()?.armorClass).toBe(16);
+  });
+
   it('says the same to a pending member (RN-15)', async () => {
     source.campaign = {
       name: 'Mirathel',
