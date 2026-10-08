@@ -175,7 +175,7 @@ The server has no global `ReadTimeout` or `WriteTimeout`, on purpose: they would
 
 - **Each `Send` of a live stream** has 30 s to reach the client (`slowclient.Interceptor`; `Middleware` stores the `http.ResponseController` in the context, because Connect does not hand over the `ResponseWriter`). The deadline is set before each send and cleared after, so silence between two messages does not count. A reader that stopped reading (a laptop that slept, a dead mobile connection that never closed) ends with `Send` failing and the stream finishing as `client_gone`, instead of the goroutine staying stuck until Cloud Run closes the connection. The 30-minute stream cap, `ReadHeaderTimeout` and `IdleTimeout` remain.
 - **The body of an image upload** has 2 minutes to arrive (10 MiB, at under 1 Mbit/s), and **the `POST /auth/login` form**, 10 s (`slowclient.ReadBody`). Past the deadline the upload answers 400 (`MALFORMED_REQUEST`, "the upload took too long") and the login, "the form could not be read".
-- A unary RPC has no body-read deadline (the body is at most 4 MiB): left for later.
+- **The body of a unary RPC** (`application/json` or `application/proto`, at most 4 MiB) has 1 minute to arrive (`slowclient.UnaryBodyTimeout`, set by `slowclient.Middleware` before Connect reads it; Connect reads the whole body before any interceptor, the session's included). A client that sends part of it and stops gets a failed read instead of holding the bytes it sent and its goroutine until Cloud Run closes the request. The deadline is cleared once the body is read, so the handler's own work is not bounded by it, and a stream's request (`application/connect+...`) has none: its client says nothing after its one message.
 
 ### Abuse limits
 
@@ -388,7 +388,7 @@ sequenceDiagram
     S-->>N: 303 to return_to and __Host-meurpg_session cookie (30 days)
 ```
 
-The callback refuses with 400, creating no session, when: the login cookie is missing or the `state` does not match it; the state does not exist, was already used or is older than 10 minutes; the provider returned an error; the `code` exchange failed (including by PKCE); or the ID token fails any check. `aud` must be only our client ID, and `azp`, when present, too.
+The callback refuses with 400, creating no session, when: the login cookie is missing or the `state` does not match it; the state does not exist, was already used or is older than 10 minutes; the provider returned an error; the `code` exchange failed (including by PKCE); or the ID token fails any check. `aud` must be only our client ID, and `azp`, when present, too. A browser has one login cookie, so a second sign-in started in it (another tab, a link from another site) replaces the first: the first callback fails with `state_mismatch` and creates nothing, and the second completes; the person tries again.
 
 ### Session
 
@@ -600,7 +600,7 @@ Rules that hold for any intent, not only the invite's:
 
 ### Responses and GET
 
-Every `CampaignService` and `CampaignDocumentService` response, errors included, goes out with `Cache-Control: no-store`. Only `ListMyCampaigns` accepts GET (`NO_SIDE_EFFECTS`), because its request is empty. The other reads (`GetCampaign`, `ListMembers`, `ListInvites`, `GetCampaignDocument`) carry the campaign ID, and in a GET the whole message goes in the URL, which ends up in the platform logs (see [Privacy](privacy.md)). So they are `IDEMPOTENT` and POST-only, even with no side effect (rule 7 of the [API contracts](#api-contracts-protobuf)).
+Every `CampaignService` and `CampaignDocumentService` response, errors included, goes out with `Cache-Control: no-store` (also the `internal` error the server builds itself for a plain error or a panic, in `rpclog` and in the recover handler, which no module's interceptor sees). Only `ListMyCampaigns` accepts GET (`NO_SIDE_EFFECTS`), because its request is empty. The other reads (`GetCampaign`, `ListMembers`, `ListInvites`, `GetCampaignDocument`) carry the campaign ID, and in a GET the whole message goes in the URL, which ends up in the platform logs (see [Privacy](privacy.md)). So they are `IDEMPOTENT` and POST-only, even with no side effect (rule 7 of the [API contracts](#api-contracts-protobuf)).
 
 ### Campaign dice
 
@@ -618,7 +618,7 @@ The choices on the "Regras da mesa" page belong to `campaigns` (file `tablerules
 
 | Call | Who | What it does |
 | --- | --- | --- |
-| `GetTableRules` | Every active member and the pending member (RN-15; non-member: `not_found`) | The rules, the style they form, the three preset styles and the numbers of the ability-score methods (the standard array, the cost of each point-buy value, the 27 points and the typing range, from SRD 5.2.1), so the app does no arithmetic. With no row, the defaults. `IDEMPOTENT`. |
+| `GetTableRules` | Every active member and the pending member (RN-15; non-member: `not_found`) | The rules, the style they form, the three preset styles and the numbers of the ability-score methods (the standard array, the cost of each point-buy value, the 27 points and the typing range, from SRD 5.2.1), so the app does no arithmetic. With no row, the defaults. The dice mode (the campaign's) and the rules (their own row) are read in one read transaction, so a master saving in between never makes the page show one from before and the other from after. `IDEMPOTENT`. |
 | `SetTableRules` | The master | Replaces **all** the rules at once (the page has a single "Salvar regras"): each field is stored as sent, and the dice mode (`campaigns.dice_mode`, RN-18) goes in the same transaction. They apply from now on: existing sheets stay as they are. |
 | `SetCampaignXpMode` | The master | Changes the XP mode after the campaign is created (RN-09). See below. |
 
