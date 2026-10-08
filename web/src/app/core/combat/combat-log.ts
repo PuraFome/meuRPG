@@ -198,9 +198,7 @@ function attackText(e: CombatLogEntry): string {
  * master may overrule. */
 function saveNotes(save: SaveResult, ctx: LogContext): string {
   const unknown =
-    ctx.master && save.roll && !save.bonusKnown
-      ? `d20 ${save.roll.total}, bônus de resistência desconhecido`
-      : '';
+    ctx.master && save.roll && !save.bonusKnown ? `d20 ${save.roll.total}, bônus desconhecido` : '';
   const notes = [save.dc > 0 ? `CD ${save.dc}` : '', unknown].filter((n) => n !== '');
   return notes.length > 0 ? ` (${notes.join('; ')})` : '';
 }

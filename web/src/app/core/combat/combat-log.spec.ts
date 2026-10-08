@@ -455,7 +455,7 @@ describe('the log of spells, reactions, the fallen and conditions (slice 6.5c)',
     } as never);
     const master = { master: true, players: new Set<string>() };
     expect(logLine(cast, '', master)?.text).toContain(
-      'o Goblin 1 falhou (CD 14; d20 13, bônus de resistência desconhecido)',
+      'o Goblin 1 falhou (CD 14; d20 13, bônus desconhecido)',
     );
     // Positive control: a known bonus says nothing more.
     expect(logLine(cast, '', master)?.text).toContain('o Capitão Goblin resistiu (CD 14)');
