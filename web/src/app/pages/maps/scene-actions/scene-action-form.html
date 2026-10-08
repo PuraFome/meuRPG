@@ -1,5 +1,5 @@
 <form class="sf" novalidate (submit)="$event.preventDefault(); submit()" [attr.aria-labelledby]="id + '-title'">
-  <h4 class="sf__title" [id]="id + '-title'">Nova ação</h4>
+  <h4 class="sf__title" [id]="id + '-title'">{{ initial() ? 'Editar ação' : 'Nova ação' }}</h4>
 
   <fieldset class="sf__kinds">
     <legend class="mr-label">O que rolar</legend>
@@ -8,6 +8,7 @@
         <input
           #firstRadio
           type="radio"
+          class="mr-check-input"
           [name]="id + '-kind'"
           [value]="k.kind"
           [checked]="kind() === k.kind"
@@ -62,6 +63,8 @@
     />
     @if (dcError()) {
       <mat-error><mat-icon aria-hidden="true">error</mat-icon>{{ dcError() }}</mat-error>
+    } @else if (initial()) {
+      <mat-hint>Em branco tira a CD da ação.</mat-hint>
     }
   </mat-form-field>
 
@@ -73,7 +76,21 @@
   }
 
   <div class="sf__actions">
-    <button matButton="outlined" type="submit" [attr.aria-disabled]="busy()">Adicionar ação</button>
+    <button
+      matButton="outlined"
+      type="submit"
+      [class.sf__off]="unchanged()"
+      [disabled]="busy() || unchanged()"
+      disabledInteractive
+      [attr.aria-describedby]="unchanged() ? id + '-reason' : null"
+    >
+      {{ initial() ? 'Salvar ação' : 'Adicionar ação' }}
+    </button>
     <button matButton type="button" (click)="cancelled.emit()">Cancelar</button>
   </div>
+  @if (unchanged()) {
+    <p class="sf__reason" [id]="id + '-reason'">
+      <mat-icon aria-hidden="true">block</mat-icon>Mude um campo para salvar.
+    </p>
+  }
 </form>

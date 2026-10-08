@@ -381,6 +381,28 @@ export class FakeMapsClient {
     return this.sceneActions;
   }
 
+  /** The error the next `updateSceneAction` answers with (set by the spec). */
+  updateSceneActionError: Error | null = null;
+
+  async updateSceneAction(
+    _c: string,
+    _m: string,
+    pointId: string,
+    actionId: string,
+    changes: { key?: string; name?: string; dc?: number },
+  ): Promise<readonly SceneAction[]> {
+    this.record('updateSceneAction', pointId, actionId, JSON.stringify(changes));
+    if (this.updateSceneActionError) {
+      throw this.updateSceneActionError;
+    }
+    this.sceneActions = this.sceneActions.map((a) =>
+      a.id === actionId
+        ? { ...a, ...changes, ...(changes.key ? { checkName: changes.key } : {}) }
+        : a,
+    );
+    return this.sceneActions;
+  }
+
   async removeSceneAction(
     _c: string,
     _m: string,

@@ -154,6 +154,9 @@ The full code review of 07/10 raised one product question, which Vinicius answer
 - **The monthly image slot of a failed request.** The slot comes back only when the call was certainly not billed: the model refused, the key was refused (401 or 403), or the answer had no image. A timeout, a connection cut after the request left and an unreadable answer keep the slot spent, because Gemini may have billed them. A panic in our own code still gives the slot back: it is a bug of the server, and the server's daily cap still bounds the cost. See [RN-28](../product/rules.md) and [Operations](../operations.md#generated-images-the-gemini-api).
 - **"Redesenhar" with a full gallery.** A redraw of a generated dungeon's map is allowed with the gallery full when the old image goes away with it (it is not shown, not a portrait and not used elsewhere), because the gallery does not grow; it is still refused when the old image stays. See [Architecture](../architecture.md#generated-dungeon-maps).
 
+- **"Apagar mapa" says why before the click.** While a combat runs on the map or one of its treasures was found or turned into XP, the button stays clickable, turns grey and shows the reason under it; the confirmation still shows the server's refusal. A silently disabled button would hide the cause. See [Design](../design.md).
+- **The screens the server already allowed are built:** the master's "Movimento forçado" in combat (a push, a pull or a teleport provokes no opportunity attack), the class choice of a multiclass level-up, and editing a scene action's check, name and DC. No filters were needed: the notes already filter by scene, and there is no level-up history screen.
+- **A creature's token is never hidden.** It is a party token, like a player character's; only NPC tokens hide. So `SetMapTokenHidden` takes no creature. See [RN-10](../product/rules.md).
 
 ### Answered on 08/10/2026
 

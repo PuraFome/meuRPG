@@ -27,7 +27,8 @@ import { type Vision, tileProgress, tileRects, visionLegend } from '../../../../
  * they are drawn, the movement marks and the square of an opportunity attack's
  * reactor. The master can turn the reach of whoever is on turn on and off
  * ("Mostrar o alcance do Toren no mapa", E9-05): the server's `GetMoveOptions`
- * answer, drawn as it comes.
+ * answer, drawn as it comes. "Movimento forçado" (a teleport, a push or a pull)
+ * is a box under it that makes the next drag skip the opportunity attacks.
  */
 @Component({
   selector: 'app-combat-map-card',
@@ -51,6 +52,12 @@ export class CombatMapCard {
   readonly offers = input<readonly OfferMark[]>([]);
   /** The master's switch for the reach of whoever is on turn: its name, and whether it is on. */
   readonly reachSwitch = input<{ readonly name: string; readonly on: boolean } | null>(null);
+  /** The master's "Movimento forçado" box is offered (a running combat on a map): the next drag skips the opportunity attacks. */
+  readonly forcedSwitch = input(false);
+  /** The box is on: the next drag is forced. */
+  readonly forced = input(false);
+  /** What the last forced drag did, in words, for the live region. */
+  readonly forcedNote = input('');
   /** The player's own combatant may be dragged to pick a square (their turn, desktop): the drop opens "Mover" there. */
   readonly ownMovable = input(false);
   readonly hint = input(true);
@@ -68,6 +75,8 @@ export class CombatMapCard {
   readonly tokenDrop = output<TokenDrop>();
   /** The master turned the reach on or off. */
   readonly reachChange = output<boolean>();
+  /** The master turned "Movimento forçado" on or off. */
+  readonly forcedChange = output<boolean>();
   /** "Ver mapa": the player's full-screen, read-only map. */
   readonly openMap = output<void>();
 

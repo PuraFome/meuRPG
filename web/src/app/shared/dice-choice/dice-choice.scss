@@ -95,3 +95,22 @@
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
+
+// The reason an option cannot be chosen: the block icon and the sentence, inside the card.
+.dice-choice__reason {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}

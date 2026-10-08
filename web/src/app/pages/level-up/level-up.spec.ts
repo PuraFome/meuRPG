@@ -15,6 +15,7 @@ import {
   LevelUpRefusalSchema,
   type LevelUpOptions,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
+import { DerivedClassSchema } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { fakeContentWatcher } from '../../core/content/content-testing';
 import { createRouterTransport } from '@connectrpc/connect';
 
@@ -89,6 +90,7 @@ describe('LevelUpPage', () => {
     options: LevelUpOptions = wizardOptions({ preparedMaxAfter: 3 }),
     char = character(),
     optionsError?: Error,
+    classes?: { key: string; namePt: string; hitDie?: number }[],
   ) {
     client.character.mockReset().mockResolvedValue(char);
     client.options.mockReset();
@@ -97,7 +99,7 @@ describe('LevelUpPage', () => {
     } else {
       client.options.mockResolvedValue(options);
     }
-    client.catalog.mockReset().mockResolvedValue({ spells: SPELLS, skills: SKILLS });
+    client.catalog.mockReset().mockResolvedValue({ spells: SPELLS, skills: SKILLS, classes });
     client.dicePreference.mockReset().mockResolvedValue(DicePreference.APP);
     // The new maximum of prepared spells: 4, two more than the two prepared today.
     const after = pensantus(true);
@@ -193,6 +195,199 @@ describe('LevelUpPage', () => {
     expect(text(f)).toContain('Passo 2 de 4 · Vida');
     await click(f, button(f, 'Voltar'));
     expect(text(f)).toContain('Passo 1 de 4 · Habilidades');
+  });
+
+  describe('a sheet with two classes: "Qual classe sobe de nível?"', () => {
+    const cleric = (over: Parameters<typeof wizardOptions>[0] = {}) =>
+      wizardOptions({
+        classKey: 'class:cleric',
+        classNamePt: 'Clérigo',
+        fromLevel: 1,
+        toLevel: 2,
+        totalFromLevel: 4,
+        totalToLevel: 5,
+        hitDie: 8,
+        hitPointAverage: 5,
+        abilityScoreImprovement: false,
+        cantrips: 0,
+        spells: 0,
+        prepares: false,
+        preparedMax: 0,
+        preparedMaxAfter: 0,
+        spellsKind: 0,
+        newFeatures: [{ key: 'feature:channel-divinity', namePt: 'Canalizar Divindade' }],
+        ...over,
+      });
+    const twoClasses = () => {
+      const derived = pensantus();
+      derived.classes.push(
+        create(DerivedClassSchema, { classKey: 'class:cleric', namePt: 'Clérigo', level: 1 }),
+      );
+      derived.totalLevel = 4;
+      return character({}, derived);
+    };
+    async function multiclass(
+      wizard: LevelUpOptions = wizardOptions({ totalToLevel: 5, preparedMaxAfter: 3 }),
+      clericOptions: LevelUpOptions = cleric(),
+      classes?: { key: string; namePt: string; hitDie?: number }[],
+    ) {
+      const f = await setup(wizard, twoClasses(), undefined, classes);
+      client.options.mockImplementation((_c: string, _ch: string, key = '') =>
+        Promise.resolve(key === 'class:cleric' ? clericOptions : wizard),
+      );
+      return f;
+    }
+    const cards = (f: ComponentFixture<LevelUpPage>) =>
+      Array.from(el(f).querySelectorAll<HTMLLabelElement>('app-class-pick .card'));
+    const radio = (f: ComponentFixture<LevelUpPage>, name: string) =>
+      cards(f)
+        .find((c) => c.textContent?.includes(name))!
+        .querySelector<HTMLInputElement>('input')!;
+
+    it('is not drawn when the sheet has one class', async () => {
+      const f = await setup();
+      expect(el(f).querySelector('app-class-pick')).toBeNull();
+      expect(text(f)).not.toContain('Qual classe sobe de nível?');
+    });
+
+    it('draws a card for each class of the sheet, the first one checked, and reads the options with no class', async () => {
+      const f = await setup(wizardOptions({ totalToLevel: 5, preparedMaxAfter: 3 }), twoClasses());
+      expect(text(f)).toContain('Qual classe sobe de nível?');
+      expect(text(f)).toContain('O Pensantus tem duas classes. O nível 5 entra em uma delas');
+      expect(
+        cards(f).map((c) =>
+          Array.from(c.querySelectorAll('.card__title, .card__desc'), (x) => x.textContent).join(
+            ' ',
+          ),
+        ),
+      ).toEqual(['Mago nível 3 → 4', 'Clérigo nível 1 → 2']);
+      expect(radio(f, 'Mago').checked).toBe(true);
+      expect(radio(f, 'Clérigo').checked).toBe(false);
+      expect(client.options).toHaveBeenCalledWith('camp-1', 'ch-1');
+      expect(text(f)).toContain('Subir para o nível 5');
+      expect(text(f)).toContain('Pensantus · Mago 3 → Mago 4');
+      expect(document.activeElement).toBe(radio(f, 'Mago'));
+    });
+
+    it('goes to the other class at once when nothing was chosen: its options, steps, subtitle and the lines of its level', async () => {
+      const f = await multiclass();
+      await click(f, radio(f, 'Clérigo'));
+      expect(client.options).toHaveBeenLastCalledWith('camp-1', 'ch-1', 'class:cleric');
+      expect(radio(f, 'Clérigo').checked).toBe(true);
+      expect(text(f)).toContain('Subir para o nível 5');
+      expect(text(f)).toContain('Pensantus · Clérigo 1 → Clérigo 2');
+      expect(text(f)).toContain('Passo 1 de 2 · Vida');
+      expect(text(f)).toContain('Só o que o nível 2 de Clérigo dá fica aberto.');
+      expect(text(f)).toContain('O que o nível 2 de Clérigo dá');
+      expect(text(f)).toContain('O Clérigo ganha 1d8 por nível');
+      expect(el(f).querySelector('[role="status"].mr-visually-hidden')?.textContent).toContain(
+        'Clérigo escolhido. Passo 1 de 2, Vida.',
+      );
+      expect(document.activeElement).toBe(radio(f, 'Clérigo'));
+      // The preview is asked for the class that gains the level.
+      expect(client.preview.mock.calls.at(-1)?.[2].classKey).toBe('class:cleric');
+    });
+
+    it('says the level of the class, never the total, in a hit points step of a multiclass sheet', async () => {
+      const f = await multiclass();
+      await click(f, radio(f, 'Clérigo'));
+      expect(text(f)).not.toContain('O que o nível 5 dá');
+      expect(text(f)).not.toContain('Só o que o nível 2 dá');
+    });
+
+    it('asks in place after a choice was made: "Continuar com o Mago" first and focused, and nothing is read', async () => {
+      const f = await multiclass();
+      await click(f, el(f).querySelector('.row__input'));
+      const reads = client.options.mock.calls.length;
+      await click(f, radio(f, 'Clérigo'));
+      const ask = el(f).querySelector('app-class-pick [role="group"]')!;
+      expect(ask.textContent).toContain('Trocar de classe?');
+      expect(ask.textContent).toContain(
+        'As escolhas já feitas neste nível, como o aumento de habilidade, são descartadas.',
+      );
+      expect(Array.from(ask.querySelectorAll('button'), (b) => b.textContent?.trim())).toEqual([
+        'Trocar para o Clérigo',
+        'Continuar com o Mago',
+      ]);
+      expect(document.activeElement?.textContent?.trim()).toBe('Continuar com o Mago');
+      // The class in force stays checked behind the question.
+      await vi.advanceTimersByTimeAsync(0);
+      expect(radio(f, 'Mago').checked).toBe(true);
+      expect(radio(f, 'Clérigo').checked).toBe(false);
+      expect(client.options.mock.calls.length).toBe(reads);
+      await click(f, button(f, 'Continuar com o Mago'));
+      expect(el(f).querySelector('app-class-pick [role="group"]')).toBeNull();
+      expect(text(f)).toContain('Pensantus · Mago 3 → Mago 4');
+      expect(document.activeElement).toBe(radio(f, 'Mago'));
+    });
+
+    it('"Trocar para o Clérigo" throws the choices away and reads the other class', async () => {
+      const f = await multiclass();
+      await click(f, el(f).querySelector('.row__input'));
+      await click(f, radio(f, 'Clérigo'));
+      await click(f, button(f, 'Trocar para o Clérigo'));
+      expect(client.options).toHaveBeenLastCalledWith('camp-1', 'ch-1', 'class:cleric');
+      expect(text(f)).toContain('Pensantus · Clérigo 1 → Clérigo 2');
+      expect(el(f).querySelector('app-class-pick [role="group"]')).toBeNull();
+      // Back to the Mago: nothing of the first draft is left, so it does not ask again.
+      await click(f, radio(f, 'Mago'));
+      expect(text(f)).toContain('Falta escolher 1 habilidade.');
+    });
+
+    it('the roll in the app is asked for the class that gains the level', async () => {
+      const f = await multiclass();
+      await click(f, radio(f, 'Clérigo'));
+      await click(
+        f,
+        Array.from(el(f).querySelectorAll('.dice-choice__card')).find((c) =>
+          c.textContent?.includes('Rolar 1d8'),
+        ),
+      );
+      await click(f, button(f, /Rolar no app/));
+      expect(client.rollHitPoints).toHaveBeenCalledWith(
+        'camp-1',
+        'ch-1',
+        'class:cleric',
+        expect.any(String),
+      );
+    });
+
+    it('a die already rolled for the other class: the die card is dashed with the reason in it, the average stays, and no roll is asked', async () => {
+      const f = await multiclass(
+        wizardOptions({ totalToLevel: 5, preparedMaxAfter: 3 }),
+        cleric({ keptHitPointRoll: 3, keptHitPointRollClassKey: 'class:wizard' }),
+        [{ key: 'class:wizard', namePt: 'Mago', hitDie: 6 }],
+      );
+      await click(f, radio(f, 'Clérigo'));
+      const die = Array.from(el(f).querySelectorAll<HTMLElement>('.dice-choice__card')).find((c) =>
+        c.textContent?.includes('Rolar 1d8'),
+      )!;
+      expect(die.classList).toContain('dice-choice__card--off');
+      expect(die.querySelector('input')?.disabled).toBe(true);
+      expect(die.textContent).toContain(
+        'O dado deste nível já foi rolado para o Mago (3 no d6). Volte ao Mago para usar esse resultado, ou fique com a média.',
+      );
+      expect(text(f)).toContain('Média: 5');
+      expect(el(f).querySelector<HTMLInputElement>('.dice-choice__card input:checked')?.value).toBe(
+        '0',
+      );
+      expect(client.rollHitPoints).not.toHaveBeenCalled();
+    });
+
+    it('a die rolled for this very class is taken back as before (the other card is no different)', async () => {
+      const f = await multiclass(
+        wizardOptions({
+          totalToLevel: 5,
+          preparedMaxAfter: 3,
+          keptHitPointRoll: 3,
+          keptHitPointRollClassKey: 'class:wizard',
+        }),
+      );
+      await click(f, el(f).querySelector('.row__input'));
+      await click(f, button(f, 'Próximo'));
+      expect(el(f).querySelector('.dice-choice__card--off')).toBeNull();
+      expect(text(f)).not.toContain('já foi rolado para');
+    });
   });
 
   describe('the discard question', () => {

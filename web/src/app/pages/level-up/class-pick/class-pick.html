@@ -1,0 +1,42 @@
+<section class="mr-panel" aria-labelledby="class-title">
+  <h2 class="mr-panel__title" id="class-title">Qual classe sobe de nível?</h2>
+  <p class="lead">{{ lead() }}</p>
+  <div class="cards" role="radiogroup" aria-labelledby="class-title">
+    @for (c of classes(); track c.key) {
+      <label class="card">
+        <input
+          type="radio"
+          class="mr-visually-hidden"
+          name="level-up-class"
+          [value]="c.key"
+          [checked]="c.key === selected()"
+          [disabled]="busy()"
+          (change)="choose(c.key)"
+        />
+        <span class="card__dot" aria-hidden="true"></span>
+        <span class="card__text">
+          <span class="card__title">{{ c.name }}</span>
+          <span class="card__desc">nível {{ c.from }} → {{ c.to }}</span>
+        </span>
+      </label>
+    }
+  </div>
+  @if (asked(); as to) {
+    <div class="mr-notice mr-notice--warning ask" role="group" aria-labelledby="class-ask-title">
+      <mat-icon aria-hidden="true">warning</mat-icon>
+      <div class="ask__body">
+        <p>
+          <strong id="class-ask-title">Trocar de classe?</strong>
+          As escolhas já feitas neste nível, como o aumento de habilidade, são descartadas.
+        </p>
+        <div class="pair">
+          <button matButton="outlined" type="button" (click)="confirmSwitch.emit()">Trocar para o {{ to.name }}</button>
+          <button matButton="outlined" type="button" class="js-class-keep" (click)="keep.emit()">
+            Continuar com o {{ current()?.name }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+  <p class="mr-visually-hidden" role="status">{{ status() }}</p>
+</section>

@@ -60,7 +60,7 @@ describe('MapPage, "Apagar mapa"', () => {
   for (const [name, reason, words] of [
     ['COMBAT_RUNNING', MapBlockedReason.COMBAT_RUNNING, 'Há um combate neste mapa'],
     ['TREASURE_CONVERTED', MapBlockedReason.TREASURE_CONVERTED, 'virou XP'],
-    ['TREASURE_FOUND', MapBlockedReason.TREASURE_FOUND, 'Desmarque antes de apagar'],
+    ['TREASURE_FOUND', MapBlockedReason.TREASURE_FOUND, 'Desmarque-o antes de apagar o mapa'],
   ] as const) {
     it(`says why a refusal for ${name} cannot be done, not that the server is unreachable`, async () => {
       const message = await deleteMessage(reason);
