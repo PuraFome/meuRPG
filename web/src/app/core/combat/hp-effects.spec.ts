@@ -196,6 +196,6 @@ describe('what Ajuda gave each target, in words', () => {
 
   it('says the character at 0 comes back with the amount', () => {
     expect(gainWords(aid, 5, SpellEffectGain.CURRENT)).toBe('volta com 5 PV');
-    expect(gainLine(aid, 5, SpellEffectGain.CURRENT)).toBe('volta com 5 PV');
+    expect(gainLine(aid, 5, SpellEffectGain.CURRENT)).toBe('Volta com 5 PV');
   });
 });

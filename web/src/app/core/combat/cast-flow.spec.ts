@@ -355,7 +355,7 @@ describe('what a spell that reads hit points did (E8-03)', () => {
     expect(castRows(aid, new Map(), labels).map((r) => [r.label, r.word, r.lines])).toEqual([
       ['Goblin 1', 'Ganhou PV máximos', ['PV máximo +5']],
       ['Capitão Goblin', 'Ganhou PV temporários', ['5 PV temporários']],
-      ['Brisa', 'Voltou com PV', ['volta com 5 PV']],
+      ['Brisa', 'Voltou com PV', ['Volta com 5 PV']],
     ]);
   });
 

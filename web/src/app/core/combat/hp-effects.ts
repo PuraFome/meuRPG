@@ -72,7 +72,7 @@ export function gainLine(kind: SpellEffectKind, amount: number, gain?: SpellEffe
         case SpellEffectGain.TEMPORARY:
           return `${amount} PV temporários`;
         case SpellEffectGain.CURRENT:
-          return `volta com ${amount} PV`;
+          return `Volta com ${amount} PV`;
         default:
           return `PV máximo +${amount}`;
       }
