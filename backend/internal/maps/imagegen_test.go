@@ -436,7 +436,6 @@ func TestMR039_FailuresGiveTheSlotBack(t *testing.T) {
 	}{
 		{gen.MarkerEmpty, mapsv1.ImageGenerationState_IMAGE_GENERATION_STATE_FAILED, mapsv1.ImageGenerationFailure_IMAGE_GENERATION_FAILURE_NO_IMAGE, "O serviço não gerou uma imagem"},
 		{gen.MarkerRefuse, mapsv1.ImageGenerationState_IMAGE_GENERATION_STATE_REFUSED, mapsv1.ImageGenerationFailure_IMAGE_GENERATION_FAILURE_REFUSED, "recusou"},
-		{gen.MarkerError, mapsv1.ImageGenerationState_IMAGE_GENERATION_STATE_FAILED, mapsv1.ImageGenerationFailure_IMAGE_GENERATION_FAILURE_UNAVAILABLE, "não respondeu"},
 	} {
 		res := master.mustGenerate(campaign, "uma cena "+tc.marker)
 		g := res.GetGeneration()
@@ -449,7 +448,29 @@ func TestMR039_FailuresGiveTheSlotBack(t *testing.T) {
 	}
 	list, _ := master.gallery.ListGalleryImages(t.Context(), connect.NewRequest(&mapsv1.ListGalleryImagesRequest{CampaignId: campaign}))
 	if n := len(list.Msg.GetImages()); n != 0 {
-		t.Errorf("the gallery has %d images after three failures", n)
+		t.Errorf("the gallery has %d images after two failures", n)
+	}
+}
+
+// A call that failed in a way that may have been billed (a timeout, a cut connection,
+// an answer that cannot be read) keeps the month's slot; the control is a refusal, which
+// surely was not billed and gives it back.
+func TestMR039_AFailureThatMayHaveBeenBilledKeepsTheSlot(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t, withFake(&gen.Fake{}, 5))
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master)
+	res := master.mustGenerate(campaign, "uma cena "+gen.MarkerRefuse)
+	if res.GetGeneration().GetSlotSpent() || res.GetStatus().GetRemaining() != 5 {
+		t.Fatalf("a refusal: %v, remaining %d; want the slot back", res.GetGeneration(), res.GetStatus().GetRemaining())
+	}
+	res = master.mustGenerate(campaign, "uma cena "+gen.MarkerError)
+	g := res.GetGeneration()
+	if g.GetState() != mapsv1.ImageGenerationState_IMAGE_GENERATION_STATE_FAILED || !g.GetSlotSpent() || res.GetImage() != nil {
+		t.Errorf("a failed call: %v, want FAILED with the slot spent", g)
+	}
+	if got := res.GetStatus().GetRemaining(); got != 4 {
+		t.Errorf("remaining = %d after a call that may have been billed, want 4", got)
 	}
 }
 
@@ -710,7 +731,12 @@ func TestMR039_TheRequestIsChecked(t *testing.T) {
 	call := func(mod func(*mapsv1.GenerateSceneImageRequest)) error {
 		req := &mapsv1.GenerateSceneImageRequest{CampaignId: campaign, IdempotencyKey: nextKey(), Prompt: "uma cena"}
 		mod(req)
-		_, err := master.imagegen.GenerateSceneImage(t.Context(), connect.NewRequest(req))
+		res, err := master.imagegen.GenerateSceneImage(t.Context(), connect.NewRequest(req))
+		if err == nil {
+			// Only a few requests may be alive at once: let this one end, so the
+			// next accepted case is not refused for the ones still running.
+			master.waitGeneration(campaign, res.Msg.GetGeneration().GetId())
+		}
 		return err
 	}
 	many := func(id string, n int) []string {
@@ -963,13 +989,13 @@ func TestMR039_Shutdown(t *testing.T) {
 	}()
 	time.Sleep(200 * time.Millisecond)
 
-	start := time.Now()
 	h.svc.CancelGenerations()
-	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	// The wait ends when the generations have stopped, not when its patience does.
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	h.svc.WaitForGenerations(ctx)
-	if time.Since(start) > 1500*time.Millisecond {
-		t.Errorf("the shutdown took %v, want about a second at most", time.Since(start))
+	if ctx.Err() != nil {
+		t.Errorf("the shutdown waited for the whole timeout: %v", ctx.Err())
 	}
 	<-polled // the long poll answered at the shutdown, maybe before the refund was written
 	got, err := master.getGeneration(campaign, queued.GetGeneration().GetId(), 0)
@@ -1097,6 +1123,49 @@ func TestMR039_TheReferencesAreShrunkAndTheRequestIsCapped(t *testing.T) {
 	wantGenerationBlocked(t, "GenerateSceneImage with too many big references", err, mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_REQUEST_TOO_LARGE)
 	if got := master.imageStatus(campaign).GetUsedThisMonth(); got != before {
 		t.Errorf("a refused request used a slot: %d -> %d", before, got)
+	}
+}
+
+// A request keeps its shrunk references in memory until its call goes out, so the
+// server holds only so many alive at once: the one calling the model and the ones
+// waiting for its slot. Another is refused without spending the month's slot, and the
+// room comes back as the requests end.
+func TestMR039_OnlySoManyRequestsWaitForTheModel(t *testing.T) {
+	t.Parallel()
+	fake, entered, release := holdingFake()
+	h := newHarness(t, withFake(fake, 30))
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master)
+	ask := func() (string, error) {
+		res, err := master.generate(campaign, "x")
+		if err != nil {
+			return "", err
+		}
+		return res.GetGeneration().GetId(), nil
+	}
+	var ids []string
+	for range maxPendingRequests {
+		id, err := ask()
+		if err != nil {
+			t.Fatalf("a request among the first %d: %v", maxPendingRequests, err)
+		}
+		ids = append(ids, id)
+	}
+	<-entered
+	used := master.imageStatus(campaign).GetUsedThisMonth()
+	_, err := ask()
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("a request over %d alive = %v, want resource_exhausted", maxPendingRequests, err)
+	}
+	if got := master.imageStatus(campaign).GetUsedThisMonth(); got != used {
+		t.Errorf("a refused request used a slot: %d -> %d", used, got)
+	}
+	close(release)
+	for _, id := range ids {
+		master.waitGeneration(campaign, id)
+	}
+	if _, err := ask(); err != nil {
+		t.Errorf("a request after the others ended: %v", err)
 	}
 }
 

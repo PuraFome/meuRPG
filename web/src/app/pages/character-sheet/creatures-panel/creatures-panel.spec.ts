@@ -5,7 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
-import { of } from 'rxjs';
+import { Subject, of } from 'rxjs';
 
 import { CharacterVitalsSchema } from '../../../../gen/meurpg/play/v1/play_pb';
 import { CreatureSource } from '../../../../gen/meurpg/characters/v1/characters_pb';
@@ -231,6 +231,81 @@ describe('CreaturesPanel (E9-10, MR-037, RN-20)', () => {
     expect(el.querySelectorAll('app-creature-card')).toHaveLength(1);
   });
 
+  it('a read that fails after the list was shown keeps the list and says it could not update, with a way to try again', async () => {
+    const { fixture, el, flat, settle } = await setup({
+      access: FAMILIAR(),
+      creatures: [creature('cr-1', 'Nanquim')],
+    });
+    api.failWith = new ConnectError('down', Code.Unavailable);
+    fixture.componentRef.setInput('reload', 1);
+    fixture.detectChanges();
+    await settle();
+    expect(el.querySelectorAll('app-creature-card')).toHaveLength(1);
+    expect(flat(el.querySelector('[role=alert]'))).toBe(
+      'Não deu para atualizar as criaturas agora.',
+    );
+    api.failWith = null;
+    api.creatures = [creature('cr-1', 'Nanquim'), creature('cr-2', 'Pena')];
+    el.querySelector<HTMLButtonElement>('.retry')!.click();
+    await settle();
+    expect(el.querySelectorAll('app-creature-card')).toHaveLength(2);
+    expect(el.querySelector('[role=alert]')).toBeNull();
+  });
+
+  it('a read that works after the list was shown says nothing about a failure (positive control)', async () => {
+    const { fixture, el, settle } = await setup({
+      access: FAMILIAR(),
+      creatures: [creature('cr-1', 'Nanquim')],
+    });
+    fixture.componentRef.setInput('reload', 1);
+    fixture.detectChanges();
+    await settle();
+    expect(el.querySelector('[role=alert]')).toBeNull();
+  });
+
+  it('a creature the master gives while a cast sheet is open is told too, after the cast is', async () => {
+    const { fixture, el, flat, settle } = await setup({ access: FAMILIAR() });
+    const closed = new Subject<unknown>();
+    dialogOpen.mockReturnValue({ afterClosed: () => closed });
+    el.querySelector<HTMLButtonElement>('.cast__btn')!.click();
+    api.creatures = [
+      creature('cr-2', 'Mastim', { source: CreatureSource.MASTER, monsterKey: 'monster:mastiff' }),
+    ];
+    fixture.componentRef.setInput('reload', 1);
+    fixture.detectChanges();
+    await settle();
+    api.creatures = [...api.creatures, creature('cr-1', 'Nanquim')];
+    closed.next({
+      spellName: 'Convocar Familiar',
+      ritual: true,
+      castingTime: '1 hora',
+      names: ['Nanquim'],
+      count: 1,
+      dismissed: 0,
+    });
+    closed.complete();
+    await settle();
+    expect(flat(el.querySelector('.live'))).toContain('Nanquim chegou.');
+    expect(flat(el.querySelector('.live'))).toContain('O mestre deu uma criatura a você: Mastim.');
+  });
+
+  it('a creature the master gives while a cast sheet is open is told when the sheet is closed without casting', async () => {
+    const { fixture, el, flat, settle } = await setup({ access: FAMILIAR() });
+    const closed = new Subject<unknown>();
+    dialogOpen.mockReturnValue({ afterClosed: () => closed });
+    el.querySelector<HTMLButtonElement>('.cast__btn')!.click();
+    api.creatures = [
+      creature('cr-2', 'Mastim', { source: CreatureSource.MASTER, monsterKey: 'monster:mastiff' }),
+    ];
+    fixture.componentRef.setInput('reload', 1);
+    fixture.detectChanges();
+    await settle();
+    closed.next(undefined);
+    closed.complete();
+    await settle();
+    expect(flat(el.querySelector('.live'))).toBe('O mestre deu uma criatura a você: Mastim.');
+  });
+
   it('the answer of an older read never replaces a newer one', async () => {
     const { fixture, el, settle } = await setup({ access: FAMILIAR() });
     let release!: () => void;
@@ -361,6 +436,24 @@ describe('CreaturesPanel, a druid in Wild Shape: the reads of her form', () => {
     reads[0].resolve(vitals('')); // older, stale: own shape
     await settle(fixture);
     expect(flat(el.querySelector('.js-wild'))).toContain('Voltar à forma normal');
+  });
+
+  it('reads the form again when the page says the vitals changed, so a form that ended elsewhere leaves the panel', async () => {
+    const api = new FakeCreaturesClient();
+    api.vitals = vitals('Lobo');
+    const fixture = build(api);
+    fixture.detectChanges();
+    await settle(fixture);
+    const el = fixture.nativeElement as HTMLElement;
+    expect(flat(el.querySelector('.js-wild'))).toContain('Voltar à forma normal');
+
+    // The form ended in the master's hand: no creature changed, only the vitals did.
+    api.vitals = vitals('');
+    fixture.componentRef.setInput('formReload', 1);
+    fixture.detectChanges();
+    await settle(fixture);
+    expect(flat(el.querySelector('.js-wild'))).toContain('Transformar');
+    expect(flat(el.querySelector('.js-wild'))).not.toContain('Voltar à forma normal');
   });
 
   it('sends one request when "Voltar à forma normal" is tapped twice, and shows no refusal', async () => {

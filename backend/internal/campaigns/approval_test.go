@@ -2,6 +2,7 @@ package campaigns
 
 import (
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -230,5 +231,39 @@ func wantPendingView(t *testing.T, call string, c *campaignsv1.Campaign, id stri
 	if c.GetId() != id || c.GetName() != "Mirathel" || c.GetMyRole() != campaignsv1.Role_ROLE_PLAYER || !c.GetAwaitingApproval() ||
 		c.GetXpMode() != campaignsv1.XpMode_XP_MODE_UNSPECIFIED || c.GetCreatedAt() != nil {
 		t.Errorf("%s campaign = %v, want only the id, the name and ROLE_PLAYER, awaiting approval", call, c)
+	}
+}
+
+// A pending membership past its 30-day deadline is no membership, even while
+// the TTL job has not deleted the row: approving a character cannot bring it
+// back. Before the deadline, the same call activates it.
+func TestActivatePendingMemberLeavesAnExpiredMembershipAlone(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	mestre, atrasada, emDia := h.newUser("Mestre"), h.newUser("Atrasada"), h.newUser("EmDia")
+	id := mestre.createCampaign(t, "Mirathel").GetId()
+	invite := mestre.createManyApprovalInvite(t, id)
+	atrasada.join(t, invite)
+	emDia.join(t, invite)
+	past := h.clock.Now().Add(-time.Hour)
+	if _, err := h.pool.Exec(t.Context(), "UPDATE campaign_members SET pending_expires_at = $3 WHERE campaign_id = $1 AND user_id = $2", id, atrasada.id, past); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := db.InTx(t.Context(), h.pool, func(tx pgx.Tx) error {
+		for _, u := range []*user{atrasada, emDia} {
+			if err := h.service.ActivatePendingMember(t.Context(), tx, id, u.id); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("transaction error = %v", err)
+	}
+	if got := h.memberStatus(id, atrasada.id); got != "pending" {
+		t.Errorf("status of the expired member = %q, want pending", got)
+	}
+	if got := h.memberStatus(id, emDia.id); got != "active" {
+		t.Errorf("status of the member within the deadline = %q, want active (positive control)", got)
 	}
 }

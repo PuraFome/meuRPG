@@ -291,7 +291,7 @@ func (s *Service) ActiveCampaigns(ctx context.Context, userID string) ([]*campai
 // campaign's master. It takes no caller on purpose, like LockSheets: the
 // check is ApproveCharacter's. Nothing else calls it.
 func (s *Service) ActivatePendingMember(ctx context.Context, tx pgx.Tx, campaignID, userID string) error {
-	if _, err := s.queries.WithTx(tx).ActivatePendingMember(ctx, campaignsdb.ActivatePendingMemberParams{CampaignID: campaignID, UserID: userID}); err != nil {
+	if _, err := s.queries.WithTx(tx).ActivatePendingMember(ctx, campaignsdb.ActivatePendingMemberParams{CampaignID: campaignID, UserID: userID, Now: s.now()}); err != nil {
 		return fmt.Errorf("activate pending member: %w", err)
 	}
 	return nil

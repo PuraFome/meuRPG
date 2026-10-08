@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -107,4 +108,60 @@ func TestLiveContentMemory(t *testing.T) {
 	t.Logf("a catalog is %d KB on the wire (spells, classes, races... with their names)", wire/1024)
 	runtime.KeepAlive(contents)
 	runtime.KeepAlive(&svc)
+}
+
+// TestLiveContentMemoryAtMaximumText measures a table whose 300 entries each
+// carry nearly the 64 KiB of text an entry may hold, the biggest content the
+// limits allow, decoded from stored data the way a read does. Run with
+// MEURPG_MEASURE=1 and -v (docs/operations.md).
+func TestLiveContentMemoryAtMaximumText(t *testing.T) {
+	if os.Getenv("MEURPG_MEASURE") == "" {
+		t.Skip("set MEURPG_MEASURE=1 to measure")
+	}
+	const kind = rulesv1.TableContentKind_TABLE_CONTENT_KIND_SPELL
+	var rows []charactersdb.CampaignContent
+	var data int
+	for i := range 300 {
+		name := fmt.Sprintf("Magia %d", i)
+		spell := testSpell(name, "class:wizard")
+		spell.DescPt = nil
+		for p := range 15 { // 15 paragraphs of 4,000 characters: just under the entry's 64 KiB
+			spell.DescPt = append(spell.DescPt, strings.Repeat(string(rune('a'+(i+p)%26)), 3990)+fmt.Sprint(i, p))
+		}
+		key := entryKey(kind, name, rows)
+		st, err := prepare(key, kind, spell, nil)
+		if err != nil {
+			t.Fatalf("prepare(%s): %v", key, err)
+		}
+		now := time.Now()
+		rows = append(rows, charactersdb.CampaignContent{ContentKey: key, Kind: kindPrefix(kind), NamePt: name, Data: st.data, Revision: i32(len(rows) + 1), CreatedAt: now, UpdatedAt: now})
+		data += len(st.data)
+	}
+	srd := loadRules(t)
+	heap := func() uint64 {
+		runtime.GC()
+		runtime.GC()
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		return m.HeapAlloc
+	}
+	const n = 4
+	contents := make([]*rules.Content, 0, n)
+	before := heap()
+	start := time.Now()
+	for range n {
+		o, err := overlayOf(rows, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c, err := srd.With(o)
+		if err != nil {
+			t.Fatal(err)
+		}
+		contents = append(contents, c)
+	}
+	missTime := time.Since(start) / n
+	kept := heap() - before
+	t.Logf("300 entries of maximum text: %d KB of stored data; a miss takes %v; a content keeps %.2f MB (the live source's budget is %d MB)", data/1024, missTime, float64(kept)/n/1e6, maxLiveBytes>>20)
+	runtime.KeepAlive(contents)
 }

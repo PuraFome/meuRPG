@@ -9,9 +9,11 @@ import (
 	"uuid"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -379,6 +381,50 @@ func TestCreateNpcFromCreatureRace(t *testing.T) {
 		var n int
 		if err := h.pool.QueryRow(t.Context(), "SELECT count(*) FROM characters WHERE campaign_id = $1 AND create_key = $2", campaign, key).Scan(&n); err != nil || n != 1 {
 			t.Errorf("round %d: %d rows for the key, %v; want 1", round, n, err)
+		}
+	}
+}
+
+// TestMonsterNpcRace: several combats that bring the same monster for the first
+// time at once each get its NPC, the same one, and the campaign keeps one row.
+func TestMonsterNpcRace(t *testing.T) {
+	t.Parallel()
+	dbtest.PoolSize(t, 8)
+	h := newHarness(t)
+	master := h.newUser("Mestre")
+	const callers = 6
+	for round := range 8 {
+		campaign := h.newCampaign(master, "Mirathel")
+		ids := make([]string, callers)
+		errs := make([]error, callers)
+		var wg sync.WaitGroup
+		start := make(chan struct{})
+		for i := range callers {
+			wg.Go(func() {
+				<-start
+				errs[i] = db.InTx(t.Context(), h.pool, func(tx pgx.Tx) error {
+					npc, ok, err := h.svc.MonsterNpc(t.Context(), tx, campaign, master.id, "monster:ogre", h.clock.Now())
+					if err == nil && !ok {
+						err = errors.New("the SRD ogre was not found")
+					}
+					ids[i] = npc.ID
+					return err
+				})
+			})
+		}
+		close(start)
+		wg.Wait()
+		for i := range callers {
+			if errs[i] != nil {
+				t.Fatalf("round %d, combat %d: %v", round, i, errs[i])
+			}
+			if ids[i] != ids[0] {
+				t.Errorf("round %d: combat %d got NPC %s, combat 0 got %s", round, i, ids[i], ids[0])
+			}
+		}
+		var n int
+		if err := h.pool.QueryRow(t.Context(), "SELECT count(*) FROM characters WHERE campaign_id = $1 AND create_key = $2", campaign, monsterNpcKey(campaign, "monster:ogre")).Scan(&n); err != nil || n != 1 {
+			t.Errorf("round %d: %d rows for the monster, %v; want 1", round, n, err)
 		}
 	}
 }

@@ -135,6 +135,42 @@ export function planDoorBlock(
   };
 }
 
+/**
+ * The squares of the rules' grid that make the drawing's square holding `(col, row)`: a door is a whole drawing square, so
+ * revealing one clears the wall under all of them (one square on a map that was never calibrated).
+ */
+export function doorBlock(
+  columns: number,
+  rows: number,
+  factor: number,
+  col: number,
+  row: number,
+): readonly Square[] {
+  const f = Math.max(1, Math.floor(factor));
+  const bc = Math.floor(col / f) * f;
+  const br = Math.floor(row / f) * f;
+  const squares: Square[] = [];
+  for (let r = br; r < Math.min(br + f, rows); r++) {
+    for (let c = bc; c < Math.min(bc + f, columns); c++) {
+      squares.push({ col: c, row: r });
+    }
+  }
+  return squares;
+}
+
+/** The squares of the door's block that have a wall under them. */
+export function wallUnderDoor(
+  walls: readonly Square[],
+  columns: number,
+  rows: number,
+  factor: number,
+  door: Square,
+): readonly Square[] {
+  return doorBlock(columns, rows, factor, door.col, door.row).filter((s) =>
+    walls.some((w) => w.col === s.col && w.row === s.row),
+  );
+}
+
 /** Whether a door of this kind blocks the sight of a creature standing in its square (RN-26: closed, locked and secret). */
 export function hidesWhoStands(kind: DoorKind | 0): boolean {
   return kind === 2 || kind === 3 || kind === 5;

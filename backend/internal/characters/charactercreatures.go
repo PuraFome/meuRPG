@@ -293,7 +293,11 @@ func (s *Service) GiveCreature(
 	var replayed bool
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		// The owner is locked first, so two calls for the same character take turns.
+		// The session first, as every combat write does (the gift writes a session
+		// event); then the owner, so two calls for the same character take turns.
+		if err := s.lockSession(ctx, tx, m.CampaignID); err != nil {
+			return err
+		}
 		owner, err := visibleForUpdate(ctx, q, m, id)
 		if err != nil {
 			return err

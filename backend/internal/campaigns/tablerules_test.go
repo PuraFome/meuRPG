@@ -4,17 +4,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"google.golang.org/protobuf/proto"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1/campaignsv1connect"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
 )
 
@@ -438,5 +445,93 @@ func TestRN24_APendingMemberRollsByTheCampaignsDiceMode(t *testing.T) {
 	}
 	if got := pending.tableRules(t, id); got.GetRules().GetDiceMode() != campaignsv1.DiceMode_DICE_MODE_PHYSICAL {
 		t.Errorf("the pending member reads %v", got.GetRules())
+	}
+}
+
+// afterQuery is a pgx tracer that calls hook, once, when a query containing
+// match has just finished: the test's way of saving between two statements.
+type afterQuery struct {
+	match string
+	hook  func()
+	once  sync.Once
+}
+
+type queryTextKey struct{}
+
+func (*afterQuery) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
+	return context.WithValue(ctx, queryTextKey{}, data.SQL)
+}
+
+func (a *afterQuery) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, _ pgx.TraceQueryEndData) {
+	if sql, _ := ctx.Value(queryTextKey{}).(string); strings.Contains(sql, a.match) {
+		a.once.Do(a.hook)
+	}
+}
+
+// GetTableRules answers from one snapshot: a master who saves the rules (and
+// with them the dice mode) while the page is being read never makes it show
+// the new dice mode with the old rules, or the other way round.
+func TestGetTableRulesIsOneSnapshotWhileTheMasterSaves(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	mestre, jogadora := h.newUser("Mestre"), h.newUser("Jogadora")
+	id := mestre.createCampaign(t, "Mirathel").GetId()
+	_, token := mestre.createInvite(t, id, 0, 0)
+	jogadora.join(t, token)
+
+	before := validRules()
+	before.DiceMode = campaignsv1.DiceMode_DICE_MODE_APP
+	before.HitPoints = campaignsv1.HitPointsRule_HIT_POINTS_RULE_AVERAGE
+	after := validRules()
+	after.DiceMode = campaignsv1.DiceMode_DICE_MODE_PHYSICAL
+	after.HitPoints = campaignsv1.HitPointsRule_HIT_POINTS_RULE_ROLL
+	if _, err := mestre.setTableRules(id, before); err != nil {
+		t.Fatalf("SetTableRules(before) error = %v", err)
+	}
+
+	// A second service on the same database, whose connections save the master's
+	// new rules right after the campaign row is read: between the page's two
+	// reads, if it makes two.
+	tracer := &afterQuery{match: "FROM campaigns", hook: func() {
+		if _, err := mestre.setTableRules(id, after); err != nil {
+			t.Errorf("SetTableRules(after) from the hook error = %v", err)
+		}
+	}}
+	pool, err := db.NewPoolWith(t.Context(), h.pool.Config().ConnString(), func(cfg *pgxpool.Config) {
+		cfg.MaxConns = 2
+		cfg.ConnConfig.Tracer = tracer
+	})
+	if err != nil {
+		t.Fatalf("NewPoolWith() error = %v", err)
+	}
+	t.Cleanup(pool.Close)
+	svc, err := New(Config{Pool: pool, Profiles: h.users, Logger: slog.New(slog.DiscardHandler), Now: h.clock.Now})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	mux := http.NewServeMux()
+	svc.Mount(mux.Handle, testSessions, connect.WithRequireConnectProtocolHeader())
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+
+	client := campaignsv1connect.NewCampaignServiceClient(server.Client(), server.URL, clientOptions(jogadora.id)...)
+	res, err := client.GetTableRules(t.Context(), connect.NewRequest(&campaignsv1.GetTableRulesRequest{CampaignId: id}))
+	if err != nil {
+		t.Fatalf("GetTableRules() error = %v", err)
+	}
+	got := res.Msg.GetRules()
+	old := got.GetDiceMode() == before.GetDiceMode() && got.GetHitPoints() == before.GetHitPoints()
+	now := got.GetDiceMode() == after.GetDiceMode() && got.GetHitPoints() == after.GetHitPoints()
+	if !old && !now {
+		t.Errorf("GetTableRules() = dice %v with hit points %v, want the rules as they were or as they became, not a mix", got.GetDiceMode(), got.GetHitPoints())
+	}
+
+	// Positive control: the hook did save, so the next read shows the new rules.
+	res, err = client.GetTableRules(t.Context(), connect.NewRequest(&campaignsv1.GetTableRulesRequest{CampaignId: id}))
+	if err != nil {
+		t.Fatalf("GetTableRules() again error = %v", err)
+	}
+	if got := res.Msg.GetRules(); got.GetDiceMode() != after.GetDiceMode() || got.GetHitPoints() != after.GetHitPoints() {
+		t.Errorf("GetTableRules() after the save = dice %v, hit points %v, want the saved rules", got.GetDiceMode(), got.GetHitPoints())
 	}
 }

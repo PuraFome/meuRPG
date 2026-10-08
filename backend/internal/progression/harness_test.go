@@ -124,6 +124,26 @@ type harness struct {
 	users  *identity.PostgresStore
 	play   *play.Service
 	server *httptest.Server
+	// beforeAward, when set, runs once after an award's checks outside the
+	// transaction and before the transaction opens: the window where another
+	// request commits.
+	beforeAward func(ctx context.Context)
+}
+
+// racingCampaigns is the real campaigns service with a hook after the XP mode
+// is read outside a transaction, the last read before an award's transaction.
+type racingCampaigns struct {
+	*campaigns.Service
+	h *harness
+}
+
+func (c racingCampaigns) CampaignXPMode(ctx context.Context, tx pgx.Tx, campaignID string) (campaignsv1.XpMode, error) {
+	mode, err := c.Service.CampaignXPMode(ctx, tx, campaignID)
+	if hook := c.h.beforeAward; hook != nil && tx == nil && err == nil {
+		c.h.beforeAward = nil
+		hook(ctx)
+	}
+	return mode, err
 }
 
 // newHarness serves the progression, play, campaigns and characters services
@@ -154,7 +174,7 @@ func newHarness(t *testing.T) *harness {
 		t.Fatalf("play.New() error = %v", err)
 	}
 	h.play = pl
-	svc, err := New(Config{Pool: pool, Party: chars, Combats: pl, Log: pl, Treasures: maps.NewTreasures(pool), Campaigns: camps, Profiles: h.users, Logger: logger, Now: clock.Now})
+	svc, err := New(Config{Pool: pool, Party: chars, Combats: pl, Log: pl, Treasures: maps.NewTreasures(pool), Campaigns: racingCampaigns{Service: camps, h: h}, Profiles: h.users, Logger: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}

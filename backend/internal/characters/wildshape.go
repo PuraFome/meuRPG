@@ -222,7 +222,7 @@ func (s *Service) writeWildShape(ctx context.Context, tx pgx.Tx, content *rules.
 	if err != nil {
 		return nil, link.Character{}, wrap("save the wild shape", err)
 	}
-	if _, err := q.TouchVitals(ctx, charactersdb.TouchVitalsParams{CharacterID: row.ID, HitPointsCurrent: before.GetHitPointsCurrent(), Now: s.now()}); err != nil {
+	if _, err := q.TouchVitals(ctx, charactersdb.TouchVitalsParams{CharacterID: row.ID, Now: s.now()}); err != nil {
 		return nil, link.Character{}, wrap("save the vitals", err)
 	}
 	after, body, _, err := s.shapedVitals(ctx, tx, content, campaignID, row.ID)
@@ -263,12 +263,12 @@ func (s *Service) SetFamiliarSight(ctx context.Context, tx pgx.Tx, campaignID, c
 	if err != nil {
 		return nil, wrap("read rules content", err)
 	}
-	before, _, row, err := s.shapedVitals(ctx, tx, content, campaignID, characterID)
+	_, _, row, err := s.shapedVitals(ctx, tx, content, campaignID, characterID)
 	if err != nil {
 		return nil, err
 	}
 	params := charactersdb.SetFamiliarSightParams{
-		CharacterID: row.ID, HitPointsCurrent: before.GetHitPointsCurrent(), InCombat: inCombat, Conditions: nonNilList(conditions), Now: s.now(),
+		CharacterID: row.ID, InCombat: inCombat, Conditions: nonNilList(conditions), Now: s.now(),
 	}
 	if creatureID != "" {
 		id, ok := parseUUID(creatureID)

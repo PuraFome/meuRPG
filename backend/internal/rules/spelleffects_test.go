@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"fmt"
 	"slices"
 	"testing"
 	"testing/fstest"
@@ -65,19 +66,28 @@ func TestLoadSpellEffectsRefuses(t *testing.T) {
 	if err := load(good); err != nil {
 		t.Fatalf("a good file: %v", err)
 	}
+	for _, sides := range tableDiceSides { // every die at a table is allowed
+		body := fmt.Sprintf(`{"spells":{"spell:sleep":{"kind":"hp_pool","dice":"5d%d","dice_per_level":"2d%[1]d","condition":"condition:unconscious"}}}`, sides)
+		if err := load(body); err != nil {
+			t.Errorf("a pool of d%d: %v", sides, err)
+		}
+	}
 	bad := map[string]string{
-		"an unknown kind":          `{"spells":{"spell:sleep":{"kind":"mind_blast"}}}`,
-		"ignores_cover with dice":  `{"spells":{"spell:sleep":{"kind":"ignores_cover","dice":"5d8"}}}`,
-		"an unknown field":         `{"spells":{"spell:sleep":{"kind":"zero_hp_target","power":9}}}`,
-		"a spell the SRD lacks":    `{"spells":{"spell:toll-the-dead":{"kind":"zero_hp_target"}}}`,
-		"a pool of other dice":     `{"spells":{"spell:sleep":{"kind":"hp_pool","dice":"5d8","dice_per_level":"2d10","condition":"condition:unconscious"}}}`,
-		"a pool with no condition": `{"spells":{"spell:sleep":{"kind":"hp_pool","dice":"5d8","dice_per_level":"2d8"}}}`,
-		"a condition that is not":  `{"spells":{"spell:sleep":{"kind":"hp_pool","dice":"5d8","dice_per_level":"2d8","condition":"spell:x"}}}`,
-		"a threshold with both":    `{"spells":{"spell:sleep":{"kind":"hp_threshold","threshold":100,"dies":true,"condition":"condition:blinded"}}}`,
-		"a threshold with neither": `{"spells":{"spell:sleep":{"kind":"hp_threshold","threshold":100}}}`,
-		"a threshold of 0":         `{"spells":{"spell:sleep":{"kind":"hp_threshold","dies":true}}}`,
-		"a heal that ends nothing": `{"spells":{"spell:sleep":{"kind":"flat_heal","amount":70}}}`,
-		"a zero target with dice":  `{"spells":{"spell:sleep":{"kind":"zero_hp_target","dice":"1d4"}}}`,
+		"an unknown kind":             `{"spells":{"spell:sleep":{"kind":"mind_blast"}}}`,
+		"ignores_cover with dice":     `{"spells":{"spell:sleep":{"kind":"ignores_cover","dice":"5d8"}}}`,
+		"an unknown field":            `{"spells":{"spell:sleep":{"kind":"zero_hp_target","power":9}}}`,
+		"a spell the SRD lacks":       `{"spells":{"spell:toll-the-dead":{"kind":"zero_hp_target"}}}`,
+		"a pool of other dice":        `{"spells":{"spell:sleep":{"kind":"hp_pool","dice":"5d8","dice_per_level":"2d10","condition":"condition:unconscious"}}}`,
+		"a pool of a die that is not": `{"spells":{"spell:sleep":{"kind":"hp_pool","dice":"5d7","dice_per_level":"2d7","condition":"condition:unconscious"}}}`,
+		"a pool of 1000 faces":        `{"spells":{"spell:sleep":{"kind":"hp_pool","dice":"5d1000","dice_per_level":"2d1000","condition":"condition:unconscious"}}}`,
+		"a pool of too many dice":     `{"spells":{"spell:sleep":{"kind":"hp_pool","dice":"31d8","dice_per_level":"2d8","condition":"condition:unconscious"}}}`,
+		"a pool with no condition":    `{"spells":{"spell:sleep":{"kind":"hp_pool","dice":"5d8","dice_per_level":"2d8"}}}`,
+		"a condition that is not":     `{"spells":{"spell:sleep":{"kind":"hp_pool","dice":"5d8","dice_per_level":"2d8","condition":"spell:x"}}}`,
+		"a threshold with both":       `{"spells":{"spell:sleep":{"kind":"hp_threshold","threshold":100,"dies":true,"condition":"condition:blinded"}}}`,
+		"a threshold with neither":    `{"spells":{"spell:sleep":{"kind":"hp_threshold","threshold":100}}}`,
+		"a threshold of 0":            `{"spells":{"spell:sleep":{"kind":"hp_threshold","dies":true}}}`,
+		"a heal that ends nothing":    `{"spells":{"spell:sleep":{"kind":"flat_heal","amount":70}}}`,
+		"a zero target with dice":     `{"spells":{"spell:sleep":{"kind":"zero_hp_target","dice":"1d4"}}}`,
 	}
 	for name, body := range bad {
 		if err := load(body); err == nil {

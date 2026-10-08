@@ -2,9 +2,12 @@ package characters
 
 import (
 	"context"
+	"fmt"
 	"reflect"
+	"runtime"
 	"sync"
 	"testing"
+	"weak"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -174,17 +177,85 @@ func TestCatalogIsBuiltOncePerContentAndBounded(t *testing.T) {
 	if s.catalogFor(b, true) == first {
 		t.Error("two contents share a catalog")
 	}
-	for range maxCatalogs { // more contents than the cache keeps: the oldest goes
+	var alive []*rules.Content // held, so only the count can drop a catalog
+	for range maxCatalogs {    // more contents than the cache keeps: the oldest goes
 		c, err := rules.LoadSRD()
 		if err != nil {
 			t.Fatal(err)
 		}
+		alive = append(alive, c)
 		s.catalogFor(c, true)
 	}
+	defer runtime.KeepAlive(alive)
 	s.catalogs.mu.Lock()
-	n, kept := len(s.catalogs.catalog), s.catalogs.catalog[a]
+	n, kept := len(s.catalogs.catalog), s.catalogs.catalog[weak.Make(a)]
 	s.catalogs.mu.Unlock()
 	if n > maxCatalogs || kept != nil {
 		t.Errorf("the cache keeps %d catalogs (the first still there: %v), want at most %d and the oldest dropped", n, kept != nil, maxCatalogs)
+	}
+}
+
+// A catalog never keeps its content alive: a content the live source let go is
+// collected, and the catalog goes with it, so the text a table holds is paid for
+// once, by the live source's budget.
+func TestCatalogDoesNotKeepItsContentAlive(t *testing.T) {
+	t.Parallel()
+	s := offlineService(t)
+	c, err := rules.LoadSRD()
+	if err != nil {
+		t.Fatal(err)
+	}
+	gone := weak.Make(c)
+	s.catalogFor(c, true)
+	if gone.Value() == nil {
+		t.Fatal("control: the content was collected while the test still holds it")
+	}
+	c = nil //nolint:ineffassign,wastedassign // the only strong reference goes
+	for range 10 {
+		runtime.GC()
+		if gone.Value() == nil {
+			return
+		}
+	}
+	t.Error("the content is still alive after its last user let it go: the catalog cache keeps it")
+}
+
+// The live source keeps contents up to a count and up to the bytes of stored
+// data they were built from; the newest always stays, so one table with a lot of
+// text still works.
+func TestLiveContentsAreBoundedByTheBytesTheyHold(t *testing.T) {
+	t.Parallel()
+	srd := loadRules(t)
+	key := func(i int) liveKey { return liveKey{campaignID: fmt.Sprintf("campaign-%d", i), revision: 1} }
+	const mb = 1 << 20
+
+	small := &TableSource{cache: map[liveKey]liveEntry{}}
+	for i := range maxLiveContents + 2 { // control: small contents are bounded by the count
+		small.store(key(i), srd, mb)
+	}
+	if n := small.size(); n != maxLiveContents {
+		t.Errorf("small contents: the source holds %d, want %d", n, maxLiveContents)
+	}
+
+	big := &TableSource{cache: map[liveKey]liveEntry{}}
+	for i := range 4 {
+		big.store(key(i), srd, 10*mb)
+	}
+	if n := big.size(); n != 2 || big.bytes > maxLiveBytes {
+		t.Errorf("10 MB contents: the source holds %d contents and %d bytes, want 2 and at most %d", n, big.bytes, maxLiveBytes)
+	}
+	if big.cached(key(3)) == nil || big.cached(key(0)) != nil {
+		t.Error("10 MB contents: the newest must stay and the oldest go")
+	}
+
+	huge := &TableSource{cache: map[liveKey]liveEntry{}}
+	huge.store(key(0), srd, 2*maxLiveBytes)
+	huge.store(key(1), srd, 2*maxLiveBytes)
+	if huge.size() != 1 || huge.cached(key(1)) == nil {
+		t.Errorf("a content over the budget: the source holds %d, want only the newest", huge.size())
+	}
+	huge.store(key(1), srd, mb) // the same revision stored again replaces its bytes
+	if huge.bytes != mb {
+		t.Errorf("after storing the same key again the source counts %d bytes, want %d", huge.bytes, mb)
 	}
 }

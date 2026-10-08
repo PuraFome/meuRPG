@@ -17,7 +17,7 @@ import (
 // the original image again.
 func TestCreateMapRetryChecksTheOriginalImage(t *testing.T) {
 	t.Parallel()
-	var armed, calls atomic.Int32
+	var armed, calls atomic.Int32 // armed: 0 off, 1 counting, 2 counting and about to provoke the conflict, 3 provoked
 	var rival func()
 	h := newHarness(t, func(c *Config) {
 		c.Now = func() time.Time {
@@ -26,7 +26,7 @@ func TestCreateMapRetryChecksTheOriginalImage(t *testing.T) {
 			// of CreateMap's own transaction fails with 40001 and InTx runs it again.
 			if armed.Load() >= 1 {
 				calls.Add(1)
-				if armed.CompareAndSwap(1, 2) {
+				if armed.CompareAndSwap(2, 3) {
 					rival()
 				}
 			}
@@ -67,10 +67,20 @@ func TestCreateMapRetryChecksTheOriginalImage(t *testing.T) {
 			t.Errorf("rival read: %v", err)
 		}
 	}
+	// Without a conflict the closure runs once: that is how many times it
+	// asks for the time per attempt.
 	armed.Store(1)
+	if _, err := master.maps.CreateMap(t.Context(), connect.NewRequest(&mapsv1.CreateMapRequest{CampaignId: campaign, Name: "Sem conflito", ImageId: x})); err != nil {
+		t.Fatalf("CreateMap() without a conflict error = %v", err)
+	}
+	perAttempt := calls.Swap(0)
+	armed.Store(2)
 	_, err = master.maps.CreateMap(t.Context(), connect.NewRequest(&mapsv1.CreateMapRequest{CampaignId: campaign, Name: "Copia", ImageId: x}))
-	t.Logf("closure ran %d time(s) calling Now", calls.Load())
 	if err != nil {
 		t.Errorf("CreateMap() error = %v, want success after the retry", err)
+	}
+	// The rival really made the first attempt fail: the closure ran again.
+	if armed.Load() != 3 || calls.Load() <= perAttempt {
+		t.Errorf("the closure asked for the time %d time(s) against %d for one attempt: the conflict was not provoked, so nothing was retried", calls.Load(), perAttempt)
 	}
 }

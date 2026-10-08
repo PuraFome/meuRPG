@@ -250,7 +250,7 @@ export class MapEditor {
     return s?.kind === 'token'
       ? (this.state()
           .tokens()
-          .find((t) => t.characterId === s.id) ?? null)
+          .find((t) => tokenKey(t) === s.id) ?? null)
       : null;
   });
   protected readonly pendingName = computed(() => {
@@ -727,8 +727,12 @@ export class MapEditor {
       return;
     }
     try {
-      await this.api.removeToken(this.campaignId(), mapId, token.characterId);
-      this.state().removeToken(token.characterId);
+      await this.api.removeToken(this.campaignId(), mapId, token.characterId, token.creatureId);
+      if (token.creatureId) {
+        this.state().removeCreatureToken(token.creatureId);
+      } else {
+        this.state().removeToken(token.characterId);
+      }
       this.selection.set(null);
       this.message.set(`${token.name} saiu do mapa.`);
     } catch (err) {

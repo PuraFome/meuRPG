@@ -14,18 +14,22 @@ const activatePendingMember = `-- name: ActivatePendingMember :execrows
 UPDATE campaign_members
 SET status = 'active', pending_expires_at = NULL
 WHERE campaign_id = $1 AND user_id = $2 AND status = 'pending'
+  AND (pending_expires_at IS NULL OR pending_expires_at > $3::timestamptz)
 `
 
 type ActivatePendingMemberParams struct {
 	CampaignID string
 	UserID     string
+	Now        time.Time
 }
 
 // The master approved the pending member's character (RN-15): the
 // membership becomes an ordinary one. An active membership matches no row
-// and stays as it is.
+// and stays as it is, and so does a pending one whose deadline has passed:
+// that member is no member any more (GetMembership), even before the daily
+// TTL job deletes the row.
 func (q *Queries) ActivatePendingMember(ctx context.Context, arg ActivatePendingMemberParams) (int64, error) {
-	result, err := q.db.Exec(ctx, activatePendingMember, arg.CampaignID, arg.UserID)
+	result, err := q.db.Exec(ctx, activatePendingMember, arg.CampaignID, arg.UserID, arg.Now)
 	if err != nil {
 		return 0, err
 	}
