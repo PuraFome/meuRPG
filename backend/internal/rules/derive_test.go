@@ -801,3 +801,80 @@ func TestHitPointsMaxNeverFallsBelowOnePerLevel(t *testing.T) {
 		}
 	})
 }
+
+// TestPaladinAuraOfProtectionAddsCharismaToEverySave: from level 6 the paladin
+// adds the Charisma modifier, at least +1, to every saving throw.
+func TestPaladinAuraOfProtectionAddsCharismaToEverySave(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	b := standard("class:paladin", 6)
+	b.BaseScores[CHA] = 15 // human +1 = 16 -> +3
+	d := Derive(b, c)
+	for _, a := range AllAbilities() {
+		want := abilityOf(d, a).Modifier + 3
+		if saveOf(d, a).Proficient {
+			want += d.ProficiencyBonus
+		}
+		if got := saveOf(d, a).Bonus; got != want {
+			t.Errorf("paladin 6, Cha 16, %s save = %+d, want %+d", a, got, want)
+		}
+	}
+	// Below level 6 there is no aura, and a low Charisma still adds +1.
+	if got, want := saveOf(Derive(standard("class:paladin", 5), c), STR).Bonus, 3; got != want {
+		t.Errorf("paladin 5 Str save = %+d, want %+d (no aura yet)", got, want)
+	}
+	if low, base := saveOf(Derive(standard("class:paladin", 6), c), STR).Bonus, 3; low != base+1 {
+		t.Errorf("paladin 6, Cha 9: Str save = %+d, want %+d (the aura adds at least +1)", low, base+1)
+	}
+}
+
+// TestLevel20FeaturesRaiseScoresUpTo24: Primal Champion (STR and CON) and the
+// monk's level 20 feature (DEX and WIS) add 4 to a score, with 24 as the limit
+// of that increase; a score above 20 from them is not reported, and any other
+// score above 20 still is.
+func TestLevel20FeaturesRaiseScoresUpTo24(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	hasIssue := func(d Derived) bool {
+		return slices.ContainsFunc(d.Issues, func(i Issue) bool { return i.Code == IssueScoreAbove20 })
+	}
+	b := standard("class:barbarian", 20)
+	b.BaseScores[STR], b.BaseScores[CON] = 18, 18 // human +1 = 19
+	d := Derive(b, c)
+	for _, a := range []Ability{STR, CON} {
+		if got := abilityOf(d, a).Score; got != 23 {
+			t.Errorf("barbarian 20 %s = %d, want 23 (19 + 4)", a, got)
+		}
+	}
+	if got := abilityOf(d, STR).Modifier; got != 6 {
+		t.Errorf("barbarian 20 STR modifier = %d, want +6", got)
+	}
+	if hasIssue(d) {
+		t.Errorf("a score of 23 from Primal Champion is reported as above 20: %v", d.Issues)
+	}
+	b.BaseScores[STR] = 20 // 21 + 4 stops at 24
+	if got := abilityOf(Derive(b, c), STR).Score; got != 24 {
+		t.Errorf("barbarian 20 STR 21 + 4 = %d, want the cap 24", got)
+	}
+	if got := abilityOf(Derive(standard("class:barbarian", 19), c), STR).Score; got != 16 {
+		t.Errorf("barbarian 19 STR = %d, want 16 (no Primal Champion yet)", got)
+	}
+
+	m := Derive(standard("class:monk", 20), c) // DEX 15, WIS 11
+	if got, want := abilityOf(m, DEX).Score, 19; got != want {
+		t.Errorf("monk 20 DEX = %d, want %d", got, want)
+	}
+	if got, want := abilityOf(m, WIS).Score, 15; got != want {
+		t.Errorf("monk 20 WIS = %d, want %d", got, want)
+	}
+
+	f := standard("class:fighter", 19)
+	f.BaseScores[STR] = 20 // human +1 = 21, and nothing raises the ceiling
+	if !hasIssue(Derive(f, c)) {
+		t.Error("a score of 21 without a feature that allows it is no longer reported")
+	}
+	b.ExtraAbilityBonuses = map[Ability]int{STR: 8} // 21 + 8 = 29, over the cap, left alone
+	if got := abilityOf(Derive(b, c), STR).Score; got != 29 {
+		t.Errorf("a score already above 24 = %d, want 29 (the feature never lowers it)", got)
+	}
+}

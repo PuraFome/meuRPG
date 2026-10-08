@@ -42,6 +42,14 @@
     ],
     "feature:stunning-strike": [
       {"type": "note"}
+    ],
+    "feature:perfect-self": [
+      {"type": "modifier", "target": "score.dex", "mode": "add", "value": "4", "cap": 24},
+      {"type": "modifier", "target": "score.wis", "mode": "add", "value": "4", "cap": 24},
+      {"type": "note", "text_pt": "DES e SAB sobem 4 (máximo 24)."}
+    ],
+    "feature:wholeness-of-body": [
+      {"type": "resource", "resource": "wholeness_of_body", "max": "1", "recharge": "long_rest"}
     ]
   }
 }

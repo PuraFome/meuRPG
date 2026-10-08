@@ -88,6 +88,12 @@ describe('hit point words', () => {
   it('counts with "usados"', () => {
     expect(usedWords(1, 3)).toBe('1 de 3 usados');
   });
+
+  it('says "ilimitado" for a resource that never runs out (a maximum of 99)', () => {
+    expect(usedWords(0, 99)).toBe('ilimitado');
+    expect(usedWords(4, 99)).toBe('ilimitado');
+    expect(usedWords(0, 6)).toBe('0 de 6 usados');
+  });
 });
 
 describe('party row words', () => {

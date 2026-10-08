@@ -52,6 +52,20 @@ func (c *Content) WildShapeForms(b Build) []CreatureEntry {
 	return forms
 }
 
+// CastsInBeastForm says whether the character keeps its spells in a beast form:
+// from druid level 18 (Beast Spells) it casts druid spells in any shape, with no
+// material components. d is the character's own sheet.
+func (c *Content) CastsInBeastForm(d Derived) bool {
+	for _, f := range d.Features {
+		for _, e := range c.c.effects[f.Key] {
+			if e.Type == "beast_spells" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // WildShapeAllows says whether the build's druid may take the beast now.
 func (c *Content) WildShapeAllows(b Build, beast string) bool {
 	return slices.ContainsFunc(c.WildShapeForms(b), func(e CreatureEntry) bool { return e.Key == beast })
@@ -65,7 +79,8 @@ func (c *Content) WildShapeAllows(b Build, beast string) bool {
 // skill and saving throw proficiencies, and gains the beast's: where both have
 // one, the higher bonus wins. The senses are the beast's; the character's
 // darkvision comes along only if the beast has darkvision too (the larger range).
-// The character can't cast spells: Spellcasting, Spells and PactMagic are empty.
+// The character can't cast spells (Spellcasting, Spells and PactMagic are empty)
+// unless Beast Spells keeps them (CastsInBeastForm).
 // It does not check that the form is allowed (WildShapeAllows does), only that it
 // is a beast.
 func (c *Content) WildShapeDerived(character Derived, beast string) (Derived, error) {
@@ -145,12 +160,15 @@ func (c *Content) WildShapeDerived(character Derived, beast string) (Derived, er
 		}
 	}
 
-	// No spells in beast form; the beast's traits join the features.
-	d.Spellcasting, d.Spells, d.PactMagic = nil, nil, nil
+	// No spells in beast form, unless Beast Spells (druid 18) keeps them; the
+	// beast's traits join the features.
+	hint := fmt.Sprintf("Em forma de fera (%s) você não pode conjurar magias, e falar ou usar as mãos fica limitado ao que a fera consegue.", c.c.namePT(beast))
+	if c.CastsInBeastForm(character) {
+		hint = fmt.Sprintf("Em forma de fera (%s) você conjura magias de druida e dispensa os materiais delas (Magias da Besta).", c.c.namePT(beast))
+	} else {
+		d.Spellcasting, d.Spells, d.PactMagic = nil, nil, nil
+	}
 	d.Features = append(slices.Clone(character.Features), b.Features...)
-	d.Hints = append(slices.Clone(character.Hints), Hint{
-		Source: "wild_shape", Mode: "note",
-		TextPT: fmt.Sprintf("Em forma de fera (%s) você não pode conjurar magias, e falar ou usar as mãos fica limitado ao que a fera consegue.", c.c.namePT(beast)),
-	})
+	d.Hints = append(slices.Clone(character.Hints), Hint{Source: "wild_shape", Mode: "note", TextPT: hint})
 	return d, nil
 }

@@ -30,7 +30,7 @@ type Resource struct {
 	Key string
 	// NamePT is the Portuguese name ("Retomar o Fôlego").
 	NamePT string
-	// Max is the number of uses. A barbarian's unlimited rage is 99.
+	// Max is the number of uses. Unlimited uses (a barbarian's Rage at 20, a druid's Wild Shape at 20) are 99; the screens say "ilimitado".
 	Max int
 	// Recharge is a Recharge* constant.
 	Recharge string
@@ -98,15 +98,15 @@ func (x *deriver) resourcesAndActions() {
 			x.d.AttacksPerAction = max(x.d.AttacksPerAction, a.effect.Count)
 		}
 	}
-	seen := map[string]bool{}
+	// Two classes may share a resource name (Channel Divinity of the cleric and
+	// the paladin); the session counts them as one pool, which has the larger
+	// Max: a second class gives new effects but no extra use (SRD Multiclassing).
+	at := map[string]int{}
 	for _, a := range x.active {
 		e := a.effect
-		if e.Type != "resource" || !x.applies(a) || seen[e.Resource] {
+		if e.Type != "resource" || !x.applies(a) {
 			continue
 		}
-		// Two classes may share a resource name (Channel Divinity of the
-		// cleric and the paladin); the session counts them as one pool, so
-		// the first one wins.
 		n, err := e.max.Int(x.env)
 		if err != nil {
 			x.issue(IssueFormula, "", "Um efeito de %s foi ignorado: a fórmula falhou.", x.c.namePT(a.owner))
@@ -115,12 +115,29 @@ func (x *deriver) resourcesAndActions() {
 		if n <= 0 {
 			continue
 		}
-		seen[e.Resource] = true
+		recharge := e.Recharge
+		if e.rechargeIf != nil {
+			switch ok, err := e.rechargeIf.Bool(x.env); {
+			case err != nil:
+				x.issue(IssueFormula, "", "Um efeito de %s foi ignorado: a condição falhou.", x.c.namePT(a.owner))
+				continue
+			case ok:
+				recharge = e.RechargeThen
+			}
+		}
 		name := x.c.namesPT["resource:"+e.Resource]
 		if name == "" {
 			name = x.c.namePT(a.owner)
 		}
-		x.d.Resources = append(x.d.Resources, Resource{Key: e.Resource, NamePT: name, Max: n, Recharge: e.Recharge, Source: a.owner})
+		r := Resource{Key: e.Resource, NamePT: name, Max: n, Recharge: recharge, Source: a.owner}
+		if i, shared := at[e.Resource]; shared {
+			if n > x.d.Resources[i].Max {
+				x.d.Resources[i] = r
+			}
+			continue
+		}
+		at[e.Resource] = len(x.d.Resources)
+		x.d.Resources = append(x.d.Resources, r)
 	}
 	for _, a := range x.active {
 		if a.effect.Type != "grant_action" || !x.applies(a) {
