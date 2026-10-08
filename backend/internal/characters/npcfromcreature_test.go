@@ -590,3 +590,38 @@ func TestEveryCreatureWithAMeleeAttackKeepsOneOnItsSheet(t *testing.T) {
 		t.Errorf("%d creatures lose every melee attack on the sheet: %v", len(lost), lost)
 	}
 }
+
+// TestCreatureNpcSavesWithItsStatBlock: a basic sheet made from a creature saves
+// with the creature's saving throws (the ability modifier, plus the proficiency
+// the stat block lists), so a spell's save against it rolls the real bonus; a
+// basic sheet typed by hand has none.
+func TestCreatureNpcSavesWithItsStatBlock(t *testing.T) {
+	t.Parallel()
+	content := loadRules(t)
+	for _, tc := range []struct {
+		key     string
+		ability rules.Ability
+		want    int
+	}{
+		{"monster:goblin", rules.DEX, 2},           // Dexterity 14, no listed save
+		{"monster:goblin", rules.STR, -1},          // Strength 8
+		{"monster:adult-red-dragon", rules.DEX, 6}, // the listed +6, not the modifier
+	} {
+		sheet, err := npcSheetFromCreature(content, tc.key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got *rules.SavingThrow
+		for _, st := range basicDerived(content, sheet).SavingThrows {
+			if st.Ability == tc.ability {
+				got = &st
+			}
+		}
+		if got == nil || got.Bonus != tc.want {
+			t.Errorf("%s %s save = %+v, want %+d", tc.key, tc.ability, got, tc.want)
+		}
+	}
+	if got := basicDerived(content, &charactersv1.BasicSheet{HitPointsMax: 5, ArmorClass: 10}).SavingThrows; len(got) != 0 {
+		t.Errorf("a typed NPC's saving throws = %v, want none", got)
+	}
+}

@@ -576,7 +576,7 @@ func (noRoster) CombatTurnOptions(context.Context, pgx.Tx, string, string, link.
 	return nil, errors.New("not in this test")
 }
 
-func (noRoster) CombatSpell(context.Context, pgx.Tx, string, string, string, int) (link.Spell, error) {
+func (noRoster) CombatSpell(context.Context, pgx.Tx, string, string, string, int, string) (link.Spell, error) {
 	return link.Spell{}, errors.New("not in this test")
 }
 

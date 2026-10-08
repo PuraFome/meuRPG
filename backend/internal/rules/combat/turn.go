@@ -21,6 +21,11 @@ type TurnState struct {
 	// ActionSurged says Action Surge was used this turn: it is used once per
 	// turn, whatever the uses left.
 	ActionSurged bool
+	// SpellCast says a spell other than a bonus action one and other than a
+	// cantrip of 1 action was cast this turn, and BonusSpellCast that a spell was
+	// cast with a bonus action: the first makes a bonus action spell illegal and
+	// the second every spell but that cantrip (SRD 5.1, Casting Time).
+	SpellCast, BonusSpellCast bool
 }
 
 // actionSurgeResource is the resource of Action Surge.
@@ -46,6 +51,9 @@ const (
 	// ReasonAlreadyUsedThisTurn: a feature that can be used once per turn
 	// (Action Surge) was used in this turn.
 	ReasonAlreadyUsedThisTurn = "ALREADY_USED_THIS_TURN"
+	// ReasonBonusActionSpellLimit: a spell cast with a bonus action leaves no
+	// other spell for the turn but a cantrip of 1 action, in either order.
+	ReasonBonusActionSpellLimit = "BONUS_ACTION_SPELL_LIMIT"
 	// ReasonReactionOnlyWhenHit: Shield, which is only cast when an attack
 	// hits the caster, never on their own turn.
 	ReasonReactionOnlyWhenHit = "REACTION_ONLY_WHEN_HIT"
@@ -286,6 +294,23 @@ func sortName(sp rules.SpellEntry) string {
 	return ptFold.Replace(strings.ToLower(name))
 }
 
+// SpellLimited says the turn's spells forbid this one: after a spell cast with a
+// bonus action only a cantrip with a casting time of 1 action may follow, and a
+// spell cast with a bonus action may not follow any other spell but that cantrip
+// (SRD 5.1, Casting Time). economy is the spell's, level its own.
+func SpellLimited(turn TurnState, economy string, level int) bool {
+	if IsFreeCantrip(economy, level) {
+		return false
+	}
+	return turn.BonusSpellCast || (economy == rules.EconomyBonusAction && turn.SpellCast)
+}
+
+// IsFreeCantrip says a spell is a cantrip with a casting time of 1 action, the
+// one spell the bonus action limit allows beside a bonus action spell.
+func IsFreeCantrip(economy string, level int) bool {
+	return level == 0 && economy == rules.EconomyAction
+}
+
 func spellOption(d rules.Derived, turn TurnState, u Usage, sp rules.SpellEntry) SpellOption {
 	o := SpellOption{Spell: sp, Economy: spellEconomy(sp.CastingTime)}
 
@@ -314,6 +339,8 @@ func spellOption(d rules.Derived, turn TurnState, u Usage, sp rules.SpellEntry) 
 	default:
 		if eo := economyOption(o.Economy, turn); !eo.Enabled {
 			o.Reason = eo.Reason
+		} else if SpellLimited(turn, o.Economy, sp.Level) {
+			o.Reason = &Reason{Code: ReasonBonusActionSpellLimit}
 		} else if sp.Level > 0 && len(o.Slots) == 0 {
 			o.Reason = &Reason{Code: ReasonNoSlot, MinLevel: sp.Level}
 		}

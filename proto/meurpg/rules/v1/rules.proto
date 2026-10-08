@@ -1359,6 +1359,8 @@ message SpellDetails {
   // 5e-database's structured area (Mãos Flamejantes: a cone of 15 ft) and, for the
   // rest, from the text of the SRD.
   SpellTarget target = 13;
+  // What the caster picks among the `damage` types; unspecified when nothing.
+  SpellDamageChoice damage_choice = 14;
 }
 
 // SpellTargetKind says whom a spell reaches.
@@ -1426,6 +1428,12 @@ enum SpellHitPointEffectKind {
   SPELL_HIT_POINT_EFFECT_KIND_ZERO_HP = 3;
   // A fixed heal that also ends conditions (Cura Completa).
   SPELL_HIT_POINT_EFFECT_KIND_FLAT_HEAL = 4;
+  // The creatures gain temporary hit points: dice plus a fixed amount, which are
+  // not healing (Vitalidade Falsa).
+  SPELL_HIT_POINT_EFFECT_KIND_TEMP_HP = 5;
+  // The creatures' maximum and current hit points both rise by a fixed amount,
+  // which is not healing (Ajuda).
+  SPELL_HIT_POINT_EFFECT_KIND_MAX_HP = 6;
 }
 
 // SpellHitPointEffect is the rule of a spell that reads hit points, from
@@ -1447,6 +1455,11 @@ message SpellHitPointEffect {
   // A flat heal: the amount at the spell's own circle and what each circle above adds.
   int32 heal_amount = 8;
   int32 heal_per_level = 9;
+  // Temporary hit points: the dice are pool_dice_count/pool_dice_sides (1d4).
+  // Maximum hit points: the amount raised at the spell's own circle and what
+  // each circle above adds. 0 for any other kind.
+  int32 amount = 10;
+  int32 amount_per_level = 11;
 }
 
 // SpellCastingTime is "1 action", "1 bonus action", "10 minutes"...
@@ -1558,9 +1571,22 @@ enum SpellSaveSuccess {
   SPELL_SAVE_SUCCESS_OTHER = 3;
 }
 
+// SpellDamageChoice says what the caster picks among the damage types of a
+// spell that lists more than one.
+enum SpellDamageChoice {
+  // Nothing to pick: every type is dealt as listed (Ice Storm).
+  SPELL_DAMAGE_CHOICE_UNSPECIFIED = 0;
+  // Every type is dealt and the dice a higher slot adds go to the type the
+  // caster picks; each type's `by_slot_level` is its dice when it is the picked
+  // one, the others staying at the spell's own circle (Coluna de Chamas).
+  SPELL_DAMAGE_CHOICE_SCALE = 1;
+  // Only the picked type is dealt (Guardiões Espirituais).
+  SPELL_DAMAGE_CHOICE_ALTERNATIVE = 2;
+}
+
 // SpellDamage is one damage type of a spell, with its dice by level. The
-// dice are the SRD's text ("8d6"); where the SRD gives a choice or a
-// formula that is not plain dice ("4d6 OR 5d6"), the text is kept as is.
+// dice are the SRD's text ("8d6"); where the SRD gives a formula that is not
+// plain dice, the text is kept as is.
 message SpellDamage {
   // Content key of the damage type, such as "damage-type:fire".
   string damage_type_key = 1;
@@ -1708,6 +1734,10 @@ enum DisabledReasonCode {
   // A feature that can be used once per turn (Action Surge, even at fighter
   // level 17 with two uses) was already used in this turn.
   DISABLED_REASON_CODE_ALREADY_USED_THIS_TURN = 14;
+  // A spell: a spell cast with a bonus action leaves no other spell for the turn
+  // except a cantrip with a casting time of 1 action, in either order (the
+  // character cast a bonus action spell, or this is one and a spell was cast).
+  DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT = 15;
 }
 
 // AttackOption is an attack the character can make.

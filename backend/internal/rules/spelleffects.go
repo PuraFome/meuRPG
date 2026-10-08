@@ -30,6 +30,14 @@ const (
 	// SpellKindFlatHeal: heals a fixed amount and ends the conditions in Ends
 	// (Cura Completa).
 	SpellKindFlatHeal = "flat_heal"
+	// SpellKindTempHP: the targets gain temporary hit points, Dice plus Amount
+	// (False Life). Temporary hit points are not healing: they do not count
+	// against the maximum, and a target that has more keeps them (SRD 5.1).
+	SpellKindTempHP = "temp_hp"
+	// SpellKindMaxHP: the targets' maximum and current hit points both rise by
+	// Amount (Aid). It is not healing either: the current hit points follow the
+	// maximum up, and nothing is healed beyond what the maximum rose.
+	SpellKindMaxHP = "max_hp"
 	// SpellKindSummon: summons creatures (Convocar Familiar, Animar Mortos,
 	// Conjurar Animais); see summon.go. It reads no hit points: SpellEffect
 	// does not return it, and SummonOptions does.
@@ -59,6 +67,9 @@ type SpellEffect struct {
 	// the condition keys it ends.
 	Heal int
 	Ends []string
+	// Amount is the fixed number a temp_hp spell adds to Dice and a max_hp spell
+	// raises the maximum by, at the slot level.
+	Amount int
 }
 
 // spellEffectFile is the shape of effects/spells.json.
@@ -87,6 +98,7 @@ type spellEffectDef struct {
 	base       SpellEffect
 	perLevel   DiceFormula // an hp_pool's extra dice
 	healPerLvl int         // a flat_heal's extra healing
+	amountPer  int         // a temp_hp's and a max_hp's extra amount
 }
 
 // loadSpellEffects reads and checks effects/spells.json.
@@ -151,6 +163,17 @@ func (c *content) loadSpellEffects(fsys fs.FS) error {
 			if in.Dice != "" || in.DicePerLevel != "" || in.Condition != "" || in.Threshold != 0 || in.Dies || in.Amount != 0 || in.AmountPerLvl != 0 || len(in.Ends) != 0 {
 				return fail("a zero_hp_target takes nothing else")
 			}
+		case SpellKindTempHP:
+			dice, ok := plainDice(in.Dice)
+			if !ok || in.Amount < 0 || in.AmountPerLvl < 1 || in.DicePerLevel != "" || in.Condition != "" || in.Threshold != 0 || in.Dies || len(in.Ends) != 0 {
+				return fail("a temp_hp takes dice, amount and amount_per_level only")
+			}
+			def.base.Dice, def.base.Amount, def.amountPer = dice, in.Amount, in.AmountPerLvl
+		case SpellKindMaxHP:
+			if in.Amount < 1 || in.AmountPerLvl < 0 || in.Dice != "" || in.DicePerLevel != "" || in.Condition != "" || in.Threshold != 0 || in.Dies || len(in.Ends) != 0 {
+				return fail("a max_hp takes amount and amount_per_level only")
+			}
+			def.base.Amount, def.amountPer = in.Amount, in.AmountPerLvl
 		case SpellKindFlatHeal:
 			if in.Amount < 1 || in.AmountPerLvl < 0 || len(in.Ends) == 0 || in.Dice != "" || in.DicePerLevel != "" || in.Condition != "" || in.Threshold != 0 || in.Dies {
 				return fail("a flat_heal takes an amount, amount_per_level and the conditions it ends")
@@ -190,5 +213,6 @@ func (c *Content) SpellEffect(key string, slotLevel int) (SpellEffect, bool) {
 	extra := max(slotLevel-def.spellLevel, 0)
 	out.Dice.Count += def.perLevel.Count * extra
 	out.Heal += def.healPerLvl * extra
+	out.Amount += def.amountPer * extra
 	return out, true
 }

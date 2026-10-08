@@ -313,6 +313,19 @@ func TestOptionsPensantus(t *testing.T) {
 		t.Errorf("misty step after the bonus action = %+v", s)
 	}
 
+	// A spell cast with a bonus action leaves no other spell but a cantrip of 1 action.
+	afterBonus := Options(d, TurnState{BonusActionUsed: true, BonusSpellCast: true}, Usage{})
+	if s := spellOf(t, afterBonus, "spell:web"); s.Enabled || s.Reason.Code != ReasonBonusActionSpellLimit {
+		t.Errorf("web after a bonus action spell = %+v, want the bonus action spell limit", s)
+	}
+	afterAction := Options(d, TurnState{ActionUsed: false, SpellCast: true}, Usage{})
+	if s := spellOf(t, afterAction, "spell:misty-step"); s.Enabled || s.Reason.Code != ReasonBonusActionSpellLimit {
+		t.Errorf("misty step after another spell = %+v, want the bonus action spell limit", s)
+	}
+	if s := spellOf(t, afterAction, "spell:web"); !s.Enabled {
+		t.Errorf("web after another action spell = %+v, want it enabled (only a bonus action spell is limited)", s)
+	}
+
 	// Fresh rest: every slot is a choice, from the spell's level up.
 	fresh := Options(d, TurnState{}, Usage{})
 	if got := levels(spellOf(t, fresh, "spell:web")); !slices.Equal(got, []int{2}) {
@@ -637,6 +650,32 @@ func TestAdjustForType(t *testing.T) {
 	} {
 		if got := AdjustForType(tt.amount, tt.typ, tt.m); got != tt.want {
 			t.Errorf("%s: AdjustForType(%d, %q) = %d, want %d", tt.name, tt.amount, tt.typ, got, tt.want)
+		}
+	}
+}
+
+// TestSpellLimited: the SRD's Casting Time rule for a spell cast with a bonus
+// action: no other spell in the turn, in either order, but a cantrip of 1 action.
+func TestSpellLimited(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name    string
+		turn    TurnState
+		economy string
+		level   int
+		want    bool
+	}{
+		{"nothing cast yet", TurnState{}, rules.EconomyAction, 1, false},
+		{"an action spell after a bonus action spell", TurnState{BonusSpellCast: true}, rules.EconomyAction, 1, true},
+		{"a bonus action spell after a bonus action spell", TurnState{BonusSpellCast: true}, rules.EconomyBonusAction, 1, true},
+		{"a bonus action cantrip after a bonus action spell", TurnState{BonusSpellCast: true}, rules.EconomyBonusAction, 0, true},
+		{"a cantrip of 1 action after a bonus action spell", TurnState{BonusSpellCast: true}, rules.EconomyAction, 0, false},
+		{"a bonus action spell after an action spell", TurnState{SpellCast: true}, rules.EconomyBonusAction, 1, true},
+		{"an action spell after an action spell", TurnState{SpellCast: true}, rules.EconomyAction, 1, false},
+		{"a bonus action spell after a cantrip of 1 action", TurnState{}, rules.EconomyBonusAction, 1, false},
+	} {
+		if got := SpellLimited(tc.turn, tc.economy, tc.level); got != tc.want {
+			t.Errorf("%s: SpellLimited = %v, want %v", tc.name, got, tc.want)
 		}
 	}
 }

@@ -1456,6 +1456,11 @@ enum EncounterBlockedReason {
   // already used in this turn. The master may use it again (he corrects the
   // economy).
   ENCOUNTER_BLOCKED_REASON_ALREADY_USED_THIS_TURN = 65;
+  // CastSpell: the caster cast a spell with a bonus action this turn, or this
+  // spell is cast with a bonus action and another spell was cast: the turn allows
+  // nothing more than a cantrip with a casting time of 1 action. The master may
+  // cast it anyway (he corrects the economy).
+  ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT = 66;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -2766,6 +2771,12 @@ message CastSpellRequest {
   // (RN-18, one roll for the creatures of a casting); the spell rolls nothing
   // else. The campaign's dice setting binds a player here as on every roll.
   SummonChoice summon = 11;
+  // The damage type the caster picks, for a spell whose damage types are a
+  // choice (SpellDetails.damage_choice): a content key such as
+  // "damage-type:radiant", one of the spell's own. Empty takes the first. Refused
+  // with `invalid_argument` for a spell with nothing to pick or a type that is
+  // not one of its types.
+  string damage_type_key = 12;
 }
 
 // SummonChoice is what a casting of a summoning spell brings: one of the
@@ -2831,6 +2842,10 @@ message SpellTargetResult {
   // Dexterity save (D4), and where it came from.
   CoverDegree cover = 8;
   CoverSource cover_source = 9;
+  // The other pending damages the cast opened for this target when the spell
+  // deals more than one damage type (Tempestade de Gelo: pancada and frio), in the
+  // spell's order after `pending_damage_id`. Same rules as `pending_damage_id`.
+  repeated string more_pending_damage_ids = 10;
 }
 
 // SpellEffectKind is how a spell that reads hit points works. The same four kinds
@@ -2848,6 +2863,12 @@ enum SpellEffectKind {
   SPELL_EFFECT_KIND_ZERO_HP = 3;
   // A fixed heal that also ends conditions (Cura Completa).
   SPELL_EFFECT_KIND_FLAT_HEAL = 4;
+  // The targets gain temporary hit points, not healing (Vitalidade Falsa). The
+  // roll is the pool_roll of the cast; `healed` of a target is what it gained.
+  SPELL_EFFECT_KIND_TEMP_HP = 5;
+  // The targets' maximum and current hit points both rise (Ajuda); `healed` of
+  // a target is how much its maximum rose.
+  SPELL_EFFECT_KIND_MAX_HP = 6;
 }
 
 // SpellEffectOutcome is whether a spell that reads hit points reached a target.
@@ -3370,6 +3391,9 @@ message CombatLogSpellTarget {
   CoverSource cover_source = 10;
   optional int32 target_armor_class = 11;
   int32 cover_bonus = 12;
+  // The damage of the cast's other damage types, once rolled, in the spell's
+  // order after `damage`.
+  repeated CombatLogDamage more_damages = 13;
 }
 
 // CombatLogDeathSave is a death save in the log. When the table hides the death

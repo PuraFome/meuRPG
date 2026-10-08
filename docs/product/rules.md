@@ -326,7 +326,7 @@ The turn's speed comes from the rules engine (MR-013). A condition that sets the
 
 ## RN-22: Conditions and concentration
 
-The app marks conditions (prone, poisoned...) and concentration, and reminds: when a concentrating character takes damage, it reminds the concentration check. It does not apply the effects by itself; the master decides. Applying effects automatically is left for after the MVP.
+The app marks conditions (prone, poisoned...) and concentration, and reminds: when a concentrating character takes damage, it reminds the concentration check. It does not apply the effects by itself; the master decides. Applying effects automatically is left for after the MVP. That includes the saving throws a spell forces later, when a creature enters its area or ends its turn there (Flaming Sphere, Web, Sleet Storm, Earthquake): a casting rolls the saves and the damage the spell asks for when it is cast, and the master calls for the later ones.
 
 
 **How the system meets it**

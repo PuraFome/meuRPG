@@ -92,6 +92,12 @@ func castError(r *rulesv1.DisabledReason, ignoreEconomy bool) error {
 			return nil
 		}
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED, "the bonus action of this turn is used")
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT:
+		if ignoreEconomy {
+			return nil
+		}
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT,
+			"a spell cast with a bonus action leaves no other spell this turn but a cantrip of 1 action")
 	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_NO_SLOT:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_SLOT, "there is no free spell slot for this spell",
 			func(b *playv1.EncounterBlocked) { b.MinLevel = r.GetMinLevel() })
@@ -292,7 +298,7 @@ func (s *Service) CastSpell(
 			// A summoning spell that takes too long is refused with a reason the screen
 			// can say ("Leva 1 hora: conjure fora do combate").
 			if cast.reason.GetCode() == rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG {
-				if long, err := s.roster.CombatSpell(ctx, c.tx, m.CampaignID, caster.CharacterID, spellKey, int(cast.level)); err == nil && long.Summon {
+				if long, err := s.roster.CombatSpell(ctx, c.tx, m.CampaignID, caster.CharacterID, spellKey, int(cast.level), ""); err == nil && long.Summon {
 					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CASTING_TIME_TOO_LONG,
 						"this spell takes too long to cast in a fight: cast it outside the combat")
 				}
@@ -309,9 +315,12 @@ func (s *Service) CastSpell(
 		if slot != nil {
 			slotLevel = int(slot.Level)
 		}
-		sp, err := s.roster.CombatSpell(ctx, c.tx, m.CampaignID, caster.CharacterID, spellKey, slotLevel)
+		sp, err := s.roster.CombatSpell(ctx, c.tx, m.CampaignID, caster.CharacterID, spellKey, slotLevel, req.Msg.GetDamageTypeKey())
 		if err != nil {
 			return nil, err
+		}
+		if pick := req.Msg.GetDamageTypeKey(); pick != "" && !slices.Contains(sp.DamageTypes, pick) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("damage_type_key must be one of the damage types of a spell that lets the caster choose"))
 		}
 
 		// Who it touches.
@@ -347,7 +356,7 @@ func (s *Service) CastSpell(
 		if len(targs) == 0 && selfOnly(sp) {
 			targs, targets = []playdb.Combatant{caster}, []target{{id: caster.ID}}
 		}
-		if sp.HP != nil && sp.HP.Kind == rules.SpellKindHPPool {
+		if sp.HP != nil && (sp.HP.Kind == rules.SpellKindHPPool || sp.HP.Kind == rules.SpellKindTempHP) {
 			if err := s.mustRollPool(ctx, c.tx, m, in, rolled); err != nil {
 				return nil, err
 			}
@@ -377,6 +386,7 @@ func (s *Service) CastSpell(
 		made = actionEvent{
 			RunBefore: run, Round: c.enc.Round, Actor: caster.ID, Key: spellKey, CastID: uuid.New().String(), Slot: slot,
 			ActionBefore: caster.ActionUsed, BonusBefore: caster.BonusActionUsed, ReactionBefore: caster.ReactionUsed, DashedBefore: caster.Dashed,
+			SpellCastBefore: caster.SpellCast, BonusSpellBefore: caster.BonusSpellCast,
 		}
 		if slot != nil && caster.Kind == kindPlayer {
 			slotVitals, err := s.spendSlot(ctx, c, caster.CharacterID, *slot, 1)
@@ -396,6 +406,14 @@ func (s *Service) CastSpell(
 			ID: caster.ID, ActionUsed: after.ActionUsed, BonusActionUsed: after.BonusActionUsed, ReactionUsed: after.ReactionUsed, Dashed: after.Dashed,
 		}); err != nil {
 			return nil, fmt.Errorf("spend the economy: %w", err)
+		}
+		// The kind of spell it was, for the bonus action spell limit: a cantrip of
+		// 1 action leaves the turn's spells as they were.
+		if !combat.IsFreeCantrip(sp.Economy, sp.Level) {
+			spellCast, bonusSpellCast := caster.SpellCast || sp.Economy != rules.EconomyBonusAction, caster.BonusSpellCast || sp.Economy == rules.EconomyBonusAction
+			if err := c.q.SetCombatantSpellsCast(ctx, playdb.SetCombatantSpellsCastParams{ID: caster.ID, SpellCast: spellCast, BonusSpellCast: bonusSpellCast}); err != nil {
+				return nil, fmt.Errorf("note the spell cast: %w", err)
+			}
 		}
 		if sp.Concentration {
 			made.Concentrate, made.ConcBefore = true, deref(caster.ConcentrationSpell)
@@ -598,10 +616,12 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	if result.Critical {
 		hit.Outcome = outcomeCrit
 	}
-	if sp.Damage == nil {
+	if len(sp.Damages) == 0 {
 		return nil
 	}
-	p, err := s.openHit(ctx, c, m.CampaignID, caster, target, sp.Key, *sp.Damage, result.Critical, result.Total, targetAC)
+	// A spell attack deals its first damage type: no spell of the SRD that rolls an
+	// attack lists a second one.
+	p, err := s.openHit(ctx, c, m.CampaignID, caster, target, sp.Key, sp.Damages[0], result.Critical, result.Total, targetAC)
 	if err != nil {
 		return err
 	}
@@ -632,22 +652,30 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 		D20: clamp32(face, 1, 20), Bonus: clamp32(save.Bonus, math.MinInt32, math.MaxInt32), Total: clamp32(roll.Total, math.MinInt32, math.MaxInt32),
 		DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Saved: saved, Unknown: !save.Known,
 	}
-	if sp.Damage == nil || (saved && sp.SaveOnSuccess != "half" && sp.SaveOnSuccess != "other") {
+	if len(sp.Damages) == 0 || (saved && sp.SaveOnSuccess != "half" && sp.SaveOnSuccess != "other") {
 		return nil
 	}
-	return s.openSpellPending(ctx, c, sp, *sp.Damage, caster, target, false, saved && sp.SaveOnSuccess == "half", hit)
+	// One pending damage for each damage type, all of the cast: each is its own
+	// roll, and the resistance of the target is read for its type when it lands.
+	for _, part := range sp.Damages {
+		if err := s.openSpellPending(ctx, c, sp, part, caster, target, false, saved && sp.SaveOnSuccess == "half", hit); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // openDarts opens Magic Missile's damage for a target: its darts, each one
 // 1d4 + 1 (the spell's damage at its own level divided by its three darts).
 func (s *Service) openDarts(ctx context.Context, c *combatTx, sp link.Spell, caster, target playdb.Combatant, hit *castHit) error {
-	if sp.Damage == nil {
+	if len(sp.Damages) == 0 {
 		return nil
 	}
+	volley := sp.Damages[0]
 	// The damage at the cast's slot level is the whole volley (3d4 + 3 at the 1st
 	// level, 6d4 + 6 at the 4th): one dart is always 1d4 + 1, whatever the level.
-	darts := max(sp.Damage.Count, 1)
-	perDart := link.Dice{Count: 1, Sides: sp.Damage.Sides, Bonus: sp.Damage.Bonus / darts, DamageType: sp.Damage.DamageType}
+	darts := max(volley.Count, 1)
+	perDart := link.Dice{Count: 1, Sides: volley.Sides, Bonus: volley.Bonus / darts, DamageType: volley.DamageType}
 	n := int(hit.Darts)
 	// A dart is its own roll: n darts are n dice and n times the bonus. The cast
 	// has no cast id for them: each target's damage is its own roll.
@@ -666,7 +694,8 @@ func (s *Service) openDarts(ctx context.Context, c *combatTx, sp link.Spell, cas
 
 // openSpellPending opens a damage or a heal of a spell for a target, in the
 // cast's group (the pending damages of one cast share an id: an area spell's
-// damage is one roll).
+// damage is one roll for each damage type). The first one a target gets is the
+// hit's Pending, the others go to its More.
 func (s *Service) openSpellPending(ctx context.Context, c *combatTx, sp link.Spell, dmg link.Dice, caster, target playdb.Combatant, healing, half bool, hit *castHit) error {
 	castID := c.castID
 	p, err := c.q.InsertPendingDamage(ctx, playdb.InsertPendingDamageParams{
@@ -677,6 +706,10 @@ func (s *Service) openSpellPending(ctx context.Context, c *combatTx, sp link.Spe
 	if err != nil {
 		return fmt.Errorf("open the pending damage: %w", err)
 	}
-	hit.Pending = p.ID
+	if hit.Pending == "" {
+		hit.Pending = p.ID
+	} else {
+		hit.More = append(hit.More, p.ID)
+	}
 	return nil
 }
