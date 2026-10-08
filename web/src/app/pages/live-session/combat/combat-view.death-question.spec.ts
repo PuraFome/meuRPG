@@ -27,8 +27,7 @@ import { RosterClient } from '../../../core/maps/roster-client';
 import { SpellCatalog } from '../../../core/combat/spell-catalog';
 import { CombatView } from './combat-view';
 
-const plain = (t: string | null | undefined) =>
-  (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const plain = (t: string | null | undefined) => (t ?? '').replace(/\s+/g, ' ').trim();
 const brisa = (state: CombatantState) =>
   combatant({
     id: 'b',
