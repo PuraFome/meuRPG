@@ -23,10 +23,11 @@ import (
 
 // CombatSpell implements play.CombatRoster: the spell as the caster casts it
 // with a slot of slotLevel (0 for a cantrip). It does not say whether the
-// caster may cast it: CombatTurnOptions does. `not_found` for a character that
-// is not one of the campaign's living ones, or a spell the content does not
-// have.
-func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, slotLevel int) (link.Spell, error) {
+// caster may cast it: CombatTurnOptions does. damageType is the damage type the
+// caster picks for a spell that lets them choose ("" takes the first). `not_found`
+// for a character that is not one of the campaign's living ones, or a spell the
+// content does not have.
+func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, slotLevel int, damageType string) (link.Spell, error) {
 	_, d, content, err := s.fighter(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return link.Spell{}, err
@@ -66,11 +67,12 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 	} else {
 		out.SaveDC = 0
 	}
-	for _, roll := range det.DamageAt(slotLevel, d.TotalLevel) {
+	out.DamageChoice, out.DamageTypes = det.DamageChoice, det.DamageTypeChoices()
+	for _, roll := range det.DamageAtChoosing(slotLevel, d.TotalLevel, damageType) {
 		// A damage without a type is no damage the engine rolls (Sono's pool of
-		// hit points); one it cannot parse ("4d6 OR 5d6") is the master's.
-		if roll.Parsed && roll.Type != "" && out.Damage == nil {
-			out.Damage = &link.Dice{Count: roll.Dice.Count, Sides: roll.Dice.Sides, Bonus: roll.Dice.Bonus, DamageType: roll.Type}
+		// hit points); one it cannot parse is the master's.
+		if roll.Parsed && roll.Type != "" {
+			out.Damages = append(out.Damages, link.Dice{Count: roll.Dice.Count, Sides: roll.Dice.Sides, Bonus: roll.Dice.Bonus, DamageType: roll.Type})
 		}
 	}
 	if heal, ok := det.HealAt(slotLevel); ok && heal.Parsed {
@@ -83,10 +85,10 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 	// A spell that reads hit points rolls no damage and opens no heal: the cast
 	// applies the effect itself.
 	if fx, ok := content.SpellEffect(spellKey, slotLevel); ok {
-		out.Damage, out.Heal = nil, nil
+		out.Damages, out.Heal = nil, nil
 		out.HP = &link.HPEffect{
 			Kind: fx.Kind, Pool: link.Dice{Count: fx.Dice.Count, Sides: fx.Dice.Sides}, Condition: fx.Condition,
-			Threshold: fx.Threshold, Dies: fx.Dies, Heal: fx.Heal, Ends: fx.Ends,
+			Threshold: fx.Threshold, Dies: fx.Dies, Heal: fx.Heal, Ends: fx.Ends, Amount: fx.Amount,
 		}
 	}
 	_, summonErr := content.SummonOptions(spellKey, det.Spell.Level, rules.Build{})
@@ -141,8 +143,9 @@ func abilityMod(d rules.Derived, a rules.Ability) int {
 }
 
 // CombatSave implements play.CombatRoster: a creature's saving throw bonus
-// against an ability. A full sheet has all six; a basic-sheet NPC has none, so
-// the bonus is 0 and Known is false, and the log says so. `not_found` for a
+// against an ability. A full sheet has all six, and so does a basic sheet made
+// from a creature (the stat block's); any other basic-sheet NPC has none, so the
+// bonus is 0 and Known is false, and the log says so. `not_found` for a
 // character that is not one of the campaign's living ones.
 func (s *Service) CombatSave(ctx context.Context, tx pgx.Tx, campaignID, characterID, ability string) (link.Save, error) {
 	_, d, _, err := s.fighter(ctx, tx, campaignID, characterID)

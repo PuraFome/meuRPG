@@ -638,7 +638,7 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 		e := SubclassEntry{Key: k, Name: s.Name, NamePT: c.namePT(k), Class: s.Class, Archived: c.archived[k], Off: c.off[k]}
 		for _, ss := range s.Spells {
 			// A spell that needs a feature's choice is not always prepared for everyone.
-			if len(ss.WithFeatures) == 0 {
+			if len(ss.WithFeatures) == 0 && !s.ExpandedList {
 				e.AlwaysPrepared = append(e.AlwaysPrepared, SubclassSpellRef{Spell: ss.Spell, ClassLevel: ss.ClassLevel})
 			}
 		}
@@ -806,6 +806,20 @@ var correctionFields = []string{"invocations_known"}
 // correction may name (the values of Spell.SaveSuccess).
 var spellCorrectionSaveSuccess = []string{"half", "none", "other"}
 
+// Spell damage choices a spell correction may name (srd51.Spell.DamageChoice).
+const (
+	// DamageChoiceScale: every listed type is dealt; the dice a higher slot adds
+	// go to the type the caster picks (Flame Strike).
+	DamageChoiceScale = "scale"
+	// DamageChoiceAlternative: only the type the caster picks is dealt (Spirit
+	// Guardians: radiant or necrotic).
+	DamageChoiceAlternative = "alternative"
+)
+
+// minChoiceDamageTypes is how many damage types a spell needs for the caster to
+// have one to pick.
+const minChoiceDamageTypes = 2
+
 // maxCorrectedSlot is the highest spell slot level a damage table may list.
 const maxCorrectedSlot = 9
 
@@ -840,7 +854,9 @@ func (c *content) applyCorrections(fsys fs.FS) error {
 			AttackType  string `json:"attack_type"`
 			SaveAbility string `json:"save_ability"`
 			SaveSuccess string `json:"save_success"`
-			Damage      []struct {
+			// DamageChoice is "scale" or "alternative" (see the DamageChoice constants).
+			DamageChoice string `json:"damage_choice"`
+			Damage       []struct {
 				DamageType string            `json:"damage_type"`
 				AtSlot     map[string]string `json:"at_slot_level"`
 			} `json:"damage"`
@@ -850,6 +866,10 @@ func (c *content) applyCorrections(fsys fs.FS) error {
 			Source   string                `json:"source"`
 			Spells   []srd51.SubclassSpell `json:"add_spells"`
 		} `json:"subclass_corrections"`
+		ExpandedLists []struct {
+			Subclass string `json:"subclass"`
+			Source   string `json:"source"`
+		} `json:"expanded_list_corrections"`
 	}
 	if err := readJSON(fsys, name, &f); err != nil {
 		return err
@@ -888,7 +908,7 @@ func (c *content) applyCorrections(fsys fs.FS) error {
 			return fmt.Errorf("%s: %s is corrected twice", name, corr.Spell)
 		}
 		seen[corr.Spell] = true
-		if corr.AttackType == "" && corr.SaveAbility == "" && corr.Damage == nil {
+		if corr.AttackType == "" && corr.SaveAbility == "" && corr.Damage == nil && corr.DamageChoice == "" {
 			return fmt.Errorf("%s: %s corrects nothing", name, corr.Spell)
 		}
 		if corr.AttackType != "" {
@@ -930,6 +950,30 @@ func (c *content) applyCorrections(fsys fs.FS) error {
 			}
 			s.Damage = dmg
 		}
+		if corr.DamageChoice != "" {
+			if corr.DamageChoice != DamageChoiceScale && corr.DamageChoice != DamageChoiceAlternative {
+				return fmt.Errorf("%s: %s: damage_choice %q is not %s or %s", name, corr.Spell, corr.DamageChoice, DamageChoiceScale, DamageChoiceAlternative)
+			}
+			if len(s.Damage) < minChoiceDamageTypes {
+				return fmt.Errorf("%s: %s: damage_choice needs a spell with two or more damage types", name, corr.Spell)
+			}
+			s.DamageChoice = corr.DamageChoice
+		}
+	}
+	seen = map[string]bool{}
+	for _, corr := range f.ExpandedLists {
+		sub, ok := c.subclasses[corr.Subclass]
+		if !ok {
+			return fmt.Errorf("%s: unknown subclass %q", name, corr.Subclass)
+		}
+		if corr.Source == "" || len(sub.Spells) == 0 {
+			return fmt.Errorf("%s: %s needs spells and a source", name, corr.Subclass)
+		}
+		if seen[corr.Subclass] {
+			return fmt.Errorf("%s: %s is corrected twice", name, corr.Subclass)
+		}
+		seen[corr.Subclass] = true
+		sub.ExpandedList = true
 	}
 	seen = map[string]bool{}
 	for _, corr := range f.Subclasses {

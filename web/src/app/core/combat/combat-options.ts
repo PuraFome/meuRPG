@@ -30,6 +30,8 @@ const REASON_TEXT: Partial<Record<DisabledReasonCode, string>> = {
   [DisabledReasonCode.ATTACKS_USED]: 'Ataques desta ação já usados',
   // Surto de ação: one use per turn, even with another use left.
   [DisabledReasonCode.ALREADY_USED_THIS_TURN]: 'Já usado neste turno',
+  // A bonus action spell leaves no other spell this turn but a cantrip of 1 action.
+  [DisabledReasonCode.BONUS_ACTION_SPELL_LIMIT]: 'Magia de ação bônus no turno',
   // Short on purpose: it repeats on every spell row, and the slot rows above
   // the list are the one explanation of which circles are out (E8-02).
   [DisabledReasonCode.NO_SLOT]: 'Sem espaço',

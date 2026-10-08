@@ -594,6 +594,9 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		if err := setRun(who, ev.RunBefore); err != nil {
 			return nil, err
 		}
+		if err := c.q.SetCombatantSpellsCast(ctx, playdb.SetCombatantSpellsCastParams{ID: who.ID, SpellCast: ev.SpellCastBefore, BonusSpellCast: ev.BonusSpellBefore}); err != nil {
+			return nil, fmt.Errorf("put back the spells cast: %w", err)
+		}
 		if ev.Slot != nil && who.Kind == kindPlayer {
 			v, err := s.spendSlot(ctx, c, who.CharacterID, *ev.Slot, -1)
 			if err != nil {
@@ -623,8 +626,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			}
 		}
 		for _, h := range ev.Hits {
-			if h.Pending != "" {
-				if err := c.q.DeletePendingDamage(ctx, h.Pending); err != nil {
+			for _, id := range append([]string{h.Pending}, h.More...) {
+				if id == "" {
+					continue
+				}
+				if err := c.q.DeletePendingDamage(ctx, id); err != nil {
 					return nil, fmt.Errorf("delete the pending damage: %w", err)
 				}
 			}
@@ -645,6 +651,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 				}
 				if err != nil {
 					return nil, err
+				}
+			}
+			if h.MaxBefore != nil && holdsHP(target) { // after the hit points, which are the lower ones
+				if err := c.q.SetCombatantHitPointsMax(ctx, playdb.SetCombatantHitPointsMaxParams{ID: target.ID, HpMax: h.MaxBefore}); err != nil {
+					return nil, fmt.Errorf("put back the maximum hit points: %w", err)
 				}
 			}
 			if err := setDeath(target, h.DeathBefore); err != nil {

@@ -184,8 +184,8 @@ func TestSpellDetailsExamples(t *testing.T) {
 	if dm := get("spell:detect-magic"); !dm.Spell.Ritual || !dm.Duration.Concentration || !dm.Duration.UpTo || dm.Duration.Amount != 10 {
 		t.Errorf("detect magic = %+v", dm.Duration)
 	}
-	// The level 6 Flame Strike entry is "4d6 OR 5d6": kept as text.
-	if fs := get("spell:flame-strike").DamageAt(6, 11); len(fs) != 2 || fs[0].Parsed || fs[0].Raw != "4d6 OR 5d6" {
+	// Flame Strike's higher slots parse: each type's table is its dice when it is the one that grows.
+	if fs := get("spell:flame-strike").DamageAt(6, 11); len(fs) != 2 || !fs[0].Parsed || fs[0].Raw != "5d6" || !fs[1].Parsed || fs[1].Raw != "5d6" {
 		t.Errorf("flame strike at 6th = %+v", fs)
 	}
 	if mt := get("spell:acid-arrow"); mt.Components.MaterialText == "" || !slices.Contains(mt.Spell.Classes, "class:wizard") || len(mt.HigherLevel) != 1 {
@@ -298,5 +298,58 @@ func TestSpellAttacksAndSaves(t *testing.T) {
 	}
 	if rolls := cl.DamageAt(3, 5); len(rolls) != 1 || rolls[0].Raw != "3d10" {
 		t.Errorf("Call Lightning damage = %+v, want 3d10", rolls)
+	}
+}
+
+// TestFlameStrikeScalesTheChosenType: Flame Strike deals 4d6 fire and 4d6 radiant,
+// and each slot level above the 5th adds 1d6 to the fire damage or to the radiant
+// damage, the caster's choice (SRD 5.1); the other type stays at 4d6.
+func TestFlameStrikeScalesTheChosenType(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	d, ok := c.SpellDetails("spell:flame-strike")
+	if !ok {
+		t.Fatal("no flame strike")
+	}
+	if got := d.DamageTypeChoices(); !slices.Equal(got, []string{"damage-type:fire", "damage-type:radiant"}) {
+		t.Fatalf("DamageTypeChoices = %v, want fire and radiant", got)
+	}
+	for _, tc := range []struct {
+		slot            int
+		pick, fire, rad string
+	}{
+		{5, "", "4d6", "4d6"},
+		{6, "", "5d6", "4d6"}, // no pick takes the first type
+		{6, "damage-type:radiant", "4d6", "5d6"},
+		{9, "damage-type:fire", "8d6", "4d6"},
+		{9, "damage-type:radiant", "4d6", "8d6"},
+	} {
+		got := map[string]string{}
+		for _, r := range d.DamageAtChoosing(tc.slot, 20, tc.pick) {
+			if !r.Parsed {
+				t.Errorf("slot %d pick %q: %q does not parse", tc.slot, tc.pick, r.Raw)
+			}
+			got[r.Type] = r.Raw
+		}
+		if got["damage-type:fire"] != tc.fire || got["damage-type:radiant"] != tc.rad || len(got) != 2 {
+			t.Errorf("Flame Strike at slot %d picking %q = %v, want fire %s and radiant %s", tc.slot, tc.pick, got, tc.fire, tc.rad)
+		}
+	}
+}
+
+// TestSpiritGuardiansDealsOneTypeOfTheTwo: radiant or necrotic, the caster's
+// alignment decides; a cast deals the chosen one only.
+func TestSpiritGuardiansDealsOneTypeOfTheTwo(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	d, _ := c.SpellDetails("spell:spirit-guardians")
+	for pick, want := range map[string]string{"": "damage-type:radiant", "damage-type:necrotic": "damage-type:necrotic"} {
+		rolls := d.DamageAtChoosing(4, 9, pick)
+		if len(rolls) != 1 || rolls[0].Type != want || rolls[0].Raw != "4d8" {
+			t.Errorf("Spirit Guardians at slot 4 picking %q = %+v, want 4d8 %s alone", pick, rolls, want)
+		}
+	}
+	if fb, _ := c.SpellDetails("spell:fireball"); fb.DamageTypeChoices() != nil || len(fb.DamageAtChoosing(3, 5, "")) != 1 {
+		t.Errorf("Fireball has no damage type to pick")
 	}
 }

@@ -7,7 +7,14 @@ import {
   SpellEffectReason,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { SpellHitPointEffectKind } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { effectWords, hpSpellKind, poolDice, poolRollText, reasonWords } from './hp-effects';
+import {
+  effectWords,
+  gainWords,
+  hpSpellKind,
+  poolDice,
+  poolRollText,
+  reasonWords,
+} from './hp-effects';
 
 describe('the spells that read hit points (E8-03)', () => {
   const sleep = {
@@ -132,5 +139,30 @@ describe('the spells that read hit points (E8-03)', () => {
       physical: true,
     });
     expect(poolRollText(typed)).toBe('5d8 = 20 · dado físico');
+  });
+
+  it('rolls the die of Vitalidade Falsa like a pool, and names the gain for it and for Ajuda', () => {
+    const falseLife = {
+      spell: { level: 1 },
+      hitPointEffect: {
+        kind: SpellHitPointEffectKind.TEMP_HP,
+        poolDiceCount: 1,
+        poolDiceSides: 4,
+        poolDicePerLevel: 0,
+        amount: 4,
+        amountPerLevel: 5,
+      },
+    } as never;
+    const aid = { hitPointEffect: { kind: SpellHitPointEffectKind.MAX_HP, amount: 5 } } as never;
+    expect(hpSpellKind(falseLife)).toBe('pool');
+    expect(poolDice(falseLife, 3)).toEqual({ count: 1, sides: 4 });
+    expect(hpSpellKind(aid)).toBe('heal');
+    expect(poolDice(aid, 2)).toBeNull();
+    expect(gainWords(SpellEffectKind.TEMP_HP, 7)).toBe('ganha 7 PV temporários');
+    expect(gainWords(SpellEffectKind.MAX_HP, 5)).toBe('ganha 5 PV máximos');
+    expect(gainWords(SpellEffectKind.FLAT_HEAL, 70)).toBe('recupera 70 PV');
+    expect(
+      effectWords(SpellEffectKind.TEMP_HP, '', SpellEffectOutcome.AFFECTED, 'Pensantus').past,
+    ).toBe('Ganhou PV');
   });
 });

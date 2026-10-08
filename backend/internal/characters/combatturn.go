@@ -77,6 +77,9 @@ func basicDerived(content *rules.Content, b *charactersv1.BasicSheet) rules.Deri
 		d.AttacksPerAction = max(m.AttacksPerAction, 1)
 	}
 	creature, _ := content.MonsterDerived(b.GetMonsterKey())
+	// Its saving throws are the stat block's (the ability modifier plus the
+	// proficiency the creature lists); a basic sheet with no creature has none.
+	d.SavingThrows = creature.SavingThrows
 	for i, a := range b.GetAttacks() {
 		typeKey := "damage-type:" + strings.ToLower(strings.TrimPrefix(a.GetDamageType().String(), "DAMAGE_TYPE_"))
 		dice := rules.DiceFormula{Count: int(a.GetDamageDiceCount()), Sides: int(a.GetDamageDiceSides()), Bonus: int(a.GetDamageBonus())}
@@ -185,7 +188,7 @@ func (s *Service) CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, 
 	d.SpeedWalkFt = turn.SpeedFt
 	opts := combat.Options(d, combat.TurnState{
 		ActionUsed: turn.ActionUsed, BonusActionUsed: turn.BonusActionUsed, ReactionUsed: turn.ReactionUsed,
-		MovementUsedFt: turn.MovementUsedFt, Dashed: turn.Dashed, AttacksMade: turn.AttacksMade, ActionSurged: turn.ActionSurged,
+		MovementUsedFt: turn.MovementUsedFt, Dashed: turn.Dashed, AttacksMade: turn.AttacksMade, ActionSurged: turn.ActionSurged, SpellCast: turn.SpellCast, BonusSpellCast: turn.BonusSpellCast,
 	}, usage)
 	out := turnOptionsToProto(opts)
 	// The movement is kept in tenths of a foot (RN-21): the feet fields are those
@@ -239,6 +242,8 @@ var reasonToProto = map[string]rulesv1.DisabledReasonCode{
 	combat.ReasonReactionOnly:        rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_REACTION_ONLY,
 	combat.ReasonTooLong:             rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG,
 	combat.ReasonAttacksUsed:         rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ATTACKS_USED,
+
+	combat.ReasonBonusActionSpellLimit: rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT,
 }
 
 // turnOptionsToProto copies package combat's TurnOptions into the API's.

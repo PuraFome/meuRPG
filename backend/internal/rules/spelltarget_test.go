@@ -135,13 +135,13 @@ func TestSpellTargetOverrides(t *testing.T) {
 		"spell:light", "spell:major-image", "spell:minor-illusion")
 	want(TargetArea, "spell:flame-strike", "spell:forbiddance", "spell:mirage-arcane", "spell:teleportation-circle", "spell:guards-and-wards",
 		"spell:fire-storm", "spell:hypnotic-pattern", "spell:plant-growth", "spell:purify-food-and-drink", "spell:glyph-of-warding")
-	want(TargetCreatures, "spell:bless", "spell:bane", "spell:mass-healing-word", "spell:prayer-of-healing", "spell:mass-suggestion",
+	want(TargetCreatures, "spell:aid", "spell:bless", "spell:bane", "spell:mass-healing-word", "spell:prayer-of-healing", "spell:mass-suggestion",
 		"spell:telepathic-bond", "spell:water-walk", "spell:wind-walk", "spell:astral-projection", "spell:heroes-feast")
 	if len(kindOf) != 0 {
 		t.Errorf("entries nobody pinned: %v", kindOf)
 	}
 	for key, count := range map[string]int{
-		"spell:bless": 3, "spell:bane": 3, "spell:mass-healing-word": 6, "spell:prayer-of-healing": 6, "spell:mass-suggestion": 12,
+		"spell:aid": 3, "spell:bless": 3, "spell:bane": 3, "spell:mass-healing-word": 6, "spell:prayer-of-healing": 6, "spell:mass-suggestion": 12,
 		"spell:telepathic-bond": 8, "spell:water-walk": 10, "spell:wind-walk": 11, "spell:astral-projection": 9, "spell:heroes-feast": 12,
 	} {
 		if got := c.c.srdTargets[key].Count; got != count {
@@ -325,6 +325,21 @@ func TestTableSpellRangeAndTargetMustAgree(t *testing.T) {
 		_, err := base.With(Overlay{Revision: 1, Spells: []TableSpell{s}})
 		if (err == nil) != tc.ok {
 			t.Errorf("%s: error = %v, want ok = %v", name, err, tc.ok)
+		}
+	}
+}
+
+// TestAidTakesThreeCreatures: Aid reaches up to three creatures, whatever the slot
+// (the higher slot adds hit points, not targets).
+func TestAidTakesThreeCreatures(t *testing.T) {
+	t.Parallel()
+	d, ok := loadForTest(t).SpellDetails("spell:aid")
+	if !ok {
+		t.Fatal("no aid")
+	}
+	for _, slot := range []int{2, 5} {
+		if got := d.Target.MaxTargets(slot, 2); got != 3 {
+			t.Errorf("Aid MaxTargets(%d, 2) = %d, want 3", slot, got)
 		}
 	}
 }

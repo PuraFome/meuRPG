@@ -166,3 +166,55 @@ func TestListSpellsHidden(t *testing.T) {
 		t.Errorf("with the archived hidden, a player finds %v", spellKeys(got))
 	}
 }
+
+// TestFiendPatronSpellsAreChosenNotGiven: the Fiend's Expanded Spell List only adds
+// its spells to the warlock list, to choose from when the warlock learns a spell
+// (SRD 5.1); the Life domain's spells, on the other hand, are always prepared.
+func TestFiendPatronSpellsAreChosenNotGiven(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	patron := []string{"spell:command", "spell:burning-hands", "spell:blindness-deafness", "spell:scorching-ray", "spell:fireball", "spell:stinking-cloud"}
+	has := func(d Derived, key string) (CharacterSpell, bool) {
+		for _, s := range d.Spells {
+			if s.Spell.Key == key {
+				return s, true
+			}
+		}
+		return CharacterSpell{}, false
+	}
+
+	b := standard("class:warlock", 5)
+	b.Classes[0].Subclass = "subclass:fiend"
+	d := Derive(b, c)
+	for _, key := range patron {
+		if s, ok := has(d, key); ok {
+			t.Errorf("a Fiend warlock 5 who chose nothing has %s on the sheet (prepared %v)", key, s.Prepared)
+		}
+	}
+
+	// Chosen among the spells known, a patron spell is a legal pick that counts.
+	spellIssues := func(d Derived) []Issue {
+		return slices.DeleteFunc(slices.Clone(d.Issues), func(i Issue) bool {
+			return i.Code != IssueSpellNotOnList && i.Code != IssueSpellCount && i.Code != IssueSpellLevel && i.Code != IssueUnknownKey
+		})
+	}
+	b.SpellsKnown = []string{"spell:burning-hands", "spell:command", "spell:charm-person", "spell:hellish-rebuke"}
+	d = Derive(b, c)
+	if is := spellIssues(d); len(is) != 0 {
+		t.Errorf("Fiend spells picked among the known ones are refused: %+v", is)
+	}
+	if s, ok := has(d, "spell:burning-hands"); !ok || !s.Prepared {
+		t.Errorf("a chosen Fiend spell is missing from the sheet or not castable: %+v %v", s, ok)
+	}
+	b.SpellsKnown = append(b.SpellsKnown, "spell:fireball", "spell:scorching-ray", "spell:expeditious-retreat")
+	if d = Derive(b, c); !slices.ContainsFunc(d.Issues, func(i Issue) bool { return i.Code == IssueSpellCount }) {
+		t.Errorf("seven spells known at warlock 5 (knows 6) raised no count issue: %+v", d.Issues)
+	}
+
+	// A domain's spells stay always prepared.
+	cl := standard("class:cleric", 3)
+	cl.Classes[0].Subclass = "subclass:life"
+	if s, ok := has(Derive(cl, c), "spell:cure-wounds"); !ok || !s.Prepared {
+		t.Errorf("a Life cleric 3 lacks cure wounds always prepared: %+v %v", s, ok)
+	}
+}

@@ -155,7 +155,7 @@ func (s *Service) mustActNow(ctx context.Context, c *combatTx, who playdb.Combat
 
 func turnOf(c playdb.Combatant) link.Turn {
 	return link.Turn{
-		ActionUsed: c.ActionUsed, BonusActionUsed: c.BonusActionUsed, ReactionUsed: c.ReactionUsed, AttacksMade: int(c.AttacksMade), ActionSurged: c.ActionSurged,
+		ActionUsed: c.ActionUsed, BonusActionUsed: c.BonusActionUsed, ReactionUsed: c.ReactionUsed, AttacksMade: int(c.AttacksMade), ActionSurged: c.ActionSurged, SpellCast: c.SpellCast, BonusSpellCast: c.BonusSpellCast,
 		Dashed: c.Dashed, SpeedFt: int(max(c.SpeedFt, c.SpeedFlyFt)), MovementUsedFt: int(c.MovementUsedDft) / 10,
 		MovementUsedDFt: int(c.MovementUsedDft), LastMoveDFt: int(c.LastMoveDft), Disengaged: c.Disengaged,
 		JumpLongDFt: int(c.JumpLongDft), JumpHighDFt: int(c.JumpHighDft),
@@ -310,7 +310,7 @@ func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrai
 	}
 	var out []*playv1.SpellTargets
 	for _, e := range spells {
-		sp, err := s.roster.CombatSpell(ctx, nil, campaignID, who.CharacterID, e.key, e.level)
+		sp, err := s.roster.CombatSpell(ctx, nil, campaignID, who.CharacterID, e.key, e.level, "")
 		if err != nil {
 			return nil, err
 		}
@@ -979,7 +979,11 @@ func (s *Service) RollDamage(
 			if err != nil {
 				return nil, fmt.Errorf("list the cast's pending damage: %w", err)
 			}
-			group = slices.DeleteFunc(all, func(o playdb.PendingDamage) bool { return o.Status != pendingAwaitingRoll })
+			// A spell with two damage types opens one roll for each: only the ones of
+			// this damage type settle together.
+			group = slices.DeleteFunc(all, func(o playdb.PendingDamage) bool {
+				return o.Status != pendingAwaitingRoll || o.DamageType != p.DamageType || o.Healing != p.Healing
+			})
 		}
 
 		// The damage: the dice (doubled on a critical hit under the SRD's rule, as the

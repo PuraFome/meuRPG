@@ -196,6 +196,12 @@ type SpellDetails struct {
 	// Save is nil when the spell asks for no saving throw.
 	Save   *SpellSave
 	Damage []SpellDamage
+	// DamageChoice says what the caster picks among the Damage types: "scale"
+	// (every type is dealt, and the higher-slot dice go to the chosen one),
+	// "alternative" (only the chosen one is dealt) or "" (every type is dealt as
+	// listed, nothing to pick). With "scale" each type's table is its dice when it
+	// is the chosen one, and DamageAtChoosing says what a cast deals.
+	DamageChoice string
 	// HealBySlotLevel is the healing by slot level ("1d8 + MOD"), nil when
 	// the spell does not heal.
 	HealBySlotLevel map[int]string
@@ -242,6 +248,46 @@ func (d *SpellDetails) DamageAt(slotLevel, characterLevel int) []DamageRoll {
 	return out
 }
 
+// DamageTypeChoices are the damage types the caster picks among, in the order
+// the spell lists them; nil for a spell that has no choice (DamageChoice "").
+func (d *SpellDetails) DamageTypeChoices() []string {
+	if d.DamageChoice == "" {
+		return nil
+	}
+	out := make([]string, 0, len(d.Damage))
+	for _, dm := range d.Damage {
+		out = append(out, dm.Type)
+	}
+	return out
+}
+
+// DamageAtChoosing lists the damage rolls of a cast in which the caster picked
+// the damage type pick (one of DamageTypeChoices; "" picks the first). A spell
+// with no choice answers as DamageAt. For "alternative" only the picked type is
+// dealt. For "scale" every type is dealt, the picked one with its table at the
+// slot level and the others with their dice at the spell's own level.
+func (d *SpellDetails) DamageAtChoosing(slotLevel, characterLevel int, pick string) []DamageRoll {
+	if d.DamageChoice == "" {
+		return d.DamageAt(slotLevel, characterLevel)
+	}
+	if pick == "" {
+		pick = d.Damage[0].Type
+	}
+	var out []DamageRoll
+	for _, dm := range d.Damage {
+		level := d.Spell.Level
+		if dm.Type == pick {
+			level = slotLevel
+		} else if d.DamageChoice == "alternative" {
+			continue
+		}
+		if raw, ok := atLevel(dm.BySlotLevel, level); ok {
+			out = append(out, newRoll(dm.Type, raw))
+		}
+	}
+	return out
+}
+
 // HealAt is the healing roll at a slot level, and whether the spell heals.
 func (d *SpellDetails) HealAt(slotLevel int) (DamageRoll, bool) {
 	raw, ok := atLevel(d.HealBySlotLevel, slotLevel)
@@ -273,14 +319,15 @@ func atLevel(table map[int]string, level int) (string, bool) {
 // buildSpellDetails structures one SRD spell.
 func (c *content) buildSpellDetails(s *srd51.Spell, entry SpellEntry) *SpellDetails {
 	d := &SpellDetails{
-		Spell:       entry,
-		CastingTime: parseCastingTime(s.CastingTime),
-		Range:       parseRange(s.Range),
-		Components:  SpellComponents{MaterialText: s.Material},
-		Duration:    parseDuration(s.Duration, s.Concentration),
-		AttackType:  s.AttackType,
-		Description: s.Desc,
-		HigherLevel: s.HigherLevel,
+		Spell:        entry,
+		CastingTime:  parseCastingTime(s.CastingTime),
+		Range:        parseRange(s.Range),
+		Components:   SpellComponents{MaterialText: s.Material},
+		Duration:     parseDuration(s.Duration, s.Concentration),
+		AttackType:   s.AttackType,
+		DamageChoice: s.DamageChoice,
+		Description:  s.Desc,
+		HigherLevel:  s.HigherLevel,
 	}
 	for _, comp := range s.Components {
 		switch comp {

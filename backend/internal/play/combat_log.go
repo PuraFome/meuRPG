@@ -255,9 +255,11 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST
 			entry.pend = map[string]*damageLog{}
 			for _, h := range ev.Hits {
-				if h.Pending != "" {
-					entry.pend[h.Pending] = &damageLog{status: playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_ROLL}
-					byPending[h.Pending] = entry
+				for _, id := range append([]string{h.Pending}, h.More...) {
+					if id != "" {
+						entry.pend[id] = &damageLog{status: playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_ROLL}
+						byPending[id] = entry
+					}
 				}
 			}
 		case eventTrapTriggered:
@@ -590,6 +592,11 @@ func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *
 				t.Damage = dl.view(v, caster, target)
 			}
 		}
+		for _, id := range h.More { // the other damage types of the spell
+			if dl, ok := e.pend[id]; ok {
+				t.MoreDamages = append(t.MoreDamages, dl.view(v, caster, target))
+			}
+		}
 		out.Targets = append(out.Targets, t)
 	}
 	return out
@@ -781,7 +788,7 @@ func (n *keyNames) of(ctx context.Context, c playdb.Combatant, key string) strin
 		}
 	}
 	if strings.HasPrefix(key, "spell:") && !isCreature(c) {
-		if sp, err := n.s.roster.CombatSpell(ctx, nil, n.campaignID, c.CharacterID, key, 0); err == nil {
+		if sp, err := n.s.roster.CombatSpell(ctx, nil, n.campaignID, c.CharacterID, key, 0, ""); err == nil {
 			return sp.Name
 		}
 	}
