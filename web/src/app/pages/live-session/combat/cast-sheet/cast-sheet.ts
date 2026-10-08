@@ -362,7 +362,7 @@ export class CastSheet {
   });
   protected readonly resultRows = computed(() => {
     const cast = this.cast() ?? this.resumedCast();
-    return castRows(cast, this.pendings(), this.labels());
+    return castRows(cast, this.pendings(), this.labels(), (id) => this.npcs().has(id));
   });
   /** The live sentence of a spell that reads hit points ("O Goblin 1 adormeceu. ..."), and the caster's
    * own roll of the pool: the server sends it only to the master and to the caster's player. */
