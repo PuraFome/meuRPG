@@ -244,3 +244,54 @@ func TestReadTxSeesOneSnapshot(t *testing.T) {
 		t.Error("a write inside ReadTx succeeded, want an error (read-only transaction)")
 	}
 }
+
+// TestAQueuedRequestWaitsAtMostAsLongAsTheConnectionIsHeld: with every
+// connection busy a request queues for one, and the wait ends when the holder
+// lets go; a holder stuck in one statement is cut off by statement_timeout, so
+// the queue is never longer than that limit plus the holder's other work. A
+// single-connection pool and a 500 ms limit stand for the 10 connections and
+// 30 s of production.
+func TestAQueuedRequestWaitsAtMostAsLongAsTheConnectionIsHeld(t *testing.T) {
+	t.Parallel()
+	url := testenv.DatabaseURL(t)
+	sep := "?"
+	if strings.Contains(url, "?") {
+		sep = "&"
+	}
+	pool, err := NewPoolWith(t.Context(), url+sep+"statement_timeout=500", func(cfg *pgxpool.Config) { cfg.MaxConns = 1 })
+	if err != nil {
+		t.Fatalf("NewPoolWith() error = %v", err)
+	}
+	t.Cleanup(pool.Close)
+
+	holding := make(chan struct{})
+	holderErr := make(chan error, 1)
+	go func() {
+		holderErr <- InTx(t.Context(), pool, func(tx pgx.Tx) error {
+			select {
+			case <-holding:
+			default:
+				close(holding)
+			}
+			_, err := tx.Exec(t.Context(), "SELECT pg_sleep(30)")
+			return err
+		})
+	}()
+	<-holding
+
+	start := time.Now()
+	err = InTx(t.Context(), pool, func(tx pgx.Tx) error {
+		_, err := tx.Exec(t.Context(), "SELECT 1")
+		return err
+	})
+	waited := time.Since(start)
+	if err != nil {
+		t.Fatalf("the queued transaction: error = %v, want it served once the holder is cut off", err)
+	}
+	if waited > 10*time.Second {
+		t.Errorf("the queued transaction waited %v, want about the statement timeout (500 ms)", waited)
+	}
+	if pgErr, ok := errors.AsType[*pgconn.PgError](<-holderErr); !ok || pgErr.Code != "57014" {
+		t.Errorf("the holder was not canceled by statement_timeout (57014)")
+	}
+}

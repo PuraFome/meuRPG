@@ -10,16 +10,23 @@
 //     connection that never closed) ends the stream instead of blocking inside
 //     Send until the platform closes the connection;
 //   - the read of a request body that a client can trickle: ReadBody, for the
-//     image upload and the sign-in form.
+//     image upload and the sign-in form, and Middleware, for every unary RPC
+//     (UnaryBodyTimeout).
 package slowclient
 
 import (
 	"context"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
 )
+
+// UnaryBodyTimeout is how long the body of a unary RPC has to arrive: the
+// largest one is 4 MiB, which a 1 Mbit/s connection sends in about 35 s.
+const UnaryBodyTimeout = time.Minute
 
 type controllerKey struct{}
 
@@ -27,10 +34,25 @@ type controllerKey struct{}
 // does not hand the handler the ResponseWriter, and the write deadline can only
 // be set through it, so the Interceptor finds it here.
 func Middleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), controllerKey{}, http.NewResponseController(w))
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+	return MiddlewareWith(UnaryBodyTimeout)(next)
+}
+
+// MiddlewareWith is Middleware with another unary body deadline.
+func MiddlewareWith(unaryBody time.Duration) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			rc := http.NewResponseController(w)
+			ctx := context.WithValue(r.Context(), controllerKey{}, rc)
+			if isUnaryRPC(r) {
+				// Set before the handler reads: Connect reads a unary body, up to its
+				// whole limit, before any interceptor (the session's included) runs.
+				if rc.SetReadDeadline(time.Now().Add(unaryBody)) == nil {
+					r.Body = &deadlineBody{ReadCloser: r.Body, rc: rc}
+				}
+			}
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }
 
 // ReadBody gives the rest of the request body d to arrive. Call it before
@@ -84,4 +106,35 @@ func (c *deadlineConn) Send(msg any) error {
 		_ = c.rc.SetWriteDeadline(time.Time{})
 	}
 	return err
+}
+
+// isUnaryRPC reports whether r is the POST of a unary Connect call. A stream's
+// request (application/connect+...) is left out: its client may stay silent
+// after the one message for as long as it listens.
+func isUnaryRPC(r *http.Request) bool {
+	if r.Method != http.MethodPost {
+		return false
+	}
+	switch mediaType, _, _ := strings.Cut(r.Header.Get("Content-Type"), ";"); strings.TrimSpace(strings.ToLower(mediaType)) {
+	case "application/json", "application/proto":
+		return true
+	}
+	return false
+}
+
+// deadlineBody clears the read deadline once the body is over (or failed). A
+// deadline left on the connection would reach its background read, which
+// net/http uses to notice a client that left, and cancel the request's
+// context while the handler still works.
+type deadlineBody struct {
+	io.ReadCloser
+	rc *http.ResponseController
+}
+
+func (b *deadlineBody) Read(p []byte) (int, error) {
+	n, err := b.ReadCloser.Read(p)
+	if err != nil {
+		_ = b.rc.SetReadDeadline(time.Time{})
+	}
+	return n, err
 }
