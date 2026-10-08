@@ -79,7 +79,18 @@ describe('parseAmount', () => {
   });
 
   it('refuses the rest', () => {
-    for (const text of ['', '0', '-5', '1000001', '1,5', '1.000', 'dez', '12 XP', '00000000']) {
+    for (const text of [
+      '',
+      '0',
+      '-5',
+      '1000001',
+      '1,5',
+      '1.000',
+      'dez',
+      '12 XP',
+      '00000000',
+      '01000000',
+    ]) {
       expect(parseAmount(text), text).toBeNull();
     }
   });

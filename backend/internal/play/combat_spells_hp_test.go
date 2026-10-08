@@ -628,6 +628,23 @@ func TestAidRaisesTheMaximumHitPoints(t *testing.T) {
 	if v := a.vitals(t, a.toren); v.GetHitPointsTemporary() != 5 {
 		t.Errorf("Toren has %d temporários, want 5", v.GetHitPointsTemporary())
 	}
+	assertAidGain(t, res, a, "Goblin", playv1.SpellEffectGain_SPELL_EFFECT_GAIN_MAXIMUM)
+	assertAidGain(t, res, a, "Toren", playv1.SpellEffectGain_SPELL_EFFECT_GAIN_TEMPORARY)
+}
+
+// assertAidGain checks what a cast of Aid says the labeled target got.
+func assertAidGain(t *testing.T, res *playv1.CastSpellResponse, a *armed, label string, want playv1.SpellEffectGain) {
+	t.Helper()
+	id := byLabel(t, a.get(t, a.master), label).GetId()
+	for _, tr := range res.GetCast().GetTargets() {
+		if tr.GetCombatantId() == id {
+			if got := tr.GetEffect().GetGain(); got != want {
+				t.Errorf("%s got %v from Ajuda, want %v", label, got, want)
+			}
+			return
+		}
+	}
+	t.Errorf("%s is not among the targets of the cast", label)
 }
 
 // TestAidWakesACharacterAtZero: Aid raises current hit points, so a character at 0
@@ -646,7 +663,8 @@ func TestAidWakesACharacterAtZero(t *testing.T) {
 	a.undoes(t, "Ajuda on a character at 0", func() {
 		a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(2), a.at(t, "Toren"), noCastRoll)
 	})
-	a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(2), a.at(t, "Toren"), noCastRoll)
+	res := a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(2), a.at(t, "Toren"), noCastRoll)
+	assertAidGain(t, res, a, "Toren", playv1.SpellEffectGain_SPELL_EFFECT_GAIN_CURRENT)
 	if v := a.vitals(t, a.toren); v.GetHitPointsCurrent() != 5 || v.GetHitPointsTemporary() != 0 {
 		t.Errorf("Toren = %d PV and %d temporários, want 5 and 0", v.GetHitPointsCurrent(), v.GetHitPointsTemporary())
 	}

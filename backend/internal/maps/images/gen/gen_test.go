@@ -340,8 +340,7 @@ func TestGeminiDoesNotRetryATimeout(t *testing.T) {
 	if _, err := g.Generate(t.Context(), sceneRequest()); !errors.Is(err, ErrUnavailable) || !strings.Contains(err.Error(), "timeout") {
 		t.Fatalf("error = %v, want ErrUnavailable by timeout", err)
 	}
-	// A retry would come after the 1 ms backoff; this is far longer.
-	time.Sleep(200 * time.Millisecond)
+	// The one retry is made inside Generate, so it would be counted by now.
 	if calls.Load() != 1 {
 		t.Errorf("calls = %d, want 1: a timeout is not retried", calls.Load())
 	}

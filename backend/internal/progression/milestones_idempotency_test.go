@@ -71,8 +71,10 @@ func TestAddMilestoneWithTheSameKeyAtOnceAddsOne(t *testing.T) {
 	tb := newTable(t, milestones, 1)
 	ids := make([]string, 4)
 	var wg sync.WaitGroup
+	start := dbtest.NewBarrier(len(ids))
 	for i := range ids {
 		wg.Go(func() {
+			start.Wait()
 			res, err := tb.master.planWithKey(tb.campaign, "Chegar ao Vale Seco", "racing")
 			if err != nil {
 				t.Errorf("AddMilestone() error = %v", err)

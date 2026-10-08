@@ -45,6 +45,34 @@ const response = create(GetCombatHighlightsResponseSchema, {
   ],
 });
 
+describe('combat highlights: the tries behind the passed checks', () => {
+  const passed = (...winners: [string, string][]) => ({
+    categories: [category(HighlightKind.CHECKS_PASSED, 4, ...winners)],
+  });
+
+  it('says how many were tried when the winners all tried the same number', () => {
+    const tiles = highlightTiles(
+      passed(['a', 'Ana'], ['b', 'Bia']),
+      new Map([
+        ['a', 5],
+        ['b', 5],
+      ]),
+    );
+    expect(tiles[0].sub).toBe(`de${nbsp}5${nbsp}tentados`);
+  });
+
+  it('says nothing about tries when the winners tried different numbers', () => {
+    const tiles = highlightTiles(
+      passed(['a', 'Ana'], ['b', 'Bia']),
+      new Map([
+        ['a', 5],
+        ['b', 6],
+      ]),
+    );
+    expect(tiles[0].sub).toBe('');
+  });
+});
+
 describe('combat highlights', () => {
   it('writes each number with its unit tied to it', () => {
     expect(highlightValue(HighlightKind.MOST_DAMAGE, 23)).toBe(`23${nbsp}de${nbsp}dano`);

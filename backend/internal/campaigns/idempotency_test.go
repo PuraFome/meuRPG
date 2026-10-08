@@ -8,6 +8,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // The audit of 07/10/2026 (F7): a retried CreateCampaign, after a timeout or a second tap, must
@@ -76,14 +77,17 @@ func TestCreateCampaignIsIdempotent(t *testing.T) {
 
 func TestCreateCampaignWithTheSameKeyAtOnceMakesOne(t *testing.T) {
 	t.Parallel()
+	const calls = 6
+	dbtest.PoolSize(t, calls) // the calls must overlap: one connection would run them one by one
 	h := newHarness(t)
 	master := h.newUser("Mestre")
 
-	const calls = 6
 	ids := make([]string, calls)
 	var wg sync.WaitGroup
+	start := dbtest.NewBarrier(calls)
 	for i := range calls {
 		wg.Go(func() {
+			start.Wait()
 			if c, err := createWithKey(t, master, "Mirathel", "racing"); err == nil {
 				ids[i] = c.GetId()
 			} else {

@@ -134,6 +134,9 @@ type castHit struct {
 	Order    int32  `json:"order,omitempty"`
 	Left     int32  `json:"left,omitempty"`
 	Healed   *int32 `json:"healed,omitempty"`
+	// Gain is what Aid gave the target (the gain* values): its maximum, temporary
+	// hit points or current hit points.
+	Gain string `json:"gain,omitempty"`
 	// What an undo puts back: the hit points and death saves when the spell
 	// changed them (a heal, a death, Estabilizar), the conditions when it
 	// changed them.

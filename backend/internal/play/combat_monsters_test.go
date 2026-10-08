@@ -427,8 +427,10 @@ func TestMR042_TwoAddsAtOnceKeepOneNpc(t *testing.T) {
 	e := a.monsterSetup(t, false)
 	var wg sync.WaitGroup
 	errs := make([]error, 2)
-	for i := range 2 {
+	start := dbtest.NewBarrier(len(errs))
+	for i := range errs {
 		wg.Go(func() {
+			start.Wait()
 			_, errs[i] = a.addMonsters(t, e, newKey(), func(r *playv1.AddMonstersRequest) { r.Count = 2 })
 		})
 	}

@@ -20,6 +20,14 @@
           </div>
         }
       }
+      @if (damageChoices().length) {
+        <app-damage-type-picker
+          [choices]="damageChoices()"
+          [chosen]="damageType()"
+          [choice]="details()!.damageChoice"
+          (pick)="pickDamageType($event)"
+        />
+      }
       @if (rule().kind !== 'none') {
         <app-cast-targets
           [rows]="targetRows()"

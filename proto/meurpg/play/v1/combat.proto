@@ -2922,6 +2922,23 @@ message SpellEffectResult {
   // master and the target's own player: on an NPC the amount would tell the
   // caster how many hit points it lacked.
   optional int32 healed = 6;
+  // For Aid (SPELL_EFFECT_KIND_MAX_HP): what the target got, which depends on who
+  // it is. Everyone gets it: it only says which of three public cases applied
+  // (an NPC or creature; a character standing; a character at 0 hit points).
+  SpellEffectGain gain = 7;
+}
+
+// SpellEffectGain is what Aid gave one target.
+enum SpellEffectGain {
+  SPELL_EFFECT_GAIN_UNSPECIFIED = 0;
+  // An NPC or a creature: its maximum and current hit points both rose.
+  SPELL_EFFECT_GAIN_MAXIMUM = 1;
+  // A player's character above 0 hit points: the amount became temporary hit
+  // points, because the sheet's maximum has no place for a bonus.
+  SPELL_EFFECT_GAIN_TEMPORARY = 2;
+  // A player's character at 0 hit points: the amount became current hit points,
+  // so the character wakes up.
+  SPELL_EFFECT_GAIN_CURRENT = 3;
 }
 
 // CastSpellResponse returns the combat and what the cast did.

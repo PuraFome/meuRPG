@@ -2,6 +2,7 @@ import { create } from '@bufbuild/protobuf';
 
 import {
   DiceRollSchema,
+  SpellEffectGain,
   SpellEffectKind,
   SpellEffectOutcome,
   SpellEffectReason,
@@ -9,6 +10,7 @@ import {
 import { SpellHitPointEffectKind } from '../../../gen/meurpg/rules/v1/rules_pb';
 import {
   effectWords,
+  gainLine,
   gainWords,
   hpSpellKind,
   poolDice,
@@ -50,6 +52,8 @@ describe('the spells that read hit points (E8-03)', () => {
       poolDice({ hitPointEffect: { kind: SpellHitPointEffectKind.THRESHOLD } } as never, 7),
     ).toBeNull();
     expect(poolDice(null, 1)).toBeNull();
+    // A slot below the spell's own level adds no dice, and takes none away.
+    expect(poolDice(sleep, 0)).toEqual({ count: 5, sides: 8 });
   });
 
   it('says what happened in a word and an icon, by the condition the spell gives', () => {
@@ -87,6 +91,13 @@ describe('the spells that read hit points (E8-03)', () => {
     ).toBe('Foi curado');
   });
 
+  it('says a heal in the gender of the name', () => {
+    const heal = (label: string) =>
+      effectWords(SpellEffectKind.FLAT_HEAL, '', SpellEffectOutcome.AFFECTED, label);
+    expect(heal('Brisa')).toMatchObject({ present: 'é curada', past: 'Foi curada' });
+    expect(heal('Toren')).toMatchObject({ present: 'é curado', past: 'Foi curado' });
+  });
+
   it('says "não foi afetado" in the gender of the name, with the block icon', () => {
     const goblin = effectWords(
       SpellEffectKind.POOL,
@@ -108,6 +119,9 @@ describe('the spells that read hit points (E8-03)', () => {
   it('gives the master the reason a creature was not affected', () => {
     expect(reasonWords(SpellEffectReason.ABOVE_POOL, 27, 8, undefined)).toBe(
       '27 é mais que 8 restantes',
+    );
+    expect(reasonWords(SpellEffectReason.ABOVE_POOL, undefined, undefined, undefined)).toBe(
+      'mais PV do que sobrou do total',
     );
     expect(reasonWords(SpellEffectReason.ABOVE_LIMIT, 27, undefined, 150)).toBe(
       '27 PV, acima do limite de 150',
@@ -164,5 +178,24 @@ describe('the spells that read hit points (E8-03)', () => {
     expect(
       effectWords(SpellEffectKind.TEMP_HP, '', SpellEffectOutcome.AFFECTED, 'Pensantus').past,
     ).toBe('Ganhou PV');
+  });
+});
+
+describe('what Ajuda gave each target, in words', () => {
+  const aid = SpellEffectKind.MAX_HP;
+
+  it('says the maximum for an NPC or a creature', () => {
+    expect(gainWords(aid, 5, SpellEffectGain.MAXIMUM)).toBe('ganha 5 PV máximos');
+    expect(gainLine(aid, 5, SpellEffectGain.MAXIMUM)).toBe('PV máximo +5');
+  });
+
+  it('says temporary hit points for a character above 0', () => {
+    expect(gainWords(aid, 5, SpellEffectGain.TEMPORARY)).toBe('ganha 5 PV temporários');
+    expect(gainLine(aid, 5, SpellEffectGain.TEMPORARY)).toBe('5 PV temporários');
+  });
+
+  it('says the character at 0 comes back with the amount', () => {
+    expect(gainWords(aid, 5, SpellEffectGain.CURRENT)).toBe('volta com 5 PV');
+    expect(gainLine(aid, 5, SpellEffectGain.CURRENT)).toBe('Volta com 5 PV');
   });
 });

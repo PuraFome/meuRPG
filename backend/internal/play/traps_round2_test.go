@@ -239,17 +239,14 @@ func TestMR035_TheActivityOutsideACombat(t *testing.T) {
 
 	// A search outside a combat: the master reads the roll and what it found, the searcher
 	// only their own, nobody else; the master's stream gets a hint with no content.
-	drain := func() {
-		time.Sleep(200 * time.Millisecond)
-		r.drain(masterStream)
-	}
-	drain()
+	r.settle(t, masterStream)                          // what the firing sent is read, so it cannot pass for the search's hint
 	res, err := r.search(t, r.caio, investigation, 12) // Toren: 12 + 0 against DC 10
 	if err != nil || len(res.GetFoundPointIds()) != 1 || res.GetFoundPointIds()[0] != hidden.GetId() {
 		t.Fatalf("Toren's search = %v, %v; want the hidden pit", res, err)
 	}
+	// The hint is published before the search returns: it is on the stream before the marker.
 	hinted := false
-	for _, ev := range r.drainUntilMapChanged(masterStream) {
+	for _, ev := range r.settle(t, masterStream)[0] {
 		if ev.GetMapChanged() != nil {
 			hinted = true
 		}
@@ -548,10 +545,11 @@ func TestMR035_APassiveNoticeTellsNobodyElseAndTheMasterOnlyWithNoContent(t *tes
 	masterStream := r.watch(t, r.master, r.campaignID)
 	r.mustMove(t, r.caio, "Toren", 7, 7)
 	r.wantKnows(t, "Toren's player", r.caio, pit.GetId(), true)
-	// The master's hint is the sign that the notice has been published: the
-	// player's stream is read after it.
-	masterEvents := r.drainUntilMapChanged(masterStream)
-	for _, ev := range r.drain(anaStream) {
+	// The marker comes after the notice's hint on every stream, in the hub's order, so
+	// what each stream carried before it is all the notice sent.
+	settled := r.settle(t, anaStream, masterStream)
+	masterEvents := settled[1]
+	for _, ev := range settled[0] {
 		if ev.GetMapChanged() != nil {
 			t.Errorf("Pensantus's stream got %v after Toren noticed a trap; want no map change", ev)
 		}

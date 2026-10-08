@@ -57,6 +57,11 @@ describe('milestones (E8-14)', () => {
     expect(reachedOf(list).map((m) => m.id)).toEqual(['r2', 'r1']);
   });
 
+  it('a milestone taken off the list is not planned even before it is reached', () => {
+    const off = create(MilestoneSchema, { id: 'o', text: 'Ponte salva', offList: true });
+    expect(plannedOf([off, planned('p1', 'Salvar o mercador')]).map((m) => m.id)).toEqual(['p1']);
+  });
+
   it('an off-list milestone is reached, never planned', () => {
     const off = reached('x', 'Ponte salva', new Date(), [mark(['Brisa'])], { offList: true });
     expect(plannedOf([off])).toEqual([]);

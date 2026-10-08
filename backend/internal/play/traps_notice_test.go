@@ -3,7 +3,6 @@ package play
 import (
 	"strings"
 	"testing"
-	"time"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -17,23 +16,19 @@ import (
 // (slice 9.14's two server gaps). These tests need the database
 // (MEURPG_TEST_DATABASE_URL); the fixture is the trap rig (traps_test.go).
 
-// settle reads a stream until it has been quiet for a moment: the events the server
-// published reach the test's channel a little later (a goroutine reads the stream).
-func (r *trapRig) settle(w *watcher) []*playv1.WatchGameSessionResponse {
-	var out []*playv1.WatchGameSessionResponse
-	for {
-		select {
-		case ev, ok := <-w.events:
-			if !ok {
-				return out
-			}
-			if ev.GetHeartbeat() == nil {
-				out = append(out, ev)
-			}
-		case <-time.After(300 * time.Millisecond):
-			return out
-		}
+// settle has the master show the current map again, which sends every stream of the
+// campaign a current_map_changed, and returns what each of ws carried before it, heartbeats
+// left out. The hub keeps order, so whatever an earlier action published is in the result
+// however late it was delivered, and the streams are quiet after it. ws must be every
+// watcher of the campaign.
+func (r *trapRig) settle(t *testing.T, ws ...*watcher) [][]*playv1.WatchGameSessionResponse {
+	t.Helper()
+	r.master.markCurrentMap(t, r.campaignID, r.mapID, ws...)
+	out := make([][]*playv1.WatchGameSessionResponse, len(ws))
+	for i, w := range ws {
+		out[i] = w.beforeMarker(t)
 	}
+	return out
 }
 
 // TestRN10_ThePassiveNoticeReachesOnlyItsPlayer: when Toren notices a trap by passing
@@ -47,10 +42,7 @@ func TestRN10_ThePassiveNoticeReachesOnlyItsPlayer(t *testing.T) {
 	pit := r.trap(t, "Fosso Dourado", 9, 7, func(s *mapsv1.TrapSpec) { s.NoticeDc = 10 })
 	r.fight(t)
 	master, caio, ana, bia := r.watch(t, r.master, r.campaignID), r.watch(t, r.caio, r.campaignID), r.watch(t, r.ana, r.campaignID), r.watch(t, r.bia, r.campaignID)
-	r.settle(master)
-	r.settle(caio)
-	r.settle(ana)
-	r.settle(bia)
+	r.settle(t, master, caio, ana, bia)
 
 	r.mustMove(t, r.caio, "Toren", 7, 7) // 10 ft from the pit: a passive 10 meets the DC 10
 
@@ -62,7 +54,8 @@ func TestRN10_ThePassiveNoticeReachesOnlyItsPlayer(t *testing.T) {
 		}
 		return n
 	}
-	got := r.settle(caio)
+	settled := r.settle(t, master, caio, ana, bia)
+	got := settled[1]
 	if noticed(got) != 1 {
 		t.Fatalf("Toren's player's stream has %d trap_noticed hints, want 1: %v", noticed(got), got)
 	}
@@ -71,11 +64,10 @@ func TestRN10_ThePassiveNoticeReachesOnlyItsPlayer(t *testing.T) {
 			t.Errorf("trap_noticed = %v, want the map %s and the trap %s", n, r.mapID, pit.GetId())
 		}
 	}
-	if n := noticed(r.settle(master)); n != 0 {
+	if n := noticed(settled[0]); n != 0 {
 		t.Errorf("the master's stream has %d trap_noticed hints, want none", n)
 	}
-	for name, w := range map[string]*watcher{"Pensantus's player": ana, "Brisa's player": bia} {
-		evs := r.settle(w)
+	for name, evs := range map[string][]*playv1.WatchGameSessionResponse{"Pensantus's player": settled[2], "Brisa's player": settled[3]} {
 		if noticed(evs) != 0 {
 			t.Errorf("%s got a trap_noticed hint", name)
 		}
@@ -123,24 +115,26 @@ func TestRN10_TheNoticeHintFollowsTheMapThePlayersSee(t *testing.T) {
 	r.trapOn(t, m2, "Fosso Dourado", 5, 5, pit("1d4"), func(s *mapsv1.TrapSpec) { s.NoticeDc = 5 })
 	caio, ana := r.watch(t, r.caio, r.campaignID), r.watch(t, r.ana, r.campaignID)
 	r.placeOn(t, m2, r.toren.GetId(), 5, 6) // hidden map: nothing noticed, nothing said
-	for _, ev := range append(r.settle(caio), r.settle(ana)...) {
-		if ev.GetTrapNoticed() != nil {
-			t.Fatalf("a hint %v for a notice on a map the players do not see", ev)
+	for _, evs := range r.settle(t, caio, ana) {
+		for _, ev := range evs {
+			if ev.GetTrapNoticed() != nil {
+				t.Fatalf("a hint %v for a notice on a map the players do not see", ev)
+			}
 		}
 	}
 	if _, err := r.mc(r.master).SetMapRevealed(t.Context(), connect.NewRequest(&mapsv1.SetMapRevealedRequest{CampaignId: r.campaignID, MapId: m2, Revealed: true})); err != nil {
 		t.Fatalf("SetMapRevealed() error = %v", err)
 	}
-	r.settle(caio)
-	r.settle(ana)
+	r.settle(t, caio, ana)
 	r.placeOn(t, m2, r.toren.GetId(), 5, 6) // revealed: Toren notices it
 	var toToren, toPensantus int
-	for _, ev := range r.settle(caio) {
+	settled := r.settle(t, caio, ana)
+	for _, ev := range settled[0] {
 		if n := ev.GetTrapNoticed(); n != nil && n.GetMapId() == m2 {
 			toToren++
 		}
 	}
-	for _, ev := range r.settle(ana) {
+	for _, ev := range settled[1] {
 		if ev.GetTrapNoticed() != nil {
 			toPensantus++
 		}

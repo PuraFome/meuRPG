@@ -221,16 +221,35 @@ func TestMR041_ATreasureIsConvertedOnce(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make([]error, 2)
 	done := make(chan int, 2)
+	start := dbtest.NewBarrier(len(errs))
 	for i := range errs {
 		wg.Go(func() {
+			start.Wait()
 			_, errs[i] = tb.backToTown("", tb.ids(2), chest)
 			done <- i
 		})
 	}
+	// Wait, on a condition and not on a clock, until both awards are stopped at the
+	// treasure's lock; neither may have finished by then.
+	observer := dbtest.SideConnection(t, tb.h.pool)
+	for waiting, deadline := 0, time.Now().Add(30*time.Second); waiting < 2; time.Sleep(5 * time.Millisecond) {
+		if err := observer.QueryRow(t.Context(), `SELECT count(*) FROM crdb_internal.cluster_queries
+			WHERE query LIKE '%FOR UPDATE OF p%' AND query NOT LIKE '%cluster_queries%'`).Scan(&waiting); err != nil {
+			t.Fatalf("look for the waiting awards: %v", err)
+		}
+		select {
+		case i := <-done:
+			t.Fatalf("award %d finished while the treasure's row was locked: %v", i, errs[i])
+		default:
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("%d awards were stopped at the treasure's lock in 30 s, want 2", waiting)
+		}
+	}
 	select {
 	case i := <-done:
 		t.Fatalf("award %d finished while the treasure's row was locked: %v", i, errs[i])
-	case <-time.After(1500 * time.Millisecond):
+	default:
 	}
 	if err := holder.Commit(t.Context()); err != nil {
 		t.Fatalf("Commit() error = %v", err)
@@ -269,8 +288,12 @@ func TestMR041_ADoubleSubmitConvertsOnce(t *testing.T) {
 	var wg sync.WaitGroup
 	res := make([]*progressionv1.AwardXPResponse, 2)
 	errs := make([]error, 2)
+	start := dbtest.NewBarrier(len(res))
 	for i := range res {
-		wg.Go(func() { res[i], errs[i] = tb.backToTown(key, tb.ids(2), chest) })
+		wg.Go(func() {
+			start.Wait()
+			res[i], errs[i] = tb.backToTown(key, tb.ids(2), chest)
+		})
 	}
 	wg.Wait()
 	var ids []string

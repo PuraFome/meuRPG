@@ -8,9 +8,9 @@ import { metersText } from '../units';
  * The line under a spell's name in "O que você pode fazer" (E8-02): where it
  * reaches and what it rolls, from the same details the cast sheet's subtitle reads:
  * "Alcance 27 m · 5d8 PV de criaturas", "Alcance 36 m · 8d6 de fogo". Empty until
- * the details are read. Nothing is written by hand per spell.
+ * the details are read; a cantrip's dice are the caster's (`Attack.spellDice`). Nothing is written by hand per spell.
  */
-export function spellSummary(details: SpellDetails | null | undefined): string {
+export function spellSummary(details: SpellDetails | null | undefined, cantripDice = ''): string {
   if (!details) {
     return '';
   }
@@ -25,7 +25,7 @@ export function spellSummary(details: SpellDetails | null | undefined): string {
   }
   const level = details.spell?.level ?? 0;
   const pool = poolDice(details, level);
-  const dice = damageDice(details, level);
+  const dice = damageDice(details, level, cantripDice);
   const type = details.damage[0]?.damageTypePt ?? '';
   const heal = details.healBySlotLevel[level];
   if (pool) {

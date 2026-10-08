@@ -10,7 +10,6 @@ import {
   type TargetInReach,
   AttackOutcome,
   SaveOutcome,
-  SpellEffectKind,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   Ability,
@@ -18,6 +17,7 @@ import {
   type SlotChoice,
   type SpellDetails,
   SpellAttackType,
+  SpellDamageChoice,
   SpellRangeKind,
   SpellSaveSuccess,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
@@ -27,7 +27,7 @@ import { joinDots, tight } from '../format/text';
 import { circleLabel } from './combat-options';
 import { article } from './combat-log';
 import { listing } from './cover';
-import { effectWords, hpSpellKind, poolDice } from './hp-effects';
+import { effectWords, gainLine, hpSpellKind, poolDice } from './hp-effects';
 import { stateWord } from './combat-view';
 
 /**
@@ -336,18 +336,55 @@ const ABILITY_PT: Partial<Record<Ability, string>> = {
   [Ability.CHARISMA]: 'Carisma',
 };
 
-/** The dice a spell makes at a slot level ("8d6"), from its details; `''` when there are none. */
-export function damageDice(details: SpellDetails | null, slotLevel: number): string {
+/**
+ * The dice a spell makes at a slot level ("8d6"), from its details; `''` when there are none.
+ * A cantrip grows with the caster's level, which the details do not know: the server sends the
+ * caster's dice with the attack (`Attack.spellDice`), and without them a cantrip shows no dice
+ * rather than the first row of its table.
+ */
+export function damageDice(
+  details: SpellDetails | null,
+  slotLevel: number,
+  cantripDice = '',
+): string {
   const d = details?.damage[0];
   if (!d) {
     return '';
   }
-  return (
-    d.bySlotLevel[slotLevel] ??
-    d.bySlotLevel[details?.spell?.level ?? 0] ??
-    Object.values(d.byCharacterLevel)[0] ??
-    ''
-  );
+  const own = details?.spell?.level ?? 0;
+  if (own === 0 && Object.keys(d.byCharacterLevel).length > 0) {
+    return cantripDice;
+  }
+  return d.bySlotLevel[slotLevel] ?? d.bySlotLevel[own] ?? cantripDice;
+}
+
+/**
+ * What a spell deals, in words, with each damage type's dice: "5d6 de fogo e 4d6 de radiante". For a spell
+ * that scales by choice (Coluna de Chamas) every type is dealt and the dice a higher slot adds go to the
+ * picked type (`pick`, a damage type key; the first when empty), the others staying at the spell's own
+ * circle; for one that deals only the picked type (Guardiões Espirituais) only that one is said.
+ */
+export function damageText(
+  details: SpellDetails | null,
+  slotLevel: number,
+  cantripDice = '',
+  pick = '',
+): string {
+  const all = details?.damage ?? [];
+  if (all.length === 0) {
+    return '';
+  }
+  const own = details?.spell?.level ?? 0;
+  const choice = details?.damageChoice ?? SpellDamageChoice.UNSPECIFIED;
+  const picked = all.find((d) => d.damageTypeKey === pick) ?? all[0];
+  const shown = choice === SpellDamageChoice.ALTERNATIVE ? [picked] : all;
+  return shown
+    .flatMap((d) => {
+      const level = choice === SpellDamageChoice.SCALE && d !== picked ? own : slotLevel;
+      const dice = damageDice(details ? { ...details, damage: [d] } : null, level, cantripDice);
+      return dice ? [`${dice}${d.damageTypePt ? ` de ${d.damageTypePt}` : ''}`] : [];
+    })
+    .join(' e ');
 }
 
 /** "Ação · alcance 36 m · 3 dardos de 1d4 + 1 de energia, sempre acertam". */
@@ -357,6 +394,8 @@ export function castSubtitle(
   details: SpellDetails | null,
   slotLevel: number,
   darts: number,
+  cantripDice = '',
+  damageType = '',
 ): string {
   const parts = [
     economy === ActionEconomy.BONUS_ACTION
@@ -374,20 +413,18 @@ export function castSubtitle(
     parts.push('pessoal');
   }
   const type = details?.damage[0]?.damageTypePt ?? '';
-  const dice = damageDice(details, slotLevel);
+  const dice = damageText(details, slotLevel, cantripDice, damageType);
   switch (kind) {
     case 'darts':
       parts.push(`${darts || 3} dardos de 1d4 + 1 de ${type || 'energia'}, sempre acertam`);
       break;
     case 'attack':
-      parts.push(`ataque de magia${dice ? ` · ${dice}${type ? ` de ${type}` : ''}` : ''}`);
+      parts.push(`ataque de magia${dice ? ` · ${dice}` : ''}`);
       break;
     case 'save': {
       const ability = ABILITY_PT[details?.save?.ability ?? Ability.UNSPECIFIED];
       const half = details?.save?.onSuccess === SpellSaveSuccess.HALF ? ', metade se resistir' : '';
-      parts.push(
-        `resistência${ability ? ` de ${ability}` : ''}${dice ? ` · ${dice}${type ? ` de ${type}` : ''}${half}` : ''}`,
-      );
+      parts.push(`resistência${ability ? ` de ${ability}` : ''}${dice ? ` · ${dice}${half}` : ''}`);
       break;
     }
     case 'heal':
@@ -469,7 +506,13 @@ export function effectSentence(
       continue;
     }
     const label = labels.get(t.combatantId)?.label ?? 'Alvo';
-    const w = effectWords(cast.effectKind, cast.effectConditionKey, t.effect.outcome, label);
+    const w = effectWords(
+      cast.effectKind,
+      cast.effectConditionKey,
+      t.effect.outcome,
+      label,
+      t.effect.gain,
+    );
     const who = isNpc(t.combatantId) ? `${article(label)} ${label}` : label;
     const sentence = `${who} ${w.past.charAt(0).toLowerCase()}${w.past.slice(1)}.`;
     parts.push(`${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}`);
@@ -491,18 +534,18 @@ function castRow(
   if (t.effect) {
     // A spell that reads hit points: the outcome in a word and an icon, never a number
     // of the target's (a player has none), and the heal's amount only when it is sent.
-    const w = effectWords(cast.effectKind, cast.effectConditionKey, t.effect.outcome, label);
+    const w = effectWords(
+      cast.effectKind,
+      cast.effectConditionKey,
+      t.effect.outcome,
+      label,
+      t.effect.gain,
+    );
     word = w.past;
     icon = w.icon;
     tone = w.affected ? 'good' : 'plain';
     if (t.effect.healed !== undefined) {
-      lines.push(
-        cast.effectKind === SpellEffectKind.TEMP_HP
-          ? `${t.effect.healed} PV temporários`
-          : cast.effectKind === SpellEffectKind.MAX_HP
-            ? `PV máximo +${t.effect.healed}`
-            : `${t.effect.healed} PV recuperados`,
-      );
+      lines.push(gainLine(cast.effectKind, t.effect.healed, t.effect.gain));
     }
   }
   if (t.attackRoll) {

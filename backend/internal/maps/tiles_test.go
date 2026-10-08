@@ -511,16 +511,27 @@ func TestTileBudget_OneRenderAtATime(t *testing.T) {
 		running.Add(-1)
 	}
 	// Several players ask for several tiles at the same time: different masks, so different renders.
-	var wg sync.WaitGroup
+	type ask struct {
+		u    *user
+		view *mapsv1.GetMapVisionResponse
+		tile *mapsv1.MapTile
+	}
+	var asks []ask
 	for _, u := range []*user{c.ana, c.caio, c.bia, c.dani} {
 		view := u.mustVision(c.campaign, c.mapID)
 		for _, tile := range view.GetTiles() {
-			wg.Go(func() {
-				if r := u.get(tileURL(view, tile)); r.status != http.StatusOK {
-					t.Errorf("tile status %d", r.status)
-				}
-			})
+			asks = append(asks, ask{u, view, tile})
 		}
+	}
+	var wg sync.WaitGroup
+	start := dbtest.NewBarrier(len(asks))
+	for _, a := range asks {
+		wg.Go(func() {
+			start.Wait()
+			if r := a.u.get(tileURL(a.view, a.tile)); r.status != http.StatusOK {
+				t.Errorf("tile status %d", r.status)
+			}
+		})
 	}
 	wg.Wait()
 	if renders.Load() < 2 {
@@ -777,7 +788,7 @@ func TestRN10_TileMissesAreRateLimitedPerUser(t *testing.T) {
 	})
 	first, second := res.GetTiles()[0], res.GetTiles()[len(res.GetTiles())-1]
 	if first.GetTx() == second.GetTx() && first.GetTy() == second.GetTy() {
-		t.Skip("one tile")
+		t.Fatal("the fixture's cave has one tile; the test needs two to tell a miss from a cached one")
 	}
 	if r := c.ana.get(tileURL(res, first)); r.status != http.StatusOK {
 		t.Fatalf("the first miss: status %d", r.status)

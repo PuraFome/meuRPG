@@ -27,6 +27,7 @@ import {
   ActionEconomy,
   type SlotChoice,
   type SpellDetails,
+  SpellDamageChoice,
   SpellRangeKind,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
@@ -78,6 +79,7 @@ import { injectSheet } from '../sheet-host';
 import { SheetFrame } from '../sheet-frame/sheet-frame';
 import { CastResult, CastSlots, type SlotAfter } from './cast-result';
 import { CastTargets } from './cast-targets';
+import { DamageTypePicker } from './damage-type-picker';
 import { SlotPicker } from './slot-picker';
 
 /** What the page hands the cast sheet. */
@@ -91,6 +93,8 @@ export interface CastSheetData {
   /** 0 for a cantrip. */
   readonly level: number;
   readonly concentration: boolean;
+  /** A damage cantrip's dice at the caster's level (`Attack.spellDice`); empty otherwise. */
+  readonly cantripDice: string;
   readonly economy: ActionEconomy;
   /** The free slots the spell can be cast with (`SpellOption.slots`). */
   readonly slots: readonly SlotChoice[];
@@ -143,6 +147,7 @@ export interface CastSheetData {
     CastResult,
     CastSlots,
     CastTargets,
+    DamageTypePicker,
     MatButtonModule,
     MatIconModule,
     RollPicker,
@@ -192,6 +197,20 @@ export class CastSheet {
   protected readonly preferApp =
     effectivePreference(this.data.diceMode, this.data.preference) === DicePreference.APP;
 
+  /** The damage types a spell lets the caster pick among; empty when it offers no choice. */
+  protected readonly damageChoices = computed(() => {
+    const d = this.details();
+    return d && d.damageChoice !== SpellDamageChoice.UNSPECIFIED && d.damage.length > 1
+      ? d.damage.map((x) => ({ key: x.damageTypeKey, name: x.damageTypePt }))
+      : [];
+  });
+  /** The picked damage type; the first until the caster picks another. */
+  private readonly pickedType = signal('');
+  protected readonly damageType = computed(() => {
+    const choices = this.damageChoices();
+    const picked = this.pickedType();
+    return choices.find((c) => c.key === picked)?.key ?? choices[0]?.key ?? '';
+  });
   protected readonly rows = computed(() =>
     slotRows(this.data.level, this.data.slots, this.data.usage, this.data.pact),
   );
@@ -348,6 +367,8 @@ export class CastSheet {
       this.details(),
       this.slotLevel(),
       this.dartsTotal(),
+      this.data.cantripDice,
+      this.damageType(),
     );
   });
 
@@ -548,6 +569,12 @@ export class CastSheet {
     }
   }
 
+  protected pickDamageType(key: string): void {
+    this.pickedType.set(key);
+    this.choiceChanged();
+    this.error.set('');
+  }
+
   protected pickSlot(row: SlotRow): void {
     this.slot.set(row);
     this.choiceChanged();
@@ -604,6 +631,8 @@ export class CastSheet {
         // A pool is always rolled by someone: the server does it when the app rolls every die.
         die ?? (this.kind() === 'pool' ? { inApp: true } : null),
         this.castKey,
+        undefined,
+        this.damageType(),
       );
       this.data.state.apply(res.encounter);
       this.cast.set(res.cast);

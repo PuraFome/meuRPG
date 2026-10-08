@@ -6,7 +6,7 @@ import {
   CoverDegree,
   CoverSource,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import { coverText, listing, markTags } from './cover';
+import { coverBonusText, coverText, listing, markTags } from './cover';
 
 describe('cover on screen', () => {
   it('names the degree and where it comes from, never an object', () => {
@@ -16,6 +16,12 @@ describe('cover on screen', () => {
     );
     expect(coverText(CoverDegree.NONE, CoverSource.UNSPECIFIED)).toBe('');
     expect(coverText(CoverDegree.UNSPECIFIED, CoverSource.UNSPECIFIED)).toBe('');
+  });
+
+  it('says the bonus to the armor class each degree gives', () => {
+    expect(coverBonusText(CoverDegree.HALF)).toBe('+2 na CA');
+    expect(coverBonusText(CoverDegree.THREE_QUARTERS)).toBe('+5 na CA');
+    expect(coverBonusText(CoverDegree.TOTAL)).toBe('');
   });
 
   it('lists a covered target with its pictogram', () => {

@@ -1212,18 +1212,32 @@ describe('LiveSession', () => {
       await render();
       const reads = () => maps.calls.filter((c) => c.startsWith('vision map-1 ')).length;
       const gets = () => maps.calls.filter((c) => c.startsWith('get map-1')).length;
+      // Opening the page schedules one read of the vision; let it land so the counts below are only the hints'.
+      await vi.waitFor(() => expect(reads()).toBe(2));
       const before = {
         reads: reads(),
         gets: gets(),
         layers: maps.calls.filter((c) => c.startsWith('layers map-1 ')).length,
       };
-      source.push({ kind: 'visionChanged', mapId: 'other-map' });
-      await tick();
-      expect(reads()).toBe(before.reads);
-      source.push({ kind: 'visionChanged', mapId: 'map-1' });
-      await tick();
-      source.push({ kind: 'visionChanged', mapId: 'map-1' });
-      await tick();
+      // The page waits 120 ms before it reads, to join a burst of hints: a fake clock, so the burst is one on any machine.
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      try {
+        source.push({ kind: 'visionChanged', mapId: 'other-map' });
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(reads()).toBe(before.reads);
+        source.push({ kind: 'visionChanged', mapId: 'map-1' });
+        source.push({
+          kind: 'tokenMoved',
+          mapId: 'map-1',
+          characterId: 'pensantus',
+          xBp: 6200,
+          yBp: 5400,
+        });
+        source.push({ kind: 'visionChanged', mapId: 'map-1' });
+        await vi.advanceTimersByTimeAsync(1000);
+      } finally {
+        vi.useRealTimers();
+      }
       await vi.waitFor(async () => {
         await tick();
         expect(reads()).toBeGreaterThan(before.reads);
@@ -1233,7 +1247,10 @@ describe('LiveSession', () => {
       expect(maps.calls.filter((c) => c.startsWith('layers map-1 ')).length).toBe(
         before.layers + 1,
       );
-      expect(gets()).toBe(before.gets + 2);
+      // The map itself is read per hint, joining one already on its way: one or two reads, never none and never one for
+      // the other map's hint.
+      expect(gets()).toBeGreaterThanOrEqual(before.gets + 1);
+      expect(gets()).toBeLessThanOrEqual(before.gets + 2);
     });
 
     it('says in words that the character is not on the map', async () => {

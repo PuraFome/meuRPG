@@ -27,6 +27,14 @@ describe('puzzle errors', () => {
       PuzzleBlockedReason.SOLVED,
     );
     expect(puzzleBlocked(new ConnectError('SOLVED', Code.FailedPrecondition))).toBeNull();
+    // A detail on any other code is not a refusal of this kind.
+    const elsewhere = new ConnectError('x', Code.Internal, undefined, [
+      {
+        desc: PuzzleBlockedSchema,
+        value: create(PuzzleBlockedSchema, { reason: PuzzleBlockedReason.SOLVED }),
+      },
+    ]);
+    expect(puzzleBlocked(elsewhere)).toBeNull();
     const invalid = new ConnectError('x', Code.InvalidArgument, undefined, [
       {
         desc: PuzzleInvalidSchema,

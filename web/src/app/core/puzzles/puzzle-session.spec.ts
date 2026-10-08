@@ -1,3 +1,5 @@
+import { Code, ConnectError } from '@connectrpc/connect';
+
 import { PuzzleRunStatus } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import type { MasterPuzzleRun } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { PuzzleSessionState, type SessionApi } from './puzzle-session';
@@ -114,6 +116,31 @@ describe('PuzzleSessionState (MR-038)', () => {
     release(masterRun(a, PuzzleRunStatus.SHOWN));
     await slow;
     expect(state.runs()[0].status).toBe(PuzzleRunStatus.CLOSED);
+  });
+
+  it('does not say it failed when there is no open session to list', async () => {
+    const { fake, state } = setup(true);
+    fake.failWith = new ConnectError('sem sessão', Code.FailedPrecondition);
+    await state.refresh();
+    expect(state.status()).not.toBe('error');
+  });
+
+  it('keeps the answer of the newest list read when an older one arrives after it', async () => {
+    const first = deferredValue<MasterPuzzleRun[]>();
+    const second = deferredValue<MasterPuzzleRun[]>();
+    const answers = [first, second];
+    const state = new PuzzleSessionState(
+      { listSession: () => answers.shift()!.promise } as unknown as SessionApi,
+      () => 'camp-1',
+      () => true,
+    );
+    const older = state.refresh();
+    const newer = state.refresh();
+    second.resolve([masterRun(a, PuzzleRunStatus.SOLVED)]);
+    await newer;
+    first.resolve([masterRun(a, PuzzleRunStatus.SHOWN)]);
+    await older;
+    expect(state.runs()[0].status).toBe(PuzzleRunStatus.SOLVED);
   });
 
   it('forgets everything when the session page opens another campaign', async () => {

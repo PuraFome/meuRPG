@@ -55,6 +55,13 @@ describe("the move page reads the server's options", () => {
       reason: MoveRefusal.WALL,
     });
     expect(verdictFor(index, origin, { col: 15, row: 7 }).kind).toBe('beyond');
+    // A refusal the server did not name (the zero of the enum) is still a refusal, not "beyond".
+    const unnamed = indexOptions(
+      create(GetMoveOptionsResponseSchema, {
+        refused: [create(RefusedSquareSchema, { col: 4, row: 4, reason: MoveRefusal.UNSPECIFIED })],
+      }),
+    );
+    expect(verdictFor(unnamed, origin, { col: 4, row: 4 }).kind).toBe('refused');
     expect(verdictFor(index, origin, origin).kind).toBe('here');
     expect(verdictFor(indexOptions(null), origin, { col: 7, row: 8 }).kind).toBe('unknown');
   });

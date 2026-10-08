@@ -341,8 +341,10 @@ func TestUpdateCampaignDocumentFirstSavesRace(t *testing.T) {
 		mu      sync.Mutex
 		winners []string
 	)
+	start := dbtest.NewBarrier(tabs)
 	for i := range tabs {
 		wg.Go(func() {
+			start.Wait()
 			body := "Versão da aba " + strconv.Itoa(i+1) + "."
 			_, err := saveDocument(t, master.doc, id, body, 0)
 			switch {

@@ -331,7 +331,7 @@ The app marks conditions (prone, poisoned...) and concentration, and reminds: wh
 
 **How the system meets it**
 
-Conditions and concentration live on the combatant (ADR-0007, ADR-0008). The reminder number is `rules/combat.ConcentrationDC`: the larger of 10 and half the damage.
+Conditions and concentration live on the combatant (ADR-0007, ADR-0008). The reminder number is `rules/combat.ConcentrationDC`: the larger of 10 and half the damage. A spell is one source of damage: when it deals two damage types (Flame Strike, Ice Storm), the target gets one reminder for the cast, after the last of them settles (applied or discarded), from the sum of what landed.
 
 **Server.** `SetCombatantConditions` replaces a combatant's set of conditions (SRD keys such as `condition:poisoned`; master only; the player only ends the concentration of their own character). A concentration spell cast puts its name in `concentration_spell`, and a second one replaces it (the log says which ended). When the master applies damage to someone concentrating, the response and the log carry `concentration_dc` ("Teste de concentração: CD 10"), only for the master and the target's player. Players see the conditions (with Portuguese names) of the combatants they see, never those of a hidden one. No effect is applied. Test: `TestRN22_ConditionsAndTheConcentrationReminder`.
 

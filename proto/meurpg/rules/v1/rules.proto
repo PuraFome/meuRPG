@@ -884,6 +884,12 @@ message Attack {
   // 1, 5, 11 and 17. 1 for the other cantrips; 0 (unset) for a weapon and for a
   // creature's attack.
   int32 beams = 18;
+  // For a cantrip (kind SPELL): the plain dice it rolls at the character's level,
+  // such as "3d8" for Sacred Flame at level 11, without the damage modifier. The
+  // spell's details carry the whole table by level for any caster, so the app
+  // reads the caster's row here instead of choosing one. Empty for a weapon and
+  // for a creature's attack.
+  string spell_dice = 19;
 }
 
 // AttackKind says whether an attack is a weapon or a spell.

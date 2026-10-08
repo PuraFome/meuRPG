@@ -37,6 +37,7 @@ describe('CastSheet: a typed roll belongs to the slot it was rolled for', () => 
       name: 'Sono',
       level: 1,
       concentration: false,
+      cantripDice: '',
       economy: ActionEconomy.ACTION,
       slots: [
         { level: 1, free: 2, pact: false },

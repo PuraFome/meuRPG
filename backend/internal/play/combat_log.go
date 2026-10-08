@@ -79,6 +79,9 @@ type damageLog struct {
 	roll    *actionEvent
 	hit     damageHit
 	applied *actionEvent
+	// discarded is the master's discard, which carries the concentration reminder
+	// when it settled the cast's last damage for the target.
+	discarded *actionEvent
 }
 
 // ListCombatLog implements playv1connect.CombatServiceHandler.
@@ -408,6 +411,9 @@ func (e *logEntry) land(kind string, ev actionEvent) {
 		}
 	case eventDamageDiscarded:
 		e.setStatus(ev.Pending, playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_DISCARDED)
+		if dl, ok := e.pend[ev.Pending]; ok {
+			dl.discarded = &ev
+		}
 	}
 }
 
@@ -607,6 +613,10 @@ func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *
 // overruled to him alone.
 func (d *damageLog) view(v combatViewer, caster, target playdb.Combatant) *playv1.CombatLogDamage {
 	out := &playv1.CombatLogDamage{Status: d.status}
+	if d.discarded != nil && d.discarded.ConcentrationDC > 0 && (v.master || v.owns(target)) {
+		dc := d.discarded.ConcentrationDC
+		out.ConcentrationDc = &dc
+	}
 	if d.roll == nil {
 		return out // the cast opened it and it is not rolled yet
 	}

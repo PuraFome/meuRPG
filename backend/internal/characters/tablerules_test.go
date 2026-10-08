@@ -221,8 +221,18 @@ var drawingDice = []int{6, 5, 5, 2, 5, 5, 4, 1, 5, 4, 4, 3, 4, 4, 4, 2, 4, 3, 3,
 // dice give the drawing's sets first and six 18s next.
 func newAbilityTable(t *testing.T) (*harness, *user, []*user, string, *testDiceRules) {
 	t.Helper()
-	sixes := slices.Repeat([]int{6}, 24)
-	faces := slices.Concat(drawingDice, sixes, sixes) // three batches of six sets
+	return newAbilityTableWithBatches(t, 3)
+}
+
+// newAbilityTableWithBatches is newAbilityTable with that many batches of six sets: the
+// drawing's, then 18s. A transaction that is retried rolls again, so racing calls need
+// more than one batch each.
+func newAbilityTableWithBatches(t *testing.T, batches int) (*harness, *user, []*user, string, *testDiceRules) {
+	t.Helper()
+	faces := drawingDice
+	for range batches - 1 {
+		faces = slices.Concat(faces, slices.Repeat([]int{6}, 24))
+	}
 	rule := &testDiceRules{}
 	rule.rule.Store(int32(charactersv1.LevelUpDiceRule_LEVEL_UP_DICE_RULE_PLAYER_CHOOSES))
 	h := newHarnessWith(t, func(c *Config) { c.Dice, c.Roller = rule, &dice.Fixed{Faces: faces} })
@@ -755,20 +765,20 @@ func TestRN24_ACreationIsRefusedWhatItsInputsBreak(t *testing.T) {
 // both answer with the same sets.
 func TestRN24_TwoRollsOfTheSameCharacterStoreOneSet(t *testing.T) {
 	t.Parallel()
-	dbtest.PoolSize(t, 2) // the racers must overlap: one connection would run them one by one
-	_, _, players, campaign, _ := newAbilityTable(t)
+	dbtest.PoolSize(t, 4) // the racers must overlap: one connection would run them one by one
+	// Every retry of every racer rolls a batch of the server's dice.
+	_, _, players, campaign, _ := newAbilityTableWithBatches(t, 40)
 	ana := players[0]
 	var wg sync.WaitGroup
 	results := make([]*charactersv1.RollAbilityScoresResponse, 4)
 	errs := make([]error, 4)
-	start := make(chan struct{})
+	start := dbtest.NewBarrier(len(results))
 	for i := range results {
 		wg.Go(func() {
-			<-start
+			start.Wait()
 			results[i], errs[i] = ana.rollScores(campaign)
 		})
 	}
-	close(start)
 	wg.Wait()
 	rolled := 0
 	for i, res := range results {

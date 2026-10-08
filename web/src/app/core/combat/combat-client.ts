@@ -794,6 +794,7 @@ export class CombatClient {
     die: AttackDie | PoolDie | null,
     key: string,
     summon?: SummonRequest,
+    damageTypeKey = '',
   ): Promise<CastResult> {
     const res = await this.client.castSpell({
       campaignId,
@@ -803,6 +804,7 @@ export class CombatClient {
       slot: slot ?? undefined,
       targets: targets.map((t) => ({ combatantId: t.combatantId, darts: t.darts })),
       idempotencyKey: key,
+      damageTypeKey,
       roll: !die
         ? { case: undefined }
         : 'inApp' in die

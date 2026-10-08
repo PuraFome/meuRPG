@@ -115,15 +115,14 @@ func TestAcceptInviteRaceForTheLastUse(t *testing.T) {
 				users[i] = h.newUser("")
 			}
 			errs := make([]error, racers)
-			start := make(chan struct{})
+			start := dbtest.NewBarrier(racers)
 			var wg sync.WaitGroup
 			for i, u := range users {
 				wg.Go(func() {
-					<-start
+					start.Wait()
 					_, errs[i] = u.accept(t, token)
 				})
 			}
-			close(start)
 			wg.Wait()
 
 			joined := 0
