@@ -492,3 +492,42 @@ func TestCampaignCapOff(t *testing.T) {
 		t.Error("off on Cloud Run was accepted")
 	}
 }
+
+// A startup error names the variable and what is wrong with it, but never
+// repeats a password, a token in a query, or a fragment from the value.
+func TestOIDCURLErrorsDoNotRepeatSecrets(t *testing.T) {
+	t.Parallel()
+	const needle = "LEAKCANARY-oidc-url-1"
+	tests := []struct {
+		name    string
+		env     map[string]string
+		wantErr string
+	}{
+		{"issuer with a password", map[string]string{"OIDC_ISSUER": "https://app:" + needle + "@idp.example.com"}, "OIDC_ISSUER must be an absolute URL"},
+		{"redirect URL with a password", map[string]string{"OIDC_REDIRECT_URL": "https://app:" + needle + "@meurpg.example.com/auth/callback"}, "OIDC_REDIRECT_URL must be an absolute URL"},
+		{"issuer over http with a token in the query", map[string]string{"OIDC_ISSUER": "http://idp.example.com?token=" + needle}, "OIDC_ISSUER must use https"},
+		{"issuer with a token in the query", map[string]string{"OIDC_ISSUER": "https://idp.example.com?token=" + needle}, "OIDC_ISSUER must not have a query"},
+		{"issuer with a token in the fragment", map[string]string{"OIDC_ISSUER": "https://idp.example.com#" + needle}, "OIDC_ISSUER must not have a query"},
+		{"redirect URL with a token in the query", map[string]string{"OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback?token=" + needle}, "OIDC_REDIRECT_URL must end in /auth/callback"},
+		{"redirect URL over http with a token in the query", map[string]string{"OIDC_REDIRECT_URL": "http://meurpg.example.com/auth/callback?token=" + needle}, "OIDC_REDIRECT_URL must use https"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := Load(env(withOIDC(tt.env)))
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("Load() error = %v, want one containing %q", err, tt.wantErr)
+			}
+			if strings.Contains(err.Error(), needle) {
+				t.Errorf("the error repeats the secret: %v", err)
+			}
+		})
+	}
+
+	// Positive control: the same marker in a value the error does print would
+	// show, so the checks above can fail.
+	_, err := Load(env(withOIDC(map[string]string{"OIDC_ISSUER": "http://" + needle + ".example.com"})))
+	if err == nil || !strings.Contains(err.Error(), needle) {
+		t.Errorf("Load() error = %v, want the host to be printed (positive control)", err)
+	}
+}

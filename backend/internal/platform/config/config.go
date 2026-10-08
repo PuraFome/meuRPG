@@ -413,13 +413,13 @@ func loadOIDC(getenv func(string) string) (OIDC, []error) {
 func checkIssuerURL(raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil || u.Host == "" || u.User != nil {
-		return fmt.Errorf("OIDC_ISSUER must be an absolute URL, got %q", raw)
+		return errors.New("OIDC_ISSUER must be an absolute URL with no user name or password, such as https://idp.example.com")
 	}
 	if !secureOrLoopback(u) {
-		return fmt.Errorf("OIDC_ISSUER must use https (http only on localhost or *.localhost), got %q", raw)
+		return fmt.Errorf("OIDC_ISSUER must use https (http only on localhost or *.localhost), got %q", shown(u))
 	}
 	if u.RawQuery != "" || u.Fragment != "" {
-		return fmt.Errorf("OIDC_ISSUER must not have a query or fragment, got %q", raw)
+		return fmt.Errorf("OIDC_ISSUER must not have a query or fragment, got %q", shown(u))
 	}
 	return nil
 }
@@ -429,15 +429,22 @@ func checkIssuerURL(raw string) error {
 func checkRedirectURL(raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil || u.Host == "" || u.User != nil {
-		return fmt.Errorf("OIDC_REDIRECT_URL must be an absolute URL, got %q", raw)
+		return errors.New("OIDC_REDIRECT_URL must be an absolute URL with no user name or password, such as https://meurpg.example.com" + CallbackPath)
 	}
 	if !secureOrLoopback(u) {
-		return fmt.Errorf("OIDC_REDIRECT_URL must use https (http only on localhost or *.localhost), got %q", raw)
+		return fmt.Errorf("OIDC_REDIRECT_URL must use https (http only on localhost or *.localhost), got %q", shown(u))
 	}
 	if u.Path != CallbackPath || u.RawQuery != "" || u.Fragment != "" {
-		return fmt.Errorf("OIDC_REDIRECT_URL must end in %s with no query or fragment, got %q", CallbackPath, raw)
+		return fmt.Errorf("OIDC_REDIRECT_URL must end in %s with no query or fragment, got %q", CallbackPath, shown(u))
 	}
 	return nil
+}
+
+// shown is u as a startup error may print it: scheme, host and path. A query
+// or fragment can carry a token, so neither is repeated (the user name and
+// password never get here: the callers refuse them first).
+func shown(u *url.URL) string {
+	return (&url.URL{Scheme: u.Scheme, Host: u.Host, Path: u.Path}).String()
 }
 
 // secureOrLoopback reports whether u uses https, or http to a loopback
