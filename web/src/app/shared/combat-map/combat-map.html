@@ -97,6 +97,18 @@
       ></span>
     }
 
+    @if (forcedTrace(); as t) {
+      <svg class="cm__path" aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <line [attr.x1]="t.x1" [attr.y1]="t.y1" [attr.x2]="t.x2" [attr.y2]="t.y2" />
+      </svg>
+      <span
+        class="cm__origin"
+        aria-hidden="true"
+        [style.left.%]="(t.origin.col / columns()) * 100"
+        [style.top.%]="(t.origin.row / rows()) * 100"
+      ></span>
+    }
+
     @if (frame(); as f) {
       @if (path(); as line) {
         <svg class="cm__path" aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none">

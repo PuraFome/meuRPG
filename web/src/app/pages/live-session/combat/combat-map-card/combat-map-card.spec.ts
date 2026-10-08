@@ -1,7 +1,9 @@
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 
 import { CombatantKind, CombatantSide } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
+import { CombatMap } from '../../../../shared/combat-map/combat-map';
 import { CombatMapCard } from './combat-map-card';
 
 const plain = (t: string | null | undefined) => (t ?? '').replace(/\s+/g, ' ').trim();
@@ -88,5 +90,37 @@ describe('CombatMapCard: "Movimento forçado"', () => {
     fixture.detectChanges();
     expect(el.querySelector('[role="status"]')).toBe(region);
     expect(plain(region.textContent)).toContain('Pensantus foi movido à força.');
+  });
+
+  it("draws its checkboxes with the design system's visible outline, not the browser's", () => {
+    const { el } = mount({ forcedSwitch: true, reachSwitch: { name: 'do Pensantus', on: false } });
+    const boxes = el.querySelectorAll('label.card__check input[type="checkbox"]');
+    expect(boxes).toHaveLength(2);
+    boxes.forEach((b) => expect(b.classList).toContain('mr-check-input'));
+  });
+
+  describe('the dragged token of a forced move', () => {
+    type Drag = { set(v: { id: string; col: number; row: number } | null): void };
+    function dragged(forced: boolean, to: { col: number; row: number }) {
+      const { fixture, el } = mount({ forcedSwitch: true, forced });
+      const map = fixture.debugElement.query(By.directive(CombatMap))
+        .componentInstance as unknown as {
+        drag: Drag;
+      };
+      map.drag.set({ id: 'p', ...to });
+      fixture.detectChanges();
+      return el;
+    }
+
+    it('marks the square the token left with a dashed ring and a dashed line from it', () => {
+      const el = dragged(true, { col: 5, row: 4 });
+      expect(el.querySelector('.cm__origin')).not.toBeNull();
+      expect(el.querySelectorAll('.cm__path line')).toHaveLength(1);
+    });
+
+    it('draws nothing while the box is off, or while the token is still on its square', () => {
+      expect(dragged(false, { col: 5, row: 4 }).querySelector('.cm__origin')).toBeNull();
+      expect(dragged(true, { col: 0, row: 0 }).querySelector('.cm__origin')).toBeNull();
+    });
   });
 });

@@ -57,11 +57,10 @@
   display: flex;
   align-items: center;
   gap: var(--mr-space-2);
-  justify-content: flex-end;
   max-width: 300px;
   font-size: 14px;
   font-weight: 700;
-  text-align: right;
+  text-align: start;
 
   .mat-icon {
     flex: none;
@@ -146,7 +145,8 @@
   .remove__reason {
     flex-basis: 100%;
     max-width: none;
-    margin-top: var(--mr-space-2);
+    // 8px above and 12px below, between the "Renomear · Apagar mapa" line and what follows.
+    margin: var(--mr-space-2) 0 var(--mr-space-3);
     text-align: start;
   }
 }

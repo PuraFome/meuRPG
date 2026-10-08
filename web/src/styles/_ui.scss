@@ -420,3 +420,61 @@ a.mr-list__row:hover .mr-list__name {
     border: 2px dashed var(--mr-map-token-ink);
   }
 }
+
+// A visible native checkbox or radio: the browser's own unchecked box is nearly invisible in the dark theme, so it is
+// drawn here, its outline `--mr-control-line` and its mark the accent. Never on an input that is visually hidden
+// (`mr-visually-hidden`): those have a drawn box of their own beside them.
+.mr-check-input {
+  appearance: none;
+  display: inline-grid;
+  flex: none;
+  place-content: center;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 2px solid var(--mr-control-line);
+  background: var(--mr-surface);
+  cursor: pointer;
+
+  &[type='checkbox'] {
+    border-radius: 4px;
+  }
+
+  &[type='radio'] {
+    border-radius: 50%;
+  }
+
+  &:checked {
+    border-color: var(--mr-accent);
+    background: var(--mr-accent);
+  }
+
+  &[type='checkbox']:checked::after {
+    content: '';
+    width: 5px;
+    height: 10px;
+    margin-top: -2px;
+    border: solid var(--mr-on-accent);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  &[type='radio']:checked::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--mr-on-accent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+}

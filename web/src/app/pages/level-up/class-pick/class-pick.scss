@@ -126,12 +126,27 @@
   }
 
   @media (max-width: 767.98px) {
-    flex-wrap: nowrap;
-
     > button {
       flex: 1 1 0;
       min-width: 0;
       --mat-button-outlined-container-height: 48px;
+    }
+  }
+
+  // Under about 480px the two labels do not fit side by side: the buttons stack at the full width, one line each. The safe
+  // one, "Continuar com ...", is drawn first (it has the focus when the question opens); the focus order is still the document's.
+  @media (max-width: 479.98px) {
+    flex-direction: column;
+
+    > button {
+      flex: none;
+      width: 100%;
+      min-height: 44px;
+      white-space: nowrap;
+    }
+
+    > .js-class-keep {
+      order: -1;
     }
   }
 }

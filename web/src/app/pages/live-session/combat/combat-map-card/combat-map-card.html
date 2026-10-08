@@ -48,6 +48,7 @@
     [layers]="layers()"
     [offers]="offers()"
     [masterMoves]="isMaster()"
+    [forcedDrag]="forcedSwitch() && forced()"
     [ownMoveId]="ownMovable() ? (own()?.id ?? null) : null"
     [doorPicks]="doorTaps() && isMaster()"
     (doorPick)="doorPick.emit($event)"
@@ -85,7 +86,7 @@
   @if (reachSwitch(); as sw) {
     <div class="card__reach">
       <label class="card__check">
-        <input type="checkbox" [checked]="sw.on" (change)="reachChange.emit($any($event.target).checked)" />
+        <input type="checkbox" class="mr-check-input" [checked]="sw.on" (change)="reachChange.emit($any($event.target).checked)" />
         Mostrar o alcance {{ sw.name }} no mapa
       </label>
       <p class="card__hint card__hint--text">
@@ -98,7 +99,7 @@
   @if (forcedSwitch() && !preview()) {
     <div class="card__reach">
       <label class="card__check">
-        <input type="checkbox" [checked]="forced()" (change)="forcedChange.emit($any($event.target).checked)" />
+        <input type="checkbox" class="mr-check-input" [checked]="forced()" (change)="forcedChange.emit($any($event.target).checked)" />
         Movimento forçado
         @if (forced()) {
           <span class="card__state">Ligado para o próximo arrasto</span>
