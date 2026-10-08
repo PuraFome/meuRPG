@@ -672,7 +672,12 @@ export class CharacterEditor {
       // The subclass's always-prepared spells, shown in this class's section, checked and locked, never in the count.
       const byKey = new Map(s.catalog.spells.map((sp) => [sp.key, sp]));
       const always = section.alwaysPrepared.flatMap((k) => (byKey.has(k) ? [byKey.get(k)!] : []));
-      const max = this.preparedMaxByClass()[section.classKey];
+      const limits = this.spellLimits().get(section.classKey);
+      // The draft's own number when the server has answered; else the saved sheet's (an edit).
+      const max =
+        limits !== undefined && limits.preparedMax > 0
+          ? limits.preparedMax
+          : this.preparedMaxByClass()[section.classKey];
       const picked = prepared.filter(
         (sp) => this.selectedSpellsPrepared().has(sp.key) && !alwaysKeys.has(sp.key),
       ).length;
@@ -709,6 +714,10 @@ export class CharacterEditor {
           outside: outsideTheLists(s.catalog, this.sections(), query(section, 'prepared'), false),
         },
         always,
+        // The most each list takes (0 or none: no limit to show).
+        cantripsLimit: limits?.cantripsKnown ? limits.cantripsKnown : null,
+        knownLimit: preparation === 'known' && limits?.spellsKnown ? limits.spellsKnown : null,
+        preparedLimit: preparation !== 'known' && max ? max : null,
         alwaysSourcePt: section.alwaysSourcePt,
         // On an edit the server says how many the class prepares (its own number, from the saved sheet).
         preparedCount:
@@ -722,6 +731,11 @@ export class CharacterEditor {
   });
   /** How many spells each casting class prepares, from the saved sheet's derived numbers (an edit only). */
   protected readonly preparedMaxByClass = signal<Readonly<Record<string, number>>>({});
+  /** What the server says each casting class of the draft knows and prepares at its level (class table and the
+   * SRD's formulas); empty while it has no answer. */
+  private readonly spellLimits = computed(
+    () => new Map((this.serverHitPoints.answer()?.spellcasting ?? []).map((l) => [l.classKey, l])),
+  );
 
   /** What the sheet has that no pick of this form gave it and no subclass of the catalog explains (a race's or a
    * feature's spell): said apart, with where it comes from. */
@@ -754,6 +768,33 @@ export class CharacterEditor {
       ? s.catalog.backgrounds.find((b) => b.key === this.selectedBackground())
       : undefined;
   });
+
+  /** The skills the race, the subrace and the background give, with where each comes from ("da raça", "do
+   * antecedente"). The server counts them as given, never as a pick: the step shows them taken and locked, and a
+   * pick on one of them is dropped, as the rules say a repeated proficiency is traded for another of the same
+   * kind. */
+  protected readonly grantedSkills = computed<ReadonlyMap<string, string>>(() => {
+    const granted = new Map<string, string>();
+    const give = (keys: readonly string[] | undefined, source: string) => {
+      for (const key of keys ?? []) {
+        if (!granted.has(key)) {
+          granted.set(key, source);
+        }
+      }
+    };
+    give(this.selectedRace()?.skillKeys, 'da raça');
+    give(this.selectedSubrace()?.skillKeys, 'da raça');
+    if (this.selectedBackground() === 'custom') {
+      give(Array.from(this.customBackgroundSkills()), 'do antecedente');
+    } else {
+      give(this.selectedBackgroundVm()?.skillKeys, 'do antecedente');
+    }
+    return granted;
+  });
+  /** The skills the player picked, without the ones already given. */
+  protected readonly chosenSkills = computed(
+    () => new Set(Array.from(this.selectedSkills()).filter((k) => !this.grantedSkills().has(k))),
+  );
 
   /** What the first class asks of the skills and the saving throws, from the server's entry for it. */
   protected readonly skillNote = computed(() => {
@@ -999,15 +1040,13 @@ export class CharacterEditor {
         control.enable({ emitEvent: false });
       }
     });
-    // While the "Pontos de vida" box is on screen, the server derives the draft (a race and a class at least)
-    // and the box adds up what the effects give.
+    // While the "Pontos de vida" box or the "Magias" step is on screen, the server derives the draft (a race and a
+    // class at least): the box adds up what the effects give, and the spell pickers count against the class's numbers.
     effect(() => {
       const s = this.state();
-      const boxOn =
-        s.status === 'ready' &&
-        this.selectedHitPointsMethod() === 'rolled' &&
-        this.rollsNeeded() > 0 &&
-        this.hitDie() > 0;
+      const hitPointsBoxOn =
+        this.selectedHitPointsMethod() === 'rolled' && this.rollsNeeded() > 0 && this.hitDie() > 0;
+      const boxOn = s.status === 'ready' && (hitPointsBoxOn || this.isCaster());
       if (!boxOn) {
         untracked(() => this.serverHitPoints.stop());
         return;
@@ -1019,6 +1058,22 @@ export class CharacterEditor {
         this.buildFullValue();
       }
       untracked(() => this.serverHitPoints.draftChanged(ready));
+    });
+    // A new player's sheet made above level 1 starts at its level's XP in a campaign that levels by XP, until the
+    // person types in the field; a milestone campaign keeps the 0.
+    effect(() => {
+      const s = this.state();
+      const level = this.totalLevelValue();
+      if (s.status !== 'ready' || s.mode !== 'create' || s.kind !== 'player') {
+        return;
+      }
+      const table = s.catalog.levelXp;
+      const control = this.fullForm.controls.experiencePoints;
+      if (s.catalog.xpMode !== 'enemies' || !table || table.length === 0 || control.dirty) {
+        return;
+      }
+      const xp = table[Math.min(Math.max(Math.trunc(level) || 1, 1), table.length) - 1];
+      untracked(() => control.setValue(xp));
     });
     this.destroyRef.onDestroy(() => {
       this.destroyed = true;
@@ -1268,6 +1323,9 @@ export class CharacterEditor {
   }
 
   protected toggleSkill(key: string): void {
+    if (this.grantedSkills().has(key)) {
+      return;
+    }
     const next = new Set(this.selectedSkills());
     if (next.has(key)) {
       next.delete(key);
@@ -1288,7 +1346,7 @@ export class CharacterEditor {
    * bonus — Bard, Rogue). A no-op on a skill that is not proficient yet:
    * the checkbox is disabled for those in the template. */
   protected toggleExpertise(key: string): void {
-    if (!this.selectedSkills().has(key)) {
+    if (!this.selectedSkills().has(key) && !this.grantedSkills().has(key)) {
       return;
     }
     const next = new Set(this.expertiseSkills());
@@ -1414,7 +1472,7 @@ export class CharacterEditor {
       customBackgroundEquipment: v.background === 'custom' ? v.customBackgroundEquipment : '',
       // A blank block never gets here: `classProblems` stops the save first.
       extraClasses: this.extraClasses().filter((c) => c.classKey !== ''),
-      skillProficiencies: Array.from(this.selectedSkills()),
+      skillProficiencies: Array.from(this.chosenSkills()),
       expertiseSkillKeys: Array.from(this.expertiseSkills()),
       abilities: v.abilities,
       extraAbilityBonuses: v.extraAbilityBonuses,
