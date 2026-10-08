@@ -54,6 +54,9 @@ export interface AttackVm {
   /** > 0 only for a spell that asks for a saving throw. */
   readonly saveDc: number;
   readonly saveAbility: AbilityKey | null;
+  /** How many attack rolls it makes in one action (Eldritch Blast: 1 to 4
+   * beams); 0 for a weapon. */
+  readonly beams: number;
 }
 
 export interface SpellcastingVm {

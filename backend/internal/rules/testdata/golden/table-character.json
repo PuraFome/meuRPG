@@ -1,6 +1,6 @@
 {
   "level 1": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.21+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.22+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -454,6 +454,39 @@
         "RangeFt": 60,
         "LongRangeFt": 0,
         "Melee": false,
+        "Beams": 1,
+        "Notes": ""
+      },
+      {
+        "Key": "attack:unarmed-strike",
+        "Name": "Unarmed Strike",
+        "NamePT": "Golpe desarmado",
+        "Kind": "weapon",
+        "Ability": "str",
+        "AttackBonus": 4,
+        "SaveDC": 0,
+        "SaveAbility": "",
+        "Damage": "3",
+        "DamageType": "damage-type:bludgeoning",
+        "DamageTypeNamePT": "concussão",
+        "VersatileDamage": "",
+        "DamageDice": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 3,
+          "AddsModifier": false
+        },
+        "VersatileDice": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "AddsModifier": false
+        },
+        "Proficient": true,
+        "RangeFt": 5,
+        "LongRangeFt": 0,
+        "Melee": true,
+        "Beams": 0,
         "Notes": ""
       }
     ],
@@ -649,7 +682,7 @@
     "Issues": null
   },
   "level 11": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.21+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.22+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -1424,6 +1457,39 @@
         "RangeFt": 60,
         "LongRangeFt": 0,
         "Melee": false,
+        "Beams": 1,
+        "Notes": ""
+      },
+      {
+        "Key": "attack:unarmed-strike",
+        "Name": "Unarmed Strike",
+        "NamePT": "Golpe desarmado",
+        "Kind": "weapon",
+        "Ability": "str",
+        "AttackBonus": 6,
+        "SaveDC": 0,
+        "SaveAbility": "",
+        "Damage": "3",
+        "DamageType": "damage-type:bludgeoning",
+        "DamageTypeNamePT": "concussão",
+        "VersatileDamage": "",
+        "DamageDice": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 3,
+          "AddsModifier": false
+        },
+        "VersatileDice": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "AddsModifier": false
+        },
+        "Proficient": true,
+        "RangeFt": 5,
+        "LongRangeFt": 0,
+        "Melee": true,
+        "Beams": 0,
         "Notes": ""
       }
     ],
@@ -1739,7 +1805,7 @@
     "Issues": null
   },
   "level 5": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.21+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.22+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -2341,6 +2407,39 @@
         "RangeFt": 60,
         "LongRangeFt": 0,
         "Melee": false,
+        "Beams": 1,
+        "Notes": ""
+      },
+      {
+        "Key": "attack:unarmed-strike",
+        "Name": "Unarmed Strike",
+        "NamePT": "Golpe desarmado",
+        "Kind": "weapon",
+        "Ability": "str",
+        "AttackBonus": 5,
+        "SaveDC": 0,
+        "SaveAbility": "",
+        "Damage": "3",
+        "DamageType": "damage-type:bludgeoning",
+        "DamageTypeNamePT": "concussão",
+        "VersatileDamage": "",
+        "DamageDice": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 3,
+          "AddsModifier": false
+        },
+        "VersatileDice": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "AddsModifier": false
+        },
+        "Proficient": true,
+        "RangeFt": 5,
+        "LongRangeFt": 0,
+        "Melee": true,
+        "Beams": 0,
         "Notes": ""
       }
     ],

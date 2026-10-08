@@ -68,9 +68,20 @@ type Effect struct {
 	// resource: a use-limited resource. Max is an Int formula; Recharge is
 	// short_rest, long_rest, dawn or none. It becomes Derived.Resources; the
 	// session counts the uses (RN-02).
-	Resource string `json:"resource,omitempty"`
-	Max      string `json:"max,omitempty"`
-	Recharge string `json:"recharge,omitempty"`
+	// RechargeIf is an optional Bool formula: while it holds, the resource
+	// recharges as RechargeThen instead of Recharge (Bardic Inspiration comes
+	// back on a short rest too from bard level 5). Both or neither.
+	Resource     string `json:"resource,omitempty"`
+	Max          string `json:"max,omitempty"`
+	Recharge     string `json:"recharge,omitempty"`
+	RechargeIf   string `json:"recharge_if,omitempty"`
+	RechargeThen string `json:"recharge_then,omitempty"`
+
+	// Cap is, for a modifier on a score ("score.str"), the highest value the
+	// effect may lift the score to (24 for Primal Champion); a score already
+	// above it is left as it is. It also raises the ceiling over which the
+	// sheet reports a score above the normal maximum.
+	Cap int `json:"cap,omitempty"`
 
 	// choice: something the player chooses. Choice is one of choiceKinds,
 	// Count how many, From the keys (or a class key, for a spell list). The
@@ -112,14 +123,14 @@ type Effect struct {
 	TextPT string `json:"text_pt,omitempty"`
 
 	// Compiled formulas, filled at load.
-	value, when, preparedMax, max *formula.Program
+	value, when, preparedMax, max, rechargeIf *formula.Program
 }
 
 // The closed sets of the effect schema.
 var (
 	effectTypes = []string{
 		"modifier", "proficiency", "roll_mode", "sense", "spellcasting",
-		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape",
+		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "initiative",
@@ -190,6 +201,9 @@ func (c *content) compileEffect(key string, e *Effect) error {
 		if e.Value == "" {
 			return fail("value is required")
 		}
+		if _, isScore := strings.CutPrefix(e.Target, "score."); isScore != (e.Cap != 0) || (isScore && (e.Mode != "add" || e.Cap <= MaxNormalScore || e.Cap > MaxScore)) {
+			return fail("a score modifier is an add with a cap above %d, and nothing else has a cap", MaxNormalScore)
+		}
 		if e.value, err = compile(e.Value, formula.Int); err != nil {
 			return err
 		}
@@ -236,6 +250,12 @@ func (c *content) compileEffect(key string, e *Effect) error {
 		if e.max, err = compile(e.Max, formula.Int); err != nil {
 			return err
 		}
+		if (e.RechargeIf == "") != (e.RechargeThen == "") || (e.RechargeThen != "" && !slices.Contains(recharges, e.RechargeThen)) {
+			return fail("recharge_if and recharge_then go together, and recharge_then is a known recharge")
+		}
+		if e.rechargeIf, err = compile(e.RechargeIf, formula.Bool); err != nil {
+			return err
+		}
 	case "choice":
 		if !slices.Contains(choiceKinds, e.Choice) || e.Count < 0 {
 			return fail("unknown choice %q", e.Choice)
@@ -261,6 +281,12 @@ func (c *content) compileEffect(key string, e *Effect) error {
 		}
 		if _, ok := crEighths(e.MaxCR); !ok {
 			return fail("wild_shape needs a max_cr that is a challenge rating, such as \"1/4\"")
+		}
+	case "beast_spells":
+		other := *e
+		other.Type = ""
+		if !reflect.DeepEqual(other, Effect{}) {
+			return fail("beast_spells takes no fields")
 		}
 	case "handler":
 		if !slices.Contains(handlers, e.Handler) {
@@ -316,6 +342,10 @@ func (c *content) validModifierTarget(t string) bool {
 		return found
 	}
 	if ab, ok := strings.CutPrefix(t, "save."); ok {
+		_, found := abilityIndex[Ability(ab)] // save.all adds to every saving throw
+		return found || ab == "all"
+	}
+	if ab, ok := strings.CutPrefix(t, "score."); ok {
 		_, found := abilityIndex[Ability(ab)]
 		return found
 	}

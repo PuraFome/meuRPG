@@ -338,6 +338,7 @@ describe('CharacterSheetPage', () => {
                 versatileDamage: '',
                 saveDc: 0,
                 saveAbility: null,
+                beams: 0,
               },
               {
                 key: 'spell:fire-bolt',
@@ -349,6 +350,7 @@ describe('CharacterSheetPage', () => {
                 versatileDamage: '',
                 saveDc: 0,
                 saveAbility: null,
+                beams: 0,
               },
               {
                 key: 'spell:poison-spray',
@@ -360,6 +362,7 @@ describe('CharacterSheetPage', () => {
                 versatileDamage: '',
                 saveDc: 14,
                 saveAbility: 'con',
+                beams: 0,
               },
             ],
           }),
@@ -376,6 +379,46 @@ describe('CharacterSheetPage', () => {
     expect(el.textContent).toContain('CD 14');
     expect(el.textContent).toContain('Constituição');
     expect(el.textContent).toContain('1d12 veneno');
+  });
+
+  it('shows how many beams a cantrip fires, and keeps the unarmed strike out of the equipment', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({
+            attacks: [
+              {
+                key: 'attack:unarmed-strike',
+                namePt: 'Golpe desarmado',
+                kind: 'weapon',
+                attackBonus: 2,
+                damage: '1',
+                damageTypePt: 'concussão',
+                saveDc: 0,
+                saveAbility: null,
+                beams: 0,
+              },
+              {
+                key: 'spell:eldritch-blast',
+                namePt: 'Rajada Mística',
+                kind: 'spell',
+                attackBonus: 9,
+                damage: '1d10',
+                damageTypePt: 'energia',
+                saveDc: 0,
+                saveAbility: null,
+                beams: 3,
+              },
+            ],
+          }),
+        }),
+      );
+
+    const el = await render();
+    expect(el.textContent).toContain('3 raios, cada um com ataque e dano próprios');
+    expect(el.textContent).toContain('Golpe desarmado');
+    expect(sectionTitled(el, 'Equipamento').textContent).not.toContain('Golpe desarmado');
   });
 
   it('shows spell slots as a readable, separated list using "nível" (integrator fix)', async () => {
@@ -839,6 +882,7 @@ describe('CharacterSheetPage', () => {
                 versatileDamage: '',
                 saveDc: 0,
                 saveAbility: null,
+                beams: 0,
               },
               {
                 key: 'spell:fire-bolt',
@@ -850,6 +894,7 @@ describe('CharacterSheetPage', () => {
                 versatileDamage: '',
                 saveDc: 0,
                 saveAbility: null,
+                beams: 0,
               },
             ],
             equipment: [{ name: 'Corda (15m)', quantity: 1 }],

@@ -47,10 +47,11 @@ export class CombatColumn {
     return s.wearsArmor ? splitArmorDescription(s.armorClassDescription).armorNamePt : null;
   });
   /** The weapons are the attacks of kind `weapon` (a damage cantrip is not
-   * equipment): no separate request for `FullSheet.weapon_keys`' names. */
+   * equipment, and neither is the unarmed strike every character has): no
+   * separate request for `FullSheet.weapon_keys`' names. */
   protected readonly weaponNames = computed(() =>
     this.sheet()
-      .attacks.filter((a) => a.kind === 'weapon')
+      .attacks.filter((a) => a.kind === 'weapon' && a.key !== 'attack:unarmed-strike')
       .map((a) => a.namePt),
   );
   protected readonly coins = computed(() => coinEntries(this.sheet().coins));
