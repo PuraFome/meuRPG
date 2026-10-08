@@ -113,7 +113,7 @@ func TestEveryReadAsksForItsOwnCampaignsContent(t *testing.T) {
 			_, err := owner.update(t, pcB, "Pensantus B", pensantusSheet())
 			return err
 		}},
-		{"GetLevelUpOptions", campA, false, false, func() error {
+		{"GetLevelUpOptions reads in a read transaction", campA, true, true, func() error {
 			_, err := owner.api.GetLevelUpOptions(ctx, connect.NewRequest(&charactersv1.GetLevelUpOptionsRequest{CampaignId: campA, CharacterId: pcA.GetId()}))
 			return err
 		}},
