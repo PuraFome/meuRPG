@@ -72,7 +72,7 @@ span.tk__hit {
   box-shadow: none;
 }
 
-// A character's creature: round like a character, with a dashed ring (MAP-LANGUAGE.md).
+// A character's creature: round like a character, with a dashed ring (docs/design.md).
 :host(.tk--npc.tk--hidden) .tk__disc {
   border-style: dashed;
 }

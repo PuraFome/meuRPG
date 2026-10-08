@@ -128,7 +128,7 @@ describe('MovePage', () => {
     expect(el.querySelector('.cm__ring ellipse')).not.toBeNull();
     expect(el.querySelectorAll('app-map-layers .sq--wall').length).toBe(1);
     expect(el.querySelectorAll('app-map-layers .sq--terrain').length).toBe(1);
-    // The legend names every mark that is drawn, layers first (MAP-LANGUAGE.md).
+    // The legend names every mark that is drawn, layers first (docs/design.md).
     const legend = Array.from(el.querySelectorAll('.mr-legend li'), (li) => plain(li.textContent));
     // The chosen square is named only once there is one.
     expect(legend).toEqual(['Parede', 'Terreno difícil', 'Você alcança', 'Alcance de 9,0 m']);

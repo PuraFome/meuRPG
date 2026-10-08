@@ -7,9 +7,10 @@
  * distances in words are `core/units.ts`'s.
  */
 
-/** The screen takes 5 to 60 columns; the server takes 4 to 200. */
-export const MIN_COLUMNS = 5;
-export const MAX_COLUMNS = 60;
+/** The columns of a grid: the server's range (`SetMapGrid`), the same on this
+ * screen and in the map editor's grid panel. */
+export const MIN_COLUMNS = 4;
+export const MAX_COLUMNS = 200;
 
 export interface Square {
   readonly col: number;

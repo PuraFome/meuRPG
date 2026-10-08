@@ -88,7 +88,7 @@
 
 // The marks drawn over the map use the map's own colours (`--mr-map-*`, the same
 // in both themes): the image under them does not change with the theme, so
-// neither do they (MAP-LANGUAGE.md). The legend swatches (`.mr-swatch`) use the same.
+// neither do they (docs/design.md). The legend swatches (`.mr-swatch`) use the same.
 // The squares the token can walk to: a tint, not a colour alone (the legend
 // names it, and the sentence under the map says how far).
 .cm__cell {

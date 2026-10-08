@@ -289,6 +289,7 @@ describe('SessionEnded (MR-032, E8-11 states 4 and 5)', () => {
         ['Dano recebido', '0'],
         ['Golpes finais', '2'],
         ['Cura', '0'],
+        ['Acertos críticos', '0'],
         ['Testes passados fora do combate', '3 de 4'],
       ]);
     });

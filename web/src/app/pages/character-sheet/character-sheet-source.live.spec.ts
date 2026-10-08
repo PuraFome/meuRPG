@@ -9,7 +9,12 @@ import {
   FullSheet,
   LevelUpReason,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { CreatureSize, DerivedSheet } from '../../../gen/meurpg/rules/v1/rules_pb';
+import {
+  Attack,
+  AttackKind,
+  CreatureSize,
+  DerivedSheet,
+} from '../../../gen/meurpg/rules/v1/rules_pb';
 import { BasicSheetVm, FullSheetVm } from './character-sheet.types';
 import { toCharacterSheetVm, toCharacterStoryInit, toStoryVm } from './character-sheet-source.live';
 
@@ -363,6 +368,37 @@ describe('the sheet maps armor_class_description, features and hints (integrator
         text: 'Vantagem em testes de resistência de INT, SAB e CAR contra magia.',
       },
     ]);
+  });
+});
+
+describe("the sheet maps the background equipment and a versatile weapon's two-handed damage", () => {
+  it('carries background_equipment_pt and versatile_damage straight through', () => {
+    const derived: DerivedSheet = {
+      ...minimalDerivedSheet(),
+      backgroundEquipmentPt: 'Uma capa e 10 po',
+      attacks: [
+        {
+          $typeName: 'meurpg.rules.v1.Attack',
+          key: 'equipment:quarterstaff',
+          namePt: 'Bordão',
+          kind: AttackKind.WEAPON,
+          attackBonus: 2,
+          damage: '1d6',
+          damageTypePt: 'concussão',
+          versatileDamage: '1d8',
+          saveDc: 0,
+        } as Attack,
+      ],
+    };
+    const sheet = toCharacterSheetVm({
+      ...characterWithFullSheet(minimalFullSheet()),
+      derived,
+    }).sheet as FullSheetVm;
+    expect(sheet.backgroundEquipment).toBe('Uma capa e 10 po');
+    expect(sheet.attacks[0].versatileDamage).toBe('1d8');
+    const bare = toCharacterSheetVm(characterWithFullSheet(minimalFullSheet()))
+      .sheet as FullSheetVm;
+    expect(bare.backgroundEquipment).toBe('');
   });
 });
 

@@ -10,7 +10,7 @@ O MeuRPG coleta só o que a mesa precisa para jogar, guarda tudo em São Paulo e
 
 - **A lei que vale é a LGPD** (Lei 13.709/2018). O GDPR europeu hoje não se aplica, porque não oferecemos o app para a União Europeia. Mesmo assim, em cada tema, seguimos a regra mais rigorosa das duas.
 - **Somos agente de tratamento de pequeno porte** (Resolução CD/ANPD nº 2/2022). Mesmo dispensados, indicamos um encarregado e publicamos um canal de contato. O Samuel é o controlador, o Vinicius é o encarregado, e o canal é um e-mail só para isso até existir o domínio.
-- **O jogador não precisa dar e-mail nem nome real.** (RN-17) O jogador entra por um login anônimo, com o apelido do mestre junto do apelido do jogador, sem conta Google (ver [Regras de negócio](produto/regras.md)).
+- **O jogador não precisa dar e-mail nem nome real.** (RN-17) O jogador entra por um login anônimo, com o apelido do mestre junto do apelido do jogador, sem conta Google (ver [Regras de negócio](produto/regras.md)). Ainda não construído: hoje toda conta entra com o Google.
 - **A base legal é o contrato**, não o consentimento. O app precisa desses dados para funcionar. Segurança e logs usam legítimo interesse.
 - **Sem cookies de terceiros, analytics, pixel ou fonte de CDN.** Os únicos cookies são o de sessão e o de login, de vida curta, ambos estritamente necessários, então não há banner.
 - **O MVP é para maiores de 18 anos**, por autodeclaração (ver [Menores de idade](#menores-de-idade)).

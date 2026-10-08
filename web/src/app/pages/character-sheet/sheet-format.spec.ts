@@ -2,6 +2,7 @@ import {
   coinEntries,
   formatDate,
   issueTitle,
+  keepUnitsTogether,
   spellLimitsText,
   pactSlotRow,
   spellSlotRows,
@@ -9,6 +10,17 @@ import {
 } from './sheet-format';
 
 describe('sheet-format', () => {
+  it('keeps a number beside its unit, and only a unit', () => {
+    expect(keepUnitsTogether('Uma luneta, um rolo de corda e 10 PO.')).toBe(
+      'Uma luneta, um rolo de corda e 10\u00a0PO.',
+    );
+    expect(keepUnitsTogether('Corda de 15 m e 2 kg de ração, 3 pés de fio')).toBe(
+      'Corda de 15\u00a0m e 2\u00a0kg de ração, 3\u00a0pés de fio',
+    );
+    // A word that only starts like a unit stays as it is.
+    expect(keepUnitsTogether('5 mapas e 2 pontas, 10 POTES')).toBe('5 mapas e 2 pontas, 10 POTES');
+  });
+
   it('formats a date as the day only, local time', () => {
     expect(formatDate(new Date(2026, 8, 29, 19, 55))).toBe('29/09/2026');
     expect(formatDate(new Date(2026, 0, 3))).toBe('03/01/2026');

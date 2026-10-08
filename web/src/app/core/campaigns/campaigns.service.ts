@@ -4,7 +4,6 @@ import { durationFromMs } from '@bufbuild/protobuf/wkt';
 
 import {
   CampaignService,
-  DiceMode,
   DicePreference,
   XpMode,
 } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
@@ -80,11 +79,6 @@ export class CampaignsService {
 
   acceptInvite(token: string) {
     return this.client.acceptInvite({ token });
-  }
-
-  /** Master only (RN-18): how the campaign's players roll dice. */
-  setDiceMode(campaignId: string, mode: DiceMode) {
-    return this.client.setCampaignDiceMode({ campaignId, mode });
   }
 
   /** Any member (RN-18): the caller's own choice, used while the campaign

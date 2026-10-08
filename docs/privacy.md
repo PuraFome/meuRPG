@@ -10,7 +10,7 @@ MeuRPG collects only what the table needs to play, keeps everything in São Paul
 
 - **The law that applies is the LGPD** (Brazilian Law 13.709/2018). The European GDPR does not apply today, because we do not offer the app to the European Union. Even so, on each topic we follow the stricter of the two.
 - **We are a small-scale processing agent** (ANPD Resolution CD/ANPD no. 2/2022). Even though we are exempt, we appoint a data protection officer (encarregado) and publish a contact channel. Samuel is the controller, Vinicius is the data protection officer, and the channel is a dedicated e-mail address until the domain exists.
-- **Players do not need to give an e-mail or a real name** (RN-17). A player signs in with an anonymous login, using the game master's nickname together with the player's own nickname, with no Google account (see [Business rules](product/rules.md)).
+- **Players do not need to give an e-mail or a real name** (RN-17). A player signs in with an anonymous login, using the game master's nickname together with the player's own nickname, with no Google account (see [Business rules](product/rules.md)). Not built yet: today every account signs in with Google.
 - **The legal basis is the contract**, not consent. The app needs this data to work. Security and logs rely on legitimate interest.
 - **No third-party cookies, analytics, pixels or CDN fonts.** The only cookies are the session cookie and the short-lived login cookie, both strictly necessary, so there is no banner.
 - **The MVP is for people aged 18 or older**, by self-declaration (see [Minors](#minors)).

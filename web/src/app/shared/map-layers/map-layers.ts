@@ -4,7 +4,7 @@ import type { DoorKind, MapLayers } from '../../core/maps/layers';
 import { DoorMark } from './door-mark';
 
 /**
- * The map's painted layers drawn over its image (Etapa 9, MAP-LANGUAGE.md),
+ * The map's painted layers drawn over its image (Etapa 9, docs/design.md),
  * the same on every map of the app: **Parede** the dark diagonal hatch,
  * **Terreno difícil** the cross hatch, **Cobertura** a pictogram in the middle
  * of the square (a dotted square filled from the bottom to one half, "Meia

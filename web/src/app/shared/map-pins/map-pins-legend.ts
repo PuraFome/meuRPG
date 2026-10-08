@@ -14,7 +14,7 @@ interface Entry {
 }
 
 /**
- * The names of the trap, treasure and light marks on a map (MAP-LANGUAGE.md): one entry for each look
+ * The names of the trap, treasure and light marks on a map (docs/design.md): one entry for each look
  * that is on the map right now, never colour alone. The master's marks say "só você vê". The screen
  * puts it next to the map's other legends (fog states before, layers and tokens after).
  */
