@@ -36,7 +36,7 @@ import {
   outcomeText,
   trapFired,
 } from '../../../../core/puzzles/puzzle-format';
-import { puzzleErrorMessage } from '../../../../core/puzzles/puzzle-errors';
+import { isTransient, puzzleErrorMessage } from '../../../../core/puzzles/puzzle-errors';
 import { PuzzlesClient } from '../../../../core/puzzles/puzzles-client';
 import { LockBoard } from '../../../../shared/puzzle-boards/lock-board';
 import { PillarsBoard } from '../../../../shared/puzzle-boards/pillars-board';
@@ -316,6 +316,20 @@ export class MasterRun {
     );
   }
 
+  /**
+   * An action whose answer was lost may have worked: the card shows the puzzle as the server has it, so a
+   * second tap is not a second hint, or another reset, nobody saw coming.
+   */
+  private async readAgain(id: string): Promise<boolean> {
+    try {
+      this.updated.emit(await this.api.masterRun(this.campaignId(), id));
+      return true;
+    } catch {
+      // Still no answer: the notice says the action did not go through, and the card stays as it was.
+      return false;
+    }
+  }
+
   protected async act(action: Action): Promise<void> {
     const id = this.puzzle()?.id;
     if (!id || this.busy()) {
@@ -351,17 +365,18 @@ export class MasterRun {
       }
     } catch (err) {
       this.ask.set(null);
+      const what =
+        action === 'hint'
+          ? 'soltar a dica'
+          : action === 'play'
+            ? 'tocar a sequência'
+            : action === 'close'
+              ? 'fechar o quebra-cabeça'
+              : 'recomeçar o quebra-cabeça';
       this.notice.set(
-        puzzleErrorMessage(
-          err,
-          action === 'hint'
-            ? 'soltar a dica'
-            : action === 'play'
-              ? 'tocar a sequência'
-              : action === 'close'
-                ? 'fechar o quebra-cabeça'
-                : 'recomeçar o quebra-cabeça',
-        ),
+        isTransient(err) && (await this.readAgain(id))
+          ? `O servidor não respondeu a tempo ao pedido de ${what}. O quebra-cabeça abaixo está como ele ficou: confira antes de tentar de novo.`
+          : puzzleErrorMessage(err, what),
       );
     } finally {
       this.busy.set(null);

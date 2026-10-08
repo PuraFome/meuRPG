@@ -264,6 +264,30 @@ describe('MasterRun (MR-038, E10-06 states 3 to 5)', () => {
       expect(api.calls[1]).toEqual(['close', 'camp-1', 'a']);
     });
 
+    it('reads the puzzle again when the answer to a hint is lost, so a second tap is not a second hint', async () => {
+      const done = liveLights({ releasedHints: 1 });
+      const { el, settle, host } = await render(liveLights(), (a) => {
+        a.runResults.set('a', done);
+        a.releaseHint = () => Promise.reject(new ConnectError('x', Code.Unavailable));
+      });
+      button(el, 'Mostrar a próxima dica').click();
+      await settle();
+      expect(api.calls).toEqual([['masterRun', 'camp-1', 'a']]);
+      expect(host.updates).toEqual([done]);
+      expect(el.querySelector('[role="alert"]')?.textContent).toContain('confira antes de tentar');
+    });
+
+    it('keeps the plain refusal when the card cannot be read either', async () => {
+      const { el, settle, host } = await render(liveLights(), (a) => {
+        a.releaseHint = () => Promise.reject(new ConnectError('x', Code.Unavailable));
+        a.masterRun = () => Promise.reject(new ConnectError('x', Code.Unavailable));
+      });
+      button(el, 'Mostrar a próxima dica').click();
+      await settle();
+      expect(host.updates).toEqual([]);
+      expect(el.querySelector('[role="alert"]')?.textContent).toContain('o servidor não respondeu');
+    });
+
     it('says why an action was refused and leaves the card as it is', async () => {
       const { el, settle } = await render(liveLights(), (a) => {
         a.failWith = new ConnectError('x', Code.FailedPrecondition, undefined, [
