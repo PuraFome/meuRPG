@@ -164,7 +164,7 @@ func (l *Lit) shine(src Source) {
 			switch d2 := dist2Ft(src.At, sq); {
 			case d2 > outer*outer:
 				continue
-			case d2 <= src.BrightFt*src.BrightFt:
+			case src.BrightFt > 0 && d2 <= src.BrightFt*src.BrightFt:
 				level = grid.Bright
 			}
 			n := row*l.g.Columns + col

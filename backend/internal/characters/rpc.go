@@ -56,13 +56,8 @@ func (s *Service) CreateCharacter(
 	if !ok {
 		return nil, invalidArgument(fieldErr("kind", "is required"))
 	}
-	// A player creates their own character; the master creates NPCs
-	// (RN-04). A master is not a player of their own campaign.
-	switch {
-	case kind == kindPlayer && isMaster(m):
-		return nil, errPermission("only a player creates a player character; the master creates NPCs")
-	case kind != kindPlayer && !isMaster(m):
-		return nil, errPermission("only the campaign's master creates NPCs")
+	if err := checkCreatorKind(m, kind); err != nil {
+		return nil, err
 	}
 
 	if _, known := charactersv1.AbilityMethod_name[int32(req.Msg.GetAbilityMethod())]; !known {
@@ -76,21 +71,9 @@ func (s *Service) CreateCharacter(
 	if err != nil {
 		return nil, s.dbError(ctx, "read rules content", err)
 	}
-	sheet, err := checkSheet(content, req.Msg.GetSheet())
-	if err == nil {
-		err = checkSheetKind(kind, sheet)
-	}
-	if err == nil && sheet.GetFull() != nil {
-		sheet.GetFull().AbilityOrigin = nil // the server's record, set below for a player
-	}
+	sheet, err := checkNewSheet(content, m, kind, req.Msg.GetSheet())
 	if err != nil {
-		return nil, invalidArgument(err)
-	}
-	if key, _, found := newArchivedChoice(content, nil, sheet.GetFull()); found {
-		return nil, errArchivedChoice("", key)
-	}
-	if key, _, found := newOffChoice(content, nil, sheet.GetFull()); found && !isMaster(m) {
-		return nil, errOffChoice("", key)
+		return nil, err
 	}
 	if err := s.checkPortrait(ctx, m.CampaignID, kind, sheet); err != nil {
 		return nil, invalidArgument(err)
@@ -155,21 +138,9 @@ func (s *Service) CreateCharacter(
 					return row, wrap("read the table content and rules", err)
 				}
 				if tc.TableRevision() != content.TableRevision() {
-					again, err := checkSheet(tc, sheet)
-					if err == nil {
-						err = checkSheetKind(kind, again)
-					}
+					again, err := checkNewSheet(tc, m, kind, sheet)
 					if err != nil {
-						return row, invalidArgument(err)
-					}
-					if again.GetFull() != nil {
-						again.GetFull().AbilityOrigin = nil
-					}
-					if key, _, found := newArchivedChoice(tc, nil, again.GetFull()); found {
-						return row, errArchivedChoice("", key)
-					}
-					if key, _, found := newOffChoice(tc, nil, again.GetFull()); found && !isMaster(m) {
-						return row, errOffChoice("", key)
+						return row, err
 					}
 					sheet = again
 					if params.Sheet, err = storeJSON.Marshal(sheet); err != nil {
@@ -442,13 +413,8 @@ func (s *Service) UpdateCharacter(
 		if err != nil {
 			return err
 		}
-		// A table entry the master archived is not a new choice (RN-23); the ones
-		// the stored sheet already has stay.
-		if key, _, found := newArchivedChoice(content, storedSheet.GetFull(), sheet.GetFull()); found {
-			return errArchivedChoice(current.ID, key)
-		}
-		if key, _, found := newOffChoice(content, storedSheet.GetFull(), sheet.GetFull()); found && !isMaster(m) {
-			return errOffChoice(current.ID, key)
+		if err := refuseNewChoices(content, m, current.ID, storedSheet.GetFull(), sheet.GetFull()); err != nil {
+			return err
 		}
 		// The ability origin is the server's: kept from the stored sheet, and a
 		// player's draft edit of the base scores is checked against it (RN-24).
@@ -747,6 +713,57 @@ func (s *Service) UpdateMasterNotes(
 		return nil, s.dbError(ctx, "update master notes", err)
 	}
 	return connect.NewResponse(res), nil
+}
+
+// checkCreatorKind is who creates what (RN-04): a player creates their own
+// character and the master creates NPCs; a master is not a player of their own
+// campaign. CreateCharacter and PreviewCharacter share it.
+func checkCreatorKind(m authz.Membership, kind string) error {
+	switch {
+	case kind == kindPlayer && isMaster(m):
+		return errPermission("only a player creates a player character; the master creates NPCs")
+	case kind != kindPlayer && !isMaster(m):
+		return errPermission("only the campaign's master creates NPCs")
+	}
+	return nil
+}
+
+// checkNewSheet checks the sheet of a character about to be created, with the
+// table's content, and returns the sheet to store: the sheet's own rules, the
+// sheet that fits the kind, the ability origin cleared (the server's record,
+// set later for a player), and no new choice of an archived or switched-off
+// entry. The errors are the ones CreateCharacter answers. CreateCharacter and
+// PreviewCharacter share it, so a preview never shows a sheet the save
+// refuses.
+func checkNewSheet(content *rules.Content, m authz.Membership, kind string, raw *charactersv1.CharacterSheet) (*charactersv1.CharacterSheet, error) {
+	sheet, err := checkSheet(content, raw)
+	if err == nil {
+		err = checkSheetKind(kind, sheet)
+	}
+	if err != nil {
+		return nil, invalidArgument(err)
+	}
+	if sheet.GetFull() != nil {
+		sheet.GetFull().AbilityOrigin = nil // the server's record, set later for a player
+	}
+	if err := refuseNewChoices(content, m, "", nil, sheet.GetFull()); err != nil {
+		return nil, err
+	}
+	return sheet, nil
+}
+
+// refuseNewChoices refuses a choice the sheet adds to the stored one (nil when
+// creating; characterID is empty then): a table entry the master archived is
+// not a new choice (RN-23), and neither is one the master switched off, except
+// for the master. The ones the stored sheet already has stay.
+func refuseNewChoices(content *rules.Content, m authz.Membership, characterID string, stored, sheet *charactersv1.FullSheet) error {
+	if key, _, found := newArchivedChoice(content, stored, sheet); found {
+		return errArchivedChoice(characterID, key)
+	}
+	if key, _, found := newOffChoice(content, stored, sheet); found && !isMaster(m) {
+		return errOffChoice(characterID, key)
+	}
+	return nil
 }
 
 // mayEditSheet is RN-01: after a game session starts, only the master edits the

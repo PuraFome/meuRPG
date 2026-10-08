@@ -158,6 +158,10 @@ The full code review of 07/10 raised one product question, which Vinicius answer
 - **The screens the server already allowed are built:** the master's "Movimento forçado" in combat (a push, a pull or a teleport provokes no opportunity attack), the class choice of a multiclass level-up, and editing a scene action's check, name and DC. No filters were needed: the notes already filter by scene, and there is no level-up history screen.
 - **A creature's token is never hidden.** It is a party token, like a player character's; only NPC tokens hide. So `SetMapTokenHidden` takes no creature. See [RN-10](../product/rules.md).
 
+### Answered on 08/10/2026
+
+- **The editor's hit points come from the server.** The character editor's "Pontos de vida" box added up the dice and the Constitution modifier in the browser and left out what race, class and features give (Dwarven Toughness, Draconic Resilience, a table's own effect), so the box showed less than the saved sheet. Vinicius chose the best fix over a note: a read-only `PreviewCharacter` call derives the draft on the server with the same checks as the save, and the box shows its numbers (`DerivedSheet.hit_points_from_effects` names what the effects add), falling back to the dice alone when the call fails. The browser still computes no rules. See [Architecture](../architecture.md) and MR-004.
+
 ## Roadmap and scope decisions
 
 These decisions used to open and close the roadmap page.

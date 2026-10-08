@@ -1056,6 +1056,8 @@ export class LiveSession {
             data,
             injector: this.injector,
             ariaLabel: `Ajustar ${vitals.name}`,
+            // The sheet scrolls inside itself, so its container may use almost the whole phone screen.
+            panelClass: 'mr-sheet',
             // The title first, so a stray Enter can't take 5 HP.
             autoFocus: 'first-heading',
           })
