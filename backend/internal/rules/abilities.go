@@ -88,10 +88,11 @@ func (x *deriver) abilities() {
 	}
 }
 
-// abilityEffects adds the features that raise a score (Primal Champion, Body and
-// Mind) to the scores abilities computed, up to each effect's cap, and then
-// reports a score above 20 that nothing explains: a manual bonus is the player's
-// own business, and a feature's cap lifts the ceiling for the score it raised.
+// abilityEffects adds the features that raise a score (Primal Champion) to the
+// scores abilities computed, up to each effect's cap, and then reports a score
+// above 20 that nothing explains: a positive manual bonus is where a magic item
+// that raises a score goes (the SRD lets an item pass 20), and a feature's cap
+// lifts the ceiling for the score it raised.
 func (x *deriver) abilityEffects() {
 	for i, ab := range x.d.Abilities {
 		ceiling, score := MaxNormalScore, ab.Score
