@@ -90,6 +90,9 @@ func (s *Service) CreaturesLeaving(ctx context.Context, tx pgx.Tx, campaignID, a
 		if err := s.writeBackCreatures(ctx, c, leaving); err != nil {
 			return "", err
 		}
+		if err := s.discardDamageOf(ctx, c, cs, leaving); err != nil {
+			return "", err
+		}
 		if _, _, err := s.dropCombatants(ctx, c, cs, leaving, false); err != nil {
 			return "", err
 		}
@@ -129,6 +132,7 @@ func (s *Service) PublishEncounterChanged(ctx context.Context, campaignID, encou
 		return // the combat is gone: nothing to tell
 	}
 	s.publishEncounterChanged(ctx, campaignID, enc)
+	s.publishLogChanged(ctx, campaignID, enc.ID, false) // the damage waiting on it was dropped: the master's line; whether a player's was hidden is not told here
 	// A creature that left may have passed the turn, and the new turn ends a familiar's
 	// sight (MR-036): the vitals and the fog hear of it too.
 	if all, err := s.vitals.ListVitals(ctx, campaignID); err == nil {

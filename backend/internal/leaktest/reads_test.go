@@ -315,7 +315,7 @@ var reads = []read{
 		},
 	},
 	{
-		procedure: playv1connect.CombatServiceGetMoveOptionsProcedure, label: "Ana's combatant", allow: onlyAna, once: true, why: "a player reads their move options on their own turn",
+		procedure: playv1connect.CombatServiceGetMoveOptionsProcedure, label: "Ana's combatant", allow: masterOnlyRead, why: "Ana's character is down: a player who is down has no move options, only the master plans her move",
 		req: func(w *world) proto.Message {
 			return &playv1.GetMoveOptionsRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: w.combatant(w.pens).GetId()}
 		},
