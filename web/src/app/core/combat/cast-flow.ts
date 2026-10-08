@@ -336,18 +336,26 @@ const ABILITY_PT: Partial<Record<Ability, string>> = {
   [Ability.CHARISMA]: 'Carisma',
 };
 
-/** The dice a spell makes at a slot level ("8d6"), from its details; `''` when there are none. */
-export function damageDice(details: SpellDetails | null, slotLevel: number): string {
+/**
+ * The dice a spell makes at a slot level ("8d6"), from its details; `''` when there are none.
+ * A cantrip grows with the caster's level, which the details do not know: the server sends the
+ * caster's dice with the attack (`Attack.spellDice`), and without them a cantrip shows no dice
+ * rather than the first row of its table.
+ */
+export function damageDice(
+  details: SpellDetails | null,
+  slotLevel: number,
+  cantripDice = '',
+): string {
   const d = details?.damage[0];
   if (!d) {
     return '';
   }
-  return (
-    d.bySlotLevel[slotLevel] ??
-    d.bySlotLevel[details?.spell?.level ?? 0] ??
-    Object.values(d.byCharacterLevel)[0] ??
-    ''
-  );
+  const own = details?.spell?.level ?? 0;
+  if (own === 0 && Object.keys(d.byCharacterLevel).length > 0) {
+    return cantripDice;
+  }
+  return d.bySlotLevel[slotLevel] ?? d.bySlotLevel[own] ?? cantripDice;
 }
 
 /** "Ação · alcance 36 m · 3 dardos de 1d4 + 1 de energia, sempre acertam". */
@@ -357,6 +365,7 @@ export function castSubtitle(
   details: SpellDetails | null,
   slotLevel: number,
   darts: number,
+  cantripDice = '',
 ): string {
   const parts = [
     economy === ActionEconomy.BONUS_ACTION
@@ -374,7 +383,7 @@ export function castSubtitle(
     parts.push('pessoal');
   }
   const type = details?.damage[0]?.damageTypePt ?? '';
-  const dice = damageDice(details, slotLevel);
+  const dice = damageDice(details, slotLevel, cantripDice);
   switch (kind) {
     case 'darts':
       parts.push(`${darts || 3} dardos de 1d4 + 1 de ${type || 'energia'}, sempre acertam`);

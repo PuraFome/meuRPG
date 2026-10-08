@@ -91,6 +91,8 @@ export interface CastSheetData {
   /** 0 for a cantrip. */
   readonly level: number;
   readonly concentration: boolean;
+  /** A damage cantrip's dice at the caster's level (`Attack.spellDice`); empty otherwise. */
+  readonly cantripDice: string;
   readonly economy: ActionEconomy;
   /** The free slots the spell can be cast with (`SpellOption.slots`). */
   readonly slots: readonly SlotChoice[];
@@ -348,6 +350,7 @@ export class CastSheet {
       this.details(),
       this.slotLevel(),
       this.dartsTotal(),
+      this.data.cantripDice,
     );
   });
 

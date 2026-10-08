@@ -785,6 +785,9 @@ type Attack struct {
 	// its own damage roll: 4 for Eldritch Blast at character level 17. It is 1
 	// for every other attack, and 0 for a weapon.
 	Beams int
+	// SpellDice is the plain dice a cantrip rolls at the character's level ("3d8"),
+	// without the damage modifier; empty for a weapon and for a creature's attack.
+	SpellDice string
 	// Notes is the rest of a creature's action, as the SRD wrote it (in
 	// English): the damage parts after the first, a saving throw, a rider.
 	// The engine rolls the to-hit and the first damage part; the master reads

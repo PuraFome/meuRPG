@@ -19,3 +19,13 @@ func TestDerivedSheetMaxHitPointsIsAtLeastOne(t *testing.T) {
 		t.Errorf("DerivedSheet.HitPointsMax = %d for 24, want 24", got)
 	}
 }
+
+// A damage cantrip reaches the app with the dice it rolls at the character's
+// level, not the whole table.
+func TestAttackToProtoCarriesCantripDice(t *testing.T) {
+	t.Parallel()
+	got := attackToProto(rules.Attack{Key: "spell:sacred-flame", Kind: "spell", Damage: "3d8", SpellDice: "3d8"})
+	if got.GetSpellDice() != "3d8" {
+		t.Errorf("spell_dice = %q, want 3d8", got.GetSpellDice())
+	}
+}

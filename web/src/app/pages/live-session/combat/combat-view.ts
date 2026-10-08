@@ -1552,6 +1552,7 @@ export class CombatView {
       name,
       level: spell?.spell?.level ?? 0,
       concentration: spell?.spell?.concentration ?? false,
+      cantripDice: cantrip?.spellDice ?? '',
       economy: spell?.economy ?? ActionEconomy.ACTION,
       slots: spell?.slots ?? [],
       usage: vitals?.spellSlots ?? [],

@@ -24,6 +24,7 @@ describe('a failed typed damage keeps the typed form open', () => {
       name: 'Raio de Fogo',
       level: 0,
       concentration: false,
+      cantripDice: '',
       economy: ActionEconomy.ACTION,
       slots: [],
       usage: [],

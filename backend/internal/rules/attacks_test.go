@@ -156,6 +156,31 @@ func TestEldritchBlastBeamCount(t *testing.T) {
 	}
 }
 
+// A damage cantrip says the plain dice it rolls at the character's level, so the
+// app shows the caster's row of the spell's table: Sacred Flame is 1d8, 2d8, 3d8
+// and 4d8 at character levels 1, 5, 11 and 17.
+func TestCantripSpellDiceFollowCharacterLevel(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for lv, want := range map[int]string{1: "1d8", 4: "1d8", 5: "2d8", 10: "2d8", 11: "3d8", 16: "3d8", 17: "4d8", 20: "4d8"} {
+		b := standard("class:cleric", lv)
+		b.Cantrips = []string{"spell:sacred-flame"}
+		a, ok := attackOf(Derive(b, c), "spell:sacred-flame")
+		if !ok {
+			t.Fatalf("level %d: no sacred flame attack", lv)
+		}
+		if a.SpellDice != want {
+			t.Errorf("level %d: SpellDice = %q, want %q", lv, a.SpellDice, want)
+		}
+	}
+	w := standard("class:fighter", 5)
+	for _, a := range Derive(w, c).Attacks {
+		if a.Kind == "weapon" && a.SpellDice != "" {
+			t.Errorf("weapon %s has SpellDice %q", a.Key, a.SpellDice)
+		}
+	}
+}
+
 // Heavy armor whose Strength requirement is not met costs 10 ft of speed;
 // dwarves keep theirs.
 func TestHeavyArmorStrengthRequirementCutsSpeed(t *testing.T) {
