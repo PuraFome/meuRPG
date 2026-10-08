@@ -174,6 +174,10 @@ type Subclass struct {
 	// Spells are the subclass's always-available spells (domain, oath,
 	// circle and patron spells).
 	Spells []SubclassSpell `json:"spells,omitempty"`
+	// ExpandedList says Spells only join the class's spell list, to choose from
+	// when the class learns a spell, instead of being always prepared. It is set
+	// by effects/corrections.json, never read from data/.
+	ExpandedList bool `json:"-"`
 }
 
 // SubclassSpell is a spell a subclass gives at a class level, sometimes
@@ -290,7 +294,12 @@ type Spell struct {
 	SaveAbility string `json:"save_ability,omitempty"`
 	SaveSuccess string `json:"save_success,omitempty"`
 	// Damage is one entry per damage type (Ice Storm has two).
-	Damage          []SpellDamage     `json:"damage,omitempty"`
+	Damage []SpellDamage `json:"damage,omitempty"`
+	// DamageChoice, set by effects/corrections.json and never read from data/,
+	// says what the caster picks among the damage types: "scale" (all of them
+	// are dealt, and the higher-slot dice go to the chosen one) or "alternative"
+	// (only the chosen one is dealt). Empty: every type is dealt as listed.
+	DamageChoice    string            `json:"-"`
 	HealAtSlotLevel map[string]string `json:"heal_at_slot_level,omitempty"`
 	// AreaType and AreaSizeFt are the 5e-database's structured area_of_effect:
 	// "cone", "cube", "cylinder", "line" or "sphere", and its size in feet (the

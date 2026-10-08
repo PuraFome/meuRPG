@@ -168,6 +168,39 @@ func (s *Service) castHPSpell(ctx context.Context, c *combatTx, sp link.Spell, t
 			}
 		}
 
+	case rules.SpellKindTempHP:
+		roll, err := s.poolRoll(fx.Pool, in)
+		if err != nil {
+			return nil, nil, err
+		}
+		gained := roll.Total + fx.Amount
+		made.DiceCount, made.DiceSides, made.Faces, made.Modifier = clamp32(fx.Pool.Count, 0, 100), clamp32(fx.Pool.Sides, 0, 100), faces32(roll.Faces), clamp32(fx.Amount, 0, math.MaxInt32)
+		made.Total, made.Physical = clamp32(gained, 0, math.MaxInt32), roll.Physical
+		for i, t := range targets {
+			h := &hits[i]
+			h.Fx = fxAffected
+			v, err := s.giveTempHP(ctx, c, t, gained, h)
+			if err != nil {
+				return nil, nil, err
+			}
+			if v != nil {
+				vitals = append(vitals, v)
+			}
+		}
+
+	case rules.SpellKindMaxHP:
+		for i, t := range targets {
+			h := &hits[i]
+			h.Fx = fxAffected
+			v, err := s.raiseMaxHP(ctx, c, t, fx.Amount, h)
+			if err != nil {
+				return nil, nil, err
+			}
+			if v != nil {
+				vitals = append(vitals, v)
+			}
+		}
+
 	case rules.SpellKindFlatHeal:
 		for i, t := range targets {
 			h := &hits[i]
@@ -260,4 +293,63 @@ func (s *Service) dropToZero(ctx context.Context, c *combatTx, t fxTarget, h *ca
 		return nil, fmt.Errorf("fail the death saves: %w", err)
 	}
 	return after, nil
+}
+
+// giveTempHP gives a target temporary hit points: they do not stack, so the target
+// keeps the larger of what it had and what the spell gives (SRD 5.1). It notes the
+// hit points before for an undo and what the target gained in h.Healed.
+func (s *Service) giveTempHP(ctx context.Context, c *combatTx, t fxTarget, amount int, h *castHit) (*playv1.CharacterVitals, error) {
+	temp := clamp32(max(amount, t.temp), 0, math.MaxInt32)
+	gained := temp - clamp32(t.temp, 0, math.MaxInt32)
+	h.Healed = &gained
+	if holdsHP(t.c) {
+		before := hpOf(t.c)
+		h.Restore = &before
+		if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: t.c.ID, HpCurrent: &before.HP, HpTemp: &temp, Defeated: before.Defeated}); err != nil {
+			return nil, fmt.Errorf("give the temporary hit points: %w", err)
+		}
+		return nil, nil
+	}
+	before, after, err := s.vitalsOf(ctx, c, t.c.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsTemporary: &temp})
+	if err != nil {
+		return nil, err
+	}
+	h.Restore = new(hpStateOf(before))
+	h.DeathBefore = deathOf(t.c)
+	return after, nil
+}
+
+// raiseMaxHP raises a target's maximum and current hit points by amount (Ajuda). An
+// NPC's or a creature's maximum is on its combatant, so it rises (a target at 0 stays
+// at 0: the master decides whether a fallen NPC is dead). A player's character's
+// maximum is worked out from its sheet and has no place for a bonus, so the character
+// gets the amount as temporary hit points, which absorb damage first; a character at
+// 0 gets it as current hit points instead, because the spell's current hit points
+// wake them up (SRD 5.1), and temporary ones would leave them dying.
+func (s *Service) raiseMaxHP(ctx context.Context, c *combatTx, t fxTarget, amount int, h *castHit) (*playv1.CharacterVitals, error) {
+	if !holdsHP(t.c) {
+		if t.hp > 0 {
+			return s.giveTempHP(ctx, c, t, amount, h)
+		}
+		hit, v, err := s.healCombatant(ctx, c, t.c, clamp32(amount, 0, math.MaxInt32))
+		if err != nil {
+			return nil, err
+		}
+		woke := hit.Amount
+		h.Healed, h.Restore, h.DeathBefore = &woke, hit.Before, hit.DeathBefore
+		return v, nil
+	}
+	rose := clamp32(amount, 0, math.MaxInt32)
+	h.Healed = &rose
+	before, maxBefore := hpOf(t.c), num(t.c.HpMax)
+	h.Restore, h.MaxBefore = &before, &maxBefore
+	if err := c.q.SetCombatantHitPointsMax(ctx, playdb.SetCombatantHitPointsMaxParams{ID: t.c.ID, HpMax: new(maxBefore + rose)}); err != nil {
+		return nil, fmt.Errorf("raise the maximum hit points: %w", err)
+	}
+	if before.HP > 0 {
+		if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: t.c.ID, HpCurrent: new(before.HP + rose), HpTemp: &before.Temp, Defeated: before.Defeated}); err != nil {
+			return nil, fmt.Errorf("raise the current hit points: %w", err)
+		}
+	}
+	return nil, nil
 }

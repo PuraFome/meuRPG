@@ -1,5 +1,5 @@
 {
-  "_comment": "Corrections to data/ (never edited by hand): values the 5e-database snapshot has wrong or lacks against the SRD 5.1's own text and tables. The loader applies them over the class table rows (corrections), over a creature's stat block (creature_corrections), over a spell's attack, saving throw and damage table (spell_corrections) and over the spells a subclass always has (subclass_corrections); it refuses an unknown class, creature, spell, subclass, field or level, a value that does not fit its field, and a correction without a source. A spell correction's damage replaces the spell's whole damage table; a spell with a damage table and no saving throw records the dice for display and for the master, and rolls nothing at cast.",
+  "_comment": "Corrections to data/ (never edited by hand): values the 5e-database snapshot has wrong or lacks against the SRD 5.1's own text and tables. The loader applies them over the class table rows (corrections), over a creature's stat block (creature_corrections), over a spell's attack, saving throw and damage table (spell_corrections) over the spells a subclass always has (subclass_corrections) and over the subclasses whose spells only join the class list (expanded_list_corrections); it refuses an unknown class, creature, spell, subclass, field or level, a value that does not fit its field, and a correction without a source. A spell correction's damage replaces the spell's whole damage table, and its damage_choice (\"scale\" or \"alternative\") says what the caster picks among the damage types; a spell with a damage table and no saving throw records the dice for display and for the master, and rolls nothing at cast.",
   "corrections": [
     {
       "class": "class:warlock",
@@ -260,6 +260,7 @@
       "spell": "spell:spirit-guardians",
       "save_ability": "wis",
       "save_success": "half",
+      "damage_choice": "alternative",
       "damage": [
         {
           "damage_type": "damage-type:radiant",
@@ -471,6 +472,33 @@
         }
       ],
       "source": "SRD 5.1, Wall of Fire: 5d8 fire, +1d8 for each slot level above 4th"
+    },
+    {
+      "spell": "spell:flame-strike",
+      "damage_choice": "scale",
+      "damage": [
+        {
+          "damage_type": "damage-type:fire",
+          "at_slot_level": {
+            "5": "4d6",
+            "6": "5d6",
+            "7": "6d6",
+            "8": "7d6",
+            "9": "8d6"
+          }
+        },
+        {
+          "damage_type": "damage-type:radiant",
+          "at_slot_level": {
+            "5": "4d6",
+            "6": "5d6",
+            "7": "6d6",
+            "8": "7d6",
+            "9": "8d6"
+          }
+        }
+      ],
+      "source": "SRD 5.1, Flame Strike: 4d6 fire and 4d6 radiant, and from a 6th-level slot the fire damage or the radiant damage (the caster's choice) grows by 1d6 for each slot level above 5th; each type's table is its dice when the caster picks it, the other type staying at 4d6 (the snapshot has the unparsable \"4d6 OR 5d6\")"
     }
   ],
   "subclass_corrections": [
@@ -483,6 +511,12 @@
         }
       ],
       "source": "SRD 5.1, Life Domain Spells: at 7th level a cleric always has death ward and guardian of faith (the snapshot lacks guardian of faith)"
+    }
+  ],
+  "expanded_list_corrections": [
+    {
+      "subclass": "subclass:fiend",
+      "source": "SRD 5.1, The Fiend, Expanded Spell List: the patron's spells are added to the warlock spell list, to choose from when the warlock learns a spell; they are not given and not always prepared (the snapshot lists them as the subclass's spells)"
     }
   ]
 }

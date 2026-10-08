@@ -545,3 +545,112 @@ func TestPowerWordKillOnADruidInBeastFormEndsTheForm(t *testing.T) {
 		t.Errorf("after the undo the druid has beast %v and %d own PV, want the wolf at 11 and her own 38", v.GetWildShape(), v.GetHitPointsCurrent())
 	}
 }
+
+// newTempHPCasters is the party of newCasters with False Life and Aid in place of
+// the usual spells: Pensantus (level 3) knows False Life, and Brisa (level 3) has
+// Aid prepared.
+func newTempHPCasters(t *testing.T) *armed {
+	t.Helper()
+	return newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
+			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
+		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 3,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt},
+			[]string{falseLife}, []string{falseLife})
+		a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", "race:human", 3,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{maceKey}, []string{sacredFlame}, nil,
+			[]string{aidSpell})
+	})
+}
+
+const (
+	falseLife = "spell:false-life"
+	aidSpell  = "spell:aid"
+)
+
+// TestFalseLifeGivesTemporaryHitPoints: False Life gives 1d4 + 4 temporary hit
+// points, which are not healing (the current hit points stay), do not stack (the
+// caster keeps the larger) and are given back by an undo.
+func TestFalseLifeGivesTemporaryHitPoints(t *testing.T) {
+	t.Parallel()
+	a := newTempHPCasters(t)
+	e := a.castersFight(t, 1)
+	a.correct(t, a.pens, hpIs(5))
+	maxHP := a.vitals(t, a.pens).GetHitPointsMax()
+	if maxHP <= 5 {
+		t.Fatalf("Pensantus's maximum = %d, want more than 5", maxHP)
+	}
+
+	a.undoes(t, "Vitalidade Falsa", func() {
+		a.h.roller.queue(3)
+		a.mustCast(t, a.ana, e, "Pensantus", falseLife, slotOfLevel(1), nil, poolInApp)
+	})
+	a.h.roller.queue(3)
+	res := a.mustCast(t, a.ana, e, "Pensantus", falseLife, slotOfLevel(1), nil, poolInApp)
+	if r := res.GetCast().GetPoolRoll(); res.GetCast().GetEffectKind() != playv1.SpellEffectKind_SPELL_EFFECT_KIND_TEMP_HP || r.GetTotal() != 7 || r.GetModifier() != 4 || r.GetDiceSides() != 4 {
+		t.Errorf("the cast = kind %v, roll %v; want temporary hit points rolled 1d4 + 4 = 7", res.GetCast().GetEffectKind(), r)
+	}
+	if v := a.vitals(t, a.pens); v.GetHitPointsTemporary() != 7 || v.GetHitPointsCurrent() != 5 {
+		t.Errorf("Pensantus has %d PV and %d temporários, want 5 and 7: not a heal", v.GetHitPointsCurrent(), v.GetHitPointsTemporary())
+	}
+	// A smaller roll does not take the larger away.
+	e = a.passTo(t, e, "Toren")
+	a.passTo(t, e, "Pensantus")
+	a.h.roller.queue(1)
+	a.mustCast(t, a.ana, e, "Pensantus", falseLife, slotOfLevel(2), nil, poolInApp)
+	if v := a.vitals(t, a.pens); v.GetHitPointsTemporary() != 10 { // 1d4 + 9 at the 2nd level, larger than 7
+		t.Errorf("Pensantus has %d temporários after a 2nd-level Vitalidade Falsa, want 10", v.GetHitPointsTemporary())
+	}
+}
+
+// TestAidRaisesTheMaximumHitPoints: Aid raises the maximum and the current hit
+// points of an NPC by 5 (it is not healing: a creature at 0 stays there), and the
+// undo puts both back; a player's character, whose maximum comes from its sheet,
+// gets the 5 as temporary hit points.
+func TestAidRaisesTheMaximumHitPoints(t *testing.T) {
+	t.Parallel()
+	a := newTempHPCasters(t)
+	e := a.castersFight(t, 1)
+	a.passTo(t, e, "Brisa")
+
+	goblin := byLabel(t, a.get(t, a.master), "Goblin")
+	a.undoes(t, "Ajuda", func() {
+		a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(2), a.at(t, "Goblin", "Toren"), noCastRoll)
+	})
+	res := a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(2), a.at(t, "Goblin", "Toren"), noCastRoll)
+	if len(res.GetCast().GetPendingDamages()) != 0 || res.GetCast().GetEffectKind() != playv1.SpellEffectKind_SPELL_EFFECT_KIND_MAX_HP {
+		t.Errorf("the cast = kind %v with %d pending damages, want maximum hit points and no heal", res.GetCast().GetEffectKind(), len(res.GetCast().GetPendingDamages()))
+	}
+	now := byLabel(t, a.get(t, a.master), "Goblin")
+	if now.GetHitPointsMax() != goblin.GetHitPointsMax()+5 || now.GetHitPointsCurrent() != goblin.GetHitPointsCurrent()+5 {
+		t.Errorf("the goblin has %d of %d PV, want %d of %d", now.GetHitPointsCurrent(), now.GetHitPointsMax(), goblin.GetHitPointsCurrent()+5, goblin.GetHitPointsMax()+5)
+	}
+	if v := a.vitals(t, a.toren); v.GetHitPointsTemporary() != 5 {
+		t.Errorf("Toren has %d temporários, want 5", v.GetHitPointsTemporary())
+	}
+}
+
+// TestAidWakesACharacterAtZero: Aid raises current hit points, so a character at 0
+// gets up with 5 instead of 5 temporary hit points that would leave them dying
+// (SRD 5.1); the death saves reset, and the undo puts them back at 0.
+func TestAidWakesACharacterAtZero(t *testing.T) {
+	t.Parallel()
+	a := newTempHPCasters(t)
+	e := a.castersFight(t, 1)
+	a.passTo(t, e, "Brisa")
+	a.correct(t, a.toren, hpIs(0))
+	if got := combatantState(a.get(t, a.caio), "Toren"); got != playv1.CombatantState_COMBATANT_STATE_DOWN {
+		t.Fatalf("Toren's state at 0 PV = %v, want DOWN", got)
+	}
+
+	a.undoes(t, "Ajuda on a character at 0", func() {
+		a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(2), a.at(t, "Toren"), noCastRoll)
+	})
+	a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(2), a.at(t, "Toren"), noCastRoll)
+	if v := a.vitals(t, a.toren); v.GetHitPointsCurrent() != 5 || v.GetHitPointsTemporary() != 0 {
+		t.Errorf("Toren = %d PV and %d temporários, want 5 and 0", v.GetHitPointsCurrent(), v.GetHitPointsTemporary())
+	}
+	if c := byLabel(t, a.get(t, a.caio), "Toren"); c.GetState() == playv1.CombatantState_COMBATANT_STATE_DOWN || c.GetDeathFailures() != 0 || c.GetDeathSuccesses() != 0 {
+		t.Errorf("Toren after Ajuda = state %v, %d failures; want up and the death saves reset", c.GetState(), c.GetDeathFailures())
+	}
+}

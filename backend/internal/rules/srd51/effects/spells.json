@@ -28,6 +28,17 @@
     "spell:spare-the-dying": {
       "kind": "zero_hp_target"
     },
+    "spell:false-life": {
+      "kind": "temp_hp",
+      "dice": "1d4",
+      "amount": 4,
+      "amount_per_level": 5
+    },
+    "spell:aid": {
+      "kind": "max_hp",
+      "amount": 5,
+      "amount_per_level": 5
+    },
     "spell:heal": {
       "kind": "flat_heal",
       "amount": 70,

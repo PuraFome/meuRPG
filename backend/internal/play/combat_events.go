@@ -106,6 +106,9 @@ type castHit struct {
 	Save     *saveRoll `json:"save,omitempty"`
 	// Pending is the pending damage or heal the cast opened for the target.
 	Pending string `json:"pending_id,omitempty"`
+	// More are the other pending damages the cast opened for the target, one for
+	// each further damage type of the spell, in the spell's order.
+	More []string `json:"more_pending_ids,omitempty"`
 	// The cover the target had against the caster for a spell attack or a Dexterity
 	// save (see actionEvent.Cover), and, for a spell attack, the armor class the
 	// total was compared with (the master's alone).
@@ -134,7 +137,10 @@ type castHit struct {
 	// What an undo puts back: the hit points and death saves when the spell
 	// changed them (a heal, a death, Estabilizar), the conditions when it
 	// changed them.
-	Restore     *hpState    `json:"restore,omitempty"`
+	Restore *hpState `json:"restore,omitempty"`
+	// MaxBefore is the maximum hit points an NPC had before a spell raised them
+	// (Ajuda), for the undo.
+	MaxBefore   *int32      `json:"max_before,omitempty"`
 	DeathBefore *deathState `json:"death_before,omitempty"`
 	CondSet     bool        `json:"cond_set,omitempty"`
 	CondBefore  []string    `json:"cond_before,omitempty"`
@@ -283,11 +289,15 @@ type actionEvent struct {
 	CondBefore []string `json:"cond_before,omitempty"`
 
 	// What the undo of an action puts back.
-	ActionBefore   bool   `json:"action_before,omitempty"`
-	BonusBefore    bool   `json:"bonus_before,omitempty"`
-	ReactionBefore bool   `json:"reaction_before,omitempty"`
-	DashedBefore   bool   `json:"dashed_before,omitempty"`
-	PrevStatus     string `json:"prev_status,omitempty"`
+	ActionBefore   bool `json:"action_before,omitempty"`
+	BonusBefore    bool `json:"bonus_before,omitempty"`
+	ReactionBefore bool `json:"reaction_before,omitempty"`
+	DashedBefore   bool `json:"dashed_before,omitempty"`
+	// SpellCastBefore and BonusSpellBefore are the kinds of spell cast before a
+	// cast (the bonus action spell limit).
+	SpellCastBefore  bool   `json:"spell_cast_before,omitempty"`
+	BonusSpellBefore bool   `json:"bonus_spell_before,omitempty"`
+	PrevStatus       string `json:"prev_status,omitempty"`
 	// Mode is how the master changed an NPC's hit points ("damage", "heal",
 	// "set"), and Delta the change.
 	Mode  string `json:"mode,omitempty"`
