@@ -146,6 +146,7 @@ type PendingDamage struct {
 	TrapPointID      *string
 	CriticalMax      int32
 	CriticalMaxRule  bool
+	Taken            *int32
 }
 
 type Puzzle struct {

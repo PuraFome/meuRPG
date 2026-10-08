@@ -4373,7 +4373,13 @@ type Attack struct {
 	// damage roll: Eldritch Blast fires 1, 2, 3 or 4 beams at warlock levels
 	// 1, 5, 11 and 17. 1 for the other cantrips; 0 (unset) for a weapon and for a
 	// creature's attack.
-	Beams         int32 `protobuf:"varint,18,opt,name=beams,proto3" json:"beams,omitempty"`
+	Beams int32 `protobuf:"varint,18,opt,name=beams,proto3" json:"beams,omitempty"`
+	// For a cantrip (kind SPELL): the plain dice it rolls at the character's level,
+	// such as "3d8" for Sacred Flame at level 11, without the damage modifier. The
+	// spell's details carry the whole table by level for any caster, so the app
+	// reads the caster's row here instead of choosing one. Empty for a weapon and
+	// for a creature's attack.
+	SpellDice     string `protobuf:"bytes,19,opt,name=spell_dice,json=spellDice,proto3" json:"spell_dice,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4532,6 +4538,13 @@ func (x *Attack) GetBeams() int32 {
 		return x.Beams
 	}
 	return 0
+}
+
+func (x *Attack) GetSpellDice() string {
+	if x != nil {
+		return x.SpellDice
+	}
+	return ""
 }
 
 // Feature is a class feature, racial trait or background feature.
@@ -10037,7 +10050,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x05count\x18\x02 \x01(\x05R\x05count\"Z\n" +
 	"\x0eCharacterSpell\x12,\n" +
 	"\x05spell\x18\x01 \x01(\v2\x16.meurpg.rules.v1.SpellR\x05spell\x12\x1a\n" +
-	"\bprepared\x18\x02 \x01(\bR\bprepared\"\x94\x05\n" +
+	"\bprepared\x18\x02 \x01(\bR\bprepared\"\xb3\x05\n" +
 	"\x06Attack\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -10058,7 +10071,9 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x0fdamage_type_key\x18\x0f \x01(\tR\rdamageTypeKey\x12\x14\n" +
 	"\x05melee\x18\x10 \x01(\bR\x05melee\x12\x14\n" +
 	"\x05notes\x18\x11 \x01(\tR\x05notes\x12\x14\n" +
-	"\x05beams\x18\x12 \x01(\x05R\x05beams\"\x87\x01\n" +
+	"\x05beams\x18\x12 \x01(\x05R\x05beams\x12\x1d\n" +
+	"\n" +
+	"spell_dice\x18\x13 \x01(\tR\tspellDice\"\x87\x01\n" +
 	"\aFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +

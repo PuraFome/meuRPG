@@ -107,9 +107,10 @@ func (x *deriver) attacks() {
 			continue
 		}
 		dmg := x.modifiers("damage.spell."+strings.TrimPrefix(key, "spell:"), 0)
+		dice := damageAt(s.Damage[0].AtCharacterLevel, x.d.TotalLevel)
 		a := Attack{
 			Key: key, Name: s.Name, NamePT: c.namePT(key), Kind: "spell", Ability: sc.Ability,
-			Damage:     withModifier(damageAt(s.Damage[0].AtCharacterLevel, x.d.TotalLevel), dmg),
+			Damage: withModifier(dice, dmg), SpellDice: dice,
 			DamageType: s.Damage[0].DamageType, DamageTypeNamePT: c.namePT(s.Damage[0].DamageType),
 			Proficient: true, RangeFt: feet(s.Range), Beams: beamsAt(key, x.d.TotalLevel),
 		}

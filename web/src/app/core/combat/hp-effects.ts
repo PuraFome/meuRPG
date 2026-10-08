@@ -1,4 +1,5 @@
 import {
+  SpellEffectGain,
   SpellEffectKind,
   SpellEffectOutcome,
   SpellEffectReason,
@@ -41,15 +42,42 @@ export function hpSpellKind(details: SpellDetails | null): HpSpellKind | null {
 }
 
 /** What a spell that changes hit points gave one target, in words: "recupera 7 PV" for a heal, "ganha 7 PV
- * temporários" for Vitalidade Falsa and "ganha 5 PV máximos" for Ajuda. */
-export function gainWords(kind: SpellEffectKind, amount: number): string {
+ * temporários" for Vitalidade Falsa, and for Ajuda what that target got (`gain`): "ganha 5 PV máximos" for
+ * an NPC or a creature, "ganha 5 PV temporários" for a character standing, "volta com 5 PV" for one at 0. */
+export function gainWords(kind: SpellEffectKind, amount: number, gain?: SpellEffectGain): string {
   switch (kind) {
     case SpellEffectKind.TEMP_HP:
       return `ganha ${amount} PV temporários`;
     case SpellEffectKind.MAX_HP:
-      return `ganha ${amount} PV máximos`;
+      switch (gain) {
+        case SpellEffectGain.TEMPORARY:
+          return `ganha ${amount} PV temporários`;
+        case SpellEffectGain.CURRENT:
+          return `volta com ${amount} PV`;
+        default:
+          return `ganha ${amount} PV máximos`;
+      }
     default:
       return `recupera ${amount} PV`;
+  }
+}
+
+/** The line under a target of the cast sheet: the amount and what it became ("PV máximo +5"). */
+export function gainLine(kind: SpellEffectKind, amount: number, gain?: SpellEffectGain): string {
+  switch (kind) {
+    case SpellEffectKind.TEMP_HP:
+      return `${amount} PV temporários`;
+    case SpellEffectKind.MAX_HP:
+      switch (gain) {
+        case SpellEffectGain.TEMPORARY:
+          return `${amount} PV temporários`;
+        case SpellEffectGain.CURRENT:
+          return `Volta com ${amount} PV`;
+        default:
+          return `PV máximo +${amount}`;
+      }
+    default:
+      return `${amount} PV recuperados`;
   }
 }
 
@@ -110,6 +138,7 @@ export function effectWords(
   condition: string,
   outcome: SpellEffectOutcome,
   label = '',
+  gain?: SpellEffectGain,
 ): EffectWords {
   if (outcome !== SpellEffectOutcome.AFFECTED) {
     return {
@@ -140,8 +169,32 @@ export function effectWords(
       };
     }
     case SpellEffectKind.TEMP_HP:
-    case SpellEffectKind.MAX_HP:
       return { present: 'ganha PV', past: 'Ganhou PV', icon: 'shield', affected: true };
+    case SpellEffectKind.MAX_HP:
+      // Ajuda: what the target got depends on who it is (maximum, temporary, or the hit points of one who got up).
+      switch (gain) {
+        case SpellEffectGain.TEMPORARY:
+          return {
+            present: 'ganha PV temporários',
+            past: 'Ganhou PV temporários',
+            icon: 'shield',
+            affected: true,
+          };
+        case SpellEffectGain.CURRENT:
+          return {
+            present: 'volta com PV',
+            past: 'Voltou com PV',
+            icon: 'favorite',
+            affected: true,
+          };
+        default:
+          return {
+            present: 'ganha PV máximos',
+            past: 'Ganhou PV máximos',
+            icon: 'shield',
+            affected: true,
+          };
+      }
     default:
       // A threshold with no condition is Palavra de Poder Matar.
       return { present: 'morre', past: 'Morreu', icon: 'heart_broken', affected: true };

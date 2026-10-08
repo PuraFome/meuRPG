@@ -2,6 +2,7 @@ import { create } from '@bufbuild/protobuf';
 
 import {
   DiceRollSchema,
+  SpellEffectGain,
   SpellEffectKind,
   SpellEffectOutcome,
   SpellEffectReason,
@@ -9,6 +10,7 @@ import {
 import { SpellHitPointEffectKind } from '../../../gen/meurpg/rules/v1/rules_pb';
 import {
   effectWords,
+  gainLine,
   gainWords,
   hpSpellKind,
   poolDice,
@@ -176,5 +178,24 @@ describe('the spells that read hit points (E8-03)', () => {
     expect(
       effectWords(SpellEffectKind.TEMP_HP, '', SpellEffectOutcome.AFFECTED, 'Pensantus').past,
     ).toBe('Ganhou PV');
+  });
+});
+
+describe('what Ajuda gave each target, in words', () => {
+  const aid = SpellEffectKind.MAX_HP;
+
+  it('says the maximum for an NPC or a creature', () => {
+    expect(gainWords(aid, 5, SpellEffectGain.MAXIMUM)).toBe('ganha 5 PV máximos');
+    expect(gainLine(aid, 5, SpellEffectGain.MAXIMUM)).toBe('PV máximo +5');
+  });
+
+  it('says temporary hit points for a character above 0', () => {
+    expect(gainWords(aid, 5, SpellEffectGain.TEMPORARY)).toBe('ganha 5 PV temporários');
+    expect(gainLine(aid, 5, SpellEffectGain.TEMPORARY)).toBe('5 PV temporários');
+  });
+
+  it('says the character at 0 comes back with the amount', () => {
+    expect(gainWords(aid, 5, SpellEffectGain.CURRENT)).toBe('volta com 5 PV');
+    expect(gainLine(aid, 5, SpellEffectGain.CURRENT)).toBe('Volta com 5 PV');
   });
 });

@@ -271,6 +271,7 @@ function clauses(e: CombatLogEntry, ctx: LogContext): string {
         spell.effectConditionKey,
         t.effect?.outcome ?? SpellEffectOutcome.UNSPECIFIED,
         label,
+        t.effect?.gain,
       );
       const verb = w.affected ? w.present : notAffectedPast(label);
       const text = `${subject(label, ctx)} ${verb}.`;
@@ -309,6 +310,7 @@ function hpCastText(e: CombatLogEntry, ctx: LogContext): { text: string; card?: 
       spell.effectConditionKey,
       fx?.outcome ?? SpellEffectOutcome.UNSPECIFIED,
       label,
+      fx?.gain,
     );
     const prep = ctx.players.has(label) ? `em ${label}` : inThe(label);
     const facts: string[] = [];
@@ -320,7 +322,7 @@ function hpCastText(e: CombatLogEntry, ctx: LogContext): { text: string; card?: 
     }
     const detail = facts.length > 0 ? ` (${facts.join(', ')})` : '';
     const healed =
-      fx?.healed !== undefined && w.affected ? gainWords(spell.effectKind, fx.healed) : '';
+      fx?.healed !== undefined && w.affected ? gainWords(spell.effectKind, fx.healed, fx.gain) : '';
     const reason =
       !w.affected && fx
         ? reasonWords(fx.reason, fx.hitPointsBefore, fx.poolLeft, spell.effectThreshold)
@@ -353,6 +355,7 @@ function poolCard(e: CombatLogEntry): PoolCard | undefined {
       spell.effectConditionKey,
       fx?.outcome ?? SpellEffectOutcome.UNSPECIFIED,
       label,
+      fx?.gain,
     );
     const hp = fx?.hitPointsBefore;
     const left = fx?.poolLeft;

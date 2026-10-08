@@ -792,6 +792,9 @@ type Attack struct {
 	// its own damage roll: 4 for Eldritch Blast at character level 17. It is 1
 	// for every other attack, and 0 for a weapon.
 	Beams int
+	// SpellDice is the plain dice a cantrip rolls at the character's level ("3d8"),
+	// without the damage modifier; empty for a weapon and for a creature's attack.
+	SpellDice string
 	// Light is a melee weapon with the light property: the only kind of
 	// Two-Weapon Fighting (the attack and the bonus action attack).
 	Light bool

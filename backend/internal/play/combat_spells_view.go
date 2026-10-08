@@ -70,6 +70,12 @@ var effectReasonToProto = map[string]playv1.SpellEffectReason{
 	fxNotAtZero:        playv1.SpellEffectReason_SPELL_EFFECT_REASON_NOT_AT_ZERO,
 }
 
+var effectGainToProto = map[string]playv1.SpellEffectGain{
+	gainMaximum:   playv1.SpellEffectGain_SPELL_EFFECT_GAIN_MAXIMUM,
+	gainTemporary: playv1.SpellEffectGain_SPELL_EFFECT_GAIN_TEMPORARY,
+	gainCurrent:   playv1.SpellEffectGain_SPELL_EFFECT_GAIN_CURRENT,
+}
+
 // effectView is what a spell that reads hit points did to a target, as the
 // viewer may see it (RN-20): everyone gets the outcome as a word; the master
 // alone gets why, the target's hit points and the pool's arithmetic (an enemy's
@@ -92,6 +98,7 @@ func effectView(h castHit, v combatViewer, target playdb.Combatant) *playv1.Spel
 			out.PoolLeft, out.PoolOrder = &h.Left, &h.Order
 		}
 	}
+	out.Gain = effectGainToProto[h.Gain]
 	if h.Healed != nil && (v.master || v.owns(target)) {
 		out.Healed = h.Healed
 	}
