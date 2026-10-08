@@ -309,6 +309,9 @@ type Service struct {
 	// once cannot take all the server's memory (package images bounds
 	// what one image may use).
 	processing chan struct{}
+	// slotReadTimeout is how long an upload that holds the processing slot has
+	// to send its file (uploadSlotReadTimeout; tests shorten it).
+	slotReadTimeout time.Duration
 
 	// tiles is the image of a fog map as tiles per player (tiles.go).
 	tiles *tileRenderer
@@ -372,31 +375,32 @@ func New(cfg Config) (*Service, error) {
 		return nil, errors.New("maps: Combats is required")
 	}
 	s := &Service{
-		layerHintEvery: defaultLayerHintEvery,
-		pool:           cfg.Pool,
-		queries:        mapsdb.New(cfg.Pool),
-		blobs:          cfg.Blobs,
-		characters:     cfg.Characters,
-		live:           cfg.Live,
-		checks:         cfg.Rules,
-		rules:          cfg.Rules,
-		combats:        cfg.Combats,
-		defaults:       cfg.Defaults,
-		logger:         cfg.Logger,
-		now:            cfg.Now,
-		maxImages:      cfg.MaxImages,
-		maxBytes:       cfg.MaxBytes,
-		maxMaps:        cfg.MaxMaps,
-		maxPoints:      cfg.MaxPointsPerMap,
-		processing:     make(chan struct{}, 1),
-		dungeonGate:    make(chan struct{}, dungeonGenerators),
-		dungeonLimit:   newDungeonLimiter(nil),
-		tiles:          newTileRenderer(),
-		generator:      cfg.Generator,
-		monthlyImages:  cfg.MonthlyImages,
-		dailyImages:    cfg.DailyImages,
-		routeLimits:    newRouteLimits(cfg.DownloadLimit, cfg.UploadLimit, cfg.Logger),
-		generating:     make(chan struct{}, maxGenerating),
+		layerHintEvery:  defaultLayerHintEvery,
+		pool:            cfg.Pool,
+		queries:         mapsdb.New(cfg.Pool),
+		blobs:           cfg.Blobs,
+		characters:      cfg.Characters,
+		live:            cfg.Live,
+		checks:          cfg.Rules,
+		rules:           cfg.Rules,
+		combats:         cfg.Combats,
+		defaults:        cfg.Defaults,
+		logger:          cfg.Logger,
+		now:             cfg.Now,
+		maxImages:       cfg.MaxImages,
+		maxBytes:        cfg.MaxBytes,
+		maxMaps:         cfg.MaxMaps,
+		maxPoints:       cfg.MaxPointsPerMap,
+		processing:      make(chan struct{}, 1),
+		slotReadTimeout: uploadSlotReadTimeout,
+		dungeonGate:     make(chan struct{}, dungeonGenerators),
+		dungeonLimit:    newDungeonLimiter(nil),
+		tiles:           newTileRenderer(),
+		generator:       cfg.Generator,
+		monthlyImages:   cfg.MonthlyImages,
+		dailyImages:     cfg.DailyImages,
+		routeLimits:     newRouteLimits(cfg.DownloadLimit, cfg.UploadLimit, cfg.Logger),
+		generating:      make(chan struct{}, maxGenerating),
 	}
 	if s.monthlyImages <= 0 {
 		s.monthlyImages = DefaultMonthlyImages
