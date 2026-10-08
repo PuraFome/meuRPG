@@ -1028,6 +1028,12 @@ func (s *Service) RollDamage(
 			}); err != nil {
 				return nil, fmt.Errorf("save the damage roll: %w", err)
 			}
+			if p.CastID != nil && hit.Applied && !g.Healing {
+				// A spell asks one concentration save of a target, not one per damage type.
+				if hit.ConcentrationDC, err = s.castConcentrationDC(ctx, c, g, tgt, takenBy(hit.Amount, hit.Before, hit.After)); err != nil {
+					return nil, err
+				}
+			}
 			if g.ID == p.ID {
 				made.Amount, made.Applied, made.Before, made.After, made.ConcentrationDC = hit.Amount, hit.Applied, hit.Before, hit.After, hit.ConcentrationDC
 				made.DeathBefore = hit.DeathBefore
@@ -1193,6 +1199,46 @@ func concentrationDC(target playdb.Combatant, taken int32) int32 {
 	return clamp32(combat.ConcentrationDC(int(taken)), 0, math.MaxInt32)
 }
 
+// takenBy is what a damage of amount cost a combatant: what temporary hit points
+// did not absorb, even when it drops the combatant below 0.
+func takenBy(amount int32, before, after *hpState) int32 {
+	if before == nil || after == nil {
+		return max(amount, 0)
+	}
+	return max(amount-max(before.Temp-after.Temp, 0), 0)
+}
+
+// castConcentrationDC notes what a damage of a spell cost its target (taken) and
+// gives the Constitution save DC the target owes for the whole cast (RN-22): the
+// SRD asks one save for each source of damage, and a spell is one source however
+// many damage types it deals. It is 0 while another pending damage of the cast is
+// still to be settled for the target, and when the target does not concentrate;
+// the pending damage that settles last carries the DC of the sum of what the
+// cast's damages cost the target.
+func (s *Service) castConcentrationDC(ctx context.Context, c *combatTx, p playdb.PendingDamage, target playdb.Combatant, taken int32) (int32, error) {
+	if err := c.q.SetPendingDamageTaken(ctx, playdb.SetPendingDamageTakenParams{ID: p.ID, Taken: &taken}); err != nil {
+		return 0, fmt.Errorf("note what the damage cost: %w", err)
+	}
+	all, err := c.q.ListCastPendingDamages(ctx, playdb.ListCastPendingDamagesParams{EncounterID: c.enc.ID, CastID: p.CastID})
+	if err != nil {
+		return 0, fmt.Errorf("list the cast's pending damage: %w", err)
+	}
+	var total int32
+	for _, o := range all {
+		if o.TargetID != p.TargetID || o.Healing {
+			continue
+		}
+		switch o.Status {
+		case pendingApplied:
+			total = clamp32(int(total)+int(num(o.Taken)), 0, math.MaxInt32)
+		case pendingDiscarded:
+		default:
+			return 0, nil // another damage type of the cast has still to land on it
+		}
+	}
+	return concentrationDC(target, total), nil
+}
+
 // decorate adds to a pending damage what its event knows and the row does not:
 // the concentration DC (for the master and the target's own player) and the
 // death save failures a damage at 0 caused.
@@ -1302,7 +1348,8 @@ func (s *Service) ApplyPendingDamage(
 		if err != nil {
 			return nil, err
 		}
-		if isDownIn(now) {
+		down := isDownIn(now)
+		if down {
 			// RN-03: a damage at 0 hit points is a death save failure (two for a
 			// critical hit), and the hit points stay at 0.
 			before, after, added, err := s.failuresWhileDown(ctx, c, target, p.Critical, amount)
@@ -1355,6 +1402,16 @@ func (s *Service) ApplyPendingDamage(
 		}
 		if _, err := c.q.SetPendingDamageApplied(ctx, playdb.SetPendingDamageAppliedParams{ID: p.ID, ResolvedAt: &c.now, AppliedAmount: appliedAmount}); err != nil {
 			return nil, fmt.Errorf("apply the pending damage: %w", err)
+		}
+		if p.CastID != nil {
+			// A spell asks one concentration save of a target, not one per damage type.
+			var taken int32
+			if !down {
+				taken = takenBy(amount, made.Before, made.After)
+			}
+			if made.ConcentrationDC, err = s.castConcentrationDC(ctx, c, p, target, taken); err != nil {
+				return nil, err
+			}
 		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)

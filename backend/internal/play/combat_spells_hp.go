@@ -235,6 +235,13 @@ const (
 	fxNotAtZero  = "not_at_zero"
 )
 
+// What Aid gave a target, as a cast event stores it.
+const (
+	gainMaximum   = "maximum"
+	gainTemporary = "temporary"
+	gainCurrent   = "current"
+)
+
 // giveCondition adds the condition to a target's conditions, when it does not
 // have it and has room for it, and notes what was there for an undo.
 func (s *Service) giveCondition(ctx context.Context, c *combatTx, t playdb.Combatant, key string, h *castHit) error {
@@ -329,8 +336,10 @@ func (s *Service) giveTempHP(ctx context.Context, c *combatTx, t fxTarget, amoun
 func (s *Service) raiseMaxHP(ctx context.Context, c *combatTx, t fxTarget, amount int, h *castHit) (*playv1.CharacterVitals, error) {
 	if !holdsHP(t.c) {
 		if t.hp > 0 {
+			h.Gain = gainTemporary
 			return s.giveTempHP(ctx, c, t, amount, h)
 		}
+		h.Gain = gainCurrent
 		hit, v, err := s.healCombatant(ctx, c, t.c, clamp32(amount, 0, math.MaxInt32))
 		if err != nil {
 			return nil, err
@@ -340,7 +349,7 @@ func (s *Service) raiseMaxHP(ctx context.Context, c *combatTx, t fxTarget, amoun
 		return v, nil
 	}
 	rose := clamp32(amount, 0, math.MaxInt32)
-	h.Healed = &rose
+	h.Healed, h.Gain = &rose, gainMaximum
 	before, maxBefore := hpOf(t.c), num(t.c.HpMax)
 	h.Restore, h.MaxBefore = &before, &maxBefore
 	if err := c.q.SetCombatantHitPointsMax(ctx, playdb.SetCombatantHitPointsMaxParams{ID: t.c.ID, HpMax: new(maxBefore + rose)}); err != nil {

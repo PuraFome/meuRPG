@@ -411,6 +411,12 @@ SET status = $2, faces = $3, physical = $4, amount = $5, resolved_at = $6, roll_
 WHERE id = $1
 RETURNING *;
 
+-- name: SetPendingDamageTaken :exec
+-- What a damage that landed cost its target after temporary hit points.
+UPDATE pending_damages
+SET taken = $2
+WHERE id = $1;
+
 -- name: SetPendingDamageStatus :one
 -- Applied or discarded by the master, a reaction's answer, or back to where it
 -- was (an undo).
@@ -429,14 +435,14 @@ RETURNING *;
 -- name: ClearPendingDamageApplied :one
 -- An undo of an applied damage: back to waiting for the master.
 UPDATE pending_damages
-SET status = 'rolled', resolved_at = NULL, applied_amount = NULL
+SET status = 'rolled', resolved_at = NULL, applied_amount = NULL, taken = NULL
 WHERE id = $1
 RETURNING *;
 
 -- name: ClearPendingDamageRoll :one
 -- An undo of the damage roll: it waits to be rolled again.
 UPDATE pending_damages
-SET status = 'awaiting_roll', faces = '{}', physical = false, amount = NULL, resolved_at = NULL, roll_total = NULL
+SET status = 'awaiting_roll', faces = '{}', physical = false, amount = NULL, resolved_at = NULL, roll_total = NULL, taken = NULL
 WHERE id = $1
 RETURNING *;
 

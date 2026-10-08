@@ -2474,6 +2474,105 @@ func TestFlameStrikeFromASixthLevelSlot(t *testing.T) {
 	}
 }
 
+// flameStrikeOn casts Coluna de Chamas (4d6 fire, 4d6 radiant) from Brisa at the
+// target, who fails the save, and returns the target's two pending damages in the
+// spell's order: fire, then radiant.
+func flameStrikeOn(t *testing.T, a *armed, e *playv1.Encounter, target string) (fire, radiant string) {
+	t.Helper()
+	a.h.roller.queue(1) // the save
+	res := a.mustCast(t, a.bia, e, "Brisa", "spell:flame-strike", slotOfLevel(5), a.at(t, target), noCastRoll)
+	tg := res.GetCast().GetTargets()[0]
+	if tg.GetPendingDamageId() == "" || len(tg.GetMorePendingDamageIds()) != 1 {
+		t.Fatalf("Coluna de Chamas on %s opened %q and %v, want a damage for each of the two types", target, tg.GetPendingDamageId(), tg.GetMorePendingDamageIds())
+	}
+	return tg.GetPendingDamageId(), tg.GetMorePendingDamageIds()[0]
+}
+
+// flameStrikeFixture is Brisa (cleric 11, Coluna de Chamas) against the goblins,
+// on her turn.
+func flameStrikeFixture(t *testing.T) (*armed, *playv1.Encounter) {
+	t.Helper()
+	a := newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
+			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
+		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 3,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt},
+			[]string{magicMissileSpell}, []string{magicMissileSpell})
+		a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", "race:human", 11,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{maceKey}, []string{sacredFlame}, nil,
+			[]string{"spell:flame-strike"})
+	})
+	e := a.castersFight(t, 1)
+	e = a.mustEndTurn(t, a.ana, e)  // Toren
+	e = a.mustEndTurn(t, a.caio, e) // Brisa
+	return a, e
+}
+
+// concentrate makes the combatant concentrate on a spell.
+func (a *armed) concentrate(t *testing.T, label, spell string) {
+	t.Helper()
+	if _, err := a.h.pool.Exec(t.Context(), `UPDATE combatants SET concentration_spell = $2 WHERE id = $1`, a.id(t, label), spell); err != nil {
+		t.Fatalf("make %s concentrate: %v", label, err)
+	}
+}
+
+// TestFlameStrikeOnAConcentratingNPCRemindsOneSave: a spell with two damage types
+// is one source of damage, so the concentrating target owes one Constitution save
+// for the cast, set from the sum of what both types cost it (10 or half of the
+// total, whichever is higher), and the reminder comes with the cast's last damage.
+func TestFlameStrikeOnAConcentratingNPCRemindsOneSave(t *testing.T) {
+	t.Parallel()
+	a, e := flameStrikeFixture(t)
+	a.concentrate(t, "Capitão Goblin", webSpell)
+	fire, radiant := flameStrikeOn(t, a, e, "Capitão Goblin")
+
+	a.h.roller.queue(5, 5, 5, 5) // 20 fire: half is 10, the minimum
+	if first := a.mustDamage(t, a.master, e, fire, inAppDamage); first.GetPendingDamage().GetConcentrationDc() != 0 {
+		t.Errorf("the fire damage reminds a DC %d, want none until the radiant damage lands", first.GetPendingDamage().GetConcentrationDc())
+	}
+	a.h.roller.queue(2, 2, 2, 2) // 8 radiant: 28 in all, DC 14
+	if last := a.mustDamage(t, a.master, e, radiant, inAppDamage); last.GetPendingDamage().GetConcentrationDc() != 14 {
+		t.Errorf("the radiant damage reminds a DC %d, want 14 (half of 20 + 8)", last.GetPendingDamage().GetConcentrationDc())
+	}
+	// The undo of the last roll takes the reminder back, and rolling again gives it again.
+	if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil {
+		t.Fatalf("UndoLastAction(the radiant roll) error = %v", err)
+	}
+	a.h.roller.queue(6, 6, 6, 6) // 24 radiant: 44 in all, DC 22
+	if again := a.mustDamage(t, a.master, e, radiant, inAppDamage); again.GetPendingDamage().GetConcentrationDc() != 22 {
+		t.Errorf("the radiant damage rolled again reminds a DC %d, want 22 (half of 20 + 24)", again.GetPendingDamage().GetConcentrationDc())
+	}
+}
+
+// TestFlameStrikeOnAConcentratingCharacterRemindsOneSave: the same for a player's
+// character, whose damages the master applies one by one: the reminder is on the
+// apply that settles the cast's last damage, and an undo of that apply puts it back.
+func TestFlameStrikeOnAConcentratingCharacterRemindsOneSave(t *testing.T) {
+	t.Parallel()
+	a, e := flameStrikeFixture(t)
+	a.concentrate(t, "Toren", webSpell)
+	fire, radiant := flameStrikeOn(t, a, e, "Toren")
+
+	a.h.roller.queue(5, 5, 5, 5) // 20 fire
+	a.mustDamage(t, a.master, e, fire, inAppDamage)
+	a.h.roller.queue(2, 2, 2, 2) // 8 radiant
+	a.mustDamage(t, a.master, e, radiant, inAppDamage)
+
+	if first, err := a.settle(t, a.master, e, fire, true); err != nil || first.GetConcentrationDc() != 0 {
+		t.Fatalf("applying the fire damage = %v, %v; want no reminder while the radiant damage waits", first, err)
+	}
+	last, err := a.settle(t, a.master, e, radiant, true)
+	if err != nil || last.GetConcentrationDc() != 14 {
+		t.Fatalf("applying the radiant damage = %v, %v; want the DC 14 reminder (half of 20 + 8)", last, err)
+	}
+	if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil {
+		t.Fatalf("UndoLastAction(the radiant apply) error = %v", err)
+	}
+	if again, err := a.settle(t, a.master, e, radiant, true); err != nil || again.GetConcentrationDc() != 14 {
+		t.Errorf("applying the radiant damage again = %v, %v; want the DC 14 reminder again", again, err)
+	}
+}
+
 // TestBonusActionSpellLeavesNoOtherSpellButACantrip: a caster that casts a spell
 // with a bonus action casts no other spell that turn except a cantrip with a
 // casting time of 1 action, whatever the order (SRD 5.1, Casting Time). The
