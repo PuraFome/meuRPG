@@ -397,6 +397,7 @@ describe('CharacterSheetPage', () => {
                 damageTypePt: 'concussão',
                 saveDc: 0,
                 saveAbility: null,
+                versatileDamage: '',
                 beams: 0,
               },
               {
@@ -408,6 +409,7 @@ describe('CharacterSheetPage', () => {
                 damageTypePt: 'energia',
                 saveDc: 0,
                 saveAbility: null,
+                versatileDamage: '',
                 beams: 3,
               },
             ],
@@ -950,6 +952,7 @@ describe('CharacterSheetPage', () => {
                 versatileDamage: '1d8',
                 saveDc: 0,
                 saveAbility: null,
+                beams: 1,
               },
               {
                 key: 'equipment:dagger',
@@ -961,6 +964,7 @@ describe('CharacterSheetPage', () => {
                 versatileDamage: '',
                 saveDc: 0,
                 saveAbility: null,
+                beams: 1,
               },
             ],
           }),
