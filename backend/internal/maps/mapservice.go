@@ -1138,6 +1138,11 @@ func (s *Service) applySpecChange(ctx context.Context, q *mapsdb.Queries, p maps
 			if converted {
 				return errTreasureConverted()
 			}
+			// Like a delete: a found treasure is part of the session's record, unmarked
+			// before it goes, never lost silently with its finders.
+			if p.TreasureFoundAt != nil {
+				return errTreasureFound()
+			}
 			if err := q.DeleteTreasureFinders(ctx, p.ID); err != nil {
 				return fmt.Errorf("forget the treasure's finders: %w", err)
 			}

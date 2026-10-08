@@ -110,6 +110,7 @@ func (s *Service) AddMonsters(
 	asked := monstersEvent{CreatureKey: creatureKey, Count: count, NameHash: hex.EncodeToString(sum[:8]), Rolled: rolled, Hidden: hidden}
 
 	var done monstersEvent
+	// No request hash: the add is compared by its own digest, which reads the defaults written out as the same request.
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventCombatantsAdded, encounterID: encID}, func(c *combatTx) (any, error) {
 		if err := notEnded(c.enc); err != nil {
 			return nil, err

@@ -64,8 +64,9 @@ WHERE campaign_id = ANY(sqlc.arg(campaign_ids)::UUID[]) AND ended_at IS NULL
 ORDER BY started_at DESC, id;
 
 -- name: GetSessionEventByIdempotencyKey :one
--- The event a change with this key already wrote, if any.
-SELECT id, seq, kind, actor_user_id, character_id, payload, created_at FROM session_events
+-- The event a change with this key already wrote, if any, with the hash of the request that
+-- wrote it (NULL on an event made without one).
+SELECT id, seq, kind, actor_user_id, character_id, payload, created_at, idempotency_hash FROM session_events
 WHERE game_session_id = $1 AND idempotency_key = $2;
 
 -- name: NextSessionEventSeq :one
@@ -78,8 +79,8 @@ WHERE game_session_id = $1;
 
 -- name: InsertSessionEvent :one
 INSERT INTO session_events
-    (game_session_id, seq, kind, actor_user_id, character_id, payload, idempotency_key, created_at, encounter_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    (game_session_id, seq, kind, actor_user_id, character_id, payload, idempotency_key, created_at, encounter_id, idempotency_hash)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, sqlc.narg(idempotency_hash))
 RETURNING id, seq;
 
 -- name: GetOnScreen :one
@@ -712,11 +713,12 @@ WHERE encounter_id = $1 AND trap_point_id IS NOT NULL AND status = 'rolled'
 ORDER BY created_at, id;
 
 -- name: ListTrapEventsOfSession :many
--- The trap firings, searches and passive notices of a session outside a combat, oldest first.
+-- The trap firings, searches and passive notices of a session outside a combat, newest first,
+-- at most 500: a long session keeps the latest ones, and the caller puts them back in order.
 -- (A notice has no combat even in one: the maps module writes it after the move.)
 SELECT id, kind, character_id, payload, created_at FROM session_events
 WHERE game_session_id = $1 AND encounter_id IS NULL AND kind IN ('trap_triggered', 'trap_searched', 'trap_noticed')
-ORDER BY seq
+ORDER BY seq DESC
 LIMIT 500;
 
 -- name: GetSessionEventByID :one

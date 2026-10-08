@@ -1254,3 +1254,28 @@ func TestAGalleryFilledMidCallDoesNotRefundAPaidPicture(t *testing.T) {
 		t.Errorf("UsedThisMonth = %d, want 1 (the model was called and billed)", used)
 	}
 }
+
+// A generation key is kept with the hash of its request: the same key and request is the first
+// generation again, the same key for another prompt is refused instead of answering with the
+// first one's image.
+func TestAGenerationKeyReusedForAnotherRequestIsRefused(t *testing.T) {
+	t.Parallel()
+	fake := &gen.Fake{}
+	h := newHarness(t, withFake(fake, 5))
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master)
+	generate := func(prompt string) (*connect.Response[mapsv1.GenerateSceneImageResponse], error) {
+		return master.imagegen.GenerateSceneImage(t.Context(), connect.NewRequest(&mapsv1.GenerateSceneImageRequest{CampaignId: campaign, IdempotencyKey: "k-reuse", Prompt: prompt}))
+	}
+	first, err := generate("uma taverna")
+	if err != nil {
+		t.Fatal(err)
+	}
+	master.waitGeneration(campaign, first.Msg.GetGeneration().GetId())
+	again, err := generate("uma taverna")
+	if err != nil || again.Msg.GetGeneration().GetId() != first.Msg.GetGeneration().GetId() {
+		t.Errorf("same key, same prompt = %v, %v; want the first generation", again.Msg.GetGeneration().GetId(), err)
+	}
+	_, err = generate("um dragão furioso")
+	wantCode(t, "same key, another prompt", err, connect.CodeInvalidArgument)
+}

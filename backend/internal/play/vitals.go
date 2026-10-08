@@ -14,6 +14,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -47,6 +48,7 @@ func (s *Service) AdjustCharacterVitals(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key must be a UUID"))
 	}
 	keyText, charText := key.String(), characterID.String()
+	hash := idem.Hash(req.Msg)
 
 	var after *playv1.CharacterVitals
 	var repeated bool
@@ -68,7 +70,7 @@ func (s *Service) AdjustCharacterVitals(
 		})
 		switch {
 		case err == nil:
-			if done.Kind != eventCharacterVitalsAdjusted || done.CharacterID == nil || *done.CharacterID != charText {
+			if done.Kind != eventCharacterVitalsAdjusted || done.CharacterID == nil || *done.CharacterID != charText || hashDiffers(done.IdempotencyHash, hash) {
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
 			}
 			repeated = true // a retry of a correction already made
@@ -92,14 +94,15 @@ func (s *Service) AdjustCharacterVitals(
 			return fmt.Errorf("next event number: %w", err)
 		}
 		if _, err := q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
-			GameSessionID:  session.ID,
-			Seq:            seq,
-			Kind:           eventCharacterVitalsAdjusted,
-			ActorUserID:    &m.UserID,
-			CharacterID:    &charText,
-			Payload:        payload,
-			IdempotencyKey: &keyText,
-			CreatedAt:      s.now(),
+			GameSessionID:   session.ID,
+			Seq:             seq,
+			Kind:            eventCharacterVitalsAdjusted,
+			ActorUserID:     &m.UserID,
+			CharacterID:     &charText,
+			Payload:         payload,
+			IdempotencyKey:  &keyText,
+			IdempotencyHash: hash,
+			CreatedAt:       s.now(),
 		}); err != nil {
 			return fmt.Errorf("insert session event: %w", err)
 		}
