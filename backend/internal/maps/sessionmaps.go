@@ -225,8 +225,8 @@ func (sm *SessionMaps) MapGrid(ctx context.Context, tx pgx.Tx, campaignID, mapID
 // BattlePoint returns a battle point of the campaign: its map and the map of
 // its fight, if the master chose one. It returns a `not_found` Connect error
 // when pointID is not a battle point of the campaign.
-func (sm *SessionMaps) BattlePoint(ctx context.Context, campaignID, pointID string) (link.BattlePoint, error) {
-	p, err := sm.queries.GetMapPointInCampaign(ctx, mapsdb.GetMapPointInCampaignParams{CampaignID: campaignID, ID: pointID})
+func (sm *SessionMaps) BattlePoint(ctx context.Context, tx pgx.Tx, campaignID, pointID string) (link.BattlePoint, error) {
+	p, err := queriesIn(sm.queries, tx).GetMapPointInCampaign(ctx, mapsdb.GetMapPointInCampaignParams{CampaignID: campaignID, ID: pointID})
 	if err == nil && p.Kind != kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_BATTLE] {
 		err = pgx.ErrNoRows // a point of another kind starts no combat
 	}
@@ -236,7 +236,7 @@ func (sm *SessionMaps) BattlePoint(ctx context.Context, campaignID, pointID stri
 	if err != nil {
 		return link.BattlePoint{}, fmt.Errorf("find the battle point: %w", err)
 	}
-	out := link.BattlePoint{MapID: p.MapID}
+	out := link.BattlePoint{MapID: p.MapID, XBP: p.XBp, YBP: p.YBp}
 	if p.TargetMapID != nil {
 		out.TargetMapID = *p.TargetMapID
 	}

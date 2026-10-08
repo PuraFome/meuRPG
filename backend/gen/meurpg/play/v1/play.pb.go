@@ -4164,7 +4164,12 @@ type WatchGameSessionResponse_TurnChanged struct {
 	CurrentCombatantId string `protobuf:"bytes,3,opt,name=current_combatant_id,json=currentCombatantId,proto3" json:"current_combatant_id,omitempty"`
 	// True when the one on turn is a combatant the member may not see: the
 	// app shows "Vez do mestre". Always false for the master.
-	MasterTurn    bool `protobuf:"varint,4,opt,name=master_turn,json=masterTurn,proto3" json:"master_turn,omitempty"`
+	MasterTurn bool `protobuf:"varint,4,opt,name=master_turn,json=masterTurn,proto3" json:"master_turn,omitempty"`
+	// The combat's revision (Encounter.revision) with the turn changed: a screen
+	// that already holds a newer combat ignores this event instead of going back.
+	// On a map with the fog of war a player's copy says 0 ("no number to compare"),
+	// as in EncounterChanged.revision.
+	Revision      int32 `protobuf:"varint,5,opt,name=revision,proto3" json:"revision,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4225,6 +4230,13 @@ func (x *WatchGameSessionResponse_TurnChanged) GetMasterTurn() bool {
 		return x.MasterTurn
 	}
 	return false
+}
+
+func (x *WatchGameSessionResponse_TurnChanged) GetRevision() int32 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
 }
 
 // CombatantMoved is a combatant's new square. A player's stream only gets
@@ -4628,7 +4640,7 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x04used\x18\x03 \x01(\x05R\x04used\":\n" +
 	"\x17WatchGameSessionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
-	"campaignId\"\xdd\x1b\n" +
+	"campaignId\"\xf9\x1b\n" +
 	"\x18WatchGameSessionResponse\x12F\n" +
 	"\x05ready\x18\x01 \x01(\v2..meurpg.play.v1.WatchGameSessionResponse.ReadyH\x00R\x05ready\x12R\n" +
 	"\theartbeat\x18\x02 \x01(\v22.meurpg.play.v1.WatchGameSessionResponse.HeartbeatH\x00R\theartbeat\x12_\n" +
@@ -4689,13 +4701,14 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x10EncounterChanged\x12!\n" +
 	"\fencounter_id\x18\x01 \x01(\tR\vencounterId\x12\x1a\n" +
 	"\brevision\x18\x02 \x01(\x05R\brevision\x121\n" +
-	"\x04mode\x18\x03 \x01(\x0e2\x1d.meurpg.play.v1.EncounterModeR\x04mode\x1a\x99\x01\n" +
+	"\x04mode\x18\x03 \x01(\x0e2\x1d.meurpg.play.v1.EncounterModeR\x04mode\x1a\xb5\x01\n" +
 	"\vTurnChanged\x12!\n" +
 	"\fencounter_id\x18\x01 \x01(\tR\vencounterId\x12\x14\n" +
 	"\x05round\x18\x02 \x01(\x05R\x05round\x120\n" +
 	"\x14current_combatant_id\x18\x03 \x01(\tR\x12currentCombatantId\x12\x1f\n" +
 	"\vmaster_turn\x18\x04 \x01(\bR\n" +
-	"masterTurn\x1az\n" +
+	"masterTurn\x12\x1a\n" +
+	"\brevision\x18\x05 \x01(\x05R\brevision\x1az\n" +
 	"\x0eCombatantMoved\x12!\n" +
 	"\fencounter_id\x18\x01 \x01(\tR\vencounterId\x12!\n" +
 	"\fcombatant_id\x18\x02 \x01(\tR\vcombatantId\x12\x10\n" +

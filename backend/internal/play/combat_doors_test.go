@@ -430,7 +430,13 @@ func TestMR025_ACombatOnACalibratedMapWalksThroughADoorBlock(t *testing.T) {
 	})); err != nil {
 		t.Fatalf("SetMapGrid(24, factor 2) error = %v", err)
 	}
-	f.fight(t)
+	// The fixture's squares are those of the 24 x 16 cave, and some are walls on this grid: the
+	// party starts off the map and the master puts Toren on open floor below.
+	f.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: f.goblins.GetId()}},
+		npcRolls: []int{2},
+		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1},
+	})
 	if e := f.get(t, f.master); e.GetGridColumns() != 48 || e.GetGridRows() != 32 {
 		t.Fatalf("the combat copied a grid of %d x %d, want 48 x 32", e.GetGridColumns(), e.GetGridRows())
 	}

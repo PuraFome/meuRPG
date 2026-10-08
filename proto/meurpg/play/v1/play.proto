@@ -1339,6 +1339,11 @@ message WatchGameSessionResponse {
     // True when the one on turn is a combatant the member may not see: the
     // app shows "Vez do mestre". Always false for the master.
     bool master_turn = 4;
+    // The combat's revision (Encounter.revision) with the turn changed: a screen
+    // that already holds a newer combat ignores this event instead of going back.
+    // On a map with the fog of war a player's copy says 0 ("no number to compare"),
+    // as in EncounterChanged.revision.
+    int32 revision = 5;
   }
 
   // CombatantMoved is a combatant's new square. A player's stream only gets

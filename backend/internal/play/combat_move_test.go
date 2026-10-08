@@ -20,6 +20,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/maps"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -320,11 +321,11 @@ func TestRN21_TheCircleCostsTheExactLine(t *testing.T) {
 		t.Errorf("after (4, 4) = %v, want 283 dft used (28 ft), 1 ft left", toren)
 	}
 
-	// The master moves anyone anywhere, through walls, and nothing is spent.
+	// The master moves anyone anywhere there is floor, through walls, and nothing is spent.
 	c.mustMove(t, c.master, "Pensantus", 9, 13)
-	c.mustMove(t, c.master, "Pensantus", 1, 1)
-	if got := c.who(t, c.master, "Pensantus"); got.GetMovementUsedDft() != 0 || got.GetCol() != 1 || got.GetRow() != 1 {
-		t.Errorf("after the master's moves = %v, want (1, 1) with no feet spent", got)
+	c.mustMove(t, c.master, "Pensantus", 1, 7)
+	if got := c.who(t, c.master, "Pensantus"); got.GetMovementUsedDft() != 0 || got.GetCol() != 1 || got.GetRow() != 7 {
+		t.Errorf("after the master's moves = %v, want (1, 7) with no feet spent", got)
 	}
 }
 
@@ -411,7 +412,7 @@ func TestRN21_DifficultTerrainAndOtherCreaturesCostMore(t *testing.T) {
 
 	// Passing an ally costs 5 ft more; ending on one is refused.
 	c.mustMove(t, c.master, "Toren", 6, 7)
-	c.mustMove(t, c.master, "Pensantus", 5, 11)
+	c.mustMove(t, c.master, "Pensantus", 7, 11)
 	c.mustMove(t, c.caio, "Toren", 3, 7) // (4, 7) holds Brisa
 	if got := c.who(t, c.caio, "Toren"); got.GetMovementUsedDft() != 200 {
 		t.Errorf("past an ally = %d dft used, want 200 (3 squares and 5 ft for passing Brisa)", got.GetMovementUsedDft())
@@ -1394,4 +1395,242 @@ func TestTurnOptionsMovementFollowsTheConditionsThatLeaveNoSpeed(t *testing.T) {
 				key, view.GetMovementLeftDft(), m.GetLeftDft(), m.GetLeftFt(), m.GetSpeedDft())
 		}
 	}
+}
+
+// openTerrain is a grid of floor with the given squares as walls.
+func openTerrain(columns, rows int, walls ...grid.Square) grid.Terrain {
+	g := grid.Grid{Columns: columns, Rows: rows}
+	t := grid.Terrain{Grid: g, Walls: grid.NewLayer(g)}
+	for _, w := range walls {
+		t.Walls.Set(w.Col, w.Row, true)
+	}
+	return t
+}
+
+// pickSquares takes n squares from the placement.
+func pickSquares(t *testing.T, p *placement, n int) []grid.Square {
+	t.Helper()
+	var out []grid.Square
+	for range n {
+		sq, ok := p.next()
+		if !ok {
+			t.Fatalf("no square left after %v", out)
+		}
+		out = append(out, sq)
+	}
+	return out
+}
+
+func playerAt(col, row int32) playdb.Combatant {
+	return playdb.Combatant{Kind: kindPlayer, GridCol: &col, GridRow: &row}
+}
+
+// TestPlacementTakesFreeFloorNearTheMiddleAwayFromThePlayers: a creature put on the
+// map without a square never lands in a wall, a closed door, a column or on another
+// combatant, and not within 10 ft (two squares) of a player's character; it takes the
+// allowed square nearest the middle, or the one farthest from the players when none
+// is far enough (RN-21).
+func TestPlacementTakesFreeFloorNearTheMiddleAwayFromThePlayers(t *testing.T) {
+	t.Parallel()
+	mid := grid.Square{Col: 4, Row: 1}
+
+	// The middle is a wall, the squares around it a closed door, a column, a combatant.
+	terrain := openTerrain(9, 3, mid)
+	terrain.Doors = grid.NewDoorLayer(terrain.Grid)
+	terrain.Doors.Set(3, 1, grid.DoorClosed)
+	terrain.Cover = grid.NewCoverLayer(terrain.Grid)
+	terrain.Cover.Set(5, 1, grid.CoverThreeQuarters)
+	npc := playdb.Combatant{Kind: kindNPC, GridCol: new(int32(4)), GridRow: new(int32(0))}
+	got := pickSquares(t, newPlacement(terrain, []playdb.Combatant{npc}, nil), 3)
+	for _, sq := range got {
+		if sq == mid || sq == (grid.Square{Col: 3, Row: 1}) || sq == (grid.Square{Col: 5, Row: 1}) || sq == (grid.Square{Col: 4, Row: 0}) {
+			t.Errorf("placed on %v: a wall, a closed door, a column or a combatant", sq)
+		}
+	}
+	if want := (grid.Square{Col: 4, Row: 2}); got[0] != want {
+		t.Errorf("first square = %v, want %v, the allowed one nearest the middle", got[0], want)
+	}
+	if got[0] == got[1] || got[1] == got[2] || got[0] == got[2] {
+		t.Errorf("squares = %v: two creatures share a square", got)
+	}
+	// An open door is floor.
+	terrain.Doors.Set(3, 1, grid.DoorOpen)
+	if sq := pickSquares(t, newPlacement(terrain, []playdb.Combatant{npc}, nil), 1)[0]; sq != (grid.Square{Col: 3, Row: 1}) {
+		t.Errorf("with an open door at 3,1 the square = %v, want the doorway", sq)
+	}
+
+	// A player in the middle: nothing within two squares (10 ft), the middle's
+	// neighbors at 3 squares come first.
+	terrain = openTerrain(9, 3)
+	p := newPlacement(terrain, []playdb.Combatant{playerAt(4, 1)}, nil)
+	for _, sq := range pickSquares(t, p, 6) {
+		if d := grid.RangeSquares(sq, mid); d <= 2 {
+			t.Errorf("placed %v, %d squares (%d ft) from the player: within reach", sq, d, d*grid.FeetPerSquare)
+		}
+	}
+	// A diagonal two squares and a half away is still within 10 ft (2 squares rounded down).
+	if sq := pickSquares(t, newPlacement(openTerrain(9, 3), []playdb.Combatant{playerAt(4, 1)}, nil), 1)[0]; sq != (grid.Square{Col: 1, Row: 1}) {
+		t.Errorf("first square beside a player in the middle = %v, want 1,1", sq)
+	}
+
+	// No square is far enough: the farthest from the players.
+	p = newPlacement(openTerrain(3, 1), []playdb.Combatant{playerAt(0, 0)}, nil)
+	if sq := pickSquares(t, p, 1)[0]; sq != (grid.Square{Col: 2, Row: 0}) {
+		t.Errorf("on a map too small to keep apart the square = %v, want the farthest, 2,0", sq)
+	}
+
+	// The battle point is the middle of the fight when there is one.
+	point := grid.Square{Col: 7, Row: 2}
+	if sq := pickSquares(t, newPlacement(openTerrain(9, 3), nil, &point), 1)[0]; sq != point {
+		t.Errorf("with a battle point at %v the square = %v", point, sq)
+	}
+
+	// A map with nothing to stand on has no square.
+	if _, ok := newPlacement(openTerrain(1, 1, grid.Square{}), nil, nil).next(); ok {
+		t.Error("a map of walls gave a square")
+	}
+}
+
+// setupUnplaced starts a combat in the cave with the party placed and the NPCs
+// without a square, and leaves it in SETUP.
+func (c *cave) setupUnplaced(t *testing.T) *playv1.Encounter {
+	t.Helper()
+	return c.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: c.goblins.GetId(), Count: 3}, {CharacterId: c.ogre.GetId()}},
+		npcRolls: []int{2, 2, 2, 2},
+		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1},
+		reveal:   []string{"Goblin 1", "Goblin 2", "Goblin 3", "Ogro"},
+		at:       map[string][2]int32{"Toren": {6, 7}, "Pensantus": {5, 8}, "Brisa": {4, 7}},
+		setup:    true,
+	})
+}
+
+func wantPlacedAway(t *testing.T, e *playv1.Encounter, npcs ...string) {
+	t.Helper()
+	seen := map[[2]int32]string{}
+	for _, label := range npcs {
+		n := byLabel(t, e, label)
+		if !n.GetPlaced() {
+			t.Errorf("%s has no square", label)
+			continue
+		}
+		at := [2]int32{n.GetCol(), n.GetRow()}
+		if caveRows[at[1]][at[0]] == '#' {
+			t.Errorf("%s is inside a wall at %v", label, at)
+		}
+		if caveRows[at[1]][at[0]] == 'q' {
+			t.Errorf("%s is inside the column at %v", label, at)
+		}
+		if other, taken := seen[at]; taken {
+			t.Errorf("%s and %s share the square %v", label, other, at)
+		}
+		seen[at] = label
+		for _, who := range e.GetCombatants() {
+			if who.GetKind() == playv1.CombatantKind_COMBATANT_KIND_PLAYER && who.GetPlaced() {
+				if d := grid.RangeSquares(grid.Square{Col: int(at[0]), Row: int(at[1])}, grid.Square{Col: int(who.GetCol()), Row: int(who.GetRow())}); d <= 2 {
+					t.Errorf("%s at %v is %d squares from %s", label, at, d, who.GetLabel())
+				}
+			}
+		}
+	}
+}
+
+// TestBeginCombatPlacesEveryUnplacedNPCOnFloorAwayFromTheParty: the combat on a map
+// never starts with creatures off it, and none stands in a wall or beside a player.
+func TestBeginCombatPlacesEveryUnplacedNPCOnFloorAwayFromTheParty(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	e := c.setupUnplaced(t)
+	if byLabel(t, e, "Ogro").GetPlaced() {
+		t.Fatal("the NPCs were placed before the combat began")
+	}
+	begun, err := c.master.combat.BeginCombat(t.Context(), connect.NewRequest(&playv1.BeginCombatRequest{CampaignId: c.campaignID, EncounterId: e.GetId(), IdempotencyKey: newKey()}))
+	if err != nil {
+		t.Fatalf("BeginCombat() error = %v", err)
+	}
+	wantPlacedAway(t, begun.Msg.GetEncounter(), "Goblin 1", "Goblin 2", "Goblin 3", "Ogro")
+	// The middle of the map, (12, 8), is floor away from the party: the first goes there.
+	if n := byLabel(t, begun.Msg.GetEncounter(), "Goblin 1"); n.GetCol() != 12 || n.GetRow() != 8 {
+		t.Errorf("Goblin 1 at %d,%d, want the middle of the map, 12,8", n.GetCol(), n.GetRow())
+	}
+}
+
+// TestPlacingOnTheMapUsesTheSamePlacementRule: "Colocar no mapa" asks the server,
+// which refuses anyone but the master and a combatant already on the map.
+func TestPlacingOnTheMapUsesTheSamePlacementRule(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	e := c.setupUnplaced(t)
+	place := func(u *user, label string) (*playv1.Encounter, error) {
+		return c.move(t, u, label, 0, 0, func(r *playv1.MoveCombatantRequest) { r.Place = true })
+	}
+	for _, label := range []string{"Goblin 1", "Goblin 2", "Goblin 3", "Ogro"} {
+		if _, err := place(c.master, label); err != nil {
+			t.Fatalf("placing %s: %v", label, err)
+		}
+	}
+	wantPlacedAway(t, c.get(t, c.master), "Goblin 1", "Goblin 2", "Goblin 3", "Ogro")
+	_, err := place(c.master, "Ogro")
+	wantCode(t, "placing a combatant on the map", err, connect.CodeInvalidArgument)
+	_, err = place(c.caio, "Toren")
+	wantCode(t, "a player placing", err, connect.CodePermissionDenied)
+	_ = e
+}
+
+// TestTheMastersMoveIntoAWallIsRefused: nobody stands in a wall, and a creature in
+// one is seen by no player, so neither a move nor a forced one goes into a wall.
+func TestTheMastersMoveIntoAWallIsRefused(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.fight(t)
+	_, err := c.move(t, c.master, "Goblin 1", 0, 0)
+	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WALL_ON_SQUARE)
+	_, err = c.move(t, c.master, "Goblin 1", 0, 0, func(r *playv1.MoveCombatantRequest) { r.Forced = true })
+	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WALL_ON_SQUARE)
+	if g := c.who(t, c.master, "Goblin 1"); g.GetCol() != 18 || g.GetRow() != 5 {
+		t.Errorf("the refused move left Goblin 1 at %d,%d", g.GetCol(), g.GetRow())
+	}
+	c.mustMove(t, c.master, "Goblin 1", 17, 5) // floor still works
+}
+
+// TestBeginCombatPlacesNPCsAroundTheBattlePoint: a combat that came from a battle
+// point puts the NPCs around it, not around the middle of the map.
+func TestBeginCombatPlacesNPCsAroundTheBattlePoint(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	var point string
+	// The square 20,3 of the cave (24 x 16 squares on a 1200 x 800 image).
+	if err := c.h.pool.QueryRow(t.Context(),
+		`INSERT INTO map_points (map_id, kind, name, x_bp, y_bp, created_at, updated_at)
+		 VALUES ($1, 'battle', 'Emboscada', $2, $3, now(), now()) RETURNING id`, c.mapID, (20*2+1)*10000/48, (3*2+1)*10000/32).Scan(&point); err != nil {
+		t.Fatalf("insert point: %v", err)
+	}
+	c.h.roller.queue(2, 2)
+	res, err := c.master.combat.StartEncounter(t.Context(), connect.NewRequest(&playv1.StartEncounterRequest{
+		CampaignId: c.campaignID, IdempotencyKey: newKey(), Name: "Emboscada", MapPointId: point,
+		Participants: []*playv1.Participant{{CharacterId: c.goblins.GetId(), Count: 2}},
+	}))
+	if err != nil {
+		t.Fatalf("StartEncounter() error = %v", err)
+	}
+	e := res.Msg.GetEncounter()
+	for label, face := range map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1} {
+		if _, err := c.master.combat.SubmitInitiative(t.Context(), connect.NewRequest(&playv1.SubmitInitiativeRequest{
+			CampaignId: c.campaignID, EncounterId: e.GetId(), CombatantId: byLabel(t, e, label).GetId(), IdempotencyKey: newKey(),
+			Roll: &playv1.SubmitInitiativeRequest_D20Face{D20Face: face},
+		})); err != nil {
+			t.Fatalf("SubmitInitiative(%s) error = %v", label, err)
+		}
+	}
+	c.mustMove(t, c.master, "Toren", 6, 7)
+	c.mustMove(t, c.master, "Pensantus", 5, 8)
+	c.mustMove(t, c.master, "Brisa", 4, 7)
+	begun, err := c.master.combat.BeginCombat(t.Context(), connect.NewRequest(&playv1.BeginCombatRequest{CampaignId: c.campaignID, EncounterId: e.GetId(), IdempotencyKey: newKey()}))
+	if err != nil {
+		t.Fatalf("BeginCombat() error = %v", err)
+	}
+	if g := byLabel(t, begun.Msg.GetEncounter(), "Goblin 1"); g.GetCol() != 20 || g.GetRow() != 3 {
+		t.Errorf("Goblin 1 at %d,%d, want the battle point's square, 20,3", g.GetCol(), g.GetRow())
+	}
+	wantPlacedAway(t, begun.Msg.GetEncounter(), "Goblin 1", "Goblin 2")
 }

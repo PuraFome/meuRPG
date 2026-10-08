@@ -1465,6 +1465,13 @@ enum EncounterBlockedReason {
   // with a weapon or an unarmed strike, and that action has not been taken yet
   // this turn. GetTurnOptions says it before, as ATTACK_ACTION_FIRST.
   ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST = 67;
+  // MoveCombatant: the master asked for a square that is a wall. Nobody stands in
+  // a wall, and a creature in one is seen by no player.
+  ENCOUNTER_BLOCKED_REASON_WALL_ON_SQUARE = 68;
+  // CastSpell, TakeAction: a healing aimed at a character that died, or that has
+  // failed three death saves. A dead creature regains no hit points (SRD 5.1,
+  // "Dropping to 0 Hit Points"), so nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_TARGET_DEAD = 69;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -2026,6 +2033,11 @@ message MoveCombatantRequest {
   // `permission_denied`. Without it, the master's move of the combatant that is
   // on turn is a move like any, and provokes.
   bool forced = 9;
+  // Only the master: the server picks the square of a combatant that has none
+  // ("Colocar no mapa"), by the same rule that places the NPCs when the combat
+  // begins. col and row are ignored. A player sending it gets `permission_denied`,
+  // and a combatant already on the map is refused with `invalid_argument`.
+  bool place = 10;
 }
 
 // MoveCombatantResponse returns the combat after the move.
