@@ -242,6 +242,20 @@ func (s *Service) OnScreen(ctx context.Context, campaignID string) (currentMapID
 	return deref(row.CurrentMapID), deref(row.ShownImageID), nil
 }
 
+// ImageShown says whether the image is the one the campaign's open session
+// shows the players, reading through tx, for a transaction that is about to
+// delete it. It implements maps.LiveSession.
+func (s *Service) ImageShown(ctx context.Context, tx pgx.Tx, campaignID, imageID string) (bool, error) {
+	row, err := s.queries.WithTx(tx).GetOnScreen(ctx, campaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil // no open session
+	}
+	if err != nil {
+		return false, fmt.Errorf("read what the session shows: %w", err)
+	}
+	return deref(row.ShownImageID) == imageID, nil
+}
+
 // Publish sends an event on the campaign's live streams: to the master's
 // always, and to the players' only when players is true. The maps module
 // decides that for its own changes, because only it knows what each change

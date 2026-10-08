@@ -147,6 +147,9 @@ type LiveSession interface {
 	// stage of the open scene of the campaign's open game session (MR-031).
 	// False when no session or no scene is open.
 	ImageOnStage(ctx context.Context, campaignID, imageID string) (bool, error)
+	// ImageShown reports whether the image is the one the open session shows the
+	// players. It reads through tx, for a transaction that is about to delete it.
+	ImageShown(ctx context.Context, tx pgx.Tx, campaignID, imageID string) (bool, error)
 	// PublishToUsers sends ev to the streams of those of userIDs who watch
 	// the campaign's session, and to nobody else: not the master, not the
 	// other players. Without an open session nothing happens.
