@@ -1,11 +1,12 @@
 import { NgTemplateOutlet } from '@angular/common';
 import {
-  Component,
-  ElementRef,
-  Injector,
   afterNextRender,
+  Component,
   computed,
+  effect,
+  ElementRef,
   inject,
+  Injector,
   signal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -109,6 +110,8 @@ export class GenerateSheet {
   /** The seed the server used; `null` after a swap by hand. */
   protected readonly seed = signal<number | null>(null);
   protected readonly busy = signal(false);
+  /** A request in the air: Esc and the backdrop do not close the sheet under it. */
+  protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
 
   /** The line being swapped, the creatures it can become and the one picked. */

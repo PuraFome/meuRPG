@@ -459,9 +459,32 @@ export class LevelUpPage {
       };
       await this.router.navigate(this.sheetLink(), { replaceUrl: true, state: { levelUp: done } });
     } catch (err) {
-      this.show(describeLevelUpFailure(err));
+      const failure = describeLevelUpFailure(err);
+      if (failure.kind === 'stale' && (await this.levelAlreadyApplied(s))) {
+        return;
+      }
+      this.show(failure);
     } finally {
       this.busy.set(false);
+    }
+  }
+
+  /** A confirmation whose answer was lost is applied but its retry is stale: when the sheet is already at the level asked for, the
+   * person goes to the sheet as after a confirmation, instead of being told to read it again. */
+  private async levelAlreadyApplied(s: LevelUpSession): Promise<boolean> {
+    try {
+      const character = await this.client.character(this.campaignId(), this.characterId());
+      const level = character.derived?.totalLevel ?? 0;
+      if (level < s.options.totalToLevel) {
+        return false;
+      }
+      await this.router.navigate(this.sheetLink(), {
+        replaceUrl: true,
+        state: { levelUp: { name: character.name, level } satisfies LevelUpDone },
+      });
+      return true;
+    } catch {
+      return false;
     }
   }
 

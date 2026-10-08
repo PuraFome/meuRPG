@@ -100,6 +100,8 @@ export class TrapSearchSheet {
   /** The server asked for a second die: the first face typed waits here. */
   protected readonly firstFace = signal<number | null>(null);
   protected readonly busy = signal(false);
+  /** A request in the air: Esc and the backdrop do not close the sheet under it. */
+  protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
   protected readonly result = signal<{
     res: SearchForTrapsResponse;
