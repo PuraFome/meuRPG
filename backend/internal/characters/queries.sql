@@ -234,6 +234,21 @@ LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID AND c.id = sqlc.arg(id)
   AND c.kind = 'player' AND c.status = 'active';
 
+-- name: GetVitalsWithDead :one
+-- GetVitals that also answers for a player character that died: the page of a
+-- dead character's player still reads its turn options and its log (a combat
+-- that ran keeps them), and nothing here lets the character act again.
+SELECT c.id, c.name, c.player_user_id, c.sheet,
+       v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
+       v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
+       ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
+       v.familiar_sight_conditions
+FROM characters AS c
+LEFT JOIN character_vitals AS v ON v.character_id = c.id
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
+WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID AND c.id = sqlc.arg(id)
+  AND c.kind = 'player' AND c.status IN ('active', 'dead');
+
 -- name: UpsertVitals :one
 -- Saves a character's vitals: the first save creates the row with revision
 -- 1, and every later one adds 1. A NULL hit_points_current is "never set":
@@ -303,6 +318,19 @@ LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
   AND c.id = ANY(sqlc.arg(ids)::UUID[])
   AND c.status = 'active'
+ORDER BY c.created_at, c.id;
+
+-- name: ListCombatCharactersWithDead :many
+-- ListCombatCharacters that also returns a character that died, for the reads
+-- of a combat that ran (a dead character's sheet names the attacks in the log,
+-- and its player's page reads the turn options). Nothing that starts a combat
+-- or lets a character act uses it.
+SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast
+FROM characters AS c
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
+WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
+  AND c.id = ANY(sqlc.arg(ids)::UUID[])
+  AND c.status IN ('active', 'dead')
 ORDER BY c.created_at, c.id;
 
 -- name: ListSessionCharacters :many
@@ -542,18 +570,20 @@ ON CONFLICT (character_id) DO UPDATE SET
 RETURNING revision, updated_at;
 
 -- name: ListPartyVision :many
--- The campaign's living, active player characters, oldest first, with what the
+-- The campaign's active and dead player characters, oldest first, with what the
 -- fog needs to know of how each one sees (package maps): the sheet, the beast of
 -- a Wild Shape form, and the familiar the player looks through, if it is still with
--- the character (MR-036, MR-037).
+-- the character (MR-036, MR-037). A dead character is listed (is_dead): its
+-- player keeps seeing what the living party sees.
 SELECT c.id, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast,
-       cc.id AS familiar_id, cc.monster_key AS familiar_monster_key
+       cc.id AS familiar_id, cc.monster_key AS familiar_monster_key,
+       (c.status = 'dead')::BOOL AS is_dead
 FROM characters AS c
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_creatures AS cc ON cc.id = v.familiar_sight_creature_id AND cc.dismissed_at IS NULL
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
-  AND c.kind = 'player' AND c.status = 'active'
+  AND c.kind = 'player' AND c.status IN ('active', 'dead')
 ORDER BY c.created_at, c.id;
 
 -- name: ListMapCreatures :many

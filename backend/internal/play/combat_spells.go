@@ -279,7 +279,8 @@ func (s *Service) CastSpell(
 			if targs[i], err = findCombatant(cs, t.id, v); err != nil {
 				return nil, err
 			}
-			if targs[i].Defeated {
+			// A dead player's character waits for the spell: a healing says it is dead.
+			if targs[i].Defeated && targs[i].Kind != kindPlayer {
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED, "a target is defeated")
 			}
 		}
@@ -321,6 +322,19 @@ func (s *Service) CastSpell(
 		}
 		if pick := req.Msg.GetDamageTypeKey(); pick != "" && !slices.Contains(sp.DamageTypes, pick) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("damage_type_key must be one of the damage types of a spell that lets the caster choose"))
+		}
+
+		// A dead creature regains no hit points (SRD 5.1), so a healing aimed at one is
+		// refused before the slot or the action is spent.
+		if healsHitPoints(sp) {
+			if err := s.refuseTheDead(ctx, c, targs); err != nil {
+				return nil, err
+			}
+		}
+		for _, t := range targs {
+			if t.Defeated {
+				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED, "a target is defeated")
+			}
 		}
 
 		// Who it touches.

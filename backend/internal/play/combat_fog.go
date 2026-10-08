@@ -100,9 +100,11 @@ func fogMemoOf(ctx context.Context) *fogMemo {
 // fogSightOf reads what the players see of the encounter's map: nil when there is
 // no fog on it (nothing to filter), and an error when it cannot be told, which
 // fails the request rather than showing a player what they may not see. Inside a
-// request that shares a memo (after a change) it is read once.
+// request that shares a memo (after a change) it is read once. A combat that ended
+// has no fog: its summary is the same for every member, and what the master hides
+// stays hidden by the combatant's own flag.
 func (s *Service) fogSightOf(ctx context.Context, campaignID string, enc playdb.Encounter) (*fogSight, error) {
-	if s.fog == nil || enc.MapID == nil {
+	if s.fog == nil || enc.MapID == nil || enc.Status == statusEnded {
 		return nil, nil
 	}
 	if memo := fogMemoOf(ctx); memo != nil {
@@ -432,10 +434,13 @@ func encounterChangedMessage(e playdb.Encounter) *playv1.WatchGameSessionRespons
 	}}
 }
 
-func turnChangedMessage(e playdb.Encounter, turn turnView) *playv1.WatchGameSessionResponse {
+// turnChangedMessage carries the combat's revision when the caller may compare it
+// (revision 0 on a fog map for a player: the master's number counts what they cannot
+// see).
+func turnChangedMessage(e playdb.Encounter, turn turnView, revision int32) *playv1.WatchGameSessionResponse {
 	return &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_TurnChanged_{
 		TurnChanged: &playv1.WatchGameSessionResponse_TurnChanged{
-			EncounterId: e.ID, Round: e.Round, CurrentCombatantId: turn.currentID, MasterTurn: turn.masterTurn,
+			EncounterId: e.ID, Round: e.Round, CurrentCombatantId: turn.currentID, MasterTurn: turn.masterTurn, Revision: revision,
 		},
 	}}
 }
@@ -459,11 +464,11 @@ func (s *Service) publishTurnChangedToPlayers(ctx context.Context, campaignID st
 	case err != nil:
 		s.logger.ErrorContext(ctx, "play: cannot work out what the players see in a combat", "error", err)
 	case f == nil:
-		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: turnChangedMessage(d.enc, d.turnFor(combatViewer{}))})
+		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: turnChangedMessage(d.enc, d.turnFor(combatViewer{}), d.enc.Revision)})
 	default:
 		for _, u := range f.sight.Users() {
 			turn := d.turnFor(combatViewer{userID: u, unseen: f.unseenFor(u, d.cs)})
-			s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: turnChangedMessage(d.enc, turn)})
+			s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: turnChangedMessage(d.enc, turn, 0)})
 		}
 	}
 }

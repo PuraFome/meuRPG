@@ -56,6 +56,33 @@ func (s *Service) readFxTarget(ctx context.Context, c *combatTx, t playdb.Combat
 	return fxTarget{c: t, hp: int(v.GetHitPointsCurrent()), max: int(v.GetHitPointsMax()), temp: int(v.GetHitPointsTemporary())}, nil
 }
 
+// healsHitPoints says whether the spell gives hit points back: a healing, and Aid
+// on a target at 0, which wakes it with current hit points.
+func healsHitPoints(sp link.Spell) bool {
+	return sp.Heal != nil || (sp.HP != nil && (sp.HP.Kind == rules.SpellKindFlatHeal || sp.HP.Kind == rules.SpellKindMaxHP))
+}
+
+// refuseTheDead refuses a healing aimed at a player's character that is dead: the
+// master confirmed its death, it failed three death saves (SRD 5.1, "Dropping to 0
+// Hit Points": three failures and the creature dies), or its character was marked
+// dead. A dead creature can't regain hit points, so nothing is spent.
+func (s *Service) refuseTheDead(ctx context.Context, c *combatTx, targs []playdb.Combatant) error {
+	for _, t := range targs {
+		if t.Kind != kindPlayer {
+			continue
+		}
+		dead := t.Defeated || t.DeathFailures >= 3
+		if !dead {
+			_, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, t.CharacterID)
+			dead = connect.CodeOf(err) == connect.CodeNotFound // marked dead: no longer an active character
+		}
+		if dead {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEAD, "the target is dead and regains no hit points")
+		}
+	}
+	return nil
+}
+
 // poolRoll rolls the dice of a pool: the server rolls them, or the player types
 // the sum of the physical dice (RN-18, checked by the caller).
 func (s *Service) poolRoll(d link.Dice, in rollInput) (dice.Result, error) {
