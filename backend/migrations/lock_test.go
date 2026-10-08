@@ -193,13 +193,13 @@ func (f *freezable) pipe(dst, src net.Conn) {
 // database answers, the same lease is renewed past its first term.
 func TestRunStopsBeforeTheLeaseEndsWhenTheDatabaseStopsAnswering(t *testing.T) {
 	t.Parallel()
-	real := freshDatabase(t)
+	direct := freshDatabase(t)
 	u, err := url.Parse(testenv.DatabaseURL(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	var name string
-	if err := real.QueryRowContext(t.Context(), `SELECT current_database()`).Scan(&name); err != nil {
+	if err := direct.QueryRowContext(t.Context(), `SELECT current_database()`).Scan(&name); err != nil {
 		t.Fatal(err)
 	}
 	proxy := newFreezable(t, u.Host)
@@ -228,7 +228,7 @@ func TestRunStopsBeforeTheLeaseEndsWhenTheDatabaseStopsAnswering(t *testing.T) {
 	proxy.frozen.Store(true)
 	time.Sleep(200 * time.Millisecond) // anything already sent has landed or is held back
 	var expires, dbNow time.Time
-	if err := real.QueryRowContext(t.Context(), `SELECT expires_at, now() FROM migration_lock WHERE id = 1`).Scan(&expires, &dbNow); err != nil {
+	if err := direct.QueryRowContext(t.Context(), `SELECT expires_at, now() FROM migration_lock WHERE id = 1`).Scan(&expires, &dbNow); err != nil {
 		t.Fatal(err)
 	}
 	readAt := time.Now()
