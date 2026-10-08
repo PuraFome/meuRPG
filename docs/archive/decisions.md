@@ -155,6 +155,10 @@ The full code review of 07/10 raised one product question, which Vinicius answer
 - **"Redesenhar" with a full gallery.** A redraw of a generated dungeon's map is allowed with the gallery full when the old image goes away with it (it is not shown, not a portrait and not used elsewhere), because the gallery does not grow; it is still refused when the old image stays. See [Architecture](../architecture.md#generated-dungeon-maps).
 
 
+### Answered on 08/10/2026
+
+- **The editor's hit points come from the server.** The character editor's "Pontos de vida" box added up the dice and the Constitution modifier in the browser and left out what race, class and features give (Dwarven Toughness, Draconic Resilience, a table's own effect), so the box showed less than the saved sheet. Vinicius chose the best fix over a note: a read-only `PreviewCharacter` call derives the draft on the server with the same checks as the save, and the box shows its numbers (`DerivedSheet.hit_points_from_effects` names what the effects add), falling back to the dice alone when the call fails. The browser still computes no rules. See [Architecture](../architecture.md) and MR-004.
+
 ## Roadmap and scope decisions
 
 These decisions used to open and close the roadmap page.

@@ -170,7 +170,49 @@ test(
     }
     await expect(page.getByRole('button', { name: 'Rolar os níveis que faltam' })).toBeDisabled();
     await expect(page.getByText(/PV máximos até agora/)).toBeVisible();
-    await expect(page.getByText(/É uma prévia/)).toBeVisible();
+  },
+);
+
+// The "Pontos de vida" box adds what the server derives for the draft, so the maximum it shows with every roll
+// typed is the one the saved sheet has: a Hill Dwarf gets one more hit point per level (Dwarven Toughness).
+test(
+  'o anão da colina vê no quadro de pontos de vida o mesmo máximo que a ficha salva',
+  { tag: '@MR-004' },
+  async ({ page }) => {
+    const campaignId = await createCampaign(page, `Anão ${Date.now()}`);
+    await page.goto(`/campaigns/${campaignId}/npcs/new/enemy`);
+    const pick = async (field: string, option: string) => {
+      const select = page.getByRole('combobox', { name: field, exact: true });
+      await select.focus();
+      await select.press('Enter');
+      await page.getByRole('option', { name: option, exact: true }).click();
+    };
+
+    await page.getByLabel('Nome do personagem', { exact: true }).fill('Gimli');
+    await pick('Raça', 'Anão');
+    await pick('Sub-raça', 'Anão da Colina');
+    await pick('Classe', 'Guerreiro');
+    await page.getByLabel('Nível', { exact: true }).fill('3');
+    await pick('Antecedente', 'Acólito');
+    await page.getByRole('tab', { name: 'Habilidades' }).click();
+    await page.locator('input').and(page.getByLabel('Constituição', { exact: true })).fill('14');
+    await page.getByRole('radio', { name: /Rolado/ }).check();
+    await page.getByLabel('Nível 2 (1d10)', { exact: true }).fill('6');
+    await page.getByLabel('Nível 3 (1d10)', { exact: true }).fill('4');
+
+    // Constitution 14 + 2 (the dwarf) = 16, modifier +3: 13 + 9 + 7 from the dice and Dwarven Toughness's 3.
+    const box = page.getByRole('status', { name: 'Pontos de vida até agora' });
+    await expect(box.getByText('+3 PV de raça, classe ou característica')).toBeVisible();
+    await expect(box.locator('.hp__sum strong')).toHaveText('32');
+    await expect(box.getByText(/É uma prévia/)).toHaveCount(0);
+
+    await page.getByRole('tab', { name: 'Perícias' }).click();
+    const skills = page.getByRole('group', { name: 'Perícias', exact: true });
+    await skills.getByRole('checkbox', { name: 'Atletismo', exact: true }).check();
+    await skills.getByRole('checkbox', { name: 'Percepção', exact: true }).check();
+    await page.getByRole('button', { name: 'Criar NPC' }).click();
+    await expect(page).toHaveURL(/\/campaigns\/[^/]+\/characters\/(?!new$)[^/]+$/);
+    await expect(page.locator('dt:text-is("Pontos de vida máximos") + dd')).toHaveText('32');
   },
 );
 

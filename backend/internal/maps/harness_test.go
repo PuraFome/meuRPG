@@ -227,9 +227,11 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 		t.Fatalf("notes.New() error = %v", err)
 	}
 
+	treasures := NewTreasures(pool)
+	treasures.SetService(svc) // a conversion tells the open maps, as cmd/api wires it
 	// The XP: "Voltar à cidade" turns a found treasure into XP (MR-041, MR-044).
 	xp, err := progression.New(progression.Config{
-		Pool: pool, Party: chars, Combats: live, Log: live, Treasures: NewTreasures(pool), Campaigns: camps, Profiles: h.users, Logger: logger, Now: clock.Now,
+		Pool: pool, Party: chars, Combats: live, Log: live, Treasures: treasures, Campaigns: camps, Profiles: h.users, Logger: logger, Now: clock.Now,
 	})
 	if err != nil {
 		t.Fatalf("progression.New() error = %v", err)

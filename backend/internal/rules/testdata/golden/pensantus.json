@@ -249,6 +249,7 @@
   "ArmorClass": 13,
   "ArmorClassDescription": "Sem armadura",
   "HitPointsMax": 23,
+  "HitPointsFromEffects": 0,
   "HitDice": [
     {
       "Die": 6,

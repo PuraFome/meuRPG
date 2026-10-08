@@ -105,6 +105,7 @@ func TestPendingMayCallIsTheAgreedList(t *testing.T) {
 		charactersv1connect.CharacterServiceCreateCharacterProcedure,
 		charactersv1connect.CharacterServiceGetCharacterProcedure,
 		charactersv1connect.CharacterServiceListCharactersProcedure,
+		charactersv1connect.CharacterServicePreviewCharacterProcedure,
 		charactersv1connect.CharacterServiceUpdateCharacterProcedure,
 		charactersv1connect.CharacterServiceUpdateCharacterStoryProcedure,
 		charactersv1connect.CharacterServiceGetAbilityRollsProcedure,
