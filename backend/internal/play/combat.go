@@ -405,6 +405,9 @@ func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Gr
 				}
 			}
 			inserted, err := c.q.InsertCombatant(ctx, row)
+			if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23503" && pgErr.ConstraintName == "combatants_character_id_fkey" {
+				return nil, nil, errCharacterNotFound() // deleted after the participants were read
+			}
 			if err != nil {
 				return nil, nil, fmt.Errorf("insert combatant: %w", err)
 			}

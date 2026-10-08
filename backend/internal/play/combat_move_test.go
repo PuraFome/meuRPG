@@ -1369,4 +1369,10 @@ func TestADownPlayerCannotMove(t *testing.T) {
 	}
 	_, err := c.move(t, c.caio, "Toren", 7, 7)
 	wantBlockedBy(t, "a down player's MoveCombatant", err, blockedDown)
+	_, err = c.options(t, c.caio, "Toren")
+	wantBlockedBy(t, "a down player's GetMoveOptions", err, blockedDown)
+	// The master plans and moves anyone.
+	if _, err := c.options(t, c.master, "Toren"); err != nil {
+		t.Errorf("the master's GetMoveOptions(a down character) error = %v, want nil", err)
+	}
 }

@@ -142,7 +142,7 @@ func (s *Service) castProto(ctx context.Context, res combatResult, ev actionEven
 			AttackRoll: attackRollView(h, v, caster), Save: saveView(h.Save, v, caster, target),
 			Effect: effectView(h, v, target),
 		}
-		coverKey, coverSource := h.coverFor(v)
+		coverKey, coverSource := h.coverFor(v, ev.CoverUsers)
 		r.Cover, r.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
 		if h.Pending != "" && (v.master || v.owns(caster)) {
 			r.PendingDamageId = h.Pending
