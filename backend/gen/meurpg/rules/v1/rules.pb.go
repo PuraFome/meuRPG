@@ -8152,8 +8152,13 @@ type AttackOption struct {
 	// For BONUS_ATTACK_RULE_OFF_HAND: the damage in `attack` leaves out the ability
 	// modifier (a positive one, and the character has no Two-Weapon Fighting style).
 	BonusDropsModifier bool `protobuf:"varint,6,opt,name=bonus_drops_modifier,json=bonusDropsModifier,proto3" json:"bonus_drops_modifier,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// For a cantrip that fires several beams in one cast (Eldritch Blast): how many
+	// beams are still to fire after the ones this cast made, while at least one
+	// beam was fired. The option stays enabled while this is above 0, though the
+	// action is spent. 0 for every other attack, and before the first beam.
+	BeamsLeft     int32 `protobuf:"varint,7,opt,name=beams_left,json=beamsLeft,proto3" json:"beams_left,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AttackOption) Reset() {
@@ -8226,6 +8231,13 @@ func (x *AttackOption) GetBonusDropsModifier() bool {
 		return x.BonusDropsModifier
 	}
 	return false
+}
+
+func (x *AttackOption) GetBeamsLeft() int32 {
+	if x != nil {
+		return x.BeamsLeft
+	}
+	return 0
 }
 
 // SpellOption is a spell the character can cast.
@@ -10459,7 +10471,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x0eDisabledReason\x127\n" +
 	"\x04code\x18\x01 \x01(\x0e2#.meurpg.rules.v1.DisabledReasonCodeR\x04code\x12\x1b\n" +
 	"\tmin_level\x18\x02 \x01(\x05R\bminLevel\x125\n" +
-	"\brecharge\x18\x03 \x01(\x0e2\x19.meurpg.rules.v1.RechargeR\brecharge\"\xb3\x02\n" +
+	"\brecharge\x18\x03 \x01(\x0e2\x19.meurpg.rules.v1.RechargeR\brecharge\"\xd2\x02\n" +
 	"\fAttackOption\x12/\n" +
 	"\x06attack\x18\x01 \x01(\v2\x17.meurpg.rules.v1.AttackR\x06attack\x12\x18\n" +
 	"\aenabled\x18\x02 \x01(\bR\aenabled\x127\n" +
@@ -10467,7 +10479,9 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\n" +
 	"bonus_rule\x18\x04 \x01(\x0e2 .meurpg.rules.v1.BonusAttackRuleR\tbonusRule\x12,\n" +
 	"\x12bonus_attacks_left\x18\x05 \x01(\x05R\x10bonusAttacksLeft\x120\n" +
-	"\x14bonus_drops_modifier\x18\x06 \x01(\bR\x12bonusDropsModifier\"\xfb\x01\n" +
+	"\x14bonus_drops_modifier\x18\x06 \x01(\bR\x12bonusDropsModifier\x12\x1d\n" +
+	"\n" +
+	"beams_left\x18\a \x01(\x05R\tbeamsLeft\"\xfb\x01\n" +
 	"\vSpellOption\x12,\n" +
 	"\x05spell\x18\x01 \x01(\v2\x16.meurpg.rules.v1.SpellR\x05spell\x128\n" +
 	"\aeconomy\x18\x02 \x01(\x0e2\x1e.meurpg.rules.v1.ActionEconomyR\aeconomy\x12\x18\n" +

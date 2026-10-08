@@ -116,6 +116,11 @@ func TestEldritchBlastBeamsAreEachAnAttackRoll(t *testing.T) {
 	a.threeAndAGoblin(t)
 	e := a.turnOf(t, "Pensantus")
 	first := wantHit(t, "first beam", a.mustAttack(t, a.ana, e, "Pensantus", blast, "Goblin", d20(15)), hit)
+	// The turn options offer the next beam, with how many are left, and its targets.
+	opts := a.mustOptions(t, a.ana, e, "Pensantus")
+	if o := attackOption(opts, blast); !o.GetEnabled() || o.GetBeamsLeft() != 1 || targetOf(opts, blast, "Goblin") == nil {
+		t.Errorf("Eldritch Blast after the first beam = enabled %v, beams left %d, want enabled with 1 left and a target", o.GetEnabled(), o.GetBeamsLeft())
+	}
 	// The second beam: another attack roll, another damage; the cast spent the
 	// action but not the beams.
 	second := wantHit(t, "second beam", a.mustAttack(t, a.ana, e, "Pensantus", blast, "Goblin", d20(15)), hit)
@@ -127,6 +132,9 @@ func TestEldritchBlastBeamsAreEachAnAttackRoll(t *testing.T) {
 		if p.GetDiceCount() != 1 || p.GetDiceSides() != 10 || p.GetBonus() != 3 {
 			t.Errorf("beam %d damage = %dd%d%+d, want 1d10+3", i+1, p.GetDiceCount(), p.GetDiceSides(), p.GetBonus())
 		}
+	}
+	if o := attackOption(a.mustOptions(t, a.ana, e, "Pensantus"), blast); o.GetEnabled() || o.GetReason().GetCode() != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ACTION_USED {
+		t.Errorf("Eldritch Blast after the last beam = enabled %v, reason %v, want the action's", o.GetEnabled(), o.GetReason().GetCode())
 	}
 	_, err := a.attack(t, a.ana, e, "Pensantus", blast, "Goblin", d20(15))
 	wantBlockedBy(t, "a third beam at 5th level", err, blockedActionUsed)

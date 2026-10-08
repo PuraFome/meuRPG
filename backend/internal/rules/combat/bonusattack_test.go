@@ -74,7 +74,8 @@ func bonusSheet(perAction int, style bool) rules.Derived {
 			{Key: "equipment:dagger", Kind: "weapon", Melee: true, Light: true, AbilityMod: 3, DamageDice: dagger, Damage: daggerText},
 			{Key: "equipment:longsword", Kind: "weapon", Melee: true},
 			{Key: rules.UnarmedStrikeKey, Kind: "weapon", Melee: true, MartialArts: true, AbilityMod: 3, DamageDice: strike, Damage: strikeText},
-			{Key: "spell:fire-bolt", Kind: "spell"},
+			{Key: "spell:fire-bolt", Kind: "spell", Beams: 1},
+			{Key: "spell:eldritch-blast", Kind: "spell", Beams: 2},
 		},
 		Actions:   []rules.Action{{Key: FlurryOfBlowsKey, Economy: rules.EconomyBonusAction, Resource: "ki"}},
 		Resources: []rules.Resource{{Key: "ki", Max: 3}},
@@ -208,5 +209,64 @@ func TestOptionsFlurryOfBlowsNeedsTheAttackAction(t *testing.T) {
 		case tc.want != "" && (got.Enabled || got.Reason == nil || got.Reason.Code != tc.want):
 			t.Errorf("%s: enabled %v, reason %v, want %s", tc.name, got.Enabled, got.Reason, tc.want)
 		}
+	}
+}
+
+func TestOptionsACantripSpendsTheAttackAction(t *testing.T) {
+	t.Parallel()
+	// Eldritch Blast cast with the action counts a beam as an attack, which must
+	// not leave an attack of Extra Attack behind.
+	turn := TurnState{ActionUsed: true, AttacksMade: 1, LastAttackKey: "spell:eldritch-blast"}
+	o := Options(bonusSheet(2, false), turn, Usage{})
+	if o.Economy.AttacksLeft != 0 {
+		t.Errorf("attacks left after a cantrip = %d, want 0", o.Economy.AttacksLeft)
+	}
+	for _, key := range []string{"equipment:longsword", "equipment:dagger", rules.UnarmedStrikeKey, "spell:fire-bolt"} {
+		got := attackOptionOf(t, o, key)
+		if got.Enabled || got.Reason.Code != ReasonActionUsed || got.Bonus != BonusNone {
+			t.Errorf("%s after a cantrip = enabled %v, reason %v, rule %d, want disabled with the action's reason", key, got.Enabled, got.Reason, got.Bonus)
+		}
+	}
+	// A weapon Attack action still leaves Extra Attack's second attack.
+	weapon := TurnState{ActionUsed: true, AttacksMade: 1, LastAttackKey: "equipment:longsword"}
+	if got := attackOptionOf(t, Options(bonusSheet(2, false), weapon, Usage{}), "equipment:longsword"); !got.Enabled {
+		t.Error("the second attack of the Attack action is disabled")
+	}
+}
+
+func TestOptionsEldritchBlastKeepsItsBeamsAfterTheFirst(t *testing.T) {
+	t.Parallel()
+	const blast = "spell:eldritch-blast"
+	sheet := bonusSheet(1, false)
+	for _, tc := range []struct {
+		name      string
+		turn      TurnState
+		enabled   bool
+		beamsLeft int
+	}{
+		{"before the cast", TurnState{}, true, 0},
+		{"after the first beam", TurnState{ActionUsed: true, AttacksMade: 1, LastAttackKey: blast}, true, 1},
+		{"after the last beam", TurnState{ActionUsed: true, AttacksMade: 2, LastAttackKey: blast}, false, 0},
+	} {
+		o := Options(sheet, tc.turn, Usage{})
+		got := attackOptionOf(t, o, blast)
+		if got.Enabled != tc.enabled || got.BeamsLeft != tc.beamsLeft {
+			t.Errorf("%s: enabled %v, beams left %d, want %v and %d", tc.name, got.Enabled, got.BeamsLeft, tc.enabled, tc.beamsLeft)
+		}
+		if tc.turn.ActionUsed && !tc.enabled && got.Reason.Code != ReasonActionUsed {
+			t.Errorf("%s: reason %v, want the action's", tc.name, got.Reason)
+		}
+		// Every other attack is off, as the action's, once the action is spent.
+		if tc.turn.ActionUsed {
+			for _, key := range []string{"equipment:longsword", "spell:fire-bolt"} {
+				if other := attackOptionOf(t, o, key); other.Enabled || other.Reason.Code != ReasonActionUsed {
+					t.Errorf("%s: %s = enabled %v, reason %v, want the action's", tc.name, key, other.Enabled, other.Reason)
+				}
+			}
+		}
+	}
+	// A beam of another cantrip's cast is not this one's.
+	if got := attackOptionOf(t, Options(sheet, TurnState{ActionUsed: true, AttacksMade: 1, LastAttackKey: "spell:fire-bolt"}, Usage{}), blast); got.Enabled {
+		t.Error("Eldritch Blast is enabled after Fire Bolt spent the action")
 	}
 }

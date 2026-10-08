@@ -42,6 +42,7 @@ import type { CombatState } from '../../../../core/combat/combat-state';
 import {
   attackDetail,
   attackName,
+  beamSpentText,
   bonusSpentText,
   isCantrip,
 } from '../../../../core/combat/combat-options';
@@ -80,6 +81,8 @@ export interface AttackSheetData {
    * down the `bonusAttacksLeft` the options had. */
   readonly bonusRule?: BonusAttackRule;
   readonly bonusAttacksLeft?: number;
+  /** A cantrip with several beams (Eldritch Blast): how many were still to fire before this one. */
+  readonly beamsLeft?: number;
   /** The answer to an opportunity offer (E9-13): the target is the mover (so the
    * sheet starts at "Rolar"), the reach is not checked (the attack comes right
    * before it leaves), and the roll names the offer. `byMaster` when the master
@@ -261,6 +264,9 @@ export class AttackSheet {
     const bonus = bonusSpentText(this.data.bonusRule, this.data.bonusAttacksLeft);
     if (bonus) {
       return bonus;
+    }
+    if (this.cantrip && (this.data.beamsLeft ?? 0) > 1) {
+      return beamSpentText(this.name, this.data.beamsLeft ?? 0);
     }
     const left = (this.data.attacksLeft ?? 1) - 1;
     if (!this.cantrip && (this.data.attacksPerAction ?? 1) > 1 && left > 0) {

@@ -1454,6 +1454,7 @@ export class CombatView {
       asReaction,
       bonusRule: option?.bonusRule,
       bonusAttacksLeft: option?.bonusAttacksLeft,
+      beamsLeft: option?.beamsLeft || attack.beams,
       attacksLeft: who ? (opts?.options?.economy?.attacksLeft ?? 0) : this.attacksLeft(),
       attacksPerAction: who
         ? (opts?.options?.economy?.attacksPerAction ?? 1)

@@ -1787,6 +1787,11 @@ message AttackOption {
   // For BONUS_ATTACK_RULE_OFF_HAND: the damage in `attack` leaves out the ability
   // modifier (a positive one, and the character has no Two-Weapon Fighting style).
   bool bonus_drops_modifier = 6;
+  // For a cantrip that fires several beams in one cast (Eldritch Blast): how many
+  // beams are still to fire after the ones this cast made, while at least one
+  // beam was fired. The option stays enabled while this is above 0, though the
+  // action is spent. 0 for every other attack, and before the first beam.
+  int32 beams_left = 7;
 }
 
 // SpellOption is a spell the character can cast.

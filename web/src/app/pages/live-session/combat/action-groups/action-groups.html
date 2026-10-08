@@ -78,7 +78,7 @@
             [tags]="attackTags(a)"
             [helpName]="isCantrip(atk) ? attackName(atk) : ''"
             [detail]="attackDetail(atk)"
-            [note]="bonusAttackLine(a)"
+            [note]="attackNote(a)"
             [rider]="rider(atk)"
             [button]="asksSave(atk) ? 'Conjurar' : 'Atacar'"
             [buttonLabel]="(asksSave(atk) ? 'Conjurar ' : 'Atacar com ') + attackName(atk)"

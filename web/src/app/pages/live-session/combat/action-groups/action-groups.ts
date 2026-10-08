@@ -17,6 +17,7 @@ import { tight } from '../../../../core/format/text';
 import {
   attackDetail,
   attackName,
+  beamsLeftLine,
   bonusAttackLine,
   circleLabel,
   groupState,
@@ -209,7 +210,11 @@ export class ActionGroups {
   });
 
   protected readonly attackName = attackName;
-  protected readonly bonusAttackLine = bonusAttackLine;
+
+  /** The line of why under an attack: its bonus action rule, or the beams of a cast still to fire. */
+  protected attackNote(o: AttackOption): string {
+    return bonusAttackLine(o) || beamsLeftLine(o);
+  }
 
   /** The tags under an attack's name: "Truque" for a cantrip, "Ação bônus" for a bonus action attack. */
   protected attackTags(o: AttackOption): string[] {

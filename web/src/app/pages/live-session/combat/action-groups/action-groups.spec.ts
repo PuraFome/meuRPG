@@ -389,6 +389,7 @@ interface AttackOver {
   bonusRule?: BonusAttackRule;
   bonusAttacksLeft?: number;
   bonusDropsModifier?: boolean;
+  beamsLeft?: number;
 }
 
 describe('ActionGroups: the bonus action attacks', () => {
@@ -494,6 +495,27 @@ describe('ActionGroups: the bonus action attacks', () => {
     expect(dagger.querySelector('.row__why')!.textContent).toContain('Ação bônus já usada');
     button(dagger).click();
     expect(attacked).toEqual([]);
+  });
+
+  it('offers the next beam of Eldritch Blast with the action spent, counting down', () => {
+    for (const [left, text] of [
+      [2, 'Rajada Mística: 2 raios restantes'],
+      [1, 'Rajada Mística: 1 raio restante'],
+    ] as const) {
+      const { row, attacked } = setup([
+        attack('spell:eldritch-blast', 'Rajada Mística', { beamsLeft: left }),
+        attack('equipment:dagger', 'Adaga', {
+          enabled: false,
+          reason: { code: DisabledReasonCode.ACTION_USED },
+        }),
+      ]);
+      const blast = row('Rajada Mística');
+      expect(note(blast)).toBe(text);
+      expect(button(blast).getAttribute('aria-disabled')).not.toBe('true');
+      button(blast).click();
+      expect(attacked).toEqual(['spell:eldritch-blast']);
+      expect(button(row('Adaga')).getAttribute('aria-disabled')).toBe('true');
+    }
   });
 
   it('shows Rajada de Golpes off with its reason before the Attack action', () => {

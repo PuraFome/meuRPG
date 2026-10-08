@@ -124,6 +124,9 @@ type AttackOption struct {
 	FlurryLeft int
 	// DropsModifier says the off-hand damage leaves out the ability modifier.
 	DropsModifier bool
+	// BeamsLeft is how many beams of a cantrip cast with the action are still to
+	// fire (Eldritch Blast); the option is enabled while any is left.
+	BeamsLeft int
 }
 
 // SlotChoice is a slot the spell can be cast with.
@@ -186,6 +189,12 @@ func Options(d rules.Derived, turn TurnState, u Usage) TurnOptions {
 	}}
 	out.Economy.AttacksPerAction = max(d.AttacksPerAction, 1)
 	out.Economy.AttacksLeft = AttacksLeft(out.Economy.AttacksPerAction, turn)
+	// A cantrip cast with the action is no Attack action: Extra Attack has nothing
+	// left to give after it.
+	castCantrip := castWithCantrip(d, turn)
+	if castCantrip {
+		out.Economy.AttacksLeft = 0
+	}
 
 	// Attacks cost an action. The damaging cantrips are in Derived.Attacks
 	// already, so they are left out of the spells below.
@@ -201,7 +210,17 @@ func Options(d rules.Derived, turn TurnState, u Usage) TurnOptions {
 			opt = economyOption(rules.EconomyAction, turn)
 		}
 		ao := AttackOption{Option: opt, Attack: a}
-		if a.Kind != "spell" && out.Economy.AttacksLeft == 0 {
+		switch {
+		case a.Kind == "spell":
+			// The beams of the cast that spent the action are still its own.
+			if left := beamsLeft(d, turn, a); left > 0 {
+				ao.Option, ao.BeamsLeft = Option{Enabled: true}, left
+			}
+		case castCantrip:
+			// The cantrip took the whole action: no attack of the Attack action is
+			// left, and no bonus action attack follows it.
+			ao.Option = Option{Reason: &Reason{Code: ReasonActionUsed}}
+		case out.Economy.AttacksLeft == 0:
 			ao = bonusAttackOption(d, turn, ao)
 		}
 		out.Attacks = append(out.Attacks, ao)
@@ -243,6 +262,23 @@ func lastAttackOf(d rules.Derived, turn TurnState) (rules.Attack, bool) {
 		return rules.Attack{}, false
 	}
 	return d.Attacks[i], true
+}
+
+// castWithCantrip says the action of this turn went to a cantrip.
+func castWithCantrip(d rules.Derived, turn TurnState) bool {
+	last, ok := lastAttackOf(d, turn)
+	return ok && turn.ActionUsed && last.Kind == "spell"
+}
+
+// beamsLeft is how many beams of the cantrip such a cast still has: the cast
+// that spent the action fired it, and made fewer beams than the cantrip has.
+// 0 when the action has not been spent on this cantrip.
+func beamsLeft(d rules.Derived, turn TurnState, a rules.Attack) int {
+	last, ok := lastAttackOf(d, turn)
+	if !ok || !turn.ActionUsed || last.Key != a.Key || a.Beams <= 1 {
+		return 0
+	}
+	return max(a.Beams-turn.AttacksMade, 0)
 }
 
 // attackActionTaken says the Attack action was taken this turn with a weapon or

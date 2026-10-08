@@ -11,6 +11,8 @@ import {
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import {
   attackDetail,
+  beamSpentText,
+  beamsLeftLine,
   bonusAttackLine,
   bonusSpentText,
   endTurnIsPrimary,
@@ -123,6 +125,8 @@ describe('"Encerrar turno"', () => {
 describe('the bonus action attacks', () => {
   const option = (over: {
     enabled?: boolean;
+    attack?: { key: string; namePt: string };
+    beamsLeft?: number;
     bonusRule?: BonusAttackRule;
     bonusAttacksLeft?: number;
     bonusDropsModifier?: boolean;
@@ -166,5 +170,30 @@ describe('the bonus action attacks', () => {
       'Rajada de Golpes: acabaram os golpes.',
     );
     expect(bonusSpentText(BonusAttackRule.UNSPECIFIED)).toBe('');
+  });
+});
+
+describe('the beams of a cantrip cast', () => {
+  const blast = (over: { enabled?: boolean; beamsLeft?: number }) =>
+    create(AttackOptionSchema, {
+      attack: { key: 'spell:eldritch-blast', namePt: 'Rajada Mística' },
+      enabled: true,
+      ...over,
+    });
+
+  it('counts the beams still to fire in one line, down to the last', () => {
+    expect(beamsLeftLine(blast({ beamsLeft: 2 }))).toBe('Rajada Mística: 2 raios restantes');
+    expect(beamsLeftLine(blast({ beamsLeft: 1 }))).toBe('Rajada Mística: 1 raio restante');
+  });
+
+  it('says nothing before the first beam or once the cantrip is off', () => {
+    expect(beamsLeftLine(blast({ beamsLeft: 0 }))).toBe('');
+    expect(beamsLeftLine(blast({ beamsLeft: 1, enabled: false }))).toBe('');
+  });
+
+  it('says what a beam spent: the beams left, or the action with the last one', () => {
+    expect(beamSpentText('Rajada Mística', 3)).toBe('Rajada Mística: 2 raios restantes.');
+    expect(beamSpentText('Rajada Mística', 2)).toBe('Rajada Mística: 1 raio restante.');
+    expect(beamSpentText('Rajada Mística', 1)).toBe('Sua ação foi usada.');
   });
 });

@@ -129,6 +129,26 @@ export function bonusSpentText(rule: BonusAttackRule | undefined, left = 1): str
   }
 }
 
+/** "Rajada Mística: 2 raios restantes": the beams of a cantrip cast (Eldritch
+ * Blast) still to fire, once the first one spent the action. `''` otherwise. */
+export function beamsLeftLine(o: AttackOption): string {
+  if (!o.enabled || o.beamsLeft <= 0 || !o.attack) {
+    return '';
+  }
+  return `${attackName(o.attack)}: ${o.beamsLeft === 1 ? '1 raio restante' : `${o.beamsLeft} raios restantes`}`;
+}
+
+/** What a beam spent, once it is fired: the beams still to fire, or the action
+ * with the last one. `before` is how many beams were to fire before this one
+ * (the option's `beamsLeft`, or the attack's `beams` for the first). */
+export function beamSpentText(name: string, before: number): string {
+  const left = before - 1;
+  if (left <= 0) {
+    return 'Sua ação foi usada.';
+  }
+  return `${name}: ${left === 1 ? '1 raio restante' : `${left} raios restantes`}.`;
+}
+
 /** "2 golpes restantes", "1 golpe restante": the unarmed strikes of Rajada de Golpes still to make. */
 export function flurryLeftText(left: number): string {
   return left === 1 ? '1 golpe restante' : `${left} golpes restantes`;
