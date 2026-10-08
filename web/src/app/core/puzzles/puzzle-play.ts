@@ -9,7 +9,6 @@ import {
   type PuzzleRun,
   type TryPuzzleHintResponse,
 } from '../../../gen/meurpg/play/v1/puzzles_pb';
-import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { newKey } from '../connect/idempotency';
 import { isTransient, puzzleBlocked, puzzleErrorMessage } from './puzzle-errors';
 import type { HintDie, MoveAnswer } from './puzzles-client';
@@ -99,8 +98,6 @@ export class PuzzlePlay {
     private readonly wait: (ms: number) => Promise<void> = (ms) =>
       new Promise((resolve) => setTimeout(resolve, ms)),
     private readonly makeKey: () => string = newKey,
-    /** The player's own character, to tell their wrong answer from another player's. */
-    private readonly ownName: () => string = () => '',
     private readonly schedule: Schedule = timeoutSchedule,
   ) {}
 
@@ -219,7 +216,8 @@ export class PuzzlePlay {
 
   /**
    * Makes one move. Never rejects: a failure becomes `message`. The verdict says whether a typed answer or a bell was judged wrong:
-   * the server's answer has the run, and a wrong move of the player's own character is its `last_move` (never the answer itself).
+   * the server's answer carries the verdict of this very move (also on a replay), never read from the run's last move, which may be
+   * another player's.
    *
    * Bell taps go one at a time, in the order they were made, each after the answer to the one before; `pending` counts the taps still
    * waiting too, so the screen can say so. A wrong bell drops the taps queued behind it (they were made for a sequence that started over).
@@ -273,20 +271,14 @@ export class PuzzlePlay {
     }
     this.message.set('');
     try {
-      const before = run.lastMove?.at ? timestampDate(run.lastMove.at).getTime() : 0;
       const answer = await this.sendWithRetry(run.puzzleId, move, key);
       if (seq !== this.openSeq) {
         return { sent: false, wrong: false, solved: false };
       }
       this.apply(answer.run);
-      const last = answer.run.lastMove;
-      const at = last?.at ? timestampDate(last.at).getTime() : 0;
-      const own = this.ownName();
-      const mine =
-        !!last && last.wrong && at !== before && (own === '' || last.characterName === own);
       return {
         sent: true,
-        wrong: !answer.run.solved && mine,
+        wrong: answer.wrong && !answer.run.solved,
         solved: answer.solvedByThisMove || answer.run.solved,
       };
     } catch (err) {

@@ -221,7 +221,7 @@ func (s *Service) MakePuzzleMove(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the puzzle after a move", err)
 	}
-	return connect.NewResponse(&playv1.MakePuzzleMoveResponse{Run: out, Replayed: res.replayed, SolvedByThisMove: res.solved}), nil
+	return connect.NewResponse(&playv1.MakePuzzleMoveResponse{Run: out, Replayed: res.replayed, SolvedByThisMove: res.solved, Wrong: res.wrong}), nil
 }
 
 // applyMove is the move's transaction. The session's row is locked first (so the
@@ -253,7 +253,7 @@ func (s *Service) applyMove(ctx context.Context, tx pgx.Tx, m authz.Membership, 
 		if done.UserID == nil || *done.UserID != m.UserID {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
 		}
-		res.replayed, res.solved = true, done.Solved
+		res.replayed, res.solved, res.wrong = true, done.Solved, done.Wrong
 		return s.namesOfRuns(ctx, tx, m.CampaignID, run)
 	case !errors.Is(err, pgx.ErrNoRows):
 		return nil, fmt.Errorf("find the move of this idempotency key: %w", err)

@@ -69,6 +69,17 @@ describe('DoorSheet', () => {
     expect(closed).toEqual([true]);
   });
 
+  it('paints the checked choice too: the door may have changed since the sheet opened', async () => {
+    const door: DoorSquare = { ...closedDoor };
+    const { press } = setup(door);
+    // A player opened the door meanwhile; the sheet still shows it closed.
+    (door as { state: number }).state = 1;
+    await press('Fechada');
+    expect(api.paints).toEqual([
+      { layer: MapLayer.DOORS, value: 2, squares: [{ col: 4, row: 2 }] },
+    ]);
+  });
+
   it('says why when the server refused, and keeps the old kind', async () => {
     const { el, press } = setup(closedDoor);
     api.paint = () => Promise.reject(new ConnectError('x', Code.PermissionDenied));
