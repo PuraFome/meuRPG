@@ -107,6 +107,12 @@ func (s *Service) runningEncounterOn(ctx context.Context, sessionID, mapID strin
 	return enc, enc.Status != statusEnded && enc.MapID != nil && *enc.MapID == mapID, nil
 }
 
+// errCombatBegan is the refusal of a firing outside a combat when a combat began on the
+// trap's map after the firing was read: the trap fires from the combat.
+func errCombatBegan() error {
+	return connect.NewError(connect.CodeFailedPrecondition, errors.New("a combat began on this map: fire the trap from the combat"))
+}
+
 // ---- Procurar armadilhas ----
 
 // SearchForTraps implements playv1connect.PlayServiceHandler.

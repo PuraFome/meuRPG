@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -1165,5 +1166,36 @@ func TestRemoveCombatantRefusesWhileItsDamageWaits(t *testing.T) {
 	}
 	if err := remove(); err != nil {
 		t.Errorf("RemoveCombatant after the damage was settled error = %v, want nil", err)
+	}
+}
+
+// TestTheLatestEncounterIsTheOpenOneWhateverTheClockSays: the session's latest combat is the
+// open one even when the clock that stamped it was behind the one of the combat that ended
+// (a clock that stepped back, or two combats within the same instant).
+func TestTheLatestEncounterIsTheOpenOneWhateverTheClockSays(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	clock := &movableClock{t: time.Now().Truncate(time.Microsecond)}
+	a.h.svc.now = clock.now
+	session := a.master.liveSession(t, a.campaignID).GetGameSession().GetId()
+	latest := func() string {
+		t.Helper()
+		enc, err := a.h.svc.queries.GetLatestEncounter(t.Context(), session)
+		if err != nil {
+			t.Fatalf("GetLatestEncounter() error = %v", err)
+		}
+		return enc.ID
+	}
+	first := a.threeAndAGoblin(t)
+	if got := latest(); got != first.GetId() {
+		t.Fatalf("latest encounter = %q, want the first, %q", got, first.GetId())
+	}
+	if _, err := a.master.combat.EndEncounter(t.Context(), connect.NewRequest(&playv1.EndEncounterRequest{CampaignId: a.campaignID, EncounterId: first.GetId(), IdempotencyKey: newKey()})); err != nil {
+		t.Fatalf("EndEncounter() error = %v", err)
+	}
+	clock.advance(-time.Hour)
+	second := a.threeAndAGoblin(t)
+	if got := latest(); got != second.GetId() {
+		t.Errorf("latest encounter = %q, want the open one, %q", got, second.GetId())
 	}
 }

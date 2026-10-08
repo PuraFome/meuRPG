@@ -137,6 +137,9 @@ func insertSceneEvent(ctx context.Context, c *combatTx, kind string, actor, key 
 	if err != nil {
 		return "", fmt.Errorf("encode the event payload: %w", err)
 	}
+	if ev, ok := payload.(actionEvent); ok && len(body) > eventPayloadBudget && ev.Trap != nil && len(ev.Trap.Caught) > 1 {
+		return insertFiringInParts(ctx, c, kind, actor, key, ev) // a firing that catches more creatures than one event holds
+	}
 	seq, err := c.q.NextSessionEventSeq(ctx, c.session.ID)
 	if err != nil {
 		return "", fmt.Errorf("next event number: %w", err)
