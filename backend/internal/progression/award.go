@@ -292,8 +292,9 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 	}
 	var award progressiondb.XpAward
 	var repeated, logged bool
+	var changedMaps []string // the maps whose treasures this award converted
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		award, repeated, logged = progressiondb.XpAward{}, false, false // a retry starts over
+		award, repeated, logged, changedMaps = progressiondb.XpAward{}, false, false, nil // a retry starts over
 		q := s.queries.WithTx(tx)
 		if done, err := q.GetXPAwardByKey(ctx, progressiondb.GetXPAwardByKeyParams{CampaignID: m.CampaignID, IdempotencyKey: g.key}); err == nil {
 			repeated = true // a request that raced with its own retry
@@ -410,6 +411,11 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 			if err := s.treasures.MarkConverted(ctx, tx, award.ID, g.treasureIDs); err != nil {
 				return err
 			}
+			for _, tr := range treasures {
+				if !slices.Contains(changedMaps, tr.MapID) {
+					changedMaps = append(changedMaps, tr.MapID)
+				}
+			}
 		}
 		payload := eventPayload{AwardID: award.ID, Mode: g.mode, TotalXP: total, XPEach: each, CharacterIDs: g.characters, EncounterID: g.encounterID, MilestoneID: g.milestoneID}
 		_, payload.LostXP = xpEach(total, len(g.characters))
@@ -428,6 +434,9 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 	})
 	if err != nil {
 		return progressiondb.XpAward{}, s.dbError(ctx, "give XP", err)
+	}
+	if !repeated && len(changedMaps) > 0 {
+		s.treasures.PublishChanged(m.CampaignID, changedMaps) // after the commit, once per map
 	}
 	if logged && !repeated {
 		name := "xp.awarded"

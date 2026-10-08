@@ -47,6 +47,7 @@ var pendingMayCall = map[string]string{
 	charactersv1connect.CharacterServiceCreateCharacterProcedure:      "create their one player character",
 	charactersv1connect.CharacterServiceGetCharacterProcedure:         "read their pending character",
 	charactersv1connect.CharacterServiceListCharactersProcedure:       "list their pending character",
+	charactersv1connect.CharacterServicePreviewCharacterProcedure:     "see the numbers of the character they are making, as the editor shows them",
 	charactersv1connect.CharacterServiceUpdateCharacterProcedure:      "edit their pending character's sheet",
 	charactersv1connect.CharacterServiceUpdateCharacterStoryProcedure: "edit their pending character's story",
 	campaignsv1connect.CampaignServiceGetTableRulesProcedure:          "read the table's rules, to make the character's ability scores the way the table allows (RN-24)",
