@@ -1,10 +1,13 @@
 import { ApplicationRef } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
+import { Code, ConnectError } from '@connectrpc/connect';
 
 import {
   type Milestone,
   MilestoneSchema,
+  XPBlockedReason,
+  XPBlockedSchema,
 } from '../../../../gen/meurpg/progression/v1/progression_pb';
 import { MilestonesStore } from '../../../core/progression/milestones-store';
 import { ProgressionClient } from '../../../core/progression/progression-client';
@@ -190,6 +193,30 @@ describe('PlannedMilestones (E8-14)', () => {
     await settle();
     expect(api.removeMilestone).toHaveBeenCalledWith('c1', 'b');
     expect(document.activeElement).toBe(el.querySelector('[data-id="c"][data-act="reach"]'));
+  });
+
+  it('says why a milestone reached once and undone stays, and stops offering to remove it', async () => {
+    const { el, settle } = await setup();
+    api.removeMilestone.mockRejectedValue(
+      new ConnectError('x', Code.FailedPrecondition, undefined, [
+        {
+          desc: XPBlockedSchema,
+          value: { reason: XPBlockedReason.XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY },
+        },
+      ]),
+    );
+    api.listMilestones.mockResolvedValue({ milestones: three });
+    btn(el, '[data-id="b"][data-act="remove"]').click();
+    await settle();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('app-milestone-ask button'))
+      .find((b) => b.textContent?.includes('Remover'))!
+      .click();
+    await settle();
+    expect(el.querySelector('app-milestone-ask')).toBeNull();
+    expect(el.querySelector('.problem')?.textContent).toContain('não pode ser removido');
+    expect(el.querySelector('[data-id="b"][data-act="remove"]')).toBeNull();
+    // Positive control: the others still offer it.
+    expect(el.querySelector('[data-id="a"][data-act="remove"]')).not.toBeNull();
   });
 
   it('edits the name in place of the row, filled, and saves it', async () => {

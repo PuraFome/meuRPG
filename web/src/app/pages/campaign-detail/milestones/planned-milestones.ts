@@ -12,12 +12,12 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { Milestone } from '../../../../gen/meurpg/progression/v1/progression_pb';
+import { XPBlockedReason, type Milestone } from '../../../../gen/meurpg/progression/v1/progression_pb';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { MILESTONES_LIMIT, plannedCount } from '../../../core/progression/milestones';
 import { MilestonesStore } from '../../../core/progression/milestones-store';
 import { ProgressionClient } from '../../../core/progression/progression-client';
-import { xpErrorMessage } from '../../../core/progression/xp-errors';
+import { xpBlocked, xpErrorMessage } from '../../../core/progression/xp-errors';
 import { MilestoneAsk } from './milestone-ask';
 import { MilestoneNameForm } from './milestone-name-form';
 
@@ -61,6 +61,9 @@ export class PlannedMilestones {
   protected readonly adding = signal(false);
   protected readonly editing = signal<string | null>(null);
   protected readonly removing = signal<string | null>(null);
+  /** Milestones the server refused to remove because they were reached once
+   * and undone: "Remover" is not offered again for them. */
+  protected readonly kept = signal<ReadonlySet<string>>(new Set());
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   /** What happened, said once in a polite status ("Marco adicionado."). */
@@ -189,6 +192,14 @@ export class PlannedMilestones {
       return true;
     } catch (err) {
       this.error.set(xpErrorMessage(err, what));
+      const removingId = this.removing();
+      if (
+        removingId !== null &&
+        xpBlocked(err)?.reason === XPBlockedReason.XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY
+      ) {
+        this.kept.update((ids) => new Set(ids).add(removingId));
+        this.removing.set(null);
+      }
       // The list may have moved under the master (another tab): read it again.
       void this.store.refresh();
       return false;

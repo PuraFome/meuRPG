@@ -54,6 +54,8 @@ export function xpBlockedMessage(blocked: XPBlocked): string {
       return 'Esse marco não está mais alcançado: ele foi desfeito. A lista foi atualizada.';
     case XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_ALREADY_MARKED:
       return 'Um dos personagens marcados já tem esse marco. A lista foi atualizada.';
+    case XPBlockedReason.XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY:
+      return 'Esse marco já foi alcançado e depois desfeito: o histórico de XP guarda isso e não é reescrito, então o marco não pode ser removido. Ele continua na lista de planejados.';
     case XPBlockedReason.XP_BLOCKED_REASON_TREASURE_NOT_FOUND_YET:
       return 'Um dos tesouros marcados não está mais como encontrado: o mestre desmarcou o achado. A lista foi atualizada; confira e tente de novo.';
     case XPBlockedReason.XP_BLOCKED_REASON_TREASURE_ALREADY_CONVERTED:
