@@ -1066,6 +1066,25 @@ service CombatService {
   //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
   rpc EndConcentration(EndConcentrationRequest) returns (EndConcentrationResponse);
 
+  // EndCombatEffect ends Ajuda on a combatant (the master only): the hit point bonus
+  // goes away, the maximum falls back, and the current hit points lose only what
+  // is above the new maximum (SRD 5.1: hit points never go above the maximum). The
+  // target never drops to 0 because of it, so a target woken by Ajuda stays awake. A
+  // player's character's bonus is kept in its vitals, an NPC's or a creature's on its
+  // combatant. Ajuda has no clock (the app does not count the 8 hours): it ends here, or at
+  // a long rest. Ending an Ajuda the combatant does not have changes nothing and is not an
+  // error. The same key with another request is `invalid_argument`.
+  //
+  // Every stream gets `encounter_changed` and, for a player's character,
+  // `vitals_changed`; the combat log gets an EFFECT_ENDED line.
+  //
+  // Errors:
+  //   - `not_found`: the combatant is not in this combat.
+  //   - `permission_denied`: the caller is not the master.
+  //   - `invalid_argument`: the effect is not AID.
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+  rpc EndCombatEffect(EndCombatEffectRequest) returns (EndCombatEffectResponse);
+
   // ListCombatLog returns the combat log ("Registro do combate"), latest
   // first, grouped by round. Every entry is structured: the app writes the
   // sentence. A player only gets the entries about what they see: nothing
@@ -1635,6 +1654,10 @@ message OpportunityOffer {
   // the server finding it on a move: there is no square (`left_col` and `left_row`
   // are 0 and mean nothing), and a hit never takes the mover back anywhere.
   bool by_hand = 10;
+  // The mover left the reach by a long jump, not a walk: the master's panel says
+  // "saltou" instead of "saiu". UNSPECIFIED for a walk (and for an offer made by
+  // hand). Sent to whoever receives the offer.
+  JumpKind jump = 11;
 }
 
 // OpportunityAttack is one melee attack of an offer's reactor.
@@ -1864,6 +1887,12 @@ message Combatant {
   // ("1/8"), for the stat block and "ND 1/8". A player never gets them (RN-20).
   string bestiary_creature_key = 65;
   string challenge_rating = 66;
+  // The hit points Ajuda adds to the maximum (5, 10, 15...; 0 without it). The
+  // maximum above (`hit_points_max`) already counts them, so the screen writes "31 de
+  // 43" with "+5 Ajuda" beside it. Only the master gets it, like the numbers it
+  // belongs to; for a creature, also its owner's player. A player's character's own
+  // numbers are CharacterVitals.hit_points_max_bonus.
+  int32 hit_points_max_bonus = 67;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -2107,6 +2136,16 @@ message GetMoveOptionsRequest {
   string campaign_id = 1;
   string encounter_id = 2;
   string combatant_id = 3;
+  // LONG describes the squares a long jump can land on instead of a walk, and
+  // `provokes_reactor_ids` warns about the opportunity attacks of that jump, as it does
+  // for a walk (a jump is movement and leaves a reach the same way). UNSPECIFIED is the
+  // walk. HIGH is refused (`invalid_argument`): a high jump changes no square, so it
+  // provokes nothing.
+  JumpKind jump = 4;
+  // For a LONG jump: the combatant ran 10 ft first (the 3 m of a running start in
+  // metric), so the distance is the whole Strength score and not half of it. Ignored
+  // without a jump.
+  bool jump_running_start = 5;
 }
 
 // GetMoveOptionsResponse is where the combatant can go in one straight move.
@@ -2298,6 +2337,15 @@ message DiceRoll {
   int32 total = 5;
   // True when the player rolled real dice and typed the sum (RN-18).
   bool physical = 6;
+  // A d20 of an ability check that a feature made count as another number
+  // (Talento Confiável: a 9 or lower counts as 10): the number it counted as.
+  // `faces` keeps what came up, `total` uses this one. Unset when the feature did not
+  // change the roll, even when the character has it: a 14 is never marked. For a roll
+  // with two d20 (disadvantage) the field belongs to the die that counted.
+  optional int32 treated_as = 7;
+  // The feature that did it, as a content key ("feature:reliable-talent"); its
+  // Portuguese name is in the content's names. Empty when `treated_as` is unset.
+  string treated_as_source = 8;
 }
 
 // CriticalDamageRule is what a critical hit does to the damage dice: the table's
@@ -2419,6 +2467,18 @@ message PendingDamage {
   // `bonus`, apart). 0 under any other rule. It is part of `roll.modifier` once
   // the damage is rolled, so `dice (faces) + modifier = total` still holds.
   int32 critical_max = 24;
+  // The weapon damage dice a feature adds to a critical hit of a melee attack, on top of
+  // `dice_count`: 1, 2 or 3 for a barbarian's Crítico Brutal (levels 9, 13 and 17), same
+  // faces as the attack's. 0 for any other hit: a ranged attack, a spell, a creature, an
+  // NPC and the master never have them. They are always rolled, whatever the critical rule
+  // is (`critical_max` never counts them), so a player with physical dice rolls
+  // `dice_count + extra_dice_count` dice and types their sum (RollDamageRequest.typed_sum).
+  // In the rolled `roll`, the faces of the `dice_count` dice come first and the extra
+  // ones last.
+  int32 extra_dice_count = 25;
+  // The feature's Portuguese name for those dice ("Crítico Brutal"); empty when
+  // `extra_dice_count` is 0.
+  string extra_dice_name_pt = 26;
 }
 
 // GetTurnOptionsRequest names a combatant.
@@ -2604,7 +2664,8 @@ message RollDamageRequest {
     // The sum of the physical dice, without the modifier and without
     // PendingDamage.critical_max: between the number of dice to roll
     // (PendingDamage.dice_count, doubled or not by the critical rule) and that
-    // number times their faces.
+    // number times their faces. With PendingDamage.extra_dice_count, those dice
+    // count in both numbers.
     int32 typed_sum = 6;
   }
 }
@@ -2870,10 +2931,10 @@ enum SpellEffectKind {
   // The targets gain temporary hit points, not healing (Vitalidade Falsa). The
   // roll is the pool_roll of the cast; `healed` of a target is what it gained.
   SPELL_EFFECT_KIND_TEMP_HP = 5;
-  // The targets' maximum and current hit points both rise (Ajuda); `healed` of
-  // a target is how much its maximum rose. A player's character gets the amount
-  // as temporary hit points (its maximum comes from the sheet), or as current
-  // hit points when it is at 0, which wakes it up.
+  // The targets' maximum and current hit points both rise (Ajuda): the bonus is kept
+  // on the target (`hit_points_max_bonus`), `healed` of a target is how much it rose,
+  // and a target at 0 hit points wakes up. Two Ajudas never add up: the stronger one
+  // stands (a weaker one on top of it changes nothing, `healed` is 0).
   SPELL_EFFECT_KIND_MAX_HP = 6;
 }
 
@@ -2922,22 +2983,26 @@ message SpellEffectResult {
   // master and the target's own player: on an NPC the amount would tell the
   // caster how many hit points it lacked.
   optional int32 healed = 6;
-  // For Aid (SPELL_EFFECT_KIND_MAX_HP): what the target got, which depends on who
-  // it is. Everyone gets it: it only says which of three public cases applied
-  // (an NPC or creature; a character standing; a character at 0 hit points).
+  // For Aid (SPELL_EFFECT_KIND_MAX_HP): what the target got. Everyone gets it: it
+  // only says which of two public cases applied (the target stood; it was at 0 hit
+  // points and woke up).
   SpellEffectGain gain = 7;
+  // For Aid: the target's hit points and maximum after it, so the result reads "PV 0 → 5
+  // de 45". Only the master and the target's own player, as `healed`.
+  optional int32 hit_points_after = 8;
+  optional int32 hit_points_max_after = 9;
 }
 
 // SpellEffectGain is what Aid gave one target.
 enum SpellEffectGain {
   SPELL_EFFECT_GAIN_UNSPECIFIED = 0;
-  // An NPC or a creature: its maximum and current hit points both rose.
+  // The target stood: its maximum and current hit points both rose.
   SPELL_EFFECT_GAIN_MAXIMUM = 1;
-  // A player's character above 0 hit points: the amount became temporary hit
-  // points, because the sheet's maximum has no place for a bonus.
+  // No longer produced: Ajuda gives no temporary hit points (they would not wake
+  // anyone, and the spell says the maximum rises).
   SPELL_EFFECT_GAIN_TEMPORARY = 2;
-  // A player's character at 0 hit points: the amount became current hit points,
-  // so the character wakes up.
+  // The target was at 0 hit points: the maximum rose too, and the current hit points
+  // woke it up (a player's character wakes with its death saves cleared).
   SPELL_EFFECT_GAIN_CURRENT = 3;
 }
 
@@ -3152,6 +3217,21 @@ message EndConcentrationResponse {
   Encounter encounter = 1;
 }
 
+// EndCombatEffectRequest ends a lasting effect on a combatant.
+message EndCombatEffectRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string combatant_id = 3;
+  // The effect to end. Only AID: Escudo ends by itself.
+  CombatEffect effect = 4;
+  string idempotency_key = 5;
+}
+
+// EndCombatEffectResponse returns the combat after the change.
+message EndCombatEffectResponse {
+  Encounter encounter = 1;
+}
+
 // ListCombatLogRequest names the combat.
 message ListCombatLogRequest {
   string campaign_id = 1;
@@ -3236,6 +3316,9 @@ enum CombatLogKind {
   // (2d8 + 2: 3, 4)"). Only the master gets the line, and it also comes from
   // before the combat begins (round 0).
   COMBAT_LOG_KIND_MONSTERS_ADDED = 24;
+  // A lasting effect on a combatant ended: `effect_end`. Escudo (it ends by itself, at
+  // the start of the caster's turn) and Ajuda (the master ended it).
+  COMBAT_LOG_KIND_EFFECT_ENDED = 25;
 }
 
 // WildShapeEndReason says why a druid's beast form ended.
@@ -3349,6 +3432,28 @@ message CombatLogEntry {
   CombatLogDoor door = 42;
   // MONSTERS_ADDED: the new monsters, in the order of their names.
   repeated CombatLogMonster monsters = 43;
+  // EFFECT_ENDED: which effect, on the actor.
+  CombatLogEffectEnd effect_end = 44;
+}
+
+// CombatLogEffectEnd is an effect that ended, in the combat log.
+message CombatLogEffectEnd {
+  CombatEffect effect = 1;
+  // AID: the hit points and the maximum before and after. Only the master (RN-20);
+  // zero for everyone else.
+  int32 hit_points_before = 2;
+  int32 hit_points_after = 3;
+  int32 hit_points_max_before = 4;
+  int32 hit_points_max_after = 5;
+}
+
+// CombatEffect is a lasting effect on a combatant that the table can end.
+enum CombatEffect {
+  COMBAT_EFFECT_UNSPECIFIED = 0;
+  // Escudo's +5 armor class. It ends by itself and has no action to end it.
+  COMBAT_EFFECT_SHIELD = 1;
+  // Ajuda's bonus to the maximum hit points.
+  COMBAT_EFFECT_AID = 2;
 }
 
 // CombatLogMonster is a monster of a MONSTERS_ADDED line, only the master's.
@@ -3474,6 +3579,10 @@ message CombatLogDamage {
   // maximum of the dice that came without rolling (already part of `roll.modifier`).
   CriticalDamageRule critical_rule = 13;
   int32 critical_max = 14;
+  // As in PendingDamage: the extra dice of a critical hit and the feature's name. The
+  // last `extra_dice_count` faces of `roll` are theirs.
+  int32 extra_dice_count = 15;
+  string extra_dice_name_pt = 16;
 }
 
 // GetCombatHighlightsRequest names the combat.
