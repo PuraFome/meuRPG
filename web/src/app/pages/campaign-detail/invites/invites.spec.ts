@@ -151,6 +151,14 @@ describe('CampaignInvites', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('1 a 20');
   });
 
+  it('tells the master the campaign has the most invites that work when the cap refuses', async () => {
+    fake.createInvite.mockRejectedValue(new ConnectError('full', Code.ResourceExhausted));
+    const { fixture } = await render();
+    await fixture.componentInstance['createInvite']();
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('50 convites valendo');
+  });
+
   it('revokes an invite and updates its status in place', async () => {
     fake.listInvitesResult = Promise.resolve({ invites: [invite('i1', InviteState.ACTIVE)] });
     fake.revokeInvite.mockResolvedValue({ invite: invite('i1', InviteState.REVOKED) });

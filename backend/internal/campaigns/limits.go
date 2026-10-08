@@ -53,3 +53,17 @@ func errCreationRefused(reason campaignsv1.CampaignCreationRefusedReason, maxCam
 	}
 	return err
 }
+
+// MaxActiveInvites is how many invites of one campaign may work at once: not
+// revoked, not expired and with uses left (RN-30). A table is a master and up
+// to six players, so fifty is far more than a table needs; the cap stops a
+// script from filling the invite table. Revoking an invite, or letting it
+// expire or run out, frees a place.
+const MaxActiveInvites = 50
+
+// errInviteCapReached is CreateInvite's refusal when the campaign already has
+// MaxActiveInvites invites that work.
+func errInviteCapReached() error {
+	return connect.NewError(connect.CodeResourceExhausted,
+		fmt.Errorf("the campaign already has %d invites that work, the most it may have; revoke one to create another", MaxActiveInvites))
+}

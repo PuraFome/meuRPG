@@ -1,12 +1,15 @@
 package campaigns
 
 import (
+	"context"
 	"crypto/rand"
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
@@ -133,5 +136,106 @@ func TestRN30_TheCreatorsAllowList(t *testing.T) {
 	open := newHarness(t)
 	if err := open.newUser("Qualquer").create(t); err != nil {
 		t.Fatalf("with no allow-list: %v", err)
+	}
+}
+
+// inviteErr creates an invite as u and returns the error.
+func (u *user) inviteErr(campaignID string, maxUses int32, expiresIn time.Duration) error {
+	_, err := u.api.CreateInvite(context.Background(), connect.NewRequest(&campaignsv1.CreateInviteRequest{
+		CampaignId: campaignID, MaxUses: maxUses, ExpiresIn: durationpb.New(expiresIn),
+	}))
+	return err
+}
+
+// RN-30: a campaign has at most MaxActiveInvites invites that still work. A
+// revoked, an expired or a used-up invite frees a place.
+func TestRN30_TheActiveInviteCapPerCampaign(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Mestre")
+	campaign := master.createCampaign(t, "Mirathel")
+	other := master.createCampaign(t, "Outra")
+	id := campaign.GetId()
+
+	_, singleUse := master.createInvite(t, id, 1, 0)
+	master.createInvite(t, id, 0, MinInviteLifetime)
+	revocable, _ := master.createInvite(t, id, 0, 0)
+	for range MaxActiveInvites - 3 {
+		master.createInvite(t, id, 0, 0)
+	}
+
+	// The cap is per campaign: the other one has room.
+	if err := master.inviteErr(other.GetId(), 0, DefaultInviteLifetime); err != nil {
+		t.Fatalf("an invite of another campaign: %v", err)
+	}
+	// The 50th passed above (createInvite fails the test otherwise); the 51st is refused.
+	wantCode(t, "the 51st invite", master.inviteErr(id, 0, DefaultInviteLifetime), connect.CodeResourceExhausted)
+
+	// A revoked invite frees one place, and only one.
+	if _, err := master.api.RevokeInvite(t.Context(), connect.NewRequest(&campaignsv1.RevokeInviteRequest{CampaignId: id, InviteId: revocable.GetId()})); err != nil {
+		t.Fatalf("RevokeInvite: %v", err)
+	}
+	if err := master.inviteErr(id, 0, DefaultInviteLifetime); err != nil {
+		t.Fatalf("after a revoke: %v", err)
+	}
+	wantCode(t, "full again after the revoke", master.inviteErr(id, 0, DefaultInviteLifetime), connect.CodeResourceExhausted)
+
+	// An invite that expired frees a place.
+	h.clock.Advance(MinInviteLifetime)
+	if err := master.inviteErr(id, 0, DefaultInviteLifetime); err != nil {
+		t.Fatalf("after an invite expired: %v", err)
+	}
+	wantCode(t, "full again after the expiry", master.inviteErr(id, 0, DefaultInviteLifetime), connect.CodeResourceExhausted)
+
+	// An invite with no uses left frees a place.
+	h.newUser("").join(t, singleUse)
+	if err := master.inviteErr(id, 0, DefaultInviteLifetime); err != nil {
+		t.Fatalf("after an invite was used up: %v", err)
+	}
+	wantCode(t, "full again after the last use", master.inviteErr(id, 0, DefaultInviteLifetime), connect.CodeResourceExhausted)
+}
+
+// RN-30: two invites created at once with one place left do not both pass.
+func TestRN30_TheLastInvitePlaceGoesToOneCreation(t *testing.T) {
+	t.Parallel()
+	dbtest.PoolSize(t, 14) // the racers must overlap: one connection would run them one by one
+	h := newHarness(t)
+	master := h.newUser("Mestre")
+	campaign := master.createCampaign(t, "Mirathel")
+	for range MaxActiveInvites - 1 {
+		master.createInvite(t, campaign.GetId(), 0, 0)
+	}
+
+	const racers = 6
+	errs := make([]error, racers)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for i := range racers {
+		wg.Go(func() {
+			<-start
+			errs[i] = master.inviteErr(campaign.GetId(), 0, DefaultInviteLifetime)
+		})
+	}
+	close(start)
+	wg.Wait()
+
+	created := 0
+	for i, err := range errs {
+		switch {
+		case err == nil:
+			created++
+		case connect.CodeOf(err) != connect.CodeResourceExhausted:
+			t.Errorf("racer %d: CreateInvite() error = %v", i, err)
+		}
+	}
+	if created != 1 {
+		t.Fatalf("%d of %d concurrent creations succeeded, want exactly 1", created, racers)
+	}
+	invites, err := master.api.ListInvites(t.Context(), connect.NewRequest(&campaignsv1.ListInvitesRequest{CampaignId: campaign.GetId()}))
+	if err != nil {
+		t.Fatalf("ListInvites: %v", err)
+	}
+	if n := len(invites.Msg.GetInvites()); n != MaxActiveInvites {
+		t.Fatalf("the campaign has %d invites, want %d", n, MaxActiveInvites)
 	}
 }
