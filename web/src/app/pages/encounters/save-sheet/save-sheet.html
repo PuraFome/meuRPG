@@ -50,7 +50,7 @@
           <legend class="mr-label">Ponto de batalha</legend>
           @for (p of points(); track p.id) {
             <label class="pt" [class.pt--on]="pointId() === p.id">
-              <input type="radio" name="save-point" [value]="p.id" [checked]="pointId() === p.id" (change)="pick(p.id)" />
+              <input type="radio" class="mr-check-input" name="save-point" [value]="p.id" [checked]="pointId() === p.id" (change)="pick(p.id)" />
               <span class="pt__t">
                 <span class="pt__n">{{ p.name }}</span>
                 <span class="pt__s">
