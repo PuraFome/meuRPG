@@ -186,6 +186,7 @@ describe('FogBase', () => {
       walls: [
         { col: 2, row: 2 },
         { col: 0, row: 0 },
+        { col: 3, row: 3 },
       ],
       terrain: [],
       half: [],

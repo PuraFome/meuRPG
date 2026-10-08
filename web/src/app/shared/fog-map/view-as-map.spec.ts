@@ -63,7 +63,7 @@ describe('ViewAsMapView: where "Voltar" goes', () => {
 
 describe('ViewAsMapView: what the master reads while looking as a character', () => {
   const goblin = mapToken('g', 'Goblin 2', { kind: CharacterKind.MINION });
-  const nanquim = mapToken('n', 'Nanquim', { kind: CharacterKind.UNSPECIFIED, creatureId: 'cr1' });
+  const nanquim = mapToken('n', 'Nanquim', { kind: CharacterKind.MINION, creatureId: 'cr1' });
 
   async function render(tokens = [mapToken('c-toren', 'Toren'), goblin, nanquim]) {
     const api = new FakeMapsClient();
