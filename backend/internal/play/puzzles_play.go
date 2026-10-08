@@ -319,6 +319,9 @@ func (s *Service) applyMove(ctx context.Context, tx pgx.Tx, m authz.Membership, 
 	}
 
 	last := &playv1.PuzzleLastMove{Move: mv, Changed: out.changed, Wrong: out.wrong, Step: out.step}
+	if d.solution.GetSequence() != nil {
+		last.PlaysAtMove = run.Plays // a later play of the sequence ends the note about a wrong bell
+	}
 	if out.wrong {
 		// "Ao errar": the trap fires in this transaction, with the move; the attempt is
 		// the move itself, marked wrong below, and so is its count toward the limits.
