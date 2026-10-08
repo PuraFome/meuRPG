@@ -233,3 +233,40 @@ func TestWildShapeEffectIsClosed(t *testing.T) {
 		}
 	}
 }
+
+// TestArchdruidWildShapeIsUnlimited: at level 20 the uses are unlimited (99, as
+// the barbarian's Rage), and two before.
+func TestArchdruidWildShapeIsUnlimited(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for level, want := range map[int]int{2: 2, 19: 2, 20: 99} {
+		if r, _ := resourceOf(Derive(salvia(level), c), "wild_shape"); r.Max != want {
+			t.Errorf("druid %d: Wild Shape Max = %d, want %d", level, r.Max, want)
+		}
+	}
+}
+
+// TestBeastSpellsKeepTheDruidsSpellsInBeastForm: from level 18 the druid keeps
+// its spellcasting in a beast shape; before, the beast form has none.
+func TestBeastSpellsKeepTheDruidsSpellsInBeastForm(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for _, level := range []int{17, 18} {
+		b := salvia(level)
+		b.Cantrips = []string{"spell:produce-flame"}
+		own := Derive(b, c)
+		if own.Spellcasting == nil || len(own.Spells) == 0 {
+			t.Fatalf("druid %d has no spells of its own to keep: %+v", level, own.Spells)
+		}
+		if got, want := c.CastsInBeastForm(own), level >= 18; got != want {
+			t.Errorf("druid %d: CastsInBeastForm = %v, want %v", level, got, want)
+		}
+		d, err := c.WildShapeDerived(own, "monster:wolf")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if has, want := d.Spellcasting != nil && len(d.Spells) > 0, level >= 18; has != want {
+			t.Errorf("druid %d in wolf form keeps spellcasting = %v, want %v", level, has, want)
+		}
+	}
+}

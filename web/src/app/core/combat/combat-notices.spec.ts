@@ -167,6 +167,16 @@ describe('the Wild Shape line of the turn', () => {
     expect(line?.reason).toBe('');
   });
 
+  it('says the uses are unlimited for an Archdruid (a maximum of 99)', () => {
+    const line = wildActionLine(feature({ enabled: true, usesLeft: 99 }), false, {
+      ...resource,
+      total: 99,
+    });
+    expect(plain(line?.detail ?? '')).toBe(
+      'Vire uma fera · usos ilimitados · volta no descanso curto ou longo',
+    );
+  });
+
   it('maps the server\'s reasons to "Sem usos" and "Sem ação disponível"', () => {
     expect(
       wildActionLine(

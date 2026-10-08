@@ -147,3 +147,182 @@ func TestConditions(t *testing.T) {
 		t.Errorf("Conditions() = %v, want the 15 SRD conditions from blinded", got)
 	}
 }
+
+// resourceOf is the derived resource with the key, if the character has one.
+func resourceOf(d Derived, key string) (Resource, bool) {
+	for _, r := range d.Resources {
+		if r.Key == key {
+			return r, true
+		}
+	}
+	return Resource{}, false
+}
+
+// TestFighterExtraAttackAtLevels11And20: the fighter makes 2 attacks from level
+// 5, 3 from 11 and 4 from 20, and a multiclass character takes the highest count
+// of its classes.
+func TestFighterExtraAttackAtLevels11And20(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for level, want := range map[int]int{4: 1, 5: 2, 10: 2, 11: 3, 19: 3, 20: 4} {
+		if got := Derive(standard("class:fighter", level), c).AttacksPerAction; got != want {
+			t.Errorf("fighter %d: AttacksPerAction = %d, want %d", level, got, want)
+		}
+	}
+	b := standard("class:fighter", 11)
+	b.Classes = []ClassLevel{{Class: "class:fighter", Level: 11}, {Class: "class:barbarian", Level: 5}}
+	if got := Derive(b, c).AttacksPerAction; got != 3 {
+		t.Errorf("fighter 11 / barbarian 5: AttacksPerAction = %d, want 3", got)
+	}
+}
+
+// TestIndomitableUsesGrowWithTheFighterLevel: one use at level 9, two at 13 and
+// three at 17, back on a long rest, and nothing before level 9.
+func TestIndomitableUsesGrowWithTheFighterLevel(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for level, want := range map[int]int{8: 0, 9: 1, 12: 1, 13: 2, 16: 2, 17: 3, 20: 3} {
+		r, ok := resourceOf(Derive(standard("class:fighter", level), c), "indomitable")
+		if want == 0 {
+			if ok {
+				t.Errorf("fighter %d: Indomitable is tracked too early: %+v", level, r)
+			}
+			continue
+		}
+		if !ok || r.Max != want || r.Recharge != RechargeLongRest {
+			t.Errorf("fighter %d: Indomitable = %+v (found %v), want %d uses on a long rest", level, r, ok, want)
+		}
+	}
+}
+
+// TestFontOfInspirationRechargesBardicInspirationOnAShortRest: the uses come back
+// on a long rest only until bard level 5, and on a short rest too from then on.
+func TestFontOfInspirationRechargesBardicInspirationOnAShortRest(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for level, want := range map[int]string{1: RechargeLongRest, 4: RechargeLongRest, 5: RechargeShortRest, 20: RechargeShortRest} {
+		r, ok := resourceOf(Derive(standard("class:bard", level), c), "bardic_inspiration")
+		if !ok || r.Recharge != want {
+			t.Errorf("bard %d: Bardic Inspiration = %+v (found %v), want recharge %q", level, r, ok, want)
+		}
+	}
+}
+
+// TestLimitedUseFeaturesHaveACounter: the features the SRD limits to a number of
+// uses between rests are resources, with their recharge.
+func TestLimitedUseFeaturesHaveACounter(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for _, tt := range []struct {
+		name, class, subclass string
+		level                 int
+		resource              string
+		max                   int
+		recharge              string
+	}{
+		{"wholeness of body", "class:monk", "subclass:open-hand", 6, "wholeness_of_body", 1, RechargeLongRest},
+		{"cleansing touch", "class:paladin", "", 14, "cleansing_touch", 1, RechargeLongRest},
+		{"stroke of luck", "class:rogue", "", 20, "stroke_of_luck", 1, RechargeShortRest},
+		{"dark one's own luck", "class:warlock", "subclass:fiend", 6, "dark_ones_own_luck", 1, RechargeShortRest},
+		{"hurl through hell", "class:warlock", "subclass:fiend", 14, "hurl_through_hell", 1, RechargeLongRest},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			b := standard(tt.class, tt.level)
+			b.Classes[0].Subclass = tt.subclass
+			r, ok := resourceOf(Derive(b, c), tt.resource)
+			if !ok || r.Max != tt.max || r.Recharge != tt.recharge {
+				t.Errorf("%s = %+v (found %v), want %d use(s), %s", tt.name, r, ok, tt.max, tt.recharge)
+			}
+		})
+	}
+	// Cleansing Touch has as many uses as the Charisma modifier, at least one.
+	b := standard("class:paladin", 14)
+	b.BaseScores[CHA] = 17 // human +1 = 18 -> +4
+	if r, _ := resourceOf(Derive(b, c), "cleansing_touch"); r.Max != 4 {
+		t.Errorf("paladin 14, Cha 18: Cleansing Touch Max = %d, want 4", r.Max)
+	}
+}
+
+// TestUnlimitedUsesAreStoredAs99: a barbarian's Rage at level 20 is a counter of
+// 99 uses, which the screens show as "ilimitado".
+func TestUnlimitedUsesAreStoredAs99(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for _, tt := range []struct {
+		class, resource string
+		level, want     int
+	}{
+		{"class:barbarian", "rage", 19, 6},
+		{"class:barbarian", "rage", 20, 99},
+		{"class:druid", "wild_shape", 19, 2},
+		{"class:druid", "wild_shape", 20, 99},
+	} {
+		if r, _ := resourceOf(Derive(standard(tt.class, tt.level), c), tt.resource); r.Max != tt.want {
+			t.Errorf("%s %d: %s Max = %d, want %d", tt.class, tt.level, tt.resource, r.Max, tt.want)
+		}
+	}
+}
+
+// TestChannelDivinityIsOnePoolWithTheLargerMax: a second class that grants
+// Channel Divinity gives new effects but no extra use, so the pool has the
+// larger Max whichever class is listed first.
+func TestChannelDivinityIsOnePoolWithTheLargerMax(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for _, order := range [][]ClassLevel{
+		{{Class: "class:paladin", Level: 3}, {Class: "class:cleric", Level: 6}},
+		{{Class: "class:cleric", Level: 6}, {Class: "class:paladin", Level: 3}},
+	} {
+		b := standard("class:paladin", 3)
+		b.Classes = order
+		b.BaseScores[WIS], b.BaseScores[STR], b.BaseScores[CHA] = 14, 14, 13
+		n := 0
+		var pool Resource
+		for _, r := range Derive(b, c).Resources {
+			if r.Key == "channel_divinity" {
+				n++
+				pool = r
+			}
+		}
+		if n != 1 || pool.Max != 2 {
+			t.Errorf("%v: %d channel_divinity pool(s) with Max %d, want one with 2 uses (cleric 6)", order, n, pool.Max)
+		}
+	}
+}
+
+// TestResourceAndScoreEffectsAreClosed: the loader refuses a recharge that
+// changes by level without both halves or with an unknown recharge, a cap on
+// anything but a score or with a normal ceiling, a score modifier that is not an
+// add, and a beast_spells effect that carries anything.
+func TestResourceAndScoreEffectsAreClosed(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t).c
+	for name, e := range map[string]*Effect{
+		"recharge_if without recharge_then":  {Type: "resource", Resource: "x", Max: "1", Recharge: "long_rest", RechargeIf: "level() >= 5"},
+		"recharge_then without recharge_if":  {Type: "resource", Resource: "x", Max: "1", Recharge: "long_rest", RechargeThen: "short_rest"},
+		"an unknown recharge_then":           {Type: "resource", Resource: "x", Max: "1", Recharge: "long_rest", RechargeIf: "level() >= 5", RechargeThen: "never"},
+		"a recharge_if that is not a Bool":   {Type: "resource", Resource: "x", Max: "1", Recharge: "long_rest", RechargeIf: "level()", RechargeThen: "short_rest"},
+		"a cap on an armor class":            {Type: "modifier", Target: "ac", Mode: "add", Value: "1", Cap: 24},
+		"a score modifier without a cap":     {Type: "modifier", Target: "score.str", Mode: "add", Value: "4"},
+		"a cap that is the normal ceiling":   {Type: "modifier", Target: "score.str", Mode: "add", Value: "4", Cap: 20},
+		"a score modifier that sets":         {Type: "modifier", Target: "score.str", Mode: "set", Value: "4", Cap: 24},
+		"a score of an unknown ability":      {Type: "modifier", Target: "score.luck", Mode: "add", Value: "4", Cap: 24},
+		"beast_spells with a resource":       {Type: "beast_spells", Resource: "x"},
+		"beast_spells with a challenge rate": {Type: "beast_spells", MaxCR: "1"},
+	} {
+		if err := c.compileEffect("feature:x", e); err == nil {
+			t.Errorf("%s: the loader accepted it", name)
+		}
+	}
+	for name, e := range map[string]*Effect{
+		"a recharge by level": {Type: "resource", Resource: "x", Max: "1", Recharge: "long_rest", RechargeIf: "level() >= 5", RechargeThen: "short_rest"},
+		"a score with a cap":  {Type: "modifier", Target: "score.str", Mode: "add", Value: "4", Cap: 24},
+		"a save for all":      {Type: "modifier", Target: "save.all", Mode: "add", Value: "1"},
+		"beast spells":        {Type: "beast_spells"},
+	} {
+		if err := c.compileEffect("feature:x", e); err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+}

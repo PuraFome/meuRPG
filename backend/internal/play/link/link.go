@@ -63,6 +63,9 @@ type Character struct {
 	// CombatOnly marks the NPC the app keeps for a creature's monsters (RN-29):
 	// never a participant, a stage NPC or a token.
 	CombatOnly bool
+	// CastsInBeastForm says the character keeps its spells in a beast shape
+	// (a druid of level 18, Beast Spells); every other character has none there.
+	CastsInBeastForm bool
 	// MonsterKey and ChallengeRating are the SRD creature an NPC was made from
 	// ("monster:bandit") and its ND ("1/8"), "" for an NPC the master typed: the
 	// master's view of a monster.
