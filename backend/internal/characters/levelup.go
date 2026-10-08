@@ -213,17 +213,19 @@ func (s *Service) newLevelUpTarget(ctx context.Context, tx pgx.Tx, m authz.Membe
 	return levelUpTarget{row: row, full: full, build: build, classKey: classKey, idx: idx, content: content, rules: tableRules}, nil
 }
 
-// readLevelUpTarget is newLevelUpTarget for a read: the row is not locked.
-func (s *Service) readLevelUpTarget(ctx context.Context, m authz.Membership, characterID, classKey string) (levelUpTarget, error) {
+// readLevelUpTarget is newLevelUpTarget for a read: the row is not locked. It
+// reads through tx, a read transaction of the caller, so the row, the content and
+// the level-up reason are one moment.
+func (s *Service) readLevelUpTarget(ctx context.Context, tx pgx.Tx, m authz.Membership, characterID, classKey string) (levelUpTarget, error) {
 	id, ok := parseUUID(characterID)
 	if !ok {
 		return levelUpTarget{}, errCharacterNotFound()
 	}
-	row, err := s.queries.GetCharacter(ctx, charactersdb.GetCharacterParams{CampaignID: m.CampaignID, ID: id})
+	row, err := s.queriesIn(tx).GetCharacter(ctx, charactersdb.GetCharacterParams{CampaignID: m.CampaignID, ID: id})
 	if err != nil {
-		return levelUpTarget{}, s.dbError(ctx, "get a character", err)
+		return levelUpTarget{}, wrap("get a character", err)
 	}
-	return s.newLevelUpTarget(ctx, nil, m, row, classKey)
+	return s.newLevelUpTarget(ctx, tx, m, row, classKey)
 }
 
 // diceRule is what the campaign's dice setting makes the caller do.
@@ -247,13 +249,38 @@ func (s *Service) GetLevelUpOptions(
 	if err != nil {
 		return nil, err
 	}
-	t, err := s.readLevelUpTarget(ctx, m, req.Msg.GetCharacterId(), req.Msg.GetClassKey())
+	// The character, the dice setting and the kept roll are one moment: a level-up
+	// that commits between them would offer the level just taken, with its roll gone.
+	var (
+		t         levelUpTarget
+		offer     rules.LevelUpOffer
+		diceRule  charactersv1.LevelUpDiceRule
+		roll      charactersdb.GetLevelUpRollRow
+		rollFound bool
+	)
+	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		if t, err = s.readLevelUpTarget(ctx, tx, m, req.Msg.GetCharacterId(), req.Msg.GetClassKey()); err != nil {
+			return err
+		}
+		if offer, err = rules.LevelUpOptions(t.build, t.classKey, t.content); err != nil {
+			return levelUpRulesError(err)
+		}
+		if diceRule, err = s.diceRule(ctx, tx, m); err != nil {
+			return err
+		}
+		roll, err = s.queries.WithTx(tx).GetLevelUpRoll(ctx, charactersdb.GetLevelUpRollParams{CharacterID: t.row.ID, ToLevel: i32(offer.TotalTo)})
+		rollFound = err == nil
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return wrap("read the kept roll", err)
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, s.dbError(ctx, "read the level up options", err)
-	}
-	offer, err := rules.LevelUpOptions(t.build, t.classKey, t.content)
-	if err != nil {
-		return nil, levelUpRulesError(err)
 	}
 	out := levelUpOptionsToProto(offer)
 	if !isMaster(m) {
@@ -276,16 +303,10 @@ func (s *Service) GetLevelUpOptions(
 			}
 		}
 	}
-	if out.DiceRule, err = s.diceRule(ctx, nil, m); err != nil {
-		return nil, s.dbError(ctx, "read the dice setting", err)
-	}
+	out.DiceRule = diceRule
 	out.HitPointsRule = hitPointsRuleToProto(t.rules.HitPoints)
-	roll, err := s.queries.GetLevelUpRoll(ctx, charactersdb.GetLevelUpRollParams{CharacterID: t.row.ID, ToLevel: i32(offer.TotalTo)})
-	switch {
-	case err == nil:
+	if rollFound {
 		out.KeptHitPointRoll, out.KeptHitPointRollClassKey = roll.Value, roll.ClassKey
-	case !errors.Is(err, pgx.ErrNoRows):
-		return nil, s.dbError(ctx, "read the kept roll", err)
 	}
 	return connect.NewResponse(&charactersv1.GetLevelUpOptionsResponse{Options: out}), nil
 }
@@ -309,11 +330,20 @@ func (s *Service) PreviewLevelUp(
 		return nil, err
 	}
 	choices := req.Msg.GetChoices()
-	t, err := s.readLevelUpTarget(ctx, m, req.Msg.GetCharacterId(), choices.GetClassKey())
-	if err != nil {
-		return nil, s.dbError(ctx, "preview a level up", err)
-	}
-	plan, err := s.planLevelUp(ctx, m, t, choices)
+	// The character and the roll the plan keeps are one moment: a level-up that
+	// commits between them would refuse a roll that was just used.
+	var (
+		t    levelUpTarget
+		plan levelUpPlan
+	)
+	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		if t, err = s.readLevelUpTarget(ctx, tx, m, req.Msg.GetCharacterId(), choices.GetClassKey()); err != nil {
+			return err
+		}
+		plan, err = s.planLevelUpIn(ctx, tx, s.queries.WithTx(tx), m, t, choices)
+		return err
+	})
 	if err != nil {
 		return nil, s.dbError(ctx, "preview a level up", err)
 	}
@@ -670,11 +700,6 @@ type levelUpPlan struct {
 	record *charactersv1.LevelUpChoices
 	// toLevel is the character's total level after the level-up.
 	toLevel int
-}
-
-// planLevelUp is planLevelUpIn outside a transaction.
-func (s *Service) planLevelUp(ctx context.Context, m authz.Membership, t levelUpTarget, choices *charactersv1.LevelUpChoices) (levelUpPlan, error) {
-	return s.planLevelUpIn(ctx, nil, s.queries, m, t, choices)
 }
 
 // planLevelUpIn builds the new sheet from the stored one and the choices, and

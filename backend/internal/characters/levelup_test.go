@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -12,10 +13,13 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 )
 
@@ -949,5 +953,102 @@ func TestMR040_TheMastersEditMovesTheCurrentHitPointsWithTheMaximum(t *testing.T
 	edit(15)
 	if got, _ := tb.storedHitPoints(id); got != nil {
 		t.Errorf("never set: current = %v, want unset", deref32(got))
+	}
+}
+
+// afterQuery runs hook once, right after the first statement whose text
+// contains match finishes. The statements the hook itself makes pass.
+type afterQuery struct {
+	match string
+	hook  func()
+	fired atomic.Bool
+}
+
+type queryTextKey struct{}
+
+func (*afterQuery) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
+	return context.WithValue(ctx, queryTextKey{}, data.SQL)
+}
+
+func (a *afterQuery) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, _ pgx.TraceQueryEndData) {
+	if sql, _ := ctx.Value(queryTextKey{}).(string); strings.Contains(sql, a.match) && a.fired.CompareAndSwap(false, true) {
+		// From a goroutine of its own: a call that reaches this service again, or a
+		// write through another pool, from inside a transaction's closure would look
+		// like a nested acquisition.
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			a.hook()
+		}()
+		<-done
+	}
+}
+
+// hookAfterQuery makes the service read through a pool of its own whose
+// statements run hook once, after the first one that contains match: what the
+// hook commits lands exactly between two statements of a read.
+func (h *harness) hookAfterQuery(match string, hook func()) {
+	h.t.Helper()
+	pool, err := db.NewPoolWith(h.t.Context(), h.pool.Config().ConnString(), func(cfg *pgxpool.Config) {
+		cfg.MaxConns = 2
+		cfg.ConnConfig.Tracer = &afterQuery{match: match, hook: hook}
+	})
+	if err != nil {
+		h.t.Fatalf("NewPoolWith() error = %v", err)
+	}
+	h.t.Cleanup(pool.Close)
+	h.svc.pool, h.svc.queries = pool, charactersdb.New(pool)
+}
+
+// The level-up options are one moment: a player who levels up while the page
+// is being read never makes it offer the level just taken with its kept hit
+// point roll gone.
+func TestMR040_TheOptionsAreOneSnapshotWhileThePlayerLevelsUp(t *testing.T) {
+	t.Parallel()
+	tb := newLevelUpTable(t, 2700, 6)
+	if _, err := tb.roll(tb.owner, tb.pc); err != nil {
+		t.Fatalf("RollLevelUpHitPoints() error = %v", err)
+	}
+	ch := pensantusLevelUp()
+	ch.HitPoints = &charactersv1.LevelUpHitPoints{Method: charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_ROLLED_IN_APP}
+	tb.h.hookAfterQuery("FROM characters", func() {
+		if _, err := tb.levelUp(tb.owner, tb.pc, ch); err != nil {
+			t.Errorf("LevelUpCharacter() from the hook error = %v", err)
+		}
+	})
+	o, err := tb.options(tb.owner, tb.pc)
+	// As it was: the level and the roll the player had. As it became: no level left to take.
+	if err == nil && o.GetKeptHitPointRoll() != 6 {
+		t.Errorf("GetLevelUpOptions(): level %d to %d with the kept roll %d; want the options as they were, with the roll 6, or a refusal", o.GetFromLevel(), o.GetToLevel(), o.GetKeptHitPointRoll())
+	}
+
+	// Positive control: the hook did level the character up.
+	if got := tb.owner.get(t, tb.campaign, tb.pc.GetId()); got.GetDerived().GetTotalLevel() != 4 {
+		t.Errorf("level after the hook = %d, want 4", got.GetDerived().GetTotalLevel())
+	}
+}
+
+// The same for the preview: the roll the plan keeps and the character come
+// from one moment, so a level-up that commits between them never makes the
+// preview refuse a roll as missing.
+func TestMR040_ThePreviewIsOneSnapshotWhileThePlayerLevelsUp(t *testing.T) {
+	t.Parallel()
+	tb := newLevelUpTable(t, 2700, 6)
+	if _, err := tb.roll(tb.owner, tb.pc); err != nil {
+		t.Fatalf("RollLevelUpHitPoints() error = %v", err)
+	}
+	ch := pensantusLevelUp()
+	ch.HitPoints = &charactersv1.LevelUpHitPoints{Method: charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_ROLLED_IN_APP}
+	tb.h.hookAfterQuery("FROM characters", func() {
+		if _, err := tb.levelUp(tb.owner, tb.pc, ch); err != nil {
+			t.Errorf("LevelUpCharacter() from the hook error = %v", err)
+		}
+	})
+	p, err := tb.preview(tb.owner, tb.pc, ch)
+	if err == nil && p.GetRefusal() != nil {
+		t.Errorf("PreviewLevelUp() refused %v; want the preview as it was, with the roll kept, or an error", p.GetRefusal())
+	}
+	if got := tb.owner.get(t, tb.campaign, tb.pc.GetId()); got.GetDerived().GetTotalLevel() != 4 {
+		t.Errorf("level after the hook = %d, want 4", got.GetDerived().GetTotalLevel())
 	}
 }
