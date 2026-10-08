@@ -19,7 +19,6 @@ func (w *world) hiddenOnlyEvents(act func()) map[string][]string {
 	// a visible marker, so the end of the hidden part is known by the stream's own order
 	must(w.master.maps.SetMapRevealed(w.t.Context(), rq(&mapsv1.SetMapRevealedRequest{CampaignId: w.campaign, MapId: w.map2, Revealed: true})))
 	must(w.master.play.SetCurrentMap(w.t.Context(), rq(&playv1.SetCurrentMapRequest{CampaignId: w.campaign, MapId: w.map2})))
-	time.Sleep(300 * time.Millisecond)
 	must(w.master.play.EndGameSession(w.t.Context(), rq(&playv1.EndGameSessionRequest{CampaignId: w.campaign, GameSessionId: w.session})))
 	out := map[string][]string{}
 	for p, sw := range watchers {

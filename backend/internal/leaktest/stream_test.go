@@ -138,7 +138,6 @@ func checkStream(t *testing.T, w *world, got *answers) {
 		t.Run("after the combat: "+r.name(), func(t *testing.T) { w.runRead(t, r, got) })
 	}
 	step("the end of the session", func() {
-		time.Sleep(300 * time.Millisecond) // the streams drain; a heartbeat or two go by
 		must(w.master.play.EndGameSession(t.Context(), rq(&playv1.EndGameSessionRequest{CampaignId: w.campaign, GameSessionId: w.session})))
 	})
 
