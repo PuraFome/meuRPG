@@ -1002,6 +1002,11 @@ func (s *Service) RollDamage(
 			if g.Half {
 				amount = clamp32(combat.HalfDamage(total), 0, math.MaxInt32)
 			}
+			if !g.Healing {
+				if amount, err = s.afterResistance(ctx, c, tgt, g.DamageType, amount); err != nil {
+					return nil, err
+				}
+			}
 			hit, vit, err := s.landDamage(ctx, c, g, tgt, amount)
 			if err != nil {
 				return nil, err
@@ -1080,6 +1085,23 @@ func (s *Service) RollDamage(
 		}
 	}
 	return connect.NewResponse(resp), nil
+}
+
+// afterResistance is the damage that lands on the target once its stat block's
+// resistances, vulnerabilities and immunities to the damage type are applied, after
+// the bonuses and the half of a saving throw (SRD 5.1). Only a target that takes
+// the damage at once and has a stat block is adjusted: an NPC made from a creature
+// and a creature. A player's character keeps its Rage and other resistances as
+// notes, for the master to apply when he sets the amount (RN-02).
+func (s *Service) afterResistance(ctx context.Context, c *combatTx, target playdb.Combatant, damageType string, amount int32) (int32, error) {
+	if !holdsHP(target) || damageType == "" || amount <= 0 {
+		return amount, nil
+	}
+	mods, err := s.roster.DamageModifiers(ctx, c.tx, c.session.CampaignID, target.CharacterID, deref(target.MonsterKey))
+	if err != nil {
+		return 0, err
+	}
+	return clamp32(combat.AdjustForType(int(amount), damageType, mods), 0, math.MaxInt32), nil
 }
 
 // landDamage puts a rolled damage or heal on its target, as far as the target's

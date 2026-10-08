@@ -614,3 +614,29 @@ func TestStableCharacterStartsTheCountsOverAfterAHit(t *testing.T) {
 		t.Errorf("first hit on a stable character = %+v, want one failure and still alive", hit)
 	}
 }
+
+func TestAdjustForType(t *testing.T) {
+	skeleton := TypeModifiers{Vulnerable: []string{"damage-type:bludgeoning"}, Immune: []string{"damage-type:poison"}}
+	fireproof := TypeModifiers{Resistant: []string{"damage-type:fire"}, Vulnerable: []string{"damage-type:fire"}}
+	for _, tt := range []struct {
+		name   string
+		amount int
+		typ    string
+		m      TypeModifiers
+		want   int
+	}{
+		{"vulnerability doubles", 6, "damage-type:bludgeoning", skeleton, 12},
+		{"immunity is none", 9, "damage-type:poison", skeleton, 0},
+		{"another type is untouched", 7, "damage-type:slashing", skeleton, 7},
+		{"resistance halves down", 7, "damage-type:fire", TypeModifiers{Resistant: []string{"damage-type:fire"}}, 3},
+		{"one is half of nothing", 1, "damage-type:fire", TypeModifiers{Resistant: []string{"damage-type:fire"}}, 0},
+		{"resistant and vulnerable: halve, then double", 7, "damage-type:fire", fireproof, 6},
+		{"a typeless damage is untouched", 5, "", skeleton, 5},
+		{"nothing stays nothing", 0, "damage-type:bludgeoning", skeleton, 0},
+		{"no modifiers", 8, "damage-type:fire", TypeModifiers{}, 8},
+	} {
+		if got := AdjustForType(tt.amount, tt.typ, tt.m); got != tt.want {
+			t.Errorf("%s: AdjustForType(%d, %q) = %d, want %d", tt.name, tt.amount, tt.typ, got, tt.want)
+		}
+	}
+}
