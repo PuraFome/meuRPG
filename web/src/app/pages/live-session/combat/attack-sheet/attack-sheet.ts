@@ -10,7 +10,7 @@ import {
   type PendingDamage,
   type TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import type { Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import type { Attack, BonusAttackRule } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import {
   type AttackStage,
@@ -39,7 +39,12 @@ import { isTheatre } from '../../../../core/combat/theatre';
 import { metersText } from '../../../../core/units';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
-import { attackDetail, attackName, isCantrip } from '../../../../core/combat/combat-options';
+import {
+  attackDetail,
+  attackName,
+  bonusSpentText,
+  isCantrip,
+} from '../../../../core/combat/combat-options';
 import { article } from '../../../../core/combat/combat-log';
 import { joinDots, tight } from '../../../../core/format/text';
 import { combatantInitial, isPlayer, stateWord } from '../../../../core/combat/combat-view';
@@ -70,6 +75,11 @@ export interface AttackSheetData {
    * one, and how many it makes. */
   readonly attacksLeft?: number;
   readonly attacksPerAction?: number;
+  /** A bonus action attack (off hand, Artes Marciais, Rajada de Golpes): it
+   * spends the bonus action, not the action; a Rajada de Golpes strike counts
+   * down the `bonusAttacksLeft` the options had. */
+  readonly bonusRule?: BonusAttackRule;
+  readonly bonusAttacksLeft?: number;
   /** The answer to an opportunity offer (E9-13): the target is the mover (so the
    * sheet starts at "Rolar"), the reach is not checked (the attack comes right
    * before it leaves), and the roll names the offer. `byMaster` when the master
@@ -247,6 +257,10 @@ export class AttackSheet {
     }
     if (this.data.asReaction) {
       return 'Sua reação foi usada.';
+    }
+    const bonus = bonusSpentText(this.data.bonusRule, this.data.bonusAttacksLeft);
+    if (bonus) {
+      return bonus;
     }
     const left = (this.data.attacksLeft ?? 1) - 1;
     if (!this.cantrip && (this.data.attacksPerAction ?? 1) > 1 && left > 0) {

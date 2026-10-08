@@ -1436,7 +1436,8 @@ export class CombatView {
     const e = this.encounter();
     const own = who ?? this.own();
     const opts = who ? creatureOpts : this.options();
-    const attack = opts?.options?.attacks.find((a) => a.attack?.key === key)?.attack;
+    const option = opts?.options?.attacks.find((a) => a.attack?.key === key);
+    const attack = option?.attack;
     if (!e || !own || !attack) {
       return;
     }
@@ -1451,6 +1452,8 @@ export class CombatView {
       preference: this.dicePreference(),
       state: this.state(),
       asReaction,
+      bonusRule: option?.bonusRule,
+      bonusAttacksLeft: option?.bonusAttacksLeft,
       attacksLeft: who ? (opts?.options?.economy?.attacksLeft ?? 0) : this.attacksLeft(),
       attacksPerAction: who
         ? (opts?.options?.economy?.attacksPerAction ?? 1)

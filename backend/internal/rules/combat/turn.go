@@ -3,6 +3,7 @@ package combat
 import (
 	"cmp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -26,6 +27,11 @@ type TurnState struct {
 	// cast with a bonus action: the first makes a bonus action spell illegal and
 	// the second every spell but that cantrip (SRD 5.1, Casting Time).
 	SpellCast, BonusSpellCast bool
+	// LastAttackKey is the attack the Attack action made last this turn ("" if
+	// none), and FlurryLeft how many unarmed strikes of Flurry of Blows are
+	// left: what the bonus action attack rules read.
+	LastAttackKey string
+	FlurryLeft    int
 }
 
 // actionSurgeResource is the resource of Action Surge.
@@ -63,6 +69,9 @@ const (
 	// ReasonTooLong: the casting time is a minute or more, too long for a
 	// fight.
 	ReasonTooLong = "CASTING_TIME_TOO_LONG"
+	// ReasonAttackActionFirst: Flurry of Blows comes right after the Attack
+	// action, and it was not taken with a weapon or an unarmed strike yet.
+	ReasonAttackActionFirst = "ATTACK_ACTION_FIRST"
 )
 
 // Reason says why an option is disabled.
@@ -107,6 +116,14 @@ type Option struct {
 type AttackOption struct {
 	Option
 	Attack rules.Attack
+	// Bonus is the rule that makes it a bonus action attack now (BonusNone while
+	// the Attack action has attacks left), and FlurryLeft the strikes of Flurry
+	// of Blows left when Bonus is BonusFlurry. Attack.Damage is already the
+	// damage the server rolls: without the ability modifier for BonusTwoWeapon.
+	Bonus      BonusKind
+	FlurryLeft int
+	// DropsModifier says the off-hand damage leaves out the ability modifier.
+	DropsModifier bool
 }
 
 // SlotChoice is a slot the spell can be cast with.
@@ -183,7 +200,11 @@ func Options(d rules.Derived, turn TurnState, u Usage) TurnOptions {
 		if a.Kind == "spell" {
 			opt = economyOption(rules.EconomyAction, turn)
 		}
-		out.Attacks = append(out.Attacks, AttackOption{Option: opt, Attack: a})
+		ao := AttackOption{Option: opt, Attack: a}
+		if a.Kind != "spell" && out.Economy.AttacksLeft == 0 {
+			ao = bonusAttackOption(d, turn, ao)
+		}
+		out.Attacks = append(out.Attacks, ao)
 	}
 
 	for _, cs := range d.Spells {
@@ -198,9 +219,96 @@ func Options(d rules.Derived, turn TurnState, u Usage) TurnOptions {
 		out.StandardActions = append(out.StandardActions, actionOption(d, turn, u, a))
 	}
 	for _, a := range d.Actions {
-		out.FeatureActions = append(out.FeatureActions, actionOption(d, turn, u, a))
+		out.FeatureActions = append(out.FeatureActions, flurryOption(d, turn, actionOption(d, turn, u, a)))
 	}
 	return out
+}
+
+// FlurryOfBlowsKey is the monk's bonus action that spends 1 ki point for two
+// unarmed strikes.
+const FlurryOfBlowsKey = "feature:flurry-of-blows"
+
+// bonusTraits is what the bonus action rules read of a sheet attack.
+func bonusTraits(a rules.Attack) AttackTraits {
+	return AttackTraits{Spell: a.Kind == "spell", Melee: a.Melee, Light: a.Light, Unarmed: a.Key == rules.UnarmedStrikeKey, MartialArts: a.MartialArts}
+}
+
+// lastAttackOf is the sheet attack the Attack action made last this turn.
+func lastAttackOf(d rules.Derived, turn TurnState) (rules.Attack, bool) {
+	if turn.LastAttackKey == "" {
+		return rules.Attack{}, false
+	}
+	i := slices.IndexFunc(d.Attacks, func(a rules.Attack) bool { return a.Key == turn.LastAttackKey })
+	if i < 0 {
+		return rules.Attack{}, false
+	}
+	return d.Attacks[i], true
+}
+
+// attackActionTaken says the Attack action was taken this turn with a weapon or
+// an unarmed strike (not a cantrip): the condition of every bonus action
+// attack.
+func attackActionTaken(d rules.Derived, turn TurnState) bool {
+	last, ok := lastAttackOf(d, turn)
+	return ok && turn.ActionUsed && turn.AttacksMade > 0 && last.Kind != "spell"
+}
+
+// bonusAttackOption turns an attack the Attack action cannot make any more into
+// a bonus action attack, when a rule lets the character make it now: enabled
+// while the bonus action is free (Flurry of Blows spent it already), disabled
+// with the bonus action's reason when it is spent (the rule is worked out as if
+// it were free, so the reason is the bonus action's, not the action's). The off-hand attack shows the
+// damage the server rolls.
+func bonusAttackOption(d rules.Derived, turn TurnState, ao AttackOption) AttackOption {
+	last, _ := lastAttackOf(d, turn)
+	kind := BonusAttack(BonusAttackTurn{
+		AttackAction: attackActionTaken(d, turn), FlurryLeft: turn.FlurryLeft, Last: bonusTraits(last),
+	}, bonusTraits(ao.Attack))
+	if kind == BonusNone {
+		return ao
+	}
+	ao.Bonus = kind
+	switch {
+	case kind == BonusFlurry:
+		ao.FlurryLeft = turn.FlurryLeft
+		ao.Option = Option{Enabled: true}
+	case turn.BonusActionUsed:
+		ao.Option = Option{Reason: &Reason{Code: ReasonBonusActionUsed}}
+	default:
+		ao.Option = Option{Enabled: true}
+	}
+	if kind == BonusTwoWeapon {
+		dice := ao.Attack.DamageDice
+		kept := OffHandBonus(dice.Bonus, ao.Attack.AbilityMod, d.TwoWeaponFighting)
+		ao.DropsModifier = kept != dice.Bonus
+		dice.Bonus = kept
+		ao.Attack.DamageDice, ao.Attack.Damage = dice, diceText(dice)
+	}
+	return ao
+}
+
+// flurryOption disables Flurry of Blows until the Attack action was taken with
+// a weapon or an unarmed strike. A spent bonus action says so first.
+func flurryOption(d rules.Derived, turn TurnState, o ActionOption) ActionOption {
+	if o.Action.Key != FlurryOfBlowsKey || attackActionTaken(d, turn) {
+		return o
+	}
+	if o.Enabled || (o.Reason != nil && o.Reason.Code == ReasonNoUses) {
+		o.Enabled, o.Reason = false, &Reason{Code: ReasonAttackActionFirst}
+	}
+	return o
+}
+
+// diceText writes a formula as the sheet shows it: "1d6+2", "2d8-1".
+func diceText(f rules.DiceFormula) string {
+	text := strconv.Itoa(f.Count) + "d" + strconv.Itoa(f.Sides)
+	switch {
+	case f.Bonus > 0:
+		return text + "+" + strconv.Itoa(f.Bonus)
+	case f.Bonus < 0:
+		return text + strconv.Itoa(f.Bonus)
+	}
+	return text
 }
 
 // AttacksLeft is how many attacks the Attack action can still make this turn:

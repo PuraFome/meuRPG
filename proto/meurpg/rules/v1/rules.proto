@@ -1743,6 +1743,29 @@ enum DisabledReasonCode {
   // except a cantrip with a casting time of 1 action, in either order (the
   // character cast a bonus action spell, or this is one and a spell was cast).
   DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT = 15;
+  // Flurry of Blows: it comes right after the Attack action, taken with a weapon
+  // or an unarmed strike, and that action has not been taken yet this turn.
+  DISABLED_REASON_CODE_ATTACK_ACTION_FIRST = 16;
+}
+
+// BonusAttackRule is the rule that makes an attack a bonus action attack right
+// now (SRD 5.1: Two-Weapon Fighting, Martial Arts, Flurry of Blows). All of them
+// follow the Attack action.
+enum BonusAttackRule {
+  // The attack is not a bonus action attack now: it is made with the Attack
+  // action.
+  BONUS_ATTACK_RULE_UNSPECIFIED = 0;
+  // The off-hand attack of Two-Weapon Fighting: a light melee weapon after the
+  // Attack action with a light melee weapon. Its damage leaves out a positive
+  // ability modifier, unless the character has the fighting style; the
+  // `attack.damage` of the option is the damage the server rolls.
+  BONUS_ATTACK_RULE_OFF_HAND = 1;
+  // The Martial Arts unarmed strike, after the Attack action with an unarmed
+  // strike or a monk weapon.
+  BONUS_ATTACK_RULE_MARTIAL_ARTS = 2;
+  // One of the two unarmed strikes of Flurry of Blows, whose bonus action is
+  // already spent (see AttackOption.bonus_attacks_left).
+  BONUS_ATTACK_RULE_FLURRY_OF_BLOWS = 3;
 }
 
 // AttackOption is an attack the character can make.
@@ -1751,6 +1774,19 @@ message AttackOption {
   bool enabled = 2;
   // Set when `enabled` is false.
   DisabledReason reason = 3;
+  // The rule that makes this attack a bonus action attack right now. Such an
+  // attack is enabled even when `economy.attacks_left` is 0, and has targets
+  // like any other; the bonus action is its cost, except for Flurry of Blows,
+  // which spent it already. When the bonus action is spent, `reason` is
+  // BONUS_ACTION_USED and this stays set. UNSPECIFIED (none) while an attack of the Attack
+  // action is left (Extra Attack comes first) and when no rule applies.
+  BonusAttackRule bonus_rule = 4;
+  // For BONUS_ATTACK_RULE_FLURRY_OF_BLOWS: how many unarmed strikes of Flurry of
+  // Blows are left this turn.
+  int32 bonus_attacks_left = 5;
+  // For BONUS_ATTACK_RULE_OFF_HAND: the damage in `attack` leaves out the ability
+  // modifier (a positive one, and the character has no Two-Weapon Fighting style).
+  bool bonus_drops_modifier = 6;
 }
 
 // SpellOption is a spell the character can cast.

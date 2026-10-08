@@ -2,12 +2,22 @@ import { create } from '@bufbuild/protobuf';
 
 import {
   AttackKind,
+  AttackOptionSchema,
   AttackSchema,
+  BonusAttackRule,
   DisabledReasonCode,
   DisabledReasonSchema,
   Recharge,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { attackDetail, endTurnIsPrimary, isReactionHint, reasonText } from './combat-options';
+import {
+  attackDetail,
+  bonusAttackLine,
+  bonusSpentText,
+  endTurnIsPrimary,
+  isBonusAttack,
+  isReactionHint,
+  reasonText,
+} from './combat-options';
 
 function reason(code: DisabledReasonCode, extra: { minLevel?: number; recharge?: Recharge } = {}) {
   return create(DisabledReasonSchema, { code, ...extra });
@@ -20,6 +30,7 @@ describe('the reasons an option is disabled', () => {
       [DisabledReasonCode.BONUS_ACTION_USED, 'Ação bônus já usada'],
       [DisabledReasonCode.REACTION_USED, 'Reação já usada'],
       [DisabledReasonCode.REACTION_ONLY_WHEN_HIT, 'Só fora da sua vez'],
+      [DisabledReasonCode.ATTACK_ACTION_FIRST, 'Só depois de atacar com a ação'],
       [DisabledReasonCode.NOT_YOUR_TURN, 'Não é a sua vez'],
       [DisabledReasonCode.COMBAT_NOT_ACTIVE, 'O combate não está em andamento'],
       [DisabledReasonCode.COMBATANT_DOWN, 'Caído: não pode agir'],
@@ -106,5 +117,54 @@ describe('"Encerrar turno"', () => {
     expect(endTurnIsPrimary({ actionUsed: false, bonusActionUsed: false })).toBe(false);
     expect(endTurnIsPrimary({ actionUsed: true, bonusActionUsed: false })).toBe(false);
     expect(endTurnIsPrimary({ actionUsed: true, bonusActionUsed: true })).toBe(true);
+  });
+});
+
+describe('the bonus action attacks', () => {
+  const option = (over: {
+    enabled?: boolean;
+    bonusRule?: BonusAttackRule;
+    bonusAttacksLeft?: number;
+    bonusDropsModifier?: boolean;
+  }) => create(AttackOptionSchema, { enabled: true, ...over });
+
+  it('tells which attacks are made with the bonus action', () => {
+    expect(isBonusAttack(option({}))).toBe(false);
+    expect(isBonusAttack(option({ bonusRule: BonusAttackRule.OFF_HAND }))).toBe(true);
+  });
+
+  it('says why in one line: the off hand with or without the modifier, Artes Marciais, Rajada de Golpes counting down', () => {
+    expect(
+      bonusAttackLine(option({ bonusRule: BonusAttackRule.OFF_HAND, bonusDropsModifier: true })),
+    ).toBe('Ataque com a outra mão, sem o modificador no dano');
+    expect(bonusAttackLine(option({ bonusRule: BonusAttackRule.OFF_HAND }))).toBe(
+      'Ataque com a outra mão',
+    );
+    expect(bonusAttackLine(option({ bonusRule: BonusAttackRule.MARTIAL_ARTS }))).toBe(
+      'Golpe desarmado das Artes Marciais',
+    );
+    const flurry = (bonusAttacksLeft: number) =>
+      bonusAttackLine(option({ bonusRule: BonusAttackRule.FLURRY_OF_BLOWS, bonusAttacksLeft }));
+    expect(flurry(2)).toBe('Rajada de Golpes: 2 golpes restantes');
+    expect(flurry(1)).toBe('Rajada de Golpes: 1 golpe restante');
+  });
+
+  it('adds no line to an attack of the action, or to one that cannot be made', () => {
+    expect(bonusAttackLine(option({}))).toBe('');
+    expect(bonusAttackLine(option({ enabled: false, bonusRule: BonusAttackRule.OFF_HAND }))).toBe(
+      '',
+    );
+  });
+
+  it('says what the attack spent once it is made', () => {
+    expect(bonusSpentText(BonusAttackRule.OFF_HAND)).toBe('Sua ação bônus foi usada.');
+    expect(bonusSpentText(BonusAttackRule.MARTIAL_ARTS)).toBe('Sua ação bônus foi usada.');
+    expect(bonusSpentText(BonusAttackRule.FLURRY_OF_BLOWS, 2)).toBe(
+      'Rajada de Golpes: 1 golpe restante.',
+    );
+    expect(bonusSpentText(BonusAttackRule.FLURRY_OF_BLOWS, 1)).toBe(
+      'Rajada de Golpes: acabaram os golpes.',
+    );
+    expect(bonusSpentText(BonusAttackRule.UNSPECIFIED)).toBe('');
   });
 });

@@ -75,9 +75,10 @@
         @if (a.attack; as atk) {
           <app-action-row
             [name]="attackName(atk)"
-            [tags]="isCantrip(atk) ? ['Truque'] : []"
+            [tags]="attackTags(a)"
             [helpName]="isCantrip(atk) ? attackName(atk) : ''"
             [detail]="attackDetail(atk)"
+            [note]="bonusAttackLine(a)"
             [rider]="rider(atk)"
             [button]="asksSave(atk) ? 'Conjurar' : 'Atacar'"
             [buttonLabel]="(asksSave(atk) ? 'Conjurar ' : 'Atacar com ') + attackName(atk)"

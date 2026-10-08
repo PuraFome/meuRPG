@@ -320,6 +320,11 @@ type Turn struct {
 	ActionUsed, BonusActionUsed, ReactionUsed bool
 	// AttacksMade is how many attacks the Attack action made this turn.
 	AttacksMade int
+	// AttackKey is the attack the Attack action made last this turn ("" if none)
+	// and FlurryLeft the unarmed strikes of Flurry of Blows left: what the bonus
+	// action attacks read.
+	AttackKey  string
+	FlurryLeft int
 	// Dashed says the Dash action doubled the speed.
 	Dashed bool
 	// ActionSurged says Action Surge was used this turn (once per turn, whatever
