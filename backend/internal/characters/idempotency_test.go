@@ -205,6 +205,53 @@ func TestCreateTableEntryIsIdempotent(t *testing.T) {
 	}
 }
 
+// One key is one gift in the campaign: two calls at once with the same key for
+// two different characters (different owners, so no owner lock makes them take
+// turns) give one creature, and the other call is refused as a key used for
+// another change, never as a server error.
+func TestGiveCreatureSameKeyForTwoCharactersAtOnce(t *testing.T) {
+	t.Parallel()
+	dbtest.PoolSize(t, 4)
+	h := newHarness(t)
+	master, a, b := h.newUser("Mestre"), h.newUser("Jogadora A"), h.newUser("Jogador B")
+	campaign := h.newCampaign(master, "Mirathel", a, b)
+	pcs := []*charactersv1.Character{a.createPensantus(t, campaign), b.createPensantus(t, campaign)}
+	for round := range 8 {
+		key := uuid.New().String()
+		errs := make([]error, len(pcs))
+		var wg sync.WaitGroup
+		start := make(chan struct{})
+		for i, pc := range pcs {
+			wg.Go(func() {
+				<-start
+				_, errs[i] = master.api.GiveCreature(t.Context(), connect.NewRequest(&charactersv1.GiveCreatureRequest{
+					CampaignId: campaign, CharacterId: pc.GetId(), MonsterKey: "monster:wolf", IdempotencyKey: key,
+				}))
+			})
+		}
+		close(start)
+		wg.Wait()
+		var done, refused int
+		for _, err := range errs {
+			switch {
+			case err == nil:
+				done++
+			case connect.CodeOf(err) == connect.CodeInvalidArgument:
+				refused++
+			default:
+				t.Errorf("round %d: GiveCreature() error = %v, want success or invalid_argument", round, err)
+			}
+		}
+		if done != 1 || refused != 1 {
+			t.Errorf("round %d: %d gifts and %d refusals, want 1 and 1", round, done, refused)
+		}
+		var n int
+		if err := h.pool.QueryRow(t.Context(), `SELECT count(*) FROM character_creatures WHERE campaign_id = $1 AND create_key LIKE '%' || $2`, campaign, key).Scan(&n); err != nil || n != 1 {
+			t.Errorf("round %d: %d creatures for the key, %v; want 1", round, n, err)
+		}
+	}
+}
+
 // The create key is the caller's: another member sending the same key with an identical request
 // gets a character of their own, not the first member's, and neither sees the other's key as used.
 func TestCreateCharacterKeyIsPerCaller(t *testing.T) {

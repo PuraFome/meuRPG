@@ -211,6 +211,42 @@ func TestRunTimeFailuresAreErrors(t *testing.T) {
 	})
 }
 
+// A division by zero without floor or ceil gives NaN or an infinity, which have
+// no int value: Go leaves the conversion to the CPU (amd64 and arm64 differ,
+// and NaN is 0 on one), so the formula is refused by what it computed, not by
+// a number that depends on the machine.
+func TestNotANumberIsRefusedOnEveryCPU(t *testing.T) {
+	t.Parallel()
+	c := newCompiler()
+	tests := []string{
+		`(level() - 3) / (level() - 3)`, // 0 / 0: NaN
+		`1 / (level() - 3)`,             // +Inf
+		`-1 / (level() - 3)`,            // -Inf
+	}
+	const want = "formula did not give a finite number"
+	for _, source := range tests {
+		t.Run(source, func(t *testing.T) {
+			t.Parallel()
+			p, err := c.Compile(source, Int)
+			if err != nil {
+				t.Fatalf("Compile: %v", err)
+			}
+			got, err := p.Int(wizard3())
+			if err == nil || err.Error() != want {
+				t.Errorf("Int = %d, %v; want the error %q", got, err, want)
+			}
+		})
+	}
+	// Control: the same shape with a divisor that is not zero is a number.
+	p, err := c.Compile(`(level() + 3) / (level() + 3)`, Int)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, err := p.Int(wizard3()); err != nil || got != 1 {
+		t.Errorf("Int(6 / 6) = %d, %v; want 1", got, err)
+	}
+}
+
 // A product of literals wraps in 64-bit integer arithmetic (1000 is 2^3*5^3,
 // so 22 factors of it come to 0), which would slip under MaxResult: a formula
 // whose steps could grow that far is refused when it is compiled.
