@@ -668,6 +668,9 @@ func (s *Service) GetMoveOptions(
 		case !actsNow(enc, who):
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
 		}
+		if err := s.mustNotBeDown(ctx, nil, m.CampaignID, who); err != nil {
+			return nil, err
+		}
 	}
 	if isTheatre(enc) {
 		// Without a map there is nowhere to go: a valid, empty answer, with what
