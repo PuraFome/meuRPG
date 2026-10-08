@@ -228,8 +228,11 @@ func TestACommittedChangeIsAnnouncedEvenIfTheCallerLeaves(t *testing.T) {
 	}
 	for name, w := range map[string]*watcher{"master": masterStream, "player": playerStream} {
 		select {
-		case <-w.events:
-		case <-time.After(2 * time.Second):
+		case ev := <-w.events:
+			if ev.GetHeartbeat() != nil {
+				t.Errorf("%s's stream got a heartbeat, want the committed turn change", name)
+			}
+		case <-time.After(waitLimit):
 			t.Errorf("%s's stream got no event for the committed turn change", name)
 		}
 	}

@@ -247,9 +247,8 @@ func TestMR035_TheActivityOutsideACombat(t *testing.T) {
 	if err != nil || len(res.GetFoundPointIds()) != 1 || res.GetFoundPointIds()[0] != hidden.GetId() {
 		t.Fatalf("Toren's search = %v, %v; want the hidden pit", res, err)
 	}
-	time.Sleep(300 * time.Millisecond)
 	hinted := false
-	for _, ev := range r.drain(masterStream) {
+	for _, ev := range r.drainUntilMapChanged(masterStream) {
 		if ev.GetMapChanged() != nil {
 			hinted = true
 		}
@@ -548,7 +547,9 @@ func TestMR035_APassiveNoticeTellsNobodyElseAndTheMasterOnlyWithNoContent(t *tes
 	masterStream := r.watch(t, r.master, r.campaignID)
 	r.mustMove(t, r.caio, "Toren", 7, 7)
 	r.wantKnows(t, "Toren's player", r.caio, pit.GetId(), true)
-	time.Sleep(400 * time.Millisecond)
+	// The master's hint is the sign that the notice has been published: the
+	// player's stream is read after it.
+	masterEvents := r.drainUntilMapChanged(masterStream)
 	for _, ev := range r.drain(anaStream) {
 		if ev.GetMapChanged() != nil {
 			t.Errorf("Pensantus's stream got %v after Toren noticed a trap; want no map change", ev)
@@ -558,7 +559,7 @@ func TestMR035_APassiveNoticeTellsNobodyElseAndTheMasterOnlyWithNoContent(t *tes
 		}
 	}
 	hinted := false
-	for _, ev := range r.drain(masterStream) {
+	for _, ev := range masterEvents {
 		hinted = hinted || ev.GetMapChanged() != nil
 	}
 	if !hinted {

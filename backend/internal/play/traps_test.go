@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -1146,6 +1147,26 @@ func (r *trapRig) drain(w *watcher) []*playv1.WatchGameSessionResponse {
 			}
 		default:
 			return out
+		}
+	}
+}
+
+// drainUntilMapChanged drains the stream until a map change has arrived, and
+// returns what it drained. The events travel through goroutines, so a fixed
+// pause does not tell when one has arrived; it gives up after waitLimit and
+// returns what came (no map change among it).
+func (r *trapRig) drainUntilMapChanged(w *watcher) []*playv1.WatchGameSessionResponse {
+	var out []*playv1.WatchGameSessionResponse
+	deadline := time.After(waitLimit)
+	for {
+		out = append(out, r.drain(w)...)
+		if slices.ContainsFunc(out, func(ev *playv1.WatchGameSessionResponse) bool { return ev.GetMapChanged() != nil }) {
+			return out
+		}
+		select {
+		case <-deadline:
+			return out
+		case <-time.After(5 * time.Millisecond):
 		}
 	}
 }
