@@ -63,6 +63,14 @@ describe('combat errors', () => {
     );
   });
 
+  it('says only that the turn waits for the master when a question about hidden creatures holds it (RN-10)', () => {
+    const text = blockedMessage({
+      reason: EncounterBlockedReason.HIDDEN_REVEAL_PENDING,
+    } as never);
+    expect(text).toBe('Esperando o mestre.');
+    expect(text).not.toMatch(/escond|criatura|magia|área/i);
+  });
+
   it('speaks by code when there is no typed detail', () => {
     expect(combatErrorMessage(new ConnectError('x', Code.Aborted))).toMatch(/mudou/);
     expect(combatErrorMessage(new ConnectError('x', Code.NotFound))).toMatch(/não existe mais/);

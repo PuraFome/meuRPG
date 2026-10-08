@@ -19,10 +19,12 @@ import {
   MonsterHitPoints,
   type ParticipantSchema,
   type PendingDamage,
+  type PreviewSpellAreaResponse,
   type ReactionOutcome,
   type SpellCast,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { newKey } from '../connect/idempotency';
+import type { Square } from './combat-grid';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
 // The key maker moved to `core/connect`; the combat screens still import it from here.
@@ -127,6 +129,33 @@ export interface CastResult {
   readonly cast: SpellCast;
   /** A summoning spell: the combatants that joined the combat, in the order of the creatures chosen. */
   readonly summoned: readonly string[];
+  /** An area placed on the map: where it landed and the squares it covers, as the caller knows the map. */
+  readonly area: { readonly origin: Square | null; readonly squares: readonly Square[] } | null;
+  /** The hidden creatures the area hit: the master's only (empty for a player). */
+  readonly hiddenHits: readonly string[];
+  /** The question the cast opened for the master ("Perguntar a cada vez"): the master's only. */
+  readonly pendingRevealId: string;
+}
+
+/** Where an area spell is placed: a point for a sphere or a cylinder, a direction for a cone, a line or a cube. */
+export type AreaChoice =
+  | { readonly origin: Square }
+  | { readonly direction: { readonly dx: number; readonly dy: number } };
+
+/** What else a cast may carry: the placed area, and the master's choice on the hidden creatures it hits. */
+export interface CastExtras {
+  readonly area?: AreaChoice | null;
+  /** The master only: whether the hidden creatures the area hits appear to the players. */
+  readonly revealHidden?: boolean;
+}
+
+function areaOneof(area: AreaChoice | null | undefined) {
+  if (!area) {
+    return { case: undefined };
+  }
+  return 'origin' in area
+    ? { case: 'origin' as const, value: { col: area.origin.col, row: area.origin.row } }
+    : { case: 'direction' as const, value: { dx: area.direction.dx, dy: area.direction.dy } };
 }
 
 /** What a summoning spell brings (`SummonChoice`): the option, a content key per creature and, optionally, a name each. */
@@ -795,6 +824,7 @@ export class CombatClient {
     key: string,
     summon?: SummonRequest,
     damageTypeKey = '',
+    extras: CastExtras = {},
   ): Promise<CastResult> {
     const res = await this.client.castSpell({
       campaignId,
@@ -819,12 +849,64 @@ export class CombatClient {
             names: [...(summon.names ?? [])],
           }
         : undefined,
+      area: areaOneof(extras.area),
+      // Left out unless the master chose: the table rule decides then.
+      ...(extras.revealHidden === undefined ? {} : { revealHidden: extras.revealHidden }),
     });
     return {
       encounter: need(res.encounter, 'CastSpell'),
       cast: need(res.cast, 'CastSpell'),
       summoned: res.summonedCombatantIds,
+      area: res.area
+        ? {
+            origin: res.area.origin ? { col: res.area.origin.col, row: res.area.origin.row } : null,
+            squares: res.area.squares.map((q) => ({ col: q.col, row: q.row })),
+          }
+        : null,
+      hiddenHits: res.hiddenHits,
+      pendingRevealId: res.pendingRevealId,
     };
+  }
+
+  /** `PreviewSpellArea`: who an area spell placed here reaches and each one's cover, spending nothing. `area` is `null` for a
+   * sphere centered on the caster, which has nothing to choose. */
+  async previewSpellArea(
+    campaignId: string,
+    encounterId: string,
+    casterId: string,
+    spellKey: string,
+    slot: SlotRef | null,
+    area: AreaChoice | null,
+  ): Promise<PreviewSpellAreaResponse> {
+    return this.client.previewSpellArea({
+      campaignId,
+      encounterId,
+      casterId,
+      spellKey,
+      slot: slot ?? undefined,
+      area: areaOneof(area),
+    });
+  }
+
+  /** The master's answer to a question of `Encounter.pending_hidden_reveals`: reveal the hidden creatures the area hit, or keep them hidden. */
+  async resolveHiddenReveal(
+    campaignId: string,
+    encounterId: string,
+    pendingRevealId: string,
+    reveal: boolean,
+  ): Promise<Encounter> {
+    const res = await this.keyed(
+      ['resolveHiddenReveal', campaignId, encounterId, pendingRevealId, reveal],
+      (sent) =>
+        this.client.resolveHiddenReveal({
+          campaignId,
+          encounterId,
+          pendingRevealId,
+          reveal,
+          idempotencyKey: sent,
+        }),
+    );
+    return need(res.encounter, 'ResolveHiddenReveal');
   }
 
   async rollDeathSave(

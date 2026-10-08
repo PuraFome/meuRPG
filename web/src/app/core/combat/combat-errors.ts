@@ -145,6 +145,10 @@ export function blockedMessage(blocked: EncounterBlocked): string {
       return 'Esse personagem não falhou três testes contra a morte. A tela foi atualizada.';
     case EncounterBlockedReason.OPPORTUNITY_PENDING:
       return 'Esperando a reação do mestre: um ataque de oportunidade ainda não foi respondido.';
+    case EncounterBlockedReason.HIDDEN_REVEAL_PENDING:
+      // The turn waits for the master's answer about hidden creatures an area hit: a player reads the same words as any wait
+      // for the master, never why (RN-10). The master's own screen says what it waits for, so this refusal is never news to him.
+      return 'Esperando o mestre.';
     case EncounterBlockedReason.NOT_ENDED:
       return 'O combate ainda não terminou. Os destaques aparecem quando ele acabar.';
     // The creatures and Wild Shape (MR-037): what the server refused, in words.
