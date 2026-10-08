@@ -20,7 +20,11 @@ import { ActionKey } from '../../../core/connect/idempotency';
 import { MILESTONES_LIMIT, plannedCount } from '../../../core/progression/milestones';
 import { MilestonesStore } from '../../../core/progression/milestones-store';
 import { ProgressionClient } from '../../../core/progression/progression-client';
-import { xpBlocked, xpErrorMessage } from '../../../core/progression/xp-errors';
+import {
+  milestoneHasHistoryText,
+  xpBlocked,
+  xpErrorMessage,
+} from '../../../core/progression/xp-errors';
 import { MilestoneAsk } from './milestone-ask';
 import { MilestoneNameForm } from './milestone-name-form';
 
@@ -202,6 +206,10 @@ export class PlannedMilestones {
       ) {
         this.kept.update((ids) => new Set(ids).add(removingId));
         this.removing.set(null);
+        const text = this.milestones().find((m) => m.id === removingId)?.text;
+        if (text) {
+          this.error.set(milestoneHasHistoryText(`O marco “${text}”`));
+        }
       }
       // The list may have moved under the master (another tab): read it again.
       void this.store.refresh();

@@ -24,6 +24,12 @@ export function xpAborted(err: unknown): boolean {
   return ConnectError.from(err, Code.Unavailable).code === Code.Aborted;
 }
 
+/** Why a milestone that was reached once and undone is not removed: its awards stay in the history. `name` is
+ * how the sentence calls it: "O marco “Chegar ao Vale Seco”", or "Esse marco". */
+export function milestoneHasHistoryText(name: string): string {
+  return `${name} já foi alcançado e depois desfeito: o histórico de XP guarda isso, então ele não pode ser removido. Ele continua na lista de planejados.`;
+}
+
 /** Portuguese for every `XPBlocked` reason: what happened and what to do. */
 export function xpBlockedMessage(blocked: XPBlocked): string {
   switch (blocked.reason) {
@@ -55,7 +61,7 @@ export function xpBlockedMessage(blocked: XPBlocked): string {
     case XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_ALREADY_MARKED:
       return 'Um dos personagens marcados já tem esse marco. A lista foi atualizada.';
     case XPBlockedReason.XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY:
-      return 'Esse marco já foi alcançado e depois desfeito: o histórico de XP guarda isso e não é reescrito, então o marco não pode ser removido. Ele continua na lista de planejados.';
+      return milestoneHasHistoryText('Esse marco');
     case XPBlockedReason.XP_BLOCKED_REASON_TREASURE_NOT_FOUND_YET:
       return 'Um dos tesouros marcados não está mais como encontrado: o mestre desmarcou o achado. A lista foi atualizada; confira e tente de novo.';
     case XPBlockedReason.XP_BLOCKED_REASON_TREASURE_ALREADY_CONVERTED:

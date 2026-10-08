@@ -213,7 +213,9 @@ describe('PlannedMilestones (E8-14)', () => {
       .click();
     await settle();
     expect(el.querySelector('app-milestone-ask')).toBeNull();
-    expect(el.querySelector('.problem')?.textContent).toContain('não pode ser removido');
+    expect(el.querySelector('.problem')?.textContent).toContain(
+      'O marco “Chegar ao Vale Seco” já foi alcançado e depois desfeito: o histórico de XP guarda isso, então ele não pode ser removido. Ele continua na lista de planejados.',
+    );
     expect(el.querySelector('[data-id="b"][data-act="remove"]')).toBeNull();
     // The row keeps its four places, so the other tools stay under the ones of the rows around it.
     const tools = el.querySelector('[data-id="b"][data-act="edit"]')!.parentElement!;
