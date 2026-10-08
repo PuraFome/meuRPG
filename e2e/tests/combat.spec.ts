@@ -977,7 +977,7 @@ test('fora da vez: o ataque de oportunidade gasta a reação, só com ataques co
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
     await expect(p.getByText('Sua reação: Disponível.')).toBeVisible();
-    await p.getByRole('button', { name: /Ataque de oportunidade/ }).click();
+    await p.getByRole('button', { name: 'Ataque de oportunidade com Adaga' }).click();
     const sheet = p.getByRole('dialog', { name: 'Ataque de oportunidade com Adaga' });
     // A melee attack: "corpo a corpo", not the dagger's thrown range.
     await expect(sheet.getByText(/^Reação ·.*corpo a corpo$/)).toBeVisible();
@@ -1071,12 +1071,13 @@ test('a distância sai em metros e em quadrados: o quadro Movimento, a barra do 
     // The "Movimento" group says it in a sentence.
     await expect(p.getByText('Você ainda não andou. Dá para andar até 7,5 m (5 quadrados).')).toBeVisible();
 
-    // The master's card for the captain (a gnome too): the Deslocamento in both units, and the Movimento chip.
+    // The master's card for the captain (a gnome too, in chain mail without the Strength 13 it asks for, so 10 ft
+    // slower: 15 ft): the Deslocamento in both units, and the Movimento chip.
     await openSessionPage(m, campaignId);
     await passTurnsTo(m, campaignId, 'Capitão Goblin');
     const card = m.getByRole('region', { name: /Ações do Capitão Goblin|Vez do Capitão Goblin/ });
-    await expect(card.locator('.stat', { hasText: 'Deslocamento' })).toContainText('7,5 m · 5 quadrados');
-    await expect(card.locator('.chip', { hasText: 'Movimento' })).toContainText('7,5 m · 5 quadrados');
+    await expect(card.locator('.stat', { hasText: 'Deslocamento' })).toContainText('4,5 m · 3 quadrados');
+    await expect(card.locator('.chip', { hasText: 'Movimento' })).toContainText('4,5 m · 3 quadrados');
 
     // The sheet: one line, in a box of its own, with the feet in parentheses.
     await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);

@@ -89,8 +89,10 @@ func signed(n int) string {
 }
 
 // checkChoices reports choices the rules would not allow: the number of
-// chosen skills and expertise, the custom background's skills and the
-// multiclass prerequisites. Spell choices are checked in spellcasting.
+// chosen skills and expertise, the number of options picked for each feature
+// that offers some (fighting styles, metamagic, invocations, a pact boon...),
+// the custom background's skills and the multiclass prerequisites. Spell
+// choices are checked in spellcasting.
 func (x *deriver) checkChoices() {
 	c := x.c
 
@@ -156,6 +158,8 @@ func (x *deriver) checkChoices() {
 	if n := len(x.b.Expertise); n > expertiseAllowed {
 		x.issue(IssueExpertise, "full.expertise_skill_keys", "Há %d perícias com especialização; o personagem tem %d.", n, expertiseAllowed)
 	}
+
+	x.checkOptionCounts()
 
 	// A custom background grants two skills, like every SRD background.
 	if x.customBackground() {
@@ -248,4 +252,81 @@ func summarize(b Build, c *content) Summary {
 	}
 	s.ClassSummaryPT = strings.Join(parts, " / ")
 	return s
+}
+
+// optionPool is the options that a group of owned features offer and how many
+// of them the character picks. Features that offer the same options (the
+// fighter's Fighting Style and the champion's Additional Fighting Style, the
+// three metamagic features) share one pool, whose allowance is their sum.
+type optionPool struct {
+	name    string
+	allowed int
+	options map[string]bool
+}
+
+// checkOptionCounts raises an Issue when a pool holds more distinct options
+// than its features allow. A repeated option name counts once (the same
+// style from two classes is the same style).
+func (x *deriver) checkOptionCounts() {
+	c := x.c
+	var pools []*optionPool
+	join := func(feature string, choose int, options []string) {
+		var into *optionPool
+		for _, p := range pools {
+			if !slices.ContainsFunc(options, func(o string) bool { return p.options[o] }) {
+				continue
+			}
+			if into == nil {
+				into = p
+				continue
+			}
+			into.allowed += p.allowed // the new feature bridges two pools
+			for o := range p.options {
+				into.options[o] = true
+			}
+			p.allowed, p.options = 0, map[string]bool{}
+		}
+		if into == nil {
+			into = &optionPool{name: c.namePT(feature), options: map[string]bool{}}
+			pools = append(pools, into)
+		}
+		into.allowed += choose
+		for _, o := range options {
+			into.options[o] = true
+		}
+	}
+	seen := map[string]bool{}
+	for _, f := range x.d.Features {
+		if seen[f.Key] {
+			continue
+		}
+		seen[f.Key] = true
+		if f.Key == invocationsFeature {
+			continue
+		}
+		for _, d := range c.featureGains([]string{f.Key}, "").choices {
+			join(d.feature, d.choose, d.options)
+		}
+	}
+	if inv := c.features[invocationsFeature]; inv != nil && seen[invocationsFeature] {
+		known := 0
+		for _, oc := range x.classes {
+			if rows := c.classLevels[oc.key]; oc.level >= 1 && oc.level <= len(rows) {
+				known += invocationsKnown(rows[oc.level-1])
+			}
+		}
+		join(invocationsFeature, known, inv.Options)
+	}
+
+	for _, p := range pools {
+		names := map[string]bool{}
+		for _, key := range x.b.FeatureChoices {
+			if f, ok := c.features[key]; ok && p.options[key] {
+				names[f.Name] = true
+			}
+		}
+		if n := len(names); n > p.allowed {
+			x.issue(IssueChoiceCount, "full.feature_choice_keys", "Há %d escolhas em %s; o personagem tem %d.", n, p.name, p.allowed)
+		}
+	}
 }

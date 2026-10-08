@@ -366,7 +366,8 @@ func TestOptionsToren(t *testing.T) {
 	d := derive(t, b)
 	o := Options(d, TurnState{}, Usage{})
 
-	if len(o.Attacks) != 1 || o.Attacks[0].Attack.AttackBonus != 5 || o.Attacks[0].Attack.DamageDice != (rules.DiceFormula{Count: 1, Sides: 8, Bonus: 3}) {
+	// The battleaxe, then the unarmed strike every character has.
+	if len(o.Attacks) != 2 || o.Attacks[1].Attack.Key != "attack:unarmed-strike" || o.Attacks[0].Attack.AttackBonus != 5 || o.Attacks[0].Attack.DamageDice != (rules.DiceFormula{Count: 1, Sides: 8, Bonus: 3}) {
 		t.Errorf("attacks = %+v", o.Attacks)
 	}
 	if len(o.Spells) != 0 {
