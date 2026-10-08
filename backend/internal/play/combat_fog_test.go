@@ -1483,7 +1483,7 @@ func TestRN10_FogCombatASaveSpellOnManyCoveredTargetsIsOneEvent(t *testing.T) {
 	for i := range goblins {
 		label := fmt.Sprintf("Goblin %d", i+1)
 		reveal, targets = append(reveal, label), append(targets, label)
-		at[label] = [2]int32{int32(20 + i/5), int32(3 + i%5)} //nolint:gosec // G115: a few squares
+		at[label] = [2]int32{int32(20 + i/5), int32(3 + i%5)}
 	}
 	e := f.start(t, plan{
 		npcs:     []*playv1.Participant{{CharacterId: f.goblins.GetId(), Count: goblins}},

@@ -378,8 +378,8 @@ func TestLeavesReachAgreesWithWalkingTheWholeLine(t *testing.T) {
 		for fr := 0; fr < 9; fr += 3 {
 			for tc := 0; tc < 9; tc += 2 {
 				for tr := 0; tr < 9; tr += 3 {
-					for rc := 0; rc < 9; rc++ {
-						for rr := 0; rr < 9; rr++ {
+					for rc := range 9 {
+						for rr := range 9 {
 							for _, reach := range []int{5, 10, 15} {
 								from, to, reactor := sq(fc, fr), sq(tc, tr), sq(rc, rr)
 								want := walk(from, to, reactor, reach)
