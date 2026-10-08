@@ -41,6 +41,7 @@ import (
 	"net/http"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"connectrpc.com/connect"
@@ -323,6 +324,9 @@ type Service struct {
 	dailyImages   int32
 	generating    chan struct{}
 	generations   sync.WaitGroup
+	// pending counts the image requests alive: the one calling the model and the ones
+	// waiting for its slot (maxPendingRequests).
+	pending atomic.Int32
 	// baseCtx is what the generation goroutines derive from; CancelGenerations
 	// cancels it at shutdown. waiters wakes the long polls of GetImageGeneration.
 	baseCtx    context.Context

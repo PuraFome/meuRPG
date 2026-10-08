@@ -1100,6 +1100,49 @@ func TestMR039_TheReferencesAreShrunkAndTheRequestIsCapped(t *testing.T) {
 	}
 }
 
+// A request keeps its shrunk references in memory until its call goes out, so the
+// server holds only so many alive at once: the one calling the model and the ones
+// waiting for its slot. Another is refused without spending the month's slot, and the
+// room comes back as the requests end.
+func TestMR039_OnlySoManyRequestsWaitForTheModel(t *testing.T) {
+	t.Parallel()
+	fake, entered, release := holdingFake()
+	h := newHarness(t, withFake(fake, 30))
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master)
+	ask := func() (string, error) {
+		res, err := master.generate(campaign, "x")
+		if err != nil {
+			return "", err
+		}
+		return res.GetGeneration().GetId(), nil
+	}
+	var ids []string
+	for range maxPendingRequests {
+		id, err := ask()
+		if err != nil {
+			t.Fatalf("a request among the first %d: %v", maxPendingRequests, err)
+		}
+		ids = append(ids, id)
+	}
+	<-entered
+	used := master.imageStatus(campaign).GetUsedThisMonth()
+	_, err := ask()
+	if connect.CodeOf(err) != connect.CodeResourceExhausted {
+		t.Fatalf("a request over %d alive = %v, want resource_exhausted", maxPendingRequests, err)
+	}
+	if got := master.imageStatus(campaign).GetUsedThisMonth(); got != used {
+		t.Errorf("a refused request used a slot: %d -> %d", used, got)
+	}
+	close(release)
+	for _, id := range ids {
+		master.waitGeneration(campaign, id)
+	}
+	if _, err := ask(); err != nil {
+		t.Errorf("a request after the others ended: %v", err)
+	}
+}
+
 func noisePNG(t *testing.T, w, h int) []byte {
 	t.Helper()
 	img := image.NewNRGBA(image.Rect(0, 0, w, h))
