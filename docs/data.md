@@ -303,7 +303,7 @@ erDiagram
 
     character_vitals {
         uuid character_id PK "and FK to characters"
-        int4 hit_points_current "0 or more, cut to the sheet maximum"
+        int4 hit_points_current "NULL until set (full), else 0 or more, cut to the sheet maximum"
         int4 hit_points_temporary "0 or more"
         int4_array spell_slots_used "used per level, up to 9"
         int4 pact_slots_used "pact slots used"
@@ -431,7 +431,7 @@ erDiagram
 
 ### Vitals, level-ups and creatures
 
-- **`character_vitals`** keeps what changes during play and lasts from one session to the next (RN-02): `hit_points_current`, `hit_points_temporary`, `spell_slots_used` (an `INT4[]`: item k is the number of level-k slots used, up to 9 levels), `pact_slots_used` (the warlock's pact slots), `hit_dice_used` (the total of hit dice spent, summing all classes) and `resources_used` (a JSONB `{resource key: spent uses}`: Second Wind, Action Surge, Rage...; the totals come from the sheet and the stored value is cut to them on read, like slots), with `revision` (goes up on each correction) and `updated_at`. The primary key is `character_id` itself, `ON DELETE CASCADE`. Only player characters have a row; an NPC's combat HP lives on `combatants`. The name is "vitals", not "state", because a character's state is already the lifecycle.
+- **`character_vitals`** keeps what changes during play and lasts from one session to the next (RN-02): `hit_points_current` (NULL until the master or a combat sets it, which reads as full hit points whatever the maximum becomes, so a first write of something else, such as a spent slot, the Wild Shape form or the familiar's eyes, does not pin it to the maximum of that day), `hit_points_temporary`, `spell_slots_used` (an `INT4[]`: item k is the number of level-k slots used, up to 9 levels), `pact_slots_used` (the warlock's pact slots), `hit_dice_used` (the total of hit dice spent, summing all classes) and `resources_used` (a JSONB `{resource key: spent uses}`: Second Wind, Action Surge, Rage...; the totals come from the sheet and the stored value is cut to them on read, like slots), with `revision` (goes up on each correction) and `updated_at`. The primary key is `character_id` itself, `ON DELETE CASCADE`. Only player characters have a row; an NPC's combat HP lives on `combatants`. The name is "vitals", not "state", because a character's state is already the lifecycle.
   - **Maximums are not stored.** `rules.Derive` computes max HP, slots per level, pact slots and hit dice on each read, and the server cuts the stored value to today's maximum **on read only**: a correction writes back the stored usage of slots and resources, changing just what it sets, so a sheet that loses a level or a resource for a while gets its usage back with it. So there is no maximum `CHECK`, only a minimum: all numbers are 0 or more, and the array has at most 9 items.
   - **Without a row the character is whole:** full HP, nothing used. The row is born at the master's first correction.
   - `familiar_sight_creature_id` (FK to `character_creatures`, `SET NULL`, with a partial index for the `SET NULL`), `familiar_sight_in_combat` (started in a combat: ends at the start of the next turn) and `familiar_sight_conditions` (the conditions the start gave the combatant) say that the player sees through the familiar (MR-036).

@@ -60,7 +60,10 @@ export interface SpellcastingVm {
   readonly saveDc: number;
   readonly attackBonus: number;
   readonly cantripsKnown: number;
+  /** The most spells the character can have prepared; 0 for a class that knows its spells. */
   readonly spellsPreparedMax: number;
+  /** The most spells a class that knows them (Bard, Ranger, Sorcerer, Warlock) can know; 0 for a class that prepares. */
+  readonly spellsKnownMax: number;
 }
 
 export interface FeatureVm {

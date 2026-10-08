@@ -651,6 +651,69 @@ func TestOnlyLivingPlayerCharactersGetXP(t *testing.T) {
 	}
 }
 
+// TestAnAwardReadsTheLivingPartyInsideItsTransaction: a character that dies, or
+// goes up a level, after the request's first checks but before the award
+// is written is judged as it is when the award is written: a dead character
+// gets nothing, and a milestone mark keeps the level the sheet has.
+func TestAnAwardReadsTheLivingPartyInsideItsTransaction(t *testing.T) {
+	t.Parallel()
+	t.Run("a character that died in the gap gets no XP", func(t *testing.T) {
+		t.Parallel()
+		tb := newTable(t, enemies, 2)
+		// Positive control: with nothing in the gap, the same award is given.
+		tb.master.manual(t, tb.campaign, 100, tb.ids(2)...)
+		if got := tb.master.xpOf(t, tb.pcs[1]); got != 50 {
+			t.Fatalf("control: sheet XP = %d, want 50", got)
+		}
+		tb.h.beforeAward = func(ctx context.Context) {
+			if _, err := tb.master.characters.MarkCharacterDead(ctx, connect.NewRequest(&charactersv1.MarkCharacterDeadRequest{CampaignId: tb.campaign, CharacterId: tb.pcs[1].GetId()})); err != nil {
+				t.Errorf("MarkCharacterDead() error = %v", err)
+			}
+		}
+		_, err := tb.master.award(tb.campaign, func(r *progressionv1.AwardXPRequest) {
+			r.Mode, r.Amount, r.CharacterIds = progressionv1.XPAwardMode_XP_AWARD_MODE_MANUAL, 100, tb.ids(2)
+		})
+		wantBlocked(t, "AwardXP(a character that died meanwhile)", err, progressionv1.XPBlockedReason_XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE)
+		if got := tb.master.xpOf(t, tb.pcs[1]); got != 50 {
+			t.Errorf("dead character's XP = %d after the refused award, want 50", got)
+		}
+		if got := tb.master.xpOf(t, tb.pcs[0]); got != 50 {
+			t.Errorf("living character's XP = %d after the refused award, want 50 (nothing is half done)", got)
+		}
+	})
+	t.Run("a mark keeps the level the sheet has when it is written", func(t *testing.T) {
+		t.Parallel()
+		tb := newTable(t, milestones, 1)
+		player, pc := tb.players[0], tb.pcs[0]
+		if _, err := tb.master.play.StartGameSession(t.Context(), connect.NewRequest(&playv1.StartGameSessionRequest{CampaignId: tb.campaign})); err != nil {
+			t.Fatalf("StartGameSession() error = %v", err)
+		}
+		tb.master.milestone(t, tb.campaign, pc.GetId()) // lets the character go up from level 1
+		tb.h.beforeAward = func(ctx context.Context) {
+			c := player.character(t, pc)
+			if _, err := player.characters.LevelUpCharacter(ctx, connect.NewRequest(&charactersv1.LevelUpCharacterRequest{
+				CampaignId: tb.campaign, CharacterId: pc.GetId(), Revision: c.GetRevision(),
+				Choices: &charactersv1.LevelUpChoices{
+					ClassKey: "class:wizard", SubclassKey: "subclass:evocation",
+					KnownSpellKeys:    []string{"spell:magic-missile", "spell:shield"},
+					PreparedSpellKeys: []string{"spell:magic-missile", "spell:shield"},
+					HitPoints:         &charactersv1.LevelUpHitPoints{Method: charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_AVERAGE},
+				},
+			})); err != nil {
+				t.Errorf("LevelUpCharacter() error = %v", err)
+			}
+		}
+		tb.master.milestone(t, tb.campaign, pc.GetId())
+		got := player.character(t, pc)
+		if got.GetDerived().GetTotalLevel() != 2 {
+			t.Fatalf("level = %d, want 2 (the level-up ran in the gap)", got.GetDerived().GetTotalLevel())
+		}
+		if !got.GetCanLevelUp() {
+			t.Error("the second mark does not let the character go up from level 2: it kept the level read before the gap")
+		}
+	})
+}
+
 // TestPlayersNeverWrite: a player calls none of the three writes.
 func TestPlayersNeverWrite(t *testing.T) {
 	t.Parallel()

@@ -60,16 +60,31 @@ describe('sheet-format', () => {
 
   it('says the class spell limits in one sentence', () => {
     const sc = { className: 'Mago', ability: 'int' as const, saveDc: 14, attackBonus: 6 };
-    expect(spellLimitsText({ ...sc, cantripsKnown: 3, spellsPreparedMax: 7 })).toBe(
+    const limits = { cantripsKnown: 0, spellsPreparedMax: 0, spellsKnownMax: 0 };
+    expect(spellLimitsText({ ...sc, ...limits, cantripsKnown: 3, spellsPreparedMax: 7 })).toBe(
       'Até 3 truques e 7 magias preparadas.',
     );
-    expect(spellLimitsText({ ...sc, cantripsKnown: 0, spellsPreparedMax: 1 })).toBe(
+    expect(spellLimitsText({ ...sc, ...limits, spellsPreparedMax: 1 })).toBe(
       'Até 1 magia preparada.',
     );
-    expect(spellLimitsText({ ...sc, cantripsKnown: 1, spellsPreparedMax: 0 })).toBe(
-      'Até 1 truque.',
+    expect(spellLimitsText({ ...sc, ...limits, cantripsKnown: 1 })).toBe('Até 1 truque.');
+    expect(spellLimitsText({ ...sc, ...limits })).toBe('');
+  });
+
+  it('calls the spells of a class that knows them "conhecidas", not "preparadas"', () => {
+    const sorcerer = {
+      className: 'Feiticeiro',
+      ability: 'cha' as const,
+      saveDc: 13,
+      attackBonus: 5,
+      cantripsKnown: 4,
+      spellsPreparedMax: 0,
+      spellsKnownMax: 5,
+    };
+    expect(spellLimitsText(sorcerer)).toBe('Até 4 truques e 5 magias conhecidas.');
+    expect(spellLimitsText({ ...sorcerer, cantripsKnown: 0, spellsKnownMax: 1 })).toBe(
+      'Até 1 magia conhecida.',
     );
-    expect(spellLimitsText({ ...sc, cantripsKnown: 0, spellsPreparedMax: 0 })).toBe('');
   });
 
   it('lists only the coins carried, platinum first', () => {

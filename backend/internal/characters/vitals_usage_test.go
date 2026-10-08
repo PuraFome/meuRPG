@@ -94,3 +94,59 @@ func TestAdjustVitalsKeepsStoredResourceUsage(t *testing.T) {
 		t.Errorf("stored usage of a resource the sheet lacks = %d, want 2", got)
 	}
 }
+
+// A character whose hit points were never set has full hit points, however high
+// the maximum goes: a first write of something else (temporary hit points, a
+// slot, the familiar's sight) creates the vitals row without pinning the current
+// hit points to the maximum of that moment, so a level-up after it shows the same
+// as for a character with no row.
+func TestAFirstVitalsWriteThatLeavesHitPointsAloneKeepsThemFull(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Mestre")
+	players := make([]*user, 5)
+	for i := range players {
+		players[i] = h.newUser("Jogador")
+	}
+	campaign := h.newCampaign(master, "Mirathel", players...)
+	next := 0
+	create := func(name string) *charactersv1.Character { // each player has one living character
+		next++
+		return players[next-1].create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, name, wizardAt(1))
+	}
+	untouched := create("Sem linha")
+	byTemporary := create("Com PV temporários")
+	bySlot := create("Com espaço gasto")
+	bySight := create("Com olhos do familiar")
+	tmp := int32(2)
+	h.adjustVitals(campaign, byTemporary.GetId(), &playv1.AdjustCharacterVitalsRequest{HitPointsTemporary: &tmp})
+	h.adjustVitals(campaign, bySlot.GetId(), &playv1.AdjustCharacterVitalsRequest{SpellSlotsUsed: []*playv1.SpellSlotsUsed{{Level: 1, Used: 1}}})
+	if err := db.InTx(t.Context(), h.pool, func(tx pgx.Tx) error {
+		_, err := h.svc.SetFamiliarSight(t.Context(), tx, campaign, bySight.GetId(), "", false, nil)
+		return err
+	}); err != nil {
+		t.Fatalf("SetFamiliarSight() error = %v", err)
+	}
+
+	for _, c := range []*charactersv1.Character{untouched, byTemporary, bySlot, bySight} {
+		if _, err := master.update(t, c, c.GetName(), wizardAt(5)); err != nil {
+			t.Fatalf("raise %s: %v", c.GetName(), err)
+		}
+		v, err := h.svc.GetVitals(t.Context(), campaign, c.GetId())
+		if err != nil {
+			t.Fatalf("GetVitals(%s) error = %v", c.GetName(), err)
+		}
+		if v.GetHitPointsMax() <= 9 || v.GetHitPointsCurrent() != v.GetHitPointsMax() {
+			t.Errorf("%s after the level-up: %d/%d hit points, want full (%d)", c.GetName(), v.GetHitPointsCurrent(), v.GetHitPointsMax(), v.GetHitPointsMax())
+		}
+	}
+	// What was set stays set: a wound is still a wound after the level-up.
+	wounded := create("Ferida")
+	h.adjustVitals(campaign, wounded.GetId(), &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: new(int32(4))})
+	if _, err := master.update(t, wounded, wounded.GetName(), wizardAt(5)); err != nil {
+		t.Fatalf("raise the wounded: %v", err)
+	}
+	if v, err := h.svc.GetVitals(t.Context(), campaign, wounded.GetId()); err != nil || v.GetHitPointsCurrent() != 4 {
+		t.Errorf("a wounded character after the level-up: %d hit points (%v), want 4", v.GetHitPointsCurrent(), err)
+	}
+}
