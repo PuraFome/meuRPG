@@ -14,6 +14,7 @@ import (
 
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1/progressionv1connect"
+	"github.com/PuraFome/meuRPG/backend/internal/maps"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
@@ -34,7 +35,16 @@ func (*afterQuery) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.Tr
 
 func (a *afterQuery) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, _ pgx.TraceQueryEndData) {
 	if sql, _ := ctx.Value(queryTextKey{}).(string); strings.Contains(sql, a.match) {
-		a.once.Do(a.hook)
+		a.once.Do(func() {
+			// From a goroutine of its own: a write through another pool from inside a
+			// transaction's closure would look like a nested acquisition.
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				a.hook()
+			}()
+			<-done
+		})
 	}
 }
 
@@ -55,6 +65,7 @@ func (h *harness) tracedClient(u *user, match string, hook func()) progressionv1
 	h.t.Cleanup(pool.Close)
 	cfg := h.cfg
 	cfg.Pool = pool
+	cfg.Treasures = maps.NewTreasures(pool) // the treasure list reads through its own pool
 	svc, err := New(cfg)
 	if err != nil {
 		h.t.Fatalf("New() error = %v", err)
@@ -153,5 +164,39 @@ func TestListMilestonesIsOneSnapshotWhileTheMasterUndoes(t *testing.T) {
 	// Positive control: the hook did undo.
 	if got := tb.master.milestones(t, tb.campaign); !got[0].GetReached() || got[1].GetReached() {
 		t.Errorf("milestones after the undo = %v, want only the first reached", got)
+	}
+}
+
+// The treasures to convert and who found them are one moment: a treasure the
+// master unmarks while the list is being read is never listed as found with
+// nobody who found it.
+func TestListTreasuresToConvertIsOneSnapshotWhileATreasureIsUnmarked(t *testing.T) {
+	t.Parallel()
+	dbtest.PoolSize(t, 6)
+	tb := newTable(t, gold, 1)
+	mapID := tb.newMap()
+	bolsa := tb.treasure(t, mapID, "Bolsa do capitão", 120, nil, tb.pcs[0].GetId())
+
+	client := tb.h.tracedClient(tb.master, "FROM map_points", func() {
+		// What unmarking commits: not found, and nobody found it.
+		for _, q := range []string{"DELETE FROM map_treasure_finders WHERE point_id = $1", "UPDATE map_points SET treasure_found_at = NULL WHERE id = $1"} {
+			if _, err := tb.h.pool.Exec(context.Background(), q, bolsa); err != nil {
+				t.Errorf("unmark from the hook: %v", err)
+			}
+		}
+	})
+	res, err := client.ListTreasuresToConvert(t.Context(), connect.NewRequest(&progressionv1.ListTreasuresToConvertRequest{CampaignId: tb.campaign}))
+	if err != nil {
+		t.Fatalf("ListTreasuresToConvert() error = %v", err)
+	}
+	for _, tr := range res.Msg.GetTreasures() {
+		if len(tr.GetFoundBy()) == 0 {
+			t.Errorf("ListTreasuresToConvert(): %q is listed as found by nobody; want it with who found it, or not at all", tr.GetName())
+		}
+	}
+
+	// Positive control: the hook did unmark it.
+	if left := tb.toConvert(t); len(left) != 0 {
+		t.Errorf("treasures after the unmark = %d, want none", len(left))
 	}
 }
