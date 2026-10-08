@@ -306,8 +306,8 @@ export class CharacterEditor {
   protected readonly selectedSpellsPrepared = signal<ReadonlySet<string>>(new Set());
   /** The search of each list, by `<section>:<list>`: "0:cantrips", "1:known", "1:prepared". */
   private readonly spellFilters = signal<Readonly<Record<string, string>>>({});
-  /** Spells the sheet has that no pick of this form gave it (a subclass's always-prepared spells):
-   * only known on an edit, from the server's own derived sheet. */
+  /** Spells the sheet has that neither a pick of this form nor its subclass gave it (a race's or a feature's spell):
+   * only known on an edit, from the server's own derived sheet, as it was when the sheet was opened. */
   protected readonly grantedSpells = signal<readonly SpellOptionVm[]>([]);
 
   protected readonly isFullSheetKind = isFullSheetKind;
@@ -704,10 +704,7 @@ export class CharacterEditor {
 
   /** What the sheet has that no pick of this form gave it and no subclass of the catalog explains (a race's or a
    * feature's spell): said apart, with where it comes from. */
-  protected readonly otherGranted = computed(() => {
-    const always = new Set(this.sections().flatMap((sec) => sec.alwaysPrepared));
-    return this.grantedSpells().filter((sp) => !always.has(sp.key));
-  });
+  protected readonly otherGranted = this.grantedSpells.asReadonly();
 
   protected setSpellFilter(
     section: number,
@@ -992,6 +989,8 @@ export class CharacterEditor {
 
   /** Counts the loads, so a late answer for a route the person left is dropped, and a save that outlives its route does not navigate. */
   private loadSeq = 0;
+  /** Counts the reads of the lists after a `content_changed`, so an older answer never replaces a newer one. */
+  private catalogSeq = 0;
   private destroyed = false;
 
   /** A reused component starts every route from nothing: nothing of the previous character stays in the form or the pick sets. */
@@ -1085,6 +1084,24 @@ export class CharacterEditor {
     );
   }
 
+  /** The table's rules for the scores changed under the person (the server refused the way of rolling the step offered):
+   * they are read again, so the step offers what is allowed now. */
+  protected async rereadAbilityTable(): Promise<void> {
+    const s = this.state();
+    if (s.status !== 'ready' || !this.abilityTable()) {
+      return;
+    }
+    const seq = this.loadSeq;
+    try {
+      const table = await this.source.loadAbilityTable(s.campaignId);
+      if (seq === this.loadSeq && table) {
+        this.abilityTable.set(table);
+      }
+    } catch {
+      // The refusal the step already shows stays; the next try reads the table again.
+    }
+  }
+
   private loadForEdit(campaignId: string, characterId: string): void {
     const seq = ++this.loadSeq;
     this.resetEditing();
@@ -1141,8 +1158,13 @@ export class CharacterEditor {
         if (existing.full) {
           this.patchFullForm(existing.full);
           this.preparedMaxByClass.set(existing.preparedMax ?? {});
+          // What the sheet has from outside the form is told once, as the sheet has it: a spell of the subclass it
+          // has now stays out of this list, and stays out when the subclass is changed (the save drops it with the subclass).
           const granted = new Set(existing.grantedSpellKeys ?? []);
-          this.grantedSpells.set(catalog.spells.filter((sp) => granted.has(sp.key)));
+          const fromSubclass = new Set(this.sections().flatMap((sec) => sec.alwaysPrepared));
+          this.grantedSpells.set(
+            catalog.spells.filter((sp) => granted.has(sp.key) && !fromSubclass.has(sp.key)),
+          );
         }
         if (existing.basic) {
           patchBasicForm(this.fb, this.basicForm, existing.basic);
@@ -1582,8 +1604,14 @@ export class CharacterEditor {
     if (s.status !== 'ready') {
       return;
     }
+    // The newest read is the one that counts, and an answer for a route the person left does not count at all.
+    const seq = ++this.catalogSeq;
+    const route = this.loadSeq;
     try {
       const catalog = await this.source.loadCatalog(s.campaignId, s.characterId ?? undefined);
+      if (seq !== this.catalogSeq || route !== this.loadSeq) {
+        return;
+      }
       const now = this.state();
       if (now.status === 'ready' && catalogChanged(now.catalog, catalog)) {
         this.state.set({ ...now, catalog });

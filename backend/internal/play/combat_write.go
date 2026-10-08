@@ -157,8 +157,11 @@ type combatTx struct {
 	// transaction opened (nil without the fog of war): it filters what the change
 	// tells its caller and stamps who could see the event (combat_fog.go).
 	sight *fogSight
-	// stamped is the last event insertEvent stamped with who could see it.
+	// stamped is the last event insertEvent stamped with who could see it, and
+	// lines every one of them: a change can write several lines (a dropped damage
+	// for each attack, a door and the move), each seen by its own players.
 	stamped *actionEvent
+	lines   []actionEvent
 	// hash is the request hash kept with the event that carries the change's key.
 	hash *string
 	// rules are the table's rules (RN-24), read in this transaction when it
@@ -186,10 +189,11 @@ type combatResult struct {
 	characterID string
 	event       *actionEvent
 	// sight is what the players saw of the combat's map before the change (nil without
-	// the fog), and stamped the event the change wrote with who could see it: the
-	// publishers use both (withFogMemo).
+	// the fog), stamped the last event the change wrote with who could see it and
+	// lines all of them: the publishers use them (withFogMemo).
 	sight   *fogSight
 	stamped *actionEvent
+	lines   []actionEvent
 }
 
 // write runs one change to a combat, as AdjustCharacterVitals runs a vitals
@@ -320,6 +324,9 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 		return combatResult{}, err
 	}
 	res.stamped = last
+	if ended != nil {
+		res.lines = ended.lines
+	}
 	// A turn that started ended some familiar's sight (MR-036): the player's vitals
 	// and the fog's view change.
 	if ended != nil && len(ended.told) > 0 {
@@ -404,6 +411,7 @@ func insertEvent(ctx context.Context, c *combatTx, kind string, actor, key *stri
 			}
 		}
 		c.stamped = &ev
+		c.lines = append(c.lines, ev)
 		payload = ev
 	}
 	body, err := json.Marshal(payload)
@@ -411,7 +419,8 @@ func insertEvent(ctx context.Context, c *combatTx, kind string, actor, key *stri
 		return fmt.Errorf("encode the event payload: %w", err)
 	}
 	if ev, ok := payload.(actionEvent); ok && len(body) > eventPayloadBudget && ev.Trap != nil && len(ev.Trap.Caught) > 1 {
-		return insertFiringInParts(ctx, c, kind, actor, key, ev)
+		_, err := insertFiringInParts(ctx, c, kind, actor, key, ev)
+		return err
 	}
 	_, err = insertRaw(ctx, c, kind, actor, key, body)
 	return err
@@ -466,8 +475,9 @@ func insertRaw(ctx context.Context, c *combatTx, kind string, actor, key *string
 // as several, back to back: the first carries the firing (and the idempotency key,
 // so a retry finds it), and each next one adds the creatures that did not fit to
 // it, as the master's own "add creatures to a firing" does (ExtendsID), marked as a
-// part (trapFireEvent.Part) so that an undo takes the whole firing back at once.
-func insertFiringInParts(ctx context.Context, c *combatTx, kind string, actor, key *string, ev actionEvent) error {
+// part (trapFireEvent.Part) so that an undo takes the whole firing back at once. It
+// returns the ID of the first event, the firing's.
+func insertFiringInParts(ctx context.Context, c *combatTx, kind string, actor, key *string, ev actionEvent) (string, error) {
 	caught := ev.Trap.Caught
 	with := func(base actionEvent, trap trapFireEvent, from, to int) ([]byte, actionEvent, error) {
 		trap.Caught = caught[from:to]
@@ -487,11 +497,11 @@ func insertFiringInParts(ctx context.Context, c *combatTx, kind string, actor, k
 	n := fitPrefix(len(caught), size(ev, *ev.Trap, 0))
 	body, _, err := with(ev, *ev.Trap, 0, n)
 	if err != nil {
-		return err
+		return "", err
 	}
 	hostID, err := insertRaw(ctx, c, kind, actor, key, body)
 	if err != nil {
-		return err
+		return "", err
 	}
 	group := ev.Trap.ExtendsID // the firing the parts add to: this one, unless it extends another
 	if group == "" {
@@ -503,18 +513,25 @@ func insertFiringInParts(ctx context.Context, c *combatTx, kind string, actor, k
 		n = fitPrefix(len(caught)-at, size(part, trap, at))
 		body, _, err := with(part, trap, at, at+n)
 		if err != nil {
-			return err
+			return "", err
 		}
 		if _, err := insertRaw(ctx, c, kind, actor, nil, body); err != nil {
-			return err
+			return "", err
 		}
 	}
-	return nil
+	return hostID, nil
 }
 
 // publishTimeout bounds what finish reads and publishes after a commit, which
 // no longer depends on the caller's patience.
 const publishTimeout = 10 * time.Second
+
+// afterCommit is the context for telling the streams about a change already committed:
+// the request's values (the fog memo, the log fields) without its cancellation, bounded
+// by publishTimeout. Call stop when done.
+func afterCommit(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), publishTimeout)
+}
 
 // finish builds the handler's answer after a change: it reads the combat
 // the change was about (the session's latest, for a retried start), lets
@@ -527,7 +544,7 @@ const publishTimeout = 10 * time.Second
 // hints every change gives, because the first call may have died before
 // telling: a hint only says "read again", so a second one is harmless.
 func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResult, publish func(ctx context.Context, d *encounterData)) (*playv1.Encounter, error) {
-	pctx, stop := context.WithTimeout(context.WithoutCancel(ctx), publishTimeout)
+	pctx, stop := afterCommit(ctx)
 	defer stop()
 	var enc playdb.Encounter
 	var err error
@@ -545,7 +562,7 @@ func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResu
 	}
 	// The sight read after the commit is read once for the publishers and the answer;
 	// the one read before it says who could see the old squares.
-	pctx = withFogMemo(pctx, res.sight, res.stamped)
+	pctx = withFogMemo(pctx, res.sight, res.lines)
 	switch {
 	case publish == nil:
 	case res.repeated:
@@ -553,7 +570,7 @@ func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResu
 	default:
 		publish(pctx, d)
 	}
-	return s.viewFor(withFogMemo(ctx, res.sight, res.stamped), m, d)
+	return s.viewFor(withFogMemo(ctx, res.sight, res.lines), m, d)
 }
 
 // publishRetried is what a retry of a committed change tells the streams: the

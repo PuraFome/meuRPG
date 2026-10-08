@@ -87,6 +87,11 @@ type templateDB struct {
 	// ddl creates the template's sequences and tables, each table after the
 	// ones it references.
 	ddl []string
+	// reference are the tables (in the order of tables) that the migrations
+	// leave with rows: data the game reads and never writes, copied with its
+	// rows, and left alone when a database is emptied. Read from the migrated
+	// template, so a migration that seeds another table needs no change here.
+	reference []string
 }
 
 // Enabled reports whether a test database is configured.
@@ -185,7 +190,7 @@ func NewPoolConns(t testing.TB, prefix string, conns int32) *pgxpool.Pool {
 	}
 	// The reference tables keep their rows: a migration fills them, and no test
 	// writes to them, so a copy of the schema alone would leave them empty.
-	for _, table := range referenceTables {
+	for _, table := range template.reference {
 		if _, err := conn.ExecContext(t.Context(), fmt.Sprintf(
 			`INSERT INTO %s SELECT * FROM %s.public.%s`, table, template.name, table)); err != nil {
 			t.Fatalf("copy the reference table %s: %v", table, err)
@@ -430,15 +435,11 @@ func take(prefix string) (string, bool) {
 	return name, true
 }
 
-// referenceTables are tables that migrations fill and the game never writes:
-// they are copied with their rows, and emptyAll leaves them alone.
-var referenceTables = []string{"session_event_kinds"}
-
 // emptyAll deletes every row of every table, children before parents.
 func (tpl templateDB) emptyAll() string {
 	var b strings.Builder
 	for _, v := range slices.Backward(tpl.tables) {
-		if v == "goose_db_version" || slices.Contains(referenceTables, v) {
+		if v == "goose_db_version" || slices.Contains(tpl.reference, v) {
 			continue // the migrations it records, and the reference data, stay
 		}
 		b.WriteString("DELETE FROM " + pgx.Identifier{v}.Sanitize() + ";")
@@ -512,7 +513,32 @@ func buildTemplate(rawURL string) (templateDB, error) {
 	if err != nil {
 		return templateDB{}, err
 	}
-	return templateDB{name: name, ddl: ddl, tables: tables}, nil
+	reference, err := seededTables(ctx, tpl, tables)
+	if err != nil {
+		return templateDB{}, err
+	}
+	return templateDB{name: name, ddl: ddl, tables: tables, reference: reference}, nil
+}
+
+// seededTables are the tables of the freshly migrated template that have rows:
+// nothing but the migrations has written to it. goose's own table is left out,
+// it is copied apart.
+func seededTables(ctx context.Context, tpl *sql.DB, tables []string) ([]string, error) {
+	var seeded []string
+	for _, table := range tables {
+		if table == "goose_db_version" {
+			continue
+		}
+		var has bool
+		query := "SELECT EXISTS (SELECT 1 FROM " + pgx.Identifier{"public", table}.Sanitize() + ")"
+		if err := tpl.QueryRowContext(ctx, query).Scan(&has); err != nil {
+			return nil, fmt.Errorf("look for the rows of the template's table %s: %w", table, err)
+		}
+		if has {
+			seeded = append(seeded, table)
+		}
+	}
+	return seeded, nil
 }
 
 // waitForVersion waits until the template has the latest migration. It

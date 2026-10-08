@@ -255,4 +255,6 @@ type TrapDamage struct {
 	CreatedAt     time.Time
 	ResolvedAt    *time.Time
 	CriticalMax   int32
+	SettleKey     *string
+	SettleHash    *string
 }

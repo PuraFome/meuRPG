@@ -136,6 +136,8 @@ export class CharacterSheetPage {
 
   /** Bumped when the stream says the character's creatures changed (the panel reads its list again). */
   protected readonly creaturesTick = signal(0);
+  /** Bumped when this character's vitals or the combat changed: a Wild Shape form may have ended. */
+  protected readonly formTick = signal(0);
 
   /** How the campaign levels: decides whether the header has an XP block or only the tag. */
   protected readonly xpMode = signal<CampaignXpMode | null>(null);
@@ -180,6 +182,11 @@ export class CharacterSheetPage {
           () => this.creaturesTick.update((n) => n + 1),
           // The table's content changed (RN-23, "A classe mudou"): the same stream, one more kind of hint, the sheet read again.
           () => void this.reloadQuietly(),
+          (who) => {
+            if (who === null || who === this.characterId) {
+              this.formTick.update((n) => n + 1);
+            }
+          },
         ),
       );
     });

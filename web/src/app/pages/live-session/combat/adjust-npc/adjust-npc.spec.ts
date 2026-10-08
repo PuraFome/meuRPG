@@ -47,4 +47,60 @@ describe('AdjustNpc reads the live hit points', () => {
       expect.any(String),
     );
   });
+
+  describe('while a correction is on its way', () => {
+    function open(adjustHitPoints: ReturnType<typeof vi.fn>) {
+      const goblin = combatant({ id: 'g', label: 'Goblin', hitPointsCurrent: 5, hitPointsMax: 12 });
+      const state = new CombatState();
+      state.apply(encounter({ id: 'e1', revision: 1, combatants: [goblin] }));
+      const close = vi.fn();
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: CombatClient, useValue: { adjustHitPoints } },
+          { provide: MatDialogRef, useValue: { close } },
+          {
+            provide: MAT_DIALOG_DATA,
+            useValue: { campaignId: 'c1', encounterId: 'e1', combatant: goblin, state },
+          },
+        ],
+      });
+      const fixture = TestBed.createComponent(AdjustNpc);
+      fixture.detectChanges();
+      const cmp = fixture.componentInstance as unknown as {
+        amount: { set(v: number): void };
+        save(): Promise<void>;
+        close(): void;
+      };
+      return { cmp, close, state };
+    }
+
+    it('cannot be closed, so its answer is not lost', async () => {
+      let answer!: (e: unknown) => void;
+      const adjustHitPoints = vi.fn(() => new Promise((resolve) => (answer = resolve)));
+      const { cmp, close, state } = open(adjustHitPoints);
+      cmp.amount.set(3);
+      const saving = cmp.save();
+      cmp.close();
+      expect(close).not.toHaveBeenCalled();
+      answer(encounter({ id: 'e1', revision: 2, combatants: [state.encounter()!.combatants[0]] }));
+      await saving;
+      expect(close).toHaveBeenCalledWith(true);
+    });
+
+    it('sends the same key for the same numbers and a new one for other numbers', async () => {
+      const adjustHitPoints = vi
+        .fn()
+        .mockRejectedValue(new Error('lost'))
+        .mockRejectedValueOnce(new Error('lost'));
+      const { cmp } = open(adjustHitPoints);
+      cmp.amount.set(3);
+      await cmp.save();
+      await cmp.save();
+      cmp.amount.set(4);
+      await cmp.save();
+      const keys = adjustHitPoints.mock.calls.map((c) => c[4] as string);
+      expect(keys[1]).toBe(keys[0]);
+      expect(keys[2]).not.toBe(keys[0]);
+    });
+  });
 });

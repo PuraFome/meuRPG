@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"uuid"
 
 	"connectrpc.com/connect"
@@ -15,6 +16,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
@@ -135,6 +137,14 @@ func (s *Service) settleTrapDamage(ctx context.Context, m authz.Membership, key,
 	if apply {
 		kind = eventDamageApplied
 	}
+	// The key is kept on the damage it settled, scoped to the campaign, with a hash of what it
+	// asked: which damage, which action and which amount. The damage outlives its session, so
+	// the key cannot rest on a session event alone.
+	amountText := "-"
+	if override != nil {
+		amountText = strconv.Itoa(int(*override))
+	}
+	scopedKey, hash := idem.Scope(m.CampaignID, key), requestHash(id.String(), kind, amountText)
 	var row playdb.TrapDamage
 	var after *playv1.CharacterVitals
 	var repeated, shapeChanged bool
@@ -144,7 +154,7 @@ func (s *Service) settleTrapDamage(ctx context.Context, m authz.Membership, key,
 		q := s.queries.WithTx(tx)
 		after, repeated, shapeChanged, touched, visionMap = nil, false, false, nil, ""
 		// The damage outlives its session, so it may be settled with none open (then there
-		// is no event to write and no key to remember).
+		// is no event to write; the damage keeps the key).
 		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
 		hasSession := err == nil
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -158,6 +168,20 @@ func (s *Service) settleTrapDamage(ctx context.Context, m authz.Membership, key,
 			return fmt.Errorf("find the trap damage: %w", err)
 		}
 		row = trapDamageOf(playdb.ListCampaignTrapDamagesRow(found))
+		prior, err := q.GetTrapDamageBySettleKey(ctx, scopedKey)
+		switch {
+		case err == nil:
+			if prior.ID != row.ID {
+				return idem.ErrReused()
+			}
+			if err := idem.SameRequest(prior.SettleHash, hash); err != nil {
+				return err
+			}
+			row, repeated = prior, true // a retry: the damage is as the first call left it
+			return nil
+		case !errors.Is(err, pgx.ErrNoRows):
+			return fmt.Errorf("find the damage of this idempotency key: %w", err)
+		}
 		if hasSession {
 			done, err := q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{GameSessionID: session.ID, IdempotencyKey: &key})
 			switch {
@@ -234,7 +258,7 @@ func (s *Service) settleTrapDamage(ctx context.Context, m authz.Membership, key,
 			}
 		}
 		resolved := c.now
-		if row, err = q.SetTrapDamageStatus(ctx, playdb.SetTrapDamageStatusParams{ID: row.ID, Status: final, ResolvedAt: &resolved, AppliedAmount: applied}); err != nil {
+		if row, err = q.SetTrapDamageStatus(ctx, playdb.SetTrapDamageStatusParams{ID: row.ID, Status: final, ResolvedAt: &resolved, AppliedAmount: applied, SettleKey: scopedKey, SettleHash: hash}); err != nil {
 			return fmt.Errorf("settle the trap damage: %w", err)
 		}
 		if !hasSession {
@@ -247,13 +271,15 @@ func (s *Service) settleTrapDamage(ctx context.Context, m authz.Membership, key,
 		return playdb.TrapDamage{}, nil, err
 	}
 	if !repeated {
+		pctx, stop := afterCommit(ctx) // the change is committed: a caller that hangs up must not leave the streams and the fog unheard
+		defer stop()
 		s.publishVitals(m.CampaignID, after)
 		s.Publish(m.CampaignID, false, mapChangedHint("")) // the trap card has one damage less
 		if touched != nil {
-			s.publishEncounterChanged(ctx, m.CampaignID, *touched)
+			s.publishEncounterChanged(pctx, m.CampaignID, *touched)
 		}
 		if shapeChanged { // the beast's senses went away: the fog hears of it (MR-036)
-			s.maps.VisionChanged(ctx, m.CampaignID, visionMap)
+			s.maps.VisionChanged(pctx, m.CampaignID, visionMap)
 		}
 	}
 	return row, after, nil

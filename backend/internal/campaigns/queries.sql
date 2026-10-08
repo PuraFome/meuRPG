@@ -55,10 +55,13 @@ ORDER BY role = 'master' DESC, joined_at, user_id;
 -- name: ActivatePendingMember :execrows
 -- The master approved the pending member's character (RN-15): the
 -- membership becomes an ordinary one. An active membership matches no row
--- and stays as it is.
+-- and stays as it is, and so does a pending one whose deadline has passed:
+-- that member is no member any more (GetMembership), even before the daily
+-- TTL job deletes the row.
 UPDATE campaign_members
 SET status = 'active', pending_expires_at = NULL
-WHERE campaign_id = $1 AND user_id = $2 AND status = 'pending';
+WHERE campaign_id = $1 AND user_id = $2 AND status = 'pending'
+  AND (pending_expires_at IS NULL OR pending_expires_at > sqlc.arg(now)::timestamptz);
 
 -- name: ClearPendingExpiry :execrows
 -- A pending member created their character (RN-15): the master decides on

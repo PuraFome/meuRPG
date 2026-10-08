@@ -246,8 +246,13 @@ export class FakeMapsClient {
     this.record('deletePoint', mapId, pointId);
   }
 
-  async removeToken(_c: string, mapId: string, characterId: string): Promise<void> {
-    this.record('removeToken', mapId, characterId);
+  async removeToken(
+    _c: string,
+    mapId: string,
+    characterId: string,
+    creatureId = '',
+  ): Promise<void> {
+    this.record('removeToken', mapId, creatureId ? `creature:${creatureId}` : characterId);
   }
 
   async setCarriedLight(

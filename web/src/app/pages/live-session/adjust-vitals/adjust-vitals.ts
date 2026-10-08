@@ -1,4 +1,4 @@
-import { Component, ElementRef, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -80,7 +80,7 @@ export class AdjustVitals {
     .filter((r) => r.total > 0)
     .map((r) => ({
       key: r.key,
-      name: r.namePt || r.key,
+      name: r.namePt || 'Recurso',
       total: r.total,
       used: signal(r.used),
     }));
@@ -92,6 +92,16 @@ export class AdjustVitals {
   );
 
   protected readonly saveState = signal<SaveState>({ status: 'idle' });
+  /** The save is in the air: Esc and the backdrop do not close the sheet under it. */
+  protected readonly lockWhileSaving = effect(() => {
+    const saving = this.saveState().status === 'saving';
+    if (this.dialogRef) {
+      this.dialogRef.disableClose = saving;
+    }
+    if (this.sheetRef) {
+      this.sheetRef.disableClose = saving;
+    }
+  });
 
   /** The idempotency key of the last correction tried, with its numbers:
    * trying the same numbers again reuses it (a retry); new numbers get a

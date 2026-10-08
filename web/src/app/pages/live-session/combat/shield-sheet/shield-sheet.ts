@@ -143,6 +143,8 @@ export class ShieldSheet {
   );
   protected readonly slot = signal<SlotRow | null>(defaultSlot(this.rows()));
   protected readonly busy = signal(false);
+  /** A request in the air: Esc and the backdrop do not close the sheet under it. */
+  protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
   protected readonly outcome = signal<'stopped' | 'still' | null>(null);
   protected readonly decided = signal(false);

@@ -135,6 +135,24 @@ describe('BattleEncounters: "Começar este combate" on the master\'s session (MR
     expect(host.started()).toBe('Emboscada na ponte');
   });
 
+  it('starts the encounter as the point keeps it now, when it was edited elsewhere without changing the points', async () => {
+    const { el, settle } = await setup();
+    const edited = artboardEncounter();
+    api.battle.set('pt-1', {
+      ...edited,
+      encounter: { ...edited.encounter, monsters: edited.encounter.monsters.slice(0, 1) },
+      unknownKeys: [],
+    });
+    result = undefined;
+    el.querySelector<HTMLButtonElement>('.enc__go')!.click();
+    await settle();
+    expect(api.getCalls).toEqual(['pt-1', 'pt-1']);
+    expect(opened).toHaveLength(1);
+    expect((opened[0].data.saved!['groups'] as { key: string }[]).map((g) => g.key)).toEqual([
+      'monster:ogre',
+    ]);
+  });
+
   it('a saved encounter with a creature the SRD lost says so and does not start', async () => {
     const { el } = await setup((a) => {
       const read = a.battle.get('pt-1')!;

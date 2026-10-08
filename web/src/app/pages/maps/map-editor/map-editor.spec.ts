@@ -328,6 +328,45 @@ describe('MapEditor', () => {
     });
   });
 
+  describe("a creature's token and its owner's", () => {
+    // The creature's `character_id` is its owner's: the two share it, and the creature comes first in the list.
+    async function withCreature() {
+      await setup();
+      state.removeToken('c-pensantus');
+      state.upsertToken(mapToken('c-pensantus', 'Corvo', { creatureId: 'raven' }));
+      state.upsertToken(mapToken('c-pensantus', 'Pensantus'));
+      const view = fixture.debugElement.query(By.directive(MapView)).componentInstance as MapView;
+      return view;
+    }
+    const removeButton = () =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+        b.textContent?.includes('Remover do mapa'),
+      )!;
+
+    it('takes the owner off the map when the owner is the one selected, not the creature that shares its character id', async () => {
+      const view = await withCreature();
+      view.tokenSelect.emit('c-pensantus');
+      await settle();
+      expect(el.querySelector('#tk-title')?.textContent).toContain('Pensantus');
+      removeButton().click();
+      await settle();
+      expect(api.calls).toContain('removeToken map-1 c-pensantus');
+      expect(state.tokens().map((t) => t.name)).toEqual(['Corvo']);
+    });
+
+    it('takes a creature off the map by its creature id, and offers no hiding, which only a character has', async () => {
+      const view = await withCreature();
+      view.tokenSelect.emit('raven');
+      await settle();
+      expect(el.querySelector('#tk-title')?.textContent).toContain('Corvo');
+      expect(text()).not.toContain('Esconder');
+      removeButton().click();
+      await settle();
+      expect(api.calls).toContain('removeToken map-1 creature:raven');
+      expect(state.tokens().map((t) => t.name)).toEqual(['Pensantus']);
+    });
+  });
+
   describe('modes', () => {
     it('opens on "Pontos": the list of points, with the three new kinds on the bar', async () => {
       await setup();

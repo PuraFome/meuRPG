@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
@@ -780,4 +781,223 @@ func TestAKeyReusedForAnotherVitalsOrSearchRequestIsRefused(t *testing.T) {
 		t.Errorf("SearchForTraps(same key, same request) error = %v, want the first answer", err)
 	}
 	wantCode(t, "SearchForTraps(same key, other roll)", search(3, searchKey), connect.CodeInvalidArgument)
+}
+
+// fireWithKey calls FireTrap as the master with the key, on the point, for the targets.
+func (r *trapRig) fireWithKey(t *testing.T, key string, p *mapsv1.MapPoint, targets ...string) (*playv1.FireTrapResponse, error) {
+	t.Helper()
+	res, err := r.master.play.FireTrap(t.Context(), connect.NewRequest(&playv1.FireTrapRequest{
+		CampaignId: r.campaignID, MapId: r.mapID, PointId: p.GetId(), TargetIds: targets, IdempotencyKey: key,
+	}))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg, nil
+}
+
+// TestMR035_AFiringKeyReusedForAnotherTrapOrOtherTargetsIsRefused: a retry of FireTrap
+// answers with the first firing; the same key for another trap or for other targets is
+// invalid_argument and fires nothing, outside a combat and in one.
+func TestMR035_AFiringKeyReusedForAnotherTrapOrOtherTargetsIsRefused(t *testing.T) {
+	t.Parallel()
+	manual := func(s *mapsv1.TrapSpec) { s.Trigger = rulesv1.TrapTrigger_TRAP_TRIGGER_MANUAL }
+	for _, tc := range []struct {
+		name     string
+		inCombat bool
+	}{{"outside a combat", false}, {"in a combat", true}} {
+		t.Run(tc.name, func(t *testing.T) { //nolint:paralleltest // the subtests share nothing but the loop variable; each builds its own rig
+			t.Parallel()
+			r := newTrapRig(t)
+			one := r.trap(t, "Um", 12, 7, pit("1d6"), manual)
+			two := r.trap(t, "Dois", 13, 7, pit("1d6"), manual)
+			if tc.inCombat {
+				r.fight(t)
+			} else {
+				r.place(t, r.toren.GetId(), 12, 7)
+				r.place(t, r.pens.GetId(), 12, 7)
+			}
+			who := func(label string) string {
+				if tc.inCombat {
+					return r.id(t, label)
+				}
+				return map[string]string{"Toren": r.toren.GetId(), "Pensantus": r.pens.GetId()}[label]
+			}
+			key := newKey()
+			first, err := r.fireWithKey(t, key, one, who("Toren"))
+			if err != nil {
+				t.Fatalf("FireTrap() error = %v", err)
+			}
+			// Positive control: the very same request again is the first answer.
+			again, err := r.fireWithKey(t, key, one, who("Toren"))
+			if err != nil || again.GetFiring().GetId() != first.GetFiring().GetId() {
+				t.Fatalf("the retry = %v, %v; want the first firing %q", again, err, first.GetFiring().GetId())
+			}
+			_, err = r.fireWithKey(t, key, two, who("Toren"))
+			wantCode(t, "FireTrap(the key on another trap)", err, connect.CodeInvalidArgument)
+			_, err = r.fireWithKey(t, key, one, who("Pensantus"))
+			wantCode(t, "FireTrap(the key for other targets)", err, connect.CodeInvalidArgument)
+			if n := r.eventCount(t, "trap_triggered"); n != 1 {
+				t.Errorf("trap_triggered events = %d, want 1", n)
+			}
+		})
+	}
+}
+
+// TestMR035_ARetriedTrapDamageAfterTheSessionEndedIsTheFirstAnswer: the damage outlives its
+// session, so applying it with no session open still remembers the key: a retry is the
+// first answer and does not hit the character twice, and the key for another amount or
+// another damage is refused.
+func TestMR035_ARetriedTrapDamageAfterTheSessionEndedIsTheFirstAnswer(t *testing.T) {
+	t.Parallel()
+	r := newTrapRig(t)
+	one := r.trap(t, "Um", 12, 7, pit("1d6"), func(s *mapsv1.TrapSpec) { s.Trigger = rulesv1.TrapTrigger_TRAP_TRIGGER_MANUAL })
+	two := r.trap(t, "Dois", 13, 7, pit("1d6"), func(s *mapsv1.TrapSpec) { s.Trigger = rulesv1.TrapTrigger_TRAP_TRIGGER_MANUAL })
+	for i, p := range []*mapsv1.MapPoint{one, two} {
+		r.place(t, r.toren.GetId(), 12+i, 7)
+		if _, err := r.fireByHand(t, p); err != nil {
+			t.Fatalf("FireTrap() error = %v", err)
+		}
+	}
+	d := r.trapDamages(t)
+	if len(d) != 2 {
+		t.Fatalf("trap damages = %v, want 2", d)
+	}
+	before := r.vitals(t, r.toren).GetHitPointsCurrent()
+	r.master.end(t, r.master.liveSession(t, r.campaignID).GetGameSession())
+	apply := func(key, id string, amount int32) (*playv1.ApplyTrapDamageResponse, error) {
+		res, err := r.master.play.ApplyTrapDamage(t.Context(), connect.NewRequest(&playv1.ApplyTrapDamageRequest{
+			CampaignId: r.campaignID, TrapDamageId: id, IdempotencyKey: key, Amount: proto.Int32(amount),
+		}))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg, nil
+	}
+	key := newKey()
+	first, err := apply(key, d[0].GetId(), 3)
+	if err != nil {
+		t.Fatalf("ApplyTrapDamage() error = %v", err)
+	}
+	again, err := apply(key, d[0].GetId(), 3)
+	if err != nil || !proto.Equal(first.GetDamage(), again.GetDamage()) {
+		t.Fatalf("the retry = %v, %v; want the first answer %v", again, err, first)
+	}
+	if got := r.hpOf(t, r.toren.GetId()); got != before-3 {
+		t.Errorf("Toren's hit points = %d, want %d: applied once", got, before-3)
+	}
+	_, err = apply(key, d[0].GetId(), 5)
+	wantCode(t, "ApplyTrapDamage(the key with another amount)", err, connect.CodeInvalidArgument)
+	_, err = apply(key, d[1].GetId(), 3)
+	wantCode(t, "ApplyTrapDamage(the key on another damage)", err, connect.CodeInvalidArgument)
+	if got := r.hpOf(t, r.toren.GetId()); got != before-3 {
+		t.Errorf("Toren's hit points = %d, want %d: the refused calls change nothing", got, before-3)
+	}
+}
+
+// TestMR035_ATrapDamageKeyReusedWithAnotherAmountIsRefusedInTheSession: during the session
+// the amount the master typed is part of what the key stands for.
+func TestMR035_ATrapDamageKeyReusedWithAnotherAmountIsRefusedInTheSession(t *testing.T) {
+	t.Parallel()
+	r := newTrapRig(t)
+	one := r.trap(t, "Um", 12, 7, pit("1d6"), func(s *mapsv1.TrapSpec) { s.Trigger = rulesv1.TrapTrigger_TRAP_TRIGGER_MANUAL })
+	r.place(t, r.toren.GetId(), 12, 7)
+	if _, err := r.fireByHand(t, one); err != nil {
+		t.Fatalf("FireTrap() error = %v", err)
+	}
+	id := r.trapDamages(t)[0].GetId()
+	apply := func(key string, amount int32) error {
+		_, err := r.master.play.ApplyTrapDamage(t.Context(), connect.NewRequest(&playv1.ApplyTrapDamageRequest{
+			CampaignId: r.campaignID, TrapDamageId: id, IdempotencyKey: key, Amount: proto.Int32(amount),
+		}))
+		return err
+	}
+	key := newKey()
+	if err := apply(key, 3); err != nil {
+		t.Fatalf("ApplyTrapDamage() error = %v", err)
+	}
+	if err := apply(key, 3); err != nil {
+		t.Errorf("the retry error = %v, want the first answer", err)
+	}
+	wantCode(t, "ApplyTrapDamage(the key with another amount)", apply(key, 5), connect.CodeInvalidArgument)
+}
+
+// TestMR035_AFiringThatMeetsACombatBegunMeanwhileIsRefused: the master fires a trap while
+// no combat runs; a combat begins on the trap's map before the firing takes the session's
+// lock. Nothing fires "outside a combat" beside a running one: the call is refused, the
+// trap stays armed, and firing it again is the combat's firing.
+func TestMR035_AFiringThatMeetsACombatBegunMeanwhileIsRefused(t *testing.T) {
+	t.Parallel()
+	manual := func(s *mapsv1.TrapSpec) { s.Trigger = rulesv1.TrapTrigger_TRAP_TRIGGER_MANUAL }
+	r := newTrapRig(t)
+	calm := r.trap(t, "Calma", 12, 7, pit("1d6"), manual)
+	r.place(t, r.toren.GetId(), 12, 7)
+	// Positive control: with no combat, the firing is outside one.
+	if _, err := r.fireByHand(t, calm, r.toren.GetId()); err != nil {
+		t.Fatalf("FireTrap() error = %v", err)
+	}
+	if d := r.trapDamages(t); len(d) != 1 || d[0].GetEncounterId() != "" {
+		t.Fatalf("trap damages with no combat = %v, want one outside a combat", d)
+	}
+
+	late := r.trap(t, "Tardia", 14, 7, pit("1d6"), manual)
+	var began *playv1.Encounter
+	r.h.svc.afterTrapRead = func() {
+		r.h.svc.afterTrapRead = nil
+		began = r.fight(t)
+	}
+	_, err := r.fireByHand(t, late)
+	r.h.svc.afterTrapRead = nil
+	if began == nil {
+		t.Fatal("the combat did not begin between the read and the lock")
+	}
+	wantCode(t, "FireTrap(a combat begun meanwhile)", err, connect.CodeFailedPrecondition)
+	if got := r.stateOf(t, r.mapID, late.GetId()); got == mapsv1.TrapState_TRAP_STATE_TRIGGERED {
+		t.Errorf("the trap is %v after the refused firing, want it armed", got)
+	}
+	if _, err := r.fireByHand(t, late); err != nil {
+		t.Fatalf("FireTrap() in the combat error = %v", err)
+	}
+	var outside, inCombat int
+	if err := r.h.pool.QueryRow(t.Context(), `SELECT count(*) FILTER (WHERE encounter_id IS NULL), count(*) FILTER (WHERE encounter_id IS NOT NULL) FROM session_events WHERE kind = 'trap_triggered'`).Scan(&outside, &inCombat); err != nil || outside != 1 || inCombat != 1 {
+		t.Errorf("firings outside a combat, in one = %d, %d (%v); want 1 and 1", outside, inCombat, err)
+	}
+}
+
+// TestMR035_AFiringOutsideACombatThatFillsMoreThanOneEventIsWrittenInParts: the session's
+// history keeps a firing in a row of a few KiB; a firing outside a combat whose dice
+// rolls for the creatures it catches would not fit one is written as several events, as in
+// a combat, and its answer, its retry and the activity list every creature.
+func TestMR035_AFiringOutsideACombatThatFillsMoreThanOneEventIsWrittenInParts(t *testing.T) {
+	t.Parallel()
+	r := newTrapRig(t)
+	manual := func(s *mapsv1.TrapSpec) { s.Trigger = rulesv1.TrapTrigger_TRAP_TRIGGER_MANUAL }
+	heavy := func(s *mapsv1.TrapSpec) {
+		s.Effect = &rulesv1.TrapEffect{Attack: &rulesv1.TrapAttack{Bonus: 20, Count: 10, Damage: &rulesv1.TrapDamage{Dice: "20d6", DamageTypeKey: "damage-type:piercing"}}}
+	}
+	big := r.trap(t, "Pesada", 12, 7, heavy, manual)
+	for i, c := range []*charactersv1.Character{r.toren, r.pens, r.bri} {
+		r.place(t, c.GetId(), 12+i, 8)
+	}
+	all := []string{r.toren.GetId(), r.pens.GetId(), r.bri.GetId()}
+	key := newKey()
+	first, err := r.fireWithKey(t, key, big, all...)
+	if err != nil {
+		t.Fatalf("FireTrap() for three characters error = %v", err)
+	}
+	if n := len(first.GetFiring().GetCaught()); n != 3 {
+		t.Errorf("the answer lists %d creatures, want 3", n)
+	}
+	if n := r.eventCount(t, "trap_triggered"); n < 2 {
+		t.Errorf("trap_triggered events = %d, want the firing in more than one", n)
+	}
+	again, err := r.fireWithKey(t, key, big, all...)
+	if err != nil || again.GetFiring().GetId() != first.GetFiring().GetId() || len(again.GetFiring().GetCaught()) != 3 {
+		t.Errorf("the retry = %v, %v; want the first firing with its three creatures", again, err)
+	}
+	if lines := r.activity(t, r.master); len(lines) != 1 || len(lines[0].GetFiring().GetCaught()) != 3 {
+		t.Errorf("the activity = %v, want one firing with three creatures", lines)
+	}
+	if d := r.trapDamages(t); len(d) < 3 {
+		t.Errorf("trap damages = %d, want some for each of the three characters", len(d))
+	}
 }

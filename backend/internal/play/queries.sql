@@ -109,10 +109,12 @@ RETURNING *;
 
 -- name: GetLatestEncounter :one
 -- The session's latest combat, ended or not: GetEncounter shows it, so the app
--- can also show the end of a combat that just ended.
+-- can also show the end of a combat that just ended. A session has at most one open
+-- combat (encounters_one_open_per_session), and it is the latest whatever the clock that
+-- stamped it said; the ended ones follow by the time they were made.
 SELECT * FROM encounters
 WHERE game_session_id = $1
-ORDER BY created_at DESC, id DESC
+ORDER BY (status <> 'ended') DESC, created_at DESC, id DESC
 LIMIT 1;
 
 -- name: GetOpenEncounter :one
@@ -732,11 +734,16 @@ SELECT id, kind, encounter_id, payload FROM session_events
 WHERE game_session_id = $1 AND id = $2;
 
 -- name: SetTrapDamageStatus :one
--- Applied (with the amount when it is not the rolled one) or discarded.
+-- Applied (with the amount when it is not the rolled one) or discarded, with the key and the
+-- request hash of the call that did it.
 UPDATE trap_damages
-SET status = $2, resolved_at = $3, applied_amount = $4
+SET status = $2, resolved_at = $3, applied_amount = $4, settle_key = $5, settle_hash = $6
 WHERE id = $1
 RETURNING *;
+
+-- name: GetTrapDamageBySettleKey :one
+-- The damage settled by the call with this (scoped) key, for a retry.
+SELECT * FROM trap_damages WHERE settle_key = $1;
 
 -- Opportunity offers (MR-034, RN-21): the right to one attack on a mover that
 -- left a reactor's reach.

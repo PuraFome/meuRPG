@@ -17,6 +17,14 @@
       }
     </div>
 
+    @if (refreshFailed() && state() === 'ready') {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>Não deu para atualizar as criaturas agora.</p>
+      </div>
+      <button type="button" class="retry" (click)="retry()"><mat-icon aria-hidden="true">refresh</mat-icon>Tentar de novo</button>
+    }
+
     @if (state() === 'failed') {
       <div class="mr-notice mr-notice--danger" role="alert">
         <mat-icon aria-hidden="true">error</mat-icon>

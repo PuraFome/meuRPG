@@ -251,7 +251,7 @@ func (s *Service) promotePending(ctx context.Context, q *campaignsdb.Queries, tx
 		// Unreachable while the row is locked and checked by the caller.
 		return &unusableInviteError{state: campaignsv1.InviteState_INVITE_STATE_USED_UP}
 	}
-	if _, err := q.ActivatePendingMember(ctx, campaignsdb.ActivatePendingMemberParams{CampaignID: invite.CampaignID, UserID: userID}); err != nil {
+	if _, err := q.ActivatePendingMember(ctx, campaignsdb.ActivatePendingMemberParams{CampaignID: invite.CampaignID, UserID: userID, Now: now}); err != nil {
 		return fmt.Errorf("activate pending member: %w", err)
 	}
 	return s.characters.ApprovePendingCharacter(ctx, tx, invite.CampaignID, userID)

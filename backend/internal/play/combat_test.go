@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -1165,5 +1166,76 @@ func TestRemoveCombatantRefusesWhileItsDamageWaits(t *testing.T) {
 	}
 	if err := remove(); err != nil {
 		t.Errorf("RemoveCombatant after the damage was settled error = %v, want nil", err)
+	}
+}
+
+// TestTheLatestEncounterIsTheOpenOneWhateverTheClockSays: the session's latest combat is the
+// open one even when the clock that stamped it was behind the one of the combat that ended
+// (a clock that stepped back, or two combats within the same instant).
+func TestTheLatestEncounterIsTheOpenOneWhateverTheClockSays(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	clock := &movableClock{t: time.Now().Truncate(time.Microsecond)}
+	a.h.svc.now = clock.now
+	session := a.master.liveSession(t, a.campaignID).GetGameSession().GetId()
+	latest := func() string {
+		t.Helper()
+		enc, err := a.h.svc.queries.GetLatestEncounter(t.Context(), session)
+		if err != nil {
+			t.Fatalf("GetLatestEncounter() error = %v", err)
+		}
+		return enc.ID
+	}
+	first := a.threeAndAGoblin(t)
+	if got := latest(); got != first.GetId() {
+		t.Fatalf("latest encounter = %q, want the first, %q", got, first.GetId())
+	}
+	if _, err := a.master.combat.EndEncounter(t.Context(), connect.NewRequest(&playv1.EndEncounterRequest{CampaignId: a.campaignID, EncounterId: first.GetId(), IdempotencyKey: newKey()})); err != nil {
+		t.Fatalf("EndEncounter() error = %v", err)
+	}
+	clock.advance(-time.Hour)
+	second := a.threeAndAGoblin(t)
+	if got := latest(); got != second.GetId() {
+		t.Errorf("latest encounter = %q, want the open one, %q", got, second.GetId())
+	}
+}
+
+// TestStartEncounterAnswersNotFoundForACharacterDeletedMeanwhile: the participants
+// are read before the transaction, so a character the master deletes in between is
+// a missing character (not_found), never an internal error.
+func TestStartEncounterAnswersNotFoundForACharacterDeletedMeanwhile(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name   string
+		delete bool
+		want   connect.Code
+	}{
+		{"the character stays", false, 0},
+		{"the character is deleted meanwhile", true, connect.CodeNotFound},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			f := newFight(t)
+			if tc.delete {
+				f.h.svc.afterSightRead = func(string) {
+					if _, err := f.h.pool.Exec(t.Context(), `DELETE FROM characters WHERE id = $1`, f.goblin.GetId()); err != nil {
+						t.Errorf("delete the character: %v", err)
+					}
+				}
+			}
+			_, err := f.master.combat.StartEncounter(t.Context(), connect.NewRequest(&playv1.StartEncounterRequest{
+				CampaignId: f.campaignID, IdempotencyKey: newKey(), Name: "Emboscada",
+				Participants: []*playv1.Participant{{CharacterId: f.goblin.GetId()}},
+			}))
+			if tc.want == 0 {
+				if err != nil {
+					t.Fatalf("StartEncounter() error = %v", err)
+				}
+				return
+			}
+			if got := connect.CodeOf(err); got != tc.want {
+				t.Fatalf("StartEncounter() = %v, want %v", err, tc.want)
+			}
+		})
 	}
 }

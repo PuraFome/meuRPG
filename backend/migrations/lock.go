@@ -27,7 +27,12 @@ import (
 //     lost the lease), the context it works with is canceled, so goose stops
 //     between statements instead of racing the new owner.
 //   - Every time is the database's now(), never a runner's clock, so skew
-//     between runners does not matter.
+//     between runners does not matter. (The run's own deadline is a local one:
+//     it stops renewing, and cancels, before the lease can end.)
+//
+// Canceling stops goose between statements, not a statement already sent: the
+// schema-change job CockroachDB started for it goes on in the background, and
+// no lock can hold that back.
 //
 // The table is created here, before goose, and is not a numbered migration: the
 // lock must exist before the first migration runs, and a migration that created
@@ -79,13 +84,18 @@ func AcquireLock(ctx context.Context, db *sql.DB, opt LockOptions) (context.Cont
 		return nil, nil, err
 	}
 
+	var leaseFrom time.Time
 	deadline := time.Now().Add(opt.Wait)
 	for {
+		// Taken before the statement: the lease the database grants ends no
+		// earlier than this plus the TTL, whatever the statement's latency.
+		attempt := time.Now()
 		got, err := tryAcquire(ctx, db, holder, opt.TTL)
 		if err != nil {
 			return nil, nil, err
 		}
 		if got {
+			leaseFrom = attempt
 			break
 		}
 		if time.Now().After(deadline) {
@@ -102,7 +112,7 @@ func AcquireLock(ctx context.Context, db *sql.DB, opt LockOptions) (context.Cont
 
 	runCtx, cancel := context.WithCancelCause(ctx)
 	stopped := make(chan struct{})
-	go heartbeat(runCtx, cancel, db, holder, opt, stopped)
+	go heartbeat(runCtx, cancel, db, holder, opt, leaseFrom, stopped)
 
 	var released bool
 	release := func() {
@@ -182,35 +192,47 @@ func tryAcquire(ctx context.Context, db *sql.DB, holder string, ttl time.Duratio
 }
 
 // heartbeat renews the lease every ttl/3 until ctx ends. When a renewal finds
-// the row gone or owned by someone else, or keeps failing until the lease would
-// have expired, it cancels the run: the migrations stop rather than race the
-// new owner.
-func heartbeat(ctx context.Context, cancel context.CancelCauseFunc, db *sql.DB, holder string, opt LockOptions, stopped chan<- struct{}) {
+// the row gone or owned by someone else, or has failed for so long that the
+// next one could not finish before the lease ends, it cancels the run: the
+// migrations stop before another run can take the lease over, rather than race
+// it.
+//
+// Each renewal has ttl/6 to answer, so a database that stops answering (a
+// frozen connection never fails by itself) is noticed at the next tick instead
+// of holding the heartbeat in the call. leaseFrom, and later the start of each
+// renewal that worked, is a time before the database set the new expiry, so
+// leaseFrom+ttl is when the lease ends at the earliest.
+func heartbeat(ctx context.Context, cancel context.CancelCauseFunc, db *sql.DB, holder string, opt LockOptions, leaseFrom time.Time, stopped chan<- struct{}) {
 	defer close(stopped)
 	tick := time.NewTicker(opt.TTL / 3)
 	defer tick.Stop()
-	lastOK := time.Now()
+	lastOK := leaseFrom
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-tick.C:
 		}
-		res, err := db.ExecContext(ctx, `UPDATE migration_lock SET expires_at = now() + $2::INTERVAL WHERE id = 1 AND holder = $1`, holder, intervalOf(opt.TTL))
+		attempt := time.Now()
+		rctx, rcancel := context.WithTimeout(ctx, opt.TTL/6)
+		res, err := db.ExecContext(rctx, `UPDATE migration_lock SET expires_at = now() + $2::INTERVAL WHERE id = 1 AND holder = $1`, holder, intervalOf(opt.TTL))
+		rcancel()
 		if ctx.Err() != nil {
 			return
 		}
 		if err == nil {
 			if n, _ := res.RowsAffected(); n == 1 {
-				lastOK = time.Now()
+				lastOK = attempt
 				continue
 			}
 			cancel(errors.New("the migration lock was lost: another run took it over"))
 			return
 		}
 		opt.Logger.WarnContext(ctx, "cannot renew the migration lock", "error", err)
-		if time.Since(lastOK) > opt.TTL {
-			cancel(fmt.Errorf("the migration lock could not be renewed for %s: %w", opt.TTL, err))
+		// The next renewal is a tick away: if that is the lease's end or later,
+		// this was the last chance to keep it.
+		if time.Since(lastOK)+opt.TTL/3 >= opt.TTL {
+			cancel(fmt.Errorf("the migration lock could not be renewed for %s: %w", time.Since(lastOK).Round(time.Millisecond), err))
 			return
 		}
 	}

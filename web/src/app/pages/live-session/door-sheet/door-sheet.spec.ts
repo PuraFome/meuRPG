@@ -14,10 +14,10 @@ describe('DoorSheet', () => {
   let api: FakeMapsClient;
   let closed: unknown[];
 
-  function setup(door: DoorSquare, wall = false) {
+  function setup(door: DoorSquare, wallSquares: readonly { col: number; row: number }[] = []) {
     api = new FakeMapsClient();
     closed = [];
-    const data: DoorSheetData = { campaignId: 'camp-1', mapId: 'map-1', door, wall };
+    const data: DoorSheetData = { campaignId: 'camp-1', mapId: 'map-1', door, wallSquares };
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
@@ -135,12 +135,25 @@ describe('DoorSheet', () => {
   });
 
   it('reveals through the wall too, when a wall is painted under the secret door (it would still be a wall)', async () => {
-    const { press } = setup({ col: 7, row: 4, state: 5, axis: 'h' }, true);
+    const { press } = setup({ col: 7, row: 4, state: 5, axis: 'h' }, [{ col: 7, row: 4 }]);
     await press('Revelar a porta secreta');
     await press('Revelar');
     expect(api.paints.map((p) => `${p.layer}:${p.value}`)).toEqual([
       `${MapLayer.WALL}:0`,
       `${MapLayer.DOORS}:2`,
     ]);
+  });
+
+  it("clears the wall under every square of the door's block on a calibrated map", async () => {
+    const block = [
+      { col: 6, row: 4 },
+      { col: 7, row: 4 },
+      { col: 6, row: 5 },
+      { col: 7, row: 5 },
+    ];
+    const { press } = setup({ col: 7, row: 4, state: 5, axis: 'h' }, block);
+    await press('Revelar a porta secreta');
+    await press('Revelar');
+    expect(api.paints[0]).toEqual({ layer: MapLayer.WALL, value: 0, squares: block });
   });
 });

@@ -63,21 +63,29 @@ func (s *Service) fillLevelUp(ctx context.Context, c *charactersv1.Character, ro
 }
 
 // Party returns the campaign's living, active player characters, oldest first,
-// with the numbers XP needs from each sheet.
-func (s *Service) Party(ctx context.Context, campaignID string) ([]link.Member, error) {
-	rows, err := s.queries.ListCombatParty(ctx, campaignID)
-	if err != nil {
-		return nil, s.dbError(ctx, "list the party", err)
+// with the numbers XP needs from each sheet, read in tx (nil outside one). An
+// award reads it inside its own transaction, so a character that died or went
+// up a level a moment before is judged as it is when the award is written.
+func (s *Service) Party(ctx context.Context, tx pgx.Tx, campaignID string) ([]link.Member, error) {
+	fail := func(action string, err error) error {
+		if tx != nil {
+			return wrap(action, err) // db.InTx must still see a 40001
+		}
+		return s.dbError(ctx, action, err)
 	}
-	content, err := s.contentFor(ctx, nil, campaignID)
+	rows, err := s.queriesIn(tx).ListCombatParty(ctx, campaignID)
 	if err != nil {
-		return nil, s.dbError(ctx, "read rules content", err)
+		return nil, fail("list the party", err)
+	}
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, fail("read rules content", err)
 	}
 	out := make([]link.Member, 0, len(rows))
 	for _, row := range rows {
 		sheet, err := loadSheet(row.ID, row.Sheet)
 		if err != nil {
-			return nil, s.dbError(ctx, "list the party", err)
+			return nil, fail("list the party", err)
 		}
 		full := sheet.GetFull()
 		if full == nil {

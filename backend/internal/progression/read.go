@@ -209,7 +209,7 @@ func (s *Service) GetCampaignExperience(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the campaign's XP mode", err)
 	}
-	party, err := s.party.Party(ctx, m.CampaignID)
+	party, err := s.party.Party(ctx, nil, m.CampaignID)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the party", err)
 	}

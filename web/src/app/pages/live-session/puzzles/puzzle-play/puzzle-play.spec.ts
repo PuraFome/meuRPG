@@ -506,7 +506,7 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
     });
 
     it("lets the time run down on its own, from the server's deadline", async () => {
-      const { el, fixture } = await render(
+      const { el } = await render(
         riddle({
           limits: {
             attemptsPerPlayer: 0,
@@ -520,7 +520,6 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
         }),
       );
       expect(textOf(el.querySelector('app-limit-counters'))).toMatch(/Tempo 4:[45]\d de 5:00/);
-      expect(fixture).toBeTruthy();
     });
   });
 
