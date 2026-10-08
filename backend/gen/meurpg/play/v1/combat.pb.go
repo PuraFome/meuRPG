@@ -12122,7 +12122,10 @@ type CombatLogSpellTarget struct {
 	CoverBonus       int32       `protobuf:"varint,12,opt,name=cover_bonus,json=coverBonus,proto3" json:"cover_bonus,omitempty"`
 	// The damage of the cast's other damage types, once rolled, in the spell's
 	// order after `damage`.
-	MoreDamages   []*CombatLogDamage `protobuf:"bytes,13,rep,name=more_damages,json=moreDamages,proto3" json:"more_damages,omitempty"`
+	MoreDamages []*CombatLogDamage `protobuf:"bytes,13,rep,name=more_damages,json=moreDamages,proto3" json:"more_damages,omitempty"`
+	// Only the master: the creature was hidden from the players when the spell hit
+	// it. A player's entry never has such a target (RN-10).
+	Hidden        bool `protobuf:"varint,14,opt,name=hidden,proto3" json:"hidden,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -12246,6 +12249,13 @@ func (x *CombatLogSpellTarget) GetMoreDamages() []*CombatLogDamage {
 		return x.MoreDamages
 	}
 	return nil
+}
+
+func (x *CombatLogSpellTarget) GetHidden() bool {
+	if x != nil {
+		return x.Hidden
+	}
+	return false
 }
 
 // CombatLogDeathSave is a death save in the log. When the table hides the death
@@ -14153,7 +14163,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\tpool_roll\x18\x06 \x01(\v2\x18.meurpg.play.v1.DiceRollR\bpoolRoll\x120\n" +
 	"\x14effect_condition_key\x18\a \x01(\tR\x12effectConditionKey\x12.\n" +
 	"\x10effect_threshold\x18\b \x01(\x05H\x00R\x0feffectThreshold\x88\x01\x01B\x13\n" +
-	"\x11_effect_threshold\"\xa6\x05\n" +
+	"\x11_effect_threshold\"\xbe\x05\n" +
 	"\x14CombatLogSpellTarget\x12\x1b\n" +
 	"\ttarget_id\x18\x01 \x01(\tR\btargetId\x12!\n" +
 	"\ftarget_label\x18\x02 \x01(\tR\vtargetLabel\x12\x14\n" +
@@ -14170,7 +14180,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x12target_armor_class\x18\v \x01(\x05H\x00R\x10targetArmorClass\x88\x01\x01\x12\x1f\n" +
 	"\vcover_bonus\x18\f \x01(\x05R\n" +
 	"coverBonus\x12B\n" +
-	"\fmore_damages\x18\r \x03(\v2\x1f.meurpg.play.v1.CombatLogDamageR\vmoreDamagesB\x15\n" +
+	"\fmore_damages\x18\r \x03(\v2\x1f.meurpg.play.v1.CombatLogDamageR\vmoreDamages\x12\x16\n" +
+	"\x06hidden\x18\x0e \x01(\bR\x06hiddenB\x15\n" +
 	"\x13_target_armor_class\"\xe6\x01\n" +
 	"\x12CombatLogDeathSave\x12,\n" +
 	"\x04roll\x18\x01 \x01(\v2\x18.meurpg.play.v1.DiceRollR\x04roll\x12:\n" +

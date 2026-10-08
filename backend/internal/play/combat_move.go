@@ -348,6 +348,11 @@ func (s *Service) MoveCombatant(
 			length = grid.LengthDFt(squareOfCombatant(target), to)
 		}
 
+		if !v.master || actsNow(c.enc, target) { // the turn's move waits for the master's answer; his own moves of a token off turn do not
+			if err := s.mustNotHold(ctx, c); err != nil {
+				return nil, err
+			}
+		}
 		if !v.master {
 			if err := s.mustNotWait(ctx, c, target); err != nil {
 				return nil, err

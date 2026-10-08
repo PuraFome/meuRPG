@@ -3689,6 +3689,9 @@ message CombatLogSpellTarget {
   // The damage of the cast's other damage types, once rolled, in the spell's
   // order after `damage`.
   repeated CombatLogDamage more_damages = 13;
+  // Only the master: the creature was hidden from the players when the spell hit
+  // it. A player's entry never has such a target (RN-10).
+  bool hidden = 14;
 }
 
 // CombatLogDeathSave is a death save in the log. When the table hides the death
