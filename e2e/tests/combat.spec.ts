@@ -1193,3 +1193,64 @@ test('Sono em dois goblins e no Capitão: o mestre vê o total e os PV, o jogado
     await done();
   }
 });
+
+const mira: CharacterBuild = {
+  name: 'Mira',
+  raceKey: 'race:human',
+  race: 'Humano',
+  classKey: 'class:monk',
+  class: 'Monge',
+  level: 3,
+  background: 'Soldado',
+  backgroundSkillKeys: ['skill:athletics', 'skill:intimidation'],
+  backgroundSkills: ['Atletismo', 'Intimidação'],
+  extraSkillKeys: ['skill:acrobatics', 'skill:stealth'],
+  extraSkills: ['Acrobacia', 'Furtividade'],
+  scores: { for: 12, des: 17, con: 14, int: 10, sab: 15, car: 8 },
+};
+
+test('monge 3: o golpe das Artes Marciais e a Rajada de Golpes aparecem como ataques de ação bônus, e a Rajada espera o ataque da ação', { tag: ['@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  const { m, p, campaignId, done } = await actingTable(browser, 'Monge', { Mira: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, [], undefined, { build: mira });
+  try {
+    const start = await getEncounterRPC(m, campaignId);
+    await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: start.id, combatantId: start.combatants.find((c) => c.label === 'Mira')!.id, col: 8, row: 9 });
+    await openSessionPage(p, campaignId);
+    const groups = p.getByRole('region', { name: 'O que você pode fazer' });
+    // A natural 1 always misses: the attack is spent and no damage is left to roll.
+    const strike = async () => {
+      await groups.getByRole('button', { name: /^Atacar com Golpe desarmado/ }).click();
+      const sheet = p.getByRole('dialog', { name: /Atacar com Golpe desarmado/ });
+      await sheet.locator('label', { hasText: 'Goblin 1' }).click();
+      const typed = sheet.getByRole('button', { name: 'Digitar o resultado' });
+      if (await typed.isVisible()) {
+        await typed.click();
+      }
+      await sheet.getByLabel(/Role 1d20/).fill('1');
+      await sheet.getByRole('button', { name: 'Confirmar 1' }).click();
+      return sheet;
+    };
+
+    // Before the Attack action, Rajada de Golpes is off and says why.
+    await expect(groups.getByText('Só depois de atacar com a ação')).toBeVisible();
+    await expect(groups.getByRole('button', { name: 'Usar Rajada de Golpes' })).toHaveAttribute('aria-disabled', 'true');
+
+    let sheet = await strike();
+    await expect(sheet.getByText('Sua ação foi usada.')).toBeVisible();
+    await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
+    // The action is spent, yet the strike stays on offer as a bonus action attack.
+    await expect(groups.getByText('Golpe desarmado das Artes Marciais')).toBeVisible();
+    await expect(groups.getByRole('button', { name: /^Atacar com Golpe desarmado/ })).toBeEnabled();
+
+    await groups.getByRole('button', { name: 'Usar Rajada de Golpes' }).click();
+    await expect(groups.getByText('Rajada de Golpes: 2 golpes restantes')).toBeVisible();
+    sheet = await strike();
+    await expect(sheet.getByText('Rajada de Golpes: 1 golpe restante.')).toBeVisible();
+    await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
+    await expect(groups.getByText('Rajada de Golpes: 1 golpe restante')).toBeVisible();
+    sheet = await strike();
+    await expect(sheet.getByText('Rajada de Golpes: acabaram os golpes.')).toBeVisible();
+  } finally {
+    await done();
+  }
+});
