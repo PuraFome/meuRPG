@@ -71,7 +71,9 @@ describe('treasure-errors: every refusal by its code and its typed detail (MR-04
   });
 
   it('a square out of the grid, the 200-point cap, a map that is gone and a lost server each have their words', () => {
-    expect(placeFailure(invalidField('column')).text).toContain('fora da grade');
+    expect(placeFailure(invalidField('column')).text).toBe(
+      'Não deu para pôr o tesouro: o quadrado fica fora da grade do mapa. O mapa pode ter mudado e foi aberto de novo: escolha o quadrado outra vez.',
+    );
     expect(placeFailure(invalidField('row')).text).toContain('fora da grade');
     expect(placeFailure(new ConnectError('x', Code.ResourceExhausted)).text).toContain(
       'limite de 200 pontos',

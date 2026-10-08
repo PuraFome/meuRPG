@@ -71,7 +71,7 @@ function invalidPlacement(field: string | null): PlaceFailure | null {
       return {
         generateAgain: false,
         rereadMap: true,
-        text: 'Não deu para pôr o tesouro: o quadrado fica fora da grade do mapa. O mapa pode ter mudado; ele foi aberto de novo, escolha o quadrado outra vez.',
+        text: 'Não deu para pôr o tesouro: o quadrado fica fora da grade do mapa. O mapa pode ter mudado e foi aberto de novo: escolha o quadrado outra vez.',
       };
     case 'name':
       return {
