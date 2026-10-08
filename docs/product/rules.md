@@ -35,7 +35,7 @@ Each rule has an ID (RN-xx) so that the stories, the tests and the code can poin
 | RN-27 | **Puzzles.** The player never receives the answer to a puzzle: only the state (the lights, the wheels, the symbols, the ciphered message), the master's clue, the loose hints, who made the last move (the character's name) and, once solved, what happened (the text the master wrote in "Ao resolver" or a generic line). | [Detail](#rn-27-puzzles) |
 | RN-28 | **AI-generated images.** Only the master generates and edits, with a limit of images per campaign per month. | [Detail](#rn-28-ai-generated-images) |
 | RN-29 | **Monsters in combat.** A monster from the bestiary (MR-042) enters combat as an NPC: the player sees only the state word (RN-20), the master sees the SRD creature sheet, and it counts in the XP by enemies by its challenge rating (CR, ND). | [Detail](#rn-29-monsters-in-combat) |
-| RN-30 | **Limits on what an account creates.** An account is master of at most 10 campaigns (`MAX_CAMPAIGNS_PER_USER`), and the whole server generates at most 100 images per day (`IMAGE_DAILY_LIMIT`), on top of each campaign's 20 per month (RN-28). | [Detail](#rn-30-limits-on-what-an-account-creates) |
+| RN-30 | **Limits on what an account creates.** An account is master of at most 10 campaigns (`MAX_CAMPAIGNS_PER_USER`), and the whole server generates at most 100 images per day (`IMAGE_DAILY_LIMIT`) and keeps at most 5 image requests alive at once (the one being made and four waiting), on top of each campaign's 20 per month (RN-28). | [Detail](#rn-30-limits-on-what-an-account-creates) |
 
 ## RN-01: Sheet lock
 
@@ -418,7 +418,7 @@ Each monster put in a combat is an `npc` combatant with the SRD creature key, a 
 
 ## RN-30: Limits on what an account creates
 
-An account is master of at most 10 campaigns (`MAX_CAMPAIGNS_PER_USER`), and the whole server generates at most 100 images per day (`IMAGE_DAILY_LIMIT`), on top of each campaign's 20 per month (RN-28). Optionally, only a list of verified e-mails (`CAMPAIGN_CREATORS`) can create campaigns; whoever joins by invite plays without being on it. Empty, anyone can create. The screen says the reason in place, with no generic error. These numbers are defaults chosen by engineering, configurable by the variables above.
+An account is master of at most 10 campaigns (`MAX_CAMPAIGNS_PER_USER`), and the whole server generates at most 100 images per day (`IMAGE_DAILY_LIMIT`) and keeps at most 5 image requests alive at once (the one being made and four waiting), on top of each campaign's 20 per month (RN-28). Optionally, only a list of verified e-mails (`CAMPAIGN_CREATORS`) can create campaigns; whoever joins by invite plays without being on it. Empty, anyone can create. The screen says the reason in place, with no generic error. These numbers are defaults chosen by engineering, configurable by the variables above.
 
 
 **How the system meets it**
