@@ -25,6 +25,7 @@ import { ImageUploader } from '../../core/images/image-uploader';
 import { ACCEPT_ATTRIBUTE, DEFAULT_LIMITS } from '../../core/images/upload-errors';
 import { UploadQueue } from '../../core/images/upload-queue';
 import { ImagePrivacyNote } from './image-privacy-note';
+import { RetryImage } from '../retry-image/retry-image';
 import { UploadProgress } from './upload-progress/upload-progress';
 
 /** A tag under a tile's name. */
@@ -73,7 +74,7 @@ type PickerState =
  */
 @Component({
   selector: 'app-gallery-picker',
-  imports: [ImagePrivacyNote, MatButtonModule, MatIconModule, UploadProgress],
+  imports: [ImagePrivacyNote, MatButtonModule, MatIconModule, RetryImage, UploadProgress],
   templateUrl: './gallery-picker.html',
   styleUrl: './gallery-picker.scss',
 })
