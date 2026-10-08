@@ -2629,7 +2629,9 @@ func TestFlameStrikeDiscardingTheLastDamageStillRemindsTheSave(t *testing.T) {
 	b.mustDamage(t, b.master, e2, fire, inAppDamage)
 	b.h.roller.queue(2, 2, 2, 2)
 	b.mustDamage(t, b.master, e2, radiant, inAppDamage)
-	b.settle(t, b.master, e2, fire, false)
+	if _, err := b.settle(t, b.master, e2, fire, false); err != nil {
+		t.Fatalf("discarding the fire damage error = %v", err)
+	}
 	if none, err := b.settle(t, b.master, e2, radiant, false); err != nil || none.GetConcentrationDc() != 0 {
 		t.Errorf("discarding both damages = %v, %v; want no reminder", none, err)
 	}
