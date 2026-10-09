@@ -167,7 +167,12 @@ export interface CharacterFormValue {
   alignment: AlignmentKey;
   /** Locks with the rest of the sheet, unlike the story fields (A3). */
   customFeaturesText: string;
+  /** A College of Lore bard's "Perguntar" setting for Palavras de Interrupção: on which rolls of an enemy the combat asks. */
+  cuttingWordsAsk: CuttingWordsAskKey;
 }
+
+/** `CuttingWordsAsk`: every roll of the enemy, attacks only (the default) or never. */
+export type CuttingWordsAskKey = 'all' | 'only-attacks' | 'never';
 
 /** One attack of a minion or story NPC (`BasicAttack`). */
 export interface BasicAttackFormValue {
@@ -468,6 +473,8 @@ export interface CharacterForEdit {
   readonly grantedSpellKeys?: readonly string[];
   /** How many spells each casting class prepares (the saved sheet's `spellcasting[].prepared_max`), by class key. */
   readonly preparedMax?: Readonly<Record<string, number>>;
+  /** The keys of the features the server's derived sheet has (`feature:cutting-words` shows the bard's "Perguntar" setting). An edit only. */
+  readonly featureKeys?: readonly string[];
 }
 
 /**

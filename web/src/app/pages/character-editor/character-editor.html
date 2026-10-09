@@ -380,6 +380,23 @@
                     </mat-form-field>
                   </section>
                 }
+
+                @if (hasCuttingWords()) {
+                  <section class="subsection" aria-labelledby="cutting-words-title">
+                    <h3 class="subsection__title" id="cutting-words-title">Palavras de Interrupção</h3>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                      <mat-label>Perguntar</mat-label>
+                      <mat-select formControlName="cuttingWordsAsk">
+                        @for (o of cuttingWordsOptions; track o.value) {
+                          <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                        }
+                      </mat-select>
+                      <mat-hint>
+                        Quando o combate pergunta se você usa Palavras de Interrupção contra o inimigo.
+                      </mat-hint>
+                    </mat-form-field>
+                  </section>
+                }
               </cdk-step>
 
               <cdk-step [label]="stepLabels.atributos" [hasError]="stepHasError('atributos')">
