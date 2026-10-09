@@ -57,7 +57,7 @@ import { coverBonusText, degreeWord, sourceWord } from '../../../../core/combat/
                 <span class="part__formula">{{ damageLine() }}{{ d.roll?.physical ? ' · dado físico' : '' }}</span>
               </span>
             } @else if (waiting()) {
-              <span class="part__line">Esperando a reação do alvo.</span>
+              <span class="part__line">Esperando o mestre.</span>
             } @else {
               <span class="part__line">Sem dano: o ataque errou.</span>
             }
