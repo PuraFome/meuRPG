@@ -293,7 +293,7 @@ func TestGrappleBeatingTheTargetsRollGrabsItAndTheMasterAnswersForTheNPC(t *test
 	// The log: "Toren agarrou o Hobgoblin", for everyone, with no number.
 	for who, u := range map[string]*user{"master": a.master, "Toren": a.caio, "Pensantus": a.ana} {
 		var found bool
-		for _, e := range logEntries(a.log(t, u, c.e)) {
+		for _, e := range contestLogEntries(a.log(t, u, c.e)) {
 			if e.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_CONTEST && e.GetContest().GetLine() == playv1.ContestLogLine_CONTEST_LOG_LINE_GRAPPLED {
 				found = true
 				if e.GetActorLabel() != "Toren" || e.GetTargetLabel() != c.hob {
@@ -326,7 +326,7 @@ func TestGrappleTieOrLossChangesNothing(t *testing.T) {
 		t.Error("a tie grappled the Hobgoblin")
 	}
 	var failed bool
-	for _, e := range logEntries(a.log(t, a.caio, c.e)) {
+	for _, e := range contestLogEntries(a.log(t, a.caio, c.e)) {
 		failed = failed || e.GetContest().GetLine() == playv1.ContestLogLine_CONTEST_LOG_LINE_GRAPPLE_FAILED
 	}
 	if !failed {
@@ -422,8 +422,8 @@ func scores16() *rulesv1.AbilityScores {
 	return &rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}
 }
 
-// logEntries are every entry of the log, the latest first.
-func logEntries(l *playv1.ListCombatLogResponse) []*playv1.CombatLogEntry {
+// contestLogEntries are every entry of the log, the latest first.
+func contestLogEntries(l *playv1.ListCombatLogResponse) []*playv1.CombatLogEntry {
 	var out []*playv1.CombatLogEntry
 	for _, r := range l.GetRounds() {
 		out = append(out, r.GetEntries()...)
@@ -625,7 +625,10 @@ func TestAPlayerChoosesTheSkillWhenAnNPCGrapplesHer(t *testing.T) {
 		t.Fatalf("Brisa's options = %v, want Acrobacia +3 and Atletismo +0", options)
 	}
 	// Someone else cannot answer for her, but the master can.
-	if _, err := c.respond(t, a.caio, started.GetContest().GetId(), playv1.ContestSkill_CONTEST_SKILL_ATHLETICS, 10); connect.CodeOf(err) == 0 {
+	if _, err := a.caio.contests.RespondContest(t.Context(), connect.NewRequest(&playv1.RespondContestRequest{
+		CampaignId: a.campaignID, EncounterId: c.e.GetId(), IdempotencyKey: newKey(), ContestId: started.GetContest().GetId(),
+		Skill: playv1.ContestSkill_CONTEST_SKILL_ATHLETICS, Roll: rollIn(),
+	})); err == nil {
 		t.Error("another player answered for Brisa")
 	}
 	// Acrobatics 8 + 3 = 11 against 18: she loses and is Grappled.
@@ -690,25 +693,24 @@ func TestShoveKnocksProneOrPushesOneSquareAndABlockedPushStays(t *testing.T) {
 	// Next round: knock prone.
 	c.advance(t, c.hob)
 	c.advance(t, "Toren")
+	if _, err := c.moveTo(t, a.master, c.hob, 4, 3); err != nil {
+		t.Fatalf("placing the Hobgoblin: %v", err)
+	}
 	view = won()
 	c.mustShove(t, a.caio, view.GetId(), playv1.ShoveOutcome_SHOVE_OUTCOME_PRONE)
 	if !c.hasCondition(t, c.hob, condProne) {
 		t.Error("the Hobgoblin is not Derrubado")
 	}
-	if !c.hasCondition(t, c.hob, condProne) || c.square(t, c.hob) != [2]int32{5, 3} {
+	if c.square(t, c.hob) != [2]int32{4, 3} {
 		t.Errorf("knocking prone moved the Hobgoblin to %v", c.square(t, c.hob))
 	}
 
-	// A creature Toren sees behind the target blocks the push (the Goblin goes to (6,3) behind the
-	// Hobgoblin, at (5,3) now).
+	// A creature Toren sees behind the target blocks the push: the Goblin goes to (5,3), behind the
+	// Hobgoblin at (4,3).
 	c.advance(t, c.hob)
 	c.advance(t, "Toren")
-	if _, err := c.moveTo(t, a.master, "Goblin", 6, 3); err != nil {
+	if _, err := c.moveTo(t, a.master, "Goblin", 5, 3); err != nil {
 		t.Fatalf("placing the Goblin: %v", err)
-	}
-	// Toren moves next to the Hobgoblin first (the master puts him there).
-	if _, err := c.moveTo(t, a.master, "Toren", 4, 3); err != nil {
-		t.Fatalf("placing Toren: %v", err)
 	}
 	view = won()
 	if view.GetShoveChoice().GetPushAvailable() || view.GetShoveChoice().GetPushBlocked() != playv1.ShoveBlockedReason_SHOVE_BLOCKED_REASON_CREATURE {
@@ -717,11 +719,11 @@ func TestShoveKnocksProneOrPushesOneSquareAndABlockedPushStays(t *testing.T) {
 	_, err := c.resolveShove(t, a.caio, view.GetId(), playv1.ShoveOutcome_SHOVE_OUTCOME_PUSH)
 	wantContestBlocked(t, "pushing into a creature", err, playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_PUSH_BLOCKED)
 	stays := c.mustShove(t, a.caio, view.GetId(), playv1.ShoveOutcome_SHOVE_OUTCOME_STAYS)
-	if stays.GetContest().GetShoveOutcome() != playv1.ShoveOutcome_SHOVE_OUTCOME_STAYS || c.square(t, c.hob) != [2]int32{5, 3} {
+	if stays.GetContest().GetShoveOutcome() != playv1.ShoveOutcome_SHOVE_OUTCOME_STAYS || c.square(t, c.hob) != [2]int32{4, 3} {
 		t.Errorf("a blocked push moved the Hobgoblin: %v", c.square(t, c.hob))
 	}
 	var line bool
-	for _, e := range logEntries(a.log(t, a.ana, c.e)) {
+	for _, e := range contestLogEntries(a.log(t, a.ana, c.e)) {
 		line = line || e.GetContest().GetLine() == playv1.ContestLogLine_CONTEST_LOG_LINE_SHOVE_STAYS
 	}
 	if !line {
@@ -835,7 +837,7 @@ func TestAGrappleEndsWhenTheGrapplerIsIncapacitatedOrTheTargetLeavesItsReach(t *
 	c.grappleWon(t)
 	set := func(who string, keys ...string) {
 		if _, err := a.master.combat.SetCombatantConditions(t.Context(), connect.NewRequest(&playv1.SetCombatantConditionsRequest{
-			CampaignId: a.campaignID, EncounterId: c.e.GetId(), CombatantId: c.id(t, who), IdempotencyKey: newKey(), Conditions: &playv1.ConditionSet{Keys: keys},
+			CampaignId: a.campaignID, EncounterId: c.e.GetId(), CombatantId: c.id(t, who), IdempotencyKey: newKey(), Conditions: &playv1.ConditionList{Keys: keys},
 		})); err != nil {
 			t.Fatalf("SetCombatantConditions() error = %v", err)
 		}
