@@ -111,7 +111,7 @@ Copy this into any PR that touches data, logs, screens or vendors:
 
 **In the legacy app (discontinued)**, `users.name` was stored, and there were two columns with no purpose: `characters.email` and `sheet.playerName`. There is no data migration: all three simply do not exist in the new schema (see [Data model](data.md)). In the legacy app, maps were kept as base64 in the database, and the gallery and campaigns were kept in `localStorage`.
 
-**Bug in the legacy app (discontinued):** sign-out and "Excluir conta" called routes that did not exist in NestJS (`POST /api/auth/logout` and `DELETE /api/auth/account`). Sign-out only cleared the browser, and the token stayed valid on the server until it expired. Deletion failed, so the right to erasure (art. 18, VI) did not work there. It is not fixed in the legacy app; the new system implements both from the first deploy with sign-in and proves them with an automated test.
+**Bug in the legacy app (discontinued):** sign-out and "Excluir conta" called routes that did not exist in NestJS (`POST /api/auth/logout` and `DELETE /api/auth/account`). Sign-out only cleared the browser, and the token stayed valid on the server until it expired. Deletion failed, so the right to erasure (art. 18, VI) did not work there. The legacy app's code is gone from the repository; the new system implements both from the first deploy with sign-in and proves them with an automated test.
 
 ### API logs
 
@@ -295,8 +295,8 @@ Data lives in São Paulo (`southamerica-east1`). Access by a vendor outside Braz
 | Google Cloud | Cloud Run, Cloud Logging, Cloud Storage, Secret Manager | Everything, in São Paulo | Data Processing Addendum with the Brazilian standard clauses |
 | Cockroach Labs | Managed CockroachDB, on Google Cloud in São Paulo | The database and its backups | **To be defined:** the current contract covers the GDPR |
 | Google (sign-in) | Sign in with Google | Google controls its own account; we receive only `sub` and e-mail | Not our processor |
-| Render | Legacy app (discontinued): NestJS. `server/` will be removed from the repository (see [Legacy app](legacy-app.md)) | What went through the legacy app's API | **Temporary gap.** Ends when `server/` is removed |
-| GitHub Pages | Legacy app (discontinued): Angular, kept in `src/` only as a reference until it leaves in a separate PR | IP of visitors | **Temporary gap.** Ends when `src/` is removed |
+| Render | Hosting of the legacy app's NestJS server (discontinued; its code is no longer in the repository). To do: the project owner turns the hosting off | What went through the legacy app's API | **Temporary gap.** Ends when the project owner turns the service off |
+| GitHub Pages | Hosting of the legacy app's Angular build (discontinued; its code is no longer in the repository). To do: the project owner turns it off in the repository settings | IP of visitors | **Temporary gap.** Ends when the project owner turns it off |
 | Google (Gemini API) | Generates the images the master asks for (MR-039, RN-28, ADR-0019), with an AI Studio key, through the server | The text the master writes, the style, the gallery images the master picks as reference and, in a refinement, the previous image. Never a person's name, e-mail or sheet. Google may keep the data briefly, or in cache, **in any country**: it counts as an international transfer | [Gemini API Paid Services terms](https://ai.google.dev/gemini-api/terms) (no image model has a free tier). **To be defined:** registration as processor and the transfer mechanism (Resolution CD/ANPD no. 19/2024) |
 | Cloudflare Workers AI | Jev, after the MVP | Only game context, no personal data | **To be defined** before Jev |
 | Have I Been Pwned | Checks whether a new password has leaked | 5 characters of the password hash, leaving the server. Identifies nobody | Not a processor |

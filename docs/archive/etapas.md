@@ -83,7 +83,7 @@ The table plays the first whole session through the app, with everything above. 
 
 ### Etapa 11: After the MVP (planned)
 
-PDF sheet import (MR-007), the full level-up screen (the sheet-guided adjustment, MR-040, is before the MVP), rules book (MR-020), copy a character (MR-021), reuse NPCs (MR-022), hand over or split the campaign (MR-023), then the player's proposal (MR-026) and PDF reading of rules (MR-027), in this order. Kept for after the MVP: table style feature by feature (MR-046) and more puzzles (MR-047). Two cleanup tasks with no story: import only the characters from the old database and decommission it (see [data.md](../data.md) and [privacy.md](../privacy.md#the-legacy-app-database)); remove `server/` (NestJS) and then `src/` (Angular) from the repository (see [legacy-app.md](../legacy-app.md)). Stories: MR-007, MR-017, MR-020, MR-021, MR-022, MR-023, MR-026, MR-027, MR-046, MR-047.
+PDF sheet import (MR-007), the full level-up screen (the sheet-guided adjustment, MR-040, is before the MVP), rules book (MR-020), copy a character (MR-021), reuse NPCs (MR-022), hand over or split the campaign (MR-023), then the player's proposal (MR-026) and PDF reading of rules (MR-027), in this order. Kept for after the MVP: table style feature by feature (MR-046) and more puzzles (MR-047). Two cleanup tasks with no story: import only the characters from the old database and decommission it (see [data.md](../data.md) and [privacy.md](../privacy.md#the-legacy-app-database)); remove `server/` (NestJS) and then `src/` (Angular) from the repository (done: both are gone from the repository). Stories: MR-007, MR-017, MR-020, MR-021, MR-022, MR-023, MR-026, MR-027, MR-046, MR-047.
 
 ## Slice labels and what they delivered
 

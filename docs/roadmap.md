@@ -2,7 +2,7 @@
 
 The MVP is reached when the table plays its first full session through the app. **Current stage: pre-MVP.** Stages 1 to 10 are built, hardened and rehearsed, and the app runs in production at `https://meurpg.app` (see [Operations](operations.md)); the first real session comes next. After the MVP: internationalization (an English UI), then Stage 11. The per-stage delivery history (PRs, migrations, slices) is in the [archive](archive/etapas.md); who decided what, and when, is in [decisions](archive/decisions.md).
 
-The order starts with the foundation: the skeleton first, then the test base and the new app's skeleton, then each story lands finished on the Go backend, proven by its own tests. There is no gradual migration from the legacy app: `src/` (old Angular) stays as a reference until it leaves the repository in a separate PR, and `server/` (old NestJS) is removed. See [Legacy app](legacy-app.md).
+The order starts with the foundation: the skeleton first, then the test base and the new app's skeleton, then each story lands finished on the Go backend, proven by its own tests. There is no gradual migration from the legacy app (old Angular and NestJS): its code has left the repository.
 
 ```mermaid
 flowchart TD
@@ -39,7 +39,7 @@ flowchart TD
 | 10. Content and generation (done) | The table's own content and rules (classes, subclasses, races, backgrounds, spells; table rules; grid calibration; combat without a grid), the dungeon generator with doors, puzzles, the players' spell list and the options the Game Master leaves available, AI-generated images, the bestiary, the encounter builder and the treasure generator. | MR-025, MR-010, MR-038, MR-039, MR-042 to MR-045 |
 | **MVP gate** | Hardening, two rehearsals and the production deploy (done); the table plays its first full session through the app with everything above. | — |
 | Internationalization | The English UI (the screens are in Portuguese until then). | — |
-| 11. After the MVP | Importing a character sheet from a PDF, the full level-up screen, a rulebook, copying characters, reusing NPCs, handing over or splitting a campaign, the player's proposal and PDF reading of rules (in this order); the table's style resource by resource (MR-046), more puzzles (MR-047) and a list of past sessions with the summary of each (the server already answers for any ended session). Two cleanup tasks with no story: importing only the characters from the old database and decommissioning that database; removing the legacy app (`src/`, `server/`). | MR-007, MR-017, MR-020 to MR-023, MR-026, MR-027, MR-046, MR-047 |
+| 11. After the MVP | Importing a character sheet from a PDF, the full level-up screen, a rulebook, copying characters, reusing NPCs, handing over or splitting a campaign, the player's proposal and PDF reading of rules (in this order); the table's style resource by resource (MR-046), more puzzles (MR-047) and a list of past sessions with the summary of each (the server already answers for any ended session). One cleanup task with no story: importing only the characters from the old database and decommissioning that database. (Removing the legacy app's code, `src/` and `server/`, is done; turning off its hosting is up to the project owner.) | MR-007, MR-017, MR-020 to MR-023, MR-026, MR-027, MR-046, MR-047 |
 
 Each stage delivers something for the Game Master and for the players. There are no dates: the pace depends on everyone's free time.
 
