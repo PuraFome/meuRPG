@@ -476,10 +476,6 @@ func TestAttackRollsReachOnlyWhoMayReadThem(t *testing.T) {
 
 	// 8. Where a condition comes from.
 	t.Run("the sources of a condition", func(t *testing.T) {
-		t.Skip("known gap, not a passing row: Combatant.condition_sources names the combatant that caused the condition (id and label) " +
-			"to every player who sees the one that has it, hidden or not (conditionSourcesFor in play/combat_states.go has no viewer). " +
-			"Nothing in the API gives a condition a source yet (no Stunning Strike), so the table stores one the way the service will. " +
-			"Remove this Skip when the read drops the sources whose combatant the viewer does not see")
 		rt.sourced(labelPens, "EscondidoA", "condition:stunned")
 		rt.sourced(labelToren, "Esqueleto", "condition:stunned")
 		rt.ask(t, "the conditions have sources")

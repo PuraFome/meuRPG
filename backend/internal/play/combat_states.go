@@ -601,11 +601,14 @@ func (s *Service) afterConditionsSet(ctx context.Context, c *combatTx, target pl
 }
 
 // conditionSourcesFor says where the conditions of a combatant that come from something
-// come from and when they end, written for everyone who sees the combatant.
-func conditionSourcesFor(who playdb.Combatant, cs []playdb.Combatant, names func(string) string) []*playv1.ConditionSource {
+// come from and when they end, written for the viewer: a source it does not see is left out.
+func conditionSourcesFor(who playdb.Combatant, cs []playdb.Combatant, v combatViewer, names func(string) string) []*playv1.ConditionSource {
 	var out []*playv1.ConditionSource
 	for _, src := range readConditionSources(who.ConditionSources) {
 		source, _ := findByID(cs, src.SourceID)
+		if source.ID != "" && !v.sees(source) {
+			continue // what a player does not see never explains a condition (RN-10)
+		}
 		item := &playv1.ConditionSource{
 			ConditionKey: src.Condition, SourceId: src.SourceID, SourceLabel: source.Label, EndsCombatantId: src.EndsCombatantID,
 		}
@@ -619,7 +622,7 @@ func conditionSourcesFor(who playdb.Combatant, cs []playdb.Combatant, names func
 		if source.Label != "" {
 			item.TextPt += " (" + source.Label + ")"
 		}
-		if ends, ok := findByID(cs, src.EndsCombatantID); ok {
+		if ends, ok := findByID(cs, src.EndsCombatantID); ok && v.sees(ends) {
 			when := "até o fim da vez de "
 			if src.EndsPhase == "start_of_turn" {
 				when = "até o começo da vez de "

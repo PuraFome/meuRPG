@@ -278,7 +278,7 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 			}
 			p.TurnPartEnded = turn.flags && e.Status == statusActive && c.TurnState == turnEnded
 			p.States = statesFor(byCombatant[c.ID], d.cs, v)
-			p.ConditionSources = conditionSourcesFor(c, d.cs, names)
+			p.ConditionSources = conditionSourcesFor(c, d.cs, v, names)
 			if v.master || v.owns(c) { // the two things that decide whether a rage ends
 				p.AttackedHostileSinceLastTurn, p.TookDamageSinceLastTurn = c.AttackedHostile, c.TookDamage
 			}
