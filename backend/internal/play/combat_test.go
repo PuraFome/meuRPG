@@ -966,9 +966,9 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 		covered[strings.SplitN(name, "(", 2)[0]] = true
 	}
 	// The actions of a turn, the spells and the highlights have their own
-	// matrices (combat_actions_test.go, combat_spells_test.go,
+	// matrices (combat_actions_test.go, combat_rolls_test.go, combat_spells_test.go,
 	// highlights_test.go).
-	if want := methods.Len() - len(actionRPCs) - len(spellRPCs) - len(highlightRPCs) - len(opportunityRPCs); len(covered) != want {
+	if want := methods.Len() - len(actionRPCs) - len(spellRPCs) - len(highlightRPCs) - len(opportunityRPCs) - len(rollRPCs); len(covered) != want {
 		t.Errorf("the matrix covers %d methods, the service has %d besides the actions of a turn", len(covered), want)
 	}
 
@@ -1110,6 +1110,7 @@ func TestSessionEventKindsMatchTheTable(t *testing.T) {
 		eventCreatureSummoned, eventCreatureDismissed, eventWildShapeStarted, eventWildShapeEnded,
 		eventFamiliarSight, eventDoorOpened,
 		eventPuzzleShown, eventPuzzleSolved, eventPuzzleReset, eventPuzzleClosed,
+		eventRollModeRequested, eventRollModeAnswered, eventDamagePartRemoved, eventStateChanged,
 	}
 	rows, err := h.pool.Query(t.Context(), `SELECT kind FROM session_event_kinds`)
 	if err != nil {

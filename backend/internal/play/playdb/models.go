@@ -17,6 +17,14 @@ type BattleEncounter struct {
 	UpdatedAt  time.Time
 }
 
+type CombatReason struct {
+	ID          string
+	EncounterID string
+	Kind        string
+	Reason      string
+	CreatedAt   time.Time
+}
+
 type Combatant struct {
 	ID                 string
 	EncounterID        string
@@ -71,6 +79,26 @@ type Combatant struct {
 	BonusSpellCast     bool
 	ActionAttackKey    *string
 	BonusAttacksLeft   int32
+	AttackedHostile    bool
+	TookDamage         bool
+	RageEndPending     bool
+	ConditionSources   []byte
+	SneakAttackTurn    *string
+	ColossusSlayerTurn *string
+}
+
+type CombatantState struct {
+	ID              string
+	EncounterID     string
+	CombatantID     string
+	Kind            string
+	SourceID        *string
+	EndsCombatantID *string
+	EndsPhase       *string
+	EndsRound       *int32
+	StartedRound    int32
+	Amount          int32
+	CreatedAt       time.Time
 }
 
 type Encounter struct {
@@ -147,6 +175,11 @@ type PendingDamage struct {
 	CriticalMax      int32
 	CriticalMaxRule  bool
 	Taken            *int32
+	Parts            []byte
+	PartRolls        []byte
+	Steps            []byte
+	LandedBefore     []byte
+	AfterSteps       *int32
 }
 
 type Puzzle struct {
@@ -188,6 +221,9 @@ type PuzzleHintTry struct {
 	Total          int32
 	Physical       bool
 	CreatedAt      time.Time
+	D20B           int32
+	Counted        int32
+	RollMode       string
 }
 
 type PuzzleMove struct {
@@ -229,6 +265,21 @@ type PuzzleRun struct {
 	PlayStartedAt        *time.Time
 	RoundStartSeq        int32
 	RoundStartedAt       *time.Time
+}
+
+type RollModeRequest struct {
+	ID            string
+	EncounterID   string
+	CombatantID   string
+	TargetID      string
+	AttackKey     string
+	SuggestedMode string
+	RequestedMode string
+	DecidedMode   *string
+	Status        string
+	Reason        string
+	CreatedAt     time.Time
+	AnsweredAt    *time.Time
 }
 
 type StageNpc struct {

@@ -74,7 +74,8 @@ func (x *deriver) attacks() {
 			AttackBonus: x.modifiers("attack.weapon."+kind, bonus), Proficient: proficient,
 			DamageType: w.DamageType, DamageTypeNamePT: c.namePT(w.DamageType),
 			Melee: kind == "melee", MartialArts: monkWeapon, AbilityMod: x.mods[ab],
-			Light: kind == "melee" && slices.Contains(w.Properties, "weapon-property:light"),
+			Light:   kind == "melee" && slices.Contains(w.Properties, "weapon-property:light"),
+			Finesse: slices.Contains(w.Properties, "weapon-property:finesse"), TwoHanded: slices.Contains(w.Properties, "weapon-property:two-handed"),
 		}
 		if dice != "" {
 			a.Damage = withModifier(dice, dmg)

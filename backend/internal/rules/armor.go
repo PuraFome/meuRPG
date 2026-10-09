@@ -81,6 +81,7 @@ func (x *deriver) armorClass() {
 	}
 	x.d.ArmorClass = x.modifiers("ac", ac)
 	x.d.ArmorClassDescription = name
+	x.d.ArmorCategory = x.armorCategory
 }
 
 // resolveArmor finds the worn armor. It runs before any effect, because

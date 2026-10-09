@@ -1,5 +1,5 @@
 {
-  "ContentVersion": "srd51@a8abc93b235c+fx.24",
+  "ContentVersion": "srd51@a8abc93b235c+fx.25",
   "RaceNamePT": "Gnomo",
   "SubraceNamePT": "Gnomo das Rochas",
   "BackgroundNamePT": "Sábio",
@@ -248,6 +248,7 @@
   "Initiative": 3,
   "ArmorClass": 13,
   "ArmorClassDescription": "Sem armadura",
+  "ArmorCategory": "none",
   "HitPointsMax": 23,
   "HitPointsFromEffects": 0,
   "HitDice": [
@@ -642,6 +643,8 @@
       "Beams": 0,
       "SpellDice": "",
       "Light": false,
+      "Finesse": false,
+      "TwoHanded": false,
       "MartialArts": false,
       "AbilityMod": 1,
       "Notes": ""
@@ -678,6 +681,8 @@
       "Beams": 1,
       "SpellDice": "1d10",
       "Light": false,
+      "Finesse": false,
+      "TwoHanded": false,
       "MartialArts": false,
       "AbilityMod": 0,
       "Notes": ""
@@ -714,6 +719,8 @@
       "Beams": 1,
       "SpellDice": "1d8",
       "Light": false,
+      "Finesse": false,
+      "TwoHanded": false,
       "MartialArts": false,
       "AbilityMod": 0,
       "Notes": ""
@@ -750,6 +757,8 @@
       "Beams": 0,
       "SpellDice": "",
       "Light": false,
+      "Finesse": false,
+      "TwoHanded": false,
       "MartialArts": false,
       "AbilityMod": 1,
       "Notes": ""

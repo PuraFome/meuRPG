@@ -21,6 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -151,7 +152,10 @@ func (s *Service) SearchForTraps(
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face must be 1 to 20"))
 		}
 	default:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face"))
+		var err error
+		if in.typedFaces, err = typedD20Faces(req.Msg.GetD20Faces()); err != nil {
+			return nil, err
+		}
 	}
 	var typed2 int
 	if f := req.Msg.D20Face_2; f != nil {
@@ -174,6 +178,7 @@ func (s *Service) SearchForTraps(
 	}
 
 	var ev actionEvent
+	var shown []*playv1.AdvantageSource // the circumstances of the roll's mode, for the searcher
 	var repeated bool
 	var told []string
 	var place searchPlace
@@ -226,14 +231,57 @@ func (s *Service) SearchForTraps(
 		if place, err = s.searcherPlace(ctx, c, who); err != nil {
 			return err
 		}
-		face, roll, err := s.d20(in, options[0].Bonus)
+		ability, isCheck := checkKey(searchCheckKey[skill])
+		cm, err := s.checkModeOf(ctx, tx, m.CampaignID, session.ID, who.ID, ability, isCheck)
 		if err != nil {
 			return err
 		}
-		totals := []int{roll.Total}
+		names, err := s.namerFor(ctx, tx, m.CampaignID)
+		if err != nil {
+			return err
+		}
+		shown = shownSources(cm.Sources, names)
+		var (
+			face, face2 int
+			totals      []int
+			roll        dice.Result
+			counted     int
+		)
+		bonus := options[0].Bonus
+		if cm.Mode != combat.ModeNormal {
+			// The conditions change the roll: two dice, the better or the worse counts. Where
+			// the light is dim to a Perception searcher, that disadvantage cancels an
+			// advantage and doubles up with another disadvantage: the second total is the
+			// one for the dim squares (SRD 5.1, "Advantage and Disadvantage").
+			r, err := s.d20With(in, bonus, cm.Mode)
+			if err != nil {
+				return err
+			}
+			face, face2, counted = r.Faces[0], r.Faces[1], r.Index
+			roll = dice.Result{Total: r.Total, Physical: r.Physical}
+			totals = []int{r.Total}
+			if skill == searchPerception {
+				if cm.Mode == combat.ModeAdvantage {
+					totals = append(totals, face+bonus)
+				} else {
+					totals = append(totals, r.Total)
+				}
+			}
+			goto searched
+		}
+		if len(in.typedFaces) > 0 {
+			in.typed = in.typedFaces[0]
+			if len(in.typedFaces) > 1 && skill == searchPerception {
+				typed2 = in.typedFaces[1]
+			}
+		}
+		face, roll, err = s.d20(in, bonus)
+		if err != nil {
+			return err
+		}
+		totals = []int{roll.Total}
 		// A Perception search is rolled twice in the app (the lower counts where the
 		// light is dim to the searcher); with a real die the second one is typed.
-		var face2 int
 		switch {
 		case skill != searchPerception:
 		case in.inApp:
@@ -246,6 +294,7 @@ func (s *Service) SearchForTraps(
 			face2 = typed2
 			totals = append(totals, typed2+options[0].Bonus)
 		}
+	searched:
 		found, err := s.traps.SearchTraps(ctx, tx, m.CampaignID, place.mapID, maplink.Observer{CharacterID: who.ID, At: place.at}, skill, totals, c.now)
 		if errors.Is(err, maplink.ErrSearchNeedsTwoDice) {
 			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_SEARCH_NEEDS_TWO_DICE, "a Perception search in dim light has disadvantage: roll a second die")
@@ -257,6 +306,9 @@ func (s *Service) SearchForTraps(
 		ev = actionEvent{
 			Round: c.enc.Round, Actor: place.combatantID, Key: skill, D20: clampInt32(face), Modifier: clampInt32(options[0].Bonus), Total: clampInt32(roll.Total),
 			Physical: roll.Physical, Found: found.Found, OnTurn: place.spent, D20B: clampInt32(face2),
+		}
+		if cm.Mode != combat.ModeNormal {
+			ev.RollMode, ev.Counted = modeKey(cm.Mode), clampInt32(counted)
 		}
 		if place.spent {
 			if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
@@ -290,8 +342,13 @@ func (s *Service) SearchForTraps(
 		Roll:          diceRoll(1, 20, []int32{ev.D20}, ev.Modifier, ev.Total, ev.Physical),
 		FoundPointIds: ev.Found,
 		SpentAction:   ev.OnTurn,
+		Mode:          modeToProto[modeOfKey(ev.RollMode)],
+		Sources:       shown,
 	}
-	if ev.D20B != 0 {
+	if ev.RollMode != "" {
+		out.Roll = diceRoll(2, 20, []int32{ev.D20, ev.D20B}, ev.Modifier, ev.Total, ev.Physical)
+		out.Roll.CountedIndex = ev.Counted
+	} else if ev.D20B != 0 {
 		out.SecondRoll = diceRoll(1, 20, []int32{ev.D20B}, ev.Modifier, ev.D20B+ev.Modifier, ev.Physical)
 	}
 	return connect.NewResponse(out), nil

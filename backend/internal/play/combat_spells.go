@@ -249,10 +249,18 @@ func (s *Service) CastSpell(
 		}
 	case *playv1.CastSpellRequest_PoolSum:
 		in.typed, in.pool, rolled = int(roll.PoolSum), true, true
+	default:
+		if len(req.Msg.GetD20Faces()) > 0 {
+			if in.typedFaces, err = typedD20Faces(req.Msg.GetD20Faces()); err != nil {
+				return nil, err
+			}
+			rolled = true
+		}
 	}
 	v := viewerOf(m)
 
 	var made actionEvent
+	var modes *spellModes                // the d20 rolls of the cast: their modes and circumstances
 	var vitals []*playv1.CharacterVitals // the slot spent, if it was a player's, and the characters a hit point spell changed
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventSpellCast, encounterID: encID}, func(c *combatTx) (any, error) {
 		vitals = nil
@@ -272,6 +280,9 @@ func (s *Service) CastSpell(
 			return nil, err
 		}
 		if err := s.refuseInShape(ctx, c, caster); err != nil { // no spells in a beast form (MR-037)
+			return nil, err
+		}
+		if err := s.refuseWhileRaging(ctx, c, caster, v.master); err != nil { // no spells in a rage (SRD)
 			return nil, err
 		}
 		targs := make([]playdb.Combatant, len(targets))
@@ -361,6 +372,9 @@ func (s *Service) CastSpell(
 				return nil, err
 			}
 		}
+		if modes, err = s.spellModes(ctx, c, m, v, cs, caster, req.Msg); err != nil {
+			return nil, err
+		}
 		if sp.AttackType != "" {
 			if in.pool {
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("pool_sum is for a spell that rolls a pool of dice"))
@@ -371,6 +385,7 @@ func (s *Service) CastSpell(
 			if !in.inApp && len(targs) != 1 {
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face fits a single target: use roll_in_app for several"))
 			}
+
 			if !v.master {
 				if err := s.mustRollThisWay(ctx, c.tx, m, in); err != nil {
 					return nil, err
@@ -426,6 +441,17 @@ func (s *Service) CastSpell(
 			if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: caster.ID, ConcentrationSpell: &spellKey}); err != nil {
 				return nil, fmt.Errorf("set the concentration: %w", err)
 			}
+			// The old concentration's mark goes, and a new Hunter's Mark marks its target.
+			if made.ConcBefore == huntersMark {
+				if err := s.clearHuntersMark(ctx, c, caster); err != nil {
+					return nil, err
+				}
+			}
+			if spellKey == huntersMark && len(targs) == 1 {
+				if err := s.markHuntersMark(ctx, c, caster, targs[0]); err != nil {
+					return nil, err
+				}
+			}
 		}
 		if summon != nil {
 			if err := s.joinSummon(ctx, c, caster, spellKey, sp.Concentration, summon, &made); err != nil {
@@ -453,7 +479,7 @@ func (s *Service) CastSpell(
 				if err != nil {
 					return nil, err
 				}
-				if err := s.resolveOnTarget(ctx, c, m, sp, caster, t, slotLevel, in, cp, &hit); err != nil {
+				if err := s.resolveOnTarget(ctx, c, m, sp, caster, t, slotLevel, in, cp, &hit, modes); err != nil {
 					return nil, err
 				}
 				made.Hits = append(made.Hits, hit)
@@ -492,6 +518,7 @@ func (s *Service) CastSpell(
 	if err != nil {
 		return nil, err
 	}
+	modes.attach(spell, v)
 	return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out, Cast: spell, SummonedCombatantIds: s.combatantsOfCreatures(ctx, res, ev.Created)}), nil
 }
 
@@ -557,7 +584,7 @@ func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb
 // resolveOnTarget does what the spell does to one target and fills the hit: a
 // spell attack's roll, a saving throw's roll, and the pending damage or heal
 // the cast opens. Anything else leaves the hit empty.
-func (s *Service) resolveOnTarget(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, slotLevel int, in rollInput, cp coverPair, hit *castHit) error {
+func (s *Service) resolveOnTarget(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, slotLevel int, in rollInput, cp coverPair, hit *castHit, modes *spellModes) error {
 	cover := cp.real
 	// The cover counts for a spell attack and a Dexterity save (D4).
 	if sp.AttackType != "" || (sp.SaveAbility == "dex" && !cover.total() && !sp.IgnoresCover) {
@@ -566,9 +593,9 @@ func (s *Service) resolveOnTarget(ctx context.Context, c *combatTx, m authz.Memb
 	}
 	switch {
 	case sp.AttackType != "":
-		return s.spellAttack(ctx, c, m, sp, caster, target, in, cover, hit)
+		return s.spellAttack(ctx, c, m, sp, caster, target, in, cover, hit, modes)
 	case sp.SaveAbility != "":
-		return s.spellSave(ctx, c, m, sp, caster, target, cover, hit)
+		return s.spellSave(ctx, c, m, sp, caster, target, cover, hit, modes)
 	case dartsOf(sp, slotLevel) > 0:
 		return s.openDarts(ctx, c, sp, caster, target, hit)
 	case sp.Heal != nil:
@@ -595,17 +622,29 @@ func (s *Service) d20(in rollInput, modifier int) (face int, roll dice.Result, e
 
 // spellAttack rolls a spell attack against a target, as RollAttack does, and
 // opens its pending damage on a hit.
-func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, in rollInput, cover coverView, hit *castHit) error {
-	face, roll, err := s.d20(in, sp.ToHit)
+func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, in rollInput, cover coverView, hit *castHit, modes *spellModes) error {
+	// Advantage and disadvantage (SRD 5.1): the mode of the roll, as RollAttack settles it.
+	truth := modes.in.facts(c.enc, c.sight).attackMode(caster, target, modes.traits, shapeOfSpell(sp), actsNow(c.enc, caster), modes.v, modes.names)
+	choice, err := s.chooseMode(ctx, c, modes.v, caster, target, sp.Key, truth.Mode, modes.ask)
 	if err != nil {
 		return err
 	}
+	d20, err := s.d20With(in, sp.ToHit, choice.Mode)
+	if err != nil {
+		return err
+	}
+	face, roll := d20.Face(), d20
+	modes.attack[target.ID] = truth.Shown
+	hit.D20B, hit.Counted, hit.RollMode, hit.SuggestedMode, hit.ReasonID = clamp32(d20.otherFace(), 0, 20), clamp32(d20.Index, 0, 1), modeKey(choice.Mode), modeKey(choice.Suggested), choice.ReasonID
 	sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, target)
 	if err != nil {
 		return err
 	}
 	targetAC := sheet.ArmorClass + int(target.AcBonus) + cover.bonus()
 	result := combat.ResolveAttack(sp.ToHit, targetAC, face)
+	if result.Hit && truth.CriticalOnHit { // a paralyzed or unconscious target within 5 ft (SRD 5.1)
+		result.Critical = true
+	}
 	hit.TargetAC = clamp32(targetAC, 0, math.MaxInt32)
 	hit.D20, hit.Modifier, hit.Total, hit.Physical = clamp32(face, 1, 20), clamp32(sp.ToHit, math.MinInt32, math.MaxInt32), clamp32(result.Total, math.MinInt32, math.MaxInt32), roll.Physical
 	hit.Outcome = outcomeMiss
@@ -633,24 +672,40 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 // opens the damage the save leaves: all of it for a target that failed, half
 // (rounded down) for one that saved when the spell halves, none when it avoids.
 // The d20 is always rolled by the app (RN-18 is for the table's own dice).
-func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, cover coverView, hit *castHit) error {
+func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, cover coverView, hit *castHit, modes *spellModes) error {
 	save, err := s.saveOf(ctx, c.tx, m.CampaignID, target, sp.SaveAbility)
 	if err != nil {
 		return err
 	}
+	targetSheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, target)
+	if err != nil {
+		return err
+	}
+	creature := creatureFacts(target, modes.in.states, targetSheet.Traits)
+	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: sp.SaveAbility, EffectVisible: true})
+	mode := combat.Resolve(sources)
+	modes.save[target.ID] = shownSources(sources, modes.names)
 	// Cover adds to a Dexterity save (SRD): half +2, three-quarters +5. The bonus
 	// the save shows already has it.
 	if sp.SaveAbility == "dex" && !cover.total() && !sp.IgnoresCover { // Chama Sagrada: no benefit from cover (SRD)
 		save.Bonus += cover.bonus()
 	}
-	face, roll, err := s.d20(rollInput{inApp: true}, save.Bonus)
-	if err != nil {
-		return err
-	}
-	saved := combat.SaveSucceeded(roll.Total, sp.SaveDC)
-	hit.Save = &saveRoll{
-		D20: clamp32(face, 1, 20), Bonus: clamp32(save.Bonus, math.MinInt32, math.MaxInt32), Total: clamp32(roll.Total, math.MinInt32, math.MaxInt32),
-		DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Saved: saved, Unknown: !save.Known,
+	var saved bool
+	if combat.AutoFailsSave(creature, sp.SaveAbility) {
+		// Stunned, paralyzed, unconscious and petrified creatures fail Strength and
+		// Dexterity saves without rolling (SRD 5.1, Conditions).
+		hit.Save = &saveRoll{DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Auto: true, Unknown: !save.Known}
+	} else {
+		d20, err := s.d20With(rollInput{inApp: true}, save.Bonus, mode)
+		if err != nil {
+			return err
+		}
+		saved = combat.SaveSucceeded(d20.Total, sp.SaveDC)
+		hit.Save = &saveRoll{
+			D20: clamp32(d20.Face(), 1, 20), Bonus: clamp32(save.Bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total, math.MinInt32, math.MaxInt32),
+			DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Saved: saved, Unknown: !save.Known,
+			D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(mode),
+		}
 	}
 	if len(sp.Damages) == 0 || (saved && sp.SaveOnSuccess != "half" && sp.SaveOnSuccess != "other") {
 		return nil

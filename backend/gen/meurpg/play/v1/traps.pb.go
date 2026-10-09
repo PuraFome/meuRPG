@@ -108,7 +108,12 @@ type SearchForTrapsRequest struct {
 	// the lower of the two rolls counts for those traps and the first for the rest. It
 	// is required (SEARCH_NEEDS_TWO_DICE) when any square the character sees within 3 m
 	// is lightly obscured. In the app the server rolls both. Investigation ignores it.
-	D20Face_2     *int32 `protobuf:"varint,6,opt,name=d20_face_2,json=d20Face2,proto3,oneof" json:"d20_face_2,omitempty"`
+	D20Face_2 *int32 `protobuf:"varint,6,opt,name=d20_face_2,json=d20Face2,proto3,oneof" json:"d20_face_2,omitempty"`
+	// With a real die, when the conditions of the character give the search advantage or
+	// disadvantage (SRD 5.1, "Advantage and Disadvantage"): both faces, in the order
+	// they were rolled. The server says which counts. Required (two faces) then; it
+	// replaces d20_face and d20_face_2.
+	D20Faces      []int32 `protobuf:"varint,7,rep,packed,name=d20_faces,json=d20Faces,proto3" json:"d20_faces,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -196,6 +201,13 @@ func (x *SearchForTrapsRequest) GetD20Face_2() int32 {
 	return 0
 }
 
+func (x *SearchForTrapsRequest) GetD20Faces() []int32 {
+	if x != nil {
+		return x.D20Faces
+	}
+	return nil
+}
+
 type isSearchForTrapsRequest_Roll interface {
 	isSearchForTrapsRequest_Roll()
 }
@@ -230,7 +242,15 @@ type SearchForTrapsResponse struct {
 	// The second d20 of a Perception search (the server rolled it, or it is the typed
 	// d20_face_2), with the same bonus. Unset for an Investigation search and for a
 	// Perception one made with no second die.
-	SecondRoll    *DiceRoll `protobuf:"bytes,4,opt,name=second_roll,json=secondRoll,proto3" json:"second_roll,omitempty"`
+	SecondRoll *DiceRoll `protobuf:"bytes,4,opt,name=second_roll,json=secondRoll,proto3" json:"second_roll,omitempty"`
+	// The mode every die of the search follows because of the character's conditions
+	// (Poisoned and Frightened are disadvantage on ability checks): with a mode other
+	// than NORMAL the search is rolled with two d20 for every trap, `roll` is the one
+	// that counts and `second_roll` the other (a real die: `d20_face` and `d20_face_2`).
+	// NORMAL when nothing applies; the dim light of a square is a mode of its own for
+	// the traps there. The circumstances are for the character's own player.
+	Mode          RollMode           `protobuf:"varint,5,opt,name=mode,proto3,enum=meurpg.play.v1.RollMode" json:"mode,omitempty"`
+	Sources       []*AdvantageSource `protobuf:"bytes,6,rep,name=sources,proto3" json:"sources,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -289,6 +309,20 @@ func (x *SearchForTrapsResponse) GetSpentAction() bool {
 func (x *SearchForTrapsResponse) GetSecondRoll() *DiceRoll {
 	if x != nil {
 		return x.SecondRoll
+	}
+	return nil
+}
+
+func (x *SearchForTrapsResponse) GetMode() RollMode {
+	if x != nil {
+		return x.Mode
+	}
+	return RollMode_ROLL_MODE_UNSPECIFIED
+}
+
+func (x *SearchForTrapsResponse) GetSources() []*AdvantageSource {
+	if x != nil {
+		return x.Sources
 	}
 	return nil
 }
@@ -1294,7 +1328,7 @@ var File_meurpg_play_v1_traps_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_traps_proto_rawDesc = "" +
 	"\n" +
-	"\x1ameurpg/play/v1/traps.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/play/v1/combat.proto\"\x91\x02\n" +
+	"\x1ameurpg/play/v1/traps.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/play/v1/combat.proto\x1a!meurpg/play/v1/combat_rolls.proto\"\xae\x02\n" +
 	"\x15SearchForTrapsRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x125\n" +
@@ -1303,15 +1337,18 @@ const file_meurpg_play_v1_traps_proto_rawDesc = "" +
 	"\bd20_face\x18\x04 \x01(\x05H\x00R\ad20Face\x12'\n" +
 	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\x12!\n" +
 	"\n" +
-	"d20_face_2\x18\x06 \x01(\x05H\x01R\bd20Face2\x88\x01\x01B\x06\n" +
+	"d20_face_2\x18\x06 \x01(\x05H\x01R\bd20Face2\x88\x01\x01\x12\x1b\n" +
+	"\td20_faces\x18\a \x03(\x05R\bd20FacesB\x06\n" +
 	"\x04rollB\r\n" +
-	"\v_d20_face_2\"\xcc\x01\n" +
+	"\v_d20_face_2\"\xb5\x02\n" +
 	"\x16SearchForTrapsResponse\x12,\n" +
 	"\x04roll\x18\x01 \x01(\v2\x18.meurpg.play.v1.DiceRollR\x04roll\x12&\n" +
 	"\x0ffound_point_ids\x18\x02 \x03(\tR\rfoundPointIds\x12!\n" +
 	"\fspent_action\x18\x03 \x01(\bR\vspentAction\x129\n" +
 	"\vsecond_roll\x18\x04 \x01(\v2\x18.meurpg.play.v1.DiceRollR\n" +
-	"secondRoll\"\xd6\x01\n" +
+	"secondRoll\x12,\n" +
+	"\x04mode\x18\x05 \x01(\x0e2\x18.meurpg.play.v1.RollModeR\x04mode\x129\n" +
+	"\asources\x18\x06 \x03(\v2\x1f.meurpg.play.v1.AdvantageSourceR\asources\"\xd6\x01\n" +
 	"\x0fFireTrapRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
@@ -1434,35 +1471,39 @@ var file_meurpg_play_v1_traps_proto_goTypes = []any{
 	(*TrapNotice)(nil),                // 15: meurpg.play.v1.TrapNotice
 	(*TrapSearchResult)(nil),          // 16: meurpg.play.v1.TrapSearchResult
 	(*DiceRoll)(nil),                  // 17: meurpg.play.v1.DiceRoll
-	(*TrapFiring)(nil),                // 18: meurpg.play.v1.TrapFiring
-	(PendingDamageStatus)(0),          // 19: meurpg.play.v1.PendingDamageStatus
-	(*timestamppb.Timestamp)(nil),     // 20: google.protobuf.Timestamp
+	(RollMode)(0),                     // 18: meurpg.play.v1.RollMode
+	(*AdvantageSource)(nil),           // 19: meurpg.play.v1.AdvantageSource
+	(*TrapFiring)(nil),                // 20: meurpg.play.v1.TrapFiring
+	(PendingDamageStatus)(0),          // 21: meurpg.play.v1.PendingDamageStatus
+	(*timestamppb.Timestamp)(nil),     // 22: google.protobuf.Timestamp
 }
 var file_meurpg_play_v1_traps_proto_depIdxs = []int32{
 	0,  // 0: meurpg.play.v1.SearchForTrapsRequest.skill:type_name -> meurpg.play.v1.TrapSearchSkill
 	17, // 1: meurpg.play.v1.SearchForTrapsResponse.roll:type_name -> meurpg.play.v1.DiceRoll
 	17, // 2: meurpg.play.v1.SearchForTrapsResponse.second_roll:type_name -> meurpg.play.v1.DiceRoll
-	18, // 3: meurpg.play.v1.FireTrapResponse.firing:type_name -> meurpg.play.v1.TrapFiring
-	19, // 4: meurpg.play.v1.TrapDamage.status:type_name -> meurpg.play.v1.PendingDamageStatus
-	17, // 5: meurpg.play.v1.TrapDamage.roll:type_name -> meurpg.play.v1.DiceRoll
-	20, // 6: meurpg.play.v1.TrapDamage.created_at:type_name -> google.protobuf.Timestamp
-	20, // 7: meurpg.play.v1.TrapDamage.session_started_at:type_name -> google.protobuf.Timestamp
-	5,  // 8: meurpg.play.v1.ListTrapDamagesResponse.damages:type_name -> meurpg.play.v1.TrapDamage
-	5,  // 9: meurpg.play.v1.ApplyTrapDamageResponse.damage:type_name -> meurpg.play.v1.TrapDamage
-	5,  // 10: meurpg.play.v1.DiscardTrapDamageResponse.damage:type_name -> meurpg.play.v1.TrapDamage
-	14, // 11: meurpg.play.v1.ListTrapActivityResponse.activity:type_name -> meurpg.play.v1.TrapActivity
-	20, // 12: meurpg.play.v1.TrapActivity.at:type_name -> google.protobuf.Timestamp
-	18, // 13: meurpg.play.v1.TrapActivity.firing:type_name -> meurpg.play.v1.TrapFiring
-	16, // 14: meurpg.play.v1.TrapActivity.search:type_name -> meurpg.play.v1.TrapSearchResult
-	15, // 15: meurpg.play.v1.TrapActivity.notice:type_name -> meurpg.play.v1.TrapNotice
-	0,  // 16: meurpg.play.v1.TrapSearchResult.skill:type_name -> meurpg.play.v1.TrapSearchSkill
-	17, // 17: meurpg.play.v1.TrapSearchResult.roll:type_name -> meurpg.play.v1.DiceRoll
-	17, // 18: meurpg.play.v1.TrapSearchResult.second_roll:type_name -> meurpg.play.v1.DiceRoll
-	19, // [19:19] is the sub-list for method output_type
-	19, // [19:19] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	18, // 3: meurpg.play.v1.SearchForTrapsResponse.mode:type_name -> meurpg.play.v1.RollMode
+	19, // 4: meurpg.play.v1.SearchForTrapsResponse.sources:type_name -> meurpg.play.v1.AdvantageSource
+	20, // 5: meurpg.play.v1.FireTrapResponse.firing:type_name -> meurpg.play.v1.TrapFiring
+	21, // 6: meurpg.play.v1.TrapDamage.status:type_name -> meurpg.play.v1.PendingDamageStatus
+	17, // 7: meurpg.play.v1.TrapDamage.roll:type_name -> meurpg.play.v1.DiceRoll
+	22, // 8: meurpg.play.v1.TrapDamage.created_at:type_name -> google.protobuf.Timestamp
+	22, // 9: meurpg.play.v1.TrapDamage.session_started_at:type_name -> google.protobuf.Timestamp
+	5,  // 10: meurpg.play.v1.ListTrapDamagesResponse.damages:type_name -> meurpg.play.v1.TrapDamage
+	5,  // 11: meurpg.play.v1.ApplyTrapDamageResponse.damage:type_name -> meurpg.play.v1.TrapDamage
+	5,  // 12: meurpg.play.v1.DiscardTrapDamageResponse.damage:type_name -> meurpg.play.v1.TrapDamage
+	14, // 13: meurpg.play.v1.ListTrapActivityResponse.activity:type_name -> meurpg.play.v1.TrapActivity
+	22, // 14: meurpg.play.v1.TrapActivity.at:type_name -> google.protobuf.Timestamp
+	20, // 15: meurpg.play.v1.TrapActivity.firing:type_name -> meurpg.play.v1.TrapFiring
+	16, // 16: meurpg.play.v1.TrapActivity.search:type_name -> meurpg.play.v1.TrapSearchResult
+	15, // 17: meurpg.play.v1.TrapActivity.notice:type_name -> meurpg.play.v1.TrapNotice
+	0,  // 18: meurpg.play.v1.TrapSearchResult.skill:type_name -> meurpg.play.v1.TrapSearchSkill
+	17, // 19: meurpg.play.v1.TrapSearchResult.roll:type_name -> meurpg.play.v1.DiceRoll
+	17, // 20: meurpg.play.v1.TrapSearchResult.second_roll:type_name -> meurpg.play.v1.DiceRoll
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_traps_proto_init() }
@@ -1471,6 +1512,7 @@ func file_meurpg_play_v1_traps_proto_init() {
 		return
 	}
 	file_meurpg_play_v1_combat_proto_init()
+	file_meurpg_play_v1_combat_rolls_proto_init()
 	file_meurpg_play_v1_traps_proto_msgTypes[0].OneofWrappers = []any{
 		(*SearchForTrapsRequest_RollInApp)(nil),
 		(*SearchForTrapsRequest_D20Face)(nil),

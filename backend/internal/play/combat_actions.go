@@ -263,13 +263,17 @@ func (s *Service) GetTurnOptions(
 		return nil, s.dbError(ctx, "read the table's rules", err)
 	}
 	res := &playv1.GetTurnOptionsResponse{Options: opts, YourTurn: actsNow(enc, who), CriticalRule: criticalRuleProto(table)}
+	modes, err := s.turnModes(ctx, m.CampaignID, d, sight, v, who)
+	if err != nil {
+		return nil, s.dbError(ctx, "work out the roll modes", err)
+	}
 	for _, a := range opts.GetAttacks() {
 		if a.GetAttack().GetSaveDc() > 0 {
 			continue // a saving throw, not an attack roll: the spells slice
 		}
-		res.AttackTargets = append(res.AttackTargets, &playv1.AttackTargets{
-			AttackKey: a.GetAttack().GetKey(), Targets: targetsFor(terrain, d.cs, who, v, reachFt(a.GetAttack().GetRangeFt(), a.GetAttack().GetLongRangeFt()), isTheatre(enc)),
-		})
+		targets := targetsFor(terrain, d.cs, who, v, reachFt(a.GetAttack().GetRangeFt(), a.GetAttack().GetLongRangeFt()), isTheatre(enc))
+		modes.annotate(a.GetAttack().GetKey(), targets)
+		res.AttackTargets = append(res.AttackTargets, &playv1.AttackTargets{AttackKey: a.GetAttack().GetKey(), Targets: targets})
 	}
 	if res.SpellTargets, err = s.spellTargetsFor(ctx, m.CampaignID, terrain, who, d.cs, v, opts, isTheatre(enc)); err != nil {
 		return nil, s.dbError(ctx, "work out the spell targets", err)
@@ -280,7 +284,7 @@ func (s *Service) GetTurnOptions(
 	}
 	for _, p := range open {
 		if deref(p.AttackerID) == who.ID && pendingVisible(p, d.cs, v) {
-			res.PendingDamages = append(res.PendingDamages, pendingProto(p, d.cs))
+			res.PendingDamages = append(res.PendingDamages, s.pendingView(ctx, m.CampaignID, p, d.cs, v))
 		}
 	}
 	return connect.NewResponse(res), nil
@@ -469,6 +473,9 @@ var outcomeToProto = map[string]playv1.AttackOutcome{
 type rollInput struct {
 	inApp bool
 	typed int
+	// typedFaces are the faces of a physical d20 pair (advantage or disadvantage,
+	// d20_faces); typed alone is one face.
+	typedFaces []int
 	// pool says typed is the sum of the physical dice of a spell's pool (not a
 	// d20 face): CastSpell's pool_sum.
 	pool bool
@@ -557,12 +564,17 @@ func (s *Service) RollAttack(
 		}
 		in.inApp = true
 	case *playv1.RollAttackRequest_D20Face:
+		if len(req.Msg.GetD20Faces()) > 0 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set d20_face or d20_faces, not both"))
+		}
 		in.typed = int(roll.D20Face)
 		if in.typed < 1 || in.typed > 20 {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face must be 1 to 20"))
 		}
 	default:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face"))
+		if in.typedFaces, err = typedD20Faces(req.Msg.GetD20Faces()); err != nil {
+			return nil, err
+		}
 	}
 	offerID := ""
 	if raw := req.Msg.GetOpportunityOfferId(); raw != "" {
@@ -575,6 +587,8 @@ func (s *Service) RollAttack(
 	v := viewerOf(m)
 
 	var made actionEvent
+	var shown []*playv1.AdvantageSource // the circumstances of the mode, as the caller may read them
+	var reason string                   // why the mode is not the suggestion (the caller's own text, or the master's)
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventAttackRolled, encounterID: encID}, func(c *combatTx) (any, error) {
 		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 		if err != nil {
@@ -717,10 +731,30 @@ func (s *Service) RollAttack(
 
 		// The roll, and what it did against the target's armor class (with the
 		// +5 of an active Escudo and the cover). The class stays on the server (RN-20).
-		face, roll, err := s.d20(in, attack.ToHit)
+		// Advantage and disadvantage (SRD 5.1): the server works the mode out from the
+		// combat, never from what the screen showed, settles what the caller asked for
+		// and rolls one d20 or two.
+		modeIn, err := readModeInputs(ctx, c, cs)
 		if err != nil {
 			return nil, err
 		}
+		names, err := s.namerFor(ctx, c.tx, m.CampaignID)
+		if err != nil {
+			return nil, err
+		}
+		truth := modeIn.facts(c.enc, c.sight).attackMode(attacker, target, attackerSheet.Traits, shapeOfAttack(attack), actsNow(c.enc, attacker) && !asReaction, v, names)
+		choice, err := s.chooseMode(ctx, c, v, attacker, target, attackKey, truth.Mode,
+			modeAsk{want: req.Msg.GetRollMode(), reason: req.Msg.GetModeReason(), requestID: req.Msg.GetRollModeRequestId()})
+		if err != nil {
+			return nil, err
+		}
+		shown, reason = truth.Shown, choice.Reason
+		d20, err := s.d20With(in, attack.ToHit, choice.Mode)
+		if err != nil {
+			return nil, err
+		}
+		face := d20.Face()
+		roll := d20
 		targetSheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, target)
 		if err != nil {
 			return nil, err
@@ -732,6 +766,20 @@ func (s *Service) RollAttack(
 			criticalFrom = 0
 		}
 		result := combat.ResolveAttackFrom(attack.ToHit, targetAC, face, criticalFrom)
+		// A hit on a paralyzed or unconscious creature within 5 ft is a critical hit
+		// whatever the die says (SRD 5.1, Conditions).
+		if result.Hit && truth.CriticalOnHit {
+			result.Critical = true
+		}
+		if err := closeRequestsOf(ctx, c, attacker.ID); err != nil {
+			return nil, err
+		}
+		// A raging barbarian that attacks a hostile creature keeps its rage (SRD 5.1).
+		if hasState(modeIn.states, attacker.ID, stateRage) && target.Side != attacker.Side && (!attacker.AttackedHostile || attacker.RageEndPending) {
+			if err := c.q.SetCombatantRageFlags(ctx, playdb.SetCombatantRageFlagsParams{ID: attacker.ID, AttackedHostile: true, TookDamage: attacker.TookDamage}); err != nil {
+				return nil, fmt.Errorf("note the attack on a hostile creature: %w", err)
+			}
+		}
 
 		after := attacker
 		var run int32
@@ -744,6 +792,9 @@ func (s *Service) RollAttack(
 			RunBefore: run, Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: attackKey,
 			D20: clamp32(face, 1, 20), Modifier: clamp32(attack.ToHit, math.MinInt32, math.MaxInt32), Total: clamp32(result.Total, math.MinInt32, math.MaxInt32),
 			Physical: roll.Physical, Outcome: outcomeMiss, AsReaction: asReaction, CriticalMaxRule: c.rules.CriticalMaxPlusRoll,
+			D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(choice.Mode), SuggestedMode: modeKey(choice.Suggested),
+			ReasonID: choice.ReasonID, RequestID: choice.RequestID, CritOnHit: truth.CriticalOnHit && result.Hit,
+			ByMaster:     choice.ByMaster && choice.changed(),
 			ActionBefore: attacker.ActionUsed, BonusBefore: attacker.BonusActionUsed, ReactionBefore: attacker.ReactionUsed, AttacksBefore: attacker.AttacksMade,
 			AsBonus: bonusKind != combat.BonusNone, AttackKeyBefore: deref(attacker.ActionAttackKey), FlurryBefore: attacker.BonusAttacksLeft,
 			// The armor class the roll was compared with (an active Escudo's +5
@@ -796,6 +847,9 @@ func (s *Service) RollAttack(
 			if err != nil {
 				return nil, err
 			}
+			if err := s.hitParts(ctx, c, m.CampaignID, v, modeIn, attacker, target, attackerSheet, attack, bonus, choice.Mode, p.ID); err != nil {
+				return nil, err
+			}
 			made.Pending = p.ID
 		}
 		if offerID != "" {
@@ -840,9 +894,11 @@ func (s *Service) RollAttack(
 	}
 	roll := &playv1.AttackRoll{
 		AttackerId: ev.Actor, TargetId: ev.Target, AttackKey: ev.Key,
-		D20: diceRoll(1, 20, faceList(ev), ev.Modifier, ev.Total, ev.Physical), Outcome: outcomeToProto[ev.Outcome],
+		D20: d20Proto(ev), Outcome: outcomeToProto[ev.Outcome],
 		CriticalRule: criticalRuleProto(tablerules.Rules{CriticalMaxPlusRoll: ev.CriticalMaxRule}),
+		Mode:         modeToProto[modeOfKey(ev.RollMode)], SuggestedMode: modeToProto[modeOfKey(ev.SuggestedMode)], CriticalOnHit: ev.CritOnHit,
 	}
+	roll.Sources, roll.ModeReason = shown, reason
 	coverKey, coverSource := ev.coverFor(v)
 	roll.Cover, roll.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
 	if v.master {
@@ -854,7 +910,7 @@ func (s *Service) RollAttack(
 // faceList is the face of the d20 of an attack roll; none for a physical one,
 // whose d20 was typed (the typed face is still in D20: the master and the
 // player know it, so it is sent as the face too).
-func faceList(ev actionEvent) []int32 { return []int32{ev.D20} }
+func faceList(ev actionEvent) []int32 { return ev.d20Faces() }
 
 // resultEvent is the event a write made: the one the closure made, or, for a
 // retry the closure never ran for, the one stored the first time.
@@ -888,7 +944,7 @@ func (s *Service) pendingFor(ctx context.Context, res combatResult, id string, v
 	if !pendingVisible(p, cs, v) {
 		return nil, nil
 	}
-	out := pendingProto(p, cs)
+	out := s.pendingView(ctx, res.session.CampaignID, p, cs, v)
 	if p.TrapPointID != nil && v.master && s.traps != nil { // a fired trap is public; its name is the master's card's
 		if names, err := s.traps.TrapNames(ctx, res.session.CampaignID, []string{*p.TrapPointID}); err == nil {
 			out.TrapName = names[*p.TrapPointID]
@@ -928,7 +984,13 @@ func (s *Service) RollDamage(
 	case *playv1.RollDamageRequest_TypedSum:
 		in.typed = int(roll.TypedSum)
 	default:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or typed_sum"))
+		if len(req.Msg.GetTypedParts()) == 0 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app, typed_sum or typed_parts"))
+		}
+	}
+	typedParts, err := typedPartsOf(req.Msg.GetTypedParts())
+	if err != nil {
+		return nil, err
 	}
 	v := viewerOf(m)
 
@@ -992,10 +1054,29 @@ func (s *Service) RollDamage(
 		// rolagem"; typed_sum never includes it). A flat damage needs no dice (and so
 		// no way of rolling).
 		expr := dice.Expr{Count: int(p.DiceCount), Sides: int(p.DiceSides), Modifier: int(p.DiceBonus) + int(p.CriticalMax)}
+		states, err := s.readStates(ctx, c.tx, c.enc.ID)
+		if err != nil {
+			return nil, err
+		}
+		// A hit with parts (the weapon and its extras) rolls each of them.
+		var pr *partsRoll
+		if len(readParts(p.Parts)) > 0 {
+			if !v.master {
+				if err := s.mustRollThisWay(ctx, c.tx, m, in); err != nil {
+					return nil, err
+				}
+			}
+			if pr, err = s.rollPendingParts(ctx, c, m.CampaignID, p, attacker, target, in, typedParts, choiceOf(req.Msg)); err != nil {
+				return nil, err
+			}
+		}
 		var roll dice.Result
-		if p.DiceCount == 0 {
+		switch {
+		case pr != nil:
+			roll = pr.legacy()
+		case p.DiceCount == 0:
 			roll = dice.Result{Expr: expr, Modifier: expr.Modifier, Total: expr.Modifier}
-		} else {
+		default:
 			if !v.master {
 				if err := s.mustRollThisWay(ctx, c.tx, m, in); err != nil {
 					return nil, err
@@ -1019,6 +1100,15 @@ func (s *Service) RollDamage(
 			DiceCount: p.DiceCount, DiceSides: p.DiceSides, Modifier: clamp32(int(p.DiceBonus)+int(p.CriticalMax), math.MinInt32, math.MaxInt32), CriticalMax: p.CriticalMax, CriticalMaxRule: p.CriticalMaxRule, Faces: faces,
 			DamageType: p.DamageType, Critical: p.Critical, Physical: roll.Physical, Heal: p.Healing, Total: rolledTotal,
 		}
+		if pr != nil {
+			vit, err := s.settleParts(ctx, c, attacker, pr, &made)
+			if err != nil {
+				return nil, err
+			}
+			if vit != nil {
+				vitals = append(vitals, vit)
+			}
+		}
 		for _, g := range group {
 			tgt, _ := findCombatant(cs, g.TargetID, combatViewer{master: true})
 			made.Secret = made.Secret || tgt.Hidden
@@ -1026,9 +1116,21 @@ func (s *Service) RollDamage(
 			if g.Half {
 				amount = clamp32(combat.HalfDamage(total), 0, math.MaxInt32)
 			}
+			// The damage of a type takes the target's resistance, vulnerability and
+			// immunity, after every bonus and the half of a save (SRD 5.1). An NPC or a
+			// creature takes what is left at once; a player's character waits for the
+			// master with the same account as a preview.
+			var steps landing
 			if !g.Healing {
-				if amount, err = s.afterResistance(ctx, c, tgt, g.DamageType, amount); err != nil {
+				byType := map[string]int{g.DamageType: int(amount)}
+				if pr != nil && g.ID == p.ID {
+					byType = pr.byType
+				}
+				if steps, err = s.settleLanding(ctx, c, states, tgt, byType); err != nil {
 					return nil, err
+				}
+				if holdsHP(tgt) && steps.changed {
+					amount = steps.amount
 				}
 			}
 			hit, vit, err := s.landDamage(ctx, c, g, tgt, amount)
@@ -1048,6 +1150,9 @@ func (s *Service) RollDamage(
 			}); err != nil {
 				return nil, fmt.Errorf("save the damage roll: %w", err)
 			}
+			if err := s.keepRollDetail(ctx, c, g, p, pr, steps, hit); err != nil {
+				return nil, err
+			}
 			if p.CastID != nil && hit.Applied && !g.Healing {
 				// A spell asks one concentration save of a target, not one per damage type.
 				if hit.ConcentrationDC, err = s.castConcentrationDC(ctx, c, g, tgt, takenBy(hit.Amount, hit.Before, hit.After)); err != nil {
@@ -1056,6 +1161,7 @@ func (s *Service) RollDamage(
 			}
 			if g.ID == p.ID {
 				made.Amount, made.Applied, made.Before, made.After, made.ConcentrationDC = hit.Amount, hit.Applied, hit.Before, hit.After, hit.ConcentrationDC
+				made.Steps = steps.groups
 				made.DeathBefore = hit.DeathBefore
 				// The 0 hit points rule: an opportunity attack that drops its mover to 0
 				// takes it back to where it left the reach.
@@ -1330,6 +1436,10 @@ func (s *Service) ApplyPendingDamage(
 	if override != nil && (*override < 0 || *override > maxHitPointChange) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("amount must be 0 to %d", maxHitPointChange))
 	}
+	ignoreModifiers := req.Msg.GetIgnoreModifiers()
+	if len(ignoreModifiers) > maxIgnoredSources {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("ignore_modifiers must have at most %d sources", maxIgnoredSources))
+	}
 
 	var made actionEvent
 	var vitals *playv1.CharacterVitals // the target's, after
@@ -1355,14 +1465,25 @@ func (s *Service) ApplyPendingDamage(
 		}
 
 		rolled := num(p.Amount)
-		amount := rolled
+		// What the target's resistance, vulnerability or immunity leaves of the roll is
+		// what lands, unless the master leaves a source out or sets another number.
+		groups := readStepGroups(p.Steps)
+		expected := rolled
+		if len(groups) > 0 {
+			expected = reapply(rolled, groups, ignoreModifiers)
+		}
+		amount := expected
 		var appliedAmount *int32
-		if override != nil && *override != rolled {
-			amount, appliedAmount = *override, override
+		if override != nil {
+			amount = *override
+		}
+		if amount != rolled {
+			appliedAmount = &amount
 		}
 		made = actionEvent{
 			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Pending: p.ID, Key: p.AttackKey,
-			Amount: amount, DamageType: p.DamageType, Overridden: appliedAmount != nil, Rolled: rolled,
+			Amount: amount, DamageType: p.DamageType, Overridden: override != nil && *override != expected, Rolled: rolled,
+			Steps: groups, Ignored: ignoreModifiers,
 		}
 		now, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, target.CharacterID)
 		if err != nil {
@@ -1420,6 +1541,9 @@ func (s *Service) ApplyPendingDamage(
 					return nil, err
 				}
 			}
+		}
+		if err := s.afterDamageTaken(ctx, c, target, amount, made.Before, made.After); err != nil {
+			return nil, err
 		}
 		if _, err := c.q.SetPendingDamageApplied(ctx, playdb.SetPendingDamageAppliedParams{ID: p.ID, ResolvedAt: &c.now, AppliedAmount: appliedAmount}); err != nil {
 			return nil, fmt.Errorf("apply the pending damage: %w", err)
@@ -1795,6 +1919,19 @@ func (s *Service) TakeAction(
 					vitals = vit
 				}
 			}
+			if err := s.beginFeatureState(ctx, c, v, who, actionKey, sheet, &made); err != nil {
+				return nil, err
+			}
+		}
+		// The Dodge action (or Patient Defense, which takes it) lasts until the start of
+		// the dodger's next turn.
+		if standard == "standard:dodge" {
+			phase := "start_of_turn"
+			st, err := s.addState(ctx, c, who, stateDodging, nil, &who.ID, &phase, nil, 0)
+			if err != nil {
+				return nil, err
+			}
+			made.StateID = st.ID
 		}
 		if standard == "standard:dash" {
 			if err := markDashed(ctx, c.q, who.ID); err != nil {

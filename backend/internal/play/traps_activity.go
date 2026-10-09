@@ -246,6 +246,7 @@ func (s *Service) ListTrapActivity(
 			}
 			out.Firing = firingProto(&shown, l.id, trapNames[tr.PointID], trapView{
 				master: master,
+				names:  s.namesFor(ctx, m.CampaignID),
 				owns:   func(id string) bool { return owned[id] || ownedCreatures[id] },
 				label: func(id string) string {
 					if n, ok := creatureNames[id]; ok {

@@ -1,6 +1,6 @@
 {
   "level 1": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.24+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.25+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -249,6 +249,7 @@
     "Initiative": 3,
     "ArmorClass": 12,
     "ArmorClassDescription": "Sem armadura",
+    "ArmorCategory": "none",
     "HitPointsMax": 10,
     "HitPointsFromEffects": 0,
     "HitDice": [
@@ -457,6 +458,8 @@
         "Beams": 1,
         "SpellDice": "1d8",
         "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
         "MartialArts": false,
         "AbilityMod": 0,
         "Notes": ""
@@ -493,6 +496,8 @@
         "Beams": 0,
         "SpellDice": "",
         "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
         "MartialArts": false,
         "AbilityMod": 2,
         "Notes": ""
@@ -692,7 +697,7 @@
     "Issues": null
   },
   "level 11": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.24+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.25+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -941,6 +946,7 @@
     "Initiative": 3,
     "ArmorClass": 12,
     "ArmorClassDescription": "Sem armadura",
+    "ArmorCategory": "none",
     "HitPointsMax": 80,
     "HitPointsFromEffects": 0,
     "HitDice": [
@@ -1470,6 +1476,8 @@
         "Beams": 1,
         "SpellDice": "3d8",
         "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
         "MartialArts": false,
         "AbilityMod": 0,
         "Notes": ""
@@ -1506,6 +1514,8 @@
         "Beams": 0,
         "SpellDice": "",
         "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
         "MartialArts": false,
         "AbilityMod": 2,
         "Notes": ""
@@ -1825,7 +1835,7 @@
     "Issues": null
   },
   "level 5": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.24+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.25+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -2074,6 +2084,7 @@
     "Initiative": 3,
     "ArmorClass": 12,
     "ArmorClassDescription": "Sem armadura",
+    "ArmorCategory": "none",
     "HitPointsMax": 38,
     "HitPointsFromEffects": 0,
     "HitDice": [
@@ -2430,6 +2441,8 @@
         "Beams": 1,
         "SpellDice": "2d8",
         "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
         "MartialArts": false,
         "AbilityMod": 0,
         "Notes": ""
@@ -2466,6 +2479,8 @@
         "Beams": 0,
         "SpellDice": "",
         "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
         "MartialArts": false,
         "AbilityMod": 2,
         "Notes": ""

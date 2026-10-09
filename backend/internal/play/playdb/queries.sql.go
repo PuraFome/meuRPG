@@ -10,6 +10,39 @@ import (
 	"time"
 )
 
+const answerRollModeRequest = `-- name: AnswerRollModeRequest :one
+UPDATE roll_mode_requests
+SET status = 'answered', decided_mode = $2, answered_at = $3
+WHERE id = $1 AND status IN ('pending', 'answered')
+RETURNING id, encounter_id, combatant_id, target_id, attack_key, suggested_mode, requested_mode, decided_mode, status, reason, created_at, answered_at
+`
+
+type AnswerRollModeRequestParams struct {
+	ID          string
+	DecidedMode *string
+	AnsweredAt  *time.Time
+}
+
+func (q *Queries) AnswerRollModeRequest(ctx context.Context, arg AnswerRollModeRequestParams) (RollModeRequest, error) {
+	row := q.db.QueryRow(ctx, answerRollModeRequest, arg.ID, arg.DecidedMode, arg.AnsweredAt)
+	var i RollModeRequest
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CombatantID,
+		&i.TargetID,
+		&i.AttackKey,
+		&i.SuggestedMode,
+		&i.RequestedMode,
+		&i.DecidedMode,
+		&i.Status,
+		&i.Reason,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+	)
+	return i, err
+}
+
 const clearCombatTurns = `-- name: ClearCombatTurns :exec
 UPDATE combatants
 SET turn_state = 'idle'
@@ -27,7 +60,7 @@ const clearPendingDamageApplied = `-- name: ClearPendingDamageApplied :one
 UPDATE pending_damages
 SET status = 'rolled', resolved_at = NULL, applied_amount = NULL, taken = NULL
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, parts, part_rolls, steps, landed_before, after_steps
 `
 
 // An undo of an applied damage: back to waiting for the master.
@@ -62,15 +95,21 @@ func (q *Queries) ClearPendingDamageApplied(ctx context.Context, id string) (Pen
 		&i.CriticalMax,
 		&i.CriticalMaxRule,
 		&i.Taken,
+		&i.Parts,
+		&i.PartRolls,
+		&i.Steps,
+		&i.LandedBefore,
+		&i.AfterSteps,
 	)
 	return i, err
 }
 
 const clearPendingDamageRoll = `-- name: ClearPendingDamageRoll :one
 UPDATE pending_damages
-SET status = 'awaiting_roll', faces = '{}', physical = false, amount = NULL, resolved_at = NULL, roll_total = NULL, taken = NULL
+SET status = 'awaiting_roll', faces = '{}', physical = false, amount = NULL, resolved_at = NULL, roll_total = NULL, taken = NULL,
+    part_rolls = '[]', steps = '[]', after_steps = NULL, landed_before = NULL
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, parts, part_rolls, steps, landed_before, after_steps
 `
 
 // An undo of the damage roll: it waits to be rolled again.
@@ -105,6 +144,11 @@ func (q *Queries) ClearPendingDamageRoll(ctx context.Context, id string) (Pendin
 		&i.CriticalMax,
 		&i.CriticalMaxRule,
 		&i.Taken,
+		&i.Parts,
+		&i.PartRolls,
+		&i.Steps,
+		&i.LandedBefore,
+		&i.AfterSteps,
 	)
 	return i, err
 }
@@ -131,6 +175,56 @@ WHERE game_session_id = $1 AND speaking
 func (q *Queries) ClearStageSpeakers(ctx context.Context, gameSessionID string) error {
 	_, err := q.db.Exec(ctx, clearStageSpeakers, gameSessionID)
 	return err
+}
+
+const closeRollModeRequest = `-- name: CloseRollModeRequest :exec
+UPDATE roll_mode_requests
+SET status = 'closed', answered_at = COALESCE(answered_at, $2)
+WHERE id = $1 AND status <> 'closed'
+`
+
+type CloseRollModeRequestParams struct {
+	ID         string
+	AnsweredAt *time.Time
+}
+
+func (q *Queries) CloseRollModeRequest(ctx context.Context, arg CloseRollModeRequestParams) error {
+	_, err := q.db.Exec(ctx, closeRollModeRequest, arg.ID, arg.AnsweredAt)
+	return err
+}
+
+const closeRollModeRequestsOf = `-- name: CloseRollModeRequestsOf :many
+UPDATE roll_mode_requests
+SET status = 'closed', answered_at = COALESCE(answered_at, $2)
+WHERE combatant_id = $1 AND status IN ('pending', 'answered')
+RETURNING id
+`
+
+type CloseRollModeRequestsOfParams struct {
+	CombatantID string
+	AnsweredAt  *time.Time
+}
+
+// A new request, a used one, the end of the turn or of the combat: the open requests
+// of the combatant are closed. The IDs come back for the event.
+func (q *Queries) CloseRollModeRequestsOf(ctx context.Context, arg CloseRollModeRequestsOfParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, closeRollModeRequestsOf, arg.CombatantID, arg.AnsweredAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const countSceneRolls = `-- name: CountSceneRolls :many
@@ -253,6 +347,180 @@ func (q *Queries) DeleteCombatant(ctx context.Context, id string) error {
 	return err
 }
 
+const deleteCombatantState = `-- name: DeleteCombatantState :exec
+DELETE FROM combatant_states
+WHERE id = $1
+`
+
+func (q *Queries) DeleteCombatantState(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deleteCombatantState, id)
+	return err
+}
+
+const deleteCombatantStatesBySource = `-- name: DeleteCombatantStatesBySource :many
+DELETE FROM combatant_states
+WHERE source_id = $1 AND kind = $2
+RETURNING id, combatant_id
+`
+
+type DeleteCombatantStatesBySourceParams struct {
+	SourceID *string
+	Kind     string
+}
+
+type DeleteCombatantStatesBySourceRow struct {
+	ID          string
+	CombatantID string
+}
+
+// The states a source gave (the marks of a ranger who stopped concentrating).
+func (q *Queries) DeleteCombatantStatesBySource(ctx context.Context, arg DeleteCombatantStatesBySourceParams) ([]DeleteCombatantStatesBySourceRow, error) {
+	rows, err := q.db.Query(ctx, deleteCombatantStatesBySource, arg.SourceID, arg.Kind)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DeleteCombatantStatesBySourceRow
+	for rows.Next() {
+		var i DeleteCombatantStatesBySourceRow
+		if err := rows.Scan(&i.ID, &i.CombatantID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const deleteCombatantStatesOfKind = `-- name: DeleteCombatantStatesOfKind :many
+DELETE FROM combatant_states
+WHERE combatant_id = $1 AND kind = $2
+RETURNING id
+`
+
+type DeleteCombatantStatesOfKindParams struct {
+	CombatantID string
+	Kind        string
+}
+
+// The states of a kind a combatant has (a rage, a dodge), the IDs back for the event.
+func (q *Queries) DeleteCombatantStatesOfKind(ctx context.Context, arg DeleteCombatantStatesOfKindParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, deleteCombatantStatesOfKind, arg.CombatantID, arg.Kind)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const deleteEndedCombatantStates = `-- name: DeleteEndedCombatantStates :many
+DELETE FROM combatant_states
+WHERE encounter_id = $1 AND ends_combatant_id = $2 AND ends_phase = 'end_of_turn'
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at
+`
+
+type DeleteEndedCombatantStatesParams struct {
+	EncounterID     string
+	EndsCombatantID *string
+}
+
+// The states that end at the end of this combatant's turn.
+func (q *Queries) DeleteEndedCombatantStates(ctx context.Context, arg DeleteEndedCombatantStatesParams) ([]CombatantState, error) {
+	rows, err := q.db.Query(ctx, deleteEndedCombatantStates, arg.EncounterID, arg.EndsCombatantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CombatantState
+	for rows.Next() {
+		var i CombatantState
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.CombatantID,
+			&i.Kind,
+			&i.SourceID,
+			&i.EndsCombatantID,
+			&i.EndsPhase,
+			&i.EndsRound,
+			&i.StartedRound,
+			&i.Amount,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const deleteExpiredCombatantStates = `-- name: DeleteExpiredCombatantStates :many
+DELETE FROM combatant_states
+WHERE encounter_id = $1
+  AND (
+    (combatant_id = ANY($2::UUID[]) AND kind IN ('dodging', 'reckless'))
+    OR (ends_combatant_id = ANY($2::UUID[]) AND ends_phase = 'start_of_turn')
+    OR (kind = 'rage' AND ends_round IS NOT NULL AND ends_round <= $3)
+  )
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at
+`
+
+type DeleteExpiredCombatantStatesParams struct {
+	EncounterID string
+	Column2     []string
+	EndsRound   *int32
+}
+
+// The states that end at the start of a turn of one of these combatants, a dodge or a
+// reckless attack of their own, and the rages whose minute is over.
+func (q *Queries) DeleteExpiredCombatantStates(ctx context.Context, arg DeleteExpiredCombatantStatesParams) ([]CombatantState, error) {
+	rows, err := q.db.Query(ctx, deleteExpiredCombatantStates, arg.EncounterID, arg.Column2, arg.EndsRound)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CombatantState
+	for rows.Next() {
+		var i CombatantState
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.CombatantID,
+			&i.Kind,
+			&i.SourceID,
+			&i.EndsCombatantID,
+			&i.EndsPhase,
+			&i.EndsRound,
+			&i.StartedRound,
+			&i.Amount,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteOpportunityOffersOfMove = `-- name: DeleteOpportunityOffersOfMove :exec
 DELETE FROM opportunity_offers
 WHERE move_id = $1
@@ -302,6 +570,49 @@ func (q *Queries) DeleteStageNPC(ctx context.Context, arg DeleteStageNPCParams) 
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const deleteStatesOfCombatant = `-- name: DeleteStatesOfCombatant :many
+DELETE FROM combatant_states
+WHERE combatant_id = $1 AND kind = $2
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at
+`
+
+type DeleteStatesOfCombatantParams struct {
+	CombatantID string
+	Kind        string
+}
+
+func (q *Queries) DeleteStatesOfCombatant(ctx context.Context, arg DeleteStatesOfCombatantParams) ([]CombatantState, error) {
+	rows, err := q.db.Query(ctx, deleteStatesOfCombatant, arg.CombatantID, arg.Kind)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CombatantState
+	for rows.Next() {
+		var i CombatantState
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.CombatantID,
+			&i.Kind,
+			&i.SourceID,
+			&i.EndsCombatantID,
+			&i.EndsPhase,
+			&i.EndsRound,
+			&i.StartedRound,
+			&i.Amount,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const endCombatantTurnPart = `-- name: EndCombatantTurnPart :exec
@@ -873,7 +1184,7 @@ func (q *Queries) GetOpportunityOfferByAttack(ctx context.Context, arg GetOpport
 }
 
 const getPendingDamage = `-- name: GetPendingDamage :one
-SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken FROM pending_damages
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, parts, part_rolls, steps, landed_before, after_steps FROM pending_damages
 WHERE encounter_id = $1 AND id = $2
 `
 
@@ -914,6 +1225,11 @@ func (q *Queries) GetPendingDamage(ctx context.Context, arg GetPendingDamagePara
 		&i.CriticalMax,
 		&i.CriticalMaxRule,
 		&i.Taken,
+		&i.Parts,
+		&i.PartRolls,
+		&i.Steps,
+		&i.LandedBefore,
+		&i.AfterSteps,
 	)
 	return i, err
 }
@@ -1056,7 +1372,7 @@ func (q *Queries) GetPuzzleHintCursor(ctx context.Context, arg GetPuzzleHintCurs
 }
 
 const getPuzzleHintTryByKey = `-- name: GetPuzzleHintTryByKey :one
-SELECT id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at FROM puzzle_hint_tries
+SELECT id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode FROM puzzle_hint_tries
 WHERE run_id = $1 AND idempotency_key = $2
 `
 
@@ -1083,6 +1399,9 @@ func (q *Queries) GetPuzzleHintTryByKey(ctx context.Context, arg GetPuzzleHintTr
 		&i.Total,
 		&i.Physical,
 		&i.CreatedAt,
+		&i.D20B,
+		&i.Counted,
+		&i.RollMode,
 	)
 	return i, err
 }
@@ -1200,6 +1519,36 @@ func (q *Queries) GetPuzzleRunForUpdate(ctx context.Context, arg GetPuzzleRunFor
 		&i.PlayStartedAt,
 		&i.RoundStartSeq,
 		&i.RoundStartedAt,
+	)
+	return i, err
+}
+
+const getRollModeRequest = `-- name: GetRollModeRequest :one
+SELECT id, encounter_id, combatant_id, target_id, attack_key, suggested_mode, requested_mode, decided_mode, status, reason, created_at, answered_at FROM roll_mode_requests
+WHERE encounter_id = $1 AND id = $2
+`
+
+type GetRollModeRequestParams struct {
+	EncounterID string
+	ID          string
+}
+
+func (q *Queries) GetRollModeRequest(ctx context.Context, arg GetRollModeRequestParams) (RollModeRequest, error) {
+	row := q.db.QueryRow(ctx, getRollModeRequest, arg.EncounterID, arg.ID)
+	var i RollModeRequest
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CombatantID,
+		&i.TargetID,
+		&i.AttackKey,
+		&i.SuggestedMode,
+		&i.RequestedMode,
+		&i.DecidedMode,
+		&i.Status,
+		&i.Reason,
+		&i.CreatedAt,
+		&i.AnsweredAt,
 	)
 	return i, err
 }
@@ -1326,6 +1675,37 @@ func (q *Queries) HasTriedPuzzleHint(ctx context.Context, arg HasTriedPuzzleHint
 	return tried, err
 }
 
+const insertCombatReason = `-- name: InsertCombatReason :one
+INSERT INTO combat_reasons (encounter_id, kind, reason, created_at)
+VALUES ($1, $2, $3, $4)
+RETURNING id, encounter_id, kind, reason, created_at
+`
+
+type InsertCombatReasonParams struct {
+	EncounterID string
+	Kind        string
+	Reason      string
+	CreatedAt   time.Time
+}
+
+func (q *Queries) InsertCombatReason(ctx context.Context, arg InsertCombatReasonParams) (CombatReason, error) {
+	row := q.db.QueryRow(ctx, insertCombatReason,
+		arg.EncounterID,
+		arg.Kind,
+		arg.Reason,
+		arg.CreatedAt,
+	)
+	var i CombatReason
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.Kind,
+		&i.Reason,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const insertCombatant = `-- name: InsertCombatant :one
 INSERT INTO combatants (
     encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face,
@@ -1336,7 +1716,7 @@ INSERT INTO combatants (
     $10, $11, $12, $13, $14, $15, $16, $17, $18,
     $19, $20, $21, $22, $23
 )
-RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left
+RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn
 `
 
 type InsertCombatantParams struct {
@@ -1446,6 +1826,62 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 		&i.BonusSpellCast,
 		&i.ActionAttackKey,
 		&i.BonusAttacksLeft,
+		&i.AttackedHostile,
+		&i.TookDamage,
+		&i.RageEndPending,
+		&i.ConditionSources,
+		&i.SneakAttackTurn,
+		&i.ColossusSlayerTurn,
+	)
+	return i, err
+}
+
+const insertCombatantState = `-- name: InsertCombatantState :one
+INSERT INTO combatant_states (
+    encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at
+`
+
+type InsertCombatantStateParams struct {
+	EncounterID     string
+	CombatantID     string
+	Kind            string
+	SourceID        *string
+	EndsCombatantID *string
+	EndsPhase       *string
+	EndsRound       *int32
+	StartedRound    int32
+	Amount          int32
+	CreatedAt       time.Time
+}
+
+func (q *Queries) InsertCombatantState(ctx context.Context, arg InsertCombatantStateParams) (CombatantState, error) {
+	row := q.db.QueryRow(ctx, insertCombatantState,
+		arg.EncounterID,
+		arg.CombatantID,
+		arg.Kind,
+		arg.SourceID,
+		arg.EndsCombatantID,
+		arg.EndsPhase,
+		arg.EndsRound,
+		arg.StartedRound,
+		arg.Amount,
+		arg.CreatedAt,
+	)
+	var i CombatantState
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CombatantID,
+		&i.Kind,
+		&i.SourceID,
+		&i.EndsCombatantID,
+		&i.EndsPhase,
+		&i.EndsRound,
+		&i.StartedRound,
+		&i.Amount,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -1463,7 +1899,7 @@ INSERT INTO combatants (
     $15, $16, $17, $18,
     'party', $19, $20, $21, $22
 )
-RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left
+RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn
 `
 
 type InsertCreatureCombatantParams struct {
@@ -1576,6 +2012,12 @@ func (q *Queries) InsertCreatureCombatant(ctx context.Context, arg InsertCreatur
 		&i.BonusSpellCast,
 		&i.ActionAttackKey,
 		&i.BonusAttacksLeft,
+		&i.AttackedHostile,
+		&i.TookDamage,
+		&i.RageEndPending,
+		&i.ConditionSources,
+		&i.SneakAttackTurn,
+		&i.ColossusSlayerTurn,
 	)
 	return i, err
 }
@@ -1727,7 +2169,7 @@ INSERT INTO pending_damages (
     dice_count, dice_sides, dice_bonus, damage_type, created_at,
     cast_id, healing, half, attack_total, attack_armor_class, critical_max, critical_max_rule
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, parts, part_rolls, steps, landed_before, after_steps
 `
 
 type InsertPendingDamageParams struct {
@@ -1808,6 +2250,11 @@ func (q *Queries) InsertPendingDamage(ctx context.Context, arg InsertPendingDama
 		&i.CriticalMax,
 		&i.CriticalMaxRule,
 		&i.Taken,
+		&i.Parts,
+		&i.PartRolls,
+		&i.Steps,
+		&i.LandedBefore,
+		&i.AfterSteps,
 	)
 	return i, err
 }
@@ -1898,9 +2345,9 @@ func (q *Queries) InsertPuzzle(ctx context.Context, arg InsertPuzzleParams) (Puz
 }
 
 const insertPuzzleHintTry = `-- name: InsertPuzzleHintTry :one
-INSERT INTO puzzle_hint_tries (run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-RETURNING id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at
+INSERT INTO puzzle_hint_tries (run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+RETURNING id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode
 `
 
 type InsertPuzzleHintTryParams struct {
@@ -1916,6 +2363,9 @@ type InsertPuzzleHintTryParams struct {
 	Total          int32
 	Physical       bool
 	CreatedAt      time.Time
+	D20B           int32
+	Counted        int32
+	RollMode       string
 }
 
 func (q *Queries) InsertPuzzleHintTry(ctx context.Context, arg InsertPuzzleHintTryParams) (PuzzleHintTry, error) {
@@ -1932,6 +2382,9 @@ func (q *Queries) InsertPuzzleHintTry(ctx context.Context, arg InsertPuzzleHintT
 		arg.Total,
 		arg.Physical,
 		arg.CreatedAt,
+		arg.D20B,
+		arg.Counted,
+		arg.RollMode,
 	)
 	var i PuzzleHintTry
 	err := row.Scan(
@@ -1948,6 +2401,9 @@ func (q *Queries) InsertPuzzleHintTry(ctx context.Context, arg InsertPuzzleHintT
 		&i.Total,
 		&i.Physical,
 		&i.CreatedAt,
+		&i.D20B,
+		&i.Counted,
+		&i.RollMode,
 	)
 	return i, err
 }
@@ -2056,6 +2512,58 @@ func (q *Queries) InsertPuzzleRun(ctx context.Context, arg InsertPuzzleRunParams
 		&i.PlayStartedAt,
 		&i.RoundStartSeq,
 		&i.RoundStartedAt,
+	)
+	return i, err
+}
+
+const insertRollModeRequest = `-- name: InsertRollModeRequest :one
+
+INSERT INTO roll_mode_requests (
+    encounter_id, combatant_id, target_id, attack_key, suggested_mode, requested_mode, status, reason, created_at
+) VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8)
+RETURNING id, encounter_id, combatant_id, target_id, attack_key, suggested_mode, requested_mode, decided_mode, status, reason, created_at, answered_at
+`
+
+type InsertRollModeRequestParams struct {
+	EncounterID   string
+	CombatantID   string
+	TargetID      string
+	AttackKey     string
+	SuggestedMode string
+	RequestedMode string
+	Reason        string
+	CreatedAt     time.Time
+}
+
+// The attack rolls: a player's requests for a better mode, the short reasons of the
+// log, the states of a combatant and the parts of a damage.
+// A player's request for a better mode than the suggested one. Any earlier request of
+// the same combatant is closed by CloseRollModeRequestsOf before.
+func (q *Queries) InsertRollModeRequest(ctx context.Context, arg InsertRollModeRequestParams) (RollModeRequest, error) {
+	row := q.db.QueryRow(ctx, insertRollModeRequest,
+		arg.EncounterID,
+		arg.CombatantID,
+		arg.TargetID,
+		arg.AttackKey,
+		arg.SuggestedMode,
+		arg.RequestedMode,
+		arg.Reason,
+		arg.CreatedAt,
+	)
+	var i RollModeRequest
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CombatantID,
+		&i.TargetID,
+		&i.AttackKey,
+		&i.SuggestedMode,
+		&i.RequestedMode,
+		&i.DecidedMode,
+		&i.Status,
+		&i.Reason,
+		&i.CreatedAt,
+		&i.AnsweredAt,
 	)
 	return i, err
 }
@@ -2215,7 +2723,7 @@ INSERT INTO pending_damages (
 ) VALUES (
     $1, NULL, $2, 'trap', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $17, $14, $15, $16
 )
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, parts, part_rolls, steps, landed_before, after_steps
 `
 
 type InsertTrapPendingDamageParams struct {
@@ -2292,6 +2800,11 @@ func (q *Queries) InsertTrapPendingDamage(ctx context.Context, arg InsertTrapPen
 		&i.CriticalMax,
 		&i.CriticalMaxRule,
 		&i.Taken,
+		&i.Parts,
+		&i.PartRolls,
+		&i.Steps,
+		&i.LandedBefore,
+		&i.AfterSteps,
 	)
 	return i, err
 }
@@ -2454,7 +2967,7 @@ func (q *Queries) ListCampaignTrapDamages(ctx context.Context, campaignID string
 }
 
 const listCastPendingDamages = `-- name: ListCastPendingDamages :many
-SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken FROM pending_damages
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, parts, part_rolls, steps, landed_before, after_steps FROM pending_damages
 WHERE encounter_id = $1 AND cast_id = $2
 ORDER BY created_at, id
 `
@@ -2502,6 +3015,86 @@ func (q *Queries) ListCastPendingDamages(ctx context.Context, arg ListCastPendin
 			&i.CriticalMax,
 			&i.CriticalMaxRule,
 			&i.Taken,
+			&i.Parts,
+			&i.PartRolls,
+			&i.Steps,
+			&i.LandedBefore,
+			&i.AfterSteps,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCombatReasons = `-- name: ListCombatReasons :many
+SELECT id, encounter_id, kind, reason, created_at FROM combat_reasons
+WHERE encounter_id = $1 AND id = ANY($2::UUID[])
+`
+
+type ListCombatReasonsParams struct {
+	EncounterID string
+	Column2     []string
+}
+
+// The reasons the log reads, by ID.
+func (q *Queries) ListCombatReasons(ctx context.Context, arg ListCombatReasonsParams) ([]CombatReason, error) {
+	rows, err := q.db.Query(ctx, listCombatReasons, arg.EncounterID, arg.Column2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CombatReason
+	for rows.Next() {
+		var i CombatReason
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.Kind,
+			&i.Reason,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCombatantStates = `-- name: ListCombatantStates :many
+SELECT id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at FROM combatant_states
+WHERE encounter_id = $1
+ORDER BY created_at, id
+`
+
+func (q *Queries) ListCombatantStates(ctx context.Context, encounterID string) ([]CombatantState, error) {
+	rows, err := q.db.Query(ctx, listCombatantStates, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CombatantState
+	for rows.Next() {
+		var i CombatantState
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.CombatantID,
+			&i.Kind,
+			&i.SourceID,
+			&i.EndsCombatantID,
+			&i.EndsPhase,
+			&i.EndsRound,
+			&i.StartedRound,
+			&i.Amount,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -2514,7 +3107,7 @@ func (q *Queries) ListCastPendingDamages(ctx context.Context, arg ListCastPendin
 }
 
 const listCombatants = `-- name: ListCombatants :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn FROM combatants
 WHERE encounter_id = $1 AND NOT dismissed
 ORDER BY order_index, created_at, id
 `
@@ -2584,6 +3177,12 @@ func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Com
 			&i.BonusSpellCast,
 			&i.ActionAttackKey,
 			&i.BonusAttacksLeft,
+			&i.AttackedHostile,
+			&i.TookDamage,
+			&i.RageEndPending,
+			&i.ConditionSources,
+			&i.SneakAttackTurn,
+			&i.ColossusSlayerTurn,
 		); err != nil {
 			return nil, err
 		}
@@ -2596,7 +3195,7 @@ func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Com
 }
 
 const listCombatantsWithDismissed = `-- name: ListCombatantsWithDismissed :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn FROM combatants
 WHERE encounter_id = $1
 ORDER BY order_index, created_at, id
 `
@@ -2665,6 +3264,12 @@ func (q *Queries) ListCombatantsWithDismissed(ctx context.Context, encounterID s
 			&i.BonusSpellCast,
 			&i.ActionAttackKey,
 			&i.BonusAttacksLeft,
+			&i.AttackedHostile,
+			&i.TookDamage,
+			&i.RageEndPending,
+			&i.ConditionSources,
+			&i.SneakAttackTurn,
+			&i.ColossusSlayerTurn,
 		); err != nil {
 			return nil, err
 		}
@@ -2677,7 +3282,7 @@ func (q *Queries) ListCombatantsWithDismissed(ctx context.Context, encounterID s
 }
 
 const listCreatureCombatants = `-- name: ListCreatureCombatants :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn FROM combatants
 WHERE encounter_id = $1 AND kind = 'creature' AND NOT dismissed
 ORDER BY order_index, created_at, id
 `
@@ -2747,6 +3352,12 @@ func (q *Queries) ListCreatureCombatants(ctx context.Context, encounterID string
 			&i.BonusSpellCast,
 			&i.ActionAttackKey,
 			&i.BonusAttacksLeft,
+			&i.AttackedHostile,
+			&i.TookDamage,
+			&i.RageEndPending,
+			&i.ConditionSources,
+			&i.SneakAttackTurn,
+			&i.ColossusSlayerTurn,
 		); err != nil {
 			return nil, err
 		}
@@ -2784,6 +3395,39 @@ func (q *Queries) ListEncounterCombatEvents(ctx context.Context, encounterID *st
 	for rows.Next() {
 		var i ListEncounterCombatEventsRow
 		if err := rows.Scan(&i.ID, &i.Kind, &i.Payload); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEncounterCombatReasons = `-- name: ListEncounterCombatReasons :many
+SELECT id, encounter_id, kind, reason, created_at FROM combat_reasons
+WHERE encounter_id = $1
+ORDER BY created_at, id
+`
+
+// Every reason of the combat, for the log.
+func (q *Queries) ListEncounterCombatReasons(ctx context.Context, encounterID string) ([]CombatReason, error) {
+	rows, err := q.db.Query(ctx, listEncounterCombatReasons, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CombatReason
+	for rows.Next() {
+		var i CombatReason
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.Kind,
+			&i.Reason,
+			&i.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -2847,6 +3491,46 @@ func (q *Queries) ListEncounterEvents(ctx context.Context, arg ListEncounterEven
 	return items, nil
 }
 
+const listEncounterRollModeRequests = `-- name: ListEncounterRollModeRequests :many
+SELECT id, encounter_id, combatant_id, target_id, attack_key, suggested_mode, requested_mode, decided_mode, status, reason, created_at, answered_at FROM roll_mode_requests
+WHERE encounter_id = $1
+ORDER BY created_at, id
+`
+
+// Every request of the combat, whatever its status, for the log.
+func (q *Queries) ListEncounterRollModeRequests(ctx context.Context, encounterID string) ([]RollModeRequest, error) {
+	rows, err := q.db.Query(ctx, listEncounterRollModeRequests, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RollModeRequest
+	for rows.Next() {
+		var i RollModeRequest
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.CombatantID,
+			&i.TargetID,
+			&i.AttackKey,
+			&i.SuggestedMode,
+			&i.RequestedMode,
+			&i.DecidedMode,
+			&i.Status,
+			&i.Reason,
+			&i.CreatedAt,
+			&i.AnsweredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listGameSessions = `-- name: ListGameSessions :many
 SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash FROM game_sessions
 WHERE campaign_id = $1
@@ -2887,7 +3571,7 @@ func (q *Queries) ListGameSessions(ctx context.Context, campaignID string) ([]Ga
 }
 
 const listOpenCombatantsOfCreatures = `-- name: ListOpenCombatantsOfCreatures :many
-SELECT cb.id, cb.encounter_id, cb.character_id, cb.user_id, cb.label, cb.kind, cb.hidden, cb.initiative, cb.initiative_bonus, cb.initiative_face, cb.tie_ordered, cb.order_index, cb.grid_col, cb.grid_row, cb.speed_ft, cb.movement_used_ft, cb.dashed, cb.action_used, cb.bonus_action_used, cb.reaction_used, cb.hp_current, cb.hp_max, cb.hp_temp, cb.defeated, cb.death_successes, cb.death_failures, cb.conditions, cb.concentration_spell, cb.created_at, cb.attacks_made, cb.ac_bonus, cb.death_save_rolled, cb.xp_value, cb.turn_state, cb.movement_used_dft, cb.last_move_dft, cb.side, cb.size, cb.speed_fly_ft, cb.jump_long_dft, cb.jump_high_dft, cb.cover_mark, cb.disengaged, cb.creature_id, cb.monster_key, cb.summon_attack, cb.summon_group_id, cb.dismissed, cb.action_surged, cb.spell_cast, cb.bonus_spell_cast, cb.action_attack_key, cb.bonus_attacks_left FROM combatants AS cb
+SELECT cb.id, cb.encounter_id, cb.character_id, cb.user_id, cb.label, cb.kind, cb.hidden, cb.initiative, cb.initiative_bonus, cb.initiative_face, cb.tie_ordered, cb.order_index, cb.grid_col, cb.grid_row, cb.speed_ft, cb.movement_used_ft, cb.dashed, cb.action_used, cb.bonus_action_used, cb.reaction_used, cb.hp_current, cb.hp_max, cb.hp_temp, cb.defeated, cb.death_successes, cb.death_failures, cb.conditions, cb.concentration_spell, cb.created_at, cb.attacks_made, cb.ac_bonus, cb.death_save_rolled, cb.xp_value, cb.turn_state, cb.movement_used_dft, cb.last_move_dft, cb.side, cb.size, cb.speed_fly_ft, cb.jump_long_dft, cb.jump_high_dft, cb.cover_mark, cb.disengaged, cb.creature_id, cb.monster_key, cb.summon_attack, cb.summon_group_id, cb.dismissed, cb.action_surged, cb.spell_cast, cb.bonus_spell_cast, cb.action_attack_key, cb.bonus_attacks_left, cb.attacked_hostile, cb.took_damage, cb.rage_end_pending, cb.condition_sources, cb.sneak_attack_turn, cb.colossus_slayer_turn FROM combatants AS cb
 JOIN encounters AS e ON e.id = cb.encounter_id
 JOIN game_sessions AS gs ON gs.id = e.game_session_id
 WHERE gs.campaign_id = $1::UUID
@@ -2967,6 +3651,12 @@ func (q *Queries) ListOpenCombatantsOfCreatures(ctx context.Context, arg ListOpe
 			&i.BonusSpellCast,
 			&i.ActionAttackKey,
 			&i.BonusAttacksLeft,
+			&i.AttackedHostile,
+			&i.TookDamage,
+			&i.RageEndPending,
+			&i.ConditionSources,
+			&i.SneakAttackTurn,
+			&i.ColossusSlayerTurn,
 		); err != nil {
 			return nil, err
 		}
@@ -3019,7 +3709,7 @@ func (q *Queries) ListOpenGameSessions(ctx context.Context, campaignIds []string
 }
 
 const listOpenPendingDamages = `-- name: ListOpenPendingDamages :many
-SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken FROM pending_damages
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, parts, part_rolls, steps, landed_before, after_steps FROM pending_damages
 WHERE encounter_id = $1 AND status IN ('awaiting_reaction', 'awaiting_roll', 'rolled')
 ORDER BY created_at, id
 `
@@ -3063,6 +3753,11 @@ func (q *Queries) ListOpenPendingDamages(ctx context.Context, encounterID string
 			&i.CriticalMax,
 			&i.CriticalMaxRule,
 			&i.Taken,
+			&i.Parts,
+			&i.PartRolls,
+			&i.Steps,
+			&i.LandedBefore,
+			&i.AfterSteps,
 		); err != nil {
 			return nil, err
 		}
@@ -3075,7 +3770,7 @@ func (q *Queries) ListOpenPendingDamages(ctx context.Context, encounterID string
 }
 
 const listOpenTrapPendingDamages = `-- name: ListOpenTrapPendingDamages :many
-SELECT p.id, p.encounter_id, p.attacker_id, p.target_id, p.attack_key, p.status, p.critical, p.dice_count, p.dice_sides, p.dice_bonus, p.damage_type, p.faces, p.physical, p.amount, p.created_at, p.resolved_at, p.cast_id, p.healing, p.half, p.applied_amount, p.attack_total, p.roll_total, p.attack_armor_class, p.trap_point_id, p.critical_max, p.critical_max_rule, p.taken FROM pending_damages AS p
+SELECT p.id, p.encounter_id, p.attacker_id, p.target_id, p.attack_key, p.status, p.critical, p.dice_count, p.dice_sides, p.dice_bonus, p.damage_type, p.faces, p.physical, p.amount, p.created_at, p.resolved_at, p.cast_id, p.healing, p.half, p.applied_amount, p.attack_total, p.roll_total, p.attack_armor_class, p.trap_point_id, p.critical_max, p.critical_max_rule, p.taken, p.parts, p.part_rolls, p.steps, p.landed_before, p.after_steps FROM pending_damages AS p
 JOIN encounters AS e ON e.id = p.encounter_id
 WHERE e.game_session_id = $1 AND e.status <> 'ended' AND p.trap_point_id IS NOT NULL AND p.status = 'rolled'
 ORDER BY p.created_at, p.id
@@ -3121,6 +3816,11 @@ func (q *Queries) ListOpenTrapPendingDamages(ctx context.Context, gameSessionID 
 			&i.CriticalMax,
 			&i.CriticalMaxRule,
 			&i.Taken,
+			&i.Parts,
+			&i.PartRolls,
+			&i.Steps,
+			&i.LandedBefore,
+			&i.AfterSteps,
 		); err != nil {
 			return nil, err
 		}
@@ -3133,7 +3833,7 @@ func (q *Queries) ListOpenTrapPendingDamages(ctx context.Context, gameSessionID 
 }
 
 const listOpenTrapPendingDamagesOfEncounter = `-- name: ListOpenTrapPendingDamagesOfEncounter :many
-SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken FROM pending_damages
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, parts, part_rolls, steps, landed_before, after_steps FROM pending_damages
 WHERE encounter_id = $1 AND trap_point_id IS NOT NULL AND status = 'rolled'
 ORDER BY created_at, id
 `
@@ -3177,6 +3877,11 @@ func (q *Queries) ListOpenTrapPendingDamagesOfEncounter(ctx context.Context, enc
 			&i.CriticalMax,
 			&i.CriticalMaxRule,
 			&i.Taken,
+			&i.Parts,
+			&i.PartRolls,
+			&i.Steps,
+			&i.LandedBefore,
+			&i.AfterSteps,
 		); err != nil {
 			return nil, err
 		}
@@ -3333,7 +4038,7 @@ func (q *Queries) ListPuzzles(ctx context.Context, arg ListPuzzlesParams) ([]Puz
 }
 
 const listRecentPuzzleHintTries = `-- name: ListRecentPuzzleHintTries :many
-SELECT id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at FROM puzzle_hint_tries
+SELECT id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode FROM puzzle_hint_tries
 WHERE run_id = $1
 ORDER BY created_at DESC, id DESC
 LIMIT 50
@@ -3363,6 +4068,9 @@ func (q *Queries) ListRecentPuzzleHintTries(ctx context.Context, runID string) (
 			&i.Total,
 			&i.Physical,
 			&i.CreatedAt,
+			&i.D20B,
+			&i.Counted,
+			&i.RollMode,
 		); err != nil {
 			return nil, err
 		}
@@ -3410,6 +4118,46 @@ func (q *Queries) ListRecentSessionEvents(ctx context.Context, arg ListRecentSes
 			&i.Kind,
 			&i.EncounterID,
 			&i.Payload,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRollModeRequests = `-- name: ListRollModeRequests :many
+SELECT id, encounter_id, combatant_id, target_id, attack_key, suggested_mode, requested_mode, decided_mode, status, reason, created_at, answered_at FROM roll_mode_requests
+WHERE encounter_id = $1 AND status IN ('pending', 'answered')
+ORDER BY created_at, id
+`
+
+// The requests that wait for the master or wait for their attack to be rolled.
+func (q *Queries) ListRollModeRequests(ctx context.Context, encounterID string) ([]RollModeRequest, error) {
+	rows, err := q.db.Query(ctx, listRollModeRequests, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RollModeRequest
+	for rows.Next() {
+		var i RollModeRequest
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.CombatantID,
+			&i.TargetID,
+			&i.AttackKey,
+			&i.SuggestedMode,
+			&i.RequestedMode,
+			&i.DecidedMode,
+			&i.Status,
+			&i.Reason,
+			&i.CreatedAt,
+			&i.AnsweredAt,
 		); err != nil {
 			return nil, err
 		}
@@ -4165,6 +4913,22 @@ func (q *Queries) SetCombatantConcentration(ctx context.Context, arg SetCombatan
 	return err
 }
 
+const setCombatantConditionSources = `-- name: SetCombatantConditionSources :exec
+UPDATE combatants
+SET condition_sources = $2
+WHERE id = $1
+`
+
+type SetCombatantConditionSourcesParams struct {
+	ID               string
+	ConditionSources []byte
+}
+
+func (q *Queries) SetCombatantConditionSources(ctx context.Context, arg SetCombatantConditionSourcesParams) error {
+	_, err := q.db.Exec(ctx, setCombatantConditionSources, arg.ID, arg.ConditionSources)
+	return err
+}
+
 const setCombatantConditions = `-- name: SetCombatantConditions :exec
 UPDATE combatants
 SET conditions = $2
@@ -4380,6 +5144,25 @@ func (q *Queries) SetCombatantMove(ctx context.Context, arg SetCombatantMovePara
 	return err
 }
 
+const setCombatantOncePerTurn = `-- name: SetCombatantOncePerTurn :exec
+UPDATE combatants
+SET sneak_attack_turn = $2, colossus_slayer_turn = $3
+WHERE id = $1
+`
+
+type SetCombatantOncePerTurnParams struct {
+	ID                 string
+	SneakAttackTurn    *string
+	ColossusSlayerTurn *string
+}
+
+// The turn ("<round>:<combatant on turn>") in which Sneak Attack and Colossus Slayer
+// last added their damage; NULL back after an undo.
+func (q *Queries) SetCombatantOncePerTurn(ctx context.Context, arg SetCombatantOncePerTurnParams) error {
+	_, err := q.db.Exec(ctx, setCombatantOncePerTurn, arg.ID, arg.SneakAttackTurn, arg.ColossusSlayerTurn)
+	return err
+}
+
 const setCombatantOrder = `-- name: SetCombatantOrder :exec
 UPDATE combatants
 SET order_index = $2, tie_ordered = $3
@@ -4394,6 +5177,31 @@ type SetCombatantOrderParams struct {
 
 func (q *Queries) SetCombatantOrder(ctx context.Context, arg SetCombatantOrderParams) error {
 	_, err := q.db.Exec(ctx, setCombatantOrder, arg.ID, arg.OrderIndex, arg.TieOrdered)
+	return err
+}
+
+const setCombatantRageFlags = `-- name: SetCombatantRageFlags :exec
+UPDATE combatants
+SET attacked_hostile = $2, took_damage = $3, rage_end_pending = $4
+WHERE id = $1
+`
+
+type SetCombatantRageFlagsParams struct {
+	ID              string
+	AttackedHostile bool
+	TookDamage      bool
+	RageEndPending  bool
+}
+
+// What decides whether a rage ends: it attacked a hostile creature since its last turn,
+// it took damage since, and the turn waits for the player's answer.
+func (q *Queries) SetCombatantRageFlags(ctx context.Context, arg SetCombatantRageFlagsParams) error {
+	_, err := q.db.Exec(ctx, setCombatantRageFlags,
+		arg.ID,
+		arg.AttackedHostile,
+		arg.TookDamage,
+		arg.RageEndPending,
+	)
 	return err
 }
 
@@ -4709,11 +5517,41 @@ func (q *Queries) SetOpportunityOfferState(ctx context.Context, arg SetOpportuni
 	return i, err
 }
 
+const setPendingDamageAmount = `-- name: SetPendingDamageAmount :exec
+UPDATE pending_damages
+SET amount = $2, roll_total = $3, parts = $4, part_rolls = $5, steps = $6, after_steps = $7
+WHERE id = $1
+`
+
+type SetPendingDamageAmountParams struct {
+	ID         string
+	Amount     *int32
+	RollTotal  *int32
+	Parts      []byte
+	PartRolls  []byte
+	Steps      []byte
+	AfterSteps *int32
+}
+
+// The master took an extra out: the new total and what lands.
+func (q *Queries) SetPendingDamageAmount(ctx context.Context, arg SetPendingDamageAmountParams) error {
+	_, err := q.db.Exec(ctx, setPendingDamageAmount,
+		arg.ID,
+		arg.Amount,
+		arg.RollTotal,
+		arg.Parts,
+		arg.PartRolls,
+		arg.Steps,
+		arg.AfterSteps,
+	)
+	return err
+}
+
 const setPendingDamageApplied = `-- name: SetPendingDamageApplied :one
 UPDATE pending_damages
 SET status = 'applied', resolved_at = $2, applied_amount = $3
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, parts, part_rolls, steps, landed_before, after_steps
 `
 
 type SetPendingDamageAppliedParams struct {
@@ -4754,15 +5592,67 @@ func (q *Queries) SetPendingDamageApplied(ctx context.Context, arg SetPendingDam
 		&i.CriticalMax,
 		&i.CriticalMaxRule,
 		&i.Taken,
+		&i.Parts,
+		&i.PartRolls,
+		&i.Steps,
+		&i.LandedBefore,
+		&i.AfterSteps,
 	)
 	return i, err
+}
+
+const setPendingDamageDetail = `-- name: SetPendingDamageDetail :exec
+UPDATE pending_damages
+SET parts = $2, part_rolls = $3, steps = $4, after_steps = $5, landed_before = $6
+WHERE id = $1
+`
+
+type SetPendingDamageDetailParams struct {
+	ID           string
+	Parts        []byte
+	PartRolls    []byte
+	Steps        []byte
+	AfterSteps   *int32
+	LandedBefore []byte
+}
+
+// What a roll left: the parts as they were rolled, what each rolled, the steps of the
+// damage, the damage after them and, for an NPC that took it at once, how many hit
+// points it had before.
+func (q *Queries) SetPendingDamageDetail(ctx context.Context, arg SetPendingDamageDetailParams) error {
+	_, err := q.db.Exec(ctx, setPendingDamageDetail,
+		arg.ID,
+		arg.Parts,
+		arg.PartRolls,
+		arg.Steps,
+		arg.AfterSteps,
+		arg.LandedBefore,
+	)
+	return err
+}
+
+const setPendingDamageParts = `-- name: SetPendingDamageParts :exec
+UPDATE pending_damages
+SET parts = $2
+WHERE id = $1
+`
+
+type SetPendingDamagePartsParams struct {
+	ID    string
+	Parts []byte
+}
+
+// The lines the hit offers.
+func (q *Queries) SetPendingDamageParts(ctx context.Context, arg SetPendingDamagePartsParams) error {
+	_, err := q.db.Exec(ctx, setPendingDamageParts, arg.ID, arg.Parts)
+	return err
 }
 
 const setPendingDamageRolled = `-- name: SetPendingDamageRolled :one
 UPDATE pending_damages
 SET status = $2, faces = $3, physical = $4, amount = $5, resolved_at = $6, roll_total = $7
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, parts, part_rolls, steps, landed_before, after_steps
 `
 
 type SetPendingDamageRolledParams struct {
@@ -4817,6 +5707,11 @@ func (q *Queries) SetPendingDamageRolled(ctx context.Context, arg SetPendingDama
 		&i.CriticalMax,
 		&i.CriticalMaxRule,
 		&i.Taken,
+		&i.Parts,
+		&i.PartRolls,
+		&i.Steps,
+		&i.LandedBefore,
+		&i.AfterSteps,
 	)
 	return i, err
 }
@@ -4825,7 +5720,7 @@ const setPendingDamageStatus = `-- name: SetPendingDamageStatus :one
 UPDATE pending_damages
 SET status = $2, resolved_at = $3
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, parts, part_rolls, steps, landed_before, after_steps
 `
 
 type SetPendingDamageStatusParams struct {
@@ -4867,6 +5762,11 @@ func (q *Queries) SetPendingDamageStatus(ctx context.Context, arg SetPendingDama
 		&i.CriticalMax,
 		&i.CriticalMaxRule,
 		&i.Taken,
+		&i.Parts,
+		&i.PartRolls,
+		&i.Steps,
+		&i.LandedBefore,
+		&i.AfterSteps,
 	)
 	return i, err
 }

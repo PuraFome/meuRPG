@@ -466,6 +466,24 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 				return nil, err
 			}
 		}
+		// What the parts of the roll spent goes back: the slot a Divine Smite used and the
+		// once-per-turn marks of Sneak Attack and Colossus Slayer.
+		if who, ok := find(ev.Actor); ok && who.Kind == kindPlayer {
+			if ev.Slot != nil {
+				v, err := s.spendSlot(ctx, c, who.CharacterID, *ev.Slot, -1)
+				if err != nil {
+					return nil, err
+				}
+				keep(v)
+			}
+		}
+		if who, ok := find(ev.Actor); ok && ev.OnceBefore != nil {
+			if err := c.q.SetCombatantOncePerTurn(ctx, playdb.SetCombatantOncePerTurnParams{
+				ID: who.ID, SneakAttackTurn: nilIfEmpty(ev.OnceBefore.Sneak), ColossusSlayerTurn: nilIfEmpty(ev.OnceBefore.Colossus),
+			}); err != nil {
+				return nil, fmt.Errorf("put back the once-per-turn marks: %w", err)
+			}
+		}
 	case eventDamageApplied:
 		// The character's vitals as they were, its death saves too, and the damage
 		// waits for the master again.
@@ -542,6 +560,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		if err := setEconomy(who, ev.ActionBefore, ev.BonusBefore, ev.ReactionBefore, ev.DashedBefore); err != nil {
 			return nil, err
 		}
+		if ev.StateID != "" { // the state the action began: a rage, a dodge, a reckless attack
+			if err := c.q.DeleteCombatantState(ctx, ev.StateID); err != nil {
+				return nil, fmt.Errorf("take the state off: %w", err)
+			}
+		}
 		if err := c.q.SetCombatantDisengaged(ctx, playdb.SetCombatantDisengagedParams{ID: who.ID, Disengaged: ev.DisengagedBefore}); err != nil {
 			return nil, fmt.Errorf("put back the disengage: %w", err)
 		}
@@ -596,6 +619,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		}
 		if err := c.q.SetCombatantSpellsCast(ctx, playdb.SetCombatantSpellsCastParams{ID: who.ID, SpellCast: ev.SpellCastBefore, BonusSpellCast: ev.BonusSpellBefore}); err != nil {
 			return nil, fmt.Errorf("put back the spells cast: %w", err)
+		}
+		if ev.Key == huntersMark { // the mark the cast put on its target
+			if err := s.clearHuntersMark(ctx, c, who); err != nil {
+				return nil, err
+			}
 		}
 		if ev.Slot != nil && who.Kind == kindPlayer {
 			v, err := s.spendSlot(ctx, c, who.CharacterID, *ev.Slot, -1)
@@ -781,4 +809,12 @@ func clueOfASolve(recent []playdb.ListRecentSessionEventsRow, e playdb.ListRecen
 	return slices.ContainsFunc(recent, func(o playdb.ListRecentSessionEventsRow) bool {
 		return o.Seq == e.Seq+1 && o.Kind == eventPuzzleSolved
 	})
+}
+
+// nilIfEmpty is a text column's value: NULL for no text.
+func nilIfEmpty(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }

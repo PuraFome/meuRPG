@@ -12,7 +12,7 @@
       {"type": "roll_mode", "roll": "advantage", "targets": ["save.dex"], "tags": ["against:visible-effects"], "text_pt": "Vantagem em testes de resistência de DES contra efeitos que você consegue ver, se não estiver cego, surdo nem incapacitado."}
     ],
     "feature:reckless-attack": [
-      {"type": "note"}
+      {"type": "grant_action", "economy": "free"}
     ],
     "feature:primal-path": [
       {"type": "choice", "choice": "subclass", "count": 1}

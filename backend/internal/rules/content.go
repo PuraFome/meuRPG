@@ -133,7 +133,10 @@ type content struct {
 	spellTargets map[string]SpellTarget
 	// srdTargets are the hand-written targets of some SRD spells
 	// (effects/spell_targets.json), by spell key.
-	srdTargets  map[string]SpellTarget
+	srdTargets map[string]SpellTarget
+	// resistances are the damage resistances of features and traits
+	// (effects/damage_resistances.json), by key.
+	resistances map[string]Resistance
 	raceChoice  map[string][]int
 	bgEquipment map[string]string
 	// entryRevision is the revision of each table entry at its last change.
@@ -261,6 +264,9 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, err
 	}
 	if err := c.loadSpellTargets(fsys); err != nil {
+		return nil, err
+	}
+	if err := c.loadDamageResistances(fsys); err != nil {
 		return nil, err
 	}
 	if err := c.loadTraps(fsys); err != nil {
@@ -424,7 +430,7 @@ func (c *content) loadEffects(fsys fs.FS) error {
 	}
 	for _, name := range files {
 		switch path.Base(name) {
-		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "spell_targets.json", "corrections.json", "traps.json", "lights.json", "consumables.json", "encounter_budget.json", "magic_item_values.json", "treasure.json":
+		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "spell_targets.json", "corrections.json", "damage_resistances.json", "traps.json", "lights.json", "consumables.json", "encounter_budget.json", "magic_item_values.json", "treasure.json":
 			continue
 		}
 		var f struct {
