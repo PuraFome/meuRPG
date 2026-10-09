@@ -13,6 +13,7 @@ import {
   TableSpellSchema,
   TableSubclassSchema,
   TableBackgroundSchema,
+  TableFeatSchema,
   TableFeatureSchema,
   TableEffectSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
@@ -24,6 +25,9 @@ import { EffectMenuVm } from './effect-draft';
 /** Test builders: an entry as the server sends it, and a small effect menu with the shape of the real one. */
 
 type Body = TableEntry['body'];
+
+/** The Strength a test feat asks of a character. */
+const STRENGTH_MINIMUM = 13;
 
 export function entry(
   kind: TableContentKind,
@@ -38,6 +42,7 @@ export function entry(
     [TableContentKind.SUBRACE]: 'subrace',
     [TableContentKind.BACKGROUND]: 'background',
     [TableContentKind.SPELL]: 'spell',
+    [TableContentKind.FEAT]: 'feat',
   }[kind as 1];
   const body: Body =
     over.body ??
@@ -64,7 +69,16 @@ export function entry(
                   skills: ['skill:arcana', 'skill:history'],
                 }),
               }
-            : { case: 'tableSpell', value: create(TableSpellSchema, { namePt, level: 1 }) });
+            : kind === TableContentKind.FEAT
+              ? {
+                  case: 'tableFeat',
+                  value: create(TableFeatSchema, {
+                    namePt,
+                    descPt: ['Texto do talento.'],
+                    prerequisite: { minimums: { strength: STRENGTH_MINIMUM } },
+                  }),
+                }
+              : { case: 'tableSpell', value: create(TableSpellSchema, { namePt, level: 1 }) });
   return create(TableEntrySchema, {
     key: over.key ?? `${prefix}:${slug}@mesa`,
     kind,
@@ -161,6 +175,18 @@ export function menuResponse(): GetEffectMenuResponse {
         ],
       },
       {
+        type: 'ability_increase',
+        namePt: 'Aumento de habilidade',
+        hintPt: 'O jogador escolhe habilidades de uma lista.',
+        featOnly: true,
+        fields: [
+          field('count', 'number', true, '', 1),
+          field('from', 'choices', true, 'abilities'),
+          field('value', 'choice', true, 'ability_increase_amounts'),
+          field('text_pt', 'text'),
+        ],
+      },
+      {
         type: 'note',
         namePt: 'Nota e magia concedida',
         hintPt: 'Um lembrete.',
@@ -196,6 +222,22 @@ export function menuResponse(): GetEffectMenuResponse {
         values: [
           { key: 'skill', namePt: 'Perícias' },
           { key: 'feature', namePt: 'Uma opção de uma lista do SRD' },
+          { key: 'feat', namePt: 'Talentos' },
+        ],
+      },
+      {
+        name: 'abilities',
+        values: [
+          { key: 'strength', namePt: 'Força' },
+          { key: 'dexterity', namePt: 'Destreza' },
+          { key: 'constitution', namePt: 'Constituição' },
+        ],
+      },
+      {
+        name: 'ability_increase_amounts',
+        values: [
+          { key: '1', namePt: '+1' },
+          { key: '2', namePt: '+2' },
         ],
       },
       {

@@ -1100,6 +1100,19 @@ message FullSheet {
   // fit it at. Set by the server and ignored from the client; an entry not here
   // uses `content_revision`.
   map<string, int32> content_baselines = 31;
+  // The feats the character took (MR-025), as content keys: "feat:grappler" or a
+  // table's "feat:<slug>@mesa". Feats are an optional rule of the game (the
+  // table's rule "Talentos"): a feat is taken in place of an Ability Score
+  // Improvement by the guided level-up, or by the master in the sheet editor. A feat
+  // applies like a feature: its effects reach the derived sheet and the sheet lists
+  // it with the features. The abilities a feat raises are in extra_ability_bonuses.
+  // At most 100.
+  repeated string feat_keys = 32;
+  // For a feat taken in the guided level-up, the key of the Ability Score Improvement
+  // feature it replaced (feat key to feature key). Set by the level-up; an entry for a feat
+  // the sheet does not have is dropped on save. The sheet then lists the feat at that level and not the improvement. A feat the
+  // master added has none.
+  map<string, string> feat_slots = 33;
 }
 
 // AbilityOrigin is the way a player made a sheet's base scores, as the server
@@ -1855,24 +1868,32 @@ message LevelUpOptions {
   // HIT_POINTS_AVERAGE_ONLY, and ROLLED_IN_APP and ROLLED_PHYSICAL answer
   // HIT_POINTS_RULE). Independent of dice_rule, which says where a roll happens.
   LevelUpHitPointsRule hit_points_rule = 35;
+  // At a level with an Ability Score Improvement, when the table uses feats (its
+  // rule "Talentos"): the feats the player may take in place of the increase, each
+  // with whether the character qualifies at the new level and what it lacks when
+  // not (meurpg.rules.v1.FeatOption). Retired feats are left out, and so are the
+  // ones the master switched off for a player. Empty at the other levels and where
+  // the table does not use feats. A feat taken is LevelUpChoices.feat_key; the
+  // abilities it raises, LevelUpChoices.ability_increase.
+  repeated meurpg.rules.v1.FeatOption feats = 36;
 
   // Multiclassing (SRD 5.1, "Multiclassing"). is_new_class says the character
   // does not have class_key: the level is the class's first (from_level 0), the hit
   // die gives its average and never the maximum, and everything above is the
   // class's level 1 (cantrips, spells and prepared spells are the class's own
   // numbers, not the total level's).
-  bool is_new_class = 36;
+  bool is_new_class = 37;
   // The ways the level can go, always set: the classes the character has (their
   // next level), then the other classes of the content sorted by name, each with
   // its prerequisite and whether it is open. A class the master archived or
   // switched off is not listed to a player.
-  repeated LevelUpClassChoice class_choices = 37;
+  repeated LevelUpClassChoice class_choices = 38;
   // For a new class: the armor, weapon and tool proficiencies its multiclass table
   // gives, each marked when the character already has it; and the picks the table
   // asks for (a skill; the Bard's instrument). The skill goes in
   // LevelUpChoices.skill_proficiency_keys, the instrument in instrument_key.
-  repeated LevelUpProficiencyGain proficiency_gains = 38;
-  repeated LevelUpProficiencyChoice proficiency_choices = 39;
+  repeated LevelUpProficiencyGain proficiency_gains = 39;
+  repeated LevelUpProficiencyChoice proficiency_choices = 40;
 }
 
 // LevelUpPrerequisite is one ability a class asks for to be taken as one of
@@ -2068,10 +2089,18 @@ message LevelUpChoices {
   repeated string expertise_skill_keys = 9;
   // The hit points of the level. Required.
   LevelUpHitPoints hit_points = 10;
+  // The feat taken in place of the Ability Score Improvement, when the table uses
+  // feats (its rule "Talentos") and the character meets its prerequisite. With a
+  // feat, `ability_increase` is the increase the feat gives (its `increase`:
+  // `count` different abilities of its list, `value` each, none above 20) and is
+  // unset when the feat gives none. A feat that raises every ability it lists needs no
+  // `ability_increase`: the server applies it, stopping at 20 (one that is not exactly that
+  // is refused). Empty for none.
+  string feat_key = 11;
   // The musical instrument (a proficiency key, such as "proficiency:lute") that a
   // Bard taken as a new class lets the player pick; the sheet lists its name among
   // tool_proficiencies. Empty for a class that asks for none.
-  string instrument_key = 11;
+  string instrument_key = 12;
 }
 
 // LevelUpRefusalReason says why the rules refuse a set of choices, so the app
@@ -2139,21 +2168,29 @@ enum LevelUpRefusalReason {
   // sheet field. The master is not refused. PreviewLevelUp answers this and
   // ARCHIVED_CHOICE with no `after`.
   LEVEL_UP_REFUSAL_REASON_SWITCHED_OFF_CHOICE = 21;
+  // A feat at a level without an Ability Score Improvement, a feat the content does
+  // not have, more than one, or one removed. `field` is "full.feat_keys".
+  LEVEL_UP_REFUSAL_REASON_FEAT = 22;
+  // The character does not meet the feat's prerequisite.
+  LEVEL_UP_REFUSAL_REASON_FEAT_PREREQUISITE = 23;
+  // A feat, but the table does not use feats (its rule "Talentos"). `field` is
+  // "choices.feat_key".
+  LEVEL_UP_REFUSAL_REASON_FEATS_NOT_ALLOWED = 24;
   // The new class asks for an ability the character does not have at 13
   // (SRD 5.1, "Multiclassing", "Prerequisites"): class_key, ability, minimum and
   // have say which. A player only; the master's editor may go past it, with the
   // sheet's multiclass_prerequisite issue.
-  LEVEL_UP_REFUSAL_REASON_MULTICLASS_PREREQUISITE = 22;
+  LEVEL_UP_REFUSAL_REASON_MULTICLASS_PREREQUISITE = 25;
   // A class the character already has asks for an ability the character does not
   // have at 13, so it takes no new class: class_key is the class it has, and
   // ability, minimum and have the missing score.
-  LEVEL_UP_REFUSAL_REASON_MULTICLASS_PREREQUISITE_CURRENT = 23;
+  LEVEL_UP_REFUSAL_REASON_MULTICLASS_PREREQUISITE_CURRENT = 26;
   // The skill a new class's multiclass table asks for is missing, repeated, one
   // the character already has, or not on the class's list.
-  LEVEL_UP_REFUSAL_REASON_PROFICIENCY_CHOICE = 24;
+  LEVEL_UP_REFUSAL_REASON_PROFICIENCY_CHOICE = 27;
   // The Bard's instrument is missing, unknown, or one the character already has;
   // or an instrument was sent for a class that asks for none.
-  LEVEL_UP_REFUSAL_REASON_INSTRUMENT_CHOICE = 25;
+  LEVEL_UP_REFUSAL_REASON_INSTRUMENT_CHOICE = 28;
 }
 
 // LevelUpRefusal is the first rule the choices break: the sheet field and a

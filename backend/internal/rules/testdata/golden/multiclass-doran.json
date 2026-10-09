@@ -1,6 +1,6 @@
 {
   "after": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.26",
+    "ContentVersion": "srd51@a8abc93b235c+fx.32",
     "RaceNamePT": "Humano",
     "SubraceNamePT": "",
     "BackgroundNamePT": "Acólito",
@@ -536,6 +536,7 @@
         "DamageType": "damage-type:slashing",
         "DamageTypeNamePT": "cortante",
         "VersatileDamage": "1d10+3",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 1,
           "Sides": 8,
@@ -572,6 +573,7 @@
         "DamageType": "damage-type:fire",
         "DamageTypeNamePT": "fogo",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 2,
           "Sides": 10,
@@ -608,6 +610,7 @@
         "DamageType": "damage-type:bludgeoning",
         "DamageTypeNamePT": "concussão",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 0,
           "Sides": 0,
@@ -932,7 +935,7 @@
     "Issues": null
   },
   "before": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.26",
+    "ContentVersion": "srd51@a8abc93b235c+fx.32",
     "RaceNamePT": "Humano",
     "SubraceNamePT": "",
     "BackgroundNamePT": "Acólito",
@@ -1225,6 +1228,7 @@
         "DamageType": "damage-type:slashing",
         "DamageTypeNamePT": "cortante",
         "VersatileDamage": "1d10+3",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 1,
           "Sides": 8,
@@ -1261,6 +1265,7 @@
         "DamageType": "damage-type:bludgeoning",
         "DamageTypeNamePT": "concussão",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 0,
           "Sides": 0,

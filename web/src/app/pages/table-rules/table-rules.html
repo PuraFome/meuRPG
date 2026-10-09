@@ -144,6 +144,17 @@
             />
           </section>
 
+          <section class="mr-panel block" aria-labelledby="feats-title">
+            <h2 class="mr-panel__title" id="feats-title">Talentos</h2>
+            <app-dice-choice
+              name="table-feats"
+              label="Talentos"
+              [options]="featOptions"
+              [value]="d.featsAllowed ? 1 : 0"
+              (valueChange)="edit({ featsAllowed: $event === 1 })"
+            />
+          </section>
+
           <section class="mr-panel block" aria-labelledby="death-title">
             <h2 class="mr-panel__title" id="death-title">Testes contra a morte</h2>
             <app-dice-choice
@@ -179,6 +190,19 @@
               }
               <app-fog-switch [checked]="d.fogOnNewMaps" (toggled)="edit({ fogOnNewMaps: $event })" />
             </div>
+          </section>
+
+          <section class="mr-panel block" aria-labelledby="hidden-area-title">
+            <h2 class="mr-panel__title" id="hidden-area-title">Criaturas escondidas atingidas por uma área</h2>
+            <p class="hint">A magia de área sempre atinge as criaturas escondidas: o efeito vale. Isto decide só se elas aparecem para os jogadores.</p>
+            <app-dice-choice
+              name="table-hidden-area"
+              label="Criaturas escondidas atingidas por uma área"
+              [options]="hiddenAreaOptions"
+              [value]="d.hiddenAreaHits"
+              (valueChange)="edit({ hiddenAreaHits: $event })"
+            />
+            <p class="hint">Você pode mudar isto a qualquer hora, no meio da sessão. Vale a partir da próxima magia.</p>
           </section>
 
           <app-xp-mode-panel [campaignId]="campaignId()" [mode]="s.xpMode" (questionOpen)="questionOpen.set($event)" />

@@ -17,6 +17,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 
 import {
+  AreaPlacement,
   type AttackRoll,
   type Combatant,
   type Encounter,
@@ -111,8 +112,12 @@ export class NpcCard {
   readonly offering = input(false);
   /** Why "Oferecer ataque de oportunidade" cannot be used now ("Ninguém pode reagir agora."), or `''`. */
   readonly offerWhy = input('');
+  /** A question about hidden creatures holds the turn: why "Próximo turno" waits ("Responda ao pedido abaixo para seguir."), or `''`. */
+  readonly waitWhy = input('');
   /** "Oferecer ataque de oportunidade": the page opens the form. */
   readonly offer = output<void>();
+  /** "Conjurar" on an NPC's area spell placed on the map: the page opens the master's picker (PM-02d state 11). */
+  readonly castArea = output<string>();
   /** "Próximo turno"; `true` when the master passes it with a damage waiting. */
   readonly next = output<boolean>();
   /** A damage was applied or discarded (`PendingDamages`): the page keeps the card for its note. */
@@ -174,6 +179,25 @@ export class NpcCard {
     () => this.targets().find((t) => t.combatantId === this.targetId())?.label ?? '',
   );
   protected readonly pendings = computed(() => this.options()?.pendingDamages ?? []);
+  /** The NPC's spells whose area is placed on the map (none without a map): each one a "Conjurar" for the master's picker. */
+  protected readonly areaSpells = computed(() => {
+    const opts = this.options();
+    if (this.theatre() || !opts?.options) {
+      return [];
+    }
+    return (opts.options.spells ?? []).flatMap((s) => {
+      const t = (opts.spellTargets ?? []).find((x) => x.spellKey === s.spell?.key);
+      return s.spell && s.enabled && t && t.placement !== AreaPlacement.UNSPECIFIED
+        ? [{ key: s.spell.key, name: s.spell.namePt || s.spell.name }]
+        : [];
+    });
+  });
+  /** A hit whose damage is still to roll or to apply holds the attacker's next attack: the server refuses it too. */
+  protected readonly rollWhy = computed(() =>
+    this.pendings().length > 0
+      ? 'Role ou aplique o dano do ataque anterior antes de rolar outro.'
+      : '',
+  );
   /** The damage of the attack just rolled shows inside its result box. */
   protected readonly inBox = computed(() => {
     const id = this.last()?.pending?.id;
@@ -305,7 +329,7 @@ export class NpcCard {
   private async rollAttack(die: { inApp: true } | { face: number }): Promise<void> {
     const a = this.attack();
     const target = this.targetId();
-    if (!a || !target || this.busy()) {
+    if (!a || !target || this.busy() || this.rollWhy()) {
       return;
     }
     this.busy.set(true);

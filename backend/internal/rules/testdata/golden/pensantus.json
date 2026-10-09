@@ -1,5 +1,5 @@
 {
-  "ContentVersion": "srd51@a8abc93b235c+fx.26",
+  "ContentVersion": "srd51@a8abc93b235c+fx.32",
   "RaceNamePT": "Gnomo",
   "SubraceNamePT": "Gnomo das Rochas",
   "BackgroundNamePT": "Sábio",
@@ -623,6 +623,7 @@
       "DamageType": "damage-type:bludgeoning",
       "DamageTypeNamePT": "concussão",
       "VersatileDamage": "1d8+1",
+      "DamageNotePT": "",
       "DamageDice": {
         "Count": 1,
         "Sides": 6,
@@ -659,6 +660,7 @@
       "DamageType": "damage-type:fire",
       "DamageTypeNamePT": "fogo",
       "VersatileDamage": "",
+      "DamageNotePT": "",
       "DamageDice": {
         "Count": 1,
         "Sides": 10,
@@ -695,6 +697,7 @@
       "DamageType": "damage-type:cold",
       "DamageTypeNamePT": "frio",
       "VersatileDamage": "",
+      "DamageNotePT": "",
       "DamageDice": {
         "Count": 1,
         "Sides": 8,
@@ -731,6 +734,7 @@
       "DamageType": "damage-type:bludgeoning",
       "DamageTypeNamePT": "concussão",
       "VersatileDamage": "",
+      "DamageNotePT": "",
       "DamageDice": {
         "Count": 0,
         "Sides": 0,

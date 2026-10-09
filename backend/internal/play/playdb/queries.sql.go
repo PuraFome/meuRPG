@@ -10,6 +10,45 @@ import (
 	"time"
 )
 
+const answerHiddenReveal = `-- name: AnswerHiddenReveal :one
+UPDATE hidden_reveals SET state = $1, answered_at = $2
+WHERE encounter_id = $3 AND id = $4 AND state = 'pending'
+RETURNING id, encounter_id, caster_id, spell_key, combatant_ids, origin_col, origin_row, squares, seq, state, created_at, answered_at
+`
+
+type AnswerHiddenRevealParams struct {
+	State       string
+	AnsweredAt  *time.Time
+	EncounterID string
+	ID          string
+}
+
+// The master's answer; only a question that waits can be answered.
+func (q *Queries) AnswerHiddenReveal(ctx context.Context, arg AnswerHiddenRevealParams) (HiddenReveal, error) {
+	row := q.db.QueryRow(ctx, answerHiddenReveal,
+		arg.State,
+		arg.AnsweredAt,
+		arg.EncounterID,
+		arg.ID,
+	)
+	var i HiddenReveal
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CasterID,
+		&i.SpellKey,
+		&i.CombatantIds,
+		&i.OriginCol,
+		&i.OriginRow,
+		&i.Squares,
+		&i.Seq,
+		&i.State,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+	)
+	return i, err
+}
+
 const clearCombatTurns = `-- name: ClearCombatTurns :exec
 UPDATE combatants
 SET turn_state = 'idle'
@@ -250,6 +289,26 @@ WHERE id = $1
 
 func (q *Queries) DeleteCombatant(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, deleteCombatant, id)
+	return err
+}
+
+const deleteHiddenReveal = `-- name: DeleteHiddenReveal :exec
+DELETE FROM hidden_reveals WHERE id = $1
+`
+
+// An undo of the cast that opened the question takes it away.
+func (q *Queries) DeleteHiddenReveal(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deleteHiddenReveal, id)
+	return err
+}
+
+const deleteHiddenRevealsOfEncounter = `-- name: DeleteHiddenRevealsOfEncounter :exec
+DELETE FROM hidden_reveals WHERE encounter_id = $1
+`
+
+// Ending the combat drops what was still to answer.
+func (q *Queries) DeleteHiddenRevealsOfEncounter(ctx context.Context, encounterID string) error {
+	_, err := q.db.Exec(ctx, deleteHiddenRevealsOfEncounter, encounterID)
 	return err
 }
 
@@ -630,6 +689,35 @@ func (q *Queries) GetGameSessionInCampaign(ctx context.Context, arg GetGameSessi
 		&i.OpenScenePointID,
 		&i.CreateKey,
 		&i.CreateHash,
+	)
+	return i, err
+}
+
+const getHiddenReveal = `-- name: GetHiddenReveal :one
+SELECT id, encounter_id, caster_id, spell_key, combatant_ids, origin_col, origin_row, squares, seq, state, created_at, answered_at FROM hidden_reveals WHERE encounter_id = $1 AND id = $2
+`
+
+type GetHiddenRevealParams struct {
+	EncounterID string
+	ID          string
+}
+
+func (q *Queries) GetHiddenReveal(ctx context.Context, arg GetHiddenRevealParams) (HiddenReveal, error) {
+	row := q.db.QueryRow(ctx, getHiddenReveal, arg.EncounterID, arg.ID)
+	var i HiddenReveal
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CasterID,
+		&i.SpellKey,
+		&i.CombatantIds,
+		&i.OriginCol,
+		&i.OriginRow,
+		&i.Squares,
+		&i.Seq,
+		&i.State,
+		&i.CreatedAt,
+		&i.AnsweredAt,
 	)
 	return i, err
 }
@@ -1670,6 +1758,59 @@ func (q *Queries) InsertGameSession(ctx context.Context, arg InsertGameSessionPa
 		&i.OpenScenePointID,
 		&i.CreateKey,
 		&i.CreateHash,
+	)
+	return i, err
+}
+
+const insertHiddenReveal = `-- name: InsertHiddenReveal :one
+INSERT INTO hidden_reveals (encounter_id, caster_id, spell_key, combatant_ids, origin_col, origin_row, squares, seq, created_at)
+VALUES (
+    $1, $2, $3, $4::TEXT[],
+    $5, $6, $7::INT4[], $8, $9
+)
+RETURNING id, encounter_id, caster_id, spell_key, combatant_ids, origin_col, origin_row, squares, seq, state, created_at, answered_at
+`
+
+type InsertHiddenRevealParams struct {
+	EncounterID  string
+	CasterID     string
+	SpellKey     string
+	CombatantIds []string
+	OriginCol    int32
+	OriginRow    int32
+	Squares      []int32
+	Seq          int32
+	CreatedAt    time.Time
+}
+
+// A player's area spell hit hidden creatures and the table asks the master: the
+// question, with where the area landed.
+func (q *Queries) InsertHiddenReveal(ctx context.Context, arg InsertHiddenRevealParams) (HiddenReveal, error) {
+	row := q.db.QueryRow(ctx, insertHiddenReveal,
+		arg.EncounterID,
+		arg.CasterID,
+		arg.SpellKey,
+		arg.CombatantIds,
+		arg.OriginCol,
+		arg.OriginRow,
+		arg.Squares,
+		arg.Seq,
+		arg.CreatedAt,
+	)
+	var i HiddenReveal
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CasterID,
+		&i.SpellKey,
+		&i.CombatantIds,
+		&i.OriginCol,
+		&i.OriginRow,
+		&i.Squares,
+		&i.Seq,
+		&i.State,
+		&i.CreatedAt,
+		&i.AnsweredAt,
 	)
 	return i, err
 }
@@ -3188,6 +3329,44 @@ func (q *Queries) ListOpenTrapPendingDamagesOfEncounter(ctx context.Context, enc
 	return items, nil
 }
 
+const listPendingHiddenReveals = `-- name: ListPendingHiddenReveals :many
+SELECT id, encounter_id, caster_id, spell_key, combatant_ids, origin_col, origin_row, squares, seq, state, created_at, answered_at FROM hidden_reveals WHERE encounter_id = $1 AND state = 'pending' ORDER BY seq
+`
+
+// The questions the master has still to answer, oldest first. They hold the turn.
+func (q *Queries) ListPendingHiddenReveals(ctx context.Context, encounterID string) ([]HiddenReveal, error) {
+	rows, err := q.db.Query(ctx, listPendingHiddenReveals, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []HiddenReveal
+	for rows.Next() {
+		var i HiddenReveal
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.CasterID,
+			&i.SpellKey,
+			&i.CombatantIds,
+			&i.OriginCol,
+			&i.OriginRow,
+			&i.Squares,
+			&i.Seq,
+			&i.State,
+			&i.CreatedAt,
+			&i.AnsweredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPendingOpportunityOffers = `-- name: ListPendingOpportunityOffers :many
 SELECT id, encounter_id, move_id, mover_id, reactor_id, left_col, left_row, state, attack_pending_id, created_at, answered_at FROM opportunity_offers
 WHERE encounter_id = $1 AND state = 'pending'
@@ -3852,6 +4031,18 @@ type MarkDeathSaveRolledOnTurnParams struct {
 func (q *Queries) MarkDeathSaveRolledOnTurn(ctx context.Context, arg MarkDeathSaveRolledOnTurnParams) error {
 	_, err := q.db.Exec(ctx, markDeathSaveRolledOnTurn, arg.CharacterID, arg.GameSessionID)
 	return err
+}
+
+const nextHiddenRevealSeq = `-- name: NextHiddenRevealSeq :one
+SELECT (COALESCE(MAX(seq), 0) + 1)::INT4 FROM hidden_reveals WHERE encounter_id = $1
+`
+
+// The place of the next question of the combat in the order they are answered.
+func (q *Queries) NextHiddenRevealSeq(ctx context.Context, encounterID string) (int32, error) {
+	row := q.db.QueryRow(ctx, nextHiddenRevealSeq, encounterID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const nextSessionEventSeq = `-- name: NextSessionEventSeq :one

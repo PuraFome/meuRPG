@@ -70,10 +70,27 @@ describe('PickList', () => {
     expect(setup({ count: 1 }).el.querySelector('.row__input')?.getAttribute('type')).toBe('radio');
   });
 
-  it('shows the first rows and "Ver os outros N", and the rest after it', () => {
+  it('says "Ver os outros N" for a masculine noun', () => {
+    const fixture = TestBed.createComponent(PickList);
+    fixture.componentRef.setInput('pickId', 'cantrips');
+    fixture.componentRef.setInput('title', 'Truque novo');
+    fixture.componentRef.setInput('noun', 'truque');
+    fixture.componentRef.setInput('nounMany', 'truques');
+    fixture.componentRef.setInput('masculine', true);
+    fixture.componentRef.setInput(
+      'items',
+      ['A', 'B', 'C', 'D', 'E', 'F'].map((name) => ({ key: `spell:${name}`, name })),
+    );
+    fixture.componentRef.setInput('picked', new Set<string>());
+    fixture.componentRef.setInput('count', 1);
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Ver os outros 2 truques');
+  });
+
+  it('shows the first rows and "Ver as outras N" for a feminine noun, and the rest after it', () => {
     const { fixture, el, text } = setup();
     expect(el.querySelectorAll('.row')).toHaveLength(4);
-    expect(text()).toContain('Ver os outros 2 magias');
+    expect(text()).toContain('Ver as outras 2 magias');
     (el.querySelector('.list__more') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(el.querySelectorAll('.row')).toHaveLength(6);

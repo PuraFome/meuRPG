@@ -14,6 +14,7 @@ import type { Ability } from '../../../gen/meurpg/rules/v1/rules_pb';
 import type { CatalogAbility } from './catalog';
 import { previewRows, spellToDraft } from './spell-draft';
 import { slotsText } from './class-draft';
+import { prerequisiteParts } from './feat-text';
 
 /**
  * What a player reads of an entry (MR-025, question 83: "every option that is on, in full, with the numbers and the
@@ -234,6 +235,22 @@ export function readEntry(
       if (b.equipmentPt) rows.push({ label: 'Equipamento', value: b.equipmentPt });
       if (b.feature && b.feature.namePt)
         sections.push({ title: 'Característica', items: [featureItem(b.feature, nameOf)] });
+      break;
+    }
+    case 'tableFeat': {
+      const f = entry.body.value;
+      const asks = prerequisiteParts(f.prerequisite, nameOf);
+      rows.push({ label: 'Pré-requisito', value: asks.length > 0 ? asks.join(', ') : 'Nenhum' });
+      for (const e of f.effects) {
+        if (e.type === 'ability_increase' && e.count > 0) {
+          const from = e.from.map((k) => nameOf(`ability:${k}`));
+          rows.push({
+            label: 'Aumento de habilidade',
+            value: `+${e.value} em ${e.count === 1 ? 'uma' : e.count} ${e.count === 1 ? 'habilidade' : 'habilidades'} à escolha: ${from.join(', ')}`,
+          });
+        }
+      }
+      text = f.descPt;
       break;
     }
     case 'tableSpell': {

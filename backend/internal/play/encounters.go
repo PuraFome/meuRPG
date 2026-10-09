@@ -446,7 +446,7 @@ func (s *Service) battlePointID(ctx context.Context, campaignID, raw string) (po
 	if perr != nil {
 		return "", "", connect.NewError(connect.CodeNotFound, errors.New("point not found"))
 	}
-	point, err := s.maps.BattlePoint(ctx, campaignID, id.String())
+	point, err := s.maps.BattlePoint(ctx, nil, campaignID, id.String())
 	if err != nil {
 		return "", "", s.dbError(ctx, "find the battle point", err)
 	}

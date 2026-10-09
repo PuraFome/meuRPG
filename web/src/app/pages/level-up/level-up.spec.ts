@@ -34,6 +34,7 @@ import {
   SPELLS,
   WIZARD_KEYS,
   classChoice,
+  featOptions,
   fighterOptions,
   pensantus,
   pensantusClassChoices,
@@ -181,6 +182,38 @@ describe('LevelUpPage', () => {
       'Magias',
       'Resumo',
     ]);
+  });
+
+  it('offers "Aumentar habilidades" or "Um talento" when the table lists feats, and sends the feat with the abilities it raises', async () => {
+    const f = await setup(wizardOptions({ preparedMaxAfter: 3, feats: featOptions() }));
+    expect(text(f)).toContain('Incremento ou talento');
+    expect(text(f)).toContain('Aumentar habilidades');
+    expect(text(f)).not.toContain('Atleta');
+    await click(
+      f,
+      el(f).querySelector<HTMLInputElement>('input[name="asi-take"][type="radio"]:not(:checked)'),
+    );
+    expect(text(f)).toContain('Atleta');
+    expect(text(f)).toContain('Precisa de Força 15.');
+    expect(text(f)).toContain('Falta escolher o talento.');
+    const radios = Array.from(
+      el(f).querySelectorAll<HTMLInputElement>('app-feat-picker input[type="radio"]'),
+    );
+    expect(radios.map((r) => r.disabled)).toEqual([false, false, true]);
+    await click(f, radios[1]);
+    expect(text(f)).toContain('Falta escolher 1 habilidade.');
+    await click(f, el(f).querySelector<HTMLInputElement>('.ability input'));
+    expect(text(f)).not.toContain('Falta escolher 1 habilidade.');
+    const sent = client.preview.mock.calls.at(-1)![2];
+    expect(sent).toMatchObject({ featKey: 'feat:atleta@mesa', abilityIncrease: { strength: 1 } });
+  });
+
+  it('keeps the step as it is today when the server lists no feats', async () => {
+    const f = await setup();
+    expect(text(f)).toContain('Incremento no Valor de Habilidade');
+    expect(text(f)).not.toContain('Um talento');
+    expect(text(f)).toContain('Esta mesa não usa talentos');
+    expect(client.preview.mock.calls.at(-1)?.[2]).toMatchObject({ featKey: '' });
   });
 
   it('has only Vida and Resumo when the level has nothing else to choose (Toren)', async () => {

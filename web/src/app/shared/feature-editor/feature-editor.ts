@@ -39,6 +39,8 @@ export class FeatureEditor {
   readonly heading = input('');
   /** No card of its own (no border, fill or padding): the page already frames it, as the open feature of a class does. */
   readonly flat = input(false);
+  /** The feat editor: its effects may be the types only a feat has. */
+  readonly featEditor = input(false);
   /** A narrow field projected between the name and the effect (`<… lead>`): the class editor's "Nível". */
   readonly withLead = input(false);
 
