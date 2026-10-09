@@ -228,3 +228,15 @@ func CheckBonus(modifiers []rules.EffectModifier, skill string) int {
 	}
 	return n
 }
+
+// BaseAC is the base armor class the modifiers give (Mage Armor), 0 for none: the highest one,
+// since two castings of the same spell do not combine (SRD 5.1, "Combining Magical Effects").
+func BaseAC(modifiers []rules.EffectModifier) int {
+	n := 0
+	for _, m := range modifiers {
+		if m.Kind == rules.ModifierBaseAC {
+			n = max(n, m.Value)
+		}
+	}
+	return n
+}

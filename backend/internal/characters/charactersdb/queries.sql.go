@@ -896,7 +896,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level
+       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -931,6 +931,7 @@ type GetVitalsRow struct {
 	FamiliarSightConditions []string
 	HitPointsMaxBonus       *int32
 	ExhaustionLevel         *int32
+	ArmorClassBase          *int32
 }
 
 // ListVitals for one character. No row means the character is not a
@@ -960,6 +961,7 @@ func (q *Queries) GetVitals(ctx context.Context, arg GetVitalsParams) (GetVitals
 		&i.FamiliarSightConditions,
 		&i.HitPointsMaxBonus,
 		&i.ExhaustionLevel,
+		&i.ArmorClassBase,
 	)
 	return i, err
 }
@@ -969,7 +971,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level
+       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -1004,6 +1006,7 @@ type GetVitalsWithDeadRow struct {
 	FamiliarSightConditions []string
 	HitPointsMaxBonus       *int32
 	ExhaustionLevel         *int32
+	ArmorClassBase          *int32
 }
 
 // GetVitals that also answers for a player character that died: the page of a
@@ -1034,6 +1037,7 @@ func (q *Queries) GetVitalsWithDead(ctx context.Context, arg GetVitalsWithDeadPa
 		&i.FamiliarSightConditions,
 		&i.HitPointsMaxBonus,
 		&i.ExhaustionLevel,
+		&i.ArmorClassBase,
 	)
 	return i, err
 }
@@ -2701,7 +2705,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level
+       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -2732,6 +2736,7 @@ type ListVitalsRow struct {
 	FamiliarSightConditions []string
 	HitPointsMaxBonus       *int32
 	ExhaustionLevel         *int32
+	ArmorClassBase          *int32
 }
 
 // The vitals of the campaign's living, active player characters (RN-02),
@@ -2770,6 +2775,7 @@ func (q *Queries) ListVitals(ctx context.Context, campaignID string) ([]ListVita
 			&i.FamiliarSightConditions,
 			&i.HitPointsMaxBonus,
 			&i.ExhaustionLevel,
+			&i.ArmorClassBase,
 		); err != nil {
 			return nil, err
 		}
@@ -3271,6 +3277,37 @@ func (q *Queries) SetStoryEditing(ctx context.Context, arg SetStoryEditingParams
 		&i.ReviveKey,
 		&i.ReviveHash,
 	)
+	return i, err
+}
+
+const setVitalsArmorBase = `-- name: SetVitalsArmorBase :one
+INSERT INTO character_vitals
+    (character_id, armor_class_base, revision, updated_at)
+VALUES ($1, $2, 1, $3)
+ON CONFLICT (character_id) DO UPDATE SET
+    armor_class_base = excluded.armor_class_base,
+    revision = character_vitals.revision + 1,
+    updated_at = excluded.updated_at
+RETURNING revision, updated_at
+`
+
+type SetVitalsArmorBaseParams struct {
+	CharacterID    string
+	ArmorClassBase *int32
+	Now            time.Time
+}
+
+type SetVitalsArmorBaseRow struct {
+	Revision  int32
+	UpdatedAt time.Time
+}
+
+// Sets the base armor class an effect that lasts gives a character (NULL: none): the first
+// call creates the row, as UpsertVitals does, and every change bumps the revision.
+func (q *Queries) SetVitalsArmorBase(ctx context.Context, arg SetVitalsArmorBaseParams) (SetVitalsArmorBaseRow, error) {
+	row := q.db.QueryRow(ctx, setVitalsArmorBase, arg.CharacterID, arg.ArmorClassBase, arg.Now)
+	var i SetVitalsArmorBaseRow
+	err := row.Scan(&i.Revision, &i.UpdatedAt)
 	return i, err
 }
 

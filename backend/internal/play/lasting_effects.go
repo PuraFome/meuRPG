@@ -316,6 +316,7 @@ func (s *Service) refreshCombatants(ctx context.Context, c *combatTx, ids ...str
 	if err != nil {
 		return fmt.Errorf("list the effects: %w", err)
 	}
+	var players []string // the characters whose base armor class is worked out again
 	for _, id := range ids {
 		i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == id })
 		if i < 0 {
@@ -365,6 +366,20 @@ func (s *Service) refreshCombatants(ctx context.Context, c *combatTx, ids ...str
 			pct /= 2
 		}
 		ac := combat.ArmorClassBonus(mods)
+		// Mage Armor: the base armor class the effects give, which the combat's rolls read.
+		if want := int32(combat.BaseAC(mods)); (cb.MageArmorAc == nil && want != 0) || (cb.MageArmorAc != nil && *cb.MageArmorAc != want) { //nolint:gosec // 0 to 60
+			var value *int32
+			if want > 0 {
+				value = &want
+			}
+			if err := c.q.SetCombatantMageArmorAC(ctx, playdb.SetCombatantMageArmorACParams{ID: cb.ID, MageArmorAc: value}); err != nil {
+				return fmt.Errorf("work out the base armor class: %w", err)
+			}
+			cs[i].MageArmorAc = value
+		}
+		if cb.Kind == kindPlayer {
+			players = append(players, cb.CharacterID)
+		}
 		noAction := slices.ContainsFunc(mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierNoAction })
 		// Speed 0 (exhaustion 5, the lethargy) is no movement; a percentage of 0 is never stored.
 		noMove := ex0(level) || slices.ContainsFunc(mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierNoMove })
@@ -395,7 +410,7 @@ func (s *Service) refreshCombatants(ctx context.Context, c *combatTx, ids ...str
 			}
 		}
 	}
-	return nil
+	return s.syncArmorBase(ctx, c, players...)
 }
 
 // endEffectRows ends effects: it closes the saving throws they ask, takes the rows away,

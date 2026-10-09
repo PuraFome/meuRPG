@@ -41,7 +41,13 @@ import { openHitDice } from '../hit-dice-sheet/hit-dice-sheet';
 import { WildPools } from '../../../shared/wild-shape/wild-pools';
 import { PlayerSheetVm, VitalsVm } from '../live-session.types';
 import { SlotDots } from '../slot-dots/slot-dots';
-import { freeWords, hitPointsPercent, slotLevelLabel, slotRowLabel } from '../vitals';
+import {
+  betterArmorClass,
+  freeWords,
+  hitPointsPercent,
+  slotLevelLabel,
+  slotRowLabel,
+} from '../vitals';
 
 /** How long "Acordado · testes contra a morte zerados" stays under the cards. */
 const WOKE_NOTICE_MS = 30000;
@@ -123,7 +129,9 @@ export class PlayerVitals {
   });
   /** The armor class on the shield: the beast's while it is one, else the sheet's. */
   private readonly baseArmorClass = computed(() =>
-    this.vitals().wildShape ? this.beastAc() : (this.sheet()?.armorClass ?? null),
+    this.vitals().wildShape
+      ? this.beastAc()
+      : betterArmorClass(this.sheet()?.armorClass ?? null, this.vitals().armorClassBase),
   );
   /** What the shield shows: the armor class already summed with the Escudo Arcano ("18"). */
   protected readonly armorClass = computed(() => {

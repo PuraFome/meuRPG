@@ -150,7 +150,7 @@
           [partyInfo]="partyInfo()"
           [sessionNumber]="s.sessionNumber"
           [cardAbove]="!!highlightsFor()"
-          [armorClass]="playerSheet()?.armorClass ?? null"
+          [armorClass]="ownArmorClass()"
           [casterClasses]="playerSheet()?.classes ?? ''"
           [diceMode]="campaign()?.diceMode ?? 1"
           [dicePreference]="campaign()?.dicePreference ?? 1"

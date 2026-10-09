@@ -138,6 +138,7 @@ func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
 		HitPointsCurrent:   maxHP, // fresh: full hit points
 		HitPointsMax:       maxHP,
 		ExhaustionLevel:    level,
+		ArmorClassBase:     derefInt(row.ArmorClassBase),
 		HitPointsMaxBonus:  bonus,
 		HitPointsTemporary: derefInt(row.HitPointsTemporary),
 		HitDiceTotal:       i32(m.hitDiceTotal),
@@ -644,6 +645,39 @@ func (s *Service) SetExhaustion(ctx context.Context, tx pgx.Tx, campaignID, char
 	if hitPoints == nil && before.GetHitPointsMax() < newMax && row.HitPointsCurrent == nil {
 		after.HitPointsCurrent = newMax // never set: full
 	}
+	after.Revision, after.UpdatedAt = saved.Revision, timestamppb.New(saved.UpdatedAt)
+	return before, after, nil
+}
+
+// SetArmorBase puts the base armor class an effect that lasts gives the character (Mage Armor,
+// SRD 5.1), 0 for none, inside tx and returns the vitals before and after. It implements
+// play.VitalsKeeper: play works the value out again in the transaction of every change to the
+// character's effects, so it never drifts from them.
+func (s *Service) SetArmorBase(ctx context.Context, tx pgx.Tx, campaignID, characterID string, armorClass int32) (before, after *playv1.CharacterVitals, err error) {
+	if armorClass < 0 || armorClass > 60 {
+		return nil, nil, invalidArgument(errors.New("armor class must be 0 to 60"))
+	}
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, nil, wrap("read rules content", err)
+	}
+	before, _, row, err := s.shapedVitals(ctx, tx, content, campaignID, characterID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if before.GetArmorClassBase() == armorClass {
+		return before, before, nil
+	}
+	var value *int32
+	if armorClass > 0 {
+		value = &armorClass
+	}
+	saved, err := s.queries.WithTx(tx).SetVitalsArmorBase(ctx, charactersdb.SetVitalsArmorBaseParams{CharacterID: row.ID, ArmorClassBase: value, Now: s.now()})
+	if err != nil {
+		return nil, nil, wrap("save the armor class", err)
+	}
+	after = proto.CloneOf(before)
+	after.ArmorClassBase = armorClass
 	after.Revision, after.UpdatedAt = saved.Revision, timestamppb.New(saved.UpdatedAt)
 	return before, after, nil
 }

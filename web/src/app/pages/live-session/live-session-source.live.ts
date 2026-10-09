@@ -81,6 +81,7 @@ export function toVitalsVm(v: CharacterVitals): VitalsVm {
     hitPointsTemporary: v.hitPointsTemporary,
     hitPointsMaxBonus: v.hitPointsMaxBonus,
     exhaustionLevel: v.exhaustionLevel,
+    armorClassBase: v.armorClassBase,
     spellSlots: v.spellSlots.map((s) => ({
       level: s.level,
       total: s.total,

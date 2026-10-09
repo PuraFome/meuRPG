@@ -64,6 +64,8 @@ export interface VitalsVm {
   readonly hitPointsMaxBonus?: number;
   /** The level of exhaustion, 0 to 6 (the master sets it); from level 4 `hitPointsMax` is already half the sheet's. Absent as 0. */
   readonly exhaustionLevel?: number;
+  /** The base armor class an effect that lasts gives (Armadura Arcana: 13 + Destreza); absent or 0 without one. */
+  readonly armorClassBase?: number;
   /** Only the levels with slots, lowest first. */
   readonly spellSlots: readonly SlotUsageVm[];
   readonly pactSlots: PactSlotsVm | null;

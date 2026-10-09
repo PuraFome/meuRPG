@@ -1049,6 +1049,10 @@ message CharacterVitals {
   // (CombatEffectService.SetExhaustion) and a long rest with food takes one off. From
   // level 4 on, `hit_points_max` is already half of the sheet's.
   int32 exhaustion_level = 100;
+  // The base armor class an effect that lasts gives the character while it lasts (Mage Armor:
+  // 13 + Dexterity, SRD 5.1); 0 without one. The session's panels show the better of it and
+  // the sheet's armor class.
+  int32 armor_class_base = 101;
 }
 
 // WildShapeState is a druid's Wild Shape form (MR-037). Like the character's

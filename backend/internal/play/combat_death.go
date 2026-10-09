@@ -238,6 +238,11 @@ func (s *Service) ConfirmDeath(
 		if who.Defeated || who.DeathFailures < 3 {
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_DYING, "the character has not failed three death saves, or is dead already")
 		}
+		// Death ends what is on the character and the concentration it held (SRD 5.1, Dropping
+		// to 0 Hit Points; Duration): the effects go, and living again brings back none of them.
+		if err := s.endEffectsOfTheDead(ctx, c, cs, who); err != nil {
+			return nil, err
+		}
 		// The character is dead in the characters module, as MarkCharacterDead
 		// leaves it: its player may create another (RN-03).
 		if err := s.roster.MarkDeadInCombat(ctx, c.tx, m.CampaignID, who.CharacterID, c.now, c.enc.Round, c.enc.ID); err != nil {
@@ -247,11 +252,6 @@ func (s *Service) ConfirmDeath(
 			ID: who.ID, DeathSuccesses: who.DeathSuccesses, DeathFailures: who.DeathFailures, DeathSaveRolled: who.DeathSaveRolled, Defeated: true,
 		}); err != nil {
 			return nil, fmt.Errorf("take the character out of the order: %w", err)
-		}
-		// Death ends what is on the character and the concentration it held (SRD 5.1, Dropping
-		// to 0 Hit Points; Duration): the effects go, and living again brings back none of them.
-		if err := s.endEffectsOfTheDead(ctx, c, cs, who); err != nil {
-			return nil, err
 		}
 		// Out of the order: it leaves the turn first, and the turn passes when
 		// nobody who acts is left in its group.

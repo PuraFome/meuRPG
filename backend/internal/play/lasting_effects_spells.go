@@ -93,12 +93,32 @@ func (s *Service) applyLastingSpell(ctx context.Context, c *combatTx, cs []playd
 		dc = new(clamp32(sp.CasterDC, 1, 40))
 	}
 	made.Lasting = &lastingEvent{Key: sp.Key, Change: "added"}
-	rows, err := s.addEffects(ctx, c, cs, effectSpec{
-		key: sp.Key, sourceKind: "spell", def: def, caster: &caster, group: made.CastID, targets: taken, dur: dur,
-		concentration: def.Concentration, dc: dc,
-	})
-	if err != nil {
-		return err
+	// An effect that sets a base armor class (Mage Armor) is worked out for each target, and does
+	// not take hold of a creature that wears armor.
+	groups := [][]playdb.Combatant{taken}
+	mods := [][]rules.EffectModifier{nil}
+	if slices.ContainsFunc(def.Modifiers, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierBaseAC }) {
+		groups, mods = nil, nil
+		for _, t := range taken {
+			m, ok, err := s.modifiersFor(ctx, c, def, t.CharacterID)
+			if err != nil {
+				return err
+			}
+			if ok {
+				groups, mods = append(groups, []playdb.Combatant{t}), append(mods, m)
+			}
+		}
+	}
+	var rows []playdb.CombatantState
+	for i, g := range groups {
+		made1, err := s.addEffects(ctx, c, cs, effectSpec{
+			key: sp.Key, sourceKind: "spell", def: def, caster: &caster, group: made.CastID, targets: g, dur: dur,
+			concentration: def.Concentration, dc: dc, modifiers: mods[i],
+		})
+		if err != nil {
+			return err
+		}
+		rows = append(rows, made1...)
 	}
 	for _, r := range rows {
 		made.Lasting.Targets = append(made.Lasting.Targets, r.CombatantID)

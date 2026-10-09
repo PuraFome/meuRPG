@@ -299,6 +299,10 @@ type ReviewHost interface {
 	// the combat's log ("O mestre reviveu <name>") and returns the combat's ID, empty when
 	// the character is in none (the caller then writes the line to the session).
 	ReviveInCombat(ctx context.Context, tx pgx.Tx, campaignID, characterID, actorUserID string, at time.Time) (encounterID string, err error)
+	// ArmorWorn tells play that the character's sheet wears armor now, inside tx: the effects
+	// that need none (Mage Armor, SRD 5.1: "the spell ends if the target dons armor") end. It
+	// returns what to call after the commit (the streams are told), or nil.
+	ArmorWorn(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (afterCommit func(ctx context.Context), err error)
 	// PublishEncounterChanged tells every stream that the combat changed. Call it after the
 	// commit.
 	PublishEncounterChanged(ctx context.Context, campaignID, encounterID string)

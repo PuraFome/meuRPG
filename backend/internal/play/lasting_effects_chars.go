@@ -132,8 +132,9 @@ func (s *Service) endCharacterEffect(ctx context.Context, m authz.Membership, ms
 	}
 	hash := idem.Hash(msg)
 	var ended int32
+	var told []*playv1.CharacterVitals
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		ended = 0
+		ended, told = 0, nil
 		q := s.queries.WithTx(tx)
 		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -169,6 +170,13 @@ func (s *Service) endCharacterEffect(ctx context.Context, m authz.Membership, ms
 				return fmt.Errorf("end the casting: %w", err)
 			}
 			ended = int32(len(gone)) //nolint:gosec // a handful of effects
+			var touched []string
+			for _, g := range gone {
+				touched = append(touched, g.CharacterID)
+			}
+			if err := s.syncArmorBase(ctx, c, touched...); err != nil {
+				return err
+			}
 			if cast, err := q.GetSpellCast(ctx, playdb.GetSpellCastParams{ID: row.GroupID, CampaignID: m.CampaignID}); err == nil && cast.Status == castActive {
 				if _, _, _, err := s.closeCast(ctx, c, cast, castEnded, endDismissed); err != nil {
 					return err
@@ -179,7 +187,11 @@ func (s *Service) endCharacterEffect(ctx context.Context, m authz.Membership, ms
 				return fmt.Errorf("end the effect: %w", err)
 			}
 			ended = 1
+			if err := s.syncArmorBase(ctx, c, row.CharacterID); err != nil {
+				return err
+			}
 		}
+		told = c.told
 		payload, err := json.Marshal(gameTimeEvent{Ended: ended})
 		if err != nil {
 			return fmt.Errorf("encode the event payload: %w", err)
@@ -200,6 +212,7 @@ func (s *Service) endCharacterEffect(ctx context.Context, m authz.Membership, ms
 		return nil, s.dbError(ctx, "end an effect", err)
 	}
 	s.publishCastsChanged(m.CampaignID, false)
+	s.publishVitalsOf(m.CampaignID, told)
 	return connect.NewResponse(&playv1.EndLastingEffectResponse{Ended: ended}), nil
 }
 

@@ -280,6 +280,7 @@ func (s *Service) TakeRest(
 		if err := s.advanceGameTime(ctx, ct, clamp32(minutes*secondsPerMinute, 0, 1<<30)); err != nil {
 			return err
 		}
+		spellVitals = append(spellVitals, ct.told...)
 		castsChanged = ct.castsChanged
 		ids := make([]string, 0, len(after))
 		for _, v := range after {

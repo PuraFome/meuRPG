@@ -15,7 +15,6 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
-	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // Finishing, interrupting and ending the casts outside a combat (casting.go), and what
@@ -67,29 +66,6 @@ func (s *Service) closeCast(ctx context.Context, c *combatTx, r playdb.SpellCast
 // the effects of the same spell cast several times don't combine, the most potent one
 // applies while the durations overlap).
 func (s *Service) takeBackCast(ctx context.Context, c *combatTx, r playdb.SpellCast) ([]*playv1.CharacterVitals, error) {
-	if r.SpellKey == rules.MageArmorSpell {
-		for _, t := range castTargetsOf(r) {
-			if t.Effect != castArmor {
-				continue
-			}
-			rest, err := s.otherCastsOn(ctx, c, r, t.ID, castArmor)
-			if err != nil {
-				return nil, err
-			}
-			if len(rest) == 0 {
-				if err := c.q.ClearMageArmorACOfCharacter(ctx, t.ID); err != nil {
-					return nil, fmt.Errorf("take Mage Armor off the combatants: %w", err)
-				}
-				continue
-			}
-			// The one that stays gives the armor class.
-			best := slices.MaxFunc(rest, func(a, b playdb.SpellCast) int { return int(armorOf(a, t.ID)) - int(armorOf(b, t.ID)) })
-			ac := armorOf(best, t.ID)
-			if err := c.q.SetMageArmorACOfCharacter(ctx, playdb.SetMageArmorACOfCharacterParams{CharacterID: t.ID, MageArmorAc: &ac}); err != nil {
-				return nil, fmt.Errorf("keep Mage Armor on the combatants: %w", err)
-			}
-		}
-	}
 	return s.takeBackMaxHP(ctx, c, r)
 }
 

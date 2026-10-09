@@ -87,6 +87,12 @@
       "on_end": "effect:lethargy",
       "tags_pt": ["CA +2", "Deslocamento dobrado", "Vantagem em resistências de Destreza"]
     },
+    "spell:mage-armor": {
+      "applies": "all",
+      "visibility": "public",
+      "modifiers": [{"kind": "base_ac", "value": 13}],
+      "tags_pt": ["CA base 13 + Destreza, sem armadura"]
+    },
     "spell:pass-without-trace": {
       "applies": "all",
       "visibility": "owner",

@@ -58,6 +58,9 @@ const (
 	// ModifierCheckBonus adds a bonus to the checks of a skill (Pass without Trace: +10 to
 	// Dexterity (Stealth)).
 	ModifierCheckBonus = "check_bonus"
+	// ModifierBaseAC makes the armor class of a creature that wears no armor at least Value
+	// (Mage Armor: 13 + Dexterity, worked out for the target when it is cast).
+	ModifierBaseAC = "base_ac"
 	// ModifierSpeedAdd adds feet to the walking speed (Longstrider: +10 ft).
 	ModifierSpeedAdd = "speed_add"
 )
@@ -207,7 +210,7 @@ var (
 		EffectDurationRounds, EffectDurationUntilStartOfTurnOf, EffectDurationUntilEndOfTurnOf,
 		EffectDurationConcentration, EffectDurationUntilDismissed, EffectDurationLongRest,
 	}
-	modifierKinds = []string{ModifierRollDie, ModifierACBonus, ModifierSpeedMultiplier, ModifierSaveAdvantage, ModifierExtraAction, ModifierNoMove, ModifierNoAction, ModifierCheckBonus, ModifierSpeedAdd}
+	modifierKinds = []string{ModifierRollDie, ModifierACBonus, ModifierSpeedMultiplier, ModifierSaveAdvantage, ModifierExtraAction, ModifierNoMove, ModifierNoAction, ModifierCheckBonus, ModifierSpeedAdd, ModifierBaseAC}
 	saveAbilities = []string{"str", "dex", "con", "int", "wis", "cha"}
 	// extraActions are the standard actions an extra action may be: the keys of
 	// effects/standard_actions.json.
@@ -385,7 +388,7 @@ func (c *content) checkEffectDef(file string, d *EffectDef, all *combatEffects) 
 }
 
 // checkModifier checks one modifier's fields against its kind.
-func checkModifier(m EffectModifier) error {
+func checkModifier(m EffectModifier) error { //nolint:gocyclo // one case for each kind of modifier
 	if !slices.Contains(modifierKinds, m.Kind) {
 		return fmt.Errorf("unknown kind %q", m.Kind)
 	}
@@ -402,6 +405,10 @@ func checkModifier(m EffectModifier) error {
 	case ModifierCheckBonus:
 		if m.Skill == "" || m.Value == 0 {
 			return fmt.Errorf("check_bonus needs a skill and a value")
+		}
+	case ModifierBaseAC:
+		if m.Value < 1 || m.Value > 60 {
+			return fmt.Errorf("base_ac needs an armor class from 1 to 60")
 		}
 	case ModifierSpeedAdd:
 		if m.Value < 1 {

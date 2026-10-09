@@ -327,9 +327,6 @@ func (s *Service) armorTargets(ctx context.Context, c *combatTx, m authz.Members
 			continue
 		}
 		ac := clamp32(mage.AC, 1, 60)
-		if err := c.q.SetMageArmorACOfCharacter(ctx, playdb.SetMageArmorACOfCharacterParams{CharacterID: t.ID, MageArmorAc: &ac}); err != nil {
-			return nil, fmt.Errorf("put Mage Armor on the combatants: %w", err)
-		}
 		targets = append(targets, castTarget{ID: t.ID, Effect: castArmor, AC: ac})
 	}
 	return targets, nil

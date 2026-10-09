@@ -134,8 +134,14 @@ ALTER TABLE combatants
     ADD CONSTRAINT combatants_effect_speed_pct_valid CHECK (effect_speed_pct BETWEEN 0 AND 400);
 
 -- A player's character keeps its exhaustion level between fights, with its other
--- live numbers.
+-- live numbers. armor_class_base is the base armor class an effect that lasts gives it
+-- (Mage Armor: 13 + Dexterity), worked out again in the transaction of every change to
+-- the character's effects, in a combat or out of it, so the session's panels show it
+-- while it lasts; NULL without one.
 ALTER TABLE character_vitals
+    ADD COLUMN IF NOT EXISTS armor_class_base INT4 NULL,
+    DROP CONSTRAINT IF EXISTS character_vitals_armor_class_base_valid,
+    ADD CONSTRAINT character_vitals_armor_class_base_valid CHECK (armor_class_base IS NULL OR armor_class_base BETWEEN 1 AND 60),
     ADD COLUMN IF NOT EXISTS exhaustion_level INT4 NOT NULL DEFAULT 0,
     DROP CONSTRAINT IF EXISTS character_vitals_exhaustion_level_valid,
     ADD CONSTRAINT character_vitals_exhaustion_level_valid CHECK (exhaustion_level BETWEEN 0 AND 6);
@@ -149,6 +155,8 @@ ALTER TABLE pending_damages
 DROP TABLE IF EXISTS character_effects;
 ALTER TABLE pending_damages DROP COLUMN IF EXISTS effect_source_key;
 ALTER TABLE character_vitals
+    DROP CONSTRAINT IF EXISTS character_vitals_armor_class_base_valid,
+    DROP COLUMN IF EXISTS armor_class_base,
     DROP CONSTRAINT IF EXISTS character_vitals_exhaustion_level_valid,
     DROP COLUMN IF EXISTS exhaustion_level;
 ALTER TABLE combatants

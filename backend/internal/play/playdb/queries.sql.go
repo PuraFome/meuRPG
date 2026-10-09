@@ -647,6 +647,38 @@ func (q *Queries) DeleteCharacterEffectsOfGroup(ctx context.Context, arg DeleteC
 	return items, nil
 }
 
+const deleteCharacterEffectsOfSpell = `-- name: DeleteCharacterEffectsOfSpell :many
+DELETE FROM character_effects WHERE character_id = $1 AND source_key = $2 AND group_id <> $3 RETURNING id
+`
+
+type DeleteCharacterEffectsOfSpellParams struct {
+	CharacterID string
+	SourceKey   string
+	GroupID     string
+}
+
+// The same spell cast again on a character replaces the first (SRD 5.1, Combining Magical
+// Effects): the effects of the other castings go.
+func (q *Queries) DeleteCharacterEffectsOfSpell(ctx context.Context, arg DeleteCharacterEffectsOfSpellParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, deleteCharacterEffectsOfSpell, arg.CharacterID, arg.SourceKey, arg.GroupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteCombatant = `-- name: DeleteCombatant :exec
 DELETE FROM combatants
 WHERE id = $1
@@ -4625,6 +4657,101 @@ func (q *Queries) ListCharacterEffectsOfCampaign(ctx context.Context, campaignID
 			&i.PlayerLabel,
 			&i.CreatedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCombatEffectsOfCharacter = `-- name: ListCombatEffectsOfCharacter :many
+SELECT cs.id, cs.encounter_id, cs.combatant_id, cs.kind, cs.source_id, cs.ends_combatant_id, cs.ends_phase, cs.ends_round, cs.started_round, cs.amount, cs.created_at, cs.group_id, cs.source_key, cs.source_kind, cs.concentration, cs.condition_keys, cs.modifiers, cs.duration_kind, cs.end_save_ability, cs.start_save_ability, cs.save_dc, cs.on_fail_effect, cs.follows_key, cs.trigger_dice, cs.trigger_damage_type, cs.trigger_max_triggers, cs.triggers_fired, cs.player_visible, cs.audience, cs.player_label FROM combatant_states cs
+JOIN combatants c ON c.id = cs.combatant_id
+JOIN encounters e ON e.id = c.encounter_id
+WHERE c.character_id = $1 AND cs.kind = 'effect' AND e.status <> 'ended'
+ORDER BY cs.created_at, cs.id
+`
+
+// The effects on a character's combatants in the combats that are not ended.
+func (q *Queries) ListCombatEffectsOfCharacter(ctx context.Context, characterID string) ([]CombatantState, error) {
+	rows, err := q.db.Query(ctx, listCombatEffectsOfCharacter, characterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CombatantState
+	for rows.Next() {
+		var i CombatantState
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.CombatantID,
+			&i.Kind,
+			&i.SourceID,
+			&i.EndsCombatantID,
+			&i.EndsPhase,
+			&i.EndsRound,
+			&i.StartedRound,
+			&i.Amount,
+			&i.CreatedAt,
+			&i.GroupID,
+			&i.SourceKey,
+			&i.SourceKind,
+			&i.Concentration,
+			&i.ConditionKeys,
+			&i.Modifiers,
+			&i.DurationKind,
+			&i.EndSaveAbility,
+			&i.StartSaveAbility,
+			&i.SaveDc,
+			&i.OnFailEffect,
+			&i.FollowsKey,
+			&i.TriggerDice,
+			&i.TriggerDamageType,
+			&i.TriggerMaxTriggers,
+			&i.TriggersFired,
+			&i.PlayerVisible,
+			&i.Audience,
+			&i.PlayerLabel,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCombatEffectsOfGroup = `-- name: ListCombatEffectsOfGroup :many
+SELECT cs.id, c.character_id FROM combatant_states cs
+JOIN combatants c ON c.id = cs.combatant_id
+JOIN encounters e ON e.id = cs.encounter_id
+WHERE cs.group_id = $1 AND cs.kind = 'effect' AND e.status <> 'ended'
+ORDER BY cs.created_at, cs.id
+`
+
+type ListCombatEffectsOfGroupRow struct {
+	ID          string
+	CharacterID string
+}
+
+// The effects of one casting that a combat holds now (the cast ended while a fight ran), with
+// the character each is on.
+func (q *Queries) ListCombatEffectsOfGroup(ctx context.Context, groupID *string) ([]ListCombatEffectsOfGroupRow, error) {
+	rows, err := q.db.Query(ctx, listCombatEffectsOfGroup, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCombatEffectsOfGroupRow
+	for rows.Next() {
+		var i ListCombatEffectsOfGroupRow
+		if err := rows.Scan(&i.ID, &i.CharacterID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -102,7 +102,7 @@ import { ScenePlayer } from './scene/scene-player/scene-player';
 import { LeftImagesBlock } from './left-images-block/left-images-block';
 import { ShownImageBlock } from './shown-image-block/shown-image-block';
 import { ShownImagePanel } from './shown-image-panel/shown-image-panel';
-import { applySnapshot, applyVitals, partyRowSub } from './vitals';
+import { applySnapshot, applyVitals, betterArmorClass, partyRowSub } from './vitals';
 import { FoundTreasures } from './treasure/found-treasures/found-treasures';
 import { TreasurePanel } from './treasure/treasure-panel/treasure-panel';
 import { TrapActivityList } from './traps/trap-activity/trap-activity';
@@ -375,6 +375,10 @@ export class LiveSession {
   protected readonly isMaster = computed(() => this.campaign()?.isMaster ?? false);
   /** The player's own character: the only one the server sends them. */
   protected readonly ownVitals = computed(() => this.vitals()[0] ?? null);
+  /** The armor class of the player's own character: the sheet's, or the base an effect gives (Armadura Arcana) when better. */
+  protected readonly ownArmorClass = computed(() =>
+    betterArmorClass(this.playerSheet()?.armorClass ?? null, this.ownVitals()?.armorClassBase),
+  );
   /** The Escudo Arcano's bonus on the player's own combatant while a combat is on; `null` outside one, so a combat that
    * ends is not read as the shield ending. */
   protected readonly ownArmorBonus = computed(() => {

@@ -298,5 +298,5 @@ func (s *Service) endEffectsOfTheDead(ctx context.Context, c *combatTx, cs []pla
 	if err := c.q.DeleteCharacterEffectsOfCharacter(ctx, who.CharacterID); err != nil {
 		return fmt.Errorf("end the effects of the dead: %w", err)
 	}
-	return nil
+	return s.syncArmorBase(ctx, c, who.CharacterID)
 }

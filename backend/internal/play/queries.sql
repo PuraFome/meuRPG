@@ -1529,3 +1529,25 @@ RETURNING *;
 -- name: DeleteCharacterEffectsOfCharacter :exec
 -- A character that died keeps no old effect when it lives again.
 DELETE FROM character_effects WHERE character_id = $1;
+
+-- name: ListCombatEffectsOfCharacter :many
+-- The effects on a character's combatants in the combats that are not ended.
+SELECT cs.* FROM combatant_states cs
+JOIN combatants c ON c.id = cs.combatant_id
+JOIN encounters e ON e.id = c.encounter_id
+WHERE c.character_id = $1 AND cs.kind = 'effect' AND e.status <> 'ended'
+ORDER BY cs.created_at, cs.id;
+
+-- name: ListCombatEffectsOfGroup :many
+-- The effects of one casting that a combat holds now (the cast ended while a fight ran), with
+-- the character each is on.
+SELECT cs.id, c.character_id FROM combatant_states cs
+JOIN combatants c ON c.id = cs.combatant_id
+JOIN encounters e ON e.id = cs.encounter_id
+WHERE cs.group_id = $1 AND cs.kind = 'effect' AND e.status <> 'ended'
+ORDER BY cs.created_at, cs.id;
+
+-- name: DeleteCharacterEffectsOfSpell :many
+-- The same spell cast again on a character replaces the first (SRD 5.1, Combining Magical
+-- Effects): the effects of the other castings go.
+DELETE FROM character_effects WHERE character_id = $1 AND source_key = $2 AND group_id <> $3 RETURNING id;

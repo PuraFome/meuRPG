@@ -46,8 +46,9 @@ func (s *Service) AdvanceGameTime(
 	keyText, hash := key.String(), idem.Hash(req.Msg)
 	var ended int32
 	var told bool
+	var vitals []*playv1.CharacterVitals
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		ended, told = 0, false
+		ended, told, vitals = 0, false, nil
 		q := s.queries.WithTx(tx)
 		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -80,6 +81,7 @@ func (s *Service) AdvanceGameTime(
 		if err := s.advanceGameTime(ctx, c, req.Msg.GetSeconds()); err != nil {
 			return err
 		}
+		vitals = c.told
 		after, err := q.ListCharacterEffectsOfCampaign(ctx, m.CampaignID)
 		if err != nil {
 			return fmt.Errorf("list the effects: %w", err)
@@ -107,6 +109,7 @@ func (s *Service) AdvanceGameTime(
 	}
 	if told {
 		s.publishCastsChanged(m.CampaignID, false)
+		s.publishVitalsOf(m.CampaignID, vitals)
 	}
 	return connect.NewResponse(&playv1.AdvanceGameTimeResponse{EffectsEnded: ended}), nil
 }

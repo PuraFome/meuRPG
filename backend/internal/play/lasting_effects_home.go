@@ -35,10 +35,6 @@ func (s *Service) castCharacterEffects(ctx context.Context, c *combatTx, plan ca
 	if !ok || def.Applies != "all" || len(plan.g.targets) == 0 {
 		return nil
 	}
-	body, err := json.Marshal(append([]rules.EffectModifier{}, def.Modifiers...))
-	if err != nil {
-		return fmt.Errorf("encode the modifiers: %w", err)
-	}
 	var seconds *int32
 	kind := rules.EffectDurationUntilDismissed
 	switch {
@@ -48,7 +44,27 @@ func (s *Service) castCharacterEffects(ctx context.Context, c *combatTx, plan ca
 		kind = rules.EffectDurationConcentration
 	}
 	caster := plan.g.caster.ID
-	for _, t := range plan.g.targets {
+	var touched []string
+	for _, t := range s.effectTargetsAll(plan) {
+		if !t.Player {
+			continue // an NPC has no vitals and no combat outside a fight: the master narrates
+		}
+		mods, ok, err := s.modifiersFor(ctx, c, def, t.ID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			continue
+		}
+		body, err := json.Marshal(mods)
+		if err != nil {
+			return fmt.Errorf("encode the modifiers: %w", err)
+		}
+		// The same spell on the same target does not stack (SRD 5.1, Combining Magical Effects).
+		if _, err := c.q.DeleteCharacterEffectsOfSpell(ctx, playdb.DeleteCharacterEffectsOfSpellParams{CharacterID: t.ID, SourceKey: plan.spell, GroupID: plan.row.ID}); err != nil {
+			return fmt.Errorf("replace the same spell: %w", err)
+		}
+		touched = append(touched, t.ID)
 		p := playdb.InsertCharacterEffectParams{
 			CampaignID: c.session.CampaignID, CharacterID: t.ID, SourceCharacterID: &caster, GroupID: plan.row.ID, SourceKey: plan.spell,
 			SourceKind: "spell", Concentration: def.Concentration, ConditionKeys: append([]string{}, def.Conditions...), Modifiers: body,
@@ -61,16 +77,37 @@ func (s *Service) castCharacterEffects(ctx context.Context, c *combatTx, plan ca
 			return fmt.Errorf("put the effect on the character: %w", err)
 		}
 	}
-	return nil
+	return s.syncArmorBase(ctx, c, touched...)
 }
 
 // endCharacterEffectsOfCast takes away the effects a cast left on characters out of a combat
 // (the cast ended, or its concentration did).
 func (s *Service) endCharacterEffectsOfCast(ctx context.Context, c *combatTx, castID string) error {
-	if _, err := c.q.DeleteCharacterEffectsOfGroup(ctx, playdb.DeleteCharacterEffectsOfGroupParams{CampaignID: c.session.CampaignID, GroupID: castID}); err != nil {
+	gone, err := c.q.DeleteCharacterEffectsOfGroup(ctx, playdb.DeleteCharacterEffectsOfGroupParams{CampaignID: c.session.CampaignID, GroupID: castID})
+	if err != nil {
 		return fmt.Errorf("end the effects of a cast: %w", err)
 	}
-	return nil
+	var touched []string
+	for _, r := range gone {
+		touched = append(touched, r.CharacterID)
+	}
+	// The cast ended while a fight ran: what it left in the combat goes too.
+	inFight, err := c.q.ListCombatEffectsOfGroup(ctx, &castID)
+	if err != nil {
+		return fmt.Errorf("list the effects of a cast in the combats: %w", err)
+	}
+	for _, st := range inFight {
+		if err := c.q.DeleteLastingEffect(ctx, st.ID); err != nil {
+			return fmt.Errorf("end an effect of a cast in a combat: %w", err)
+		}
+		if st.CharacterID != "" {
+			touched = append(touched, st.CharacterID)
+			if err := c.q.ClearMageArmorACOfCharacter(ctx, st.CharacterID); err != nil {
+				return fmt.Errorf("take the base armor class off the combatants: %w", err)
+			}
+		}
+	}
+	return s.syncArmorBase(ctx, c, touched...)
 }
 
 // advanceGameTime moves game time on by seconds (the master's: a cast that took time): what
@@ -83,6 +120,7 @@ func (s *Service) advanceGameTime(ctx context.Context, c *combatTx, seconds int3
 	if err != nil {
 		return fmt.Errorf("move game time on: %w", err)
 	}
+	var touched []string
 	for _, r := range rows {
 		if r.SecondsLeft == nil || *r.SecondsLeft > 0 {
 			continue
@@ -90,8 +128,9 @@ func (s *Service) advanceGameTime(ctx context.Context, c *combatTx, seconds int3
 		if err := c.q.DeleteCharacterEffect(ctx, r.ID); err != nil {
 			return fmt.Errorf("end an effect whose time ran out: %w", err)
 		}
+		touched = append(touched, r.CharacterID)
 	}
-	return nil
+	return s.syncArmorBase(ctx, c, touched...)
 }
 
 // effectsToCombat runs when characters join a combat: their effects come into it with the
@@ -174,6 +213,13 @@ func (s *Service) effectsToCharacters(ctx context.Context, c *combatTx, cs, only
 	for _, st := range rows {
 		i := slices.IndexFunc(cs, func(a playdb.Combatant) bool { return a.ID == st.CombatantID })
 		if i < 0 || !backedByCharacter(cs[i]) || (only != nil && !slices.ContainsFunc(only, func(a playdb.Combatant) bool { return a.ID == st.CombatantID })) {
+			continue
+		}
+		// The casting that held it ended while the fight ran: nothing is left to give back.
+		if cast, err := c.q.GetSpellCast(ctx, playdb.GetSpellCastParams{ID: deref(st.GroupID), CampaignID: c.session.CampaignID}); err == nil && cast.Status != castActive {
+			if err := c.q.DeleteLastingEffect(ctx, st.ID); err != nil {
+				return fmt.Errorf("end the effect of an ended cast: %w", err)
+			}
 			continue
 		}
 		kind := deref(st.DurationKind)

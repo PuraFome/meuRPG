@@ -2,7 +2,6 @@ package play
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
 	"slices"
@@ -70,32 +69,6 @@ func (s *Service) carryCasts(ctx context.Context, c *combatTx, cb playdb.Combata
 			c.castsTold(r.Secret)
 		}
 	}
-	return s.carryMageArmor(ctx, c, cb)
-}
-
-// carryMageArmor puts the armor class of the best Mage Armor on the character on its
-// combatant.
-func (s *Service) carryMageArmor(ctx context.Context, c *combatTx, cb playdb.Combatant) error {
-	probe, err := json.Marshal([]map[string]string{{"id": cb.CharacterID, "effect": castArmor}})
-	if err != nil {
-		return fmt.Errorf("encode the target: %w", err)
-	}
-	rows, err := c.q.ListLiveSpellCastsOnTarget(ctx, playdb.ListLiveSpellCastsOnTargetParams{CampaignID: c.session.CampaignID, Target: probe})
-	if err != nil {
-		return fmt.Errorf("list the casts on a target: %w", err)
-	}
-	var best int32
-	for _, r := range rows {
-		if r.SpellKey == rules.MageArmorSpell {
-			best = max(best, armorOf(r, cb.CharacterID))
-		}
-	}
-	if best == 0 {
-		return nil
-	}
-	if err := c.q.SetCombatantMageArmorAC(ctx, playdb.SetCombatantMageArmorACParams{ID: cb.ID, MageArmorAc: &best}); err != nil {
-		return fmt.Errorf("put Mage Armor on the combatant: %w", err)
-	}
 	return nil
 }
 
@@ -156,24 +129,15 @@ func (s *Service) endSpellsAtRest(ctx context.Context, c *combatTx, restMinutes 
 
 const secondsPerMinute = 60
 
-// armorWithSpells is the armor class a character has with the spells that last on it
-// (Mage Armor, SRD 5.1): the better of the sheet's and the spell's. A combat reads it
-// from the combatant instead; this is for what hits a character outside one (a trap).
-func (s *Service) armorWithSpells(ctx context.Context, q *playdb.Queries, campaignID, characterID string, sheetAC int) (int, error) {
-	probe, err := json.Marshal([]map[string]string{{"id": characterID, "effect": castArmor}})
+// armorWithSpells is the armor class a character has with the effects that last on it (Mage
+// Armor, SRD 5.1): the better of the sheet's and the effect's base. A combat reads it from the
+// combatant instead; this is for what hits a character outside one (a trap).
+func (s *Service) armorWithSpells(ctx context.Context, q *playdb.Queries, _, characterID string, sheetAC int) (int, error) {
+	base, err := s.armorBaseOf(ctx, q, characterID)
 	if err != nil {
-		return sheetAC, fmt.Errorf("encode the target: %w", err)
+		return sheetAC, err
 	}
-	rows, err := q.ListLiveSpellCastsOnTarget(ctx, playdb.ListLiveSpellCastsOnTargetParams{CampaignID: campaignID, Target: probe})
-	if err != nil {
-		return sheetAC, fmt.Errorf("list the casts on a target: %w", err)
-	}
-	for _, r := range rows {
-		if r.SpellKey == rules.MageArmorSpell {
-			sheetAC = max(sheetAC, int(armorOf(r, characterID)))
-		}
-	}
-	return sheetAC, nil
+	return max(sheetAC, int(base)), nil
 }
 
 // concentrationCheck is what hit points taken ask of a spell cast outside a combat that
