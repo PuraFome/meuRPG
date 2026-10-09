@@ -36,6 +36,7 @@ Cada regra tem um ID (RN-xx) para as histórias, os testes e o código apontarem
 | RN-28 | **Imagens geradas por IA.** Só o mestre gera e edita, com um limite de imagens por campanha por mês. | [Detalhes](#rn-28-imagens-geradas-por-ia) |
 | RN-29 | **Monstros no combate.** Um monstro do bestiário (MR-042) entra no combate como um NPC: o jogador vê só a palavra do estado (RN-20), o mestre vê a ficha de criatura do SRD, e ele conta no XP por inimigos pelo ND. | [Detalhes](#rn-29-monstros-no-combate) |
 | RN-30 | **Limites do que uma conta cria.** Uma conta é mestre de no máximo 10 campanhas (`MAX_CAMPAIGNS_PER_USER`), e o servidor todo gera no máximo 100 imagens por dia (`IMAGE_DAILY_LIMIT`) e mantém no máximo 5 pedidos de imagem vivos ao mesmo tempo (o que está sendo feito e quatro esperando), além dos 20 por mês de cada campanha (RN-28). | [Detalhes](#rn-30-limites-do-que-uma-conta-cria) |
+| RN-31 | **Escolhas de classe e raça.** Uma classe ou raça pode pedir uma escolha ao jogador (Estilo de Luta, Ancestralidade Dracônica, Pacto e invocações, Metamagia, Inimigo Favorito, terreno, os +1 do Meio-Elfo...). Não se cria personagem com escolha aberta; a ficha travada que tem uma continua jogável e a completa depois, e a subida de nível também pede as escolhas que ficaram para trás. | [Detalhes](#rn-31-escolhas-de-classe-e-raça) |
 
 ## RN-01: Trava da ficha
 
@@ -424,6 +425,20 @@ Uma conta é mestre de no máximo 10 campanhas (`MAX_CAMPAIGNS_PER_USER`), e o s
 **Como o sistema cumpre**
 
 O teto de campanhas é contado na transação que insere a campanha, então duas criações ao mesmo tempo não o ultrapassam; a recusa é `resource_exhausted` (`LIMIT_REACHED`, com o teto) ou, fora da lista, `permission_denied` (`NOT_ALLOWED`), no detalhe `CampaignCreationRefused`. O teto de imagens do dia é lido na transação que reserva a vaga, e a recusa é o motivo `DAILY_LIMIT_REACHED` (o dia é o de Brasília). O teto de convites é contado na transação que insere o convite (`CountActiveInvites`): o 51º convite que ainda vale é `resource_exhausted`, e revogar um, deixá-lo vencer ou gastar o último uso libera uma vaga; o formulário de convite diz isso no lugar. O teto de personagens é contado do mesmo jeito em todo create de personagem (`CreateCharacter`, `CreateNpcFromCreature` e o NPC que o combate cria para um monstro; `CountCampaignCharacters`, contando os mortos e os pendentes): o 1.001º é `resource_exhausted`, a repetição de um create que já passou é respondida mesmo numa campanha cheia, e a tela diz isso onde o personagem é feito. Duas criações disputando a última vaga não passam juntas (o `SERIALIZABLE` faz uma repetir e contar de novo). Testes: `TestRN30_TheActiveInviteCapPerCampaign`, `TestRN30_TheLastInvitePlaceGoesToOneCreation`, `TestRN30_TheCharacterCapPerCampaign`, `TestRN30_TheLastCharacterPlaceGoesToOneCreate`, `TestRN30_TheDefaultCharacterCapIsAThousand`, `TestRN30_TheMonsterNpcOfACombatCountsInTheCap`. Ao lado, limites de taxa por IP e por usuário param um script ([Arquitetura](../../architecture.md#abuse-limits)).
+
+## RN-31: Escolhas de classe e raça
+
+Toda escolha que uma classe, subclasse ou raça pede é uma *escolha* do motor de regras, com as opções, quantas se tomam e o que cada opção exige (um nível, uma magia, uma feature). O servidor lista (`PreviewChoices`) e a tela desenha o que a lista diz; nada na tela sabe o que é um Estilo de Luta. Seções do SRD por trás dos dados: Estilo de Luta (Guerreiro, Paladino, Patrulheiro), Ancestralidade Dracônica e Sopro (Draconato), Ancestral Dracônico, Afinidade Elemental e Metamagia (Feiticeiro), Pacto, Invocações Místicas e Arcana Mística (Bruxo), Inimigo Favorito, Explorador Natural e Caçador (Patrulheiro), Círculo da Terra (Druida), Aumento de Habilidade (Meio-Elfo), truque do Alto Elfo, Lista de Magias Expandida do Ínfero, Segredos Mágicos e Colégio do Conhecimento (Bardo), Maestria e Magias de Assinatura (Mago).
+
+- **Criação.** `CreateCharacter` e `UpdateCharacter` da ficha de um jogador recusam a ficha com escolha aberta (`CHOICES_MISSING`, com os rótulos). O editor tem o passo "Escolhas", e "Criar personagem" explica o que falta. Os NPCs do mestre e as fichas da mesa não são cobrados.
+- **Opções que ainda não dá para tomar** (uma invocação que pede nível 5, ou uma magia que a ficha não tem) aparecem pontilhadas, com o motivo; nunca somem. Duas opções que dão a mesma coisa (a mesma resistência duas vezes) são recusadas.
+- **Ficha travada.** O personagem criado antes das escolhas existirem, ou cuja classe ganhou uma, tem *escolhas abertas*. Continua jogável; o dono e o mestre veem "N escolhas pendentes" e `CompleteCharacterChoices` guarda só as que faltam, sem mudar mais nada da ficha (RN-01). O mestre vê "N escolhas em aberto" na campanha; o jogador não vê as dos outros.
+- **Subida de nível.** O nível também pede as escolhas que ficaram para trás ("Escolhas que ficaram para trás"), as novas do nível, e recusa a invocação cujo pré-requisito não foi cumprido.
+- **O que a escolha dá** (sopro, resistência, magias do Ínfero, os +1) é calculado pelo `Derive` e aparece na ficha.
+
+**Como o sistema cumpre**
+
+`rules.Content.Choices` monta os grupos a partir da ficha (dados em `effects/choices.json`, cada linha com a fonte do SRD); `Validate` e `CheckLevelUp` usam o mesmo motor, então a lista da tela e a conferência do servidor não discordam. `CompleteCharacterChoices` roda em `db.InTx`, é idempotente pela chave e grava o evento de sessão `character_choices_completed`. Testes: `TestPreviewChoices*`, `TestCompleteCharacterChoices*`, `TestChoicesAreRefusedAtCreation`, `TestLevelUpSweep` (todas as classes e subclasses) e os testes Playwright com `@RN-31`.
 
 ## Fluxos e estados
 
