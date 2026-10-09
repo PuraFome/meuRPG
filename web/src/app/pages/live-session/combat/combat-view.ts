@@ -30,7 +30,7 @@ import {
   type OpportunityOffer,
   type PendingDamage,
   PendingDamageStatus,
-  type ReactionPrompt,
+  type ReactionWindow,
   type GetTurnOptionsResponse,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import {
@@ -126,7 +126,14 @@ import { ConditionsDialog, type ConditionsData } from './conditions-dialog/condi
 import { DeathQuestion } from './death-question/death-question';
 import { DeathSaves } from './death-saves/death-saves';
 import { FeatureSheet, type FeatureSheetData } from './feature-sheet/feature-sheet';
-import { ShieldSheet, type ShieldSheetData } from './shield-sheet/shield-sheet';
+import {
+  ReactionSheet,
+  type ReactionSheetData,
+  type ReactionSheetResult,
+} from './reaction-sheet/reaction-sheet';
+import { windowsBarText } from '../../../core/combat/reaction-master';
+import { promptView, reactionWait, sheetWindow } from '../../../core/combat/reactions';
+import { ReactionQueue } from './reaction-queue/reaction-queue';
 import { CombatLogPanel } from './combat-log/combat-log-panel';
 import type { CombatantInfo } from './combat-info';
 import { CombatBar } from './combat-bar/combat-bar';
@@ -220,6 +227,7 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
     OrderList,
     PlayerInitiative,
     TheatreReaction,
+    ReactionQueue,
     TurnBar,
     TrapDamages,
     TurnPanel,
@@ -293,7 +301,10 @@ export class CombatView {
   private readonly deathKey = new ActionKey();
   private readonly confirmDeathKey = new ActionKey();
   private readonly leaveFormKey = new ActionKey();
-  private readonly shieldHandled = new Set<string>();
+  /** The reaction windows whose sheet already opened by itself: it opens once for each, never again after it closed. */
+  private readonly reactionHandled = new Set<string>();
+  /** The reaction sheet is on screen: no second one opens over it. */
+  private readonly reactionOpen = signal(false);
 
   protected readonly encounter = computed(() => this.state().shown());
   protected readonly image = computed(() => {
@@ -601,13 +612,18 @@ export class CombatView {
   protected readonly waiting = computed(() => {
     const e = this.encounter();
     const own = this.own();
-    return e && own && !this.isMaster() ? waitingText(e, offersHolding(e, own.id)) : null;
+    if (!e || !own || this.isMaster()) {
+      return null;
+    }
+    // What the server says the combat waits for (a reaction, a concentration save), written for this player.
+    return reactionWait(e) ?? waitingText(e, offersHolding(e, own.id));
   });
   /** The master's bar: "Esperando a sua reação: Goblin 2". */
   protected readonly waitNote = computed(() => {
     const e = this.encounter();
     return e && this.isMaster()
-      ? barText(e, (characterId) => this.info().get(characterId)?.playerName ?? '')
+      ? barText(e, (characterId) => this.info().get(characterId)?.playerName ?? '') ||
+          windowsBarText(e)
       : '';
   });
   /** The NPC reactors' attacks with their numbers, by offer (read from the reactor's own options). */
@@ -944,17 +960,24 @@ export class CombatView {
         });
       }
     });
-    // A hit on the player's character that waits for their reaction opens Escudo (E6-28).
+    // A reaction window the player answers (Escudo, Esquiva, Contramágica, the concentration save...) opens its sheet
+    // by itself, once; a reload brings it back, as the window lives on the server.
     effect(() => {
       const e = this.encounter();
       const own = this.own();
-      if (this.isMaster() || !e || !own || e.status !== EncounterStatus.ACTIVE) {
+      if (
+        this.isMaster() ||
+        !e ||
+        !own ||
+        e.status !== EncounterStatus.ACTIVE ||
+        this.reactionOpen()
+      ) {
         return;
       }
-      const prompt = e.reactionPrompts.find((p) => p.targetId === own.id);
-      if (prompt && !this.shieldHandled.has(prompt.pendingDamageId)) {
-        this.shieldHandled.add(prompt.pendingDamageId);
-        untracked(() => this.openShield(prompt));
+      const window = sheetWindow(e);
+      if (window && !this.reactionHandled.has(window.id)) {
+        this.reactionHandled.add(window.id);
+        untracked(() => this.openReaction(window));
       }
     });
     // "Mover" belongs to the player's turn: when it ends, the page closes.
@@ -1432,6 +1455,7 @@ export class CombatView {
     asReaction = false,
     who?: Combatant,
     creatureOpts?: GetTurnOptionsResponse | null,
+    catchWindowId = '',
   ): void {
     const e = this.encounter();
     const own = who ?? this.own();
@@ -1452,6 +1476,7 @@ export class CombatView {
       preference: this.dicePreference(),
       state: this.state(),
       asReaction,
+      ...(catchWindowId ? { catchWindowId } : {}),
       bonusRule: option?.bonusRule,
       bonusAttacksLeft: option?.bonusAttacksLeft,
       beamsLeft: option?.beamsLeft || attack.beams,
@@ -1743,29 +1768,57 @@ export class CombatView {
     ).subscribe();
   }
 
-  /** "Você foi atingido: usar Escudo?": opens by itself, and has to be answered. */
-  private openShield(prompt: ReactionPrompt): void {
+  /** "Você foi atingido: usar Escudo?" and the other reactions: opens by itself, and has to be answered. */
+  private openReaction(window: ReactionWindow): void {
     const e = this.encounter();
     const own = this.own();
     const vitals = this.vitals().find((v) => v.characterId === own?.characterId);
     if (!e) {
       return;
     }
-    const data: ShieldSheetData = {
+    const data: ReactionSheetData = {
       campaignId: this.campaignId(),
       encounterId: e.id,
-      prompt,
+      window,
       round: e.round,
       usage: vitals?.spellSlots ?? [],
       pact: vitals?.pactSlots ?? null,
       state: this.state(),
       armorClass: this.armorClass(),
+      diceMode: this.diceMode(),
+      preference: this.dicePreference(),
     };
-    openSheet<ShieldSheet, ShieldSheetData, boolean>(this.dialog, this.bottomSheet, ShieldSheet, {
-      data,
-      ariaLabel: 'Você foi atingido: usar Escudo Arcano?',
-      alert: true,
-    }).subscribe();
+    this.reactionOpen.set(true);
+    openSheet<ReactionSheet, ReactionSheetData, ReactionSheetResult>(
+      this.dialog,
+      this.bottomSheet,
+      ReactionSheet,
+      {
+        data,
+        ariaLabel: promptView(window, e.round)?.ariaLabel ?? 'Reação',
+        alert: true,
+      },
+    ).subscribe({
+      next: (result) => {
+        if (result?.throwWindowId) {
+          this.reactionHandled.add(result.throwWindowId);
+          this.openThrowBack(result.throwWindowId);
+        }
+      },
+      complete: () => this.reactionOpen.set(false),
+    });
+  }
+
+  /** "Devolver (1 de chi)": the attack with the missile the monk caught, part of the same reaction. */
+  private openThrowBack(windowId: string): void {
+    const attacks = this.options()?.options?.attacks ?? [];
+    const pick =
+      attacks.find(
+        (a) => a.attack?.kind === AttackKind.WEAPON && a.attack.saveDc === 0 && !a.attack.melee,
+      ) ?? attacks.find((a) => a.attack?.kind === AttackKind.WEAPON && a.attack.saveDc === 0);
+    if (pick?.attack) {
+      this.attackSheet(pick.attack.key, undefined, true, undefined, undefined, windowId);
+    }
   }
 
   /** A damage was settled: the master's card stays for its note. */

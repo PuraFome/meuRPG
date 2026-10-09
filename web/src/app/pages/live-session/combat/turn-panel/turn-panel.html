@@ -127,6 +127,13 @@
     }
     }
   } @else {
+    @if (waiting(); as w) {
+      <!-- Off turn, the wait is the same sentence the player on turn reads (a reaction, a concentration save). -->
+      <div class="mr-notice mr-notice--warning turn__notice" role="status" data-testid="reaction-wait">
+        <mat-icon aria-hidden="true">hourglass_top</mat-icon>
+        <p><strong>{{ w.title }}.</strong> {{ w.detail }}</p>
+      </div>
+    }
     @if (banner().ownEnded) {
       <p class="turn__next" role="status">{{ missing() }}</p>
       <app-joint-others mode="summary" [encounter]="encounter()" />
