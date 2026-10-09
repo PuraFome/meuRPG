@@ -40,6 +40,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps"
 	"github.com/PuraFome/meuRPG/backend/internal/notes"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/choicetest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
@@ -290,7 +291,7 @@ func (h *harness) clients(userID string) *user {
 		id: userID, h: h,
 		campaigns:  campaignsv1connect.NewCampaignServiceClient(c, url),
 		document:   campaignsv1connect.NewCampaignDocumentServiceClient(c, url),
-		characters: charactersv1connect.NewCharacterServiceClient(c, url),
+		characters: charactersv1connect.NewCharacterServiceClient(c, url, connect.WithInterceptors(choicetest.Interceptor(charactersv1connect.NewCharacterServiceClient(c, url)))),
 		table:      rulesv1connect.NewTableContentServiceClient(c, url),
 		gallery:    mapsv1connect.NewGalleryServiceClient(c, url),
 		maps:       mapsv1connect.NewMapServiceClient(c, url),

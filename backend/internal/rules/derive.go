@@ -112,6 +112,7 @@ func deriveWith(b Build, c *content, inactive map[string]bool) Derived {
 	x.attacks()
 	x.resourcesAndActions()
 	x.effectHints()
+	x.choiceEffects()
 	x.checkChoices()
 	x.dropReplacedTiers()
 	// Only an issue tied to a table entry is ever blamed on a change.
@@ -355,7 +356,7 @@ func (x *deriver) collectEffects() {
 	feature := func(key, name, source string, level int, desc []string) {
 		x.d.Features = append(x.d.Features, Feature{
 			Key: key, Name: name, NamePT: c.namePT(key), Source: source, Level: level,
-			SourcePT: x.sourcePT(source, level), Description: desc,
+			SourcePT: x.sourcePT(source, level), Description: desc, SummaryPT: x.optionSummary(key),
 		})
 	}
 
@@ -466,6 +467,8 @@ func (x *deriver) collectEffects() {
 	for i, key := range x.b.FeatureChoices {
 		field := fmt.Sprintf("full.feature_choice_keys[%d]", i)
 		switch {
+		case c.choiceValueOK(key):
+			// A pick of the choice engine (choicegroups.go), which checks it.
 		case strings.HasPrefix(key, "feature:"):
 			f, ok := c.features[key]
 			if !ok {
@@ -507,6 +510,21 @@ func (x *deriver) collectEffects() {
 			x.issue(IssueUnknownKey, field, "A opção escolhida não existe no conteúdo %s.", c.version)
 		}
 	}
+}
+
+// optionSummary is the one-line rule of a chosen option, or "".
+func (x *deriver) optionSummary(key string) string {
+	ch := x.c.choices
+	if ch == nil {
+		return ""
+	}
+	if a, ok := ch.ancestryByTrait[key]; ok {
+		return fmt.Sprintf("%s · %s · teste de %s", x.c.namePT(a.DamageType), breathShapePT(a), x.c.namePT(a.Save))
+	}
+	if a, ok := ch.ancestryByFeature[key]; ok {
+		return x.c.namePT(a.DamageType)
+	}
+	return ch.summaries[key]
 }
 
 // sourcePT says where a feature comes from, in Portuguese: "Mago 1",

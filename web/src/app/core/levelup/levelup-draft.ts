@@ -1,6 +1,7 @@
 import { computed, signal } from '@angular/core';
 
 import {
+  type Choice,
   LevelUpHitPointsMethod,
   LevelUpHitPointsRule,
   LevelUpProficiencyKind,
@@ -16,6 +17,15 @@ import {
 import { abilityName } from '../content/feat-text';
 import { ABILITY_KEYS, type AbilityKey } from '../characters/characters.types';
 import type { LevelUpChoicesInit } from './levelup-client';
+import {
+  type ChoiceDrafts,
+  keepDraftsOf,
+  missingIn,
+  storedKeysOf,
+  textsOf,
+  withSelection,
+  withText,
+} from './levelup-choices';
 import {
   type Missing,
   type PickItem,
@@ -94,6 +104,10 @@ export class LevelUpDraft {
   readonly features: PickSet = signal<ReadonlySet<string>>(new Set());
   readonly skills: PickSet = signal<ReadonlySet<string>>(new Set());
   readonly expertise: PickSet = signal<ReadonlySet<string>>(new Set());
+  /** The picks on the choices an earlier level left open (`LevelUpOptions.late_choices`), by choice key (PM-05). */
+  readonly lateDrafts = signal<ChoiceDrafts>(new Map());
+  /** The picks on the new level's choices that are not options of a feature (`LevelUpOptions.new_choices`). */
+  readonly newDrafts = signal<ChoiceDrafts>(new Map());
   /** The musical instrument a Bard taken as a later class picks (a proficiency key), or ''. */
   readonly instrument = signal('');
   private readonly preparedMax = signal(0);
@@ -312,6 +326,23 @@ export class LevelUpDraft {
     if (this.hpCard() === 'roll' && this.rolled() === null) {
       out.push({ step: 'hp', id: 'hp', text: 'Falta rolar o dado de vida.' });
     }
+    // What an earlier level left open comes first: the server refuses the level without it.
+    const late = missingIn(o.lateChoices, this.lateDrafts());
+    if (late.count > 0) {
+      out.push({
+        step: 'picks',
+        id: 'late',
+        text: needText(late.count, 'escolha que ficou para trás', 'escolhas que ficaram para trás'),
+      });
+    }
+    const fresh = missingIn(o.newChoices, this.newDrafts());
+    if (fresh.count > 0) {
+      out.push({
+        step: 'picks',
+        id: 'new',
+        text: needText(fresh.count, 'escolha do nível', 'escolhas do nível'),
+      });
+    }
     if (o.subclassDue && this.subclassKey() === '') {
       out.push({ step: 'picks', id: 'subclass', text: 'Falta escolher a subclasse.' });
     }
@@ -402,6 +433,8 @@ export class LevelUpDraft {
       this.featKey() !== '' ||
       this.hpCard() !== this.startCard ||
       this.subclassKey() !== '' ||
+      this.lateDrafts().size > 0 ||
+      this.newDrafts().size > 0 ||
       this.instrument() !== '' ||
       [
         this.cantrips(),
@@ -425,7 +458,15 @@ export class LevelUpDraft {
       cantripKeys: [...this.cantrips()],
       knownSpellKeys: [...this.spells()],
       preparedSpellKeys: [...this.prepared()],
-      featureChoiceKeys: [...this.features()],
+      featureChoiceKeys: [
+        ...this.features(),
+        ...storedKeysOf(this.options.newChoices, this.newDrafts()),
+      ],
+      lateChoiceKeys: storedKeysOf(this.options.lateChoices, this.lateDrafts()),
+      featureChoiceText: {
+        ...textsOf(this.options.lateChoices, this.lateDrafts()),
+        ...textsOf(this.options.newChoices, this.newDrafts()),
+      },
       skillProficiencyKeys: [...this.skills()],
       expertiseSkillKeys: [...this.expertise()],
       instrumentKey: this.instrument(),
@@ -464,6 +505,24 @@ export class LevelUpDraft {
       return;
     }
     this.abilityKeys.set([...keys, key].slice(-this.abilityAsked()));
+  }
+
+  /** A pick on a choice an earlier level left open: `optionKeys` is the whole selection of the choice now. */
+  selectLate(choice: Choice, optionKeys: readonly string[]): void {
+    this.lateDrafts.update((d) => withSelection(d, choice, optionKeys));
+  }
+
+  editLateText(choice: Choice, n: number, text: string): void {
+    this.lateDrafts.update((d) => withText(d, choice, n, text));
+  }
+
+  /** A pick on one of the new level's own choices. */
+  selectNew(choice: Choice, optionKeys: readonly string[]): void {
+    this.newDrafts.update((d) => withSelection(d, choice, optionKeys));
+  }
+
+  editNewText(choice: Choice, n: number, text: string): void {
+    this.newDrafts.update((d) => withText(d, choice, n, text));
   }
 
   setAsiMode(mode: AsiMode): void {
@@ -574,6 +633,8 @@ export class LevelUpDraft {
       this.totals().featureChoices.flatMap((f) => f.options.map((o) => o.key)),
     );
     this.features.set(new Set([...other.features()].filter((k) => options.has(k))));
+    this.lateDrafts.set(keepDraftsOf(this.options.lateChoices, other.lateDrafts()));
+    this.newDrafts.set(keepDraftsOf(this.options.newChoices, other.newDrafts()));
     this.skills.set(
       keep(
         other.skills(),

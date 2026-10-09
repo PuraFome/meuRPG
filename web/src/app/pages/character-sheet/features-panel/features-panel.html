@@ -13,6 +13,9 @@
               <span class="feature__source">{{ f.sourcePt }}</span>
               <mat-icon class="feature__chevron" aria-hidden="true">expand_more</mat-icon>
             </summary>
+            @if (f.summaryPt) {
+              <p class="feature__summary-pt">{{ f.summaryPt }}</p>
+            }
             <p class="feature__text" lang="en">{{ f.description }}</p>
           </details>
         </li>
@@ -30,6 +33,17 @@
       <ul class="hints">
         @for (hint of s.hints; track $index) {
           <li>{{ hint.text }}</li>
+        }
+      </ul>
+    </div>
+  }
+
+  @if (s.resistances.length > 0) {
+    <div class="block">
+      <h3 class="block__label" id="resistencias-label">Resistências</h3>
+      <ul class="pills" aria-labelledby="resistencias-label">
+        @for (name of s.resistances; track name) {
+          <li class="mr-tag">{{ name }}</li>
         }
       </ul>
     </div>

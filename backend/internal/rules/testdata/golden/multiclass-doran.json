@@ -1,6 +1,6 @@
 {
   "after": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.33",
+    "ContentVersion": "srd51@a8abc93b235c+fx.34",
     "RaceNamePT": "Humano",
     "SubraceNamePT": "",
     "BackgroundNamePT": "Acólito",
@@ -869,7 +869,8 @@
         "Source": "feature:fighter-fighting-style",
         "Level": 1,
         "SourcePT": "Guerreiro 1",
-        "Description": null
+        "Description": null,
+        "SummaryPT": "+1 de CA enquanto usa armadura."
       }
     ],
     "Languages": [
@@ -944,7 +945,7 @@
     "Issues": null
   },
   "before": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.33",
+    "ContentVersion": "srd51@a8abc93b235c+fx.34",
     "RaceNamePT": "Humano",
     "SubraceNamePT": "",
     "BackgroundNamePT": "Acólito",
@@ -1506,7 +1507,8 @@
         "Source": "feature:fighter-fighting-style",
         "Level": 1,
         "SourcePT": "Guerreiro 1",
-        "Description": null
+        "Description": null,
+        "SummaryPT": "+1 de CA enquanto usa armadura."
       }
     ],
     "Languages": [

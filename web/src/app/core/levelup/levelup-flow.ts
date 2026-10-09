@@ -104,6 +104,8 @@ export function stepsFor(o: LevelUpOptions, t: Totals, more: number): StepKey[] 
     t.featureChoices.length > 0 ||
     t.skills > 0 ||
     t.expertise > 0 ||
+    o.lateChoices.length > 0 ||
+    o.newChoices.length > 0 ||
     proficiencyPick(o, LevelUpProficiencyKind.INSTRUMENT) > 0
   ) {
     steps.push('picks');

@@ -11,12 +11,14 @@ import { AbilityScoresInput } from './character-editor.types';
  * server); these only name and format what the person typed.
  */
 
-/** The editor's steps, in order. `magias` only exists for a caster class. */
-export type EditorStepKey = 'basico' | 'atributos' | 'pericias' | 'magias' | 'equipamento';
+/** The editor's steps, in order. `escolhas` only exists when the race or a class asks a choice, `magias` for a caster class. */
+export type EditorStepKey =
+  'basico' | 'atributos' | 'escolhas' | 'pericias' | 'magias' | 'equipamento';
 
 export const EDITOR_STEP_LABELS: Record<EditorStepKey, string> = {
   basico: 'Básico',
   atributos: 'Habilidades',
+  escolhas: 'Escolhas',
   pericias: 'Perícias',
   magias: 'Magias',
   equipamento: 'Equipamento',
