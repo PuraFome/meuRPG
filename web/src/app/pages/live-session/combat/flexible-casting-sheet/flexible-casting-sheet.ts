@@ -119,7 +119,8 @@ const DIRECTIONS: readonly Segment<Direction>[] = [
               type="button"
               class="pair__btn"
               [class.pair__btn--danger]="direction() === 'convert'"
-              [attr.aria-disabled]="!ready() || busy()"
+              [disabled]="!ready() || busy()"
+              disabledInteractive
               (click)="go()"
             >
               {{ doLabel() }}
@@ -234,6 +235,8 @@ export class FlexibleCastingSheet {
     }
     const level = this.levelNumber();
     const direction = this.direction();
+    // The points as the player saw them when asking: what the answer says is worked out from them.
+    const before = this.points();
     this.busy.set(true);
     this.error.set('');
     try {
@@ -250,21 +253,20 @@ export class FlexibleCastingSheet {
       if (res.vitals) {
         this.answered.set(toVitalsVm(res.vitals));
       }
-      const points = this.points();
       this.done.set(
-        direction === 'create' && 'cost' in res
+        'cost' in res
           ? {
               pill: 'Espaço criado',
               lines: [
                 `Você criou um espaço de ${circleLabel(level)}.`,
-                `Gastou ${pointsText(res.cost)}: restam ${points.left} de ${points.total}. O espaço some no descanso longo.`,
+                `Gastou ${pointsText(res.cost)}: restam ${Math.max(0, before.left - res.cost)} de ${before.total}. O espaço some no descanso longo.`,
               ],
             }
           : {
               pill: 'Espaço convertido',
               lines: [
                 `Você gastou um espaço de ${circleLabel(level)}.`,
-                `Ganhou ${pointsText('gain' in res ? res.gain : level)} de feitiçaria: ficam em ${points.left} de ${points.total}.`,
+                `Ganhou ${pointsText(res.gain)} de feitiçaria: ficam em ${Math.min(before.total, before.left + res.gain)} de ${before.total}.`,
               ],
             },
       );

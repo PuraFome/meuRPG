@@ -106,7 +106,8 @@ export interface BardicInspirationSheetData {
               matButton="filled"
               type="button"
               class="pair__btn"
-              [attr.aria-disabled]="targetId() === null || busy()"
+              [disabled]="targetId() === null || busy()"
+              disabledInteractive
               (click)="give()"
             >
               <mat-icon aria-hidden="true">music_note</mat-icon>{{ doLabel() }}

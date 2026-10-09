@@ -116,7 +116,7 @@ type Mode = 'heal' | 'poison' | 'disease';
                 [value]="amount()"
                 [min]="1"
                 [max]="pool().left"
-                (valueChange)="amount.set($event)"
+                (valueChange)="asked.set($event)"
               />
               <span class="step__unit">pontos · de 1 a {{ pool().left }}</span>
             </div>
@@ -134,7 +134,8 @@ type Mode = 'heal' | 'poison' | 'disease';
               matButton="filled"
               type="button"
               class="pair__btn"
-              [attr.aria-disabled]="!ready() || busy()"
+              [disabled]="!ready() || busy()"
+              disabledInteractive
               (click)="touch()"
             >
               <mat-icon aria-hidden="true">favorite</mat-icon>{{ doLabel() }}
@@ -181,7 +182,7 @@ export class LayOnHandsSheet {
   );
   protected readonly mode = signal<Mode>('heal');
   /** The points asked for; cut to the pool when it is smaller (the server limits it too). */
-  private readonly asked = signal<number | null>(null);
+  protected readonly asked = signal<number | null>(null);
   protected readonly amount = computed(() =>
     Math.min(this.asked() ?? firstAmount(this.pool()), Math.max(1, this.pool().left)),
   );

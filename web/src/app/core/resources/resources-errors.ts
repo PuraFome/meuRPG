@@ -5,7 +5,11 @@ import {
   ResourceBlockedReason,
   ResourceBlockedSchema,
 } from '../../../gen/meurpg/play/v1/resources_pb';
-import { combatErrorMessage, sessionClosed } from '../combat/combat-errors';
+import {
+  INSPIRATION_PENDING_TEXT,
+  combatErrorMessage,
+  sessionClosed,
+} from '../combat/combat-errors';
 import { describeConnectError } from '../connect/connect-errors';
 
 /** The typed detail of a `failed_precondition` from `ResourceService`, or `null` (another code, or another detail).
@@ -47,7 +51,7 @@ export function resourceBlockedMessage(
     case ResourceBlockedReason.NOT_AVAILABLE:
       return 'Você não tem essa habilidade.';
     case ResourceBlockedReason.INSPIRATION_PENDING:
-      return 'Responda primeiro à pergunta da Inspiração de Bardo.';
+      return INSPIRATION_PENDING_TEXT;
     default:
       return 'Isso não pode ser feito agora. A tela foi atualizada.';
   }

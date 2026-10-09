@@ -967,7 +967,9 @@ export class CombatView {
     effect(() => {
       const e = this.encounter();
       const offer = this.ownOffer();
-      if (this.isMaster() || !e || !offer || e.status !== EncounterStatus.ACTIVE) {
+      // The turn options arrive after the combat: the question opens when its attack is in them.
+      const ready = this.options() !== null;
+      if (this.isMaster() || !e || !offer || !ready || e.status !== EncounterStatus.ACTIVE) {
         return;
       }
       if (!this.inspirationHandled.has(offer.holdId)) {
