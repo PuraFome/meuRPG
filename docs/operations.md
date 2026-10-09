@@ -2,7 +2,7 @@
 
 The goal is a cost close to zero: with no active session, nothing is running or connected.
 
-**Status.** There is no production deployment yet. This page describes the plan for the first deploy (Cloud Run) and the settings the code already enforces. Items marked **planned** do not exist yet. The local environment (`make up`, the optional ELK) does exist; see [CONTRIBUTING](../CONTRIBUTING.md).
+**Status.** There is no production deployment yet. This page describes the plan for the first deploy (Cloud Run), the steps to do it ([First deploy, step by step](#first-deploy-step-by-step)) and the settings the code already enforces. Items marked **planned** do not exist yet. The local environment (`make up`, the optional ELK) does exist; see [CONTRIBUTING](../CONTRIBUTING.md).
 
 ## Hosting
 
@@ -93,7 +93,7 @@ The content the master registers (MR-025, RN-23; [Architecture](architecture.md#
 
 ## Environment variables and secrets
 
-Credentials (the Google OAuth client secret, the database connection string and others) live in Google Cloud Secret Manager, never in a loose environment variable in the repository or in the deploy. The exact list of secrets per environment is **planned** (not defined yet).
+Credentials (the Google OAuth client secret, the database connection string and others) live in Google Cloud Secret Manager, never in a loose environment variable in the repository or in the deploy. The secrets of the first deploy are `OIDC_CLIENT_SECRET`, `DATABASE_URL` and `GEMINI_API_KEY` ([First deploy, step by step](#5-secrets)); the full list per environment and who has access is still **planned**.
 
 ### Sign-in settings
 
@@ -164,9 +164,15 @@ Gallery images (MR-019) live in a blob store (see [Architecture](architecture.md
 
 | Variable | Secret? | Where |
 | --- | --- | --- |
-| `BLOB_DIR` | No | The image folder on disk. In the local environment, `/var/lib/meurpg/images`, on a Docker Compose volume. Without it, images are off (`503`). In production disk is not used: Cloud Storage comes instead (below) |
+| `BLOB_BUCKET` | No | The Cloud Storage bucket for the images: **the store on Cloud Run**. The API reads and writes it over the JSON API with the service account's token, taken from the metadata server |
+| `BLOB_DIR` | No | The image folder on disk, for the local environment (`/var/lib/meurpg/images`, on a Docker Compose volume) and the tests. Without either variable, images are off (`503`). **Refused on Cloud Run** (`K_SERVICE` set), whose disk is memory and is lost when the instance stops; the message points to `BLOB_BUCKET` |
 
-**On the first deploy (the Cloud Storage implementation does not exist yet, because there is no deploy):** one bucket only for the images, in `southamerica-east1`, Standard class, with uniform bucket-level access and public-access prevention; a 7-day soft delete (the deadline in [Privacy](privacy.md)); and only the API's service account with access (`roles/storage.objectUser` on the bucket), with no public URL and no signed URL: the API is always the one that delivers the image, after checking who is asking. The implementation goes in the `blob` package, behind the same interface.
+- **One store only.** With both `BLOB_BUCKET` and `BLOB_DIR` the server refuses to start, with a message naming both.
+- **At start with `BLOB_BUCKET`,** the server reads a token from the metadata server and lists one object of the bucket (`storage.objects.list`). If that fails (wrong name, missing role, no metadata server), the log says `the images bucket cannot be reached; images are off` with the reason, uploads, downloads and the gallery answer `503`, and the rest of the app works, like a missing `BLOB_DIR`. The check runs once: after fixing the cause, deploy a new revision. On success: `images are stored in Cloud Storage`.
+- **No client library.** The store (`blob.GCS`) calls three methods of the Cloud Storage JSON API with `net/http`: a media upload (`POST /upload/storage/v1/b/<bucket>/o?uploadType=media`), a streamed read (`GET .../o/<object>?alt=media`, with a `Range` header when the reader seeks) and a delete. The token is cached until a minute before it expires, and forgotten when the API answers `401`. Every call has a time limit (5 s for the token, 15 s for the answer's headers and for a delete, 2 minutes for an upload and for the whole life of an open read). Only a read is repeated, once, after a network error or a `5xx`. Errors carry the status or the network error, never the token, the response body, the bucket or the object name (keys hold IDs). A missing object is `blob.ErrNotFound` on read, and not an error on delete, as on disk.
+- **Key prefixes.** A key is stored as the object name, unchanged (`campaigns/<campaign>/images/<id>`). A new kind of file takes its own prefix under the campaign's, so a prefix is enough to find and clean up one kind. Nothing else on the server writes files to disk: the only code that does is the `srdimport` tool, which runs on a developer's machine.
+
+**On the first deploy:** one bucket only for the images, in `southamerica-east1`, Standard class, with uniform bucket-level access and public-access prevention; a 7-day soft delete (the deadline in [Privacy](privacy.md)); and only the API's service account with access (`roles/storage.objectUser` on the bucket, which covers create, read, delete and list), with no public URL and no signed URL: the API is always the one that delivers the image, after checking who is asking. The commands are in [First deploy, step by step](#first-deploy-step-by-step).
 
 **Memory.** An upload reads and processes one image at a time on each instance (it waits for its turn before reading the file, so queued uploads hold no body), and refuses an image whose decoding would exceed 256 MiB (an estimate in the `maps/images` package). With 512 MiB per instance there is room for the rest, as long as Go's garbage collector knows the limit: set `GOMEMLIMIT` (for example `400MiB`) on the first deploy. The worst case of the fog tiles, summed, is about 330 MB (see [Fog image tiles](#fog-image-tiles)); PNG uploads are stored with 8 bits per channel, so that decoding them later costs 4 bytes per pixel. The image of a generated dungeon (MR-010) goes through the same one-image-at-a-time slot and is drawn with a palette (1 byte per pixel): the largest, 199 × 399 squares, is 3,980 × 7,980 px and uses about 32 MB while drawing and about 36 MB allocated in all (see [Architecture](architecture.md#generated-dungeon-maps)); the fog tiles decode the stored image, which is a palette PNG and costs less than a photo.
 
@@ -294,6 +300,207 @@ In production, Cloud Run's stdout already goes to Cloud Logging, and the path to
 
 A Google Cloud budget alert warns if the cost exceeds what is expected. The exact thresholds are **planned** (not defined yet).
 
+## First deploy, step by step
+
+For someone who knows Google Cloud but not this app. Every value comes from the sections above or from the code; what is not known yet is written as `<placeholder>`. Run the commands in order, from the repository root, with `gcloud` signed in as a project owner (`gcloud auth login`) and Docker running.
+
+What the app needs, in one list: one Cloud Run service (the Go API, which also serves the Angular app), one Cloud Run job (the migrations), one private bucket (images), three secrets, one service account and one Google OAuth client. The database is CockroachDB on its own cloud, in the same region (see [Hosting](#hosting)); nothing here creates it.
+
+### 1. Project, region and APIs
+
+```bash
+export PROJECT_ID=<your-project-id>
+export REGION=southamerica-east1
+export SERVICE=meurpg
+export REPO=meurpg                          # Artifact Registry repository
+export SA_NAME=meurpg-api                   # the service account
+export SA=$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com
+export BUCKET=$PROJECT_ID-images            # bucket names are global: change it if taken
+export IMAGE=$REGION-docker.pkg.dev/$PROJECT_ID/$REPO/api:$(git rev-parse --short HEAD)
+
+gcloud config set project $PROJECT_ID
+gcloud config set run/region $REGION
+gcloud services enable run.googleapis.com artifactregistry.googleapis.com \
+  secretmanager.googleapis.com storage.googleapis.com iam.googleapis.com
+```
+
+Link a billing account to the project first, and set the budget alerts ([Budget alerts](#budget-alerts)). The Gemini API ([Generated images](#generated-images-the-gemini-api)) is only for AI images; its key is made in Google AI Studio and restricted to the Gemini API there.
+
+### 2. Build and push the image
+
+The image is `backend/Dockerfile`, built from the **repository root** (it needs `backend/` and `web/`). It has three stages: Node 22 builds the Angular app (`npm ci`, `npm run build`), Go 1.27 compiles `api` and `migrate`, and a distroless `static` image carries `/app/api`, `/app/migrate` and the web build in `/app/web`. So one build gives the API, the app and the migration program; nothing else is built or copied.
+
+```bash
+gcloud artifacts repositories create $REPO --repository-format=docker --location=$REGION
+gcloud auth configure-docker $REGION-docker.pkg.dev
+
+# Cloud Run runs linux/amd64: say so when building on an Apple-silicon Mac.
+docker build --platform linux/amd64 -f backend/Dockerfile \
+  --build-arg VERSION=v0.1.0 --build-arg COMMIT=$(git rev-parse HEAD) \
+  -t $IMAGE .
+docker push $IMAGE
+```
+
+The first build takes a few minutes (npm and Go modules). `docker run --rm --entrypoint /app/migrate $IMAGE` prints the usage line if you want to see that the image is right.
+
+### 3. Service account and roles
+
+One account runs the service and the migration job. It gets the bucket (below) and the three secrets (below), and **no project-level role**.
+
+```bash
+gcloud iam service-accounts create $SA_NAME --display-name="MeuRPG API"
+```
+
+### 4. The images bucket
+
+As in [Images](#images): one bucket, Standard class, in the region, uniform bucket-level access, public-access prevention, 7-day soft delete. Only the service account has access, as `roles/storage.objectUser` on the bucket, which gives it exactly what the app does (create, read, delete and list objects; the start-up check lists one object). No public URL and no signed URL: the API reads the bucket with the account's token and delivers the image after checking who is asking.
+
+```bash
+gcloud storage buckets create gs://$BUCKET --location=$REGION \
+  --default-storage-class=STANDARD --uniform-bucket-level-access \
+  --public-access-prevention --soft-delete-duration=7d
+
+gcloud storage buckets add-iam-policy-binding gs://$BUCKET \
+  --member=serviceAccount:$SA --role=roles/storage.objectUser
+```
+
+### 5. Secrets
+
+Three secrets. Each value is read from the keyboard, so it does not stay in the shell history. `DATABASE_URL` is the CockroachDB Cloud connection string from its console (`<connection string>`, which this page does not know) and, on Cloud Run, **must say `sslmode=verify-full`** (or `verify-ca`), or the server does not start ([Sign-in settings](#sign-in-settings)). Add `pool_max_conns` only to change the default of 10 ([The connection pool](#the-connection-pool)). `OIDC_CLIENT_SECRET` comes from step 6, so create that secret after it. `GEMINI_API_KEY` is optional: without it, AI images are off and the rest works.
+
+```bash
+read -rs -p "DATABASE_URL: " V; echo
+printf '%s' "$V" | gcloud secrets create database-url --replication-policy=user-managed \
+  --locations=$REGION --data-file=-
+
+read -rs -p "OIDC_CLIENT_SECRET (step 6): " V; echo
+printf '%s' "$V" | gcloud secrets create oidc-client-secret --replication-policy=user-managed \
+  --locations=$REGION --data-file=-
+
+read -rs -p "GEMINI_API_KEY (skip this command to leave AI images off): " V; echo
+printf '%s' "$V" | gcloud secrets create gemini-api-key --replication-policy=user-managed \
+  --locations=$REGION --data-file=-
+unset V
+
+for S in database-url oidc-client-secret gemini-api-key; do   # drop gemini-api-key if you skipped it
+  gcloud secrets add-iam-policy-binding $S \
+    --member=serviceAccount:$SA --role=roles/secretmanager.secretAccessor
+done
+```
+
+### 6. Google OAuth client (sign-in)
+
+Sign-in is Google only (`OIDC_ISSUER=https://accounts.google.com`). The OAuth client is made in the console (there is no `gcloud` command for a web client): **APIs & Services → OAuth consent screen** (Google Auth Platform in the newer console).
+
+1. Consent screen: user type **External**; app name, support e-mail and developer e-mail as you like; scopes **`openid`** and **`.../auth/userinfo.email`** (the app asks for `openid email`, nothing more, and neither is a sensitive scope). While the screen is in *Testing*, only the e-mails listed as test users can sign in: either add the whole table there, or publish the screen (*In production*), which these scopes do without Google's review.
+2. **Credentials → Create credentials → OAuth client ID → Web application.** Under *Authorized redirect URIs* put exactly the value of `OIDC_REDIRECT_URL`: `https://<host>/auth/callback`, where `<host>` is your domain (step 10) or the `run.app` host. The `run.app` host can be computed before the service exists: `https://$SERVICE-$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)').$REGION.run.app`. After the first deploy, check it against `gcloud run services describe $SERVICE --format='value(status.url)'`; if they differ, fix the redirect URI. Leave *Authorized JavaScript origins* empty (the flow is a server-side redirect).
+3. Copy the client ID and secret. The ID goes into the service as `OIDC_CLIENT_ID`; the secret into Secret Manager (step 5).
+
+```bash
+export OIDC_CLIENT_ID=<client id, ends in .apps.googleusercontent.com>
+export APP_URL=https://<domain or run.app host>          # no trailing slash
+export MASTER_EMAIL=<the master's verified e-mail>        # CAMPAIGN_CREATORS
+```
+
+### 7. Migrations: a Cloud Run job, before the service
+
+`/app/migrate` is in the same image (the API is its default entry point; the job overrides it). The job runs once per deploy, **before** the new revision gets traffic; the API never migrates by itself, and two runs at the same time wait for each other ([The connection pool](#the-connection-pool)). It only needs `DATABASE_URL`.
+
+```bash
+gcloud run jobs create meurpg-migrate --image=$IMAGE --service-account=$SA \
+  --command=/app/migrate --args=up --set-secrets=DATABASE_URL=database-url:latest \
+  --max-retries=0 --task-timeout=15m
+gcloud run jobs execute meurpg-migrate --wait
+```
+
+On the next deploys: `gcloud run jobs update meurpg-migrate --image=$IMAGE`, then `execute --wait` again, then deploy the service. If the job fails, read its log (step 13) and do not deploy; running `execute` again is safe, because goose applies only what is pending.
+
+### 8. The service
+
+Every value is from [Hosting](#hosting), [Environment variables and secrets](#environment-variables-and-secrets) and [Abuse limits](#abuse-limits). Notes on the flags:
+
+- `--max-instances=1`: the live stream's fan-out is in memory ([Live session stream](#live-session-stream)). `--min-instances=0`: no cost when idle.
+- `--timeout=2100`: the stream lives up to 30 minutes; the default of 5 would cut it. `--concurrency=50`.
+- `--cpu=1 --memory=512Mi`, with CPU only during a request (the default, `--cpu-throttling`): the app keeps a request open while an AI image is generated for that reason ([Generated images](#generated-images-the-gemini-api)). `GOMEMLIMIT=400MiB` ([Images](#images)).
+- `--allow-unauthenticated`: Cloud Run's own login is off because the app does its own sign-in. If an organization policy forbids it, the policy has to allow this one service.
+- `CAMPAIGN_CREATORS` holds the e-mails that may create campaigns: with the table's master only, nobody else can open a campaign. It may hold several e-mails separated by commas, which is why the variables use the `^@^` delimiter below (gcloud's escape for commas inside a value). Leave it empty to let any account create.
+- `OIDC_MAX_AGE` is **not** set with Google. The limit variables show their defaults; drop the ones you do not want to pin. `LISTEN_HOST` and `PORT` are not set.
+- Leave `GEMINI_API_KEY` out of `--set-secrets` if you skipped it.
+- Never set `BLOB_DIR`, `IMAGE_GENERATOR=fake` or `MAX_CAMPAIGNS_PER_USER=off`: the server refuses to start on Cloud Run with any of them.
+
+```bash
+gcloud run deploy $SERVICE --image=$IMAGE --service-account=$SA \
+  --allow-unauthenticated --cpu=1 --memory=512Mi \
+  --min-instances=0 --max-instances=1 --concurrency=50 --timeout=2100 \
+  --set-secrets=OIDC_CLIENT_SECRET=oidc-client-secret:latest,DATABASE_URL=database-url:latest,GEMINI_API_KEY=gemini-api-key:latest \
+  --set-env-vars="^@^GOMEMLIMIT=400MiB@GOOGLE_CLOUD_PROJECT=$PROJECT_ID@BLOB_BUCKET=$BUCKET@OIDC_ISSUER=https://accounts.google.com@OIDC_CLIENT_ID=$OIDC_CLIENT_ID@OIDC_REDIRECT_URL=$APP_URL/auth/callback@CAMPAIGN_CREATORS=$MASTER_EMAIL@MAX_CAMPAIGNS_PER_USER=10@IMAGE_DAILY_LIMIT=100@IMAGE_MONTHLY_LIMIT=20@RATE_LIMIT_MULTIPLIER=1"
+```
+
+The start-up log must say `images are stored in Cloud Storage`. If it says `the images bucket cannot be reached; images are off`, the server is up but uploads answer 503: check the bucket name, the role of step 4, and that the service runs as `$SA`; then deploy a new revision (the check runs once, at start).
+
+### 9. The service address
+
+```bash
+gcloud run services describe $SERVICE --format='value(status.url)'
+```
+
+If you used the `run.app` host in `APP_URL` and it matches, you are done with the address: it is already registered on the OAuth client. Otherwise, register the real one (step 6) and update `OIDC_REDIRECT_URL` (`gcloud run services update $SERVICE --update-env-vars OIDC_REDIRECT_URL=...`; a new revision).
+
+### 10. The domain
+
+`<domain>` is an open item (from the GitHub Student Developer Pack). Until it exists, the table can use the `run.app` URL; nothing else depends on the domain except `OIDC_REDIRECT_URL`. With a domain:
+
+```bash
+export DOMAIN=<domain>
+gcloud beta run domain-mappings create --service=$SERVICE --domain=$DOMAIN
+gcloud beta run domain-mappings describe --domain=$DOMAIN    # the DNS records to create
+```
+
+Create the DNS records it shows, wait for the certificate (it can take minutes to hours), then, **in this order**: register `https://$DOMAIN/auth/callback` on the OAuth client, update `OIDC_REDIRECT_URL`, and test. **Not verified:** whether Cloud Run domain mappings are available in `southamerica-east1`; if the command is refused, use the `run.app` URL, or put a load balancer in front, which changes how the client IP is read (`cloudRunTrustedHops`, [Sign-in rate limit and the client IP](#sign-in-rate-limit-and-the-client-ip)).
+
+### 11. Smoke test
+
+In order; stop at the first failure and read the logs (step 13).
+
+- [ ] `curl -s -o /dev/null -w '%{http_code}\n' $APP_URL/readyz` answers `200` (the database answers). `/healthz` too.
+- [ ] The start-up log has `images are stored in Cloud Storage`, and no warning about OIDC or the database.
+- [ ] Open `$APP_URL`: the app loads (the Angular build is served by the API).
+- [ ] Sign in with the master's Google account. A different account sees the creation refused if `CAMPAIGN_CREATORS` is set.
+- [ ] Create a campaign.
+- [ ] Upload an image to the gallery (a map or a portrait), see its thumbnail, and look in `gcloud storage ls -r gs://$BUCKET/campaigns/` for its two objects (the image and `.thumb`).
+- [ ] Invite a player (a second browser or a private window, another Google account), join, and open a map the master shared: the image loads for the player, and stops loading when the master hides it.
+- [ ] Start a live session with two browsers: a change made by the master (a token move, a roll) reaches the player at once, which proves the stream and the in-memory fan-out. Leave it open for a minute: the heartbeat keeps it alive.
+- [ ] Sign-in rate limit: the first-deploy check in [Sign-in rate limit and the client IP](#sign-in-rate-limit-and-the-client-ip) (the last item of `X-Forwarded-For` is the caller's).
+- [ ] Only if `GEMINI_API_KEY` is set: generate one image in a scene; it appears in the gallery. Then the first bill shows the real cost per image ([Generated images](#generated-images-the-gemini-api)).
+- [ ] Delete the image: the two objects are gone from the bucket's listing (soft delete keeps them 7 days, out of reach of the API).
+
+### 12. Roll back
+
+Revisions are kept. Send the traffic back to the previous one:
+
+```bash
+gcloud run revisions list --service=$SERVICE
+gcloud run services update-traffic $SERVICE --to-revisions=<previous-revision>=100
+```
+
+A rollback does not undo migrations: the database keeps the schema the job applied, and the previous revision runs on it. Check, before rolling back, that the migrations of the release you are leaving do not break the old code (read their files in `backend/migrations/`); if they do, release a fix forward instead of running `migrate down`. Secrets roll back by version: `gcloud run services update $SERVICE --update-secrets=DATABASE_URL=database-url:<version>`.
+
+### 13. Read the logs
+
+The API writes one JSON line per event to stdout, which Cloud Run sends to Cloud Logging, with the trace when `GOOGLE_CLOUD_PROJECT` is set ([Logs in ELK](#logs-in-elk)).
+
+```bash
+gcloud run services logs read $SERVICE --limit=100
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="'$SERVICE'" AND severity>=ERROR' \
+  --freshness=1h --limit=50 --format='value(timestamp,jsonPayload.message,jsonPayload.error)'
+# One request, by the X-Request-Id of its response:
+gcloud logging read 'resource.type="cloud_run_revision" AND jsonPayload.request_id="<id>"' --freshness=1d
+# The migration job:
+gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="meurpg-migrate"' --freshness=1d
+```
+
+The log never holds a password, a token or an e-mail ([Privacy](privacy.md#logs-in-elk)).
+
 ## Open items before the first deploy
 
 - Domain name (comes from the GitHub Student Developer Pack; only needed on the first deploy).
@@ -303,7 +510,8 @@ A Google Cloud budget alert warns if the cost exceeds what is expected. The exac
 - Budget alert thresholds.
 - The production ELK (see [Logs in ELK](#logs-in-elk)): whether it is worth the cost, where Elasticsearch runs, the Cloud Logging sink to Pub/Sub and the pipeline step that reads `jsonPayload`.
 - The Gemini API key in Secret Manager, the daily quota and the key's API restriction (see [Generated images](#generated-images-the-gemini-api)); measure the real cost per image with it, and adjust `IMAGE_MONTHLY_LIMIT`.
-- The images bucket and the Cloud Storage implementation in the `blob` package (private bucket in São Paulo, 7-day soft delete, only the API's service account), and `GOMEMLIMIT` on Cloud Run (see [Images](#images)).
+- Run the images bucket and the rest of the first deploy by the steps in [First deploy, step by step](#first-deploy-step-by-step); the Cloud Storage store is in the `blob` package and was tested against a fake of the API only. The real bucket's behaviour (the media upload, the `Range` read, the metadata token) is checked by the smoke test of that section.
+- The CockroachDB Cloud connection string, in the form the console gives for `sslmode=verify-full`: the production image carries no certificate file, so check that the console's string verifies against the system's certificates.
 
 ## See also
 

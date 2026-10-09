@@ -14,7 +14,8 @@
 //	OIDC_REDIRECT_URL   https://<this server>/auth/callback
 //	OIDC_CA_FILE        extra CA certificates (PEM) to trust, for a local provider (optional)
 //	OIDC_MAX_AGE        max_age sent to the provider, e.g. 1h (optional)
-//	BLOB_DIR            directory for uploaded images (optional)
+//	BLOB_DIR            directory for uploaded images (optional; never with BLOB_BUCKET, never on Cloud Run)
+//	BLOB_BUCKET         Cloud Storage bucket for uploaded images (optional; the store on Cloud Run)
 //	GEMINI_API_KEY      key of the Gemini API: turns image generation on (optional, secret)
 //	GEMINI_IMAGE_MODEL  the image model (default gemini-3.1-flash-image)
 //	IMAGE_GENERATOR     "fake" uses the deterministic fake generator, never on Cloud Run (optional)
@@ -187,12 +188,27 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	}
 
 	// Images need somewhere to live. blobs stays a nil interface without
-	// BLOB_DIR (never a nil *blob.FS, for the reason given for database
-	// above), and the maps module then answers 503 for images.
+	// BLOB_DIR or BLOB_BUCKET (never a nil *blob.FS, for the reason given for
+	// database above), and the maps module then answers 503 for images.
 	var blobs blob.Store
-	if cfg.BlobDir == "" {
-		logger.Warn("BLOB_DIR is not set; images are off: uploads, image downloads and the gallery answer 503")
-	} else {
+	switch {
+	case cfg.BlobBucket != "":
+		gcs, err := blob.NewGCS(cfg.BlobBucket)
+		if err != nil {
+			return err
+		}
+		// A bucket that cannot be reached now keeps images off, with a
+		// warning, instead of stopping the server: like a missing BLOB_DIR,
+		// the rest of the app works.
+		if err := gcs.Check(ctx); err != nil {
+			logger.Warn("the images bucket cannot be reached; images are off: uploads, image downloads and the gallery answer 503", "error", err)
+		} else {
+			blobs = gcs
+			logger.Info("images are stored in Cloud Storage")
+		}
+	case cfg.BlobDir == "":
+		logger.Warn("BLOB_DIR and BLOB_BUCKET are not set; images are off: uploads, image downloads and the gallery answer 503")
+	default:
 		fs, err := blob.NewFS(cfg.BlobDir)
 		if err != nil {
 			return err

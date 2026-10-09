@@ -2330,16 +2330,18 @@ sequenceDiagram
 
 ### Where images are stored
 
-The `backend/internal/platform/blob` package is a small interface (`Put`, `Open`, `Delete`) with a disk implementation. The keys are `campaigns/<campaign>/images/<id>` and `…/<id>.thumb`: everything of a campaign shares the same prefix.
+The `backend/internal/platform/blob` package is a small interface (`Put`, `Open`, `Delete`) with two implementations: the disk (`FS`) and Cloud Storage (`GCS`). The keys are `campaigns/<campaign>/images/<id>` and `…/<id>.thumb`: everything of a campaign shares the same prefix.
 
 | Where | How |
 | --- | --- |
 | Local environment | `BLOB_DIR=/var/lib/meurpg/images`, in a Docker Compose volume (`images`), which survives `make down` |
 | Tests | A temporary folder per test |
-| Production | A private Cloud Storage bucket, in São Paulo, behind the same interface, from the first deploy (see [Operations](operations.md)) |
+| Production | `BLOB_BUCKET`: a private Cloud Storage bucket, in São Paulo, reached by `blob.GCS` (the JSON API over `net/http`, with the service account's token from the metadata server; see [Operations](operations.md#images)) |
 
 - **On disk,** each file starts with a line with the type (`image/jpeg`), followed by the image. `Put` writes to a temporary file and renames over, so nobody reads half a file. Every operation goes through an `os.Root`, which refuses any path outside the folder, even through a symbolic link, and the key only accepts lowercase letters, digits, `.`, `-` and `_`. Errors do not carry the path, because the key has IDs.
-- **Without `BLOB_DIR`,** images are off: upload, download and `GalleryService` answer `503`/`unavailable`, and the rest of the app works. The startup log warns.
+- **Only one store is chosen:** `BLOB_BUCKET` or `BLOB_DIR`. Both set, or `BLOB_DIR` on Cloud Run, stops the server at start. If the bucket cannot be reached at start, the server keeps running with images off.
+- **In Cloud Storage,** the object name is the key, as it is, and the content type is the object's. `Put` is one media upload, which Cloud Storage applies whole. `Open` streams the object and, when the reader seeks (`http.ServeContent` does), asks for the rest with a `Range` header; the `ETag` the image routes send comes from the image's ID, not from the store, so the store has nothing to add for `304`.
+- **Without `BLOB_DIR` or `BLOB_BUCKET`,** images are off: upload, download and `GalleryService` answer `503`/`unavailable`, and the rest of the app works. The startup log warns.
 - **Deleting** removes the row first and the files after: without the row, nobody reaches the files, so a failure deleting them exposes nothing (it goes to the log).
 - **Deleting the campaign** (today, only through the master's account deletion) deletes the rows via `ON DELETE CASCADE`, but not the files. Whoever implements campaign or account deletion must also delete the prefix `campaigns/<campaign>/` (see [Privacy](privacy.md)).
 
@@ -2380,7 +2382,7 @@ The route is not Connect, but the errors use Connect codes, in a small JSON the 
 | 400 | `invalid_argument` | `MALFORMED_REQUEST` | Not a `multipart` form, a field is missing, an extra field, or the order is wrong |
 | 429 | `resource_exhausted` | `QUOTA` | The campaign already has 300 images, or would pass 500 MiB |
 | 401, 403, 404 | `unauthenticated`, `permission_denied`, `not_found` | — | No session; a player; a non-member (or the campaign does not exist) |
-| 503 | `unavailable` | — | Images off (no `BLOB_DIR`), or the database or storage did not respond |
+| 503 | `unavailable` | — | Images off (no `BLOB_DIR` or `BLOB_BUCKET`), or the database or storage did not respond |
 | 500, 504, 499 | `internal`, `deadline_exceeded`, `canceled` | — | The Connect protocol table's statuses (`httpStatus`, in `maps/httperror.go`): an `internal` error is 500, an expired deadline 504 and a cancelled request 499 (nobody reads the response) |
 
 The `CrossOriginProtection` `403` (an upload from another site) comes before all this, in plain text: the app never sees it.
