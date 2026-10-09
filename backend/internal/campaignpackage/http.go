@@ -61,10 +61,12 @@ func (s *Service) part(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	n, err := strconv.Atoi(r.PathValue("n"))
-	if err != nil || n < 1 {
+	// Parsed as 32 bits: the part number is stored as an INT4.
+	n64, err := strconv.ParseInt(r.PathValue("n"), 10, 32)
+	if err != nil || n64 < 1 {
 		return notFound()
 	}
+	n := int(n64)
 	imp, err := s.ownUpload(ctx, userID, r.PathValue("id"))
 	if err != nil {
 		return notFound() // someone else's upload reads as one that does not exist
@@ -100,7 +102,7 @@ func (s *Service) part(w http.ResponseWriter, r *http.Request) error {
 			return fmt.Errorf("find the upload: %w", err)
 		}
 		if err := q.UpsertCampaignImportPart(ctx, packagedb.UpsertCampaignImportPartParams{
-			ImportID: cur.ID, PartNumber: int32(n), ByteSize: int32(want), CreatedAt: now, //nolint:gosec // G115: at most PartSize
+			ImportID: cur.ID, PartNumber: int32(n64), ByteSize: int32(want), CreatedAt: now, //nolint:gosec // G115: want is at most PartSize
 		}); err != nil {
 			return fmt.Errorf("record the part: %w", err)
 		}
