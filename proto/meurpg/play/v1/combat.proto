@@ -4334,6 +4334,10 @@ enum ReactionKind {
   // an action of a player against an enemy waits for "Sem reação" so that the
   // pause says nothing to the players.
   REACTION_KIND_MASTER_CHECK = 11;
+  // A contest (grapple, shove, escape) that waits for its defender's roll or its
+  // winner's choice; it is answered with RespondContest / ResolveShove, not with
+  // AnswerReaction.
+  REACTION_KIND_CONTEST = 12;
 }
 
 enum ReactionWindowStatus {
@@ -4420,6 +4424,7 @@ message ReactionWindow {
     MasterCheckPrompt master_check = 28;
     HellishRebukeSavePrompt hellish_rebuke_save = 29;
     DeflectMissilesThrowPrompt deflect_throw = 30;
+    ContestPrompt contest = 31;
   }
 }
 
@@ -4601,6 +4606,12 @@ message ConcentrationSavePrompt {
   bool bonus_known = 7;
   // True once the player left the roll to the master.
   bool handed_to_master = 8;
+}
+
+// ContestPrompt names the contest a CONTEST window waits for: the sheet reads it
+// from Encounter.contest_state.
+message ContestPrompt {
+  string contest_id = 1;
 }
 
 message MasterCheckPrompt {

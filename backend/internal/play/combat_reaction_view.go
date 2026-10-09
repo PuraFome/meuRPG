@@ -27,6 +27,7 @@ var reactionKindProto = map[reaction.Kind]playv1.ReactionKind{
 	reaction.FeatherFall:       playv1.ReactionKind_REACTION_KIND_FEATHER_FALL,
 	reaction.Concentration:     playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE,
 	reaction.MasterCheck:       playv1.ReactionKind_REACTION_KIND_MASTER_CHECK,
+	reaction.Contest:           playv1.ReactionKind_REACTION_KIND_CONTEST,
 }
 
 // windowView is what the builders of a caller's windows share.
@@ -178,6 +179,19 @@ func (wv *windowView) opportunityWindow(o playdb.OpportunityOffer, mover, reacto
 // caller sees is named (never which NPC, never why).
 func (wv *windowView) waitOf(w playdb.ReactionWindow, reactor *playdb.Combatant, answers bool, wait *reaction.Wait) {
 	save := reaction.Kind(w.Kind) == reaction.Concentration
+	if reaction.Kind(w.Kind) == reaction.Contest {
+		// A contest names the player that owes the next step, and is the master's otherwise;
+		// whoever answers it reads its sheet instead.
+		switch {
+		case answers && reactor == nil:
+		case answers:
+		case reactor != nil && reactor.Kind == kindPlayer && wv.v.sees(*reactor):
+			wait.Contesters = append(wait.Contesters, reactor.Label)
+		default:
+			wait.Master = true
+		}
+		return
+	}
 	if wv.v.master {
 		switch {
 		case reactor != nil && reactor.Kind == kindPlayer && save:
@@ -244,6 +258,8 @@ func (wv *windowView) window(w playdb.ReactionWindow, reactor *playdb.Combatant,
 		err = wv.shieldPrompt(w, reactor, out)
 	case reaction.MasterCheck:
 		err = wv.masterCheckPrompt(w, out)
+	case reaction.Contest:
+		out.Prompt = &playv1.ReactionWindow_Contest{Contest: &playv1.ContestPrompt{ContestId: windowTriggerOf(w).Contest}}
 	case reaction.Concentration:
 		err = wv.concentrationPrompt(w, reactor, out)
 	default:

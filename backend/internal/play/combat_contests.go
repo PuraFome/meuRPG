@@ -36,10 +36,7 @@ import (
 // never the total, the skill or the escape DC of an NPC, nor the other player's total.
 //
 // The contest waits without a timeout; the master may answer for anyone or close it.
-// A reaction window of kind CONTEST is the same mechanism with a different store:
-// today the wait is the contest row itself (status awaiting_defender), and the
-// state read says who it waits for; when the reaction window lands, the row moves into
-// it and this wait goes away.
+// The wait is a reaction window of kind CONTEST (combat_contests_window.go).
 
 // contestCaller reads what every contest call starts with: the caller, the idempotency
 // key and the combat.
@@ -248,15 +245,15 @@ func (s *Service) StartContest(
 		if err := v.mayAct(initiator); err != nil {
 			return nil, err
 		}
-		if err := s.mustActNow(ctx, c, initiator); err != nil {
-			return nil, err
-		}
 		open, err := c.q.ListUnansweredContestsOf(ctx, playdb.ListUnansweredContestsOfParams{EncounterID: c.enc.ID, InitiatorID: initiator.ID})
 		if err != nil {
 			return nil, fmt.Errorf("list the open contests: %w", err)
 		}
 		if len(open) > 0 {
 			return nil, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_CONTEST_OPEN, "a contest of this combatant waits already")
+		}
+		if err := s.mustActNow(ctx, c, initiator); err != nil {
+			return nil, err
 		}
 		holds, err := c.q.ListHolds(ctx, c.enc.ID)
 		if err != nil {

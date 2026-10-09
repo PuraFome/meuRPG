@@ -22,7 +22,20 @@ INSERT INTO session_event_kinds (kind) VALUES
     ('surprise_set')
 ON CONFLICT (kind) DO NOTHING;
 
+-- A contest waits in a reaction window of its own kind (W7-X, on 00221).
+ALTER TABLE reaction_windows DROP CONSTRAINT reaction_windows_kind_valid;
+ALTER TABLE reaction_windows ADD CONSTRAINT reaction_windows_kind_valid CHECK (kind IN (
+    'shield', 'uncanny_dodge', 'hellish_rebuke', 'counterspell', 'cutting_words',
+    'deflect_missiles', 'feather_fall', 'concentration_save', 'master_check', 'contest'
+));
+
 -- +goose Down
+DELETE FROM reaction_windows WHERE kind = 'contest';
+ALTER TABLE reaction_windows DROP CONSTRAINT reaction_windows_kind_valid;
+ALTER TABLE reaction_windows ADD CONSTRAINT reaction_windows_kind_valid CHECK (kind IN (
+    'shield', 'uncanny_dodge', 'hellish_rebuke', 'counterspell', 'cutting_words',
+    'deflect_missiles', 'feather_fall', 'concentration_save', 'master_check'
+));
 DELETE FROM session_events WHERE kind IN (
     'contest_started', 'contest_resolved', 'contest_deferred', 'contest_closed', 'shove_resolved', 'grapple_released',
     'hide_attempted', 'hide_resolved', 'hide_ended', 'help_given', 'help_cleared',
