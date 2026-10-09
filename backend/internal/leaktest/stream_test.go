@@ -90,7 +90,10 @@ func eventCase(ev *playv1.WatchGameSessionResponse) string {
 // notTriggered lists the events the script does not make, and why. An event that is neither
 // triggered nor here fails TestLeakMatrix/stream: a new kind of event must be exercised or
 // explained.
-var notTriggered = map[string]string{}
+var notTriggered = map[string]string{
+	"reaction_window_opened": "TestAnNPCsReactionWindowIsHeardByTheMasterAlone needs its own combat state and checks the events of both kinds",
+	"reaction_window_closed": "same test",
+}
 
 func checkStream(t *testing.T, w *world, got *answers) {
 	t.Helper()
