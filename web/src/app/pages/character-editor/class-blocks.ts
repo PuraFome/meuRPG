@@ -257,3 +257,73 @@ export function outsideTheLists(
       classes: LIST.format(spell.classKeys.flatMap((k) => (names.get(k) ? [names.get(k)!] : []))),
     }));
 }
+
+/** What `PreviewChoices` says about the spells outside a casting class's list (`ChoiceSpellSource`), as the editor reads it. */
+export interface SpellSourceVm {
+  readonly classKey: string;
+  /** The spells the patron adds to the class list, from the class level they come at. */
+  readonly patronSpells: readonly { readonly spellKey: string; readonly classLevel: number }[];
+  /** How many known spells may come from any class's list, and the highest circle of one. */
+  readonly secrets: number;
+  readonly secretsMaxSpellLevel: number;
+}
+
+/** One extra picker of a section: spells that are not on the class list but that the sheet may know. */
+export interface ExtraSpellList {
+  readonly id: 'patron' | 'secrets';
+  readonly title: string;
+  readonly hint: string;
+  readonly spells: readonly SpellOptionVm[];
+}
+
+/**
+ * The spells outside a section's list that its class may pick (PM-05): the patron's expanded spells ("Do patrono")
+ * and the Magical Secrets of any class's list. The numbers and the levels are the server's (`source`); the
+ * browser only looks the keys up in the catalog and leaves out what the class list already offers.
+ */
+export function extraSpellLists(
+  catalog: RulesCatalogVm,
+  section: CasterSection,
+  source: SpellSourceVm | undefined,
+  selected: ReadonlySet<string>,
+  master = false,
+): ExtraSpellList[] {
+  if (!source) {
+    return [];
+  }
+  const own = (sp: SpellOptionVm) => sp.classKeys.includes(section.listClassKey);
+  const out: ExtraSpellList[] = [];
+  const byKey = new Map(catalog.spells.map((sp) => [sp.key, sp]));
+  const patron = source.patronSpells
+    .filter((p) => p.classLevel <= section.level)
+    .flatMap((p) => {
+      const sp = byKey.get(p.spellKey);
+      return sp && sp.level >= 1 && !own(sp) && listed(sp, selected, master) ? [sp] : [];
+    });
+  if (patron.length > 0) {
+    out.push({
+      id: 'patron',
+      title: 'Do patrono',
+      hint: 'Magias que o patrono soma à lista da classe. Entram entre as conhecidas.',
+      spells: sorted(patron),
+    });
+  }
+  if (source.secrets > 0) {
+    const secrets = catalog.spells.filter(
+      (sp) =>
+        sp.level >= 1 &&
+        !own(sp) &&
+        listed(sp, selected, master) &&
+        (sp.level <= source.secretsMaxSpellLevel || selected.has(sp.key)),
+    );
+    if (secrets.length > 0) {
+      out.push({
+        id: 'secrets',
+        title: 'Segredos mágicos',
+        hint: `Até ${source.secrets} ${source.secrets === 1 ? 'magia' : 'magias'} de qualquer lista de classe, até o ${source.secretsMaxSpellLevel}º nível de magia.`,
+        spells: sorted(secrets),
+      });
+    }
+  }
+  return out;
+}

@@ -13,6 +13,7 @@ import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC,
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
+import { tableWithOpenChoices } from './choices-support';
 import { classCard, passClassStep, tableForLevelUp } from './levelup-support';
 import { aurora, auroraSheet, beginPlacedCombatRPC, nael, naelSheet, orla, orlaSheet, spendForRestRPC } from './rests-support';
 import { castSheet, choiceCard, openCastOf, pickChoice, pickSlotRadio, pickTargetOf, tableForCasting } from './casting-support';
@@ -2856,6 +2857,80 @@ test('o subir de nível passa no axe e nas conferências de layout no tema escur
 test('o subir de nível passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
   test.setTimeout(900_000);
   await scanLevelUpScreens(browser, 'light', 320);
+});
+
+// The choices a locked sheet left open (PM-05): the sheet's banner, the page "Completar escolhas pendentes" with the
+// choice missing, half picked and full, the save, the page with nothing left, and the master's tag on the campaign.
+async function scanOpenChoicesScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `${colorScheme === 'light' ? 'no tema claro' : 'no tema escuro'}, a ${width} px`;
+  const height = width === 320 ? 568 : width === 1024 ? 768 : width < 768 ? 844 : 800;
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height } });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableWithOpenChoices(m, p, `Acessibilidade escolhas ${Date.now()}`);
+    campaignId = table.campaignId;
+    const sheet = `/campaigns/${campaignId}/characters/${table.characterId}`;
+
+    // Not `open`: with a session open the page keeps its stream, so the network is never idle.
+    await m.goto(`/campaigns/${campaignId}`);
+    await expect(m.getByText('2 escolhas em aberto')).toBeVisible();
+    await expectScreenPasses(m, `O mestre, a marca de escolhas em aberto ${where}`);
+
+    await p.goto(sheet);
+    await expect(p.getByText('Esta ficha tem 2 escolhas pendentes.')).toBeVisible();
+    await expectScreenPasses(p, `A ficha com escolhas pendentes ${where}`);
+
+    await p.getByRole('link', { name: 'Completar escolhas pendentes' }).click();
+    await expect(p.getByRole('heading', { level: 1, name: 'Completar escolhas pendentes' })).toBeVisible();
+    const abilities = p.getByRole('region', { name: /\+1 em duas habilidades/ });
+    await expect(abilities).toBeVisible();
+    await expectScreenPasses(p, `Completar escolhas, com a escolha faltando ${where}`);
+    await abilities.getByRole('checkbox', { name: /Destreza/ }).click();
+    await expect(abilities.getByText('Destreza 16 → 17')).toBeVisible();
+    await expectScreenPasses(p, `Completar escolhas, uma habilidade ${where}`);
+    await abilities.getByRole('checkbox', { name: /Constituição/ }).click();
+    await expect(abilities.getByText('Constituição 15 → 16')).toBeVisible();
+    await expect(abilities.getByText(/Já escolheu 2/).first()).toBeVisible();
+    await expectScreenPasses(p, `Completar escolhas, as duas habilidades ${where}`);
+
+    await p.getByRole('button', { name: 'Salvar escolhas' }).click();
+    await expect(p).toHaveURL(new RegExp(`${sheet}$`));
+    await expect(p.getByText('escolhas pendentes')).toHaveCount(0);
+    await expectScreenPasses(p, `A ficha depois de completar as escolhas ${where}`);
+
+    await p.goto(`${sheet}/choices`);
+    await expect(p.getByText('Pensantus não tem escolhas pendentes.')).toBeVisible();
+    await expectScreenPasses(p, `Completar escolhas, sem nada pendente ${where}`);
+  } finally {
+    await endOpenSessionRPC(m, campaignId);
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as escolhas pendentes passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-01'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanOpenChoicesScreens(browser, 'light', 1280);
+});
+
+test('as escolhas pendentes passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-01'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanOpenChoicesScreens(browser, 'dark', 390);
+});
+
+test('as escolhas pendentes passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@RN-01'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanOpenChoicesScreens(browser, 'dark', 1024);
+});
+
+test('as escolhas pendentes passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@RN-01'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanOpenChoicesScreens(browser, 'light', 320);
 });
 
 /**

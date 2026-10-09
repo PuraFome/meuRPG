@@ -4,6 +4,10 @@ import {
   CharacterKind,
 } from '../../core/characters/characters.types';
 import { DamageTypeKey } from '../../core/characters/character-labels';
+import type {
+  ChoiceGroup,
+  ChoiceSpellSource,
+} from '../../../gen/meurpg/characters/v1/characters_pb';
 import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
 
 /**
@@ -86,19 +90,10 @@ export interface ExtraClassValue {
  * field — simple enough to be lossless without a dedicated add/remove list
  * UI (integrator review, phase 2b).
  *
- * **Left out on purpose (integrator review, phase 2 and 2b):**
- * `FullSheet.feature_choice_keys` (a fighting style, a dragon ancestry, an
- * eldritch invocation...) has no field here. `rules.v1.Content` does not
- * list, for a given feature or trait, which content keys are valid choices
- * for it — there is nowhere in the catalog to build a "choose one" select
- * from. Sending it empty on create is safe: an unmade choice a feature
- * needs shows up as a `DerivedSheet.issue`, exactly like any other
- * incomplete choice the rules would flag (ADR-0008, "the app is an
- * assistant, not a judge"). On an edit, `CharacterEditorSourceLive` starts
- * from the loaded `FullSheet` and only overwrites what this form actually
- * has a field for, so a value already set here (by a future level-up flow,
- * say) survives a save through this editor even though this editor cannot
- * set it. Revisit once `ContentService` exposes those option lists.
+ * `featureChoiceKeys` and `featureChoiceText` (a fighting style, a dragon ancestry, an eldritch
+ * invocation, the humanoid races of a favored enemy...) are not typed either: the "Escolhas" step
+ * draws them from `CharacterEditorSource.previewChoices` (PM-05), which says which choices the draft
+ * has and the exact string each option stores; a pick only ever writes what the server listed.
  */
 export interface CharacterFormValue {
   name: string;
@@ -167,6 +162,10 @@ export interface CharacterFormValue {
   alignment: AlignmentKey;
   /** Locks with the rest of the sheet, unlike the story fields (A3). */
   customFeaturesText: string;
+  /** The picks of the class and race choices, in the order they were made (`FullSheet.feature_choice_keys`). */
+  featureChoiceKeys: string[];
+  /** The free texts of those picks, by `<choice key>#<n>` (`FullSheet.feature_choice_text`). */
+  featureChoiceText: Record<string, string>;
   /** A College of Lore bard's "Perguntar" setting for Palavras de Interrupção: on which rolls of an enemy the combat asks. */
   cuttingWordsAsk: CuttingWordsAskKey;
 }
@@ -475,6 +474,19 @@ export interface SpellLimitsVm {
   readonly preparedMax: number;
 }
 
+/** What `PreviewChoices` says about a draft: the choices its race and classes ask, and where the pickers find spells. */
+export interface ChoicesPreviewVm {
+  /** Empty when the draft asks nothing (a human rogue 1): the editor has no step for it. */
+  readonly groups: readonly ChoiceGroup[];
+  /** "Escolhas feitas: done de total". */
+  readonly done: number;
+  readonly total: number;
+  /** The picks the draft stores that no choice of it offers (the class or the race changed): the editor drops them. */
+  readonly notOffered: readonly string[];
+  /** For each casting class, the spells outside its list (the patron's, Magical Secrets). */
+  readonly spellSources: readonly ChoiceSpellSource[];
+}
+
 export interface CharacterForEdit {
   readonly kind: CharacterKind;
   readonly revision: number;
@@ -525,6 +537,8 @@ export abstract class CharacterEditorSource {
   ): Promise<AbilityRollsVm>;
   /** `PreviewCharacter`: the server derives the draft and writes nothing. */
   abstract previewCharacter(input: PreviewCharacterInput): Promise<CharacterPreviewVm>;
+  /** `PreviewChoices`: the choices the draft asks, with what is picked in it; writes nothing. */
+  abstract previewChoices(input: PreviewCharacterInput): Promise<ChoicesPreviewVm>;
   abstract createCharacter(input: CreateCharacterInput): Promise<{ characterId: string }>;
   abstract updateCharacter(input: UpdateCharacterInput): Promise<{ revision: number }>;
 }

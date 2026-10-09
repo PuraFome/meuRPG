@@ -49,6 +49,7 @@ import {
   CharacterForEdit,
   CharacterFormValue,
   CharacterPreviewVm,
+  ChoicesPreviewVm,
   CreateCharacterInput,
   CuttingWordsAskKey,
   HitPointsMethod,
@@ -320,6 +321,8 @@ export function toFullSheetInit(v: CharacterFormValue) {
     portraitImageId: v.portraitImageId,
     alignment: ALIGNMENT_TO_GEN[v.alignment],
     customFeaturesText: v.customFeaturesText,
+    featureChoiceKeys: v.featureChoiceKeys,
+    featureChoiceText: v.featureChoiceText,
     cuttingWordsAsk: CUTTING_WORDS_ASK_TO_GEN[v.cuttingWordsAsk],
   };
 }
@@ -468,6 +471,8 @@ export function toFormFullSheet(name: string, full: GenFullSheet): CharacterForm
     portraitImageId: full.portraitImageId,
     alignment: ALIGNMENT_FROM_GEN[full.alignment],
     customFeaturesText: full.customFeaturesText,
+    featureChoiceKeys: [...full.featureChoiceKeys],
+    featureChoiceText: { ...full.featureChoiceText },
     cuttingWordsAsk: cuttingWordsAskFromGen(full.cuttingWordsAsk),
   };
 }
@@ -797,6 +802,30 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         spellsKnown: sc.spellsKnown,
         preparedMax: sc.preparedMax,
       })),
+    };
+  }
+
+  async previewChoices(input: PreviewCharacterInput): Promise<ChoicesPreviewVm> {
+    const res = await this.characterClient.previewChoices({
+      campaignId: input.campaignId,
+      characterId: input.characterId ?? '',
+      kind: KIND_TO_GEN[input.kind],
+      sheet: {
+        content: {
+          case: 'full',
+          value: mergeFullSheetInit(
+            input.characterId ? this.loadedFullSheets.get(input.characterId) : undefined,
+            input.full,
+          ),
+        },
+      },
+    });
+    return {
+      groups: res.groups,
+      done: res.done,
+      total: res.total,
+      notOffered: res.notOffered,
+      spellSources: res.spellSources,
     };
   }
 

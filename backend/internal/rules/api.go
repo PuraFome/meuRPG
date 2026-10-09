@@ -157,6 +157,11 @@ type Build struct {
 	// invocation. Derive applies an option only while the build has the
 	// feature or trait it belongs to.
 	FeatureChoices []string
+	// FeatureChoiceText is the free text some choices take, by "<choice
+	// key>#<n>": the two humanoid races of a Favored Enemy. The engine keeps the
+	// text and never reads it (choicegroups.go).
+	FeatureChoiceText map[string]string
+
 	// ToolProficiencies are the tool proficiencies the sheet lists as free text.
 	// Derive does not read them; the guided level-up adds the musical instrument
 	// that taking a Bard level as a later class gives.
@@ -690,6 +695,12 @@ type Derived struct {
 	// Hints are situational bonuses the engine shows but does not apply
 	// (ADR-0008: "vantagem se a fonte for mágica").
 	Hints []Hint
+	// BreathWeapon is the dragonborn's breath weapon once the dragon ancestry is
+	// picked; nil for the others.
+	BreathWeapon *BreathWeapon `json:",omitempty"`
+	// Resistances are the damage types the character resists because of its race
+	// (the dragonborn's ancestry, the tiefling's fire, the dwarf's poison).
+	Resistances []ChoiceResistance `json:",omitempty"`
 	// OpenChoices are the choices the sheet still lacks, each with how many
 	// are missing: skills, cantrips, spells known and spells prepared. A
 	// sheet with none is complete.
@@ -900,6 +911,9 @@ type Feature struct {
 	SourcePT string
 	// Description is the SRD text, in English (ADR-0008).
 	Description []string
+	// SummaryPT is the rule in one line, in Portuguese, for an option the player
+	// picked (a fighting style, an invocation); empty for the others.
+	SummaryPT string `json:",omitempty"`
 }
 
 // Proficiency is an armor, weapon or tool proficiency.

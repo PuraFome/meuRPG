@@ -83,6 +83,9 @@ export interface FeatureVm {
    * behind a native `<details>` — the sheet has no Portuguese text for
    * this yet (plan §5, "open questions"). */
   readonly description: string;
+  /** The rule in one line, in Portuguese (`Feature.summary_pt`), for an option the player picked (a fighting
+   * style, an invocation, a pact boon); empty for the other features. */
+  readonly summaryPt: string;
 }
 
 /** A real problem with the sheet (`DerivedSheet.issues`): shown in the
@@ -169,6 +172,12 @@ export interface FullSheetVm {
   readonly cantripNames: readonly string[];
   readonly spellNames: readonly string[];
   readonly features: readonly FeatureVm[];
+  /** The dragonborn's Breath Weapon with the numbers of this sheet, the whole rule in one paragraph
+   * (`DerivedSheet.breath_weapon.text_pt`); empty for every other character. */
+  readonly breathWeapon: string;
+  /** The damage types the character resists because of its race, by their Portuguese names
+   * ("Fogo", "Veneno"); the sheet only shows them (`DerivedSheet.resistances`). */
+  readonly resistances: readonly string[];
   readonly languages: readonly string[];
   readonly proficiencies: readonly string[];
   readonly equipment: readonly EquipmentItemVm[];
@@ -376,4 +385,7 @@ export abstract class CharacterSheetSource {
    * player's pending membership too (`RejectCharacter`). Nothing comes
    * back: the character is gone. */
   abstract rejectCharacter(campaignId: string, characterId: string): Promise<void>;
+  /** How many selections of the character's class and race choices are still open (PM-05), for "Esta ficha tem N
+   * escolhas pendentes": the master's and the owner's to know. 0 when there are none and for a sheet that has no choices. */
+  abstract getPendingChoiceCount(campaignId: string, characterId: string): Promise<number>;
 }

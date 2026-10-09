@@ -398,3 +398,58 @@ func TestMR040_TheHitPointsOfANewClassUseItsDie(t *testing.T) {
 		t.Errorf("a typed 10 on the d10: %v, %v", up.GetDerived().GetHitPointsMax(), err)
 	}
 }
+
+// TestAMulticlassLevelBringsTheNewClassesChoices: a Wizard that takes Ranger 1 picks the
+// ranger's level 1 choices (a favored enemy and its language, a terrain) at that level:
+// the offer lists them in new_choices, the level is refused without their picks
+// (FEATURE_CHOICE) and goes through with them, leaving no choice open (RN-33).
+func TestAMulticlassLevelBringsTheNewClassesChoices(t *testing.T) {
+	t.Parallel()
+	tb := newLevelUpTable(t, 2700)
+	o, err := tb.optionsFor(tb.owner, tb.pc, "class:ranger")
+	if err != nil {
+		t.Fatalf("GetLevelUpOptions(Ranger): %v", err)
+	}
+	if !o.GetIsNewClass() || len(o.GetLateChoices()) != 0 {
+		t.Fatalf("options = new %v, late %v; want a new class and nothing left behind", o.GetIsNewClass(), o.GetLateChoices())
+	}
+	var asked []*charactersv1.Choice
+	for _, g := range o.GetNewChoices() {
+		asked = append(asked, g.GetChoices()...)
+	}
+	if len(asked) < 2 {
+		t.Fatalf("new choices = %v, want the favored enemy and the terrain of level 1", o.GetNewChoices())
+	}
+	ch := &charactersv1.LevelUpChoices{ClassKey: "class:ranger", HitPoints: &charactersv1.LevelUpHitPoints{Method: charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_AVERAGE}}
+	for _, fc := range o.GetFeatureChoices() {
+		for _, opt := range fc.GetOptions()[:fc.GetChoose()] {
+			ch.FeatureChoiceKeys = append(ch.FeatureChoiceKeys, opt.GetKey())
+		}
+	}
+	for _, sk := range o.GetProficiencyChoices() {
+		for _, opt := range sk.GetFrom() {
+			if !opt.GetAlreadyHave() && len(ch.SkillProficiencyKeys) < int(sk.GetCount()) {
+				ch.SkillProficiencyKeys = append(ch.SkillProficiencyKeys, opt.GetKey())
+			}
+		}
+	}
+	_, err = tb.levelUp(tb.owner, tb.pc, ch)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("the level without the ranger's choices: %v, want a refusal", err)
+	}
+	for _, c := range asked {
+		for _, opt := range c.GetOptions() {
+			if opt.GetReasonPt() == "" && !opt.GetNeedsText() && len(ch.FeatureChoiceKeys) < 12 && !slices.Contains(ch.FeatureChoiceKeys, opt.GetStoredKey()) {
+				ch.FeatureChoiceKeys = append(ch.FeatureChoiceKeys, opt.GetStoredKey())
+				break
+			}
+		}
+	}
+	done, err := tb.levelUp(tb.owner, tb.pc, ch)
+	if err != nil {
+		t.Fatalf("the level with the ranger's choices: %v", err)
+	}
+	if len(done.GetDerived().GetClasses()) != 2 || done.GetDerived().GetTotalLevel() != 4 {
+		t.Errorf("after the level: %d classes, level %d; want Wizard 3 and Ranger 1", len(done.GetDerived().GetClasses()), done.GetDerived().GetTotalLevel())
+	}
+}

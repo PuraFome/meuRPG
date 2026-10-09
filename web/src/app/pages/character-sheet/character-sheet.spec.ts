@@ -54,8 +54,15 @@ class FakeCharacterSheetSource {
     Promise.reject(new Error('not stubbed'));
   rejectCharacterCalls: string[] = [];
 
+  pendingChoices = 0;
+  pendingChoiceCalls: string[] = [];
+
   getXpMode(): Promise<CampaignXpMode> {
     return Promise.resolve(this.xpMode);
+  }
+  getPendingChoiceCount(_campaignId: string, characterId: string): Promise<number> {
+    this.pendingChoiceCalls.push(characterId);
+    return Promise.resolve(this.pendingChoices);
   }
   getCharacterSheet(campaignId: string, characterId: string): Promise<CharacterSheetVm> {
     return this.getCharacterSheetFn(campaignId, characterId);
@@ -130,6 +137,8 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     cantripNames: [],
     spellNames: [],
     features: [],
+    breathWeapon: '',
+    resistances: [],
     languages: [],
     proficiencies: [],
     equipment: [],
@@ -1037,6 +1046,101 @@ describe('CharacterSheetPage', () => {
     expect(section.textContent).not.toContain('Defesa sem Armadura');
   });
 
+  describe('class and race choices (PM-05)', () => {
+    it('warns of the open choices and links to the page that completes them', async () => {
+      configure();
+      fake.pendingChoices = 2;
+      fake.getCharacterSheetFn = () => Promise.resolve(vm({ state: 'locked', canEdit: false }));
+
+      const el = await render();
+
+      const banner = el.querySelector('app-pending-choices-banner')!;
+      expect(banner.textContent).toContain('Esta ficha tem 2 escolhas pendentes.');
+      const link = banner.querySelector('a')!;
+      expect(link.textContent?.trim()).toBe('Completar');
+      expect(link.getAttribute('href')).toBe('/campaigns/camp-1/characters/char-1/choices');
+    });
+
+    it('says "1 escolha pendente" in the singular', async () => {
+      configure();
+      fake.pendingChoices = 1;
+      fake.getCharacterSheetFn = () => Promise.resolve(vm());
+
+      const el = await render();
+
+      expect(el.textContent).toContain('Esta ficha tem 1 escolha pendente.');
+    });
+
+    it('shows nothing with no open choice', async () => {
+      configure();
+      fake.getCharacterSheetFn = () => Promise.resolve(vm());
+
+      const el = await render();
+
+      expect(el.querySelector('app-pending-choices-banner')?.textContent?.trim()).toBe('');
+    });
+
+    it('does not even ask for an NPC, a basic sheet or a dead character', async () => {
+      configure();
+      fake.pendingChoices = 3;
+      fake.getCharacterSheetFn = () => Promise.resolve(vm({ characterKind: 'enemy' }));
+      let el = await render();
+      expect(el.textContent).not.toContain('escolhas pendentes');
+
+      TestBed.resetTestingModule();
+      configure();
+      fake.pendingChoices = 3;
+      fake.getCharacterSheetFn = () => Promise.resolve(vm({ state: 'dead' }));
+      el = await render();
+      expect(el.textContent).not.toContain('escolhas pendentes');
+      expect(fake.pendingChoiceCalls).toEqual([]);
+    });
+
+    it('shows the breath weapon box, the resistances as pills and the one-line rule of a picked option', async () => {
+      configure();
+      fake.getCharacterSheetFn = () =>
+        Promise.resolve(
+          vm({
+            sheet: fullSheet({
+              breathWeapon: 'Ação: sopro em cone de 4,5 m. Dano de 2d6 de fogo.',
+              resistances: ['Fogo', 'Veneno'],
+              features: [
+                {
+                  name: 'Estilo de Luta: Defesa',
+                  sourcePt: 'Guerreiro 1',
+                  description: 'While you are wearing armor, you gain a +1 bonus to AC.',
+                  summaryPt: '+1 na CA enquanto usar armadura.',
+                },
+              ],
+            }),
+          }),
+        );
+
+      const el = await render();
+
+      const breath = sectionTitled(el, 'Arma de sopro');
+      expect(breath.textContent).toContain('sopro em cone de 4,5 m');
+      const features = sectionTitled(el, 'Características e traços');
+      const pills = Array.from(features.querySelectorAll('ul.pills li')).map((li) =>
+        li.textContent?.trim(),
+      );
+      expect(pills).toEqual(['Fogo', 'Veneno']);
+      expect(features.querySelector('.feature__summary-pt')?.textContent).toContain(
+        '+1 na CA enquanto usar armadura.',
+      );
+    });
+
+    it('draws none of them for a sheet without those traits', async () => {
+      configure();
+      fake.getCharacterSheetFn = () => Promise.resolve(vm());
+
+      const el = await render();
+
+      expect(el.textContent).not.toContain('Arma de sopro');
+      expect(el.textContent).not.toContain('Resistências');
+    });
+  });
+
   it('shows each feature as a compact row, its English description collapsed by default; issues in the notice under the header, hints as reminders', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
@@ -1048,6 +1152,7 @@ describe('CharacterSheetPage', () => {
                 name: 'Recuperação Arcana',
                 sourcePt: 'Mago 1',
                 description: 'You have learned to regain some of your magical energy.',
+                summaryPt: '',
               },
             ],
             issues: [
@@ -1107,6 +1212,7 @@ describe('CharacterSheetPage', () => {
               {
                 name: 'Atleta',
                 sourcePt: 'Talento · Mago 4',
+                summaryPt: '',
                 description: 'Você corre e escala melhor.',
               },
             ],

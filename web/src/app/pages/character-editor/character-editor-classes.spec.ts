@@ -194,6 +194,9 @@ class FakeSource {
   rollAbilityScores() {
     return Promise.reject(new Error('unused'));
   }
+  previewChoices() {
+    return Promise.resolve({ groups: [], done: 0, total: 0, notOffered: [], spellSources: [] });
+  }
   createCharacter(input: CreateCharacterInput) {
     this.created.push(input);
     return Promise.resolve({ characterId: 'new' });
@@ -655,6 +658,8 @@ describe('an edit of a sheet of several classes', () => {
         portraitImageId: '',
         alignment: '',
         customFeaturesText: '',
+        featureChoiceKeys: [],
+        featureChoiceText: {},
         cuttingWordsAsk: 'only-attacks',
       },
     };
@@ -839,6 +844,8 @@ function emptyEdit(over: Partial<CharacterForEdit['full'] & object> = {}): Chara
       portraitImageId: '',
       alignment: '',
       customFeaturesText: '',
+      featureChoiceKeys: [],
+      featureChoiceText: {},
       cuttingWordsAsk: 'only-attacks',
       ...over,
     },

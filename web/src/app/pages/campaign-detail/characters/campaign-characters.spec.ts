@@ -4,7 +4,11 @@ import { provideRouter } from '@angular/router';
 
 import { ExperienceStore, type ExperienceRow } from '../../../core/progression/experience-store';
 import { CampaignCharacters } from './campaign-characters';
-import { CampaignCharactersSource, CampaignCharactersVm } from './campaign-characters.types';
+import {
+  CampaignCharactersSource,
+  CampaignCharactersVm,
+  OpenChoicesVm,
+} from './campaign-characters.types';
 
 @Injectable()
 class FakeCampaignCharactersSource {
@@ -14,8 +18,16 @@ class FakeCampaignCharactersSource {
     hasLivingCharacter: false,
   });
 
+  openChoicesResult: Promise<readonly OpenChoicesVm[]> = Promise.resolve([]);
+  openChoicesCalls = 0;
+
   listCharacters(): Promise<CampaignCharactersVm> {
     return this.listCharactersResult;
+  }
+
+  openChoices(): Promise<readonly OpenChoicesVm[]> {
+    this.openChoicesCalls++;
+    return this.openChoicesResult;
   }
 }
 
@@ -273,6 +285,76 @@ describe('CampaignCharacters', () => {
       const { el } = await render(true);
       expect(el.querySelector('app-level-up-tag')).toBeNull();
       expect(el.textContent).toContain('Pensantus');
+    });
+  });
+  describe('open choices (PM-05)', () => {
+    const vm: CampaignCharactersVm = {
+      playerCharacters: [
+        {
+          id: 'c1',
+          name: 'Tharn',
+          kind: 'player',
+          state: 'locked',
+          classSummary: 'Guerreiro 1',
+          playerDisplayName: 'Vinicius',
+        },
+        {
+          id: 'c2',
+          name: 'Lia',
+          kind: 'player',
+          state: 'locked',
+          classSummary: 'Mago 1',
+          playerDisplayName: 'Ana',
+        },
+      ],
+      npcs: [],
+      hasLivingCharacter: false,
+    };
+
+    it("tags the master's characters that have choices open, with what is open for a screen reader", async () => {
+      fake.listCharactersResult = Promise.resolve(vm);
+      fake.openChoicesResult = Promise.resolve([
+        { characterId: 'c1', count: 2, labels: ['Estilo de Luta (Guerreiro, nível 1)'] },
+      ]);
+
+      const { el } = await render(true);
+
+      const tags = Array.from(el.querySelectorAll('.mr-tag')).filter((t) =>
+        t.textContent?.includes('em aberto'),
+      );
+      expect(tags.length).toBe(1);
+      expect(tags[0].textContent).toContain('2 escolhas em aberto');
+      expect(tags[0].textContent).toContain('Estilo de Luta (Guerreiro, nível 1)');
+      expect(el.textContent).not.toContain('1 escolha em aberto');
+    });
+
+    it('says "1 escolha em aberto" in the singular', async () => {
+      fake.listCharactersResult = Promise.resolve(vm);
+      fake.openChoicesResult = Promise.resolve([{ characterId: 'c2', count: 1, labels: ['Raça'] }]);
+
+      const { el } = await render(true);
+
+      expect(el.textContent).toContain('1 escolha em aberto');
+    });
+
+    it('never asks for them, nor shows a tag, to a player', async () => {
+      fake.listCharactersResult = Promise.resolve(vm);
+      fake.openChoicesResult = Promise.resolve([{ characterId: 'c1', count: 2, labels: ['x'] }]);
+
+      const { el } = await render(false);
+
+      expect(fake.openChoicesCalls).toBe(0);
+      expect(el.textContent).not.toContain('em aberto');
+    });
+
+    it("keeps the list when the master's open choices cannot be read", async () => {
+      fake.listCharactersResult = Promise.resolve(vm);
+      fake.openChoicesResult = Promise.reject(new Error('down'));
+
+      const { el } = await render(true);
+
+      expect(el.textContent).toContain('Tharn');
+      expect(el.textContent).not.toContain('em aberto');
     });
   });
 

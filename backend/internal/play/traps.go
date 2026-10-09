@@ -259,6 +259,7 @@ func (s *Service) SearchForTraps(
 		if err != nil {
 			return err
 		}
+		shown = shownSources(cm.Sources, names)
 		var (
 			face, face2 int
 			totals      []int

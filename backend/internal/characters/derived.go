@@ -158,7 +158,18 @@ func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
 			NamePt:      f.NamePT,
 			SourcePt:    f.SourcePT,
 			Description: strings.Join(f.Description, "\n\n"),
+			SummaryPt:   f.SummaryPT,
 		})
+	}
+	if bw := d.BreathWeapon; bw != nil {
+		out.BreathWeapon = &rulesv1.BreathWeapon{
+			AncestryKey: bw.AncestryKey, DamageType: bw.DamageType, DamageTypeNamePt: bw.DamageTypePT, Dice: bw.Dice,
+			Shape: breathShapeToProto[bw.Shape], SizeFt: i32(bw.SizeFt), WidthFt: i32(bw.WidthFt),
+			SaveAbility: abilityToProto[bw.SaveAbility], Dc: i32(bw.DC), TextPt: bw.Text,
+		}
+	}
+	for _, r := range d.Resistances {
+		out.Resistances = append(out.Resistances, &rulesv1.Resistance{DamageType: r.DamageType, DamageTypeNamePt: r.DamageTypePT, SourceKey: r.SourceKey})
 	}
 	for _, l := range d.Languages {
 		out.Languages = append(out.Languages, l.NamePT)
@@ -183,6 +194,11 @@ func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
 		out.Issues = append(out.Issues, &rulesv1.Issue{Code: is.Code, Field: is.Field, Message: is.Message})
 	}
 	return out
+}
+
+var breathShapeToProto = map[string]rulesv1.BreathShape{
+	rules.BreathLine: rulesv1.BreathShape_BREATH_SHAPE_LINE,
+	rules.BreathCone: rulesv1.BreathShape_BREATH_SHAPE_CONE,
 }
 
 var rechargeToProto = map[string]rulesv1.Recharge{

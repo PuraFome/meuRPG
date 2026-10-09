@@ -16,6 +16,7 @@ import {
   CampaignCharacterListItemVm,
   CampaignCharactersSource,
   CampaignCharactersVm,
+  OpenChoicesVm,
   ClaimVm,
 } from './campaign-characters.types';
 
@@ -97,5 +98,14 @@ export class CampaignCharactersSourceLive implements CampaignCharactersSource {
       npcs,
       hasLivingCharacter: playerCharacters.some((c) => c.state !== 'dead' && !c.reserved),
     };
+  }
+
+  async openChoices(campaignId: string): Promise<readonly OpenChoicesVm[]> {
+    const res = await this.client.getCampaignOpenChoices({ campaignId });
+    return res.characters.map((c) => ({
+      characterId: c.characterId,
+      count: c.pendingCount,
+      labels: c.labelsPt,
+    }));
   }
 }

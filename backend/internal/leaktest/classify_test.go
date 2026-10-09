@@ -74,6 +74,7 @@ var notReads = map[string]classified{
 	charactersv1connect.CharacterServiceCreateCharacterProcedure:                {playerAction, "a player (or a pending member) makes their own character"},
 	charactersv1connect.CharacterServiceCreateClaimLinkProcedure:                {masterWrite, masterOnlyWhy},
 	charactersv1connect.CharacterServiceCreateNpcFromCreatureProcedure:          {masterWrite, masterOnlyWhy},
+	charactersv1connect.CharacterServiceCompleteCharacterChoicesProcedure:       {playerAction, "a player completes the choices their own locked sheet left open; the answer is their character"},
 	charactersv1connect.CharacterServiceDeleteReservedCharacterProcedure:        {masterWrite, masterOnlyWhy},
 	charactersv1connect.CharacterServiceDismissCreatureProcedure:                {playerAction, "a player dismisses their own creature"},
 	charactersv1connect.CharacterServiceGiveCreatureProcedure:                   {masterWrite, masterOnlyWhy},
