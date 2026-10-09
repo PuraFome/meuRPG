@@ -31,6 +31,7 @@ var spellRPCs = []string{"CastSpell", "UseReaction", "DeclineReaction", "RollDea
 const (
 	magicMissileSpell = "spell:magic-missile"
 	shieldSpell       = "spell:shield"
+	featherFallSpell  = "spell:feather-fall"
 	sleepSpell        = "spell:sleep"
 	burningHands      = "spell:burning-hands"
 	holdPerson        = "spell:hold-person"

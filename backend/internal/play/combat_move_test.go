@@ -146,7 +146,7 @@ func newCave(t *testing.T) *cave {
 		}
 		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 2, scores(15, 13, 14, 10), []string{battleaxe}, nil) // Strength 16 with the human's +1
 		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 3, scores(10, 14, 12, 16), nil, []string{fireBolt},
-			[]string{burningHands, magicMissileSpell, shieldSpell}, []string{burningHands, magicMissileSpell, shieldSpell})
+			[]string{burningHands, magicMissileSpell, shieldSpell, featherFallSpell}, []string{burningHands, magicMissileSpell, shieldSpell, featherFallSpell})
 		a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", "race:halfling", 2,
 			&rulesv1.AbilityScores{Strength: 8, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{maceKey}, []string{sacredFlame}, nil, []string{cureWounds})
 	})

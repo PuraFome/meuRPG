@@ -2,6 +2,7 @@ package play
 
 import (
 	"connectrpc.com/connect"
+	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 
 	"errors"
 	"fmt"
@@ -262,4 +263,82 @@ func (a *armed) throwBack(t *testing.T, u *user, e *playv1.Encounter, windowID, 
 		return nil, err
 	}
 	return res.Msg, nil
+}
+
+// fallOf is the status of the fall damage of the combatant, from the database.
+func (a *armed) fallOf(t *testing.T, label string) (status string, amount int32) {
+	t.Helper()
+	var amt *int32
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT status, amount FROM pending_damages WHERE target_id = $1 AND trap_point_id IS NOT NULL`, a.id(t, label)).Scan(&status, &amt); err != nil {
+		t.Fatalf("read the fall damage of %s: %v", label, err)
+	}
+	if amt != nil {
+		amount = *amt
+	}
+	return status, amount
+}
+
+// fallingRig is the cave with a simple pit on (9, 7), the combat begun and Toren
+// walking into it: the fall waits for the wizard's Feather Fall.
+func fallingRig(t *testing.T) (*trapRig, *playv1.Encounter) {
+	t.Helper()
+	r := newTrapRig(t)
+	r.trap(t, "Fosso", 9, 7, pit("1d6"), func(s *mapsv1.TrapSpec) { s.PresetKey = "trap:simple-pit" })
+	e := r.fight(t)
+	r.h.roller.queue(4) // the 1d6 of the fall
+	if _, err := r.moveResult(t, r.caio, "Toren", 12, 7); err != nil {
+		t.Fatalf("MoveCombatant() error = %v", err)
+	}
+	return r, e
+}
+
+// TestFeatherFallTakesTheFallDamageOfAPitAway: a pit's damage waits for the windows of
+// the fall; the wizard, within 60 feet and with a 1st-level slot, saves Toren: no
+// falling damage (SRD, Feather Fall). The player of the falling fighter reads who is
+// deciding, and the damage lands on its own when nobody can reaction any more.
+func TestFeatherFallTakesTheFallDamageOfAPitAway(t *testing.T) {
+	t.Parallel()
+	r, e := fallingRig(t)
+	if status, amount := r.fallOf(t, "Toren"); status != "awaiting_reaction" || amount != 4 {
+		t.Fatalf("Toren's fall = %s for %d, want it waiting for the reaction (4)", status, amount)
+	}
+	if got := r.get(t, r.caio).GetReactionWait().GetTitlePt(); got != "Esperando a reação de Pensantus" {
+		t.Errorf("Toren's player reads %q, want the wizard named", got)
+	}
+	w := r.windowOf(t, r.ana, playv1.ReactionKind_REACTION_KIND_FEATHER_FALL)
+	if w == nil || len(w.GetFeatherFall().GetFalling()) != 1 || w.GetFeatherFall().GetFalling()[0].GetLabel() != "Toren" || w.GetFeatherFall().GetFallFt() != 10 || w.GetFeatherFall().GetMaxTargets() != 5 {
+		t.Fatalf("the wizard's window = %v, want Toren falling 10 ft, up to 5 creatures", w)
+	}
+	if _, err := r.answerReaction(t, r.ana, e, w.GetId(), func(q *playv1.AnswerReactionRequest) {
+		q.Answer, q.Slot = playv1.ReactionChoice_REACTION_CHOICE_USE, slotOfLevel(1)
+	}); err == nil {
+		t.Error("Feather Fall was cast on nobody")
+	}
+	res := r.mustAnswer(t, r.ana, e, w.GetId(), func(q *playv1.AnswerReactionRequest) {
+		q.Answer, q.Slot, q.CreatureIds = playv1.ReactionChoice_REACTION_CHOICE_USE, slotOfLevel(1), []string{r.id(t, "Toren")}
+	})
+	if got := res.GetResult().GetFeatherFall().GetSavedIds(); len(got) != 1 || got[0] != r.id(t, "Toren") {
+		t.Errorf("the result = %v, want Toren saved", res.GetResult())
+	}
+	if status, _ := r.fallOf(t, "Toren"); status != "discarded" {
+		t.Errorf("Toren's fall damage is %s, want it discarded", status)
+	}
+	if n := len(r.get(t, r.caio).GetReactionWindows()); n != 0 || r.get(t, r.caio).GetReactionWait() != nil {
+		t.Errorf("windows left after the answer: %d", n)
+	}
+}
+
+// TestAFallThatNobodySlowsLandsWhenTheWindowIsPassed: the wizard lets it pass and the
+// damage reaches Toren as every trap damage does: it waits for the master.
+func TestAFallThatNobodySlowsLandsWhenTheWindowIsPassed(t *testing.T) {
+	t.Parallel()
+	r, e := fallingRig(t)
+	w := r.windowOf(t, r.ana, playv1.ReactionKind_REACTION_KIND_FEATHER_FALL)
+	if w == nil {
+		t.Fatal("no Feather Fall window")
+	}
+	r.mustAnswer(t, r.ana, e, w.GetId(), passAnswer)
+	if status, amount := r.fallOf(t, "Toren"); status != "rolled" || amount != 4 {
+		t.Errorf("Toren's fall = %s for %d, want it rolled for the master (4)", status, amount)
+	}
 }
