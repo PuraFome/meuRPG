@@ -155,7 +155,10 @@ func validate(b Build, c *content) error {
 	if err := checkKeys(c, "full.prepared_spell_keys", b.SpellsPrepared, MaxPreparedSpells, isLeveledSpell); err != nil {
 		return err
 	}
-	return checkKeys(c, "full.feature_choice_keys", b.FeatureChoices, MaxListLength, isOption)
+	if err := checkKeys(c, "full.feature_choice_keys", b.FeatureChoices, MaxListLength, isOption); err != nil {
+		return err
+	}
+	return checkKeys(c, "full.feat_keys", b.Feats, MaxListLength, isFeat)
 }
 
 // checkName checks a custom name's length; the characters module cleans
@@ -218,6 +221,12 @@ func isCantrip(c *content, k string) bool {
 func isLeveledSpell(c *content, k string) bool {
 	s, ok := c.spells[k]
 	return ok && s.Level > 0
+}
+
+// isFeat: a feat of the SRD or the table.
+func isFeat(c *content, k string) bool {
+	_, ok := c.feats[k]
+	return ok
 }
 
 // isOption: a feature or trait that is an option of another one.

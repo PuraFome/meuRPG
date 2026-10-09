@@ -3,7 +3,7 @@ import { Routes } from '@angular/router';
 /**
  * "Conteúdo da mesa" (MR-025, RN-23): the list, then one entry, new or existing. Lazy from `app.routes.ts` by
  * `loadChildren`, so the editors, the effect picker and the table content client stay out of the initial bundle.
- * `options` is "Opções para os jogadores" (the master's switches, RN-23); `new/:kind` comes before `entries/:key`; the key of an entry ("race:corujeiro@mesa") is one path segment, encoded.
+ * `import` loads a content pack (the master's file); `options` is "Opções para os jogadores" (the master's switches, RN-23); `new/:kind` comes before `entries/:key`; the key of an entry ("race:corujeiro@mesa") is one path segment, encoded.
  */
 export const CONTENT_ROUTES: Routes = [
   {
@@ -15,6 +15,11 @@ export const CONTENT_ROUTES: Routes = [
     path: 'options',
     title: 'Opções para os jogadores',
     loadComponent: () => import('./options/options').then((m) => m.ContentOptions),
+  },
+  {
+    path: 'import',
+    title: 'Importar pacote',
+    loadComponent: () => import('./import/content-import').then((m) => m.ContentImport),
   },
   {
     path: 'new/:kind',

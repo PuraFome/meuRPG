@@ -30,6 +30,8 @@ export interface LevelUpCatalog {
   readonly revision?: number;
   readonly spells: readonly Spell[];
   readonly skills: readonly Skill[];
+  /** The Portuguese name of the proficiencies, races and sub-races, for a feat's prerequisite ("proficiência em Armadura média"). */
+  readonly names?: ReadonlyMap<string, string>;
   /** The classes' names, for "da lista de Mago" when a table class or a third caster reads another class's list. */
   readonly classes?: readonly {
     readonly key: string;
@@ -130,6 +132,13 @@ export class LevelUpClient {
         revision: res.tableRevision,
         spells: res.content?.spells ?? [],
         skills: res.content?.skills ?? [],
+        names: new Map(
+          [
+            ...(res.content?.proficiencies ?? []),
+            ...(res.content?.races ?? []),
+            ...(res.content?.subraces ?? []),
+          ].map((n) => [n.key, n.namePt]),
+        ),
         classes: (res.content?.classes ?? []).map((c) => ({
           key: c.key,
           namePt: c.namePt,

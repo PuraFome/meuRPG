@@ -16,13 +16,13 @@ import (
 // from the class's casting) and no "wild_shape".
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
-	"extra_attack", "choice", "note",
+	"extra_attack", "choice", "ability_increase", "note",
 }
 
 // overlayChoiceKinds are the choices a table feature may offer. The subclass and
 // the Ability Score Improvement are the class table's, not a feature's.
 var overlayChoiceKinds = []string{
-	"skill", "expertise", "cantrip", "spell", "language", "tool", "feature",
+	"skill", "expertise", "cantrip", "spell", "language", "tool", "feature", "feat",
 }
 
 // featureKind is where a feature belongs: a class, a subclass, a race (trait)
@@ -100,6 +100,9 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 	if !slices.Contains(overlayEffectTypes, e.Type) {
 		return fail(".type", ReasonEffect, "effect type %q is not on the table's menu", e.Type)
 	}
+	if e.Type == "ability_increase" && !strings.HasPrefix(owner, "feat:") {
+		return fail(".type", ReasonEffect, "only a feat raises abilities: an ability_increase is not on the menu of a feature")
+	}
 	if name := unusedField(e); strict && name != "" {
 		return fail("."+name, ReasonValue, "the field %s is not used by a %s effect", name, e.Type)
 	}
@@ -133,7 +136,17 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 		if e.Choice == "feature" && len(e.From) == 0 {
 			return fail(".from", ReasonValue, "a choice of features needs the options to choose from")
 		}
+		if e.Choice == "feat" && len(e.From) > 0 && e.Count > len(e.From) {
+			return fail(".count", ReasonValue, "a choice of feats cannot ask for more than the %d feats it lists", len(e.From))
+		}
 		for _, k := range e.From {
+			if e.Choice == "feat" {
+				// The feats offered are the SRD's or the table's own, and only feats.
+				if !strings.HasPrefix(k, "feat:") || (!b.entries[k] && !b.base.exists(k)) {
+					return fail(".from", ReasonReference, "choice feat %q does not exist", k)
+				}
+				continue
+			}
 			// The options come from an SRD set: a key the SRD has, never one of the
 			// table's (and never one that does not exist).
 			if isTableKey(k) || !b.base.exists(k) {
@@ -142,6 +155,10 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 			if e.Choice == "feature" && !isOption(b.base, k) {
 				return fail(".from", ReasonReference, "%q is not an option of an SRD feature", k)
 			}
+		}
+	case "ability_increase":
+		if attr, msg := checkAbilityIncrease(e); attr != "" {
+			return fail(attr, ReasonValue, "%s", msg)
 		}
 	case "resource":
 		if !validResourceName(e.Resource) {
@@ -168,6 +185,8 @@ var ownFields = map[string][]string{
 	"extra_attack": {"count"},
 	"grant_action": {"economy"},
 	"note":         {"value", "spells"},
+	// An ability_increase is a feat's alone (checkEffect).
+	"ability_increase": {"value", "count", "from"},
 }
 
 // unusedField is the first field of e, in the order of the proto message, that
@@ -341,6 +360,12 @@ func effectError(e *Effect, msg string) (attr, reason string) {
 		return ".choice", ReasonValue
 	case has("in from"):
 		return ".from", ReasonReference
+	case has("ability_increase"):
+		attr, _ := checkAbilityIncrease(e)
+		if attr == "" {
+			attr = ".value"
+		}
+		return attr, ReasonValue
 	case has("unknown economy"):
 		return ".economy", ReasonValue
 	case has("extra_attack needs"):

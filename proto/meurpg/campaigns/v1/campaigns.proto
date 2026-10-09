@@ -671,6 +671,12 @@ message TableRules {
   // example "Beber uma poção é uma ação bônus". At most 20, each 1 to 200
   // characters on one line, in the order the master wrote them.
   repeated string house_rules = 8;
+  // "Talentos": whether the table plays with feats, an optional rule of the
+  // game. When true, the guided level-up's Ability Score Improvement step offers
+  // a feat in place of the ability increase (the feats the character qualifies
+  // for; CharacterService.GetLevelUpOptions). Default false: feats are not used
+  // and the level-up is as the SRD's. Read as sent by SetTableRules.
+  bool feats_allowed = 9;
 }
 
 // TableStylePreset is what one "Estilo da mesa" fills in. The app applies a

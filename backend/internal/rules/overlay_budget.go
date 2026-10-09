@@ -163,5 +163,11 @@ func checkBudgets(o *Overlay) error {
 			return err
 		}
 	}
+	for fi := range o.Feats {
+		tf := &o.Feats[fi]
+		if err := bg.feature(fmt.Sprintf("feats[%d]", fi), &TableFeature{Key: tf.Key, Effects: tf.Effects}); err != nil {
+			return err
+		}
+	}
 	return nil
 }

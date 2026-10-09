@@ -147,6 +147,7 @@ describe('ContentOptions, "Opções para os jogadores" (MR-025, RN-23, E10-01 st
       'Raças3 de 4',
       'Antecedentes1 de 1',
       'Magias1 de 1',
+      'Talentos0 de 0',
     ]);
     expect(text(el.querySelector('h1')!)).toBe('Opções para os jogadores');
     expect(text(el.querySelector('.counter strong')!)).toBe('Classes: 2 de 2 ligadas');

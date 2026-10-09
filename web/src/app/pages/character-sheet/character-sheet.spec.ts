@@ -1079,6 +1079,32 @@ describe('CharacterSheetPage', () => {
     );
   });
 
+  it('shows a feat taken at a level-up with its source, "Talento · Mago 4", and no replaced Incremento', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({
+            features: [
+              {
+                name: 'Atleta',
+                sourcePt: 'Talento · Mago 4',
+                description: 'Você corre e escala melhor.',
+              },
+            ],
+          }),
+        }),
+      );
+    const el = await render();
+    const rows = Array.from(el.querySelectorAll('details summary')).map((s) =>
+      s.textContent?.replace(/\s+/g, ' ').trim(),
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toContain('Atleta');
+    expect(rows[0]).toContain('Talento · Mago 4');
+    expect(el.textContent).not.toContain('Incremento no Valor de Habilidade');
+  });
+
   it('"A classe mudou": the changed entry\'s sentences above the sheet, and the same issue never listed twice (RN-23)', async () => {
     configure();
     const sentence = 'Guardião do Vale agora dá 2 perícias no nível 1; esta ficha tem 3.';
