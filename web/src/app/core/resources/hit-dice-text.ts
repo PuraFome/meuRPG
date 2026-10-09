@@ -43,3 +43,17 @@ export function hitDiceLeftWords(sizes: readonly HitDieSize[]): string {
 export function totalDiceLeft(sizes: readonly HitDieSize[]): number {
   return sizes.reduce((sum, s) => sum + diceLeft(s), 0);
 }
+
+/**
+ * What a spent hit die did, as the player reads it: "Rolou 7 + 2 = 9 · recuperou 9 PV". The die and the Constitution
+ * modifier make the total (never below 0); a modifier of 0 is not written; when the hit points stop at the
+ * maximum, the line says the total was more than they could take.
+ */
+export function hitDieRollLine(face: number, modifier: number, healed: number): string {
+  const total = Math.max(0, face + modifier);
+  const roll =
+    modifier === 0
+      ? `Rolou ${face}`
+      : `Rolou ${face} ${modifier > 0 ? '+' : '−'} ${Math.abs(modifier)} = ${total}`;
+  return `${roll} · recuperou ${healed} PV${healed < total ? ' (chegou ao máximo)' : ''}`;
+}

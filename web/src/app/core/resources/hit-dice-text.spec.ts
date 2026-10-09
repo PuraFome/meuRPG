@@ -1,4 +1,5 @@
 import {
+  hitDieRollLine,
   dieName,
   diceLeft,
   hitDiceLeftWords,
@@ -50,5 +51,19 @@ describe('hit dice words', () => {
         { faces: 6, total: 1, used: 1 },
       ]),
     ).toBe(3);
+  });
+
+  it('says what a spent die did, as the board writes it', () => {
+    expect(hitDieRollLine(7, 2, 9)).toBe('Rolou 7 + 2 = 9 · recuperou 9 PV');
+  });
+
+  it('does not write a modifier of 0, writes a negative one with a minus, and never a total below 0', () => {
+    expect(hitDieRollLine(5, 0, 5)).toBe('Rolou 5 · recuperou 5 PV');
+    expect(hitDieRollLine(4, -1, 3)).toBe('Rolou 4 − 1 = 3 · recuperou 3 PV');
+    expect(hitDieRollLine(1, -3, 0)).toBe('Rolou 1 − 3 = 0 · recuperou 0 PV');
+  });
+
+  it('says when the hit points stopped at the maximum', () => {
+    expect(hitDieRollLine(7, 2, 4)).toBe('Rolou 7 + 2 = 9 · recuperou 4 PV (chegou ao máximo)');
   });
 });

@@ -230,7 +230,7 @@
             class="board__rest"
             [campaignId]="campaignId()"
             [party]="vitals()"
-            (restTaken)="restTaken($event)"
+            (restTaken)="takeVitals($event)"
           />
           <app-shown-image-panel
             class="board__image"
@@ -344,7 +344,15 @@
           </div>
           <div class="board__side">
             @if (ownVitals(); as v) {
-              <app-player-vitals [vitals]="v" [sheet]="playerSheet()" [beastAc]="beastAc()" [campaignId]="campaignId()" />
+              <app-player-vitals
+                [vitals]="v"
+                [sheet]="playerSheet()"
+                [beastAc]="beastAc()"
+                [campaignId]="campaignId()"
+                [diceMode]="campaign()?.diceMode ?? 1"
+                [dicePreference]="campaign()?.dicePreference ?? 1"
+                (vitalsChange)="takeVitals([$event])"
+              />
             } @else {
               <div class="mr-notice mr-notice--neutral">
                 <mat-icon aria-hidden="true">person_off</mat-icon>

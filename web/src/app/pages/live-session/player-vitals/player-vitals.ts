@@ -1,9 +1,26 @@
-import { Component, computed, effect, input, signal } from '@angular/core';
+import {
+  Component,
+  DOCUMENT,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
+import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { article } from '../../../core/combat/combat-log';
-import { hitDiceLeftWords } from '../../../core/resources/hit-dice-text';
+import { focusWithRing } from '../../../core/creatures/focus-ring';
+import { hitDiceLeftWords, totalDiceLeft } from '../../../core/resources/hit-dice-text';
+import { openHitDice } from '../hit-dice-sheet/hit-dice-sheet';
 import { WildPools } from '../../../shared/wild-shape/wild-pools';
 import { PlayerSheetVm, VitalsVm } from '../live-session.types';
 import { SlotDots } from '../slot-dots/slot-dots';
@@ -26,7 +43,7 @@ interface SlotRowVm {
  */
 @Component({
   selector: 'app-player-vitals',
-  imports: [MatIconModule, RouterLink, SlotDots, WildPools],
+  imports: [MatButtonModule, MatIconModule, RouterLink, SlotDots, WildPools],
   templateUrl: './player-vitals.html',
   styleUrl: './player-vitals.scss',
 })
@@ -40,6 +57,16 @@ export class PlayerVitals {
   /** The combat's version (E6-05): the PV box and the shield side by side,
    * then the slots; no temporary HP, hit dice or footer. */
   readonly compact = input(false);
+  /** How the campaign has the players roll their dice and the player's own choice: the hit die sheet follows them (RN-18). */
+  readonly diceMode = input<DiceMode>(DiceMode.PLAYERS_CHOOSE);
+  readonly dicePreference = input<DicePreference>(DicePreference.APP);
+  /** The vitals the server answered after a hit die was spent: the page takes them in like any other change. */
+  readonly vitalsChange = output<VitalsVm>();
+
+  private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
+  private readonly bottomSheet = inject(MatBottomSheet);
 
   /** The two reserves of a druid in a beast form, the beast's first: they take the place of the hit points box. */
   protected readonly pools = computed(() => {
@@ -70,6 +97,26 @@ export class PlayerVitals {
   /** "3 de 5d10 e 1 de 1d6": the dice left by size. */
   protected readonly diceLeft = computed(() => hitDiceLeftWords(this.vitals().hitDiceSizes));
   protected readonly freeWords = freeWords;
+  /** "Gastar dados de vida" has nothing to spend when every die is used. */
+  protected readonly noDiceLeft = computed(() => totalDiceLeft(this.vitals().hitDiceSizes) === 0);
+
+  /** "Gastar dados de vida": the sheet where a short rest's dice are spent one by one. */
+  protected spendHitDice(): void {
+    if (this.noDiceLeft()) {
+      return;
+    }
+    const opener = this.document.activeElement as HTMLElement | null;
+    openHitDice(this.dialog, this.bottomSheet, {
+      campaignId: this.campaignId(),
+      vitals: this.vitals,
+      diceMode: this.diceMode(),
+      preference: this.dicePreference(),
+      apply: (v) => this.vitalsChange.emit(v),
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => focusWithRing(opener));
+  }
+
   protected readonly percent = computed(() => hitPointsPercent(this.vitals()));
 
   protected readonly slotRows = computed<SlotRowVm[]>(() => {

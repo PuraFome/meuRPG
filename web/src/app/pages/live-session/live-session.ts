@@ -1041,8 +1041,8 @@ export class LiveSession {
       });
   }
 
-  /** The master's rest changed these characters: their new numbers (the stream says the same to the other screens). */
-  protected restTaken(taken: readonly VitalsVm[]): void {
+  /** A rest or a spent hit die changed these characters: their new numbers, as the server answered (the stream says the same to the other screens). */
+  protected takeVitals(taken: readonly VitalsVm[]): void {
     this.vitals.update((list) => taken.reduce((all, v) => applyVitals(all, v), list));
   }
 

@@ -496,6 +496,17 @@ describe('LiveSession', () => {
       expect(el.textContent).not.toContain('Descanso longo');
     });
 
+    it('gives the player "Gastar dados de vida" on their card', async () => {
+      const el = await render();
+      expect(button(el, 'Gastar dados de vida')).toBeTruthy();
+    });
+
+    it("does not put the player's button on the master's party rows", async () => {
+      asMaster();
+      const el = await render();
+      expect(button(el, 'Gastar dados de vida')).toBeUndefined();
+    });
+
     it('shows the party as the rest left it, without waiting for the stream', async () => {
       asMaster();
       resources.restPreview.mockResolvedValue(

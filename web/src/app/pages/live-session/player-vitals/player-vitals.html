@@ -51,6 +51,28 @@
   </dl>
   </div>
 
+  @if (!compact()) {
+    <div class="dice">
+      <button
+        matButton="outlined"
+        type="button"
+        class="js-hit-dice"
+        [class.mr-button--off]="noDiceLeft()"
+        [disabled]="noDiceLeft()"
+        disabledInteractive
+        [attr.aria-describedby]="noDiceLeft() ? 'dice-reason' : null"
+        (click)="spendHitDice()"
+      >
+        <mat-icon aria-hidden="true">casino</mat-icon>Gastar dados de vida
+      </button>
+      @if (noDiceLeft()) {
+        <p class="dice__reason" id="dice-reason">
+          <mat-icon aria-hidden="true">block</mat-icon>Não há dados de vida para gastar.
+        </p>
+      }
+    </div>
+  }
+
   @if (pools()) {
     <p class="mr-panel nospells"><mat-icon aria-hidden="true">block</mat-icon><span><b>Sem magias</b> na forma de fera.</span></p>
   } @else if (slotRows().length > 0) {
@@ -79,7 +101,7 @@
     >
     <p class="vitals__lock">
       <mat-icon aria-hidden="true">lock</mat-icon>
-      Durante a sessão, só o mestre muda esses números.
+      Durante a sessão, só o mestre muda esses números, fora os dados de vida que você gasta.
     </p>
   </div>
   }
