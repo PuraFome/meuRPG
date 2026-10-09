@@ -1,8 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 
+import { timestampDate } from '@bufbuild/protobuf/wkt';
+
 import {
   CharacterKind as GenCharacterKind,
+  ClaimState as GenClaimState,
   CharacterService,
   CharacterState as GenCharacterState,
   CharacterSummary,
@@ -13,6 +16,7 @@ import {
   CampaignCharacterListItemVm,
   CampaignCharactersSource,
   CampaignCharactersVm,
+  ClaimVm,
 } from './campaign-characters.types';
 
 const KIND_FROM_GEN: Record<GenCharacterKind, CharacterKind> = {
@@ -32,6 +36,27 @@ const STATE_FROM_GEN: Record<GenCharacterState, CharacterState> = {
   [GenCharacterState.PENDING]: 'pending',
 };
 
+function claimOf(c: CharacterSummary): ClaimVm | null {
+  switch (c.claimState) {
+    case GenClaimState.NONE:
+      return { state: 'none', expiresAt: null, claimedBy: null };
+    case GenClaimState.SENT:
+      return { state: 'sent', expiresAt: expiry(c), claimedBy: null };
+    case GenClaimState.EXPIRED:
+      return { state: 'expired', expiresAt: expiry(c), claimedBy: null };
+    case GenClaimState.REVOKED:
+      return { state: 'revoked', expiresAt: null, claimedBy: null };
+    case GenClaimState.USED:
+      return { state: 'used', expiresAt: null, claimedBy: c.claimedByDisplayName || null };
+    default:
+      return null;
+  }
+}
+
+function expiry(c: CharacterSummary): Date | null {
+  return c.claimExpiresAt ? timestampDate(c.claimExpiresAt) : null;
+}
+
 function toListItemVm(c: CharacterSummary): CampaignCharacterListItemVm {
   return {
     id: c.id,
@@ -40,6 +65,9 @@ function toListItemVm(c: CharacterSummary): CampaignCharacterListItemVm {
     state: STATE_FROM_GEN[c.state],
     classSummary: c.classSummary,
     playerDisplayName: c.playerDisplayName || null,
+    raceName: c.raceNamePt,
+    reserved: c.reserved,
+    claim: claimOf(c),
   };
 }
 
@@ -67,7 +95,7 @@ export class CampaignCharactersSourceLive implements CampaignCharactersSource {
     return {
       playerCharacters,
       npcs,
-      hasLivingCharacter: playerCharacters.some((c) => c.state !== 'dead'),
+      hasLivingCharacter: playerCharacters.some((c) => c.state !== 'dead' && !c.reserved),
     };
   }
 }

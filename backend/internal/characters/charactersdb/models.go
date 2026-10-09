@@ -41,6 +41,8 @@ type Character struct {
 	UpdatedAt           time.Time
 	CreateKey           *string
 	CreateHash          *string
+	Reserved            bool
+	ClaimedAt           *time.Time
 }
 
 type CharacterCreature struct {
@@ -73,4 +75,17 @@ type CharacterLevelUp struct {
 	HpValue     int32
 	Choices     []byte
 	CreatedAt   time.Time
+}
+
+type ClaimLink struct {
+	ID          string
+	CampaignID  string
+	CharacterID string
+	TokenHash   []byte
+	CreatedBy   string
+	CreatedAt   time.Time
+	ExpiresAt   time.Time
+	RevokedAt   *time.Time
+	UsedAt      *time.Time
+	UsedBy      *string
 }

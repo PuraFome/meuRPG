@@ -259,6 +259,10 @@ func TestProviderSessionMaxAgeAndPrompt(t *testing.T) {
 	if rec := getAuthorize(t, p, authorizeQuery(map[string]string{"prompt": "login"}), session...); rec.Code != http.StatusOK {
 		t.Errorf("prompt=login: status = %d, want 200 (the login page)", rec.Code)
 	}
+	// prompt=select_account shows it too: the person chooses the account again.
+	if rec := getAuthorize(t, p, authorizeQuery(map[string]string{"prompt": "select_account"}), session...); rec.Code != http.StatusOK {
+		t.Errorf("prompt=select_account: status = %d, want 200 (the login page)", rec.Code)
+	}
 	// prompt=none never shows it.
 	back = callbackParams(t, getAuthorize(t, p, authorizeQuery(map[string]string{"prompt": "none"})))
 	if back.Get("error") != "login_required" || back.Get("state") != "the-state" {

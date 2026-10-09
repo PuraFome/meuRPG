@@ -139,13 +139,16 @@ func tokenAuthStyle(methods []string) (oauth2.AuthStyle, error) {
 }
 
 // authCodeURL builds the URL that sends the browser to the provider.
-func (p *provider) authCodeURL(state, nonce, verifier string) string {
+func (p *provider) authCodeURL(state, nonce, verifier string, selectAccount bool) string {
 	opts := []oauth2.AuthCodeOption{
 		oauth2.S256ChallengeOption(verifier),
 		oidc.Nonce(nonce),
 	}
 	if p.maxAge > 0 {
 		opts = append(opts, oauth2.SetAuthURLParam("max_age", strconv.Itoa(int(p.maxAge.Seconds()))))
+	}
+	if selectAccount {
+		opts = append(opts, oauth2.SetAuthURLParam("prompt", "select_account"))
 	}
 	return p.oauth2.AuthCodeURL(state, opts...)
 }
