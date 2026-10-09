@@ -57,6 +57,19 @@ import { LevelUpSession } from '../level-up-session';
         (pick)="s().draft.toggleSkill($event)"
       />
     }
+    @if (s().draft.instrumentAsked() > 0) {
+      <app-pick-list
+        pickId="instrument"
+        title="Instrumento musical"
+        lead="Escolha 1 instrumento. A tabela de multiclasse do Bardo dá um instrumento à escolha."
+        noun="instrumento"
+        nounMany="instrumentos"
+        [items]="s().draft.instrumentItems()"
+        [picked]="instrumentPicked()"
+        [count]="1"
+        (pick)="s().draft.toggleInstrument($event)"
+      />
+    }
     @if (s().draft.expertiseAsked() > 0) {
       <app-pick-list
         pickId="expertise"
@@ -85,6 +98,9 @@ export class PicksStep {
 
   protected readonly subclasses = computed<PickItem[]>(() =>
     this.s().options.subclasses.map((c) => ({ key: c.key, name: c.namePt, sub: '' })),
+  );
+  protected readonly instrumentPicked = computed(
+    () => new Set(this.s().draft.instrument() ? [this.s().draft.instrument()] : []),
   );
   protected readonly subclassPicked = computed(
     () => new Set(this.s().draft.subclassKey() ? [this.s().draft.subclassKey()] : []),

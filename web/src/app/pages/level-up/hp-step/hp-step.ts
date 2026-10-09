@@ -63,8 +63,16 @@ export class HpStep {
     ];
   });
 
+  protected readonly title = computed(() => {
+    const o = this.s().options;
+    return o.isNewClass ? `Pontos de vida de ${o.classNamePt} 1` : 'Pontos de vida';
+  });
+
   protected readonly intro = computed(() => {
     const s = this.s();
+    if (s.options.isNewClass) {
+      return `O nível 1 de ${s.options.classNamePt} dá um d${s.die}, e o personagem vai ao nível total ${s.options.totalToLevel}. O dado cheio só vale no nível 1 do personagem.`;
+    }
     const raised = s.draft.abilityIncrease().con !== undefined;
     const mod = formatModifier(s.conModifier());
     return `O ${s.options.classNamePt} ganha 1d${s.die} por nível, mais o modificador de Constituição (${mod}${raised ? `, com o aumento do passo ${s.stepNumber('abilities')}` : ''}).`;

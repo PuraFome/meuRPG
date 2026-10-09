@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { endOpenSessionRPC } from './live-session-support';
 import { archiveEntryRPC } from './spells-support';
 import { newSignedInContext, showAllPicks } from './support';
+import { passClassStep } from './levelup-support';
 import {
   changeGuardianSkillsRPC,
   createGuardianRPC,
@@ -229,18 +230,19 @@ test(
       await expect(p.getByText('Ícaro · Guardião do Vale 1 → Guardião do Vale 2')).toBeVisible();
 
       // Vida: the average, by the table's rule; the server gives the numbers.
-      await expect(p.getByText('Passo 1 de')).toBeVisible();
+      await passClassStep(p);
+      await expect(p.getByText('Passo 2 de')).toBeVisible();
       await expect(p.getByText('Média: 6')).toBeVisible();
       await p.getByRole('button', { name: 'Próximo' }).click();
 
       // Escolhas: the fighting style the class offers at level 2.
-      await expect(p.getByText(/Passo 2 de \d · Escolhas/)).toBeVisible();
+      await expect(p.getByText(/Passo 3 de \d · Escolhas/)).toBeVisible();
       await expect(p.getByRole('heading', { name: 'Estilo de luta' })).toBeVisible();
       await p.locator('#pick-feature-0').getByRole('radio').first().click();
       await p.getByRole('button', { name: 'Próximo' }).click();
 
       // Magias: the half caster prepares from the druid's list, whose name the step says.
-      await expect(p.getByText(/Passo 3 de \d · Magias/)).toBeVisible();
+      await expect(p.getByText(/Passo 4 de \d · Magias/)).toBeVisible();
       const prepare = p.locator('#pick-prepared');
       await expect(prepare).toBeVisible();
       // The server says how many to prepare ("Faltam preparar 2 magias."): pick that many from the list.
@@ -255,7 +257,7 @@ test(
       await p.getByRole('button', { name: 'Próximo' }).click();
 
       // Resumo: only the rows that change, the slots tagged "Da mesa".
-      await expect(p.getByText(/Passo 4 de 4 · Resumo/)).toBeVisible();
+      await expect(p.getByText(/Passo 5 de 5 · Resumo/)).toBeVisible();
       const summary = p.getByRole('region', { name: 'O que muda', exact: true });
       await expect(summary).toContainText('Guardião do Vale 1');
       await expect(summary).toContainText('Guardião do Vale 2');
@@ -307,16 +309,17 @@ test(
       await p.goto(sheetOf(campaignId, characterId));
       await p.getByRole('link', { name: 'Subir para o nível 3' }).click();
       await expect(p.getByRole('heading', { name: 'Subir para o nível 3' })).toBeVisible();
-      // Before the subclass is chosen the fighter casts nothing: Vida, Escolhas, Resumo.
-      await expect(p.getByText(/Passo 1 de 3/)).toBeVisible();
+      // Before the subclass is chosen the fighter casts nothing: Classe, Vida, Escolhas, Resumo.
+      await passClassStep(p);
+      await expect(p.getByText(/Passo 2 de 4/)).toBeVisible();
       await p.getByRole('button', { name: 'Próximo' }).click();
       await expect(p.getByRole('heading', { name: 'Subclasse' })).toBeVisible();
       await p.locator('#pick-subclass').getByRole('radio', { name: /Lâmina de Tinta/ }).click();
       // Picking it makes the Magias step appear: the step count follows.
-      await expect(p.getByText(/Passo 2 de 4/)).toBeVisible();
+      await expect(p.getByText(/Passo 3 de 5/)).toBeVisible();
       await p.getByRole('button', { name: 'Próximo' }).click();
 
-      await expect(p.getByText(/Passo 3 de 4 · Magias/)).toBeVisible();
+      await expect(p.getByText(/Passo 4 de 5 · Magias/)).toBeVisible();
       // The cantrips and the spells come from the wizard's list, not the fighter's.
       await expect(p.getByText(/truques de Mago/)).toBeVisible();
       await expect(p.getByText(/Escolha 3 magias de 1º nível para aprender/)).toBeVisible();
@@ -334,7 +337,7 @@ test(
       await spells.getByRole('checkbox', { name: /^Armadura Arcana/ }).check();
       await p.getByRole('button', { name: 'Próximo' }).click();
 
-      await expect(p.getByText(/Passo 4 de 4 · Resumo/)).toBeVisible();
+      await expect(p.getByText(/Passo 5 de 5 · Resumo/)).toBeVisible();
       await p.getByRole('button', { name: 'Confirmar o nível 3' }).click();
       await expect(p).toHaveURL(sheetOf(campaignId, characterId));
       await expect(p.getByText('Rúnico subiu para o nível 3.')).toBeVisible();
