@@ -400,7 +400,7 @@ How to read a story: the user-story sentence, the priority (MVP, MVP prerequisit
 - Rules: —
 - Modules: campaigns (the document); maps and characters (the images, maps and sheets the links point to)
 
-Carried over from the legacy app ([legacy app](../legacy-app.md)).
+Carried over from the legacy app (discontinued, no longer in the repository).
 
 #### Acceptance criteria
 In the MVP only the game master sees the document.

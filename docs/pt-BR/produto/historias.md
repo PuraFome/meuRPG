@@ -401,7 +401,7 @@ Como ler uma história: a frase da história, a prioridade (MVP, MVP pré-requis
 - Regras: —
 - Módulos: campaigns (o documento); maps e characters (as imagens, os mapas e as fichas dos links)
 
-Existia no app antigo ([app antigo](../../legacy-app.md)).
+Existia no app antigo (descontinuado, não está mais no repositório).
 
 #### Critérios de aceite
 No MVP, só o mestre vê o documento.

@@ -41,7 +41,7 @@
 
 MeuRPG is a companion for one table's D&D 5e campaigns. The Game Master (*mestre*) prepares the world and runs the live session; players join by invite, follow their character sheet and act in roleplay (RP) and in combat within what the rules allow. The rules engine does the math, and the server is the authority: what is hidden never leaves it for a player. More in the [product vision](docs/product/vision.md).
 
-It is a Go server that serves the Angular app and the API from the same origin, backed by CockroachDB and built to run on Cloud Run in São Paulo. The screens are in Portuguese for now; the English UI comes after the MVP. The old app is discontinued and documented in [Legacy app](docs/legacy-app.md).
+It is a Go server that serves the Angular app and the API from the same origin, backed by CockroachDB and built to run on Cloud Run in São Paulo. The screens are in Portuguese for now; the English UI comes after the MVP.
 
 ## Current stage
 
@@ -122,7 +122,6 @@ All commands are in `make help` and in [CONTRIBUTING](CONTRIBUTING.md).
 | `deploy/local/` | The Docker Compose of the local environment |
 | `docs/` | The documentation, with Mermaid diagrams ([index](docs/README.md)) |
 | `.github/` | CI workflows, Dependabot and the PR template |
-| `src/`, `server/` | The [legacy app](docs/legacy-app.md), discontinued |
 
 ## Quality
 
@@ -166,7 +165,3 @@ The rules come from the System Reference Document 5.1 (SRD 5.1), under the Creat
 The fonts (Alegreya and Alegreya Sans, OFL 1.1) and icons (Material Symbols, Apache 2.0) are also in the [NOTICE](NOTICE), with licenses in [`third_party/licenses/`](third_party/licenses/).
 
 MeuRPG is distributed under the [Apache License 2.0](LICENSE). Third-party content listed in the [NOTICE](NOTICE) keeps its own license: the SRD 5.1 and the SRD 5.2.1 (CC BY 4.0), the 5e-database data (MIT), the fonts (OFL 1.1) and the icons (Apache 2.0). Anyone who redistributes MeuRPG, with or without changes, includes the `LICENSE` and `NOTICE` files.
-
-## Legacy app (discontinued)
-
-The Angular app in `src/` and the NestJS server in `server/` are the old app. They receive no changes and both leave the repository after the MVP. What they did and how they ran is in [Legacy app](docs/legacy-app.md).

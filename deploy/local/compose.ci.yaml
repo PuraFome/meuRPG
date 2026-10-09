@@ -4,5 +4,8 @@
 # .github/workflows/e2e.yml on top of compose.yaml; never by `make up`.
 services:
   cockroach:
+    # The same digest as compose.yaml, from Cockroach Labs' registry on Google
+    # Cloud: GitHub's shared runners hit Docker Hub's anonymous pull limit.
+    image: us-docker.pkg.dev/cockroach-cloud-images/cockroachdb/cockroach:v26.2.7@sha256:9464ae30465b887295459b98d129a76d074caeaa4c86836d369c6d2fdddd1685
     command: ["start-single-node", "--insecure", "--store=type=mem,size=2GiB", "--cache=256MiB", "--max-sql-memory=1GiB"]
     volumes: !reset []

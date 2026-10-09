@@ -6,7 +6,7 @@ The old app's database is not migrated. The one exception is a one-off, hand-rev
 
 ## Differences from the old app
 
-In the old app (`server/src/db/schema.sql`) the campaign did not exist and everything belonged directly to the user. This table is only for readers who know the old schema; no row of it is migrated, except the characters above.
+In the old app the campaign did not exist and everything belonged directly to the user. This table is only for readers who know the old schema; no row of it is migrated, except the characters above.
 
 | Old app | Now | Why |
 | --- | --- | --- |
