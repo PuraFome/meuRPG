@@ -521,7 +521,8 @@
                 }
                 <app-skill-picker
                   [skills]="s.catalog.skills"
-                  [proficient]="selectedSkills()"
+                  [proficient]="chosenSkills()"
+                  [granted]="grantedSkills()"
                   [expertise]="expertiseSkills()"
                   (toggleSkill)="toggleSkill($event)"
                   (toggleExpertise)="toggleExpertise($event)"
@@ -558,12 +559,13 @@
                           {{ sectionHeading(view.section) }}
                         </h3>
                         <p class="group-hint">
-                          {{ view.section.namePt }} {{ view.section.level }}@if (view.preparedCount) {
-                            · {{ view.preparedCount }}
+                          {{ view.section.namePt }} {{ view.section.level }}@if (view.preparedCount.text) {
+                            ·
+                            <span [class.group-hint--over]="view.preparedCount.over">{{ view.preparedCount.text }}</span>
                           }
                         </p>
-                      } @else if (view.preparedCount) {
-                        <p class="group-hint">{{ view.preparedCount }}</p>
+                      } @else if (view.preparedCount.text) {
+                        <p class="group-hint" [class.group-hint--over]="view.preparedCount.over">{{ view.preparedCount.text }}</p>
                       }
                       @if (view.always.length > 0) {
                         <app-granted-spells
@@ -580,6 +582,7 @@
                             title="Truques"
                             searchLabel="Buscar truque"
                             noun="truque"
+                            [limit]="view.cantripsLimit"
                             [options]="view.cantrips.all"
                             [filtered]="view.cantrips.shown"
                             [selected]="selectedCantrips()"
@@ -600,6 +603,7 @@
                             title="Magias conhecidas"
                             searchLabel="Buscar magia"
                             noun="magia"
+                            [limit]="view.knownLimit"
                             [showLevel]="true"
                             [maxSpellLevel]="view.section.maxCircle"
                             [options]="view.known.all"
@@ -619,6 +623,8 @@
                             title="Magias preparadas"
                             searchLabel="Buscar magia"
                             noun="magia"
+                            [limit]="view.preparedLimit"
+                            [warnBelowLimit]="true"
                             [showLevel]="true"
                             [maxSpellLevel]="view.section.maxCircle"
                             [options]="view.prepared.all"

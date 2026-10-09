@@ -9,6 +9,8 @@ export interface TurnChange {
   readonly round: number;
   readonly currentCombatantId: string;
   readonly masterTurn: boolean;
+  /** The combat's revision with this turn; 0 (or absent) when the server gives no number to compare (a player on a fog map). */
+  readonly revision?: number;
 }
 
 /** What `combatant_moved` carries (play.proto). */
@@ -173,10 +175,16 @@ export class CombatState {
     }
     // A part that ended inside a joint turn moves "current" to another member of the same group, in the same
     // round: the group and who already ended their part stay. Only a turn that moves on starts over.
+    const revision = turn.revision ?? 0;
+    if (revision > 0 && revision < e.revision) {
+      return true; // an event older than the combat on screen: nothing to patch, nothing to read again
+    }
     this.patched++;
     const sameGroup = turn.round === e.round && e.turnGroupIds.includes(turn.currentCombatantId);
     this.encounter.set({
       ...e,
+      // The patched turn is as new as the event: an older answer arriving now is dropped by `apply`.
+      revision: Math.max(e.revision, revision),
       round: turn.round,
       currentCombatantId: turn.currentCombatantId,
       masterTurn: turn.masterTurn,

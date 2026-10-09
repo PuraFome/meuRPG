@@ -172,6 +172,12 @@ export class NpcCard {
     () => this.targets().find((t) => t.combatantId === this.targetId())?.label ?? '',
   );
   protected readonly pendings = computed(() => this.options()?.pendingDamages ?? []);
+  /** A hit whose damage is still to roll or to apply holds the attacker's next attack: the server refuses it too. */
+  protected readonly rollWhy = computed(() =>
+    this.pendings().length > 0
+      ? 'Role ou aplique o dano do ataque anterior antes de rolar outro.'
+      : '',
+  );
   /** The damage of the attack just rolled shows inside its result box. */
   protected readonly inBox = computed(() => {
     const id = this.last()?.pending?.id;
@@ -299,7 +305,7 @@ export class NpcCard {
   private async rollAttack(die: { inApp: true } | { face: number }): Promise<void> {
     const a = this.attack();
     const target = this.targetId();
-    if (!a || !target || this.busy()) {
+    if (!a || !target || this.busy() || this.rollWhy()) {
       return;
     }
     this.busy.set(true);

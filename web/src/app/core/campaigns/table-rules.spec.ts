@@ -53,6 +53,7 @@ const base: RulesDraft = {
   typed: false,
   critical: CriticalRule.DOUBLED_DICE,
   deathSaves: DeathSaveVisibility.VISIBLE_TO_ALL,
+  featsAllowed: false,
   enemyReactions: EnemyReactionsRule.ONLY_WHEN_POSSIBLE,
   houseRules: [],
 };
@@ -134,5 +135,11 @@ describe('table rules', () => {
     expect(xpModeBlocked(blocked)).toEqual({ awards: 3, totalXp: 2716 });
     expect(xpModeBlocked(new ConnectError('x', Code.FailedPrecondition))).toBeNull();
     expect(xpModeBlocked(new ConnectError('x', Code.Internal))).toBeNull();
+  });
+
+  it('counts the rule "Talentos" as a choice, off by default', () => {
+    expect(draftFromRules(undefined).featsAllowed).toBe(false);
+    expect(draftFromRules({ featsAllowed: true } as never).featsAllowed).toBe(true);
+    expect(changeCount({ ...base, featsAllowed: true }, base)).toBe(1);
   });
 });

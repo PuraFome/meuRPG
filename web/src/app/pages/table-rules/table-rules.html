@@ -144,6 +144,17 @@
             />
           </section>
 
+          <section class="mr-panel block" aria-labelledby="feats-title">
+            <h2 class="mr-panel__title" id="feats-title">Talentos</h2>
+            <app-dice-choice
+              name="table-feats"
+              label="Talentos"
+              [options]="featOptions"
+              [value]="d.featsAllowed ? 1 : 0"
+              (valueChange)="edit({ featsAllowed: $event === 1 })"
+            />
+          </section>
+
           <section class="mr-panel block" aria-labelledby="death-title">
             <h2 class="mr-panel__title" id="death-title">Testes contra a morte</h2>
             <app-dice-choice

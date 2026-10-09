@@ -89,6 +89,12 @@ export function blockedMessage(blocked: EncounterBlocked): string {
     }
     case EncounterBlockedReason.MOVE_BLOCKED:
       return 'Não dá para passar por aí: há uma parede ou outra criatura no caminho.';
+    case EncounterBlockedReason.WALL_ON_SQUARE:
+      return 'Esse quadrado é uma parede: ninguém fica dentro dele.';
+    case EncounterBlockedReason.NO_FREE_SQUARE:
+      return 'Não há quadrado livre longe dos jogadores neste mapa.';
+    case EncounterBlockedReason.TARGET_DEAD:
+      return 'Não dá para curar quem já morreu.';
     case EncounterBlockedReason.ENEMY_IN_THE_WAY:
       return 'Um inimigo está no caminho.';
     case EncounterBlockedReason.TARGET_COVER_TOTAL:

@@ -56,6 +56,7 @@ func rulesFromRow(r campaignsdb.CampaignTableRule) tablerules.Rules {
 		DeathSavesHidden:    r.DeathSaves == deathSavesOwnerAndMaster,
 		CombatWithoutMap:    !r.CombatStartsWithMap,
 		FogOnNewMaps:        r.FogOnNewMaps,
+		FeatsAllowed:        r.FeatsAllowed,
 		Reminders:           r.HouseRules,
 
 		EnemyReactionsAlways: r.EnemyReactions == enemyReactionsAlways,
@@ -86,6 +87,16 @@ func (s *Service) StoredTableRules(ctx context.Context, tx pgx.Tx, campaignID st
 		return tablerules.Rules{}, err
 	}
 	return rulesFromRow(row), nil
+}
+
+// CampaignName is the campaign's name, read in tx (nil: the pool). Package characters labels
+// an exported content pack with it, through its CampaignNames interface.
+func (s *Service) CampaignName(ctx context.Context, tx pgx.Tx, campaignID string) (string, error) {
+	c, err := s.queriesIn(tx).GetCampaign(ctx, campaignID)
+	if err != nil {
+		return "", fmt.Errorf("get the campaign: %w", err)
+	}
+	return c.Name, nil
 }
 
 // CombatWithoutMap says whether "Iniciar combate" starts without a map by
@@ -206,6 +217,7 @@ func tableRulesToProto(r campaignsdb.CampaignTableRule, dice string) *campaignsv
 		Critical:       criticalFromDB[r.CriticalRule],
 		DeathSaves:     deathSavesFromDB[r.DeathSaves],
 		HouseRules:     append([]string{}, r.HouseRules...),
+		FeatsAllowed:   r.FeatsAllowed,
 		EnemyReactions: enemyReactionsFromDB[r.EnemyReactions],
 	}
 }
@@ -318,7 +330,7 @@ func tableRulesParams(msg *campaignsv1.TableRules) (campaignsdb.UpsertTableRules
 		AbilityRoll4d6: am.GetRolled_4D6(), AbilityTyped: am.GetTyped(),
 		CriticalRule: crit, DeathSaves: deaths,
 		CombatStartsWithMap: msg.GetCombatStartsWithMap(), FogOnNewMaps: msg.GetFogOnNewMaps(),
-		HouseRules: houseRules, EnemyReactions: enemy,
+		HouseRules: houseRules, FeatsAllowed: msg.GetFeatsAllowed(), EnemyReactions: enemy,
 	}, dice, nil
 }
 

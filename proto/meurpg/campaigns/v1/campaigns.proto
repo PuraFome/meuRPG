@@ -23,8 +23,8 @@ import "google/protobuf/timestamp.proto";
 // for the master to approve the character they create (see
 // meurpg.characters.v1.CharacterService.ApproveCharacter). A pending member
 // is not a member yet. They see the campaign in ListMyCampaigns and
-// through GetCampaign, both with only its name and `awaiting_approval`
-// set; every other method answers them `not_found`, exactly as for someone
+// through GetCampaign, both with only its name, the campaign's XP mode and
+// `awaiting_approval` set; every other method answers them `not_found`, exactly as for someone
 // who is not in the campaign.
 //
 // Responses carry `Cache-Control: no-store`, because they describe the
@@ -51,7 +51,7 @@ service CampaignService {
   // ListMyCampaigns lists the campaigns the caller is a member of, newest
   // first, with the caller's role in each. It also lists the campaigns where
   // the caller is a pending member (RN-15, MR-024), with only the id, the
-  // name, my_role and `awaiting_approval` set, so the player can find their
+  // name, my_role, xp_mode and `awaiting_approval` set, so the player can find their
   // way back to the campaign while they wait.
   //
   // Its request is empty, so clients may call it with HTTP GET: the URL
@@ -65,8 +65,9 @@ service CampaignService {
   // the URL.
   //
   // A pending member (RN-15, MR-024) may call it too, and gets only the
-  // campaign's id, name, my_role (ROLE_PLAYER) and `awaiting_approval` set:
-  // enough to show "esperando a aprovação do mestre".
+  // campaign's id, name, my_role (ROLE_PLAYER), xp_mode and `awaiting_approval`
+  // set: enough to show "esperando a aprovação do mestre", and for the
+  // character editor to start a new character at its level's XP.
   rpc GetCampaign(GetCampaignRequest) returns (GetCampaignResponse) {
     option idempotency_level = IDEMPOTENT;
   }
@@ -163,8 +164,8 @@ service CampaignService {
   //
   // Invites with approval (RN-15, MR-024). When the invite has
   // `requires_approval`, the caller becomes a pending member, not a player:
-  // the returned campaign has `awaiting_approval` set and only its id, name
-  // and my_role. The app takes them straight to creating their character
+  // the returned campaign has `awaiting_approval` set and only its id, name,
+  // my_role and xp_mode. The app takes them straight to creating their character
   // (CharacterService.CreateCharacter), which starts PENDING. They become a
   // player when the master approves that character
   // (CharacterService.ApproveCharacter); if the master rejects it
@@ -304,8 +305,9 @@ message Campaign {
   Role my_role = 5;
   // True when the caller is a pending member (RN-15, MR-024): they accepted
   // an invite that requires approval, and the master has not approved their
-  // character yet. Then only id, name and my_role (ROLE_PLAYER) are set:
-  // xp_mode is unspecified and created_at is unset.
+  // character yet. Then only id, name, my_role (ROLE_PLAYER) and xp_mode are
+  // set (the XP mode is no secret, and the editor needs it); created_at is
+  // unset.
   bool awaiting_approval = 6;
   // How the campaign's players roll dice (RN-18). Set for every member;
   // unspecified for a pending member.
@@ -669,6 +671,12 @@ message TableRules {
   // example "Beber uma poção é uma ação bônus". At most 20, each 1 to 200
   // characters on one line, in the order the master wrote them.
   repeated string house_rules = 8;
+  // "Talentos": whether the table plays with feats, an optional rule of the
+  // game. When true, the guided level-up's Ability Score Improvement step offers
+  // a feat in place of the ability increase (the feats the character qualifies
+  // for; CharacterService.GetLevelUpOptions). Default false: feats are not used
+  // and the level-up is as the SRD's. Read as sent by SetTableRules.
+  bool feats_allowed = 9;
   // "Reações dos inimigos": when a player's action against an enemy waits for the
   // master (RN-24). Required in SetTableRules (UNSPECIFIED is `invalid_argument`); a
   // campaign that never saved its rules has ONLY_WHEN_POSSIBLE. Every member reads

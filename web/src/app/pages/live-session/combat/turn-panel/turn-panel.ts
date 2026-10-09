@@ -12,6 +12,7 @@ import { metersFixed, squaresFree } from '../../../../core/units';
 import { article } from '../../../../core/combat/combat-log';
 import {
   combatantInitial,
+  isDead,
   isDown,
   isPlayer,
   ownCombatant,
@@ -134,6 +135,10 @@ export class TurnPanel {
   /** The player looks through their familiar's eyes: the character is blind and does not attack (the master resolves it, MR-036). */
   protected readonly blind = computed(() => !!this.own()?.familiarSightCreatureId);
   /** The player's character is at 0 hit points (any turn). */
+  protected readonly dead = computed(() => {
+    const me = this.own();
+    return !!me && isDead(me);
+  });
   protected readonly isDown = computed(() => {
     const own = this.own();
     return !!own && isDown(own);

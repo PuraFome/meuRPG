@@ -42,6 +42,7 @@ const saved: RulesDraft = {
   typed: true,
   critical: CriticalRule.DOUBLED_DICE,
   deathSaves: DeathSaveVisibility.VISIBLE_TO_ALL,
+  featsAllowed: false,
   enemyReactions: EnemyReactionsRule.ONLY_WHEN_POSSIBLE,
   houseRules: ['Beber uma poção é uma ação bônus'],
 };

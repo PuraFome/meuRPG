@@ -1501,18 +1501,28 @@ enum EncounterBlockedReason {
   // with a weapon or an unarmed strike, and that action has not been taken yet
   // this turn. GetTurnOptions says it before, as ATTACK_ACTION_FIRST.
   ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST = 67;
+  // MoveCombatant: the master asked for a square that is a wall. Nobody stands in
+  // a wall, and a creature in one is seen by no player.
+  ENCOUNTER_BLOCKED_REASON_WALL_ON_SQUARE = 68;
+  // CastSpell, TakeAction: a healing aimed at a character that died, or that has
+  // failed three death saves. A dead creature regains no hit points (SRD 5.1,
+  // "Dropping to 0 Hit Points"), so nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_TARGET_DEAD = 69;
+  // MoveCombatant with `place`: the map has no free square a creature can stand
+  // on, so the server found none to place the combatant on.
+  ENCOUNTER_BLOCKED_REASON_NO_FREE_SQUARE = 70;
   // MoveCombatant, RollAttack, CastSpell, TakeAction, EndTurn: a damage to a
   // concentrating combatant waits for its Constitution save (a reaction window of
   // kind CONCENTRATION_SAVE is open). The screen reads Encounter.reaction_wait.
   // (REACTION_PENDING, 24, is the same wait for any other reaction window.)
-  ENCOUNTER_BLOCKED_REASON_CONCENTRATION_SAVE_PENDING = 68;
+  ENCOUNTER_BLOCKED_REASON_CONCENTRATION_SAVE_PENDING = 71;
   // AnswerReaction, ResolveConcentrationSave: the window is not the first one
   // open for its reactor in the order (a window waits for the ones before it), or
   // it was answered or closed already.
-  ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN_TO_ANSWER = 69;
+  ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN_TO_ANSWER = 72;
   // AnswerReaction: the answer needs a roll (Counterspell's check, Cutting Words'
   // die, Deflect Missiles' die, a saving throw) and none came.
-  ENCOUNTER_BLOCKED_REASON_REACTION_NEEDS_ROLL = 70;
+  ENCOUNTER_BLOCKED_REASON_REACTION_NEEDS_ROLL = 73;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -2086,6 +2096,11 @@ message MoveCombatantRequest {
   // `permission_denied`. Without it, the master's move of the combatant that is
   // on turn is a move like any, and provokes.
   bool forced = 9;
+  // Only the master: the server picks the square of a combatant that has none
+  // ("Colocar no mapa"), by the same rule that places the NPCs when the combat
+  // begins. col and row are ignored. A player sending it gets `permission_denied`,
+  // and a combatant already on the map is refused with `invalid_argument`.
+  bool place = 10;
 }
 
 // MoveCombatantResponse returns the combat after the move.

@@ -31,6 +31,10 @@ type Rules struct {
 	CombatWithoutMap bool
 	// FogOnNewMaps makes a map created from now on start with the fog of war on.
 	FogOnNewMaps bool
+	// FeatsAllowed lets the table play with feats, an optional rule of the game:
+	// the level-up's Ability Score Improvement step then offers a feat in place of
+	// the ability increase. The zero value is the SRD's: feats are not used.
+	FeatsAllowed bool
 	// EnemyReactionsAlways makes every action of a player against an enemy wait
 	// for the master's one-tap check ("Reações dos inimigos: Sempre"), instead of
 	// waiting only when an enemy has a reaction.

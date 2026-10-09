@@ -96,6 +96,9 @@ type BattlePoint struct {
 	// TargetMapID is the map of the fight, when the master chose one; empty
 	// when the fight happens on the session's current map.
 	TargetMapID string
+	// XBP and YBP are where the point is on its map, in basis points of the
+	// image's width and height (0 to 10000).
+	XBP, YBP int32
 }
 
 // TokenPosition is where a character's token stands on a map, in basis

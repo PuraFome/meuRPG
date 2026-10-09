@@ -1,8 +1,9 @@
 syntax = "proto3";
 
-// The table's own rules content (MR-025, RN-23, ADR-0018): the classes,
-// subclasses, races, subraces, backgrounds and spells that the master writes for
-// one campaign. The RPCs are TableContentService's, below; the catalog the
+// The table's own rules content (MR-025, MR-025, RN-23, ADR-0018): the classes,
+// subclasses, races, subraces, backgrounds, spells and feats that the master writes
+// for one campaign, and the content pack that carries them from one campaign to
+// another (ExportTableContent, ImportTableContent). The RPCs are TableContentService's, below; the catalog the
 // character editor builds from is ContentService.ListContent (rules.proto).
 //
 // One typed message per kind, each mapping one to one onto the fields the rules
@@ -42,6 +43,9 @@ enum TableContentKind {
   TABLE_CONTENT_KIND_BACKGROUND = 5;
   // A spell.
   TABLE_CONTENT_KIND_SPELL = 6;
+  // A feat: an optional rule of the game, taken in place of an Ability Score
+  // Improvement when the table's rule "Talentos" allows it (MR-025).
+  TABLE_CONTENT_KIND_FEAT = 7;
 }
 
 // TableEntry is one entry of the table's content, as ListTableEntries and the
@@ -81,14 +85,15 @@ message TableEntry {
     TableSubrace table_subrace = 13;
     TableBackground table_background = 14;
     TableSpell table_spell = 15;
+    TableFeat table_feat = 17;
   }
 }
 
 // TableEffect is one effect of a feature, from the closed menu: what the engine
 // computes with, never code. `type` is "modifier", "proficiency", "resource",
-// "sense", "roll_mode", "grant_action", "extra_attack", "choice" or "note"; only
-// the fields of the type are read, and a field the type does not use is refused.
-// A feature with no effects is text only and always valid. Formulas ("value",
+// "sense", "roll_mode", "grant_action", "extra_attack", "choice", "ability_increase"
+// or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
+// read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
 // "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
 // prof(), floor, ceil, min and max, and must compile.
 message TableEffect {
@@ -123,8 +128,13 @@ message TableEffect {
   string max = 14;
   string recharge = 15;
   // choice: what the player chooses ("skill", "expertise", "cantrip", "spell",
-  // "language", "tool" or "feature"), how many, and from which keys. For
-  // extra_attack, `count` is how many attacks the Attack action makes.
+  // "language", "tool", "feature" or "feat"), how many, and from which keys (for
+  // "feat": feat keys of the SRD or the table; empty is any feat). For
+  // extra_attack, `count` is how many attacks the Attack action makes. For
+  // ability_increase, `count` is how many different abilities the player picks,
+  // `from` the abilities to pick from ("str", "dex", "con", "int", "wis", "cha")
+  // and `value` how much each goes up, "1" or "2": never above 20 (SRD 5.1, Ability
+  // Score Improvement). The sheet keeps the result as manual ability bonuses.
   string choice = 16;
   int32 count = 17;
   repeated string from = 18;
@@ -150,6 +160,21 @@ message TableFeature {
   string name_pt = 2;
   // The text, one paragraph per entry.
   repeated string desc_pt = 3;
+  repeated TableEffect effects = 4;
+}
+
+// TableFeat is a feat (MR-025): an optional rule of the game that a character takes
+// in place of an Ability Score Improvement when the table's rule "Talentos" allows
+// it. The key is "feat:<slug>@mesa". The effects belong to the feat itself (it has
+// no features of its own), come from the same closed menu as a feature's, and may
+// include one `ability_increase`, which only a feat has.
+message TableFeat {
+  string name_pt = 1;
+  // The text, one paragraph per entry.
+  repeated string desc_pt = 2;
+  // What the feat asks of a character; unset asks nothing.
+  FeatPrerequisite prerequisite = 3;
+  // At most 20, and at most one ability_increase.
   repeated TableEffect effects = 4;
 }
 
@@ -446,9 +471,15 @@ message TableContentViolation {
   // (a reference does not exist), "forbidden_effect", "bad_formula", "bad_table",
   // "bad_casting", "bad_value", "overlay" (the content as a whole), "immutable"
   // (a key, kind or parent changed, or a spell crossing between cantrip and
-  // leveled), "duplicate_name" (another entry of the kind has the name) and
+  // leveled), "duplicate_name" (another entry of the kind has the name), "unknown_field" (ImportTableContent:
+  // a field the message does not have) and
   // "size_limit" (64 KiB of data). The 300-entry limit is "limit", with an empty
-  // field.
+  // field. In ImportTableContent a violation about the pack itself is at a field
+  // that starts with "pack": "pack" (over 2 MiB: "size_limit"), "pack.format" and
+  // "pack.version" ("bad_value"), "pack.entries[3].key" ("bad_key" for a key that is
+  // not "<kind>:<slug>@mesa" of the entry's kind, "duplicate_key" for one that
+  // repeats) and "pack.entries[3].body" ("bad_value": no body, or one of another
+  // kind than the key's).
   string reason = 2;
   // English, for logs and tests.
   string message = 3;
@@ -574,8 +605,60 @@ service TableContentService {
   // `invalid_argument` (a TableContentRefusal).
   rpc UnarchiveTableEntry(UnarchiveTableEntryRequest) returns (UnarchiveTableEntryResponse) {}
 
+  // ExportTableContent returns the campaign's own entries as one content pack
+  // (MR-025): the file the master keeps and imports into another campaign, or back
+  // into this one. Only the master. Every entry is in it, archived ones included,
+  // as a TableEntry with its `key`, `kind`, `name_pt` and its body; what the server
+  // manages (revision, timestamps, the count of characters, `off` and `archived`)
+  // is left out, and so is every switch: a pack carries content, not a campaign's
+  // choices about it. The features keep their keys, so a pack imported back keeps
+  // the choices sheets made. The pack is the file the app saves as
+  // "<campanha>-conteudo.json", in proto JSON.
+  //
+  // Errors: `permission_denied`, `not_found`.
+  rpc ExportTableContent(ExportTableContentRequest) returns (ExportTableContentResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // ImportTableContent loads a content pack into the campaign (MR-025). Only the
+  // master. A pack is untrusted input: every entry goes through the rules that
+  // CreateTableEntry and UpdateTableEntry apply, with the same violations, and
+  // nothing in it is run.
+  //
+  // With PREVIEW nothing is written: the answer says, for each entry, whether it
+  // would be new, updated (and which fields change), unchanged or refused (every
+  // violation with its field), and the totals. With APPLY everything is written in
+  // one transaction, all or nothing: an entry of the pack whose key the campaign has
+  // is updated, keeping its features' keys (and its archived mark and its switch);
+  // a key the campaign does not have is created, with the pack's key. An entry that
+  // is refused makes APPLY `invalid_argument` with a TableContentRefusal that lists
+  // every violation, each with the entry's key, and writes nothing. The content
+  // revision goes up once for the whole import, the live content is the new one for
+  // every request and sheet, the sheets that use an updated entry recalculate (the
+  // answer lists the ones left with issues), and the campaign's session gets
+  // `content_changed`. An import that changes nothing writes nothing and does not
+  // raise the revision. A new entry is on for the players, as a hand-made one; the
+  // import never switches anything off or on.
+  //
+  // The limits are the ones of the editors, checked on the whole campaign: 300
+  // entries, 64 KiB of data per entry; and the pack itself is at most 2 MiB (in
+  // proto JSON), has `format` "meurpg.table-content" and `version` 1, and every key
+  // is "<kind>:<slug>@mesa" of its entry's kind, without repeats. The
+  // violation reasons of a pack are in TableContentViolation.
+  //
+  // Errors: `permission_denied`, `not_found`; `invalid_argument` with a
+  // TableContentRefusal for a pack the rules refuse (APPLY; PREVIEW answers it as
+  // data, except for the pack-level violations, which are `invalid_argument` in
+  // both modes).
+  //
+  // Safe to retry when the request carries an idempotency_key (APPLY): a second call
+  // with the same key and the same request returns what the first one answered and
+  // writes nothing; the same key with another request is `invalid_argument`. Without
+  // a key the call is not deduplicated. PREVIEW ignores the key.
+  rpc ImportTableContent(ImportTableContentRequest) returns (ImportTableContentResponse) {}
+
   // ListOptionSwitches is the master's "Opções para os jogadores" (MR-025, RN-23):
-  // every class, subclass, race, subrace, background and spell of the campaign, the
+  // every class, subclass, race, subrace, background, spell and feat of the campaign, the
   // SRD's and the table's, each with its on/off state and how many of the
   // campaign's player characters use it, sorted by kind and Portuguese name. It is
   // what the screen draws "o que cada jogador vê" from. Only the master; what a
@@ -604,7 +687,7 @@ service TableContentService {
   // Errors:
   //   - `permission_denied`, `not_found`;
   //   - `invalid_argument`: no switch at all, more than 700, a key that is not a
-  //     class, subclass, race, subrace, background or spell of the campaign's
+  //     class, subclass, race, subrace, background, spell or feat of the campaign's
   //     content, or the same key twice.
   //
   // An archived table entry can be switched like any other (it stays hidden from
@@ -668,6 +751,7 @@ message CreateTableEntryRequest {
     TableSubrace table_subrace = 13;
     TableBackground table_background = 14;
     TableSpell table_spell = 15;
+    TableFeat table_feat = 17;
   }
   // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
   // same key and the same request returns what the first call made instead of making another.
@@ -700,6 +784,7 @@ message UpdateTableEntryRequest {
     TableSubrace table_subrace = 13;
     TableBackground table_background = 14;
     TableSpell table_spell = 15;
+    TableFeat table_feat = 17;
   }
 }
 
@@ -736,6 +821,115 @@ message UnarchiveTableEntryResponse {
   int32 table_revision = 2;
 }
 
+// TableContentPack is a campaign's own content as a file (MR-025):
+// {"format": "meurpg.table-content", "version": 1, "name": "...", "entries": [...]}
+// in proto JSON. It carries no campaign, user or date: it can be shared and
+// imported anywhere.
+message TableContentPack {
+  // Always "meurpg.table-content". ImportTableContent refuses another.
+  string format = 1;
+  // 1. ImportTableContent refuses another.
+  int32 version = 2;
+  // A label for the pack: the campaign's name when exported. 0 to 80 characters on
+  // one line; kept by nothing, shown in the preview.
+  string name = 3;
+  // The entries. At most 300. Each has `key`, `kind`, `name_pt` and its body; the
+  // other fields of TableEntry are left out of an export and ignored in an import.
+  repeated TableEntry entries = 4;
+}
+
+// ExportTableContentRequest names a campaign.
+message ExportTableContentRequest {
+  string campaign_id = 1;
+}
+
+// ExportTableContentResponse carries the pack.
+message ExportTableContentResponse {
+  TableContentPack pack = 1;
+}
+
+// TableImportMode says whether ImportTableContent writes.
+enum TableImportMode {
+  TABLE_IMPORT_MODE_UNSPECIFIED = 0;
+  // Check the pack and say what an import would do; write nothing.
+  TABLE_IMPORT_MODE_PREVIEW = 1;
+  // Write the pack, all or nothing.
+  TABLE_IMPORT_MODE_APPLY = 2;
+}
+
+// ImportTableContentRequest carries a pack and what to do with it.
+message ImportTableContentRequest {
+  string campaign_id = 1;
+  // The pack as a message. Required unless `pack_json` is set.
+  TableContentPack pack = 2;
+  // Required.
+  TableImportMode mode = 3;
+  // Optional, for APPLY. 1 to 64 characters, chosen once by the app for this action:
+  // a retry with the same key and the same request returns what the first call
+  // answered instead of importing again. The key is unique in the campaign; the same
+  // key with another request is `invalid_argument`.
+  string idempotency_key = 4;
+  // The pack file as the master has it, in proto JSON. Prefer it to `pack`: the server
+  // reads it strictly, and a field it does not know (a misspelled "proficiency" for
+  // "proficiency_key") is a violation of its entry at the path of the field (reason
+  // "unknown_field"), never dropped. When set, `pack` must be unset. The 2 MiB limit is
+  // this field's size.
+  bytes pack_json = 5;
+}
+
+// TableImportStatus is what an import does with one entry of the pack.
+enum TableImportStatus {
+  TABLE_IMPORT_STATUS_UNSPECIFIED = 0;
+  // The campaign has no entry with this key: it is created.
+  TABLE_IMPORT_STATUS_NEW = 1;
+  // The campaign has the entry and the pack's differs: it is replaced, keeping the
+  // keys of its features.
+  TABLE_IMPORT_STATUS_UPDATED = 2;
+  // The campaign has the same entry: nothing changes.
+  TABLE_IMPORT_STATUS_UNCHANGED = 3;
+  // The rules refuse the entry. An import with a refused entry writes nothing.
+  TABLE_IMPORT_STATUS_REFUSED = 4;
+}
+
+// TableImportEntry is the outcome for one entry of the pack, in the pack's order.
+message TableImportEntry {
+  string key = 1;
+  TableContentKind kind = 2;
+  string name_pt = 3;
+  TableImportStatus status = 4;
+  // UPDATED: what changes, as the paths of the entry's fields that differ: "name_pt"
+  // and the body's top-level fields ("table_class.levels", "table_race.speed_ft").
+  repeated string changed_fields = 5;
+  // REFUSED: every violation, with the same fields and reasons as CreateTableEntry
+  // (the `key` of each is this entry's, or another entry's the write would break).
+  repeated TableContentViolation violations = 6;
+}
+
+// TableImportTotals counts the entries of a pack by outcome.
+message TableImportTotals {
+  int32 new = 1;
+  int32 updated = 2;
+  int32 unchanged = 3;
+  int32 refused = 4;
+}
+
+// ImportTableContentResponse says what the import did, or with PREVIEW would do.
+message ImportTableContentResponse {
+  // The mode of the request.
+  TableImportMode mode = 1;
+  // The pack's label.
+  string pack_name = 2;
+  // One per entry of the pack, in its order.
+  repeated TableImportEntry entries = 3;
+  TableImportTotals totals = 4;
+  // The campaign's content revision: after an APPLY that changed something, the new
+  // one; otherwise the current one.
+  int32 table_revision = 5;
+  // APPLY: the characters that use an updated entry and have issues on their sheets
+  // with the new rules (never the ones without).
+  repeated AffectedCharacter affected_characters = 6;
+}
+
 // OptionSwitch is the state asked for one option.
 message OptionSwitch {
   // The option's content key: "class:wizard", "subclass:evocation",
@@ -753,7 +947,7 @@ message ListOptionSwitchesRequest {
 // OptionSwitchEntry is one option in the master's list.
 message OptionSwitchEntry {
   string key = 1;
-  // The kind of the option (class, subclass, race, subrace, background, spell).
+  // The kind of the option (class, subclass, race, subrace, background, spell, feat).
   TableContentKind kind = 2;
   string name_pt = 3;
   // True for the table's own entry ("@mesa"), false for the SRD's.
@@ -891,6 +1085,9 @@ message EffectMenuType {
   // class keys (`class:wizard`) whose list the player picks from (ClassIndexes
   // lists them). Empty `from` is any of the kind.
   repeated EffectMenuField fields = 4;
+  // Only a feat has this effect (ability_increase): the editor of a feature leaves
+  // it out.
+  bool feat_only = 5;
 }
 
 // EffectMenuField is a field of an effect type.
@@ -925,7 +1122,9 @@ message EffectMenuValue {
 message EffectMenuList {
   // "modifier_targets", "modifier_modes", "proficiency_targets",
   // "proficiency_levels", "roll_modes", "roll_targets", "senses", "recharges",
-  // "economies", "choice_kinds", "skills", "languages", "tools" or "tag_prefixes".
+  // "economies", "choice_kinds", "skills", "languages", "tools", "tag_prefixes",
+  // "abilities" (the six abilities, for an ability_increase's `from`) or
+  // "ability_increase_amounts" (its `value`: "1" or "2").
   string name = 1;
   repeated EffectMenuValue values = 2;
 }

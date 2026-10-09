@@ -117,11 +117,14 @@
           totalNote="Total do ataque"
           [modifier]="attack()?.attackBonus ?? 0"
           appLabel="Rolar ataque"
-          [busy]="busy() || !targetId()"
+          [busy]="busy() || !targetId() || !!rollWhy()"
           (app)="rollApp()"
           (typed)="rollTyped($event)"
         />
       </div>
+      @if (rollWhy()) {
+        <p class="offer__why" id="roll-why">{{ rollWhy() }}</p>
+      }
     } @else {
       <p class="card__cap">Este combatente não tem ataques na ficha. Use "Dano/Cura" na ordem para ajustar os PV.</p>
     }

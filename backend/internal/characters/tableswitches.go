@@ -20,7 +20,7 @@ import (
 )
 
 // The master's switches, "Opções para os jogadores" (MR-025, RN-23, ADR-0018): per
-// campaign, each class, subclass, race, subrace, background and spell, the SRD's and
+// campaign, each class, subclass, race, subrace, background, spell and feat, the SRD's and
 // the table's, is on or off for the players. Everything is on by default; the off
 // set is campaign_content_off, read with the revision in the caller's transaction
 // and added to the content by rules.Overlay.Off. Every change bumps the campaign's
@@ -97,6 +97,9 @@ func optionEntries(c *rules.Content, uses map[string]int) []*rulesv1.OptionSwitc
 	}
 	for _, e := range cat.Spells {
 		add(rulesv1.TableContentKind_TABLE_CONTENT_KIND_SPELL, e.Key, e.NamePT, "", e.Level, e.Archived, e.Off)
+	}
+	for _, e := range c.Feats() {
+		add(rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT, e.Key, e.NamePT, "", 0, e.Archived, e.Off)
 	}
 	slices.SortStableFunc(out, func(a, b *rulesv1.OptionSwitchEntry) int {
 		if d := cmp.Compare(a.GetKind(), b.GetKind()); d != 0 {
@@ -182,7 +185,7 @@ func (s *Service) SetOptionSwitches(
 		}
 		for i, sw := range switches {
 			if !before.Switchable(sw.GetKey()) {
-				return invalidArgument(fieldErr("switches", "switches[%d].key: %q is not a class, subclass, race, subrace, background or spell of this campaign", i, sw.GetKey()))
+				return invalidArgument(fieldErr("switches", "switches[%d].key: %q is not a class, subclass, race, subrace, background, spell or feat of this campaign", i, sw.GetKey()))
 			}
 		}
 		rev, err := q.BumpContentRevision(ctx, charactersdb.BumpContentRevisionParams{CampaignID: m.CampaignID, Now: s.now()})

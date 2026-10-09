@@ -23,6 +23,7 @@ import type { Map as MapMessage } from '../../../gen/meurpg/maps/v1/maps_pb';
 import {
   type Encounter,
   EncounterMode,
+  CombatantKind,
   EncounterStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { AuthService } from '../../core/auth/auth.service';
@@ -311,7 +312,18 @@ export class LiveSession {
   );
 
   protected readonly ownCharacterId = computed(() => this.vitals().at(0)?.characterId ?? '');
-  protected readonly ownCharacterName = computed(() => this.vitals().at(0)?.name ?? '');
+  /** The player's own combatant in the combat, which a character that died keeps (it has no vitals). */
+  private readonly ownCombatant = computed(() =>
+    this.combat.encounter()?.combatants.find((c) => c.mine && c.kind === CombatantKind.PLAYER),
+  );
+  /** The player's character: from the vitals, or, for one that died, from its combatant. */
+  protected readonly ownCharacterName = computed(
+    () => this.vitals().at(0)?.name || this.ownCombatant()?.label || '',
+  );
+  /** Whose numbers the "O combate acabou" card marks as the reader's: a dead character's too. */
+  protected readonly highlightsCharacterId = computed(
+    () => this.ownCharacterId() || this.ownCombatant()?.characterId || '',
+  );
   /** The ended combat whose "Destaques" card this player closed (MR-032). */
   private readonly highlightsClosed = signal<string | null>(null);
   /** The players' "O combate acabou" card: the combat that ended, until they close it. */
@@ -564,7 +576,11 @@ export class LiveSession {
           void this.trapBoard.refresh();
           void this.readSnapshot(campaignId, generation);
         },
-        onContentChanged: () => this.spellCatalog.forget(campaignId),
+        onContentChanged: () => {
+          this.spellCatalog.forget(campaignId);
+          // The sheet the trap skills come from may have changed with the table's content.
+          this.loadPlayerSheet(campaignId, generation);
+        },
         onVitals: (v) => {
           // Looking through a familiar's eyes, or coming back, changes what the player sees.
           const before =
@@ -781,11 +797,12 @@ export class LiveSession {
     }
   }
 
-  /** "Fechar" on the players' "Destaques" card. */
+  /** "Fechar" on the players' "Destaques" card: it closes the summary under it too, which has no button of its own while the card is up. */
   protected closeHighlights(): void {
     const e = this.highlightsFor();
     if (e) {
       this.highlightsClosed.set(e.id);
+      this.combat.dismissEnded();
     }
   }
 
@@ -850,6 +867,15 @@ export class LiveSession {
       return;
     }
     this.loadedSheetFor = own.characterId;
+    this.loadPlayerSheet(campaignId, generation);
+  }
+
+  /** Reads the player's own sheet again; best effort, the page keeps the one it has when this fails. */
+  private loadPlayerSheet(campaignId: string, generation: number): void {
+    const own = this.ownVitals();
+    if (this.isMaster() || !own) {
+      return;
+    }
     this.source.getPlayerSheet(campaignId, own.characterId).then(
       (sheet) => generation === this.generation && this.playerSheet.set(sheet),
       () => undefined,

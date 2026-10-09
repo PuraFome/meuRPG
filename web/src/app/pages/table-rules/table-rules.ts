@@ -158,6 +158,22 @@ const ENEMY_REACTION_OPTIONS: readonly DiceOption<EnemyReactionsRule>[] = [
   },
 ];
 
+/** "Talentos": 1 is allowed, 0 is not used (the radio cards take numbers). */
+const FEAT_OPTIONS: readonly DiceOption<number>[] = [
+  {
+    value: 0,
+    title: 'Não usados',
+    description:
+      'Todo incremento no valor de habilidade é o do SRD: +2 em uma habilidade ou +1 em duas.',
+  },
+  {
+    value: 1,
+    title: 'Permitidos',
+    description:
+      'No lugar do incremento, o jogador pode pegar um talento da mesa, se a ficha atender ao pré-requisito.',
+  },
+];
+
 const DICE_OPTIONS: readonly DiceOption<DiceMode>[] = [
   {
     value: DiceMode.APP,
@@ -218,6 +234,7 @@ function ruleRows(d: RulesDraft, xpMode: XpMode): { label: string; value: string
     { label: 'Habilidades de uma ficha nova', value: methodWords(d) },
     { label: 'Acertos críticos', value: titleOf(CRITICAL_OPTIONS, d.critical) },
     { label: 'Testes contra a morte', value: titleOf(DEATH_SAVE_OPTIONS, d.deathSaves) },
+    { label: 'Talentos', value: d.featsAllowed ? 'Permitidos' : 'Não usados' },
     { label: 'Reações dos inimigos', value: titleOf(ENEMY_REACTION_OPTIONS, d.enemyReactions) },
     { label: 'Experiência', value: XP_OPTION_TITLES[xpMode] ?? '' },
   ];
@@ -272,6 +289,7 @@ export class TableRulesPage {
   protected readonly deathSaveOptions = DEATH_SAVE_OPTIONS;
   protected readonly enemyReactionOptions = ENEMY_REACTION_OPTIONS;
   protected readonly diceOptions = DICE_OPTIONS;
+  protected readonly featOptions = FEAT_OPTIONS;
   protected readonly combatOptions = COMBAT_OPTIONS;
   protected readonly inertStyle: readonly TableStyle[] = [TableStyle.PERSONALIZADO];
   protected readonly maxLength = HOUSE_RULE_MAX_LENGTH;

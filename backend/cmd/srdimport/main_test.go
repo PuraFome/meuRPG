@@ -314,3 +314,26 @@ func TestMonsterXPComesFromTheChallengeRating(t *testing.T) {
 		t.Error("monsterXP(31) accepted a challenge rating the table lacks")
 	}
 }
+
+// TestFeatsKeepTheirAbilityScoreMinimums: a feat is read with its text and every
+// ability score minimum it asks for.
+func TestFeatsKeepTheirAbilityScoreMinimums(t *testing.T) {
+	t.Parallel()
+	in := &inputs{raw: map[string][]byte{"5e-SRD-Feats.json": []byte(`[
+		{"index": "grappler", "name": "Grappler", "desc": ["Text."], "prerequisites": [{"ability_score": {"index": "str", "name": "STR", "url": "/x"}, "minimum_score": 13}]},
+		{"index": "alert", "name": "Alert", "desc": ["Text."], "prerequisites": []}]`)}}
+	out, err := convertFeats(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	feats, ok := out.data.([]srd51.Feat)
+	if !ok || out.name != "feats.json" || len(feats) != 2 {
+		t.Fatalf("convertFeats() = %v %T", out.name, out.data)
+	}
+	if feats[0].Key != "feat:alert" || feats[0].Minimums != nil {
+		t.Errorf("a feat with no prerequisite = %+v", feats[0])
+	}
+	if feats[1].Key != "feat:grappler" || feats[1].Minimums["str"] != 13 || len(feats[1].Desc) != 1 {
+		t.Errorf("Grappler = %+v", feats[1])
+	}
+}
