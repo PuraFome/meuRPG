@@ -22,7 +22,6 @@ import {
   MonsterHitPoints,
   type ParticipantSchema,
   type PendingDamage,
-  type ReactionOutcome,
   type SpellCast,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { newKey } from '../connect/idempotency';
@@ -158,12 +157,6 @@ export interface ActionResult {
 export interface ConditionChange {
   readonly keys?: readonly string[];
   readonly endConcentration?: boolean;
-}
-
-/** What Escudo did to a hit (`UseReaction`). */
-export interface ReactionResult {
-  readonly encounter: Encounter;
-  readonly outcome: ReactionOutcome;
 }
 
 /** How a window is answered (`AnswerReaction`): "Usar ..." with what it needs, or "Deixar passar". */
@@ -754,24 +747,6 @@ export class CombatClient {
     };
   }
 
-  /** The master answers for the target: cast Escudo with `slot`. */
-  async useReaction(
-    campaignId: string,
-    encounterId: string,
-    pendingDamageId: string,
-    slot: { level: number; pact: boolean },
-    key: string,
-  ): Promise<ReactionResult> {
-    const res = await this.client.useReaction({
-      campaignId,
-      encounterId,
-      pendingDamageId,
-      slot,
-      idempotencyKey: key,
-    });
-    return { encounter: need(res.encounter, 'UseReaction'), outcome: res.outcome };
-  }
-
   /** `AnswerReaction`: "Usar ..." or "Deixar passar" on a reaction window. The caller makes the key from the request. */
   async answerReaction(
     campaignId: string,
@@ -821,22 +796,6 @@ export class CombatClient {
       idempotencyKey: key,
     });
     return { encounter: need(res.encounter, 'ResolveConcentrationSave'), result: res.result };
-  }
-
-  /** The master lets the hit go ("Seguir sem Escudo"). */
-  async declineReaction(
-    campaignId: string,
-    encounterId: string,
-    pendingDamageId: string,
-    key: string,
-  ): Promise<Encounter> {
-    const res = await this.client.declineReaction({
-      campaignId,
-      encounterId,
-      pendingDamageId,
-      idempotencyKey: key,
-    });
-    return need(res.encounter, 'DeclineReaction');
   }
 
   /** A standard action ("standard:dash") or a feature's ("feature:second-wind").
