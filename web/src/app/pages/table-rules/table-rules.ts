@@ -185,6 +185,44 @@ const COMBAT_OPTIONS: readonly DiceOption<number>[] = [
   },
 ];
 
+/** The title of the option a rule has chosen. */
+function titleOf<T>(options: readonly DiceOption<T>[], value: T): string {
+  return options.find((o) => o.value === value)?.title ?? '';
+}
+
+/** The ways of making ability scores a table allows, in words. */
+function methodWords(d: RulesDraft): string {
+  return [
+    d.standardArray ? 'Conjunto padrão' : '',
+    d.pointBuy ? 'Compra por pontos' : '',
+    d.rolled4d6 ? '4d6, descartando o menor' : '',
+    d.typed ? 'Digitar os valores' : '',
+  ]
+    .filter((m) => m !== '')
+    .join(', ');
+}
+
+/** What a player reads of each rule: its words. */
+function ruleRows(d: RulesDraft, xpMode: XpMode): { label: string; value: string }[] {
+  return [
+    { label: 'Dados', value: DICE_TITLES[d.diceMode] },
+    {
+      label: 'Combate',
+      value: d.combatStartsWithMap ? 'Começa com mapa' : 'Começa sem mapa (teatro da mente)',
+    },
+    { label: 'Névoa de guerra nos mapas novos', value: d.fogOnNewMaps ? 'Ligada' : 'Desligada' },
+    {
+      label: 'Pontos de vida ao subir de nível',
+      value: titleOf(HIT_POINT_OPTIONS, d.hitPoints),
+    },
+    { label: 'Habilidades de uma ficha nova', value: methodWords(d) },
+    { label: 'Acertos críticos', value: titleOf(CRITICAL_OPTIONS, d.critical) },
+    { label: 'Testes contra a morte', value: titleOf(DEATH_SAVE_OPTIONS, d.deathSaves) },
+    { label: 'Reações dos inimigos', value: titleOf(ENEMY_REACTION_OPTIONS, d.enemyReactions) },
+    { label: 'Experiência', value: XP_OPTION_TITLES[xpMode] ?? '' },
+  ];
+}
+
 /**
  * "Regras da mesa" (MR-025, RN-24, RN-09; E10-03 states 1 to 3), master only: the "Estilo da mesa" on top, which fills the
  * three settings it owns (dice, combat with or without a map, fog on new maps) and leaves each editable; then the
@@ -278,42 +316,7 @@ export class TableRulesPage {
   /** What a player reads: each rule in words (the page is read-only for them; only the master changes it). */
   protected readonly readRows = computed<readonly { label: string; value: string }[]>(() => {
     const s = this.state();
-    if (s.status !== 'ready') {
-      return [];
-    }
-    const d = s.vm.saved;
-    const methods = [
-      d.standardArray ? 'Conjunto padrão' : '',
-      d.pointBuy ? 'Compra por pontos' : '',
-      d.rolled4d6 ? '4d6, descartando o menor' : '',
-      d.typed ? 'Digitar os valores' : '',
-    ].filter((m) => m !== '');
-    return [
-      { label: 'Dados', value: DICE_TITLES[d.diceMode] },
-      {
-        label: 'Combate',
-        value: d.combatStartsWithMap ? 'Começa com mapa' : 'Começa sem mapa (teatro da mente)',
-      },
-      { label: 'Névoa de guerra nos mapas novos', value: d.fogOnNewMaps ? 'Ligada' : 'Desligada' },
-      {
-        label: 'Pontos de vida ao subir de nível',
-        value: HIT_POINT_OPTIONS.find((o) => o.value === d.hitPoints)?.title ?? '',
-      },
-      { label: 'Habilidades de uma ficha nova', value: methods.join(', ') },
-      {
-        label: 'Acertos críticos',
-        value: CRITICAL_OPTIONS.find((o) => o.value === d.critical)?.title ?? '',
-      },
-      {
-        label: 'Testes contra a morte',
-        value: DEATH_SAVE_OPTIONS.find((o) => o.value === d.deathSaves)?.title ?? '',
-      },
-      {
-        label: 'Reações dos inimigos',
-        value: ENEMY_REACTION_OPTIONS.find((o) => o.value === d.enemyReactions)?.title ?? '',
-      },
-      { label: 'Experiência', value: XP_OPTION_TITLES[s.xpMode] ?? '' },
-    ];
+    return s.status === 'ready' ? ruleRows(s.vm.saved, s.xpMode) : [];
   });
   protected readonly styleLabel = computed(() => {
     const s = this.state();

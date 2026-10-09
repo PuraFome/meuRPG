@@ -2686,6 +2686,16 @@ describe('CharacterEditor, leaving the route while a read or a save is in flight
   });
 });
 
+/** What the "Perguntar" specs read of the editor. */
+interface EditorProbe {
+  fullForm: {
+    getRawValue(): { cuttingWordsAsk: string };
+    patchValue(value: { cuttingWordsAsk: string }): void;
+  };
+  cuttingWordsOptions: readonly { label: string }[];
+  submit(): Promise<void>;
+}
+
 describe('CharacterEditor, the bard\'s "Perguntar" setting for Palavras de Interrupção', () => {
   let fake: FakeCharacterEditorSource;
 
@@ -2712,11 +2722,10 @@ describe('CharacterEditor, the bard\'s "Perguntar" setting for Palavras de Inter
     await flush();
     await fixture.whenStable();
     fixture.detectChanges();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return {
       fixture,
       el: fixture.nativeElement as HTMLElement,
-      cmp: fixture.componentInstance as any,
+      cmp: fixture.componentInstance as unknown as EditorProbe,
     };
   }
 
@@ -2725,7 +2734,7 @@ describe('CharacterEditor, the bard\'s "Perguntar" setting for Palavras de Inter
     expect(el.textContent).toContain('Palavras de Interrupção');
     expect(el.querySelector('mat-select[formcontrolname="cuttingWordsAsk"]')).not.toBeNull();
     expect(cmp.fullForm.getRawValue().cuttingWordsAsk).toBe('only-attacks');
-    expect(cmp.cuttingWordsOptions.map((o: { label: string }) => o.label)).toEqual([
+    expect(cmp.cuttingWordsOptions.map((o) => o.label)).toEqual([
       'Em todos os testes do inimigo',
       'Só em ataques',
       'Nunca',
