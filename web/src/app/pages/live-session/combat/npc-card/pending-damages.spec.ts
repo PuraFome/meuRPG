@@ -205,3 +205,81 @@ describe("PendingDamages: the damage of a player's critical with Crítico Brutal
     ).toBe('2d12 (7, 11) + 1d12 Crítico Brutal (4) + 3 = 25 de dano cortante');
   });
 });
+
+describe('PendingDamages: rolling again after "Desfazer" (R2-11)', () => {
+  it('sends a new idempotency key for the same damage, so the server rolls it instead of replaying the old answer', async () => {
+    const keys: string[] = [];
+    const enc = encounter({
+      combatants: [
+        combatant({ id: 'cap', label: 'Capitão Goblin' }),
+        combatant({ id: 'pen', label: 'Pensantus', kind: CombatantKind.PLAYER }),
+      ],
+    } as never);
+    const api = {
+      rollDamage: async (_c: string, _e: string, _p: string, _d: unknown, key: string) => {
+        keys.push(key);
+        return { encounter: enc, pending: {}, cast: [] };
+      },
+    };
+    TestBed.configureTestingModule({ providers: [{ provide: CombatClient, useValue: api }] });
+    const fixture = TestBed.createComponent(PendingDamages);
+    const p = {
+      id: 'p1',
+      attackerId: 'cap',
+      targetId: 'pen',
+      status: PendingDamageStatus.AWAITING_ROLL,
+      diceCount: 1,
+      diceSides: 6,
+      bonus: 2,
+    };
+    fixture.componentRef.setInput('pendings', [p]);
+    fixture.componentRef.setInput('encounter', enc);
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.componentRef.setInput('state', new CombatState());
+    fixture.detectChanges();
+    const sheet = fixture.componentInstance as unknown as {
+      rollInApp(p: unknown): Promise<void>;
+    };
+    await sheet.rollInApp(p);
+    await sheet.rollInApp(p);
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).not.toBe(keys[1]);
+  });
+
+  it('keeps the key when the answer was lost, so a retry never rolls twice', async () => {
+    const keys: string[] = [];
+    const enc = encounter({ combatants: [] } as never);
+    let fail = true;
+    const api = {
+      rollDamage: async (_c: string, _e: string, _p: string, _d: unknown, key: string) => {
+        keys.push(key);
+        if (fail) {
+          fail = false;
+          throw new Error('lost');
+        }
+        return { encounter: enc, pending: {}, cast: [] };
+      },
+    };
+    TestBed.configureTestingModule({ providers: [{ provide: CombatClient, useValue: api }] });
+    const fixture = TestBed.createComponent(PendingDamages);
+    const p = {
+      id: 'p1',
+      attackerId: 'cap',
+      targetId: 'pen',
+      status: PendingDamageStatus.AWAITING_ROLL,
+      diceCount: 1,
+      diceSides: 6,
+    };
+    fixture.componentRef.setInput('pendings', [p]);
+    fixture.componentRef.setInput('encounter', enc);
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.componentRef.setInput('state', new CombatState());
+    fixture.detectChanges();
+    const sheet = fixture.componentInstance as unknown as {
+      rollInApp(p: unknown): Promise<void>;
+    };
+    await sheet.rollInApp(p);
+    await sheet.rollInApp(p);
+    expect(keys[0]).toBe(keys[1]);
+  });
+});

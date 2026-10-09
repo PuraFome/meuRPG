@@ -3,6 +3,7 @@ import {
   ElementRef,
   Injector,
   afterNextRender,
+  DestroyRef,
   computed,
   inject,
   input,
@@ -26,7 +27,7 @@ import {
 } from '../../../../core/play/scene-view';
 import { tieShortWords, tight } from '../../../../core/format/text';
 import { StagePlayer } from '../stage-player/stage-player';
-import { openSceneRollSheet } from '../scene-roll-sheet/scene-roll-sheet';
+import { SceneRollSheet, openSceneRollSheet } from '../scene-roll-sheet/scene-roll-sheet';
 
 /**
  * "Cena" on the player's page (E7-03, MR-015, RN-20): the block under the
@@ -58,6 +59,26 @@ export class ScenePlayer {
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly injector = inject(Injector);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  /** The roll sheet this block opened is on screen (it is the page's overlay, not part of this block's DOM). */
+  private rollSheetOpen = false;
+  private gone = false;
+
+  constructor() {
+    // The block leaves the page when a combat shows (the page draws the combat instead). The roll sheet is an overlay
+    // that would stay on top of the initiative card and keep "Rolar no app" out of reach: it closes with the block.
+    inject(DestroyRef).onDestroy(() => {
+      this.gone = true;
+      if (this.rollSheetOpen) {
+        // Only the roll sheet: another dialog on the page is not this block's to close.
+        this.dialog.openDialogs
+          .filter((d) => d.componentInstance instanceof SceneRollSheet)
+          .forEach((d) => d.close());
+        if (this.bottomSheet._openedBottomSheetRef?.instance instanceof SceneRollSheet) {
+          this.bottomSheet.dismiss();
+        }
+      }
+    });
+  }
 
   readonly campaignId = input.required<string>();
   readonly state = input.required<SceneState>();
@@ -100,6 +121,7 @@ export class ScenePlayer {
   });
 
   protected roll(action: SceneActionView): void {
+    this.rollSheetOpen = true;
     openSceneRollSheet(this.dialog, this.bottomSheet, {
       campaignId: this.campaignId(),
       action,
@@ -107,7 +129,12 @@ export class ScenePlayer {
       preference: this.dicePreference(),
       state: this.state(),
       reliableTalent: this.reliableTalent(),
-    }).subscribe(() => this.focusRow(action.id));
+    }).subscribe(() => {
+      this.rollSheetOpen = false;
+      if (!this.gone) {
+        this.focusRow(action.id);
+      }
+    });
   }
 
   /** The row that was rolled turns into the result; the sheet's opener is gone,
