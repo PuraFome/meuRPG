@@ -83,8 +83,6 @@ export interface VitalsVm {
   readonly resources?: readonly ResourceUsageVm[];
   /** The beast a druid is in now; `null` or absent in the character's own shape. While it is set, the numbers above wait. */
   readonly wildShape?: WildShapeVm | null;
-  /** The level of exhaustion, 0 to 6; absent for older copies. From level 4 on, `hitPointsMax` is already half. */
-  readonly exhaustionLevel?: number;
 }
 
 /** The open game session being watched. */
