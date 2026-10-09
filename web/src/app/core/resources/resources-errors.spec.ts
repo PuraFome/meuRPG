@@ -87,7 +87,7 @@ describe('resource errors', () => {
   });
 
   it('has a sentence for a reason it does not word', () => {
-    expect(resourceBlockedMessage(ResourceBlockedReason.NOT_AVAILABLE)).toContain(
+    expect(resourceBlockedMessage(ResourceBlockedReason.UNSPECIFIED)).toContain(
       'não pode ser feito agora',
     );
   });
