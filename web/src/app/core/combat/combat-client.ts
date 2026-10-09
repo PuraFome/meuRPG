@@ -5,6 +5,9 @@ import { createClient } from '@connectrpc/connect';
 import {
   type AttackRoll,
   CombatService,
+  type ConcentrationSaveResult,
+  ReactionChoice,
+  type ReactionResult as GenReactionResult,
   type DeathSave,
   type CoverDegree,
   type CombatantSide,
@@ -161,6 +164,39 @@ export interface ConditionChange {
 export interface ReactionResult {
   readonly encounter: Encounter;
   readonly outcome: ReactionOutcome;
+}
+
+/** How a window is answered (`AnswerReaction`): "Usar ..." with what it needs, or "Deixar passar". */
+export interface ReactionAnswer {
+  readonly use: boolean;
+  /** The slot of a spell reaction (`pact` for the pact slot). */
+  readonly slot?: SlotRef;
+  /** Hellish Rebuke paid with the Infernal Legacy. */
+  readonly useRacial?: boolean;
+  /** Feather Fall: the falling creatures to save. */
+  readonly creatureIds?: readonly string[];
+  /** The die the answer needs, when it needs one: the app rolls it, or the face typed from a physical die. */
+  readonly die?: { readonly inApp: true } | { readonly typed: number };
+}
+
+/** What `AnswerReaction` answers: the combat and what the answer did. */
+export interface AnswerResult {
+  readonly encounter: Encounter;
+  readonly result: GenReactionResult | undefined;
+}
+
+/** How a concentration window is settled: the d20 in the app, a typed face, "Deixar o mestre rolar por mim", or the
+ * master keeping the concentration. */
+export type ConcentrationAnswer =
+  | { readonly kind: 'app' }
+  | { readonly kind: 'typed'; readonly face: number }
+  | { readonly kind: 'hand' }
+  | { readonly kind: 'keep' };
+
+/** What `ResolveConcentrationSave` answers: the combat and the save (unset when handed to the master or kept). */
+export interface ConcentrationOutcome {
+  readonly encounter: Encounter;
+  readonly result: ConcentrationSaveResult | undefined;
 }
 
 /** One adjustment of an NPC's hit points ("Dano/Cura"): at most one of the
@@ -623,6 +659,7 @@ export class CombatClient {
     key: string,
     asReaction = false,
     opportunityOfferId = '',
+    catchWindowId = '',
   ): Promise<AttackResult> {
     const res = await this.client.rollAttack({
       campaignId,
@@ -635,6 +672,7 @@ export class CombatClient {
         'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
       asReaction,
       opportunityOfferId,
+      catchWindowId,
     });
     return {
       encounter: need(res.encounter, 'RollAttack'),
@@ -732,6 +770,57 @@ export class CombatClient {
       idempotencyKey: key,
     });
     return { encounter: need(res.encounter, 'UseReaction'), outcome: res.outcome };
+  }
+
+  /** `AnswerReaction`: "Usar ..." or "Deixar passar" on a reaction window. The caller makes the key from the request. */
+  async answerReaction(
+    campaignId: string,
+    encounterId: string,
+    windowId: string,
+    answer: ReactionAnswer,
+    key: string,
+  ): Promise<AnswerResult> {
+    const res = await this.client.answerReaction({
+      campaignId,
+      encounterId,
+      windowId,
+      answer: answer.use ? ReactionChoice.USE : ReactionChoice.PASS,
+      slot: answer.slot ? { level: answer.slot.level, pact: answer.slot.pact } : undefined,
+      useRacial: answer.useRacial ?? false,
+      creatureIds: [...(answer.creatureIds ?? [])],
+      roll: !answer.die
+        ? { case: undefined }
+        : 'inApp' in answer.die
+          ? { case: 'rollInApp', value: true }
+          : { case: 'typed', value: answer.die.typed },
+      idempotencyKey: key,
+    });
+    return { encounter: need(res.encounter, 'AnswerReaction'), result: res.result };
+  }
+
+  /** `ResolveConcentrationSave`: the Constitution saving throw of a concentration window. */
+  async resolveConcentrationSave(
+    campaignId: string,
+    encounterId: string,
+    windowId: string,
+    how: ConcentrationAnswer,
+    key: string,
+  ): Promise<ConcentrationOutcome> {
+    const res = await this.client.resolveConcentrationSave({
+      campaignId,
+      encounterId,
+      windowId,
+      roll:
+        how.kind === 'app'
+          ? { case: 'rollInApp', value: true }
+          : how.kind === 'typed'
+            ? { case: 'd20Face', value: how.face }
+            : how.kind === 'hand'
+              ? { case: 'handToMaster', value: true }
+              : { case: 'keep', value: true },
+      idempotencyKey: key,
+    });
+    return { encounter: need(res.encounter, 'ResolveConcentrationSave'), result: res.result };
   }
 
   /** The master lets the hit go ("Seguir sem Escudo"). */
