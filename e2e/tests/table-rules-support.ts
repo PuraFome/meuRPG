@@ -44,6 +44,7 @@ export async function setTableRulesRPC(master: Page, campaignId: string, rules: 
       critical: 'CRITICAL_RULE_DOUBLED_DICE',
       deathSaves: 'DEATH_SAVE_VISIBILITY_VISIBLE_TO_ALL',
       houseRules: [],
+      enemyReactions: 'ENEMY_REACTIONS_RULE_ONLY_WHEN_POSSIBLE',
       ...rules,
     },
   });
