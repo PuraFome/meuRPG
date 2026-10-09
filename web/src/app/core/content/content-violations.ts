@@ -198,6 +198,48 @@ const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: string }[] =
     shape: /^table_(class|subclass)\.levels\[\]\.features\[\]$/,
     text: 'Confira esta característica.',
   },
+  // A feat (MR-025): the paths and reasons of backend/internal/rules/overlay_feat.go.
+  {
+    shape: /^table_feat\.prerequisite\.(minimums|any_of)(\.[a-z]+)?$/,
+    text: 'A pontuação mínima vai de 1 a 30.',
+  },
+  {
+    shape: /^table_feat\.prerequisite\.proficiency_key$/,
+    text: 'Escolha uma proficiência da lista do SRD.',
+  },
+  {
+    shape: /^table_feat\.prerequisite\.race_key$/,
+    text: 'Esta raça ou sub-raça não existe mais. Escolha outra.',
+  },
+  {
+    shape: /^table_feat\.prerequisite\.level$/,
+    text: 'O nível vai de 1 a 20 (vazio não pede nada).',
+  },
+  {
+    shape: /^table_feat\.effects\[\]$/,
+    reason: 'limit',
+    text: 'Um talento tem só um aumento de habilidade.',
+  },
+  {
+    shape: /^table_feat\.effects\[\]\.count$/,
+    reason: 'bad_value',
+    text: 'Quantos o jogador escolhe: de 1 até o número de itens da lista (em um aumento de habilidade, as habilidades da lista).',
+  },
+  {
+    shape: /^table_feat\.effects\[\]\.from$/,
+    reason: 'bad_value',
+    text: 'Liste as opções entre as quais o jogador escolhe, sem repetir (em um aumento de habilidade, as habilidades).',
+  },
+  {
+    shape: /^table_feat\.effects\[\]\.from$/,
+    reason: 'dangling_reference',
+    text: 'Este talento não existe mais. Tire-o da lista.',
+  },
+  {
+    shape: /^table_feat\.effects\[\]\.value$/,
+    reason: 'bad_value',
+    text: 'Este valor não serve para este efeito (um aumento de habilidade soma +1 ou +2 a cada habilidade).',
+  },
   { shape: /\.level$/, text: 'Escolha um nível de magia de 0 (truque) a 9.' },
   { shape: /\.school_key$/, text: 'Escolha a escola da magia.' },
   {

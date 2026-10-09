@@ -55,6 +55,7 @@ const saved: RulesDraft = {
   typed: true,
   critical: CriticalRule.DOUBLED_DICE,
   deathSaves: DeathSaveVisibility.VISIBLE_TO_ALL,
+  featsAllowed: false,
   houseRules: ['Beber uma poção é uma ação bônus'],
 };
 
@@ -451,5 +452,26 @@ describe('TableRulesPage', () => {
       expect(setXpMode).toHaveBeenCalledTimes(1);
       expect(document.activeElement).toBe(button(el, 'Mudar o modo de XP'));
     });
+  });
+
+  it('has "Talentos" as "Não usados" by default, and saves "Permitidos" with the rest', async () => {
+    const { fixture, el } = await setup();
+    expect(radio(el, 'Não usados').checked).toBe(true);
+    radio(el, 'Permitidos').click();
+    await settle(fixture);
+    expect(text(el)).toContain('1 mudança não salva');
+    button(el, 'Salvar regras').click();
+    await settle(fixture);
+    const [, sent] = set.mock.calls[0] as [string, RulesDraft];
+    expect(sent.featsAllowed).toBe(true);
+    expect(sent.houseRules).toEqual(['Beber uma poção é uma ação bônus']);
+  });
+
+  it('tells a player whether the table uses feats', async () => {
+    const { el } = await setup(Role.PLAYER);
+    const rows = Array.from(el.querySelectorAll('.read__row')).map(
+      (r) => `${r.querySelector('dt')?.textContent} ${r.querySelector('dd')?.textContent}`,
+    );
+    expect(rows).toContain('Talentos Não usados');
   });
 });

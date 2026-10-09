@@ -206,6 +206,7 @@ var notReads = map[string]classified{
 	progressionv1connect.ProgressionServiceUpdateMilestoneProcedure:           {masterWrite, masterOnlyWhy},
 	rulesv1connect.TableContentServiceArchiveTableEntryProcedure:              {masterWrite, masterOnlyWhy},
 	rulesv1connect.TableContentServiceCreateTableEntryProcedure:               {masterWrite, masterOnlyWhy},
+	rulesv1connect.TableContentServiceImportTableContentProcedure:             {masterWrite, masterOnlyWhy},
 	rulesv1connect.TableContentServiceSetOptionSwitchesProcedure:              {masterWrite, masterOnlyWhy},
 	rulesv1connect.TableContentServiceUnarchiveTableEntryProcedure:            {masterWrite, masterOnlyWhy},
 	rulesv1connect.TableContentServiceUpdateTableEntryProcedure:               {masterWrite, masterOnlyWhy},

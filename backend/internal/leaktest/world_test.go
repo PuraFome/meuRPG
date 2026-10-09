@@ -534,6 +534,9 @@ func (w *world) buildTableContent() {
 		case *rulesv1.TableBackground:
 			b.NamePt = w.secrets.marker(kind, readers...)
 			req = &rulesv1.CreateTableEntryRequest{CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableBackground{TableBackground: b}}
+		case *rulesv1.TableFeat:
+			b.NamePt = w.secrets.marker(kind, readers...)
+			req = &rulesv1.CreateTableEntryRequest{CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableFeat{TableFeat: b}}
 		}
 		e := must(m.table.CreateTableEntry(ctx, rq(req))).GetEntry()
 		w.secrets.id(kind+"-key", e.GetKey(), readers...)
@@ -555,17 +558,31 @@ func (w *world) buildTableContent() {
 			Damage: []*rulesv1.TableSpellDamage{{DamageTypeKey: "damage-type:force", Dice: "3d6"}},
 		}
 	}
+	feat := func(readers ...*person) *rulesv1.TableFeat {
+		return &rulesv1.TableFeat{
+			DescPt:  []string{w.secrets.marker("feat-text", readers...)},
+			Effects: []*rulesv1.TableEffect{{Type: "note", TextPt: w.secrets.marker("feat-effect", readers...)}},
+		}
+	}
+	// the table plays with feats, so the level-up offers them to the players who may read them
+	rules := must(m.campaigns.GetTableRules(ctx, rq(&campaignsv1.GetTableRulesRequest{CampaignId: w.campaign}))).GetRules()
+	rules.FeatsAllowed = true
+	must(m.campaigns.SetTableRules(ctx, rq(&campaignsv1.SetTableRulesRequest{CampaignId: w.campaign, Rules: rules})))
 	// one live entry, which the players read, so the reads are not vacuous
 	create("race-live", race(), w.ana, w.caio, w.pending)
+	create("feat-live", feat(w.ana, w.caio), w.ana, w.caio)
 	create("spell-live", spell(w.ana, w.caio, w.pending), w.ana, w.caio, w.pending)
 	archivedRace := create("race-archived", race())
 	must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: archivedRace.GetKey()})))
 	archivedSpell := create("spell-archived", spell())
 	must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: archivedSpell.GetKey()})))
+	archivedFeat := create("feat-archived", feat())
+	must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: archivedFeat.GetKey()})))
+	offFeat := create("feat-off", feat())
 	offRace := create("race-off", race())
 	// and an option of the SRD, switched off in "Opções para os jogadores"
 	must(m.table.SetOptionSwitches(ctx, rq(&rulesv1.SetOptionSwitchesRequest{CampaignId: w.campaign, Switches: []*rulesv1.OptionSwitch{
-		{Key: offRace.GetKey(), Off: true}, {Key: "race:tiefling", Off: true},
+		{Key: offRace.GetKey(), Off: true}, {Key: offFeat.GetKey(), Off: true}, {Key: "race:tiefling", Off: true},
 	}})))
 	w.secrets.add(&canary{needle: "race:tiefling", kind: "srd-race-off-key"})
 }

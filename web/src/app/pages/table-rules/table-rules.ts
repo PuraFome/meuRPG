@@ -142,6 +142,32 @@ const DEATH_SAVE_OPTIONS: readonly DiceOption<DeathSaveVisibility>[] = [
   },
 ];
 
+/** The ways of making ability scores a table allows, in words. */
+function methodWords(d: RulesDraft): string[] {
+  return [
+    d.standardArray ? 'Conjunto padrão' : '',
+    d.pointBuy ? 'Compra por pontos' : '',
+    d.rolled4d6 ? '4d6, descartando o menor' : '',
+    d.typed ? 'Digitar os valores' : '',
+  ].filter((m) => m !== '');
+}
+
+/** "Talentos": 1 is allowed, 0 is not used (the radio cards take numbers). */
+const FEAT_OPTIONS: readonly DiceOption<number>[] = [
+  {
+    value: 0,
+    title: 'Não usados',
+    description:
+      'Todo incremento no valor de habilidade é o do SRD: +2 em uma habilidade ou +1 em duas.',
+  },
+  {
+    value: 1,
+    title: 'Permitidos',
+    description:
+      'No lugar do incremento, o jogador pode pegar um talento da mesa, se a ficha atender ao pré-requisito.',
+  },
+];
+
 const DICE_OPTIONS: readonly DiceOption<DiceMode>[] = [
   {
     value: DiceMode.APP,
@@ -217,6 +243,7 @@ export class TableRulesPage {
   protected readonly criticalOptions = CRITICAL_OPTIONS;
   protected readonly deathSaveOptions = DEATH_SAVE_OPTIONS;
   protected readonly diceOptions = DICE_OPTIONS;
+  protected readonly featOptions = FEAT_OPTIONS;
   protected readonly combatOptions = COMBAT_OPTIONS;
   protected readonly inertStyle: readonly TableStyle[] = [TableStyle.PERSONALIZADO];
   protected readonly maxLength = HOUSE_RULE_MAX_LENGTH;
@@ -265,12 +292,7 @@ export class TableRulesPage {
       return [];
     }
     const d = s.vm.saved;
-    const methods = [
-      d.standardArray ? 'Conjunto padrão' : '',
-      d.pointBuy ? 'Compra por pontos' : '',
-      d.rolled4d6 ? '4d6, descartando o menor' : '',
-      d.typed ? 'Digitar os valores' : '',
-    ].filter((m) => m !== '');
+    const methods = methodWords(d);
     return [
       { label: 'Dados', value: DICE_TITLES[d.diceMode] },
       {
@@ -291,6 +313,7 @@ export class TableRulesPage {
         label: 'Testes contra a morte',
         value: DEATH_SAVE_OPTIONS.find((o) => o.value === d.deathSaves)?.title ?? '',
       },
+      { label: 'Talentos', value: d.featsAllowed ? 'Permitidos' : 'Não usados' },
       { label: 'Experiência', value: XP_OPTION_TITLES[s.xpMode] ?? '' },
     ];
   });

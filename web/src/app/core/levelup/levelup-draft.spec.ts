@@ -6,8 +6,16 @@ import {
   LevelUpHitPointsRule,
   LevelUpSubclassSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
+import { Ability } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { LevelUpDraft } from './levelup-draft';
-import { SKILLS, SPELLS, WIZARD_KEYS, fighterOptions, wizardOptions } from './levelup-testing';
+import {
+  SKILLS,
+  SPELLS,
+  WIZARD_KEYS,
+  featOptions,
+  fighterOptions,
+  wizardOptions,
+} from './levelup-testing';
 
 const catalog = { spells: SPELLS, skills: SKILLS };
 // Two are prepared today and the new maximum is 3: one more to prepare.
@@ -373,5 +381,161 @@ describe('LevelUpDraft: adopt after the sheet is read again', () => {
     );
     nextLevel.adopt(old);
     expect(nextLevel.rolled()).toBeNull();
+  });
+
+  describe('LevelUpDraft: a feat in place of the increase (MR-025)', () => {
+    const withFeats = () =>
+      new LevelUpDraft(
+        wizardOptions({ preparedMaxAfter: 3, feats: featOptions() }),
+        WIZARD_KEYS,
+        catalog,
+      );
+
+    it('offers the feat only when the server lists feats at the level', () => {
+      expect(wizard().hasFeats()).toBe(false);
+      wizard().setAsiMode('feat');
+      expect(wizard().taking()).toBe(false);
+      const d = withFeats();
+      expect(d.hasFeats()).toBe(true);
+      d.setAsiMode('feat');
+      expect(d.taking()).toBe(true);
+    });
+
+    it("asks for the feat, then for the abilities it raises, and sends feat_key with the feat's increase", () => {
+      const d = withFeats();
+      d.setAsiMode('feat');
+      expect(d.missingIn('abilities').map((m) => m.text)).toEqual(['Falta escolher o talento.']);
+      d.setFeat('feat:atleta@mesa');
+      expect(d.missingIn('abilities').map((m) => m.text)).toEqual(['Falta escolher 1 habilidade.']);
+      d.toggleFeatAbility(Ability.DEXTERITY);
+      expect(d.missingIn('abilities')).toEqual([]);
+      expect(d.pickedKeys()).toEqual(['dex']);
+      expect(d.choices()).toMatchObject({
+        featKey: 'feat:atleta@mesa',
+        abilityIncrease: { dexterity: 1 },
+      });
+    });
+
+    it('a feat with no increase sends none, and picking another ability replaces it when only one is asked', () => {
+      const d = withFeats();
+      d.setAsiMode('feat');
+      d.setFeat('feat:grappler');
+      expect(d.missingIn('abilities')).toEqual([]);
+      expect(d.choices().abilityIncrease).toEqual({});
+      d.setFeat('feat:atleta@mesa');
+      d.toggleFeatAbility(Ability.STRENGTH);
+      d.toggleFeatAbility(Ability.DEXTERITY);
+      expect(d.featAbilities()).toEqual([Ability.DEXTERITY]);
+      d.toggleFeatAbility(Ability.CONSTITUTION);
+      expect(d.featAbilities()).toEqual([Ability.DEXTERITY]);
+    });
+
+    it('does not take a feat the character does not qualify for', () => {
+      const d = withFeats();
+      d.setAsiMode('feat');
+      d.setFeat('feat:mestre@mesa');
+      expect(d.featKey()).toBe('');
+    });
+
+    it('going back to the increase sends the increase and no feat', () => {
+      const d = withFeats();
+      d.setAsiMode('feat');
+      d.setFeat('feat:atleta@mesa');
+      d.toggleFeatAbility(Ability.STRENGTH);
+      d.setAsiMode('increase');
+      d.toggleAbility('int');
+      expect(d.choices()).toMatchObject({ featKey: '', abilityIncrease: { intelligence: 2 } });
+    });
+
+    it('keeps the feat and its abilities after the sheet is read again, if the server still offers it', () => {
+      const before = withFeats();
+      before.setAsiMode('feat');
+      before.setFeat('feat:atleta@mesa');
+      before.toggleFeatAbility(Ability.STRENGTH);
+      const after = withFeats();
+      after.adopt(before);
+      expect(after.taking()).toBe(true);
+      expect(after.featKey()).toBe('feat:atleta@mesa');
+      expect(after.featAbilities()).toEqual([Ability.STRENGTH]);
+      const gone = new LevelUpDraft(wizardOptions({ preparedMaxAfter: 3 }), WIZARD_KEYS, catalog);
+      gone.adopt(before);
+      expect(gone.taking()).toBe(false);
+      expect(gone.featKey()).toBe('');
+    });
+
+    it('counts a picked feat as a choice made (leaving asks first)', () => {
+      const d = withFeats();
+      d.setAsiMode('feat');
+      d.setFeat('feat:grappler');
+      expect(d.dirty()).toBe(true);
+    });
+  });
+
+  describe('LevelUpDraft: feats and the abilities at 20 (MR-025)', () => {
+    const draftWith = (feat: ReturnType<typeof featOptions>[number]) => {
+      const d = new LevelUpDraft(
+        wizardOptions({ preparedMaxAfter: 3, feats: [feat] }),
+        WIZARD_KEYS,
+        catalog,
+      );
+      d.setAsiMode('feat');
+      d.setFeat(feat.key);
+      return d;
+    };
+    const feat = (over: { count: number; from: Ability[]; capped?: Ability[] }) => {
+      const f = featOptions()[1];
+      f.increase = { ...f.increase!, count: over.count, from: over.from } as never;
+      f.cappedAbilities = over.capped ?? [];
+      return f;
+    };
+
+    it('sends no increase for a feat that raises every ability it lists: the server applies it', () => {
+      const d = draftWith(
+        feat({ count: 2, from: [Ability.STRENGTH, Ability.DEXTERITY], capped: [Ability.STRENGTH] }),
+      );
+      expect(d.featFixed()).toBe(true);
+      expect(d.missingIn('abilities')).toEqual([]);
+      expect(d.choices().abilityIncrease).toEqual({});
+      expect(d.choices().featKey).toBe('feat:atleta@mesa');
+      // The Resumo still names what rises: the abilities not at the cap.
+      expect(d.featSummary()).toEqual({ name: 'Atleta', increase: '+1 Destreza' });
+    });
+
+    it('does not let the player pick an ability the server says would pass 20', () => {
+      const d = draftWith(
+        feat({ count: 1, from: [Ability.STRENGTH, Ability.DEXTERITY], capped: [Ability.STRENGTH] }),
+      );
+      d.toggleFeatAbility(Ability.STRENGTH);
+      expect(d.featAbilities()).toEqual([]);
+      d.toggleFeatAbility(Ability.DEXTERITY);
+      expect(d.choices().abilityIncrease).toEqual({ dexterity: 1 });
+      expect(d.featSummary()?.increase).toBe('+1 Destreza');
+    });
+
+    it('asks only for the free abilities when fewer than the count are below 20', () => {
+      const d = draftWith(
+        feat({
+          count: 2,
+          from: [Ability.STRENGTH, Ability.DEXTERITY, Ability.CONSTITUTION],
+          capped: [Ability.STRENGTH],
+        }),
+      );
+      expect(d.featAsked()).toBe(2);
+      const few = draftWith(
+        feat({
+          count: 2,
+          from: [Ability.STRENGTH, Ability.DEXTERITY, Ability.CONSTITUTION],
+          capped: [Ability.STRENGTH, Ability.DEXTERITY],
+        }),
+      );
+      expect(few.featAsked()).toBe(1);
+      few.toggleFeatAbility(Ability.CONSTITUTION);
+      expect(few.missingIn('abilities')).toEqual([]);
+      expect(few.choices().abilityIncrease).toEqual({ constitution: 1 });
+    });
+
+    it('has no feat summary while the increase is taken', () => {
+      expect(wizard().featSummary()).toBeNull();
+    });
   });
 });

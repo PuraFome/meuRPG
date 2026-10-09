@@ -465,6 +465,30 @@ func (q *Queries) GetCampaignContentByCreateKey(ctx context.Context, createKey *
 	return i, err
 }
 
+const getCampaignContentImport = `-- name: GetCampaignContentImport :one
+SELECT create_hash, response FROM campaign_content_imports
+WHERE campaign_id = $1::UUID AND create_key = $2
+`
+
+type GetCampaignContentImportParams struct {
+	CampaignID string
+	CreateKey  string
+}
+
+type GetCampaignContentImportRow struct {
+	CreateHash string
+	Response   []byte
+}
+
+// The answer of the ImportTableContent that carried this idempotency key (the campaign's ID and
+// the key), with the hash of its request.
+func (q *Queries) GetCampaignContentImport(ctx context.Context, arg GetCampaignContentImportParams) (GetCampaignContentImportRow, error) {
+	row := q.db.QueryRow(ctx, getCampaignContentImport, arg.CampaignID, arg.CreateKey)
+	var i GetCampaignContentImportRow
+	err := row.Scan(&i.CreateHash, &i.Response)
+	return i, err
+}
+
 const getCharacter = `-- name: GetCharacter :one
 SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash FROM characters
 WHERE campaign_id = $1::UUID AND id = $2
@@ -921,6 +945,34 @@ func (q *Queries) InsertCampaignContent(ctx context.Context, arg InsertCampaignC
 		&i.CreateHash,
 	)
 	return i, err
+}
+
+const insertCampaignContentImport = `-- name: InsertCampaignContentImport :exec
+INSERT INTO campaign_content_imports (campaign_id, create_key, create_hash, response, created_at)
+VALUES ($1::UUID, $2, $3, $4, $5)
+ON CONFLICT (campaign_id, create_key) DO NOTHING
+`
+
+type InsertCampaignContentImportParams struct {
+	CampaignID string
+	CreateKey  string
+	CreateHash string
+	Response   []byte
+	Now        time.Time
+}
+
+// Keeps the key, the request hash and the answer of an applied import. The content revision is held
+// by the transaction (BumpContentRevision), so two imports with one key take turns; ON CONFLICT is
+// the net under that.
+func (q *Queries) InsertCampaignContentImport(ctx context.Context, arg InsertCampaignContentImportParams) error {
+	_, err := q.db.Exec(ctx, insertCampaignContentImport,
+		arg.CampaignID,
+		arg.CreateKey,
+		arg.CreateHash,
+		arg.Response,
+		arg.Now,
+	)
+	return err
 }
 
 const insertCampaignContentWithKey = `-- name: InsertCampaignContentWithKey :one
