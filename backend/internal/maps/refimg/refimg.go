@@ -4,8 +4,8 @@
 //
 // A reference is a flat drawing, a pure function of its Plan, like the
 // generated dungeon's image (package dungeonimg, whose look it keeps): paper for
-// the floor, dark hatched walls and rock, an ink outline where the floor meets a
-// wall. It has no door (an overlay), no number and no text. Two things are added
+// the floor, dark walls and rock, an ink outline where the floor meets a wall
+// (the textured map's drawing is flatter: see RenderPadded). It has no door (an overlay), no number and no text. Two things are added
 // for the players' view:
 //
 //   - a square nobody sees is solid black, and the plan is cropped to the squares
@@ -158,6 +158,19 @@ func Render(p Plan, w, h int) (*image.Paletted, error) {
 	}
 	drawMarkers(img, p, w, h)
 	return img, nil
+}
+
+// textureRock is the rock of the textured map's drawing.
+var textureRock = color.RGBA{R: 0x10, G: 0x10, B: 0x12, A: 0xFF} //nolint:mnd // a near-black, as the palette's other colors
+
+// flatPalette is a copy of palette with the outline in the floor's color and the
+// walls, the hatch and so the padding in textureRock.
+func flatPalette(palette color.Palette) color.Palette {
+	out := append(color.Palette(nil), palette...)
+	out[dungeonimg.IndexInk] = out[dungeonimg.IndexFloor]
+	out[dungeonimg.IndexWall] = textureRock
+	out[dungeonimg.IndexHatch] = textureRock
+	return out
 }
 
 func extendPalette(base color.Palette) color.Palette {
@@ -358,6 +371,12 @@ func RenderPadded(p Plan, imgW, imgH int, side int) (*image.Paletted, Pad, error
 	if err != nil {
 		return nil, Pad{}, err
 	}
+	// The textured map's drawing is two flat colors: the floor, with no outline on
+	// it (the ink is the floor's color), and rock that is nearly black. Asked to
+	// paint over the outline, the model raised wall edges on the floor squares and
+	// let the dark channel into them; with the flat plan it keeps the floor level
+	// and puts the walls on the dark side (checked with the real model).
+	plan.Palette = flatPalette(plan.Palette)
 	canvas := image.NewPaletted(image.Rect(0, 0, pad.CanvasW, pad.CanvasH), plan.Palette)
 	period := min(8, max(4, min(mw/p.Cols, mh/p.Rows)/3))
 	thick := max(1, period/4)
