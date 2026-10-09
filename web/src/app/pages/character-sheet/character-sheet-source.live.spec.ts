@@ -455,3 +455,51 @@ describe("the sheet maps a Warlock's Pact Magic apart from the spell slots", () 
     expect(sorcerer).toMatchObject({ spellsPreparedMax: 0, spellsKnownMax: 5 });
   });
 });
+
+describe('the sheet maps the breath weapon, the resistances and the one-line rule of a pick (PM-05)', () => {
+  const resistance = (damageTypeNamePt: string) => ({
+    $typeName: 'meurpg.rules.v1.Resistance' as const,
+    damageType: `damage-type:${damageTypeNamePt}`,
+    damageTypeNamePt,
+    sourceKey: 'trait:x',
+  });
+
+  it('carries the breath weapon text, the resistances by name and the summary of a feature', () => {
+    const derived: DerivedSheet = {
+      ...minimalDerivedSheet(),
+      breathWeapon: {
+        $typeName: 'meurpg.rules.v1.BreathWeapon',
+        textPt: 'Sopro em cone. Dano de 2d6 de fogo.',
+      } as DerivedSheet['breathWeapon'],
+      resistances: [resistance('fogo'), resistance('veneno')],
+      features: [
+        {
+          $typeName: 'meurpg.rules.v1.Feature',
+          key: 'feature:fighting-style-defense',
+          name: 'Defense',
+          namePt: 'Defesa',
+          sourcePt: 'Guerreiro 1',
+          description: '+1 AC.',
+          summaryPt: '+1 na CA com armadura.',
+        },
+      ],
+    };
+
+    const sheet = toCharacterSheetVm({
+      ...characterWithFullSheet(minimalFullSheet()),
+      derived,
+    }).sheet as FullSheetVm;
+
+    expect(sheet.breathWeapon).toBe('Sopro em cone. Dano de 2d6 de fogo.');
+    expect(sheet.resistances).toEqual(['Fogo', 'Veneno']);
+    expect(sheet.features[0].summaryPt).toBe('+1 na CA com armadura.');
+  });
+
+  it('has no breath weapon and no resistance by default', () => {
+    const sheet = toCharacterSheetVm(characterWithFullSheet(minimalFullSheet()))
+      .sheet as FullSheetVm;
+
+    expect(sheet.breathWeapon).toBe('');
+    expect(sheet.resistances).toEqual([]);
+  });
+});

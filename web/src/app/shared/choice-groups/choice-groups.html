@@ -1,0 +1,171 @@
+@if (total() !== null && done() !== null) {
+  <p class="choices__counter" role="status">
+    <strong>Escolhas feitas: {{ done() }} de {{ total() }}</strong>
+    @if (subtitle() !== '') {
+      <span class="choices__subtitle">{{ subtitle() }}</span>
+    }
+  </p>
+}
+
+@for (section of sections(); track section.choices[0].key) {
+  <section
+    class="choice"
+    [attr.data-pending]="isDone(section) ? null : ''"
+    [attr.aria-labelledby]="titleId(section.choices[0])"
+  >
+    <header class="choice__head">
+      <h3 class="choice__title" [id]="titleId(section.choices[0])" tabindex="-1">
+        {{ sectionTitle(section) }}
+        @if (isDone(section)) {
+          <mat-icon aria-hidden="true">check_circle</mat-icon>
+          <span class="visually-hidden">Escolha feita</span>
+        } @else {
+          <span class="choice__mark" aria-hidden="true">!</span>
+          <span class="visually-hidden">Escolha pendente</span>
+        }
+      </h3>
+      <p class="choice__origin">
+        {{ origin(section) }}
+        @if (progress(section) !== '') {
+          · <span>{{ progress(section) }}</span>
+        }
+      </p>
+    </header>
+
+    @for (choice of section.choices; track choice.key) {
+      @if (section.choices.length > 1 || choice.partPt !== '') {
+        <p class="choice__part" [id]="titleId(choice) + '-part'">{{ choice.partPt || choice.labelPt }}</p>
+      }
+      @if (choice.hintPt !== '') {
+        <p class="choice__hint">{{ choice.hintPt }}</p>
+      }
+
+      @if (choice.kind === kind.ENEMY || choice.kind === kind.LANGUAGE) {
+        <mat-form-field appearance="outline" class="choice__select">
+          <mat-label>{{ choice.labelPt }}</mat-label>
+          <mat-select
+            [value]="firstKey(choice)"
+            (selectionChange)="choose(choice, $event.value)"
+          >
+            <mat-option value="">—</mat-option>
+            @for (option of choice.options; track option.key) {
+              <mat-option [value]="option.key" [disabled]="isBlocked(option)">{{ option.namePt }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        @if (selectedOption(choice); as chosen) {
+          @if (chosen.summaryPt !== '') {
+            <p class="choice__result" role="status">{{ chosen.summaryPt }}</p>
+          }
+        }
+        @if (needsTexts(choice)) {
+          <div class="choice__texts">
+            @for (n of [1, 2]; track n) {
+              <mat-form-field appearance="outline">
+                <mat-label>Raça humanoide {{ n }}</mat-label>
+                <input
+                  matInput
+                  maxlength="40"
+                  [value]="text(choice, n)"
+                  (input)="editText(choice, n, $any($event.target).value)"
+                />
+              </mat-form-field>
+            }
+          </div>
+        }
+      } @else {
+        @if (hasSpellFilter(choice)) {
+          <mat-form-field appearance="outline" class="choice__filter">
+            <mat-label>Filtrar magias</mat-label>
+            <input matInput [value]="filterValue(choice)" (input)="setSpellFilter(choice, $any($event.target).value)" />
+          </mat-form-field>
+        }
+        @if (hasFilter(choice)) {
+          <div class="choice__filters" role="group" [attr.aria-label]="'Mostrar ' + choice.titlePt">
+            <button type="button" [attr.aria-pressed]="!(onlyTakable().get(choice.key) ?? false)" (click)="setTakable(choice, false)">
+              Todas
+            </button>
+            <button type="button" [attr.aria-pressed]="onlyTakable().get(choice.key) ?? false" (click)="setTakable(choice, true)">
+              Só as que posso escolher ({{ takableCount(choice) }})
+            </button>
+          </div>
+        }
+        @if (isFull(choice)) {
+          <p class="choice__full" role="status">{{ fullText(choice) }}</p>
+        }
+        @let shown = visibleOptions(choice);
+        <div
+          class="choice__options"
+          [attr.role]="isRadio(choice) ? 'radiogroup' : 'group'"
+          [attr.aria-labelledby]="titleId(choice) + (section.choices.length > 1 ? '-part' : '')"
+          [attr.aria-label]="section.choices.length > 1 ? null : null"
+        >
+          @for (option of shown.takable; track option.key) {
+            <ng-container
+              *ngTemplateOutlet="card; context: { choice: choice, option: option, rest: false }"
+            ></ng-container>
+          }
+          @if (shown.blocked.length > 0) {
+            <h4 class="choice__sub">Ainda não disponíveis</h4>
+            @for (option of shown.blocked; track option.key) {
+              <ng-container
+                *ngTemplateOutlet="card; context: { choice: choice, option: option, rest: true }"
+              ></ng-container>
+            }
+          }
+        </div>
+        @if (choice.resultPt !== '') {
+          <p class="choice__result" role="status">{{ choice.resultPt }}</p>
+        }
+        @if (circleSpellsOf(choice).length > 0) {
+          <ul class="choice__circle" aria-label="Magias de círculo">
+            @for (row of circleSpellsOf(choice); track row.level) {
+              <li [class.choice__circle--later]="!row.reached">
+                Nível {{ row.level }}: {{ row.names }}
+              </li>
+            }
+          </ul>
+        }
+      }
+    }
+  </section>
+}
+
+<ng-template #card let-choice="choice" let-option="option">
+  <div
+    class="card"
+    [class.card--picked]="isPicked(choice, option)"
+    [class.card--off]="isOff(choice, option)"
+    [attr.role]="isRadio(choice) ? 'radio' : 'checkbox'"
+    [attr.aria-checked]="isPicked(choice, option)"
+    [attr.aria-disabled]="isOff(choice, option) ? 'true' : null"
+    [attr.aria-describedby]="optionId(choice, option) + '-d'"
+    [id]="optionId(choice, option)"
+    [attr.tabindex]="tabIndex(choice, option)"
+    (click)="toggle(choice, option)"
+    (keydown)="onKey($event, choice, option)"
+  >
+    <span class="card__name">{{ option.namePt }}</span>
+    @if (choice.kind === kind.SPELLS) {
+      <span class="card__meta">{{ spellLine(option) }}</span>
+    }
+    <span class="card__desc" [id]="optionId(choice, option) + '-d'">
+      @if (isBlocked(option)) {
+        {{ option.reasonPt }}
+      } @else if (isOff(choice, option)) {
+        {{ fullText(choice) }}
+      } @else {
+        {{ option.summaryPt }}
+      }
+    </span>
+    @if (offerCantrips() && missingSpell(option); as spell) {
+      <button
+        type="button"
+        class="card__add"
+        (click)="$event.stopPropagation(); addCantrip.emit(spell.key)"
+      >
+        Escolher {{ spell.namePt }} agora
+      </button>
+    }
+  </div>
+</ng-template>
