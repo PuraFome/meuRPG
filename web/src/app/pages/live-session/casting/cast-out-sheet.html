@@ -1,0 +1,128 @@
+<app-sheet-frame [title]="title()" titleId="cast-out-t" [subtitle]="subtitle()" [phone]="inSheet" (closed)="close()">
+  <div class="body">
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+
+    @if (cast(); as c) {
+      <ul class="result">
+        @for (line of resultLines(); track line) {
+          <li>{{ line }}</li>
+        }
+      </ul>
+      @if (resultRoll()) {
+        <p class="roll">{{ resultRoll() }}</p>
+      }
+      @if (c.status === 1) {
+        <div class="mr-notice mr-notice--warning" role="status">
+          <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
+          <p>
+            <strong>Conjurando ({{ c.castingMinutes }} min).</strong>
+            O espaço de magia só é gasto quando o mestre conclui a conjuração. Se a concentração se perder, a magia falha e o espaço fica com você.
+          </p>
+        </div>
+      }
+    } @else if (askCaster()) {
+      <app-choice-cards label="Quem conjura" [rows]="casterRows()" [chosen]="[]" (choose)="pickCaster($event)" />
+    } @else if (loadError()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ loadError() }}</p>
+      </div>
+    } @else if (!options()) {
+      <p class="loading" role="status">Carregando as magias…</p>
+    } @else if (options()!.inCombat) {
+      <div class="mr-notice mr-notice--neutral" role="status">
+        <mat-icon aria-hidden="true">swords</mat-icon>
+        <p>Durante o combate, as magias são conjuradas na vez de quem as lança.</p>
+      </div>
+    } @else if (options()!.wildShape) {
+      <div class="mr-notice mr-notice--neutral" role="status">
+        <mat-icon aria-hidden="true">pets</mat-icon>
+        <p>Em forma de fera não se conjura. Encerre a forma antes.</p>
+      </div>
+    } @else if (!spell()) {
+      @if (spellRows().length) {
+        <app-choice-cards label="Magia" [rows]="spellRows()" [chosen]="[]" (choose)="pickSpell($event)" />
+      } @else {
+        <p class="loading">Nenhuma magia para conjurar fora do combate.</p>
+      }
+    } @else {
+      @if (wayRows().length > 1) {
+        <app-choice-cards label="Como conjurar" [rows]="wayRows()" [chosen]="[way()]" (choose)="pickWay($event)" />
+      }
+      @if (slots().length) {
+        <app-slot-picker [rows]="slots()" [chosen]="slot()" (pick)="pickSlot($event)" />
+      }
+      @if (long()) {
+        <div class="mr-notice mr-notice--neutral" role="status">
+          <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
+          <p>
+            Leva {{ minutes() }} minutos. Você concentra enquanto conjura; o espaço de magia só é gasto quando o mestre conclui a conjuração.
+          </p>
+        </div>
+      }
+      @if (showTargets()) {
+        <app-choice-cards
+          [label]="targetTitle()"
+          [rows]="targetChoices()"
+          [chosen]="chosen()"
+          [mode]="rule().kind === 'one' ? 'radio' : 'check'"
+          (choose)="toggle($event)"
+        />
+      }
+      @if (rollsDice()) {
+        <app-roll-picker
+          [compact]="true"
+          [canApp]="canApp"
+          [canType]="canType"
+          [preferApp]="preferApp"
+          [label]="'Role ' + spell()!.rollDice + ' para ' + spell()!.spell!.namePt + ': some os dados'"
+          [hint]="'Digite a soma dos dados, de ' + dice().count + ' a ' + dice().count * dice().sides + '.'"
+          totalNote="Total dos dados"
+          [min]="dice().count"
+          [max]="dice().count * dice().sides"
+          [modifier]="0"
+          [busy]="!ready()"
+          appLabel="Conjurar e rolar no app"
+          [sticky]="true"
+          [(typing)]="typing"
+          (app)="castNow({ inApp: true })"
+          (typed)="castNow({ typedSum: $event })"
+        />
+      }
+    }
+  </div>
+
+  <div foot>
+    @if (cast()) {
+      <div class="actions">
+        <button mat-flat-button type="button" (click)="close()">Fechar</button>
+      </div>
+    } @else if (spell()) {
+      @if (missing()) {
+        <p class="missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ missing() }}</p>
+      }
+      <div class="actions">
+        @if (!data.spellKey) {
+          <button mat-stroked-button type="button" (click)="back()">Outra magia</button>
+        }
+        @if (!rollsDice()) {
+          <button
+            mat-flat-button
+            type="button"
+            class="cast"
+            [disabled]="!ready()"
+            disabledInteractive
+            (click)="castNow()"
+          >
+            {{ buttonLabel() }}
+          </button>
+        }
+      </div>
+    }
+  </div>
+</app-sheet-frame>
