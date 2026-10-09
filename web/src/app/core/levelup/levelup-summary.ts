@@ -356,7 +356,9 @@ export function changeRows(
     // The picks of the draft count at once: the preview of the sheet that comes after them can still be the one before
     // the last pick, and a count read from it alone would flip between runs. The picks are always new spells.
     const knownAfter =
-      ac.spellsKnown > 0 ? ac.spellsKnown : Math.max(onList(after), onList(before) + ctx.spells.length);
+      ac.spellsKnown > 0
+        ? ac.spellsKnown
+        : Math.max(onList(after), onList(before) + ctx.spells.length);
     const missing = ctx.spellsMissing > 0 ? ` (falta ${ctx.spellsMissing})` : '';
     if (ctx.learnsSpells !== false && (knownAfter !== knownBefore || ctx.spells.length > 0)) {
       rows.push({

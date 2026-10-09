@@ -209,11 +209,23 @@ describe('changeRows: a class that starts casting, and how it learns its spells 
   });
 
   it('reads the same book count whether the preview already has the picks or still lacks them', () => {
-    const six = ['Armadura Arcana', 'Mísseis Mágicos', 'Escudo', 'Sono', 'Detectar Magia', 'Identificação'];
+    const six = [
+      'Armadura Arcana',
+      'Mísseis Mágicos',
+      'Escudo',
+      'Sono',
+      'Detectar Magia',
+      'Identificação',
+    ];
     const inBook = (names: string[]) =>
       names.map((n) =>
         create(CharacterSpellSchema, {
-          spell: create(SpellSchema, { key: `spell:${n}`, name: n, level: 1, classKeys: ['class:wizard'] }),
+          spell: create(SpellSchema, {
+            key: `spell:${n}`,
+            name: n,
+            level: 1,
+            classKeys: ['class:wizard'],
+          }),
         }),
       );
     const caster = (spells: string[]) => {
@@ -224,8 +236,12 @@ describe('changeRows: a class that starts casting, and how it learns its spells 
       return sheet;
     };
     const withCtx = { ...ctx, spellbook: true, spells: six };
-    const stale = changeRows(nonCasterBefore(), caster([]), withCtx).find((r) => r.key === 'spells');
-    const fresh = changeRows(nonCasterBefore(), caster(six), withCtx).find((r) => r.key === 'spells');
+    const stale = changeRows(nonCasterBefore(), caster([]), withCtx).find(
+      (r) => r.key === 'spells',
+    );
+    const fresh = changeRows(nonCasterBefore(), caster(six), withCtx).find(
+      (r) => r.key === 'spells',
+    );
     expect(stale).toMatchObject({ before: '—', after: '6' });
     expect(fresh).toMatchObject({ before: '—', after: '6' });
   });

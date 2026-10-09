@@ -353,7 +353,7 @@ for (const { width, height } of [
         await expect(summary).toContainText('Pelo nível total (6): não muda.');
         await expect(summary).toContainText('Proficiências novas');
         // The book is six spells every time, not the count of a preview that has not seen the last pick.
-        await expect(summary).toContainText(/Livro de magias\s*—\s*→\s*6\b/);
+        await expect(summary).toContainText(/Livro de magias[\s\S]*?—\s*para\s*→\s*6\b/);
         await expect(summary).toContainText('Só a primeira classe dá equipamento.');
 
         // The question in place: "Voltar" first, and nothing is saved until the class is confirmed.
