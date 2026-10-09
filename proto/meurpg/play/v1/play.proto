@@ -1221,6 +1221,21 @@ message WatchGameSessionResponse {
     // (GetGroupCheck), each as your own role. A hint with no content (RN-10): the skill,
     // the DC and the rolls never travel on the stream.
     GroupCheckChanged group_check_changed = 40;
+    // A Revivify cast outside a combat was asked, or the master answered it: read
+    // RevivifyService.ListRevivifyRequests again. A hint with no content. Only the master
+    // and the caster's player get it (RN-10).
+    RevivifyChanged revivify_changed = 28;
+    // The master asked for changes on a pending character: read the character again
+    // (CharacterService.GetCharacter). A hint with no reason: the reason is read, never
+    // streamed. Only the master and the character's owner get it.
+    CharacterChangesRequested character_changes_requested = 29;
+    // The owner sent a pending character again. As above: read it again. Only the master
+    // and the owner.
+    CharacterResubmitted character_resubmitted = 30;
+    // A dead character lives again (ReviveCharacter, or Revivify): read it again, and the
+    // vitals. The master and the character's owner get it; the table reads the line of
+    // the log.
+    CharacterRevived character_revived = 31;
   }
 
   // HiddenHitPending says a question waits for the master in a combat. It names
@@ -1254,6 +1269,27 @@ message WatchGameSessionResponse {
 
   // GroupCheckChanged is the content-free hint that the group check changed.
   message GroupCheckChanged {}
+  // RevivifyChanged is the content-free hint that the casts of Revivify outside a combat
+  // changed.
+  message RevivifyChanged {}
+
+  // CharacterChangesRequested is the hint that the master asked for changes.
+  message CharacterChangesRequested {
+    // The character (a UUID).
+    string character_id = 1;
+  }
+
+  // CharacterResubmitted is the hint that a player sent their character again.
+  message CharacterResubmitted {
+    // The character (a UUID).
+    string character_id = 1;
+  }
+
+  // CharacterRevived is the hint that a dead character lives again.
+  message CharacterRevived {
+    // The character (a UUID).
+    string character_id = 1;
+  }
 
   // ContentChanged is the content-free hint that the table's content changed.
   message ContentChanged {}

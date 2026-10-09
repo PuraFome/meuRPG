@@ -17,6 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // The table's rules outside combat (MR-025, RN-24): the hit points of a level-up
@@ -691,12 +692,23 @@ func TestRN24_TheManualBonusesCannotGetAroundTheMethod(t *testing.T) {
 	if err != nil {
 		t.Fatalf("negative bonuses: %v", err)
 	}
-	// The half-elf places two points: +1 and +1 is fine, +2 and +1 is not.
-	if _, err := bia.createWith(campaign, mStd, withExtra("race:half-elf", &rulesv1.AbilityScores{Strength: 1, Dexterity: 1})); err != nil {
-		t.Fatalf("the half-elf's two points: %v", err)
+	// The half-elf's two +1 are picks of the Escolhas step, not manual bonuses: they need
+	// nothing of the method, and a manual bonus on top of them is refused.
+	halfElf := func(manual *rulesv1.AbilityScores) *charactersv1.CharacterSheet {
+		s := withExtra("race:half-elf", manual)
+		key := rules.AbilityChoiceKey("race:half-elf")
+		s.GetFull().FeatureChoiceKeys = []string{rules.ScopedChoice(key, "ability:str"), rules.ScopedChoice(key, "ability:dex")}
+		return s
 	}
-	_, err = caio.createWith(campaign, mStd, withExtra("race:half-elf", &rulesv1.AbilityScores{Strength: 2, Dexterity: 1}))
-	if r := abilityRefusal(t, "a half-elf with 3 points", err); r.GetReason() != extra {
+	created, err := bia.createWith(campaign, mStd, halfElf(nil))
+	if err != nil {
+		t.Fatalf("the half-elf's two picks: %v", err)
+	}
+	if str := created.GetDerived().GetAbilities()[0]; str.GetScore() != 16 || str.GetBonus() != 1 {
+		t.Errorf("Strength = %+v, want the +1 of the pick on top of the base 15", str)
+	}
+	_, err = caio.createWith(campaign, mStd, halfElf(&rulesv1.AbilityScores{Strength: 1, Dexterity: 1}))
+	if r := abilityRefusal(t, "a half-elf with manual points besides its picks", err); r.GetReason() != extra {
 		t.Errorf("refusal = %v, want EXTRA_BONUSES", r)
 	}
 	// A draft edit by the player is checked too; the master edits free.

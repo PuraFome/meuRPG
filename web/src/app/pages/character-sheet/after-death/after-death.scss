@@ -1,0 +1,15 @@
+:host {
+  display: block;
+}
+
+.ad__text {
+  max-width: 60ch;
+  margin: 0 0 var(--mr-space-3);
+}
+
+@media (max-width: 767.98px) {
+  a {
+    display: flex;
+    width: 100%;
+  }
+}

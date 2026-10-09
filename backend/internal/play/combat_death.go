@@ -240,7 +240,7 @@ func (s *Service) ConfirmDeath(
 		}
 		// The character is dead in the characters module, as MarkCharacterDead
 		// leaves it: its player may create another (RN-03).
-		if err := s.roster.MarkDead(ctx, c.tx, m.CampaignID, who.CharacterID, c.now); err != nil {
+		if err := s.roster.MarkDeadInCombat(ctx, c.tx, m.CampaignID, who.CharacterID, c.now, c.enc.Round, c.enc.ID); err != nil {
 			return nil, err
 		}
 		if err := c.q.SetCombatantDeathSaves(ctx, playdb.SetCombatantDeathSavesParams{

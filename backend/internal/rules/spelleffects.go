@@ -46,7 +46,20 @@ const (
 	// (Chama Sagrada, SRD 5.1). It reads no hit points either: SpellEffect does
 	// not return it, and IgnoresCover says it.
 	SpellKindIgnoresCover = "ignores_cover"
+	// SpellKindRevive: the spell brings a creature that died in the last minute back
+	// to life with HitPoints hit points (Revivify, SRD 5.1). A minute is WindowRounds
+	// rounds in a combat ("a round is about 6 seconds", SRD 5.1, "The Order of Combat").
+	// It reads no hit points: SpellEffect does not return it, and Revive does.
+	SpellKindRevive = "revive"
 )
+
+// ReviveSpec is what a spell of the revive kind does (Revivify).
+type ReviveSpec struct {
+	// HitPoints is what the creature has when it lives again.
+	HitPoints int
+	// WindowRounds is how many rounds of a combat the spell reaches back: a minute.
+	WindowRounds int
+}
 
 // SpellEffect is what a spell that reads hit points does, at a slot level.
 type SpellEffect struct {
@@ -87,6 +100,12 @@ type spellEffectJSON struct {
 	Amount       int      `json:"amount,omitempty"`
 	AmountPerLvl int      `json:"amount_per_level,omitempty"`
 	Ends         []string `json:"ends,omitempty"`
+	// The revive kind: the hit points the creature comes back with and the rounds the
+	// spell reaches back. Source is the SRD passage the numbers come from; a revive
+	// entry must say it.
+	HitPoints    int    `json:"hit_points,omitempty"`
+	WindowRounds int    `json:"window_rounds,omitempty"`
+	Source       string `json:"source,omitempty"`
 	// summonJSON are the fields of the "summon" kind.
 	summonJSON
 }
@@ -109,6 +128,7 @@ func (c *content) loadSpellEffects(fsys fs.FS) error {
 	}
 	c.spellEffects = map[string]spellEffectDef{}
 	c.coverIgnoring = map[string]bool{}
+	c.revives = map[string]ReviveSpec{}
 	for _, key := range sortedKeys(f.Spells) {
 		in := f.Spells[key]
 		sp, ok := c.spells[key]
@@ -123,6 +143,16 @@ func (c *content) loadSpellEffects(fsys fs.FS) error {
 				return fail("%q is not a condition", k)
 			}
 			return nil
+		}
+		if in.Kind == SpellKindRevive {
+			if in.HitPoints < 1 || in.WindowRounds < 1 || in.Source == "" || in.Dice != "" || in.DicePerLevel != "" || in.Condition != "" || in.Threshold != 0 || in.Dies || in.Amount != 0 || in.AmountPerLvl != 0 || len(in.Ends) != 0 {
+				return fail("a revive takes hit_points, window_rounds and its source only")
+			}
+			c.revives[key] = ReviveSpec{HitPoints: in.HitPoints, WindowRounds: in.WindowRounds}
+			continue
+		}
+		if in.HitPoints != 0 || in.WindowRounds != 0 {
+			return fail("hit_points and window_rounds belong to the revive kind")
 		}
 		if in.Kind == SpellKindSummon {
 			if in.Dice != "" || in.DicePerLevel != "" || in.Condition != "" || in.Threshold != 0 || in.Dies || in.Amount != 0 || in.AmountPerLvl != 0 || len(in.Ends) != 0 {
@@ -199,6 +229,12 @@ func (c *content) loadSpellEffects(fsys fs.FS) error {
 // IgnoresCover says the spell's saving throw gets no benefit from cover (the
 // SRD's Chama Sagrada), from the "ignores_cover" kind of effects/spells.json.
 func (c *Content) IgnoresCover(key string) bool { return c.c.coverIgnoring[key] }
+
+// Revive says what a spell of the revive kind does (Revivify), and false for any other spell.
+func (c *Content) Revive(key string) (ReviveSpec, bool) {
+	r, ok := c.c.revives[key]
+	return r, ok
+}
 
 // SpellEffect returns what a spell that reads hit points does when cast with a
 // slot of slotLevel (the spell's own level for a smaller or zero slotLevel),

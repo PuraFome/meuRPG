@@ -272,9 +272,83 @@ describe('LiveSessionSourceLive.watch', () => {
     ).toEqual(['ready', 'contentChanged']);
   });
 
+  it('maps the two hints of a character to one event with the character, and the revival to its own', async () => {
+    expect(
+      await events([
+        create(WatchGameSessionResponseSchema, {
+          event: { case: 'characterChangesRequested', value: { characterId: 'c-1' } },
+        }),
+        create(WatchGameSessionResponseSchema, {
+          event: { case: 'characterResubmitted', value: { characterId: 'c-2' } },
+        }),
+        create(WatchGameSessionResponseSchema, {
+          event: { case: 'characterRevived', value: { characterId: 'c-3' } },
+        }),
+      ]),
+    ).toEqual(['characterChanged', 'characterChanged', 'characterRevived']);
+  });
+
+  it('maps `revivify_changed` to its own event, with no content (RN-10)', async () => {
+    expect(
+      await events([
+        create(WatchGameSessionResponseSchema, { event: { case: 'revivifyChanged', value: {} } }),
+      ]),
+    ).toEqual(['revivifyChanged']);
+  });
+
   it('still takes an event it does not know as a sign the stream is alive', async () => {
     // An empty `event` is what a newer server's oneof case looks like to this app.
     expect(await events([create(WatchGameSessionResponseSchema, {})])).toEqual(['heartbeat']);
+  });
+});
+
+describe('LiveSessionSourceLive.getPlayerSheet', () => {
+  function sheetWith(spells: { key: string; prepared: boolean }[]) {
+    const characters = {
+      getCharacter: async () => ({
+        character: {
+          derived: {
+            classes: [{ namePt: 'Clérigo', level: 5 }],
+            subraceNamePt: '',
+            raceNamePt: 'Humano',
+            skills: [],
+            senses: [],
+            features: [],
+            spells: spells.map((s) => ({ spell: { key: s.key }, prepared: s.prepared })),
+          },
+        },
+      }),
+    };
+    TestBed.configureTestingModule({
+      providers: [LiveSessionSourceLive, { provide: CONNECT_TRANSPORT, useValue: {} }],
+    });
+    const source = TestBed.inject(LiveSessionSourceLive);
+    (source as unknown as { characters: unknown }).characters = characters;
+    return source;
+  }
+
+  it('says the character has Revivificar only when it is ready today, and gives the class line', async () => {
+    const ready = await sheetWith([{ key: 'spell:revivify', prepared: true }]).getPlayerSheet(
+      'c',
+      'x',
+    );
+    expect(ready.revivify).toBe(true);
+    expect(ready.classes).toBe('Clérigo 5');
+    expect(ready.summary).toBe('Clérigo 5, Humano');
+  });
+
+  it('does not offer Revivificar for a spell on the sheet that is not prepared, nor for other spells', async () => {
+    const notReady = await sheetWith([{ key: 'spell:revivify', prepared: false }]).getPlayerSheet(
+      'c',
+      'x',
+    );
+    expect(notReady.revivify).toBe(false);
+    TestBed.resetTestingModule();
+    const other = await sheetWith([{ key: 'spell:bless', prepared: true }]).getPlayerSheet(
+      'c',
+      'x',
+    );
+    expect(other.revivify).toBe(false);
   });
 });
 

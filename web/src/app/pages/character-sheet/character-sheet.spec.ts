@@ -5,6 +5,10 @@ import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { BehaviorSubject, of } from 'rxjs';
 
+import {
+  CharacterBlockedReason,
+  CharacterBlockedSchema,
+} from '../../../gen/meurpg/characters/v1/characters_pb';
 import { ABILITY_KEYS } from '../../core/characters/characters.types';
 import { OpenSessions, type OpenSessionVm } from '../../shell/live-notice/open-sessions';
 import { CharacterSheetPage } from './character-sheet';
@@ -21,6 +25,7 @@ import {
   CharacterSheetVm,
   CharacterStoryVm,
   FullSheetVm,
+  ReviewVm,
 } from './character-sheet.types';
 
 @Injectable()
@@ -53,9 +58,38 @@ class FakeCharacterSheetSource {
   rejectCharacterFn: (campaignId: string, characterId: string) => Promise<void> = () =>
     Promise.reject(new Error('not stubbed'));
   rejectCharacterCalls: string[] = [];
+  requestCharacterChangesCalls: Array<{ reason: string; key: string }> = [];
+  requestCharacterChangesFn: (reason: string) => Promise<CharacterSheetVm> = () =>
+    Promise.reject(new Error('not stubbed'));
+  resubmitCalls: string[] = [];
+  resubmitCharacterFn: () => Promise<CharacterSheetVm> = () =>
+    Promise.reject(new Error('not stubbed'));
+
+  reviveCalls: Array<{ characterId: string; key: string }> = [];
+  reviveCharacterFn: () => Promise<CharacterSheetVm> = () =>
+    Promise.reject(new Error('not stubbed'));
+  hasLivingFn: () => Promise<boolean> = () => Promise.resolve(false);
+  reviveCharacter(
+    _campaignId: string,
+    characterId: string,
+    key: string,
+  ): Promise<CharacterSheetVm> {
+    this.reviveCalls.push({ characterId, key });
+    return this.reviveCharacterFn();
+  }
+  hasLivingCharacter(): Promise<boolean> {
+    return this.hasLivingFn();
+  }
+
+  pendingChoices = 0;
+  pendingChoiceCalls: string[] = [];
 
   getXpMode(): Promise<CampaignXpMode> {
     return Promise.resolve(this.xpMode);
+  }
+  getPendingChoiceCount(_campaignId: string, characterId: string): Promise<number> {
+    this.pendingChoiceCalls.push(characterId);
+    return Promise.resolve(this.pendingChoices);
   }
   getCharacterSheet(campaignId: string, characterId: string): Promise<CharacterSheetVm> {
     return this.getCharacterSheetFn(campaignId, characterId);
@@ -66,6 +100,19 @@ class FakeCharacterSheetSource {
   rejectCharacter(campaignId: string, characterId: string): Promise<void> {
     this.rejectCharacterCalls.push(characterId);
     return this.rejectCharacterFn(campaignId, characterId);
+  }
+  requestCharacterChanges(
+    _campaignId: string,
+    _characterId: string,
+    reason: string,
+    key: string,
+  ): Promise<CharacterSheetVm> {
+    this.requestCharacterChangesCalls.push({ reason, key });
+    return this.requestCharacterChangesFn(reason);
+  }
+  resubmitCharacter(_campaignId: string, characterId: string): Promise<CharacterSheetVm> {
+    this.resubmitCalls.push(characterId);
+    return this.resubmitCharacterFn();
   }
   getMasterNotes(campaignId: string, characterId: string): Promise<string> {
     this.getMasterNotesCalls.push(characterId);
@@ -130,6 +177,8 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     cantripNames: [],
     spellNames: [],
     features: [],
+    breathWeapon: '',
+    resistances: [],
     languages: [],
     proficiencies: [],
     equipment: [],
@@ -187,6 +236,7 @@ function vm(overrides: Partial<CharacterSheetVm> = {}): CharacterSheetVm {
     canEdit: true,
     sheetLockedAt: null,
     diedAt: null,
+    revivedAt: null,
     revision: 1,
     sheet: fullSheet(),
     story: emptyStory(),
@@ -196,6 +246,10 @@ function vm(overrides: Partial<CharacterSheetVm> = {}): CharacterSheetVm {
     canMarkDead: false,
     canAccessMasterNotes: false,
     canApprove: false,
+    canRequestChanges: false,
+    canResubmit: false,
+    canRevive: false,
+    review: null,
     isMaster: false,
     playerDisplayName: 'Vinicius',
     raceLabel: 'Gnomo da Rocha',
@@ -225,6 +279,7 @@ const xpWatcher = {
         onContent?: () => void,
         onForm?: (characterId: string | null) => void,
         onVitals?: (vitals: VitalsVm) => void,
+        onCharacter?: (characterId: string) => void,
       ) => void
     >(),
 };
@@ -1037,6 +1092,101 @@ describe('CharacterSheetPage', () => {
     expect(section.textContent).not.toContain('Defesa sem Armadura');
   });
 
+  describe('class and race choices (PM-05)', () => {
+    it('warns of the open choices and links to the page that completes them', async () => {
+      configure();
+      fake.pendingChoices = 2;
+      fake.getCharacterSheetFn = () => Promise.resolve(vm({ state: 'locked', canEdit: false }));
+
+      const el = await render();
+
+      const banner = el.querySelector('app-pending-choices-banner')!;
+      expect(banner.textContent).toContain('Esta ficha tem 2 escolhas pendentes.');
+      const link = banner.querySelector('a')!;
+      expect(link.textContent?.trim()).toBe('Completar');
+      expect(link.getAttribute('href')).toBe('/campaigns/camp-1/characters/char-1/choices');
+    });
+
+    it('says "1 escolha pendente" in the singular', async () => {
+      configure();
+      fake.pendingChoices = 1;
+      fake.getCharacterSheetFn = () => Promise.resolve(vm());
+
+      const el = await render();
+
+      expect(el.textContent).toContain('Esta ficha tem 1 escolha pendente.');
+    });
+
+    it('shows nothing with no open choice', async () => {
+      configure();
+      fake.getCharacterSheetFn = () => Promise.resolve(vm());
+
+      const el = await render();
+
+      expect(el.querySelector('app-pending-choices-banner')?.textContent?.trim()).toBe('');
+    });
+
+    it('does not even ask for an NPC, a basic sheet or a dead character', async () => {
+      configure();
+      fake.pendingChoices = 3;
+      fake.getCharacterSheetFn = () => Promise.resolve(vm({ characterKind: 'enemy' }));
+      let el = await render();
+      expect(el.textContent).not.toContain('escolhas pendentes');
+
+      TestBed.resetTestingModule();
+      configure();
+      fake.pendingChoices = 3;
+      fake.getCharacterSheetFn = () => Promise.resolve(vm({ state: 'dead' }));
+      el = await render();
+      expect(el.textContent).not.toContain('escolhas pendentes');
+      expect(fake.pendingChoiceCalls).toEqual([]);
+    });
+
+    it('shows the breath weapon box, the resistances as pills and the one-line rule of a picked option', async () => {
+      configure();
+      fake.getCharacterSheetFn = () =>
+        Promise.resolve(
+          vm({
+            sheet: fullSheet({
+              breathWeapon: 'Ação: sopro em cone de 4,5 m. Dano de 2d6 de fogo.',
+              resistances: ['Fogo', 'Veneno'],
+              features: [
+                {
+                  name: 'Estilo de Luta: Defesa',
+                  sourcePt: 'Guerreiro 1',
+                  description: 'While you are wearing armor, you gain a +1 bonus to AC.',
+                  summaryPt: '+1 na CA enquanto usar armadura.',
+                },
+              ],
+            }),
+          }),
+        );
+
+      const el = await render();
+
+      const breath = sectionTitled(el, 'Arma de sopro');
+      expect(breath.textContent).toContain('sopro em cone de 4,5 m');
+      const features = sectionTitled(el, 'Características e traços');
+      const pills = Array.from(features.querySelectorAll('ul.pills li')).map((li) =>
+        li.textContent?.trim(),
+      );
+      expect(pills).toEqual(['Fogo', 'Veneno']);
+      expect(features.querySelector('.feature__summary-pt')?.textContent).toContain(
+        '+1 na CA enquanto usar armadura.',
+      );
+    });
+
+    it('draws none of them for a sheet without those traits', async () => {
+      configure();
+      fake.getCharacterSheetFn = () => Promise.resolve(vm());
+
+      const el = await render();
+
+      expect(el.textContent).not.toContain('Arma de sopro');
+      expect(el.textContent).not.toContain('Resistências');
+    });
+  });
+
   it('shows each feature as a compact row, its English description collapsed by default; issues in the notice under the header, hints as reminders', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
@@ -1048,6 +1198,7 @@ describe('CharacterSheetPage', () => {
                 name: 'Recuperação Arcana',
                 sourcePt: 'Mago 1',
                 description: 'You have learned to regain some of your magical energy.',
+                summaryPt: '',
               },
             ],
             issues: [
@@ -1107,6 +1258,7 @@ describe('CharacterSheetPage', () => {
               {
                 name: 'Atleta',
                 sourcePt: 'Talento · Mago 4',
+                summaryPt: '',
                 description: 'Você corre e escala melhor.',
               },
             ],
@@ -1322,8 +1474,31 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
     fake = TestBed.inject(CharacterSheetSource) as unknown as FakeCharacterSheetSource;
   });
 
-  const pendingForMaster = () =>
-    vm({ state: 'pending', canApprove: true, isMaster: true, canAccessMasterNotes: true });
+  const pendingForMaster = (overrides: Partial<CharacterSheetVm> = {}) =>
+    vm({
+      state: 'pending',
+      canApprove: true,
+      canRequestChanges: true,
+      isMaster: true,
+      canAccessMasterNotes: true,
+      playerDisplayName: 'Lia',
+      name: 'Lyra',
+      ...overrides,
+    });
+  const asked = (status: 'changes_requested' | 'resubmitted'): ReviewVm => ({
+    status,
+    reason: 'O antecedente não bate com a história.',
+    requestedAt: new Date(2026, 9, 8, 21, 10),
+    resubmittedAt: status === 'resubmitted' ? new Date(2026, 9, 8, 21, 42) : null,
+  });
+  const statuses = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll('[role="status"]')).map((n) => n.textContent?.trim() ?? '');
+  const field = (el: HTMLElement) => el.querySelector<HTMLTextAreaElement>('textarea')!;
+  async function type(fixture: { detectChanges(): void }, el: HTMLElement, text: string) {
+    field(el).value = text;
+    field(el).dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+  }
 
   async function render() {
     const fixture = TestBed.createComponent(CharacterSheetPage);
@@ -1426,6 +1601,289 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
     fixture.detectChanges();
 
     expect(el.querySelector('[role="alert"]')?.textContent).toContain('Personagem não encontrado');
+  });
+
+  it('shows the three buttons in order, Aprovar the only filled one, with the sentence about "Pedir ajustes"', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(pendingForMaster());
+    const el = (await render()).nativeElement as HTMLElement;
+
+    const notice = el.querySelector('[aria-label="Aprovação do personagem"]')!;
+    const labels = Array.from(notice.querySelectorAll('button')).map((b) => b.textContent?.trim());
+    expect(labels).toEqual(['Aprovar personagem', 'Pedir ajustes', 'Recusar personagem']);
+    expect(notice.querySelectorAll('.mat-mdc-unelevated-button')).toHaveLength(1);
+    expect(notice.textContent).toContain(
+      'Pedir ajustes devolve a ficha ao jogador, com o seu motivo, e o convite continua valendo.',
+    );
+    expect(el.querySelector('[aria-label="Estado do personagem"]')?.textContent).toContain(
+      'Pendente',
+    );
+  });
+
+  it('"Pedir ajustes" opens the form in place of the notice, with the focus on the field', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(pendingForMaster());
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+
+    button(el, 'Pedir ajustes')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(el.querySelector('[aria-label="Aprovação do personagem"]')).toBeNull();
+    expect(el.querySelector('h2')?.textContent).toContain('Pedir ajustes em Lyra');
+    expect(el.textContent).toContain('O que Lia precisa ajustar');
+    expect(el.textContent).toContain('0 de 500');
+    expect(document.activeElement).toBe(field(el));
+
+    button(el, 'Cancelar')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(el.querySelector('[aria-label="Aprovação do personagem"]')).not.toBeNull();
+    expect(document.activeElement).toBe(button(el, 'Pedir ajustes'));
+  });
+
+  it('tapping "Enviar pedido" with nothing but spaces does not disable it: the field gets the error and the focus', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(pendingForMaster());
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+    button(el, 'Pedir ajustes')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await type(fixture, el, '   ');
+    el.querySelector<HTMLElement>('button.mat-mdc-unelevated-button')!.blur();
+
+    button(el, 'Enviar pedido')!.click();
+    fixture.detectChanges();
+
+    const alert = el.querySelector('[role="alert"]')!;
+    expect(alert.textContent).toContain(
+      'Escreva o que Lia precisa ajustar. O pedido não vai sem motivo.',
+    );
+    expect(field(el).getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(field(el));
+    expect(button(el, 'Enviar pedido')!.getAttribute('aria-disabled')).not.toBe('true');
+    expect(button(el, 'Enviar pedido')!.disabled).toBe(false);
+    expect(fake.requestCharacterChangesCalls).toEqual([]);
+
+    await type(fixture, el, 'Falta o equipamento.');
+    expect(el.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('counts the characters without the spaces at the ends, and refuses more than 500', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(pendingForMaster());
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+    button(el, 'Pedir ajustes')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    await type(fixture, el, '  Falta o equipamento.  ');
+    expect(el.textContent).toContain('20 de 500');
+
+    await type(fixture, el, 'a'.repeat(500));
+    expect(el.textContent).toContain('500 de 500');
+    expect(el.querySelector('[role="alert"]')).toBeNull();
+
+    await type(fixture, el, 'a'.repeat(501));
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+      'O motivo passa de 500 caracteres.',
+    );
+    button(el, 'Enviar pedido')!.click();
+    fixture.detectChanges();
+    expect(fake.requestCharacterChangesCalls).toEqual([]);
+    expect(document.activeElement).toBe(field(el));
+  });
+
+  it('sends the trimmed reason with an idempotency key, then tags the header, announces it and focuses "Pedir ajustes de novo"', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(pendingForMaster());
+    fake.requestCharacterChangesFn = () =>
+      Promise.resolve(pendingForMaster({ review: asked('changes_requested') }));
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+    button(el, 'Pedir ajustes')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await type(fixture, el, '  O antecedente não bate com a história.  ');
+
+    button(el, 'Enviar pedido')!.click();
+    await flush();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fake.requestCharacterChangesCalls).toHaveLength(1);
+    expect(fake.requestCharacterChangesCalls[0].reason).toBe(
+      'O antecedente não bate com a história.',
+    );
+    expect(fake.requestCharacterChangesCalls[0].key).not.toBe('');
+    expect(el.querySelector('[aria-label="Estado do personagem"]')?.textContent).toContain(
+      'Pendente · ajustes pedidos',
+    );
+    const notice = el.querySelector('[aria-label="Aprovação do personagem"]')!;
+    expect(notice.textContent).toContain('Você pediu ajustes (8 de out., 21h10).');
+    expect(notice.textContent).toContain('Esperando Lia reenviar a ficha.');
+    expect(notice.querySelector('blockquote')?.textContent).toContain(
+      '“O antecedente não bate com a história.”',
+    );
+    expect(Array.from(notice.querySelectorAll('button')).map((b) => b.textContent?.trim())).toEqual(
+      ['Aprovar personagem', 'Pedir ajustes de novo', 'Recusar personagem'],
+    );
+    expect(statuses(el)).toContain('Pedido de ajustes enviado a Lia');
+    expect(document.activeElement).toBe(button(el, 'Pedir ajustes de novo'));
+  });
+
+  it("shows the server's refusal on the form and keeps what was typed", async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(pendingForMaster());
+    fake.requestCharacterChangesFn = () =>
+      Promise.reject(new ConnectError('no', Code.PermissionDenied));
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+    button(el, 'Pedir ajustes')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await type(fixture, el, 'Falta o equipamento.');
+
+    button(el, 'Enviar pedido')!.click();
+    await flush();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain('Você não tem permissão');
+    expect(field(el).value).toBe('Falta o equipamento.');
+  });
+
+  it('after the player sends again: "Pendente · reenviado", when, and the request quoted; the three buttons stay', async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(pendingForMaster({ review: asked('resubmitted') }));
+    const el = (await render()).nativeElement as HTMLElement;
+
+    expect(el.querySelector('[aria-label="Estado do personagem"]')?.textContent).toContain(
+      'Pendente · reenviado',
+    );
+    const notice = el.querySelector('[aria-label="Aprovação do personagem"]')!;
+    expect(notice.textContent).toContain('Lia reenviou a ficha (8 de out., 21h42), com ajustes.');
+    expect(notice.querySelector('blockquote')?.textContent).toContain(
+      'O antecedente não bate com a história.',
+    );
+    expect(notice.querySelectorAll('button')).toHaveLength(3);
+  });
+
+  it('"Recusar personagem" asks as the board says, with "Confirmar recusa" outlined and the focus on "Cancelar"', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(pendingForMaster());
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+
+    button(el, 'Recusar personagem')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const ask = el.querySelector('[aria-labelledby="reject-title"]')!;
+    expect(ask.querySelector('h2')?.textContent).toContain('Recusar Lyra?');
+    expect(ask.textContent).toContain(
+      'O personagem é apagado e isto não se desfaz. Lia precisa de um convite novo para tentar de novo. Se a ficha só precisa de ajustes, use “Pedir ajustes”.',
+    );
+    const confirm = button(ask as HTMLElement, 'Confirmar recusa')!;
+    expect(confirm.classList.contains('mat-mdc-outlined-button')).toBe(true);
+    expect(confirm.classList.contains('mat-mdc-unelevated-button')).toBe(false);
+    expect(document.activeElement).toBe(button(el, 'Cancelar'));
+
+    button(el, 'Cancelar')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(el.querySelector('[aria-labelledby="reject-title"]')).toBeNull();
+    expect(document.activeElement).toBe(button(el, 'Recusar personagem'));
+  });
+
+  it('the owner whose sheet came back sees "O mestre pediu ajustes." in place of the waiting strip, with the reason and the date', async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({ state: 'pending', canResubmit: true, review: asked('changes_requested') }),
+      );
+    const el = (await render()).nativeElement as HTMLElement;
+
+    const alert = el.querySelector('[role="alert"]')!;
+    expect(alert.textContent).toContain('O mestre pediu ajustes.');
+    expect(alert.textContent).toContain('“O antecedente não bate com a história.”');
+    expect(alert.textContent).toContain(
+      'Pedido em 8 de out., 21h10. Ajuste a ficha e envie de novo.',
+    );
+    expect(el.textContent).not.toContain('Esperando a aprovação do mestre');
+    expect(button(el, 'Enviar de novo')).toBeTruthy();
+    const edit = Array.from(el.querySelectorAll('a')).filter((a) =>
+      a.textContent?.includes('Editar ficha'),
+    );
+    expect(edit).toHaveLength(1);
+    expect(el.querySelectorAll('.mat-mdc-unelevated-button')).toHaveLength(1);
+  });
+
+  it('"Enviar de novo" resubmits; the waiting notice comes back with "Ficha enviada de novo.", the button and the reason are gone', async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({ state: 'pending', canResubmit: true, review: asked('changes_requested') }),
+      );
+    fake.resubmitCharacterFn = () =>
+      Promise.resolve(vm({ state: 'pending', review: asked('resubmitted') }));
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+
+    button(el, 'Enviar de novo')!.click();
+    await flush();
+    fixture.detectChanges();
+
+    expect(fake.resubmitCalls).toEqual(['char-1']);
+    expect(statuses(el).some((t) => t.includes('Ficha enviada de novo.'))).toBe(true);
+    expect(el.textContent).toContain('Esperando a aprovação do mestre');
+    expect(button(el, 'Enviar de novo')).toBeUndefined();
+    expect(el.textContent).not.toContain('O antecedente não bate com a história.');
+    expect(el.textContent).not.toContain('O mestre pediu ajustes.');
+  });
+
+  it('editing the sheet never resubmits by itself', async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({ state: 'pending', canResubmit: true, review: asked('changes_requested') }),
+      );
+    const el = (await render()).nativeElement as HTMLElement;
+    expect(fake.resubmitCalls).toEqual([]);
+    expect(
+      Array.from(el.querySelectorAll('a'))
+        .find((a) => a.textContent?.includes('Editar ficha'))
+        ?.getAttribute('href'),
+    ).toBe('/campaigns/camp-1/characters/char-1/edit');
+  });
+
+  it('a player with no request open, or one who is not the owner, gets no changes notice', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(vm({ state: 'pending', review: null }));
+    const el = (await render()).nativeElement as HTMLElement;
+    expect(el.textContent).not.toContain('O mestre pediu ajustes.');
+    expect(button(el, 'Enviar de novo')).toBeUndefined();
+    expect(el.textContent).toContain('Esperando a aprovação do mestre');
+  });
+
+  it('reads the character again on the stream hint for it, and only for it', async () => {
+    let reads = 0;
+    fake.getCharacterSheetFn = () => {
+      reads++;
+      return Promise.resolve(vm({ state: 'pending' }));
+    };
+    openSessions.set([
+      {
+        sessionId: 's1',
+        campaignId: 'camp-1',
+        campaignName: 'Mirathel',
+        sessionNumber: 5,
+        startedAt: new Date(),
+        isMaster: false,
+      },
+    ]);
+    const fixture = await render();
+    const onCharacter = xpWatcher.follow.mock.calls.at(-1)![6]!;
+
+    onCharacter('other');
+    await flush();
+    expect(reads).toBe(1);
+    onCharacter('char-1');
+    await flush();
+    fixture.detectChanges();
+    expect(reads).toBe(2);
+    openSessions.set([]);
   });
 
   it('a sheet the server does not show (not_found) reads "Personagem não encontrado", not an error (RN-20)', async () => {
@@ -1615,6 +2073,7 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
       expect.any(Function),
       expect.any(Function),
       expect.any(Function),
+      expect.any(Function),
     );
 
     openSessions.set([
@@ -1631,6 +2090,7 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
     await fixture.whenStable();
     expect(xpWatcher.follow).toHaveBeenLastCalledWith(
       'camp-1',
+      expect.any(Function),
       expect.any(Function),
       expect.any(Function),
       expect.any(Function),
@@ -2067,5 +2527,223 @@ describe('CharacterSheetPage: answers that arrive late', () => {
 
     expect(el.textContent).toContain('Bravo');
     expect(el.textContent).not.toContain('Alfa');
+  });
+});
+
+describe('CharacterSheetPage: Reviver and "E agora?"', () => {
+  let fake: FakeCharacterSheetSource;
+
+  const deadForMaster = (over: Partial<CharacterSheetVm> = {}) =>
+    vm({
+      name: 'Toren',
+      state: 'dead',
+      diedAt: new Date(2026, 9, 8, 21, 0),
+      isMaster: true,
+      canRevive: true,
+      canAccessMasterNotes: true,
+      playerDisplayName: 'Davi',
+      ...over,
+    });
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [CharacterSheetPage],
+      providers: [
+        { provide: CharacterSheetSource, useClass: FakeCharacterSheetSource },
+        { provide: ActivatedRoute, useValue: activatedRouteFor('camp-1', 'char-1') },
+        ...xpProviders(),
+      ],
+    });
+    fake = TestBed.inject(CharacterSheetSource) as unknown as FakeCharacterSheetSource;
+    fake.getMasterNotesFn = () => Promise.resolve('');
+  });
+
+  async function open(character: CharacterSheetVm) {
+    fake.getCharacterSheetFn = () => Promise.resolve(character);
+    const fixture = TestBed.createComponent(CharacterSheetPage);
+    fixture.detectChanges();
+    await flush();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const button = (text: string) => buttonWithText(el, text);
+    return { fixture, el, button };
+  }
+
+  const livingRefused = () =>
+    new ConnectError('blocked', Code.FailedPrecondition, undefined, [
+      {
+        desc: CharacterBlockedSchema,
+        value: {
+          reason: CharacterBlockedReason.LIVING_CHARACTER_EXISTS,
+          characterId: 'nuvem-1',
+          livingCharacterName: 'Nuvem',
+        },
+      },
+    ]);
+
+  it('gives the master "Reviver" in the place of "Marcar como morto", and keeps the dead page whole', async () => {
+    const { el, button } = await open(deadForMaster());
+
+    expect(button('Reviver')).toBeTruthy();
+    expect(button('Marcar como morto')).toBeUndefined();
+    expect(el.textContent).toContain('Morto');
+    expect(el.textContent).toContain('A ficha fica guardada.');
+    expect(el.querySelector('app-ability-medallions')).not.toBeNull();
+  });
+
+  it('asks in place with the four lines, the outlined "Reviver Toren" focused', async () => {
+    const { fixture, el, button } = await open(deadForMaster());
+
+    button('Reviver')!.click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const dialog = el.querySelector('[role="alertdialog"]')!;
+    expect(dialog.querySelector('h2')?.textContent).toBe('Reviver Toren?');
+    const text = dialog.textContent!.replace(/\s+/g, ' ');
+    expect(text).toContain(
+      'Toren volta com 1 PV, sem a condição Inconsciente e com os testes contra a morte zerados.',
+    );
+    expect(text).toContain('Os espaços de magia e os usos de classe ficam como estavam.');
+    expect(text).toContain(
+      'Com um combate aberto, ele volta à ordem de iniciativa onde estava e age no próximo turno dele.',
+    );
+    expect(text).toContain('O registro diz “O mestre reviveu Toren”.');
+    const confirm = button('Reviver Toren')!;
+    expect(confirm.classList).toContain('mat-mdc-outlined-button');
+    expect(document.activeElement).toBe(confirm);
+    expect(fake.reviveCalls).toEqual([]);
+  });
+
+  it('cancels with Escape and puts the focus back on "Reviver"', async () => {
+    const { fixture, el, button } = await open(deadForMaster());
+    button('Reviver')!.click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    el.querySelector('[role="alertdialog"]')!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    );
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[role="alertdialog"]')).toBeNull();
+    expect(document.activeElement).toBe(button('Reviver'));
+    expect(fake.reviveCalls).toEqual([]);
+  });
+
+  it('revives with one key, shows the living character and says so', async () => {
+    const { fixture, el, button } = await open(deadForMaster());
+    fake.reviveCharacterFn = () =>
+      Promise.resolve(
+        deadForMaster({
+          state: 'locked',
+          diedAt: null,
+          revivedAt: new Date(2026, 9, 9, 10, 0),
+          canRevive: false,
+          canMarkDead: true,
+        }),
+      );
+    button('Reviver')!.click();
+    fixture.detectChanges();
+    button('Reviver Toren')!.click();
+    await flush();
+    fixture.detectChanges();
+
+    expect(fake.reviveCalls).toHaveLength(1);
+    expect(fake.reviveCalls[0].characterId).toBe('char-1');
+    expect(fake.reviveCalls[0].key).not.toBe('');
+    expect(el.querySelector('[role="alertdialog"]')).toBeNull();
+    expect(button('Reviver')).toBeUndefined();
+    expect(button('Marcar como morto')).toBeTruthy();
+    expect(el.textContent).not.toContain('A ficha fica guardada.');
+    expect(el.textContent).toContain('Voltou à vida em');
+    const said = Array.from(el.querySelectorAll('[role="status"]')).map((n) => n.textContent);
+    expect(said).toContain('Toren voltou à vida');
+  });
+
+  it('refuses with the card of the other living character, and links to it', async () => {
+    const { fixture, el, button } = await open(deadForMaster());
+    fake.reviveCharacterFn = () => Promise.reject(livingRefused());
+    button('Reviver')!.click();
+    fixture.detectChanges();
+    button('Reviver Toren')!.click();
+    await flush();
+    fixture.detectChanges();
+
+    const card = el.querySelector('[role="alert"]')!;
+    expect(card.querySelector('h2')?.textContent).toBe('Davi já tem outro personagem vivo');
+    const text = card.textContent!.replace(/\s+/g, ' ');
+    expect(text).toContain('Davi criou Nuvem depois da morte de Toren.');
+    expect(text).toContain('o mestre arquiva Nuvem ou a marca como morta primeiro.');
+    const link = card.querySelector('a')!;
+    expect(link.textContent?.trim()).toBe('Abrir Nuvem');
+    expect(link.getAttribute('href')).toBe('/campaigns/camp-1/characters/nuvem-1');
+
+    button('Cancelar')!.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[role="alert"]')).toBeNull();
+    expect(button('Reviver')).toBeTruthy();
+  });
+
+  it('says in words that the character is not dead, when the server says so', async () => {
+    const { fixture, el, button } = await open(deadForMaster());
+    fake.reviveCharacterFn = () =>
+      Promise.reject(
+        new ConnectError('not dead', Code.FailedPrecondition, undefined, [
+          { desc: CharacterBlockedSchema, value: { reason: CharacterBlockedReason.NOT_DEAD } },
+        ]),
+      );
+    button('Reviver')!.click();
+    fixture.detectChanges();
+    button('Reviver Toren')!.click();
+    await flush();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain('não está morto');
+  });
+
+  it('offers "E agora?" to the owner of a dead character with no living one', async () => {
+    const { fixture, el, button } = await open(
+      vm({ name: 'Toren', state: 'dead', diedAt: new Date(2026, 9, 8), canEdit: false }),
+    );
+    await flush();
+    fixture.detectChanges();
+
+    const panel = sectionTitled(el, 'E agora?');
+    expect(panel.textContent!.replace(/\s+/g, ' ')).toContain(
+      'Você pode criar um novo personagem nesta campanha. Ele precisa da aprovação do mestre, como qualquer ficha nova. Toren fica guardado.',
+    );
+    const create = panel.querySelector('a')!;
+    expect(create.textContent?.trim()).toBe('Criar um novo personagem');
+    expect(create.getAttribute('href')).toBe('/campaigns/camp-1/characters/new');
+    expect(button('Reviver')).toBeUndefined();
+  });
+
+  it('keeps "E agora?" from the owner who already has a living character', async () => {
+    fake.hasLivingFn = () => Promise.resolve(true);
+    const { fixture, el } = await open(vm({ name: 'Toren', state: 'dead', canEdit: false }));
+    await flush();
+    fixture.detectChanges();
+
+    expect(el.textContent).not.toContain('E agora?');
+  });
+
+  it('keeps "E agora?" from the master and from a living character', async () => {
+    const master = await open(deadForMaster());
+    await flush();
+    master.fixture.detectChanges();
+    expect(master.el.textContent).not.toContain('E agora?');
+  });
+
+  it('shows the revival quietly on the page of a character that lives again', async () => {
+    const { el } = await open(vm({ revivedAt: new Date(2026, 9, 9, 10, 0) }));
+
+    expect(el.textContent).toContain('Voltou à vida em');
+    expect(el.textContent).not.toContain('E agora?');
   });
 });

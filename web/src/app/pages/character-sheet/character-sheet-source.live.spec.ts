@@ -1,3 +1,5 @@
+import { timestampFromDate } from '@bufbuild/protobuf/wkt';
+
 import {
   Alignment,
   BasicSheet,
@@ -9,6 +11,7 @@ import {
   CuttingWordsAsk,
   FullSheet,
   LevelUpReason,
+  Review,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import {
   Attack,
@@ -137,6 +140,7 @@ function minimalDerivedSheet(): DerivedSheet {
     changedContent: [],
     backgroundEquipmentPt: '',
     hitPointsFromEffects: 0,
+    resistances: [],
   };
 }
 
@@ -173,6 +177,7 @@ function minimalFullSheet(overrides: Partial<FullSheet> = {}): FullSheet {
     contentRevision: 0,
     knownIssues: [],
     contentBaselines: {},
+    featureChoiceText: {},
     cuttingWordsAsk: CuttingWordsAsk.UNSPECIFIED,
     xpValue: 0,
     ...overrides,
@@ -207,6 +212,11 @@ function characterWithFullSheet(full: FullSheet): Character {
     storyEditingAllowed: false,
     canSetStoryEditing: false,
     canApprove: false,
+    canRequestChanges: false,
+    canResubmit: false,
+    canRevive: false,
+    deathEncounterId: '',
+    revivifyBlocked: false,
     canLevelUp: false,
     levelUpReason: LevelUpReason.UNSPECIFIED,
     reserved: false,
@@ -336,6 +346,7 @@ describe('the sheet maps armor_class_description, features and hints (integrator
           namePt: 'Recuperação Arcana',
           sourcePt: 'Mago 1',
           description: 'You have learned to regain some of your magical energy.',
+          summaryPt: '',
         },
       ],
       hints: [
@@ -365,6 +376,7 @@ describe('the sheet maps armor_class_description, features and hints (integrator
         name: 'Recuperação Arcana',
         sourcePt: 'Mago 1',
         description: 'You have learned to regain some of your magical energy.',
+        summaryPt: '',
       },
     ]);
     expect(sheet.hints).toEqual([
@@ -457,6 +469,106 @@ describe("the sheet maps a Warlock's Pact Magic apart from the spell slots", () 
   });
 });
 
+describe('the master review of a pending character, read from Character.review', () => {
+  const base = characterWithFullSheet(minimalFullSheet({}));
+
+  it('maps the status, the reason and the dates', () => {
+    const when = new Date(2026, 9, 8, 21, 10);
+    const vm = toCharacterSheetVm({
+      ...base,
+      canRequestChanges: true,
+      review: {
+        $typeName: 'meurpg.characters.v1.CharacterReview',
+        status: Review.CHANGES_REQUESTED,
+        reason: 'Falta o equipamento.',
+        requestedAt: timestampFromDate(when),
+        resubmittedAt: undefined,
+      },
+    });
+    expect(vm.canRequestChanges).toBe(true);
+    expect(vm.review).toEqual({
+      status: 'changes_requested',
+      reason: 'Falta o equipamento.',
+      requestedAt: when,
+      resubmittedAt: null,
+    });
+  });
+
+  it('has no review for anyone who may not read it', () => {
+    expect(toCharacterSheetVm({ ...base, review: undefined }).review).toBeNull();
+  });
+});
+
+describe('the revival of a dead character, read from Character', () => {
+  const base = characterWithFullSheet(minimalFullSheet({}));
+
+  it('maps who may revive and when it last happened', () => {
+    const when = new Date(2026, 9, 9, 10, 30);
+    const vm = toCharacterSheetVm({
+      ...base,
+      state: CharacterState.DEAD,
+      canRevive: true,
+      revivedAt: timestampFromDate(when),
+    });
+    expect(vm.canRevive).toBe(true);
+    expect(vm.revivedAt).toEqual(when);
+  });
+
+  it('has no revival for a character that never came back', () => {
+    const vm = toCharacterSheetVm({ ...base, revivedAt: undefined });
+    expect(vm.canRevive).toBe(false);
+    expect(vm.revivedAt).toBeNull();
+  });
+});
+
+describe('the sheet maps the breath weapon, the resistances and the one-line rule of a pick (PM-05)', () => {
+  const resistance = (damageTypeNamePt: string) => ({
+    $typeName: 'meurpg.rules.v1.Resistance' as const,
+    damageType: `damage-type:${damageTypeNamePt}`,
+    damageTypeNamePt,
+    sourceKey: 'trait:x',
+  });
+
+  it('carries the breath weapon text, the resistances by name and the summary of a feature', () => {
+    const derived: DerivedSheet = {
+      ...minimalDerivedSheet(),
+      breathWeapon: {
+        $typeName: 'meurpg.rules.v1.BreathWeapon',
+        textPt: 'Sopro em cone. Dano de 2d6 de fogo.',
+      } as DerivedSheet['breathWeapon'],
+      resistances: [resistance('fogo'), resistance('veneno')],
+      features: [
+        {
+          $typeName: 'meurpg.rules.v1.Feature',
+          key: 'feature:fighting-style-defense',
+          name: 'Defense',
+          namePt: 'Defesa',
+          sourcePt: 'Guerreiro 1',
+          description: '+1 AC.',
+          summaryPt: '+1 na CA com armadura.',
+        },
+      ],
+    };
+
+    const sheet = toCharacterSheetVm({
+      ...characterWithFullSheet(minimalFullSheet()),
+      derived,
+    }).sheet as FullSheetVm;
+
+    expect(sheet.breathWeapon).toBe('Sopro em cone. Dano de 2d6 de fogo.');
+    expect(sheet.resistances).toEqual(['Fogo', 'Veneno']);
+    expect(sheet.features[0].summaryPt).toBe('+1 na CA com armadura.');
+  });
+
+  it('has no breath weapon and no resistance by default', () => {
+    const sheet = toCharacterSheetVm(characterWithFullSheet(minimalFullSheet()))
+      .sheet as FullSheetVm;
+
+    expect(sheet.breathWeapon).toBe('');
+    expect(sheet.resistances).toEqual([]);
+  });
+});
+
 describe('the sheet lists the feats a character took with the features (MR-025)', () => {
   it('shows a feat as a feature whose source is "Talento"', () => {
     const derived: DerivedSheet = {
@@ -469,13 +581,19 @@ describe('the sheet lists the feats a character took with the features (MR-025)'
           namePt: 'Atleta',
           sourcePt: 'Talento',
           description: 'Você corre e escala melhor.',
+          summaryPt: '',
         },
       ],
     };
     const character = characterWithFullSheet(minimalFullSheet({ featKeys: ['feat:atleta@mesa'] }));
     const sheet = toCharacterSheetVm({ ...character, derived }).sheet as FullSheetVm;
     expect(sheet.features).toEqual([
-      { name: 'Atleta', sourcePt: 'Talento', description: 'Você corre e escala melhor.' },
+      {
+        name: 'Atleta',
+        sourcePt: 'Talento',
+        description: 'Você corre e escala melhor.',
+        summaryPt: '',
+      },
     ]);
   });
 });

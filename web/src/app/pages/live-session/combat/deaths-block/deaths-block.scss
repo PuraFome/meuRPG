@@ -1,0 +1,142 @@
+:host {
+  display: block;
+}
+
+:host:has(.deaths) {
+  margin-top: var(--mr-space-4);
+}
+
+.deaths__title {
+  margin-bottom: 0;
+}
+
+.deaths__sub {
+  margin: 2px 0 var(--mr-space-2);
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.deaths__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.death {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'token text tags actions'
+    '. switch switch switch'
+    '. ask ask ask'
+    '. error error error';
+  align-items: center;
+  gap: 4px 10px;
+  padding: var(--mr-space-3) 0;
+  border-top: 1px solid var(--mr-rule);
+
+  @media (max-width: 767.98px) {
+    grid-template-columns: 30px minmax(0, 1fr);
+    grid-template-areas:
+      'token text'
+      '. tags'
+      '. actions'
+      '. switch'
+      '. ask'
+      '. error';
+  }
+}
+
+.death__token {
+  grid-area: token;
+}
+
+.death__text {
+  grid-area: text;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.death__name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.death__line {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.death__tags {
+  grid-area: tags;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.death__actions {
+  grid-area: actions;
+
+  &:empty {
+    display: none;
+  }
+
+  @media (max-width: 767.98px) {
+    button {
+      width: 100%;
+      min-height: 44px;
+    }
+  }
+}
+
+.death__switch {
+  grid-area: switch;
+}
+
+.death__ask {
+  grid-area: ask;
+}
+
+.death__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  strong {
+    color: var(--mr-ink);
+  }
+}
+
+.death__error {
+  grid-area: error;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--mr-danger-ink);
+}
+
+.deaths__foot {
+  margin: var(--mr-space-2) 0 0;
+  padding-top: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+
+  strong {
+    color: var(--mr-ink);
+  }
+}

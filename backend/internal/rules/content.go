@@ -59,6 +59,8 @@ type content struct {
 	// coverIgnoring are the spells whose saving throw gets no benefit from cover
 	// (the "ignores_cover" kind of effects/spells.json), by spell key.
 	coverIgnoring map[string]bool
+	// revives are the spells that bring the dead back (the "revive" kind), by spell key.
+	revives map[string]ReviveSpec
 	// summons are the spells that summon a creature (the "summon" kind of
 	// effects/spells.json), by spell key.
 	summons map[string]*summonDef
@@ -100,6 +102,9 @@ type content struct {
 
 	namesPT map[string]string
 	namesEN map[string]string
+
+	// choices is effects/choices.json (choicedata.go), shared by a table layer.
+	choices *choiceData
 
 	compiler *formula.Compiler
 	catalog  Catalog
@@ -241,7 +246,7 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, err
 	}
 	for k, v := range names.Names {
-		if !c.exists(k) && !strings.HasPrefix(k, "sense:") && !strings.HasPrefix(k, "resource:") && !strings.HasPrefix(k, "trap:") && !strings.HasPrefix(k, "light:") && !strings.HasPrefix(k, "attunement:") && !c.isAttackName(k) {
+		if !c.exists(k) && !strings.HasPrefix(k, "sense:") && !strings.HasPrefix(k, "resource:") && !strings.HasPrefix(k, "trap:") && !strings.HasPrefix(k, "light:") && !strings.HasPrefix(k, "attunement:") && !strings.HasPrefix(k, "creature-type:") && !strings.HasPrefix(k, "terrain:") && !c.isAttackName(k) {
 			return nil, fmt.Errorf("effects/names_pt.json: unknown key %q", k)
 		}
 		c.namesPT[k] = v
@@ -254,6 +259,9 @@ func load(fsys fs.FS) (*content, error) {
 	slices.Sort(classIndexes)
 	c.compiler = formula.NewCompiler(classIndexes)
 	if err := c.loadEffects(fsys); err != nil {
+		return nil, err
+	}
+	if err := c.loadChoiceData(fsys); err != nil {
 		return nil, err
 	}
 	if err := c.loadStandardActions(fsys); err != nil {
@@ -444,7 +452,7 @@ func (c *content) loadEffects(fsys fs.FS) error {
 	}
 	for _, name := range files {
 		switch path.Base(name) {
-		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "spell_targets.json", "corrections.json", "damage_resistances.json", "traps.json", "lights.json", "consumables.json", "encounter_budget.json", "magic_item_values.json", "treasure.json":
+		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "spell_targets.json", "corrections.json", "damage_resistances.json", "traps.json", "lights.json", "consumables.json", "encounter_budget.json", "magic_item_values.json", "treasure.json", "choices.json":
 			continue
 		}
 		var f struct {

@@ -38,6 +38,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images/gen"
 	"github.com/PuraFome/meuRPG/backend/internal/notes"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/choicetest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
@@ -200,6 +201,7 @@ func newStack(t *testing.T) *stack {
 	}
 	chars.SetLive(live)
 	chars.SetCreatureHost(live)
+	chars.SetReviewHost(live)
 	msvc, err := maps.New(maps.Config{
 		Pool: pool, Blobs: blobs, Characters: chars, Live: live, Generator: &gen.Fake{}, Rules: srd, Combats: live,
 		Defaults: camps, Logger: logger, Now: clock.Now,
@@ -313,7 +315,7 @@ func (s *stack) personWith(name, id string) *person {
 		name: name, id: id, stack: s, client: c,
 		campaigns:  campaignsv1connect.NewCampaignServiceClient(c, url),
 		document:   campaignsv1connect.NewCampaignDocumentServiceClient(c, url),
-		characters: charactersv1connect.NewCharacterServiceClient(c, url),
+		characters: charactersv1connect.NewCharacterServiceClient(c, url, connect.WithInterceptors(choicetest.Interceptor(charactersv1connect.NewCharacterServiceClient(c, url)))),
 		content:    rulesv1connect.NewContentServiceClient(c, url),
 		table:      rulesv1connect.NewTableContentServiceClient(c, url),
 		play:       playv1connect.NewPlayServiceClient(c, url),

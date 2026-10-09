@@ -512,6 +512,7 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 	if out.OpportunityOffers, err = s.opportunityOffers(ctx, m, d, v); err != nil {
 		return nil, err
 	}
+	out.Deaths = s.deathsOf(ctx, m, d, v)
 	out.RollModeRequests = s.rollModeRequestsFor(ctx, m, d, v)
 	if out.ReactionWindows, out.ReactionWait, err = s.reactionView(ctx, m, d, v, names); err != nil {
 		return nil, err

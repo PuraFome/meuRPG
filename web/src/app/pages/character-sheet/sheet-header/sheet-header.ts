@@ -8,7 +8,7 @@ import { LevelUpTag } from '../../../shared/xp/level-up-tag';
 import { CampaignXpMode, CharacterSheetVm } from '../character-sheet.types';
 import { XpBlock } from '../xp-block/xp-block';
 import { formatXp } from '../../../core/format/text';
-import { formatDate, stateTagLabel } from '../sheet-format';
+import { formatDate, pendingTag, stateTagLabel } from '../sheet-format';
 
 interface HeaderField {
   readonly label: string;
@@ -41,6 +41,8 @@ export class SheetHeader {
   );
   protected readonly kindLabel = computed(() => characterKindLabel(this.vm().characterKind));
   protected readonly stateLabel = computed(() => stateTagLabel(this.vm().state));
+  /** A pending character's tag says where the master's review stands. */
+  protected readonly pending = computed(() => pendingTag(this.vm().review));
   /** An NPC never leaves "Rascunho" (only player sheets lock, RN-01, and an
    * NPC isn't marked dead, RN-04), so its tag is its kind alone. */
   protected readonly showState = computed(() => !this.isNpc() || this.vm().state !== 'draft');
@@ -52,6 +54,12 @@ export class SheetHeader {
   protected readonly diedOn = computed(() => {
     const vm = this.vm();
     return vm.state === 'dead' && vm.diedAt ? formatDate(vm.diedAt) : null;
+  });
+
+  /** A character the master brought back says so, quietly, until it dies again. */
+  protected readonly revivedOn = computed(() => {
+    const vm = this.vm();
+    return vm.state !== 'dead' && vm.revivedAt ? formatDate(vm.revivedAt) : null;
   });
 
   /** The XP block of a player character in a campaign that counts XP (E7-10). */

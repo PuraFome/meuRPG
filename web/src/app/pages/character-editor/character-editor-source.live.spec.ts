@@ -116,6 +116,7 @@ function fullyPopulatedFullSheet(): FullSheet {
     contentRevision: 0,
     knownIssues: [],
     contentBaselines: {},
+    featureChoiceText: {},
     cuttingWordsAsk: CuttingWordsAsk.NEVER,
   };
 }
@@ -176,6 +177,7 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
       // as loaded, not wiped to a zero/empty default.
       coins: loaded.coins,
       featureChoiceKeys: loaded.featureChoiceKeys,
+      featureChoiceText: loaded.featureChoiceText,
       featKeys: loaded.featKeys,
       featSlots: loaded.featSlots,
       challengeRating: loaded.challengeRating,
@@ -185,6 +187,65 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
       knownIssues: loaded.knownIssues,
       contentBaselines: loaded.contentBaselines,
       cuttingWordsAsk: loaded.cuttingWordsAsk,
+    });
+  });
+
+  it('sends the picks and the texts of the form, in the order they were made, and reads them back', async () => {
+    const loaded = fullyPopulatedFullSheet();
+    const form = {
+      ...toFormFullSheet('Pensantus', loaded),
+      featureChoiceKeys: ['feature:style-archery', 'race:half-elf-dex'],
+      featureChoiceText: { 'choice:favored-enemy#1': 'Orcs' },
+    };
+
+    expect(toFullSheetInit(form)).toMatchObject({
+      featureChoiceKeys: ['feature:style-archery', 'race:half-elf-dex'],
+      featureChoiceText: { 'choice:favored-enemy#1': 'Orcs' },
+    });
+    // The form's picks win over the loaded sheet's on a save, and a pick taken out stays out.
+    expect(mergeFullSheetInit(loaded, form)).toMatchObject({
+      featureChoiceKeys: ['feature:style-archery', 'race:half-elf-dex'],
+    });
+    expect(toFormFullSheet('x', { ...loaded, featureChoiceText: { 'a#1': 'b' } })).toMatchObject({
+      featureChoiceKeys: loaded.featureChoiceKeys,
+      featureChoiceText: { 'a#1': 'b' },
+    });
+  });
+
+  it('asks PreviewChoices for the draft and hands back the groups, the counts and the spell sources', async () => {
+    TestBed.configureTestingModule({
+      providers: [CharacterEditorSourceLive, { provide: CONNECT_TRANSPORT, useValue: {} }],
+    });
+    const source = TestBed.inject(CharacterEditorSourceLive);
+    const calls: unknown[] = [];
+    (source as unknown as { characterClient: unknown }).characterClient = {
+      previewChoices: (req: unknown) => {
+        calls.push(req);
+        return Promise.resolve({
+          groups: [{ sourceKey: 'class:fighter' }],
+          done: 1,
+          total: 2,
+          notOffered: ['x'],
+          spellSources: [{ classKey: 'class:warlock' }],
+        });
+      },
+    };
+    const form = toFormFullSheet('Pensantus', fullyPopulatedFullSheet());
+
+    const res = await source.previewChoices({
+      campaignId: 'camp-1',
+      characterId: null,
+      kind: 'player',
+      full: form,
+    });
+
+    expect(res).toMatchObject({ done: 1, total: 2, notOffered: ['x'] });
+    expect(res.groups.length).toBe(1);
+    expect(res.spellSources[0].classKey).toBe('class:warlock');
+    expect(calls[0]).toMatchObject({
+      campaignId: 'camp-1',
+      characterId: '',
+      sheet: { content: { case: 'full', value: { featureChoiceKeys: form.featureChoiceKeys } } },
     });
   });
 

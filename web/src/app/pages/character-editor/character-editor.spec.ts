@@ -27,6 +27,7 @@ import {
   CharacterEditorSource,
   CharacterForEdit,
   CharacterPreviewVm,
+  ChoicesPreviewVm,
   CreateCharacterInput,
   PreviewCharacterInput,
   RulesCatalogVm,
@@ -57,6 +58,14 @@ class FakeCharacterEditorSource {
   previewCharacter(input: PreviewCharacterInput): Promise<CharacterPreviewVm> {
     this.previewCharacterCalls.push(input);
     return this.previewCharacterFn(input);
+  }
+  /** `PreviewChoices`: a draft that asks nothing, unless a spec says otherwise. */
+  previewChoicesCalls: PreviewCharacterInput[] = [];
+  previewChoicesFn: (input: PreviewCharacterInput) => Promise<ChoicesPreviewVm> = () =>
+    Promise.resolve({ groups: [], done: 0, total: 0, notOffered: [], spellSources: [] });
+  previewChoices(input: PreviewCharacterInput): Promise<ChoicesPreviewVm> {
+    this.previewChoicesCalls.push(input);
+    return this.previewChoicesFn(input);
   }
   createCharacterCalls: CreateCharacterInput[] = [];
   createCharacterFn: (input: CreateCharacterInput) => Promise<{ characterId: string }> = () =>
@@ -1003,6 +1012,8 @@ describe('CharacterEditor', () => {
           size: 0,
           alignment: '',
           customFeaturesText: '',
+          featureChoiceKeys: [],
+          featureChoiceText: {},
           cuttingWordsAsk: 'only-attacks',
         },
         basic: null,
@@ -1384,9 +1395,7 @@ describe('CharacterEditor', () => {
       await openStep(fixture, 'Habilidades');
 
       const summary = el.querySelector('.bonuses__summary');
-      expect(summary?.textContent).toContain(
-        'Incremento no Valor de Habilidade, escolhas de raça, item mágico.',
-      );
+      expect(summary?.textContent).toContain('Incremento no Valor de Habilidade, item mágico.');
       expect(el.querySelector('.bonuses__state')?.textContent).toContain('Nenhum em uso');
 
       cmp.fullForm.patchValue({
@@ -1700,6 +1709,8 @@ describe('CharacterEditor', () => {
         const { fixture, el, cmp } = await openBox();
         await vi.advanceTimersByTimeAsync(PAUSE); // call 1, slow
         cmp.hitPointsRolls.set([4, 4]);
+        // The effect that asks again runs with the change detection: flushed here, not left to the scheduler's timer.
+        fixture.detectChanges();
         await vi.advanceTimersByTimeAsync(PAUSE); // call 2
         expect(answers.length).toBe(2);
 
@@ -1977,6 +1988,8 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
       portraitImageId: '',
       alignment: '',
       customFeaturesText: '',
+      featureChoiceKeys: [],
+      featureChoiceText: {},
       cuttingWordsAsk: 'only-attacks',
       ...over,
     },
@@ -2314,6 +2327,8 @@ describe('CharacterEditor, the NPC portrait', () => {
           portraitImageId,
           alignment: '',
           customFeaturesText: '',
+          featureChoiceKeys: [],
+          featureChoiceText: {},
           cuttingWordsAsk: 'only-attacks',
         },
       };
@@ -2839,6 +2854,8 @@ function fullSheetFor(over: object = {}): CharacterForEdit {
       size: 0,
       alignment: '',
       customFeaturesText: '',
+      featureChoiceKeys: [],
+      featureChoiceText: {},
       cuttingWordsAsk: 'only-attacks',
       ...over,
     },

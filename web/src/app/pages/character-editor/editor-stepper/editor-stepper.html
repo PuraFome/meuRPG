@@ -24,6 +24,10 @@
         @if (step.hasError) {
           <span class="mr-visually-hidden"> (com erro)</span>
         }
+        @if (isPending(i)) {
+          <span class="stepper__pending" aria-hidden="true">!</span>
+          <span class="mr-visually-hidden"> Escolha pendente</span>
+        }
       </button>
       @if (!last) {
         <span class="stepper__line" aria-hidden="true"></span>

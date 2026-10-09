@@ -29,6 +29,7 @@
       {"type": "note"}
     ],
     "feature:eldritch-invocation-devils-sight": [
+      {"type": "sense", "sense": "darkvision", "range_ft": 120},
       {"type": "note", "text_pt": "Enxerga normalmente na escuridão, mágica ou não, até 36 m."}
     ],
     "feature:eldritch-invocation-eldritch-sight": [

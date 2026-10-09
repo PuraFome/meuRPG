@@ -122,6 +122,13 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 				return playdb.ListRecentSessionEventsRow{}, false
 			}
 		}
+		// A Revivify cast is not undone: the creature lives again in the characters module, as
+		// after the master's Reviver, and the diamonds are spent. It closes the chain.
+		if e.Kind == eventSpellCast {
+			if ev, err := readEvent(e.Payload); err == nil && ev.FxKind == rules.SpellKindRevive {
+				return playdb.ListRecentSessionEventsRow{}, false
+			}
+		}
 		if slices.Contains(undoableKinds, e.Kind) && e.EncounterID != nil && *e.EncounterID == encounterID {
 			// A move written before the undo knew moves says where it came from
 			// nowhere: there is nothing to put back.

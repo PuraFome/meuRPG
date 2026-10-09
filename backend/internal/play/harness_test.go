@@ -29,6 +29,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/characters/contenttest"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
 	"github.com/PuraFome/meuRPG/backend/internal/maps"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/choicetest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -192,6 +193,7 @@ func newHarness(t *testing.T, live ...LiveConfig) *harness {
 	}
 	h.svc, h.chars, h.camps = svc, chars, camps
 	chars.SetCreatureHost(svc) // a creature dismissed leaves its combat, and its events and hints go through play (MR-037)
+	chars.SetReviewHost(svc)
 	srv := httpserver.New(httpserver.Config{Logger: logger})
 	h.http = srv
 	opt := connect.WithRequireConnectProtocolHeader()
@@ -214,6 +216,7 @@ type user struct {
 	resource   playv1connect.ResourceServiceClient
 	casting    playv1connect.CastingServiceClient
 	encounters playv1connect.EncounterServiceClient
+	revivify   playv1connect.RevivifyServiceClient
 	content    rulesv1connect.ContentServiceClient
 	table      rulesv1connect.TableContentServiceClient
 }
@@ -240,13 +243,14 @@ func (h *harness) clients(userID string) *user {
 	return &user{
 		id:         userID,
 		campaigns:  campaignsv1connect.NewCampaignServiceClient(c, url),
-		characters: charactersv1connect.NewCharacterServiceClient(c, url),
+		characters: charactersv1connect.NewCharacterServiceClient(c, url, connect.WithInterceptors(choicetest.Interceptor(charactersv1connect.NewCharacterServiceClient(c, url)))),
 		play:       playv1connect.NewPlayServiceClient(c, url),
 		combat:     playv1connect.NewCombatServiceClient(c, url),
 		contests:   playv1connect.NewContestServiceClient(c, url),
 		resource:   playv1connect.NewResourceServiceClient(c, url),
 		casting:    playv1connect.NewCastingServiceClient(c, url),
 		encounters: playv1connect.NewEncounterServiceClient(c, url),
+		revivify:   playv1connect.NewRevivifyServiceClient(c, url),
 		content:    rulesv1connect.NewContentServiceClient(c, url),
 		table:      rulesv1connect.NewTableContentServiceClient(c, url),
 	}

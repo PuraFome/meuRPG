@@ -428,6 +428,8 @@ export async function createCharacterViaUI(
     await classSkillsGroup.getByRole('checkbox', { name: skill, exact: true }).check();
   }
 
+  await fillChoicesStep(page);
+
   if (reserved) {
     await page.getByRole('button', { name: 'Salvar como reservado' }).click();
     await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}$`));
@@ -456,8 +458,123 @@ export async function createCharacterViaUI(
  * `sheet` for a full-sheet kind. See `characterRpcBody` for a body built
  * from a `CharacterBuild`.
  */
-export function createCharacterRPC(page: Page, campaignId: string, body: Record<string, unknown>): Promise<APIResponse> {
-  return callRPC(page, 'meurpg.characters.v1.CharacterService/CreateCharacter', { campaignId, ...body });
+export async function createCharacterRPC(page: Page, campaignId: string, body: Record<string, unknown>): Promise<APIResponse> {
+  return callRPC(page, 'meurpg.characters.v1.CharacterService/CreateCharacter', {
+    campaignId,
+    ...(await withDefaultChoices(page, campaignId, body)),
+  });
+}
+
+/** The options that change a number or the actions of a fight: the last ones a default pick takes, so a test's expected numbers do not move. */
+const NUMERIC_CHOICES = [
+  'archery',
+  'defense',
+  'dueling',
+  'protection',
+  'two-weapon-fighting',
+  'agonizing-blast',
+  'beguiling-influence',
+  'devils-sight',
+  'giant-killer',
+  'evasion',
+  'uncanny-dodge',
+  'volley',
+  'whirlwind',
+];
+
+interface PreviewedChoice {
+  missing?: number;
+  picked?: string[];
+  options?: { key: string; storedKey: string; reasonPt?: string; needsText?: boolean }[];
+}
+
+/**
+ * A `CreateCharacter` body whose player sheet has made every choice its class, subclass and race ask (a Fighting
+ * Style, a Draconic Ancestry, a Pact Boon and invocations, a favored enemy, a terrain, the half-elf's +1s, the high
+ * elf's cantrip...): the server refuses a player's sheet with a choice open (CHOICES_MISSING), as the editor does not
+ * let the person create it. The choices are the server's own (`PreviewChoices`), so this knows no class: it takes, for
+ * each open choice, the first options the sheet can take that change no number of a fight, and asks again until
+ * nothing is open. A body that is not a player's full sheet, or that already has its picks, is returned as it is.
+ */
+export async function withDefaultChoices(page: Page, campaignId: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const sheet = body.sheet as { full?: Record<string, unknown> } | undefined;
+  if (body.kind !== 'CHARACTER_KIND_PLAYER' || !sheet?.full) {
+    return body;
+  }
+  const keys = [...((sheet.full.featureChoiceKeys as string[] | undefined) ?? [])];
+  const rank = (key: string) => (NUMERIC_CHOICES.some((n) => key.includes(n)) ? 1 : 0);
+  const maxRounds = 12;
+  for (let round = 0; round < maxRounds; round++) {
+    const res = await callRPC(page, 'meurpg.characters.v1.CharacterService/PreviewChoices', {
+      campaignId,
+      characterId: '',
+      kind: 'CHARACTER_KIND_PLAYER',
+      sheet: { full: { ...sheet.full, featureChoiceKeys: keys } },
+    });
+    if (!res.ok()) {
+      break;
+    }
+    const groups = ((await res.json()) as { groups?: { choices?: PreviewedChoice[] }[] }).groups ?? [];
+    let added = false;
+    for (const choice of groups.flatMap((g) => g.choices ?? [])) {
+      let need = choice.missing ?? 0;
+      const options = [...(choice.options ?? [])].sort((a, b) => rank(a.key) - rank(b.key));
+      for (const o of options) {
+        if (need === 0) {
+          break;
+        }
+        if (o.reasonPt || o.needsText || choice.picked?.includes(o.key) || keys.includes(o.storedKey)) {
+          continue;
+        }
+        keys.push(o.storedKey);
+        need--;
+        added = true;
+      }
+    }
+    if (!added) {
+      break;
+    }
+  }
+  return { ...body, sheet: { ...sheet, full: { ...sheet.full, featureChoiceKeys: keys } } };
+}
+
+/**
+ * Makes the choices the editor's "Escolhas" step asks (a Fighting Style, an ancestry, invocations...), as a person
+ * would: in each choice with something left to pick, the first options that are not dotted and change no number of a
+ * fight, and the first type and language for a favored enemy. Does nothing for a class and a race that ask nothing
+ * (the step is not there). The server judges the sheet; this only fills it.
+ */
+export async function fillChoicesStep(page: Page): Promise<void> {
+  const tab = page.getByRole('tab', { name: /Escolhas/ });
+  if ((await tab.count()) === 0) {
+    return;
+  }
+  await tab.click();
+  const maxRounds = 40;
+  for (let round = 0; round < maxRounds && (await tab.textContent())?.includes('Escolha pendente'); round++) {
+    const pending = page.locator('[data-pending]').first();
+    // A favored enemy's type and its language are lists; the humanoid type asks two texts, so it is skipped.
+    const lists = pending.locator('mat-select');
+    if ((await lists.count()) > 0) {
+      for (let i = 0; i < (await lists.count()); i++) {
+        await lists.nth(i).click();
+        await page
+          .getByRole('option')
+          .filter({ hasNotText: /^—$|Humanoide/ })
+          .first()
+          .click();
+      }
+      continue;
+    }
+    const cards = pending.locator('.card[aria-checked="false"]:not([aria-disabled="true"])');
+    const names = await cards.allTextContents();
+    const numeric = /Arquearia|Defesa|Duelo|Duelismo|Proteção|Duas Armas|Rajada|Influência|Visão do Diabo|Matador de Gigantes|Evasão|Esquiva/;
+    const best = names.map((text, i) => ({ i, r: numeric.test(text) ? 1 : 0 })).sort((a, b) => a.r - b.r || a.i - b.i)[0];
+    if (!best) {
+      break;
+    }
+    await cards.nth(best.i).click();
+  }
 }
 
 /**
@@ -521,9 +638,18 @@ export async function startGameSession(page: Page, campaignId?: string): Promise
 /**
  * Opens a long level-up pick list ("Ver as outras N ..." or "Ver os outros N ...", it shows 4 rows
  * alphabetically) so a row picked by name is there whatever the names sort like.
+ *
+ * The page repaints after the click that changed a list, so the button is read from a list that has
+ * drawn its rows, never from the one before the last pick: pass `hidden` (how many rows the list
+ * keeps back once it is complete) when the list was just changed, and the call waits for that button.
  */
-export async function showAllPicks(panel: import('@playwright/test').Locator): Promise<void> {
-  const more = panel.getByRole('button', { name: /^Ver (os outros|as outras) \d+/ });
+export async function showAllPicks(panel: import('@playwright/test').Locator, hidden?: number): Promise<void> {
+  const more = panel.getByRole('button', { name: new RegExp(`^Ver (os outros|as outras) ${hidden ?? '\\d+'}\\b`) });
+  if (hidden !== undefined) {
+    await more.click();
+    return;
+  }
+  await panel.locator('input.row__input').first().waitFor();
   if ((await more.count()) > 0) {
     await more.click();
   }

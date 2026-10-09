@@ -72,6 +72,7 @@ export function encounter(over: Partial<Encounter> = {}): Encounter {
     turnGroupIds: [],
     npcOnlyGroups: [],
     opportunityOffers: [],
+    deaths: [],
     rollModeRequests: [],
     revision: 1,
     ...over,

@@ -9,13 +9,19 @@ import {
   CharacterService,
   CharacterState as GenCharacterState,
   CharacterSummary,
+  Review as GenReview,
 } from '../../../../gen/meurpg/characters/v1/characters_pb';
-import { CharacterKind, CharacterState } from '../../../core/characters/characters.types';
+import {
+  CharacterKind,
+  CharacterState,
+  ReviewStatus,
+} from '../../../core/characters/characters.types';
 import { CONNECT_TRANSPORT } from '../../../core/connect/transport';
 import {
   CampaignCharacterListItemVm,
   CampaignCharactersSource,
   CampaignCharactersVm,
+  OpenChoicesVm,
   ClaimVm,
 } from './campaign-characters.types';
 
@@ -36,6 +42,11 @@ const STATE_FROM_GEN: Record<GenCharacterState, CharacterState> = {
   [GenCharacterState.PENDING]: 'pending',
 };
 
+const REVIEW_FROM_GEN: Partial<Record<GenReview, ReviewStatus>> = {
+  [GenReview.AWAITING]: 'awaiting',
+  [GenReview.CHANGES_REQUESTED]: 'changes_requested',
+  [GenReview.RESUBMITTED]: 'resubmitted',
+};
 function claimOf(c: CharacterSummary): ClaimVm | null {
   switch (c.claimState) {
     case GenClaimState.NONE:
@@ -65,6 +76,7 @@ function toListItemVm(c: CharacterSummary): CampaignCharacterListItemVm {
     state: STATE_FROM_GEN[c.state],
     classSummary: c.classSummary,
     playerDisplayName: c.playerDisplayName || null,
+    reviewStatus: REVIEW_FROM_GEN[c.reviewStatus] ?? null,
     raceName: c.raceNamePt,
     reserved: c.reserved,
     claim: claimOf(c),
@@ -97,5 +109,14 @@ export class CampaignCharactersSourceLive implements CampaignCharactersSource {
       npcs,
       hasLivingCharacter: playerCharacters.some((c) => c.state !== 'dead' && !c.reserved),
     };
+  }
+
+  async openChoices(campaignId: string): Promise<readonly OpenChoicesVm[]> {
+    const res = await this.client.getCampaignOpenChoices({ campaignId });
+    return res.characters.map((c) => ({
+      characterId: c.characterId,
+      count: c.pendingCount,
+      labels: c.labelsPt,
+    }));
   }
 }

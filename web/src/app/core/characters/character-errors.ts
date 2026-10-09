@@ -5,6 +5,8 @@ import {
   AbilityScoresRefusalSchema,
   CharacterBlockedReason as GenCharacterBlockedReason,
   CharacterBlockedSchema,
+  ChoiceRefusalReason,
+  ChoiceRefusalSchema,
   InvalidFieldSchema,
   LevelUpRefusalReason,
   LevelUpRefusalSchema,
@@ -28,48 +30,69 @@ export function switchedOffKey(err: unknown): string | null {
     : null;
 }
 
+/** The living character that stops a revival (RN-03): what the card "já tem outro personagem vivo" names and links to. */
+export interface LivingRefusal {
+  readonly characterId: string;
+  readonly name: string;
+}
+
+/**
+ * The living character of the player that refused a revival (`failed_precondition` with `CharacterBlocked`
+ * `LIVING_CHARACTER_EXISTS`, `ReviveCharacter` and `ConfirmRevivifyTime`), or `null` for any other error.
+ */
+export function livingRefusal(err: unknown): LivingRefusal | null {
+  const e = ConnectError.from(err, Code.Unavailable);
+  if (e.code !== Code.FailedPrecondition) {
+    return null;
+  }
+  const [detail] = e.findDetails(CharacterBlockedSchema);
+  return detail?.reason === GenCharacterBlockedReason.LIVING_CHARACTER_EXISTS
+    ? { characterId: detail.characterId, name: detail.livingCharacterName }
+    : null;
+}
+
 /**
  * Turns a `CharacterBlocked.reason` into the message the sheet and the
  * editor show as-is. Kept separate from `describeCharacterError` so both can
  * be unit-tested without a `ConnectError` in hand — this one takes the
  * already-decoded local reason, not a wire enum.
  */
+const BLOCKED_MESSAGES: Partial<Record<CharacterBlockedReason, string>> = {
+  sheet_locked:
+    'A ficha está travada porque a campanha já começou a jogar. Só o mestre pode editá-la agora.',
+  character_dead: 'Esse personagem está morto e a ficha não pode mais ser editada.',
+  living_character_exists: 'Você já tem um personagem vivo nesta campanha.',
+  story_locked:
+    'O mestre ainda não liberou a edição da história. Peça para ele liberar em "Permitir editar a história".',
+  not_pending:
+    'Esse personagem já foi aprovado e faz parte da campanha: não dá mais para recusá-lo nem pedir ajustes.',
+  no_changes_requested:
+    'O mestre não tem um pedido de ajustes aberto nesse personagem. Atualize a página.',
+  not_dead: 'Esse personagem não está morto. Atualize a página.',
+  awaiting_approval: 'Esse personagem ainda espera a sua aprovação. Aprove ou recuse antes.',
+  not_reserved: 'Esse personagem já tem dono. Devolva-o à reserva antes de gerar um link.',
+  claim_link_used: 'Esse link já foi usado: um jogador assumiu o personagem.',
+  not_claimed:
+    'Esse personagem não veio de um link, ou já está na reserva: não dá para devolvê-lo.',
+  character_in_combat:
+    'Esse personagem está em um combate. Encerre o combate antes de devolvê-lo à reserva.',
+  claim_own_link: 'Este link é para um jogador. Copie e envie para ele.',
+  reserved: 'Esse personagem está reservado: ainda não tem jogador.',
+};
+
 export function characterBlockedMessage(
   reason: CharacterBlockedReason | undefined,
   content?: ContentRef,
 ): string {
-  switch (reason) {
-    case 'archived_content':
-      return `${contentWords(content)} foi arquivad${content?.masculine ? 'o' : 'a'} pelo mestre e não vale mais como escolha nova. Escolha outra opção${content?.step ? `, no passo ${content.step}` : ''}.`;
-    case 'switched_off_content':
-      return `${contentWords(content)} foi desligad${content?.masculine ? 'o' : 'a'} pelo mestre para os jogadores. Escolha outra opção${content?.step ? `, no passo ${content.step}` : ''}.`;
-    case 'sheet_locked':
-      return 'A ficha está travada porque a campanha já começou a jogar. Só o mestre pode editá-la agora.';
-    case 'character_dead':
-      return 'Esse personagem está morto e a ficha não pode mais ser editada.';
-    case 'living_character_exists':
-      return 'Você já tem um personagem vivo nesta campanha.';
-    case 'story_locked':
-      return 'O mestre ainda não liberou a edição da história. Peça para ele liberar em "Permitir editar a história".';
-    case 'not_pending':
-      return 'Esse personagem já foi aprovado e faz parte da campanha: não dá mais para recusá-lo.';
-    case 'awaiting_approval':
-      return 'Esse personagem ainda espera a sua aprovação. Aprove ou recuse antes.';
-    case 'not_reserved':
-      return 'Esse personagem já tem dono. Devolva-o à reserva antes de gerar um link.';
-    case 'claim_link_used':
-      return 'Esse link já foi usado: um jogador assumiu o personagem.';
-    case 'not_claimed':
-      return 'Esse personagem não veio de um link, ou já está na reserva: não dá para devolvê-lo.';
-    case 'character_in_combat':
-      return 'Esse personagem está em um combate. Encerre o combate antes de devolvê-lo à reserva.';
-    case 'claim_own_link':
-      return 'Este link é para um jogador. Copie e envie para ele.';
-    case 'reserved':
-      return 'Esse personagem está reservado: ainda não tem jogador.';
-    default:
-      return 'Não foi possível concluir a ação agora.';
+  if (reason === 'archived_content' || reason === 'switched_off_content') {
+    const what = reason === 'archived_content' ? 'arquivad' : 'desligad';
+    const by =
+      reason === 'archived_content'
+        ? 'pelo mestre e não vale mais como escolha nova'
+        : 'pelo mestre para os jogadores';
+    return `${contentWords(content)} foi ${what}${content?.masculine ? 'o' : 'a'} ${by}. Escolha outra opção${content?.step ? `, no passo ${content.step}` : ''}.`;
   }
+  return (reason && BLOCKED_MESSAGES[reason]) || 'Não foi possível concluir a ação agora.';
 }
 
 /** What a content key is, in words, for an error that names one: "A classe “Guardião do Vale”". */
@@ -117,6 +140,25 @@ export function invalidFieldPath(err: unknown): string | null {
   return connectErr.findDetails(InvalidFieldSchema)[0]?.field ?? null;
 }
 
+const BLOCKED_FROM_GEN: Partial<Record<GenCharacterBlockedReason, CharacterBlockedReason>> = {
+  [GenCharacterBlockedReason.SHEET_LOCKED]: 'sheet_locked',
+  [GenCharacterBlockedReason.CHARACTER_DEAD]: 'character_dead',
+  [GenCharacterBlockedReason.LIVING_CHARACTER_EXISTS]: 'living_character_exists',
+  [GenCharacterBlockedReason.STORY_LOCKED]: 'story_locked',
+  [GenCharacterBlockedReason.NOT_PENDING]: 'not_pending',
+  [GenCharacterBlockedReason.AWAITING_APPROVAL]: 'awaiting_approval',
+  [GenCharacterBlockedReason.NO_CHANGES_REQUESTED]: 'no_changes_requested',
+  [GenCharacterBlockedReason.NOT_DEAD]: 'not_dead',
+  [GenCharacterBlockedReason.ARCHIVED_CONTENT]: 'archived_content',
+  [GenCharacterBlockedReason.SWITCHED_OFF_CONTENT]: 'switched_off_content',
+  [GenCharacterBlockedReason.NOT_RESERVED]: 'not_reserved',
+  [GenCharacterBlockedReason.CLAIM_LINK_USED]: 'claim_link_used',
+  [GenCharacterBlockedReason.NOT_CLAIMED]: 'not_claimed',
+  [GenCharacterBlockedReason.CHARACTER_IN_COMBAT]: 'character_in_combat',
+  [GenCharacterBlockedReason.CLAIM_OWN_LINK]: 'claim_own_link',
+  [GenCharacterBlockedReason.RESERVED]: 'reserved',
+};
+
 /** Maps the wire `CharacterBlockedReason` enum (characters.proto) onto the
  * local, UI-facing union `characterBlockedMessage` reads. `UNSPECIFIED` and
  * any future value this app does not know about yet fall through to
@@ -125,38 +167,7 @@ export function invalidFieldPath(err: unknown): string | null {
 function mapBlockedReason(
   reason: GenCharacterBlockedReason | undefined,
 ): CharacterBlockedReason | undefined {
-  switch (reason) {
-    case GenCharacterBlockedReason.SHEET_LOCKED:
-      return 'sheet_locked';
-    case GenCharacterBlockedReason.CHARACTER_DEAD:
-      return 'character_dead';
-    case GenCharacterBlockedReason.LIVING_CHARACTER_EXISTS:
-      return 'living_character_exists';
-    case GenCharacterBlockedReason.STORY_LOCKED:
-      return 'story_locked';
-    case GenCharacterBlockedReason.NOT_PENDING:
-      return 'not_pending';
-    case GenCharacterBlockedReason.AWAITING_APPROVAL:
-      return 'awaiting_approval';
-    case GenCharacterBlockedReason.ARCHIVED_CONTENT:
-      return 'archived_content';
-    case GenCharacterBlockedReason.SWITCHED_OFF_CONTENT:
-      return 'switched_off_content';
-    case GenCharacterBlockedReason.NOT_RESERVED:
-      return 'not_reserved';
-    case GenCharacterBlockedReason.CLAIM_LINK_USED:
-      return 'claim_link_used';
-    case GenCharacterBlockedReason.NOT_CLAIMED:
-      return 'not_claimed';
-    case GenCharacterBlockedReason.CHARACTER_IN_COMBAT:
-      return 'character_in_combat';
-    case GenCharacterBlockedReason.CLAIM_OWN_LINK:
-      return 'claim_own_link';
-    case GenCharacterBlockedReason.RESERVED:
-      return 'reserved';
-    default:
-      return undefined;
-  }
+  return reason === undefined ? undefined : BLOCKED_FROM_GEN[reason];
 }
 
 /** The typed reason of an `AbilityScoresRefusal` an error carries, or `null` for any other error. */
@@ -197,6 +208,36 @@ export function abilityRefusalMessage(reason: AbilityScoresRefusalReason): strin
 }
 
 /**
+ * What a `ChoiceRefusal` says (PM-05): the choices a player's sheet still has open, or a pick the rules do not
+ * take, by the typed reason and the labels the server sends, never by its message. `null` for any other error.
+ */
+export function choiceRefusalMessage(err: unknown): string | null {
+  const connectErr = ConnectError.from(err, Code.Unavailable);
+  if (connectErr.code !== Code.FailedPrecondition) {
+    return null;
+  }
+  const [refusal] = connectErr.findDetails(ChoiceRefusalSchema);
+  if (!refusal) {
+    return null;
+  }
+  const labels = refusal.issues.map((i) => i.labelPt).filter((l) => l !== '');
+  switch (refusal.reason) {
+    case ChoiceRefusalReason.CHOICES_MISSING:
+      return labels.length === 0
+        ? 'Faltam escolhas de classe ou de raça. Faça-as no passo "Escolhas".'
+        : labels.length === 1
+          ? `Falta uma escolha: ${labels[0]}. Faça-a no passo "Escolhas".`
+          : `Faltam escolhas: ${labels.join('; ')}. Faça-as no passo "Escolhas".`;
+    case ChoiceRefusalReason.PREREQUISITE_UNMET:
+      return 'Uma das opções escolhidas pede algo que a ficha ainda não tem. Confira o passo "Escolhas".';
+    case ChoiceRefusalReason.CHOICE_NOT_OFFERED:
+      return 'Uma das escolhas não existe mais para essa ficha, ou passou do número permitido. Confira o passo "Escolhas".';
+    default:
+      return 'As escolhas da ficha não seguem as regras. Confira o passo "Escolhas".';
+  }
+}
+
+/**
  * Maps any `CharacterService` error to a message a form can show as-is.
  *
  * For `failed_precondition`, this reads the `CharacterBlocked` detail off
@@ -218,6 +259,10 @@ export function describeCharacterError(
     const [hp] = connectErr.findDetails(LevelUpRefusalSchema);
     if (hp?.reason === LevelUpRefusalReason.HIT_POINTS_RULE) {
       return 'A mesa decidiu como se ganham os pontos de vida dos níveis acima do 1º. Use o jeito que ela deixa, no passo "Habilidades".';
+    }
+    const choices = choiceRefusalMessage(connectErr);
+    if (choices !== null) {
+      return choices;
     }
     const [detail] = connectErr.findDetails(CharacterBlockedSchema);
     const content = detail?.contentKey
@@ -243,6 +288,9 @@ export function describeCharacterError(
 /** "Classe 2: ..." when the server points at a class block; the generic line otherwise. */
 function invalidArgumentMessage(err: ConnectError): string {
   const field = err.findDetails(InvalidFieldSchema)[0]?.field ?? '';
+  if (field === 'reason') {
+    return 'O motivo precisa ter de 1 a 500 caracteres.';
+  }
   const block = /^full\.classes\[(\d+)\]/.exec(field);
   if (block) {
     return `Classe ${Number(block[1]) + 1}: essa classe se repete ou não existe. Cada classe entra uma vez só; escolha outra no passo Básico.`;

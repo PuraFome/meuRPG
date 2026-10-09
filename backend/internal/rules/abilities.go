@@ -48,6 +48,11 @@ func (x *deriver) abilities() {
 			}
 		}
 	}
+	// The abilities the player picked for the race (the half-elf's two +1).
+	picked := x.pickedAbilities()
+	for _, a := range picked {
+		raceBonus[a]++
+	}
 	x.scores = map[Ability]int{}
 	x.mods = map[Ability]int{}
 	for _, a := range AllAbilities() {
@@ -75,7 +80,7 @@ func (x *deriver) abilities() {
 	for _, v := range x.b.ExtraAbilityBonuses {
 		hasManualIncrease = hasManualIncrease || v > 0
 	}
-	if x.race != nil && x.race.AbilityBonusChoices != nil && !hasManualIncrease {
+	if x.race != nil && x.race.AbilityBonusChoices != nil && !hasManualIncrease && len(picked) < x.race.AbilityBonusChoices.Choose {
 		ch := x.race.AbilityBonusChoices
 		names := make([]string, 0, len(ch.From))
 		for _, k := range ch.From {
@@ -83,7 +88,7 @@ func (x *deriver) abilities() {
 		}
 		x.d.Hints = append(x.d.Hints, Hint{
 			Source: x.race.Key, Mode: "note",
-			TextPT: fmt.Sprintf("%s: some +1 em %d habilidades à escolha (%s) nos bônus manuais.", x.c.namePT(x.race.Key), ch.Choose, strings.Join(names, ", ")),
+			TextPT: fmt.Sprintf("%s: escolha +1 em %d habilidades (%s) no passo Escolhas.", x.c.namePT(x.race.Key), ch.Choose, strings.Join(names, ", ")),
 		})
 	}
 }

@@ -274,6 +274,7 @@ func TestMR045_OnlyTheSpellsACharacterCanLearn(t *testing.T) {
 	fighter := pensantusSheet()
 	fighter.GetFull().Classes = []*charactersv1.ClassLevel{{ClassKey: "class:fighter", Level: 1}}
 	fighter.GetFull().CantripKeys, fighter.GetFull().KnownSpellKeys, fighter.GetFull().PreparedSpellKeys = nil, nil, nil
+	fighter.GetFull().FeatureChoiceKeys = []string{"feature:fighter-fighting-style-defense"}
 	if _, err := dona.update(t, pens, "Guerreiro", fighter); err != nil {
 		t.Fatalf("UpdateCharacter(a fighter) error = %v", err)
 	}

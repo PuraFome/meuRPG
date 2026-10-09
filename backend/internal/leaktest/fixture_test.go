@@ -48,22 +48,23 @@ type world struct {
 	session                              string
 
 	// The characters.
-	pens, toren *charactersv1.Character // Ana's and Caio's player characters
-	reserved    *charactersv1.Character // a character the master made for a player to claim: nobody's
-	claimToken  string                  // its claim link's secret, shown once to the master
-	pendingHero *charactersv1.Character // the character that waits for approval
-	boss        *charactersv1.Character // the NPC whose numbers are secret
-	hiddenNPC   *charactersv1.Character // an NPC whose token the master hid
-	bandit      *charactersv1.Character // an NPC made from a bestiary creature
-	merchant    *charactersv1.Character // an NPC on the stage
-	casterNPC   *charactersv1.Character // an NPC with a full sheet, not on the stage, that cast a spell
-	healer      *charactersv1.Character // a Life cleric NPC on the stage that healed Caio's character
-	disciple    int64                   // the Disciple of Life extra hit points the healer gave Caio's character
-	healCast    *playv1.OutsideCast     // that cast, as the master reads it
-	hiddenCast  string                  // the id of that cast
-	offstage    *charactersv1.Character // an NPC with a portrait, not on the stage
-	seenNPC     *charactersv1.Character // an NPC the master left visible, in Ana's sight
-	stage2      *charactersv1.Character // an NPC the stream test puts on the stage
+	pens, toren  *charactersv1.Character // Ana's and Caio's player characters
+	reserved     *charactersv1.Character // a character the master made for a player to claim: nobody's
+	claimToken   string                  // its claim link's secret, shown once to the master
+	pendingHero  *charactersv1.Character // the character that waits for approval
+	reviewReason string                  // what the master asked her to change
+	boss         *charactersv1.Character // the NPC whose numbers are secret
+	hiddenNPC    *charactersv1.Character // an NPC whose token the master hid
+	bandit       *charactersv1.Character // an NPC made from a bestiary creature
+	merchant     *charactersv1.Character // an NPC on the stage
+	casterNPC    *charactersv1.Character // an NPC with a full sheet, not on the stage, that cast a spell
+	healer       *charactersv1.Character // a Life cleric NPC on the stage that healed Caio's character
+	disciple     int64                   // the Disciple of Life extra hit points the healer gave Caio's character
+	healCast     *playv1.OutsideCast     // that cast, as the master reads it
+	hiddenCast   string                  // the id of that cast
+	offstage     *charactersv1.Character // an NPC with a portrait, not on the stage
+	seenNPC      *charactersv1.Character // an NPC the master left visible, in Ana's sight
+	stage2       *charactersv1.Character // an NPC the stream test puts on the stage
 
 	// The gallery.
 	imgMap, imgUnshown, imgShown, imgLeft, imgPortrait, imgStage, imgGenerated, generation string

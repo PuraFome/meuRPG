@@ -179,3 +179,19 @@
 .stepper__next {
   margin-left: auto;
 }
+
+// A step with a choice still to make: a "!" in a ring beside the label, never colour alone.
+.stepper__pending {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--mr-accent-text);
+  border-radius: 50%;
+  color: var(--mr-accent-text);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1;
+}

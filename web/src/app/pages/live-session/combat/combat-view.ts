@@ -96,6 +96,7 @@ import {
 import type { FogView } from '../../../core/maps/fog-view';
 import { LayersState } from '../../../core/maps/layers-state';
 import { MapsClient } from '../../../core/maps/maps-client';
+import { isRevivify } from '../../../core/revivify/revivify-flow';
 import { type FallNote, fallNote } from '../../../core/traps/trap-log';
 import { type SearchSkills, searchRoute } from '../../../core/traps/trap-search';
 import type { TrapBoard } from '../../../core/traps/trap-board';
@@ -137,6 +138,7 @@ import { DeathQuestion } from './death-question/death-question';
 import { DeathSaves } from './death-saves/death-saves';
 import { RageQuestion } from './rage-end/rage-question';
 import { FeatureSheet, type FeatureSheetData } from './feature-sheet/feature-sheet';
+import { openRevivifySheet } from './revivify-sheet/revivify-sheet';
 import { InspirationCard } from './inspiration-card/inspiration-card';
 import { openBardicInspiration, openFlexibleCasting, openLayOnHands } from './resource-sheets';
 import { resourceFlow } from '../../../core/resources/resource-actions';
@@ -171,6 +173,7 @@ import {
   type OpportunitySheetData,
 } from './opportunity/opportunity-sheet';
 import { NpcCard } from './npc-card/npc-card';
+import { DeathsBlock } from './deaths-block/deaths-block';
 import { RollModeQueue } from './roll-mode/roll-mode-queue';
 import { OrderList } from './order-list/order-list';
 import { PlayerInitiative } from './player-initiative/player-initiative';
@@ -250,6 +253,7 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
     OfferPanel,
     OpportunityCard,
     OrderColumn,
+    DeathsBlock,
     OrderStrip,
     OrderList,
     PlayerInitiative,
@@ -299,6 +303,8 @@ export class CombatView {
   readonly cardAbove = input(false);
   /** The player's own armor class from their sheet (without Escudo's +5), for the Escudo result. */
   readonly armorClass = input<number | null>(null);
+  /** "Clérigo 5": the player's class line, for the Revivificar sheet's header. */
+  readonly casterClasses = input('');
   readonly diceMode = input.required<DiceMode>();
   readonly dicePreference = input.required<DicePreference>();
   /** The player's bonuses in Percepção and Investigação, for "Procurar" (E9-08); `null` while unknown. */
@@ -1774,7 +1780,28 @@ export class CombatView {
       this.summonSheet(key, spell.spell.namePt || spell.spell.name);
       return;
     }
+    if (isRevivify(key)) {
+      this.revivifySheet();
+      return;
+    }
     this.castSheet(key);
+  }
+
+  /** Revivificar has its own sheet (who died nearby, the diamonds, the result), not the target picker. */
+  private revivifySheet(): void {
+    const e = this.encounter();
+    const own = this.own();
+    if (!e || !own) {
+      return;
+    }
+    openRevivifySheet(this.dialog, this.bottomSheet, {
+      campaignId: this.campaignId(),
+      casterName: own.label,
+      classes: this.casterClasses(),
+      combat: { encounterId: e.id, casterId: own.id, round: e.round, state: this.state() },
+      casterCharacterId: own.characterId,
+      reload: signal(0),
+    }).subscribe();
   }
 
   /** The cast sheet for a spell of the options, or a cantrip that asks for a

@@ -117,6 +117,9 @@ describe('LiveStream (ADR-0005 client rules)', () => {
       onReactionWindowOpened: vi.fn(),
       onReactionWindowClosed: vi.fn(),
       onContentChanged: vi.fn(),
+      onCharacterChanged: vi.fn(),
+      onCharacterRevived: vi.fn(),
+      onRevivifyChanged: vi.fn(),
       onSceneChanged: vi.fn(),
       onNotesChanged: vi.fn(),
       onVisionChanged: vi.fn(),
@@ -203,6 +206,28 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     expect(handlers.onContentChanged).toHaveBeenCalledTimes(1);
     expect(handlers.onContentChanged).toHaveBeenCalledWith();
     expect(stream.status()).toBe('live');
+  });
+
+  it('tells the page a casting of Revivify outside a combat changed, with nothing in it', async () => {
+    stream.start();
+    last().push({ kind: 'ready' });
+    last().push({ kind: 'revivifyChanged' });
+    await flush();
+    expect(handlers.onRevivifyChanged).toHaveBeenCalledTimes(1);
+    expect(handlers.onRevivifyChanged).toHaveBeenCalledWith();
+    expect(stream.status()).toBe('live');
+  });
+
+  it('tells the page a character lives again as a change of that character and as a revival', async () => {
+    stream.start();
+    last().push({ kind: 'ready' });
+    last().push({ kind: 'characterChanged', characterId: 'c-1' });
+    last().push({ kind: 'characterRevived', characterId: 'c-2' });
+    await flush();
+    expect(handlers.onCharacterChanged).toHaveBeenCalledTimes(2);
+    expect(handlers.onCharacterChanged).toHaveBeenLastCalledWith('c-2');
+    expect(handlers.onCharacterRevived).toHaveBeenCalledTimes(1);
+    expect(handlers.onCharacterRevived).toHaveBeenCalledWith('c-2');
   });
 
   it('tells the page the XP changed (MR-016), and keeps the stream alive', async () => {

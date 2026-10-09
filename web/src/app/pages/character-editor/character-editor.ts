@@ -44,6 +44,17 @@ import {
 import { CharacterKind, isFullSheetKind } from '../../core/characters/characters.types';
 import { ActionKey } from '../../core/connect/idempotency';
 import { formatXp } from '../../core/format/text';
+import {
+  applySelection,
+  missingSentence,
+  pendingLabels,
+  withChoiceText,
+} from '../../shared/choice-groups/choice-picks';
+import {
+  ChoiceGroups,
+  type ChoiceSelection,
+  type ChoiceTextEdit,
+} from '../../shared/choice-groups/choice-groups';
 import { FictionNotice } from '../../shared/fiction-notice/fiction-notice';
 import { TableMark } from '../../shared/table-mark/table-mark';
 import { AbilityFields } from './ability-fields/ability-fields';
@@ -72,10 +83,12 @@ import {
   ClassBlock,
   MAX_TOTAL_LEVEL,
   type CasterSection,
+  type ExtraSpellList,
   allOfSection,
   blocksOf,
   cantripsOf,
   casterSections,
+  extraSpellLists,
   hitDiceAfterFirst,
   leveledOf,
   offered,
@@ -91,6 +104,7 @@ import { EditorStepper } from './editor-stepper/editor-stepper';
 import { HitPointsRolls } from './hit-points-rolls/hit-points-rolls';
 import { validRoll } from './hit-points-preview';
 import { ServerHitPoints } from './hit-points-server';
+import { ServerChoices } from './server-choices';
 import {
   EDITOR_STEP_LABELS,
   EditorField,
@@ -276,6 +290,7 @@ function filterByName<T extends { readonly namePt: string }>(
 @Component({
   selector: 'app-character-editor',
   imports: [
+    ChoiceGroups,
     ClassBlockFields,
     GrantedSpells,
     TableMark,
@@ -325,6 +340,7 @@ export class CharacterEditor {
   private readonly spellDetails = new Map<string, Promise<SpellDetailsVm>>();
 
   @ViewChild(EditorStepper) private stepper?: EditorStepper;
+  @ViewChild(ChoiceGroups) private choiceGroups?: ChoiceGroups;
 
   protected readonly state = signal<PageState>({ status: 'loading', title: 'Ficha' });
   /** The class block a refusal points at (`full.classes[i]`), so the block says so. */
@@ -363,6 +379,66 @@ export class CharacterEditor {
   protected readonly hitPointsFromEffects = computed(
     () => this.serverHitPoints.answer()?.hitPointsFromEffects ?? null,
   );
+
+  /** The picks of the class and race choices, in the order they were made, and their free texts (PM-05). */
+  protected readonly featureChoiceKeys = signal<readonly string[]>([]);
+  protected readonly featureChoiceText = signal<Readonly<Record<string, string>>>({});
+  /** The choices the server reads in the draft while the "Escolhas" step may be on screen. */
+  private readonly serverChoices = new ServerChoices(() => {
+    const s = this.state();
+    if (s.status !== 'ready') {
+      return Promise.reject(new Error('the page is not ready'));
+    }
+    return this.source.previewChoices({
+      campaignId: s.campaignId,
+      characterId: s.mode === 'edit' ? s.characterId : null,
+      kind: s.kind,
+      full: this.buildFullValue(),
+    });
+  });
+  protected readonly choicesAnswer = this.serverChoices.answer.asReadonly();
+  protected readonly choiceGroupsOfDraft = computed(() => this.choicesAnswer()?.groups ?? []);
+  /** The step exists only when the race or a class asks a choice (a human rogue 1 has none). */
+  protected readonly choicesStep = computed(() => this.choiceGroupsOfDraft().length > 0);
+  private readonly pendingChoices = computed(() => pendingLabels(this.choiceGroupsOfDraft()));
+  /** The tab carries the "!" while a choice is open. */
+  protected readonly pendingSteps = computed(() =>
+    this.choicesStep() && this.pendingChoices().length > 0 ? [EDITOR_STEP_LABELS.escolhas] : [],
+  );
+  /** The steps built from the start: the ones whose content the save depends on. */
+  protected readonly eagerSteps = computed(() => [
+    ...(this.abilityTable() ? [EDITOR_STEP_LABELS.atributos] : []),
+    ...(this.choicesStep() ? [EDITOR_STEP_LABELS.escolhas] : []),
+  ]);
+  /** A player's sheet cannot be saved with a choice open (the server refuses it); the master's NPCs and edits can. */
+  protected readonly choicesBlocked = computed(() => {
+    const s = this.state();
+    return (
+      s.status === 'ready' &&
+      s.kind === 'player' &&
+      !s.catalog.viewerIsMaster &&
+      this.pendingChoices().length > 0
+    );
+  });
+  /** "Falta uma escolha: Estilo de Luta.", the description of the blocked button. */
+  protected readonly missingText = computed(() => missingSentence(this.choiceGroupsOfDraft()));
+  /** The line next to the counter of the step: "Tharn · Guerreiro 1 · Draconato". */
+  protected readonly choicesSubtitle = computed(() => {
+    this.formChanges();
+    const s = this.state();
+    if (s.status !== 'ready') {
+      return '';
+    }
+    const v = this.fullForm.getRawValue();
+    const cls = this.selectedClass();
+    return [
+      v.name.trim(),
+      cls ? `${cls.namePt} ${v.level}` : '',
+      this.selectedSubrace()?.namePt ?? this.selectedRace()?.namePt ?? '',
+    ]
+      .filter((p) => p !== '')
+      .join(' · ');
+  });
 
   /** Catalog-backed pickers (integrator fix: the editor must never make a
    * person type a content key) — cantrips and the known/prepared spell
@@ -668,9 +744,36 @@ export class CharacterEditor {
   protected readonly availableCantrips = computed(() =>
     this.unionOf((sec, spells) => cantripsOf(spells, sec, new Set(this.selectedCantrips()), true)),
   );
-  protected readonly availableSpells = computed(() =>
-    this.unionOf((sec, spells) => allOfSection(spells, sec).filter((sp) => sp.level >= 1)),
-  );
+  protected readonly availableSpells = computed(() => {
+    const own = this.unionOf((sec, spells) =>
+      allOfSection(spells, sec).filter((sp) => sp.level >= 1),
+    );
+    // The patron's spells and the Magical Secrets are picks of the sheet too, though no class list has them.
+    const seen = new Set(own.map((sp) => sp.key));
+    const extra = this.sectionExtras()
+      .flatMap((e) => e.lists.flatMap((l) => l.spells))
+      .filter((sp) => !seen.has(sp.key) && seen.add(sp.key));
+    return [...own, ...extra];
+  });
+  /** For each section, the spells outside its list that `PreviewChoices` lets it pick. */
+  private readonly sectionExtras = computed<{ index: number; lists: ExtraSpellList[] }[]>(() => {
+    const s = this.state();
+    const sources = this.choicesAnswer()?.spellSources ?? [];
+    if (s.status !== 'ready' || sources.length === 0) {
+      return [];
+    }
+    const picked = new Set([...this.selectedSpellsKnown(), ...this.selectedSpellsPrepared()]);
+    return this.sections().map((section) => ({
+      index: section.index,
+      lists: extraSpellLists(
+        s.catalog,
+        section,
+        sources.find((src) => src.classKey === section.classKey),
+        picked,
+        this.master(),
+      ),
+    }));
+  });
   private unionOf(
     pick: (section: CasterSection, spells: readonly SpellOptionVm[]) => SpellOptionVm[],
   ): SpellOptionVm[] {
@@ -741,6 +844,9 @@ export class CharacterEditor {
       return {
         section,
         id: String(section.index),
+        extras: this.sectionExtras().find((e) => e.index === section.index)?.lists ?? [],
+        /** The extra lists add to the known spells of a "known" or "spellbook" class, else to the prepared ones. */
+        extrasToKnown: section.preparation !== 'prepared',
         cantrips: {
           all: cantrips,
           shown: filterByName(cantrips, query(section, 'cantrips')),
@@ -789,6 +895,17 @@ export class CharacterEditor {
   /** What the sheet has that no pick of this form gave it and no subclass of the catalog explains (a race's or a
    * feature's spell): said apart, with where it comes from. */
   protected readonly otherGranted = this.grantedSpells.asReadonly();
+
+  /** The search of an extra list ("0:patron"), and what it narrows. */
+  protected spellFilterOf(id: string): string {
+    return this.spellFilters()[id] ?? '';
+  }
+  protected setExtraFilter(id: string, value: string): void {
+    this.spellFilters.update((f) => ({ ...f, [id]: value }));
+  }
+  protected filterSpells(spells: readonly SpellOptionVm[], id: string): readonly SpellOptionVm[] {
+    return filterByName(spells, this.spellFilterOf(id));
+  }
 
   protected setSpellFilter(
     section: number,
@@ -1123,6 +1240,41 @@ export class CharacterEditor {
       }
       untracked(() => this.serverHitPoints.draftChanged(ready));
     });
+    // The server reads the draft for its choices (a race and a class at least) and the "Escolhas" step shows them.
+    effect(() => {
+      const s = this.state();
+      if (s.status !== 'ready' || !isFullSheetKind(s.kind)) {
+        untracked(() => this.serverChoices.stop());
+        return;
+      }
+      this.formChanges();
+      const ready = this.selectedRaceKey() !== '' && this.selectedClassKey() !== '';
+      if (ready) {
+        this.buildFullValue();
+      }
+      untracked(() => this.serverChoices.draftChanged(ready));
+    });
+    // A pick the draft stores that no choice offers any more (the class or the race changed) goes, with its texts.
+    effect(() => {
+      const answer = this.choicesAnswer();
+      if (!answer) {
+        return;
+      }
+      untracked(() => {
+        const gone = new Set(answer.notOffered);
+        if (gone.size > 0) {
+          this.featureChoiceKeys.update((keys) => keys.filter((k) => !gone.has(k)));
+        }
+        const live = new Set(answer.groups.flatMap((g) => g.choices.map((c) => c.key)));
+        const texts = this.featureChoiceText();
+        const kept = Object.entries(texts).filter(([k]) =>
+          live.has(k.slice(0, k.lastIndexOf('#'))),
+        );
+        if (kept.length !== Object.keys(texts).length) {
+          this.featureChoiceText.set(Object.fromEntries(kept));
+        }
+      });
+    });
     // A new player's sheet made above level 1 starts at its level's XP in a campaign that levels by XP, until the
     // person types in the field; a milestone campaign keeps the 0.
     effect(() => {
@@ -1141,6 +1293,7 @@ export class CharacterEditor {
     });
     this.destroyRef.onDestroy(() => {
       this.destroyed = true;
+      this.serverChoices.stop();
       this.serverHitPoints.stop();
       this.loadSeq++;
     });
@@ -1169,6 +1322,9 @@ export class CharacterEditor {
     this.selectedSpellsKnown.set(new Set());
     this.selectedSpellsPrepared.set(new Set());
     this.spellFilters.set({});
+    this.featureChoiceKeys.set([]);
+    this.featureChoiceText.set({});
+    this.serverChoices.stop();
     this.grantedSpells.set([]);
     this.hasCuttingWords.set(false);
     this.preparedMaxByClass.set({});
@@ -1402,6 +1558,46 @@ export class CharacterEditor {
     this.selectedCantrips.set(new Set(full.cantrips));
     this.selectedSpellsKnown.set(new Set(full.spellsKnown));
     this.selectedSpellsPrepared.set(new Set(full.spellsPrepared));
+    this.featureChoiceKeys.set(full.featureChoiceKeys);
+    this.featureChoiceText.set(full.featureChoiceText);
+  }
+
+  /** A pick on the "Escolhas" step: the stored keys follow it, and the server reads the draft again. */
+  protected pickChoice(pick: ChoiceSelection): void {
+    this.featureChoiceKeys.update((keys) => applySelection(keys, pick.choice, pick.optionKeys));
+  }
+
+  protected editChoiceText(edit: ChoiceTextEdit): void {
+    this.featureChoiceText.update((texts) =>
+      withChoiceText(texts, edit.choice.key, edit.n, edit.text),
+    );
+  }
+
+  /** "Escolher Rajada Mística agora": the spell becomes one of the sheet's cantrips (the "Magias" step), and the choices are read again. */
+  protected addChoiceCantrip(spellKey: string): void {
+    if (!this.selectedCantrips().has(spellKey)) {
+      this.selectedCantrips.set(new Set([...this.selectedCantrips(), spellKey]));
+    }
+  }
+
+  /** The blocked "Criar personagem": the "Escolhas" step opens and the focus goes to the first choice still open. */
+  private focusFirstPendingChoice(): void {
+    const stepper = this.stepper;
+    if (!stepper) {
+      return;
+    }
+    const index = stepper.steps
+      .toArray()
+      .findIndex((st) => st.label === EDITOR_STEP_LABELS.escolhas);
+    if (index < 0) {
+      return;
+    }
+    if (index === stepper.selectedIndex) {
+      this.choiceGroups?.focusFirstPending();
+      return;
+    }
+    stepper.goTo(index);
+    afterNextRender(() => this.choiceGroups?.focusFirstPending(), { injector: this.injector });
   }
 
   protected toggleSkill(key: string): void {
@@ -1585,6 +1781,8 @@ export class CharacterEditor {
       portraitImageId: v.portraitImageId,
       alignment: v.alignment,
       customFeaturesText: v.customFeaturesText,
+      featureChoiceKeys: [...this.featureChoiceKeys()],
+      featureChoiceText: { ...this.featureChoiceText() },
       cuttingWordsAsk: v.cuttingWordsAsk,
     };
   }
@@ -1671,6 +1869,11 @@ export class CharacterEditor {
     }
     const isBasic = !isFullSheetKind(s.kind);
     const form = isBasic ? this.basicForm : this.fullForm;
+    // A choice still open: the button only leads to it (it is aria-disabled, not disabled, so it can be reached and activated).
+    if (!isBasic && this.choicesBlocked()) {
+      this.focusFirstPendingChoice();
+      return;
+    }
     if (
       form.invalid ||
       (!isBasic &&

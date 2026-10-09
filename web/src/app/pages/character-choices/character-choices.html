@@ -1,0 +1,83 @@
+<a class="back" [routerLink]="sheetLink()">
+  <mat-icon aria-hidden="true">arrow_back</mat-icon>
+  Voltar para a ficha
+</a>
+
+@let st = state();
+@switch (st.status) {
+  @case ('loading') {
+    <h1 class="mr-page-title">Completar escolhas pendentes</h1>
+    <div class="mr-notice mr-notice--neutral" role="status">
+      <mat-spinner diameter="20" aria-label="Carregando as escolhas" />
+      <p>Carregando as escolhas da ficha...</p>
+    </div>
+  }
+  @case ('error') {
+    <h1 class="mr-page-title">Não foi possível abrir as escolhas</h1>
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ st.message }}</p>
+    </div>
+  }
+  @case ('none') {
+    <h1 class="mr-page-title">Completar escolhas pendentes</h1>
+    <div class="mr-notice mr-notice--success" role="status">
+      <mat-icon aria-hidden="true">check_circle</mat-icon>
+      <p>{{ st.name }} não tem escolhas pendentes.</p>
+    </div>
+    <a matButton="filled" class="done" [routerLink]="sheetLink()">Voltar para a ficha</a>
+  }
+  @case ('ready') {
+    <h1 class="mr-page-title">Completar escolhas pendentes</h1>
+    <p class="lead">
+      A ficha ficou travada com escolhas em aberto. Faça só as que faltam: o que já foi escolhido não muda mais.
+    </p>
+
+    @if (failure(); as why) {
+      <div class="mr-notice mr-notice--danger js-failure" role="alert" tabindex="-1">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ why }}</p>
+      </div>
+    }
+    @if (previewFailure(); as why) {
+      <div class="mr-notice mr-notice--warning" role="status">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <p>{{ why }}</p>
+      </div>
+    }
+
+    @if (response(); as res) {
+      <app-choice-groups
+        [groups]="groups()"
+        [done]="res.done"
+        [total]="res.total"
+        [subtitle]="subtitle()"
+        [offerCantrips]="false"
+        (selected)="onSelected($event)"
+        (textEdited)="onText($event)"
+      />
+    }
+
+    @if (answers().length === 0) {
+      <p id="save-hint" class="foot__hint">Faça pelo menos uma escolha para salvar.</p>
+    }
+    <footer class="foot">
+      <a matButton="outlined" [routerLink]="sheetLink()">Cancelar</a>
+      <button
+        matButton="filled"
+        type="button"
+        class="js-save"
+        [disabled]="saving() || answers().length === 0"
+        [attr.aria-describedby]="answers().length === 0 ? 'save-hint' : null"
+        disabledInteractive
+        (click)="save()"
+      >
+        @if (saving()) {
+          Salvando...
+        } @else {
+          Salvar escolhas
+        }
+      </button>
+    </footer>
+  }
+}

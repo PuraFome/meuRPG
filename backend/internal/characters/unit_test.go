@@ -137,6 +137,9 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["ClaimCharacter"] = c.ClaimCharacter(ctx, connect.NewRequest(&charactersv1.ClaimCharacterRequest{Token: "x"}))
 	_, calls["ApproveCharacter"] = c.ApproveCharacter(ctx, connect.NewRequest(&charactersv1.ApproveCharacterRequest{CampaignId: id, CharacterId: id}))
 	_, calls["RejectCharacter"] = c.RejectCharacter(ctx, connect.NewRequest(&charactersv1.RejectCharacterRequest{CampaignId: id, CharacterId: id}))
+	_, calls["RequestCharacterChanges"] = c.RequestCharacterChanges(ctx, connect.NewRequest(&charactersv1.RequestCharacterChangesRequest{CampaignId: id, CharacterId: id}))
+	_, calls["ResubmitCharacter"] = c.ResubmitCharacter(ctx, connect.NewRequest(&charactersv1.ResubmitCharacterRequest{CampaignId: id, CharacterId: id}))
+	_, calls["ReviveCharacter"] = c.ReviveCharacter(ctx, connect.NewRequest(&charactersv1.ReviveCharacterRequest{CampaignId: id, CharacterId: id}))
 	_, calls["GetLevelUpOptions"] = c.GetLevelUpOptions(ctx, connect.NewRequest(&charactersv1.GetLevelUpOptionsRequest{CampaignId: id, CharacterId: id}))
 	_, calls["PreviewLevelUp"] = c.PreviewLevelUp(ctx, connect.NewRequest(&charactersv1.PreviewLevelUpRequest{CampaignId: id, CharacterId: id}))
 	_, calls["PreviewCharacter"] = c.PreviewCharacter(ctx, connect.NewRequest(&charactersv1.PreviewCharacterRequest{CampaignId: id}))
@@ -151,6 +154,9 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["DismissCreature"] = c.DismissCreature(ctx, connect.NewRequest(&charactersv1.DismissCreatureRequest{CampaignId: id, CreatureId: id}))
 	_, calls["AdjustCreatureHitPoints"] = c.AdjustCreatureHitPoints(ctx, connect.NewRequest(&charactersv1.AdjustCreatureHitPointsRequest{CampaignId: id, CreatureId: id}))
 	_, calls["GetSummonOptions"] = c.GetSummonOptions(ctx, connect.NewRequest(&charactersv1.GetSummonOptionsRequest{CampaignId: id, CharacterId: id}))
+	_, calls["PreviewChoices"] = c.PreviewChoices(ctx, connect.NewRequest(&charactersv1.PreviewChoicesRequest{CampaignId: id}))
+	_, calls["CompleteCharacterChoices"] = c.CompleteCharacterChoices(ctx, connect.NewRequest(&charactersv1.CompleteCharacterChoicesRequest{CampaignId: id, CharacterId: id}))
+	_, calls["GetCampaignOpenChoices"] = c.GetCampaignOpenChoices(ctx, connect.NewRequest(&charactersv1.GetCampaignOpenChoicesRequest{CampaignId: id}))
 	_, calls["ListWildShapeForms"] = c.ListWildShapeForms(ctx, connect.NewRequest(&charactersv1.ListWildShapeFormsRequest{CampaignId: id, CharacterId: id}))
 	_, calls["ListContent"] = content.ListContent(ctx, connect.NewRequest(&rulesv1.ListContentRequest{CampaignId: id}))
 	_, calls["GetSpellDetails"] = content.GetSpellDetails(ctx, connect.NewRequest(&rulesv1.GetSpellDetailsRequest{CampaignId: id, SpellKey: "spell:fire-bolt"}))
@@ -209,8 +215,8 @@ func TestReadsWithIDsArePostOnly(t *testing.T) {
 			}
 		}
 	}
-	if len(reads) != 23 {
-		t.Errorf("found %d reads, want 23 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, PreviewCharacter, PreviewClaim, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListSpells, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries, ListOptionSwitches, GetClassTableDefaults, GetEffectMenu)", len(reads))
+	if len(reads) != 25 {
+		t.Errorf("found %d reads, want 25 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, PreviewCharacter, PreviewChoices, PreviewClaim, GetCampaignOpenChoices, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListSpells, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries, ListOptionSwitches, GetClassTableDefaults, GetEffectMenu)", len(reads))
 	}
 	for procedure, method := range reads {
 		opts, _ := method.Options().(*descriptorpb.MethodOptions)

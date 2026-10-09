@@ -161,6 +161,9 @@ type Combatant struct {
 	InspirationFrom         *string
 	InspirationExpiresRound *int32
 	SlotsUsed               []byte
+	DeathRound              *int32
+	DeathOrderIndex         *int32
+	RevivifyBlocked         bool
 }
 
 type CombatantState struct {
@@ -410,6 +413,24 @@ type ReactionWindow struct {
 	Outcome         []byte
 	CreatedAt       time.Time
 	AnsweredAt      *time.Time
+}
+
+type RevivifyRequest struct {
+	ID                string
+	CampaignID        string
+	GameSessionID     string
+	CasterCharacterID string
+	TargetCharacterID string
+	RequestedByUserID *string
+	SlotLevel         int32
+	SlotPact          bool
+	Status            string
+	CreatedAt         time.Time
+	AnsweredAt        *time.Time
+	CreateKey         *string
+	CreateHash        *string
+	AnswerKey         *string
+	AnswerHash        *string
 }
 
 type RollHold struct {

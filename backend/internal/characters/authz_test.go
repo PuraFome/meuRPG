@@ -168,6 +168,26 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := u.api.PreviewCharacter(ctx, connect.NewRequest(&charactersv1.PreviewCharacterRequest{CampaignId: campaign, CharacterId: pendingPC.GetId(), Sheet: pensantusSheet()}))
 			return err
 		}, [6]connect.Code{allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
+		// PreviewChoices follows PreviewCharacter: the same callers and the same sheets,
+		// and, for a character, whoever sees it.
+		{"PreviewChoices", "new player sheet", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.PreviewChoices(ctx, connect.NewRequest(&charactersv1.PreviewChoicesRequest{CampaignId: campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Sheet: pensantusSheet()}))
+			return err
+		}, [6]connect.Code{connect.CodePermissionDenied, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
+		{"PreviewChoices", "character", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.PreviewChoices(ctx, connect.NewRequest(&charactersv1.PreviewChoicesRequest{CampaignId: campaign, CharacterId: pc.GetId(), Sheet: pensantusSheet()}))
+			return err
+		}, [6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"PreviewChoices", "pending character", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.PreviewChoices(ctx, connect.NewRequest(&charactersv1.PreviewChoicesRequest{CampaignId: campaign, CharacterId: pendingPC.GetId()}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
+		// Only the master reads who has choices open; a player and a stranger are told
+		// the campaign does not exist.
+		{"GetCampaignOpenChoices", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.GetCampaignOpenChoices(ctx, connect.NewRequest(&charactersv1.GetCampaignOpenChoicesRequest{CampaignId: campaign}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		{
 			"UpdateCharacter", "draft", nil, update(pc.GetId()),
 			[6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound},
@@ -212,6 +232,22 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := u.api.RejectCharacter(ctx, connect.NewRequest(&charactersv1.RejectCharacterRequest{CampaignId: campaign, CharacterId: rejecteePC.GetId()}))
 			return err
 		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		// "Pedir ajustes": the master asks, the owner sends it again. The pending caller owns
+		// pendingPC, so the master's row opens the request the owner's row answers. Whoever is
+		// not the owner gets the answer of a character that is not there.
+		{"RequestCharacterChanges", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.RequestCharacterChanges(ctx, connect.NewRequest(&charactersv1.RequestCharacterChangesRequest{
+				CampaignId: campaign, CharacterId: pendingPC.GetId(), Reason: "Falta o equipamento.", IdempotencyKey: uuid.New().String(),
+			}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"ResubmitCharacter", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.ResubmitCharacter(ctx, connect.NewRequest(&charactersv1.ResubmitCharacterRequest{
+				CampaignId: campaign, CharacterId: pendingPC.GetId(), IdempotencyKey: uuid.New().String(),
+			}))
+			return err
+		}, [6]connect.Code{connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
 
 		{"SetStoryEditing", "", nil, func(ctx context.Context, u *user) error {
 			_, err := u.api.SetStoryEditing(ctx, connect.NewRequest(&charactersv1.SetStoryEditingRequest{CampaignId: campaign, CharacterId: pc.GetId(), Allowed: true}))
@@ -446,6 +482,15 @@ func TestAuthorizationMatrix(t *testing.T) {
 			return err
 		}, [6]connect.Code{connect.CodeFailedPrecondition, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
+		// The wizard of the table has nothing open: the callers that may complete choices
+		// reach the rule that says so, the others are told the character is not theirs.
+		{"CompleteCharacterChoices", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.CompleteCharacterChoices(ctx, connect.NewRequest(&charactersv1.CompleteCharacterChoicesRequest{
+				CampaignId: campaign, CharacterId: pc.GetId(), ExpectedRevision: 1,
+				Picks: []*charactersv1.ChoicePick{{ChoiceKey: "feature:fighter-fighting-style", OptionKeys: []string{"feature:fighter-fighting-style-defense"}}},
+			}))
+			return err
+		}, [6]connect.Code{connect.CodeAborted, connect.CodeAborted, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		// Reserved characters and claim links (MR-049): only the master makes, revokes and gives
 		// back; every other member is refused with the master's answer (permission_denied), and
 		// whoever is no member, or only pending, cannot tell the campaign from one that does not exist.
@@ -479,6 +524,14 @@ func TestAuthorizationMatrix(t *testing.T) {
 		// Last, because it changes the owner's character for good.
 		{"MarkCharacterDead", "", nil, func(ctx context.Context, u *user) error {
 			_, err := u.api.MarkCharacterDead(ctx, connect.NewRequest(&charactersv1.MarkCharacterDeadRequest{CampaignId: campaign, CharacterId: pc.GetId()}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		// "Reviver" brings the character the row above killed back: the master's alone.
+		{"ReviveCharacter", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.ReviveCharacter(ctx, connect.NewRequest(&charactersv1.ReviveCharacterRequest{
+				CampaignId: campaign, CharacterId: pc.GetId(), IdempotencyKey: uuid.New().String(),
+			}))
 			return err
 		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 	}

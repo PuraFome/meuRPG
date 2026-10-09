@@ -1,0 +1,38 @@
+<section class="rc" aria-labelledby="rc-title">
+  <h2 class="rc__title" id="rc-title">Pedir ajustes em {{ characterName() }}</h2>
+  <p class="rc__text">
+    {{ playerName() }} lê o seu motivo na ficha, ajusta e envia de novo. O personagem continua
+    pendente; nada é apagado.
+  </p>
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>O que {{ playerName() }} precisa ajustar</mat-label>
+    <textarea
+      #field
+      matInput
+      rows="4"
+      autocomplete="off"
+      [formControl]="text"
+      [errorStateMatcher]="matcher"
+      [attr.aria-describedby]="problem() ? 'rc-hint rc-problem' : 'rc-hint'"
+    ></textarea>
+    <mat-hint id="rc-hint">Diga o que não está certo e o que fazer.</mat-hint>
+    <mat-hint align="end">{{ length() }} de {{ max }}</mat-hint>
+  </mat-form-field>
+  @if (problem(); as p) {
+    <p class="rc__problem" id="rc-problem" role="alert">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>{{ p }}
+    </p>
+  }
+  @if (error(); as e) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ e }}</p>
+    </div>
+  }
+  <div class="rc__actions">
+    <button matButton="filled" type="button" [attr.aria-disabled]="busy()" (click)="submit()">
+      Enviar pedido
+    </button>
+    <button matButton="outlined" type="button" (click)="cancelled.emit()">Cancelar</button>
+  </div>
+</section>

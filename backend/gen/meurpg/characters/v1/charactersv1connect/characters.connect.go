@@ -92,6 +92,15 @@ const (
 	// CharacterServiceRejectCharacterProcedure is the fully-qualified name of the CharacterService's
 	// RejectCharacter RPC.
 	CharacterServiceRejectCharacterProcedure = "/meurpg.characters.v1.CharacterService/RejectCharacter"
+	// CharacterServiceRequestCharacterChangesProcedure is the fully-qualified name of the
+	// CharacterService's RequestCharacterChanges RPC.
+	CharacterServiceRequestCharacterChangesProcedure = "/meurpg.characters.v1.CharacterService/RequestCharacterChanges"
+	// CharacterServiceResubmitCharacterProcedure is the fully-qualified name of the CharacterService's
+	// ResubmitCharacter RPC.
+	CharacterServiceResubmitCharacterProcedure = "/meurpg.characters.v1.CharacterService/ResubmitCharacter"
+	// CharacterServiceReviveCharacterProcedure is the fully-qualified name of the CharacterService's
+	// ReviveCharacter RPC.
+	CharacterServiceReviveCharacterProcedure = "/meurpg.characters.v1.CharacterService/ReviveCharacter"
 	// CharacterServiceCreateClaimLinkProcedure is the fully-qualified name of the CharacterService's
 	// CreateClaimLink RPC.
 	CharacterServiceCreateClaimLinkProcedure = "/meurpg.characters.v1.CharacterService/CreateClaimLink"
@@ -119,6 +128,15 @@ const (
 	// CharacterServicePreviewCharacterProcedure is the fully-qualified name of the CharacterService's
 	// PreviewCharacter RPC.
 	CharacterServicePreviewCharacterProcedure = "/meurpg.characters.v1.CharacterService/PreviewCharacter"
+	// CharacterServicePreviewChoicesProcedure is the fully-qualified name of the CharacterService's
+	// PreviewChoices RPC.
+	CharacterServicePreviewChoicesProcedure = "/meurpg.characters.v1.CharacterService/PreviewChoices"
+	// CharacterServiceCompleteCharacterChoicesProcedure is the fully-qualified name of the
+	// CharacterService's CompleteCharacterChoices RPC.
+	CharacterServiceCompleteCharacterChoicesProcedure = "/meurpg.characters.v1.CharacterService/CompleteCharacterChoices"
+	// CharacterServiceGetCampaignOpenChoicesProcedure is the fully-qualified name of the
+	// CharacterService's GetCampaignOpenChoices RPC.
+	CharacterServiceGetCampaignOpenChoicesProcedure = "/meurpg.characters.v1.CharacterService/GetCampaignOpenChoices"
 	// CharacterServiceRollLevelUpHitPointsProcedure is the fully-qualified name of the
 	// CharacterService's RollLevelUpHitPoints RPC.
 	CharacterServiceRollLevelUpHitPointsProcedure = "/meurpg.characters.v1.CharacterService/RollLevelUpHitPoints"
@@ -470,6 +488,85 @@ type CharacterServiceClient interface {
 	//     character stays in the campaign. The error carries a CharacterBlocked
 	//     detail with reason NOT_PENDING.
 	RejectCharacter(context.Context, *connect.Request[v1.RejectCharacterRequest]) (*connect.Response[v1.RejectCharacterResponse], error)
+	// RequestCharacterChanges is the master's "Pedir ajustes" on a character that
+	// waits for approval (RN-15, MR-024): it stays PENDING and the player sees the
+	// master's reason, edits the sheet and sends it again (ResubmitCharacter). Only
+	// the campaign's master may call it. Nothing is deleted: the invite and the
+	// pending membership stay as they are, and the master may still approve or
+	// reject at any time.
+	//
+	// The reason is 1 to 500 characters after trimming, one block of text. It is
+	// personal data of the player kept by the master: only the master and the
+	// owner read it (Character.review), and the server deletes it when the
+	// character is approved or rejected, when the character, the campaign or the
+	// player's account is deleted (docs/privacy.md). Asking again replaces the reason
+	// and the time, and the review is CHANGES_REQUESTED again.
+	//
+	// It carries an idempotency_key (1 to 64 characters, scoped to the caller): the
+	// same key with the same request returns the first answer and tells the stream
+	// nothing; the same key with another request is `invalid_argument`.
+	//
+	// It sends `character_changes_requested` to the master and the owner.
+	//
+	// Errors:
+	//   - `invalid_argument`: the reason is empty or has only spaces (field
+	//     "reason", InvalidField), it passes 500 characters (field "reason"), the
+	//     key is not valid or was used for another request, or the character is an
+	//     NPC.
+	//   - `not_found`: the character is not in this campaign, the campaign does
+	//     not exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: the character is not PENDING (NOT_PENDING).
+	RequestCharacterChanges(context.Context, *connect.Request[v1.RequestCharacterChangesRequest]) (*connect.Response[v1.RequestCharacterChangesResponse], error)
+	// ResubmitCharacter is the owner's "Enviar de novo": the sheet is ready for
+	// the master to look at again. The character stays PENDING and its review
+	// becomes RESUBMITTED; the reason stays for the master's history until the
+	// character is approved, rejected or deleted. Only the owning player may call it,
+	// and only while a request for changes is open. Editing the sheet does not send
+	// it: the player decides when they are done.
+	//
+	// It carries an idempotency_key like RequestCharacterChanges. It sends
+	// `character_resubmitted` to the master and the owner.
+	//
+	// Errors:
+	//   - `invalid_argument`: the key is not valid or was used for another request.
+	//   - `not_found`: the character is not in this campaign, the campaign does not
+	//     exist, or the caller is not its owner or a member: the same answer for
+	//     both, so nobody probes a character_id.
+	//   - `failed_precondition`: NOT_PENDING (the character was approved), or
+	//     NO_CHANGES_REQUESTED (there is no open request: nothing was asked, or
+	//     it was already sent again).
+	ResubmitCharacter(context.Context, *connect.Request[v1.ResubmitCharacterRequest]) (*connect.Response[v1.ResubmitCharacterResponse], error)
+	// ReviveCharacter is the master's "Reviver" (RN-03, SRD 5.1, "Dropping to 0 Hit
+	// Points"): a dead player character lives again with 1 hit point, with no death
+	// save counted, and goes back to the state it had before it died (a draft or
+	// locked). Spell slots, class uses and hit dice stay as they were. It is not a
+	// spell: it spends nothing and has no time limit. Only the campaign's master may
+	// call it.
+	//
+	// In a combat that is not ended where the character was a combatant, it goes back
+	// to the order where it was and acts on its next turn: the SRD has no "no turn
+	// this round" rule. The log says "O mestre reviveu <name>". The character's
+	// `revived_at` is set; `died_at` stays as the history of the master, and a new
+	// death sets it again.
+	//
+	// RN-03: a player has at most one living character in a campaign. If the player
+	// made another one after this death, reviving is refused until the master
+	// archives it or marks it dead.
+	//
+	// It carries an idempotency_key; the same key with the same request after a
+	// success returns the character as it is.
+	//
+	// Errors:
+	//   - `invalid_argument`: the character is an NPC, or the key is not valid or was
+	//     used for another request.
+	//   - `not_found`: the character is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: the character is not dead (NOT_DEAD), or its player
+	//     already has another living character in the campaign
+	//     (LIVING_CHARACTER_EXISTS: the error's CharacterBlocked names it).
+	ReviveCharacter(context.Context, *connect.Request[v1.ReviveCharacterRequest]) (*connect.Response[v1.ReviveCharacterResponse], error)
 	// CreateClaimLink makes the link a player uses to take a reserved character
 	// (the character the master made with CreateCharacter.for_player). Only the
 	// campaign's master may call it. The app builds the link as
@@ -620,6 +717,56 @@ type CharacterServiceClient interface {
 	//     sheet is locked for the caller (RN-01), or a new choice is archived or
 	//     switched off (the same detail as the save).
 	PreviewCharacter(context.Context, *connect.Request[v1.PreviewCharacterRequest]) (*connect.Response[v1.PreviewCharacterResponse], error)
+	// PreviewChoices answers which choices a sheet asks the player to make (a Fighting
+	// Style, a Draconic Ancestry, the warlock's Pact Boon and invocations, a favored
+	// enemy, a terrain, the half-elf's two +1, a bonus cantrip...), how many picks each
+	// takes, which are made, and what each option asks for and gives. It writes nothing.
+	//
+	// The browser never decides a rule: this is where the "Escolhas" step of the
+	// character editor, the locked sheet's "Completar escolhas pendentes" and the
+	// level-up's catch-up read the options, the prerequisites (a warlock level, a
+	// cantrip, a Pact Boon), the numbers a pick gives (the breath weapon's DC) and which
+	// choice is still open. It also says where the spell pickers get the spells that
+	// are not on the class list (the patron's, the Magical Secrets).
+	//
+	// Who may call it, the sheet it takes and the errors are those of PreviewCharacter;
+	// with a character_id and no sheet, the character's stored sheet is the one read.
+	// A basic sheet has no choices (`invalid_argument`).
+	PreviewChoices(context.Context, *connect.Request[v1.PreviewChoicesRequest]) (*connect.Response[v1.PreviewChoicesResponse], error)
+	// CompleteCharacterChoices makes the choices a sheet left open, on a sheet that is
+	// locked for the player (RN-01) as well as on a draft: it writes only the picks of
+	// the choices that are open, and nothing else changes. What is chosen never becomes
+	// a field again: a choice already made is `CHOICE_ALREADY_MADE`, and the Pact Boon
+	// is never swapped. A pick that changes numbers (a half-elf's +1 in Constitution
+	// raises the hit points) is recomputed by the sheet, and the master gets the line
+	// "<name> completou <choice>" in the log.
+	//
+	// For the owning player and for the master. The master may complete the choices of
+	// any character; a player only their own. Not for a dead character (the master edits
+	// its sheet with UpdateCharacter).
+	//
+	// Errors:
+	//   - `not_found`: the character is not in this campaign or the caller may not see it
+	//     (the same for a player who does not own it and for a stranger).
+	//   - `aborted`: the revision is not the character's now.
+	//   - `invalid_argument`: more than 50 picks, an empty choice key, an option key
+	//     that is not a content key, or a text over 40 characters.
+	//   - `failed_precondition`: with a ChoiceRefusal detail: CHOICE_NOT_OPEN for a
+	//     pick that names a choice the sheet does not have, CHOICE_ALREADY_MADE for one
+	//     with nothing left to pick, CHOICE_NOT_OFFERED for an option the choice does not
+	//     list or more picks than it has left, PREREQUISITE_UNMET for an option that
+	//     asks for what the sheet lacks, CHOICES_MISSING for a text a pick needs and
+	//     lacks (the humanoid favored enemy's two races); or with a CharacterBlocked
+	//     detail: CHARACTER_DEAD.
+	CompleteCharacterChoices(context.Context, *connect.Request[v1.CompleteCharacterChoicesRequest]) (*connect.Response[v1.CompleteCharacterChoicesResponse], error)
+	// GetCampaignOpenChoices lists the player characters of the campaign that have
+	// choices still open, with a label for each, for the master's warning before a
+	// session starts (the sheets lock then). Only the master's.
+	//
+	// Errors:
+	//   - `not_found`: the caller is not the campaign's master, whether the campaign
+	//     exists or not: a player and a stranger learn nothing.
+	GetCampaignOpenChoices(context.Context, *connect.Request[v1.GetCampaignOpenChoicesRequest]) (*connect.Response[v1.GetCampaignOpenChoicesResponse], error)
 	// RollLevelUpHitPoints rolls the hit die of the class's next level, on the
 	// server, and keeps the result for this character, class and level:
 	// calling it again returns the same roll (it is not a reroll), so the
@@ -914,6 +1061,24 @@ func NewCharacterServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(characterServiceMethods.ByName("RejectCharacter")),
 			connect.WithClientOptions(opts...),
 		),
+		requestCharacterChanges: connect.NewClient[v1.RequestCharacterChangesRequest, v1.RequestCharacterChangesResponse](
+			httpClient,
+			baseURL+CharacterServiceRequestCharacterChangesProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("RequestCharacterChanges")),
+			connect.WithClientOptions(opts...),
+		),
+		resubmitCharacter: connect.NewClient[v1.ResubmitCharacterRequest, v1.ResubmitCharacterResponse](
+			httpClient,
+			baseURL+CharacterServiceResubmitCharacterProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("ResubmitCharacter")),
+			connect.WithClientOptions(opts...),
+		),
+		reviveCharacter: connect.NewClient[v1.ReviveCharacterRequest, v1.ReviveCharacterResponse](
+			httpClient,
+			baseURL+CharacterServiceReviveCharacterProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("ReviveCharacter")),
+			connect.WithClientOptions(opts...),
+		),
 		createClaimLink: connect.NewClient[v1.CreateClaimLinkRequest, v1.CreateClaimLinkResponse](
 			httpClient,
 			baseURL+CharacterServiceCreateClaimLinkProcedure,
@@ -969,6 +1134,26 @@ func NewCharacterServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			httpClient,
 			baseURL+CharacterServicePreviewCharacterProcedure,
 			connect.WithSchema(characterServiceMethods.ByName("PreviewCharacter")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		previewChoices: connect.NewClient[v1.PreviewChoicesRequest, v1.PreviewChoicesResponse](
+			httpClient,
+			baseURL+CharacterServicePreviewChoicesProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("PreviewChoices")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		completeCharacterChoices: connect.NewClient[v1.CompleteCharacterChoicesRequest, v1.CompleteCharacterChoicesResponse](
+			httpClient,
+			baseURL+CharacterServiceCompleteCharacterChoicesProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("CompleteCharacterChoices")),
+			connect.WithClientOptions(opts...),
+		),
+		getCampaignOpenChoices: connect.NewClient[v1.GetCampaignOpenChoicesRequest, v1.GetCampaignOpenChoicesResponse](
+			httpClient,
+			baseURL+CharacterServiceGetCampaignOpenChoicesProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("GetCampaignOpenChoices")),
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
@@ -1055,6 +1240,9 @@ type characterServiceClient struct {
 	updateMasterNotes        *connect.Client[v1.UpdateMasterNotesRequest, v1.UpdateMasterNotesResponse]
 	approveCharacter         *connect.Client[v1.ApproveCharacterRequest, v1.ApproveCharacterResponse]
 	rejectCharacter          *connect.Client[v1.RejectCharacterRequest, v1.RejectCharacterResponse]
+	requestCharacterChanges  *connect.Client[v1.RequestCharacterChangesRequest, v1.RequestCharacterChangesResponse]
+	resubmitCharacter        *connect.Client[v1.ResubmitCharacterRequest, v1.ResubmitCharacterResponse]
+	reviveCharacter          *connect.Client[v1.ReviveCharacterRequest, v1.ReviveCharacterResponse]
 	createClaimLink          *connect.Client[v1.CreateClaimLinkRequest, v1.CreateClaimLinkResponse]
 	revokeClaimLink          *connect.Client[v1.RevokeClaimLinkRequest, v1.RevokeClaimLinkResponse]
 	returnCharacterToReserve *connect.Client[v1.ReturnCharacterToReserveRequest, v1.ReturnCharacterToReserveResponse]
@@ -1064,6 +1252,9 @@ type characterServiceClient struct {
 	getLevelUpOptions        *connect.Client[v1.GetLevelUpOptionsRequest, v1.GetLevelUpOptionsResponse]
 	previewLevelUp           *connect.Client[v1.PreviewLevelUpRequest, v1.PreviewLevelUpResponse]
 	previewCharacter         *connect.Client[v1.PreviewCharacterRequest, v1.PreviewCharacterResponse]
+	previewChoices           *connect.Client[v1.PreviewChoicesRequest, v1.PreviewChoicesResponse]
+	completeCharacterChoices *connect.Client[v1.CompleteCharacterChoicesRequest, v1.CompleteCharacterChoicesResponse]
+	getCampaignOpenChoices   *connect.Client[v1.GetCampaignOpenChoicesRequest, v1.GetCampaignOpenChoicesResponse]
 	rollLevelUpHitPoints     *connect.Client[v1.RollLevelUpHitPointsRequest, v1.RollLevelUpHitPointsResponse]
 	levelUpCharacter         *connect.Client[v1.LevelUpCharacterRequest, v1.LevelUpCharacterResponse]
 	listLevelUps             *connect.Client[v1.ListLevelUpsRequest, v1.ListLevelUpsResponse]
@@ -1146,6 +1337,21 @@ func (c *characterServiceClient) RejectCharacter(ctx context.Context, req *conne
 	return c.rejectCharacter.CallUnary(ctx, req)
 }
 
+// RequestCharacterChanges calls meurpg.characters.v1.CharacterService.RequestCharacterChanges.
+func (c *characterServiceClient) RequestCharacterChanges(ctx context.Context, req *connect.Request[v1.RequestCharacterChangesRequest]) (*connect.Response[v1.RequestCharacterChangesResponse], error) {
+	return c.requestCharacterChanges.CallUnary(ctx, req)
+}
+
+// ResubmitCharacter calls meurpg.characters.v1.CharacterService.ResubmitCharacter.
+func (c *characterServiceClient) ResubmitCharacter(ctx context.Context, req *connect.Request[v1.ResubmitCharacterRequest]) (*connect.Response[v1.ResubmitCharacterResponse], error) {
+	return c.resubmitCharacter.CallUnary(ctx, req)
+}
+
+// ReviveCharacter calls meurpg.characters.v1.CharacterService.ReviveCharacter.
+func (c *characterServiceClient) ReviveCharacter(ctx context.Context, req *connect.Request[v1.ReviveCharacterRequest]) (*connect.Response[v1.ReviveCharacterResponse], error) {
+	return c.reviveCharacter.CallUnary(ctx, req)
+}
+
 // CreateClaimLink calls meurpg.characters.v1.CharacterService.CreateClaimLink.
 func (c *characterServiceClient) CreateClaimLink(ctx context.Context, req *connect.Request[v1.CreateClaimLinkRequest]) (*connect.Response[v1.CreateClaimLinkResponse], error) {
 	return c.createClaimLink.CallUnary(ctx, req)
@@ -1189,6 +1395,21 @@ func (c *characterServiceClient) PreviewLevelUp(ctx context.Context, req *connec
 // PreviewCharacter calls meurpg.characters.v1.CharacterService.PreviewCharacter.
 func (c *characterServiceClient) PreviewCharacter(ctx context.Context, req *connect.Request[v1.PreviewCharacterRequest]) (*connect.Response[v1.PreviewCharacterResponse], error) {
 	return c.previewCharacter.CallUnary(ctx, req)
+}
+
+// PreviewChoices calls meurpg.characters.v1.CharacterService.PreviewChoices.
+func (c *characterServiceClient) PreviewChoices(ctx context.Context, req *connect.Request[v1.PreviewChoicesRequest]) (*connect.Response[v1.PreviewChoicesResponse], error) {
+	return c.previewChoices.CallUnary(ctx, req)
+}
+
+// CompleteCharacterChoices calls meurpg.characters.v1.CharacterService.CompleteCharacterChoices.
+func (c *characterServiceClient) CompleteCharacterChoices(ctx context.Context, req *connect.Request[v1.CompleteCharacterChoicesRequest]) (*connect.Response[v1.CompleteCharacterChoicesResponse], error) {
+	return c.completeCharacterChoices.CallUnary(ctx, req)
+}
+
+// GetCampaignOpenChoices calls meurpg.characters.v1.CharacterService.GetCampaignOpenChoices.
+func (c *characterServiceClient) GetCampaignOpenChoices(ctx context.Context, req *connect.Request[v1.GetCampaignOpenChoicesRequest]) (*connect.Response[v1.GetCampaignOpenChoicesResponse], error) {
+	return c.getCampaignOpenChoices.CallUnary(ctx, req)
 }
 
 // RollLevelUpHitPoints calls meurpg.characters.v1.CharacterService.RollLevelUpHitPoints.
@@ -1561,6 +1782,85 @@ type CharacterServiceHandler interface {
 	//     character stays in the campaign. The error carries a CharacterBlocked
 	//     detail with reason NOT_PENDING.
 	RejectCharacter(context.Context, *connect.Request[v1.RejectCharacterRequest]) (*connect.Response[v1.RejectCharacterResponse], error)
+	// RequestCharacterChanges is the master's "Pedir ajustes" on a character that
+	// waits for approval (RN-15, MR-024): it stays PENDING and the player sees the
+	// master's reason, edits the sheet and sends it again (ResubmitCharacter). Only
+	// the campaign's master may call it. Nothing is deleted: the invite and the
+	// pending membership stay as they are, and the master may still approve or
+	// reject at any time.
+	//
+	// The reason is 1 to 500 characters after trimming, one block of text. It is
+	// personal data of the player kept by the master: only the master and the
+	// owner read it (Character.review), and the server deletes it when the
+	// character is approved or rejected, when the character, the campaign or the
+	// player's account is deleted (docs/privacy.md). Asking again replaces the reason
+	// and the time, and the review is CHANGES_REQUESTED again.
+	//
+	// It carries an idempotency_key (1 to 64 characters, scoped to the caller): the
+	// same key with the same request returns the first answer and tells the stream
+	// nothing; the same key with another request is `invalid_argument`.
+	//
+	// It sends `character_changes_requested` to the master and the owner.
+	//
+	// Errors:
+	//   - `invalid_argument`: the reason is empty or has only spaces (field
+	//     "reason", InvalidField), it passes 500 characters (field "reason"), the
+	//     key is not valid or was used for another request, or the character is an
+	//     NPC.
+	//   - `not_found`: the character is not in this campaign, the campaign does
+	//     not exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: the character is not PENDING (NOT_PENDING).
+	RequestCharacterChanges(context.Context, *connect.Request[v1.RequestCharacterChangesRequest]) (*connect.Response[v1.RequestCharacterChangesResponse], error)
+	// ResubmitCharacter is the owner's "Enviar de novo": the sheet is ready for
+	// the master to look at again. The character stays PENDING and its review
+	// becomes RESUBMITTED; the reason stays for the master's history until the
+	// character is approved, rejected or deleted. Only the owning player may call it,
+	// and only while a request for changes is open. Editing the sheet does not send
+	// it: the player decides when they are done.
+	//
+	// It carries an idempotency_key like RequestCharacterChanges. It sends
+	// `character_resubmitted` to the master and the owner.
+	//
+	// Errors:
+	//   - `invalid_argument`: the key is not valid or was used for another request.
+	//   - `not_found`: the character is not in this campaign, the campaign does not
+	//     exist, or the caller is not its owner or a member: the same answer for
+	//     both, so nobody probes a character_id.
+	//   - `failed_precondition`: NOT_PENDING (the character was approved), or
+	//     NO_CHANGES_REQUESTED (there is no open request: nothing was asked, or
+	//     it was already sent again).
+	ResubmitCharacter(context.Context, *connect.Request[v1.ResubmitCharacterRequest]) (*connect.Response[v1.ResubmitCharacterResponse], error)
+	// ReviveCharacter is the master's "Reviver" (RN-03, SRD 5.1, "Dropping to 0 Hit
+	// Points"): a dead player character lives again with 1 hit point, with no death
+	// save counted, and goes back to the state it had before it died (a draft or
+	// locked). Spell slots, class uses and hit dice stay as they were. It is not a
+	// spell: it spends nothing and has no time limit. Only the campaign's master may
+	// call it.
+	//
+	// In a combat that is not ended where the character was a combatant, it goes back
+	// to the order where it was and acts on its next turn: the SRD has no "no turn
+	// this round" rule. The log says "O mestre reviveu <name>". The character's
+	// `revived_at` is set; `died_at` stays as the history of the master, and a new
+	// death sets it again.
+	//
+	// RN-03: a player has at most one living character in a campaign. If the player
+	// made another one after this death, reviving is refused until the master
+	// archives it or marks it dead.
+	//
+	// It carries an idempotency_key; the same key with the same request after a
+	// success returns the character as it is.
+	//
+	// Errors:
+	//   - `invalid_argument`: the character is an NPC, or the key is not valid or was
+	//     used for another request.
+	//   - `not_found`: the character is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: the character is not dead (NOT_DEAD), or its player
+	//     already has another living character in the campaign
+	//     (LIVING_CHARACTER_EXISTS: the error's CharacterBlocked names it).
+	ReviveCharacter(context.Context, *connect.Request[v1.ReviveCharacterRequest]) (*connect.Response[v1.ReviveCharacterResponse], error)
 	// CreateClaimLink makes the link a player uses to take a reserved character
 	// (the character the master made with CreateCharacter.for_player). Only the
 	// campaign's master may call it. The app builds the link as
@@ -1711,6 +2011,56 @@ type CharacterServiceHandler interface {
 	//     sheet is locked for the caller (RN-01), or a new choice is archived or
 	//     switched off (the same detail as the save).
 	PreviewCharacter(context.Context, *connect.Request[v1.PreviewCharacterRequest]) (*connect.Response[v1.PreviewCharacterResponse], error)
+	// PreviewChoices answers which choices a sheet asks the player to make (a Fighting
+	// Style, a Draconic Ancestry, the warlock's Pact Boon and invocations, a favored
+	// enemy, a terrain, the half-elf's two +1, a bonus cantrip...), how many picks each
+	// takes, which are made, and what each option asks for and gives. It writes nothing.
+	//
+	// The browser never decides a rule: this is where the "Escolhas" step of the
+	// character editor, the locked sheet's "Completar escolhas pendentes" and the
+	// level-up's catch-up read the options, the prerequisites (a warlock level, a
+	// cantrip, a Pact Boon), the numbers a pick gives (the breath weapon's DC) and which
+	// choice is still open. It also says where the spell pickers get the spells that
+	// are not on the class list (the patron's, the Magical Secrets).
+	//
+	// Who may call it, the sheet it takes and the errors are those of PreviewCharacter;
+	// with a character_id and no sheet, the character's stored sheet is the one read.
+	// A basic sheet has no choices (`invalid_argument`).
+	PreviewChoices(context.Context, *connect.Request[v1.PreviewChoicesRequest]) (*connect.Response[v1.PreviewChoicesResponse], error)
+	// CompleteCharacterChoices makes the choices a sheet left open, on a sheet that is
+	// locked for the player (RN-01) as well as on a draft: it writes only the picks of
+	// the choices that are open, and nothing else changes. What is chosen never becomes
+	// a field again: a choice already made is `CHOICE_ALREADY_MADE`, and the Pact Boon
+	// is never swapped. A pick that changes numbers (a half-elf's +1 in Constitution
+	// raises the hit points) is recomputed by the sheet, and the master gets the line
+	// "<name> completou <choice>" in the log.
+	//
+	// For the owning player and for the master. The master may complete the choices of
+	// any character; a player only their own. Not for a dead character (the master edits
+	// its sheet with UpdateCharacter).
+	//
+	// Errors:
+	//   - `not_found`: the character is not in this campaign or the caller may not see it
+	//     (the same for a player who does not own it and for a stranger).
+	//   - `aborted`: the revision is not the character's now.
+	//   - `invalid_argument`: more than 50 picks, an empty choice key, an option key
+	//     that is not a content key, or a text over 40 characters.
+	//   - `failed_precondition`: with a ChoiceRefusal detail: CHOICE_NOT_OPEN for a
+	//     pick that names a choice the sheet does not have, CHOICE_ALREADY_MADE for one
+	//     with nothing left to pick, CHOICE_NOT_OFFERED for an option the choice does not
+	//     list or more picks than it has left, PREREQUISITE_UNMET for an option that
+	//     asks for what the sheet lacks, CHOICES_MISSING for a text a pick needs and
+	//     lacks (the humanoid favored enemy's two races); or with a CharacterBlocked
+	//     detail: CHARACTER_DEAD.
+	CompleteCharacterChoices(context.Context, *connect.Request[v1.CompleteCharacterChoicesRequest]) (*connect.Response[v1.CompleteCharacterChoicesResponse], error)
+	// GetCampaignOpenChoices lists the player characters of the campaign that have
+	// choices still open, with a label for each, for the master's warning before a
+	// session starts (the sheets lock then). Only the master's.
+	//
+	// Errors:
+	//   - `not_found`: the caller is not the campaign's master, whether the campaign
+	//     exists or not: a player and a stranger learn nothing.
+	GetCampaignOpenChoices(context.Context, *connect.Request[v1.GetCampaignOpenChoicesRequest]) (*connect.Response[v1.GetCampaignOpenChoicesResponse], error)
 	// RollLevelUpHitPoints rolls the hit die of the class's next level, on the
 	// server, and keeps the result for this character, class and level:
 	// calling it again returns the same roll (it is not a reroll), so the
@@ -2001,6 +2351,24 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 		connect.WithSchema(characterServiceMethods.ByName("RejectCharacter")),
 		connect.WithHandlerOptions(opts...),
 	)
+	characterServiceRequestCharacterChangesHandler := connect.NewUnaryHandler(
+		CharacterServiceRequestCharacterChangesProcedure,
+		svc.RequestCharacterChanges,
+		connect.WithSchema(characterServiceMethods.ByName("RequestCharacterChanges")),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceResubmitCharacterHandler := connect.NewUnaryHandler(
+		CharacterServiceResubmitCharacterProcedure,
+		svc.ResubmitCharacter,
+		connect.WithSchema(characterServiceMethods.ByName("ResubmitCharacter")),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceReviveCharacterHandler := connect.NewUnaryHandler(
+		CharacterServiceReviveCharacterProcedure,
+		svc.ReviveCharacter,
+		connect.WithSchema(characterServiceMethods.ByName("ReviveCharacter")),
+		connect.WithHandlerOptions(opts...),
+	)
 	characterServiceCreateClaimLinkHandler := connect.NewUnaryHandler(
 		CharacterServiceCreateClaimLinkProcedure,
 		svc.CreateClaimLink,
@@ -2056,6 +2424,26 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 		CharacterServicePreviewCharacterProcedure,
 		svc.PreviewCharacter,
 		connect.WithSchema(characterServiceMethods.ByName("PreviewCharacter")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServicePreviewChoicesHandler := connect.NewUnaryHandler(
+		CharacterServicePreviewChoicesProcedure,
+		svc.PreviewChoices,
+		connect.WithSchema(characterServiceMethods.ByName("PreviewChoices")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceCompleteCharacterChoicesHandler := connect.NewUnaryHandler(
+		CharacterServiceCompleteCharacterChoicesProcedure,
+		svc.CompleteCharacterChoices,
+		connect.WithSchema(characterServiceMethods.ByName("CompleteCharacterChoices")),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceGetCampaignOpenChoicesHandler := connect.NewUnaryHandler(
+		CharacterServiceGetCampaignOpenChoicesProcedure,
+		svc.GetCampaignOpenChoices,
+		connect.WithSchema(characterServiceMethods.ByName("GetCampaignOpenChoices")),
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
@@ -2153,6 +2541,12 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 			characterServiceApproveCharacterHandler.ServeHTTP(w, r)
 		case CharacterServiceRejectCharacterProcedure:
 			characterServiceRejectCharacterHandler.ServeHTTP(w, r)
+		case CharacterServiceRequestCharacterChangesProcedure:
+			characterServiceRequestCharacterChangesHandler.ServeHTTP(w, r)
+		case CharacterServiceResubmitCharacterProcedure:
+			characterServiceResubmitCharacterHandler.ServeHTTP(w, r)
+		case CharacterServiceReviveCharacterProcedure:
+			characterServiceReviveCharacterHandler.ServeHTTP(w, r)
 		case CharacterServiceCreateClaimLinkProcedure:
 			characterServiceCreateClaimLinkHandler.ServeHTTP(w, r)
 		case CharacterServiceRevokeClaimLinkProcedure:
@@ -2171,6 +2565,12 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 			characterServicePreviewLevelUpHandler.ServeHTTP(w, r)
 		case CharacterServicePreviewCharacterProcedure:
 			characterServicePreviewCharacterHandler.ServeHTTP(w, r)
+		case CharacterServicePreviewChoicesProcedure:
+			characterServicePreviewChoicesHandler.ServeHTTP(w, r)
+		case CharacterServiceCompleteCharacterChoicesProcedure:
+			characterServiceCompleteCharacterChoicesHandler.ServeHTTP(w, r)
+		case CharacterServiceGetCampaignOpenChoicesProcedure:
+			characterServiceGetCampaignOpenChoicesHandler.ServeHTTP(w, r)
 		case CharacterServiceRollLevelUpHitPointsProcedure:
 			characterServiceRollLevelUpHitPointsHandler.ServeHTTP(w, r)
 		case CharacterServiceLevelUpCharacterProcedure:
@@ -2256,6 +2656,18 @@ func (UnimplementedCharacterServiceHandler) RejectCharacter(context.Context, *co
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.RejectCharacter is not implemented"))
 }
 
+func (UnimplementedCharacterServiceHandler) RequestCharacterChanges(context.Context, *connect.Request[v1.RequestCharacterChangesRequest]) (*connect.Response[v1.RequestCharacterChangesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.RequestCharacterChanges is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) ResubmitCharacter(context.Context, *connect.Request[v1.ResubmitCharacterRequest]) (*connect.Response[v1.ResubmitCharacterResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.ResubmitCharacter is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) ReviveCharacter(context.Context, *connect.Request[v1.ReviveCharacterRequest]) (*connect.Response[v1.ReviveCharacterResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.ReviveCharacter is not implemented"))
+}
+
 func (UnimplementedCharacterServiceHandler) CreateClaimLink(context.Context, *connect.Request[v1.CreateClaimLinkRequest]) (*connect.Response[v1.CreateClaimLinkResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.CreateClaimLink is not implemented"))
 }
@@ -2290,6 +2702,18 @@ func (UnimplementedCharacterServiceHandler) PreviewLevelUp(context.Context, *con
 
 func (UnimplementedCharacterServiceHandler) PreviewCharacter(context.Context, *connect.Request[v1.PreviewCharacterRequest]) (*connect.Response[v1.PreviewCharacterResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.PreviewCharacter is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) PreviewChoices(context.Context, *connect.Request[v1.PreviewChoicesRequest]) (*connect.Response[v1.PreviewChoicesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.PreviewChoices is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) CompleteCharacterChoices(context.Context, *connect.Request[v1.CompleteCharacterChoicesRequest]) (*connect.Response[v1.CompleteCharacterChoicesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.CompleteCharacterChoices is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) GetCampaignOpenChoices(context.Context, *connect.Request[v1.GetCampaignOpenChoicesRequest]) (*connect.Response[v1.GetCampaignOpenChoicesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.GetCampaignOpenChoices is not implemented"))
 }
 
 func (UnimplementedCharacterServiceHandler) RollLevelUpHitPoints(context.Context, *connect.Request[v1.RollLevelUpHitPointsRequest]) (*connect.Response[v1.RollLevelUpHitPointsResponse], error) {

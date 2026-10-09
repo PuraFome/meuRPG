@@ -76,6 +76,12 @@
       ],
       "multiplier_at_level": {"5": 2, "7": 3, "9": 4},
       "attack": "full"
+    },
+    "spell:revivify": {
+      "kind": "revive",
+      "hit_points": 1,
+      "window_rounds": 10,
+      "source": "SRD 5.1, Revivify: the spell touches a creature that died within the last minute and it returns to life with 1 hit point. SRD 5.1, Combat, The Order of Combat: a round is about 6 seconds, so a minute is 10 rounds."
     }
   }
 }

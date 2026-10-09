@@ -287,10 +287,21 @@ WHERE character_id = sqlc.arg(character_id) AND kind = 'player'
 
 -- name: SetCombatantHitPoints :exec
 -- An NPC's hit points, temporary hit points and defeated flag (damage, healing,
--- the master's hand, an undo).
+-- the master's hand, an undo). When the combatant becomes defeated, the round and the
+-- place in the order it died at are kept (Revivify counts its minute from them); when it
+-- stops being, they and the master's switch go.
 UPDATE combatants
-SET hp_current = $2, hp_temp = $3, defeated = $4
-WHERE id = $1;
+SET hp_current = sqlc.arg(hp_current), hp_temp = sqlc.arg(hp_temp), defeated = sqlc.arg(defeated)::BOOL,
+    death_round = CASE
+        WHEN sqlc.arg(defeated)::BOOL AND NOT defeated THEN (SELECT e.round FROM encounters AS e WHERE e.id = combatants.encounter_id)
+        WHEN NOT sqlc.arg(defeated)::BOOL THEN NULL ELSE death_round END,
+    death_order_index = CASE
+        WHEN sqlc.arg(defeated)::BOOL AND NOT defeated THEN (
+            SELECT cur.order_index FROM combatants AS cur JOIN encounters AS e ON e.current_combatant_id = cur.id
+            WHERE e.id = combatants.encounter_id)
+        WHEN NOT sqlc.arg(defeated)::BOOL THEN NULL ELSE death_order_index END,
+    revivify_blocked = CASE WHEN sqlc.arg(defeated)::BOOL THEN revivify_blocked ELSE false END
+WHERE combatants.id = sqlc.arg(id);
 
 -- name: SetCombatantHitPointsMax :exec
 -- An NPC's or a creature's maximum hit points and the part of them Aid (Ajuda)
@@ -356,8 +367,33 @@ WHERE id = sqlc.arg(id);
 -- The death save counts, whether the turn's save was rolled, and whether the
 -- combatant is out of the fight (a death the master confirmed), or their undo.
 UPDATE combatants
-SET death_successes = $2, death_failures = $3, death_save_rolled = $4, defeated = $5
-WHERE id = $1;
+SET death_successes = sqlc.arg(death_successes), death_failures = sqlc.arg(death_failures), death_save_rolled = sqlc.arg(death_save_rolled),
+    defeated = sqlc.arg(defeated)::BOOL,
+    death_round = CASE
+        WHEN sqlc.arg(defeated)::BOOL AND NOT defeated THEN (SELECT e.round FROM encounters AS e WHERE e.id = combatants.encounter_id)
+        WHEN NOT sqlc.arg(defeated)::BOOL THEN NULL ELSE death_round END,
+    death_order_index = CASE
+        WHEN sqlc.arg(defeated)::BOOL AND NOT defeated THEN (
+            SELECT cur.order_index FROM combatants AS cur JOIN encounters AS e ON e.current_combatant_id = cur.id
+            WHERE e.id = combatants.encounter_id)
+        WHEN NOT sqlc.arg(defeated)::BOOL THEN NULL ELSE death_order_index END,
+    revivify_blocked = CASE WHEN sqlc.arg(defeated)::BOOL THEN revivify_blocked ELSE false END
+WHERE combatants.id = sqlc.arg(id);
+
+-- name: ReviveCombatant :exec
+-- A dead combatant lives again (the master's Reviver, Revivify): back in the fight where it
+-- was in the order, no death save counted, and out of the running turn, so it acts on its
+-- next turn. An NPC's hit points are set by SetCombatantHitPoints.
+UPDATE combatants
+SET defeated = false, death_successes = 0, death_failures = 0, death_save_rolled = false,
+    turn_state = 'idle', death_round = NULL, death_order_index = NULL, revivify_blocked = false
+WHERE id = sqlc.arg(id);
+
+-- name: SetCombatantRevivifyBlocked :exec
+-- The master's switch "Revivificar não funciona nesta morte", for a dead combatant.
+UPDATE combatants
+SET revivify_blocked = sqlc.arg(blocked)
+WHERE id = sqlc.arg(id) AND defeated;
 
 -- name: ResetDeathSavesOfCharacter :exec
 -- Healing above 0 resets both counts (RN-03): the character's combatant in the
@@ -1022,6 +1058,43 @@ SELECT e.* FROM battle_encounters AS e
 JOIN map_points AS p ON p.id = e.map_point_id
 WHERE e.campaign_id = $1 AND e.map_id = $2 AND p.kind = 'battle'
 ORDER BY e.created_at, e.map_point_id;
+
+-- name: InsertRevivifyRequest :one
+-- A Revivify cast outside a combat, waiting for the master (SRD 5.1, Revivify). A second
+-- insert with the same key inserts nothing, and the caller reads the first one.
+INSERT INTO revivify_requests
+    (campaign_id, game_session_id, caster_character_id, target_character_id, requested_by_user_id,
+     slot_level, slot_pact, created_at, create_key, create_hash)
+VALUES (
+    sqlc.arg(campaign_id)::UUID, sqlc.arg(game_session_id)::UUID, sqlc.arg(caster_character_id)::UUID, sqlc.arg(target_character_id)::UUID,
+    sqlc.narg(requested_by_user_id)::UUID, sqlc.arg(slot_level), sqlc.arg(slot_pact), sqlc.arg(created_at),
+    sqlc.narg(create_key), sqlc.narg(create_hash)
+)
+ON CONFLICT (campaign_id, create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING *;
+
+-- name: GetRevivifyRequestByCreateKey :one
+SELECT * FROM revivify_requests
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND create_key = sqlc.arg(create_key);
+
+-- name: GetRevivifyRequestForUpdate :one
+SELECT * FROM revivify_requests
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID
+FOR UPDATE;
+
+-- name: ListRevivifyRequests :many
+-- The casts of a session, newest first. A player's list is filtered by the caller.
+SELECT * FROM revivify_requests
+WHERE game_session_id = sqlc.arg(game_session_id)::UUID
+ORDER BY created_at DESC, id
+LIMIT 50;
+
+-- name: AnswerRevivifyRequest :one
+UPDATE revivify_requests
+SET status = sqlc.arg(status), answered_at = sqlc.arg(answered_at), answer_key = sqlc.narg(answer_key), answer_hash = sqlc.narg(answer_hash)
+WHERE id = sqlc.arg(id)::UUID AND status = 'pending'
+RETURNING *;
+
 
 -- The attack rolls: a player's requests for a better mode, the short reasons of the
 -- log, the states of a combatant and the parts of a damage.
