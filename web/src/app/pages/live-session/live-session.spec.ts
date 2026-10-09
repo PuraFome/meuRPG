@@ -46,6 +46,8 @@ import {
   mapToken,
 } from '../../core/maps/maps-testing';
 import { SceneClient } from '../../core/play/scene-client';
+import { CombatClient } from '../../core/combat/combat-client';
+import { CombatState } from '../../core/combat/combat-state';
 import { SpellCatalog } from '../../core/combat/spell-catalog';
 import { SessionSummaryClient } from '../../core/play/session-summary';
 import { SessionSummarySchema } from '../../../gen/meurpg/play/v1/summary_pb';
@@ -1472,6 +1474,49 @@ describe('LiveSession', () => {
         expect(count('layers map-1')).toBeGreaterThan(before.layers);
       });
       expect(count('get map-1')).toBe(before.gets + 1);
+    });
+  });
+  describe('the reaction windows on the stream (PM-04)', () => {
+    it('reads the combat again when a window opens, and keeps the sentence of one that closed by itself', async () => {
+      const get = vi.spyOn(TestBed.inject(CombatClient), 'get').mockResolvedValue(null);
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      const state = (fixture.componentInstance as unknown as { combat: CombatState }).combat;
+      get.mockClear();
+
+      source.push({ kind: 'reactionWindowOpened', encounterId: 'e1', windowId: 'w1' });
+      await settle(fixture);
+      expect(get).toHaveBeenCalledTimes(1);
+      expect(state.wasAnnounced('w1')).toBe(true);
+
+      source.push({
+        kind: 'reactionWindowClosed',
+        encounterId: 'e1',
+        windowId: 'w1',
+        closedByItself: true,
+        text: 'Queda Suave fechou. Você já usou a sua reação.',
+      });
+      await settle(fixture);
+      expect(state.reactionNotice()?.text).toBe('Queda Suave fechou. Você já usou a sua reação.');
+      expect(get).toHaveBeenCalledTimes(2);
+    });
+
+    it('a window that was answered says nothing, and the combat is read again', async () => {
+      const get = vi.spyOn(TestBed.inject(CombatClient), 'get').mockResolvedValue(null);
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      const state = (fixture.componentInstance as unknown as { combat: CombatState }).combat;
+      get.mockClear();
+      source.push({
+        kind: 'reactionWindowClosed',
+        encounterId: 'e1',
+        windowId: 'w1',
+        closedByItself: false,
+        text: '',
+      });
+      await settle(fixture);
+      expect(state.reactionNotice()).toBeNull();
+      expect(get).toHaveBeenCalledTimes(1);
     });
   });
 });

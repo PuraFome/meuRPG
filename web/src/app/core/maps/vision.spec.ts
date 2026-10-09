@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   decodeVision,
+  knownWindow,
   seenCount,
   shadeRects,
   shadeRuns,
@@ -161,5 +162,29 @@ describe('the tiles', () => {
     const rects = tileRects(vision);
     expect(tileProgress(rects, new Set())).toEqual({ total: 3, done: 0 });
     expect(tileProgress(rects, new Set(['1:0', '0:1']))).toEqual({ total: 3, done: 2 });
+  });
+});
+
+describe('knownWindow', () => {
+  const rows = ['..........', '..........', '...#BB#...', '...#Br#...', '..........', '..........'];
+  const vision = decodeVision(visionResponse(rows));
+
+  it('is the box of what the viewer knows (seen now, remembered, a wall) with the margin, on the grid', () => {
+    expect(knownWindow(vision, [], 1)).toEqual({ col: 2, row: 1, cols: 6, rows: 4 });
+    // The margin never leaves the grid.
+    expect(knownWindow(vision, [], 5)).toEqual({ col: 0, row: 0, cols: 10, rows: 6 });
+  });
+
+  it('grows to hold a token outside what the viewer sees', () => {
+    expect(knownWindow(vision, [{ col: 9, row: 5 }], 0)).toEqual({
+      col: 3,
+      row: 2,
+      cols: 7,
+      rows: 4,
+    });
+  });
+
+  it('is nothing when nothing is known and there is no token', () => {
+    expect(knownWindow(decodeVision(visionResponse(['..', '..'])), [], 2)).toBeNull();
   });
 });

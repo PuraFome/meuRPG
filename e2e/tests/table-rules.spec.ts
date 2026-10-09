@@ -458,3 +458,32 @@ test(
     }
   },
 );
+
+test(
+  '"Reações dos inimigos": o mestre muda para "Sempre", salva, e o jogador lê a regra em palavras @PM-04',
+  { tag: '@PM-04' },
+  async ({ browser }) => {
+    const master = await newSignedInContext(browser, 'Mestre Teste');
+    const player = await newSignedInContext(browser, 'Jogador Teste');
+    try {
+      const m = await master.newPage();
+      const p = await player.newPage();
+      await Promise.all([m.goto('/'), p.goto('/')]);
+      const campaignId = await campaignWithEmptyPlayer(m, p, `Reações ${Date.now()}`);
+      await m.goto(`/campaigns/${campaignId}/rules`);
+      const group = m.getByRole('radiogroup', { name: 'Reações dos inimigos' });
+      await expect(group.getByRole('radio', { name: /Só quando um inimigo pode reagir/ })).toBeChecked();
+      await pickRadio(group, /^Sempre/);
+      await m.getByRole('button', { name: 'Salvar regras' }).click();
+      await expect.poll(async () => (await tableRulesOf(m, campaignId)).rules.enemyReactions).toBe('ENEMY_REACTIONS_RULE_ALWAYS');
+
+      await p.goto(`/campaigns/${campaignId}/rules`);
+      await expect(p.getByText('Reações dos inimigos', { exact: true })).toBeVisible();
+      await expect(p.getByText('Sempre', { exact: true })).toBeVisible();
+      await expect(p.getByRole('radio')).toHaveCount(0);
+    } finally {
+      await master.close();
+      await player.close();
+    }
+  },
+);

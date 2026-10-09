@@ -20,6 +20,28 @@ const words = (e: Element | null | undefined) => {
 /** Toren failed Seguir os rastros (CD 13, 1 attempt): he has none left. */
 const failed = sceneRoll('r1', 'a2', 'Toren', 7, { passed: false, attemptsLeft: 0 });
 
+describe('SceneRollLine, the roll of a removed character', () => {
+  it('says "Personagem removido" instead of an empty name', async () => {
+    const nameless = sceneRoll('r2', 'a2', '', 7, { passed: false, attemptsLeft: 0 });
+    const scene = masterScene([nameless]);
+    const state = new SceneState(
+      () => Promise.resolve(scene),
+      () => true,
+    );
+    state.apply(scene);
+    TestBed.configureTestingModule({
+      providers: [{ provide: SceneClient, useValue: new FakeSceneClient() }],
+    });
+    const fixture = TestBed.createComponent(SceneRollLine);
+    fixture.componentRef.setInput('campaignId', 'c1');
+    fixture.componentRef.setInput('state', state);
+    fixture.componentRef.setInput('scene', scene);
+    fixture.componentRef.setInput('roll', nameless);
+    fixture.detectChanges();
+    expect(flat(fixture.nativeElement.querySelector('.rl__who'))).toBe('Personagem removido');
+  });
+});
+
 describe('SceneRollLine, "Dar mais uma tentativa" (MR-015, question 55)', () => {
   async function setup(scene = masterScene([failed]), roll = failed) {
     const api = new FakeSceneClient();

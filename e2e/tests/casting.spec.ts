@@ -4,12 +4,12 @@ import { castSheet, openCastOf, pickChoice, pickSlotRadio, pickTargetOf, tableFo
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { newSignedInContext } from './support';
 
-// MR-048 (casting outside a combat), RN-31 (what a cast does and who reads it) and RN-10 (the master reads every
+// MR-048 (casting outside a combat), RN-32 (what a cast does and who reads it) and RN-10 (the master reads every
 // cast, a player what they may). Setup goes through the API; every test makes its own campaign.
 
 test(
   'a jogadora conjura Armadura Arcana em si, vê a CA e encerra a magia depois de confirmar',
-  { tag: ['@MR-048', '@RN-31'] },
+  { tag: ['@MR-048', '@RN-32'] },
   async ({ browser }) => {
     const masterContext = await newSignedInContext(browser, 'Mestre Teste');
     const playerContext = await newSignedInContext(browser, 'Jogador Teste');
@@ -53,7 +53,7 @@ test(
 
 test(
   'um ritual de 11 minutos fica conjurando até o mestre concluir a conjuração',
-  { tag: ['@MR-048', '@RN-31'] },
+  { tag: ['@MR-048', '@RN-32'] },
   async ({ browser }) => {
     const masterContext = await newSignedInContext(browser, 'Mestre Teste');
     const playerContext = await newSignedInContext(browser, 'Jogador Teste');

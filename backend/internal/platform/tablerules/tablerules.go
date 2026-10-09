@@ -38,6 +38,10 @@ type Rules struct {
 	// the level-up's Ability Score Improvement step then offers a feat in place of
 	// the ability increase. The zero value is the SRD's: feats are not used.
 	FeatsAllowed bool
+	// EnemyReactionsAlways makes every action of a player against an enemy wait
+	// for the master's one-tap check ("Reações dos inimigos: Sempre"), instead of
+	// waiting only when an enemy has a reaction.
+	EnemyReactionsAlways bool
 	// Reminders are the table's house rules: short texts shown on "Regras da
 	// mesa" and never enforced; none by default.
 	Reminders []string

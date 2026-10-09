@@ -4,8 +4,8 @@
     <div class="skills__column">
       <div class="skill skill--head" [class.skill--head-repeat]="!first" aria-hidden="true">
         <span>Perícia</span>
-        <span class="skill__ability">Habilidade</span>
-        <span class="skill__expertise">Especialização</span>
+        <span class="skill__ability"><span class="head__long">Habilidade</span><span class="head__short">Hab.</span></span>
+        <span class="skill__expertise"><span class="head__long">Especialização</span><span class="head__short">Espec.</span></span>
       </div>
       @for (skill of column; track skill.key) {
         <div class="skill">

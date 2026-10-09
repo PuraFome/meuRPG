@@ -51,6 +51,26 @@ func TestLoad(t *testing.T) {
 			},
 		},
 		{
+			name: "a Cloud Storage bucket",
+			env:  map[string]string{"BLOB_BUCKET": " meurpg-images "},
+			want: Config{Port: 8080, LogLevel: slog.LevelInfo, WebDir: DefaultWebDir, BlobBucket: "meurpg-images"},
+		},
+		{
+			name:    "a folder and a bucket together are refused",
+			env:     map[string]string{"BLOB_DIR": "/images", "BLOB_BUCKET": "meurpg-images"},
+			wantErr: []string{"BLOB_DIR and BLOB_BUCKET are both set"},
+		},
+		{
+			name:    "a folder is refused on Cloud Run, and the message names the bucket",
+			env:     map[string]string{"K_SERVICE": "meurpg", "BLOB_DIR": "/images"},
+			wantErr: []string{"BLOB_DIR is not allowed on Cloud Run", "BLOB_BUCKET"},
+		},
+		{
+			name: "a bucket is allowed on Cloud Run",
+			env:  map[string]string{"K_SERVICE": "meurpg", "BLOB_BUCKET": "meurpg-images"},
+			want: Config{Port: 8080, LogLevel: slog.LevelInfo, WebDir: DefaultWebDir, CloudRun: true, BlobBucket: "meurpg-images"},
+		},
+		{
 			name: "surrounding whitespace is ignored",
 			env: map[string]string{
 				"PORT": " 3000 ", "LOG_LEVEL": " warn ", "DATABASE_URL": "  ", "WEB_DIR": "  ", "BLOB_DIR": " ",

@@ -8,6 +8,47 @@
   gap: var(--mr-space-3);
 }
 
+.np__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+// The collapsed row: the whole title is the button, 48px high.
+.np--shut {
+  padding-block: 0;
+}
+
+.np__title--row {
+  margin: 0;
+}
+
+.np__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
 .np__head {
   display: flex;
   align-items: baseline;

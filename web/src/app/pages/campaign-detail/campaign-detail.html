@@ -59,6 +59,10 @@
         <div class="campaign-layout__column">
           <!-- For a player, only while a session is open (it's empty otherwise). -->
           <app-game-session-card [campaignId]="s.campaign.id" [isMaster]="isMaster" />
+          <!-- A player came for their characters: they come right after the session card. -->
+          @if (!isMaster) {
+            <app-campaign-characters [campaignId]="s.campaign.id" [isMaster]="false" />
+          }
           <app-past-sessions-panel [campaignId]="s.campaign.id" [isMaster]="isMaster" />
           <app-experience-panel [campaignId]="s.campaign.id" [campaignName]="s.campaign.name" [isMaster]="isMaster" />
           @if (isMaster) {
@@ -76,7 +80,9 @@
           @if (isMaster) { <app-bestiary-panel [campaignId]="s.campaign.id" /> }
           @if (isMaster) { <app-encounters-panel [campaignId]="s.campaign.id" /> }
           @if (isMaster) { <app-puzzles-panel [campaignId]="s.campaign.id" /> }
-          <app-campaign-characters [campaignId]="s.campaign.id" [isMaster]="isMaster" />
+          @if (isMaster) {
+            <app-campaign-characters [campaignId]="s.campaign.id" [isMaster]="true" />
+          }
         </div>
 
         <div class="campaign-layout__column">
@@ -116,7 +122,7 @@
               @for (m of members(); track m.userId) {
                 <li class="member">
                   <span class="member__text">
-                    <span class="member__name">
+                    <span class="member__name" [class.mr-muted]="!m.hasName">
                       {{ m.name }}
                       @if (m.isViewer) {
                         <span class="mr-muted member__you">(você)</span>
