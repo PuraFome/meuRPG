@@ -152,11 +152,15 @@ func speedDFt(c playdb.Combatant) int {
 	if slices.ContainsFunc(c.Conditions, func(k string) bool { return slices.Contains(noSpeed, k) }) {
 		return 0
 	}
+	if c.EffectNoMove { // the lethargy of a Velocidade that ended (RN-22)
+		return 0
+	}
 	speed := int(max(c.SpeedFt, c.SpeedFlyFt)) * 10
 	if c.Dashed {
 		speed *= 2
 	}
-	return speed
+	// The speed the effects leave: doubled by Velocidade, halved or 0 by exhaustion (SRD, Conditions).
+	return speed * int(c.EffectSpeedPct) / 100
 }
 
 // movementLeftDFt is the movement the combatant has left this turn, in tenths of

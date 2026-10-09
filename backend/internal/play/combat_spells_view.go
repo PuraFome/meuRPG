@@ -176,6 +176,15 @@ func (s *Service) castProto(ctx context.Context, res combatResult, ev actionEven
 			Effect: effectView(h, v, target),
 		}
 		r.AttackMode = modeToProto[modeOfKey(h.RollMode)]
+		switch h.Lasting {
+		case lastingApplied:
+			r.LastingEffect = playv1.LastingEffectOutcome_LASTING_EFFECT_OUTCOME_APPLIED
+		case lastingNoEffect:
+			r.LastingEffect = playv1.LastingEffectOutcome_LASTING_EFFECT_OUTCOME_NO_EFFECT
+			if v.master {
+				r.NoEffectReasonMaster = h.NoEffectWhy
+			}
+		}
 		coverKey, coverSource := h.coverFor(v, ev.CoverUsers)
 		r.Cover, r.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
 		if h.Pending != "" && (v.master || v.owns(caster)) {

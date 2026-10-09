@@ -633,6 +633,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle(playv1connect.NewCastingServiceHandler(s, opts...))
 	handle(playv1connect.NewPuzzleServiceHandler(s, opts...))
 	handle(playv1connect.NewEncounterServiceHandler(s, opts...))
+	handle(playv1connect.NewLastingEffectServiceHandler(s, opts...))
 }
 
 // queriesIn is the queries on the transaction, or on the pool when tx is nil. A

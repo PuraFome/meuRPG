@@ -588,3 +588,17 @@ func windowReasonOf(reason string) reaction.Reason {
 	}
 	return reaction.ReasonEffectEnded
 }
+
+// effectSaveAdvantage are the abilities the effects on a combatant give advantage on the saving
+// throws of (Velocidade: Destreza).
+func effectSaveAdvantage(states map[string][]playdb.CombatantState, id string) []string {
+	var out []string
+	for _, st := range effectsOn(states, id) {
+		for _, m := range effectModifiers(st) {
+			if m.Kind == rules.ModifierSaveAdvantage {
+				out = append(out, m.Abilities...)
+			}
+		}
+	}
+	return out
+}

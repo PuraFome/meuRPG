@@ -83,7 +83,8 @@ func (s *Service) gate(ctx context.Context, tx pgx.Tx, campaignID string, e play
 	if down {
 		return rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN, nil
 	}
-	return rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED, nil
+	// An effect or a condition that takes the actions away (RN-22).
+	return cannotActCode(c), nil
 }
 
 // isDown says whether a player's character is at 0 hit points ("Caído"): its
@@ -120,6 +121,8 @@ func gateError(code rulesv1.DisabledReasonCode) error {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
 	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_COMBATANT_DOWN, "the character is down")
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_INCAPACITATED, rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_EFFECT_LETHARGY:
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CANNOT_ACT, "the combatant cannot act now")
 	}
 	// Not on turn, or out of the fight (a defeated combatant has no turn).
 	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not this combatant's turn")
@@ -253,6 +256,7 @@ func (s *Service) GetTurnOptions(
 	}
 	if code != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED {
 		disableAll(opts, code)
+		s.explainEffectReason(d, who, v, opts, code, s.namesFor(ctx, m.CampaignID))
 	}
 	terrain, err := s.terrainOf(ctx, nil, m.CampaignID, enc)
 	if err != nil {
@@ -270,6 +274,7 @@ func (s *Service) GetTurnOptions(
 		return nil, s.dbError(ctx, "read the table's rules", err)
 	}
 	res := &playv1.GetTurnOptionsResponse{Options: opts, YourTurn: actsNow(enc, who), CriticalRule: criticalRuleProto(table)}
+	s.effectTurnInfo(d, who, v, res, s.namesFor(ctx, m.CampaignID))
 	modes, err := s.turnModes(ctx, m.CampaignID, d, sight, v, who)
 	if err != nil {
 		return nil, s.dbError(ctx, "work out the roll modes", err)
@@ -827,7 +832,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		if err != nil {
 			return nil, err
 		}
-		targetAC := targetSheet.ArmorClass + int(target.AcBonus) + cover.bonus()
+		targetAC := targetSheet.ArmorClass + int(target.AcBonus) + int(target.EffectAcBonus) + cover.bonus()
 		// Improved Critical and Superior Critical are for weapon attacks only.
 		criticalFrom := attackerSheet.CriticalRange
 		if attack.Spell {

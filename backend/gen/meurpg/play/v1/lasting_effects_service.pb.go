@@ -1243,7 +1243,9 @@ type SetExhaustionRequest struct {
 	ExpectedLevel int32 `protobuf:"varint,6,opt,name=expected_level,json=expectedLevel,proto3" json:"expected_level,omitempty"`
 	// For level 6: confirm that the character dies ("Confirmar a morte" is the call
 	// of ConfirmDeath; this only takes it to the confirmation).
-	ConfirmDeath  bool `protobuf:"varint,7,opt,name=confirm_death,json=confirmDeath,proto3" json:"confirm_death,omitempty"`
+	ConfirmDeath bool `protobuf:"varint,7,opt,name=confirm_death,json=confirmDeath,proto3" json:"confirm_death,omitempty"`
+	// The combat the combatant is in; needed with `combatant_id`.
+	EncounterId   string `protobuf:"bytes,8,opt,name=encounter_id,json=encounterId,proto3" json:"encounter_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1338,6 +1340,13 @@ func (x *SetExhaustionRequest) GetConfirmDeath() bool {
 	return false
 }
 
+func (x *SetExhaustionRequest) GetEncounterId() string {
+	if x != nil {
+		return x.EncounterId
+	}
+	return ""
+}
+
 type isSetExhaustionRequest_Subject interface {
 	isSetExhaustionRequest_Subject()
 }
@@ -1430,6 +1439,8 @@ type LowerExhaustionRequest struct {
 	// Why: a long rest with food and drink.
 	Reason        ExhaustionLowerReason `protobuf:"varint,6,opt,name=reason,proto3,enum=meurpg.play.v1.ExhaustionLowerReason" json:"reason,omitempty"`
 	ExpectedLevel int32                 `protobuf:"varint,7,opt,name=expected_level,json=expectedLevel,proto3" json:"expected_level,omitempty"`
+	// The combat the combatant is in; needed with `combatant_id`.
+	EncounterId   string `protobuf:"bytes,8,opt,name=encounter_id,json=encounterId,proto3" json:"encounter_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1522,6 +1533,13 @@ func (x *LowerExhaustionRequest) GetExpectedLevel() int32 {
 		return x.ExpectedLevel
 	}
 	return 0
+}
+
+func (x *LowerExhaustionRequest) GetEncounterId() string {
+	if x != nil {
+		return x.EncounterId
+	}
+	return ""
 }
 
 type isLowerExhaustionRequest_Subject interface {
@@ -1704,7 +1722,7 @@ const file_meurpg_play_v1_lasting_effects_service_proto_rawDesc = "" +
 	"\x10_second_d20_face\"\x8b\x01\n" +
 	"\x16RollEffectSaveResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x128\n" +
-	"\x06result\x18\x02 \x01(\v2 .meurpg.play.v1.EffectSaveResultR\x06result\"\x97\x02\n" +
+	"\x06result\x18\x02 \x01(\v2 .meurpg.play.v1.EffectSaveResultR\x06result\"\xba\x02\n" +
 	"\x14SetExhaustionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12'\n" +
@@ -1713,12 +1731,13 @@ const file_meurpg_play_v1_lasting_effects_service_proto_rawDesc = "" +
 	"\fcombatant_id\x18\x04 \x01(\tH\x00R\vcombatantId\x12\x14\n" +
 	"\x05level\x18\x05 \x01(\x05R\x05level\x12%\n" +
 	"\x0eexpected_level\x18\x06 \x01(\x05R\rexpectedLevel\x12#\n" +
-	"\rconfirm_death\x18\a \x01(\bR\fconfirmDeathB\t\n" +
+	"\rconfirm_death\x18\a \x01(\bR\fconfirmDeath\x12!\n" +
+	"\fencounter_id\x18\b \x01(\tR\vencounterIdB\t\n" +
 	"\asubject\"\x8c\x01\n" +
 	"\x15SetExhaustionResponse\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\x05R\x05level\x12$\n" +
 	"\x0ehit_points_max\x18\x02 \x01(\x05R\fhitPointsMax\x127\n" +
-	"\tencounter\x18\x03 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xad\x02\n" +
+	"\tencounter\x18\x03 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xd0\x02\n" +
 	"\x16LowerExhaustionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12'\n" +
@@ -1727,7 +1746,8 @@ const file_meurpg_play_v1_lasting_effects_service_proto_rawDesc = "" +
 	"\fcombatant_id\x18\x04 \x01(\tH\x00R\vcombatantId\x12\x0e\n" +
 	"\x02by\x18\x05 \x01(\x05R\x02by\x12=\n" +
 	"\x06reason\x18\x06 \x01(\x0e2%.meurpg.play.v1.ExhaustionLowerReasonR\x06reason\x12%\n" +
-	"\x0eexpected_level\x18\a \x01(\x05R\rexpectedLevelB\t\n" +
+	"\x0eexpected_level\x18\a \x01(\x05R\rexpectedLevel\x12!\n" +
+	"\fencounter_id\x18\b \x01(\tR\vencounterIdB\t\n" +
 	"\asubject\"\x8e\x01\n" +
 	"\x17LowerExhaustionResponse\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\x05R\x05level\x12$\n" +

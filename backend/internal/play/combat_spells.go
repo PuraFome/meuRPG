@@ -548,6 +548,9 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 			if made.Dismissed, err = s.endSummons(ctx, c, caster); err != nil {
 				return nil, err
 			}
+			if err := s.endConcentrationEffects(ctx, c, caster, endConcentration); err != nil { // its effects end with it (RN-22)
+				return nil, err
+			}
 			if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: caster.ID, ConcentrationSpell: &spellKey}); err != nil {
 				return nil, fmt.Errorf("set the concentration: %w", err)
 			}
@@ -596,6 +599,10 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 				}
 				made.Hits = append(made.Hits, hit)
 				hidden = hidden || t.Hidden
+			}
+			// What a spell that lasts leaves on the targets it took hold of (RN-22).
+			if err := s.applyLastingSpell(ctx, c, cs, sp, caster, targs, &made); err != nil {
+				return nil, err
 			}
 		}
 		packCoverSeen(&made)
@@ -787,7 +794,7 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	if err != nil {
 		return err
 	}
-	targetAC := sheet.ArmorClass + int(target.AcBonus) + cover.bonus()
+	targetAC := sheet.ArmorClass + int(target.AcBonus) + int(target.EffectAcBonus) + cover.bonus()
 	result := combat.ResolveAttack(sp.ToHit, targetAC, face)
 	if result.Hit && truth.CriticalOnHit { // a paralyzed or unconscious target within 5 ft (SRD 5.1)
 		result.Critical = true

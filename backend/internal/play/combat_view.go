@@ -521,6 +521,10 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 	if out.PendingHiddenReveals, out.TurnHeld, err = s.hiddenRevealsView(ctx, d, v); err != nil {
 		return nil, err
 	}
+	// The effects that last: the cards, the labels and the conditions the viewer may read (RN-22).
+	if err := s.decorateEffects(ctx, m, d, v, names, out); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 

@@ -1741,6 +1741,12 @@ enum EncounterBlockedReason {
   // TakeAction (Reckless Attack): it is declared with the first attack of the turn,
   // and an attack was made.
   ENCOUNTER_BLOCKED_REASON_RECKLESS_TOO_LATE = 83;
+  // The combatant cannot act now because of an effect or a condition (RN-22): it is
+  // incapacitated (Paralisado, Atordoado, Inconsciente, Petrificado, Incapacitado) or the
+  // lethargy of a Velocidade holds it. The message never names the cause to a player.
+  ENCOUNTER_BLOCKED_REASON_CANNOT_ACT = 100;
+  // The extra action an effect gives (Velocidade) is not there, or was spent.
+  ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE = 101;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused

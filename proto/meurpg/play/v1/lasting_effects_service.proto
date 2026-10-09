@@ -277,6 +277,8 @@ message SetExhaustionRequest {
   // For level 6: confirm that the character dies ("Confirmar a morte" is the call
   // of ConfirmDeath; this only takes it to the confirmation).
   bool confirm_death = 7;
+  // The combat the combatant is in; needed with `combatant_id`.
+  string encounter_id = 8;
 }
 
 message SetExhaustionResponse {
@@ -299,6 +301,8 @@ message LowerExhaustionRequest {
   // Why: a long rest with food and drink.
   ExhaustionLowerReason reason = 6;
   int32 expected_level = 7;
+  // The combat the combatant is in; needed with `combatant_id`.
+  string encounter_id = 8;
 }
 
 enum ExhaustionLowerReason {

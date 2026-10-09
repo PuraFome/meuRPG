@@ -148,6 +148,12 @@ type castHit struct {
 	Fogged   bool   `json:"fogged,omitempty"`
 	SeenMask uint64 `json:"seen_mask,omitempty"`
 
+	// A spell that lasts (RN-22): whether its effect took hold of the target
+	// (lastingApplied) or the spell did nothing to it (lastingNoEffect), and why, which
+	// only the master reads.
+	Lasting     string `json:"lasting,omitempty"`
+	NoEffectWhy string `json:"no_effect_why,omitempty"`
+
 	// A spell that reads hit points (combat_spells_hp.go): whether it reached the
 	// target (the fx* values below), why not, the target's hit points when it did,
 	// its place in the pool's order and what was left of the pool after it, and the

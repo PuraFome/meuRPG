@@ -182,7 +182,7 @@ func (s *Service) trapTargetsOf(ctx context.Context, tx pgx.Tx, campaignID strin
 			if err != nil {
 				return nil, err
 			}
-			out[i].armorClass = sheet.ArmorClass + int(c.AcBonus)
+			out[i].armorClass = sheet.ArmorClass + int(c.AcBonus) + int(c.EffectAcBonus)
 		}
 		if ability != "" {
 			save, err := s.saveOf(ctx, tx, campaignID, c, ability)

@@ -502,6 +502,10 @@ func (noVitals) SetHitPointsMaxBonus(context.Context, pgx.Tx, string, string, in
 	return nil, nil, errors.New("not in this test")
 }
 
+func (noVitals) SetExhaustion(context.Context, pgx.Tx, string, string, int32) (before, after *playv1.CharacterVitals, err error) {
+	return nil, nil, errors.New("not in this test")
+}
+
 func (noVitals) SetFamiliarSight(context.Context, pgx.Tx, string, string, string, bool, []string) (*playv1.CharacterVitals, error) {
 	return nil, errors.New("not in this test")
 }

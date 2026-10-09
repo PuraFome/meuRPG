@@ -474,3 +474,16 @@ func (c *Content) SpellEffectRounds(spellKey string) int {
 	}
 	return d.Duration.Amount * RoundsPerMinute
 }
+
+// ConditionKeys lists the keys of the conditions the file describes (the SRD's 15), sorted.
+func (c *Content) ConditionKeys() []string {
+	if c.c.combatEffects == nil {
+		return nil
+	}
+	keys := make([]string, 0, len(c.c.combatEffects.conditions))
+	for k := range c.c.combatEffects.conditions {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	return keys
+}
