@@ -168,7 +168,7 @@ func TestMR032_HighlightsOfTheAmbush(t *testing.T) {
 	// Rodada 2.
 	attackAndApply(a.bia, "Brisa", rapier, "Capitão Goblin", 15, 5) // 8 on the Capitão
 	end(a.bia)
-	a.h.roller.queue(15) // the Capitão shoots with an enemy next to him: two d20
+	a.h.roller.queue(15)                                                 // the Capitão shoots with an enemy next to him: two d20
 	attackAndApply(a.master, "Capitão Goblin", shortBow, "Toren", 15, 3) // 5 more to Toren
 	end(a.master)
 	attackAndApply(a.ana, "Pensantus", fireBolt, "Goblin 2", 13, 7) // 7 on a goblin of 7: a final blow
