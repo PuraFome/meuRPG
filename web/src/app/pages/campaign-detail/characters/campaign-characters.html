@@ -138,6 +138,12 @@
         </section>
 
         @if (isMaster()) {
+          <app-reserved-characters
+            [campaignId]="campaignId()"
+            [rows]="reservedRows(s.vm)"
+            (changed)="refresh()"
+          />
+
           <section class="mr-panel" aria-labelledby="npcs-heading">
             <h3 class="mr-panel__title" id="npcs-heading">NPCs</h3>
             @if (s.vm.npcs.length === 0) {

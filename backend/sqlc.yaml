@@ -66,7 +66,9 @@ sql:
 
   - engine: postgresql
     schema: migrations
-    queries: internal/characters/queries.sql
+    queries:
+      - internal/characters/queries.sql
+      - internal/characters/claims.sql
     gen:
       go:
         <<: *go-options
@@ -75,7 +77,9 @@ sql:
 
   - engine: postgresql
     schema: migrations
-    queries: internal/play/queries.sql
+    queries:
+      - internal/play/queries.sql
+      - internal/play/combat_reserve.sql
     gen:
       go:
         <<: *go-options

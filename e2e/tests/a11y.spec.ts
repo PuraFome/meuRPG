@@ -16,6 +16,7 @@ import { tableForLevelUp } from './levelup-support';
 import { paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
+import { claimRoute, linkRPC, reservedRPC, revokeLinkRPC, rowOf } from './claim-support';
 import { authStatePath, boxOf, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
@@ -5823,6 +5824,112 @@ test('as opções para os jogadores passam no axe e nas conferências de layout 
 
 test('as opções para os jogadores passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
   await scanOptions(browser, 'light', 320);
+});
+
+/**
+ * The reserved characters and their claim links (MR-049, PM-09): the master's list with a row in each state of the link, a
+ * question asked in place, the dialog that makes the link (before and after), the editor of a reserved character, and the page
+ * a player opens with the link: signed out (the same for every link), the card, the page of a link that cannot be used and the
+ * master's own link.
+ */
+async function scanClaims(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(150_000);
+  const view = { colorScheme, viewport: { width, height: 900 } } as const;
+  // The master's "Copiar link" writes to the clipboard, which a headless browser allows only when it is granted.
+  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), permissions: ['clipboard-read', 'clipboard-write'], ...view });
+  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), ...view });
+  const gContext = await browser.newContext({ storageState: { cookies: [], origins: [] }, ...view });
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    const g = await gContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const created = await callRPC(m, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', { name: `Acessibilidade reservados ${Date.now()}`, xpMode: 'XP_MODE_ENEMIES' });
+    expect(created.ok()).toBeTruthy();
+    const campaignId = (await created.json()).campaign.id as string;
+    const kai = await reservedRPC(m, campaignId, 'Kai');
+    const salvia = await reservedRPC(m, campaignId, 'Sálvia');
+    const ragna = await reservedRPC(m, campaignId, 'Ragna');
+    const brisa = await reservedRPC(m, campaignId, 'Brisa');
+    const salviaToken = await linkRPC(m, campaignId, salvia);
+    await linkRPC(m, campaignId, ragna);
+    await revokeLinkRPC(m, campaignId, ragna);
+    const kaiToken = await linkRPC(m, campaignId, kai);
+    const brisaToken = await linkRPC(m, campaignId, brisa);
+    // The player takes Brisa, so the list has "Assumido por".
+    await p.goto(claimRoute(brisaToken));
+    await p.getByRole('button', { name: 'Assumir este personagem' }).click();
+    await expect(p.getByRole('heading', { level: 1 })).toHaveText('Pronto: Brisa é seu');
+
+    // The master's list: no link, sent, revoked and claimed, one row each.
+    await open(m, `/campaigns/${campaignId}`);
+    await expect(rowOf(m, 'Sálvia')).toContainText('Link enviado');
+    await expect(rowOf(m, 'Ragna')).toContainText('Link revogado');
+    await expect(rowOf(m, 'Brisa')).toContainText('Assumido por');
+    await expectScreenPasses(m, `Personagens reservados ${where}`);
+    await rowOf(m, 'Sálvia').getByRole('button', { name: /Revogar o link de Sálvia/ }).click();
+    await expect(rowOf(m, 'Sálvia').getByRole('group', { name: 'Revogar o link de Sálvia?' })).toBeVisible();
+    await expectScreenPasses(m, `Personagens reservados, revogar o link ${where}`);
+    await rowOf(m, 'Sálvia').getByRole('button', { name: 'Cancelar' }).click();
+    await rowOf(m, 'Brisa').getByRole('button', { name: /Devolver Brisa à reserva/ }).click();
+    await expect(rowOf(m, 'Brisa').getByRole('group', { name: 'Devolver Brisa à reserva?' })).toBeVisible();
+    await expectScreenPasses(m, `Personagens reservados, devolver à reserva ${where}`);
+    await rowOf(m, 'Brisa').getByRole('button', { name: 'Cancelar' }).click();
+    await rowOf(m, 'Ragna').getByRole('button', { name: 'Excluir Ragna' }).click();
+    await expect(rowOf(m, 'Ragna').getByRole('group', { name: 'Excluir Ragna?' })).toBeVisible();
+    await expectScreenPasses(m, `Personagens reservados, excluir ${where}`);
+    await rowOf(m, 'Ragna').getByRole('button', { name: 'Cancelar' }).click();
+
+    // The dialog: the validity, then the link shown once.
+    await rowOf(m, 'Ragna').getByRole('button', { name: /Gerar novo link/ }).click();
+    const dialog = m.getByRole('dialog', { name: 'Gerar link para o jogador' });
+    await expect(dialog.getByRole('radio', { name: '7 dias' })).toBeChecked();
+    await expectScreenPasses(m, `Gerar link para o jogador ${where}`);
+    await dialog.getByRole('button', { name: 'Gerar link' }).click();
+    await expect(dialog.locator('.claim-link__field')).toBeVisible();
+    await expectScreenPasses(m, `Gerar link para o jogador, o link ${where}`);
+    await dialog.getByRole('button', { name: 'Copiar link' }).click();
+    await expect(dialog.getByText('Link copiado.')).toBeVisible();
+    await expectScreenPasses(m, `Gerar link para o jogador, link copiado ${where}`);
+
+    await open(m, `/campaigns/${campaignId}/reserved/new`);
+    await expect(m.getByText('Personagem reservado.')).toBeVisible();
+    await expectScreenPasses(m, `Criar personagem para um jogador ${where}`);
+
+    // The player's pages: the card, the page of a link that cannot be used, the master's own link and the signed-out page.
+    await p.goto(claimRoute(kaiToken));
+    await expect(p.getByRole('heading', { level: 1 })).toHaveText('Este personagem é seu?');
+    await expectScreenPasses(p, `Link do personagem, o cartão ${where}`);
+    await p.goto(claimRoute('x'));
+    await expect(p.getByRole('heading', { level: 1 })).toHaveText('Este link não pode ser usado');
+    await expectScreenPasses(p, `Link do personagem, o link que não vale ${where}`);
+    await m.goto(claimRoute(salviaToken));
+    await expect(m.getByRole('heading', { level: 1 })).toHaveText('Este link é para um jogador');
+    await expectScreenPasses(m, `Link do personagem, o link do próprio mestre ${where}`);
+    await g.goto(claimRoute(salviaToken));
+    await expect(g.getByRole('heading', { level: 1 })).toHaveText('Assumir um personagem');
+    await expect(g.getByRole('button', { name: 'Entrar com Google' })).toBeVisible();
+    await expectScreenPasses(g, `Link do personagem, sem entrar ${where}`);
+  } finally {
+    await Promise.all([mContext.close(), pContext.close(), gContext.close()]);
+  }
+}
+
+test('os reservados e os links passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-049'] }, async ({ browser }) => {
+  await scanClaims(browser, 'light', 1280);
+});
+
+test('os reservados e os links passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-049'] }, async ({ browser }) => {
+  await scanClaims(browser, 'dark', 1024);
+});
+
+test('os reservados e os links passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-049'] }, async ({ browser }) => {
+  await scanClaims(browser, 'dark', 390);
+});
+
+test('os reservados e os links passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-049'] }, async ({ browser }) => {
+  await scanClaims(browser, 'light', 320);
 });
 
 /**

@@ -91,7 +91,12 @@ export class SheetHeader {
       { label: 'Antecedente', value: vm.backgroundLabel },
     ];
     if (!this.isNpc()) {
-      fields.push({ label: 'Jogador', value: vm.playerDisplayName ?? 'Jogador sem nome' });
+      fields.push({
+        label: 'Jogador',
+        value: vm.reserved
+          ? 'Reservado: ainda sem jogador'
+          : (vm.playerDisplayName ?? 'Jogador sem nome'),
+      });
     }
     fields.push({ label: 'Tendência', value: vm.alignmentLabel });
     // What an enemy, a boss or a minion is worth when defeated: the master's

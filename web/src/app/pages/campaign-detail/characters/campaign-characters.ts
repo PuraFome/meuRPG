@@ -27,6 +27,7 @@ import { LevelUpTag } from '../../../shared/xp/level-up-tag';
 import { characterRowSub, stateTagClass } from './campaign-characters.copy';
 import { LevelUpChanges } from './level-up-changes';
 import { CharacterCreatures } from '../creatures/character-creatures';
+import { ReservedCharacters } from './reserved/reserved-characters';
 import {
   CampaignCharacterListItemVm,
   CampaignCharactersSource,
@@ -69,6 +70,7 @@ const NPC_KINDS: ReadonlyArray<{ kind: CharacterKind; segment: string }> = [
     LevelUpChanges,
     LevelUpTag,
     MatButtonModule,
+    ReservedCharacters,
     MatIconModule,
     MatMenuModule,
     RouterLink,
@@ -185,8 +187,21 @@ export class CampaignCharacters implements OnInit {
     vm: CampaignCharactersVm,
   ): readonly CampaignCharacterListItemVm[] {
     return this.isMaster()
-      ? vm.playerCharacters.filter((c) => c.state !== 'pending')
+      ? vm.playerCharacters.filter((c) => c.state !== 'pending' && c.reserved !== true)
       : vm.playerCharacters;
+  }
+
+  /** Master only: the reserved characters (nobody's yet) and the ones a player took through a link, which can go back. */
+  protected reservedRows(vm: CampaignCharactersVm): readonly CampaignCharacterListItemVm[] {
+    return vm.playerCharacters.filter((c) => c.reserved === true || c.claim?.state === 'used');
+  }
+
+  /** The list changed under a write of the reserved characters: read it again, keeping what is on screen meanwhile. */
+  protected refresh(): void {
+    this.source.listCharacters(this.campaignId()).then(
+      (vm) => this.state.set({ status: 'ready', vm }),
+      (err: unknown) => this.state.set({ status: 'error', message: describeCharacterError(err) }),
+    );
   }
 
   ngOnInit(): void {
