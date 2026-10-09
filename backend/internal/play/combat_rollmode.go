@@ -67,8 +67,7 @@ func (m modeChoice) changed() bool { return m.Mode != m.Suggested }
 // open requests.
 func (s *Service) chooseMode(ctx context.Context, c *combatTx, v combatViewer, attacker, target playdb.Combatant, attackKey string, truth combat.RollMode, ask modeAsk) (modeChoice, error) {
 	out := modeChoice{Mode: truth, Suggested: truth, ByMaster: v.master}
-	switch {
-	case ask.requestID != "":
+	if ask.requestID != "" {
 		req, err := c.q.GetRollModeRequest(ctx, playdb.GetRollModeRequestParams{EncounterID: c.enc.ID, ID: ask.requestID})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return out, connect.NewError(connect.CodeNotFound, errors.New("roll mode request not found"))
@@ -380,7 +379,7 @@ func (s *Service) CancelRollModeRequest(
 		c.characterID = &attacker.CharacterID
 		return actionEvent{
 			Round: c.enc.Round, Secret: attacker.Hidden, Actor: attacker.ID, Target: row.TargetID, Key: row.AttackKey,
-			RequestID: row.ID, Cancelled: true, SuggestedMode: row.SuggestedMode, Requested: row.RequestedMode,
+			RequestID: row.ID, Canceled: true, SuggestedMode: row.SuggestedMode, Requested: row.RequestedMode,
 		}, nil
 	})
 	if err != nil {

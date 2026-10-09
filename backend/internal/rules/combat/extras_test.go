@@ -63,7 +63,7 @@ func TestSneakAttackConditions(t *testing.T) {
 		{"already used this turn", func(s *ExtraScene) { s.Mode = ModeAdvantage; s.SneakUsed = true }, false, false, "Já usado neste turno (uma vez por turno)."},
 		{"an enemy near the target without disadvantage", func(s *ExtraScene) { s.EnemyNearTarget = true }, true, true, "Um inimigo do alvo está a 1,5 m e você não tem desvantagem · uma vez por turno"},
 		{"an enemy near the target but disadvantage", func(s *ExtraScene) { s.EnemyNearTarget = true; s.Mode = ModeDisadvantage }, false, false, "Você tem desvantagem neste ataque."},
-		{"neither advantage nor an enemy near", func(s *ExtraScene) {}, false, false, "Sem vantagem e sem um inimigo do alvo a 1,5 m."},
+		{"neither advantage nor an enemy near", func(*ExtraScene) {}, false, false, "Sem vantagem e sem um inimigo do alvo a 1,5 m."},
 		{"no map: the master confirms the ally", func(s *ExtraScene) { s.WithoutMap = true }, true, false, "O mestre confirma se há um aliado perto do alvo."},
 		{"no map but advantage: no need of an ally", func(s *ExtraScene) { s.WithoutMap = true; s.Mode = ModeAdvantage }, true, true, "Você tem vantagem neste ataque · uma vez por turno"},
 	}
@@ -215,7 +215,7 @@ func TestExtraDiceDoubleOnACriticalHitButFlatNumbersDoNot(t *testing.T) {
 
 func TestGreatWeaponFightingRerollsOnesAndTwosOnce(t *testing.T) {
 	next := []int{9, 1, 7}
-	roll := func(sides int) (int, error) {
+	roll := func(_ int) (int, error) {
 		v := next[0]
 		next = next[1:]
 		return v, nil

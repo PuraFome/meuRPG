@@ -277,7 +277,7 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 				shareEconomy(p, c)
 			}
 			p.TurnPartEnded = turn.flags && e.Status == statusActive && c.TurnState == turnEnded
-			p.States = statesFor(byCombatant[c.ID], c, d.cs, v)
+			p.States = statesFor(byCombatant[c.ID], d.cs, v)
 			p.ConditionSources = conditionSourcesFor(c, d.cs, names)
 			if v.master || v.owns(c) { // the two things that decide whether a rage ends
 				p.AttackedHostileSinceLastTurn, p.TookDamageSinceLastTurn = c.AttackedHostile, c.TookDamage

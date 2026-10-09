@@ -907,11 +907,6 @@ func (s *Service) RollAttack(
 	return connect.NewResponse(&playv1.RollAttackResponse{Encounter: out, PendingDamage: pending, Roll: roll}), nil
 }
 
-// faceList is the face of the d20 of an attack roll; none for a physical one,
-// whose d20 was typed (the typed face is still in D20: the master and the
-// player know it, so it is sent as the face too).
-func faceList(ev actionEvent) []int32 { return ev.d20Faces() }
-
 // resultEvent is the event a write made: the one the closure made, or, for a
 // retry the closure never ran for, the one stored the first time.
 func resultEvent(res combatResult, made actionEvent) (actionEvent, error) {

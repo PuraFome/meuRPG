@@ -670,7 +670,8 @@ func freeSmiteSlots(v *playv1.CharacterVitals) []*playv1.SlotOption {
 // hitParts works out the parts of the hit of a weapon attack and stores them on the
 // pending damage the attack opened. A hit with no extra and no automatic line has none.
 func (s *Service) hitParts(ctx context.Context, c *combatTx, campaignID string, v combatViewer, in attackModeInputs, attacker, target playdb.Combatant,
-	sheet link.Sheet, attack link.Attack, weaponBonus int, mode combat.RollMode, pendingID string) error {
+	sheet link.Sheet, attack link.Attack, weaponBonus int, mode combat.RollMode, pendingID string,
+) error {
 	if !attack.Weapon {
 		return nil
 	}
@@ -918,7 +919,8 @@ func (r *partsRoll) legacy() dice.Result {
 // rollPendingParts checks and rolls the parts of a pending damage: the extras the player
 // marked, with their conditions checked again, and the dice of the counted parts.
 func (s *Service) rollPendingParts(ctx context.Context, c *combatTx, campaignID string, p playdb.PendingDamage, attacker, target playdb.Combatant,
-	in rollInput, typed map[string]int, choice extraChoice) (*partsRoll, error) {
+	in rollInput, typed map[string]int, choice extraChoice,
+) (*partsRoll, error) {
 	tsheet, err := s.sheetOf(ctx, c.tx, campaignID, target)
 	if err != nil {
 		return nil, err

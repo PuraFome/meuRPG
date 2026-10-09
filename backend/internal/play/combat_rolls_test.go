@@ -269,7 +269,6 @@ func TestPM06b_SneakAttackAddsItsDiceToAnAttackWithAdvantage(t *testing.T) {
 	if dmg.GetAmount() < 13 {
 		t.Errorf("the damage = %d, want at least 13 (5 + 8 and the modifier)", dmg.GetAmount())
 	}
-
 }
 
 // A raging barbarian takes half of the bludgeoning, piercing and slashing damage,

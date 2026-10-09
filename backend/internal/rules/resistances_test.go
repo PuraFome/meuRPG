@@ -30,19 +30,45 @@ func TestRacialAndRageResistancesComeFromTheSheet(t *testing.T) {
 		types []string
 		while string
 	}{
-		{"tiefling: fire", Build{BaseScores: scores, Race: "race:tiefling", Background: "background:acolyte", Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}},
-			"trait:hellish-resistance", []string{"damage-type:fire"}, ResistanceAlways},
-		{"hill dwarf: poison", Build{BaseScores: scores, Race: "race:dwarf", Subrace: "subrace:hill-dwarf", Background: "background:acolyte", Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}},
-			"trait:dwarven-resilience", []string{"damage-type:poison"}, ResistanceAlways},
-		{"red dragonborn: fire", Build{BaseScores: scores, Race: "race:dragonborn", Background: "background:acolyte", FeatureChoices: []string{"trait:draconic-ancestry-red"}, Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}},
-			"trait:draconic-ancestry-red", []string{"damage-type:fire"}, ResistanceAlways},
-		{"silver dragonborn: cold", Build{BaseScores: scores, Race: "race:dragonborn", Background: "background:acolyte", FeatureChoices: []string{"trait:draconic-ancestry-silver"}, Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}},
-			"trait:draconic-ancestry-silver", []string{"damage-type:cold"}, ResistanceAlways},
-		{"barbarian: rage", Build{BaseScores: scores, Race: "race:human", Background: "background:acolyte", Classes: []ClassLevel{{Class: "class:barbarian", Level: 1}}},
-			"feature:rage", []string{"damage-type:bludgeoning", "damage-type:piercing", "damage-type:slashing"}, ResistanceWhileRage},
+		{
+			"tiefling: fire",
+			Build{BaseScores: scores, Race: "race:tiefling", Background: "background:acolyte", Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}},
+			"trait:hellish-resistance",
+			[]string{"damage-type:fire"},
+			ResistanceAlways,
+		},
+		{
+			"hill dwarf: poison",
+			Build{BaseScores: scores, Race: "race:dwarf", Subrace: "subrace:hill-dwarf", Background: "background:acolyte", Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}},
+			"trait:dwarven-resilience",
+			[]string{"damage-type:poison"},
+			ResistanceAlways,
+		},
+		{
+			"red dragonborn: fire",
+			Build{BaseScores: scores, Race: "race:dragonborn", Background: "background:acolyte", FeatureChoices: []string{"trait:draconic-ancestry-red"}, Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}},
+			"trait:draconic-ancestry-red",
+			[]string{"damage-type:fire"},
+			ResistanceAlways,
+		},
+		{
+			"silver dragonborn: cold",
+			Build{BaseScores: scores, Race: "race:dragonborn", Background: "background:acolyte", FeatureChoices: []string{"trait:draconic-ancestry-silver"}, Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}},
+			"trait:draconic-ancestry-silver",
+			[]string{"damage-type:cold"},
+			ResistanceAlways,
+		},
+		{
+			"barbarian: rage",
+			Build{BaseScores: scores, Race: "race:human", Background: "background:acolyte", Classes: []ClassLevel{{Class: "class:barbarian", Level: 1}}},
+			"feature:rage",
+			[]string{"damage-type:bludgeoning", "damage-type:piercing", "damage-type:slashing"},
+			ResistanceWhileRage,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			rs := c.Resistances(Derive(tt.build, c))
 			r, ok := resistanceOf(rs, tt.key)
 			if !ok {
@@ -73,10 +99,10 @@ func TestEveryDraconicLineageHasItsDamageType(t *testing.T) {
 		"black": "acid", "blue": "lightning", "brass": "fire", "bronze": "lightning", "copper": "acid",
 		"gold": "fire", "green": "poison", "red": "fire", "silver": "cold", "white": "cold",
 	}
-	for colour, typ := range want {
-		r, ok := c.c.resistances["trait:draconic-ancestry-"+colour]
+	for color, typ := range want {
+		r, ok := c.c.resistances["trait:draconic-ancestry-"+color]
 		if !ok || !slices.Equal(r.DamageTypes, []string{"damage-type:" + typ}) {
-			t.Errorf("%s dragon: %+v", colour, r)
+			t.Errorf("%s dragon: %+v", color, r)
 		}
 	}
 }

@@ -9,9 +9,9 @@ import (
 	"slices"
 	"testing"
 	"time"
+	"uuid"
 
 	"connectrpc.com/connect"
-	"uuid"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"

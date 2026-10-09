@@ -417,11 +417,11 @@ func (s *Service) EndRage(
 // statesFor builds the states a viewer reads on a combatant. A Hunter's Mark is the
 // master's and its caster's player's alone; the others are public chips (RN-20: an
 // NPC's state is only the chip).
-func statesFor(states []playdb.CombatantState, who playdb.Combatant, cs []playdb.Combatant, v combatViewer) []*playv1.CombatantEffect {
+func statesFor(states []playdb.CombatantState, cs []playdb.Combatant, v combatViewer) []*playv1.CombatantEffect {
 	var out []*playv1.CombatantEffect
 	for _, st := range states {
 		source, _ := findByID(cs, deref(st.SourceID))
-		if st.Kind == stateMark && !v.master && !(v.owns(source)) {
+		if st.Kind == stateMark && !v.master && !v.owns(source) {
 			continue
 		}
 		e := &playv1.CombatantEffect{

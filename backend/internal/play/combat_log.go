@@ -327,7 +327,7 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 				}
 			}
 		case eventRollModeAnswered:
-			if ev.Cancelled {
+			if ev.Canceled {
 				continue // a request taken back is no line
 			}
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_ROLL_MODE_ANSWERED
@@ -587,7 +587,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_STATE_CHANGED:
 		out.State = &playv1.CombatLogStateChange{Kind: stateKindProto(e.ev.StateKind), Started: e.ev.StateStarted, Reason: e.ev.StateReason}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_DAMAGE_PART_REMOVED:
-		if !e.removalView(ctx, v, v.owns(actor), out) {
+		if !e.removalView(v, v.owns(actor), out) {
 			return nil, false
 		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST:

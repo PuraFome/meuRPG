@@ -1,8 +1,6 @@
 package play
 
 import (
-	"context"
-
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -107,7 +105,7 @@ func (e *logEntry) dressDamage(d *playv1.CombatLogDamage, v combatViewer, dice, 
 }
 
 // removalView is the master's removal of an extra, as a line for him and the attacker's player.
-func (e *logEntry) removalView(ctx context.Context, v combatViewer, owner bool, out *playv1.CombatLogEntry) bool {
+func (e *logEntry) removalView(v combatViewer, owner bool, out *playv1.CombatLogEntry) bool {
 	if !v.master && !owner {
 		return false
 	}

@@ -253,7 +253,7 @@ func sameTypedFaces(counted, other, index int32, in rollInput) bool {
 		return false
 	}
 	for i, f := range in.typedFaces {
-		if int32(f) != want[i] {
+		if f != int(want[i]) {
 			return false
 		}
 	}

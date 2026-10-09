@@ -79,25 +79,11 @@ func (s *Service) RemoveDamagePart(
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_RESOLVED, "the damage was applied to a character already")
 		}
 		parts, rolls := readParts(p.Parts), readPartRolls(p.PartRolls)
-		pi := slices.IndexFunc(parts, func(x partRecord) bool { return x.Key == partKey })
-		ri := slices.IndexFunc(rolls, func(x partRoll) bool { return x.Key == partKey })
-		// Only an extra that counts comes out; the weapon, an automatic line and a smite
-		// (whose slot is spent) stay.
-		if pi < 0 || ri < 0 || parts[pi].Kind != partExtra || partKey == combat.ExtraDivineSmite || partKey == combat.ExtraDivineSmiteExtra || !rolls[ri].Counted {
+		if !takeOut(parts, rolls, partKey) {
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE, "that part cannot be taken out")
 		}
-		parts[pi].Removed, rolls[ri].Counted = true, false
 
-		byType := map[string]int{}
-		for _, r := range rolls {
-			if r.Counted {
-				byType[r.DamageType] += max(int(r.Sum)+int(r.Flat)+int(r.Fixed), 0)
-			}
-		}
-		total := 0
-		for _, n := range byType {
-			total += n
-		}
+		byType, total := countedByType(rolls)
 		// The target's modifiers are the ones the roll used: the stored groups say them.
 		var mods []combat.Modifier
 		for _, g := range readStepGroups(p.Steps) {
@@ -119,15 +105,9 @@ func (s *Service) RemoveDamagePart(
 		}
 		made.Amount = landed
 		if holdsHP(target) && p.Status == pendingApplied {
-			// The NPC took the damage at once: it is given back what the extra added.
-			var before hpState
-			if err := jsonUnmarshal(p.LandedBefore, &before); err != nil {
-				return nil, fmt.Errorf("read the hit points before the damage: %w", err)
-			}
-			dmg := combat.ApplyDamage(int(before.HP), int(before.Temp), int(landed))
-			now := hpState{HP: clamp32(dmg.HP, 0, math.MaxInt32), Temp: clamp32(dmg.TempHP, 0, math.MaxInt32), Defeated: dmg.HP == 0}
-			if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: target.ID, HpCurrent: &now.HP, HpTemp: &now.Temp, Defeated: now.Defeated}); err != nil {
-				return nil, fmt.Errorf("give the hit points back: %w", err)
+			now, err := giveBackHitPoints(ctx, c, p, target, landed)
+			if err != nil {
+				return nil, err
 			}
 			made.Before, made.After = new(hpOf(target)), &now
 			amount = landed
@@ -167,4 +147,46 @@ func (s *Service) RemoveDamagePart(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.RemoveDamagePartResponse{Encounter: out, PendingDamage: pending}), nil
+}
+
+// countedByType sums the dice and numbers of the parts that count, by damage type, and
+// all of them together.
+func countedByType(rolls []partRoll) (map[string]int, int) {
+	byType := map[string]int{}
+	total := 0
+	for _, r := range rolls {
+		if r.Counted {
+			n := max(int(r.Sum)+int(r.Flat)+int(r.Fixed), 0)
+			byType[r.DamageType] += n
+			total += n
+		}
+	}
+	return byType, total
+}
+
+// giveBackHitPoints gives an NPC the hit points a removed extra took: its hit points
+// before the damage, with what is left of the damage taken.
+func giveBackHitPoints(ctx context.Context, c *combatTx, p playdb.PendingDamage, target playdb.Combatant, landed int32) (hpState, error) {
+	var before hpState
+	if err := jsonUnmarshal(p.LandedBefore, &before); err != nil {
+		return hpState{}, fmt.Errorf("read the hit points before the damage: %w", err)
+	}
+	dmg := combat.ApplyDamage(int(before.HP), int(before.Temp), int(landed))
+	now := hpState{HP: clamp32(dmg.HP, 0, math.MaxInt32), Temp: clamp32(dmg.TempHP, 0, math.MaxInt32), Defeated: dmg.HP == 0}
+	if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: target.ID, HpCurrent: &now.HP, HpTemp: &now.Temp, Defeated: now.Defeated}); err != nil {
+		return hpState{}, fmt.Errorf("give the hit points back: %w", err)
+	}
+	return now, nil
+}
+
+// takeOut marks an extra as removed, and says whether it could be. Only an extra that
+// counts comes out; the weapon, an automatic line and a smite (whose slot is spent) stay.
+func takeOut(parts []partRecord, rolls []partRoll, key string) bool {
+	pi := slices.IndexFunc(parts, func(x partRecord) bool { return x.Key == key })
+	ri := slices.IndexFunc(rolls, func(x partRoll) bool { return x.Key == key })
+	if pi < 0 || ri < 0 || parts[pi].Kind != partExtra || key == combat.ExtraDivineSmite || key == combat.ExtraDivineSmiteExtra || !rolls[ri].Counted {
+		return false
+	}
+	parts[pi].Removed, rolls[ri].Counted = true, false
+	return true
 }

@@ -114,7 +114,7 @@ func SneakAttackDice(rogueLevel int) int {
 	if rogueLevel < 1 {
 		return 0
 	}
-	return (rogueLevel + 1) / 2
+	return (rogueLevel + 1) / pairOfDice
 }
 
 // SmiteDice is the dice of Divine Smite for the level of the slot spent: 2d8 for

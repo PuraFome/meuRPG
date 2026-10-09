@@ -457,7 +457,7 @@ type actionEvent struct {
 	// ("normal", "advantage" or "disadvantage"; empty is normal). A mode that is not the
 	// suggestion keeps its reason apart (ReasonID, a combat_reasons row, or RequestID,
 	// the answered request): free text never goes in an event. Requested is the mode a
-	// player asked the master for; Cancelled says the request was taken back.
+	// player asked the master for; Canceled says the request was taken back.
 	// CriticalOnHit says a hit was a critical hit by the target's condition.
 	Counted       int32  `json:"counted,omitempty"`
 	RollMode      string `json:"roll_mode,omitempty"`
@@ -465,7 +465,7 @@ type actionEvent struct {
 	Requested     string `json:"requested_mode,omitempty"`
 	ReasonID      string `json:"reason_id,omitempty"`
 	RequestID     string `json:"request_id,omitempty"`
-	Cancelled     bool   `json:"cancelled,omitempty"`
+	Canceled      bool   `json:"canceled,omitempty"`
 	CritOnHit     bool   `json:"crit_on_hit,omitempty"`
 	ByMaster      bool   `json:"by_master,omitempty"`
 

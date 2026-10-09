@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"slices"
 
 	"connectrpc.com/connect"
@@ -173,7 +172,7 @@ type attackShape struct {
 func shapeOfAttack(a link.Attack) attackShape {
 	shape := attackShape{
 		Melee: a.Melee, Weapon: a.Weapon || (!a.Spell && !a.Save), UsesStrength: a.Ability == "str",
-		RangeFt: int(a.RangeFt), LongRangeFt: int(a.LongRangeFt),
+		RangeFt: a.RangeFt, LongRangeFt: a.LongRangeFt,
 	}
 	switch {
 	case a.Spell:
@@ -430,18 +429,10 @@ func (r d20Roll) Face() int { return r.Faces[r.Index] }
 
 // otherFace is the die that does not count, 0 when there was only one.
 func (r d20Roll) otherFace() int {
-	if len(r.Faces) < 2 {
+	if len(r.Faces) < pairDice {
 		return 0
 	}
 	return r.Faces[1-r.Index]
-}
-
-// faces32 converts the faces for the API.
-func (r d20Roll) proto(modifier int32) *playv1.DiceRoll {
-	return &playv1.DiceRoll{
-		DiceCount: clamp32(len(r.Faces), 1, 2), DiceSides: 20, Faces: faces32(r.Faces), Modifier: modifier,
-		Total: clamp32(r.Total, math.MinInt32, math.MaxInt32), Physical: r.Physical, CountedIndex: clamp32(r.Index, 0, 1),
-	}
 }
 
 // typedD20Faces checks the faces of a physical d20 pair: one or two, 1 to 20 each.
@@ -468,7 +459,7 @@ func (s *Service) d20With(in rollInput, modifier int, mode combat.RollMode) (d20
 	var faces []int
 	switch {
 	case in.inApp:
-		res, err := dice.Roll(s.roller, dice.Expr{Count: n, Sides: 20})
+		res, err := dice.Roll(s.roller, dice.Expr{Count: n, Sides: d20Sides})
 		if err != nil {
 			return d20Roll{}, fmt.Errorf("roll the d20: %w", err)
 		}
@@ -598,7 +589,7 @@ func shownSources(sources []combat.Source, names func(string) string) []*playv1.
 
 // attach puts the circumstances of each roll in the answer to the cast. A retry of a
 // cast the closure never ran for has none.
-func (m *spellModes) attach(cast *playv1.SpellCast, v combatViewer) {
+func (m *spellModes) attach(cast *playv1.SpellCast) {
 	if m == nil || cast == nil {
 		return
 	}
@@ -611,3 +602,9 @@ func (m *spellModes) attach(cast *playv1.SpellCast, v combatViewer) {
 		}
 	}
 }
+
+// The d20 and the pair of them a roll with advantage or disadvantage takes.
+const (
+	d20Sides = 20
+	pairDice = 2
+)

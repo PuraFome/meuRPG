@@ -273,7 +273,7 @@ func rollModed(d20 func() (int, error), mode combat.RollMode) (face, other, coun
 	}
 	counted = mode.Pick(faces)
 	face = faces[counted]
-	if len(faces) == 2 {
+	if len(faces) == pairDice {
 		other = faces[1-counted]
 	}
 	return face, other, counted, nil

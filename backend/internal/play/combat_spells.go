@@ -518,7 +518,7 @@ func (s *Service) CastSpell(
 	if err != nil {
 		return nil, err
 	}
-	modes.attach(spell, v)
+	modes.attach(spell)
 	return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out, Cast: spell, SummonedCombatantIds: s.combatantsOfCreatures(ctx, res, ev.Created)}), nil
 }
 

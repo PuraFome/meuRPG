@@ -142,14 +142,14 @@ func (m RollMode) Dice() int {
 	if m == ModeNormal {
 		return 1
 	}
-	return 2
+	return pairOfDice
 }
 
 // Pick returns the index of the die that counts among the d20 faces: the
 // higher for advantage (the first on a tie), the lower for disadvantage. One
 // face is index 0.
 func (m RollMode) Pick(faces []int) int {
-	if len(faces) < 2 {
+	if len(faces) < pairOfDice {
 		return 0
 	}
 	switch m {
@@ -265,6 +265,35 @@ type AttackModeResult struct {
 	CriticalOnHit bool
 }
 
+// conditionSource is a condition that gives an attack roll advantage or disadvantage.
+type conditionSource struct {
+	condition string
+	kind      string
+	effect    RollMode
+}
+
+// attackerConditionSources are the conditions of the attacker that change its attack
+// rolls, and targetConditionSources those of the target that change the rolls against
+// it (SRD 5.1, Conditions). A prone target depends on the distance and is apart.
+var attackerConditionSources = []conditionSource{
+	{conditionProne, SourceProneAttacker, ModeDisadvantage},
+	{conditionRestrained, SourceRestrainedAttacker, ModeDisadvantage},
+	{conditionBlinded, SourceBlindedAttacker, ModeDisadvantage},
+	{conditionPoisoned, SourcePoisonedAttacker, ModeDisadvantage},
+	{conditionFrightened, SourceFrightenedAttacker, ModeDisadvantage},
+	{conditionInvisible, SourceInvisibleAttacker, ModeAdvantage},
+}
+
+var targetConditionSources = []conditionSource{
+	{conditionRestrained, SourceRestrainedTarget, ModeAdvantage},
+	{conditionBlinded, SourceBlindedTarget, ModeAdvantage},
+	{conditionStunned, SourceStunnedTarget, ModeAdvantage},
+	{conditionParalyzed, SourceParalyzedTarget, ModeAdvantage},
+	{conditionUnconscious, SourceUnconsciousTarget, ModeAdvantage},
+	{conditionPetrified, SourcePetrifiedTarget, ModeAdvantage},
+	{conditionInvisible, SourceInvisibleTarget, ModeDisadvantage},
+}
+
 // AttackMode lists the circumstances of an attack roll (SRD 5.1, Conditions,
 // "Dodge", Barbarian "Reckless Attack", Monsters "Pack Tactics", "Unseen Attackers
 // and Targets", "Ranged Attacks"). The app does not keep who a Frightened creature
@@ -276,54 +305,23 @@ func AttackMode(s AttackScene) AttackModeResult {
 	}
 	within, known := s.withinFive()
 
-	// The attacker's own condition.
-	if s.Attacker.Has(conditionProne) {
-		add(SourceProneAttacker, ModeDisadvantage, conditionProne)
+	// The conditions of the attacker and of the target.
+	for _, r := range attackerConditionSources {
+		if s.Attacker.Has(r.condition) {
+			add(r.kind, r.effect, r.condition)
+		}
 	}
-	if s.Attacker.Has(conditionRestrained) {
-		add(SourceRestrainedAttacker, ModeDisadvantage, conditionRestrained)
+	for _, r := range targetConditionSources {
+		if s.Target.Has(r.condition) {
+			add(r.kind, r.effect, r.condition)
+		}
 	}
-	if s.Attacker.Has(conditionBlinded) {
-		add(SourceBlindedAttacker, ModeDisadvantage, conditionBlinded)
-	}
-	if s.Attacker.Has(conditionPoisoned) {
-		add(SourcePoisonedAttacker, ModeDisadvantage, conditionPoisoned)
-	}
-	if s.Attacker.Has(conditionFrightened) {
-		add(SourceFrightenedAttacker, ModeDisadvantage, conditionFrightened)
-	}
-	if s.Attacker.Has(conditionInvisible) {
-		add(SourceInvisibleAttacker, ModeAdvantage, conditionInvisible)
-	}
-
-	// The target's.
 	if s.Target.Has(conditionProne) && known {
 		if within {
 			add(SourceProneTarget, ModeAdvantage, conditionProne)
 		} else {
 			add(SourceProneTarget, ModeDisadvantage, conditionProne)
 		}
-	}
-	if s.Target.Has(conditionRestrained) {
-		add(SourceRestrainedTarget, ModeAdvantage, conditionRestrained)
-	}
-	if s.Target.Has(conditionBlinded) {
-		add(SourceBlindedTarget, ModeAdvantage, conditionBlinded)
-	}
-	if s.Target.Has(conditionStunned) {
-		add(SourceStunnedTarget, ModeAdvantage, conditionStunned)
-	}
-	if s.Target.Has(conditionParalyzed) {
-		add(SourceParalyzedTarget, ModeAdvantage, conditionParalyzed)
-	}
-	if s.Target.Has(conditionUnconscious) {
-		add(SourceUnconsciousTarget, ModeAdvantage, conditionUnconscious)
-	}
-	if s.Target.Has(conditionPetrified) {
-		add(SourcePetrifiedTarget, ModeAdvantage, conditionPetrified)
-	}
-	if s.Target.Has(conditionInvisible) {
-		add(SourceInvisibleTarget, ModeDisadvantage, conditionInvisible)
 	}
 	if known && within && (s.Target.Has(conditionParalyzed) || s.Target.Has(conditionUnconscious)) {
 		out.CriticalOnHit = true
@@ -356,14 +354,22 @@ func AttackMode(s AttackScene) AttackModeResult {
 		add(SourceUnseenTarget, ModeDisadvantage, "")
 	}
 
-	// Ranged Attacks.
-	if s.Ranged {
-		if s.DistanceKnown && s.ReachFt > 0 && s.DistanceFt > s.ReachFt && (s.LongRangeFt == 0 || s.DistanceFt <= s.LongRangeFt) {
-			add(SourceLongRange, ModeDisadvantage, "")
-		}
-		if s.HostileNearAttacker {
-			add(SourceHostileNearby, ModeDisadvantage, "")
-		}
+	out.Sources = append(out.Sources, rangedSources(s)...)
+	return out
+}
+
+// rangedSources are the disadvantages of a ranged attack: beyond the normal range, and
+// with a hostile creature within 5 ft of the attacker (SRD 5.1, "Ranged Attacks").
+func rangedSources(s AttackScene) []Source {
+	var out []Source
+	if !s.Ranged {
+		return out
+	}
+	if s.DistanceKnown && s.ReachFt > 0 && s.DistanceFt > s.ReachFt && (s.LongRangeFt == 0 || s.DistanceFt <= s.LongRangeFt) {
+		out = append(out, Source{Kind: SourceLongRange, Effect: ModeDisadvantage})
+	}
+	if s.HostileNearAttacker {
+		out = append(out, Source{Kind: SourceHostileNearby, Effect: ModeDisadvantage})
 	}
 	return out
 }
@@ -423,3 +429,6 @@ func AutoFailsSave(c Creature, ability string) bool {
 	}
 	return c.Has(conditionStunned) || c.Has(conditionParalyzed) || c.Has(conditionUnconscious) || c.Has(conditionPetrified)
 }
+
+// pairOfDice is the d20 a roll with advantage or disadvantage takes.
+const pairOfDice = 2

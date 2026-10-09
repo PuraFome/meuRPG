@@ -111,14 +111,14 @@ type trapAttackEvent struct {
 // it favors and the condition it comes from.
 type sourceRec struct {
 	Kind      string `json:"k"`
-	Effect    int8   `json:"e"`
+	Effect    int    `json:"e"`
 	Condition string `json:"c,omitempty"`
 }
 
 func sourceRecs(sources []combat.Source) []sourceRec {
 	var out []sourceRec
 	for _, s := range sources {
-		out = append(out, sourceRec{Kind: s.Kind, Effect: int8(s.Effect), Condition: s.Condition})
+		out = append(out, sourceRec{Kind: s.Kind, Effect: int(s.Effect), Condition: s.Condition})
 	}
 	return out
 }
