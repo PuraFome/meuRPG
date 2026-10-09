@@ -434,9 +434,9 @@ func encounterChangedMessage(e playdb.Encounter) *playv1.WatchGameSessionRespons
 	}}
 }
 
-// turnChangedMessage carries the combat's revision when the caller may compare it
-// (revision 0 on a fog map for a player: the master's number counts what they cannot
-// see).
+// turnChangedMessage carries the combat's revision for the master, whose screen holds
+// the same number. A player's read counts what they can see (a different scale), so
+// their copy says 0, "no number to compare".
 func turnChangedMessage(e playdb.Encounter, turn turnView, revision int32) *playv1.WatchGameSessionResponse {
 	return &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_TurnChanged_{
 		TurnChanged: &playv1.WatchGameSessionResponse_TurnChanged{
@@ -464,7 +464,7 @@ func (s *Service) publishTurnChangedToPlayers(ctx context.Context, campaignID st
 	case err != nil:
 		s.logger.ErrorContext(ctx, "play: cannot work out what the players see in a combat", "error", err)
 	case f == nil:
-		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: turnChangedMessage(d.enc, d.turnFor(combatViewer{}), d.enc.Revision)})
+		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: turnChangedMessage(d.enc, d.turnFor(combatViewer{}), 0)})
 	default:
 		for _, u := range f.sight.Users() {
 			turn := d.turnFor(combatViewer{userID: u, unseen: f.unseenFor(u, d.cs)})

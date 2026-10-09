@@ -1566,6 +1566,11 @@ func TestRN10_FogCombatADeadCharactersPlayerSeesWhatTheLivingPartySees(t *testin
 		t.Fatalf("GetTurnOptions for the dead character error = %v", err)
 	}
 	f.noLeak(t, "the dead player's turn options", asJSON(t, res.Msg), "Capitão Goblin", deadPlayerCanary)
+	// "Ver como" a dead character is not found: it is no one to look as.
+	_, err = f.mapsAs(f.master).GetMapVision(t.Context(), connect.NewRequest(&mapsv1.GetMapVisionRequest{
+		CampaignId: f.campaignID, MapId: f.mapID, AsCharacterId: f.pens.GetId(),
+	}))
+	wantCode(t, "GetMapVision as a dead character", err, connect.CodeNotFound)
 	// The map: the squares of the living party, not nothing.
 	toren := f.who(t, f.master, "Toren")
 	if !f.seesSquare(t, f.ana, int(toren.GetCol()), int(toren.GetRow())) {

@@ -4165,10 +4165,10 @@ type WatchGameSessionResponse_TurnChanged struct {
 	// True when the one on turn is a combatant the member may not see: the
 	// app shows "Vez do mestre". Always false for the master.
 	MasterTurn bool `protobuf:"varint,4,opt,name=master_turn,json=masterTurn,proto3" json:"master_turn,omitempty"`
-	// The combat's revision (Encounter.revision) with the turn changed: a screen
-	// that already holds a newer combat ignores this event instead of going back.
-	// On a map with the fog of war a player's copy says 0 ("no number to compare"),
-	// as in EncounterChanged.revision.
+	// The combat's revision (Encounter.revision) with the turn changed, for the
+	// master only: a screen that already holds a newer combat ignores this event
+	// instead of going back. A player's copy says 0 ("no number to compare"): what
+	// their reads count is not the master's number.
 	Revision      int32 `protobuf:"varint,5,opt,name=revision,proto3" json:"revision,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

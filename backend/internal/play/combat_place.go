@@ -179,7 +179,7 @@ func (s *Service) placeUnplaced(ctx context.Context, c *combatTx, cs []playdb.Co
 
 // errNoRoom is the refusal for a placement on a map with no square left.
 func errNoRoom() error {
-	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_SQUARE_OCCUPIED, "there is no free square on the map")
+	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_FREE_SQUARE, "there is no free square on the map")
 }
 
 // errWall is the refusal for a master's move or placement onto a wall.

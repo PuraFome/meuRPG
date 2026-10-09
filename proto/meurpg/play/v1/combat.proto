@@ -1472,6 +1472,9 @@ enum EncounterBlockedReason {
   // failed three death saves. A dead creature regains no hit points (SRD 5.1,
   // "Dropping to 0 Hit Points"), so nothing is spent.
   ENCOUNTER_BLOCKED_REASON_TARGET_DEAD = 69;
+  // MoveCombatant with `place`: the map has no free square a creature can stand
+  // on, so the server found none to place the combatant on.
+  ENCOUNTER_BLOCKED_REASON_NO_FREE_SQUARE = 70;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused

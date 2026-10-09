@@ -1577,6 +1577,21 @@ func TestPlacingOnTheMapUsesTheSamePlacementRule(t *testing.T) {
 	_ = e
 }
 
+// TestPlacingOnAMapWithNoFreeSquareSaysSo: when nothing is left to stand on, the master
+// is told there is no free square, not that a square he never picked is taken.
+func TestPlacingOnAMapWithNoFreeSquareSaysSo(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.setupUnplaced(t)
+	for row := range 16 {
+		for col := range 24 {
+			c.terrain.addWalls(grid.Square{Col: col, Row: row})
+		}
+	}
+	_, err := c.move(t, c.master, "Ogro", 0, 0, func(r *playv1.MoveCombatantRequest) { r.Place = true })
+	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_FREE_SQUARE)
+}
+
 // TestTheMastersMoveIntoAWallIsRefused: nobody stands in a wall, and a creature in
 // one is seen by no player, so neither a move nor a forced one goes into a wall.
 func TestTheMastersMoveIntoAWallIsRefused(t *testing.T) {

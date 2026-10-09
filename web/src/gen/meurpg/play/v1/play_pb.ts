@@ -1838,10 +1838,10 @@ export type WatchGameSessionResponse_TurnChanged = Message<"meurpg.play.v1.Watch
   masterTurn: boolean;
 
   /**
-   * The combat's revision (Encounter.revision) with the turn changed: a screen
-   * that already holds a newer combat ignores this event instead of going back.
-   * On a map with the fog of war a player's copy says 0 ("no number to compare"),
-   * as in EncounterChanged.revision.
+   * The combat's revision (Encounter.revision) with the turn changed, for the
+   * master only: a screen that already holds a newer combat ignores this event
+   * instead of going back. A player's copy says 0 ("no number to compare"): what
+   * their reads count is not the master's number.
    *
    * @generated from field: int32 revision = 5;
    */
