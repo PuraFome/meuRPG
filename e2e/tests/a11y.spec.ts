@@ -7409,14 +7409,6 @@ test('o salto que sai do alcance de um inimigo passa no axe e nas conferências 
   await scanJumpWarningScreens(browser, 'dark', 390);
 });
 
-/** The effects that last on the player's screens (W7-E, RN-22): "Seus efeitos" and the exhaustion card on the live sheet,
- * the attack sheet with the d4 of Bênção typed from a physical die, the turn of a paralysed character and the saving
- * throw of the end of the turn with its three answers, its typed fields and its result. The table and the effects come
- * through the API, so every run draws the same screens. */
-async function scanEffectsPlayerScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
-  const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
 /**
  * "Efeitos que duram" no lado do mestre (W7-E, RN-22): o painel "Efeitos em jogo" com o relógio dos turnos, a pergunta de
  * encerrar uma concentração, "Adicionar um efeito", "Mudar a duração", o cartão do que os jogadores veem, a exaustão (e a
@@ -7475,6 +7467,72 @@ async function scanEffectsOutsideScreens(browser: Browser, colorScheme: 'light' 
   const viewport = sizeOf(width);
   const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(390) });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableWithPensantus(m, p, `Acessibilidade Efeitos fora ${Date.now()}`);
+    campaignId = table.campaignId;
+    await startSessionRPC(m, campaignId);
+    await setExhaustionRPC(m, campaignId, table.characterId, 2, 0);
+    await openSessionPage(m, campaignId);
+    const panel = m.getByRole('region', { name: 'Efeitos em jogo' });
+    await expect(panel.getByText('Nenhum efeito nos personagens agora.')).toBeVisible();
+    await expectScreenPasses(m, `Efeitos fora do combate, o painel e "Passar o tempo" ${where}`);
+    const time = m.getByRole('region', { name: 'Passar o tempo' });
+    await time.getByRole('button', { name: '10 minutos' }).click();
+    await time.getByRole('button', { name: 'Passar o tempo' }).click();
+    await expect(time).toContainText('Passou 10 minutos.');
+    await expectScreenPasses(m, `Passar o tempo, o resultado ${where}`);
+
+    const rest = m.getByRole('region', { name: 'Descanso' });
+    await rest.getByRole('button', { name: 'Descanso longo' }).click();
+    await expect(rest.getByRole('switch', { name: 'Sem comida ou bebida' })).toBeVisible();
+    await expectScreenPasses(m, `Descanso longo, "Sem comida ou bebida" ${where}`);
+    await rest.getByRole('switch', { name: 'Sem comida ou bebida' }).click();
+    await expectScreenPasses(m, `Descanso longo, sem comida ou bebida ligado ${where}`);
+    await rest.getByRole('button', { name: 'Cancelar' }).click();
+
+    await panel.getByRole('button', { name: 'Exaustão' }).click();
+    await expect(m.getByRole('dialog', { name: /^Exaustão/ })).toBeVisible();
+    await expectScreenPasses(m, `Exaustão fora do combate ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [scheme, width, words] of [
+  ['light', 1280, 'no tema claro, no desktop'],
+  ['dark', 390, 'no tema escuro, no celular'],
+  ['light', 390, 'no tema claro, no celular'],
+  ['dark', 1280, 'no tema escuro, no desktop'],
+] as const) {
+  test(`os efeitos que duram do mestre, no combate, passam no axe e nas conferências de layout ${words}`, { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanEffectsScreens(browser, scheme, width);
+  });
+
+  test(`os efeitos do mestre fora do combate, "Passar o tempo" e o descanso longo passam no axe e nas conferências de layout ${words}`, { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanEffectsOutsideScreens(browser, scheme, width);
+  });
+}
+
+/** The effects that last on the player's screens (W7-E, RN-22): "Seus efeitos" and the exhaustion card on the live sheet,
+ * the attack sheet with the d4 of Bênção typed from a physical die, the turn of a paralysed character and the saving
+ * throw of the end of the turn with its three answers, its typed fields and its result. The table and the effects come
+ * through the API, so every run draws the same screens. */
+async function scanEffectsPlayerScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -7547,31 +7605,6 @@ async function scanEffectsOutsideScreens(browser: Browser, colorScheme: 'light' 
     await save.getByRole('button', { name: /Confirmar/ }).click();
     await expect(save).toContainText('Passou');
     await expectScreenPasses(p, `Fim do seu turno, o resultado ${where}`);
-    const table = await tableWithPensantus(m, p, `Acessibilidade Efeitos fora ${Date.now()}`);
-    campaignId = table.campaignId;
-    await startSessionRPC(m, campaignId);
-    await setExhaustionRPC(m, campaignId, table.characterId, 2, 0);
-    await openSessionPage(m, campaignId);
-    const panel = m.getByRole('region', { name: 'Efeitos em jogo' });
-    await expect(panel.getByText('Nenhum efeito nos personagens agora.')).toBeVisible();
-    await expectScreenPasses(m, `Efeitos fora do combate, o painel e "Passar o tempo" ${where}`);
-    const time = m.getByRole('region', { name: 'Passar o tempo' });
-    await time.getByRole('button', { name: '10 minutos' }).click();
-    await time.getByRole('button', { name: 'Passar o tempo' }).click();
-    await expect(time).toContainText('Passou 10 minutos.');
-    await expectScreenPasses(m, `Passar o tempo, o resultado ${where}`);
-
-    const rest = m.getByRole('region', { name: 'Descanso' });
-    await rest.getByRole('button', { name: 'Descanso longo' }).click();
-    await expect(rest.getByRole('switch', { name: 'Sem comida ou bebida' })).toBeVisible();
-    await expectScreenPasses(m, `Descanso longo, "Sem comida ou bebida" ${where}`);
-    await rest.getByRole('switch', { name: 'Sem comida ou bebida' }).click();
-    await expectScreenPasses(m, `Descanso longo, sem comida ou bebida ligado ${where}`);
-    await rest.getByRole('button', { name: 'Cancelar' }).click();
-
-    await panel.getByRole('button', { name: 'Exaustão' }).click();
-    await expect(m.getByRole('dialog', { name: /^Exaustão/ })).toBeVisible();
-    await expectScreenPasses(m, `Exaustão fora do combate ${where}`);
   } finally {
     if (campaignId) {
       await endOpenSessionRPC(m, campaignId);
@@ -7600,19 +7633,3 @@ test('os efeitos que duram, na tela do jogador, passam no axe e nas conferência
   test.setTimeout(240_000);
   await scanEffectsPlayerScreens(browser, 'dark', 390);
 });
-for (const [scheme, width, words] of [
-  ['light', 1280, 'no tema claro, no desktop'],
-  ['dark', 390, 'no tema escuro, no celular'],
-  ['light', 390, 'no tema claro, no celular'],
-  ['dark', 1280, 'no tema escuro, no desktop'],
-] as const) {
-  test(`os efeitos que duram do mestre, no combate, passam no axe e nas conferências de layout ${words}`, { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
-    test.setTimeout(300_000);
-    await scanEffectsScreens(browser, scheme, width);
-  });
-
-  test(`os efeitos do mestre fora do combate, "Passar o tempo" e o descanso longo passam no axe e nas conferências de layout ${words}`, { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
-    test.setTimeout(300_000);
-    await scanEffectsOutsideScreens(browser, scheme, width);
-  });
-}
