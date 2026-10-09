@@ -16,6 +16,7 @@ The backend runs on Cloud Run in `southamerica-east1` (São Paulo).
 | `min-instances` | 0 (scales to zero when idle) |
 | `max-instances` | **1**, while the live-session stream fan-out is in memory (see [Live session stream](#live-session-stream)) |
 | Concurrency | **50** (`--concurrency=50`): each live stream counts against it, a table has about 14 at once (at most 56, 8 per person), and the database pool of 10 is what limits real work; at the Cloud Run default of 80, the worst case of stalled 4 MiB request bodies goes past the 512 MiB limit |
+| In front | A global external Application Load Balancer with a serverless NEG, because Cloud Run domain mappings are not offered in this region ([step 10](#10-the-domain)); `TRUSTED_PROXY_HOPS=2` |
 | Request timeout | At least 35 minutes (`--timeout=2100`, the maximum is 60 minutes): the stream lives up to 30. The Cloud Run default, 5 minutes, would cut the stream short |
 
 CockroachDB runs on Google Cloud, in the same region, on the project owner's current plan: the legacy Unlimited plan, bought before the 2024 licensing change. Changing plan loses Unlimited. Backups stay in São Paulo and are kept for 30 days at most, to meet the deletion deadline (see [Privacy](privacy.md)). This configuration still has to be checked in the console before the first deploy.
@@ -30,6 +31,7 @@ These are estimates, not a bill. They are used to decide architecture, such as k
 | Heavy (more use, more tables) | ~US$ 1.60–6.40/month | Still a few dollars. |
 | Accident: stream/WebSocket open all month | ~US$ 55–88/month | This is why the Connect stream only opens during a session (see [Architecture](architecture.md)). |
 | Egress (data out of São Paulo) | US$ 0.19/GiB | No free tier. This is why map images go to Cloud Storage and leave through their own URL, not as base64 inside responses. The master's browser keeps each image for a year (`private, immutable`) and downloads it once. The player's browser asks again on every use (`no-cache`, so it stops showing what the master hid), but the answer is a bodiless `304` while the image does not change, so each device still downloads each image once (see [Architecture](architecture.md#serving-images)). |
+| Global external Application Load Balancer (in front of the service, see [step 10](#10-the-domain)) | About US$ 0.025 per hour for the forwarding rule, ~US$ 18/month, plus a small per-GB data processing charge. Check the current price: [VPC pricing](https://cloud.google.com/vpc/network-pricing) | Billed all month, even when Cloud Run is scaled to zero. It is the largest fixed cost of the setup. |
 | Gallery images in Cloud Storage (Standard, São Paulo) | US$ 0.035 per GiB per month ([Cloud Storage pricing](https://cloud.google.com/storage/pricing), checked 30/09/2026) | A campaign with a full gallery (500 MiB, the proposed limit) costs ~US$ 0.02/month. The 7-day soft delete charges the same price for deleted data during those days. The API reads the bucket in the same region, with no egress; each read is a class B operation, billed per thousand (same page). |
 
 ## Live session stream
@@ -108,6 +110,7 @@ The master's sign-in (`identity` module) needs one secret, the OIDC provider's c
 | `OIDC_REDIRECT_URL` | No | `https://<domain>/auth/callback`, registered identically on Google's OAuth client. Changing domain requires registering the new URL before the deploy |
 | `SESSION_IDLE_TIMEOUT` | No | A duration, from `1h` to `720h`; default `336h` (14 days). A sign-in session with no use for that long stops being valid (ASVS 5.0 V7.3.1), as if it did not exist. The 14 days exist because the table plays roughly every week: they forgive two missed sessions in a row and still cut a forgotten browser well before the absolute 30 days, which nothing changes. Lowering the value signs out people who go a while without playing; raising it helps little, because the absolute 30 days remain |
 | `OIDC_MAX_AGE` | No | Do not set it with Google, which does not document `max_age`. Re-authentication every 30 days (NIST SP 800-63B-4) comes from the 30-day server-side session. In the local environment, with the devidp, it is `1h` |
+| `TRUSTED_PROXY_HOPS` | No | How many proxies of ours sit between the client and the server, which tells the rate limits where the client IP is (see [Sign-in rate limit and the client IP](#sign-in-rate-limit-and-the-client-ip)). Unset on Cloud Run means **1** (Cloud Run alone, on its `run.app` URL); set it to **2** when the global external Application Load Balancer is in front. Only 1 and 2 are accepted on Cloud Run, and any value elsewhere stops the server from starting (the local server is never behind a proxy, and trusting `X-Forwarded-For` there would let a client choose its own key). The start-up log says `client ip source` with `trusted_proxy_hops` |
 | `GOOGLE_CLOUD_PROJECT` | No | The project id, set at deploy (`--set-env-vars`): **Cloud Run does not set it by itself**. Without it, log lines do not carry the Cloud Logging trace, and the lines of one request do not show up together (see [Architecture](architecture.md#logs)) |
 | `LISTEN_HOST` | No | Do not set it: empty, the server listens on all interfaces, which is what Cloud Run requires. Local environments use `127.0.0.1` |
 
@@ -133,10 +136,11 @@ In production, sign-in is Google only (`OIDC_ISSUER=https://accounts.google.com`
 
 ### Sign-in rate limit and the client IP
 
-`/auth/login` and `/auth/callback` share a per-IP limit and a global one, in memory (see [Architecture](architecture.md#login-attempt-limit)). On Cloud Run, the client IP is the last item of `X-Forwarded-For`, which Google's front end appends. This holds for Cloud Run **without a load balancer in front**, which is the current plan.
+`/auth/login` and `/auth/callback` share a per-IP limit and a global one, in memory (see [Architecture](architecture.md#login-attempt-limit)). The client IP is the Nth item of `X-Forwarded-For` counted from the right, where N is `TRUSTED_PROXY_HOPS`. Production runs behind a global external Application Load Balancer (see [step 10](#10-the-domain)): set `TRUSTED_PROXY_HOPS=2`. On the `run.app` URL alone, leave it unset (1).
 
-- **On the first deploy, check** that the last item of `X-Forwarded-For` really is the caller's IP: Google documents the format for load balancers, but does not say how many items the front end appends without a load balancer. If the last item belongs to a Google machine, all clients share a single limit (only the global one remains); nobody can bypass the limit, but `cloudRunTrustedHops` in `ratelimit.ClientKey` has to change.
-- **If a load balancer is ever put in front**, it appends `<client-ip>,<load-balancer-ip>`, and the client IP becomes the second-to-last item: `cloudRunTrustedHops` becomes 2.
+- **Behind the load balancer (2)**, it appends `<client-ip>,<load-balancer-ip>` to the header, so the client IP is the second item from the right. With the value left at 1, every client would share the load balancer's address and one bucket.
+- **On the first deploy, check** that the item counted by `TRUSTED_PROXY_HOPS` really is the caller's IP: Google documents the format for load balancers, but does not say how many items Cloud Run's front end appends without one. If it belongs to a Google machine, all clients share a single limit (only the global one remains); nobody can bypass the limit, but `TRUSTED_PROXY_HOPS` has to change (`gcloud run services update $SERVICE --update-env-vars TRUSTED_PROXY_HOPS=<n>`, a new revision).
+- A value that is too low is safe: every client lands on a proxy's address and shares one bucket. A value that is too high is not: it reaches an item the client wrote, so a client could choose its own bucket. That is why only 1 and 2 are accepted, and why 2 goes only with the ingress closed to everything but the load balancer ([step 10](#10-the-domain)).
 - With several instances, each has its own counters.
 
 ### Abuse limits
@@ -153,7 +157,7 @@ The app has rate limits and caps on what one account creates (see [Architecture]
 - **Per-campaign caps** (50 invites that still work, 1,000 characters and NPCs) are fixed in the code (`campaigns.MaxActiveInvites`, `characters.DefaultMaxCharactersPerCampaign`), not variables: the symptom is `resource_exhausted` on `CreateInvite`, `CreateCharacter` or `CreateNpcFromCreature`, and the remedy is to revoke an invite or delete a character (see [Architecture](architecture.md#abuse-limits)).
 - **How to raise a limit on Cloud Run:** `gcloud run services update <service> --update-env-vars MAX_CAMPAIGNS_PER_USER=20` (creates a new revision; the limit variables are not secrets).
 - **One instance only.** Rate counters live in process memory. The plan is `max-instances` 1, and with it the limits are exact. With a second instance each would have its own (the effect is up to double), and exact limits would need shared storage (Redis or the database). Changing `max-instances` requires rereading this. The same goes for the sign-in limit.
-- **The client IP** is the last item of `X-Forwarded-For`, as in the [sign-in limit](#sign-in-rate-limit-and-the-client-ip); the first-deploy check covers both. If the last item belongs to a Google machine, all clients share the bucket of a single IP (100 per second in total): nobody bypasses it, but the limit stops telling one person from another, and `RATE_LIMIT_MULTIPLIER` has to go up until the check is done.
+- **The client IP** is the item of `X-Forwarded-For` that `TRUSTED_PROXY_HOPS` points at, as in the [sign-in limit](#sign-in-rate-limit-and-the-client-ip); the first-deploy check covers both. If that item belongs to a Google machine, all clients share the bucket of a single IP (100 per second in total): nobody bypasses it, but the limit stops telling one person from another, and `RATE_LIMIT_MULTIPLIER` has to go up until the check is done.
 - **A trickled upload.** An upload holds the one image-processing slot while its file arrives, with 45 s to send it (2 minutes for the rest of the request): a phone below about 2 Mbit/s sending a 10 MiB image is answered 400 ("the upload took too long") and tries again. If that happens to real users, raise `uploadSlotReadTimeout` in `maps/upload.go`; the slot is shared with the fog tiles, so the cost of raising it is that a slow upload blocks them longer.
 - **Cloud Run concurrency.** The app has no global `WriteTimeout`, so the streams are not cut: an image, a thumbnail, a tile or an app file is bounded by its own 2-minute write deadline instead (see [Slow clients](architecture.md#slow-clients)). Set `--concurrency` for the service (the number of requests one instance takes at once) to a value the instance's 512 MiB and 10 database connections carry, and keep the live streams (at most 8 per user) in mind when choosing it: a slow client that holds a request for its 2 minutes holds one of those slots.
 - **What the limits do not do.** They are not a defence against a volume attack (DDoS): for that, use Cloud Armor, or Cloud Run concurrency and `max-instances`, which the production plan must define. The app's global limit only stops the database (10 connections) from stalling because of a few sources.
@@ -514,6 +518,7 @@ Every value is from [Hosting](#hosting), [Environment variables and secrets](#en
 - `--cpu=1 --memory=512Mi`, with CPU only during a request (the default, `--cpu-throttling`): the app keeps a request open while an AI image is generated for that reason ([Generated images](#generated-images-the-gemini-api)). `GOMEMLIMIT=400MiB` ([Images](#images)).
 - `--allow-unauthenticated`: Cloud Run's own login is off because the app does its own sign-in. If an organization policy forbids it, the policy has to allow this one service.
 - `CAMPAIGN_CREATORS` holds the e-mails that may create campaigns: with the table's master only, nobody else can open a campaign. It may hold several e-mails separated by commas, which is why `--set-env-vars` starts with `^#^`: gcloud's escape that changes the separator between variables from the comma to `#`, so commas (and the `@` of an e-mail) stay inside a value. **A value must not contain `#`**, the new separator; and, because the argument is in double quotes, no `"`, backtick or backslash either. The values here are ids, e-mails, `:` and `/` URLs, so none does; if you add a variable of your own, keep that in mind. Leave `CAMPAIGN_CREATORS` empty to let any account create.
+- `TRUSTED_PROXY_HOPS` is left unset at the first deploy on the `run.app` URL (1). Step 10 sets it to 2 when the load balancer is in front.
 - `OIDC_MAX_AGE` is **not** set with Google. The limit variables show their defaults; drop the ones you do not want to pin. `LISTEN_HOST` and `PORT` are not set.
 - **`--set-secrets` must name only secrets that exist**: a missing one fails the deploy. Pick the line below that matches step 5: with `GEMINI_API_KEY` if you created `gemini-api-key`, without it otherwise. With a database CA file (see the TLS part of step 5), add `,/etc/cockroach/ca.crt=cockroach-ca:latest` to the line you picked.
 - Never set `BLOB_DIR`, `IMAGE_GENERATOR=fake` or `MAX_CAMPAIGNS_PER_USER=off`: the server refuses to start on Cloud Run with any of them.
@@ -544,36 +549,87 @@ If you used the `run.app` host in `APP_URL` and it matches, you are done with th
 
 ### 10. The domain
 
-`<domain>` is an open item (from the GitHub Student Developer Pack). **The `run.app` URL is the default for Saturday; the domain can wait.** Cloud Run domain mappings are not offered in every region. The check below is best effort (a listing that works is a good sign, not a guarantee that a mapping will be created and its certificate issued); if you have any doubt, take case B:
+The domain (`meurpg.app`) goes behind a global external Application Load Balancer with a serverless network endpoint group (NEG). Cloud Run domain mappings are not offered in `southamerica-east1`: the supported regions ([Cloud Run docs](https://cloud.google.com/run/docs/mapping-custom-domains)) are `asia-east1`, `asia-northeast1`, `asia-southeast1`, `europe-north1`, `europe-west1`, `europe-west4`, `us-central1`, `us-east1`, `us-east4` and `us-west1`, and mappings are still Preview. Firebase Hosting rewrites are no way out either: they cut a request at 60 seconds, which breaks the 30-minute stream. **The `run.app` URL keeps working until the last command below closes the ingress**, so the first deploy and the smoke test can use it, and the domain can follow.
+
+The domain is registered with Cloud Domains, with a Cloud DNS zone as its DNS. Create the zone first (`gcloud dns managed-zones create $DNS_ZONE --dns-name=$DOMAIN. --visibility=public --dnssec-state=on`), see the yearly price (`gcloud domains registrations get-register-parameters $DOMAIN`), then register it with `gcloud domains registrations register $DOMAIN --cloud-dns-zone=$DNS_ZONE --contact-data-from-file=<contacts.yaml> --contact-privacy=redacted-contact-data --yearly-price="<price> USD" --notices=hsts-preloaded` (the notice is for an HSTS-preloaded TLD such as `.app`; try it first with `--validate-only`). The contact file holds the registrant's personal data: it never enters the repository. The registry e-mails a verification link to the registrant, which must be followed.
+
+Variables first (the same terminal as the other steps). The DNS zone is the Cloud DNS zone that holds the domain:
 
 ```bash
-gcloud beta run domain-mappings list --region=$REGION
+export DOMAIN=meurpg.app
+export DNS_ZONE=<cloud dns zone name>
+export LB=meurpg-lb                          # prefix of every load balancer resource
+
+gcloud services enable compute.googleapis.com dns.googleapis.com
+
+# 1. The global static IPv4 address
+gcloud compute addresses create $LB-ip --ip-version=IPV4 --global
+
+# 2. The serverless NEG, pointing at the Cloud Run service
+gcloud compute network-endpoint-groups create $LB-neg \
+  --region=$REGION --network-endpoint-type=serverless --cloud-run-service=$SERVICE
+
+# 3. The backend service, with the NEG
+gcloud compute backend-services create $LB-backend \
+  --global --load-balancing-scheme=EXTERNAL_MANAGED
+gcloud compute backend-services add-backend $LB-backend \
+  --global --network-endpoint-group=$LB-neg --network-endpoint-group-region=$REGION
+
+# 4. The URL map
+gcloud compute url-maps create $LB-map --default-service=$LB-backend
+
+# 5. The Google-managed certificate for the domain
+gcloud compute ssl-certificates create $LB-cert --domains=$DOMAIN --global
+
+# 6. The SSL policy: TLS 1.2 or newer, modern ciphers
+gcloud compute ssl-policies create $LB-ssl-policy --profile=MODERN --min-tls-version=1.2
+
+# 7. The HTTPS proxy
+gcloud compute target-https-proxies create $LB-proxy \
+  --url-map=$LB-map --ssl-certificates=$LB-cert --ssl-policy=$LB-ssl-policy
+
+# 8. The forwarding rule, on 443
+gcloud compute forwarding-rules create $LB-https \
+  --global --load-balancing-scheme=EXTERNAL_MANAGED \
+  --address=$LB-ip --target-https-proxy=$LB-proxy --ports=443
+
+# 9. The A record
+export LB_IP=$(gcloud compute addresses describe $LB-ip --global --format='value(address)')
+gcloud dns record-sets create $DOMAIN. --zone=$DNS_ZONE --type=A --ttl=300 --rrdatas=$LB_IP
 ```
 
-If it lists mappings (or an empty table), the region offers them. If it answers an error saying that the region does not support domain mappings, it does not. The check only reads; nothing is created.
-
-**Case A, the region offers them (domain ready for Saturday):**
+The certificate is issued 15 to 60 minutes after the A record resolves to `$LB_IP`. Wait until the status is `ACTIVE`:
 
 ```bash
-export DOMAIN=<domain>
-gcloud beta run domain-mappings create --service=$SERVICE --domain=$DOMAIN --region=$REGION
-gcloud beta run domain-mappings describe --domain=$DOMAIN --region=$REGION    # the DNS records to create
+gcloud compute ssl-certificates describe $LB-cert --global --format='value(managed.status,managed.domainStatus)'
 ```
 
-Create the DNS records it shows and wait for the certificate (minutes to hours). Then, **in this order**: register `https://$DOMAIN/auth/callback` on the OAuth client (step 6), update `OIDC_REDIRECT_URL` (`gcloud run services update $SERVICE --update-env-vars OIDC_REDIRECT_URL=https://$DOMAIN/auth/callback`), and test the sign-in on the domain. Keep the `run.app` redirect registered until the domain works.
+Then, **in this order**: register `https://$DOMAIN/auth/callback` on the OAuth client (step 6; keep the `run.app` one until the domain works), then close the direct way in and point the app at the domain:
 
-**Case B, the region does not offer them (use the `run.app` URL for Saturday, the domain later).** Do nothing here. The table uses the `run.app` URL; the OAuth redirect is the one registered in step 6 with it, and `OIDC_REDIRECT_URL` is `https://<service>-<project number>.southamerica-east1.run.app/auth/callback`, as in the deploy of step 8. The domain waits for a later session: it needs another way in front of the service (a global external load balancer with a serverless network endpoint group, or a region that offers mappings), and nothing in the app needs it first.
+```bash
+gcloud run services update $SERVICE \
+  --ingress=internal-and-cloud-load-balancing \
+  --update-env-vars=TRUSTED_PROXY_HOPS=2,OIDC_REDIRECT_URL=https://$DOMAIN/auth/callback
+```
 
-What changes in each case:
+Test the sign-in on `https://$DOMAIN`, and do the check of [Sign-in rate limit and the client IP](#sign-in-rate-limit-and-the-client-ip).
 
-| | `run.app` (case B, Saturday) | Domain mapping (case A) | Domain behind a load balancer (later) |
-| --- | --- | --- | --- |
-| `OIDC_REDIRECT_URL` | `https://<run.app host>/auth/callback` | `https://<domain>/auth/callback`, registered on the OAuth client **before** the variable changes | the same, with the load balancer's domain |
-| Redirect URI on the OAuth client | the `run.app` one | add the domain's; keep the other until the domain works | the load balancer's domain |
-| `CAMPAIGN_CREATORS` | no change | no change | no change: it holds e-mails, and nothing in it depends on the host |
-| `cloudRunTrustedHops` (`ratelimit.ClientKey`) | stays **1** | stays **1** if the first-deploy check below shows the last `X-Forwarded-For` item is the caller (a mapping goes through Google's front end; **not verified**) | must become **2** (a code change and a new image), because the load balancer appends its own address |
+- **The stream fits.** A serverless NEG backend has a fixed timeout of 60 minutes (the backend service's `--timeout` does not apply to it), which covers the 30-minute stream.
+- **No HTTP to HTTPS redirect rule is needed** for a TLD on the HSTS preload list such as `.app`: browsers only use HTTPS for it. For any other domain, add a second forwarding rule on port 80 with a URL map that redirects to HTTPS.
+- **The `run.app` URL stops answering** once the ingress is closed (the `run.app` host is no longer reachable from the internet). To go back to it, run `gcloud run services update $SERVICE --ingress=all --update-env-vars=TRUSTED_PROXY_HOPS=1,OIDC_REDIRECT_URL=https://<run.app host>/auth/callback`, with that redirect registered on the OAuth client. Both variables must change together: with `--ingress=all` and `TRUSTED_PROXY_HOPS=2`, a client that reaches `run.app` directly would fall into the wrong `X-Forwarded-For` item.
+- **The load balancer costs money all month** ([Estimated costs](#estimated-costs-são-paulo)).
 
-In every case, do the check of [Sign-in rate limit and the client IP](#sign-in-rate-limit-and-the-client-ip) on the first deploy. If `cloudRunTrustedHops` is wrong, nobody bypasses the limit, but all clients share one bucket until it is fixed (`RATE_LIMIT_MULTIPLIER` can be raised meanwhile).
+What changes with the domain:
+
+| | `run.app` (first deploy) | Domain behind the load balancer |
+| --- | --- | --- |
+| `OIDC_REDIRECT_URL` | `https://<run.app host>/auth/callback` | `https://$DOMAIN/auth/callback`, registered on the OAuth client **before** the variable changes |
+| Redirect URI on the OAuth client | the `run.app` one | add the domain's; keep the other until the domain works |
+| `--ingress` | `all` (the default) | `internal-and-cloud-load-balancing` |
+| `CAMPAIGN_CREATORS` | no change | no change: it holds e-mails, and nothing in it depends on the host |
+| `TRUSTED_PROXY_HOPS` | unset (**1**) | **2** |
+
+In both cases, do the check of [Sign-in rate limit and the client IP](#sign-in-rate-limit-and-the-client-ip) on the first deploy. If `TRUSTED_PROXY_HOPS` is too low, nobody bypasses the limit, but all clients share one bucket until it is fixed (`RATE_LIMIT_MULTIPLIER` can be raised meanwhile). If it is too high (2 with the ingress open to the `run.app` URL), a client can choose its own bucket: never leave 2 with `--ingress=all`.
 
 ### 11. Smoke test
 
@@ -587,7 +643,7 @@ In order; stop at the first failure and read the logs (step 13).
 - [ ] Upload an image to the gallery (a map or a portrait), see its thumbnail, and look in `gcloud storage ls -r gs://$BUCKET/campaigns/` for its two objects (the image and `.thumb`).
 - [ ] Invite a player (a second browser or a private window, another Google account), join, and open a map the master shared: the image loads for the player, and stops loading when the master hides it.
 - [ ] Start a live session with two browsers: a change made by the master (a token move, a roll) reaches the player at once, which proves the stream and the in-memory fan-out. Leave it open for a minute: the heartbeat keeps it alive.
-- [ ] Sign-in rate limit: the first-deploy check in [Sign-in rate limit and the client IP](#sign-in-rate-limit-and-the-client-ip) (the last item of `X-Forwarded-For` is the caller's).
+- [ ] Sign-in rate limit: the first-deploy check in [Sign-in rate limit and the client IP](#sign-in-rate-limit-and-the-client-ip) (the item of `X-Forwarded-For` that `TRUSTED_PROXY_HOPS` counts is the caller's).
 - [ ] Only if `GEMINI_API_KEY` is set: generate one image in a scene; it appears in the gallery. Then the first bill shows the real cost per image ([Generated images](#generated-images-the-gemini-api)).
 - [ ] Delete the image: the two objects are gone from the bucket's listing (soft delete keeps them 7 days, out of reach of the API).
 
@@ -622,7 +678,7 @@ The log never holds a password, a token or an e-mail ([Privacy](privacy.md#logs-
 
 ## Open items before the first deploy
 
-- Domain name (comes from the GitHub Student Developer Pack). Not needed for Saturday: the `run.app` URL works, and the domain mapping may not exist in `southamerica-east1` ([step 10](#10-the-domain)).
+- The domain: `meurpg.app`, behind a global external Application Load Balancer, since Cloud Run domain mappings are not offered in `southamerica-east1` ([step 10](#10-the-domain)). The first deploy can use the `run.app` URL, and the load balancer follows.
 - Check the region and the backup retention in the CockroachDB Cloud console (São Paulo, 30 days at most).
 - Evaluate whether migrating from CockroachDB to Cloud SQL or another product is worth it, since the legacy plan cannot change without losing Unlimited. It weighs on the account: the code uses CockroachDB's row TTL (sessions, sign-in states and invites) and retries transactions on error `40001`; on PostgreSQL, the cleanup would become a scheduled job.
 - The full list of secrets per environment and who has access.

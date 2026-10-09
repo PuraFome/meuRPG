@@ -255,7 +255,7 @@ func (f modeFacts) scene(attacker, target playdb.Combatant, traits link.Traits, 
 	}
 	s := combat.AttackScene{
 		Attacker: creatureFacts(attacker, f.states, traits), Target: creatureFacts(target, f.states, link.Traits{}),
-		Ranged: ranged, StrengthMelee: shape.Weapon && shape.Melee && shape.UsesStrength, OwnTurn: ownTurn,
+		Ranged: ranged, StrengthMelee: shape.Weapon && shape.Melee && !ranged && shape.UsesStrength, OwnTurn: ownTurn,
 		DistanceKnown: known, DistanceFt: int(dist), ReachFt: reach, LongRangeFt: long,
 	}
 	s.AttackerUnseen = f.unseen(target, attacker)

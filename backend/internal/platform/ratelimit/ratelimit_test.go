@@ -122,7 +122,7 @@ func TestClientKey(t *testing.T) {
 		name       string
 		remoteAddr string
 		xff        []string
-		cloudRun   bool
+		hops       int
 		want       string
 	}{
 		{
@@ -137,37 +137,37 @@ func TestClientKey(t *testing.T) {
 			want:       "192.0.2.1",
 		},
 		{
-			name:       "on Cloud Run, the entry Google's front end appended",
+			name:       "with one hop, the entry Google's front end appended",
 			remoteAddr: "169.254.1.1:1234",
 			xff:        []string{"203.0.113.9"},
-			cloudRun:   true,
+			hops:       1,
 			want:       "203.0.113.9",
 		},
 		{
-			name:       "on Cloud Run, entries the client sent itself are ignored",
+			name:       "with one hop, entries the client sent itself are ignored",
 			remoteAddr: "169.254.1.1:1234",
 			xff:        []string{"1.1.1.1, 2.2.2.2,203.0.113.9"},
-			cloudRun:   true,
+			hops:       1,
 			want:       "203.0.113.9",
 		},
 		{
-			name:       "on Cloud Run, several header lines are one list",
+			name:       "with one hop, several header lines are one list",
 			remoteAddr: "169.254.1.1:1234",
 			xff:        []string{"1.1.1.1", "203.0.113.9"},
-			cloudRun:   true,
+			hops:       1,
 			want:       "203.0.113.9",
 		},
 		{
-			name:       "on Cloud Run, no header falls back to the connection",
+			name:       "with one hop, no header falls back to the connection",
 			remoteAddr: "169.254.1.1:1234",
-			cloudRun:   true,
+			hops:       1,
 			want:       "169.254.1.1",
 		},
 		{
-			name:       "on Cloud Run, garbage falls back to the connection",
+			name:       "with one hop, garbage falls back to the connection",
 			remoteAddr: "169.254.1.1:1234",
 			xff:        []string{"1.1.1.1, not-an-ip"},
-			cloudRun:   true,
+			hops:       1,
 			want:       "169.254.1.1",
 		},
 		{
@@ -176,11 +176,45 @@ func TestClientKey(t *testing.T) {
 			want:       "2001:db8:1:2::/64",
 		},
 		{
-			name:       "IPv6 on Cloud Run too",
+			name:       "IPv6 with one hop too",
 			remoteAddr: "169.254.1.1:1234",
 			xff:        []string{"2001:db8:1:2::99"},
-			cloudRun:   true,
+			hops:       1,
 			want:       "2001:db8:1:2::/64",
+		},
+		{
+			name:       "two hops, the second entry from the right is the client",
+			remoteAddr: "169.254.1.1:1234",
+			xff:        []string{"203.0.113.9,198.51.100.7"},
+			hops:       2,
+			want:       "203.0.113.9",
+		},
+		{
+			name:       "two hops, spoofed leading entries are ignored",
+			remoteAddr: "169.254.1.1:1234",
+			xff:        []string{"1.1.1.1, 2.2.2.2, 203.0.113.9, 198.51.100.7"},
+			hops:       2,
+			want:       "203.0.113.9",
+		},
+		{
+			name:       "two hops, a header shorter than the hops falls back to the connection",
+			remoteAddr: "169.254.1.1:1234",
+			xff:        []string{"203.0.113.9"},
+			hops:       2,
+			want:       "169.254.1.1",
+		},
+		{
+			name:       "two hops, IPv6 clients are grouped by /64",
+			remoteAddr: "169.254.1.1:1234",
+			xff:        []string{"2001:db8:1:2::99, 198.51.100.7"},
+			hops:       2,
+			want:       "2001:db8:1:2::/64",
+		},
+		{
+			name:       "zero hops ignores a long header",
+			remoteAddr: "192.0.2.1:54321",
+			xff:        []string{"1.1.1.1, 203.0.113.9"},
+			want:       "192.0.2.1",
 		},
 		{
 			name:       "IPv4-mapped IPv6 is IPv4",
@@ -201,7 +235,7 @@ func TestClientKey(t *testing.T) {
 			for _, v := range tt.xff {
 				r.Header.Add("X-Forwarded-For", v)
 			}
-			if got := ClientKey(r, tt.cloudRun); got != tt.want {
+			if got := ClientKey(r, tt.hops); got != tt.want {
 				t.Errorf("ClientKey() = %q, want %q", got, tt.want)
 			}
 		})

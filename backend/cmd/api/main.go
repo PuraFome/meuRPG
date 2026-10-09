@@ -164,6 +164,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	if err != nil {
 		return fmt.Errorf("load the rules content: %w", err)
 	}
+	logger.Info("client ip source", "trusted_proxy_hops", cfg.TrustedProxyHops)
 	logger.Info("rules content loaded", "content_version", rulesContent.Version())
 
 	// database stays a nil interface when DATABASE_URL is empty. It must not
@@ -259,7 +260,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			MaxCampaignsPerUser: cfg.Limits.MaxCampaignsPerUser,
 			CampaignCreators:    cfg.Limits.CampaignCreators,
 			Policy:              policy,
-			BehindCloudRun:      cfg.CloudRun,
+			TrustedProxyHops:    cfg.TrustedProxyHops,
 		})
 		if err != nil {
 			return err
@@ -270,9 +271,9 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			Logger: logger,
 			// Zero (SESSION_IDLE_TIMEOUT unset) means the 14-day default.
 			SessionIdleTimeout: cfg.SessionIdleTimeout,
-			// On Cloud Run the sign-in rate limit reads the client IP from
-			// X-Forwarded-For; anywhere else, from the connection.
-			BehindCloudRun: cfg.CloudRun,
+			// Behind Cloud Run the sign-in rate limit reads the client IP
+			// from X-Forwarded-For; anywhere else, from the connection.
+			TrustedProxyHops: cfg.TrustedProxyHops,
 			// What a user may ask to finish right after signing in
 			// (POST /auth/login): today, accepting a campaign invite.
 			Intents: map[string]identity.IntentHandler{
@@ -296,7 +297,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// Set on Cloud Run only: the log lines then carry the request's trace.
 		TraceProject: cfg.TraceProject,
 		// The per-IP limit on every API request, before a session is looked up.
-		Limit: ratelimit.Middleware(policy.IP, cfg.CloudRun, ratelimit.NewNotifier(logger, "api requests by ip")),
+		Limit: ratelimit.Middleware(policy.IP, cfg.TrustedProxyHops, ratelimit.NewNotifier(logger, "api requests by ip")),
 	})
 
 	connectOpts := connectOptions(logger)
@@ -425,9 +426,9 @@ type wireOptions struct {
 	// Policy holds the limiters some modules apply themselves (the image
 	// routes' per-user limits); the zero value limits nothing.
 	Policy ratelimit.Policy
-	// BehindCloudRun says where the client's address is: the claim links' limit
-	// per address reads it.
-	BehindCloudRun bool
+	// TrustedProxyHops says where the client's address is (see
+	// ratelimit.ClientKey): the claim links' limit per address reads it.
+	TrustedProxyHops int
 }
 
 // wireModules builds the five modules that need each other, connects them in
@@ -477,7 +478,7 @@ func wireModules(
 		Dice:    levelUpDice{campaignsService}, // how a player rolls the hit die of a level-up (RN-18)
 		Logger:  logger,
 		// The claim links' limit per address (MR-049).
-		BehindCloudRun: opts.BehindCloudRun,
+		TrustedProxyHops: opts.TrustedProxyHops,
 	})
 	if err != nil {
 		return nil, err

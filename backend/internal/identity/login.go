@@ -170,7 +170,7 @@ func parseLoginForm(w http.ResponseWriter, r *http.Request, readTimeout time.Dur
 // so a refused request costs nothing. The client IP is not logged
 // (docs/privacy.md); the request log line already shows the 429.
 func (s *Service) allowLogin(w http.ResponseWriter, r *http.Request) bool {
-	ok, wait := s.loginLimiter.Allow(ratelimit.ClientKey(r, s.behindCloudRun))
+	ok, wait := s.loginLimiter.Allow(ratelimit.ClientKey(r, s.trustedProxyHops))
 	if !ok {
 		// Retry-After is in whole seconds (RFC 9110, section 10.2.3).
 		w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(wait.Seconds())))))

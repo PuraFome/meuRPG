@@ -1741,6 +1741,9 @@ enum EncounterBlockedReason {
   // TakeAction (Reckless Attack): it is declared with the first attack of the turn,
   // and an attack was made.
   ENCOUNTER_BLOCKED_REASON_RECKLESS_TOO_LATE = 83;
+  // StartEncounter: a participant is a reserved character (imported, not claimed by a
+  // player yet), which cannot fight until someone owns it.
+  ENCOUNTER_BLOCKED_REASON_CHARACTER_RESERVED = 84;
   // The combatant cannot act now because of an effect or a condition (RN-22): it is
   // incapacitated (Paralisado, Atordoado, Inconsciente, Petrificado, Incapacitado) or the
   // lethargy of a Velocidade holds it. The message never names the cause to a player.

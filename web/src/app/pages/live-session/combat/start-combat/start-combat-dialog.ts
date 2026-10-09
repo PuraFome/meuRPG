@@ -84,6 +84,9 @@ export interface StartCombatData {
   readonly saved?: SavedStart;
 }
 
+/** Why a reserved character (imported, not claimed by a player yet) has no checkbox: the server refuses it at the start. */
+export const RESERVED_WHY = 'Reservado: ainda sem jogador';
+
 /** The server's limit (combat.proto): 40 combatants in a combat. */
 const MAX_COMBATANTS = 40;
 
@@ -200,6 +203,9 @@ export class StartCombatDialog {
   protected readonly players = computed(() =>
     this.entries().filter((e) => e.kind === CharacterKind.PLAYER),
   );
+  protected readonly RESERVED_WHY = RESERVED_WHY;
+  /** The party members that can fight: a reserved character cannot. */
+  protected readonly fighters = computed(() => this.players().filter((p) => !p.reserved));
   protected readonly npcs = computed(() =>
     this.entries().filter((e) => e.kind !== CharacterKind.PLAYER),
   );
@@ -310,7 +316,9 @@ export class StartCombatDialog {
       );
       this.entries.set(entries);
       this.included.set(
-        new Set(entries.filter((e) => e.kind === CharacterKind.PLAYER).map((e) => e.id)),
+        new Set(
+          entries.filter((e) => e.kind === CharacterKind.PLAYER && !e.reserved).map((e) => e.id),
+        ),
       );
       this.state.set('ready');
     } catch {
@@ -380,7 +388,7 @@ export class StartCombatDialog {
       ...(this.adding
         ? []
         : this.players()
-            .filter((p) => this.included().has(p.id))
+            .filter((p) => this.included().has(p.id) && !p.reserved)
             .map((p) => ({ characterId: p.id }))),
       ...this.npcs()
         .filter((n) => (this.counts().get(n.id) ?? 0) > 0)

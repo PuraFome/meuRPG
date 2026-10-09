@@ -588,6 +588,14 @@ export class AttackSheet {
         this.body()?.nativeElement.scrollTo({ top: 0 });
       }
     });
+    // A hit whose damage waits for the target's reaction (Escudo, answered by the master): the sheet follows the server
+    // when the combat changes, so the hit turns into the miss, or into the damage to roll, instead of waiting for good.
+    effect(() => {
+      this.data.state.encounter();
+      if (this.waiting()) {
+        untracked(() => void this.followReaction());
+      }
+    });
     // A roll a reaction window held (Palavras de Interrupção) and a Bardic Inspiration die the attacker holds: once the window
     // is answered the d20 is kept for the question, and the sheet that waited for the window shows it.
     effect(() => {
@@ -603,6 +611,40 @@ export class AttackSheet {
         });
       }
     });
+  }
+
+  /** Reads the attacker's pending damages again: the hit that waited for a reaction is now a damage to roll, or gone
+   * (the reaction stopped it: a miss). The player learns only that: never the armor class or the NPC's numbers (RN-10). */
+  private async followReaction(): Promise<void> {
+    const waiting = this.pending();
+    if (!waiting) {
+      return;
+    }
+    try {
+      const res = await this.api.turnOptions(
+        this.data.campaignId,
+        this.data.encounterId,
+        this.data.attackerId,
+      );
+      const now = res.pendingDamages.find((p) => p.id === waiting.id);
+      if (this.pending()?.id !== waiting.id || awaitsReaction(now)) {
+        return;
+      }
+      if (now) {
+        this.pending.set(now);
+        this.stage.set(stageAfterRoll(this.roll()?.outcome ?? AttackOutcome.HIT, now));
+        return;
+      }
+      const r = this.roll();
+      if (r) {
+        // A protobuf-es message is a plain object: the same roll, now a miss.
+        this.roll.set({ ...r, outcome: AttackOutcome.MISS });
+      }
+      this.pending.set(null);
+      this.stage.set('done');
+    } catch {
+      // The sheet keeps what it shows; the next change of the combat asks again.
+    }
   }
 
   private signedBonus(): string {

@@ -135,7 +135,7 @@ func newClaimLimits() claimLimits {
 // error to answer with.
 func (s *Service) allowClaim(userID string, peer string, header http.Header) error {
 	r := &http.Request{RemoteAddr: peer, Header: header}
-	if ok, wait := s.claims.ip.Allow(ratelimit.ClientKey(r, s.behindCloudRun)); !ok {
+	if ok, wait := s.claims.ip.Allow(ratelimit.ClientKey(r, s.trustedProxyHops)); !ok {
 		return ratelimit.RPCError(wait)
 	}
 	if ok, wait := s.claims.user.Allow(userID); !ok {
