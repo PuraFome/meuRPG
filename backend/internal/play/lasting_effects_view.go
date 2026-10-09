@@ -185,8 +185,14 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 	f := g.first()
 	key := deref(f.SourceKey)
 	def, _ := ev.s.effectDef(ev.content, key)
+	// The casting's id is the master's: for an effect that came from a cast outside a combat it is
+	// that cast's id (RN-10).
+	group := f.ID
+	if ev.v.master {
+		group = deref(f.GroupID)
+	}
 	out := &playv1.LastingEffect{
-		Id: f.ID, GroupId: deref(f.GroupID), EncounterId: f.EncounterID, SourceKey: key, SourceNamePt: ev.names(key),
+		Id: f.ID, GroupId: group, EncounterId: f.EncounterID, SourceKey: key, SourceNamePt: ev.names(key),
 		Concentration: f.Concentration, ConditionKeys: f.ConditionKeys,
 	}
 	switch deref(f.SourceKind) {
