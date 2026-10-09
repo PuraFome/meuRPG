@@ -54,10 +54,7 @@ import {
 } from './puzzles-support';
 import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
-import { brisa, brisaSheet } from './combat-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
-});
-
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { archiveEntryRPC, createEntryRPC, entryRoute, raceBody, spellBody, updateEntryRPC } from './content-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
