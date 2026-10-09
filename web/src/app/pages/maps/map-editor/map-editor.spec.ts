@@ -107,6 +107,7 @@ describe('MapEditor', () => {
     inputs: { combatRunning?: boolean; sessionNumber?: number | null } = {},
     layers: { wall?: Uint8Array; doors?: Uint8Array } = {},
     dungeonRooms: GetDungeonRoomsResponse | null = null,
+    people: typeof roster = roster,
   ) {
     api = new FakeMapsClient();
     // An ordinary map: the generator did not make it, so `GetDungeonRooms` is `not_found` and the editor shows nothing of a dungeon.
@@ -138,7 +139,7 @@ describe('MapEditor', () => {
       providers: [
         { provide: MapsClient, useValue: api },
         { provide: DungeonsClient, useValue: dungeons },
-        { provide: RosterClient, useValue: { list: () => Promise.resolve(roster) } },
+        { provide: RosterClient, useValue: { list: () => Promise.resolve(people) } },
         {
           provide: LightPresets,
           useValue: {
@@ -1222,6 +1223,20 @@ describe('MapEditor', () => {
       await settle();
       expect(el.querySelector('app-editor-bar')).not.toBeNull();
       expect(text()).not.toContain('Você está vendo o mapa como');
+    });
+
+    it('says why it is missing when the fog is on and no character has a player yet', async () => {
+      await setup({ gridColumns: 24, gridRows: 16, fogEnabled: true }, {}, {}, null, []);
+      expect(text()).not.toContain('Você está vendo');
+      expect(el.querySelector('app-view-as-list')).toBeNull();
+      expect(text()).toContain(
+        '“Ver como” aparece quando um jogador tiver um personagem nesta campanha.',
+      );
+    });
+
+    it('says nothing about it without the fog', async () => {
+      await setup({ gridColumns: 24, gridRows: 16, fogEnabled: false }, {}, {}, null, []);
+      expect(text()).not.toContain('aparece quando um jogador');
     });
 
     it('is not offered without the fog', async () => {

@@ -342,6 +342,30 @@ test('as telas de quem não entrou passam no axe, nos dois temas', { tag: '@a11y
   }
 });
 
+// docs/design.md#legal-pages and #footer: the two legal pages and the footer under them, signed out, in both
+// themes at desktop and phone widths. The contents list is open beside the text on a desktop and closed on a phone.
+test('os termos, a privacidade e o rodapé passam no axe nos dois temas, no desktop e no celular', { tag: ['@a11y', '@legal'] }, async ({ browser }) => {
+  for (const [scheme, width] of [['light', 1280], ['dark', 1280], ['light', 390], ['dark', 390]] as const) {
+    const context = await browser.newContext({ colorScheme: scheme, viewport: { width, height: 900 } });
+    try {
+      const page = await context.newPage();
+      for (const [screen, route] of [
+        ['Termos de uso', '/terms'],
+        ['Política de privacidade', '/privacy'],
+        ['Início', '/'],
+      ]) {
+        await open(page, route);
+        const footer = page.getByRole('navigation', { name: 'Rodapé' });
+        await expect(footer.getByRole('link')).toHaveCount(3);
+        await footer.scrollIntoViewIfNeeded();
+        await expectScreenPasses(page, `${screen} com rodapé (${scheme}, ${width}px)`);
+      }
+    } finally {
+      await context.close();
+    }
+  }
+});
+
 // docs/design.md#cor: every control that takes focus shows the same 2px
 // ring. Material's buttons remove their outline in their own styles, so
 // this checks them explicitly (axe does not check that a focus ring shows).
