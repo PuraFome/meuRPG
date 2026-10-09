@@ -786,7 +786,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions
+       v.familiar_sight_conditions, v.exhaustion_level
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -817,6 +817,7 @@ type GetVitalsRow struct {
 	FamiliarSightCreatureID *string
 	FamiliarSightInCombat   *bool
 	FamiliarSightConditions []string
+	ExhaustionLevel         *int32
 }
 
 // ListVitals for one character. No row means the character is not a
@@ -842,6 +843,7 @@ func (q *Queries) GetVitals(ctx context.Context, arg GetVitalsParams) (GetVitals
 		&i.FamiliarSightCreatureID,
 		&i.FamiliarSightInCombat,
 		&i.FamiliarSightConditions,
+		&i.ExhaustionLevel,
 	)
 	return i, err
 }
@@ -2156,7 +2158,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions
+       v.familiar_sight_conditions, v.exhaustion_level
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -2183,6 +2185,7 @@ type ListVitalsRow struct {
 	FamiliarSightCreatureID *string
 	FamiliarSightInCombat   *bool
 	FamiliarSightConditions []string
+	ExhaustionLevel         *int32
 }
 
 // The vitals of the campaign's living, active player characters (RN-02),
@@ -2217,6 +2220,7 @@ func (q *Queries) ListVitals(ctx context.Context, campaignID string) ([]ListVita
 			&i.FamiliarSightCreatureID,
 			&i.FamiliarSightInCombat,
 			&i.FamiliarSightConditions,
+			&i.ExhaustionLevel,
 		); err != nil {
 			return nil, err
 		}
@@ -2535,6 +2539,46 @@ func (q *Queries) SetStoryEditing(ctx context.Context, arg SetStoryEditingParams
 		&i.CreateKey,
 		&i.CreateHash,
 	)
+	return i, err
+}
+
+const setVitalsExhaustion = `-- name: SetVitalsExhaustion :one
+INSERT INTO character_vitals
+    (character_id, hit_points_current, exhaustion_level, revision, updated_at)
+VALUES ($1, $2, $3, 1, $4)
+ON CONFLICT (character_id) DO UPDATE SET
+    hit_points_current = COALESCE(excluded.hit_points_current, character_vitals.hit_points_current),
+    exhaustion_level = excluded.exhaustion_level,
+    revision = character_vitals.revision + 1,
+    updated_at = excluded.updated_at
+RETURNING revision, updated_at
+`
+
+type SetVitalsExhaustionParams struct {
+	CharacterID      string
+	HitPointsCurrent *int32
+	ExhaustionLevel  int32
+	Now              time.Time
+}
+
+type SetVitalsExhaustionRow struct {
+	Revision  int32
+	UpdatedAt time.Time
+}
+
+// Sets a character's level of exhaustion (SRD, Conditions: Exhaustion) and, when
+// the new hit point maximum cut the hit points, the hit points: the first call
+// creates the row, as UpsertVitals does. A NULL hit_points_current stays "never
+// set" (full), so only a cut writes it.
+func (q *Queries) SetVitalsExhaustion(ctx context.Context, arg SetVitalsExhaustionParams) (SetVitalsExhaustionRow, error) {
+	row := q.db.QueryRow(ctx, setVitalsExhaustion,
+		arg.CharacterID,
+		arg.HitPointsCurrent,
+		arg.ExhaustionLevel,
+		arg.Now,
+	)
+	var i SetVitalsExhaustionRow
+	err := row.Scan(&i.Revision, &i.UpdatedAt)
 	return i, err
 }
 

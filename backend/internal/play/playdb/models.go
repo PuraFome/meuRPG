@@ -17,6 +17,57 @@ type BattleEncounter struct {
 	UpdatedAt  time.Time
 }
 
+type CombatEffect struct {
+	ID                 string
+	EncounterID        string
+	GroupID            string
+	SourceKind         string
+	SourceKey          string
+	CasterID           *string
+	Concentration      bool
+	ConditionKeys      []string
+	Modifiers          []byte
+	DurationKind       string
+	StartedRound       int32
+	EndsRound          *int32
+	EndsCombatantID    *string
+	EndsPhase          *string
+	EndSaveAbility     *string
+	StartSaveAbility   *string
+	SaveDc             *int32
+	OnFailEffect       *string
+	TriggerDice        *string
+	TriggerDamageType  *string
+	TriggerMaxTriggers *int32
+	PlayerVisible      bool
+	Audience           string
+	PlayerLabel        *string
+	CreatedAt          time.Time
+}
+
+type CombatEffectSafe struct {
+	ID           string
+	EncounterID  string
+	EffectID     *string
+	CombatantID  string
+	Phase        string
+	Round        int32
+	State        string
+	ClosedReason *string
+	D20          *int32
+	Bonus        *int32
+	Total        *int32
+	Saved        *bool
+	CreatedAt    time.Time
+	AnsweredAt   *time.Time
+}
+
+type CombatEffectTarget struct {
+	EffectID      string
+	CombatantID   string
+	TriggersFired int32
+}
+
 type Combatant struct {
 	ID                 string
 	EncounterID        string
@@ -71,6 +122,13 @@ type Combatant struct {
 	BonusSpellCast     bool
 	ActionAttackKey    *string
 	BonusAttacksLeft   int32
+	EffectConditions   []string
+	EffectAcBonus      int32
+	EffectSpeedPct     int32
+	EffectNoAction     bool
+	EffectNoMove       bool
+	ExhaustionLevel    int32
+	HpMaxBase          *int32
 }
 
 type Encounter struct {
@@ -147,6 +205,7 @@ type PendingDamage struct {
 	CriticalMax      int32
 	CriticalMaxRule  bool
 	Taken            *int32
+	EffectSourceKey  *string
 }
 
 type Puzzle struct {

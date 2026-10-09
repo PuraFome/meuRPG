@@ -15,6 +15,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // Vitals (RN-02): a player character's current and temporary hit points,
@@ -119,12 +120,16 @@ func (s *Service) liveFamiliar(ctx context.Context, q *charactersdb.Queries, cam
 // value to its maximum: a sheet that lost a level, or a class, never shows
 // more than it has now.
 func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
+	// A level of exhaustion from 4 on halves the maximum (SRD, Conditions).
+	level := min(max(derefInt(row.ExhaustionLevel), 0), combat.MaxExhaustion)
+	maxHP := i32(combat.ExhaustedMaxHP(m.hitPoints, int(level)))
 	v := &playv1.CharacterVitals{
 		CharacterId:        row.ID,
 		Name:               row.Name,
 		PlayerUserId:       deref(row.PlayerUserID),
-		HitPointsCurrent:   i32(m.hitPoints), // fresh: full hit points
-		HitPointsMax:       i32(m.hitPoints),
+		HitPointsCurrent:   maxHP, // fresh: full hit points
+		HitPointsMax:       maxHP,
+		ExhaustionLevel:    level,
 		HitPointsTemporary: derefInt(row.HitPointsTemporary),
 		HitDiceTotal:       i32(m.hitDiceTotal),
 		HitDiceUsed:        min(derefInt(row.HitDiceUsed), i32(m.hitDiceTotal)),
@@ -349,6 +354,61 @@ func (s *Service) AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, chara
 			return nil, nil, wrap("save the wild shape", err)
 		}
 	}
+	after.Revision = saved.Revision
+	after.UpdatedAt = timestamppb.New(saved.UpdatedAt)
+	return before, after, nil
+}
+
+// SetExhaustion sets a character's level of exhaustion inside tx and returns the
+// vitals before and after (SRD, Conditions: Exhaustion). From level 4 the hit
+// point maximum is halved and the current hit points are cut to the new maximum;
+// going back down gives the maximum back and never heals, so the cut stays stored.
+// `not_found` for anything but a living, active player character of the campaign;
+// `invalid_argument` for a level outside 0 to 6. Package play calls it from
+// SetExhaustion and LowerExhaustion, in the transaction that writes the event.
+func (s *Service) SetExhaustion(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level int32) (before, after *playv1.CharacterVitals, err error) {
+	id, ok := parseUUID(characterID)
+	if !ok {
+		return nil, nil, errCharacterNotFound()
+	}
+	if level < 0 || level > combat.MaxExhaustion {
+		return nil, nil, invalidArgument(errors.New("level must be 0 to 6"))
+	}
+	q := s.queries.WithTx(tx)
+	row, err := q.GetVitals(ctx, charactersdb.GetVitalsParams{CampaignID: campaignID, ID: id})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil, errCharacterNotFound()
+	}
+	if err != nil {
+		return nil, nil, wrap("get vitals", err)
+	}
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, nil, wrap("read rules content", err)
+	}
+	m, err := maxima(content, row.ID, row.Sheet, row.WildShapeBeast)
+	if err != nil {
+		return nil, nil, err
+	}
+	current := vitalsRow(row)
+	before = vitalsToProto(current, m)
+	// The hit points the new maximum leaves: a cut when it fell below them. A
+	// character whose hit points were never set is full: the cut stores what full
+	// is under the new maximum, so lowering the level later does not heal.
+	newMax := i32(combat.ExhaustedMaxHP(m.hitPoints, int(level)))
+	var hitPoints *int32
+	if kept := min(before.GetHitPointsCurrent(), newMax); kept < before.GetHitPointsCurrent() || (row.HitPointsCurrent == nil && newMax < i32(m.hitPoints)) {
+		hitPoints = &kept
+	}
+	saved, err := q.SetVitalsExhaustion(ctx, charactersdb.SetVitalsExhaustionParams{CharacterID: row.ID, HitPointsCurrent: hitPoints, ExhaustionLevel: level, Now: s.now()})
+	if err != nil {
+		return nil, nil, wrap("save the exhaustion", err)
+	}
+	current.ExhaustionLevel = &level
+	if hitPoints != nil {
+		current.HitPointsCurrent = hitPoints
+	}
+	after = vitalsToProto(current, m)
 	after.Revision = saved.Revision
 	after.UpdatedAt = timestamppb.New(saved.UpdatedAt)
 	return before, after, nil

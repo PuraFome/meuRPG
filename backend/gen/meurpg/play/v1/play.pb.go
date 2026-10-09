@@ -1599,8 +1599,12 @@ type CharacterVitals struct {
 	// familiar's eyes (MR-036); unset otherwise. While it is set the character
 	// counts as blind and deaf.
 	FamiliarSight *FamiliarSightState `protobuf:"bytes,16,opt,name=familiar_sight,json=familiarSight,proto3" json:"familiar_sight,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The level of exhaustion, 0 to 6 (SRD 5.1, Conditions): the master sets it
+	// (CombatEffectService.SetExhaustion) and a long rest with food takes one off.
+	// From level 4 on, `hit_points_max` is already half of the sheet's.
+	ExhaustionLevel int32 `protobuf:"varint,100,opt,name=exhaustion_level,json=exhaustionLevel,proto3" json:"exhaustion_level,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *CharacterVitals) Reset() {
@@ -1743,6 +1747,13 @@ func (x *CharacterVitals) GetFamiliarSight() *FamiliarSightState {
 		return x.FamiliarSight
 	}
 	return nil
+}
+
+func (x *CharacterVitals) GetExhaustionLevel() int32 {
+	if x != nil {
+		return x.ExhaustionLevel
+	}
+	return 0
 }
 
 // WildShapeState is a druid's Wild Shape form (MR-037). Like the character's
@@ -4578,7 +4589,7 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x05width\x18\x03 \x01(\x05R\x05width\x12\x16\n" +
 	"\x06height\x18\x04 \x01(\x05R\x06height\x12\x10\n" +
 	"\x03url\x18\x05 \x01(\tR\x03url\x12#\n" +
-	"\rthumbnail_url\x18\x06 \x01(\tR\fthumbnailUrl\"\x90\x06\n" +
+	"\rthumbnail_url\x18\x06 \x01(\tR\fthumbnailUrl\"\xbb\x06\n" +
 	"\x0fCharacterVitals\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12$\n" +
@@ -4600,7 +4611,8 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\tresources\x18\x0e \x03(\v2\x1d.meurpg.play.v1.ResourceUsageR\tresources\x12=\n" +
 	"\n" +
 	"wild_shape\x18\x0f \x01(\v2\x1e.meurpg.play.v1.WildShapeStateR\twildShape\x12I\n" +
-	"\x0efamiliar_sight\x18\x10 \x01(\v2\".meurpg.play.v1.FamiliarSightStateR\rfamiliarSight\"\xa5\x01\n" +
+	"\x0efamiliar_sight\x18\x10 \x01(\v2\".meurpg.play.v1.FamiliarSightStateR\rfamiliarSight\x12)\n" +
+	"\x10exhaustion_level\x18d \x01(\x05R\x0fexhaustionLevel\"\xa5\x01\n" +
 	"\x0eWildShapeState\x12\x1b\n" +
 	"\tbeast_key\x18\x01 \x01(\tR\bbeastKey\x12\"\n" +
 	"\rbeast_name_pt\x18\x02 \x01(\tR\vbeastNamePt\x12,\n" +

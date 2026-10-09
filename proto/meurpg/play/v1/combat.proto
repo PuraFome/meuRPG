@@ -11,6 +11,7 @@ syntax = "proto3";
 package meurpg.play.v1;
 
 import "google/protobuf/timestamp.proto";
+import "meurpg/play/v1/combat_effects.proto";
 import "meurpg/rules/v1/rules.proto";
 
 // CombatService runs a combat (an "encounter") inside the campaign's open
@@ -1600,6 +1601,13 @@ message Encounter {
   // it never changes, so a screen can trust it for the whole combat. Never
   // UNSPECIFIED.
   EncounterMode mode = 19;
+  // The saving throws an effect asks at a turn that wait for an answer (window kind
+  // EFFECT_SAVE, RN-22): the end of a turn is not over until they are answered. The
+  // master all; a player the ones of their own character (to roll) and, for a
+  // combatant they see and an effect they may read, the wait ("Esperando o teste de
+  // Brisa"); for an NPC or an effect the master hides, a window with only
+  // `waiting_pt` "Esperando o mestre" and nothing else of the effect.
+  repeated EffectSaveWindow effect_save_windows = 100;
 }
 
 // OpportunityOffer is the attack a combatant may make on an enemy that left its
@@ -1864,6 +1872,16 @@ message Combatant {
   // ("1/8"), for the stat block and "ND 1/8". A player never gets them (RN-20).
   string bestiary_creature_key = 65;
   string challenge_rating = 66;
+  // The effects the caller reads on this combatant, as cards: the master all of
+  // them; the player of the combatant the ones they may read, never the DC of an
+  // NPC's effect; the others nothing (see `effect_labels`).
+  repeated CombatEffect effects = 100;
+  // The labels the caller reads for the effects on this combatant, for the order and
+  // the map: "Paralisado", "Preso numa teia", or the master's free label. A player
+  // reads only the ones the master leaves visible; the master reads all.
+  repeated EffectLabel effect_labels = 101;
+  // The level of exhaustion, 0 to 6. The master and the owner read it; the others 0.
+  int32 exhaustion_level = 102;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -2298,6 +2316,10 @@ message DiceRoll {
   int32 total = 5;
   // True when the player rolled real dice and typed the sum (RN-18).
   bool physical = 6;
+  // The dice an effect added to (sign 1) or took from (sign -1) the roll: Bênção
+  // and Perdição's d4 on attack rolls and saving throws. `total` already has them.
+  // For a player on a source the master hides, `source_name_pt` is "Outra fonte".
+  repeated ExtraDie extra_dice = 100;
 }
 
 // CriticalDamageRule is what a critical hit does to the damage dice: the table's
@@ -2419,6 +2441,9 @@ message PendingDamage {
   // `bonus`, apart). 0 under any other rule. It is part of `roll.modifier` once
   // the damage is rolled, so `dice (faces) + modifier = total` still holds.
   int32 critical_max = 24;
+  // The damage an effect dealt to who started the turn under it (the web that
+  // burns): the effect's Portuguese name ("Teia em chamas"). It has no attacker.
+  string effect_source_name_pt = 100;
 }
 
 // GetTurnOptionsRequest names a combatant.
@@ -2450,6 +2475,12 @@ message GetTurnOptionsResponse {
   // combatant's attacks and spells will do to the damage dice, so the screen can
   // say it before the roll. DOUBLED_DICE or MAX_PLUS_ROLL, never UNSPECIFIED.
   CriticalDamageRule critical_rule = 6;
+  // What the effects on the combatant take away this turn, in words the caller may
+  // read ("Você está Paralisada. Não age nem se move neste turno."); empty when
+  // nothing does.
+  repeated EffectNote effect_notes = 100;
+  // The extra action an effect gives (Velocidade); unset when there is none.
+  ExtraActionOption extra_action = 101;
 }
 
 // SpellTargets lists the targets one spell can choose.
@@ -2558,6 +2589,14 @@ message RollAttackRequest {
   // is `failed_precondition` (REACTION_USED). The cover is measured with the
   // mover on the square it left the reach at, not where it stands now.
   string opportunity_offer_id = 10;
+  // The faces of the dice an effect adds to the roll (Bênção, Perdição), in the order
+  // of the effects, when the player rolls physical dice (`d20_face`): one for each,
+  // 1 to the die's faces. With the app's dice the server rolls them.
+  repeated int32 extra_die_faces = 100;
+  // True: the attack is the weapon attack of the extra action an effect gives
+  // (Velocidade): it spends that action, not the Attack action, and it is one weapon
+  // attack.
+  bool use_extra_action = 101;
 }
 
 // AttackRoll is the attack roll and what it did.
@@ -2669,6 +2708,9 @@ message TakeActionRequest {
     // of Retomar o fôlego.
     int32 typed_sum = 7;
   }
+  // True: the action is the extra action an effect gives (Velocidade): Disparada,
+  // Desengajar, Esconder or Usar um objeto spend that action instead of the Action.
+  bool use_extra_action = 100;
 }
 
 // TakeActionResponse returns the combat after the action.
@@ -2822,6 +2864,11 @@ message SaveResult {
   bool bonus_known = 3;
   // The spell's save DC. Only the master and the caster's player.
   int32 dc = 4;
+  // The target failed by itself, with no d20: a Strength or Dexterity saving throw
+  // of a Paralisado, Atordoado, Inconsciente or Petrificado creature (SRD,
+  // Conditions). `roll` is unset then. The cause is read only by who may read the
+  // condition.
+  bool auto_fail = 100;
 }
 
 // SpellTargetResult is what a cast did to one target.
@@ -2850,6 +2897,13 @@ message SpellTargetResult {
   // deals more than one damage type (Tempestade de Gelo: pancada and frio), in the
   // spell's order after `pending_damage_id`. Same rules as `pending_damage_id`.
   repeated string more_pending_damage_ids = 10;
+  // A spell that leaves an effect that lasts (Bênção, Perdição, Imobilizar Pessoa,
+  // Velocidade, Teia): whether it took hold on this target. Unspecified for the
+  // other spells.
+  LastingEffectOutcome lasting_effect = 100;
+  // Only the master: why a spell had no effect ("alvo não é humanoide"). The player
+  // reads only "A magia não teve efeito." (RN-20).
+  string no_effect_reason_master = 101;
 }
 
 // SpellEffectKind is how a spell that reads hit points works. The same four kinds
@@ -3236,6 +3290,13 @@ enum CombatLogKind {
   // (2d8 + 2: 3, 4)"). Only the master gets the line, and it also comes from
   // before the combat begins (round 0).
   COMBAT_LOG_KIND_MONSTERS_ADDED = 24;
+  // An effect that lasts began, changed or ended, a saving throw of an effect was
+  // rolled, or an effect dealt damage (RN-22): `effect`. An effect the master hides
+  // from the players is a line for the master alone, and no count of them reaches a
+  // player.
+  COMBAT_LOG_KIND_EFFECT = 100;
+  // The level of exhaustion of a combatant changed (`effect.exhaustion_level`).
+  COMBAT_LOG_KIND_EXHAUSTION = 101;
 }
 
 // WildShapeEndReason says why a druid's beast form ended.
@@ -3349,6 +3410,46 @@ message CombatLogEntry {
   CombatLogDoor door = 42;
   // MONSTERS_ADDED: the new monsters, in the order of their names.
   repeated CombatLogMonster monsters = 43;
+  // EFFECT and EXHAUSTION: what happened.
+  CombatLogEffect effect = 100;
+}
+
+// CombatLogEffect is what an EFFECT or EXHAUSTION line says.
+message CombatLogEffect {
+  // The effect's key and Portuguese name ("spell:hold-person", "Imobilizar Pessoa").
+  string source_key = 1;
+  string source_name_pt = 2;
+  // What happened.
+  CombatLogEffectChange change = 3;
+  // The combatants it concerns, by label ("Brisa", "Goblin 2").
+  repeated string target_labels = 4;
+  // SAVED and SAVE_FAILED: the ability ("wis"), and for the master the roll and the DC;
+  // a player reads only whether it passed.
+  string ability = 5;
+  string ability_name_pt = 6;
+  optional int32 d20 = 7;
+  optional int32 total = 8;
+  optional int32 dc = 9;
+  // DAMAGE: the damage type's Portuguese name and the amount rolled.
+  string damage_type_pt = 10;
+  int32 amount = 11;
+  // EXHAUSTION: the level now, and the level before.
+  int32 exhaustion_level = 12;
+  int32 exhaustion_before = 13;
+  // Only the master: how many of the effects of this line the players do not read.
+  int32 hidden_count = 14;
+}
+
+// CombatLogEffectChange is what an effect did.
+enum CombatLogEffectChange {
+  COMBAT_LOG_EFFECT_CHANGE_UNSPECIFIED = 0;
+  COMBAT_LOG_EFFECT_CHANGE_ADDED = 1;
+  COMBAT_LOG_EFFECT_CHANGE_ENDED = 2;
+  COMBAT_LOG_EFFECT_CHANGE_DURATION_CHANGED = 3;
+  COMBAT_LOG_EFFECT_CHANGE_SAVED = 4;
+  COMBAT_LOG_EFFECT_CHANGE_SAVE_FAILED = 5;
+  COMBAT_LOG_EFFECT_CHANGE_DAMAGE = 6;
+  COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED = 7;
 }
 
 // CombatLogMonster is a monster of a MONSTERS_ADDED line, only the master's.

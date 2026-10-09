@@ -1011,3 +1011,125 @@ SELECT e.* FROM battle_encounters AS e
 JOIN map_points AS p ON p.id = e.map_point_id
 WHERE e.campaign_id = $1 AND e.map_id = $2 AND p.kind = 'battle'
 ORDER BY e.created_at, e.map_point_id;
+
+-- Effects that last (RN-22): the effects of an encounter, their targets, the saving
+-- throws they ask at the turns, and what they leave on the combatant.
+
+-- name: InsertCombatEffect :one
+INSERT INTO combat_effects (
+    encounter_id, group_id, source_kind, source_key, caster_id, concentration, condition_keys, modifiers,
+    duration_kind, started_round, ends_round, ends_combatant_id, ends_phase,
+    end_save_ability, start_save_ability, save_dc, on_fail_effect,
+    trigger_dice, trigger_damage_type, trigger_max_triggers,
+    player_visible, audience, player_label, created_at
+) VALUES (
+    $1, $2, $3, $4, sqlc.narg(caster_id), $5, $6, $7,
+    $8, $9, sqlc.narg(ends_round), sqlc.narg(ends_combatant_id), sqlc.narg(ends_phase),
+    sqlc.narg(end_save_ability), sqlc.narg(start_save_ability), sqlc.narg(save_dc), sqlc.narg(on_fail_effect),
+    sqlc.narg(trigger_dice), sqlc.narg(trigger_damage_type), sqlc.narg(trigger_max_triggers),
+    $10, $11, sqlc.narg(player_label), $12
+)
+RETURNING *;
+
+-- name: InsertCombatEffectTarget :exec
+INSERT INTO combat_effect_targets (effect_id, combatant_id) VALUES ($1, $2)
+ON CONFLICT (effect_id, combatant_id) DO NOTHING;
+
+-- name: ListCombatEffects :many
+-- The encounter's effects, oldest first: the order the cards and the conditions come in.
+SELECT * FROM combat_effects WHERE encounter_id = $1 ORDER BY created_at, id;
+
+-- name: ListCombatEffectTargets :many
+SELECT t.effect_id, t.combatant_id, t.triggers_fired
+FROM combat_effect_targets AS t
+JOIN combat_effects AS e ON e.id = t.effect_id
+WHERE e.encounter_id = $1
+ORDER BY e.created_at, e.id, t.combatant_id;
+
+-- name: GetCombatEffect :one
+SELECT * FROM combat_effects WHERE id = $1 AND encounter_id = $2;
+
+-- name: DeleteCombatEffect :exec
+DELETE FROM combat_effects WHERE id = $1;
+
+-- name: DeleteCombatEffectTarget :exec
+DELETE FROM combat_effect_targets WHERE effect_id = $1 AND combatant_id = $2;
+
+-- name: DeleteTargetlessCombatEffects :many
+-- An effect that lost its last target (the combatant left) is over.
+DELETE FROM combat_effects AS e
+WHERE e.encounter_id = $1
+  AND NOT EXISTS (SELECT 1 FROM combat_effect_targets AS t WHERE t.effect_id = e.id)
+RETURNING e.id;
+
+-- name: SetCombatEffectEnds :one
+UPDATE combat_effects
+SET duration_kind = $2, ends_round = sqlc.narg(ends_round), ends_combatant_id = sqlc.narg(ends_combatant_id), ends_phase = sqlc.narg(ends_phase)
+WHERE id = $1
+RETURNING *;
+
+-- name: SetCombatEffectVisibility :one
+UPDATE combat_effects
+SET player_visible = $2, audience = $3, player_label = sqlc.narg(player_label)
+WHERE id = $1
+RETURNING *;
+
+-- name: CountCombatEffectTrigger :execrows
+-- One more time the effect's damage hit the target.
+UPDATE combat_effect_targets SET triggers_fired = triggers_fired + 1 WHERE effect_id = $1 AND combatant_id = $2;
+
+-- name: InsertCombatEffectSave :one
+-- Opens the saving throw an effect asks of a target at a turn. The unique index
+-- keeps a repeated end of turn from opening it twice: no row comes back then.
+INSERT INTO combat_effect_saves (encounter_id, effect_id, combatant_id, phase, round, created_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (effect_id, combatant_id, round, phase) DO NOTHING
+RETURNING *;
+
+-- name: ListOpenCombatEffectSaves :many
+SELECT * FROM combat_effect_saves WHERE encounter_id = $1 AND state = 'open' ORDER BY created_at, id;
+
+-- name: GetCombatEffectSave :one
+SELECT * FROM combat_effect_saves WHERE id = $1 AND encounter_id = $2;
+
+-- name: AnswerCombatEffectSave :one
+UPDATE combat_effect_saves
+SET state = 'answered', d20 = sqlc.narg(d20), bonus = sqlc.narg(bonus), total = sqlc.narg(total), saved = $2, answered_at = $3
+WHERE id = $1 AND state = 'open'
+RETURNING *;
+
+-- name: CloseCombatEffectSaves :many
+-- The effect ended, or its caster lost the concentration, with the windows open.
+UPDATE combat_effect_saves
+SET state = 'closed', closed_reason = $2, answered_at = $3
+WHERE effect_id = $1 AND state = 'open'
+RETURNING *;
+
+-- name: SetCombatantEffectState :exec
+-- What the effects leave on a combatant, worked out again (see combat_effects.go):
+-- the conditions (the ones set by hand and the effects'), the ones that came from
+-- effects, the armor class bonus, the speed in percent and the lethargy.
+UPDATE combatants
+SET conditions = $2, effect_conditions = $3, effect_ac_bonus = $4, effect_speed_pct = $5, effect_no_action = $6, effect_no_move = $7
+WHERE id = $1;
+
+-- name: SetCombatantExhaustion :exec
+-- An NPC's exhaustion: the level, and the hit points under the maximum the level
+-- leaves (hp_max_base is the maximum before level 4 halved it).
+UPDATE combatants
+SET exhaustion_level = $2, hp_max = sqlc.narg(hp_max), hp_current = sqlc.narg(hp_current), hp_max_base = sqlc.narg(hp_max_base),
+    effect_speed_pct = $3, defeated = $4
+WHERE id = $1;
+
+-- name: InsertEffectPendingDamage :one
+-- The damage a turn that starts under an effect deals (the web that burns): no
+-- attacker, rolled already. 'rolled' for a player's character (waits for the
+-- master), 'applied' for an NPC or a creature (the caller put it on the combatant).
+INSERT INTO pending_damages (
+    encounter_id, attacker_id, target_id, attack_key, status, critical,
+    dice_count, dice_sides, dice_bonus, damage_type, faces, amount, roll_total, half,
+    created_at, resolved_at, effect_source_key
+) VALUES (
+    $1, NULL, $2, 'effect', $3, false, $4, $5, $6, $7, $8, $9, $10, false, $11, sqlc.narg(resolved_at), $12
+)
+RETURNING *;

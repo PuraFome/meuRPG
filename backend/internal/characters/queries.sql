@@ -212,7 +212,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions
+       v.familiar_sight_conditions, v.exhaustion_level
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -227,7 +227,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions
+       v.familiar_sight_conditions, v.exhaustion_level
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -253,6 +253,21 @@ ON CONFLICT (character_id) DO UPDATE SET
     pact_slots_used = excluded.pact_slots_used,
     hit_dice_used = excluded.hit_dice_used,
     resources_used = excluded.resources_used,
+    revision = character_vitals.revision + 1,
+    updated_at = excluded.updated_at
+RETURNING revision, updated_at;
+
+-- name: SetVitalsExhaustion :one
+-- Sets a character's level of exhaustion (SRD, Conditions: Exhaustion) and, when
+-- the new hit point maximum cut the hit points, the hit points: the first call
+-- creates the row, as UpsertVitals does. A NULL hit_points_current stays "never
+-- set" (full), so only a cut writes it.
+INSERT INTO character_vitals
+    (character_id, hit_points_current, exhaustion_level, revision, updated_at)
+VALUES (sqlc.arg(character_id), sqlc.narg(hit_points_current), sqlc.arg(exhaustion_level), 1, sqlc.arg(now))
+ON CONFLICT (character_id) DO UPDATE SET
+    hit_points_current = COALESCE(excluded.hit_points_current, character_vitals.hit_points_current),
+    exhaustion_level = excluded.exhaustion_level,
     revision = character_vitals.revision + 1,
     updated_at = excluded.updated_at
 RETURNING revision, updated_at;
