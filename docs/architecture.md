@@ -1650,7 +1650,9 @@ stateDiagram-v2
 | `RollAttack` | The player on their own character, on their turn (or with `as_reaction`, off it); the master on any combatant on turn | The attack, first step: rolls the d20 (app or physical face), spends the action (or the reaction, on an opportunity attack) and compares with the target's AC |
 | `CastSpell` | The player on their own character, on their turn; the master on any combatant on turn | Casts: spends the slot and the action or bonus action at once, and resolves by what the spell is (spell attack, save, darts, healing or just a log entry) |
 | `DeclineOpportunity`, `SkipOpportunity` | The reactor's controller (the character's or creature's player; the master, of an NPC) declines; only the master continues without waiting | Answer an opportunity-attack offer without attacking (the attack is `RollAttack` with `opportunity_offer_id`); they store `reaction_declined` ([Opportunity attacks](#opportunity-attacks)) |
-| `UseReaction`, `DeclineReaction` | The player on the hit character; the master on any | Shield when a blow hits: spends the slot and the reaction, gives +5 AC until the start of the character's next turn and compares the blow again; or lets the blow through |
+| `AnswerReaction` | The reactor's player; the master, of an NPC's and (to answer for the player) of any | Answers a reaction window: "Usar" (with the slot, `use_racial`, the die, the creatures of a Feather Fall) or "Deixar passar". One answer for every kind: Shield, Uncanny Dodge, Hellish Rebuke, Counterspell, Cutting Words, Deflect Missiles, Feather Fall, the opportunity attack and the master's check (see "The reaction window" below) |
+| `ResolveConcentrationSave` | The owner of the concentrating character; the master, for an NPC or to roll for a player | The concentration save a damage asks for: the app's die, a physical die, "Deixar o mestre rolar por mim" (a player) or "keep" (the master) |
+| `UseReaction`, `DeclineReaction` | The player on the hit character; the master on any | The Shield's two answers, kept for the clients that still send them: they are `AnswerReaction` on the hit's Shield window (spends the slot and the reaction, +5 AC until the start of the next turn, compares the blow again; or lets it through) |
 | `RollDeathSave` | The player on their own character; the master on any | The death save of someone at 0 HP, at the start of their turn |
 | `ConfirmDeath` | The master | Confirms the death of someone who failed three times: marks the character dead and removes them from the order. Cannot be undone |
 | `SetCombatantConditions` | The master; the player only to end the concentration of their own character | The conditions (labels, RN-22) and the end of concentration |
@@ -1779,6 +1781,32 @@ sequenceDiagram
 ```
 
 `RollDamage` and `ApplyPendingDamage` on a blow waiting for the reaction give `REACTION_PENDING`; the attacker's `EndTurn` gives `PENDING_DAMAGE` (only the master passes, discarding). The +5 stays in `combatants.ac_bonus` until the start of the character's next turn (`ResetCombatantTurn`): every attack in the meantime uses the sheet's AC plus the bonus, and the bonus never alters the sheet (RN-04). The **opportunity attack** is `RollAttack` with `as_reaction`: a melee attack (the greatest melee reach of the sheet, at least 5 ft; a thrown weapon, with a long range, counts as ranged) off turn, spending the reaction in place of the action. The other reaction spells are the table's.
+
+**The reaction window (PM-04).**
+One mechanism covers every reaction the SRD gives a creature: `Encounter.reaction_windows[]`, backed by the `reaction_windows` table (one row per reactor and trigger, with a `group_id` for the windows of the same trigger and a `step` for the two-step ones) and `reaction_holds` (the request of an action that waits). A window opens when something a reaction can change happens, and **the action waits**: nothing of it is written until every window of its group is answered or closed.
+
+| Reaction | Trigger (SRD 5.1) | Held until answered |
+| --- | --- | --- |
+| Shield | a hit on the reactor, or Magic Missile (it takes no damage) | the hit's damage roll (`AWAITING_REACTION`) |
+| Uncanny Dodge | a hit the rogue sees, after the damage is rolled | the damage landing: halved, rounded down |
+| Deflect Missiles | a ranged weapon hit on the monk | the damage landing, less 1d10 + Dexterity + monk level; at 0 it is caught and, for 1 ki, thrown back with `RollAttack(catch_window_id)` |
+| Hellish Rebuke | the reactor was damaged by a creature it sees within 60 ft, and survived | nothing: it happens after. Offers the Infernal Legacy (a 2nd-level cast, once per long rest) and the slots; the NPC aggressor's save is the master's (second step) |
+| Counterspell | a cast by a creature the reactor sees within 60 ft | the whole cast (the spell is held with its request and replayed after); the countered cast still spends its slot |
+| Cutting Words | an attack roll, an ability check or a damage roll of a creature the bard sees within 60 ft | the roll (the bard answers before the die is thrown); a creature that cannot hear or is immune to charm is "sem efeito" |
+| Feather Fall | a fall of a pit trap (`fall_ft` of the preset) within 60 ft | the fall damage (`AWAITING_REACTION` trap damage); up to 5 creatures saved |
+| Opportunity attack | a creature leaves a reach | the mover's turn (its own offers, shown as a window) |
+| Hidden reveal (PM-02c) | a player's area spell hit hidden creatures and the table asks ("Perguntar a cada vez") | the turn: the master reads the question as a window (`HIDDEN_REVEAL`) and answers it with `ResolveHiddenReveal`; every player reads the same "Esperando o mestre" |
+| Concentration save | damage that lands on a concentrating creature (DC 10 or half the damage); 0 HP ends it with no save | the attack that dealt the damage (`CONCENTRATION_SAVE_PENDING`) |
+
+**The settle step.** After every write of a combat `settleReactions` runs: it closes the windows that stopped being valid (the reactor spent the reaction, fell or is incapacitated, the trigger is gone) with a reason (`reaction.Closure`), lets a hit whose windows are all closed go on to its damage roll, and replays the held actions in the combat's transaction (the replay is the same handler as the RPC, with what the answers decided in `replayState`: the countered cast, the Cutting Words die, the halved or deflected damage). Replaying a held request with its idempotency key returns the same answer.
+
+**The gate.** `reactionGate` refuses `EndTurn`, a second action, `RollDamage` and `ApplyPendingDamage` with `REACTION_PENDING` (or `CONCENTRATION_SAVE_PENDING`) while a window waits, for the master too (who ends the combat or answers). Windows are answered in the initiative order inside a group (`NOT_YOUR_TURN_TO_ANSWER` otherwise); two answers at once settle to one. A window the reactor can no longer use closes by itself and says so, in words, only to its own reactor. Ending the combat discards every window and held action.
+
+**Who reads what (RN-10, RN-20).** A player gets only their own windows (`for_you`) and `reaction_wait`, the line the server writes for the whole table ("Esperando o mestre", "Esperando a reação de Pensantus": the name only when the reactor is a player character the reader sees). Never which NPC, which reaction or why. The Counterspell prompt carries no spell name or level; a Cutting Words prompt to a bard has no total; the numbers of the trigger (`ReactionTrigger`) are the master's. The stream events `reaction_window_opened` and `reaction_window_closed` go only to the reactor and the master. The table rule "Reações dos inimigos" (`enemy_reactions`): by default only an enemy that can react opens a window; "Sempre" opens the master's one-tap check (`MASTER_CHECK`) on every hit, cast and damage of a player against an enemy, so the pause says nothing.
+
+**The log.** One line per reaction (`COMBAT_LOG_KIND_REACTION_WINDOW`), with `for_master` and `for_players` text (`reaction_text_pt`); `reaction_answered` and `concentration_save_rolled` are the session event kinds. A used Shield keeps `reaction_used` (undoable); an undo reopens its window, closes the windows of the damage it takes back and gives an NPC's slot back. A held action's event closes the undo chain.
+
+**What the SRD leaves out** (so the app decides, and says so): the triggers' "see" and 60 ft come from the reaction texts of the Player's Handbook; a reaction spell cannot be countered by the app; an NPC bard's ability-check rolls are not asked (no flow rolls an enemy's checks); Hellish Rebuke's fire is always rolled in the app; Deflect Missiles' free-hand condition is not checked; Feather Fall's trigger is the pit trap (a creature thrown into a fall by another effect has no window yet).
 
 **The fallen (RN-03).** A player character at 0 HP is "Caído" (the word comes from `character_vitals`). Their turn starts with a death save to roll (`death_save_due`, for them and the master), and the turn waits for them. Whoever drops to 0 HP **during their own turn** (an opportunity attack, the master's correction) does not owe the save that turn: the first is at the start of the next turn (SRD 5.1; `changeVitals` marks `death_save_rolled`).
 
@@ -2439,16 +2467,18 @@ sequenceDiagram
 
 ### Where images are stored
 
-The `backend/internal/platform/blob` package is a small interface (`Put`, `Open`, `Delete`) with a disk implementation. The keys are `campaigns/<campaign>/images/<id>` and `…/<id>.thumb`: everything of a campaign shares the same prefix.
+The `backend/internal/platform/blob` package is a small interface (`Put`, `Open`, `Delete`) with two implementations: the disk (`FS`) and Cloud Storage (`GCS`). The keys are `campaigns/<campaign>/images/<id>` and `…/<id>.thumb`: everything of a campaign shares the same prefix.
 
 | Where | How |
 | --- | --- |
 | Local environment | `BLOB_DIR=/var/lib/meurpg/images`, in a Docker Compose volume (`images`), which survives `make down` |
 | Tests | A temporary folder per test |
-| Production | A private Cloud Storage bucket, in São Paulo, behind the same interface, from the first deploy (see [Operations](operations.md)) |
+| Production | `BLOB_BUCKET`: a private Cloud Storage bucket, in São Paulo, reached by `blob.GCS` (the JSON API over `net/http`, with the service account's token from the metadata server; see [Operations](operations.md#images)) |
 
 - **On disk,** each file starts with a line with the type (`image/jpeg`), followed by the image. `Put` writes to a temporary file and renames over, so nobody reads half a file. Every operation goes through an `os.Root`, which refuses any path outside the folder, even through a symbolic link, and the key only accepts lowercase letters, digits, `.`, `-` and `_`. Errors do not carry the path, because the key has IDs.
-- **Without `BLOB_DIR`,** images are off: upload, download and `GalleryService` answer `503`/`unavailable`, and the rest of the app works. The startup log warns.
+- **Only one store is chosen:** `BLOB_BUCKET` or `BLOB_DIR`. Both set, or `BLOB_DIR` on Cloud Run, stops the server at start. If the bucket cannot be reached at start, the server logs a warning and keeps the store on: each call succeeds or fails on its own, and the image routes answer an error when one fails.
+- **In Cloud Storage,** the object name is the key, as it is, and the content type is the object's. `Put` is one media upload, which Cloud Storage applies whole. `Open` streams the object and, when the reader seeks (`http.ServeContent` does), asks for the rest with a `Range` header; the `ETag` the image routes send comes from the image's ID, not from the store, so the store has nothing to add for `304`.
+- **Without `BLOB_DIR` or `BLOB_BUCKET`,** images are off: upload, download and `GalleryService` answer `503`/`unavailable`, and the rest of the app works. The startup log warns.
 - **Deleting** removes the row first and the files after: without the row, nobody reaches the files, so a failure deleting them exposes nothing (it goes to the log).
 - **Deleting the campaign** (today, only through the master's account deletion) deletes the rows via `ON DELETE CASCADE`, but not the files. Whoever implements campaign or account deletion must also delete the prefix `campaigns/<campaign>/` (see [Privacy](privacy.md)).
 
@@ -2489,7 +2519,7 @@ The route is not Connect, but the errors use Connect codes, in a small JSON the 
 | 400 | `invalid_argument` | `MALFORMED_REQUEST` | Not a `multipart` form, a field is missing, an extra field, or the order is wrong |
 | 429 | `resource_exhausted` | `QUOTA` | The campaign already has 300 images, or would pass 500 MiB |
 | 401, 403, 404 | `unauthenticated`, `permission_denied`, `not_found` | — | No session; a player; a non-member (or the campaign does not exist) |
-| 503 | `unavailable` | — | Images off (no `BLOB_DIR`), or the database or storage did not respond |
+| 503 | `unavailable` | — | Images off (no `BLOB_DIR` or `BLOB_BUCKET`), or the database or storage did not respond |
 | 500, 504, 499 | `internal`, `deadline_exceeded`, `canceled` | — | The Connect protocol table's statuses (`httpStatus`, in `maps/httperror.go`): an `internal` error is 500, an expired deadline 504 and a cancelled request 499 (nobody reads the response) |
 
 The `CrossOriginProtection` `403` (an upload from another site) comes before all this, in plain text: the app never sees it.

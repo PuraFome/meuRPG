@@ -17,6 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // Revivify, "Revivificar" (SRD 5.1, Revivify; RN-03): 3rd level, 1 action, touch, diamonds
@@ -286,8 +287,27 @@ func (s *Service) castRevivify(
 		if err != nil {
 			return nil, err
 		}
+		// A Counterspell can answer this cast like any other: it waits for the windows and
+		// happens when they are answered (PM-04, combat_reaction_hold.go).
+		if held, ok, err := s.holdCast(ctx, c, m, req.Msg, cs, caster, revivifyKey, slot.Level, []playdb.Combatant{target}); err != nil {
+			return nil, err
+		} else if ok {
+			made = held
+			return made, nil
+		}
 		if made, vitals, err = s.spendForRevivify(ctx, c, caster, slot); err != nil {
 			return nil, err
+		}
+		if c.replay != nil && c.replay.countered {
+			// The slot and the action are spent, as casting expended them, and nothing else
+			// happens: the creature stays dead (SRD, Counterspell).
+			made.Secret = caster.Hidden
+			made.Reaction = &reactionEvent{Kind: string(reaction.CounterspellKind), Countered: true, Spell: revivifyKey, Level: slot.Level}
+			if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+				return nil, fmt.Errorf("touch the encounter: %w", err)
+			}
+			c.characterID = &caster.CharacterID
+			return made, nil
 		}
 		// The creature lives again. A player's character comes back through the characters
 		// module, as the master's Reviver does it (RN-03 may refuse: nothing is spent then, the
@@ -338,6 +358,9 @@ func (s *Service) castRevivify(
 	})
 	if err != nil {
 		return nil, err
+	}
+	if ev.Reaction != nil && ev.Reaction.Hold { // a reaction window holds the cast: nothing of it happened yet
+		return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out}), nil
 	}
 	spell, err := s.castProto(ctx, res, ev, v)
 	if err != nil {

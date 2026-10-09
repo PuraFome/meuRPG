@@ -69,9 +69,15 @@ type Config struct {
 	// BlobDir is the directory where uploaded images are stored (package
 	// internal/platform/blob), such as a Docker volume in the local stack.
 	// Empty means "images are off": the API still starts, and the image
-	// routes answer 503. Production will store images in Cloud Storage
-	// instead (docs/operations.md).
+	// routes answer 503. Production stores images in Cloud Storage
+	// instead (BlobBucket). Never together with BlobBucket, and never on
+	// Cloud Run, whose disk is memory that a restart empties.
 	BlobDir string
+
+	// BlobBucket is the Cloud Storage bucket where uploaded images are stored
+	// (BLOB_BUCKET): the production store, reached with the Cloud Run
+	// service account's token. Empty means the bucket is not used.
+	BlobBucket string
 
 	// CloudRun is true when the process runs on Cloud Run, which sets
 	// K_SERVICE in every service container (see "Container runtime
@@ -263,6 +269,13 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	cfg.BlobDir = strings.TrimSpace(getenv("BLOB_DIR"))
+	cfg.BlobBucket = strings.TrimSpace(getenv("BLOB_BUCKET"))
+	switch {
+	case cfg.BlobDir != "" && cfg.BlobBucket != "":
+		errs = append(errs, errors.New("BLOB_DIR and BLOB_BUCKET are both set; choose one: BLOB_BUCKET for Cloud Storage, BLOB_DIR for a local folder"))
+	case cfg.CloudRun && cfg.BlobDir != "":
+		errs = append(errs, errors.New("BLOB_DIR is not allowed on Cloud Run, whose disk is lost when the instance stops; use BLOB_BUCKET"))
+	}
 
 	images, imageErrs := loadImages(getenv, cfg.CloudRun)
 	cfg.Images = images

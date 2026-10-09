@@ -135,6 +135,96 @@ describe('CombatClient area spells', () => {
   });
 });
 
+describe('CombatClient, the reaction windows (PM-04)', () => {
+  function fake() {
+    const calls = {
+      answer: [] as Record<string, unknown>[],
+      concentration: [] as Record<string, unknown>[],
+      attack: [] as Record<string, unknown>[],
+    };
+    TestBed.configureTestingModule({
+      providers: [CombatClient, { provide: CONNECT_TRANSPORT, useValue: {} }],
+    });
+    const client = TestBed.inject(CombatClient);
+    (client as unknown as { client: unknown }).client = {
+      answerReaction: (req: Record<string, unknown>) => {
+        calls.answer.push(req);
+        return Promise.resolve({ encounter: { id: 'enc' }, result: { used: true } });
+      },
+      resolveConcentrationSave: (req: Record<string, unknown>) => {
+        calls.concentration.push(req);
+        return Promise.resolve({ encounter: { id: 'enc' } });
+      },
+      rollAttack: (req: Record<string, unknown>) => {
+        calls.attack.push(req);
+        return Promise.resolve({ encounter: { id: 'enc' }, roll: { d20: {} } });
+      },
+    };
+    return { client, calls };
+  }
+
+  it('answers USE with the slot, the Infernal Legacy, the creatures and the die the window asked for', async () => {
+    const { client, calls } = fake();
+    await client.answerReaction(
+      'c',
+      'e',
+      'w1',
+      {
+        use: true,
+        slot: { level: 2, pact: true },
+        useRacial: false,
+        creatureIds: ['a', 'b'],
+        die: { typed: 9 },
+      },
+      'key-1',
+    );
+    expect(calls.answer[0]).toMatchObject({
+      campaignId: 'c',
+      encounterId: 'e',
+      windowId: 'w1',
+      answer: 1,
+      slot: { level: 2, pact: true },
+      useRacial: false,
+      creatureIds: ['a', 'b'],
+      roll: { case: 'typed', value: 9 },
+      idempotencyKey: 'key-1',
+    });
+  });
+
+  it('answers PASS with nothing else, and asks the app to roll with roll_in_app', async () => {
+    const { client, calls } = fake();
+    await client.answerReaction('c', 'e', 'w1', { use: false }, 'k');
+    await client.answerReaction('c', 'e', 'w1', { use: true, die: { inApp: true } }, 'k2');
+    expect(calls.answer[0]).toMatchObject({
+      answer: 2,
+      creatureIds: [],
+      roll: { case: undefined },
+    });
+    expect(calls.answer[0]['slot']).toBeUndefined();
+    expect(calls.answer[1]).toMatchObject({ answer: 1, roll: { case: 'rollInApp', value: true } });
+  });
+
+  it('settles a concentration save four ways: the app, a typed d20, the master, or kept', async () => {
+    const { client, calls } = fake();
+    await client.resolveConcentrationSave('c', 'e', 'w', { kind: 'app' }, 'k1');
+    await client.resolveConcentrationSave('c', 'e', 'w', { kind: 'typed', face: 12 }, 'k2');
+    await client.resolveConcentrationSave('c', 'e', 'w', { kind: 'hand' }, 'k3');
+    await client.resolveConcentrationSave('c', 'e', 'w', { kind: 'keep' }, 'k4');
+    expect(calls.concentration.map((c) => c['roll'])).toEqual([
+      { case: 'rollInApp', value: true },
+      { case: 'd20Face', value: 12 },
+      { case: 'handToMaster', value: true },
+      { case: 'keep', value: true },
+    ]);
+  });
+
+  it("names the window that caught the missile on the monk's throw back", async () => {
+    const { client, calls } = fake();
+    await client.rollAttack('c', 'e', 'a', 'attack:bow', 't', { inApp: true }, 'k', true, '', 'w2');
+    expect(calls.attack[0]).toMatchObject({ asReaction: true, catchWindowId: 'w2' });
+  });
+});
+
 describe('CombatClient Revivify', () => {
   it('casts on a dead target with the diamonds confirmed and no combatant target', async () => {
     TestBed.configureTestingModule({

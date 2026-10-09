@@ -701,6 +701,26 @@ message TableRules {
   // combat reads it when each spell is cast, so a change applies from the next
   // spell on.
   HiddenAreaHitRule hidden_area_hits = 10;
+  // "Reações dos inimigos": when a player's action against an enemy waits for the
+  // master (RN-24). Required in SetTableRules (UNSPECIFIED is `invalid_argument`); a
+  // campaign that never saved its rules has ONLY_WHEN_POSSIBLE. Every member reads
+  // it, only the master changes it, and the combat reads it at each action, so a
+  // change applies from the next action on.
+  EnemyReactionsRule enemy_reactions = 11;
+}
+
+// EnemyReactionsRule is when the game waits for the master before the result of a
+// player's action against an enemy (RN-24, RN-10). A pause that exists only when
+// an enemy can react tells the players who can, so the table chooses.
+enum EnemyReactionsRule {
+  ENEMY_REACTIONS_RULE_UNSPECIFIED = 0;
+  // The game waits only when an enemy has a reaction available. The default, and
+  // faster; a pause may hint that someone can react.
+  ENEMY_REACTIONS_RULE_ONLY_WHEN_POSSIBLE = 1;
+  // Every action of a player against an enemy (a hit, a damage, a spell) waits for
+  // the master's one-tap answer, "Sem reação" or the reaction, so that the pause
+  // says nothing.
+  ENEMY_REACTIONS_RULE_ALWAYS = 2;
 }
 
 // TableStylePreset is what one "Estilo da mesa" fills in. The app applies a

@@ -729,3 +729,95 @@ func TestRevivify_OutsideACombatTheSwitchAndRN03(t *testing.T) {
 		t.Errorf("slots used after the refusal = %d, want 0", usedSlots(v, 3))
 	}
 }
+
+// PM-04: a Counterspell answers a Revivify like any cast. The cast waits for the window and
+// nothing happens meanwhile: Toren is still dead and no slot is spent. A pass lets it through.
+func TestRevivify_AnEnemyWizardsCounterspellCountersItOrLetsItThrough(t *testing.T) {
+	t.Parallel()
+	for _, counter := range []bool{true, false} {
+		name := "passed"
+		if counter {
+			name = "countered"
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			a := newArmedWith(t, func(a *armed) {
+				a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 4,
+					&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
+				a.pens = a.ana.ilaria(t, a.campaignID)
+				a.bri = a.bia.hero(t, a.campaignID, "Brisa", "class:fighter", "race:human", 2,
+					&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{rapier}, nil)
+			})
+			wiz := a.master.bossCaster(t, a.campaignID, "Mago Sombrio", 7, []string{fireBolt}, []string{counterspellSpell}, []string{counterspellSpell})
+			e := a.start(t, plan{
+				npcs:     []*playv1.Participant{{CharacterId: wiz}},
+				npcRolls: []int{3},
+				players:  map[string]int32{"Toren": 18, "Ilaria": 12, "Brisa": 1},
+				reveal:   []string{"Mago Sombrio"},
+				at:       map[string][2]int32{"Toren": {3, 3}, "Ilaria": {3, 4}, "Mago Sombrio": {5, 4}, "Brisa": {8, 8}},
+			})
+			a.dies(t, e, "Toren", a.toren)
+
+			held, err := a.castRevivify(t, a.ana, e, "Ilaria", "Toren")
+			if err != nil {
+				t.Fatalf("CastSpell(Revivify) error = %v", err)
+			}
+			if held.GetCast() != nil {
+				t.Fatalf("Revivify was not held for the wizard's Counterspell: %v", held.GetCast())
+			}
+			if !byLabel(t, a.get(t, a.master), "Toren").GetDefeated() {
+				t.Error("Toren is alive while the cast waits")
+			}
+			if v := a.vitals(t, a.pens); usedSlots(v, 3) != 0 {
+				t.Errorf("slots spent while the cast waits = %d, want 0", usedSlots(v, 3))
+			}
+			// Nothing of the turn moves, and nothing can be undone, while it waits.
+			if _, err := a.castRevivify(t, a.ana, e, "Ilaria", "Toren"); err == nil {
+				t.Error("a second Revivify while the window waits was accepted")
+			}
+			if err := a.undo(t, a.master, a.get(t, a.master), newKey()); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+				t.Errorf("UndoLastAction while the cast waits = %v, want nothing to undo", err)
+			}
+			w := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_COUNTERSPELL)
+			if w == nil {
+				t.Fatalf("the master's windows = %v, want the wizard's Counterspell", a.windows(t, a.master))
+			}
+			answer := passAnswer
+			if counter {
+				answer = useAnswer(3)
+			}
+			res := a.mustAnswer(t, a.master, e, w.GetId(), answer)
+
+			if v := a.vitals(t, a.pens); usedSlots(v, 3) != 1 {
+				t.Errorf("slots spent after the answer = %d, want 1 (a countered spell still expends it)", usedSlots(v, 3))
+			}
+			now := a.get(t, a.master)
+			if len(now.GetReactionWindows()) != 0 {
+				t.Errorf("windows open after the answer = %v, want none", now.GetReactionWindows())
+			}
+			toren := byLabel(t, now, "Toren")
+			if counter {
+				if !toren.GetDefeated() {
+					t.Errorf("Toren after a countered Revivify = defeated %v, want still dead", toren.GetDefeated())
+				}
+				if !res.GetResult().GetCounterspell().GetCountered() {
+					t.Errorf("the answer's result = %v, want countered", res.GetResult())
+				}
+				if len(now.GetDeaths()) != 1 {
+					t.Errorf("deaths after a countered Revivify = %v, want Toren's", now.GetDeaths())
+				}
+				return
+			}
+			if toren.GetDefeated() || a.vitals(t, a.toren).GetHitPointsCurrent() != 1 {
+				t.Errorf("Toren after the cast went through = defeated %v, want alive with 1 hit point", toren.GetDefeated())
+			}
+			if len(now.GetDeaths()) != 0 {
+				t.Errorf("deaths after the cast went through = %v, want none", now.GetDeaths())
+			}
+			// The cast that went through closes the undo chain, as an unheld one does.
+			if err := a.undo(t, a.master, now, newKey()); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+				t.Errorf("UndoLastAction after the Revivify = %v, want nothing to undo", err)
+			}
+		})
+	}
+}

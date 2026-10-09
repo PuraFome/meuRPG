@@ -1411,6 +1411,21 @@ message FullSheet {
   // the sheet does not have is dropped on save. The sheet then lists the feat at that level and not the improvement. A feat the
   // master added has none.
   map<string, string> feat_slots = 33;
+  // A College of Lore bard's "Perguntar" setting for Cutting Words: on which rolls
+  // of an enemy the combat asks whether to use it. Unspecified is ONLY_ATTACKS.
+  CuttingWordsAsk cutting_words_ask = 40;
+}
+
+// CuttingWordsAsk is when the combat asks a bard to use Cutting Words.
+enum CuttingWordsAsk {
+  CUTTING_WORDS_ASK_UNSPECIFIED = 0;
+  // On every roll of an enemy the bard sees within 60 ft: attacks, checks and
+  // damage ("em todos os testes do inimigo").
+  CUTTING_WORDS_ASK_ALL = 1;
+  // Only on attack rolls ("só em ataques"). The default.
+  CUTTING_WORDS_ASK_ONLY_ATTACKS = 2;
+  // Never ("nunca").
+  CUTTING_WORDS_ASK_NEVER = 3;
 }
 
 // AbilityOrigin is the way a player made a sheet's base scores, as the server

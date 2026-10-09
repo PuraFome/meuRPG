@@ -8,6 +8,7 @@ import {
   CharacterKind,
   CharacterState,
   CharacterStory,
+  CuttingWordsAsk,
   FullSheet,
   LevelUpReason,
   Review,
@@ -175,6 +176,7 @@ function minimalFullSheet(overrides: Partial<FullSheet> = {}): FullSheet {
     contentRevision: 0,
     knownIssues: [],
     contentBaselines: {},
+    cuttingWordsAsk: CuttingWordsAsk.UNSPECIFIED,
     xpValue: 0,
     ...overrides,
   };

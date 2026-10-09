@@ -477,6 +477,9 @@ type actionEvent struct {
 	// D20B is the second d20 of a Perception search with disadvantage.
 	D20B  int32    `json:"d20_b,omitempty"`
 	Found []string `json:"found,omitempty"`
+	// Reaction is what a reaction window did (PM-04), or marks the event that
+	// stands for a held action (combat_reaction_hold.go).
+	Reaction *reactionEvent `json:"reaction,omitempty"`
 }
 
 // readEvent decodes an event's payload. A payload of this module never fails

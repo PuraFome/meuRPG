@@ -1032,10 +1032,10 @@ async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await m.getByRole('button', { name: 'Confirmar 18' }).click();
     await expect(m.getByText(/contra CA \d+ da Pensantus|contra CA \d+ do Pensantus/)).toBeVisible();
     // Pensantus can cast Escudo: a hit that is not critical waits for his reaction (E6-28b).
-    await expect(m.getByText('Esperando a reação do Pensantus.')).toBeVisible();
-    await expect(m.getByRole('button', { name: 'Rolar dano' })).toHaveAttribute('aria-disabled', 'true');
+    await expect(m.getByRole('region', { name: 'Reações a um ataque' })).toBeVisible();
+    await expect(m.getByRole('button', { name: 'Rolar dano' })).toBeDisabled();
     await expectScreenPasses(m, `Cartão do mestre, esperando a reação (Escudo) ${where}`);
-    await m.getByRole('button', { name: 'Seguir sem Escudo' }).click();
+    await m.getByRole('region', { name: 'Reações a um ataque' }).getByRole('button', { name: 'Deixar passar pelo jogador' }).click();
     await m.getByRole('button', { name: 'Rolar dano' }).click();
     await expect(m.getByRole('button', { name: /Aplicar \d+ de dano/ })).toBeVisible();
     await expectScreenPasses(m, `Cartão do mestre, dano para aplicar ${where}`);
@@ -1180,7 +1180,7 @@ async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     // The move that provokes: the turn waits for the master, who has the prompt.
     await nudge('Um quadrado para a esquerda');
     await p.getByRole('button', { name: 'Mover para cá' }).click();
-    await expect(p.getByRole('status').filter({ hasText: 'Esperando a reação do mestre.' })).toBeVisible();
+    await expect(p.getByRole('status').filter({ hasText: 'Esperando o mestre.' })).toBeVisible();
     await expectScreenPasses(p, `Sua vez, esperando a reação do mestre ${where}`);
     const card = m.getByRole('group', { name: 'Ataque de oportunidade de Goblin 1' });
     await expect(card.getByRole('button', { name: 'Não atacar' })).toBeFocused();
@@ -1378,8 +1378,15 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await card2.getByLabel('Dano a aplicar').fill('1');
     await card2.getByRole('button', { name: 'Aplicar 1 de dano' }).click();
     await expect(card2.getByText(/1 de dano aplicado/).first()).toBeVisible();
-    await expect(card2.getByText('Pensantus está concentrado em Teia. Teste de Constituição, CD 10.')).toBeVisible();
-    await expectScreenPasses(m, `Aplicar outro valor, o lembrete da concentração ${where}`);
+    // The damage on a concentrating character asks its owner for the save (PM-04): the prompt, the master's card, the result.
+    const save = p.getByRole('alertdialog', { name: 'Concentração em risco: teste de resistência de Constituição contra CD 10' });
+    await expect(save).toBeVisible();
+    await expectScreenPasses(p, `Concentração em risco, o aviso ${where}`);
+    await expectScreenPasses(m, `Concentração em risco, o cartão do mestre ${where}`);
+    await save.getByRole('button', { name: 'Rolar no app' }).click();
+    await expect(save.getByRole('button', { name: 'Fechar' })).toBeVisible();
+    await expectScreenPasses(p, `Concentração em risco, o resultado ${where}`);
+    await save.getByRole('button', { name: 'Fechar' }).click();
 
     // The fallen, first stable: three successes.
     await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 0 });
@@ -1439,6 +1446,84 @@ test('conjurar, cair, o Escudo e as condições passam no axe e nas conferência
 test('conjurar, cair, o Escudo e as condições passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
   test.setTimeout(400_000);
   await scanCastingScreens(browser, 'dark', 390);
+});
+
+/** The reaction window of an NPC (PM-04): the player's wait, the master's card of the Mago for Escudo and for
+ * Contramágica, and the concentration save's prompt. */
+async function scanReactionScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade reações ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    let enc = await getEncounterRPC(m, campaignId);
+    const added = await combatRPC(m, 'AddMonsters', { campaignId, encounterId: enc.id, creatureKey: 'monster:mage', count: 1, hidden: false });
+    const mage = added.combatants.find((c) => c.label.startsWith('Mago'))!;
+    await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: enc.id, combatantId: mage.id, col: 8, row: 8, forced: true });
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+
+    // Escudo of the Mago: the player's wait, then the master's card.
+    await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Atacar com Raio de Fogo' });
+    await sheet.locator('label', { hasText: mage.label }).click();
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await p.getByLabel(/Role 1d20 para Raio de Fogo/).fill('10');
+    await p.getByRole('button', { name: 'Confirmar 10' }).click();
+    await expect(p.getByText('Esperando o mestre.').first()).toBeVisible();
+    await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
+    await expect(p.getByRole('status').filter({ hasText: 'Esperando o mestre.' })).toBeVisible();
+    await expectScreenPasses(p, `Esperando o mestre, a reação de um NPC ${where}`);
+    const card = m.getByRole('region', { name: mage.label });
+    await expect(card.getByRole('button', { name: `Usar Escudo Arcano pelo ${mage.label}` })).toBeVisible();
+    await expectScreenPasses(m, `A reação do Mago, Escudo Arcano ${where}`);
+    await card.getByRole('button', { name: 'Deixar passar' }).click();
+    await expect(p.getByRole('status').filter({ hasText: 'Esperando o mestre.' })).toHaveCount(0);
+
+    // Contramágica of the Mago against Pensantus's cast, on his next turn.
+    enc = await getEncounterRPC(m, campaignId);
+    await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: enc.combatants.find((c) => c.label === 'Pensantus')!.id, discardPendingDamage: true });
+    enc = await passTurnsTo(m, campaignId, 'Pensantus');
+    const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
+    const cast = await callRPC(p, 'meurpg.play.v1.CombatService/CastSpell', {
+      campaignId,
+      encounterId: enc.id,
+      casterId: id('Pensantus'),
+      spellKey: 'spell:magic-missile',
+      slot: { level: 1 },
+      targets: [{ combatantId: id('Goblin 1'), darts: 3 }],
+      idempotencyKey: crypto.randomUUID(),
+    });
+    expect(cast.ok(), await cast.text()).toBeTruthy();
+    await expect(card.getByRole('button', { name: /Usar Contramágica/ })).toBeVisible();
+    await expectScreenPasses(p, `Esperando o mestre, uma conjuração ${where}`);
+    await expectScreenPasses(m, `A reação do Mago, Contramágica ${where}`);
+    await card.getByRole('button', { name: 'Deixar passar' }).click();
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as reações dos NPCs passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@PM-04'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanReactionScreens(browser, 'light', 1280);
+});
+
+test('as reações dos NPCs passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@PM-04'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanReactionScreens(browser, 'dark', 390);
 });
 
 /** The fighter's turn (Etapa 6, slice 6.5c): Extra Attack's "1 ataque restante", Retomar o

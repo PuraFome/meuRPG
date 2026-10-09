@@ -88,8 +88,8 @@ COPY --from=web-build /src/dist/web/browser /app/web
 # The images folder, owned by nonroot (uid and gid 65532) so the API can
 # write to it. It stays empty and unused unless BLOB_DIR points at it: the
 # local stack mounts a volume here (deploy/local/compose.yaml), and a new
-# volume takes this folder's owner. Production will store images in Cloud
-# Storage instead (docs/operations.md).
+# volume takes this folder's owner. Production stores images in Cloud Storage
+# instead (BLOB_BUCKET, docs/operations.md), and refuses BLOB_DIR.
 COPY --from=build --chown=65532:65532 /out/meurpg/ /var/lib/meurpg/
 
 # OCI image labels (https://github.com/opencontainers/image-spec/blob/main/annotations.md),

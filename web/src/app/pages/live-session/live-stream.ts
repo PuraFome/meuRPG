@@ -35,6 +35,15 @@ export interface LiveStreamHandlers {
   /** `encounter_changed`: the combat changed; the page reads it again when
    * `revision` is newer than its copy. */
   onEncounterChanged?(change: { encounterId: string; revision: number; mode?: number }): void;
+  /** `reaction_window_opened`: a window waits for this player (or the master); the page reads the combat again. */
+  onReactionWindowOpened?(opened: { encounterId: string; windowId: string }): void;
+  /** `reaction_window_closed`: a window is no longer open; `text` says why when it closed by itself. */
+  onReactionWindowClosed?(closed: {
+    encounterId: string;
+    windowId: string;
+    closedByItself: boolean;
+    text: string;
+  }): void;
   /** `turn_changed`: applied in place, per audience. */
   onTurnChanged?(turn: TurnChange): void;
   /** `combatant_moved`: applied in place. */
@@ -214,6 +223,12 @@ export class LiveStream {
             break;
           case 'encounterChanged':
             this.options.handlers.onEncounterChanged?.(event);
+            break;
+          case 'reactionWindowOpened':
+            this.options.handlers.onReactionWindowOpened?.(event);
+            break;
+          case 'reactionWindowClosed':
+            this.options.handlers.onReactionWindowClosed?.(event);
             break;
           case 'turnChanged':
             this.options.handlers.onTurnChanged?.(event);

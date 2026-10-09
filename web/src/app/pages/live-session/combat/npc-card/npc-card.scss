@@ -196,6 +196,12 @@
   color: var(--mr-danger-ink);
 }
 
+// The roll is held by a reaction: neither a hit nor a miss yet.
+.pill--held {
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+}
+
 // The master's way to the creature's stat block (a monster of the bestiary, RN-29): "Ficha da criatura", an accent link.
 .card__sheet {
   align-self: flex-start;
