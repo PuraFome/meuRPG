@@ -63,6 +63,16 @@ func (w *world) buildCharacters() {
 	ctx := w.t.Context()
 	w.pens = w.pc(w.ana, "Pensantus", "race:gnome")
 	w.toren = w.pc(w.caio, "Toren", "race:human")
+	// A reserved character (MR-049): the master made it for a player to claim. No player reads
+	// it, in any list, party view, combat order, map token, summary or image, until it is claimed.
+	w.reserved = must(w.master.characters.CreateCharacter(ctx, rq(&charactersv1.CreateCharacterRequest{
+		CampaignId: w.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: w.secrets.marker("reserved-name"),
+		Sheet: w.fullSheet("class:wizard", "race:human", 1), ForPlayer: true,
+		Story: &charactersv1.CharacterStory{Backstory: w.secrets.marker("reserved-backstory")},
+	}))).GetCharacter()
+	w.secrets.id("reserved", w.reserved.GetId())
+	w.claimToken = must(w.master.characters.CreateClaimLink(ctx, rq(&charactersv1.CreateClaimLinkRequest{CampaignId: w.campaign, CharacterId: w.reserved.GetId()}))).GetToken()
+	w.secrets.add(&canary{needle: w.claimToken, kind: "claim-token"})
 	// The master's private notes about a character (Ana's and the NPC's).
 	for _, id := range []string{w.pens.GetId(), w.toren.GetId()} {
 		must(w.master.characters.UpdateMasterNotes(ctx, rq(&charactersv1.UpdateMasterNotesRequest{CampaignId: w.campaign, CharacterId: id, Notes: w.secrets.marker("master-notes")})))

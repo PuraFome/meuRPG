@@ -37,6 +37,10 @@ type Character struct {
 	// PlayerUserID is the account that plays a player's character. Empty for
 	// an NPC, and for a character whose player deleted their account (RN-16).
 	PlayerUserID string
+	// Reserved is true for a character the master gave back to the reserve (MR-049):
+	// nobody owns it and no player may see it. Only SessionCharacters sets it; the
+	// other reads leave a reserved character out.
+	Reserved bool
 	// InitiativeBonus is added to the d20 for the initiative.
 	InitiativeBonus int
 	// SpeedFt is the walking speed, in feet (5 ft per square of the grid).
