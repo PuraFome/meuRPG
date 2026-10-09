@@ -130,8 +130,18 @@ func (p *packagePart) exportCharacters(ctx context.Context, q *charactersdb.Quer
 // --- stage ------------------------------------------------------------------
 
 // contentKeyShape is the key of a table entry: the kind, a colon, a slug and
-// "@mesa". The slug is what the server makes from the name.
-var contentKeyShape = regexp.MustCompile(`^(class|subclass|race|subrace|background|spell):([a-z0-9]+(?:-[a-z0-9]+)*)@mesa$`)
+// "@mesa". The slug is what the server makes from the name. The kinds come from
+// tableKinds, so a kind the table can create is one a package can carry.
+var contentKeyShape = regexp.MustCompile(`^(` + tableKindPrefixes() + `):([a-z0-9]+(?:-[a-z0-9]+)*)@mesa$`)
+
+// tableKindPrefixes is the key prefixes of tableKinds as a regexp alternation.
+func tableKindPrefixes() string {
+	prefixes := make([]string, 0, len(tableKinds))
+	for _, tk := range tableKinds {
+		prefixes = append(prefixes, regexp.QuoteMeta(tk.prefix))
+	}
+	return strings.Join(prefixes, "|")
+}
 
 type stagedContent struct {
 	entries []entryRow
