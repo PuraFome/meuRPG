@@ -1,0 +1,8 @@
+{
+  "effects": {
+    "feat:grappler": [
+      {"type": "roll_mode", "roll": "advantage", "targets": ["attack"], "tags": ["against:grappled-creature"], "text_pt": "Vantagem nas jogadas de ataque contra uma criatura que você esteja agarrando."},
+      {"type": "note", "text_pt": "Com uma ação, você pode tentar imobilizar uma criatura que você agarra: faça outro teste de agarrar. Se for bem-sucedido, você e a criatura ficam contidos até o agarrão terminar."}
+    ]
+  }
+}

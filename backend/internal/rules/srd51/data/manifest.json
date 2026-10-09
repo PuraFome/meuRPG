@@ -29,6 +29,10 @@
    "sha256": "6dc4dc61ac71c9ae2ffffe8deae087f2dbe8f1a7b5a8675077adb5df649901c3"
   },
   {
+   "name": "5e-SRD-Feats.json",
+   "sha256": "77ec1eeab03643714250c617ee54f558ff6600a12d25fc17ae709a1bc9513482"
+  },
+  {
    "name": "5e-SRD-Features.json",
    "sha256": "fd20a2a5c27996eb66c023053b1629d93dac2d1d108e5d81dfc53ddf0d6ad93c"
   },
@@ -109,6 +113,10 @@
   {
    "name": "equipment.json",
    "sha256": "119d1c3bf5dfa240c2f6fa10480fd0e9551e2fd4c3d2b5a4ca3b96be14e03e7d"
+  },
+  {
+   "name": "feats.json",
+   "sha256": "5dd0244b4013c7b753244f3d011e48a62ee251d05511cbd855ffd83cdbd18717"
   },
   {
    "name": "features.json",

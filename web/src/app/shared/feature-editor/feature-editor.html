@@ -35,6 +35,7 @@
         [basePath]="path('effects[0]')"
         [issuesOf]="issuesOf()"
         [allowTextOnly]="true"
+        [featEditor]="featEditor()"
         [spellOptions]="spellOptions()"
         (effectChange)="patch({ effects: [$event] })"
       />
@@ -45,6 +46,7 @@
         [basePath]="path('effects[0]')"
         [issuesOf]="issuesOf()"
         [allowTextOnly]="true"
+        [featEditor]="featEditor()"
         [spellOptions]="spellOptions()"
         (effectChange)="setEffect(0, $event)"
       />
@@ -70,6 +72,7 @@
           [issuesOf]="issuesOf()"
           [spellOptions]="spellOptions()"
           label="Outro efeito"
+          [featEditor]="featEditor()"
           (effectChange)="setEffect(e.index, $event)"
         />
         <app-field-note class="grid__wide" [id]="path('effects[' + e.index + ']') + '-note'" [issues]="issuesOf()(path('effects[' + e.index + ']'))" />

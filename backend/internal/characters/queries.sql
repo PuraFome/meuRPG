@@ -672,6 +672,20 @@ RETURNING *;
 -- The entry a CreateTableEntry with this idempotency key made, if any (the key carries the campaign's ID).
 SELECT * FROM campaign_content WHERE create_key = $1;
 
+-- name: GetCampaignContentImport :one
+-- The answer of the ImportTableContent that carried this idempotency key (the campaign's ID and
+-- the key), with the hash of its request.
+SELECT create_hash, response FROM campaign_content_imports
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND create_key = sqlc.arg(create_key);
+
+-- name: InsertCampaignContentImport :exec
+-- Keeps the key, the request hash and the answer of an applied import. The content revision is held
+-- by the transaction (BumpContentRevision), so two imports with one key take turns; ON CONFLICT is
+-- the net under that.
+INSERT INTO campaign_content_imports (campaign_id, create_key, create_hash, response, created_at)
+VALUES (sqlc.arg(campaign_id)::UUID, sqlc.arg(create_key), sqlc.arg(create_hash), sqlc.arg(response), sqlc.arg(now))
+ON CONFLICT (campaign_id, create_key) DO NOTHING;
+
 -- name: UpdateCampaignContent :one
 -- The body and the name; the key, the kind and the archive mark stay.
 UPDATE campaign_content

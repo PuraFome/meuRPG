@@ -138,6 +138,32 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
     expect(text(row)).toContain('Esta fórmula não funciona.');
     expect(row.querySelector('.frow__hint')).toBeNull();
   });
+
+  it('offers "Aumento de habilidade" only to the feat editor, with the abilities and amounts from the menu', () => {
+    const types = () =>
+      Array.from((field('type') as HTMLSelectElement).options).map((o) => o.text.trim());
+    setup(emptyEffect('note'));
+    expect(types()).not.toContain('Aumento de habilidade');
+    TestBed.resetTestingModule();
+    fixture = TestBed.createComponent(EffectPicker);
+    fixture.componentRef.setInput('effect', emptyEffect('ability_increase'));
+    fixture.componentRef.setInput('menu', menu());
+    fixture.componentRef.setInput('basePath', 'table_race.traits[0].effects[0]');
+    fixture.componentRef.setInput('featEditor', true);
+    fixture.detectChanges();
+    el = fixture.nativeElement as HTMLElement;
+    expect(types()).toContain('Aumento de habilidade');
+    expect(field('count')).not.toBeNull();
+    const value = field('value') as HTMLSelectElement;
+    expect(Array.from(value.options).map((o) => o.text.trim())).toEqual(['Escolha…', '+1', '+2']);
+    const add = field('from')!.querySelector('select') as HTMLSelectElement;
+    expect(Array.from(add.options).map((o) => o.text.trim())).toEqual([
+      '',
+      'Força',
+      'Destreza',
+      'Constituição',
+    ]);
+  });
 });
 
 describe('EffectPicker: the range field (metres on screen, feet on the wire)', () => {

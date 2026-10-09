@@ -20,6 +20,7 @@ const ON_WORDS: Readonly<Record<ContentNavKind['slug'], { one: string; many: str
   races: { one: 'ligada', many: 'ligadas' },
   backgrounds: { one: 'ligado', many: 'ligados' },
   spells: { one: 'ligada', many: 'ligadas' },
+  feats: { one: 'ligado', many: 'ligados' },
 };
 
 export interface OptionCount {
@@ -104,7 +105,7 @@ export function usingText(n: number, off = false): string {
 
 /** Whether the option's noun is masculine ("o antecedente"): the words that agree with it follow. */
 export function isMasculine(kind: TableContentKind): boolean {
-  return kind === TableContentKind.BACKGROUND;
+  return kind === TableContentKind.BACKGROUND || kind === TableContentKind.FEAT;
 }
 
 /** "ligada"/"ligado", "desligada"/"desligado", agreeing with the kind's noun. */
