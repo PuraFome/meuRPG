@@ -110,12 +110,12 @@ func (q *Queries) BumpContentRevision(ctx context.Context, arg BumpContentRevisi
 
 const carryHitPoints = `-- name: CarryHitPoints :exec
 UPDATE character_vitals
-SET hit_points_current = LEAST(LEAST(hit_points_current, $1::INT4) + $2::INT4, $3::INT4),
+SET hit_points_current = LEAST(LEAST(hit_points_current, $1::INT4 + hit_points_max_bonus) + $2::INT4, $3::INT4 + hit_points_max_bonus),
     revision = revision + 1,
     updated_at = $4
 WHERE character_id = $5
   AND hit_points_current IS NOT NULL
-  AND hit_points_current <> LEAST(LEAST(hit_points_current, $1::INT4) + $2::INT4, $3::INT4)
+  AND hit_points_current <> LEAST(LEAST(hit_points_current, $1::INT4 + hit_points_max_bonus) + $2::INT4, $3::INT4 + hit_points_max_bonus)
 `
 
 type CarryHitPointsParams struct {
@@ -129,7 +129,8 @@ type CarryHitPointsParams struct {
 // The sheet's maximum hit points changed from old_max to new_max (a level-up,
 // an edit): a character whose current hit points are set gains what the maximum
 // gained (gain, zero when it fell), so a wound stays a wound, and never ends
-// above the new maximum. NULL is "full" and stays so. The revision moves only
+// above the new maximum. Both maximums are the sheet's, and Aid's bonus (the
+// character's hit_points_max_bonus) rides on top of each. NULL is "full" and stays so. The revision moves only
 // when the number does.
 func (q *Queries) CarryHitPoints(ctx context.Context, arg CarryHitPointsParams) error {
 	_, err := q.db.Exec(ctx, carryHitPoints,
@@ -895,7 +896,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions
+       v.familiar_sight_conditions, v.hit_points_max_bonus
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -928,6 +929,7 @@ type GetVitalsRow struct {
 	FamiliarSightCreatureID *string
 	FamiliarSightInCombat   *bool
 	FamiliarSightConditions []string
+	HitPointsMaxBonus       *int32
 }
 
 // ListVitals for one character. No row means the character is not a
@@ -955,6 +957,7 @@ func (q *Queries) GetVitals(ctx context.Context, arg GetVitalsParams) (GetVitals
 		&i.FamiliarSightCreatureID,
 		&i.FamiliarSightInCombat,
 		&i.FamiliarSightConditions,
+		&i.HitPointsMaxBonus,
 	)
 	return i, err
 }
@@ -964,7 +967,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions
+       v.familiar_sight_conditions, v.hit_points_max_bonus
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -997,6 +1000,7 @@ type GetVitalsWithDeadRow struct {
 	FamiliarSightCreatureID *string
 	FamiliarSightInCombat   *bool
 	FamiliarSightConditions []string
+	HitPointsMaxBonus       *int32
 }
 
 // GetVitals that also answers for a player character that died: the page of a
@@ -1025,6 +1029,7 @@ func (q *Queries) GetVitalsWithDead(ctx context.Context, arg GetVitalsWithDeadPa
 		&i.FamiliarSightCreatureID,
 		&i.FamiliarSightInCombat,
 		&i.FamiliarSightConditions,
+		&i.HitPointsMaxBonus,
 	)
 	return i, err
 }
@@ -2692,7 +2697,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions
+       v.familiar_sight_conditions, v.hit_points_max_bonus
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -2721,6 +2726,7 @@ type ListVitalsRow struct {
 	FamiliarSightCreatureID *string
 	FamiliarSightInCombat   *bool
 	FamiliarSightConditions []string
+	HitPointsMaxBonus       *int32
 }
 
 // The vitals of the campaign's living, active player characters (RN-02),
@@ -2757,6 +2763,7 @@ func (q *Queries) ListVitals(ctx context.Context, campaignID string) ([]ListVita
 			&i.FamiliarSightCreatureID,
 			&i.FamiliarSightInCombat,
 			&i.FamiliarSightConditions,
+			&i.HitPointsMaxBonus,
 		); err != nil {
 			return nil, err
 		}
@@ -3258,6 +3265,46 @@ func (q *Queries) SetStoryEditing(ctx context.Context, arg SetStoryEditingParams
 		&i.ReviveKey,
 		&i.ReviveHash,
 	)
+	return i, err
+}
+
+const setVitalsMaxBonus = `-- name: SetVitalsMaxBonus :one
+INSERT INTO character_vitals (character_id, hit_points_current, hit_points_max_bonus, revision, updated_at)
+VALUES ($1, $2, $3, 1, $4)
+ON CONFLICT (character_id) DO UPDATE SET
+    hit_points_max_bonus = excluded.hit_points_max_bonus,
+    hit_points_current = COALESCE(excluded.hit_points_current, character_vitals.hit_points_current),
+    revision = character_vitals.revision + 1,
+    updated_at = excluded.updated_at
+RETURNING revision, updated_at
+`
+
+type SetVitalsMaxBonusParams struct {
+	CharacterID       string
+	HitPointsCurrent  *int32
+	HitPointsMaxBonus int32
+	Now               time.Time
+}
+
+type SetVitalsMaxBonusRow struct {
+	Revision  int32
+	UpdatedAt time.Time
+}
+
+// Aid's bonus to a character's maximum hit points (hit_points_max_bonus) and the
+// current hit points that go with it: the first write creates the vitals row, as
+// TouchVitals does (hit_points_current is only for that insert, and a NULL "full"
+// stays full of the new maximum). A NULL hit_points_current argument leaves the
+// stored current hit points alone.
+func (q *Queries) SetVitalsMaxBonus(ctx context.Context, arg SetVitalsMaxBonusParams) (SetVitalsMaxBonusRow, error) {
+	row := q.db.QueryRow(ctx, setVitalsMaxBonus,
+		arg.CharacterID,
+		arg.HitPointsCurrent,
+		arg.HitPointsMaxBonus,
+		arg.Now,
+	)
+	var i SetVitalsMaxBonusRow
+	err := row.Scan(&i.Revision, &i.UpdatedAt)
 	return i, err
 }
 

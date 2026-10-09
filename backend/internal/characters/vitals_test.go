@@ -127,3 +127,33 @@ func TestApplyVitalsChange(t *testing.T) {
 		t.Error("2 pact slots of 1 were accepted")
 	}
 }
+
+// TestVitalsCountAidsBonusInTheMaximum: Aid's bonus rides on top of the sheet's
+// maximum (SRD 5.1, Aid: both the maximum and the current hit points rise), a character
+// that was never adjusted is full of the new maximum, the stored hit points are cut
+// to it and the sheet's own maximum is what is left of it.
+func TestVitalsCountAidsBonusInTheMaximum(t *testing.T) {
+	t.Parallel()
+	fresh := vitalsToProto(vitalsRow{ID: "c1", HitPointsMaxBonus: new(int32(5))}, wizard3())
+	if fresh.GetHitPointsMax() != 25 || fresh.GetHitPointsCurrent() != 25 || fresh.GetHitPointsMaxBonus() != 5 {
+		t.Errorf("fresh vitals under Aid = %d of %d with a bonus of %d, want 25 of 25 and 5", fresh.GetHitPointsCurrent(), fresh.GetHitPointsMax(), fresh.GetHitPointsMaxBonus())
+	}
+	hurt := vitalsToProto(vitalsRow{ID: "c1", HitPointsMaxBonus: new(int32(10)), HitPointsCurrent: new(int32(27))}, wizard3())
+	if hurt.GetHitPointsMax() != 30 || hurt.GetHitPointsCurrent() != 27 {
+		t.Errorf("a wounded character under Aid = %d of %d, want 27 of 30", hurt.GetHitPointsCurrent(), hurt.GetHitPointsMax())
+	}
+	if sheet := hurt.GetHitPointsMax() - hurt.GetHitPointsMaxBonus(); sheet != 20 {
+		t.Errorf("the sheet's maximum = %d, want 20", sheet)
+	}
+	over := vitalsToProto(vitalsRow{ID: "c1", HitPointsMaxBonus: new(int32(5)), HitPointsCurrent: new(int32(40))}, wizard3())
+	if over.GetHitPointsCurrent() != 25 {
+		t.Errorf("stored hit points above the effective maximum read as %d, want 25", over.GetHitPointsCurrent())
+	}
+	// Healing and corrections go up to the effective maximum.
+	if err := applyVitalsChange(hurt, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: new(int32(30))}); err != nil {
+		t.Errorf("correcting to the effective maximum: %v", err)
+	}
+	if err := applyVitalsChange(hurt, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: new(int32(31))}); err == nil {
+		t.Error("correcting above the effective maximum was accepted")
+	}
+}

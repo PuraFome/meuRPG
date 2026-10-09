@@ -279,7 +279,7 @@
 
       <div class="sheet" [class.sheet--pnotes]="!vm.isMaster">
         <app-ability-medallions class="sheet__abilities" [abilities]="full.abilities" />
-        <app-combat-column class="sheet__combat" [sheet]="full" [liveSlots]="hasLiveSlots()">
+        <app-combat-column class="sheet__combat" [sheet]="full" [vitals]="vitals()" [liveSlots]="hasLiveSlots()">
           <!-- The live counters of an open session (PM-07b 7), right after the combat numbers. -->
           @if (vitals(); as live) {
             <app-resource-counters resources [vitals]="live" />

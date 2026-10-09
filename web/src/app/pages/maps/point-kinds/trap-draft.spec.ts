@@ -11,6 +11,7 @@ import {
   TrapTrigger,
 } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import {
+  alsoFindOptions,
   blankTrapDraft,
   hasTrapErrors,
   isTrapDirty,
@@ -18,6 +19,7 @@ import {
   newDamage,
   newSave,
   presetSummary,
+  toggleAlsoFind,
   trapChangesOf,
   trapDraftFromPreset,
   trapDraftOf,
@@ -272,5 +274,53 @@ describe('what the point carries', () => {
     const d = trapDraftOf(point);
     expect(isTrapDirty({ ...d, damage: [...d.damage, newDamage()] }, point)).toBe(true);
     expect(isTrapDirty({ ...d, damage: [] }, point)).toBe(true);
+  });
+});
+
+describe('"Também acham com" (PM-03c)', () => {
+  it('starts empty, even for a preset, and reads the saved keys', () => {
+    expect(blankTrapDraft().alsoFind).toEqual([]);
+    expect(trapDraftFromPreset(needle).alsoFind).toEqual([]);
+    const saved = {
+      name: 'Fosso',
+      description: '',
+      trap: { findDc: 15, alsoFindSkillKeys: ['skill:arcana'] },
+    } as never;
+    expect(trapDraftOf(saved).alsoFind).toEqual(['skill:arcana']);
+  });
+
+  it('sends the keys in the whole spec, and a change of them is an edit', () => {
+    const point = {
+      name: 'Fosso',
+      description: '',
+      trap: { findDc: 15, alsoFindSkillKeys: [] },
+    } as never;
+    const d = { ...trapDraftOf(point), alsoFind: ['skill:arcana', 'skill:religion'] };
+    expect(trapSpecOf(d).alsoFindSkillKeys).toEqual(['skill:arcana', 'skill:religion']);
+    expect(isTrapDirty(d, point)).toBe(true);
+    expect(trapChangesOf(d, point)?.trap?.alsoFindSkillKeys).toEqual([
+      'skill:arcana',
+      'skill:religion',
+    ]);
+    expect(isTrapDirty(trapDraftOf(point), point)).toBe(false);
+  });
+
+  it("offers every skill but the two that always find, in the list's order, and keeps the picks in it", () => {
+    const all = [
+      'skill:acrobatics',
+      'skill:arcana',
+      'skill:investigation',
+      'skill:perception',
+      'skill:religion',
+    ].map((key) => ({ key }));
+    const offered = alsoFindOptions(all).map((s) => s.key);
+    expect(offered).toEqual(['skill:acrobatics', 'skill:arcana', 'skill:religion']);
+    expect(toggleAlsoFind(['skill:religion'], 'skill:acrobatics', offered)).toEqual([
+      'skill:acrobatics',
+      'skill:religion',
+    ]);
+    expect(
+      toggleAlsoFind(['skill:acrobatics', 'skill:religion'], 'skill:religion', offered),
+    ).toEqual(['skill:acrobatics']);
   });
 });

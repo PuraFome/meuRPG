@@ -135,6 +135,10 @@ type Sheet struct {
 	// weapon attack: 20, 19 with Improved Critical, 18 with Superior Critical.
 	// 0 (a basic sheet) is 20.
 	CriticalRange int
+	// BrutalCriticalDice is how many weapon damage dice a critical hit with a melee
+	// weapon attack rolls on top of the doubled ones (the barbarian's Brutal
+	// Critical: 1, 2 or 3 by level); 0 without it.
+	BrutalCriticalDice int
 	// Metamagic are the Metamagic options the sorcerer knows (feature keys), ChaMod
 	// is its Charisma modifier, and BardicDie the size of the die its Bardic
 	// Inspiration gives, 0 for a character with none.
@@ -475,6 +479,9 @@ type SceneOption struct {
 	// Passive is the character's passive value, when HasPassive.
 	Passive    int
 	HasPassive bool
+	// ReliableTalent says a d20 of this check counts as at least 10 (the
+	// character has Reliable Talent and the check adds the proficiency bonus).
+	ReliableTalent bool
 }
 
 // Creature is a creature of a player's character (MR-037, Etapa 9) as a

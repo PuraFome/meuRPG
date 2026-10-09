@@ -114,7 +114,9 @@
             [summary]="summary()"
             [canDisengage]="canDisengage()"
             [busy]="busy()"
-            (disengage)="disengage.emit()"
+            [chosen]="disengaging()"
+            (disengage)="chooseDisengage()"
+            (undo)="takeBackDisengage()"
           />
         }
         @if (optionsFailed()) {

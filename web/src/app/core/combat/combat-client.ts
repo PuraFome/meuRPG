@@ -11,6 +11,7 @@ import {
   type DeathSave,
   type CoverDegree,
   type CombatantSide,
+  type CombatEffect,
   type DiceRoll,
   type Encounter,
   EncounterMode,
@@ -497,8 +498,16 @@ export class CombatClient {
     campaignId: string,
     encounterId: string,
     combatantId: string,
+    jump?: { readonly runningStart: boolean },
   ): Promise<GetMoveOptionsResponse> {
-    return this.client.getMoveOptions({ campaignId, encounterId, combatantId });
+    // With a jump the squares are the long jump's, and `provokes_reactor_ids` warns about its opportunity attacks as a walk's does.
+    return this.client.getMoveOptions({
+      campaignId,
+      encounterId,
+      combatantId,
+      jump: jump ? JumpKind.LONG : JumpKind.UNSPECIFIED,
+      jumpRunningStart: jump?.runningStart ?? false,
+    });
   }
 
   /** The master's "Aliado" (PARTY) or back to enemy (ENEMY). */
@@ -1079,6 +1088,27 @@ export class CombatClient {
       key,
     );
     return need(res.encounter, 'SetCombatantConditions');
+  }
+
+  /** The master's "Encerrar Ajuda": ends a lasting effect on a combatant (only Ajuda has an action; the Escudo Arcano ends by itself). */
+  async endCombatEffect(
+    campaignId: string,
+    encounterId: string,
+    combatantId: string,
+    effect: CombatEffect,
+  ): Promise<Encounter> {
+    const res = await this.keyed(
+      ['endCombatEffect', campaignId, encounterId, combatantId, effect],
+      (sent) =>
+        this.client.endCombatEffect({
+          campaignId,
+          encounterId,
+          combatantId,
+          effect,
+          idempotencyKey: sent,
+        }),
+    );
+    return need(res.encounter, 'EndCombatEffect');
   }
 
   /** The master's "Dano/Cura" on an NPC. */

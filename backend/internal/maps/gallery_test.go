@@ -519,6 +519,7 @@ type noRules struct{}
 func (noRules) SceneCheckName(string) (string, bool)         { return "", false }
 func (noRules) NamePT(string) string                         { return "" }
 func (noRules) TrapPreset(string) (rules.TrapPreset, bool)   { return rules.TrapPreset{}, false }
+func (noRules) IsSkill(string) bool                          { return false }
 func (noRules) LightPreset(string) (rules.LightPreset, bool) { return rules.LightPreset{}, false }
 func (noRules) GenerateTreasure(string, int, uint64) (rules.Treasure, error) {
 	return rules.Treasure{}, errors.New("not in this test")

@@ -60,6 +60,206 @@ describe('PlayerVitals as a beast (MR-037, E9-11)', () => {
   });
 });
 
+describe('PlayerVitals under Escudo Arcano and Ajuda (PM-03a)', () => {
+  const flat = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim();
+
+  function mount(over: Parameters<typeof pensantusVitals>[0], bonus: number | null) {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    const fixture = TestBed.createComponent(PlayerVitals);
+    fixture.componentRef.setInput('vitals', pensantusVitals(over));
+    fixture.componentRef.setInput('sheet', { armorClass: 13, summary: 'Mago 5', senses: [] });
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.componentRef.setInput('compact', true);
+    fixture.componentRef.setInput('armorClassBonus', bonus);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('shows the armor class already summed, the small sum under it and the label under the cards', () => {
+    const el = mount({}, 5).nativeElement as HTMLElement;
+    expect(flat(el.querySelector('.shield__number'))).toBe('18');
+    expect(flat(el.querySelector('.shield__sum'))).toBe('13 + 5');
+    const label = el.querySelector('.effects[role="status"] .effect--shield');
+    expect(flat(label)).toContain('Escudo Arcano +5 até a sua vez');
+  });
+
+  it('is the plain shield, with no sum and no label, without the spell', () => {
+    const el = mount({}, 0).nativeElement as HTMLElement;
+    expect(flat(el.querySelector('.shield__number'))).toBe('13');
+    expect(el.querySelector('.shield__sum')).toBeNull();
+    expect(el.querySelector('.effect')).toBeNull();
+  });
+
+  it('says once, politely, that the shield ended with the base class, and stops after six seconds', () => {
+    vi.useFakeTimers();
+    try {
+      const fixture = mount({}, 5);
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.querySelector('.ended')).toBeNull();
+      fixture.componentRef.setInput('armorClassBonus', 0);
+      fixture.detectChanges();
+      expect(flat(el.querySelector('.ended-live[role="status"] .ended'))).toContain(
+        'O Escudo Arcano acabou. A sua CA voltou a 13.',
+      );
+      expect(flat(el.querySelector('.shield__number'))).toBe('13');
+      vi.advanceTimersByTime(5999);
+      fixture.detectChanges();
+      expect(el.querySelector('.ended')).not.toBeNull();
+      vi.advanceTimersByTime(1);
+      fixture.detectChanges();
+      expect(el.querySelector('.ended')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not say the shield ended when the combat or the combatant went away', () => {
+    const fixture = mount({}, 5);
+    fixture.componentRef.setInput('armorClassBonus', null);
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('.ended')).toBeNull();
+  });
+
+  it('hangs "+5 de Ajuda" off the maximum, stripes the bar and reads the number for a screen reader', () => {
+    const el = mount({ hitPointsCurrent: 43, hitPointsMax: 43, hitPointsMaxBonus: 5 }, 0)
+      .nativeElement as HTMLElement;
+    expect(flat(el.querySelector('.hp__max'))).toBe('de 43');
+    expect(flat(el.querySelector('.hp__top .hp__aid'))).toBe('+5 de Ajuda');
+    expect(flat(el.querySelector('.effect--aid'))).toContain(
+      'Ajuda: +5 nos PV até o mestre encerrar ou um descanso longo',
+    );
+    expect(flat(el.querySelector('.hp .mr-visually-hidden'))).toBe(
+      'Pontos de vida: 43 de 43, 5 de Ajuda',
+    );
+    expect(el.querySelector('.hp__bar')?.getAttribute('aria-label')).toBe(
+      '43 de 43 pontos de vida',
+    );
+    const [solid, striped] = Array.from(el.querySelectorAll<HTMLElement>('.hp__fill'));
+    expect(parseFloat(solid.style.width)).toBeCloseTo((38 / 43) * 100);
+    expect(parseFloat(striped.style.width)).toBeCloseTo((5 / 43) * 100);
+  });
+
+  it("leaves the striped part empty when the hit points are below the sheet's maximum", () => {
+    const el = mount({ hitPointsCurrent: 31, hitPointsMax: 43, hitPointsMaxBonus: 5 }, 0)
+      .nativeElement as HTMLElement;
+    const [solid, striped] = Array.from(el.querySelectorAll<HTMLElement>('.hp__fill'));
+    expect(parseFloat(solid.style.width)).toBeCloseTo((31 / 43) * 100);
+    expect(parseFloat(striped.style.width)).toBe(0);
+  });
+
+  it('writes +10 for a third-level Ajuda', () => {
+    const el = mount({ hitPointsCurrent: 48, hitPointsMax: 48, hitPointsMaxBonus: 10 }, 0)
+      .nativeElement as HTMLElement;
+    expect(flat(el.querySelector('.hp__aid'))).toBe('+10 de Ajuda');
+    expect(flat(el.querySelector('.effect--aid'))).toContain('Ajuda: +10 nos PV');
+  });
+
+  it('writes nothing about Ajuda without it', () => {
+    const plain = mount({}, 0).nativeElement as HTMLElement;
+    expect(plain.querySelector('.hp__aid')).toBeNull();
+    expect(plain.querySelectorAll('.hp__fill')).toHaveLength(1);
+  });
+
+  it("writes the sheet's own maximum small under the label while Ajuda is on, and not without it", () => {
+    const el = mount({ hitPointsCurrent: 43, hitPointsMax: 43, hitPointsMaxBonus: 5 }, 0)
+      .nativeElement as HTMLElement;
+    expect(flat(el.querySelector('.hp__sheet'))).toBe('máximo 38 da ficha');
+    expect(mount({}, 0).nativeElement.querySelector('.hp__sheet')).toBeNull();
+  });
+});
+
+describe('PlayerVitals at 0 hit points and the Ajuda that wakes (PM-03a)', () => {
+  const flat = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim();
+
+  function mount(
+    over: Parameters<typeof pensantusVitals>[0],
+    saves: { successes: number; failures: number } | null,
+  ) {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    const fixture = TestBed.createComponent(PlayerVitals);
+    fixture.componentRef.setInput(
+      'vitals',
+      pensantusVitals({ name: 'Toren', hitPointsMax: 40, ...over }),
+    );
+    fixture.componentRef.setInput('sheet', { armorClass: 18, summary: 'Guerreiro 4', senses: [] });
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.componentRef.setInput('compact', true);
+    fixture.componentRef.setInput('ownDeathSaves', saves);
+    fixture.detectChanges();
+    return fixture;
+  }
+  const pills = (f: ReturnType<typeof mount>) =>
+    Array.from((f.nativeElement as HTMLElement).querySelectorAll('.effects .effect'), flat);
+
+  it('says "Inconsciente" and the death save counts of the combatant at 0', () => {
+    const f = mount({ hitPointsCurrent: 0 }, { successes: 1, failures: 1 });
+    expect(pills(f)).toEqual(['Inconsciente', 'Testes contra a morte: 1 sucesso, 1 falha']);
+    expect((f.nativeElement as HTMLElement).querySelector('.effects')?.getAttribute('role')).toBe(
+      'status',
+    );
+  });
+
+  it('says only "Inconsciente" when no combat tells the counts, and nothing above 0', () => {
+    expect(pills(mount({ hitPointsCurrent: 0 }, null))).toEqual(['Inconsciente']);
+    expect(pills(mount({ hitPointsCurrent: 12 }, { successes: 0, failures: 0 }))).toEqual([]);
+  });
+
+  it('says the character woke when Ajuda takes the hit points from 0 to above 0, then lets it go', () => {
+    vi.useFakeTimers();
+    try {
+      const f = mount({ hitPointsCurrent: 0, revision: 1 }, { successes: 1, failures: 1 });
+      f.componentRef.setInput(
+        'vitals',
+        pensantusVitals({
+          name: 'Toren',
+          hitPointsCurrent: 5,
+          hitPointsMax: 45,
+          hitPointsMaxBonus: 5,
+          revision: 2,
+        }),
+      );
+      f.detectChanges();
+      expect(pills(f)).toEqual([
+        'favorite_borderAjuda: +5 nos PV até o mestre encerrar ou um descanso longo',
+        'checkAcordado · testes contra a morte zerados',
+      ]);
+      expect(flat((f.nativeElement as HTMLElement).querySelector('.effect--ok'))).toContain(
+        'Acordado',
+      );
+      vi.advanceTimersByTime(30000);
+      f.detectChanges();
+      expect(pills(f)).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not say it woke for a plain heal, or for hit points that were never 0', () => {
+    const heal = mount({ hitPointsCurrent: 0, revision: 1 }, null);
+    heal.componentRef.setInput(
+      'vitals',
+      pensantusVitals({ name: 'Toren', hitPointsCurrent: 5, hitPointsMax: 40, revision: 2 }),
+    );
+    heal.detectChanges();
+    expect(pills(heal)).toEqual([]);
+    const aid = mount({ hitPointsCurrent: 10, hitPointsMax: 40, revision: 1 }, null);
+    aid.componentRef.setInput(
+      'vitals',
+      pensantusVitals({
+        name: 'Toren',
+        hitPointsCurrent: 15,
+        hitPointsMax: 45,
+        hitPointsMaxBonus: 5,
+        revision: 2,
+      }),
+    );
+    aid.detectChanges();
+    expect(pills(aid).some((p) => p?.includes('Acordado'))).toBe(false);
+  });
+});
+
 describe('PlayerVitals hit dice by size (decisions batch 2 B, 6)', () => {
   function render(over: Parameters<typeof pensantusVitals>[0]) {
     TestBed.configureTestingModule({ providers: [provideRouter([])] });

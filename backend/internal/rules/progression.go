@@ -159,6 +159,10 @@ type SceneOption struct {
 	// HasPassive says whether there is one.
 	Passive    int
 	HasPassive bool
+	// ReliableTalent says a d20 of this check counts as at least 10: the
+	// character has Reliable Talent and the check adds the proficiency bonus
+	// (a skill the sheet is proficient in, expertise included).
+	ReliableTalent bool
 }
 
 // SceneError is an action whose key is not a skill, ability or save the
@@ -170,6 +174,15 @@ type SceneError struct {
 
 func (e *SceneError) Error() string {
 	return fmt.Sprintf("scene action %d: unknown check %q", e.Index, e.Key)
+}
+
+// IsSkill says whether key is one of the SRD's 18 skills ("skill:arcana").
+func (c *Content) IsSkill(key string) bool {
+	if !strings.HasPrefix(key, SceneSkill+":") {
+		return false
+	}
+	_, ok := c.SceneCheckName(key)
+	return ok
 }
 
 // SceneCheckName is the Portuguese name of a scene check by its key
@@ -216,6 +229,7 @@ func SceneOptions(d Derived, actions []SceneAction) ([]SceneOption, error) {
 			for _, s := range d.Skills {
 				if s.Key == a.Key {
 					o.NamePT, o.Bonus, ok = s.NamePT, s.Bonus, true
+					o.ReliableTalent = d.ReliableTalent && (s.Proficiency == ProficiencyFull || s.Proficiency == ProficiencyExpertise)
 					switch key {
 					case "perception":
 						o.Passive, o.HasPassive = d.PassivePerception, true

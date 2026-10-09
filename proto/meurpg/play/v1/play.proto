@@ -1034,6 +1034,12 @@ message CharacterVitals {
   // familiar's eyes (MR-036); unset otherwise. While it is set the character
   // counts as blind and deaf.
   FamiliarSightState familiar_sight = 16;
+  // The hit points Ajuda adds to the maximum (5 at the 2nd spell level, 5 more for each level
+  // above), kept until the master ends the spell (CombatService.EndCombatEffect) or a long
+  // rest; 0 without it. `hit_points_max` already counts them, and the sheet's own
+  // maximum is `hit_points_max - hit_points_max_bonus`. Two Ajudas keep the stronger.
+  // Healing goes up to the effective maximum.
+  int32 hit_points_max_bonus = 17;
   // How many hit dice of each size are used (die size to count, such as 10 to 2
   // for two d10 spent), only the sizes with something spent. Hit dice of different
   // sizes are kept apart (SRD 5.1, "Multiclassing"): a short rest spends them by

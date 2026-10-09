@@ -42,6 +42,8 @@ export interface Chosen {
   readonly square: Square;
   readonly refused: boolean;
   readonly label?: string;
+  /** A second label under the square ("Cai fora do alcance"): the cost then goes above it. */
+  readonly note?: string;
 }
 
 /** A reactor whose reach a pending opportunity offer is about, and the square

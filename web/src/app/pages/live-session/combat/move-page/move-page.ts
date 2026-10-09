@@ -30,9 +30,11 @@ import {
   stepHeight,
 } from '../../../../core/combat/jump-plan';
 import {
+  LANDS_OUT_OF_REACH,
   afterText,
   costTitle,
   indexOptions,
+  jumpCardText,
   leftLine,
   provokeWarning,
   provokedBy,
@@ -63,7 +65,12 @@ const DEFAULT_ZOOM = 1;
 
 /** What "Saltar para cá" asks for. */
 export type JumpRequest =
-  | { readonly kind: 'long'; readonly square: Square }
+  | {
+      readonly kind: 'long';
+      readonly square: Square;
+      /** "Saltar e desengajar": the action is taken first, and then the jump leaves the reach with no attack. */
+      readonly disengage?: true;
+    }
   | { readonly kind: 'high'; readonly heightDft: number };
 
 /**
@@ -132,6 +139,8 @@ export class MovePage {
   readonly jump = output<JumpRequest>();
   /** "Desengajar (gasta a ação)": takes the action here, so the warning goes. */
   readonly disengage = output<void>();
+  /** What the page reads from the server (`GetMoveOptions`): the squares of a long jump (`runningStart` as the limits say), or `null` for a walk. */
+  readonly readJump = output<{ readonly runningStart: boolean } | null>();
   /** "Cancelar", or the back arrow. */
   readonly back = output<void>();
 
@@ -140,6 +149,8 @@ export class MovePage {
   protected readonly kind = signal<JumpMode>('long');
   protected readonly height = signal(0);
   protected readonly zoom = signal(DEFAULT_ZOOM);
+  /** Desengajar was chosen for the jump: the action is spent with the jump, not before it. */
+  private readonly disengageChoice = signal(false);
   /** The question about the known trap is open in the footer. */
   protected readonly trapAsk = signal(false);
   private readonly errorFor = signal<Square | null>(null);
@@ -266,8 +277,25 @@ export class MovePage {
     }
     const v = this.verdict();
     const dft = this.jumping() ? this.jumpCost() : v?.kind === 'ok' ? v.square.costDft : 0;
-    return { square, refused: false, label: metersFixed(dft / 10) };
+    return {
+      square,
+      refused: false,
+      label: metersFixed(dft / 10),
+      // The square a jump lands on says it leaves the reach of someone who sees it (the same warning as the walk's).
+      note: this.jumping() && s.warning ? LANDS_OUT_OF_REACH : undefined,
+    };
   });
+  /** A long jump that leaves an enemy's reach: Desengajar can be chosen and spent with it. */
+  protected readonly jumpProvokes = computed(
+    () =>
+      this.jumping() &&
+      this.kind() === 'long' &&
+      this.summary().kind === 'ok' &&
+      !!this.summary().warning,
+  );
+  protected readonly disengaging = computed(
+    () => this.disengageChoice() && this.jumpProvokes() && this.canDisengage(),
+  );
   protected readonly canMove = computed(() => {
     if (this.busy()) {
       return false;
@@ -313,7 +341,9 @@ export class MovePage {
       return 'Mover para cá';
     }
     return this.kind() === 'long'
-      ? 'Saltar para cá'
+      ? this.disengaging()
+        ? 'Saltar e desengajar'
+        : 'Saltar para cá'
       : `Saltar ${metersFixed(this.height() / 10)} para cima`;
   });
   /** What the footer's button says it is for when it cannot be pressed. */
@@ -359,6 +389,12 @@ export class MovePage {
       if (this.lockedDoor()) {
         untracked(() => this.chosen.set(null));
       }
+    });
+    // A long jump asks the server for its own squares (and who they provoke); a walk or a high jump asks for the walk's.
+    effect(() => {
+      const long = this.jumping() && this.kind() === 'long';
+      const running = this.jumps()?.runningStart ?? false;
+      untracked(() => this.readJump.emit(long ? { runningStart: running } : null));
     });
     // The high jump starts at the most it can do (E9-06: 1,8 m).
     effect(() => {
@@ -478,8 +514,8 @@ export class MovePage {
     return {
       kind: 'ok',
       title: `Saltar ${metersFixed(cost / 10)}`,
-      detail: `O terreno difícil no caminho não conta. ${afterText(left, cost)}`,
-      warning: names.length > 0 ? provokeWarning(names) : '',
+      detail: jumpCardText(cost, left, this.trapName()),
+      warning: names.length > 0 ? provokeWarning(names, 'salto') : '',
       trap: this.trapName() ? this.trapName() : '',
     };
   }
@@ -499,11 +535,26 @@ export class MovePage {
   protected setMode(mode: 'walk' | 'jump'): void {
     this.mode.set(mode);
     this.chosen.set(null);
+    this.disengageChoice.set(false);
+  }
+
+  /** "Desengajar (gasta a ação)": a walk takes the action at once; a jump chooses it, to be spent with the jump. */
+  protected chooseDisengage(): void {
+    if (this.jumping()) {
+      this.disengageChoice.set(true);
+      return;
+    }
+    this.disengage.emit();
+  }
+
+  protected takeBackDisengage(): void {
+    this.disengageChoice.set(false);
   }
 
   protected setKind(kind: JumpMode): void {
     this.kind.set(kind);
     this.chosen.set(null);
+    this.disengageChoice.set(false);
     this.height.set(maxHeight(Math.min(limitFor(this.jumps()!, kind), this.leftDft())));
   }
 
@@ -537,7 +588,11 @@ export class MovePage {
       if (this.kind() === 'high') {
         this.jump.emit({ kind: 'high', heightDft: this.height() });
       } else if (to) {
-        this.jump.emit({ kind: 'long', square: to });
+        this.jump.emit(
+          this.disengaging()
+            ? { kind: 'long', square: to, disengage: true }
+            : { kind: 'long', square: to },
+        );
       }
     } else if (to) {
       this.confirm.emit(to);

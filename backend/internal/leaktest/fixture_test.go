@@ -58,6 +58,9 @@ type world struct {
 	bandit       *charactersv1.Character // an NPC made from a bestiary creature
 	merchant     *charactersv1.Character // an NPC on the stage
 	casterNPC    *charactersv1.Character // an NPC with a full sheet, not on the stage, that cast a spell
+	healer       *charactersv1.Character // a Life cleric NPC on the stage that healed Caio's character
+	disciple     int64                   // the Disciple of Life extra hit points the healer gave Caio's character
+	healCast     *playv1.OutsideCast     // that cast, as the master reads it
 	hiddenCast   string                  // the id of that cast
 	offstage     *charactersv1.Character // an NPC with a portrait, not on the stage
 	seenNPC      *charactersv1.Character // an NPC the master left visible, in Ana's sight

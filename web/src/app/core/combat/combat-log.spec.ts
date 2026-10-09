@@ -274,6 +274,20 @@ describe('the combat log sentences (timeline.md, Rodadas 1 and 2)', () => {
           entry({
             kind: CombatLogKind.MOVED,
             actorLabel: 'Toren',
+            distanceFt: 15,
+            distanceDft: 150,
+            jump: JumpKind.LONG,
+            jumpRunningStart: true,
+          }),
+        )?.text,
+      ),
+    ).toBe(' saltou 4,5 m, com corrida');
+    expect(
+      plain(
+        logLine(
+          entry({
+            kind: CombatLogKind.MOVED,
+            actorLabel: 'Toren',
             distanceDft: 0,
             jump: JumpKind.HIGH,
             jumpHeightDft: 60,
@@ -1060,6 +1074,64 @@ describe('the log of a revival (Reviver and Revivificar)', () => {
     } as never);
     expect(logLine(cast, '', table)?.text).toBe(
       ' conjurou Revivificar no Goblin 2: voltou com 1 PV',
+    );
+  });
+});
+
+describe('the log line of a critical with the extra dice of Crítico Brutal (PM-03b)', () => {
+  const crit = (roll: object | undefined, extra = 1) =>
+    create(CombatLogEntrySchema, {
+      id: 'ragna',
+      kind: CombatLogKind.ATTACK,
+      outcome: AttackOutcome.CRITICAL_HIT,
+      actorLabel: 'Ragna',
+      targetLabel: 'Hobgoblin',
+      key: 'equipment:greataxe',
+      keyNamePt: 'Machado grande',
+      damage: {
+        status: PendingDamageStatus.APPLIED,
+        amount: 25,
+        damageTypePt: 'cortante',
+        extraDiceCount: extra,
+        extraDiceNamePt: extra > 0 ? 'Crítico Brutal' : '',
+        roll,
+      },
+    } as never);
+  const faces = {
+    diceCount: 3,
+    diceSides: 12,
+    faces: [7, 11, 4],
+    modifier: 3,
+    total: 25,
+    physical: false,
+  };
+
+  it("splits the groups of dice, with the feature's name, for whoever gets the dice", () => {
+    expect(logLine(crit(faces))?.text).toBe(
+      ' ataca o Hobgoblin com o Machado grande: crítico, dano 2d12 (7, 11) + 1d12 Crítico Brutal (4) + 3 = 25 de cortante',
+    );
+  });
+
+  it('names the feature and the groups when the dice were physical: only the sum is known', () => {
+    const typed = {
+      diceCount: 3,
+      diceSides: 12,
+      faces: [],
+      modifier: 3,
+      total: 25,
+      physical: true,
+    };
+    expect(logLine(crit(typed))?.text).toBe(
+      ' ataca o Hobgoblin com o Machado grande: crítico, dano 3d12 (2d12 + 1d12 Crítico Brutal) = 22 + 3 = 25 de cortante, dados físicos',
+    );
+  });
+
+  it('says only the amount to whoever does not get the dice, and for a hit without the feature', () => {
+    expect(logLine(crit(undefined))?.text).toBe(
+      ' ataca o Hobgoblin com o Machado grande: crítico, 25 de dano',
+    );
+    expect(logLine(crit(faces, 0))?.text).toBe(
+      ' ataca o Hobgoblin com o Machado grande: crítico, 25 de dano',
     );
   });
 });

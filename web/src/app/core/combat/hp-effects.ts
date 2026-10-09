@@ -29,7 +29,7 @@ const KIND_FROM_GEN: Partial<Record<SpellHitPointEffectKind, HpSpellKind>> = {
   [SpellHitPointEffectKind.THRESHOLD]: 'threshold',
   [SpellHitPointEffectKind.ZERO_HP]: 'zero',
   [SpellHitPointEffectKind.FLAT_HEAL]: 'heal',
-  // Vitalidade Falsa rolls a die before the cast, as a pool does; Ajuda only names who it touches.
+  // Vitalidade Falsa rolls a die before the cast, as a pool does; Ajuda only names who it touches (it raises the maximum).
   [SpellHitPointEffectKind.TEMP_HP]: 'pool',
   [SpellHitPointEffectKind.MAX_HP]: 'heal',
 };
@@ -43,7 +43,7 @@ export function hpSpellKind(details: SpellDetails | null): HpSpellKind | null {
 
 /** What a spell that changes hit points gave one target, in words: "recupera 7 PV" for a heal, "ganha 7 PV
  * temporários" for Vitalidade Falsa, and for Ajuda what that target got (`gain`): "ganha 5 PV máximos" for
- * an NPC or a creature, "ganha 5 PV temporários" for a character standing, "volta com 5 PV" for one at 0. */
+ * one that stood, "acorda com 5 PV" for one at 0. A `TEMPORARY` gain is no longer sent; it is still written. */
 export function gainWords(kind: SpellEffectKind, amount: number, gain?: SpellEffectGain): string {
   switch (kind) {
     case SpellEffectKind.TEMP_HP:
@@ -53,7 +53,7 @@ export function gainWords(kind: SpellEffectKind, amount: number, gain?: SpellEff
         case SpellEffectGain.TEMPORARY:
           return `ganha ${amount} PV temporários`;
         case SpellEffectGain.CURRENT:
-          return `volta com ${amount} PV`;
+          return `acorda com ${amount} PV`;
         default:
           return `ganha ${amount} PV máximos`;
       }
@@ -72,7 +72,7 @@ export function gainLine(kind: SpellEffectKind, amount: number, gain?: SpellEffe
         case SpellEffectGain.TEMPORARY:
           return `${amount} PV temporários`;
         case SpellEffectGain.CURRENT:
-          return `Volta com ${amount} PV`;
+          return `Acorda com ${amount} PV`;
         default:
           return `PV máximo +${amount}`;
       }
@@ -171,7 +171,7 @@ export function effectWords(
     case SpellEffectKind.TEMP_HP:
       return { present: 'ganha PV', past: 'Ganhou PV', icon: 'shield', affected: true };
     case SpellEffectKind.MAX_HP:
-      // Ajuda: what the target got depends on who it is (maximum, temporary, or the hit points of one who got up).
+      // Ajuda: the maximum rose, and a target that was at 0 woke up with the hit points.
       switch (gain) {
         case SpellEffectGain.TEMPORARY:
           return {
@@ -182,8 +182,8 @@ export function effectWords(
           };
         case SpellEffectGain.CURRENT:
           return {
-            present: 'volta com PV',
-            past: 'Voltou com PV',
+            present: 'acorda',
+            past: 'Acordou',
             icon: 'favorite',
             affected: true,
           };
@@ -233,4 +233,21 @@ export function poolRollText(roll: DiceRoll): string {
     return `${roll.diceCount}d${roll.diceSides} = ${roll.total} · dado físico`;
   }
   return rollFormula(roll);
+}
+
+/** "PV 0 → 5 de 45": what Ajuda did to one target's hit points, as the result of the cast says it. The hit
+ * points before come from the master's number when it is there; otherwise they are the after minus what the
+ * spell added (the server sends `healed` to the same two readers it sends the after to). `null` when the
+ * server did not send the numbers. */
+export function aidChange(
+  before: number | undefined,
+  healed: number | undefined,
+  after: number | undefined,
+  maxAfter: number | undefined,
+): string | null {
+  if (after === undefined || maxAfter === undefined) {
+    return null;
+  }
+  const from = before ?? (healed === undefined ? undefined : Math.max(0, after - healed));
+  return from === undefined ? null : `PV ${from} → ${after} de ${maxAfter}`;
 }

@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 
 import {
   CombatantKind,
+  JumpKind,
   OpportunityAttackSchema,
   OpportunityOfferSchema,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
@@ -83,6 +84,15 @@ describe('OpportunityCard', () => {
     expect(plain(el.querySelector('section')?.getAttribute('aria-label'))).toBe(
       'Ataque de oportunidade de Goblin 2',
     );
+  });
+
+  it('says the mover jumped out of the reach, and that the jump was worth it, when the offer comes from a jump', () => {
+    const jumped = create(OpportunityOfferSchema, { ...toGoblin, jump: JumpKind.LONG });
+    const { el } = setup([jumped]);
+    const text = plain(el.textContent);
+    expect(text).toContain('O Toren saltou para fora do alcance do Goblin 2.');
+    expect(text).not.toContain('saiu do alcance');
+    expect(text).toContain('Já saltou 15,0 m: o salto valeu.'.replace('15,0', '4,5'));
   });
 
   it('has "Não atacar" and "Atacar com Cimitarra", the same width, with the safe one focused', async () => {

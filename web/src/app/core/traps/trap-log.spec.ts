@@ -104,6 +104,40 @@ describe('trap log', () => {
       },
     });
     expect(activityLines(none, false)[0].text).toContain('não achou nada');
+    // A search with another skill names it, and a roll Talento Confiável raised shows the account.
+    const other = create(TrapActivitySchema, {
+      id: 'o',
+      search: {
+        characterName: 'Pensantus',
+        skill: TrapSearchSkill.OTHER,
+        otherSkillKey: 'skill:arcana',
+        roll: { diceCount: 1, diceSides: 20, faces: [12], modifier: 8, total: 20 },
+        foundNames: ['Estátua que cospe fogo'],
+      },
+    });
+    expect(activityLines(other, true)[0].text).toBe(
+      ' procurou armadilhas (Arcanismo): 1d20 (12) + 8 = 20, e achou a armadilha Estátua que cospe fogo',
+    );
+    const raised = create(TrapActivitySchema, {
+      id: 'r',
+      search: {
+        characterName: 'Brisa',
+        skill: TrapSearchSkill.OTHER,
+        otherSkillKey: 'skill:acrobatics',
+        roll: {
+          diceCount: 1,
+          diceSides: 20,
+          faces: [6],
+          modifier: 9,
+          total: 19,
+          treatedAs: 10,
+          treatedAsSource: 'feature:reliable-talent',
+        },
+      },
+    });
+    expect(activityLines(raised, true)[0].text).toBe(
+      ' procurou armadilhas (Acrobacia): d20: 6 → 10 (Talento Confiável) + 9 = 19, e não achou nada',
+    );
     const notice = create(TrapActivitySchema, {
       id: 'q',
       notice: { characterNames: ['Sálvia'], trapName: 'Fosso escondido' },

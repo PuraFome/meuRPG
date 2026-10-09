@@ -730,6 +730,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			if !ok || h.Fx == "" {
 				continue
 			}
+			if h.BonusBefore != nil && !holdsHP(target) { // Ajuda's bonus, before the hit points the bonus bounds
+				if _, _, err := s.vitals.SetHitPointsMaxBonus(ctx, c.tx, c.session.CampaignID, target.CharacterID, *h.BonusBefore); err != nil {
+					return nil, err
+				}
+			}
 			if h.Restore != nil {
 				if holdsHP(target) {
 					err = setHP(target, *h.Restore)
@@ -744,7 +749,7 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 				}
 			}
 			if h.MaxBefore != nil && holdsHP(target) { // after the hit points, which are the lower ones
-				if err := c.q.SetCombatantHitPointsMax(ctx, playdb.SetCombatantHitPointsMaxParams{ID: target.ID, HpMax: h.MaxBefore}); err != nil {
+				if err := c.q.SetCombatantHitPointsMax(ctx, playdb.SetCombatantHitPointsMaxParams{ID: target.ID, HpMax: h.MaxBefore, HpMaxBonus: num(h.BonusBefore)}); err != nil {
 					return nil, fmt.Errorf("put back the maximum hit points: %w", err)
 				}
 			}

@@ -72,9 +72,8 @@ var effectReasonToProto = map[string]playv1.SpellEffectReason{
 }
 
 var effectGainToProto = map[string]playv1.SpellEffectGain{
-	gainMaximum:   playv1.SpellEffectGain_SPELL_EFFECT_GAIN_MAXIMUM,
-	gainTemporary: playv1.SpellEffectGain_SPELL_EFFECT_GAIN_TEMPORARY,
-	gainCurrent:   playv1.SpellEffectGain_SPELL_EFFECT_GAIN_CURRENT,
+	gainMaximum: playv1.SpellEffectGain_SPELL_EFFECT_GAIN_MAXIMUM,
+	gainCurrent: playv1.SpellEffectGain_SPELL_EFFECT_GAIN_CURRENT,
 }
 
 // effectView is what a spell that reads hit points did to a target, as the
@@ -108,6 +107,7 @@ func effectView(h castHit, v combatViewer, target playdb.Combatant) *playv1.Spel
 	}
 	if h.Healed != nil && (v.master || v.owns(target)) {
 		out.Healed = h.Healed
+		out.HitPointsAfter, out.HitPointsMaxAfter = h.HPAfter, h.MaxAfter
 	}
 	return out
 }

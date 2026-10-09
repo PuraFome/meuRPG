@@ -6,6 +6,8 @@
     [initiative]="s.initiative"
     [speedFt]="s.speedWalkFt"
     [hitPointsMax]="s.hitPointsMax"
+    [hitPointsCurrent]="aidVitals()?.hitPointsCurrent ?? null"
+    [aid]="aidVitals()?.hitPointsMaxBonus ?? 0"
     [hitDice]="s.hitDice"
   />
 </section>

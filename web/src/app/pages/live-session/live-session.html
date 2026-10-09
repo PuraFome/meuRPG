@@ -160,7 +160,7 @@
           (changeDice)="changeDice()"
         >
           @if (ownVitals(); as v) {
-            <app-player-vitals [vitals]="v" [sheet]="playerSheet()" [beastAc]="beastAc()" [campaignId]="campaignId()" [compact]="true" />
+            <app-player-vitals [vitals]="v" [sheet]="playerSheet()" [beastAc]="beastAc()" [campaignId]="campaignId()" [armorClassBonus]="ownArmorBonus()" [ownDeathSaves]="ownDeathSaves()" [compact]="true" />
           }
         </app-combat-view>
         <!-- The fog's tools stay during a combat (MR-036): the master's "Ver como" and the lights, the player's light. A combat without a map has no fog (RN-25). -->
@@ -347,6 +347,7 @@
               [state]="scene"
               [diceMode]="campaign()?.diceMode ?? 1"
               [dicePreference]="campaign()?.dicePreference ?? 1"
+              [reliableTalent]="playerSheet()?.skills?.reliableTalent ?? []"
             />
             <app-shown-image-block [image]="shownImage()" [animate]="phase() === 'live'" />
             <app-left-images-block [images]="leftImages()" />
@@ -374,6 +375,8 @@
                 [sheet]="playerSheet()"
                 [beastAc]="beastAc()"
                 [campaignId]="campaignId()"
+                [armorClassBonus]="ownArmorBonus()"
+                [ownDeathSaves]="ownDeathSaves()"
                 [diceMode]="campaign()?.diceMode ?? 1"
                 [dicePreference]="campaign()?.dicePreference ?? 1"
                 (vitalsChange)="takeVitals([$event])"

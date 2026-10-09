@@ -678,3 +678,32 @@ func TestTheMastersCorrectionOfHitDiceIsBySize(t *testing.T) {
 		t.Errorf("a count of 4 = %v, want 3d10 and 1d6", d)
 	}
 }
+
+// SRD 5.1, "Aid": the spell lasts 8 hours, which a long rest covers, so the long
+// rest ends it and the hit points that come back fill the sheet's own maximum; a
+// short rest does not.
+func TestALongRestEndsAidAndAShortRestDoesNot(t *testing.T) {
+	t.Parallel()
+	r := newRestTable(t)
+	r.use(t, r.fighter, func(q *playv1.AdjustCharacterVitalsRequest) { q.HitPointsCurrent = proto.Int32(10) })
+	sheetMax := r.vitals(t, r.master, r.fighter).GetHitPointsMax()
+	if _, err := r.h.pool.Exec(t.Context(), `UPDATE character_vitals SET hit_points_max_bonus = 5, hit_points_current = 15 WHERE character_id = $1`, r.fighter.GetId()); err != nil {
+		t.Fatalf("give the fighter Aid: %v", err)
+	}
+	if v := r.vitals(t, r.master, r.fighter); v.GetHitPointsMaxBonus() != 5 || v.GetHitPointsMax() != sheetMax+5 {
+		t.Fatalf("with Aid: bonus %d, maximum %d (sheet %d)", v.GetHitPointsMaxBonus(), v.GetHitPointsMax(), sheetMax)
+	}
+	if _, err := r.rest(t, playv1.RestKind_REST_KIND_SHORT); err != nil {
+		t.Fatalf("TakeRest(short) error = %v", err)
+	}
+	if v := r.vitals(t, r.master, r.fighter); v.GetHitPointsMaxBonus() != 5 || v.GetHitPointsMax() != sheetMax+5 {
+		t.Errorf("after a short rest: bonus %d, maximum %d, want Aid kept", v.GetHitPointsMaxBonus(), v.GetHitPointsMax())
+	}
+	if _, err := r.rest(t, playv1.RestKind_REST_KIND_LONG); err != nil {
+		t.Fatalf("TakeRest(long) error = %v", err)
+	}
+	v := r.vitals(t, r.master, r.fighter)
+	if v.GetHitPointsMaxBonus() != 0 || v.GetHitPointsMax() != sheetMax || v.GetHitPointsCurrent() != sheetMax {
+		t.Errorf("after a long rest: bonus %d, %d/%d hit points, want Aid ended and %d/%d", v.GetHitPointsMaxBonus(), v.GetHitPointsCurrent(), v.GetHitPointsMax(), sheetMax, sheetMax)
+	}
+}
