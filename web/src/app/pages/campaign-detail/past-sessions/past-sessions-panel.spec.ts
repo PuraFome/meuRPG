@@ -92,6 +92,18 @@ describe('PastSessionsPanel', () => {
     ]);
   });
 
+  it("keeps name, date, duration and link as the row's own children, so one grid lays them out without wrapping", async () => {
+    listSessions.mockResolvedValue([ended(3)]);
+    const { el } = await render(true);
+    const row = el.querySelector('li.row')!;
+    expect(Array.from(row.children, (c) => c.className.split(' ')[0])).toEqual([
+      'row__name',
+      'row__when',
+      'row__duration',
+      'row__link',
+    ]);
+  });
+
   it('leaves the open session out: it is the live notice above', async () => {
     listSessions.mockResolvedValue([open(4), ended(3)]);
     const { el } = await render(true);

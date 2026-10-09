@@ -46,28 +46,37 @@
   margin: 0;
 }
 
+// One row never wraps. Name, date and duration stack in the left column (on a phone the duration sits under the
+// date); the link takes the right column, centred on the whole row. From 600 px the duration moves beside the link.
 .row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'name link'
+    'when link'
+    'duration link';
   align-items: center;
-  justify-content: space-between;
-  gap: 0 var(--mr-space-3);
+  column-gap: var(--mr-space-3);
   padding: 4px 0;
   border-top: 1px solid var(--mr-rule);
 
   &:first-child {
     border-top: 0;
   }
-}
 
-.row__text {
-  display: flex;
-  flex: 1 1 200px;
-  flex-direction: column;
-  min-width: 0;
+  @media (min-width: 600px) {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      'name duration link'
+      'when duration link';
+    column-gap: var(--mr-space-4);
+  }
 }
 
 .row__name {
+  grid-area: name;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-family: var(--mr-font-display);
   font-size: 19px;
   font-weight: 700;
@@ -75,22 +84,17 @@
 }
 
 .row__when {
+  grid-area: when;
+  min-width: 0;
   font-size: 14px;
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
 
-// The duration and the link share a line; on a narrow phone they drop below the name, to the right.
-.row__side {
-  display: flex;
-  flex: 0 1 auto;
-  align-items: center;
-  gap: var(--mr-space-4);
-  margin-left: auto;
-}
-
 .row__duration {
+  grid-area: duration;
   font-size: 14px;
+  line-height: 20px;
   color: var(--mr-ink-muted);
   white-space: nowrap;
 }
@@ -104,6 +108,7 @@
   color: var(--mr-accent-text);
   text-decoration: none;
   white-space: nowrap;
+  grid-area: link;
 
   &:hover {
     text-decoration: underline;

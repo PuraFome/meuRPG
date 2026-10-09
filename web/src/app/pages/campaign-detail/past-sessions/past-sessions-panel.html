@@ -30,21 +30,17 @@
           <ul class="mr-list past__list">
             @for (r of rows(); track r.id; let i = $index) {
               <li class="row">
-                <span class="row__text">
-                  <span class="row__name">Sessão {{ r.number }}</span>
-                  <span class="row__when">{{ r.span }}</span>
-                </span>
-                <span class="row__side">
-                  <span class="row__duration">{{ r.duration }}</span>
-                  <a
-                    class="row__link"
-                    [class.js-first-extra]="i === shown"
-                    [routerLink]="['/campaigns', campaignId(), 'sessions', r.number]"
-                    [attr.aria-label]="'Ver resumo da Sessão ' + r.number"
-                  >
-                    Ver resumo<mat-icon aria-hidden="true">chevron_right</mat-icon>
-                  </a>
-                </span>
+                <span class="row__name">Sessão {{ r.number }}</span>
+                <span class="row__when">{{ r.span }}</span>
+                <span class="row__duration">{{ r.duration }}</span>
+                <a
+                  class="row__link"
+                  [class.js-first-extra]="i === shown"
+                  [routerLink]="['/campaigns', campaignId(), 'sessions', r.number]"
+                  [attr.aria-label]="'Ver resumo da Sessão ' + r.number"
+                >
+                  Ver resumo<mat-icon aria-hidden="true">chevron_right</mat-icon>
+                </a>
               </li>
             }
           </ul>
