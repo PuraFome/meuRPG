@@ -13,13 +13,13 @@
       {"type": "modifier", "target": "damage.weapon.melee", "mode": "add", "value": "2", "tags": ["wielding:one-melee-weapon"], "text_pt": "+2 de dano com uma arma corpo a corpo numa mão e nenhuma outra arma."}
     ],
     "feature:fighter-fighting-style-great-weapon-fighting": [
-      {"type": "note"}
+      {"type": "note", "text_pt": "Combate com Armas Grandes: refaz 1 ou 2 no dado de dano de um ataque corpo a corpo com arma de duas mãos (ou versátil, usada com duas); vale o novo resultado."}
     ],
     "feature:fighter-fighting-style-protection": [
       {"type": "grant_action", "economy": "reaction"}
     ],
     "feature:fighter-fighting-style-two-weapon-fighting": [
-      {"type": "note"}
+      {"type": "note", "text_pt": "Combate com Duas Armas: soma o modificador de habilidade ao dano do segundo ataque."}
     ],
     "feature:second-wind": [
       {"type": "grant_action", "economy": "bonus_action"},

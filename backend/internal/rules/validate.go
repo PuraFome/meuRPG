@@ -155,8 +155,19 @@ func validate(b Build, c *content) error {
 	if err := checkKeys(c, "full.prepared_spell_keys", b.SpellsPrepared, MaxPreparedSpells, isLeveledSpell); err != nil {
 		return err
 	}
-	return checkKeys(c, "full.feature_choice_keys", b.FeatureChoices, MaxListLength, isOption)
+	if len(b.FeatureChoiceText) > MaxChoiceTexts {
+		return fail("full.feature_choice_text", "must have at most %d entries", MaxChoiceTexts)
+	}
+	for k, v := range b.FeatureChoiceText {
+		if _, _, ok := strings.Cut(k, textSeparator); !ok || utf8.RuneCountInString(v) > MaxChoiceTextLength {
+			return fail("full.feature_choice_text", "has a key that is no choice's or a text over %d characters", MaxChoiceTextLength)
+		}
+	}
+	return checkKeys(c, "full.feature_choice_keys", b.FeatureChoices, MaxListLength, isChoicePick)
 }
+
+// isChoicePick: an option of a feature or trait, or a pick of the choice engine.
+func isChoicePick(c *content, k string) bool { return isOption(c, k) || c.choiceValueOK(k) }
 
 // checkName checks a custom name's length; the characters module cleans
 // the text itself (one line, no control characters).

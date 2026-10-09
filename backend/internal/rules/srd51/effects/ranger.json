@@ -19,7 +19,7 @@
       {"type": "modifier", "target": "damage.weapon.melee", "mode": "add", "value": "2", "tags": ["wielding:one-melee-weapon"], "text_pt": "+2 de dano com uma arma corpo a corpo numa mão e nenhuma outra arma."}
     ],
     "feature:ranger-fighting-style-two-weapon-fighting": [
-      {"type": "note"}
+      {"type": "note", "text_pt": "Combate com Duas Armas: soma o modificador de habilidade ao dano do segundo ataque."}
     ],
     "feature:spellcasting-ranger": [
       {"type": "spellcasting", "ability": "wis", "progression": "half"}

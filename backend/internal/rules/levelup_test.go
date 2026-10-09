@@ -38,7 +38,7 @@ func sorcererBuild(level int) Build {
 		Classes:            []ClassLevel{{Class: "class:sorcerer", Subclass: "subclass:draconic", Level: level}},
 		SkillProficiencies: []string{"skill:arcana", "skill:persuasion"},
 		Cantrips:           []string{"spell:fire-bolt", "spell:light", "spell:mage-hand", "spell:prestidigitation"},
-		FeatureChoices:     []string{"trait:draconic-ancestry-red"},
+		FeatureChoices:     []string{"feature:dragon-ancestor-red---fire-damage"},
 	}
 	b.SpellsKnown = []string{"spell:magic-missile", "spell:shield", "spell:burning-hands"}[:min(level+1, 3)]
 	return b
@@ -555,11 +555,12 @@ func TestLevelUpGainsTheEngineModels(t *testing.T) {
 		}
 	}
 	var o LevelUpOffer
-	if o, _ = LevelUpOptions(at("class:warlock", "subclass:fiend", 10), "class:warlock", c); len(o.MasterAdds) != 1 || o.MasterAdds[0].Key != "feature:mystic-arcanum-6th-level" {
-		t.Errorf("Warlock 10 to 11 master adds = %+v, want Mystic Arcanum", o.MasterAdds)
+	// The choices the engine asks for are no longer left to the master's editor.
+	if o, _ = LevelUpOptions(at("class:warlock", "subclass:fiend", 10), "class:warlock", c); len(o.MasterAdds) != 0 || !offersChoice(o.NewChoices, "feature:mystic-arcanum-6th-level") {
+		t.Errorf("Warlock 10 to 11: master adds %+v, new choices %+v, want a Mystic Arcanum choice", o.MasterAdds, o.NewChoices)
 	}
-	if o, _ = LevelUpOptions(at("class:wizard", "subclass:evocation", 17), "class:wizard", c); len(o.MasterAdds) != 1 || o.MasterAdds[0].Key != "feature:spell-mastery" {
-		t.Errorf("Wizard 17 to 18 master adds = %+v, want Spell Mastery", o.MasterAdds)
+	if o, _ = LevelUpOptions(at("class:wizard", "subclass:evocation", 17), "class:wizard", c); len(o.MasterAdds) != 0 || !offersChoice(o.NewChoices, "feature:spell-mastery#1") || !offersChoice(o.NewChoices, "feature:spell-mastery#2") {
+		t.Errorf("Wizard 17 to 18: master adds %+v, new choices %+v, want the two Spell Mastery choices", o.MasterAdds, o.NewChoices)
 	}
 	bard := at("class:bard", "subclass:lore", 9)
 	if o, _ = LevelUpOptions(bard, "class:bard", c); o.AnyClassSpells != 2 || o.Spells < 2 {
@@ -595,4 +596,11 @@ func TestLevelUpRefusesDuplicates(t *testing.T) {
 			t.Errorf("%s: error = %v, want a refusal", name, err)
 		}
 	}
+}
+
+// offersChoice says whether one of the groups holds the choice with this key.
+func offersChoice(groups []ChoiceGroup, key string) bool {
+	return slices.ContainsFunc(groups, func(g ChoiceGroup) bool {
+		return slices.ContainsFunc(g.Choices, func(ch Choice) bool { return ch.Key == key })
+	})
 }

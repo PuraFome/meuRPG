@@ -56,6 +56,9 @@ const (
 	LevelUpReasonPrepared = "prepared"
 	// LevelUpReasonFeatureChoice: not exactly the options the new features offer.
 	LevelUpReasonFeatureChoice = "feature_choice"
+	// LevelUpReasonLateChoice: a choice an earlier level left open (a fighting
+	// style the sheet never picked) is still open.
+	LevelUpReasonLateChoice = "late_choice"
 	// LevelUpReasonSkills: not exactly the skills the new level lets the player
 	// choose.
 	LevelUpReasonSkills = "skills"
@@ -146,6 +149,17 @@ type LevelUpOffer struct {
 	// college, the Rogue's Expertise).
 	SkillChoices     int
 	ExpertiseChoices int
+	// LateChoices are the choices an earlier level left open (a sheet written
+	// before they were asked, or saved with one skipped): the level up asks for
+	// them first and refuses without them. NewChoices are the new level's choices
+	// that are not feature options (a favored enemy, a terrain, a Mystic Arcanum),
+	// which FeatureChoices does not carry.
+	LateChoices []ChoiceGroup
+	NewChoices  []ChoiceGroup
+	// CanSwapInvocation says the class is the Warlock's and the sheet has an
+	// invocation to swap: one may be replaced at each level (SRD 5.1, Warlock,
+	// Eldritch Invocations).
+	CanSwapInvocation bool
 
 	// Automatic.
 
@@ -207,6 +221,15 @@ type LevelUpFeatureChoice struct {
 	Subclass string
 	Choose   int
 	Options  []NamedKey
+	// Blocked are the options the character cannot take now (an invocation whose
+	// prerequisite is unmet), with the reason; they are not in Options.
+	Blocked []LevelUpBlockedOption
+}
+
+// LevelUpBlockedOption is an option that stays on the screen, with why it cannot be
+// taken.
+type LevelUpBlockedOption struct {
+	Key, NamePT, ReasonPT string
 }
 
 // LevelUpChoices is what the player chose for one level up, in content
@@ -227,6 +250,13 @@ type LevelUpChoices struct {
 	FeatureChoices     []string
 	SkillProficiencies []string
 	Expertise          []string
+	// LateChoices are the picks of the choices an earlier level left open, and
+	// FeatureChoiceText the free text some picks take (Build.FeatureChoiceText).
+	LateChoices       []string
+	FeatureChoiceText map[string]string
+	// SwapInvocation is an Eldritch Invocation the warlock gives up for another
+	// from FeatureChoices (one at each level of the class).
+	SwapInvocation string
 	// HitPoints is the gain of this level.
 	HitPoints LevelUpHitPoints
 }
@@ -254,6 +284,7 @@ func (b Build) clone() Build {
 	b.SpellsKnown = slices.Clone(b.SpellsKnown)
 	b.SpellsPrepared = slices.Clone(b.SpellsPrepared)
 	b.FeatureChoices = slices.Clone(b.FeatureChoices)
+	b.FeatureChoiceText = maps.Clone(b.FeatureChoiceText)
 	b.HitPoints.Rolls = slices.Clone(b.HitPoints.Rolls)
 	return b
 }
@@ -415,8 +446,104 @@ func levelUpOptionsWith(b Build, idx int, c *content, sub *srd51.Subclass) (Leve
 	} else {
 		o.Cantrips = gains.cantrips
 	}
+	// The College of Lore's Additional Magical Secrets (SRD 5.1, Bard, Lore): two
+	// more spells of any class, outside the number the Bard knows.
+	if sub != nil && slices.Contains(subFeatures, "feature:additional-magical-secrets") {
+		o.Spells += 2
+		o.SpellsKind = PreparationKnown
+		o.AnyClassSpells += 2
+	}
 	o.AnyClassSpells = min(o.AnyClassSpells, o.Spells)
+
+	// The choices the engine asks: the ones an earlier level left open, and the new
+	// level's that are not feature options.
+	asked, atNewLevel := c.choiceSet(b), c.choiceSet(bare)
+	o.LateChoices = pendingGroups(asked)
+	o.NewChoices = newScopedGroups(asked, atNewLevel)
+	for i := range o.FeatureChoices {
+		o.FeatureChoices[i] = blockOptions(o.FeatureChoices[i], atNewLevel)
+	}
+	o.CanSwapInvocation = classKey == "class:warlock" && slices.ContainsFunc(b.FeatureChoices, c.isInvocation)
 	return o, nil
+}
+
+// blockOptions moves the options of a due choice that the sheet at the new level
+// cannot take (an invocation whose prerequisite is unmet) from Options to Blocked.
+func blockOptions(fc LevelUpFeatureChoice, atNewLevel ChoiceSet) LevelUpFeatureChoice {
+	reasons := map[string]string{}
+	for _, g := range atNewLevel.Groups {
+		for _, ch := range g.Choices {
+			if ch.Key != fc.Feature.Key {
+				continue
+			}
+			for _, o := range ch.Options {
+				if o.ReasonPT != "" && o.Key == o.Stored {
+					reasons[o.Key] = o.ReasonPT
+				}
+			}
+		}
+	}
+	var takable []NamedKey
+	for _, o := range fc.Options {
+		if reason, blocked := reasons[o.Key]; blocked {
+			fc.Blocked = append(fc.Blocked, LevelUpBlockedOption{Key: o.Key, NamePT: o.NamePT, ReasonPT: reason})
+			continue
+		}
+		takable = append(takable, o)
+	}
+	fc.Options = takable
+	return fc
+}
+
+// isInvocation says whether a key is one of the Warlock's Eldritch Invocations.
+func (c *content) isInvocation(key string) bool {
+	inv := c.features[invocationsFeature]
+	return inv != nil && slices.Contains(inv.Options, key)
+}
+
+// pendingGroups keeps, of a ChoiceSet, the choices with selections left to make.
+func pendingGroups(s ChoiceSet) []ChoiceGroup {
+	var out []ChoiceGroup
+	for _, g := range s.Groups {
+		var open []Choice
+		for _, ch := range g.Choices {
+			if ch.Missing() > 0 {
+				open = append(open, ch)
+			}
+		}
+		if len(open) > 0 {
+			g.Choices = open
+			out = append(out, g)
+		}
+	}
+	return out
+}
+
+// newScopedGroups keeps the choices the new level adds (not in before) whose picks
+// are not plain feature options: the options of LevelUpOffer.FeatureChoices, and the
+// bonus cantrips of LevelUpOffer.Cantrips, are asked there.
+func newScopedGroups(before, after ChoiceSet) []ChoiceGroup {
+	had := map[string]bool{}
+	for _, g := range before.Groups {
+		for _, ch := range g.Choices {
+			had[ch.Key] = true
+		}
+	}
+	var out []ChoiceGroup
+	for _, g := range after.Groups {
+		var fresh []Choice
+		for _, ch := range g.Choices {
+			if had[ch.Key] || ch.Missing() == 0 || ch.plain || ch.viaCantrips {
+				continue
+			}
+			fresh = append(fresh, ch)
+		}
+		if len(fresh) > 0 {
+			g.Choices = fresh
+			out = append(out, g)
+		}
+	}
+	return out
 }
 
 // spellcastingOf finds a class's casting numbers, or nil.
@@ -437,25 +564,11 @@ func isASILevel(row *srd51.Level) bool {
 	})
 }
 
-// masterAdds are the features that ask the player for a choice the sheet has
-// no field for, or that the engine has no data for. The guided level-up lists
-// them (LevelUpOffer.MasterAdds) and the master adds them in the editor
-// (RN-12): the Warlock's Mystic Arcanum, the Wizard's Spell Mastery and
-// Signature Spells, the College of Lore's Additional Magical Secrets, and the
-// Ranger's favored enemies and terrains.
-var masterAdds = map[string]bool{
-	"feature:mystic-arcanum-6th-level":         true,
-	"feature:mystic-arcanum-7th-level":         true,
-	"feature:mystic-arcanum-8th-level":         true,
-	"feature:mystic-arcanum-9th-level":         true,
-	"feature:spell-mastery":                    true,
-	"feature:signature-spell":                  true,
-	"feature:additional-magical-secrets":       true,
-	"feature:favored-enemy-2-types":            true,
-	"feature:favored-enemy-3-enemies":          true,
-	"feature:natural-explorer-2-terrain-types": true,
-	"feature:natural-explorer-3-terrain-types": true,
-}
+// masterAdds are the features that ask the player for a choice the guided
+// level-up cannot ask for. It lists them (LevelUpOffer.MasterAdds) and the
+// master adds them in the editor (RN-12). None today: the choice engine asks
+// for them all (choicegroups.go).
+var masterAdds = map[string]bool{}
 
 // invocationsFeature is the Warlock's Eldritch Invocations. How many the
 // character knows comes from the class table (invocations_known), level by
@@ -665,7 +778,17 @@ func ApplyLevelUp(before Build, ch LevelUpChoices, c *Content) (Build, error) {
 	after.Cantrips = append(after.Cantrips, ch.Cantrips...)
 	after.SpellsKnown = append(after.SpellsKnown, ch.Spells...)
 	after.SpellsPrepared = append(after.SpellsPrepared, ch.Prepared...)
+	if ch.SwapInvocation != "" {
+		after.FeatureChoices = slices.DeleteFunc(after.FeatureChoices, func(k string) bool { return k == ch.SwapInvocation })
+	}
+	after.FeatureChoices = append(after.FeatureChoices, ch.LateChoices...)
 	after.FeatureChoices = append(after.FeatureChoices, ch.FeatureChoices...)
+	if len(ch.FeatureChoiceText) > 0 {
+		if after.FeatureChoiceText == nil {
+			after.FeatureChoiceText = map[string]string{}
+		}
+		maps.Copy(after.FeatureChoiceText, ch.FeatureChoiceText)
+	}
 	after.SkillProficiencies = append(after.SkillProficiencies, ch.SkillProficiencies...)
 	after.Expertise = append(after.Expertise, ch.Expertise...)
 
@@ -761,26 +884,8 @@ func checkLevelUp(before, after Build, c *content) *LevelUpError {
 	}
 
 	// Options, skills and expertise.
-	newChoices, removed := added(before.FeatureChoices, after.FeatureChoices)
-	if removed {
-		return refuse("full.feature_choice_keys", LevelUpReasonFeatureChoice, "an option was removed")
-	}
-	left := slices.Clone(newChoices)
-	for _, d := range gains.choices {
-		taken := 0
-		left = slices.DeleteFunc(left, func(k string) bool {
-			if taken < d.choose && slices.Contains(d.options, k) {
-				taken++
-				return true
-			}
-			return false
-		})
-		if taken != d.choose {
-			return refuse("full.feature_choice_keys", LevelUpReasonFeatureChoice, "%s needs %d options, got %d", d.feature, d.choose, taken)
-		}
-	}
-	if len(left) > 0 {
-		return refuse("full.feature_choice_keys", LevelUpReasonFeatureChoice, "an option the new features do not offer")
+	if lerr := checkLevelUpChoices(before, after, classKey, c); lerr != nil {
+		return lerr
 	}
 	wantSkills, wantExpertise := gains.skills, gains.expertise
 	if got, removed := added(before.SkillProficiencies, after.SkillProficiencies); removed || len(got) != wantSkills {
@@ -802,6 +907,56 @@ func checkLevelUp(before, after Build, c *content) *LevelUpError {
 		}
 		if !had[is.Code+"|"+is.Field+"|"+is.Message] {
 			return &LevelUpError{Field: is.Field, Reason: LevelUpReasonSheetIssue, Code: is.Code, Message: is.Message}
+		}
+	}
+	return nil
+}
+
+// checkLevelUpChoices checks the picks of the choice engine against the new level: the
+// sheet that comes out has every choice made (the level's own and the ones an
+// earlier level left open), takes nothing a choice does not offer and nothing whose
+// prerequisite is unmet, and loses no pick, but for one Eldritch Invocation the
+// warlock swaps (SRD 5.1, Warlock, Eldritch Invocations: "when you gain a level in
+// this class, you can choose one of the invocations you know and replace it with
+// another invocation that you could learn at that level").
+func checkLevelUpChoices(before, after Build, classKey string, c *content) *LevelUpError {
+	const field = "full.feature_choice_keys"
+	var gone []string
+	for _, k := range before.FeatureChoices {
+		if !slices.Contains(after.FeatureChoices, k) {
+			gone = append(gone, k)
+		}
+	}
+	if len(gone) > 1 || (len(gone) == 1 && !(classKey == "class:warlock" && c.isInvocation(gone[0]))) {
+		return refuse(field, LevelUpReasonFeatureChoice, "an option was removed")
+	}
+	for k, v := range before.FeatureChoiceText {
+		if after.FeatureChoiceText[k] != v {
+			return refuse("full.feature_choice_text", LevelUpReasonLocked, "a text already written does not change")
+		}
+	}
+
+	setBefore, setAfter := c.choiceSet(before), c.choiceSet(after)
+	had := map[string]bool{}
+	for _, p := range setBefore.ChoiceProblems(false) {
+		had[p.Code+"|"+p.ChoiceKey+"|"+p.OptionKey] = true
+	}
+	late := map[string]bool{}
+	for _, p := range setBefore.Pending() {
+		late[p.ChoiceKey] = true
+	}
+	for _, p := range setAfter.ChoiceProblems(true) {
+		switch {
+		case p.Code == ChoiceProblemMissing && late[p.ChoiceKey]:
+			return refuse(field, LevelUpReasonLateChoice, "%s was left open by an earlier level and is still open", p.ChoiceKey)
+		case p.Code == ChoiceProblemMissing:
+			return refuse(field, LevelUpReasonFeatureChoice, "%s needs %d options, got %d", p.ChoiceKey, p.Required, p.Picked)
+		case had[p.Code+"|"+p.ChoiceKey+"|"+p.OptionKey]:
+			// A problem the sheet already had is not the level's.
+		case p.Code == ChoiceProblemPrerequisite:
+			return refuse(field, LevelUpReasonFeatureChoice, "%s does not meet its prerequisite", p.OptionKey)
+		default:
+			return refuse(field, LevelUpReasonFeatureChoice, "an option the new features do not offer")
 		}
 	}
 	return nil
