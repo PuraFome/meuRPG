@@ -4,6 +4,7 @@ import {
   LevelUpFeatureChoiceSchema,
   LevelUpHitPointsMethod,
   LevelUpHitPointsRule,
+  LevelUpProficiencyKind,
   LevelUpSubclassSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { Ability } from '../../../gen/meurpg/rules/v1/rules_pb';
@@ -537,5 +538,87 @@ describe('LevelUpDraft: adopt after the sheet is read again', () => {
     it('has no feat summary while the increase is taken', () => {
       expect(wizard().featSummary()).toBeNull();
     });
+  });
+});
+
+describe('LevelUpDraft: a class taken as a later class (SRD 5.1, "Multiclassing")', () => {
+  const pick = (
+    kind: LevelUpProficiencyKind,
+    count: number,
+    from: [string, string, boolean][],
+  ) => ({
+    kind,
+    count,
+    from: from.map(([key, namePt, alreadyHave]) => ({ key, namePt, alreadyHave })),
+  });
+  const rogue = () =>
+    fighterOptions({
+      classKey: 'class:rogue',
+      classNamePt: 'Ladino',
+      isNewClass: true,
+      fromLevel: 0,
+      toLevel: 1,
+      expertiseChoices: 2,
+      proficiencyChoices: [
+        pick(LevelUpProficiencyKind.SKILL, 1, [
+          ['skill:arcana', 'Arcanismo', false],
+          ['skill:history', 'História', true],
+          ['skill:stealth', 'Furtividade', false],
+        ]),
+      ],
+    });
+  const bard = () =>
+    fighterOptions({
+      classKey: 'class:bard',
+      classNamePt: 'Bardo',
+      isNewClass: true,
+      fromLevel: 0,
+      toLevel: 1,
+      proficiencyChoices: [
+        pick(LevelUpProficiencyKind.SKILL, 1, [['skill:stealth', 'Furtividade', false]]),
+        pick(LevelUpProficiencyKind.INSTRUMENT, 1, [
+          ['proficiency:lute', 'Alaúde', false],
+          ['proficiency:drum', 'Tambor', true],
+        ]),
+      ],
+    });
+
+  it('asks for the skill of the class list, with the ones the character has turned off, and the expertise after it', () => {
+    const d = new LevelUpDraft(rogue(), { ...WIZARD_KEYS, skills: ['skill:history'] }, catalog);
+    expect(d.steps()).toEqual(['class', 'hp', 'picks', 'summary']);
+    expect(d.skillsAsked()).toBe(1);
+    expect(d.skillItems().map((i) => [i.key, i.disabled ?? ''])).toEqual([
+      ['skill:arcana', ''],
+      ['skill:stealth', ''],
+      ['skill:history', 'Você já tem'],
+    ]);
+    // A turned off skill cannot be picked.
+    d.toggleSkill('skill:history');
+    expect(d.skills().size).toBe(0);
+    d.toggleSkill('skill:stealth');
+    expect(d.missing().map((m) => m.id)).toEqual(['expertise']);
+    expect(d.choices().skillProficiencyKeys).toEqual(['skill:stealth']);
+  });
+
+  it("asks for the Bard's instrument in its own pick, and sends it as instrumentKey", () => {
+    const d = new LevelUpDraft(bard(), WIZARD_KEYS, catalog);
+    expect(d.steps()).toContain('picks');
+    expect(d.instrumentAsked()).toBe(1);
+    expect(d.missing().map((m) => m.id)).toEqual(['skills', 'instrument']);
+    d.toggleInstrument('proficiency:drum'); // already has it: nothing happens
+    expect(d.instrument()).toBe('');
+    d.toggleInstrument('proficiency:lute');
+    d.toggleSkill('skill:stealth');
+    expect(d.missing()).toEqual([]);
+    expect(d.choices().instrumentKey).toBe('proficiency:lute');
+    expect(d.dirty()).toBe(true);
+    d.toggleInstrument('proficiency:lute');
+    expect(d.instrument()).toBe('');
+  });
+
+  it('opens the flow with the class step, always, and has no picks for a class that asks for none', () => {
+    const d = new LevelUpDraft(fighterOptions(), WIZARD_KEYS, catalog);
+    expect(d.steps()).toEqual(['class', 'hp', 'summary']);
+    expect(d.choices().instrumentKey).toBe('');
   });
 });

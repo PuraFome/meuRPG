@@ -1,0 +1,1570 @@
+{
+  "after": {
+    "ContentVersion": "srd51@a8abc93b235c+fx.33",
+    "RaceNamePT": "Humano",
+    "SubraceNamePT": "",
+    "BackgroundNamePT": "Acólito",
+    "BackgroundEquipmentPT": "",
+    "Classes": [
+      {
+        "ClassKey": "class:fighter",
+        "NamePT": "Guerreiro",
+        "Level": 5,
+        "SubclassNamePT": "Campeão"
+      },
+      {
+        "ClassKey": "class:wizard",
+        "NamePT": "Mago",
+        "Level": 1,
+        "SubclassNamePT": ""
+      }
+    ],
+    "Abilities": [
+      {
+        "Ability": "str",
+        "NamePT": "Força",
+        "Base": 15,
+        "RaceBonus": 1,
+        "ManualBonus": 0,
+        "Bonus": 1,
+        "Score": 16,
+        "Modifier": 3
+      },
+      {
+        "Ability": "dex",
+        "NamePT": "Destreza",
+        "Base": 13,
+        "RaceBonus": 1,
+        "ManualBonus": 0,
+        "Bonus": 1,
+        "Score": 14,
+        "Modifier": 2
+      },
+      {
+        "Ability": "con",
+        "NamePT": "Constituição",
+        "Base": 13,
+        "RaceBonus": 1,
+        "ManualBonus": 0,
+        "Bonus": 1,
+        "Score": 14,
+        "Modifier": 2
+      },
+      {
+        "Ability": "int",
+        "NamePT": "Inteligência",
+        "Base": 12,
+        "RaceBonus": 1,
+        "ManualBonus": 0,
+        "Bonus": 1,
+        "Score": 13,
+        "Modifier": 1
+      },
+      {
+        "Ability": "wis",
+        "NamePT": "Sabedoria",
+        "Base": 10,
+        "RaceBonus": 1,
+        "ManualBonus": 0,
+        "Bonus": 1,
+        "Score": 11,
+        "Modifier": 0
+      },
+      {
+        "Ability": "cha",
+        "NamePT": "Carisma",
+        "Base": 8,
+        "RaceBonus": 1,
+        "ManualBonus": 0,
+        "Bonus": 1,
+        "Score": 9,
+        "Modifier": -1
+      }
+    ],
+    "TotalLevel": 6,
+    "ProficiencyBonus": 3,
+    "SavingThrows": [
+      {
+        "Ability": "str",
+        "NamePT": "Força",
+        "Proficient": true,
+        "Bonus": 6
+      },
+      {
+        "Ability": "dex",
+        "NamePT": "Destreza",
+        "Proficient": false,
+        "Bonus": 2
+      },
+      {
+        "Ability": "con",
+        "NamePT": "Constituição",
+        "Proficient": true,
+        "Bonus": 5
+      },
+      {
+        "Ability": "int",
+        "NamePT": "Inteligência",
+        "Proficient": false,
+        "Bonus": 1
+      },
+      {
+        "Ability": "wis",
+        "NamePT": "Sabedoria",
+        "Proficient": false,
+        "Bonus": 0
+      },
+      {
+        "Ability": "cha",
+        "NamePT": "Carisma",
+        "Proficient": false,
+        "Bonus": -1
+      }
+    ],
+    "Skills": [
+      {
+        "Key": "skill:acrobatics",
+        "NamePT": "Acrobacia",
+        "Ability": "dex",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:animal-handling",
+        "NamePT": "Adestrar Animais",
+        "Ability": "wis",
+        "Proficiency": 0,
+        "Bonus": 0
+      },
+      {
+        "Key": "skill:arcana",
+        "NamePT": "Arcanismo",
+        "Ability": "int",
+        "Proficiency": 0,
+        "Bonus": 1
+      },
+      {
+        "Key": "skill:athletics",
+        "NamePT": "Atletismo",
+        "Ability": "str",
+        "Proficiency": 2,
+        "Bonus": 6
+      },
+      {
+        "Key": "skill:performance",
+        "NamePT": "Atuação",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": -1
+      },
+      {
+        "Key": "skill:deception",
+        "NamePT": "Enganação",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": -1
+      },
+      {
+        "Key": "skill:stealth",
+        "NamePT": "Furtividade",
+        "Ability": "dex",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:history",
+        "NamePT": "História",
+        "Ability": "int",
+        "Proficiency": 0,
+        "Bonus": 1
+      },
+      {
+        "Key": "skill:intimidation",
+        "NamePT": "Intimidação",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": -1
+      },
+      {
+        "Key": "skill:insight",
+        "NamePT": "Intuição",
+        "Ability": "wis",
+        "Proficiency": 2,
+        "Bonus": 3
+      },
+      {
+        "Key": "skill:investigation",
+        "NamePT": "Investigação",
+        "Ability": "int",
+        "Proficiency": 0,
+        "Bonus": 1
+      },
+      {
+        "Key": "skill:medicine",
+        "NamePT": "Medicina",
+        "Ability": "wis",
+        "Proficiency": 0,
+        "Bonus": 0
+      },
+      {
+        "Key": "skill:nature",
+        "NamePT": "Natureza",
+        "Ability": "int",
+        "Proficiency": 0,
+        "Bonus": 1
+      },
+      {
+        "Key": "skill:perception",
+        "NamePT": "Percepção",
+        "Ability": "wis",
+        "Proficiency": 2,
+        "Bonus": 3
+      },
+      {
+        "Key": "skill:persuasion",
+        "NamePT": "Persuasão",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": -1
+      },
+      {
+        "Key": "skill:sleight-of-hand",
+        "NamePT": "Prestidigitação",
+        "Ability": "dex",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:religion",
+        "NamePT": "Religião",
+        "Ability": "int",
+        "Proficiency": 2,
+        "Bonus": 4
+      },
+      {
+        "Key": "skill:survival",
+        "NamePT": "Sobrevivência",
+        "Ability": "wis",
+        "Proficiency": 0,
+        "Bonus": 0
+      }
+    ],
+    "PassivePerception": 13,
+    "PassiveInvestigation": 11,
+    "PassiveInsight": 13,
+    "Initiative": 2,
+    "ArmorClass": 19,
+    "ArmorClassDescription": "Cota de malha + escudo",
+    "ArmorCategory": "heavy",
+    "HitPointsMax": 50,
+    "HitPointsFromEffects": 0,
+    "HitDice": [
+      {
+        "Die": 10,
+        "Count": 5
+      },
+      {
+        "Die": 6,
+        "Count": 1
+      }
+    ],
+    "SpeedWalkFt": 30,
+    "SpeedFlyFt": 0,
+    "SpeedSwimFt": 0,
+    "SpeedClimbFt": 0,
+    "SpeedBurrowFt": 0,
+    "Hover": false,
+    "Senses": null,
+    "NextLevelXP": 23000,
+    "Spellcasting": [
+      {
+        "Class": "class:wizard",
+        "ClassNamePT": "Mago",
+        "Ability": "int",
+        "SaveDC": 12,
+        "AttackBonus": 4,
+        "CantripsKnown": 3,
+        "PreparesSpells": true,
+        "PreparedMax": 2,
+        "SpellsKnownMax": 0,
+        "MaxSpellLevel": 1,
+        "Ritual": true,
+        "SpellList": "class:wizard"
+      }
+    ],
+    "SpellSlots": [
+      2,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "PactMagic": null,
+    "Spells": [
+      {
+        "Spell": {
+          "Key": "spell:minor-illusion",
+          "Name": "Minor Illusion",
+          "NamePT": "Ilusão Menor",
+          "Level": 0,
+          "School": "school:illusion",
+          "SchoolNamePT": "Ilusão",
+          "Classes": [
+            "class:bard",
+            "class:sorcerer",
+            "class:warlock",
+            "class:wizard"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:mage-hand",
+          "Name": "Mage Hand",
+          "NamePT": "Mãos Mágicas",
+          "Level": 0,
+          "School": "school:conjuration",
+          "SchoolNamePT": "Conjuração",
+          "Classes": [
+            "class:bard",
+            "class:sorcerer",
+            "class:warlock",
+            "class:wizard"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:fire-bolt",
+          "Name": "Fire Bolt",
+          "NamePT": "Raio de Fogo",
+          "Level": 0,
+          "School": "school:evocation",
+          "SchoolNamePT": "Evocação",
+          "Classes": [
+            "class:sorcerer",
+            "class:wizard"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:mage-armor",
+          "Name": "Mage Armor",
+          "NamePT": "Armadura Arcana",
+          "Level": 1,
+          "School": "school:abjuration",
+          "SchoolNamePT": "Abjuração",
+          "Classes": [
+            "class:sorcerer",
+            "class:wizard"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": false
+      },
+      {
+        "Spell": {
+          "Key": "spell:detect-magic",
+          "Name": "Detect Magic",
+          "NamePT": "Detectar Magia",
+          "Level": 1,
+          "School": "school:divination",
+          "SchoolNamePT": "Adivinhação",
+          "Classes": [
+            "class:bard",
+            "class:cleric",
+            "class:druid",
+            "class:paladin",
+            "class:ranger",
+            "class:sorcerer",
+            "class:wizard"
+          ],
+          "Ritual": true,
+          "Concentration": true,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": false
+      },
+      {
+        "Spell": {
+          "Key": "spell:shield",
+          "Name": "Shield",
+          "NamePT": "Escudo Arcano",
+          "Level": 1,
+          "School": "school:abjuration",
+          "SchoolNamePT": "Abjuração",
+          "Classes": [
+            "class:sorcerer",
+            "class:wizard"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "reaction",
+            "Trigger": "",
+            "Raw": "1 reaction"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:identify",
+          "Name": "Identify",
+          "NamePT": "Identificação",
+          "Level": 1,
+          "School": "school:divination",
+          "SchoolNamePT": "Adivinhação",
+          "Classes": [
+            "class:bard",
+            "class:wizard"
+          ],
+          "Ritual": true,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "minute",
+            "Trigger": "",
+            "Raw": "1 minute"
+          }
+        },
+        "Prepared": false
+      },
+      {
+        "Spell": {
+          "Key": "spell:magic-missile",
+          "Name": "Magic Missile",
+          "NamePT": "Mísseis Mágicos",
+          "Level": 1,
+          "School": "school:evocation",
+          "SchoolNamePT": "Evocação",
+          "Classes": [
+            "class:sorcerer",
+            "class:wizard"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
+          "Key": "spell:sleep",
+          "Name": "Sleep",
+          "NamePT": "Sono",
+          "Level": 1,
+          "School": "school:enchantment",
+          "SchoolNamePT": "Encantamento",
+          "Classes": [
+            "class:bard",
+            "class:sorcerer",
+            "class:wizard"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": false
+      }
+    ],
+    "Attacks": [
+      {
+        "Key": "equipment:longsword",
+        "Name": "Longsword",
+        "NamePT": "Espada longa",
+        "Kind": "weapon",
+        "Ability": "str",
+        "AttackBonus": 6,
+        "SaveDC": 0,
+        "SaveAbility": "",
+        "Damage": "1d8+3",
+        "DamageType": "damage-type:slashing",
+        "DamageTypeNamePT": "cortante",
+        "VersatileDamage": "1d10+3",
+        "DamageNotePT": "",
+        "DamageDice": {
+          "Count": 1,
+          "Sides": 8,
+          "Bonus": 3,
+          "AddsModifier": false
+        },
+        "VersatileDice": {
+          "Count": 1,
+          "Sides": 10,
+          "Bonus": 3,
+          "AddsModifier": false
+        },
+        "Proficient": true,
+        "RangeFt": 5,
+        "LongRangeFt": 0,
+        "Melee": true,
+        "Beams": 0,
+        "SpellDice": "",
+        "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
+        "MartialArts": false,
+        "AbilityMod": 3,
+        "Notes": ""
+      },
+      {
+        "Key": "spell:fire-bolt",
+        "Name": "Fire Bolt",
+        "NamePT": "Raio de Fogo",
+        "Kind": "spell",
+        "Ability": "int",
+        "AttackBonus": 4,
+        "SaveDC": 0,
+        "SaveAbility": "",
+        "Damage": "2d10",
+        "DamageType": "damage-type:fire",
+        "DamageTypeNamePT": "fogo",
+        "VersatileDamage": "",
+        "DamageNotePT": "",
+        "DamageDice": {
+          "Count": 2,
+          "Sides": 10,
+          "Bonus": 0,
+          "AddsModifier": false
+        },
+        "VersatileDice": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "AddsModifier": false
+        },
+        "Proficient": true,
+        "RangeFt": 120,
+        "LongRangeFt": 0,
+        "Melee": false,
+        "Beams": 1,
+        "SpellDice": "2d10",
+        "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
+        "MartialArts": false,
+        "AbilityMod": 0,
+        "Notes": ""
+      },
+      {
+        "Key": "attack:unarmed-strike",
+        "Name": "Unarmed Strike",
+        "NamePT": "Golpe desarmado",
+        "Kind": "weapon",
+        "Ability": "str",
+        "AttackBonus": 6,
+        "SaveDC": 0,
+        "SaveAbility": "",
+        "Damage": "4",
+        "DamageType": "damage-type:bludgeoning",
+        "DamageTypeNamePT": "concussão",
+        "VersatileDamage": "",
+        "DamageNotePT": "",
+        "DamageDice": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 4,
+          "AddsModifier": false
+        },
+        "VersatileDice": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "AddsModifier": false
+        },
+        "Proficient": true,
+        "RangeFt": 5,
+        "LongRangeFt": 0,
+        "Melee": true,
+        "Beams": 0,
+        "SpellDice": "",
+        "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
+        "MartialArts": false,
+        "AbilityMod": 3,
+        "Notes": ""
+      }
+    ],
+    "Resources": [
+      {
+        "Key": "second_wind",
+        "NamePT": "Retomar o Fôlego",
+        "Max": 1,
+        "Recharge": "short_rest",
+        "Source": "feature:second-wind"
+      },
+      {
+        "Key": "action_surge",
+        "NamePT": "Surto de Ação",
+        "Max": 1,
+        "Recharge": "short_rest",
+        "Source": "feature:action-surge-1-use"
+      },
+      {
+        "Key": "arcane_recovery",
+        "NamePT": "Recuperação Arcana",
+        "Max": 1,
+        "Recharge": "long_rest",
+        "Source": "feature:arcane-recovery"
+      }
+    ],
+    "Actions": [
+      {
+        "Key": "feature:second-wind",
+        "NamePT": "Retomar o Fôlego",
+        "Economy": "bonus_action",
+        "Resource": "second_wind",
+        "Source": "feature:second-wind",
+        "Standard": ""
+      },
+      {
+        "Key": "feature:action-surge-1-use",
+        "NamePT": "Surto de Ação",
+        "Economy": "free",
+        "Resource": "action_surge",
+        "Source": "feature:action-surge-1-use",
+        "Standard": ""
+      }
+    ],
+    "StandardActions": [
+      {
+        "Key": "standard:attack",
+        "NamePT": "Atacar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      },
+      {
+        "Key": "standard:cast-a-spell",
+        "NamePT": "Conjurar uma magia",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      },
+      {
+        "Key": "standard:dash",
+        "NamePT": "Disparada",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      },
+      {
+        "Key": "standard:disengage",
+        "NamePT": "Desengajar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      },
+      {
+        "Key": "standard:dodge",
+        "NamePT": "Esquivar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      },
+      {
+        "Key": "standard:help",
+        "NamePT": "Ajudar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      },
+      {
+        "Key": "standard:hide",
+        "NamePT": "Esconder",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      },
+      {
+        "Key": "standard:ready",
+        "NamePT": "Preparar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      },
+      {
+        "Key": "standard:search",
+        "NamePT": "Procurar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      },
+      {
+        "Key": "standard:use-an-object",
+        "NamePT": "Usar um objeto",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      }
+    ],
+    "AttacksPerAction": 2,
+    "CriticalRange": 19,
+    "TwoWeaponFighting": false,
+    "SaveActions": null,
+    "Features": [
+      {
+        "Key": "background-feature:shelter-of-the-faithful",
+        "Name": "Shelter of the Faithful",
+        "NamePT": "Abrigo dos Fiéis",
+        "Source": "background:acolyte",
+        "Level": 0,
+        "SourcePT": "Acólito",
+        "Description": null
+      },
+      {
+        "Key": "feature:fighter-fighting-style",
+        "Name": "Fighting Style",
+        "NamePT": "Estilo de Luta",
+        "Source": "class:fighter",
+        "Level": 1,
+        "SourcePT": "Guerreiro 1",
+        "Description": null
+      },
+      {
+        "Key": "feature:second-wind",
+        "Name": "Second Wind",
+        "NamePT": "Retomar o Fôlego",
+        "Source": "class:fighter",
+        "Level": 1,
+        "SourcePT": "Guerreiro 1",
+        "Description": null
+      },
+      {
+        "Key": "feature:action-surge-1-use",
+        "Name": "Action Surge (1 use)",
+        "NamePT": "Surto de Ação (1 uso)",
+        "Source": "class:fighter",
+        "Level": 2,
+        "SourcePT": "Guerreiro 2",
+        "Description": null
+      },
+      {
+        "Key": "feature:martial-archetype",
+        "Name": "Martial Archetype",
+        "NamePT": "Arquétipo Marcial",
+        "Source": "class:fighter",
+        "Level": 3,
+        "SourcePT": "Guerreiro 3",
+        "Description": null
+      },
+      {
+        "Key": "feature:improved-critical",
+        "Name": "Improved Critical",
+        "NamePT": "Crítico Aprimorado",
+        "Source": "subclass:champion",
+        "Level": 3,
+        "SourcePT": "Campeão (Guerreiro 3)",
+        "Description": null
+      },
+      {
+        "Key": "feature:fighter-ability-score-improvement-1",
+        "Name": "Ability Score Improvement",
+        "NamePT": "Incremento no Valor de Habilidade",
+        "Source": "class:fighter",
+        "Level": 4,
+        "SourcePT": "Guerreiro 4",
+        "Description": null
+      },
+      {
+        "Key": "feature:extra-attack-1",
+        "Name": "Extra Attack",
+        "NamePT": "Ataque Extra",
+        "Source": "class:fighter",
+        "Level": 5,
+        "SourcePT": "Guerreiro 5",
+        "Description": null
+      },
+      {
+        "Key": "feature:spellcasting-wizard",
+        "Name": "Spellcasting: Wizard",
+        "NamePT": "Conjuração: Mago",
+        "Source": "class:wizard",
+        "Level": 1,
+        "SourcePT": "Mago 1",
+        "Description": null
+      },
+      {
+        "Key": "feature:arcane-recovery",
+        "Name": "Arcane Recovery",
+        "NamePT": "Recuperação Arcana",
+        "Source": "class:wizard",
+        "Level": 1,
+        "SourcePT": "Mago 1",
+        "Description": null
+      },
+      {
+        "Key": "feature:fighter-fighting-style-defense",
+        "Name": "Fighting Style: Defense",
+        "NamePT": "Estilo de Luta: Defesa",
+        "Source": "feature:fighter-fighting-style",
+        "Level": 1,
+        "SourcePT": "Guerreiro 1",
+        "Description": null
+      }
+    ],
+    "Languages": [
+      {
+        "Key": "language:common",
+        "NamePT": "Comum"
+      }
+    ],
+    "Proficiencies": [
+      {
+        "Kind": "armor",
+        "Key": "proficiency:shields",
+        "NamePT": "Escudos"
+      },
+      {
+        "Kind": "armor",
+        "Key": "proficiency:all-armor",
+        "NamePT": "Todas as armaduras"
+      },
+      {
+        "Kind": "weapon",
+        "Key": "proficiency:martial-weapons",
+        "NamePT": "Armas marciais"
+      },
+      {
+        "Kind": "weapon",
+        "Key": "proficiency:simple-weapons",
+        "NamePT": "Armas simples"
+      }
+    ],
+    "Hints": [
+      {
+        "Source": "equipment:chain-mail",
+        "Target": "skill:stealth",
+        "Targets": [
+          "skill:stealth"
+        ],
+        "Mode": "disadvantage",
+        "Value": 0,
+        "Tags": null,
+        "TextPT": "Desvantagem em Furtividade com cota de malha."
+      },
+      {
+        "Source": "feature:second-wind",
+        "Target": "",
+        "Targets": null,
+        "Mode": "note",
+        "Value": 0,
+        "Tags": null,
+        "TextPT": "Retomar o fôlego: recupera 1d10+5 pontos de vida, uma vez por descanso curto ou longo."
+      },
+      {
+        "Source": "feature:improved-critical",
+        "Target": "",
+        "Targets": null,
+        "Mode": "note",
+        "Value": 0,
+        "Tags": null,
+        "TextPT": "Crítico com 19 ou 20 nos ataques com arma."
+      },
+      {
+        "Source": "feature:arcane-recovery",
+        "Target": "",
+        "Targets": null,
+        "Mode": "note",
+        "Value": 0,
+        "Tags": null,
+        "TextPT": "Recuperação arcana: uma vez por dia, depois de um descanso curto, recupera espaços de magia que somem até 1 níveis (nenhum de 6º nível ou mais)."
+      }
+    ],
+    "OpenChoices": null,
+    "Issues": null
+  },
+  "before": {
+    "ContentVersion": "srd51@a8abc93b235c+fx.33",
+    "RaceNamePT": "Humano",
+    "SubraceNamePT": "",
+    "BackgroundNamePT": "Acólito",
+    "BackgroundEquipmentPT": "",
+    "Classes": [
+      {
+        "ClassKey": "class:fighter",
+        "NamePT": "Guerreiro",
+        "Level": 5,
+        "SubclassNamePT": "Campeão"
+      }
+    ],
+    "Abilities": [
+      {
+        "Ability": "str",
+        "NamePT": "Força",
+        "Base": 15,
+        "RaceBonus": 1,
+        "ManualBonus": 0,
+        "Bonus": 1,
+        "Score": 16,
+        "Modifier": 3
+      },
+      {
+        "Ability": "dex",
+        "NamePT": "Destreza",
+        "Base": 13,
+        "RaceBonus": 1,
+        "ManualBonus": 0,
+        "Bonus": 1,
+        "Score": 14,
+        "Modifier": 2
+      },
+      {
+        "Ability": "con",
+        "NamePT": "Constituição",
+        "Base": 13,
+        "RaceBonus": 1,
+        "ManualBonus": 0,
+        "Bonus": 1,
+        "Score": 14,
+        "Modifier": 2
+      },
+      {
+        "Ability": "int",
+        "NamePT": "Inteligência",
+        "Base": 12,
+        "RaceBonus": 1,
+        "ManualBonus": 0,
+        "Bonus": 1,
+        "Score": 13,
+        "Modifier": 1
+      },
+      {
+        "Ability": "wis",
+        "NamePT": "Sabedoria",
+        "Base": 10,
+        "RaceBonus": 1,
+        "ManualBonus": 0,
+        "Bonus": 1,
+        "Score": 11,
+        "Modifier": 0
+      },
+      {
+        "Ability": "cha",
+        "NamePT": "Carisma",
+        "Base": 8,
+        "RaceBonus": 1,
+        "ManualBonus": 0,
+        "Bonus": 1,
+        "Score": 9,
+        "Modifier": -1
+      }
+    ],
+    "TotalLevel": 5,
+    "ProficiencyBonus": 3,
+    "SavingThrows": [
+      {
+        "Ability": "str",
+        "NamePT": "Força",
+        "Proficient": true,
+        "Bonus": 6
+      },
+      {
+        "Ability": "dex",
+        "NamePT": "Destreza",
+        "Proficient": false,
+        "Bonus": 2
+      },
+      {
+        "Ability": "con",
+        "NamePT": "Constituição",
+        "Proficient": true,
+        "Bonus": 5
+      },
+      {
+        "Ability": "int",
+        "NamePT": "Inteligência",
+        "Proficient": false,
+        "Bonus": 1
+      },
+      {
+        "Ability": "wis",
+        "NamePT": "Sabedoria",
+        "Proficient": false,
+        "Bonus": 0
+      },
+      {
+        "Ability": "cha",
+        "NamePT": "Carisma",
+        "Proficient": false,
+        "Bonus": -1
+      }
+    ],
+    "Skills": [
+      {
+        "Key": "skill:acrobatics",
+        "NamePT": "Acrobacia",
+        "Ability": "dex",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:animal-handling",
+        "NamePT": "Adestrar Animais",
+        "Ability": "wis",
+        "Proficiency": 0,
+        "Bonus": 0
+      },
+      {
+        "Key": "skill:arcana",
+        "NamePT": "Arcanismo",
+        "Ability": "int",
+        "Proficiency": 0,
+        "Bonus": 1
+      },
+      {
+        "Key": "skill:athletics",
+        "NamePT": "Atletismo",
+        "Ability": "str",
+        "Proficiency": 2,
+        "Bonus": 6
+      },
+      {
+        "Key": "skill:performance",
+        "NamePT": "Atuação",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": -1
+      },
+      {
+        "Key": "skill:deception",
+        "NamePT": "Enganação",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": -1
+      },
+      {
+        "Key": "skill:stealth",
+        "NamePT": "Furtividade",
+        "Ability": "dex",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:history",
+        "NamePT": "História",
+        "Ability": "int",
+        "Proficiency": 0,
+        "Bonus": 1
+      },
+      {
+        "Key": "skill:intimidation",
+        "NamePT": "Intimidação",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": -1
+      },
+      {
+        "Key": "skill:insight",
+        "NamePT": "Intuição",
+        "Ability": "wis",
+        "Proficiency": 2,
+        "Bonus": 3
+      },
+      {
+        "Key": "skill:investigation",
+        "NamePT": "Investigação",
+        "Ability": "int",
+        "Proficiency": 0,
+        "Bonus": 1
+      },
+      {
+        "Key": "skill:medicine",
+        "NamePT": "Medicina",
+        "Ability": "wis",
+        "Proficiency": 0,
+        "Bonus": 0
+      },
+      {
+        "Key": "skill:nature",
+        "NamePT": "Natureza",
+        "Ability": "int",
+        "Proficiency": 0,
+        "Bonus": 1
+      },
+      {
+        "Key": "skill:perception",
+        "NamePT": "Percepção",
+        "Ability": "wis",
+        "Proficiency": 2,
+        "Bonus": 3
+      },
+      {
+        "Key": "skill:persuasion",
+        "NamePT": "Persuasão",
+        "Ability": "cha",
+        "Proficiency": 0,
+        "Bonus": -1
+      },
+      {
+        "Key": "skill:sleight-of-hand",
+        "NamePT": "Prestidigitação",
+        "Ability": "dex",
+        "Proficiency": 0,
+        "Bonus": 2
+      },
+      {
+        "Key": "skill:religion",
+        "NamePT": "Religião",
+        "Ability": "int",
+        "Proficiency": 2,
+        "Bonus": 4
+      },
+      {
+        "Key": "skill:survival",
+        "NamePT": "Sobrevivência",
+        "Ability": "wis",
+        "Proficiency": 0,
+        "Bonus": 0
+      }
+    ],
+    "PassivePerception": 13,
+    "PassiveInvestigation": 11,
+    "PassiveInsight": 13,
+    "Initiative": 2,
+    "ArmorClass": 19,
+    "ArmorClassDescription": "Cota de malha + escudo",
+    "ArmorCategory": "heavy",
+    "HitPointsMax": 44,
+    "HitPointsFromEffects": 0,
+    "HitDice": [
+      {
+        "Die": 10,
+        "Count": 5
+      }
+    ],
+    "SpeedWalkFt": 30,
+    "SpeedFlyFt": 0,
+    "SpeedSwimFt": 0,
+    "SpeedClimbFt": 0,
+    "SpeedBurrowFt": 0,
+    "Hover": false,
+    "Senses": null,
+    "NextLevelXP": 14000,
+    "Spellcasting": null,
+    "SpellSlots": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "PactMagic": null,
+    "Spells": null,
+    "Attacks": [
+      {
+        "Key": "equipment:longsword",
+        "Name": "Longsword",
+        "NamePT": "Espada longa",
+        "Kind": "weapon",
+        "Ability": "str",
+        "AttackBonus": 6,
+        "SaveDC": 0,
+        "SaveAbility": "",
+        "Damage": "1d8+3",
+        "DamageType": "damage-type:slashing",
+        "DamageTypeNamePT": "cortante",
+        "VersatileDamage": "1d10+3",
+        "DamageNotePT": "",
+        "DamageDice": {
+          "Count": 1,
+          "Sides": 8,
+          "Bonus": 3,
+          "AddsModifier": false
+        },
+        "VersatileDice": {
+          "Count": 1,
+          "Sides": 10,
+          "Bonus": 3,
+          "AddsModifier": false
+        },
+        "Proficient": true,
+        "RangeFt": 5,
+        "LongRangeFt": 0,
+        "Melee": true,
+        "Beams": 0,
+        "SpellDice": "",
+        "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
+        "MartialArts": false,
+        "AbilityMod": 3,
+        "Notes": ""
+      },
+      {
+        "Key": "attack:unarmed-strike",
+        "Name": "Unarmed Strike",
+        "NamePT": "Golpe desarmado",
+        "Kind": "weapon",
+        "Ability": "str",
+        "AttackBonus": 6,
+        "SaveDC": 0,
+        "SaveAbility": "",
+        "Damage": "4",
+        "DamageType": "damage-type:bludgeoning",
+        "DamageTypeNamePT": "concussão",
+        "VersatileDamage": "",
+        "DamageNotePT": "",
+        "DamageDice": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 4,
+          "AddsModifier": false
+        },
+        "VersatileDice": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "AddsModifier": false
+        },
+        "Proficient": true,
+        "RangeFt": 5,
+        "LongRangeFt": 0,
+        "Melee": true,
+        "Beams": 0,
+        "SpellDice": "",
+        "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
+        "MartialArts": false,
+        "AbilityMod": 3,
+        "Notes": ""
+      }
+    ],
+    "Resources": [
+      {
+        "Key": "second_wind",
+        "NamePT": "Retomar o Fôlego",
+        "Max": 1,
+        "Recharge": "short_rest",
+        "Source": "feature:second-wind"
+      },
+      {
+        "Key": "action_surge",
+        "NamePT": "Surto de Ação",
+        "Max": 1,
+        "Recharge": "short_rest",
+        "Source": "feature:action-surge-1-use"
+      }
+    ],
+    "Actions": [
+      {
+        "Key": "feature:second-wind",
+        "NamePT": "Retomar o Fôlego",
+        "Economy": "bonus_action",
+        "Resource": "second_wind",
+        "Source": "feature:second-wind",
+        "Standard": ""
+      },
+      {
+        "Key": "feature:action-surge-1-use",
+        "NamePT": "Surto de Ação",
+        "Economy": "free",
+        "Resource": "action_surge",
+        "Source": "feature:action-surge-1-use",
+        "Standard": ""
+      }
+    ],
+    "StandardActions": [
+      {
+        "Key": "standard:attack",
+        "NamePT": "Atacar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      },
+      {
+        "Key": "standard:cast-a-spell",
+        "NamePT": "Conjurar uma magia",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      },
+      {
+        "Key": "standard:dash",
+        "NamePT": "Disparada",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      },
+      {
+        "Key": "standard:disengage",
+        "NamePT": "Desengajar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      },
+      {
+        "Key": "standard:dodge",
+        "NamePT": "Esquivar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      },
+      {
+        "Key": "standard:help",
+        "NamePT": "Ajudar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      },
+      {
+        "Key": "standard:hide",
+        "NamePT": "Esconder",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      },
+      {
+        "Key": "standard:ready",
+        "NamePT": "Preparar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      },
+      {
+        "Key": "standard:search",
+        "NamePT": "Procurar",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      },
+      {
+        "Key": "standard:use-an-object",
+        "NamePT": "Usar um objeto",
+        "Economy": "action",
+        "Resource": "",
+        "Source": "",
+        "Standard": ""
+      }
+    ],
+    "AttacksPerAction": 2,
+    "CriticalRange": 19,
+    "TwoWeaponFighting": false,
+    "SaveActions": null,
+    "Features": [
+      {
+        "Key": "background-feature:shelter-of-the-faithful",
+        "Name": "Shelter of the Faithful",
+        "NamePT": "Abrigo dos Fiéis",
+        "Source": "background:acolyte",
+        "Level": 0,
+        "SourcePT": "Acólito",
+        "Description": null
+      },
+      {
+        "Key": "feature:fighter-fighting-style",
+        "Name": "Fighting Style",
+        "NamePT": "Estilo de Luta",
+        "Source": "class:fighter",
+        "Level": 1,
+        "SourcePT": "Guerreiro 1",
+        "Description": null
+      },
+      {
+        "Key": "feature:second-wind",
+        "Name": "Second Wind",
+        "NamePT": "Retomar o Fôlego",
+        "Source": "class:fighter",
+        "Level": 1,
+        "SourcePT": "Guerreiro 1",
+        "Description": null
+      },
+      {
+        "Key": "feature:action-surge-1-use",
+        "Name": "Action Surge (1 use)",
+        "NamePT": "Surto de Ação (1 uso)",
+        "Source": "class:fighter",
+        "Level": 2,
+        "SourcePT": "Guerreiro 2",
+        "Description": null
+      },
+      {
+        "Key": "feature:martial-archetype",
+        "Name": "Martial Archetype",
+        "NamePT": "Arquétipo Marcial",
+        "Source": "class:fighter",
+        "Level": 3,
+        "SourcePT": "Guerreiro 3",
+        "Description": null
+      },
+      {
+        "Key": "feature:improved-critical",
+        "Name": "Improved Critical",
+        "NamePT": "Crítico Aprimorado",
+        "Source": "subclass:champion",
+        "Level": 3,
+        "SourcePT": "Campeão (Guerreiro 3)",
+        "Description": null
+      },
+      {
+        "Key": "feature:fighter-ability-score-improvement-1",
+        "Name": "Ability Score Improvement",
+        "NamePT": "Incremento no Valor de Habilidade",
+        "Source": "class:fighter",
+        "Level": 4,
+        "SourcePT": "Guerreiro 4",
+        "Description": null
+      },
+      {
+        "Key": "feature:extra-attack-1",
+        "Name": "Extra Attack",
+        "NamePT": "Ataque Extra",
+        "Source": "class:fighter",
+        "Level": 5,
+        "SourcePT": "Guerreiro 5",
+        "Description": null
+      },
+      {
+        "Key": "feature:fighter-fighting-style-defense",
+        "Name": "Fighting Style: Defense",
+        "NamePT": "Estilo de Luta: Defesa",
+        "Source": "feature:fighter-fighting-style",
+        "Level": 1,
+        "SourcePT": "Guerreiro 1",
+        "Description": null
+      }
+    ],
+    "Languages": [
+      {
+        "Key": "language:common",
+        "NamePT": "Comum"
+      }
+    ],
+    "Proficiencies": [
+      {
+        "Kind": "armor",
+        "Key": "proficiency:shields",
+        "NamePT": "Escudos"
+      },
+      {
+        "Kind": "armor",
+        "Key": "proficiency:all-armor",
+        "NamePT": "Todas as armaduras"
+      },
+      {
+        "Kind": "weapon",
+        "Key": "proficiency:martial-weapons",
+        "NamePT": "Armas marciais"
+      },
+      {
+        "Kind": "weapon",
+        "Key": "proficiency:simple-weapons",
+        "NamePT": "Armas simples"
+      }
+    ],
+    "Hints": [
+      {
+        "Source": "equipment:chain-mail",
+        "Target": "skill:stealth",
+        "Targets": [
+          "skill:stealth"
+        ],
+        "Mode": "disadvantage",
+        "Value": 0,
+        "Tags": null,
+        "TextPT": "Desvantagem em Furtividade com cota de malha."
+      },
+      {
+        "Source": "feature:second-wind",
+        "Target": "",
+        "Targets": null,
+        "Mode": "note",
+        "Value": 0,
+        "Tags": null,
+        "TextPT": "Retomar o fôlego: recupera 1d10+5 pontos de vida, uma vez por descanso curto ou longo."
+      },
+      {
+        "Source": "feature:improved-critical",
+        "Target": "",
+        "Targets": null,
+        "Mode": "note",
+        "Value": 0,
+        "Tags": null,
+        "TextPT": "Crítico com 19 ou 20 nos ataques com arma."
+      }
+    ],
+    "OpenChoices": null,
+    "Issues": null
+  }
+}

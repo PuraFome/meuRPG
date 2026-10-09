@@ -244,3 +244,10 @@
   --mat-button-filled-container-height: 48px;
   margin-top: var(--mr-space-4);
 }
+
+// The confirmation of a class new to the sheet: outlined in the danger ink, never a second filled button.
+.danger-outline {
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+  --mat-button-outlined-outline-color: var(--mr-danger-ink);
+  color: var(--mr-danger-ink);
+}

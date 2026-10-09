@@ -151,6 +151,10 @@ type Build struct {
 	// invocation. Derive applies an option only while the build has the
 	// feature or trait it belongs to.
 	FeatureChoices []string
+	// ToolProficiencies are the tool proficiencies the sheet lists as free text.
+	// Derive does not read them; the guided level-up adds the musical instrument
+	// that taking a Bard level as a later class gives.
+	ToolProficiencies []string
 	// Feats are the feats the character took (an optional rule of the game, MR-025):
 	// "feat:grappler" or a table's "feat:<slug>@mesa". Derive treats each like a
 	// feature: its effects apply and the sheet lists it. The abilities a feat
@@ -236,6 +240,13 @@ func (c *Content) Catalog() Catalog {
 // "Mago"), falling back to the SRD's English name, or "" for an unknown key.
 func (c *Content) NamePT(key string) string {
 	return c.c.namePT(key)
+}
+
+// ProficiencyNamePT returns the Portuguese name of a proficiency key
+// ("proficiency:lute" is "Alaúde"; an armor or a weapon category is named as the
+// sheet names it), or the SRD's English name when there is none.
+func (c *Content) ProficiencyNamePT(key string) string {
+	return c.c.proficiencyNamePT(key)
 }
 
 // Conditions returns the SRD's conditions ("condition:poisoned", "Envenenado"),
