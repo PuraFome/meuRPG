@@ -797,8 +797,9 @@ test('o Escudo: o mestre responde pelo jogador enquanto o aviso está aberto, e 
     const prompt = p.getByRole('alertdialog', { name: 'Você foi atingido: usar Escudo Arcano?' });
     await expect(prompt).toBeVisible();
     await card.getByRole('button', { name: 'Seguir sem Escudo Arcano' }).click();
-    await expect(prompt.getByText('O mestre respondeu por você')).toBeVisible();
-    await prompt.getByRole('button', { name: 'Fechar' }).click();
+    // The prompt is no longer awaited: it closes by itself and a notice says why (two prompts never pile up).
+    await expect(p.locator('mat-snack-bar-container').getByText('O mestre respondeu por você')).toBeVisible();
+    await expect(prompt).toHaveCount(0);
     await expect(card.getByRole('button', { name: 'Rolar dano' })).toBeVisible();
     // The player's own refusal: "Não usar" lets the next hit go on to its damage.
     await card.getByRole('button', { name: 'Rolar dano' }).click();

@@ -15,8 +15,8 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/formula"
 )
 
-// The table's own content: classes, subclasses, races, subraces, backgrounds
-// and spells that the master writes for one campaign (MR-025, RN-23,
+// The table's own content: classes, subclasses, races, subraces, backgrounds,
+// spells and feats that the master writes for one campaign (MR-025, RN-23,
 // ADR-0018). Content.With adds them, as an Overlay, on top of the SRD content
 // and returns a new Content; the SRD one is never changed, because it is a
 // singleton that many requests read at once.
@@ -86,10 +86,11 @@ type Overlay struct {
 	Subraces    []TableSubrace
 	Backgrounds []TableBackground
 	Spells      []TableSpell
+	Feats       []TableFeat
 }
 
 // TableEntry is what every entry has. Key is "<kind>:<slug>@mesa" (kind is
-// class, subclass, race, subrace, background or spell), the slug is 1 to 60 of
+// class, subclass, race, subrace, background, spell or feat), the slug is 1 to 60 of
 // [a-z0-9-], and the key never changes after the entry is created. The table's
 // entries have no English name: NamePT is the name everywhere. Archived says
 // the master retired the entry: sheets that use it keep working, but it is not
@@ -538,8 +539,8 @@ func (c *Content) Hidden(key string) bool {
 }
 
 // Switchable says whether the key is one the master can switch on or off: a
-// class, subclass, race, subrace, background or spell of this content, the SRD's
-// or the table's.
+// class, subclass, race, subrace, background, spell or feat of this content, the
+// SRD's or the table's.
 func (c *Content) Switchable(key string) bool { return c.c.isSwitchable(key) }
 
 // AnyHidden says whether the table retired or switched off anything at all, so a
@@ -591,7 +592,7 @@ func (c *content) offOrParent(key string) bool {
 }
 
 // isSwitchable says whether the key is a class, subclass, race, subrace,
-// background or spell of the content.
+// background, spell or feat of the content.
 func (c *content) isSwitchable(key string) bool {
 	switch {
 	case strings.HasPrefix(key, "class:"):
@@ -611,6 +612,9 @@ func (c *content) isSwitchable(key string) bool {
 		return ok
 	case strings.HasPrefix(key, "spell:"):
 		_, ok := c.spells[key]
+		return ok
+	case strings.HasPrefix(key, "feat:"):
+		_, ok := c.feats[key]
 		return ok
 	}
 	return false
@@ -633,6 +637,7 @@ func buildKeys(b Build, want func(string) bool) []string {
 	add(b.SpellsKnown...)
 	add(b.SpellsPrepared...)
 	add(b.FeatureChoices...)
+	add(b.Feats...)
 	return sortedKeys(seen)
 }
 
@@ -688,6 +693,9 @@ func BuildKeys(b Build) []KeyField {
 	}
 	for i, k := range b.FeatureChoices {
 		add(k, fmt.Sprintf("full.feature_choice_keys[%d]", i))
+	}
+	for i, k := range b.Feats {
+		add(k, fmt.Sprintf("full.feat_keys[%d]", i))
 	}
 	return out
 }
@@ -768,7 +776,7 @@ func (b *overlayBuilder) build(o Overlay) error {
 	if o.Revision < 0 {
 		return ovErr("", "the revision cannot be negative").at("revision", ReasonOverlay)
 	}
-	total := len(o.Classes) + len(o.Subclasses) + len(o.Races) + len(o.Subraces) + len(o.Backgrounds) + len(o.Spells)
+	total := len(o.Classes) + len(o.Subclasses) + len(o.Races) + len(o.Subraces) + len(o.Backgrounds) + len(o.Spells) + len(o.Feats)
 	if total > MaxOverlayEntries {
 		return ovErr("", "%d entries; the limit is %d per table", total, MaxOverlayEntries).at("", ReasonLimit)
 	}
@@ -787,7 +795,8 @@ func (b *overlayBuilder) build(o Overlay) error {
 	classes := byKey(o.Classes, func(e *TableClass) string { return e.Key })
 	subclasses := byKey(o.Subclasses, func(e *TableSubclass) string { return e.Key })
 	backgrounds := byKey(o.Backgrounds, func(e *TableBackground) string { return e.Key })
-	if err := b.claimKeys(o, classes, subclasses, races, subraces, backgrounds, spells); err != nil {
+	feats := byKey(o.Feats, func(e *TableFeat) string { return e.Key })
+	if err := b.claimKeys(o, classes, subclasses, races, subraces, backgrounds, spells, feats); err != nil {
 		return err
 	}
 
@@ -855,6 +864,12 @@ func (b *overlayBuilder) build(o Overlay) error {
 			return fail(err, path)
 		}
 	}
+	for _, i := range feats {
+		path := fmt.Sprintf("feats[%d]", i)
+		if err := b.addFeat(&o.Feats[i], path); err != nil {
+			return fail(err, path)
+		}
+	}
 	if err := b.compileEffects(); err != nil {
 		return err
 	}
@@ -874,7 +889,7 @@ func (b *overlayBuilder) build(o Overlay) error {
 
 // claimKeys is the first pass: it checks the form of every entry key, that none
 // repeats or exists, and learns the facts the references need.
-func (b *overlayBuilder) claimKeys(o Overlay, classes, subclasses, races, subraces, backgrounds, spells []int) error {
+func (b *overlayBuilder) claimKeys(o Overlay, classes, subclasses, races, subraces, backgrounds, spells, feats []int) error {
 	claim := func(prefix, path string, e TableEntry) error {
 		if err := checkTableKey(prefix, e.Key); err != nil {
 			return locate(err, path)
@@ -916,6 +931,11 @@ func (b *overlayBuilder) claimKeys(o Overlay, classes, subclasses, races, subrac
 	}
 	for _, i := range spells {
 		if err := claim("spell:", fmt.Sprintf("spells[%d]", i), o.Spells[i].TableEntry); err != nil {
+			return err
+		}
+	}
+	for _, i := range feats {
+		if err := claim("feat:", fmt.Sprintf("feats[%d]", i), o.Feats[i].TableEntry); err != nil {
 			return err
 		}
 	}
@@ -967,6 +987,25 @@ func checkTableKey(prefix, key string) error {
 		return ovErr(key, "the slug cannot end in \"spellcasting\": it is reserved for the Spellcasting feature the engine writes").reason(ReasonReservedKey)
 	}
 	return nil
+}
+
+// CheckEntryKey checks that key is the key of a table entry of the kind ("class",
+// "feat"...): "<kind>:<slug>@mesa", the slug 1 to 60 characters of [a-z0-9-] and none of
+// the words the engine reserves. It returns the reason (ReasonKey or ReasonReservedKey)
+// and the English message of the first thing wrong, or "" when the key is fine.
+func CheckEntryKey(kind, key string) (reason, message string) {
+	err := checkTableKey(kind+":", key)
+	if err == nil {
+		return "", ""
+	}
+	oe, ok := errors.AsType[*OverlayError](err)
+	if !ok {
+		return ReasonKey, err.Error()
+	}
+	if oe.Reason != "" {
+		return oe.Reason, oe.Message
+	}
+	return ReasonKey, oe.Message
 }
 
 // slugOfKey is the part of a key between its prefix and "@mesa".
@@ -1050,6 +1089,7 @@ func (c *content) cloneForOverlay() *content {
 	n.subclasses = maps.Clone(c.subclasses)
 	n.features = maps.Clone(c.features)
 	n.backgrounds = maps.Clone(c.backgrounds)
+	n.feats = maps.Clone(c.feats)
 	n.spells = maps.Clone(c.spells)
 	n.classLevels = maps.Clone(c.classLevels)
 	n.subclassLevels = maps.Clone(c.subclassLevels)

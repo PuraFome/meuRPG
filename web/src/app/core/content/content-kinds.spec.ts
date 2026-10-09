@@ -2,6 +2,7 @@ import { create } from '@bufbuild/protobuf';
 
 import {
   TableContentKind,
+  TableFeatSchema,
   TableSubclassSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import {
@@ -24,7 +25,14 @@ describe('the list of the table content (E10-01 states 1, 2 and 10)', () => {
 
   it('counts every entry of each kind, archived ones included, and says the limit in the nav', () => {
     const counts = Object.fromEntries(CONTENT_NAV.map((n) => [n.slug, countOfNav(entries, n)]));
-    expect(counts).toEqual({ classes: 2, subclasses: 2, races: 1, backgrounds: 1, spells: 1 });
+    expect(counts).toEqual({
+      classes: 2,
+      subclasses: 2,
+      races: 1,
+      backgrounds: 1,
+      spells: 1,
+      feats: 0,
+    });
     expect(limitLine(entries)).toBe('7 de 300 entradas · o limite de uma campanha');
     expect(summaryLine(entries)).toBe('7 entradas, 1 arquivada');
     expect(summaryLine(entries.slice(0, 1))).toBe('1 entrada');
@@ -120,5 +128,27 @@ describe('the list of the table content (E10-01 states 1, 2 and 10)', () => {
     expect(entrySupport(entries[4], name)).toBe('Médio · 9 m');
     expect(entrySupport(entries[5], name)).toBe('2 perícias');
     expect(entrySupport(entries[6], name)).toBe('1º nível');
+  });
+
+  it('has the feats among the kinds, with the masculine words of "o talento"', () => {
+    const feat = entry(TableContentKind.FEAT, 'Mestre das Cordas', { archived: true });
+    expect(nav('feats')).toMatchObject({
+      plural: 'Talentos',
+      newLabel: 'Novo talento',
+      createSegment: 'feat',
+    });
+    expect(filterEntries([feat], nav('feats'), '', 'all')).toHaveLength(1);
+    expect(savedSentence(TableContentKind.FEAT, 'Mestre das Cordas')).toBe(
+      'O talento Mestre das Cordas foi salvo.',
+    );
+    expect(entryState(feat, true)?.text).toBe('Arquivado');
+  });
+
+  it('writes the support line of a feat from its prerequisite', () => {
+    const none = entry(TableContentKind.FEAT, 'Livre', {
+      body: { case: 'tableFeat', value: create(TableFeatSchema, { namePt: 'Livre' }) },
+    });
+    expect(entrySupportRaw(entry(TableContentKind.FEAT, 'Lutador'), (k) => k)).toBe('Força 13');
+    expect(entrySupportRaw(none, (k) => k)).toBe('Sem pré-requisito');
   });
 });

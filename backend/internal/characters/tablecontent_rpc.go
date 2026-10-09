@@ -228,15 +228,25 @@ func (s *Service) checkOverlay(entries []entryRow, revision int, key string, lea
 // data. It works on a clone of body, so a retried transaction starts from what the
 // request had.
 func prepare(key string, kind rulesv1.TableContentKind, body, old tableBody, lead ...*rulesv1.TableContentViolation) (stored, error) {
+	return prepareWith(featureKeys, key, kind, body, old, lead...)
+}
+
+// prepareWith is prepare with the way the features get their keys.
+func prepareWith(
+	keys func(entryKey string, body, old tableBody) []*rulesv1.TableContentViolation,
+	key string, kind rulesv1.TableContentKind, body, old tableBody, lead ...*rulesv1.TableContentViolation,
+) (stored, error) {
 	b := proto.Clone(body).(tableBody)
-	if v := checkShape(b); len(v) > 0 {
-		return stored{}, errRefusedContent(append(slices.Clone(lead), v...))
+	// Every problem of the body comes at once: the shape, the feature count and the keys.
+	problems := slices.Clone(lead)
+	problems = append(problems, checkShape(b)...)
+	tooMany := checkFeatureCount(kind, b)
+	problems = append(problems, tooMany...)
+	if len(tooMany) == 0 { // the keys of that many features are not worth making
+		problems = append(problems, keys(key, b, old)...)
 	}
-	if v := checkFeatureCount(kind, b); len(v) > 0 {
-		return stored{}, errRefusedContent(append(slices.Clone(lead), v...))
-	}
-	if v := featureKeys(key, b, old); len(v) > 0 {
-		return stored{}, errRefusedContent(append(slices.Clone(lead), v...))
+	if len(problems) > len(lead) {
+		return stored{}, errRefusedContent(problems)
 	}
 	data, err := storedData(b)
 	if err != nil {

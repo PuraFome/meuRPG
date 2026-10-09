@@ -18,6 +18,22 @@ import { LevelUpSession } from '../level-up-session';
     <section class="mr-panel" aria-labelledby="summary-title">
       <h2 class="mr-panel__title" id="summary-title">O que muda</h2>
       <p class="lead">Confira antes de confirmar. Depois, só o mestre muda a ficha.</p>
+      @if (s().draft.featSummary(); as feat) {
+        <p class="feat">
+          <strong>Talento: {{ feat.name }}</strong>
+          @if (feat.increase) {
+            <span>{{ feat.increase }}</span>
+          }
+        </p>
+      }
+      @if (s().draft.featSummary(); as feat) {
+        <p class="feat">
+          <strong>Talento: {{ feat.name }}</strong>
+          @if (feat.increase) {
+            <span>{{ feat.increase }}</span>
+          }
+        </p>
+      }
       <app-change-rows [rows]="s().rows()" />
     </section>
     <p class="rest">
@@ -43,6 +59,22 @@ import { LevelUpSession } from '../level-up-session';
       font-size: 15px;
       line-height: 20px;
       color: var(--mr-ink-muted);
+    }
+
+    .feat {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--mr-space-1) var(--mr-space-3);
+      margin: 0 0 var(--mr-space-3);
+      font-size: 17px;
+    }
+
+    .feat {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--mr-space-1) var(--mr-space-3);
+      margin: 0 0 var(--mr-space-3);
+      font-size: 17px;
     }
 
     .rest {

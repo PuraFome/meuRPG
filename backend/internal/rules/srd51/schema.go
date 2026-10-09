@@ -223,6 +223,26 @@ type BackgroundFeature struct {
 	Desc []string `json:"desc"`
 }
 
+// Feat is a feat, an optional rule of the game: the SRD's own (Grappler) and the
+// table's. Its effects are in effects/feats.json (the SRD's) or in the table's
+// content. The prerequisites all have to be met; Minimums are ability scores
+// that all must be met, AnyOf ones of which a single one is enough, Proficiency a
+// proficiency key the character has, Spellcasting says the character can cast
+// at least one spell, Race is a race or subrace key and Level the least total
+// character level. The SRD data only has ability score minimums; the rest is
+// the table's.
+type Feat struct {
+	Key          string         `json:"key"`
+	Name         string         `json:"name"`
+	Desc         []string       `json:"desc"`
+	Minimums     map[string]int `json:"minimums,omitempty"`
+	AnyOf        map[string]int `json:"any_of,omitempty"`
+	Proficiency  string         `json:"proficiency,omitempty"`
+	Spellcasting bool           `json:"spellcasting,omitempty"`
+	Race         string         `json:"race,omitempty"`
+	Level        int            `json:"level,omitempty"`
+}
+
 // Proficiency is something a character can be proficient in.
 type Proficiency struct {
 	Key  string `json:"key"`

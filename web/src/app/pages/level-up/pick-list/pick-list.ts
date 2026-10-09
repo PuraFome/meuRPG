@@ -3,7 +3,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { PickItem } from '../../../core/levelup/levelup-flow';
 
-/** How many rows a long list shows before "Ver os outros N". */
+/** How many rows a long list shows before "Ver as outras N". */
 const FIRST_ROWS = 4;
 
 /**
@@ -12,7 +12,7 @@ const FIRST_ROWS = 4;
  * skills and expertise. A panel with its title, how many of how many are
  * picked (a warning icon and the words while one is missing, a tick when it
  * is complete), the rows with a real radio (one place) or checkbox (several),
- * and, for a long list, a search and "Ver os outros N". A spell's row has the
+ * and, for a long list, a search and "Ver as outras N" ("Ver os outros N" for a masculine noun). A spell's row has the
  * "?" for its description. The parent owns the picks: `pick` says a row was
  * tapped. A full list disables its unpicked rows, so nothing is picked past
  * the count.
@@ -37,7 +37,9 @@ export class PickList {
   readonly base = input(0);
   /** "magia", for the search's label and the empty state. */
   readonly noun = input('opção');
-  /** "truques", "magias": what "Ver os outros 7 truques" counts. */
+  /** The noun is masculine ("truque"): the words around it agree ("Ver os outros 7 truques"). The default is feminine ("opção", "magia", "perícia"). */
+  readonly masculine = input(false);
+  /** "truques", "magias": what "Ver as outras 7 magias" counts. */
   readonly nounMany = input('opções');
   readonly searchLabel = input('');
   /** The "?" beside a spell. */

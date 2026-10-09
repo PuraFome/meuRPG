@@ -141,7 +141,9 @@
       <p class="turn__next">{{ next.prefix }}<b>{{ next.name }}</b>.</p>
     }
     @if (own(); as me) {
-      @if (isDown()) {
+      @if (dead()) {
+        <!-- A dead character has no reaction to show. -->
+      } @else if (isDown()) {
         <p class="turn__react turn__react--top">
           <mat-icon aria-hidden="true">favorite_border</mat-icon>
           <span>{{ offTurnDown() }}</span>

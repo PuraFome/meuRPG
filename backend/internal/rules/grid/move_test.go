@@ -483,3 +483,39 @@ func TestATrapSquareHeldByAnAllyStillFires(t *testing.T) {
 		t.Errorf("a move that misses the trap marked it: %+v", got)
 	}
 }
+
+func TestStandableIsFloorWithoutAShutDoor(t *testing.T) {
+	t.Parallel()
+	g := grid.Grid{Columns: 8, Rows: 2}
+	tr := grid.Terrain{Grid: g, Walls: grid.NewLayer(g), Cover: grid.NewCoverLayer(g), Doors: grid.NewDoorLayer(g)}
+	tr.Walls.Set(1, 0, true)
+	tr.Cover.Set(2, 0, grid.CoverThreeQuarters)
+	tr.Cover.Set(3, 0, grid.CoverHalf)
+	for col, door := range map[int]grid.Door{4: grid.DoorClosed, 5: grid.DoorLocked, 6: grid.DoorBarred, 7: grid.DoorSecret} {
+		tr.Doors.Set(col, 1, door)
+	}
+	tr.Doors.Set(0, 1, grid.DoorOpen)
+	for _, c := range []struct {
+		sq   grid.Square
+		want bool
+	}{
+		{sq(0, 0), true},
+		{sq(1, 0), false},
+		{sq(2, 0), false},
+		{sq(3, 0), true},
+		{sq(0, 1), true},
+		{sq(4, 1), false},
+		{sq(5, 1), false},
+		{sq(6, 1), false},
+		{sq(7, 1), false},
+		{sq(-1, 0), false},
+		{sq(0, 2), false},
+	} {
+		if got := tr.Standable(c.sq); got != c.want {
+			t.Errorf("Standable(%v) = %v, want %v", c.sq, got, c.want)
+		}
+	}
+	if !(grid.Terrain{Grid: g}).Standable(sq(3, 1)) {
+		t.Error("a map with no layers is floor")
+	}
+}

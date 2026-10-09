@@ -38,6 +38,7 @@ import { MapsClient } from '../../../core/maps/maps-client';
 import { MoveSaves } from '../../../core/maps/move-saves';
 import { paintHint } from '../../../core/maps/paint-tools';
 import { mapTokenInitial } from '../../../core/maps/token-initial';
+import { tokenSpot } from '../../../core/maps/token-spot';
 import { RosterClient, RosterEntry } from '../../../core/maps/roster-client';
 import type { CluePlayer } from '../../../core/maps/scene-clues';
 import { ViewAsCounts } from '../../../core/maps/view-as';
@@ -433,7 +434,12 @@ export class MapEditor {
     if (!mapId) {
       return;
     }
-    const at = this.view()?.centerBp() ?? { xBp: 5000, yBp: 5000 };
+    // The nearest free floor square to the middle of the screen: tokens added one after the other never share a square.
+    const at = tokenSpot(
+      this.view()?.centerBp() ?? { xBp: 5000, yBp: 5000 },
+      this.paint.painted.layers(),
+      this.state().tokens(),
+    );
     try {
       const token = await this.api.placeToken(this.campaignId(), mapId, entry.id, at.xBp, at.yBp);
       this.state().upsertToken(token);

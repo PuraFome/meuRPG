@@ -30,6 +30,25 @@ describe('TurnPanel', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
+  it('shows the reaction of a living player, and none for a dead one', () => {
+    const living = text({ currentCombatantId: 'cap' });
+    expect(living.textContent).toContain('Sua reação: Disponível.');
+    const dead = [
+      ...order.filter((c) => c.id !== 'pen'),
+      combatant({
+        id: 'pen',
+        label: 'Pensantus',
+        kind: CombatantKind.PLAYER,
+        mine: true,
+        state: CombatantState.DEAD,
+        defeated: true,
+      }),
+    ];
+    const el = text({ currentCombatantId: 'cap', combatants: dead });
+    expect(el.textContent).not.toContain('Sua reação');
+    expect(el.textContent).not.toContain('Ataque de oportunidade');
+  });
+
   it('names another one on turn and says the player is next', () => {
     const el = text({ currentCombatantId: 'cap' });
     expect(el.querySelector('h2')?.textContent).toBe('Vez do Capitão Goblin');

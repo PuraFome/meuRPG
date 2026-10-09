@@ -482,4 +482,25 @@ describe('ContentEntry', () => {
       expect(text(el)).not.toContain('Corujeiro Velho');
     });
   });
+
+  it('opens a feat for the master in the feat editor, and the editor offers the effect only a feat has', async () => {
+    const feat = entry(TableContentKind.FEAT, 'Lutador de Corda');
+    const { el } = await setup(Role.MASTER, feat.key, [...mirathel(), feat]);
+    expect(el.querySelector('app-feat-editor')).not.toBeNull();
+    expect(text(el.querySelector('.tags')!)).toContain('Talento da mesa');
+    expect(text(el)).toContain('Voltar para Talentos');
+    const types = Array.from(
+      el.querySelectorAll<HTMLSelectElement>('[data-field="table_feat.effects[0].type"] option'),
+    ).map((o) => o.textContent?.trim());
+    expect(types).toContain('Aumento de habilidade');
+    expect(classDefaultsCall).not.toHaveBeenCalled();
+  });
+
+  it('gives a player the read view of a feat, with its prerequisite in words', async () => {
+    const feat = entry(TableContentKind.FEAT, 'Lutador de Corda');
+    const { el } = await setup(Role.PLAYER, feat.key, [...mirathel(), feat]);
+    expect(el.querySelector('app-feat-editor')).toBeNull();
+    expect(text(el)).toContain('Pré-requisito');
+    expect(text(el)).toContain('Força 13');
+  });
 });
