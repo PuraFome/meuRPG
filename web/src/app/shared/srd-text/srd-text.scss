@@ -1,0 +1,55 @@
+:host {
+  display: block;
+}
+
+p,
+ul {
+  margin: 0;
+}
+
+p + p,
+p + ul,
+ul + p,
+p + .srd__scroll,
+.srd__scroll + p,
+ul + .srd__scroll,
+.srd__scroll + ul {
+  margin-top: var(--mr-space-2);
+}
+
+ul {
+  padding-left: 1.4em;
+}
+
+.srd__heading {
+  font-weight: 700;
+}
+
+.srd__scroll {
+  overflow-x: auto;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 19px;
+}
+
+th,
+td {
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  font-weight: 700;
+  background: var(--mr-ground);
+}
+
+tr + tr td {
+  border-top: 1px solid var(--mr-line);
+}

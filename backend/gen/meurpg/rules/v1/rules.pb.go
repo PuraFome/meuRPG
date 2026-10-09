@@ -7689,7 +7689,23 @@ type SpellDetails struct {
 	// rest, from the text of the SRD.
 	Target *SpellTarget `protobuf:"bytes,13,opt,name=target,proto3" json:"target,omitempty"`
 	// What the caster picks among the `damage` types; unspecified when nothing.
-	DamageChoice  SpellDamageChoice `protobuf:"varint,14,opt,name=damage_choice,json=damageChoice,proto3,enum=meurpg.rules.v1.SpellDamageChoice" json:"damage_choice,omitempty"`
+	DamageChoice SpellDamageChoice `protobuf:"varint,14,opt,name=damage_choice,json=damageChoice,proto3,enum=meurpg.rules.v1.SpellDamageChoice" json:"damage_choice,omitempty"`
+	// The description in Portuguese, one paragraph per entry of `description`: our
+	// translation of the SRD 5.1 English (effects/spells_pt.json), markdown kept. For
+	// a table spell it is the table's own text, the same as `description`. Empty while
+	// `text_pt_missing`; the app then shows `description` in English with a note.
+	DescriptionPt []string `protobuf:"bytes,15,rep,name=description_pt,json=descriptionPt,proto3" json:"description_pt,omitempty"`
+	// The "At Higher Levels" paragraphs in Portuguese, one per entry of `higher_level`;
+	// empty when the spell has none, and while `text_pt_missing`.
+	HigherLevelPt []string `protobuf:"bytes,16,rep,name=higher_level_pt,json=higherLevelPt,proto3" json:"higher_level_pt,omitempty"`
+	// True for an SRD spell with no Portuguese text yet: `description_pt`,
+	// `higher_level_pt` and `components.material_text_pt` are empty and the English
+	// `description`, `higher_level` and `components.material_text` are all there is.
+	TextPtMissing bool `protobuf:"varint,17,opt,name=text_pt_missing,json=textPtMissing,proto3" json:"text_pt_missing,omitempty"`
+	// True when the text exists only in Portuguese (a table spell): `description`,
+	// `higher_level` and `components.material_text` already are the Portuguese, and
+	// there is no English to offer.
+	TextPtOnly    bool `protobuf:"varint,18,opt,name=text_pt_only,json=textPtOnly,proto3" json:"text_pt_only,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7820,6 +7836,34 @@ func (x *SpellDetails) GetDamageChoice() SpellDamageChoice {
 		return x.DamageChoice
 	}
 	return SpellDamageChoice_SPELL_DAMAGE_CHOICE_UNSPECIFIED
+}
+
+func (x *SpellDetails) GetDescriptionPt() []string {
+	if x != nil {
+		return x.DescriptionPt
+	}
+	return nil
+}
+
+func (x *SpellDetails) GetHigherLevelPt() []string {
+	if x != nil {
+		return x.HigherLevelPt
+	}
+	return nil
+}
+
+func (x *SpellDetails) GetTextPtMissing() bool {
+	if x != nil {
+		return x.TextPtMissing
+	}
+	return false
+}
+
+func (x *SpellDetails) GetTextPtOnly() bool {
+	if x != nil {
+		return x.TextPtOnly
+	}
+	return false
 }
 
 // SpellTarget is whom a spell reaches.
@@ -8193,9 +8237,13 @@ type SpellComponents struct {
 	Somatic  bool                   `protobuf:"varint,2,opt,name=somatic,proto3" json:"somatic,omitempty"`
 	Material bool                   `protobuf:"varint,3,opt,name=material,proto3" json:"material,omitempty"`
 	// What the material component is, in English. Empty without one.
-	MaterialText  string `protobuf:"bytes,4,opt,name=material_text,json=materialText,proto3" json:"material_text,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	MaterialText string `protobuf:"bytes,4,opt,name=material_text,json=materialText,proto3" json:"material_text,omitempty"`
+	// The same in Portuguese: our translation of the SRD's text (for a table spell,
+	// the table's own, same as `material_text`). Empty without a material component
+	// and while `SpellDetails.text_pt_missing`; the app then shows `material_text`.
+	MaterialTextPt string `protobuf:"bytes,5,opt,name=material_text_pt,json=materialTextPt,proto3" json:"material_text_pt,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SpellComponents) Reset() {
@@ -8252,6 +8300,13 @@ func (x *SpellComponents) GetMaterial() bool {
 func (x *SpellComponents) GetMaterialText() string {
 	if x != nil {
 		return x.MaterialText
+	}
+	return ""
+}
+
+func (x *SpellComponents) GetMaterialTextPt() string {
+	if x != nil {
+		return x.MaterialTextPt
 	}
 	return ""
 }
@@ -11344,7 +11399,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x05total\x18\x03 \x01(\x05R\x05total\x12'\n" +
 	"\x0fcontent_version\x18\x04 \x01(\tR\x0econtentVersion\"N\n" +
 	"\x17GetSpellDetailsResponse\x123\n" +
-	"\x05spell\x18\x01 \x01(\v2\x1d.meurpg.rules.v1.SpellDetailsR\x05spell\"\x95\a\n" +
+	"\x05spell\x18\x01 \x01(\v2\x1d.meurpg.rules.v1.SpellDetailsR\x05spell\"\xae\b\n" +
 	"\fSpellDetails\x12,\n" +
 	"\x05spell\x18\x01 \x01(\v2\x16.meurpg.rules.v1.SpellR\x05spell\x12D\n" +
 	"\fcasting_time\x18\x02 \x01(\v2!.meurpg.rules.v1.SpellCastingTimeR\vcastingTime\x121\n" +
@@ -11363,7 +11418,12 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\fhigher_level\x18\v \x03(\tR\vhigherLevel\x12N\n" +
 	"\x10hit_point_effect\x18\f \x01(\v2$.meurpg.rules.v1.SpellHitPointEffectR\x0ehitPointEffect\x124\n" +
 	"\x06target\x18\r \x01(\v2\x1c.meurpg.rules.v1.SpellTargetR\x06target\x12G\n" +
-	"\rdamage_choice\x18\x0e \x01(\x0e2\".meurpg.rules.v1.SpellDamageChoiceR\fdamageChoice\x1aB\n" +
+	"\rdamage_choice\x18\x0e \x01(\x0e2\".meurpg.rules.v1.SpellDamageChoiceR\fdamageChoice\x12%\n" +
+	"\x0edescription_pt\x18\x0f \x03(\tR\rdescriptionPt\x12&\n" +
+	"\x0fhigher_level_pt\x18\x10 \x03(\tR\rhigherLevelPt\x12&\n" +
+	"\x0ftext_pt_missing\x18\x11 \x01(\bR\rtextPtMissing\x12 \n" +
+	"\ftext_pt_only\x18\x12 \x01(\bR\n" +
+	"textPtOnly\x1aB\n" +
 	"\x14HealBySlotLevelEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xea\x01\n" +
@@ -11398,12 +11458,13 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x04kind\x18\x01 \x01(\x0e2\x1f.meurpg.rules.v1.SpellRangeKindR\x04kind\x12\x1f\n" +
 	"\vdistance_ft\x18\x02 \x01(\x05R\n" +
 	"distanceFt\x12\x10\n" +
-	"\x03raw\x18\x03 \x01(\tR\x03raw\"\x84\x01\n" +
+	"\x03raw\x18\x03 \x01(\tR\x03raw\"\xae\x01\n" +
 	"\x0fSpellComponents\x12\x16\n" +
 	"\x06verbal\x18\x01 \x01(\bR\x06verbal\x12\x18\n" +
 	"\asomatic\x18\x02 \x01(\bR\asomatic\x12\x1a\n" +
 	"\bmaterial\x18\x03 \x01(\bR\bmaterial\x12#\n" +
-	"\rmaterial_text\x18\x04 \x01(\tR\fmaterialText\"\xe4\x01\n" +
+	"\rmaterial_text\x18\x04 \x01(\tR\fmaterialText\x12(\n" +
+	"\x10material_text_pt\x18\x05 \x01(\tR\x0ematerialTextPt\"\xe4\x01\n" +
 	"\rSpellDuration\x126\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\".meurpg.rules.v1.SpellDurationKindR\x04kind\x12\x16\n" +
 	"\x06amount\x18\x02 \x01(\x05R\x06amount\x126\n" +

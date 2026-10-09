@@ -277,6 +277,19 @@ func TestMR044_GetMagicItem(t *testing.T) {
 		t.Errorf("the SRD text = %v", ring.GetDescription())
 	}
 
+	// The Portuguese text rides next to the English, paragraph for paragraph; an item
+	// without one says so.
+	bag, err := get("item:bag-of-holding")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bag.GetDescriptionPtMissing() || len(bag.GetDescriptionPt()) != len(bag.GetDescription()) {
+		t.Errorf("the Bag of Holding's Portuguese text = %v (missing %v), want %d paragraphs", bag.GetDescriptionPt(), bag.GetDescriptionPtMissing(), len(bag.GetDescription()))
+	}
+	if ring.GetDescriptionPtMissing() != (len(ring.GetDescriptionPt()) == 0) {
+		t.Errorf("the Ring of Protection: missing %v with %d Portuguese paragraphs", ring.GetDescriptionPtMissing(), len(ring.GetDescriptionPt()))
+	}
+
 	potion, _ := get("item:potion-of-healing-common")
 	if potion.GetValuePo() != 50 || !potion.GetHalved() || !potion.GetConsumable() {
 		t.Errorf("a consumable of rarity common = %v, want 50 PO halved", potion)

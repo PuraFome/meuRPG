@@ -20,7 +20,7 @@
         } @else {
           {{ row.value.text }}
           @if (row.value.english) {
-            <span [attr.lang]="ours() ? null : 'en'" class="spell__english">{{ row.value.english }}</span>
+            <span [attr.lang]="ours() || row.value.inPortuguese ? null : 'en'" class="spell__english">{{ row.value.english }}</span>
           }
         }
       </dd>
@@ -30,21 +30,36 @@
 
 <section class="spell__text" [attr.aria-labelledby]="ours() || plain() ? null : 'spell-srd-label'">
   @if (!ours() && !plain()) {
-    <h3 class="spell__label" id="spell-srd-label">Texto do SRD 5.1 (em inglês)</h3>
+    <div class="spell__label-row">
+      <h3 class="spell__label" id="spell-srd-label">
+        Texto do SRD 5.1
+        @if (description().lang === 'en') {
+          <span class="spell__note" data-testid="lang-note">(em inglês)</span>
+        }
+      </h3>
+      @if (description().canToggle) {
+        <app-description-lang-button />
+      }
+    </div>
+  } @else if (!ours() && (description().lang === 'en' || description().canToggle)) {
+    <div class="spell__label-row spell__label-row--end">
+      @if (description().lang === 'en') {
+        <span class="spell__note" data-testid="lang-note">(em inglês)</span>
+      }
+      @if (description().canToggle) {
+        <app-description-lang-button />
+      }
+    </div>
   }
-  <div class="spell__prose" [class.spell__prose--ours]="ours() || plain()" [attr.lang]="ours() ? null : 'en'">
-    @for (paragraph of d.description; track $index) {
-      <p>{{ paragraph }}</p>
-    }
+  <div class="spell__prose" [class.spell__prose--ours]="ours() || plain()">
+    <app-srd-text [paragraphs]="description().paragraphs" [lang]="description().lang" />
   </div>
 </section>
 @if (d.higherLevel.length > 0) {
   <section class="spell__text" aria-labelledby="spell-higher-label">
     <h3 class="spell__label" id="spell-higher-label">Em níveis superiores</h3>
-    <div class="spell__prose" [class.spell__prose--ours]="ours() || plain()" [attr.lang]="ours() ? null : 'en'">
-      @for (paragraph of d.higherLevel; track $index) {
-        <p>{{ paragraph }}</p>
-      }
+    <div class="spell__prose" [class.spell__prose--ours]="ours() || plain()">
+      <app-srd-text [paragraphs]="higher().paragraphs" [lang]="higher().lang" />
     </div>
   </section>
 }

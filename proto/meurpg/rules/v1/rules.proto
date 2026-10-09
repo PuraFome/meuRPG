@@ -1543,6 +1543,22 @@ message SpellDetails {
   SpellTarget target = 13;
   // What the caster picks among the `damage` types; unspecified when nothing.
   SpellDamageChoice damage_choice = 14;
+  // The description in Portuguese, one paragraph per entry of `description`: our
+  // translation of the SRD 5.1 English (effects/spells_pt.json), markdown kept. For
+  // a table spell it is the table's own text, the same as `description`. Empty while
+  // `text_pt_missing`; the app then shows `description` in English with a note.
+  repeated string description_pt = 15;
+  // The "At Higher Levels" paragraphs in Portuguese, one per entry of `higher_level`;
+  // empty when the spell has none, and while `text_pt_missing`.
+  repeated string higher_level_pt = 16;
+  // True for an SRD spell with no Portuguese text yet: `description_pt`,
+  // `higher_level_pt` and `components.material_text_pt` are empty and the English
+  // `description`, `higher_level` and `components.material_text` are all there is.
+  bool text_pt_missing = 17;
+  // True when the text exists only in Portuguese (a table spell): `description`,
+  // `higher_level` and `components.material_text` already are the Portuguese, and
+  // there is no English to offer.
+  bool text_pt_only = 18;
 }
 
 // SpellTargetKind says whom a spell reaches.
@@ -1693,6 +1709,10 @@ message SpellComponents {
   bool material = 3;
   // What the material component is, in English. Empty without one.
   string material_text = 4;
+  // The same in Portuguese: our translation of the SRD's text (for a table spell,
+  // the table's own, same as `material_text`). Empty without a material component
+  // and while `SpellDetails.text_pt_missing`; the app then shows `material_text`.
+  string material_text_pt = 5;
 }
 
 // SpellDuration is how long a spell lasts.

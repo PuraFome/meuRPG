@@ -218,7 +218,7 @@ test(
 );
 
 test(
-  'o "?" ao lado da magia abre a descrição, com o texto do SRD em inglês',
+  'o "?" ao lado da magia abre a descrição, com o texto do SRD em português e o original em inglês',
   { tag: '@MR-004' },
   async ({ page }) => {
     await openEditorAs(page, 'Bardo');
@@ -233,8 +233,11 @@ test(
       await expect(dialog.getByText(label, { exact: true })).toBeVisible();
     }
     await expect(dialog.getByText('1 ação')).toBeVisible();
+    await expect(dialog.getByText('Texto do SRD 5.1', { exact: true })).toBeVisible();
+    await expect(dialog.locator('.spell__prose .srd[lang="en"]')).toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Ver em inglês' }).click();
     await expect(dialog.getByText('Texto do SRD 5.1 (em inglês)')).toBeVisible();
-    await expect(dialog.locator('.spell__prose[lang="en"]')).toContainText('beast');
+    await expect(dialog.locator('.spell__prose .srd[lang="en"]').first()).toContainText('beast');
 
     // The X and the button at the bottom are both "Fechar".
     await dialog.getByRole('button', { name: 'Fechar', exact: true }).last().click();

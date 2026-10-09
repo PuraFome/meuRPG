@@ -298,6 +298,11 @@ func TestGetSpellDetails(t *testing.T) {
 		len(d.GetDescription()) == 0 || len(d.GetHigherLevel()) == 0 {
 		t.Errorf("GetSpellDetails(fireball) = %v", d)
 	}
+	// The Portuguese text rides next to the English, paragraph for paragraph.
+	if d.GetTextPtMissing() || d.GetTextPtOnly() || len(d.GetDescriptionPt()) != len(d.GetDescription()) ||
+		len(d.GetHigherLevelPt()) != len(d.GetHigherLevel()) || d.GetComponents().GetMaterialTextPt() == "" {
+		t.Errorf("GetSpellDetails(fireball) Portuguese text = %v / %v / %q, missing=%v", d.GetDescriptionPt(), d.GetHigherLevelPt(), d.GetComponents().GetMaterialTextPt(), d.GetTextPtMissing())
+	}
 
 	// A cantrip's damage grows with the character's level; healing by slot.
 	if fb, _ := get(master, campaign, "spell:fire-bolt"); fb.GetDamage()[0].GetByCharacterLevel()[5] != "2d10" ||
