@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
+import { AreaPlacement } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { CombatState } from '../../../../core/combat/combat-state';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
@@ -71,5 +72,93 @@ describe('NpcCard: the idempotency key follows the target', () => {
     expect(first[4]).toBe('t1');
     expect(second[4]).toBe('t2');
     expect(second[6]).not.toBe(first[6]);
+  });
+
+  it('does not roll a second attack while a hit of this attacker still has its damage open, and says why', async () => {
+    TestBed.resetTestingModule();
+    const rollAttack = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [{ provide: CombatClient, useValue: { rollAttack } }],
+    });
+    const fixture = TestBed.createComponent(NpcCard);
+    fixture.componentRef.setInput('campaignId', 'c');
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants: [combatant({ id: 'npc', label: 'Goblin' })] }),
+    );
+    fixture.componentRef.setInput('subject', combatant({ id: 'npc', label: 'Goblin' }));
+    fixture.componentRef.setInput('state', { apply: vi.fn() } as unknown as CombatState);
+    const open = { ...(opts(['t1']) as object), pendingDamages: [{ id: 'p1' }] } as never;
+    fixture.componentRef.setInput('options', open);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const card = fixture.componentInstance as unknown as { rollApp(): Promise<void> };
+    await card.rollApp();
+    expect(rollAttack).not.toHaveBeenCalled();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('#roll-why')?.textContent,
+    ).toContain('dano do ataque anterior');
+    // Once the damage is applied the options carry none, and the attack rolls again.
+    rollAttack.mockRejectedValue(new Error('stop'));
+    fixture.componentRef.setInput('options', opts(['t1']));
+    fixture.detectChanges();
+    await card.rollApp();
+    expect(rollAttack).toHaveBeenCalledTimes(1);
+    expect((fixture.nativeElement as HTMLElement).querySelector('#roll-why')).toBeNull();
+  });
+});
+
+describe("NpcCard: an NPC's area spell", () => {
+  function setup(theatre: boolean) {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: CombatClient, useValue: {} }] });
+    const fixture = TestBed.createComponent(NpcCard);
+    const zuk = combatant({ id: 'z', label: 'Zuk' });
+    fixture.componentRef.setInput('campaignId', 'c');
+    fixture.componentRef.setInput('encounter', encounter({ combatants: [zuk] }));
+    fixture.componentRef.setInput('subject', zuk);
+    fixture.componentRef.setInput('state', {
+      apply: vi.fn(),
+      encounter: () => encounter({ combatants: [zuk] }),
+    } as unknown as CombatState);
+    fixture.componentRef.setInput('theatre', theatre);
+    fixture.componentRef.setInput('options', {
+      options: {
+        attacks: [],
+        spells: [
+          {
+            spell: { key: 'spell:fireball', namePt: 'Bola de Fogo', level: 3 },
+            enabled: true,
+            slots: [],
+          },
+          { spell: { key: 'spell:bless', namePt: 'Bênção', level: 1 }, enabled: true, slots: [] },
+        ],
+      },
+      attackTargets: [],
+      spellTargets: [
+        { spellKey: 'spell:fireball', placement: AreaPlacement.POINT, targets: [] },
+        { spellKey: 'spell:bless', placement: AreaPlacement.UNSPECIFIED, targets: [] },
+      ],
+      pendingDamages: [],
+    } as never);
+    const cast: string[] = [];
+    fixture.componentInstance.castArea.subscribe((k) => cast.push(k));
+    fixture.detectChanges();
+    return { el: fixture.nativeElement as HTMLElement, cast };
+  }
+
+  it('offers "Conjurar" for a spell placed on the map only, and hands its key to the page', () => {
+    const { el, cast } = setup(false);
+    const buttons = Array.from(el.querySelectorAll<HTMLButtonElement>('.area-spell'));
+    expect(buttons.map((b) => b.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+      'auto_awesomeConjurar Bola de Fogo',
+    ]);
+    buttons[0].click();
+    expect(cast).toEqual(['spell:fireball']);
+  });
+
+  it('offers none without a map', () => {
+    expect(setup(true).el.querySelector('.area-spell')).toBeNull();
   });
 });

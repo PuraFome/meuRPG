@@ -17,7 +17,11 @@
           [currentId]="encounter().currentCombatantId"
           [layers]="layers()"
           [offers]="offers()"
-        />
+        >
+          @if (lastArea(); as area) {
+            <app-area-overlay [columns]="encounter().gridColumns" [rows]="encounter().gridRows" [squares]="area.squares" [origin]="area.origin" />
+          }
+        </app-combat-map>
       </div>
     </div>
     <button mat-stroked-button type="button" class="card__open" (click)="openMap.emit()">
@@ -53,7 +57,11 @@
     [doorPicks]="doorTaps() && isMaster()"
     (doorPick)="doorPick.emit($event)"
     (tokenDrop)="tokenDrop.emit($event)"
-  />
+  >
+    @if (lastArea(); as area) {
+      <app-area-overlay [columns]="encounter().gridColumns" [rows]="encounter().gridRows" [squares]="area.squares" [origin]="area.origin" />
+    }
+  </app-combat-map>
   }
 
   @if (forcedSwitch() && !preview()) {
@@ -133,6 +141,10 @@
       @if (fogLegend()?.unseen) {
         <li before><span class="mr-swatch mr-swatch--sample mr-swatch--unseen" aria-hidden="true"></span>Não visto</li>
       }
+    @if (lastArea()) {
+      <li><span class="mr-swatch sw-area" aria-hidden="true"></span>Área da última magia</li>
+      <li><span class="sw-diamond" aria-hidden="true"></span>Ponto de origem</li>
+    }
     @if (isMaster()) {
       <li><app-combatant-token initial="P" [size]="22" [onMap]="true" />Jogador</li>
       <li><app-combatant-token initial="C" [npc]="true" [size]="22" [onMap]="true" />NPC</li>

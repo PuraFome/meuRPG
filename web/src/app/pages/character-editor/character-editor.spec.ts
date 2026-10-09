@@ -717,6 +717,21 @@ describe('CharacterEditor', () => {
       expect(warning()).toBeUndefined();
     });
 
+    it('puts "Preparadas 7 de 5" in the error style when a saved sheet prepares more than the class takes', async () => {
+      const { el, cmp, fixture } = await openSpells({
+        cantripsKnown: 2,
+        spellsKnown: 0,
+        preparedMax: 1,
+      });
+      cmp.preparedMaxByClass.set({ 'class:wizard': 1 });
+      cmp.toggleSpellPrepared('spell:shield');
+      cmp.toggleSpellPrepared('spell:magic-missile');
+      fixture.detectChanges();
+
+      expect(el.querySelector('.group-hint--over')?.textContent?.trim()).toBe('Preparadas 2 de 1');
+      expect(el.querySelector('.picker__error')?.textContent).toContain('Passou do limite de 1');
+    });
+
     it('shows no limit before the server has answered', async () => {
       configure({ id: 'camp-1' });
       const { fixture, el } = await render();

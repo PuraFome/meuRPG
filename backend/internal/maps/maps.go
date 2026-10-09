@@ -100,9 +100,10 @@ type CharacterDirectory interface {
 	// campaign that has it, inside tx, and returns how many it cleared
 	// (MR-031): the master deleted the image from the gallery.
 	ClearPortraits(ctx context.Context, tx pgx.Tx, campaignID, imageID string) (int64, error)
-	// PartyVision returns the campaign's living player characters that have a
-	// player, each with what it sees with (its derived darkvision, blindsight
-	// and truesight): the fog of war's viewers (MR-036). A beast's senses in Wild
+	// PartyVision returns the campaign's player characters that have a player,
+	// each with what it sees with (its derived darkvision, blindsight and
+	// truesight): the fog of war's viewers (MR-036). A character that died is
+	// listed as Dead, with no senses. A beast's senses in Wild
 	// Shape replace the character's, and a familiar the player looks through comes
 	// as Eyes (MR-037).
 	PartyVision(ctx context.Context, tx pgx.Tx, campaignID string) ([]link.PartyMember, error)

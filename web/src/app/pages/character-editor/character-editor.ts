@@ -161,6 +161,18 @@ function titleFor(mode: CharacterEditorMode, kind: CharacterKind, reserved = fal
   return kind === 'player' ? 'Criar personagem' : 'Criar NPC';
 }
 
+/** "Preparadas 7 de 5" for a preparing class whose number is known, and whether it is past the number. */
+function preparedCountLine(
+  preparation: SpellPreparation | null,
+  picked: number,
+  max: number | undefined,
+) {
+  if (preparation === 'known' || max === undefined) {
+    return { text: '', over: false };
+  }
+  return { text: `Preparadas ${picked} de ${max}`, over: picked > max };
+}
+
 /** What each spell list of a section takes at most: `null` where there is no number to show. `preparedMax` is the
  * number of prepared spells whether or not the class prepares, for the "Preparadas N de M" line. */
 function spellListLimits(
@@ -745,10 +757,7 @@ export class CharacterEditor {
         preparedLimit: limits.prepared,
         alwaysSourcePt: section.alwaysSourcePt,
         // On an edit the server says how many the class prepares (its own number, from the saved sheet).
-        preparedCount:
-          section.preparation !== 'known' && max !== undefined
-            ? `Preparadas ${picked} de ${max}`
-            : '',
+        preparedCount: preparedCountLine(section.preparation, picked, max),
         noLeveledYet,
         castingStarts: `O ${sectionName(section)} conjura magias a partir do nível ${section.firstLevel}.`,
       };

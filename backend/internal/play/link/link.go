@@ -100,6 +100,9 @@ type BattlePoint struct {
 	// TargetMapID is the map of the fight, when the master chose one; empty
 	// when the fight happens on the session's current map.
 	TargetMapID string
+	// XBP and YBP are where the point is on its map, in basis points of the
+	// image's width and height (0 to 10000).
+	XBP, YBP int32
 }
 
 // TokenPosition is where a character's token stands on a map, in basis
@@ -278,6 +281,15 @@ type Spell struct {
 	// IgnoresCover says the spell's saving throw gets no benefit from cover (Chama
 	// Sagrada, SRD 5.1); the total-cover targeting refusal stays.
 	IgnoresCover bool
+	// AreaShape is the form of the spell's area ("sphere", "cylinder", "cone", "line"
+	// or "cube"), AreaSizeFt its radius (sphere, cylinder), length (cone, line) or
+	// side (cube) in feet, and AreaWidthFt a line's width: empty and 0 for a spell
+	// that is not an area with a shape. SpreadsAroundCorners says the area is the
+	// part of the shape connected to its origin, not what the origin sees.
+	AreaShape            string
+	AreaSizeFt           int
+	AreaWidthFt          int
+	SpreadsAroundCorners bool
 }
 
 // HPEffect is what a spell that reads hit points does at the slot level, from

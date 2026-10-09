@@ -6,6 +6,7 @@ import {
   CriticalRule,
   DeathSaveVisibility,
   DiceMode,
+  HiddenAreaHitRule,
   HitPointsRule,
   TableStyle,
   XpMode,
@@ -29,6 +30,10 @@ export interface RulesDraft {
   readonly typed: boolean;
   readonly critical: CriticalRule;
   readonly deathSaves: DeathSaveVisibility;
+  /** What an area spell does to the hiding of a hidden creature it hits (required when saving). */
+  readonly hiddenAreaHits: HiddenAreaHitRule;
+  /** "Talentos": whether a level with an Ability Score Improvement may take a feat instead. */
+  readonly featsAllowed: boolean;
   readonly houseRules: readonly string[];
 }
 
@@ -61,6 +66,10 @@ export function draftFromRules(rules: GetTableRulesResponse['rules']): RulesDraf
     typed: rules?.abilityMethods?.typed ?? true,
     critical: rules?.critical ?? CriticalRule.DOUBLED_DICE,
     deathSaves: rules?.deathSaves ?? DeathSaveVisibility.VISIBLE_TO_ALL,
+    // A campaign that never saved its rules reveals (the server's default); the page always sends a real choice.
+    // (UNSPECIFIED is 0, so `||` takes the default for it.)
+    hiddenAreaHits: rules?.hiddenAreaHits || HiddenAreaHitRule.REVEAL,
+    featsAllowed: rules?.featsAllowed ?? false,
     houseRules: rules?.houseRules ?? [],
   };
 }
@@ -114,6 +123,8 @@ export function changeCount(draft: RulesDraft, saved: RulesDraft): number {
     'typed',
     'critical',
     'deathSaves',
+    'hiddenAreaHits',
+    'featsAllowed',
   ];
   for (const key of scalar) {
     if (draft[key] !== saved[key]) {
@@ -216,6 +227,8 @@ export class TableRulesClient {
         },
         critical: d.critical,
         deathSaves: d.deathSaves,
+        hiddenAreaHits: d.hiddenAreaHits,
+        featsAllowed: d.featsAllowed,
         houseRules: [...d.houseRules],
       },
     });

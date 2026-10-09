@@ -519,11 +519,11 @@ export async function startGameSession(page: Page, campaignId?: string): Promise
 }
 
 /**
- * Opens a long level-up pick list ("Ver os outros N ...", it shows 4 rows
+ * Opens a long level-up pick list ("Ver as outras N ..." or "Ver os outros N ...", it shows 4 rows
  * alphabetically) so a row picked by name is there whatever the names sort like.
  */
 export async function showAllPicks(panel: import('@playwright/test').Locator): Promise<void> {
-  const more = panel.getByRole('button', { name: /^Ver os outros \d+/ });
+  const more = panel.getByRole('button', { name: /^Ver (os outros|as outras) \d+/ });
   if ((await more.count()) > 0) {
     await more.click();
   }

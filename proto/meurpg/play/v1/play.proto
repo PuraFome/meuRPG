@@ -1183,6 +1183,19 @@ message WatchGameSessionResponse {
     // queue is not queued twice; at most one goes out per campaign every 250 ms, and
     // the last change is never left unannounced.
     ContentChanged content_changed = 23;
+    // A player's area spell hit hidden creatures and the table asks the master
+    // whether they appear (CombatService.ResolveHiddenReveal). Only the master
+    // gets it; no player's stream ever carries it (RN-10).
+    HiddenHitPending hidden_hit_pending = 24;
+  }
+
+  // HiddenHitPending says a question waits for the master in a combat. It names
+  // no creature: the master reads Encounter.pending_hidden_reveals.
+  message HiddenHitPending {
+    // The combat (a UUID).
+    string encounter_id = 1;
+    // The question (a UUID).
+    string pending_reveal_id = 2;
   }
 
   // ContentChanged is the content-free hint that the table's content changed.
@@ -1339,6 +1352,11 @@ message WatchGameSessionResponse {
     // True when the one on turn is a combatant the member may not see: the
     // app shows "Vez do mestre". Always false for the master.
     bool master_turn = 4;
+    // The combat's revision (Encounter.revision) with the turn changed, for the
+    // master only: a screen that already holds a newer combat ignores this event
+    // instead of going back. A player's copy says 0 ("no number to compare"): what
+    // their reads count is not the master's number.
+    int32 revision = 5;
   }
 
   // CombatantMoved is a combatant's new square. A player's stream only gets

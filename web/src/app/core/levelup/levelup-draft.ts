@@ -6,7 +6,13 @@ import {
   LevelUpSpellsKind,
   type LevelUpOptions,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
-import type { Skill, Spell } from '../../../gen/meurpg/rules/v1/rules_pb';
+import {
+  Ability,
+  type FeatOption,
+  type Skill,
+  type Spell,
+} from '../../../gen/meurpg/rules/v1/rules_pb';
+import { abilityName } from '../content/feat-text';
 import { ABILITY_KEYS, type AbilityKey } from '../characters/characters.types';
 import type { LevelUpChoicesInit } from './levelup-client';
 import {
@@ -44,6 +50,18 @@ const WIRE_ABILITY: Record<AbilityKey, string> = {
   cha: 'charisma',
 };
 
+const WIRE_OF_ABILITY: Readonly<Record<number, AbilityKey>> = {
+  [Ability.STRENGTH]: 'str',
+  [Ability.DEXTERITY]: 'dex',
+  [Ability.CONSTITUTION]: 'con',
+  [Ability.INTELLIGENCE]: 'int',
+  [Ability.WISDOM]: 'wis',
+  [Ability.CHARISMA]: 'cha',
+};
+
+/** What the player takes at an Ability Score Improvement level: the increase of the SRD, or a feat. */
+export type AsiMode = 'increase' | 'feat';
+
 type PickSet = ReturnType<typeof signal<ReadonlySet<string>>>;
 
 /**
@@ -57,6 +75,11 @@ type PickSet = ReturnType<typeof signal<ReadonlySet<string>>>;
 export class LevelUpDraft {
   readonly abilityMode = signal<'one' | 'two'>('one');
   readonly abilityKeys = signal<readonly AbilityKey[]>([]);
+  /** "Aumentar habilidades" or "Um talento": the second is offered only when the server lists feats. */
+  readonly asiMode = signal<AsiMode>('increase');
+  readonly featKey = signal('');
+  /** The abilities the picked feat raises (`increase.count` of `increase.from`). */
+  readonly featAbilities = signal<readonly Ability[]>([]);
   /** The card the hit points start on: a table that makes everybody roll starts on the die (RN-24), the rest on the average. */
   private readonly startCard: HpCard;
   readonly hpCard = signal<HpCard>('average');
@@ -85,6 +108,7 @@ export class LevelUpDraft {
     readonly catalog: {
       readonly spells: readonly Spell[];
       readonly skills: readonly Skill[];
+      readonly names?: ReadonlyMap<string, string>;
       readonly classes?: readonly {
         readonly key: string;
         readonly namePt: string;
@@ -141,7 +165,7 @@ export class LevelUpDraft {
 
   /** The Portuguese name of every key the screen may show. */
   readonly names = computed(() => {
-    const names = new Map<string, string>();
+    const names = new Map<string, string>(this.catalog.names);
     for (const s of this.catalog.spells) names.set(s.key, s.namePt);
     for (const s of this.catalog.skills) names.set(s.key, s.namePt);
     for (const s of this.options.subclasses) names.set(s.key, s.namePt);
@@ -168,7 +192,67 @@ export class LevelUpDraft {
   readonly outsideMax = computed(() => this.options.anyClassSpells);
 
   readonly abilityAsked = computed(() => (this.abilityMode() === 'one' ? 1 : 2));
+
+  /** The feats the server offers at this level (empty: the step is today's increase only). */
+  readonly feats = computed<readonly FeatOption[]>(() => this.options.feats);
+  readonly hasFeats = computed(
+    () => this.options.abilityScoreImprovement && this.feats().length > 0,
+  );
+  readonly taking = computed(() => this.hasFeats() && this.asiMode() === 'feat');
+  /** The picked feat, as the server lists it. */
+  readonly feat = computed(() => this.feats().find((f) => f.key === this.featKey()));
+  /** The feat raises every ability it lists: nothing to pick, and the server applies it (stopping each at 20). */
+  readonly featFixed = computed(() => {
+    const inc = this.feat()?.increase;
+    return inc !== undefined && inc.count >= inc.from.length;
+  });
+  /** The abilities of the feat's list the server says would pass 20. */
+  readonly featCapped = computed<readonly Ability[]>(() => {
+    const feat = this.feat();
+    return feat?.increase ? feat.cappedAbilities : [];
+  });
+  /** How many abilities the player picks for a feat that gives a choice: the count, or fewer when too few are below 20. */
+  readonly featAsked = computed(() => {
+    const inc = this.feat()?.increase;
+    if (!inc || this.featFixed()) {
+      return 0;
+    }
+    const free = inc.from.filter((a) => !this.featCapped().includes(a)).length;
+    return Math.min(inc.count, free);
+  });
+  /** "Talento: Atleta" with "+1 Força, +1 Destreza": what the Resumo and the list of the level say of the feat. */
+  readonly featSummary = computed(() => {
+    const feat = this.feat();
+    if (!this.taking() || !feat) {
+      return null;
+    }
+    const inc = feat.increase;
+    const raised = this.featFixed()
+      ? (inc?.from ?? []).filter((a) => !this.featCapped().includes(a))
+      : this.featAbilities();
+    return {
+      name: feat.namePt,
+      increase: inc ? raised.map((a) => `+${inc.value} ${abilityName(a)}`).join(', ') : '',
+    };
+  });
+  /** The abilities raised by what was picked, in the sheet's own keys: the increase, or the feat's. */
+  readonly pickedKeys = computed<readonly AbilityKey[]>(() =>
+    this.taking()
+      ? (this.featFixed() ? (this.feat()?.increase?.from ?? []) : this.featAbilities()).map(
+          (a) => WIRE_OF_ABILITY[a],
+        )
+      : this.abilityKeys(),
+  );
+
   readonly abilityIncrease = computed<Partial<Record<AbilityKey, number>>>(() => {
+    if (this.taking()) {
+      // A feat that raises every ability it lists sends no increase: the server applies it, stopping at 20.
+      const inc = this.feat()?.increase;
+      if (!inc || this.featFixed() || this.featAbilities().length !== this.featAsked()) {
+        return {};
+      }
+      return Object.fromEntries(this.featAbilities().map((a) => [WIRE_OF_ABILITY[a], inc.value]));
+    }
     const keys = this.abilityKeys();
     if (!this.options.abilityScoreImprovement || keys.length !== this.abilityAsked()) {
       return {};
@@ -182,7 +266,21 @@ export class LevelUpDraft {
     const o = this.options;
     const t = this.totals();
     const out: Missing[] = [];
-    if (o.abilityScoreImprovement && this.abilityKeys().length < this.abilityAsked()) {
+    if (this.taking()) {
+      if (this.feat() === undefined) {
+        out.push({ step: 'abilities', id: 'abilities', text: 'Falta escolher o talento.' });
+      } else if (this.featAbilities().length < this.featAsked()) {
+        out.push({
+          step: 'abilities',
+          id: 'abilities',
+          text: needText(
+            this.featAsked() - this.featAbilities().length,
+            'habilidade',
+            'habilidades',
+          ),
+        });
+      }
+    } else if (o.abilityScoreImprovement && this.abilityKeys().length < this.abilityAsked()) {
       const n = this.abilityAsked() - this.abilityKeys().length;
       out.push({
         step: 'abilities',
@@ -277,6 +375,7 @@ export class LevelUpDraft {
   readonly dirty = computed(
     () =>
       this.abilityKeys().length > 0 ||
+      this.featKey() !== '' ||
       this.hpCard() !== this.startCard ||
       this.subclassKey() !== '' ||
       [
@@ -296,6 +395,7 @@ export class LevelUpDraft {
       abilityIncrease: Object.fromEntries(
         ABILITY_KEYS.filter((k) => increase[k]).map((k) => [WIRE_ABILITY[k], increase[k]]),
       ),
+      featKey: this.taking() ? this.featKey() : '',
       subclassKey: this.subclassKey(),
       cantripKeys: [...this.cantrips()],
       knownSpellKeys: [...this.spells()],
@@ -340,6 +440,40 @@ export class LevelUpDraft {
     this.abilityKeys.set([...keys, key].slice(-this.abilityAsked()));
   }
 
+  setAsiMode(mode: AsiMode): void {
+    if (mode !== this.asiMode() && (mode === 'increase' || this.hasFeats())) {
+      this.asiMode.set(mode);
+    }
+  }
+
+  /** Picks a feat the character qualifies for; a feat that raises every ability it lists needs no further choice. */
+  setFeat(key: string): void {
+    const feat = this.feats().find((f) => f.key === key);
+    if (!feat?.qualifies || key === this.featKey()) {
+      return;
+    }
+    this.featKey.set(key);
+    this.featAbilities.set([]);
+  }
+
+  /** An ability of the feat's increase: picked or dropped, never more than `count`. */
+  toggleFeatAbility(ability: Ability): void {
+    const inc = this.feat()?.increase;
+    const now = this.featAbilities();
+    if (!inc || this.featFixed() || !inc.from.includes(ability)) {
+      return;
+    }
+    if (now.includes(ability)) {
+      this.featAbilities.set(now.filter((a) => a !== ability));
+    } else if (this.featCapped().includes(ability)) {
+      return;
+    } else if (this.featAsked() === 1) {
+      this.featAbilities.set([ability]);
+    } else if (now.length < this.featAsked()) {
+      this.featAbilities.set([...now, ability]);
+    }
+  }
+
   setHpCard(card: HpCard): void {
     this.hpCard.set(card);
   }
@@ -381,6 +515,17 @@ export class LevelUpDraft {
     if (this.options.abilityScoreImprovement) {
       this.abilityMode.set(other.abilityMode());
       this.abilityKeys.set(other.abilityKeys().slice(0, this.abilityAsked()));
+    }
+    if (other.taking() && this.feats().some((f) => f.key === other.featKey() && f.qualifies)) {
+      this.asiMode.set('feat');
+      this.setFeat(other.featKey());
+      const inc = this.feat()?.increase;
+      this.featAbilities.set(
+        other
+          .featAbilities()
+          .filter((a) => inc?.from.includes(a) && !this.featCapped().includes(a))
+          .slice(0, this.featAsked()),
+      );
     }
     this.adoptHitPoints(other);
     const sameLevel =

@@ -1,6 +1,6 @@
 -- Reserved characters and their claim links (MR-049). A reserved character is a
 -- player character with no owner that no player can see (characters.reserved); a
--- claim link hands it to a player. The tables are in migration 00196.
+-- claim link hands it to a player. The tables are in migration 00203.
 
 -- name: InsertClaimLink :one
 INSERT INTO claim_links (campaign_id, character_id, token_hash, created_by, created_at, expires_at)

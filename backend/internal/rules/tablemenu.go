@@ -23,6 +23,9 @@ type MenuType struct {
 	// Fields are the fields the type reads, in the order the editor shows them;
 	// every other field of the effect is refused.
 	Fields []MenuField
+	// FeatOnly says only a feat has this effect: the editor of a feature leaves it
+	// out.
+	FeatOnly bool
 }
 
 // MenuField is a field of an effect type.
@@ -105,6 +108,8 @@ const (
 	ListLanguages         = "languages"
 	ListTools             = "tools"
 	ListTagPrefixes       = "tag_prefixes"
+	ListAbilities         = "abilities"
+	ListIncreaseAmounts   = "ability_increase_amounts"
 )
 
 // menuTypes is the menu's types, in the picker's order, with the copy in
@@ -162,6 +167,12 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
+	{Type: "ability_increase", NamePT: "Aumento de habilidade", FeatOnly: true, HintPT: "O jogador escolhe quantas habilidades de uma lista e soma o mesmo valor a cada uma, sem passar de 20 (como o meio talento: +1 em uma de duas).", Fields: []MenuField{
+		{Name: "count", Required: true, Kind: "number", Min: 1, Max: abilityCount},
+		{Name: "from", Required: true, Kind: "choices", List: ListAbilities},
+		{Name: "value", Required: true, Kind: "choice", List: ListIncreaseAmounts},
+		{Name: "text_pt", Kind: "text"},
+	}},
 	{Type: "note", NamePT: "Nota e magia concedida", HintPT: "Um lembrete na ficha, com um número se quiser, ou magias que a característica concede (um truque, uma magia por dia).", Fields: []MenuField{
 		{Name: "text_pt", Kind: "text"},
 		{Name: "value", Kind: "formula"},
@@ -188,6 +199,7 @@ var (
 	choiceNames = map[string]string{
 		"skill": "Perícias", "expertise": "Especialização", "cantrip": "Truques", "spell": "Magias",
 		"language": "Idiomas", "tool": "Ferramentas", "feature": "Uma opção de uma lista do SRD",
+		"feat": "Talentos",
 	}
 	rollTargetNames = map[string]string{
 		"attack": "Ataques", "death_save": "Testes contra a morte", "initiative": "Iniciativa",
@@ -269,6 +281,10 @@ func (c *Content) EffectMenu() EffectMenu {
 		}
 		return out
 	}
+	var abilityValues []MenuValue
+	for _, a := range AllAbilities() {
+		abilityValues = append(abilityValues, MenuValue{Key: string(a), NamePT: abilityName(a)})
+	}
 	var modes []MenuValue
 	for _, k := range modifierModes {
 		modes = append(modes, MenuValue{Key: k, NamePT: modeNames[k][0], HintPT: modeNames[k][1]})
@@ -288,6 +304,8 @@ func (c *Content) EffectMenu() EffectMenu {
 		{Name: ListLanguages, Values: languages},
 		{Name: ListTools, Values: tools},
 		{Name: ListTagPrefixes, Values: tagPrefixes},
+		{Name: ListAbilities, Values: abilityValues},
+		{Name: ListIncreaseAmounts, Values: []MenuValue{{Key: "1", NamePT: "+1"}, {Key: "2", NamePT: "+2"}}},
 	}
 
 	// The option sets: SRD features that offer options. A set with no option

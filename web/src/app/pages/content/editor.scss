@@ -231,3 +231,11 @@
   border-top: 1px solid var(--mr-rule);
   overflow-wrap: anywhere;
 }
+
+.sub {
+  margin: var(--mr-space-2) 0 0;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--mr-ink);
+}
