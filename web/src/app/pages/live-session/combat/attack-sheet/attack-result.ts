@@ -37,6 +37,12 @@ import { coverBonusText, degreeWord, sourceWord } from '../../../../core/combat/
                 </span>
               }
             </span>
+            @if (held()) {
+              <span class="part__line">O mestre ainda não disse se acertou.</span>
+            }
+            @if (bonusLine()) {
+              <span class="part__line">{{ bonusLine() }}</span>
+            }
             @if (coverLine()) {
               <span class="part__line">{{ coverLine() }}</span>
             }
@@ -76,6 +82,15 @@ export class AttackResult {
   /** The hit's damage waits for the target's reaction (Escudo): it is not a miss. */
   readonly waiting = input(false);
   readonly damageLine = input('');
+  /** The roll is held for the Bardic Inspiration question: the d20 is shown, the result is not (and there is no armor class). */
+  readonly held = input(false);
+  /** "+ 6 no d8 da Inspiração de Bardo": the die the player added after the d20; the total already has it. */
+  protected readonly bonusLine = computed(() =>
+    (this.roll()?.bonusDice ?? [])
+      .filter((b) => b.used)
+      .map((b) => `Com o d${b.sides} da Inspiração de Bardo (+${b.face}).`)
+      .join(' '),
+  );
   /** "O Goblin 2 estava com meia cobertura.": says why a miss missed, never by how much (RN-20). */
   protected readonly coverLine = computed(() => {
     const r = this.roll();

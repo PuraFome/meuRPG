@@ -25,6 +25,7 @@ import {
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
   ActionEconomy,
+  type MetamagicOption,
   type SlotChoice,
   type SpellDetails,
   SpellDamageChoice,
@@ -71,6 +72,19 @@ import { circleLabel } from '../../../../core/combat/combat-grid';
 import { isPlayer } from '../../../../core/combat/combat-view';
 import { groupFeminine, groupName, isCreature } from '../../../../core/combat/creature-names';
 import { SpellCatalog } from '../../../../core/combat/spell-catalog';
+import {
+  type MetamagicPicks,
+  NO_PICKS,
+  castLabel,
+  chosenLine,
+  metamagicChoices,
+  metamagicCost,
+  metamagicMissing,
+  metamagicRows,
+  metamagicSpentLine,
+  toggledOption,
+} from '../../../../core/resources/metamagic';
+import type { Pool } from '../../../../core/resources/pools';
 import { openSpellDetails } from '../../../../shared/spell-details/open-spell-details';
 import { spellDetailsFromGen } from '../../../../shared/spell-details/spell-details-map';
 import { SpellHelp } from '../../../../shared/spell-details/spell-help';
@@ -79,6 +93,7 @@ import { injectSheet } from '../sheet-host';
 import { SheetFrame } from '../sheet-frame/sheet-frame';
 import { CastResult, CastSlots, type SlotAfter } from './cast-result';
 import { CastTargets } from './cast-targets';
+import { MetamagicPicker } from './metamagic-picker';
 import { DamageTypePicker } from './damage-type-picker';
 import { SlotPicker } from './slot-picker';
 
@@ -124,6 +139,10 @@ export interface CastSheetData {
   /** The damage of a cast whose sheet was closed before it was rolled: the
    * sheet opens at the damage with it. */
   readonly resume?: readonly PendingDamage[];
+  /** The Metamagic options the sorcerer knows, for this spell (`SpellOption.metamagic_options`); empty for none. */
+  readonly metamagic?: readonly MetamagicOption[];
+  /** The sorcery points left and their maximum, for "Pontos de Feitiçaria: 5 de 5". */
+  readonly sorceryPoints?: Pool | null;
 }
 
 /**
@@ -149,6 +168,7 @@ export interface CastSheetData {
     CastTargets,
     DamageTypePicker,
     MatButtonModule,
+    MetamagicPicker,
     MatIconModule,
     RollPicker,
     SheetFrame,
@@ -180,6 +200,17 @@ export class CastSheet {
   protected readonly pendings = signal<ReadonlyMap<string, PendingDamage>>(
     new Map((this.data.resume ?? []).map((p) => [p.id, p])),
   );
+  /** The Metamagic options the sorcerer knows for this spell, and the ones marked: at most one, or Empowered Spell
+   * with one other; each may ask for creatures (`picks`). */
+  protected readonly metaOptions = this.data.metamagic ?? [];
+  protected readonly sorceryPoints = this.data.sorceryPoints ?? null;
+  protected readonly chosenMeta = signal<string[]>([]);
+  protected readonly picks = signal<MetamagicPicks>(NO_PICKS);
+  protected readonly metaRows = computed(() => metamagicRows(this.metaOptions, this.chosenMeta()));
+  protected readonly metaCost = computed(() => metamagicCost(this.metaOptions, this.chosenMeta()));
+  protected readonly metaLine = computed(() => chosenLine(this.metaOptions, this.chosenMeta()));
+  /** "Conjurar e gastar 1 ponto" once an option is marked, else "Conjurar X". */
+  protected readonly castText = computed(() => castLabel(this.data.name, this.metaCost()));
   /** Whether the cast happened (or is being resumed): the result stage. */
   protected readonly done = computed(() => this.cast() !== null || !!this.data.resume);
 
@@ -314,7 +345,7 @@ export class CastSheet {
     if (this.kind() === 'attack' && this.chosen().length > 1 && !this.canApp) {
       return 'Com dados físicos, escolha um alvo por vez.';
     }
-    return '';
+    return metamagicMissing(this.metaOptions, this.chosenMeta(), this.picks(), this.sorceryPoints);
   });
   protected readonly ready = computed(() => this.missing() === '');
   /** Magic Missile's count, in the footer next to the button: it states what is missing, and when all are placed. */
@@ -438,6 +469,12 @@ export class CastSheet {
     }
     if (c.concentrationEndedSpellKey) {
       out.push('A sua concentração anterior acabou.');
+    }
+    if (c.metamagicKeys.length > 0) {
+      const names = c.metamagicKeys.map(
+        (k) => this.metaOptions.find((o) => o.key === k)?.namePt ?? 'Metamagia',
+      );
+      out.push(`${metamagicSpentLine(names, c.sorceryPointsSpent, this.sorceryPoints)}.`);
     }
     out.push(spentLine(this.data.economy));
     return out;
@@ -581,8 +618,36 @@ export class CastSheet {
     this.error.set('');
   }
 
+  protected toggleMeta(key: string): void {
+    this.chosenMeta.set(toggledOption(this.chosenMeta(), key));
+    this.choiceChanged();
+    this.error.set('');
+  }
+
+  protected setPicks(picks: MetamagicPicks): void {
+    this.picks.set(picks);
+    this.choiceChanged();
+    this.error.set('');
+  }
+
+  /** "Sem Metamagia": the spell is cast as it is. */
+  protected noMetamagic(): void {
+    this.chosenMeta.set([]);
+    this.picks.set(NO_PICKS);
+    this.choiceChanged();
+  }
+
+  /** The creatures the options of Metamagic can pick among: the spell's own targets that can be chosen. */
+  protected readonly metaCandidates = computed(() => this.targetRows().filter((t) => !t.blocked));
+
   protected toggle(id: string): void {
     this.chosen.set(toggled(this.rule(), this.chosen(), id));
+    // A creature no longer a target cannot stay the second target or the one with disadvantage.
+    this.picks.update((p) => ({
+      twinned: p.twinned === this.chosen()[0] ? '' : p.twinned,
+      careful: p.careful,
+      heightened: this.chosen().includes(p.heightened) ? p.heightened : '',
+    }));
     this.choiceChanged();
     this.error.set('');
   }
@@ -633,6 +698,7 @@ export class CastSheet {
         this.castKey,
         undefined,
         this.damageType(),
+        metamagicChoices(this.chosenMeta(), this.picks()),
       );
       this.data.state.apply(res.encounter);
       this.cast.set(res.cast);
