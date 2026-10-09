@@ -307,6 +307,10 @@ export class CombatView {
   private readonly shieldHandled = new Set<string>();
 
   protected readonly encounter = computed(() => this.state().shown());
+  /** "Combate atualizado agora." (PM-02c 9c): said once when the page comes up with the turn on hold, that is, after a reload;
+   * it goes when the wait is over. Nothing here is kept in the browser: the combat says what waits. */
+  protected readonly refreshed = signal('');
+  private refreshChecked = false;
   protected readonly image = computed(() => {
     const e = this.encounter();
     const map = this.mapState().map();
@@ -852,6 +856,19 @@ export class CombatView {
   }
 
   constructor() {
+    effect(() => {
+      const e = this.encounter();
+      untracked(() => {
+        const held =
+          !!e && e.status === EncounterStatus.ACTIVE && (e.turnHeld || questions(e).length > 0);
+        if (e && !this.refreshChecked) {
+          this.refreshChecked = true;
+          this.refreshed.set(held ? 'Combate atualizado agora.' : '');
+        } else if (!held) {
+          this.refreshed.set('');
+        }
+      });
+    });
     effect(() => {
       const e = this.encounter();
       const campaignId = this.campaignId();

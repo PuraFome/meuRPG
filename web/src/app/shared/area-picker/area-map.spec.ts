@@ -40,12 +40,13 @@ function setup(
     rangeFt?: number;
     master?: boolean;
     readOnly?: boolean;
+    columns?: number;
   } = {},
 ) {
   const fixture = TestBed.createComponent(AreaMap);
   const ref = fixture.componentRef;
   ref.setInput('image', { url: 'map.png', width: 1200, height: 800 });
-  ref.setInput('columns', 12);
+  ref.setInput('columns', over.columns ?? 12);
   ref.setInput('rows', 8);
   ref.setInput('combatants', [caster, goblin, hidden]);
   ref.setInput('casterId', 'p');
@@ -249,6 +250,18 @@ describe('AreaMap: the keyboard', () => {
     expect(places).toEqual([{ kind: 'point', square: { col: 8, row: 4 } }]);
   });
 
+  it('updates the "Ponto a … de você" hint as the point moves by keyboard, Shift included', () => {
+    const { fixture, el, key } = setup();
+    const hint = () => plain(el.querySelector('.hint')?.textContent);
+    expect(hint()).toContain('Toque no mapa ou arraste');
+    key('ArrowRight');
+    fixture.detectChanges();
+    expect(hint()).toContain('Ponto a 1,5 m de você');
+    key('ArrowRight', true);
+    fixture.detectChanges();
+    expect(hint()).toContain('Ponto a 9,0 m de você');
+  });
+
   it('cancels with Escape', () => {
     const { key, cancels } = setup();
     key('Escape');
@@ -314,5 +327,40 @@ describe('AreaMap: the keyboard', () => {
     (list.querySelector('[role="option"]') as HTMLElement).click();
     fixture.detectChanges();
     expect(places).toEqual([{ kind: 'direction', direction: { dx: 1, dy: 0 } }]);
+  });
+});
+
+describe('AreaMap: the zoom of a big map', () => {
+  const buttons = (el: HTMLElement) =>
+    el.querySelector('[role="group"][aria-label="Zoom do mapa"]');
+
+  it('offers no zoom on a map that fits, and no zoom to a read-only one', () => {
+    expect(buttons(setup().el)).toBeNull();
+    expect(buttons(setup({ columns: 60, readOnly: true }).el)).toBeNull();
+  });
+
+  it('zooms a map of 60 columns in and out by steps, the first one fitting the screen', () => {
+    const { fixture, el } = setup({ columns: 60 });
+    const group = buttons(el)!;
+    expect(group).not.toBeNull();
+    const scroller = () => el.querySelector('.scroller')!;
+    const zoomIn = group.querySelector<HTMLButtonElement>('[aria-label="Aproximar o mapa"]')!;
+    const zoomOut = group.querySelector<HTMLButtonElement>('[aria-label="Afastar o mapa"]')!;
+    expect(scroller().classList.contains('scroller--zoomed')).toBe(false);
+    expect(zoomOut.getAttribute('aria-disabled')).toBe('true');
+    zoomIn.click();
+    fixture.detectChanges();
+    expect(scroller().classList.contains('scroller--zoomed')).toBe(true);
+    expect(zoomOut.getAttribute('aria-disabled')).toBeNull();
+    for (let i = 0; i < 5; i++) {
+      zoomIn.click();
+    }
+    fixture.detectChanges();
+    expect(zoomIn.getAttribute('aria-disabled')).toBe('true');
+    for (let i = 0; i < 5; i++) {
+      zoomOut.click();
+    }
+    fixture.detectChanges();
+    expect(scroller().classList.contains('scroller--zoomed')).toBe(false);
   });
 });

@@ -53,6 +53,14 @@ import { MapLayersLegend } from '../map-layers/map-layers-legend';
 
 /** How far above the finger the template follows a touch, so the finger does not cover what is chosen (PM-02a). */
 const FINGER_LIFT_PX = 44;
+/** Sides of a square when a big map is zoomed in so that a finger hits one; the first step fits the map to the screen. */
+const CELL_PX_NEAR = 22;
+const CELL_PX_CLOSE = 30;
+const CELL_PX_CLOSEST = 40;
+const ZOOM_CELLS = [null, CELL_PX_NEAR, CELL_PX_CLOSE, CELL_PX_CLOSEST] as const;
+/** A map wider than this many squares gets the zoom: its squares are too small to tap at the screen's width. */
+const BIG_MAP_COLUMNS = 30;
+
 /** The pause before a move is announced, so holding an arrow key does not flood the screen reader. */
 const ANNOUNCE_DELAY_MS = 300;
 /** Shift and an arrow move five squares. */
@@ -140,6 +148,15 @@ export class AreaMap {
 
   /** The template under the pointer, the finger or the arrow keys, not placed yet. */
   protected readonly hover = signal<AreaPick | null>(null);
+  /** The zoom step of a big map (0 fits it to the screen). */
+  protected readonly zoom = signal(0);
+  protected readonly lastZoom = ZOOM_CELLS.length - 1;
+  protected readonly zoomable = computed(
+    () => !this.readOnly() && this.columns() > BIG_MAP_COLUMNS,
+  );
+  protected readonly cell = computed(() => (this.zoomable() ? ZOOM_CELLS[this.zoom()] : null));
+  /** The hover came from the keyboard, so the hint follows it (a mouse that only passes over does not rewrite it). */
+  private readonly hoverByKey = signal(false);
   /** Where the finger is, in percent of the map, while it drags: the dotted line to the template above it. */
   protected readonly finger = signal<{ x: number; y: number } | null>(null);
   /** "Fora do alcance." and why, after a tap outside the range. */
@@ -250,7 +267,7 @@ export class AreaMap {
   );
 
   protected readonly hint = computed(() => {
-    const pick = this.placed();
+    const pick = (this.hoverByKey() ? this.hover() : null) ?? this.placed();
     if (!pick) {
       return beforeHint(this.placement(), this.area());
     }
@@ -403,7 +420,7 @@ export class AreaMap {
     }
     this.touching = event.pointerId;
     (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
-    this.hover.set(this.pickAt(this.squareUnder(event, FINGER_LIFT_PX)));
+    this.setHover(this.pickAt(this.squareUnder(event, FINGER_LIFT_PX)), false);
     this.finger.set(this.fingerAt(event));
   }
 
@@ -413,14 +430,14 @@ export class AreaMap {
     }
     if (AreaMap.touchLike(event)) {
       if (this.touching === event.pointerId) {
-        this.hover.set(this.pickAt(this.squareUnder(event, FINGER_LIFT_PX)));
+        this.setHover(this.pickAt(this.squareUnder(event, FINGER_LIFT_PX)), false);
         this.finger.set(this.fingerAt(event));
       }
       return;
     }
     const pick = this.pickAt(this.squareUnder(event, 0));
     if (!samePick(pick, this.hover())) {
-      this.hover.set(pick);
+      this.setHover(pick, false);
     }
   }
 
@@ -487,9 +504,18 @@ export class AreaMap {
       ? this.movedPoint(step, event.shiftKey ? SHIFT_STEP : 1)
       : this.turned(step.dc + step.dr);
     if (next) {
-      this.hover.set(next);
+      this.setHover(next, true);
       this.say(next);
     }
+  }
+
+  protected zoomBy(delta: 1 | -1): void {
+    this.zoom.update((z) => Math.min(this.lastZoom, Math.max(0, z + delta)));
+  }
+
+  private setHover(pick: AreaPick | null, byKey: boolean): void {
+    this.hoverByKey.set(byKey);
+    this.hover.set(pick);
   }
 
   /** The point the arrows move to: from the hover, the placed point or the caster, kept on the map. */

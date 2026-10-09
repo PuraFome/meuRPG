@@ -8,8 +8,11 @@
   </div>
 }
 
+<div class="zoomable">
+<div class="scroller" [class.scroller--zoomed]="cell() !== null">
 <app-combat-map
   class="map"
+  [cellPx]="cell()"
   [image]="image()"
   [mapName]="mapName()"
   [columns]="columns()"
@@ -73,6 +76,18 @@
     ></div>
   </div>
 </app-combat-map>
+</div>
+@if (zoomable()) {
+  <div class="zoom" role="group" aria-label="Zoom do mapa">
+    <button type="button" aria-label="Aproximar o mapa" [attr.aria-disabled]="zoom() === lastZoom ? 'true' : null" (click)="zoomBy(1)">
+      <mat-icon aria-hidden="true">zoom_in</mat-icon>
+    </button>
+    <button type="button" aria-label="Afastar o mapa" [attr.aria-disabled]="zoom() === 0 ? 'true' : null" (click)="zoomBy(-1)">
+      <mat-icon aria-hidden="true">zoom_out</mat-icon>
+    </button>
+  </div>
+}
+</div>
 
 <ng-template #own>
   <li><span class="mr-swatch sw-area" aria-hidden="true"></span>Área da magia</li>

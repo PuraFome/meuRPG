@@ -73,6 +73,10 @@
           />
         } @else {
         <div class="stack">
+          @if (refreshed()) {
+            <!-- The page was reloaded while the turn waits (PM-02c 9c): a line says the screen was rebuilt from the combat as it stands. -->
+            <p class="refreshed" role="status">{{ refreshed() }}</p>
+          }
           @if (laptop()) {
             <app-combat-bar
               [encounter]="e"
@@ -224,6 +228,10 @@
           />
         } @else {
           <div class="stack">
+            @if (refreshed()) {
+              <!-- The page was reloaded while the turn waits (PM-02c 9c): a line says the screen was rebuilt from the combat as it stands. -->
+              <p class="refreshed" role="status">{{ refreshed() }}</p>
+            }
             <!-- What ended without the player asking (the beast fell, the concentration was lost): stays until it is touched. -->
             <div class="notices" role="status" aria-live="polite">
               @if (formNotice(); as text) {

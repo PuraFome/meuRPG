@@ -15,6 +15,49 @@
   min-width: 0;
 }
 
+// A big map zooms in: the box is wider than the screen, so its parent scrolls (the "Mover" page's way); on a phone it is a
+// window, not the whole page.
+.zoomable {
+  position: relative;
+}
+
+.scroller--zoomed {
+  overflow: auto;
+  overscroll-behavior: contain;
+  max-height: 320px;
+}
+
+// The zoom stays at the corner of the visible map while it scrolls under it.
+.zoom {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--mr-control-line);
+    border-radius: var(--mr-radius-sm);
+    background: var(--mr-surface);
+    color: var(--mr-ink);
+    cursor: pointer;
+  }
+
+  button[aria-disabled='true'] {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+}
+
 // The picker's layer over the battle map: no stacking context of its own, so each mark takes its place among the map's (the
 // area under the tokens, the diamond and the length over them, the layer that takes the taps over all).
 .am {
