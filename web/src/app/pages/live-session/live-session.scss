@@ -39,9 +39,10 @@
       'main puzzles'
       'main scene'
       'main party'
+      'main rest'
       'main tokens'
       'traps traps';
-    grid-template-rows: auto auto auto auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto auto auto auto;
 
     .board__fog {
       grid-area: fog;
@@ -67,6 +68,10 @@
       grid-area: party;
     }
 
+    .board__rest {
+      grid-area: rest;
+    }
+
     .board__tokens {
       grid-area: tokens;
     }
@@ -86,9 +91,10 @@
       'main image'
       'main puzzles'
       'main party'
+      'main rest'
       'main tokens'
       'traps traps';
-    grid-template-rows: auto auto auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto auto auto;
   }
 }
 
@@ -142,6 +148,7 @@
 }
 
 .board__party,
+.board__rest,
 .board__puzzles,
 .board__fog,
 .board__image,

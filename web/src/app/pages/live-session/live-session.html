@@ -225,6 +225,13 @@
             [info]="partyInfo()"
             (adjust)="adjust($event)"
           />
+          <!-- The master's short and long rests (PM-07b 9). -->
+          <app-rest-card
+            class="board__rest"
+            [campaignId]="campaignId()"
+            [party]="vitals()"
+            (restTaken)="restTaken($event)"
+          />
           <app-shown-image-panel
             class="board__image"
             [campaignId]="campaignId()"
