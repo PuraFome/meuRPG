@@ -82,9 +82,7 @@ func sweepBase(t *testing.T, c *Content, classKey, subKey string) Build {
 	if sub := c.c.subclasses[b.Classes[0].Subclass]; sub != nil {
 		gains = gains.plus(c.c.subclassGains(sub, 1))
 	}
-	for _, d := range gains.choices {
-		b.FeatureChoices = append(b.FeatureChoices, firstOptions(c, d.options, d.choose)...)
-	}
+	b.FeatureChoices = append(b.FeatureChoices, pickPending(c.c, b)...)
 	for range gains.skills {
 		b.SkillProficiencies = append(b.SkillProficiencies, nextSkill(c, b))
 	}
@@ -266,6 +264,13 @@ func satisfy(t *testing.T, c *Content, b Build, classKey, subKey string) LevelUp
 		ownList := pickSpells(c, spellList, 1, maxSpellLevel, slices.Concat(b.SpellsKnown, anyList), spells-o.AnyClassSpells, false)[len(b.SpellsKnown)+len(anyList):]
 		ch.Spells = slices.Concat(anyList, ownList)
 	}
+	// The choices of the engine that FeatureChoices does not carry: the ones an
+	// earlier level left open and the new level's favored enemy, terrain, arcanum...
+	mid, err := ApplyLevelUp(b, ch, c)
+	if err != nil {
+		t.Fatalf("ApplyLevelUp: %v", err)
+	}
+	ch.LateChoices = pickPending(c.c, mid)
 	// The prepared spells depend on the maximum with the other choices made.
 	after, err := ApplyLevelUp(b, ch, c)
 	if err != nil {
@@ -296,6 +301,39 @@ func firstOptions(c *Content, options []string, n int) []string {
 func prepares(c *Content, b Build, classKey string) bool {
 	sc := spellcastingOf(Derive(b, c), classKey)
 	return sc != nil && sc.PreparesSpells
+}
+
+// pickPending completes every choice of b that the choice engine asks, with the
+// first options that can be taken, and returns the keys it adds to
+// Build.FeatureChoices. The bonus cantrips are left to the cantrip list. An option
+// that grants a proficiency is skipped, like firstOptions does.
+func pickPending(c *content, b Build) []string {
+	var added []string
+	for range 12 {
+		progressed := false
+		for _, g := range c.choiceSet(b).Groups {
+			for _, ch := range g.Choices {
+				need := ch.Missing()
+				if ch.viaCantrips {
+					continue
+				}
+				for _, o := range ch.Options {
+					grants := slices.ContainsFunc(c.effects[o.Key], func(e *Effect) bool { return e.Type == "proficiency" })
+					if need == 0 || o.Blocked() || o.NeedsText || grants || slices.Contains(b.FeatureChoices, o.Stored) {
+						continue
+					}
+					b.FeatureChoices = append(b.FeatureChoices, o.Stored)
+					added = append(added, o.Stored)
+					need--
+					progressed = true
+				}
+			}
+		}
+		if !progressed {
+			break
+		}
+	}
+	return added
 }
 
 // TestLevelUpSweepMulticlass takes every ordered pair of classes of the SRD (12 by

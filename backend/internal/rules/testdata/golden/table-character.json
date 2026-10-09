@@ -1781,7 +1781,8 @@
         "Source": "feature:gen-full-prepared-estilo@mesa",
         "Level": 6,
         "SourcePT": "Classe full-prepared 6",
-        "Description": null
+        "Description": null,
+        "SummaryPT": "+1 de CA enquanto usa armadura."
       }
     ],
     "Languages": [

@@ -80,6 +80,12 @@
                       }
                     </span>
                     <span class="tags">
+                      @if (isMaster() && openChoicesText(c.id); as open) {
+                        <span class="mr-tag mr-tag--pending">
+                          <mat-icon aria-hidden="true">pending_actions</mat-icon>{{ open }}
+                          <span class="mr-visually-hidden">. {{ openChoicesLabels(c.id) }}</span>
+                        </span>
+                      }
                       @if (canLevelUp(c.id)) {
                         <app-level-up-tag />
                       }

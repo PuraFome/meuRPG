@@ -38,6 +38,7 @@ Each rule has an ID (RN-xx) so that the stories, the tests and the code can poin
 | RN-30 | **Limits on what an account creates.** An account is master of at most 10 campaigns (`MAX_CAMPAIGNS_PER_USER`), and the whole server generates at most 100 images per day (`IMAGE_DAILY_LIMIT`) and keeps at most 5 image requests alive at once (the one being made and four waiting), on top of each campaign's 20 per month (RN-28). | [Detail](#rn-30-limits-on-what-an-account-creates) |
 | RN-31 | **Reactions and the reaction window.** One reaction per round; when something a reaction can change happens, the game waits for the reactor, the master answers for every NPC, and a player of an NPC's reaction reads only "Esperando o mestre". The concentration save is a window too. | [Detail](#rn-31-reactions-and-the-reaction-window) |
 | RN-32 | **Casting outside combat.** A character casts a spell outside a combat with no turn and no economy: a spell cast in an action takes effect at once, and one that takes minutes or hours (or a ritual) is finished by the master when the game time has passed. A ritual costs no spell slot and 10 more minutes. A cast that is interrupted fails and spends no slot. | [Detail](#rn-32-casting-outside-combat) |
+| RN-33 | **Class and race choices.** A class or a race can ask the player to pick something (a Fighting Style, a Draconic Ancestry, Pact Boon and invocations, Metamagic, a Favored Enemy, a terrain, the Half-Elf's +1s...). A character is not created with a choice open; a locked sheet that has one keeps working and completes it later, and a level-up also asks the choices that were left behind. | [Detail](#rn-33-class-and-race-choices) |
 
 ## RN-01: Sheet lock
 
@@ -480,6 +481,20 @@ A character casts a spell outside a combat with no turn and no economy: a spell 
 **How the system meets it**
 
 `CastingService` (`GetCastOptions`, `CastSpellOutsideCombat`, `ConfirmCastTimePassed`, `AbandonCast`, `EndActiveSpell`, `ListSpellCasts`) does it, with one row of `spell_casts` per casting and the stream hint `spell_casts_changed`. The rules (what is a ritual, the minutes, the slots, the healing) come from the rules engine, not from the browser. One cast going and one concentration per caster are held by the table itself. The refusals are typed (`CastingBlocked`: in combat, a cast in progress, no slot, a target in armor, out of reach, a class that cannot cast rituals). See [MR-048](stories.md#mr-048-cast-spells-outside-combat) and [Architecture](../architecture.md#casting-outside-combat-mr-048-rn-31). Tests: `TestCastingOutside_*` and `TestRN10_CastingOutsideHidesWhatThePlayersMaySee`.
+
+## RN-33: Class and race choices
+
+Every pick a class, subclass or race asks is a *choice* of the rules engine, with its options, how many picks it takes and what each option asks (a level, a spell, a feature). The server lists them (`PreviewChoices`) and the screen draws what the list says; nothing on the screen knows what a Fighting Style is. The SRD sections behind the data: Fighting Style (Fighter, Paladin, Ranger), Draconic Ancestry and Breath Weapon (Dragonborn), Dragon Ancestor, Elemental Affinity and Metamagic (Sorcerer), Pact Boon, Eldritch Invocations and Mystic Arcanum (Warlock), Favored Enemy, Natural Explorer and Hunter (Ranger), Circle of the Land (Druid), Ability Score Increase (Half-Elf), High Elf cantrip, the Fiend's Expanded Spell List, Magical Secrets and the College of Lore (Bard), Spell Mastery and Signature Spells (Wizard).
+
+- **Creation.** `CreateCharacter` and `UpdateCharacter` of a player's sheet refuse a sheet with an open choice (`CHOICES_MISSING`, with the labels). The editor has a step "Escolhas" that shows them, and "Criar personagem" explains what is missing. The master's NPCs and the table sheets are not held to it.
+- **Options that cannot be taken yet** (an invocation that asks level 5, or a spell the sheet lacks) are listed, dotted, with the reason; they never disappear. Two options that give the same thing (the same resistance twice) are refused.
+- **A locked sheet.** A character created before the choices existed, or whose class gained one, has *open choices*. It stays playable; the owner and the master see "N escolhas pendentes" and `CompleteCharacterChoices` stores only the missing picks, never changing anything else on the sheet (RN-01). The master sees "N escolhas em aberto" on the campaign page; a player sees no one else's.
+- **Level-up.** The level also asks the choices that were left behind ("Escolhas que ficaram para trás"), the new ones of the level, and refuses an invocation whose prerequisite is unmet.
+- **What a pick gives** (breath weapon, resistance, Fiend spells, the +1s) is computed by `Derive` and appears on the sheet.
+
+**How the system meets it**
+
+`rules.Content.Choices` builds the groups from the sheet (data in `effects/choices.json`, each row with its SRD source); `Validate` and `CheckLevelUp` use the same engine, so the screen's list and the server's check cannot disagree. `CompleteCharacterChoices` runs in `db.InTx`, is idempotent by key and writes the session event `character_choices_completed`. Tests: `TestPreviewChoices*`, `TestCompleteCharacterChoices*`, `TestChoicesAreRefusedAtCreation`, `TestLevelUpSweep` (every class, every subclass) and the Playwright tests tagged `@RN-32`.
 
 ## Flows and states
 

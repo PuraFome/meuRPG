@@ -80,7 +80,8 @@ func TestMR037_SummonOptions(t *testing.T) {
 	campaign := h.newCampaign(master, "Mirathel", wizard, warlock, cleric, druid)
 	pensantus := wizard.createPensantus(t, campaign)
 	bruxo := warlock.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Bruxo",
-		casterSheet("class:warlock", "", 3, 8, 14, 14, 10, 10, 16, nil, nil, "feature:pact-of-the-chain"))
+		casterSheet("class:warlock", "", 3, 8, 14, 14, 10, 10, 16, nil, nil, "feature:pact-of-the-chain",
+			"feature:eldritch-invocation-armor-of-shadows", "feature:eldritch-invocation-beast-speech"))
 	clerigo := cleric.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Clérigo",
 		casterSheet("class:cleric", "subclass:life", 9, 10, 12, 14, 10, 18, 12, []string{"spell:animate-dead", "spell:bless"}, nil))
 	druida := druid.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Druida",

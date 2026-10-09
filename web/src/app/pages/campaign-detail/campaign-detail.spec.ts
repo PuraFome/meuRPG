@@ -39,6 +39,9 @@ class FakeCampaignCharactersSource {
   listCharacters(): Promise<CampaignCharactersVm> {
     return this.listCharactersResult;
   }
+  openChoices() {
+    return Promise.resolve([]);
+  }
 }
 
 @Injectable()

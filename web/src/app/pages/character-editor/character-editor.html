@@ -47,7 +47,7 @@
         }
         @if (isFullSheetKind(s.kind)) {
           <form [formGroup]="fullForm">
-            <app-editor-stepper [eager]="abilityTable() ? [stepLabels.atributos] : []">
+            <app-editor-stepper [eager]="eagerSteps()" [pending]="pendingSteps()">
               <cdk-step [label]="stepLabels.basico" [hasError]="stepHasError('basico')">
                 <p class="step-lead">
                   Quem é o personagem, na ordem do cabeçalho da ficha. Os campos com * são
@@ -446,7 +446,7 @@
                     <span class="bonuses__text">
                       <span class="bonuses__title">Bônus manuais</span>
                       <span class="bonuses__sub">
-                        Incremento no Valor de Habilidade, escolhas de raça, item mágico.
+                        Incremento no Valor de Habilidade, item mágico.
                       </span>
                       <span class="bonuses__sub bonuses__state">
                         {{ bonusesInUse() ? 'Em uso: ' + bonusesInUse() + '.' : 'Nenhum em uso.' }}
@@ -454,8 +454,8 @@
                     </span>
                   </summary>
                   <p class="step-lead" id="extra-bonuses-label">
-                    O que a ficha não soma sozinha, como os +1 que a raça deixa escolher. De −10 a
-                    +10, somados ao valor da habilidade.
+                    O que a ficha não soma sozinha, como um item mágico. De −10 a +10, somados ao
+                    valor da habilidade. Os +1 que o meio-elfo escolhe ficam no passo Escolhas.
                   </p>
                   <app-ability-fields
                     role="group"
@@ -517,6 +517,24 @@
                   }
                 </section>
               </cdk-step>
+
+              @if (choicesStep()) {
+                <cdk-step [label]="stepLabels.escolhas">
+                  <p class="step-lead">
+                    O que a raça e a classe deixam você escolher, como estilo de luta, ancestral
+                    dracônico ou invocações. Cada escolha mostra o que ela dá.
+                  </p>
+                  <app-choice-groups
+                    [groups]="choiceGroupsOfDraft()"
+                    [done]="choicesAnswer()?.done ?? null"
+                    [total]="choicesAnswer()?.total ?? null"
+                    [subtitle]="choicesSubtitle()"
+                    (selected)="pickChoice($event)"
+                    (textEdited)="editChoiceText($event)"
+                    (addCantrip)="addChoiceCantrip($event)"
+                  />
+                </cdk-step>
+              }
 
               <cdk-step [label]="stepLabels.pericias">
                 <p class="step-lead">
@@ -648,6 +666,27 @@
                             (filterChange)="setSpellFilter(view.section.index, 'prepared', $event)"
                           />
                         }
+                        @for (extra of view.extras; track extra.id) {
+                          <div class="spell-grid__extra">
+                            <app-spell-picker
+                              [titleId]="'spells-' + extra.id + '-label-' + view.id"
+                              [title]="extra.title"
+                              searchLabel="Buscar magia"
+                              noun="magia"
+                              [showLevel]="true"
+                              [options]="extra.spells"
+                              [filtered]="
+                                filterSpells(extra.spells, view.section.index + ':' + extra.id)
+                              "
+                              [selected]="view.extrasToKnown ? selectedSpellsKnown() : selectedSpellsPrepared()"
+                              [filter]="spellFilterOf(view.section.index + ':' + extra.id)"
+                              (toggle)="view.extrasToKnown ? toggleSpellKnown($event) : toggleSpellPrepared($event)"
+                              (describe)="describeSpell($event)"
+                              (filterChange)="setExtraFilter(view.section.index + ':' + extra.id, $event)"
+                            />
+                            <p class="group-hint">{{ extra.hint }}</p>
+                          </div>
+                        }
                       </div>
                     </section>
                   }
@@ -770,6 +809,8 @@
             type="button"
             class="editor__primary"
             [disabled]="saveState().status === 'saving'"
+            [aria-disabled]="choicesBlocked()"
+            [attr.aria-describedby]="choicesBlocked() ? 'choices-missing' : null"
             (click)="submit()"
           >
             @if (saveState().status === 'saving') {
@@ -779,6 +820,11 @@
             }
           </button>
           <a mat-button class="editor__cancel" [routerLink]="cancelLink()">Cancelar</a>
+          @if (choicesBlocked()) {
+            <p class="editor__note editor__missing" id="choices-missing">
+              {{ missingText() }}
+            </p>
+          }
           <p class="editor__note">{{ actionsNote() }}</p>
         </div>
       }

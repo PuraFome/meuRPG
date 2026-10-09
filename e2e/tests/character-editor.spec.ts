@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { authStatePath, createCampaign } from './support';
+import { authStatePath, createCampaign, fillChoicesStep } from './support';
 
 // MR-004: the character editor offers what the character can have at its
 // level (web/src/app/pages/character-editor). Not a sign-in test, so it
@@ -94,6 +94,7 @@ test(
 
     // Saving waits until every result has an ability.
     await expect(page.getByText('Faltam 6 habilidades')).toBeVisible();
+    await fillChoicesStep(page);
     await page.getByRole('button', { name: 'Criar personagem' }).click();
     await expect(page.getByText(/coloque cada resultado numa habilidade/)).toBeVisible();
 

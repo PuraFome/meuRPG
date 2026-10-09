@@ -38,6 +38,7 @@ Cada regra tem um ID (RN-xx) para as histórias, os testes e o código apontarem
 | RN-30 | **Limites do que uma conta cria.** Uma conta é mestre de no máximo 10 campanhas (`MAX_CAMPAIGNS_PER_USER`), e o servidor todo gera no máximo 100 imagens por dia (`IMAGE_DAILY_LIMIT`) e mantém no máximo 5 pedidos de imagem vivos ao mesmo tempo (o que está sendo feito e quatro esperando), além dos 20 por mês de cada campanha (RN-28). | [Detalhes](#rn-30-limites-do-que-uma-conta-cria) |
 | RN-31 | **Reações e a janela de reação.** Uma reação por rodada; quando acontece algo que uma reação pode mudar, o jogo espera por quem pode reagir, o mestre responde por todo NPC, e o jogador de uma reação de NPC lê só "Esperando o mestre". O teste de concentração também é uma janela. | [Detalhes](#rn-31-reações-e-a-janela-de-reação) |
 | RN-32 | **Conjurar fora do combate.** Um personagem conjura uma magia fora do combate sem turno e sem economia de ações: a magia lançada com uma ação tem efeito na hora, e a que leva minutos ou horas (ou um ritual) é concluída pelo mestre quando o tempo de jogo passou. Um ritual não gasta espaço de magia e leva 10 minutos a mais. Uma conjuração interrompida falha e não gasta espaço. | [Detalhes](#rn-32-conjurar-fora-do-combate) |
+| RN-33 | **Escolhas de classe e raça.** Uma classe ou raça pode pedir uma escolha ao jogador (Estilo de Luta, Ancestralidade Dracônica, Pacto e invocações, Metamagia, Inimigo Favorito, terreno, os +1 do Meio-Elfo...). Não se cria personagem com escolha aberta; a ficha travada que tem uma continua jogável e a completa depois, e a subida de nível também pede as escolhas que ficaram para trás. | [Detalhes](#rn-33-escolhas-de-classe-e-raça) |
 
 ## RN-01: Trava da ficha
 
@@ -480,6 +481,20 @@ Um personagem conjura uma magia fora do combate sem turno e sem economia de aç�
 **Como o sistema cumpre**
 
 O `CastingService` (`GetCastOptions`, `CastSpellOutsideCombat`, `ConfirmCastTimePassed`, `AbandonCast`, `EndActiveSpell`, `ListSpellCasts`) faz isso, com uma linha de `spell_casts` por conjuração e a dica de stream `spell_casts_changed`. As regras (o que é ritual, os minutos, os espaços, a cura) vêm do motor de regras, não do navegador. Uma conjuração em andamento e uma concentração por conjurador são garantidas pela própria tabela. As recusas são tipadas (`CastingBlocked`: em combate, conjuração em andamento, sem espaço, alvo de armadura, fora de alcance, classe que não faz ritual). Veja a [MR-048](historias.md#mr-048-conjurar-magias-fora-do-combate) e a [Arquitetura](../../architecture.md#casting-outside-combat-mr-048-rn-31). Testes: `TestCastingOutside_*` e `TestRN10_CastingOutsideHidesWhatThePlayersMaySee`.
+
+## RN-33: Escolhas de classe e raça
+
+Toda escolha que uma classe, subclasse ou raça pede é uma *escolha* do motor de regras, com as opções, quantas se tomam e o que cada opção exige (um nível, uma magia, uma feature). O servidor lista (`PreviewChoices`) e a tela desenha o que a lista diz; nada na tela sabe o que é um Estilo de Luta. Seções do SRD por trás dos dados: Estilo de Luta (Guerreiro, Paladino, Patrulheiro), Ancestralidade Dracônica e Sopro (Draconato), Ancestral Dracônico, Afinidade Elemental e Metamagia (Feiticeiro), Pacto, Invocações Místicas e Arcana Mística (Bruxo), Inimigo Favorito, Explorador Natural e Caçador (Patrulheiro), Círculo da Terra (Druida), Aumento de Habilidade (Meio-Elfo), truque do Alto Elfo, Lista de Magias Expandida do Ínfero, Segredos Mágicos e Colégio do Conhecimento (Bardo), Maestria e Magias de Assinatura (Mago).
+
+- **Criação.** `CreateCharacter` e `UpdateCharacter` da ficha de um jogador recusam a ficha com escolha aberta (`CHOICES_MISSING`, com os rótulos). O editor tem o passo "Escolhas", e "Criar personagem" explica o que falta. Os NPCs do mestre e as fichas da mesa não são cobrados.
+- **Opções que ainda não dá para tomar** (uma invocação que pede nível 5, ou uma magia que a ficha não tem) aparecem pontilhadas, com o motivo; nunca somem. Duas opções que dão a mesma coisa (a mesma resistência duas vezes) são recusadas.
+- **Ficha travada.** O personagem criado antes das escolhas existirem, ou cuja classe ganhou uma, tem *escolhas abertas*. Continua jogável; o dono e o mestre veem "N escolhas pendentes" e `CompleteCharacterChoices` guarda só as que faltam, sem mudar mais nada da ficha (RN-01). O mestre vê "N escolhas em aberto" na campanha; o jogador não vê as dos outros.
+- **Subida de nível.** O nível também pede as escolhas que ficaram para trás ("Escolhas que ficaram para trás"), as novas do nível, e recusa a invocação cujo pré-requisito não foi cumprido.
+- **O que a escolha dá** (sopro, resistência, magias do Ínfero, os +1) é calculado pelo `Derive` e aparece na ficha.
+
+**Como o sistema cumpre**
+
+`rules.Content.Choices` monta os grupos a partir da ficha (dados em `effects/choices.json`, cada linha com a fonte do SRD); `Validate` e `CheckLevelUp` usam o mesmo motor, então a lista da tela e a conferência do servidor não discordam. `CompleteCharacterChoices` roda em `db.InTx`, é idempotente pela chave e grava o evento de sessão `character_choices_completed`. Testes: `TestPreviewChoices*`, `TestCompleteCharacterChoices*`, `TestChoicesAreRefusedAtCreation`, `TestLevelUpSweep` (todas as classes e subclasses) e os testes Playwright com `@RN-32`.
 
 ## Fluxos e estados
 

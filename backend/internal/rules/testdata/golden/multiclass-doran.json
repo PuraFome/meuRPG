@@ -869,7 +869,8 @@
         "Source": "feature:fighter-fighting-style",
         "Level": 1,
         "SourcePT": "Guerreiro 1",
-        "Description": null
+        "Description": null,
+        "SummaryPT": "+1 de CA enquanto usa armadura."
       }
     ],
     "Languages": [
@@ -1506,7 +1507,8 @@
         "Source": "feature:fighter-fighting-style",
         "Level": 1,
         "SourcePT": "Guerreiro 1",
-        "Description": null
+        "Description": null,
+        "SummaryPT": "+1 de CA enquanto usa armadura."
       }
     ],
     "Languages": [

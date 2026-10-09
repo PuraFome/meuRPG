@@ -76,6 +76,9 @@ func (s *Service) CreateCharacter(
 	if err != nil {
 		return nil, err
 	}
+	if err := refuseChoices(content, m, kind, sheet.GetFull(), nil); err != nil {
+		return nil, err
+	}
 	if err := s.checkPortrait(ctx, m.CampaignID, kind, sheet); err != nil {
 		return nil, invalidArgument(err)
 	}
@@ -144,6 +147,9 @@ func (s *Service) CreateCharacter(
 				if tc.TableRevision() != content.TableRevision() {
 					again, err := checkNewSheet(tc, m, kind, sheet)
 					if err != nil {
+						return row, err
+					}
+					if err := refuseChoices(tc, m, kind, again.GetFull(), nil); err != nil {
 						return row, err
 					}
 					sheet = again
@@ -349,6 +355,7 @@ func (s *Service) ListCharacters(
 				summary.OpenChoices = openChoices(rules.Derive(buildOf(full), content))
 			}
 		}
+		summary.PendingChoiceCount = pendingChoiceCount(content, m, row.Kind, row.Status, row.PlayerUserID, sheet)
 		res.Characters = append(res.Characters, summary)
 	}
 	return connect.NewResponse(res), nil
@@ -448,6 +455,10 @@ func (s *Service) UpdateCharacter(
 			return err
 		}
 		if err := refuseNewChoices(content, m, current.ID, storedSheet.GetFull(), sheet.GetFull()); err != nil {
+			return err
+		}
+		// A player's own save leaves no choice open (the master may).
+		if err := refuseChoices(content, m, current.Kind, sheet.GetFull(), storedSheet.GetFull()); err != nil {
 			return err
 		}
 		if err := refuseMulticlassGap(content, m, storedSheet.GetFull(), sheet.GetFull()); err != nil {

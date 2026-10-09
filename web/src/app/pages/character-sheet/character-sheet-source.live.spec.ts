@@ -140,6 +140,7 @@ function minimalDerivedSheet(): DerivedSheet {
     changedContent: [],
     backgroundEquipmentPt: '',
     hitPointsFromEffects: 0,
+    resistances: [],
   };
 }
 
@@ -176,6 +177,7 @@ function minimalFullSheet(overrides: Partial<FullSheet> = {}): FullSheet {
     contentRevision: 0,
     knownIssues: [],
     contentBaselines: {},
+    featureChoiceText: {},
     cuttingWordsAsk: CuttingWordsAsk.UNSPECIFIED,
     xpValue: 0,
     ...overrides,
@@ -344,6 +346,7 @@ describe('the sheet maps armor_class_description, features and hints (integrator
           namePt: 'Recuperação Arcana',
           sourcePt: 'Mago 1',
           description: 'You have learned to regain some of your magical energy.',
+          summaryPt: '',
         },
       ],
       hints: [
@@ -373,6 +376,7 @@ describe('the sheet maps armor_class_description, features and hints (integrator
         name: 'Recuperação Arcana',
         sourcePt: 'Mago 1',
         description: 'You have learned to regain some of your magical energy.',
+        summaryPt: '',
       },
     ]);
     expect(sheet.hints).toEqual([
@@ -517,6 +521,54 @@ describe('the revival of a dead character, read from Character', () => {
   });
 });
 
+describe('the sheet maps the breath weapon, the resistances and the one-line rule of a pick (PM-05)', () => {
+  const resistance = (damageTypeNamePt: string) => ({
+    $typeName: 'meurpg.rules.v1.Resistance' as const,
+    damageType: `damage-type:${damageTypeNamePt}`,
+    damageTypeNamePt,
+    sourceKey: 'trait:x',
+  });
+
+  it('carries the breath weapon text, the resistances by name and the summary of a feature', () => {
+    const derived: DerivedSheet = {
+      ...minimalDerivedSheet(),
+      breathWeapon: {
+        $typeName: 'meurpg.rules.v1.BreathWeapon',
+        textPt: 'Sopro em cone. Dano de 2d6 de fogo.',
+      } as DerivedSheet['breathWeapon'],
+      resistances: [resistance('fogo'), resistance('veneno')],
+      features: [
+        {
+          $typeName: 'meurpg.rules.v1.Feature',
+          key: 'feature:fighting-style-defense',
+          name: 'Defense',
+          namePt: 'Defesa',
+          sourcePt: 'Guerreiro 1',
+          description: '+1 AC.',
+          summaryPt: '+1 na CA com armadura.',
+        },
+      ],
+    };
+
+    const sheet = toCharacterSheetVm({
+      ...characterWithFullSheet(minimalFullSheet()),
+      derived,
+    }).sheet as FullSheetVm;
+
+    expect(sheet.breathWeapon).toBe('Sopro em cone. Dano de 2d6 de fogo.');
+    expect(sheet.resistances).toEqual(['Fogo', 'Veneno']);
+    expect(sheet.features[0].summaryPt).toBe('+1 na CA com armadura.');
+  });
+
+  it('has no breath weapon and no resistance by default', () => {
+    const sheet = toCharacterSheetVm(characterWithFullSheet(minimalFullSheet()))
+      .sheet as FullSheetVm;
+
+    expect(sheet.breathWeapon).toBe('');
+    expect(sheet.resistances).toEqual([]);
+  });
+});
+
 describe('the sheet lists the feats a character took with the features (MR-025)', () => {
   it('shows a feat as a feature whose source is "Talento"', () => {
     const derived: DerivedSheet = {
@@ -529,13 +581,19 @@ describe('the sheet lists the feats a character took with the features (MR-025)'
           namePt: 'Atleta',
           sourcePt: 'Talento',
           description: 'Você corre e escala melhor.',
+          summaryPt: '',
         },
       ],
     };
     const character = characterWithFullSheet(minimalFullSheet({ featKeys: ['feat:atleta@mesa'] }));
     const sheet = toCharacterSheetVm({ ...character, derived }).sheet as FullSheetVm;
     expect(sheet.features).toEqual([
-      { name: 'Atleta', sourcePt: 'Talento', description: 'Você corre e escala melhor.' },
+      {
+        name: 'Atleta',
+        sourcePt: 'Talento',
+        description: 'Você corre e escala melhor.',
+        summaryPt: '',
+      },
     ]);
   });
 });

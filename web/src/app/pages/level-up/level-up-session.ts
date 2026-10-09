@@ -326,6 +326,12 @@ export class LevelUpSession {
         d.missingIn('abilities').length === 0,
       );
     }
+    if (o.lateChoices.length > 0) {
+      choice('Escolhas que ficaram para trás', 'picks', !pending('picks', ['late']));
+    }
+    if (o.newChoices.length > 0) {
+      choice('Escolhas do nível', 'picks', !pending('picks', ['new']));
+    }
     if (o.subclassDue) {
       choice('Subclasse', 'picks', d.subclassKey() !== '');
     }

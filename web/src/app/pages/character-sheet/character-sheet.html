@@ -110,6 +110,9 @@
 
     <app-level-up-banner [vm]="vm" />
 
+    <!-- PM-05: a class or race choice the sheet never made. The server counts them. -->
+    <app-pending-choices-banner [campaignId]="vm.campaignId" [characterId]="vm.id" [count]="pendingChoices()" />
+
     @if (markDeadState(); as md) {
       @if (md.status === 'error') {
         <div class="mr-notice mr-notice--danger" role="alert">

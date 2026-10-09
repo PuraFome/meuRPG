@@ -185,6 +185,28 @@ func (x *deriver) characterSpells(casters []caster) {
 		}
 	}
 
+	// What the picks of the choice engine grant (choicegroups.go): a bonus cantrip (the
+	// high elf's), the Pact of the Tome's cantrips and a Mystic Arcanum. They are known
+	// on top of the class's numbers, so they count against none. The bonus cantrips
+	// take the place of the extra cantrips a sheet that predates the picks keeps in
+	// its cantrip list.
+	var grantedCantrips, grantedSpells []string
+	for _, k := range x.b.FeatureChoices {
+		choiceKey, spell, ok := SplitScopedChoice(k)
+		if !ok || !strings.HasPrefix(spell, "spell:") || !x.grantsSpells(choiceKey) {
+			continue
+		}
+		granted[spell] = true
+		if sp := c.spells[spell]; sp != nil && sp.Level == 0 {
+			grantedCantrips = append(grantedCantrips, spell)
+			if len(c.effectChoices(strings.SplitN(choiceKey, textSeparator, 2)[0], "cantrip")) > 0 {
+				extraCantrips = max(extraCantrips-1, 0)
+			}
+		} else {
+			grantedSpells = append(grantedSpells, spell)
+		}
+	}
+
 	// The subclass's always-prepared spells at its class level.
 	alwaysPrepared := map[string]bool{}
 	for _, cs := range casters {
@@ -278,6 +300,16 @@ func (x *deriver) characterSpells(casters []caster) {
 			x.issue(IssueSpellNotOnList, field, "%s não está na lista de magias do personagem.", c.namePT(key))
 		}
 		addSpell(s, true)
+	}
+	for _, spell := range grantedCantrips {
+		if sp := c.spells[spell]; sp != nil {
+			addSpell(sp, true)
+		}
+	}
+	for _, spell := range grantedSpells {
+		if sp := c.spells[spell]; sp != nil {
+			addSpell(sp, true)
+		}
 	}
 	// A spell an effect grants (a race's cantrip) comes on top of the class's
 	// numbers: it counts against none of them.
@@ -412,4 +444,20 @@ func MaxSpellLevelFromSlots(slots [9]int) int {
 		}
 	}
 	return highest
+}
+
+// grantsSpells says whether the choice with this key (a feature, a trait, with its
+// "#part") gives the spells picked for it, and the sheet has it. Spell Mastery and
+// Signature Spells name spells of the spellbook, which it already has.
+func (x *deriver) grantsSpells(choiceKey string) bool {
+	base, _, _ := strings.Cut(choiceKey, textSeparator)
+	if base == "feature:spell-mastery" || base == "feature:signature-spell" {
+		return false
+	}
+	for _, f := range x.d.Features {
+		if f.Key == base {
+			return true
+		}
+	}
+	return false
 }

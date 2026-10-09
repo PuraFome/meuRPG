@@ -730,6 +730,7 @@ func TestMR040_OneRollPerLevelNotPerClass(t *testing.T) {
 	sheet := pensantusSheet()
 	sheet.GetFull().ExperiencePoints = 6500 // level 5
 	sheet.GetFull().Classes = append(sheet.GetFull().Classes, &charactersv1.ClassLevel{ClassKey: "class:fighter", Level: 1})
+	sheet.GetFull().FeatureChoiceKeys = append(sheet.GetFull().FeatureChoiceKeys, "feature:fighter-fighting-style-defense")
 	pc := tb.other.create(t, tb.campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Multi", sheet)
 	pc = tb.other.get(t, tb.campaign, pc.GetId())
 	rollAs := func(class string) (*charactersv1.RollLevelUpHitPointsResponse, error) {

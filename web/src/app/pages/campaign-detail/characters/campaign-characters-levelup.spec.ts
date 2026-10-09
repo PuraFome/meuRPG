@@ -17,6 +17,9 @@ import { CampaignCharactersSource, type CampaignCharactersVm } from './campaign-
 
 @Injectable()
 class Source {
+  openChoices() {
+    return Promise.resolve([]);
+  }
   listCharacters(): Promise<CampaignCharactersVm> {
     return Promise.resolve({
       playerCharacters: [

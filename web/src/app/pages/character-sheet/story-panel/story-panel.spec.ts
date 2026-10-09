@@ -44,6 +44,8 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     cantripNames: [],
     spellNames: [],
     features: [],
+    breathWeapon: '',
+    resistances: [],
     languages: [],
     proficiencies: [],
     equipment: [],

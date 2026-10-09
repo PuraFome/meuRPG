@@ -128,6 +128,15 @@ const (
 	// CharacterServicePreviewCharacterProcedure is the fully-qualified name of the CharacterService's
 	// PreviewCharacter RPC.
 	CharacterServicePreviewCharacterProcedure = "/meurpg.characters.v1.CharacterService/PreviewCharacter"
+	// CharacterServicePreviewChoicesProcedure is the fully-qualified name of the CharacterService's
+	// PreviewChoices RPC.
+	CharacterServicePreviewChoicesProcedure = "/meurpg.characters.v1.CharacterService/PreviewChoices"
+	// CharacterServiceCompleteCharacterChoicesProcedure is the fully-qualified name of the
+	// CharacterService's CompleteCharacterChoices RPC.
+	CharacterServiceCompleteCharacterChoicesProcedure = "/meurpg.characters.v1.CharacterService/CompleteCharacterChoices"
+	// CharacterServiceGetCampaignOpenChoicesProcedure is the fully-qualified name of the
+	// CharacterService's GetCampaignOpenChoices RPC.
+	CharacterServiceGetCampaignOpenChoicesProcedure = "/meurpg.characters.v1.CharacterService/GetCampaignOpenChoices"
 	// CharacterServiceRollLevelUpHitPointsProcedure is the fully-qualified name of the
 	// CharacterService's RollLevelUpHitPoints RPC.
 	CharacterServiceRollLevelUpHitPointsProcedure = "/meurpg.characters.v1.CharacterService/RollLevelUpHitPoints"
@@ -708,6 +717,56 @@ type CharacterServiceClient interface {
 	//     sheet is locked for the caller (RN-01), or a new choice is archived or
 	//     switched off (the same detail as the save).
 	PreviewCharacter(context.Context, *connect.Request[v1.PreviewCharacterRequest]) (*connect.Response[v1.PreviewCharacterResponse], error)
+	// PreviewChoices answers which choices a sheet asks the player to make (a Fighting
+	// Style, a Draconic Ancestry, the warlock's Pact Boon and invocations, a favored
+	// enemy, a terrain, the half-elf's two +1, a bonus cantrip...), how many picks each
+	// takes, which are made, and what each option asks for and gives. It writes nothing.
+	//
+	// The browser never decides a rule: this is where the "Escolhas" step of the
+	// character editor, the locked sheet's "Completar escolhas pendentes" and the
+	// level-up's catch-up read the options, the prerequisites (a warlock level, a
+	// cantrip, a Pact Boon), the numbers a pick gives (the breath weapon's DC) and which
+	// choice is still open. It also says where the spell pickers get the spells that
+	// are not on the class list (the patron's, the Magical Secrets).
+	//
+	// Who may call it, the sheet it takes and the errors are those of PreviewCharacter;
+	// with a character_id and no sheet, the character's stored sheet is the one read.
+	// A basic sheet has no choices (`invalid_argument`).
+	PreviewChoices(context.Context, *connect.Request[v1.PreviewChoicesRequest]) (*connect.Response[v1.PreviewChoicesResponse], error)
+	// CompleteCharacterChoices makes the choices a sheet left open, on a sheet that is
+	// locked for the player (RN-01) as well as on a draft: it writes only the picks of
+	// the choices that are open, and nothing else changes. What is chosen never becomes
+	// a field again: a choice already made is `CHOICE_ALREADY_MADE`, and the Pact Boon
+	// is never swapped. A pick that changes numbers (a half-elf's +1 in Constitution
+	// raises the hit points) is recomputed by the sheet, and the master gets the line
+	// "<name> completou <choice>" in the log.
+	//
+	// For the owning player and for the master. The master may complete the choices of
+	// any character; a player only their own. Not for a dead character (the master edits
+	// its sheet with UpdateCharacter).
+	//
+	// Errors:
+	//   - `not_found`: the character is not in this campaign or the caller may not see it
+	//     (the same for a player who does not own it and for a stranger).
+	//   - `aborted`: the revision is not the character's now.
+	//   - `invalid_argument`: more than 50 picks, an empty choice key, an option key
+	//     that is not a content key, or a text over 40 characters.
+	//   - `failed_precondition`: with a ChoiceRefusal detail: CHOICE_NOT_OPEN for a
+	//     pick that names a choice the sheet does not have, CHOICE_ALREADY_MADE for one
+	//     with nothing left to pick, CHOICE_NOT_OFFERED for an option the choice does not
+	//     list or more picks than it has left, PREREQUISITE_UNMET for an option that
+	//     asks for what the sheet lacks, CHOICES_MISSING for a text a pick needs and
+	//     lacks (the humanoid favored enemy's two races); or with a CharacterBlocked
+	//     detail: CHARACTER_DEAD.
+	CompleteCharacterChoices(context.Context, *connect.Request[v1.CompleteCharacterChoicesRequest]) (*connect.Response[v1.CompleteCharacterChoicesResponse], error)
+	// GetCampaignOpenChoices lists the player characters of the campaign that have
+	// choices still open, with a label for each, for the master's warning before a
+	// session starts (the sheets lock then). Only the master's.
+	//
+	// Errors:
+	//   - `not_found`: the caller is not the campaign's master, whether the campaign
+	//     exists or not: a player and a stranger learn nothing.
+	GetCampaignOpenChoices(context.Context, *connect.Request[v1.GetCampaignOpenChoicesRequest]) (*connect.Response[v1.GetCampaignOpenChoicesResponse], error)
 	// RollLevelUpHitPoints rolls the hit die of the class's next level, on the
 	// server, and keeps the result for this character, class and level:
 	// calling it again returns the same roll (it is not a reroll), so the
@@ -1078,6 +1137,26 @@ func NewCharacterServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		previewChoices: connect.NewClient[v1.PreviewChoicesRequest, v1.PreviewChoicesResponse](
+			httpClient,
+			baseURL+CharacterServicePreviewChoicesProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("PreviewChoices")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		completeCharacterChoices: connect.NewClient[v1.CompleteCharacterChoicesRequest, v1.CompleteCharacterChoicesResponse](
+			httpClient,
+			baseURL+CharacterServiceCompleteCharacterChoicesProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("CompleteCharacterChoices")),
+			connect.WithClientOptions(opts...),
+		),
+		getCampaignOpenChoices: connect.NewClient[v1.GetCampaignOpenChoicesRequest, v1.GetCampaignOpenChoicesResponse](
+			httpClient,
+			baseURL+CharacterServiceGetCampaignOpenChoicesProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("GetCampaignOpenChoices")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 		rollLevelUpHitPoints: connect.NewClient[v1.RollLevelUpHitPointsRequest, v1.RollLevelUpHitPointsResponse](
 			httpClient,
 			baseURL+CharacterServiceRollLevelUpHitPointsProcedure,
@@ -1173,6 +1252,9 @@ type characterServiceClient struct {
 	getLevelUpOptions        *connect.Client[v1.GetLevelUpOptionsRequest, v1.GetLevelUpOptionsResponse]
 	previewLevelUp           *connect.Client[v1.PreviewLevelUpRequest, v1.PreviewLevelUpResponse]
 	previewCharacter         *connect.Client[v1.PreviewCharacterRequest, v1.PreviewCharacterResponse]
+	previewChoices           *connect.Client[v1.PreviewChoicesRequest, v1.PreviewChoicesResponse]
+	completeCharacterChoices *connect.Client[v1.CompleteCharacterChoicesRequest, v1.CompleteCharacterChoicesResponse]
+	getCampaignOpenChoices   *connect.Client[v1.GetCampaignOpenChoicesRequest, v1.GetCampaignOpenChoicesResponse]
 	rollLevelUpHitPoints     *connect.Client[v1.RollLevelUpHitPointsRequest, v1.RollLevelUpHitPointsResponse]
 	levelUpCharacter         *connect.Client[v1.LevelUpCharacterRequest, v1.LevelUpCharacterResponse]
 	listLevelUps             *connect.Client[v1.ListLevelUpsRequest, v1.ListLevelUpsResponse]
@@ -1313,6 +1395,21 @@ func (c *characterServiceClient) PreviewLevelUp(ctx context.Context, req *connec
 // PreviewCharacter calls meurpg.characters.v1.CharacterService.PreviewCharacter.
 func (c *characterServiceClient) PreviewCharacter(ctx context.Context, req *connect.Request[v1.PreviewCharacterRequest]) (*connect.Response[v1.PreviewCharacterResponse], error) {
 	return c.previewCharacter.CallUnary(ctx, req)
+}
+
+// PreviewChoices calls meurpg.characters.v1.CharacterService.PreviewChoices.
+func (c *characterServiceClient) PreviewChoices(ctx context.Context, req *connect.Request[v1.PreviewChoicesRequest]) (*connect.Response[v1.PreviewChoicesResponse], error) {
+	return c.previewChoices.CallUnary(ctx, req)
+}
+
+// CompleteCharacterChoices calls meurpg.characters.v1.CharacterService.CompleteCharacterChoices.
+func (c *characterServiceClient) CompleteCharacterChoices(ctx context.Context, req *connect.Request[v1.CompleteCharacterChoicesRequest]) (*connect.Response[v1.CompleteCharacterChoicesResponse], error) {
+	return c.completeCharacterChoices.CallUnary(ctx, req)
+}
+
+// GetCampaignOpenChoices calls meurpg.characters.v1.CharacterService.GetCampaignOpenChoices.
+func (c *characterServiceClient) GetCampaignOpenChoices(ctx context.Context, req *connect.Request[v1.GetCampaignOpenChoicesRequest]) (*connect.Response[v1.GetCampaignOpenChoicesResponse], error) {
+	return c.getCampaignOpenChoices.CallUnary(ctx, req)
 }
 
 // RollLevelUpHitPoints calls meurpg.characters.v1.CharacterService.RollLevelUpHitPoints.
@@ -1914,6 +2011,56 @@ type CharacterServiceHandler interface {
 	//     sheet is locked for the caller (RN-01), or a new choice is archived or
 	//     switched off (the same detail as the save).
 	PreviewCharacter(context.Context, *connect.Request[v1.PreviewCharacterRequest]) (*connect.Response[v1.PreviewCharacterResponse], error)
+	// PreviewChoices answers which choices a sheet asks the player to make (a Fighting
+	// Style, a Draconic Ancestry, the warlock's Pact Boon and invocations, a favored
+	// enemy, a terrain, the half-elf's two +1, a bonus cantrip...), how many picks each
+	// takes, which are made, and what each option asks for and gives. It writes nothing.
+	//
+	// The browser never decides a rule: this is where the "Escolhas" step of the
+	// character editor, the locked sheet's "Completar escolhas pendentes" and the
+	// level-up's catch-up read the options, the prerequisites (a warlock level, a
+	// cantrip, a Pact Boon), the numbers a pick gives (the breath weapon's DC) and which
+	// choice is still open. It also says where the spell pickers get the spells that
+	// are not on the class list (the patron's, the Magical Secrets).
+	//
+	// Who may call it, the sheet it takes and the errors are those of PreviewCharacter;
+	// with a character_id and no sheet, the character's stored sheet is the one read.
+	// A basic sheet has no choices (`invalid_argument`).
+	PreviewChoices(context.Context, *connect.Request[v1.PreviewChoicesRequest]) (*connect.Response[v1.PreviewChoicesResponse], error)
+	// CompleteCharacterChoices makes the choices a sheet left open, on a sheet that is
+	// locked for the player (RN-01) as well as on a draft: it writes only the picks of
+	// the choices that are open, and nothing else changes. What is chosen never becomes
+	// a field again: a choice already made is `CHOICE_ALREADY_MADE`, and the Pact Boon
+	// is never swapped. A pick that changes numbers (a half-elf's +1 in Constitution
+	// raises the hit points) is recomputed by the sheet, and the master gets the line
+	// "<name> completou <choice>" in the log.
+	//
+	// For the owning player and for the master. The master may complete the choices of
+	// any character; a player only their own. Not for a dead character (the master edits
+	// its sheet with UpdateCharacter).
+	//
+	// Errors:
+	//   - `not_found`: the character is not in this campaign or the caller may not see it
+	//     (the same for a player who does not own it and for a stranger).
+	//   - `aborted`: the revision is not the character's now.
+	//   - `invalid_argument`: more than 50 picks, an empty choice key, an option key
+	//     that is not a content key, or a text over 40 characters.
+	//   - `failed_precondition`: with a ChoiceRefusal detail: CHOICE_NOT_OPEN for a
+	//     pick that names a choice the sheet does not have, CHOICE_ALREADY_MADE for one
+	//     with nothing left to pick, CHOICE_NOT_OFFERED for an option the choice does not
+	//     list or more picks than it has left, PREREQUISITE_UNMET for an option that
+	//     asks for what the sheet lacks, CHOICES_MISSING for a text a pick needs and
+	//     lacks (the humanoid favored enemy's two races); or with a CharacterBlocked
+	//     detail: CHARACTER_DEAD.
+	CompleteCharacterChoices(context.Context, *connect.Request[v1.CompleteCharacterChoicesRequest]) (*connect.Response[v1.CompleteCharacterChoicesResponse], error)
+	// GetCampaignOpenChoices lists the player characters of the campaign that have
+	// choices still open, with a label for each, for the master's warning before a
+	// session starts (the sheets lock then). Only the master's.
+	//
+	// Errors:
+	//   - `not_found`: the caller is not the campaign's master, whether the campaign
+	//     exists or not: a player and a stranger learn nothing.
+	GetCampaignOpenChoices(context.Context, *connect.Request[v1.GetCampaignOpenChoicesRequest]) (*connect.Response[v1.GetCampaignOpenChoicesResponse], error)
 	// RollLevelUpHitPoints rolls the hit die of the class's next level, on the
 	// server, and keeps the result for this character, class and level:
 	// calling it again returns the same roll (it is not a reroll), so the
@@ -2280,6 +2427,26 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	characterServicePreviewChoicesHandler := connect.NewUnaryHandler(
+		CharacterServicePreviewChoicesProcedure,
+		svc.PreviewChoices,
+		connect.WithSchema(characterServiceMethods.ByName("PreviewChoices")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceCompleteCharacterChoicesHandler := connect.NewUnaryHandler(
+		CharacterServiceCompleteCharacterChoicesProcedure,
+		svc.CompleteCharacterChoices,
+		connect.WithSchema(characterServiceMethods.ByName("CompleteCharacterChoices")),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceGetCampaignOpenChoicesHandler := connect.NewUnaryHandler(
+		CharacterServiceGetCampaignOpenChoicesProcedure,
+		svc.GetCampaignOpenChoices,
+		connect.WithSchema(characterServiceMethods.ByName("GetCampaignOpenChoices")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	characterServiceRollLevelUpHitPointsHandler := connect.NewUnaryHandler(
 		CharacterServiceRollLevelUpHitPointsProcedure,
 		svc.RollLevelUpHitPoints,
@@ -2398,6 +2565,12 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 			characterServicePreviewLevelUpHandler.ServeHTTP(w, r)
 		case CharacterServicePreviewCharacterProcedure:
 			characterServicePreviewCharacterHandler.ServeHTTP(w, r)
+		case CharacterServicePreviewChoicesProcedure:
+			characterServicePreviewChoicesHandler.ServeHTTP(w, r)
+		case CharacterServiceCompleteCharacterChoicesProcedure:
+			characterServiceCompleteCharacterChoicesHandler.ServeHTTP(w, r)
+		case CharacterServiceGetCampaignOpenChoicesProcedure:
+			characterServiceGetCampaignOpenChoicesHandler.ServeHTTP(w, r)
 		case CharacterServiceRollLevelUpHitPointsProcedure:
 			characterServiceRollLevelUpHitPointsHandler.ServeHTTP(w, r)
 		case CharacterServiceLevelUpCharacterProcedure:
@@ -2529,6 +2702,18 @@ func (UnimplementedCharacterServiceHandler) PreviewLevelUp(context.Context, *con
 
 func (UnimplementedCharacterServiceHandler) PreviewCharacter(context.Context, *connect.Request[v1.PreviewCharacterRequest]) (*connect.Response[v1.PreviewCharacterResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.PreviewCharacter is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) PreviewChoices(context.Context, *connect.Request[v1.PreviewChoicesRequest]) (*connect.Response[v1.PreviewChoicesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.PreviewChoices is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) CompleteCharacterChoices(context.Context, *connect.Request[v1.CompleteCharacterChoicesRequest]) (*connect.Response[v1.CompleteCharacterChoicesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.CompleteCharacterChoices is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) GetCampaignOpenChoices(context.Context, *connect.Request[v1.GetCampaignOpenChoicesRequest]) (*connect.Response[v1.GetCampaignOpenChoicesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.GetCampaignOpenChoices is not implemented"))
 }
 
 func (UnimplementedCharacterServiceHandler) RollLevelUpHitPoints(context.Context, *connect.Request[v1.RollLevelUpHitPointsRequest]) (*connect.Response[v1.RollLevelUpHitPointsResponse], error) {

@@ -48,6 +48,7 @@ var pendingMayCall = map[string]string{
 	charactersv1connect.CharacterServiceGetCharacterProcedure:         "read their pending character",
 	charactersv1connect.CharacterServiceListCharactersProcedure:       "list their pending character",
 	charactersv1connect.CharacterServicePreviewCharacterProcedure:     "see the numbers of the character they are making, as the editor shows them",
+	charactersv1connect.CharacterServicePreviewChoicesProcedure:       "read the choices of the character they are making (the editor's Escolhas step)",
 	charactersv1connect.CharacterServiceUpdateCharacterProcedure:      "edit their pending character's sheet",
 	charactersv1connect.CharacterServiceResubmitCharacterProcedure:    "send their pending character to the master again after he asked for changes",
 	charactersv1connect.CharacterServiceUpdateCharacterStoryProcedure: "edit their pending character's story",
