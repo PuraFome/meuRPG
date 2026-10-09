@@ -30,7 +30,7 @@ func (s *Service) outsideCaster(ctx context.Context, tx pgx.Tx, campaignID, char
 		return "", rules.Derived{}, combat.Usage{}, nil, err
 	}
 	if kind == kindPlayer {
-		v, err := s.getVitals(ctx, tx, campaignID, characterID)
+		v, err := s.getVitals(ctx, tx, campaignID, characterID, false)
 		if err != nil {
 			return "", rules.Derived{}, combat.Usage{}, nil, err
 		}
