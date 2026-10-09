@@ -50,43 +50,31 @@ export function contestBlocked(err: unknown): ContestBlocked | null {
 }
 
 /** Why a contest or a special action was refused, in words (W7-X). Nothing here names a total, a DC or a creature the player does not see. */
+const CONTEST_BLOCKED_TEXT: Partial<Record<ContestBlockedReason, string>> = {
+  [ContestBlockedReason.TARGET_TOO_BIG]: 'Grande demais: no máximo um tamanho acima do seu.',
+  [ContestBlockedReason.NOT_AWAITING]:
+    'Essa disputa não espera mais por isso. A tela foi atualizada.',
+  [ContestBlockedReason.CONTEST_OPEN]: 'Uma disputa sua ainda espera a resposta.',
+  [ContestBlockedReason.NOT_GRAPPLED]: 'Não há agarrão para soltar. A tela foi atualizada.',
+  [ContestBlockedReason.PUSH_BLOCKED]: 'Há algo na casa de trás: o empurrão não sai do lugar.',
+  [ContestBlockedReason.NO_ROOM_TO_DRAG]:
+    'Não dá para arrastar por aí: não há casa livre atrás de você para quem você segura.',
+  [ContestBlockedReason.SURPRISED]:
+    'Surpresa: não se move, não age e não reage até o fim do turno.',
+  [ContestBlockedReason.NOT_AVAILABLE]: 'Essa ação não está na sua ficha.',
+  [ContestBlockedReason.NOT_AN_ALLY]: 'Só dá para ajudar um aliado que ainda está de pé.',
+  [ContestBlockedReason.TASK_NOT_AVAILABLE]: 'Não dá para ajudar nessa tarefa.',
+  [ContestBlockedReason.HIDE_NOT_PENDING]:
+    'Esse esconderijo já foi decidido. A tela foi atualizada.',
+  [ContestBlockedReason.GROUP_CHECK_OPEN]: 'Já há um teste em grupo aberto.',
+  [ContestBlockedReason.GROUP_CHECK_CLOSED]: 'O mestre já encerrou esse teste em grupo.',
+  [ContestBlockedReason.NOT_IN_GROUP_CHECK]: 'O mestre não pediu esse teste ao seu personagem.',
+  [ContestBlockedReason.ALREADY_ANSWERED]: 'Você já rolou esse teste.',
+  [ContestBlockedReason.COMBAT_BEGUN]: 'O combate já começou.',
+};
+
 export function contestBlockedMessage(blocked: ContestBlocked): string {
-  switch (blocked.reason) {
-    case ContestBlockedReason.TARGET_TOO_BIG:
-      return 'Grande demais: no máximo um tamanho acima do seu.';
-    case ContestBlockedReason.NOT_AWAITING:
-      return 'Essa disputa não espera mais por isso. A tela foi atualizada.';
-    case ContestBlockedReason.CONTEST_OPEN:
-      return 'Uma disputa sua ainda espera a resposta.';
-    case ContestBlockedReason.NOT_GRAPPLED:
-      return 'Não há agarrão para soltar. A tela foi atualizada.';
-    case ContestBlockedReason.PUSH_BLOCKED:
-      return 'Há algo na casa de trás: o empurrão não sai do lugar.';
-    case ContestBlockedReason.NO_ROOM_TO_DRAG:
-      return 'Não dá para arrastar por aí: não há casa livre atrás de você para quem você segura.';
-    case ContestBlockedReason.SURPRISED:
-      return 'Surpresa: não se move, não age e não reage até o fim do turno.';
-    case ContestBlockedReason.NOT_AVAILABLE:
-      return 'Essa ação não está na sua ficha.';
-    case ContestBlockedReason.NOT_AN_ALLY:
-      return 'Só dá para ajudar um aliado que ainda está de pé.';
-    case ContestBlockedReason.TASK_NOT_AVAILABLE:
-      return 'Não dá para ajudar nessa tarefa.';
-    case ContestBlockedReason.HIDE_NOT_PENDING:
-      return 'Esse esconderijo já foi decidido. A tela foi atualizada.';
-    case ContestBlockedReason.GROUP_CHECK_OPEN:
-      return 'Já há um teste em grupo aberto.';
-    case ContestBlockedReason.GROUP_CHECK_CLOSED:
-      return 'O mestre já encerrou esse teste em grupo.';
-    case ContestBlockedReason.NOT_IN_GROUP_CHECK:
-      return 'O mestre não pediu esse teste ao seu personagem.';
-    case ContestBlockedReason.ALREADY_ANSWERED:
-      return 'Você já rolou esse teste.';
-    case ContestBlockedReason.COMBAT_BEGUN:
-      return 'O combate já começou.';
-    default:
-      return 'Isso não vale agora. A tela foi atualizada.';
-  }
+  return CONTEST_BLOCKED_TEXT[blocked.reason] ?? 'Isso não vale agora. A tela foi atualizada.';
 }
 
 /** What any action says while a roll of the character waits for the answer about a Bardic Inspiration die: the

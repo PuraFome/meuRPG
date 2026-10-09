@@ -1,4 +1,13 @@
-import { Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -7,6 +16,7 @@ import type { Observable } from 'rxjs';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
+  type CheckOption,
   type ContestAttackOption,
   type ContestSkillOption,
   ContestKind,
@@ -14,6 +24,7 @@ import {
   ContestSkill,
   ContestStatus,
   ContestTargetReason,
+  type RollNote,
   RollModeKind,
   ShoveBlockedReason,
   ShoveOutcome,
@@ -90,6 +101,19 @@ const ESCAPE_STEPS = ['Teste', 'Resultado'] as const;
 const GRAPPLE_AT: Record<Stage, number> = { target: 0, roll: 1, wait: 1, choice: 2, result: 2 };
 const ESCAPE_AT: Record<Stage, number> = { target: 0, roll: 0, wait: 0, choice: 1, result: 1 };
 
+/** What a check rolls, from what the server sent for it: the modifier, the mode and the circumstances behind the mode. */
+function checkOf(option: CheckOption | ContestSkillOption | undefined): {
+  modifier: number;
+  mode: RollModeKind;
+  notes: readonly RollNote[];
+} {
+  return {
+    modifier: option?.modifier ?? 0,
+    mode: option?.mode ?? RollModeKind.NORMAL,
+    notes: option?.notes ?? [],
+  };
+}
+
 export function openContestSheet(
   dialog: MatDialog,
   bottomSheet: MatBottomSheet,
@@ -113,6 +137,7 @@ export function openContestSheet(
  * folha" only hides it: the page brings it back with the result. A player reads only their own total and who won (RN-20).
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-contest-sheet',
   imports: [AttackSteps, CheckRollForm, ContestRoll, MatButtonModule, MatIconModule, SheetFrame],
   templateUrl: './contest-sheet.html',
@@ -217,22 +242,13 @@ export class ContestSheet {
     skillChoices(this.data.escape ?? []),
   );
   /** What the chosen check rolls: the Strength (Athletics) option of the attack, or the escape's skill. */
-  protected readonly check = computed(() => {
-    if (this.escape) {
-      const o = this.options().find((x) => x.skill === this.skill()) ?? this.options()[0];
-      return {
-        modifier: o?.modifier ?? 0,
-        mode: o?.mode ?? RollModeKind.NORMAL,
-        notes: o?.notes ?? [],
-      };
-    }
-    const o = this.data.attack?.rollOption;
-    return {
-      modifier: o?.modifier ?? 0,
-      mode: o?.mode ?? RollModeKind.NORMAL,
-      notes: o?.notes ?? [],
-    };
-  });
+  protected readonly check = computed(() =>
+    checkOf(
+      this.escape
+        ? (this.options().find((x) => x.skill === this.skill()) ?? this.options()[0])
+        : this.data.attack?.rollOption,
+    ),
+  );
   protected readonly checkLine = computed(() =>
     skillLine(this.escape ? this.skill() : ContestSkill.ATHLETICS),
   );

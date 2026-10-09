@@ -33,12 +33,15 @@ import type {
 } from './contest-client';
 import { encounter } from './combat-testing';
 
+/** The d20 a spec's roll shows unless it says another. */
+const DEFAULT_FACE = 15;
+
 /** A d20 check as a contest, Hide or a group check rolled it: the d20 that counts, the modifier and the total. */
 export function checkRoll(over: MessageInitShape<typeof CheckRollSchema> = {}): CheckRoll {
   return create(CheckRollSchema, {
     skill: ContestSkill.ATHLETICS,
     skillKey: 'skill:athletics',
-    faces: [15],
+    faces: [DEFAULT_FACE],
     modifier: 5,
     total: 20,
     mode: RollModeKind.NORMAL,

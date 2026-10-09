@@ -1,4 +1,13 @@
-import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -16,6 +25,7 @@ import { openGroupCheckSheet } from './group-check-sheet';
  * DC (never before, RN-20). It reads the check again on each `group_check_changed` (the page bumps `tick`).
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-group-check-card',
   imports: [MatButtonModule, MatIconModule],
   templateUrl: './group-check-card.html',
