@@ -835,7 +835,7 @@ func TestRN10_FogCombatAnOpportunityAttackOnANPCThatRetreatsIntoTheDark(t *testi
 	if len(offers) != 1 || offers[0].GetMoverLabel() != "Goblin 1" || !offers[0].GetForYou() {
 		t.Fatalf("Toren's offers = %v, want the one on Goblin 1, whom he saw leave", offers)
 	}
-	res, err := f.offerAttack(t, f.caio, "Toren", offers[0].GetAttacks()[0].GetKey(), "Goblin 1", offers[0].GetId(), disadvantage(15))
+	res, err := f.offerAttack(t, f.caio, "Toren", offers[0].GetAttacks()[0].GetKey(), "Goblin 1", offers[0].GetId(), d20(15))
 	if err != nil {
 		t.Fatalf("Toren's opportunity attack on the retreating goblin error = %v", err)
 	}

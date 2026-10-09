@@ -797,7 +797,16 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		if err != nil {
 			return nil, err
 		}
-		truth := modeIn.facts(c.enc, c.sight).attackMode(attacker, target, attackerSheet.Traits, shapeOfAttack(attack), actsNow(c.enc, attacker) && !asReaction, v, names)
+		// An opportunity attack is a melee attack made right before the mover leaves reach (SRD 5.1): its
+		// mode and distance are read with the target on the square it left the reach at, never where
+		// the move ended (a prone mover that was adjacent is not "beyond 5 ft"), and a thrown-capable
+		// melee weapon is never ranged with it.
+		opportunity := asReaction && catchID == ""
+		modeTarget, shape := coverTarget, shapeOfAttack(attack)
+		if opportunity {
+			shape.Thrown, shape.RangeFt, shape.LongRangeFt = false, meleeReachFt, 0
+		}
+		truth := modeIn.facts(c.enc, c.sight).attackMode(attacker, modeTarget, attackerSheet.Traits, shape, actsNow(c.enc, attacker) && !asReaction, v, names)
 		// A roll that waits for a Bardic Inspiration die is not settled yet: its mode is worked
 		// out without writing, and the answer settles it with the mode the roll was made with.
 		forced := forcedOf(ctx)
@@ -928,7 +937,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 			if err != nil {
 				return nil, err
 			}
-			if err := s.hitParts(ctx, c, m.CampaignID, v, modeIn, attacker, target, attackerSheet, attack, bonus, choice.Mode, slices.ContainsFunc(truth.Sources, func(s combat.Source) bool { return s.Effect == combat.ModeDisadvantage }), p.ID); err != nil {
+			if err := s.hitParts(ctx, c, m.CampaignID, v, modeIn, attacker, modeTarget, attackerSheet, attack, bonus, choice.Mode, slices.ContainsFunc(truth.Sources, func(s combat.Source) bool { return s.Effect == combat.ModeDisadvantage }), opportunity, p.ID); err != nil {
 				return nil, err
 			}
 			made.Pending = p.ID
