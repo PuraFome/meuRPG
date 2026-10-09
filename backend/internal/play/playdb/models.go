@@ -234,6 +234,19 @@ type PuzzleRun struct {
 	RoundStartedAt       *time.Time
 }
 
+type RollHold struct {
+	ID             string
+	EncounterID    string
+	CombatantID    string
+	IdempotencyKey string
+	Request        []byte
+	Face           int32
+	Modifier       int32
+	Round          int32
+	AnswerKey      *string
+	CreatedAt      time.Time
+}
+
 type StageNpc struct {
 	ID            string
 	GameSessionID string

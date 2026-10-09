@@ -1027,3 +1027,30 @@ SELECT EXISTS (
     SELECT 1 FROM session_events
     WHERE game_session_id = $1 AND kind = 'rest_taken' AND payload ->> 'kind' = 'long'
 ) AS taken;
+
+-- name: InsertRollHold :one
+-- An attack roll that waits for the answer about a Bardic Inspiration die.
+INSERT INTO roll_holds (encounter_id, combatant_id, idempotency_key, request, face, modifier, round, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING *;
+
+-- name: GetRollHold :one
+SELECT * FROM roll_holds WHERE encounter_id = $1 AND id = $2;
+
+-- name: GetRollHoldByKey :one
+-- The hold the request with this key made, if any.
+SELECT * FROM roll_holds WHERE encounter_id = $1 AND idempotency_key = $2;
+
+-- name: GetOpenRollHoldOf :one
+-- The hold of the combatant that was not answered yet, if any.
+SELECT * FROM roll_holds WHERE encounter_id = $1 AND combatant_id = $2 AND answer_key IS NULL;
+
+-- name: AnswerRollHold :exec
+UPDATE roll_holds SET answer_key = $2 WHERE id = $1;
+
+-- name: DeleteRollHold :exec
+DELETE FROM roll_holds WHERE id = $1;
+
+-- name: ListOpenRollHolds :many
+-- The rolls of the combat that wait for an answer, for the combatants' views.
+SELECT * FROM roll_holds WHERE encounter_id = $1 AND answer_key IS NULL;

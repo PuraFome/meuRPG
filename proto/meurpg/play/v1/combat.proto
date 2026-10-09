@@ -1868,6 +1868,10 @@ message Combatant {
   // combatant's own player get it; the other players see the bard spend a use
   // and nothing more.
   InspirationDie inspiration_die = 70;
+  // The attack roll of this combatant that waits for the answer about the die, if any
+  // (it is answered with AnswerBardicInspiration). Only the master and the combatant's
+  // own player get it, so the question is still there when the screen is read again.
+  InspirationOffer inspiration_offer = 71;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -2630,6 +2634,12 @@ message InspirationOffer {
   string hold_id = 1;
   // The die the character holds, and who gave it.
   InspirationDie die = 2;
+  // The d20 of the held roll, with the attack's bonus as the modifier: what the player
+  // rolled, before the result is told.
+  DiceRoll d20 = 3;
+  // The attack and its target.
+  string attack_key = 4;
+  string target_id = 5;
 }
 
 // BonusDie is a die added to a roll after it was rolled (Bardic Inspiration).
@@ -3446,6 +3456,9 @@ message CombatLogEntry {
   repeated CombatLogMonster monsters = 43;
   // RESOURCE: what the class resource did.
   CombatLogResource resource = 90;
+  // ATTACK: the die added to the d20 after it was rolled (Bardic Inspiration). Only
+  // the master and the attacker's player get it, like the d20.
+  repeated BonusDie bonus_dice = 91;
 }
 
 // CombatLogResource is a Lay on Hands, a Flexible Casting or a Bardic Inspiration

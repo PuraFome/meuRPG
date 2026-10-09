@@ -10,6 +10,20 @@ import (
 	"time"
 )
 
+const answerRollHold = `-- name: AnswerRollHold :exec
+UPDATE roll_holds SET answer_key = $2 WHERE id = $1
+`
+
+type AnswerRollHoldParams struct {
+	ID        string
+	AnswerKey *string
+}
+
+func (q *Queries) AnswerRollHold(ctx context.Context, arg AnswerRollHoldParams) error {
+	_, err := q.db.Exec(ctx, answerRollHold, arg.ID, arg.AnswerKey)
+	return err
+}
+
 const clearCombatTurns = `-- name: ClearCombatTurns :exec
 UPDATE combatants
 SET turn_state = 'idle'
@@ -283,6 +297,15 @@ WHERE puzzle_id = $1 AND shown_at IS NULL
 // edit of the puzzle makes their start wrong, so they go (the master draws another).
 func (q *Queries) DeletePreparedPuzzleRuns(ctx context.Context, puzzleID string) error {
 	_, err := q.db.Exec(ctx, deletePreparedPuzzleRuns, puzzleID)
+	return err
+}
+
+const deleteRollHold = `-- name: DeleteRollHold :exec
+DELETE FROM roll_holds WHERE id = $1
+`
+
+func (q *Queries) DeleteRollHold(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deleteRollHold, id)
 	return err
 }
 
@@ -776,6 +799,34 @@ func (q *Queries) GetOpenGameSessionForUpdate(ctx context.Context, campaignID st
 	return i, err
 }
 
+const getOpenRollHoldOf = `-- name: GetOpenRollHoldOf :one
+SELECT id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at FROM roll_holds WHERE encounter_id = $1 AND combatant_id = $2 AND answer_key IS NULL
+`
+
+type GetOpenRollHoldOfParams struct {
+	EncounterID string
+	CombatantID string
+}
+
+// The hold of the combatant that was not answered yet, if any.
+func (q *Queries) GetOpenRollHoldOf(ctx context.Context, arg GetOpenRollHoldOfParams) (RollHold, error) {
+	row := q.db.QueryRow(ctx, getOpenRollHoldOf, arg.EncounterID, arg.CombatantID)
+	var i RollHold
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CombatantID,
+		&i.IdempotencyKey,
+		&i.Request,
+		&i.Face,
+		&i.Modifier,
+		&i.Round,
+		&i.AnswerKey,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getOpenSceneEvent = `-- name: GetOpenSceneEvent :one
 SELECT id, seq, created_at FROM session_events
 WHERE game_session_id = $1 AND kind = 'scene_opened'
@@ -1200,6 +1251,61 @@ func (q *Queries) GetPuzzleRunForUpdate(ctx context.Context, arg GetPuzzleRunFor
 		&i.PlayStartedAt,
 		&i.RoundStartSeq,
 		&i.RoundStartedAt,
+	)
+	return i, err
+}
+
+const getRollHold = `-- name: GetRollHold :one
+SELECT id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at FROM roll_holds WHERE encounter_id = $1 AND id = $2
+`
+
+type GetRollHoldParams struct {
+	EncounterID string
+	ID          string
+}
+
+func (q *Queries) GetRollHold(ctx context.Context, arg GetRollHoldParams) (RollHold, error) {
+	row := q.db.QueryRow(ctx, getRollHold, arg.EncounterID, arg.ID)
+	var i RollHold
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CombatantID,
+		&i.IdempotencyKey,
+		&i.Request,
+		&i.Face,
+		&i.Modifier,
+		&i.Round,
+		&i.AnswerKey,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getRollHoldByKey = `-- name: GetRollHoldByKey :one
+SELECT id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at FROM roll_holds WHERE encounter_id = $1 AND idempotency_key = $2
+`
+
+type GetRollHoldByKeyParams struct {
+	EncounterID    string
+	IdempotencyKey string
+}
+
+// The hold the request with this key made, if any.
+func (q *Queries) GetRollHoldByKey(ctx context.Context, arg GetRollHoldByKeyParams) (RollHold, error) {
+	row := q.db.QueryRow(ctx, getRollHoldByKey, arg.EncounterID, arg.IdempotencyKey)
+	var i RollHold
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CombatantID,
+		&i.IdempotencyKey,
+		&i.Request,
+		&i.Face,
+		&i.Modifier,
+		&i.Round,
+		&i.AnswerKey,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -2078,6 +2184,51 @@ func (q *Queries) InsertPuzzleRun(ctx context.Context, arg InsertPuzzleRunParams
 		&i.PlayStartedAt,
 		&i.RoundStartSeq,
 		&i.RoundStartedAt,
+	)
+	return i, err
+}
+
+const insertRollHold = `-- name: InsertRollHold :one
+INSERT INTO roll_holds (encounter_id, combatant_id, idempotency_key, request, face, modifier, round, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at
+`
+
+type InsertRollHoldParams struct {
+	EncounterID    string
+	CombatantID    string
+	IdempotencyKey string
+	Request        []byte
+	Face           int32
+	Modifier       int32
+	Round          int32
+	CreatedAt      time.Time
+}
+
+// An attack roll that waits for the answer about a Bardic Inspiration die.
+func (q *Queries) InsertRollHold(ctx context.Context, arg InsertRollHoldParams) (RollHold, error) {
+	row := q.db.QueryRow(ctx, insertRollHold,
+		arg.EncounterID,
+		arg.CombatantID,
+		arg.IdempotencyKey,
+		arg.Request,
+		arg.Face,
+		arg.Modifier,
+		arg.Round,
+		arg.CreatedAt,
+	)
+	var i RollHold
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CombatantID,
+		&i.IdempotencyKey,
+		&i.Request,
+		&i.Face,
+		&i.Modifier,
+		&i.Round,
+		&i.AnswerKey,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -3097,6 +3248,42 @@ func (q *Queries) ListOpenPendingDamages(ctx context.Context, encounterID string
 			&i.CriticalMax,
 			&i.CriticalMaxRule,
 			&i.Taken,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOpenRollHolds = `-- name: ListOpenRollHolds :many
+SELECT id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at FROM roll_holds WHERE encounter_id = $1 AND answer_key IS NULL
+`
+
+// The rolls of the combat that wait for an answer, for the combatants' views.
+func (q *Queries) ListOpenRollHolds(ctx context.Context, encounterID string) ([]RollHold, error) {
+	rows, err := q.db.Query(ctx, listOpenRollHolds, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RollHold
+	for rows.Next() {
+		var i RollHold
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.CombatantID,
+			&i.IdempotencyKey,
+			&i.Request,
+			&i.Face,
+			&i.Modifier,
+			&i.Round,
+			&i.AnswerKey,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

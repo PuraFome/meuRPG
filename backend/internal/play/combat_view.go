@@ -108,6 +108,8 @@ func (v combatViewer) owns(c playdb.Combatant) bool {
 type encounterData struct {
 	enc playdb.Encounter
 	cs  []playdb.Combatant
+	// holds are the attack rolls that wait for the answer about a Bardic Inspiration die.
+	holds []playdb.RollHold
 }
 
 // loadEncounter reads a combat's combatants, in turn order.
@@ -116,7 +118,11 @@ func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter)
 	if err != nil {
 		return nil, fmt.Errorf("list the combatants: %w", err)
 	}
-	return &encounterData{enc: enc, cs: cs}, nil
+	holds, err := q.ListOpenRollHolds(ctx, enc.ID) // the rolls that wait for the answer about a die
+	if err != nil {
+		return nil, fmt.Errorf("list the held rolls: %w", err)
+	}
+	return &encounterData{enc: enc, cs: cs, holds: holds}, nil
 }
 
 // turnView is the turn as one viewer sees it (RN-20, joint turns): who acts,
@@ -264,6 +270,7 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 				shareEconomy(p, c)
 			}
 			p.InspirationDie = inspirationDieView(d.cs, c, e.Round, v)
+			p.InspirationOffer = inspirationOfferView(d, c, v)
 			p.TurnPartEnded = turn.flags && e.Status == statusActive && c.TurnState == turnEnded
 			out.Combatants = append(out.Combatants, p)
 		}

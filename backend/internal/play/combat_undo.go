@@ -402,7 +402,13 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 	switch kind {
 	case eventAttackRolled:
 		// The action (or the reaction) comes back and the damage the hit opened goes
-		// away.
+		// away. A Bardic Inspiration die the roll used is held again.
+		if who, ok := find(ev.Actor); ok && ev.Res != nil && ev.Res.Kind == resBardicUse {
+			sides, expires, from := ev.Res.Sides, ev.Res.ExpiresRound, ev.Res.FromID
+			if err := c.q.SetCombatantInspirationDie(ctx, playdb.SetCombatantInspirationDieParams{ID: who.ID, Sides: &sides, FromID: &from, ExpiresRound: &expires}); err != nil {
+				return nil, fmt.Errorf("hold the die again: %w", err)
+			}
+		}
 		if who, ok := find(ev.Actor); ok {
 			if ev.AsReaction {
 				err = setEconomy(who, who.ActionUsed, who.BonusActionUsed, ev.ReactionBefore, who.Dashed)

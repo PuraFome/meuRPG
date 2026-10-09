@@ -71,6 +71,10 @@ type resourceEvent struct {
 	ExpiresRound int32 `json:"expires_round,omitempty"`
 	// Keys are the Metamagic options a casting used (resMetamagic).
 	Keys []string `json:"keys,omitempty"`
+	// Face is the face of the Bardic Inspiration die added to an attack roll (resBardicUse),
+	// with Sides, the bard that gave it (FromID) and the round it would have run out in.
+	Face   int32  `json:"face,omitempty"`
+	FromID string `json:"from_id,omitempty"`
 }
 
 // resourceFlow is what the closure of a flow works with after the action is spent.

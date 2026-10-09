@@ -579,7 +579,9 @@ func (s *Service) RollAttack(
 	v := viewerOf(m)
 
 	var made actionEvent
+	var held *heldRoll // the roll waits for the player's answer about a Bardic Inspiration die
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventAttackRolled, encounterID: encID}, func(c *combatTx) (any, error) {
+		held = nil
 		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
@@ -721,9 +723,17 @@ func (s *Service) RollAttack(
 
 		// The roll, and what it did against the target's armor class (with the
 		// +5 of an active Escudo and the cover). The class stays on the server (RN-20).
-		face, roll, err := s.d20(in, attack.ToHit)
+		face, roll, bonus, h, err := s.rollOrHold(ctx, c, attacker, req.Msg, key, in, attack.ToHit)
 		if err != nil {
 			return nil, err
+		}
+		if h != nil {
+			held = h // nothing is resolved, spent or written until the answer
+			return nil, nil
+		}
+		bonusFace := 0
+		if bonus != nil {
+			bonusFace = int(bonus.Face) // the die the player added after rolling
 		}
 		targetSheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, target)
 		if err != nil {
@@ -735,7 +745,7 @@ func (s *Service) RollAttack(
 		if attack.Spell {
 			criticalFrom = 0
 		}
-		result := combat.ResolveAttackFrom(attack.ToHit, targetAC, face, criticalFrom)
+		result := combat.ResolveAttackFrom(attack.ToHit+bonusFace, targetAC, face, criticalFrom)
 
 		after := attacker
 		var run int32
@@ -746,7 +756,7 @@ func (s *Service) RollAttack(
 		}
 		made = actionEvent{
 			RunBefore: run, Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: attackKey,
-			D20: clamp32(face, 1, 20), Modifier: clamp32(attack.ToHit, math.MinInt32, math.MaxInt32), Total: clamp32(result.Total, math.MinInt32, math.MaxInt32),
+			D20: clamp32(face, 1, 20), Modifier: clamp32(attack.ToHit+bonusFace, math.MinInt32, math.MaxInt32), Total: clamp32(result.Total, math.MinInt32, math.MaxInt32),
 			Physical: roll.Physical, Outcome: outcomeMiss, AsReaction: asReaction, CriticalMaxRule: c.rules.CriticalMaxPlusRoll,
 			ActionBefore: attacker.ActionUsed, BonusBefore: attacker.BonusActionUsed, ReactionBefore: attacker.ReactionUsed, AttacksBefore: attacker.AttacksMade,
 			AsBonus: bonusKind != combat.BonusNone, AttackKeyBefore: deref(attacker.ActionAttackKey), FlurryBefore: attacker.BonusAttacksLeft,
@@ -755,6 +765,9 @@ func (s *Service) RollAttack(
 			TargetAC: clamp32(targetAC, 0, math.MaxInt32),
 			Cover:    cover.key(), CoverSource: cover.sourceKey(), CoverBonus: clamp32(cover.bonus(), 0, 5),
 			CoverRestricted: cp.restricted, CoverSeenBy: cp.seenBy,
+		}
+		if bonus != nil {
+			made.Res = &resourceEvent{Kind: resBardicUse, Sides: bonus.Sides, Face: bonus.Face, FromID: bonus.From, ExpiresRound: bonus.ExpiresRound}
 		}
 		switch {
 		case asReaction:
@@ -827,6 +840,9 @@ func (s *Service) RollAttack(
 	if v, err = s.viewerAfter(ctx, m, res, v); err != nil { // a replay never ran the closure: the fog filter still holds
 		return nil, s.dbError(ctx, "work out what the player sees", err)
 	}
+	if held != nil {
+		return s.heldAnswer(ctx, m, res, held, req.Msg)
+	}
 	ev, err := resultEvent(res, made)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the attack", err)
@@ -846,6 +862,7 @@ func (s *Service) RollAttack(
 		AttackerId: ev.Actor, TargetId: ev.Target, AttackKey: ev.Key,
 		D20: diceRoll(1, 20, faceList(ev), ev.Modifier, ev.Total, ev.Physical), Outcome: outcomeToProto[ev.Outcome],
 		CriticalRule: criticalRuleProto(tablerules.Rules{CriticalMaxPlusRoll: ev.CriticalMaxRule}),
+		BonusDice:    bonusDiceOf(ev),
 	}
 	coverKey, coverSource := ev.coverFor(v)
 	roll.Cover, roll.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
