@@ -6079,8 +6079,8 @@ async function scanFlexibleCastingScreens(browser: Browser, colorScheme: 'light'
     const groups = p.getByRole('region', { name: 'O que você pode fazer' });
 
     // The cast sheet with Metamagic: the options, one marked, and the grey one with its reason.
-    await groups.getByRole('button', { name: 'Conjurar Mãos Flamejantes' }).click();
-    const cast = p.getByRole('dialog', { name: 'Conjurar Mãos Flamejantes' });
+    await groups.getByRole('button', { name: 'Conjurar Enfeitiçar Pessoa' }).click();
+    const cast = p.getByRole('dialog', { name: 'Conjurar Enfeitiçar Pessoa' });
     await cast.locator('label', { hasText: 'Capitão Goblin' }).click();
     await expect(cast.getByRole('heading', { name: /^Metamagia/ })).toBeVisible();
     await expect(cast.getByText('Pontos de Feitiçaria: 3 de 3')).toBeVisible();
