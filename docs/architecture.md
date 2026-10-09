@@ -991,6 +991,9 @@ The player creates their own character and the master creates the NPCs; the shee
 | `ApproveCharacter`, `RejectCharacter` (player characters only) | Yes | `permission_denied` | `permission_denied` | `not_found` | `unauthenticated` | `not_found` |
 | `GetMasterNotes`, `UpdateMasterNotes` | Yes | `permission_denied` | `permission_denied` | `not_found` | `unauthenticated` | `not_found` |
 | `PreviewCharacter` (the editor's derived sheet, nothing written) | New NPC sheet and a character it sees and may edit; `permission_denied` for a new player sheet | New player sheet and their own character while the sheet is not locked (`failed_precondition`, as the save) | New player sheet; another player's character is `not_found` | `not_found` | `unauthenticated` | New player sheet and their own pending character |
+| `PreviewChoices` (the class and race choices of a draft or a sheet it may see, nothing written) | Yes | Yes, for a new sheet and their own character | `not_found` | `not_found` | `unauthenticated` | A new player sheet and their own pending character |
+| `CompleteCharacterChoices` (the missing picks of a locked sheet, RN-31) | Yes | Yes, their own | `not_found` | `not_found` | `unauthenticated` | `not_found` |
+| `GetCampaignOpenChoices` (who has open choices) | Yes | `not_found` | `not_found` | `not_found` | `unauthenticated` | `not_found` |
 | `GetLevelUpOptions`, `PreviewLevelUp` (only while `can_level_up`) | Yes | Yes | `not_found` | `not_found` | `unauthenticated` | `not_found` |
 | `RollLevelUpHitPoints`, `LevelUpCharacter` (only while `can_level_up`) | `permission_denied` | Yes | `not_found` | `not_found` | `unauthenticated` | `not_found` |
 | `ListLevelUps` | Yes | `permission_denied` | `permission_denied` | `not_found` | `unauthenticated` | `not_found` |
