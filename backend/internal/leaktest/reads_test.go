@@ -1,6 +1,8 @@
 package leaktest
 
 import (
+	campaignpackagev1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaignpackage/v1"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/campaignpackage/v1/campaignpackagev1connect"
 	"google.golang.org/protobuf/proto"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
@@ -68,6 +70,14 @@ var reads = []read{
 		procedure: campaignsv1connect.CampaignDocumentServiceGetCampaignDocumentProcedure, allow: masterOnlyRead, why: "the document holds prep notes and spoilers",
 		req: func(w *world) proto.Message {
 			return &campaignsv1.GetCampaignDocumentRequest{CampaignId: w.campaign}
+		},
+	},
+
+	// ===== CampaignPackageService
+	{
+		procedure: campaignpackagev1connect.CampaignPackageServiceGetCampaignExportProcedure, allow: masterOnlyRead, why: "the export is the whole campaign, hidden things included",
+		req: func(w *world) proto.Message {
+			return &campaignpackagev1.GetCampaignExportRequest{CampaignId: w.campaign}
 		},
 	},
 

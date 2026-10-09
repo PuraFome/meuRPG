@@ -1,0 +1,248 @@
+// PM-09 state 2: one card at a time under the back link and the page title, 48px controls, the card a single
+// column that keeps to a readable width on a computer. On 320px the preview is one column and its buttons
+// stack at the foot of the card.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+
+  @media (min-width: 768px) {
+    gap: var(--mr-space-5);
+  }
+}
+
+.back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: -10px 0 -8px;
+  font-size: 16px;
+  color: var(--mr-ink-muted);
+  text-decoration: none;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &:hover {
+    color: var(--mr-accent-text);
+    text-decoration: underline;
+  }
+}
+
+.mr-page-title {
+  margin-bottom: 0;
+}
+
+.card {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 40rem;
+  padding: var(--mr-space-4) var(--mr-space-5);
+}
+
+.file-input {
+  display: none;
+}
+
+p {
+  margin: 0;
+}
+
+.hint {
+  margin-top: var(--mr-space-2);
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.headline {
+  margin: 0 0 var(--mr-space-3);
+}
+
+.block {
+  margin-block: var(--mr-space-3);
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  color: var(--mr-ink-muted);
+}
+
+// The drop area: dashed, with "Escolher o arquivo" inside it (the drop is a convenience; the button is the
+// keyboard's way in).
+.drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--mr-space-2);
+  padding: var(--mr-space-5) var(--mr-space-4);
+  border: 2px dashed var(--mr-control-line);
+  border-radius: var(--mr-radius-lg);
+  text-align: center;
+
+  .mat-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 28px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.drop--over {
+  border-color: var(--mr-accent);
+  background: var(--mr-accent-soft);
+}
+
+.drop__lead {
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 700;
+}
+
+.drop__or {
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+}
+
+.drop__button,
+.wide,
+.open {
+  min-height: 48px;
+}
+
+.drop__button,
+.wide {
+  width: 100%;
+
+  @media (min-width: 600px) {
+    width: auto;
+    min-width: 14rem;
+  }
+}
+
+.wide {
+  @media (min-width: 600px) {
+    width: 100%;
+  }
+}
+
+.kept {
+  align-items: flex-start;
+}
+
+.kept__button {
+  min-height: 48px;
+  margin-top: var(--mr-space-2);
+}
+
+.file {
+  margin-bottom: var(--mr-space-3);
+  overflow-wrap: anywhere;
+}
+
+.bar {
+  display: block;
+  height: 8px;
+  box-sizing: border-box;
+  border: 1px solid var(--mr-control-line);
+  border-radius: 4px;
+  background: var(--mr-rule);
+  overflow: hidden;
+}
+
+.bar__fill {
+  display: block;
+  height: 100%;
+  background: var(--mr-accent);
+  transition: width 0.2s linear;
+}
+
+.progress-text {
+  margin: var(--mr-space-3) 0;
+  font-size: 16px;
+  line-height: 22px;
+  color: var(--mr-ink-muted);
+}
+
+// "Mapas ... 6": a label and its number on every row, a rule between rows.
+.counts {
+  margin: 0;
+}
+
+.counts__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  padding: 8px 0;
+  border-top: 1px solid var(--mr-rule);
+  font-size: 16px;
+  line-height: 22px;
+
+  dt,
+  dd {
+    margin: 0;
+  }
+
+  dd {
+    font-weight: 700;
+    text-align: right;
+  }
+}
+
+.problems {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin: 0 0 var(--mr-space-3);
+  padding: 0;
+  list-style: none;
+  font-size: 16px;
+  line-height: 22px;
+
+  li {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--mr-space-2);
+  }
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
+    font-size: 20px;
+    color: var(--mr-danger-ink);
+  }
+}
+
+// On a phone the buttons are the full width, one under the other (48px); from 600px they sit side by side.
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin-top: var(--mr-space-4);
+
+  > * {
+    min-height: 48px;
+  }
+
+  @media (min-width: 600px) {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+.open {
+  width: 100%;
+
+  @media (min-width: 600px) {
+    width: auto;
+  }
+}

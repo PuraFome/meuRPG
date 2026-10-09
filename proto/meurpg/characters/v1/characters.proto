@@ -517,7 +517,11 @@ service CharacterService {
   //     carries a CharacterBlocked detail with reason CANNOT_LEVEL_UP (it is
   //     not marked for a milestone and has too little XP, it is at level 20,
   //     or it is an NPC), CHARACTER_DEAD or AWAITING_APPROVAL.
-  //   - `invalid_argument`: class_key is not a class of the character.
+  //   - `invalid_argument`: class_key is not a class of the content.
+  //   - `failed_precondition` with a LevelUpRefusal: class_key is a class the
+  //     character does not have and the character may not take it (the
+  //     MULTICLASS_PREREQUISITE reasons, MAX_LEVEL, ARCHIVED_CHOICE or
+  //     SWITCHED_OFF_CHOICE).
   rpc GetLevelUpOptions(GetLevelUpOptionsRequest) returns (GetLevelUpOptionsResponse) {
     option idempotency_level = IDEMPOTENT;
   }
@@ -663,7 +667,9 @@ service CharacterService {
   // Secrets, favored enemies and terrains); swapping a spell known for
   // another, which the SRD lets Bards, Rangers, Sorcerers and Warlocks do when
   // they level up (a level-up only adds spells, never removes one); and
-  // multiclassing and custom subclasses.
+  // custom subclasses. A class the character does not have is multiclassing
+  // (SRD 5.1, "Multiclassing"): LevelUpChoices.class_key names it, and it joins the
+  // sheet at level 1 if the character meets the prerequisites.
   //
   // Who may call it: only the owning player, and only while
   // Character.can_level_up is true. The master keeps the sheet editor
@@ -2046,9 +2052,12 @@ message ClaimCharacterResponse {
 message GetLevelUpOptionsRequest {
   string campaign_id = 1;
   string character_id = 2;
-  // The class that gains the level, one the character already has (a new
-  // class is multiclassing, which stays in the sheet editor). Empty means the
-  // character's first class.
+  // The class that gains the level: one the character has, or one it does not
+  // have yet (multiclassing: the options are those of the class's level 1, and
+  // is_new_class is true; LevelUpOptions.class_choices lists them all). Empty
+  // means the character's first class. A class of the content that the character
+  // may not take is `failed_precondition` with the reason in LevelUpRefusal; one
+  // the content does not have is `invalid_argument`.
   string class_key = 3;
 }
 
@@ -2215,14 +2224,111 @@ message LevelUpOptions {
   // the guided level-up asks for them first, and LevelUpCharacter refuses the level
   // without them (LATE_CHOICE_MISSING). Their picks go in
   // LevelUpChoices.late_choice_keys. Only the choices with selections left are here.
-  repeated ChoiceGroup late_choices = 37;
+  repeated ChoiceGroup late_choices = 41;
   // The new level's choices that are not options of a feature: a favored enemy and its
   // language, a terrain, a Mystic Arcanum, a Spell Mastery, a Signature Spell. Their
   // picks go in LevelUpChoices.feature_choice_keys (and feature_choice_text).
-  repeated ChoiceGroup new_choices = 38;
+  repeated ChoiceGroup new_choices = 42;
   // True for a warlock that knows an invocation: at each level of the class one may be
   // replaced by another (LevelUpChoices.swap_invocation_key).
-  bool can_swap_invocation = 39;
+  bool can_swap_invocation = 43;
+
+  // Multiclassing (SRD 5.1, "Multiclassing"). is_new_class says the character
+  // does not have class_key: the level is the class's first (from_level 0), the hit
+  // die gives its average and never the maximum, and everything above is the
+  // class's level 1 (cantrips, spells and prepared spells are the class's own
+  // numbers, not the total level's).
+  bool is_new_class = 37;
+  // The ways the level can go, always set: the classes the character has (their
+  // next level), then the other classes of the content sorted by name, each with
+  // its prerequisite and whether it is open. A class the master archived or
+  // switched off is not listed to a player.
+  repeated LevelUpClassChoice class_choices = 38;
+  // For a new class: the armor, weapon and tool proficiencies its multiclass table
+  // gives, each marked when the character already has it; and the picks the table
+  // asks for (a skill; the Bard's instrument). The skill goes in
+  // LevelUpChoices.skill_proficiency_keys, the instrument in instrument_key.
+  repeated LevelUpProficiencyGain proficiency_gains = 39;
+  repeated LevelUpProficiencyChoice proficiency_choices = 40;
+}
+
+// LevelUpPrerequisite is one ability a class asks for to be taken as one of
+// several classes, with the character's final score.
+message LevelUpPrerequisite {
+  meurpg.rules.v1.Ability ability = 1;
+  int32 minimum = 2;
+  int32 have = 3;
+  bool met = 4;
+}
+
+// LevelUpClassUnavailable says why a class is not open as the next level.
+enum LevelUpClassUnavailable {
+  LEVEL_UP_CLASS_UNAVAILABLE_UNSPECIFIED = 0;
+  // The character, or the class, is at level 20.
+  LEVEL_UP_CLASS_UNAVAILABLE_MAX_LEVEL = 1;
+  // The new class asks for an ability the character does not have at 13.
+  LEVEL_UP_CLASS_UNAVAILABLE_PREREQUISITE = 2;
+  // A class the character already has asks for an ability the character does not
+  // have at 13, which closes every new class.
+  LEVEL_UP_CLASS_UNAVAILABLE_PREREQUISITE_CURRENT = 3;
+}
+
+// LevelUpClassChoice is a class the next level can go to: one the character has or
+// a new one (SRD 5.1, "Multiclassing").
+message LevelUpClassChoice {
+  string class_key = 1;
+  string name_pt = 2;
+  // True for a class the character does not have.
+  bool is_new = 3;
+  // The class's level before and after the level: 5 and 6, or 0 and 1 for a new
+  // class.
+  int32 from_level = 4;
+  int32 to_level = 5;
+  // The Portuguese name of the subclass the character has in the class, and
+  // whether the class picks its subclass at to_level.
+  string subclass_name_pt = 6;
+  bool subclass_due = 7;
+  // What the class asks for as one of several classes: every ability here, or
+  // just one of them when prerequisite_any_of (the Fighter's Strength or
+  // Dexterity). For a class the character has, what a new class asks of it.
+  repeated LevelUpPrerequisite prerequisites = 8;
+  bool prerequisite_any_of = 9;
+  bool prerequisite_met = 10;
+  // True when the level can go to this class now; otherwise unavailable says why.
+  bool available = 11;
+  LevelUpClassUnavailable unavailable = 12;
+}
+
+// LevelUpProficiencyGain is a proficiency a new class gives (the multiclass table).
+message LevelUpProficiencyGain {
+  string key = 1;
+  string name_pt = 2;
+  // "armor", "weapon", "tool" or "other".
+  string kind = 3;
+  bool already_have = 4;
+}
+
+// LevelUpProficiencyKind is what a pick of the multiclass table is.
+enum LevelUpProficiencyKind {
+  LEVEL_UP_PROFICIENCY_KIND_UNSPECIFIED = 0;
+  LEVEL_UP_PROFICIENCY_KIND_SKILL = 1;
+  LEVEL_UP_PROFICIENCY_KIND_INSTRUMENT = 2;
+}
+
+// LevelUpProficiencyChoice is "choose `count` of `from`" among the proficiencies of a
+// new class: a skill from its list, or the Bard's musical instrument.
+message LevelUpProficiencyChoice {
+  LevelUpProficiencyKind kind = 1;
+  int32 count = 2;
+  repeated LevelUpProficiencyOption from = 3;
+}
+
+// LevelUpProficiencyOption is an option of a pick, marked when the character
+// already has it (the server refuses it: PROFICIENCY_CHOICE or INSTRUMENT_CHOICE).
+message LevelUpProficiencyOption {
+  string key = 1;
+  string name_pt = 2;
+  bool already_have = 3;
 }
 
 // LevelUpHitPointsRule is which methods of deciding a level's hit points the
@@ -2328,7 +2434,8 @@ message LevelUpHitPoints {
 // only what is new, never the sheet's whole lists: the server adds them to the
 // stored sheet. The same message is what ListLevelUps shows the master.
 message LevelUpChoices {
-  // The class that gains the level: one the character has.
+  // The class that gains the level: one the character has, or a new one
+  // (multiclassing), which joins the sheet at level 1 as its last class.
   string class_key = 1;
   // The ability increase at an Ability Score Improvement level: +2 in one
   // ability, or +1 in two, as AbilityScores fields; the others 0 or unset.
@@ -2356,15 +2463,19 @@ message LevelUpChoices {
   // `ability_increase`: the server applies it, stopping at 20 (one that is not exactly that
   // is refused). Empty for none.
   string feat_key = 11;
+  // The musical instrument (a proficiency key, such as "proficiency:lute") that a
+  // Bard taken as a new class lets the player pick; the sheet lists its name among
+  // tool_proficiencies. Empty for a class that asks for none.
+  string instrument_key = 12;
   // The picks of the choices an earlier level left open (LevelUpOptions.late_choices),
   // written like feature_choice_keys. At most 100.
-  repeated string late_choice_keys = 12;
+  repeated string late_choice_keys = 13;
   // The free text of the picks (the humanoid races of a favored enemy), as
   // FullSheet.feature_choice_text. At most 12 entries.
-  map<string, string> feature_choice_text = 13;
+  map<string, string> feature_choice_text = 14;
   // An Eldritch Invocation the warlock gives up for another one in feature_choice_keys:
   // at most one at each level (SRD 5.1, Warlock). Never the Pact Boon.
-  string swap_invocation_key = 14;
+  string swap_invocation_key = 15;
 }
 
 // LevelUpRefusalReason says why the rules refuse a set of choices, so the app
@@ -2440,9 +2551,24 @@ enum LevelUpRefusalReason {
   // A feat, but the table does not use feats (its rule "Talentos"). `field` is
   // "choices.feat_key".
   LEVEL_UP_REFUSAL_REASON_FEATS_NOT_ALLOWED = 24;
+  // The new class asks for an ability the character does not have at 13
+  // (SRD 5.1, "Multiclassing", "Prerequisites"): class_key, ability, minimum and
+  // have say which. A player only; the master's editor may go past it, with the
+  // sheet's multiclass_prerequisite issue.
+  LEVEL_UP_REFUSAL_REASON_MULTICLASS_PREREQUISITE = 25;
+  // A class the character already has asks for an ability the character does not
+  // have at 13, so it takes no new class: class_key is the class it has, and
+  // ability, minimum and have the missing score.
+  LEVEL_UP_REFUSAL_REASON_MULTICLASS_PREREQUISITE_CURRENT = 26;
+  // The skill a new class's multiclass table asks for is missing, repeated, one
+  // the character already has, or not on the class's list.
+  LEVEL_UP_REFUSAL_REASON_PROFICIENCY_CHOICE = 27;
+  // The Bard's instrument is missing, unknown, or one the character already has;
+  // or an instrument was sent for a class that asks for none.
+  LEVEL_UP_REFUSAL_REASON_INSTRUMENT_CHOICE = 28;
   // A choice an earlier level left open is still open (LevelUpOptions.late_choices).
   // `field` is "full.feature_choice_keys".
-  LEVEL_UP_REFUSAL_REASON_LATE_CHOICE_MISSING = 25;
+  LEVEL_UP_REFUSAL_REASON_LATE_CHOICE_MISSING = 29;
 }
 
 // LevelUpRefusal is the first rule the choices break: the sheet field and a
@@ -2455,6 +2581,13 @@ message LevelUpRefusal {
   LevelUpRefusalReason reason = 2;
   // With SHEET_ISSUE: the Issue code, such as "spell_count" or "spell_level".
   string issue_code = 3;
+  // With the MULTICLASS_PREREQUISITE reasons: the class, the ability the
+  // character lacks, the score the class asks for and the one the character has.
+  // For an "or" prerequisite (the Fighter's), the ability closest to the minimum.
+  string class_key = 4;
+  meurpg.rules.v1.Ability ability = 5;
+  int32 minimum = 6;
+  int32 have = 7;
 }
 
 // PreviewLevelUpRequest asks for the sheet with the choices applied.
@@ -2480,6 +2613,49 @@ message PreviewLevelUpResponse {
   // accept them. An incomplete step shows here (for example CANTRIPS while
   // the new cantrip is not picked).
   LevelUpRefusal refusal = 2;
+  // Set when the sheet has more than one class after the level (a new class, or a
+  // level of the second): what the summary says about multiclassing. Unset with
+  // `after`.
+  LevelUpMulticlassSummary multiclass_summary = 3;
+}
+
+// LevelUpMulticlassException is one of the exceptions of SRD 5.1, "Multiclassing",
+// "Class Features", that the level meets.
+enum LevelUpMulticlassException {
+  LEVEL_UP_MULTICLASS_EXCEPTION_UNSPECIFIED = 0;
+  // The level's Extra Attack does not add to the attacks the character already makes.
+  LEVEL_UP_MULTICLASS_EXCEPTION_EXTRA_ATTACK = 1;
+  // The level's Channel Divinity gives effects, not uses.
+  LEVEL_UP_MULTICLASS_EXCEPTION_CHANNEL_DIVINITY = 2;
+  // The level's Unarmored Defense is the second one: the character does not gain it.
+  LEVEL_UP_MULTICLASS_EXCEPTION_UNARMORED_DEFENSE = 3;
+}
+
+// LevelUpMulticlassSummary is what the summary of a level up on a multiclass sheet
+// says beyond the derived numbers: the caster level of the multiclass spellcaster
+// table, the proficiencies the level gives, and the exceptions it meets.
+message LevelUpMulticlassSummary {
+  // The class the level adds to the sheet; empty when the level goes to a class the
+  // character already has.
+  string new_class_key = 1;
+  // The levels in the multiclass spellcaster table (SRD 5.1, "Multiclassing",
+  // "Spell Slots") before and after: all the levels of Bard, Cleric, Druid,
+  // Sorcerer and Wizard, half (rounded down) of Paladin and Ranger, a third of the
+  // Fighter's and Rogue's casting subclasses. Pact Magic does not count.
+  int32 caster_level_before = 2;
+  int32 caster_level_after = 3;
+  // True when more than one class has the Spellcasting feature, so that table gives
+  // slots_after; otherwise the slots are those of the one casting class.
+  bool slots_by_table = 4;
+  // The spell slots per circle after the level (9 entries, the 1st circle first),
+  // and the hit dice after it, by die.
+  repeated int32 slots_after = 5;
+  repeated meurpg.rules.v1.HitDice hit_dice_after = 6;
+  // The armor, weapon and tool proficiencies the sheet has after the level and not
+  // before, then the skills picked and the instrument (key empty, the name as the
+  // sheet lists it).
+  repeated LevelUpNamedKey proficiencies_gained = 7;
+  repeated LevelUpMulticlassException exceptions = 8;
 }
 
 // RollLevelUpHitPointsRequest names the character, and the class if it has

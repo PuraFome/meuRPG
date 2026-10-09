@@ -452,6 +452,7 @@ func buildOf(f *charactersv1.FullSheet) rules.Build {
 		SpellsPrepared:      f.GetPreparedSpellKeys(),
 		FeatureChoices:      f.GetFeatureChoiceKeys(),
 		FeatureChoiceText:   f.GetFeatureChoiceText(),
+		ToolProficiencies:   f.GetToolProficiencies(),
 		Feats:               f.GetFeatKeys(),
 		FeatSlots:           f.GetFeatSlots(),
 	}

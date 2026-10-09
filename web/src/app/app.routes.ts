@@ -22,6 +22,15 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/campaigns/campaigns').then((m) => m.Campaigns),
   },
   {
+    // Make a campaign from a package file (MR-050). Before `campaigns/:id`, so "import" is not read as a campaign's
+    // ID. A plain `loadComponent`: its clients are root services that only lazy code imports.
+    path: 'campaigns/import',
+    title: 'Importar campanha',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/campaigns/campaign-import/campaign-import').then((m) => m.CampaignImportPage),
+  },
+  {
     // `loadChildren`, not `loadComponent`: CampaignDetail's route needs its
     // own `providers` (CampaignCharactersSource, GameSessionSource, phase
     // 2) without pulling their generated Connect clients into this file,
@@ -145,6 +154,15 @@ export const routes: Routes = [
     title: 'Galeria',
     canActivate: [authGuard],
     loadComponent: () => import('./pages/gallery/gallery').then((m) => m.GalleryPage),
+  },
+  {
+    // "Exportar campanha" (MR-050), master only: what goes into the package, the progress and "Baixar de novo". The
+    // page tells a player so, like the gallery's.
+    path: 'campaigns/:id/export',
+    title: 'Exportar campanha',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/campaign-export/campaign-export').then((m) => m.CampaignExportPage),
   },
   {
     // The master's puzzles (MR-038, E10-06): make one, edit one. The list is a panel on the campaign page; showing a puzzle

@@ -311,11 +311,11 @@ func TestMR040_OnlyWhenTheCharacterCanLevelUp(t *testing.T) {
 	// A player who is not the owner cannot even see the character.
 	_, err = tb.options(tb.other, pc)
 	wantCode(t, "GetLevelUpOptions(other player)", err, connect.CodeNotFound)
-	// A class the character does not have.
+	// A class the content does not have.
 	_, err = tb.owner.api.GetLevelUpOptions(t.Context(), connect.NewRequest(&charactersv1.GetLevelUpOptionsRequest{
-		CampaignId: tb.campaign, CharacterId: pc.GetId(), ClassKey: "class:fighter",
+		CampaignId: tb.campaign, CharacterId: pc.GetId(), ClassKey: "class:artificer",
 	}))
-	wantCode(t, "GetLevelUpOptions(a new class)", err, connect.CodeInvalidArgument)
+	wantCode(t, "GetLevelUpOptions(a class that does not exist)", err, connect.CodeInvalidArgument)
 }
 
 // TestMR040_TheRestStaysLocked: the level-up changes the class, the
@@ -450,7 +450,7 @@ func TestMR040_TheRulesRefuseWhatTheLevelDoesNotGive(t *testing.T) {
 		"a list too long": func(ch *charactersv1.LevelUpChoices) {
 			ch.CantripKeys = slices.Repeat([]string{"spell:light"}, 31)
 		},
-		"a class that is not there": func(ch *charactersv1.LevelUpChoices) { ch.ClassKey = "class:fighter" },
+		"a class that is not there": func(ch *charactersv1.LevelUpChoices) { ch.ClassKey = "class:artificer" },
 		"an unknown method": func(ch *charactersv1.LevelUpChoices) {
 			ch.HitPoints = &charactersv1.LevelUpHitPoints{Method: 99}
 		},

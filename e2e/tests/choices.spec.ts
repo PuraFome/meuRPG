@@ -33,11 +33,11 @@ test(
       // The locked sheet says so, with the way to complete it.
       await p.goto(sheet);
       await expect(p.getByText('Esta ficha tem 2 escolhas pendentes.')).toBeVisible();
-      // Before the picks: Constituição 15 (+2) and 23 hit points at the most.
+      // Before the picks: Constituição 15 (+2) and 20 hit points at the most.
       const constitution = p.locator('.medallion').filter({ hasText: 'Constituição' });
       await expect(constitution.locator('.medallion__modifier')).toHaveText('+2');
       await expect(constitution.locator('.medallion__score')).toContainText('15');
-      await expect(p.locator('.hp__value')).toHaveText('23');
+      await expect(p.locator('.hp__value')).toHaveText('20');
       await p.getByRole('link', { name: 'Completar escolhas pendentes' }).click();
 
       await expect(p).toHaveURL(new RegExp(`${sheet}/choices$`));
@@ -67,7 +67,7 @@ test(
       // The +1s were saved and the sheet recomputed: Constituição 16 (+3), one more hit point per level (3 levels).
       await expect(constitution.locator('.medallion__modifier')).toHaveText('+3');
       await expect(constitution.locator('.medallion__score')).toContainText('16');
-      await expect(p.locator('.hp__value')).toHaveText('26');
+      await expect(p.locator('.hp__value')).toHaveText('23');
 
       // The page of a sheet with nothing open says so.
       await p.goto(`${sheet}/choices`);

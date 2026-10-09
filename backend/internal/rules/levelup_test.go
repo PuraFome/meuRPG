@@ -373,7 +373,12 @@ func TestLevelUpRefusals(t *testing.T) {
 		{"locked: background", torenLevelUp(), func(b *Build) { b.Background = "background:criminal" }, asi, LevelUpReasonLocked, "full.background_key"},
 		{"no level gained", torenLevelUp(), func(b *Build) { b.Classes[0].Level = 3 }, asi, LevelUpReasonClass, "full.classes"},
 		{"two levels", torenLevelUp(), func(b *Build) { b.Classes[0].Level = 5 }, asi, LevelUpReasonClass, "full.classes[0].level"},
-		{"a new class", torenLevelUp(), func(b *Build) { b.Classes = append(b.Classes, ClassLevel{Class: "class:wizard", Level: 1}) }, asi, LevelUpReasonClass, "full.classes"},
+		{"a new class without the prerequisite", torenLevelUp(), func(b *Build) { b.Classes = append(b.Classes, ClassLevel{Class: "class:wizard", Level: 1}) }, asi, LevelUpReasonMulticlassPrerequisite, "class_key"},
+		{"a new class at level 2", torenLevelUp(), func(b *Build) { b.Classes = append(b.Classes, ClassLevel{Class: "class:barbarian", Level: 2}) }, asi, LevelUpReasonClass, "full.classes[1].level"},
+		{"a new class that is not in the content", torenLevelUp(), func(b *Build) { b.Classes = append(b.Classes, ClassLevel{Class: "class:artificer", Level: 1}) }, asi, LevelUpReasonClass, "full.classes[1].class_key"},
+		{"a new class listed twice", torenLevelUp(), func(b *Build) {
+			b.Classes = append(b.Classes, ClassLevel{Class: "class:fighter", Level: 1})
+		}, asi, LevelUpReasonClass, "full.classes[1].class_key"},
 		{"ASI of +1", torenLevelUp(), nil, LevelUpChoices{Class: "class:fighter", AbilityIncrease: map[Ability]int{STR: 1}, HitPoints: good.HitPoints}, LevelUpReasonAbilityShape, "full.extra_ability_bonuses"},
 		{"ASI of +3", torenLevelUp(), nil, LevelUpChoices{Class: "class:fighter", AbilityIncrease: map[Ability]int{STR: 2, DEX: 1}, HitPoints: good.HitPoints}, LevelUpReasonAbilityShape, "full.extra_ability_bonuses"},
 		{"ASI lowers", torenLevelUp(), func(b *Build) { b.ExtraAbilityBonuses = map[Ability]int{STR: -1, DEX: 2} }, good, LevelUpReasonAbilityShape, "full.extra_ability_bonuses.strength"},
@@ -411,7 +416,7 @@ func TestLevelUpRefusals(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			after, err := ApplyLevelUp(tt.before, tt.ch, c)
-			if tt.name == "no level gained" || tt.name == "two levels" || tt.name == "a new class" {
+			if tt.name == "no level gained" || tt.name == "two levels" || strings.HasPrefix(tt.name, "a new class") {
 				// Break the Build the way a client could, from the plain next level.
 				after, err = ApplyLevelUp(tt.before, good, c)
 			}
@@ -473,8 +478,8 @@ func TestLevelUpRefusesBadSpells(t *testing.T) {
 func TestLevelUpLimits(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
-	if _, err := LevelUpOptions(pensantus(), "class:fighter", c); err == nil {
-		t.Error("LevelUpOptions for a class the character does not have worked")
+	if _, err := LevelUpOptions(pensantus(), "class:artificer", c); err == nil {
+		t.Error("LevelUpOptions for a class the content does not have worked")
 	} else {
 		wantRefusal(t, err, LevelUpReasonClass, "full.classes")
 	}

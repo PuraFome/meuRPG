@@ -4,6 +4,7 @@ import {
   ChoiceGroupSchema,
   ChoiceSchema,
   LevelUpFeatureChoiceSchema,
+  LevelUpProficiencyKind,
   LevelUpSubclassSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import {
@@ -30,14 +31,14 @@ const steps = (
 
 describe('the steps of a level-up (MR-040)', () => {
   it('gives Pensantus Habilidades, Vida, Magias and Resumo at Mago 4', () => {
-    expect(steps(wizardOptions())).toEqual(['abilities', 'hp', 'spells', 'summary']);
+    expect(steps(wizardOptions())).toEqual(['class', 'abilities', 'hp', 'spells', 'summary']);
   });
 
   it('drops Habilidades where the level has no increase, and Magias where nothing is chosen', () => {
     const fighter4 = fighterOptions({ abilityScoreImprovement: true });
-    expect(steps(fighter4)).toEqual(['abilities', 'hp', 'summary']);
+    expect(steps(fighter4)).toEqual(['class', 'abilities', 'hp', 'summary']);
     // Toren at Guerreiro 5: Vida and Resumo only, the hit points never go.
-    expect(steps(fighterOptions())).toEqual(['hp', 'summary']);
+    expect(steps(fighterOptions())).toEqual(['class', 'hp', 'summary']);
   });
 
   it('keeps Magias for a level that only lets the caster prepare more', () => {
@@ -48,8 +49,8 @@ describe('the steps of a level-up (MR-040)', () => {
       spellsKind: 0,
       classKey: 'class:cleric',
     });
-    expect(steps(cleric, '', 6, 4)).toEqual(['hp', 'spells', 'summary']);
-    expect(steps(cleric, '', 4, 4)).toEqual(['hp', 'summary']);
+    expect(steps(cleric, '', 6, 4)).toEqual(['class', 'hp', 'spells', 'summary']);
+    expect(steps(cleric, '', 4, 4)).toEqual(['class', 'hp', 'summary']);
   });
 
   it('adds Escolhas for a subclass, a feature option, a skill or expertise', () => {
@@ -57,7 +58,7 @@ describe('the steps of a level-up (MR-040)', () => {
       subclassDue: true,
       subclasses: [create(LevelUpSubclassSchema, { key: 'sub:champion', namePt: 'Campeão' })],
     });
-    expect(steps(due)).toEqual(['hp', 'picks', 'summary']);
+    expect(steps(due)).toEqual(['class', 'hp', 'picks', 'summary']);
     const style = fighterOptions({
       featureChoices: [
         create(LevelUpFeatureChoiceSchema, {
@@ -66,9 +67,14 @@ describe('the steps of a level-up (MR-040)', () => {
         }),
       ],
     });
-    expect(steps(style)).toEqual(['hp', 'picks', 'summary']);
-    expect(steps(fighterOptions({ skillChoices: 2 }))).toEqual(['hp', 'picks', 'summary']);
-    expect(steps(fighterOptions({ expertiseChoices: 2 }))).toEqual(['hp', 'picks', 'summary']);
+    expect(steps(style)).toEqual(['class', 'hp', 'picks', 'summary']);
+    expect(steps(fighterOptions({ skillChoices: 2 }))).toEqual(['class', 'hp', 'picks', 'summary']);
+    expect(steps(fighterOptions({ expertiseChoices: 2 }))).toEqual([
+      'class',
+      'hp',
+      'picks',
+      'summary',
+    ]);
   });
 
   it('puts the chosen subclass share into the counts, so Magias can appear after it', () => {
@@ -168,16 +174,60 @@ describe('the steps of a level-up: choices an earlier level left open (PM-05)', 
     create(ChoiceGroupSchema, { choices: [create(ChoiceSchema, { key, picks: 1, missing: 1 })] });
 
   it('has the Escolhas step for a late choice or a new scoped one, and none without them', () => {
-    expect(steps(fighterOptions())).toEqual(['hp', 'summary']);
+    expect(steps(fighterOptions())).toEqual(['class', 'hp', 'summary']);
     expect(steps(fighterOptions({ lateChoices: [group('c1')] }))).toEqual([
+      'class',
       'hp',
       'picks',
       'summary',
     ]);
     expect(steps(fighterOptions({ newChoices: [group('c2')] }))).toEqual([
+      'class',
       'hp',
       'picks',
       'summary',
+    ]);
+  });
+});
+
+describe('the class step and the picks of a new class', () => {
+  it('opens every flow, even a level with nothing else to choose', () => {
+    expect(steps(fighterOptions())[0]).toBe('class');
+  });
+
+  it('adds the skill of the multiclass table to the skills asked, and the instrument makes the picks step', () => {
+    const rogue = fighterOptions({
+      isNewClass: true,
+      proficiencyChoices: [{ kind: LevelUpProficiencyKind.SKILL, count: 1, from: [] }],
+    });
+    expect(totalsFor(rogue, '').skills).toBe(1);
+    expect(steps(rogue)).toEqual(['class', 'hp', 'picks', 'summary']);
+    const bard = fighterOptions({
+      isNewClass: true,
+      proficiencyChoices: [{ kind: LevelUpProficiencyKind.INSTRUMENT, count: 1, from: [] }],
+    });
+    expect(steps(bard)).toEqual(['class', 'hp', 'picks', 'summary']);
+  });
+
+  it('lists the skills of the class list with the ones the character has turned off', () => {
+    const o = fighterOptions({
+      isNewClass: true,
+      proficiencyChoices: [
+        {
+          kind: LevelUpProficiencyKind.SKILL,
+          count: 1,
+          from: [
+            { key: 'skill:arcana', namePt: 'Arcanismo', alreadyHave: true },
+            { key: 'skill:stealth', namePt: 'Furtividade', alreadyHave: false },
+          ],
+        },
+      ],
+    });
+    expect(
+      skillOptions(SKILLS, { ...WIZARD_KEYS, skills: [] }, o).map((i) => [i.key, i.disabled ?? '']),
+    ).toEqual([
+      ['skill:arcana', 'Você já tem'],
+      ['skill:stealth', ''],
     ]);
   });
 });

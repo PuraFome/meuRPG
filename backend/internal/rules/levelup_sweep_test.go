@@ -230,6 +230,24 @@ func satisfy(t *testing.T, c *Content, b Build, classKey, subKey string) LevelUp
 		ch.FeatureChoices = append(ch.FeatureChoices, firstOptions(c, keys, fc.Choose)...)
 	}
 	tmp := b.clone()
+	// A class taken as a later class asks for its own picks first: a skill from its
+	// list and a musical instrument.
+	if mc := o.Multiclass; mc != nil {
+		if mc.Skills != nil {
+			for _, opt := range mc.Skills.From {
+				if !opt.AlreadyHave && len(tmp.SkillProficiencies)-len(b.SkillProficiencies) < mc.Skills.Choose {
+					tmp.SkillProficiencies = append(tmp.SkillProficiencies, opt.Key)
+				}
+			}
+		}
+		if mc.Instruments != nil {
+			for _, opt := range mc.Instruments.From {
+				if !opt.AlreadyHave && ch.Instrument == "" {
+					ch.Instrument = opt.Key
+				}
+			}
+		}
+	}
 	for range skills {
 		tmp.SkillProficiencies = append(tmp.SkillProficiencies, nextSkill(c, tmp))
 	}
@@ -237,6 +255,11 @@ func satisfy(t *testing.T, c *Content, b Build, classKey, subKey string) LevelUp
 	ch.Expertise = pickExpertise(c, b, expertise)[len(b.Expertise):]
 	if spellList != "" {
 		ch.Cantrips = pickSpells(c, spellList, 0, 0, b.Cantrips, cantrips, false)[len(b.Cantrips):]
+		if len(ch.Cantrips) < cantrips {
+			// The sheet has one list of cantrips, so a cantrip two classes share is known
+			// once: a class whose list the other class has used up has none left to give.
+			t.Skipf("%s has no cantrip left that the sheet does not know (%d of %d)", spellList, len(ch.Cantrips), cantrips)
+		}
 		anyList := pickSpells(c, spellList, 1, maxSpellLevel, b.SpellsKnown, o.AnyClassSpells, true)[len(b.SpellsKnown):]
 		ownList := pickSpells(c, spellList, 1, maxSpellLevel, slices.Concat(b.SpellsKnown, anyList), spells-o.AnyClassSpells, false)[len(b.SpellsKnown)+len(anyList):]
 		ch.Spells = slices.Concat(anyList, ownList)
@@ -311,4 +334,141 @@ func pickPending(c *content, b Build) []string {
 		}
 	}
 	return added
+}
+
+// TestLevelUpSweepMulticlass takes every ordered pair of classes of the SRD (12 by
+// 11 = 132): a character of the first class at total level 5 enters the second at
+// level 1 and then levels it to total level 20, every step passing the same checks
+// as TestLevelUpSweep. It runs twice: with scores that meet every prerequisite
+// (all 132 pairs are open), and with the scores of the sweep's base character,
+// where the pairs whose prerequisites the scores do not meet must be refused, with
+// the class of the refusal said right.
+func TestLevelUpSweepMulticlass(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for _, scores := range []string{"every prerequisite met", "the sweep's scores"} {
+		for _, a := range sortedKeys(c.c.classes) {
+			for _, b := range sortedKeys(c.c.classes) {
+				if a == b {
+					continue
+				}
+				t.Run(scores+"/"+a+"+"+b, func(t *testing.T) {
+					t.Parallel()
+					sweepMulticlassPair(t, c, a, b, scores == "every prerequisite met")
+				})
+			}
+		}
+	}
+}
+
+// TestLevelUpSweepMulticlassWithTableClasses is the same sweep for the table's
+// classes of every casting kind (none, full, half and pact casters), as the first
+// class and as the second, together with every class of the SRD.
+func TestLevelUpSweepMulticlassWithTableClasses(t *testing.T) {
+	t.Parallel()
+	srd := loadForTest(t)
+	c := withOverlayOn(t, srd, genOverlay(t, srd))
+	var table []string
+	for _, key := range sortedKeys(c.c.classes) {
+		if isTableKey(key) {
+			table = append(table, key)
+		}
+	}
+	if len(table) != len(genKinds) {
+		t.Fatalf("table classes = %v, want one of each casting kind", table)
+	}
+	for _, g := range table {
+		for _, s := range sortedKeys(srd.c.classes) {
+			if g == "class:gen-pact-known@mesa" && s == "class:warlock" {
+				// Two classes with Pact Magic: the SRD has one, so it has no rule for
+				// the slots of a second (Derive keeps the last class's).
+				continue
+			}
+			for _, pair := range [][2]string{{g, s}, {s, g}} {
+				t.Run(pair[0]+"+"+pair[1], func(t *testing.T) {
+					t.Parallel()
+					sweepMulticlassPair(t, c, pair[0], pair[1], true)
+				})
+			}
+		}
+	}
+}
+
+// sweepMulticlassPair is a character of class a at total level 5 entering class b
+// at level 1 and leveling it to 20 in all. With strong every score is 15, so the
+// prerequisites are met; otherwise the sweep's base scores are used, and a pair
+// they do not qualify is checked to be refused for the right class.
+func sweepMulticlassPair(t *testing.T, c *Content, a, b string, strong bool) {
+	t.Helper()
+	subOf := func(key string) string {
+		if subs := c.c.classes[key].Subclasses; len(subs) > 0 {
+			return subs[0]
+		}
+		return ""
+	}
+	base := sweepBase(t, c, a, subOf(a))
+	if strong {
+		base.BaseScores = map[Ability]int{STR: 14, DEX: 14, CON: 14, INT: 14, WIS: 14, CHA: 14}
+	}
+	base = sweepUp(t, c, base, a, subOf(a), 5)
+
+	final := map[Ability]int{}
+	for _, s := range Derive(base, c).Abilities {
+		final[s.Ability] = s.Score
+	}
+	// The prerequisites by the SRD's table (the table's own classes ask for
+	// Constitution 11), on the final scores.
+	met := func(class string) bool {
+		if isTableKey(class) {
+			return final[CON] >= 11
+		}
+		for _, row := range prerequisiteTable {
+			if row.class != class {
+				continue
+			}
+			n := 0
+			for _, ab := range row.abilities {
+				if final[ab] >= 13 {
+					n++
+				}
+			}
+			return n == len(row.abilities) || row.anyOf && n > 0
+		}
+		t.Fatalf("no prerequisite row for %s", class)
+		return false
+	}
+	if strong && (!met(a) || !met(b)) {
+		t.Fatalf("the scores %v do not meet %s and %s", final, a, b)
+	}
+	_, err := LevelUpOptions(base, b, c)
+	switch {
+	case !met(a):
+		wantRefusal(t, err, LevelUpReasonMulticlassPrerequisiteCurrent, "class_key")
+		return
+	case !met(b):
+		wantRefusal(t, err, LevelUpReasonMulticlassPrerequisite, "class_key")
+		return
+	case err != nil:
+		t.Fatalf("LevelUpOptions: %v", err)
+	}
+
+	// Enters the class, then levels it to 20 in all.
+	ch := satisfy(t, c, base, b, subOf(b))
+	after, err := ApplyLevelUp(base, ch, c)
+	if err != nil {
+		t.Fatalf("ApplyLevelUp: %v", err)
+	}
+	if err := CheckLevelUp(base, after, c); err != nil {
+		t.Fatalf("CheckLevelUp: %v\nchoices: %+v", err, ch)
+	}
+	if err := Validate(after, c); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if issues := Derive(after, c).Issues; len(issues) != 0 {
+		t.Fatalf("the new sheet has issues: %v\nchoices: %+v", issues, ch)
+	}
+	if d := Derive(after, c); d.TotalLevel != 6 || len(d.Classes) != 2 || d.Classes[1].ClassKey != b || d.Classes[1].Level != 1 {
+		t.Fatalf("classes after = %+v, total %d", d.Classes, d.TotalLevel)
+	}
+	sweepUp(t, c, after, b, subOf(b), MaxLevel)
 }

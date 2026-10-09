@@ -270,3 +270,74 @@ func TestTheFiendLearnsItsPatronSpellsAtLevelUp(t *testing.T) {
 	ch.Spells = []string{"spell:cure-wounds"}
 	wantRefusal(t, CheckLevelUp(b, mustApply(t, c, b, ch), c), LevelUpReasonSpells, "full.known_spell_keys")
 }
+
+// TestAMulticlassLevelAsksTheChoicesOfTheNewClassesFirstLevel: the class step comes first,
+// then the choices of the class taken, a new class's level 1 included (SRD 5.1,
+// "Multiclassing": a class taken later gives its level 1 features but the starting
+// proficiencies). A Wizard 5 that takes Fighter 1 picks a Fighting Style, one that takes
+// Ranger 1 picks a Favored Enemy and a terrain, and a Fighter 5 that takes Warlock 1 picks
+// nothing (the Pact Boon comes at Warlock 3). The level is refused without them, and
+// accepted with them, leaving no choice open.
+func TestAMulticlassLevelAsksTheChoicesOfTheNewClassesFirstLevel(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	subOf := func(key string) string {
+		if subs := c.c.classes[key].Subclasses; len(subs) > 0 {
+			return subs[0]
+		}
+		return ""
+	}
+	base := func(class string) Build {
+		b := sweepBase(t, c, class, subOf(class))
+		b.BaseScores = map[Ability]int{STR: 14, DEX: 14, CON: 14, INT: 14, WIS: 14, CHA: 14}
+		return sweepUp(t, c, b, class, subOf(class), 5)
+	}
+	for _, tc := range []struct {
+		from, to string
+		asks     bool
+	}{
+		{"class:wizard", "class:fighter", true},
+		{"class:wizard", "class:ranger", true},
+		{"class:fighter", "class:warlock", false},
+	} {
+		t.Run(tc.from+"+"+tc.to, func(t *testing.T) {
+			t.Parallel()
+			before := base(tc.from)
+			o, err := LevelUpOptions(before, tc.to, c)
+			if err != nil {
+				t.Fatalf("LevelUpOptions: %v", err)
+			}
+			if !o.NewClass {
+				t.Fatalf("%s is not a new class of the character", tc.to)
+			}
+			if len(o.LateChoices) != 0 {
+				t.Errorf("late choices = %+v, want none: the sheet left nothing open", o.LateChoices)
+			}
+			asked := len(o.FeatureChoices) + len(o.NewChoices)
+			if (asked > 0) != tc.asks {
+				t.Fatalf("the level asks %d choices (feature options %d, new choices %d), want some: %v", asked, len(o.FeatureChoices), len(o.NewChoices), tc.asks)
+			}
+			ch := satisfy(t, c, before, tc.to, subOf(tc.to))
+			if tc.asks {
+				// Without the picks the level is refused, with the reason of the choices.
+				bare := ch
+				bare.FeatureChoices, bare.LateChoices = nil, nil
+				without, aerr := ApplyLevelUp(before, bare, c)
+				if aerr != nil {
+					t.Fatalf("ApplyLevelUp without the picks: %v", aerr)
+				}
+				wantRefusal(t, CheckLevelUp(before, without, c), LevelUpReasonFeatureChoice, "full.feature_choice_keys")
+			}
+			after, err := ApplyLevelUp(before, ch, c)
+			if err != nil {
+				t.Fatalf("ApplyLevelUp: %v", err)
+			}
+			if err := CheckLevelUp(before, after, c); err != nil {
+				t.Fatalf("CheckLevelUp: %v\nchoices: %+v", err, ch)
+			}
+			if n := c.c.choiceSet(after).PendingCount(); n != 0 {
+				t.Errorf("%d choices still open after the level: %+v", n, c.c.choiceSet(after).Pending())
+			}
+		})
+	}
+}

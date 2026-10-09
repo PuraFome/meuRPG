@@ -113,24 +113,28 @@ var (
 		charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_ROLLED_PHYSICAL: "rolled_physical",
 	}
 	refusalReasons = map[string]charactersv1.LevelUpRefusalReason{
-		rules.LevelUpReasonClass:            charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_CLASS,
-		rules.LevelUpReasonMaxLevel:         charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_MAX_LEVEL,
-		rules.LevelUpReasonLocked:           charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_LOCKED_FIELD,
-		rules.LevelUpReasonAbilityNotDue:    charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ABILITY_NOT_DUE,
-		rules.LevelUpReasonAbilityShape:     charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ABILITY_SHAPE,
-		rules.LevelUpReasonAbilityAbove20:   charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ABILITY_ABOVE_20,
-		rules.LevelUpReasonHitPoints:        charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_HIT_POINTS,
-		rules.LevelUpReasonSubclass:         charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SUBCLASS,
-		rules.LevelUpReasonCantrips:         charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_CANTRIPS,
-		rules.LevelUpReasonSpells:           charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SPELLS,
-		rules.LevelUpReasonPrepared:         charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_PREPARED,
-		rules.LevelUpReasonFeatureChoice:    charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_FEATURE_CHOICE,
-		rules.LevelUpReasonSkills:           charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SKILLS,
-		rules.LevelUpReasonExpertise:        charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_EXPERTISE,
-		rules.LevelUpReasonSheetIssue:       charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SHEET_ISSUE,
-		rules.LevelUpReasonFeat:             charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_FEAT,
-		rules.LevelUpReasonFeatPrerequisite: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_FEAT_PREREQUISITE,
-		rules.LevelUpReasonLateChoice:       charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_LATE_CHOICE_MISSING,
+		rules.LevelUpReasonClass:                         charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_CLASS,
+		rules.LevelUpReasonMaxLevel:                      charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_MAX_LEVEL,
+		rules.LevelUpReasonLocked:                        charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_LOCKED_FIELD,
+		rules.LevelUpReasonAbilityNotDue:                 charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ABILITY_NOT_DUE,
+		rules.LevelUpReasonAbilityShape:                  charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ABILITY_SHAPE,
+		rules.LevelUpReasonAbilityAbove20:                charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ABILITY_ABOVE_20,
+		rules.LevelUpReasonHitPoints:                     charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_HIT_POINTS,
+		rules.LevelUpReasonSubclass:                      charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SUBCLASS,
+		rules.LevelUpReasonCantrips:                      charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_CANTRIPS,
+		rules.LevelUpReasonSpells:                        charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SPELLS,
+		rules.LevelUpReasonPrepared:                      charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_PREPARED,
+		rules.LevelUpReasonFeatureChoice:                 charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_FEATURE_CHOICE,
+		rules.LevelUpReasonSkills:                        charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SKILLS,
+		rules.LevelUpReasonExpertise:                     charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_EXPERTISE,
+		rules.LevelUpReasonSheetIssue:                    charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SHEET_ISSUE,
+		rules.LevelUpReasonFeat:                          charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_FEAT,
+		rules.LevelUpReasonFeatPrerequisite:              charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_FEAT_PREREQUISITE,
+		rules.LevelUpReasonLateChoice:                    charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_LATE_CHOICE_MISSING,
+		rules.LevelUpReasonMulticlassPrerequisite:        charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_MULTICLASS_PREREQUISITE,
+		rules.LevelUpReasonMulticlassPrerequisiteCurrent: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_MULTICLASS_PREREQUISITE_CURRENT,
+		rules.LevelUpReasonProficiencyChoice:             charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_PROFICIENCY_CHOICE,
+		rules.LevelUpReasonInstrumentChoice:              charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_INSTRUMENT_CHOICE,
 	}
 )
 
@@ -146,7 +150,11 @@ func errRefused(r *charactersv1.LevelUpRefusal) error {
 
 // refusalOf turns a package rules refusal into the message.
 func refusalOf(e *rules.LevelUpError) *charactersv1.LevelUpRefusal {
-	return &charactersv1.LevelUpRefusal{Field: e.Field, Reason: refusalReasons[e.Reason], IssueCode: e.Code}
+	r := &charactersv1.LevelUpRefusal{Field: e.Field, Reason: refusalReasons[e.Reason], IssueCode: e.Code}
+	if e.ClassKey != "" {
+		r.ClassKey, r.Ability, r.Minimum, r.Have = e.ClassKey, abilityToProto[e.Ability], i32(e.Minimum), i32(e.Have)
+	}
+	return r
 }
 
 // levelUpTarget is the character a guided level-up call is about, checked
@@ -156,7 +164,9 @@ type levelUpTarget struct {
 	row   charactersdb.Character
 	full  *charactersv1.FullSheet
 	build rules.Build
-	// classKey is the class that gains the level; idx its place in the sheet.
+	// classKey is the class that gains the level; idx its place in the sheet. A
+	// class the character does not have (multiclassing) has idx past the last
+	// class: it joins the sheet at level 1.
 	classKey string
 	idx      int
 	// content is the campaign's rules content, read in the caller's transaction.
@@ -219,9 +229,37 @@ func (s *Service) newLevelUpTarget(ctx context.Context, tx pgx.Tx, m authz.Membe
 	}
 	idx := slices.IndexFunc(build.Classes, func(c rules.ClassLevel) bool { return c.Class == classKey })
 	if idx < 0 {
-		return levelUpTarget{}, invalidArgument(fieldErr("class_key", "is not a class of the character"))
+		// A class of the content the character does not have is multiclassing: the
+		// rules judge the prerequisites. The table's retired and switched-off classes
+		// are not a new choice (RN-23); the master's switch does not bind the master.
+		if !isClassKey(content, classKey) {
+			return levelUpTarget{}, invalidArgument(fieldErr("class_key", "is not a class"))
+		}
+		if reason, key := newClassRefusal(content, m, classKey); reason != charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_UNSPECIFIED {
+			return levelUpTarget{}, errRefused(&charactersv1.LevelUpRefusal{Field: "class_key", Reason: reason, ClassKey: key})
+		}
+		idx = len(build.Classes)
 	}
 	return levelUpTarget{row: row, full: full, build: build, classKey: classKey, idx: idx, content: content, rules: tableRules}, nil
+}
+
+// isClassKey says the content has a class with this key.
+func isClassKey(content *rules.Content, key string) bool {
+	return slices.ContainsFunc(content.Catalog().Classes, func(c rules.ClassEntry) bool { return c.Key == key })
+}
+
+// newClassRefusal says why the caller may not take a class as a new class
+// because of the table's switches (RN-23): the master retired it, or switched it
+// off for the players (the master is not bound by the switch). The zero reason
+// says none.
+func newClassRefusal(content *rules.Content, m authz.Membership, classKey string) (charactersv1.LevelUpRefusalReason, string) {
+	switch {
+	case content.Archived(classKey):
+		return charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ARCHIVED_CHOICE, classKey
+	case !isMaster(m) && content.Hidden(classKey):
+		return charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SWITCHED_OFF_CHOICE, classKey
+	}
+	return charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_UNSPECIFIED, ""
 }
 
 // readLevelUpTarget is newLevelUpTarget for a read: the row is not locked. It
@@ -294,6 +332,7 @@ func (s *Service) GetLevelUpOptions(
 		return nil, s.dbError(ctx, "read the level up options", err)
 	}
 	out := levelUpOptionsToProto(offer)
+	out.ClassChoices = classChoicesToProto(t.content, m, rules.LevelUpClasses(t.build, t.content))
 	out.Feats = featOptionsToProto(offer.Feats, t.rules.FeatsAllowed, isMaster(m))
 	if !isMaster(m) {
 		// A subclass the master archived or switched off is not offered to a player (RN-23), unless
@@ -378,10 +417,18 @@ func (s *Service) PreviewLevelUp(
 	if plan.retiredChoice {
 		return connect.NewResponse(&charactersv1.PreviewLevelUpResponse{Refusal: plan.refusal}), nil
 	}
-	return connect.NewResponse(&charactersv1.PreviewLevelUpResponse{
+	res := &charactersv1.PreviewLevelUpResponse{
 		After:   derivedToProto(rules.Derive(buildOf(plan.sheet), t.content)),
 		Refusal: plan.refusal,
-	}), nil
+	}
+	newClass := ""
+	if t.idx == len(t.build.Classes) {
+		newClass = t.classKey
+	}
+	if sum, ok := rules.MulticlassSummaryOf(t.build, buildOf(plan.sheet), newClass, t.content); ok {
+		res.MulticlassSummary = multiclassSummaryToProto(sum, rules.Derive(buildOf(plan.sheet), t.content))
+	}
+	return connect.NewResponse(res), nil
 }
 
 // RollLevelUpHitPoints implements charactersv1connect.CharacterServiceHandler.
@@ -662,6 +709,11 @@ func levelUpNames(content *rules.Content, classKey string, c *charactersv1.Level
 			names[k] = name
 		}
 	}
+	if k := c.GetInstrumentKey(); k != "" {
+		if name := content.ProficiencyNamePT(k); name != "" {
+			names[k] = name
+		}
+	}
 	return names
 }
 
@@ -884,7 +936,7 @@ func levelUpChoicesFromProto(classKey string, c *charactersv1.LevelUpChoices, hp
 		Cantrips: c.GetCantripKeys(), Spells: c.GetKnownSpellKeys(), Prepared: c.GetPreparedSpellKeys(),
 		FeatureChoices: c.GetFeatureChoiceKeys(), SkillProficiencies: c.GetSkillProficiencyKeys(), Expertise: c.GetExpertiseSkillKeys(),
 		LateChoices: c.GetLateChoiceKeys(), FeatureChoiceText: c.GetFeatureChoiceText(), SwapInvocation: c.GetSwapInvocationKey(),
-		Feat: c.GetFeatKey(), HitPoints: hp,
+		Feat: c.GetFeatKey(), HitPoints: hp, Instrument: c.GetInstrumentKey(),
 	}
 	for a, v := range abilityMap(c.GetAbilityIncrease()) {
 		if v != 0 {
@@ -903,11 +955,16 @@ func levelUpChoicesFromProto(classKey string, c *charactersv1.LevelUpChoices, hp
 // does not change stays as it was stored.
 func applyLevelUp(full *charactersv1.FullSheet, after rules.Build, idx int) *charactersv1.FullSheet {
 	out := proto.CloneOf(full)
+	if idx == len(out.Classes) {
+		// A class the character did not have joins the sheet, last.
+		out.Classes = append(out.Classes, &charactersv1.ClassLevel{ClassKey: after.Classes[idx].Class})
+	}
 	cl := out.Classes[idx]
 	cl.Level = i32(after.Classes[idx].Level)
 	if sub := after.Classes[idx].Subclass; sub != "" {
 		cl.Subclass = &charactersv1.ClassLevel_SubclassKey{SubclassKey: sub}
 	}
+	out.ToolProficiencies = slices.Clone(after.ToolProficiencies)
 	if !abilityMapsEqual(abilityMap(full.GetExtraAbilityBonuses()), after.ExtraAbilityBonuses) {
 		out.ExtraAbilityBonuses = &rulesv1.AbilityScores{
 			Strength: i32(after.ExtraAbilityBonuses[rules.STR]), Dexterity: i32(after.ExtraAbilityBonuses[rules.DEX]),
@@ -1003,6 +1060,24 @@ func levelUpOptionsToProto(o rules.LevelUpOffer) *charactersv1.LevelUpOptions {
 		CanSwapInvocation: o.CanSwapInvocation,
 	}
 	out.SpellsKind = spellsKindOf(o.SpellsKind)
+	out.IsNewClass = o.NewClass
+	if mc := o.Multiclass; mc != nil {
+		for _, p := range mc.Proficiencies {
+			out.ProficiencyGains = append(out.ProficiencyGains, &charactersv1.LevelUpProficiencyGain{Key: p.Key, NamePt: p.NamePT, Kind: p.Kind, AlreadyHave: p.AlreadyHave})
+		}
+		pick := func(kind charactersv1.LevelUpProficiencyKind, p *rules.MulticlassPick) {
+			if p == nil {
+				return
+			}
+			ch := &charactersv1.LevelUpProficiencyChoice{Kind: kind, Count: i32(p.Choose)}
+			for _, o := range p.From {
+				ch.From = append(ch.From, &charactersv1.LevelUpProficiencyOption{Key: o.Key, NamePt: o.NamePT, AlreadyHave: o.AlreadyHave})
+			}
+			out.ProficiencyChoices = append(out.ProficiencyChoices, ch)
+		}
+		pick(charactersv1.LevelUpProficiencyKind_LEVEL_UP_PROFICIENCY_KIND_SKILL, mc.Skills)
+		pick(charactersv1.LevelUpProficiencyKind_LEVEL_UP_PROFICIENCY_KIND_INSTRUMENT, mc.Instruments)
+	}
 	for _, sub := range o.Subclasses {
 		out.Subclasses = append(out.Subclasses, &charactersv1.LevelUpSubclass{
 			Key: sub.Key, NamePt: sub.NamePT, FeatureChoices: choices(sub.FeatureChoices),
@@ -1050,4 +1125,65 @@ func spellsKindOf(kind string) charactersv1.LevelUpSpellsKind {
 		return charactersv1.LevelUpSpellsKind_LEVEL_UP_SPELLS_KIND_KNOWN
 	}
 	return charactersv1.LevelUpSpellsKind_LEVEL_UP_SPELLS_KIND_UNSPECIFIED
+}
+
+// unavailableToProto turns the reason a class is closed into the message's.
+var unavailableToProto = map[string]charactersv1.LevelUpClassUnavailable{
+	rules.UnavailableMaxLevel:            charactersv1.LevelUpClassUnavailable_LEVEL_UP_CLASS_UNAVAILABLE_MAX_LEVEL,
+	rules.UnavailablePrerequisite:        charactersv1.LevelUpClassUnavailable_LEVEL_UP_CLASS_UNAVAILABLE_PREREQUISITE,
+	rules.UnavailablePrerequisiteCurrent: charactersv1.LevelUpClassUnavailable_LEVEL_UP_CLASS_UNAVAILABLE_PREREQUISITE_CURRENT,
+}
+
+// classChoicesToProto is the class step: the classes the character has and the
+// others, leaving out the table's classes the caller may not take (RN-23).
+func classChoicesToProto(content *rules.Content, m authz.Membership, in []rules.LevelUpClassChoice) []*charactersv1.LevelUpClassChoice {
+	var out []*charactersv1.LevelUpClassChoice
+	for _, ch := range in {
+		if ch.New {
+			if reason, _ := newClassRefusal(content, m, ch.Class); reason != charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_UNSPECIFIED {
+				continue
+			}
+		}
+		pc := &charactersv1.LevelUpClassChoice{
+			ClassKey: ch.Class, NamePt: ch.ClassNamePT, IsNew: ch.New, FromLevel: i32(ch.FromLevel), ToLevel: i32(ch.ToLevel),
+			SubclassNamePt: ch.SubclassNamePT, SubclassDue: ch.SubclassDue,
+			PrerequisiteAnyOf: ch.Prerequisite.AnyOf, PrerequisiteMet: ch.Prerequisite.Met,
+			Available: ch.Available, Unavailable: unavailableToProto[ch.Unavailable],
+		}
+		for _, r := range ch.Prerequisite.Requirements {
+			pc.Prerequisites = append(pc.Prerequisites, &charactersv1.LevelUpPrerequisite{
+				Ability: abilityToProto[r.Ability], Minimum: i32(r.Minimum), Have: i32(r.Have), Met: r.Met,
+			})
+		}
+		out = append(out, pc)
+	}
+	return out
+}
+
+// exceptionToProto turns a multiclass exception into the message's.
+var exceptionToProto = map[string]charactersv1.LevelUpMulticlassException{
+	rules.ExceptionExtraAttack:      charactersv1.LevelUpMulticlassException_LEVEL_UP_MULTICLASS_EXCEPTION_EXTRA_ATTACK,
+	rules.ExceptionChannelDivinity:  charactersv1.LevelUpMulticlassException_LEVEL_UP_MULTICLASS_EXCEPTION_CHANNEL_DIVINITY,
+	rules.ExceptionUnarmoredDefense: charactersv1.LevelUpMulticlassException_LEVEL_UP_MULTICLASS_EXCEPTION_UNARMORED_DEFENSE,
+}
+
+// multiclassSummaryToProto is what the summary says about a multiclass level.
+func multiclassSummaryToProto(sum rules.MulticlassSummary, after rules.Derived) *charactersv1.LevelUpMulticlassSummary {
+	out := &charactersv1.LevelUpMulticlassSummary{
+		NewClassKey: sum.NewClass, CasterLevelBefore: i32(sum.CasterLevelBefore), CasterLevelAfter: i32(sum.CasterLevelAfter),
+		SlotsByTable: sum.SlotsByTable,
+	}
+	for _, n := range after.SpellSlots {
+		out.SlotsAfter = append(out.SlotsAfter, i32(n))
+	}
+	for _, h := range after.HitDice {
+		out.HitDiceAfter = append(out.HitDiceAfter, &rulesv1.HitDice{Faces: i32(h.Die), Count: i32(h.Count)})
+	}
+	for _, p := range sum.ProficienciesGained {
+		out.ProficienciesGained = append(out.ProficienciesGained, &charactersv1.LevelUpNamedKey{Key: p.Key, NamePt: p.NamePT})
+	}
+	for _, e := range sum.Exceptions {
+		out.Exceptions = append(out.Exceptions, exceptionToProto[e])
+	}
+	return out
 }
