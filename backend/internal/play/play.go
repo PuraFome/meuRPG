@@ -313,6 +313,20 @@ type CombatRoster interface {
 	// the master's list) and reused after. It is a combat character; the monsters
 	// of a combat are copies of it. False for a key that is not an SRD creature.
 	MonsterNpc(ctx context.Context, tx pgx.Tx, campaignID, masterUserID, monsterKey string, at time.Time) (link.Character, bool, error)
+
+	// Casting outside a combat (casting.go).
+
+	// CastingOptions lists the spells the character can cast outside a combat, for the
+	// caster's screen. `not_found` for any other character.
+	CastingOptions(ctx context.Context, tx pgx.Tx, campaignID, characterID string) ([]*playv1.CastingSpell, error)
+	// OutsideSpell is the spell as the character casts it outside a combat with a slot
+	// of slotLevel (0 for a cantrip or a ritual): what the sheet allows, the times, the
+	// duration and what the server applies. It refuses nothing: the caller checks.
+	// `not_found` for any other character or spell.
+	OutsideSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, slotLevel int) (link.OutsideSpell, error)
+	// MageArmorAC is the armor class the character would have with Mage Armor on it,
+	// and whether it wears armor. `not_found` for any other character.
+	MageArmorAC(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (link.MageArmor, error)
 }
 
 // DiceForce is what the campaign's dice setting makes a player do (RN-18).

@@ -75,7 +75,9 @@ sql:
 
   - engine: postgresql
     schema: migrations
-    queries: internal/play/queries.sql
+    queries:
+      - internal/play/queries.sql
+      - internal/play/queries_casting.sql
     gen:
       go:
         <<: *go-options

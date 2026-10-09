@@ -1,0 +1,578 @@
+syntax = "proto3";
+
+// This file is the API of casting outside a combat (SRD 5.1, "Spellcasting"):
+// healing between fights, Mage Armor before one, Detect Magic, rituals and every
+// spell whose casting time is a minute or more. In a combat the spells are
+// CombatService.CastSpell's; here there is no turn and no economy, only the
+// spell, the slot (or none for a cantrip or a ritual), the targets, the time the
+// casting takes and how long the spell lasts. It is in the same package as
+// play.proto because its live hint travels on the same stream (WatchGameSession).
+package meurpg.play.v1;
+
+import "google/protobuf/timestamp.proto";
+import "meurpg/play/v1/combat.proto";
+import "meurpg/play/v1/play.proto";
+import "meurpg/rules/v1/rules.proto";
+
+// CastingService casts spells for the characters of a campaign during its open
+// game session, outside a combat.
+//
+// What the server applies: healing (the dice rolled by the server or typed from
+// physical dice, the slot's level, and the healer's Life Domain features), the
+// temporary hit points of False Life, the hit point maximum of Aid, the armor class
+// of Mage Armor and the creatures of the summoning spells (the same ones
+// PlayService.CastSummon makes). Every other spell is a cast the log records and
+// the master narrates. A cast on an NPC changes nothing about the NPC: an NPC has
+// hit points only inside a combat.
+//
+// A spell that takes minutes or hours (and a ritual, which takes 10 minutes more)
+// is cast in two steps: CastSpellOutsideCombat starts it (the caster is then concentrating on
+// the casting, and no slot is spent), and FinishCast ends it when the time has
+// passed, which is when the slot is spent and the spell takes effect. A cast that
+// is interrupted, or still going when a combat starts, fails and spends nothing
+// (SRD 5.1, "Longer Casting Times"). The app does not keep time: the table says
+// when the minutes have passed.
+//
+// A spell that lasts is kept until the master ends it (EndSpell), the caster stops
+// concentrating, another concentration spell replaces it, or a rest long enough
+// for its whole duration (an hour for a short rest, 8 hours for a long one) ends
+// it. The app does not count a spell's hours.
+//
+// Who sees what (RN-10, RN-20): the master sees every cast. A player sees the casts
+// of the characters they may see: the player characters, and the NPCs on the stage.
+// A cast by an NPC that is not on the stage, and every target who is not on the
+// stage, never reach a player: not the cast, not its ID, not its hint on the stream.
+// The healing a target got, its hit points and its armor class go only to the
+// master and the target's player.
+//
+// Every method needs a valid session cookie and fails with `unauthenticated`
+// without one. For a campaign the caller is not a member of, methods answer
+// `not_found`, exactly as for a campaign that does not exist. All of them need an
+// open game session and fail with `failed_precondition` and a GameSessionBlocked
+// detail (NO_OPEN_SESSION) without one.
+//
+// Errors every method can return, besides those listed on each method:
+//   - `unauthenticated`: no valid session cookie.
+//   - `unavailable`: the database did not answer; the app may try again.
+//   - `aborted`: the database kept reporting a conflicting transaction after the
+//     server's retries; the app may try again.
+//
+// Responses carry `Cache-Control: no-store`. Every request carries a campaign ID, so
+// reads are IDEMPOTENT and POST-only: a GET would put the ID in the URL, and URLs end
+// up in the platform's request logs (docs/privacy.md).
+service CastingService {
+  // GetCastingOptions lists what a character can cast outside a combat: the spells
+  // it has prepared or knows (a wizard's spellbook counts for rituals), each with
+  // the slots it can use, whether it can be cast as a ritual, how long it takes,
+  // how long it lasts, and what the server does with it; and the characters the
+  // caller may pick as targets. A spell with no free slot and no ritual is listed
+  // with its reason. The character's player reads their own character's, and the
+  // master any player's character's and any NPC's with a full sheet (a basic NPC
+  // casts nothing).
+  //
+  // Targets: the master gets every living character of the campaign (an NPC kept
+  // for monsters excluded). A player gets the player characters and the NPCs on the
+  // stage, never an NPC that is not.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist or the caller is not a member of
+  //     it, or the character is not a living character of the campaign that the
+  //     caller may cast for.
+  //   - `permission_denied`: the caller is a player and the character is not theirs.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION).
+  rpc GetCastingOptions(GetCastingOptionsRequest) returns (GetCastingOptionsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // CastSpellOutsideCombat casts a spell outside a combat. The spell must be one the character
+  // has prepared or knows, or a ritual it can cast as one (the wizard from the
+  // spellbook, the cleric and the druid prepared, the bard known; a warlock of the
+  // Pact of the Chain casts Find Familiar as a ritual). The slot is a free one of at
+  // least the spell's level, unset for a cantrip; a ritual spends no slot and can
+  // not be cast at a higher level (SRD 5.1, "Rituals").
+  //
+  // A spell cast in an action, a bonus action or a reaction takes effect at once: the
+  // response carries the finished cast. A spell that takes minutes or hours, and
+  // every ritual, starts a cast in the CASTING state instead: nothing is spent and
+  // nothing happens yet, the caster is concentrating on the casting (it ends any
+  // concentration spell the caster had), and FinishCast ends it. A character has one
+  // cast going at a time. A spell that needs concentration puts the caster in
+  // concentration when it takes effect; casting another ends the first (SRD 5.1,
+  // "Duration"), with the creatures the first one summoned and its effects.
+  //
+  // What the cast does when it takes effect:
+  //   - a healing spell heals each player character among the targets with one roll
+  //     for the whole cast: the dice are rolled by the server with roll_in_app, or
+  //     typed with pool_sum (the sum of the physical dice, with no modifier), and
+  //     the campaign's dice setting binds a player as on every roll (RN-18). The
+  //     healing is the spell's dice at the slot's level plus the caster's spellcasting
+  //     modifier, up to the target's maximum; a cleric of the Life Domain adds
+  //     Disciple of Life to each target, rolls the highest number of each die with
+  //     Supreme Healing, and heals itself with Blessed Healer (SRD 5.1);
+  //   - False Life gives the caster temporary hit points (they do not stack: the
+  //     larger value stays);
+  //   - Aid raises the hit point maximum and the current hit points of each player
+  //     character among the targets (up to three) until the spell ends;
+  //   - Mage Armor sets a target's base armor class to 13 + its Dexterity modifier
+  //     while it wears no armor (a target in armor is refused); in a combat the
+  //     bonus goes to the combatant;
+  //   - a summoning spell makes its creatures, as CastSummon does (`summon`);
+  //   - any other spell only goes to the log.
+  //
+  // The master can cast for an NPC with a full sheet: an NPC has no slots to spend,
+  // so the slot is only recorded. A cast by an NPC on the stage is seen by the
+  // players, one by an NPC that is not on the stage by the master alone.
+  //
+  // The character's player may cast for their own character and the master for
+  // any. The caster and the targets that are player characters get
+  // `vitals_changed`; everyone who may see the cast gets `spell_casts_changed`, and
+  // a `spell_cast_outside` (or `spell_cast_started`) event, with ids and numbers only,
+  // goes to the history.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist or the caller is not a member of
+  //     it; the caster is not a living character of the campaign that the caller may
+  //     cast for; a target is not one the caller may pick (an NPC that is not on the
+  //     stage is not found for a player).
+  //   - `permission_denied`: the caller is a player and the caster is not their
+  //     character.
+  //   - `invalid_argument`: the spell is not one of the caster's, or a cantrip with
+  //     a slot, a slot that does not fit or is not free, `ritual` for a spell that is
+  //     not a ritual or a caster that cannot cast it as one, a ritual with a slot, no
+  //     roll for a spell that rolls dice, more targets than the spell takes (the
+  //     master is not held to the number) or a repeated one, more than 10 targets,
+  //     `summon` for a spell that does not summon, or not for one that does.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION); the caster is in a combat (CastingBlocked, IN_COMBAT:
+  //     cast there), has a cast going (CAST_IN_PROGRESS), has no free slot of that
+  //     level (NO_SLOT), is in a beast form (WILD_SHAPE_NO_SPELLS), or a Mage Armor
+  //     target wears armor (TARGET_WEARS_ARMOR).
+  rpc CastSpellOutsideCombat(CastSpellOutsideCombatRequest) returns (CastSpellOutsideCombatResponse);
+
+  // FinishCast ends a cast that is in the CASTING state: the time has passed. The slot
+  // is spent now (NO_SLOT, with nothing changed, when it is no longer free) and the
+  // spell takes effect as CastSpellOutsideCombat describes, with the roll and the summoning choice
+  // this request carries. The caster's player may call it, and the master. A combat
+  // that began meanwhile failed the cast already (the cast is FAILED with the reason
+  // COMBAT_STARTED, and this method refuses with CAST_NOT_GOING).
+  //
+  // Errors:
+  //   - `not_found`: the cast is not one of the open session's, or the caller may
+  //     not see it.
+  //   - `permission_denied`: the caller is a player and the caster is not their
+  //     character.
+  //   - `invalid_argument`: as CastSpellOutsideCombat for the roll and the summoning choice.
+  //   - `failed_precondition`: no open session; the cast is not going (CastingBlocked,
+  //     CAST_NOT_GOING); no free slot (NO_SLOT); the caster is in a combat
+  //     (IN_COMBAT).
+  rpc FinishCast(FinishCastRequest) returns (FinishCastResponse);
+
+  // InterruptCast fails a cast that is in the CASTING state: the concentration broke,
+  // or the caster gave up. The slot was never spent, so nothing is given back
+  // (SRD 5.1: "If your concentration is broken, the spell fails, but you don't expend
+  // a spell slot. If you want to try casting the spell again, you must start over").
+  // The caster stops concentrating. The caster's player may call it, and the master.
+  // Calling it on a cast that is no longer going changes nothing.
+  //
+  // Errors:
+  //   - `not_found`: the cast is not one of the open session's, or the caller may
+  //     not see it.
+  //   - `permission_denied`: the caller is a player and the caster is not their
+  //     character.
+  //   - `failed_precondition`: no open session.
+  rpc InterruptCast(InterruptCastRequest) returns (InterruptCastResponse);
+
+  // EndSpell ends a spell that lasts (a cast in the ACTIVE state): the caster stops
+  // concentrating, dismisses it, or the master ends it. What it did to the targets
+  // is undone where it can be: Mage Armor's armor class goes back, Aid's hit point
+  // maximum goes back (the current hit points lose only what is above the new
+  // maximum, never the last one), the creatures that lasted only while the caster
+  // concentrated are dismissed. Healing and temporary hit points stay: they were
+  // instantaneous or run out by themselves. The caster's player may end their own
+  // character's spells, and the master any. Ending a spell that already ended changes
+  // nothing.
+  //
+  // Errors:
+  //   - `not_found`: the cast is not one of the open session's, or the caller may
+  //     not see it.
+  //   - `permission_denied`: the caller is a player and the caster is not their
+  //     character.
+  //   - `failed_precondition`: no open session; the cast is still being cast (use
+  //     InterruptCast: CastingBlocked, CAST_NOT_ACTIVE).
+  rpc EndSpell(EndSpellRequest) returns (EndSpellResponse);
+
+  // ListSpellCasts reads the casts of the open session: the ones going or lasting
+  // (`active`), with the spell each character concentrates on, and the log of the
+  // session's casts, newest first (`log`, at most 100). The master gets every cast. A
+  // player gets the casts they may see (see the service): the details of a target
+  // that is not their character (the healing, the hit points, the armor class) are
+  // left out, and a cast by an NPC that is not on the stage is not there.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist or the caller is not a member of it;
+  //     `character_id` is not a character of the campaign the caller may see.
+  //   - `failed_precondition`: no open session.
+  rpc ListSpellCasts(ListSpellCastsRequest) returns (ListSpellCastsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+}
+
+// OutsideCastStatus is where a cast is.
+enum OutsideCastStatus {
+  OUTSIDE_CAST_STATUS_UNSPECIFIED = 0;
+  // Being cast: the spell takes minutes or hours and the time has not passed (FinishCast
+  // ends it, InterruptCast fails it). Nothing is spent yet.
+  OUTSIDE_CAST_STATUS_CASTING = 1;
+  // The spell took effect and lasts (or the caster concentrates on it).
+  OUTSIDE_CAST_STATUS_ACTIVE = 2;
+  // The spell took effect and is over: instantaneous, ended, or its time ran out.
+  OUTSIDE_CAST_STATUS_ENDED = 3;
+  // The casting did not finish; no slot was spent.
+  OUTSIDE_CAST_STATUS_FAILED = 4;
+}
+
+// OutsideCastEnd says why a cast is over.
+enum OutsideCastEnd {
+  OUTSIDE_CAST_END_UNSPECIFIED = 0;
+  // An instantaneous spell, over as it took effect.
+  OUTSIDE_CAST_END_INSTANT = 1;
+  // The caster or the master ended it (EndSpell).
+  OUTSIDE_CAST_END_DISMISSED = 2;
+  // The caster cast another concentration spell, or stopped concentrating.
+  OUTSIDE_CAST_END_CONCENTRATION = 3;
+  // A rest long enough for its duration passed.
+  OUTSIDE_CAST_END_REST = 4;
+  // The casting was interrupted (InterruptCast).
+  OUTSIDE_CAST_END_INTERRUPTED = 5;
+  // A combat began while the spell was being cast.
+  OUTSIDE_CAST_END_COMBAT_STARTED = 6;
+  // The caster is not a character of the campaign any more (it died, or was removed).
+  OUTSIDE_CAST_END_CASTER_GONE = 7;
+}
+
+// RestThatEnds is the rest long enough for a spell's whole duration to pass.
+enum RestThatEnds {
+  REST_THAT_ENDS_UNSPECIFIED = 0;
+  // The spell lasts an hour or less: a short rest (at least 1 hour) ends it.
+  REST_THAT_ENDS_SHORT = 1;
+  // It lasts more than an hour and up to 8 hours: a long rest (at least 8 hours) ends it.
+  REST_THAT_ENDS_LONG = 2;
+}
+
+// CastEffect is what the server did with a target of a cast.
+enum CastEffect {
+  CAST_EFFECT_UNSPECIFIED = 0;
+  // Nothing the server applies: the log records it and the master narrates.
+  CAST_EFFECT_NARRATED = 1;
+  // The target regained hit points.
+  CAST_EFFECT_HEAL = 2;
+  // The target gained temporary hit points.
+  CAST_EFFECT_TEMPORARY_HIT_POINTS = 3;
+  // The target's hit point maximum rose (Aid).
+  CAST_EFFECT_MAX_HIT_POINTS = 4;
+  // The target's base armor class became 13 + Dexterity (Mage Armor).
+  CAST_EFFECT_ARMOR_CLASS = 5;
+}
+
+// CastingBlockedReason says why CastingService refused with `failed_precondition`.
+enum CastingBlockedReason {
+  CASTING_BLOCKED_REASON_UNSPECIFIED = 0;
+  // The caster is a combatant of a combat that is not ended: cast it there.
+  CASTING_BLOCKED_REASON_IN_COMBAT = 1;
+  // The caster has a cast in the CASTING state.
+  CASTING_BLOCKED_REASON_CAST_IN_PROGRESS = 2;
+  // No free slot of the level (see min_level).
+  CASTING_BLOCKED_REASON_NO_SLOT = 3;
+  // A Mage Armor target wears armor.
+  CASTING_BLOCKED_REASON_TARGET_WEARS_ARMOR = 4;
+  // FinishCast on a cast that is not in the CASTING state.
+  CASTING_BLOCKED_REASON_CAST_NOT_GOING = 5;
+  // EndSpell on a cast that is still being cast.
+  CASTING_BLOCKED_REASON_CAST_NOT_ACTIVE = 6;
+  // The character is in a beast form and casts nothing.
+  CASTING_BLOCKED_REASON_WILD_SHAPE_NO_SPELLS = 7;
+}
+
+// CastingBlocked is the detail of CastingService's `failed_precondition`.
+message CastingBlocked {
+  CastingBlockedReason reason = 1;
+  // For NO_SLOT: the lowest slot level that would do.
+  int32 min_level = 2;
+}
+
+// CastingSpell is a spell a character can cast outside a combat.
+message CastingSpell {
+  meurpg.rules.v1.Spell spell = 1;
+  // Whether the spell can be cast the normal way: a cantrip, or a prepared spell
+  // with a free slot (see `slots`).
+  bool can_cast = 2;
+  // Whether it can be cast as a ritual: no slot, 10 minutes more.
+  bool can_ritual = 3;
+  // The slots it can be cast with: at least the spell's level, with a free one.
+  // Empty for a cantrip.
+  repeated meurpg.rules.v1.SlotChoice slots = 4;
+  // Why neither way works (NO_SLOT, with the minimum level); unset when one does.
+  meurpg.rules.v1.DisabledReason reason = 5;
+  // The minutes casting takes the normal way (0: an action, a bonus action or a
+  // reaction, cast at once) and as a ritual (at least 10).
+  int32 casting_minutes = 6;
+  int32 ritual_minutes = 7;
+  // The spell's casting time as the SRD writes it, in Portuguese ("1 ação", "10 minutos").
+  string casting_time_pt = 8;
+  // Whether the spell lasts after the cast, and for how long (0 when it has no time
+  // the table can count, as "until dispelled"). The rest that ends it, when one does.
+  bool lasts = 9;
+  int32 duration_seconds = 10;
+  RestThatEnds rest_ends = 11;
+  // What the server does with it when it takes effect.
+  CastingEffectKind effect = 12;
+  // Whether the cast rolls dice (a healing spell, False Life): it needs `roll_in_app` or
+  // `pool_sum`. `roll_dice` is the dice at the spell's own level, "2d8".
+  bool rolls_dice = 13;
+  string roll_dice = 14;
+  // How many targets the spell takes at its own level (0: any number, an area; the
+  // caster alone for a spell that reaches only the caster), and how many more for each
+  // slot level above it.
+  int32 max_targets = 15;
+  int32 targets_per_level = 16;
+  bool caster_only = 17;
+  // Whether it brings creatures: cast it with `summon` (CharacterService.GetSummonOptions
+  // has the choices).
+  bool summons = 18;
+}
+
+// CastingEffectKind is what a spell does that the server applies, from the spell alone.
+enum CastingEffectKind {
+  CASTING_EFFECT_KIND_UNSPECIFIED = 0;
+  // Only logged: the master narrates it.
+  CASTING_EFFECT_KIND_NARRATED = 1;
+  CASTING_EFFECT_KIND_HEAL = 2;
+  CASTING_EFFECT_KIND_TEMPORARY_HIT_POINTS = 3;
+  CASTING_EFFECT_KIND_MAX_HIT_POINTS = 4;
+  CASTING_EFFECT_KIND_ARMOR_CLASS = 5;
+  CASTING_EFFECT_KIND_SUMMON = 6;
+}
+
+// CastingTarget is a character the caller may pick as a target.
+message CastingTarget {
+  string character_id = 1;
+  string name = 2;
+  // Whether it is an NPC (a cast on it changes nothing about it).
+  bool npc = 3;
+}
+
+// GetCastingOptionsRequest names the caster.
+message GetCastingOptionsRequest {
+  string campaign_id = 1;
+  // The caster: a living character of the campaign (a UUID).
+  string character_id = 2;
+}
+
+// GetCastingOptionsResponse is what the character can cast, and on whom.
+message GetCastingOptionsResponse {
+  repeated CastingSpell spells = 1;
+  // The characters the caller may pick as targets, the caster included, in the
+  // order the campaign lists them.
+  repeated CastingTarget targets = 2;
+  // The caster is a combatant of a combat that is not ended: CastSpellOutsideCombat refuses
+  // (IN_COMBAT) and the spells are CombatService's.
+  bool in_combat = 3;
+  // The caster is in a beast form and casts nothing.
+  bool wild_shape = 4;
+  // The cast the caster has going, if any (one at a time).
+  OutsideCast casting = 5;
+  // The spell the caster concentrates on, if any.
+  OutsideCast concentrating = 6;
+}
+
+// CastSpellOutsideCombatRequest casts a spell outside a combat.
+message CastSpellOutsideCombatRequest {
+  string campaign_id = 1;
+  // The caster: a player's character, or an NPC with a full sheet for the master (a UUID).
+  string caster_id = 2;
+  // The spell, one of GetCastingOptions' keys.
+  string spell_key = 3;
+  // True: cast as a ritual, spending no slot, 10 minutes more. Refused with a slot.
+  bool ritual = 4;
+  // The slot. Unset for a cantrip and for a ritual. For an NPC caster it is only
+  // recorded (an NPC has no slots to spend), and it still names the spell's level.
+  SpellSlot slot = 5;
+  // The targets: characters (UUIDs), at most 10. Empty for a spell that reaches only the
+  // caster, and for one that meets nobody; a spell that reaches only the caster
+  // takes the caster as its target by itself.
+  repeated string target_character_ids = 6;
+  // A UUID the app generates once for this casting and sends again on a retry.
+  string idempotency_key = 7;
+  // How the dice of a spell that rolls them (a healing spell, False Life) come:
+  // exactly one for such a spell, ignored by the others. A spell that takes minutes
+  // or hours is rolled by FinishCast, not here.
+  oneof roll {
+    // True: the app rolls the dice on the server (RN-18).
+    bool roll_in_app = 8;
+    // The sum of the physical dice, from the number of dice to the most they can
+    // show, without a modifier. The campaign's dice setting binds a player here as on
+    // every roll (RN-18).
+    int32 pool_sum = 9;
+  }
+  // What a summoning spell brings (as CastSummon). Required for such a spell and
+  // refused for any other. A spell that takes minutes or hours takes it in FinishCast.
+  SummonChoice summon = 10;
+}
+
+// FinishCastRequest ends the casting of a spell that takes time.
+message FinishCastRequest {
+  string campaign_id = 1;
+  // The cast (a UUID) in the CASTING state.
+  string cast_id = 2;
+  string idempotency_key = 3;
+  oneof roll {
+    bool roll_in_app = 4;
+    int32 pool_sum = 5;
+  }
+  SummonChoice summon = 6;
+}
+
+// CastSpellOutsideCombatResponse returns the cast and what it changed.
+message CastSpellOutsideCombatResponse {
+  // The cast as the caller sees it: CASTING for a spell that takes time, otherwise ACTIVE
+  // (it lasts) or ENDED (it was instantaneous).
+  OutsideCast cast = 1;
+  // The vitals of the characters the cast changed that the caller may read: the master
+  // gets every one, a player their own character's. The slot spent is in the caster's.
+  repeated CharacterVitals vitals = 2;
+  // The creatures a summoning spell made (UUIDs), in the order of `summon.creature_keys`.
+  repeated string creature_ids = 3;
+  // The creatures the cast dismissed (a new familiar replaces the old one, a new
+  // concentration ends the creatures of the old).
+  repeated string dismissed_creature_ids = 4;
+  // The casts the new one ended (the caster's old concentration).
+  repeated string ended_cast_ids = 5;
+}
+
+// FinishCastResponse returns the cast and what it changed, as CastSpellOutsideCombatResponse does.
+message FinishCastResponse {
+  // The cast as the caller sees it: CASTING for a spell that takes time, otherwise ACTIVE
+  // (it lasts) or ENDED (it was instantaneous).
+  OutsideCast cast = 1;
+  // The vitals of the characters the cast changed that the caller may read: the master
+  // gets every one, a player their own character's. The slot spent is in the caster's.
+  repeated CharacterVitals vitals = 2;
+  // The creatures a summoning spell made (UUIDs), in the order of `summon.creature_keys`.
+  repeated string creature_ids = 3;
+  // The creatures the cast dismissed (a new familiar replaces the old one, a new
+  // concentration ends the creatures of the old).
+  repeated string dismissed_creature_ids = 4;
+  // The casts the new one ended (the caster's old concentration).
+  repeated string ended_cast_ids = 5;
+}
+
+// InterruptCastRequest fails a cast that is being cast.
+message InterruptCastRequest {
+  string campaign_id = 1;
+  string cast_id = 2;
+  string idempotency_key = 3;
+}
+
+// InterruptCastResponse returns the cast as it is.
+message InterruptCastResponse {
+  OutsideCast cast = 1;
+}
+
+// EndSpellRequest ends a spell that lasts.
+message EndSpellRequest {
+  string campaign_id = 1;
+  string cast_id = 2;
+  string idempotency_key = 3;
+}
+
+// EndSpellResponse returns the cast as it is, and what ending it changed.
+message EndSpellResponse {
+  OutsideCast cast = 1;
+  // The vitals of the characters it changed that the caller may read (Aid ending).
+  repeated CharacterVitals vitals = 2;
+  // The creatures it dismissed.
+  repeated string dismissed_creature_ids = 3;
+}
+
+// ListSpellCastsRequest asks for the casts of the open session.
+message ListSpellCastsRequest {
+  string campaign_id = 1;
+  // Only the casts of this caster, or by or on this character (a UUID); empty for all.
+  string character_id = 2;
+}
+
+// ListSpellCastsResponse is the casts, as the caller sees them.
+message ListSpellCastsResponse {
+  // The casts being cast and the ones that last, oldest first.
+  repeated OutsideCast active = 1;
+  // The session's casts, newest first, at most 100.
+  repeated OutsideCast log = 2;
+}
+
+// OutsideCast is one casting outside a combat.
+message OutsideCast {
+  string id = 1;
+  string spell_key = 2;
+  string spell_name_pt = 3;
+  // The caster (a character) and its name.
+  string caster_id = 4;
+  string caster_name = 5;
+  bool caster_is_npc = 6;
+  OutsideCastStatus status = 7;
+  // Cast as a ritual (no slot, 10 minutes more).
+  bool ritual = 8;
+  // The slot level the spell was cast at (0: a cantrip or a ritual, the spell's own
+  // level) and whether it was a pact magic slot.
+  int32 slot_level = 9;
+  bool slot_pact = 10;
+  // The minutes the casting takes (the ritual's 10 included); 0 when it was cast at once.
+  int32 casting_minutes = 11;
+  // Whether the caster concentrates on it (while it is being cast, and while it lasts if
+  // the spell needs concentration).
+  bool concentrating = 12;
+  // Whether the spell lasts after the cast, and for how long (0: no time to count). The
+  // app does not count the time: the spell ends by EndSpell, the caster's concentration,
+  // or the rest in `rest_ends`.
+  bool lasts = 13;
+  int32 duration_seconds = 14;
+  RestThatEnds rest_ends = 15;
+  google.protobuf.Timestamp started_at = 16;
+  // When the spell took effect (unset while it is being cast or if it failed) and when it ended.
+  google.protobuf.Timestamp cast_at = 17;
+  google.protobuf.Timestamp ended_at = 18;
+  OutsideCastEnd end_reason = 19;
+  repeated OutsideCastTarget targets = 20;
+  // The roll of the dice the spell rolled, to everyone who sees the cast ("2d8 (3, 5)"
+  // is dice_count 2, dice_sides 8, faces [3, 5]), with the sum and the modifier that
+  // was added. The healing each target regained is in the targets, for the master and
+  // that target's player only.
+  int32 dice_count = 21;
+  int32 dice_sides = 22;
+  repeated int32 faces = 23;
+  int32 roll_total = 24;
+  // Whether the dice were physical.
+  bool physical = 25;
+  // Set for the master alone: the cast is not shown to the players (an NPC that is not on
+  // the stage cast it).
+  bool secret = 26;
+  // The creatures a summoning cast made (UUIDs), for the master and the caster's player.
+  repeated string creature_ids = 27;
+}
+
+// OutsideCastTarget is what a cast did to one target.
+message OutsideCastTarget {
+  string character_id = 1;
+  string name = 2;
+  bool npc = 3;
+  CastEffect effect = 4;
+  // For the master and the target's player only (RN-20): the hit points regained (HEAL;
+  // after Disciple of Life), gained as temporary hit points, or added to the maximum,
+  // and the hit points before and after. Never for an NPC: it has none outside a combat.
+  int32 amount = 5;
+  int32 hit_points_before = 6;
+  int32 hit_points_after = 7;
+  // For ARMOR_CLASS, the master and the target's player only: the armor class the spell
+  // gave (13 + Dexterity), which is the one in use when it is better than the sheet's.
+  int32 armor_class = 8;
+}
