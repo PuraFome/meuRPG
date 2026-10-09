@@ -1,0 +1,109 @@
+:host {
+  display: grid;
+  gap: var(--mr-space-3);
+}
+
+// Two questions side by side when they fit (PM-02c 9b), one under the other on a phone.
+@media (min-width: 1280px) {
+  :host:has(.hr + .hr) {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+}
+
+// With no question the card takes no room in the column (its live region stays, out of the flow, to announce the next one).
+:host:not(:has(.hr)) {
+  display: contents;
+}
+
+// A question that waits for the master: the warning surface, like the opportunity card beside it.
+.hr {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border: 1px solid var(--mr-warning-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+
+  p {
+    margin: 0;
+  }
+}
+
+.hr__icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  font-size: 22px;
+}
+
+.hr__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  min-width: 0;
+}
+
+.hr__kicker {
+  font-size: 13px;
+}
+
+.hr__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 25px;
+  color: var(--mr-ink);
+}
+
+.hr__text {
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.hr__rule {
+  font-size: 13px;
+}
+
+// Side by side while they fit, stacked at 390 px, 48 px on a phone and 44 px from a tablet up.
+.hr__pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+  margin-top: var(--mr-space-1);
+}
+
+.hr__btn {
+  --mat-button-filled-container-height: 48px;
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  flex: 1 1 auto;
+  min-width: max-content;
+
+  @media (min-width: 768px) {
+    --mat-button-filled-container-height: 44px;
+    --mat-button-outlined-container-height: 44px;
+    flex: 0 0 auto;
+  }
+
+  @media (max-width: 419.98px) {
+    flex-basis: 100%;
+  }
+}
+
+.hr__pair .mat-mdc-outlined-button {
+  background: var(--mr-surface);
+}
+
+// The second question's buttons: the app's dashed, quiet look, with the reason in the kicker (aria-describedby).
+.hr__btn--off {
+  --mat-button-filled-disabled-container-color: var(--mr-surface);
+  --mat-button-filled-disabled-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
+  border: 1px dashed var(--mr-control-line);
+}

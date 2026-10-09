@@ -23,6 +23,7 @@ import {
   CriticalRule,
   DeathSaveVisibility,
   DiceMode,
+  HiddenAreaHitRule,
   HitPointsRule,
   Role,
   TableStyle,
@@ -142,6 +143,32 @@ const DEATH_SAVE_OPTIONS: readonly DiceOption<DeathSaveVisibility>[] = [
   },
 ];
 
+/** What an area spell does to the hiding of a hidden creature it hits (PM-02c state 8), from "asks least" to "asks most". */
+const HIDDEN_AREA_OPTIONS: readonly DiceOption<HiddenAreaHitRule>[] = [
+  {
+    value: HiddenAreaHitRule.REVEAL,
+    title: 'Revelar',
+    description: 'A criatura aparece para os jogadores, como num “Revelar” seu. É o padrão.',
+  },
+  {
+    value: HiddenAreaHitRule.KEEP_HIDDEN,
+    title: 'Manter escondidas',
+    description:
+      'A criatura sofre o efeito e continua escondida. Os jogadores não ficam sabendo dela.',
+  },
+  {
+    value: HiddenAreaHitRule.ASK,
+    title: 'Perguntar a cada vez',
+    description:
+      'Quando a magia de um jogador atingir criaturas escondidas, o turno espera e você escolhe na hora entre revelar e manter.',
+  },
+];
+
+/** The title of the option a rule has, for the read-only rows. */
+function titleOf<T extends number>(options: readonly DiceOption<T>[], value: T): string {
+  return options.find((o) => o.value === value)?.title ?? '';
+}
+
 const DICE_OPTIONS: readonly DiceOption<DiceMode>[] = [
   {
     value: DiceMode.APP,
@@ -216,6 +243,7 @@ export class TableRulesPage {
   protected readonly hitPointOptions = HIT_POINT_OPTIONS;
   protected readonly criticalOptions = CRITICAL_OPTIONS;
   protected readonly deathSaveOptions = DEATH_SAVE_OPTIONS;
+  protected readonly hiddenAreaOptions = HIDDEN_AREA_OPTIONS;
   protected readonly diceOptions = DICE_OPTIONS;
   protected readonly combatOptions = COMBAT_OPTIONS;
   protected readonly inertStyle: readonly TableStyle[] = [TableStyle.PERSONALIZADO];
@@ -280,16 +308,20 @@ export class TableRulesPage {
       { label: 'Névoa de guerra nos mapas novos', value: d.fogOnNewMaps ? 'Ligada' : 'Desligada' },
       {
         label: 'Pontos de vida ao subir de nível',
-        value: HIT_POINT_OPTIONS.find((o) => o.value === d.hitPoints)?.title ?? '',
+        value: titleOf(HIT_POINT_OPTIONS, d.hitPoints),
       },
       { label: 'Habilidades de uma ficha nova', value: methods.join(', ') },
       {
         label: 'Acertos críticos',
-        value: CRITICAL_OPTIONS.find((o) => o.value === d.critical)?.title ?? '',
+        value: titleOf(CRITICAL_OPTIONS, d.critical),
       },
       {
         label: 'Testes contra a morte',
-        value: DEATH_SAVE_OPTIONS.find((o) => o.value === d.deathSaves)?.title ?? '',
+        value: titleOf(DEATH_SAVE_OPTIONS, d.deathSaves),
+      },
+      {
+        label: 'Criaturas escondidas atingidas por uma área',
+        value: titleOf(HIDDEN_AREA_OPTIONS, d.hiddenAreaHits),
       },
       { label: 'Experiência', value: XP_OPTION_TITLES[s.xpMode] ?? '' },
     ];
