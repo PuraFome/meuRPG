@@ -222,9 +222,7 @@ func (s *Service) changeExhaustion(ctx context.Context, m authz.Membership, key 
 			}
 		}
 		// The exhaustion is the owner's and the master's: no line for the other players (RN-10).
-		ev.Secret = true
-		secret = true
-		ev.Lasting = &lastingEvent{Key: "condition:exhaustion", Change: "exhaustion", Level: target, Before: before}
+		ev.Lasting = &lastingEvent{Key: conditionExhaustion, Change: "exhaustion", Level: target, Before: before, OwnerOnly: true}
 		if who != nil {
 			ev.Lasting.Targets = []string{who.ID}
 		}

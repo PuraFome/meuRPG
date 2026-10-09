@@ -21,6 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
@@ -723,10 +724,22 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		// attack. The master has the last word, and an NPC with several attacks is
 		// his to run.
 		bonusKind := combat.BonusNone
+		// The extra action Velocidade gives takes one weapon attack (SRD 5.1, Haste).
+		useExtra := req.Msg.GetUseExtraAction() && !asReaction
+		if useExtra {
+			if attack.Spell {
+				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE, "the extra action takes one weapon attack, not a spell")
+			}
+			if err := s.mustHaveExtraAction(ctx, c, attacker, "attack"); err != nil {
+				return nil, err
+			}
+		}
 		if !v.master {
 			switch {
 			case asReaction && attacker.ReactionUsed && catchID == "": // the throw is the reaction already spent
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is used")
+			case useExtra:
+				// Spent below, with the extra action: the action and the attacks of the turn stay.
 			case !asReaction:
 				if bonusKind, err = attackEconomy(attacker, attackerSheet, attack); err != nil {
 					return nil, err
@@ -838,7 +851,12 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		if attack.Spell {
 			criticalFrom = 0
 		}
-		result := combat.ResolveAttackFrom(attack.ToHit+bonusFace, targetAC, face, criticalFrom)
+		// Bênção and Perdição (SRD 5.1): a d4 added to or taken from the attack roll.
+		extra, extraTotal, err := s.rollEffectDice(in, effectDiceFor(modeIn.states, attacker.ID, rules.RollAppliesAttack), req.Msg.GetExtraDieFaces())
+		if err != nil {
+			return nil, err
+		}
+		result := combat.ResolveAttackFrom(attack.ToHit+bonusFace+extraTotal, targetAC, face, criticalFrom)
 		// A hit on a paralyzed or unconscious creature within 5 ft is a critical hit
 		// whatever the die says (SRD 5.1, Conditions).
 		if result.Hit && truth.CriticalOnHit {
@@ -863,6 +881,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		}
 		made = actionEvent{
 			RunBefore: run, Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: attackKey,
+			Extra: extra, ExtraUsed: useExtra,
 			D20: clamp32(face, 1, 20), Modifier: clamp32(attack.ToHit+bonusFace, math.MinInt32, math.MaxInt32), Total: clamp32(result.Total, math.MinInt32, math.MaxInt32),
 			Physical: roll.Physical, Outcome: outcomeMiss, AsReaction: asReaction, CriticalMaxRule: c.rules.CriticalMaxPlusRoll,
 			D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(choice.Mode), SuggestedMode: modeKey(choice.Suggested),
@@ -882,6 +901,10 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		switch {
 		case asReaction:
 			after.ReactionUsed = true
+		case useExtra:
+			if err := c.q.SetCombatantExtraActionUsed(ctx, playdb.SetCombatantExtraActionUsedParams{ID: attacker.ID, ExtraActionUsed: true}); err != nil {
+				return nil, fmt.Errorf("spend the extra action: %w", err)
+			}
 		case bonusKind == combat.BonusFlurry:
 			// The bonus action went to Flurry of Blows: one of its strikes.
 			if err := c.q.SetCombatantAttackState(ctx, playdb.SetCombatantAttackStateParams{ID: attacker.ID, ActionAttackKey: attacker.ActionAttackKey, BonusAttacksLeft: attacker.BonusAttacksLeft - 1}); err != nil {
@@ -1978,7 +2001,16 @@ func (s *Service) TakeAction(
 			return nil, err
 		}
 		// The master has the last word: he may act again with the action used.
-		if !action.GetEnabled() {
+		useExtra := req.Msg.GetUseExtraAction()
+		if useExtra {
+			if feature {
+				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE, "the extra action takes a standard action")
+			}
+			if err := s.mustHaveExtraAction(ctx, c, who, actionKey); err != nil {
+				return nil, err
+			}
+		}
+		if !action.GetEnabled() && !useExtra {
 			if feature {
 				if err := featureError(action.GetReason(), v.master); err != nil {
 					return nil, err
@@ -1995,9 +2027,16 @@ func (s *Service) TakeAction(
 			Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, Key: actionKey, RunBefore: run,
 			ActionBefore: who.ActionUsed, BonusBefore: who.BonusActionUsed, ReactionBefore: who.ReactionUsed, DashedBefore: who.Dashed,
 			AttacksBefore: who.AttacksMade, DisengagedBefore: who.Disengaged, SurgedBefore: who.ActionSurged,
-			AttackKeyBefore: deref(who.ActionAttackKey), FlurryBefore: who.BonusAttacksLeft,
+			AttackKeyBefore: deref(who.ActionAttackKey), FlurryBefore: who.BonusAttacksLeft, ExtraUsed: useExtra,
 		}
 		after := who
+		if useExtra {
+			// The extra action pays for it: the action of the turn stays.
+			economy = rulesv1.ActionEconomy_ACTION_ECONOMY_FREE
+			if err := c.q.SetCombatantExtraActionUsed(ctx, playdb.SetCombatantExtraActionUsedParams{ID: who.ID, ExtraActionUsed: true}); err != nil {
+				return nil, fmt.Errorf("spend the extra action: %w", err)
+			}
+		}
 		switch economy {
 		case rulesv1.ActionEconomy_ACTION_ECONOMY_BONUS_ACTION:
 			after.BonusActionUsed = true

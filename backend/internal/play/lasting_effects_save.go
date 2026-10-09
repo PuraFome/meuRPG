@@ -71,10 +71,12 @@ func (s *Service) closeEffectWindows(ctx context.Context, c *combatTx, st playdb
 
 // effectDie is a die an effect adds to or takes from a roll, with the face it showed.
 type effectDie struct {
-	Key   string
-	Faces int
-	Sign  int
-	Face  int
+	Key   string `json:"key"`
+	Faces int    `json:"faces"`
+	Sign  int    `json:"sign"`
+	Face  int    `json:"face,omitempty"`
+	// Hidden says the master keeps the effect from the players (RN-10).
+	Hidden bool `json:"hidden,omitempty"`
 }
 
 // effectDiceFor lists the dice the effects on a combatant add to a roll of the kind
@@ -83,7 +85,7 @@ func effectDiceFor(states map[string][]playdb.CombatantState, id, applies string
 	var out []effectDie
 	for _, st := range effectsOn(states, id) {
 		for _, d := range combat.EffectDice(deref(st.SourceKey), effectModifiers(st), applies) {
-			out = append(out, effectDie{Key: d.Source, Faces: d.Faces, Sign: d.Sign})
+			out = append(out, effectDie{Key: d.Source, Faces: d.Faces, Sign: d.Sign, Hidden: !st.PlayerVisible})
 		}
 	}
 	return out
@@ -124,11 +126,14 @@ func (s *Service) rollEffectDice(in rollInput, dd []effectDie, typed []int32) ([
 
 // extraDiceProto writes the dice an effect added, for who reads the roll: the effect's name,
 // or "Outra fonte" with no key when the master hides the effect from the players (RN-20).
-func (s *Service) extraDiceProto(dd []effectDie, reveal func(key string) bool, names func(string) string) []*playv1.ExtraDie {
+func extraDiceProto(dd []effectDie, master bool, names func(string) string) []*playv1.ExtraDie {
 	out := make([]*playv1.ExtraDie, 0, len(dd))
 	for _, d := range dd {
-		e := &playv1.ExtraDie{SourceKey: d.Key, SourceNamePt: names(d.Key), Faces: clamp32(d.Faces, 0, 100), Sign: clamp32(d.Sign, -1, 1), Face: clamp32(d.Face, 0, 100)}
-		if !reveal(d.Key) {
+		e := &playv1.ExtraDie{SourceKey: d.Key, Faces: clamp32(d.Faces, 0, 100), Sign: clamp32(d.Sign, -1, 1), Face: clamp32(d.Face, 0, 100)}
+		if names != nil {
+			e.SourceNamePt = names(d.Key)
+		}
+		if d.Hidden && !master {
 			e.SourceKey, e.SourceNamePt = "", "Outra fonte"
 		}
 		out = append(out, e)
@@ -298,7 +303,7 @@ func (s *Service) RollEffectSave(
 					result.D20Faces = append(result.D20Faces, clamp32(f, 1, 20))
 				}
 				result.D20, result.Total, result.Physical, result.Saved = clamp32(d20.Face(), 1, 20), clamp32(total, math.MinInt32, math.MaxInt32), d20.Physical, saved
-				result.ExtraDice = s.extraDiceProto(extra, func(string) bool { return true }, s.namesFor(ctx, c.session.CampaignID))
+				result.ExtraDice = extraDiceProto(extra, true, s.namesFor(ctx, c.session.CampaignID))
 				le.D20, le.Total = result.D20, result.Total
 				ev.D20, ev.Modifier, ev.Total, ev.Physical = result.D20, result.Modifier, result.Total, d20.Physical
 			}

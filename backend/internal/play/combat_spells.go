@@ -795,7 +795,13 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 		return err
 	}
 	targetAC := sheet.ArmorClass + int(target.AcBonus) + int(target.EffectAcBonus) + cover.bonus()
-	result := combat.ResolveAttack(sp.ToHit, targetAC, face)
+	// Bênção and Perdição (SRD 5.1): the d4 the app rolls for the caster's spell attack.
+	extra, extraTotal, err := s.rollEffectDice(rollInput{inApp: true}, effectDiceFor(modes.in.states, caster.ID, rules.RollAppliesAttack), nil)
+	if err != nil {
+		return err
+	}
+	hit.Extra = extra
+	result := combat.ResolveAttack(sp.ToHit+extraTotal, targetAC, face)
 	if result.Hit && truth.CriticalOnHit { // a paralyzed or unconscious target within 5 ft (SRD 5.1)
 		result.Critical = true
 	}
@@ -858,9 +864,15 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 		if err != nil {
 			return err
 		}
-		saved = combat.SaveSucceeded(d20.Total, sp.SaveDC) || c.meta.passes(target.ID) // Careful Spell: it passes on its own
+		// Bênção and Perdição: a d4 on the target's saving throw.
+		extra, extraTotal, err := s.rollEffectDice(rollInput{inApp: true}, effectDiceFor(modes.in.states, target.ID, rules.RollAppliesSave), nil)
+		if err != nil {
+			return err
+		}
+		saved = combat.SaveSucceeded(d20.Total+extraTotal, sp.SaveDC) || c.meta.passes(target.ID) // Careful Spell: it passes on its own
 		hit.Save = &saveRoll{
-			D20: clamp32(d20.Face(), 1, 20), Bonus: clamp32(save.Bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total, math.MinInt32, math.MaxInt32),
+			Extra: extra,
+			D20:   clamp32(d20.Face(), 1, 20), Bonus: clamp32(save.Bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total+extraTotal, math.MinInt32, math.MaxInt32),
 			DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Saved: saved, Unknown: !save.Known,
 			D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(saveMode),
 		}

@@ -36,12 +36,12 @@ const (
 
 // The kinds of session event the effects write (session_event_kinds, migration 00230).
 const (
-	eventLastingAdded      = "combat_effect_added"
-	eventLastingChanged    = "combat_effect_changed"
-	eventLastingEnded      = "combat_effect_ended"
-	eventLastingVisibility = "combat_effect_visibility_changed"
-	eventLastingSaved      = "combat_effect_saved"
-	eventLastingTriggered  = "combat_effect_triggered"
+	eventLastingAdded      = "lasting_effect_added"
+	eventLastingChanged    = "lasting_effect_changed"
+	eventLastingEnded      = "lasting_effect_ended"
+	eventLastingVisibility = "lasting_effect_visibility_changed"
+	eventLastingSaved      = "lasting_effect_saved"
+	eventLastingTriggered  = "lasting_effect_triggered"
 	eventExhaustion        = "exhaustion_changed"
 )
 
@@ -75,6 +75,9 @@ type lastingEvent struct {
 	Rounds  int32    `json:"rounds,omitempty"`
 	// Effects are the ids of the rows it concerns.
 	Effects []string `json:"effects,omitempty"`
+	// OwnerOnly says only the targets' players read the line (an effect for its owner alone,
+	// the owner-class conditions, exhaustion): the master reads it always.
+	OwnerOnly bool `json:"owner_only,omitempty"`
 }
 
 // isEffect says a state is an effect that lasts.
@@ -442,7 +445,7 @@ func (s *Service) endEffectRows(ctx context.Context, c *combatTx, cs []playdb.Co
 		hidden := s.effectHiddenFrom(first, targetsOf(cs, targets))
 		if err := insertEvent(ctx, c, eventLastingEnded, &c.actorUserID, nil, actionEvent{
 			Round: c.enc.Round, Secret: hidden, Actor: deref(first.SourceID), Target: targets[0],
-			Lasting: &lastingEvent{Key: k.key, Change: "ended", Targets: targets, Reason: reason, Effects: ids},
+			Lasting: &lastingEvent{Key: k.key, Change: "ended", Targets: targets, Reason: reason, Effects: ids, OwnerOnly: first.Audience == audienceOwner},
 		}); err != nil {
 			return err
 		}
@@ -538,7 +541,7 @@ func (s *Service) addedEvent(ctx context.Context, c *combatTx, cs []playdb.Comba
 	}
 	return insertEvent(ctx, c, eventLastingAdded, &c.actorUserID, nil, actionEvent{
 		Round: c.enc.Round, Secret: s.effectHiddenFrom(first, targetsOf(cs, targets)), Actor: deref(first.SourceID), Target: targets[0],
-		Lasting: &lastingEvent{Key: key, Change: "added", Targets: targets, Caster: deref(first.SourceID), Rounds: rounds, Effects: ids},
+		Lasting: &lastingEvent{Key: key, Change: "added", Targets: targets, Caster: deref(first.SourceID), Rounds: rounds, Effects: ids, OwnerOnly: first.Audience == audienceOwner},
 	})
 }
 

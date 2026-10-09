@@ -18,18 +18,18 @@ ALTER TABLE reaction_windows
 
 -- The kinds of session event the effects write. A new kind is one INSERT (00168).
 INSERT INTO session_event_kinds (kind) VALUES
-    ('combat_effect_added'),
-    ('combat_effect_changed'),
-    ('combat_effect_ended'),
-    ('combat_effect_visibility_changed'),
-    ('combat_effect_saved'),
-    ('combat_effect_triggered'),
+    ('lasting_effect_added'),
+    ('lasting_effect_changed'),
+    ('lasting_effect_ended'),
+    ('lasting_effect_visibility_changed'),
+    ('lasting_effect_saved'),
+    ('lasting_effect_triggered'),
     ('exhaustion_changed')
 ON CONFLICT (kind) DO NOTHING;
 
 -- +goose Down
-DELETE FROM session_events WHERE kind IN ('combat_effect_added', 'combat_effect_changed', 'combat_effect_ended', 'combat_effect_visibility_changed', 'combat_effect_saved', 'combat_effect_triggered', 'exhaustion_changed');
-DELETE FROM session_event_kinds WHERE kind IN ('combat_effect_added', 'combat_effect_changed', 'combat_effect_ended', 'combat_effect_visibility_changed', 'combat_effect_saved', 'combat_effect_triggered', 'exhaustion_changed');
+DELETE FROM session_events WHERE kind IN ('lasting_effect_added', 'lasting_effect_changed', 'lasting_effect_ended', 'lasting_effect_visibility_changed', 'lasting_effect_saved', 'lasting_effect_triggered', 'exhaustion_changed');
+DELETE FROM session_event_kinds WHERE kind IN ('lasting_effect_added', 'lasting_effect_changed', 'lasting_effect_ended', 'lasting_effect_visibility_changed', 'lasting_effect_saved', 'lasting_effect_triggered', 'exhaustion_changed');
 DELETE FROM reaction_windows WHERE kind = 'effect_save';
 ALTER TABLE reaction_windows
     DROP CONSTRAINT IF EXISTS reaction_windows_closed_reason_valid,

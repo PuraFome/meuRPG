@@ -342,6 +342,8 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 				continue // a request taken back is no line
 			}
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_ROLL_MODE_ANSWERED
+		case eventLastingAdded, eventLastingChanged, eventLastingEnded, eventLastingSaved, eventLastingTriggered, eventLastingVisibility, eventExhaustion:
+			entry.kind = effectLogKinds[e.Kind]
 		case eventStateChanged:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_STATE_CHANGED
 		case eventDamagePartRemoved:
@@ -516,6 +518,9 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	if !v.master && (!visible || !seen) {
 		return nil, false
 	}
+	if _, isEffect := effectLogKinds[kindKeyOf(e.kind)]; isEffect && e.ev.Lasting != nil && !effectLineVisible(e.ev.Lasting, v, byID) {
+		return nil, false
+	}
 	// An Escudo that ended is a line for the master and the combatant's own player: the
 	// Escudo may have answered an attack the other players do not see (a hidden attacker),
 	// and the line would tell them something happened (RN-10).
@@ -547,6 +552,8 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		out.KeyNamePt = names.of(ctx, actor, e.ev.Key)
 	}
 	switch e.kind {
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT, playv1.CombatLogKind_COMBAT_LOG_KIND_EXHAUSTION:
+		names.s.effectLogView(ctx, e, out, v, byID, names.campaignID)
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:
 		out.Resource = resourceLogView(e.ev, v, actor, target)
 		if e.ev.Res != nil && e.ev.Res.Kind == resBardicGive && !v.master && !v.owns(actor) && !v.owns(target) {
@@ -599,6 +606,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 			out.ModeChange = e.modeChange(e.ev, e.ev.ByMaster)
 			out.Reason = e.rolls.reasonOf(e.ev)
 			out.BonusDice = bonusDiceOf(e.ev)
+			out.AttackRoll.ExtraDice = extraDiceProto(e.ev.Extra, v.master, nil)
 		}
 		if len(e.stopped) > 0 { // Escudo stopped it: a miss, with no damage
 			out.Outcome, out.StoppedByReaction = playv1.AttackOutcome_ATTACK_OUTCOME_MISS, true

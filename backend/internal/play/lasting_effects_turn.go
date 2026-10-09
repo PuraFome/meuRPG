@@ -181,3 +181,75 @@ func (s *Service) endEffectsOfLeaver(ctx context.Context, c *combatTx, cs []play
 	})
 	return s.endEffectRows(ctx, c, cs, rows, endLeft)
 }
+
+// mustHaveExtraAction refuses an extra action the combatant does not have, has used, or may not
+// spend on the action (SRD 5.1, Haste: one weapon attack, Dash, Disengage, Hide or Use an
+// Object; never a spell).
+func (s *Service) mustHaveExtraAction(ctx context.Context, c *combatTx, who playdb.Combatant, action string) error {
+	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the effects: %w", err)
+	}
+	for _, st := range effectsOn(statesOf(rows), who.ID) {
+		for _, m := range effectModifiers(st) {
+			if m.Kind != rules.ModifierExtraAction {
+				continue
+			}
+			switch {
+			case who.ExtraActionUsed:
+				return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE, "the extra action of this turn is used")
+			case who.EffectNoAction || cannotActCode(who) != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED:
+				return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CANNOT_ACT, "the combatant cannot act now")
+			case !slices.Contains(m.Allowed, strings.TrimPrefix(action, "standard:")):
+				return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE, "the extra action does not take this action")
+			}
+			return nil
+		}
+	}
+	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE, "the combatant has no extra action")
+}
+
+// reconcileConditions settles the conditions the master set against the effects: one an effect
+// leaves, taken off by hand, ends the effects that left it; exhaustion is never set as a
+// condition (it has levels: SetExhaustion). It returns the set to write and the combatant as
+// the ended effects left it.
+func (s *Service) reconcileConditions(ctx context.Context, c *combatTx, target playdb.Combatant, conditions []string) ([]string, playdb.Combatant, error) {
+	conditions = slices.DeleteFunc(slices.Clone(conditions), func(k string) bool { return k == conditionExhaustion })
+	if slices.Contains(target.Conditions, conditionExhaustion) {
+		conditions = append(conditions, conditionExhaustion)
+	}
+	var gone []string
+	for _, k := range target.EffectConditions {
+		if !slices.Contains(conditions, k) {
+			gone = append(gone, k)
+		}
+	}
+	if len(gone) == 0 {
+		return conditions, target, nil
+	}
+	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
+	if err != nil {
+		return nil, target, fmt.Errorf("list the effects: %w", err)
+	}
+	rows = slices.DeleteFunc(rows, func(st playdb.CombatantState) bool {
+		return st.CombatantID != target.ID || !slices.ContainsFunc(st.ConditionKeys, func(k string) bool { return slices.Contains(gone, k) })
+	})
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return nil, target, fmt.Errorf("list the combatants: %w", err)
+	}
+	if err := s.endEffectRows(ctx, c, cs, rows, endByMaster); err != nil {
+		return nil, target, err
+	}
+	cs, err = c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return nil, target, fmt.Errorf("list the combatants: %w", err)
+	}
+	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == target.ID }); i >= 0 {
+		target = cs[i]
+	}
+	return conditions, target, nil
+}
+
+// conditionExhaustion is the condition the levels of exhaustion leave on a combatant.
+const conditionExhaustion = "condition:exhaustion"

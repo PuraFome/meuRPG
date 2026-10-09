@@ -459,6 +459,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			}
 		}
 		if who, ok := find(ev.Actor); ok {
+			if ev.ExtraUsed {
+				if err = c.q.SetCombatantExtraActionUsed(ctx, playdb.SetCombatantExtraActionUsedParams{ID: who.ID, ExtraActionUsed: false}); err != nil {
+					return nil, fmt.Errorf("give the extra action back: %w", err)
+				}
+			}
 			if ev.AsReaction {
 				err = setEconomy(who, who.ActionUsed, who.BonusActionUsed, ev.ReactionBefore, who.Dashed)
 			} else {
@@ -615,6 +620,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		}
 		if err := setEconomy(who, ev.ActionBefore, ev.BonusBefore, ev.ReactionBefore, ev.DashedBefore); err != nil {
 			return nil, err
+		}
+		if ev.ExtraUsed {
+			if err := c.q.SetCombatantExtraActionUsed(ctx, playdb.SetCombatantExtraActionUsedParams{ID: who.ID, ExtraActionUsed: false}); err != nil {
+				return nil, fmt.Errorf("give the extra action back: %w", err)
+			}
 		}
 		if ev.StateID != "" { // the state the action began: a rage, a dodge, a reckless attack
 			if err := c.q.DeleteCombatantState(ctx, ev.StateID); err != nil {

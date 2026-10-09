@@ -71,7 +71,7 @@ func (wv *windowView) effectSavePrompt(w playdb.ReactionWindow, reactor *playdb.
 			p.ModeSourcesPt = append(p.ModeSourcesPt, src.GetTextPt())
 		}
 		p.AutoFail = combat.AutoFailsSave(creature, ability)
-		p.ExtraDice = wv.s.extraDiceProto(effectDiceFor(states, reactor.ID, rules.RollAppliesSave), func(string) bool { return true }, wv.names)
+		p.ExtraDice = extraDiceProto(effectDiceFor(states, reactor.ID, rules.RollAppliesSave), true, wv.names)
 	}
 	out.Prompt = &playv1.ReactionWindow_EffectSave{EffectSave: p}
 	return nil
