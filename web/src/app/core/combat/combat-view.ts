@@ -46,6 +46,11 @@ export function stateWord(state: CombatantState, label = ''): string {
 
 /** Whether a player's character is at 0 hit points and still in the story:
  * down, stable or dying. */
+/** A player's character that died: it has no reaction and takes no part in the fight. */
+export function isDead(c: Combatant): boolean {
+  return c.state === CombatantState.DEAD || c.defeated;
+}
+
 export function isDown(c: Combatant): boolean {
   return (
     c.state === CombatantState.DOWN ||

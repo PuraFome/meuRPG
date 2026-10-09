@@ -42,10 +42,22 @@
 <div class="cols" [class.cols--one]="!isMaster()" [class.cols--xp]="xpBlock()">
   <section class="mr-panel cols__out" aria-labelledby="out-title">
     <h2 class="mr-panel__title" id="out-title">Derrotados</h2>
-    @if (defeated().length === 0) {
+    @if (defeated().length === 0 && dead().length === 0) {
       <p class="mr-muted">Ninguém caiu neste combate.</p>
     } @else {
       <ul class="mr-list">
+        @for (c of dead(); track c.id) {
+          <li class="mr-list__row line">
+            <app-combatant-token [initial]="initial(c)" [defeated]="true" [size]="28" />
+            <span class="mr-list__text">
+              <span class="mr-list__name">{{ c.label }}</span>
+              <span class="mr-list__sub">{{ sub(c) }}</span>
+            </span>
+            <span class="line__right">
+              <span class="line__out"><mat-icon aria-hidden="true">close</mat-icon>{{ deadWord(c) }}</span>
+            </span>
+          </li>
+        }
         @for (c of defeated(); track c.id) {
           <li class="mr-list__row line">
             <app-combatant-token [initial]="initial(c)" [npc]="!creature(c)" [creature]="creature(c)" [defeated]="true" [size]="28" />

@@ -53,7 +53,10 @@ describe('combat errors', () => {
 
   it('says a wall is no place to stand and that the dead cannot be healed', () => {
     expect(blockedMessage({ reason: EncounterBlockedReason.WALL_ON_SQUARE } as never)).toMatch(
-      /parede/,
+      'Esse quadrado é uma parede: ninguém fica dentro dele.',
+    );
+    expect(blockedMessage({ reason: EncounterBlockedReason.NO_FREE_SQUARE } as never)).toBe(
+      'Não há quadrado livre longe dos jogadores neste mapa.',
     );
     expect(blockedMessage({ reason: EncounterBlockedReason.TARGET_DEAD } as never)).toBe(
       'Não dá para curar quem já morreu.',

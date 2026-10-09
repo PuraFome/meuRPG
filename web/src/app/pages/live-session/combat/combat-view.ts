@@ -103,6 +103,7 @@ import { TurnOptionsState } from '../../../core/combat/turn-options-state';
 import { saveAnnouncement } from '../../../core/combat/death-saves';
 import {
   currentCombatant,
+  isDead,
   isDown,
   isPlayer,
   ownCombatant,
@@ -733,6 +734,7 @@ export class CombatView {
       !this.active() ||
       own.reactionUsed ||
       isDown(own) ||
+      isDead(own) ||
       !opts?.options
     ) {
       return [];

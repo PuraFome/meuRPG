@@ -203,6 +203,31 @@ describe('CombatSummary and the XP (E7-06)', () => {
     expect(text).not.toContain('Brisa está caída');
   });
 
+  it('counts the dead out of the players standing, and lists them among those who fell', async () => {
+    const fixture = TestBed.createComponent(CombatSummary);
+    const player = (id: string, label: string, state: CombatantState, extra = {}) =>
+      combatant({ id, label, kind: CombatantKind.PLAYER, characterId: `c-${id}`, state, ...extra });
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        id: 'enc',
+        status: EncounterStatus.ENDED,
+        combatants: [
+          player('a', 'Brisa', CombatantState.DEAD, { defeated: true }),
+          player('b', 'Toren', CombatantState.UNHURT, { hitPointsCurrent: 12 }),
+        ],
+      }),
+    );
+    fixture.componentRef.setInput('isMaster', true);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const text = (el.textContent ?? '').replace(/\s+/g, ' ');
+    expect(text).toMatch(/Jogadores em pé\s*1 de 2/);
+    expect(text).not.toContain('Ninguém caiu neste combate');
+    expect(text).toContain('Brisa');
+    expect(text).toContain('Morta');
+  });
+
   it('has no "Voltar à sessão" of its own while the highlights card above it has the one "Fechar"', async () => {
     const { fixture, el } = setup(false);
     fixture.componentRef.setInput('quietTitle', true);

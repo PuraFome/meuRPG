@@ -23,6 +23,7 @@ import type { Map as MapMessage } from '../../../gen/meurpg/maps/v1/maps_pb';
 import {
   type Encounter,
   EncounterMode,
+  CombatantKind,
   EncounterStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { AuthService } from '../../core/auth/auth.service';
@@ -311,7 +312,18 @@ export class LiveSession {
   );
 
   protected readonly ownCharacterId = computed(() => this.vitals().at(0)?.characterId ?? '');
-  protected readonly ownCharacterName = computed(() => this.vitals().at(0)?.name ?? '');
+  /** The player's own combatant in the combat, which a character that died keeps (it has no vitals). */
+  private readonly ownCombatant = computed(() =>
+    this.combat.encounter()?.combatants.find((c) => c.mine && c.kind === CombatantKind.PLAYER),
+  );
+  /** The player's character: from the vitals, or, for one that died, from its combatant. */
+  protected readonly ownCharacterName = computed(
+    () => this.vitals().at(0)?.name || this.ownCombatant()?.label || '',
+  );
+  /** Whose numbers the "O combate acabou" card marks as the reader's: a dead character's too. */
+  protected readonly highlightsCharacterId = computed(
+    () => this.ownCharacterId() || this.ownCombatant()?.characterId || '',
+  );
   /** The ended combat whose "Destaques" card this player closed (MR-032). */
   private readonly highlightsClosed = signal<string | null>(null);
   /** The players' "O combate acabou" card: the combat that ended, until they close it. */

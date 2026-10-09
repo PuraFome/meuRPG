@@ -23,6 +23,13 @@ import {
 } from '../../core/puzzles/puzzles-testing';
 import { PuzzleRunStatus } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { create } from '@bufbuild/protobuf';
+import {
+  CombatantKind,
+  CombatantState,
+  type Encounter,
+  EncounterStatus,
+} from '../../../gen/meurpg/play/v1/combat_pb';
+import { combatant, encounter } from '../../core/combat/combat-testing';
 import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
@@ -552,6 +559,36 @@ describe('LiveSession', () => {
     expect(summary).toHaveBeenCalledWith('mirathel', 's4');
     expect(el.querySelector('h2.card__title')?.textContent).toBe('A sessão acabou');
     expect(el.querySelector('app-session-blocked')).toBeNull();
+  });
+
+  it("names a dead character's player's own result by the character, which has no vitals any more", async () => {
+    source.snapshot = { ...(source.snapshot as LiveSnapshotVm), vitals: [] };
+    const fixture = TestBed.createComponent(LiveSession);
+    await settle(fixture);
+    const page = fixture.componentInstance as unknown as {
+      combat: { apply(e: Encounter): void };
+      ownCharacterName(): string;
+      highlightsCharacterId(): string;
+    };
+    expect(page.ownCharacterName()).toBe('');
+    page.combat.apply(
+      encounter({
+        status: EncounterStatus.ENDED,
+        combatants: [
+          combatant({
+            id: 'pen',
+            label: 'Pensantus',
+            kind: CombatantKind.PLAYER,
+            characterId: 'pensantus',
+            mine: true,
+            state: CombatantState.DEAD,
+            defeated: true,
+          }),
+        ],
+      }),
+    );
+    expect(page.ownCharacterName()).toBe('Pensantus');
+    expect(page.highlightsCharacterId()).toBe('pensantus');
   });
 
   it('lands the master on "Sessão encerrada" after confirming the end (MR-032)', async () => {
