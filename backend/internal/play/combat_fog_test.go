@@ -989,8 +989,8 @@ func TestRN10_FogCombatNamingAnUnseenNPCIsNotFoundOnEveryCall(t *testing.T) {
 	inApp := func(r *playv1.CastSpellRequest) { r.Roll = &playv1.CastSpellRequest_RollInApp{RollInApp: true} }
 	_, err = f.cast(t, f.ana, e, "Pensantus", fireBolt, nil, f.at(t, "Goblin 1"), inApp)
 	wantCode(t, "CastSpell (a cantrip) on an unseen NPC", err, connect.CodeNotFound)
-	_, err = f.cast(t, f.ana, e, "Pensantus", burningHands, slotOfLevel(1), f.at(t, "Goblin 1", "Goblin 3"), inApp)
-	wantCode(t, "CastSpell (an area) with unseen NPCs", err, connect.CodeNotFound)
+	// An area spell on a map does not read the list at all: the server finds who is inside
+	// (TestTheTableRuleDecidesWhatAHitDoesToAHiddenCreature).
 	_ = room
 }
 

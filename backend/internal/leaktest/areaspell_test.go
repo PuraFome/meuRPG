@@ -63,8 +63,8 @@ func TestAnAreaSpellThatHitsAHiddenCreatureNamesItToNoPlayerBeforeTheReveal(t *t
 		}
 	}()
 	ctx := t.Context()
-	m := w.master
 	w.buildPeople()
+	m := w.master
 	w.imgMap = w.image("area-map-image", 240, 160)
 	w.fogMap = must(m.maps.CreateMap(ctx, rq(&mapsv1.CreateMapRequest{CampaignId: w.campaign, Name: w.secrets.public("area-map-name"), ImageId: w.imgMap}))).GetMap().GetId()
 	must(m.maps.SetMapRevealed(ctx, rq(&mapsv1.SetMapRevealedRequest{CampaignId: w.campaign, MapId: w.fogMap, Revealed: true})))
