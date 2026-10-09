@@ -12,7 +12,14 @@ import { newKey } from '../../../../core/combat/combat-client';
 import { SceneClient, type SceneDie } from '../../../../core/play/scene-client';
 import { sceneBlocked, sceneErrorMessage } from '../../../../core/play/scene-errors';
 import type { SceneState } from '../../../../core/play/scene-state';
-import { passText, sceneRollFormula, signedBonus } from '../../../../core/play/scene-view';
+import { treatedPreview } from '../../../../core/combat/combat-dice';
+import {
+  passText,
+  sceneRollFormula,
+  sceneRollNote,
+  sceneRollSpeech,
+  signedBonus,
+} from '../../../../core/play/scene-view';
 import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions';
 import { joinDots } from '../../../../core/format/text';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
@@ -27,6 +34,8 @@ export interface SceneRollSheetData {
   readonly diceMode: DiceMode;
   readonly preference: DicePreference;
   readonly state: SceneState;
+  /** The keys of the skills Talento Confiável raises for this character (empty without it): the typed die's preview shows "6 → 10". */
+  readonly reliableTalent?: readonly string[];
 }
 
 /** The roll sheet of one action: a bottom sheet on a phone, a dialog from a
@@ -115,11 +124,24 @@ export class SceneRollSheet {
     const r = this.roll();
     return r ? sceneRollFormula(r) : '';
   });
+  /** A feature raised the d20 (Talento Confiável): the sentence under the result and what a screen reader reads in the formula's place. */
+  protected readonly treatedNote = computed(() => {
+    const r = this.roll();
+    return r ? sceneRollNote(r) : '';
+  });
+  protected readonly treatedSpeech = computed(() => {
+    const r = this.roll();
+    return r ? sceneRollSpeech(r) : '';
+  });
   /** "Passou · CD 12", only when the master shows the DC: the server sends `passed` then and not otherwise. */
   protected readonly pass = computed(() => {
     const passed = this.roll()?.passed;
     return passed === undefined ? null : { ok: passed, text: passText(passed, this.action.dc) };
   });
+  /** The typed d20's live total, with Talento Confiável's account where the character's feature raises this check and the number is below 10. */
+  protected readonly typedFormula = this.data.reliableTalent?.includes(this.action.key)
+    ? (face: number) => treatedPreview(face, this.bonus, 'feature:reliable-talent')
+    : null;
   protected readonly rollLabel = `Role 1d20 para ${this.action.checkName} (${this.bonusText})`;
 
   constructor() {

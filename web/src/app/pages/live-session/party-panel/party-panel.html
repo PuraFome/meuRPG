@@ -39,6 +39,9 @@
             @if (v.hitPointsTemporary > 0) {
               <span class="mr-tag">+{{ v.hitPointsTemporary }} temporários</span>
             }
+            @if ((v.hitPointsMaxBonus ?? 0) > 0) {
+              <span class="mr-tag js-aid">{{ aidTag(v.hitPointsMaxBonus ?? 0) }}</span>
+            }
             @if (v.wildShape; as beast) {
               <span class="mr-tag js-beast"
                 >{{ beast.beastNamePt }} {{ beast.hitPointsCurrent }} de {{ beast.hitPointsMax }} PV</span

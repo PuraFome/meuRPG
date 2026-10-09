@@ -345,7 +345,7 @@ describe('what a spell that reads hit points did (E8-03)', () => {
     );
   });
 
-  it('says what Ajuda gave each target: maximum, temporary, or the hit points of one who got up', () => {
+  it('says what Ajuda gave each target: the maximum, a temporary gain still written, or the hit points of one who woke up', () => {
     const aid = create(SpellCastSchema, {
       spellKey: 'spell:aid',
       effectKind: SpellEffectKind.MAX_HP,
@@ -361,7 +361,41 @@ describe('what a spell that reads hit points did (E8-03)', () => {
     expect(castRows(aid, new Map(), labels).map((r) => [r.label, r.word, r.lines])).toEqual([
       ['Goblin 1', 'Ganhou PV máximos', ['PV máximo +5']],
       ['Capitão Goblin', 'Ganhou PV temporários', ['5 PV temporários']],
-      ['Brisa', 'Voltou com PV', ['Volta com 5 PV']],
+      ['Brisa', 'Acordou', ['Acorda com 5 PV']],
+    ]);
+  });
+
+  it('reads "PV 0 → 5 de 45" for an Ajuda target that woke up, and the change in the maximum for one that stood', () => {
+    const aid = create(SpellCastSchema, {
+      spellKey: 'spell:aid',
+      effectKind: SpellEffectKind.MAX_HP,
+      targets: [
+        {
+          combatantId: 'b',
+          effect: {
+            outcome: SpellEffectOutcome.AFFECTED,
+            healed: 5,
+            gain: SpellEffectGain.CURRENT,
+            hitPointsAfter: 5,
+            hitPointsMaxAfter: 45,
+          },
+        },
+        {
+          combatantId: 'g1',
+          effect: {
+            outcome: SpellEffectOutcome.AFFECTED,
+            healed: 5,
+            gain: SpellEffectGain.MAXIMUM,
+            hitPointsBefore: 31,
+            hitPointsAfter: 36,
+            hitPointsMaxAfter: 43,
+          },
+        },
+      ],
+    });
+    expect(castRows(aid, new Map(), labels).map((r) => [r.label, r.lines])).toEqual([
+      ['Brisa', ['PV 0 → 5 de 45']],
+      ['Goblin 1', ['PV máximo +5', 'PV 31 → 36 de 43']],
     ]);
   });
 

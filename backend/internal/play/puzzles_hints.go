@@ -87,7 +87,7 @@ func (s *Service) TryPuzzleHint(
 	}
 	return connect.NewResponse(&playv1.TryPuzzleHintResponse{
 		Run:      out,
-		Roll:     diceRoll(1, 20, []int32{res.try.D20}, res.try.Modifier, res.try.Total, res.try.Physical),
+		Roll:     treatedRoll(res.try.D20, res.try.Modifier, res.try.Total, res.try.Physical),
 		Passed:   res.try.Passed,
 		Replayed: res.replayed,
 	}), nil
@@ -181,7 +181,7 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	if len(options) != 1 || !options[0].Known {
 		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_SKILL, "your character has no numbers for this skill")
 	}
-	face, roll, err := s.d20(in, options[0].Bonus)
+	face, roll, err := s.checkD20(in, options[0].Bonus, options[0].ReliableTalent)
 	if err != nil {
 		return nil, err
 	}

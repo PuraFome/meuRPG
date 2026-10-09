@@ -10,6 +10,8 @@ import {
   type TargetInReach,
   AttackOutcome,
   SaveOutcome,
+  SpellEffectGain,
+  SpellEffectKind,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   Ability,
@@ -27,7 +29,7 @@ import { joinDots, tight } from '../format/text';
 import { circleLabel } from './combat-options';
 import { article } from './combat-log';
 import { listing } from './cover';
-import { effectWords, gainLine, hpSpellKind, poolDice } from './hp-effects';
+import { aidChange, effectWords, gainLine, hpSpellKind, poolDice } from './hp-effects';
 import { stateWord } from './combat-view';
 
 /**
@@ -558,8 +560,22 @@ function castRow(
     word = w.past;
     icon = w.icon;
     tone = w.affected ? 'good' : 'plain';
-    if (t.effect.healed !== undefined) {
+    // Ajuda: "PV 0 → 5 de 45" where the server sent the numbers (the master and the target's own player).
+    const change =
+      cast.effectKind === SpellEffectKind.MAX_HP
+        ? aidChange(
+            t.effect.hitPointsBefore,
+            t.effect.healed,
+            t.effect.hitPointsAfter,
+            t.effect.hitPointsMaxAfter,
+          )
+        : null;
+    // The one who woke up reads the change alone: "Acorda com 5 PV" would say it twice.
+    if (t.effect.healed !== undefined && !(change && t.effect.gain === SpellEffectGain.CURRENT)) {
       lines.push(gainLine(cast.effectKind, t.effect.healed, t.effect.gain));
+    }
+    if (change) {
+      lines.push(change);
     }
   }
   if (t.attackRoll) {

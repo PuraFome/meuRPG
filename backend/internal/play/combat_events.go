@@ -143,9 +143,14 @@ type castHit struct {
 	Order    int32  `json:"order,omitempty"`
 	Left     int32  `json:"left,omitempty"`
 	Healed   *int32 `json:"healed,omitempty"`
-	// Gain is what Aid gave the target (the gain* values): its maximum, temporary
-	// hit points or current hit points.
+	// Gain is what Aid gave the target (the gain* values): its maximum, or, for a
+	// target that was at 0 hit points, the current hit points that woke it up.
 	Gain string `json:"gain,omitempty"`
+	// HPAfter and MaxAfter are the target's hit points and maximum after Aid, and
+	// BonusBefore the bonus it had before (an undo puts it back).
+	HPAfter     *int32 `json:"hp_after,omitempty"`
+	MaxAfter    *int32 `json:"max_after,omitempty"`
+	BonusBefore *int32 `json:"bonus_before,omitempty"`
 	// What an undo puts back: the hit points and death saves when the spell
 	// changed them (a heal, a death, Estabilizar), the conditions when it
 	// changed them.
@@ -237,9 +242,17 @@ type actionEvent struct {
 	// master's answer carries it (RN-20), and a retry reads it back from here.
 	TargetAC int32 `json:"target_ac,omitempty"`
 
+	// ReliableTalent says the roll of an ability check was made by a character with
+	// Reliable Talent that applied to the check (a skill it is proficient in): each d20
+	// of 9 or lower counted as 10.
+	ReliableTalent bool `json:"reliable_talent,omitempty"`
+
 	// The damage roll: the dice, their faces, the total and the type. Applied
 	// says an NPC took it at once.
+	// DiceCount counts every die rolled, ExtraDice among them: the last ExtraDice
+	// faces are the ones a feature added to a critical hit (Brutal Critical).
 	DiceCount  int32   `json:"dice_count,omitempty"`
+	ExtraDice  int32   `json:"extra_dice,omitempty"`
 	DiceSides  int32   `json:"dice_sides,omitempty"`
 	Faces      []int32 `json:"faces,omitempty"`
 	Amount     int32   `json:"amount,omitempty"`
@@ -255,6 +268,9 @@ type actionEvent struct {
 	// master's hand.
 	Before *hpState `json:"before,omitempty"`
 	After  *hpState `json:"after,omitempty"`
+
+	// EffectEnd is the effect a combat_effect_ended event is about.
+	EffectEnd *effectEnd `json:"effect_end,omitempty"`
 
 	// A spell cast (spell_cast) and a reaction: the cast, the slot spent, what it
 	// did to each target and the concentration it set or ended; a feature action:
@@ -365,6 +381,7 @@ type actionEvent struct {
 	Jump             string     `json:"jump,omitempty"`
 	HeightDFt        int32      `json:"height_dft,omitempty"`
 	LandingDifficult bool       `json:"landing_difficult,omitempty"`
+	JumpRunning      bool       `json:"jump_running,omitempty"`
 	From             *moveState `json:"from,omitempty"`
 	// StoppedEarly says a creature the mover did not see cut the move short.
 	StoppedEarly bool `json:"stopped_early,omitempty"`

@@ -1055,6 +1055,14 @@ message TrapSpec {
   // re-arms a trap. The master may change it (UpdateMapPoint); the live game
   // changes it too (slice 9.8).
   TrapState state = 7;
+  // The skills, besides Perception and Investigation, that find this trap when a
+  // player searches with them, against `find_dc`: skill keys ("skill:arcana"), at most 16,
+  // none by default (the app never assumes that a magic trap wants Arcana: the master
+  // decides trap by trap). Refused with `invalid_argument`: Perception, Investigation, a
+  // repeated key and anything that is not a skill of the SRD. An update replaces the whole
+  // trap, so it sends the list it wants (empty clears it). Only the master reads and writes it; a player
+  // never gets the field (RN-10), on the map or in any answer.
+  repeated string also_find_skill_keys = 8;
 }
 
 // LightSpec is what a LIGHT point is.

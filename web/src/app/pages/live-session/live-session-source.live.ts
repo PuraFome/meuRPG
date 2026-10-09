@@ -17,8 +17,15 @@ import {
   PlayService,
   ShownImage,
 } from '../../../gen/meurpg/play/v1/play_pb';
-import { ContentService, Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
+import {
+  ContentService,
+  type DerivedSheet,
+  type DerivedSkill,
+  ProficiencyLevel,
+  Recharge,
+} from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
+import type { OtherSkill } from '../../core/traps/trap-search';
 import { hitDiceWords } from '../../core/resources/hit-dice-text';
 import { metersText } from '../../core/units';
 import {
@@ -41,6 +48,28 @@ const RECHARGE: Partial<Record<Recharge, 'short_rest' | 'long_rest' | 'dawn' | '
   [Recharge.DAWN]: 'dawn',
 };
 
+/** "Outra perícia…": the other 16 skills with the sheet's bonus, alphabetical, the same list for everyone (RN-10). */
+export function otherSkills(skills: readonly DerivedSkill[]): OtherSkill[] {
+  return skills
+    .filter((k) => k.key !== 'skill:perception' && k.key !== 'skill:investigation')
+    .map((k) => ({ key: k.key, name: k.namePt, bonus: k.bonus }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+}
+
+/** The skills Talento Confiável raises: the ones with proficiency (or expertise), when the sheet has the feature; none otherwise. */
+export function reliableTalentSkills(derived: DerivedSheet): string[] {
+  if (!derived.features.some((f) => f.key === 'feature:reliable-talent')) {
+    return [];
+  }
+  return derived.skills
+    .filter(
+      (k) =>
+        k.proficiency === ProficiencyLevel.PROFICIENT ||
+        k.proficiency === ProficiencyLevel.EXPERTISE,
+    )
+    .map((k) => k.key);
+}
+
 export function toVitalsVm(v: CharacterVitals): VitalsVm {
   return {
     characterId: v.characterId,
@@ -49,6 +78,7 @@ export function toVitalsVm(v: CharacterVitals): VitalsVm {
     hitPointsCurrent: v.hitPointsCurrent,
     hitPointsMax: v.hitPointsMax,
     hitPointsTemporary: v.hitPointsTemporary,
+    hitPointsMaxBonus: v.hitPointsMaxBonus,
     spellSlots: v.spellSlots.map((s) => ({
       level: s.level,
       total: s.total,
@@ -355,7 +385,12 @@ export class LiveSessionSourceLive implements LiveSessionSource {
       armorClass: derived ? derived.armorClass : null,
       summary: [classes, race].filter(Boolean).join(', '),
       skills: derived
-        ? { perception: skill('skill:perception'), investigation: skill('skill:investigation') }
+        ? {
+            perception: skill('skill:perception'),
+            investigation: skill('skill:investigation'),
+            others: otherSkills(derived.skills),
+            reliableTalent: reliableTalentSkills(derived),
+          }
         : undefined,
       senses: derived?.senses.map((s) => `${s.namePt}: ${metersText(s.rangeFt)}`) ?? [],
     };

@@ -1748,6 +1748,63 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
     expect(xpWatcher.follow).toHaveBeenLastCalledWith(null, expect.any(Function));
   });
 
+  it('shows Ajuda on the sheet while the session is live: "43 de 43", "máximo 38 da ficha", the tag and the banner', async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ sheet: fullSheet({ hitPointsMax: 38 }) }));
+    openSessions.set([
+      {
+        sessionId: 's1',
+        campaignId: 'camp-1',
+        campaignName: 'Mirathel',
+        sessionNumber: 5,
+        startedAt: new Date(),
+        isMaster: false,
+      },
+    ]);
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+    const flat = (n: Element | null) => n?.textContent?.replace(/\s+/g, ' ').trim();
+    // The session's snapshot brings the live numbers, with Ajuda in the maximum.
+    const onVitals = xpWatcher.follow.mock.calls.at(-1)![5]!;
+    onVitals(
+      pensantusVitals({
+        characterId: 'char-1',
+        hitPointsCurrent: 43,
+        hitPointsMax: 43,
+        hitPointsMaxBonus: 5,
+        revision: 2,
+      }),
+    );
+    fixture.detectChanges();
+    expect(flat(el.querySelector('app-combat-stats .hp__value'))).toBe('43 de 43');
+    expect(flat(el.querySelector('app-combat-stats .hp__note'))).toBe('máximo 38 da ficha');
+    expect(flat(el.querySelector('app-combat-stats .aid-banner'))).toContain(
+      'Ajuda: +5 nos PV até o mestre encerrar ou um descanso longo',
+    );
+
+    // The master ends Ajuda: the stream's vitals bring the old maximum back and the old text returns.
+    onVitals(
+      pensantusVitals({
+        characterId: 'char-1',
+        hitPointsCurrent: 38,
+        hitPointsMax: 38,
+        revision: 3,
+      }),
+    );
+    fixture.detectChanges();
+    expect(flat(el.querySelector('app-combat-stats .hp__note'))).not.toBe('máximo 38 da ficha');
+    expect(el.querySelector('app-combat-stats .aid-banner')).toBeNull();
+  });
+
+  it('keeps the old text outside a session', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(vm());
+    openSessions.set([]);
+    const el = (await render()).nativeElement as HTMLElement;
+    expect(el.querySelector('app-combat-stats .hp__note')?.textContent?.trim()).toBe(
+      'Os atuais aparecem na sessão',
+    );
+  });
+
   it("does not listen for an NPC's sheet: it has no XP to keep fresh", async () => {
     fake.getCharacterSheetFn = () =>
       Promise.resolve(vm({ characterKind: 'enemy', experiencePoints: 0 }));

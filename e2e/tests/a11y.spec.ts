@@ -21,12 +21,12 @@ import { paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
 import { claimRoute, linkRPC, reservedRPC, revokeLinkRPC, rowOf } from './claim-support';
-import { authStatePath, boxOf, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn, type TestUser } from './support';
+import { authStatePath, boxOf, callRPC, layoutSize, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn, type TestUser } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
-import { movePensantus, pensantusFirst, sq20, trapRPC, treasureRPC } from './trap-support';
+import { movePensantus, pensantusFirst, sq20, thirdPlayer, trapRPC, treasureRPC, type TrapTable } from './trap-support';
 import { cavePoints, clickSquare, dragSquares, editorRoute, mapToPaint } from './editor-support';
 import { campaignWithEmptyPlayer, factor, masterCampaign, method, setTableRulesRPC, wallSquares } from './table-rules-support';
 import {
@@ -55,7 +55,7 @@ import {
 } from './puzzles-support';
 import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
-import { brisa, brisaSheet } from './combat-support';
+import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { archiveEntryRPC, createEntryRPC, entryRoute, raceBody, spellBody, updateEntryRPC } from './content-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
@@ -89,13 +89,14 @@ const wcag = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 async function expectScreenPasses(page: Page, screen: string): Promise<void> {
   // A dialog still fading in has colours between two states: axe would judge
   // the contrast of a frame nobody stops on (it failed that way once, in the
-  // spell dialog). Wait for the transitions that end; a looping one never
-  // does.
+  // spell dialog, and again in the Escudo prompt on a slow runner). Wait for
+  // the transitions that end, the ones that have not started yet ("pending",
+  // the dialog's first frame) included; a looping one never does.
   await page.waitForFunction(
     () =>
       document
         .getAnimations()
-        .every((a) => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity),
+        .every((a) => a.playState === 'finished' || a.playState === 'idle' || a.effect?.getComputedTiming().iterations === Infinity),
     undefined,
     { timeout: 5_000 },
   );
@@ -1231,7 +1232,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
 
     // The conditions: the dialog (the master) and the tags on both screens.
     await m.getByRole('button', { name: 'Mais ações para Goblin 1' }).click();
-    await m.getByRole('menuitem', { name: 'Condições…' }).click();
+    await m.getByRole('menuitem', { name: 'Mudar condições' }).click();
     await expect(m.getByRole('dialog', { name: 'Condições de Goblin 1' })).toBeVisible();
     await expectScreenPasses(m, `Condições, a janela ${where}`);
     await m.getByRole('checkbox', { name: 'Envenenado' }).check();
@@ -1255,6 +1256,10 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await prompt.getByRole('button', { name: 'Conjurar Escudo Arcano' }).click();
     await expect(prompt.getByText('O Escudo Arcano segurou o ataque do Capitão Goblin.')).toBeVisible();
     await expectScreenPasses(p, `Escudo, o resultado ${where}`);
+    // On the master's row the shield's label stays on one line, whatever the width of the screen.
+    const shieldChip = m.getByRole('region', { name: 'Ordem de iniciativa' }).locator('.row__effect', { hasText: 'Escudo Arcano' });
+    await expect(shieldChip).toBeVisible();
+    expect((await layoutSize(shieldChip)).height).toBeLessThan(30);
     await prompt.getByRole('button', { name: 'Fechar' }).click();
     // The captain's turn goes on: a second hit (a critical one) is damage to roll and discard; then Pensantus's turn.
     await card.getByRole('button', { name: 'Digitar o resultado' }).click();
@@ -3483,6 +3488,17 @@ async function scanTrapScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await expectScreenPasses(p, `Procurar armadilhas, o resultado ${where}`);
     await sheet.getByRole('button', { name: 'Fechar', exact: true }).last().click();
 
+    // "Outra perícia…": the list of the other skills, then one picked.
+    await p.getByRole('button', { name: 'Procurar armadilhas' }).click();
+    await sheet.locator('label', { hasText: 'Outra perícia…' }).click();
+    await expect(sheet.getByRole('listbox', { name: 'Perícia' })).toBeVisible();
+    await expectScreenPasses(p, `Procurar armadilhas, Outra perícia ${where}`);
+    await sheet.getByRole('listbox', { name: 'Perícia' }).getByRole('option', { name: /^Arcanismo/ }).click();
+    await expect(sheet.getByText('Escolha uma perícia')).toHaveCount(0);
+    await expectScreenPasses(p, `Procurar armadilhas, a perícia escolhida ${where}`);
+    await p.keyboard.press('Escape');
+    await expect(sheet).toBeHidden();
+
     // In a combat: the damage that waits for the master, and the player's note.
     await pensantusFirst(m, table);
     await movePensantus(p, table, 9, 7);
@@ -3694,6 +3710,13 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
     await expect(m.getByRole('heading', { name: 'Predefinições do SRD' })).toBeVisible();
     await expect(m.getByText('Percepção passiva contra a CD 15')).toBeVisible();
     await expectScreenPasses(m, `Armadilha, o formulário e Quem notaria ${where}`);
+    await m.getByRole('button', { name: 'Acrescentar perícia' }).click();
+    await expect(m.getByRole('listbox', { name: 'Também acham com' })).toBeVisible();
+    await expectScreenPasses(m, `Armadilha, Também acham com, a lista ${where}`);
+    await m.getByRole('listbox', { name: 'Também acham com' }).getByRole('option', { name: 'Arcanismo' }).click();
+    await m.keyboard.press('Escape');
+    await expect(m.locator('.tp__chip', { hasText: 'Arcanismo' })).toBeVisible();
+    await expectScreenPasses(m, `Armadilha, Também acham com, a etiqueta ${where}`);
     await m.getByLabel('CD para achar (Investigação)').fill('40');
     await m.getByRole('button', { name: 'Salvar ponto' }).click();
     await expect(m.getByText('Use uma CD de 1 a 30.')).toBeVisible();
@@ -6737,4 +6760,229 @@ test('as conjurações fora do combate passam no axe e nas conferências de layo
 test('as conjurações fora do combate passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-048'] }, async ({ browser }) => {
   test.setTimeout(300_000);
   await scanOutsideCastingScreens(browser, 'light', 320);
+});
+
+// ---- Ajuda, Crítico Brutal, Talento Confiável and the jump that leaves a reach (PM-03a, PM-03b, PM-03c) ----
+
+const sizeOf = (width: number) => ({ width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 });
+
+// Ajuda on a character at 0 hit points: the player's two pills, the awake one with the tag and the banner, the sheet page,
+// and the master's row with its menu and the question that ends the spell.
+async function scanAidScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = sizeOf(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  let close: () => Promise<void> = async () => undefined;
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade Ajuda ${Date.now()}`, true, true);
+    campaignId = table.campaignId;
+    const third = await thirdPlayer(browser, { m, p, table, campaignId, done: async () => undefined } satisfies TrapTable, brisa, brisaAidSheet);
+    close = third.close;
+    const square = sq20(4, 7);
+    await placeTokenRPC(m, campaignId, table.mapId, third.characterId, square.xBp, square.yBp);
+    await beginAttackCombatRPC(m, table, { Brisa: 20, Pensantus: 15, 'Capitão Goblin': 10, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 0 });
+    await openSessionPage(p, campaignId);
+    await openSessionPage(m, campaignId);
+
+    await expect(p.getByRole('status').getByText('Testes contra a morte: 0 sucessos, 0 falhas')).toBeVisible();
+    await expectScreenPasses(p, `A 0 PV, as etiquetas Inconsciente e testes contra a morte ${where}`);
+
+    const enc = await getEncounterRPC(m, campaignId);
+    const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
+    const cast = await callRPC(third.page, 'meurpg.play.v1.CombatService/CastSpell', {
+      campaignId,
+      encounterId: enc.id,
+      casterId: id('Brisa'),
+      spellKey: 'spell:aid',
+      slot: { level: 2 },
+      targets: [{ combatantId: id('Pensantus') }],
+      idempotencyKey: crypto.randomUUID(),
+    });
+    expect(cast.ok(), await cast.text()).toBeTruthy();
+    await expect(p.getByRole('status').getByText('Acordado · testes contra a morte zerados')).toBeVisible();
+    await expectScreenPasses(p, `Ajuda sobre quem estava a 0 PV, acordou ${where}`);
+
+    const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
+    await expect(order.locator('.row__effect--aid')).toContainText('Ajuda +5 PV');
+    await expectScreenPasses(m, `A ordem do mestre com Ajuda ${where}`);
+    await order.getByRole('button', { name: 'Mais ações para Pensantus' }).click();
+    await expect(m.getByRole('menuitem', { name: 'Encerrar Ajuda em Pensantus' })).toBeVisible();
+    await expectScreenPasses(m, `O menu da linha com Encerrar Ajuda ${where}`);
+    await m.getByRole('menuitem', { name: 'Encerrar Ajuda em Pensantus' }).click();
+    const ask = m.getByRole('alertdialog', { name: /Encerrar a Ajuda d[oa] Pensantus/ });
+    await expect(ask).toBeVisible();
+    await expectScreenPasses(m, `Encerrar a Ajuda, a pergunta no lugar ${where}`);
+    await ask.getByRole('button', { name: 'Cancelar' }).click();
+
+    await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
+    await expect(p.locator('app-combat-stats').getByText('5 de 28')).toBeVisible({ timeout: 30_000 });
+    await expectLoaded(p);
+    await expectScreenPasses(p, `A ficha com Ajuda ${where}`);
+  } finally {
+    await close();
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a Ajuda a 0 PV, no jogador, na ficha e na ordem do mestre, passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanAidScreens(browser, 'light', 1280);
+});
+
+test('a Ajuda a 0 PV, no jogador, na ficha e na ordem do mestre, passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanAidScreens(browser, 'dark', 390);
+});
+
+// Crítico Brutal: the critical's sum before the roll, the typed sheet with its total on the button, and the log line.
+async function scanBrutalScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = sizeOf(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade Brutal ${Date.now()}`, true, true, { build: ragna, sheet: ragnaSheet });
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Ragna: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, { 'Capitão Goblin': [11, 5], 'Goblin 1': [6, 7], 'Goblin 2': [14, 10] });
+    await openSessionPage(p, campaignId);
+    await p.getByRole('button', { name: 'Atacar com Machado grande' }).click();
+    // The dialog's name follows its heading, which changes with each step: the one dialog on the page.
+    const sheet = p.getByRole('dialog');
+    await sheet.locator('label', { hasText: 'Goblin 1' }).click();
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await sheet.getByLabel(/Role 1d20 para Machado grande/).fill('20');
+    await sheet.getByRole('button', { name: 'Confirmar 20' }).click();
+    await expect(sheet.getByText('Dano do crítico')).toBeVisible();
+    await expectScreenPasses(p, `Crítico Brutal, o dano do crítico antes de rolar ${where}`);
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await sheet.getByLabel(/Role 3d12/).fill('22');
+    await expect(sheet.getByRole('button', { name: 'Confirmar 25' })).toBeVisible();
+    await expectScreenPasses(p, `Crítico Brutal, dados físicos e o total no botão ${where}`);
+    await sheet.getByRole('button', { name: 'Confirmar 25' }).click();
+    await expect(sheet.getByRole('button', { name: 'Voltar à sua vez' })).toBeVisible();
+    await expectScreenPasses(p, `Crítico Brutal, o resultado ${where}`);
+    await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
+    // On a phone the log opens from its button; on the wide screen it is already on the page.
+    const log = p.getByRole('log', { name: 'Registro do combate' });
+    await p.getByRole('button', { name: 'Abrir o registro do combate' }).or(log).first().click();
+    await expect(log).toContainText('Crítico Brutal');
+    await expectScreenPasses(p, `Crítico Brutal, o registro do combate ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o Crítico Brutal, antes de rolar, com dados físicos e no registro, passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-012', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanBrutalScreens(browser, 'light', 1280);
+});
+
+test('o Crítico Brutal, antes de rolar, com dados físicos e no registro, passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-012', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanBrutalScreens(browser, 'dark', 390);
+});
+
+// Talento Confiável on a trap search: the preview and the result, with the rule said.
+async function scanReliableTalentScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = sizeOf(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade Talento ${Date.now()}`, true, true, { build: dalila, sheet: dalilaSheet });
+    campaignId = table.campaignId;
+    await trapRPC(m, table, 'Fosso escondido', 6, 7, { findDc: 18 });
+    await openSessionPage(p, campaignId);
+    await p.getByRole('button', { name: 'Procurar armadilhas' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Procurar armadilhas' });
+    await sheet.locator('label', { hasText: 'Investigação' }).click();
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await sheet.getByLabel(/Role 1d20 para Investigação/).fill('4');
+    await expect(sheet.getByText('4 → 10 (Talento Confiável)')).toBeVisible();
+    await expectScreenPasses(p, `Talento Confiável, a prévia do d20 baixo ${where}`);
+    await sheet.getByRole('button', { name: /Confirmar 4/ }).click();
+    await expect(sheet.getByText(/d20: 4 → 10 \(Talento Confiável\)/)).toBeVisible();
+    await expectScreenPasses(p, `Talento Confiável, o resultado da busca ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o Talento Confiável na busca por armadilhas passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-035'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanReliableTalentScreens(browser, 'light', 1280);
+});
+
+test('o Talento Confiável na busca por armadilhas passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-035'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanReliableTalentScreens(browser, 'dark', 390);
+});
+
+async function scanJumpWarningScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = sizeOf(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade Salto ${Date.now()}`, true, true, { build: toren, sheet: torenSheet });
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Toren: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, { 'Capitão Goblin': [15, 3], 'Goblin 1': [4, 6], 'Goblin 2': [15, 11] });
+    await openSessionPage(p, campaignId);
+    await p.getByRole('button', { name: 'Mover', exact: true }).click();
+    await pickRadio(p, 'Saltar');
+    await expect(p.getByRole('heading', { name: 'Saltar Toren' })).toBeVisible();
+    await tapSquare(p, 6, 7);
+    await expect(p.getByText('Esse salto sai do alcance do Goblin 1. Ele pode atacar você de graça (ataque de oportunidade).')).toBeVisible();
+    await expectScreenPasses(p, `Saltar, o aviso de que sai do alcance ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o salto que sai do alcance de um inimigo passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-034', '@RN-21'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanJumpWarningScreens(browser, 'light', 1280);
+});
+
+test('o salto que sai do alcance de um inimigo passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-034', '@RN-21'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanJumpWarningScreens(browser, 'dark', 390);
 });

@@ -560,6 +560,33 @@ describe('MasterRun (MR-038, E10-06 states 3 to 5)', () => {
       // The DC is the master's own: it is on his puzzle and never on this line.
       expect(el.textContent).not.toMatch(/\bCD\b/);
     });
+
+    it('says what Talento Confiável did: the die that came up, what it counted as and the feature', async () => {
+      const { el } = await render(
+        liveLights({
+          hintTries: [
+            {
+              characterName: 'Brisa',
+              hint: 1,
+              passed: true,
+              roll: {
+                diceCount: 1,
+                diceSides: 20,
+                faces: [6],
+                modifier: 9,
+                total: 19,
+                treatedAs: 10,
+                treatedAsSource: 'feature:reliable-talent',
+              },
+            },
+          ],
+        }),
+      );
+      const lines = Array.from(el.querySelectorAll('.facts__line--quiet')).map((l) => textOf(l));
+      expect(lines).toContain(
+        'Brisa rolou 19 (d20: 6 → 10, Talento Confiável) para a dica 1: passou.',
+      );
+    });
   });
 
   describe('Enigma (E10-12 state 5)', () => {

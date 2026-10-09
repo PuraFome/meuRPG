@@ -955,6 +955,12 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 			_, err := u.combat.EndTurn(ctx, connect.NewRequest(&playv1.EndTurnRequest{CampaignId: campaign, EncounterId: enc, ExpectedCombatantId: pens, IdempotencyKey: newKey()}))
 			return err
 		},
+		"EndCombatEffect": func(u *user, ctx context.Context) error {
+			_, err := u.combat.EndCombatEffect(ctx, connect.NewRequest(&playv1.EndCombatEffectRequest{
+				CampaignId: campaign, EncounterId: enc, CombatantId: pens, Effect: playv1.CombatEffect_COMBAT_EFFECT_AID, IdempotencyKey: newKey(),
+			}))
+			return err
+		},
 		"MoveCombatant(Pensantus)": func(u *user, ctx context.Context) error {
 			_, err := u.combat.MoveCombatant(ctx, connect.NewRequest(&playv1.MoveCombatantRequest{CampaignId: campaign, EncounterId: enc, CombatantId: pens, IdempotencyKey: newKey(), Col: 1, Row: 1}))
 			return err
@@ -975,7 +981,7 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 	masterOnly := map[string]bool{
 		"StartEncounter": true, "SetInitiativeOrder": true, "BeginCombat": true, "SetCombatantHidden": true,
 		"AddCombatants": true, "AddMonsters": true, "RemoveCombatant": true, "EndEncounter": true, "SetCombatantSide": true, "SetCombatantCover": true,
-		"OfferOpportunity": true, "WithdrawOpportunity": true,
+		"OfferOpportunity": true, "WithdrawOpportunity": true, "EndCombatEffect": true,
 	}
 	for name, call := range calls {
 		if err := call(anonymous, t.Context()); connect.CodeOf(err) != connect.CodeUnauthenticated {
@@ -1101,7 +1107,7 @@ func TestSessionEventKindsMatchTheTable(t *testing.T) {
 		eventCombatantRemoved, eventEncounterEnded,
 		eventAttackRolled, eventDamageRolled, eventDamageApplied, eventDamageDiscarded,
 		eventActionTaken, eventHitPointsAdjusted, eventActionUndone,
-		eventSpellCast, eventReactionUsed, eventReactionDeclined, eventDeathSaveRolled, eventDeathConfirmed, eventConditionsSet,
+		eventSpellCast, eventReactionUsed, eventReactionDeclined, eventDeathSaveRolled, eventDeathConfirmed, eventConditionsSet, eventCombatEffectEnded,
 		eventXPAwarded, eventXPAwardUndone, eventMilestoneMarked, eventSceneOpened, eventSceneClosed, eventSceneCheckRolled,
 		eventClueRevealed, eventStageChanged,
 		eventSceneAttemptGranted, eventTurnPartEnded,

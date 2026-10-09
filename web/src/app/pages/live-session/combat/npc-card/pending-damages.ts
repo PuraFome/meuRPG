@@ -22,7 +22,12 @@ import {
   PendingDamageStatus,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient, newKey } from '../../../../core/combat/combat-client';
-import { damageFormula, diceName, sumRange } from '../../../../core/combat/combat-dice';
+import {
+  damageFormula,
+  diceName,
+  extraDiceOf,
+  sumRange,
+} from '../../../../core/combat/combat-dice';
 import { criticalHint, criticalTypedHint, fixedParts } from '../../../../core/combat/critical';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
@@ -117,7 +122,7 @@ export class PendingDamages {
         p.diceCount > 1
           ? `Role ${diceName(p.diceCount, p.diceSides)} para o dano: some os dois`
           : `Role ${diceName(p.diceCount, p.diceSides)} para o dano`,
-      line: p.roll ? damageFormula(p.roll, p.damageTypePt) : '',
+      line: p.roll ? damageFormula(p.roll, p.damageTypePt, extraDiceOf(p), p.criticalMax) : '',
       // A critical hit follows the table's rule: what to roll, said the way it asks, and what the typed sum is (RN-24).
       crit: p.critical
         ? (criticalHint(p.criticalRule, p.diceCount, p.diceSides, p.criticalMax)?.line ?? '')

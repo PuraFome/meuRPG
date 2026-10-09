@@ -16,21 +16,24 @@ export class MoveOptionsState {
   private asked = 0;
   private subject = '';
 
+  /** `jump` asks for the squares of a long jump instead of a walk's (and its opportunity-attack warning): the answer for one is never read as the other. */
   async load(
     api: CombatClient,
     campaignId: string,
     encounterId: string,
     combatantId: string,
+    jump?: { readonly runningStart: boolean },
   ): Promise<void> {
     const mine = ++this.asked;
-    // Another combatant's circle is never drawn for this one while the answer comes.
-    if (this.subject !== combatantId) {
-      this.subject = combatantId;
+    // Another combatant's circle (or a walk's for a jump) is never drawn while the answer comes.
+    const subject = jump ? `${combatantId}:jump:${jump.runningStart}` : combatantId;
+    if (this.subject !== subject) {
+      this.subject = subject;
       this.data.set(null);
       this.failed.set(false);
     }
     try {
-      const res = await api.moveOptions(campaignId, encounterId, combatantId);
+      const res = await api.moveOptions(campaignId, encounterId, combatantId, jump);
       if (mine === this.asked) {
         this.data.set(res);
         this.failed.set(false);

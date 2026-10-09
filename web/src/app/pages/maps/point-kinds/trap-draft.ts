@@ -58,6 +58,8 @@ export interface TrapDraft {
   /** Empty: nobody notices it alone (the SRD's poison needle). */
   readonly noticeDc: string;
   readonly findDc: string;
+  /** "Também acham com": the skill keys (`skill:arcana`) besides Percepção and Investigação that find it, against `findDc`; none by default. */
+  readonly alsoFind: readonly string[];
   readonly areaSize: 1 | 2 | 3 | 4;
   readonly trigger: TrapTrigger;
   readonly state: TrapState;
@@ -88,6 +90,31 @@ export const ABILITIES: readonly { readonly value: Ability; readonly name: strin
   { value: Ability.WISDOM, name: 'Sabedoria' },
   { value: Ability.CHARISMA, name: 'Carisma' },
 ];
+
+/** The skills that find a trap with no word from the master: Percepção (against the DC to notice) and Investigação (against the DC to find). */
+export const SKILLS_ALWAYS_FIND = ['skill:perception', 'skill:investigation'] as const;
+
+/** The most skills "Também acham com" takes: the SRD's 18 less the two that always find. */
+export const ALSO_FIND_MAX = 16;
+
+/** The Arcanismo key: the SRD's rule that any character may try it against a magic trap, which the app only reminds of. */
+export const ARCANA_KEY = 'skill:arcana';
+
+/** The skills "Também acham com" offers, from the rules' skills (key and Portuguese name): every one but the two that always find, as the list's order. */
+export function alsoFindOptions<T extends { readonly key: string }>(skills: readonly T[]): T[] {
+  return skills.filter((s) => !(SKILLS_ALWAYS_FIND as readonly string[]).includes(s.key));
+}
+
+/** The skill picked or put back, kept in the order of the list the master sees. */
+export function toggleAlsoFind(
+  current: readonly string[],
+  key: string,
+  order: readonly string[],
+): string[] {
+  const next = current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
+  const rank = (k: string) => (order.includes(k) ? order.indexOf(k) : order.length);
+  return next.sort((a, b) => rank(a) - rank(b));
+}
 
 const blankDamage = (): DamageDraft => ({ dice: '', typeKey: 'damage-type:bludgeoning' });
 
@@ -123,6 +150,7 @@ export function blankTrapDraft(name = ''): TrapDraft {
     description: '',
     noticeDc: '',
     findDc: '',
+    alsoFind: [],
     areaSize: 1,
     trigger: TrapTrigger.ENTER,
     state: TrapState.ARMED,
@@ -187,6 +215,8 @@ export function trapDraftFromPreset(preset: TrapPreset): TrapDraft {
     description: preset.descriptionPt,
     noticeDc: preset.noticeDc > 0 ? String(preset.noticeDc) : '',
     findDc: String(preset.findDc),
+    // A preset marks no skill: not even a magic one wants Arcanismo unless the master says so.
+    alsoFind: [],
     areaSize: clampArea(preset.areaSize),
     trigger: preset.trigger === TrapTrigger.MANUAL ? TrapTrigger.MANUAL : TrapTrigger.ENTER,
     state: TrapState.ARMED,
@@ -198,6 +228,16 @@ function clampArea(n: number): 1 | 2 | 3 | 4 {
   return n >= 4 ? 4 : n === 3 ? 3 : n === 2 ? 2 : 1;
 }
 
+/** The trigger the form offers: the saved one when it is manual, "ao entrar" otherwise. */
+function triggerOf(trigger: TrapTrigger | undefined): TrapTrigger {
+  return trigger === TrapTrigger.MANUAL ? TrapTrigger.MANUAL : TrapTrigger.ENTER;
+}
+
+/** The state the form shows: fired or disarmed as saved, armed otherwise. */
+function stateOf(state: TrapState | undefined): TrapState {
+  return state === TrapState.TRIGGERED || state === TrapState.DISARMED ? state : TrapState.ARMED;
+}
+
 /** The form as the saved point has it. */
 export function trapDraftOf(point: Pick<MapPoint, 'name' | 'description' | 'trap'>): TrapDraft {
   const t = point.trap;
@@ -207,12 +247,10 @@ export function trapDraftOf(point: Pick<MapPoint, 'name' | 'description' | 'trap
     description: point.description,
     noticeDc: t && t.noticeDc > 0 ? String(t.noticeDc) : '',
     findDc: t ? String(t.findDc) : '',
+    alsoFind: t?.alsoFindSkillKeys ?? [],
     areaSize: clampArea(t?.areaSize ?? 1),
-    trigger: t?.trigger === TrapTrigger.MANUAL ? TrapTrigger.MANUAL : TrapTrigger.ENTER,
-    state:
-      t?.state === TrapState.TRIGGERED || t?.state === TrapState.DISARMED
-        ? t.state
-        : TrapState.ARMED,
+    trigger: triggerOf(t?.trigger),
+    state: stateOf(t?.state),
     ...effectDraft(t?.effect),
   };
 }
@@ -332,6 +370,7 @@ export function trapSpecOf(d: TrapDraft): MessageInitShape<typeof TrapSpecSchema
     presetKey: d.presetKey,
     noticeDc: d.noticeDc.trim() === '' ? 0 : Number(d.noticeDc),
     findDc: Number(d.findDc),
+    alsoFindSkillKeys: [...d.alsoFind],
     areaSize: d.areaSize,
     trigger: d.trigger,
     state: d.state,

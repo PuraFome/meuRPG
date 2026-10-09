@@ -18,6 +18,11 @@ function modifierText(modifier: number): string {
 
 /** A roll as the formula the table reads, the total included. */
 export function rollFormula(roll: DiceRoll): string {
+  // A d20 a feature raised says so (Talento Confiável): what came up, what it counted as, and the feature.
+  const treated = treatedFormula(roll);
+  if (treated) {
+    return treated;
+  }
   const mod = modifierText(roll.modifier);
   if (roll.diceCount === 0) {
     return `${roll.total}`;
@@ -29,10 +34,87 @@ export function rollFormula(roll: DiceRoll): string {
   return `${roll.diceCount}d${roll.diceSides} (${roll.faces.join(', ')})${mod} = ${roll.total}`;
 }
 
+// ---- a d20 that a feature made count as another number (Talento Confiável, PM-03b) ----
+
+/** A d20 of 9 or lower counts as 10 (Talento Confiável, SRD 5.1). */
+export const TREATED_FLOOR = 10;
+
+/** The Portuguese name of the feature that changed a d20 (`DiceRoll.treated_as_source`, a content key). */
+const TREATED_SOURCE_NAMES: Readonly<Record<string, string>> = {
+  'feature:reliable-talent': 'Talento Confiável',
+};
+
+/** The name a roll's `treated_as_source` goes by on the screens. */
+export function treatedSourceName(source: string): string {
+  return TREATED_SOURCE_NAMES[source] ?? 'uma característica';
+}
+
+/** The d20 that came up and counted as another number: the roll's one face, or the face of the die that counted when two
+ * were rolled (the lowest one that was raised). `null` for a roll no feature changed. */
+function treatedFace(roll: DiceRoll): number | null {
+  const counted = roll.treatedAs;
+  if (counted === undefined || roll.faces.length === 0) {
+    return null;
+  }
+  const raised = roll.faces.filter((f) => f < counted);
+  return raised.length > 0 ? Math.min(...raised) : roll.faces[0];
+}
+
+/** "d20: 6 → 10 (Talento Confiável) + 9 = 19": what came up, what it counted as and the feature that did it. `null` when no
+ * feature changed the roll: a d20 of 14 is never marked. */
+export function treatedFormula(roll: DiceRoll, bonusNote = ''): string | null {
+  const face = treatedFace(roll);
+  if (face === null || roll.treatedAs === undefined) {
+    return null;
+  }
+  // "+ 9 (Acrobacia)": a page that names what the bonus is for says it after the number.
+  const note = bonusNote && roll.modifier !== 0 ? ` (${bonusNote})` : '';
+  return `d20: ${face} → ${roll.treatedAs} (${treatedSourceName(roll.treatedAsSource)})${modifierText(roll.modifier)}${note} = ${roll.total}`;
+}
+
+/** "O d20 de 6 contou como 10: perícia com proficiência.": the sentence under the result, or `null` when nothing changed. */
+export function treatedSentence(roll: DiceRoll): string | null {
+  const face = treatedFace(roll);
+  return face === null || roll.treatedAs === undefined
+    ? null
+    : `O d20 de ${face} contou como ${roll.treatedAs}: perícia com proficiência.`;
+}
+
+/** What a screen reader says for the same roll: "d20: 6, contou 10 por Talento Confiável, mais 9, total 19". */
+export function treatedSpeech(roll: DiceRoll): string | null {
+  const face = treatedFace(roll);
+  if (face === null || roll.treatedAs === undefined) {
+    return null;
+  }
+  const mod =
+    roll.modifier === 0
+      ? ''
+      : `, ${roll.modifier < 0 ? 'menos' : 'mais'} ${Math.abs(roll.modifier)}`;
+  return `d20: ${face}, contou ${roll.treatedAs} por ${treatedSourceName(roll.treatedAsSource)}${mod}, total ${roll.total}`;
+}
+
+/** The typed d20's live total before it is sent, when the character's Talento Confiável will raise it: "6 → 10 (Talento
+ * Confiável) + 9 = 19". The server owns the rule; this only shows the account the sheet already knows. */
+export function treatedPreview(
+  face: number,
+  bonus: number,
+  source: string,
+): { readonly text: string; readonly total: number } | null {
+  const to = TREATED_FLOOR;
+  if (face >= to) {
+    return null;
+  }
+  const total = to + bonus;
+  return {
+    text: `${face} → ${to} (${treatedSourceName(source)})${modifierText(bonus)} = ${total}`,
+    total,
+  };
+}
+
 /** A roll for a sentence: the app's `1d20 (14) = 14`, a typed one `16 + 5 = 21
  * · dado físico` (or just `1 · dado físico` for a bare d20: `1 = 1` reads as a typo). */
 export function rollText(roll: DiceRoll): string {
-  if (!roll.physical) {
+  if (!roll.physical || roll.treatedAs !== undefined) {
     return rollFormula(roll);
   }
   return roll.modifier === 0 ? `${roll.total} · dado físico` : `${rollFormula(roll)} · dado físico`;
@@ -52,9 +134,74 @@ export function damageWords(amount: number, typePt: string): string {
   return `${amount} de ${adjective ? `dano ${typePt}` : typePt}`;
 }
 
-/** The damage line: `1d10 (7) = 7 de fogo`, `2d6 (5, 4) + 2 = 11 de dano`. */
-export function damageFormula(roll: DiceRoll, typePt: string): string {
+/** The dice a feature adds to a critical hit, with the feature's name ("1d12 Crítico Brutal"): the last `count` dice of
+ * the roll are theirs. */
+export interface ExtraDice {
+  readonly count: number;
+  readonly name: string;
+}
+
+/** The extra dice a pending damage or a log damage carries, or `undefined` when it has none. */
+export function extraDiceOf(d: {
+  readonly extraDiceCount: number;
+  readonly extraDiceNamePt: string;
+}): ExtraDice | undefined {
+  return d.extraDiceCount > 0 ? { count: d.extraDiceCount, name: d.extraDiceNamePt } : undefined;
+}
+
+/** A rolled damage with the critical's own dice apart from the feature's: `2d12 (7, 11) + 1d12 Crítico Brutal (4) + 3
+ * = 25`. The faces come in the server's order (the critical's first, the extra ones last), and the part of the modifier
+ * that is the maximum of a critical that came without rolling stands apart ("12 (máximo) + ..."). `null` when the roll
+ * cannot be split: typed dice have no faces. */
+export function splitFormula(roll: DiceRoll, extra: ExtraDice, criticalMax = 0): string | null {
+  const own = roll.diceCount - extra.count;
+  if (extra.count <= 0 || roll.physical || own < 1 || roll.faces.length !== roll.diceCount) {
+    return null;
+  }
+  const parts: string[] = [];
+  if (criticalMax > 0) {
+    parts.push(`${criticalMax} (máximo)`);
+  }
+  parts.push(`${own}d${roll.diceSides} (${roll.faces.slice(0, own).join(', ')})`);
+  parts.push(
+    `${extra.count}d${roll.diceSides} ${extra.name} (${roll.faces.slice(own).join(', ')})`,
+  );
+  return `${parts.join(' + ')}${modifierText(roll.modifier - criticalMax)} = ${roll.total}`;
+}
+
+/** The same split for dice rolled on the table: only the sum was typed, so the groups come from the counts
+ * (`3d12 (2d12 + 1d12 Crítico Brutal) = 22 + 3 = 25`), and the maximum of a critical that came without rolling stands
+ * apart. `null` when the roll is not a typed one or has no own dice. */
+export function physicalSplitFormula(
+  roll: DiceRoll,
+  extra: ExtraDice,
+  criticalMax = 0,
+): string | null {
+  const own = roll.diceCount - extra.count;
+  if (extra.count <= 0 || !roll.physical || own < 1) {
+    return null;
+  }
+  const sides = roll.diceSides;
+  const groups = `${roll.diceCount}d${sides} (${own}d${sides} + ${extra.count}d${sides} ${extra.name})`;
+  const bonus = roll.modifier - criticalMax;
+  const sum = roll.total - roll.modifier;
+  const max = criticalMax > 0 ? `${criticalMax} (máximo) + ` : '';
+  return `${max}${groups} = ${sum}${modifierText(bonus)} = ${roll.total}`;
+}
+
+/** The damage line: `1d10 (7) = 7 de fogo`, `2d6 (5, 4) + 2 = 11 de dano`; with the extra dice of a critical hit the
+ * groups are split (`2d12 (7, 11) + 1d12 Crítico Brutal (4) + 3 = 25 de dano cortante`). */
+export function damageFormula(
+  roll: DiceRoll,
+  typePt: string,
+  extra?: ExtraDice,
+  criticalMax = 0,
+): string {
   const words = damageWords(roll.total, typePt);
+  const split = extra ? splitFormula(roll, extra, criticalMax) : null;
+  if (split) {
+    return `${split.replace(/ = \d+$/, '')} = ${words}`;
+  }
   const shown = rollFormula(roll).replace(/ = \d+$/, '');
   // A flat number, or a typed sum with no bonus, has no formula to show.
   return roll.diceCount === 0 || shown === `${roll.total}` ? words : `${shown} = ${words}`;

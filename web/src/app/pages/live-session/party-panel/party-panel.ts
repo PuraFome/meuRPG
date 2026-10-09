@@ -1,6 +1,7 @@
 import { Component, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 
+import { aidTagForMaster } from '../../../core/combat/combat-effects';
 import { PartyMemberInfoVm, VitalsVm } from '../live-session.types';
 import { SessionXp } from '../session-xp/session-xp';
 import { SlotDots } from '../slot-dots/slot-dots';
@@ -29,6 +30,7 @@ export class PartyPanel {
   /** "Ajustar" on a row. */
   readonly adjust = output<VitalsVm>();
 
+  protected readonly aidTag = aidTagForMaster;
   protected readonly percent = hitPointsPercent;
   protected readonly hpState = hitPointsState;
   protected readonly sub = partyRowSub;

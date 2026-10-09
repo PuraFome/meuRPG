@@ -23,6 +23,7 @@ import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_p
 import {
   AreaPlacement,
   type Combatant,
+  CombatEffect,
   type InspirationOffer,
   CombatLogKind,
   CombatantState,
@@ -601,6 +602,8 @@ export class CombatView {
   );
   /** Where the combatant of the move page can go (`GetMoveOptions`): the player's own, or whoever the master's reach is on for. */
   protected readonly moveOptions = new MoveOptionsState();
+  /** The "Saltar" page's "Distância" is on: the options are the long jump's (and its warning), not the walk's. */
+  protected readonly moveJump = signal<{ readonly runningStart: boolean } | null>(null);
   /** The master's "Mostrar o alcance": the reach of whoever is on turn, drawn on the map. */
   protected readonly reachOn = signal(false);
   /** The master's "Movimento forçado" box: it is for one drag, and goes off when the drag is taken. */
@@ -1087,7 +1090,11 @@ export class CombatView {
         return;
       }
       void e.revision;
-      untracked(() => void this.moveOptions.load(this.api, campaignId, e.id, who));
+      // Only while the "Saltar" page is the one open: the master's reach and a closed page read the walk's.
+      const jump = this.state().moving() ? this.moveJump() : null;
+      untracked(
+        () => void this.moveOptions.load(this.api, campaignId, e.id, who, jump ?? undefined),
+      );
     });
     // An offer the player answers opens its prompt by itself, once (E9-13).
     effect(() => {
@@ -2134,6 +2141,11 @@ export class CombatView {
     );
   }
 
+  /** The master: "Encerrar Ajuda": the bonus goes, and the hit points lose only what passes the new maximum. */
+  protected endAid(id: string): Promise<boolean> {
+    return this.run((e) => this.api.endCombatEffect(this.campaignId(), e.id, id, CombatEffect.AID));
+  }
+
   protected remove(id: string): Promise<boolean> {
     return this.run((e) => this.api.remove(this.campaignId(), e.id, id));
   }
@@ -2437,6 +2449,10 @@ export class CombatView {
     }
     const before = own.movementUsedDft;
     this.moveError.set('');
+    // "Saltar e desengajar": the action is spent first, so the jump leaves the reach with no opportunity attack.
+    if (req.kind === 'long' && req.disengage && !(await this.disengage())) {
+      return;
+    }
     const ok = await this.runMove((e) => {
       // The same jump again (a lost answer) is a retry: it keeps its key and is not charged twice.
       const key = this.jumpKey.keyFor([e.id, own.id, req]);

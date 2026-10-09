@@ -70,7 +70,7 @@ export const naelSheet = {
   cantripKeys: ['spell:fire-bolt', 'spell:ray-of-frost', 'spell:light', 'spell:mage-hand'],
   knownSpellKeys: naelSpells,
   preparedSpellKeys: naelSpells,
-  featureChoiceKeys: ['trait:draconic-ancestry-red', 'feature:metamagic-careful-spell', 'feature:metamagic-twinned-spell'],
+  featureChoiceKeys: ['feature:dragon-ancestor-red---fire-damage', 'feature:metamagic-careful-spell', 'feature:metamagic-twinned-spell'],
 };
 
 /** A story NPC ally with `hitPointsMax` hit points. */

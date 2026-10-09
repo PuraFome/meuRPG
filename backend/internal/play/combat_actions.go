@@ -442,6 +442,7 @@ func pendingProto(p playdb.PendingDamage, cs []playdb.Combatant) *playv1.Pending
 		Status: pendingStatusToProto[p.Status], Critical: p.Critical,
 		CriticalRule: pendingCriticalRule(p.Critical, p.CriticalMaxRule), CriticalMax: p.CriticalMax,
 		DiceCount: p.DiceCount, DiceSides: p.DiceSides, Bonus: p.DiceBonus,
+		ExtraDiceCount: p.ExtraDice, ExtraDiceNamePt: extraDiceName(p.ExtraDice),
 		DamageTypeKey: p.DamageType, DamageTypePt: damageTypePT[p.DamageType],
 		CastId: deref(p.CastID), Healing: p.Healing, Half: p.Half, AppliedAmount: p.AppliedAmount,
 		TrapPointId: deref(p.TrapPointID), // a trap's damage has no attacker (MR-035)
@@ -452,7 +453,7 @@ func pendingProto(p playdb.PendingDamage, cs []playdb.Combatant) *playv1.Pending
 		if p.RollTotal != nil { // a half damage's roll is the whole one
 			total = *p.RollTotal
 		}
-		out.Roll = diceRoll(p.DiceCount, p.DiceSides, p.Faces, p.DiceBonus+p.CriticalMax, total, p.Physical)
+		out.Roll = diceRoll(p.DiceCount+p.ExtraDice, p.DiceSides, p.Faces, p.DiceBonus+p.CriticalMax, total, p.Physical)
 	}
 	if p.Status == pendingApplied {
 		out.TargetDefeated = slices.ContainsFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID && holdsHP(c) && c.Defeated })
@@ -865,8 +866,9 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 				// it is negative, or the character fights with two weapons).
 				bonus = combat.OffHandBonus(bonus, attack.AbilityMod, attackerSheet.TwoWeaponFighting)
 			}
-			p, err := s.openHit(ctx, c, m.CampaignID, attacker, target, attackKey,
-				link.Dice{Count: attack.DiceCount, Sides: attack.DiceSides, Bonus: bonus, DamageType: attack.DamageType}, result.Critical, result.Total, targetAC)
+			p, err := s.openHit(ctx, c, attacker, target, attackKey,
+				link.Dice{Count: attack.DiceCount, Sides: attack.DiceSides, Bonus: bonus, DamageType: attack.DamageType}, result.Critical,
+				brutalCriticalDice(attacker, attack, attackerSheet, result.Critical), result.Total, targetAC)
 			if err != nil {
 				return nil, err
 			}
@@ -1084,9 +1086,11 @@ func (s *Service) rollDamage(ctx context.Context, m authz.Membership, req *conne
 		// critical rule adds without rolling (the dice's maximum, in "máximo mais uma
 		// rolagem"; typed_sum never includes it). A flat damage needs no dice (and so
 		// no way of rolling).
-		expr := dice.Expr{Count: int(p.DiceCount), Sides: int(p.DiceSides), Modifier: int(p.DiceBonus) + int(p.CriticalMax)}
+		// The extra dice of a feature (Brutal Critical) are always rolled, after the
+		// critical's own, and typed_sum counts them.
+		expr := dice.Expr{Count: int(p.DiceCount) + int(p.ExtraDice), Sides: int(p.DiceSides), Modifier: int(p.DiceBonus) + int(p.CriticalMax)}
 		var roll dice.Result
-		if p.DiceCount == 0 {
+		if expr.Count == 0 {
 			roll = dice.Result{Expr: expr, Modifier: expr.Modifier, Total: expr.Modifier}
 		} else {
 			if !v.master {
@@ -1123,7 +1127,7 @@ func (s *Service) rollDamage(ctx context.Context, m authz.Membership, req *conne
 
 		made = actionEvent{
 			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: p.TargetID, Pending: p.ID, Key: p.AttackKey,
-			DiceCount: p.DiceCount, DiceSides: p.DiceSides, Modifier: clamp32(int(p.DiceBonus)+int(p.CriticalMax), math.MinInt32, math.MaxInt32), CriticalMax: p.CriticalMax, CriticalMaxRule: p.CriticalMaxRule, Faces: faces,
+			DiceCount: p.DiceCount + p.ExtraDice, ExtraDice: p.ExtraDice, DiceSides: p.DiceSides, Modifier: clamp32(int(p.DiceBonus)+int(p.CriticalMax), math.MinInt32, math.MaxInt32), CriticalMax: p.CriticalMax, CriticalMaxRule: p.CriticalMaxRule, Faces: faces,
 			DamageType: p.DamageType, Critical: p.Critical, Physical: roll.Physical, Heal: p.Healing, Total: rolledTotal,
 		}
 		for _, g := range group {

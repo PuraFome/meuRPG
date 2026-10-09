@@ -22,6 +22,10 @@ enum TrapSearchSkill {
   TRAP_SEARCH_SKILL_PERCEPTION = 1;
   // Intelligence (Investigation), against the trap's DC to find it.
   TRAP_SEARCH_SKILL_INVESTIGATION = 2;
+  // Any other skill of the SRD, named in `other_skill_key`. It finds only the traps
+  // whose master allowed it (TrapSpec.also_find_skill_keys), against the DC to find
+  // them. A skill no trap nearby allows answers exactly as a search that failed.
+  TRAP_SEARCH_SKILL_OTHER = 3;
 }
 
 // SearchForTrapsRequest is the player's "Procurar armadilhas".
@@ -47,6 +51,11 @@ message SearchForTrapsRequest {
   // is required (SEARCH_NEEDS_TWO_DICE) when any square the character sees within 3 m
   // is lightly obscured. In the app the server rolls both. Investigation ignores it.
   optional int32 d20_face_2 = 6;
+  // Required with OTHER, and only then: the skill's key ("skill:arcana"), one of
+  // the SRD's 18 that is neither Perception nor Investigation; else `invalid_argument`.
+  // The menu the player sees is the same for every trap, so this tells nothing about
+  // which traps are near.
+  string other_skill_key = 7;
 }
 
 // SearchForTrapsResponse is what the search found.
@@ -222,4 +231,6 @@ message TrapSearchResult {
   // The traps it revealed to the character (map point IDs), with their names.
   repeated string found_point_ids = 6;
   repeated string found_names = 7;
+  // The skill of a search made with OTHER ("skill:arcana"); empty otherwise.
+  string other_skill_key = 8;
 }
