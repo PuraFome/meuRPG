@@ -58,6 +58,7 @@ describe('PlayerVitals under Escudo Arcano and Ajuda (PM-03a)', () => {
   const flat = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim();
 
   function mount(over: Parameters<typeof pensantusVitals>[0], bonus: number | null) {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({ providers: [provideRouter([])] });
     const fixture = TestBed.createComponent(PlayerVitals);
     fixture.componentRef.setInput('vitals', pensantusVitals(over));
@@ -152,5 +153,103 @@ describe('PlayerVitals under Escudo Arcano and Ajuda (PM-03a)', () => {
     const plain = mount({}, 0).nativeElement as HTMLElement;
     expect(plain.querySelector('.hp__aid')).toBeNull();
     expect(plain.querySelectorAll('.hp__fill')).toHaveLength(1);
+  });
+
+  it("writes the sheet's own maximum small under the label while Ajuda is on, and not without it", () => {
+    const el = mount({ hitPointsCurrent: 43, hitPointsMax: 43, hitPointsMaxBonus: 5 }, 0)
+      .nativeElement as HTMLElement;
+    expect(flat(el.querySelector('.hp__sheet'))).toBe('máximo 38 da ficha');
+    expect(mount({}, 0).nativeElement.querySelector('.hp__sheet')).toBeNull();
+  });
+});
+
+describe('PlayerVitals at 0 hit points and the Ajuda that wakes (PM-03a)', () => {
+  const flat = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim();
+
+  function mount(
+    over: Parameters<typeof pensantusVitals>[0],
+    saves: { successes: number; failures: number } | null,
+  ) {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    const fixture = TestBed.createComponent(PlayerVitals);
+    fixture.componentRef.setInput(
+      'vitals',
+      pensantusVitals({ name: 'Toren', hitPointsMax: 40, ...over }),
+    );
+    fixture.componentRef.setInput('sheet', { armorClass: 18, summary: 'Guerreiro 4', senses: [] });
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.componentRef.setInput('compact', true);
+    fixture.componentRef.setInput('ownDeathSaves', saves);
+    fixture.detectChanges();
+    return fixture;
+  }
+  const pills = (f: ReturnType<typeof mount>) =>
+    Array.from((f.nativeElement as HTMLElement).querySelectorAll('.effects .effect'), flat);
+
+  it('says "Inconsciente" and the death save counts of the combatant at 0', () => {
+    const f = mount({ hitPointsCurrent: 0 }, { successes: 1, failures: 1 });
+    expect(pills(f)).toEqual(['Inconsciente', 'Testes contra a morte: 1 sucesso, 1 falha']);
+    expect((f.nativeElement as HTMLElement).querySelector('.effects')?.getAttribute('role')).toBe(
+      'status',
+    );
+  });
+
+  it('says only "Inconsciente" when no combat tells the counts, and nothing above 0', () => {
+    expect(pills(mount({ hitPointsCurrent: 0 }, null))).toEqual(['Inconsciente']);
+    expect(pills(mount({ hitPointsCurrent: 12 }, { successes: 0, failures: 0 }))).toEqual([]);
+  });
+
+  it('says the character woke when Ajuda takes the hit points from 0 to above 0, then lets it go', () => {
+    vi.useFakeTimers();
+    try {
+      const f = mount({ hitPointsCurrent: 0, revision: 1 }, { successes: 1, failures: 1 });
+      f.componentRef.setInput(
+        'vitals',
+        pensantusVitals({
+          name: 'Toren',
+          hitPointsCurrent: 5,
+          hitPointsMax: 45,
+          hitPointsMaxBonus: 5,
+          revision: 2,
+        }),
+      );
+      f.detectChanges();
+      expect(pills(f)).toEqual([
+        'favorite_borderAjuda: +5 nos PV até o mestre encerrar ou um descanso longo',
+        'checkAcordado · testes contra a morte zerados',
+      ]);
+      expect(flat((f.nativeElement as HTMLElement).querySelector('.effect--ok'))).toContain(
+        'Acordado',
+      );
+      vi.advanceTimersByTime(30000);
+      f.detectChanges();
+      expect(pills(f)).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not say it woke for a plain heal, or for hit points that were never 0', () => {
+    const heal = mount({ hitPointsCurrent: 0, revision: 1 }, null);
+    heal.componentRef.setInput(
+      'vitals',
+      pensantusVitals({ name: 'Toren', hitPointsCurrent: 5, hitPointsMax: 40, revision: 2 }),
+    );
+    heal.detectChanges();
+    expect(pills(heal)).toEqual([]);
+    const aid = mount({ hitPointsCurrent: 10, hitPointsMax: 40, revision: 1 }, null);
+    aid.componentRef.setInput(
+      'vitals',
+      pensantusVitals({
+        name: 'Toren',
+        hitPointsCurrent: 15,
+        hitPointsMax: 45,
+        hitPointsMaxBonus: 5,
+        revision: 2,
+      }),
+    );
+    aid.detectChanges();
+    expect(pills(aid).some((p) => p?.includes('Acordado'))).toBe(false);
   });
 });

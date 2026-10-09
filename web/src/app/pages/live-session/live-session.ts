@@ -344,6 +344,15 @@ export class LiveSession {
     }
     return e.combatants.find((c) => c.mine)?.armorClassBonus ?? null;
   });
+  /** The death saves of the player's own combatant while a combat is on; `null` outside one. */
+  protected readonly ownDeathSaves = computed(() => {
+    const e = this.combat.encounter();
+    if (this.isMaster() || e?.status !== EncounterStatus.ACTIVE) {
+      return null;
+    }
+    const own = e.combatants.find((c) => c.mine);
+    return own ? { successes: own.deathSuccesses, failures: own.deathFailures } : null;
+  });
   /** The master's "Ver como" list: the living player characters, with their players. */
   protected readonly viewAsPeople = computed<readonly ViewAsPerson[]>(() =>
     this.vitals().map((v) => ({

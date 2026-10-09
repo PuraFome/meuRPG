@@ -7,6 +7,7 @@ import {
   parseSum,
   rollFormula,
   rollText,
+  physicalSplitFormula,
   splitFormula,
   sumRange,
   treatedFormula,
@@ -130,6 +131,19 @@ describe('a damage with the extra dice of a critical hit (PM-03b)', () => {
     expect(damageFormula(typed, 'cortante', brutal)).toBe('22 + 3 = 25 de dano cortante');
     expect(splitFormula(rolled, { count: 0, name: '' })).toBeNull();
     expect(damageFormula(rolled, 'cortante')).toBe('3d12 (7, 11, 4) + 3 = 25 de dano cortante');
+  });
+
+  it('writes the groups of typed dice from their counts: only the sum is known', () => {
+    const typed = roll({ diceCount: 3, diceSides: 12, modifier: 3, total: 25, physical: true });
+    expect(physicalSplitFormula(typed, brutal)).toBe(
+      '3d12 (2d12 + 1d12 Crítico Brutal) = 22 + 3 = 25',
+    );
+    const max = roll({ diceCount: 2, diceSides: 12, modifier: 15, total: 25, physical: true });
+    expect(physicalSplitFormula(max, brutal, 12)).toBe(
+      '12 (máximo) + 2d12 (1d12 + 1d12 Crítico Brutal) = 10 + 3 = 25',
+    );
+    expect(physicalSplitFormula(rolled, brutal)).toBeNull();
+    expect(physicalSplitFormula(typed, { count: 0, name: '' })).toBeNull();
   });
 
   it('reads the extra dice of a pending or a log damage, and nothing without them', () => {

@@ -82,6 +82,23 @@
   }
 }
 
+// A row with a lasting effect's label stacks on a phone: the label has the width of the words, and "Dano/Cura" goes under it.
+.row--effects {
+  @media (max-width: 767.98px) {
+    grid-template-areas:
+      'token text text'
+      '. actions actions'
+      '. cover cover'
+      '. death death'
+      '. extra extra';
+
+    .row__actions {
+      justify-content: flex-start;
+      margin-top: 4px;
+    }
+  }
+}
+
 .row--turn {
   background: var(--mr-accent-soft);
 }
@@ -274,7 +291,6 @@
 .row__effect {
   gap: 5px;
   padding: 2px 9px;
-  white-space: normal;
 
   .mat-icon {
     flex: none;

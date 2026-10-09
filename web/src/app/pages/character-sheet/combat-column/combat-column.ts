@@ -5,6 +5,7 @@ import {
   formatModifier,
   splitArmorDescription,
 } from '../../../core/characters/character-labels';
+import type { VitalsVm } from '../../live-session/live-session.types';
 import { FullSheetVm } from '../character-sheet.types';
 import { CombatStats } from '../combat-stats/combat-stats';
 import {
@@ -30,6 +31,14 @@ import {
 })
 export class CombatColumn {
   readonly sheet = input.required<FullSheetVm>();
+  /** This character's live vitals while its campaign has an open session; `null` otherwise. */
+  readonly vitals = input<VitalsVm | null>(null);
+
+  /** Only to show what Ajuda adds. */
+  protected readonly aidVitals = computed(() => {
+    const v = this.vitals();
+    return v && (v.hitPointsMaxBonus ?? 0) > 0 && !v.wildShape ? v : null;
+  });
 
   protected readonly abilityLabel = abilityLabel;
   protected readonly formatModifier = formatModifier;

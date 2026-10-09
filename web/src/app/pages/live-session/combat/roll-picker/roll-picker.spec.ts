@@ -50,6 +50,20 @@ describe('RollPicker', () => {
     expect(typeOnly.textContent).not.toContain('Rolar no app');
   });
 
+  it('reads the total on the button, not the typed sum, when it confirms a damage ("Confirmar 25")', () => {
+    const { type, button, rolled } = setup({
+      min: 3,
+      max: 36,
+      modifier: 3,
+      confirmTotal: true,
+      canApp: false,
+    });
+    type('22');
+    expect(button('Confirmar 25')).toBeTruthy();
+    button('Confirmar 25')!.click();
+    expect(rolled).toEqual(['typed 22']);
+  });
+
   it('rolls in the app on one tap', () => {
     const { button, rolled } = setup();
     button('Rolar no app')!.click();

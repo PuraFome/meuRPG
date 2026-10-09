@@ -49,6 +49,8 @@ export class RollPicker {
   readonly max = input(20);
   /** Added to the typed number: the attack bonus, or the damage modifier. */
   readonly modifier = input(0);
+  /** The button reads the total ("Confirmar 25", with the bonus added) in place of the typed number: damage, where the sum of the dice is only a part. */
+  readonly confirmTotal = input(false);
   /** The field's label ("Role 1d20 para o Machado de batalha (+5)"). */
   readonly label = input.required<string>();
   /** The line under it ("Role o seu dado e digite o número que saiu (1 a 20)."). */
@@ -93,6 +95,11 @@ export class RollPicker {
   protected readonly id = `roll-picker-${nextId++}`;
   protected readonly text = signal('');
   protected readonly value = computed(() => parseSum(this.text(), this.min(), this.max()));
+  /** The number on the button: the typed one, or the total when `confirmTotal` is on. */
+  protected readonly confirmNumber = computed(() => {
+    const v = this.value();
+    return v !== null && this.confirmTotal() ? (this.total()?.sum ?? v) : v;
+  });
   protected readonly invalid = computed(() => this.text().trim() !== '' && this.value() === null);
   protected readonly showTyping = computed(() => this.typing() || !this.canApp());
   protected readonly errorText = computed(() =>

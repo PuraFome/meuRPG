@@ -16,7 +16,7 @@ import {
   SpellEffectOutcome,
   WildShapeEndReason,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import { extraDiceOf, rollText, splitFormula } from './combat-dice';
+import { extraDiceOf, physicalSplitFormula, rollText, splitFormula } from './combat-dice';
 import { conditionName, listNames } from './conditions';
 import { metersFixed, metersText } from '../units';
 import { circleLabel } from './combat-options';
@@ -124,6 +124,22 @@ function isShot(key: string): boolean {
   return /bow|sling|dart|blowgun|net|^spell:/.test(key);
 }
 
+/** The applied damage in words: ", 25 de dano", or with the extra dice of a critical (Crítico Brutal) the groups of dice,
+ * for whoever has the roll: the faces when the app rolled them, the counts and "dados físicos" when only the sum was typed. */
+function appliedWords(d: CombatLogDamage): string {
+  const extra = extraDiceOf(d);
+  const kind = d.damageTypePt || 'dano';
+  const cut = (formula: string) => formula.replace(/ = \d+$/, '');
+  const split = extra && d.roll ? splitFormula(d.roll, extra, d.criticalMax) : null;
+  if (split) {
+    return `, dano ${cut(split)} = ${d.amount} de ${kind}`;
+  }
+  const typed = extra && d.roll ? physicalSplitFormula(d.roll, extra, d.criticalMax) : null;
+  return typed
+    ? `, dano ${cut(typed)} = ${d.amount} de ${kind}, dados físicos`
+    : `, ${d.amount} de dano`;
+}
+
 /** The damage of an attack or of one target of a cast, as the sentence
  * tells it: ", 5 de dano", the dice the master overruled, a heal, a half. */
 function damageText(d: CombatLogDamage): string {
@@ -144,16 +160,11 @@ function damageText(d: CombatLogDamage): string {
           ? ` (o dado deu ${d.rolledAmount})`
           : '';
       const half = d.half ? ' (metade)' : '';
-      // A critical with a feature's extra dice (Crítico Brutal): the groups of dice, for whoever has the roll.
-      const extra = extraDiceOf(d);
-      const split = extra && d.roll ? splitFormula(d.roll, extra, d.criticalMax) : null;
       const failures =
         d.deathFailuresAdded > 0
           ? `, ${d.deathFailuresAdded === 1 ? 'uma falha' : 'duas falhas'} no teste contra a morte`
           : '';
-      const words = split
-        ? `, dano ${split.replace(/ = \d+$/, '')} = ${d.amount} de ${d.damageTypePt || 'dano'}`
-        : `, ${d.amount} de dano`;
+      const words = appliedWords(d);
       return `${words}${half}${other}${failures}`;
     }
   }

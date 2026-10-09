@@ -99,6 +99,13 @@
   background: repeating-linear-gradient(135deg, var(--mr-ink) 0 2px, var(--mr-surface) 2px 5px);
 }
 
+// "máximo 38 da ficha", small, under "Pontos de vida" while Ajuda raises the maximum.
+.hp__sheet {
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
 // "de 43" and, hanging off it, "+5 de Ajuda": it breaks to the next line before it squeezes the number.
 .hp__top {
   display: flex;
@@ -107,11 +114,9 @@
   gap: 2px var(--mr-space-2);
 }
 
-.hp__aid,
-.effect {
+.hp__aid {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
   box-sizing: border-box;
   border: 1px solid var(--mr-accent);
   border-radius: var(--mr-radius-pill);
@@ -120,9 +125,6 @@
   font-size: 13px;
   font-weight: 700;
   line-height: 1.2;
-}
-
-.hp__aid {
   min-height: 24px;
   padding: 0 9px;
   white-space: nowrap;
@@ -136,24 +138,6 @@
 
   &:empty {
     display: none;
-  }
-}
-
-.effect {
-  min-height: 28px;
-  padding: 3px 9px;
-
-  .mat-icon {
-    flex: none;
-    width: 14px;
-    height: 14px;
-    font-size: 14px;
-  }
-
-  &--aid {
-    border-color: var(--mr-warning-line);
-    background: var(--mr-warning-surface);
-    color: var(--mr-warning-ink);
   }
 }
 

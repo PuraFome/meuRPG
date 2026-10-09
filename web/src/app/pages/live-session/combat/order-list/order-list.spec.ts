@@ -511,6 +511,29 @@ describe('OrderList under Escudo Arcano and Ajuda (PM-03a)', () => {
     expect(items().some((i) => i?.includes('Encerrar Ajuda'))).toBe(false);
   });
 
+  it('puts an icon before every item of the row menu, with the labels of the board', () => {
+    const fixture = mount([salvia(), hobgoblin]);
+    const el = fixture.nativeElement as HTMLElement;
+    const menuOf = (name: string) => {
+      el.querySelector<HTMLButtonElement>(`button[aria-label="Mais ações para ${name}"]`)!.click();
+      fixture.detectChanges();
+      return Array.from(document.querySelectorAll('.mat-mdc-menu-item'));
+    };
+    const player = menuOf('Sálvia');
+    expect(player.map((i) => flat(i))).toEqual([
+      'favorite_borderEncerrar Ajuda em Sálvia',
+      'editMudar condições',
+      'shieldMarcar cobertura',
+    ]);
+    expect(player.every((i) => i.querySelector(':scope > .mat-icon') !== null)).toBe(true);
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+    const npc = menuOf('Hobgoblin');
+    expect(npc.map((i) => flat(i)?.replace(/^[a-z_]+(?=[A-Z])/, ''))).toContain('Esconder');
+    expect(npc.every((i) => i.querySelector('.mat-icon') !== null)).toBe(true);
+    expect(el.querySelectorAll('.row--effects')).toHaveLength(1);
+  });
+
   function openQuestion(fixture: ReturnType<typeof mount>) {
     (
       fixture.componentInstance as unknown as { endingAid: { set(id: string): void } }

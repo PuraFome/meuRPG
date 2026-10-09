@@ -169,6 +169,26 @@ export function splitFormula(roll: DiceRoll, extra: ExtraDice, criticalMax = 0):
   return `${parts.join(' + ')}${modifierText(roll.modifier - criticalMax)} = ${roll.total}`;
 }
 
+/** The same split for dice rolled on the table: only the sum was typed, so the groups come from the counts
+ * (`3d12 (2d12 + 1d12 Crítico Brutal) = 22 + 3 = 25`), and the maximum of a critical that came without rolling stands
+ * apart. `null` when the roll is not a typed one or has no own dice. */
+export function physicalSplitFormula(
+  roll: DiceRoll,
+  extra: ExtraDice,
+  criticalMax = 0,
+): string | null {
+  const own = roll.diceCount - extra.count;
+  if (extra.count <= 0 || !roll.physical || own < 1) {
+    return null;
+  }
+  const sides = roll.diceSides;
+  const groups = `${roll.diceCount}d${sides} (${own}d${sides} + ${extra.count}d${sides} ${extra.name})`;
+  const bonus = roll.modifier - criticalMax;
+  const sum = roll.total - roll.modifier;
+  const max = criticalMax > 0 ? `${criticalMax} (máximo) + ` : '';
+  return `${max}${groups} = ${sum}${modifierText(bonus)} = ${roll.total}`;
+}
+
 /** The damage line: `1d10 (7) = 7 de fogo`, `2d6 (5, 4) + 2 = 11 de dano`; with the extra dice of a critical hit the
  * groups are split (`2d12 (7, 11) + 1d12 Crítico Brutal (4) + 3 = 25 de dano cortante`). */
 export function damageFormula(

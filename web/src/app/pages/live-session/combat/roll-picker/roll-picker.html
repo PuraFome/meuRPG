@@ -85,7 +85,7 @@
       disabledInteractive
       (click)="confirm()"
     >
-      Confirmar{{ value() === null ? '' : ' ' + value() }}
+      Confirmar{{ confirmNumber() === null ? '' : ' ' + confirmNumber() }}
     </button>
     @if (canApp()) {
       <button type="button" class="type__back" (click)="typing.set(false)">

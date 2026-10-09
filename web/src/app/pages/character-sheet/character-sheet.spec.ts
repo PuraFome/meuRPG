@@ -11,6 +11,8 @@ import { CharacterSheetPage } from './character-sheet';
 import { NotesClient } from '../../core/notes/notes-client';
 import { CreaturesClient } from '../../core/creatures/creatures-client';
 import { CreaturesPanel } from './creatures-panel/creatures-panel';
+import type { VitalsVm } from '../live-session/live-session.types';
+import { pensantusVitals } from '../live-session/testing';
 import { XpWatcher } from './xp-watcher';
 import {
   BasicSheetVm,
@@ -221,9 +223,12 @@ const xpWatcher = {
         onChange: () => void,
         onCreatures?: () => void,
         onContent?: () => void,
-        onForm?: (characterId: string | null) => void,
+        onForm?: (characterId: string | null, vitals?: VitalsVm) => void,
       ) => void
     >(),
+  readVitals: vi.fn<(campaignId: string, characterId: string) => Promise<VitalsVm | null>>(() =>
+    Promise.resolve(null),
+  ),
 };
 /** The player's notes panel reads this; nothing here talks to a server. */
 const notesApi = {
@@ -1402,6 +1407,7 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
   beforeEach(() => {
     openSessions.set([]);
     xpWatcher.follow.mockClear();
+    xpWatcher.readVitals.mockClear();
     TestBed.configureTestingModule({
       imports: [CharacterSheetPage],
       providers: [
@@ -1593,6 +1599,61 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
 
     fixture.destroy();
     expect(xpWatcher.follow).toHaveBeenLastCalledWith(null, expect.any(Function));
+  });
+
+  it('shows Ajuda on the sheet while the session is live: "43 de 43", "máximo 38 da ficha", the tag and the banner', async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ sheet: fullSheet({ hitPointsMax: 38 }) }));
+    xpWatcher.readVitals.mockResolvedValue(
+      pensantusVitals({
+        characterId: 'char-1',
+        hitPointsCurrent: 43,
+        hitPointsMax: 43,
+        hitPointsMaxBonus: 5,
+      }),
+    );
+    openSessions.set([
+      {
+        sessionId: 's1',
+        campaignId: 'camp-1',
+        campaignName: 'Mirathel',
+        sessionNumber: 5,
+        startedAt: new Date(),
+        isMaster: false,
+      },
+    ]);
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+    const flat = (n: Element | null) => n?.textContent?.replace(/\s+/g, ' ').trim();
+    expect(xpWatcher.readVitals).toHaveBeenCalledWith('camp-1', 'char-1');
+    expect(flat(el.querySelector('app-combat-stats .hp__value'))).toBe('43 de 43');
+    expect(flat(el.querySelector('app-combat-stats .hp__note'))).toBe('máximo 38 da ficha');
+    expect(flat(el.querySelector('app-combat-stats .aid-banner'))).toContain(
+      'Ajuda: +5 nos PV até o mestre encerrar ou um descanso longo',
+    );
+
+    // The master ends Ajuda: the stream's vitals bring the old maximum back and the old text returns.
+    const onForm = xpWatcher.follow.mock.calls.at(-1)![4]!;
+    onForm(
+      'char-1',
+      pensantusVitals({ characterId: 'char-1', hitPointsCurrent: 38, hitPointsMax: 38 }),
+    );
+    fixture.detectChanges();
+    expect(flat(el.querySelector('app-combat-stats .hp__note'))).toBe(
+      'Os atuais aparecem na sessão',
+    );
+    expect(el.querySelector('app-combat-stats .aid-banner')).toBeNull();
+    xpWatcher.readVitals.mockResolvedValue(null);
+  });
+
+  it('keeps the old text outside a session', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(vm());
+    openSessions.set([]);
+    const el = (await render()).nativeElement as HTMLElement;
+    expect(el.querySelector('app-combat-stats .hp__note')?.textContent?.trim()).toBe(
+      'Os atuais aparecem na sessão',
+    );
+    expect(xpWatcher.readVitals).not.toHaveBeenCalled();
   });
 
   it("does not listen for an NPC's sheet: it has no XP to keep fresh", async () => {

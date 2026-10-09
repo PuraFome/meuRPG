@@ -21,14 +21,14 @@ export function sq20(col: number, row: number): { xBp: number; yBp: number } {
   return { xBp: Math.round(((col + 0.5) * 10000) / 20), yBp: Math.round(((row + 0.5) * 10000) / 14) };
 }
 
-export async function trapTable(browser: Browser, name: string): Promise<TrapTable> {
+export async function trapTable(browser: Browser, name: string, character: { build?: CharacterBuild; sheet?: Record<string, unknown> } = {}): Promise<TrapTable> {
   const master: BrowserContext = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 1000 } });
   const player: BrowserContext = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 1280, height: 1000 } });
   const m = await master.newPage();
   const p = await player.newPage();
   await m.goto('/');
   await p.goto('/');
-  const table = await tableForCombat(m, p, `${name} ${Date.now()}`, true, true);
+  const table = await tableForCombat(m, p, `${name} ${Date.now()}`, true, true, character);
   return {
     m,
     p,
@@ -49,6 +49,8 @@ export interface TrapSpecBody {
   manual?: boolean;
   /** A flat damage, so the number is known ("3" is 3 de concussão). */
   damage?: string;
+  /** The skills besides Percepção and Investigação that find it ("Também acham com"), as content keys. */
+  alsoFind?: string[];
 }
 
 /** A trap on the map (born hidden); returns its point's ID. */
@@ -63,6 +65,7 @@ export async function trapRPC(m: Page, table: CombatTable, name: string, col: nu
     trap: {
       noticeDc: spec.noticeDc ?? 30,
       findDc: spec.findDc ?? 5,
+      alsoFindSkillKeys: spec.alsoFind ?? [],
       areaSize: spec.areaSize ?? 1,
       trigger: spec.manual ? 'TRAP_TRIGGER_MANUAL' : 'TRAP_TRIGGER_ENTER',
       effect: { damage: [{ dice: spec.damage ?? '3', damageTypeKey: 'damage-type:bludgeoning' }] },
@@ -115,7 +118,7 @@ export interface ThirdPlayer {
  * A second player with a character in the table (RN-03 allows one living character each, so the first account's Pensantus and this one's
  * Toren): the third devidp account "E-mail Não Verificado", from the session `auth.setup.ts` saves.
  */
-export async function thirdPlayer(browser: Browser, t: TrapTable, build: CharacterBuild): Promise<ThirdPlayer> {
+export async function thirdPlayer(browser: Browser, t: TrapTable, build: CharacterBuild, sheet: Record<string, unknown> = {}): Promise<ThirdPlayer> {
   const context = await newSignedInContext(browser, 'E-mail Não Verificado', { viewport: { width: 1280, height: 1000 } });
   const page = await context.newPage();
   await page.goto('/');
@@ -123,7 +126,9 @@ export async function thirdPlayer(browser: Browser, t: TrapTable, build: Charact
   expect(invite.ok(), await invite.text()).toBeTruthy();
   const joined = await callRPC(page, 'meurpg.campaigns.v1.CampaignService/AcceptInvite', { token: (await invite.json()).token });
   expect(joined.ok(), await joined.text()).toBeTruthy();
-  const made = await createCharacterRPC(page, t.campaignId, characterRpcBody('PLAYER', build));
+  const body = characterRpcBody('PLAYER', build) as { sheet: { full: object } };
+  body.sheet.full = { ...body.sheet.full, ...sheet };
+  const made = await createCharacterRPC(page, t.campaignId, body);
   expect(made.ok(), await made.text()).toBeTruthy();
   return { page, characterId: (await made.json()).character.id as string, close: () => context.close() };
 }

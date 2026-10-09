@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { callRPC, newSignedInContext } from './support';
-import { toren } from './combat-support';
+import { dalila, dalilaSheet, toren } from './combat-support';
 import { sessionRoute, squareBp, tableForFog } from './fog-support';
 import { movePensantus, pensantusFirst, pointNames, sq20, thirdPlayer, trapRPC, trapTable, treasureRPC } from './trap-support';
 
@@ -366,6 +366,89 @@ test(
         await endOpenSessionRPC(mp, campaignId);
       }
       await Promise.all([master.close(), pensantus.close(), torenCtx.close()]);
+    }
+  },
+);
+
+test(
+  'Talento Confiável: o ladino 11 digita um d20 baixo na busca, a prévia e o resultado dizem "4 → 10" e ele acha',
+  { tag: ['@MR-035', '@RN-10'] },
+  async ({ browser }) => {
+    test.setTimeout(180_000);
+    const { m, p, table, campaignId, done } = await trapTable(browser, 'Talento', { build: dalila, sheet: dalilaSheet });
+    try {
+      // The DC is 18: a plain 4 + 10 would fall short, only the 10 that Talento Confiável counts, plus the 10, clears it.
+      await trapRPC(m, table, 'Fosso escondido', 6, 7, { findDc: 18 });
+      await openSessionPage(p, campaignId);
+
+      await p.getByRole('button', { name: 'Procurar armadilhas' }).click();
+      const sheet = p.getByRole('dialog', { name: 'Procurar armadilhas' });
+      await sheet.locator('label', { hasText: 'Investigação' }).click();
+      await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+      await sheet.getByLabel(/Role 1d20 para Investigação/).fill('4');
+      await expect(sheet.getByText('4 → 10 (Talento Confiável)')).toBeVisible();
+      await sheet.getByRole('button', { name: /Confirmar 4/ }).click();
+      await expect(sheet.getByText(/d20: 4 → 10 \(Talento Confiável\)/)).toBeVisible();
+      await expect(sheet).toContainText('Você achou uma armadilha: Fosso escondido.');
+      await sheet.getByRole('button', { name: 'Fechar', exact: true }).last().click();
+      expect(await pointNames(p, table)).toContain('Fosso escondido');
+
+      // A d20 of 14 is not raised: no line about the feature.
+      await trapRPC(m, table, 'Fosso raso', 4, 7, { findDc: 30 });
+      await p.getByRole('button', { name: 'Procurar armadilhas' }).click();
+      await sheet.locator('label', { hasText: 'Investigação' }).click();
+      await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+      await sheet.getByLabel(/Role 1d20 para Investigação/).fill('14');
+      await expect(sheet.getByText('Talento Confiável')).toHaveCount(0);
+      await sheet.getByRole('button', { name: /Confirmar 14/ }).click();
+      await expect(sheet).toContainText('Você não encontrou nada.');
+      await expect(sheet.getByText('Talento Confiável')).toHaveCount(0);
+    } finally {
+      await done();
+    }
+  },
+);
+
+test(
+  '"Outra perícia…" é o mesmo menu com ou sem armadilha por perto, e só acha a que lista essa perícia em "Também acham com"',
+  { tag: ['@MR-035', '@RN-10'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    const { m, p, table, campaignId, done } = await trapTable(browser, 'Outra perícia');
+    try {
+      await openSessionPage(p, campaignId);
+      const search = p.getByRole('button', { name: 'Procurar armadilhas' });
+      const sheet = p.getByRole('dialog', { name: 'Procurar armadilhas' });
+      const openOther = async () => {
+        await search.click();
+        await sheet.locator('label', { hasText: 'Outra perícia…' }).click();
+        return sheet.getByRole('listbox', { name: 'Perícia' });
+      };
+
+      // No trap on the map: the list of the other skills with the sheet's bonus.
+      const empty = await openOther();
+      await expect(empty.getByRole('option')).toHaveCount(16);
+      const without = await empty.innerText();
+      await p.keyboard.press('Escape');
+      await expect(sheet).toBeHidden();
+
+      // Two traps close by: one found with Arcanismo too, the other with Religião. The menu is the same, word for word.
+      await trapRPC(m, table, 'Fosso escondido', 6, 7, { alsoFind: ['skill:arcana'] });
+      await trapRPC(m, table, 'Fosso raso', 4, 7, { alsoFind: ['skill:religion'] });
+      const list = await openOther();
+      await expect(list).toHaveText(without, { useInnerText: true });
+      await list.getByRole('option', { name: /^Arcanismo/ }).click();
+      await expect(sheet.getByText('Escolha uma perícia')).toHaveCount(0);
+      await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+      await sheet.getByLabel(/Role 1d20 para Arcanismo/).fill('20');
+      await sheet.getByRole('button', { name: /Confirmar 20/ }).click();
+      await expect(sheet).toContainText('Você achou uma armadilha: Fosso escondido.');
+      await sheet.getByRole('button', { name: 'Fechar', exact: true }).last().click();
+      expect(await pointNames(p, table)).toContain('Fosso escondido');
+      expect(await pointNames(p, table)).not.toContain('Fosso raso');
+      await expect(p.getByRole('region', { name: 'Registro' })).toContainText('procurou armadilhas (Arcanismo)');
+    } finally {
+      await done();
     }
   },
 );

@@ -989,6 +989,20 @@ describe('the log line of a critical with the extra dice of Crítico Brutal (PM-
     );
   });
 
+  it('names the feature and the groups when the dice were physical: only the sum is known', () => {
+    const typed = {
+      diceCount: 3,
+      diceSides: 12,
+      faces: [],
+      modifier: 3,
+      total: 25,
+      physical: true,
+    };
+    expect(logLine(crit(typed))?.text).toBe(
+      ' ataca o Hobgoblin com o Machado grande: crítico, dano 3d12 (2d12 + 1d12 Crítico Brutal) = 22 + 3 = 25 de cortante, dados físicos',
+    );
+  });
+
   it('says only the amount to whoever does not get the dice, and for a hit without the feature', () => {
     expect(logLine(crit(undefined))?.text).toBe(
       ' ataca o Hobgoblin com o Machado grande: crítico, 25 de dano',

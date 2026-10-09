@@ -16,6 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import type { VitalsVm } from '../live-session/live-session.types';
 import { setPageSubject } from '../../core/title/page-title';
 import { formatModifier } from '../../core/characters/character-labels';
 import { describeCharacterError } from '../../core/characters/character-errors';
@@ -139,6 +140,11 @@ export class CharacterSheetPage {
   /** Bumped when this character's vitals or the combat changed: a Wild Shape form may have ended. */
   protected readonly formTick = signal(0);
 
+  /** This character's vitals from the open session, for Ajuda on the sheet; `null` outside a session or while they are not read. */
+  protected readonly vitals = signal<VitalsVm | null>(null);
+  /** The campaign whose session the vitals were read from (read once, then kept fresh by the stream). */
+  private vitalsFor = '';
+
   /** How the campaign levels: decides whether the header has an XP block or only the tag. */
   protected readonly xpMode = signal<CampaignXpMode | null>(null);
 
@@ -175,25 +181,50 @@ export class CharacterSheetPage {
       const player = s.status === 'ready' && s.vm.characterKind === 'player';
       const live =
         player && id !== '' && this.openSessions.sessions().some((o) => o.campaignId === id);
-      untracked(() =>
+      untracked(() => {
+        this.followVitals(live ? id : null);
         this.xpWatcher.follow(
           live ? id : null,
           () => void this.reloadQuietly(),
           () => this.creaturesTick.update((n) => n + 1),
           // The table's content changed (RN-23, "A classe mudou"): the same stream, one more kind of hint, the sheet read again.
           () => void this.reloadQuietly(),
-          (who) => {
+          (who, v) => {
             if (who === null || who === this.characterId) {
               this.formTick.update((n) => n + 1);
             }
+            if (v && who === this.characterId) {
+              this.vitals.set(v);
+            }
           },
-        ),
-      );
+        );
+      });
     });
     this.destroyRef.onDestroy(() => {
       this.destroyed = true;
       this.xpWatcher.follow(null, () => undefined);
     });
+  }
+
+  /** Reads the vitals once when the campaign's session is live; forgets them when it is not. */
+  private followVitals(campaignId: string | null): void {
+    if (campaignId === null) {
+      this.vitalsFor = '';
+      this.vitals.set(null);
+      return;
+    }
+    if (campaignId === this.vitalsFor) {
+      return;
+    }
+    this.vitalsFor = campaignId;
+    this.xpWatcher.readVitals(campaignId, this.characterId).then(
+      (v) => {
+        if (!this.destroyed && this.vitalsFor === campaignId && v && !this.vitals()) {
+          this.vitals.set(v);
+        }
+      },
+      () => undefined,
+    );
   }
 
   private characterId = '';
@@ -231,6 +262,8 @@ export class CharacterSheetPage {
   private load(campaignId: string, characterId: string): void {
     const seq = ++this.sheetSeq;
     this.state.set({ status: 'loading' });
+    this.vitals.set(null);
+    this.vitalsFor = '';
     this.confirmingDeath.set(false);
     this.confirmingReject.set(false);
     this.markDeadState.set({ status: 'idle' });

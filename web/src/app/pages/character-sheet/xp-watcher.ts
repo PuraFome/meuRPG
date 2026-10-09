@@ -1,6 +1,7 @@
 import { DOCUMENT, Injectable, inject } from '@angular/core';
 
 import { LiveSessionSourceLive } from '../live-session/live-session-source.live';
+import { VitalsVm } from '../live-session/live-session.types';
 import { LiveStream } from '../live-session/live-stream';
 
 /**
@@ -26,13 +27,13 @@ export class XpWatcher {
    * `onCreatures`, when given, on every `creatures_changed` and on a reconnection too, and `onContent` on every
    * `content_changed` (the table's content moved: the editor and the level-up read their catalog again), and
    * `onForm` when a character's hit points or the combat changed (a Wild Shape form ends that way), with the
-   * character of a vitals event, or `null` when it is the combat that changed. */
+   * character of a vitals event (and the vitals themselves), or `null` when it is the combat that changed. */
   follow(
     campaignId: string | null,
     onChange: () => void,
     onCreatures?: () => void,
     onContent?: () => void,
-    onForm?: (characterId: string | null) => void,
+    onForm?: (characterId: string | null, vitals?: VitalsVm) => void,
   ): void {
     if (campaignId === this.campaignId) {
       return;
@@ -60,7 +61,7 @@ export class XpWatcher {
           }
           first = false;
         },
-        onVitals: (v) => onForm?.(v.characterId),
+        onVitals: (v) => onForm?.(v.characterId, v),
         onEncounterChanged: () => onForm?.(null),
         onXpChanged: onChange,
         onCreaturesChanged: onCreatures,
@@ -71,6 +72,12 @@ export class XpWatcher {
     });
     this.stream = stream;
     stream.start();
+  }
+
+  /** The vitals of a character in the campaign's open session (Ajuda shows on the sheet), or `null` when the session does not list it. */
+  async readVitals(campaignId: string, characterId: string): Promise<VitalsVm | null> {
+    const live = await this.source.getLiveSession(campaignId);
+    return live.vitals.find((v) => v.characterId === characterId) ?? null;
   }
 
   private stop(stream: LiveStream): void {

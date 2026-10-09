@@ -189,7 +189,7 @@
       <div class="sheet" [class.sheet--pnotes]="!vm.isMaster">
         <app-ability-medallions class="sheet__abilities" [abilities]="full.abilities" />
         <app-proficiency-column class="sheet__proficiencies" [sheet]="full" />
-        <app-combat-column class="sheet__combat" [sheet]="full">
+        <app-combat-column class="sheet__combat" [sheet]="full" [vitals]="vitals()">
           <!-- MR-037: the character's creatures, right after Combate and Magias (E9-10). -->
           @if (vm.characterKind === 'player' && vm.state === 'pending') {
             <p creatures class="mr-muted sheet__pending-note">

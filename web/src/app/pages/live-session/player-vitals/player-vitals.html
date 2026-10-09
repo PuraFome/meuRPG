@@ -32,6 +32,9 @@
           }
         </span>
         <span class="hp__label">Pontos de vida</span>
+        @if (aid() > 0) {
+          <span class="hp__sheet">máximo {{ sheetMaximum() }} da ficha</span>
+        }
       </span>
     </p>
     <div class="hp__bar" [class.hp__bar--aid]="aid() > 0" role="img" [attr.aria-label]="barLabel()">
@@ -72,17 +75,22 @@
   </dl>
   </div>
 
-  <!-- The labels of the effects under the two cards; a live region, so they are said when they come and go. -->
+  <!-- The labels of the effects and states under the two cards; a live region, so they are said when they come and go. -->
   <div class="effects" role="status">
+    @if (down() && !pools()) {
+      <app-effect-pill tone="down">Inconsciente</app-effect-pill>
+      @if (deathSaves(); as saves) {
+        <app-effect-pill tone="neutral">Testes contra a morte: {{ saves }}</app-effect-pill>
+      }
+    }
     @if (shieldBonus() > 0) {
-      <span class="effect effect--shield"
-        ><mat-icon aria-hidden="true">shield</mat-icon>{{ shieldLabel(shieldBonus()) }}</span
-      >
+      <app-effect-pill tone="shield" icon="shield">{{ shieldLabel(shieldBonus()) }}</app-effect-pill>
     }
     @if (aid() > 0) {
-      <span class="effect effect--aid"
-        ><mat-icon aria-hidden="true">favorite_border</mat-icon>{{ aidLabel(aid()) }}</span
-      >
+      <app-effect-pill tone="aid" icon="favorite_border">{{ aidLabel(aid()) }}</app-effect-pill>
+    }
+    @if (woke()) {
+      <app-effect-pill tone="ok" icon="check">Acordado · testes contra a morte zerados</app-effect-pill>
     }
   </div>
 

@@ -192,7 +192,7 @@ describe('AttackSheet: the critical with the extra dice of Crítico Brutal (PM-0
     type(fixture, el, '22');
     expect(plain(el.querySelector('.type__formula')?.textContent)).toContain('22 (3d12) + 3 = 25');
     expect(plain(el.querySelector('.type__cap')?.textContent)).toBe('dado físico · de cortante');
-    expect(plain(el.textContent)).toContain('Confirmar 22');
+    expect(plain(el.textContent)).toContain('Confirmar 25');
   });
 
   it('under "o máximo mais uma rolagem" the maximum enters alone and the dice to roll are the critical\'s and the feature\'s', () => {

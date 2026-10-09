@@ -12,6 +12,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
 import { article } from '../../../core/combat/combat-log';
+import { countsSentence } from '../../../core/combat/death-saves';
 import {
   SHIELD_ENDED_MS,
   aidBar,
@@ -24,10 +25,14 @@ import {
   sheetMaximum,
   vitalsSpeech,
 } from '../../../core/combat/combat-effects';
+import { EffectPill } from '../../../shared/effect-pill/effect-pill';
 import { WildPools } from '../../../shared/wild-shape/wild-pools';
 import { PlayerSheetVm, VitalsVm } from '../live-session.types';
 import { SlotDots } from '../slot-dots/slot-dots';
 import { freeWords, hitPointsPercent, slotLevelLabel, slotRowLabel, usedWords } from '../vitals';
+
+/** How long "Acordado · testes contra a morte zerados" stays under the cards. */
+const WOKE_NOTICE_MS = 30000;
 
 interface SlotRowVm {
   readonly key: string;
@@ -46,7 +51,7 @@ interface SlotRowVm {
  */
 @Component({
   selector: 'app-player-vitals',
-  imports: [MatIconModule, RouterLink, SlotDots, WildPools],
+  imports: [EffectPill, MatIconModule, RouterLink, SlotDots, WildPools],
   templateUrl: './player-vitals.html',
   styleUrl: './player-vitals.scss',
 })
@@ -63,6 +68,8 @@ export class PlayerVitals {
   /** The Escudo Arcano's bonus on the character's own combatant while a combat runs (0 without the spell); `null`
    * when there is no combat or no combatant, which is not the shield ending. */
   readonly armorClassBonus = input<number | null>(null);
+  /** The death saves of the player's own combatant while a combat runs; `null` without one (the pill then says only "Inconsciente"). */
+  readonly ownDeathSaves = input<{ successes: number; failures: number } | null>(null);
 
   /** The two reserves of a druid in a beast form, the beast's first: they take the place of the hit points box. */
   protected readonly pools = computed(() => {
@@ -93,6 +100,16 @@ export class PlayerVitals {
     return base !== null && this.shieldBonus() > 0 ? shieldSum(base, this.shieldBonus()) : '';
   });
   protected readonly shieldLabel = shieldLabelForOwner;
+  /** At 0 hit points in the character's own shape: "Inconsciente" and the death save counts. */
+  protected readonly down = computed(() => this.vitals().hitPointsCurrent <= 0);
+  /** "1 sucesso, 1 falha", or empty when no combat tells the counts. */
+  protected readonly deathSaves = computed(() => {
+    const s = this.ownDeathSaves();
+    return s ? countsSentence(s.successes, s.failures) : '';
+  });
+  /** Ajuda raised the hit points of a character at 0: it is awake and the death saves are cleared, for a while. */
+  protected readonly woke = signal(false);
+  private wokeTimer: ReturnType<typeof setTimeout> | undefined;
 
   /** Ajuda's bonus: 0 without it. */
   protected readonly aid = computed(() => Math.max(0, this.vitals().hitPointsMaxBonus ?? 0));
@@ -157,7 +174,10 @@ export class PlayerVitals {
   private previous: VitalsVm | null = null;
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => clearTimeout(this.endedTimer));
+    inject(DestroyRef).onDestroy(() => {
+      clearTimeout(this.endedTimer);
+      clearTimeout(this.wokeTimer);
+    });
     // The shield that the combat takes away (the bonus goes from above 0 to 0 on this player's own combatant) is said once,
     // politely, and goes away by itself; a combat that ended or a combatant that is gone is not "the shield ended".
     effect(() => {
@@ -174,6 +194,7 @@ export class PlayerVitals {
       const v = this.vitals();
       const before = this.previous;
       this.previous = v;
+      this.updateWoke(before, v);
       if (!before || before.characterId !== v.characterId || before.revision === v.revision) {
         return;
       }
@@ -182,5 +203,23 @@ export class PlayerVitals {
           `${v.hitPointsTemporary} temporários.`,
       );
     });
+  }
+
+  /** From 0 to above 0 while Ajuda is on: the "Acordado" pill, for WOKE_NOTICE_MS; back to 0 or no Ajuda clears it. */
+  private updateWoke(before: VitalsVm | null, v: VitalsVm): void {
+    const bonus = v.hitPointsMaxBonus ?? 0;
+    if (
+      before &&
+      before.characterId === v.characterId &&
+      before.hitPointsCurrent <= 0 &&
+      v.hitPointsCurrent > 0 &&
+      bonus > 0
+    ) {
+      this.woke.set(true);
+      clearTimeout(this.wokeTimer);
+      this.wokeTimer = setTimeout(() => this.woke.set(false), WOKE_NOTICE_MS);
+    } else if (v.hitPointsCurrent <= 0 || bonus <= 0) {
+      this.woke.set(false);
+    }
   }
 }

@@ -39,10 +39,18 @@ describe('XpWatcher (E7-10)', () => {
         return call.events();
       },
       classifyError: () => 'transient',
+      getLiveSession: () =>
+        Promise.resolve({ vitals: [{ characterId: 'char-1', hitPointsMaxBonus: 5 }] }),
     };
     TestBed.configureTestingModule({
       providers: [XpWatcher, { provide: LiveSessionSourceLive, useValue: source }],
     });
+  });
+
+  it("reads one character's vitals from the open session, or null when it is not listed", async () => {
+    const watcher = TestBed.inject(XpWatcher);
+    expect((await watcher.readVitals('camp-1', 'char-1'))?.hitPointsMaxBonus).toBe(5);
+    expect(await watcher.readVitals('camp-1', 'char-9')).toBeNull();
   });
 
   it("opens the session's stream and says so when the XP changes", async () => {
@@ -120,7 +128,7 @@ describe('XpWatcher (E7-10)', () => {
     });
     calls[0].push({ kind: 'encounterChanged', encounterId: 'enc-1', revision: 3 });
     await flush();
-    expect(onForm.mock.calls).toEqual([['char-1'], [null]]);
+    expect(onForm.mock.calls).toEqual([['char-1', { characterId: 'char-1' }], [null]]);
     calls[0].push({ kind: 'ready' });
     await flush();
     expect(onForm).toHaveBeenLastCalledWith(null);

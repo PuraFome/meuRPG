@@ -4,12 +4,15 @@ import {
   adjustVitalsRPC,
   beginAttackCombatRPC,
   brisa,
+  brisaAidSheet,
   brisaSheet,
   combatRPC,
   endTurnOf,
   getEncounterRPC,
   passTurnsTo,
   pensantusCasting,
+  ragna,
+  ragnaSheet,
   setGridRPC,
   tableForCombat,
   toren,
@@ -20,6 +23,8 @@ import {
 import type { CharacterBuild } from './support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { boxOf, callRPC, layoutSize, newSignedInContext } from './support';
+import { placeTokenRPC } from './maps-support';
+import { sq20, thirdPlayer, trapTable } from './trap-support';
 
 // The combat on screen (Etapa 6, slice 6.5a, MR-013, RN-18 to RN-22): the
 // master sets the grid and starts a combat, everybody rolls initiative, the
@@ -240,6 +245,7 @@ async function actingTable(
   hidden: string[] = [],
   phone = { width: 390, height: 844 },
   character: { build?: CharacterBuild; sheet?: Record<string, unknown> } = {},
+  at?: Record<string, [number, number]>,
 ): Promise<ActingTable> {
   const master: BrowserContext = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
   const player: BrowserContext = await newSignedInContext(browser, 'Jogador Teste', { viewport: phone });
@@ -248,7 +254,7 @@ async function actingTable(
   await m.goto('/');
   await p.goto('/');
   const table = await tableForCombat(m, p, `${name} ${Date.now()}`, true, true, character);
-  await beginAttackCombatRPC(m, table, faces, undefined, hidden);
+  await beginAttackCombatRPC(m, table, faces, at, hidden);
   return {
     m,
     p,
@@ -826,7 +832,7 @@ test('condições e concentração: o mestre marca no menu, o jogador vê as eti
     await openSessionPage(p, campaignId);
     // The master marks two conditions on Goblin 1 from its ⋮ menu.
     await m.getByRole('button', { name: 'Mais ações para Goblin 1' }).click();
-    await m.getByRole('menuitem', { name: 'Condições…' }).click();
+    await m.getByRole('menuitem', { name: 'Mudar condições' }).click();
     const dialog = m.getByRole('dialog', { name: 'Condições de Goblin 1' });
     await expect(dialog.getByRole('heading', { name: 'Condições de Goblin 1' })).toBeFocused();
     await expect(dialog.getByRole('checkbox')).toHaveCount(15);
@@ -857,7 +863,7 @@ test('condições e concentração: o mestre marca no menu, o jogador vê as eti
     await expect(m.getByText('Concentra em Teia')).toBeVisible();
     // The master sees it in the dialog too, with the same action.
     await m.getByRole('button', { name: 'Mais ações para Pensantus' }).click();
-    await m.getByRole('menuitem', { name: 'Condições…' }).click();
+    await m.getByRole('menuitem', { name: 'Mudar condições' }).click();
     await expect(m.getByRole('dialog', { name: 'Condições de Pensantus' }).getByText('Concentrado em')).toBeVisible();
     await m.getByRole('button', { name: 'Cancelar' }).click();
     await p.getByRole('button', { name: 'Encerrar concentração' }).click();
@@ -1248,6 +1254,137 @@ test('monge 3: o golpe das Artes Marciais e a Rajada de Golpes aparecem como ata
     await expect(groups.getByText('Rajada de Golpes: 1 golpe restante')).toBeVisible();
     sheet = await strike();
     await expect(sheet.getByText('Rajada de Golpes: acabaram os golpes.')).toBeVisible();
+  } finally {
+    await done();
+  }
+});
+
+test('Ajuda sobre quem está a 0 PV: acorda, a ficha mostra o efeito, e o mestre encerra pelo menu da linha com a pergunta', { tag: ['@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  const t = await trapTable(browser, 'Ajuda');
+  const { m, p, table, campaignId } = t;
+  const third = await thirdPlayer(browser, t, brisa, brisaAidSheet);
+  try {
+    const square = sq20(4, 7);
+    await placeTokenRPC(m, campaignId, table.mapId, third.characterId, square.xBp, square.yBp);
+    await beginAttackCombatRPC(m, table, { Brisa: 20, Pensantus: 15, 'Capitão Goblin': 10, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 0 });
+    await openSessionPage(p, campaignId);
+    await openSessionPage(m, campaignId);
+
+    // Before: at 0, the two pills of the board, with the counts of the combatant's death saves.
+    const pills = p.getByRole('status');
+    await expect(pills.getByText('Inconsciente', { exact: true })).toBeVisible();
+    await expect(pills.getByText('Testes contra a morte: 0 sucessos, 0 falhas')).toBeVisible();
+
+    // Brisa (the third player) casts Ajuda with a 2nd-level slot on Pensantus.
+    const enc = await getEncounterRPC(m, campaignId);
+    const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
+    const cast = await callRPC(third.page, 'meurpg.play.v1.CombatService/CastSpell', {
+      campaignId,
+      encounterId: enc.id,
+      casterId: id('Brisa'),
+      spellKey: 'spell:aid',
+      slot: { level: 2 },
+      targets: [{ combatantId: id('Pensantus') }],
+      idempotencyKey: crypto.randomUUID(),
+    });
+    expect(cast.ok(), await cast.text()).toBeTruthy();
+
+    // After: awake with 5 of 28, the sheet's maximum small, the tag, the amber banner and the green pill.
+    await expect(p.getByText('+5 de Ajuda', { exact: true })).toBeVisible();
+    await expect(p.getByText('máximo 23 da ficha')).toBeVisible();
+    await expect(pills.getByText('Ajuda: +5 nos PV até o mestre encerrar ou um descanso longo')).toBeVisible();
+    await expect(pills.getByText('Acordado · testes contra a morte zerados')).toBeVisible();
+    await expect(pills.getByText('Inconsciente', { exact: true })).toHaveCount(0);
+
+    // The master's row says it on one line, even at 1280 px.
+    const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
+    const chip = order.locator('.row__effect--aid');
+    await expect(chip).toContainText('Ajuda +5 PV');
+    expect((await layoutSize(chip)).height).toBeLessThan(30);
+
+    // The sheet page, outside the session's screen, draws the same numbers while the session is live.
+    await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
+    const stats = p.locator('app-combat-stats');
+    await expect(stats.getByText('5 de 28')).toBeVisible({ timeout: 30_000 });
+    await expect(stats.getByText('máximo 23 da ficha')).toBeVisible();
+    await expect(stats.getByText('+5 de Ajuda', { exact: true })).toBeVisible();
+    await expect(stats.getByText('Ajuda: +5 nos PV até o mestre encerrar ou um descanso longo')).toBeVisible();
+
+    // The master ends it from the row's menu: each item has its icon, the question says the account, and the confirm ends it.
+    await order.getByRole('button', { name: 'Mais ações para Pensantus' }).click();
+    await expect(m.getByRole('menuitem', { name: 'Encerrar Ajuda em Pensantus' })).toBeVisible();
+    await expect(m.getByRole('menuitem', { name: 'Mudar condições' })).toBeVisible();
+    await m.getByRole('menuitem', { name: 'Encerrar Ajuda em Pensantus' }).click();
+    const ask = m.getByRole('alertdialog', { name: /Encerrar a Ajuda d[oa] Pensantus/ });
+    await expect(ask).toContainText('O máximo de PV volta a 23. Os PV atuais ficam em 5');
+    await expect(ask.getByRole('button', { name: 'Cancelar' })).toBeFocused();
+    await ask.getByRole('button', { name: 'Encerrar Ajuda' }).click();
+    await expect(ask).toBeHidden();
+    await expect(order.locator('.row__effect--aid')).toHaveCount(0);
+
+    // The player's sheet goes back to the old words.
+    await expect(stats.getByText('Os atuais aparecem na sessão')).toBeVisible();
+    expect((await vitalsOf(m, campaignId, 'Pensantus')).hitPointsCurrent).toBe(5);
+  } finally {
+    await third.close();
+    await t.done();
+  }
+});
+
+test('Crítico Brutal com dados no app: a conta antes de rolar, a linha do resultado e o registro dizem o nome e os dados de cada grupo', { tag: ['@MR-012', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  const { p, campaignId, done } = await actingTable(browser, 'Brutal app', { Ragna: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, [], undefined, { build: ragna, sheet: ragnaSheet }, { 'Capitão Goblin': [11, 5], 'Goblin 1': [6, 7], 'Goblin 2': [14, 10] });
+  try {
+    await openSessionPage(p, campaignId);
+    await p.getByRole('button', { name: 'Atacar com Machado grande' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Atacar com Machado grande' });
+    await sheet.locator('label', { hasText: 'Goblin 1' }).click();
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await sheet.getByLabel(/Role 1d20 para Machado grande/).fill('20');
+    await sheet.getByRole('button', { name: 'Confirmar 20' }).click();
+    await expect(sheet.locator('.pill', { hasText: 'Crítico' })).toBeVisible();
+
+    // Before rolling: the whole sum and which part is the critical's and which the feature's.
+    await expect(sheet.getByText('Dano do crítico')).toBeVisible();
+    await expect(sheet.getByText('2d12 + 1d12 + 3', { exact: true })).toBeVisible();
+    await expect(sheet.getByText('2d12 do crítico (dados dobrados) e 1d12 do Crítico Brutal (nível 9), mais 3 de modificador, de cortante.')).toBeVisible();
+    await sheet.getByRole('button', { name: 'Rolar dano no app' }).click();
+    await expect(sheet.getByText(/2d12 \(\d+, \d+\) \+ 1d12 Crítico Brutal \(\d+\) \+ 3 = \d+ de dano cortante/)).toBeVisible();
+    await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
+
+    await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
+    await expect(p.getByRole('log', { name: 'Registro do combate' })).toContainText(/dano 2d12 \(\d+, \d+\) \+ 1d12 Crítico Brutal \(\d+\) \+ 3 = \d+ de cortante/);
+  } finally {
+    await done();
+  }
+});
+
+test('Crítico Brutal com dados físicos: o jogador rola três dados, o botão lê o total e o registro diz os grupos', { tag: ['@MR-012', '@MR-014', '@RN-18'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  const { p, campaignId, done } = await actingTable(browser, 'Brutal físico', { Ragna: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, [], undefined, { build: ragna, sheet: ragnaSheet }, { 'Capitão Goblin': [11, 5], 'Goblin 1': [6, 7], 'Goblin 2': [14, 10] });
+  try {
+    await openSessionPage(p, campaignId);
+    await p.getByRole('button', { name: 'Atacar com Machado grande' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Atacar com Machado grande' });
+    await sheet.locator('label', { hasText: 'Goblin 1' }).click();
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await sheet.getByLabel(/Role 1d20 para Machado grande/).fill('20');
+    await sheet.getByRole('button', { name: 'Confirmar 20' }).click();
+    await expect(sheet.locator('.pill', { hasText: 'Crítico' })).toBeVisible();
+
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await expect(sheet.getByText('Role 3d12 para o Machado grande (+3)')).toBeVisible();
+    await expect(sheet.getByText('2d12 do crítico e 1d12 do Crítico Brutal. Role os três dados e digite a soma (3 a 36).')).toBeVisible();
+    await sheet.getByLabel(/Role 3d12/).fill('22');
+    await expect(sheet.getByText('22 (3d12) + 3 = 25')).toBeVisible();
+    // The button reads the total, not the sum of the dice typed.
+    await sheet.getByRole('button', { name: 'Confirmar 25' }).click();
+    await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
+
+    await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
+    await expect(p.getByRole('log', { name: 'Registro do combate' })).toContainText('dano 3d12 (2d12 + 1d12 Crítico Brutal) = 22 + 3 = 25 de cortante, dados físicos');
   } finally {
     await done();
   }
