@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"uuid"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -16,7 +15,6 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
-	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // Casting outside a combat (SRD 5.1, "Spellcasting"): rituals, spells that take
@@ -70,6 +68,8 @@ type castTarget struct {
 	Amount int32 `json:"amount,omitempty"`
 	Before int32 `json:"before,omitempty"`
 	After  int32 `json:"after,omitempty"`
+	// Extra is what Disciple of Life added to the healing of this target.
+	Extra int32 `json:"extra,omitempty"`
 	// AC is the armor class Mage Armor gave.
 	AC int32 `json:"ac,omitempty"`
 	// Blessed marks the caster's own regained hit points of Blessed Healer, which are
@@ -153,9 +153,6 @@ type stageMap struct {
 	// byChar maps a character ID to its place's ID, and byEntry the other way.
 	byChar, byEntry map[string]string
 }
-
-// on says the NPC is on the stage.
-func (m stageMap) on(characterID string) bool { _, ok := m.byChar[characterID]; return ok }
 
 // stageMapOf reads the stage of the session.
 func stageMapOf(ctx context.Context, q *playdb.Queries, sessionID string) (stageMap, error) {
@@ -259,17 +256,6 @@ func (s *Service) guardCast(ctx context.Context, c *combatTx, m authz.Membership
 	return g, nil
 }
 
-// castWho is the user the stream reaches for a cast: the caster's player.
-func castUsers(g castGuard) []string {
-	var out []string
-	for _, ch := range append([]link.Character{g.caster}, g.targets...) {
-		if ch.Player && ch.PlayerUserID != "" && !slices.Contains(out, ch.PlayerUserID) {
-			out = append(out, ch.PlayerUserID)
-		}
-	}
-	return out
-}
-
 // CastSpellOutsideCombat implements playv1connect.CastingServiceHandler.
 func (s *Service) CastSpellOutsideCombat(
 	ctx context.Context,
@@ -283,46 +269,12 @@ func (s *Service) CastSpellOutsideCombat(
 	if err != nil {
 		return nil, err
 	}
-	casterID, ok := parseID(req.Msg.GetCasterCharacterId())
-	if !ok {
-		return nil, errCharacterNotFound()
-	}
-	spellKey := req.Msg.GetSpellKey()
-	if spellKey == "" || len(spellKey) > 100 {
-		return nil, badCast("spell_key must name one of the caster's spells")
-	}
-	if len(req.Msg.GetTargetIds()) > maxSpellTargets {
-		return nil, badCast(fmt.Sprintf("target_character_ids must have at most %d entries", maxSpellTargets))
-	}
-	var targetIDs []string
-	for i, raw := range req.Msg.GetTargetIds() {
-		id, ok := parseID(raw)
-		if !ok {
-			return nil, errCharacterNotFound()
-		}
-		if slices.Contains(targetIDs, id) {
-			return nil, badCast(fmt.Sprintf("target_character_ids[%d] repeats a character", i))
-		}
-		targetIDs = append(targetIDs, id)
-	}
-	var inApp *bool
-	var poolSum *int32
-	switch roll := req.Msg.GetRoll().(type) {
-	case *playv1.CastSpellOutsideCombatRequest_RollInApp:
-		inApp = &roll.RollInApp
-	case *playv1.CastSpellOutsideCombatRequest_TypedSum:
-		poolSum = &roll.TypedSum
-	}
-	in, rolled, err := castRoll(inApp, poolSum)
+	in, err := readCastRequest(req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	ritual := req.Msg.GetAsRitual()
-	if ritual && req.Msg.GetSlot() != nil {
-		return nil, badCast("a ritual is cast with no slot")
-	}
-	pick := req.Msg.GetSummon()
-
+	casterID, spellKey, targetIDs, ritual, pick := in.casterID, in.spell, in.targetIDs, in.ritual, req.Msg.GetSummon()
+	roll, rolled := in.roll, in.rolled
 	var made castOutcome
 	res, err := s.write(ctx, combatWrite{
 		m: m, key: key, hash: idem.Hash(req.Msg), kind: eventSpellCastOutside, altKind: eventSpellCastStarted,
@@ -339,7 +291,7 @@ func (s *Service) CastSpellOutsideCombat(
 		if err != nil {
 			return nil, err
 		}
-		plan.in, plan.rolled, plan.pick = in, rolled, pick
+		plan.in, plan.rolled, plan.pick = roll, rolled, pick
 		long := plan.minutes > 0
 		if long && pick != nil {
 			return nil, badCast("summon goes in FinishCast for a spell that takes time")
@@ -636,5 +588,53 @@ func (s *Service) effectTargets(plan castPlan) []link.Character {
 	return slices.DeleteFunc(slices.Clone(targets), func(t link.Character) bool { return !t.Player })
 }
 
-var _ = uuid.New
-var _ = rules.MageArmorSpell
+// castRequest is what a CastSpellOutsideCombat request says, checked for its shape.
+type castRequest struct {
+	casterID, spell string
+	targetIDs       []string
+	ritual, rolled  bool
+	roll            rollInput
+}
+
+// readCastRequest checks the shape of a request: the ids, the spell, the targets (no more than
+// the most a cast takes, none repeated) and the roll.
+func readCastRequest(msg *playv1.CastSpellOutsideCombatRequest) (castRequest, error) {
+	var in castRequest
+	var ok bool
+	if in.casterID, ok = parseID(msg.GetCasterCharacterId()); !ok {
+		return in, errCharacterNotFound()
+	}
+	in.spell = msg.GetSpellKey()
+	if in.spell == "" || len(in.spell) > 100 {
+		return in, badCast("spell_key must name one of the caster's spells")
+	}
+	if len(msg.GetTargetIds()) > maxSpellTargets {
+		return in, badCast(fmt.Sprintf("target_ids must have at most %d entries", maxSpellTargets))
+	}
+	for i, raw := range msg.GetTargetIds() {
+		id, ok := parseID(raw)
+		if !ok {
+			return in, errCharacterNotFound()
+		}
+		if slices.Contains(in.targetIDs, id) {
+			return in, badCast(fmt.Sprintf("target_ids[%d] repeats a character", i))
+		}
+		in.targetIDs = append(in.targetIDs, id)
+	}
+	var inApp *bool
+	var typed *int32
+	switch roll := msg.GetRoll().(type) {
+	case *playv1.CastSpellOutsideCombatRequest_RollInApp:
+		inApp = &roll.RollInApp
+	case *playv1.CastSpellOutsideCombatRequest_TypedSum:
+		typed = &roll.TypedSum
+	}
+	var err error
+	if in.roll, in.rolled, err = castRoll(inApp, typed); err != nil {
+		return in, err
+	}
+	if in.ritual = msg.GetAsRitual(); in.ritual && msg.GetSlot() != nil {
+		return in, badCast("a ritual is cast with no slot")
+	}
+	return in, nil
+}

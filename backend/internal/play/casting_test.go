@@ -178,6 +178,9 @@ func TestCastingOutside_HealingBetweenFightsAndTheLifeDomain(t *testing.T) {
 		t.Errorf("2nd-level slots used = %d, want 1", got)
 	}
 	// What Toren regained is for the master and Toren's player (RN-20), not for the caster's.
+	if tg := cast.GetTargets()[0]; tg.GetExtraHitPoints() != 4 {
+		t.Errorf("Disciple of Life as the caster's player reads it = %d, want 4 (2 + the 2nd level): it comes from the caster's own features", tg.GetExtraHitPoints())
+	}
 	if tg := cast.GetTargets()[0]; tg.GetEffect() != playv1.CastEffect_CAST_EFFECT_HEAL || tg.GetAmount() != 0 || tg.GetHitPointsAfter() != 0 {
 		t.Errorf("target as the caster's player = %v, want the heal without the numbers", tg)
 	}

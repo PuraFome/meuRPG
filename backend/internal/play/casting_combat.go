@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/PuraFome/meuRPG/backend/internal/authz"
-	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
-	"github.com/jackc/pgx/v5"
 	"math"
 	"slices"
 
+	"github.com/jackc/pgx/v5"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // Where the casts outside a combat meet a combat, and a rest (SRD 5.1, "Spellcasting",
@@ -209,7 +210,10 @@ func (s *Service) concentrationAfter(ctx context.Context, tx pgx.Tx, q *playdb.Q
 			out.dc = clamp32(combat.ConcentrationDC(int(taken)), 0, math.MaxInt32)
 			return out, false, nil
 		}
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), actorUserID: m.UserID, svc: s, master: true}
+		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), actorUserID: m.UserID, svc: s, master: true})
+		if err != nil {
+			return out, false, err
+		}
 		status, reason := castEnded, endConcentration
 		if r.Status == castCasting {
 			status, reason = castFailed, endInterrupted

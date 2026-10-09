@@ -41,11 +41,14 @@ func HealFeaturesOf(features []rules.Feature) HealFeatures {
 // levelBonus is Disciple of Life's and Blessed Healer's 2 + the spell's level,
 // for a spell of 1st level or higher cast at slotLevel (the spell assumes the
 // slot's level for that casting, SRD 5.1, "Casting a Spell at a Higher Level").
+// lifeDomainBonus is the 2 of Disciple of Life's and Blessed Healer's "2 + the spell's level".
+const lifeDomainBonus = 2
+
 func levelBonus(slotLevel int) int {
 	if slotLevel < 1 {
 		return 0
 	}
-	return 2 + slotLevel
+	return lifeDomainBonus + slotLevel
 }
 
 // TargetExtra is what each creature the spell heals regains besides the spell's

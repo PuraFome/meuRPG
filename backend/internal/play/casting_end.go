@@ -197,7 +197,7 @@ func (s *Service) castRowFor(ctx context.Context, c *combatTx, m authz.Membershi
 	return row, caster, nil
 }
 
-// FinishCast implements playv1connect.CastingServiceHandler.
+// ConfirmCastTimePassed implements playv1connect.CastingServiceHandler.
 func (s *Service) ConfirmCastTimePassed(
 	ctx context.Context,
 	req *connect.Request[playv1.ConfirmCastTimePassedRequest],
@@ -347,7 +347,7 @@ func (s *Service) planFinish(ctx context.Context, c *combatTx, m authz.Membershi
 	return plan, nil
 }
 
-// InterruptCast implements playv1connect.CastingServiceHandler.
+// AbandonCast implements playv1connect.CastingServiceHandler.
 func (s *Service) AbandonCast(
 	ctx context.Context,
 	req *connect.Request[playv1.AbandonCastRequest],
@@ -390,7 +390,7 @@ func (s *Service) AbandonCast(
 	return connect.NewResponse(&playv1.AbandonCastResponse{Cast: cast}), nil
 }
 
-// EndSpell implements playv1connect.CastingServiceHandler.
+// EndActiveSpell implements playv1connect.CastingServiceHandler.
 func (s *Service) EndActiveSpell(
 	ctx context.Context,
 	req *connect.Request[playv1.EndActiveSpellRequest],

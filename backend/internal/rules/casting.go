@@ -137,9 +137,8 @@ type SpellStanding struct {
 }
 
 // wizardClass is the class whose Ritual Casting reads the spellbook: SRD 5.1,
-// "Rituals": "The caster must also have the spell prepared or on his or her list
-// of spells known, unless the character's ritual feature specifies otherwise, as
-// the wizard's does."
+// "Rituals": the caster must have the spell prepared or on the list of spells
+// known, unless the character's ritual feature says otherwise, as the wizard's does.
 const wizardClass = "class:wizard"
 
 // findFamiliar and pactOfTheChain are the one case that lets a character cast a

@@ -199,7 +199,7 @@ func (s *Service) healTargets(ctx context.Context, c *combatTx, plan castPlan, o
 			return rolled, nil, err
 		}
 		out.vitals = append(out.vitals, v)
-		ct := castTarget{ID: t.ID, Effect: castHeal, Amount: hit.Amount}
+		ct := castTarget{ID: t.ID, Effect: castHeal, Amount: hit.Amount, Extra: clamp32(extra, 0, math.MaxInt32)}
 		if hit.Before != nil && hit.After != nil {
 			ct.Before, ct.After = hit.Before.HP, hit.After.HP
 		}
@@ -212,7 +212,7 @@ func (s *Service) healTargets(ctx context.Context, c *combatTx, plan castPlan, o
 			return rolled, nil, err
 		}
 		out.vitals = append(out.vitals, v)
-		ct := castTarget{ID: plan.g.caster.ID, Effect: castHeal, Amount: hit.Amount}
+		ct := castTarget{ID: plan.g.caster.ID, Effect: castHeal, Amount: hit.Amount, Extra: clamp32(extra, 0, math.MaxInt32)}
 		if hit.Before != nil && hit.After != nil {
 			ct.Before, ct.After = hit.Before.HP, hit.After.HP
 		}

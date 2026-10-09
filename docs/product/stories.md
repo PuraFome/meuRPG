@@ -2,7 +2,7 @@
 
 # Stories and acceptance criteria
 
-The MVP has 37 stories: 35 plus 2 prerequisites (the invite, MR-002, which leads to MR-003, and the NPCs, MR-005, who are the combat enemies). Ten more stories are planned for after the MVP.
+The MVP has 38 stories: 36 plus 2 prerequisites (the invite, MR-002, which leads to MR-003, and the NPCs, MR-005, who are the combat enemies). Ten more stories are planned for after the MVP.
 
 A story is done when all its criteria pass. Each criterion becomes an automated test: Playwright for what shows on screen, a Go test for the rule on the server. There are no characterization tests of the legacy app; the new system only has to prove its own acceptance criteria.
 
@@ -47,6 +47,7 @@ How to read a story: the user-story sentence, the priority (MVP, MVP prerequisit
 | [MR-043](#mr-043-generate-encounters) | Combat | MVP |
 | [MR-044](#mr-044-generate-treasure) | Map | MVP |
 | [MR-045](#mr-045-look-up-spells) | Rules | MVP |
+| [MR-048](#mr-048-cast-spells-outside-combat) | Combat | MVP |
 | [MR-002](#mr-002-generate-an-invite) | Campaign | MVP (prerequisite) |
 | [MR-005](#mr-005-create-npcs) | Character | MVP (prerequisite) |
 | [MR-007](#mr-007-import-a-sheet-from-pdf) | Character | Later |
@@ -1172,6 +1173,32 @@ The story covers own classes **and** subclasses, races and subraces, backgrounds
 
 #### Related
 - A part of [MR-020](#mr-020-look-up-the-rulebook), with only the spells. Letting the GM accept a spell outside the class list is for after the MVP ([MR-046](#mr-046-table-style-feature-by-feature)). Table content: [MR-025](#mr-025-register-table-content).
+
+### MR-048: Cast spells outside combat
+
+**As a** player, **I want** to cast my spells between fights, **so that** I heal the party, prepare Mage Armor or cast a ritual without opening a combat. **As a** master, **I want** to confirm that the time of a long casting has passed, **so that** the slot is spent and the spell takes effect when the story says so.
+
+- Priority: MVP
+- Rules: RN-31, RN-10, RN-18, RN-20
+- Modules: play, characters, rules
+
+#### Acceptance criteria
+- **Given** a cleric with a free slot and a hurt ally, **when** the player casts Cure Wounds with "Conjurar" and picks the ally, **then** the slot is spent, one roll heals the ally up to the maximum, and the party sees the cast in the log.
+- **Given** a wizard with Detect Magic in the spellbook, **when** the player casts it "Como ritual", **then** no slot is spent, the casting takes 10 minutes more and the wizard concentrates on it from the start.
+- **Given** a cast that takes minutes or hours, **when** the master taps "Concluir conjuração", **then** the slot is spent and the spell takes effect. **And when** the caster's concentration breaks first, **then** the cast fails and no slot is spent.
+- **Given** a spell that lasts and a caster who concentrates on it, **when** the caster casts another concentration spell, **then** the screen asks "Isso encerra Bênção" first, and the first spell ends with the new cast.
+- **Given** an active spell, **when** the master or the caster taps "Encerrar", **then** it ends and what it changed goes back (Mage Armor's armor class).
+- **Given** a target that wears armor, **when** Mage Armor is cast on it, **then** the cast is refused with the reason.
+- **Given** an NPC on the stage as a target, **when** a player reads the cast, **then** they read the NPC by its place on the stage and never the character ID, and a cast by an NPC that is not on the stage never reaches them (RN-10, RN-20).
+- **Given** a combat running, **when** its caster tries to cast outside it, **then** the cast is refused and the spell is cast in the combat.
+
+#### In the app
+- **Server.** `CastingService` (`casting.proto`): `GetCastOptions`, `CastSpellOutsideCombat`, `ConfirmCastTimePassed` (master only), `AbandonCast`, `EndActiveSpell` and `ListSpellCasts`, with the typed refusals of `CastingBlocked`. One row of `spell_casts` per casting; the stream hint is `spell_casts_changed`. See [Architecture](../architecture.md#casting-outside-combat-mr-048-rn-31) and [Data model](../data.md#casting-outside-combat-mr-048-rn-31).
+- **Screen.** "Conjurar" opens the spells the character can cast, each with its slots, "Como ritual" when the spell allows it, the time it takes and the targets. The master casts for an NPC with "Conjurar como NPC". "Magias ativas" lists the casts going or lasting, with "Concluir conjuração" (master) and "Encerrar".
+- **Tests (Go).** `TestCastingOutside_*` and `TestRN10_CastingOutsideHidesWhatThePlayersMaySee` in `backend/internal/play`.
+
+#### Related
+- [RN-31](rules.md#rn-31-casting-outside-combat). In a combat the spells are cast there. The maximum hit points of Aid are not raised yet.
 
 ## Priority: MVP (prerequisite)
 

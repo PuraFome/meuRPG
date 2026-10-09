@@ -2,7 +2,7 @@
 
 # Histórias e critérios de aceite
 
-O MVP tem 37 histórias: 35 mais 2 pré-requisitos (o convite, MR-002, que leva à MR-003, e os NPCs, MR-005, que são os inimigos do combate). Outras dez histórias ficam para depois do MVP.
+O MVP tem 38 histórias: 36 mais 2 pré-requisitos (o convite, MR-002, que leva à MR-003, e os NPCs, MR-005, que são os inimigos do combate). Outras dez histórias ficam para depois do MVP.
 
 Uma história está pronta quando todos os critérios dela passam. Cada critério vira um teste automático: Playwright para o que aparece na tela, teste em Go para a regra no servidor. Não há testes de caracterização do app antigo; o sistema novo só precisa provar os próprios critérios de aceite.
 
@@ -47,6 +47,7 @@ Como ler uma história: a frase da história, a prioridade (MVP, MVP pré-requis
 | [MR-043](#mr-043-gerar-encontros) | Combate | MVP |
 | [MR-044](#mr-044-gerar-tesouro) | Mapa | MVP |
 | [MR-045](#mr-045-consultar-as-magias) | Regras | MVP |
+| [MR-048](#mr-048-conjurar-magias-fora-do-combate) | Combate | MVP |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
 | [MR-007](#mr-007-importar-ficha-em-pdf) | Personagem | Depois |
@@ -1173,6 +1174,32 @@ A história cobre classes **e** subclasses próprias, raças e sub-raças, antec
 
 #### Relacionadas
 - Uma parte da [MR-020](#mr-020-consultar-o-livro-de-regras), só com as magias. O mestre aceitar uma magia fora da lista da classe fica para depois do MVP ([MR-046](#mr-046-o-estilo-da-mesa-recurso-por-recurso)). Conteúdo da mesa: [MR-025](#mr-025-cadastrar-conteúdo-da-mesa).
+
+### MR-048: Conjurar magias fora do combate
+
+**Como** jogador, **quero** conjurar minhas magias entre os combates, **para** curar o grupo, preparar Armadura Arcana ou conjurar um ritual sem abrir um combate. **Como** mestre, **quero** confirmar que o tempo de uma conjuração longa passou, **para** o espaço ser gasto e a magia fazer efeito quando a história disser.
+
+- Prioridade: MVP
+- Regras: RN-31, RN-10, RN-18, RN-20
+- Módulos: play, characters, rules
+
+#### Critérios de aceite
+- **Dado** um clérigo com um espaço livre e um aliado ferido, **quando** o jogador conjura Curar Ferimentos em "Conjurar" e escolhe o aliado, **então** o espaço é gasto, uma rolagem cura o aliado até o máximo, e o grupo vê a conjuração no registro.
+- **Dado** um mago com Detectar Magia no grimório, **quando** o jogador a conjura "Como ritual", **então** nenhum espaço é gasto, a conjuração leva 10 minutos a mais e o mago se concentra nela desde o início.
+- **Dado** uma conjuração que leva minutos ou horas, **quando** o mestre toca em "Concluir conjuração", **então** o espaço é gasto e a magia faz efeito. **E quando** a concentração do conjurador se quebra antes, **então** a conjuração falha e nenhum espaço é gasto.
+- **Dado** uma magia que dura e um conjurador concentrado nela, **quando** ele conjura outra magia de concentração, **então** a tela pergunta antes "Isso encerra Bênção", e a primeira magia termina com a nova conjuração.
+- **Dado** uma magia ativa, **quando** o mestre ou o conjurador toca em "Encerrar", **então** ela termina e o que ela mudou volta (a CA da Armadura Arcana).
+- **Dado** um alvo que veste armadura, **quando** Armadura Arcana é conjurada nele, **então** a conjuração é recusada com o motivo.
+- **Dado** um NPC em cena como alvo, **quando** um jogador lê a conjuração, **então** ele lê o NPC pelo lugar dele em cena e nunca o ID do personagem, e uma conjuração de um NPC que não está em cena nunca chega a ele (RN-10, RN-20).
+- **Dado** um combate em andamento, **quando** o conjurador tenta conjurar fora dele, **então** a conjuração é recusada e a magia é conjurada no combate.
+
+#### No app
+- **Servidor.** `CastingService` (`casting.proto`): `GetCastOptions`, `CastSpellOutsideCombat`, `ConfirmCastTimePassed` (só o mestre), `AbandonCast`, `EndActiveSpell` e `ListSpellCasts`, com as recusas tipadas do `CastingBlocked`. Uma linha de `spell_casts` por conjuração; a dica de stream é `spell_casts_changed`. Veja a [Arquitetura](../../architecture.md#casting-outside-combat-mr-048-rn-31) e o [Modelo de dados](../../data.md#casting-outside-combat-mr-048-rn-31).
+- **Tela.** "Conjurar" abre as magias que o personagem pode conjurar, cada uma com seus espaços, "Como ritual" quando a magia permite, o tempo que leva e os alvos. O mestre conjura por um NPC com "Conjurar como NPC". "Magias ativas" lista as conjurações em andamento ou duradouras, com "Concluir conjuração" (mestre) e "Encerrar".
+- **Testes (Go).** `TestCastingOutside_*` e `TestRN10_CastingOutsideHidesWhatThePlayersMaySee` em `backend/internal/play`.
+
+#### Relacionadas
+- [RN-31](regras.md#rn-31-conjurar-fora-do-combate). No combate as magias são conjuradas lá. O máximo de pontos de vida de Ajuda ainda não sobe.
 
 ## Prioridade: MVP (pré-requisito)
 

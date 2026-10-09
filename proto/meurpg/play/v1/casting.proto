@@ -604,6 +604,10 @@ message OutsideCastTarget {
   int32 amount = 5;
   int32 hit_points_before = 6;
   int32 hit_points_after = 7;
+  // What the healer's Life Domain added to this target (Disciple of Life: 2 + the spell's
+  // level), for everyone who sees the cast: it comes from the caster's features and says
+  // nothing about the target's hit points.
+  int32 extra_hit_points = 9;
   // For ARMOR_CLASS, the master and the target's player only: the armor class the spell
   // gave (13 + Dexterity), which is the one in use when it is better than the sheet's.
   int32 armor_class = 8;

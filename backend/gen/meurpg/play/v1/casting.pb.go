@@ -2077,6 +2077,10 @@ type OutsideCastTarget struct {
 	Amount          int32 `protobuf:"varint,5,opt,name=amount,proto3" json:"amount,omitempty"`
 	HitPointsBefore int32 `protobuf:"varint,6,opt,name=hit_points_before,json=hitPointsBefore,proto3" json:"hit_points_before,omitempty"`
 	HitPointsAfter  int32 `protobuf:"varint,7,opt,name=hit_points_after,json=hitPointsAfter,proto3" json:"hit_points_after,omitempty"`
+	// What the healer's Life Domain added to this target (Disciple of Life: 2 + the spell's
+	// level), for everyone who sees the cast: it comes from the caster's features and says
+	// nothing about the target's hit points.
+	ExtraHitPoints int32 `protobuf:"varint,9,opt,name=extra_hit_points,json=extraHitPoints,proto3" json:"extra_hit_points,omitempty"`
 	// For ARMOR_CLASS, the master and the target's player only: the armor class the spell
 	// gave (13 + Dexterity), which is the one in use when it is better than the sheet's.
 	ArmorClass    int32 `protobuf:"varint,8,opt,name=armor_class,json=armorClass,proto3" json:"armor_class,omitempty"`
@@ -2159,6 +2163,13 @@ func (x *OutsideCastTarget) GetHitPointsBefore() int32 {
 func (x *OutsideCastTarget) GetHitPointsAfter() int32 {
 	if x != nil {
 		return x.HitPointsAfter
+	}
+	return 0
+}
+
+func (x *OutsideCastTarget) GetExtraHitPoints() int32 {
+	if x != nil {
+		return x.ExtraHitPoints
 	}
 	return 0
 }
@@ -2324,7 +2335,7 @@ const file_meurpg_play_v1_casting_proto_rawDesc = "" +
 	"roll_total\x18\x18 \x01(\x05R\trollTotal\x12\x1a\n" +
 	"\bphysical\x18\x19 \x01(\bR\bphysical\x12\x16\n" +
 	"\x06secret\x18\x1a \x01(\bR\x06secret\x12!\n" +
-	"\fcreature_ids\x18\x1b \x03(\tR\vcreatureIds\"\x9f\x02\n" +
+	"\fcreature_ids\x18\x1b \x03(\tR\vcreatureIds\"\xc9\x02\n" +
 	"\x11OutsideCastTarget\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x10\n" +
@@ -2332,7 +2343,8 @@ const file_meurpg_play_v1_casting_proto_rawDesc = "" +
 	"\x06effect\x18\x04 \x01(\x0e2\x1a.meurpg.play.v1.CastEffectR\x06effect\x12\x16\n" +
 	"\x06amount\x18\x05 \x01(\x05R\x06amount\x12*\n" +
 	"\x11hit_points_before\x18\x06 \x01(\x05R\x0fhitPointsBefore\x12(\n" +
-	"\x10hit_points_after\x18\a \x01(\x05R\x0ehitPointsAfter\x12\x1f\n" +
+	"\x10hit_points_after\x18\a \x01(\x05R\x0ehitPointsAfter\x12(\n" +
+	"\x10extra_hit_points\x18\t \x01(\x05R\x0eextraHitPoints\x12\x1f\n" +
 	"\varmor_class\x18\b \x01(\x05R\n" +
 	"armorClass*\xb8\x01\n" +
 	"\x11OutsideCastStatus\x12#\n" +
