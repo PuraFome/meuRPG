@@ -308,3 +308,9 @@
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
+
+// The d4 an effect adds, typed from a physical die, above the d20's field.
+.sheet__extra {
+  display: block;
+  margin-bottom: var(--mr-space-3);
+}

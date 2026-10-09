@@ -1,12 +1,13 @@
 import type { DiceRoll } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   type AdvantageSource,
+  AdvantageSourceKind,
   type DamageStep,
   type RollModeRequest,
   RollMode,
   RollModeRequestStatus,
 } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
-import { rollFormula } from './combat-dice';
+import { extraDiceText, rollFormula } from './combat-dice';
 
 /** The three modes a d20 is rolled with, in the order the radio group shows them. */
 export const ROLL_MODES: readonly RollMode[] = [
@@ -56,6 +57,15 @@ export function d20Count(mode: RollMode): 1 | 2 {
 /** "Vantagem" or "Desvantagem" for the tag of a source. */
 export function sourceWord(source: AdvantageSource): string {
   return source.effect === RollMode.ADVANTAGE ? 'Vantagem' : 'Desvantagem';
+}
+
+/** The line of a source under a roll: "Vantagem: Alvo Paralisado a 1,5 m: vantagem". A die an effect added ("Bênção, de Tavo...") and
+ * "Outra fonte" (an effect the master keeps from the players) are the server's sentence as it is: it already says what they are. */
+export function sourceLine(source: AdvantageSource): string {
+  return source.kind === AdvantageSourceKind.EFFECT_DIE ||
+    source.kind === AdvantageSourceKind.OTHER_SOURCE
+    ? source.textPt
+    : `${sourceWord(source)}: ${source.textPt}`;
 }
 
 /** How the roll mode stands for whoever is about to roll. */
@@ -140,7 +150,7 @@ export function d20Formula(roll: DiceRoll): string {
     const kept = roll.faces[roll.countedIndex] ?? roll.faces[0];
     const mod =
       roll.modifier === 0 ? '' : ` ${roll.modifier < 0 ? '−' : '+'} ${Math.abs(roll.modifier)}`;
-    return `${kept}${mod} = ${roll.total}`;
+    return `${kept}${mod}${extraDiceText(roll).text} = ${roll.total}`;
   }
   return rollFormula(roll);
 }

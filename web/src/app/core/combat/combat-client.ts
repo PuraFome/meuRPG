@@ -263,6 +263,12 @@ export interface AnswerResult {
   readonly result: GenReactionResult | undefined;
 }
 
+/** What an effect changes in an attack roll: the faces of the d4 it adds from physical dice, and the extra action it gives. */
+export interface AttackEffects {
+  readonly extraDieFaces?: readonly number[];
+  readonly useExtraAction?: boolean;
+}
+
 /** How a concentration window is settled: the d20 in the app, a typed face, "Deixar o mestre rolar por mim", or the
  * master keeping the concentration. */
 export type ConcentrationAnswer =
@@ -791,6 +797,7 @@ export class CombatClient {
     opportunityOfferId = '',
     mode?: ModeChoice,
     catchWindowId = '',
+    effects: AttackEffects = {},
   ): Promise<AttackResult> {
     const res = await this.client.rollAttack({
       campaignId,
@@ -816,6 +823,10 @@ export class CombatClient {
           }
         : {}),
       catchWindowId,
+      // The dice effects add to the roll (Bênção, Perdição) typed from a physical die, and the weapon attack of
+      // the extra action an effect gives (Velocidade).
+      extraDieFaces: [...(effects.extraDieFaces ?? [])],
+      useExtraAction: effects.useExtraAction ?? false,
     });
     return attackResult(res);
   }
@@ -1056,9 +1067,10 @@ export class CombatClient {
     actionKey: string,
     die?: DamageDie,
     key?: string,
+    useExtraAction = false,
   ): Promise<ActionResult> {
     const res = await this.keyed(
-      ['takeAction', campaignId, encounterId, combatantId, actionKey, die],
+      ['takeAction', campaignId, encounterId, combatantId, actionKey, die, useExtraAction],
       (sent) =>
         this.client.takeAction({
           campaignId,
@@ -1066,6 +1078,8 @@ export class CombatClient {
           combatantId,
           actionKey,
           idempotencyKey: sent,
+          // The extra action an effect gives (Velocidade) pays for it instead of the action (RN-22).
+          useExtraAction,
           roll: !die
             ? { case: undefined }
             : 'inApp' in die
