@@ -175,7 +175,7 @@ func (p *packagePart) stagePuzzle(in *campaignpackage.Import, pp *pkgv1.PackageP
 		return bad(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID)
 	}
 	input := puzzleInput{
-		name: pp.GetName(), config: proto.Clone(pp.GetConfig()).(*playv1.PuzzleConfig), solution: pp.GetSolution(), start: pp.GetStart(), //nolint:forcetypeassert // Clone returns the same type
+		name: pp.GetName(), config: proto.CloneOf(pp.GetConfig()), solution: pp.GetSolution(), start: pp.GetStart(),
 		seed: pp.GetSeed(), clue: pp.GetClue(), hints: pp.GetHints(),
 		onSolve: pp.GetOnSolve(), hintCheck: pp.GetHintCheck(), parts: pp.GetParts(), onWrong: pp.GetOnWrong(),
 	}

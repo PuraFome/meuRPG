@@ -10,7 +10,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 )
 
-// The upload goes up in parts of this size (the last one is shorter): small
+// PartSize is the size of the parts an upload goes up in (the last one is shorter): small
 // enough for Cloud Run's 32 MiB request limit with a wide margin, big enough
 // that a 200 MiB package is about forty requests.
 const PartSize = 5 << 20

@@ -205,6 +205,7 @@ function characterWithFullSheet(full: FullSheet): Character {
     canApprove: false,
     canLevelUp: false,
     levelUpReason: LevelUpReason.UNSPECIFIED,
+    reserved: false,
   };
 }
 

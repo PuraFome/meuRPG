@@ -206,3 +206,8 @@
   line-height: 22px;
   color: var(--mr-ink-muted);
 }
+
+.notice__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

@@ -23,6 +23,9 @@ import (
 // (the JSON entries and the zip's own records).
 const exportMargin = 1 << 20
 
+// exportIDLength is the length of an export id: 128 bits as hex digits.
+const exportIDLength = 32
+
 // newExportID is 128 random bits as 32 hex digits.
 func newExportID() (string, error) {
 	var b [16]byte
@@ -222,7 +225,7 @@ func errExportNotFound() error {
 
 // validExportID is the shape of an export id: 32 lowercase hex digits.
 func validExportID(id string) bool {
-	if len(id) != 32 {
+	if len(id) != exportIDLength {
 		return false
 	}
 	for i := range len(id) {

@@ -95,7 +95,7 @@ func Open(ra io.ReaderAt, size int64) (*Package, []*pkgv1.PackageProblem) {
 		return nil, pr.List
 	}
 	if total > MaxTotalBytes {
-		return fail(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_PACKAGE_TOO_BIG, "", int64(total)) //nolint:gosec // G115: at most 2,000 entries of MaxEntryBytes
+		return fail(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_PACKAGE_TOO_BIG, "", int64(total))
 	}
 	mf, ok := p.files[ManifestName]
 	if !ok {
@@ -132,7 +132,7 @@ func (p *Package) checkFile(f *zip.File, pr *Problems) bool {
 	// with two oversize images lists both.
 	switch {
 	case f.UncompressedSize64 > MaxEntryBytes:
-		reason(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_ENTRY_TOO_BIG, int64(min(f.UncompressedSize64, 1<<62))) //nolint:gosec // G115: capped here
+		reason(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_ENTRY_TOO_BIG, int64(min(f.UncompressedSize64, 1<<62)))
 	case f.UncompressedSize64 > ratioFloor && f.UncompressedSize64 > MaxRatio*max(f.CompressedSize64, 1):
 		reason(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_COMPRESSION_RATIO, MaxRatio)
 	}

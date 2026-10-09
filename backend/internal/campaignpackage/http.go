@@ -94,7 +94,7 @@ func (s *Service) part(w http.ResponseWriter, r *http.Request) error {
 	now := s.now()
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		// The upload may have been cancelled or replaced while the part came.
+		// The upload may have been canceled or replaced while the part came.
 		cur, err := q.GetCampaignImport(ctx, imp.ID)
 		if err != nil {
 			return fmt.Errorf("find the upload: %w", err)
@@ -129,7 +129,7 @@ func wrongLength() *httpError {
 }
 
 // rateLimited turns the limiter's Connect error into the route's 429.
-func rateLimited(err error) error {
+func rateLimited(error) error {
 	return &httpError{status: http.StatusTooManyRequests, code: connect.CodeResourceExhausted, reason: "RATE_LIMITED", message: "too many requests, please wait a moment and try again", retryAfter: 1}
 }
 

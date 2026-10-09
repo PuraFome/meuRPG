@@ -770,14 +770,14 @@ func (p *mapsPart) applyPoint(ctx context.Context, q *mapsdb.Queries, sm *staged
 	}
 	for i, a := range pt.actions {
 		if _, err := q.InsertSceneAction(ctx, mapsdb.InsertSceneActionParams{
-			PointID: pt.id, Position: int32(i), Key: a.key, Name: a.name, Dc: a.dc, MaxAttempts: a.maxAttempts, Now: pt.createdAt, //nolint:gosec // G115: at most 20
+			PointID: pt.id, Position: int32(i), Key: a.key, Name: a.name, Dc: a.dc, MaxAttempts: a.maxAttempts, Now: pt.createdAt,
 		}); err != nil {
 			return fmt.Errorf("insert an imported scene action: %w", err)
 		}
 	}
 	for i, c := range pt.clues {
 		if err := q.InsertImportedSceneClue(ctx, mapsdb.InsertImportedSceneClueParams{
-			ID: c.id, PointID: pt.id, Position: int32(i), Text: c.text, Now: pt.createdAt, //nolint:gosec // G115: at most 30
+			ID: c.id, PointID: pt.id, Position: int32(i), Text: c.text, Now: pt.createdAt,
 		}); err != nil {
 			return fmt.Errorf("insert an imported clue: %w", err)
 		}

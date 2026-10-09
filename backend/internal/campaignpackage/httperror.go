@@ -56,8 +56,11 @@ func (s *Service) writeError(w http.ResponseWriter, r *http.Request, err error) 
 		s.logger.LogAttrs(r.Context(), slog.LevelError, "campaignpackage: cannot encode an error", slog.Any("error", jerr))
 		return
 	}
-	_, _ = w.Write(body) //nolint:gosec // G705: JSON from json.Marshal, sent as application/json with nosniff
+	_, _ = w.Write(body)
 }
+
+// statusClientClosed is the status for a request the client gave up (nginx's 499).
+const statusClientClosed = 499
 
 // connectStatus is the HTTP status of a Connect code, as the Connect protocol
 // table has it for the codes this service answers with.
@@ -78,7 +81,7 @@ func connectStatus(c connect.Code) int {
 	case connect.CodeFailedPrecondition:
 		return http.StatusPreconditionFailed
 	case connect.CodeCanceled:
-		return 499
+		return statusClientClosed
 	case connect.CodeUnavailable:
 		return http.StatusServiceUnavailable
 	case connect.CodeDeadlineExceeded:

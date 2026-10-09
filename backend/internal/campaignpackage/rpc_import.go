@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 	"unicode/utf8"
 	"uuid"
 
@@ -326,11 +325,4 @@ func (s *Service) uploadComplete(ctx context.Context, imp packagedb.CampaignImpo
 		}
 	}
 	return true, nil
-}
-
-func nowOr(t time.Time) *timestamppb.Timestamp {
-	if t.IsZero() {
-		return nil
-	}
-	return timestamppb.New(t)
 }

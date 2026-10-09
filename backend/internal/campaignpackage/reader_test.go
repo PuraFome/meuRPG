@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -320,10 +321,10 @@ func TestTheWriterRefusesToGoPastTheLimits(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	w := NewWriter(&buf, when)
-	if err := w.AddFile(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_IMAGE_FILE, "images/1", bytes.NewReader(make([]byte, MaxEntryBytes+1))); err != ErrTooBig {
+	if err := w.AddFile(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_IMAGE_FILE, "images/1", bytes.NewReader(make([]byte, MaxEntryBytes+1))); !errors.Is(err, ErrTooBig) {
 		t.Fatalf("a file over 10 MiB: err = %v", err)
 	}
-	if err := w.AddBytes(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_MAP, "maps/1.json", make([]byte, MaxEntryBytes+1), zip.Deflate); err != ErrTooBig {
+	if err := w.AddBytes(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_MAP, "maps/1.json", make([]byte, MaxEntryBytes+1), zip.Deflate); !errors.Is(err, ErrTooBig) {
 		t.Fatalf("bytes over 10 MiB: err = %v", err)
 	}
 	if err := w.AddBytes(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_MAP, "../maps.json", []byte("x"), zip.Deflate); err == nil {
@@ -346,7 +347,7 @@ func TestTheWriterRefusesAnEntryTwiceAndTooManyEntries(t *testing.T) {
 			t.Fatalf("entry %d: %v", i, err)
 		}
 	}
-	if err := w.AddBytes(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_MAP, "maps/last.json", []byte("{}"), zip.Store); err != ErrTooBig {
+	if err := w.AddBytes(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_MAP, "maps/last.json", []byte("{}"), zip.Store); !errors.Is(err, ErrTooBig) {
 		t.Fatalf("the 2,000th entry besides the manifest: err = %v", err)
 	}
 }
@@ -356,7 +357,7 @@ func TestFileNamesAreSafe(t *testing.T) {
 	for in, want := range map[string]string{
 		"Mirathel":              "Mirathel.meurpg.zip",
 		"A Maldição de Strahd":  "A_Maldicao_de_Strahd.meurpg.zip",
-		"../../etc/passwd":      "etc_passwd.meurpg.zip",
+		"../../etc/hosts":       "etc_hosts.meurpg.zip",
 		"  ":                    "campanha.meurpg.zip",
 		"Olá\r\nSet-Cookie: x":  "Ola_Set-Cookie_x.meurpg.zip",
 		".hidden":               "hidden.meurpg.zip",

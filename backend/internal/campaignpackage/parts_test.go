@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"errors"
 	"io"
 	"strings"
 	"testing"
@@ -108,8 +109,13 @@ func TestThePartsReadAsOneFileAcrossTheirEdges(t *testing.T) {
 	r := newPartsReader(t.Context(), store, "imp", total)
 	defer func() { _ = r.Close() }()
 	for _, tc := range []struct{ off, n int64 }{
-		{0, 10}, {PartSize - 5, 10}, {PartSize - readBlock - 3, readBlock + 9}, {2*PartSize - 1, 2}, {total - 4, 4},
-		{PartSize, PartSize + 100}, {0, total},
+		{0, 10},
+		{PartSize - 5, 10},
+		{PartSize - readBlock - 3, readBlock + 9},
+		{2*PartSize - 1, 2},
+		{total - 4, 4},
+		{PartSize, PartSize + 100},
+		{0, total},
 	} {
 		buf := make([]byte, tc.n)
 		n, err := r.ReadAt(buf, tc.off)
@@ -120,10 +126,10 @@ func TestThePartsReadAsOneFileAcrossTheirEdges(t *testing.T) {
 	// Past the end it reads what is there and says EOF, as an io.ReaderAt must.
 	buf := make([]byte, 10)
 	n, err := r.ReadAt(buf, total-4)
-	if n != 4 || err != io.EOF {
+	if n != 4 || !errors.Is(err, io.EOF) {
 		t.Errorf("ReadAt across the end = %d, %v, want 4, EOF", n, err)
 	}
-	if _, err := r.ReadAt(buf, total); err != io.EOF {
+	if _, err := r.ReadAt(buf, total); !errors.Is(err, io.EOF) {
 		t.Errorf("ReadAt at the end error = %v, want EOF", err)
 	}
 	if _, err := r.ReadAt(buf, -1); err == nil {

@@ -5,11 +5,14 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"io"
 	"io/fs"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"connectrpc.com/connect"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -143,7 +146,7 @@ func (h *harness) storedKeys(prefix string) []string {
 	var keys []string
 	_ = filepath.WalkDir(h.blobDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
-			return nil
+			return nil //nolint:nilerr // a path that cannot be read is not a key
 		}
 		rel, _ := filepath.Rel(h.blobDir, path)
 		rel = filepath.ToSlash(rel)
@@ -179,4 +182,12 @@ func mustMarshal(t *testing.T, m proto.Message) []byte {
 		t.Fatal(err)
 	}
 	return b
+}
+
+// detailsOf is the typed details of a Connect error.
+func detailsOf(err error) []*connect.ErrorDetail {
+	if ce, ok := errors.AsType[*connect.Error](err); ok {
+		return ce.Details()
+	}
+	return nil
 }

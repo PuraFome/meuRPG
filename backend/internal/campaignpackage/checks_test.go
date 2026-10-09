@@ -48,23 +48,33 @@ func TestEachKindIsCheckedLikeWhatTheMasterTypes(t *testing.T) {
 		label  string
 		reason pkgv1.PackageProblemReason
 	}{
-		{"a point off the map", func(c *crafted) { editMap(c, func(m *pkgv1.PackageMap) { m.Points[0].XBp = 20000 }) },
-			pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_SCENE, "A ponte quebrada", invalid},
+		{
+			"a point off the map", func(c *crafted) { editMap(c, func(m *pkgv1.PackageMap) { m.Points[0].XBp = 20000 }) },
+			pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_SCENE, "A ponte quebrada", invalid,
+		},
 		{"a trap of a damage type the rules lack", func(c *crafted) {
 			editMap(c, func(m *pkgv1.PackageMap) {
 				p := m.Points[0]
 				p.Kind, p.Hooks, p.ShowDc = mapsv1.MapPointKind_MAP_POINT_KIND_TRAP, "", false
-				p.Trap = &mapsv1.TrapSpec{NoticeDc: 10, FindDc: 10, AreaSize: 1, Trigger: rulesv1.TrapTrigger_TRAP_TRIGGER_ENTER,
-					Effect: &rulesv1.TrapEffect{Damage: []*rulesv1.TrapDamage{{Dice: "1d6", DamageTypeKey: "damage-type:nonsense"}}}}
+				p.Trap = &mapsv1.TrapSpec{
+					NoticeDc: 10, FindDc: 10, AreaSize: 1, Trigger: rulesv1.TrapTrigger_TRAP_TRIGGER_ENTER,
+					Effect: &rulesv1.TrapEffect{Damage: []*rulesv1.TrapDamage{{Dice: "1d6", DamageTypeKey: "damage-type:nonsense"}}},
+				}
 			})
 		}, pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_POINT, "A ponte quebrada", unknown},
-		{"a grid with too few columns", func(c *crafted) { editMap(c, func(m *pkgv1.PackageMap) { m.GridColumns, m.GridFactor = 3, 1 }) },
-			pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_MAP, "Vila", invalid},
+		{
+			"a grid with too few columns", func(c *crafted) { editMap(c, func(m *pkgv1.PackageMap) { m.GridColumns, m.GridFactor = 3, 1 }) },
+			pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_MAP, "Vila", invalid,
+		},
 		{"layers of another grid", func(c *crafted) {
-			editMap(c, func(m *pkgv1.PackageMap) { m.GridColumns, m.GridFactor, m.Layers = 10, 1, &pkgv1.PackageLayers{Walls: []byte{1, 2, 3}} })
+			editMap(c, func(m *pkgv1.PackageMap) {
+				m.GridColumns, m.GridFactor, m.Layers = 10, 1, &pkgv1.PackageLayers{Walls: []byte{1, 2, 3}}
+			})
 		}, pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_MAP, "Vila", invalid},
-		{"fog on a map without a grid", func(c *crafted) { editMap(c, func(m *pkgv1.PackageMap) { m.FogEnabled = true }) },
-			pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_MAP, "Vila", invalid},
+		{
+			"fog on a map without a grid", func(c *crafted) { editMap(c, func(m *pkgv1.PackageMap) { m.FogEnabled = true }) },
+			pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_MAP, "Vila", invalid,
+		},
 		{"a point that leads to a map the package lacks", func(c *crafted) {
 			editMap(c, func(m *pkgv1.PackageMap) {
 				m.Points[0].Kind, m.Points[0].Hooks, m.Points[0].ShowDc = mapsv1.MapPointKind_MAP_POINT_KIND_SUBMAP, "", false
@@ -72,7 +82,9 @@ func TestEachKindIsCheckedLikeWhatTheMasterTypes(t *testing.T) {
 			})
 		}, pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_POINT, "A ponte quebrada", missing},
 		{"an encounter of a creature the SRD lacks", func(c *crafted) {
-			editMap(c, func(m *pkgv1.PackageMap) { m.Points[0].Kind, m.Points[0].Hooks, m.Points[0].ShowDc = mapsv1.MapPointKind_MAP_POINT_KIND_BATTLE, "", false })
+			editMap(c, func(m *pkgv1.PackageMap) {
+				m.Points[0].Kind, m.Points[0].Hooks, m.Points[0].ShowDc = mapsv1.MapPointKind_MAP_POINT_KIND_BATTLE, "", false
+			})
 			c.add(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_ENCOUNTERS, "encounters.json", mustMarshal(t, &pkgv1.PackageEncounters{Encounters: []*pkgv1.PackageEncounter{{
 				PointId: pointID(c), Encounter: &playv1.BattleEncounter{Monsters: []*playv1.MonsterGroup{{CreatureKey: "monster:nonexistent", Count: 1}}},
 			}}}))
@@ -81,8 +93,10 @@ func TestEachKindIsCheckedLikeWhatTheMasterTypes(t *testing.T) {
 			c.add(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_PUZZLE, "puzzles/1.json", mustMarshal(t, &pkgv1.PackagePuzzle{
 				Id: "0b6f4a52-3b5e-4c55-9d0b-2a51f0c1e101", Name: "Luzes",
 				Config: &playv1.PuzzleConfig{Kind: &playv1.PuzzleConfig_Lights{Lights: &playv1.LightsConfig{Size: 3}}},
-				OnSolve: &playv1.PuzzleOnSolve{Action: playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_OPEN_DOOR,
-					Target: &playv1.PuzzleOnSolve_Door{Door: &playv1.PuzzleDoorTarget{MapId: mapID(c), Col: 1, Row: 1}}},
+				OnSolve: &playv1.PuzzleOnSolve{
+					Action: playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_OPEN_DOOR,
+					Target: &playv1.PuzzleOnSolve_Door{Door: &playv1.PuzzleDoorTarget{MapId: mapID(c), Col: 1, Row: 1}},
+				},
 			}))
 		}, pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_PUZZLE, "Luzes", missing},
 		{"an NPC of a class the rules lack", func(c *crafted) {

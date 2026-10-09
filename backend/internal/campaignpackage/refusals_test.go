@@ -89,8 +89,10 @@ func TestEveryRefusalOfAPackageNamesItsReason(t *testing.T) {
 		},
 		{
 			name: "a name that climbs out of a folder", kind: pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_PACKAGE, reason: pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_BAD_ENTRY_NAME,
-			change: func(c *crafted) { c.add(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_IMAGE_FILE, "../../etc/cron.d/x", []byte("boom")) },
-			label:  "../../etc/cron.d/x",
+			change: func(c *crafted) {
+				c.add(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_IMAGE_FILE, "../../etc/cron.d/x", []byte("boom"))
+			},
+			label: "../../etc/cron.d/x",
 		},
 		{
 			name: "an entry the zip does not have", kind: pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_PACKAGE, reason: pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_MISSING_ENTRY,
@@ -108,8 +110,10 @@ func TestEveryRefusalOfAPackageNamesItsReason(t *testing.T) {
 		},
 		{
 			name: "a file that is not an image", kind: pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_IMAGE, reason: pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_IMAGE_UNREADABLE,
-			change: func(c *crafted) { c.set(c.entryOf(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_IMAGE_FILE, 0), []byte("<svg onload=alert(1)>")) },
-			label:  "Mapa antigo", limit: 10 << 20,
+			change: func(c *crafted) {
+				c.set(c.entryOf(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_IMAGE_FILE, 0), []byte("<svg onload=alert(1)>"))
+			},
+			label: "Mapa antigo", limit: 10 << 20,
 		},
 		{
 			name: "something that is not a package at all", kind: pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_PACKAGE, reason: pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_NOT_A_PACKAGE,
@@ -118,7 +122,7 @@ func TestEveryRefusalOfAPackageNamesItsReason(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			data := bytes.Clone(good)
+			var data []byte
 			if tc.raw != nil {
 				data = tc.raw(good)
 			} else {
@@ -152,7 +156,7 @@ func TestAPackageWithAnyProblemIsNotCreated(t *testing.T) {
 		t.Fatalf("CreateCampaignFromImport() error = %v, want failed_precondition", err)
 	}
 	var blocked *pkgv1.CampaignPackageBlocked
-	for _, d := range err.(*connect.Error).Details() {
+	for _, d := range detailsOf(err) {
 		if v, derr := d.Value(); derr == nil {
 			blocked, _ = v.(*pkgv1.CampaignPackageBlocked)
 		}
@@ -227,4 +231,3 @@ func TestAnEntryFarOverTheLimitThatIsSmallInTheZipIsRefusedBeforeItIsRead(t *tes
 		t.Fatalf("problem = %v", p)
 	}
 }
-

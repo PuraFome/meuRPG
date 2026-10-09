@@ -22,8 +22,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/PuraFome/meuRPG/backend/gen/meurpg/campaignpackage/v1/campaignpackagev1connect"
 	pkgv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaignpackage/v1"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/campaignpackage/v1/campaignpackagev1connect"
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1/campaignsv1connect"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1/charactersv1connect"
@@ -381,7 +381,7 @@ func pngImage(t *testing.T, w, h int, seed byte) []byte {
 	img := image.NewNRGBA(image.Rect(0, 0, w, h))
 	for y := range h {
 		for x := range w {
-			img.SetNRGBA(x, y, color.NRGBA{R: seed, G: byte(x * 255 / max(w, 1)), B: byte(y * 255 / max(h, 1)), A: 255})
+			img.SetNRGBA(x, y, color.NRGBA{R: seed, G: byte(x * 255 / max(w, 1)), B: byte(y * 255 / max(h, 1)), A: 255}) //nolint:gosec // G115: 0 to 255
 		}
 	}
 	var buf bytes.Buffer

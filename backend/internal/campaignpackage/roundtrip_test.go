@@ -8,7 +8,7 @@ import (
 // diffLines names the first lines that differ, for a readable failure.
 func diffLines(a, b string) string {
 	la, lb := strings.Split(a, "\n"), strings.Split(b, "\n")
-	for i := 0; i < max(len(la), len(lb)); i++ {
+	for i := range max(len(la), len(lb)) {
 		var x, y string
 		if i < len(la) {
 			x = la[i]

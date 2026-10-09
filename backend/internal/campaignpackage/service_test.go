@@ -234,7 +234,7 @@ func TestTheCampaignCapIsEnforcedBeforeTheUploadAndAtTheEnd(t *testing.T) {
 		if connect.CodeOf(err) != connect.CodeResourceExhausted {
 			t.Fatalf("error = %v, want resource_exhausted", err)
 		}
-		for _, d := range err.(*connect.Error).Details() {
+		for _, d := range detailsOf(err) {
 			if v, derr := d.Value(); derr == nil {
 				if r, ok := v.(*campaignsv1.CampaignCreationRefused); ok {
 					return r
@@ -290,15 +290,6 @@ func TestACreateRetriedWithTheSameKeyMakesOneCampaign(t *testing.T) {
 	}
 }
 
-// failingPart is a part whose Apply fails after the others: the last kind going wrong.
-type failingPart struct{}
-
-func (failingPart) Export(context.Context, pgx.Tx, string, *campaignpackage.Snapshot) error { return nil }
-func (failingPart) Stage(context.Context, *campaignpackage.Import) error                   { return nil }
-func (failingPart) Apply(context.Context, pgx.Tx, *campaignpackage.Import) error {
-	return errors.New("the last kind failed")
-}
-
 func TestAFailureInTheLastKindLeavesNoRowAndNoFile(t *testing.T) {
 	failing := false
 	h := newHarness(t, func(o *options) {
@@ -343,8 +334,12 @@ func TestAFailureInTheLastKindLeavesNoRowAndNoFile(t *testing.T) {
 // switchPart fails its Apply while on is true.
 type switchPart struct{ on *bool }
 
-func (switchPart) Export(context.Context, pgx.Tx, string, *campaignpackage.Snapshot) error { return nil }
-func (switchPart) Stage(context.Context, *campaignpackage.Import) error                   { return nil }
+func (switchPart) Export(context.Context, pgx.Tx, string, *campaignpackage.Snapshot) error {
+	return nil
+}
+
+func (switchPart) Stage(context.Context, *campaignpackage.Import) error { return nil }
+
 func (p switchPart) Apply(context.Context, pgx.Tx, *campaignpackage.Import) error {
 	if *p.on {
 		return errors.New("the last kind failed")
@@ -377,11 +372,11 @@ func TestAnExportIsDownloadedByTheMasterOnly(t *testing.T) {
 		t.Fatalf("the master's download: %d %s", res.status, res.body)
 	}
 	for header, want := range map[string]string{
-		"Content-Type":              "application/zip",
-		"Content-Disposition":       `attachment; filename="Mirathel.meurpg.zip"`,
-		"Cache-Control":             "no-store",
-		"X-Content-Type-Options":    "nosniff",
-		"Content-Security-Policy":   "default-src 'none'",
+		"Content-Type":                 "application/zip",
+		"Content-Disposition":          `attachment; filename="Mirathel.meurpg.zip"`,
+		"Cache-Control":                "no-store",
+		"X-Content-Type-Options":       "nosniff",
+		"Content-Security-Policy":      "default-src 'none'",
 		"Cross-Origin-Resource-Policy": "same-origin",
 	} {
 		if got := res.header.Get(header); got != want {
@@ -543,7 +538,7 @@ func (hugePart) Export(_ context.Context, _ pgx.Tx, _ string, s *campaignpackage
 	s.AddBlob(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_IMAGE_FILE, "images/999", "campaigns/none/images/none", 300<<20)
 	return nil
 }
-func (hugePart) Stage(context.Context, *campaignpackage.Import) error { return nil }
+func (hugePart) Stage(context.Context, *campaignpackage.Import) error         { return nil }
 func (hugePart) Apply(context.Context, pgx.Tx, *campaignpackage.Import) error { return nil }
 
 func TestPackagesAreOffWithoutABlobStore(t *testing.T) {
@@ -562,4 +557,3 @@ func TestPackagesAreOffWithoutABlobStore(t *testing.T) {
 	_, err = master.pkg.BeginCampaignImport(ctx, connect.NewRequest(&pkgv1.BeginCampaignImportRequest{FileName: "a.zip", TotalBytes: 10, Fingerprint: "a"}))
 	check("BeginCampaignImport", err)
 }
-

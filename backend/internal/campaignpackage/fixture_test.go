@@ -43,7 +43,7 @@ func (h *harness) buildFixture(master *user) *fixture {
 	// The campaign: how the table plays.
 	_ = must(master.campaigns.SetTableRules(ctx, connect.NewRequest(&campaignsv1.SetTableRulesRequest{CampaignId: cid, Rules: &campaignsv1.TableRules{
 		DiceMode: campaignsv1.DiceMode_DICE_MODE_APP, CombatStartsWithMap: false, FogOnNewMaps: false,
-		HitPoints: campaignsv1.HitPointsRule_HIT_POINTS_RULE_AVERAGE,
+		HitPoints:      campaignsv1.HitPointsRule_HIT_POINTS_RULE_AVERAGE,
 		AbilityMethods: &campaignsv1.AbilityMethods{StandardArray: true, PointBuy: false, Rolled_4D6: true, Typed: false},
 		Critical:       campaignsv1.CriticalRule_CRITICAL_RULE_MAX_PLUS_ROLL, DeathSaves: campaignsv1.DeathSaveVisibility_DEATH_SAVE_VISIBILITY_OWNER_AND_MASTER,
 		HouseRules: []string{"Beber uma poção é uma ação bônus.", "Ninguém ressuscita no primeiro dia."},
@@ -175,8 +175,10 @@ func (h *harness) buildFixture(master *user) *fixture {
 	lights := must(master.puzzles.CreatePuzzle(ctx, connect.NewRequest(&playv1.CreatePuzzleRequest{
 		CampaignId: cid, Name: "Luzes do selo", Config: &playv1.PuzzleConfig{Kind: &playv1.PuzzleConfig_Lights{Lights: &playv1.LightsConfig{Size: 3}}},
 		Clue: "Só o selo apagado abre o caminho.", Hints: []string{"Comece pelo centro."},
-		OnSolve: &playv1.PuzzleOnSolve{Action: playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_OPEN_DOOR, Message: "A porta da vila se abriu.",
-			Target: &playv1.PuzzleOnSolve_Door{Door: &playv1.PuzzleDoorTarget{MapId: f.village, Col: 5, Row: 5}}},
+		OnSolve: &playv1.PuzzleOnSolve{
+			Action: playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_OPEN_DOOR, Message: "A porta da vila se abriu.",
+			Target: &playv1.PuzzleOnSolve_Door{Door: &playv1.PuzzleDoorTarget{MapId: f.village, Col: 5, Row: 5}},
+		},
 		OnWrong: &playv1.PuzzleOnWrong{MaxMoves: 30},
 	})))
 	_ = lights
@@ -184,7 +186,7 @@ func (h *harness) buildFixture(master *user) *fixture {
 		CampaignId: cid, Name: "Charada da lareira",
 		Config:   &playv1.PuzzleConfig{Kind: &playv1.PuzzleConfig_Riddle{Riddle: &playv1.RiddleConfig{Text: "Moro embaixo de cada passo seu, mas nunca peso nada. O que sou?"}}},
 		Solution: &playv1.PuzzleSolution{Kind: &playv1.PuzzleSolution_Riddle{Riddle: &playv1.RiddleSolution{Answers: []string{"sombra"}}}},
-		OnSolve: &playv1.PuzzleOnSolve{Action: playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_CLUE, Target: &playv1.PuzzleOnSolve_Clue{Clue: &playv1.PuzzleClueTarget{ClueId: f.clue}}},
+		OnSolve:  &playv1.PuzzleOnSolve{Action: playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_CLUE, Target: &playv1.PuzzleOnSolve_Clue{Clue: &playv1.PuzzleClueTarget{ClueId: f.clue}}},
 	})))
 	old := must(master.puzzles.CreatePuzzle(ctx, connect.NewRequest(&playv1.CreatePuzzleRequest{
 		CampaignId: cid, Name: "Cofre antigo", Config: &playv1.PuzzleConfig{Kind: &playv1.PuzzleConfig_Lock{Lock: &playv1.LockConfig{Wheels: 4, Alphabet: playv1.PuzzleAlphabet_PUZZLE_ALPHABET_DIGITS}}},

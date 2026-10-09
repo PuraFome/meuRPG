@@ -81,7 +81,7 @@ func (p *packagePart) Stage(_ context.Context, in *campaignpackage.Import) error
 	name, err := names.Clean(msg.GetName(), MaxNameLength)
 	if err != nil {
 		in.Problem(pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_CAMPAIGN, "", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID, 0)
-		return nil
+		return nil //nolint:nilerr // a bad package is a problem for the preview, not a failure
 	}
 	staged.name = name
 	in.CampaignName = name
@@ -91,11 +91,11 @@ func (p *packagePart) Stage(_ context.Context, in *campaignpackage.Import) error
 	}
 	if staged.rules, staged.dice, err = tableRulesParams(msg.GetTableRules()); err != nil {
 		bad(pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_CAMPAIGN)
-		return nil
+		return nil //nolint:nilerr // a bad package is a problem for the preview, not a failure
 	}
 	if staged.document, err = cleanDocument(msg.GetDocument()); err != nil {
 		in.Problem(pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_DOCUMENT, name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID, MaxDocumentBytes)
-		return nil
+		return nil //nolint:nilerr // a bad package is a problem for the preview, not a failure
 	}
 	in.Set(stagedKey, &staged)
 	return nil
