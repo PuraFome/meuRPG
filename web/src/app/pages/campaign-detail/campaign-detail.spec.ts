@@ -44,8 +44,8 @@ class FakeCampaignCharactersSource {
 @Injectable()
 class FakeGameSessionSource {
   getCurrentSessionResult: Promise<GameSessionVm | null> = Promise.resolve(null);
-  getCurrentSession(): Promise<GameSessionVm | null> {
-    return this.getCurrentSessionResult;
+  listSessions(): Promise<readonly GameSessionVm[]> {
+    return this.getCurrentSessionResult.then((open) => (open ? [open] : []));
   }
 }
 
@@ -174,9 +174,9 @@ describe('CampaignDetail', () => {
     expect(headings[0].textContent).toContain('Mirathel');
     expect(el.textContent).toContain('Você é mestre nesta campanha. XP por inimigos derrotados.');
     expect(el.textContent).toContain('Vinicius');
-    // Never an e-mail, and never a bare "Sem nome": the fallback says the role.
-    expect(el.textContent).toContain('Jogador sem nome');
-    expect(el.textContent).not.toContain('Sem nome');
+    // Never an e-mail, and never a bare "Sem nome": the fallback says where the name is missing.
+    expect(el.textContent).toContain('Sem nome no perfil');
+    expect(el.textContent).not.toContain('Jogador sem nome');
     expect(el.textContent).not.toContain('@');
   });
 
@@ -191,7 +191,7 @@ describe('CampaignDetail', () => {
 
     const el = await render();
     const rows = Array.from(el.querySelectorAll('section[aria-labelledby="members-heading"] li'));
-    expect(rows[0].textContent).toContain('Mestre sem nome');
+    expect(rows[0].textContent).toContain('Sem nome no perfil');
     expect(rows[0].textContent).toContain('(você)');
     expect(rows[0].querySelector('a')?.getAttribute('href')).toBe('/profile');
     // Somebody else's row: no "(você)" and no link to the viewer's profile.
@@ -369,6 +369,29 @@ describe('CampaignDetail', () => {
     ).toContain('Ler as regras');
   });
 
+  it('gives only the master the "Exportar campanha" link, to the export page (MR-050)', async () => {
+    configure();
+    fake.getCampaignResult = Promise.resolve({
+      campaign: campaign('camp-1', 'Mirathel', Role.MASTER),
+    });
+    fake.listMembersResult = Promise.resolve({ members: [] });
+    const master = await render();
+    expect(
+      Array.from(master.querySelectorAll('a[href="/campaigns/camp-1/export"]')).map((a) =>
+        a.textContent?.trim(),
+      ),
+    ).toEqual(['Exportar campanha']);
+
+    TestBed.resetTestingModule();
+    configure();
+    fake.getCampaignResult = Promise.resolve({
+      campaign: campaign('camp-1', 'Mirathel', Role.PLAYER),
+    });
+    fake.listMembersResult = Promise.resolve({ members: [] });
+    const player = await render();
+    expect(player.querySelector('a[href="/campaigns/camp-1/export"]')).toBeNull();
+  });
+
   it('a pending member sees the wait banner and their character, never the members (MR-024)', async () => {
     configure();
     fake.getCampaignResult = Promise.resolve({
@@ -454,20 +477,48 @@ describe('CampaignDetail', () => {
       expect(listAwards).toHaveBeenCalledTimes(1);
     });
 
-    it('puts it right after "Sessão", and gives only the master "Dar XP"', async () => {
+    it('puts it after "Sessão" and "Sessões anteriores", and gives only the master "Dar XP"', async () => {
       asRole(Role.MASTER);
       const el = await render();
       await flush();
       const column = el.querySelector('.campaign-layout__column')!;
       const order = Array.from(column.children).map((c) => c.tagName.toLowerCase());
-      expect(order.indexOf('app-experience-panel')).toBe(
+      expect(order.indexOf('app-past-sessions-panel')).toBe(
         order.indexOf('app-game-session-card') + 1,
+      );
+      expect(order.indexOf('app-experience-panel')).toBe(
+        order.indexOf('app-past-sessions-panel') + 1,
       );
       expect(
         Array.from(el.querySelectorAll('app-experience-panel button')).some(
           (b) => b.textContent?.trim() === 'Dar XP',
         ),
       ).toBe(true);
+    });
+
+    const columnOrder = (el: HTMLElement) =>
+      Array.from(el.querySelector('.campaign-layout__column')!.children).map((c) =>
+        c.tagName.toLowerCase(),
+      );
+
+    it('puts a player\'s characters right after "Sessão", before the XP and the dice', async () => {
+      asRole(Role.PLAYER);
+      const el = await render();
+      await flush();
+      const order = columnOrder(el);
+      expect(order.indexOf('app-campaign-characters')).toBe(
+        order.indexOf('app-game-session-card') + 1,
+      );
+      expect(order.indexOf('app-campaign-characters')).toBeLessThan(
+        order.indexOf('app-experience-panel'),
+      );
+    });
+
+    it("keeps the master's characters at the end of the column", async () => {
+      asRole(Role.MASTER);
+      const el = await render();
+      await flush();
+      expect(columnOrder(el).at(-1)).toBe('app-campaign-characters');
     });
 
     it('tags who can level up in the group list too (RN-12)', async () => {

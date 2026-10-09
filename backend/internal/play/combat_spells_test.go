@@ -31,6 +31,7 @@ var spellRPCs = []string{"CastSpell", "UseReaction", "DeclineReaction", "RollDea
 const (
 	magicMissileSpell = "spell:magic-missile"
 	shieldSpell       = "spell:shield"
+	featherFallSpell  = "spell:feather-fall"
 	sleepSpell        = "spell:sleep"
 	burningHands      = "spell:burning-hands"
 	holdPerson        = "spell:hold-person"
@@ -111,11 +112,129 @@ func (a *armed) castKey(t *testing.T, u *user, e *playv1.Encounter, caster, spel
 		CampaignId: a.campaignID, EncounterId: e.GetId(), CasterId: a.id(t, caster), SpellKey: spell, Slot: slot, Targets: targets, IdempotencyKey: key,
 	}
 	roll(req)
+	a.placeFor(t, req, targets)
 	res, err := u.combat.CastSpell(t.Context(), connect.NewRequest(req))
 	if err != nil {
 		return nil, err
 	}
 	return res.Msg, nil
+}
+
+// placeFor puts an area spell that the map places (a sphere at a point, a cone, a line or a
+// cube from the caster) where it reaches exactly the targets the test names, the way a table
+// that wants to hit those creatures would aim it: it asks the server's own preview, as the
+// master, which squares or directions give that set, and takes the first. The tests that
+// use it are about what a spell does to its targets, not about where it lands (the area
+// tests in combat_area_test.go are). A spell that is not placed, a cast with an area already
+// and a spell that cannot be cast now are left as they are.
+func (a *armed) placeFor(t *testing.T, req *playv1.CastSpellRequest, targets []*playv1.SpellTarget) {
+	t.Helper()
+	if req.GetArea() != nil {
+		return
+	}
+	if done, ok := a.placedBy.Load(req.GetIdempotencyKey()); ok {
+		switch p := done.(type) {
+		case *playv1.SpellOrigin:
+			req.Area = &playv1.CastSpellRequest_Origin{Origin: p}
+		case *playv1.SpellDirection:
+			req.Area = &playv1.CastSpellRequest_Direction{Direction: p}
+		}
+		return
+	}
+	opts, err := a.master.combat.GetTurnOptions(t.Context(), connect.NewRequest(&playv1.GetTurnOptionsRequest{CampaignId: a.campaignID, EncounterId: req.GetEncounterId(), CombatantId: req.GetCasterId()}))
+	if err != nil {
+		return
+	}
+	placement := playv1.AreaPlacement_AREA_PLACEMENT_UNSPECIFIED
+	if st := spellTargetsOf(opts.Msg, req.GetSpellKey()); st != nil {
+		placement = st.GetPlacement()
+	} else {
+		// A spell the options leave out (the master casts it again with the action used): the
+		// server's own refusal says how it is placed.
+		_, err := a.master.combat.PreviewSpellArea(t.Context(), connect.NewRequest(&playv1.PreviewSpellAreaRequest{
+			CampaignId: a.campaignID, EncounterId: req.GetEncounterId(), CasterId: req.GetCasterId(), SpellKey: req.GetSpellKey(), Slot: req.GetSlot(),
+		}))
+		switch {
+		case err == nil:
+		case strings.Contains(err.Error(), "placed at a point"):
+			placement = playv1.AreaPlacement_AREA_PLACEMENT_POINT
+		case strings.Contains(err.Error(), "comes out of the caster"):
+			placement = playv1.AreaPlacement_AREA_PLACEMENT_DIRECTION
+		}
+	}
+	if placement == playv1.AreaPlacement_AREA_PLACEMENT_UNSPECIFIED || placement == playv1.AreaPlacement_AREA_PLACEMENT_CASTER {
+		return
+	}
+	want := map[string]bool{}
+	for _, tg := range targets {
+		want[tg.GetCombatantId()] = true
+	}
+	reaches := func(origin *playv1.SpellOrigin, dir *playv1.SpellDirection) bool {
+		pr := &playv1.PreviewSpellAreaRequest{CampaignId: a.campaignID, EncounterId: req.GetEncounterId(), CasterId: req.GetCasterId(), SpellKey: req.GetSpellKey(), Slot: req.GetSlot()}
+		if origin != nil {
+			pr.Area = &playv1.PreviewSpellAreaRequest_Origin{Origin: origin}
+		} else {
+			pr.Area = &playv1.PreviewSpellAreaRequest_Direction{Direction: dir}
+		}
+		res, err := a.master.combat.PreviewSpellArea(t.Context(), connect.NewRequest(pr))
+		if err != nil || len(res.Msg.GetTargets()) != len(want) {
+			return false
+		}
+		for _, tg := range res.Msg.GetTargets() {
+			if !want[tg.GetCombatantId()] {
+				return false
+			}
+		}
+		return true
+	}
+	enc := a.get(t, a.master)
+	if placement == playv1.AreaPlacement_AREA_PLACEMENT_DIRECTION {
+		for _, d := range [][2]int32{{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}} {
+			if dir := (&playv1.SpellDirection{Dx: d[0], Dy: d[1]}); reaches(nil, dir) {
+				req.Area = &playv1.CastSpellRequest_Direction{Direction: dir}
+				a.placedBy.Store(req.GetIdempotencyKey(), dir)
+				return
+			}
+		}
+		t.Fatalf("no direction of %s reaches exactly %d targets", req.GetSpellKey(), len(want))
+	}
+	var squares []*playv1.SpellOrigin
+	for _, c := range enc.GetCombatants() {
+		if want[c.GetId()] && c.GetPlaced() {
+			squares = append(squares, &playv1.SpellOrigin{Col: c.GetCol(), Row: c.GetRow()})
+		}
+	}
+	for row := range enc.GetGridRows() {
+		for col := range enc.GetGridColumns() {
+			squares = append(squares, &playv1.SpellOrigin{Col: col, Row: row})
+		}
+	}
+	for _, sq := range squares {
+		if reaches(sq, nil) {
+			req.Area = &playv1.CastSpellRequest_Origin{Origin: sq}
+			a.placedBy.Store(req.GetIdempotencyKey(), sq)
+			return
+		}
+	}
+	t.Fatalf("no point reaches exactly the %d targets of %s", len(want), req.GetSpellKey())
+}
+
+// stand puts each combatant on its square, as the master does when he sets the table.
+func (a *armed) stand(t *testing.T, at map[string][2]int32) {
+	t.Helper()
+	for label, sq := range at {
+		a.put(t, label, sq[0], sq[1])
+	}
+}
+
+// put moves a combatant to a square, as the master does when he sets the table.
+func (a *armed) put(t *testing.T, label string, col, row int32) {
+	t.Helper()
+	if _, err := a.master.combat.MoveCombatant(t.Context(), connect.NewRequest(&playv1.MoveCombatantRequest{
+		CampaignId: a.campaignID, EncounterId: a.get(t, a.master).GetId(), CombatantId: a.id(t, label), IdempotencyKey: newKey(), Col: col, Row: row, Forced: true,
+	})); err != nil {
+		t.Fatalf("MoveCombatant(%s to %d,%d) error = %v", label, col, row, err)
+	}
 }
 
 func (a *armed) mustCast(t *testing.T, u *user, e *playv1.Encounter, caster, spell string, slot *playv1.SpellSlot, targets []*playv1.SpellTarget, roll func(*playv1.CastSpellRequest)) *playv1.CastSpellResponse {
@@ -445,6 +564,10 @@ func TestSaveSpellRollsOnceForTheCast(t *testing.T) {
 	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 2)
+	// The cone of Mãos Flamejantes east of Pensantus: Goblin 1 (7,5), Goblin 2 (7,4) and the
+	// Capitão (8,6), with nobody in the way of any of them and Toren, Brisa out of it.
+	a.put(t, "Goblin 1", 7, 5)
+	a.put(t, "Capitão Goblin", 8, 6)
 
 	// Saves (DC 14 = 8 + 2 + 4: the gnome has Intelligence 18): Goblin 1 rolls 5, Goblin 2 rolls 18 and saves, the
 	// Capitão rolls 12; the NPCs have no bonus.
@@ -590,6 +713,41 @@ func TestHealingSpellRevivesAndResetsDeathSaves(t *testing.T) {
 	}
 }
 
+// TestAHealingSpellRefusesADeadTargetBeforeSpendingAnything: a creature with three
+// failed death saves is dead and regains no hit points (SRD 5.1), so Curar
+// Ferimentos on Toren is refused with the slot and the action untouched; once the
+// master confirms the death the refusal is the same.
+func TestAHealingSpellRefusesADeadTargetBeforeSpendingAnything(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.castersFight(t, 1)
+	a.correct(t, a.toren, hpIs(0))
+	if _, err := a.h.pool.Exec(t.Context(), `UPDATE combatants SET death_failures = 3 WHERE id = $1`, a.id(t, "Toren")); err != nil {
+		t.Fatalf("set the failed saves: %v", err)
+	}
+	a.passTo(t, e, "Brisa")
+	slotsBefore := usedSlots(a.vitals(t, a.bri), 1)
+	for _, step := range []string{"three failures", "confirmed"} {
+		if step == "confirmed" {
+			if _, err := a.master.combat.ConfirmDeath(t.Context(), connect.NewRequest(&playv1.ConfirmDeathRequest{
+				CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Toren"), IdempotencyKey: newKey(),
+			})); err != nil {
+				t.Fatalf("ConfirmDeath() error = %v", err)
+			}
+		}
+		_, err := a.cast(t, a.bia, e, "Brisa", cureWounds, slotOfLevel(1), a.at(t, "Toren"), noCastRoll)
+		wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEAD)
+		if got := usedSlots(a.vitals(t, a.bri), 1); got != slotsBefore {
+			t.Errorf("%s: Brisa's level 1 slots used = %d, want the %d it had", step, got, slotsBefore)
+		}
+		if brisa := byLabel(t, a.get(t, a.bia), "Brisa"); brisa.GetActionUsed() {
+			t.Errorf("%s: the refused healing spent Brisa's action", step)
+		}
+	}
+	// Positive control: a living target is healed by the same cast.
+	a.mustCast(t, a.bia, e, "Brisa", cureWounds, slotOfLevel(1), a.at(t, "Pensantus"), noCastRoll)
+}
+
 var rollApp = func(r *playv1.RollDeathSaveRequest) { r.Roll = &playv1.RollDeathSaveRequest_RollInApp{RollInApp: true} }
 
 func deathFace(face int32) func(*playv1.RollDeathSaveRequest) {
@@ -721,6 +879,17 @@ func TestShieldTurnsAHitIntoAMiss(t *testing.T) {
 		e = a.mustEndTurn(t, a.master, e)
 		if c := byLabel(t, e, "Pensantus"); c.GetArmorClassBonus() != 0 || c.GetReactionUsed() {
 			t.Errorf("Pensantus at the start of his turn = bonus %d, reaction used %v; want 0 and available", c.GetArmorClassBonus(), c.GetReactionUsed())
+		}
+		// The log says the Escudo ended, to the master and to its caster; another player
+		// does not read it (the Escudo may have answered an attack they do not see).
+		for name, u := range map[string]*user{"master": a.master, "the caster": a.ana} {
+			ended := effectEndedLines(a.log(t, u, e))
+			if len(ended) != 1 || ended[0].GetActorLabel() != "Pensantus" || ended[0].GetEffectEnd().GetEffect() != playv1.CombatEffect_COMBAT_EFFECT_SHIELD {
+				t.Errorf("%s reads the effect lines %v, want one: Pensantus's Escudo ended", name, ended)
+			}
+		}
+		if ended := effectEndedLines(a.log(t, a.caio, e)); len(ended) != 0 {
+			t.Errorf("another player reads %v, want no line about an Escudo they may not know of", ended)
 		}
 	})
 
@@ -1176,40 +1345,11 @@ func TestRN22_ConditionsAndTheConcentrationReminder(t *testing.T) {
 	if err != nil || applied.GetConcentrationDc() != 10 {
 		t.Fatalf("the damage on a concentrating Pensantus = %v, %v; want the DC 10 reminder", applied, err)
 	}
-	hit = a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", d20(9))
-	if _, err := a.declineReaction(t, a.ana, e, hit.GetPendingDamage().GetId()); err != nil {
-		t.Fatalf("DeclineReaction() error = %v", err)
+	// The damage asks the save, and the turn waits for it (SRD, Duration): the master keeps it.
+	if w := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE); w == nil || w.GetConcentrationSave().GetDc() != 10 {
+		t.Fatalf("Pensantus's windows = %v, want a concentration save of DC 10", a.windows(t, a.ana))
 	}
-	a.h.roller.queue(6)
-	a.mustDamage(t, a.master, e, hit.GetPendingDamage().GetId(), inAppDamage)
-	big := int32(30)
-	res, err := a.master.combat.ApplyPendingDamage(t.Context(), connect.NewRequest(&playv1.ApplyPendingDamageRequest{
-		CampaignId: a.campaignID, EncounterId: e.GetId(), PendingDamageId: hit.GetPendingDamage().GetId(), IdempotencyKey: newKey(), Amount: &big,
-	}))
-	if err != nil || res.Msg.GetPendingDamage().GetConcentrationDc() != 15 {
-		t.Fatalf("the damage of 30 on Pensantus = %v, %v; want the DC 15 reminder (half of 30)", res, err)
-	}
-	// The reminder is in the log for the master and the target's own player, not for others.
-	dcOf := func(u *user) (dc int32, found bool) {
-		for _, r := range a.log(t, u, e).GetRounds() {
-			for _, en := range r.GetEntries() {
-				if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK && en.GetDamage().ConcentrationDc != nil && en.GetDamage().GetStatus() == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED && en.GetDamage().GetAmount() == 30 {
-					return en.GetDamage().GetConcentrationDc(), true
-				}
-			}
-		}
-		return 0, false
-	}
-	if dc, ok := dcOf(a.master); !ok || dc != 15 {
-		t.Errorf("the master's log DC = %d, %v; want 15", dc, ok)
-	}
-	if dc, ok := dcOf(a.ana); !ok || dc != 15 {
-		t.Errorf("Pensantus's player's log DC = %d, %v; want 15", dc, ok)
-	}
-	if _, ok := dcOf(a.caio); ok {
-		t.Error("another player's log has Pensantus's concentration DC")
-	}
-
+	a.keepAllConcentrations(t, e)
 	// His player ends the concentration; the log says which spell ended; the undo puts it back.
 	if _, err := a.conditions(t, a.ana, e, "Pensantus", nil, false, true); err != nil {
 		t.Fatalf("SetCombatantConditions(end_concentration) error = %v", err)
@@ -1231,6 +1371,50 @@ func TestRN22_ConditionsAndTheConcentrationReminder(t *testing.T) {
 	}
 	if got := byLabel(t, a.get(t, a.caio), "Pensantus").GetConcentrationSpell(); got != webSpell {
 		t.Errorf("concentration after the undo = %q, want Teia again", got)
+	}
+
+	hit = a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", d20(9))
+	if _, err := a.declineReaction(t, a.ana, e, hit.GetPendingDamage().GetId()); err != nil {
+		t.Fatalf("DeclineReaction() error = %v", err)
+	}
+	a.h.roller.queue(6)
+	a.mustDamage(t, a.master, e, hit.GetPendingDamage().GetId(), inAppDamage)
+	big := int32(30)
+	res, err := a.master.combat.ApplyPendingDamage(t.Context(), connect.NewRequest(&playv1.ApplyPendingDamageRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), PendingDamageId: hit.GetPendingDamage().GetId(), IdempotencyKey: newKey(), Amount: &big,
+	}))
+	if err != nil || res.Msg.GetPendingDamage().GetConcentrationDc() != 15 {
+		t.Fatalf("the damage of 30 on Pensantus = %v, %v; want the DC 15 reminder (half of 30)", res, err)
+	}
+	a.keepAllConcentrations(t, e)
+	// The reminder is in the log for the master and the target's own player, not for others.
+	dcOf := func(u *user) (dc int32, found bool) {
+		for _, r := range a.log(t, u, e).GetRounds() {
+			for _, en := range r.GetEntries() {
+				if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK && en.GetDamage().ConcentrationDc != nil && en.GetDamage().GetStatus() == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED && en.GetDamage().GetAmount() == 30 {
+					return en.GetDamage().GetConcentrationDc(), true
+				}
+			}
+		}
+		return 0, false
+	}
+	if dc, ok := dcOf(a.master); !ok || dc != 15 {
+		t.Errorf("the master's log DC = %d, %v; want 15", dc, ok)
+	}
+	if dc, ok := dcOf(a.ana); !ok || dc != 15 {
+		t.Errorf("Pensantus's player's log DC = %d, %v; want 15", dc, ok)
+	}
+	if _, ok := dcOf(a.caio); ok {
+		t.Error("another player's log has Pensantus's concentration DC")
+	}
+
+	// At 0 hit points the concentration ends with no save (SRD, Duration): the 30 damage took Pensantus
+	// down, so no window asks one, and the log says which spell ended.
+	if w := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE); w != nil {
+		t.Errorf("a concentration save of %v waits for a character at 0 hit points: the concentration ends without one", w)
+	}
+	if got := byLabel(t, a.get(t, a.caio), "Pensantus").GetConcentrationSpell(); got != "" {
+		t.Errorf("concentration at 0 hit points = %q, want none", got)
 	}
 }
 
@@ -1531,6 +1715,8 @@ func TestCombatUndoTakesBackEveryNewAction(t *testing.T) {
 		a.mustCast(t, a.ana, e, "Pensantus", magicMissileSpell, slotOfLevel(1), []*playv1.SpellTarget{darts(a, t, "Goblin", 2), darts(a, t, "Capitão Goblin", 1)}, noCastRoll)
 	})
 	// The damage roll of an area spell settles every pending damage of the cast.
+	// A cone to the north holds the goblin and the Capitão, and not Toren, who stays at his axe's reach of the goblin.
+	a.stand(t, map[string][2]int32{"Goblin": {6, 3}, "Capitão Goblin": {6, 2}})
 	beforeCast := a.snapshot(t)
 	cast := a.mustCast(t, a.ana, e, "Pensantus", burningHands, slotOfLevel(1), both, noCastRoll)
 	a.undoes(t, "the damage roll of an area spell", func() {
@@ -1543,6 +1729,7 @@ func TestCombatUndoTakesBackEveryNewAction(t *testing.T) {
 	if got := a.snapshot(t); got != beforeCast {
 		t.Errorf("the undo of the area spell left the combat different:\nbefore %s\nafter  %s", beforeCast, got)
 	}
+	a.stand(t, map[string][2]int32{"Goblin": {7, 5}, "Capitão Goblin": {4, 4}})
 	// Ending a concentration, and the conditions, are undone too.
 	a.mustCast(t, a.ana, e, "Pensantus", holdPerson, slotOfLevel(2), a.at(t, "Goblin"), noCastRoll)
 	a.undoes(t, "ending the concentration", func() {
@@ -1631,6 +1818,10 @@ func TestCombatUndoTakesBackEveryNewAction(t *testing.T) {
 			t.Fatalf("DeclineReaction() error = %v", err)
 		}
 	})
+	// The turn waits for the answer (PM-04): Pensantus lets the hit go before the next attack.
+	if _, err := b.declineReaction(t, b.ana, eb, hit.GetPendingDamage().GetId()); err != nil {
+		t.Fatalf("DeclineReaction() error = %v", err)
+	}
 	// And a damage at 0 hit points: a failure that the undo takes away.
 	b.correct(t, b.toren, hpIs(0))
 	b.h.roller.queue(3)
@@ -1724,16 +1915,22 @@ func TestRN20_PlayersNeverReceiveSpellAndReactionSecrets(t *testing.T) {
 	note("Pensantus's player", cast, a.log(t, a.ana, e))
 	note("Toren's player", a.log(t, a.caio, e))
 
-	// The master casts for Pensantus at the hidden Capitão and the goblin: the line is his alone.
+	// The master casts for Pensantus a cone that reaches the hidden Capitão and the goblin, and
+	// keeps the Capitão hidden: the players' line lists the goblin alone.
+	a.stand(t, map[string][2]int32{"Toren": {5, 3}, "Capitão Goblin": {7, 4}, "Goblin": {7, 5}})
 	a.h.roller.queue(5, 6)
-	a.mustCast(t, a.master, e, "Pensantus", burningHands, slotOfLevel(1), a.at(t, "Capitão Goblin", "Goblin"), noCastRoll)
+	a.mustCast(t, a.master, e, "Pensantus", burningHands, slotOfLevel(1), a.at(t, "Capitão Goblin", "Goblin"), func(r *playv1.CastSpellRequest) { r.RevealHidden = new(false) })
 	note("Toren's player", a.get(t, a.caio), a.log(t, a.caio, e))
+	var line *playv1.CombatLogEntry
 	for _, r := range a.log(t, a.caio, e).GetRounds() {
 		for _, en := range r.GetEntries() {
 			if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST && en.GetKey() == burningHands {
-				t.Errorf("a player's log has a cast that touched a hidden combatant: %v", en)
+				line = en
 			}
 		}
+	}
+	if line == nil || len(line.GetSpell().GetTargets()) != 1 || line.GetSpell().GetTargets()[0].GetTargetLabel() != "Goblin" {
+		t.Errorf("a player's line of a cone that touched a hidden combatant = %v, want the goblin alone", line)
 	}
 	for _, text := range seen {
 		for _, banned := range []string{`"armorClass"`, "targetArmorClass", "hitPointsCurrent", "hitPointsMax", hidden, "Capitão", a.capitao.GetId()} {
@@ -1759,6 +1956,7 @@ func TestCombatSpellsAreIdempotent(t *testing.T) {
 	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
+	a.stand(t, map[string][2]int32{"Toren": {5, 3}}) // out of the cone to the goblin
 	events := func() int { return a.events(t) }
 
 	// CastSpell: the slot once, the same cast.
@@ -2122,17 +2320,25 @@ func TestCantripsAreNotPartOfExtraAttack(t *testing.T) {
 	wantBlockedBy(t, "a second cantrip", err, blockedActionUsed)
 }
 
-// TestSpellCastIsLimitedToTenTargets: a cast and the damage roll that settles it
-// fit a session event (4 KiB): ten targets work, eleven are refused.
+// TestSpellCastIsLimitedToTenTargets: on a combat without a map the caster lists who a
+// spell touches, and a cast and the damage roll that settles it fit a session event: ten
+// targets work, eleven are refused. (On a map the server finds who is inside, up to every
+// creature of the combat: TestAnAreaCastFitsTheEventWithEveryCreatureOfTheCombat.)
 func TestSpellCastIsLimitedToTenTargets(t *testing.T) {
 	t.Parallel()
 	a := newCasters(t)
-	e := a.castersFight(t, 10)
 	var labels []string
 	for i := 1; i <= 10; i++ {
 		labels = append(labels, fmt.Sprintf("Goblin %d", i))
 	}
-	_, err := a.cast(t, a.ana, e, "Pensantus", burningHands, slotOfLevel(1), a.at(t, append(labels, "Capitão Goblin")...), noCastRoll)
+	e := a.start(t, plan{
+		theatre:  true,
+		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId(), Count: 10}, {CharacterId: a.capitao.GetId()}},
+		npcRolls: slices.Repeat([]int{1}, 11),
+		players:  map[string]int32{"Pensantus": 20, "Toren": 15, "Brisa": 10},
+		reveal:   append(slices.Clone(labels), "Capitão Goblin"),
+	})
+	_, err := a.cast(t, a.ana, e, "Pensantus", burningHands, slotOfLevel(1), a.at(t, append(slices.Clone(labels), "Capitão Goblin")...), noCastRoll)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("a cast on 11 targets = %v, want invalid_argument", err)
 	}
@@ -2287,20 +2493,20 @@ func TestReplayedCastDoesNotShowAHiddenTarget(t *testing.T) {
 	}
 }
 
-// Escudo's armor class holds for every hit on the target: a second hit already waiting for
-// the reaction, whose total is under the new armor class, does not land.
+// Escudo's armor class holds for every hit on the target. The turn waits for the
+// reaction (PM-04), so the Capitão's second attack waits for the answer to the first; once
+// Escudo is up (AC 17) the second one, total 13, misses.
 func TestShieldAlsoStopsTheOtherHitsAwaitingTheReaction(t *testing.T) {
 	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFightNPCFirst(t)
 	before := byLabel(t, e, "Pensantus").GetHitPointsCurrent()
 	first := a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", d20(9)) // 13 vs AC 12: a hit
-	second := a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", d20(9))
-	for i, r := range []*playv1.RollAttackResponse{first, second} {
-		if r.GetPendingDamage().GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_REACTION {
-			t.Fatalf("hit %d = %v, want it awaiting the reaction", i+1, r.GetPendingDamage())
-		}
+	if first.GetPendingDamage().GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_REACTION {
+		t.Fatalf("the hit = %v, want it awaiting the reaction", first.GetPendingDamage())
 	}
+	_, err := a.attack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", d20(9))
+	wantBlockedBy(t, "a second attack while the hit waits", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_PENDING)
 	res, err := a.useReaction(t, a.ana, e, first.GetPendingDamage().GetId(), slotOfLevel(1))
 	if err != nil {
 		t.Fatalf("UseReaction() error = %v", err)
@@ -2308,18 +2514,12 @@ func TestShieldAlsoStopsTheOtherHitsAwaitingTheReaction(t *testing.T) {
 	if res.GetOutcome() != playv1.ReactionOutcome_REACTION_OUTCOME_STOPPED {
 		t.Fatalf("outcome = %v, want stopped", res.GetOutcome())
 	}
-	// Escudo is up (AC 17): the other hit, total 13, would miss, so it must not hurt her.
-	if _, err := a.declineReaction(t, a.ana, e, second.GetPendingDamage().GetId()); err != nil {
-		t.Logf("DeclineReaction() error = %v", err)
-	}
-	a.h.roller.queue(7)
-	if _, err := a.damage(t, a.master, e, second.GetPendingDamage().GetId(), inAppDamage); err != nil {
-		t.Logf("RollDamage() error = %v", err)
-	} else if _, err := a.settle(t, a.master, e, second.GetPendingDamage().GetId(), true); err != nil {
-		t.Logf("ApplyPendingDamage() error = %v", err)
+	second := a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", d20(9))
+	if second.GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_MISS || second.GetPendingDamage() != nil {
+		t.Errorf("the second attack = %v, want a miss against the Escudo's AC 17", second.GetRoll())
 	}
 	if got := byLabel(t, a.get(t, a.master), "Pensantus").GetHitPointsCurrent(); got != before {
-		t.Errorf("Pensantus HP = %d, want %d: a hit with total 13 against the Escudo's AC 17 must not land", got, before)
+		t.Errorf("Pensantus HP = %d, want %d: nothing landed", got, before)
 	}
 }
 
@@ -2715,6 +2915,13 @@ func TestSpellSaveAgainstACreatureUsesItsStatBlock(t *testing.T) {
 	added := a.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) {
 		r.CreatureKey, r.Count, r.Hidden = "monster:goblin", 1, new(false)
 	})
+	// The cone east of Pensantus holds the new monster (7,4) and Goblin 1 (7,5), and nobody else.
+	a.stand(t, map[string][2]int32{"Goblin 1": {7, 5}, "Goblin 2": {0, 9}})
+	if _, err := a.master.combat.MoveCombatant(t.Context(), connect.NewRequest(&playv1.MoveCombatantRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: added.GetCombatantIds()[0], IdempotencyKey: newKey(), Col: 7, Row: 4, Forced: true,
+	})); err != nil {
+		t.Fatalf("MoveCombatant(the monster) error = %v", err)
+	}
 	a.h.roller.queue(10, 10) // the monster's save and the typed Goblin's
 	res := a.mustCast(t, a.master, added.GetEncounter(), "Pensantus", burningHands, slotOfLevel(1),
 		[]*playv1.SpellTarget{{CombatantId: added.GetCombatantIds()[0]}, {CombatantId: a.id(t, "Goblin 1")}}, noCastRoll)
@@ -2751,6 +2958,7 @@ func TestSpellWithTwoDamageTypesFitsTenTargets(t *testing.T) {
 			[]string{cureWounds})
 	})
 	e := a.castersFight(t, 10)
+	a.stand(t, map[string][2]int32{"Pensantus": {0, 0}, "Toren": {0, 1}, "Brisa": {1, 0}, "Capitão Goblin": {0, 9}}) // the cylinder holds the goblins and nobody else
 	var labels []string
 	for i := 1; i <= 10; i++ {
 		labels = append(labels, fmt.Sprintf("Goblin %d", i))

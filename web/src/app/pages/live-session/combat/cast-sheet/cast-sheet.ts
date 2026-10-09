@@ -1,6 +1,8 @@
 import {
   Component,
   ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -16,6 +18,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
+  AreaPlacement,
   type CombatantState,
   type PendingDamage,
   type SpellCast,
@@ -25,8 +28,10 @@ import {
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
   ActionEconomy,
+  type MetamagicOption,
   type SlotChoice,
   type SpellDetails,
+  SpellAreaShape,
   SpellDamageChoice,
   SpellRangeKind,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
@@ -47,6 +52,7 @@ import {
   freeText,
   lastSlotWarning,
   rollGroups,
+  saveAbility,
   slotRows,
   spellKind,
   spentLine,
@@ -61,6 +67,24 @@ import {
   newKey,
 } from '../../../../core/combat/combat-client';
 import { ActionKey } from '../../../../core/connect/idempotency';
+import { AreaFlow } from '../../../../core/combat/area-flow';
+import {
+  allyWarning,
+  areaRows,
+  confirmLabel,
+  countText,
+  nobodyText,
+  notPlacedReason,
+  shapeText,
+  stepOneTitle,
+} from '../../../../core/combat/area-text';
+import type { AreaShape } from '../../../../core/combat/spell-area';
+import type { MapLayers } from '../../../../core/maps/layers';
+import type { Vision } from '../../../../core/maps/vision';
+import { AreaList } from '../../../../shared/area-picker/area-list';
+import { AreaMap } from '../../../../shared/area-picker/area-map';
+import { AreaStep } from '../../../../shared/area-picker/area-step';
+import type { CombatMapImage } from '../../../../shared/combat-map/combat-map';
 import { diceName, sumRange } from '../../../../core/combat/combat-dice';
 import { criticalHint, criticalTypedHint, fixedParts } from '../../../../core/combat/critical';
 import { poolDice, poolRollText } from '../../../../core/combat/hp-effects';
@@ -71,6 +95,19 @@ import { circleLabel } from '../../../../core/combat/combat-grid';
 import { isPlayer } from '../../../../core/combat/combat-view';
 import { groupFeminine, groupName, isCreature } from '../../../../core/combat/creature-names';
 import { SpellCatalog } from '../../../../core/combat/spell-catalog';
+import {
+  type MetamagicPicks,
+  NO_PICKS,
+  castLabel,
+  chosenLine,
+  metamagicChoices,
+  metamagicCost,
+  metamagicMissing,
+  metamagicRows,
+  metamagicSpentLine,
+  toggledOption,
+} from '../../../../core/resources/metamagic';
+import type { Pool } from '../../../../core/resources/pools';
 import { openSpellDetails } from '../../../../shared/spell-details/open-spell-details';
 import { spellDetailsFromGen } from '../../../../shared/spell-details/spell-details-map';
 import { SpellHelp } from '../../../../shared/spell-details/spell-help';
@@ -79,8 +116,20 @@ import { injectSheet } from '../sheet-host';
 import { SheetFrame } from '../sheet-frame/sheet-frame';
 import { CastResult, CastSlots, type SlotAfter } from './cast-result';
 import { CastTargets } from './cast-targets';
+import { MetamagicPicker } from './metamagic-picker';
 import { DamageTypePicker } from './damage-type-picker';
 import { SlotPicker } from './slot-picker';
+
+/** The battle map an area spell is placed on (a combat with a grid): what the page already draws. */
+export interface CastMapData {
+  readonly image: CombatMapImage;
+  readonly mapName: string;
+  readonly columns: number;
+  readonly rows: number;
+  readonly layers: MapLayers | null;
+  /** A player's map with the fog on: what they see. */
+  readonly fog: Vision | null;
+}
 
 /** What the page hands the cast sheet. */
 export interface CastSheetData {
@@ -124,6 +173,13 @@ export interface CastSheetData {
   /** The damage of a cast whose sheet was closed before it was rolled: the
    * sheet opens at the damage with it. */
   readonly resume?: readonly PendingDamage[];
+  /** The Metamagic options the sorcerer knows, for this spell (`SpellOption.metamagic_options`); empty for none. */
+  readonly metamagic?: readonly MetamagicOption[];
+  /** The sorcery points left and their maximum, for "Pontos de Feitiçaria: 5 de 5". */
+  readonly sorceryPoints?: Pool | null;
+  /** The battle map, in a combat with a grid: an area spell is placed on it. Absent without a map (theatre of the mind),
+   * where every area spell keeps the list of who it hits. */
+  readonly map?: CastMapData | null;
 }
 
 /**
@@ -144,11 +200,15 @@ export interface CastSheetData {
 @Component({
   selector: 'app-cast-sheet',
   imports: [
+    AreaList,
+    AreaMap,
+    AreaStep,
     CastResult,
     CastSlots,
     CastTargets,
     DamageTypePicker,
     MatButtonModule,
+    MetamagicPicker,
     MatIconModule,
     RollPicker,
     SheetFrame,
@@ -164,6 +224,7 @@ export class CastSheet {
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly sheet = injectSheet<CastSheetData, boolean>();
+  private readonly injector = inject(Injector);
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
 
@@ -180,6 +241,17 @@ export class CastSheet {
   protected readonly pendings = signal<ReadonlyMap<string, PendingDamage>>(
     new Map((this.data.resume ?? []).map((p) => [p.id, p])),
   );
+  /** The Metamagic options the sorcerer knows for this spell, and the ones marked: at most one, or Empowered Spell
+   * with one other; each may ask for creatures (`picks`). */
+  protected readonly metaOptions = this.data.metamagic ?? [];
+  protected readonly sorceryPoints = this.data.sorceryPoints ?? null;
+  protected readonly chosenMeta = signal<string[]>([]);
+  protected readonly picks = signal<MetamagicPicks>(NO_PICKS);
+  protected readonly metaRows = computed(() => metamagicRows(this.metaOptions, this.chosenMeta()));
+  protected readonly metaCost = computed(() => metamagicCost(this.metaOptions, this.chosenMeta()));
+  protected readonly metaLine = computed(() => chosenLine(this.metaOptions, this.chosenMeta()));
+  /** "Conjurar e gastar 1 ponto" once an option is marked, else "Conjurar X". */
+  protected readonly castText = computed(() => castLabel(this.data.name, this.metaCost()));
   /** Whether the cast happened (or is being resumed): the result stage. */
   protected readonly done = computed(() => this.cast() !== null || !!this.data.resume);
 
@@ -302,6 +374,16 @@ export class CastSheet {
     if (this.data.level > 0 && !this.slot()) {
       return 'Escolha o espaço de magia.';
     }
+    // A placed area takes no target: the server works out who is inside from the point.
+    const target = this.flow ? '' : this.targetsMissing();
+    return (
+      target ||
+      metamagicMissing(this.metaOptions, this.chosenMeta(), this.picks(), this.sorceryPoints)
+    );
+  });
+
+  /** What the target step still needs, in words; `''` when it is complete. */
+  private targetsMissing(): string {
     const r = this.rule();
     if (r.kind === 'darts') {
       return dartsPlaced(this.dealt()) === this.dartsTotal()
@@ -315,8 +397,86 @@ export class CastSheet {
       return 'Com dados físicos, escolha um alvo por vez.';
     }
     return '';
-  });
+  }
   protected readonly ready = computed(() => this.missing() === '');
+
+  // ---- an area placed on the map (PM-02a, PM-02b) ----
+
+  /** How the spell's area is placed: only on a map with a grid; without one every area spell keeps its list. */
+  protected readonly placement =
+    this.data.map && this.data.targets ? this.data.targets.placement : AreaPlacement.UNSPECIFIED;
+  protected readonly Placement = AreaPlacement;
+  /** The two steps of the area, for a placed area spell; `null` for any other cast. */
+  protected readonly flow =
+    this.placement === AreaPlacement.UNSPECIFIED
+      ? null
+      : new AreaFlow(this.placement, (area) =>
+          this.api.previewSpellArea(
+            this.data.campaignId,
+            this.data.encounterId,
+            this.data.casterId,
+            this.data.spellKey,
+            this.slotRef(),
+            area,
+          ),
+        );
+  protected readonly areaShape: AreaShape = {
+    shape: this.data.targets?.areaShape ?? SpellAreaShape.UNSPECIFIED,
+    sizeFt: this.data.targets?.areaSizeFt ?? 0,
+    widthFt: this.data.targets?.areaWidthFt ?? 0,
+  };
+  protected readonly stepOne = stepOneTitle(this.placement);
+  protected readonly confirmText =
+    this.placement === AreaPlacement.CASTER
+      ? 'Ver quem está na área'
+      : confirmLabel(this.placement);
+  protected readonly notPlaced = notPlacedReason(this.placement);
+  protected readonly combatants = computed(() => this.data.state.encounter()?.combatants ?? []);
+  protected readonly casterLabel = computed(
+    () => this.combatants().find((c) => c.id === this.data.casterId)?.label ?? '',
+  );
+  protected readonly areaRows = computed(() => {
+    const p = this.flow?.preview();
+    return p ? areaRows(p.targets, p.coverCounts, saveAbility(this.details()), this.placement) : [];
+  });
+  protected readonly areaCount = computed(() => countText(this.flow?.preview()?.targets ?? []));
+  protected readonly areaWarning = computed(() => {
+    const p = this.flow?.preview();
+    return p ? allyWarning(p.targets, this.data.name, this.casterLabel()) : null;
+  });
+  /** "Ninguém que você vê está na área." (on the map) or "Ninguém está marcado." (the list), with what it spends. */
+  protected readonly nobodyLine = computed(() =>
+    nobodyText(
+      !!this.flow,
+      this.data.level > 0 ? this.slotLevel() : 0,
+      this.data.economy === ActionEconomy.BONUS_ACTION,
+    ),
+  );
+  protected readonly coverNote = computed(() => {
+    const p = this.flow?.preview();
+    if (!p || p.targets.length === 0) {
+      return '';
+    }
+    return p.coverCounts
+      ? `A cobertura é medida do ponto de origem, não de você, e só conta quando o teste é de Destreza (como o ${article(this.data.name) === 'a' ? 'da' : 'do'} ${this.data.name}).`
+      : '';
+  });
+  /** The area waits for the caster's "Conjurar mesmo assim" (nobody in it) before the cast can be sent. */
+  protected readonly areaAsks = computed(
+    () => !!this.flow && this.flow.nobody() && !this.flow.nobodyAccepted(),
+  );
+  /** A list spell that may hit nobody, with nobody ticked: "Conjurar" asks in place first (PM-02d state 13). */
+  protected readonly listAsking = signal(false);
+  private readonly areaKey = new ActionKey();
+  private readonly listTitle = viewChild<AreaStep>('listTitle');
+  private readonly changePlace = viewChild('changePlace', { read: ElementRef<HTMLButtonElement> });
+  private readonly backToList = viewChild('backToList', { read: ElementRef<HTMLButtonElement> });
+
+  /** The slot of the cast, as the requests take it. */
+  private slotRef(): { level: number; pact: boolean } | null {
+    const slot = this.slot();
+    return this.data.level > 0 && slot ? { level: slot.level, pact: slot.pact } : null;
+  }
   /** Magic Missile's count, in the footer next to the button: it states what is missing, and when all are placed. */
   protected readonly dartsLine = computed(() => {
     if (this.rule().kind !== 'darts' || this.dartsTotal() === 0) {
@@ -336,7 +496,7 @@ export class CastSheet {
     if (this.data.resume) {
       return `Role o dano de ${this.data.name}`;
     }
-    if (this.hpDone()) {
+    if (this.hpDone() || (this.flow && this.done())) {
       return `${this.data.name} conjurad${article(this.data.name) === 'a' ? 'a' : 'o'}`;
     }
     if (this.done()) {
@@ -354,6 +514,9 @@ export class CastSheet {
       const s = this.cast()?.slot;
       const circle = s ? circleLabel(s.level) : this.data.level === 0 ? 'Truque' : '';
       const n = this.cast()?.targets.length ?? 0;
+      if (this.flow) {
+        return this.areaResultLine(circle, n);
+      }
       return this.kind() === 'pool' && n > 0
         ? `${circle} · ${n} ${n === 1 ? 'criatura' : 'criaturas'} na área`
         : circle;
@@ -369,8 +532,21 @@ export class CastSheet {
       this.dartsTotal(),
       this.data.cantripDice,
       this.damageType(),
+      this.flow ? shapeText(this.areaShape) : '',
     );
   });
+
+  /** "3º nível · 4 criaturas · teste de resistência de Destreza (CD 16)": what an area hit, counted from the cast's own targets
+   * (a player's never holds a hidden creature, RN-10). */
+  private areaResultLine(circle: string, n: number): string {
+    const parts = [circle, `${n} ${n === 1 ? 'criatura' : 'criaturas'}`];
+    const ability = saveAbility(this.details());
+    if (ability) {
+      const dc = this.cast()?.targets.find((t) => (t.save?.dc ?? 0) > 0)?.save?.dc ?? 0;
+      parts.push(`teste de resistência de ${ability}${dc > 0 ? ` (CD ${dc})` : ''}`);
+    }
+    return parts.filter((p) => p !== '').join(' · ');
+  }
 
   // ---- the result ----
 
@@ -438,6 +614,12 @@ export class CastSheet {
     }
     if (c.concentrationEndedSpellKey) {
       out.push('A sua concentração anterior acabou.');
+    }
+    if (c.metamagicKeys.length > 0) {
+      const names = c.metamagicKeys.map(
+        (k) => this.metaOptions.find((o) => o.key === k)?.namePt ?? 'Metamagia',
+      );
+      out.push(`${metamagicSpentLine(names, c.sorceryPointsSpent, this.sorceryPoints)}.`);
     }
     out.push(spentLine(this.data.economy));
     return out;
@@ -531,6 +713,32 @@ export class CastSheet {
     effect(() => this.back()?.nativeElement.focus());
     // The answer of a request in the air has to be shown: the sheet can't be dismissed meanwhile.
     effect(() => this.sheet.lock(this.busy()));
+    // A sphere around the caster has nothing to place: its list is asked for at once.
+    void this.flow?.start();
+    // Step 2 opens on its title; with nobody inside, on "Mudar o local", the safe answer.
+    effect(() => {
+      const step = this.flow?.step();
+      const asks = this.areaAsks();
+      if (step !== 'list') {
+        return;
+      }
+      untracked(() =>
+        afterNextRender(
+          () => (asks ? this.changePlace()?.nativeElement.focus() : this.listTitle()?.focus()),
+          { injector: this.injector },
+        ),
+      );
+    });
+    // "Ninguém está marcado.": the focus goes to "Voltar à lista".
+    effect(() => {
+      if (this.listAsking()) {
+        untracked(() =>
+          afterNextRender(() => this.backToList()?.nativeElement.focus(), {
+            injector: this.injector,
+          }),
+        );
+      }
+    });
     effect(() => {
       if (this.error()) {
         this.frame()?.scrollToTop();
@@ -581,8 +789,37 @@ export class CastSheet {
     this.error.set('');
   }
 
+  protected toggleMeta(key: string): void {
+    this.chosenMeta.set(toggledOption(this.chosenMeta(), key));
+    this.choiceChanged();
+    this.error.set('');
+  }
+
+  protected setPicks(picks: MetamagicPicks): void {
+    this.picks.set(picks);
+    this.choiceChanged();
+    this.error.set('');
+  }
+
+  /** "Sem Metamagia": the spell is cast as it is. */
+  protected noMetamagic(): void {
+    this.chosenMeta.set([]);
+    this.picks.set(NO_PICKS);
+    this.choiceChanged();
+  }
+
+  /** The creatures the options of Metamagic can pick among: the spell's own targets that can be chosen. */
+  protected readonly metaCandidates = computed(() => this.targetRows().filter((t) => !t.blocked));
+
   protected toggle(id: string): void {
+    this.listAsking.set(false);
     this.chosen.set(toggled(this.rule(), this.chosen(), id));
+    // A creature no longer a target cannot stay the second target or the one with disadvantage.
+    this.picks.update((p) => ({
+      twinned: p.twinned === this.chosen()[0] ? '' : p.twinned,
+      careful: p.careful,
+      heightened: this.chosen().includes(p.heightened) ? p.heightened : '',
+    }));
     this.choiceChanged();
     this.error.set('');
   }
@@ -593,9 +830,39 @@ export class CastSheet {
     this.error.set('');
   }
 
-  /** "Conjurar X" (a spell with no attack roll). */
+  /** "Conjurar X" (a spell with no attack roll). A list that may hit nobody, with nobody ticked, asks in place first. */
   protected castNow(): Promise<void> {
+    const r = this.rule();
+    if (
+      !this.flow &&
+      r.kind === 'multi' &&
+      r.min === 0 &&
+      this.chosen().length === 0 &&
+      !this.listAsking()
+    ) {
+      this.listAsking.set(true);
+      return Promise.resolve();
+    }
     return this.doCast(null);
+  }
+
+  /** "Conjurar mesmo assim" over an area with nobody the caster sees: a spell that rolls a pool goes on to its roll. */
+  protected castAnyway(): Promise<void> {
+    if (this.flow) {
+      this.flow.nobodyAccepted.set(true);
+      return this.usesPicker() ? Promise.resolve() : this.doCast(null);
+    }
+    return this.doCast(null);
+  }
+
+  /** "Confirmar local" (or the second tap): the list of who is inside. */
+  protected confirmArea(): Promise<boolean> {
+    return this.flow ? this.flow.confirm() : Promise.resolve(false);
+  }
+
+  /** "Mudar o local": back to the map, the point where it was. */
+  protected changeArea(): void {
+    this.flow?.back();
   }
 
   protected castRolled(die: AttackDie): Promise<void> {
@@ -614,25 +881,27 @@ export class CastSheet {
     this.busy.set(true);
     this.error.set('');
     try {
-      const slot = this.slot();
-      const targets =
-        this.rule().kind === 'darts'
-          ? dartTargets(this.dealt())
-          : this.rule().kind === 'none'
-            ? []
-            : this.chosen().map((combatantId) => ({ combatantId, darts: 0 }));
+      const slot = this.slotRef();
+      const area = this.flow ? this.flow.choice() : null;
+      const roll = die ?? (this.kind() === 'pool' ? { inApp: true as const } : null);
+      // A placed area's key follows its request: the same slot, place and roll again is a retry of it.
+      const key = this.flow
+        ? this.areaKey.keyFor([slot, area, roll, this.damageType()])
+        : this.castKey;
       const res = await this.api.castSpell(
         this.data.campaignId,
         this.data.encounterId,
         this.data.casterId,
         this.data.spellKey,
-        this.data.level > 0 && slot ? { level: slot.level, pact: slot.pact } : null,
-        targets,
+        slot,
+        this.castTargets(),
         // A pool is always rolled by someone: the server does it when the app rolls every die.
-        die ?? (this.kind() === 'pool' ? { inApp: true } : null),
-        this.castKey,
+        roll,
+        key,
         undefined,
         this.damageType(),
+        metamagicChoices(this.chosenMeta(), this.picks()),
+        this.flow ? { area } : {},
       );
       this.data.state.apply(res.encounter);
       this.cast.set(res.cast);
@@ -643,6 +912,16 @@ export class CastSheet {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  /** Who the cast names: nobody for a placed area (the server works it out), the darts, or the targets ticked. */
+  private castTargets(): { combatantId: string; darts: number }[] {
+    if (this.flow || this.rule().kind === 'none') {
+      return [];
+    }
+    return this.rule().kind === 'darts'
+      ? dartTargets(this.dealt())
+      : this.chosen().map((combatantId) => ({ combatantId, darts: 0 }));
   }
 
   /** "Rolar no app": every damage still owed is rolled, one call each. */

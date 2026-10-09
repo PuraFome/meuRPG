@@ -35,6 +35,7 @@ func newWorld(t *testing.T) *world {
 	w.buildOtherMaps()
 	w.buildTraps()
 	w.buildSession()
+	w.buildCasting()
 	w.buildCombat()
 	w.buildPuzzles()
 	w.buildNotesAndProgress()
@@ -62,6 +63,16 @@ func (w *world) buildCharacters() {
 	ctx := w.t.Context()
 	w.pens = w.pc(w.ana, "Pensantus", "race:gnome")
 	w.toren = w.pc(w.caio, "Toren", "race:human")
+	// A reserved character (MR-049): the master made it for a player to claim. No player reads
+	// it, in any list, party view, combat order, map token, summary or image, until it is claimed.
+	w.reserved = must(w.master.characters.CreateCharacter(ctx, rq(&charactersv1.CreateCharacterRequest{
+		CampaignId: w.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: w.secrets.marker("reserved-name"),
+		Sheet: w.fullSheet("class:wizard", "race:human", 1), ForPlayer: true,
+		Story: &charactersv1.CharacterStory{Backstory: w.secrets.marker("reserved-backstory")},
+	}))).GetCharacter()
+	w.secrets.id("reserved", w.reserved.GetId())
+	w.claimToken = must(w.master.characters.CreateClaimLink(ctx, rq(&charactersv1.CreateClaimLinkRequest{CampaignId: w.campaign, CharacterId: w.reserved.GetId()}))).GetToken()
+	w.secrets.add(&canary{needle: w.claimToken, kind: "claim-token"})
 	// The master's private notes about a character (Ana's and the NPC's).
 	for _, id := range []string{w.pens.GetId(), w.toren.GetId()} {
 		must(w.master.characters.UpdateMasterNotes(ctx, rq(&charactersv1.UpdateMasterNotesRequest{CampaignId: w.campaign, CharacterId: id, Notes: w.secrets.marker("master-notes")})))
@@ -277,6 +288,8 @@ func (w *world) buildSession() {
 	w.offstage, _ = w.npc("offstage", &charactersv1.BasicSheet{HitPointsMax: 9, ArmorClass: 11, SpeedFt: 30, PortraitImageId: w.imgPortrait})
 	w.secrets.id("offstage-npc", w.offstage.GetId())
 	must(m.play.PutOnStage(ctx, rq(&playv1.PutOnStageRequest{CampaignId: w.campaign, CharacterId: w.merchant.GetId()})))
+
+	w.buildHealing()
 
 	// A scene prepared and never opened: everything on it is the master's.
 	s2 := w.point(w.fogMap, mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, w.secrets.marker("scene-closed-name"), w.secrets.marker("scene-closed-description"), 6, 8, func(r *mapsv1.CreateMapPointRequest) {
@@ -533,6 +546,9 @@ func (w *world) buildTableContent() {
 		case *rulesv1.TableBackground:
 			b.NamePt = w.secrets.marker(kind, readers...)
 			req = &rulesv1.CreateTableEntryRequest{CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableBackground{TableBackground: b}}
+		case *rulesv1.TableFeat:
+			b.NamePt = w.secrets.marker(kind, readers...)
+			req = &rulesv1.CreateTableEntryRequest{CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableFeat{TableFeat: b}}
 		}
 		e := must(m.table.CreateTableEntry(ctx, rq(req))).GetEntry()
 		w.secrets.id(kind+"-key", e.GetKey(), readers...)
@@ -554,17 +570,31 @@ func (w *world) buildTableContent() {
 			Damage: []*rulesv1.TableSpellDamage{{DamageTypeKey: "damage-type:force", Dice: "3d6"}},
 		}
 	}
+	feat := func(readers ...*person) *rulesv1.TableFeat {
+		return &rulesv1.TableFeat{
+			DescPt:  []string{w.secrets.marker("feat-text", readers...)},
+			Effects: []*rulesv1.TableEffect{{Type: "note", TextPt: w.secrets.marker("feat-effect", readers...)}},
+		}
+	}
+	// the table plays with feats, so the level-up offers them to the players who may read them
+	rules := must(m.campaigns.GetTableRules(ctx, rq(&campaignsv1.GetTableRulesRequest{CampaignId: w.campaign}))).GetRules()
+	rules.FeatsAllowed = true
+	must(m.campaigns.SetTableRules(ctx, rq(&campaignsv1.SetTableRulesRequest{CampaignId: w.campaign, Rules: rules})))
 	// one live entry, which the players read, so the reads are not vacuous
 	create("race-live", race(), w.ana, w.caio, w.pending)
+	create("feat-live", feat(w.ana, w.caio), w.ana, w.caio)
 	create("spell-live", spell(w.ana, w.caio, w.pending), w.ana, w.caio, w.pending)
 	archivedRace := create("race-archived", race())
 	must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: archivedRace.GetKey()})))
 	archivedSpell := create("spell-archived", spell())
 	must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: archivedSpell.GetKey()})))
+	archivedFeat := create("feat-archived", feat())
+	must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: archivedFeat.GetKey()})))
+	offFeat := create("feat-off", feat())
 	offRace := create("race-off", race())
 	// and an option of the SRD, switched off in "Opções para os jogadores"
 	must(m.table.SetOptionSwitches(ctx, rq(&rulesv1.SetOptionSwitchesRequest{CampaignId: w.campaign, Switches: []*rulesv1.OptionSwitch{
-		{Key: offRace.GetKey(), Off: true}, {Key: "race:tiefling", Off: true},
+		{Key: offRace.GetKey(), Off: true}, {Key: offFeat.GetKey(), Off: true}, {Key: "race:tiefling", Off: true},
 	}})))
 	w.secrets.add(&canary{needle: "race:tiefling", kind: "srd-race-off-key"})
 }

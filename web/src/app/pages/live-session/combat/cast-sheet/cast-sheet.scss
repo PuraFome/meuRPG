@@ -53,14 +53,15 @@
 }
 
 // "Cancelar" and "Conjurar" are two real buttons of the same width, side by
-// side, Cancelar first (the DOM has Conjurar first, for the order of focus). At
-// 320px they would be 138px each: stacked, full width, Conjurar on top.
+// side, Cancelar first (the DOM has Conjurar first, for the order of focus).
+// Under 480px a long spell name would wrap inside a half-width button: stacked,
+// full width, Conjurar on top.
 .actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 
-  @media (max-width: 359.98px) {
+  @media (max-width: 479.98px) {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -72,7 +73,7 @@
   width: 100%;
   font-weight: 700;
 
-  @media (min-width: 360px) {
+  @media (min-width: 480px) {
     order: -1;
   }
 }
@@ -81,6 +82,23 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+// An area's buttons (PM-02a, PM-02b): one under the other, the whole width, the main one on top, 48 px.
+.actions--stack {
+  grid-template-columns: minmax(0, 1fr);
+
+  .cancel {
+    order: 0;
+  }
+}
+
+// "Cancelar" under "Confirmar local": a text button in the accent.
+.quiet {
+  --mat-button-text-container-height: 48px;
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  width: 100%;
+  font-weight: 700;
 }
 
 // "Constrição encerra a concentração em Conjurar Animais. Os 2 Lobos atrozes somem.": above the cast button, like the summon sheet's line.
@@ -98,4 +116,9 @@
     height: 18px;
     font-size: 18px;
   }
+}
+
+// "Sem Metamagia": a text button under the options, never as loud as the cast.
+.nometa {
+  align-self: flex-start;
 }

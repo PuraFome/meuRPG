@@ -6,6 +6,17 @@
     </div>
   }
 
+  <!-- A window that closed by itself says why, once, for whoever it was for (never that another reactor acted). -->
+  <div class="view-notices" role="status" aria-live="polite">
+    @if (state().reactionNotice(); as notice) {
+      <div class="mr-notice mr-notice--neutral view-notice" data-testid="reaction-closed">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <p>{{ notice.text }}</p>
+        <button mat-button type="button" (click)="state().dismissReactionNotice()">Entendi</button>
+      </div>
+    }
+  </div>
+
   @if (isMaster()) {
     @switch (e.status) {
       @case (Status.SETUP) {
@@ -73,12 +84,17 @@
           />
         } @else {
         <div class="stack">
+          @if (refreshed()) {
+            <!-- The page was reloaded while the turn waits (PM-02c 9c): a line says the screen was rebuilt from the combat as it stands. -->
+            <p class="refreshed" role="status">{{ refreshed() }}</p>
+          }
           @if (laptop()) {
             <app-combat-bar
               [encounter]="e"
               [busy]="busy()"
               [pendingNote]="owed()"
               [waitNote]="waitNote()"
+              [waitWhy]="waitWhy()"
               [theatre]="theatre()"
               (next)="nextTurn($event)"
               (end)="endCombat()"
@@ -218,11 +234,16 @@
             [start]="dropStart()"
             (confirm)="confirmMove($event)"
             (jump)="confirmJump($event)"
+            (readJump)="moveJump.set($event)"
             (disengage)="disengage()"
             (back)="closeFullPage()"
           />
         } @else {
           <div class="stack">
+            @if (refreshed()) {
+              <!-- The page was reloaded while the turn waits (PM-02c 9c): a line says the screen was rebuilt from the combat as it stands. -->
+              <p class="refreshed" role="status">{{ refreshed() }}</p>
+            }
             <!-- What ended without the player asking (the beast fell, the concentration was lost): stays until it is touched. -->
             <div class="notices" role="status" aria-live="polite">
               @if (formNotice(); as text) {
@@ -268,10 +289,21 @@
                   [trapNote]="trapNote()"
                   [concentration]="ownConcentration()"
                   [theatre]="theatre()"
+                  [orderBelow]="orderBelow()"
                   (endTurn)="nextTurn()"
                   (opportunity)="openAttack($event, true)"
                   (endConcentration)="endOwnConcentration()"
                 />
+              }
+              @if (ownOffer(); as offer) {
+                <div class="mr-notice mr-notice--warning notice" data-testid="inspiration-pending">
+                  <mat-icon aria-hidden="true">music_note</mat-icon>
+                  <p>A sua rolagem espera a sua resposta: usar a Inspiração de Bardo?</p>
+                  <button mat-button type="button" class="notice__ok" (click)="openHeldRoll()">Responder</button>
+                </div>
+              }
+              @if (ownDie(); as die) {
+                <app-inspiration-card class="player__die" [die]="die" [round]="e.round" />
               }
             </div>
             @if (wideLayout()) {
@@ -348,6 +380,9 @@
                 }
               }
             }
+            @if (orderBelow()) {
+              <app-order-strip class="player__strip" [encounter]="e" />
+            }
             @if (theatre()) {
               <app-no-map-panel class="player__map" />
             } @else if (image(); as img) {
@@ -418,6 +453,13 @@
 <!-- What the master's side of a running combat is made of: the answers and the card of whoever is on turn, then the order. -->
 <ng-template #masterCards>
   @if (encounter(); as e) {
+    <app-hidden-reveal-card
+      [encounter]="e"
+      [spellNames]="revealSpellNames()"
+      [busy]="busy()"
+      (answer)="answerReveal($event)"
+      (answered)="focusOrder()"
+    />
     <app-opportunity-card
       [encounter]="e"
       [attacksByOffer]="masterAttacks()"
@@ -454,6 +496,8 @@
         [theatre]="theatre()"
         [offering]="offering()"
         [offerWhy]="offerWhy()"
+        [waitWhy]="waitWhy()"
+        (castArea)="openMasterArea($event)"
         (offer)="toggleOffer()"
         (next)="nextTurn($event)"
         (settledNote)="settled()"
@@ -471,6 +515,8 @@
         }
       </app-npc-card>
     }
+    <!-- The reaction windows the master answers (PM-04): below the card, in the order the server answers them. -->
+    <app-reaction-queue [encounter]="e" [campaignId]="campaignId()" [state]="state()" />
   }
 </ng-template>
 
@@ -492,6 +538,7 @@
       (reveal)="reveal($event)"
       (remove)="remove($event)"
       (endConcentration)="loseConcentration($event)"
+      (endAid)="endAid($event)"
       (add)="addCombatants()"
       [coverAgainst]="coverAgainst()"
       [turnLabel]="turnLabel()"

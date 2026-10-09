@@ -64,6 +64,10 @@ export class SceneRollLine {
   readonly scene = input.required<OpenSceneInfo>();
   readonly roll = input.required<SceneRoll>();
 
+  /** A roll of a character the campaign no longer has carries no name. */
+  protected readonly who = computed(
+    () => this.roll().characterName.trim() || 'Personagem removido',
+  );
   protected readonly initial = computed(() => initialOf(this.roll().characterName));
   protected readonly clock = computed(() => rollClock(this.roll()));
   protected readonly actionTitle = computed(() => rollActionTitle(this.scene(), this.roll()));

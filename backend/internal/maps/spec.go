@@ -2,6 +2,7 @@ package maps
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -35,6 +36,17 @@ const (
 	maxLightFt         = 120
 	maxFlatDamage      = 100
 	maxTrapDice        = 24 // the SRD's deadliest trap at levels 17 to 20: 24d10
+	// maxAlsoFindSkills is how many skills besides Perception and Investigation a
+	// trap lets find it: the SRD has 18 skills, 16 of them are left.
+	maxAlsoFindSkills = 16
+)
+
+// The two skills every trap can be found with (Perception against the DC to
+// notice it, Investigation against the DC to find it), which a trap's list of
+// other skills never repeats.
+const (
+	skillPerception    = "skill:perception"
+	skillInvestigation = "skill:investigation"
 )
 
 // The database's trap states (map_points.trap_state) and the API's.
@@ -109,15 +121,42 @@ func (s *Service) cleanTrap(in *mapsv1.TrapSpec, current *string) (trapData, err
 	if err != nil {
 		return trapData{}, err
 	}
+	also, err := s.cleanAlsoFind(in.GetAlsoFindSkillKeys())
+	if err != nil {
+		return trapData{}, err
+	}
 	canonical := &mapsv1.TrapSpec{
 		PresetKey: in.GetPresetKey(), NoticeDc: in.GetNoticeDc(), FindDc: in.GetFindDc(), AreaSize: in.GetAreaSize(),
-		Trigger: in.GetTrigger(), Effect: effect,
+		Trigger: in.GetTrigger(), Effect: effect, AlsoFindSkillKeys: also,
 	}
 	b, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(canonical)
 	if err != nil {
 		return trapData{}, fmt.Errorf("encode the trap: %w", err)
 	}
 	return trapData{json: b, state: stateDB}, nil
+}
+
+// cleanAlsoFind checks the skills the master lets find a trap besides Perception
+// and Investigation: SRD skills, each once, at most maxAlsoFindSkills, in the order
+// given. Nobody is assumed (a magic trap does not take Arcana by itself): the master
+// decides trap by trap.
+func (s *Service) cleanAlsoFind(keys []string) ([]string, error) {
+	if len(keys) > maxAlsoFindSkills {
+		return nil, badSpec("trap.also_find_skill_keys has at most %d skills", maxAlsoFindSkills)
+	}
+	var out []string
+	for i, k := range keys {
+		switch {
+		case k == skillPerception || k == skillInvestigation:
+			return nil, badSpec("trap.also_find_skill_keys[%d] is a skill every trap can be found with", i)
+		case !s.rules.IsSkill(k):
+			return nil, badSpec("trap.also_find_skill_keys[%d] is not a skill of the SRD", i)
+		case slices.Contains(out, k):
+			return nil, badSpec("trap.also_find_skill_keys[%d] repeats a skill", i)
+		}
+		out = append(out, k)
+	}
+	return out, nil
 }
 
 // cleanEffect checks a trap's effect, in the rules the loader of effects/traps.json

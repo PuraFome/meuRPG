@@ -193,12 +193,12 @@ SELECT * FROM campaign_table_rules WHERE campaign_id = $1;
 -- The master saved "Regras da mesa": every setting is written.
 INSERT INTO campaign_table_rules (
     campaign_id, hit_points_rule, ability_standard_array, ability_point_buy, ability_roll_4d6, ability_typed,
-    critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, updated_at
+    critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, feats_allowed, hidden_area_hits, enemy_reactions, updated_at
 )
 VALUES (
     sqlc.arg(campaign_id), sqlc.arg(hit_points_rule), sqlc.arg(ability_standard_array), sqlc.arg(ability_point_buy),
     sqlc.arg(ability_roll_4d6), sqlc.arg(ability_typed), sqlc.arg(critical_rule), sqlc.arg(death_saves),
-    sqlc.arg(combat_starts_with_map), sqlc.arg(fog_on_new_maps), sqlc.arg(house_rules)::TEXT[], sqlc.arg(now)
+    sqlc.arg(combat_starts_with_map), sqlc.arg(fog_on_new_maps), sqlc.arg(house_rules)::TEXT[], sqlc.arg(feats_allowed), sqlc.arg(hidden_area_hits), sqlc.arg(enemy_reactions), sqlc.arg(now)
 )
 ON CONFLICT (campaign_id) DO UPDATE SET
     hit_points_rule = excluded.hit_points_rule,
@@ -211,6 +211,9 @@ ON CONFLICT (campaign_id) DO UPDATE SET
     combat_starts_with_map = excluded.combat_starts_with_map,
     fog_on_new_maps = excluded.fog_on_new_maps,
     house_rules = excluded.house_rules,
+    feats_allowed = excluded.feats_allowed,
+    hidden_area_hits = excluded.hidden_area_hits,
+    enemy_reactions = excluded.enemy_reactions,
     updated_at = excluded.updated_at
 RETURNING *;
 
@@ -222,3 +225,13 @@ SELECT * FROM campaigns WHERE id = $1 FOR UPDATE;
 -- name: SetCampaignXPMode :one
 -- The master changed how the campaign levels (RN-09).
 UPDATE campaigns SET xp_mode = $2, xp_mode_changed_at = sqlc.arg(now)::TIMESTAMPTZ WHERE id = $1 RETURNING xp_mode, xp_mode_changed_at;
+
+-- name: InsertImportedCampaign :one
+-- A campaign made from a package (MR-050): the id is chosen before, because the
+-- files of its images are stored under it. create_key and create_hash are the
+-- idempotency key of CreateCampaignFromImport; a second call with the key makes
+-- no row, and the caller reads the first one (GetCampaignByCreateKey).
+INSERT INTO campaigns (id, name, xp_mode, dice_mode, created_by, create_key, create_hash)
+VALUES (sqlc.arg(id), sqlc.arg(name), sqlc.arg(xp_mode), sqlc.arg(dice_mode), sqlc.arg(created_by), sqlc.narg(create_key), sqlc.narg(create_hash))
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING *;

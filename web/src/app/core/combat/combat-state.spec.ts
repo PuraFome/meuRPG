@@ -148,6 +148,37 @@ describe('CombatState', () => {
     ).toBe(true);
   });
 
+  it('keeps a patched turn from being overwritten by an older answer, and ignores an older turn event', () => {
+    const state = new CombatState();
+    state.apply(encounter({ combatants: two, currentCombatantId: 'a', round: 1, revision: 4 }));
+    // The event of the turn change carries the revision it made.
+    state.applyTurn({
+      encounterId: 'enc',
+      round: 2,
+      currentCombatantId: 'b',
+      masterTurn: false,
+      revision: 6,
+    });
+    expect(state.encounter()).toMatchObject({ round: 2, currentCombatantId: 'b', revision: 6 });
+    // The answer of a call that began before the turn changed is older: it does not bring the turn back.
+    state.apply(encounter({ combatants: two, currentCombatantId: 'a', round: 1, revision: 5 }));
+    expect(state.encounter()).toMatchObject({ round: 2, currentCombatantId: 'b' });
+    // An event about a turn older than the one on screen changes nothing.
+    expect(
+      state.applyTurn({
+        encounterId: 'enc',
+        round: 1,
+        currentCombatantId: 'a',
+        masterTurn: false,
+        revision: 5,
+      }),
+    ).toBe(true);
+    expect(state.encounter()).toMatchObject({ round: 2, currentCombatantId: 'b', revision: 6 });
+    // No number to compare (a player on a fog map): the turn applies and the revision stays.
+    state.applyTurn({ encounterId: 'enc', round: 3, currentCombatantId: 'a', masterTurn: false });
+    expect(state.encounter()).toMatchObject({ round: 3, revision: 6 });
+  });
+
   it('drops a read that started before combatant_moved', () => {
     const state = new CombatState();
     state.apply(encounter({ combatants: two }));
@@ -254,5 +285,34 @@ describe('CombatState', () => {
       expect(e.turnGroupIds).toEqual([]);
       expect(e.combatants.some((c) => c.turnPartEnded)).toBe(false);
     });
+  });
+});
+
+describe('CombatState, the reaction windows that closed (PM-04)', () => {
+  it('keeps the sentence of a window that closed by itself until it is dismissed, and drops it with the combat', () => {
+    const state = new CombatState();
+    state.noteReactionClosed('w1', 'Queda Suave fechou. Você já usou a sua reação.');
+    expect(state.reactionNotice()).toEqual({
+      windowId: 'w1',
+      text: 'Queda Suave fechou. Você já usou a sua reação.',
+    });
+    state.dismissReactionNotice();
+    expect(state.reactionNotice()).toBeNull();
+    state.noteReactionClosed('w2', 'A Contramágica fechou.');
+    state.clear();
+    expect(state.reactionNotice()).toBeNull();
+  });
+
+  it('a window closed with no sentence (it was answered) leaves no notice', () => {
+    const state = new CombatState();
+    state.noteReactionClosed('w1', '');
+    expect(state.reactionNotice()).toBeNull();
+  });
+
+  it('knows which windows the stream announced: the others came with a read', () => {
+    const state = new CombatState();
+    state.noteReactionOpened('w1');
+    expect(state.wasAnnounced('w1')).toBe(true);
+    expect(state.wasAnnounced('w2')).toBe(false);
   });
 });

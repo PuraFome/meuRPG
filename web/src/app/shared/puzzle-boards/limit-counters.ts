@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import type { CounterRow } from '../../core/puzzles/puzzle-format';
 
 /**
- * The counters a puzzle with limits keeps on screen (MR-038, E10-12 states 6, 8 and 10): "Suas tentativas 2 de 3", "Jogadas 7 de 10",
+ * The counters a puzzle with limits keeps on screen (MR-038, E10-12 states 6, 8 and 10): "Tentativas restantes 2 de 3", "Jogadas 7 de 10",
  * "Tempo 4:48 de 5:00". A label on the left and the value, in bold, on the right; a counter that has run out says so in words
  * ("acabou") as well as in its colour.
  */

@@ -468,7 +468,7 @@ func (noSheets) LockSheets(context.Context, pgx.Tx, string, time.Time) (int64, e
 	return 0, errors.New("not in this test")
 }
 
-type noVitals struct{}
+type noVitals struct{ RestKeeper }
 
 func (noVitals) ListVitals(context.Context, string) ([]*playv1.CharacterVitals, error) {
 	return nil, errors.New("not in this test")
@@ -496,6 +496,10 @@ func (noVitals) SetWildShape(context.Context, pgx.Tx, string, string, string, in
 
 func (noVitals) FamiliarOf(context.Context, pgx.Tx, string, string) (link.Creature, bool, error) {
 	return link.Creature{}, false, errors.New("not in this test")
+}
+
+func (noVitals) SetHitPointsMaxBonus(context.Context, pgx.Tx, string, string, int32) (before, after *playv1.CharacterVitals, err error) {
+	return nil, nil, errors.New("not in this test")
 }
 
 func (noVitals) SetFamiliarSight(context.Context, pgx.Tx, string, string, string, bool, []string) (*playv1.CharacterVitals, error) {
@@ -536,7 +540,7 @@ func (noMaps) MapGrid(context.Context, pgx.Tx, string, string) (link.Grid, error
 	return link.Grid{}, errors.New("not in this test")
 }
 
-func (noMaps) BattlePoint(context.Context, string, string) (link.BattlePoint, error) {
+func (noMaps) BattlePoint(context.Context, pgx.Tx, string, string) (link.BattlePoint, error) {
 	return link.BattlePoint{}, errors.New("not in this test")
 }
 
@@ -590,6 +594,10 @@ func (noRoster) SceneCheckName(string) string { return "" }
 
 func (noRoster) CombatSave(context.Context, pgx.Tx, string, string, string) (link.Save, error) {
 	return link.Save{}, errors.New("not in this test")
+}
+
+func (noRoster) ReactionStats(context.Context, pgx.Tx, string, string) (link.ReactionStats, error) {
+	return link.ReactionStats{}, errors.New("not in this test")
 }
 
 func (noRoster) MarkDead(context.Context, pgx.Tx, string, string, time.Time) error {
@@ -803,9 +811,13 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["TakeAction"] = cc.TakeAction(ctx, connect.NewRequest(&playv1.TakeActionRequest{CampaignId: id}))
 	_, combat["AdjustCombatantHitPoints"] = cc.AdjustCombatantHitPoints(ctx, connect.NewRequest(&playv1.AdjustCombatantHitPointsRequest{CampaignId: id}))
 	_, combat["UndoLastAction"] = cc.UndoLastAction(ctx, connect.NewRequest(&playv1.UndoLastActionRequest{CampaignId: id}))
+	_, combat["PreviewSpellArea"] = cc.PreviewSpellArea(ctx, connect.NewRequest(&playv1.PreviewSpellAreaRequest{CampaignId: id}))
+	_, combat["ResolveHiddenReveal"] = cc.ResolveHiddenReveal(ctx, connect.NewRequest(&playv1.ResolveHiddenRevealRequest{CampaignId: id}))
 	_, combat["CastSpell"] = cc.CastSpell(ctx, connect.NewRequest(&playv1.CastSpellRequest{CampaignId: id}))
 	_, combat["UseReaction"] = cc.UseReaction(ctx, connect.NewRequest(&playv1.UseReactionRequest{CampaignId: id}))
 	_, combat["DeclineReaction"] = cc.DeclineReaction(ctx, connect.NewRequest(&playv1.DeclineReactionRequest{CampaignId: id}))
+	_, combat["AnswerReaction"] = cc.AnswerReaction(ctx, connect.NewRequest(&playv1.AnswerReactionRequest{CampaignId: id}))
+	_, combat["ResolveConcentrationSave"] = cc.ResolveConcentrationSave(ctx, connect.NewRequest(&playv1.ResolveConcentrationSaveRequest{CampaignId: id}))
 	_, combat["DeclineOpportunity"] = cc.DeclineOpportunity(ctx, connect.NewRequest(&playv1.DeclineOpportunityRequest{CampaignId: id}))
 	_, combat["SpendMovement"] = cc.SpendMovement(ctx, connect.NewRequest(&playv1.SpendMovementRequest{CampaignId: id}))
 	_, combat["OfferOpportunity"] = cc.OfferOpportunity(ctx, connect.NewRequest(&playv1.OfferOpportunityRequest{CampaignId: id}))
@@ -815,6 +827,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["ConfirmDeath"] = cc.ConfirmDeath(ctx, connect.NewRequest(&playv1.ConfirmDeathRequest{CampaignId: id}))
 	_, combat["SetCombatantConditions"] = cc.SetCombatantConditions(ctx, connect.NewRequest(&playv1.SetCombatantConditionsRequest{CampaignId: id}))
 	_, combat["EndConcentration"] = cc.EndConcentration(ctx, connect.NewRequest(&playv1.EndConcentrationRequest{CampaignId: id}))
+	_, combat["EndCombatEffect"] = cc.EndCombatEffect(ctx, connect.NewRequest(&playv1.EndCombatEffectRequest{CampaignId: id}))
 	_, combat["ListCombatLog"] = cc.ListCombatLog(ctx, connect.NewRequest(&playv1.ListCombatLogRequest{CampaignId: id}))
 	_, combat["GetCombatHighlights"] = cc.GetCombatHighlights(ctx, connect.NewRequest(&playv1.GetCombatHighlightsRequest{CampaignId: id}))
 	combatMethods := playv1.File_meurpg_play_v1_combat_proto.Services().ByName("CombatService").Methods()
@@ -887,6 +900,8 @@ type emptyTrapBook struct{}
 func (emptyTrapBook) Traps(context.Context, pgx.Tx, string, string) ([]maplink.Trap, error) {
 	return nil, nil
 }
+
+func (emptyTrapBook) FallFt(string) int { return 0 }
 
 func (emptyTrapBook) KnownTraps(context.Context, string, string, string) ([]maplink.Trap, error) {
 	return nil, nil

@@ -56,3 +56,17 @@ func ParseDice(s string) (DiceFormula, bool) {
 	f.Count, f.Sides = count, faces
 	return f, true
 }
+
+// reliableTalentFloor is the number Reliable Talent makes a low d20 count as.
+const reliableTalentFloor = 10
+
+// ReliableTalentFace is the number a d20 counts as for an ability check that adds
+// the proficiency bonus when the character has Reliable Talent: a roll of 9 or
+// lower counts as 10 (SRD 5.1, Rogue, level 11), anything else as itself.
+// treated says whether the rule changed the number.
+func ReliableTalentFace(face int) (counted int, treated bool) {
+	if face < reliableTalentFloor {
+		return reliableTalentFloor, true
+	}
+	return face, false
+}

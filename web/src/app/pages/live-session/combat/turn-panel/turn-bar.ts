@@ -10,11 +10,13 @@ import { EndTurn } from './end-turn';
 
 /**
  * The bar pinned to the bottom of a player's own turn on a phone and a
- * tablet (E6-06): what is still available this turn, as open circles and
- * words, and "Encerrar turno", which is an outline until the action and the
- * bonus action are spent (then it is the filled button). It sits at the end
- * of the page's column so that it sticks to the bottom of the screen while
- * the page scrolls. From 1024px the button is in the turn card instead.
+ * tablet (E6-06): one slim row with the movement still left and "Encerrar
+ * turno", which is an outline until the action and the bonus action are spent
+ * (then it is the filled button). What else is available this turn is in the
+ * tiles above, so the bar does not repeat it and leaves the initiative cards
+ * visible. It sits at the end of the page's column so that it sticks to the
+ * bottom of the screen while the page scrolls. From 1024px the button is in
+ * the turn card instead.
  */
 @Component({
   selector: 'app-turn-bar',
@@ -24,29 +26,21 @@ import { EndTurn } from './end-turn';
       <app-mine-tabs [tabs]="tabs()" [selected]="selected()" (select)="select.emit($event)" />
     }
     @if (own(); as me) {
-    @if (waiting()) {
-      <p class="what">{{ waiting() }}: a vez continua quando responderem.</p>
-    } @else if (!asking()) {
-    <p class="what">{{ joint() ? 'Ainda disponível na sua parte' : 'Ainda disponível neste turno' }}</p>
-    <ul class="left">
-      @for (item of left(); track item.name) {
-        <li>
-          <span class="dot" aria-hidden="true"></span>
-          <span>{{ item.name }}@if (item.amount) {&nbsp;<b>{{ item.amount }}</b>}</span>
-        </li>
-      } @empty {
-        <li>Nada: só falta encerrar o turno.</li>
+      @if (joint(); as who) {
+        @if (!asking()) {
+          <p class="what">{{ note(who) }}</p>
+        }
+        <app-end-part [left]="partLeft()" [busy]="busy()" (endPart)="endTurn.emit()" (asked)="asking.set($event)" />
+      } @else {
+        <div class="row">
+          @if (waiting()) {
+            <p class="what">{{ waiting() }}: a vez continua quando responderem.</p>
+          } @else if (move(); as amount) {
+            <p class="what">Mover&nbsp;<b>{{ amount }}</b></p>
+          }
+          <app-end-turn class="row__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" [waiting]="waiting()" (endTurn)="endTurn.emit()" />
+        </div>
       }
-    </ul>
-    }
-    @if (joint(); as who) {
-      @if (!asking()) {
-        <p class="what">{{ note(who) }}</p>
-      }
-      <app-end-part [left]="partLeft()" [busy]="busy()" (endPart)="endTurn.emit()" (asked)="asking.set($event)" />
-    } @else {
-      <app-end-turn [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" [waiting]="waiting()" [block]="true" (endTurn)="endTurn.emit()" />
-    }
     }
   `,
   styles: `
@@ -58,7 +52,7 @@ import { EndTurn } from './end-turn';
       flex-direction: column;
       gap: 8px;
       margin: 0 calc(var(--mr-gutter) * -1);
-      padding: 10px var(--mr-gutter) 12px;
+      padding: 8px var(--mr-gutter);
       border-top: 1px solid var(--mr-line);
       background: var(--mr-surface);
 
@@ -71,34 +65,37 @@ import { EndTurn } from './end-turn';
       margin: 0;
       font-size: 14px;
       color: var(--mr-ink-muted);
-    }
 
-    // Two columns, so "Mover 7,5 m · 5 quadrados" never wraps in the middle of
-    // a number: it takes the cell, and the dot stays at the end of its line.
-    .left {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 4px 16px;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      font-size: 15px;
-      font-weight: 500;
-
-      li {
-        display: flex;
-        align-items: center;
-        gap: 6px;
+      b {
+        color: var(--mr-ink);
       }
     }
 
-    .dot {
+    // One slim row: the movement left, when there is one, and "Encerrar turno" at the end. The
+    // question "Encerrar mesmo?" takes the whole row while it is open.
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+
+      .what {
+        flex: 1 1 0;
+        min-width: 0;
+      }
+
+      &:has([role='alertdialog']) .what {
+        display: none;
+      }
+    }
+
+    .row__end {
       flex: none;
-      box-sizing: border-box;
-      width: 16px;
-      height: 16px;
-      border: 2px solid var(--mr-ink);
-      border-radius: 50%;
+      margin-left: auto;
+
+      &:has([role='alertdialog']) {
+        flex: 1 1 100%;
+      }
     }
   `,
 })
@@ -136,37 +133,14 @@ export class TurnBar {
     );
   }
 
-  protected readonly left = computed(() => {
+  /** "7,5 m · 5 quadrados": the movement still left; empty without a map (the Movimento tile says it) or when none is left. */
+  protected readonly move = computed(() => {
     const c = this.own();
-    if (!c) {
-      return [];
+    if (!c || c.movementLeftFt <= 0 || this.theatre()) {
+      return '';
     }
-    const items: { name: string; amount?: string }[] = [];
-    if (!c.actionUsed) {
-      items.push({ name: 'Ação' });
-    } else if (this.attacksLeft() > 0) {
-      items.push({
-        name: `${this.attacksLeft()} ${this.attacksLeft() === 1 ? 'ataque' : 'ataques'}`,
-      });
-    }
-    if (!c.bonusActionUsed) {
-      items.push({ name: 'Ação bônus' });
-    }
-    if (!c.reactionUsed) {
-      items.push({ name: 'Reação' });
-    }
-    // Without a map the movement is said once, in its tile ("3,0 m de 9,0 m"), not again here.
-    if (c.movementLeftFt > 0 && !this.theatre()) {
-      items.push({
-        name: 'Mover',
-        amount: tight(
-          joinDots([
-            metersFixed(c.movementLeftDft / 10),
-            squaresText(reachSquares(c.movementLeftFt)),
-          ]),
-        ),
-      });
-    }
-    return items;
+    return tight(
+      joinDots([metersFixed(c.movementLeftDft / 10), squaresText(reachSquares(c.movementLeftFt))]),
+    );
   });
 }

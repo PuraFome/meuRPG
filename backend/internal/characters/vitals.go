@@ -15,7 +15,6 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
-	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // Vitals (RN-02): a player character's current and temporary hit points,
@@ -57,6 +56,8 @@ type vitalsMax struct {
 	pactSlots    int
 	hitDice      []rules.HitDice
 	hitDiceTotal int
+	// conMod is the Constitution modifier: what a spent hit die adds to its roll.
+	conMod int
 	// resources are the class and race resources the sheet has at its level.
 	resources []rules.Resource
 	// beast is the Wild Shape form the character is in (MR-037): its content key,
@@ -93,6 +94,11 @@ func maxima(content *rules.Content, characterID string, doc []byte, beast *strin
 	for _, hd := range d.HitDice {
 		m.hitDiceTotal += hd.Count
 	}
+	for _, a := range d.Abilities {
+		if a.Ability == rules.CON {
+			m.conMod = a.Modifier
+		}
+	}
 	return m, nil
 }
 
@@ -120,26 +126,33 @@ func (s *Service) liveFamiliar(ctx context.Context, q *charactersdb.Queries, cam
 // value to its maximum: a sheet that lost a level, or a class, never shows
 // more than it has now.
 func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
-	// A level of exhaustion from 4 on halves the maximum (SRD, Conditions).
-	level := min(max(derefInt(row.ExhaustionLevel), 0), combat.MaxExhaustion)
-	maxHP := i32(combat.ExhaustedMaxHP(m.hitPoints, int(level)))
+	bonus := derefInt(row.HitPointsMaxBonus) // Aid's, on top of the sheet's maximum
 	v := &playv1.CharacterVitals{
 		CharacterId:        row.ID,
 		Name:               row.Name,
 		PlayerUserId:       deref(row.PlayerUserID),
-		HitPointsCurrent:   maxHP, // fresh: full hit points
-		HitPointsMax:       maxHP,
-		ExhaustionLevel:    level,
+		HitPointsCurrent:   i32(m.hitPoints) + bonus, // fresh: full hit points
+		HitPointsMax:       i32(m.hitPoints) + bonus,
+		HitPointsMaxBonus:  bonus,
 		HitPointsTemporary: derefInt(row.HitPointsTemporary),
 		HitDiceTotal:       i32(m.hitDiceTotal),
-		HitDiceUsed:        min(derefInt(row.HitDiceUsed), i32(m.hitDiceTotal)),
 		Revision:           derefInt(row.Revision),
 		UpdatedAt:          timestamp(row.UpdatedAt),
 	}
 	if row.HitPointsCurrent != nil {
 		v.HitPointsCurrent = min(*row.HitPointsCurrent, v.HitPointsMax)
 	}
-	for k, total := range m.slots {
+	// The hit dice spent, by size: the sum is the count the older clients read.
+	spent := hitDiceUsedOf(row, m)
+	v.HitDiceUsed = i32(spent.Total())
+	v.HitDiceUsedByDie = hitDiceToProto(spent)
+	for k, sheetTotal := range m.slots {
+		// The slots Flexible Casting created add to the sheet's.
+		var created int32
+		if k < len(row.SpellSlotsCreated) {
+			created = max(row.SpellSlotsCreated[k], 0)
+		}
+		total := sheetTotal + int(created)
 		if total == 0 {
 			continue
 		}
@@ -147,7 +160,7 @@ func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
 		if k < len(row.SpellSlotsUsed) {
 			used = min(row.SpellSlotsUsed[k], i32(total))
 		}
-		v.SpellSlots = append(v.SpellSlots, &playv1.SpellSlotUsage{Level: i32(k + 1), Total: i32(total), Used: used})
+		v.SpellSlots = append(v.SpellSlots, &playv1.SpellSlotUsage{Level: i32(k + 1), Total: i32(total), Used: used, Created: created})
 	}
 	if m.pactSlots > 0 {
 		v.PactSlots = &playv1.PactSlotUsage{
@@ -212,24 +225,34 @@ func (s *Service) ListVitals(ctx context.Context, campaignID string) ([]*playv1.
 // GetVitals returns one living, active player character's vitals, or a
 // `not_found` Connect error when characterID is not one in the campaign.
 func (s *Service) GetVitals(ctx context.Context, campaignID, characterID string) (*playv1.CharacterVitals, error) {
-	return s.getVitals(ctx, nil, campaignID, characterID)
+	return s.getVitals(ctx, nil, campaignID, characterID, false)
 }
 
 // GetVitalsTx is GetVitals inside tx, so a change that computes from the
 // vitals and writes them back (the master applying damage) reads what its own
 // transaction will overwrite, never a stale copy.
 func (s *Service) GetVitalsTx(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (*playv1.CharacterVitals, error) {
-	return s.getVitals(ctx, tx, campaignID, characterID)
+	return s.getVitals(ctx, tx, campaignID, characterID, false)
 }
 
-// getVitals reads the vitals in tx (nil: the pool).
-func (s *Service) getVitals(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (*playv1.CharacterVitals, error) {
+// getVitals reads the vitals in tx (nil: the pool). With withDead, the vitals of a
+// character that died answer too: only the reads that serve a dead character's
+// player ask for it; anything that lets a character act or heals it does not.
+func (s *Service) getVitals(ctx context.Context, tx pgx.Tx, campaignID, characterID string, withDead bool) (*playv1.CharacterVitals, error) {
 	q := s.queriesIn(tx)
 	id, ok := parseUUID(characterID)
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
-	row, err := q.GetVitals(ctx, charactersdb.GetVitalsParams{CampaignID: campaignID, ID: id})
+	var row charactersdb.GetVitalsRow
+	var err error
+	if withDead {
+		var dead charactersdb.GetVitalsWithDeadRow
+		dead, err = q.GetVitalsWithDead(ctx, charactersdb.GetVitalsWithDeadParams{CampaignID: campaignID, ID: id})
+		row = charactersdb.GetVitalsRow(dead)
+	} else {
+		row, err = q.GetVitals(ctx, charactersdb.GetVitalsParams{CampaignID: campaignID, ID: id})
+	}
 	if err != nil {
 		return nil, s.dbError(ctx, "get vitals", err) // no row: not_found
 	}
@@ -300,12 +323,15 @@ func (s *Service) AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, chara
 	for _, change := range req.GetSpellSlotsUsed() {
 		used[change.GetLevel()-1] = change.GetUsed()
 	}
-	pactUsed, hitDiceUsed := derefInt(row.PactSlotsUsed), derefInt(row.HitDiceUsed)
+	pactUsed := derefInt(row.PactSlotsUsed)
 	if req.PactSlotsUsed != nil {
 		pactUsed = after.GetPactSlots().GetUsed()
 	}
-	if req.HitDiceUsed != nil {
-		hitDiceUsed = after.GetHitDiceUsed()
+	// The hit dice are kept by size. A correction that leaves them alone writes what
+	// was read (a row from before the sizes were kept gets them now).
+	hitDiceJSON, hitDiceUsed, err := encodeHitDiceUsed(hitDiceFromProto(after.GetHitDiceUsedByDie()))
+	if err != nil {
+		return nil, nil, wrap("encode the hit dice", err)
 	}
 	usedResources := map[string]int32{}
 	_ = json.Unmarshal(row.ResourcesUsed, &usedResources)
@@ -336,6 +362,8 @@ func (s *Service) AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, chara
 		SpellSlotsUsed:     used,
 		PactSlotsUsed:      pactUsed,
 		HitDiceUsed:        hitDiceUsed,
+		HitDiceUsedByDie:   hitDiceJSON,
+		SpellSlotsCreated:  slotsCreatedOf(current),
 		ResourcesUsed:      resourcesJSON,
 		Now:                s.now(),
 	})
@@ -359,67 +387,12 @@ func (s *Service) AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, chara
 	return before, after, nil
 }
 
-// SetExhaustion sets a character's level of exhaustion inside tx and returns the
-// vitals before and after (SRD, Conditions: Exhaustion). From level 4 the hit
-// point maximum is halved and the current hit points are cut to the new maximum;
-// going back down gives the maximum back and never heals, so the cut stays stored.
-// `not_found` for anything but a living, active player character of the campaign;
-// `invalid_argument` for a level outside 0 to 6. Package play calls it from
-// SetExhaustion and LowerExhaustion, in the transaction that writes the event.
-func (s *Service) SetExhaustion(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level int32) (before, after *playv1.CharacterVitals, err error) {
-	id, ok := parseUUID(characterID)
-	if !ok {
-		return nil, nil, errCharacterNotFound()
-	}
-	if level < 0 || level > combat.MaxExhaustion {
-		return nil, nil, invalidArgument(errors.New("level must be 0 to 6"))
-	}
-	q := s.queries.WithTx(tx)
-	row, err := q.GetVitals(ctx, charactersdb.GetVitalsParams{CampaignID: campaignID, ID: id})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil, errCharacterNotFound()
-	}
-	if err != nil {
-		return nil, nil, wrap("get vitals", err)
-	}
-	content, err := s.contentFor(ctx, tx, campaignID)
-	if err != nil {
-		return nil, nil, wrap("read rules content", err)
-	}
-	m, err := maxima(content, row.ID, row.Sheet, row.WildShapeBeast)
-	if err != nil {
-		return nil, nil, err
-	}
-	current := vitalsRow(row)
-	before = vitalsToProto(current, m)
-	// The hit points the new maximum leaves: a cut when it fell below them. A
-	// character whose hit points were never set is full: the cut stores what full
-	// is under the new maximum, so lowering the level later does not heal.
-	newMax := i32(combat.ExhaustedMaxHP(m.hitPoints, int(level)))
-	var hitPoints *int32
-	if kept := min(before.GetHitPointsCurrent(), newMax); kept < before.GetHitPointsCurrent() || (row.HitPointsCurrent == nil && newMax < i32(m.hitPoints)) {
-		hitPoints = &kept
-	}
-	saved, err := q.SetVitalsExhaustion(ctx, charactersdb.SetVitalsExhaustionParams{CharacterID: row.ID, HitPointsCurrent: hitPoints, ExhaustionLevel: level, Now: s.now()})
-	if err != nil {
-		return nil, nil, wrap("save the exhaustion", err)
-	}
-	current.ExhaustionLevel = &level
-	if hitPoints != nil {
-		current.HitPointsCurrent = hitPoints
-	}
-	after = vitalsToProto(current, m)
-	after.Revision = saved.Revision
-	after.UpdatedAt = timestamppb.New(saved.UpdatedAt)
-	return before, after, nil
-}
-
 // applyVitalsChange sets on v the values req sets, checking each against
 // its maximum. v already has the maximums. Errors are fieldErrors, with the
 // request's field names.
 func applyVitalsChange(v *playv1.CharacterVitals, req *playv1.AdjustCharacterVitalsRequest) error {
 	if req.HitPointsCurrent == nil && req.HitPointsTemporary == nil && len(req.GetSpellSlotsUsed()) == 0 &&
-		req.PactSlotsUsed == nil && req.HitDiceUsed == nil && len(req.GetResourcesUsed()) == 0 && req.WildShapeHitPointsCurrent == nil {
+		req.PactSlotsUsed == nil && req.HitDiceUsed == nil && len(req.GetHitDiceUsedByDie()) == 0 && len(req.GetResourcesUsed()) == 0 && req.WildShapeHitPointsCurrent == nil {
 		return fieldErr("request", "must set at least one value to change")
 	}
 	if req.WildShapeHitPointsCurrent != nil {
@@ -474,11 +447,34 @@ func applyVitalsChange(v *playv1.CharacterVitals, req *playv1.AdjustCharacterVit
 		}
 		v.PactSlots.Used = req.GetPactSlotsUsed()
 	}
+	if req.HitDiceUsed != nil && len(req.GetHitDiceUsedByDie()) > 0 {
+		return fieldErr("hit_dice_used", "must not be set together with hit_dice_used_by_die")
+	}
 	if req.HitDiceUsed != nil {
 		if err := inRange("hit_dice_used", req.GetHitDiceUsed(), v.GetHitDiceTotal()); err != nil {
 			return err
 		}
-		v.HitDiceUsed = req.GetHitDiceUsed()
+		// A count with no sizes spends the largest dice first.
+		setHitDiceUsed(v, rules.SplitHitDiceUsed(hitDiceOf(v), int(req.GetHitDiceUsed())))
+	}
+	if len(req.GetHitDiceUsedByDie()) > 0 {
+		next := hitDiceFromProto(v.GetHitDiceUsedByDie())
+		for die, n := range req.GetHitDiceUsedByDie() {
+			field := fmt.Sprintf("hit_dice_used_by_die[%d]", die)
+			i := slices.IndexFunc(v.GetHitDice(), func(hd *rulesv1.HitDice) bool { return hd.GetFaces() == die })
+			if i < 0 {
+				return fieldErr(field, "must be a die size the character has")
+			}
+			if err := inRange(field, n, v.GetHitDice()[i].GetCount()); err != nil {
+				return err
+			}
+			if n == 0 {
+				delete(next, int(die))
+			} else {
+				next[int(die)] = int(n)
+			}
+		}
+		setHitDiceUsed(v, next)
 	}
 	seenResource := map[string]bool{}
 	for i, change := range req.GetResourcesUsed() {
@@ -552,4 +548,50 @@ func (s *Service) carryHitPoints(ctx context.Context, q *charactersdb.Queries, c
 		return wrap("carry the current hit points", err)
 	}
 	return nil
+}
+
+// SetHitPointsMaxBonus puts the bonus Aid adds to a character's maximum hit
+// points at bonus (0 or more; 0 ends the spell) inside tx, and returns the vitals
+// before and after. The current hit points follow the bonus: a bonus that grew
+// raises them by the same amount (the spell raises the maximum and the current
+// hit points together, so a character at 0 hit points wakes up with the
+// difference), and a bonus that fell takes away only what is now above the maximum
+// (hit points never pass it, SRD 5.1, "Healing"), never the last hit point of
+// someone who still had one. Setting the bonus it already has changes nothing, not
+// even the revision. `not_found` for anything but a living, active player's
+// character of the campaign. It implements play.VitalsKeeper; the caller records
+// the event and resets the death saves of a character that woke up.
+func (s *Service) SetHitPointsMaxBonus(ctx context.Context, tx pgx.Tx, campaignID, characterID string, bonus int32) (before, after *playv1.CharacterVitals, err error) {
+	bonus = max(bonus, 0)
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, nil, wrap("read rules content", err)
+	}
+	before, _, row, err := s.shapedVitals(ctx, tx, content, campaignID, characterID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if before.GetHitPointsMaxBonus() == bonus {
+		return before, before, nil
+	}
+	sheetMax := before.GetHitPointsMax() - before.GetHitPointsMaxBonus()
+	newMax := sheetMax + bonus
+	current := before.GetHitPointsCurrent()
+	switch {
+	case bonus > before.GetHitPointsMaxBonus():
+		current += bonus - before.GetHitPointsMaxBonus()
+	case current > 0:
+		current = max(min(current, newMax), 1)
+	}
+	current = min(current, newMax)
+	saved, err := s.queries.WithTx(tx).SetVitalsMaxBonus(ctx, charactersdb.SetVitalsMaxBonusParams{
+		CharacterID: row.ID, HitPointsCurrent: &current, HitPointsMaxBonus: bonus, Now: s.now(),
+	})
+	if err != nil {
+		return nil, nil, wrap("save the hit point bonus", err)
+	}
+	after = proto.CloneOf(before)
+	after.HitPointsMaxBonus, after.HitPointsMax, after.HitPointsCurrent = bonus, newMax, current
+	after.Revision, after.UpdatedAt = saved.Revision, timestamppb.New(saved.UpdatedAt)
+	return before, after, nil
 }

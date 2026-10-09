@@ -15,6 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -62,6 +63,11 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 		if e.Kind == eventCreatureSummoned || e.Kind == eventCreatureDismissed {
 			continue
 		}
+		// A concentration that ended at 0 hit points is written before the damage's own
+		// event, and goes with it when the damage is undone.
+		if ev, err := readEvent(e.Payload); err == nil && ev.Reaction != nil && ev.Reaction.Kind == concentrationEnd {
+			continue
+		}
 		// The offers a move made are written before the move's own event, the same
 		// way: the undo acts on the move.
 		// One the master made by hand (a combat without a grid) is no part of a move:
@@ -101,6 +107,18 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 				continue
 			}
 			if err != nil || (e.Kind == eventFamiliarSight && ev.Sight != "start") {
+				return playdb.ListRecentSessionEventsRow{}, false
+			}
+		}
+		// The event that stands for a held action is no action to undo: nothing of it
+		// happened yet (combat_reaction_hold.go).
+		if ev, err := readEvent(e.Payload); err == nil && ev.Reaction != nil && ev.Reaction.Hold {
+			return playdb.ListRecentSessionEventsRow{}, false
+		}
+		// A fall whose damage waited for a Feather Fall landed by itself: the hit points
+		// it took were not written with the firing, so the firing is no longer undoable.
+		if e.Kind == eventTrapTriggered {
+			if ev, err := readEvent(e.Payload); err == nil && ev.Trap != nil && ev.Trap.Held {
 				return playdb.ListRecentSessionEventsRow{}, false
 			}
 		}
@@ -207,6 +225,22 @@ func (s *Service) UndoLastAction(
 		if last.Kind == eventCombatantMoved {
 			undoneMove = &ev
 		}
+		if last.Kind == eventDamageRolled || last.Kind == eventDamageApplied {
+			// The concentration the damage ended (at 0 hit points) comes back with it.
+			at := slices.IndexFunc(recent, func(e playdb.ListRecentSessionEventsRow) bool { return e.ID == last.ID })
+			for _, older := range recent[at+1:] {
+				pe, err := readEvent(older.Payload)
+				if err != nil || pe.Reaction == nil || pe.Reaction.Kind != concentrationEnd || pe.Reaction.Group != ev.Pending {
+					break
+				}
+				more, err := s.takeBack(ctx, c, older.Kind, pe)
+				if err != nil {
+					return nil, err
+				}
+				vitals = append(vitals, more...)
+				alsoUndone = append(alsoUndone, older.ID)
+			}
+		}
 		if last.Kind == eventTrapTriggered {
 			rearmed = ev.Trap
 			// A firing written as several events is taken back whole.
@@ -296,6 +330,22 @@ func (s *Service) publishUndone(ctx context.Context, campaignID string, d *encou
 // damage that is gone (its character was deleted meanwhile) is skipped: there
 // is nothing left to put back on it.
 func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev actionEvent) ([]*playv1.CharacterVitals, error) {
+	if kind == eventDamageRolled || kind == eventDamageApplied {
+		// The windows the damage opened (a concentration save, a Hellish Rebuke) were
+		// about it: they go with it.
+		pendings := []string{ev.Pending}
+		for _, h := range ev.Settled {
+			pendings = append(pendings, h.Pending)
+		}
+		for _, id := range pendings {
+			if id == "" {
+				continue
+			}
+			if err := c.q.CloseOpenReactionWindowsOfPending(ctx, playdb.CloseOpenReactionWindowsOfPendingParams{EncounterID: c.enc.ID, Pending: id, AnsweredAt: c.now}); err != nil {
+				return nil, fmt.Errorf("close the windows of a damage taken back: %w", err)
+			}
+		}
+	}
 	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 	if err != nil {
 		return nil, fmt.Errorf("list the combatants: %w", err)
@@ -401,7 +451,13 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 	switch kind {
 	case eventAttackRolled:
 		// The action (or the reaction) comes back and the damage the hit opened goes
-		// away.
+		// away. A Bardic Inspiration die the roll used is held again.
+		if who, ok := find(ev.Actor); ok && ev.Res != nil && ev.Res.Kind == resBardicUse {
+			sides, expires, from := ev.Res.Sides, ev.Res.ExpiresRound, ev.Res.FromID
+			if err := c.q.SetCombatantInspirationDie(ctx, playdb.SetCombatantInspirationDieParams{ID: who.ID, Sides: &sides, FromID: &from, ExpiresRound: &expires}); err != nil {
+				return nil, fmt.Errorf("hold the die again: %w", err)
+			}
+		}
 		if who, ok := find(ev.Actor); ok {
 			if ev.AsReaction {
 				err = setEconomy(who, who.ActionUsed, who.BonusActionUsed, ev.ReactionBefore, who.Dashed)
@@ -557,6 +613,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		if err := setRun(who, ev.RunBefore); err != nil {
 			return nil, err
 		}
+		if ev.Res != nil {
+			if err := s.takeBackResource(ctx, c, ev, who, find, setHP, setDeath, putVitals, keep); err != nil {
+				return nil, err
+			}
+		}
 		if ev.Resource != "" && who.Kind == kindPlayer {
 			v, err := s.spendResource(ctx, c, who.CharacterID, ev.Resource, -1)
 			if err != nil {
@@ -597,6 +658,13 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		if err := c.q.SetCombatantSpellsCast(ctx, playdb.SetCombatantSpellsCastParams{ID: who.ID, SpellCast: ev.SpellCastBefore, BonusSpellCast: ev.BonusSpellBefore}); err != nil {
 			return nil, fmt.Errorf("put back the spells cast: %w", err)
 		}
+		if ev.Res != nil && ev.Res.Kind == resMetamagic && who.Kind == kindPlayer {
+			v, err := s.spendResource(ctx, c, who.CharacterID, rules.SorceryPointsKey, -ev.Res.Spent)
+			if err != nil {
+				return nil, err
+			}
+			keep(v)
+		}
 		if ev.Slot != nil && who.Kind == kindPlayer {
 			v, err := s.spendSlot(ctx, c, who.CharacterID, *ev.Slot, -1)
 			if err != nil {
@@ -625,6 +693,21 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 				return nil, err
 			}
 		}
+		// The question the cast left the master goes away, and the creatures it revealed
+		// are hidden again: the spell never happened (their line is the players' no more
+		// while they are hidden).
+		if ev.PendingReveal != "" {
+			if err := c.q.DeleteHiddenReveal(ctx, ev.PendingReveal); err != nil {
+				return nil, fmt.Errorf("drop the hidden reveal: %w", err)
+			}
+		}
+		for _, id := range ev.Revealed {
+			if target, ok := find(id); ok {
+				if err := c.q.SetCombatantHidden(ctx, playdb.SetCombatantHiddenParams{ID: target.ID, Hidden: true}); err != nil {
+					return nil, fmt.Errorf("hide the combatant again: %w", err)
+				}
+			}
+		}
 		for _, h := range ev.Hits {
 			for _, id := range append([]string{h.Pending}, h.More...) {
 				if id == "" {
@@ -640,6 +723,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			if !ok || h.Fx == "" {
 				continue
 			}
+			if h.BonusBefore != nil && !holdsHP(target) { // Ajuda's bonus, before the hit points the bonus bounds
+				if _, _, err := s.vitals.SetHitPointsMaxBonus(ctx, c.tx, c.session.CampaignID, target.CharacterID, *h.BonusBefore); err != nil {
+					return nil, err
+				}
+			}
 			if h.Restore != nil {
 				if holdsHP(target) {
 					err = setHP(target, *h.Restore)
@@ -654,7 +742,7 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 				}
 			}
 			if h.MaxBefore != nil && holdsHP(target) { // after the hit points, which are the lower ones
-				if err := c.q.SetCombatantHitPointsMax(ctx, playdb.SetCombatantHitPointsMaxParams{ID: target.ID, HpMax: h.MaxBefore}); err != nil {
+				if err := c.q.SetCombatantHitPointsMax(ctx, playdb.SetCombatantHitPointsMaxParams{ID: target.ID, HpMax: h.MaxBefore, HpMaxBonus: num(h.BonusBefore)}); err != nil {
 					return nil, fmt.Errorf("put back the maximum hit points: %w", err)
 				}
 			}
@@ -675,13 +763,20 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			break
 		}
 		if ev.Slot != nil {
-			v, err := s.spendSlot(ctx, c, who.CharacterID, *ev.Slot, -1)
-			if err != nil {
+			if who.Kind == kindPlayer {
+				v, err := s.spendSlot(ctx, c, who.CharacterID, *ev.Slot, -1)
+				if err != nil {
+					return nil, err
+				}
+				keep(v)
+			} else if err := s.giveBackNPCSlot(ctx, c, who, *ev.Slot); err != nil { // an NPC's slot is counted on the combatant
 				return nil, err
 			}
-			keep(v)
 		}
 		if err := setEconomy(who, who.ActionUsed, who.BonusActionUsed, ev.ReactionBefore, who.Dashed); err != nil {
+			return nil, err
+		}
+		if err := s.reopenWindowOf(ctx, c, ev); err != nil {
 			return nil, err
 		}
 		if err := c.q.SetCombatantAcBonus(ctx, playdb.SetCombatantAcBonusParams{ID: who.ID, AcBonus: ev.ACBonusBefore}); err != nil {
@@ -698,6 +793,9 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 	case eventReactionDeclined:
 		if ev.OfferID != "" { // an opportunity offer turned down or skipped: it waits again
 			return nil, offerWaits(ctx, c, ev.OfferID)
+		}
+		if err := s.reopenWindowOf(ctx, c, ev); err != nil {
+			return nil, err
 		}
 		return nil, setStatus(ev.Pending, pendingAwaitingReaction)
 	case eventDeathSaveRolled:

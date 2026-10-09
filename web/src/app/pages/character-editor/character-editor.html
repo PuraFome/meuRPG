@@ -7,6 +7,16 @@
       }
     </header>
 
+    @if (reserved()) {
+      <div class="mr-notice mr-notice--neutral editor__reserved" role="note">
+        <mat-icon aria-hidden="true">visibility_off</mat-icon>
+        <p>
+          <strong>Personagem reservado.</strong> Ninguém é dono ainda: os jogadores só o veem depois que um deles assumir
+          pelo link que você gerar.
+        </p>
+      </div>
+    }
+
     @switch (s.status) {
       @case ('loading') {
         <div class="mr-panel editor__loading" role="status">
@@ -380,6 +390,23 @@
                     </mat-form-field>
                   </section>
                 }
+
+                @if (hasCuttingWords()) {
+                  <section class="subsection" aria-labelledby="cutting-words-title">
+                    <h3 class="subsection__title" id="cutting-words-title">Palavras de Interrupção</h3>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                      <mat-label>Perguntar</mat-label>
+                      <mat-select formControlName="cuttingWordsAsk">
+                        @for (o of cuttingWordsOptions; track o.value) {
+                          <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                        }
+                      </mat-select>
+                      <mat-hint>
+                        Quando o combate pergunta se você usa Palavras de Interrupção contra o inimigo.
+                      </mat-hint>
+                    </mat-form-field>
+                  </section>
+                }
               </cdk-step>
 
               <cdk-step [label]="stepLabels.atributos" [hasError]="stepHasError('atributos')">
@@ -542,12 +569,13 @@
                           {{ sectionHeading(view.section) }}
                         </h3>
                         <p class="group-hint">
-                          {{ view.section.namePt }} {{ view.section.level }}@if (view.preparedCount) {
-                            · {{ view.preparedCount }}
+                          {{ view.section.namePt }} {{ view.section.level }}@if (view.preparedCount.text) {
+                            ·
+                            <span [class.group-hint--over]="view.preparedCount.over">{{ view.preparedCount.text }}</span>
                           }
                         </p>
-                      } @else if (view.preparedCount) {
-                        <p class="group-hint">{{ view.preparedCount }}</p>
+                      } @else if (view.preparedCount.text) {
+                        <p class="group-hint" [class.group-hint--over]="view.preparedCount.over">{{ view.preparedCount.text }}</p>
                       }
                       @if (view.always.length > 0) {
                         <app-granted-spells
@@ -747,7 +775,7 @@
             @if (saveState().status === 'saving') {
               {{ s.mode === 'create' ? 'Criando…' : 'Salvando…' }}
             } @else {
-              {{ s.mode === 'create' ? pageTitle() : 'Salvar ficha' }}
+              {{ s.mode === 'create' ? createLabel() : 'Salvar ficha' }}
             }
           </button>
           <a mat-button class="editor__cancel" [routerLink]="cancelLink()">Cancelar</a>

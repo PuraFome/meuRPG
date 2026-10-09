@@ -25,6 +25,13 @@
 :host(.used) {
   border: 1.5px dashed var(--mr-control-line);
   color: var(--mr-ink-muted);
+
+  // From 1024px the plain word has no frame, but a used one keeps its dashed
+  // frame and so keeps room inside it (the circle is hidden there).
+  @media (min-width: 1024px) {
+    height: 26px;
+    padding: 0 12px;
+  }
 }
 
 .mat-icon {

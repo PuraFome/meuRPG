@@ -1,9 +1,12 @@
 import { create, type MessageInitShape } from '@bufbuild/protobuf';
 
 import {
+  LevelUpClassChoiceSchema,
+  LevelUpClassUnavailable,
   LevelUpDiceRule,
   LevelUpOptionsSchema,
   LevelUpSpellsKind,
+  type LevelUpClassChoice,
   type LevelUpOptions,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import {
@@ -11,6 +14,9 @@ import {
   DerivedAbilitySchema,
   DerivedClassSchema,
   DerivedSheetSchema,
+  FeatOptionSchema,
+  FeatUnmetKind,
+  type FeatOption,
   DerivedSkillSchema,
   HitDiceSchema,
   ProficiencyLevel,
@@ -27,12 +33,60 @@ import type { SheetKeys } from './levelup-flow';
 
 /** Fixtures of the guided level-up's specs: Pensantus (Mago 3, E8-15's numbers) and a fighter. */
 
+/** One way the level can go, as the class step lists it. */
+export function classChoice(
+  over: MessageInitShape<typeof LevelUpClassChoiceSchema> = {},
+): LevelUpClassChoice {
+  return create(LevelUpClassChoiceSchema, { available: true, prerequisiteMet: true, ...over });
+}
+
+/** Pensantus's step: the Mago he has, then a Guerreiro he may take (Strength or Dexterity) and a Paladino he may not. */
+export function pensantusClassChoices(): LevelUpClassChoice[] {
+  return [
+    classChoice({
+      classKey: 'class:wizard',
+      namePt: 'Mago',
+      fromLevel: 3,
+      toLevel: 4,
+      subclassNamePt: 'Evocação',
+      prerequisites: [{ ability: Ability.INTELLIGENCE, minimum: 13, have: 18, met: true }],
+    }),
+    classChoice({
+      classKey: 'class:fighter',
+      namePt: 'Guerreiro',
+      isNew: true,
+      fromLevel: 0,
+      toLevel: 1,
+      prerequisiteAnyOf: true,
+      prerequisites: [
+        { ability: Ability.STRENGTH, minimum: 13, have: 12, met: false },
+        { ability: Ability.DEXTERITY, minimum: 13, have: 16, met: true },
+      ],
+    }),
+    classChoice({
+      classKey: 'class:paladin',
+      namePt: 'Paladino',
+      isNew: true,
+      fromLevel: 0,
+      toLevel: 1,
+      available: false,
+      prerequisiteMet: false,
+      unavailable: LevelUpClassUnavailable.PREREQUISITE,
+      prerequisites: [
+        { ability: Ability.STRENGTH, minimum: 13, have: 12, met: false },
+        { ability: Ability.CHARISMA, minimum: 13, have: 12, met: false },
+      ],
+    }),
+  ];
+}
+
 export function wizardOptions(
   over: MessageInitShape<typeof LevelUpOptionsSchema> = {},
 ): LevelUpOptions {
   return create(LevelUpOptionsSchema, {
     classKey: 'class:wizard',
     classNamePt: 'Mago',
+    classChoices: pensantusClassChoices(),
     fromLevel: 3,
     toLevel: 4,
     totalFromLevel: 3,
@@ -70,6 +124,9 @@ export function fighterOptions(
   return create(LevelUpOptionsSchema, {
     classKey: 'class:fighter',
     classNamePt: 'Guerreiro',
+    classChoices: [
+      classChoice({ classKey: 'class:fighter', namePt: 'Guerreiro', fromLevel: 4, toLevel: 5 }),
+    ],
     fromLevel: 4,
     toLevel: 5,
     totalFromLevel: 4,
@@ -213,4 +270,41 @@ export function pensantus(
     ],
     ...over,
   });
+}
+
+/** The feats a table that allows them offers at the level: one with no increase, one that raises one of two abilities, and one the character does not qualify for. */
+export function featOptions(): FeatOption[] {
+  return [
+    create(FeatOptionSchema, {
+      key: 'feat:grappler',
+      namePt: 'Agarrador',
+      name: 'Grappler',
+      desc: ['You have advantage on attack rolls against a creature you are grappling.'],
+      prerequisite: { minimums: { strength: 13 } },
+      qualifies: true,
+    }),
+    create(FeatOptionSchema, {
+      key: 'feat:atleta@mesa',
+      namePt: 'Atleta',
+      desc: ['Você corre e escala melhor.'],
+      table: true,
+      increase: { count: 1, from: [Ability.STRENGTH, Ability.DEXTERITY], value: 1 },
+      qualifies: true,
+    }),
+    create(FeatOptionSchema, {
+      key: 'feat:mestre@mesa',
+      namePt: 'Mestre das Armas',
+      desc: ['Texto.'],
+      table: true,
+      prerequisite: { minimums: { strength: 15 }, level: 8 },
+      qualifies: false,
+      unmet: [
+        {
+          kind: FeatUnmetKind.ABILITY_MINIMUM,
+          abilities: [{ ability: Ability.STRENGTH, minimum: 15 }],
+        },
+        { kind: FeatUnmetKind.LEVEL, value: 8 },
+      ],
+    }),
+  ];
 }

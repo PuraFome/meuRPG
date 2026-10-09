@@ -73,7 +73,15 @@ type loginRequest struct {
 	returnTo      string
 	intent        string
 	intentPayload string
+	// selectAccount asks the provider to offer the choice of account even when one
+	// is signed in with it ("Entrar com outra conta"): prompt=select_account, which
+	// only the POST form may send.
+	selectAccount bool
 }
+
+// promptSelectAccount is the one value of the form's prompt field: the OpenID
+// Connect prompt that makes the provider show its account chooser.
+const promptSelectAccount = "select_account"
 
 // handleLogin starts a plain sign-in: GET /auth/login?return_to=/path.
 func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -135,7 +143,7 @@ func parseLoginForm(w http.ResponseWriter, r *http.Request, readTimeout time.Dur
 		return loginRequest{}, badLogin("malformed_form", nil), "the form could not be read"
 	}
 	form := r.PostForm
-	for _, field := range []string{"return_to", "intent", "intent_payload"} {
+	for _, field := range []string{"return_to", "intent", "intent_payload", "prompt"} {
 		if len(form[field]) > 1 {
 			return loginRequest{}, badLogin("repeated_field", nil), "each field may appear only once"
 		}
@@ -147,6 +155,13 @@ func parseLoginForm(w http.ResponseWriter, r *http.Request, readTimeout time.Dur
 	}
 	if req.intent == "" && req.intentPayload != "" {
 		return loginRequest{}, badLogin("payload_without_intent", nil), "intent_payload needs an intent"
+	}
+	switch form.Get("prompt") {
+	case "":
+	case promptSelectAccount:
+		req.selectAccount = true
+	default:
+		return loginRequest{}, badLogin("unknown_prompt", nil), "prompt may only be select_account"
 	}
 	return req, nil, ""
 }
@@ -249,7 +264,7 @@ func (s *Service) startLogin(w http.ResponseWriter, r *http.Request, req loginRe
 	if r.Method == http.MethodPost {
 		status = http.StatusSeeOther
 	}
-	http.Redirect(w, r, p.authCodeURL(state, nonce, verifier), status)
+	http.Redirect(w, r, p.authCodeURL(state, nonce, verifier, req.selectAccount), status)
 }
 
 // loginError is a sign-in that failed, at its start or in the callback: the

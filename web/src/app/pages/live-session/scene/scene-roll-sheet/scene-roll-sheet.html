@@ -16,11 +16,22 @@
     <div class="res" role="status" aria-live="polite">
       <span class="res__sum">{{ r.roll?.total }}</span>
       <span class="res__text">
-        <span class="res__formula">{{ formula() }}</span>
+        @if (treatedSpeech()) {
+          <span class="mr-visually-hidden">{{ treatedSpeech() }}</span>
+          <span class="res__formula" aria-hidden="true">{{ formula() }}</span>
+          <span class="res__cap">{{ treatedNote() }}</span>
+        } @else {
+          <span class="res__formula">{{ formula() }}</span>
+        }
         <span class="res__cap">Seu total em {{ action.checkName }}</span>
         @if (pass(); as p) {
-          <span class="mr-tag res__pass" [class.mr-tag--success]="p.ok" [class.mr-tag--danger]="!p.ok">
-            <mat-icon aria-hidden="true">{{ p.ok ? 'check' : 'close' }}</mat-icon>{{ p.text }}
+          <span
+            class="mr-tag res__pass"
+            [class.mr-tag--success]="p.ok"
+            [class.mr-tag--danger]="!p.ok"
+          >
+            <mat-icon aria-hidden="true">{{ p.ok ? 'check' : 'close' }}</mat-icon
+            >{{ p.text }}
           </span>
         }
       </span>
@@ -36,7 +47,10 @@
         </span>
       </div>
       <p class="how">Role no app, ou role o seu dado e digite o número que saiu.</p>
-      <p class="note"><mat-icon aria-hidden="true">visibility</mat-icon>O mestre vê o resultado e diz o que acontece.</p>
+      <p class="note">
+        <mat-icon aria-hidden="true">visibility</mat-icon>O mestre vê o resultado e diz o que
+        acontece.
+      </p>
     }
     <app-roll-picker
       [canApp]="canApp"
@@ -45,6 +59,7 @@
       [label]="rollLabel"
       hint="Role o seu dado e digite o número que saiu (1 a 20)."
       [totalNote]="'Total em ' + action.checkName"
+      [typedFormula]="typedFormula"
       [modifier]="bonus"
       [busy]="busy()"
       [sticky]="true"

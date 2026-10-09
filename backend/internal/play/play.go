@@ -73,6 +73,8 @@ type SheetLocker interface {
 // authorization check, and their errors are Connect errors to return as
 // they are.
 type VitalsKeeper interface {
+	// RestKeeper is the rests and the resources that move points between the vitals.
+	RestKeeper
 	// ListVitals returns the vitals of the campaign's living, active player
 	// characters, oldest first.
 	ListVitals(ctx context.Context, campaignID string) ([]*playv1.CharacterVitals, error)
@@ -86,12 +88,13 @@ type VitalsKeeper interface {
 	// active player character of the campaign; `invalid_argument` for a
 	// value outside 0 to its maximum.
 	AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, characterID string, req *playv1.AdjustCharacterVitalsRequest) (before, after *playv1.CharacterVitals, err error)
-	// SetExhaustion sets the character's level of exhaustion, 0 to 6, inside tx and
-	// returns the vitals before and after: from level 4 the maximum is halved and
-	// the current hit points are cut to it; a lower level gives the maximum back
-	// and never heals. `not_found` for anything but a living, active player
-	// character of the campaign; `invalid_argument` for a level outside 0 to 6.
-	SetExhaustion(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level int32) (before, after *playv1.CharacterVitals, err error)
+
+	// SetHitPointsMaxBonus puts Aid's bonus to the character's maximum hit points
+	// at bonus inside tx (0 ends it) and returns the vitals before and after: the
+	// current hit points rise with a bonus that grew (a character at 0 wakes up) and
+	// lose only the excess when it fell, never the last hit point. `not_found` for
+	// anything but a living, active player character of the campaign.
+	SetHitPointsMaxBonus(ctx context.Context, tx pgx.Tx, campaignID, characterID string, bonus int32) (before, after *playv1.CharacterVitals, err error)
 
 	// The druid's Wild Shape form and the familiar's eyes live on the vitals too
 	// (MR-037, MR-036). This package decides when they start and end, and what they
@@ -175,8 +178,9 @@ type MapKeeper interface {
 	// when it has none, or a `not_found` Connect error (MR-013).
 	MapGrid(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (link.Grid, error)
 	// BattlePoint returns a battle point of the campaign, or a `not_found`
-	// Connect error for any other point.
-	BattlePoint(ctx context.Context, campaignID, pointID string) (link.BattlePoint, error)
+	// Connect error for any other point. It reads inside tx when the caller has one
+	// (nil: the pool).
+	BattlePoint(ctx context.Context, tx pgx.Tx, campaignID, pointID string) (link.BattlePoint, error)
 	// ScenePoint returns a SCENE point of the campaign, hidden or not, with its
 	// actions and their DCs (MR-015), and the master's hooks and clues (MR-029,
 	// never for a player), or a `not_found` Connect error for any other point.
@@ -242,6 +246,9 @@ type CombatRoster interface {
 	// CombatSave returns the character's saving throw bonus for an ability
 	// ("dex"). A basic-sheet NPC has none: Known is false.
 	CombatSave(ctx context.Context, tx pgx.Tx, campaignID, characterID, ability string) (link.Save, error)
+	// ReactionStats is what the sheet (or the stat block of an NPC made from a
+	// creature) says about the combatant's reactions.
+	ReactionStats(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (link.ReactionStats, error)
 	// MarkDead marks a player's character dead inside tx, as the master's
 	// MarkCharacterDead does (RN-03): the master confirmed its death in a combat.
 	// It is idempotent.
@@ -319,6 +326,20 @@ type CombatRoster interface {
 	// the master's list) and reused after. It is a combat character; the monsters
 	// of a combat are copies of it. False for a key that is not an SRD creature.
 	MonsterNpc(ctx context.Context, tx pgx.Tx, campaignID, masterUserID, monsterKey string, at time.Time) (link.Character, bool, error)
+
+	// Casting outside a combat (casting.go).
+
+	// CastingOptions lists the spells the character can cast outside a combat, for the
+	// caster's screen. `not_found` for any other character.
+	CastingOptions(ctx context.Context, tx pgx.Tx, campaignID, characterID string) ([]*playv1.CastingSpell, error)
+	// OutsideSpell is the spell as the character casts it outside a combat with a slot
+	// of slotLevel (0 for a cantrip or a ritual): what the sheet allows, the times, the
+	// duration and what the server applies. It refuses nothing: the caller checks.
+	// `not_found` for any other character or spell.
+	OutsideSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, slotLevel int) (link.OutsideSpell, error)
+	// MageArmorAC is the armor class the character would have with Mage Armor on it,
+	// and whether it wears armor. `not_found` for any other character.
+	MageArmorAC(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (link.MageArmor, error)
 }
 
 // DiceForce is what the campaign's dice setting makes a player do (RN-18).
@@ -500,9 +521,10 @@ func (s *Service) namesFor(ctx context.Context, campaignID string) func(key stri
 
 // The compiler checks that Service implements the handler.
 var (
-	_ playv1connect.PlayServiceHandler   = (*Service)(nil)
-	_ playv1connect.CombatServiceHandler = (*Service)(nil)
-	_ playv1connect.PuzzleServiceHandler = (*Service)(nil)
+	_ playv1connect.PlayServiceHandler    = (*Service)(nil)
+	_ playv1connect.CombatServiceHandler  = (*Service)(nil)
+	_ playv1connect.CastingServiceHandler = (*Service)(nil)
+	_ playv1connect.PuzzleServiceHandler  = (*Service)(nil)
 )
 
 // New returns a Service.
@@ -601,6 +623,8 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	))
 	handle(playv1connect.NewPlayServiceHandler(s, opts...))
 	handle(playv1connect.NewCombatServiceHandler(s, opts...))
+	handle(playv1connect.NewResourceServiceHandler(s, opts...))
+	handle(playv1connect.NewCastingServiceHandler(s, opts...))
 	handle(playv1connect.NewPuzzleServiceHandler(s, opts...))
 	handle(playv1connect.NewEncounterServiceHandler(s, opts...))
 }

@@ -68,7 +68,9 @@ func (s *Service) namesOfRuns(ctx context.Context, tx pgx.Tx, campaignID string,
 		return nil, fmt.Errorf("read the names of the characters that played: %w", err)
 	}
 	for _, c := range chars {
-		names[c.ID] = c.Name
+		if !c.Reserved { // a character given back to the reserve has no name to show (RN-10)
+			names[c.ID] = c.Name
+		}
 	}
 	return names, nil
 }
@@ -301,7 +303,9 @@ func (s *Service) masterExtras(ctx context.Context, tx pgx.Tx, campaignID string
 			return ex, fmt.Errorf("read the names of the characters that tried: %w", err)
 		}
 		for _, c := range chars {
-			ex.names[c.ID] = c.Name
+			if !c.Reserved {
+				ex.names[c.ID] = c.Name
+			}
 		}
 	}
 	if d.onWrong.GetAttemptsPerPlayer() > 0 {
@@ -387,7 +391,7 @@ func masterRunProto(d puzzleDef, run *playdb.PuzzleRun, names runNames, shown bo
 	for _, t := range ex.tries {
 		try := &playv1.PuzzleHintTry{
 			Hint: t.HintIndex + 1, Passed: t.Passed, At: timestamppb.New(t.CreatedAt),
-			Roll: diceRoll(1, 20, []int32{t.D20}, t.Modifier, t.Total, t.Physical),
+			Roll: treatedRoll(t.D20, t.Modifier, t.Total, t.Physical),
 		}
 		if t.CharacterID != nil {
 			try.CharacterName = ex.names[*t.CharacterID]

@@ -108,30 +108,57 @@
         [roll]="roll()"
         [d20Formula]="d20Formula()"
         [outcome]="outcome()"
+        [held]="held()"
         [showDamage]="stage() === 'done'"
         [damage]="damage()"
         [waiting]="waiting()"
         [damageLine]="damageLine()"
+        [asking]="stage() === 'inspire'"
       />
+
+      @if (stage() === 'inspire') {
+        <app-inspiration-prompt
+          [die]="offer()?.die"
+          [canApp]="canApp"
+          [canType]="canType"
+          [preferApp]="preferApp"
+          [busy]="busy()"
+          [(typing)]="typing"
+          (use)="answerInspiration(true, $event)"
+          (keep)="answerInspiration(false, null)"
+        />
+      }
 
       @if (stage() === 'damage' && dice(); as d) {
         <div class="dmg">
-          <p class="dmg__what">
-            {{ showCritical() ? damageIntro() : (pending()?.critical ? 'Acerto crítico: o dano segue a regra da mesa.' : 'Acertou: role o dano.') }}
-          </p>
+          @if (brutalCard(); as card) {
+            @if (!typing() && canApp) {
+              <div class="crit">
+                <span class="crit__cap">Dano do crítico</span>
+                <b class="crit__sum">{{ card.sum }}</b>
+                <span class="crit__text">{{ card.sentence }}</span>
+              </div>
+            }
+          } @else {
+            <p class="dmg__what">
+              {{ showCritical() ? damageIntro() : (pending()?.critical ? 'Acerto crítico: o dano segue a regra da mesa.' : 'Acertou: role o dano.') }}
+            </p>
+          }
           <app-roll-picker
             [canApp]="canApp"
             [canType]="canType"
             [preferApp]="preferApp"
             [label]="damageLabel()"
             [hint]="damageHint()"
-            totalNote="Dano total"
+            [totalNote]="totalNote()"
+            [typedFormula]="typedFormula()"
             [min]="range().min"
             [max]="range().max"
             [modifier]="damageModifier()"
+            [confirmTotal]="true"
             [fixedText]="fixedText()"
             [busy]="busy()"
-            [appLabel]="'Rolar ' + d.name + ' no app'"
+            [appLabel]="damageAppLabel()"
             [sticky]="true"
             [(typing)]="typing"
             (app)="rollDamage({ inApp: true })"

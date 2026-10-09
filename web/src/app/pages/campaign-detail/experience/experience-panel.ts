@@ -71,6 +71,16 @@ export class ExperiencePanel {
     });
   }
 
+  /** A player on a campaign with no living player character and no award has nothing to read here: the panel is not drawn. */
+  protected readonly nothingToShow = computed(
+    () =>
+      !this.isMaster() &&
+      this.store.rowsState() === 'ready' &&
+      this.store.awardsState() === 'ready' &&
+      !this.milestones() &&
+      this.store.rows().length === 0 &&
+      this.store.awards().length === 0,
+  );
   protected readonly milestones = computed(() => this.store.xpMode() === XpMode.MILESTONES);
   protected readonly lead = computed(() => {
     const rows = this.store.rows();

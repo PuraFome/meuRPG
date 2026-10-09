@@ -79,7 +79,7 @@ func (s *Service) StartEncounter(
 	}
 	var point link.BattlePoint
 	if pointID != nil {
-		if point, err = s.maps.BattlePoint(ctx, m.CampaignID, *pointID); err != nil {
+		if point, err = s.maps.BattlePoint(ctx, nil, m.CampaignID, *pointID); err != nil {
 			return nil, s.dbError(ctx, "find the battle point", err)
 		}
 	}
@@ -418,6 +418,10 @@ func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Gr
 					return nil, nil, err
 				}
 			}
+			// The spells cast outside the combat go in with it (casting_combat.go).
+			if err := s.carryCasts(ctx, c, inserted); err != nil {
+				return nil, nil, err
+			}
 			all = append(all, inserted)
 			added = append(added, inserted)
 		}
@@ -713,6 +717,10 @@ func (s *Service) BeginCombat(
 		if !ok {
 			first = []string{cs[0].ID} // everybody defeated: the first of the order starts
 		}
+		// A combat on a map starts with every NPC on it, away from the players.
+		if cs, err = s.placeUnplaced(ctx, c, cs); err != nil {
+			return nil, err
+		}
 		started := c.now
 		c.enc.StartedAt = &started
 		// No sight carries into the fight: it is an action of a turn there (MR-036).
@@ -828,9 +836,14 @@ func (s *Service) EndTurn(
 		if err := v.mayAct(current); err != nil {
 			return nil, err
 		}
+		// The turn waits for the master's answer to a question of an area spell, and
+		// his own turn passing waits too.
+		if err := s.mustNotHold(ctx, c); err != nil {
+			return nil, err
+		}
 		// The turn waits for an opportunity attack's answer; the master may end it
 		// anyway, which passes the offers over.
-		if err := s.mustNotWait(ctx, c, current); err != nil {
+		if err := s.mustNotWaitForOffers(ctx, c, current); err != nil {
 			return nil, err
 		}
 		if _, err := c.q.SkipPendingOpportunityOffersOfMover(ctx, playdb.SkipPendingOpportunityOffersOfMoverParams{EncounterID: c.enc.ID, MoverID: current.ID, AnsweredAt: &c.now}); err != nil {
@@ -853,6 +866,12 @@ func (s *Service) EndTurn(
 		if dropped, err = c.pendingOf(ctx, current.ID); err != nil {
 			return nil, err
 		}
+		if !v.master {
+			// A damage on a creature the player does not see is the master's to roll (an
+			// area spell hit a hidden creature): it does not hold their turn, and no
+			// refusal says it exists (RN-10).
+			dropped = slices.DeleteFunc(dropped, func(p playdb.PendingDamage) bool { return !pendingVisible(p, cs, v) })
+		}
 		if len(dropped) > 0 {
 			if !v.master || !req.Msg.GetDiscardPendingDamage() {
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_PENDING_DAMAGE, "a damage is still to roll or to apply")
@@ -871,6 +890,15 @@ func (s *Service) EndTurn(
 					return nil, err
 				}
 			}
+		}
+		// A reaction window holds the turn too (PM-04), except the ones the damage the
+		// master just dropped was waiting on: they close with it.
+		droppedIDs := make([]string, len(dropped))
+		for i, p := range dropped {
+			droppedIDs[i] = p.ID
+		}
+		if err := s.reactionGate(ctx, c, droppedIDs...); err != nil {
+			return nil, err
 		}
 		c.characterID = &current.CharacterID
 		if err := c.q.EndCombatantTurnPart(ctx, current.ID); err != nil {
@@ -1212,6 +1240,11 @@ func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Com
 	if err := s.keepTrapDamage(ctx, c, cs); err != nil {
 		return err
 	}
+	// What was still to answer about the hidden creatures an area hit goes with the
+	// combat: nothing moves on it any more, so there is nothing to decide.
+	if err := c.q.DeleteHiddenRevealsOfEncounter(ctx, c.enc.ID); err != nil {
+		return fmt.Errorf("drop the hidden reveals: %w", err)
+	}
 	ended := c.now
 	enc, err := c.q.SetEncounterState(ctx, playdb.SetEncounterStateParams{
 		ID: c.enc.ID, Status: statusEnded, Round: c.enc.Round, StartedAt: c.enc.StartedAt, EndedAt: &ended,
@@ -1220,12 +1253,21 @@ func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Com
 		return fmt.Errorf("end the encounter: %w", err)
 	}
 	c.enc = enc
+	// What a reaction window held is discarded with the combat, without effect: a held
+	// cast or roll never happened, so nothing of it was spent.
+	if err := s.discardReactions(ctx, c); err != nil {
+		return err
+	}
 	// The creatures keep the hit points they had when the fight ended (MR-037).
 	if err := s.writeBackCreatures(ctx, c, cs); err != nil {
 		return err
 	}
 	// A familiar's sight begun in the fight ends with it (MR-036).
 	if err := s.endCombatSights(ctx, c, cs); err != nil {
+		return err
+	}
+	// The concentration the combatants carried goes back to the casts (casting_combat.go).
+	if err := s.endCarriedCasts(ctx, c, cs); err != nil {
 		return err
 	}
 	if enc.MapID == nil {

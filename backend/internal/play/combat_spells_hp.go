@@ -36,6 +36,9 @@ type fxTarget struct {
 	c       playdb.Combatant
 	hp, max int
 	temp    int
+	// bonus is the part of max that Ajuda added: a player's character's, from its
+	// vitals; an NPC's and a creature's is on the combatant (c.HpMaxBonus).
+	bonus int
 }
 
 // readFxTarget reads a target's hit points: an NPC's or a creature's from its
@@ -51,9 +54,36 @@ func (s *Service) readFxTarget(ctx context.Context, c *combatTx, t playdb.Combat
 		return fxTarget{}, err
 	}
 	if w := v.GetWildShape(); w != nil {
-		return fxTarget{c: t, hp: int(w.GetHitPointsCurrent()), max: int(w.GetHitPointsMax())}, nil
+		return fxTarget{c: t, hp: int(w.GetHitPointsCurrent()), max: int(w.GetHitPointsMax()), bonus: int(v.GetHitPointsMaxBonus())}, nil
 	}
-	return fxTarget{c: t, hp: int(v.GetHitPointsCurrent()), max: int(v.GetHitPointsMax()), temp: int(v.GetHitPointsTemporary())}, nil
+	return fxTarget{c: t, hp: int(v.GetHitPointsCurrent()), max: int(v.GetHitPointsMax()), temp: int(v.GetHitPointsTemporary()), bonus: int(v.GetHitPointsMaxBonus())}, nil
+}
+
+// healsHitPoints says whether the spell gives hit points back: a healing, and Aid
+// on a target at 0, which wakes it with current hit points.
+func healsHitPoints(sp link.Spell) bool {
+	return sp.Heal != nil || (sp.HP != nil && (sp.HP.Kind == rules.SpellKindFlatHeal || sp.HP.Kind == rules.SpellKindMaxHP))
+}
+
+// refuseTheDead refuses a healing aimed at a player's character that is dead: the
+// master confirmed its death, it failed three death saves (SRD 5.1, "Dropping to 0
+// Hit Points": three failures and the creature dies), or its character was marked
+// dead. A dead creature can't regain hit points, so nothing is spent.
+func (s *Service) refuseTheDead(ctx context.Context, c *combatTx, targs []playdb.Combatant) error {
+	for _, t := range targs {
+		if t.Kind != kindPlayer {
+			continue
+		}
+		dead := t.Defeated || t.DeathFailures >= 3
+		if !dead {
+			_, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, t.CharacterID)
+			dead = connect.CodeOf(err) == connect.CodeNotFound // marked dead: no longer an active character
+		}
+		if dead {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEAD, "the target is dead and regains no hit points")
+		}
+	}
+	return nil
 }
 
 // poolRoll rolls the dice of a pool: the server rolls them, or the player types
@@ -235,11 +265,11 @@ const (
 	fxNotAtZero  = "not_at_zero"
 )
 
-// What Aid gave a target, as a cast event stores it.
+// What Aid gave a target, as a cast event stores it: the maximum (the target stood)
+// or the current hit points too (it was at 0 and woke up).
 const (
-	gainMaximum   = "maximum"
-	gainTemporary = "temporary"
-	gainCurrent   = "current"
+	gainMaximum = "maximum"
+	gainCurrent = "current"
 )
 
 // giveCondition adds the condition to a target's conditions, when it does not
@@ -326,39 +356,52 @@ func (s *Service) giveTempHP(ctx context.Context, c *combatTx, t fxTarget, amoun
 	return after, nil
 }
 
-// raiseMaxHP raises a target's maximum and current hit points by amount (Ajuda). An
-// NPC's or a creature's maximum is on its combatant, so it rises (a target at 0 stays
-// at 0: the master decides whether a fallen NPC is dead). A player's character's
-// maximum is worked out from its sheet and has no place for a bonus, so the character
-// gets the amount as temporary hit points, which absorb damage first; a character at
-// 0 gets it as current hit points instead, because the spell's current hit points
-// wake them up (SRD 5.1), and temporary ones would leave them dying.
+// raiseMaxHP raises a target's hit point maximum and current hit points by amount
+// for Ajuda (SRD 5.1, Aid): the bonus is kept on the target until the master ends it
+// (EndCombatEffect). Two Ajudas never add up (SRD, "Combining Magical Effects": the
+// effects of the same spell cast several times do not combine, the most potent
+// one applies): the target keeps the stronger bonus, and the current hit points rise
+// by what the maximum rose. A weaker Ajuda over a stronger one changes nothing. A
+// player's character at 0 hit points wakes up with the new current hit points (the
+// spell raises them, SRD "Dropping to 0 Hit Points": the unconsciousness ends when
+// the character regains any); an NPC or a creature at 0 stays down, the master
+// decides whether a fallen NPC is dead.
 func (s *Service) raiseMaxHP(ctx context.Context, c *combatTx, t fxTarget, amount int, h *castHit) (*playv1.CharacterVitals, error) {
-	if !holdsHP(t.c) {
-		if t.hp > 0 {
-			h.Gain = gainTemporary
-			return s.giveTempHP(ctx, c, t, amount, h)
+	bonus := clamp32(amount, 0, math.MaxInt32)
+	if holdsHP(t.c) {
+		bonusBefore := t.c.HpMaxBonus
+		stronger := max(bonus, bonusBefore)
+		rose := stronger - bonusBefore
+		before, maxBefore := hpOf(t.c), num(t.c.HpMax)
+		h.Healed, h.Gain, h.Restore, h.MaxBefore, h.BonusBefore = &rose, gainMaximum, &before, &maxBefore, &bonusBefore
+		now := before
+		if rose > 0 {
+			if err := c.q.SetCombatantHitPointsMax(ctx, playdb.SetCombatantHitPointsMaxParams{ID: t.c.ID, HpMax: new(maxBefore + rose), HpMaxBonus: stronger}); err != nil {
+				return nil, fmt.Errorf("raise the maximum hit points: %w", err)
+			}
+			if before.HP > 0 {
+				now.HP = before.HP + rose
+				if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: t.c.ID, HpCurrent: &now.HP, HpTemp: &before.Temp, Defeated: before.Defeated}); err != nil {
+					return nil, fmt.Errorf("raise the current hit points: %w", err)
+				}
+			}
 		}
-		h.Gain = gainCurrent
-		hit, v, err := s.healCombatant(ctx, c, t.c, clamp32(amount, 0, math.MaxInt32))
-		if err != nil {
-			return nil, err
-		}
-		woke := hit.Amount
-		h.Healed, h.Restore, h.DeathBefore = &woke, hit.Before, hit.DeathBefore
-		return v, nil
+		h.HPAfter, h.MaxAfter = &now.HP, new(maxBefore+rose)
+		return nil, nil
 	}
-	rose := clamp32(amount, 0, math.MaxInt32)
+	b, a, err := s.vitals.SetHitPointsMaxBonus(ctx, c.tx, c.session.CampaignID, t.c.CharacterID, max(bonus, clamp32(t.bonus, 0, math.MaxInt32)))
+	if err != nil {
+		return nil, err
+	}
+	rose := a.GetHitPointsMaxBonus() - b.GetHitPointsMaxBonus()
 	h.Healed, h.Gain = &rose, gainMaximum
-	before, maxBefore := hpOf(t.c), num(t.c.HpMax)
-	h.Restore, h.MaxBefore = &before, &maxBefore
-	if err := c.q.SetCombatantHitPointsMax(ctx, playdb.SetCombatantHitPointsMaxParams{ID: t.c.ID, HpMax: new(maxBefore + rose)}); err != nil {
-		return nil, fmt.Errorf("raise the maximum hit points: %w", err)
-	}
-	if before.HP > 0 {
-		if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: t.c.ID, HpCurrent: new(before.HP + rose), HpTemp: &before.Temp, Defeated: before.Defeated}); err != nil {
-			return nil, fmt.Errorf("raise the current hit points: %w", err)
+	h.Restore, h.BonusBefore, h.DeathBefore = new(hpStateOf(b)), new(b.GetHitPointsMaxBonus()), deathOf(t.c)
+	h.HPAfter, h.MaxAfter = new(a.GetHitPointsCurrent()), new(a.GetHitPointsMax())
+	if b.GetHitPointsCurrent() == 0 && a.GetHitPointsCurrent() > 0 {
+		h.Gain = gainCurrent
+		if err := c.q.ResetDeathSavesOfCharacter(ctx, playdb.ResetDeathSavesOfCharacterParams{CharacterID: t.c.CharacterID, GameSessionID: c.session.ID}); err != nil {
+			return nil, fmt.Errorf("reset the death saves: %w", err)
 		}
 	}
-	return nil, nil
+	return a, nil
 }

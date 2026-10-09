@@ -3,25 +3,29 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 
 import { canvasJpeg, newCampaign, uploadThroughPicker } from './gallery-support';
 import { saveDocumentRPC, tableWithDocumentParts } from './document-support';
+import { exportThroughScreen, joinAsPlayer, tableForPackage, zipWithManifest } from './campaign-package-support';
 import { expectAligned } from './layout';
 import { expectLoaded } from './loaded';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
-import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
+import { adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
-import { tableForLevelUp } from './levelup-support';
+import { classCard, passClassStep, tableForLevelUp } from './levelup-support';
+import { aurora, auroraSheet, beginPlacedCombatRPC, nael, naelSheet, orla, orlaSheet, spendForRestRPC } from './rests-support';
+import { castSheet, choiceCard, openCastOf, pickChoice, pickSlotRadio, pickTargetOf, tableForCasting } from './casting-support';
 import { paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
-import { authStatePath, boxOf, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn } from './support';
+import { claimRoute, linkRPC, reservedRPC, revokeLinkRPC, rowOf } from './claim-support';
+import { authStatePath, boxOf, callRPC, layoutSize, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn, type TestUser } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
-import { movePensantus, pensantusFirst, sq20, trapRPC, treasureRPC } from './trap-support';
+import { movePensantus, pensantusFirst, sq20, thirdPlayer, trapRPC, treasureRPC, type TrapTable } from './trap-support';
 import { cavePoints, clickSquare, dragSquares, editorRoute, mapToPaint } from './editor-support';
 import { campaignWithEmptyPlayer, factor, masterCampaign, method, setTableRulesRPC, wallSquares } from './table-rules-support';
 import {
@@ -50,7 +54,7 @@ import {
 } from './puzzles-support';
 import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
-import { brisa, brisaSheet } from './combat-support';
+import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { archiveEntryRPC, createEntryRPC, entryRoute, raceBody, spellBody, updateEntryRPC } from './content-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
@@ -84,13 +88,14 @@ const wcag = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 async function expectScreenPasses(page: Page, screen: string): Promise<void> {
   // A dialog still fading in has colours between two states: axe would judge
   // the contrast of a frame nobody stops on (it failed that way once, in the
-  // spell dialog). Wait for the transitions that end; a looping one never
-  // does.
+  // spell dialog, and again in the Escudo prompt on a slow runner). Wait for
+  // the transitions that end, the ones that have not started yet ("pending",
+  // the dialog's first frame) included; a looping one never does.
   await page.waitForFunction(
     () =>
       document
         .getAnimations()
-        .every((a) => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity),
+        .every((a) => a.playState === 'finished' || a.playState === 'idle' || a.effect?.getComputedTiming().iterations === Infinity),
     undefined,
     { timeout: 5_000 },
   );
@@ -954,10 +959,10 @@ async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await m.getByRole('button', { name: 'Confirmar 18' }).click();
     await expect(m.getByText(/contra CA \d+ da Pensantus|contra CA \d+ do Pensantus/)).toBeVisible();
     // Pensantus can cast Escudo: a hit that is not critical waits for his reaction (E6-28b).
-    await expect(m.getByText('Esperando a reação do Pensantus.')).toBeVisible();
-    await expect(m.getByRole('button', { name: 'Rolar dano' })).toHaveAttribute('aria-disabled', 'true');
+    await expect(m.getByRole('region', { name: 'Reações a um ataque' })).toBeVisible();
+    await expect(m.getByRole('button', { name: 'Rolar dano' })).toBeDisabled();
     await expectScreenPasses(m, `Cartão do mestre, esperando a reação (Escudo) ${where}`);
-    await m.getByRole('button', { name: 'Seguir sem Escudo' }).click();
+    await m.getByRole('region', { name: 'Reações a um ataque' }).getByRole('button', { name: 'Deixar passar pelo jogador' }).click();
     await m.getByRole('button', { name: 'Rolar dano' }).click();
     await expect(m.getByRole('button', { name: /Aplicar \d+ de dano/ })).toBeVisible();
     await expectScreenPasses(m, `Cartão do mestre, dano para aplicar ${where}`);
@@ -996,6 +1001,48 @@ test('agir no combate passa no axe e nas conferências de layout no tema claro, 
 test('agir no combate passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanActionScreens(browser, 'dark', 390);
+});
+
+async function checkTurnAboveTheFold(browser: Browser): Promise<void> {
+  const viewport = { width: 390, height: 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Ações acima da dobra ${Date.now()}`, true, true);
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+
+    // The four boxes are one compact row; the attack and the spell are on the first screen.
+    const tiles = p.getByRole('list', { name: 'O que você tem neste turno' }).getByRole('listitem');
+    await expect(tiles).toHaveCount(4);
+    const row = await Promise.all((await tiles.all()).map((t) => boxOf(t)));
+    expect(new Set(row.map((b) => Math.round(b.y))).size).toBe(1);
+    expect(Math.max(...row.map((b) => b.height))).toBeLessThanOrEqual(80);
+    await expect(p.getByRole('button', { name: 'Atacar com Raio de Fogo' })).toBeInViewport();
+
+    // The action block comes before the order of initiative.
+    const actions = await boxOf(p.getByRole('heading', { name: 'Ação', exact: true }));
+    const order = await boxOf(p.getByRole('list', { name: 'Ordem de iniciativa' }));
+    expect(actions.y).toBeLessThan(order.y);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('no celular de 390 x 844 as ações da vez ficam acima da dobra, logo sob o título, e a ordem vem depois', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await checkTurnAboveTheFold(browser);
 });
 
 /** Moving by the circle, jumping, cover and the opportunity attacks (Etapa 9,
@@ -1060,7 +1107,7 @@ async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     // The move that provokes: the turn waits for the master, who has the prompt.
     await nudge('Um quadrado para a esquerda');
     await p.getByRole('button', { name: 'Mover para cá' }).click();
-    await expect(p.getByRole('status').filter({ hasText: 'Esperando a reação do mestre.' })).toBeVisible();
+    await expect(p.getByRole('status').filter({ hasText: 'Esperando o mestre.' })).toBeVisible();
     await expectScreenPasses(p, `Sua vez, esperando a reação do mestre ${where}`);
     const card = m.getByRole('group', { name: 'Ataque de oportunidade de Goblin 1' });
     await expect(card.getByRole('button', { name: 'Não atacar' })).toBeFocused();
@@ -1184,7 +1231,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
 
     // The conditions: the dialog (the master) and the tags on both screens.
     await m.getByRole('button', { name: 'Mais ações para Goblin 1' }).click();
-    await m.getByRole('menuitem', { name: 'Condições…' }).click();
+    await m.getByRole('menuitem', { name: 'Mudar condições' }).click();
     await expect(m.getByRole('dialog', { name: 'Condições de Goblin 1' })).toBeVisible();
     await expectScreenPasses(m, `Condições, a janela ${where}`);
     await m.getByRole('checkbox', { name: 'Envenenado' }).check();
@@ -1208,6 +1255,10 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await prompt.getByRole('button', { name: 'Conjurar Escudo Arcano' }).click();
     await expect(prompt.getByText('O Escudo Arcano segurou o ataque do Capitão Goblin.')).toBeVisible();
     await expectScreenPasses(p, `Escudo, o resultado ${where}`);
+    // On the master's row the shield's label stays on one line, whatever the width of the screen.
+    const shieldChip = m.getByRole('region', { name: 'Ordem de iniciativa' }).locator('.row__effect', { hasText: 'Escudo Arcano' });
+    await expect(shieldChip).toBeVisible();
+    expect((await layoutSize(shieldChip)).height).toBeLessThan(30);
     await prompt.getByRole('button', { name: 'Fechar' }).click();
     // The captain's turn goes on: a second hit (a critical one) is damage to roll and discard; then Pensantus's turn.
     await card.getByRole('button', { name: 'Digitar o resultado' }).click();
@@ -1258,8 +1309,15 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await card2.getByLabel('Dano a aplicar').fill('1');
     await card2.getByRole('button', { name: 'Aplicar 1 de dano' }).click();
     await expect(card2.getByText(/1 de dano aplicado/).first()).toBeVisible();
-    await expect(card2.getByText('Pensantus está concentrado em Teia. Teste de Constituição, CD 10.')).toBeVisible();
-    await expectScreenPasses(m, `Aplicar outro valor, o lembrete da concentração ${where}`);
+    // The damage on a concentrating character asks its owner for the save (PM-04): the prompt, the master's card, the result.
+    const save = p.getByRole('alertdialog', { name: 'Concentração em risco: teste de resistência de Constituição contra CD 10' });
+    await expect(save).toBeVisible();
+    await expectScreenPasses(p, `Concentração em risco, o aviso ${where}`);
+    await expectScreenPasses(m, `Concentração em risco, o cartão do mestre ${where}`);
+    await save.getByRole('button', { name: 'Rolar no app' }).click();
+    await expect(save.getByRole('button', { name: 'Fechar' })).toBeVisible();
+    await expectScreenPasses(p, `Concentração em risco, o resultado ${where}`);
+    await save.getByRole('button', { name: 'Fechar' }).click();
 
     // The fallen, first stable: three successes.
     await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 0 });
@@ -1319,6 +1377,84 @@ test('conjurar, cair, o Escudo e as condições passam no axe e nas conferência
 test('conjurar, cair, o Escudo e as condições passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
   test.setTimeout(400_000);
   await scanCastingScreens(browser, 'dark', 390);
+});
+
+/** The reaction window of an NPC (PM-04): the player's wait, the master's card of the Mago for Escudo and for
+ * Contramágica, and the concentration save's prompt. */
+async function scanReactionScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade reações ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    let enc = await getEncounterRPC(m, campaignId);
+    const added = await combatRPC(m, 'AddMonsters', { campaignId, encounterId: enc.id, creatureKey: 'monster:mage', count: 1, hidden: false });
+    const mage = added.combatants.find((c) => c.label.startsWith('Mago'))!;
+    await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: enc.id, combatantId: mage.id, col: 8, row: 8, forced: true });
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+
+    // Escudo of the Mago: the player's wait, then the master's card.
+    await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Atacar com Raio de Fogo' });
+    await sheet.locator('label', { hasText: mage.label }).click();
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await p.getByLabel(/Role 1d20 para Raio de Fogo/).fill('10');
+    await p.getByRole('button', { name: 'Confirmar 10' }).click();
+    await expect(p.getByText('Esperando o mestre.').first()).toBeVisible();
+    await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
+    await expect(p.getByRole('status').filter({ hasText: 'Esperando o mestre.' })).toBeVisible();
+    await expectScreenPasses(p, `Esperando o mestre, a reação de um NPC ${where}`);
+    const card = m.getByRole('region', { name: mage.label });
+    await expect(card.getByRole('button', { name: `Usar Escudo Arcano pelo ${mage.label}` })).toBeVisible();
+    await expectScreenPasses(m, `A reação do Mago, Escudo Arcano ${where}`);
+    await card.getByRole('button', { name: 'Deixar passar' }).click();
+    await expect(p.getByRole('status').filter({ hasText: 'Esperando o mestre.' })).toHaveCount(0);
+
+    // Contramágica of the Mago against Pensantus's cast, on his next turn.
+    enc = await getEncounterRPC(m, campaignId);
+    await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: enc.combatants.find((c) => c.label === 'Pensantus')!.id, discardPendingDamage: true });
+    enc = await passTurnsTo(m, campaignId, 'Pensantus');
+    const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
+    const cast = await callRPC(p, 'meurpg.play.v1.CombatService/CastSpell', {
+      campaignId,
+      encounterId: enc.id,
+      casterId: id('Pensantus'),
+      spellKey: 'spell:magic-missile',
+      slot: { level: 1 },
+      targets: [{ combatantId: id('Goblin 1'), darts: 3 }],
+      idempotencyKey: crypto.randomUUID(),
+    });
+    expect(cast.ok(), await cast.text()).toBeTruthy();
+    await expect(card.getByRole('button', { name: /Usar Contramágica/ })).toBeVisible();
+    await expectScreenPasses(p, `Esperando o mestre, uma conjuração ${where}`);
+    await expectScreenPasses(m, `A reação do Mago, Contramágica ${where}`);
+    await card.getByRole('button', { name: 'Deixar passar' }).click();
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as reações dos NPCs passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@PM-04'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanReactionScreens(browser, 'light', 1280);
+});
+
+test('as reações dos NPCs passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@PM-04'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanReactionScreens(browser, 'dark', 390);
 });
 
 /** The fighter's turn (Etapa 6, slice 6.5c): Extra Attack's "1 ataque restante", Retomar o
@@ -1905,6 +2041,11 @@ async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark',
     // Not `open()`: with a session open the sheet follows its stream, so the network is never idle.
     await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
     const panel = p.getByRole('region', { name: 'Anotações' });
+    // Under 1200px the notes are one "Anotações (N)" row that opens on a tap (no such button on the four-column sheet).
+    await expectScreenPasses(p, `Ficha com as anotações, primeira vista ${where}`);
+    for (const toggle of await panel.getByRole('button', { name: /^Anotações \(\d+\)/ }).all()) {
+      await toggle.click();
+    }
     await expect(panel.getByText('Brisa me deve 5 PO')).toBeVisible();
     await expectScreenPasses(p, `Ficha com as anotações ${where}`);
     await panel.getByRole('button', { name: 'Nova anotação' }).click();
@@ -1941,6 +2082,70 @@ test('pistas, ganchos e anotações passam no axe e nas conferências de layout 
 test('pistas, ganchos e anotações passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-029', '@MR-030'] }, async ({ browser }) => {
   test.setTimeout(600_000);
   await scanNotesScreens(browser, 'light', 320);
+});
+
+/** The player's sheet: the game numbers first on a phone and a tablet (the combat block before the saves and the
+ * skills, the notes last as one row), and the four-column paper sheet from 1200px (docs/design.md). */
+async function scanSheetOrder(browser: Browser, width: number): Promise<{ combat: number; proficiencies: number; features: number; notes: number; notesX: number; combatX: number }> {
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), viewport: { width, height: 844 } });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), viewport: { width, height: 844 } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForScenes(m, p, `Ordem da ficha ${Date.now()}`, false);
+    campaignId = table.campaignId;
+    await createNoteRPC(p, campaignId, 'Brisa me deve 5 PO');
+    await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
+    await expect(p.getByRole('heading', { name: 'Características e traços' })).toBeVisible();
+    const top = async (selector: string) => (await boxOf(p.locator(selector))).y;
+    const abilities = await top('app-ability-medallions');
+    const combat = await top('app-combat-column');
+    const proficiencies = await top('app-proficiency-column');
+    const features = await top('app-features-panel');
+    const notes = await top('app-notes-panel');
+    return {
+      combat: combat - abilities,
+      proficiencies: proficiencies - abilities,
+      features: features - abilities,
+      notes: notes - abilities,
+      notesX: (await boxOf(p.locator('app-notes-panel'))).x,
+      combatX: (await boxOf(p.locator('app-combat-column'))).x,
+    };
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a ficha no celular vai dos números do jogo às anotações, que ficam numa linha só', { tag: ['@a11y', '@MR-004', '@MR-030'] }, async ({ browser }) => {
+  test.setTimeout(120_000);
+  const at = await scanSheetOrder(browser, 390);
+  // The abilities come first, then the combat block, then the saves and skills.
+  expect(at.combat).toBeGreaterThan(0);
+  expect(at.combat).toBeLessThan(at.proficiencies);
+  expect(at.proficiencies).toBeLessThan(at.features);
+  expect(at.features).toBeLessThan(at.notes);
+});
+
+test('a ficha no tablet também põe o combate antes das anotações', { tag: ['@a11y', '@MR-004', '@MR-030'] }, async ({ browser }) => {
+  test.setTimeout(120_000);
+  const at = await scanSheetOrder(browser, 768);
+  expect(at.combat).toBeLessThanOrEqual(at.proficiencies);
+  expect(at.features).toBeLessThan(at.notes);
+});
+
+test('a ficha no desktop de 1280 mantém as quatro colunas, com as anotações no alto da quarta', { tag: ['@a11y', '@MR-004', '@MR-030'] }, async ({ browser }) => {
+  test.setTimeout(120_000);
+  const at = await scanSheetOrder(browser, 1280);
+  // The notes are the first block of the fourth column: level with the combat block, to its right.
+  expect(Math.abs(at.notes - at.combat)).toBeLessThan(2);
+  expect(at.notesX).toBeGreaterThan(at.combatX);
 });
 
 /** The joint turn (MR-013, E8-01): the master's card and boxes, the player's
@@ -2163,7 +2368,8 @@ async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' |
     await p.goto('/');
     const table = await tableForCombat(m, p, `Acessibilidade magias ${Date.now()}`, true, true);
     campaignId = table.campaignId;
-    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    // The three around Goblin 1, so Sono placed on it catches them.
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, { 'Capitão Goblin': [9, 10], 'Goblin 1': [9, 9], 'Goblin 2': [10, 9] });
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
 
@@ -2177,8 +2383,33 @@ async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' |
 
     await p.getByRole('button', { name: 'Conjurar Sono' }).click();
     const sheet = p.getByRole('dialog', { name: 'Conjurar Sono' });
-    await sheet.locator('label', { hasText: 'Goblin 1' }).click();
-    await sheet.locator('label', { hasText: 'Capitão Goblin' }).click();
+    // The area picker (PM-02a, PM-02b): the map before a point, then a point with nobody seen in it and its confirmation.
+    const map = sheet.getByRole('application', { name: 'Mapa: escolha o ponto da Sono' });
+    await expect(map).toBeFocused();
+    await expectScreenPasses(p, `Conjurar Sono, o ponto no mapa ${where}`);
+    await map.press('Shift+ArrowUp');
+    // The hint under the title follows the keyboard: it names the distance of the point the arrows reached, before Enter places it.
+    const hint = sheet.locator('.hint');
+    await expect(hint).toContainText(/Ponto a\s+\d+,\d\s+m de você/);
+    const first = await hint.innerText();
+    await map.press('Shift+ArrowUp');
+    await expect(hint).not.toHaveText(first);
+    await map.press('Enter');
+    await expect(sheet.getByText(/Ponto a\s+.* de você/).first()).toBeVisible();
+    await expectScreenPasses(p, `Conjurar Sono, o ponto colocado ${where}`);
+    await map.press('c');
+    await expect(sheet.getByRole('listbox', { name: 'Centrar em…' })).toBeFocused();
+    await expectScreenPasses(p, `Conjurar Sono, "Centrar em…" ${where}`);
+    await sheet.getByRole('listbox', { name: 'Centrar em…' }).press('Escape');
+    await map.press('Enter');
+    await expect(sheet.getByText('Ninguém que você vê está na área.')).toBeVisible();
+    await expect(sheet.getByRole('button', { name: 'Mudar o local' })).toBeFocused();
+    await expectScreenPasses(p, `Conjurar Sono, ninguém na área ${where}`);
+    await sheet.getByRole('button', { name: 'Mudar o local' }).click();
+    await sheet.getByRole('button', { name: 'Centrar em…' }).click();
+    await sheet.getByRole('listbox', { name: 'Centrar em…' }).getByRole('option', { name: /Goblin 1/ }).click();
+    await sheet.getByRole('button', { name: 'Confirmar local' }).click();
+    await expect(sheet.getByRole('heading', { name: 'Quem está na área' })).toBeFocused();
     await expectScreenPasses(p, `Conjurar Sono, quem está na área ${where}`);
     await sheet.getByRole('button', { name: 'Detalhes de Sono' }).click();
     await expect(p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true })).toBeVisible();
@@ -2215,6 +2446,89 @@ test('as magias na sessão passam no axe e nas conferências de layout no tema c
 test('as magias na sessão passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
   test.setTimeout(420_000);
   await scanCombatDetailsScreens(browser, 'dark', 390);
+});
+
+/**
+ * The area spell the table asks about (PM-02c 9 and 9c, PM-02b 5): the master's question with the area of the last spell
+ * over his map and its legend, the question when no hidden creature was in the area ("Sem escondidas"), the line "Combate
+ * atualizado agora." after a reload, and the picker's zoom on a map of 40 columns. The desktop scan hides a goblin in the
+ * area; the phone scan has none in it. The table asks (`Perguntar a cada vez`), so the cast holds the turn either way.
+ */
+async function scanHiddenAreaScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number, hiddenInArea: boolean): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade escondidas ${Date.now()}`, true, true);
+    campaignId = table.campaignId;
+    await setTableRulesRPC(m, campaignId, { hiddenAreaHits: 'HIDDEN_AREA_HIT_RULE_ASK' });
+    if (!hiddenInArea) {
+      await setGridRPC(m, campaignId, table.mapId, 40);
+    }
+    // Sono's area is 4 squares around the point: Goblin 2 is in it, or far from it.
+    const at: Record<string, [number, number]> = { 'Capitão Goblin': [9, 10], 'Goblin 1': [9, 9], 'Goblin 2': hiddenInArea ? [10, 9] : [20, 3] };
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, at, ['Goblin 2']);
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+
+    await p.getByRole('button', { name: 'Conjurar Sono' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Conjurar Sono' });
+    const map = sheet.getByRole('application', { name: 'Mapa: escolha o ponto da Sono' });
+    await expect(map).toBeFocused();
+    if (!hiddenInArea) {
+      await expect(sheet.getByRole('group', { name: 'Zoom do mapa' })).toBeVisible();
+      await sheet.getByRole('button', { name: 'Aproximar o mapa' }).click();
+      await expectScreenPasses(p, `Conjurar Sono, o mapa de 40 colunas aproximado ${where}`);
+      await sheet.getByRole('button', { name: 'Afastar o mapa' }).click();
+    }
+    await map.press('c');
+    await sheet.getByRole('listbox', { name: 'Centrar em…' }).getByRole('option', { name: /Goblin 1/ }).click();
+    await map.press('Enter');
+    await expect(sheet.getByRole('heading', { name: 'Quem está na área' })).toBeFocused();
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await p.getByLabel(/Role 5d8/).fill('20');
+    await p.getByRole('button', { name: 'Confirmar 20' }).click();
+    await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
+    await expect(p.getByText('Esperando o mestre').first()).toBeVisible();
+    await expectScreenPasses(p, `Esperando o mestre, a vez parada ${where}`);
+
+    if (width < 768) {
+      await m.getByRole('button', { name: 'Abrir o registro' }).click().catch(() => undefined);
+    }
+    const card = m.getByRole('group', { name: hiddenInArea ? /atingiu 1 criatura escondida/ : /nenhuma criatura escondida na área/ });
+    await expect(card).toBeVisible({ timeout: 20_000 });
+    await expect(m.locator('app-area-overlay')).toBeVisible();
+    await expectScreenPasses(m, `A pergunta ao mestre, com a área da última magia ${where}`);
+    await m.reload();
+    await expect(m.getByRole('status').filter({ hasText: 'Combate atualizado agora.' })).toBeVisible();
+    await expect(card).toBeVisible();
+    await expectScreenPasses(m, `A pergunta depois de recarregar ${where}`);
+    await m.getByRole('button', { name: hiddenInArea ? 'Revelar' : 'Sem escondidas', exact: true }).click();
+    await expect(card).toHaveCount(0);
+    await expectScreenPasses(p, `A vez volta ao jogador ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a pergunta das escondidas e a área da última magia passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanHiddenAreaScreens(browser, 'light', 1280, true);
+});
+
+test('a pergunta sem escondidas e o zoom do mapa grande passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanHiddenAreaScreens(browser, 'dark', 390, false);
 });
 
 /**
@@ -2420,18 +2734,52 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `A ficha que pode subir de nível ${where}`);
 
     await p.getByRole('link', { name: 'Subir para o nível 4' }).click();
-    await expect(p.getByText('Passo 1 de 4 · Habilidades')).toBeVisible();
+    await expect(p.getByText('Passo 1 de 5 · Classe')).toBeVisible();
+    await expectScreenPasses(p, `Subir em qual classe?, a classe que ele tem ${where}`);
+    await classCard(p, /^Uma classe nova/).click();
+    await expect(p.getByRole('heading', { name: 'Qual classe nova?' })).toBeVisible();
+    await expectScreenPasses(p, `Subir em qual classe?, "Uma classe nova" aberta com os pré-requisitos ${where}`);
+    // A new class end to end, before the level goes to the Mago he has: the Guerreiro (Destreza 16 meets "Força ou Destreza").
+    await classCard(p, /^Guerreiro/).click();
+    await expect(p.getByText('Pensantus · Mago 3 → Mago 3 · Guerreiro 1')).toBeAttached();
+    await expectScreenPasses(p, `Subir em qual classe?, a classe nova escolhida ${where}`);
+    await p.getByRole('button', { name: 'Próximo' }).click();
+    await expect(p.getByRole('heading', { name: 'Pontos de vida de Guerreiro 1' })).toBeVisible();
+    await expectScreenPasses(p, `Vida da classe nova ${where}`);
+    await p.getByRole('button', { name: 'Próximo' }).click();
+    await p.locator('#pick-feature-0').getByRole('radio').first().click();
+    await expectScreenPasses(p, `Escolhas da classe nova, o Estilo de Luta ${where}`);
+    await p.getByRole('button', { name: 'Próximo' }).click();
+    await expect(p.getByText('Passo 4 de 4 · Resumo')).toBeVisible();
+    await expectScreenPasses(p, `Resumo da classe nova ${where}`);
+    await p.getByRole('button', { name: 'Confirmar o nível 4' }).click();
+    await expect(p.getByRole('alertdialog', { name: 'Subir em Guerreiro 1?' })).toBeVisible();
+    await expectScreenPasses(p, `A pergunta antes de acrescentar a classe ${where}`);
+    await p.getByRole('button', { name: 'Voltar', exact: true }).click();
+    for (let i = 0; i < 3; i++) {
+      await p.getByRole('button', { name: 'Voltar', exact: true }).click();
+    }
+    await classCard(p, /^Mago/).click();
+    await p.getByRole('button', { name: 'Trocar para o Mago' }).click();
+    await expect(p.getByText('Pensantus · Mago 3 → Mago 4')).toBeAttached();
+    await p.getByRole('button', { name: 'Próximo' }).click();
+    await expect(p.getByText('Passo 2 de 5 · Habilidades')).toBeVisible();
     await expectScreenPasses(p, `Habilidades, com a escolha faltando ${where}`);
     await row('Inteligência').click();
     await expect(p.getByText('18 → 20')).toBeVisible();
     await expectScreenPasses(p, `Habilidades, Inteligência 20 ${where}`);
+    // "Cancelar" is the first step's button; the class step is the first one now.
+    await p.getByRole('button', { name: 'Voltar', exact: true }).click();
+    await expect(p.getByText('Passo 1 de 5 · Classe')).toBeVisible();
     await p.getByRole('button', { name: 'Cancelar' }).click();
     await expect(p.getByText('Descartar as escolhas?')).toBeVisible();
     await expectScreenPasses(p, `A pergunta de descartar ${where}`);
     await p.getByRole('button', { name: 'Continuar escolhendo' }).click();
     await p.getByRole('button', { name: 'Próximo' }).click();
+    await expect(p.getByText('Passo 2 de 5 · Habilidades')).toBeVisible();
+    await p.getByRole('button', { name: 'Próximo' }).click();
 
-    await expect(p.getByText('Passo 2 de 4 · Vida')).toBeVisible();
+    await expect(p.getByText('Passo 3 de 5 · Vida')).toBeVisible();
     await expectScreenPasses(p, `Vida, a média ${where}`);
     await p.locator('.dice-choice__card').filter({ hasText: 'Rolar 1d6' }).click();
     await expectScreenPasses(p, `Vida, rolar o dado ${where}`);
@@ -2443,7 +2791,7 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `Vida, o resultado do dado ${where}`);
     await p.getByRole('button', { name: 'Próximo' }).click();
 
-    await expect(p.getByText('Passo 3 de 4 · Magias')).toBeVisible();
+    await expect(p.getByText('Passo 4 de 5 · Magias')).toBeVisible();
     await expectScreenPasses(p, `Magias, com a escolha faltando ${where}`);
     await p.getByRole('button', { name: /Ver os outros \d+ truques/ }).click();
     await row('Prestidigitação').click();
@@ -2464,7 +2812,7 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `Magias, tudo escolhido ${where}`);
     await p.getByRole('button', { name: 'Próximo' }).click();
 
-    await expect(p.getByText('Passo 4 de 4 · Resumo')).toBeVisible();
+    await expect(p.getByText('Passo 5 de 5 · Resumo')).toBeVisible();
     await expectScreenPasses(p, `Resumo ${where}`);
     await p.getByRole('button', { name: 'Confirmar o nível 4' }).click();
     await expect(p.getByText('Pensantus subiu para o nível 4.').first()).toBeVisible();
@@ -2490,22 +2838,22 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
 }
 
 test('o subir de nível passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
+  test.setTimeout(900_000);
   await scanLevelUpScreens(browser, 'light', 1280);
 });
 
 test('o subir de nível passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
+  test.setTimeout(900_000);
   await scanLevelUpScreens(browser, 'dark', 390);
 });
 
 test('o subir de nível passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
+  test.setTimeout(900_000);
   await scanLevelUpScreens(browser, 'dark', 1024);
 });
 
 test('o subir de nível passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
+  test.setTimeout(900_000);
   await scanLevelUpScreens(browser, 'light', 320);
 });
 
@@ -3065,6 +3413,17 @@ async function scanTrapScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await expectScreenPasses(p, `Procurar armadilhas, o resultado ${where}`);
     await sheet.getByRole('button', { name: 'Fechar', exact: true }).last().click();
 
+    // "Outra perícia…": the list of the other skills, then one picked.
+    await p.getByRole('button', { name: 'Procurar armadilhas' }).click();
+    await sheet.locator('label', { hasText: 'Outra perícia…' }).click();
+    await expect(sheet.getByRole('listbox', { name: 'Perícia' })).toBeVisible();
+    await expectScreenPasses(p, `Procurar armadilhas, Outra perícia ${where}`);
+    await sheet.getByRole('listbox', { name: 'Perícia' }).getByRole('option', { name: /^Arcanismo/ }).click();
+    await expect(sheet.getByText('Escolha uma perícia')).toHaveCount(0);
+    await expectScreenPasses(p, `Procurar armadilhas, a perícia escolhida ${where}`);
+    await p.keyboard.press('Escape');
+    await expect(sheet).toBeHidden();
+
     // In a combat: the damage that waits for the master, and the player's note.
     await pensantusFirst(m, table);
     await movePensantus(p, table, 9, 7);
@@ -3276,6 +3635,13 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
     await expect(m.getByRole('heading', { name: 'Predefinições do SRD' })).toBeVisible();
     await expect(m.getByText('Percepção passiva contra a CD 15')).toBeVisible();
     await expectScreenPasses(m, `Armadilha, o formulário e Quem notaria ${where}`);
+    await m.getByRole('button', { name: 'Acrescentar perícia' }).click();
+    await expect(m.getByRole('listbox', { name: 'Também acham com' })).toBeVisible();
+    await expectScreenPasses(m, `Armadilha, Também acham com, a lista ${where}`);
+    await m.getByRole('listbox', { name: 'Também acham com' }).getByRole('option', { name: 'Arcanismo' }).click();
+    await m.keyboard.press('Escape');
+    await expect(m.locator('.tp__chip', { hasText: 'Arcanismo' })).toBeVisible();
+    await expectScreenPasses(m, `Armadilha, Também acham com, a etiqueta ${where}`);
     await m.getByLabel('CD para achar (Investigação)').fill('40');
     await m.getByRole('button', { name: 'Salvar ponto' }).click();
     await expect(m.getByText('Use uma CD de 1 a 30.')).toBeVisible();
@@ -5453,7 +5819,8 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     };
     await openLive(`/campaigns/${campaignId}/characters/${characterId}/level-up`);
-    await expect(page.getByText(/Passo 1 de \d · Vida/)).toBeVisible();
+    await passClassStep(page);
+    await expect(page.getByText(/Passo 2 de \d · Vida/)).toBeVisible();
     await expectScreenPasses(page, `Subir de nível, a vida ${where}`);
     await page.getByRole('button', { name: 'Próximo' }).click();
     await expect(page.getByText(/Escolhas/).first()).toBeVisible();
@@ -5484,6 +5851,7 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
     const runico = await createSheetRPC(page, campaignD, fighter);
     await lockAndMilestone(m, campaignD, runico);
     await openLive(`/campaigns/${campaignD}/characters/${runico}/level-up`);
+    await passClassStep(page);
     await page.getByRole('button', { name: 'Próximo' }).click();
     await page.locator('#pick-subclass').getByRole('radio', { name: /Lâmina de Tinta/ }).click();
     await page.getByRole('button', { name: 'Próximo' }).click();
@@ -5629,4 +5997,917 @@ test('as opções para os jogadores passam no axe e nas conferências de layout 
 
 test('as opções para os jogadores passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
   await scanOptions(browser, 'light', 320);
+});
+
+/** The campaign package (MR-050): the export page (idle, running through a
+ * fulfilled `GetCampaignExport`, done with "Baixar de novo") and the import
+ * page (choose, a file refused before upload, preview, refused, newer
+ * version, done). The package is a real one, exported and fetched by the
+ * test; the running export is the one state too quick to catch for real. */
+async function scanPackage(browser: Browser, colorScheme: 'light' | 'dark', width: number, owner: TestUser): Promise<void> {
+  const context = await browser.newContext({
+    storageState: authStatePath(owner),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
+  const page = await context.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const input = page.getByLabel('Arquivo do pacote da campanha');
+  try {
+    await page.goto('/');
+    const table = await tableForPackage(page, `Acessibilidade pacote ${Date.now()}`);
+
+    await open(page, `/campaigns/${table.campaignId}`);
+    await expect(page.getByRole('link', { name: 'Exportar campanha' })).toBeVisible();
+    await expectScreenPasses(page, `Campanha com o painel Pacote da campanha ${where}`);
+
+    await open(page, `/campaigns/${table.campaignId}/export`);
+    await expect(page.getByRole('button', { name: 'Exportar campanha' })).toBeVisible();
+    await expectScreenPasses(page, `Exportar campanha, antes de exportar ${where}`);
+
+    const running = '**/meurpg.campaignpackage.v1.CampaignPackageService/GetCampaignExport';
+    await page.route(running, (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        json: { export: { id: 'a11y', state: 'CAMPAIGN_EXPORT_STATE_RUNNING', percent: 40 }, estimatedBytes: '4096' },
+      }),
+    );
+    await page.reload();
+    await expect(page.getByRole('progressbar', { name: 'Progresso da exportação' })).toBeVisible();
+    await expectScreenPasses(page, `Exportar campanha, exportando ${where}`);
+    await page.unroute(running);
+
+    await exportThroughScreen(page, table.campaignId);
+    await expectLoaded(page);
+    await expectScreenPasses(page, `Exportar campanha, pacote pronto ${where}`);
+    const href = await page.getByRole('link', { name: 'Baixar de novo' }).getAttribute('href');
+    const fetched = await page.request.get(href!);
+    expect(fetched.ok()).toBeTruthy();
+    const zip = await fetched.body();
+
+    await open(page, '/campaigns');
+    await expect(page.getByRole('link', { name: 'Importar campanha' })).toBeVisible();
+    await expectScreenPasses(page, `Minhas campanhas com Importar campanha ${where}`);
+
+    await open(page, '/campaigns/import');
+    await expect(page.getByRole('button', { name: 'Escolher o arquivo' })).toBeVisible();
+    await expectScreenPasses(page, `Importar campanha, escolher o arquivo ${where}`);
+
+    await input.setInputFiles({ name: 'notas.txt', mimeType: 'text/plain', buffer: Buffer.from('não é um pacote') });
+    await expect(page.getByRole('alert').filter({ hasText: 'Esse arquivo não parece um pacote de campanha.' })).toBeVisible();
+    await expectScreenPasses(page, `Importar campanha, arquivo recusado ${where}`);
+
+    await input.setInputFiles({ name: 'falso.meurpg.zip', mimeType: 'application/zip', buffer: Buffer.from('só tem o nome') });
+    await expect(page.getByRole('strong').filter({ hasText: 'Este pacote não pode ser criado.' })).toBeVisible({ timeout: 60_000 });
+    await expectScreenPasses(page, `Importar campanha, pacote recusado ${where}`);
+
+    await page.getByRole('button', { name: 'Escolher outro arquivo' }).click();
+    await input.setInputFiles({ name: 'futuro.meurpg.zip', mimeType: 'application/zip', buffer: zipWithManifest({ format_version: 2 }) });
+    await expect(page.getByRole('strong').filter({ hasText: 'Este pacote é de uma versão mais nova do MeuRPG' })).toBeVisible({ timeout: 60_000 });
+    await expectScreenPasses(page, `Importar campanha, versão mais nova ${where}`);
+
+    await page.getByRole('button', { name: 'Escolher outro arquivo' }).click();
+    await input.setInputFiles({ name: 'pacote.meurpg.zip', mimeType: 'application/zip', buffer: zip });
+    await expect(page.getByRole('button', { name: 'Criar campanha' })).toBeVisible({ timeout: 60_000 });
+    await expectLoaded(page);
+    await expectScreenPasses(page, `Importar campanha, prévia ${where}`);
+
+    await page.getByRole('button', { name: 'Criar campanha' }).click();
+    await expect(page.getByRole('heading', { level: 2, name: 'Campanha criada' })).toBeVisible({ timeout: 60_000 });
+    await expectScreenPasses(page, `Importar campanha, campanha criada ${where}`);
+
+    // The player's side of the export page: only the master exports.
+    const playerContext = await newSignedInContext(browser, 'Mestre Teste', { colorScheme, viewport: { width, height: 900 } });
+    try {
+      const player = await playerContext.newPage();
+      await player.goto('/');
+      await joinAsPlayer(page, player, table.campaignId);
+      await open(player, `/campaigns/${table.campaignId}/export`);
+      await expect(player.getByText('Só o mestre exporta a campanha.')).toBeVisible();
+      await expectScreenPasses(player, `Exportar campanha, vista do jogador ${where}`);
+    } finally {
+      await playerContext.close();
+    }
+  } finally {
+    await context.close();
+  }
+}
+
+test('o pacote da campanha passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-050'] }, async ({ browser }) => {
+  test.slow();
+  // One import upload per account at a time: each scan, and campaign-package.spec.ts, imports as its own account.
+  await scanPackage(browser, 'light', 1280, 'Jogador Teste');
+});
+
+test('o pacote da campanha passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-050'] }, async ({ browser }) => {
+  test.slow();
+  await scanPackage(browser, 'dark', 390, 'E-mail Não Verificado');
+});
+
+/**
+ * The reserved characters and their claim links (MR-049, PM-09): the master's list with a row in each state of the link, a
+ * question asked in place, the dialog that makes the link (before and after), the editor of a reserved character, and the page
+ * a player opens with the link: signed out (the same for every link), the card, the page of a link that cannot be used and the
+ * master's own link.
+ */
+async function scanClaims(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(150_000);
+  const view = { colorScheme, viewport: { width, height: 900 } } as const;
+  // The master's "Copiar link" writes to the clipboard, which a headless browser allows only when it is granted.
+  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), permissions: ['clipboard-read', 'clipboard-write'], ...view });
+  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), ...view });
+  const gContext = await browser.newContext({ storageState: { cookies: [], origins: [] }, ...view });
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    const g = await gContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const created = await callRPC(m, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', { name: `Acessibilidade reservados ${Date.now()}`, xpMode: 'XP_MODE_ENEMIES' });
+    expect(created.ok()).toBeTruthy();
+    const campaignId = (await created.json()).campaign.id as string;
+    const kai = await reservedRPC(m, campaignId, 'Kai');
+    const salvia = await reservedRPC(m, campaignId, 'Sálvia');
+    const ragna = await reservedRPC(m, campaignId, 'Ragna');
+    const brisa = await reservedRPC(m, campaignId, 'Brisa');
+    const salviaToken = await linkRPC(m, campaignId, salvia);
+    await linkRPC(m, campaignId, ragna);
+    await revokeLinkRPC(m, campaignId, ragna);
+    const kaiToken = await linkRPC(m, campaignId, kai);
+    const brisaToken = await linkRPC(m, campaignId, brisa);
+    // The player takes Brisa, so the list has "Assumido por".
+    await p.goto(claimRoute(brisaToken));
+    await p.getByRole('button', { name: 'Assumir este personagem' }).click();
+    await expect(p.getByRole('heading', { level: 1 })).toHaveText('Pronto: Brisa é seu');
+
+    // The master's list: no link, sent, revoked and claimed, one row each.
+    await open(m, `/campaigns/${campaignId}`);
+    await expect(rowOf(m, 'Sálvia')).toContainText('Link enviado');
+    await expect(rowOf(m, 'Ragna')).toContainText('Link revogado');
+    await expect(rowOf(m, 'Brisa')).toContainText('Assumido por');
+    await expectScreenPasses(m, `Personagens reservados ${where}`);
+    await rowOf(m, 'Sálvia').getByRole('button', { name: /Revogar o link de Sálvia/ }).click();
+    await expect(rowOf(m, 'Sálvia').getByRole('group', { name: 'Revogar o link de Sálvia?' })).toBeVisible();
+    await expectScreenPasses(m, `Personagens reservados, revogar o link ${where}`);
+    await rowOf(m, 'Sálvia').getByRole('button', { name: 'Cancelar' }).click();
+    await rowOf(m, 'Brisa').getByRole('button', { name: /Devolver Brisa à reserva/ }).click();
+    await expect(rowOf(m, 'Brisa').getByRole('group', { name: 'Devolver Brisa à reserva?' })).toBeVisible();
+    await expectScreenPasses(m, `Personagens reservados, devolver à reserva ${where}`);
+    await rowOf(m, 'Brisa').getByRole('button', { name: 'Cancelar' }).click();
+    await rowOf(m, 'Ragna').getByRole('button', { name: 'Excluir Ragna' }).click();
+    await expect(rowOf(m, 'Ragna').getByRole('group', { name: 'Excluir Ragna?' })).toBeVisible();
+    await expectScreenPasses(m, `Personagens reservados, excluir ${where}`);
+    await rowOf(m, 'Ragna').getByRole('button', { name: 'Cancelar' }).click();
+
+    // The dialog: the validity, then the link shown once.
+    await rowOf(m, 'Ragna').getByRole('button', { name: /Gerar novo link/ }).click();
+    const dialog = m.getByRole('dialog', { name: 'Gerar link para o jogador' });
+    await expect(dialog.getByRole('radio', { name: '7 dias' })).toBeChecked();
+    await expectScreenPasses(m, `Gerar link para o jogador ${where}`);
+    await dialog.getByRole('button', { name: 'Gerar link' }).click();
+    await expect(dialog.locator('.claim-link__field')).toBeVisible();
+    await expectScreenPasses(m, `Gerar link para o jogador, o link ${where}`);
+    await dialog.getByRole('button', { name: 'Copiar link' }).click();
+    await expect(dialog.getByText('Link copiado.')).toBeVisible();
+    await expectScreenPasses(m, `Gerar link para o jogador, link copiado ${where}`);
+
+    await open(m, `/campaigns/${campaignId}/reserved/new`);
+    await expect(m.getByText('Personagem reservado.')).toBeVisible();
+    await expectScreenPasses(m, `Criar personagem para um jogador ${where}`);
+
+    // The player's pages: the card, the page of a link that cannot be used, the master's own link and the signed-out page.
+    await p.goto(claimRoute(kaiToken));
+    await expect(p.getByRole('heading', { level: 1 })).toHaveText('Este personagem é seu?');
+    await expectScreenPasses(p, `Link do personagem, o cartão ${where}`);
+    await p.goto(claimRoute('x'));
+    await expect(p.getByRole('heading', { level: 1 })).toHaveText('Este link não pode ser usado');
+    await expectScreenPasses(p, `Link do personagem, o link que não vale ${where}`);
+    await m.goto(claimRoute(salviaToken));
+    await expect(m.getByRole('heading', { level: 1 })).toHaveText('Este link é para um jogador');
+    await expectScreenPasses(m, `Link do personagem, o link do próprio mestre ${where}`);
+    await g.goto(claimRoute(salviaToken));
+    await expect(g.getByRole('heading', { level: 1 })).toHaveText('Assumir um personagem');
+    await expect(g.getByRole('button', { name: 'Entrar com Google' })).toBeVisible();
+    await expectScreenPasses(g, `Link do personagem, sem entrar ${where}`);
+  } finally {
+    await Promise.all([mContext.close(), pContext.close(), gContext.close()]);
+  }
+}
+
+test('os reservados e os links passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-049'] }, async ({ browser }) => {
+  await scanClaims(browser, 'light', 1280);
+});
+
+test('os reservados e os links passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-049'] }, async ({ browser }) => {
+  await scanClaims(browser, 'dark', 1024);
+});
+
+test('os reservados e os links passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-049'] }, async ({ browser }) => {
+  await scanClaims(browser, 'dark', 390);
+});
+
+test('os reservados e os links passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-049'] }, async ({ browser }) => {
+  await scanClaims(browser, 'light', 320);
+});
+
+/**
+ * "Sessões anteriores" (PM-01): the campaign page's panel with a long list (the master's, the player's, and a
+ * player's before any session ended, where it does not exist), the summary page of the master (with a combat's
+ * table, without it) and of a player, the neighbours' links, a number that does not exist, and the generic page.
+ */
+async function scanPastSessions(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width <= 390 ? 700 : 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableWithPensantus(m, p, `Acessibilidade sessões anteriores ${Date.now()}`);
+    campaignId = table.campaignId;
+    const route = `/campaigns/${campaignId}`;
+
+    // Nothing ended yet: the master's empty box, and no panel for the player.
+    await open(m, route);
+    await expect(m.getByRole('region', { name: 'Sessões anteriores' })).toContainText('Nenhuma sessão encerrada ainda');
+    await expectScreenPasses(m, `Sessões anteriores, vazio do mestre ${where}`);
+    await open(p, route);
+    await expect(p.getByRole('region', { name: 'Sessões anteriores' })).toHaveCount(0);
+    await expectScreenPasses(p, `Sessões anteriores, o jogador sem nenhuma ${where}`);
+
+    // Six ended sessions: five show and "Mostrar as outras 1".
+    for (let i = 0; i < 6; i++) {
+      await endSessionRPC(m, campaignId, await startSessionRPC(m, campaignId));
+    }
+    await open(m, route);
+    const panel = (page: Page) => page.getByRole('region', { name: 'Sessões anteriores' });
+    await expect(panel(m)).toContainText('6 encerradas');
+    await expect(panel(m).getByRole('button', { name: 'Mostrar as outras 1' })).toBeVisible();
+    await expectScreenPasses(m, `Sessões anteriores, lista do mestre ${where}`);
+    await panel(m).getByRole('button', { name: 'Mostrar as outras 1' }).click();
+    await expect(panel(m).getByRole('link', { name: 'Ver resumo da Sessão 1' })).toBeFocused();
+    await expectScreenPasses(m, `Sessões anteriores, a lista inteira ${where}`);
+    await open(p, route);
+    await expect(panel(p)).toContainText('6 encerradas');
+    await expectScreenPasses(p, `Sessões anteriores, lista do jogador ${where}`);
+
+    // The summary page, as the master and as the player, and the pager.
+    await open(m, `${route}/sessions/3`);
+    await expect(m.getByRole('heading', { name: 'Em números' })).toBeVisible();
+    await expect(m.getByRole('navigation', { name: 'Outras sessões' })).toContainText('Sessão 4');
+    await expectScreenPasses(m, `O resumo da sessão, mestre ${where}`);
+    await m.getByRole('navigation', { name: 'Outras sessões' }).getByRole('link', { name: 'Sessão 4' }).focus();
+    await expectScreenPasses(m, `O resumo da sessão, foco na sessão vizinha ${where}`);
+    await open(p, `${route}/sessions/3`);
+    await expect(p.getByRole('heading', { name: 'A sessão acabou' })).toBeVisible();
+    await expectScreenPasses(p, `O resumo da sessão, jogador ${where}`);
+
+    // A number that does not exist, and the page for anyone who may not know.
+    await open(m, `${route}/sessions/9`);
+    await expect(m.getByRole('heading', { level: 1, name: 'Não há Sessão 9' })).toBeVisible();
+    await expectScreenPasses(m, `O resumo da sessão, número que não existe ${where}`);
+    await open(p, `${route}/sessions/abc`);
+    await expect(p.getByRole('heading', { level: 1, name: 'Página não encontrada' })).toBeVisible();
+    await expectScreenPasses(p, `O resumo da sessão, página genérica ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as sessões anteriores e o resumo passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanPastSessions(browser, 'light', 1280);
+});
+
+test('as sessões anteriores e o resumo passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanPastSessions(browser, 'dark', 390);
+});
+
+test('as sessões anteriores e o resumo passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanPastSessions(browser, 'light', 320);
+});
+
+/**
+ * "Descansos e dados de vida" (PM-07b 9, 10): the master's rest card (idle, the short and the long rest asking, done, and the
+ * long rest's warning once one was taken), and the player's "Gastar dados de vida" sheet (the app and the typed roll, the typed
+ * number out of range and valid, a die spent, and no dice left), then the "Recursos" counters on the character sheet.
+ */
+async function scanRestScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width <= 390 ? 700 : 900 };
+  const master = await newSignedInContext(browser, 'Mestre Teste', { colorScheme, viewport });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  m.setDefaultTimeout(20_000);
+  p.setDefaultTimeout(20_000);
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForLevelUp(m, p, `Acessibilidade descansos ${Date.now()}`, { build: toren, sheet: torenSheet, milestone: false });
+    campaignId = table.campaignId;
+    // Toren: 10 of 46 hit points, 3 of 5 d10 spent, Second Wind and Action Surge used.
+    await spendForRestRPC(m, campaignId, table.characterId);
+
+    // The master's card: idle, then the two questions, each with the focus on the button that was tapped.
+    await openSessionPage(m, campaignId);
+    const card = m.getByRole('region', { name: 'Descanso' });
+    await expect(card.getByRole('button', { name: 'Descanso curto' })).toBeVisible();
+    await expectScreenPasses(m, `Descanso, o cartão do mestre ${where}`);
+    await card.getByRole('button', { name: 'Descanso curto' }).click();
+    const question = card.getByRole('alertdialog', { name: 'Começar o descanso curto?' });
+    await expect(question).toContainText('Retomar o Fôlego: Toren 1 de 1');
+    await expectScreenPasses(m, `Descanso curto, a confirmação ${where}`);
+    await card.getByRole('button', { name: 'Descanso longo' }).click();
+    await expect(card.getByRole('alertdialog', { name: 'Começar o descanso longo?' })).toContainText('Metade dos dados de vida');
+    await expectScreenPasses(m, `Descanso longo, a confirmação ${where}`);
+    await card.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(card.getByRole('alertdialog')).toHaveCount(0);
+
+    // The player's sheet of hit dice: the two ways to roll, the typed number, a die spent, no dice left.
+    await openSessionPage(p, campaignId);
+    await p.getByRole('button', { name: 'Gastar dados de vida' }).click();
+    const dice = p.getByRole('dialog', { name: 'Gastar dados de vida' });
+    await expect(dice.getByRole('button', { name: 'Digitar o resultado' })).toBeVisible();
+    await expectScreenPasses(p, `Gastar dados de vida, escolher como rolar ${where}`);
+    await dice.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await expectScreenPasses(p, `Gastar dados de vida, número a digitar ${where}`);
+    await dice.getByLabel(/Role 1d10/).fill('27');
+    await expect(dice.getByRole('alert').filter({ hasText: 'Digite um número de 1 a 10' })).toBeVisible();
+    await expectScreenPasses(p, `Gastar dados de vida, número fora de 1 a 10 ${where}`);
+    await dice.getByLabel(/Role 1d10/).fill('6');
+    await dice.getByRole('button', { name: 'Confirmar 6' }).click();
+    await expect(dice.getByRole('list', { name: 'Dados gastos agora' })).toContainText('Rolou 6 + 3 = 9 · recuperou 9 PV');
+    await expectScreenPasses(p, `Gastar dados de vida, um dado gasto ${where}`);
+    await dice.getByRole('button', { name: /^Rolar d10 no app/ }).click();
+    await expect(dice.getByRole('list', { name: 'Dados gastos agora' }).getByRole('listitem')).toHaveCount(2);
+    await expect(dice.getByText('Não há dados de vida para gastar.')).toBeVisible();
+    await expectScreenPasses(p, `Gastar dados de vida, nenhum dado sobrando ${where}`);
+    await dice.locator('button', { hasText: 'Fechar' }).click();
+    await expect(p.getByRole('dialog')).toHaveCount(0);
+
+    // The rests taken: the done line, and the long rest's warning once one was taken.
+    await card.getByRole('button', { name: 'Descanso curto' }).click();
+    await card.getByRole('button', { name: 'Descansar' }).click();
+    await expect(card.getByText('Descanso curto feito.').first()).toBeVisible();
+    await expectScreenPasses(m, `Descanso curto, feito ${where}`);
+    await card.getByRole('button', { name: 'Descanso longo' }).click();
+    await card.getByRole('button', { name: 'Descansar' }).click();
+    await expect(card.getByText('Descanso longo feito.').first()).toBeVisible();
+    await card.getByRole('button', { name: 'Descanso longo' }).click();
+    await expect(card.getByText('Já houve um descanso longo nesta sessão.')).toBeVisible();
+    await expectScreenPasses(m, `Descanso longo, com o aviso do outro descanso ${where}`);
+    await card.getByRole('button', { name: 'Cancelar' }).click();
+
+    // "Recursos" on the character sheet (a fighter has no spell slots), live while the session is open.
+    await open(p, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    await expect(p.getByRole('region', { name: 'Recursos' }).getByRole('listitem').filter({ hasText: 'Retomar o Fôlego' })).toContainText('1 de 1');
+    await expectScreenPasses(p, `Ficha, os recursos ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('os descansos e os dados de vida passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-012', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRestScreens(browser, 'light', 1280);
+});
+
+test('os descansos e os dados de vida passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-012', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRestScreens(browser, 'dark', 1024);
+});
+
+test('os descansos e os dados de vida passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-012', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRestScreens(browser, 'dark', 390);
+});
+
+test('os descansos e os dados de vida passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-012', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRestScreens(browser, 'light', 320);
+});
+
+/**
+ * "Cura pelas Mãos" and "Inspiração de Bardo" (PM-07c 9 and 12): the paladin's dialog (the touch, the cure, the answer), the
+ * bard's gift (the list, the answer), and the question a held roll asks, "Usar a Inspiração de Bardo (d6)?". Aurora (the
+ * paladin) is Jogador Teste and Orla (the bard) the other player; the master only passes the turns.
+ */
+async function scanLayOnHandsAndInspirationScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width <= 390 ? 700 : 900 };
+  const master = await newSignedInContext(browser, 'Mestre Teste', { colorScheme, viewport });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  m.setDefaultTimeout(20_000);
+  p.setDefaultTimeout(20_000);
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  let bard: Awaited<ReturnType<typeof secondPlayer>> | null = null;
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade mãos ${Date.now()}`, true, false, { build: aurora, sheet: auroraSheet });
+    campaignId = table.campaignId;
+    bard = await secondPlayer(browser, m, campaignId, orla, orlaSheet);
+    await bard.page.setViewportSize(viewport);
+    await bard.page.emulateMedia({ colorScheme });
+    const b = bard.page;
+    b.setDefaultTimeout(20_000);
+    await beginPlacedCombatRPC(
+      m,
+      table,
+      [table.captainId],
+      { Orla: 20, Aurora: 15, 'Capitão Goblin': 5 },
+      { Orla: [7, 9], Aurora: [8, 9], 'Capitão Goblin': [9, 9] },
+    );
+    await adjustVitalsRPC(m, campaignId, bard.characterId, { hitPointsCurrent: 3 });
+    await openSessionPage(p, campaignId);
+    await openSessionPage(b, campaignId);
+
+    // Orla's turn: the gift, the list of who can be inspired, and the answer.
+    await expect(b.getByRole('heading', { name: 'Sua vez, Orla' })).toBeVisible();
+    await b.getByRole('region', { name: 'O que você pode fazer' }).getByRole('button', { name: /^Usar Inspiração de Bardo/ }).click();
+    const gift = b.getByRole('dialog', { name: 'Inspiração de Bardo' });
+    await expect(gift.locator('label', { hasText: 'Aurora' })).toBeVisible();
+    await expectScreenPasses(b, `Inspiração de Bardo, quem inspirar ${where}`);
+    await gift.locator('label', { hasText: 'Aurora' }).click();
+    await gift.getByRole('button', { name: 'Inspirar Aurora' }).click();
+    await expect(gift.getByText('Você inspirou Aurora.')).toBeVisible();
+    await expectScreenPasses(b, `Inspiração de Bardo, dado entregue ${where}`);
+    await gift.locator('button', { hasText: 'Fechar' }).click();
+    await passTurnsTo(m, campaignId, 'Aurora');
+
+    // Aurora's turn: the die card, and the touch on Orla (hurt).
+    await expect(p.getByRole('heading', { name: 'Sua vez, Aurora' })).toBeVisible();
+    await expect(p.getByText('Inspiração de Bardo: d6').first()).toBeVisible();
+    const groups = p.getByRole('region', { name: 'O que você pode fazer' });
+    await expectScreenPasses(p, `Sua vez, com o dado de Inspiração de Bardo ${where}`);
+    await groups.getByRole('button', { name: 'Usar Cura pelas Mãos' }).click();
+    const hands = p.getByRole('dialog', { name: 'Cura pelas Mãos' });
+    await expect(hands.locator('label', { hasText: 'Orla' })).toBeVisible();
+    await expectScreenPasses(p, `Cura pelas Mãos, restaurar PV ${where}`);
+    await hands.locator('label', { hasText: 'Neutralizar um veneno' }).click();
+    await expect(hands.getByRole('button', { name: /^Neutralizar o veneno/ })).toBeVisible();
+    await expectScreenPasses(p, `Cura pelas Mãos, neutralizar um veneno ${where}`);
+    await hands.locator('label', { hasText: 'Restaurar PV' }).click();
+    await hands.locator('label', { hasText: 'Orla' }).click();
+    await hands.getByRole('button', { name: 'Mais um ponto' }).click();
+    await expect(hands.getByRole('button', { name: 'Curar 6 PV em Orla' })).toBeVisible();
+    await expectScreenPasses(p, `Cura pelas Mãos, mais pontos ${where}`);
+    await hands.getByRole('button', { name: 'Curar 6 PV em Orla' }).click();
+    await expect(hands.locator('.pill')).toContainText('Curou');
+    await expectScreenPasses(p, `Cura pelas Mãos, curou ${where}`);
+    await hands.locator('button', { hasText: 'Fechar' }).click();
+
+    // The next round: the attack with the die in hand asks before the result.
+    await passTurnsTo(m, campaignId, 'Orla');
+    await passTurnsTo(m, campaignId, 'Aurora');
+    await expect(p.getByRole('heading', { name: 'Sua vez, Aurora' })).toBeVisible();
+    await groups.getByRole('button', { name: /^Atacar com Espada/ }).click();
+    const attack = p.getByRole('dialog', { name: /Atacar com Espada/ });
+    await attack.locator('label', { hasText: 'Capitão Goblin' }).click();
+    await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await p.getByLabel(/Role 1d20/).fill('1');
+    await p.getByRole('button', { name: 'Confirmar 1' }).click();
+    await expect(p.getByRole('heading', { name: 'Usar a Inspiração de Bardo (d6)?' }).last()).toBeVisible();
+    await expectScreenPasses(p, `Usar a Inspiração de Bardo, a pergunta ${where}`);
+    await p.getByRole('button', { name: 'Digitar o resultado' }).last().click();
+    await expectScreenPasses(p, `Usar a Inspiração de Bardo, digitar o dado ${where}`);
+    await p.getByLabel(/Role 1d6/).last().fill('4');
+    await p.getByRole('button', { name: 'Confirmar 4' }).last().click();
+    await expect(p.getByRole('button', { name: 'Voltar à sua vez' }).last()).toBeVisible();
+    await expectScreenPasses(p, `Atacar, resultado com o dado de Inspiração de Bardo ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await bard?.close();
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a Cura pelas Mãos e a Inspiração de Bardo passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanLayOnHandsAndInspirationScreens(browser, 'light', 1280);
+});
+
+test('a Cura pelas Mãos e a Inspiração de Bardo passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanLayOnHandsAndInspirationScreens(browser, 'dark', 1024);
+});
+
+test('a Cura pelas Mãos e a Inspiração de Bardo passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanLayOnHandsAndInspirationScreens(browser, 'dark', 390);
+});
+
+test('a Cura pelas Mãos e a Inspiração de Bardo passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanLayOnHandsAndInspirationScreens(browser, 'light', 320);
+});
+
+/**
+ * "Conjuração Flexível" and "Metamagia" (PM-07c 10 and 11): the sorcerer's dialog (creating a slot, converting one with the points
+ * at the maximum, and the answer), the cast sheet with the Metamagic section (the options marked, the grey one with its reason),
+ * and the sheet's "Recursos" and "Espaços de magia" with the slot that was created.
+ */
+async function scanFlexibleCastingScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width <= 390 ? 700 : 900 };
+  const master = await newSignedInContext(browser, 'Mestre Teste', { colorScheme, viewport });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  m.setDefaultTimeout(20_000);
+  p.setDefaultTimeout(20_000);
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade feiticeiro ${Date.now()}`, true, false, { build: nael, sheet: naelSheet });
+    campaignId = table.campaignId;
+    await beginPlacedCombatRPC(m, table, [table.captainId], { Nael: 20, 'Capitão Goblin': 5 }, { Nael: [8, 9], 'Capitão Goblin': [9, 9] });
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Nael' })).toBeVisible();
+    const groups = p.getByRole('region', { name: 'O que você pode fazer' });
+
+    // The cast sheet with Metamagic: the options, one marked, and the grey one with its reason.
+    await groups.getByRole('button', { name: 'Conjurar Enfeitiçar Pessoa' }).click();
+    const cast = p.getByRole('dialog', { name: 'Conjurar Enfeitiçar Pessoa' });
+    await cast.locator('label', { hasText: 'Capitão Goblin' }).click();
+    await expect(cast.getByRole('heading', { name: /^Metamagia/ })).toBeVisible();
+    await expect(cast.getByText('Pontos de Feitiçaria: 3 de 3')).toBeVisible();
+    await expectScreenPasses(p, `Conjurar, a Metamagia ${where}`);
+    await cast.locator('label', { hasText: 'Magia Cuidadosa' }).click();
+    await expectScreenPasses(p, `Conjurar, a Magia Cuidadosa marcada ${where}`);
+    await p.keyboard.press('Escape');
+    await expect(p.getByRole('dialog')).toHaveCount(0);
+
+    // Flexible Casting: nothing to convert at the maximum of points (the reason is written), then a slot is created.
+    await groups.getByRole('button', { name: 'Usar Conjuração Flexível: Criar Espaços de Magia' }).click();
+    const flex = p.getByRole('dialog', { name: 'Conjuração Flexível' });
+    await expect(flex).toContainText('Pontos de Feitiçaria: 3 de 3');
+    await expectScreenPasses(p, `Conjuração Flexível, criar um espaço ${where}`);
+    await flex.locator('label', { hasText: 'Espaço → pontos' }).click();
+    await expectScreenPasses(p, `Conjuração Flexível, converter um espaço ${where}`);
+    await flex.locator('label', { hasText: 'Pontos → espaço' }).click();
+    await flex.getByRole('button', { name: /^Criar o espaço de/ }).click();
+    await expect(flex.locator('.pill')).toBeVisible();
+    await expectScreenPasses(p, `Conjuração Flexível, espaço criado ${where}`);
+    await flex.locator('button', { hasText: 'Fechar' }).click();
+
+    // The sheet's counters: Sorcery Points 1 of 3 and a created 1st-level slot.
+    await open(p, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    await expect(p.getByRole('region', { name: 'Recursos' }).getByRole('listitem').filter({ hasText: 'Pontos de Feitiçaria' })).toContainText('1 de 3');
+    await expect(p.getByRole('region', { name: 'Espaços de magia' })).toContainText('criado');
+    await expectScreenPasses(p, `Ficha, os recursos e os espaços criados ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a Conjuração Flexível, a Metamagia e os contadores da ficha passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanFlexibleCastingScreens(browser, 'light', 1280);
+});
+
+test('a Conjuração Flexível, a Metamagia e os contadores da ficha passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanFlexibleCastingScreens(browser, 'dark', 1024);
+});
+
+test('a Conjuração Flexível, a Metamagia e os contadores da ficha passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanFlexibleCastingScreens(browser, 'dark', 390);
+});
+
+test('a Conjuração Flexível, a Metamagia e os contadores da ficha passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanFlexibleCastingScreens(browser, 'light', 320);
+});
+
+// ---- casting outside a combat (MR-048, W7-C) ----
+
+async function scanOutsideCastingScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width < 700 ? 800 : 900 };
+  const contexts = await Promise.all(
+    (['Mestre Teste', 'Jogador Teste'] as const).map((user) =>
+      browser.newContext({ storageState: authStatePath(user), colorScheme, viewport }),
+    ),
+  );
+  const [m, p] = await Promise.all(contexts.map((c) => c.newPage()));
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForCasting(m, p, `Acessibilidade conjuração ${Date.now()}`);
+    campaignId = table.campaignId;
+    await openSessionPage(p, campaignId);
+    await openSessionPage(m, campaignId);
+    await expect(p.locator('app-casting-panel').getByText('Nada foi conjurado nesta sessão ainda.')).toBeVisible();
+    await expectScreenPasses(p, `A sessão com as magias, vazia ${where}`);
+
+    // The spell, the slot and the target of Armadura Arcana, then what it did.
+    await p.getByRole('button', { name: 'Conjurar', exact: true }).click();
+    await expect(castSheet(p).getByText('Magia', { exact: true }).first()).toBeVisible();
+    await expectScreenPasses(p, `Conjurar, a lista de magias ${where}`);
+    await choiceCard(castSheet(p), 'Armadura Arcana').click();
+    await expect(castSheet(p).locator('.frame__title')).toHaveText('Armadura Arcana');
+    await pickSlotRadio(castSheet(p), '1º nível');
+    await pickTargetOf(castSheet(p), 'Pensantus');
+    await expectScreenPasses(p, `Conjurar Armadura Arcana, espaço e alvo ${where}`);
+    await castSheet(p).getByRole('button', { name: 'Conjurar Armadura Arcana em Pensantus' }).click();
+    await expect(castSheet(p).getByText(/CA 13 \+ Destreza/)).toBeVisible();
+    await expectScreenPasses(p, `Conjurar Armadura Arcana, o resultado ${where}`);
+    await castSheet(p).getByRole('button', { name: 'Fechar' }).last().click();
+
+    // The spell that lasts, and the danger confirmation of ending it.
+    await expect(p.locator('app-casting-panel').getByText('dura 8 horas')).toBeVisible();
+    await expectScreenPasses(p, `Magias ativas ${where}`);
+    await p.locator('app-casting-panel').getByRole('button', { name: 'Encerrar' }).click();
+    await expect(p.locator('app-cast-confirm-sheet').getByText('Encerrar Armadura Arcana de Pensantus?')).toBeVisible();
+    await expectScreenPasses(p, `Encerrar a magia, a confirmação ${where}`);
+    await p.locator('app-cast-confirm-sheet').getByRole('button', { name: 'Cancelar' }).click();
+
+    // A ritual: the way, the time computed, and the cast waiting for the master.
+    const ritual = await openCastOf(p, 'Alarme');
+    await pickChoice(ritual, 'Como ritual');
+    await expect(ritual.getByText('1 minuto + 10 = 11 minutos')).toBeVisible();
+    await expectScreenPasses(p, `Conjurar Alarme como ritual ${where}`);
+    await ritual.getByRole('button', { name: 'Começar o ritual' }).click();
+    await expect(ritual.getByText(/só é gasto quando o mestre conclui/)).toBeVisible();
+    await expectScreenPasses(p, `Conjurando o ritual ${where}`);
+    await ritual.getByRole('button', { name: 'Fechar' }).last().click();
+    await expect(p.locator('app-casting-panel').getByText('Esperando o mestre concluir')).toBeVisible();
+    await expectScreenPasses(p, `A conjuração esperando o mestre ${where}`);
+
+    // The master's queue.
+    await expect(m.locator('app-casting-panel').getByRole('button', { name: 'Concluir conjuração' })).toBeVisible();
+    await expectScreenPasses(m, `A fila de conjurações do mestre ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await Promise.all(contexts.map((c) => c.close()));
+  }
+}
+
+test('as conjurações fora do combate passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-048'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanOutsideCastingScreens(browser, 'light', 1280);
+});
+
+test('as conjurações fora do combate passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-048'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanOutsideCastingScreens(browser, 'dark', 390);
+});
+
+test('as conjurações fora do combate passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-048'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanOutsideCastingScreens(browser, 'light', 320);
+});
+
+// ---- Ajuda, Crítico Brutal, Talento Confiável and the jump that leaves a reach (PM-03a, PM-03b, PM-03c) ----
+
+const sizeOf = (width: number) => ({ width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 });
+
+// Ajuda on a character at 0 hit points: the player's two pills, the awake one with the tag and the banner, the sheet page,
+// and the master's row with its menu and the question that ends the spell.
+async function scanAidScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = sizeOf(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  let close: () => Promise<void> = async () => undefined;
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade Ajuda ${Date.now()}`, true, true);
+    campaignId = table.campaignId;
+    const third = await thirdPlayer(browser, { m, p, table, campaignId, done: async () => undefined } satisfies TrapTable, brisa, brisaAidSheet);
+    close = third.close;
+    const square = sq20(4, 7);
+    await placeTokenRPC(m, campaignId, table.mapId, third.characterId, square.xBp, square.yBp);
+    await beginAttackCombatRPC(m, table, { Brisa: 20, Pensantus: 15, 'Capitão Goblin': 10, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 0 });
+    await openSessionPage(p, campaignId);
+    await openSessionPage(m, campaignId);
+
+    await expect(p.getByRole('status').getByText('Testes contra a morte: 0 sucessos, 0 falhas')).toBeVisible();
+    await expectScreenPasses(p, `A 0 PV, as etiquetas Inconsciente e testes contra a morte ${where}`);
+
+    const enc = await getEncounterRPC(m, campaignId);
+    const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
+    const cast = await callRPC(third.page, 'meurpg.play.v1.CombatService/CastSpell', {
+      campaignId,
+      encounterId: enc.id,
+      casterId: id('Brisa'),
+      spellKey: 'spell:aid',
+      slot: { level: 2 },
+      targets: [{ combatantId: id('Pensantus') }],
+      idempotencyKey: crypto.randomUUID(),
+    });
+    expect(cast.ok(), await cast.text()).toBeTruthy();
+    await expect(p.getByRole('status').getByText('Acordado · testes contra a morte zerados')).toBeVisible();
+    await expectScreenPasses(p, `Ajuda sobre quem estava a 0 PV, acordou ${where}`);
+
+    const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
+    await expect(order.locator('.row__effect--aid')).toContainText('Ajuda +5 PV');
+    await expectScreenPasses(m, `A ordem do mestre com Ajuda ${where}`);
+    await order.getByRole('button', { name: 'Mais ações para Pensantus' }).click();
+    await expect(m.getByRole('menuitem', { name: 'Encerrar Ajuda em Pensantus' })).toBeVisible();
+    await expectScreenPasses(m, `O menu da linha com Encerrar Ajuda ${where}`);
+    await m.getByRole('menuitem', { name: 'Encerrar Ajuda em Pensantus' }).click();
+    const ask = m.getByRole('alertdialog', { name: /Encerrar a Ajuda d[oa] Pensantus/ });
+    await expect(ask).toBeVisible();
+    await expectScreenPasses(m, `Encerrar a Ajuda, a pergunta no lugar ${where}`);
+    await ask.getByRole('button', { name: 'Cancelar' }).click();
+
+    await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
+    await expect(p.locator('app-combat-stats').getByText('5 de 28')).toBeVisible({ timeout: 30_000 });
+    await expectLoaded(p);
+    await expectScreenPasses(p, `A ficha com Ajuda ${where}`);
+  } finally {
+    await close();
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a Ajuda a 0 PV, no jogador, na ficha e na ordem do mestre, passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanAidScreens(browser, 'light', 1280);
+});
+
+test('a Ajuda a 0 PV, no jogador, na ficha e na ordem do mestre, passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanAidScreens(browser, 'dark', 390);
+});
+
+// Crítico Brutal: the critical's sum before the roll, the typed sheet with its total on the button, and the log line.
+async function scanBrutalScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = sizeOf(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade Brutal ${Date.now()}`, true, true, { build: ragna, sheet: ragnaSheet });
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Ragna: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, { 'Capitão Goblin': [11, 5], 'Goblin 1': [6, 7], 'Goblin 2': [14, 10] });
+    await openSessionPage(p, campaignId);
+    await p.getByRole('button', { name: 'Atacar com Machado grande' }).click();
+    // The dialog's name follows its heading, which changes with each step: the one dialog on the page.
+    const sheet = p.getByRole('dialog');
+    await sheet.locator('label', { hasText: 'Goblin 1' }).click();
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await sheet.getByLabel(/Role 1d20 para Machado grande/).fill('20');
+    await sheet.getByRole('button', { name: 'Confirmar 20' }).click();
+    await expect(sheet.getByText('Dano do crítico')).toBeVisible();
+    await expectScreenPasses(p, `Crítico Brutal, o dano do crítico antes de rolar ${where}`);
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await sheet.getByLabel(/Role 3d12/).fill('22');
+    await expect(sheet.getByRole('button', { name: 'Confirmar 25' })).toBeVisible();
+    await expectScreenPasses(p, `Crítico Brutal, dados físicos e o total no botão ${where}`);
+    await sheet.getByRole('button', { name: 'Confirmar 25' }).click();
+    await expect(sheet.getByRole('button', { name: 'Voltar à sua vez' })).toBeVisible();
+    await expectScreenPasses(p, `Crítico Brutal, o resultado ${where}`);
+    await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
+    // On a phone the log opens from its button; on the wide screen it is already on the page.
+    const log = p.getByRole('log', { name: 'Registro do combate' });
+    await p.getByRole('button', { name: 'Abrir o registro do combate' }).or(log).first().click();
+    await expect(log).toContainText('Crítico Brutal');
+    await expectScreenPasses(p, `Crítico Brutal, o registro do combate ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o Crítico Brutal, antes de rolar, com dados físicos e no registro, passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-012', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanBrutalScreens(browser, 'light', 1280);
+});
+
+test('o Crítico Brutal, antes de rolar, com dados físicos e no registro, passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-012', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanBrutalScreens(browser, 'dark', 390);
+});
+
+// Talento Confiável on a trap search: the preview and the result, with the rule said.
+async function scanReliableTalentScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = sizeOf(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade Talento ${Date.now()}`, true, true, { build: dalila, sheet: dalilaSheet });
+    campaignId = table.campaignId;
+    await trapRPC(m, table, 'Fosso escondido', 6, 7, { findDc: 18 });
+    await openSessionPage(p, campaignId);
+    await p.getByRole('button', { name: 'Procurar armadilhas' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Procurar armadilhas' });
+    await sheet.locator('label', { hasText: 'Investigação' }).click();
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await sheet.getByLabel(/Role 1d20 para Investigação/).fill('4');
+    await expect(sheet.getByText('4 → 10 (Talento Confiável)')).toBeVisible();
+    await expectScreenPasses(p, `Talento Confiável, a prévia do d20 baixo ${where}`);
+    await sheet.getByRole('button', { name: /Confirmar 4/ }).click();
+    await expect(sheet.getByText(/d20: 4 → 10 \(Talento Confiável\)/)).toBeVisible();
+    await expectScreenPasses(p, `Talento Confiável, o resultado da busca ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o Talento Confiável na busca por armadilhas passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-035'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanReliableTalentScreens(browser, 'light', 1280);
+});
+
+test('o Talento Confiável na busca por armadilhas passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-035'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanReliableTalentScreens(browser, 'dark', 390);
+});
+
+async function scanJumpWarningScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = sizeOf(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade Salto ${Date.now()}`, true, true, { build: toren, sheet: torenSheet });
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Toren: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, { 'Capitão Goblin': [15, 3], 'Goblin 1': [4, 6], 'Goblin 2': [15, 11] });
+    await openSessionPage(p, campaignId);
+    await p.getByRole('button', { name: 'Mover', exact: true }).click();
+    await pickRadio(p, 'Saltar');
+    await expect(p.getByRole('heading', { name: 'Saltar Toren' })).toBeVisible();
+    await tapSquare(p, 6, 7);
+    await expect(p.getByText('Esse salto sai do alcance do Goblin 1. Ele pode atacar você de graça (ataque de oportunidade).')).toBeVisible();
+    await expectScreenPasses(p, `Saltar, o aviso de que sai do alcance ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o salto que sai do alcance de um inimigo passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-034', '@RN-21'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanJumpWarningScreens(browser, 'light', 1280);
+});
+
+test('o salto que sai do alcance de um inimigo passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-034', '@RN-21'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanJumpWarningScreens(browser, 'dark', 390);
 });

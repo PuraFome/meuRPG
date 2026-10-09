@@ -1363,7 +1363,7 @@
       "count": 1
     },
     "@typescript-eslint/no-magic-numbers": {
-      "count": 2
+      "count": 1
     },
     "complexity": {
       "count": 2
@@ -1574,14 +1574,6 @@
     },
     "@typescript-eslint/no-magic-numbers": {
       "count": 2
-    }
-  },
-  "src/app/pages/live-session/combat/shield-sheet/shield-sheet.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 1
     }
   },
   "src/app/pages/live-session/combat/start-combat/npc-row.ts": {

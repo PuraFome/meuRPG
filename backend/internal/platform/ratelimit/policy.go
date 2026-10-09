@@ -26,6 +26,10 @@ type Policy struct {
 	// Upload limits a user's image uploads: each one decodes up to 40
 	// megapixels.
 	Upload *Limiter
+	// Package limits a user's calls that read or write a whole campaign (start
+	// an export, begin, preview and create an import, download an export), and
+	// PackageParts the parts of an upload.
+	Package, PackageParts *Limiter
 }
 
 // NewPolicy builds the limiters. multiplier is 1 in production; it must be
@@ -56,6 +60,19 @@ func NewPolicy(multiplier float64) Policy {
 			PerClient:  Rate{Burst: 20, Every: 6 * time.Second},
 			Global:     Rate{Burst: 50, Every: time.Second},
 			MaxClients: 10000,
+		}, multiplier)),
+		// A master exports or imports a campaign a few times in a session, and each call
+		// reads or writes the whole campaign: six in a minute is plenty.
+		Package: New(scaled(Config{
+			PerClient:  Rate{Burst: 6, Every: 10 * time.Second}, //nolint:mnd // the policy\'s numbers
+			Global:     Rate{Burst: 20, Every: 5 * time.Second}, //nolint:mnd // the policy\'s numbers
+			MaxClients: 10000,                                   //nolint:mnd // as the other limiters
+		}, multiplier)),
+		// 200 MiB goes up in about forty parts of 5 MiB; a fast line sends them in seconds.
+		PackageParts: New(scaled(Config{
+			PerClient:  Rate{Burst: 60, Every: 500 * time.Millisecond},  //nolint:mnd // the policy\'s numbers
+			Global:     Rate{Burst: 200, Every: 100 * time.Millisecond}, //nolint:mnd // the policy\'s numbers
+			MaxClients: 10000,                                           //nolint:mnd // as the other limiters
 		}, multiplier)),
 	}
 }

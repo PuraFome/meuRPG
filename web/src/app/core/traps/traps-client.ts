@@ -18,7 +18,14 @@ import { CONNECT_TRANSPORT } from '../connect/transport';
 export type SearchDie =
   { readonly inApp: true } | { readonly face: number; readonly face2?: number };
 
-export type SearchSkill = 'perception' | 'investigation';
+/** The skill a search rolls: the two that always find, or `other` (any other skill of the sheet, named by the key sent with it). */
+export type SearchSkill = 'perception' | 'investigation' | 'other';
+
+const TRAP_SKILL: Readonly<Record<SearchSkill, TrapSearchSkill>> = {
+  perception: TrapSearchSkill.PERCEPTION,
+  investigation: TrapSearchSkill.INVESTIGATION,
+  other: TrapSearchSkill.OTHER,
+};
 
 /**
  * Thin wrapper around the trap calls of `PlayService` (MR-035, traps.proto): the player's search, the
@@ -35,10 +42,13 @@ export class TrapsClient {
     skill: SearchSkill,
     die: SearchDie,
     idempotencyKey: string,
+    otherSkillKey = '',
   ): Promise<SearchForTrapsResponse> {
     return this.client.searchForTraps({
       campaignId,
-      skill: skill === 'perception' ? TrapSearchSkill.PERCEPTION : TrapSearchSkill.INVESTIGATION,
+      skill: TRAP_SKILL[skill],
+      // Only with `other`: the server refuses a key without it, and the two that always find.
+      otherSkillKey: skill === 'other' ? otherSkillKey : '',
       idempotencyKey,
       roll:
         'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },

@@ -10,6 +10,7 @@ import { type TrapActivity, TrapSearchSkill } from '../../../gen/meurpg/play/v1/
 import { rollText } from '../combat/combat-dice';
 import { conditionName } from '../combat/conditions';
 import { listNames } from '../maps/scene-clues';
+import { skillKeyName } from './trap-search';
 
 /** One line of what traps did, ready to draw: an icon, the actor in bold and the rest of the sentence. */
 export interface TrapLine {
@@ -102,7 +103,11 @@ export function firingLines(
   return lines;
 }
 
-function skillName(skill: TrapSearchSkill): string {
+/** The skill a search rolled, by name: the two that always find, or the one named by the key of an "Outra perícia…" search. */
+function skillName(skill: TrapSearchSkill, otherKey = ''): string {
+  if (skill === TrapSearchSkill.OTHER) {
+    return otherKey ? skillKeyName(otherKey) : 'Outra perícia';
+  }
   return skill === TrapSearchSkill.PERCEPTION ? 'Percepção' : 'Investigação';
 }
 
@@ -124,7 +129,7 @@ export function activityLines(a: TrapActivity, master: boolean): TrapLine[] {
         id: a.id,
         icon: 'search',
         actor: s.characterName || 'Alguém',
-        text: ` procurou armadilhas (${skillName(s.skill)}): ${rolls.join(' e ')}, e ${outcome}`,
+        text: ` procurou armadilhas (${skillName(s.skill, s.otherSkillKey)}): ${rolls.join(' e ')}, e ${outcome}`,
       },
     ];
   }

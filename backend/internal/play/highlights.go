@@ -133,6 +133,10 @@ func tallyHighlights(events []playdb.ListEncounterCombatEventsRow, combatants []
 			if actor != nil && ev.Heal {
 				actor.healing += ev.Amount
 			}
+			// Lay on Hands: the hit points the touch gave back.
+			if actor != nil && ev.Res != nil {
+				actor.healing += ev.Res.Healed
+			}
 		case eventDamageRolled:
 			hits := ev.Settled
 			if len(hits) == 0 {

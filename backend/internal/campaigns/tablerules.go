@@ -56,8 +56,21 @@ func rulesFromRow(r campaignsdb.CampaignTableRule) tablerules.Rules {
 		DeathSavesHidden:    r.DeathSaves == deathSavesOwnerAndMaster,
 		CombatWithoutMap:    !r.CombatStartsWithMap,
 		FogOnNewMaps:        r.FogOnNewMaps,
+		HiddenAreaHits:      hiddenAreaHitsFromDB(r.HiddenAreaHits),
+		FeatsAllowed:        r.FeatsAllowed,
 		Reminders:           r.HouseRules,
+
+		EnemyReactionsAlways: r.EnemyReactions == enemyReactionsAlways,
 	}
+}
+
+// hiddenAreaHitsFromDB is the shared rule of a stored text: the default (reveal)
+// is the zero value.
+func hiddenAreaHitsFromDB(v string) tablerules.HiddenAreaHitRule {
+	if v == hiddenAreaHitsReveal {
+		return tablerules.HiddenAreaHitsReveal
+	}
+	return tablerules.HiddenAreaHitRule(v)
 }
 
 // The database's text values of the rules (the CHECK constraints of
@@ -69,6 +82,9 @@ const (
 	criticalMaxPlusRoll      = "max_plus_roll"
 	deathSavesVisibleToAll   = "visible_to_all"
 	deathSavesOwnerAndMaster = "owner_and_master"
+	hiddenAreaHitsReveal     = "reveal"
+	enemyReactionsWhenPossible = "only_when_possible"
+	enemyReactionsAlways       = "always"
 )
 
 // StoredTableRules returns the table's stored rules of a campaign: the
@@ -82,6 +98,16 @@ func (s *Service) StoredTableRules(ctx context.Context, tx pgx.Tx, campaignID st
 		return tablerules.Rules{}, err
 	}
 	return rulesFromRow(row), nil
+}
+
+// CampaignName is the campaign's name, read in tx (nil: the pool). Package characters labels
+// an exported content pack with it, through its CampaignNames interface.
+func (s *Service) CampaignName(ctx context.Context, tx pgx.Tx, campaignID string) (string, error) {
+	c, err := s.queriesIn(tx).GetCampaign(ctx, campaignID)
+	if err != nil {
+		return "", fmt.Errorf("get the campaign: %w", err)
+	}
+	return c.Name, nil
 }
 
 // CombatWithoutMap says whether "Iniciar combate" starts without a map by
@@ -151,6 +177,24 @@ var (
 		campaignsv1.DeathSaveVisibility_DEATH_SAVE_VISIBILITY_VISIBLE_TO_ALL:   deathSavesVisibleToAll,
 		campaignsv1.DeathSaveVisibility_DEATH_SAVE_VISIBILITY_OWNER_AND_MASTER: deathSavesOwnerAndMaster,
 	}
+	enemyReactionsToDB = map[campaignsv1.EnemyReactionsRule]string{
+		campaignsv1.EnemyReactionsRule_ENEMY_REACTIONS_RULE_ONLY_WHEN_POSSIBLE: enemyReactionsWhenPossible,
+		campaignsv1.EnemyReactionsRule_ENEMY_REACTIONS_RULE_ALWAYS:             enemyReactionsAlways,
+	}
+	enemyReactionsFromDB = map[string]campaignsv1.EnemyReactionsRule{
+		enemyReactionsWhenPossible: campaignsv1.EnemyReactionsRule_ENEMY_REACTIONS_RULE_ONLY_WHEN_POSSIBLE,
+		enemyReactionsAlways:       campaignsv1.EnemyReactionsRule_ENEMY_REACTIONS_RULE_ALWAYS,
+	}
+	hiddenAreaHitsToDB = map[campaignsv1.HiddenAreaHitRule]string{
+		campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_REVEAL:      hiddenAreaHitsReveal,
+		campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_KEEP_HIDDEN: string(tablerules.HiddenAreaHitsKeepHidden),
+		campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_ASK:         string(tablerules.HiddenAreaHitsAsk),
+	}
+	hiddenAreaHitsFromDBEnum = map[string]campaignsv1.HiddenAreaHitRule{
+		hiddenAreaHitsReveal:                        campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_REVEAL,
+		string(tablerules.HiddenAreaHitsKeepHidden): campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_KEEP_HIDDEN,
+		string(tablerules.HiddenAreaHitsAsk):        campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_ASK,
+	}
 	deathSavesFromDB = map[string]campaignsv1.DeathSaveVisibility{
 		deathSavesVisibleToAll:   campaignsv1.DeathSaveVisibility_DEATH_SAVE_VISIBILITY_VISIBLE_TO_ALL,
 		deathSavesOwnerAndMaster: campaignsv1.DeathSaveVisibility_DEATH_SAVE_VISIBILITY_OWNER_AND_MASTER,
@@ -164,7 +208,7 @@ func defaultRow(campaignID string) campaignsdb.CampaignTableRule {
 		CampaignID: campaignID, HitPointsRule: hitPointsPlayerChooses,
 		AbilityStandardArray: true, AbilityPointBuy: true, AbilityRoll4d6: true, AbilityTyped: true,
 		CriticalRule: criticalDoubledDice, DeathSaves: deathSavesVisibleToAll,
-		CombatStartsWithMap: true, FogOnNewMaps: false,
+		CombatStartsWithMap: true, FogOnNewMaps: false, HiddenAreaHits: hiddenAreaHitsReveal, EnemyReactions: enemyReactionsWhenPossible,
 	}
 }
 
@@ -191,9 +235,12 @@ func tableRulesToProto(r campaignsdb.CampaignTableRule, dice string) *campaignsv
 			StandardArray: r.AbilityStandardArray, PointBuy: r.AbilityPointBuy,
 			Rolled_4D6: r.AbilityRoll4d6, Typed: r.AbilityTyped,
 		},
-		Critical:   criticalFromDB[r.CriticalRule],
-		DeathSaves: deathSavesFromDB[r.DeathSaves],
-		HouseRules: append([]string{}, r.HouseRules...),
+		Critical:       criticalFromDB[r.CriticalRule],
+		DeathSaves:     deathSavesFromDB[r.DeathSaves],
+		HouseRules:     append([]string{}, r.HouseRules...),
+		HiddenAreaHits: hiddenAreaHitsFromDBEnum[r.HiddenAreaHits],
+		FeatsAllowed:   r.FeatsAllowed,
+		EnemyReactions: enemyReactionsFromDB[r.EnemyReactions],
 	}
 }
 
@@ -280,6 +327,14 @@ func tableRulesParams(msg *campaignsv1.TableRules) (campaignsdb.UpsertTableRules
 	if !ok {
 		return none, "", invalidArgument("rules.death_saves", errors.New("must be visible_to_all or owner_and_master"))
 	}
+	hidden, ok := hiddenAreaHitsToDB[msg.GetHiddenAreaHits()]
+	if !ok {
+		return none, "", invalidArgument("rules.hidden_area_hits", errors.New("must be reveal, keep_hidden or ask"))
+	}
+	enemy, ok := enemyReactionsToDB[msg.GetEnemyReactions()]
+	if !ok {
+		return none, "", invalidArgument("rules.enemy_reactions", errors.New("must be only_when_possible or always"))
+	}
 	am := msg.GetAbilityMethods()
 	if !am.GetStandardArray() && !am.GetPointBuy() && !am.GetRolled_4D6() && !am.GetTyped() {
 		return none, "", invalidArgument("rules.ability_methods", errors.New("must allow at least one method"))
@@ -301,7 +356,7 @@ func tableRulesParams(msg *campaignsv1.TableRules) (campaignsdb.UpsertTableRules
 		AbilityRoll4d6: am.GetRolled_4D6(), AbilityTyped: am.GetTyped(),
 		CriticalRule: crit, DeathSaves: deaths,
 		CombatStartsWithMap: msg.GetCombatStartsWithMap(), FogOnNewMaps: msg.GetFogOnNewMaps(),
-		HouseRules: houseRules,
+		HouseRules: houseRules, HiddenAreaHits: hidden, FeatsAllowed: msg.GetFeatsAllowed(), EnemyReactions: enemy,
 	}, dice, nil
 }
 

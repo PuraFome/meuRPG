@@ -216,7 +216,20 @@ func (x *deriver) routes(act Action) []Action {
 const (
 	improvedCriticalFeature = "feature:improved-critical"
 	superiorCriticalFeature = "feature:superior-critical"
+	// reliableTalentFeature is the rogue's Reliable Talent (SRD 5.1, Rogue,
+	// level 11).
+	reliableTalentFeature = "feature:reliable-talent"
 )
+
+// brutalCriticalDice is how many extra weapon damage dice each Brutal Critical
+// feature of the barbarian adds to a melee critical hit (SRD 5.1, Barbarian:
+// one at level 9, two at 13, three at 17). A character has them all; the
+// highest counts.
+var brutalCriticalDice = map[string]int{
+	"feature:brutal-critical-1-die":  1,
+	"feature:brutal-critical-2-dice": 2, //nolint:mnd // the SRD table: two extra dice at level 13
+	"feature:brutal-critical-3-dice": 3, //nolint:mnd // the SRD table: three extra dice at level 17
+}
 
 // twoWeaponFightingStyles are the fighting styles that keep the ability
 // modifier on the damage of the bonus action attack.
@@ -226,8 +239,9 @@ var twoWeaponFightingStyles = []string{
 }
 
 // criticalAndStyles fills Derived.CriticalRange (20, 19 with Improved
-// Critical, 18 with Superior Critical) and Derived.TwoWeaponFighting from the
-// features the character has.
+// Critical, 18 with Superior Critical), Derived.TwoWeaponFighting,
+// Derived.BrutalCriticalDice and Derived.ReliableTalent from the features the
+// character has.
 func (x *deriver) criticalAndStyles() {
 	x.d.CriticalRange = 20
 	for _, a := range x.active {
@@ -239,6 +253,10 @@ func (x *deriver) criticalAndStyles() {
 			x.d.CriticalRange = min(x.d.CriticalRange, 18)
 		case a.owner == improvedCriticalFeature:
 			x.d.CriticalRange = min(x.d.CriticalRange, 19)
+		case a.owner == reliableTalentFeature:
+			x.d.ReliableTalent = true
+		case brutalCriticalDice[a.owner] > 0:
+			x.d.BrutalCriticalDice = max(x.d.BrutalCriticalDice, brutalCriticalDice[a.owner])
 		case slices.Contains(twoWeaponFightingStyles, a.owner):
 			x.d.TwoWeaponFighting = true
 		}

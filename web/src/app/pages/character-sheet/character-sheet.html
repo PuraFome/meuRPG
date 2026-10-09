@@ -188,14 +188,13 @@
 
       <div class="sheet" [class.sheet--pnotes]="!vm.isMaster">
         <app-ability-medallions class="sheet__abilities" [abilities]="full.abilities" />
-        <app-proficiency-column class="sheet__proficiencies" [sheet]="full" />
-        <app-combat-column class="sheet__combat" [sheet]="full">
+        <app-combat-column class="sheet__combat" [sheet]="full" [vitals]="vitals()" [liveSlots]="hasLiveSlots()">
+          <!-- The live counters of an open session (PM-07b 7), right after the combat numbers. -->
+          @if (vitals(); as live) {
+            <app-resource-counters resources [vitals]="live" />
+          }
           <!-- MR-037: the character's creatures, right after Combate and Magias (E9-10). -->
-          @if (vm.characterKind === 'player' && vm.state === 'pending') {
-            <p creatures class="mr-muted sheet__pending-note">
-              Aparece quando o mestre aprovar o personagem.
-            </p>
-          } @else if (vm.characterKind === 'player') {
+          @if (vm.characterKind === 'player' && vm.state !== 'pending') {
             <app-creatures-panel
               creatures
               [campaignId]="vm.campaignId"
@@ -208,16 +207,19 @@
             />
           }
         </app-combat-column>
+        <app-proficiency-column class="sheet__proficiencies" [sheet]="full" />
         <div class="sheet__traits">
-          <!-- The player's own notes (E8-07); the master never gets this panel (RN-20). -->
-          @if (!vm.isMaster && vm.state === 'pending') {
-            <p class="mr-muted sheet__pnotes sheet__pending-note">
-              Aparece quando o mestre aprovar o personagem.
-            </p>
-          } @else if (!vm.isMaster) {
-            <app-notes-panel class="sheet__pnotes" [campaignId]="vm.campaignId" />
-          }
           <app-features-panel class="sheet__features" [sheet]="full" />
+          <!-- The player's own notes (E8-07); the master never gets this panel (RN-20). Under the game numbers: first in the fourth column from 1200px, one row that opens on a phone and a tablet. -->
+          @if (vm.characterKind === 'player' && vm.state === 'pending') {
+            <!-- A pending member has no notes and no creatures yet: one line says when they appear. -->
+            <section class="mr-panel sheet__pnotes" aria-labelledby="pending-panels-title">
+              <h2 class="mr-panel__title" id="pending-panels-title">Anotações e criaturas</h2>
+              <p class="mr-muted sheet__pending-note">Aparece quando o mestre aprovar o personagem.</p>
+            </section>
+          } @else if (!vm.isMaster) {
+            <app-notes-panel class="sheet__pnotes" [campaignId]="vm.campaignId" [collapsible]="narrow()" />
+          }
           @if (vm.story) {
             <app-story-panel class="sheet__tstory" [vm]="vm" (changed)="replaceVm($event)" />
           }

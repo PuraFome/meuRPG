@@ -1,0 +1,213 @@
+// PM-09 state 1: back link, the campaign's name with "Configurações da campanha", then the main panel (what
+// goes, what never goes, the file, "Exportar campanha") with the export's cards in a column beside it from
+// 1024px; on a phone the cards stack under the main panel and every control is 48px.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+
+  @media (min-width: 768px) {
+    gap: var(--mr-space-5);
+  }
+}
+
+.back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: -10px 0 -8px;
+  font-size: 16px;
+  color: var(--mr-ink-muted);
+  text-decoration: none;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &:hover {
+    color: var(--mr-accent-text);
+    text-decoration: underline;
+  }
+}
+
+.page-status {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.page-action,
+.retry {
+  margin-top: var(--mr-space-3);
+  min-height: 48px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-4);
+  align-items: start;
+
+  @media (min-width: 1024px) {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: var(--mr-space-5);
+  }
+}
+
+.main,
+.side > .mr-panel {
+  padding: var(--mr-space-4) var(--mr-space-5);
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+}
+
+.lead,
+.hint {
+  margin: 0 0 var(--mr-space-3);
+  font-size: 16px;
+  line-height: 22px;
+  color: var(--mr-ink-muted);
+}
+
+.hint {
+  margin: var(--mr-space-3) 0 0;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.main .hint {
+  margin-bottom: var(--mr-space-4);
+}
+
+.list-title {
+  margin: var(--mr-space-4) 0 var(--mr-space-2);
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 700;
+}
+
+.marks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 16px;
+  line-height: 22px;
+
+  li {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--mr-space-2);
+  }
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
+    font-size: 20px;
+  }
+}
+
+.marks--yes .mat-icon {
+  color: var(--mr-success-ink);
+}
+
+.marks--no .mat-icon {
+  color: var(--mr-danger-ink);
+}
+
+// "Mirathel.meurpg.zip        cerca de 84 MB"
+.file {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--mr-space-1) var(--mr-space-3);
+  margin: var(--mr-space-5) 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.file__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.file__size {
+  white-space: nowrap;
+}
+
+.action-error {
+  margin-bottom: var(--mr-space-3);
+}
+
+// 48px, and the full width on a phone.
+.primary,
+.download,
+.wide {
+  min-height: 48px;
+}
+
+.wide,
+.download {
+  width: 100%;
+}
+
+.primary {
+  width: 100%;
+
+  @media (min-width: 600px) {
+    width: auto;
+  }
+}
+
+.download {
+  margin-top: var(--mr-space-3);
+
+  @media (min-width: 600px) {
+    width: auto;
+  }
+}
+
+.bar {
+  display: block;
+  height: 8px;
+  box-sizing: border-box;
+  border: 1px solid var(--mr-control-line);
+  border-radius: 4px;
+  background: var(--mr-rule);
+  overflow: hidden;
+}
+
+.bar__fill {
+  display: block;
+  height: 100%;
+  background: var(--mr-accent);
+  transition: width 0.2s linear;
+}
+
+.progress-text {
+  margin: var(--mr-space-3) 0;
+  font-size: 16px;
+  line-height: 22px;
+  color: var(--mr-ink-muted);
+}
+
+.notice__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

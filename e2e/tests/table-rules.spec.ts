@@ -4,7 +4,7 @@ import { layersOf, mapToPaint } from './editor-support';
 import { campaignWithEmptyPlayer, factor, masterCampaign, method, setTableRulesRPC, tableRulesOf, wallSquares } from './table-rules-support';
 import { callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 import { endOpenSessionRPC } from './live-session-support';
-import { tableForLevelUp, toren } from './levelup-support';
+import { passClassStep, tableForLevelUp, toren } from './levelup-support';
 import { pickRadio } from './move-support';
 import { awardXpRPC, tableForXp } from './xp-support';
 
@@ -344,13 +344,15 @@ test(
 
       // The default: the player chooses, two cards.
       await p.goto(page);
-      await expect(p.getByText('Passo 1 de 2 · Vida')).toBeVisible();
+      await passClassStep(p);
+      await expect(p.getByText('Passo 2 de 3 · Vida')).toBeVisible();
       await expect(p.getByRole('radio', { name: /Média:/ })).toBeVisible();
       await expect(p.getByRole('radio', { name: /Rolar 1d10/ })).toBeVisible();
 
       // "Rolar": only the die, and the server refuses the average on its own.
       await setTableRulesRPC(m, campaignId, { hitPoints: 'HIT_POINTS_RULE_ROLL' });
       await p.goto(page);
+      await passClassStep(p);
       await expect(p.getByText('A mesa pede que todos rolem o dado de vida. A média não é oferecida.')).toBeVisible();
       await expect(p.getByRole('radio', { name: /Média:/ })).toHaveCount(0);
       await expect(p.getByText('Falta rolar o dado de vida.')).toBeVisible();
@@ -360,6 +362,7 @@ test(
       // "A média": only the average, no die.
       await setTableRulesRPC(m, campaignId, { hitPoints: 'HIT_POINTS_RULE_AVERAGE' });
       await p.goto(page);
+      await passClassStep(p);
       await expect(p.getByText('A mesa usa a média: todos recebem o valor médio do dado de vida. O dado não é oferecido.')).toBeVisible();
       await expect(p.getByRole('radio', { name: /Rolar 1d10/ })).toHaveCount(0);
       await expect(p.getByRole('button', { name: /Rolar no app/ })).toHaveCount(0);
@@ -452,6 +455,35 @@ test(
       await expect(p.getByText(/Dados digitados em/)).toBeVisible();
       const after = await callRPC(p, 'meurpg.characters.v1.CharacterService/GetAbilityRolls', { campaignId });
       expect((await after.json()).rolls.sets).toHaveLength(6);
+    } finally {
+      await master.close();
+      await player.close();
+    }
+  },
+);
+
+test(
+  '"Reações dos inimigos": o mestre muda para "Sempre", salva, e o jogador lê a regra em palavras @PM-04',
+  { tag: '@PM-04' },
+  async ({ browser }) => {
+    const master = await newSignedInContext(browser, 'Mestre Teste');
+    const player = await newSignedInContext(browser, 'Jogador Teste');
+    try {
+      const m = await master.newPage();
+      const p = await player.newPage();
+      await Promise.all([m.goto('/'), p.goto('/')]);
+      const campaignId = await campaignWithEmptyPlayer(m, p, `Reações ${Date.now()}`);
+      await m.goto(`/campaigns/${campaignId}/rules`);
+      const group = m.getByRole('radiogroup', { name: 'Reações dos inimigos' });
+      await expect(group.getByRole('radio', { name: /Só quando um inimigo pode reagir/ })).toBeChecked();
+      await pickRadio(group, /^Sempre/);
+      await m.getByRole('button', { name: 'Salvar regras' }).click();
+      await expect.poll(async () => (await tableRulesOf(m, campaignId)).rules.enemyReactions).toBe('ENEMY_REACTIONS_RULE_ALWAYS');
+
+      await p.goto(`/campaigns/${campaignId}/rules`);
+      await expect(p.getByText('Reações dos inimigos', { exact: true })).toBeVisible();
+      await expect(p.getByText('Sempre', { exact: true })).toBeVisible();
+      await expect(p.getByRole('radio')).toHaveCount(0);
     } finally {
       await master.close();
       await player.close();

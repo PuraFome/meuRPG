@@ -364,64 +364,151 @@ func duelist(weapons ...string) Build {
 	return b
 }
 
-// TestDuelingAddsTwoDamageToTheOneMeleeWeaponInOneHand: SRD 5.1 Dueling gives +2 to
-// damage while a melee weapon is wielded in one hand and no other weapon is. The sheet
-// lists the weapons carried, not the ones in hand, so the bonus is applied to the
-// sole weapon of the sheet, in the damage it rolls in one hand, and left as a note for
-// the master when there are other weapons.
-func TestDuelingAddsTwoDamageToTheOneMeleeWeaponInOneHand(t *testing.T) {
+// TestDuelingAddsTwoDamageToEveryOneHandedMeleeWeapon: SRD 5.1 Dueling gives +2 to
+// damage while a melee weapon is wielded in one hand and no other weapon is. The
+// sheet lists the weapons carried, not the ones in hand, so the bonus is applied to
+// the damage every one-handed melee weapon rolls in one hand, and the attack line
+// says the condition for the table to check.
+func TestDuelingAddsTwoDamageToEveryOneHandedMeleeWeapon(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
-	damageOf := func(d Derived, key string) string {
+	const note = "Inclui +2 de Estilo de Luta: Duelismo (sem outra arma na mão)"
+	attack := func(d Derived, key string) Attack {
 		a, ok := attackOf(d, key)
 		if !ok {
 			t.Fatalf("no attack for %s in %+v", key, d.Attacks)
 		}
-		return a.Damage
+		return a
 	}
 	dueling := func(d Derived) bool {
 		return slices.ContainsFunc(d.Hints, func(h Hint) bool { return h.Source == "feature:fighter-fighting-style-dueling" })
 	}
 
-	// STR 16 (+3): a longsword rolls 1d8 + 3, +2 for Dueling.
+	// STR 16 (+3): a longsword rolls 1d8 + 3, +2 for Dueling, with the condition written on the line.
 	d := Derive(duelist("equipment:longsword"), c)
-	if got := damageOf(d, "equipment:longsword"); got != "1d8+5" {
-		t.Errorf("longsword damage with Dueling = %q, want 1d8+5", got)
-	}
-	if a, _ := attackOf(d, "equipment:longsword"); a.VersatileDamage != "1d10+3" {
-		t.Errorf("longsword two-handed damage = %q, want 1d10+3 (no Dueling with two hands)", a.VersatileDamage)
+	if a := attack(d, "equipment:longsword"); a.Damage != "1d8+5" || a.VersatileDamage != "1d10+3" || a.DamageNotePT != note {
+		t.Errorf("longsword = %q / %q (%q), want 1d8+5, 1d10+3 two-handed and the Dueling note", a.Damage, a.VersatileDamage, a.DamageNotePT)
 	}
 	if dueling(d) {
 		t.Error("the applied bonus is also a hint for the master to apply again")
 	}
 
-	// A weapon wielded with two hands gets nothing.
+	// A sword and a bow: the sword gets the bonus, the bow does not.
+	d = Derive(duelist("equipment:longsword", "equipment:longbow"), c)
+	if a := attack(d, "equipment:longsword"); a.Damage != "1d8+5" || a.DamageNotePT != note {
+		t.Errorf("longsword with a bow carried = %q (%q), want 1d8+5 with the note", a.Damage, a.DamageNotePT)
+	}
+	if a := attack(d, "equipment:longbow"); a.Damage != "1d8+2" || a.DamageNotePT != "" {
+		t.Errorf("longbow = %q (%q), want 1d8+2 and no note", a.Damage, a.DamageNotePT)
+	}
+
+	// Two melee weapons: each one-handed line carries the bonus and the condition.
+	d = Derive(duelist("equipment:longsword", "equipment:dagger"), c)
+	if a := attack(d, "equipment:longsword"); a.Damage != "1d8+5" || a.DamageNotePT != note {
+		t.Errorf("longsword beside a dagger = %q (%q)", a.Damage, a.DamageNotePT)
+	}
+	if a := attack(d, "equipment:dagger"); a.Damage != "1d4+5" || a.DamageNotePT != note {
+		t.Errorf("dagger beside a longsword = %q (%q), want 1d4+5 with the note", a.Damage, a.DamageNotePT)
+	}
+
+	// A two-handed weapon gets nothing; with nothing to apply it to, the bonus stays a hint.
 	d = Derive(duelist("equipment:greatsword"), c)
-	if got := damageOf(d, "equipment:greatsword"); got != "2d6+3" {
-		t.Errorf("greatsword damage = %q, want 2d6+3", got)
+	if a := attack(d, "equipment:greatsword"); a.Damage != "2d6+3" || a.DamageNotePT != "" {
+		t.Errorf("greatsword = %q (%q), want 2d6+3 and no note", a.Damage, a.DamageNotePT)
 	}
 	if !dueling(d) {
 		t.Error("with no weapon to apply it to, the bonus should stay a hint")
 	}
 
-	// Another weapon on the sheet: the app cannot tell what is in hand, so it applies nothing and leaves the hint.
-	d = Derive(duelist("equipment:longsword", "equipment:dagger"), c)
-	if got := damageOf(d, "equipment:longsword"); got != "1d8+3" {
-		t.Errorf("longsword damage with two weapons carried = %q, want 1d8+3", got)
-	}
-	if !dueling(d) {
-		t.Error("two weapons carried: the Dueling bonus should stay a hint for the master")
-	}
-
-	// A ranged weapon is not melee.
-	if got := damageOf(Derive(duelist("equipment:longbow"), c), "equipment:longbow"); got != "1d8+2" {
-		t.Errorf("longbow damage = %q, want 1d8+2 (DEX 14 +2, no Dueling)", got)
-	}
-
-	// Without the style there is no bonus.
+	// Without the style there is no bonus and no note.
 	b := duelist("equipment:longsword")
 	b.FeatureChoices = nil
-	if got := damageOf(Derive(b, c), "equipment:longsword"); got != "1d8+3" {
-		t.Errorf("longsword damage without Dueling = %q, want 1d8+3", got)
+	if a := attack(Derive(b, c), "equipment:longsword"); a.Damage != "1d8+3" || a.DamageNotePT != "" {
+		t.Errorf("longsword without Dueling = %q (%q), want 1d8+3", a.Damage, a.DamageNotePT)
+	}
+}
+
+// Brutal Critical (SRD 5.1, Barbarian) adds one weapon die to a melee critical hit
+// at level 9, two at 13 and three at 17; nobody else has it.
+func TestBrutalCriticalDiceFollowTheBarbarianLevel(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for _, tc := range []struct {
+		class string
+		level int
+		want  int
+	}{
+		{"class:barbarian", 8, 0},
+		{"class:barbarian", 9, 1},
+		{"class:barbarian", 12, 1},
+		{"class:barbarian", 13, 2},
+		{"class:barbarian", 16, 2},
+		{"class:barbarian", 17, 3},
+		{"class:barbarian", 20, 3},
+		{"class:fighter", 20, 0},
+	} {
+		if got := Derive(standard(tc.class, tc.level), c).BrutalCriticalDice; got != tc.want {
+			t.Errorf("%s %d: BrutalCriticalDice = %d, want %d", tc.class, tc.level, got, tc.want)
+		}
+	}
+}
+
+// Reliable Talent (SRD 5.1, Rogue 11) lifts a d20 of 9 or lower to 10 on an ability
+// check that adds the proficiency bonus: a skill the sheet is proficient in, with
+// expertise too, and never a plain ability check, a saving throw or a skill without
+// proficiency.
+func TestReliableTalentCountsOnlyForChecksThatAddProficiency(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	rogue := func(level int) Build {
+		b := standard("class:rogue", level)
+		b.SkillProficiencies = []string{"skill:acrobatics", "skill:stealth"}
+		b.Expertise = []string{"skill:stealth", "skill:perception"}
+		return b
+	}
+	checks := func(d Derived, keys ...string) map[string]bool {
+		t.Helper()
+		actions := make([]SceneAction, len(keys))
+		for i, k := range keys {
+			actions[i] = SceneAction{Key: k}
+		}
+		opts, err := SceneOptions(d, actions)
+		if err != nil {
+			t.Fatalf("SceneOptions: %v", err)
+		}
+		out := map[string]bool{}
+		for _, o := range opts {
+			out[o.Action.Key] = o.ReliableTalent
+		}
+		return out
+	}
+	keys := []string{"skill:acrobatics", "skill:stealth", "skill:arcana", "ability:dex", "save:dex"}
+
+	if d := Derive(rogue(11), c); !d.ReliableTalent {
+		t.Fatal("a level 11 rogue has no Reliable Talent")
+	} else {
+		got := checks(d, keys...)
+		want := map[string]bool{"skill:acrobatics": true, "skill:stealth": true, "skill:arcana": false, "ability:dex": false, "save:dex": false}
+		for k, w := range want {
+			if got[k] != w {
+				t.Errorf("level 11 rogue, %s: ReliableTalent = %v, want %v", k, got[k], w)
+			}
+		}
+	}
+	if d := Derive(rogue(10), c); d.ReliableTalent || checks(d, "skill:acrobatics")["skill:acrobatics"] {
+		t.Error("a level 10 rogue has Reliable Talent")
+	}
+	if Derive(standard("class:fighter", 20), c).ReliableTalent {
+		t.Error("a fighter has Reliable Talent")
+	}
+}
+
+func TestReliableTalentFace(t *testing.T) {
+	t.Parallel()
+	for face, want := range map[int]int{1: 10, 6: 10, 9: 10, 10: 10, 14: 14, 20: 20} {
+		got, treated := ReliableTalentFace(face)
+		if got != want || treated != (face < 10) {
+			t.Errorf("ReliableTalentFace(%d) = %d, %v; want %d, %v", face, got, treated, want, face < 10)
+		}
 	}
 }

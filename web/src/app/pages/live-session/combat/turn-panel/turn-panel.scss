@@ -87,16 +87,23 @@
 // bonus action and the reaction ("Disponível" is an open circle and the
 // word, never a check; "Usada" is a struck, dashed tile with a filled
 // circle and a cross), and the movement with a bar.
+// On a phone the four are one row of compact chips, so the attacks and spells
+// under the title are on the first screen; from 768px they are the tiles.
 .eco {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
 
+  // A 320px phone has 62px for each chip: two by two there, so no word breaks in the middle.
+  @media (max-width: 359.98px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   @media (min-width: 768px) {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
   }
 }
 
@@ -104,13 +111,19 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
   box-sizing: border-box;
-  min-height: 88px;
-  padding: 10px 12px;
+  min-height: 56px;
+  padding: 6px 5px;
   border: 1.5px solid var(--mr-ink);
   border-radius: var(--mr-radius-md);
   background: var(--mr-surface);
+
+  @media (min-width: 768px) {
+    gap: 6px;
+    min-height: 88px;
+    padding: 10px 12px;
+  }
 }
 
 .tile--used {
@@ -123,16 +136,38 @@
 }
 
 .tile__name {
-  padding-right: 30px;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 700;
-  line-height: 20px;
+  line-height: 16px;
+
+  @media (min-width: 768px) {
+    padding-right: 30px;
+    font-size: 16px;
+    line-height: 20px;
+  }
 }
 
 .tile__word {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 18px;
+  line-height: 15px;
+
+  @media (min-width: 768px) {
+    font-size: 14px;
+    line-height: 18px;
+  }
+}
+
+// On a phone the circle sits in front of the word, on the line under the name.
+.tile__state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 4px;
+
+  @media (min-width: 768px) {
+    display: contents;
+  }
 }
 
 .tile--move .tile__word {
@@ -141,22 +176,35 @@
 }
 
 .dot {
-  position: absolute;
-  top: 10px;
-  right: 10px;
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  width: 22px;
-  height: 22px;
-  border: 2px solid var(--mr-ink);
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--mr-ink);
   border-radius: 50%;
 
   .mat-icon {
-    width: 14px;
-    height: 14px;
-    font-size: 14px;
+    width: 10px;
+    height: 10px;
+    font-size: 10px;
+  }
+
+  @media (min-width: 768px) {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 22px;
+    height: 22px;
+    border-width: 2px;
+
+    .mat-icon {
+      width: 14px;
+      height: 14px;
+      font-size: 14px;
+    }
   }
 }
 
@@ -169,14 +217,41 @@
 .tile__meters {
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 26px;
-  line-height: 28px;
+  font-size: 16px;
+  line-height: 18px;
 
   small {
+    display: block;
     font-family: var(--mr-font-sans);
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 400;
+    line-height: 14px;
     color: var(--mr-ink-muted);
+  }
+
+  @media (min-width: 768px) {
+    font-size: 26px;
+    line-height: 28px;
+
+    small {
+      display: inline;
+      font-size: 14px;
+      line-height: inherit;
+    }
+  }
+}
+
+// The movement's free squares and the spent distance are for the tile: on a
+// phone the chip keeps the distance left and the bar, and the words stay for a
+// screen reader.
+.tile--move .tile__word {
+  @media (max-width: 767.98px) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
 

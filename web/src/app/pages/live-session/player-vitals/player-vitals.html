@@ -1,5 +1,14 @@
 @let v = vitals();
 <section class="vitals" aria-labelledby="vitals-name">
+  <!-- The Escudo Arcano's end: said once, politely, for a few seconds; the focus stays where it is. -->
+  <div class="ended-live" role="status">
+    @if (shieldEnded(); as sentence) {
+      <p class="ended">
+        <mat-icon aria-hidden="true">shield</mat-icon>
+        <span><b>{{ sentence.lead }}</b> {{ sentence.rest }}</span>
+      </p>
+    }
+  </div>
   <div class="vitals__head">
     <h2 class="vitals__name" id="vitals-name">{{ v.name }}</h2>
     @if (sheet()?.summary; as summary) {
@@ -12,21 +21,33 @@
     <app-wild-pools class="top__pools" [beast]="p.beast" [character]="p.character" />
   } @else {
   <div class="hp">
-    <p class="hp__numbers">
+    <p class="mr-visually-hidden">{{ speech() }}</p>
+    <p class="hp__numbers" aria-hidden="true">
       <span class="hp__current">{{ v.hitPointsCurrent }}</span>
       <span class="hp__of">
-        <span class="hp__max">de {{ v.hitPointsMax }}</span>
+        <span class="hp__top">
+          <span class="hp__max">de {{ v.hitPointsMax }}</span>
+          @if (aid() > 0) {
+            <span class="hp__aid">{{ aidTag(aid()) }}</span>
+          }
+        </span>
         <span class="hp__label">Pontos de vida</span>
+        @if (aid() > 0) {
+          <span class="hp__sheet">máximo {{ sheetMaximum() }} da ficha</span>
+        }
       </span>
     </p>
-    <div class="hp__bar" aria-hidden="true">
-      <div class="hp__fill" [style.width.%]="percent()"></div>
+    <div class="hp__bar" [class.hp__bar--aid]="aid() > 0" role="img" [attr.aria-label]="barLabel()">
+      <div class="hp__fill" [style.width.%]="aid() > 0 ? bar().solid : percent()"></div>
+      @if (aid() > 0) {
+        <div class="hp__fill hp__fill--aid" [style.width.%]="bar().striped"></div>
+      }
     </div>
   </div>
   }
 
   <dl class="stats">
-    <div class="shield">
+    <div class="shield" [class.shield--sum]="shieldSum() !== ''">
       <dt class="stats__label">{{ acLabel() }}</dt>
       <dd class="shield__value">
         <svg class="shield__shape" width="96" height="112" viewBox="0 0 96 112" aria-hidden="true">
@@ -34,6 +55,9 @@
         </svg>
         <span class="shield__number">{{ armorClass() ?? '–' }}</span>
       </dd>
+      @if (shieldSum(); as sum) {
+        <span class="shield__sum" aria-hidden="true">{{ sum }}</span>
+      }
     </div>
     @if (!compact()) {
     <div class="box">
@@ -43,13 +67,54 @@
     <div class="box">
       <dt class="stats__label">
         Dados de vida
-        <span class="box__words">{{ usedWords(v.hitDiceUsed, v.hitDiceTotal) }}</span>
+        <span class="box__words"><span class="mr-visually-hidden">Restam </span>{{ diceLeft() }}</span>
       </dt>
       <dd class="box__value" [class.box__value--long]="v.hitDice.length > 4">{{ v.hitDice }}</dd>
     </div>
     }
   </dl>
   </div>
+
+  <!-- The labels of the effects and states under the two cards; a live region, so they are said when they come and go. -->
+  <div class="effects" role="status">
+    @if (down() && !pools()) {
+      <app-effect-pill tone="down">Inconsciente</app-effect-pill>
+      @if (deathSaves(); as saves) {
+        <app-effect-pill tone="neutral">Testes contra a morte: {{ saves }}</app-effect-pill>
+      }
+    }
+    @if (shieldBonus() > 0) {
+      <app-effect-pill tone="shield" icon="shield">{{ shieldLabel(shieldBonus()) }}</app-effect-pill>
+    }
+    @if (aid() > 0) {
+      <app-effect-pill tone="aid" icon="favorite_border">{{ aidLabel(aid()) }}</app-effect-pill>
+    }
+    @if (woke()) {
+      <app-effect-pill tone="ok" icon="check">Acordado · testes contra a morte zerados</app-effect-pill>
+    }
+  </div>
+
+  @if (!compact()) {
+    <div class="dice">
+      <button
+        matButton="outlined"
+        type="button"
+        class="js-hit-dice"
+        [class.mr-button--off]="noDiceLeft()"
+        [disabled]="noDiceLeft()"
+        disabledInteractive
+        [attr.aria-describedby]="noDiceLeft() ? 'dice-reason' : null"
+        (click)="spendHitDice()"
+      >
+        <mat-icon aria-hidden="true">casino</mat-icon>Gastar dados de vida
+      </button>
+      @if (noDiceLeft()) {
+        <p class="dice__reason" id="dice-reason">
+          <mat-icon aria-hidden="true">block</mat-icon>Não há dados de vida para gastar.
+        </p>
+      }
+    </div>
+  }
 
   @if (pools()) {
     <p class="mr-panel nospells"><mat-icon aria-hidden="true">block</mat-icon><span><b>Sem magias</b> na forma de fera.</span></p>
@@ -79,7 +144,7 @@
     >
     <p class="vitals__lock">
       <mat-icon aria-hidden="true">lock</mat-icon>
-      Durante a sessão, só o mestre muda esses números.
+      Durante a sessão, só o mestre muda esses números, fora os dados de vida que você gasta.
     </p>
   </div>
   }

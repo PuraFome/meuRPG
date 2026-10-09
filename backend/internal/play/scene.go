@@ -508,7 +508,7 @@ func (s *Service) sceneRolls(ctx context.Context, m authz.Membership, scene link
 func sceneRollToProto(id, characterID, characterName string, at time.Time, ev sceneRollEvent, showPassed bool) *playv1.SceneRoll {
 	out := &playv1.SceneRoll{
 		Id: id, ActionId: ev.ActionID, CharacterId: characterID, CharacterName: characterName,
-		Roll:     diceRoll(1, 20, []int32{ev.D20}, ev.Modifier, ev.Total, ev.Physical),
+		Roll:     treatedRoll(ev.D20, ev.Modifier, ev.Total, ev.Physical),
 		RolledAt: timestamppb.New(at),
 	}
 	if showPassed {
@@ -708,7 +708,7 @@ func (s *Service) RollSceneCheck(
 		}
 
 		bonus := options[0].Bonus
-		face, roll, err := s.d20(in, bonus)
+		face, roll, err := s.checkD20(in, bonus, options[0].ReliableTalent)
 		if err != nil {
 			return err
 		}

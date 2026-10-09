@@ -63,6 +63,8 @@ export class ScenePlayer {
   readonly state = input.required<SceneState>();
   readonly diceMode = input.required<DiceMode>();
   readonly dicePreference = input.required<DicePreference>();
+  /** The skills Talento Confiável raises for the character (the sheet's), for the typed die's preview. */
+  readonly reliableTalent = input<readonly string[]>([]);
 
   protected readonly scene = computed(() => this.state().scene());
   /** The scene's name with "A" tied to the next word (no break after it). */
@@ -104,6 +106,7 @@ export class ScenePlayer {
       diceMode: this.diceMode(),
       preference: this.dicePreference(),
       state: this.state(),
+      reliableTalent: this.reliableTalent(),
     }).subscribe(() => this.focusRow(action.id));
   }
 

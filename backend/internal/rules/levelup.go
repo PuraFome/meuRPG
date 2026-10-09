@@ -26,9 +26,25 @@ import (
 // Reasons of a LevelUpError. They are stable codes: the app maps each one to
 // its own Portuguese copy, so nobody parses Message.
 const (
-	// LevelUpReasonClass: not exactly one class of the character, one level up
-	// (a new class, which is multiclassing, stays with the master's editor).
+	// LevelUpReasonClass: not exactly one class of the character, one level up,
+	// or one new class at its first level, last in the list (multiclassing).
 	LevelUpReasonClass = "class"
+	// LevelUpReasonMulticlassPrerequisite: the new class asks for an ability the
+	// character does not have at 13 (SRD 5.1, "Multiclassing", "Prerequisites").
+	// ClassKey is the new class, and Ability, Minimum and Have the missing score.
+	LevelUpReasonMulticlassPrerequisite = "multiclass_prerequisite"
+	// LevelUpReasonMulticlassPrerequisiteCurrent: a class the character already has
+	// asks for an ability the character does not have at 13, which closes every new
+	// class to it. ClassKey is the class the character has.
+	LevelUpReasonMulticlassPrerequisiteCurrent = "multiclass_prerequisite_current"
+	// LevelUpReasonProficiencyChoice: not exactly the skill the new class's
+	// multiclass proficiencies let the player choose, or one that is not on the
+	// class's list or that the character already has.
+	LevelUpReasonProficiencyChoice = "proficiency_choice"
+	// LevelUpReasonInstrumentChoice: not exactly the musical instrument the bard's
+	// multiclass proficiencies let the player choose, or one the character already
+	// has.
+	LevelUpReasonInstrumentChoice = "instrument_choice"
 	// LevelUpReasonMaxLevel: the character is already level 20.
 	LevelUpReasonMaxLevel = "max_level"
 	// LevelUpReasonLocked: a field the level does not change (name, race, base
@@ -40,6 +56,12 @@ const (
 	LevelUpReasonAbilityShape = "ability_shape"
 	// LevelUpReasonAbilityAbove20: the increase takes an ability above 20.
 	LevelUpReasonAbilityAbove20 = "ability_above_20"
+	// LevelUpReasonFeat: a feat at a level that has no Ability Score Improvement, a
+	// feat removed or more than one, or a feat the content does not have.
+	LevelUpReasonFeat = "feat"
+	// LevelUpReasonFeatPrerequisite: the character does not meet the feat's
+	// prerequisite.
+	LevelUpReasonFeatPrerequisite = "feat_prerequisite"
 	// LevelUpReasonHitPoints: the new hit points entry is missing, outside 1 to
 	// the hit die, or the earlier levels changed.
 	LevelUpReasonHitPoints = "hit_points"
@@ -78,6 +100,13 @@ type LevelUpError struct {
 	Code string
 	// Message is English text for logs and tests, never for the app.
 	Message string
+	// ClassKey, Ability, Minimum and Have say which multiclass prerequisite is not
+	// met (the two LevelUpReasonMulticlassPrerequisite reasons). Have is the
+	// character's final score, Minimum the score the class asks for.
+	ClassKey string
+	Ability  Ability
+	Minimum  int
+	Have     int
 }
 
 func (e *LevelUpError) Error() string {
@@ -100,6 +129,11 @@ type LevelUpOffer struct {
 	ToLevel     int
 	TotalFrom   int
 	TotalTo     int
+	// NewClass says the character does not have the class yet: the level is its
+	// first (FromLevel 0), and Multiclass says what taking it as a later class
+	// gives and asks for.
+	NewClass   bool
+	Multiclass *MulticlassOffer
 
 	// HitDie is the class's die (8 for a d8) and HitPointAverage the fixed
 	// gain: half the die plus one, before the Constitution modifier.
@@ -109,8 +143,13 @@ type LevelUpOffer struct {
 	// To choose.
 
 	// AbilityScoreImprovement says this level has one: +2 in one ability or
-	// +1 in two, none above 20. The SRD 5.1 has no feats.
+	// +1 in two, none above 20. When the table plays with feats (an optional
+	// rule), the player may take a feat from Feats in its place.
 	AbilityScoreImprovement bool
+	// Feats are the feats of the content with whether the character qualifies at
+	// the new level, at a level with an Ability Score Improvement; empty at the
+	// others. The server leaves them out when the table does not use feats.
+	Feats []FeatOption
 	// SubclassDue says the class picks its subclass now, from Subclasses.
 	SubclassDue bool
 	Subclasses  []LevelUpSubclass
@@ -214,8 +253,12 @@ type LevelUpFeatureChoice struct {
 type LevelUpChoices struct {
 	// Class is the class key that gains the level.
 	Class string
-	// AbilityIncrease is +2 in one ability or +1 in two; empty for none.
+	// AbilityIncrease is +2 in one ability or +1 in two; empty for none. With a
+	// Feat, it is the increase the feat gives (its ability_increase effect), or
+	// empty when it gives none.
 	AbilityIncrease map[Ability]int
+	// Feat is the feat taken in place of the Ability Score Improvement, or empty.
+	Feat string
 	// Subclass is the subclass key, when one is due.
 	Subclass string
 	// The new cantrips, known (or spellbook) spells and prepared spells.
@@ -229,6 +272,10 @@ type LevelUpChoices struct {
 	Expertise          []string
 	// HitPoints is the gain of this level.
 	HitPoints LevelUpHitPoints
+	// Instrument is the musical instrument (a proficiency key) that taking the Bard
+	// as a later class lets the player pick; the sheet lists its name among the
+	// tool proficiencies.
+	Instrument string
 }
 
 // LevelUpHitPoints is the hit points of the new level: the fixed average,
@@ -254,6 +301,9 @@ func (b Build) clone() Build {
 	b.SpellsKnown = slices.Clone(b.SpellsKnown)
 	b.SpellsPrepared = slices.Clone(b.SpellsPrepared)
 	b.FeatureChoices = slices.Clone(b.FeatureChoices)
+	b.ToolProficiencies = slices.Clone(b.ToolProficiencies)
+	b.Feats = slices.Clone(b.Feats)
+	b.FeatSlots = maps.Clone(b.FeatSlots)
 	b.HitPoints.Rolls = slices.Clone(b.HitPoints.Rolls)
 	return b
 }
@@ -266,12 +316,20 @@ func (b Build) totalLevel() int {
 	return n
 }
 
-// levelUpClass finds the class that gains the level, and refuses one the
-// character does not have, or a character at level 20.
+// levelUpClass finds the class that gains the level, and refuses a class the
+// content does not have, or a character at level 20. A class the character does
+// not have is a new class (multiclassing): the index is past the last class, and
+// the class must pass the prerequisites (see multiclassAllowed).
 func levelUpClass(b Build, classKey string, c *content) (int, *LevelUpError) {
 	idx := slices.IndexFunc(b.Classes, func(cl ClassLevel) bool { return cl.Class == classKey })
-	if _, known := c.classes[classKey]; idx < 0 || !known {
-		return 0, refuse("full.classes", LevelUpReasonClass, "the character has no such class: a new class is multiclassing")
+	if _, known := c.classes[classKey]; !known {
+		return 0, refuse("full.classes", LevelUpReasonClass, "no such class")
+	}
+	if idx < 0 {
+		if lerr := c.multiclassAllowed(b, classKey); lerr != nil {
+			return 0, lerr
+		}
+		return len(b.Classes), nil
 	}
 	if b.totalLevel() >= MaxLevel || b.Classes[idx].Level >= MaxLevel {
 		return 0, refuse(fmt.Sprintf("full.classes[%d].level", idx), LevelUpReasonMaxLevel, "the character is already level %d", MaxLevel)
@@ -280,8 +338,10 @@ func levelUpClass(b Build, classKey string, c *content) (int, *LevelUpError) {
 }
 
 // LevelUpOptions says what the next level of class classKey gives a
-// character built as before. It refuses a class the character does not have
-// (LevelUpClass) and a character at level 20 (LevelUpMaxLevel).
+// character built as before. A class the character does not have is a new
+// class at its level 1, if the character meets the prerequisites (the
+// LevelUpMulticlassPrerequisite refusals); it refuses a class the content does
+// not have (LevelUpClass) and a character at level 20 (LevelUpMaxLevel).
 func LevelUpOptions(before Build, classKey string, c *Content) (LevelUpOffer, error) {
 	o, err := levelUpOptions(before, classKey, c.c)
 	if err != nil {
@@ -295,7 +355,11 @@ func levelUpOptions(b Build, classKey string, c *content) (LevelUpOffer, *LevelU
 	if lerr != nil {
 		return LevelUpOffer{}, lerr
 	}
-	o, _ := levelUpOptionsWith(b, idx, c, c.subclasses[b.Classes[idx].Subclass])
+	var sub *srd51.Subclass
+	if idx < len(b.Classes) {
+		sub = c.subclasses[b.Classes[idx].Subclass]
+	}
+	o, _ := levelUpOptionsWith(b, idx, classKey, c, sub)
 	return o, nil
 }
 
@@ -305,15 +369,23 @@ func levelUpOptions(b Build, classKey string, c *content) (LevelUpOffer, *LevelU
 // options and the check read the same numbers; the options themselves call it
 // with the subclass the character already has, and give each candidate
 // subclass its own part (LevelUpSubclass).
-func levelUpOptionsWith(b Build, idx int, c *content, sub *srd51.Subclass) (LevelUpOffer, *LevelUpError) {
-	cl := b.Classes[idx]
-	classKey := cl.Class
+func levelUpOptionsWith(b Build, idx int, classKey string, c *content, sub *srd51.Subclass) (LevelUpOffer, *LevelUpError) {
+	// idx past the last class is a class the character does not have: its first level.
+	newClass := idx >= len(b.Classes)
+	cl := ClassLevel{Class: classKey}
+	if !newClass {
+		cl = b.Classes[idx]
+	}
 	class := c.classes[classKey]
 	newLevel := cl.Level + 1
 
 	// The level with nothing chosen yet: what follows from the level alone.
 	bare := b.clone()
-	bare.Classes[idx].Level = newLevel
+	if newClass {
+		bare.Classes = append(bare.Classes, ClassLevel{Class: classKey, Level: newLevel})
+	} else {
+		bare.Classes[idx].Level = newLevel
+	}
 	if sub != nil && bare.Classes[idx].Subclass == "" {
 		// A third caster casts through its subclass: the level with the subclass
 		// chosen has its casting numbers.
@@ -327,12 +399,19 @@ func levelUpOptionsWith(b Build, idx int, c *content, sub *srd51.Subclass) (Leve
 		HitDie: class.HitDie, HitPointAverage: class.HitDie/2 + 1,
 		ProficiencyBonusBefore: dBefore.ProficiencyBonus, ProficiencyBonusAfter: dBare.ProficiencyBonus,
 		PactBefore: dBefore.PactMagic, PactAfter: dBare.PactMagic,
+		NewClass: newClass,
+	}
+	if newClass {
+		o.Multiclass = c.multiclassOffer(b, dBefore, bare, classKey)
 	}
 	copy(o.SlotsBefore[:], dBefore.SpellSlots)
 	copy(o.SlotsAfter[:], dBare.SpellSlots)
 
 	row := c.classLevels[classKey][newLevel-1]
 	o.AbilityScoreImprovement = isASILevel(row)
+	if o.AbilityScoreImprovement {
+		o.Feats = featOptions(bare, c)
+	}
 
 	// Features the level adds, by name; and the ones the guided flow does not
 	// cover, which the master adds in the editor.
@@ -376,7 +455,7 @@ func levelUpOptionsWith(b Build, idx int, c *content, sub *srd51.Subclass) (Leve
 				if _, third := c.subCasting[key]; third && sub == nil {
 					// A third caster's table starts with the subclass: what it adds to
 					// the level's counts is the difference with the class alone.
-					with, _ := levelUpOptionsWith(b, idx, c, s)
+					with, _ := levelUpOptionsWith(b, idx, classKey, c, s)
 					ls.Cantrips += max(with.Cantrips-o.Cantrips, 0)
 					ls.Spells, ls.SpellsKind = max(with.Spells-o.Spells, 0), with.SpellsKind
 					ls.SpellList, ls.MaxSpellLevel = with.SpellList, with.MaxSpellLevel
@@ -401,7 +480,12 @@ func levelUpOptionsWith(b Build, idx int, c *content, sub *srd51.Subclass) (Leve
 		o.Cantrips = max(after.CantripsKnown-oldCantrips, 0) + gains.cantrips
 		switch preparation(cast.effect) {
 		case PreparationSpellbook:
-			if before != nil {
+			switch {
+			case newClass:
+				// A Wizard taken as a later class starts its spellbook (SRD 5.1,
+				// Wizard, "Spellbook").
+				o.Spells, o.SpellsKind = wizardStartingSpells, PreparationSpellbook
+			case before != nil:
 				o.Spells, o.SpellsKind = 2, PreparationSpellbook
 			}
 		case PreparationKnown:
@@ -431,6 +515,33 @@ func spellcastingOf(d Derived, classKey string) *Spellcasting {
 
 // isASILevel says whether a class table row has an Ability Score
 // Improvement.
+// asiFeatureKey is the Ability Score Improvement feature of a class row, or "".
+func asiFeatureKey(row *srd51.Level) string {
+	if row == nil {
+		return ""
+	}
+	for _, k := range row.Features {
+		if strings.Contains(k, "-ability-score-improvement-") {
+			return k
+		}
+	}
+	return ""
+}
+
+// fixedIncrease is what a feat that raises every ability it lists adds to a sheet: its value
+// to each, and no more than the room left under 20.
+func fixedIncrease(inc *FeatIncrease, d Derived) map[Ability]int {
+	out := map[Ability]int{}
+	for _, s := range d.Abilities {
+		if slices.Contains(inc.From, s.Ability) {
+			if n := min(inc.Value, MaxNormalScore-s.Score); n > 0 {
+				out[s.Ability] = n
+			}
+		}
+	}
+	return out
+}
+
 func isASILevel(row *srd51.Level) bool {
 	return row != nil && slices.ContainsFunc(row.Features, func(k string) bool {
 		return strings.Contains(k, "-ability-score-improvement-")
@@ -578,9 +689,20 @@ func invocationsKnown(row *srd51.Level) int {
 // character already has.
 func (c *content) namedChoices(b Build, due []dueChoice) []LevelUpFeatureChoice {
 	var out []LevelUpFeatureChoice
+	// An option is taken once, whichever feature offered it: the Defense style of
+	// the Paladin is the Fighter's Defense (SRD 5.1, Fighter, "Fighting Style").
+	taken := map[string]bool{}
+	for _, k := range b.FeatureChoices {
+		if f := c.features[k]; f != nil {
+			taken[f.Name] = true
+		}
+	}
 	for _, d := range due {
 		fc := LevelUpFeatureChoice{Feature: NamedKey{Key: d.feature, NamePT: c.namePT(d.feature)}, Subclass: d.subclass, Choose: d.choose}
 		for _, o := range d.options {
+			if f := c.features[o]; f != nil && taken[f.Name] {
+				continue
+			}
 			if !slices.Contains(b.FeatureChoices, o) {
 				fc.Options = append(fc.Options, NamedKey{Key: o, NamePT: c.namePT(o)})
 			}
@@ -630,16 +752,19 @@ func oldRolls(b Build, c *content) []int {
 // every earlier level of the class that gains it and of the classes before it.
 func rollIndex(b Build, classIdx int) int {
 	n := 0
-	for _, cl := range b.Classes[:classIdx+1] {
+	// A class the character does not have yet (classIdx past the last) goes after all.
+	for _, cl := range b.Classes[:min(classIdx+1, len(b.Classes))] {
 		n += cl.Level
 	}
 	return n - 1
 }
 
 // ApplyLevelUp returns the Build that the choices make from before: the
-// class one level higher, and the choices added to it. It never judges the
-// choices (CheckLevelUp does); it only refuses a class the character does
-// not have (LevelUpClass) and level 20 (LevelUpMaxLevel).
+// class one level higher, or a class the character does not have at level 1
+// (last in the list), and the choices added to it. It never judges the
+// choices (CheckLevelUp does); it only refuses a class the content does not
+// have (LevelUpClass), the prerequisites of a new class and level 20
+// (LevelUpMaxLevel).
 //
 // The hit points follow the sheet's method. With the fixed average the Build
 // stays as it is; a rolled value switches a fixed sheet to rolled, filling
@@ -651,16 +776,34 @@ func ApplyLevelUp(before Build, ch LevelUpChoices, c *Content) (Build, error) {
 		return Build{}, lerr
 	}
 	after := before.clone()
+	if idx == len(after.Classes) {
+		after.Classes = append(after.Classes, ClassLevel{Class: ch.Class})
+	}
 	cl := &after.Classes[idx]
 	cl.Level++
 	if ch.Subclass != "" {
 		cl.Subclass = ch.Subclass
 	}
-	for a, v := range ch.AbilityIncrease {
+	increase := ch.AbilityIncrease
+	if f, ok := c.c.feats[ch.Feat]; ok && ch.Feat != "" {
+		if after.FeatSlots == nil {
+			after.FeatSlots = map[string]string{}
+		}
+		after.FeatSlots[ch.Feat] = asiFeatureKey(c.c.classLevels[ch.Class][cl.Level-1])
+		// A feat that raises every ability it lists has nothing to choose: the increase is
+		// the feat's own, stopping at 20 (SRD 5.1, Ability Score Improvement).
+		if e := c.c.featEntry(f); len(increase) == 0 && e.Increase != nil && e.Increase.Count == len(e.Increase.From) {
+			increase = fixedIncrease(e.Increase, derive(before, c.c))
+		}
+	}
+	for a, v := range increase {
 		if after.ExtraAbilityBonuses == nil {
 			after.ExtraAbilityBonuses = map[Ability]int{}
 		}
 		after.ExtraAbilityBonuses[a] += v
+	}
+	if ch.Feat != "" {
+		after.Feats = append(after.Feats, ch.Feat)
 	}
 	after.Cantrips = append(after.Cantrips, ch.Cantrips...)
 	after.SpellsKnown = append(after.SpellsKnown, ch.Spells...)
@@ -668,6 +811,9 @@ func ApplyLevelUp(before Build, ch LevelUpChoices, c *Content) (Build, error) {
 	after.FeatureChoices = append(after.FeatureChoices, ch.FeatureChoices...)
 	after.SkillProficiencies = append(after.SkillProficiencies, ch.SkillProficiencies...)
 	after.Expertise = append(after.Expertise, ch.Expertise...)
+	if name := c.c.proficiencyNamePT(ch.Instrument); ch.Instrument != "" && name != "" {
+		after.ToolProficiencies = append(after.ToolProficiencies, name)
+	}
 
 	die := c.c.classes[ch.Class].HitDie
 	value := ch.HitPoints.Roll
@@ -689,7 +835,9 @@ func ApplyLevelUp(before Build, ch LevelUpChoices, c *Content) (Build, error) {
 //
 //   - exactly one existing class gains exactly one level;
 //   - the ability increase, only at an Ability Score Improvement level: +2 in
-//     one ability or +1 in two, none above 20, as extra_ability_bonuses;
+//     one ability or +1 in two, none above 20, as extra_ability_bonuses; or, in
+//     its place, one feat the character qualifies for, with the increase the feat
+//     gives (whether the table uses feats is the server's to check);
 //   - the new level's hit points, in 1 to the hit die, with the earlier
 //     levels unchanged (a fixed sheet that rolls takes their averages);
 //   - exactly the new cantrips, known or spellbook spells the level gives, and
@@ -709,28 +857,59 @@ func CheckLevelUp(before, after Build, c *Content) error {
 }
 
 func checkLevelUp(before, after Build, c *content) *LevelUpError {
-	// One class, one level.
-	idx, lerr := levelUpClassOf(before, after, c)
+	// One class, one level. A class added at level 1 is checked as if the
+	// character had it at level 0.
+	ext, tools := before, after
+	newKey, newClass := newClassOf(before, after)
+	if newClass {
+		if _, known := c.classes[newKey]; !known {
+			return refuse(fmt.Sprintf("full.classes[%d].class_key", len(before.Classes)), LevelUpReasonClass, "no such class")
+		}
+		if slices.ContainsFunc(before.Classes, func(cl ClassLevel) bool { return cl.Class == newKey }) {
+			return refuse(fmt.Sprintf("full.classes[%d].class_key", len(before.Classes)), LevelUpReasonClass, "the class is listed twice")
+		}
+		if lerr := c.multiclassAllowed(before, newKey); lerr != nil {
+			return lerr
+		}
+		ext = withNewClass(before, newKey)
+		// The instrument of the Bard's table is checked on its own.
+		tools.ToolProficiencies = before.ToolProficiencies
+	}
+	idx, lerr := levelUpClassOf(ext, after, c)
 	if lerr != nil {
 		return lerr
 	}
-	classKey := before.Classes[idx].Class
+	classKey := ext.Classes[idx].Class
 	class := c.classes[classKey]
-	newLevel := before.Classes[idx].Level + 1
+	newLevel := ext.Classes[idx].Level + 1
 
-	if lerr := checkLocked(before, after); lerr != nil {
+	if lerr := checkLocked(before, tools); lerr != nil {
 		return lerr
 	}
 	dBefore, dAfter := derive(before, c), derive(after, c)
-	if lerr := checkAbilities(before, after, dAfter, isASILevel(c.classLevels[classKey][newLevel-1])); lerr != nil {
+	asi := isASILevel(c.classLevels[classKey][newLevel-1])
+	feat, lerr := checkFeat(before, after, c, asi)
+	if lerr != nil {
 		return lerr
 	}
-	if lerr := checkHitPoints(before, after, idx, class.HitDie, c); lerr != nil {
+	if lerr := checkAbilities(before, after, dBefore, dAfter, asi, feat); lerr != nil {
 		return lerr
+	}
+	if lerr := checkHitPoints(ext, after, idx, class.HitDie, c); lerr != nil {
+		return lerr
+	}
+	var mc *MulticlassOffer
+	if newClass {
+		bare := after.clone()
+		bare.ToolProficiencies = before.ToolProficiencies
+		mc = c.multiclassOffer(before, dBefore, bare, classKey)
+		if lerr := c.checkMulticlassTools(mc, before.ToolProficiencies, after.ToolProficiencies); lerr != nil {
+			return lerr
+		}
 	}
 
 	// The subclass, then what depends on it.
-	bcl, acl := before.Classes[idx], after.Classes[idx]
+	bcl, acl := ext.Classes[idx], after.Classes[idx]
 	due := bcl.Subclass == "" && bcl.CustomSubclassName == "" && class.SubclassLevel == newLevel
 	field := fmt.Sprintf("full.classes[%d]", idx)
 	switch {
@@ -745,12 +924,18 @@ func checkLevelUp(before, after Build, c *content) *LevelUpError {
 	}
 	sub := c.subclasses[acl.Subclass]
 
-	if lerr := checkDuplicates(after); lerr != nil {
+	// A skill picked twice, or one the character already has, is the refusal of the
+	// multiclass pick when the class is new (checkMulticlassSkills).
+	dups := after
+	if newClass {
+		dups.SkillProficiencies = before.SkillProficiencies
+	}
+	if lerr := checkDuplicates(dups); lerr != nil {
 		return lerr
 	}
 	// The same numbers the options give: the class's, and the chosen
 	// subclass's, which are not in the options' top level while it is due.
-	offer, _ := levelUpOptionsWith(before, idx, c, sub)
+	offer, _ := levelUpOptionsWith(before, idx, classKey, c, sub)
 	offOwnList, lerr := checkSpells(before, after, offer, offer.SpellList, c)
 	if lerr != nil {
 		return lerr
@@ -783,7 +968,15 @@ func checkLevelUp(before, after Build, c *content) *LevelUpError {
 		return refuse("full.feature_choice_keys", LevelUpReasonFeatureChoice, "an option the new features do not offer")
 	}
 	wantSkills, wantExpertise := gains.skills, gains.expertise
-	if got, removed := added(before.SkillProficiencies, after.SkillProficiencies); removed || len(got) != wantSkills {
+	got, removedSkills := added(before.SkillProficiencies, after.SkillProficiencies)
+	switch {
+	case removedSkills:
+		return refuse("full.skill_proficiency_keys", LevelUpReasonSkills, "a skill was removed")
+	case mc != nil:
+		if lerr := c.checkMulticlassSkills(mc, got, wantSkills); lerr != nil {
+			return lerr
+		}
+	case len(got) != wantSkills:
 		return refuse("full.skill_proficiency_keys", LevelUpReasonSkills, "the new level lets the player choose %d skills", wantSkills)
 	}
 	if got, removed := added(before.Expertise, after.Expertise); removed || len(got) != wantExpertise {
@@ -866,6 +1059,8 @@ func checkLocked(before, after Build) *LevelUpError {
 		return locked("full.shield")
 	case !slices.Equal(before.Weapons, after.Weapons):
 		return locked("full.weapon_keys")
+	case !slices.Equal(before.ToolProficiencies, after.ToolProficiencies):
+		return locked("full.tool_proficiencies")
 	}
 	return nil
 }
@@ -886,9 +1081,43 @@ func added(before, after []string) (fresh []string, removed bool) {
 	return fresh, removed
 }
 
+// checkFeat checks the feat of the new level: at most one, only at an Ability Score
+// Improvement level, one the content has, and one the character qualifies for
+// with the level gained and before the feat's own ability increase. It returns the
+// feat taken, or nil.
+func checkFeat(before, after Build, c *content, asi bool) (*FeatEntry, *LevelUpError) {
+	const field = "full.feat_keys"
+	fresh, removed := added(before.Feats, after.Feats)
+	switch {
+	case removed:
+		return nil, refuse(field, LevelUpReasonFeat, "a feat was removed")
+	case len(fresh) == 0:
+		return nil, nil
+	case len(fresh) > 1:
+		return nil, refuse(field, LevelUpReasonFeat, "one feat in place of one Ability Score Improvement")
+	case !asi:
+		return nil, refuse(field, LevelUpReasonFeat, "this level has no Ability Score Improvement")
+	}
+	f, ok := c.feats[fresh[0]]
+	if !ok {
+		return nil, refuse(field, LevelUpReasonFeat, "not a feat of the content")
+	}
+	entry := c.featEntry(f)
+	// The prerequisite is judged on the sheet with the level gained and without the
+	// feat and what it raises, as the guided level-up offered it.
+	pre := after.clone()
+	pre.Feats, pre.ExtraAbilityBonuses = slices.Clone(before.Feats), maps.Clone(before.ExtraAbilityBonuses)
+	if unmet := c.unmetPrerequisite(entry, pre, derive(pre, c)); len(unmet) > 0 {
+		return nil, refuse(field, LevelUpReasonFeatPrerequisite, "the character does not meet the prerequisite of the feat (%s)", unmet[0].Kind)
+	}
+	return &entry, nil
+}
+
 // checkAbilities checks the ability increase: only at an ASI level, +2 in one
-// ability or +1 in two, and none above 20.
-func checkAbilities(before, after Build, dAfter Derived, asi bool) *LevelUpError {
+// ability or +1 in two, and none above 20. With a feat taken in its place the
+// increase is the feat's own: its ability_increase effect's count of different
+// abilities from its list with its value each, and nothing when it has none.
+func checkAbilities(before, after Build, dBefore, dAfter Derived, asi bool, feat *FeatEntry) *LevelUpError {
 	const field = "full.extra_ability_bonuses"
 	var raised []Ability
 	total := 0
@@ -907,13 +1136,18 @@ func checkAbilities(before, after Build, dAfter Derived, asi bool) *LevelUpError
 			return refuse(field, LevelUpReasonAbilityShape, "an unknown ability")
 		}
 	}
-	if total == 0 {
+	if total == 0 && (feat == nil || feat.Increase == nil) {
 		return nil
 	}
 	if !asi {
 		return refuse(field, LevelUpReasonAbilityNotDue, "this level has no Ability Score Improvement")
 	}
-	if total != 2 {
+	switch {
+	case feat != nil && feat.Increase == nil:
+		return refuse(field, LevelUpReasonAbilityShape, "the feat gives no ability increase")
+	case feat != nil:
+		return checkFeatIncrease(feat.Increase, before, after, dBefore)
+	case total != abilityScoreImprovementPoints:
 		return refuse(field, LevelUpReasonAbilityShape, "+2 in one ability or +1 in two")
 	}
 	for _, a := range raised {
@@ -996,6 +1230,7 @@ func checkDuplicates(b Build) *LevelUpError {
 		{"full.known_spell_keys", LevelUpReasonSpells, b.SpellsKnown},
 		{"full.prepared_spell_keys", LevelUpReasonPrepared, b.SpellsPrepared},
 		{"full.feature_choice_keys", LevelUpReasonFeatureChoice, b.FeatureChoices},
+		{"full.feat_keys", LevelUpReasonFeat, b.Feats},
 		{"full.skill_proficiency_keys", LevelUpReasonSkills, b.SkillProficiencies},
 		{"full.expertise_skill_keys", LevelUpReasonExpertise, b.Expertise},
 	} {
@@ -1006,6 +1241,52 @@ func checkDuplicates(b Build) *LevelUpError {
 			}
 			seen[k] = true
 		}
+	}
+	return nil
+}
+
+// checkFeatIncrease checks the increase a feat gave. A feat that raises every ability it lists
+// raises each by its value, no more than the room under 20 (nothing on an ability already at
+// 20). A feat that lets the player choose raises as many different abilities of its list as it
+// asks, or as many as still have room when fewer do, each by its value and none above 20
+// (SRD 5.1, Ability Score Improvement: an ability score cannot be raised above 20 by it).
+func checkFeatIncrease(inc *FeatIncrease, before, after Build, dBefore Derived) *LevelUpError {
+	const field = "full.extra_ability_bonuses"
+	score := map[Ability]int{}
+	for _, s := range dBefore.Abilities {
+		score[s.Ability] = s.Score
+	}
+	delta := func(a Ability) int { return after.ExtraAbilityBonuses[a] - before.ExtraAbilityBonuses[a] }
+	for _, a := range AllAbilities() {
+		if delta(a) != 0 && !slices.Contains(inc.From, a) {
+			return refuse(field+"."+protoAbility[a], LevelUpReasonAbilityShape, "the feat raises only the abilities it lists")
+		}
+	}
+	if inc.Count == len(inc.From) {
+		for _, a := range inc.From {
+			if want := max(min(inc.Value, MaxNormalScore-score[a]), 0); delta(a) != want {
+				return refuse(field+"."+protoAbility[a], LevelUpReasonAbilityShape, "the feat raises %s by %d, to 20 at most", protoAbility[a], want)
+			}
+		}
+		return nil
+	}
+	room, picked := 0, 0
+	for _, a := range inc.From {
+		if score[a]+inc.Value <= MaxNormalScore {
+			room++
+		}
+		switch d := delta(a); {
+		case d == 0:
+		case d != inc.Value:
+			return refuse(field+"."+protoAbility[a], LevelUpReasonAbilityShape, "the feat raises each ability it picks by %d", inc.Value)
+		case score[a]+d > MaxNormalScore:
+			return refuse(field+"."+protoAbility[a], LevelUpReasonAbilityAbove20, "an ability score cannot pass 20")
+		default:
+			picked++
+		}
+	}
+	if picked != min(inc.Count, room) {
+		return refuse(field, LevelUpReasonAbilityShape, "the feat raises %d different abilities by %d each", min(inc.Count, room), inc.Value)
 	}
 	return nil
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // The combat log, "Registro do combate" (D10, MR-012; the history screen
@@ -213,6 +214,9 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 		if ev.Round == 0 && (e.Kind != eventCombatantsAdded || ev.Monsters == nil) {
 			continue
 		}
+		if ev.Reaction != nil && ev.Reaction.Hold {
+			continue // the event of a held action stands for nothing yet: its replay is the line
+		}
 		entry := &logEntry{id: e.ID, at: e.CreatedAt, ev: ev, hosts: []string{e.ID}}
 		switch e.Kind {
 		case eventCombatBegun:
@@ -235,9 +239,14 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			}
 			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_MONSTERS_ADDED, true
 		case eventCombatantHiddenSet:
-			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_REVEAL_CHANGED, true
+			// The master's own reveal is his alone; the one an area spell made is the
+			// players' line too ("foi revelado"): the creature appears on their map.
+			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_REVEAL_CHANGED, !ev.ByArea
 		case eventActionTaken:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION
+			if ev.Res != nil {
+				entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE
+			}
 		case eventHitPointsAdjusted:
 			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED, true
 		case eventDeathSaveRolled:
@@ -246,6 +255,8 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_CONFIRMED
 		case eventConditionsSet:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED
+		case eventCombatEffectEnded:
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED
 		case eventTurnPartEnded:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_TURN_PART_ENDED
 		case eventAttackRolled:
@@ -343,6 +354,13 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			// (decline, skip, withdraw) belongs to it, so the answer can be undone.
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_OPPORTUNITY_OFFERED
 			byMove[ev.MoveID] = entry
+		case eventReactionAnswered, eventConcentrationSaveRolled:
+			// One line for each reaction used (PM-04c, 10); a "Deixar passar" and the
+			// master's one-tap check are no line.
+			if ev.Reaction == nil || ev.Reaction.Kind == string(reaction.MasterCheck) || (!ev.Reaction.Used && e.Kind == eventReactionAnswered) {
+				continue
+			}
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW
 		case eventReactionDeclined:
 			if host, ok := byPending[ev.Pending]; ok {
 				host.hosts = append(host.hosts, e.ID) // a decline is the entry's last action to undo
@@ -419,6 +437,9 @@ func (e *logEntry) land(kind string, ev actionEvent) {
 
 // view builds the entry the viewer gets, and false when they do not get it.
 func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]playdb.Combatant, names *keyNames, lastID string) (*playv1.CombatLogEntry, bool) {
+	if e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW {
+		return e.reactionEntry(ctx, v, byID, names)
+	}
 	actor, target := byID[e.ev.Actor], byID[e.ev.Target]
 	switch e.kind {
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED:
@@ -445,9 +466,18 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	seen := e.ev.seenByViewer(v)
 	for _, h := range e.ev.Hits { // every target of a spell
 		hit, ok := byID[h.Target]
+		if e.ev.Placed { // an area the server placed: the hidden creatures it hit are left out of the line, not the line
+			continue
+		}
 		visible = visible && ok && !hit.Hidden
 	}
 	if !v.master && (!visible || !seen) {
+		return nil, false
+	}
+	// An Escudo that ended is a line for the master and the combatant's own player: the
+	// Escudo may have answered an attack the other players do not see (a hidden attacker),
+	// and the line would tell them something happened (RN-10).
+	if !v.master && e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED && e.ev.EffectEnd != nil && e.ev.EffectEnd.Effect == effectShield && !v.owns(actor) {
 		return nil, false
 	}
 	// The offer's line is for whoever gets the offer (RN-10): the reactor's player
@@ -470,10 +500,16 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	}
 	switch e.kind {
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK, playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION,
-		playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST, playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION:
+		playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST, playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION,
+		playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:
 		out.KeyNamePt = names.of(ctx, actor, e.ev.Key)
 	}
 	switch e.kind {
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:
+		out.Resource = resourceLogView(e.ev, v, actor, target)
+		if e.ev.Res != nil && e.ev.Res.Kind == resBardicGive && !v.master && !v.owns(actor) && !v.owns(target) {
+			out.TargetId, out.TargetLabel = "", "" // who holds the die is the bard's, the holder's and the master's
+		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_MONSTERS_ADDED:
 		for _, it := range e.ev.Monsters.Items {
 			out.Monsters = append(out.Monsters, &playv1.CombatLogMonster{
@@ -487,7 +523,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		}
 		switch e.ev.Jump {
 		case jumpLong:
-			out.Jump = playv1.JumpKind_JUMP_KIND_LONG
+			out.Jump, out.JumpRunningStart = playv1.JumpKind_JUMP_KIND_LONG, e.ev.JumpRunning
 		case jumpHigh:
 			out.Jump, out.JumpHeightDft = playv1.JumpKind_JUMP_KIND_HIGH, e.ev.HeightDFt
 		}
@@ -514,6 +550,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		}
 		if dice {
 			out.AttackRoll = diceRoll(1, 20, []int32{e.ev.D20}, e.ev.Modifier, e.ev.Total, e.ev.Physical)
+			out.BonusDice = bonusDiceOf(e.ev)
 		}
 		if len(e.stopped) > 0 { // Escudo stopped it: a miss, with no damage
 			out.Outcome, out.StoppedByReaction = playv1.AttackOutcome_ATTACK_OUTCOME_MISS, true
@@ -568,6 +605,14 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED:
 		out.Conditions = e.ev.Conditions
 		out.ConcentrationEndedKey = e.ev.ConcEnded
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED:
+		if end := e.ev.EffectEnd; end != nil {
+			out.EffectEnd = &playv1.CombatLogEffectEnd{Effect: combatEffectToProto[end.Effect]}
+			if v.master { // the numbers are the master's and the player's own (RN-20); the player reads the vitals
+				out.EffectEnd.HitPointsBefore, out.EffectEnd.HitPointsAfter = end.HP0, end.HP1
+				out.EffectEnd.HitPointsMaxBefore, out.EffectEnd.HitPointsMaxAfter = end.Max0, end.Max1
+			}
+		}
 	}
 	return out, true
 }
@@ -579,8 +624,17 @@ func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *
 	caster := byID[e.ev.Actor]
 	out := &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot), Concentrating: e.ev.Concentrate, ConcentrationEndedKey: e.ev.ConcEnded}
 	out.EffectKind, out.PoolRoll, out.EffectConditionKey, out.EffectThreshold = effectHeader(e.ev, v, caster)
+	if e.ev.Res != nil && e.ev.Res.Kind == resMetamagic {
+		out.MetamagicKeys, out.SorceryPointsSpent = e.ev.Res.Keys, e.ev.Res.Spent
+	}
 	for _, h := range e.ev.Hits {
 		target := byID[h.Target]
+		// The players' line never lists a creature that was hidden when an area hit it
+		// (not even after the master reveals it: the line would say the spell hit it),
+		// nor one that is hidden now or that a combatant that left no longer names.
+		if !v.master && (h.HiddenAtCast || target.Hidden || target.ID == "" || h.unseenBy(e.ev.CoverUsers, v.userID)) {
+			continue
+		}
 		t := &playv1.CombatLogSpellTarget{
 			TargetId: target.ID, TargetLabel: target.Label, Darts: h.Darts, Outcome: outcomeToProto[h.Outcome],
 			AttackRoll: attackRollView(h, v, caster), Save: saveView(h.Save, v, caster, target),
@@ -588,6 +642,7 @@ func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *
 		}
 		coverKey, coverSource := h.coverFor(v, e.ev.CoverUsers)
 		t.Cover, t.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
+		t.Hidden = v.master && h.HiddenAtCast
 		if v.master && h.TargetAC > 0 {
 			t.TargetArmorClass, t.CoverBonus = &h.TargetAC, h.CoverBonus
 		}
@@ -670,6 +725,7 @@ func (e *logEntry) damage(dice, master, targetsOwn bool, out *playv1.CombatLogEn
 	d.Amount, d.DamageTypeKey, d.DamageTypePt = e.dmg.Amount, e.dmg.DamageType, damageTypePT[e.dmg.DamageType]
 	d.CriticalRule, d.CriticalMax = pendingCriticalRule(e.dmg.Critical, e.dmg.CriticalMaxRule), e.dmg.CriticalMax
 	if dice {
+		d.ExtraDiceCount, d.ExtraDiceNamePt = e.dmg.ExtraDice, extraDiceName(e.dmg.ExtraDice)
 		d.Roll = diceRoll(e.dmg.DiceCount, e.dmg.DiceSides, e.dmg.Faces, e.dmg.Modifier, e.dmg.Amount, e.dmg.Physical)
 	}
 	if ap := e.applied; ap != nil { // the master's apply of a character's damage

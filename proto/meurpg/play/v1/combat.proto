@@ -11,7 +11,6 @@ syntax = "proto3";
 package meurpg.play.v1;
 
 import "google/protobuf/timestamp.proto";
-import "meurpg/play/v1/combat_effects.proto";
 import "meurpg/rules/v1/rules.proto";
 
 // CombatService runs a combat (an "encounter") inside the campaign's open
@@ -836,6 +835,26 @@ service CombatService {
   // and a spell that does nothing the table cannot see is still spent. A
   // reaction spell (Escudo) is not cast here: UseReaction.
   //
+  // An area spell placed on the map (a spell whose area comes out of the caster
+  // or is centered on a point, in a combat with a grid: SpellTargets.placement is
+  // not UNSPECIFIED, see PreviewSpellArea) is cast with `area`, the point or the
+  // direction the caster chose. The server decides who is inside, and each one's
+  // cover from the point of origin: `targets` is ignored. Everyone inside is
+  // affected, allies and the caster included, hidden creatures too (the table
+  // rule TableRules.hidden_area_hits only decides whether a hit reveals them), and
+  // an area with nobody in it is still cast and spends the slot and the action.
+  // A cast with `area` for a spell that has none, or without it for one that
+  // needs it, is `invalid_argument`. Without a grid (THEATRE) the caster lists
+  // `targets` as before, and the master judges what is inside and the cover.
+  //
+  // reveal_hidden (the master only) says whether the hidden creatures the area
+  // hits appear to the players; without it the table rule decides. A player who
+  // sends it is `permission_denied`, before anything else is checked. When a
+  // player casts and the rule is ASK, the cast holds the turn until the master
+  // answers (ResolveHiddenReveal): while a question is open the server refuses
+  // MoveCombatant, RollAttack, TakeAction, CastSpell, EndTurn and the master's
+  // turn passing with EncounterBlocked HIDDEN_REVEAL_PENDING.
+  //
   // targets are who it touches, as the caller sees them, in range (the spell's
   // range from the caster, a king's move at 5 ft a square; Self is the caster
   // alone, Touch is 5 ft; the master is never held to the range, and the caster
@@ -910,6 +929,73 @@ service CombatService {
   //     NO_SLOT (with min_level), NOT_PLACED and TARGET_OUT_OF_REACH (with
   //     missing_ft; a player), TARGET_DEFEATED and WRONG_DICE_MODE.
   rpc CastSpell(CastSpellRequest) returns (CastSpellResponse);
+
+  // PreviewSpellArea says who an area spell reaches when it is placed at a point
+  // or in a direction, and the cover each one has, without spending anything: the
+  // second step of "Conjurar" on a map ("Quem está na área"). CastSpell works it
+  // all out again and trusts nothing of this answer.
+  //
+  // The point of origin (SRD 5.1, "Areas of Effect"): a sphere or a cylinder is
+  // centered on a point within the spell's range (`origin`); a cone, a line and a
+  // cube come out of the caster, who points a direction (`direction`), and the
+  // caster's own square is not inside; a sphere or a cylinder that is itself Self
+  // ("a 15-foot radius around you") is centered on the caster and needs neither.
+  // A location is outside the area when no unblocked straight line runs from the
+  // origin to it, and only total cover (a wall, a closed door) blocks; a spell
+  // that "spreads around corners" (Fireball) reaches the part of its shape
+  // connected to the origin instead. A point the caster does not see because a wall
+  // is in the way comes into being on the near side of the wall (SRD, "Targets"):
+  // `origin` of the answer is the effective one (the master is not held to this,
+  // and nor to the range).
+  //
+  // The cover of each target is measured from the point of origin, not from the
+  // caster, and counts only when the spell's saving throw is a Dexterity one
+  // (`cover_counts`; SRD, "Cover": +2 or +5 to Dexterity saving throws): a spell
+  // with another save (Onda Trovejante, Constitution) gives no bonus. A creature
+  // reached only around a corner gets no cover bonus of its own: the master marks
+  // it (SetCombatantCover).
+  //
+  // The answer lists only what the caller sees (RN-10, RN-20): a hidden creature
+  // is not in `targets` for a player, nor counted anywhere, and an area drawn by
+  // the map the player knows leaves the walls they do not know out. The master
+  // gets everyone, the hidden ones marked.
+  //
+  // Errors:
+  //   - `not_found`: the combat or the caster is not in this campaign's open
+  //     session, or the caller is a player and may not see it.
+  //   - `permission_denied`: the caller is a player and the caster is not their
+  //     character.
+  //   - `invalid_argument`: the spell is not one of the caster's, is no placed area,
+  //     the slot does not fit, both or neither of origin and direction for a spell
+  //     that needs one, a point off the map, or a direction with both numbers 0.
+  //   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_PLACED (the
+  //     caster has no square), and, for a player, TARGET_OUT_OF_REACH (with
+  //     missing_ft) for an origin beyond the spell's range.
+  rpc PreviewSpellArea(PreviewSpellAreaRequest) returns (PreviewSpellAreaResponse);
+
+  // ResolveHiddenReveal answers the question a player's area spell opened when it
+  // hit hidden creatures and the table rule is "Perguntar a cada vez" (Encounter.
+  // pending_hidden_reveals): `reveal` true makes them appear to the players, as
+  // SetCombatantHidden does; false keeps them hidden. It lets the turn go on when
+  // the last question is answered. Questions are answered in the order they were
+  // opened, the oldest first.
+  //
+  // Only the master may answer. A player gets `permission_denied` for any
+  // pending_reveal_id, existing or not, checked before the id is looked up: a
+  // different answer would tell the player whether a question is open, and so
+  // whether the spell hit a hidden creature (RN-10). Answering the same way twice
+  // is not an error (the answer is the same); the other way, after the first
+  // answer, is `failed_precondition`, and answering a question while an older one
+  // waits is `failed_precondition` too. Ending the combat drops the questions.
+  //
+  // Errors:
+  //   - `permission_denied`: the caller is not the master.
+  //   - `invalid_argument`: a malformed id.
+  //   - `not_found`: the combat is not in this campaign, or the question does not
+  //     exist.
+  //   - `failed_precondition`: answered the other way already, or an older question
+  //     is open.
+  rpc ResolveHiddenReveal(ResolveHiddenRevealRequest) returns (ResolveHiddenRevealResponse);
 
   // UseReaction casts Escudo (the spell) when a hit lands on a player's
   // character: the hit's pending damage waits in AWAITING_REACTION, and the
@@ -1066,6 +1152,61 @@ service CombatService {
   //     (a creature does not concentrate).
   //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
   rpc EndConcentration(EndConcentrationRequest) returns (EndConcentrationResponse);
+
+  // EndCombatEffect ends Ajuda on a combatant (the master only): the hit point bonus
+  // goes away, the maximum falls back, and the current hit points lose only what
+  // is above the new maximum (SRD 5.1: hit points never go above the maximum). The
+  // target never drops to 0 because of it, so a target woken by Ajuda stays awake. A
+  // player's character's bonus is kept in its vitals, an NPC's or a creature's on its
+  // combatant. Ajuda has no clock (the app does not count the 8 hours): it ends here, or at
+  // a long rest. Ending an Ajuda the combatant does not have changes nothing and is not an
+  // error. The same key with another request is `invalid_argument`.
+  //
+  // Every stream gets `encounter_changed` and, for a player's character,
+  // `vitals_changed`; the combat log gets an EFFECT_ENDED line.
+  //
+  // Errors:
+  //   - `not_found`: the combatant is not in this combat.
+  //   - `permission_denied`: the caller is not the master.
+  //   - `invalid_argument`: the effect is not AID.
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+  rpc EndCombatEffect(EndCombatEffectRequest) returns (EndCombatEffectResponse);
+
+  // AnswerReaction answers a reaction window (PM-04): "Usar ..." or "Deixar
+  // passar". One window serves the seven reactions (Shield, Uncanny Dodge, Hellish
+  // Rebuke, Counterspell, Cutting Words, Deflect Missiles, Feather Fall), and the
+  // master's "Sem reação" check of the table rule "Reações dos inimigos". The
+  // action that opened the window (an attack, a spell, a fall) stays waiting
+  // (AWAITING_REACTION) until every window of it is answered, and goes on by
+  // itself then. The reactor's player answers theirs; the master answers any
+  // (`by_master` in the log). A window is answered in the order of
+  // `Encounter.reaction_windows`.
+  //
+  // Every stream gets `encounter_changed`; the reactor and the master also get
+  // `reaction_window_opened` and `reaction_window_closed`.
+  //
+  // Errors:
+  //   - `not_found`: the combat is not in the open session, or the window is not
+  //     in it.
+  //   - `permission_denied`: the caller is a player and the window is not theirs
+  //     to answer: the same answer for a real and for an invented window_id (RN-10).
+  //   - `invalid_argument`: the slot, the creatures or the roll do not fit what the
+  //     window offers.
+  //   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED,
+  //     NOT_YOUR_TURN_TO_ANSWER (out of order, or already answered or closed),
+  //     NO_SLOT (with min_level), REACTION_USED, REACTION_NEEDS_ROLL,
+  //     WRONG_DICE_MODE.
+  rpc AnswerReaction(AnswerReactionRequest) returns (AnswerReactionResponse);
+
+  // ResolveConcentrationSave settles a concentration window (SRD, Duration): the
+  // owner's Constitution saving throw against the DC the window carries, rolled in
+  // the app or typed from a physical d20, or handed to the master ("Deixar o
+  // mestre rolar por mim"). The master rolls or keeps the concentration for an
+  // NPC, and for a player who does not answer. On a failure the concentration ends,
+  // and the spell with it. The action that dealt the damage goes on after it.
+  //
+  // Errors: as AnswerReaction.
+  rpc ResolveConcentrationSave(ResolveConcentrationSaveRequest) returns (ResolveConcentrationSaveResponse);
 
   // ListCombatLog returns the combat log ("Registro do combate"), latest
   // first, grouped by round. Every entry is structured: the app writes the
@@ -1402,6 +1543,13 @@ enum EncounterBlockedReason {
   // `opportunity_offer_id` refuses a used reaction with REACTION_USED, and a
   // defeated or down reactor with the usual reasons.)
   ENCOUNTER_BLOCKED_REASON_OPPORTUNITY_PENDING = 46;
+  // MoveCombatant, RollAttack, TakeAction, CastSpell, EndTurn: the turn waits for
+  // the master to answer a question (Encounter.pending_hidden_reveals), and the
+  // master's own EndTurn waits too. The turn is held for everyone alike, so a
+  // player's screen says only "Esperando o mestre" (Encounter.turn_held) and
+  // nothing in the answer says why: the reason is the same as a wait for an
+  // opportunity attack to the player's eyes, and the master reads the question.
+  ENCOUNTER_BLOCKED_REASON_HIDDEN_REVEAL_PENDING = 47;
   // The traps (MR-035, PlayService.SearchForTraps and FireTrap). The first three
   // are 9.8's; 53 and 54 are free.
   //
@@ -1466,6 +1614,28 @@ enum EncounterBlockedReason {
   // with a weapon or an unarmed strike, and that action has not been taken yet
   // this turn. GetTurnOptions says it before, as ATTACK_ACTION_FIRST.
   ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST = 67;
+  // MoveCombatant: the master asked for a square that is a wall. Nobody stands in
+  // a wall, and a creature in one is seen by no player.
+  ENCOUNTER_BLOCKED_REASON_WALL_ON_SQUARE = 68;
+  // CastSpell, TakeAction: a healing aimed at a character that died, or that has
+  // failed three death saves. A dead creature regains no hit points (SRD 5.1,
+  // "Dropping to 0 Hit Points"), so nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_TARGET_DEAD = 69;
+  // MoveCombatant with `place`: the map has no free square a creature can stand
+  // on, so the server found none to place the combatant on.
+  ENCOUNTER_BLOCKED_REASON_NO_FREE_SQUARE = 70;
+  // MoveCombatant, RollAttack, CastSpell, TakeAction, EndTurn: a damage to a
+  // concentrating combatant waits for its Constitution save (a reaction window of
+  // kind CONCENTRATION_SAVE is open). The screen reads Encounter.reaction_wait.
+  // (REACTION_PENDING, 24, is the same wait for any other reaction window.)
+  ENCOUNTER_BLOCKED_REASON_CONCENTRATION_SAVE_PENDING = 71;
+  // AnswerReaction, ResolveConcentrationSave: the window is not the first one
+  // open for its reactor in the order (a window waits for the ones before it), or
+  // it was answered or closed already.
+  ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN_TO_ANSWER = 72;
+  // AnswerReaction: the answer needs a roll (Counterspell's check, Cutting Words'
+  // die, Deflect Missiles' die, a saving throw) and none came.
+  ENCOUNTER_BLOCKED_REASON_REACTION_NEEDS_ROLL = 73;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -1601,13 +1771,44 @@ message Encounter {
   // it never changes, so a screen can trust it for the whole combat. Never
   // UNSPECIFIED.
   EncounterMode mode = 19;
-  // The saving throws an effect asks at a turn that wait for an answer (window kind
-  // EFFECT_SAVE, RN-22): the end of a turn is not over until they are answered. The
-  // master all; a player the ones of their own character (to roll) and, for a
-  // combatant they see and an effect they may read, the wait ("Esperando o teste de
-  // Brisa"); for an NPC or an effect the master hides, a window with only
-  // `waiting_pt` "Esperando o mestre" and nothing else of the effect.
-  repeated EffectSaveWindow effect_save_windows = 100;
+  // The reaction windows that are open, in the order they are answered (the
+  // reactors' initiative order), as the caller may see them: the master all; a
+  // player only the ones they answer (`for_you`). Nobody gets a window they do not
+  // answer: what the others read is `reaction_wait`. Empty when nothing waits. The
+  // app opens its prompt from this after each `encounter_changed`. The window
+  // lives on the server: a reload gives it back.
+  repeated ReactionWindow reaction_windows = 22;
+  // What the combat waits for, as the caller may read it (PM-04a): unset when
+  // nothing waits. It says "Esperando o mestre" for a reactor that is an NPC or
+  // that the caller does not see, and "Esperando a reação de Sálvia" only for a
+  // player's character the caller sees; never which NPC, and never why.
+  ReactionWait reaction_wait = 23;
+  // True when the turn waits for the master to answer something the caller is not
+  // told (the master reads `pending_hidden_reveals`): the app says "Esperando o
+  // mestre" and offers no move, attack, action, spell or end of turn. A player
+  // gets the same value for any reason the turn waits for the master that is not
+  // an opportunity offer (those have their own list), so it says nothing of why.
+  bool turn_held = 20;
+  // The questions the master has still to answer, oldest first (a player's area
+  // spell hit hidden creatures and the table rule asks): only the master gets
+  // them, empty for a player. The app opens its card from this after each
+  // `encounter_changed`, also after a reload.
+  repeated HiddenRevealQuestion pending_hidden_reveals = 21;
+}
+
+// HiddenRevealQuestion is one question the master has to answer: the area spell
+// of a player hit hidden creatures, and the table asks whether they appear.
+message HiddenRevealQuestion {
+  // Stable ID (a UUID): what ResolveHiddenReveal names.
+  string id = 1;
+  // The combatant that cast (a UUID) and the spell (rules.v1.Spell.key).
+  string caster_id = 2;
+  string spell_key = 3;
+  // The hidden creatures the area hit (UUIDs), in the combat's order.
+  repeated string combatant_ids = 4;
+  // The area of the cast, so that the map can draw it: the point of origin and the
+  // squares inside.
+  SpellArea area = 5;
 }
 
 // OpportunityOffer is the attack a combatant may make on an enemy that left its
@@ -1643,6 +1844,10 @@ message OpportunityOffer {
   // the server finding it on a move: there is no square (`left_col` and `left_row`
   // are 0 and mean nothing), and a hit never takes the mover back anywhere.
   bool by_hand = 10;
+  // The mover left the reach by a long jump, not a walk: the master's panel says
+  // "saltou" instead of "saiu". UNSPECIFIED for a walk (and for an offer made by
+  // hand). Sent to whoever receives the offer.
+  JumpKind jump = 11;
 }
 
 // OpportunityAttack is one melee attack of an offer's reactor.
@@ -1872,16 +2077,20 @@ message Combatant {
   // ("1/8"), for the stat block and "ND 1/8". A player never gets them (RN-20).
   string bestiary_creature_key = 65;
   string challenge_rating = 66;
-  // The effects the caller reads on this combatant, as cards: the master all of
-  // them; the player of the combatant the ones they may read, never the DC of an
-  // NPC's effect; the others nothing (see `effect_labels`).
-  repeated CombatEffect effects = 100;
-  // The labels the caller reads for the effects on this combatant, for the order and
-  // the map: "Paralisado", "Preso numa teia", or the master's free label. A player
-  // reads only the ones the master leaves visible; the master reads all.
-  repeated EffectLabel effect_labels = 101;
-  // The level of exhaustion, 0 to 6. The master and the owner read it; the others 0.
-  int32 exhaustion_level = 102;
+  // The hit points Ajuda adds to the maximum (5, 10, 15...; 0 without it). The
+  // maximum above (`hit_points_max`) already counts them, so the screen writes "31 de
+  // 43" with "+5 Ajuda" beside it. Only the master gets it, like the numbers it
+  // belongs to; for a creature, also its owner's player. A player's character's own
+  // numbers are CharacterVitals.hit_points_max_bonus.
+  int32 hit_points_max_bonus = 67;
+  // The Bardic Inspiration die the combatant holds, if any. Only the master and the
+  // combatant's own player get it; the other players see the bard spend a use
+  // and nothing more.
+  InspirationDie inspiration_die = 70;
+  // The attack roll of this combatant that waits for the answer about the die, if any
+  // (it is answered with AnswerBardicInspiration). Only the master and the combatant's
+  // own player get it, so the question is still there when the screen is read again.
+  InspirationOffer inspiration_offer = 71;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -2044,6 +2253,11 @@ message MoveCombatantRequest {
   // `permission_denied`. Without it, the master's move of the combatant that is
   // on turn is a move like any, and provokes.
   bool forced = 9;
+  // Only the master: the server picks the square of a combatant that has none
+  // ("Colocar no mapa"), by the same rule that places the NPCs when the combat
+  // begins. col and row are ignored. A player sending it gets `permission_denied`,
+  // and a combatant already on the map is refused with `invalid_argument`.
+  bool place = 10;
 }
 
 // MoveCombatantResponse returns the combat after the move.
@@ -2125,6 +2339,18 @@ message GetMoveOptionsRequest {
   string campaign_id = 1;
   string encounter_id = 2;
   string combatant_id = 3;
+  // LONG describes the squares a long jump can land on instead of a walk, and
+  // `provokes_reactor_ids` warns about the opportunity attacks of that jump, as it does
+  // for a walk (a jump is movement and leaves a reach the same way). UNSPECIFIED is the
+  // walk. HIGH is refused (`invalid_argument`): a high jump changes no square, so it
+  // provokes nothing.
+  JumpKind jump = 4;
+  // For a LONG jump: the screen's guess that the combatant ran 10 ft first (the 3 m
+  // of a running start in metric). The squares always follow the running start the
+  // server counted from what the combatant really walked just before (the distance is
+  // the whole Strength score with it, half without), so the preview never offers a
+  // square MoveCombatant would refuse. Ignored without a jump.
+  bool jump_running_start = 5;
 }
 
 // GetMoveOptionsResponse is where the combatant can go in one straight move.
@@ -2316,10 +2542,15 @@ message DiceRoll {
   int32 total = 5;
   // True when the player rolled real dice and typed the sum (RN-18).
   bool physical = 6;
-  // The dice an effect added to (sign 1) or took from (sign -1) the roll: Bênção
-  // and Perdição's d4 on attack rolls and saving throws. `total` already has them.
-  // For a player on a source the master hides, `source_name_pt` is "Outra fonte".
-  repeated ExtraDie extra_dice = 100;
+  // A d20 of an ability check that a feature made count as another number
+  // (Talento Confiável: a 9 or lower counts as 10): the number it counted as.
+  // `faces` keeps what came up, `total` uses this one. Unset when the feature did not
+  // change the roll, even when the character has it: a 14 is never marked. For a roll
+  // with two d20 (disadvantage) the field belongs to the die that counted.
+  optional int32 treated_as = 7;
+  // The feature that did it, as a content key ("feature:reliable-talent"); its
+  // Portuguese name is in the content's names. Empty when `treated_as` is unset.
+  string treated_as_source = 8;
 }
 
 // CriticalDamageRule is what a critical hit does to the damage dice: the table's
@@ -2441,9 +2672,18 @@ message PendingDamage {
   // `bonus`, apart). 0 under any other rule. It is part of `roll.modifier` once
   // the damage is rolled, so `dice (faces) + modifier = total` still holds.
   int32 critical_max = 24;
-  // The damage an effect dealt to who started the turn under it (the web that
-  // burns): the effect's Portuguese name ("Teia em chamas"). It has no attacker.
-  string effect_source_name_pt = 100;
+  // The weapon damage dice a feature adds to a critical hit of a melee attack, on top of
+  // `dice_count`: 1, 2 or 3 for a barbarian's Crítico Brutal (levels 9, 13 and 17), same
+  // faces as the attack's. 0 for any other hit: a ranged attack, a spell, a creature, an
+  // NPC and the master never have them. They are always rolled, whatever the critical rule
+  // is (`critical_max` never counts them), so a player with physical dice rolls
+  // `dice_count + extra_dice_count` dice and types their sum (RollDamageRequest.typed_sum).
+  // In the rolled `roll`, the faces of the `dice_count` dice come first and the extra
+  // ones last.
+  int32 extra_dice_count = 25;
+  // The feature's Portuguese name for those dice ("Crítico Brutal"); empty when
+  // `extra_dice_count` is 0.
+  string extra_dice_name_pt = 26;
 }
 
 // GetTurnOptionsRequest names a combatant.
@@ -2475,12 +2715,28 @@ message GetTurnOptionsResponse {
   // combatant's attacks and spells will do to the damage dice, so the screen can
   // say it before the roll. DOUBLED_DICE or MAX_PLUS_ROLL, never UNSPECIFIED.
   CriticalDamageRule critical_rule = 6;
-  // What the effects on the combatant take away this turn, in words the caller may
-  // read ("Você está Paralisada. Não age nem se move neste turno."); empty when
-  // nothing does.
-  repeated EffectNote effect_notes = 100;
-  // The extra action an effect gives (Velocidade); unset when there is none.
-  ExtraActionOption extra_action = 101;
+  // For each feature action of options.feature_actions that picks a creature
+  // (Cura pelas Mãos, Inspiração de Bardo), who it can pick.
+  repeated ResourceTargets resource_targets = 30;
+}
+
+// ResourceTargets lists the creatures a feature action that picks one can choose.
+message ResourceTargets {
+  // The feature action, as in rules.v1.Action.key ("feature:lay-on-hands",
+  // "feature:bardic-inspiration-d6").
+  string action_key = 1;
+  // The combatants the caller sees, in turn order: for Lay on Hands the touch's
+  // reach (5 ft, `too_far` beyond it), for Bardic Inspiration the 60 ft of the bard's
+  // voice. The paladin itself is listed for Lay on Hands, the bard never is.
+  repeated ResourceTarget targets = 2;
+}
+
+// ResourceTarget is one creature a feature action may pick.
+message ResourceTarget {
+  TargetInReach target = 1;
+  // Set when the creature cannot be picked: Bardic Inspiration's "Já tem um dado",
+  // "Não ouve você". Empty when it can. Never a creature's type (RN-10).
+  string disabled_reason_pt = 2;
 }
 
 // SpellTargets lists the targets one spell can choose.
@@ -2507,6 +2763,33 @@ message SpellTargets {
   // spell's level)`. 0 when it takes no more. `extra_target_per_level` is true
   // when this is above 0.
   int32 targets_per_level = 6;
+  // How the spell is placed on a map with a grid; UNSPECIFIED for a spell that is
+  // not a placed area (it takes `targets` as before, and in a combat without a map
+  // every area spell does). The screen draws the placement picker for the others.
+  AreaPlacement placement = 7;
+  // The area's form and size, for the picker's outline: the radius of a sphere or
+  // a cylinder, the length of a cone or a line, the side of a cube, in feet; and a
+  // line's width in feet. Only with a `placement`.
+  meurpg.rules.v1.SpellAreaShape area_shape = 8;
+  int32 area_size_ft = 9;
+  int32 area_width_ft = 10;
+  // How far the point of origin may be from the caster, in feet, for POINT; 0 for
+  // the others. The master is not held to it.
+  int32 range_ft = 11;
+}
+
+// AreaPlacement is how a spell's area is set on a map with a grid (SRD 5.1,
+// "Areas of Effect" and "Spell Range").
+enum AreaPlacement {
+  AREA_PLACEMENT_UNSPECIFIED = 0;
+  // A sphere or a cylinder centered on a point the caster chooses within range.
+  AREA_PLACEMENT_POINT = 1;
+  // A cone, a line or a cube that comes out of the caster (range Self): the
+  // caster picks one of eight directions.
+  AREA_PLACEMENT_DIRECTION = 2;
+  // A sphere or a cylinder that is Self: centered on the caster, nothing to
+  // choose.
+  AREA_PLACEMENT_CASTER = 3;
 }
 
 // DartsAtSlot is how many darts a slot level makes.
@@ -2589,14 +2872,10 @@ message RollAttackRequest {
   // is `failed_precondition` (REACTION_USED). The cover is measured with the
   // mover on the square it left the reach at, not where it stands now.
   string opportunity_offer_id = 10;
-  // The faces of the dice an effect adds to the roll (Bênção, Perdição), in the order
-  // of the effects, when the player rolls physical dice (`d20_face`): one for each,
-  // 1 to the die's faces. With the app's dice the server rolls them.
-  repeated int32 extra_die_faces = 100;
-  // True: the attack is the weapon attack of the extra action an effect gives
-  // (Velocidade): it spends that action, not the Attack action, and it is one weapon
-  // attack.
-  bool use_extra_action = 101;
+  // Deflect Missiles' throw back: the reaction window (kind DEFLECT_MISSILES, at its
+  // throw-back step) that caught the missile. It implies `as_reaction`, spends the
+  // monk's ki (1 point) and is part of the same reaction, so it opens no window.
+  string catch_window_id = 11;
 }
 
 // AttackRoll is the attack roll and what it did.
@@ -2618,6 +2897,53 @@ message AttackRoll {
   // CRITICAL_HIT ("role os dados duas vezes" or "o máximo mais uma rolagem"). Set
   // on every roll: the damage itself is PendingDamage (critical_rule).
   CriticalDamageRule critical_rule = 9;
+  // The die added to the d20 after it was rolled (Bardic Inspiration), when the
+  // player answered. The d20's total already has it.
+  repeated BonusDie bonus_dice = 30;
+  // True when a reaction window holds the roll (Cutting Words): the d20 is rolled
+  // and the action spent, but the result is not told yet, so `outcome` is
+  // UNSPECIFIED. The result comes with the next `encounter_changed`, when the
+  // window is answered.
+  bool held_for_reaction = 10;
+}
+
+// InspirationDie is a Bardic Inspiration die a combatant holds (SRD 5.1, Bard): one
+// at a time, for 10 minutes.
+message InspirationDie {
+  // The size of the die: 6, 8, 10 or 12.
+  int32 sides = 1;
+  // The bard that gave it (a combatant's ID) and its name, "Orla".
+  string from_combatant_id = 2;
+  string from_label = 3;
+  // The round the die runs out in: it lasts 100 rounds (10 minutes of 6 seconds).
+  int32 expires_at_round = 4;
+}
+
+// InspirationOffer asks the player of a held roll whether to add the Bardic
+// Inspiration die: RollAttack answered it instead of the outcome. The attack
+// is only resolved by AnswerBardicInspiration.
+message InspirationOffer {
+  // The held roll (a UUID).
+  string hold_id = 1;
+  // The die the character holds, and who gave it.
+  InspirationDie die = 2;
+  // The d20 of the held roll, with the attack's bonus as the modifier: what the player
+  // rolled, before the result is told.
+  DiceRoll d20 = 3;
+  // The attack and its target.
+  string attack_key = 4;
+  string target_id = 5;
+}
+
+// BonusDie is a die added to a roll after it was rolled (Bardic Inspiration).
+message BonusDie {
+  // The feature it came from ("feature:bardic-inspiration-d6").
+  string source_key = 1;
+  int32 sides = 2;
+  // The face rolled, 0 for a die the player did not use.
+  int32 face = 3;
+  // Whether the die was added to the total.
+  bool used = 4;
 }
 
 // RollAttackResponse returns the roll and the combat after it.
@@ -2628,6 +2954,11 @@ message RollAttackResponse {
   // Set when the attack hit: the damage to roll. For the master and the
   // attacker's player only.
   PendingDamage pending_damage = 3;
+  // Set instead of the outcome (`roll.outcome` is unspecified, no action is spent
+  // and there is no pending damage) when the attacker holds a Bardic Inspiration
+  // die: the d20 is rolled, and the player decides whether to add the die before the
+  // result is told (AnswerBardicInspiration).
+  InspirationOffer inspiration_offer = 30;
 }
 
 // RollDamageRequest rolls the damage of a hit.
@@ -2643,7 +2974,8 @@ message RollDamageRequest {
     // The sum of the physical dice, without the modifier and without
     // PendingDamage.critical_max: between the number of dice to roll
     // (PendingDamage.dice_count, doubled or not by the critical rule) and that
-    // number times their faces.
+    // number times their faces. With PendingDamage.extra_dice_count, those dice
+    // count in both numbers.
     int32 typed_sum = 6;
   }
 }
@@ -2708,9 +3040,6 @@ message TakeActionRequest {
     // of Retomar o fôlego.
     int32 typed_sum = 7;
   }
-  // True: the action is the extra action an effect gives (Velocidade): Disparada,
-  // Desengajar, Esconder or Usar um objeto spend that action instead of the Action.
-  bool use_extra_action = 100;
 }
 
 // TakeActionResponse returns the combat after the action.
@@ -2823,6 +3152,143 @@ message CastSpellRequest {
   // with `invalid_argument` for a spell with nothing to pick or a type that is
   // not one of its types.
   string damage_type_key = 12;
+  // The Metamagic the sorcerer uses on this casting (SRD 5.1, Sorcerer): one
+  // option, or Empowered Spell with one other. Each must be an option the
+  // character knows and the spell takes at this slot (SpellOption.metamagic_options);
+  // otherwise `invalid_argument` with the reason. The cost is spent from the sorcery
+  // points with the slot.
+  repeated MetamagicChoice metamagic = 30;
+  // Where an area spell is placed, for a spell that has a placement on a map with
+  // a grid (see CastSpell and PreviewSpellArea). At most one is set: a point for a
+  // sphere or a cylinder, a direction for a cone, a line and a cube. A sphere or
+  // a cylinder that is Self takes neither.
+  oneof area {
+    SpellOrigin origin = 13;
+    SpellDirection direction = 14;
+  }
+  // The master only: whether the hidden creatures the area hits appear to the
+  // players, for this cast. Without it the table rule decides. A player who sends
+  // it gets `permission_denied`, before anything else is checked.
+  optional bool reveal_hidden = 15;
+}
+
+// MetamagicChoice is one Metamagic option on a casting.
+message MetamagicChoice {
+  // The option, "feature:metamagic-twinned-spell".
+  string key = 1;
+  // Twinned Spell: the second target (a combatant's ID); the first is the cast's
+  // target.
+  repeated string target_ids = 2;
+  // Careful Spell: the creatures that pass the saving throw on their own, up to
+  // the Charisma modifier (at least one).
+  repeated string careful_ids = 3;
+  // Heightened Spell: the target with disadvantage on its first saving throw.
+  string heightened_id = 4;
+}
+
+// SpellOrigin is a square of the grid the caster chose as the point of origin of an
+// area: col 0 to grid_columns - 1 and row 0 to grid_rows - 1, from the top left.
+message SpellOrigin {
+  int32 col = 1;
+  int32 row = 2;
+}
+
+// SpellDirection is one of the eight directions a cone, a line or a cube points
+// (every 45 degrees): `dx` is -1 (west), 0 or 1 (east), `dy` is -1 (north), 0 or 1
+// (south), and never both 0.
+message SpellDirection {
+  int32 dx = 1;
+  int32 dy = 2;
+}
+
+// SpellArea is where an area spell landed: the point of origin it really had (the
+// caster's square for a cone, a line and a cube) and the squares it covers, after
+// the line of effect cut it (walls and doors cut it; cover does not).
+message SpellArea {
+  SpellOrigin origin = 1;
+  repeated SpellOrigin squares = 2;
+}
+
+// PreviewSpellAreaRequest places an area spell for the preview.
+message PreviewSpellAreaRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The combatant that casts (a UUID).
+  string caster_id = 3;
+  // The spell, one of GetTurnOptions' options.spells keys.
+  string spell_key = 4;
+  // The slot, as in CastSpellRequest. Unset for a cantrip.
+  SpellSlot slot = 5;
+  // Where it is placed: as in CastSpellRequest.
+  oneof area {
+    SpellOrigin origin = 6;
+    SpellDirection direction = 7;
+  }
+}
+
+// PreviewSpellAreaResponse is who an area reaches.
+message PreviewSpellAreaResponse {
+  // The point of origin the area really has: the one asked for, or the near side
+  // of a wall for a player's point behind it; the caster's square for a cone, a
+  // line and a cube.
+  SpellOrigin origin = 1;
+  // The squares inside, in rows from the top.
+  repeated SpellOrigin squares = 2;
+  // The creatures inside, as the caller sees them, in the combat's order: the
+  // caster too, when inside.
+  repeated AreaTarget targets = 3;
+  // True when the spell's saving throw is a Dexterity one, the only save cover
+  // helps (SRD, "Cover"); with another ability each target's `cover` is NONE and
+  // the screen says the spell gets no cover bonus.
+  bool cover_counts = 4;
+  // The most the area can reach from the caster, in feet: the spell's range for a
+  // sphere or a cylinder, 0 for a spell that comes out of the caster. The screen
+  // dims the squares beyond it.
+  int32 range_ft = 5;
+  // True when the point of origin is not the one asked for (a wall was in the
+  // way).
+  bool moved = 6;
+}
+
+// AreaTarget is a creature inside a placed area.
+message AreaTarget {
+  string combatant_id = 1;
+  string label = 2;
+  // How hurt it is, as a word: never hit points (RN-20). Unset for a player's
+  // character, as in the order: its hit points are on the table and the app reads
+  // them from the combatant.
+  CombatantState state = 3;
+  // The cover it has against the point of origin (D4), where it comes from, and
+  // only when the save is Dexterity (see `cover_counts`), NONE when it has none
+  // and unset when the save gets none; never TOTAL: a creature with total cover is not
+  // inside.
+  CoverDegree cover = 4;
+  CoverSource cover_source = 5;
+  // True for a creature on the caster's side: a player's character or creature
+  // for a player caster, an NPC for the master's. The caster itself has `self`.
+  bool ally = 6;
+  bool self = 7;
+  // The distance in feet from the point of origin, the squares between the
+  // centers rounded down times 5 ft (RN-21).
+  int32 distance_ft = 8;
+  // Only the master gets it: the creature is hidden from the players.
+  bool hidden = 9;
+}
+
+// ResolveHiddenRevealRequest answers a question of Encounter.pending_hidden_reveals.
+message ResolveHiddenRevealRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The question (a UUID).
+  string pending_reveal_id = 3;
+  // True: the hidden creatures appear to the players. False: they stay hidden.
+  bool reveal = 4;
+  string idempotency_key = 5;
+}
+
+// ResolveHiddenRevealResponse returns the combat as it is now.
+message ResolveHiddenRevealResponse {
+  Encounter encounter = 1;
 }
 
 // SummonChoice is what a casting of a summoning spell brings: one of the
@@ -2864,11 +3330,6 @@ message SaveResult {
   bool bonus_known = 3;
   // The spell's save DC. Only the master and the caster's player.
   int32 dc = 4;
-  // The target failed by itself, with no d20: a Strength or Dexterity saving throw
-  // of a Paralisado, Atordoado, Inconsciente or Petrificado creature (SRD,
-  // Conditions). `roll` is unset then. The cause is read only by who may read the
-  // condition.
-  bool auto_fail = 100;
 }
 
 // SpellTargetResult is what a cast did to one target.
@@ -2897,13 +3358,6 @@ message SpellTargetResult {
   // deals more than one damage type (Tempestade de Gelo: pancada and frio), in the
   // spell's order after `pending_damage_id`. Same rules as `pending_damage_id`.
   repeated string more_pending_damage_ids = 10;
-  // A spell that leaves an effect that lasts (Bênção, Perdição, Imobilizar Pessoa,
-  // Velocidade, Teia): whether it took hold on this target. Unspecified for the
-  // other spells.
-  LastingEffectOutcome lasting_effect = 100;
-  // Only the master: why a spell had no effect ("alvo não é humanoide"). The player
-  // reads only "A magia não teve efeito." (RN-20).
-  string no_effect_reason_master = 101;
 }
 
 // SpellEffectKind is how a spell that reads hit points works. The same four kinds
@@ -2924,10 +3378,10 @@ enum SpellEffectKind {
   // The targets gain temporary hit points, not healing (Vitalidade Falsa). The
   // roll is the pool_roll of the cast; `healed` of a target is what it gained.
   SPELL_EFFECT_KIND_TEMP_HP = 5;
-  // The targets' maximum and current hit points both rise (Ajuda); `healed` of
-  // a target is how much its maximum rose. A player's character gets the amount
-  // as temporary hit points (its maximum comes from the sheet), or as current
-  // hit points when it is at 0, which wakes it up.
+  // The targets' maximum and current hit points both rise (Ajuda): the bonus is kept
+  // on the target (`hit_points_max_bonus`), `healed` of a target is how much it rose,
+  // and a target at 0 hit points wakes up. Two Ajudas never add up: the stronger one
+  // stands (a weaker one on top of it changes nothing, `healed` is 0).
   SPELL_EFFECT_KIND_MAX_HP = 6;
 }
 
@@ -2976,22 +3430,26 @@ message SpellEffectResult {
   // master and the target's own player: on an NPC the amount would tell the
   // caster how many hit points it lacked.
   optional int32 healed = 6;
-  // For Aid (SPELL_EFFECT_KIND_MAX_HP): what the target got, which depends on who
-  // it is. Everyone gets it: it only says which of three public cases applied
-  // (an NPC or creature; a character standing; a character at 0 hit points).
+  // For Aid (SPELL_EFFECT_KIND_MAX_HP): what the target got. Everyone gets it: it
+  // only says which of two public cases applied (the target stood; it was at 0 hit
+  // points and woke up).
   SpellEffectGain gain = 7;
+  // For Aid: the target's hit points and maximum after it, so the result reads "PV 0 → 5
+  // de 45". Only the master and the target's own player, as `healed`.
+  optional int32 hit_points_after = 8;
+  optional int32 hit_points_max_after = 9;
 }
 
 // SpellEffectGain is what Aid gave one target.
 enum SpellEffectGain {
   SPELL_EFFECT_GAIN_UNSPECIFIED = 0;
-  // An NPC or a creature: its maximum and current hit points both rose.
+  // The target stood: its maximum and current hit points both rose.
   SPELL_EFFECT_GAIN_MAXIMUM = 1;
-  // A player's character above 0 hit points: the amount became temporary hit
-  // points, because the sheet's maximum has no place for a bonus.
+  // No longer produced: Ajuda gives no temporary hit points (they would not wake
+  // anyone, and the spell says the maximum rises).
   SPELL_EFFECT_GAIN_TEMPORARY = 2;
-  // A player's character at 0 hit points: the amount became current hit points,
-  // so the character wakes up.
+  // The target was at 0 hit points: the maximum rose too, and the current hit points
+  // woke it up (a player's character wakes with its death saves cleared).
   SPELL_EFFECT_GAIN_CURRENT = 3;
 }
 
@@ -3003,6 +3461,17 @@ message CastSpellResponse {
   // order of `summon.creature_keys`. They share one initiative total, so they
   // take a joint turn. Empty for any other spell.
   repeated string summoned_combatant_ids = 3;
+  // An area spell placed on the map: where it landed (the master's, the caster's
+  // player's: the map as the caller knows it). Unset for any other cast.
+  SpellArea area = 4;
+  // The hidden creatures the area hit (UUIDs). Only the master gets them: empty
+  // for a player, who is told nothing that names or counts a hidden creature
+  // (RN-10).
+  repeated string hidden_hits = 5;
+  // The question this cast opened for the master (Encounter.pending_hidden_reveals),
+  // when the table rule is "Perguntar a cada vez" and a player cast. Only the master
+  // gets it.
+  string pending_reveal_id = 6;
 }
 
 // SpellCast is a cast, as the caller may see it.
@@ -3033,6 +3502,11 @@ message SpellCast {
   // A threshold: the most hit points a creature may have to be affected (150,
   // 100). Only the master.
   optional int32 effect_threshold = 11;
+  // The Metamagic options the casting used and the sorcery points they took
+  // (everyone who gets the cast gets them: they are the caster's choice, not a
+  // secret).
+  repeated string metamagic_keys = 30;
+  int32 sorcery_points_spent = 31;
 }
 
 // UseReactionRequest casts Escudo against a hit.
@@ -3206,6 +3680,21 @@ message EndConcentrationResponse {
   Encounter encounter = 1;
 }
 
+// EndCombatEffectRequest ends a lasting effect on a combatant.
+message EndCombatEffectRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string combatant_id = 3;
+  // The effect to end. Only AID: Escudo ends by itself.
+  CombatEffect effect = 4;
+  string idempotency_key = 5;
+}
+
+// EndCombatEffectResponse returns the combat after the change.
+message EndCombatEffectResponse {
+  Encounter encounter = 1;
+}
+
 // ListCombatLogRequest names the combat.
 message ListCombatLogRequest {
   string campaign_id = 1;
@@ -3231,6 +3720,9 @@ message CombatLogRound {
 // CombatLogKind is what a combat log entry tells.
 enum CombatLogKind {
   COMBAT_LOG_KIND_UNSPECIFIED = 0;
+  // A class resource flow (Lay on Hands, Flexible Casting, Bardic Inspiration): the
+  // actor, the target and `resource`.
+  COMBAT_LOG_KIND_RESOURCE = 90;
   // The combat began (round 1).
   COMBAT_LOG_KIND_COMBAT_BEGUN = 1;
   // An attack: the attacker, the target, the roll, the outcome and, once
@@ -3290,13 +3782,13 @@ enum CombatLogKind {
   // (2d8 + 2: 3, 4)"). Only the master gets the line, and it also comes from
   // before the combat begins (round 0).
   COMBAT_LOG_KIND_MONSTERS_ADDED = 24;
-  // An effect that lasts began, changed or ended, a saving throw of an effect was
-  // rolled, or an effect dealt damage (RN-22): `effect`. An effect the master hides
-  // from the players is a line for the master alone, and no count of them reaches a
-  // player.
-  COMBAT_LOG_KIND_EFFECT = 100;
-  // The level of exhaustion of a combatant changed (`effect.exhaustion_level`).
-  COMBAT_LOG_KIND_EXHAUSTION = 101;
+  // A reaction window was answered or closed (PM-04): `reaction_text_pt` is the
+  // line, written on the server for who reads it (the master's has the NPC
+  // numbers, the players' has none and never names a reactor they do not see).
+  COMBAT_LOG_KIND_REACTION_WINDOW = 25;
+  // A lasting effect on a combatant ended: `effect_end`. Escudo (it ends by itself, at
+  // the start of the caster's turn) and Ajuda (the master ended it).
+  COMBAT_LOG_KIND_EFFECT_ENDED = 26;
 }
 
 // WildShapeEndReason says why a druid's beast form ended.
@@ -3393,6 +3885,9 @@ message CombatLogEntry {
   int32 distance_dft = 30;
   JumpKind jump = 31;
   int32 jump_height_dft = 32;
+  // MOVED by a long jump: the combatant had walked 10 ft just before, so the jump
+  // counted with a running start. Everyone who gets the line.
+  bool jump_running_start = 45;
   // MOVED by a long jump, only the master: it landed in difficult terrain, so the
   // line says "Acrobacia CD 10 ou cai Derrubado" (the app rolls nothing).
   bool landing_difficult = 33;
@@ -3410,46 +3905,67 @@ message CombatLogEntry {
   CombatLogDoor door = 42;
   // MONSTERS_ADDED: the new monsters, in the order of their names.
   repeated CombatLogMonster monsters = 43;
-  // EFFECT and EXHAUSTION: what happened.
-  CombatLogEffect effect = 100;
+  // RESOURCE: what the class resource did.
+  CombatLogResource resource = 90;
+  // ATTACK: the die added to the d20 after it was rolled (Bardic Inspiration). Only
+  // the master and the attacker's player get it, like the d20.
+  repeated BonusDie bonus_dice = 91;
+  // REACTION_WINDOW: the line, already filtered for the caller.
+  string reaction_text_pt = 44;
+  // EFFECT_ENDED: which effect, on the actor.
+  CombatLogEffectEnd effect_end = 46;
 }
 
-// CombatLogEffect is what an EFFECT or EXHAUSTION line says.
-message CombatLogEffect {
-  // The effect's key and Portuguese name ("spell:hold-person", "Imobilizar Pessoa").
-  string source_key = 1;
-  string source_name_pt = 2;
-  // What happened.
-  CombatLogEffectChange change = 3;
-  // The combatants it concerns, by label ("Brisa", "Goblin 2").
-  repeated string target_labels = 4;
-  // SAVED and SAVE_FAILED: the ability ("wis"), and for the master the roll and the DC;
-  // a player reads only whether it passed.
-  string ability = 5;
-  string ability_name_pt = 6;
-  optional int32 d20 = 7;
-  optional int32 total = 8;
-  optional int32 dc = 9;
-  // DAMAGE: the damage type's Portuguese name and the amount rolled.
-  string damage_type_pt = 10;
-  int32 amount = 11;
-  // EXHAUSTION: the level now, and the level before.
-  int32 exhaustion_level = 12;
-  int32 exhaustion_before = 13;
-  // Only the master: how many of the effects of this line the players do not read.
-  int32 hidden_count = 14;
+// CombatLogEffectEnd is an effect that ended, in the combat log.
+message CombatLogEffectEnd {
+  CombatEffect effect = 1;
+  // AID: the hit points and the maximum before and after. Only the master (RN-20);
+  // zero for everyone else.
+  int32 hit_points_before = 2;
+  int32 hit_points_after = 3;
+  int32 hit_points_max_before = 4;
+  int32 hit_points_max_after = 5;
 }
 
-// CombatLogEffectChange is what an effect did.
-enum CombatLogEffectChange {
-  COMBAT_LOG_EFFECT_CHANGE_UNSPECIFIED = 0;
-  COMBAT_LOG_EFFECT_CHANGE_ADDED = 1;
-  COMBAT_LOG_EFFECT_CHANGE_ENDED = 2;
-  COMBAT_LOG_EFFECT_CHANGE_DURATION_CHANGED = 3;
-  COMBAT_LOG_EFFECT_CHANGE_SAVED = 4;
-  COMBAT_LOG_EFFECT_CHANGE_SAVE_FAILED = 5;
-  COMBAT_LOG_EFFECT_CHANGE_DAMAGE = 6;
-  COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED = 7;
+// CombatEffect is a lasting effect on a combatant that the table can end.
+enum CombatEffect {
+  COMBAT_EFFECT_UNSPECIFIED = 0;
+  // Escudo's +5 armor class. It ends by itself and has no action to end it.
+  COMBAT_EFFECT_SHIELD = 1;
+  // Ajuda's bonus to the maximum hit points.
+  COMBAT_EFFECT_AID = 2;
+}
+
+// CombatLogResource is a Lay on Hands, a Flexible Casting or a Bardic Inspiration
+// line of the log.
+message CombatLogResource {
+  // The flow, "feature:lay-on-hands", "feature:flexible-casting-creating-spell-slots",
+  // "feature:flexible-casting-converting-spell-slot" or "feature:bardic-inspiration".
+  string key = 1;
+  // The points or uses spent from the resource (a Lay on Hands amount or cure,
+  // sorcery points of a created slot, 1 use of Bardic Inspiration).
+  int32 spent = 2;
+  // Flexible Casting: the spell slot level created or expended, and the sorcery
+  // points gained by converting one.
+  int32 slot_level = 3;
+  int32 gained = 4;
+  // Lay on Hands: the hit points the target regained, and the cure. Only the
+  // master and the target's player get `healed`; a disease or a poison is public.
+  optional int32 healed = 5;
+  meurpg.play.v1.LayOnHandsCureKind cure = 6;
+  // The touch did nothing; the reason (undead or construct) is the master's alone.
+  bool nothing_happened = 7;
+  optional string nothing_reason = 8;
+  // Bardic Inspiration: the die given (its size) and the round it runs out in.
+  int32 die_sides = 9;
+  int32 expires_at_round = 10;
+}
+
+// LayOnHandsCureKind is what a Lay on Hands cure fixed.
+enum LayOnHandsCureKind {
+  LAY_ON_HANDS_CURE_KIND_UNSPECIFIED = 0;
+  LAY_ON_HANDS_CURE_KIND_DISEASE = 1;
+  LAY_ON_HANDS_CURE_KIND_POISON = 2;
 }
 
 // CombatLogMonster is a monster of a MONSTERS_ADDED line, only the master's.
@@ -3491,6 +4007,9 @@ message CombatLogSpell {
   DiceRoll pool_roll = 6;
   string effect_condition_key = 7;
   optional int32 effect_threshold = 8;
+  // The Metamagic the casting used, and the sorcery points it spent.
+  repeated string metamagic_keys = 30;
+  int32 sorcery_points_spent = 31;
 }
 
 // CombatLogSpellTarget is what a cast did to one target, in the log. Its fields
@@ -3518,6 +4037,9 @@ message CombatLogSpellTarget {
   // The damage of the cast's other damage types, once rolled, in the spell's
   // order after `damage`.
   repeated CombatLogDamage more_damages = 13;
+  // Only the master: the creature was hidden from the players when the spell hit
+  // it. A player's entry never has such a target (RN-10).
+  bool hidden = 14;
 }
 
 // CombatLogDeathSave is a death save in the log. When the table hides the death
@@ -3575,6 +4097,10 @@ message CombatLogDamage {
   // maximum of the dice that came without rolling (already part of `roll.modifier`).
   CriticalDamageRule critical_rule = 13;
   int32 critical_max = 14;
+  // As in PendingDamage: the extra dice of a critical hit and the feature's name. The
+  // last `extra_dice_count` faces of `roll` are theirs.
+  int32 extra_dice_count = 15;
+  string extra_dice_name_pt = 16;
 }
 
 // GetCombatHighlightsRequest names the combat.
@@ -3734,4 +4260,458 @@ message TrapDamageDone {
   bool critical = 8;
   // APPLIED to an NPC that reached 0: defeated.
   bool target_defeated = 9;
+}
+
+// ---- The reaction window (PM-04) ----
+
+// ReactionKind is what a reaction window asks.
+enum ReactionKind {
+  REACTION_KIND_UNSPECIFIED = 0;
+  // Escudo Arcano: +5 on the armor class until the start of the caster's next
+  // turn, against an attack that hit it or a Magic Missile that targets it (SRD,
+  // Shield).
+  REACTION_KIND_SHIELD = 1;
+  // Esquiva Sobrenatural: half the damage of an attack that hit and whose
+  // attacker the rogue sees (SRD, Rogue 5).
+  REACTION_KIND_UNCANNY_DODGE = 2;
+  // Repreensão Infernal: the creature that damaged the caster, within 60 ft and
+  // seen, makes a Dexterity saving throw (SRD, Hellish Rebuke).
+  REACTION_KIND_HELLISH_REBUKE = 3;
+  // Contramágica: a creature within 60 ft that the caster sees casts a spell (SRD,
+  // Counterspell).
+  REACTION_KIND_COUNTERSPELL = 4;
+  // Palavras de Interrupção: a creature within 60 ft that the bard sees makes an
+  // attack roll, an ability check or a damage roll (SRD, College of Lore).
+  REACTION_KIND_CUTTING_WORDS = 5;
+  // Defletir Projéteis: a ranged weapon attack hit the monk (SRD, Monk 3).
+  REACTION_KIND_DEFLECT_MISSILES = 6;
+  // Queda Suave: the caster or a creature within 60 ft falls (SRD, Feather Fall).
+  REACTION_KIND_FEATHER_FALL = 7;
+  // The opportunity attack (RN-21): the same offer as Encounter.opportunity_offers,
+  // answered with RollAttack, DeclineOpportunity or SkipOpportunity. AnswerReaction
+  // may only pass it.
+  REACTION_KIND_OPPORTUNITY = 8;
+  // Reserved: the hidden creatures an area spell hits (the question joins the
+  // window when it lands).
+  REACTION_KIND_HIDDEN_REVEAL = 9;
+  // The Constitution saving throw of a concentrating combatant that took damage
+  // (SRD, Duration).
+  REACTION_KIND_CONCENTRATION_SAVE = 10;
+  // The master's one-tap check of the table rule "Reações dos inimigos: Sempre":
+  // an action of a player against an enemy waits for "Sem reação" so that the
+  // pause says nothing to the players.
+  REACTION_KIND_MASTER_CHECK = 11;
+}
+
+enum ReactionWindowStatus {
+  REACTION_WINDOW_STATUS_UNSPECIFIED = 0;
+  REACTION_WINDOW_STATUS_OPEN = 1;
+  REACTION_WINDOW_STATUS_ANSWERED = 2;
+  REACTION_WINDOW_STATUS_CLOSED_BY_ITSELF = 3;
+}
+
+// ReactionClosedReason says why a window closed by itself: the server looks at
+// the open windows again at every change of hit points, conditions or order.
+enum ReactionClosedReason {
+  REACTION_CLOSED_REASON_UNSPECIFIED = 0;
+  // The same reactor already used its reaction (one a round, SRD, Reactions).
+  REACTION_CLOSED_REASON_REACTION_SPENT = 1;
+  // The reactor is incapacitated, unconscious or dead (SRD, Incapacitated).
+  REACTION_CLOSED_REASON_REACTOR_INCAPACITATED = 2;
+  // What triggered it is gone (the spell was countered, the attacker died, the
+  // creature left the 60 ft, the concentration ended).
+  REACTION_CLOSED_REASON_TRIGGER_GONE = 3;
+}
+
+enum ReactionChoice {
+  REACTION_CHOICE_UNSPECIFIED = 0;
+  REACTION_CHOICE_USE = 1;
+  REACTION_CHOICE_PASS = 2;
+}
+
+// What the table decides with "Reações dos inimigos" is TableRules.enemy_reactions.
+
+// ReactionWait is the line "Esperando ..." the combat shows while a window is
+// open, written for the caller (PM-04a).
+message ReactionWait {
+  // "Esperando o mestre", "Esperando a reação de Sálvia" or both ("Esperando o
+  // mestre e a reação de Sálvia"); for a concentration save of a visible player,
+  // "Esperando o teste de Constituição de Sálvia".
+  string title_pt = 1;
+  // What waits, without a number and without an NPC: "O resultado do seu ataque
+  // sai quando ele responder.", "A queda no Fosso só é resolvida quando ele
+  // responder.", "A sua conjuração se resolve quando ele responder." or "O turno
+  // continua quando ele responder.".
+  string detail_pt = 2;
+}
+
+// ReactionWindow is a question to a reactor: may it react? Its fields follow
+// who asks: the master reads all of it; the reactor's player reads only what the
+// reactor sees (RN-10, RN-20: no total, no armor class, no NPC, no spell name for
+// a Counterspell); nobody else gets the window at all.
+message ReactionWindow {
+  // Stable id (a UUID): what AnswerReaction names.
+  string id = 1;
+  ReactionKind kind = 2;
+  ReactionWindowStatus status = 3;
+  ReactionClosedReason closed_reason = 4;
+  // The trigger the window belongs to: windows of one action share it (the master
+  // reads "Reações a uma magia" and "Reações a um ataque" as two queues).
+  string group_id = 5;
+  // The reactor (a combatant UUID) and its label; empty for MASTER_CHECK.
+  string reactor_id = 6;
+  string reactor_label = 7;
+  // The reactor is a player's character (the master's "Respondendo no celular").
+  bool reactor_is_player = 8;
+  // True when the caller may answer it now: the reactor's player, and the master.
+  bool for_you = 9;
+  // Only the master: this is the window to answer now (the first of the order);
+  // the others read "Depois do Mago 1".
+  bool answer_now = 10;
+  // Only the master: what happened, with the numbers that are the master's.
+  ReactionTrigger trigger = 11;
+  // The step of the window: false the first question; true the second one, after
+  // an answer that asks one more thing (Hellish Rebuke's saving throw, the
+  // monk's throw back). A second step is answered like the first.
+  bool second_step = 12;
+  // Only whoever answers: the question, by kind.
+  oneof prompt {
+    ShieldPrompt shield = 20;
+    UncannyDodgePrompt uncanny_dodge = 21;
+    HellishRebukePrompt hellish_rebuke = 22;
+    CounterspellPrompt counterspell = 23;
+    CuttingWordsPrompt cutting_words = 24;
+    DeflectMissilesPrompt deflect_missiles = 25;
+    FeatherFallPrompt feather_fall = 26;
+    ConcentrationSavePrompt concentration_save = 27;
+    MasterCheckPrompt master_check = 28;
+    HellishRebukeSavePrompt hellish_rebuke_save = 29;
+    DeflectMissilesThrowPrompt deflect_throw = 30;
+  }
+}
+
+// ReactionTrigger is what happened, for the master (RN-20: the numbers of NPCs
+// are the master's).
+message ReactionTrigger {
+  string actor_id = 1;
+  string actor_label = 2;
+  string target_id = 3;
+  string target_label = 4;
+  // The attack or the spell: its key and Portuguese name.
+  string action_key = 5;
+  string action_name_pt = 6;
+  // The distance between the reactor and the actor (or the fall), when on a map.
+  optional int32 distance_ft = 7;
+  // An attack that hit: the total and the armor class it was compared with.
+  optional int32 attack_total = 8;
+  optional int32 target_armor_class = 9;
+  // A damage that waits: the amount rolled.
+  optional int32 damage = 10;
+  // A spell (Counterspell): its key and level. Never sent to a player.
+  string spell_key = 11;
+  int32 spell_level = 12;
+  // Shield: the armor class after it, to read "17 contra 15 viraria erro".
+  optional int32 armor_class_with_shield = 13;
+  // Concentration: the spell and the damage that threatens it.
+  string concentration_spell_key = 14;
+  int32 damage_taken = 15;
+  // Cutting Words: what is rolled.
+  ReactionRollKind roll_kind = 16;
+  // The slot the master may use for an NPC reactor, and what each slot does
+  // (Counterspell: "anula sem teste" or "teste de Inteligência CD 13").
+  repeated SlotEffect slot_effects = 17;
+  // The saving throw of a Hellish Rebuke's aggressor (the master's roll) and its bonus.
+  optional int32 save_dc = 18;
+  optional int32 save_bonus = 19;
+}
+
+// SlotEffect is what a slot does to a Counterspell, read by the master.
+message SlotEffect {
+  meurpg.rules.v1.SlotChoice slot = 1;
+  // True: the spell fails with no check.
+  bool no_check = 2;
+  // The DC of the check when there is one (10 + the spell's level).
+  int32 check_dc = 3;
+  // The reactor's bonus on the check.
+  int32 check_bonus = 4;
+}
+
+enum ReactionRollKind {
+  REACTION_ROLL_KIND_UNSPECIFIED = 0;
+  REACTION_ROLL_KIND_ATTACK = 1;
+  REACTION_ROLL_KIND_TEST = 2;
+  REACTION_ROLL_KIND_DAMAGE = 3;
+}
+
+// ShieldPrompt: "Você foi atingido: usar Escudo Arcano?" (no total, no armor class).
+message ShieldPrompt {
+  // The pending damage the hit opened (the old Shield calls name it).
+  string pending_damage_id = 1;
+  // Who attacked and with what, only when the reactor sees the attacker.
+  string attacker_label = 2;
+  string attack_name_pt = 3;
+  // True for a Magic Missile that targets the reactor ("você é alvo de Mísseis
+  // Mágicos"): Shield then takes all the damage away.
+  bool magic_missile = 4;
+  repeated meurpg.rules.v1.SlotChoice slots = 5;
+  string spell_name_pt = 6;
+}
+
+message UncannyDodgePrompt {
+  string attacker_label = 1;
+  string attack_name_pt = 2;
+  // The damage the attack would do to the reactor, and what is left halved
+  // (rounded down).
+  int32 damage = 3;
+  int32 halved = 4;
+}
+
+message HellishRebukePrompt {
+  string aggressor_label = 1;
+  string attack_name_pt = 2;
+  optional int32 distance_ft = 3;
+  // The saving throw DC: the caster's (8 + proficiency + Charisma).
+  int32 save_dc = 4;
+  // The ways to pay, in the order the sheet offers them.
+  repeated HellishRebukeOption options = 5;
+}
+
+message HellishRebukeOption {
+  // The tiefling's Infernal Legacy: once per long rest, as a 2nd-level spell, no
+  // slot spent.
+  bool racial = 1;
+  // The slot (when not racial).
+  meurpg.rules.v1.SlotChoice slot = 2;
+  // The level it is cast at, and the damage dice: 2d10 plus 1d10 for each level
+  // above the 1st.
+  int32 level = 3;
+  int32 dice_count = 4;
+  // Uses left of the Infernal Legacy.
+  int32 uses_left = 5;
+}
+
+// HellishRebukeSavePrompt is the second step, for the master: the aggressor's
+// saving throw when it is an NPC.
+message HellishRebukeSavePrompt {
+  string aggressor_label = 1;
+  int32 save_dc = 2;
+  int32 save_bonus = 3;
+  bool bonus_known = 4;
+  int32 dice_count = 5;
+}
+
+message CounterspellPrompt {
+  // The caster the reactor sees, and how far: never the spell or its level.
+  string caster_label = 1;
+  optional int32 distance_ft = 2;
+  // The slots of the 3rd level or above.
+  repeated meurpg.rules.v1.SlotChoice slot_options = 3;
+}
+
+message CuttingWordsPrompt {
+  ReactionRollKind roll_kind = 1;
+  string roller_label = 2;
+  // Who the roll is against, when the reactor sees it (an attack).
+  string target_label = 3;
+  optional int32 distance_ft = 4;
+  int32 die_sides = 5;
+  int32 uses_left = 6;
+}
+
+message DeflectMissilesPrompt {
+  string attacker_label = 1;
+  string attack_name_pt = 2;
+  // The damage the attack would do to the reactor.
+  int32 damage = 3;
+  // 1d10 + flat_bonus (Dexterity modifier + monk level) is what comes off.
+  int32 die_sides = 4;
+  int32 flat_bonus = 5;
+  int32 dex_mod = 6;
+  int32 monk_level = 7;
+}
+
+// DeflectMissilesThrowPrompt: the damage fell to 0 and the monk caught the missile;
+// throw it back for 1 ki, as part of the same reaction (RollAttack with
+// catch_window_id), or keep it (AnswerReaction PASS).
+message DeflectMissilesThrowPrompt {
+  int32 ki_left = 1;
+  int32 normal_range_ft = 2;
+  int32 long_range_ft = 3;
+}
+
+message FallingCreature {
+  string combatant_id = 1;
+  string label = 2;
+  bool ally = 3;
+  optional int32 distance_ft = 4;
+}
+
+message FeatherFallPrompt {
+  // Only the creatures that fall and the reactor sees.
+  repeated FallingCreature falling = 1;
+  int32 max_targets = 2;
+  int32 fall_ft = 3;
+  repeated meurpg.rules.v1.SlotChoice slot_options = 4;
+}
+
+message ConcentrationSavePrompt {
+  string spell_key = 1;
+  string spell_name_pt = 2;
+  // The damage that threatens it, from the source the window is for.
+  int32 damage_taken = 3;
+  // 10 or half the damage, whichever is higher (SRD).
+  int32 dc = 4;
+  // What threatens it ("Bola de Fogo do Mago 1"), when the reactor sees the source.
+  string source_label = 5;
+  // The owner's Constitution saving throw bonus. Unknown for a basic sheet.
+  int32 save_bonus = 6;
+  bool bonus_known = 7;
+  // True once the player left the roll to the master.
+  bool handed_to_master = 8;
+}
+
+message MasterCheckPrompt {
+  // What the check is about, for the master's card: "Ataque de Toren contra o
+  // Goblin 2 · acertou".
+  string summary_pt = 1;
+  // True when an enemy has a reaction for it (the card then offers the reaction
+  // next to "Sem reação"); false: "Nenhum inimigo tem uma reação para isto".
+  bool enemy_can_react = 2;
+}
+
+// AnswerReactionRequest answers a window.
+message AnswerReactionRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string window_id = 3;
+  ReactionChoice answer = 4;
+  // The slot of a spell reaction: one of the prompt's (the pact slot is `pact`).
+  SpellSlot slot = 5;
+  // Hellish Rebuke paid with the Infernal Legacy.
+  bool use_racial = 6;
+  // Feather Fall: the falling creatures to save, at most the prompt's max_targets.
+  repeated string creature_ids = 7;
+  // The die the answer needs, when it needs one (Counterspell's check, Cutting
+  // Words' die, Deflect Missiles' die, the saving throw of Hellish Rebuke): exactly
+  // one of them. `typed` is the face of the physical die.
+  oneof roll {
+    bool roll_in_app = 8;
+    int32 typed = 9;
+  }
+  string idempotency_key = 10;
+}
+
+message AnswerReactionResponse {
+  Encounter encounter = 1;
+  // What the answer did, for the answerer (the master's `by_master` answer too).
+  ReactionResult result = 2;
+}
+
+// ReactionResult is what an answered window did, read by the reactor and the
+// master. Never sent to anybody else.
+message ReactionResult {
+  ReactionKind kind = 1;
+  // True when the master answered.
+  bool by_master = 2;
+  // False for PASS.
+  bool used = 3;
+  oneof result {
+    ShieldResult shield = 20;
+    UncannyDodgeResult uncanny_dodge = 21;
+    HellishRebukeResult hellish_rebuke = 22;
+    CounterspellResult counterspell = 23;
+    CuttingWordsResult cutting_words = 24;
+    DeflectMissilesResult deflect_missiles = 25;
+    FeatherFallResult feather_fall = 26;
+  }
+  // The window the answer asked one more thing of (a second step), if any.
+  string next_window_id = 30;
+}
+
+message ShieldResult {
+  // The new armor class stopped the attack (or took the Magic Missile away).
+  bool stopped = 1;
+}
+
+message UncannyDodgeResult {
+  int32 damage_before = 1;
+  int32 damage_after = 2;
+}
+
+message HellishRebukeResult {
+  // The aggressor's save: only the reactor and the master.
+  DiceRoll save = 1;
+  int32 save_dc = 2;
+  bool saved = 3;
+  int32 damage = 4;
+  int32 level = 5;
+  bool racial = 6;
+}
+
+message CounterspellResult {
+  bool countered = 1;
+  // What was cast, revealed now that it happened (SRD): to the reactor and the master.
+  string spell_key = 2;
+  string spell_name_pt = 3;
+  int32 spell_level = 4;
+  // The ability check, when the spell was above the slot.
+  DiceRoll check = 5;
+  int32 check_dc = 6;
+}
+
+message CuttingWordsResult {
+  // The die subtracted.
+  DiceRoll die = 1;
+  // False for a creature that cannot hear the bard or is immune to charm: "sem
+  // efeito", the same words as when the master chooses not to apply it.
+  bool effective = 2;
+  // What the roll became: only "acertou" / "errou" for a player (no total, no AC);
+  // the master reads the numbers in the log.
+  AttackOutcome outcome = 3;
+  ReactionRollKind roll_kind = 4;
+}
+
+message DeflectMissilesResult {
+  DiceRoll reduction = 1;
+  int32 damage_before = 2;
+  int32 damage_after = 3;
+  bool caught = 4;
+  bool throw_back_available = 5;
+}
+
+message FeatherFallResult {
+  // The creatures that take no fall damage.
+  repeated string saved_ids = 1;
+}
+
+message ResolveConcentrationSaveRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string window_id = 3;
+  oneof roll {
+    // The app rolls the d20 (with the owner's Constitution saving throw bonus).
+    bool roll_in_app = 4;
+    // The face of a physical d20, 1 to 20.
+    int32 d20_face = 5;
+    // The owner leaves the roll to the master (a player only).
+    bool hand_to_master = 6;
+    // The master keeps the concentration without a roll (an NPC's, or a player who
+    // does not answer; the master only).
+    bool keep = 7;
+  }
+  string idempotency_key = 8;
+}
+
+message ResolveConcentrationSaveResponse {
+  Encounter encounter = 1;
+  // Unset for `hand_to_master` and `keep`.
+  ConcentrationSaveResult result = 2;
+}
+
+message ConcentrationSaveResult {
+  DiceRoll save = 1;
+  int32 dc = 2;
+  bool kept = 3;
+  string spell_key = 4;
+  string spell_name_pt = 5;
 }

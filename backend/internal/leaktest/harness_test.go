@@ -30,6 +30,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1/progressionv1connect"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1/rulesv1connect"
+	"github.com/PuraFome/meuRPG/backend/internal/campaignpackage"
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns"
 	"github.com/PuraFome/meuRPG/backend/internal/characters"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
@@ -231,6 +232,21 @@ func newStack(t *testing.T) *stack {
 		t.Fatalf("notes.New() error = %v", err)
 	}
 
+	// The campaign package: a player must not reach the export or the upload of a master.
+	pkgSvc, err := campaignpackage.New(campaignpackage.Config{
+		Pool: pool, Blobs: blobs, Creation: camps, Logger: logger, Now: clock.Now, ContentVersion: srd.Version(),
+		Parts: []campaignpackage.Part{camps.PackagePart(), msvc.PackageImagesPart(), chars.PackagePart(), msvc.PackageMapsPart(), live.PackagePart(srd)},
+	})
+	if err != nil {
+		t.Fatalf("campaignpackage.New() error = %v", err)
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		pkgSvc.Cancel()
+		pkgSvc.Wait(ctx)
+	})
+
 	srv := httpserver.New(httpserver.Config{Logger: logger})
 	opt := connect.WithRequireConnectProtocolHeader()
 	sessions := fakeSessions{}
@@ -240,6 +256,7 @@ func newStack(t *testing.T) *stack {
 	xp.Mount(srv.Handle, sessions, camps, opt)
 	notesSvc.Mount(srv.Handle, sessions, camps, opt)
 	msvc.Mount(srv.Handle, sessions, camps, opt)
+	pkgSvc.Mount(srv.Handle, sessions, camps, opt)
 	s.server = httptest.NewServer(srv.Handler())
 	t.Cleanup(s.server.Close)
 	t.Cleanup(live.Close) // end the streams first, so the server can close
@@ -263,6 +280,7 @@ type person struct {
 	table      rulesv1connect.TableContentServiceClient
 	play       playv1connect.PlayServiceClient
 	combat     playv1connect.CombatServiceClient
+	casting    playv1connect.CastingServiceClient
 	puzzles    playv1connect.PuzzleServiceClient
 	encounters playv1connect.EncounterServiceClient
 	maps       mapsv1connect.MapServiceClient
@@ -299,6 +317,7 @@ func (s *stack) personWith(name, id string) *person {
 		table:      rulesv1connect.NewTableContentServiceClient(c, url),
 		play:       playv1connect.NewPlayServiceClient(c, url),
 		combat:     playv1connect.NewCombatServiceClient(c, url),
+		casting:    playv1connect.NewCastingServiceClient(c, url),
 		puzzles:    playv1connect.NewPuzzleServiceClient(c, url),
 		encounters: playv1connect.NewEncounterServiceClient(c, url),
 		maps:       mapsv1connect.NewMapServiceClient(c, url),

@@ -185,18 +185,19 @@ export class OpenSessions {
   }
 }
 
-/** `/campaigns/<id>` or `/campaigns/<id>/session`, from a router URL. */
+/** A page of a campaign (`/campaigns/<id>`, `/campaigns/<id>/session`, a sheet, a map...), from a router URL. */
 function campaignPage(url: string): { campaignId: string; session: boolean } | null {
   const path = url.split(/[?#]/, 1)[0];
-  const match = /^\/campaigns\/([^/]+)(\/session)?\/?$/.exec(path);
-  return match ? { campaignId: match[1], session: match[2] !== undefined } : null;
+  const match = /^\/campaigns\/([^/]+)(\/session)?(\/.*)?$/.exec(path);
+  return match ? { campaignId: match[1], session: match[2] !== undefined && !match[3] } : null;
 }
 
 /**
  * The sessions the notice announces on `url`, oldest first: every open
  * session the person plays in (a master started theirs, so it isn't news)
  * whose notice they haven't closed, except the one of the campaign whose
- * page they are on (its "Sessão" panel says it). None on a session page:
+ * pages they are on (the campaign page, a sheet, a map: the app bar's "Ao vivo"
+ * link is there and the notice would only push the page down). None on a session page:
  * the person is at a table already, and the page is theirs (the app bar's
  * "Ao vivo" link still leads to any other open session).
  *

@@ -133,7 +133,7 @@ test(
       await order.getByRole('button', { name: 'Fechar' }).click();
       await expect(order.getByRole('button', { name: 'Marcar cobertura de Capitão Goblin' })).toBeFocused();
       await order.getByRole('button', { name: 'Mais ações para Goblin 2' }).click();
-      await m.getByRole('menuitem', { name: 'Marcar cobertura…' }).click();
+      await m.getByRole('menuitem', { name: 'Marcar cobertura' }).click();
       await pickRadio(order.getByRole('radiogroup', { name: 'Cobertura marcada de Goblin 2' }), 'Cobertura total');
       await order.getByRole('button', { name: 'Fechar' }).click();
 
@@ -262,7 +262,8 @@ test(
       await p.getByRole('button', { name: 'Mover para cá' }).click();
 
       // The move landed; the player's turn waits, and every action says why instead of failing on click.
-      await expect(p.getByRole('status').filter({ hasText: 'Esperando a reação do mestre.' })).toContainText('O Goblin 1 pode fazer um ataque de oportunidade.');
+      // The player reads the same words for any NPC's reaction: never which NPC or why (RN-10).
+      await expect(p.getByRole('status').filter({ hasText: 'Esperando o mestre.' })).toContainText('O turno continua quando ele responder.');
       await expect(p.getByRole('button', { name: 'Mover', exact: true })).toHaveAttribute('aria-disabled', 'true');
       await expect(p.getByRole('button', { name: 'Atacar com Raio de Fogo' })).toHaveAttribute('aria-disabled', 'true');
 
@@ -284,7 +285,7 @@ test(
       await expect(sheet.getByText('A reação dele foi usada.')).toBeVisible();
       await sheet.getByRole('button', { name: 'Fechar' }).last().click();
       await expect(card).toHaveCount(0);
-      await expect(p.getByText('Esperando a reação do mestre.')).toHaveCount(0);
+      await expect(p.getByText('Esperando o mestre.')).toHaveCount(0);
       await expect(p.getByRole('button', { name: 'Mover', exact: true })).not.toHaveAttribute('aria-disabled', 'true');
       await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Goblin 1 ataca o Pensantus com a Cimitarra (ataque de oportunidade): errou');
     } finally {
@@ -309,7 +310,7 @@ test(
       const card = m.getByRole('group', { name: 'Ataque de oportunidade de Goblin 1' });
       await card.getByRole('button', { name: 'Não atacar' }).click();
       await expect(card).toHaveCount(0);
-      await expect(p.getByText('Esperando a reação do mestre.')).toHaveCount(0);
+      await expect(p.getByText('Esperando o mestre.')).toHaveCount(0);
       await expect(p.getByRole('button', { name: 'Mover', exact: true })).not.toHaveAttribute('aria-disabled', 'true');
     } finally {
       await done();
@@ -469,6 +470,34 @@ test(
       await expect(m.getByText('Ligado para o próximo arrasto')).toHaveCount(0);
       await expect(m.getByText('Esperando a reação do jogador de Pensantus')).toHaveCount(0);
       await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Goblin 1')?.col).toBe(9);
+    } finally {
+      await done();
+    }
+  },
+);
+
+test(
+  'o salto que sai do alcance de um goblin avisa antes: "Esse salto sai do alcance do Goblin 1" e o ataque de oportunidade de graça',
+  { tag: ['@MR-034', '@RN-21'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    // Toren stands on (5, 7), Goblin 1 on the diagonal (4, 6): one square east takes him out of its reach.
+    const { p, campaignId, done } = await movingTable(browser, 'Salto do alcance', torenFirst, {
+      character: { build: toren, sheet: torenSheet },
+      at: { 'Capitão Goblin': [15, 3], 'Goblin 1': [4, 6], 'Goblin 2': [15, 11] },
+    });
+    try {
+      await openSessionPage(p, campaignId);
+      await expect(p.getByRole('heading', { name: 'Sua vez, Toren' })).toBeVisible();
+      await p.getByRole('button', { name: 'Mover', exact: true }).click();
+      await pickRadio(p, 'Saltar');
+      await expect(p.getByRole('heading', { name: 'Saltar Toren' })).toBeVisible();
+      await tapSquare(p, 6, 7);
+      await expect(p.getByText('Esse salto sai do alcance do Goblin 1. Ele pode atacar você de graça (ataque de oportunidade).')).toBeVisible();
+      await expect(p.getByRole('button', { name: 'Saltar para cá' })).toBeVisible();
+      // A square that stays in its reach has no warning.
+      await tapSquare(p, 5, 6);
+      await expect(p.getByText('Esse salto sai do alcance')).toHaveCount(0);
     } finally {
       await done();
     }

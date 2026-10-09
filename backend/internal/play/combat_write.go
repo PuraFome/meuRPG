@@ -21,6 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // The kinds of session_events rows a combat writes (session_event_kinds).
@@ -52,6 +53,9 @@ const (
 	eventDeathSaveRolled  = "death_save_rolled"
 	eventDeathConfirmed   = "death_confirmed"
 	eventConditionsSet    = "conditions_set"
+	// A lasting effect ended: Escudo at the start of the caster's turn, Ajuda when the
+	// master ends it (combat_effects.go).
+	eventCombatEffectEnded = "combat_effect_ended"
 )
 
 // The kinds of Etapa 7: the XP awards (package progression writes them
@@ -98,16 +102,28 @@ const (
 	eventCoverSet           = "cover_set"
 	eventSideSet            = "side_set"
 	eventOpportunityOffered = "opportunity_offered"
-	eventCreatureSummoned   = "creature_summoned"
-	eventCreatureDismissed  = "creature_dismissed"
-	eventWildShapeStarted   = "wild_shape_started"
-	eventWildShapeEnded     = "wild_shape_ended"
-	eventFamiliarSight      = "familiar_sight"
+	// eventHiddenRevealAnswered is the master's answer to the question an area spell
+	// of a player left (hidden_reveals): reveal the hidden creatures it hit, or keep
+	// them hidden.
+	eventHiddenRevealAnswered = "hidden_reveal_answered"
+	eventCreatureSummoned     = "creature_summoned"
+	eventCreatureDismissed    = "creature_dismissed"
+	eventWildShapeStarted     = "wild_shape_started"
+	eventWildShapeEnded       = "wild_shape_ended"
+	eventFamiliarSight        = "familiar_sight"
 )
 
 // The kind of Etapa 10 (migration 00121): a move opened a closed door (MR-010,
 // RN-26). Written by this package, in the move's transaction.
 const eventDoorOpened = "door_opened"
+
+// The kinds of the reaction window (migration 00196, PM-04): the answer of a window,
+// and a concentration save. The legacy Shield answers keep reaction_used and
+// reaction_declined (their undo knows them).
+const (
+	eventReactionAnswered        = "reaction_answered"
+	eventConcentrationSaveRolled = "concentration_save_rolled"
+)
 
 // combatWrite describes one change to a combat: who makes it, the idempotency
 // key, the kind of event it becomes, and the combat it is about (empty when
@@ -141,6 +157,8 @@ type combatTx struct {
 	kind string
 	// castID is the id the pending damages of the spell being cast share.
 	castID string
+	// meta is the Metamagic of the casting in progress (nil without it).
+	meta *castMeta
 	// actorUserID is who makes the change, for the events a change writes besides
 	// its own (the creatures it summons or dismisses).
 	actorUserID string
@@ -168,6 +186,22 @@ type combatTx struct {
 	// opened: a critical hit and who sees the death saves follow them from the
 	// next roll on, and are never kept longer than the change.
 	rules tablerules.Rules
+	// castsChanged says the casts outside a combat changed in this change (a combat
+	// that began failed a casting, carried a concentration, ended one): castsUnchanged,
+	// castsMasterOnly or castsPublic. write tells the streams after the commit.
+	castsChanged int
+	// reactionNotes are the reaction windows the change opened or closed, told
+	// after the commit to their reactor and the master; replay is set while a held
+	// action is replayed (combat_reaction_hold.go); lastAnswered is the reaction the
+	// change answered, for the sentence of the windows it closed; tellIDs are the
+	// combatants whose character vitals a replayed action changed.
+	reactionNotes []reactionNote
+	replay        *replayState
+	lastAnswered  reaction.Kind
+	tellIDs       []string
+	// answered are the answers of this change whose event waits for what the replay
+	// of a held action made of the roll (combat_reaction_hold.go).
+	answered []answeredRef
 }
 
 // combatResult is what a change leaves for the handler: the session, and
@@ -194,6 +228,10 @@ type combatResult struct {
 	sight   *fogSight
 	stamped *actionEvent
 	lines   []actionEvent
+	// notes are the reaction windows the change opened or closed, and tellIDs the
+	// combatants whose vitals a replayed action changed: told after the commit.
+	notes   []reactionNote
+	tellIDs []string
 }
 
 // write runs one change to a combat, as AdjustCharacterVitals runs a vitals
@@ -202,6 +240,9 @@ type combatResult struct {
 // do returns the event's payload, or nil when nothing changed, and then no
 // event is written. Only after the commit does the handler publish.
 func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx) (payload any, err error)) (combatResult, error) {
+	if a := ambientOf(ctx); a != nil { // the replay of a held action: inside the open transaction
+		return s.writeAmbient(ctx, a, w, do)
+	}
 	// What the players see is read first, never inside the transaction: the maps
 	// module asks this one where the combatants stand, and that read would wait for
 	// the rows the change has already written. The sight is read with the combat's
@@ -227,6 +268,7 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 			// Here, after the transaction returned, so a retried transaction
 			// logs once.
 			s.logCombatEvent(ctx, res)
+			s.publishReactions(ctx, w.m.CampaignID, res)
 		}
 		return res, err
 	}
@@ -305,6 +347,11 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 		if err := s.pruneOffers(ctx, c); err != nil {
 			return err
 		}
+		// The reaction windows that stopped being valid close, and what the ones
+		// that are all answered held goes on.
+		if err := s.settleReactions(ctx, c); err != nil {
+			return err
+		}
 		res.encounterID = c.enc.ID
 		res.kind = c.kind
 		res.characterID = deref(c.characterID)
@@ -326,6 +373,10 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 	res.stamped = last
 	if ended != nil {
 		res.lines = ended.lines
+		res.notes, res.tellIDs = ended.reactionNotes, ended.tellIDs
+	}
+	if ended != nil && ended.castsChanged != castsUnchanged {
+		s.publishCastsChanged(w.m.CampaignID, ended.castsChanged == castsMasterOnly)
 	}
 	// A turn that started ended some familiar's sight (MR-036): the player's vitals
 	// and the fog's view change.

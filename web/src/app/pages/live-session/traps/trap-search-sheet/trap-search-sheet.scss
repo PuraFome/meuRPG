@@ -217,13 +217,15 @@
   font-weight: 800;
   text-align: center;
 
+  // The border is the focus ring, as in the attack sheet's typed die: no outline outside it.
+  &:focus,
   &:focus-visible {
     border-color: var(--mr-accent);
-    outline: 2px solid var(--mr-focus);
-    outline-offset: 2px;
+    outline: none;
   }
 
-  &[aria-invalid='true'] {
+  &[aria-invalid='true'],
+  &[aria-invalid='true']:focus {
     border-color: var(--mr-danger-ink);
   }
 }
@@ -270,5 +272,68 @@
       min-width: 0;
       padding-inline: 20px;
     }
+  }
+}
+
+// "Outra perícia…": the field that says the pick, and the list of the other 16 skills with the sheet's bonus, alphabetical.
+.other {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin-top: var(--mr-space-2);
+}
+
+.other__cap {
+  font-size: 13px;
+  color: var(--mr-ink-muted);
+}
+
+.other__value {
+  box-sizing: border-box;
+  min-height: 48px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+
+  &--empty {
+    color: var(--mr-ink-muted);
+  }
+}
+
+.other__list {
+  max-height: 264px;
+  margin: 0;
+  padding: var(--mr-space-1);
+  overflow-y: auto;
+  border: 1px solid var(--mr-accent);
+  border-radius: var(--mr-radius-md);
+  list-style: none;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.other__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: var(--mr-radius-sm);
+  cursor: pointer;
+
+  &--on {
+    background: var(--mr-accent-soft);
+    font-weight: 700;
+  }
+
+  &--cursor {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -2px;
   }
 }

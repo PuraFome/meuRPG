@@ -25,6 +25,9 @@ export function refusalStep(reason: LevelUpRefusalReason, field = ''): StepKey |
           : null;
     case LevelUpRefusalReason.ABILITY_NOT_DUE:
     case LevelUpRefusalReason.ABILITY_SHAPE:
+    case LevelUpRefusalReason.FEAT:
+    case LevelUpRefusalReason.FEAT_PREREQUISITE:
+    case LevelUpRefusalReason.FEATS_NOT_ALLOWED:
     case LevelUpRefusalReason.ABILITY_ABOVE_20:
       return 'abilities';
     case LevelUpRefusalReason.HIT_POINTS:
@@ -32,6 +35,12 @@ export function refusalStep(reason: LevelUpRefusalReason, field = ''): StepKey |
     case LevelUpRefusalReason.HIT_POINT_ROLL_MISSING:
     case LevelUpRefusalReason.HIT_POINT_ROLL_OTHER_CLASS:
       return 'hp';
+    case LevelUpRefusalReason.MULTICLASS_PREREQUISITE:
+    case LevelUpRefusalReason.MULTICLASS_PREREQUISITE_CURRENT:
+    case LevelUpRefusalReason.CLASS:
+      return 'class';
+    case LevelUpRefusalReason.PROFICIENCY_CHOICE:
+    case LevelUpRefusalReason.INSTRUMENT_CHOICE:
     case LevelUpRefusalReason.SUBCLASS:
     case LevelUpRefusalReason.FEATURE_CHOICE:
     case LevelUpRefusalReason.SKILLS:
@@ -57,6 +66,14 @@ export function refusalMessage(refusal: Pick<LevelUpRefusal, 'reason'>): string 
       return 'Esse nível não vale para a classe escolhida. Volte para a ficha e comece de novo.';
     case LevelUpRefusalReason.MAX_LEVEL:
       return 'Este personagem já está no nível máximo.';
+    case LevelUpRefusalReason.MULTICLASS_PREREQUISITE:
+      return 'Esta classe nova pede uma habilidade que o personagem ainda não tem. Escolha outra classe.';
+    case LevelUpRefusalReason.MULTICLASS_PREREQUISITE_CURRENT:
+      return 'Uma classe que o personagem já tem pede uma habilidade que ele não tem, e por isso nenhuma classe nova entra. Suba uma classe que ele já tem.';
+    case LevelUpRefusalReason.PROFICIENCY_CHOICE:
+      return 'Escolha a perícia que a classe nova dá, da lista dela e que o personagem ainda não tenha.';
+    case LevelUpRefusalReason.INSTRUMENT_CHOICE:
+      return 'Escolha o instrumento musical da classe nova, entre os da lista.';
     case LevelUpRefusalReason.LOCKED_FIELD:
       return 'Algo que o nível não muda ficou diferente na ficha. Volte para a ficha e comece de novo.';
     case LevelUpRefusalReason.ABILITY_NOT_DUE:
@@ -65,6 +82,12 @@ export function refusalMessage(refusal: Pick<LevelUpRefusal, 'reason'>): string 
       return 'O aumento é de +2 em uma habilidade, ou de +1 em duas.';
     case LevelUpRefusalReason.ABILITY_ABOVE_20:
       return 'Nenhuma habilidade passa de 20. Escolha outra.';
+    case LevelUpRefusalReason.FEAT:
+      return 'O talento escolhido não vale neste nível: ele não existe mais, saiu da lista ou este nível não o permite. Escolha outro.';
+    case LevelUpRefusalReason.FEAT_PREREQUISITE:
+      return 'A ficha não atende ao pré-requisito do talento. Escolha outro talento ou aumente habilidades.';
+    case LevelUpRefusalReason.FEATS_NOT_ALLOWED:
+      return 'O mestre não usa talentos nesta mesa. Aumente habilidades.';
     case LevelUpRefusalReason.HIT_POINTS:
       return 'O resultado do dado de vida está fora do que o dado permite.';
     case LevelUpRefusalReason.HIT_POINTS_RULE:

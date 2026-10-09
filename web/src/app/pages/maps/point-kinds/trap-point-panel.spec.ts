@@ -20,6 +20,7 @@ import {
 } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { FakeMapsClient } from '../../../core/maps/maps-testing';
+import { SceneChecks } from '../../../core/maps/scene-actions';
 import { TrapPresets } from '../../../core/traps/trap-presets';
 import { TrapPointPanel } from './trap-point-panel';
 
@@ -39,6 +40,16 @@ const presets = create(ListTrapPresetsResponseSchema, {
           { dice: '1d6', damageTypeKey: 'damage-type:bludgeoning', damageTypePt: 'concussão' },
         ],
       },
+    }),
+    create(TrapPresetSchema, {
+      key: 'trap:fire-statue',
+      namePt: 'Estátua que cospe fogo',
+      kind: 'magic',
+      descriptionPt: 'Uma estátua.',
+      noticeDc: 15,
+      findDc: 15,
+      trigger: TrapTrigger.ENTER,
+      areaSize: 1,
     }),
     create(TrapPresetSchema, {
       key: 'trap:poison-needle',
@@ -108,6 +119,30 @@ const trapPoint = create(MapPointSchema, {
   },
 });
 
+// The rules' skills as `SceneChecks` sends them, alphabetical: the 18 of the SRD (the panel offers 16 of them).
+const SKILLS = [
+  ['acrobatics', 'Acrobacia'],
+  ['animal-handling', 'Adestrar Animais'],
+  ['arcana', 'Arcanismo'],
+  ['athletics', 'Atletismo'],
+  ['performance', 'Atuação'],
+  ['deception', 'Enganação'],
+  ['stealth', 'Furtividade'],
+  ['history', 'História'],
+  ['intimidation', 'Intimidação'],
+  ['investigation', 'Investigação'],
+  ['medicine', 'Medicina'],
+  ['nature', 'Natureza'],
+  ['perception', 'Percepção'],
+  ['insight', 'Intuição'],
+  ['persuasion', 'Persuasão'],
+  ['religion', 'Religião'],
+  ['sleight-of-hand', 'Prestidigitação'],
+  ['survival', 'Sobrevivência'],
+]
+  .map(([key, label]) => ({ key: `skill:${key}`, label }))
+  .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+
 const noticers = create(GetTrapNoticersResponseSchema, {
   noticeDc: 15,
   noticers: [
@@ -147,6 +182,7 @@ describe('TrapPointPanel', () => {
       providers: [
         { provide: MapsClient, useValue: api },
         { provide: TrapPresets, useValue: { list: () => Promise.resolve(presets) } },
+        { provide: SceneChecks, useValue: { skills: () => Promise.resolve(SKILLS) } },
       ],
     });
     fixture = TestBed.createComponent(TrapPointPanel);
@@ -310,5 +346,130 @@ describe('TrapPointPanel', () => {
     radio('Desarmada').click();
     await settle();
     expect(panel().changes()?.trap?.state).toBe(TrapState.DISARMED);
+  });
+
+  describe('"Também acham com" (PM-03c)', () => {
+    const also = () => el.querySelector('.tp__also')!;
+    const options = () =>
+      Array.from(el.querySelectorAll<HTMLElement>('[role="option"]'), (o) =>
+        o.textContent?.replace(/^check/, '').trim(),
+      );
+    const chips = () => Array.from(el.querySelectorAll('.tp__chip b'), (b) => b.textContent);
+    const open = async () => {
+      (el.querySelector('.tp__add') as HTMLButtonElement).click();
+      await settle();
+    };
+
+    it('says "Nenhuma perícia a mais" by default, and sends an empty list', async () => {
+      await setup();
+      expect(also().textContent).toContain('Também acham com');
+      expect(also().textContent).toContain('Nenhuma perícia a mais');
+      expect(el.querySelector('.tp__add')?.textContent?.replace(/\s+/g, ' ').trim()).toContain(
+        'Acrescentar perícia',
+      );
+      expect(text()).toContain(
+        'Usam a CD para achar. O jogador procura com qualquer perícia; só as daqui (e Percepção e Investigação) acham esta armadilha. Você decide: o app não presume nada.',
+      );
+      type('CD para achar (Investigação)', '16');
+      expect(panel().changes()?.trap?.alsoFindSkillKeys).toEqual([]);
+    });
+
+    it('opens a multi-select list of the 16 skills that are not Percepção or Investigação, alphabetical', async () => {
+      await setup();
+      await open();
+      const list = el.querySelector('[role="listbox"]')!;
+      expect(list.getAttribute('aria-multiselectable')).toBe('true');
+      expect(options()).toHaveLength(16);
+      expect(options()[0]).toBe('Acrobacia');
+      expect(options()).not.toContain('Percepção');
+      expect(options()).not.toContain('Investigação');
+      expect(text()).toContain('Percepção e Investigação já valem');
+      expect(el.querySelector('.tp__add')?.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('picks and puts back a skill as a chip with "×", and sends the list in the whole spec', async () => {
+      await setup();
+      await open();
+      const option = (name: string) =>
+        Array.from(el.querySelectorAll<HTMLElement>('[role="option"]')).find((o) =>
+          o.textContent?.includes(name),
+        )!;
+      option('Religião').click();
+      option('Arcanismo').click();
+      await settle();
+      // Kept in the list's order, whichever was picked first.
+      expect(chips()).toEqual(['Arcanismo', 'Religião']);
+      expect(option('Arcanismo').getAttribute('aria-selected')).toBe('true');
+      expect(el.querySelector('.tp__none')).toBeNull();
+      expect(panel().changes()?.trap?.alsoFindSkillKeys).toEqual([
+        'skill:arcana',
+        'skill:religion',
+      ]);
+      (el.querySelector('[aria-label="Tirar Arcanismo"]') as HTMLButtonElement).click();
+      await settle();
+      expect(chips()).toEqual(['Religião']);
+      expect(panel().changes()?.trap?.alsoFindSkillKeys).toEqual(['skill:religion']);
+    });
+
+    it('moves with the arrows, picks with Space and closes with Escape, giving the focus back to the button', async () => {
+      await setup();
+      await open();
+      const list = el.querySelector<HTMLElement>('[role="listbox"]')!;
+      const key = (k: string) => {
+        list.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
+        fixture.detectChanges();
+      };
+      key('ArrowDown');
+      key('ArrowDown');
+      expect(list.getAttribute('aria-activedescendant')).toBe('tf-also-2');
+      key(' ');
+      expect(chips()).toEqual(['Arcanismo']);
+      key('ArrowUp');
+      key('Escape');
+      expect(el.querySelector('[role="listbox"]')).toBeNull();
+      expect(document.activeElement).toBe(el.querySelector('.tp__add'));
+    });
+
+    it('reads the saved list into the chips', async () => {
+      await setup(
+        create(MapPointSchema, {
+          ...trapPoint,
+          trap: {
+            presetKey: 'trap:simple-pit',
+            noticeDc: 15,
+            findDc: 15,
+            areaSize: 2,
+            alsoFindSkillKeys: ['skill:arcana', 'skill:religion'],
+          } as never,
+        }),
+      );
+      expect(chips()).toEqual(['Arcanismo', 'Religião']);
+      expect(panel().changes()).toBeNull();
+    });
+
+    it('reminds a magic preset of Arcanismo without marking anything, and drops the line once it is a chip', async () => {
+      await setup();
+      radio('Estátua que cospe fogo').click();
+      await settle();
+      expect(text()).toContain(
+        'O SRD diz que qualquer personagem pode tentar um teste de Inteligência (Arcanismo)',
+      );
+      expect(chips()).toEqual([]);
+      await open();
+      (
+        Array.from(el.querySelectorAll<HTMLElement>('[role="option"]')).find((o) =>
+          o.textContent?.includes('Arcanismo'),
+        ) as HTMLElement
+      ).click();
+      await settle();
+      expect(text()).not.toContain('O SRD diz que qualquer personagem');
+    });
+
+    it('has no reminder for a mechanical preset', async () => {
+      await setup();
+      radio('Agulha envenenada').click();
+      await settle();
+      expect(text()).not.toContain('O SRD diz que qualquer personagem');
+    });
   });
 });

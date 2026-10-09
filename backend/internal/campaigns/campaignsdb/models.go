@@ -64,4 +64,7 @@ type CampaignTableRule struct {
 	FogOnNewMaps         bool
 	HouseRules           []string
 	UpdatedAt            time.Time
+	FeatsAllowed         bool
+	HiddenAreaHits       string
+	EnemyReactions       string
 }

@@ -166,6 +166,18 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
     expect(text(el)).not.toContain('Dê XP');
   });
 
+  it('is not drawn for a player while there is no living character and no award', async () => {
+    respond(XpMode.ENEMIES, []);
+    const { el } = await setup(false);
+    expect(el.querySelector<HTMLElement>('section')?.hidden).toBe(true);
+  });
+
+  it('is still there for the master with no living character: it invites the first award', async () => {
+    respond(XpMode.ENEMIES, []);
+    const { el } = await setup(true);
+    expect(el.querySelector<HTMLElement>('section')?.hidden).toBe(false);
+  });
+
   it('gives the master "Dar XP" and nobody else', async () => {
     respond(XpMode.ENEMIES);
     expect(

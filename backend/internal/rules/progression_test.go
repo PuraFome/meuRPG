@@ -294,3 +294,18 @@ func TestLifeDomainAlwaysPreparesGuardianOfFaith(t *testing.T) {
 		t.Errorf("Life domain spells at level 7 = %v, want %v", got, want)
 	}
 }
+
+// IsSkill says yes to the SRD's 18 skills by key and no to an ability, a saving throw
+// and anything else.
+func TestIsSkill(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for key, want := range map[string]bool{
+		"skill:arcana": true, "skill:sleight-of-hand": true, "skill:animal-handling": true,
+		"skill:juggling": false, "ability:int": false, "save:int": false, "arcana": false, "": false,
+	} {
+		if got := c.IsSkill(key); got != want {
+			t.Errorf("IsSkill(%q) = %v, want %v", key, got, want)
+		}
+	}
+}

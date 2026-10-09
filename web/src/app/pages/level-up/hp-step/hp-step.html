@@ -4,7 +4,7 @@
 </p>
 
 <section class="mr-panel" id="pick-hp" [attr.data-missing]="s().draft.missingIn('hp').length > 0 ? '' : null" aria-labelledby="hp-title">
-  <h2 class="mr-panel__title" id="hp-title">Pontos de vida</h2>
+  <h2 class="mr-panel__title" id="hp-title">{{ title() }}</h2>
   <p class="lead">{{ intro() }}</p>
 
   @if (s().hpFixed === 'average') {
@@ -114,7 +114,7 @@
       </li>
     }
   </ul>
-  @if (s().draft.steps().length === 2) {
+  @if (s().draft.steps().length === 3) {
     <p class="gives__none">
       Neste nível não há mais nada para escolher: sem habilidades e sem magias, só os pontos de vida.
     </p>

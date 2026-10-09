@@ -21,6 +21,7 @@ import { LevelUpDraft } from '../../core/levelup/levelup-draft';
 import { describeLevelUpFailure } from '../../core/levelup/levelup-errors';
 import { changeRows, type ChangeRow } from '../../core/levelup/levelup-summary';
 import { LevelUpPreview } from './level-up-preview';
+import { hitDiceSum } from '../../core/resources/hit-dice-text';
 
 const LIST = new Intl.ListFormat('pt-BR', { type: 'conjunction' });
 
@@ -89,7 +90,7 @@ export class LevelUpSession {
     this.draft = draft;
     this.before = character.derived!;
     this.revision.set(character.revision);
-    this.multiclass = (character.derived?.classes.length ?? 0) >= 2;
+    this.multiclass = (character.derived?.classes.length ?? 0) >= 2 || options.isNewClass;
     this.preview = new LevelUpPreview(client, campaignId, character.id);
     const rule = options.diceRule;
     this.canApp = rule !== LevelUpDiceRule.FORCED_PHYSICAL;
@@ -169,6 +170,15 @@ export class LevelUpSession {
       // A table class's own features are what the master wrote, so the summary names them; the SRD's are on the sheet already.
       newFeatures: isTableKey(this.options.classKey) ? this.newFeatureNames() : [],
       learnsSpells: d.effective().spellsKind !== LevelUpSpellsKind.UNSPECIFIED,
+      ...(this.options.isNewClass
+        ? {
+            multiclass: {
+              newClassName: this.options.classNamePt,
+              summary: this.preview.state().multiclass,
+              newFeatures: this.options.newFeatures.map((f) => f.namePt),
+            },
+          }
+        : {}),
     });
   });
 
@@ -307,7 +317,11 @@ export class LevelUpSession {
         .some((m) => m.step === step && ids.some((id) => m.id === id || m.id.startsWith(id)));
     if (o.abilityScoreImprovement) {
       choice(
-        'Incremento no Valor de Habilidade',
+        d.featSummary()
+          ? `Talento: ${d.featSummary()!.name}`
+          : d.hasFeats()
+            ? 'Incremento ou talento'
+            : 'Incremento no Valor de Habilidade',
         'abilities',
         d.missingIn('abilities').length === 0,
       );
@@ -363,7 +377,7 @@ export class LevelUpSession {
         `${pb(o.proficiencyBonusBefore)} → ${pb(o.proficiencyBonusAfter)}`,
       );
     }
-    const dice = (s: DerivedSheet) => s.hitDice.map((x) => `${x.count}d${x.faces}`).join(' + ');
+    const dice = (s: DerivedSheet) => hitDiceSum(s.hitDice);
     out.push({
       title: 'Dados de vida',
       sub: `Entra sozinho · ${dice(this.before)} → ${dice(this.after())}`,

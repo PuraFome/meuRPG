@@ -8,6 +8,8 @@
  */
 
 import type { FamiliarSightVm } from '../../core/play/familiar-eyes';
+import type { SearchSkills } from '../../core/traps/trap-search';
+import type { HitDieSize } from '../../core/resources/hit-dice-text';
 import type { DiceMode, DicePreference } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { CombatantMove, TurnChange } from '../../core/combat/combat-state';
 
@@ -16,6 +18,8 @@ export interface SlotUsageVm {
   readonly level: number;
   readonly total: number;
   readonly used: number;
+  /** How many of `total` Flexible Casting created (they vanish on a long rest); absent or 0 for none. */
+  readonly created?: number;
 }
 
 /** A warlock's pact magic slots (`PactSlotUsage`): all of one level. */
@@ -43,7 +47,7 @@ export interface ResourceUsageVm {
   readonly namePt?: string;
   readonly total: number;
   readonly used: number;
-  /** When the uses come back, for "volta no descanso curto ou longo". */
+  /** When the uses come back: `short_rest` is "num descanso curto ou longo" (`RECHARGE_SHORT_REST`), `long_rest` only "num descanso longo". */
   readonly recharge: 'short_rest' | 'long_rest' | 'dawn' | 'none';
 }
 
@@ -56,12 +60,18 @@ export interface VitalsVm {
   readonly hitPointsCurrent: number;
   readonly hitPointsMax: number;
   readonly hitPointsTemporary: number;
+  /** What Ajuda adds to the maximum above (0 or absent without it): `hitPointsMax` already counts it, the sheet's own is the difference. */
+  readonly hitPointsMaxBonus?: number;
   /** Only the levels with slots, lowest first. */
   readonly spellSlots: readonly SlotUsageVm[];
   readonly pactSlots: PactSlotsVm | null;
-  /** "3d6", or "2d10 + 1d8" for a multiclass character. */
+  /** The hit dice by size, "3d6", or "2d10 e 1d8" for a multiclass character (kept apart by size, SRD "Multiclassing"). */
   readonly hitDice: string;
+  /** Each size with how many dice there are and how many are spent, largest die first (`hit_dice` with `hit_dice_used_by_die`). */
+  readonly hitDiceSizes: readonly HitDieSize[];
+  /** All the dice, of every size: the character's level. */
   readonly hitDiceTotal: number;
+  /** All the dice spent, of every size. */
   readonly hitDiceUsed: number;
   /** Of two copies of the same character's vitals, the larger is newer. */
   readonly revision: number;
@@ -141,6 +151,20 @@ export type LiveEventVm =
       readonly revision: number;
       readonly mode?: number;
     }
+  /** `reaction_window_opened` (PM-04): a window waits for this player or for the master; read the combat again for the prompt. */
+  | {
+      readonly kind: 'reactionWindowOpened';
+      readonly encounterId: string;
+      readonly windowId: string;
+    }
+  /** `reaction_window_closed`: a window is no longer open. `text` is the reason when it closed by itself, written for this person. */
+  | {
+      readonly kind: 'reactionWindowClosed';
+      readonly encounterId: string;
+      readonly windowId: string;
+      readonly closedByItself: boolean;
+      readonly text: string;
+    }
   /** `turn_changed`, as this member may see it. */
   | ({ readonly kind: 'turnChanged' } & TurnChange)
   /** `combatant_moved`. */
@@ -162,6 +186,8 @@ export type LiveEventVm =
   | { readonly kind: 'trapNoticed'; readonly mapId: string; readonly pointId: string }
   /** `creatures_changed` (MR-037): the character's creatures changed outside a combat; read them again. */
   | { readonly kind: 'creaturesChanged' }
+  /** `spell_casts_changed` (MR-048): the casts outside a combat changed; read them again. Carries no content. */
+  | { readonly kind: 'spellCastsChanged' }
   /** `content_changed` (10.1d): the table's content changed; read the catalog again with this member's role. */
   | { readonly kind: 'contentChanged' };
 
@@ -198,8 +224,8 @@ export interface CampaignInfoVm {
 export interface PlayerSheetVm {
   /** `DerivedSheet.armor_class`; `null` for a sheet without it. */
   readonly armorClass: number | null;
-  /** The bonuses in Percepção and Investigação, for "Procurar armadilhas"; `null` for a sheet without skills. */
-  readonly skills?: { readonly perception: number | null; readonly investigation: number | null };
+  /** The bonuses in Percepção and Investigação and the other skills, for "Procurar armadilhas" and the checks; `undefined` for a sheet without skills. */
+  readonly skills?: SearchSkills;
   /** "Mago 3, Gnomo das Rochas". */
   readonly summary: string;
   /** The character's senses, as the sheet says them in meters: "Visão no escuro: 18 m" (MR-036). */
@@ -221,7 +247,8 @@ export interface VitalsChange {
   readonly hitPointsTemporary?: number;
   readonly spellSlotsUsed?: readonly { readonly level: number; readonly used: number }[];
   readonly pactSlotsUsed?: number;
-  readonly hitDiceUsed?: number;
+  /** How many dice of each size are spent (die size to count), for the sizes that change. */
+  readonly hitDiceUsedByDie?: Readonly<Record<number, number>>;
   /** The resources whose spent uses change (a master gives uses back). */
   readonly resourcesUsed?: readonly { readonly key: string; readonly used: number }[];
   /** The beast's hit points, for a druid in Wild Shape; 0 ends the form. */

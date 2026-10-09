@@ -216,6 +216,27 @@
   bottom: calc(100% + 6px);
 }
 
+// What the chosen square says about itself ("Cai fora do alcance"): a filled label under it, in the map's own garnet.
+.cm__note {
+  pointer-events: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  z-index: 3;
+  box-sizing: border-box;
+  height: 22px;
+  padding: 0 9px;
+  border: 1.5px solid var(--mr-map-token-surface);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-map-accent);
+  color: var(--mr-map-token-surface);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 19px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
 // A refused square: dashed, and clear, so the wall hatch under it stays in sight.
 .cm__frame--refused {
   border-style: dashed;

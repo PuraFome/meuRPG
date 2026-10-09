@@ -9,13 +9,14 @@ import {
   CharacterBlockedSchema,
   CharacterSchema,
   FullSheetSchema,
+  LevelUpClassUnavailable,
   LevelUpDiceRule,
   LevelUpHitPointsRule,
   LevelUpRefusalReason,
   LevelUpRefusalSchema,
   type LevelUpOptions,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { DerivedClassSchema } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { Ability, DerivedClassSchema } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { fakeContentWatcher } from '../../core/content/content-testing';
 import { createRouterTransport } from '@connectrpc/connect';
 
@@ -32,8 +33,11 @@ import {
   SKILLS,
   SPELLS,
   WIZARD_KEYS,
+  classChoice,
+  featOptions,
   fighterOptions,
   pensantus,
+  pensantusClassChoices,
   wizardOptions,
 } from '../../core/levelup/levelup-testing';
 import { LevelUpPage } from './level-up';
@@ -92,6 +96,7 @@ describe('LevelUpPage', () => {
     char = character(),
     optionsError?: Error,
     classes?: { key: string; namePt: string; hitDie?: number }[],
+    atClass = false,
   ) {
     client.character.mockReset().mockResolvedValue(char);
     client.options.mockReset();
@@ -130,6 +135,13 @@ describe('LevelUpPage', () => {
     navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const fixture = TestBed.createComponent(LevelUpPage);
     await load(fixture);
+    // The class step opens every flow ("Subir em qual classe?"); most specs are about the steps after it.
+    const next = Array.from(el(fixture).querySelectorAll<HTMLButtonElement>('button')).find(
+      (b) => b.textContent?.trim() === 'Próximo',
+    );
+    if (!atClass && next) {
+      await click(fixture, next);
+    }
     return fixture;
   }
 
@@ -158,12 +170,13 @@ describe('LevelUpPage', () => {
       r.textContent?.includes(name),
     )!;
 
-  it('lists the four steps of Pensantus, and starts at Habilidades', async () => {
+  it('lists the five steps of Pensantus, the class first, and starts at Habilidades once it is chosen', async () => {
     const f = await setup();
     expect(text(f)).toContain('Subir para o nível 4');
     expect(text(f)).toContain('Pensantus · Mago 3 → Mago 4');
-    expect(text(f)).toContain('Passo 1 de 4 · Habilidades');
+    expect(text(f)).toContain('Passo 2 de 5 · Habilidades');
     expect(Array.from(el(f).querySelectorAll('.step__label')).map((s) => s.textContent)).toEqual([
+      'Classe',
       'Habilidades',
       'Vida',
       'Magias',
@@ -171,9 +184,41 @@ describe('LevelUpPage', () => {
     ]);
   });
 
+  it('offers "Aumentar habilidades" or "Um talento" when the table lists feats, and sends the feat with the abilities it raises', async () => {
+    const f = await setup(wizardOptions({ preparedMaxAfter: 3, feats: featOptions() }));
+    expect(text(f)).toContain('Incremento ou talento');
+    expect(text(f)).toContain('Aumentar habilidades');
+    expect(text(f)).not.toContain('Atleta');
+    await click(
+      f,
+      el(f).querySelector<HTMLInputElement>('input[name="asi-take"][type="radio"]:not(:checked)'),
+    );
+    expect(text(f)).toContain('Atleta');
+    expect(text(f)).toContain('Precisa de Força 15.');
+    expect(text(f)).toContain('Falta escolher o talento.');
+    const radios = Array.from(
+      el(f).querySelectorAll<HTMLInputElement>('app-feat-picker input[type="radio"]'),
+    );
+    expect(radios.map((r) => r.disabled)).toEqual([false, false, true]);
+    await click(f, radios[1]);
+    expect(text(f)).toContain('Falta escolher 1 habilidade.');
+    await click(f, el(f).querySelector<HTMLInputElement>('.ability input'));
+    expect(text(f)).not.toContain('Falta escolher 1 habilidade.');
+    const sent = client.preview.mock.calls.at(-1)![2];
+    expect(sent).toMatchObject({ featKey: 'feat:atleta@mesa', abilityIncrease: { strength: 1 } });
+  });
+
+  it('keeps the step as it is today when the server lists no feats', async () => {
+    const f = await setup();
+    expect(text(f)).toContain('Incremento no Valor de Habilidade');
+    expect(text(f)).not.toContain('Um talento');
+    expect(text(f)).toContain('Esta mesa não usa talentos');
+    expect(client.preview.mock.calls.at(-1)?.[2]).toMatchObject({ featKey: '' });
+  });
+
   it('has only Vida and Resumo when the level has nothing else to choose (Toren)', async () => {
     const f = await setup(fighterOptions());
-    expect(text(f)).toContain('Passo 1 de 2 · Vida');
+    expect(text(f)).toContain('Passo 2 de 3 · Vida');
     expect(text(f)).toContain('Neste nível não há mais nada para escolher');
     expect(text(f)).toContain('Ataque Extra');
   });
@@ -184,7 +229,7 @@ describe('LevelUpPage', () => {
     expect(next.getAttribute('aria-disabled')).toBe('true');
     expect(text(f)).toContain('Falta escolher 1 habilidade.');
     await click(f, next);
-    expect(text(f)).toContain('Passo 1 de 4');
+    expect(text(f)).toContain('Passo 2 de 5');
     expect(el(f).querySelector('#pick-abilities')?.contains(document.activeElement)).toBe(true);
   });
 
@@ -193,16 +238,28 @@ describe('LevelUpPage', () => {
     await click(f, el(f).querySelector('.row--on, .row'));
     // The first ability row is Força.
     await click(f, button(f, 'Próximo'));
-    expect(text(f)).toContain('Passo 2 de 4 · Vida');
+    expect(text(f)).toContain('Passo 3 de 5 · Vida');
     await click(f, button(f, 'Voltar'));
-    expect(text(f)).toContain('Passo 1 de 4 · Habilidades');
+    expect(text(f)).toContain('Passo 2 de 5 · Habilidades');
   });
 
-  describe('a sheet with two classes: "Qual classe sobe de nível?"', () => {
+  describe('the class step: "Subir em qual classe?"', () => {
+    const twoClassChoices = () => [
+      classChoice({
+        classKey: 'class:wizard',
+        namePt: 'Mago',
+        fromLevel: 3,
+        toLevel: 4,
+        subclassNamePt: 'Evocação',
+      }),
+      classChoice({ classKey: 'class:cleric', namePt: 'Clérigo', fromLevel: 1, toLevel: 2 }),
+      ...pensantusClassChoices().slice(1),
+    ];
     const cleric = (over: Parameters<typeof wizardOptions>[0] = {}) =>
       wizardOptions({
         classKey: 'class:cleric',
         classNamePt: 'Clérigo',
+        classChoices: twoClassChoices(),
         fromLevel: 1,
         toLevel: 2,
         totalFromLevel: 4,
@@ -227,12 +284,19 @@ describe('LevelUpPage', () => {
       derived.totalLevel = 4;
       return character({}, derived);
     };
+    const wizardTwo = () =>
+      wizardOptions({
+        totalToLevel: 5,
+        preparedMaxAfter: 3,
+        classChoices: twoClassChoices(),
+      });
+    /** The page at its class step, for a sheet with two classes. */
     async function multiclass(
-      wizard: LevelUpOptions = wizardOptions({ totalToLevel: 5, preparedMaxAfter: 3 }),
+      wizard: LevelUpOptions = wizardTwo(),
       clericOptions: LevelUpOptions = cleric(),
       classes?: { key: string; namePt: string; hitDie?: number }[],
     ) {
-      const f = await setup(wizard, twoClasses(), undefined, classes);
+      const f = await setup(wizard, twoClasses(), undefined, classes, true);
       client.options.mockImplementation((_c: string, _ch: string, key = '') =>
         Promise.resolve(key === 'class:cleric' ? clericOptions : wizard),
       );
@@ -242,32 +306,47 @@ describe('LevelUpPage', () => {
       Array.from(el(f).querySelectorAll<HTMLLabelElement>('app-class-pick .card'));
     const radio = (f: ComponentFixture<LevelUpPage>, name: string) =>
       cards(f)
-        .find((c) => c.textContent?.includes(name))!
+        .find((c) => c.querySelector('.card__title')?.textContent?.trim() === name)!
         .querySelector<HTMLInputElement>('input')!;
+    const step = (f: ComponentFixture<LevelUpPage>) =>
+      el(f).querySelector('.head__step')?.textContent?.replace(/\s+/g, ' ').trim();
 
-    it('is not drawn when the sheet has one class', async () => {
-      const f = await setup();
-      expect(el(f).querySelector('app-class-pick')).toBeNull();
-      expect(text(f)).not.toContain('Qual classe sobe de nível?');
+    it('opens every flow, even for a sheet with one class: the classes it has and "Uma classe nova"', async () => {
+      const f = await setup(wizardOptions(), character(), undefined, undefined, true);
+      expect(text(f)).toContain('Subir em qual classe?');
+      expect(step(f)).toBe('Passo 1 de 5 · Classe');
+      expect(
+        cards(f).map((c) =>
+          Array.from(c.querySelectorAll('.card__title, .card__desc'), (x) =>
+            x.textContent?.replace(/\s+/g, ' ').trim(),
+          ).join(' '),
+        ),
+      ).toEqual([
+        'Mago nível 3 → 4 · Evocação',
+        'Uma classe nova Entra com o nível 1 da classe: o seu nível total vai a 4.',
+      ]);
+      expect(radio(f, 'Mago').checked).toBe(true);
+      expect(radio(f, 'Uma classe nova').checked).toBe(false);
+      // The new classes only open when asked for.
+      expect(text(f)).not.toContain('Qual classe nova?');
+      expect(client.options).toHaveBeenCalledWith('camp-1', 'ch-1');
+      expect(document.activeElement).toBe(radio(f, 'Mago'));
+      // The class in force is chosen: "Próximo" is open.
+      expect(button(f, 'Próximo').getAttribute('aria-disabled')).not.toBe('true');
     });
 
     it('draws a card for each class of the sheet, the first one checked, and reads the options with no class', async () => {
-      const f = await setup(wizardOptions({ totalToLevel: 5, preparedMaxAfter: 3 }), twoClasses());
-      expect(text(f)).toContain('Qual classe sobe de nível?');
-      expect(text(f)).toContain('O Pensantus tem duas classes. O nível 5 entra em uma delas');
+      const f = await multiclass();
       expect(
-        cards(f).map((c) =>
-          Array.from(c.querySelectorAll('.card__title, .card__desc'), (x) => x.textContent).join(
-            ' ',
-          ),
-        ),
-      ).toEqual(['Mago nível 3 → 4', 'Clérigo nível 1 → 2']);
+        cards(f)
+          .slice(0, 3)
+          .map((c) => c.querySelector('.card__title')?.textContent),
+      ).toEqual(['Mago', 'Clérigo', 'Uma classe nova']);
       expect(radio(f, 'Mago').checked).toBe(true);
       expect(radio(f, 'Clérigo').checked).toBe(false);
       expect(client.options).toHaveBeenCalledWith('camp-1', 'ch-1');
       expect(text(f)).toContain('Subir para o nível 5');
       expect(text(f)).toContain('Pensantus · Mago 3 → Mago 4');
-      expect(document.activeElement).toBe(radio(f, 'Mago'));
     });
 
     it('goes to the other class at once when nothing was chosen: its options, steps, subtitle and the lines of its level', async () => {
@@ -277,14 +356,16 @@ describe('LevelUpPage', () => {
       expect(radio(f, 'Clérigo').checked).toBe(true);
       expect(text(f)).toContain('Subir para o nível 5');
       expect(text(f)).toContain('Pensantus · Clérigo 1 → Clérigo 2');
-      expect(text(f)).toContain('Passo 1 de 2 · Vida');
+      expect(step(f)).toBe('Passo 1 de 3 · Classe');
+      expect(el(f).querySelector('[role="status"].mr-visually-hidden')?.textContent).toContain(
+        'Clérigo escolhido. O nível tem 3 passos.',
+      );
+      expect(document.activeElement).toBe(radio(f, 'Clérigo'));
+      await click(f, button(f, 'Próximo'));
+      expect(text(f)).toContain('Passo 2 de 3 · Vida');
       expect(text(f)).toContain('Só o que o nível 2 de Clérigo dá fica aberto.');
       expect(text(f)).toContain('O que o nível 2 de Clérigo dá');
       expect(text(f)).toContain('O Clérigo ganha 1d8 por nível');
-      expect(el(f).querySelector('[role="status"].mr-visually-hidden')?.textContent).toContain(
-        'Clérigo escolhido. Passo 1 de 2, Vida.',
-      );
-      expect(document.activeElement).toBe(radio(f, 'Clérigo'));
       // The preview is asked for the class that gains the level.
       expect(client.preview.mock.calls.at(-1)?.[2].classKey).toBe('class:cleric');
     });
@@ -292,20 +373,26 @@ describe('LevelUpPage', () => {
     it('says the level of the class, never the total, in a hit points step of a multiclass sheet', async () => {
       const f = await multiclass();
       await click(f, radio(f, 'Clérigo'));
+      await click(f, button(f, 'Próximo'));
       expect(text(f)).not.toContain('O que o nível 5 dá');
       expect(text(f)).not.toContain('Só o que o nível 2 dá');
     });
 
+    /** Past the class step to Habilidades, picks the first ability, and back to the class step. */
+    async function chooseThenBack(f: ComponentFixture<LevelUpPage>) {
+      await click(f, button(f, 'Próximo'));
+      await click(f, el(f).querySelector('.row__input'));
+      await click(f, button(f, 'Voltar'));
+    }
+
     it('asks in place after a choice was made: "Continuar com o Mago" first and focused, and nothing is read', async () => {
       const f = await multiclass();
-      await click(f, el(f).querySelector('.row__input'));
+      await chooseThenBack(f);
       const reads = client.options.mock.calls.length;
       await click(f, radio(f, 'Clérigo'));
       const ask = el(f).querySelector('app-class-pick [role="group"]')!;
       expect(ask.textContent).toContain('Trocar de classe?');
-      expect(ask.textContent).toContain(
-        'As escolhas já feitas neste nível, como o aumento de habilidade, são descartadas.',
-      );
+      expect(ask.textContent).toContain('As escolhas deste nível são descartadas.');
       expect(Array.from(ask.querySelectorAll('button'), (b) => b.textContent?.trim())).toEqual([
         'Trocar para o Clérigo',
         'Continuar com o Mago',
@@ -324,7 +411,7 @@ describe('LevelUpPage', () => {
 
     it('"Trocar para o Clérigo" throws the choices away and reads the other class', async () => {
       const f = await multiclass();
-      await click(f, el(f).querySelector('.row__input'));
+      await chooseThenBack(f);
       await click(f, radio(f, 'Clérigo'));
       await click(f, button(f, 'Trocar para o Clérigo'));
       expect(client.options).toHaveBeenLastCalledWith('camp-1', 'ch-1', 'class:cleric');
@@ -332,12 +419,14 @@ describe('LevelUpPage', () => {
       expect(el(f).querySelector('app-class-pick [role="group"]')).toBeNull();
       // Back to the Mago: nothing of the first draft is left, so it does not ask again.
       await click(f, radio(f, 'Mago'));
+      await click(f, button(f, 'Próximo'));
       expect(text(f)).toContain('Falta escolher 1 habilidade.');
     });
 
     it('the roll in the app is asked for the class that gains the level', async () => {
       const f = await multiclass();
       await click(f, radio(f, 'Clérigo'));
+      await click(f, button(f, 'Próximo'));
       await click(
         f,
         Array.from(el(f).querySelectorAll('.dice-choice__card')).find((c) =>
@@ -355,11 +444,12 @@ describe('LevelUpPage', () => {
 
     it('a die already rolled for the other class: the die card is dashed with the reason in it, the average stays, and no roll is asked', async () => {
       const f = await multiclass(
-        wizardOptions({ totalToLevel: 5, preparedMaxAfter: 3 }),
+        wizardTwo(),
         cleric({ keptHitPointRoll: 3, keptHitPointRollClassKey: 'class:wizard' }),
         [{ key: 'class:wizard', namePt: 'Mago', hitDie: 6 }],
       );
       await click(f, radio(f, 'Clérigo'));
+      await click(f, button(f, 'Próximo'));
       const die = Array.from(el(f).querySelectorAll<HTMLElement>('.dice-choice__card')).find((c) =>
         c.textContent?.includes('Rolar 1d8'),
       )!;
@@ -380,20 +470,275 @@ describe('LevelUpPage', () => {
         wizardOptions({
           totalToLevel: 5,
           preparedMaxAfter: 3,
+          classChoices: twoClassChoices(),
           keptHitPointRoll: 3,
           keptHitPointRollClassKey: 'class:wizard',
         }),
       );
+      await click(f, button(f, 'Próximo'));
       await click(f, el(f).querySelector('.row__input'));
       await click(f, button(f, 'Próximo'));
       expect(el(f).querySelector('.dice-choice__card--off')).toBeNull();
       expect(text(f)).not.toContain('já foi rolado para');
     });
+
+    describe('"Uma classe nova"', () => {
+      const mage = () =>
+        wizardOptions({
+          classKey: 'class:wizard',
+          classNamePt: 'Mago',
+          classChoices: doranChoices(),
+          isNewClass: true,
+          fromLevel: 0,
+          toLevel: 1,
+          totalFromLevel: 5,
+          totalToLevel: 6,
+          hitDie: 6,
+          hitPointAverage: 4,
+          abilityScoreImprovement: false,
+          cantrips: 3,
+          spells: 6,
+          preparedMaxAfter: 2,
+          spellSlotsBefore: [],
+          spellSlotsAfter: [2],
+        });
+      const fighterFive = () => {
+        const derived = pensantus();
+        derived.classes = [
+          create(DerivedClassSchema, { classKey: 'class:fighter', namePt: 'Guerreiro', level: 5 }),
+        ];
+        derived.totalLevel = 5;
+        return character({ name: 'Doran' }, derived);
+      };
+      const doranChoices = () => [
+        classChoice({
+          classKey: 'class:fighter',
+          namePt: 'Guerreiro',
+          fromLevel: 5,
+          toLevel: 6,
+          subclassNamePt: 'Campeão',
+          prerequisiteAnyOf: true,
+          prerequisites: [
+            { ability: Ability.STRENGTH, minimum: 13, have: 16, met: true },
+            { ability: Ability.DEXTERITY, minimum: 13, have: 14, met: true },
+          ],
+        }),
+        classChoice({
+          classKey: 'class:wizard',
+          namePt: 'Mago',
+          isNew: true,
+          toLevel: 1,
+          prerequisites: [{ ability: Ability.INTELLIGENCE, minimum: 13, have: 13, met: true }],
+        }),
+        classChoice({
+          classKey: 'class:barbarian',
+          namePt: 'Bárbaro',
+          isNew: true,
+          toLevel: 1,
+          prerequisites: [{ ability: Ability.STRENGTH, minimum: 13, have: 16, met: true }],
+        }),
+        classChoice({
+          classKey: 'class:bard',
+          namePt: 'Bardo',
+          isNew: true,
+          toLevel: 1,
+          available: false,
+          prerequisiteMet: false,
+          unavailable: LevelUpClassUnavailable.PREREQUISITE,
+          prerequisites: [{ ability: Ability.CHARISMA, minimum: 13, have: 9, met: false }],
+        }),
+        classChoice({
+          classKey: 'class:monk',
+          namePt: 'Monge',
+          isNew: true,
+          toLevel: 1,
+          available: false,
+          prerequisiteMet: false,
+          unavailable: LevelUpClassUnavailable.PREREQUISITE,
+          prerequisites: [
+            { ability: Ability.DEXTERITY, minimum: 13, have: 14, met: true },
+            { ability: Ability.WISDOM, minimum: 13, have: 11, met: false },
+          ],
+        }),
+      ];
+      const fighter = () =>
+        fighterOptions({
+          fromLevel: 5,
+          toLevel: 6,
+          totalFromLevel: 5,
+          totalToLevel: 6,
+          classChoices: doranChoices(),
+        });
+      const barbarian = () =>
+        wizardOptions({
+          classKey: 'class:barbarian',
+          classNamePt: 'Bárbaro',
+          classChoices: doranChoices(),
+          isNewClass: true,
+          fromLevel: 0,
+          toLevel: 1,
+          totalFromLevel: 5,
+          totalToLevel: 6,
+          hitDie: 12,
+          hitPointAverage: 7,
+          abilityScoreImprovement: false,
+          cantrips: 0,
+          spells: 0,
+          prepares: false,
+          preparedMax: 0,
+          preparedMaxAfter: 0,
+          spellsKind: 0,
+          spellSlotsBefore: [],
+          spellSlotsAfter: [],
+          newFeatures: [{ key: 'feature:rage', namePt: 'Fúria' }],
+        });
+      async function doran() {
+        const f = await setup(fighter(), fighterFive(), undefined, undefined, true);
+        client.options.mockImplementation((_c: string, _ch: string, key = '') =>
+          Promise.resolve(
+            key === 'class:wizard' ? mage() : key === 'class:barbarian' ? barbarian() : fighter(),
+          ),
+        );
+        return f;
+      }
+
+      it('opens the other classes with what each asks for, and the ones the character does not qualify for dashed, with the reason', async () => {
+        const f = await doran();
+        await click(f, radio(f, 'Uma classe nova'));
+        expect(text(f)).toContain(
+          'Você cumpre o pré-requisito do Guerreiro: Força 13 ou Destreza 13 (Força 16, Destreza 14). Para uma classe nova, é preciso cumprir o das duas.',
+        );
+        expect(text(f)).toContain('Qual classe nova?');
+        expect(text(f)).toContain('Duas estão ao seu alcance.');
+        const mago = cards(f).find((c) => c.querySelector('.card__title')?.textContent === 'Mago')!;
+        expect(mago.textContent).toContain('Exige Inteligência 13.');
+        expect(mago.textContent).toContain('Você tem Inteligência 13.');
+        const bardo = cards(f).find(
+          (c) => c.querySelector('.card__title')?.textContent === 'Bardo',
+        )!;
+        expect(bardo.classList).toContain('card--closed');
+        expect(bardo.textContent).toContain('Exige Carisma 13.');
+        expect(bardo.textContent).toContain('Falta: Carisma 13 (você tem 9).');
+        expect(bardo.querySelector('input')?.getAttribute('aria-disabled')).toBe('true');
+        const monge = cards(f).find(
+          (c) => c.querySelector('.card__title')?.textContent === 'Monge',
+        )!;
+        expect(monge.textContent).toContain('Exige Destreza 13 e Sabedoria 13.');
+        expect(monge.textContent).toContain('Falta: Sabedoria 13 (você tem 11).');
+        // A closed card cannot be chosen: nothing is read.
+        const reads = client.options.mock.calls.length;
+        await click(f, bardo.querySelector('input'));
+        expect(client.options.mock.calls.length).toBe(reads);
+      });
+
+      it('waits for the class: "Próximo" says so, and opens once a class is picked', async () => {
+        const f = await doran();
+        await click(f, radio(f, 'Uma classe nova'));
+        expect(button(f, 'Próximo').getAttribute('aria-disabled')).toBe('true');
+        expect(text(f)).toContain('Escolha a classe nova para continuar.');
+        await click(f, radio(f, 'Mago'));
+        expect(client.options).toHaveBeenLastCalledWith('camp-1', 'ch-1', 'class:wizard');
+        expect(text(f)).toContain('Doran · Guerreiro 5 → Guerreiro 5 · Mago 1');
+        expect(text(f)).toContain('Subir para o nível 6');
+        expect(radio(f, 'Mago').checked).toBe(true);
+        expect(button(f, 'Próximo').getAttribute('aria-disabled')).not.toBe('true');
+        // The steps follow the class's level 1: no Habilidades, Vida, Magias, Resumo.
+        expect(
+          Array.from(el(f).querySelectorAll('.step__label')).map((x) => x.textContent),
+        ).toEqual(['Classe', 'Vida', 'Magias', 'Resumo']);
+      });
+
+      it('says the die of the new class in "Vida", and never the maximum', async () => {
+        const f = await doran();
+        await click(f, radio(f, 'Uma classe nova'));
+        await click(f, radio(f, 'Mago'));
+        await click(f, button(f, 'Próximo'));
+        expect(text(f)).toContain('Pontos de vida de Mago 1');
+        expect(text(f)).toContain(
+          'O nível 1 de Mago dá um d6, e o personagem vai ao nível total 6. O dado cheio só vale no nível 1 do personagem.',
+        );
+        expect(text(f)).toContain('Média: 4');
+      });
+
+      it('asks in place before it adds the class: the footer becomes the question, with "Voltar" focused, and nothing is sent until it is confirmed', async () => {
+        const f = await doran();
+        client.levelUp.mockResolvedValue(
+          character({ name: 'Doran', canLevelUp: false }, pensantus(true)),
+        );
+        await click(f, radio(f, 'Uma classe nova'));
+        await click(f, radio(f, 'Bárbaro'));
+        await click(f, button(f, 'Próximo')); // Vida
+        await click(f, button(f, 'Próximo')); // Resumo
+        expect(step(f)).toBe('Passo 3 de 3 · Resumo');
+        await click(f, button(f, 'Confirmar o nível 6'));
+        const ask = el(f).querySelector('[role="alertdialog"]')!;
+        expect(ask.textContent).toContain('Subir em Bárbaro 1?');
+        expect(ask.textContent).toContain(
+          'Isso acrescenta uma classe nova à ficha: Bárbaro 1, e o nível total vai a 6. Não se desfaz.',
+        );
+        expect(Array.from(ask.querySelectorAll('button'), (b) => b.textContent?.trim())).toEqual([
+          'Subir em Bárbaro 1',
+          'Voltar',
+        ]);
+        expect(document.activeElement?.textContent?.trim()).toBe('Voltar');
+        expect(client.levelUp).not.toHaveBeenCalled();
+        // "Voltar" keeps everything: the footer is back, the button is the one of the step.
+        await click(f, button(f, 'Voltar'));
+        expect(el(f).querySelector('[role="alertdialog"]')).toBeNull();
+        expect(button(f, 'Confirmar o nível 6')).toBeDefined();
+        expect(client.levelUp).not.toHaveBeenCalled();
+        // The question again, and this time it is answered.
+        await click(f, button(f, 'Confirmar o nível 6'));
+        await click(f, button(f, 'Subir em Bárbaro 1'));
+        expect(client.levelUp).toHaveBeenCalledTimes(1);
+        expect(client.levelUp.mock.calls[0][3].classKey).toBe('class:barbarian');
+        expect(navigate).toHaveBeenCalled();
+      });
+
+      it('a class the character has is confirmed at once, with no question', async () => {
+        const f = await doran();
+        await click(f, button(f, 'Próximo'));
+        await click(f, button(f, 'Próximo'));
+        await click(f, button(f, 'Confirmar o nível 6'));
+        expect(el(f).querySelector('[role="alertdialog"]')).toBeNull();
+        expect(client.levelUp).toHaveBeenCalledTimes(1);
+      });
+
+      it('closes "Uma classe nova" with the reason when a class the character has does not meet its own prerequisite', async () => {
+        const choices = doranChoices();
+        choices[0].prerequisiteMet = false;
+        choices[0].prerequisites = [
+          { ability: Ability.STRENGTH, minimum: 13, have: 12, met: false },
+          { ability: Ability.DEXTERITY, minimum: 13, have: 12, met: false },
+        ] as (typeof choices)[0]['prerequisites'];
+        for (const c of choices.slice(1)) {
+          c.available = false;
+          c.unavailable = LevelUpClassUnavailable.PREREQUISITE_CURRENT;
+        }
+        const f = await setup(
+          fighterOptions({ fromLevel: 5, toLevel: 6, totalToLevel: 6, classChoices: choices }),
+          fighterFive(),
+          undefined,
+          undefined,
+          true,
+        );
+        expect(text(f)).toContain(
+          'Você não cumpre o pré-requisito do Guerreiro: Força 13 ou Destreza 13 (Força 12, Destreza 12). Uma classe nova só entra com o pré-requisito das duas.',
+        );
+        const nova = radio(f, 'Uma classe nova');
+        expect(nova.getAttribute('aria-disabled')).toBe('true');
+        await click(f, nova);
+        expect(text(f)).not.toContain('Qual classe nova?');
+        // The Guerreiro still levels up.
+        expect(radio(f, 'Guerreiro').checked).toBe(true);
+        expect(button(f, 'Próximo').getAttribute('aria-disabled')).not.toBe('true');
+      });
+    });
   });
 
   describe('the discard question', () => {
     it('leaves at once when nothing was chosen', async () => {
-      const f = await setup();
+      const f = await setup(undefined, undefined, undefined, undefined, true);
       await click(f, button(f, 'Cancelar'));
       expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1', 'characters', 'ch-1']);
     });
@@ -401,6 +746,7 @@ describe('LevelUpPage', () => {
     it('asks in place once something was chosen, with "Continuar escolhendo" first and focused', async () => {
       const f = await setup();
       await click(f, el(f).querySelector('.row__input'));
+      await click(f, button(f, 'Voltar'));
       await click(f, button(f, 'Cancelar'));
       expect(text(f)).toContain('Descartar as escolhas?');
       expect(navigate).not.toHaveBeenCalled();
@@ -443,7 +789,7 @@ describe('LevelUpPage', () => {
       expect(text(f)).toContain('Média: 4');
       expect(text(f)).toContain('4 + Constituição +3 · de 23 para 30');
       expect(text(f)).toContain('1d6 + Constituição +3 · o resultado fica no registro');
-      expect(text(f)).toContain('Feito no passo 1');
+      expect(text(f)).toContain('Feito no passo 2');
     });
 
     it('rolls the die on the server and keeps the result', async () => {
@@ -600,6 +946,10 @@ describe('LevelUpPage', () => {
       it('with "rolar" the page counts as untouched until something else is chosen (leaving does not ask)', async () => {
         const f = await setup(
           wizardOptions({ preparedMaxAfter: 3, hitPointsRule: LevelUpHitPointsRule.ROLL_ONLY }),
+          undefined,
+          undefined,
+          undefined,
+          true,
         );
         await click(f, button(f, 'Cancelar'));
         expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1', 'characters', 'ch-1']);
@@ -718,7 +1068,7 @@ describe('LevelUpPage', () => {
         );
         await reread(f);
         f.detectChanges();
-        expect(text(f)).toContain('Passo 2 de 4 · Vida');
+        expect(text(f)).toContain('Passo 3 de 5 · Vida');
         expect(text(f)).not.toContain('Rolado no app: 7');
         expect(el(f).querySelector('app-roll-picker')).not.toBeNull();
       });
@@ -731,7 +1081,7 @@ describe('LevelUpPage', () => {
         );
         await reread(f);
         f.detectChanges();
-        expect(text(f)).toContain('Passo 2 de 4 · Vida');
+        expect(text(f)).toContain('Passo 3 de 5 · Vida');
         expect(text(f)).toContain('Rolado no app: 7 no d6');
       });
     });
@@ -748,7 +1098,7 @@ describe('LevelUpPage', () => {
 
     it('counts the picks, blocks "Próximo" with the reason, and unblocks it when complete', async () => {
       const f = await throughSpells();
-      expect(text(f)).toContain('Passo 3 de 4 · Magias');
+      expect(text(f)).toContain('Passo 4 de 5 · Magias');
       expect(text(f)).toContain('0 de 1');
       expect(text(f)).toContain('0 de 2');
       expect(text(f)).toContain('Falta escolher 1 truque.');
@@ -787,7 +1137,7 @@ describe('LevelUpPage', () => {
       await click(f, el(f).querySelector('#pick-prepared .row__input'));
       await click(f, el(f).querySelectorAll('#pick-prepared .row__input')[1]);
       await click(f, button(f, 'Próximo'));
-      expect(text(f)).toContain('Passo 4 de 4 · Resumo');
+      expect(text(f)).toContain('Passo 5 de 5 · Resumo');
       expect(text(f)).toMatch(/18 para → ?20/);
       expect(text(f)).toContain('O resto da ficha não muda e continua travado.');
       await click(f, button(f, 'Confirmar o nível 4'));
@@ -950,7 +1300,7 @@ describe('LevelUpPage', () => {
         'Escolha todos os truques novos do nível',
       );
       await click(f, button(f, 'Ir para Magias'));
-      expect(text(f)).toContain('Passo 3 de 4 · Magias');
+      expect(text(f)).toContain('Passo 4 de 5 · Magias');
       expect(el(f).querySelector('.js-failure')).toBeNull();
     });
   });
@@ -1004,7 +1354,7 @@ describe('LevelUpPage', () => {
         'O mestre mudou as opções da mesa. As listas deste nível estão atualizadas.',
       );
       // Still on the same step, and the cantrip is still picked.
-      expect(text(f)).toContain('Passo 3 de 4 · Magias');
+      expect(text(f)).toContain('Passo 4 de 5 · Magias');
       expect(
         (pickRow(f, 'Prestidigitação').querySelector('input') as HTMLInputElement).checked,
       ).toBe(true);
@@ -1035,7 +1385,7 @@ describe('LevelUpPage', () => {
       client.options.mockRejectedValue(new Error('offline'));
       watcher.hint();
       await load(f);
-      expect(text(f)).toContain('Passo 1 de 4 · Habilidades');
+      expect(text(f)).toContain('Passo 2 de 5 · Habilidades');
       expect(el(f).querySelector('.js-failure')).toBeNull();
       expect(text(f)).not.toContain('O mestre mudou');
     });
@@ -1128,6 +1478,7 @@ describe('LevelUpPage with the real client: a content_changed hint really reads 
       Array.from(root.querySelectorAll<HTMLButtonElement>('button')).find(
         (b) => b.textContent?.trim() === 'Próximo',
       )!;
+    await click(next()); // past "Subir em qual classe?"
     await click(row('Inteligência')?.querySelector('input'));
     await click(next());
     await click(next());

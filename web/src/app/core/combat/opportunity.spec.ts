@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CombatantKind,
+  JumpKind,
   OpportunityAttackSchema,
   OpportunityOfferSchema,
 } from '../../../gen/meurpg/play/v1/combat_pb';
@@ -17,6 +18,7 @@ import {
   offersOn,
   offersToAnswer,
   playerQuestion,
+  reachingAttacks,
   spendText,
   reactorAttacks,
   reactorIsMasters,
@@ -141,6 +143,10 @@ describe('opportunity attacks in words', () => {
       'O Goblin 2 está saindo do seu alcance. Ataque de oportunidade?',
     );
     expect(plain(masterNews(toGoblin))).toBe('O Toren saiu do alcance do Goblin 2.');
+    // Out of the reach by a long jump, the word is "saltou".
+    expect(
+      plain(masterNews(create(OpportunityOfferSchema, { ...toGoblin, jump: JumpKind.LONG }))),
+    ).toBe('O Toren saltou para fora do alcance do Goblin 2.');
     expect(plain(masterAsk(toGoblin))).toBe('Goblin 2 ataca o Toren?');
   });
 
@@ -188,5 +194,49 @@ describe('opportunity attacks in words', () => {
     const [b] = reactorAttacks(toToren, []);
     expect(b.attack).toBeNull();
     expect(attackLabel(b)).toBe('Atacar com Espada longa');
+  });
+});
+
+describe('reachingAttacks', () => {
+  const weapon = (key: string, extra: Record<string, unknown>) =>
+    create(AttackSchema, { key, kind: AttackKind.WEAPON, melee: true, saveDc: 0, ...extra });
+  const options = (attacks: ReturnType<typeof weapon>[], targets: Record<string, unknown[]>) =>
+    ({
+      options: { attacks: attacks.map((attack) => ({ attack })) },
+      attackTargets: Object.entries(targets).map(([attackKey, list]) => ({
+        attackKey,
+        targets: list,
+      })),
+    }) as never;
+
+  it('offers a reach weapon at 10 ft, which the server says is within reach', () => {
+    const glaive = weapon('glaive', { namePt: 'Glaive', rangeFt: 10 });
+    const sword = weapon('sword', { namePt: 'Espada', rangeFt: 5 });
+    const found = reachingAttacks(
+      options([glaive, sword], {
+        glaive: [{ distanceFt: 10, tooFar: false }],
+        sword: [{ distanceFt: 10, tooFar: true }],
+      }),
+    );
+    expect(found).toEqual([{ key: 'glaive', name: 'Glaive' }]);
+  });
+
+  it('offers a thrown weapon only for a target next to the player, whatever its range', () => {
+    const dagger = weapon('dagger', { namePt: 'Adaga', rangeFt: 20, longRangeFt: 60 });
+    expect(
+      reachingAttacks(options([dagger], { dagger: [{ distanceFt: 15, tooFar: false }] })),
+    ).toEqual([]);
+    expect(
+      reachingAttacks(options([dagger], { dagger: [{ distanceFt: 5, tooFar: false }] })),
+    ).toHaveLength(1);
+  });
+
+  it('offers nothing for a target without a distance, a spell or a ranged weapon', () => {
+    const bow = weapon('bow', { melee: false, rangeFt: 150 });
+    expect(reachingAttacks(options([bow], { bow: [{ distanceFt: 5, tooFar: false }] }))).toEqual(
+      [],
+    );
+    const sword = weapon('sword', { rangeFt: 5 });
+    expect(reachingAttacks(options([sword], { sword: [{ tooFar: false }] }))).toEqual([]);
   });
 });

@@ -35,6 +35,7 @@ import {
   CharacterStoryVm,
   FullSheetVm,
 } from './character-sheet.types';
+import { hitDiceWords } from '../../core/resources/hit-dice-text';
 
 const KIND_FROM_GEN: Record<GenCharacterKind, CharacterKind> = {
   [GenCharacterKind.UNSPECIFIED]: 'player',
@@ -105,6 +106,7 @@ function toAttackVm(attack: GenAttack): AttackVm {
     damage: attack.damage,
     damageTypePt: attack.damageTypePt,
     versatileDamage: attack.versatileDamage,
+    damageNotePt: attack.damageNotePt,
     saveDc: attack.saveDc,
     saveAbility: attack.saveDc > 0 ? ABILITY_FROM_GEN[attack.saveAbility] : null,
     beams: attack.beams,
@@ -153,7 +155,7 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
     wearsArmor: full.armorKey !== '',
     hasShield: full.shield,
     hitPointsMax: derived.hitPointsMax,
-    hitDice: derived.hitDice.map((hd) => `${hd.count}d${hd.faces}`).join(' + ') || '—',
+    hitDice: hitDiceWords(derived.hitDice),
     speedWalkFt: derived.speedWalkFt,
     senses: derived.senses.map((s) => `${s.namePt}: ${metersWithFeet(s.rangeFt)}`),
     attacks: derived.attacks.map(toAttackVm),
@@ -345,6 +347,7 @@ export function toCharacterSheetVm(character: Character): CharacterSheetVm {
     // gated on the character being a living player character.
     isMaster: character.canAccessMasterNotes,
     playerDisplayName: character.playerDisplayName || null,
+    reserved: character.reserved,
     // The subrace's name already says the race ("Gnomo das Rochas"), as the
     // paper sheet's "Raça" box does; the race alone when there is none.
     raceLabel: character.derived?.subraceNamePt || character.derived?.raceNamePt || '',

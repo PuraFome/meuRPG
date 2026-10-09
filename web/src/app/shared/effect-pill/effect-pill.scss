@@ -1,0 +1,40 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-sizing: border-box;
+  min-height: 28px;
+  padding: 3px 9px;
+  border: 1px solid var(--mr-accent);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-accent-soft);
+  color: var(--mr-accent-text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.mat-icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+}
+
+:host(.effect--aid) {
+  border-color: var(--mr-warning-line);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+}
+
+:host(.effect--ok) {
+  border-color: var(--mr-success-ink);
+  background: var(--mr-success-surface);
+  color: var(--mr-success-ink);
+}
+
+:host(.effect--neutral) {
+  border-color: var(--mr-line);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+}

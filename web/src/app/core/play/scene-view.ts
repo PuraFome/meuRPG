@@ -5,7 +5,7 @@ import type {
   SceneActionView,
   SceneRoll,
 } from '../../../gen/meurpg/play/v1/scene_pb';
-import { rollFormula } from '../combat/combat-dice';
+import { rollFormula, treatedFormula, treatedSentence, treatedSpeech } from '../combat/combat-dice';
 import { joinDots, tight } from '../format/text';
 import { formatClock } from '../../shared/session-time/session-time';
 import { actionTitle } from '../maps/scene-actions';
@@ -33,7 +33,22 @@ export function sceneRollFormula(roll: SceneRoll): string {
   if (!dice) {
     return '';
   }
+  const treated = treatedFormula(dice);
+  if (treated) {
+    return treated;
+  }
   return dice.physical && dice.modifier === 0 ? `${dice.total}` : rollFormula(dice);
+}
+
+/** "O d20 de 6 contou como 10: perícia com proficiência.", only when a feature changed the roll. */
+export function sceneRollNote(roll: SceneRoll): string {
+  return roll.roll ? (treatedSentence(roll.roll) ?? '') : '';
+}
+
+/** What a screen reader hears of a roll a feature changed, in place of the formula's arrow: "d20: 6, contou 10 por Talento
+ * Confiável, mais 9, total 19". Empty for any other roll. */
+export function sceneRollSpeech(roll: SceneRoll): string {
+  return roll.roll ? (treatedSpeech(roll.roll) ?? '') : '';
 }
 
 /** "Passou · CD 12", "Não passou · CD 13", or the word alone when the action

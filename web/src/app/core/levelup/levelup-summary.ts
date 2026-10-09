@@ -1,9 +1,12 @@
+import {
+  LevelUpMulticlassException,
+  type LevelUpMulticlassSummary,
+} from '../../../gen/meurpg/characters/v1/characters_pb';
 import type {
   Attack,
   DerivedSheet,
   DerivedSkill,
   SavingThrow,
-  Spellcasting,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { Ability as GenAbility } from '../../../gen/meurpg/rules/v1/rules_pb';
 import {
@@ -14,6 +17,7 @@ import {
 } from '../characters/character-labels';
 import type { AbilityKey } from '../characters/characters.types';
 import { joinDots } from '../format/text';
+import { hitDiceSum } from '../resources/hit-dice-text';
 
 /** One line of "O que muda": a label, the value before and after, and a small line under it. */
 export interface ChangeRow {
@@ -25,6 +29,23 @@ export interface ChangeRow {
   /** The number comes from the table's own class ("Da mesa"), not the SRD's. */
   readonly table?: boolean;
 }
+
+/** What the summary adds when a class is new to the sheet (SRD 5.1, "Multiclassing"): the multiclass summary the server sent and the names. */
+export interface MulticlassContext {
+  readonly newClassName: string;
+  readonly summary: LevelUpMulticlassSummary | null;
+  /** The features of the new class's level 1, by name. */
+  readonly newFeatures: readonly string[];
+}
+
+const EXCEPTION_TEXT: Record<number, string> = {
+  [LevelUpMulticlassException.EXTRA_ATTACK]:
+    'Ataque Extra não se soma ao que o personagem já tinha: o número de ataques é o maior.',
+  [LevelUpMulticlassException.CHANNEL_DIVINITY]:
+    'Canalizar Divindade: os efeitos das duas classes ficam à escolha, mas os usos não se somam.',
+  [LevelUpMulticlassException.UNARMORED_DEFENSE]:
+    'Defesa sem Armadura não se soma à que o personagem já tinha: vale a primeira.',
+};
 
 /** What the summary needs besides the two sheets: how the hit points were decided and what was picked. */
 export interface SummaryContext {
@@ -48,6 +69,8 @@ export interface SummaryContext {
   readonly table?: boolean;
   /** The features the level gives by themselves, by name ("Estilo de luta", "Conjuração"). */
   readonly newFeatures?: readonly string[];
+  /** Set when the level adds a class to the sheet. */
+  readonly multiclass?: MulticlassContext;
 }
 
 const LIST = new Intl.ListFormat('pt-BR', { type: 'conjunction' });
@@ -61,9 +84,9 @@ const ABILITY_KEY: Record<number, AbilityKey> = {
   [GenAbility.CHARISMA]: 'cha',
 };
 
-/** "3d6", or "3d6 + 1d8" for a multiclass. */
+/** "3d6", or "3d6 + 1d8" for a multiclass (kept apart by size). */
 function hitDice(sheet: DerivedSheet): string {
-  return sheet.hitDice.map((d) => `${d.count}d${d.faces}`).join(' + ');
+  return hitDiceSum(sheet.hitDice);
 }
 
 /** "Novo: A" / "Novas: A e B". */
@@ -83,6 +106,65 @@ function row(
 
 function cast(sheet: DerivedSheet, classKey: string) {
   return sheet.spellcasting.find((c) => c.classKey === classKey);
+}
+
+/** Why the slots changed on a sheet with several classes: the caster level of the multiclass table, or the one class's own table. */
+function slotsReason(ctx: SummaryContext, after: DerivedSheet): string {
+  const s = ctx.multiclass?.summary;
+  if (!s) {
+    return '';
+  }
+  if (s.slotsByTable) {
+    return `Nível de conjurador ${s.casterLevelAfter}, pela tabela de multiclasse.`;
+  }
+  const casters = after.spellcasting;
+  if (casters.length === 1) {
+    const level = after.classes.find((c) => c.classKey === casters[0].classKey)?.level ?? 0;
+    return level === s.casterLevelAfter
+      ? `Nível de conjurador ${s.casterLevelAfter}: só ${article(casters[0].classNamePt)} ${casters[0].classNamePt} conta.`
+      : `Espaços da tabela d${article(casters[0].classNamePt)} ${casters[0].classNamePt}.`;
+  }
+  return '';
+}
+
+/** "o" or "a" for a class name, the way the sheet says "o Mago", "a Bruxa"... the SRD names are masculine but for a few. */
+function article(name: string): string {
+  return /^(Bruxa|Druida)$/.test(name) ? 'a' : 'o';
+}
+
+/** The rows only a class new to the sheet has: what it gives as proficiencies and features, and the equipment it does not. */
+function multiclassRows(mc: MulticlassContext): ChangeRow[] {
+  const gained = mc.summary?.proficienciesGained.map((p) => p.namePt) ?? [];
+  const out: ChangeRow[] = [
+    {
+      key: 'proficiencies',
+      label: 'Proficiências novas',
+      before: '—',
+      after: gained.length === 0 ? 'nenhuma' : LIST.format(gained),
+      sub:
+        gained.length === 0
+          ? `A tabela de multiclasse d${article(mc.newClassName)} ${mc.newClassName} não dá nenhuma.`
+          : 'Só as da tabela de multiclasse.',
+    },
+  ];
+  const exceptions = (mc.summary?.exceptions ?? []).map((e) => EXCEPTION_TEXT[e]).filter(Boolean);
+  if (mc.newFeatures.length > 0 || exceptions.length > 0) {
+    out.push({
+      key: 'new-class-features',
+      label: 'Características novas',
+      before: '—',
+      after: mc.newFeatures.length > 0 ? joinDots([...mc.newFeatures]) : 'nenhuma',
+      sub: exceptions.join(' '),
+    });
+  }
+  out.push({
+    key: 'equipment',
+    label: 'Equipamento novo',
+    before: '—',
+    after: 'nenhum',
+    sub: 'Só a primeira classe dá equipamento.',
+  });
+  return out;
 }
 
 function savesChanged(before: DerivedSheet, after: DerivedSheet): ChangeRow[] {
@@ -158,8 +240,25 @@ export function changeRows(
   ctx: SummaryContext,
 ): ChangeRow[] {
   const rows: (ChangeRow | null)[] = [];
-  const level = (s: DerivedSheet) => s.classes.map((c) => `${c.namePt} ${c.level}`).join(' / ');
-  rows.push({ key: 'level', label: 'Nível', before: level(before), after: level(after), sub: '' });
+  const mc = ctx.multiclass;
+  const level = (s: DerivedSheet) =>
+    s.classes.map((c) => `${c.namePt} ${c.level}`).join(mc ? ' · ' : ' / ');
+  if (mc) {
+    rows.push({
+      key: 'total-level',
+      label: 'Nível total',
+      before: String(before.totalLevel),
+      after: String(after.totalLevel),
+      sub: `O XP para este nível é o do nível total${before.nextLevelXp > 0 ? `: ${before.nextLevelXp.toLocaleString('pt-BR')}` : ''}.`,
+    });
+  }
+  rows.push({
+    key: 'level',
+    label: mc ? 'Classes' : 'Nível',
+    before: level(before),
+    after: level(after),
+    sub: '',
+  });
 
   const was = new Map(before.abilities.map((a) => [a.ability, a]));
   for (const a of after.abilities) {
@@ -180,15 +279,37 @@ export function changeRows(
   rows.push(
     row('hp', 'Pontos de vida', String(before.hitPointsMax), String(after.hitPointsMax), ctx.hpSub),
   );
-  rows.push(row('hit-dice', 'Dados de vida', hitDice(before), hitDice(after)));
   rows.push(
     row(
-      'proficiency',
-      'Bônus de proficiência',
-      formatModifier(before.proficiencyBonus),
-      formatModifier(after.proficiencyBonus),
+      'hit-dice',
+      'Dados de vida',
+      hitDice(before),
+      hitDice(after),
+      mc && after.hitDice.length > 1 ? 'Ficam separados por tipo.' : '',
     ),
   );
+  if (mc) {
+    // The proficiency bonus follows the total level: the row stays even when the number does not move.
+    rows.push({
+      key: 'proficiency',
+      label: 'Bônus de proficiência',
+      before: formatModifier(before.proficiencyBonus),
+      after: formatModifier(after.proficiencyBonus),
+      sub:
+        before.proficiencyBonus === after.proficiencyBonus
+          ? `Pelo nível total (${after.totalLevel}): não muda.`
+          : `Pelo nível total (${after.totalLevel}).`,
+    });
+  } else {
+    rows.push(
+      row(
+        'proficiency',
+        'Bônus de proficiência',
+        formatModifier(before.proficiencyBonus),
+        formatModifier(after.proficiencyBonus),
+      ),
+    );
+  }
   rows.push(
     row('armor', 'Classe de Armadura', String(before.armorClass), String(after.armorClass)),
   );
@@ -230,13 +351,15 @@ export function changeRows(
     const list = ctx.spellListClassKey || ctx.classKey;
     // A class that learns a fixed number of spells has it from the server, whichever list they came from (a Bard's Magical
     // Secrets); the others (a spellbook, a table class) are counted among the spells of the sheet that are on the class list.
-    const known = (s: DerivedSheet, c: Spellcasting | undefined) =>
-      c && c.spellsKnown > 0
-        ? c.spellsKnown
-        : s.spells.filter((x) => (x.spell?.level ?? 0) > 0 && x.spell?.classKeys.includes(list))
-            .length;
-    const knownBefore = known(before, bc);
-    const knownAfter = known(after, ac);
+    const onList = (s: DerivedSheet) =>
+      s.spells.filter((x) => (x.spell?.level ?? 0) > 0 && x.spell?.classKeys.includes(list)).length;
+    const knownBefore = bc && bc.spellsKnown > 0 ? bc.spellsKnown : onList(before);
+    // The picks of the draft count at once: the preview of the sheet that comes after them can still be the one before
+    // the last pick, and a count read from it alone would flip between runs. The picks are always new spells.
+    const knownAfter =
+      ac.spellsKnown > 0
+        ? ac.spellsKnown
+        : Math.max(onList(after), onList(before) + ctx.spells.length);
     const missing = ctx.spellsMissing > 0 ? ` (falta ${ctx.spellsMissing})` : '';
     if (ctx.learnsSpells !== false && (knownAfter !== knownBefore || ctx.spells.length > 0)) {
       rows.push({
@@ -256,7 +379,7 @@ export function changeRows(
         `Espaços de ${spellLevelLabel(level)}`,
         String(slots(before, level)),
         String(slots(after, level)),
-        ctx.table ? 'Da tabela da classe' : '',
+        ctx.table ? 'Da tabela da classe' : slotsReason(ctx, after),
       );
       rows.push(slotRow && ctx.table ? { ...slotRow, table: true } : slotRow);
     }
@@ -292,6 +415,9 @@ export function changeRows(
       after: String(ctx.newFeatures.length),
       sub: joinDots([...ctx.newFeatures]),
     });
+  }
+  if (mc) {
+    rows.push(...multiclassRows(mc));
   }
   rows.push(...savesChanged(before, after));
   rows.push(...attacksChanged(before, after));

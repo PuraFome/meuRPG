@@ -18,6 +18,22 @@ import { LevelUpSession } from '../level-up-session';
     <section class="mr-panel" aria-labelledby="summary-title">
       <h2 class="mr-panel__title" id="summary-title">O que muda</h2>
       <p class="lead">Confira antes de confirmar. Depois, só o mestre muda a ficha.</p>
+      @if (s().draft.featSummary(); as feat) {
+        <p class="feat">
+          <strong>Talento: {{ feat.name }}</strong>
+          @if (feat.increase) {
+            <span>{{ feat.increase }}</span>
+          }
+        </p>
+      }
+      @if (s().draft.featSummary(); as feat) {
+        <p class="feat">
+          <strong>Talento: {{ feat.name }}</strong>
+          @if (feat.increase) {
+            <span>{{ feat.increase }}</span>
+          }
+        </p>
+      }
       <app-change-rows [rows]="s().rows()" />
     </section>
     <p class="rest">
@@ -36,13 +52,6 @@ import { LevelUpSession } from '../level-up-session';
       display: flex;
       flex-direction: column;
       gap: var(--mr-space-4);
-
-      // A summary reads label to value: not wider than a line can be followed.
-      // From 1100px the step has its own column, which it fills like the
-      // other steps, next to "O resto da ficha".
-      @media (min-width: 768px) and (max-width: 1099.98px) {
-        max-width: 640px;
-      }
     }
 
     .lead {
@@ -50,6 +59,22 @@ import { LevelUpSession } from '../level-up-session';
       font-size: 15px;
       line-height: 20px;
       color: var(--mr-ink-muted);
+    }
+
+    .feat {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--mr-space-1) var(--mr-space-3);
+      margin: 0 0 var(--mr-space-3);
+      font-size: 17px;
+    }
+
+    .feat {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--mr-space-1) var(--mr-space-3);
+      margin: 0 0 var(--mr-space-3);
+      font-size: 17px;
     }
 
     .rest {

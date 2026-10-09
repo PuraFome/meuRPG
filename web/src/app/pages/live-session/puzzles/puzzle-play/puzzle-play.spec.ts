@@ -403,7 +403,9 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
       const { el, settle } = await render(riddle({ limits: counted }));
       expect(textOf(el.querySelector('.board-card'))).toContain('Moro embaixo de cada passo seu');
       expect(textOf(el.querySelector('.clue'))).toContain('Procure no chão da Cripta.');
-      expect(textOf(el.querySelector('app-limit-counters'))).toContain('Suas tentativas 3 de 3');
+      expect(textOf(el.querySelector('app-limit-counters'))).toContain(
+        'Tentativas restantes 3 de 3',
+      );
       api.moveResult = () => ({
         run: riddle({
           revision: 2,
@@ -423,7 +425,9 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
       expect(el.querySelector('.mr-notice--danger')?.textContent).toContain(
         'Não é isso. Tente outra resposta.',
       );
-      expect(textOf(el.querySelector('app-limit-counters'))).toContain('Suas tentativas 2 de 3');
+      expect(textOf(el.querySelector('app-limit-counters'))).toContain(
+        'Tentativas restantes 2 de 3',
+      );
       // The typed answer stays in the field, to be changed.
       expect((el.querySelector('input[name="answer"]') as HTMLInputElement).value).toBe(
         'escuridão',
@@ -462,7 +466,7 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
       expect(el.querySelector('input[name="answer"]')).toBeNull();
       expect(el.querySelector('.blocked')?.textContent).toContain('Você não tem mais tentativas.');
       expect(textOf(el.querySelector('app-limit-counters'))).toContain(
-        'Suas tentativas 0 de 3 · acabou',
+        'Tentativas restantes 0 de 3 · acabou',
       );
     });
 
@@ -907,7 +911,7 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
         'true',
       );
       expect(textOf(el.querySelector('app-limit-counters'))).toContain(
-        'Suas tentativas 0 de 2 · acabou',
+        'Tentativas restantes 0 de 2 · acabou',
       );
     });
 
@@ -985,6 +989,47 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
         'Você tirou 9. Não deu desta vez. Outro jogador pode tentar',
       );
       expect(textOf(notice)).not.toMatch(/\bCD\b/);
+    });
+
+    it('tells the player what Talento Confiável did to the d20, and says nothing of it for a die no feature changed', async () => {
+      const { el, settle } = await render(
+        playerRun(riddlePuzzle('a', 'A porta'), {
+          hintByCheck: true,
+          hintSkillKey: 'skill:investigation',
+          canTryHint: true,
+        }),
+      );
+      api.hintResult = () =>
+        hintAnswer(
+          playerRun(riddlePuzzle('a', 'A porta'), {
+            revision: 2,
+            hintByCheck: true,
+            hintSkillKey: 'skill:investigation',
+            canTryHint: false,
+          }),
+          true,
+          19,
+          {
+            roll: {
+              diceCount: 1,
+              diceSides: 20,
+              faces: [6],
+              modifier: 9,
+              total: 19,
+              treatedAs: 10,
+              treatedAsSource: 'feature:reliable-talent',
+            },
+          },
+        );
+      (
+        Array.from(el.querySelectorAll('button')).find((b) =>
+          b.textContent?.includes('Tentar uma dica'),
+        ) as HTMLElement
+      ).click();
+      await settle();
+      const notice = el.querySelector('.hints .mr-notice--success')!;
+      expect(textOf(notice)).toContain('Seu total: 19.');
+      expect(textOf(notice)).toContain('O d20 de 6 contou como 10: perícia com proficiência.');
     });
 
     it('asks the session to read the dice mode again when the server says the table rolls the other way', async () => {

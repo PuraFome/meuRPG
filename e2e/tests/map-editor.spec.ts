@@ -427,6 +427,48 @@ test('uma armadilha nasce de uma predefinição do SRD, e "Quem notaria" mostra 
   });
 });
 
+test('"Também acham com": a perícia entra como etiqueta, o servidor guarda, e ao recarregar ela continua na armadilha @MR-035 @RN-10', async ({ browser }) => {
+  await atCave(browser, 'Também acham', { noFog: true }, async ({ table, mp }) => {
+    await mp.goto(editorRoute(table.campaignId, table.mapId));
+    await mp.getByRole('group', { name: 'Adicionar ponto' }).getByRole('button', { name: 'Armadilha' }).click();
+    const map = mp.getByRole('group', { name: /^Mapa / });
+    const box = await boxOf(map);
+    await mp.mouse.click(box.x + box.width * (11.5 / 24), box.y + box.height * (7.5 / 16));
+    await mp.getByRole('radio', { name: /Fosso escondido/ }).click();
+
+    // The two skills that always find are not offered; the rest is a list that takes a skill with a click.
+    const also = mp.getByRole('heading', { name: 'Também acham com' });
+    await expect(also).toBeVisible();
+    await expect(mp.getByText('Nenhuma perícia a mais')).toBeVisible();
+    await mp.getByRole('button', { name: 'Acrescentar perícia' }).click();
+    const list = mp.getByRole('listbox', { name: 'Também acham com' });
+    await expect(list.getByRole('option', { name: 'Percepção' })).toHaveCount(0);
+    await expect(list.getByRole('option', { name: 'Investigação' })).toHaveCount(0);
+    await list.getByRole('option', { name: 'Arcanismo' }).click();
+    await expect(mp.locator('.tp__chip', { hasText: 'Arcanismo' })).toBeVisible();
+    await expect(mp.getByText('Nenhuma perícia a mais')).toHaveCount(0);
+    await mp.keyboard.press('Escape');
+
+    await mp.getByRole('button', { name: 'Salvar ponto' }).click();
+    await expect(mp.getByText('Fosso escondido salvo.')).toBeAttached();
+    const saved = async () => ((await getMapRPC(mp, table.campaignId, table.mapId)).points.find((point) => point.name === 'Fosso escondido') as { trap: { alsoFindSkillKeys?: string[] } }).trap.alsoFindSkillKeys;
+    expect(await saved()).toEqual(['skill:arcana']);
+
+    // After a reload the point is opened again and the chip is still there; taking it off and saving empties the list.
+    await mp.reload();
+    await expect(mp.getByRole('radio', { name: 'Pontos' })).toBeVisible();
+    const mapAgain = mp.getByRole('group', { name: /^Mapa / });
+    const boxAgain = await boxOf(mapAgain);
+    await mp.mouse.click(boxAgain.x + boxAgain.width * (11.5 / 24), boxAgain.y + boxAgain.height * (7.5 / 16));
+    await expect(mp.locator('.tp__chip', { hasText: 'Arcanismo' })).toBeVisible();
+    await mp.getByRole('button', { name: 'Tirar Arcanismo' }).click();
+    await expect(mp.getByText('Nenhuma perícia a mais')).toBeVisible();
+    await mp.getByRole('button', { name: 'Salvar ponto' }).click();
+    await expect(mp.getByText('Fosso escondido salvo.')).toBeAttached();
+    expect((await saved()) ?? []).toEqual([]);
+  });
+});
+
 test('um ponto de Luz usa uma fonte do SRD ou os raios do mestre, e o jogador nunca recebe o ponto @MR-036 @RN-10', async ({ browser }) => {
   await atCave(browser, 'Luz', { noFog: true }, async ({ table, mp, ap }) => {
     await mp.goto(editorRoute(table.campaignId, table.mapId));

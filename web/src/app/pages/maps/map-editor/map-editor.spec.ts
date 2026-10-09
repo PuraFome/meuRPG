@@ -30,6 +30,7 @@ import { RosterClient } from '../../../core/maps/roster-client';
 import { visionResponse } from '../../../core/maps/vision-testing';
 import { TrapPresets } from '../../../core/traps/trap-presets';
 import { MapView } from '../../../shared/map-view/map-view';
+import { EditorBar } from '../editor-bar/editor-bar';
 import { PaintSurface } from '../paint-surface/paint-surface';
 import { MapEditor } from './map-editor';
 
@@ -328,6 +329,25 @@ describe('MapEditor', () => {
     });
   });
 
+  describe('adding a token', () => {
+    it('puts a new token on a free square, never on the one a token already holds', async () => {
+      await setup();
+      // Pensantus stands on the middle of the map, the square the new token would take if nothing else counted.
+      state.removeToken('c-pensantus');
+      state.upsertToken(mapToken('c-pensantus', 'Pensantus', { xBp: 5000, yBp: 5000 }));
+      const bar = fixture.debugElement.query(By.directive(EditorBar))
+        .componentInstance as EditorBar;
+      bar.addToken.emit({ ...roster[1], portraitImageId: '' });
+      await settle();
+      const call = api.calls.find((c) => c.startsWith('placeToken map-1 c-toren'));
+      expect(call).toBeDefined();
+      const [, , , x, y] = call!.split(' ').map((v, i) => (i >= 3 ? Number(v) : v));
+      const square = (xBp: number, yBp: number) =>
+        `${Math.floor((xBp / 10000) * 24)},${Math.floor((yBp / 10000) * 16)}`;
+      expect(square(x as number, y as number)).not.toBe(square(5000, 5000));
+    });
+  });
+
   describe("a creature's token and its owner's", () => {
     // The creature's `character_id` is its owner's: the two share it, and the creature comes first in the list.
     async function withCreature() {
@@ -481,6 +501,7 @@ describe('MapEditor', () => {
       radio('Pintar').click();
       await settle();
       button('Terreno difícil').click();
+      await settle();
       radio('3×3').click();
       await settle();
       surface()!.stroke.emit({ centers: [{ col: 5, row: 5 }], erase: false });
@@ -490,6 +511,20 @@ describe('MapEditor', () => {
       expect(api.paints).toHaveLength(1);
       expect(api.paints[0].layer).toBe(MapLayer.DIFFICULT_TERRAIN);
       expect(api.paints[0].squares).toHaveLength(12);
+    });
+
+    it('paints nothing until a tool is chosen: the brush starts with none in hand', async () => {
+      await setup();
+      radio('Pintar').click();
+      await settle();
+      surface()!.stroke.emit({ centers: [{ col: 5, row: 5 }], erase: false });
+      await flush();
+      expect(api.paints).toHaveLength(0);
+      button('Terreno difícil').click();
+      await settle();
+      surface()!.stroke.emit({ centers: [{ col: 5, row: 5 }], erase: false });
+      await flush();
+      expect(api.paints).toHaveLength(1);
     });
 
     it('"Apagar" and Shift erase the chosen tool\'s layer with value 0', async () => {
@@ -586,6 +621,15 @@ describe('MapEditor', () => {
       expect(button('Parede').getAttribute('aria-disabled')).toBe('true');
       expect(text()).toContain('Este mapa ainda não tem grade.');
       expect(text()).toContain('Precisa da grade definida.');
+    });
+
+    it('offers a way to the grid field from the reason, and focuses it', async () => {
+      await setup({ gridColumns: 0, gridRows: 0 });
+      radio('Pintar').click();
+      await settle();
+      button('Ir para a grade').click();
+      await settle();
+      expect(document.activeElement).toBe(el.querySelector('app-grid-panel input'));
     });
 
     it('while a combat runs says so, still paints, and turns the grid change off', async () => {

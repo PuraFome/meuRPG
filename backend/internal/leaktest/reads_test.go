@@ -1,6 +1,8 @@
 package leaktest
 
 import (
+	campaignpackagev1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaignpackage/v1"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/campaignpackage/v1/campaignpackagev1connect"
 	"google.golang.org/protobuf/proto"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
@@ -71,6 +73,14 @@ var reads = []read{
 		},
 	},
 
+	// ===== CampaignPackageService
+	{
+		procedure: campaignpackagev1connect.CampaignPackageServiceGetCampaignExportProcedure, allow: masterOnlyRead, why: "the export is the whole campaign, hidden things included",
+		req: func(w *world) proto.Message {
+			return &campaignpackagev1.GetCampaignExportRequest{CampaignId: w.campaign}
+		},
+	},
+
 	// ===== CharacterService
 	{
 		procedure: charactersv1connect.CharacterServiceListCharactersProcedure, allow: membersAndPending, why: "a pending member reads their own pending character",
@@ -82,6 +92,19 @@ var reads = []read{
 		procedure: charactersv1connect.CharacterServiceGetCharacterProcedure, label: "Ana's character", allow: onlyAna,
 		req: func(w *world) proto.Message {
 			return &charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}
+		},
+	},
+	{
+		procedure: charactersv1connect.CharacterServiceGetCharacterProcedure, label: "a reserved character", allow: masterOnlyRead, why: "nobody owns it: no player reads it until one claims it (MR-049)",
+		req: func(w *world) proto.Message {
+			return &charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.reserved.GetId()}
+		},
+	},
+	{
+		procedure: charactersv1connect.CharacterServicePreviewClaimProcedure, allow: everyone, ignore: []string{"reserved-name"},
+		why: "whoever holds the link reads the public card of the character it is for: its name, race, class and level, and who sent it; nothing else. The master gets \"this link is for a player\"",
+		req: func(w *world) proto.Message {
+			return &charactersv1.PreviewClaimRequest{Token: w.claimToken}
 		},
 	},
 	{
@@ -259,6 +282,10 @@ var reads = []read{
 		},
 	},
 	{
+		procedure: rulesv1connect.TableContentServiceExportTableContentProcedure, allow: masterOnlyRead,
+		req: func(w *world) proto.Message { return &rulesv1.ExportTableContentRequest{CampaignId: w.campaign} },
+	},
+	{
 		procedure: rulesv1connect.TableContentServiceGetEffectMenuProcedure, allow: masterOnlyRead,
 		req: func(w *world) proto.Message { return &rulesv1.GetEffectMenuRequest{CampaignId: w.campaign} },
 	},
@@ -303,6 +330,14 @@ var reads = []read{
 		req: func(w *world) proto.Message { return &playv1.ListTrapDamagesRequest{CampaignId: w.campaign} },
 	},
 
+	// ===== ResourceService
+	{
+		procedure: playv1connect.ResourceServiceGetRestPreviewProcedure, allow: masterOnlyRead, why: "what a rest gives back, character by character, is the master's to read",
+		req: func(w *world) proto.Message {
+			return &playv1.GetRestPreviewRequest{CampaignId: w.campaign, Kind: playv1.RestKind_REST_KIND_LONG}
+		},
+	},
+
 	// ===== CombatService
 	{
 		procedure: playv1connect.CombatServiceGetEncounterProcedure, allow: members,
@@ -336,6 +371,26 @@ var reads = []read{
 		procedure: playv1connect.CombatServiceGetTurnOptionsProcedure, label: "the boss", allow: masterOnlyRead,
 		req: func(w *world) proto.Message {
 			return &playv1.GetTurnOptionsRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: w.combatant(w.boss).GetId()}
+		},
+	},
+
+	// ===== CastingService
+	{
+		procedure: playv1connect.CastingServiceListSpellCastsProcedure, allow: members, why: "the casts of the session: what a player may see; an NPC that is not on the stage casts for the master alone",
+		req: func(w *world) proto.Message {
+			return &playv1.ListSpellCastsRequest{CampaignId: w.campaign}
+		},
+	},
+	{
+		procedure: playv1connect.CastingServiceGetCastOptionsProcedure, label: "Ana's character", allow: onlyAna, why: "a player reads their own character's options; the targets are the party and the NPCs on the stage",
+		req: func(w *world) proto.Message {
+			return &playv1.GetCastOptionsRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}
+		},
+	},
+	{
+		procedure: playv1connect.CastingServiceGetCastOptionsProcedure, label: "the hidden NPC", allow: masterOnlyRead, why: "an NPC is cast for by the master alone, and a player never learns it exists",
+		req: func(w *world) proto.Message {
+			return &playv1.GetCastOptionsRequest{CampaignId: w.campaign, CharacterId: w.casterNPC.GetId()}
 		},
 	},
 

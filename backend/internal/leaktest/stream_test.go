@@ -90,7 +90,11 @@ func eventCase(ev *playv1.WatchGameSessionResponse) string {
 // notTriggered lists the events the script does not make, and why. An event that is neither
 // triggered nor here fails TestLeakMatrix/stream: a new kind of event must be exercised or
 // explained.
-var notTriggered = map[string]string{}
+var notTriggered = map[string]string{
+	"hidden_hit_pending": "needs a player's area spell that hits a hidden creature, which has a world of its own: TestAnAreaSpellThatHitsAHiddenCreatureNamesItToNoPlayerBeforeTheReveal (the master hears it, no player does)",
+	"reaction_window_opened": "TestAnNPCsReactionWindowIsHeardByTheMasterAlone needs its own combat state and checks the events of both kinds",
+	"reaction_window_closed": "same test",
+}
 
 func checkStream(t *testing.T, w *world, got *answers) {
 	t.Helper()
@@ -237,6 +241,12 @@ func (w *world) streamScript() {
 	w.allow("stage2-name", w.ana, w.caio)
 	w.allow("stage2-description")
 	w.secrets.allowNeedle(w.stage2.GetId())
+
+	// -- a spell cast outside the combat by an NPC that is not on the stage: the hint is the master's alone
+	must(m.casting.CastSpellOutsideCombat(ctx, rq(&playv1.CastSpellOutsideCombatRequest{
+		CampaignId: w.campaign, CasterCharacterId: w.casterNPC.GetId(), SpellKey: "spell:mage-armor", Slot: &playv1.SpellSlot{Level: 1},
+		TargetIds: []string{w.toren.GetId()}, IdempotencyKey: newKey(),
+	})))
 
 	// -- vitals, XP, the creature of Caio, the table's content
 	must(m.play.AdjustCharacterVitals(ctx, rq(&playv1.AdjustCharacterVitalsRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId(), IdempotencyKey: newKey(), HitPointsCurrent: proto.Int32(3)})))

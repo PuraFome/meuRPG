@@ -51,6 +51,9 @@ func TestAuthorizationMatrix(t *testing.T) {
 	pendingPC := pending.createPensantus(t, campaign)
 	approveePC := approvee.createPensantus(t, campaign)
 	rejecteePC := rejectee.createPensantus(t, campaign)
+	// Two reserved characters (MR-049): the rows of the claim links and of "Excluir".
+	reserved := master.reservedByMaster(t, campaign, "Reservado")
+	toDelete := master.reservedByMaster(t, campaign, "Para apagar")
 
 	// fresh reads a character's current revision as the master, so every
 	// caller's write is judged on its permission, not on a stale revision.
@@ -297,6 +300,19 @@ func TestAuthorizationMatrix(t *testing.T) {
 			return err
 		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
+		{"ExportTableContent", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.table.ExportTableContent(ctx, connect.NewRequest(&rulesv1.ExportTableContentRequest{CampaignId: campaign}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		{"ImportTableContent", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.table.ImportTableContent(ctx, connect.NewRequest(&rulesv1.ImportTableContentRequest{
+				CampaignId: campaign, Mode: rulesv1.TableImportMode_TABLE_IMPORT_MODE_PREVIEW,
+				Pack: &rulesv1.TableContentPack{Format: "meurpg.table-content", Version: 1},
+			}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
 		{"ListOptionSwitches", "", nil, func(ctx context.Context, u *user) error {
 			_, err := u.table.ListOptionSwitches(ctx, connect.NewRequest(&rulesv1.ListOptionSwitchesRequest{CampaignId: campaign}))
 			return err
@@ -429,6 +445,36 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := u.api.MarkCharacterDead(ctx, connect.NewRequest(&charactersv1.MarkCharacterDeadRequest{CampaignId: campaign, CharacterId: pendingPC.GetId()}))
 			return err
 		}, [6]connect.Code{connect.CodeFailedPrecondition, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		// Reserved characters and claim links (MR-049): only the master makes, revokes and gives
+		// back; every other member is refused with the master's answer (permission_denied), and
+		// whoever is no member, or only pending, cannot tell the campaign from one that does not exist.
+		{"CreateClaimLink", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.CreateClaimLink(ctx, connect.NewRequest(&charactersv1.CreateClaimLinkRequest{CampaignId: campaign, CharacterId: reserved.GetId()}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"RevokeClaimLink", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.RevokeClaimLink(ctx, connect.NewRequest(&charactersv1.RevokeClaimLinkRequest{CampaignId: campaign, CharacterId: reserved.GetId()}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		// A reserved character has no player to take back: the master is refused for the state, the rest for the role.
+		{"ReturnCharacterToReserve", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.ReturnCharacterToReserve(ctx, connect.NewRequest(&charactersv1.ReturnCharacterToReserveRequest{CampaignId: campaign, CharacterId: reserved.GetId()}))
+			return err
+		}, [6]connect.Code{connect.CodeFailedPrecondition, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		// The links answer every signed-in person with the same refusal for a link that does not work.
+		{"PreviewClaim", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.PreviewClaim(ctx, connect.NewRequest(&charactersv1.PreviewClaimRequest{Token: "x"}))
+			return err
+		}, [6]connect.Code{connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"ClaimCharacter", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.ClaimCharacter(ctx, connect.NewRequest(&charactersv1.ClaimCharacterRequest{Token: "x"}))
+			return err
+		}, [6]connect.Code{connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"DeleteReservedCharacter", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.DeleteReservedCharacter(ctx, connect.NewRequest(&charactersv1.DeleteReservedCharacterRequest{CampaignId: campaign, CharacterId: toDelete.GetId()}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
 		// Last, because it changes the owner's character for good.
 		{"MarkCharacterDead", "", nil, func(ctx context.Context, u *user) error {

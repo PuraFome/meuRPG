@@ -194,7 +194,7 @@ func TestTableClassEditorStartsFromTheServer(t *testing.T) {
 	// The menu: every type with its name, the lists they point at, the option sets,
 	// the helpers and the classes classLevel takes.
 	menu := master.effectMenu(t, campaign)
-	if len(menu.GetTypes()) != 9 || menu.GetMaxFeaturesPerClass() != 60 || menu.GetMaxEffectsPerFeature() != 20 || menu.GetExtraAttackMin() != 2 || menu.GetExtraAttackMax() != 4 {
+	if len(menu.GetTypes()) != 10 || menu.GetMaxFeaturesPerClass() != 60 || menu.GetMaxEffectsPerFeature() != 20 || menu.GetExtraAttackMin() != 2 || menu.GetExtraAttackMax() != 4 {
 		t.Fatalf("menu = %d types, limits %d/%d, extra attacks %d to %d", len(menu.GetTypes()), menu.GetMaxFeaturesPerClass(), menu.GetMaxEffectsPerFeature(), menu.GetExtraAttackMin(), menu.GetExtraAttackMax())
 	}
 	lists := map[string]*rulesv1.EffectMenuList{}
@@ -454,12 +454,21 @@ func TestTableClassMulticlassAtCreation(t *testing.T) {
 		t.Errorf("hit points = %d, want %d (the first class's full die, the others' averages)", dr.GetHitPointsMax(), want)
 	}
 
-	// A prerequisite that is not met is the sheet's issue, never a refusal: the
-	// Cleric asks for Wisdom 13 and Corvina has 10.
+	// A prerequisite that is not met refuses a player (SRD 5.1 "Multiclassing"): the
+	// Cleric asks for Wisdom 13 and Corvina has 10. The master's NPC goes past it,
+	// with the sheet's multiclass_prerequisite issue.
 	weak := proto.CloneOf(strong)
 	weak.Wisdom = 10
-	if c, err := create(p2, "Corvina fraca", corvina(weak)); err != nil || !slices.Contains(issueCodes(c), "multiclass_prerequisite") {
-		t.Errorf("a missing prerequisite: issues %v, error %v; want the multiclass_prerequisite issue and a created sheet", issueCodes(c), err)
+	_, err = create(p2, "Corvina fraca", corvina(weak))
+	if r := refusal(t, "CreateCharacter(a missing prerequisite)", err); r.GetReason() != charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_MULTICLASS_PREREQUISITE ||
+		r.GetClassKey() != "class:cleric" || r.GetAbility() != rulesv1.Ability_ABILITY_WISDOM || r.GetMinimum() != 13 || r.GetHave() != 11 || r.GetField() != "sheet.full.classes[1].class_key" {
+		t.Errorf("refusal = %v, want the Cleric's Wisdom 13 (Corvina has 11 with the human's +1) at classes[1]", r)
+	}
+	if c, err := master.api.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+		CampaignId: campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_BOSS, Name: "Corvina fraca",
+		Sheet: &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: corvina(weak)}},
+	})); err != nil || !slices.Contains(issueCodes(c.Msg.GetCharacter()), "multiclass_prerequisite") {
+		t.Errorf("the master's NPC with a missing prerequisite: error %v; want the multiclass_prerequisite issue and a created sheet", err)
 	}
 
 	// A subclass chosen before its class level (the Mago picks at level 2) is the issue too.

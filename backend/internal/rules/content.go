@@ -34,6 +34,7 @@ type content struct {
 	subclasses    map[string]*srd51.Subclass
 	features      map[string]*srd51.Feature
 	backgrounds   map[string]*srd51.Background
+	feats         map[string]*srd51.Feat
 	proficiencies map[string]*srd51.Proficiency
 	equipment     map[string]*srd51.Equipment
 	spells        map[string]*srd51.Spell
@@ -79,8 +80,6 @@ type content struct {
 	// (effects/traps.json), and lights the light presets (effects/lights.json).
 	traps  traps
 	lights []LightPreset
-	// combatEffects are the effects that last in a combat (effects/combat_effects.json).
-	combatEffects *combatEffects
 	// encounterBudget is the XP per character of each level, band by band, index 0
 	// being level 1 (effects/encounter_budget.json, SRD 5.2.1).
 	encounterBudget []encounter.Budget
@@ -184,6 +183,7 @@ func load(fsys fs.FS) (*content, error) {
 		subclasses:     map[string]*srd51.Subclass{},
 		features:       map[string]*srd51.Feature{},
 		backgrounds:    map[string]*srd51.Background{},
+		feats:          map[string]*srd51.Feat{},
 		proficiencies:  map[string]*srd51.Proficiency{},
 		equipment:      map[string]*srd51.Equipment{},
 		spells:         map[string]*srd51.Spell{},
@@ -238,7 +238,7 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, err
 	}
 	for k, v := range names.Names {
-		if !c.exists(k) && !strings.HasPrefix(k, "sense:") && !strings.HasPrefix(k, "resource:") && !strings.HasPrefix(k, "trap:") && !strings.HasPrefix(k, "light:") && !strings.HasPrefix(k, "effect:") && !strings.HasPrefix(k, "attunement:") && !c.isAttackName(k) {
+		if !c.exists(k) && !strings.HasPrefix(k, "sense:") && !strings.HasPrefix(k, "resource:") && !strings.HasPrefix(k, "trap:") && !strings.HasPrefix(k, "light:") && !strings.HasPrefix(k, "attunement:") && !c.isAttackName(k) {
 			return nil, fmt.Errorf("effects/names_pt.json: unknown key %q", k)
 		}
 		c.namesPT[k] = v
@@ -269,9 +269,6 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, err
 	}
 	if err := c.loadLights(fsys); err != nil {
-		return nil, err
-	}
-	if err := c.loadCombatEffects(fsys); err != nil {
 		return nil, err
 	}
 	if err := c.loadEncounterBudget(fsys); err != nil {
@@ -349,6 +346,7 @@ func (c *content) loadData(fsys fs.FS) error {
 		index(fsys, "subclasses.json", func(r *srd51.Subclass) string { return r.Key }, c.subclasses, c.namesEN, func(r *srd51.Subclass) string { return r.Name }),
 		index(fsys, "features.json", func(r *srd51.Feature) string { return r.Key }, c.features, c.namesEN, func(r *srd51.Feature) string { return r.Name }),
 		index(fsys, "backgrounds.json", func(r *srd51.Background) string { return r.Key }, c.backgrounds, c.namesEN, func(r *srd51.Background) string { return r.Name }),
+		index(fsys, "feats.json", func(r *srd51.Feat) string { return r.Key }, c.feats, c.namesEN, func(r *srd51.Feat) string { return r.Name }),
 		index(fsys, "proficiencies.json", func(r *srd51.Proficiency) string { return r.Key }, c.proficiencies, c.namesEN, func(r *srd51.Proficiency) string { return r.Name }),
 		index(fsys, "equipment.json", func(r *srd51.Equipment) string { return r.Key }, c.equipment, c.namesEN, func(r *srd51.Equipment) string { return r.Name }),
 		index(fsys, "spells.json", func(r *srd51.Spell) string { return r.Key }, c.spells, c.namesEN, func(r *srd51.Spell) string { return r.Name }),
@@ -367,6 +365,11 @@ func (c *content) loadData(fsys fs.FS) error {
 	for _, b := range c.backgrounds {
 		c.namesEN[b.Feature.Key] = b.Feature.Name
 	}
+	for _, k := range sortedKeys(c.feats) {
+		if field, msg := c.checkFeatShape(c.feats[k]); field != "" {
+			return fmt.Errorf("data/feats.json: %s: %s: %s", k, field, msg)
+		}
+	}
 	for _, k := range sortedKeys(c.spells) {
 		s := c.spells[k]
 		if (s.AreaType == "") != (s.AreaSizeFt == 0) ||
@@ -380,6 +383,12 @@ func (c *content) loadData(fsys fs.FS) error {
 	slices.Sort(c.skillOrder)
 	for _, k := range sortedKeys(c.features) {
 		for _, o := range c.features[k].Options {
+			// The first parent in key order is the lowest level one: a feature listed
+			// by metamagic-1, 2 and 3 belongs to metamagic-1, the one a level 3
+			// sorcerer has.
+			if _, set := c.optionParents[o]; set {
+				continue
+			}
 			if f, ok := c.features[o]; ok && f.Parent == "" {
 				c.optionParents[o] = k
 			}
@@ -429,7 +438,7 @@ func (c *content) loadEffects(fsys fs.FS) error {
 	}
 	for _, name := range files {
 		switch path.Base(name) {
-		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "spell_targets.json", "corrections.json", "traps.json", "lights.json", "combat_effects.json", "consumables.json", "encounter_budget.json", "magic_item_values.json", "treasure.json":
+		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "spell_targets.json", "corrections.json", "traps.json", "lights.json", "consumables.json", "encounter_budget.json", "magic_item_values.json", "treasure.json":
 			continue
 		}
 		var f struct {
@@ -473,7 +482,7 @@ func (c *content) effectOwnerExists(key string) bool {
 		}
 		return false
 	case strings.HasPrefix(key, "feature:"), strings.HasPrefix(key, "trait:"),
-		strings.HasPrefix(key, "background:"), strings.HasPrefix(key, "race:"),
+		strings.HasPrefix(key, "background:"), strings.HasPrefix(key, "race:"), strings.HasPrefix(key, "feat:"),
 		strings.HasPrefix(key, "subrace:"), strings.HasPrefix(key, "class:"),
 		strings.HasPrefix(key, "subclass:"):
 		return c.exists(key)
@@ -827,6 +836,10 @@ var creatureCorrectionFields = []string{
 // correct. The set is closed.
 var correctionFields = []string{"invocations_known"}
 
+// multiclassCorrectionFields are the multiclass fields effects/corrections.json
+// may add. The set is closed.
+var multiclassCorrectionFields = []string{"instrument_choices"}
+
 // spellCorrectionSaveSuccess are the outcomes of a saving throw a spell
 // correction may name (the values of Spell.SaveSuccess).
 var spellCorrectionSaveSuccess = []string{"half", "none", "other"}
@@ -895,6 +908,13 @@ func (c *content) applyCorrections(fsys fs.FS) error {
 			Subclass string `json:"subclass"`
 			Source   string `json:"source"`
 		} `json:"expanded_list_corrections"`
+		Multiclass []struct {
+			Class   string   `json:"class"`
+			Field   string   `json:"field"`
+			Source  string   `json:"source"`
+			Choose  int      `json:"choose"`
+			Options []string `json:"options"`
+		} `json:"multiclass_corrections"`
 		SpellLists   []spellListCorrection   `json:"spell_list_corrections"`
 		SubclassRows []subclassRowCorrection `json:"subclass_feature_corrections"`
 	}
@@ -992,6 +1012,35 @@ func (c *content) applyCorrections(fsys fs.FS) error {
 			}
 			s.DamageChoice = corr.DamageChoice
 		}
+	}
+	seen = map[string]bool{}
+	for _, corr := range f.Multiclass {
+		class, ok := c.classes[corr.Class]
+		if !ok {
+			return fmt.Errorf("%s: unknown class %q", name, corr.Class)
+		}
+		if !slices.Contains(multiclassCorrectionFields, corr.Field) {
+			return fmt.Errorf("%s: %s: field %q cannot be corrected", name, corr.Class, corr.Field)
+		}
+		if corr.Source == "" {
+			return fmt.Errorf("%s: %s: %s needs a source", name, corr.Class, corr.Field)
+		}
+		if seen[corr.Class+"/"+corr.Field] {
+			return fmt.Errorf("%s: %s: %s is corrected twice", name, corr.Class, corr.Field)
+		}
+		seen[corr.Class+"/"+corr.Field] = true
+		if corr.Choose < 1 || corr.Choose > len(corr.Options) {
+			return fmt.Errorf("%s: %s: %s chooses %d of %d", name, corr.Class, corr.Field, corr.Choose, len(corr.Options))
+		}
+		for i, o := range corr.Options {
+			if p, ok := c.proficiencies[o]; !ok || p.Kind != "tool" {
+				return fmt.Errorf("%s: %s: %q is not a tool proficiency", name, corr.Class, o)
+			}
+			if slices.Contains(corr.Options[:i], o) {
+				return fmt.Errorf("%s: %s: %q is listed twice", name, corr.Class, o)
+			}
+		}
+		class.Multiclass.InstrumentChoices = &srd51.Choice{Choose: corr.Choose, From: slices.Clone(corr.Options)}
 	}
 	seen = map[string]bool{}
 	for _, corr := range f.ExpandedLists {

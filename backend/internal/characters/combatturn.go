@@ -30,14 +30,42 @@ import (
 // combat.Options works for a minion as for a hero. `not_found` for a
 // character that is not one of the campaign's living ones.
 func (s *Service) fighter(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (kind string, d rules.Derived, content *rules.Content, err error) {
+	return s.fighterOf(ctx, tx, campaignID, characterID, false)
+}
+
+// fighterOf is fighter that also answers for a character that died when withDead
+// is set: only the reads of a combat that ran use it (the log names the attacks of
+// the dead, and their player's page reads the turn options, all disabled).
+func (s *Service) fighterOf(ctx context.Context, tx pgx.Tx, campaignID, characterID string, withDead bool) (kind string, d rules.Derived, content *rules.Content, err error) {
 	id, ok := parseUUID(characterID)
 	if !ok {
 		return "", rules.Derived{}, nil, errCharacterNotFound()
 	}
-	rows, err := s.queriesIn(tx).ListCombatCharacters(ctx, charactersdb.ListCombatCharactersParams{CampaignID: campaignID, Ids: []string{id}})
-	if err != nil {
-		return "", rules.Derived{}, nil, s.dbError(ctx, "read a character for a combat", err)
+	type row struct {
+		ID, Kind       string
+		Sheet          []byte
+		WildShapeBeast *string
 	}
+	var found []row
+	q := s.queriesIn(tx)
+	if withDead {
+		rows, err := q.ListCombatCharactersWithDead(ctx, charactersdb.ListCombatCharactersWithDeadParams{CampaignID: campaignID, Ids: []string{id}})
+		if err != nil {
+			return "", rules.Derived{}, nil, s.dbError(ctx, "read a character for a combat", err)
+		}
+		for _, r := range rows {
+			found = append(found, row{ID: r.ID, Kind: r.Kind, Sheet: r.Sheet, WildShapeBeast: r.WildShapeBeast})
+		}
+	} else {
+		rows, err := q.ListCombatCharacters(ctx, charactersdb.ListCombatCharactersParams{CampaignID: campaignID, Ids: []string{id}})
+		if err != nil {
+			return "", rules.Derived{}, nil, s.dbError(ctx, "read a character for a combat", err)
+		}
+		for _, r := range rows {
+			found = append(found, row{ID: r.ID, Kind: r.Kind, Sheet: r.Sheet, WildShapeBeast: r.WildShapeBeast})
+		}
+	}
+	rows := found
 	if len(rows) == 0 {
 		return "", rules.Derived{}, nil, errCharacterNotFound()
 	}
@@ -128,11 +156,21 @@ func diceText(f rules.DiceFormula) string {
 // character's sheet. It takes no caller: it runs after play's authorization
 // check, and its armor class never goes to a player.
 func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (link.Sheet, error) {
-	_, d, _, err := s.fighter(ctx, tx, campaignID, characterID)
+	_, d, content, err := s.fighterOf(ctx, tx, campaignID, characterID, true)
 	if err != nil {
 		return link.Sheet{}, err
 	}
-	out := link.Sheet{ArmorClass: d.ArmorClass, Senses: senseRanges(d.Senses)}
+	out := link.Sheet{ArmorClass: d.ArmorClass, Senses: senseRanges(d.Senses), Metamagic: rules.MetamagicKnown(d.Features)}
+	for _, a := range d.Abilities {
+		if a.Ability == rules.CHA {
+			out.ChaMod = a.Modifier
+		}
+	}
+	for _, cl := range d.Classes {
+		if cl.ClassKey == "class:bard" {
+			out.BardicDie = content.BardicInspirationDie(cl.Level)
+		}
+	}
 	for _, a := range d.Attacks {
 		name := a.NamePT
 		if name == "" {
@@ -149,7 +187,7 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 		out.Actions = append(out.Actions, link.Action{Key: a.Key, Name: a.NamePT})
 	}
 	out.AttacksPerAction = max(d.AttacksPerAction, 1)
-	out.CriticalRange, out.TwoWeaponFighting = d.CriticalRange, d.TwoWeaponFighting
+	out.CriticalRange, out.TwoWeaponFighting, out.BrutalCriticalDice = d.CriticalRange, d.TwoWeaponFighting, d.BrutalCriticalDice
 	for _, a := range d.Actions {
 		out.FeatureActions = append(out.FeatureActions, link.FeatureAction{
 			Key: a.Key, Name: a.NamePT, Economy: a.Economy, Resource: a.Resource, Pool: poolResources[a.Resource], Standard: a.Standard,
@@ -172,13 +210,13 @@ var poolResources = map[string]bool{"lay_on_hands": true}
 // now, from the sheet, what it used this turn and, for a player's character,
 // the spell slots already spent (its vitals).
 func (s *Service) CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, characterID string, turn link.Turn) (*rulesv1.TurnOptions, error) {
-	kind, d, _, err := s.fighter(ctx, tx, campaignID, characterID)
+	kind, d, _, err := s.fighterOf(ctx, tx, campaignID, characterID, true)
 	if err != nil {
 		return nil, err
 	}
 	var usage combat.Usage
 	if kind == "player" {
-		v, err := s.getVitals(ctx, tx, campaignID, characterID)
+		v, err := s.getVitals(ctx, tx, campaignID, characterID, true)
 		if err != nil {
 			return nil, err
 		}

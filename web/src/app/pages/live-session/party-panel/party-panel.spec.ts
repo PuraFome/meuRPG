@@ -59,3 +59,25 @@ describe('PartyPanel: a druid in Wild Shape (MR-037)', () => {
     expect(el.querySelector('.js-beast')).toBeNull();
   });
 });
+
+describe('PartyPanel under Ajuda (PM-03a)', () => {
+  const flat = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim();
+
+  it('says "+5 Ajuda" by the maximum the master reads, and nothing without it', () => {
+    TestBed.configureTestingModule({}).overrideComponent(PartyPanel, {
+      remove: { imports: [SessionXp] },
+      add: { imports: [SessionXpStub] },
+    });
+    const fixture = TestBed.createComponent(PartyPanel);
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.componentRef.setInput('party', [
+      pensantusVitals({ hitPointsCurrent: 31, hitPointsMax: 43, hitPointsMaxBonus: 5 }),
+    ]);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(flat(el.querySelector('.js-aid'))).toBe('+5 Ajuda');
+    fixture.componentRef.setInput('party', [pensantusVitals()]);
+    fixture.detectChanges();
+    expect(el.querySelector('.js-aid')).toBeNull();
+  });
+});

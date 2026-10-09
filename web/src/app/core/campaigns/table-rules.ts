@@ -6,6 +6,8 @@ import {
   CriticalRule,
   DeathSaveVisibility,
   DiceMode,
+  EnemyReactionsRule,
+  HiddenAreaHitRule,
   HitPointsRule,
   TableStyle,
   XpMode,
@@ -29,6 +31,12 @@ export interface RulesDraft {
   readonly typed: boolean;
   readonly critical: CriticalRule;
   readonly deathSaves: DeathSaveVisibility;
+  /** What an area spell does to the hiding of a hidden creature it hits (required when saving). */
+  readonly hiddenAreaHits: HiddenAreaHitRule;
+  /** "Talentos": whether a level with an Ability Score Improvement may take a feat instead. */
+  readonly featsAllowed: boolean;
+  /** When the game waits for the master before the result of a player's action against an enemy (PM-04). */
+  readonly enemyReactions: EnemyReactionsRule;
   readonly houseRules: readonly string[];
 }
 
@@ -61,6 +69,12 @@ export function draftFromRules(rules: GetTableRulesResponse['rules']): RulesDraf
     typed: rules?.abilityMethods?.typed ?? true,
     critical: rules?.critical ?? CriticalRule.DOUBLED_DICE,
     deathSaves: rules?.deathSaves ?? DeathSaveVisibility.VISIBLE_TO_ALL,
+    // A campaign that never saved its rules reveals (the server's default); the page always sends a real choice.
+    // (UNSPECIFIED is 0, so `||` takes the default for it.)
+    hiddenAreaHits: rules?.hiddenAreaHits || HiddenAreaHitRule.REVEAL,
+    featsAllowed: rules?.featsAllowed ?? false,
+    // The server refuses UNSPECIFIED: an old reading is the default rule.
+    enemyReactions: rules?.enemyReactions || EnemyReactionsRule.ONLY_WHEN_POSSIBLE,
     houseRules: rules?.houseRules ?? [],
   };
 }
@@ -114,6 +128,9 @@ export function changeCount(draft: RulesDraft, saved: RulesDraft): number {
     'typed',
     'critical',
     'deathSaves',
+    'hiddenAreaHits',
+    'featsAllowed',
+    'enemyReactions',
   ];
   for (const key of scalar) {
     if (draft[key] !== saved[key]) {
@@ -216,6 +233,9 @@ export class TableRulesClient {
         },
         critical: d.critical,
         deathSaves: d.deathSaves,
+        hiddenAreaHits: d.hiddenAreaHits,
+        featsAllowed: d.featsAllowed,
+        enemyReactions: d.enemyReactions,
         houseRules: [...d.houseRules],
       },
     });

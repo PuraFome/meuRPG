@@ -37,6 +37,10 @@ type Character struct {
 	// PlayerUserID is the account that plays a player's character. Empty for
 	// an NPC, and for a character whose player deleted their account (RN-16).
 	PlayerUserID string
+	// Reserved is true for a character the master gave back to the reserve (MR-049):
+	// nobody owns it and no player may see it. Only SessionCharacters sets it; the
+	// other reads leave a reserved character out.
+	Reserved bool
 	// InitiativeBonus is added to the d20 for the initiative.
 	InitiativeBonus int
 	// SpeedFt is the walking speed, in feet (5 ft per square of the grid).
@@ -96,6 +100,9 @@ type BattlePoint struct {
 	// TargetMapID is the map of the fight, when the master chose one; empty
 	// when the fight happens on the session's current map.
 	TargetMapID string
+	// XBP and YBP are where the point is on its map, in basis points of the
+	// image's width and height (0 to 10000).
+	XBP, YBP int32
 }
 
 // TokenPosition is where a character's token stands on a map, in basis
@@ -128,6 +135,16 @@ type Sheet struct {
 	// weapon attack: 20, 19 with Improved Critical, 18 with Superior Critical.
 	// 0 (a basic sheet) is 20.
 	CriticalRange int
+	// BrutalCriticalDice is how many weapon damage dice a critical hit with a melee
+	// weapon attack rolls on top of the doubled ones (the barbarian's Brutal
+	// Critical: 1, 2 or 3 by level); 0 without it.
+	BrutalCriticalDice int
+	// Metamagic are the Metamagic options the sorcerer knows (feature keys), ChaMod
+	// is its Charisma modifier, and BardicDie the size of the die its Bardic
+	// Inspiration gives, 0 for a character with none.
+	Metamagic []string
+	ChaMod    int
+	BardicDie int
 	// TwoWeaponFighting says the character has the fighting style.
 	TwoWeaponFighting bool
 	// FeatureActions are the actions the sheet's class and race features grant
@@ -274,6 +291,15 @@ type Spell struct {
 	// IgnoresCover says the spell's saving throw gets no benefit from cover (Chama
 	// Sagrada, SRD 5.1); the total-cover targeting refusal stays.
 	IgnoresCover bool
+	// AreaShape is the form of the spell's area ("sphere", "cylinder", "cone", "line"
+	// or "cube"), AreaSizeFt its radius (sphere, cylinder), length (cone, line) or
+	// side (cube) in feet, and AreaWidthFt a line's width: empty and 0 for a spell
+	// that is not an area with a shape. SpreadsAroundCorners says the area is the
+	// part of the shape connected to its origin, not what the origin sees.
+	AreaShape            string
+	AreaSizeFt           int
+	AreaWidthFt          int
+	SpreadsAroundCorners bool
 }
 
 // HPEffect is what a spell that reads hit points does at the slot level, from
@@ -307,6 +333,51 @@ type HPEffect struct {
 type Save struct {
 	Bonus int
 	Known bool
+}
+
+// ReactionStats is what a combatant's sheet or stat block says about its
+// reactions (PM-04): the spells it can cast and its slots, the numbers of each
+// reaction and the features that give them. A player's character spends from its
+// vitals; for anyone else the slots are the sheet's or the stat block's total and
+// the combat counts what a fight spent.
+type ReactionStats struct {
+	// Spells are the keys of the spells it can cast now: every cantrip, the spells
+	// it knows or has prepared, the always-prepared ones and, for a stat block, the
+	// ones its Spellcasting trait lists.
+	Spells []string
+	// SlotsTotal are its slots by spell level (index 0 the 1st), PactLevel and
+	// PactSlots the warlock's pact slots.
+	SlotsTotal           [9]int
+	PactLevel, PactSlots int
+	// CastingMod is the spellcasting ability modifier (what a Counterspell check
+	// adds), SaveDC the spell save DC.
+	CastingMod, SaveDC int
+	// InfernalLegacy says Hellish Rebuke can be cast through the tiefling's trait
+	// (level 3), once a long rest, as a 2nd-level spell; its DC is the Charisma one.
+	InfernalLegacy bool
+	LegacyDC       int
+	// UncannyDodge says the combatant has the rogue's feature.
+	UncannyDodge bool
+	// Deflect says it has Deflect Missiles; MonkLevel and DexMod are its numbers.
+	Deflect           bool
+	MonkLevel, DexMod int
+	// Proficiency is the proficiency bonus (the Deflect Missiles throw back adds it).
+	Proficiency int
+	// CuttingWords says it has the bard's feature, with its bard level (the die)
+	// and the bard's "Perguntar" setting: "all", "attacks" (the default) or "never".
+	CuttingWords bool
+	BardLevel    int
+	CuttingAsk   string
+	// CharmImmune says the stat block is immune to being charmed (Cutting Words
+	// does nothing to it).
+	CharmImmune bool
+	// StatBlock says the combatant is a creature's stat block: its slots come from
+	// the trait and the combat counts them.
+	StatBlock bool
+	// ResourceMax are the uses its features give at its level, by resource key
+	// ("bardic_inspiration", "ki", "infernal_legacy"): the combat counts what an NPC
+	// spent; a player's character spends from its vitals.
+	ResourceMax map[string]int
 }
 
 // Named is a content key with its Portuguese name.
@@ -408,6 +479,9 @@ type SceneOption struct {
 	// Passive is the character's passive value, when HasPassive.
 	Passive    int
 	HasPassive bool
+	// ReliableTalent says a d20 of this check counts as at least 10 (the
+	// character has Reliable Talent and the check adds the proficiency bonus).
+	ReliableTalent bool
 }
 
 // Creature is a creature of a player's character (MR-037, Etapa 9) as a

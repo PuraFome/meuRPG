@@ -17,6 +17,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 
 import {
+  AreaPlacement,
   type AttackRoll,
   type Combatant,
   type Encounter,
@@ -111,8 +112,12 @@ export class NpcCard {
   readonly offering = input(false);
   /** Why "Oferecer ataque de oportunidade" cannot be used now ("Ninguém pode reagir agora."), or `''`. */
   readonly offerWhy = input('');
+  /** A question about hidden creatures holds the turn: why "Próximo turno" waits ("Responda ao pedido abaixo para seguir."), or `''`. */
+  readonly waitWhy = input('');
   /** "Oferecer ataque de oportunidade": the page opens the form. */
   readonly offer = output<void>();
+  /** "Conjurar" on an NPC's area spell placed on the map: the page opens the master's picker (PM-02d state 11). */
+  readonly castArea = output<string>();
   /** "Próximo turno"; `true` when the master passes it with a damage waiting. */
   readonly next = output<boolean>();
   /** A damage was applied or discarded (`PendingDamages`): the page keeps the card for its note. */
@@ -128,8 +133,6 @@ export class NpcCard {
   /** The master is typing the d20: the roll takes the whole row. */
   protected readonly typing = signal(false);
   private readonly picker = viewChild(RollPicker);
-  /** The master's own "Usar Escudo por ele" stopped the hit. */
-  private readonly stoppedHere = signal(false);
   /** The d20 just rolled: shown with the armor class, until the turn changes. */
   protected readonly last = signal<{
     roll: AttackRoll;
@@ -174,6 +177,25 @@ export class NpcCard {
     () => this.targets().find((t) => t.combatantId === this.targetId())?.label ?? '',
   );
   protected readonly pendings = computed(() => this.options()?.pendingDamages ?? []);
+  /** The NPC's spells whose area is placed on the map (none without a map): each one a "Conjurar" for the master's picker. */
+  protected readonly areaSpells = computed(() => {
+    const opts = this.options();
+    if (this.theatre() || !opts?.options) {
+      return [];
+    }
+    return (opts.options.spells ?? []).flatMap((s) => {
+      const t = (opts.spellTargets ?? []).find((x) => x.spellKey === s.spell?.key);
+      return s.spell && s.enabled && t && t.placement !== AreaPlacement.UNSPECIFIED
+        ? [{ key: s.spell.key, name: s.spell.namePt || s.spell.name }]
+        : [];
+    });
+  });
+  /** A hit whose damage is still to roll or to apply holds the attacker's next attack: the server refuses it too. */
+  protected readonly rollWhy = computed(() =>
+    this.pendings().length > 0
+      ? 'Role ou aplique o dano do ataque anterior antes de rolar outro.'
+      : '',
+  );
   /** The damage of the attack just rolled shows inside its result box. */
   protected readonly inBox = computed(() => {
     const id = this.last()?.pending?.id;
@@ -208,13 +230,19 @@ export class NpcCard {
     }
     const target = this.encounter().combatants.find((c) => c.id === l.roll.targetId);
     // Escudo can turn a hit into a miss after the roll (the master's answer, or the player's).
-    const stopped = this.stoppedHere() || this.reactionStopped();
+    const stopped = this.reactionStopped();
     return {
       total: l.roll.d20?.total ?? 0,
       formula: l.roll.d20 ? rollFormula(l.roll.d20) : '',
       physical: l.roll.d20?.physical ?? false,
-      word: stopped ? `Errou: o ${this.shieldName()} segurou` : outcomeWord(l.roll.outcome),
-      hit: !stopped && isHit(l.roll.outcome),
+      // A reaction holds the roll (Palavras de Interrupção): no outcome until it is answered.
+      held: l.roll.heldForReaction,
+      word: l.roll.heldForReaction
+        ? 'Esperando a reação'
+        : stopped
+          ? `Errou: o ${this.shieldName()} segurou`
+          : outcomeWord(l.roll.outcome),
+      hit: !l.roll.heldForReaction && !stopped && isHit(l.roll.outcome),
       against:
         l.roll.targetArmorClass !== undefined
           ? `contra CA ${l.roll.targetArmorClass} ${article(target?.label ?? '') === 'a' ? 'da' : 'do'} ${target?.label ?? ''}`
@@ -242,12 +270,6 @@ export class NpcCard {
       }
     });
     effect(() => {
-      const prompt = this.encounter().reactionPrompts[0];
-      if (prompt?.spellNamePt) {
-        this.shieldName.set(prompt.spellNamePt);
-      }
-    });
-    effect(() => {
       const keys = this.attacks().map((a) => a.key);
       if (!keys.includes(this.attackKey())) {
         this.attackKey.set(keys[0] ?? '');
@@ -261,10 +283,6 @@ export class NpcCard {
         this.key = newKey();
       }
     });
-  }
-
-  protected onReacted(what: 'stopped' | 'still' | 'declined'): void {
-    this.stoppedHere.set(what === 'stopped');
   }
 
   protected pickAttack(key: string): void {
@@ -305,7 +323,7 @@ export class NpcCard {
   private async rollAttack(die: { inApp: true } | { face: number }): Promise<void> {
     const a = this.attack();
     const target = this.targetId();
-    if (!a || !target || this.busy()) {
+    if (!a || !target || this.busy() || this.rollWhy()) {
       return;
     }
     this.busy.set(true);
@@ -324,7 +342,6 @@ export class NpcCard {
       this.state().apply(res.encounter);
       this.last.set({ roll: res.roll, pending: res.pending ?? null, subject: this.subject().id });
       this.picker()?.reset();
-      this.stoppedHere.set(false);
     } catch (err) {
       this.error.set(combatErrorMessage(err, 'rolar o ataque'));
     } finally {

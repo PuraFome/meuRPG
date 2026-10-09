@@ -1,3 +1,4 @@
+import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { create } from '@bufbuild/protobuf';
 
@@ -5,13 +6,17 @@ import {
   CriticalRule,
   DeathSaveVisibility,
   DiceMode,
+  EnemyReactionsRule,
+  HiddenAreaHitRule,
   HitPointsRule,
   TableStyle,
   TableStylePresetSchema,
   XpModeChangeBlockedSchema,
 } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { CONNECT_TRANSPORT } from '../connect/transport';
 import {
   type RulesDraft,
+  TableRulesClient,
   applyPreset,
   changeCount,
   draftFromRules,
@@ -52,6 +57,9 @@ const base: RulesDraft = {
   typed: false,
   critical: CriticalRule.DOUBLED_DICE,
   deathSaves: DeathSaveVisibility.VISIBLE_TO_ALL,
+  hiddenAreaHits: HiddenAreaHitRule.REVEAL,
+  featsAllowed: false,
+  enemyReactions: EnemyReactionsRule.ONLY_WHEN_POSSIBLE,
   houseRules: [],
 };
 
@@ -111,6 +119,26 @@ describe('table rules', () => {
     expect(d.combatStartsWithMap).toBe(true);
     expect(d.fogOnNewMaps).toBe(false);
     expect(d.houseRules).toEqual([]);
+    // Hidden creatures an area hits appear unless the table chose otherwise.
+    expect(d.hiddenAreaHits).toBe(HiddenAreaHitRule.REVEAL);
+    expect(d.enemyReactions).toBe(EnemyReactionsRule.ONLY_WHEN_POSSIBLE);
+  });
+
+  it('reads an unspecified rule as the default and counts a change of it', () => {
+    expect(
+      draftFromRules({ enemyReactions: EnemyReactionsRule.UNSPECIFIED } as never).enemyReactions,
+    ).toBe(EnemyReactionsRule.ONLY_WHEN_POSSIBLE);
+    expect(
+      draftFromRules({ enemyReactions: EnemyReactionsRule.ALWAYS } as never).enemyReactions,
+    ).toBe(EnemyReactionsRule.ALWAYS);
+    expect(changeCount({ ...base, enemyReactions: EnemyReactionsRule.ALWAYS }, base)).toBe(1);
+  });
+
+  it('keeps the rule on hidden creatures an area hits, and counts its change', () => {
+    expect(draftFromRules({ hiddenAreaHits: HiddenAreaHitRule.ASK } as never).hiddenAreaHits).toBe(
+      HiddenAreaHitRule.ASK,
+    );
+    expect(changeCount({ ...base, hiddenAreaHits: HiddenAreaHitRule.KEEP_HIDDEN }, base)).toBe(1);
   });
 
   it('reads how much XP stood in the way from the typed detail, never from the message', () => {
@@ -121,5 +149,28 @@ describe('table rules', () => {
     expect(xpModeBlocked(blocked)).toEqual({ awards: 3, totalXp: 2716 });
     expect(xpModeBlocked(new ConnectError('x', Code.FailedPrecondition))).toBeNull();
     expect(xpModeBlocked(new ConnectError('x', Code.Internal))).toBeNull();
+  });
+
+  it('sends the rule on hidden creatures with every save (the server requires it)', async () => {
+    TestBed.configureTestingModule({
+      providers: [TableRulesClient, { provide: CONNECT_TRANSPORT, useValue: {} }],
+    });
+    const client = TestBed.inject(TableRulesClient);
+    const sent: { rules: Record<string, unknown> }[] = [];
+    (client as unknown as { client: unknown }).client = {
+      setTableRules: (req: { rules: Record<string, unknown> }) => {
+        sent.push(req);
+        return Promise.resolve({ rules: req.rules, style: TableStyle.PERSONALIZADO });
+      },
+    };
+    const res = await client.set('c', { ...base, hiddenAreaHits: HiddenAreaHitRule.ASK });
+    expect(sent[0].rules['hiddenAreaHits']).toBe(HiddenAreaHitRule.ASK);
+    expect(res.saved.hiddenAreaHits).toBe(HiddenAreaHitRule.ASK);
+  });
+
+  it('counts the rule "Talentos" as a choice, off by default', () => {
+    expect(draftFromRules(undefined).featsAllowed).toBe(false);
+    expect(draftFromRules({ featsAllowed: true } as never).featsAllowed).toBe(true);
+    expect(changeCount({ ...base, featsAllowed: true }, base)).toBe(1);
   });
 });

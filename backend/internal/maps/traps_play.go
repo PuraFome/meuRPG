@@ -117,6 +117,9 @@ func (s *Service) loadTrapScene(ctx context.Context, tx pgx.Tx, campaignID, mapI
 		return nil, fmt.Errorf("read the party: %w", err)
 	}
 	for _, m := range party {
+		if m.Dead {
+			continue // a dead character notices nothing
+		}
 		ts.members[m.CharacterID] = m
 		ts.order = append(ts.order, m.CharacterID)
 	}
@@ -359,10 +362,13 @@ func (s *Service) tellNoticers(ctx context.Context, campaignID, mapID string, ro
 }
 
 // SearchTraps is "Procurar armadilhas" (MR-035, D5, question 71) as the maps
-// module sees it: the observer's roll total, with the skill ("perception" or
-// "investigation"), against every armed trap within 3 m whose square it sees and
-// that its character does not know. Perception meets the trap's DC to notice it
-// (a trap with none is never found by it), Investigation its DC to find it. A
+// module sees it: the observer's roll total, with the skill ("perception",
+// "investigation" or the key of another skill, "skill:arcana"), against every armed
+// trap within 3 m whose square it sees and that its character does not know.
+// Perception meets the trap's DC to notice it (a trap with none is never found by
+// it), Investigation its DC to find it, and another skill the DC to find, only for
+// the traps whose master listed it (TrapSpec.also_find_skill_keys): for the others it
+// sees nothing, which reads exactly as a search that fell short. A
 // pass reveals the trap to the observer's character, inside tx, and nothing else
 // is said: who found what is the play module's event. It implements play.TrapBook.
 func (s *Service) SearchTraps(ctx context.Context, tx pgx.Tx, campaignID, mapID string, who link.Observer, skill string, totals []int, at time.Time) (link.SearchResult, error) {
@@ -389,8 +395,11 @@ func (s *Service) SearchTraps(ctx context.Context, tx pgx.Tx, campaignID, mapID 
 			continue
 		}
 		dc := int(spec.GetFindDc())
-		if skill == "perception" {
+		switch {
+		case skill == "perception":
 			dc = int(spec.GetNoticeDc())
+		case skill != "investigation" && !slices.Contains(spec.GetAlsoFindSkillKeys(), skill):
+			continue // another skill finds only the traps whose master allowed it, against the DC to find
 		}
 		sg := ts.sightOf(viewer, s.pointSquares(ts.g, p))
 		total := totals[0]
@@ -800,4 +809,16 @@ func (s *Service) creatureLanded(ctx context.Context, campaignID, actorUserID, m
 	if err := s.firer.CreatureDropped(ctx, campaignID, mapID, creature, actorUserID, g.SquareOf(int(token.XBp), int(token.YBp))); err != nil {
 		s.logger.ErrorContext(ctx, "maps: cannot fire a trap for a creature's token", "error", err)
 	}
+}
+
+// FallFt implements play.TrapBook: the depth of a pit preset, in feet.
+func (s *Service) FallFt(presetKey string) int {
+	if presetKey == "" {
+		return 0
+	}
+	p, ok := s.rules.TrapPreset(presetKey)
+	if !ok {
+		return 0
+	}
+	return p.FallFt
 }

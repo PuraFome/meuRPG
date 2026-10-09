@@ -70,6 +70,7 @@ function vitals(revision: number): VitalsVm {
     spellSlots: [],
     pactSlots: null,
     hitDice: '3d6',
+    hitDiceSizes: [{ faces: 6, total: 3, used: 1 }],
     hitDiceTotal: 3,
     hitDiceUsed: 1,
     revision,
@@ -113,11 +114,14 @@ describe('LiveStream (ADR-0005 client rules)', () => {
       onCombatLogChanged: vi.fn(),
       onXpChanged: vi.fn(),
       onPuzzleChanged: vi.fn(),
+      onReactionWindowOpened: vi.fn(),
+      onReactionWindowClosed: vi.fn(),
       onContentChanged: vi.fn(),
       onSceneChanged: vi.fn(),
       onNotesChanged: vi.fn(),
       onVisionChanged: vi.fn(),
       onStageChanged: vi.fn(),
+      onSpellCastsChanged: vi.fn(),
       onEnded: vi.fn(),
       onFatal: vi.fn(),
     };
@@ -166,6 +170,30 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     expect(handlers.onPuzzleChanged).toHaveBeenCalledWith('p-1');
   });
 
+  it('hands the page the id of a reaction window that opened, and the reason of one that closed by itself (PM-04)', async () => {
+    stream.start();
+    last().push({ kind: 'ready' });
+    last().push({ kind: 'reactionWindowOpened', encounterId: 'e1', windowId: 'w1' });
+    last().push({
+      kind: 'reactionWindowClosed',
+      encounterId: 'e1',
+      windowId: 'w1',
+      closedByItself: true,
+      text: 'Queda Suave fechou. Você já usou a sua reação.',
+    });
+    await flush();
+    expect(handlers.onReactionWindowOpened).toHaveBeenCalledWith(
+      expect.objectContaining({ encounterId: 'e1', windowId: 'w1' }),
+    );
+    expect(handlers.onReactionWindowClosed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        windowId: 'w1',
+        closedByItself: true,
+        text: 'Queda Suave fechou. Você já usou a sua reação.',
+      }),
+    );
+  });
+
   it("tells the page the table's content changed (RN-23, content_changed), with nothing in it", async () => {
     stream.start();
     last().push({ kind: 'ready' });
@@ -211,6 +239,15 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     await flush();
     expect(handlers.onVisionChanged).toHaveBeenCalledWith('map-1');
     expect(stream.status()).toBe('live');
+  });
+
+  it('hands `spell_casts_changed` to the page on its own, so the casts are read again (MR-048)', async () => {
+    stream.start();
+    last().push({ kind: 'ready' });
+    last().push({ kind: 'spellCastsChanged' });
+    await flush();
+    expect(handlers.onSpellCastsChanged).toHaveBeenCalledTimes(1);
+    expect(handlers.onStageChanged).not.toHaveBeenCalled();
   });
 
   it('hands `stage_changed` to the page on its own, so the stage is read again (MR-031)', async () => {

@@ -108,6 +108,8 @@ func (v combatViewer) owns(c playdb.Combatant) bool {
 type encounterData struct {
 	enc playdb.Encounter
 	cs  []playdb.Combatant
+	// holds are the attack rolls that wait for the answer about a Bardic Inspiration die.
+	holds []playdb.RollHold
 }
 
 // loadEncounter reads a combat's combatants, in turn order.
@@ -116,7 +118,11 @@ func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter)
 	if err != nil {
 		return nil, fmt.Errorf("list the combatants: %w", err)
 	}
-	return &encounterData{enc: enc, cs: cs}, nil
+	holds, err := q.ListOpenRollHolds(ctx, enc.ID) // the rolls that wait for the answer about a die
+	if err != nil {
+		return nil, fmt.Errorf("list the held rolls: %w", err)
+	}
+	return &encounterData{enc: enc, cs: cs, holds: holds}, nil
 }
 
 // turnView is the turn as one viewer sees it (RN-20, joint turns): who acts,
@@ -263,6 +269,8 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 			if shared && inParty(c) && !v.owns(c) && inTurn(e, c) {
 				shareEconomy(p, c)
 			}
+			p.InspirationDie = inspirationDieView(d.cs, c, e.Round, v)
+			p.InspirationOffer = inspirationOfferView(d, c, v)
 			p.TurnPartEnded = turn.flags && e.Status == statusActive && c.TurnState == turnEnded
 			out.Combatants = append(out.Combatants, p)
 		}
@@ -350,6 +358,7 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		// A creature's hit points are numbers to its owner's player and the master
 		// (below); everyone else gets the state word.
 		out.HitPointsCurrent, out.HitPointsMax, out.HitPointsTemporary = c.HpCurrent, c.HpMax, c.HpTemp
+		out.HitPointsMaxBonus = c.HpMaxBonus
 	}
 	if v.master {
 		out.Hidden = c.Hidden
@@ -358,12 +367,14 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 			out.ArmorClass = new(armorClass)
 		}
 		out.HitPointsCurrent, out.HitPointsMax, out.HitPointsTemporary = c.HpCurrent, c.HpMax, c.HpTemp
+		out.HitPointsMaxBonus = c.HpMaxBonus
 		out.XpValue = c.XpValue // an NPC's, the master's alone (RN-20); 0 for a player's character
 		out.PortraitUrl = portrait
 		if vitals != nil {
 			out.HitPointsCurrent = new(vitals.GetHitPointsCurrent())
 			out.HitPointsMax = new(vitals.GetHitPointsMax())
 			out.HitPointsTemporary = new(vitals.GetHitPointsTemporary())
+			out.HitPointsMaxBonus = vitals.GetHitPointsMaxBonus()
 		}
 	}
 	// A player's character at 0 hit points is down ("Caído"): everyone who
@@ -478,6 +489,14 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 	}
 	out.ReactionPrompts = prompts
 	if out.OpportunityOffers, err = s.opportunityOffers(ctx, m, d, v); err != nil {
+		return nil, err
+	}
+	if out.ReactionWindows, out.ReactionWait, err = s.reactionView(ctx, m, d, v, names); err != nil {
+		return nil, err
+	}
+	// The turn waits for the master's answer: everyone is told it waits, only the
+	// master why.
+	if out.PendingHiddenReveals, out.TurnHeld, err = s.hiddenRevealsView(ctx, d, v); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -640,7 +659,7 @@ func (s *Service) changedFor(campaignID string, ids ...string) func(ctx context.
 // the players what they may see (a hidden one's turn is "the master's"; on a
 // map with the fog of war, so is the turn of an NPC the player does not see).
 func (s *Service) publishTurnChanged(ctx context.Context, campaignID string, d *encounterData) {
-	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: turnChangedMessage(d.enc, d.turnFor(combatViewer{master: true}))})
+	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: turnChangedMessage(d.enc, d.turnFor(combatViewer{master: true}), d.enc.Revision)})
 	s.publishTurnChangedToPlayers(ctx, campaignID, d)
 }
 

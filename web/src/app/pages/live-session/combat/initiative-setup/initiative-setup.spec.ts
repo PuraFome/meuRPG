@@ -54,6 +54,25 @@ describe('InitiativeSetup', () => {
     expect(orders).toEqual([['g2', 'g1']]);
   });
 
+  it("shows each monster's armor class and hit points before the first turn, and a player's none", () => {
+    const fixture = TestBed.createComponent(InitiativeSetup);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        status: EncounterStatus.SETUP,
+        round: 0,
+        combatants: [
+          rolled('g1', 'Goblin 1', 12, { armorClass: 15, hitPointsCurrent: 7, hitPointsMax: 7 }),
+          rolled('brisa', 'Brisa', 19, { kind: CombatantKind.PLAYER }),
+        ],
+      }),
+    );
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('CA 15 · PV 7 de 7');
+    expect(text.match(/CA \d+/g)).toHaveLength(1);
+  });
+
   it('says who the master waits for and offers to type the roll', () => {
     const { el } = setup();
     expect(el.textContent).toContain('Esperando Toren');

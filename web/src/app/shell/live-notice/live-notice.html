@@ -13,7 +13,7 @@
           [routerLink]="['/campaigns', s.campaignId, 'session']"
           [attr.aria-label]="'Entrar na sessão ' + s.sessionNumber + ' de ' + s.campaignName"
           (click)="dismiss(s.sessionId)"
-          >Entrar na sessão</a
+          ><span>Entrar</span><span class="live-notice__more"> na sessão</span></a
         >
       </div>
       <button

@@ -45,22 +45,6 @@
           </div>
         }
         <div class="body" (change)="onPick()">
-          @if (classOptions(); as classes) {
-            @if (classes.length >= 2 && isFirst()) {
-              <app-class-pick
-                [classes]="classes"
-                [selected]="s.options.classKey"
-                [characterName]="s.character.name"
-                [totalToLevel]="s.options.totalToLevel"
-                [busy]="classBusy()"
-                [asking]="classAsking()"
-                [status]="classStatus()"
-                (pick)="pickClass($event)"
-                (confirmSwitch)="confirmClass()"
-                (keep)="keepClass()"
-              />
-            }
-          }
           @if (failure(); as f) {
             <div class="mr-notice mr-notice--danger js-failure" role="alert" tabindex="-1">
               <mat-icon aria-hidden="true">error</mat-icon>
@@ -75,6 +59,21 @@
             </div>
           }
           @switch (step()) {
+            @case ('class') {
+              <app-class-pick
+                [choices]="s.options.classChoices"
+                [selected]="s.options.classKey"
+                [newMode]="newMode()"
+                [totalToLevel]="s.options.totalToLevel"
+                [busy]="classBusy()"
+                [asking]="classAsking()"
+                [status]="classStatus()"
+                (pick)="pickClass($event)"
+                (pickNew)="openNewClasses()"
+                (confirmSwitch)="confirmClass()"
+                (keep)="keepClass()"
+              />
+            }
             @case ('abilities') {
               <app-abilities-step [s]="s" />
             }
@@ -113,6 +112,19 @@
               <div class="foot__buttons foot__buttons--ask">
                 <button matButton="outlined" type="button" class="js-keep" (click)="keepChoosing()">Continuar escolhendo</button>
                 <button matButton="filled" type="button" (click)="leave()">Descartar e sair</button>
+              </div>
+            </div>
+          } @else if (confirmingNew()) {
+            <div class="ask" role="alertdialog" aria-labelledby="new-class-title" aria-describedby="new-class-text">
+              <p class="ask__title" id="new-class-title">Subir em {{ s.options.classNamePt }} 1?</p>
+              <p class="ask__text" id="new-class-text">
+                Isso acrescenta uma classe nova à ficha: {{ s.options.classNamePt }} 1, e o nível total vai a {{ s.options.totalToLevel }}. Não se desfaz.
+              </p>
+              <div class="foot__buttons foot__buttons--ask">
+                <button matButton="outlined" type="button" class="danger-outline" [disabled]="busy()" disabledInteractive (click)="confirm()">
+                  Subir em {{ s.options.classNamePt }} 1
+                </button>
+                <button matButton="outlined" type="button" class="js-new-keep" (click)="keepNotNew()">Voltar</button>
               </div>
             </div>
           } @else {

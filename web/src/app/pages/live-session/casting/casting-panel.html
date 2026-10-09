@@ -1,0 +1,94 @@
+<section class="casting" aria-labelledby="casting-h">
+  <div class="casting__head">
+    <h2 class="casting__title" id="casting-h">Magias</h2>
+    @if (master()) {
+      <button mat-stroked-button type="button" (click)="open(true)">
+        <mat-icon aria-hidden="true">auto_fix_high</mat-icon>
+        Conjurar como NPC
+      </button>
+    } @else if (characterId()) {
+      <button mat-flat-button type="button" (click)="open()">
+        <mat-icon aria-hidden="true">auto_fix_high</mat-icon>
+        Conjurar
+      </button>
+    }
+  </div>
+
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  @if (going().length) {
+    <h3 class="casting__sub">{{ master() ? 'Conjurações em andamento' : 'Conjurando' }}</h3>
+    <ul class="casting__list">
+      @for (c of going(); track c.id) {
+        <li class="cast">
+          <div class="cast__text">
+            <b class="cast__name">{{ master() ? queueTitle(c) : c.spellNamePt }}</b>
+            <span class="cast__who">{{ master() ? queueLine(c) : c.casterName + (c.ritual ? ' · ritual' : '') + ' · ' + minutesWords(c.castingMinutes) }}</span>
+            <span class="cast__chip"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>concentração</span>
+          </div>
+          @if (master()) {
+            @if (physical()) {
+              <label class="cast__sum">
+                Soma dos dados (se a magia rolar)
+                <input type="number" inputmode="numeric" min="1" [value]="typed()[c.id] ?? ''" (input)="setTyped(c.id, $any($event.target).value)" />
+              </label>
+            }
+            <button mat-flat-button type="button" [disabled]="busy('finish', c.id)" disabledInteractive (click)="finish(c)">
+              Concluir conjuração
+            </button>
+          } @else {
+            <p class="cast__wait" role="status">Esperando o mestre concluir. O espaço só é gasto quando ele concluir.</p>
+          }
+          @if (mine(c)) {
+            <button mat-stroked-button type="button" [disabled]="busy('stop', c.id)" disabledInteractive (click)="stop(c)">
+              Parar a conjuração
+            </button>
+          }
+        </li>
+      }
+    </ul>
+    @if (master()) {
+      <div class="mr-notice mr-notice--neutral" role="note">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <p>{{ noteBefore }}<strong>{{ noteStrong }}</strong>{{ noteAfter }}</p>
+      </div>
+    }
+  }
+
+  @if (lasting().length) {
+    <h3 class="casting__sub">Magias ativas</h3>
+    <ul class="casting__list">
+      @for (c of lasting(); track c.id) {
+        <li class="cast">
+          <div class="cast__text">
+            <b class="cast__name">{{ c.spellNamePt }}</b>
+            <span class="cast__who">{{ c.casterName }}</span>
+            <span class="cast__chip">{{ chip(c) }}</span>
+          </div>
+          @if (mine(c)) {
+            <button mat-stroked-button type="button" class="cast__end" [disabled]="busy('end', c.id)" disabledInteractive (click)="end(c)">
+              Encerrar
+            </button>
+          }
+        </li>
+      }
+    </ul>
+    <p class="casting__note">{{ note }}</p>
+  }
+
+  @if (lines().length) {
+    <h3 class="casting__sub">O que foi conjurado</h3>
+    <ul class="casting__log">
+      @for (l of lines(); track l.id) {
+        <li [class.casting__log--failed]="l.failed">{{ l.text }}</li>
+      }
+    </ul>
+  } @else if (loaded() && !going().length && !lasting().length) {
+    <p class="casting__empty">Nada foi conjurado nesta sessão ainda.</p>
+  }
+</section>

@@ -12,6 +12,7 @@ import { metersFixed, squaresFree } from '../../../../core/units';
 import { article } from '../../../../core/combat/combat-log';
 import {
   combatantInitial,
+  isDead,
   isDown,
   isPlayer,
   ownCombatant,
@@ -92,6 +93,8 @@ export class TurnPanel {
   readonly concentration = input('');
   /** The combat is played without a map (RN-25): the movement tile has no squares to count. */
   readonly theatre = input(false);
+  /** The page draws the order strip itself, under the actions, on the player's own turn on a phone. */
+  readonly orderBelow = input(false);
 
   readonly endTurn = output<void>();
   /** "Ataque de oportunidade": the key of the melee attack. */
@@ -134,6 +137,10 @@ export class TurnPanel {
   /** The player looks through their familiar's eyes: the character is blind and does not attack (the master resolves it, MR-036). */
   protected readonly blind = computed(() => !!this.own()?.familiarSightCreatureId);
   /** The player's character is at 0 hit points (any turn). */
+  protected readonly dead = computed(() => {
+    const me = this.own();
+    return !!me && isDead(me);
+  });
   protected readonly isDown = computed(() => {
     const own = this.own();
     return !!own && isDown(own);
