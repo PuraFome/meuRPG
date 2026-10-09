@@ -352,6 +352,7 @@ test(
       // "Rolar": only the die, and the server refuses the average on its own.
       await setTableRulesRPC(m, campaignId, { hitPoints: 'HIT_POINTS_RULE_ROLL' });
       await p.goto(page);
+      await passClassStep(p);
       await expect(p.getByText('A mesa pede que todos rolem o dado de vida. A média não é oferecida.')).toBeVisible();
       await expect(p.getByRole('radio', { name: /Média:/ })).toHaveCount(0);
       await expect(p.getByText('Falta rolar o dado de vida.')).toBeVisible();
@@ -361,6 +362,7 @@ test(
       // "A média": only the average, no die.
       await setTableRulesRPC(m, campaignId, { hitPoints: 'HIT_POINTS_RULE_AVERAGE' });
       await p.goto(page);
+      await passClassStep(p);
       await expect(p.getByText('A mesa usa a média: todos recebem o valor médio do dado de vida. O dado não é oferecido.')).toBeVisible();
       await expect(p.getByRole('radio', { name: /Rolar 1d10/ })).toHaveCount(0);
       await expect(p.getByRole('button', { name: /Rolar no app/ })).toHaveCount(0);
