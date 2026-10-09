@@ -1,0 +1,222 @@
+@let s = state();
+@if (s.status !== 'not-found' && s.status !== 'forbidden') {
+  <a class="back" [routerLink]="['/campaigns', campaignId()]">
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>
+    Voltar para a campanha
+  </a>
+}
+@switch (s.status) {
+  @case ('loading') {
+    <div>
+      <h1 class="mr-page-title">Exportar campanha</h1>
+      <p class="page-status" role="status">
+        <mat-spinner diameter="24" aria-label="Carregando a exportação" />
+        Carregando a exportação...
+      </p>
+    </div>
+  }
+  @case ('not-found') {
+    <div>
+      <h1 class="mr-page-title">Campanha não encontrada</h1>
+      <div class="mr-notice mr-notice--neutral page-notice" role="alert">
+        <mat-icon aria-hidden="true">search_off</mat-icon>
+        <p>
+          <strong>Essa campanha não existe, ou você não é membro dela.</strong>
+          Confira o link com o mestre.
+        </p>
+      </div>
+      <a mat-flat-button class="page-action" routerLink="/campaigns">Ir para Minhas campanhas</a>
+    </div>
+  }
+  @case ('forbidden') {
+    <div>
+      <h1 class="mr-page-title">Exportar campanha</h1>
+      <div class="mr-notice mr-notice--neutral page-notice" role="status">
+        <mat-icon aria-hidden="true">lock</mat-icon>
+        <p><strong>Só o mestre exporta a campanha.</strong></p>
+      </div>
+      <a mat-flat-button class="page-action" [routerLink]="['/campaigns', campaignId()]"
+        >Voltar para a campanha</a
+      >
+    </div>
+  }
+  @case ('error') {
+    <div>
+      <h1 class="mr-page-title">Não foi possível abrir a exportação</h1>
+      <div class="mr-notice mr-notice--danger page-notice" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ s.message }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="retry" (click)="load()">
+        Tentar de novo
+      </button>
+    </div>
+  }
+  @case ('ready') {
+    <header>
+      <h1 class="mr-page-title">{{ campaignName() }}</h1>
+      <p class="mr-page-lead">Configurações da campanha</p>
+    </header>
+
+    <div class="layout">
+      <section class="mr-panel main" aria-labelledby="export-heading">
+        <h2 class="mr-panel__title" id="export-heading">Exportar campanha</h2>
+        <p class="lead">
+          Gera um arquivo com tudo o que é <strong>da mesa</strong>, para criar a mesma campanha em
+          outro servidor. É uma foto de agora: se há uma sessão aberta, ela fica de fora.
+        </p>
+
+        <h3 class="list-title">Vai no pacote</h3>
+        <ul class="marks marks--yes">
+          @for (item of goes; track item) {
+            <li>
+              <mat-icon aria-hidden="true">check</mat-icon>
+              <span>{{ item }}</span>
+            </li>
+          }
+          <li>
+            <mat-icon aria-hidden="true">check</mat-icon>
+            <span>Todos os personagens, como <strong>reservados</strong> (sem dono)</span>
+          </li>
+        </ul>
+
+        <h3 class="list-title">Nunca vai</h3>
+        <ul class="marks marks--no">
+          @for (item of never; track item) {
+            <li>
+              <mat-icon aria-hidden="true">close</mat-icon>
+              <span>{{ item }}</span>
+            </li>
+          }
+        </ul>
+
+        <p class="file">
+          <span class="file__name">{{ fileName() }}</span>
+          @if (sizeWords(); as size) {
+            <strong class="file__size">{{ size }}</strong>
+          }
+        </p>
+        <p class="hint">
+          O tamanho vem das imagens e dos dados já guardados. O limite do pacote é
+          {{ limitText() }}.
+        </p>
+
+        @if (actionError(); as message) {
+          <div class="mr-notice mr-notice--danger action-error" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ message }}</p>
+          </div>
+        }
+
+        <button
+          #primary
+          mat-flat-button
+          type="button"
+          class="primary"
+          [disabled]="starting() || running()"
+          (click)="start()"
+        >
+          <mat-icon aria-hidden="true">arrow_forward</mat-icon>Exportar campanha
+        </button>
+      </section>
+
+      <div class="side">
+        @if (latest(); as exp) {
+          @switch (exp.state) {
+            @case (State.RUNNING) {
+              <section class="mr-panel" aria-labelledby="running-heading">
+                <h2 class="mr-panel__title" id="running-heading">Exportando…</h2>
+                <span
+                  class="bar"
+                  role="progressbar"
+                  aria-label="Progresso da exportação"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  [attr.aria-valuenow]="percent()"
+                >
+                  <span class="bar__fill" [style.width.%]="percent()"></span>
+                </span>
+                <!-- The percent is aria-hidden: the bar says it, and the polite text then changes only when the phase does. -->
+                <p class="progress-text" aria-live="polite">
+                  {{ phase() }} <span aria-hidden="true">({{ percent() }}%)</span>. Pode fechar esta
+                  página: o arquivo fica pronto por 24 horas.
+                </p>
+                @if (pollNote(); as note) {
+                  <p class="hint" role="status">{{ note }}</p>
+                }
+                <button
+                  matButton="outlined"
+                  type="button"
+                  class="wide"
+                  [disabled]="cancelling()"
+                  (click)="cancel()"
+                >
+                  Cancelar
+                </button>
+              </section>
+            }
+            @case (State.DONE) {
+              <section class="mr-panel" aria-labelledby="last-heading">
+                <h2 class="mr-panel__title" id="last-heading">Último pacote</h2>
+                <div class="mr-notice mr-notice--success">
+                  <mat-icon aria-hidden="true">check_circle</mat-icon>
+                  <p class="notice__text">
+                    <strong>{{ exp.fileName }}</strong> · {{ lastDetails() }}
+                  </p>
+                </div>
+                <a mat-flat-button class="download" [href]="exp.downloadPath" download>
+                  <mat-icon aria-hidden="true">download</mat-icon>Baixar de novo
+                </a>
+                <p class="hint">{{ expiry() }}</p>
+              </section>
+            }
+            @case (State.FAILED) {
+              <section class="mr-panel" aria-labelledby="failed-heading">
+                <h2 class="mr-panel__title" id="failed-heading">Exportação não concluída</h2>
+                <div class="mr-notice mr-notice--danger">
+                  <mat-icon aria-hidden="true">error</mat-icon>
+                  @if (exp.failure === Failure.TOO_BIG) {
+                    <p>
+                      <strong>O pacote passa do limite de {{ limitText() }}.</strong>
+                      Apague da galeria as imagens que você não usa e exporte de novo.
+                    </p>
+                  } @else {
+                    <p>
+                      <strong>A exportação parou no meio.</strong>
+                      O servidor foi interrompido e nenhum arquivo foi guardado.
+                    </p>
+                  }
+                </div>
+                @if (exp.failure !== Failure.TOO_BIG) {
+                  <button
+                    matButton="outlined"
+                    type="button"
+                    class="wide"
+                    [disabled]="starting()"
+                    (click)="start()"
+                  >
+                    Exportar campanha
+                  </button>
+                }
+              </section>
+            }
+            @case (State.CANCELED) {
+              <section class="mr-panel" aria-labelledby="canceled-heading">
+                <h2 class="mr-panel__title" id="canceled-heading">Exportação cancelada</h2>
+                <div class="mr-notice mr-notice--neutral">
+                  <mat-icon aria-hidden="true">info</mat-icon>
+                  <p>
+                    <strong>Nenhum arquivo foi guardado.</strong>
+                    Exporte de novo quando quiser.
+                  </p>
+                </div>
+              </section>
+            }
+          }
+        }
+      </div>
+    </div>
+
+    <p class="mr-visually-hidden" role="status">{{ announcement() }}</p>
+  }
+}

@@ -1,0 +1,361 @@
+syntax = "proto3";
+
+package meurpg.campaignpackage.v1;
+
+import "google/protobuf/timestamp.proto";
+import "meurpg/campaigns/v1/campaigns.proto";
+
+// CampaignPackageService exports a campaign as one file and creates a new
+// campaign from such a file (MR-050). The format is in format.proto.
+//
+// Every method needs a valid session cookie (`unauthenticated` without one).
+// Exporting is the campaign's master's: a player gets `permission_denied`,
+// anyone else `not_found`. Importing makes a NEW campaign whose master is the
+// caller, so it needs no campaign; it is refused like CreateCampaign is
+// (`resource_exhausted` at the campaign cap and `permission_denied` for an
+// account that may not create campaigns, both with a CampaignCreationRefused
+// detail). Requests carry the campaign or the upload in the body, so every
+// read is POST-only, like the rest of the API.
+//
+// # Exporting
+//
+// StartCampaignExport reads the campaign in one transaction, on the server,
+// and writes the zip to the blob store; the master can close the page, and
+// the finished file stays 24 hours and is then deleted (it is also deleted
+// with the campaign or the account). The file is downloaded with
+// `GET /downloads/campaign-exports/{id}`: the id is 32 random hex digits, the
+// route checks again that the caller is the campaign's master, and it answers
+// `Content-Disposition: attachment`, `Cache-Control: no-store` and a file name
+// made safe from the campaign's name.
+//
+// # Importing
+//
+// The file goes up in parts, because Cloud Run refuses a request over 32 MiB:
+//
+//  1. BeginCampaignImport says the name and size of the file and returns the
+//     upload's id and the size of each part.
+//  2. Each part is sent with `PUT /uploads/campaign-imports/{id}/parts/{n}`,
+//     the raw bytes as the body (`n` from 1). The upload belongs to the
+//     account that began it. A part sent twice replaces itself. The parts are
+//     kept 1 hour after the last one, then deleted.
+//  3. PreviewCampaignImport reads the whole package and lists what it holds
+//     and every problem. Nothing is created.
+//  4. CreateCampaignFromImport creates the campaign, all or nothing: with any
+//     problem, or a failure halfway, nothing is created and no file is left.
+//
+// A person has one upload at a time: beginning another discards the first.
+service CampaignPackageService {
+  // StartCampaignExport begins an export of the campaign and returns it
+  // running. With an export already running for the campaign it returns that
+  // one. The master only.
+  //
+  // Errors: `failed_precondition` with the reason IMAGES_OFF when the server
+  // has no blob store.
+  rpc StartCampaignExport(StartCampaignExportRequest) returns (StartCampaignExportResponse);
+
+  // GetCampaignExport returns the campaign's latest export (running, finished,
+  // failed or canceled), if it has not expired, and the size the next one is
+  // expected to have. The master only.
+  rpc GetCampaignExport(GetCampaignExportRequest) returns (GetCampaignExportResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // CancelCampaignExport stops a running export. It has no effect on one that
+  // finished. The master only.
+  rpc CancelCampaignExport(CancelCampaignExportRequest) returns (CancelCampaignExportResponse);
+
+  // BeginCampaignImport starts an upload, or returns the caller's own upload
+  // when it is the same file (the same fingerprint), with the parts already
+  // received, so a dropped connection resumes. Another file discards the
+  // caller's previous upload.
+  //
+  // Errors: `invalid_argument` for a size over the 200 MiB limit or a missing
+  // name; `resource_exhausted` or `permission_denied` as CreateCampaign
+  // (before any byte is sent); `failed_precondition` with the reason
+  // IMAGES_OFF without a blob store.
+  rpc BeginCampaignImport(BeginCampaignImportRequest) returns (BeginCampaignImportResponse);
+
+  // GetCampaignImport returns the caller's upload, if one is still kept.
+  rpc GetCampaignImport(GetCampaignImportRequest) returns (GetCampaignImportResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // CancelCampaignImport discards the caller's upload and its parts.
+  rpc CancelCampaignImport(CancelCampaignImportRequest) returns (CancelCampaignImportResponse);
+
+  // PreviewCampaignImport reads the package of a complete upload and says what
+  // it holds and what is wrong with it. Nothing is created. A package the
+  // server refuses is still an answer, with `problems`.
+  //
+  // Errors: `failed_precondition` with the reason INCOMPLETE when parts are
+  // missing; `not_found` for an upload that is not the caller's or has
+  // expired.
+  rpc PreviewCampaignImport(PreviewCampaignImportRequest) returns (PreviewCampaignImportResponse);
+
+  // CreateCampaignFromImport creates the campaign of a package without
+  // problems; the caller is its master. It reads the package again, so a
+  // package with a problem is refused here as it is in the preview
+  // (`failed_precondition`, reason HAS_PROBLEMS, with the preview in the
+  // detail). It carries an idempotency key, scoped to the caller: a retry
+  // returns the campaign the first call made.
+  //
+  // Errors: also the campaign cap, as BeginCampaignImport.
+  rpc CreateCampaignFromImport(CreateCampaignFromImportRequest) returns (CreateCampaignFromImportResponse);
+}
+
+// CampaignExportState is where an export is.
+enum CampaignExportState {
+  CAMPAIGN_EXPORT_STATE_UNSPECIFIED = 0;
+  CAMPAIGN_EXPORT_STATE_RUNNING = 1;
+  // The file is ready until expires_at.
+  CAMPAIGN_EXPORT_STATE_DONE = 2;
+  CAMPAIGN_EXPORT_STATE_FAILED = 3;
+  CAMPAIGN_EXPORT_STATE_CANCELED = 4;
+}
+
+// CampaignExportFailure is why an export failed.
+enum CampaignExportFailure {
+  CAMPAIGN_EXPORT_FAILURE_UNSPECIFIED = 0;
+  // The package would pass the 200 MiB, 2,000 entries or 10 MiB limits.
+  CAMPAIGN_EXPORT_FAILURE_TOO_BIG = 1;
+  // The server stopped, or the storage failed, midway.
+  CAMPAIGN_EXPORT_FAILURE_INTERRUPTED = 2;
+}
+
+// CampaignExport is one export of a campaign.
+message CampaignExport {
+  string id = 1;
+  CampaignExportState state = 2;
+  // 0 to 100, while running.
+  int32 percent = 3;
+  CampaignExportFailure failure = 4;
+  // The file name the download suggests, such as `Mirathel.meurpg.zip`. Set
+  // when done.
+  string file_name = 5;
+  // The size of the file and the number of entries in it; set when done.
+  int64 byte_size = 6;
+  int32 entry_count = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp finished_at = 9;
+  // When the file is deleted (24 hours after it finished); set when done.
+  google.protobuf.Timestamp expires_at = 10;
+  // The path to download the file from; set when done.
+  string download_path = 11;
+}
+
+message StartCampaignExportRequest {
+  string campaign_id = 1;
+  // 1 to 64 characters, scoped to the caller. The same key with the same
+  // request returns the export the first call made.
+  string idempotency_key = 2;
+}
+
+message StartCampaignExportResponse {
+  CampaignExport export = 1;
+}
+
+message GetCampaignExportRequest {
+  string campaign_id = 1;
+}
+
+message GetCampaignExportResponse {
+  // The latest export that has not expired; unset when there is none.
+  CampaignExport export = 1;
+  // About how big the next package will be: the gallery's bytes and a margin
+  // for the data.
+  int64 estimated_bytes = 2;
+  // The limit of a package: 200 MiB.
+  int64 limit_bytes = 3;
+}
+
+message CancelCampaignExportRequest {
+  string campaign_id = 1;
+  string export_id = 2;
+}
+
+message CancelCampaignExportResponse {
+  CampaignExport export = 1;
+}
+
+// CampaignImport is an upload in progress.
+message CampaignImport {
+  string id = 1;
+  string file_name = 2;
+  int64 total_bytes = 3;
+  // The size of every part but the last.
+  int32 part_size = 4;
+  int32 part_count = 5;
+  // The numbers (from 1) of the parts the server holds, ascending.
+  repeated int32 received_parts = 6;
+  // When the parts are deleted if nothing more arrives.
+  google.protobuf.Timestamp expires_at = 7;
+}
+
+message BeginCampaignImportRequest {
+  // The file's name, only to show (1 to 120 characters).
+  string file_name = 1;
+  // The file's length in bytes: 1 to 200 MiB.
+  int64 total_bytes = 2;
+  // Something the app makes from the file (its name, size and last-modified
+  // time) so that choosing the same file again resumes this upload. 1 to 200
+  // characters.
+  string fingerprint = 3;
+}
+
+message BeginCampaignImportResponse {
+  CampaignImport upload = 1;
+}
+
+message GetCampaignImportRequest {}
+
+message GetCampaignImportResponse {
+  // Unset when the caller has no upload.
+  CampaignImport upload = 1;
+  // The fingerprint the upload was begun with.
+  string fingerprint = 2;
+}
+
+message CancelCampaignImportRequest {
+  string import_id = 1;
+}
+
+message CancelCampaignImportResponse {}
+
+// PackageProblemKind is the kind of thing a problem is about, so the app can
+// name it in plain words ("a imagem", "a cena", "o personagem").
+enum PackageProblemKind {
+  PACKAGE_PROBLEM_KIND_UNSPECIFIED = 0;
+  // The file as a whole.
+  PACKAGE_PROBLEM_KIND_PACKAGE = 1;
+  PACKAGE_PROBLEM_KIND_CAMPAIGN = 2;
+  PACKAGE_PROBLEM_KIND_IMAGE = 3;
+  PACKAGE_PROBLEM_KIND_MAP = 4;
+  // A battle, trap, treasure, light or submap point.
+  PACKAGE_PROBLEM_KIND_POINT = 5;
+  PACKAGE_PROBLEM_KIND_SCENE = 6;
+  PACKAGE_PROBLEM_KIND_NPC = 7;
+  PACKAGE_PROBLEM_KIND_CHARACTER = 8;
+  PACKAGE_PROBLEM_KIND_PUZZLE = 9;
+  PACKAGE_PROBLEM_KIND_CONTENT = 10;
+  PACKAGE_PROBLEM_KIND_ENCOUNTER = 11;
+  PACKAGE_PROBLEM_KIND_DOCUMENT = 12;
+}
+
+// PackageProblemReason is why a thing cannot be created.
+enum PackageProblemReason {
+  PACKAGE_PROBLEM_REASON_UNSPECIFIED = 0;
+  // Not a zip, or its manifest is missing or unreadable.
+  PACKAGE_PROBLEM_REASON_NOT_A_PACKAGE = 1;
+  // Written by a newer MeuRPG: the format version is above 1.
+  PACKAGE_PROBLEM_REASON_NEWER_VERSION = 2;
+  // The package passes 200 MiB.
+  PACKAGE_PROBLEM_REASON_PACKAGE_TOO_BIG = 3;
+  // The zip has more than 2,000 entries.
+  PACKAGE_PROBLEM_REASON_TOO_MANY_ENTRIES = 4;
+  // An entry passes 10 MiB (or its size is not what the manifest says).
+  PACKAGE_PROBLEM_REASON_ENTRY_TOO_BIG = 5;
+  // An entry decompresses to far more than it occupies.
+  PACKAGE_PROBLEM_REASON_COMPRESSION_RATIO = 6;
+  // An entry's name is not one of the allowed shapes (a `..`, a slash at the
+  // start, a backslash...).
+  PACKAGE_PROBLEM_REASON_BAD_ENTRY_NAME = 7;
+  // A JSON entry has a field this server does not know.
+  PACKAGE_PROBLEM_REASON_UNKNOWN_FIELD = 8;
+  // An entry's SHA-256 is not the manifest's.
+  PACKAGE_PROBLEM_REASON_HASH_MISMATCH = 9;
+  // The manifest names an entry the zip lacks, or something refers to an
+  // entry the manifest does not list.
+  PACKAGE_PROBLEM_REASON_MISSING_ENTRY = 10;
+  // The zip has an entry the manifest does not list, or lists it twice.
+  PACKAGE_PROBLEM_REASON_UNEXPECTED_ENTRY = 11;
+  // The data breaks a rule of the app (a size, a range, a name...).
+  PACKAGE_PROBLEM_REASON_INVALID = 12;
+  // It names something this server does not know: a rules key, a trap
+  // preset, an action, a creature.
+  PACKAGE_PROBLEM_REASON_UNKNOWN_CONTENT = 13;
+  // It uses a thing that is not in the package (a map that is not there, a
+  // class of the table that the content does not hold).
+  PACKAGE_PROBLEM_REASON_NOT_IN_PACKAGE = 14;
+  // A limit of a campaign: the problem's `limit` says which number.
+  PACKAGE_PROBLEM_REASON_LIMIT = 15;
+  // An image that cannot be read, or is not a JPEG, PNG or WebP.
+  PACKAGE_PROBLEM_REASON_IMAGE_UNREADABLE = 16;
+  // An image with too many pixels.
+  PACKAGE_PROBLEM_REASON_IMAGE_DIMENSIONS = 17;
+  // Two things have the same name or key.
+  PACKAGE_PROBLEM_REASON_DUPLICATE = 18;
+}
+
+// PackageProblem is one reason the package cannot be created.
+message PackageProblem {
+  PackageProblemKind kind = 1;
+  // What it is about, as the package names it (an image's name, a scene's
+  // name...). Empty for the file as a whole. Free text of the master's
+  // package.
+  string name = 2;
+  PackageProblemReason reason = 3;
+  // For LIMIT, ENTRY_TOO_BIG and PACKAGE_TOO_BIG: the number that was passed
+  // (a count, or bytes).
+  int64 limit = 4;
+}
+
+// PackageCounts is what a package holds, by kind.
+message PackageCounts {
+  int32 maps = 1;
+  int32 npcs = 2;
+  int32 scenes = 3;
+  int32 puzzles = 4;
+  // Battle points, with or without a saved encounter.
+  int32 battle_points = 5;
+  int32 treasure_points = 6;
+  int32 images = 7;
+  int64 image_bytes = 8;
+  int32 content_entries = 9;
+  int32 characters = 10;
+}
+
+message PreviewCampaignImportRequest {
+  string import_id = 1;
+}
+
+message PreviewCampaignImportResponse {
+  // The campaign's name in the package; empty when the package was refused
+  // before it was read.
+  string campaign_name = 1;
+  google.protobuf.Timestamp exported_at = 2;
+  // The format version the package says it has; 0 when unreadable.
+  int32 format_version = 3;
+  PackageCounts counts = 4;
+  // Everything that stops "Criar campanha". Empty: the package can be created.
+  repeated PackageProblem problems = 5;
+}
+
+message CreateCampaignFromImportRequest {
+  string import_id = 1;
+  // 1 to 64 characters, scoped to the caller.
+  string idempotency_key = 2;
+}
+
+message CreateCampaignFromImportResponse {
+  meurpg.campaigns.v1.Campaign campaign = 1;
+  PackageCounts counts = 2;
+}
+
+// CampaignPackageBlockedReason is the reason of a `failed_precondition`.
+enum CampaignPackageBlockedReason {
+  CAMPAIGN_PACKAGE_BLOCKED_REASON_UNSPECIFIED = 0;
+  // The server has no blob store.
+  CAMPAIGN_PACKAGE_BLOCKED_REASON_IMAGES_OFF = 1;
+  // The upload lacks parts.
+  CAMPAIGN_PACKAGE_BLOCKED_REASON_INCOMPLETE = 2;
+  // The package has problems; the detail's `preview` lists them.
+  CAMPAIGN_PACKAGE_BLOCKED_REASON_HAS_PROBLEMS = 3;
+}
+
+// CampaignPackageBlocked is the detail of a `failed_precondition` of this
+// service.
+message CampaignPackageBlocked {
+  CampaignPackageBlockedReason reason = 1;
+  // For HAS_PROBLEMS: the same answer PreviewCampaignImport gives.
+  PreviewCampaignImportResponse preview = 2;
+}

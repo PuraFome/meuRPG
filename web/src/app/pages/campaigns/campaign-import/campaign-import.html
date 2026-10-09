@@ -1,0 +1,283 @@
+<a class="back" routerLink="/campaigns">
+  <mat-icon aria-hidden="true">arrow_back</mat-icon>
+  Voltar para minhas campanhas
+</a>
+<h1 class="mr-page-title">Minhas campanhas</h1>
+
+@let s = state();
+@switch (s.status) {
+  @case ('loading') {
+    <section class="mr-panel card" aria-labelledby="import-heading">
+      <h2 class="mr-panel__title" id="import-heading">Importar campanha</h2>
+      <p class="status" role="status">
+        <mat-spinner diameter="24" aria-label="Carregando" />
+        Carregando...
+      </p>
+    </section>
+  }
+  @case ('choose') {
+    <section class="mr-panel card" aria-labelledby="import-heading">
+      <h2 class="mr-panel__title" id="import-heading">Importar campanha</h2>
+      @if (s.notice) {
+        <div class="mr-notice mr-notice--danger block" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ s.notice }}</p>
+        </div>
+      }
+      @if (s.kept) {
+        <div class="mr-notice mr-notice--neutral block kept">
+          <mat-icon aria-hidden="true">history</mat-icon>
+          <div>
+            <p>
+              <strong>Você tem um envio guardado.</strong>
+              {{ s.kept }}
+            </p>
+            <button matButton="outlined" type="button" class="kept__button" (click)="pick()">
+              Continuar o envio
+            </button>
+          </div>
+        </div>
+      }
+      <div
+        class="drop"
+        [class.drop--over]="dragging()"
+        (dragover)="onDragOver($event)"
+        (dragleave)="onDragLeave()"
+        (drop)="onDrop($event)"
+      >
+        <mat-icon aria-hidden="true">add</mat-icon>
+        <p class="drop__lead">Arraste o arquivo .meurpg.zip aqui</p>
+        <p class="drop__or">ou</p>
+        <button mat-flat-button type="button" class="drop__button" data-focus (click)="pick()">
+          Escolher o arquivo
+        </button>
+      </div>
+      <p class="hint">Pacote de até 200 MB, com até 2.000 itens e nenhum acima de 10 MB.</p>
+    </section>
+  }
+  @case ('uploading') {
+    <section class="mr-panel card" aria-labelledby="import-heading">
+      <h2 class="mr-panel__title" id="import-heading" tabindex="-1" data-focus>
+        Importar campanha
+      </h2>
+      <p class="file">
+        <strong>{{ s.fileName }}</strong> · {{ formatBytes(s.size) }}
+      </p>
+      <span
+        class="bar"
+        role="progressbar"
+        aria-label="Progresso do envio"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        [attr.aria-valuenow]="barPercent()"
+      >
+        <span class="bar__fill" [style.width.%]="barPercent()"></span>
+      </span>
+      <p class="progress-text" aria-live="polite">{{ progressText() }}</p>
+      <button
+        matButton="outlined"
+        type="button"
+        class="wide"
+        [disabled]="s.canceling"
+        (click)="cancelUpload()"
+      >
+        Cancelar o envio
+      </button>
+    </section>
+  }
+  @case ('reading') {
+    <section class="mr-panel card" aria-labelledby="import-heading">
+      <h2 class="mr-panel__title" id="import-heading" tabindex="-1" data-focus>
+        Importar campanha
+      </h2>
+      <p class="status" role="status">
+        <mat-spinner diameter="24" aria-label="Conferindo o pacote" />
+        Conferindo o pacote...
+      </p>
+    </section>
+  }
+  @case ('creating') {
+    <section class="mr-panel card" aria-labelledby="import-heading">
+      <h2 class="mr-panel__title" id="import-heading" tabindex="-1" data-focus>
+        Importar campanha
+      </h2>
+      <p class="status" role="status">
+        <mat-spinner diameter="24" aria-label="Criando a campanha" />
+        Criando a campanha...
+      </p>
+    </section>
+  }
+  @case ('preview') {
+    <section class="mr-panel card" aria-labelledby="preview-heading">
+      <h2 class="mr-panel__title" id="preview-heading" tabindex="-1" data-focus>
+        Prévia do pacote
+      </h2>
+      @if (headline()) {
+        <p class="hint headline">{{ headline() }}</p>
+      }
+      <dl class="counts">
+        @for (row of rows(); track row.label) {
+          <div class="counts__row">
+            <dt>{{ row.label }}</dt>
+            <dd>{{ row.value }}</dd>
+          </div>
+        }
+      </dl>
+      <div class="mr-notice mr-notice--success block">
+        <mat-icon aria-hidden="true">check_circle</mat-icon>
+        <p><strong>Tudo pode ser criado.</strong> Nenhum item foi recusado.</p>
+      </div>
+      <div class="actions">
+        <button mat-flat-button type="button" (click)="create()">
+          <mat-icon aria-hidden="true">check</mat-icon>Criar campanha
+        </button>
+        <button matButton="outlined" type="button" (click)="again()">Escolher outro arquivo</button>
+      </div>
+    </section>
+  }
+  @case ('refused') {
+    <section class="mr-panel card" aria-labelledby="preview-heading">
+      <h2 class="mr-panel__title" id="preview-heading" tabindex="-1" data-focus>
+        Prévia do pacote
+      </h2>
+      @if (headline()) {
+        <p class="hint headline">{{ headline() }}</p>
+      }
+      <div class="mr-notice mr-notice--danger block">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>
+          <strong>Este pacote não pode ser criado.</strong>
+          Nada é criado pela metade: corrija o pacote e envie de novo.
+        </p>
+      </div>
+      <ul class="problems" aria-label="O que impede a criação">
+        @for (sentence of problems(); track $index) {
+          <li>
+            <mat-icon aria-hidden="true">close</mat-icon>
+            <span>{{ sentence }}</span>
+          </li>
+        }
+      </ul>
+      @if (moreProblems()) {
+        <p class="hint">{{ moreProblems() }}</p>
+      }
+      <div class="actions">
+        <button matButton="outlined" type="button" (click)="again()">Escolher outro arquivo</button>
+      </div>
+    </section>
+  }
+  @case ('newer') {
+    <section class="mr-panel card" aria-labelledby="import-heading">
+      <h2 class="mr-panel__title" id="import-heading" tabindex="-1" data-focus>
+        Importar campanha
+      </h2>
+      <div class="mr-notice mr-notice--danger block">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>
+          <strong
+            >Este pacote é de uma versão mais nova do MeuRPG, e este servidor ainda não sabe
+            abri-lo.</strong
+          >
+          Peça a quem cuida do servidor para atualizá-lo, ou exporte de novo pelo app antigo.
+        </p>
+      </div>
+      <div class="actions">
+        <button matButton="outlined" type="button" (click)="again()">Escolher outro arquivo</button>
+      </div>
+    </section>
+  }
+  @case ('cap') {
+    <section class="mr-panel card" aria-labelledby="import-heading">
+      <h2 class="mr-panel__title" id="import-heading" tabindex="-1" data-focus>
+        Importar campanha
+      </h2>
+      <div class="mr-notice mr-notice--danger block">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>
+          @if (s.max > 0) {
+            <strong>Você já tem {{ s.max }} campanhas.</strong> Este é o limite por conta.
+          } @else {
+            <strong>Você já tem o máximo de campanhas.</strong> Este é o limite por conta.
+          }
+          Apague uma campanha que você não usa mais e envie o pacote de novo.
+        </p>
+      </div>
+      <div class="actions">
+        <a matButton="outlined" routerLink="/campaigns">Voltar às campanhas</a>
+      </div>
+    </section>
+  }
+  @case ('not-allowed') {
+    <section class="mr-panel card" aria-labelledby="import-heading">
+      <h2 class="mr-panel__title" id="import-heading" tabindex="-1" data-focus>
+        Importar campanha
+      </h2>
+      <div class="mr-notice mr-notice--danger block">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ s.text }}</p>
+      </div>
+      <div class="actions">
+        <a matButton="outlined" routerLink="/campaigns">Voltar às campanhas</a>
+      </div>
+    </section>
+  }
+  @case ('failed') {
+    <section class="mr-panel card" aria-labelledby="import-heading">
+      <h2 class="mr-panel__title" id="import-heading" tabindex="-1" data-focus>
+        Importar campanha
+      </h2>
+      <div class="mr-notice mr-notice--danger block" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>
+          <strong>{{ s.failure.title }}</strong>
+          {{ s.failure.cause }}
+          @if (s.failure.createdNothing) {
+            Nenhuma campanha, imagem ou personagem ficou para trás.
+          }
+        </p>
+      </div>
+      @if (s.failure.unknown) {
+        <p class="hint">
+          “Tentar de novo” é seguro: se a campanha já foi criada, você recebe a mesma, sem repetir.
+        </p>
+      } @else {
+        <p class="hint">“Tentar de novo” usa as partes que já foram enviadas.</p>
+      }
+      <div class="actions">
+        <button mat-flat-button type="button" (click)="retry()">
+          <mat-icon aria-hidden="true">refresh</mat-icon>Tentar de novo
+        </button>
+        <a matButton="outlined" routerLink="/campaigns">Voltar às campanhas</a>
+      </div>
+    </section>
+  }
+  @case ('done') {
+    <section class="mr-panel card" aria-labelledby="done-heading">
+      <h2 class="mr-panel__title" id="done-heading" tabindex="-1" data-focus>Campanha criada</h2>
+      <div class="mr-notice mr-notice--success block">
+        <mat-icon aria-hidden="true">check_circle</mat-icon>
+        <p>
+          <strong>{{ s.name }}</strong
+          >{{ createdTail(s.counts) }}
+        </p>
+      </div>
+      <a mat-flat-button class="open" [routerLink]="['/campaigns', s.campaignId]">
+        <mat-icon aria-hidden="true">arrow_forward</mat-icon>Abrir a campanha
+      </a>
+      @if ((s.counts?.characters ?? 0) > 0) {
+        <p class="hint">Próximo passo: mande a cada jogador o link do personagem dele.</p>
+      }
+    </section>
+  }
+}
+
+<input
+  #fileInput
+  class="file-input"
+  type="file"
+  accept=".zip,application/zip"
+  aria-label="Arquivo do pacote da campanha"
+  tabindex="-1"
+  (change)="onPicked(fileInput)"
+/>
+<p class="mr-visually-hidden" role="status">{{ announcement() }}</p>
