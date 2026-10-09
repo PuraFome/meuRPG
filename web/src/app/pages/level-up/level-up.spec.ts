@@ -765,6 +765,9 @@ describe('LevelUpPage', () => {
 
     it('says how many spells are left to prepare, and drops the line once none is', async () => {
       const f = await throughSpells();
+      await click(f, pickRow(f, 'Prestidigitação').querySelector('input'));
+      await click(f, pickRow(f, 'Passo Nebuloso').querySelector('input'));
+      await click(f, pickRow(f, 'Reflexos').querySelector('input'));
       const lead = () =>
         el(f).querySelector('#pick-prepared .list__lead--strong')?.textContent?.trim();
 
