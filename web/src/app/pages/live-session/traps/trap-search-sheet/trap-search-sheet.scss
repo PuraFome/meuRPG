@@ -217,13 +217,15 @@
   font-weight: 800;
   text-align: center;
 
+  // The border is the focus ring, as in the attack sheet's typed die: no outline outside it.
+  &:focus,
   &:focus-visible {
     border-color: var(--mr-accent);
-    outline: 2px solid var(--mr-focus);
-    outline-offset: 2px;
+    outline: none;
   }
 
-  &[aria-invalid='true'] {
+  &[aria-invalid='true'],
+  &[aria-invalid='true']:focus {
     border-color: var(--mr-danger-ink);
   }
 }

@@ -45,6 +45,7 @@ export async function setTableRulesRPC(master: Page, campaignId: string, rules: 
       deathSaves: 'DEATH_SAVE_VISIBILITY_VISIBLE_TO_ALL',
       hiddenAreaHits: 'HIDDEN_AREA_HIT_RULE_REVEAL',
       houseRules: [],
+      enemyReactions: 'ENEMY_REACTIONS_RULE_ONLY_WHEN_POSSIBLE',
       ...rules,
     },
   });

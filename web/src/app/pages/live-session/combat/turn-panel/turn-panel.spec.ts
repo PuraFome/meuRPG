@@ -91,6 +91,30 @@ describe('TurnPanel', () => {
     ]);
   });
 
+  it('keeps the order strip in the card, unless the page draws it under the actions on the own turn', () => {
+    const fixture = TestBed.createComponent(TurnPanel);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants: order, currentCombatantId: 'pen' }),
+    );
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-order-strip')).not.toBeNull();
+
+    fixture.componentRef.setInput('orderBelow', true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-order-strip')).toBeNull();
+    // The four chips are still there, one row of them.
+    expect(fixture.nativeElement.querySelectorAll('.eco > li')).toHaveLength(4);
+
+    // Off turn there are no actions under the card, so the strip stays in it.
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants: order, currentCombatantId: 'cap' }),
+    );
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-order-strip')).not.toBeNull();
+  });
+
   it('says the turn waits for an opportunity attack, and what stopped a move short', () => {
     const fixture = TestBed.createComponent(TurnPanel);
     fixture.componentRef.setInput(
@@ -159,5 +183,53 @@ describe('TurnPanel as a beast (MR-037, E9-11 state 3)', () => {
     // One armor class on the page, and it is the vitals card's: not in the band.
     expect(flatText(el.querySelector('app-wild-band'))).not.toContain('CA');
     expect(el.querySelector('app-wild-pools')).toBeNull();
+  });
+});
+
+describe('TurnPanel, the wait line (PM-04)', () => {
+  const order = [
+    combatant({ id: 'cap', label: 'Capitão Goblin' }),
+    combatant({ id: 'pen', label: 'Pensantus', kind: CombatantKind.PLAYER, mine: true }),
+    combatant({ id: 'brisa', label: 'Brisa', kind: CombatantKind.PLAYER }),
+  ];
+  const wait = { title: 'Esperando o mestre', detail: 'O turno continua quando ele responder.' };
+
+  function panel(over: Parameters<typeof encounter>[0]) {
+    const fixture = TestBed.createComponent(TurnPanel);
+    fixture.componentRef.setInput('encounter', encounter({ combatants: order, ...over }));
+    fixture.componentRef.setInput('waiting', wait);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('says it, in a status line, in the turn of someone else', () => {
+    const el = panel({ currentCombatantId: 'cap' });
+    const line = el.querySelector('[data-testid="reaction-wait"]');
+    expect(line?.getAttribute('role')).toBe('status');
+    expect(textOf(line!)).toContain('Esperando o mestre. O turno continua quando ele responder.');
+    expect(el.querySelector('h2')?.textContent).toBe('Vez do Capitão Goblin');
+  });
+
+  it('says it in the player\'s own turn, and "Encerrar turno" stays reachable with the reason', () => {
+    const el = panel({ currentCombatantId: 'pen' });
+    const status = Array.from(el.querySelectorAll('[role="status"]')).find((s) =>
+      s.textContent?.includes('Esperando o mestre.'),
+    );
+    expect(status).toBeDefined();
+    const end = Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+      b.textContent?.includes('Encerrar turno'),
+    )!;
+    expect(end.getAttribute('aria-disabled')).toBe('true');
+    expect(end.getAttribute('aria-describedby')).toBeTruthy();
+  });
+
+  it('draws nothing when nothing waits', () => {
+    const fixture = TestBed.createComponent(TurnPanel);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants: order, currentCombatantId: 'cap' }),
+    );
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="reaction-wait"]')).toBeNull();
   });
 });

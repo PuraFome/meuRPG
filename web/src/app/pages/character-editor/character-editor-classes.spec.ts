@@ -655,6 +655,7 @@ describe('an edit of a sheet of several classes', () => {
         portraitImageId: '',
         alignment: '',
         customFeaturesText: '',
+        cuttingWordsAsk: 'only-attacks',
       },
     };
     const fixture = TestBed.createComponent(CharacterEditor);
@@ -838,6 +839,7 @@ function emptyEdit(over: Partial<CharacterForEdit['full'] & object> = {}): Chara
       portraitImageId: '',
       alignment: '',
       customFeaturesText: '',
+      cuttingWordsAsk: 'only-attacks',
       ...over,
     },
   };

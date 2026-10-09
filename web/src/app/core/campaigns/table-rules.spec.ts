@@ -6,6 +6,7 @@ import {
   CriticalRule,
   DeathSaveVisibility,
   DiceMode,
+  EnemyReactionsRule,
   HiddenAreaHitRule,
   HitPointsRule,
   TableStyle,
@@ -58,6 +59,7 @@ const base: RulesDraft = {
   deathSaves: DeathSaveVisibility.VISIBLE_TO_ALL,
   hiddenAreaHits: HiddenAreaHitRule.REVEAL,
   featsAllowed: false,
+  enemyReactions: EnemyReactionsRule.ONLY_WHEN_POSSIBLE,
   houseRules: [],
 };
 
@@ -119,6 +121,17 @@ describe('table rules', () => {
     expect(d.houseRules).toEqual([]);
     // Hidden creatures an area hits appear unless the table chose otherwise.
     expect(d.hiddenAreaHits).toBe(HiddenAreaHitRule.REVEAL);
+    expect(d.enemyReactions).toBe(EnemyReactionsRule.ONLY_WHEN_POSSIBLE);
+  });
+
+  it('reads an unspecified rule as the default and counts a change of it', () => {
+    expect(
+      draftFromRules({ enemyReactions: EnemyReactionsRule.UNSPECIFIED } as never).enemyReactions,
+    ).toBe(EnemyReactionsRule.ONLY_WHEN_POSSIBLE);
+    expect(
+      draftFromRules({ enemyReactions: EnemyReactionsRule.ALWAYS } as never).enemyReactions,
+    ).toBe(EnemyReactionsRule.ALWAYS);
+    expect(changeCount({ ...base, enemyReactions: EnemyReactionsRule.ALWAYS }, base)).toBe(1);
   });
 
   it('keeps the rule on hidden creatures an area hits, and counts its change', () => {

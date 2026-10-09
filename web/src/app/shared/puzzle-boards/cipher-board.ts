@@ -169,7 +169,7 @@ export class CipherBoard {
   readonly verdict = input<'' | 'wrong'>('');
   readonly blocked = input('');
   readonly busy = input(false);
-  /** "Suas tentativas 2 de 3", "Jogadas 7 de 10", "Tempo 4:48 de 5:00": above the button. */
+  /** "Tentativas restantes 2 de 3", "Jogadas 7 de 10", "Tempo 4:48 de 5:00": above the button. */
   readonly counters = input<readonly CounterRow[]>([]);
 
   /** The deciphered message the player typed, trimmed. */

@@ -74,9 +74,10 @@
   }
 }
 
-// The check of a chosen choice has a place of its own, so choosing never moves the others.
+// The check of a chosen choice takes no room while it is hidden, so the words of the others sit in the middle of their
+// segment; each segment is wide enough for the check and its words (`.seg__item`'s `min-width`), so choosing never moves the others.
 .chk--hide {
-  visibility: hidden;
+  display: none;
 }
 
 // The degree of the cover or of the light: a line of its own, as wide as the bar.
@@ -152,6 +153,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
+  min-width: 6.5rem;
   min-height: 42px;
   padding: 0 14px;
   border: 0;
@@ -178,6 +180,7 @@
 }
 
 .seg--small .seg__item {
+  min-width: 5rem;
   padding: 0 var(--mr-space-3);
 }
 

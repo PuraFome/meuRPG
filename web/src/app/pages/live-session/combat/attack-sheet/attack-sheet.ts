@@ -35,6 +35,7 @@ import {
   sumRange,
 } from '../../../../core/combat/combat-dice';
 import { criticalHint, criticalTypedHint, fixedParts } from '../../../../core/combat/critical';
+import { reactionWait } from '../../../../core/combat/reactions';
 import { isTheatre } from '../../../../core/combat/theatre';
 import { metersText } from '../../../../core/units';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
@@ -96,6 +97,9 @@ export interface AttackSheetData {
   /** A hit whose damage was never rolled (the sheet was closed): the sheet
    * opens at "Dano" with it. */
   readonly resume?: { readonly pending: PendingDamage; readonly targetLabel: string };
+  /** The monk's throw back after Defletir Projéteis: the reaction window that caught the missile
+   * (`RollAttack.catch_window_id`). It is part of the same reaction, so it asks nothing more. */
+  readonly catchWindowId?: string;
 }
 
 /**
@@ -203,7 +207,8 @@ export class AttackSheet {
 
   protected readonly outcome = computed(() => {
     const r = this.roll();
-    return r
+    // A roll a reaction holds (Palavras de Interrupção) has no result yet: the wait line says so instead.
+    return r && !r.heldForReaction
       ? {
           word: outcomeWord(r.outcome),
           hit: isHit(r.outcome),
@@ -248,6 +253,17 @@ export class AttackSheet {
       d,
       target ? stateWord(target.state) : '',
     );
+  });
+  /** The d20 is rolled but a reaction holds the result: "Esperando o mestre. O resultado do seu ataque sai quando ele responder." */
+  protected readonly held = computed(() => {
+    const r = this.roll();
+    const e = this.data.state.encounter();
+    return r?.heldForReaction
+      ? ((e ? reactionWait(e) : null) ?? {
+          title: 'Esperando o mestre',
+          detail: 'O resultado do seu ataque sai quando ele responder.',
+        })
+      : null;
   });
   /** The hit is made, but its damage waits for the target's reaction (Escudo). */
   protected readonly waiting = computed(() => awaitsReaction(this.pending()));
@@ -395,12 +411,15 @@ export class AttackSheet {
         this.attackKeys.keyFor({ id, die }),
         this.data.asReaction ?? false,
         this.data.opportunity?.offerId ?? '',
+        this.data.catchWindowId ?? '',
       );
       this.data.state.apply(res.encounter);
       this.roll.set(res.roll);
       this.pending.set(res.pending ?? null);
       this.typing.set(false);
-      this.stage.set(stageAfterRoll(res.roll.outcome, res.pending));
+      this.stage.set(
+        res.roll.heldForReaction ? 'done' : stageAfterRoll(res.roll.outcome, res.pending),
+      );
     } catch (err) {
       this.fail(err);
     } finally {

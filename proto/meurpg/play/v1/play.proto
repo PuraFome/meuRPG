@@ -1187,6 +1187,14 @@ message WatchGameSessionResponse {
     // whether they appear (CombatService.ResolveHiddenReveal). Only the master
     // gets it; no player's stream ever carries it (RN-10).
     HiddenHitPending hidden_hit_pending = 24;
+    // A reaction window opened for the one who answers it, and for the master (PM-04):
+    // a hint with the window's id; the app reads the combat again for the prompt.
+    // No other player gets it (RN-10): they read the change of `reaction_wait`.
+    ReactionWindowOpened reaction_window_opened = 25;
+    // A window was answered or closed by itself, for the reactor and the master:
+    // the id and the sentence the app shows ("Queda Suave fechou. Você já usou a
+    // sua reação."), written for each of the two.
+    ReactionWindowClosed reaction_window_closed = 26;
   }
 
   // HiddenHitPending says a question waits for the master in a combat. It names
@@ -1196,6 +1204,23 @@ message WatchGameSessionResponse {
     string encounter_id = 1;
     // The question (a UUID).
     string pending_reveal_id = 2;
+  }
+
+  // ReactionWindowOpened is the hint that a reaction window waits for its reactor.
+  message ReactionWindowOpened {
+    string encounter_id = 1;
+    string window_id = 2;
+  }
+
+  // ReactionWindowClosed says a window is no longer open.
+  message ReactionWindowClosed {
+    string encounter_id = 1;
+    string window_id = 2;
+    // True when it closed by itself, with `text_pt` as the reason (only the
+    // reactor's own reason, never that another reactor acted); false when it was
+    // answered, and then `text_pt` is empty.
+    bool closed_by_itself = 3;
+    string text_pt = 4;
   }
 
   // ContentChanged is the content-free hint that the table's content changed.

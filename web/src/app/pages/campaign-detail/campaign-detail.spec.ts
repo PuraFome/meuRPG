@@ -174,9 +174,9 @@ describe('CampaignDetail', () => {
     expect(headings[0].textContent).toContain('Mirathel');
     expect(el.textContent).toContain('Você é mestre nesta campanha. XP por inimigos derrotados.');
     expect(el.textContent).toContain('Vinicius');
-    // Never an e-mail, and never a bare "Sem nome": the fallback says the role.
-    expect(el.textContent).toContain('Jogador sem nome');
-    expect(el.textContent).not.toContain('Sem nome');
+    // Never an e-mail, and never a bare "Sem nome": the fallback says where the name is missing.
+    expect(el.textContent).toContain('Sem nome no perfil');
+    expect(el.textContent).not.toContain('Jogador sem nome');
     expect(el.textContent).not.toContain('@');
   });
 
@@ -191,7 +191,7 @@ describe('CampaignDetail', () => {
 
     const el = await render();
     const rows = Array.from(el.querySelectorAll('section[aria-labelledby="members-heading"] li'));
-    expect(rows[0].textContent).toContain('Mestre sem nome');
+    expect(rows[0].textContent).toContain('Sem nome no perfil');
     expect(rows[0].textContent).toContain('(você)');
     expect(rows[0].querySelector('a')?.getAttribute('href')).toBe('/profile');
     // Somebody else's row: no "(você)" and no link to the viewer's profile.
@@ -494,6 +494,31 @@ describe('CampaignDetail', () => {
           (b) => b.textContent?.trim() === 'Dar XP',
         ),
       ).toBe(true);
+    });
+
+    const columnOrder = (el: HTMLElement) =>
+      Array.from(el.querySelector('.campaign-layout__column')!.children).map((c) =>
+        c.tagName.toLowerCase(),
+      );
+
+    it('puts a player\'s characters right after "Sessão", before the XP and the dice', async () => {
+      asRole(Role.PLAYER);
+      const el = await render();
+      await flush();
+      const order = columnOrder(el);
+      expect(order.indexOf('app-campaign-characters')).toBe(
+        order.indexOf('app-game-session-card') + 1,
+      );
+      expect(order.indexOf('app-campaign-characters')).toBeLessThan(
+        order.indexOf('app-experience-panel'),
+      );
+    });
+
+    it("keeps the master's characters at the end of the column", async () => {
+      asRole(Role.MASTER);
+      const el = await render();
+      await flush();
+      expect(columnOrder(el).at(-1)).toBe('app-campaign-characters');
     });
 
     it('tags who can level up in the group list too (RN-12)', async () => {

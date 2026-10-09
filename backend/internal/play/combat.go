@@ -839,7 +839,7 @@ func (s *Service) EndTurn(
 		}
 		// The turn waits for an opportunity attack's answer; the master may end it
 		// anyway, which passes the offers over.
-		if err := s.mustNotWait(ctx, c, current); err != nil {
+		if err := s.mustNotWaitForOffers(ctx, c, current); err != nil {
 			return nil, err
 		}
 		if _, err := c.q.SkipPendingOpportunityOffersOfMover(ctx, playdb.SkipPendingOpportunityOffersOfMoverParams{EncounterID: c.enc.ID, MoverID: current.ID, AnsweredAt: &c.now}); err != nil {
@@ -886,6 +886,15 @@ func (s *Service) EndTurn(
 					return nil, err
 				}
 			}
+		}
+		// A reaction window holds the turn too (PM-04), except the ones the damage the
+		// master just dropped was waiting on: they close with it.
+		droppedIDs := make([]string, len(dropped))
+		for i, p := range dropped {
+			droppedIDs[i] = p.ID
+		}
+		if err := s.reactionGate(ctx, c, droppedIDs...); err != nil {
+			return nil, err
 		}
 		c.characterID = &current.CharacterID
 		if err := c.q.EndCombatantTurnPart(ctx, current.ID); err != nil {
@@ -1240,6 +1249,11 @@ func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Com
 		return fmt.Errorf("end the encounter: %w", err)
 	}
 	c.enc = enc
+	// What a reaction window held is discarded with the combat, without effect: a held
+	// cast or roll never happened, so nothing of it was spent.
+	if err := s.discardReactions(ctx, c); err != nil {
+		return err
+	}
 	// The creatures keep the hit points they had when the fight ended (MR-037).
 	if err := s.writeBackCreatures(ctx, c, cs); err != nil {
 		return err

@@ -45,6 +45,11 @@
   color: var(--mr-ink-muted);
 }
 
+// The fields' error line sits right above the button: room for it, so "Escolha um modo de XP." is whole.
+.create__form > button[type='submit'] {
+  margin-top: var(--mr-space-3);
+}
+
 .create__error {
   margin-bottom: var(--mr-space-3);
 }
