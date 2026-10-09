@@ -79,6 +79,7 @@ type Combatant struct {
 	BonusSpellCast          bool
 	ActionAttackKey         *string
 	BonusAttacksLeft        int32
+	HpMaxBonus              int32
 	MageArmorAc             *int32
 	AttackedHostile         bool
 	TookDamage              bool
@@ -165,6 +166,7 @@ type OpportunityOffer struct {
 	AttackPendingID *string
 	CreatedAt       time.Time
 	AnsweredAt      *time.Time
+	Jumped          bool
 }
 
 type PendingDamage struct {
@@ -195,6 +197,7 @@ type PendingDamage struct {
 	CriticalMax      int32
 	CriticalMaxRule  bool
 	Taken            *int32
+	ExtraDice        int32
 	Parts            []byte
 	PartRolls        []byte
 	Steps            []byte

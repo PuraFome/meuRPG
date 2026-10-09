@@ -767,6 +767,8 @@
     ],
     "AttacksPerAction": 2,
     "CriticalRange": 19,
+    "BrutalCriticalDice": 0,
+    "ReliableTalent": false,
     "TwoWeaponFighting": false,
     "SaveActions": null,
     "Features": [
@@ -1420,6 +1422,8 @@
     ],
     "AttacksPerAction": 2,
     "CriticalRange": 19,
+    "BrutalCriticalDice": 0,
+    "ReliableTalent": false,
     "TwoWeaponFighting": false,
     "SaveActions": null,
     "Features": [

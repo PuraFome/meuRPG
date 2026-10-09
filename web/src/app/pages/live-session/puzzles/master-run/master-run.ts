@@ -23,6 +23,7 @@ import {
   PuzzleStopReason,
 } from '../../../../../gen/meurpg/play/v1/puzzles_pb';
 import { focusWithRing } from '../../../../core/creatures/focus-ring';
+import { treatedSourceName } from '../../../../core/combat/combat-dice';
 import { joinDots } from '../../../../core/format/text';
 import {
   clockOf,
@@ -253,7 +254,14 @@ export class MasterRun {
       .map((t) => {
         const face = t.roll?.faces[0];
         const total = t.roll?.total ?? 0;
-        const how = face !== undefined && face !== total ? `${total} (d20: ${face})` : `${total}`;
+        // A d20 that Talento Confiável raised shows what came up and what it counted as.
+        const raised = t.roll?.treatedAs;
+        const how =
+          raised !== undefined && face !== undefined
+            ? `${total} (d20: ${face} → ${raised}, ${treatedSourceName(t.roll?.treatedAsSource ?? '')})`
+            : face !== undefined && face !== total
+              ? `${total} (d20: ${face})`
+              : `${total}`;
         return `${t.characterName} rolou ${how}${t.roll?.physical ? ' (dado físico)' : ''} para a dica ${t.hint}: ${t.passed ? 'passou' : 'não passou'}.`;
       }),
   );

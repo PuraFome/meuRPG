@@ -196,6 +196,7 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	if err != nil {
 		return nil, err
 	}
+	d20 = reliableD20(d20, options[0].Bonus, options[0].ReliableTalent)
 	roll := d20
 	face := d20.Face()
 	passed := roll.Total >= int(d.hintCheck.GetDc())
@@ -233,11 +234,11 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 // disadvantage, with the one that counts marked.
 func hintRollProto(t playdb.PuzzleHintTry) *playv1.DiceRoll {
 	if t.D20B == 0 {
-		return diceRoll(1, 20, []int32{t.D20}, t.Modifier, t.Total, t.Physical)
+		return treatedRoll(t.D20, t.Modifier, t.Total, t.Physical)
 	}
 	out := diceRoll(2, 20, pairOf(t.D20, t.D20B, t.Counted), t.Modifier, t.Total, t.Physical)
 	out.CountedIndex = t.Counted
-	return out
+	return markTreated(out, t.Modifier, t.Total)
 }
 
 // sameTypedFaces says whether the dice a call types are the dice of the try made before.

@@ -379,6 +379,7 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		// A creature's hit points are numbers to its owner's player and the master
 		// (below); everyone else gets the state word.
 		out.HitPointsCurrent, out.HitPointsMax, out.HitPointsTemporary = c.HpCurrent, c.HpMax, c.HpTemp
+		out.HitPointsMaxBonus = c.HpMaxBonus
 	}
 	if v.master {
 		out.Hidden = c.Hidden
@@ -387,12 +388,14 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 			out.ArmorClass = new(armorClass)
 		}
 		out.HitPointsCurrent, out.HitPointsMax, out.HitPointsTemporary = c.HpCurrent, c.HpMax, c.HpTemp
+		out.HitPointsMaxBonus = c.HpMaxBonus
 		out.XpValue = c.XpValue // an NPC's, the master's alone (RN-20); 0 for a player's character
 		out.PortraitUrl = portrait
 		if vitals != nil {
 			out.HitPointsCurrent = new(vitals.GetHitPointsCurrent())
 			out.HitPointsMax = new(vitals.GetHitPointsMax())
 			out.HitPointsTemporary = new(vitals.GetHitPointsTemporary())
+			out.HitPointsMaxBonus = vitals.GetHitPointsMaxBonus()
 		}
 	}
 	// A player's character at 0 hit points is down ("Caído"): everyone who

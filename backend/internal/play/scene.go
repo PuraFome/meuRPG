@@ -513,13 +513,14 @@ func (s *Service) sceneRolls(ctx context.Context, m authz.Membership, scene link
 func sceneRollToProto(id, characterID, characterName string, at time.Time, ev sceneRollEvent, showPassed bool) *playv1.SceneRoll {
 	out := &playv1.SceneRoll{
 		Id: id, ActionId: ev.ActionID, CharacterId: characterID, CharacterName: characterName,
-		Roll:     diceRoll(1, 20, []int32{ev.D20}, ev.Modifier, ev.Total, ev.Physical),
+		Roll:     treatedRoll(ev.D20, ev.Modifier, ev.Total, ev.Physical),
 		RolledAt: timestamppb.New(at),
 		Mode:     modeToProto[modeOfKey(ev.RollMode)],
 	}
 	if ev.D20B != 0 {
 		out.Roll = diceRoll(2, 20, pairOf(ev.D20, ev.D20B, ev.Counted), ev.Modifier, ev.Total, ev.Physical)
 		out.Roll.CountedIndex = ev.Counted
+		markTreated(out.Roll, ev.Modifier, ev.Total)
 	}
 	if showPassed {
 		out.Passed = ev.Passed
@@ -737,6 +738,7 @@ func (s *Service) RollSceneCheck(
 		if err != nil {
 			return err
 		}
+		d20 = reliableD20(d20, bonus, options[0].ReliableTalent)
 		ev = sceneRollEvent{
 			PointID: scene.PointID, ActionID: action.ID, Key: action.Key,
 			D20: clamp32(d20.Face(), 1, 20), Modifier: clamp32(bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total, math.MinInt32, math.MaxInt32),

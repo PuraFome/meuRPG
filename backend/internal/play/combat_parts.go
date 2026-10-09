@@ -306,11 +306,16 @@ func partsProto(p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT f
 		if sp.Count == 0 {
 			count, fixed = 0, 0
 		}
+		note := sp.Note
+		if sp.Key == partWeapon && count > 0 && p.ExtraDice > 0 {
+			count += int(p.ExtraDice)
+			note = joinNote(note, fmt.Sprintf("inclui %dd%d do %s", p.ExtraDice, sp.Sides, extraDiceName(p.ExtraDice)))
+		}
 		out = append(out, &playv1.DamagePart{
 			Key: sp.Key, LabelPt: sp.Label, DiceCount: clamp32(count, 0, 200), DiceSides: sp.Sides, Flat: sp.Flat + clamp32(fixed, 0, 10000),
 			DamageTypeKey: sp.DamageType, DamageTypePt: damageTypePT(sp.DamageType), SourceKey: sp.Source,
 			Choosable: sp.Choosable, Selected: sp.Selected && !sp.Removed, Available: sp.Available && !sp.Removed, ReasonPt: sp.Reason,
-			Auto: sp.Kind == partAuto, Doubled: p.Critical && sp.Count > 0, NeedsSlot: sp.NeedsSlot, NotePt: sp.Note,
+			Auto: sp.Kind == partAuto, Doubled: p.Critical && sp.Count > 0, NeedsSlot: sp.NeedsSlot, NotePt: note,
 		})
 	}
 	return out
@@ -493,7 +498,6 @@ type rollPartsInput struct {
 // every die; with physical dice the player typed one sum for each group of dice.
 func (s *Service) rollParts(r rollPartsInput) (partsRoll, error) {
 	out := partsRoll{byType: map[string]int{}, physical: !r.in.inApp}
-	critical := r.p.Critical
 	var final []partRecord
 	for _, sp := range r.parts {
 		if sp.Kind == partExtra && sp.Choosable {
@@ -538,10 +542,7 @@ func (s *Service) rollParts(r rollPartsInput) (partsRoll, error) {
 		if !r.counts(sp) {
 			continue
 		}
-		count, fixed := 0, 0
-		if sp.Count > 0 && sp.Sides > 0 {
-			count, fixed = combat.CriticalDice(rules.DiceFormula{Count: int(sp.Count), Sides: int(sp.Sides)}, critical, r.rule)
-		}
+		count, fixed := r.diceOf(sp)
 		pr := partRoll{
 			Key: sp.Key, Label: sp.Label, Count: clamp32(count, 0, 200), Sides: sp.Sides, Flat: sp.Flat, Fixed: clamp32(fixed, 0, 10000),
 			DamageType: sp.DamageType, Conditional: sp.Conditional, Counted: true, Physical: !r.in.inApp,
@@ -572,6 +573,19 @@ func (s *Service) rollParts(r rollPartsInput) (partsRoll, error) {
 		out.total += n
 	}
 	return out, nil
+}
+
+// diceOf is the dice a part rolls and the fixed number that comes without rolling: the
+// critical's rule applied to its dice, and, for the weapon, the extra dice of a feature
+// (Brutal Critical), always rolled after the critical's own.
+func (r rollPartsInput) diceOf(sp partRecord) (count, fixed int) {
+	if sp.Count > 0 && sp.Sides > 0 {
+		count, fixed = combat.CriticalDice(rules.DiceFormula{Count: int(sp.Count), Sides: int(sp.Sides)}, r.p.Critical, r.rule)
+	}
+	if sp.Key == partWeapon && count > 0 {
+		count += int(r.p.ExtraDice)
+	}
+	return count, fixed
 }
 
 // counts says a part is part of the damage: the weapon, a marked extra, an automatic
@@ -1087,4 +1101,12 @@ func (r *partsRoll) scale(from, to int, st *replayState) {
 		}
 	}
 	r.adjust = func(shown int) int { return adjustedDamage(st, shown) }
+}
+
+// joinNote puts two notes of a part in one line.
+func joinNote(a, b string) string {
+	if a == "" {
+		return b
+	}
+	return a + "; " + b
 }

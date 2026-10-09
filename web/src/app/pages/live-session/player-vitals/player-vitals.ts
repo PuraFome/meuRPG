@@ -8,6 +8,7 @@ import {
   input,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
@@ -18,6 +19,20 @@ import { RouterLink } from '@angular/router';
 
 import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { article } from '../../../core/combat/combat-log';
+import { countsSentence } from '../../../core/combat/death-saves';
+import {
+  SHIELD_ENDED_MS,
+  aidBar,
+  aidLabel,
+  aidTag,
+  armorClassWithShield,
+  shieldEndedParts,
+  shieldLabelForOwner,
+  shieldSum,
+  sheetMaximum,
+  vitalsSpeech,
+} from '../../../core/combat/combat-effects';
+import { EffectPill } from '../../../shared/effect-pill/effect-pill';
 import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { hitDiceLeftWords, totalDiceLeft } from '../../../core/resources/hit-dice-text';
 import { openHitDice } from '../hit-dice-sheet/hit-dice-sheet';
@@ -25,6 +40,9 @@ import { WildPools } from '../../../shared/wild-shape/wild-pools';
 import { PlayerSheetVm, VitalsVm } from '../live-session.types';
 import { SlotDots } from '../slot-dots/slot-dots';
 import { freeWords, hitPointsPercent, slotLevelLabel, slotRowLabel } from '../vitals';
+
+/** How long "Acordado · testes contra a morte zerados" stays under the cards. */
+const WOKE_NOTICE_MS = 30000;
 
 interface SlotRowVm {
   readonly key: string;
@@ -43,7 +61,7 @@ interface SlotRowVm {
  */
 @Component({
   selector: 'app-player-vitals',
-  imports: [MatButtonModule, MatIconModule, RouterLink, SlotDots, WildPools],
+  imports: [EffectPill, MatButtonModule, MatIconModule, RouterLink, SlotDots, WildPools],
   templateUrl: './player-vitals.html',
   styleUrl: './player-vitals.scss',
 })
@@ -57,6 +75,12 @@ export class PlayerVitals {
   /** The combat's version (E6-05): the PV box and the shield side by side,
    * then the slots; no temporary HP, hit dice or footer. */
   readonly compact = input(false);
+  /** The Escudo Arcano's bonus on the character's own combatant while a combat runs (0 without the spell); `null`
+   * when there is no combat or no combatant, which is not the shield ending. */
+  readonly armorClassBonus = input<number | null>(null);
+  /** The death saves of the player's own combatant while a combat runs; `null` without one (the pill then says only "Inconsciente"). */
+  readonly ownDeathSaves = input<{ successes: number; failures: number } | null>(null);
+
   /** How the campaign has the players roll their dice and the player's own choice: the hit die sheet follows them (RN-18). */
   readonly diceMode = input<DiceMode>(DiceMode.PLAYERS_CHOOSE);
   readonly dicePreference = input<DicePreference>(DicePreference.APP);
@@ -82,9 +106,55 @@ export class PlayerVitals {
     };
   });
   /** The armor class on the shield: the beast's while it is one, else the sheet's. */
-  protected readonly armorClass = computed(() =>
+  private readonly baseArmorClass = computed(() =>
     this.vitals().wildShape ? this.beastAc() : (this.sheet()?.armorClass ?? null),
   );
+  /** What the shield shows: the armor class already summed with the Escudo Arcano ("18"). */
+  protected readonly armorClass = computed(() => {
+    const base = this.baseArmorClass();
+    return base === null ? null : armorClassWithShield(base, this.shieldBonus());
+  });
+  protected readonly shieldBonus = computed(() => this.armorClassBonus() ?? 0);
+  /** The small sum under the shield: "13 + 5"; empty without the spell. */
+  protected readonly shieldSum = computed(() => {
+    const base = this.baseArmorClass();
+    return base !== null && this.shieldBonus() > 0 ? shieldSum(base, this.shieldBonus()) : '';
+  });
+  protected readonly shieldLabel = shieldLabelForOwner;
+  /** At 0 hit points in the character's own shape: "Inconsciente" and the death save counts. */
+  protected readonly down = computed(() => this.vitals().hitPointsCurrent <= 0);
+  /** "1 sucesso, 1 falha", or empty when no combat tells the counts. */
+  protected readonly deathSaves = computed(() => {
+    const s = this.ownDeathSaves();
+    return s ? countsSentence(s.successes, s.failures) : '';
+  });
+  /** Ajuda raised the hit points of a character at 0: it is awake and the death saves are cleared, for a while. */
+  protected readonly woke = signal(false);
+  private wokeTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /** Ajuda's bonus: 0 without it. */
+  protected readonly aid = computed(() => Math.max(0, this.vitals().hitPointsMaxBonus ?? 0));
+  protected readonly aidTag = aidTag;
+  protected readonly aidLabel = aidLabel;
+  protected readonly sheetMaximum = computed(() =>
+    sheetMaximum(this.vitals().hitPointsMax, this.aid()),
+  );
+  protected readonly speech = computed(() => {
+    const v = this.vitals();
+    return vitalsSpeech(v.hitPointsCurrent, v.hitPointsMax, this.aid());
+  });
+  protected readonly barLabel = computed(() => {
+    const v = this.vitals();
+    return `${v.hitPointsCurrent} de ${v.hitPointsMax} pontos de vida`;
+  });
+  protected readonly bar = computed(() => {
+    const v = this.vitals();
+    return aidBar(v.hitPointsCurrent, v.hitPointsMax, this.aid());
+  });
+  /** The sentence of a shield that just ended, for a few seconds. */
+  protected readonly shieldEnded = signal<{ lead: string; rest: string } | null>(null);
+  private endedTimer: ReturnType<typeof setTimeout> | undefined;
+  private previousBonus: number | null = null;
 
   /** "Classe de Armadura", or "CA do Lobo" while a beast (the shield is narrow). */
   protected readonly acLabel = computed(() => {
@@ -146,10 +216,27 @@ export class PlayerVitals {
   private previous: VitalsVm | null = null;
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      clearTimeout(this.endedTimer);
+      clearTimeout(this.wokeTimer);
+    });
+    // The shield that the combat takes away (the bonus goes from above 0 to 0 on this player's own combatant) is said once,
+    // politely, and goes away by itself; a combat that ended or a combatant that is gone is not "the shield ended".
+    effect(() => {
+      const bonus = this.armorClassBonus();
+      const before = this.previousBonus;
+      this.previousBonus = bonus;
+      if (before !== null && before > 0 && bonus === 0) {
+        this.shieldEnded.set(shieldEndedParts(untracked(() => this.baseArmorClass())));
+        clearTimeout(this.endedTimer);
+        this.endedTimer = setTimeout(() => this.shieldEnded.set(null), SHIELD_ENDED_MS);
+      }
+    });
     effect(() => {
       const v = this.vitals();
       const before = this.previous;
       this.previous = v;
+      this.updateWoke(before, v);
       if (!before || before.characterId !== v.characterId || before.revision === v.revision) {
         return;
       }
@@ -158,5 +245,23 @@ export class PlayerVitals {
           `${v.hitPointsTemporary} temporários.`,
       );
     });
+  }
+
+  /** From 0 to above 0 while Ajuda is on: the "Acordado" pill, for WOKE_NOTICE_MS; back to 0 or no Ajuda clears it. */
+  private updateWoke(before: VitalsVm | null, v: VitalsVm): void {
+    const bonus = v.hitPointsMaxBonus ?? 0;
+    if (
+      before &&
+      before.characterId === v.characterId &&
+      before.hitPointsCurrent <= 0 &&
+      v.hitPointsCurrent > 0 &&
+      bonus > 0
+    ) {
+      this.woke.set(true);
+      clearTimeout(this.wokeTimer);
+      this.wokeTimer = setTimeout(() => this.woke.set(false), WOKE_NOTICE_MS);
+    } else if (v.hitPointsCurrent <= 0 || bonus <= 0) {
+      this.woke.set(false);
+    }
   }
 }

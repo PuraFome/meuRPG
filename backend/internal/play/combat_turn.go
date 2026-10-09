@@ -110,6 +110,11 @@ func startTurn(ctx context.Context, c *combatTx, ids []string, round int32) erro
 	if err := c.q.ClearCombatTurns(ctx, c.enc.ID); err != nil {
 		return fmt.Errorf("clear the turn: %w", err)
 	}
+	if c.svc != nil {
+		if err := c.svc.endShields(ctx, c, ids); err != nil {
+			return err
+		}
+	}
 	for _, id := range ids {
 		if err := c.q.ResetCombatantTurn(ctx, id); err != nil {
 			return fmt.Errorf("reset the turn: %w", err)

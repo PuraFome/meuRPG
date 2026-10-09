@@ -42,6 +42,7 @@ export function combatant(over: Partial<Combatant> & { id: string; label: string
     states: [],
     concentrationSpell: '',
     armorClassBonus: 0,
+    hitPointsMaxBonus: 0,
     deathSaveDue: false,
     turnPartEnded: false,
     side: CombatantSide.ENEMY,

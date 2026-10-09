@@ -54,6 +54,181 @@
   }
 }
 
+// "Também acham com": the chips and the button in one row; the list opens right under the button, on its left edge.
+.tp__also {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.tp__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2);
+}
+
+.tp__add,
+.tp__chip {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  border-radius: var(--mr-radius-pill);
+  font: inherit;
+  font-weight: 700;
+}
+
+.tp__add {
+  gap: 6px;
+  padding: 0 14px 0 10px;
+  border: 1px dashed var(--mr-control-line);
+  background: transparent;
+  color: var(--mr-accent-text);
+  cursor: pointer;
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.tp__chip {
+  gap: 2px;
+  padding-left: 14px;
+  border: 1px solid var(--mr-control-line);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+
+  b {
+    font-weight: 700;
+  }
+}
+
+// The × is a 44px target in a chip that is 36px tall to the eye.
+.tp__chip-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--mr-ink-muted);
+  cursor: pointer;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.tp__none {
+  color: var(--mr-ink-muted);
+}
+
+.tp__list {
+  align-self: flex-start;
+  width: min(300px, 100%);
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  overflow: hidden;
+}
+
+.tp__options {
+  max-height: 340px;
+  margin: 0;
+  padding: var(--mr-space-1);
+  overflow-y: auto;
+  list-style: none;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -2px;
+  }
+}
+
+.tp__option {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 44px;
+  padding: 0 var(--mr-space-3);
+  border-radius: var(--mr-radius-sm);
+  cursor: pointer;
+
+  &--cursor {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -2px;
+  }
+
+  &--on {
+    background: var(--mr-accent-soft);
+  }
+}
+
+.tp__box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 4px;
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+    color: var(--mr-on-accent);
+    visibility: hidden;
+  }
+
+  .tp__option--on & {
+    border-color: var(--mr-accent);
+    background: var(--mr-accent);
+
+    .mat-icon {
+      visibility: visible;
+    }
+  }
+}
+
+.tp__list-note {
+  margin: 0;
+  padding: var(--mr-space-2) var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+// On a phone the list opens as a sheet from the bottom, with the skills in one column of 48px rows.
+@media (max-width: 767.98px) {
+  .tp__list {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 20;
+    width: auto;
+    border-radius: var(--mr-radius-xl) var(--mr-radius-xl) 0 0;
+    box-shadow: 0 -8px 24px color-mix(in srgb, var(--mr-ink) 25%, transparent);
+  }
+
+  .tp__options {
+    max-height: 60vh;
+  }
+
+  .tp__option {
+    min-height: 48px;
+  }
+}
+
 .tp__dc {
   display: flex;
   flex-direction: column;

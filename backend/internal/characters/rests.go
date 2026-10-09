@@ -89,7 +89,11 @@ func planRest(kind string, v *playv1.CharacterVitals, m vitalsMax, choice rules.
 		after.SpellSlots = slots
 	}
 	if long {
-		after.HitPointsCurrent = v.GetHitPointsMax()
+		// Ajuda lasts 8 hours (SRD 5.1, "Aid"): a long rest ends it, and the hit points
+		// that come back fill the sheet's own maximum.
+		after.HitPointsMax -= after.GetHitPointsMaxBonus()
+		after.HitPointsMaxBonus = 0
+		after.HitPointsCurrent = after.GetHitPointsMax()
 	}
 	if rules.TemporaryHitPointsEndOn(kind) {
 		preview.TemporaryHitPointsLost = v.GetHitPointsTemporary()
@@ -200,6 +204,14 @@ func (s *Service) TakeRest(ctx context.Context, tx pgx.Tx, campaignID string, re
 		saved, err := s.writeVitals(ctx, q, r.row, plan.after, k == rules.RestLong)
 		if err != nil {
 			return nil, nil, err
+		}
+		if r.view.GetHitPointsMaxBonus() > 0 && plan.after.GetHitPointsMaxBonus() == 0 {
+			// The rest ended Ajuda: the bonus is cleared on the row, which bumps the revision once more.
+			saved2, err := q.SetVitalsMaxBonus(ctx, charactersdb.SetVitalsMaxBonusParams{CharacterID: r.row.ID, HitPointsMaxBonus: 0, Now: s.now()})
+			if err != nil {
+				return nil, nil, wrap("end Aid", err)
+			}
+			saved.Revision, saved.UpdatedAt = saved2.Revision, saved2.UpdatedAt
 		}
 		plan.after.Revision = saved.Revision
 		plan.after.UpdatedAt = timestamppb.New(saved.UpdatedAt)

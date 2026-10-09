@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ConnectError, Code } from '@connectrpc/connect';
 
+import { CombatEffect, JumpKind } from '../../../gen/meurpg/play/v1/combat_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 import { CombatClient } from './combat-client';
 
@@ -136,6 +137,73 @@ describe('CombatClient area spells', () => {
     await client.resolveHiddenReveal('c', 'e', 'q1', true);
     expect(requests[1]).toMatchObject({ pendingRevealId: 'q1', reveal: true });
     expect(requests[1]['idempotencyKey']).toEqual(expect.any(String));
+  });
+});
+
+describe('CombatClient.endCombatEffect', () => {
+  it('ends Ajuda on a combatant, with a key that a retry keeps and another effect or combatant changes', async () => {
+    TestBed.configureTestingModule({
+      providers: [CombatClient, { provide: CONNECT_TRANSPORT, useValue: {} }],
+    });
+    const client = TestBed.inject(CombatClient);
+    const sent: { combatantId: string; effect: CombatEffect; idempotencyKey: string }[] = [];
+    const answers: (Error | null)[] = [new ConnectError('lost', Code.Unavailable), null, null];
+    (client as unknown as { client: unknown }).client = {
+      endCombatEffect: (req: {
+        combatantId: string;
+        effect: CombatEffect;
+        idempotencyKey: string;
+      }) => {
+        sent.push(req);
+        const failure = answers.shift();
+        return failure ? Promise.reject(failure) : Promise.resolve({ encounter: { id: 'enc' } });
+      },
+    };
+    await expect(client.endCombatEffect('c', 'e', 'sal', CombatEffect.AID)).rejects.toBeInstanceOf(
+      ConnectError,
+    );
+    await client.endCombatEffect('c', 'e', 'sal', CombatEffect.AID);
+    await client.endCombatEffect('c', 'e', 'tor', CombatEffect.AID);
+    expect(sent.map((s) => [s.combatantId, s.effect])).toEqual([
+      ['sal', CombatEffect.AID],
+      ['sal', CombatEffect.AID],
+      ['tor', CombatEffect.AID],
+    ]);
+    expect(sent[1].idempotencyKey).toBe(sent[0].idempotencyKey);
+    expect(sent[2].idempotencyKey).not.toBe(sent[0].idempotencyKey);
+  });
+});
+
+describe('CombatClient.moveOptions', () => {
+  function clientAsking() {
+    TestBed.configureTestingModule({
+      providers: [CombatClient, { provide: CONNECT_TRANSPORT, useValue: {} }],
+    });
+    const client = TestBed.inject(CombatClient);
+    const sent: object[] = [];
+    (client as unknown as { client: unknown }).client = {
+      getMoveOptions: (req: object) => {
+        sent.push(req);
+        return Promise.resolve({});
+      },
+    };
+    return { client, sent };
+  }
+
+  it('asks for the walk with no jump', async () => {
+    const { client, sent } = clientAsking();
+    await client.moveOptions('c', 'e', 't');
+    expect(sent[0]).toMatchObject({ jump: JumpKind.UNSPECIFIED, jumpRunningStart: false });
+  });
+
+  it("asks for the long jump, with the running start, so the warning is the jump's", async () => {
+    const { client, sent } = clientAsking();
+    await client.moveOptions('c', 'e', 't', { runningStart: true });
+    expect(sent[0]).toMatchObject({
+      combatantId: 't',
+      jump: JumpKind.LONG,
+      jumpRunningStart: true,
+    });
   });
 });
 

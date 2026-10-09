@@ -185,3 +185,28 @@
   line-height: 18px;
   color: var(--mr-ink-muted);
 }
+
+// Under Ajuda the box stacks: "43 de 43", the sheet's maximum, then the spell's tag.
+.hp--aid {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'value'
+    'label'
+    'note'
+    'tag';
+  row-gap: 2px;
+  justify-items: start;
+}
+
+.hp__of {
+  font-size: 24px;
+}
+
+.hp__tag {
+  grid-area: tag;
+  margin: 4px 0 0;
+}
+
+.aid-banner {
+  margin-top: var(--mr-space-3);
+}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -139,8 +140,19 @@ func (s *Service) SearchForTraps(
 		skill = searchPerception
 	case playv1.TrapSearchSkill_TRAP_SEARCH_SKILL_INVESTIGATION:
 		skill = searchInvestigation
+	case playv1.TrapSearchSkill_TRAP_SEARCH_SKILL_OTHER:
+		// Any other skill of the SRD: the player's menu is the same for every trap, and the
+		// server counts the skill only for the traps that allow it.
+		key := req.Msg.GetOtherSkillKey()
+		if key == searchCheckKey[searchPerception] || key == searchCheckKey[searchInvestigation] || !strings.HasPrefix(key, "skill:") || s.roster.SceneCheckName(key) == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("other_skill_key must be a skill of the SRD that is neither Perception nor Investigation"))
+		}
+		skill = key
 	default:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("skill must be PERCEPTION or INVESTIGATION"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("skill must be PERCEPTION, INVESTIGATION or OTHER"))
+	}
+	if req.Msg.GetSkill() != playv1.TrapSearchSkill_TRAP_SEARCH_SKILL_OTHER && req.Msg.GetOtherSkillKey() != "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("other_skill_key is only for a search with OTHER"))
 	}
 	var in rollInput
 	switch roll := req.Msg.GetRoll().(type) {
@@ -219,7 +231,7 @@ func (s *Service) SearchForTraps(
 		if force.refuses(in.inApp) {
 			return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_WRONG_DICE_MODE, "this is not how the campaign has you roll your dice")
 		}
-		options, err := s.roster.SceneOptions(ctx, tx, m.CampaignID, who.ID, []string{searchCheckKey[skill]})
+		options, err := s.roster.SceneOptions(ctx, tx, m.CampaignID, who.ID, []string{checkKeyOf(skill)})
 		if err != nil {
 			return err
 		}
@@ -236,6 +248,10 @@ func (s *Service) SearchForTraps(
 		}
 		ability, isCheck := checkKey(searchCheckKey[skill])
 		cm, err := s.checkModeOf(ctx, tx, m.CampaignID, session.ID, who.ID, ability, isCheck)
+		// Reliable Talent: a d20 of 9 or lower counts as 10 for a skill the character is
+		// proficient in, each die of a search with disadvantage before the lower is
+		// chosen. Not for the light's penalty: that is the second die, as before.
+		reliable := options[0].ReliableTalent
 		if err != nil {
 			return err
 		}
@@ -260,12 +276,13 @@ func (s *Service) SearchForTraps(
 			if err != nil {
 				return err
 			}
+			r = reliableD20(r, bonus, reliable)
 			face, face2, counted = r.Faces[0], r.Faces[1], r.Index
 			roll = dice.Result{Total: r.Total, Physical: r.Physical}
 			totals = []int{r.Total}
 			if skill == searchPerception {
 				if cm.Mode == combat.ModeAdvantage {
-					totals = append(totals, face+bonus)
+					totals = append(totals, countedFace(face, reliable)+bonus)
 				} else {
 					totals = append(totals, r.Total)
 				}
@@ -278,7 +295,7 @@ func (s *Service) SearchForTraps(
 				typed2 = in.typedFaces[1]
 			}
 		}
-		face, roll, err = s.d20(in, bonus)
+		face, roll, err = s.checkD20(in, bonus, reliable)
 		if err != nil {
 			return err
 		}
@@ -289,13 +306,13 @@ func (s *Service) SearchForTraps(
 		case skill != searchPerception:
 		case in.inApp:
 			var roll2 dice.Result
-			if face2, roll2, err = s.d20(in, options[0].Bonus); err != nil {
+			if face2, roll2, err = s.checkD20(rollInput{inApp: true}, options[0].Bonus, reliable); err != nil {
 				return err
 			}
 			totals = append(totals, roll2.Total)
 		case typed2 > 0:
 			face2 = typed2
-			totals = append(totals, typed2+options[0].Bonus)
+			totals = append(totals, countedFace(typed2, reliable)+options[0].Bonus)
 		}
 	searched:
 		found, err := s.traps.SearchTraps(ctx, tx, m.CampaignID, place.mapID, maplink.Observer{CharacterID: who.ID, At: place.at}, skill, totals, c.now)
@@ -308,7 +325,7 @@ func (s *Service) SearchForTraps(
 		told = found.Users
 		ev = actionEvent{
 			Round: c.enc.Round, Actor: place.combatantID, Key: skill, D20: clampInt32(face), Modifier: clampInt32(options[0].Bonus), Total: clampInt32(roll.Total),
-			Physical: roll.Physical, Found: found.Found, OnTurn: place.spent, D20B: clampInt32(face2),
+			Physical: roll.Physical, Found: found.Found, OnTurn: place.spent, D20B: clampInt32(face2), ReliableTalent: reliable,
 		}
 		if cm.Mode != combat.ModeNormal {
 			ev.RollMode, ev.Counted = modeKey(cm.Mode), clampInt32(counted)
@@ -342,7 +359,7 @@ func (s *Service) SearchForTraps(
 		s.Publish(m.CampaignID, false, mapChangedHint(place.mapID)) // the master's activity read has a new line: a hint with no content
 	}
 	out := &playv1.SearchForTrapsResponse{
-		Roll:          diceRoll(1, 20, []int32{ev.D20}, ev.Modifier, ev.Total, ev.Physical),
+		Roll:          checkRoll(ev.D20, ev.Modifier, ev.Physical, ev.ReliableTalent),
 		FoundPointIds: ev.Found,
 		SpentAction:   ev.OnTurn,
 		Mode:          modeToProto[modeOfKey(ev.RollMode)],
@@ -351,8 +368,9 @@ func (s *Service) SearchForTraps(
 	if ev.RollMode != "" {
 		out.Roll = diceRoll(2, 20, []int32{ev.D20, ev.D20B}, ev.Modifier, ev.Total, ev.Physical)
 		out.Roll.CountedIndex = ev.Counted
+		markTreated(out.Roll, ev.Modifier, ev.Total)
 	} else if ev.D20B != 0 {
-		out.SecondRoll = diceRoll(1, 20, []int32{ev.D20B}, ev.Modifier, ev.D20B+ev.Modifier, ev.Physical)
+		out.SecondRoll = checkRoll(ev.D20B, ev.Modifier, ev.Physical, ev.ReliableTalent)
 	}
 	return connect.NewResponse(out), nil
 }

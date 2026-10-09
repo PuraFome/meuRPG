@@ -1,8 +1,10 @@
 import { create } from '@bufbuild/protobuf';
 
 import {
+  CombatEffect,
   CombatLogEntrySchema,
   CombatLogKind,
+  SpellEffectGain,
   SpellEffectKind,
   SpellEffectOutcome,
   SpellEffectReason,
@@ -196,5 +198,80 @@ describe('the other spells that read hit points in the log (E8-03)', () => {
     expect(logLine(heal(undefined), '', player)!.text).toBe(
       ' conjura Cura Completa: Toren é curado.',
     );
+  });
+});
+
+describe('Ajuda and the Escudo Arcano in the log (PM-03a)', () => {
+  const aid = (healed: number | undefined, gain: SpellEffectGain) =>
+    create(CombatLogEntrySchema, {
+      id: 'ajuda',
+      kind: CombatLogKind.SPELL_CAST,
+      actorLabel: 'Pensantus',
+      keyNamePt: 'Ajuda',
+      spell: {
+        effectKind: SpellEffectKind.MAX_HP,
+        targets: [
+          { targetId: 't', targetLabel: 'Toren', effect: { outcome: AFFECTED, healed, gain } },
+        ],
+      },
+    });
+
+  it('says a target at 0 woke up with the hit points, and never writes temporary hit points', () => {
+    expect(logLine(aid(5, SpellEffectGain.CURRENT), '', master)!.text).toBe(
+      ' conjura Ajuda em Toren: acorda com 5 PV',
+    );
+    expect(logLine(aid(5, SpellEffectGain.CURRENT), '', player)!.text).toBe(
+      ' conjura Ajuda: Toren acordou com 5 PV (Ajuda).',
+    );
+    // A player who is not the target gets no amount.
+    expect(logLine(aid(undefined, SpellEffectGain.CURRENT), '', player)!.text).toBe(
+      ' conjura Ajuda: Toren acordou (Ajuda).',
+    );
+    expect(logLine(aid(5, SpellEffectGain.MAXIMUM), '', master)!.text).toBe(
+      ' conjura Ajuda em Toren: ganha 5 PV máximos',
+    );
+  });
+
+  const ended = (effect: CombatEffect, label: string, numbers = {}) =>
+    create(CombatLogEntrySchema, {
+      id: 'fim',
+      kind: CombatLogKind.EFFECT_ENDED,
+      actorLabel: label,
+      effectEnd: { effect, ...numbers },
+    });
+
+  it('writes the end of the Escudo Arcano for everyone, with the name of its caster', () => {
+    expect(logLine(ended(CombatEffect.SHIELD, 'Pensantus'), '', player)!.text).toBe(
+      'O Escudo Arcano de Pensantus acabou',
+    );
+    expect(logLine(ended(CombatEffect.SHIELD, 'Mago 1'), '', master)!.text).toBe(
+      'O Escudo Arcano do Mago 1 acabou',
+    );
+  });
+
+  it('writes the end of Ajuda, with the hit points only for the master, who has the numbers', () => {
+    const players = new Set(['Sálvia']);
+    const master = { master: true, players };
+    const player = { master: false, players };
+    const numbers = {
+      hitPointsBefore: 43,
+      hitPointsAfter: 38,
+      hitPointsMaxBefore: 43,
+      hitPointsMaxAfter: 38,
+    };
+    expect(logLine(ended(CombatEffect.AID, 'Sálvia', numbers), '', master)!.text).toBe(
+      'A Ajuda de Sálvia acabou: PV 43 → 38',
+    );
+    // The server sends zeros to everyone else: no numbers on the line.
+    expect(logLine(ended(CombatEffect.AID, 'Sálvia'), '', player)!.text).toBe(
+      'A Ajuda de Sálvia acabou',
+    );
+    expect(
+      logLine(
+        ended(CombatEffect.AID, 'Sálvia', { ...numbers, hitPointsBefore: 31, hitPointsAfter: 31 }),
+        '',
+        master,
+      )!.text,
+    ).toBe('A Ajuda de Sálvia acabou: PV 31, máximo 43 → 38');
   });
 });

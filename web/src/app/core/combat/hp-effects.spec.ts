@@ -9,6 +9,7 @@ import {
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { SpellHitPointEffectKind } from '../../../gen/meurpg/rules/v1/rules_pb';
 import {
+  aidChange,
   effectWords,
   gainLine,
   gainWords,
@@ -189,13 +190,38 @@ describe('what Ajuda gave each target, in words', () => {
     expect(gainLine(aid, 5, SpellEffectGain.MAXIMUM)).toBe('PV máximo +5');
   });
 
-  it('says temporary hit points for a character above 0', () => {
+  it('still writes a temporary gain, which the server no longer sends', () => {
     expect(gainWords(aid, 5, SpellEffectGain.TEMPORARY)).toBe('ganha 5 PV temporários');
     expect(gainLine(aid, 5, SpellEffectGain.TEMPORARY)).toBe('5 PV temporários');
   });
 
-  it('says the character at 0 comes back with the amount', () => {
-    expect(gainWords(aid, 5, SpellEffectGain.CURRENT)).toBe('volta com 5 PV');
-    expect(gainLine(aid, 5, SpellEffectGain.CURRENT)).toBe('Volta com 5 PV');
+  it('says the character at 0 wakes up with the amount', () => {
+    expect(gainWords(aid, 5, SpellEffectGain.CURRENT)).toBe('acorda com 5 PV');
+    expect(gainLine(aid, 5, SpellEffectGain.CURRENT)).toBe('Acorda com 5 PV');
+  });
+});
+
+describe('what Ajuda did to the hit points, in words (PM-03a)', () => {
+  it('says "PV 0 → 5 de 45" for a target that woke up, from the numbers the server sent', () => {
+    expect(aidChange(undefined, 5, 5, 45)).toBe('PV 0 → 5 de 45');
+    expect(aidChange(31, 5, 36, 43)).toBe('PV 31 → 36 de 43');
+  });
+
+  it("says nothing when the server sent no numbers (not the master, not the target's own player)", () => {
+    expect(aidChange(undefined, undefined, undefined, undefined)).toBeNull();
+    expect(aidChange(undefined, undefined, 5, 45)).toBeNull();
+  });
+
+  it('says a target that woke up "acorda com 5 PV"', () => {
+    expect(gainWords(SpellEffectKind.MAX_HP, 5, SpellEffectGain.CURRENT)).toBe('acorda com 5 PV');
+    expect(
+      effectWords(
+        SpellEffectKind.MAX_HP,
+        '',
+        SpellEffectOutcome.AFFECTED,
+        'Toren',
+        SpellEffectGain.CURRENT,
+      ).past,
+    ).toBe('Acordou');
   });
 });

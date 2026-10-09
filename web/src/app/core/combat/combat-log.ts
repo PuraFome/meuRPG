@@ -2,6 +2,7 @@ import {
   AttackOutcome,
   type CombatLogDamage,
   type DiceRoll,
+  CombatEffect,
   type CombatLogEntry,
   CombatLogKind,
   type CombatLogRound,
@@ -14,12 +15,13 @@ import {
   PendingDamageStatus,
   type SaveResult,
   SaveOutcome,
+  SpellEffectGain,
   SpellEffectKind,
   SpellEffectOutcome,
   WildShapeEndReason,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { CombatantStateKind, DamageStepKind } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
-import { rollText } from './combat-dice';
+import { extraDiceOf, physicalSplitFormula, rollText, splitFormula } from './combat-dice';
 import { modeWord } from './roll-mode';
 import { conditionName, listNames } from './conditions';
 import { metersFixed, metersText } from '../units';
@@ -140,6 +142,22 @@ function isShot(key: string): boolean {
   return /bow|sling|dart|blowgun|net|^spell:/.test(key);
 }
 
+/** The applied damage in words: ", 25 de dano", or with the extra dice of a critical (Crítico Brutal) the groups of dice,
+ * for whoever has the roll: the faces when the app rolled them, the counts and "dados físicos" when only the sum was typed. */
+function appliedWords(d: CombatLogDamage): string {
+  const extra = extraDiceOf(d);
+  const kind = d.damageTypePt || 'dano';
+  const cut = (formula: string) => formula.replace(/ = \d+$/, '');
+  const split = extra && d.roll ? splitFormula(d.roll, extra, d.criticalMax) : null;
+  if (split) {
+    return `, dano ${cut(split)} = ${d.amount} de ${kind}`;
+  }
+  const typed = extra && d.roll ? physicalSplitFormula(d.roll, extra, d.criticalMax) : null;
+  return typed
+    ? `, dano ${cut(typed)} = ${d.amount} de ${kind}, dados físicos`
+    : `, ${d.amount} de dano`;
+}
+
 /** The damage of an attack or of one target of a cast, as the sentence
  * tells it: ", 5 de dano", the dice the master overruled, a heal, a half. */
 function damageText(d: CombatLogDamage): string {
@@ -164,7 +182,8 @@ function damageText(d: CombatLogDamage): string {
         d.deathFailuresAdded > 0
           ? `, ${d.deathFailuresAdded === 1 ? 'uma falha' : 'duas falhas'} no teste contra a morte`
           : '';
-      return `, ${d.amount} de dano${half}${other}${failures}`;
+      const words = appliedWords(d);
+      return `${words}${half}${other}${failures}`;
     }
   }
 }
@@ -378,10 +397,29 @@ function clauses(e: CombatLogEntry, ctx: LogContext): string {
         t.effect?.gain,
       );
       const verb = w.affected ? w.present : notAffectedPast(label);
-      const text = `${subject(label, ctx)} ${verb}.`;
+      const text =
+        woke(spell.effectKind, t.effect, `${subject(label, ctx)}`) ??
+        `${subject(label, ctx)} ${verb}.`;
       return i === 0 ? text : upFirst(text);
     })
     .join(' ');
+}
+
+/** Ajuda on a target that was at 0: "Toren acordou com 5 PV (Ajuda).", the amount only where the server sent it
+ * (the master and the target's own player). `null` for any other target. */
+function woke(
+  kind: SpellEffectKind,
+  fx: { outcome: SpellEffectOutcome; gain: SpellEffectGain; healed?: number } | undefined,
+  who: string,
+): string | null {
+  if (
+    kind !== SpellEffectKind.MAX_HP ||
+    fx?.outcome !== SpellEffectOutcome.AFFECTED ||
+    fx.gain !== SpellEffectGain.CURRENT
+  ) {
+    return null;
+  }
+  return `${who} acordou${fx.healed === undefined ? '' : ` com ${fx.healed} PV`} (Ajuda).`;
 }
 
 function notAffectedPast(label: string): string {
@@ -589,7 +627,7 @@ function movedText(e: CombatLogEntry): string {
   }
   const length = e.distanceDft > 0 ? metersFixed(e.distanceDft / 10) : metersText(e.distanceFt);
   if (e.jump === JumpKind.LONG) {
-    return ` saltou ${length}${e.landingDifficult ? ' e caiu em terreno difícil. Acrobacia CD 10 ou cai Derrubado' : ''}`;
+    return ` saltou ${length}${e.jumpRunningStart ? ', com corrida' : ''}${e.landingDifficult ? ' e caiu em terreno difícil. Acrobacia CD 10 ou cai Derrubado' : ''}`;
   }
   return ` anda ${length}`;
 }
@@ -781,6 +819,13 @@ export function logLine(
     case CombatLogKind.DOOR_OPENED:
       // A move opened a closed door (RN-26): "Toren abriu a porta." The server sends the line only to who saw or remembers the door.
       return { ...base, icon: 'door_open', text: ' abriu a porta' };
+    case CombatLogKind.EFFECT_ENDED:
+      return {
+        ...base,
+        icon: e.effectEnd?.effect === CombatEffect.SHIELD ? 'shield' : 'favorite_border',
+        actor: '',
+        text: effectEndedText(e, ctx),
+      };
     case CombatLogKind.RESOURCE: {
       const r = resourceText(e);
       return { ...base, icon: r.icon, text: r.text };
@@ -816,6 +861,29 @@ export function logLine(
     default:
       return null;
   }
+}
+
+/** "O Escudo Arcano de Pensantus acabou", "A Ajuda de Sálvia acabou" and, for the master, who has the numbers
+ * (the server sends them to nobody else: zero), ": PV 43 → 38". */
+function effectEndedText(e: CombatLogEntry, ctx: LogContext): string {
+  const end = e.effectEnd;
+  const label = e.actorLabel || e.targetLabel || 'alguém';
+  const of = ctx.players.has(label)
+    ? `de ${label}`
+    : `${article(label) === 'a' ? 'da' : 'do'} ${label}`;
+  if (end?.effect === CombatEffect.SHIELD) {
+    return `O Escudo Arcano ${of} acabou`;
+  }
+  if (end?.effect !== CombatEffect.AID) {
+    return `Um efeito ${of} acabou`;
+  }
+  const base = `A Ajuda ${of} acabou`;
+  if (!ctx.master || end.hitPointsMaxBefore <= 0) {
+    return base;
+  }
+  return end.hitPointsBefore === end.hitPointsAfter
+    ? `${base}: PV ${end.hitPointsAfter}, máximo ${end.hitPointsMaxBefore} → ${end.hitPointsMaxAfter}`
+    : `${base}: PV ${end.hitPointsBefore} → ${end.hitPointsAfter}`;
 }
 
 /** "Bandido 1: 9 PV (2d8 + 2: 3, 4)", or "Bandido 1: 11 PV (média)": what the master reads of the monsters that came in. */

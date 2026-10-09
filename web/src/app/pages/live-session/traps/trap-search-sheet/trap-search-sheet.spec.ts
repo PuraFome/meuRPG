@@ -36,8 +36,8 @@ describe('TrapSearchSheet', () => {
     const sent: unknown[] = [];
     const keys: string[] = [];
     const api = {
-      search: async (_c: string, skill: string, die: unknown, key: string) => {
-        sent.push([skill, die]);
+      search: async (_c: string, skill: string, die: unknown, key: string, other = '') => {
+        sent.push(other ? [skill, die, other] : [skill, die]);
         keys.push(key);
         const next = responses.shift();
         if (next instanceof Error) {
@@ -53,7 +53,16 @@ describe('TrapSearchSheet', () => {
     });
     const data: TrapSearchData = {
       campaignId: 'c',
-      skills: { perception: 4, investigation: 4 },
+      skills: {
+        perception: 4,
+        investigation: 4,
+        others: [
+          { key: 'skill:acrobatics', name: 'Acrobacia', bonus: 1 },
+          { key: 'skill:arcana', name: 'Arcanismo', bonus: 8 },
+          { key: 'skill:athletics', name: 'Atletismo', bonus: -1 },
+        ],
+        reliableTalent: ['skill:acrobatics', 'skill:investigation'],
+      },
       diceMode: DiceMode.PLAYERS_CHOOSE,
       preference: DicePreference.APP,
       state: {
@@ -83,13 +92,156 @@ describe('TrapSearchSheet', () => {
     const text = el.textContent!.replace(/\s+/g, ' ');
     expect(text).toContain('Percepção +4');
     expect(text).toContain('Investigação +4');
-    expect(text).toContain('Algumas armadilhas só se acham com Investigação.');
+    expect(text).toContain('Algumas armadilhas só se acham com uma perícia específica.');
+    expect(text).toContain('Outra perícia…');
+    expect(text).toContain('Qualquer outra perícia da sua ficha');
     expect(Array.from(el.querySelectorAll('.steps__name'), (e) => e.textContent)).toEqual([
       'Como',
       'Rolar',
       'Resultado',
     ]);
     expect(el.querySelector('[role=dialog], .frame')).toBeTruthy();
+  });
+
+  describe('"Outra perícia…"', () => {
+    const choose = (fixture: { detectChanges(): void }, el: HTMLElement) => {
+      const radios = el.querySelectorAll<HTMLInputElement>('input[type=radio]');
+      radios[2].click();
+      radios[2].dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+    };
+    const rows = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll('[role=option]'), (r) =>
+        r.textContent?.replace(/\s+/g, ' ').trim(),
+      );
+
+    it('opens the "Perícia" list with every other skill and the sheet bonus, and rolls nothing until one is picked', () => {
+      const { fixture, el } = setup([]);
+      expect(el.querySelector('[role=listbox]')).toBeNull();
+      choose(fixture, el);
+      expect(el.querySelector('#trap-other-cap')?.textContent).toBe('Perícia');
+      expect(rows(el)).toEqual(['Acrobacia+1', 'Arcanismo+8', 'Atletismo−1']);
+      expect(el.querySelector('.other__value')?.textContent?.trim()).toBe('Escolha uma perícia');
+      const roll = Array.from(el.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Rolar no app'),
+      )!;
+      expect(roll.disabled).toBe(true);
+      expect(el.textContent).toContain(
+        'Algumas armadilhas só se acham com uma perícia específica.',
+      );
+    });
+
+    it("sends OTHER with the skill's key, and writes its name and bonus in the result", async () => {
+      const { fixture, el, sent, roller } = setup([
+        create(SearchForTrapsResponseSchema, { roll: roll(12, 20), foundPointIds: ['x'] }),
+      ]);
+      choose(fixture, el);
+      (el.querySelectorAll('[role=option]')[1] as HTMLElement).click();
+      fixture.detectChanges();
+      expect(el.querySelector('.other__value')?.textContent?.trim()).toBe('Arcanismo +8');
+      await roller.rollWith({ inApp: true });
+      fixture.detectChanges();
+      expect(sent[0]).toEqual(['other', { inApp: true }, 'skill:arcana']);
+      expect(el.textContent).toContain('1d20 (12) + 8 (Arcanismo) = 20');
+      expect(el.textContent).toContain('Achou');
+      expect(el.textContent).toContain('Você achou uma armadilha: Fosso escondido.');
+    });
+
+    it('picks with the arrows and Enter, the focus on the list', () => {
+      const { fixture, el } = setup([]);
+      choose(fixture, el);
+      const list = el.querySelector<HTMLElement>('[role=listbox]')!;
+      const key = (k: string) => {
+        list.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
+        fixture.detectChanges();
+      };
+      key('ArrowDown');
+      key('Enter');
+      expect(el.querySelector('.other__value')?.textContent?.trim()).toBe('Arcanismo +8');
+      expect(list.getAttribute('aria-activedescendant')).toBe('trap-other-1');
+    });
+
+    it('titles the physical die for the skill picked: "Role 1d20 para Arcanismo (+8)"', () => {
+      const { fixture, el } = setup([]);
+      choose(fixture, el);
+      (el.querySelectorAll('[role=option]')[1] as HTMLElement).click();
+      fixture.detectChanges();
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => b.textContent?.includes('Digitar o resultado'))!
+        .click();
+      fixture.detectChanges();
+      expect(el.querySelector('.type__label')?.textContent).toBe('Role 1d20 para Arcanismo (+8)');
+    });
+
+    it('says "Nada" and the same words for a skill no trap accepts as for a roll that fell short', async () => {
+      const { fixture, el, roller } = setup([
+        create(SearchForTrapsResponseSchema, { roll: roll(18, 19), foundPointIds: [] }),
+      ]);
+      choose(fixture, el);
+      (el.querySelectorAll('[role=option]')[0] as HTMLElement).click();
+      fixture.detectChanges();
+      await roller.rollWith({ inApp: true });
+      fixture.detectChanges();
+      expect(el.textContent).toContain('1d20 (18) + 1 (Acrobacia) = 19');
+      expect(el.textContent).toContain('Você não encontrou nada.');
+      expect(el.querySelector('.res__tag')?.textContent).toContain('Nada');
+      expect(el.textContent).not.toContain('Falhou');
+    });
+  });
+
+  describe('Talento Confiável (PM-03b)', () => {
+    it('shows the typed d20 raised in the preview when the sheet has the feature and the skill is proficient', () => {
+      const { fixture, el, roller } = setup([]);
+      roller.pick('investigation');
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => b.textContent?.includes('Digitar o resultado'))!
+        .click();
+      fixture.detectChanges();
+      const field = el.querySelector<HTMLInputElement>('#trap-face')!;
+      field.value = '6';
+      field.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      expect(el.querySelector('.type__sum')?.textContent).toContain(
+        '6 → 10 (Talento Confiável) + 4 = 14',
+      );
+      field.value = '14';
+      field.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      expect(el.querySelector('.type__sum')?.textContent).not.toContain('Talento');
+    });
+
+    it('shows no raise for a skill the character is not proficient in (Percepção here)', () => {
+      const { fixture, el } = setup([]);
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => b.textContent?.includes('Digitar o resultado'))!
+        .click();
+      fixture.detectChanges();
+      const field = el.querySelector<HTMLInputElement>('#trap-face')!;
+      field.value = '6';
+      field.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      expect(el.querySelector('.type__sum')?.textContent).toContain('6 + 4 = 10');
+      expect(el.querySelector('.type__sum')?.textContent).not.toContain('Talento');
+    });
+
+    it("writes the server's raised roll in the result, with the skill the bonus is for", async () => {
+      const { fixture, el, roller } = setup([
+        create(SearchForTrapsResponseSchema, {
+          roll: {
+            ...roll(6, 19),
+            treatedAs: 10,
+            treatedAsSource: 'feature:reliable-talent',
+          },
+          foundPointIds: [],
+        }),
+      ]);
+      roller.pick('investigation');
+      await roller.rollWith({ inApp: true });
+      fixture.detectChanges();
+      expect(el.querySelector('.res__formula')?.textContent).toBe(
+        'd20: 6 → 10 (Talento Confiável) + 13 (Investigação) = 19',
+      );
+    });
   });
 
   it('answers the same words for a miss as for no trap', async () => {

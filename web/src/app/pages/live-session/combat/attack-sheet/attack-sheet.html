@@ -171,9 +171,19 @@
 
       @if (stage() === 'damage' && dice(); as d) {
         <div class="dmg">
-          <p class="dmg__what">
-            {{ showCritical() ? damageIntro() : (pending()?.critical ? 'Acerto crítico: o dano segue a regra da mesa.' : 'Acertou: role o dano.') }}
-          </p>
+          @if (brutalCard(); as card) {
+            @if (!typing() && canApp) {
+              <div class="crit">
+                <span class="crit__cap">Dano do crítico</span>
+                <b class="crit__sum">{{ card.sum }}</b>
+                <span class="crit__text">{{ card.sentence }}</span>
+              </div>
+            }
+          } @else {
+            <p class="dmg__what">
+              {{ showCritical() ? damageIntro() : (pending()?.critical ? 'Acerto crítico: o dano segue a regra da mesa.' : 'Acertou: role o dano.') }}
+            </p>
+          }
           @if (parts().length) {
             <app-damage-parts [parts]="parts()" [(picks)]="picks" [disabled]="busy()" />
             <app-multi-roll
@@ -197,13 +207,15 @@
               [preferApp]="preferApp"
               [label]="damageLabel()"
               [hint]="damageHint()"
-              totalNote="Dano total"
+              [totalNote]="totalNote()"
+              [typedFormula]="typedFormula()"
               [min]="range().min"
               [max]="range().max"
               [modifier]="damageModifier()"
+              [confirmTotal]="true"
               [fixedText]="fixedText()"
               [busy]="busy()"
-              [appLabel]="'Rolar ' + d.name + ' no app'"
+              [appLabel]="damageAppLabel()"
               [sticky]="true"
               [(typing)]="typing"
               (app)="rollDamage({ inApp: true })"

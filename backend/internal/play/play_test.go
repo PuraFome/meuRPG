@@ -498,6 +498,10 @@ func (noVitals) FamiliarOf(context.Context, pgx.Tx, string, string) (link.Creatu
 	return link.Creature{}, false, errors.New("not in this test")
 }
 
+func (noVitals) SetHitPointsMaxBonus(context.Context, pgx.Tx, string, string, int32) (before, after *playv1.CharacterVitals, err error) {
+	return nil, nil, errors.New("not in this test")
+}
+
 func (noVitals) SetFamiliarSight(context.Context, pgx.Tx, string, string, string, bool, []string) (*playv1.CharacterVitals, error) {
 	return nil, errors.New("not in this test")
 }
@@ -823,6 +827,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["ConfirmDeath"] = cc.ConfirmDeath(ctx, connect.NewRequest(&playv1.ConfirmDeathRequest{CampaignId: id}))
 	_, combat["SetCombatantConditions"] = cc.SetCombatantConditions(ctx, connect.NewRequest(&playv1.SetCombatantConditionsRequest{CampaignId: id}))
 	_, combat["EndConcentration"] = cc.EndConcentration(ctx, connect.NewRequest(&playv1.EndConcentrationRequest{CampaignId: id}))
+	_, combat["EndCombatEffect"] = cc.EndCombatEffect(ctx, connect.NewRequest(&playv1.EndCombatEffectRequest{CampaignId: id}))
 	_, combat["ListCombatLog"] = cc.ListCombatLog(ctx, connect.NewRequest(&playv1.ListCombatLogRequest{CampaignId: id}))
 	_, combat["GetCombatHighlights"] = cc.GetCombatHighlights(ctx, connect.NewRequest(&playv1.GetCombatHighlightsRequest{CampaignId: id}))
 	_, combat["RequestRollMode"] = cc.RequestRollMode(ctx, connect.NewRequest(&playv1.RequestRollModeRequest{CampaignId: id}))

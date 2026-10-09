@@ -53,6 +53,9 @@ const (
 	eventDeathSaveRolled  = "death_save_rolled"
 	eventDeathConfirmed   = "death_confirmed"
 	eventConditionsSet    = "conditions_set"
+	// A lasting effect ended: Escudo at the start of the caster's turn, Ajuda when the
+	// master ends it (combat_effects.go).
+	eventCombatEffectEnded = "combat_effect_ended"
 )
 
 // The kinds of Etapa 7: the XP awards (package progression writes them

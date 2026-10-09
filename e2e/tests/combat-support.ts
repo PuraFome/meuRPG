@@ -281,7 +281,43 @@ export const brisa: CharacterBuild = {
   extraSkills: ['Intuição', 'Medicina'],
   scores: { for: 12, des: 12, con: 14, int: 10, sab: 16, car: 12 },
 };
+/** Ragna, a human Barbarian 9 with a greataxe: Crítico Brutal (one extra weapon die on a melee critical hit). */
+export const ragna: CharacterBuild = {
+  name: 'Ragna',
+  raceKey: 'race:human',
+  race: 'Humano',
+  classKey: 'class:barbarian',
+  class: 'Bárbaro',
+  level: 9,
+  background: 'Soldada',
+  backgroundSkillKeys: ['skill:athletics', 'skill:intimidation'],
+  backgroundSkills: ['Atletismo', 'Intimidação'],
+  extraSkillKeys: ['skill:perception', 'skill:survival'],
+  extraSkills: ['Percepção', 'Sobrevivência'],
+  scores: { for: 16, des: 13, con: 14, int: 10, sab: 10, car: 8 },
+};
+export const ragnaSheet = { weaponKeys: ['equipment:greataxe'] };
+
+/** Dalila, a human Rogue 11 with expertise in four skills: Talento Confiável counts a d20 of 9 or lower as 10 on them. */
+export const dalila: CharacterBuild = {
+  name: 'Dalila',
+  raceKey: 'race:human',
+  race: 'Humano',
+  classKey: 'class:rogue',
+  class: 'Ladino',
+  level: 11,
+  background: 'Criminosa',
+  backgroundSkillKeys: ['skill:deception', 'skill:sleight-of-hand'],
+  backgroundSkills: ['Enganação', 'Prestidigitação'],
+  extraSkillKeys: ['skill:acrobatics', 'skill:investigation', 'skill:perception', 'skill:stealth'],
+  extraSkills: ['Acrobacia', 'Investigação', 'Percepção', 'Furtividade'],
+  scores: { for: 10, des: 16, con: 14, int: 14, sab: 12, car: 8 },
+};
+export const dalilaSheet = { expertiseSkillKeys: ['skill:acrobatics', 'skill:investigation', 'skill:perception', 'skill:stealth'] };
+
 export const brisaSheet = {
   weaponKeys: ['equipment:mace'],
   preparedSpellKeys: ['spell:cure-wounds'],
 };
+/** Brisa with Ajuda prepared (a 2nd-level spell: she has two such slots at level 3). */
+export const brisaAidSheet = { ...brisaSheet, preparedSpellKeys: ['spell:cure-wounds', 'spell:aid'] };

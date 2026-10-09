@@ -134,7 +134,9 @@ test(
       const damage = p.getByRole('dialog');
       await damage.getByRole('button', { name: 'Digitar o resultado' }).click();
       await damage.getByLabel(/Role 2d6/).fill('7');
-      await damage.getByRole('button', { name: 'Confirmar 7' }).click();
+      // The bite's +3 is added by the app, and the button says the total that is sent: 7 + 3.
+      await expect(damage.getByText('7 + 3 = 10')).toBeVisible();
+      await damage.getByRole('button', { name: 'Confirmar 10' }).click();
       await expect(damage.getByText(/Goblin 1/).first()).toBeVisible();
       await damage.getByRole('button', { name: 'Voltar à sua vez' }).click();
       await expect(blocks.nth(1)).not.toContainText('Falta rolar o dano');

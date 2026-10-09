@@ -557,8 +557,9 @@ func (s *Service) noticeAfterMove(ctx context.Context, campaignID string, enc pl
 // markKnownTraps marks, on the squares a player's character can reach, the ones a
 // move to would run into an armed trap the character knows: the app asks "Isso entra
 // no Fosso escondido. Mover assim mesmo?" first. The master is not warned, and a
-// trap the character does not know is never marked (RN-10).
-func (s *Service) markKnownTraps(ctx context.Context, campaignID string, enc playdb.Encounter, who playdb.Combatant, out *playv1.GetMoveOptionsResponse) {
+// trap the character does not know is never marked (RN-10). For a long jump only the
+// landing square counts: the jumper clears the squares in between.
+func (s *Service) markKnownTraps(ctx context.Context, campaignID string, enc playdb.Encounter, who playdb.Combatant, out *playv1.GetMoveOptionsResponse, jump bool) {
 	if s.traps == nil || enc.MapID == nil || who.Kind == kindNPC || len(out.GetReachable()) == 0 {
 		return
 	}
@@ -579,7 +580,11 @@ func (s *Service) markKnownTraps(ctx context.Context, campaignID string, enc pla
 	}
 	for _, r := range out.Reachable {
 		to := grid.Square{Col: int(r.GetCol()), Row: int(r.GetRow())}
-		for _, step := range grid.Line(from, to) {
+		steps := grid.Line(from, to)
+		if jump {
+			steps = steps[len(steps)-1:] // a jump fires a trap only where it lands
+		}
+		for _, step := range steps {
 			if i := slices.IndexFunc(ahead, func(t maplink.Trap) bool { return t.Covers(step.Square) }); i >= 0 {
 				r.KnownTrapPointId, r.KnownTrapName = ahead[i].PointID, ahead[i].Name
 				break

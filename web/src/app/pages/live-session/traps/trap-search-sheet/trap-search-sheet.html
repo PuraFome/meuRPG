@@ -69,7 +69,21 @@
           </label>
         }
       </fieldset>
-      <p class="note"><mat-icon aria-hidden="true">info</mat-icon>Algumas armadilhas só se acham com Investigação.</p>
+      @if (skill() === 'other') {
+        <!-- "Perícia": the other skills of the sheet, always the same list; Enter picks. -->
+        <div class="other">
+          <span class="other__cap" id="trap-other-cap">Perícia</span>
+          <p class="other__value" [class.other__value--empty]="!otherPicked()">{{ otherPicked() ? otherTitle(otherPicked()!) : 'Escolha uma perícia' }}</p>
+          <ul #list class="other__list" role="listbox" aria-labelledby="trap-other-cap" tabindex="0" [attr.aria-activedescendant]="'trap-other-' + otherCursor()" (keydown)="onListKey($event)" (click)="onListClick($event)">
+            @for (o of others; track o.key; let i = $index) {
+              <li role="option" class="other__row" [id]="'trap-other-' + i" [class.other__row--on]="otherKey() === o.key" [class.other__row--cursor]="otherCursor() === i" [attr.data-index]="i" [attr.aria-selected]="otherKey() === o.key">
+                <span>{{ o.name }}</span><b>{{ otherTitle(o).replace(o.name + ' ', '') }}</b>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+      <p class="note"><mat-icon aria-hidden="true">info</mat-icon>{{ note }}</p>
     }
     @if (typing() || firstFace() !== null) {
       <div class="type">
@@ -109,12 +123,12 @@
       <button matButton="outlined" type="button" (click)="cancel()">Cancelar</button>
     } @else {
       @if (canApp) {
-        <button [matButton]="preferApp || !canType ? 'filled' : 'outlined'" type="button" [disabled]="busy()" (click)="rollWith({ inApp: true })">
+        <button [matButton]="preferApp || !canType ? 'filled' : 'outlined'" type="button" [disabled]="busy() || !ready()" (click)="rollWith({ inApp: true })">
           <mat-icon aria-hidden="true">casino</mat-icon>Rolar no app
         </button>
       }
       @if (canType) {
-        <button [matButton]="!preferApp && canApp ? 'filled' : 'outlined'" type="button" (click)="startTyping()">Digitar o resultado</button>
+        <button [matButton]="!preferApp && canApp ? 'filled' : 'outlined'" type="button" [disabled]="!ready()" (click)="startTyping()">Digitar o resultado</button>
       }
       <button matButton="outlined" type="button" (click)="cancel()">Cancelar</button>
     }

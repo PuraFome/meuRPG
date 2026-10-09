@@ -991,6 +991,47 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
       expect(textOf(notice)).not.toMatch(/\bCD\b/);
     });
 
+    it('tells the player what Talento Confiável did to the d20, and says nothing of it for a die no feature changed', async () => {
+      const { el, settle } = await render(
+        playerRun(riddlePuzzle('a', 'A porta'), {
+          hintByCheck: true,
+          hintSkillKey: 'skill:investigation',
+          canTryHint: true,
+        }),
+      );
+      api.hintResult = () =>
+        hintAnswer(
+          playerRun(riddlePuzzle('a', 'A porta'), {
+            revision: 2,
+            hintByCheck: true,
+            hintSkillKey: 'skill:investigation',
+            canTryHint: false,
+          }),
+          true,
+          19,
+          {
+            roll: {
+              diceCount: 1,
+              diceSides: 20,
+              faces: [6],
+              modifier: 9,
+              total: 19,
+              treatedAs: 10,
+              treatedAsSource: 'feature:reliable-talent',
+            },
+          },
+        );
+      (
+        Array.from(el.querySelectorAll('button')).find((b) =>
+          b.textContent?.includes('Tentar uma dica'),
+        ) as HTMLElement
+      ).click();
+      await settle();
+      const notice = el.querySelector('.hints .mr-notice--success')!;
+      expect(textOf(notice)).toContain('Seu total: 19.');
+      expect(textOf(notice)).toContain('O d20 de 6 contou como 10: perícia com proficiência.');
+    });
+
     it('asks the session to read the dice mode again when the server says the table rolls the other way', async () => {
       const { el, settle } = await render(
         playerRun(riddlePuzzle('a', 'A porta'), {

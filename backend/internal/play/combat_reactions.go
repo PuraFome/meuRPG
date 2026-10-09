@@ -76,7 +76,7 @@ func (s *Service) openPendingWindows(ctx context.Context, c *combatTx, p playdb.
 // openHit opens the pending damage of a hit, an attack's or a spell attack's:
 // to be rolled, or, when a reaction window waits on it (Escudo, or the master's
 // check), to wait for the answers first. attackTotal is kept for the new comparison.
-func (s *Service) openHit(ctx context.Context, c *combatTx, campaignID string, attacker, target playdb.Combatant, key string, dmg link.Dice, critical bool, attackTotal, attackAC int) (playdb.PendingDamage, error) {
+func (s *Service) openHit(ctx context.Context, c *combatTx, attacker, target playdb.Combatant, key string, dmg link.Dice, critical bool, extraDice, attackTotal, attackAC int) (playdb.PendingDamage, error) {
 	total := clamp32(attackTotal, math.MinInt32, math.MaxInt32)
 	specs, err := s.hitWindows(ctx, c, attacker, target, key, critical, false, total, clamp32(attackAC, 0, math.MaxInt32))
 	if err != nil {
@@ -95,6 +95,7 @@ func (s *Service) openHit(ctx context.Context, c *combatTx, campaignID string, a
 		DiceCount: clamp32(count, 0, 100), CriticalMax: clamp32(fixed, 0, 10000), CriticalMaxRule: critical && c.rules.CriticalMaxPlusRoll,
 		DiceSides: clamp32(dmg.Sides, 0, 100), DiceBonus: clamp32(dmg.Bonus, -1000, 1000),
 		DamageType: dmg.DamageType, CreatedAt: c.now, AttackTotal: &total, AttackArmorClass: new(clamp32(attackAC, 0, math.MaxInt32)),
+		ExtraDice: clamp32(extraDice, 0, maxExtraDice),
 	})
 	if err != nil {
 		return playdb.PendingDamage{}, fmt.Errorf("open the pending damage: %w", err)
