@@ -7,7 +7,7 @@
 -- beginning another discards the first. The parts are kept 1 hour after the
 -- last one and are then deleted by the cleanup, file first and row after.
 -- user_id is a plain UUID without a foreign key, for the reason given on
--- campaign_exports: the cleanup must find the parts of an account that went.
+-- campaign_exports: the sweeper takes the uploads of an account that went and deletes their parts.
 --
 -- fingerprint is what the app makes from the file (name, size, time) so that
 -- choosing the same file again resumes the upload. file_name is only shown.

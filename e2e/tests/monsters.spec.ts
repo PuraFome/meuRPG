@@ -297,7 +297,8 @@ test(
       const swap = gen.locator('.swap');
       await expect(swap.locator('.swap__t')).toHaveText(`Trocar ${was}`);
       const options = swap.locator('.swap__opt');
-      expect(await options.count()).toBeGreaterThan(0);
+      // The options come from the server after the panel opens: wait for the first one, never count too early.
+      await expect(options.first()).toBeVisible();
       const chosen = (await options.first().locator('.swap__n').innerText()).trim();
       await options.first().click();
       await swap.getByRole('button', { name: `Trocar por ${chosen}` }).click();

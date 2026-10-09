@@ -194,13 +194,39 @@ export function moreProblemsText(hidden: number): string {
 // ---------------------------------------------------------------------------------------------------------
 // Exporting
 
-/** `<campanha>.meurpg.zip`, as the board shows it before the export (the server cleans the real name). */
+/** The campaign's part of the file name stops here, as on the server (`maxFileNameLetters`). */
+const MAX_FILE_NAME_LETTERS = 60;
+
+/**
+ * `<campanha>.meurpg.zip` exactly as the server names the download: a port of `campaignpackage.FileName`, so the
+ * page shows the name the file will have ("Mirathel verificação" is "Mirathel_verificacao.meurpg.zip"). Accents come
+ * off; anything but ASCII letters, digits, dots, dashes and underscores becomes one underscore; nothing is left at the
+ * edges; a name with nothing usable is "campanha". Keep it in step with `format.go` (`TestFileNamesAreSafe`).
+ */
 export function suggestedFileName(campaignName: string): string {
-  const safe = campaignName
-    // eslint-disable-next-line no-control-regex
-    .replace(/[\u0000-\u001f\u007f\\/:*?"<>|]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  let name = '';
+  let lastUnderscore = true; // no underscore at the start
+  for (const ch of campaignName.normalize('NFD')) {
+    if (/\p{Mn}/u.test(ch)) {
+      continue; // the accent the decomposition split off
+    }
+    if (/^[A-Za-z0-9]$/.test(ch)) {
+      name += ch;
+      lastUnderscore = false;
+    } else if (ch === '-' || ch === '_' || ch === '.') {
+      if (!lastUnderscore || ch !== '.') {
+        name += ch;
+      }
+      lastUnderscore = ch === '_';
+    } else if (!lastUnderscore) {
+      name += '_';
+      lastUnderscore = true;
+    }
+    if (name.length >= MAX_FILE_NAME_LETTERS) {
+      break;
+    }
+  }
+  const safe = name.replace(/^[._-]+|[._-]+$/g, '');
   return `${safe === '' ? 'campanha' : safe}.meurpg.zip`;
 }
 
