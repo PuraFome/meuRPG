@@ -2008,6 +2008,166 @@ func (q *Queries) InsertImageRequest(ctx context.Context, arg InsertImageRequest
 	return i, err
 }
 
+const insertImportedGalleryImage = `-- name: InsertImportedGalleryImage :exec
+INSERT INTO gallery_images (id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, generated_kind)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+`
+
+type InsertImportedGalleryImageParams struct {
+	ID            string
+	CampaignID    string
+	UploadedBy    *string
+	Name          string
+	ContentType   string
+	Width         int32
+	Height        int32
+	ByteSize      int32
+	CreatedAt     time.Time
+	Generated     bool
+	GeneratedKind string
+}
+
+// The parent and the copy are set after every image of the package is in
+// (SetImportedImageRefs), so the order of the images does not matter.
+func (q *Queries) InsertImportedGalleryImage(ctx context.Context, arg InsertImportedGalleryImageParams) error {
+	_, err := q.db.Exec(ctx, insertImportedGalleryImage,
+		arg.ID,
+		arg.CampaignID,
+		arg.UploadedBy,
+		arg.Name,
+		arg.ContentType,
+		arg.Width,
+		arg.Height,
+		arg.ByteSize,
+		arg.CreatedAt,
+		arg.Generated,
+		arg.GeneratedKind,
+	)
+	return err
+}
+
+const insertImportedMap = `-- name: InsertImportedMap :exec
+INSERT INTO maps (id, campaign_id, name, image_id, revealed_at, grid_columns, grid_factor, fog_enabled, fog_on_first_grid, group_vision, base_light, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7,
+        $8, $9, $10, $11, $12, $12)
+`
+
+type InsertImportedMapParams struct {
+	ID             string
+	CampaignID     string
+	Name           string
+	ImageID        string
+	RevealedAt     *time.Time
+	GridColumns    *int32
+	GridFactor     int32
+	FogEnabled     bool
+	FogOnFirstGrid bool
+	GroupVision    bool
+	BaseLight      string
+	Now            time.Time
+}
+
+func (q *Queries) InsertImportedMap(ctx context.Context, arg InsertImportedMapParams) error {
+	_, err := q.db.Exec(ctx, insertImportedMap,
+		arg.ID,
+		arg.CampaignID,
+		arg.Name,
+		arg.ImageID,
+		arg.RevealedAt,
+		arg.GridColumns,
+		arg.GridFactor,
+		arg.FogEnabled,
+		arg.FogOnFirstGrid,
+		arg.GroupVision,
+		arg.BaseLight,
+		arg.Now,
+	)
+	return err
+}
+
+const insertImportedMapPoint = `-- name: InsertImportedMapPoint :exec
+INSERT INTO map_points (
+    id, map_id, kind, name, description, hooks, show_dc, x_bp, y_bp, target_map_id,
+    trap, trap_state, treasure_value_po, light_preset, light_bright_ft, light_dim_ft, revealed_at, stairs, created_at, updated_at
+)
+VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9,
+    $10, $11, $12, $13, $14, $15,
+    $16, $17, $18, $19, $19
+)
+`
+
+type InsertImportedMapPointParams struct {
+	ID              string
+	MapID           string
+	Kind            string
+	Name            string
+	Description     string
+	Hooks           string
+	ShowDc          bool
+	XBp             int32
+	YBp             int32
+	TargetMapID     *string
+	Trap            []byte
+	TrapState       *string
+	TreasureValuePo *int32
+	LightPreset     *string
+	LightBrightFt   *int32
+	LightDimFt      *int32
+	RevealedAt      *time.Time
+	Stairs          *string
+	Now             time.Time
+}
+
+func (q *Queries) InsertImportedMapPoint(ctx context.Context, arg InsertImportedMapPointParams) error {
+	_, err := q.db.Exec(ctx, insertImportedMapPoint,
+		arg.ID,
+		arg.MapID,
+		arg.Kind,
+		arg.Name,
+		arg.Description,
+		arg.Hooks,
+		arg.ShowDc,
+		arg.XBp,
+		arg.YBp,
+		arg.TargetMapID,
+		arg.Trap,
+		arg.TrapState,
+		arg.TreasureValuePo,
+		arg.LightPreset,
+		arg.LightBrightFt,
+		arg.LightDimFt,
+		arg.RevealedAt,
+		arg.Stairs,
+		arg.Now,
+	)
+	return err
+}
+
+const insertImportedSceneClue = `-- name: InsertImportedSceneClue :exec
+INSERT INTO scene_clues (id, point_id, position, text, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $5)
+`
+
+type InsertImportedSceneClueParams struct {
+	ID       string
+	PointID  string
+	Position int32
+	Text     string
+	Now      time.Time
+}
+
+func (q *Queries) InsertImportedSceneClue(ctx context.Context, arg InsertImportedSceneClueParams) error {
+	_, err := q.db.Exec(ctx, insertImportedSceneClue,
+		arg.ID,
+		arg.PointID,
+		arg.Position,
+		arg.Text,
+		arg.Now,
+	)
+	return err
+}
+
 const insertMap = `-- name: InsertMap :one
 INSERT INTO maps (campaign_id, name, image_id, fog_on_first_grid, create_key, create_hash, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
@@ -2993,6 +3153,57 @@ func (q *Queries) ListMapVisionMemory(ctx context.Context, mapID string) ([]List
 	return items, nil
 }
 
+const listMapsOfCampaign = `-- name: ListMapsOfCampaign :many
+
+SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash FROM maps
+WHERE campaign_id = $1
+ORDER BY created_at, id
+`
+
+// The campaign package (MR-050). A campaign made from a package is built with
+// the ids chosen before (the files of the images are stored under them), and
+// with the dates in the package's order.
+// Every map of the campaign in the order the lists show them, for an export.
+func (q *Queries) ListMapsOfCampaign(ctx context.Context, campaignID string) ([]Map, error) {
+	rows, err := q.db.Query(ctx, listMapsOfCampaign, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Map
+	for rows.Next() {
+		var i Map
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.Name,
+			&i.ImageID,
+			&i.RevealedAt,
+			&i.Revision,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.GridColumns,
+			&i.FogEnabled,
+			&i.BaseLight,
+			&i.GroupVision,
+			&i.LayersRevision,
+			&i.LightRevision,
+			&i.VisionEpoch,
+			&i.FogOnFirstGrid,
+			&i.GridFactor,
+			&i.CreateKey,
+			&i.CreateHash,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMapsUsingImage = `-- name: ListMapsUsingImage :many
 SELECT id, name FROM maps
 WHERE campaign_id = $1 AND image_id = $2
@@ -3683,6 +3894,28 @@ type SetGeneratedDungeonImageParams struct {
 // "Redesenhar" drew a new image for the map: it is the dungeon's own now.
 func (q *Queries) SetGeneratedDungeonImage(ctx context.Context, arg SetGeneratedDungeonImageParams) error {
 	_, err := q.db.Exec(ctx, setGeneratedDungeonImage, arg.ImageID, arg.MapID)
+	return err
+}
+
+const setImportedImageRefs = `-- name: SetImportedImageRefs :exec
+UPDATE gallery_images SET parent_image_id = $1, copy_of_image_id = $2
+WHERE campaign_id = $3 AND id = $4
+`
+
+type SetImportedImageRefsParams struct {
+	ParentImageID *string
+	CopyOfImageID *string
+	CampaignID    string
+	ID            string
+}
+
+func (q *Queries) SetImportedImageRefs(ctx context.Context, arg SetImportedImageRefsParams) error {
+	_, err := q.db.Exec(ctx, setImportedImageRefs,
+		arg.ParentImageID,
+		arg.CopyOfImageID,
+		arg.CampaignID,
+		arg.ID,
+	)
 	return err
 }
 
