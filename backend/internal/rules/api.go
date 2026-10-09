@@ -803,6 +803,10 @@ type Attack struct {
 	DamageType       string
 	DamageTypeNamePT string
 	VersatileDamage  string
+	// DamageNotePT says the damage includes a bonus that holds only under a
+	// condition the sheet cannot check (Dueling: no other weapon in hand), with
+	// the condition; empty otherwise.
+	DamageNotePT string
 	// DamageDice and VersatileDice are Damage and VersatileDamage as
 	// numbers, for the combat functions. Both are zero when the weapon has
 	// no damage dice.
