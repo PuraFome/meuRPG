@@ -1,0 +1,71 @@
+@let d = draft();
+<app-editor-alerts [saver]="saver" (reload)="reload.emit()" />
+<div class="editor">
+  <div class="editor__main">
+    <section class="mr-panel block" aria-labelledby="feat-data-t">
+      <h2 class="mr-panel__title" id="feat-data-t">Dados do talento</h2>
+      <app-feature-editor
+        [feature]="d.feature"
+        [menu]="menu()"
+        basePath="table_feat"
+        [issuesOf]="issuesOf"
+        [spellOptions]="spellOptions()"
+        [featEditor]="true"
+        [flat]="true"
+        nameLabel="Nome do talento"
+        textLabel="Texto do talento"
+        (featureChange)="setFeature($event)"
+      />
+    </section>
+
+    <section class="mr-panel block" aria-labelledby="feat-asks-t">
+      <h2 class="mr-panel__title" id="feat-asks-t">O que o talento pede</h2>
+      <p class="hint">Vale só para quem vai pegar o talento. Deixe vazio o que o talento não pede. Quem confere é o servidor.</p>
+      <h3 class="sub">Todas estas habilidades, com no mínimo</h3>
+      <div class="grid grid--3">
+        @for (f of abilities(); track f.field) {
+          <app-text-field [label]="f.name" [value]="d.minimums[f.field]" inputmode="numeric" [path]="'table_feat.prerequisite.minimums.' + f.field" [issues]="issuesOf('table_feat.prerequisite.minimums.' + f.field)" (valueChange)="setScore('minimums', f.field, $event)" />
+        }
+      </div>
+      @for (m of issuesOf('table_feat.prerequisite.minimums'); track m) {
+        <p class="inline-issue" role="note">{{ m }}</p>
+      }
+      <h3 class="sub">Uma destas habilidades, com no mínimo</h3>
+      <div class="grid grid--3">
+        @for (f of abilities(); track f.field) {
+          <app-text-field [label]="f.name" [value]="d.anyOf[f.field]" inputmode="numeric" [path]="'table_feat.prerequisite.any_of.' + f.field" [issues]="issuesOf('table_feat.prerequisite.any_of.' + f.field)" (valueChange)="setScore('anyOf', f.field, $event)" />
+        }
+      </div>
+      @for (m of issuesOf('table_feat.prerequisite.any_of'); track m) {
+        <p class="inline-issue" role="note">{{ m }}</p>
+      }
+      <div class="grid grid--2">
+        <app-select-field label="Proficiência" [options]="proficiencyOptions()" [value]="d.proficiencyKey" path="table_feat.prerequisite.proficiency_key" [issues]="issuesOf('table_feat.prerequisite.proficiency_key')" (valueChange)="patch({ proficiencyKey: $event })" />
+        <app-select-field label="Raça ou sub-raça" [options]="raceOptions()" [value]="d.raceKey" path="table_feat.prerequisite.race_key" [issues]="issuesOf('table_feat.prerequisite.race_key')" (valueChange)="patch({ raceKey: $event })" />
+      </div>
+      <div class="grid grid--2">
+        <app-text-field label="Nível mínimo do personagem" [value]="d.level" inputmode="numeric" path="table_feat.prerequisite.level" [issues]="issuesOf('table_feat.prerequisite.level')" (valueChange)="patch({ level: $event })" />
+      </div>
+      <app-check-row label="Pode conjurar ao menos uma magia" [checked]="d.spellcasting" path="table_feat.prerequisite.spellcasting" (toggled)="patch({ spellcasting: $event })" />
+      @for (m of issuesOf('table_feat.prerequisite'); track m) {
+        <p class="inline-issue" role="note">{{ m }}</p>
+      }
+    </section>
+
+    <app-editor-bar saveLabel="Salvar talento" [saving]="saver.saving()" [blocked]="saveBlocked()" (save)="save()" (cancel)="cancelled.emit()" />
+  </div>
+
+  <aside class="editor__side" aria-label="Como os jogadores veem">
+    <section class="mr-panel preview" aria-labelledby="preview-t">
+      <h2 class="mr-panel__title" id="preview-t">Como os jogadores veem</h2>
+      <p class="preview__name">
+        <span>{{ d.feature.name.trim() || 'Novo talento' }}</span>
+        <span class="mr-tag"><mat-icon aria-hidden="true">menu_book</mat-icon>Da mesa</span>
+      </p>
+      <app-entry-read [read]="preview()" [plain]="true" />
+    </section>
+    @if (entry(); as saved) {
+      <app-players-switch [campaignId]="campaignId()" [entry]="saved" (switched)="switched.emit($event)" />
+    }
+  </aside>
+</div>

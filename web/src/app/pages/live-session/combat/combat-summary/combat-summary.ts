@@ -11,8 +11,9 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
+import { CombatantState } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { combatantInitial, isPlayer } from '../../../../core/combat/combat-view';
+import { combatantInitial, isPlayer, stateWord } from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
 import { formatXp } from '../../../../core/format/text';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
@@ -71,8 +72,14 @@ export class CombatSummary {
   protected readonly players = computed(() => this.encounter().combatants.filter(isPlayer));
   protected readonly npcs = computed(() => this.encounter().combatants.filter((c) => !isPlayer(c)));
   protected readonly defeated = computed(() => this.npcs().filter((c) => c.defeated));
+  /** The player characters that died: a dead combatant has no hit points to read, so the state says it. */
+  protected readonly dead = computed(() =>
+    this.players().filter((c) => c.state === CombatantState.DEAD || c.defeated),
+  );
   protected readonly standing = computed(
-    () => this.players().filter((c) => (c.hitPointsCurrent ?? 1) > 0).length,
+    () =>
+      this.players().filter((c) => !this.dead().includes(c) && (c.hitPointsCurrent ?? 1) > 0)
+        .length,
   );
   protected readonly group = computed<GroupRow[]>(() =>
     this.players().map((c) => {
@@ -85,8 +92,10 @@ export class CombatSummary {
           ),
         )
         .join(' · ');
+      // A dead character needs no healing: it is not "caída" either.
+      const dead = c.state === CombatantState.DEAD;
       const down =
-        v && v.hitPointsCurrent === 0
+        v && v.hitPointsCurrent === 0 && !dead
           ? `Caída: ${c.deathSuccesses} ${c.deathSuccesses === 1 ? 'sucesso' : 'sucessos'}, ${c.deathFailures} ${c.deathFailures === 1 ? 'falha' : 'falhas'}. Precisa de cura.`
           : '';
       return {
@@ -107,6 +116,10 @@ export class CombatSummary {
 
   protected xp(c: Combatant): string {
     return formatXp(c.xpValue);
+  }
+
+  protected deadWord(c: Combatant): string {
+    return stateWord(CombatantState.DEAD, c.label);
   }
 
   protected creature(c: Combatant): boolean {

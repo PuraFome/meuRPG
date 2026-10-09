@@ -168,6 +168,8 @@ function minimalFullSheet(overrides: Partial<FullSheet> = {}): FullSheet {
     alignment: Alignment.UNSPECIFIED,
     customFeaturesText: '',
     featureChoiceKeys: [],
+    featKeys: [],
+    featSlots: {},
     challengeRating: '',
     portraitImageId: '',
     contentRevision: 0,
@@ -509,5 +511,28 @@ describe('the revival of a dead character, read from Character', () => {
     const vm = toCharacterSheetVm({ ...base, revivedAt: undefined });
     expect(vm.canRevive).toBe(false);
     expect(vm.revivedAt).toBeNull();
+  });
+});
+
+describe('the sheet lists the feats a character took with the features (MR-025)', () => {
+  it('shows a feat as a feature whose source is "Talento"', () => {
+    const derived: DerivedSheet = {
+      ...minimalDerivedSheet(),
+      features: [
+        {
+          $typeName: 'meurpg.rules.v1.Feature',
+          key: 'feat:atleta@mesa',
+          name: '',
+          namePt: 'Atleta',
+          sourcePt: 'Talento',
+          description: 'Você corre e escala melhor.',
+        },
+      ],
+    };
+    const character = characterWithFullSheet(minimalFullSheet({ featKeys: ['feat:atleta@mesa'] }));
+    const sheet = toCharacterSheetVm({ ...character, derived }).sheet as FullSheetVm;
+    expect(sheet.features).toEqual([
+      { name: 'Atleta', sourcePt: 'Talento', description: 'Você corre e escala melhor.' },
+    ]);
   });
 });

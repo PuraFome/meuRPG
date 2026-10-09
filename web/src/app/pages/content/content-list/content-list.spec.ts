@@ -9,6 +9,7 @@ import { ContentSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { TableContentKind } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { TableContentClient } from '../../../core/content/content-client';
+import { TableContentPackSchema as PackSchema } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { entry, fakeContentWatcher, mirathel } from '../../../core/content/content-testing';
 import { ContentList } from './content-list';
 
@@ -22,6 +23,7 @@ describe('ContentList', () => {
   const catalog = vi.fn();
   const unarchive = vi.fn();
   const archive = vi.fn();
+  const exportPack = vi.fn();
   const getCampaign = vi.fn();
   let watcher = fakeContentWatcher();
 
@@ -36,6 +38,7 @@ describe('ContentList', () => {
       archived: false,
     }));
     archive.mockReset();
+    exportPack.mockReset();
     getCampaign.mockReset().mockResolvedValue({
       campaign: { id: 'camp-1', name: 'Mirathel', myRole: role, awaitingApproval: false },
     });
@@ -58,7 +61,10 @@ describe('ContentList', () => {
           },
         },
         { provide: CampaignsService, useValue: { getCampaign } },
-        { provide: TableContentClient, useValue: { list, catalog, unarchive, archive } },
+        {
+          provide: TableContentClient,
+          useValue: { list, catalog, unarchive, archive, exportPack },
+        },
       ],
     });
     const fixture = TestBed.createComponent(ContentList);
@@ -102,7 +108,14 @@ describe('ContentList', () => {
   it('gives the master the kinds with their counts, the limit, and the rows with the state in words', async () => {
     const { el } = await setup(Role.MASTER, { kind: 'classes' });
     const items = Array.from(el.querySelectorAll('.menu__item')).map((a) => text(a).trim());
-    expect(items).toEqual(['Classes2', 'Subclasses2', 'Raças1', 'Antecedentes1', 'Magias1']);
+    expect(items).toEqual([
+      'Classes2',
+      'Subclasses2',
+      'Raças1',
+      'Antecedentes1',
+      'Magias1',
+      'Talentos0',
+    ]);
     expect(text(el)).toContain('7 de 300 entradas · o limite de uma campanha');
     expect(el.querySelector('.menu__item--on')?.getAttribute('aria-current')).toBe('page');
     const rows = Array.from(el.querySelectorAll('.row')).map((r) => text(r).trim());
@@ -147,11 +160,12 @@ describe('ContentList', () => {
     expect(text(el)).toContain('Nenhuma entrada com esta busca');
   });
 
-  it('draws the empty campaign: "Nada cadastrado ainda." with the SRD still valid, five kinds with 0', async () => {
+  it('draws the empty campaign: "Nada cadastrado ainda." with the SRD still valid, six kinds with 0', async () => {
     const { el } = await setup(Role.MASTER, { entries: [], kind: 'spells' });
     expect(text(el)).toContain('Nada cadastrado ainda.');
     expect(text(el)).toContain('O SRD continua valendo');
     expect(Array.from(el.querySelectorAll('.menu__count')).map((c) => c.textContent)).toEqual([
+      '0',
       '0',
       '0',
       '0',
@@ -295,5 +309,73 @@ describe('ContentList', () => {
     await settle();
     expect(el.querySelectorAll('a.row')).toHaveLength(1);
     expect(text(el)).not.toContain('Não foi possível');
+  });
+
+  it('lists the feats like the other kinds, with "Novo talento" and the prerequisite as the support line', async () => {
+    const feat = entry(TableContentKind.FEAT, 'Lutador de Corda');
+    const { el } = await setup(Role.MASTER, { entries: [...mirathel(), feat], kind: 'feats' });
+    expect(text(el.querySelector('.list__head')!)).toContain('Novo talento');
+    expect(el.querySelector('a[href$="/new/feat"]')).not.toBeNull();
+    expect(text(el.querySelector('.row')!)).toContain('Lutador de Corda');
+    expect(text(el.querySelector('.row')!)).toContain('Força 13');
+  });
+
+  it('gives the master "Importar pacote" and "Exportar" beside "Regras da mesa", and a player neither', async () => {
+    const { el } = await setup(Role.MASTER);
+    const actions = text(el.querySelector('.head__actions')!);
+    expect(actions).toContain('Importar pacote');
+    expect(actions).toContain('Exportar');
+    expect(el.querySelector('a[href$="/content/import"]')).not.toBeNull();
+    const player = (await setup(Role.PLAYER)).el;
+    expect(text(player)).not.toContain('Importar pacote');
+    expect(text(player)).not.toContain('Exportar');
+  });
+
+  it('exports the pack as "<campanha>-conteudo.json" in proto JSON and says where it went', async () => {
+    const saved: { name: string; blob: Blob }[] = [];
+    const realCreate = URL.createObjectURL;
+    const realRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = ((blob: Blob) => {
+      saved.push({ name: '', blob });
+      return 'blob:pack';
+    }) as never;
+    URL.revokeObjectURL = (() => undefined) as never;
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      saved[saved.length - 1].name = this.download;
+    });
+    try {
+      const { el, settle: again } = await setup(Role.MASTER);
+      exportPack.mockResolvedValue(
+        create(PackSchema, { format: 'meurpg.table-content', version: 1, name: 'Mirathel' }),
+      );
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button'))
+        .find((b) => text(b).includes('Exportar'))!
+        .click();
+      await again();
+      expect(exportPack).toHaveBeenCalledWith('camp-1');
+      expect(saved).toHaveLength(1);
+      expect(saved[0].name).toBe('mirathel-conteudo.json');
+      expect(await saved[0].blob.text()).toContain('"format": "meurpg.table-content"');
+      expect(text(el.querySelector('[role="status"]')!)).toContain('mirathel-conteudo.json');
+    } finally {
+      URL.createObjectURL = realCreate;
+      URL.revokeObjectURL = realRevoke;
+      click.mockRestore();
+    }
+  });
+
+  it('says it when the export fails, and the button comes back', async () => {
+    const { el, settle: again } = await setup(Role.MASTER);
+    exportPack.mockRejectedValue(new ConnectError('x', Code.PermissionDenied));
+    const button = () =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+        text(b).includes('Exportar'),
+      )!;
+    button().click();
+    await again();
+    expect(text(el.querySelector('[role="alert"]')!)).toContain('Só o mestre');
+    expect(button().disabled).toBe(false);
   });
 });

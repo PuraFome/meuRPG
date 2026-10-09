@@ -403,6 +403,21 @@ export class CombatClient {
     };
   }
 
+  /** "Colocar no mapa": the server picks the square of a combatant that has none
+   * (free floor, away from the players), so the screen never guesses one. */
+  async place(campaignId: string, encounterId: string, combatantId: string): Promise<Encounter> {
+    const res = await this.keyed(['placeCombatant', campaignId, encounterId, combatantId], (sent) =>
+      this.client.moveCombatant({
+        campaignId,
+        encounterId,
+        combatantId,
+        idempotencyKey: sent,
+        place: true,
+      }),
+    );
+    return need(res.encounter, 'MoveCombatant');
+  }
+
   /** `GetMoveOptions`: where the combatant can go in one straight move, the
    * cost of each square and why the others inside the circle are refused. */
   moveOptions(

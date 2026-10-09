@@ -79,7 +79,7 @@ func (s *Service) StartEncounter(
 	}
 	var point link.BattlePoint
 	if pointID != nil {
-		if point, err = s.maps.BattlePoint(ctx, m.CampaignID, *pointID); err != nil {
+		if point, err = s.maps.BattlePoint(ctx, nil, m.CampaignID, *pointID); err != nil {
 			return nil, s.dbError(ctx, "find the battle point", err)
 		}
 	}
@@ -712,6 +712,10 @@ func (s *Service) BeginCombat(
 		first, _, ok := nextTurnGroup(cs, "", "")
 		if !ok {
 			first = []string{cs[0].ID} // everybody defeated: the first of the order starts
+		}
+		// A combat on a map starts with every NPC on it, away from the players.
+		if cs, err = s.placeUnplaced(ctx, c, cs); err != nil {
+			return nil, err
 		}
 		started := c.now
 		c.enc.StartedAt = &started
