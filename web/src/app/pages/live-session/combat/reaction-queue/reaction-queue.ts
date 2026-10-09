@@ -119,15 +119,6 @@ let nextId = 0;
               >
                 Sem reação
               </button>
-              <button
-                mat-stroked-button
-                type="button"
-                class="btn"
-                [disabled]="busy()"
-                (click)="answer(card.window, { use: true })"
-              >
-                Usar uma reação…
-              </button>
             </div>
           </section>
         }

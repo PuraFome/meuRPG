@@ -264,14 +264,12 @@ describe("ReactionQueue, the master's side of the reaction windows", () => {
       );
     });
 
-    it('"Sem reação" closes the window; "Usar uma reação…" is the other answer', async () => {
+    it('"Sem reação" closes the window (an enemy that can react has a window of its own)', async () => {
       const { fixture, el } = setup([check()]);
       button(el, 'Sem reação').click();
       await flush(fixture);
       expect(api.answerReaction.mock.calls[0][3]).toEqual({ use: false });
-      button(el, 'Usar uma reação…').click();
-      await flush(fixture);
-      expect(api.answerReaction.mock.calls[1][3]).toEqual({ use: true });
+      expect(Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.includes('Usar uma reação'))).toBe(false);
     });
   });
 
