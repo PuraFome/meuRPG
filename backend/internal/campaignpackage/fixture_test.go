@@ -157,7 +157,7 @@ func (h *harness) buildFixture(master *user) *fixture {
 			f.village, f.npc, f.villageImage, "0b6f4a52-3b5e-4c55-9d0b-2a51f0c1e001"),
 	})))
 
-	// The table content: a background, a race, a spell, a class; one archived;
+	// The table content: a background, a race, a class, a feat, a spell; one archived;
 	// one option switched off.
 	entry := func(req *rulesv1.CreateTableEntryRequest) string {
 		req.CampaignId = cid
@@ -166,6 +166,7 @@ func (h *harness) buildFixture(master *user) *fixture {
 	background := entry(&rulesv1.CreateTableEntryRequest{Body: &rulesv1.CreateTableEntryRequest_TableBackground{TableBackground: tableBackground("Guarda de farol")}})
 	_ = entry(&rulesv1.CreateTableEntryRequest{Body: &rulesv1.CreateTableEntryRequest_TableRace{TableRace: tableRace("Anão do mar")}})
 	_ = entry(&rulesv1.CreateTableEntryRequest{Body: &rulesv1.CreateTableEntryRequest_TableClass{TableClass: tableClass("Guardião das marés")}})
+	_ = entry(&rulesv1.CreateTableEntryRequest{Body: &rulesv1.CreateTableEntryRequest_TableFeat{TableFeat: &rulesv1.TableFeat{NamePt: "Vigia do farol", DescPt: []string{"Nunca é pego de surpresa à beira-mar."}}}})
 	spell := entry(&rulesv1.CreateTableEntryRequest{Body: &rulesv1.CreateTableEntryRequest_TableSpell{TableSpell: tableSpell("Raio de sal", "class:wizard")}})
 	_ = must(master.table.ArchiveTableEntry(ctx, connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: cid, Key: spell})))
 	_ = background
