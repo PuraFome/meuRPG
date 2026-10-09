@@ -51,6 +51,9 @@ type RestKeeper interface {
 	// conversion into sorcery points.
 	CreateSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level int) (before, after *playv1.CharacterVitals, cost int, err error)
 	ConvertSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level int) (before, after *playv1.CharacterVitals, gain int, err error)
+	// UndoCreateSpellSlot and UndoConvertSpellSlot take them back (the master's undo).
+	UndoCreateSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level, cost int) (*playv1.CharacterVitals, error)
+	UndoConvertSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level, gain int) (*playv1.CharacterVitals, error)
 }
 
 // resourceBlocked is the failed_precondition of a rule's refusal, with the

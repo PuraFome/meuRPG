@@ -146,14 +146,16 @@ func (c *Content) BardicInspirationDie(bardLevel int) int {
 var ErrBardicInspiration = errors.New("bardic inspiration")
 
 // BardicInspirationTarget is what the bard knows of the creature it chooses: it is
-// not the bard, the bard sees it within 60 feet, it can hear, and it has no die yet.
+// not the bard, it is within 60 feet, it can hear, and it has no die yet (SRD 5.1:
+// "one creature other than yourself within 60 feet of you who can hear you"; "a
+// creature can have only one Bardic Inspiration die at a time"). The SRD asks no
+// line of sight.
 type BardicInspirationTarget struct {
-	IsBard    bool
-	Distance  int  // in feet; meaningful when OnMap
-	OnMap     bool // false: theatre of the mind, where the master judges the range
-	CanHear   bool
-	HasDie    bool
-	CanBeSeen bool
+	IsBard   bool
+	Distance int  // in feet; meaningful when OnMap
+	OnMap    bool // false: theatre of the mind, where the master judges the range
+	CanHear  bool
+	HasDie   bool
 }
 
 // BardicInspirationRefusal is the reason the target cannot be given a die, "" when it
@@ -162,8 +164,6 @@ func BardicInspirationRefusal(t BardicInspirationTarget) string {
 	switch {
 	case t.IsBard:
 		return "É você"
-	case !t.CanBeSeen:
-		return "Você não a vê"
 	case t.OnMap && t.Distance > BardicInspirationRangeFt:
 		return "Além de 18 m"
 	case !t.CanHear:

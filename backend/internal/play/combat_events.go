@@ -434,6 +434,9 @@ type actionEvent struct {
 	// D20B is the second d20 of a Perception search with disadvantage.
 	D20B  int32    `json:"d20_b,omitempty"`
 	Found []string `json:"found,omitempty"`
+	// Res is what a class resource flow did (Lay on Hands, Flexible Casting,
+	// Bardic Inspiration): see combat_resources.go.
+	Res *resourceEvent `json:"res,omitempty"`
 }
 
 // readEvent decodes an event's payload. A payload of this module never fails

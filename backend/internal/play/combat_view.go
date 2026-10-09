@@ -263,6 +263,7 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 			if shared && inParty(c) && !v.owns(c) && inTurn(e, c) {
 				shareEconomy(p, c)
 			}
+			p.InspirationDie = inspirationDieView(d.cs, c, e.Round, v)
 			p.TurnPartEnded = turn.flags && e.Status == statusActive && c.TurnState == turnEnded
 			out.Combatants = append(out.Combatants, p)
 		}

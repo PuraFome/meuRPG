@@ -431,3 +431,44 @@ func (s *Service) ConvertSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, c
 	}
 	return r.view, after, gain, nil
 }
+
+// UndoCreateSpellSlot takes back a slot Flexible Casting created: the slot goes away
+// (a used one counts as used no more) and the points it cost come back. It returns the
+// vitals after. It implements play.RestKeeper.
+func (s *Service) UndoCreateSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level, cost int) (*playv1.CharacterVitals, error) {
+	r, _, err := s.vitalsOfRow(ctx, tx, campaignID, characterID)
+	if err != nil {
+		return nil, err
+	}
+	after := proto.CloneOf(r.view)
+	if slot := slotOf(after, i32(level)); slot != nil && slot.GetCreated() > 0 {
+		slot.Total--
+		slot.Created--
+		slot.Used = min(slot.GetUsed(), slot.GetTotal())
+		if slot.GetTotal() == 0 {
+			after.SpellSlots = slices.DeleteFunc(after.SpellSlots, func(x *playv1.SpellSlotUsage) bool { return x.GetLevel() == i32(level) })
+		}
+	}
+	if points, _ := resourceLeft(after, rules.SorceryPointsKey); points != nil {
+		points.Used = max(points.GetUsed()-i32(cost), 0)
+	}
+	return s.saveView(ctx, tx, r, after)
+}
+
+// UndoConvertSpellSlot takes back a conversion of a slot into sorcery points: the slot
+// is free again and the points go. It returns the vitals after. It implements
+// play.RestKeeper.
+func (s *Service) UndoConvertSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level, gain int) (*playv1.CharacterVitals, error) {
+	r, _, err := s.vitalsOfRow(ctx, tx, campaignID, characterID)
+	if err != nil {
+		return nil, err
+	}
+	after := proto.CloneOf(r.view)
+	if slot := slotOf(after, i32(level)); slot != nil {
+		slot.Used = max(slot.GetUsed()-1, 0)
+	}
+	if points, _ := resourceLeft(after, rules.SorceryPointsKey); points != nil {
+		points.Used = min(points.GetUsed()+i32(gain), points.GetTotal())
+	}
+	return s.saveView(ctx, tx, r, after)
+}

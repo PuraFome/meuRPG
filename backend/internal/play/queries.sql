@@ -343,6 +343,14 @@ UPDATE combatants
 SET conditions = $2
 WHERE id = $1;
 
+-- name: SetCombatantInspirationDie :exec
+-- The Bardic Inspiration die a combatant holds: its size, the bard's combatant and
+-- the round it runs out in; all NULL for no die (the die was used, ran out or the
+-- giving was undone).
+UPDATE combatants
+SET inspiration_sides = sqlc.narg(sides), inspiration_from = sqlc.narg(from_id), inspiration_expires_round = sqlc.narg(expires_round)
+WHERE id = sqlc.arg(id);
+
 -- name: SetCombatantDeathSaves :exec
 -- The death save counts, whether the turn's save was rolled, and whether the
 -- combatant is out of the fight (a death the master confirmed), or their undo.

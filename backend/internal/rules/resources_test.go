@@ -146,7 +146,7 @@ func TestBardicInspirationLastsTenMinutes(t *testing.T) {
 
 func TestBardicInspirationRefusals(t *testing.T) {
 	t.Parallel()
-	ok := BardicInspirationTarget{OnMap: true, Distance: 45, CanHear: true, CanBeSeen: true}
+	ok := BardicInspirationTarget{OnMap: true, Distance: 45, CanHear: true}
 	if r := BardicInspirationRefusal(ok); r != "" {
 		t.Errorf("a creature at 45 ft that hears: %q", r)
 	}
@@ -157,7 +157,6 @@ func TestBardicInspirationRefusals(t *testing.T) {
 	}
 	for name, mod := range map[string]func(*BardicInspirationTarget){
 		"the bard itself":   func(t *BardicInspirationTarget) { t.IsBard = true },
-		"out of sight":      func(t *BardicInspirationTarget) { t.CanBeSeen = false },
 		"beyond 60 ft":      func(t *BardicInspirationTarget) { t.Distance = 65 },
 		"cannot hear":       func(t *BardicInspirationTarget) { t.CanHear = false },
 		"already has a die": func(t *BardicInspirationTarget) { t.HasDie = true },
@@ -169,7 +168,7 @@ func TestBardicInspirationRefusals(t *testing.T) {
 		}
 	}
 	// In the theatre of the mind there is no distance: the master judges it.
-	theatre := BardicInspirationTarget{Distance: 500, CanHear: true, CanBeSeen: true}
+	theatre := BardicInspirationTarget{Distance: 500, CanHear: true}
 	if r := BardicInspirationRefusal(theatre); r != "" {
 		t.Errorf("theatre of the mind: %q", r)
 	}

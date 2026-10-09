@@ -128,6 +128,12 @@ type Sheet struct {
 	// weapon attack: 20, 19 with Improved Critical, 18 with Superior Critical.
 	// 0 (a basic sheet) is 20.
 	CriticalRange int
+	// Metamagic are the Metamagic options the sorcerer knows (feature keys), ChaMod
+	// is its Charisma modifier, and BardicDie the size of the die its Bardic
+	// Inspiration gives, 0 for a character with none.
+	Metamagic []string
+	ChaMod    int
+	BardicDie int
 	// TwoWeaponFighting says the character has the fighting style.
 	TwoWeaponFighting bool
 	// FeatureActions are the actions the sheet's class and race features grant

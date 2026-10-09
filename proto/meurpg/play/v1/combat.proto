@@ -2454,6 +2454,28 @@ message GetTurnOptionsResponse {
   // combatant's attacks and spells will do to the damage dice, so the screen can
   // say it before the roll. DOUBLED_DICE or MAX_PLUS_ROLL, never UNSPECIFIED.
   CriticalDamageRule critical_rule = 6;
+  // For each feature action of options.feature_actions that picks a creature
+  // (Cura pelas Mãos, Inspiração de Bardo), who it can pick.
+  repeated ResourceTargets resource_targets = 30;
+}
+
+// ResourceTargets lists the creatures a feature action that picks one can choose.
+message ResourceTargets {
+  // The feature action, as in rules.v1.Action.key ("feature:lay-on-hands",
+  // "feature:bardic-inspiration-d6").
+  string action_key = 1;
+  // The combatants the caller sees, in turn order: for Lay on Hands the touch's
+  // reach (5 ft, `too_far` beyond it), for Bardic Inspiration the 60 ft of the bard's
+  // voice. The paladin itself is listed for Lay on Hands, the bard never is.
+  repeated ResourceTarget targets = 2;
+}
+
+// ResourceTarget is one creature a feature action may pick.
+message ResourceTarget {
+  TargetInReach target = 1;
+  // Set when the creature cannot be picked: Bardic Inspiration's "Já tem um dado",
+  // "Não ouve você". Empty when it can. Never a creature's type (RN-10).
+  string disabled_reason_pt = 2;
 }
 
 // SpellTargets lists the targets one spell can choose.

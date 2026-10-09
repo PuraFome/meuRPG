@@ -240,6 +240,9 @@ func (s *Service) GetTurnOptions(
 	if err != nil {
 		return nil, s.dbError(ctx, "work out the turn options", err)
 	}
+	if err := s.attachMetamagic(ctx, nil, m.CampaignID, who, opts); err != nil {
+		return nil, s.dbError(ctx, "work out the Metamagic", err)
+	}
 	code, err := s.gate(ctx, nil, m.CampaignID, enc, who)
 	if err != nil {
 		return nil, s.dbError(ctx, "check the combatant's turn", err)
@@ -274,6 +277,7 @@ func (s *Service) GetTurnOptions(
 	if res.SpellTargets, err = s.spellTargetsFor(ctx, m.CampaignID, terrain, who, d.cs, v, opts, isTheatre(enc)); err != nil {
 		return nil, s.dbError(ctx, "work out the spell targets", err)
 	}
+	res.ResourceTargets = resourceTargetsFor(terrain, d.cs, who, v, opts, enc)
 	open, err := s.queries.ListOpenPendingDamages(ctx, enc.ID)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the pending damage", err)
@@ -1680,6 +1684,11 @@ func (s *Service) TakeAction(
 		if wildShapeFeature(actionKey) {
 			// It needs the beast: AssumeWildShape takes it (MR-037).
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the Wild Shape action is taken with AssumeWildShape"))
+		}
+		if slices.Contains(resourceFlowActions, actionKey) {
+			// They need a target or a number of points: UseLayOnHands, CreateSpellSlot,
+			// ConvertSpellSlot and GiveBardicInspiration take them.
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this action is taken with the resource service"))
 		}
 		feature := strings.HasPrefix(actionKey, "feature:")
 		list := opts.GetStandardActions()

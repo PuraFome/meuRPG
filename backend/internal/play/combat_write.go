@@ -141,6 +141,8 @@ type combatTx struct {
 	kind string
 	// castID is the id the pending damages of the spell being cast share.
 	castID string
+	// meta is the Metamagic of the casting in progress (nil without it).
+	meta *castMeta
 	// actorUserID is who makes the change, for the events a change writes besides
 	// its own (the creatures it summons or dismisses).
 	actorUserID string

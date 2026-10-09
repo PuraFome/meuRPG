@@ -128,11 +128,21 @@ func diceText(f rules.DiceFormula) string {
 // character's sheet. It takes no caller: it runs after play's authorization
 // check, and its armor class never goes to a player.
 func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (link.Sheet, error) {
-	_, d, _, err := s.fighter(ctx, tx, campaignID, characterID)
+	_, d, content, err := s.fighter(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return link.Sheet{}, err
 	}
-	out := link.Sheet{ArmorClass: d.ArmorClass, Senses: senseRanges(d.Senses)}
+	out := link.Sheet{ArmorClass: d.ArmorClass, Senses: senseRanges(d.Senses), Metamagic: rules.MetamagicKnown(d.Features)}
+	for _, a := range d.Abilities {
+		if a.Ability == rules.CHA {
+			out.ChaMod = a.Modifier
+		}
+	}
+	for _, cl := range d.Classes {
+		if cl.ClassKey == "class:bard" {
+			out.BardicDie = content.BardicInspirationDie(cl.Level)
+		}
+	}
 	for _, a := range d.Attacks {
 		name := a.NamePT
 		if name == "" {
