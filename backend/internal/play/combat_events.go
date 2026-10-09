@@ -3,6 +3,7 @@ package play
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -88,6 +89,13 @@ type saveRoll struct {
 	Total int32 `json:"total"`
 	DC    int32 `json:"dc"`
 	Saved bool  `json:"saved,omitempty"`
+	// The save rolled with advantage or disadvantage: the other d20, which die counts
+	// (D20 is the one that does) and the mode; Auto says a stunned, paralyzed,
+	// unconscious or petrified target failed a Strength or Dexterity save without rolling.
+	D20B     int32  `json:"d20_b,omitempty"`
+	Counted  int32  `json:"counted,omitempty"`
+	RollMode string `json:"roll_mode,omitempty"`
+	Auto     bool   `json:"auto,omitempty"`
 	// Unknown says the target is a basic-sheet NPC with no saving throw bonus:
 	// the roll is d20 + 0 and the master may overrule it.
 	Unknown bool `json:"bonus_unknown,omitempty"`
@@ -104,6 +112,13 @@ type castHit struct {
 	Total    int32     `json:"total,omitempty"`
 	Physical bool      `json:"physical,omitempty"`
 	Save     *saveRoll `json:"save,omitempty"`
+	// A spell attack made with advantage or disadvantage: the other d20, which die
+	// counts (D20 is the one that does), the mode and the suggestion.
+	D20B          int32  `json:"d20_b,omitempty"`
+	Counted       int32  `json:"counted,omitempty"`
+	RollMode      string `json:"roll_mode,omitempty"`
+	SuggestedMode string `json:"suggested_mode,omitempty"`
+	ReasonID      string `json:"reason_id,omitempty"`
 	// Pending is the pending damage or heal the cast opened for the target.
 	Pending string `json:"pending_id,omitempty"`
 	// More are the other pending damages the cast opened for the target, one for
@@ -190,6 +205,7 @@ type damageHit struct {
 	Pending     string      `json:"pending_id"`
 	Target      string      `json:"target_id"`
 	Amount      int32       `json:"amount"`
+	Shown       int32       `json:"shown,omitempty"` // the damage a player who is not the target's reads
 	Half        bool        `json:"half,omitempty"`
 	Applied     bool        `json:"applied,omitempty"`
 	Before      *hpState    `json:"before,omitempty"`
@@ -491,9 +507,49 @@ type actionEvent struct {
 	// Monsters is what AddMonsters did: the parameters (for a retry to be checked
 	// against) and the new combatants (the master's log line).
 	Monsters *monstersEvent `json:"monsters,omitempty"`
-	// D20B is the second d20 of a Perception search with disadvantage.
+	// D20B is the second d20 of a Perception search with disadvantage, and of an
+	// attack roll made with advantage or disadvantage (D20 is then the die that counts).
 	D20B  int32    `json:"d20_b,omitempty"`
 	Found []string `json:"found,omitempty"`
+
+	// The mode of a d20 roll (combat_advantage.go, combat_rollmode.go). Counted is the
+	// index (0 or 1) of the die that counts among the two, in the order they were
+	// rolled; RollMode the mode the roll had and SuggestedMode the server's suggestion
+	// ("normal", "advantage" or "disadvantage"; empty is normal). A mode that is not the
+	// suggestion keeps its reason apart (ReasonID, a combat_reasons row, or RequestID,
+	// the answered request): free text never goes in an event. Requested is the mode a
+	// player asked the master for; Canceled says the request was taken back.
+	// CriticalOnHit says a hit was a critical hit by the target's condition.
+	Counted       int32  `json:"counted,omitempty"`
+	RollMode      string `json:"roll_mode,omitempty"`
+	SuggestedMode string `json:"suggested_mode,omitempty"`
+	Requested     string `json:"requested_mode,omitempty"`
+	ReasonID      string `json:"reason_id,omitempty"`
+	RequestID     string `json:"request_id,omitempty"`
+	Canceled      bool   `json:"canceled,omitempty"`
+	CritOnHit     bool   `json:"crit_on_hit,omitempty"`
+	ByMaster      bool   `json:"by_master,omitempty"`
+
+	// The damage by parts (combat_parts.go): what each part rolled, the once-per-turn
+	// marks of the attacker before the roll (an undo puts them back) and the steps
+	// that resistance took the damage through.
+	Parts      []partRoll  `json:"parts,omitempty"`
+	OnceBefore *onceMarks  `json:"once_before,omitempty"`
+	Steps      []stepGroup `json:"steps,omitempty"`
+	// Shown is the damage as rolled, before the target's modifiers and with every die the
+	// roll made: what a player who is not the target's reads.
+	Shown int32 `json:"shown,omitempty"`
+	// Ignored are the sources of the steps the master left out when he applied the damage.
+	Ignored []string `json:"ignored,omitempty"`
+
+	// A state that began or ended (state_changed; the action that began it): its kind
+	// ("rage", "dodging", "reckless", "hunters_mark_target"), whether it began, why it
+	// ended, and the state row an action's undo takes away.
+	StateKind    string `json:"state_kind,omitempty"`
+	StateStarted bool   `json:"state_started,omitempty"`
+	StateReason  string `json:"state_reason,omitempty"`
+	StateID      string `json:"state_id,omitempty"`
+
 	// Res is what a class resource flow did (Lay on Hands, Flexible Casting,
 	// Bardic Inspiration): see combat_resources.go.
 	Res *resourceEvent `json:"res,omitempty"`
@@ -602,4 +658,12 @@ func (s *Service) publishLogChanged(ctx context.Context, campaignID, encounterID
 type stoppedHit struct {
 	Pending    string `json:"pending"`
 	PrevStatus string `json:"prev_status"`
+}
+
+// jsonUnmarshal decodes a stored JSON column.
+func jsonUnmarshal(raw []byte, v any) error {
+	if len(raw) == 0 {
+		return errors.New("empty")
+	}
+	return json.Unmarshal(raw, v)
 }

@@ -495,7 +495,8 @@ RETURNING *;
 -- name: ClearPendingDamageRoll :one
 -- An undo of the damage roll: it waits to be rolled again.
 UPDATE pending_damages
-SET status = 'awaiting_roll', faces = '{}', physical = false, amount = NULL, resolved_at = NULL, roll_total = NULL, taken = NULL
+SET status = 'awaiting_roll', faces = '{}', physical = false, amount = NULL, resolved_at = NULL, roll_total = NULL, taken = NULL,
+    part_rolls = '[]', steps = '[]', after_steps = NULL, landed_before = NULL
 WHERE id = $1
 RETURNING *;
 
@@ -998,8 +999,8 @@ WHERE run_id = $1 AND seq > $2 AND wrong AND user_id IS NOT NULL
 GROUP BY user_id;
 
 -- name: InsertPuzzleHintTry :one
-INSERT INTO puzzle_hint_tries (run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+INSERT INTO puzzle_hint_tries (run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 RETURNING *;
 
 -- name: GetPuzzleHintTryByKey :one
@@ -1093,6 +1094,158 @@ UPDATE revivify_requests
 SET status = sqlc.arg(status), answered_at = sqlc.arg(answered_at), answer_key = sqlc.narg(answer_key), answer_hash = sqlc.narg(answer_hash)
 WHERE id = sqlc.arg(id)::UUID AND status = 'pending'
 RETURNING *;
+
+
+-- The attack rolls: a player's requests for a better mode, the short reasons of the
+-- log, the states of a combatant and the parts of a damage.
+
+-- name: InsertRollModeRequest :one
+-- A player's request for a better mode than the suggested one. Any earlier request of
+-- the same combatant is closed by CloseRollModeRequestsOf before.
+INSERT INTO roll_mode_requests (
+    encounter_id, combatant_id, target_id, attack_key, suggested_mode, requested_mode, status, reason, created_at
+) VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8)
+RETURNING *;
+
+-- name: GetRollModeRequest :one
+SELECT * FROM roll_mode_requests
+WHERE encounter_id = $1 AND id = $2;
+
+-- name: ListRollModeRequests :many
+-- The requests that wait for the master or wait for their attack to be rolled.
+SELECT * FROM roll_mode_requests
+WHERE encounter_id = $1 AND status IN ('pending', 'answered')
+ORDER BY created_at, id;
+
+-- name: AnswerRollModeRequest :one
+UPDATE roll_mode_requests
+SET status = 'answered', decided_mode = $2, answered_at = $3
+WHERE id = $1 AND status IN ('pending', 'answered')
+RETURNING *;
+
+-- name: CloseRollModeRequest :exec
+UPDATE roll_mode_requests
+SET status = 'closed', answered_at = COALESCE(answered_at, $2)
+WHERE id = $1 AND status <> 'closed';
+
+-- name: CloseRollModeRequestsOf :many
+-- A new request, a used one, the end of the turn or of the combat: the open requests
+-- of the combatant are closed. The IDs come back for the event.
+UPDATE roll_mode_requests
+SET status = 'closed', answered_at = COALESCE(answered_at, $2)
+WHERE combatant_id = $1 AND status IN ('pending', 'answered')
+RETURNING id;
+
+-- name: InsertCombatReason :one
+INSERT INTO combat_reasons (encounter_id, kind, reason, created_at)
+VALUES ($1, $2, $3, $4)
+RETURNING *;
+
+-- name: ListCombatReasons :many
+-- The reasons the log reads, by ID.
+SELECT * FROM combat_reasons
+WHERE encounter_id = $1 AND id = ANY($2::UUID[]);
+
+-- name: InsertCombatantState :one
+INSERT INTO combatant_states (
+    encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING *;
+
+-- name: ListCombatantStates :many
+SELECT * FROM combatant_states
+WHERE encounter_id = $1
+ORDER BY created_at, id;
+
+-- name: DeleteCombatantState :exec
+DELETE FROM combatant_states
+WHERE id = $1;
+
+-- name: DeleteCombatantStatesOfKind :many
+-- The states of a kind a combatant has (a rage, a dodge), the IDs back for the event.
+DELETE FROM combatant_states
+WHERE combatant_id = $1 AND kind = $2
+RETURNING id;
+
+-- name: DeleteCombatantStatesBySource :many
+-- The states a source gave (the marks of a ranger who stopped concentrating).
+DELETE FROM combatant_states
+WHERE source_id = $1 AND kind = $2
+RETURNING id, combatant_id;
+
+-- name: SetCombatantRageFlags :exec
+-- What decides whether a rage ends: it attacked a hostile creature since its last turn,
+-- it took damage since, and the turn waits for the player's answer.
+UPDATE combatants
+SET attacked_hostile = $2, took_damage = $3, rage_end_pending = $4
+WHERE id = $1;
+
+-- name: SetCombatantConditionSources :exec
+UPDATE combatants
+SET condition_sources = $2
+WHERE id = $1;
+
+-- name: SetCombatantOncePerTurn :exec
+-- The turn ("<round>:<combatant on turn>") in which Sneak Attack and Colossus Slayer
+-- last added their damage; NULL back after an undo.
+UPDATE combatants
+SET sneak_attack_turn = $2, colossus_slayer_turn = $3
+WHERE id = $1;
+
+-- name: SetPendingDamageParts :exec
+-- The lines the hit offers.
+UPDATE pending_damages
+SET parts = $2
+WHERE id = $1;
+
+-- name: SetPendingDamageDetail :exec
+-- What a roll left: the parts as they were rolled, what each rolled, the steps of the
+-- damage, the damage after them and, for an NPC that took it at once, how many hit
+-- points it had before.
+UPDATE pending_damages
+SET parts = $2, part_rolls = $3, steps = $4, after_steps = $5, landed_before = $6
+WHERE id = $1;
+
+-- name: SetPendingDamageAmount :exec
+-- The master took an extra out: the new total and what lands.
+UPDATE pending_damages
+SET amount = $2, roll_total = $3, parts = $4, part_rolls = $5, steps = $6, after_steps = $7
+WHERE id = $1;
+
+-- name: DeleteExpiredCombatantStates :many
+-- The states that end at the start of a turn of one of these combatants, a dodge or a
+-- reckless attack of their own, and the rages whose minute is over.
+DELETE FROM combatant_states
+WHERE encounter_id = $1
+  AND (
+    (combatant_id = ANY($2::UUID[]) AND kind IN ('dodging', 'reckless'))
+    OR (ends_combatant_id = ANY($2::UUID[]) AND ends_phase = 'start_of_turn')
+    OR (kind = 'rage' AND ends_round IS NOT NULL AND ends_round <= $3)
+  )
+RETURNING *;
+
+-- name: DeleteEndedCombatantStates :many
+-- The states that end at the end of this combatant's turn.
+DELETE FROM combatant_states
+WHERE encounter_id = $1 AND ends_combatant_id = $2 AND ends_phase = 'end_of_turn'
+RETURNING *;
+
+-- name: DeleteStatesOfCombatant :many
+DELETE FROM combatant_states
+WHERE combatant_id = $1 AND kind = $2
+RETURNING *;
+
+-- name: ListEncounterRollModeRequests :many
+-- Every request of the combat, whatever its status, for the log.
+SELECT * FROM roll_mode_requests
+WHERE encounter_id = $1
+ORDER BY created_at, id;
+
+-- name: ListEncounterCombatReasons :many
+-- Every reason of the combat, for the log.
+SELECT * FROM combat_reasons
+WHERE encounter_id = $1
+ORDER BY created_at, id;
 
 -- name: HasLongRestInSession :one
 -- Whether the master already took a long rest in the session: the SRD allows one

@@ -614,7 +614,10 @@ type Derived struct {
 	// "Sem armadura" or "Armadura de couro + escudo".
 	ArmorClass            int
 	ArmorClassDescription string
-	HitPointsMax          int
+	// ArmorCategory is the worn armor's category: "none", "light", "medium" or
+	// "heavy" (a shield is separate). Rage gives its benefits only without heavy armor.
+	ArmorCategory string
+	HitPointsMax  int
 	// HitPointsFromEffects is HitPointsMax minus what the hit dice and the
 	// Constitution modifier give (with the floor of one per level): what the
 	// "hp.max" effects add. It is negative for an effect that subtracts and 0
@@ -848,6 +851,10 @@ type Attack struct {
 	// Light is a melee weapon with the light property: the only kind of
 	// Two-Weapon Fighting (the attack and the bonus action attack).
 	Light bool
+	// Finesse and TwoHanded are the weapon properties of the same names: Sneak
+	// Attack takes a finesse or a ranged weapon, and Great Weapon Fighting a
+	// two-handed melee one. False for a spell and a creature's attack.
+	Finesse, TwoHanded bool
 	// MartialArts says the Martial Arts bonus action unarmed strike goes with
 	// this attack: the unarmed strike, and a monk weapon, while the monk wears
 	// no armor and no shield.

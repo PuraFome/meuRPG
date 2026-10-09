@@ -6,6 +6,9 @@
   </div>
   <p class="rl__action">{{ action() }}</p>
   <p class="rl__formula">{{ formula() }}</p>
+  @if (modeInfo()) {
+    <app-check-mode [mode]="roll().mode" [sources]="roll().sources" [faces]="faces()" />
+  }
   @if (pass(); as text) {
     <div class="rl__line">
       <span class="mr-tag" [class.mr-tag--success]="roll().passed" [class.mr-tag--danger]="!roll().passed">

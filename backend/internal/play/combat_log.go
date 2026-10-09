@@ -71,6 +71,11 @@ type logEntry struct {
 	// hosts are the events the entry shows: an attack's own and the ones of its
 	// damage, so the entry of the last action is the one to undo.
 	hosts []string
+	// removed is the master's removal of an extra of the damage, partLabel the extra's
+	// name on a line of the removal, rolls what the log reads of the combat's own tables.
+	removed   *actionEvent
+	partLabel string
+	rolls     *logRolls
 }
 
 // damageLog is what became of one pending damage of a spell: where it is, the
@@ -107,6 +112,9 @@ func (s *Service) ListCombatLog(
 		events []playdb.ListEncounterEventsRow
 		cs     []playdb.Combatant
 		recent []playdb.ListRecentSessionEventsRow
+		// the reasons and the requests the events point at
+		reasons  []playdb.CombatReason
+		requests []playdb.RollModeRequest
 	)
 	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
@@ -119,6 +127,12 @@ func (s *Service) ListCombatLog(
 		}
 		if events, err = q.ListEncounterEvents(ctx, playdb.ListEncounterEventsParams{EncounterID: &enc.ID, Limit: logEventLimit}); err != nil {
 			return fmt.Errorf("list the combat's events: %w", err)
+		}
+		if reasons, err = q.ListEncounterCombatReasons(ctx, enc.ID); err != nil {
+			return fmt.Errorf("list the reasons: %w", err)
+		}
+		if requests, err = q.ListEncounterRollModeRequests(ctx, enc.ID); err != nil {
+			return fmt.Errorf("list the requests: %w", err)
 		}
 		// With the dismissed creatures: their lines survive a concentration ending.
 		if cs, err = q.ListCombatantsWithDismissed(ctx, enc.ID); err != nil {
@@ -147,6 +161,10 @@ func (s *Service) ListCombatLog(
 		v.hideDeath = rules.DeathSavesHidden
 	}
 	entries := buildLog(events)
+	rolls := newLogRolls(reasons, requests, s.namesFor(ctx, m.CampaignID))
+	for _, e := range entries {
+		e.rolls = rolls
+	}
 
 	res := &playv1.ListCombatLogResponse{}
 	var lastID string
@@ -319,6 +337,30 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 						}
 						entry.pend[d.Pending] = &damageLog{status: status}
 						byPending[d.Pending] = entry
+					}
+				}
+			}
+		case eventRollModeAnswered:
+			if ev.Canceled {
+				continue // a request taken back is no line
+			}
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_ROLL_MODE_ANSWERED
+		case eventStateChanged:
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_STATE_CHANGED
+		case eventDamagePartRemoved:
+			// The removal belongs to the damage it took the extra out of, and is a line of its own.
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_DAMAGE_PART_REMOVED
+			if host, ok := byPending[ev.Pending]; ok {
+				host.hosts = append(host.hosts, e.ID)
+				host.removed = &ev
+				if host.dmg != nil {
+					for _, r := range host.dmg.Parts {
+						if r.Key == ev.Key {
+							entry.partLabel = r.Label
+						}
+					}
+					if ev.After != nil {
+						host.dmg.After = ev.After
 					}
 				}
 			}
@@ -554,12 +596,19 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		}
 		if dice {
 			out.AttackRoll = diceRoll(1, 20, []int32{e.ev.D20}, e.ev.Modifier, e.ev.Total, e.ev.Physical)
+			if e.ev.D20B != 0 {
+				out.AttackRoll = diceRoll(2, 20, pairOf(e.ev.D20, e.ev.D20B, e.ev.Counted), e.ev.Modifier, e.ev.Total, e.ev.Physical)
+				out.AttackRoll.CountedIndex = e.ev.Counted
+			}
+			out.ModeChange = e.modeChange(e.ev, e.ev.ByMaster)
+			out.Reason = e.rolls.reasonOf(e.ev)
 			out.BonusDice = bonusDiceOf(e.ev)
 		}
 		if len(e.stopped) > 0 { // Escudo stopped it: a miss, with no damage
 			out.Outcome, out.StoppedByReaction = playv1.AttackOutcome_ATTACK_OUTCOME_MISS, true
 		} else if e.ev.Pending != "" {
 			out.Damage = e.damage(dice, v.master, v.master || v.owns(target), out)
+			e.dressDamage(out.Damage, v, dice, v.master || (target.Kind == kindPlayer && v.owns(target)), holdsHP(target))
 		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:
 		if e.ev.Heal { // Retomar o fôlego: only the master and its own player see the numbers
@@ -569,6 +618,18 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 					Roll: diceRoll(e.ev.DiceCount, e.ev.DiceSides, e.ev.Faces, e.ev.Modifier, e.ev.Total, e.ev.Physical),
 				}
 			}
+		}
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_ROLL_MODE_ANSWERED:
+		if !v.master && !v.owns(actor) {
+			return nil, false
+		}
+		out.ModeChange = e.answerChange()
+		out.Reason = e.rolls.reasonOf(e.ev)
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_STATE_CHANGED:
+		out.State = &playv1.CombatLogStateChange{Kind: stateKindProto(e.ev.StateKind), Started: e.ev.StateStarted, Reason: e.ev.StateReason}
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_DAMAGE_PART_REMOVED:
+		if !e.removalView(v, v.owns(actor), out) {
+			return nil, false
 		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST:
 		out.Spell = e.spellView(v, byID)
@@ -685,6 +746,9 @@ func (d *damageLog) view(v combatViewer, caster, target playdb.Combatant) *playv
 	}
 	r := d.roll
 	out.Amount, out.DamageTypeKey, out.DamageTypePt = d.hit.Amount, r.DamageType, damageTypePT[r.DamageType]
+	if !v.master && !v.owns(target) && d.hit.Shown > 0 { // as rolled, before the target's modifiers (RN-20)
+		out.Amount = d.hit.Shown
+	}
 	out.Half, out.Healing = d.hit.Half, r.Heal
 	out.CriticalRule, out.CriticalMax = pendingCriticalRule(r.Critical, r.CriticalMaxRule), r.CriticalMax
 	if r.Heal && !v.master && !v.owns(target) {
@@ -787,6 +851,7 @@ func (e *logEntry) trapEntry(ctx context.Context, v combatViewer, byID map[strin
 			return cc.Hidden || (cc.Fogged && !slices.Contains(cc.SeenBy, v.userID))
 		},
 		label: func(id string) string { return byID[id].Label },
+		names: func(key string) string { return names.contentName(ctx, key) },
 		status: func(pendingID string) (playv1.PendingDamageStatus, bool) {
 			if dl, ok := e.pend[pendingID]; ok {
 				return dl.status, true

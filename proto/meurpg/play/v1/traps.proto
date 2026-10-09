@@ -13,6 +13,7 @@ package meurpg.play.v1;
 
 import "google/protobuf/timestamp.proto";
 import "meurpg/play/v1/combat.proto";
+import "meurpg/play/v1/combat_rolls.proto";
 
 // TrapSearchSkill is the skill a search rolls (question 71).
 enum TrapSearchSkill {
@@ -56,6 +57,11 @@ message SearchForTrapsRequest {
   // The menu the player sees is the same for every trap, so this tells nothing about
   // which traps are near.
   string other_skill_key = 7;
+  // With a real die, when the conditions of the character give the search advantage or
+  // disadvantage (SRD 5.1, "Advantage and Disadvantage"): both faces, in the order
+  // they were rolled. The server says which counts. Required (two faces) then; it
+  // replaces d20_face and d20_face_2.
+  repeated int32 d20_faces = 8;
 }
 
 // SearchForTrapsResponse is what the search found.
@@ -74,6 +80,14 @@ message SearchForTrapsResponse {
   // d20_face_2), with the same bonus. Unset for an Investigation search and for a
   // Perception one made with no second die.
   DiceRoll second_roll = 4;
+  // The mode every die of the search follows because of the character's conditions
+  // (Poisoned and Frightened are disadvantage on ability checks): with a mode other
+  // than NORMAL the search is rolled with two d20 for every trap, `roll` is the one
+  // that counts and `second_roll` the other (a real die: `d20_face` and `d20_face_2`).
+  // NORMAL when nothing applies; the dim light of a square is a mode of its own for
+  // the traps there. The circumstances are for the character's own player.
+  RollMode mode = 5;
+  repeated AdvantageSource sources = 6;
 }
 
 // FireTrapRequest is the master firing a trap by hand.

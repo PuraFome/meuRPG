@@ -1388,7 +1388,7 @@ func TestTimelineRound1And2Log(t *testing.T) {
 	end(a.bia)
 	// 2. Capitão atira no Toren (Arco curto): 1d20 (15) + 4 = 19; 1d6 (3) + 2 = 5, e o
 	// dano espera o mestre.
-	a.h.roller.queue(15, 3)
+	a.h.roller.queue(15, 15, 3)
 	hit := a.mustAttack(t, a.master, e, "Capitão Goblin", shortBow, "Toren", inAppRoll)
 	pending := a.mustDamage(t, a.master, e, hit.GetPendingDamage().GetId(), inAppDamage).GetPendingDamage()
 	if pending.GetAmount() != 5 || pending.GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_ROLLED {

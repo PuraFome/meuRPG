@@ -1,0 +1,286 @@
+syntax = "proto3";
+
+// This file holds the data of the d20 rolls and of the damage of a hit that
+// CombatService, CastSpell and the other rolls of the app share: advantage and
+// disadvantage with their sources (SRD 5.1, "Advantage and Disadvantage"), the
+// requests that ask the master for a better mode, what is added to the damage of
+// a hit, the steps that resistance and vulnerability take, and the states of a
+// combatant (a rage, a mark, a dodge). The RPCs and the messages that carry an
+// Encounter are in combat.proto.
+package meurpg.play.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// RollMode is how a d20 is rolled (SRD 5.1, "Advantage and Disadvantage").
+enum RollMode {
+  ROLL_MODE_UNSPECIFIED = 0;
+  // One d20.
+  ROLL_MODE_NORMAL = 1;
+  // Two d20, the higher counts.
+  ROLL_MODE_ADVANTAGE = 2;
+  // Two d20, the lower counts.
+  ROLL_MODE_DISADVANTAGE = 3;
+}
+
+// AdvantageSourceKind is the circumstance that gives a roll advantage or
+// disadvantage. The server works them all out and writes the sentence
+// (AdvantageSource.text_pt); the browser does no rules.
+enum AdvantageSourceKind {
+  ADVANTAGE_SOURCE_KIND_UNSPECIFIED = 0;
+  // Conditions of the target (an attack against it) and of the attacker (its own
+  // attack rolls). SRD 5.1, Conditions.
+  ADVANTAGE_SOURCE_KIND_PRONE_TARGET = 1;
+  ADVANTAGE_SOURCE_KIND_PRONE_ATTACKER = 2;
+  ADVANTAGE_SOURCE_KIND_RESTRAINED_TARGET = 3;
+  ADVANTAGE_SOURCE_KIND_RESTRAINED_ATTACKER = 4;
+  ADVANTAGE_SOURCE_KIND_BLINDED_TARGET = 5;
+  ADVANTAGE_SOURCE_KIND_BLINDED_ATTACKER = 6;
+  ADVANTAGE_SOURCE_KIND_POISONED_ATTACKER = 7;
+  ADVANTAGE_SOURCE_KIND_FRIGHTENED_ATTACKER = 8;
+  ADVANTAGE_SOURCE_KIND_INVISIBLE_TARGET = 9;
+  ADVANTAGE_SOURCE_KIND_INVISIBLE_ATTACKER = 10;
+  ADVANTAGE_SOURCE_KIND_STUNNED_TARGET = 11;
+  ADVANTAGE_SOURCE_KIND_PARALYZED_TARGET = 12;
+  ADVANTAGE_SOURCE_KIND_UNCONSCIOUS_TARGET = 13;
+  ADVANTAGE_SOURCE_KIND_PETRIFIED_TARGET = 14;
+  // Barbarian: Reckless Attack, for the barbarian's own Strength melee attacks and
+  // for every attack against it until its next turn.
+  ADVANTAGE_SOURCE_KIND_RECKLESS_ATTACKER = 15;
+  ADVANTAGE_SOURCE_KIND_RECKLESS_TARGET = 16;
+  // The Dodge action on the target.
+  ADVANTAGE_SOURCE_KIND_DODGING_TARGET = 17;
+  // A monster's Pack Tactics.
+  ADVANTAGE_SOURCE_KIND_PACK_TACTICS = 18;
+  // SRD 5.1, "Unseen Attackers and Targets".
+  ADVANTAGE_SOURCE_KIND_UNSEEN_ATTACKER = 19;
+  ADVANTAGE_SOURCE_KIND_UNSEEN_TARGET = 20;
+  // SRD 5.1, "Ranged Attacks": beyond the normal range, and a hostile creature
+  // within 5 ft.
+  ADVANTAGE_SOURCE_KIND_LONG_RANGE = 21;
+  ADVANTAGE_SOURCE_KIND_HOSTILE_NEARBY = 22;
+  // Saving throws and ability checks.
+  ADVANTAGE_SOURCE_KIND_DODGING_SAVE = 23;
+  ADVANTAGE_SOURCE_KIND_DANGER_SENSE = 24;
+  ADVANTAGE_SOURCE_KIND_RAGE_STRENGTH = 25;
+  ADVANTAGE_SOURCE_KIND_RESTRAINED_SAVE = 26;
+  ADVANTAGE_SOURCE_KIND_POISONED_CHECK = 27;
+  ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK = 28;
+  // A search for traps in dim light (Perception, MR-035).
+  ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM = 29;
+}
+
+// AdvantageSource is one circumstance of a roll, as the caller may read it. A
+// player never gets a source that rests on something the master hides (RN-10,
+// RN-20): the roll's mode counts it, the list does not name it.
+message AdvantageSource {
+  AdvantageSourceKind kind = 1;
+  // ADVANTAGE or DISADVANTAGE, never NORMAL.
+  RollMode effect = 2;
+  // The sentence the screen shows, in Portuguese: "Alvo Derrubado a 1,5 m: vantagem".
+  string text_pt = 3;
+}
+
+// RollModeRequestStatus is where a player's request for a better mode is.
+enum RollModeRequestStatus {
+  ROLL_MODE_REQUEST_STATUS_UNSPECIFIED = 0;
+  // Waits for the master.
+  ROLL_MODE_REQUEST_STATUS_PENDING = 1;
+  // The master answered: `decided_mode` is the mode the attack rolls with. The player
+  // rolls it with RollAttack.roll_mode_request_id.
+  ROLL_MODE_REQUEST_STATUS_ANSWERED = 2;
+  // The player took it back, or the turn ended, or the attack was rolled.
+  ROLL_MODE_REQUEST_STATUS_CLOSED = 3;
+}
+
+// RollModeRequest is a player's request for a mode that is better than the
+// server's suggestion (advantage the server did not suggest, or normal where it
+// suggested disadvantage): the master decides, because the SRD leaves it to him
+// ("the GM can also decide that circumstances influence a roll"). The master gets
+// every request of the combat; a player the ones of their own characters.
+message RollModeRequest {
+  string id = 1;
+  // The combatant that wants to attack, the target, and the attack (a key of its
+  // options.attacks) with its Portuguese name.
+  string combatant_id = 2;
+  string target_id = 3;
+  string attack_key = 4;
+  string attack_name_pt = 5;
+  // The mode the server suggested, the mode asked for, and the master's answer
+  // (unset while PENDING).
+  RollMode suggested_mode = 6;
+  RollMode requested_mode = 7;
+  RollMode decided_mode = 8;
+  RollModeRequestStatus status = 9;
+  // The player's reason, 1 to 120 characters (the master and the requester read it).
+  string reason = 10;
+  google.protobuf.Timestamp created_at = 11;
+}
+
+// DamageStepKind is what a step of the damage does to it.
+enum DamageStepKind {
+  DAMAGE_STEP_KIND_UNSPECIFIED = 0;
+  DAMAGE_STEP_KIND_RESISTANCE = 1;
+  DAMAGE_STEP_KIND_VULNERABILITY = 2;
+  DAMAGE_STEP_KIND_IMMUNITY = 3;
+}
+
+// DamageStep is one change that resistance, vulnerability or immunity makes to
+// a damage (SRD 5.1, "Damage Resistance and Vulnerability"): halved rounding
+// down, doubled, or nothing. Several sources of the same kind for one damage type
+// count once and are all named. Only the master and the owner of a player's
+// character get the steps of that character; a creature's or an NPC's are the
+// master's alone (RN-20).
+message DamageStep {
+  DamageStepKind kind = 1;
+  // The sources counted ("race:tiefling", "feature:rage", "monster:skeleton").
+  repeated string source_keys = 2;
+  // "Resistência a fogo (tiefling)".
+  string label_pt = 3;
+  // The damage before and after the step.
+  int32 before = 4;
+  int32 after = 5;
+  string damage_type_key = 6;
+  // The master told the app to leave it out (ApplyPendingDamageRequest.ignore_modifiers).
+  bool ignored = 7;
+}
+
+// SlotOption is a spell slot a damage part may spend (Divine Smite).
+message SlotOption {
+  int32 level = 1;
+  // A pact magic slot.
+  bool pact = 2;
+  // How many are free, and how many the character has.
+  int32 free = 3;
+  int32 max = 4;
+  // The dice the part rolls with this slot.
+  int32 dice_count = 5;
+}
+
+// DamagePart is a line of the damage of a hit: the weapon's, an extra the player
+// may add (Sneak Attack, Divine Smite, Hunter's Mark, Colossus Slayer) or an
+// automatic one (Rage, Improved Divine Smite). The extras are always listed, with
+// the reason when the condition does not hold (SRD 5.1, "Damage Rolls").
+message DamagePart {
+  // "weapon", "sneak-attack", "divine-smite", "divine-smite-extra",
+  // "hunters-mark", "colossus-slayer", "rage", "improved-divine-smite".
+  string key = 1;
+  // Its name for the line: "Espada curta", "Ataque Furtivo".
+  string label_pt = 2;
+  // The dice to roll (already doubled by a critical hit under the SRD's rule) and
+  // the number added without rolling.
+  int32 dice_count = 3;
+  int32 dice_sides = 4;
+  int32 flat = 5;
+  string damage_type_key = 6;
+  string damage_type_pt = 7;
+  // Where it comes from: the feature or spell key.
+  string source_key = 8;
+  // The player may choose it; `selected` says it is marked, `available` that it can be.
+  bool choosable = 9;
+  bool selected = 10;
+  bool available = 11;
+  // Why it is marked, or why it is disabled (the rule in words).
+  string reason_pt = 12;
+  // The server adds it with no choice.
+  bool auto = 13;
+  // The dice were doubled by a critical hit.
+  bool doubled = 14;
+  // Marking it spends a spell slot, which `slot_options` lists.
+  bool needs_slot = 15;
+  repeated SlotOption slot_options = 16;
+  // A word under the line: "inclui Duelismo +2 (automático)".
+  string note_pt = 17;
+}
+
+// Reroll is a die rerolled by Great Weapon Fighting.
+message Reroll {
+  int32 index = 1;
+  int32 from = 2;
+  int32 to = 3;
+}
+
+// DamagePartRoll is what one part of a damage rolled.
+message DamagePartRoll {
+  string part_key = 1;
+  string label_pt = 2;
+  int32 dice_count = 3;
+  int32 dice_sides = 4;
+  // The faces the app rolled; empty for a part a player typed.
+  repeated int32 faces = 5;
+  int32 flat = 6;
+  // The sum of the dice (the faces, or what was typed).
+  int32 sum = 7;
+  // Whether it counts in the total. A part the master took out, or Divine Smite's
+  // extra die against a target it does not apply to, rolled and does not count.
+  bool counted = 8;
+  bool physical = 9;
+  string damage_type_key = 10;
+  repeated Reroll rerolled = 11;
+}
+
+// SelectedExtra is an extra the player marks when they roll the damage.
+message SelectedExtra {
+  string key = 1;
+  // Divine Smite: the slot spent.
+  int32 slot_level = 2;
+  bool pact = 3;
+}
+
+// TypedPart is the sum a player typed for a group of dice (physical dice, one field
+// for each group).
+message TypedPart {
+  string part_key = 1;
+  int32 sum = 2;
+}
+
+// CombatantStateKind is a state a combatant is in for a while (PM-07).
+enum CombatantStateKind {
+  COMBATANT_STATE_KIND_UNSPECIFIED = 0;
+  // "Em fúria": Barbarian, Rage.
+  COMBATANT_STATE_KIND_RAGE = 1;
+  // "Marcado": the target of the ranger's Hunter's Mark. Only the master and the
+  // ranger's player get it.
+  COMBATANT_STATE_KIND_HUNTERS_MARK_TARGET = 2;
+  // "Esquivando": the Dodge action, until the start of its next turn.
+  COMBATANT_STATE_KIND_DODGING = 3;
+  // "Ataque descuidado": Reckless Attack, until the start of its next turn.
+  COMBATANT_STATE_KIND_RECKLESS = 4;
+}
+
+// StatePhase is the moment of a turn.
+enum StatePhase {
+  STATE_PHASE_UNSPECIFIED = 0;
+  STATE_PHASE_START_OF_TURN = 1;
+  STATE_PHASE_END_OF_TURN = 2;
+}
+
+// CombatantEffect is a state of a combatant, with where it comes from and when it ends.
+message CombatantEffect {
+  string id = 1;
+  CombatantStateKind kind = 2;
+  // The combatant that caused it (the ranger of a Hunter's Mark) and its label.
+  string source_id = 3;
+  string source_label = 4;
+  // It ends at the start or the end of this combatant's turn, in `ends_round`
+  // when that is set (a rage lasts 10 rounds). Empty when it ends with something
+  // else (a concentration).
+  string ends_combatant_id = 5;
+  StatePhase ends_phase = 6;
+  int32 ends_round = 7;
+  // The label of the chip and what the state does, in Portuguese.
+  string label_pt = 8;
+  string effect_pt = 9;
+}
+
+// ConditionSource says where a condition of a combatant comes from and when it
+// ends: Stunned from a monk's Stunning Strike ends at the end of the monk's next
+// turn (SRD 5.1, Monk). Conditions the master marks by hand have none.
+message ConditionSource {
+  string condition_key = 1;
+  string source_id = 2;
+  string source_label = 3;
+  string ends_combatant_id = 4;
+  StatePhase ends_phase = 5;
+  // "Atordoado (Kai) · até o fim da vez de Kai".
+  string text_pt = 6;
+}

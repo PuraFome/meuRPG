@@ -26,7 +26,7 @@ import { PoolCardView } from './pool-card';
             @for (l of g.lines; track l.id) {
               <li class="line">
                 <span class="line__icon" aria-hidden="true"><mat-icon>{{ l.icon }}</mat-icon></span>
-                <span class="line__text">
+                <div class="line__text">
                   @if (l.actor) {<b>{{ l.actor }}</b>}{{ l.text }}
                   @if (l.note; as note) {
                     <span class="line__note">{{ note }}</span>
@@ -34,7 +34,25 @@ import { PoolCardView } from './pool-card';
                   @if (l.hidden) {
                     <span class="line__secret"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só o mestre vê</span>
                   }
-                </span>
+                  @if (l.roll; as roll) {
+                    <span class="line__roll">
+                      {{ roll.label }}:
+                      @for (f of roll.faces; track $index) {
+                        <span class="die" [class.die--counts]="f.counts">
+                          <b>{{ f.value }}</b>{{ ' ' }}
+                          <span class="die__word">{{ f.counts ? 'conta' : 'não conta' }}</span>
+                        </span>
+                      }
+                    </span>
+                  }
+                  @if (l.notes?.length) {
+                    <ul class="line__notes">
+                      @for (n of l.notes; track $index) {
+                        <li>{{ n }}</li>
+                      }
+                    </ul>
+                  }
+                </div>
                 <!-- The card has the whole width of the line, under it, not the text's column. -->
                 @if (l.card; as card) {
                   <app-pool-card class="line__card" [card]="card" (change)="conditions.emit($event)" />

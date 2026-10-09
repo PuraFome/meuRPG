@@ -1,0 +1,18 @@
+{
+  "source": "SRD 5.1: Tiefling (Hellish Resistance: fire), Dwarf (Dwarven Resilience: poison), Dragonborn (Damage Resistance and the Draconic Ancestry table: acid, lightning, fire, poison, cold), Barbarian 1 (Rage: bludgeoning, piercing and slashing while raging, if not wearing heavy armor).",
+  "resistances": {
+    "trait:hellish-resistance": {"damage_types": ["damage-type:fire"]},
+    "trait:dwarven-resilience": {"damage_types": ["damage-type:poison"]},
+    "trait:draconic-ancestry-black": {"damage_types": ["damage-type:acid"]},
+    "trait:draconic-ancestry-blue": {"damage_types": ["damage-type:lightning"]},
+    "trait:draconic-ancestry-brass": {"damage_types": ["damage-type:fire"]},
+    "trait:draconic-ancestry-bronze": {"damage_types": ["damage-type:lightning"]},
+    "trait:draconic-ancestry-copper": {"damage_types": ["damage-type:acid"]},
+    "trait:draconic-ancestry-gold": {"damage_types": ["damage-type:fire"]},
+    "trait:draconic-ancestry-green": {"damage_types": ["damage-type:poison"]},
+    "trait:draconic-ancestry-red": {"damage_types": ["damage-type:fire"]},
+    "trait:draconic-ancestry-silver": {"damage_types": ["damage-type:cold"]},
+    "trait:draconic-ancestry-white": {"damage_types": ["damage-type:cold"]},
+    "feature:rage": {"damage_types": ["damage-type:bludgeoning", "damage-type:piercing", "damage-type:slashing"], "while": "rage"}
+  }
+}

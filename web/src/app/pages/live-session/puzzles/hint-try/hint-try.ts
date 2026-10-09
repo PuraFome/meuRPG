@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -7,7 +15,10 @@ import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import { treatedSentence } from '../../../../core/combat/combat-dice';
 import type { HintTry } from '../../../../core/puzzles/puzzle-play';
 import type { HintDie } from '../../../../core/puzzles/puzzles-client';
+import { checkFaces, hasModeInfo } from '../../../../core/play/check-roll';
+import { MultiRoll, type RollField } from '../../combat/multi-roll/multi-roll';
 import { RollPicker } from '../../combat/roll-picker/roll-picker';
+import { CheckMode } from '../../scene/check-mode/check-mode';
 
 /**
  * "Tentar uma dica · Investigação" on the player's phone (MR-038, RN-27, RN-18, E10-12 states 9 and 9b): a skill check the master set wins
@@ -20,7 +31,7 @@ import { RollPicker } from '../../combat/roll-picker/roll-picker';
 @Component({
   selector: 'app-hint-try',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule, RollPicker],
+  imports: [CheckMode, MatButtonModule, MatIconModule, MultiRoll, RollPicker],
   template: `
     @if (result(); as r) {
       @if (r.passed) {
@@ -35,8 +46,25 @@ import { RollPicker } from '../../combat/roll-picker/roll-picker';
         </div>
       }
     }
+    @if (result(); as r) {
+      @if (modeInfo(r)) {
+        <app-check-mode [mode]="r.mode" [sources]="r.sources" [faces]="faces(r)" />
+      }
+    }
     @if (canTry()) {
-      @if (typing()) {
+      @if (typing() && pair()) {
+        <app-multi-roll
+          [fields]="pairFields"
+          [canApp]="canApp()"
+          [canType]="true"
+          [preferApp]="false"
+          [hint]="'Teste de ' + skill() + ' com 2 d20. Role os dois dados e digite cada número, sem o bônus.'"
+          [busy]="busy()"
+          [(typing)]="typing"
+          (app)="app()"
+          (typed)="onPair($event)"
+        />
+      } @else if (typing()) {
         <app-roll-picker
           [canApp]="canApp()"
           [canType]="true"
@@ -108,6 +136,8 @@ export class HintTryControl {
   readonly dicePreference = input<DicePreference>(DicePreference.APP);
   /** The player's last try, until it changes. */
   readonly result = input<HintTry | null>(null);
+  /** The try takes two d20 (advantage or disadvantage): the form for a real die has two fields. */
+  readonly pair = input(false);
 
   /** A try with the d20 rolled in the app. */
   readonly rolled = output<HintDie>();
@@ -115,6 +145,10 @@ export class HintTryControl {
   readonly typed = output<HintDie>();
 
   protected readonly typing = signal(false);
+  protected readonly pairFields: readonly RollField[] = [
+    { key: 'first', label: 'Primeiro d20', min: 1, max: 20 },
+    { key: 'second', label: 'Segundo d20', min: 1, max: 20 },
+  ];
   protected readonly canApp = computed(() => this.diceMode() !== DiceMode.PHYSICAL);
   private readonly canType = computed(() => this.diceMode() !== DiceMode.APP);
   private readonly prefersApp = computed(
@@ -134,6 +168,15 @@ export class HintTryControl {
     return 'A rolagem é no app. Com dado físico, você digita o resultado.';
   });
 
+  constructor() {
+    // The server asked for the second die: the fields open at once.
+    effect(() => {
+      if (this.pair() && this.canTry() && this.canType()) {
+        this.typing.set(true);
+      }
+    });
+  }
+
   protected go(): void {
     if (this.canApp() && (!this.canType() || this.prefersApp())) {
       this.rolled.emit({ inApp: true });
@@ -145,6 +188,19 @@ export class HintTryControl {
   protected onTyped(face: number): void {
     this.typing.set(false);
     this.typed.emit({ face });
+  }
+
+  protected onPair(faces: number[]): void {
+    this.typing.set(false);
+    this.typed.emit({ faces });
+  }
+
+  protected faces(r: HintTry) {
+    return checkFaces(r.roll);
+  }
+
+  protected modeInfo(r: HintTry): boolean {
+    return hasModeInfo(r.mode, r.sources, this.faces(r));
   }
 
   protected app(): void {

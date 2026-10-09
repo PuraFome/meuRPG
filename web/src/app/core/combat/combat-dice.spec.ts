@@ -184,6 +184,11 @@ describe('a d20 that Talento Confiável raised (PM-03b)', () => {
     expect(treatedFormula(two)).toBe('d20: 6 → 10 (Talento Confiável) + 9 = 19');
   });
 
+  it('shows the die that counted with advantage, even when the other one is lower', () => {
+    const adv = roll({ ...raised, faces: [6, 4], countedIndex: 0 });
+    expect(treatedFormula(adv)).toBe('d20: 6 → 10 (Talento Confiável) + 9 = 19');
+  });
+
   it('says it in a sentence and for a screen reader', () => {
     expect(treatedSentence(raised)).toBe('O d20 de 6 contou como 10: perícia com proficiência.');
     expect(treatedSpeech(raised)).toBe('d20: 6, contou 10 por Talento Confiável, mais 9, total 19');

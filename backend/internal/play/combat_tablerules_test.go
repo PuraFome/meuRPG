@@ -169,7 +169,7 @@ func (a *armed) critRound(t *testing.T, e *playv1.Encounter, rule playv1.Critica
 
 	// A spell that attacks (4d6, a 1st-circle slot).
 	cast := a.mustCast(t, a.bia, e, "Brisa", guidingBolt, slotOfLevel(1), a.at(t, "Ogro"), func(r *playv1.CastSpellRequest) {
-		r.Roll = &playv1.CastSpellRequest_D20Face{D20Face: 20}
+		r.D20Faces = []int32{20, 20} // the Ogro stands next to Brisa: disadvantage
 	})
 	if len(cast.GetCast().GetPendingDamages()) != 1 {
 		t.Fatalf("Raio Guiador = %v, want one pending damage", cast.GetCast())
@@ -269,7 +269,7 @@ func TestRN24_TheCriticalFollowsTheTablesRule(t *testing.T) {
 
 	// A spell that attacks with real dice: the typed sum is of the 4 dice, never of the 24 kept.
 	cast := a.mustCast(t, a.bia, e, "Brisa", guidingBolt, slotOfLevel(1), a.at(t, "Ogro"), func(r *playv1.CastSpellRequest) {
-		r.Roll = &playv1.CastSpellRequest_D20Face{D20Face: 20}
+		r.D20Faces = []int32{20, 20} // the Ogro stands next to Brisa: disadvantage
 	})
 	bolt := cast.GetCast().GetPendingDamages()[0]
 	wantCritical(t, "the typed Raio Guiador", bolt, playv1.CriticalDamageRule_CRITICAL_DAMAGE_RULE_MAX_PLUS_ROLL, 4, 24)

@@ -157,6 +157,44 @@ type Sheet struct {
 	// which an NPC sees with on a map with the fog of war (MR-036). The zero value
 	// is plain sight.
 	Senses Senses
+	// Traits are the features the rolls and the damage of a combat read.
+	Traits Traits
+}
+
+// Traits are what a sheet has that changes how its owner rolls and what its
+// damage carries: the barbarian's Rage, Reckless Attack and Danger Sense, the
+// rogue's Sneak Attack, the paladin's Divine Smite, the ranger's Hunter's Mark and
+// Colossus Slayer, the fighting style that rerolls low damage dice, a monster's
+// Pack Tactics, the armor that cancels Rage and the damage resistances.
+type Traits struct {
+	// BarbarianLevel and RogueLevel are the class levels, 0 without the class.
+	BarbarianLevel, RogueLevel int
+	// Rage, RecklessAttack and DangerSense are the barbarian's features.
+	Rage, RecklessAttack, DangerSense bool
+	// SneakAttackDice is the dice of Sneak Attack, 0 without the feature.
+	SneakAttackDice int
+	// DivineSmite, ImprovedDivineSmite and ColossusSlayer are the features of those
+	// names, and HuntersMark says the character has the spell.
+	DivineSmite, ImprovedDivineSmite, ColossusSlayer, HuntersMark bool
+	// GreatWeaponFighting is the fighting style.
+	GreatWeaponFighting bool
+	// PackTactics is a monster's trait.
+	PackTactics bool
+	// HeavyArmor says the armor worn is heavy: Rage gives none of its benefits then.
+	HeavyArmor bool
+	// Resistances are the damage resistances the features and traits give.
+	Resistances []Resistance
+	// CreatureType is the SRD type of a monster ("undead", "fiend", "beast"); empty
+	// for a character.
+	CreatureType string
+}
+
+// Resistance is a damage resistance of a feature or trait: its key and name, the
+// damage types it halves ("damage-type:fire") and when ("" always, "rage").
+type Resistance struct {
+	Source, NamePT string
+	DamageTypes    []string
+	While          string
 }
 
 // Senses are a creature's special senses, as a range in feet (0 for none).
@@ -200,6 +238,12 @@ type Attack struct {
 	// them.
 	Light, Unarmed, MartialArts bool
 	AbilityMod                  int
+	// Ability is the ability the attack uses ("str", "dex"...), Finesse and TwoHanded
+	// the weapon's properties, and Weapon says it is a weapon attack (an unarmed
+	// strike too) and not a spell.
+	Ability            string
+	Finesse, TwoHanded bool
+	Weapon             bool
 }
 
 // Action is a standard action: its key ("standard:dash") and Portuguese name.

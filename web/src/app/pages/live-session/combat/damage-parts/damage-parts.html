@@ -1,0 +1,77 @@
+<section class="parts" [attr.aria-labelledby]="id + '-t'">
+  <h3 class="parts__title" [id]="id + '-t'">O que entra no dano</h3>
+
+  @if (fixed().length) {
+    <ul class="fixed">
+      @for (p of fixed(); track p.key) {
+        <li class="line">
+          <span class="line__name">{{ p.labelPt }}</span>
+          <span class="line__what">
+            {{ formula(p) }}{{ p.damageTypePt ? ' de ' + p.damageTypePt : '' }}
+            @if (doubled(p)) {
+              <span class="line__crit">dados dobrados</span>
+            }
+            @if (p.auto) {
+              <span class="line__auto">automático</span>
+            }
+          </span>
+          @if (p.notePt) {
+            <span class="line__note">{{ p.notePt }}</span>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  @if (extras().length) {
+    <ul class="extras" [attr.aria-label]="'Extras que você pode somar'">
+      @for (p of extras(); track p.key) {
+        <li class="extra" [class.extra--off]="!p.available">
+          <label class="extra__row">
+            <input
+              type="checkbox"
+              class="extra__box"
+              [checked]="!!pickOf(p)"
+              [disabled]="!p.available || disabled()"
+              [attr.aria-describedby]="id + '-' + p.key"
+              (change)="toggle(p)"
+            />
+            <span class="extra__text">
+              <b class="line__name">{{ p.labelPt }}</b>
+              <span class="line__what">
+                {{ formula(p) }}{{ p.damageTypePt ? ' de ' + p.damageTypePt : '' }}
+                @if (doubled(p)) {
+                  <span class="line__crit">dados dobrados</span>
+                }
+              </span>
+            </span>
+          </label>
+          <span class="extra__why" [id]="id + '-' + p.key">
+            @if (!p.available) {
+              <mat-icon aria-hidden="true">block</mat-icon>Indisponível:
+            }
+            {{ p.reasonPt }}{{ p.reasonPt && p.notePt ? ' ' : '' }}{{ p.notePt }}
+          </span>
+          @if (p.needsSlot && pickOf(p)) {
+            <div class="slots" role="radiogroup" [attr.aria-label]="'Espaço de magia para ' + p.labelPt">
+              @for (o of p.slotOptions; track $index) {
+                <label class="slot" [class.slot--on]="slotOn(p, o)" [class.slot--off]="o.free === 0">
+                  <input
+                    type="radio"
+                    class="mr-visually-hidden"
+                    [name]="id + '-' + p.key + '-slot'"
+                    [checked]="slotOn(p, o)"
+                    [disabled]="o.free === 0 || disabled()"
+                    (change)="chooseSlot(p, o)"
+                  />
+                  <mat-icon aria-hidden="true">{{ slotOn(p, o) ? 'radio_button_checked' : 'radio_button_unchecked' }}</mat-icon>
+                  {{ slotText(p, o) }}
+                </label>
+              }
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  }
+</section>
