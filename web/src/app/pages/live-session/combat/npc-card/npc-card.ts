@@ -128,8 +128,6 @@ export class NpcCard {
   /** The master is typing the d20: the roll takes the whole row. */
   protected readonly typing = signal(false);
   private readonly picker = viewChild(RollPicker);
-  /** The master's own "Usar Escudo por ele" stopped the hit. */
-  private readonly stoppedHere = signal(false);
   /** The d20 just rolled: shown with the armor class, until the turn changes. */
   protected readonly last = signal<{
     roll: AttackRoll;
@@ -208,13 +206,19 @@ export class NpcCard {
     }
     const target = this.encounter().combatants.find((c) => c.id === l.roll.targetId);
     // Escudo can turn a hit into a miss after the roll (the master's answer, or the player's).
-    const stopped = this.stoppedHere() || this.reactionStopped();
+    const stopped = this.reactionStopped();
     return {
       total: l.roll.d20?.total ?? 0,
       formula: l.roll.d20 ? rollFormula(l.roll.d20) : '',
       physical: l.roll.d20?.physical ?? false,
-      word: stopped ? `Errou: o ${this.shieldName()} segurou` : outcomeWord(l.roll.outcome),
-      hit: !stopped && isHit(l.roll.outcome),
+      // A reaction holds the roll (Palavras de Interrupção): no outcome until it is answered.
+      held: l.roll.heldForReaction,
+      word: l.roll.heldForReaction
+        ? 'Esperando a reação'
+        : stopped
+          ? `Errou: o ${this.shieldName()} segurou`
+          : outcomeWord(l.roll.outcome),
+      hit: !l.roll.heldForReaction && !stopped && isHit(l.roll.outcome),
       against:
         l.roll.targetArmorClass !== undefined
           ? `contra CA ${l.roll.targetArmorClass} ${article(target?.label ?? '') === 'a' ? 'da' : 'do'} ${target?.label ?? ''}`
@@ -242,12 +246,6 @@ export class NpcCard {
       }
     });
     effect(() => {
-      const prompt = this.encounter().reactionPrompts[0];
-      if (prompt?.spellNamePt) {
-        this.shieldName.set(prompt.spellNamePt);
-      }
-    });
-    effect(() => {
       const keys = this.attacks().map((a) => a.key);
       if (!keys.includes(this.attackKey())) {
         this.attackKey.set(keys[0] ?? '');
@@ -261,10 +259,6 @@ export class NpcCard {
         this.key = newKey();
       }
     });
-  }
-
-  protected onReacted(what: 'stopped' | 'still' | 'declined'): void {
-    this.stoppedHere.set(what === 'stopped');
   }
 
   protected pickAttack(key: string): void {
@@ -324,7 +318,6 @@ export class NpcCard {
       this.state().apply(res.encounter);
       this.last.set({ roll: res.roll, pending: res.pending ?? null, subject: this.subject().id });
       this.picker()?.reset();
-      this.stoppedHere.set(false);
     } catch (err) {
       this.error.set(combatErrorMessage(err, 'rolar o ataque'));
     } finally {
