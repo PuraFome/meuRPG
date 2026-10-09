@@ -41,10 +41,31 @@ func (s *Service) applyLastingSpell(ctx context.Context, c *combatTx, cs []playd
 	if !ok || len(targs) == 0 || len(made.Hits) != len(targs) {
 		return nil
 	}
+	// The kind of creature an NPC was made from, for the spells that pick a type.
+	kinds := map[string]string{}
+	var ids []string
+	for _, t := range targs {
+		if t.CharacterID != "" && t.MonsterKey == nil {
+			ids = append(ids, t.CharacterID)
+		}
+	}
+	if len(ids) > 0 {
+		chars, err := s.roster.CombatCharacters(ctx, c.tx, c.session.CampaignID, ids)
+		if err != nil {
+			return err
+		}
+		for _, ch := range chars {
+			kinds[ch.ID] = ch.MonsterKey
+		}
+	}
 	var taken []playdb.Combatant
 	for i, t := range targs {
 		hit := &made.Hits[i]
-		if why := s.noEffectWhy(content, def, t); why != "" {
+		key := deref(t.MonsterKey)
+		if key == "" {
+			key = kinds[t.CharacterID]
+		}
+		if why := s.noEffectWhy(content, def, t, key); why != "" {
 			hit.Lasting, hit.NoEffectWhy = lastingNoEffect, why
 			continue
 		}
@@ -89,11 +110,11 @@ func (s *Service) applyLastingSpell(ctx context.Context, c *combatTx, cs []playd
 // noEffectWhy says why a spell takes no hold of a target, "" when it may: a spell that picks a
 // humanoid (Imobilizar Pessoa), a condition the creature is immune to, a creature too simple for
 // Riso Histérico (SRD 5.1: an Intelligence score of 4 or less).
-func (s *Service) noEffectWhy(content *rules.Content, def *rules.EffectDef, t playdb.Combatant) string {
+func (s *Service) noEffectWhy(content *rules.Content, def *rules.EffectDef, t playdb.Combatant, monsterKey string) string {
 	var creature rules.Creature
 	known := false
-	if t.MonsterKey != nil {
-		creature, known = content.CreatureByKey(*t.MonsterKey)
+	if monsterKey != "" {
+		creature, known = content.CreatureByKey(monsterKey)
 	}
 	if def.TargetType == "humanoid" && known && !combat.IsHumanoid(creature.Type) {
 		return whyNotHumanoid

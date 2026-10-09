@@ -1017,6 +1017,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		BonusDice: bonusDiceOf(ev),
 	}
 	roll.Sources, roll.ModeReason = shown, reason
+	roll.D20.ExtraDice = extraDiceProto(ev.Extra, v.master, s.namesFor(ctx, m.CampaignID))
 	coverKey, coverSource := ev.coverFor(v)
 	roll.Cover, roll.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
 	if v.master {

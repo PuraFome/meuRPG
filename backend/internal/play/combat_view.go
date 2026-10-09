@@ -361,7 +361,7 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		out.InitiativeBonus = new(c.InitiativeBonus)
 		out.InitiativeFace = c.InitiativeFace
 		shareEconomy(out, c)
-		out.ArmorClassBonus = c.AcBonus
+		out.ArmorClassBonus = c.AcBonus + c.EffectAcBonus
 		out.DeathSaveDue = onTurn && deathSaveDue(c, vitals)
 	}
 	if w := vitals.GetWildShape(); w != nil && c.Kind == kindPlayer {

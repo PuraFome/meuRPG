@@ -296,8 +296,12 @@ func TestAnOutsideCastEntersACombatInRoundsAndLeavesItInGameTime(t *testing.T) {
 		t.Fatalf("EndEncounter() error = %v", err)
 	}
 	c := a.castByID(t, a.master, cast.GetId())
-	if c == nil || c.GetStatus() != playv1.OutsideCastStatus_OUTSIDE_CAST_STATUS_ACTIVE || c.GetDurationSeconds() != 54 {
-		t.Errorf("after the combat the cast = %v, want active with 54 seconds", c)
+	if c == nil || c.GetStatus() != playv1.OutsideCastStatus_OUTSIDE_CAST_STATUS_ACTIVE {
+		t.Errorf("after the combat the cast = %v, want it still active", c)
+	}
+	var left int32
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT seconds_left FROM character_effects WHERE group_id = $1`, cast.GetId()).Scan(&left); err != nil || left != 54 {
+		t.Errorf("after the combat the effect has %d seconds left (%v), want 54", left, err)
 	}
 }
 
