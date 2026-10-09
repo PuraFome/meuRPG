@@ -62,7 +62,7 @@ func (s *Service) GetSummonOptions(
 			}
 			return err
 		}
-		vitals, err := s.getVitals(ctx, tx, m.CampaignID, id)
+		vitals, err := s.getVitals(ctx, tx, m.CampaignID, id, false)
 		if err != nil {
 			return err
 		}
