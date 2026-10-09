@@ -496,10 +496,9 @@ func restoreContestState(ctx context.Context, c *combatTx, ev actionEvent) error
 // attack rolls (the seam: when they land, this is their roll).
 func (s *Service) d20Mode(in rollInput, mode combat.CheckMode, modifier int) (face int, faces []int, err error) {
 	if mode == combat.CheckNormal {
-		if len(in.faces) > 1 {
-			return 0, nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_faces must have one face for this roll"))
-		}
-		if len(in.faces) == 1 {
+		// A hidden attacker types two dice without knowing which creature noticed it; the
+		// second face counts only when the roll has advantage.
+		if len(in.faces) >= 1 {
 			in.typed = in.faces[0]
 		}
 		f, _, err := s.d20(in, modifier)

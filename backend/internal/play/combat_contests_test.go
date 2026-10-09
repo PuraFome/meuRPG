@@ -451,3 +451,397 @@ func (c *cx) mustShove(t *testing.T, u *user, contestID string, outcome playv1.S
 	}
 	return res
 }
+
+// advance passes the turns until it is the combatant's.
+func (c *cx) advance(t *testing.T, label string) *playv1.Encounter {
+	t.Helper()
+	want := c.id(t, label)
+	for range 12 {
+		e := c.refresh(t)
+		if e.GetCurrentCombatantId() == want {
+			return e
+		}
+		if _, err := c.master.combat.EndTurn(t.Context(), connect.NewRequest(&playv1.EndTurnRequest{
+			CampaignId: c.campaignID, EncounterId: e.GetId(), IdempotencyKey: newKey(), ExpectedCombatantId: e.GetCurrentCombatantId(), ExpectedRound: e.GetRound(),
+		})); err != nil {
+			t.Fatalf("EndTurn() error = %v", err)
+		}
+	}
+	t.Fatalf("the turn never reached %s", label)
+	return nil
+}
+
+// moveTo calls MoveCombatant as u.
+func (c *cx) moveTo(t *testing.T, u *user, label string, col, row int32) (*playv1.MoveCombatantResponse, error) {
+	t.Helper()
+	res, err := u.combat.MoveCombatant(t.Context(), connect.NewRequest(&playv1.MoveCombatantRequest{
+		CampaignId: c.campaignID, EncounterId: c.e.GetId(), CombatantId: c.id(t, label), IdempotencyKey: newKey(), Col: col, Row: row,
+	}))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg, nil
+}
+
+func (c *cx) moveOptions(t *testing.T, u *user, label string) *playv1.GetMoveOptionsResponse {
+	t.Helper()
+	res, err := u.combat.GetMoveOptions(t.Context(), connect.NewRequest(&playv1.GetMoveOptionsRequest{
+		CampaignId: c.campaignID, EncounterId: c.e.GetId(), CombatantId: c.id(t, label),
+	}))
+	if err != nil {
+		t.Fatalf("GetMoveOptions(%s) error = %v", label, err)
+	}
+	return res.Msg
+}
+
+// square is where a combatant stands, as the master sees it.
+func (c *cx) square(t *testing.T, label string) [2]int32 {
+	t.Helper()
+	cb := c.combatant(t, c.master, label)
+	return [2]int32{cb.GetCol(), cb.GetRow()}
+}
+
+// grappleWon makes Toren win a grapple on the Hobgoblin (d20 18 against 3).
+func (c *cx) grappleWon(t *testing.T) {
+	t.Helper()
+	started := c.mustStart(t, c.caio, func(r *playv1.StartContestRequest) {
+		c.h.roller.queue(18)
+		r.InitiatorId, r.TargetId, r.Purpose = c.id(t, "Toren"), c.id(t, c.hob), playv1.ContestPurpose_CONTEST_PURPOSE_GRAPPLE
+	})
+	c.mustRespond(t, c.master, started.GetContest().GetId(), playv1.ContestSkill_CONTEST_SKILL_ATHLETICS, 2)
+	if !c.hasCondition(t, c.hob, condGrappled) {
+		t.Fatal("the grapple did not take")
+	}
+}
+
+// grappledByAttack makes the Hobgoblin grapple a combatant with a fixed escape DC, the master's
+// word after its attack hit (SRD 5.1, the giant constrictor snake's "escape DC 16").
+func (c *cx) grappledByAttack(t *testing.T, victim string, dc int32) {
+	t.Helper()
+	c.advance(t, c.hob)
+	c.mustStart(t, c.master, func(r *playv1.StartContestRequest) {
+		r.InitiatorId, r.TargetId, r.Purpose = c.id(t, c.hob), c.id(t, victim), playv1.ContestPurpose_CONTEST_PURPOSE_GRAPPLE
+		r.Kind, r.EscapeDc, r.Roll = playv1.ContestKind_CONTEST_KIND_ESCAPE_DC, dc, nil
+	})
+}
+
+// TestEscapeAgainstAFixedDCNeverShowsTheDC (SRD 5.1, "Escaping a Grapple" and the monsters' "escape
+// DC"): a grapple that came from an attack is escaped with Athletics or Acrobatics against its DC,
+// the grappler rolls nothing; Brisa reads only whether she escaped (RN-20).
+func TestEscapeAgainstAFixedDCNeverShowsTheDC(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	c := a.arena(t, arenaPlan{at: map[string][2]int32{"Brisa": {5, 3}}})
+	c.grappledByAttack(t, "Brisa", 16)
+	if !c.hasCondition(t, "Brisa", condGrappled) {
+		t.Fatal("Brisa is not Grappled by the attack")
+	}
+	if s := c.state(t, a.master).GetGrapples(); len(s) != 1 || s[0].GetEscapeDc() != 16 {
+		t.Fatalf("the master reads grapples %v, want one with the DC 16", s)
+	}
+	for _, u := range []*user{a.bia, a.caio} {
+		for _, g := range c.state(t, u).GetGrapples() {
+			if g.GetEscapeDc() != 0 {
+				t.Errorf("a player reads the escape DC: %v", g)
+			}
+		}
+	}
+
+	// Brisa's turn: grappled, speed 0 for movement, Escape offered.
+	c.advance(t, "Brisa")
+	o := a.mustOptions(t, a.bia, c.e, "Brisa")
+	st := o.GetContestState()
+	if !st.GetGrappled() || !st.GetCanEscape() || len(st.GetEscapeOptions()) != 2 {
+		t.Fatalf("Brisa's contest state = %v, want grappled and able to escape with two skills", st)
+	}
+	if st.GetGrapplerId() != c.id(t, c.hob) {
+		t.Errorf("grappler = %s, want the Hobgoblin she sees", st.GetGrapplerId())
+	}
+	if left := o.GetOptions().GetEconomy().GetMovement().GetLeftDft(); left != 0 {
+		t.Errorf("movement left = %d, a grappled creature's speed is 0", left)
+	}
+
+	// Acrobatics +3 (Dexterity 16): d20 12 is 15, under the DC 16: still grappled, the action spent.
+	c.h.roller.queue(12)
+	failed := c.mustStart(t, a.bia, func(r *playv1.StartContestRequest) {
+		r.InitiatorId, r.Purpose, r.Skill = c.id(t, "Brisa"), playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE, playv1.ContestSkill_CONTEST_SKILL_ACROBATICS
+	})
+	if got := failed.GetContest(); got.GetStatus() != playv1.ContestStatus_CONTEST_STATUS_RESOLVED || got.GetWinner() != playv1.ContestWinner_CONTEST_WINNER_DEFENDER || got.GetEscapeDc() != 0 {
+		t.Fatalf("failed escape = %v, want resolved for the grappler with no DC in it", got)
+	}
+	if !c.hasCondition(t, "Brisa", condGrappled) {
+		t.Fatal("a failed escape freed her")
+	}
+	c.h.roller.queue(20)
+	_, err := c.startContest(t, a.bia, func(r *playv1.StartContestRequest) {
+		r.InitiatorId, r.Purpose = c.id(t, "Brisa"), playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE
+	})
+	wantBlockedBy(t, "a second escape in the turn", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED)
+
+	// The next round: 14 + 3 = 17 reaches the DC.
+	c.advance(t, c.hob)
+	c.advance(t, "Brisa")
+	c.h.roller.queue(14)
+	escaped := c.mustStart(t, a.bia, func(r *playv1.StartContestRequest) {
+		r.InitiatorId, r.Purpose, r.Skill = c.id(t, "Brisa"), playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE, playv1.ContestSkill_CONTEST_SKILL_ACROBATICS
+	})
+	if escaped.GetContest().GetWinner() != playv1.ContestWinner_CONTEST_WINNER_INITIATOR {
+		t.Fatalf("escape = %v, want it to work", escaped.GetContest())
+	}
+	if c.hasCondition(t, "Brisa", condGrappled) {
+		t.Error("Brisa is still Grappled after escaping")
+	}
+	if g := c.state(t, a.master).GetGrapples(); len(g) != 0 {
+		t.Errorf("the hold stays after the escape: %v", g)
+	}
+}
+
+// TestAPlayerChoosesTheSkillWhenAnNPCGrappleHer (SRD 5.1, "Grappling": the target chooses Athletics
+// or Acrobacia): the master rolls for the Hobgoblin, the player picks and rolls, the totals are
+// compared; and escaping is contested by the grappler's Athletics alone.
+func TestAPlayerChoosesTheSkillWhenAnNPCGrapplesHer(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	c := a.arena(t, arenaPlan{at: map[string][2]int32{"Brisa": {5, 3}}})
+	c.advance(t, c.hob)
+
+	// The master rolls Athletics for the Hobgoblin: 17 + 1 = 18.
+	c.h.roller.queue(17)
+	started := c.mustStart(t, a.master, func(r *playv1.StartContestRequest) {
+		r.InitiatorId, r.TargetId, r.Purpose = c.id(t, c.hob), c.id(t, "Brisa"), playv1.ContestPurpose_CONTEST_PURPOSE_GRAPPLE
+	})
+	mine := c.state(t, a.bia).GetContests()
+	if len(mine) != 1 || !mine[0].GetYouAnswer() || mine[0].GetWaitingFor() != playv1.ContestWaitFor_CONTEST_WAIT_FOR_PLAYER {
+		t.Fatalf("Brisa's contests = %v, want one for her to answer", mine)
+	}
+	if mine[0].GetInitiatorRoll() != nil {
+		t.Errorf("Brisa reads the Hobgoblin's roll before she answers: %v", mine[0].GetInitiatorRoll())
+	}
+	options := map[playv1.ContestSkill]int32{}
+	for _, o := range mine[0].GetAnswerOptions() {
+		options[o.GetSkill()] = o.GetModifier()
+	}
+	if options[playv1.ContestSkill_CONTEST_SKILL_ACROBATICS] != 3 || options[playv1.ContestSkill_CONTEST_SKILL_ATHLETICS] != 0 {
+		t.Fatalf("Brisa's options = %v, want Acrobacia +3 and Atletismo +0", options)
+	}
+	// Someone else cannot answer for her, but the master can.
+	if _, err := c.respond(t, a.caio, started.GetContest().GetId(), playv1.ContestSkill_CONTEST_SKILL_ATHLETICS, 10); connect.CodeOf(err) == 0 {
+		t.Error("another player answered for Brisa")
+	}
+	// Acrobatics 8 + 3 = 11 against 18: she loses and is Grappled.
+	answered := c.mustRespond(t, a.bia, started.GetContest().GetId(), playv1.ContestSkill_CONTEST_SKILL_ACROBATICS, 8)
+	if got := answered.GetContest(); got.GetWinner() != playv1.ContestWinner_CONTEST_WINNER_INITIATOR || got.GetInitiatorRoll() != nil || got.GetDefenderRoll().GetTotal() != 11 {
+		t.Fatalf("answer = %v, want the Hobgoblin to win, Brisa to read only her own 11", got)
+	}
+	if !c.hasCondition(t, "Brisa", condGrappled) {
+		t.Fatal("Brisa is not Grappled")
+	}
+
+	// Escape against the Hobgoblin's Athletics (the master rolls it): she wins 12 + 3 = 15 against 5 + 1.
+	c.advance(t, "Brisa")
+	c.h.roller.queue(12)
+	esc := c.mustStart(t, a.bia, func(r *playv1.StartContestRequest) {
+		r.InitiatorId, r.Purpose, r.Skill = c.id(t, "Brisa"), playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE, playv1.ContestSkill_CONTEST_SKILL_ACROBATICS
+	})
+	if esc.GetContest().GetWaitingFor() != playv1.ContestWaitFor_CONTEST_WAIT_FOR_MASTER {
+		t.Fatalf("escape = %v, want it to wait for the master", esc.GetContest())
+	}
+	masterSide := c.state(t, a.master).GetContests()[0]
+	if len(masterSide.GetAnswerOptions()) != 1 || masterSide.GetAnswerOptions()[0].GetSkill() != playv1.ContestSkill_CONTEST_SKILL_ATHLETICS {
+		t.Errorf("the grappler answers with Athletics alone, got %v", masterSide.GetAnswerOptions())
+	}
+	c.mustRespond(t, a.master, esc.GetContest().GetId(), playv1.ContestSkill_CONTEST_SKILL_ACROBATICS, 5) // the skill is forced to Athletics
+	if c.hasCondition(t, "Brisa", condGrappled) {
+		t.Error("Brisa is still Grappled after winning the escape")
+	}
+}
+
+// TestShoveKnocksProneOrPushesOneSquareAndABlockedPushStays (SRD 5.1, "Shoving a Creature").
+func TestShoveKnocksProneOrPushesOneSquareAndABlockedPushStays(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	c := a.arena(t, arenaPlan{})
+	won := func() *playv1.ContestView {
+		started := c.mustStart(t, a.caio, func(r *playv1.StartContestRequest) {
+			c.h.roller.queue(18)
+			r.InitiatorId, r.TargetId, r.Purpose = c.id(t, "Toren"), c.id(t, c.hob), playv1.ContestPurpose_CONTEST_PURPOSE_SHOVE
+		})
+		return c.mustRespond(t, a.master, started.GetContest().GetId(), playv1.ContestSkill_CONTEST_SKILL_ATHLETICS, 2).GetContest()
+	}
+
+	// Pushed: the square behind the target, straight away from Toren (4,3) -> (5,3).
+	view := won()
+	if !view.GetShoveChoice().GetPushAvailable() || !view.GetShoveChoice().GetProneAvailable() {
+		t.Fatalf("shove choice = %v, want both", view.GetShoveChoice())
+	}
+	pushed := c.mustShove(t, a.caio, view.GetId(), playv1.ShoveOutcome_SHOVE_OUTCOME_PUSH)
+	if pushed.GetContest().GetShoveOutcome() != playv1.ShoveOutcome_SHOVE_OUTCOME_PUSH {
+		t.Fatalf("outcome = %v", pushed.GetContest())
+	}
+	if got := c.square(t, c.hob); got != [2]int32{5, 3} {
+		t.Fatalf("the Hobgoblin stands on %v, want (5,3)", got)
+	}
+	// A retry of the same call answers the same and moves nobody again.
+	again := &playv1.ResolveShoveRequest{CampaignId: a.campaignID, EncounterId: c.e.GetId(), IdempotencyKey: newKey(), ContestId: view.GetId(), Outcome: playv1.ShoveOutcome_SHOVE_OUTCOME_PRONE}
+	if _, err := a.caio.contests.ResolveShove(t.Context(), connect.NewRequest(again)); err == nil {
+		t.Error("a second choice on a shove already resolved was accepted")
+	}
+
+	// Next round: knock prone.
+	c.advance(t, c.hob)
+	c.advance(t, "Toren")
+	view = won()
+	c.mustShove(t, a.caio, view.GetId(), playv1.ShoveOutcome_SHOVE_OUTCOME_PRONE)
+	if !c.hasCondition(t, c.hob, condProne) {
+		t.Error("the Hobgoblin is not Derrubado")
+	}
+	if !c.hasCondition(t, c.hob, condProne) || c.square(t, c.hob) != [2]int32{5, 3} {
+		t.Errorf("knocking prone moved the Hobgoblin to %v", c.square(t, c.hob))
+	}
+
+	// A creature Toren sees behind the target blocks the push (the Goblin goes to (6,3) behind the
+	// Hobgoblin, at (5,3) now).
+	c.advance(t, c.hob)
+	c.advance(t, "Toren")
+	if _, err := c.moveTo(t, a.master, "Goblin", 6, 3); err != nil {
+		t.Fatalf("placing the Goblin: %v", err)
+	}
+	// Toren moves next to the Hobgoblin first (the master puts him there).
+	if _, err := c.moveTo(t, a.master, "Toren", 4, 3); err != nil {
+		t.Fatalf("placing Toren: %v", err)
+	}
+	view = won()
+	if view.GetShoveChoice().GetPushAvailable() || view.GetShoveChoice().GetPushBlocked() != playv1.ShoveBlockedReason_SHOVE_BLOCKED_REASON_CREATURE {
+		t.Fatalf("shove choice = %v, want the push blocked by a creature", view.GetShoveChoice())
+	}
+	_, err := c.resolveShove(t, a.caio, view.GetId(), playv1.ShoveOutcome_SHOVE_OUTCOME_PUSH)
+	wantContestBlocked(t, "pushing into a creature", err, playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_PUSH_BLOCKED)
+	stays := c.mustShove(t, a.caio, view.GetId(), playv1.ShoveOutcome_SHOVE_OUTCOME_STAYS)
+	if stays.GetContest().GetShoveOutcome() != playv1.ShoveOutcome_SHOVE_OUTCOME_STAYS || c.square(t, c.hob) != [2]int32{5, 3} {
+		t.Errorf("a blocked push moved the Hobgoblin: %v", c.square(t, c.hob))
+	}
+	var line bool
+	for _, e := range logEntries(a.log(t, a.ana, c.e)) {
+		line = line || e.GetContest().GetLine() == playv1.ContestLogLine_CONTEST_LOG_LINE_SHOVE_STAYS
+	}
+	if !line {
+		t.Error("the log has no \"não sai do lugar\" line")
+	}
+}
+
+// TestDraggingAGrappledCreatureHalvesTheSpeedAndLeavesItBehind (SRD 5.1, "Moving a Grappled
+// Creature"): half the speed, the creature on the square the grappler left before its last one,
+// and no room is refused.
+func TestDraggingAGrappledCreatureHalvesTheSpeedAndLeavesItBehind(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	c := a.arena(t, arenaPlan{})
+	c.grappleWon(t)
+	if _, err := a.master.combat.EndTurn(t.Context(), connect.NewRequest(&playv1.EndTurnRequest{CampaignId: a.campaignID, EncounterId: c.e.GetId(), IdempotencyKey: newKey(), ExpectedCombatantId: c.id(t, "Toren"), ExpectedRound: 1})); err != nil {
+		t.Fatalf("EndTurn() error = %v", err)
+	}
+	c.advance(t, c.hob)
+	c.advance(t, "Toren")
+
+	opts := c.moveOptions(t, a.caio, "Toren")
+	if opts.GetDraggingCombatantId() != c.id(t, c.hob) || !opts.GetDraggingHalved() {
+		t.Fatalf("move options = dragging %q halved %v, want the Hobgoblin at half speed", opts.GetDraggingCombatantId(), opts.GetDraggingHalved())
+	}
+	if opts.GetMovementLeftDft() != 150 {
+		t.Errorf("movement left = %d, want 150 (half of 30 ft)", opts.GetMovementLeftDft())
+	}
+	var north *playv1.ReachableSquare
+	for _, r := range opts.GetReachable() {
+		if r.GetCol() == 3 && r.GetRow() == 1 {
+			north = r
+		}
+		if r.GetDraggedTo() == nil {
+			t.Fatalf("a square without the place of the dragged creature: %v", r)
+		}
+	}
+	if north == nil || north.GetDraggedTo().GetCol() != 3 || north.GetDraggedTo().GetRow() != 2 {
+		t.Fatalf("(3,1) = %v, want the Hobgoblin left on (3,2)", north)
+	}
+
+	// Four squares cost 40 ft at half speed: too far; two squares fit.
+	_, err := c.moveTo(t, a.caio, "Toren", 3, 0)
+	if err != nil {
+		t.Fatalf("a three-square drag: %v", err)
+	}
+	if got := c.square(t, "Toren"); got != [2]int32{3, 0} {
+		t.Fatalf("Toren stands on %v", got)
+	}
+	if got := c.square(t, c.hob); got != [2]int32{3, 1} {
+		t.Errorf("the Hobgoblin stands on %v, want (3,1), behind Toren", got)
+	}
+	if !c.hasCondition(t, c.hob, condGrappled) {
+		t.Error("dragging ended the grapple")
+	}
+	if used := c.combatant(t, a.caio, "Toren"); used.GetMovementLeftDft() != 0 {
+		t.Errorf("movement left = %d, want 0 after dragging three squares", used.GetMovementLeftDft())
+	}
+}
+
+// TestADragWithNoRoomBehindIsRefused: the square the creature would be left on is taken.
+func TestADragWithNoRoomBehindIsRefused(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	c := a.arena(t, arenaPlan{})
+	c.grappleWon(t)
+	c.advance(t, c.hob)
+	c.advance(t, "Toren")
+	// Pensantus stands on (3,2), where the Hobgoblin would be left when Toren goes to (3,1).
+	if _, err := c.moveTo(t, a.master, "Pensantus", 3, 2); err != nil {
+		t.Fatalf("placing Pensantus: %v", err)
+	}
+	_, err := c.moveTo(t, a.caio, "Toren", 3, 1)
+	wantContestBlocked(t, "dragging onto a taken square", err, playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NO_ROOM_TO_DRAG)
+	if got := c.square(t, "Toren"); got != [2]int32{3, 3} {
+		t.Errorf("a refused drag moved Toren to %v", got)
+	}
+	var refused bool
+	for _, r := range c.moveOptions(t, a.caio, "Toren").GetRefused() {
+		refused = refused || (r.GetCol() == 3 && r.GetRow() == 1 && r.GetReason() == playv1.MoveRefusal_MOVE_REFUSAL_NO_ROOM_TO_DRAG)
+	}
+	if !refused {
+		t.Error("the move preview does not refuse (3,1) for lack of room")
+	}
+}
+
+// TestAGrappleEndsWhenTheGrapplerIsIncapacitatedOrTheTargetLeavesItsReach (SRD 5.1, Conditions,
+// Grappled), and the master's forced move counts as an effect that removes it from the reach.
+func TestAGrappleEndsWhenTheGrapplerIsIncapacitatedOrTheTargetLeavesItsReach(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	c := a.arena(t, arenaPlan{})
+	c.grappleWon(t)
+
+	// The master takes the target far away with a forced move: out of the reach, the hold ends.
+	if _, err := a.master.combat.MoveCombatant(t.Context(), connect.NewRequest(&playv1.MoveCombatantRequest{
+		CampaignId: a.campaignID, EncounterId: c.e.GetId(), CombatantId: c.id(t, c.hob), IdempotencyKey: newKey(), Col: 9, Row: 8, Forced: true,
+	})); err != nil {
+		t.Fatalf("forced move: %v", err)
+	}
+	if c.hasCondition(t, c.hob, condGrappled) {
+		t.Fatal("the Hobgoblin is still Grappled out of Toren's reach")
+	}
+
+	// Grapple again; Toren falls Incapacitated (a condition the master marks): the grapple ends.
+	c.advance(t, c.hob)
+	c.advance(t, "Toren")
+	if _, err := c.moveTo(t, a.master, c.hob, 4, 3); err != nil {
+		t.Fatalf("placing the Hobgoblin: %v", err)
+	}
+	c.grappleWon(t)
+	set := func(who string, keys ...string) {
+		if _, err := a.master.combat.SetCombatantConditions(t.Context(), connect.NewRequest(&playv1.SetCombatantConditionsRequest{
+			CampaignId: a.campaignID, EncounterId: c.e.GetId(), CombatantId: c.id(t, who), IdempotencyKey: newKey(), Conditions: &playv1.ConditionSet{Keys: keys},
+		})); err != nil {
+			t.Fatalf("SetCombatantConditions() error = %v", err)
+		}
+	}
+	set("Toren", "condition:incapacitated")
+	if c.hasCondition(t, c.hob, condGrappled) {
+		t.Error("the grapple outlived its grappler being incapacitated")
+	}
+}
