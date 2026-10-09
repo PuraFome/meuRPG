@@ -114,13 +114,6 @@
     }
   },
   "effects": {
-    "effect:dodging": {
-      "kind": "feature",
-      "duration": {"kind": "until_start_of_turn_of"},
-      "visibility": "public",
-      "modifiers": [{"kind": "save_advantage", "abilities": ["dex"]}],
-      "tags_pt": ["Ataque contra você: desvantagem se você vê o atacante", "Vantagem em resistências de Destreza"]
-    },
     "effect:lethargy": {
       "kind": "feature",
       "duration": {"kind": "until_end_of_turn_of"},
