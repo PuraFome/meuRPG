@@ -27,7 +27,9 @@ func (e *logEntry) reactionEntry(ctx context.Context, v combatViewer, byID map[s
 	if text == "" {
 		return nil, false
 	}
-	if !v.master && named && !e.ev.seenByViewer(v) {
+	// On a fogged map the line is for who saw it happen, also when it names nobody; a reactor's own
+	// player always has their line.
+	if !v.master && !e.ev.seenByViewer(v) && !v.owns(byID[e.ev.Actor]) {
 		return nil, false
 	}
 	actor := byID[e.ev.Actor]
@@ -75,6 +77,13 @@ func (e *logEntry) reactionLine(ctx context.Context, v combatViewer, byID map[st
 	numbers := v.master || v.owns(reactor) // the reactor's own dice are theirs, an NPC's are the master's
 	if reactor.Kind != kindPlayer {
 		numbers = v.master
+	}
+	if re.Kind == reactionHeldDropped {
+		if !v.master {
+			return "", false
+		}
+		what := map[string]string{"cast": "A conjuração", "attack": "O ataque", "damage": "O dano"}[re.Roll]
+		return fmt.Sprintf("%s de %s esperava uma reação e não pôde acontecer depois das respostas (%s).", what, who, re.Why), true
 	}
 	switch reaction.Kind(re.Kind) {
 	case reaction.CounterspellKind:

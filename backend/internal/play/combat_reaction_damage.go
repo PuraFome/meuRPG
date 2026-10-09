@@ -26,9 +26,8 @@ import (
 // cuttingWindows lists the Cutting Words windows an enemy's roll opens (SRD,
 // College of Lore): each bard of the other side that sees the roller within 60 feet,
 // has its reaction and a use of Bardic Inspiration, and whose "Perguntar" setting asks
-// for this kind of roll. The prompt opens for any creature, immune or not: an immune
-// one only makes the answer do nothing, so the absence of a prompt tells nothing
-// about the creature (RN-10, RN-20).
+// for this kind of roll, and whose roller can be cut (it hears the bard and is not
+// immune to charm: the server never opens a window that would only say "sem efeito").
 func (s *Service) cuttingWindows(ctx context.Context, c *combatTx, cs []playdb.Combatant, roller playdb.Combatant, roll string, base windowTrigger) ([]windowSpec, error) {
 	var specs []windowSpec
 	for _, r := range cs {
@@ -58,6 +57,13 @@ func (s *Service) cuttingWindows(ctx context.Context, c *combatTx, cs []playdb.C
 		if !sees {
 			continue
 		}
+		// A roller that cannot hear the bard or is immune to charm opens no window: the prompt would
+		// tell the bard what the creature is (decisions-batch2-A, item 4).
+		if cut, err := s.rollerCanBeCut(ctx, c, roller); err != nil {
+			return nil, err
+		} else if !cut {
+			continue
+		}
 		t := base
 		t.Roll, t.Distance = roll, dist
 		specs = append(specs, windowSpec{kind: reaction.CuttingWords, reactor: &r, trigger: t})
@@ -72,8 +78,16 @@ func (s *Service) holdAttackRoll(ctx context.Context, c *combatTx, m authz.Membe
 		return actionEvent{}, false, nil
 	}
 	specs, err := s.cuttingWindows(ctx, c, cs, attacker, "attack", windowTrigger{Actor: attacker.ID, Target: target.ID, Key: key})
-	if err != nil || len(specs) == 0 {
+	if err != nil {
 		return actionEvent{}, false, err
+	}
+	// "Sempre": a player's attack on an enemy waits for the master's check also when no bard could
+	// cut the roll, so the pause (a miss included) tells the table nothing about a bard.
+	if len(specs) == 0 && c.rules.EnemyReactionsAlways && playerAgainstEnemy(attacker, target) {
+		specs = append(specs, windowSpec{kind: reaction.MasterCheck, trigger: windowTrigger{Actor: attacker.ID, Target: target.ID, Key: key, Roll: "attack"}})
+	}
+	if len(specs) == 0 {
+		return actionEvent{}, false, nil
 	}
 	ev := actionEvent{Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: key}
 	if ev, err = s.holdAction(ctx, c, m, "attack", attacker, req, holdData{}, specs, ev); err != nil {
