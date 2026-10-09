@@ -28,6 +28,9 @@
 -- trigger_max_triggers are the damage dealt to who starts the turn under it, at
 -- most trigger_max_triggers times for each target.
 --
+-- follows_key is the spell an effect follows (the lethargy a Velocidade leaves
+-- says which one: "spell:haste").
+--
 -- Who reads it: player_visible is the master's switch (off, no player but the
 -- target's own reads it), audience says 'all' (the table sees its label) or
 -- 'owner' (only the target's player), player_label is the master's free label,
@@ -54,6 +57,7 @@ CREATE TABLE IF NOT EXISTS combat_effects (
     start_save_ability TEXT NULL,
     save_dc INT4 NULL,
     on_fail_effect TEXT NULL,
+    follows_key TEXT NULL,
     trigger_dice TEXT NULL,
     trigger_damage_type TEXT NULL,
     trigger_max_triggers INT4 NULL,
@@ -92,7 +96,7 @@ CREATE TABLE IF NOT EXISTS combat_effect_targets (
 -- ('EFFECT_ENDED' or 'CASTER_LOST_CONCENTRATION') and state 'closed'. d20,
 -- bonus, total and saved are the answer. The unique index makes a repeated end
 -- of turn open it once.
-CREATE TABLE IF NOT EXISTS combat_effect_saves (
+CREATE TABLE IF NOT EXISTS combat_effect_windows (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     encounter_id UUID NOT NULL REFERENCES encounters (id) ON DELETE CASCADE,
     effect_id UUID NULL REFERENCES combat_effects (id) ON DELETE SET NULL,
@@ -107,12 +111,12 @@ CREATE TABLE IF NOT EXISTS combat_effect_saves (
     saved BOOL NULL,
     created_at TIMESTAMPTZ NOT NULL,
     answered_at TIMESTAMPTZ NULL,
-    CONSTRAINT combat_effect_saves_phase_valid CHECK (phase IN ('start', 'end')),
-    CONSTRAINT combat_effect_saves_state_valid CHECK (state IN ('open', 'answered', 'closed')),
-    CONSTRAINT combat_effect_saves_reason_valid CHECK (closed_reason IS NULL OR closed_reason IN ('EFFECT_ENDED', 'CASTER_LOST_CONCENTRATION'))
+    CONSTRAINT combat_effect_windows_phase_valid CHECK (phase IN ('start', 'end')),
+    CONSTRAINT combat_effect_windows_state_valid CHECK (state IN ('open', 'answered', 'closed')),
+    CONSTRAINT combat_effect_windows_reason_valid CHECK (closed_reason IS NULL OR closed_reason IN ('EFFECT_ENDED', 'CASTER_LOST_CONCENTRATION'))
 );
 
 -- +goose Down
-DROP TABLE IF EXISTS combat_effect_saves;
+DROP TABLE IF EXISTS combat_effect_windows;
 DROP TABLE IF EXISTS combat_effect_targets;
 DROP TABLE IF EXISTS combat_effects;

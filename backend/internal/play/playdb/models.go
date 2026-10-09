@@ -36,6 +36,7 @@ type CombatEffect struct {
 	StartSaveAbility   *string
 	SaveDc             *int32
 	OnFailEffect       *string
+	FollowsKey         *string
 	TriggerDice        *string
 	TriggerDamageType  *string
 	TriggerMaxTriggers *int32
@@ -45,7 +46,13 @@ type CombatEffect struct {
 	CreatedAt          time.Time
 }
 
-type CombatEffectSafe struct {
+type CombatEffectTarget struct {
+	EffectID      string
+	CombatantID   string
+	TriggersFired int32
+}
+
+type CombatEffectWindow struct {
 	ID           string
 	EncounterID  string
 	EffectID     *string
@@ -60,12 +67,6 @@ type CombatEffectSafe struct {
 	Saved        *bool
 	CreatedAt    time.Time
 	AnsweredAt   *time.Time
-}
-
-type CombatEffectTarget struct {
-	EffectID      string
-	CombatantID   string
-	TriggersFired int32
 }
 
 type Combatant struct {

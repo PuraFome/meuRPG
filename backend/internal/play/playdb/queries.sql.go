@@ -10,14 +10,14 @@ import (
 	"time"
 )
 
-const answerCombatEffectSave = `-- name: AnswerCombatEffectSave :one
-UPDATE combat_effect_saves
+const answerCombatEffectWindow = `-- name: AnswerCombatEffectWindow :one
+UPDATE combat_effect_windows
 SET state = 'answered', d20 = $4, bonus = $5, total = $6, saved = $2, answered_at = $3
 WHERE id = $1 AND state = 'open'
 RETURNING id, encounter_id, effect_id, combatant_id, phase, round, state, closed_reason, d20, bonus, total, saved, created_at, answered_at
 `
 
-type AnswerCombatEffectSaveParams struct {
+type AnswerCombatEffectWindowParams struct {
 	ID         string
 	Saved      *bool
 	AnsweredAt *time.Time
@@ -26,8 +26,8 @@ type AnswerCombatEffectSaveParams struct {
 	Total      *int32
 }
 
-func (q *Queries) AnswerCombatEffectSave(ctx context.Context, arg AnswerCombatEffectSaveParams) (CombatEffectSafe, error) {
-	row := q.db.QueryRow(ctx, answerCombatEffectSave,
+func (q *Queries) AnswerCombatEffectWindow(ctx context.Context, arg AnswerCombatEffectWindowParams) (CombatEffectWindow, error) {
+	row := q.db.QueryRow(ctx, answerCombatEffectWindow,
 		arg.ID,
 		arg.Saved,
 		arg.AnsweredAt,
@@ -35,7 +35,7 @@ func (q *Queries) AnswerCombatEffectSave(ctx context.Context, arg AnswerCombatEf
 		arg.Bonus,
 		arg.Total,
 	)
-	var i CombatEffectSafe
+	var i CombatEffectWindow
 	err := row.Scan(
 		&i.ID,
 		&i.EncounterID,
@@ -180,29 +180,29 @@ func (q *Queries) ClearStageSpeakers(ctx context.Context, gameSessionID string) 
 	return err
 }
 
-const closeCombatEffectSaves = `-- name: CloseCombatEffectSaves :many
-UPDATE combat_effect_saves
+const closeCombatEffectWindows = `-- name: CloseCombatEffectWindows :many
+UPDATE combat_effect_windows
 SET state = 'closed', closed_reason = $2, answered_at = $3
 WHERE effect_id = $1 AND state = 'open'
 RETURNING id, encounter_id, effect_id, combatant_id, phase, round, state, closed_reason, d20, bonus, total, saved, created_at, answered_at
 `
 
-type CloseCombatEffectSavesParams struct {
+type CloseCombatEffectWindowsParams struct {
 	EffectID     *string
 	ClosedReason *string
 	AnsweredAt   *time.Time
 }
 
 // The effect ended, or its caster lost the concentration, with the windows open.
-func (q *Queries) CloseCombatEffectSaves(ctx context.Context, arg CloseCombatEffectSavesParams) ([]CombatEffectSafe, error) {
-	rows, err := q.db.Query(ctx, closeCombatEffectSaves, arg.EffectID, arg.ClosedReason, arg.AnsweredAt)
+func (q *Queries) CloseCombatEffectWindows(ctx context.Context, arg CloseCombatEffectWindowsParams) ([]CombatEffectWindow, error) {
+	rows, err := q.db.Query(ctx, closeCombatEffectWindows, arg.EffectID, arg.ClosedReason, arg.AnsweredAt)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CombatEffectSafe
+	var items []CombatEffectWindow
 	for rows.Next() {
-		var i CombatEffectSafe
+		var i CombatEffectWindow
 		if err := rows.Scan(
 			&i.ID,
 			&i.EncounterID,
@@ -647,7 +647,7 @@ func (q *Queries) GetCampaignTrapDamageForUpdate(ctx context.Context, arg GetCam
 }
 
 const getCombatEffect = `-- name: GetCombatEffect :one
-SELECT id, encounter_id, group_id, source_kind, source_key, caster_id, concentration, condition_keys, modifiers, duration_kind, started_round, ends_round, ends_combatant_id, ends_phase, end_save_ability, start_save_ability, save_dc, on_fail_effect, trigger_dice, trigger_damage_type, trigger_max_triggers, player_visible, audience, player_label, created_at FROM combat_effects WHERE id = $1 AND encounter_id = $2
+SELECT id, encounter_id, group_id, source_kind, source_key, caster_id, concentration, condition_keys, modifiers, duration_kind, started_round, ends_round, ends_combatant_id, ends_phase, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, player_visible, audience, player_label, created_at FROM combat_effects WHERE id = $1 AND encounter_id = $2
 `
 
 type GetCombatEffectParams struct {
@@ -677,6 +677,7 @@ func (q *Queries) GetCombatEffect(ctx context.Context, arg GetCombatEffectParams
 		&i.StartSaveAbility,
 		&i.SaveDc,
 		&i.OnFailEffect,
+		&i.FollowsKey,
 		&i.TriggerDice,
 		&i.TriggerDamageType,
 		&i.TriggerMaxTriggers,
@@ -688,18 +689,18 @@ func (q *Queries) GetCombatEffect(ctx context.Context, arg GetCombatEffectParams
 	return i, err
 }
 
-const getCombatEffectSave = `-- name: GetCombatEffectSave :one
-SELECT id, encounter_id, effect_id, combatant_id, phase, round, state, closed_reason, d20, bonus, total, saved, created_at, answered_at FROM combat_effect_saves WHERE id = $1 AND encounter_id = $2
+const getCombatEffectWindow = `-- name: GetCombatEffectWindow :one
+SELECT id, encounter_id, effect_id, combatant_id, phase, round, state, closed_reason, d20, bonus, total, saved, created_at, answered_at FROM combat_effect_windows WHERE id = $1 AND encounter_id = $2
 `
 
-type GetCombatEffectSaveParams struct {
+type GetCombatEffectWindowParams struct {
 	ID          string
 	EncounterID string
 }
 
-func (q *Queries) GetCombatEffectSave(ctx context.Context, arg GetCombatEffectSaveParams) (CombatEffectSafe, error) {
-	row := q.db.QueryRow(ctx, getCombatEffectSave, arg.ID, arg.EncounterID)
-	var i CombatEffectSafe
+func (q *Queries) GetCombatEffectWindow(ctx context.Context, arg GetCombatEffectWindowParams) (CombatEffectWindow, error) {
+	row := q.db.QueryRow(ctx, getCombatEffectWindow, arg.ID, arg.EncounterID)
+	var i CombatEffectWindow
 	err := row.Scan(
 		&i.ID,
 		&i.EncounterID,
@@ -1570,17 +1571,17 @@ const insertCombatEffect = `-- name: InsertCombatEffect :one
 INSERT INTO combat_effects (
     encounter_id, group_id, source_kind, source_key, caster_id, concentration, condition_keys, modifiers,
     duration_kind, started_round, ends_round, ends_combatant_id, ends_phase,
-    end_save_ability, start_save_ability, save_dc, on_fail_effect,
+    end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key,
     trigger_dice, trigger_damage_type, trigger_max_triggers,
     player_visible, audience, player_label, created_at
 ) VALUES (
     $1, $2, $3, $4, $13, $5, $6, $7,
     $8, $9, $14, $15, $16,
-    $17, $18, $19, $20,
-    $21, $22, $23,
-    $10, $11, $24, $12
+    $17, $18, $19, $20, $21,
+    $22, $23, $24,
+    $10, $11, $25, $12
 )
-RETURNING id, encounter_id, group_id, source_kind, source_key, caster_id, concentration, condition_keys, modifiers, duration_kind, started_round, ends_round, ends_combatant_id, ends_phase, end_save_ability, start_save_ability, save_dc, on_fail_effect, trigger_dice, trigger_damage_type, trigger_max_triggers, player_visible, audience, player_label, created_at
+RETURNING id, encounter_id, group_id, source_kind, source_key, caster_id, concentration, condition_keys, modifiers, duration_kind, started_round, ends_round, ends_combatant_id, ends_phase, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, player_visible, audience, player_label, created_at
 `
 
 type InsertCombatEffectParams struct {
@@ -1604,6 +1605,7 @@ type InsertCombatEffectParams struct {
 	StartSaveAbility   *string
 	SaveDc             *int32
 	OnFailEffect       *string
+	FollowsKey         *string
 	TriggerDice        *string
 	TriggerDamageType  *string
 	TriggerMaxTriggers *int32
@@ -1634,6 +1636,7 @@ func (q *Queries) InsertCombatEffect(ctx context.Context, arg InsertCombatEffect
 		arg.StartSaveAbility,
 		arg.SaveDc,
 		arg.OnFailEffect,
+		arg.FollowsKey,
 		arg.TriggerDice,
 		arg.TriggerDamageType,
 		arg.TriggerMaxTriggers,
@@ -1659,6 +1662,7 @@ func (q *Queries) InsertCombatEffect(ctx context.Context, arg InsertCombatEffect
 		&i.StartSaveAbility,
 		&i.SaveDc,
 		&i.OnFailEffect,
+		&i.FollowsKey,
 		&i.TriggerDice,
 		&i.TriggerDamageType,
 		&i.TriggerMaxTriggers,
@@ -1666,53 +1670,6 @@ func (q *Queries) InsertCombatEffect(ctx context.Context, arg InsertCombatEffect
 		&i.Audience,
 		&i.PlayerLabel,
 		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const insertCombatEffectSave = `-- name: InsertCombatEffectSave :one
-INSERT INTO combat_effect_saves (encounter_id, effect_id, combatant_id, phase, round, created_at)
-VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (effect_id, combatant_id, round, phase) DO NOTHING
-RETURNING id, encounter_id, effect_id, combatant_id, phase, round, state, closed_reason, d20, bonus, total, saved, created_at, answered_at
-`
-
-type InsertCombatEffectSaveParams struct {
-	EncounterID string
-	EffectID    *string
-	CombatantID string
-	Phase       string
-	Round       int32
-	CreatedAt   time.Time
-}
-
-// Opens the saving throw an effect asks of a target at a turn. The unique index
-// keeps a repeated end of turn from opening it twice: no row comes back then.
-func (q *Queries) InsertCombatEffectSave(ctx context.Context, arg InsertCombatEffectSaveParams) (CombatEffectSafe, error) {
-	row := q.db.QueryRow(ctx, insertCombatEffectSave,
-		arg.EncounterID,
-		arg.EffectID,
-		arg.CombatantID,
-		arg.Phase,
-		arg.Round,
-		arg.CreatedAt,
-	)
-	var i CombatEffectSafe
-	err := row.Scan(
-		&i.ID,
-		&i.EncounterID,
-		&i.EffectID,
-		&i.CombatantID,
-		&i.Phase,
-		&i.Round,
-		&i.State,
-		&i.ClosedReason,
-		&i.D20,
-		&i.Bonus,
-		&i.Total,
-		&i.Saved,
-		&i.CreatedAt,
-		&i.AnsweredAt,
 	)
 	return i, err
 }
@@ -1730,6 +1687,53 @@ type InsertCombatEffectTargetParams struct {
 func (q *Queries) InsertCombatEffectTarget(ctx context.Context, arg InsertCombatEffectTargetParams) error {
 	_, err := q.db.Exec(ctx, insertCombatEffectTarget, arg.EffectID, arg.CombatantID)
 	return err
+}
+
+const insertCombatEffectWindow = `-- name: InsertCombatEffectWindow :one
+INSERT INTO combat_effect_windows (encounter_id, effect_id, combatant_id, phase, round, created_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (effect_id, combatant_id, round, phase) DO NOTHING
+RETURNING id, encounter_id, effect_id, combatant_id, phase, round, state, closed_reason, d20, bonus, total, saved, created_at, answered_at
+`
+
+type InsertCombatEffectWindowParams struct {
+	EncounterID string
+	EffectID    *string
+	CombatantID string
+	Phase       string
+	Round       int32
+	CreatedAt   time.Time
+}
+
+// Opens the saving throw an effect asks of a target at a turn. The unique index
+// keeps a repeated end of turn from opening it twice: no row comes back then.
+func (q *Queries) InsertCombatEffectWindow(ctx context.Context, arg InsertCombatEffectWindowParams) (CombatEffectWindow, error) {
+	row := q.db.QueryRow(ctx, insertCombatEffectWindow,
+		arg.EncounterID,
+		arg.EffectID,
+		arg.CombatantID,
+		arg.Phase,
+		arg.Round,
+		arg.CreatedAt,
+	)
+	var i CombatEffectWindow
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.EffectID,
+		&i.CombatantID,
+		&i.Phase,
+		&i.Round,
+		&i.State,
+		&i.ClosedReason,
+		&i.D20,
+		&i.Bonus,
+		&i.Total,
+		&i.Saved,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+	)
+	return i, err
 }
 
 const insertCombatant = `-- name: InsertCombatant :one
@@ -3045,7 +3049,7 @@ func (q *Queries) ListCombatEffectTargets(ctx context.Context, encounterID strin
 }
 
 const listCombatEffects = `-- name: ListCombatEffects :many
-SELECT id, encounter_id, group_id, source_kind, source_key, caster_id, concentration, condition_keys, modifiers, duration_kind, started_round, ends_round, ends_combatant_id, ends_phase, end_save_ability, start_save_ability, save_dc, on_fail_effect, trigger_dice, trigger_damage_type, trigger_max_triggers, player_visible, audience, player_label, created_at FROM combat_effects WHERE encounter_id = $1 ORDER BY created_at, id
+SELECT id, encounter_id, group_id, source_kind, source_key, caster_id, concentration, condition_keys, modifiers, duration_kind, started_round, ends_round, ends_combatant_id, ends_phase, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, player_visible, audience, player_label, created_at FROM combat_effects WHERE encounter_id = $1 ORDER BY created_at, id
 `
 
 // The encounter's effects, oldest first: the order the cards and the conditions come in.
@@ -3077,6 +3081,7 @@ func (q *Queries) ListCombatEffects(ctx context.Context, encounterID string) ([]
 			&i.StartSaveAbility,
 			&i.SaveDc,
 			&i.OnFailEffect,
+			&i.FollowsKey,
 			&i.TriggerDice,
 			&i.TriggerDamageType,
 			&i.TriggerMaxTriggers,
@@ -3489,19 +3494,19 @@ func (q *Queries) ListGameSessions(ctx context.Context, campaignID string) ([]Ga
 	return items, nil
 }
 
-const listOpenCombatEffectSaves = `-- name: ListOpenCombatEffectSaves :many
-SELECT id, encounter_id, effect_id, combatant_id, phase, round, state, closed_reason, d20, bonus, total, saved, created_at, answered_at FROM combat_effect_saves WHERE encounter_id = $1 AND state = 'open' ORDER BY created_at, id
+const listOpenCombatEffectWindows = `-- name: ListOpenCombatEffectWindows :many
+SELECT id, encounter_id, effect_id, combatant_id, phase, round, state, closed_reason, d20, bonus, total, saved, created_at, answered_at FROM combat_effect_windows WHERE encounter_id = $1 AND state = 'open' ORDER BY created_at, id
 `
 
-func (q *Queries) ListOpenCombatEffectSaves(ctx context.Context, encounterID string) ([]CombatEffectSafe, error) {
-	rows, err := q.db.Query(ctx, listOpenCombatEffectSaves, encounterID)
+func (q *Queries) ListOpenCombatEffectWindows(ctx context.Context, encounterID string) ([]CombatEffectWindow, error) {
+	rows, err := q.db.Query(ctx, listOpenCombatEffectWindows, encounterID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CombatEffectSafe
+	var items []CombatEffectWindow
 	for rows.Next() {
-		var i CombatEffectSafe
+		var i CombatEffectWindow
 		if err := rows.Scan(
 			&i.ID,
 			&i.EncounterID,
@@ -4670,7 +4675,7 @@ const setCombatEffectEnds = `-- name: SetCombatEffectEnds :one
 UPDATE combat_effects
 SET duration_kind = $2, ends_round = $3, ends_combatant_id = $4, ends_phase = $5
 WHERE id = $1
-RETURNING id, encounter_id, group_id, source_kind, source_key, caster_id, concentration, condition_keys, modifiers, duration_kind, started_round, ends_round, ends_combatant_id, ends_phase, end_save_ability, start_save_ability, save_dc, on_fail_effect, trigger_dice, trigger_damage_type, trigger_max_triggers, player_visible, audience, player_label, created_at
+RETURNING id, encounter_id, group_id, source_kind, source_key, caster_id, concentration, condition_keys, modifiers, duration_kind, started_round, ends_round, ends_combatant_id, ends_phase, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, player_visible, audience, player_label, created_at
 `
 
 type SetCombatEffectEndsParams struct {
@@ -4709,6 +4714,7 @@ func (q *Queries) SetCombatEffectEnds(ctx context.Context, arg SetCombatEffectEn
 		&i.StartSaveAbility,
 		&i.SaveDc,
 		&i.OnFailEffect,
+		&i.FollowsKey,
 		&i.TriggerDice,
 		&i.TriggerDamageType,
 		&i.TriggerMaxTriggers,
@@ -4724,7 +4730,7 @@ const setCombatEffectVisibility = `-- name: SetCombatEffectVisibility :one
 UPDATE combat_effects
 SET player_visible = $2, audience = $3, player_label = $4
 WHERE id = $1
-RETURNING id, encounter_id, group_id, source_kind, source_key, caster_id, concentration, condition_keys, modifiers, duration_kind, started_round, ends_round, ends_combatant_id, ends_phase, end_save_ability, start_save_ability, save_dc, on_fail_effect, trigger_dice, trigger_damage_type, trigger_max_triggers, player_visible, audience, player_label, created_at
+RETURNING id, encounter_id, group_id, source_kind, source_key, caster_id, concentration, condition_keys, modifiers, duration_kind, started_round, ends_round, ends_combatant_id, ends_phase, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, player_visible, audience, player_label, created_at
 `
 
 type SetCombatEffectVisibilityParams struct {
@@ -4761,6 +4767,7 @@ func (q *Queries) SetCombatEffectVisibility(ctx context.Context, arg SetCombatEf
 		&i.StartSaveAbility,
 		&i.SaveDc,
 		&i.OnFailEffect,
+		&i.FollowsKey,
 		&i.TriggerDice,
 		&i.TriggerDamageType,
 		&i.TriggerMaxTriggers,

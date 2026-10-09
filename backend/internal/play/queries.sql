@@ -1019,13 +1019,13 @@ ORDER BY e.created_at, e.map_point_id;
 INSERT INTO combat_effects (
     encounter_id, group_id, source_kind, source_key, caster_id, concentration, condition_keys, modifiers,
     duration_kind, started_round, ends_round, ends_combatant_id, ends_phase,
-    end_save_ability, start_save_ability, save_dc, on_fail_effect,
+    end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key,
     trigger_dice, trigger_damage_type, trigger_max_triggers,
     player_visible, audience, player_label, created_at
 ) VALUES (
     $1, $2, $3, $4, sqlc.narg(caster_id), $5, $6, $7,
     $8, $9, sqlc.narg(ends_round), sqlc.narg(ends_combatant_id), sqlc.narg(ends_phase),
-    sqlc.narg(end_save_ability), sqlc.narg(start_save_ability), sqlc.narg(save_dc), sqlc.narg(on_fail_effect),
+    sqlc.narg(end_save_ability), sqlc.narg(start_save_ability), sqlc.narg(save_dc), sqlc.narg(on_fail_effect), sqlc.narg(follows_key),
     sqlc.narg(trigger_dice), sqlc.narg(trigger_damage_type), sqlc.narg(trigger_max_triggers),
     $10, $11, sqlc.narg(player_label), $12
 )
@@ -1078,29 +1078,29 @@ RETURNING *;
 -- One more time the effect's damage hit the target.
 UPDATE combat_effect_targets SET triggers_fired = triggers_fired + 1 WHERE effect_id = $1 AND combatant_id = $2;
 
--- name: InsertCombatEffectSave :one
+-- name: InsertCombatEffectWindow :one
 -- Opens the saving throw an effect asks of a target at a turn. The unique index
 -- keeps a repeated end of turn from opening it twice: no row comes back then.
-INSERT INTO combat_effect_saves (encounter_id, effect_id, combatant_id, phase, round, created_at)
+INSERT INTO combat_effect_windows (encounter_id, effect_id, combatant_id, phase, round, created_at)
 VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (effect_id, combatant_id, round, phase) DO NOTHING
 RETURNING *;
 
--- name: ListOpenCombatEffectSaves :many
-SELECT * FROM combat_effect_saves WHERE encounter_id = $1 AND state = 'open' ORDER BY created_at, id;
+-- name: ListOpenCombatEffectWindows :many
+SELECT * FROM combat_effect_windows WHERE encounter_id = $1 AND state = 'open' ORDER BY created_at, id;
 
--- name: GetCombatEffectSave :one
-SELECT * FROM combat_effect_saves WHERE id = $1 AND encounter_id = $2;
+-- name: GetCombatEffectWindow :one
+SELECT * FROM combat_effect_windows WHERE id = $1 AND encounter_id = $2;
 
--- name: AnswerCombatEffectSave :one
-UPDATE combat_effect_saves
+-- name: AnswerCombatEffectWindow :one
+UPDATE combat_effect_windows
 SET state = 'answered', d20 = sqlc.narg(d20), bonus = sqlc.narg(bonus), total = sqlc.narg(total), saved = $2, answered_at = $3
 WHERE id = $1 AND state = 'open'
 RETURNING *;
 
--- name: CloseCombatEffectSaves :many
+-- name: CloseCombatEffectWindows :many
 -- The effect ended, or its caster lost the concentration, with the windows open.
-UPDATE combat_effect_saves
+UPDATE combat_effect_windows
 SET state = 'closed', closed_reason = $2, answered_at = $3
 WHERE effect_id = $1 AND state = 'open'
 RETURNING *;
