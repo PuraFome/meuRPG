@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -63,6 +64,10 @@ func (s *Service) groupWrite(ctx context.Context, m authz.Membership, key string
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
 			}
 			repeated = true
+			// A retry answers what the first call made: the check it names is in the event.
+			if err := json.Unmarshal(done.Payload, &ev); err != nil {
+				return fmt.Errorf("read the event of this idempotency key: %w", err)
+			}
 			return nil
 		case !errors.Is(err, pgx.ErrNoRows):
 			return fmt.Errorf("find the event of this idempotency key: %w", err)
@@ -153,12 +158,6 @@ func (s *Service) RequestGroupCheck(
 	view, err := s.groupCheckView(ctx, m, ev.GroupCheckID)
 	if err != nil {
 		return nil, err
-	}
-	if repeated {
-		// The retry does not know the check's id: the check it made is the session's latest.
-		if view, err = s.latestGroupCheckView(ctx, m); err != nil {
-			return nil, err
-		}
 	}
 	return connect.NewResponse(&playv1.RequestGroupCheckResponse{GroupCheck: view}), nil
 }

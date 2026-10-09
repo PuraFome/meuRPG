@@ -132,12 +132,14 @@ export class EndTurn {
   readonly block = input(false);
   /** An opportunity attack waits for an answer ("Esperando a reação do mestre"): the turn cannot end. */
   readonly waiting = input('');
+  /** The character is surprised (W7-X): the turn only passes ("Passar o turno"), with nothing to ask, as nothing is available. */
+  readonly surprised = input(false);
 
   readonly endTurn = output<void>();
 
   protected readonly asking = signal(false);
   protected readonly primary = computed(
-    () => endTurnIsPrimary(this.own()) && this.attacksLeft() === 0,
+    () => this.surprised() || (endTurnIsPrimary(this.own()) && this.attacksLeft() === 0),
   );
   protected readonly question = computed(() => {
     const left = this.attacksLeft();
@@ -151,7 +153,7 @@ export class EndTurn {
     if (this.waiting()) {
       return;
     }
-    if (this.own().actionUsed && this.attacksLeft() === 0) {
+    if (this.surprised() || (this.own().actionUsed && this.attacksLeft() === 0)) {
       this.endTurn.emit();
       return;
     }

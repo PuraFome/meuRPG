@@ -1,0 +1,88 @@
+<app-sheet-frame
+  [title]="title()"
+  subtitle="Disputa"
+  titleId="contest-answer-t"
+  [phone]="inSheet"
+  (closed)="close()"
+>
+  <app-attack-steps [steps]="stepList()" label="Passos da disputa" />
+
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  @switch (stage()) {
+    @case ('choose') {
+      <p class="line">
+        Você escolhe <b>Força (Atletismo)</b> ou <b>Destreza (Acrobacia)</b> {{ intro().tail }}
+      </p>
+      <div class="list" role="radiogroup" aria-label="Habilidade">
+        @for (o of options(); track o.skill) {
+          <label class="card" [class.card--on]="chosenSkill() === o.skill">
+            <input
+              type="radio"
+              class="mr-check-input"
+              name="answer-skill"
+              [checked]="chosenSkill() === o.skill"
+              (change)="pick(o.skill)"
+            />
+            <span class="card__text">
+              <span class="card__name">{{ skillLabel(o.skill) }}</span>
+              <span class="card__sub">Seu modificador: {{ signedText(o.modifier) }}</span>
+              @for (n of noteLines(o); track $index) {
+                <span class="card__sub">{{ n }}</span>
+              }
+            </span>
+          </label>
+        }
+      </div>
+      <app-check-roll-form
+        [mode]="mode()"
+        [modifier]="modifier()"
+        [checkName]="checkName()"
+        [diceMode]="data.diceMode"
+        [preference]="data.preference"
+        [busy]="busy()"
+        deferLabel="Deixar o mestre rolar por mim"
+        (roll)="answer($event)"
+        (defer)="answer(null)"
+      />
+    }
+    @case ('wait') {
+      <div class="mr-notice mr-notice--neutral note" role="status" data-testid="contest-wait">
+        <mat-icon aria-hidden="true">schedule</mat-icon>
+        <p><b>{{ waitTitle() }}.</b> {{ waitText() }}</p>
+      </div>
+    }
+    @default {
+      @if (roll(); as r) {
+        <app-contest-roll [roll]="r" [skill]="rollSkill()" />
+      }
+      @if (verdict(); as v) {
+        <div
+          class="mr-notice note"
+          [class.mr-notice--success]="v.won"
+          [class.mr-notice--danger]="!v.won"
+          role="status"
+        >
+          <mat-icon aria-hidden="true">{{ v.won ? 'check_circle' : 'error' }}</mat-icon>
+          <p><b>{{ v.lead }}</b> {{ v.rest }}</p>
+        </div>
+      }
+    }
+  }
+
+  <div foot class="foot">
+    @switch (stage()) {
+      @case ('wait') {
+        <button mat-stroked-button type="button" class="foot__btn" (click)="close()">Fechar a folha</button>
+      }
+      @case ('result') {
+        <button #done mat-flat-button type="button" class="foot__btn foot__btn--main" (click)="close()">Fechar</button>
+      }
+    }
+  </div>
+</app-sheet-frame>

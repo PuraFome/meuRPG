@@ -259,9 +259,14 @@ func (s *Service) GetSurpriseSuggestion(
 			CombatantId: c.ID, PassivePerception: clamp32(passive, math.MinInt32, math.MaxInt32), Surprised: slices.Contains(marked, c.ID),
 		}
 		var hiders []combat.HideTotals
+		notHiding := 0 // creatures of the other side with no Stealth total: they are in plain sight
 		for _, h := range d.cs {
+			if h.ID == c.ID || h.Defeated || h.Dismissed || !oppositeSide(h, c) {
+				continue
+			}
 			total, ok := totals[h.ID]
-			if !ok || h.ID == c.ID || h.Defeated || !oppositeSide(h, c) {
+			if !ok {
+				notHiding++
 				continue
 			}
 			// A creature the master said sees the hider clearly notices it, whatever the numbers.
@@ -276,6 +281,8 @@ func (s *Service) GetSurpriseSuggestion(
 		switch {
 		case len(hiders) == 0:
 			sg.Reason = playv1.SurpriseSuggestionReason_SURPRISE_SUGGESTION_REASON_NO_HIDERS
+		case notHiding > 0: // a creature that is not hiding is noticed (SRD 5.1, "Surprise": a threat noticed)
+			sg.Reason = playv1.SurpriseSuggestionReason_SURPRISE_SUGGESTION_REASON_NOTICES
 		case combat.NoticesNoThreat(passive, hiders):
 			sg.Suggested, sg.Reason = true, playv1.SurpriseSuggestionReason_SURPRISE_SUGGESTION_REASON_HIDERS_BEAT
 		default:

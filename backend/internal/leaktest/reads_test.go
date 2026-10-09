@@ -374,6 +374,26 @@ var reads = []read{
 		},
 	},
 
+	// ===== ContestService
+	{
+		procedure: playv1connect.ContestServiceGetContestStateProcedure, allow: members, why: "a player reads the contests they are in, their own Hide, the Helps and the grapples whose two creatures they see; never an NPC's roll, a fixed escape DC, or who noticed a hider (RN-10, RN-20)",
+		req: func(w *world) proto.Message {
+			return &playv1.GetContestStateRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId()}
+		},
+	},
+	{
+		procedure: playv1connect.ContestServiceGetSurpriseSuggestionProcedure, allow: masterOnlyRead, why: "the suggestion holds every creature's passive Perception and every hider's Stealth total",
+		req: func(w *world) proto.Message {
+			return &playv1.GetSurpriseSuggestionRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId()}
+		},
+	},
+	{
+		procedure: playv1connect.ContestServiceGetGroupCheckProcedure, allow: members, why: "a player reads their own roll only; the DC, the others' rolls and the count are the master's",
+		req: func(w *world) proto.Message {
+			return &playv1.GetGroupCheckRequest{CampaignId: w.campaign}
+		},
+	},
+
 	// ===== CastingService
 	{
 		procedure: playv1connect.CastingServiceListSpellCastsProcedure, allow: members, why: "the casts of the session: what a player may see; an NPC that is not on the stage casts for the master alone",

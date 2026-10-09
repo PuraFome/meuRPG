@@ -188,6 +188,8 @@ export type LiveEventVm =
   | { readonly kind: 'creaturesChanged' }
   /** `spell_casts_changed` (MR-048): the casts outside a combat changed; read them again. Carries no content. */
   | { readonly kind: 'spellCastsChanged' }
+  /** `group_check_changed` (W7-X): a group check was asked, answered or closed; read it again as this member (the hint carries no content). */
+  | { readonly kind: 'groupCheckChanged' }
   /** `content_changed` (10.1d): the table's content changed; read the catalog again with this member's role. */
   | { readonly kind: 'contentChanged' };
 

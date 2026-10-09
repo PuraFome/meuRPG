@@ -156,6 +156,15 @@ func (r *contestReader) contestView(ctx context.Context, row playdb.CombatContes
 		Id: row.ID, Kind: kindProto(row.Kind), Purpose: purposeProto(row.Purpose), Status: statusProto(row.Status),
 		InitiatorId: row.InitiatorID, DefenderId: row.DefenderID, Round: row.Round, CreatedAt: timestamppb.New(row.CreatedAt),
 	}
+	// A creature the player does not see (a hidden NPC) is not named: its id is the master's (RN-10).
+	if !r.v.master {
+		if !r.v.sees(initiator) {
+			out.InitiatorId = ""
+		}
+		if !r.v.sees(defender) {
+			out.DefenderId = ""
+		}
+	}
 	if row.Winner != nil && (row.Status == contestResolved || row.Status == contestAwaitingOutcome) {
 		out.Winner = winnerProto(*row.Winner)
 	}
@@ -316,6 +325,9 @@ func (r *contestReader) helpViews() []*playv1.HelpView {
 		ally, okA := combatantOfCharacter(r.d.cs, h.AllyCharacterID)
 		if !okH || !okA {
 			continue
+		}
+		if !r.v.master && (!r.v.sees(helper) || !r.v.sees(ally)) {
+			continue // a Help between creatures the player does not see names a hidden creature
 		}
 		view := &playv1.HelpView{Id: h.ID, HelperId: helper.ID, AllyId: ally.ID}
 		switch h.Kind {

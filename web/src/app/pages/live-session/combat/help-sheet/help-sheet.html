@@ -1,0 +1,142 @@
+<app-sheet-frame
+  [title]="title()"
+  subtitle="Ação"
+  titleId="help-t"
+  [phone]="inSheet"
+  (closed)="close()"
+>
+  <app-attack-steps [steps]="stepList()" label="Passos da ajuda" />
+
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  @switch (stage()) {
+    @case ('ally') {
+      <app-segmented label="O que ajudar" [segments]="kinds" [value]="kind()" (choose)="setKind($event)" />
+      <div class="list" role="radiogroup" aria-label="Aliado">
+        @for (a of data.allies; track a.id) {
+          <label class="card" [class.card--on]="allyId() === a.id">
+            <input
+              type="radio"
+              class="mr-check-input"
+              name="help-ally"
+              [checked]="allyId() === a.id"
+              (change)="pickAlly(a.id)"
+            />
+            <span class="card__text">
+              <span class="card__name">{{ a.label }}</span>
+            </span>
+          </label>
+        } @empty {
+          <p class="note-line">Não há nenhum aliado para ajudar.</p>
+        }
+      </div>
+    }
+    @case ('what') {
+      @if (kind() === 'check') {
+        <div class="list" role="radiogroup" aria-label="Tarefa">
+          @for (t of tasks(); track t.key) {
+            <label class="card" [class.card--on]="taskKey() === t.key">
+              <input
+                type="radio"
+                class="mr-check-input"
+                name="help-task"
+                [checked]="taskKey() === t.key"
+                (change)="taskKey.set(t.key)"
+              />
+              <span class="card__text">
+                <span class="card__name">{{ t.name }}</span>
+                <span class="card__sub">{{ t.sub }}</span>
+              </span>
+            </label>
+          }
+        </div>
+        <p class="line">{{ duration() }}</p>
+      } @else {
+        <div class="mr-notice mr-notice--neutral note">
+          <mat-icon aria-hidden="true">info</mat-icon>
+          <p>{{ intro() }}</p>
+        </div>
+        <div class="list" role="radiogroup" aria-label="Alvo">
+          @for (t of targets(); track t.id) {
+            <label class="card" [class.card--on]="targetId() === t.id" [class.card--off]="t.blocked">
+              <input
+                type="radio"
+                class="mr-check-input"
+                name="help-target"
+                [disabled]="!!t.blocked"
+                [checked]="targetId() === t.id"
+                (change)="targetId.set(t.id)"
+              />
+              <span class="card__text">
+                <span class="card__name">{{ t.name }}</span>
+                @if (t.sub) {
+                  <span class="card__sub">{{ t.sub }}</span>
+                }
+                @if (t.blocked) {
+                  <span class="card__why"><mat-icon aria-hidden="true">lock</mat-icon>{{ t.blocked }}</span>
+                }
+              </span>
+            </label>
+          } @empty {
+            <p class="note-line">Não há ninguém ao alcance de você.</p>
+          }
+        </div>
+      }
+    }
+    @default {
+      @if (helped(); as h) {
+        <div class="mr-notice mr-notice--success note" role="status">
+          <mat-icon aria-hidden="true">check_circle</mat-icon>
+          <p><b>{{ h.lead }}</b> {{ h.rest }}</p>
+        </div>
+      }
+      @if (kind() === 'check') {
+        <p class="line">{{ duration() }}</p>
+      }
+    }
+  }
+
+  <div foot class="foot">
+    @switch (stage()) {
+      @case ('ally') {
+        <div class="foot__row">
+          <button mat-stroked-button type="button" class="foot__btn" (click)="close()">Voltar</button>
+          <button
+            mat-flat-button
+            type="button"
+            class="foot__btn foot__btn--main"
+            [disabled]="allyId() === null"
+            disabledInteractive
+            (click)="next()"
+          >
+            Continuar
+          </button>
+        </div>
+      }
+      @case ('what') {
+        <div class="foot__row">
+          <button mat-stroked-button type="button" class="foot__btn" [disabled]="busy()" (click)="backToAlly()">Voltar</button>
+          <button
+            mat-flat-button
+            type="button"
+            class="foot__btn foot__btn--main"
+            [class.foot__btn--off]="!ready()"
+            [disabled]="!ready() || busy()"
+            disabledInteractive
+            (click)="help()"
+          >
+            {{ button() }}
+          </button>
+        </div>
+      }
+      @default {
+        <button #done mat-flat-button type="button" class="foot__btn foot__btn--main" (click)="close()">Fechar</button>
+      }
+    }
+  </div>
+</app-sheet-frame>

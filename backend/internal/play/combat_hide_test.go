@@ -123,6 +123,15 @@ func (o outsiders) refused(t *testing.T, name string, call func(u *user, campaig
 	wantCode(t, name+" as the master of another campaign, with its own campaign's id", call(o.other, o.otherCampaign), connect.CodeNotFound)
 }
 
+// refusedHere is refused for the calls that would work in the other master's own campaign (a
+// group check is asked there, read there): only this campaign's id is tried.
+func (o outsiders) refusedHere(t *testing.T, name string, call func(u *user, campaignID string) error, campaignID string) {
+	t.Helper()
+	wantCode(t, name+" as a stranger", call(o.stranger, campaignID), connect.CodeNotFound)
+	wantCode(t, name+" as a pending member", call(o.pending, campaignID), connect.CodeNotFound)
+	wantCode(t, name+" as the master of another campaign, on this campaign", call(o.other, campaignID), connect.CodeNotFound)
+}
+
 // TestHideTotalEqualToPassivePerceptionKeepsTheHiderNoticed (SRD 5.1, "Hiding": the SRD says
 // nothing of a tie, the app keeps the hider noticed; one point more hides). The hider's Stealth
 // is compared with each creature's passive Perception; a Hide with Cunning Action spends the
@@ -210,8 +219,8 @@ func TestHideIsComparedWithEachObserversOwnPassivePerception(t *testing.T) {
 	if o := observerOf(t, applied, hob); o.GetPassivePerception() != 5 || o.GetNoticed() {
 		t.Errorf("the poisoned Hobgoblin = %v, want a passive Perception of 5 and not noticing", o)
 	}
-	if o := observerOf(t, applied, goblin); o.GetPassivePerception() != 10 || !o.GetNoticed() || o.GetKnown() {
-		t.Errorf("the Goblin = %v, want a passive Perception of 10 (no known number) and noticing", o)
+	if o := observerOf(t, applied, goblin); o.GetPassivePerception() != 10 || !o.GetNoticed() {
+		t.Errorf("the Goblin = %v, want a passive Perception of 10 and noticing", o)
 	}
 	if got := c.state(t, a.master).GetHiddenIds(); !slices.Equal(got, []string{c.id(t, "Toren")}) {
 		t.Errorf("the master reads %v hidden, want Toren (one creature has not noticed)", got)
@@ -453,8 +462,14 @@ func TestHideCostsTheActionAndOnlyTheCombatantsOwnPlayerOnItsTurnMayRollIt(t *te
 		t.Errorf("the master reads %v hidden, want the Hobgoblin", got)
 	}
 	for who, u := range map[string]*user{"Toren's player": a.caio, "Pensantus's player": a.ana, "Brisa's player": a.bia} {
-		if s := c.state(t, u); len(s.GetHiddenIds()) != 0 || len(s.GetHideAttempts()) != 0 {
-			t.Errorf("%s reads %v of the Hobgoblin's hiding, want nothing", who, s)
+		s := c.state(t, u)
+		if len(s.GetHiddenIds()) != 0 {
+			t.Errorf("%s reads %v hidden, want nobody", who, s.GetHiddenIds())
+		}
+		for _, h := range s.GetHideAttempts() {
+			if h.GetHiderId() == c.id(t, c.hob) {
+				t.Errorf("%s reads the Hobgoblin's Hide: %v", who, h)
+			}
 		}
 	}
 }

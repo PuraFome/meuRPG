@@ -225,13 +225,20 @@ func TestHelpRefusesWhatIsNotAnAllyATaskOrAFreeAction(t *testing.T) {
 		"an attack with a task": func(r *playv1.HelpRequest) {
 			r.Kind, r.AllyId, r.TaskKey, r.TargetId = playv1.HelpKind_HELP_KIND_ATTACK, c.id(t, "Toren"), "skill:stealth", c.id(t, c.hob)
 		},
+	} {
+		if _, err := c.help(t, a.bia, "Brisa", edit); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Errorf("%s = %v, want invalid_argument", name, err)
+		}
+	}
+	// An id that names nobody is not found, as in every call of the combat.
+	for name, edit := range map[string]func(*playv1.HelpRequest){
 		"an attack with no target": func(r *playv1.HelpRequest) { r.Kind, r.AllyId = playv1.HelpKind_HELP_KIND_ATTACK, c.id(t, "Toren") },
 		"a combatant that is no UUID": func(r *playv1.HelpRequest) {
 			r.Kind, r.AllyId, r.TaskKey = playv1.HelpKind_HELP_KIND_CHECK, "toren", "skill:stealth"
 		},
 	} {
-		if _, err := c.help(t, a.bia, "Brisa", edit); connect.CodeOf(err) != connect.CodeInvalidArgument {
-			t.Errorf("%s = %v, want invalid_argument", name, err)
+		if _, err := c.help(t, a.bia, "Brisa", edit); connect.CodeOf(err) != connect.CodeNotFound {
+			t.Errorf("%s = %v, want not_found", name, err)
 		}
 	}
 	if a.mustOptions(t, a.bia, c.refresh(t), "Brisa").GetOptions().GetEconomy().GetAction().GetUsed() {

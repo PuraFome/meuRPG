@@ -38,7 +38,7 @@ import { EndTurn } from './end-turn';
           } @else if (move(); as amount) {
             <p class="what">Mover&nbsp;<b>{{ amount }}</b></p>
           }
-          <app-end-turn class="row__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" [waiting]="waiting()" (endTurn)="endTurn.emit()" />
+          <app-end-turn class="row__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" [waiting]="waiting()" [label]="surprised() ? 'Passar o turno' : 'Encerrar turno'" [surprised]="surprised()" (endTurn)="endTurn.emit()" />
         </div>
       }
     }
@@ -110,6 +110,8 @@ export class TurnBar {
   readonly attacksLeft = input(0);
   /** An opportunity attack waits for an answer: the list of what is left and the end button say so instead. */
   readonly waiting = input('');
+  /** The character is surprised (W7-X): the button only passes the turn. */
+  readonly surprised = input(false);
   /** No map (RN-25): the movement is a number of meters, said as "Movimento 9,0 m". */
   readonly theatre = input(false);
 

@@ -98,6 +98,7 @@ import { ShownImageBlock } from './shown-image-block/shown-image-block';
 import { ShownImagePanel } from './shown-image-panel/shown-image-panel';
 import { applySnapshot, applyVitals, partyRowSub } from './vitals';
 import { FoundTreasures } from './treasure/found-treasures/found-treasures';
+import { GroupCheckCard } from './group-check/group-check-card';
 import { TreasurePanel } from './treasure/treasure-panel/treasure-panel';
 import { TrapActivityList } from './traps/trap-activity/trap-activity';
 import { TrapPanel } from './traps/trap-panel/trap-panel';
@@ -139,6 +140,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     CastingPanel,
     CombatView,
     FoundTreasures,
+    GroupCheckCard,
     HighlightsCard,
     LiveToast,
     MasterLive,
@@ -245,6 +247,8 @@ export class LiveSession {
   protected readonly creaturesTick = signal(0);
   /** Counts the `spell_casts_changed` hints (and each `ready`): the casts panel reads again when it moves. */
   protected readonly castsTick = signal(0);
+  /** Counts the `group_check_changed` hints (and each `ready`): the group check's card reads again when it moves (W7-X). */
+  protected readonly groupCheckTick = signal(0);
   protected readonly familiarNameNow = signal<string | null>(null);
   protected readonly seeingFamiliar = computed(() => !!this.vitals().at(0)?.familiarSight);
   private readonly familiarEyes = inject(FamiliarEyesClient);
@@ -626,6 +630,7 @@ export class LiveSession {
         },
         onCreaturesChanged: () => this.creaturesTick.update((n) => n + 1),
         onSpellCastsChanged: () => this.castsTick.update((n) => n + 1),
+        onGroupCheckChanged: () => this.groupCheckTick.update((n) => n + 1),
         onPuzzleChanged: (id) => void this.puzzles.changed(id),
         onTokenMoved: (move) => {
           this.scheduleVision();
@@ -763,6 +768,7 @@ export class LiveSession {
       this.scheduleVision();
       this.creaturesTick.update((n) => n + 1);
       this.castsTick.update((n) => n + 1);
+      this.groupCheckTick.update((n) => n + 1);
       if (this.isMaster()) {
         void this.reloadMaps();
       }

@@ -93,6 +93,8 @@ const (
 	trapSave     = 26
 	sceneDC      = 28
 	hintDC       = 25
+	escapeDC     = 27 // the fixed escape DC of a grapple by a hidden NPC's attack
+	groupCheckDC = 23
 	caveColumns  = 24
 	dungeonSeed  = 8675309
 	treasureSeed = 424242

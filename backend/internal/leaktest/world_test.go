@@ -368,6 +368,26 @@ func (w *world) buildCombat() {
 		w.secrets.id("combatant", c.GetId(), w.combatantReaders(c)...)
 	}
 
+	// A hidden NPC grapples Toren with an attack of its own, the escape DC the master says (ESCAPE_DC): the
+	// DC is the master's, and a player reads neither the DC nor the id of the creature that holds them.
+	w.secrets.number("escape-dc", escapeDC, "dc")
+	hiddenNPC := w.combatantOf(e, w.hiddenNPC.GetId())
+	for range 60 {
+		cur := must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+		if cur.GetCurrentCombatantId() == hiddenNPC.GetId() {
+			break
+		}
+		must(m.combat.EndTurn(ctx, rq(&playv1.EndTurnRequest{CampaignId: w.campaign, EncounterId: e.GetId(), IdempotencyKey: newKey(), ExpectedCombatantId: cur.GetCurrentCombatantId(), ExpectedRound: cur.GetRound()})))
+	}
+	must(m.contests.StartContest(ctx, rq(&playv1.StartContestRequest{
+		CampaignId: w.campaign, EncounterId: e.GetId(), IdempotencyKey: newKey(), InitiatorId: hiddenNPC.GetId(), TargetId: w.combatantOf(e, w.toren.GetId()).GetId(),
+		Purpose: playv1.ContestPurpose_CONTEST_PURPOSE_GRAPPLE, Kind: playv1.ContestKind_CONTEST_KIND_ESCAPE_DC, EscapeDc: escapeDC,
+	})))
+	// A group check of Stealth is open, with the master's DC; Caio has rolled his character's d20.
+	w.secrets.number("group-check-dc", groupCheckDC, "dc")
+	asked := must(m.contests.RequestGroupCheck(ctx, rq(&playv1.RequestGroupCheckRequest{CampaignId: w.campaign, IdempotencyKey: newKey(), SkillKey: "skill:stealth", Dc: groupCheckDC}))).GetGroupCheck()
+	must(w.caio.contests.RollGroupCheck(ctx, rq(&playv1.RollGroupCheckRequest{CampaignId: w.campaign, IdempotencyKey: newKey(), GroupCheckId: asked.GetId(), Roll: appRoll()})))
+
 	// Pensantus falls, and Ana rolls a death save on her turn: a failure.
 	pens := w.combatantOf(e, w.pens.GetId())
 	must(m.play.AdjustCharacterVitals(ctx, rq(&playv1.AdjustCharacterVitalsRequest{
@@ -385,6 +405,11 @@ func (w *world) buildCombat() {
 		Roll: &playv1.RollDeathSaveRequest_D20Face{D20Face: 5},
 	})))
 	w.encounter = must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+}
+
+// appRoll is a check rolled by the server.
+func appRoll() *playv1.CheckRollInput {
+	return &playv1.CheckRollInput{Roll: &playv1.CheckRollInput_RollInApp{RollInApp: true}}
 }
 
 // combatantOf finds the combatant of a character in the master's copy of a combat.

@@ -67,4 +67,16 @@ describe('EndTurn', () => {
     end().click();
     expect(ended).toEqual([]);
   });
+
+  it('passes the turn of a surprised character at once, with nothing to ask (W7-X)', () => {
+    const { fixture, el, ended, end } = setup({ actionUsed: false, bonusActionUsed: false });
+    fixture.componentRef.setInput('surprised', true);
+    fixture.componentRef.setInput('label', 'Passar o turno');
+    fixture.detectChanges();
+    expect(end().classList).toContain('end--filled');
+    expect(end().textContent?.trim()).toContain('Passar o turno');
+    end().click();
+    expect(ended).toEqual([1]);
+    expect(el.querySelector('[role="alertdialog"]')).toBeNull();
+  });
 });

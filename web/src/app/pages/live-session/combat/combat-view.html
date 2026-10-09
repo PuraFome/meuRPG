@@ -296,11 +296,20 @@
                   [concentration]="ownConcentration()"
                   [theatre]="theatre()"
                   [orderBelow]="orderBelow()"
+                  [contest]="contestFacts()"
                   (endTurn)="nextTurn()"
                   (endRage)="endRageOf($event)"
                   (opportunity)="openAttack($event, true)"
                   (endConcentration)="endOwnConcentration()"
                 />
+              }
+              @if (contest.pending().length > 0 && !contest.sheetOpen()) {
+                <!-- A contest asks something of this player (W7-X) and its sheet was closed: the way back to it. -->
+                <div class="mr-notice mr-notice--warning notice" data-testid="contest-pending">
+                  <mat-icon aria-hidden="true">pan_tool</mat-icon>
+                  <p>Uma disputa espera a sua resposta.</p>
+                  <button mat-button type="button" class="notice__ok" (click)="contest.answerPending()">Responder</button>
+                </div>
               }
               @if (ownOffer(); as offer) {
                 <div class="mr-notice mr-notice--warning notice" data-testid="inspiration-pending">
@@ -369,6 +378,10 @@
                       [wild]="wild()"
                       [beast]="me.wildShapeBeastNamePt"
                       [theatre]="theatre()"
+                      [contestAttacks]="contestAttacks()"
+                      [contest]="contestFacts()"
+                      (contestAttack)="contest.openAttack($event)"
+                      (escape)="contest.openEscape()"
                       (familiarEyes)="askFamiliarEyes()"
                       (attack)="openAttack($event)"
                       (cast)="openCast($event)"
@@ -434,6 +447,7 @@
                 [attacksLeft]="attacksLeft()"
                 [busy]="busy()"
                 [waiting]="waiting()?.title ?? ''"
+                [surprised]="contestFacts()?.surprised === true"
                 [theatre]="theatre()"
                 [joint]="jointOthers()"
                 (endTurn)="nextTurn()"

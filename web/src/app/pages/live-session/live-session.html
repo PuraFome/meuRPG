@@ -325,6 +325,12 @@
         />
         <div class="board" [class.board--scene]="scene.scene()">
           <div class="board__main">
+            <app-group-check-card
+              [campaignId]="campaignId()"
+              [tick]="groupCheckTick()"
+              [diceMode]="campaign()?.diceMode ?? 1"
+              [preference]="campaign()?.dicePreference ?? 1"
+            />
             <app-scene-player
               [campaignId]="campaignId()"
               [state]="scene"

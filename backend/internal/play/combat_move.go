@@ -367,6 +367,10 @@ func (s *Service) MoveCombatant(
 			if err := s.mustNotBeDown(ctx, c.tx, m.CampaignID, target); err != nil {
 				return nil, err
 			}
+			// A surprised creature does not move on its first turn (SRD 5.1, "Surprise").
+			if err := s.mustNotBeSurprised(ctx, c, target); err != nil {
+				return nil, err
+			}
 		}
 
 		if th, err = s.newTrapHook(ctx, c.tx, m.CampaignID, c.enc, target); err != nil {

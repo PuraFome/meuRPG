@@ -129,6 +129,8 @@ import type { PartyMemberInfoVm, VitalsVm } from '../live-session.types';
 import { ActionGroups } from './action-groups/action-groups';
 import { AdjustNpc, type AdjustNpcData } from './adjust-npc/adjust-npc';
 import { AttackSheet, type AttackSheetData } from './attack-sheet/attack-sheet';
+import { ContestHost } from './contest-host';
+import { ContestClient } from '../../../core/combat/contest-client';
 import { CastSheet, type CastMapData, type CastSheetData } from './cast-sheet/cast-sheet';
 import { ConditionsDialog, type ConditionsData } from './conditions-dialog/conditions-dialog';
 import { DeathQuestion } from './death-question/death-question';
@@ -768,6 +770,23 @@ export class CombatView {
     return this.isMaster() ? currentCombatant(e) : this.own();
   });
   protected readonly options = computed(() => this.turn.data());
+  /** The player's side of the contests (W7-X): grapple, shove, escape, Hide, Help, and the questions a contest asks. */
+  protected readonly contest = new ContestHost({
+    dialog: this.dialog,
+    bottomSheet: this.bottomSheet,
+    api: inject(ContestClient),
+    campaignId: () => this.campaignId(),
+    isMaster: () => this.isMaster(),
+    encounter: this.encounter,
+    own: this.own,
+    options: this.options,
+    state: () => this.state(),
+    diceMode: () => this.diceMode(),
+    preference: () => this.dicePreference(),
+  });
+  /** The contest facts of the player's turn (hidden, surprised, grappled) and the special attacks, from `GetTurnOptions`. */
+  protected readonly contestFacts = computed(() => this.options()?.contestState);
+  protected readonly contestAttacks = computed(() => this.options()?.contestAttackOptions ?? []);
   protected readonly economy = computed(() => this.options()?.options?.economy);
   /** Extra Attack: the attacks of this Attack action that remain, and how many it makes. */
   protected readonly attacksLeft = computed(() => this.economy()?.attacksLeft ?? 0);
@@ -1392,6 +1411,15 @@ export class CombatView {
   /** A standard action from the list: "Procurar" opens the search for traps (E9-08, it spends the action
    * through `SearchForTraps`); the others spend the action (`takeAction`). */
   protected standardAction(key: string): void {
+    // Hide and Help are the contest service's (W7-X): the check, and the master's answer, are not a plain action.
+    if (this.contest.hideKeys().includes(key)) {
+      this.contest.openHide(key);
+      return;
+    }
+    if (key === 'standard:help') {
+      this.contest.openHelp();
+      return;
+    }
     if (
       key === 'standard:search' &&
       searchRoute(this.mapState().map()?.gridColumns ?? 0, this.own()?.placed ?? false) === 'traps'
@@ -1461,6 +1489,11 @@ export class CombatView {
     const e = this.encounter();
     const option = this.options()?.options?.featureActions.find((a) => a.action?.key === key);
     if (!own || !e || !option?.action) {
+      return;
+    }
+    if (this.contest.hideKeys().includes(key)) {
+      // The rogue's Cunning Action: Hide as a bonus action.
+      this.contest.openHide(key);
       return;
     }
     const name = option.action.namePt;

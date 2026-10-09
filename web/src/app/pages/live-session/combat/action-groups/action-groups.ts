@@ -4,6 +4,11 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant, PendingDamage } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
+  type ContestAttackOption,
+  type ContestTurnState,
+  ContestAttackOptionKind,
+} from '../../../../../gen/meurpg/play/v1/contest_types_pb';
+import {
   type ActionOption,
   type Attack,
   type AttackOption,
@@ -30,6 +35,15 @@ import {
   spellTags,
 } from '../../../../core/combat/combat-options';
 import { spellSummary } from '../../../../core/combat/spell-summary';
+import {
+  ESCAPE_DETAIL,
+  GRAPPLE_DETAIL,
+  hiddenAttackNote,
+  SHOVE_DETAIL,
+  SPECIAL_ATTACKS_NOTE,
+  grappledWord,
+  hiddenWord,
+} from '../../../../core/combat/contest-view';
 import { freeText } from '../../../../core/combat/cast-flow';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
 import type { PactSlotsVm, SlotUsageVm } from '../../live-session.types';
@@ -105,9 +119,17 @@ export class ActionGroups {
   readonly beast = input('');
   /** The combat is played without a map (RN-25): Movimento says so and its button is "Gastar movimento". */
   readonly theatre = input(false);
+  /** The special attacks of the Attack action, Agarrar and Empurrar (`GetTurnOptions.contest_attack_options`, W7-X). */
+  readonly contestAttacks = input<readonly ContestAttackOption[]>([]);
+  /** The contest facts of the turn: grappled (and who can escape), hidden, surprised (W7-X). */
+  readonly contest = input<ContestTurnState | undefined>(undefined);
 
   /** "Atacar": the key of the attack, as in `Attack.key`. */
   readonly attack = output<string>();
+  /** "Agarrar" or "Empurrar": the sheet that picks the target. */
+  readonly contestAttack = output<ContestAttackOptionKind>();
+  /** "Escapar" of a grappled combatant. */
+  readonly escape = output<void>();
   /** A standard action, by key ("standard:dash"). */
   readonly action = output<string>();
   /** "Conjurar": the key of the spell, or of a cantrip that asks for a save. */
@@ -137,6 +159,27 @@ export class ActionGroups {
   /** From 1024px the economy tiles are the panel's first thing (E6-14). */
   protected readonly desktop = mediaQuery('(min-width: 1024px)');
 
+  protected readonly surprised = computed(() => this.contest()?.surprised === true);
+  protected readonly grappled = computed(() => this.contest()?.grappled === true);
+  protected readonly hiddenNote = computed(() =>
+    this.contest()?.hidden ? hiddenAttackNote(hiddenWord(this.own().label)) : '',
+  );
+  protected readonly specialNote = SPECIAL_ATTACKS_NOTE;
+  /** The four groups of a surprised character's turn, each unavailable for the same reason (SRD 5.1, Surprise). */
+  protected readonly surpriseRows: readonly { readonly name: string; readonly why: string }[] = [
+    { name: 'Atacar', why: 'Surpresa.' },
+    { name: 'Movimento', why: 'Surpresa.' },
+    { name: 'Ação bônus', why: 'Surpresa.' },
+    { name: 'Reação', why: 'Surpresa até o fim do turno.' },
+  ];
+  protected readonly escapeDetail = ESCAPE_DETAIL;
+  protected readonly escapeWhy = computed(() => reasonText(this.contest()?.escapeReason));
+  /** The word of the attack list for Agarrar and Empurrar. */
+  protected special(o: ContestAttackOption): { name: string; detail: string } {
+    return o.kind === ContestAttackOptionKind.SHOVE
+      ? { name: 'Empurrar', detail: SHOVE_DETAIL }
+      : { name: 'Agarrar', detail: GRAPPLE_DETAIL };
+  }
   protected readonly action_ = computed(() => optionsFor(this.options(), 'action'));
   /** Every spell, whatever its economy, as the server ordered them. */
   protected readonly spells = computed(() => this.options().spells);
@@ -176,6 +219,14 @@ export class ActionGroups {
   protected readonly movement = computed(() => {
     const own = this.own();
     const left = own.movementLeftFt;
+    if (this.grappled()) {
+      // Grappled: the speed is 0 (SRD 5.1, Conditions), and the line says why.
+      return {
+        left: 0,
+        pill: 'Sem movimento',
+        text: `Indisponível: ${grappledWord(own.label)}.`,
+      };
+    }
     // Tenths of a foot, metres with one decimal ("Restam 6,9 m").
     const leftM = metersFixed(own.movementLeftDft / 10);
     const sentence = `${leftM} (${squaresText(reachSquares(left))})`;

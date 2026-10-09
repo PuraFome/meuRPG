@@ -7,7 +7,9 @@ import {
   CombatantState,
   type Encounter,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type { ContestTurnState } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
 import { joinDots, tight } from '../../../../core/format/text';
+import { contestNotes } from '../../../../core/combat/contest-view';
 import { metersFixed, squaresFree } from '../../../../core/units';
 import { article } from '../../../../core/combat/combat-log';
 import {
@@ -100,6 +102,8 @@ export class TurnPanel {
   readonly theatre = input(false);
   /** The page draws the order strip itself, under the actions, on the player's own turn on a phone. */
   readonly orderBelow = input(false);
+  /** The contest facts of the turn (`GetTurnOptions.contest_state`): hidden, surprised (W7-X). */
+  readonly contest = input<ContestTurnState | undefined>(undefined);
 
   readonly endTurn = output<void>();
   /** "Ataque de oportunidade": the key of the melee attack. */
@@ -116,6 +120,12 @@ export class TurnPanel {
   protected readonly wide = mediaQuery('(min-width: 1280px)');
   protected readonly compact = computed(() => this.desktop() && this.banner().mine && !this.down());
   protected readonly banner = computed(() => turnBanner(this.encounter()));
+  /** "Escondida" and "Surpresa": the state tags of the turn with the sentence under each (W7-X). */
+  protected readonly states = computed(() => contestNotes(this.contest(), this.own()?.label ?? ''));
+  protected readonly surprised = computed(() => this.contest()?.surprised === true);
+  protected readonly endLabel = computed(() =>
+    this.surprised() ? 'Passar o turno' : 'Encerrar turno',
+  );
   /** The members of a joint turn that is all creatures (the wolves): the header draws each one's token. */
   protected readonly groupTokens = computed<readonly Combatant[]>(() => {
     const members = this.banner().joint?.members ?? [];

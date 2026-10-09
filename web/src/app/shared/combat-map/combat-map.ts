@@ -53,6 +53,12 @@ export interface OfferMark {
   readonly left: Square | null;
 }
 
+/** Where a creature the mover drags ends up (W7-X): the square the server worked out, and the creature's initial. */
+export interface DraggedMark {
+  readonly square: Square;
+  readonly initial: string;
+}
+
 export interface TokenDrop extends Square {
   readonly id: string;
 }
@@ -101,6 +107,8 @@ export class CombatMap {
   readonly fog = input<Vision | null>(null);
   readonly offers = input<readonly OfferMark[]>([]);
   readonly chosen = input<Chosen | null>(null);
+  /** Where the creature the mover drags ends up if the mover goes to the chosen square: a dashed token (W7-X). */
+  readonly dragged = input<DraggedMark | null>(null);
   /** One square marked without a token (E6-02: "O quadrado marcado tem
    * 1,5 m"), to judge the grid's size by. */
   readonly mark = input<Square | null>(null);

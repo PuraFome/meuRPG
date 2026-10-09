@@ -1,0 +1,210 @@
+<app-sheet-frame
+  [title]="title()"
+  [subtitle]="subtitle()"
+  titleId="contest-t"
+  [phone]="inSheet"
+  (closed)="close()"
+>
+  <app-attack-steps [steps]="stepList()" label="Passos da disputa" />
+
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  @switch (stage()) {
+    @case ('target') {
+      <div class="mr-notice mr-notice--neutral note">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <p>Você precisa de <b>uma mão livre</b>. {{ limitText() }}</p>
+      </div>
+      <label class="card" [class.card--on]="free()">
+        <input
+          type="checkbox"
+          class="mr-check-input"
+          [checked]="free()"
+          (change)="setFree($any($event.target).checked)"
+        />
+        <span class="card__text">
+          <span class="card__name">Tenho uma mão livre</span>
+          <span class="card__sub">Confirme antes de rolar.</span>
+        </span>
+      </label>
+      <div class="list" role="radiogroup" aria-label="Alvo">
+        @for (t of rows(); track t.id) {
+          <label class="card" [class.card--on]="targetId() === t.id" [class.card--off]="t.blocked">
+            <input
+              type="radio"
+              class="mr-check-input"
+              name="contest-target"
+              [value]="t.id"
+              [disabled]="!!t.blocked"
+              [checked]="targetId() === t.id"
+              (change)="pick(t.id)"
+            />
+            <span class="card__text">
+              <span class="card__name">{{ t.label }}</span>
+              <span class="card__sub">{{ t.sub }}</span>
+              @if (t.blocked) {
+                <span class="card__why"><mat-icon aria-hidden="true">lock</mat-icon>{{ t.blocked }}</span>
+              }
+            </span>
+          </label>
+        } @empty {
+          <p class="note-line">Não há ninguém ao alcance.</p>
+        }
+      </div>
+    }
+    @case ('roll') {
+      @if (escape) {
+        <div class="mr-notice mr-notice--neutral note">
+          <mat-icon aria-hidden="true">info</mat-icon>
+          <p>{{ intro() }}</p>
+        </div>
+        <div class="list" role="radiogroup" aria-label="Habilidade">
+          @for (o of options(); track o.skill) {
+            <label class="card" [class.card--on]="skill() === o.skill">
+              <input
+                type="radio"
+                class="mr-check-input"
+                name="contest-skill"
+                [checked]="skill() === o.skill"
+                (change)="pickSkill(o.skill)"
+              />
+              <span class="card__text">
+                <span class="card__name">{{ skillLabel(o.skill) }}</span>
+                <span class="card__sub">Seu modificador: {{ signedText(o.modifier) }}</span>
+              </span>
+            </label>
+          }
+        </div>
+      } @else {
+        <p class="line">Seu teste de <b>{{ checkLine() }}</b>: <b>{{ modifierText() }}</b>.</p>
+      }
+      <app-check-roll-form
+        [mode]="check().mode"
+        [modifier]="check().modifier"
+        [checkName]="checkLine()"
+        [diceMode]="data.diceMode"
+        [preference]="data.preference"
+        [busy]="busy()"
+        (roll)="roll($event)"
+      />
+    }
+    @default {
+      @if (escape) {
+        <div class="mr-notice mr-notice--neutral note">
+          <mat-icon aria-hidden="true">info</mat-icon>
+          <p>{{ intro() }}</p>
+        </div>
+      } @else if (stage() === 'wait') {
+        <p class="line">Seu teste de <b>{{ checkLine() }}</b>: <b>{{ modifierText() }}</b>.</p>
+      }
+      @if (contest()?.initiatorRoll; as r) {
+        @if (escape || stage() === 'wait') {
+          <app-contest-roll [roll]="r" [skill]="rollSkill()" />
+        }
+      }
+      @if (stage() === 'wait') {
+        <div class="mr-notice mr-notice--neutral note" role="status" data-testid="contest-wait">
+          <mat-icon aria-hidden="true">schedule</mat-icon>
+          <p><b>{{ waitTitle() }}.</b> {{ waitDetail() }}</p>
+        </div>
+      }
+      @if (stage() === 'choice') {
+        <div class="mr-notice mr-notice--success note" role="status">
+          <mat-icon aria-hidden="true">check_circle</mat-icon>
+          <p><b>Você venceu a disputa.</b> {{ choiceLead() }}</p>
+        </div>
+        <div class="list" role="radiogroup" aria-label="O que fazer">
+          <label class="card" [class.card--on]="outcome() === Outcome.PRONE">
+            <input type="radio" class="mr-check-input" name="shove" [checked]="outcome() === Outcome.PRONE" (change)="setOutcome(Outcome.PRONE)" />
+            <span class="card__text">
+              <span class="card__name">Derrubar</span>
+              <span class="card__sub">{{ proneText() }}</span>
+            </span>
+          </label>
+          <label class="card" [class.card--on]="outcome() === Outcome.PUSH" [class.card--off]="pushOff()">
+            <input
+              type="radio"
+              class="mr-check-input"
+              name="shove"
+              [disabled]="pushOff()"
+              [checked]="outcome() === Outcome.PUSH"
+              (change)="setOutcome(Outcome.PUSH)"
+            />
+            <span class="card__text">
+              <span class="card__name">Empurrar 1,5 m</span>
+              <span class="card__sub">{{ pushText() }}</span>
+            </span>
+          </label>
+        </div>
+      }
+      @if (stage() === 'result' && verdict(); as v) {
+        <div
+          class="mr-notice note"
+          [class.mr-notice--success]="v.won"
+          [class.mr-notice--danger]="!v.won"
+          role="status"
+        >
+          <mat-icon aria-hidden="true">{{ v.won ? 'check_circle' : 'error' }}</mat-icon>
+          <p><b>{{ v.lead }}</b> {{ v.rest }}</p>
+        </div>
+        @if (holds()) {
+          <p class="line">{{ hold() }}</p>
+        }
+      }
+    }
+  }
+
+  <div foot class="foot">
+    @switch (stage()) {
+      @case ('target') {
+        @if (why()) {
+          <p class="why" id="contest-why"><mat-icon aria-hidden="true">block</mat-icon>{{ why() }}</p>
+        }
+        <div class="foot__row">
+          <button mat-stroked-button type="button" class="foot__btn" (click)="close()">Voltar</button>
+          <button
+            mat-flat-button
+            type="button"
+            class="foot__btn foot__btn--main"
+            [class.foot__btn--off]="!canRoll()"
+            [disabled]="!canRoll() || busy()"
+            disabledInteractive
+            [attr.aria-describedby]="why() ? 'contest-why' : null"
+            (click)="advance()"
+          >
+            <mat-icon aria-hidden="true">casino</mat-icon>Rolar a disputa
+          </button>
+        </div>
+      }
+      @case ('wait') {
+        <button mat-stroked-button type="button" class="foot__btn" (click)="close()">Fechar a folha</button>
+        @if (waitingForMaster()) {
+          <p class="foot__hint">
+            “Fechar a folha” só a esconde: a disputa continua esperando o mestre, e a folha volta com o resultado.
+          </p>
+        }
+      }
+      @case ('choice') {
+        <button
+          #done
+          mat-flat-button
+          type="button"
+          class="foot__btn foot__btn--main"
+          [disabled]="busy() || outcome() === null"
+          disabledInteractive
+          (click)="confirm()"
+        >
+          Confirmar
+        </button>
+      }
+      @default {
+        <button #done mat-flat-button type="button" class="foot__btn foot__btn--main" (click)="close()">Fechar</button>
+      }
+    }
+  </div>
+</app-sheet-frame>

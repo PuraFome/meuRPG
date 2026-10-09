@@ -1,0 +1,34 @@
+@if (check(); as c) {
+  @switch (mode()) {
+    @case ('roll') {
+      <section class="card mr-notice mr-notice--warning" aria-label="Teste em grupo">
+        <mat-icon aria-hidden="true">groups</mat-icon>
+        <div class="card__body">
+          <p><b>Teste em grupo.</b> O mestre pediu um teste de {{ c.skillNamePt }} de todo o grupo.</p>
+          <button mat-flat-button type="button" class="card__btn" (click)="openSheet()">Rolar o teste</button>
+        </div>
+      </section>
+    }
+    @case ('wait') {
+      <section class="card mr-notice mr-notice--neutral" aria-label="Teste em grupo">
+        <mat-icon aria-hidden="true">schedule</mat-icon>
+        <div class="card__body">
+          <p>
+            <b>Esperando o mestre.</b> O resultado do grupo aparece quando ele encerrar o teste de
+            {{ c.skillNamePt }}.
+          </p>
+          <button mat-stroked-button type="button" class="card__btn" (click)="openSheet()">Abrir a folha</button>
+        </div>
+      </section>
+    }
+    @case ('result') {
+      <section class="card mr-notice mr-notice--neutral" aria-label="Teste em grupo">
+        <mat-icon aria-hidden="true">groups</mat-icon>
+        <div class="card__body">
+          <p><b>Teste em grupo: {{ c.skillNamePt }}.</b> {{ line() }}</p>
+          <button mat-stroked-button type="button" class="card__btn" (click)="dismiss()">Dispensar</button>
+        </div>
+      </section>
+    }
+  }
+}
