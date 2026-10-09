@@ -44,6 +44,10 @@ type deriver struct {
 	skillLevel      map[string]ProficiencyLevel
 	automaticSkills map[string]bool
 
+	// inactiveFeats are the feats the character took and no longer meets the prerequisite
+	// of: the sheet lists them but their effects do not apply.
+	inactiveFeats map[string]bool
+
 	env *formula.Env
 	// conditions caches each effect's `when` result: the character does
 	// not change during one Derive, and a broken condition must report one
@@ -67,8 +71,24 @@ type activeEffect struct {
 }
 
 func derive(b Build, c *content) Derived {
+	d := deriveWith(b, c, nil)
+	if len(b.Feats) == 0 {
+		return d
+	}
+	// A character that loses a feat's prerequisite cannot use the feat until it has the
+	// prerequisite again (SRD 5.1, Feats). What the character has is judged with the
+	// feats in place, and the sheet is made again without the ones that no longer fit.
+	lost := c.lostFeats(b, d)
+	if len(lost) == 0 {
+		return d
+	}
+	return deriveWith(b, c, lost)
+}
+
+// deriveWith is derive with the feats in inactive (by key) listed but not applied.
+func deriveWith(b Build, c *content, inactive map[string]bool) Derived {
 	d := &Derived{ContentVersion: c.version}
-	x := &deriver{b: b, c: c, d: d, proficient: map[string]bool{}, conditions: map[*Effect]bool{}}
+	x := &deriver{b: b, c: c, d: d, proficient: map[string]bool{}, conditions: map[*Effect]bool{}, inactiveFeats: inactive}
 
 	x.resolve()
 	x.resolveArmor()
@@ -395,7 +415,11 @@ func (x *deriver) collectEffects() {
 			x.issue(IssueUnknownKey, fmt.Sprintf("full.feat_keys[%d]", i), "O talento escolhido não existe no conteúdo %s.", c.version)
 			continue
 		}
-		add(key)
+		if x.inactiveFeats[key] {
+			x.issue(IssueFeatPrerequisite, fmt.Sprintf("full.feat_keys[%d]", i), "O personagem não cumpre mais o pré-requisito de %s: o talento só vale de novo quando cumprir.", c.namePT(key))
+		} else {
+			add(key)
+		}
 		feature(key, f.Name, key, 0, f.Desc)
 	}
 

@@ -416,3 +416,42 @@ func TestFeatAbilityIncreaseNeverPassesTwenty(t *testing.T) {
 	after = mustApply(t, c, before, LevelUpChoices{Class: "class:fighter", AbilityIncrease: map[Ability]int{STR: 2}, HitPoints: avg})
 	wantRefusal(t, CheckLevelUp(before, after, c), LevelUpReasonAbilityAbove20, "")
 }
+
+// TestAFeatWhoseRequirementIsLostStopsWorking: a character that loses a feat's prerequisite
+// cannot use the feat until it has the prerequisite again (SRD 5.1, Feats). The sheet still
+// lists the feat, says why it does not apply, and applies it again when the requirement is back.
+func TestAFeatWhoseRequirementIsLostStopsWorking(t *testing.T) {
+	t.Parallel()
+	c, err := loadForTest(t).With(Overlay{Revision: 1, Feats: []TableFeat{{
+		TableEntry: TableEntry{Key: "feat:punho" + tableSuffix, NamePT: "Punho"}, DescPT: []string{"Soca forte."},
+		Prerequisite: FeatPrerequisite{Minimums: map[Ability]int{STR: 15}},
+		Effects:      []Effect{{Type: "modifier", Target: "initiative", Mode: "add", Value: "5"}},
+	}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := "feat:punho" + tableSuffix
+	b := torenLevelUp() // human: Strength 15 + 1
+	plain := Derive(b, c).Initiative
+	b.Feats = []string{key}
+	has := func(d Derived, code string) bool {
+		return slices.ContainsFunc(d.Issues, func(is Issue) bool { return is.Code == code })
+	}
+	listed := func(d Derived) bool {
+		return slices.ContainsFunc(d.Features, func(f Feature) bool { return f.Key == key })
+	}
+
+	d := Derive(b, c)
+	if d.Initiative != plain+5 || has(d, IssueFeatPrerequisite) || !listed(d) {
+		t.Fatalf("a feat whose prerequisite is met: initiative %d (want %d), issues %v", d.Initiative, plain+5, d.Issues)
+	}
+	b.BaseScores[STR] = 12 // 13 with the race: below the 15 the feat asks
+	d = Derive(b, c)
+	if d.Initiative != plain || !has(d, IssueFeatPrerequisite) || !listed(d) {
+		t.Errorf("a feat whose prerequisite was lost: initiative %d (want %d), issues %v, listed %v", d.Initiative, plain, d.Issues, listed(d))
+	}
+	b.BaseScores[STR] = 15
+	if d = Derive(b, c); d.Initiative != plain+5 || has(d, IssueFeatPrerequisite) {
+		t.Errorf("the prerequisite is back: initiative %d (want %d), issues %v", d.Initiative, plain+5, d.Issues)
+	}
+}

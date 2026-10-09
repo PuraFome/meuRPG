@@ -199,9 +199,47 @@ func CheckFeat(b Build, key string, c *Content) ([]FeatUnmet, error) {
 	return c.c.unmetFeat(e, b, derive(b, c.c)), nil
 }
 
-// unmetFeat is what the character lacks of the feat's prerequisite, and the
-// abilities the feat raises when not enough of them can still go up.
+// lostFeats are the feats the build has and whose prerequisite the derived sheet no
+// longer meets (the ability increase of a feat already taken is not asked again).
+func (c *content) lostFeats(b Build, d Derived) map[string]bool {
+	var lost map[string]bool
+	for _, key := range b.Feats {
+		f, ok := c.feats[key]
+		if !ok || len(c.unmetPrerequisite(c.featEntry(f), b, d)) == 0 {
+			continue
+		}
+		if lost == nil {
+			lost = map[string]bool{}
+		}
+		lost[key] = true
+	}
+	return lost
+}
+
+// unmetFeat is what the character lacks to take the feat: its prerequisite, and the
+// abilities it raises when not enough of them can still go up.
 func (c *content) unmetFeat(e FeatEntry, b Build, d Derived) []FeatUnmet {
+	out := c.unmetPrerequisite(e, b, d)
+	if inc := e.Increase; inc != nil {
+		score := map[Ability]int{}
+		for _, s := range d.Abilities {
+			score[s.Ability] = s.Score
+		}
+		room := 0
+		for _, a := range inc.From {
+			if score[a]+inc.Value <= MaxNormalScore {
+				room++
+			}
+		}
+		if room < inc.Count {
+			out = append(out, FeatUnmet{Kind: FeatUnmetAbilityCap})
+		}
+	}
+	return out
+}
+
+// unmetPrerequisite is what the character lacks of the feat's prerequisite.
+func (c *content) unmetPrerequisite(e FeatEntry, b Build, d Derived) []FeatUnmet {
 	p := e.Prerequisite
 	score := map[Ability]int{}
 	for _, s := range d.Abilities {
@@ -237,17 +275,6 @@ func (c *content) unmetFeat(e FeatEntry, b Build, d Derived) []FeatUnmet {
 	}
 	if p.Level > 0 && d.TotalLevel < p.Level {
 		out = append(out, FeatUnmet{Kind: FeatUnmetLevel, Value: p.Level})
-	}
-	if inc := e.Increase; inc != nil {
-		room := 0
-		for _, a := range inc.From {
-			if score[a]+inc.Value <= MaxNormalScore {
-				room++
-			}
-		}
-		if room < inc.Count {
-			out = append(out, FeatUnmet{Kind: FeatUnmetAbilityCap})
-		}
 	}
 	return out
 }

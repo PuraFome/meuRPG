@@ -1,14 +1,26 @@
+import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
-import { Code, ConnectError } from '@connectrpc/connect';
+import { Code, ConnectError, createRouterTransport } from '@connectrpc/connect';
 
 import {
+  ExportTableContentResponseSchema,
+  ImportTableContentResponseSchema,
+  TableContentService,
+  TableImportMode,
   TableContentBlockedReason,
   TableContentBlockedSchema,
   TableContentRefusalSchema,
   TableContentViolationSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { OUTCOME_UNKNOWN, SESSION_ENDED } from '../connect/connect-errors';
-import { blockedReason, contentErrorText, isStale, refusalOf } from './content-client';
+import { CONNECT_TRANSPORT } from '../connect/transport';
+import {
+  TableContentClient,
+  blockedReason,
+  contentErrorText,
+  isStale,
+  refusalOf,
+} from './content-client';
 
 function blocked(code: Code, reason: TableContentBlockedReason) {
   return new ConnectError('x', code, undefined, [
@@ -111,5 +123,35 @@ describe('the errors of the table content calls', () => {
     expect(contentErrorText(new ConnectError('x', Code.Unauthenticated), 'salvar')).toBe(
       SESSION_ENDED,
     );
+  });
+});
+
+describe('the content pack calls (MR-025)', () => {
+  it("sends the idempotency key with an APPLY only, and exports the campaign's pack", async () => {
+    const seen: { mode: TableImportMode; key: string }[] = [];
+    const transport = createRouterTransport(({ service }) => {
+      service(TableContentService, {
+        importTableContent: (req) => {
+          seen.push({ mode: req.mode, key: req.idempotencyKey });
+          return create(ImportTableContentResponseSchema);
+        },
+        exportTableContent: (req) =>
+          create(ExportTableContentResponseSchema, {
+            pack: { format: 'meurpg.table-content', version: 1, name: req.campaignId },
+          }),
+      });
+    });
+    TestBed.configureTestingModule({
+      providers: [{ provide: CONNECT_TRANSPORT, useValue: transport }],
+    });
+    const client = TestBed.inject(TableContentClient);
+    const pack = await client.exportPack('camp-1');
+    expect(pack.name).toBe('camp-1');
+    await client.importPack('camp-1', pack, 'preview', 'key-1');
+    await client.importPack('camp-1', pack, 'apply', 'key-1');
+    expect(seen).toEqual([
+      { mode: TableImportMode.PREVIEW, key: '' },
+      { mode: TableImportMode.APPLY, key: 'key-1' },
+    ]);
   });
 });

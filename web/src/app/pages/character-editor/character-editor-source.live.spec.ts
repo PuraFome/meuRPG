@@ -104,6 +104,8 @@ function fullyPopulatedFullSheet(): FullSheet {
     customFeaturesText: 'Sabe um truque de cartas que sempre erra.',
     // No UI collects this either — the plan §4 gap this test also protects.
     featureChoiceKeys: ['feature:fighter-fighting-style-defense'],
+    // Nor the feats the character took: an edit by the master must not wipe them.
+    featKeys: ['feat:grappler'],
     // Nor this: the NPC's challenge rating and the XP it gives (Etapa 7); the
     // editor must not drop them when it saves.
     challengeRating: '2',
@@ -171,6 +173,7 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
       // as loaded, not wiped to a zero/empty default.
       coins: loaded.coins,
       featureChoiceKeys: loaded.featureChoiceKeys,
+      featKeys: loaded.featKeys,
       challengeRating: loaded.challengeRating,
       xpValue: loaded.xpValue,
       portraitImageId: loaded.portraitImageId,

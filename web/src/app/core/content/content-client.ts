@@ -8,6 +8,9 @@ import {
   type CreateTableEntryRequestSchema,
   type GetClassTableDefaultsResponse,
   type GetEffectMenuResponse,
+  type ImportTableContentResponse,
+  TableImportMode,
+  type TableContentPack,
   type OptionSwitchEntry,
   type TableContentViolation,
   TableContentBlockedReason,
@@ -91,7 +94,7 @@ export class TableContentClient {
     return res.entry as TableEntry;
   }
 
-  /** "Opções para os jogadores" (MR-025, RN-23): every class, subclass, race, subrace, background and spell with its switch (master only). */
+  /** "Opções para os jogadores" (MR-025, RN-23): every class, subclass, race, subrace, background, spell and feat with its switch (master only). */
   async switches(
     campaignId: string,
   ): Promise<{ options: readonly OptionSwitchEntry[]; tableRevision: number }> {
@@ -105,6 +108,27 @@ export class TableContentClient {
     switches: readonly { key: string; off: boolean }[],
   ): Promise<SetOptionSwitchesResponse> {
     return this.client.setOptionSwitches({ campaignId, switches: [...switches] });
+  }
+
+  /** The campaign's own entries as a content pack (master only). */
+  async exportPack(campaignId: string): Promise<TableContentPack> {
+    const res = await this.client.exportTableContent({ campaignId });
+    return res.pack as TableContentPack;
+  }
+
+  /** PREVIEW writes nothing and answers each entry; APPLY writes all or nothing (`idempotencyKey`: see `ActionKey`). */
+  importPack(
+    campaignId: string,
+    pack: TableContentPack,
+    mode: 'preview' | 'apply',
+    idempotencyKey = '',
+  ): Promise<ImportTableContentResponse> {
+    return this.client.importTableContent({
+      campaignId,
+      pack,
+      mode: mode === 'apply' ? TableImportMode.APPLY : TableImportMode.PREVIEW,
+      idempotencyKey: mode === 'apply' ? idempotencyKey : '',
+    });
   }
 
   /** The closed menu of effects, as data (master only). */

@@ -934,6 +934,9 @@ const (
 	IssueMulticlass = "multiclass_prerequisite"
 	// IssueHitPointRolls: fewer or more hit point rolls than levels.
 	IssueHitPointRolls = "hit_point_rolls"
+	// IssueFeatPrerequisite: a feat the character took whose prerequisite it no longer
+	// meets; the feat does not apply until it does again (SRD 5.1, Feats).
+	IssueFeatPrerequisite = "feat_prerequisite"
 	// IssueArmorProficiency: armor or a shield without the proficiency.
 	IssueArmorProficiency = "armor_proficiency"
 	// IssueScoreAbove20: a score above 20 without a manual bonus.
