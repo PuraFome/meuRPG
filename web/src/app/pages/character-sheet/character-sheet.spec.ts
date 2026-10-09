@@ -84,9 +84,6 @@ class FakeCharacterSheetSource {
   pendingChoices = 0;
   pendingChoiceCalls: string[] = [];
 
-  pendingChoices = 0;
-  pendingChoiceCalls: string[] = [];
-
   getXpMode(): Promise<CampaignXpMode> {
     return Promise.resolve(this.xpMode);
   }
