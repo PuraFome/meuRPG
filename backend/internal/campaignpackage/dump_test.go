@@ -35,7 +35,7 @@ type dumper struct {
 // ignored are the fields a new campaign has of its own: moments and counters.
 var ignored = map[string]bool{
 	"created_at": true, "updated_at": true, "revision": true, "layers_revision": true, "light_revision": true, "vision_epoch": true,
-	"characters_using": true, "table_revision": true, "content_version": true, "expires_at": true, "archived_at": true,
+	"characters_using": true, "content_revision": true, "table_revision": true, "content_version": true, "expires_at": true, "archived_at": true,
 	"revealed_at": true, "updated_by_display_name": true, "uploaded_by_display_name": true, "uploaded_by": true,
 }
 

@@ -29,6 +29,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1/charactersv1connect"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1/mapsv1connect"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/notes/v1/notesv1connect"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1/rulesv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/campaignpackage"
@@ -37,6 +38,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/characters/contenttest"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
 	"github.com/PuraFome/meuRPG/backend/internal/maps"
+	"github.com/PuraFome/meuRPG/backend/internal/notes"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
@@ -233,6 +235,10 @@ func newHarness(t *testing.T, opts ...func(*options)) *harness {
 		pkg.Wait(ctx)
 	})
 
+	notesSvc, err := notes.New(notes.Config{Pool: pool, Scenes: sessionMaps, Logger: logger, Now: h.clock.Now})
+	if err != nil {
+		t.Fatalf("notes.New() error = %v", err)
+	}
 	srv := httpserver.New(httpserver.Config{Logger: logger})
 	opt := connect.WithRequireConnectProtocolHeader()
 	camps.Mount(srv.Handle, fakeSessions{}, opt)
@@ -240,6 +246,7 @@ func newHarness(t *testing.T, opts ...func(*options)) *harness {
 	live.Mount(srv.Handle, fakeSessions{}, camps, opt)
 	mapsSvc.Mount(srv.Handle, fakeSessions{}, camps, opt)
 	pkg.Mount(srv.Handle, fakeSessions{}, camps, opt)
+	notesSvc.Mount(srv.Handle, fakeSessions{}, camps, opt)
 	h.server = httptest.NewServer(srv.Handler())
 	t.Cleanup(h.server.Close)
 	t.Cleanup(live.Close)
@@ -256,8 +263,10 @@ type user struct {
 	gallery    mapsv1connect.GalleryServiceClient
 	maps       mapsv1connect.MapServiceClient
 	puzzles    playv1connect.PuzzleServiceClient
+	play       playv1connect.PlayServiceClient
 	encounters playv1connect.EncounterServiceClient
 	pkg        campaignpackagev1connect.CampaignPackageServiceClient
+	notes      notesv1connect.NotesServiceClient
 }
 
 func (h *harness) newUser(displayName string) *user {
@@ -286,8 +295,10 @@ func (h *harness) clients(userID string) *user {
 		gallery:    mapsv1connect.NewGalleryServiceClient(c, url),
 		maps:       mapsv1connect.NewMapServiceClient(c, url),
 		puzzles:    playv1connect.NewPuzzleServiceClient(c, url),
+		play:       playv1connect.NewPlayServiceClient(c, url),
 		encounters: playv1connect.NewEncounterServiceClient(c, url),
 		pkg:        campaignpackagev1connect.NewCampaignPackageServiceClient(c, url),
+		notes:      notesv1connect.NewNotesServiceClient(c, url),
 	}
 }
 

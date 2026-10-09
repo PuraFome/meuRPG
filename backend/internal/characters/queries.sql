@@ -712,3 +712,9 @@ VALUES (sqlc.arg(id), sqlc.arg(campaign_id)::UUID, sqlc.arg(kind), sqlc.arg(mast
 INSERT INTO campaign_content (campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at)
 VALUES (sqlc.arg(campaign_id)::UUID, sqlc.arg(content_key), sqlc.arg(kind), sqlc.arg(name_pt), sqlc.arg(data), sqlc.arg(revision),
         sqlc.narg(archived_at), sqlc.arg(now), sqlc.arg(now));
+
+-- name: InsertImportedReservedCharacter :exec
+-- A player's character made from a package (MR-050): reserved (no owner, invisible to the
+-- players until one claims it, MR-049), with the id chosen before.
+INSERT INTO characters (id, campaign_id, kind, status, name, sheet, story, reserved, created_at, updated_at)
+VALUES (sqlc.arg(id), sqlc.arg(campaign_id)::UUID, 'player', 'active', sqlc.arg(name), sqlc.arg(sheet), sqlc.arg(story), true, sqlc.arg(now), sqlc.arg(now));

@@ -1211,6 +1211,34 @@ func (q *Queries) InsertImportedNpc(ctx context.Context, arg InsertImportedNpcPa
 	return err
 }
 
+const insertImportedReservedCharacter = `-- name: InsertImportedReservedCharacter :exec
+INSERT INTO characters (id, campaign_id, kind, status, name, sheet, story, reserved, created_at, updated_at)
+VALUES ($1, $2::UUID, 'player', 'active', $3, $4, $5, true, $6, $6)
+`
+
+type InsertImportedReservedCharacterParams struct {
+	ID         string
+	CampaignID string
+	Name       string
+	Sheet      []byte
+	Story      []byte
+	Now        time.Time
+}
+
+// A player's character made from a package (MR-050): reserved (no owner, invisible to the
+// players until one claims it, MR-049), with the id chosen before.
+func (q *Queries) InsertImportedReservedCharacter(ctx context.Context, arg InsertImportedReservedCharacterParams) error {
+	_, err := q.db.Exec(ctx, insertImportedReservedCharacter,
+		arg.ID,
+		arg.CampaignID,
+		arg.Name,
+		arg.Sheet,
+		arg.Story,
+		arg.Now,
+	)
+	return err
+}
+
 const insertLevelUp = `-- name: InsertLevelUp :one
 INSERT INTO character_level_ups
     (campaign_id, character_id, class_key, from_level, to_level, hp_method, hp_value, choices, created_at)

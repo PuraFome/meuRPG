@@ -55,7 +55,7 @@ func TestExportThenImportMakesTheSameCampaign(t *testing.T) {
 		t.Fatalf("the fixture is missing what the test is about:\n%.400s", before)
 	}
 	c := got.GetCounts()
-	if c.GetMaps() != 2 || c.GetNpcs() != 2 || c.GetScenes() != 1 || c.GetPuzzles() != 3 || c.GetBattlePoints() != 1 || c.GetTreasurePoints() != 1 || c.GetImages() != 3 || c.GetContentEntries() != 4 {
+	if c.GetMaps() != 2 || c.GetNpcs() != 2 || c.GetCharacters() != 1 || c.GetScenes() != 1 || c.GetPuzzles() != 3 || c.GetBattlePoints() != 1 || c.GetTreasurePoints() != 1 || c.GetImages() != 3 || c.GetContentEntries() != 4 {
 		t.Fatalf("counts = %v", c)
 	}
 }

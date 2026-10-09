@@ -22,6 +22,7 @@ type fixture struct {
 	taverna, battle         string // the points
 	clue                    string
 	npc, creatureNpc        string
+	reserved                string
 }
 
 // must returns the message of a call's answer, and fails the test (by panic,
@@ -133,6 +134,20 @@ func (h *harness) buildFixture(master *user) *fixture {
 		CampaignId: cid, CreatureKey: "monster:goblin", Name: "Gruk", Kind: charactersv1.CharacterKind_CHARACTER_KIND_MINION, IdempotencyKey: "0d6f0b3e-0f3f-4b53-9d2a-2b0f6c0a1111",
 	})))
 	f.creatureNpc = cr.GetCharacter().GetId()
+
+	// A player's character, made reserved for a player to claim (MR-049), with the master's notes.
+	reserved := must(master.characters.CreateCharacter(ctx, connect.NewRequest(&charactersv1.CreateCharacterRequest{
+		CampaignId: cid, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Pensantus", ForPlayer: true,
+		Sheet: &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
+			BaseScores: &rulesv1.AbilityScores{Strength: 12, Dexterity: 16, Constitution: 15, Intelligence: 16, Wisdom: 13, Charisma: 12},
+			RaceKey:    "race:human",
+			Classes:    []*charactersv1.ClassLevel{{ClassKey: "class:fighter", Level: 2}},
+			ArmorKey:   "equipment:chain-mail", WeaponKeys: []string{"equipment:longsword"},
+		}}},
+		Story: &charactersv1.CharacterStory{Backstory: "Veio do mar."},
+	})))
+	f.reserved = reserved.GetCharacter().GetId()
+	_ = must(master.characters.UpdateMasterNotes(ctx, connect.NewRequest(&charactersv1.UpdateMasterNotesRequest{CampaignId: cid, CharacterId: f.reserved, Notes: "Esconde um segredo."})))
 
 	// The document links a map, a character and an image.
 	_ = must(master.document.UpdateCampaignDocument(ctx, connect.NewRequest(&campaignsv1.UpdateCampaignDocumentRequest{
