@@ -277,6 +277,10 @@ var reads = []read{
 		},
 	},
 	{
+		procedure: rulesv1connect.TableContentServiceExportTableContentProcedure, allow: masterOnlyRead,
+		req: func(w *world) proto.Message { return &rulesv1.ExportTableContentRequest{CampaignId: w.campaign} },
+	},
+	{
 		procedure: rulesv1connect.TableContentServiceGetEffectMenuProcedure, allow: masterOnlyRead,
 		req: func(w *world) proto.Message { return &rulesv1.GetEffectMenuRequest{CampaignId: w.campaign} },
 	},

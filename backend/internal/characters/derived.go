@@ -236,6 +236,7 @@ func attackToProto(a rules.Attack) *rulesv1.Attack {
 		Melee:               a.Melee,
 		Notes:               a.Notes,
 		Beams:               i32(a.Beams),
+		DamageNotePt:        a.DamageNotePT,
 		SpellDice:           a.SpellDice,
 	}
 }

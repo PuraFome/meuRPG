@@ -307,7 +307,11 @@ export class LevelUpSession {
         .some((m) => m.step === step && ids.some((id) => m.id === id || m.id.startsWith(id)));
     if (o.abilityScoreImprovement) {
       choice(
-        'Incremento no Valor de Habilidade',
+        d.featSummary()
+          ? `Talento: ${d.featSummary()!.name}`
+          : d.hasFeats()
+            ? 'Incremento ou talento'
+            : 'Incremento no Valor de Habilidade',
         'abilities',
         d.missingIn('abilities').length === 0,
       );

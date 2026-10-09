@@ -113,22 +113,24 @@ var (
 		charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_ROLLED_PHYSICAL: "rolled_physical",
 	}
 	refusalReasons = map[string]charactersv1.LevelUpRefusalReason{
-		rules.LevelUpReasonClass:          charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_CLASS,
-		rules.LevelUpReasonMaxLevel:       charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_MAX_LEVEL,
-		rules.LevelUpReasonLocked:         charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_LOCKED_FIELD,
-		rules.LevelUpReasonAbilityNotDue:  charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ABILITY_NOT_DUE,
-		rules.LevelUpReasonAbilityShape:   charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ABILITY_SHAPE,
-		rules.LevelUpReasonAbilityAbove20: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ABILITY_ABOVE_20,
-		rules.LevelUpReasonHitPoints:      charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_HIT_POINTS,
-		rules.LevelUpReasonSubclass:       charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SUBCLASS,
-		rules.LevelUpReasonCantrips:       charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_CANTRIPS,
-		rules.LevelUpReasonSpells:         charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SPELLS,
-		rules.LevelUpReasonPrepared:       charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_PREPARED,
-		rules.LevelUpReasonFeatureChoice:  charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_FEATURE_CHOICE,
-		rules.LevelUpReasonSkills:         charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SKILLS,
-		rules.LevelUpReasonExpertise:      charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_EXPERTISE,
-		rules.LevelUpReasonSheetIssue:     charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SHEET_ISSUE,
-		rules.LevelUpReasonLateChoice:     charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_LATE_CHOICE_MISSING,
+		rules.LevelUpReasonClass:            charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_CLASS,
+		rules.LevelUpReasonMaxLevel:         charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_MAX_LEVEL,
+		rules.LevelUpReasonLocked:           charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_LOCKED_FIELD,
+		rules.LevelUpReasonAbilityNotDue:    charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ABILITY_NOT_DUE,
+		rules.LevelUpReasonAbilityShape:     charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ABILITY_SHAPE,
+		rules.LevelUpReasonAbilityAbove20:   charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ABILITY_ABOVE_20,
+		rules.LevelUpReasonHitPoints:        charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_HIT_POINTS,
+		rules.LevelUpReasonSubclass:         charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SUBCLASS,
+		rules.LevelUpReasonCantrips:         charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_CANTRIPS,
+		rules.LevelUpReasonSpells:           charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SPELLS,
+		rules.LevelUpReasonPrepared:         charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_PREPARED,
+		rules.LevelUpReasonFeatureChoice:    charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_FEATURE_CHOICE,
+		rules.LevelUpReasonSkills:           charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SKILLS,
+		rules.LevelUpReasonExpertise:        charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_EXPERTISE,
+		rules.LevelUpReasonSheetIssue:       charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SHEET_ISSUE,
+		rules.LevelUpReasonFeat:             charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_FEAT,
+		rules.LevelUpReasonFeatPrerequisite: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_FEAT_PREREQUISITE,
+		rules.LevelUpReasonLateChoice:       charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_LATE_CHOICE_MISSING,
 	}
 )
 
@@ -292,6 +294,7 @@ func (s *Service) GetLevelUpOptions(
 		return nil, s.dbError(ctx, "read the level up options", err)
 	}
 	out := levelUpOptionsToProto(offer)
+	out.Feats = featOptionsToProto(offer.Feats, t.rules.FeatsAllowed, isMaster(m))
 	if !isMaster(m) {
 		// A subclass the master archived or switched off is not offered to a player (RN-23), unless
 		// the character's own sheet already has it.
@@ -305,6 +308,20 @@ func (s *Service) GetLevelUpOptions(
 		}
 		if hiddenList(out.GetSpellListClassKey()) {
 			out.SpellListClassKey = ""
+		}
+		// Nor the name of a hidden race or subrace a feat asks for.
+		hiddenRace := func(k string) bool {
+			return k != "" && t.content.Hidden(k) && t.build.Race != k && t.build.Subrace != k
+		}
+		for _, f := range out.Feats {
+			if hiddenRace(f.GetPrerequisite().GetRaceKey()) {
+				f.Prerequisite.RaceKey = ""
+			}
+			for _, u := range f.GetUnmet() {
+				if hiddenRace(u.GetKey()) && u.GetKind() == rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_RACE {
+					u.Key = ""
+				}
+			}
 		}
 		for _, sub := range out.Subclasses {
 			if hiddenList(sub.GetSpellListClassKey()) {
@@ -638,7 +655,7 @@ func (s *Service) ListLevelUps(
 // levelUpNames names every content key a level-up's choices hold.
 func levelUpNames(content *rules.Content, classKey string, c *charactersv1.LevelUpChoices) map[string]string {
 	names := map[string]string{}
-	keys := slices.Concat([]string{classKey, c.GetSubclassKey()}, c.GetCantripKeys(), c.GetKnownSpellKeys(),
+	keys := slices.Concat([]string{classKey, c.GetSubclassKey(), c.GetFeatKey()}, c.GetCantripKeys(), c.GetKnownSpellKeys(),
 		c.GetPreparedSpellKeys(), c.GetFeatureChoiceKeys(), c.GetSkillProficiencyKeys(), c.GetExpertiseSkillKeys())
 	for _, k := range keys {
 		if name := content.NamePT(k); k != "" && name != "" {
@@ -705,6 +722,9 @@ func checkLevelUpChoices(c *charactersv1.LevelUpChoices) error {
 	if len(c.GetSwapInvocationKey()) > maxChoiceKeyLength {
 		return fieldErr("choices.swap_invocation_key", "must be at most %d characters", maxChoiceKeyLength)
 	}
+	if len(c.GetFeatKey()) > maxContentKeyLength {
+		return fieldErr("choices.feat_key", "must be at most %d characters", maxContentKeyLength)
+	}
 	if m := c.GetHitPoints().GetMethod(); charactersv1.LevelUpHitPointsMethod_name[int32(m)] == "" {
 		return fieldErr("choices.hit_points.method", "is not a known method")
 	}
@@ -747,6 +767,14 @@ func (s *Service) planLevelUpIn(ctx context.Context, tx pgx.Tx, q *charactersdb.
 	}
 	plan := levelUpPlan{toLevel: offer.TotalTo, record: proto.CloneOf(choices)}
 	plan.record.ClassKey = t.classKey
+	// Feats are an optional rule of the game: only a table that plays with them lets the
+	// level take one. The plan is still built (as with the other refusals) so the preview
+	// can show what the rest of the choices make.
+	if choices.GetFeatKey() != "" && !t.rules.FeatsAllowed {
+		plan.refusal = &charactersv1.LevelUpRefusal{
+			Field: "choices.feat_key", Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_FEATS_NOT_ALLOWED,
+		}
+	}
 
 	// The hit points of the level.
 	method := choices.GetHitPoints().GetMethod()
@@ -856,7 +884,7 @@ func levelUpChoicesFromProto(classKey string, c *charactersv1.LevelUpChoices, hp
 		Cantrips: c.GetCantripKeys(), Spells: c.GetKnownSpellKeys(), Prepared: c.GetPreparedSpellKeys(),
 		FeatureChoices: c.GetFeatureChoiceKeys(), SkillProficiencies: c.GetSkillProficiencyKeys(), Expertise: c.GetExpertiseSkillKeys(),
 		LateChoices: c.GetLateChoiceKeys(), FeatureChoiceText: c.GetFeatureChoiceText(), SwapInvocation: c.GetSwapInvocationKey(),
-		HitPoints: hp,
+		Feat: c.GetFeatKey(), HitPoints: hp,
 	}
 	for a, v := range abilityMap(c.GetAbilityIncrease()) {
 		if v != 0 {
@@ -902,6 +930,8 @@ func applyLevelUp(full *charactersv1.FullSheet, after rules.Build, idx int) *cha
 	out.PreparedSpellKeys = slices.Clone(after.SpellsPrepared)
 	out.FeatureChoiceKeys = slices.Clone(after.FeatureChoices)
 	out.FeatureChoiceText = maps.Clone(after.FeatureChoiceText)
+	out.FeatKeys = slices.Clone(after.Feats)
+	out.FeatSlots = maps.Clone(after.FeatSlots)
 	out.SkillProficiencyKeys = slices.Clone(after.SkillProficiencies)
 	out.ExpertiseSkillKeys = slices.Clone(after.Expertise)
 	return out

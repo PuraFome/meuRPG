@@ -317,6 +317,19 @@ func TestAuthorizationMatrix(t *testing.T) {
 			return err
 		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
+		{"ExportTableContent", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.table.ExportTableContent(ctx, connect.NewRequest(&rulesv1.ExportTableContentRequest{CampaignId: campaign}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		{"ImportTableContent", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.table.ImportTableContent(ctx, connect.NewRequest(&rulesv1.ImportTableContentRequest{
+				CampaignId: campaign, Mode: rulesv1.TableImportMode_TABLE_IMPORT_MODE_PREVIEW,
+				Pack: &rulesv1.TableContentPack{Format: "meurpg.table-content", Version: 1},
+			}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
 		{"ListOptionSwitches", "", nil, func(ctx context.Context, u *user) error {
 			_, err := u.table.ListOptionSwitches(ctx, connect.NewRequest(&rulesv1.ListOptionSwitchesRequest{CampaignId: campaign}))
 			return err

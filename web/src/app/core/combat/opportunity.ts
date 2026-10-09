@@ -4,7 +4,8 @@ import {
   type Encounter,
   type OpportunityOffer,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import type { Attack } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { type Attack, AttackKind } from '../../../gen/meurpg/rules/v1/rules_pb';
+import type { GetTurnOptionsResponse } from '../../../gen/meurpg/play/v1/combat_pb';
 import { joinDots, tight } from '../format/text';
 import { article } from './combat-log';
 import { attackName, attackTitle, damageText } from './combat-options';
@@ -164,4 +165,28 @@ export function reactorAttacks(
 /** "Atacar com Espada longa". */
 export function attackLabel(a: ReactorAttack): string {
   return `Atacar com ${a.attack ? attackName(a.attack) : a.name}`;
+}
+
+/** The reach of a melee attack that says none, in feet. */
+const MELEE_REACH_FT = 5;
+
+/** The melee weapon attacks a player can make off turn as an opportunity attack: the ones with a target the server
+ * says is within the weapon's reach (`tooFar`: 10 ft for a glaive or a whip, not only 5). A thrown weapon (it has a
+ * long range) reaches only 5 ft in melee, whatever range it has when thrown. */
+export function reachingAttacks(opts: GetTurnOptionsResponse): { key: string; name: string }[] {
+  return (opts.options?.attacks ?? []).flatMap((a) => {
+    const atk = a.attack;
+    if (!atk || atk.kind !== AttackKind.WEAPON || atk.saveDc !== 0 || !atk.melee) {
+      return [];
+    }
+    const inReach = opts.attackTargets
+      .find((t) => t.attackKey === atk.key)
+      ?.targets.some(
+        (t) =>
+          t.distanceFt !== undefined &&
+          !t.tooFar &&
+          (atk.longRangeFt === 0 || t.distanceFt <= MELEE_REACH_FT),
+      );
+    return inReach ? [{ key: atk.key, name: atk.namePt || atk.name }] : [];
+  });
 }

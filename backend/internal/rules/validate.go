@@ -163,7 +163,10 @@ func validate(b Build, c *content) error {
 			return fail("full.feature_choice_text", "has a key that is no choice's or a text over %d characters", MaxChoiceTextLength)
 		}
 	}
-	return checkKeys(c, "full.feature_choice_keys", b.FeatureChoices, MaxListLength, isChoicePick)
+	if err := checkKeys(c, "full.feature_choice_keys", b.FeatureChoices, MaxListLength, isChoicePick); err != nil {
+		return err
+	}
+	return checkKeys(c, "full.feat_keys", b.Feats, MaxListLength, isFeat)
 }
 
 // isChoicePick: an option of a feature or trait, or a pick of the choice engine.
@@ -229,6 +232,12 @@ func isCantrip(c *content, k string) bool {
 func isLeveledSpell(c *content, k string) bool {
 	s, ok := c.spells[k]
 	return ok && s.Level > 0
+}
+
+// isFeat: a feat of the SRD or the table.
+func isFeat(c *content, k string) bool {
+	_, ok := c.feats[k]
+	return ok
 }
 
 // isOption: a feature or trait that is an option of another one.

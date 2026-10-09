@@ -57,14 +57,15 @@ test(
       const create = p.getByRole('button', { name: 'Criar personagem' });
       await expect(create).toHaveAttribute('aria-disabled', 'true');
       await expect(create).toHaveAccessibleDescription(/Faltam escolhas: .*Estilo de Luta/);
-      await create.click();
+      await create.focus();
+      await p.keyboard.press('Enter');
       await expect(p).toHaveURL(/characters\/new$/);
       await expect(p.getByRole('heading', { level: 3, name: /Ancestral Dracônico/ })).toBeFocused();
       await expect(p.getByText(/Escolhas feitas: 0 de 2/)).toBeVisible();
 
       const ancestry = p.getByRole('region', { name: /Ancestral Dracônico/ });
-      await ancestry.getByRole('radio', { name: /Vermelho \(fogo\)/ }).click();
-      await expect(ancestry.getByRole('radio', { name: /Vermelho \(fogo\)/ })).toBeChecked();
+      await ancestry.getByRole('radio', { name: /Vermelho/ }).click();
+      await expect(ancestry.getByRole('radio', { name: /Vermelho/ })).toBeChecked();
       const style = p.getByRole('region', { name: /Estilo de Luta/ });
       await style.getByRole('radio', { name: /Defesa/ }).click();
       await expect(p.getByText(/Escolhas feitas: 2 de 2/)).toBeVisible();
@@ -119,13 +120,13 @@ test(
       await blocked.focus();
       await expect(blocked).toBeFocused();
       await expect(blocked).toContainText('9');
-      await blocked.click();
+      await p.keyboard.press('Space');
       await expect(blocked).toHaveAttribute('aria-checked', 'false');
 
       for (const name of [/Armadura de Sombras/, /Idioma Bestial/, /Visão Diabólica/]) {
         await invocations.getByRole('checkbox', { name }).click();
       }
-      await expect(p.getByText('Já escolheu 3. Desmarque uma para trocar.')).toBeVisible();
+      await expect(p.getByRole('status').filter({ hasText: 'Já escolheu 3.' })).toBeVisible();
       await expect(p.getByRole('tab', { name: /Escolhas/ })).not.toContainText('Escolha pendente');
 
       await p.getByRole('button', { name: 'Criar personagem' }).click();

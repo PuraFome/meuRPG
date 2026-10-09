@@ -5,6 +5,7 @@ import { LevelUpRefusalReason } from '../../../../gen/meurpg/characters/v1/chara
 import { Ability } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { ABILITY_LABELS, formatModifier } from '../../../core/characters/character-labels';
 import { ABILITY_KEYS, type AbilityKey } from '../../../core/characters/characters.types';
+import { FeatPicker } from '../../../shared/feat-picker/feat-picker';
 import { ChangeRowsList } from '../change-rows/change-rows';
 import { LevelUpSession } from '../level-up-session';
 
@@ -35,12 +36,12 @@ const ABILITY_DERIVED = /^(dc|attack|prepared|armor|initiative|save-|skills-|pas
  * Step "Habilidades" of the guided level-up (MR-040, E8-15): the SRD's Ability Score
  * Improvement, "+2 em uma habilidade" or "+1 em duas", none above 20, with the score
  * before → after of the picked ones and "O que muda com Inteligência 20", read from the
- * preview (the browser computes no modifier). The SRD 5.1 has no feats, so this is the
- * only choice the level offers here.
+ * preview (the browser computes no modifier). When the table allows feats (MR-025) the server lists them and the step
+ * offers "Aumentar habilidades" or "Um talento" (`app-feat-picker`); with no feats listed it is the increase alone.
  */
 @Component({
   selector: 'app-abilities-step',
-  imports: [ChangeRowsList, MatIconModule],
+  imports: [ChangeRowsList, FeatPicker, MatIconModule],
   templateUrl: './abilities-step.html',
   styleUrl: './abilities-step.scss',
 })
@@ -50,10 +51,17 @@ export class AbilitiesStep {
   protected readonly missing = computed(() => this.s().draft.missingIn('abilities').length > 0);
   protected readonly one = computed(() => this.s().draft.abilityMode() === 'one');
 
+  protected readonly hasFeats = computed(() => this.s().draft.hasFeats());
+  protected readonly taking = computed(() => this.s().draft.taking());
+  protected readonly nameOf = computed(() => {
+    const names = this.s().draft.names();
+    return (key: string) => names.get(key) ?? key.replace(/^[a-z-]+:/, '');
+  });
+
   protected readonly rows = computed<AbilityRow[]>(() => {
     const s = this.s();
     const d = s.draft;
-    const picked = d.abilityKeys();
+    const picked = d.pickedKeys();
     const after = s.after();
     return ABILITY_KEYS.map((key) => {
       const was = s.before.abilities.find((a) => a.ability === WIRE[key]);
@@ -76,7 +84,7 @@ export class AbilitiesStep {
   /** "Inteligência 20", or "Inteligência 19 e Sabedoria 14": the abilities picked, as they will be. */
   protected readonly title = computed(() => {
     const s = this.s();
-    const names = s.draft.abilityKeys().map((key) => {
+    const names = s.draft.pickedKeys().map((key) => {
       const now = s.after().abilities.find((a) => a.ability === WIRE[key]);
       return `${ABILITY_LABELS[key]} ${now?.score ?? ''}`;
     });
@@ -85,6 +93,20 @@ export class AbilitiesStep {
       : new Intl.ListFormat('pt-BR', { type: 'conjunction' }).format(names);
   });
 
+  /** The "O que muda" panel when there is nothing to show yet. */
+  protected readonly noChange = computed(() => {
+    const d = this.s().draft;
+    if (!d.taking()) {
+      return 'Escolha uma habilidade para ver o que muda.';
+    }
+    const feat = d.feat();
+    if (!feat) {
+      return 'Escolha um talento para ver o que muda.';
+    }
+    return feat.increase
+      ? 'Escolha as habilidades para ver o que muda.'
+      : 'Este talento não muda habilidades.';
+  });
   protected readonly changes = computed(() =>
     this.s()
       .rows()
@@ -96,6 +118,6 @@ export class AbilitiesStep {
     return !p.loading && p.refusal?.reason === LevelUpRefusalReason.ABILITY_ABOVE_20;
   });
   protected readonly constitutionPicked = computed(() =>
-    this.s().draft.abilityKeys().includes('con'),
+    this.s().draft.pickedKeys().includes('con'),
   );
 }

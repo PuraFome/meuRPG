@@ -180,7 +180,14 @@ func (s *Service) SpendMovement(
 			if !onTurn {
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
 			}
+			if err := s.mustNotHold(ctx, c); err != nil {
+				return nil, err
+			}
 			if err := s.mustNotWait(ctx, c, target); err != nil {
+				return nil, err
+			}
+		} else if onTurn {
+			if err := s.mustNotHold(ctx, c); err != nil {
 				return nil, err
 			}
 		}

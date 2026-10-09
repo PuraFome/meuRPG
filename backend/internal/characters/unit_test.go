@@ -156,6 +156,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["CreateTableEntry"] = table.CreateTableEntry(ctx, connect.NewRequest(&rulesv1.CreateTableEntryRequest{CampaignId: id}))
 	_, calls["UpdateTableEntry"] = table.UpdateTableEntry(ctx, connect.NewRequest(&rulesv1.UpdateTableEntryRequest{CampaignId: id, Key: "spell:x@mesa"}))
 	_, calls["ArchiveTableEntry"] = table.ArchiveTableEntry(ctx, connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: id, Key: "spell:x@mesa"}))
+	_, calls["ExportTableContent"] = table.ExportTableContent(ctx, connect.NewRequest(&rulesv1.ExportTableContentRequest{CampaignId: id}))
+	_, calls["ImportTableContent"] = table.ImportTableContent(ctx, connect.NewRequest(&rulesv1.ImportTableContentRequest{CampaignId: id}))
 	_, calls["UnarchiveTableEntry"] = table.UnarchiveTableEntry(ctx, connect.NewRequest(&rulesv1.UnarchiveTableEntryRequest{CampaignId: id, Key: "spell:x@mesa"}))
 
 	methods := charactersv1.File_meurpg_characters_v1_characters_proto.Services().ByName("CharacterService").Methods().Len() +

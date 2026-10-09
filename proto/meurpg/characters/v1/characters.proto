@@ -1164,10 +1164,23 @@ message FullSheet {
   // fit it at. Set by the server and ignored from the client; an entry not here
   // uses `content_revision`.
   map<string, int32> content_baselines = 31;
+  // The feats the character took (MR-025), as content keys: "feat:grappler" or a
+  // table's "feat:<slug>@mesa". Feats are an optional rule of the game (the
+  // table's rule "Talentos"): a feat is taken in place of an Ability Score
+  // Improvement by the guided level-up, or by the master in the sheet editor. A feat
+  // applies like a feature: its effects reach the derived sheet and the sheet lists
+  // it with the features. The abilities a feat raises are in extra_ability_bonuses.
+  // At most 100.
+  repeated string feat_keys = 32;
+  // For a feat taken in the guided level-up, the key of the Ability Score Improvement
+  // feature it replaced (feat key to feature key). Set by the level-up; an entry for a feat
+  // the sheet does not have is dropped on save. The sheet then lists the feat at that level and not the improvement. A feat the
+  // master added has none.
+  map<string, string> feat_slots = 33;
   // The free text some choices take: the two humanoid races of a favored enemy, by
   // "<choice key>#<n>" ("feature:favored-enemy-1-type#1"). At most 12 entries, each 1
   // to 40 characters, one line. The rules never read the text.
-  map<string, string> feature_choice_text = 32;
+  map<string, string> feature_choice_text = 34;
 }
 
 // AbilityOrigin is the way a player made a sheet's base scores, as the server
@@ -1920,18 +1933,26 @@ message LevelUpOptions {
   // HIT_POINTS_AVERAGE_ONLY, and ROLLED_IN_APP and ROLLED_PHYSICAL answer
   // HIT_POINTS_RULE). Independent of dice_rule, which says where a roll happens.
   LevelUpHitPointsRule hit_points_rule = 35;
+  // At a level with an Ability Score Improvement, when the table uses feats (its
+  // rule "Talentos"): the feats the player may take in place of the increase, each
+  // with whether the character qualifies at the new level and what it lacks when
+  // not (meurpg.rules.v1.FeatOption). Retired feats are left out, and so are the
+  // ones the master switched off for a player. Empty at the other levels and where
+  // the table does not use feats. A feat taken is LevelUpChoices.feat_key; the
+  // abilities it raises, LevelUpChoices.ability_increase.
+  repeated meurpg.rules.v1.FeatOption feats = 36;
   // The choices an earlier level left open (a Fighting Style the sheet never picked):
   // the guided level-up asks for them first, and LevelUpCharacter refuses the level
   // without them (LATE_CHOICE_MISSING). Their picks go in
   // LevelUpChoices.late_choice_keys. Only the choices with selections left are here.
-  repeated ChoiceGroup late_choices = 36;
+  repeated ChoiceGroup late_choices = 37;
   // The new level's choices that are not options of a feature: a favored enemy and its
   // language, a terrain, a Mystic Arcanum, a Spell Mastery, a Signature Spell. Their
   // picks go in LevelUpChoices.feature_choice_keys (and feature_choice_text).
-  repeated ChoiceGroup new_choices = 37;
+  repeated ChoiceGroup new_choices = 38;
   // True for a warlock that knows an invocation: at each level of the class one may be
   // replaced by another (LevelUpChoices.swap_invocation_key).
-  bool can_swap_invocation = 38;
+  bool can_swap_invocation = 39;
 }
 
 // LevelUpHitPointsRule is which methods of deciding a level's hit points the
@@ -2057,15 +2078,23 @@ message LevelUpChoices {
   repeated string expertise_skill_keys = 9;
   // The hit points of the level. Required.
   LevelUpHitPoints hit_points = 10;
+  // The feat taken in place of the Ability Score Improvement, when the table uses
+  // feats (its rule "Talentos") and the character meets its prerequisite. With a
+  // feat, `ability_increase` is the increase the feat gives (its `increase`:
+  // `count` different abilities of its list, `value` each, none above 20) and is
+  // unset when the feat gives none. A feat that raises every ability it lists needs no
+  // `ability_increase`: the server applies it, stopping at 20 (one that is not exactly that
+  // is refused). Empty for none.
+  string feat_key = 11;
   // The picks of the choices an earlier level left open (LevelUpOptions.late_choices),
   // written like feature_choice_keys. At most 100.
-  repeated string late_choice_keys = 11;
+  repeated string late_choice_keys = 12;
   // The free text of the picks (the humanoid races of a favored enemy), as
   // FullSheet.feature_choice_text. At most 12 entries.
-  map<string, string> feature_choice_text = 12;
+  map<string, string> feature_choice_text = 13;
   // An Eldritch Invocation the warlock gives up for another one in feature_choice_keys:
   // at most one at each level (SRD 5.1, Warlock). Never the Pact Boon.
-  string swap_invocation_key = 13;
+  string swap_invocation_key = 14;
 }
 
 // LevelUpRefusalReason says why the rules refuse a set of choices, so the app
@@ -2133,9 +2162,17 @@ enum LevelUpRefusalReason {
   // sheet field. The master is not refused. PreviewLevelUp answers this and
   // ARCHIVED_CHOICE with no `after`.
   LEVEL_UP_REFUSAL_REASON_SWITCHED_OFF_CHOICE = 21;
+  // A feat at a level without an Ability Score Improvement, a feat the content does
+  // not have, more than one, or one removed. `field` is "full.feat_keys".
+  LEVEL_UP_REFUSAL_REASON_FEAT = 22;
+  // The character does not meet the feat's prerequisite.
+  LEVEL_UP_REFUSAL_REASON_FEAT_PREREQUISITE = 23;
+  // A feat, but the table does not use feats (its rule "Talentos"). `field` is
+  // "choices.feat_key".
+  LEVEL_UP_REFUSAL_REASON_FEATS_NOT_ALLOWED = 24;
   // A choice an earlier level left open is still open (LevelUpOptions.late_choices).
   // `field` is "full.feature_choice_keys".
-  LEVEL_UP_REFUSAL_REASON_LATE_CHOICE_MISSING = 22;
+  LEVEL_UP_REFUSAL_REASON_LATE_CHOICE_MISSING = 25;
 }
 
 // LevelUpRefusal is the first rule the choices break: the sheet field and a

@@ -22,14 +22,18 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
 )
 
-// PartyMember is a living player character as the fog of war needs it: whose
-// it is and what it sees with.
+// PartyMember is a player character as the fog of war needs it: whose it is and
+// what it sees with. A character that died is listed too, as Dead: its player
+// keeps seeing what the living party sees.
 type PartyMember struct {
 	// CharacterID is the character (a UUID).
 	CharacterID string
 	// UserID is the account that plays it. Never empty: a character whose
 	// player is gone (RN-16) is not listed.
 	UserID string
+	// Dead says the character died. It sees nothing and notices nothing; its player
+	// sees what the living party sees (the union of their views).
+	Dead bool
 	// Senses are its special senses, derived from the sheet. For a druid in Wild
 	// Shape they are the beast's: a wolf has no darkvision (MR-037, D6).
 	Senses vision.Senses

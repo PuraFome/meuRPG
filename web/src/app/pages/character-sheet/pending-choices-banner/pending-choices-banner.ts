@@ -16,15 +16,13 @@ import { RouterLink } from '@angular/router';
     @if (count() > 0) {
       <section class="mr-notice mr-notice--warning pending" aria-label="Escolhas pendentes">
         <mat-icon aria-hidden="true">pending_actions</mat-icon>
-        <p>
-          Esta ficha tem {{ words() }}.
-          <a
-            class="pending__go"
-            aria-label="Completar escolhas pendentes"
-            [routerLink]="['/campaigns', campaignId(), 'characters', characterId(), 'choices']"
-            >Completar</a
-          >
-        </p>
+        <p>Esta ficha tem {{ words() }}.</p>
+        <a
+          class="pending__go"
+          aria-label="Completar escolhas pendentes"
+          [routerLink]="['/campaigns', campaignId(), 'characters', characterId(), 'choices']"
+          >Completar</a
+        >
       </section>
     }
   `,
@@ -35,9 +33,10 @@ import { RouterLink } from '@angular/router';
 
     .pending {
       margin-bottom: var(--mr-space-4);
+      align-items: center;
     }
 
-    // A 44px target in the middle of a sentence.
+    // A 44px target beside the sentence, so it never stretches the sentence's line.
     .pending__go {
       display: inline-flex;
       align-items: center;

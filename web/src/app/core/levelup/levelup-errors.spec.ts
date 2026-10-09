@@ -131,4 +131,21 @@ describe('an option the master retired (RN-23, 10.1d)', () => {
     expect(f).toMatchObject({ kind: 'refusal', step: 'picks' });
     expect(f.message).toContain('escolhas que ficaram para trás');
   });
+
+  it('words the refusals of a feat and sends the player to the Habilidades step', () => {
+    for (const reason of [
+      LevelUpRefusalReason.FEAT,
+      LevelUpRefusalReason.FEAT_PREREQUISITE,
+      LevelUpRefusalReason.FEATS_NOT_ALLOWED,
+    ]) {
+      expect(describeLevelUpFailure(refused(reason))).toMatchObject({ step: 'abilities' });
+    }
+    expect(refusalMessage({ reason: LevelUpRefusalReason.FEAT_PREREQUISITE })).toContain(
+      'pré-requisito do talento',
+    );
+    expect(refusalMessage({ reason: LevelUpRefusalReason.FEATS_NOT_ALLOWED })).toBe(
+      'O mestre não usa talentos nesta mesa. Aumente habilidades.',
+    );
+    expect(refusalMessage({ reason: LevelUpRefusalReason.FEAT })).toContain('Escolha outro');
+  });
 });

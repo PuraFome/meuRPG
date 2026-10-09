@@ -45,15 +45,14 @@ test(
       await abilities.getByRole('checkbox', { name: /Destreza/ }).click();
       await abilities.getByRole('checkbox', { name: /Constituição/ }).click();
       await expect(abilities.getByRole('checkbox', { name: /Força/ })).toHaveAttribute('aria-disabled', 'true');
-      await expect(abilities.getByText('Destreza 16 → 17')).toBeVisible();
-      await expect(abilities.getByText('Constituição 15 → 16')).toBeVisible();
+      await expect(abilities.getByText(/Destreza 16 → 17 e Constituição 15 → 16/)).toBeVisible();
 
       await p.getByRole('button', { name: 'Salvar escolhas' }).click();
 
       // Back on the sheet, still locked, with nothing pending.
       await expect(p).toHaveURL(new RegExp(`${sheet}$`));
       await expect(p.getByRole('heading', { level: 1 })).toBeVisible();
-      await expect(p.getByText('escolhas pendentes')).toHaveCount(0);
+      await expect(p.getByText(/Esta ficha tem \d+ escolhas? pendentes?/)).toHaveCount(0);
       await expect(p.getByRole('link', { name: 'Editar ficha' })).toHaveCount(0);
 
       // The page of a sheet with nothing open says so.

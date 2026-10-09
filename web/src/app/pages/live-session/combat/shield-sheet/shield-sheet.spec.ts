@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { ConnectError, Code } from '@connectrpc/connect';
 
 import { CombatantKind, CombatantSide } from '../../../../../gen/meurpg/play/v1/combat_pb';
@@ -61,5 +62,55 @@ describe('ShieldSheet: the idempotency key follows the answer', () => {
     await sheet.use();
     expect(keys['use']).toBeDefined();
     expect(keys['use']).not.toBe(keys['decline']);
+  });
+});
+
+describe('ShieldSheet: a prompt nobody awaits closes by itself', () => {
+  const prompt = (id: string) => ({
+    pendingDamageId: id,
+    targetId: 't',
+    spellNamePt: 'Escudo Arcano',
+    slots: [{ level: 1, pact: false, free: 2 }],
+  });
+
+  it('closes with a notice when the master answers for the player', async () => {
+    const closed: unknown[] = [];
+    const notices: string[] = [];
+    const state = new CombatState();
+    state.apply(
+      encounter({
+        currentCombatantId: 'cap',
+        combatants: [toren, cap],
+        reactionPrompts: [prompt('p1')] as never,
+      }),
+    );
+    const data = {
+      campaignId: 'c',
+      encounterId: 'enc',
+      round: 1,
+      state,
+      armorClass: 15,
+      pact: null,
+      prompt: prompt('p1'),
+      usage: [{ level: 1, total: 2, used: 0 }],
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: data },
+        { provide: MatDialogRef, useValue: { close: (r: unknown) => closed.push(r) } },
+        { provide: CombatClient, useValue: {} },
+        { provide: MatSnackBar, useValue: { open: (text: string) => notices.push(text) } },
+      ],
+    });
+    const fixture = TestBed.createComponent(ShieldSheet);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(closed).toEqual([]);
+
+    state.apply(encounter({ currentCombatantId: 'cap', combatants: [toren, cap] }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(closed).toEqual([false]);
+    expect(notices).toEqual(['O mestre respondeu por você: o ataque já não espera a sua reação.']);
   });
 });

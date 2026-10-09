@@ -47,6 +47,9 @@
               @if (atk.versatileDamage) {
                 <span class="attacks__versatile">Com duas mãos: {{ atk.versatileDamage }}</span>
               }
+              @if (atk.damageNotePt) {
+                <span class="attacks__versatile">{{ atk.damageNotePt }}</span>
+              }
             </td>
           </tr>
         }
