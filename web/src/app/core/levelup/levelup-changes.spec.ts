@@ -60,4 +60,13 @@ describe('choiceRows: the master\'s "O que mudou"', () => {
       ).map((r) => r.label),
     ).toEqual(['Pontos de vida']);
   });
+
+  it('names the feat the player took in place of the increase', () => {
+    const l = levelUp({ featKey: 'feat:atleta@mesa', abilityIncrease: { dexterity: 1 } });
+    l.namesPt['feat:atleta@mesa'] = 'Atleta';
+    expect(choiceRows(l).map((r) => [r.label, r.value])).toEqual([
+      ['Habilidades', '+1 em Destreza'],
+      ['Talento', 'Atleta'],
+    ]);
+  });
 });

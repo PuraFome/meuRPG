@@ -1540,35 +1540,45 @@ enum EncounterBlockedReason {
   // with a weapon or an unarmed strike, and that action has not been taken yet
   // this turn. GetTurnOptions says it before, as ATTACK_ACTION_FIRST.
   ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST = 67;
+  // MoveCombatant: the master asked for a square that is a wall. Nobody stands in
+  // a wall, and a creature in one is seen by no player.
+  ENCOUNTER_BLOCKED_REASON_WALL_ON_SQUARE = 68;
+  // CastSpell, TakeAction: a healing aimed at a character that died, or that has
+  // failed three death saves. A dead creature regains no hit points (SRD 5.1,
+  // "Dropping to 0 Hit Points"), so nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_TARGET_DEAD = 69;
+  // MoveCombatant with `place`: the map has no free square a creature can stand
+  // on, so the server found none to place the combatant on.
+  ENCOUNTER_BLOCKED_REASON_NO_FREE_SQUARE = 70;
   // RollAttack: the player asked for a mode better than the suggestion (advantage
   // the server did not suggest) and the master has not approved it. RequestRollMode
   // asks him.
-  ENCOUNTER_BLOCKED_REASON_ROLL_MODE_NEEDS_APPROVAL = 68;
+  ENCOUNTER_BLOCKED_REASON_ROLL_MODE_NEEDS_APPROVAL = 71;
   // RollAttack with roll_mode_request_id: the request still waits for the master.
-  ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_PENDING = 69;
+  ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_PENDING = 72;
   // AnswerRollModeRequest, RollAttack with roll_mode_request_id: the request is
   // answered, taken back or used already.
-  ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED = 70;
+  ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED = 73;
   // EndTurn: the barbarian is raging and the turn ends with no attack on a hostile
   // creature and no damage taken since its last turn, so the rage would end: the
   // player is asked (AnswerRageEnd) before the turn passes.
-  ENCOUNTER_BLOCKED_REASON_RAGE_END_PENDING = 71;
+  ENCOUNTER_BLOCKED_REASON_RAGE_END_PENDING = 74;
   // AnswerRageEnd: no question waits.
-  ENCOUNTER_BLOCKED_REASON_RAGE_END_NOT_PENDING = 72;
+  ENCOUNTER_BLOCKED_REASON_RAGE_END_NOT_PENDING = 75;
   // CastSpell: a raging character casts no spell and keeps no concentration (SRD 5.1,
   // Barbarian, Rage).
-  ENCOUNTER_BLOCKED_REASON_RAGING_CANNOT_CAST = 73;
+  ENCOUNTER_BLOCKED_REASON_RAGING_CANNOT_CAST = 76;
   // EndRage: the combatant is not raging.
-  ENCOUNTER_BLOCKED_REASON_NOT_RAGING = 74;
+  ENCOUNTER_BLOCKED_REASON_NOT_RAGING = 77;
   // RollDamage: a marked extra does not hold (its condition fails, or its slot is not
   // free). The attack's sheet reads the reason from PendingDamage.parts.
-  ENCOUNTER_BLOCKED_REASON_EXTRA_NOT_AVAILABLE = 75;
+  ENCOUNTER_BLOCKED_REASON_EXTRA_NOT_AVAILABLE = 78;
   // RemoveDamagePart: the part is the weapon's or an automatic line, which cannot be
   // taken out, or it was taken out already.
-  ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE = 76;
+  ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE = 79;
   // TakeAction (Reckless Attack): it is declared with the first attack of the turn,
   // and an attack was made.
-  ENCOUNTER_BLOCKED_REASON_RECKLESS_TOO_LATE = 77;
+  ENCOUNTER_BLOCKED_REASON_RECKLESS_TOO_LATE = 80;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -2151,6 +2161,11 @@ message MoveCombatantRequest {
   // `permission_denied`. Without it, the master's move of the combatant that is
   // on turn is a move like any, and provokes.
   bool forced = 9;
+  // Only the master: the server picks the square of a combatant that has none
+  // ("Colocar no mapa"), by the same rule that places the NPCs when the combat
+  // begins. col and row are ignored. A player sending it gets `permission_denied`,
+  // and a combatant already on the map is refused with `invalid_argument`.
+  bool place = 10;
 }
 
 // MoveCombatantResponse returns the combat after the move.

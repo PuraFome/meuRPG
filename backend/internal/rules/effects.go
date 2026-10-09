@@ -107,6 +107,11 @@ type Effect struct {
 	NoFly  bool   `json:"no_fly,omitempty"`
 	NoSwim bool   `json:"no_swim,omitempty"`
 
+	// replaces: the feature this one takes over from, a lower tier of the same
+	// feature (Channel Divinity twice between rests replaces once). The
+	// sheet lists only the newest tier; the older one's effects still apply.
+	Replaces string `json:"replaces,omitempty"`
+
 	// handler: the name of a Go function for what data cannot say, from
 	// handlers.
 	Handler string `json:"handler,omitempty"`
@@ -130,7 +135,8 @@ type Effect struct {
 var (
 	effectTypes = []string{
 		"modifier", "proficiency", "roll_mode", "sense", "spellcasting",
-		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells",
+		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces",
+		"ability_increase",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "initiative",
@@ -145,7 +151,7 @@ var (
 	recharges         = []string{"short_rest", "long_rest", "dawn", "none"}
 	choiceKinds       = []string{
 		"skill", "expertise", "cantrip", "spell", "subclass", "feature",
-		"language", "tool", "ability_score_improvement",
+		"language", "tool", "ability_score_improvement", "feat",
 	}
 	economies = []string{"action", "bonus_action", "reaction", "free", "movement"}
 	// handlers are the Go functions an effect may name. Content (and, later,
@@ -190,7 +196,23 @@ func (c *content) compileEffect(key string, e *Effect) error {
 		return fail("max_cr, no_fly and no_swim belong to wild_shape")
 	}
 
+	if e.Type != "replaces" && e.Replaces != "" {
+		return fail("replaces belongs to the replaces effect")
+	}
+
 	switch e.Type {
+	case "replaces":
+		other := *e
+		other.Type, other.Replaces = "", ""
+		if !reflect.DeepEqual(other, Effect{}) {
+			return fail("replaces takes the feature key only")
+		}
+		if _, ok := c.features[e.Replaces]; !ok {
+			return fail("replaces needs the key of a feature")
+		}
+		if e.Replaces == key {
+			return fail("a feature cannot replace itself")
+		}
 	case "modifier":
 		if !c.validModifierTarget(e.Target) {
 			return fail("unknown target %q", e.Target)
@@ -264,6 +286,13 @@ func (c *content) compileEffect(key string, e *Effect) error {
 			if !c.exists(k) {
 				return fail("unknown key %q in from", k)
 			}
+		}
+	case "ability_increase":
+		// The player picks Count different abilities of From and adds Value to
+		// each; the sheet keeps the result as manual ability bonuses, so Derive reads
+		// nothing here. Only a feat has it (the table's menu).
+		if attr, msg := checkAbilityIncrease(e); attr != "" {
+			return fail("%s", msg)
 		}
 	case "grant_action":
 		if !slices.Contains(economies, e.Economy) {

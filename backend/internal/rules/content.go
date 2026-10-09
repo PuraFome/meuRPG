@@ -34,6 +34,7 @@ type content struct {
 	subclasses    map[string]*srd51.Subclass
 	features      map[string]*srd51.Feature
 	backgrounds   map[string]*srd51.Background
+	feats         map[string]*srd51.Feat
 	proficiencies map[string]*srd51.Proficiency
 	equipment     map[string]*srd51.Equipment
 	spells        map[string]*srd51.Spell
@@ -185,6 +186,7 @@ func load(fsys fs.FS) (*content, error) {
 		subclasses:     map[string]*srd51.Subclass{},
 		features:       map[string]*srd51.Feature{},
 		backgrounds:    map[string]*srd51.Background{},
+		feats:          map[string]*srd51.Feat{},
 		proficiencies:  map[string]*srd51.Proficiency{},
 		equipment:      map[string]*srd51.Equipment{},
 		spells:         map[string]*srd51.Spell{},
@@ -350,6 +352,7 @@ func (c *content) loadData(fsys fs.FS) error {
 		index(fsys, "subclasses.json", func(r *srd51.Subclass) string { return r.Key }, c.subclasses, c.namesEN, func(r *srd51.Subclass) string { return r.Name }),
 		index(fsys, "features.json", func(r *srd51.Feature) string { return r.Key }, c.features, c.namesEN, func(r *srd51.Feature) string { return r.Name }),
 		index(fsys, "backgrounds.json", func(r *srd51.Background) string { return r.Key }, c.backgrounds, c.namesEN, func(r *srd51.Background) string { return r.Name }),
+		index(fsys, "feats.json", func(r *srd51.Feat) string { return r.Key }, c.feats, c.namesEN, func(r *srd51.Feat) string { return r.Name }),
 		index(fsys, "proficiencies.json", func(r *srd51.Proficiency) string { return r.Key }, c.proficiencies, c.namesEN, func(r *srd51.Proficiency) string { return r.Name }),
 		index(fsys, "equipment.json", func(r *srd51.Equipment) string { return r.Key }, c.equipment, c.namesEN, func(r *srd51.Equipment) string { return r.Name }),
 		index(fsys, "spells.json", func(r *srd51.Spell) string { return r.Key }, c.spells, c.namesEN, func(r *srd51.Spell) string { return r.Name }),
@@ -367,6 +370,11 @@ func (c *content) loadData(fsys fs.FS) error {
 	}
 	for _, b := range c.backgrounds {
 		c.namesEN[b.Feature.Key] = b.Feature.Name
+	}
+	for _, k := range sortedKeys(c.feats) {
+		if field, msg := c.checkFeatShape(c.feats[k]); field != "" {
+			return fmt.Errorf("data/feats.json: %s: %s: %s", k, field, msg)
+		}
 	}
 	for _, k := range sortedKeys(c.spells) {
 		s := c.spells[k]
@@ -474,7 +482,7 @@ func (c *content) effectOwnerExists(key string) bool {
 		}
 		return false
 	case strings.HasPrefix(key, "feature:"), strings.HasPrefix(key, "trait:"),
-		strings.HasPrefix(key, "background:"), strings.HasPrefix(key, "race:"),
+		strings.HasPrefix(key, "background:"), strings.HasPrefix(key, "race:"), strings.HasPrefix(key, "feat:"),
 		strings.HasPrefix(key, "subrace:"), strings.HasPrefix(key, "class:"),
 		strings.HasPrefix(key, "subclass:"):
 		return c.exists(key)
@@ -592,6 +600,24 @@ func abilityMap(m map[string]int) map[Ability]int {
 	return out
 }
 
+// traitSkills are the skills the traits give, as skill keys: the trait's
+// "proficiency:skill-<name>" proficiencies.
+func (c *content) traitSkills(traits []string) []string {
+	var out []string
+	for _, t := range traits {
+		tr, ok := c.traits[t]
+		if !ok {
+			continue
+		}
+		for _, p := range tr.Proficiencies {
+			if skill, ok := strings.CutPrefix(p, "proficiency:skill-"); ok {
+				out = append(out, "skill:"+skill)
+			}
+		}
+	}
+	return out
+}
+
 // buildCatalog fills catalog, spellEntries and spellDetails. reuse, when not nil,
 // are the details of another content with the same SRD spells (the base of a
 // With): the ones that did not change are shared instead of parsed again.
@@ -602,13 +628,14 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 		cat.Races = append(cat.Races, RaceEntry{
 			Key: k, Name: r.Name, NamePT: c.namePT(k), SpeedFt: r.SpeedFt, Size: r.Size,
 			AbilityBonuses: abilityMap(r.AbilityBonuses), Subraces: r.Subraces,
-			ChoiceBonuses: c.raceChoice[k], Archived: c.archived[k], Off: c.off[k],
+			ChoiceBonuses: c.raceChoice[k], SkillProficiencies: c.traitSkills(r.Traits), Archived: c.archived[k], Off: c.off[k],
 		})
 	}
 	for _, k := range sortedKeys(c.subraces) {
 		s := c.subraces[k]
 		cat.Subraces = append(cat.Subraces, SubraceEntry{
-			Key: k, Name: s.Name, NamePT: c.namePT(k), Race: s.Race, AbilityBonuses: abilityMap(s.AbilityBonuses), Archived: c.archived[k], Off: c.off[k],
+			Key: k, Name: s.Name, NamePT: c.namePT(k), Race: s.Race, AbilityBonuses: abilityMap(s.AbilityBonuses),
+			SkillProficiencies: c.traitSkills(s.Traits), Archived: c.archived[k], Off: c.off[k],
 		})
 	}
 	for _, k := range sortedKeys(c.classes) {
@@ -741,6 +768,7 @@ func (c *content) buildCatalog(reuse map[string]*SpellDetails) {
 	sortPT(cat.Weapons, func(e WeaponEntry) string { return e.NamePT })
 	sortPT(cat.Spells, func(e SpellEntry) string { return e.NamePT })
 	cat.ChallengeRatings = slices.Clone(c.ratings)
+	cat.LevelXP = slices.Clone(c.levelXP)
 	for _, k := range sortedKeys(c.languages) {
 		cat.Languages = append(cat.Languages, NamedEntry{Key: k, NamePT: c.namePT(k), Kind: "language"})
 	}
@@ -876,11 +904,19 @@ func (c *content) applyCorrections(fsys fs.FS) error {
 			Subclass string `json:"subclass"`
 			Source   string `json:"source"`
 		} `json:"expanded_list_corrections"`
+		SpellLists   []spellListCorrection   `json:"spell_list_corrections"`
+		SubclassRows []subclassRowCorrection `json:"subclass_feature_corrections"`
 	}
 	if err := readJSON(fsys, name, &f); err != nil {
 		return err
 	}
 	c.attacksPerAction = map[string]int{}
+	if err := c.correctSpellLists(name, f.SpellLists); err != nil {
+		return err
+	}
+	if err := c.correctSubclassFeatures(name, f.SubclassRows); err != nil {
+		return err
+	}
 	seen := map[string]bool{}
 	for _, corr := range f.Creatures {
 		m, ok := c.monsters[corr.Creature]
@@ -1034,6 +1070,121 @@ func (c *content) applyCorrections(fsys fs.FS) error {
 				return err
 			}
 			row.ClassSpecific = raw
+		}
+	}
+	return nil
+}
+
+// spellListCorrection moves spells on or off one class's spell list in
+// effects/corrections.json.
+type spellListCorrection struct {
+	Class  string   `json:"class"`
+	Add    []string `json:"add"`
+	Remove []string `json:"remove"`
+	Source string   `json:"source"`
+}
+
+// correctSpellLists writes the spell list corrections over the spells'
+// classes. It refuses an unknown class or spell, a spell added that is already on the list or removed that is not,
+// a spell named twice, a correction that changes nothing and one without a
+// source.
+func (c *content) correctSpellLists(name string, corrections []spellListCorrection) error {
+	seen := map[string]bool{}
+	for _, corr := range corrections {
+		if _, ok := c.classes[corr.Class]; !ok {
+			return fmt.Errorf("%s: unknown class %q", name, corr.Class)
+		}
+		if corr.Source == "" {
+			return fmt.Errorf("%s: the spell list of %s needs a source", name, corr.Class)
+		}
+		if seen[corr.Class] {
+			return fmt.Errorf("%s: the spell list of %s is corrected twice", name, corr.Class)
+		}
+		seen[corr.Class] = true
+		if len(corr.Add)+len(corr.Remove) == 0 {
+			return fmt.Errorf("%s: the spell list of %s corrects nothing", name, corr.Class)
+		}
+		named := map[string]bool{}
+		for _, key := range slices.Concat(corr.Add, corr.Remove) {
+			if _, ok := c.spells[key]; !ok {
+				return fmt.Errorf("%s: %s: unknown spell %q", name, corr.Class, key)
+			}
+			if named[key] {
+				return fmt.Errorf("%s: %s: %s is named twice", name, corr.Class, key)
+			}
+			named[key] = true
+		}
+		for _, key := range corr.Add {
+			s := c.spells[key]
+			if slices.Contains(s.Classes, corr.Class) {
+				return fmt.Errorf("%s: %s is already on the list of %s", name, key, corr.Class)
+			}
+			s.Classes = append(slices.Clone(s.Classes), corr.Class)
+		}
+		for _, key := range corr.Remove {
+			s := c.spells[key]
+			i := slices.Index(s.Classes, corr.Class)
+			if i < 0 {
+				return fmt.Errorf("%s: %s is not on the list of %s", name, key, corr.Class)
+			}
+			s.Classes = slices.Delete(slices.Clone(s.Classes), i, i+1)
+		}
+	}
+	return nil
+}
+
+// subclassRowCorrection adds features to the row of a subclass at a class
+// level in effects/corrections.json, creating the row when the snapshot has
+// none at that level.
+type subclassRowCorrection struct {
+	Subclass string   `json:"subclass"`
+	Level    int      `json:"level"`
+	Add      []string `json:"add_features"`
+	Source   string   `json:"source"`
+}
+
+// correctSubclassFeatures writes the subclass row corrections. It refuses an
+// unknown subclass or feature, a feature that belongs to another subclass, a
+// level out of range, a feature the row already has and a correction without
+// a source.
+func (c *content) correctSubclassFeatures(name string, corrections []subclassRowCorrection) error {
+	seen := map[string]bool{}
+	for _, corr := range corrections {
+		sub, ok := c.subclasses[corr.Subclass]
+		if !ok {
+			return fmt.Errorf("%s: unknown subclass %q", name, corr.Subclass)
+		}
+		if corr.Source == "" || len(corr.Add) == 0 {
+			return fmt.Errorf("%s: %s level %d needs features and a source", name, corr.Subclass, corr.Level)
+		}
+		if corr.Level < 1 || corr.Level > MaxLevel {
+			return fmt.Errorf("%s: %s: level %d is not 1 to %d", name, corr.Subclass, corr.Level, MaxLevel)
+		}
+		id := fmt.Sprintf("%s/%d", corr.Subclass, corr.Level)
+		if seen[id] {
+			return fmt.Errorf("%s: %s level %d is corrected twice", name, corr.Subclass, corr.Level)
+		}
+		seen[id] = true
+		row := c.subclassLevels[corr.Subclass][corr.Level]
+		if row == nil {
+			row = &srd51.Level{Class: sub.Class, Subclass: corr.Subclass, Level: corr.Level}
+			if c.subclassLevels[corr.Subclass] == nil {
+				c.subclassLevels[corr.Subclass] = map[int]*srd51.Level{}
+			}
+			c.subclassLevels[corr.Subclass][corr.Level] = row
+		}
+		for _, key := range corr.Add {
+			f, ok := c.features[key]
+			if !ok {
+				return fmt.Errorf("%s: %s: unknown feature %q", name, corr.Subclass, key)
+			}
+			if f.Subclass != corr.Subclass {
+				return fmt.Errorf("%s: %s: %s is not a feature of this subclass", name, corr.Subclass, key)
+			}
+			if slices.Contains(row.Features, key) {
+				return fmt.Errorf("%s: %s level %d already has %s", name, corr.Subclass, corr.Level, key)
+			}
+			row.Features = append(row.Features, key)
 		}
 	}
 	return nil

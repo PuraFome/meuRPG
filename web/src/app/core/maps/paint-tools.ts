@@ -14,7 +14,8 @@ export type CoverDegree = 1 | 2;
 export type LightDegree = 1 | 2 | 3;
 
 export interface PaintSettings {
-  readonly tool: PaintTool;
+  /** The tool in hand, or `null` while none was chosen: a stroke paints nothing until the master picks one. */
+  readonly tool: PaintTool | null;
   readonly cover: CoverDegree;
   /** The light a stroke paints: the map's base light is the starting point (`Claro`, `Penumbra`, `Escuro`). */
   readonly light: LightDegree;
@@ -25,7 +26,7 @@ export interface PaintSettings {
 }
 
 export const DEFAULT_SETTINGS: PaintSettings = {
-  tool: 'terrain',
+  tool: null,
   cover: 1,
   light: 2,
   door: 2,
@@ -67,8 +68,11 @@ const LAYER: Readonly<Record<PaintTool, MapLayer>> = {
   door: MapLayer.DOORS,
 };
 
-/** The layer and value a stroke sends: erasing is value 0 of the chosen tool's layer. */
-export function strokeOf(s: PaintSettings): { layer: MapLayer; value: number } {
+/** The layer and value a stroke sends: erasing is value 0 of the chosen tool's layer. No tool in hand, no stroke. */
+export function strokeOf(s: PaintSettings): { layer: MapLayer; value: number } | null {
+  if (s.tool === null) {
+    return null;
+  }
   const layer = LAYER[s.tool];
   if (s.erase) {
     return { layer, value: 0 };
@@ -128,6 +132,9 @@ export function lineSquares(from: Square, to: Square): Square[] {
 
 /** "Terreno difícil · arraste para pintar · Shift apaga": the line over the map's corner. */
 export function paintHint(s: PaintSettings): string {
+  if (s.tool === null) {
+    return 'Escolha uma ferramenta para pintar';
+  }
   if (s.tool === 'door') {
     return s.erase
       ? 'Porta · toque numa porta para tirá-la'

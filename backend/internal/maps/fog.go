@@ -349,7 +349,7 @@ func (s *Service) newSight(ctx context.Context, tx pgx.Tx, in fogInput, points [
 	}
 	sg := &sight{g: in.g, members: members, stands: map[string]grid.Square{}, group: in.group, combat: combat.Running}
 	for _, m := range members {
-		if sq, ok := where(m.CharacterID); ok {
+		if sq, ok := where(m.CharacterID); ok && !m.Dead {
 			sg.stands[m.CharacterID] = sq
 		}
 	}
@@ -547,8 +547,9 @@ func cmpInts(n ...int) int {
 // character is there to see: false is "Seu personagem não está neste mapa".
 func (sg *sight) viewOf(userID string) (view *vision.View, onMap bool) {
 	var views []*vision.View
+	spectator := sg.spectates(userID)
 	for _, m := range sg.members {
-		if !sg.group && m.UserID != userID {
+		if m.Dead || (!sg.group && !spectator && m.UserID != userID) {
 			continue
 		}
 		// Looking through the familiar's eyes the character is blind to its own
@@ -570,7 +571,23 @@ func (sg *sight) viewOf(userID string) (view *vision.View, onMap bool) {
 	return sg.entry.lit.Union(views...), true
 }
 
-// users lists the players with a living character, in a stable order, then the
+// spectates says the player has lost every character they had: they see what the
+// living party sees, as with "Visão do grupo", instead of nothing.
+func (sg *sight) spectates(userID string) bool {
+	dead := false
+	for _, m := range sg.members {
+		if m.UserID != userID {
+			continue
+		}
+		if !m.Dead {
+			return false
+		}
+		dead = true
+	}
+	return dead
+}
+
+// users lists the players with a character, in a stable order, then the
 // others in extra (players who only remember: a hint about a wall painted on a
 // remembered square is theirs too).
 func (sg *sight) users(extra ...string) []string {

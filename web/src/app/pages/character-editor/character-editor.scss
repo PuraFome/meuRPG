@@ -107,6 +107,11 @@
   color: var(--mr-ink-muted);
 }
 
+.group-hint--over {
+  color: var(--mr-danger-ink);
+  font-weight: 500;
+}
+
 .check-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

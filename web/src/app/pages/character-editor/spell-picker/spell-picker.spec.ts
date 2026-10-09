@@ -124,4 +124,25 @@ describe('SpellPicker', () => {
     expect(text).toContain('Você a lê em “Magias”, mas não a escolhe nesta ficha.');
     expect(text).not.toContain('Esta magia é de');
   });
+
+  it('shows the count in the error style, with the reason, when more are chosen than the limit', () => {
+    const { fixture, el } = render({ selected: ['spell:fire-bolt', 'spell:light'] });
+    fixture.componentRef.setInput('limit', 1);
+    fixture.detectChanges();
+
+    expect(el.querySelector('.picker__chosen')?.textContent).toContain('2 de 1 truques escolhidos');
+    expect(el.querySelector('.picker__chosen--over')).not.toBeNull();
+    expect(el.querySelector('.picker__error')?.textContent?.replace(/\s+/g, ' ').trim()).toContain(
+      'Passou do limite de 1: desmarque 1 truque.',
+    );
+  });
+
+  it('shows no error at or below the limit', () => {
+    const { fixture, el } = render({ selected: ['spell:fire-bolt'] });
+    fixture.componentRef.setInput('limit', 1);
+    fixture.detectChanges();
+
+    expect(el.querySelector('.picker__chosen--over')).toBeNull();
+    expect(el.querySelector('.picker__error')).toBeNull();
+  });
 });

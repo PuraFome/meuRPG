@@ -151,6 +151,16 @@ type Build struct {
 	// invocation. Derive applies an option only while the build has the
 	// feature or trait it belongs to.
 	FeatureChoices []string
+	// Feats are the feats the character took (an optional rule of the game, MR-025):
+	// "feat:grappler" or a table's "feat:<slug>@mesa". Derive treats each like a
+	// feature: its effects apply and the sheet lists it. The abilities a feat
+	// raises are in ExtraAbilityBonuses, like an Ability Score Improvement's.
+	Feats []string
+	// FeatSlots says, for a feat taken in place of an Ability Score Improvement, the
+	// feature of that improvement it replaced ("feature:fighter-ability-score-improvement-1"):
+	// the sheet lists the feat at that level and not the improvement. A feat the master added
+	// has none.
+	FeatSlots map[string]string
 }
 
 // ClassLevel is one class of a Build and its level in that class.
@@ -315,6 +325,9 @@ type Catalog struct {
 	Spells      []SpellEntry
 	// ChallengeRatings are the SRD's 34 ratings with their XP, in order.
 	ChallengeRatings []ChallengeRating
+	// LevelXP is the XP that reaches each level: LevelXP[0] is level 1 (0 XP), the
+	// last is level 20.
+	LevelXP []int
 	// Languages, Proficiencies and DamageTypes name the SRD's keys a table entry
 	// points at, sorted by Portuguese name (the master's effect menu carries the
 	// same names; a player has no menu).
@@ -363,6 +376,9 @@ type RaceEntry struct {
 	// their choice (a table race's "+2 and +1 to your choice"), largest first;
 	// nil for an SRD race (the half-elf's choice is in the SRD data).
 	ChoiceBonuses []int
+	// SkillProficiencies are the skills its traits give (the half-orc's
+	// Intimidation), which the player does not choose.
+	SkillProficiencies []string
 	// Archived says the table has retired it: sheets that have it keep it,
 	// but it is not offered as a new choice. Every Archived below is the same.
 	Archived bool
@@ -377,8 +393,10 @@ type SubraceEntry struct {
 	// Race is the key of the parent race.
 	Race           string
 	AbilityBonuses map[Ability]int
-	Archived       bool
-	Off            bool
+	// SkillProficiencies are the skills its traits give, besides the race's.
+	SkillProficiencies []string
+	Archived           bool
+	Off                bool
 }
 
 // ClassEntry is a class in the Catalog.
@@ -648,6 +666,10 @@ type Derived struct {
 	// Hints are situational bonuses the engine shows but does not apply
 	// (ADR-0008: "vantagem se a fonte for mágica").
 	Hints []Hint
+	// OpenChoices are the choices the sheet still lacks, each with how many
+	// are missing: skills, cantrips, spells known and spells prepared. A
+	// sheet with none is complete.
+	OpenChoices []OpenChoice
 	// Issues are problems found while deriving: unknown keys, unusual
 	// choices, a broken formula. They never stop the sheet from opening.
 	Issues []Issue
@@ -778,6 +800,10 @@ type Attack struct {
 	DamageType       string
 	DamageTypeNamePT string
 	VersatileDamage  string
+	// DamageNotePT says the damage includes a bonus that holds only under a
+	// condition the sheet cannot check (Dueling: no other weapon in hand), with
+	// the condition; empty otherwise.
+	DamageNotePT string
 	// DamageDice and VersatileDice are Damage and VersatileDamage as
 	// numbers, for the combat functions. Both are zero when the weapon has
 	// no damage dice.
@@ -879,6 +905,23 @@ type Hint struct {
 	TextPT string
 }
 
+// The kinds of OpenChoice.
+const (
+	OpenChoiceSkills         = "skills"
+	OpenChoiceCantrips       = "cantrips"
+	OpenChoiceSpellsKnown    = "spells_known"
+	OpenChoiceSpellsPrepared = "spells_prepared"
+)
+
+// OpenChoice is a choice the character's class gives and the sheet has not
+// made yet.
+type OpenChoice struct {
+	// Kind is one of the OpenChoice constants.
+	Kind string
+	// Missing is how many picks are left, at least 1.
+	Missing int
+}
+
 // Issue is a problem Derive found. Code is stable (see the Issue* codes),
 // Field points at the sheet field when it applies, as a path with the
 // CharacterSheet proto's field names ("full.classes[0].subclass_key"), and
@@ -936,6 +979,9 @@ const (
 	IssueMulticlass = "multiclass_prerequisite"
 	// IssueHitPointRolls: fewer or more hit point rolls than levels.
 	IssueHitPointRolls = "hit_point_rolls"
+	// IssueFeatPrerequisite: a feat the character took whose prerequisite it no longer
+	// meets; the feat does not apply until it does again (SRD 5.1, Feats).
+	IssueFeatPrerequisite = "feat_prerequisite"
 	// IssueArmorProficiency: armor or a shield without the proficiency.
 	IssueArmorProficiency = "armor_proficiency"
 	// IssueScoreAbove20: a score above 20 without a manual bonus.

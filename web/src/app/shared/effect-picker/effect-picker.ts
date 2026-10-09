@@ -39,13 +39,17 @@ export class EffectPicker {
   readonly allowTextOnly = input(false);
   /** The spells a note may grant (the table's catalog): the key and the Portuguese name. */
   readonly spellOptions = input<readonly SelectOption[]>([]);
+  /** The feat editor's picker also offers the types only a feat has (`feat_only`). */
+  readonly featEditor = input(false);
   /** The label of the type select ("Efeito"). */
   readonly label = input('Efeito');
 
   readonly effectChange = output<EffectDraft>();
 
   protected readonly typeOptions = computed<SelectOption[]>(() => {
-    const types = this.menu().types.map((t) => ({ value: t.type, label: t.namePt }));
+    const types = this.menu()
+      .typesFor(this.featEditor())
+      .map((t) => ({ value: t.type, label: t.namePt }));
     return this.allowTextOnly() ? [{ value: '', label: 'Só texto' }, ...types] : types;
   });
   protected readonly typeHint = computed(() => {
@@ -119,7 +123,7 @@ export class EffectPicker {
   protected optionsOf(f: EffectMenuField): (SelectOption & { hint: string })[] {
     const menu = this.menu();
     const list =
-      f.name === 'from'
+      f.name === 'from' && f.list === ''
         ? menu.fromOptions(this.effect().choice)
         : f.name === 'spells'
           ? []

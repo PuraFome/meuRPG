@@ -1,5 +1,6 @@
 import { TableContentKind, type TableEntry } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { joinDots, tight } from '../format/text';
+import { prerequisiteSupport } from './feat-text';
 import { metersText } from '../units';
 
 /**
@@ -13,7 +14,7 @@ import { metersText } from '../units';
  * "Raças" group holds them) but they are entries too: they sit in "Raças", after the races. */
 export interface ContentNavKind {
   /** The URL segment of "Nova …" and the list's key. */
-  readonly slug: 'classes' | 'subclasses' | 'races' | 'backgrounds' | 'spells';
+  readonly slug: 'classes' | 'subclasses' | 'races' | 'backgrounds' | 'spells' | 'feats';
   /** Plural, the nav item and the panel title. */
   readonly plural: string;
   /** Singular with its article, for "Nova raça" and "Voltar para Raças". */
@@ -81,6 +82,16 @@ export const CONTENT_NAV: readonly ContentNavKind[] = [
     editable: true,
     createSegment: 'spell',
   },
+  {
+    slug: 'feats',
+    plural: 'Talentos',
+    singular: 'talento',
+    kinds: [TableContentKind.FEAT],
+    newLabel: 'Novo talento',
+    aOne: 'um talento',
+    editable: true,
+    createSegment: 'feat',
+  },
 ];
 
 export function navOfKind(kind: TableContentKind): ContentNavKind | undefined {
@@ -99,6 +110,7 @@ export const KIND_WORDS: Readonly<Record<number, string>> = {
   [TableContentKind.SUBRACE]: 'Sub-raça',
   [TableContentKind.BACKGROUND]: 'Antecedente',
   [TableContentKind.SPELL]: 'Magia',
+  [TableContentKind.FEAT]: 'Talento',
 };
 
 /** The noun of a kind with its article and the words that agree with it: "A magia … foi salva", "O antecedente … foi salvo". */
@@ -131,6 +143,7 @@ export const KIND_NOUNS: Readonly<Record<number, KindNoun>> = {
     archived: 'arquivado',
   },
   [TableContentKind.SPELL]: { article: 'A', noun: 'magia', saved: 'salva', archived: 'arquivada' },
+  [TableContentKind.FEAT]: { article: 'O', noun: 'talento', saved: 'salvo', archived: 'arquivado' },
 };
 
 /** "A magia Lâmina de Nanquim foi salva." */
@@ -303,6 +316,12 @@ export function entrySupport(
     case 'tableSpell': {
       const s = e.body.value;
       parts.push(s.level === 0 ? 'Truque' : `${s.level}º nível`);
+      break;
+    }
+    case 'tableFeat': {
+      const f = e.body.value;
+      const says = prerequisiteSupport(f.prerequisite, nameOf);
+      parts.push(says === '' ? 'Sem pré-requisito' : says);
       break;
     }
     default:

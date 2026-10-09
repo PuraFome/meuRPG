@@ -1,6 +1,6 @@
 {
   "level 1": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.25+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.27+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -439,6 +439,7 @@
         "DamageType": "damage-type:lightning",
         "DamageTypeNamePT": "elétrico",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 1,
           "Sides": 8,
@@ -477,6 +478,7 @@
         "DamageType": "damage-type:bludgeoning",
         "DamageTypeNamePT": "concussão",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 0,
           "Sides": 0,
@@ -694,10 +696,11 @@
         "TextPT": "Luz-guia: conhece a rota dos navios."
       }
     ],
+    "OpenChoices": null,
     "Issues": null
   },
   "level 11": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.25+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.27+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -1248,6 +1251,33 @@
       },
       {
         "Spell": {
+          "Key": "spell:blindness-deafness",
+          "Name": "Blindness/Deafness",
+          "NamePT": "Cegueira/Surdez",
+          "Level": 2,
+          "School": "school:necromancy",
+          "SchoolNamePT": "Necromancia",
+          "Classes": [
+            "class:bard",
+            "class:cleric",
+            "class:sorcerer",
+            "class:wizard",
+            "class:gen-full-known@mesa",
+            "class:gen-full-prepared@mesa"
+          ],
+          "Ritual": false,
+          "Concentration": false,
+          "CastingTime": {
+            "Amount": 1,
+            "Unit": "action",
+            "Trigger": "",
+            "Raw": "1 action"
+          }
+        },
+        "Prepared": true
+      },
+      {
+        "Spell": {
           "Key": "spell:animate-dead",
           "Name": "Animate Dead",
           "NamePT": "Animar Mortos",
@@ -1397,30 +1427,6 @@
       },
       {
         "Spell": {
-          "Key": "spell:arcane-eye",
-          "Name": "Arcane Eye",
-          "NamePT": "Olho Arcano",
-          "Level": 4,
-          "School": "school:divination",
-          "SchoolNamePT": "Adivinhação",
-          "Classes": [
-            "class:cleric",
-            "class:wizard",
-            "class:gen-full-prepared@mesa"
-          ],
-          "Ritual": false,
-          "Concentration": true,
-          "CastingTime": {
-            "Amount": 1,
-            "Unit": "action",
-            "Trigger": "",
-            "Raw": "1 action"
-          }
-        },
-        "Prepared": true
-      },
-      {
-        "Spell": {
           "Key": "spell:blade-barrier",
           "Name": "Blade Barrier",
           "NamePT": "Barreira de Lâminas",
@@ -1457,6 +1463,7 @@
         "DamageType": "damage-type:lightning",
         "DamageTypeNamePT": "elétrico",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 3,
           "Sides": 8,
@@ -1495,6 +1502,7 @@
         "DamageType": "damage-type:bludgeoning",
         "DamageTypeNamePT": "concussão",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 0,
           "Sides": 0,
@@ -1832,10 +1840,16 @@
         "TextPT": "Olhos"
       }
     ],
+    "OpenChoices": [
+      {
+        "Kind": "spells_prepared",
+        "Missing": 1
+      }
+    ],
     "Issues": null
   },
   "level 5": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.25+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.27+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -2422,6 +2436,7 @@
         "DamageType": "damage-type:lightning",
         "DamageTypeNamePT": "elétrico",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 2,
           "Sides": 8,
@@ -2460,6 +2475,7 @@
         "DamageType": "damage-type:bludgeoning",
         "DamageTypeNamePT": "concussão",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 0,
           "Sides": 0,
@@ -2750,6 +2766,12 @@
           "against:charm"
         ],
         "TextPT": "Olhos"
+      }
+    ],
+    "OpenChoices": [
+      {
+        "Kind": "spells_prepared",
+        "Missing": 1
       }
     ],
     "Issues": null

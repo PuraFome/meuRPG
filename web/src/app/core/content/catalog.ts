@@ -35,6 +35,10 @@ export interface CatalogVm {
   /** The classes a subclass can belong to: the SRD's and the table's, not the archived. */
   readonly classes: readonly SelectOption[];
   readonly skills: readonly SelectOption[];
+  /** The SRD's proficiencies a feat may ask for (armor, weapons, tools...), by name. */
+  readonly proficiencies: readonly SelectOption[];
+  /** The races and sub-races a feat may ask for, not the archived. */
+  readonly raceChoices: readonly SelectOption[];
   readonly spells: readonly SelectOption[];
   /** The Portuguese name of any key of the catalog and of the table's entries (the key itself when unknown). */
   nameOf(key: string): string;
@@ -104,6 +108,15 @@ export function catalogVm(content: Content, entries: readonly TableEntry[] = [])
       .filter((c) => !c.archived)
       .map((c) => ({ value: c.key, label: isTableKey(c.key) ? `${c.namePt} (da mesa)` : c.namePt }))
       .sort(byName),
+    proficiencies: content.proficiencies
+      .map((p) => ({ value: p.key, label: capital(p.namePt) }))
+      .sort(byName),
+    raceChoices: [
+      ...content.races.filter((r) => !r.archived).map((r) => ({ value: r.key, label: r.namePt })),
+      ...content.subraces
+        .filter((r) => !r.archived)
+        .map((r) => ({ value: r.key, label: `${r.namePt} (sub-raça)` })),
+    ].sort(byName),
     skills: content.skills.map((s) => ({ value: s.key, label: s.namePt })).sort(byName),
     spells: content.spells
       .filter((s) => !s.archived)

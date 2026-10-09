@@ -51,6 +51,11 @@ export class SpellPicker {
    * was lowered): it stays so it can be unchecked, and is marked. */
   readonly maxSpellLevel = input<number | null>(null);
 
+  /** The most the class takes in this list, or `null` for no limit to show. The count reads "2 de 3". */
+  readonly limit = input<number | null>(null);
+  /** Warn "Prepare até N" while fewer than the limit are chosen (the prepared list of a preparing class). */
+  readonly warnBelowLimit = input(false);
+
   /** What the search finds that no list of the sheet has: greyed, with the reason. */
   readonly outside = input<readonly OutsideSpell[]>([]);
   /** Where "Ver em Magias" goes. */
@@ -79,9 +84,36 @@ export class SpellPicker {
 
   protected readonly count = computed(() => {
     const n = this.chosen().length;
+    const limit = this.limit();
+    if (limit !== null) {
+      const many = n > 1 || limit > 1;
+      return this.noun() === 'truque'
+        ? `${n} de ${limit} ${many ? 'truques escolhidos' : 'truque escolhido'}`
+        : `${n} de ${limit} ${many ? 'magias escolhidas' : 'magia escolhida'}`;
+    }
     return this.noun() === 'truque'
       ? countLabel(n, 'truque escolhido', 'truques escolhidos', 'Nenhum truque escolhido')
       : countLabel(n, 'magia escolhida', 'magias escolhidas', 'Nenhuma magia escolhida');
+  });
+
+  /** The count is past the limit: the server refuses the save, so the picker says why in the error style. */
+  protected readonly overLimit = computed(() => {
+    const limit = this.limit();
+    return limit !== null && this.chosen().length > limit;
+  });
+  protected readonly overLimitReason = computed(() => {
+    const limit = this.limit();
+    const extra = limit === null ? 0 : this.chosen().length - limit;
+    const what = this.noun() === 'truque' ? ['truque', 'truques'] : ['magia', 'magias'];
+    return `Passou do limite de ${limit}: desmarque ${extra} ${extra === 1 ? what[0] : what[1]}.`;
+  });
+
+  /** "Prepare até 4": fewer are chosen than the class prepares. */
+  protected readonly prepareWarning = computed(() => {
+    const limit = this.limit();
+    return this.warnBelowLimit() && limit !== null && this.chosen().length < limit
+      ? `Prepare até ${limit}`
+      : '';
   });
 
   /** "2 truques escolhidos: Mãos Mágicas, Raio de Fogo". */

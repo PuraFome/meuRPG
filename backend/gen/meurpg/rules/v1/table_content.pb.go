@@ -4,9 +4,10 @@
 // 	protoc        (unknown)
 // source: meurpg/rules/v1/table_content.proto
 
-// The table's own rules content (MR-025, RN-23, ADR-0018): the classes,
-// subclasses, races, subraces, backgrounds and spells that the master writes for
-// one campaign. The RPCs are TableContentService's, below; the catalog the
+// The table's own rules content (MR-025, MR-025, RN-23, ADR-0018): the classes,
+// subclasses, races, subraces, backgrounds, spells and feats that the master writes
+// for one campaign, and the content pack that carries them from one campaign to
+// another (ExportTableContent, ImportTableContent). The RPCs are TableContentService's, below; the catalog the
 // character editor builds from is ContentService.ListContent (rules.proto).
 //
 // One typed message per kind, each mapping one to one onto the fields the rules
@@ -62,6 +63,9 @@ const (
 	TableContentKind_TABLE_CONTENT_KIND_BACKGROUND TableContentKind = 5
 	// A spell.
 	TableContentKind_TABLE_CONTENT_KIND_SPELL TableContentKind = 6
+	// A feat: an optional rule of the game, taken in place of an Ability Score
+	// Improvement when the table's rule "Talentos" allows it (MR-025).
+	TableContentKind_TABLE_CONTENT_KIND_FEAT TableContentKind = 7
 )
 
 // Enum value maps for TableContentKind.
@@ -74,6 +78,7 @@ var (
 		4: "TABLE_CONTENT_KIND_SUBRACE",
 		5: "TABLE_CONTENT_KIND_BACKGROUND",
 		6: "TABLE_CONTENT_KIND_SPELL",
+		7: "TABLE_CONTENT_KIND_FEAT",
 	}
 	TableContentKind_value = map[string]int32{
 		"TABLE_CONTENT_KIND_UNSPECIFIED": 0,
@@ -83,6 +88,7 @@ var (
 		"TABLE_CONTENT_KIND_SUBRACE":     4,
 		"TABLE_CONTENT_KIND_BACKGROUND":  5,
 		"TABLE_CONTENT_KIND_SPELL":       6,
+		"TABLE_CONTENT_KIND_FEAT":        7,
 	}
 )
 
@@ -298,6 +304,119 @@ func (TableContentBlockedReason) EnumDescriptor() ([]byte, []int) {
 	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{3}
 }
 
+// TableImportMode says whether ImportTableContent writes.
+type TableImportMode int32
+
+const (
+	TableImportMode_TABLE_IMPORT_MODE_UNSPECIFIED TableImportMode = 0
+	// Check the pack and say what an import would do; write nothing.
+	TableImportMode_TABLE_IMPORT_MODE_PREVIEW TableImportMode = 1
+	// Write the pack, all or nothing.
+	TableImportMode_TABLE_IMPORT_MODE_APPLY TableImportMode = 2
+)
+
+// Enum value maps for TableImportMode.
+var (
+	TableImportMode_name = map[int32]string{
+		0: "TABLE_IMPORT_MODE_UNSPECIFIED",
+		1: "TABLE_IMPORT_MODE_PREVIEW",
+		2: "TABLE_IMPORT_MODE_APPLY",
+	}
+	TableImportMode_value = map[string]int32{
+		"TABLE_IMPORT_MODE_UNSPECIFIED": 0,
+		"TABLE_IMPORT_MODE_PREVIEW":     1,
+		"TABLE_IMPORT_MODE_APPLY":       2,
+	}
+)
+
+func (x TableImportMode) Enum() *TableImportMode {
+	p := new(TableImportMode)
+	*p = x
+	return p
+}
+
+func (x TableImportMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TableImportMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_meurpg_rules_v1_table_content_proto_enumTypes[4].Descriptor()
+}
+
+func (TableImportMode) Type() protoreflect.EnumType {
+	return &file_meurpg_rules_v1_table_content_proto_enumTypes[4]
+}
+
+func (x TableImportMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TableImportMode.Descriptor instead.
+func (TableImportMode) EnumDescriptor() ([]byte, []int) {
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{4}
+}
+
+// TableImportStatus is what an import does with one entry of the pack.
+type TableImportStatus int32
+
+const (
+	TableImportStatus_TABLE_IMPORT_STATUS_UNSPECIFIED TableImportStatus = 0
+	// The campaign has no entry with this key: it is created.
+	TableImportStatus_TABLE_IMPORT_STATUS_NEW TableImportStatus = 1
+	// The campaign has the entry and the pack's differs: it is replaced, keeping the
+	// keys of its features.
+	TableImportStatus_TABLE_IMPORT_STATUS_UPDATED TableImportStatus = 2
+	// The campaign has the same entry: nothing changes.
+	TableImportStatus_TABLE_IMPORT_STATUS_UNCHANGED TableImportStatus = 3
+	// The rules refuse the entry. An import with a refused entry writes nothing.
+	TableImportStatus_TABLE_IMPORT_STATUS_REFUSED TableImportStatus = 4
+)
+
+// Enum value maps for TableImportStatus.
+var (
+	TableImportStatus_name = map[int32]string{
+		0: "TABLE_IMPORT_STATUS_UNSPECIFIED",
+		1: "TABLE_IMPORT_STATUS_NEW",
+		2: "TABLE_IMPORT_STATUS_UPDATED",
+		3: "TABLE_IMPORT_STATUS_UNCHANGED",
+		4: "TABLE_IMPORT_STATUS_REFUSED",
+	}
+	TableImportStatus_value = map[string]int32{
+		"TABLE_IMPORT_STATUS_UNSPECIFIED": 0,
+		"TABLE_IMPORT_STATUS_NEW":         1,
+		"TABLE_IMPORT_STATUS_UPDATED":     2,
+		"TABLE_IMPORT_STATUS_UNCHANGED":   3,
+		"TABLE_IMPORT_STATUS_REFUSED":     4,
+	}
+)
+
+func (x TableImportStatus) Enum() *TableImportStatus {
+	p := new(TableImportStatus)
+	*p = x
+	return p
+}
+
+func (x TableImportStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TableImportStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_meurpg_rules_v1_table_content_proto_enumTypes[5].Descriptor()
+}
+
+func (TableImportStatus) Type() protoreflect.EnumType {
+	return &file_meurpg_rules_v1_table_content_proto_enumTypes[5]
+}
+
+func (x TableImportStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TableImportStatus.Descriptor instead.
+func (TableImportStatus) EnumDescriptor() ([]byte, []int) {
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{5}
+}
+
 // TableEntry is one entry of the table's content, as ListTableEntries and the
 // writes return it: what every entry has, and the kind's message in `body`.
 type TableEntry struct {
@@ -338,6 +457,7 @@ type TableEntry struct {
 	//	*TableEntry_TableSubrace
 	//	*TableEntry_TableBackground
 	//	*TableEntry_TableSpell
+	//	*TableEntry_TableFeat
 	Body          isTableEntry_Body `protobuf_oneof:"body"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -504,6 +624,15 @@ func (x *TableEntry) GetTableSpell() *TableSpell {
 	return nil
 }
 
+func (x *TableEntry) GetTableFeat() *TableFeat {
+	if x != nil {
+		if x, ok := x.Body.(*TableEntry_TableFeat); ok {
+			return x.TableFeat
+		}
+	}
+	return nil
+}
+
 type isTableEntry_Body interface {
 	isTableEntry_Body()
 }
@@ -532,6 +661,10 @@ type TableEntry_TableSpell struct {
 	TableSpell *TableSpell `protobuf:"bytes,15,opt,name=table_spell,json=tableSpell,proto3,oneof"`
 }
 
+type TableEntry_TableFeat struct {
+	TableFeat *TableFeat `protobuf:"bytes,17,opt,name=table_feat,json=tableFeat,proto3,oneof"`
+}
+
 func (*TableEntry_TableClass) isTableEntry_Body() {}
 
 func (*TableEntry_TableSubclass) isTableEntry_Body() {}
@@ -544,11 +677,13 @@ func (*TableEntry_TableBackground) isTableEntry_Body() {}
 
 func (*TableEntry_TableSpell) isTableEntry_Body() {}
 
+func (*TableEntry_TableFeat) isTableEntry_Body() {}
+
 // TableEffect is one effect of a feature, from the closed menu: what the engine
 // computes with, never code. `type` is "modifier", "proficiency", "resource",
-// "sense", "roll_mode", "grant_action", "extra_attack", "choice" or "note"; only
-// the fields of the type are read, and a field the type does not use is refused.
-// A feature with no effects is text only and always valid. Formulas ("value",
+// "sense", "roll_mode", "grant_action", "extra_attack", "choice", "ability_increase"
+// or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
+// read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
 // "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
 // prof(), floor, ceil, min and max, and must compile.
 type TableEffect struct {
@@ -584,8 +719,13 @@ type TableEffect struct {
 	Max      string `protobuf:"bytes,14,opt,name=max,proto3" json:"max,omitempty"`
 	Recharge string `protobuf:"bytes,15,opt,name=recharge,proto3" json:"recharge,omitempty"`
 	// choice: what the player chooses ("skill", "expertise", "cantrip", "spell",
-	// "language", "tool" or "feature"), how many, and from which keys. For
-	// extra_attack, `count` is how many attacks the Attack action makes.
+	// "language", "tool", "feature" or "feat"), how many, and from which keys (for
+	// "feat": feat keys of the SRD or the table; empty is any feat). For
+	// extra_attack, `count` is how many attacks the Attack action makes. For
+	// ability_increase, `count` is how many different abilities the player picks,
+	// `from` the abilities to pick from ("str", "dex", "con", "int", "wis", "cha")
+	// and `value` how much each goes up, "1" or "2": never above 20 (SRD 5.1, Ability
+	// Score Improvement). The sheet keeps the result as manual ability bonuses.
 	Choice string   `protobuf:"bytes,16,opt,name=choice,proto3" json:"choice,omitempty"`
 	Count  int32    `protobuf:"varint,17,opt,name=count,proto3" json:"count,omitempty"`
 	From   []string `protobuf:"bytes,18,rep,name=from,proto3" json:"from,omitempty"`
@@ -854,6 +994,82 @@ func (x *TableFeature) GetEffects() []*TableEffect {
 	return nil
 }
 
+// TableFeat is a feat (MR-025): an optional rule of the game that a character takes
+// in place of an Ability Score Improvement when the table's rule "Talentos" allows
+// it. The key is "feat:<slug>@mesa". The effects belong to the feat itself (it has
+// no features of its own), come from the same closed menu as a feature's, and may
+// include one `ability_increase`, which only a feat has.
+type TableFeat struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	NamePt string                 `protobuf:"bytes,1,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
+	// The text, one paragraph per entry.
+	DescPt []string `protobuf:"bytes,2,rep,name=desc_pt,json=descPt,proto3" json:"desc_pt,omitempty"`
+	// What the feat asks of a character; unset asks nothing.
+	Prerequisite *FeatPrerequisite `protobuf:"bytes,3,opt,name=prerequisite,proto3" json:"prerequisite,omitempty"`
+	// At most 20, and at most one ability_increase.
+	Effects       []*TableEffect `protobuf:"bytes,4,rep,name=effects,proto3" json:"effects,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TableFeat) Reset() {
+	*x = TableFeat{}
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TableFeat) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TableFeat) ProtoMessage() {}
+
+func (x *TableFeat) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TableFeat.ProtoReflect.Descriptor instead.
+func (*TableFeat) Descriptor() ([]byte, []int) {
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *TableFeat) GetNamePt() string {
+	if x != nil {
+		return x.NamePt
+	}
+	return ""
+}
+
+func (x *TableFeat) GetDescPt() []string {
+	if x != nil {
+		return x.DescPt
+	}
+	return nil
+}
+
+func (x *TableFeat) GetPrerequisite() *FeatPrerequisite {
+	if x != nil {
+		return x.Prerequisite
+	}
+	return nil
+}
+
+func (x *TableFeat) GetEffects() []*TableEffect {
+	if x != nil {
+		return x.Effects
+	}
+	return nil
+}
+
 // TableCasting is how a class, or a third caster's subclass, casts.
 type TableCasting struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -880,7 +1096,7 @@ type TableCasting struct {
 
 func (x *TableCasting) Reset() {
 	*x = TableCasting{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[3]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -892,7 +1108,7 @@ func (x *TableCasting) String() string {
 func (*TableCasting) ProtoMessage() {}
 
 func (x *TableCasting) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[3]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -905,7 +1121,7 @@ func (x *TableCasting) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableCasting.ProtoReflect.Descriptor instead.
 func (*TableCasting) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{3}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *TableCasting) GetKind() string {
@@ -976,7 +1192,7 @@ type TableClassLevel struct {
 
 func (x *TableClassLevel) Reset() {
 	*x = TableClassLevel{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[4]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -988,7 +1204,7 @@ func (x *TableClassLevel) String() string {
 func (*TableClassLevel) ProtoMessage() {}
 
 func (x *TableClassLevel) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[4]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1001,7 +1217,7 @@ func (x *TableClassLevel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableClassLevel.ProtoReflect.Descriptor instead.
 func (*TableClassLevel) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{4}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *TableClassLevel) GetProfBonus() int32 {
@@ -1076,7 +1292,7 @@ type TableClass struct {
 
 func (x *TableClass) Reset() {
 	*x = TableClass{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[5]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1088,7 +1304,7 @@ func (x *TableClass) String() string {
 func (*TableClass) ProtoMessage() {}
 
 func (x *TableClass) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[5]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1101,7 +1317,7 @@ func (x *TableClass) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableClass.ProtoReflect.Descriptor instead.
 func (*TableClass) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{5}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *TableClass) GetNamePt() string {
@@ -1215,7 +1431,7 @@ type TableAlwaysPrepared struct {
 
 func (x *TableAlwaysPrepared) Reset() {
 	*x = TableAlwaysPrepared{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[6]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1227,7 +1443,7 @@ func (x *TableAlwaysPrepared) String() string {
 func (*TableAlwaysPrepared) ProtoMessage() {}
 
 func (x *TableAlwaysPrepared) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[6]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1240,7 +1456,7 @@ func (x *TableAlwaysPrepared) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableAlwaysPrepared.ProtoReflect.Descriptor instead.
 func (*TableAlwaysPrepared) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{6}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *TableAlwaysPrepared) GetClassLevel() int32 {
@@ -1273,7 +1489,7 @@ type TableSubclassLevel struct {
 
 func (x *TableSubclassLevel) Reset() {
 	*x = TableSubclassLevel{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[7]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1285,7 +1501,7 @@ func (x *TableSubclassLevel) String() string {
 func (*TableSubclassLevel) ProtoMessage() {}
 
 func (x *TableSubclassLevel) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[7]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1298,7 +1514,7 @@ func (x *TableSubclassLevel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableSubclassLevel.ProtoReflect.Descriptor instead.
 func (*TableSubclassLevel) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{7}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *TableSubclassLevel) GetLevel() int32 {
@@ -1357,7 +1573,7 @@ type TableSubclass struct {
 
 func (x *TableSubclass) Reset() {
 	*x = TableSubclass{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[8]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1369,7 +1585,7 @@ func (x *TableSubclass) String() string {
 func (*TableSubclass) ProtoMessage() {}
 
 func (x *TableSubclass) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[8]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1382,7 +1598,7 @@ func (x *TableSubclass) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableSubclass.ProtoReflect.Descriptor instead.
 func (*TableSubclass) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{8}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *TableSubclass) GetNamePt() string {
@@ -1458,7 +1674,7 @@ type TableRace struct {
 
 func (x *TableRace) Reset() {
 	*x = TableRace{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[9]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1470,7 +1686,7 @@ func (x *TableRace) String() string {
 func (*TableRace) ProtoMessage() {}
 
 func (x *TableRace) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[9]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1483,7 +1699,7 @@ func (x *TableRace) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableRace.ProtoReflect.Descriptor instead.
 func (*TableRace) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{9}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *TableRace) GetNamePt() string {
@@ -1563,7 +1779,7 @@ type TableSubrace struct {
 
 func (x *TableSubrace) Reset() {
 	*x = TableSubrace{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[10]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1575,7 +1791,7 @@ func (x *TableSubrace) String() string {
 func (*TableSubrace) ProtoMessage() {}
 
 func (x *TableSubrace) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[10]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1588,7 +1804,7 @@ func (x *TableSubrace) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableSubrace.ProtoReflect.Descriptor instead.
 func (*TableSubrace) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{10}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *TableSubrace) GetNamePt() string {
@@ -1638,7 +1854,7 @@ type TableBackground struct {
 
 func (x *TableBackground) Reset() {
 	*x = TableBackground{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[11]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1650,7 +1866,7 @@ func (x *TableBackground) String() string {
 func (*TableBackground) ProtoMessage() {}
 
 func (x *TableBackground) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[11]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1663,7 +1879,7 @@ func (x *TableBackground) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableBackground.ProtoReflect.Descriptor instead.
 func (*TableBackground) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{11}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *TableBackground) GetNamePt() string {
@@ -1726,7 +1942,7 @@ type TableSpellTarget struct {
 
 func (x *TableSpellTarget) Reset() {
 	*x = TableSpellTarget{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[12]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1738,7 +1954,7 @@ func (x *TableSpellTarget) String() string {
 func (*TableSpellTarget) ProtoMessage() {}
 
 func (x *TableSpellTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[12]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1751,7 +1967,7 @@ func (x *TableSpellTarget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableSpellTarget.ProtoReflect.Descriptor instead.
 func (*TableSpellTarget) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{12}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *TableSpellTarget) GetKind() TableSpellTargetKind {
@@ -1804,7 +2020,7 @@ type TableSpellCastingTime struct {
 
 func (x *TableSpellCastingTime) Reset() {
 	*x = TableSpellCastingTime{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[13]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1816,7 +2032,7 @@ func (x *TableSpellCastingTime) String() string {
 func (*TableSpellCastingTime) ProtoMessage() {}
 
 func (x *TableSpellCastingTime) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[13]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1829,7 +2045,7 @@ func (x *TableSpellCastingTime) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableSpellCastingTime.ProtoReflect.Descriptor instead.
 func (*TableSpellCastingTime) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{13}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *TableSpellCastingTime) GetUnit() CastingTimeUnit {
@@ -1868,7 +2084,7 @@ type TableSpellRange struct {
 
 func (x *TableSpellRange) Reset() {
 	*x = TableSpellRange{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[14]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1880,7 +2096,7 @@ func (x *TableSpellRange) String() string {
 func (*TableSpellRange) ProtoMessage() {}
 
 func (x *TableSpellRange) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[14]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1893,7 +2109,7 @@ func (x *TableSpellRange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableSpellRange.ProtoReflect.Descriptor instead.
 func (*TableSpellRange) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{14}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *TableSpellRange) GetKind() SpellRangeKind {
@@ -1925,7 +2141,7 @@ type TableSpellDuration struct {
 
 func (x *TableSpellDuration) Reset() {
 	*x = TableSpellDuration{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[15]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1937,7 +2153,7 @@ func (x *TableSpellDuration) String() string {
 func (*TableSpellDuration) ProtoMessage() {}
 
 func (x *TableSpellDuration) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[15]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1950,7 +2166,7 @@ func (x *TableSpellDuration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableSpellDuration.ProtoReflect.Descriptor instead.
 func (*TableSpellDuration) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{15}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *TableSpellDuration) GetKind() SpellDurationKind {
@@ -1995,7 +2211,7 @@ type TableSpellComponents struct {
 
 func (x *TableSpellComponents) Reset() {
 	*x = TableSpellComponents{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[16]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2007,7 +2223,7 @@ func (x *TableSpellComponents) String() string {
 func (*TableSpellComponents) ProtoMessage() {}
 
 func (x *TableSpellComponents) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[16]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2020,7 +2236,7 @@ func (x *TableSpellComponents) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableSpellComponents.ProtoReflect.Descriptor instead.
 func (*TableSpellComponents) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{16}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *TableSpellComponents) GetVerbal() bool {
@@ -2069,7 +2285,7 @@ type TableSpellDamage struct {
 
 func (x *TableSpellDamage) Reset() {
 	*x = TableSpellDamage{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[17]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2081,7 +2297,7 @@ func (x *TableSpellDamage) String() string {
 func (*TableSpellDamage) ProtoMessage() {}
 
 func (x *TableSpellDamage) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[17]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2094,7 +2310,7 @@ func (x *TableSpellDamage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableSpellDamage.ProtoReflect.Descriptor instead.
 func (*TableSpellDamage) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{17}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *TableSpellDamage) GetDamageTypeKey() string {
@@ -2138,7 +2354,7 @@ type TableSpellHeal struct {
 
 func (x *TableSpellHeal) Reset() {
 	*x = TableSpellHeal{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[18]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2150,7 +2366,7 @@ func (x *TableSpellHeal) String() string {
 func (*TableSpellHeal) ProtoMessage() {}
 
 func (x *TableSpellHeal) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[18]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2163,7 +2379,7 @@ func (x *TableSpellHeal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableSpellHeal.ProtoReflect.Descriptor instead.
 func (*TableSpellHeal) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{18}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *TableSpellHeal) GetDice() string {
@@ -2220,7 +2436,7 @@ type TableSpell struct {
 
 func (x *TableSpell) Reset() {
 	*x = TableSpell{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[19]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2232,7 +2448,7 @@ func (x *TableSpell) String() string {
 func (*TableSpell) ProtoMessage() {}
 
 func (x *TableSpell) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[19]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2245,7 +2461,7 @@ func (x *TableSpell) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableSpell.ProtoReflect.Descriptor instead.
 func (*TableSpell) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{19}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *TableSpell) GetNamePt() string {
@@ -2386,9 +2602,15 @@ type TableContentViolation struct {
 	// (a reference does not exist), "forbidden_effect", "bad_formula", "bad_table",
 	// "bad_casting", "bad_value", "overlay" (the content as a whole), "immutable"
 	// (a key, kind or parent changed, or a spell crossing between cantrip and
-	// leveled), "duplicate_name" (another entry of the kind has the name) and
+	// leveled), "duplicate_name" (another entry of the kind has the name), "unknown_field" (ImportTableContent:
+	// a field the message does not have) and
 	// "size_limit" (64 KiB of data). The 300-entry limit is "limit", with an empty
-	// field.
+	// field. In ImportTableContent a violation about the pack itself is at a field
+	// that starts with "pack": "pack" (over 2 MiB: "size_limit"), "pack.format" and
+	// "pack.version" ("bad_value"), "pack.entries[3].key" ("bad_key" for a key that is
+	// not "<kind>:<slug>@mesa" of the entry's kind, "duplicate_key" for one that
+	// repeats) and "pack.entries[3].body" ("bad_value": no body, or one of another
+	// kind than the key's).
 	Reason string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
 	// English, for logs and tests.
 	Message string `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
@@ -2400,7 +2622,7 @@ type TableContentViolation struct {
 
 func (x *TableContentViolation) Reset() {
 	*x = TableContentViolation{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[20]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2412,7 +2634,7 @@ func (x *TableContentViolation) String() string {
 func (*TableContentViolation) ProtoMessage() {}
 
 func (x *TableContentViolation) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[20]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2425,7 +2647,7 @@ func (x *TableContentViolation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableContentViolation.ProtoReflect.Descriptor instead.
 func (*TableContentViolation) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{20}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *TableContentViolation) GetField() string {
@@ -2467,7 +2689,7 @@ type TableContentRefusal struct {
 
 func (x *TableContentRefusal) Reset() {
 	*x = TableContentRefusal{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[21]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2479,7 +2701,7 @@ func (x *TableContentRefusal) String() string {
 func (*TableContentRefusal) ProtoMessage() {}
 
 func (x *TableContentRefusal) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[21]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2492,7 +2714,7 @@ func (x *TableContentRefusal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableContentRefusal.ProtoReflect.Descriptor instead.
 func (*TableContentRefusal) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{21}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *TableContentRefusal) GetViolations() []*TableContentViolation {
@@ -2515,7 +2737,7 @@ type TableContentBlocked struct {
 
 func (x *TableContentBlocked) Reset() {
 	*x = TableContentBlocked{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[22]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2527,7 +2749,7 @@ func (x *TableContentBlocked) String() string {
 func (*TableContentBlocked) ProtoMessage() {}
 
 func (x *TableContentBlocked) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[22]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2540,7 +2762,7 @@ func (x *TableContentBlocked) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableContentBlocked.ProtoReflect.Descriptor instead.
 func (*TableContentBlocked) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{22}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *TableContentBlocked) GetReason() TableContentBlockedReason {
@@ -2575,7 +2797,7 @@ type AffectedCharacter struct {
 
 func (x *AffectedCharacter) Reset() {
 	*x = AffectedCharacter{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[23]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2587,7 +2809,7 @@ func (x *AffectedCharacter) String() string {
 func (*AffectedCharacter) ProtoMessage() {}
 
 func (x *AffectedCharacter) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[23]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2600,7 +2822,7 @@ func (x *AffectedCharacter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AffectedCharacter.ProtoReflect.Descriptor instead.
 func (*AffectedCharacter) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{23}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *AffectedCharacter) GetCharacterId() string {
@@ -2641,7 +2863,7 @@ type ListTableEntriesRequest struct {
 
 func (x *ListTableEntriesRequest) Reset() {
 	*x = ListTableEntriesRequest{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[24]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2653,7 +2875,7 @@ func (x *ListTableEntriesRequest) String() string {
 func (*ListTableEntriesRequest) ProtoMessage() {}
 
 func (x *ListTableEntriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[24]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2666,7 +2888,7 @@ func (x *ListTableEntriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTableEntriesRequest.ProtoReflect.Descriptor instead.
 func (*ListTableEntriesRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{24}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ListTableEntriesRequest) GetCampaignId() string {
@@ -2690,7 +2912,7 @@ type ListTableEntriesResponse struct {
 
 func (x *ListTableEntriesResponse) Reset() {
 	*x = ListTableEntriesResponse{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[25]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2702,7 +2924,7 @@ func (x *ListTableEntriesResponse) String() string {
 func (*ListTableEntriesResponse) ProtoMessage() {}
 
 func (x *ListTableEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[25]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2715,7 +2937,7 @@ func (x *ListTableEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTableEntriesResponse.ProtoReflect.Descriptor instead.
 func (*ListTableEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{25}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ListTableEntriesResponse) GetEntries() []*TableEntry {
@@ -2754,6 +2976,7 @@ type CreateTableEntryRequest struct {
 	//	*CreateTableEntryRequest_TableSubrace
 	//	*CreateTableEntryRequest_TableBackground
 	//	*CreateTableEntryRequest_TableSpell
+	//	*CreateTableEntryRequest_TableFeat
 	Body isCreateTableEntryRequest_Body `protobuf_oneof:"body"`
 	// Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
 	// same key and the same request returns what the first call made instead of making another.
@@ -2766,7 +2989,7 @@ type CreateTableEntryRequest struct {
 
 func (x *CreateTableEntryRequest) Reset() {
 	*x = CreateTableEntryRequest{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[26]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2778,7 +3001,7 @@ func (x *CreateTableEntryRequest) String() string {
 func (*CreateTableEntryRequest) ProtoMessage() {}
 
 func (x *CreateTableEntryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[26]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2791,7 +3014,7 @@ func (x *CreateTableEntryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTableEntryRequest.ProtoReflect.Descriptor instead.
 func (*CreateTableEntryRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{26}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *CreateTableEntryRequest) GetCampaignId() string {
@@ -2862,6 +3085,15 @@ func (x *CreateTableEntryRequest) GetTableSpell() *TableSpell {
 	return nil
 }
 
+func (x *CreateTableEntryRequest) GetTableFeat() *TableFeat {
+	if x != nil {
+		if x, ok := x.Body.(*CreateTableEntryRequest_TableFeat); ok {
+			return x.TableFeat
+		}
+	}
+	return nil
+}
+
 func (x *CreateTableEntryRequest) GetIdempotencyKey() string {
 	if x != nil {
 		return x.IdempotencyKey
@@ -2897,6 +3129,10 @@ type CreateTableEntryRequest_TableSpell struct {
 	TableSpell *TableSpell `protobuf:"bytes,15,opt,name=table_spell,json=tableSpell,proto3,oneof"`
 }
 
+type CreateTableEntryRequest_TableFeat struct {
+	TableFeat *TableFeat `protobuf:"bytes,17,opt,name=table_feat,json=tableFeat,proto3,oneof"`
+}
+
 func (*CreateTableEntryRequest_TableClass) isCreateTableEntryRequest_Body() {}
 
 func (*CreateTableEntryRequest_TableSubclass) isCreateTableEntryRequest_Body() {}
@@ -2908,6 +3144,8 @@ func (*CreateTableEntryRequest_TableSubrace) isCreateTableEntryRequest_Body() {}
 func (*CreateTableEntryRequest_TableBackground) isCreateTableEntryRequest_Body() {}
 
 func (*CreateTableEntryRequest_TableSpell) isCreateTableEntryRequest_Body() {}
+
+func (*CreateTableEntryRequest_TableFeat) isCreateTableEntryRequest_Body() {}
 
 // CreateTableEntryResponse returns the new entry.
 type CreateTableEntryResponse struct {
@@ -2922,7 +3160,7 @@ type CreateTableEntryResponse struct {
 
 func (x *CreateTableEntryResponse) Reset() {
 	*x = CreateTableEntryResponse{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[27]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2934,7 +3172,7 @@ func (x *CreateTableEntryResponse) String() string {
 func (*CreateTableEntryResponse) ProtoMessage() {}
 
 func (x *CreateTableEntryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[27]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2947,7 +3185,7 @@ func (x *CreateTableEntryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTableEntryResponse.ProtoReflect.Descriptor instead.
 func (*CreateTableEntryResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{27}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *CreateTableEntryResponse) GetEntry() *TableEntry {
@@ -2983,6 +3221,7 @@ type UpdateTableEntryRequest struct {
 	//	*UpdateTableEntryRequest_TableSubrace
 	//	*UpdateTableEntryRequest_TableBackground
 	//	*UpdateTableEntryRequest_TableSpell
+	//	*UpdateTableEntryRequest_TableFeat
 	Body          isUpdateTableEntryRequest_Body `protobuf_oneof:"body"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2990,7 +3229,7 @@ type UpdateTableEntryRequest struct {
 
 func (x *UpdateTableEntryRequest) Reset() {
 	*x = UpdateTableEntryRequest{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[28]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3002,7 +3241,7 @@ func (x *UpdateTableEntryRequest) String() string {
 func (*UpdateTableEntryRequest) ProtoMessage() {}
 
 func (x *UpdateTableEntryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[28]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3015,7 +3254,7 @@ func (x *UpdateTableEntryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateTableEntryRequest.ProtoReflect.Descriptor instead.
 func (*UpdateTableEntryRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{28}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *UpdateTableEntryRequest) GetCampaignId() string {
@@ -3100,6 +3339,15 @@ func (x *UpdateTableEntryRequest) GetTableSpell() *TableSpell {
 	return nil
 }
 
+func (x *UpdateTableEntryRequest) GetTableFeat() *TableFeat {
+	if x != nil {
+		if x, ok := x.Body.(*UpdateTableEntryRequest_TableFeat); ok {
+			return x.TableFeat
+		}
+	}
+	return nil
+}
+
 type isUpdateTableEntryRequest_Body interface {
 	isUpdateTableEntryRequest_Body()
 }
@@ -3128,6 +3376,10 @@ type UpdateTableEntryRequest_TableSpell struct {
 	TableSpell *TableSpell `protobuf:"bytes,15,opt,name=table_spell,json=tableSpell,proto3,oneof"`
 }
 
+type UpdateTableEntryRequest_TableFeat struct {
+	TableFeat *TableFeat `protobuf:"bytes,17,opt,name=table_feat,json=tableFeat,proto3,oneof"`
+}
+
 func (*UpdateTableEntryRequest_TableClass) isUpdateTableEntryRequest_Body() {}
 
 func (*UpdateTableEntryRequest_TableSubclass) isUpdateTableEntryRequest_Body() {}
@@ -3139,6 +3391,8 @@ func (*UpdateTableEntryRequest_TableSubrace) isUpdateTableEntryRequest_Body() {}
 func (*UpdateTableEntryRequest_TableBackground) isUpdateTableEntryRequest_Body() {}
 
 func (*UpdateTableEntryRequest_TableSpell) isUpdateTableEntryRequest_Body() {}
+
+func (*UpdateTableEntryRequest_TableFeat) isUpdateTableEntryRequest_Body() {}
 
 // UpdateTableEntryResponse returns the entry as stored.
 type UpdateTableEntryResponse struct {
@@ -3154,7 +3408,7 @@ type UpdateTableEntryResponse struct {
 
 func (x *UpdateTableEntryResponse) Reset() {
 	*x = UpdateTableEntryResponse{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[29]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3166,7 +3420,7 @@ func (x *UpdateTableEntryResponse) String() string {
 func (*UpdateTableEntryResponse) ProtoMessage() {}
 
 func (x *UpdateTableEntryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[29]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3179,7 +3433,7 @@ func (x *UpdateTableEntryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateTableEntryResponse.ProtoReflect.Descriptor instead.
 func (*UpdateTableEntryResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{29}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *UpdateTableEntryResponse) GetEntry() *TableEntry {
@@ -3214,7 +3468,7 @@ type ArchiveTableEntryRequest struct {
 
 func (x *ArchiveTableEntryRequest) Reset() {
 	*x = ArchiveTableEntryRequest{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[30]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3226,7 +3480,7 @@ func (x *ArchiveTableEntryRequest) String() string {
 func (*ArchiveTableEntryRequest) ProtoMessage() {}
 
 func (x *ArchiveTableEntryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[30]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3239,7 +3493,7 @@ func (x *ArchiveTableEntryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArchiveTableEntryRequest.ProtoReflect.Descriptor instead.
 func (*ArchiveTableEntryRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{30}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *ArchiveTableEntryRequest) GetCampaignId() string {
@@ -3267,7 +3521,7 @@ type ArchiveTableEntryResponse struct {
 
 func (x *ArchiveTableEntryResponse) Reset() {
 	*x = ArchiveTableEntryResponse{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[31]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3279,7 +3533,7 @@ func (x *ArchiveTableEntryResponse) String() string {
 func (*ArchiveTableEntryResponse) ProtoMessage() {}
 
 func (x *ArchiveTableEntryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[31]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3292,7 +3546,7 @@ func (x *ArchiveTableEntryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArchiveTableEntryResponse.ProtoReflect.Descriptor instead.
 func (*ArchiveTableEntryResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{31}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *ArchiveTableEntryResponse) GetEntry() *TableEntry {
@@ -3320,7 +3574,7 @@ type UnarchiveTableEntryRequest struct {
 
 func (x *UnarchiveTableEntryRequest) Reset() {
 	*x = UnarchiveTableEntryRequest{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[32]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3332,7 +3586,7 @@ func (x *UnarchiveTableEntryRequest) String() string {
 func (*UnarchiveTableEntryRequest) ProtoMessage() {}
 
 func (x *UnarchiveTableEntryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[32]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3345,7 +3599,7 @@ func (x *UnarchiveTableEntryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnarchiveTableEntryRequest.ProtoReflect.Descriptor instead.
 func (*UnarchiveTableEntryRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{32}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *UnarchiveTableEntryRequest) GetCampaignId() string {
@@ -3373,7 +3627,7 @@ type UnarchiveTableEntryResponse struct {
 
 func (x *UnarchiveTableEntryResponse) Reset() {
 	*x = UnarchiveTableEntryResponse{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[33]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3385,7 +3639,7 @@ func (x *UnarchiveTableEntryResponse) String() string {
 func (*UnarchiveTableEntryResponse) ProtoMessage() {}
 
 func (x *UnarchiveTableEntryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[33]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3398,7 +3652,7 @@ func (x *UnarchiveTableEntryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnarchiveTableEntryResponse.ProtoReflect.Descriptor instead.
 func (*UnarchiveTableEntryResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{33}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *UnarchiveTableEntryResponse) GetEntry() *TableEntry {
@@ -3415,6 +3669,512 @@ func (x *UnarchiveTableEntryResponse) GetTableRevision() int32 {
 	return 0
 }
 
+// TableContentPack is a campaign's own content as a file (MR-025):
+// {"format": "meurpg.table-content", "version": 1, "name": "...", "entries": [...]}
+// in proto JSON. It carries no campaign, user or date: it can be shared and
+// imported anywhere.
+type TableContentPack struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Always "meurpg.table-content". ImportTableContent refuses another.
+	Format string `protobuf:"bytes,1,opt,name=format,proto3" json:"format,omitempty"`
+	// 1. ImportTableContent refuses another.
+	Version int32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
+	// A label for the pack: the campaign's name when exported. 0 to 80 characters on
+	// one line; kept by nothing, shown in the preview.
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// The entries. At most 300. Each has `key`, `kind`, `name_pt` and its body; the
+	// other fields of TableEntry are left out of an export and ignored in an import.
+	Entries       []*TableEntry `protobuf:"bytes,4,rep,name=entries,proto3" json:"entries,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TableContentPack) Reset() {
+	*x = TableContentPack{}
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TableContentPack) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TableContentPack) ProtoMessage() {}
+
+func (x *TableContentPack) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TableContentPack.ProtoReflect.Descriptor instead.
+func (*TableContentPack) Descriptor() ([]byte, []int) {
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *TableContentPack) GetFormat() string {
+	if x != nil {
+		return x.Format
+	}
+	return ""
+}
+
+func (x *TableContentPack) GetVersion() int32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *TableContentPack) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *TableContentPack) GetEntries() []*TableEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+// ExportTableContentRequest names a campaign.
+type ExportTableContentRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExportTableContentRequest) Reset() {
+	*x = ExportTableContentRequest{}
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExportTableContentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExportTableContentRequest) ProtoMessage() {}
+
+func (x *ExportTableContentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExportTableContentRequest.ProtoReflect.Descriptor instead.
+func (*ExportTableContentRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *ExportTableContentRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+// ExportTableContentResponse carries the pack.
+type ExportTableContentResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Pack          *TableContentPack      `protobuf:"bytes,1,opt,name=pack,proto3" json:"pack,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExportTableContentResponse) Reset() {
+	*x = ExportTableContentResponse{}
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExportTableContentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExportTableContentResponse) ProtoMessage() {}
+
+func (x *ExportTableContentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExportTableContentResponse.ProtoReflect.Descriptor instead.
+func (*ExportTableContentResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *ExportTableContentResponse) GetPack() *TableContentPack {
+	if x != nil {
+		return x.Pack
+	}
+	return nil
+}
+
+// ImportTableContentRequest carries a pack and what to do with it.
+type ImportTableContentRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	// The pack as a message. Required unless `pack_json` is set.
+	Pack *TableContentPack `protobuf:"bytes,2,opt,name=pack,proto3" json:"pack,omitempty"`
+	// Required.
+	Mode TableImportMode `protobuf:"varint,3,opt,name=mode,proto3,enum=meurpg.rules.v1.TableImportMode" json:"mode,omitempty"`
+	// Optional, for APPLY. 1 to 64 characters, chosen once by the app for this action:
+	// a retry with the same key and the same request returns what the first call
+	// answered instead of importing again. The key is unique in the campaign; the same
+	// key with another request is `invalid_argument`.
+	IdempotencyKey string `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	// The pack file as the master has it, in proto JSON. Prefer it to `pack`: the server
+	// reads it strictly, and a field it does not know (a misspelled "proficiency" for
+	// "proficiency_key") is a violation of its entry at the path of the field (reason
+	// "unknown_field"), never dropped. When set, `pack` must be unset. The 2 MiB limit is
+	// this field's size.
+	PackJson      []byte `protobuf:"bytes,5,opt,name=pack_json,json=packJson,proto3" json:"pack_json,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ImportTableContentRequest) Reset() {
+	*x = ImportTableContentRequest{}
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImportTableContentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImportTableContentRequest) ProtoMessage() {}
+
+func (x *ImportTableContentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImportTableContentRequest.ProtoReflect.Descriptor instead.
+func (*ImportTableContentRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *ImportTableContentRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *ImportTableContentRequest) GetPack() *TableContentPack {
+	if x != nil {
+		return x.Pack
+	}
+	return nil
+}
+
+func (x *ImportTableContentRequest) GetMode() TableImportMode {
+	if x != nil {
+		return x.Mode
+	}
+	return TableImportMode_TABLE_IMPORT_MODE_UNSPECIFIED
+}
+
+func (x *ImportTableContentRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+func (x *ImportTableContentRequest) GetPackJson() []byte {
+	if x != nil {
+		return x.PackJson
+	}
+	return nil
+}
+
+// TableImportEntry is the outcome for one entry of the pack, in the pack's order.
+type TableImportEntry struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Key    string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Kind   TableContentKind       `protobuf:"varint,2,opt,name=kind,proto3,enum=meurpg.rules.v1.TableContentKind" json:"kind,omitempty"`
+	NamePt string                 `protobuf:"bytes,3,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
+	Status TableImportStatus      `protobuf:"varint,4,opt,name=status,proto3,enum=meurpg.rules.v1.TableImportStatus" json:"status,omitempty"`
+	// UPDATED: what changes, as the paths of the entry's fields that differ: "name_pt"
+	// and the body's top-level fields ("table_class.levels", "table_race.speed_ft").
+	ChangedFields []string `protobuf:"bytes,5,rep,name=changed_fields,json=changedFields,proto3" json:"changed_fields,omitempty"`
+	// REFUSED: every violation, with the same fields and reasons as CreateTableEntry
+	// (the `key` of each is this entry's, or another entry's the write would break).
+	Violations    []*TableContentViolation `protobuf:"bytes,6,rep,name=violations,proto3" json:"violations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TableImportEntry) Reset() {
+	*x = TableImportEntry{}
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TableImportEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TableImportEntry) ProtoMessage() {}
+
+func (x *TableImportEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TableImportEntry.ProtoReflect.Descriptor instead.
+func (*TableImportEntry) Descriptor() ([]byte, []int) {
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *TableImportEntry) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *TableImportEntry) GetKind() TableContentKind {
+	if x != nil {
+		return x.Kind
+	}
+	return TableContentKind_TABLE_CONTENT_KIND_UNSPECIFIED
+}
+
+func (x *TableImportEntry) GetNamePt() string {
+	if x != nil {
+		return x.NamePt
+	}
+	return ""
+}
+
+func (x *TableImportEntry) GetStatus() TableImportStatus {
+	if x != nil {
+		return x.Status
+	}
+	return TableImportStatus_TABLE_IMPORT_STATUS_UNSPECIFIED
+}
+
+func (x *TableImportEntry) GetChangedFields() []string {
+	if x != nil {
+		return x.ChangedFields
+	}
+	return nil
+}
+
+func (x *TableImportEntry) GetViolations() []*TableContentViolation {
+	if x != nil {
+		return x.Violations
+	}
+	return nil
+}
+
+// TableImportTotals counts the entries of a pack by outcome.
+type TableImportTotals struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	New           int32                  `protobuf:"varint,1,opt,name=new,proto3" json:"new,omitempty"`
+	Updated       int32                  `protobuf:"varint,2,opt,name=updated,proto3" json:"updated,omitempty"`
+	Unchanged     int32                  `protobuf:"varint,3,opt,name=unchanged,proto3" json:"unchanged,omitempty"`
+	Refused       int32                  `protobuf:"varint,4,opt,name=refused,proto3" json:"refused,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TableImportTotals) Reset() {
+	*x = TableImportTotals{}
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TableImportTotals) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TableImportTotals) ProtoMessage() {}
+
+func (x *TableImportTotals) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TableImportTotals.ProtoReflect.Descriptor instead.
+func (*TableImportTotals) Descriptor() ([]byte, []int) {
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *TableImportTotals) GetNew() int32 {
+	if x != nil {
+		return x.New
+	}
+	return 0
+}
+
+func (x *TableImportTotals) GetUpdated() int32 {
+	if x != nil {
+		return x.Updated
+	}
+	return 0
+}
+
+func (x *TableImportTotals) GetUnchanged() int32 {
+	if x != nil {
+		return x.Unchanged
+	}
+	return 0
+}
+
+func (x *TableImportTotals) GetRefused() int32 {
+	if x != nil {
+		return x.Refused
+	}
+	return 0
+}
+
+// ImportTableContentResponse says what the import did, or with PREVIEW would do.
+type ImportTableContentResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The mode of the request.
+	Mode TableImportMode `protobuf:"varint,1,opt,name=mode,proto3,enum=meurpg.rules.v1.TableImportMode" json:"mode,omitempty"`
+	// The pack's label.
+	PackName string `protobuf:"bytes,2,opt,name=pack_name,json=packName,proto3" json:"pack_name,omitempty"`
+	// One per entry of the pack, in its order.
+	Entries []*TableImportEntry `protobuf:"bytes,3,rep,name=entries,proto3" json:"entries,omitempty"`
+	Totals  *TableImportTotals  `protobuf:"bytes,4,opt,name=totals,proto3" json:"totals,omitempty"`
+	// The campaign's content revision: after an APPLY that changed something, the new
+	// one; otherwise the current one.
+	TableRevision int32 `protobuf:"varint,5,opt,name=table_revision,json=tableRevision,proto3" json:"table_revision,omitempty"`
+	// APPLY: the characters that use an updated entry and have issues on their sheets
+	// with the new rules (never the ones without).
+	AffectedCharacters []*AffectedCharacter `protobuf:"bytes,6,rep,name=affected_characters,json=affectedCharacters,proto3" json:"affected_characters,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *ImportTableContentResponse) Reset() {
+	*x = ImportTableContentResponse{}
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImportTableContentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImportTableContentResponse) ProtoMessage() {}
+
+func (x *ImportTableContentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImportTableContentResponse.ProtoReflect.Descriptor instead.
+func (*ImportTableContentResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *ImportTableContentResponse) GetMode() TableImportMode {
+	if x != nil {
+		return x.Mode
+	}
+	return TableImportMode_TABLE_IMPORT_MODE_UNSPECIFIED
+}
+
+func (x *ImportTableContentResponse) GetPackName() string {
+	if x != nil {
+		return x.PackName
+	}
+	return ""
+}
+
+func (x *ImportTableContentResponse) GetEntries() []*TableImportEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+func (x *ImportTableContentResponse) GetTotals() *TableImportTotals {
+	if x != nil {
+		return x.Totals
+	}
+	return nil
+}
+
+func (x *ImportTableContentResponse) GetTableRevision() int32 {
+	if x != nil {
+		return x.TableRevision
+	}
+	return 0
+}
+
+func (x *ImportTableContentResponse) GetAffectedCharacters() []*AffectedCharacter {
+	if x != nil {
+		return x.AffectedCharacters
+	}
+	return nil
+}
+
 // OptionSwitch is the state asked for one option.
 type OptionSwitch struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -3429,7 +4189,7 @@ type OptionSwitch struct {
 
 func (x *OptionSwitch) Reset() {
 	*x = OptionSwitch{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[34]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3441,7 +4201,7 @@ func (x *OptionSwitch) String() string {
 func (*OptionSwitch) ProtoMessage() {}
 
 func (x *OptionSwitch) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[34]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3454,7 +4214,7 @@ func (x *OptionSwitch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OptionSwitch.ProtoReflect.Descriptor instead.
 func (*OptionSwitch) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{34}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *OptionSwitch) GetKey() string {
@@ -3481,7 +4241,7 @@ type ListOptionSwitchesRequest struct {
 
 func (x *ListOptionSwitchesRequest) Reset() {
 	*x = ListOptionSwitchesRequest{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[35]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3493,7 +4253,7 @@ func (x *ListOptionSwitchesRequest) String() string {
 func (*ListOptionSwitchesRequest) ProtoMessage() {}
 
 func (x *ListOptionSwitchesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[35]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3506,7 +4266,7 @@ func (x *ListOptionSwitchesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListOptionSwitchesRequest.ProtoReflect.Descriptor instead.
 func (*ListOptionSwitchesRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{35}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *ListOptionSwitchesRequest) GetCampaignId() string {
@@ -3520,7 +4280,7 @@ func (x *ListOptionSwitchesRequest) GetCampaignId() string {
 type OptionSwitchEntry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Key   string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// The kind of the option (class, subclass, race, subrace, background, spell).
+	// The kind of the option (class, subclass, race, subrace, background, spell, feat).
 	Kind   TableContentKind `protobuf:"varint,2,opt,name=kind,proto3,enum=meurpg.rules.v1.TableContentKind" json:"kind,omitempty"`
 	NamePt string           `protobuf:"bytes,3,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	// True for the table's own entry ("@mesa"), false for the SRD's.
@@ -3548,7 +4308,7 @@ type OptionSwitchEntry struct {
 
 func (x *OptionSwitchEntry) Reset() {
 	*x = OptionSwitchEntry{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[36]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3560,7 +4320,7 @@ func (x *OptionSwitchEntry) String() string {
 func (*OptionSwitchEntry) ProtoMessage() {}
 
 func (x *OptionSwitchEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[36]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3573,7 +4333,7 @@ func (x *OptionSwitchEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OptionSwitchEntry.ProtoReflect.Descriptor instead.
 func (*OptionSwitchEntry) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{36}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *OptionSwitchEntry) GetKey() string {
@@ -3658,7 +4418,7 @@ type ListOptionSwitchesResponse struct {
 
 func (x *ListOptionSwitchesResponse) Reset() {
 	*x = ListOptionSwitchesResponse{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[37]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3670,7 +4430,7 @@ func (x *ListOptionSwitchesResponse) String() string {
 func (*ListOptionSwitchesResponse) ProtoMessage() {}
 
 func (x *ListOptionSwitchesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[37]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3683,7 +4443,7 @@ func (x *ListOptionSwitchesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListOptionSwitchesResponse.ProtoReflect.Descriptor instead.
 func (*ListOptionSwitchesResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{37}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *ListOptionSwitchesResponse) GetOptions() []*OptionSwitchEntry {
@@ -3712,7 +4472,7 @@ type SetOptionSwitchesRequest struct {
 
 func (x *SetOptionSwitchesRequest) Reset() {
 	*x = SetOptionSwitchesRequest{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[38]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3724,7 +4484,7 @@ func (x *SetOptionSwitchesRequest) String() string {
 func (*SetOptionSwitchesRequest) ProtoMessage() {}
 
 func (x *SetOptionSwitchesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[38]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3737,7 +4497,7 @@ func (x *SetOptionSwitchesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetOptionSwitchesRequest.ProtoReflect.Descriptor instead.
 func (*SetOptionSwitchesRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{38}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *SetOptionSwitchesRequest) GetCampaignId() string {
@@ -3770,7 +4530,7 @@ type SetOptionSwitchesResponse struct {
 
 func (x *SetOptionSwitchesResponse) Reset() {
 	*x = SetOptionSwitchesResponse{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[39]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3782,7 +4542,7 @@ func (x *SetOptionSwitchesResponse) String() string {
 func (*SetOptionSwitchesResponse) ProtoMessage() {}
 
 func (x *SetOptionSwitchesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[39]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3795,7 +4555,7 @@ func (x *SetOptionSwitchesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetOptionSwitchesResponse.ProtoReflect.Descriptor instead.
 func (*SetOptionSwitchesResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{39}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *SetOptionSwitchesResponse) GetTableRevision() int32 {
@@ -3829,7 +4589,7 @@ type GetClassTableDefaultsRequest struct {
 
 func (x *GetClassTableDefaultsRequest) Reset() {
 	*x = GetClassTableDefaultsRequest{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[40]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3841,7 +4601,7 @@ func (x *GetClassTableDefaultsRequest) String() string {
 func (*GetClassTableDefaultsRequest) ProtoMessage() {}
 
 func (x *GetClassTableDefaultsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[40]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3854,7 +4614,7 @@ func (x *GetClassTableDefaultsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetClassTableDefaultsRequest.ProtoReflect.Descriptor instead.
 func (*GetClassTableDefaultsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{40}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *GetClassTableDefaultsRequest) GetCampaignId() string {
@@ -3884,7 +4644,7 @@ type GetClassTableDefaultsResponse struct {
 
 func (x *GetClassTableDefaultsResponse) Reset() {
 	*x = GetClassTableDefaultsResponse{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[41]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3896,7 +4656,7 @@ func (x *GetClassTableDefaultsResponse) String() string {
 func (*GetClassTableDefaultsResponse) ProtoMessage() {}
 
 func (x *GetClassTableDefaultsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[41]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3909,7 +4669,7 @@ func (x *GetClassTableDefaultsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetClassTableDefaultsResponse.ProtoReflect.Descriptor instead.
 func (*GetClassTableDefaultsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{41}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *GetClassTableDefaultsResponse) GetProfBonus() []int32 {
@@ -3966,7 +4726,7 @@ type CastingTableDefault struct {
 
 func (x *CastingTableDefault) Reset() {
 	*x = CastingTableDefault{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[42]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3978,7 +4738,7 @@ func (x *CastingTableDefault) String() string {
 func (*CastingTableDefault) ProtoMessage() {}
 
 func (x *CastingTableDefault) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[42]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3991,7 +4751,7 @@ func (x *CastingTableDefault) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CastingTableDefault.ProtoReflect.Descriptor instead.
 func (*CastingTableDefault) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{42}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *CastingTableDefault) GetKind() string {
@@ -4039,7 +4799,7 @@ type GetEffectMenuRequest struct {
 
 func (x *GetEffectMenuRequest) Reset() {
 	*x = GetEffectMenuRequest{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[43]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4051,7 +4811,7 @@ func (x *GetEffectMenuRequest) String() string {
 func (*GetEffectMenuRequest) ProtoMessage() {}
 
 func (x *GetEffectMenuRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[43]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4064,7 +4824,7 @@ func (x *GetEffectMenuRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEffectMenuRequest.ProtoReflect.Descriptor instead.
 func (*GetEffectMenuRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{43}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *GetEffectMenuRequest) GetCampaignId() string {
@@ -4103,7 +4863,7 @@ type GetEffectMenuResponse struct {
 
 func (x *GetEffectMenuResponse) Reset() {
 	*x = GetEffectMenuResponse{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[44]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4115,7 +4875,7 @@ func (x *GetEffectMenuResponse) String() string {
 func (*GetEffectMenuResponse) ProtoMessage() {}
 
 func (x *GetEffectMenuResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[44]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4128,7 +4888,7 @@ func (x *GetEffectMenuResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEffectMenuResponse.ProtoReflect.Descriptor instead.
 func (*GetEffectMenuResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{44}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *GetEffectMenuResponse) GetTypes() []*EffectMenuType {
@@ -4220,14 +4980,17 @@ type EffectMenuType struct {
 	// for "tool", tool keys (`tools`); for "cantrip" and "spell", a spell list: SRD
 	// class keys (`class:wizard`) whose list the player picks from (ClassIndexes
 	// lists them). Empty `from` is any of the kind.
-	Fields        []*EffectMenuField `protobuf:"bytes,4,rep,name=fields,proto3" json:"fields,omitempty"`
+	Fields []*EffectMenuField `protobuf:"bytes,4,rep,name=fields,proto3" json:"fields,omitempty"`
+	// Only a feat has this effect (ability_increase): the editor of a feature leaves
+	// it out.
+	FeatOnly      bool `protobuf:"varint,5,opt,name=feat_only,json=featOnly,proto3" json:"feat_only,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EffectMenuType) Reset() {
 	*x = EffectMenuType{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[45]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4239,7 +5002,7 @@ func (x *EffectMenuType) String() string {
 func (*EffectMenuType) ProtoMessage() {}
 
 func (x *EffectMenuType) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[45]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4252,7 +5015,7 @@ func (x *EffectMenuType) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EffectMenuType.ProtoReflect.Descriptor instead.
 func (*EffectMenuType) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{45}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *EffectMenuType) GetType() string {
@@ -4283,6 +5046,13 @@ func (x *EffectMenuType) GetFields() []*EffectMenuField {
 	return nil
 }
 
+func (x *EffectMenuType) GetFeatOnly() bool {
+	if x != nil {
+		return x.FeatOnly
+	}
+	return false
+}
+
 // EffectMenuField is a field of an effect type.
 type EffectMenuField struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -4307,7 +5077,7 @@ type EffectMenuField struct {
 
 func (x *EffectMenuField) Reset() {
 	*x = EffectMenuField{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[46]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4319,7 +5089,7 @@ func (x *EffectMenuField) String() string {
 func (*EffectMenuField) ProtoMessage() {}
 
 func (x *EffectMenuField) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[46]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4332,7 +5102,7 @@ func (x *EffectMenuField) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EffectMenuField.ProtoReflect.Descriptor instead.
 func (*EffectMenuField) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{46}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *EffectMenuField) GetName() string {
@@ -4391,7 +5161,7 @@ type EffectMenuValue struct {
 
 func (x *EffectMenuValue) Reset() {
 	*x = EffectMenuValue{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[47]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4403,7 +5173,7 @@ func (x *EffectMenuValue) String() string {
 func (*EffectMenuValue) ProtoMessage() {}
 
 func (x *EffectMenuValue) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[47]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4416,7 +5186,7 @@ func (x *EffectMenuValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EffectMenuValue.ProtoReflect.Descriptor instead.
 func (*EffectMenuValue) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{47}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *EffectMenuValue) GetKey() string {
@@ -4445,7 +5215,9 @@ type EffectMenuList struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// "modifier_targets", "modifier_modes", "proficiency_targets",
 	// "proficiency_levels", "roll_modes", "roll_targets", "senses", "recharges",
-	// "economies", "choice_kinds", "skills", "languages", "tools" or "tag_prefixes".
+	// "economies", "choice_kinds", "skills", "languages", "tools", "tag_prefixes",
+	// "abilities" (the six abilities, for an ability_increase's `from`) or
+	// "ability_increase_amounts" (its `value`: "1" or "2").
 	Name          string             `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Values        []*EffectMenuValue `protobuf:"bytes,2,rep,name=values,proto3" json:"values,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -4454,7 +5226,7 @@ type EffectMenuList struct {
 
 func (x *EffectMenuList) Reset() {
 	*x = EffectMenuList{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[48]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4466,7 +5238,7 @@ func (x *EffectMenuList) String() string {
 func (*EffectMenuList) ProtoMessage() {}
 
 func (x *EffectMenuList) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[48]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4479,7 +5251,7 @@ func (x *EffectMenuList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EffectMenuList.ProtoReflect.Descriptor instead.
 func (*EffectMenuList) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{48}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *EffectMenuList) GetName() string {
@@ -4512,7 +5284,7 @@ type EffectOptionSet struct {
 
 func (x *EffectOptionSet) Reset() {
 	*x = EffectOptionSet{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[49]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4524,7 +5296,7 @@ func (x *EffectOptionSet) String() string {
 func (*EffectOptionSet) ProtoMessage() {}
 
 func (x *EffectOptionSet) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[49]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4537,7 +5309,7 @@ func (x *EffectOptionSet) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EffectOptionSet.ProtoReflect.Descriptor instead.
 func (*EffectOptionSet) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{49}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *EffectOptionSet) GetKey() string {
@@ -4583,7 +5355,7 @@ type FormulaHelper struct {
 
 func (x *FormulaHelper) Reset() {
 	*x = FormulaHelper{}
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[50]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4595,7 +5367,7 @@ func (x *FormulaHelper) String() string {
 func (*FormulaHelper) ProtoMessage() {}
 
 func (x *FormulaHelper) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[50]
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4608,7 +5380,7 @@ func (x *FormulaHelper) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FormulaHelper.ProtoReflect.Descriptor instead.
 func (*FormulaHelper) Descriptor() ([]byte, []int) {
-	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{50}
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *FormulaHelper) GetCall() string {
@@ -4636,7 +5408,7 @@ var File_meurpg_rules_v1_table_content_proto protoreflect.FileDescriptor
 
 const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\n" +
-	"#meurpg/rules/v1/table_content.proto\x12\x0fmeurpg.rules.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"\xb9\x06\n" +
+	"#meurpg/rules/v1/table_content.proto\x12\x0fmeurpg.rules.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"\xf6\x06\n" +
 	"\n" +
 	"TableEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x125\n" +
@@ -4661,7 +5433,9 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\rtable_subrace\x18\r \x01(\v2\x1d.meurpg.rules.v1.TableSubraceH\x00R\ftableSubrace\x12M\n" +
 	"\x10table_background\x18\x0e \x01(\v2 .meurpg.rules.v1.TableBackgroundH\x00R\x0ftableBackground\x12>\n" +
 	"\vtable_spell\x18\x0f \x01(\v2\x1b.meurpg.rules.v1.TableSpellH\x00R\n" +
-	"tableSpellB\x06\n" +
+	"tableSpell\x12;\n" +
+	"\n" +
+	"table_feat\x18\x11 \x01(\v2\x1a.meurpg.rules.v1.TableFeatH\x00R\ttableFeatB\x06\n" +
 	"\x04body\"\xf9\x03\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
@@ -4690,6 +5464,11 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +
 	"\adesc_pt\x18\x03 \x03(\tR\x06descPt\x126\n" +
+	"\aeffects\x18\x04 \x03(\v2\x1c.meurpg.rules.v1.TableEffectR\aeffects\"\xbc\x01\n" +
+	"\tTableFeat\x12\x17\n" +
+	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x17\n" +
+	"\adesc_pt\x18\x02 \x03(\tR\x06descPt\x12E\n" +
+	"\fprerequisite\x18\x03 \x01(\v2!.meurpg.rules.v1.FeatPrerequisiteR\fprerequisite\x126\n" +
 	"\aeffects\x18\x04 \x03(\v2\x1c.meurpg.rules.v1.TableEffectR\aeffects\"\xf1\x01\n" +
 	"\fTableCasting\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x122\n" +
@@ -4848,7 +5627,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x18ListTableEntriesResponse\x125\n" +
 	"\aentries\x18\x01 \x03(\v2\x1b.meurpg.rules.v1.TableEntryR\aentries\x12%\n" +
 	"\x0etable_revision\x18\x02 \x01(\x05R\rtableRevision\x12'\n" +
-	"\x0fcontent_version\x18\x03 \x01(\tR\x0econtentVersion\"\x86\x04\n" +
+	"\x0fcontent_version\x18\x03 \x01(\tR\x0econtentVersion\"\xc3\x04\n" +
 	"\x17CreateTableEntryRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12>\n" +
@@ -4861,12 +5640,14 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\rtable_subrace\x18\r \x01(\v2\x1d.meurpg.rules.v1.TableSubraceH\x00R\ftableSubrace\x12M\n" +
 	"\x10table_background\x18\x0e \x01(\v2 .meurpg.rules.v1.TableBackgroundH\x00R\x0ftableBackground\x12>\n" +
 	"\vtable_spell\x18\x0f \x01(\v2\x1b.meurpg.rules.v1.TableSpellH\x00R\n" +
-	"tableSpell\x12'\n" +
+	"tableSpell\x12;\n" +
+	"\n" +
+	"table_feat\x18\x11 \x01(\v2\x1a.meurpg.rules.v1.TableFeatH\x00R\ttableFeat\x12'\n" +
 	"\x0fidempotency_key\x18\x10 \x01(\tR\x0eidempotencyKeyB\x06\n" +
 	"\x04body\"t\n" +
 	"\x18CreateTableEntryResponse\x121\n" +
 	"\x05entry\x18\x01 \x01(\v2\x1b.meurpg.rules.v1.TableEntryR\x05entry\x12%\n" +
-	"\x0etable_revision\x18\x02 \x01(\x05R\rtableRevision\"\x9c\x04\n" +
+	"\x0etable_revision\x18\x02 \x01(\x05R\rtableRevision\"\xd9\x04\n" +
 	"\x17UpdateTableEntryRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x10\n" +
@@ -4881,7 +5662,9 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\rtable_subrace\x18\r \x01(\v2\x1d.meurpg.rules.v1.TableSubraceH\x00R\ftableSubrace\x12M\n" +
 	"\x10table_background\x18\x0e \x01(\v2 .meurpg.rules.v1.TableBackgroundH\x00R\x0ftableBackground\x12>\n" +
 	"\vtable_spell\x18\x0f \x01(\v2\x1b.meurpg.rules.v1.TableSpellH\x00R\n" +
-	"tableSpellB\x06\n" +
+	"tableSpell\x12;\n" +
+	"\n" +
+	"table_feat\x18\x11 \x01(\v2\x1a.meurpg.rules.v1.TableFeatH\x00R\ttableFeatB\x06\n" +
 	"\x04body\"\xc9\x01\n" +
 	"\x18UpdateTableEntryResponse\x121\n" +
 	"\x05entry\x18\x01 \x01(\v2\x1b.meurpg.rules.v1.TableEntryR\x05entry\x12%\n" +
@@ -4900,7 +5683,45 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x03key\x18\x02 \x01(\tR\x03key\"w\n" +
 	"\x1bUnarchiveTableEntryResponse\x121\n" +
 	"\x05entry\x18\x01 \x01(\v2\x1b.meurpg.rules.v1.TableEntryR\x05entry\x12%\n" +
-	"\x0etable_revision\x18\x02 \x01(\x05R\rtableRevision\"2\n" +
+	"\x0etable_revision\x18\x02 \x01(\x05R\rtableRevision\"\x8f\x01\n" +
+	"\x10TableContentPack\x12\x16\n" +
+	"\x06format\x18\x01 \x01(\tR\x06format\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\x05R\aversion\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x125\n" +
+	"\aentries\x18\x04 \x03(\v2\x1b.meurpg.rules.v1.TableEntryR\aentries\"<\n" +
+	"\x19ExportTableContentRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\"S\n" +
+	"\x1aExportTableContentResponse\x125\n" +
+	"\x04pack\x18\x01 \x01(\v2!.meurpg.rules.v1.TableContentPackR\x04pack\"\xef\x01\n" +
+	"\x19ImportTableContentRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x125\n" +
+	"\x04pack\x18\x02 \x01(\v2!.meurpg.rules.v1.TableContentPackR\x04pack\x124\n" +
+	"\x04mode\x18\x03 \x01(\x0e2 .meurpg.rules.v1.TableImportModeR\x04mode\x12'\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\x12\x1b\n" +
+	"\tpack_json\x18\x05 \x01(\fR\bpackJson\"\x9f\x02\n" +
+	"\x10TableImportEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x125\n" +
+	"\x04kind\x18\x02 \x01(\x0e2!.meurpg.rules.v1.TableContentKindR\x04kind\x12\x17\n" +
+	"\aname_pt\x18\x03 \x01(\tR\x06namePt\x12:\n" +
+	"\x06status\x18\x04 \x01(\x0e2\".meurpg.rules.v1.TableImportStatusR\x06status\x12%\n" +
+	"\x0echanged_fields\x18\x05 \x03(\tR\rchangedFields\x12F\n" +
+	"\n" +
+	"violations\x18\x06 \x03(\v2&.meurpg.rules.v1.TableContentViolationR\n" +
+	"violations\"w\n" +
+	"\x11TableImportTotals\x12\x10\n" +
+	"\x03new\x18\x01 \x01(\x05R\x03new\x12\x18\n" +
+	"\aupdated\x18\x02 \x01(\x05R\aupdated\x12\x1c\n" +
+	"\tunchanged\x18\x03 \x01(\x05R\tunchanged\x12\x18\n" +
+	"\arefused\x18\x04 \x01(\x05R\arefused\"\xe4\x02\n" +
+	"\x1aImportTableContentResponse\x124\n" +
+	"\x04mode\x18\x01 \x01(\x0e2 .meurpg.rules.v1.TableImportModeR\x04mode\x12\x1b\n" +
+	"\tpack_name\x18\x02 \x01(\tR\bpackName\x12;\n" +
+	"\aentries\x18\x03 \x03(\v2!.meurpg.rules.v1.TableImportEntryR\aentries\x12:\n" +
+	"\x06totals\x18\x04 \x01(\v2\".meurpg.rules.v1.TableImportTotalsR\x06totals\x12%\n" +
+	"\x0etable_revision\x18\x05 \x01(\x05R\rtableRevision\x12S\n" +
+	"\x13affected_characters\x18\x06 \x03(\v2\".meurpg.rules.v1.AffectedCharacterR\x12affectedCharacters\"2\n" +
 	"\fOptionSwitch\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x10\n" +
 	"\x03off\x18\x02 \x01(\bR\x03off\"<\n" +
@@ -4963,12 +5784,13 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x13max_tags_per_effect\x18\b \x01(\x05R\x10maxTagsPerEffect\x12(\n" +
 	"\x10extra_attack_min\x18\t \x01(\x05R\x0eextraAttackMin\x12(\n" +
 	"\x10extra_attack_max\x18\n" +
-	" \x01(\x05R\x0eextraAttackMax\"\x90\x01\n" +
+	" \x01(\x05R\x0eextraAttackMax\"\xad\x01\n" +
 	"\x0eEffectMenuType\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +
 	"\ahint_pt\x18\x03 \x01(\tR\x06hintPt\x128\n" +
-	"\x06fields\x18\x04 \x03(\v2 .meurpg.rules.v1.EffectMenuFieldR\x06fields\"\x8d\x01\n" +
+	"\x06fields\x18\x04 \x03(\v2 .meurpg.rules.v1.EffectMenuFieldR\x06fields\x12\x1b\n" +
+	"\tfeat_only\x18\x05 \x01(\bR\bfeatOnly\"\x8d\x01\n" +
 	"\x0fEffectMenuField\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
 	"\brequired\x18\x02 \x01(\bR\brequired\x12\x12\n" +
@@ -4991,7 +5813,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\rFormulaHelper\x12\x12\n" +
 	"\x04call\x18\x01 \x01(\tR\x04call\x12\x18\n" +
 	"\areturns\x18\x02 \x01(\tR\areturns\x12\x17\n" +
-	"\ahint_pt\x18\x03 \x01(\tR\x06hintPt*\xf3\x01\n" +
+	"\ahint_pt\x18\x03 \x01(\tR\x06hintPt*\x90\x02\n" +
 	"\x10TableContentKind\x12\"\n" +
 	"\x1eTABLE_CONTENT_KIND_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18TABLE_CONTENT_KIND_CLASS\x10\x01\x12\x1f\n" +
@@ -4999,7 +5821,8 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x17TABLE_CONTENT_KIND_RACE\x10\x03\x12\x1e\n" +
 	"\x1aTABLE_CONTENT_KIND_SUBRACE\x10\x04\x12!\n" +
 	"\x1dTABLE_CONTENT_KIND_BACKGROUND\x10\x05\x12\x1c\n" +
-	"\x18TABLE_CONTENT_KIND_SPELL\x10\x06*\xd0\x01\n" +
+	"\x18TABLE_CONTENT_KIND_SPELL\x10\x06\x12\x1b\n" +
+	"\x17TABLE_CONTENT_KIND_FEAT\x10\a*\xd0\x01\n" +
 	"\x14TableSpellTargetKind\x12'\n" +
 	"#TABLE_SPELL_TARGET_KIND_UNSPECIFIED\x10\x00\x12$\n" +
 	" TABLE_SPELL_TARGET_KIND_CREATURE\x10\x01\x12%\n" +
@@ -5017,13 +5840,25 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"(TABLE_CONTENT_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"TABLE_CONTENT_BLOCKED_REASON_STALE\x10\x01\x12)\n" +
 	"%TABLE_CONTENT_BLOCKED_REASON_ARCHIVED\x10\x02\x12-\n" +
-	")TABLE_CONTENT_BLOCKED_REASON_NOT_ARCHIVED\x10\x032\xff\a\n" +
+	")TABLE_CONTENT_BLOCKED_REASON_NOT_ARCHIVED\x10\x03*p\n" +
+	"\x0fTableImportMode\x12!\n" +
+	"\x1dTABLE_IMPORT_MODE_UNSPECIFIED\x10\x00\x12\x1d\n" +
+	"\x19TABLE_IMPORT_MODE_PREVIEW\x10\x01\x12\x1b\n" +
+	"\x17TABLE_IMPORT_MODE_APPLY\x10\x02*\xba\x01\n" +
+	"\x11TableImportStatus\x12#\n" +
+	"\x1fTABLE_IMPORT_STATUS_UNSPECIFIED\x10\x00\x12\x1b\n" +
+	"\x17TABLE_IMPORT_STATUS_NEW\x10\x01\x12\x1f\n" +
+	"\x1bTABLE_IMPORT_STATUS_UPDATED\x10\x02\x12!\n" +
+	"\x1dTABLE_IMPORT_STATUS_UNCHANGED\x10\x03\x12\x1f\n" +
+	"\x1bTABLE_IMPORT_STATUS_REFUSED\x10\x042\xe4\t\n" +
 	"\x13TableContentService\x12l\n" +
 	"\x10ListTableEntries\x12(.meurpg.rules.v1.ListTableEntriesRequest\x1a).meurpg.rules.v1.ListTableEntriesResponse\"\x03\x90\x02\x02\x12i\n" +
 	"\x10CreateTableEntry\x12(.meurpg.rules.v1.CreateTableEntryRequest\x1a).meurpg.rules.v1.CreateTableEntryResponse\"\x00\x12i\n" +
 	"\x10UpdateTableEntry\x12(.meurpg.rules.v1.UpdateTableEntryRequest\x1a).meurpg.rules.v1.UpdateTableEntryResponse\"\x00\x12l\n" +
 	"\x11ArchiveTableEntry\x12).meurpg.rules.v1.ArchiveTableEntryRequest\x1a*.meurpg.rules.v1.ArchiveTableEntryResponse\"\x00\x12r\n" +
 	"\x13UnarchiveTableEntry\x12+.meurpg.rules.v1.UnarchiveTableEntryRequest\x1a,.meurpg.rules.v1.UnarchiveTableEntryResponse\"\x00\x12r\n" +
+	"\x12ExportTableContent\x12*.meurpg.rules.v1.ExportTableContentRequest\x1a+.meurpg.rules.v1.ExportTableContentResponse\"\x03\x90\x02\x02\x12o\n" +
+	"\x12ImportTableContent\x12*.meurpg.rules.v1.ImportTableContentRequest\x1a+.meurpg.rules.v1.ImportTableContentResponse\"\x00\x12r\n" +
 	"\x12ListOptionSwitches\x12*.meurpg.rules.v1.ListOptionSwitchesRequest\x1a+.meurpg.rules.v1.ListOptionSwitchesResponse\"\x03\x90\x02\x02\x12l\n" +
 	"\x11SetOptionSwitches\x12).meurpg.rules.v1.SetOptionSwitchesRequest\x1a*.meurpg.rules.v1.SetOptionSwitchesResponse\"\x00\x12{\n" +
 	"\x15GetClassTableDefaults\x12-.meurpg.rules.v1.GetClassTableDefaultsRequest\x1a..meurpg.rules.v1.GetClassTableDefaultsResponse\"\x03\x90\x02\x02\x12c\n" +
@@ -5042,171 +5877,202 @@ func file_meurpg_rules_v1_table_content_proto_rawDescGZIP() []byte {
 	return file_meurpg_rules_v1_table_content_proto_rawDescData
 }
 
-var file_meurpg_rules_v1_table_content_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_meurpg_rules_v1_table_content_proto_msgTypes = make([]protoimpl.MessageInfo, 51)
+var file_meurpg_rules_v1_table_content_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_meurpg_rules_v1_table_content_proto_msgTypes = make([]protoimpl.MessageInfo, 59)
 var file_meurpg_rules_v1_table_content_proto_goTypes = []any{
 	(TableContentKind)(0),                 // 0: meurpg.rules.v1.TableContentKind
 	(TableSpellTargetKind)(0),             // 1: meurpg.rules.v1.TableSpellTargetKind
 	(TableAreaShape)(0),                   // 2: meurpg.rules.v1.TableAreaShape
 	(TableContentBlockedReason)(0),        // 3: meurpg.rules.v1.TableContentBlockedReason
-	(*TableEntry)(nil),                    // 4: meurpg.rules.v1.TableEntry
-	(*TableEffect)(nil),                   // 5: meurpg.rules.v1.TableEffect
-	(*TableFeature)(nil),                  // 6: meurpg.rules.v1.TableFeature
-	(*TableCasting)(nil),                  // 7: meurpg.rules.v1.TableCasting
-	(*TableClassLevel)(nil),               // 8: meurpg.rules.v1.TableClassLevel
-	(*TableClass)(nil),                    // 9: meurpg.rules.v1.TableClass
-	(*TableAlwaysPrepared)(nil),           // 10: meurpg.rules.v1.TableAlwaysPrepared
-	(*TableSubclassLevel)(nil),            // 11: meurpg.rules.v1.TableSubclassLevel
-	(*TableSubclass)(nil),                 // 12: meurpg.rules.v1.TableSubclass
-	(*TableRace)(nil),                     // 13: meurpg.rules.v1.TableRace
-	(*TableSubrace)(nil),                  // 14: meurpg.rules.v1.TableSubrace
-	(*TableBackground)(nil),               // 15: meurpg.rules.v1.TableBackground
-	(*TableSpellTarget)(nil),              // 16: meurpg.rules.v1.TableSpellTarget
-	(*TableSpellCastingTime)(nil),         // 17: meurpg.rules.v1.TableSpellCastingTime
-	(*TableSpellRange)(nil),               // 18: meurpg.rules.v1.TableSpellRange
-	(*TableSpellDuration)(nil),            // 19: meurpg.rules.v1.TableSpellDuration
-	(*TableSpellComponents)(nil),          // 20: meurpg.rules.v1.TableSpellComponents
-	(*TableSpellDamage)(nil),              // 21: meurpg.rules.v1.TableSpellDamage
-	(*TableSpellHeal)(nil),                // 22: meurpg.rules.v1.TableSpellHeal
-	(*TableSpell)(nil),                    // 23: meurpg.rules.v1.TableSpell
-	(*TableContentViolation)(nil),         // 24: meurpg.rules.v1.TableContentViolation
-	(*TableContentRefusal)(nil),           // 25: meurpg.rules.v1.TableContentRefusal
-	(*TableContentBlocked)(nil),           // 26: meurpg.rules.v1.TableContentBlocked
-	(*AffectedCharacter)(nil),             // 27: meurpg.rules.v1.AffectedCharacter
-	(*ListTableEntriesRequest)(nil),       // 28: meurpg.rules.v1.ListTableEntriesRequest
-	(*ListTableEntriesResponse)(nil),      // 29: meurpg.rules.v1.ListTableEntriesResponse
-	(*CreateTableEntryRequest)(nil),       // 30: meurpg.rules.v1.CreateTableEntryRequest
-	(*CreateTableEntryResponse)(nil),      // 31: meurpg.rules.v1.CreateTableEntryResponse
-	(*UpdateTableEntryRequest)(nil),       // 32: meurpg.rules.v1.UpdateTableEntryRequest
-	(*UpdateTableEntryResponse)(nil),      // 33: meurpg.rules.v1.UpdateTableEntryResponse
-	(*ArchiveTableEntryRequest)(nil),      // 34: meurpg.rules.v1.ArchiveTableEntryRequest
-	(*ArchiveTableEntryResponse)(nil),     // 35: meurpg.rules.v1.ArchiveTableEntryResponse
-	(*UnarchiveTableEntryRequest)(nil),    // 36: meurpg.rules.v1.UnarchiveTableEntryRequest
-	(*UnarchiveTableEntryResponse)(nil),   // 37: meurpg.rules.v1.UnarchiveTableEntryResponse
-	(*OptionSwitch)(nil),                  // 38: meurpg.rules.v1.OptionSwitch
-	(*ListOptionSwitchesRequest)(nil),     // 39: meurpg.rules.v1.ListOptionSwitchesRequest
-	(*OptionSwitchEntry)(nil),             // 40: meurpg.rules.v1.OptionSwitchEntry
-	(*ListOptionSwitchesResponse)(nil),    // 41: meurpg.rules.v1.ListOptionSwitchesResponse
-	(*SetOptionSwitchesRequest)(nil),      // 42: meurpg.rules.v1.SetOptionSwitchesRequest
-	(*SetOptionSwitchesResponse)(nil),     // 43: meurpg.rules.v1.SetOptionSwitchesResponse
-	(*GetClassTableDefaultsRequest)(nil),  // 44: meurpg.rules.v1.GetClassTableDefaultsRequest
-	(*GetClassTableDefaultsResponse)(nil), // 45: meurpg.rules.v1.GetClassTableDefaultsResponse
-	(*CastingTableDefault)(nil),           // 46: meurpg.rules.v1.CastingTableDefault
-	(*GetEffectMenuRequest)(nil),          // 47: meurpg.rules.v1.GetEffectMenuRequest
-	(*GetEffectMenuResponse)(nil),         // 48: meurpg.rules.v1.GetEffectMenuResponse
-	(*EffectMenuType)(nil),                // 49: meurpg.rules.v1.EffectMenuType
-	(*EffectMenuField)(nil),               // 50: meurpg.rules.v1.EffectMenuField
-	(*EffectMenuValue)(nil),               // 51: meurpg.rules.v1.EffectMenuValue
-	(*EffectMenuList)(nil),                // 52: meurpg.rules.v1.EffectMenuList
-	(*EffectOptionSet)(nil),               // 53: meurpg.rules.v1.EffectOptionSet
-	(*FormulaHelper)(nil),                 // 54: meurpg.rules.v1.FormulaHelper
-	(*timestamppb.Timestamp)(nil),         // 55: google.protobuf.Timestamp
-	(Ability)(0),                          // 56: meurpg.rules.v1.Ability
-	(*AbilityScores)(nil),                 // 57: meurpg.rules.v1.AbilityScores
-	(CastingTimeUnit)(0),                  // 58: meurpg.rules.v1.CastingTimeUnit
-	(SpellRangeKind)(0),                   // 59: meurpg.rules.v1.SpellRangeKind
-	(SpellDurationKind)(0),                // 60: meurpg.rules.v1.SpellDurationKind
-	(SpellDurationUnit)(0),                // 61: meurpg.rules.v1.SpellDurationUnit
-	(*SpellSave)(nil),                     // 62: meurpg.rules.v1.SpellSave
+	(TableImportMode)(0),                  // 4: meurpg.rules.v1.TableImportMode
+	(TableImportStatus)(0),                // 5: meurpg.rules.v1.TableImportStatus
+	(*TableEntry)(nil),                    // 6: meurpg.rules.v1.TableEntry
+	(*TableEffect)(nil),                   // 7: meurpg.rules.v1.TableEffect
+	(*TableFeature)(nil),                  // 8: meurpg.rules.v1.TableFeature
+	(*TableFeat)(nil),                     // 9: meurpg.rules.v1.TableFeat
+	(*TableCasting)(nil),                  // 10: meurpg.rules.v1.TableCasting
+	(*TableClassLevel)(nil),               // 11: meurpg.rules.v1.TableClassLevel
+	(*TableClass)(nil),                    // 12: meurpg.rules.v1.TableClass
+	(*TableAlwaysPrepared)(nil),           // 13: meurpg.rules.v1.TableAlwaysPrepared
+	(*TableSubclassLevel)(nil),            // 14: meurpg.rules.v1.TableSubclassLevel
+	(*TableSubclass)(nil),                 // 15: meurpg.rules.v1.TableSubclass
+	(*TableRace)(nil),                     // 16: meurpg.rules.v1.TableRace
+	(*TableSubrace)(nil),                  // 17: meurpg.rules.v1.TableSubrace
+	(*TableBackground)(nil),               // 18: meurpg.rules.v1.TableBackground
+	(*TableSpellTarget)(nil),              // 19: meurpg.rules.v1.TableSpellTarget
+	(*TableSpellCastingTime)(nil),         // 20: meurpg.rules.v1.TableSpellCastingTime
+	(*TableSpellRange)(nil),               // 21: meurpg.rules.v1.TableSpellRange
+	(*TableSpellDuration)(nil),            // 22: meurpg.rules.v1.TableSpellDuration
+	(*TableSpellComponents)(nil),          // 23: meurpg.rules.v1.TableSpellComponents
+	(*TableSpellDamage)(nil),              // 24: meurpg.rules.v1.TableSpellDamage
+	(*TableSpellHeal)(nil),                // 25: meurpg.rules.v1.TableSpellHeal
+	(*TableSpell)(nil),                    // 26: meurpg.rules.v1.TableSpell
+	(*TableContentViolation)(nil),         // 27: meurpg.rules.v1.TableContentViolation
+	(*TableContentRefusal)(nil),           // 28: meurpg.rules.v1.TableContentRefusal
+	(*TableContentBlocked)(nil),           // 29: meurpg.rules.v1.TableContentBlocked
+	(*AffectedCharacter)(nil),             // 30: meurpg.rules.v1.AffectedCharacter
+	(*ListTableEntriesRequest)(nil),       // 31: meurpg.rules.v1.ListTableEntriesRequest
+	(*ListTableEntriesResponse)(nil),      // 32: meurpg.rules.v1.ListTableEntriesResponse
+	(*CreateTableEntryRequest)(nil),       // 33: meurpg.rules.v1.CreateTableEntryRequest
+	(*CreateTableEntryResponse)(nil),      // 34: meurpg.rules.v1.CreateTableEntryResponse
+	(*UpdateTableEntryRequest)(nil),       // 35: meurpg.rules.v1.UpdateTableEntryRequest
+	(*UpdateTableEntryResponse)(nil),      // 36: meurpg.rules.v1.UpdateTableEntryResponse
+	(*ArchiveTableEntryRequest)(nil),      // 37: meurpg.rules.v1.ArchiveTableEntryRequest
+	(*ArchiveTableEntryResponse)(nil),     // 38: meurpg.rules.v1.ArchiveTableEntryResponse
+	(*UnarchiveTableEntryRequest)(nil),    // 39: meurpg.rules.v1.UnarchiveTableEntryRequest
+	(*UnarchiveTableEntryResponse)(nil),   // 40: meurpg.rules.v1.UnarchiveTableEntryResponse
+	(*TableContentPack)(nil),              // 41: meurpg.rules.v1.TableContentPack
+	(*ExportTableContentRequest)(nil),     // 42: meurpg.rules.v1.ExportTableContentRequest
+	(*ExportTableContentResponse)(nil),    // 43: meurpg.rules.v1.ExportTableContentResponse
+	(*ImportTableContentRequest)(nil),     // 44: meurpg.rules.v1.ImportTableContentRequest
+	(*TableImportEntry)(nil),              // 45: meurpg.rules.v1.TableImportEntry
+	(*TableImportTotals)(nil),             // 46: meurpg.rules.v1.TableImportTotals
+	(*ImportTableContentResponse)(nil),    // 47: meurpg.rules.v1.ImportTableContentResponse
+	(*OptionSwitch)(nil),                  // 48: meurpg.rules.v1.OptionSwitch
+	(*ListOptionSwitchesRequest)(nil),     // 49: meurpg.rules.v1.ListOptionSwitchesRequest
+	(*OptionSwitchEntry)(nil),             // 50: meurpg.rules.v1.OptionSwitchEntry
+	(*ListOptionSwitchesResponse)(nil),    // 51: meurpg.rules.v1.ListOptionSwitchesResponse
+	(*SetOptionSwitchesRequest)(nil),      // 52: meurpg.rules.v1.SetOptionSwitchesRequest
+	(*SetOptionSwitchesResponse)(nil),     // 53: meurpg.rules.v1.SetOptionSwitchesResponse
+	(*GetClassTableDefaultsRequest)(nil),  // 54: meurpg.rules.v1.GetClassTableDefaultsRequest
+	(*GetClassTableDefaultsResponse)(nil), // 55: meurpg.rules.v1.GetClassTableDefaultsResponse
+	(*CastingTableDefault)(nil),           // 56: meurpg.rules.v1.CastingTableDefault
+	(*GetEffectMenuRequest)(nil),          // 57: meurpg.rules.v1.GetEffectMenuRequest
+	(*GetEffectMenuResponse)(nil),         // 58: meurpg.rules.v1.GetEffectMenuResponse
+	(*EffectMenuType)(nil),                // 59: meurpg.rules.v1.EffectMenuType
+	(*EffectMenuField)(nil),               // 60: meurpg.rules.v1.EffectMenuField
+	(*EffectMenuValue)(nil),               // 61: meurpg.rules.v1.EffectMenuValue
+	(*EffectMenuList)(nil),                // 62: meurpg.rules.v1.EffectMenuList
+	(*EffectOptionSet)(nil),               // 63: meurpg.rules.v1.EffectOptionSet
+	(*FormulaHelper)(nil),                 // 64: meurpg.rules.v1.FormulaHelper
+	(*timestamppb.Timestamp)(nil),         // 65: google.protobuf.Timestamp
+	(*FeatPrerequisite)(nil),              // 66: meurpg.rules.v1.FeatPrerequisite
+	(Ability)(0),                          // 67: meurpg.rules.v1.Ability
+	(*AbilityScores)(nil),                 // 68: meurpg.rules.v1.AbilityScores
+	(CastingTimeUnit)(0),                  // 69: meurpg.rules.v1.CastingTimeUnit
+	(SpellRangeKind)(0),                   // 70: meurpg.rules.v1.SpellRangeKind
+	(SpellDurationKind)(0),                // 71: meurpg.rules.v1.SpellDurationKind
+	(SpellDurationUnit)(0),                // 72: meurpg.rules.v1.SpellDurationUnit
+	(*SpellSave)(nil),                     // 73: meurpg.rules.v1.SpellSave
 }
 var file_meurpg_rules_v1_table_content_proto_depIdxs = []int32{
-	0,  // 0: meurpg.rules.v1.TableEntry.kind:type_name -> meurpg.rules.v1.TableContentKind
-	55, // 1: meurpg.rules.v1.TableEntry.created_at:type_name -> google.protobuf.Timestamp
-	55, // 2: meurpg.rules.v1.TableEntry.updated_at:type_name -> google.protobuf.Timestamp
-	55, // 3: meurpg.rules.v1.TableEntry.archived_at:type_name -> google.protobuf.Timestamp
-	9,  // 4: meurpg.rules.v1.TableEntry.table_class:type_name -> meurpg.rules.v1.TableClass
-	12, // 5: meurpg.rules.v1.TableEntry.table_subclass:type_name -> meurpg.rules.v1.TableSubclass
-	13, // 6: meurpg.rules.v1.TableEntry.table_race:type_name -> meurpg.rules.v1.TableRace
-	14, // 7: meurpg.rules.v1.TableEntry.table_subrace:type_name -> meurpg.rules.v1.TableSubrace
-	15, // 8: meurpg.rules.v1.TableEntry.table_background:type_name -> meurpg.rules.v1.TableBackground
-	23, // 9: meurpg.rules.v1.TableEntry.table_spell:type_name -> meurpg.rules.v1.TableSpell
-	5,  // 10: meurpg.rules.v1.TableFeature.effects:type_name -> meurpg.rules.v1.TableEffect
-	56, // 11: meurpg.rules.v1.TableCasting.ability:type_name -> meurpg.rules.v1.Ability
-	6,  // 12: meurpg.rules.v1.TableClassLevel.features:type_name -> meurpg.rules.v1.TableFeature
-	56, // 13: meurpg.rules.v1.TableClass.saving_throws:type_name -> meurpg.rules.v1.Ability
-	57, // 14: meurpg.rules.v1.TableClass.minimums:type_name -> meurpg.rules.v1.AbilityScores
-	57, // 15: meurpg.rules.v1.TableClass.any_of:type_name -> meurpg.rules.v1.AbilityScores
-	7,  // 16: meurpg.rules.v1.TableClass.casting:type_name -> meurpg.rules.v1.TableCasting
-	8,  // 17: meurpg.rules.v1.TableClass.levels:type_name -> meurpg.rules.v1.TableClassLevel
-	6,  // 18: meurpg.rules.v1.TableSubclassLevel.features:type_name -> meurpg.rules.v1.TableFeature
-	11, // 19: meurpg.rules.v1.TableSubclass.levels:type_name -> meurpg.rules.v1.TableSubclassLevel
-	7,  // 20: meurpg.rules.v1.TableSubclass.casting:type_name -> meurpg.rules.v1.TableCasting
-	10, // 21: meurpg.rules.v1.TableSubclass.always_prepared:type_name -> meurpg.rules.v1.TableAlwaysPrepared
-	57, // 22: meurpg.rules.v1.TableRace.ability_bonuses:type_name -> meurpg.rules.v1.AbilityScores
-	6,  // 23: meurpg.rules.v1.TableRace.traits:type_name -> meurpg.rules.v1.TableFeature
-	57, // 24: meurpg.rules.v1.TableSubrace.ability_bonuses:type_name -> meurpg.rules.v1.AbilityScores
-	6,  // 25: meurpg.rules.v1.TableSubrace.traits:type_name -> meurpg.rules.v1.TableFeature
-	6,  // 26: meurpg.rules.v1.TableBackground.feature:type_name -> meurpg.rules.v1.TableFeature
-	1,  // 27: meurpg.rules.v1.TableSpellTarget.kind:type_name -> meurpg.rules.v1.TableSpellTargetKind
-	2,  // 28: meurpg.rules.v1.TableSpellTarget.shape:type_name -> meurpg.rules.v1.TableAreaShape
-	58, // 29: meurpg.rules.v1.TableSpellCastingTime.unit:type_name -> meurpg.rules.v1.CastingTimeUnit
-	59, // 30: meurpg.rules.v1.TableSpellRange.kind:type_name -> meurpg.rules.v1.SpellRangeKind
-	60, // 31: meurpg.rules.v1.TableSpellDuration.kind:type_name -> meurpg.rules.v1.SpellDurationKind
-	61, // 32: meurpg.rules.v1.TableSpellDuration.unit:type_name -> meurpg.rules.v1.SpellDurationUnit
-	17, // 33: meurpg.rules.v1.TableSpell.casting_time:type_name -> meurpg.rules.v1.TableSpellCastingTime
-	18, // 34: meurpg.rules.v1.TableSpell.range:type_name -> meurpg.rules.v1.TableSpellRange
-	19, // 35: meurpg.rules.v1.TableSpell.duration:type_name -> meurpg.rules.v1.TableSpellDuration
-	20, // 36: meurpg.rules.v1.TableSpell.components:type_name -> meurpg.rules.v1.TableSpellComponents
-	16, // 37: meurpg.rules.v1.TableSpell.target:type_name -> meurpg.rules.v1.TableSpellTarget
-	62, // 38: meurpg.rules.v1.TableSpell.save:type_name -> meurpg.rules.v1.SpellSave
-	21, // 39: meurpg.rules.v1.TableSpell.damage:type_name -> meurpg.rules.v1.TableSpellDamage
-	22, // 40: meurpg.rules.v1.TableSpell.heal:type_name -> meurpg.rules.v1.TableSpellHeal
-	24, // 41: meurpg.rules.v1.TableContentRefusal.violations:type_name -> meurpg.rules.v1.TableContentViolation
-	3,  // 42: meurpg.rules.v1.TableContentBlocked.reason:type_name -> meurpg.rules.v1.TableContentBlockedReason
-	4,  // 43: meurpg.rules.v1.ListTableEntriesResponse.entries:type_name -> meurpg.rules.v1.TableEntry
-	9,  // 44: meurpg.rules.v1.CreateTableEntryRequest.table_class:type_name -> meurpg.rules.v1.TableClass
-	12, // 45: meurpg.rules.v1.CreateTableEntryRequest.table_subclass:type_name -> meurpg.rules.v1.TableSubclass
-	13, // 46: meurpg.rules.v1.CreateTableEntryRequest.table_race:type_name -> meurpg.rules.v1.TableRace
-	14, // 47: meurpg.rules.v1.CreateTableEntryRequest.table_subrace:type_name -> meurpg.rules.v1.TableSubrace
-	15, // 48: meurpg.rules.v1.CreateTableEntryRequest.table_background:type_name -> meurpg.rules.v1.TableBackground
-	23, // 49: meurpg.rules.v1.CreateTableEntryRequest.table_spell:type_name -> meurpg.rules.v1.TableSpell
-	4,  // 50: meurpg.rules.v1.CreateTableEntryResponse.entry:type_name -> meurpg.rules.v1.TableEntry
-	9,  // 51: meurpg.rules.v1.UpdateTableEntryRequest.table_class:type_name -> meurpg.rules.v1.TableClass
-	12, // 52: meurpg.rules.v1.UpdateTableEntryRequest.table_subclass:type_name -> meurpg.rules.v1.TableSubclass
-	13, // 53: meurpg.rules.v1.UpdateTableEntryRequest.table_race:type_name -> meurpg.rules.v1.TableRace
-	14, // 54: meurpg.rules.v1.UpdateTableEntryRequest.table_subrace:type_name -> meurpg.rules.v1.TableSubrace
-	15, // 55: meurpg.rules.v1.UpdateTableEntryRequest.table_background:type_name -> meurpg.rules.v1.TableBackground
-	23, // 56: meurpg.rules.v1.UpdateTableEntryRequest.table_spell:type_name -> meurpg.rules.v1.TableSpell
-	4,  // 57: meurpg.rules.v1.UpdateTableEntryResponse.entry:type_name -> meurpg.rules.v1.TableEntry
-	27, // 58: meurpg.rules.v1.UpdateTableEntryResponse.affected_characters:type_name -> meurpg.rules.v1.AffectedCharacter
-	4,  // 59: meurpg.rules.v1.ArchiveTableEntryResponse.entry:type_name -> meurpg.rules.v1.TableEntry
-	4,  // 60: meurpg.rules.v1.UnarchiveTableEntryResponse.entry:type_name -> meurpg.rules.v1.TableEntry
-	0,  // 61: meurpg.rules.v1.OptionSwitchEntry.kind:type_name -> meurpg.rules.v1.TableContentKind
-	40, // 62: meurpg.rules.v1.ListOptionSwitchesResponse.options:type_name -> meurpg.rules.v1.OptionSwitchEntry
-	38, // 63: meurpg.rules.v1.SetOptionSwitchesRequest.switches:type_name -> meurpg.rules.v1.OptionSwitch
-	40, // 64: meurpg.rules.v1.SetOptionSwitchesResponse.options:type_name -> meurpg.rules.v1.OptionSwitchEntry
-	46, // 65: meurpg.rules.v1.GetClassTableDefaultsResponse.tables:type_name -> meurpg.rules.v1.CastingTableDefault
-	8,  // 66: meurpg.rules.v1.CastingTableDefault.rows:type_name -> meurpg.rules.v1.TableClassLevel
-	49, // 67: meurpg.rules.v1.GetEffectMenuResponse.types:type_name -> meurpg.rules.v1.EffectMenuType
-	52, // 68: meurpg.rules.v1.GetEffectMenuResponse.lists:type_name -> meurpg.rules.v1.EffectMenuList
-	53, // 69: meurpg.rules.v1.GetEffectMenuResponse.option_sets:type_name -> meurpg.rules.v1.EffectOptionSet
-	54, // 70: meurpg.rules.v1.GetEffectMenuResponse.helpers:type_name -> meurpg.rules.v1.FormulaHelper
-	50, // 71: meurpg.rules.v1.EffectMenuType.fields:type_name -> meurpg.rules.v1.EffectMenuField
-	51, // 72: meurpg.rules.v1.EffectMenuList.values:type_name -> meurpg.rules.v1.EffectMenuValue
-	51, // 73: meurpg.rules.v1.EffectOptionSet.options:type_name -> meurpg.rules.v1.EffectMenuValue
-	28, // 74: meurpg.rules.v1.TableContentService.ListTableEntries:input_type -> meurpg.rules.v1.ListTableEntriesRequest
-	30, // 75: meurpg.rules.v1.TableContentService.CreateTableEntry:input_type -> meurpg.rules.v1.CreateTableEntryRequest
-	32, // 76: meurpg.rules.v1.TableContentService.UpdateTableEntry:input_type -> meurpg.rules.v1.UpdateTableEntryRequest
-	34, // 77: meurpg.rules.v1.TableContentService.ArchiveTableEntry:input_type -> meurpg.rules.v1.ArchiveTableEntryRequest
-	36, // 78: meurpg.rules.v1.TableContentService.UnarchiveTableEntry:input_type -> meurpg.rules.v1.UnarchiveTableEntryRequest
-	39, // 79: meurpg.rules.v1.TableContentService.ListOptionSwitches:input_type -> meurpg.rules.v1.ListOptionSwitchesRequest
-	42, // 80: meurpg.rules.v1.TableContentService.SetOptionSwitches:input_type -> meurpg.rules.v1.SetOptionSwitchesRequest
-	44, // 81: meurpg.rules.v1.TableContentService.GetClassTableDefaults:input_type -> meurpg.rules.v1.GetClassTableDefaultsRequest
-	47, // 82: meurpg.rules.v1.TableContentService.GetEffectMenu:input_type -> meurpg.rules.v1.GetEffectMenuRequest
-	29, // 83: meurpg.rules.v1.TableContentService.ListTableEntries:output_type -> meurpg.rules.v1.ListTableEntriesResponse
-	31, // 84: meurpg.rules.v1.TableContentService.CreateTableEntry:output_type -> meurpg.rules.v1.CreateTableEntryResponse
-	33, // 85: meurpg.rules.v1.TableContentService.UpdateTableEntry:output_type -> meurpg.rules.v1.UpdateTableEntryResponse
-	35, // 86: meurpg.rules.v1.TableContentService.ArchiveTableEntry:output_type -> meurpg.rules.v1.ArchiveTableEntryResponse
-	37, // 87: meurpg.rules.v1.TableContentService.UnarchiveTableEntry:output_type -> meurpg.rules.v1.UnarchiveTableEntryResponse
-	41, // 88: meurpg.rules.v1.TableContentService.ListOptionSwitches:output_type -> meurpg.rules.v1.ListOptionSwitchesResponse
-	43, // 89: meurpg.rules.v1.TableContentService.SetOptionSwitches:output_type -> meurpg.rules.v1.SetOptionSwitchesResponse
-	45, // 90: meurpg.rules.v1.TableContentService.GetClassTableDefaults:output_type -> meurpg.rules.v1.GetClassTableDefaultsResponse
-	48, // 91: meurpg.rules.v1.TableContentService.GetEffectMenu:output_type -> meurpg.rules.v1.GetEffectMenuResponse
-	83, // [83:92] is the sub-list for method output_type
-	74, // [74:83] is the sub-list for method input_type
-	74, // [74:74] is the sub-list for extension type_name
-	74, // [74:74] is the sub-list for extension extendee
-	0,  // [0:74] is the sub-list for field type_name
+	0,   // 0: meurpg.rules.v1.TableEntry.kind:type_name -> meurpg.rules.v1.TableContentKind
+	65,  // 1: meurpg.rules.v1.TableEntry.created_at:type_name -> google.protobuf.Timestamp
+	65,  // 2: meurpg.rules.v1.TableEntry.updated_at:type_name -> google.protobuf.Timestamp
+	65,  // 3: meurpg.rules.v1.TableEntry.archived_at:type_name -> google.protobuf.Timestamp
+	12,  // 4: meurpg.rules.v1.TableEntry.table_class:type_name -> meurpg.rules.v1.TableClass
+	15,  // 5: meurpg.rules.v1.TableEntry.table_subclass:type_name -> meurpg.rules.v1.TableSubclass
+	16,  // 6: meurpg.rules.v1.TableEntry.table_race:type_name -> meurpg.rules.v1.TableRace
+	17,  // 7: meurpg.rules.v1.TableEntry.table_subrace:type_name -> meurpg.rules.v1.TableSubrace
+	18,  // 8: meurpg.rules.v1.TableEntry.table_background:type_name -> meurpg.rules.v1.TableBackground
+	26,  // 9: meurpg.rules.v1.TableEntry.table_spell:type_name -> meurpg.rules.v1.TableSpell
+	9,   // 10: meurpg.rules.v1.TableEntry.table_feat:type_name -> meurpg.rules.v1.TableFeat
+	7,   // 11: meurpg.rules.v1.TableFeature.effects:type_name -> meurpg.rules.v1.TableEffect
+	66,  // 12: meurpg.rules.v1.TableFeat.prerequisite:type_name -> meurpg.rules.v1.FeatPrerequisite
+	7,   // 13: meurpg.rules.v1.TableFeat.effects:type_name -> meurpg.rules.v1.TableEffect
+	67,  // 14: meurpg.rules.v1.TableCasting.ability:type_name -> meurpg.rules.v1.Ability
+	8,   // 15: meurpg.rules.v1.TableClassLevel.features:type_name -> meurpg.rules.v1.TableFeature
+	67,  // 16: meurpg.rules.v1.TableClass.saving_throws:type_name -> meurpg.rules.v1.Ability
+	68,  // 17: meurpg.rules.v1.TableClass.minimums:type_name -> meurpg.rules.v1.AbilityScores
+	68,  // 18: meurpg.rules.v1.TableClass.any_of:type_name -> meurpg.rules.v1.AbilityScores
+	10,  // 19: meurpg.rules.v1.TableClass.casting:type_name -> meurpg.rules.v1.TableCasting
+	11,  // 20: meurpg.rules.v1.TableClass.levels:type_name -> meurpg.rules.v1.TableClassLevel
+	8,   // 21: meurpg.rules.v1.TableSubclassLevel.features:type_name -> meurpg.rules.v1.TableFeature
+	14,  // 22: meurpg.rules.v1.TableSubclass.levels:type_name -> meurpg.rules.v1.TableSubclassLevel
+	10,  // 23: meurpg.rules.v1.TableSubclass.casting:type_name -> meurpg.rules.v1.TableCasting
+	13,  // 24: meurpg.rules.v1.TableSubclass.always_prepared:type_name -> meurpg.rules.v1.TableAlwaysPrepared
+	68,  // 25: meurpg.rules.v1.TableRace.ability_bonuses:type_name -> meurpg.rules.v1.AbilityScores
+	8,   // 26: meurpg.rules.v1.TableRace.traits:type_name -> meurpg.rules.v1.TableFeature
+	68,  // 27: meurpg.rules.v1.TableSubrace.ability_bonuses:type_name -> meurpg.rules.v1.AbilityScores
+	8,   // 28: meurpg.rules.v1.TableSubrace.traits:type_name -> meurpg.rules.v1.TableFeature
+	8,   // 29: meurpg.rules.v1.TableBackground.feature:type_name -> meurpg.rules.v1.TableFeature
+	1,   // 30: meurpg.rules.v1.TableSpellTarget.kind:type_name -> meurpg.rules.v1.TableSpellTargetKind
+	2,   // 31: meurpg.rules.v1.TableSpellTarget.shape:type_name -> meurpg.rules.v1.TableAreaShape
+	69,  // 32: meurpg.rules.v1.TableSpellCastingTime.unit:type_name -> meurpg.rules.v1.CastingTimeUnit
+	70,  // 33: meurpg.rules.v1.TableSpellRange.kind:type_name -> meurpg.rules.v1.SpellRangeKind
+	71,  // 34: meurpg.rules.v1.TableSpellDuration.kind:type_name -> meurpg.rules.v1.SpellDurationKind
+	72,  // 35: meurpg.rules.v1.TableSpellDuration.unit:type_name -> meurpg.rules.v1.SpellDurationUnit
+	20,  // 36: meurpg.rules.v1.TableSpell.casting_time:type_name -> meurpg.rules.v1.TableSpellCastingTime
+	21,  // 37: meurpg.rules.v1.TableSpell.range:type_name -> meurpg.rules.v1.TableSpellRange
+	22,  // 38: meurpg.rules.v1.TableSpell.duration:type_name -> meurpg.rules.v1.TableSpellDuration
+	23,  // 39: meurpg.rules.v1.TableSpell.components:type_name -> meurpg.rules.v1.TableSpellComponents
+	19,  // 40: meurpg.rules.v1.TableSpell.target:type_name -> meurpg.rules.v1.TableSpellTarget
+	73,  // 41: meurpg.rules.v1.TableSpell.save:type_name -> meurpg.rules.v1.SpellSave
+	24,  // 42: meurpg.rules.v1.TableSpell.damage:type_name -> meurpg.rules.v1.TableSpellDamage
+	25,  // 43: meurpg.rules.v1.TableSpell.heal:type_name -> meurpg.rules.v1.TableSpellHeal
+	27,  // 44: meurpg.rules.v1.TableContentRefusal.violations:type_name -> meurpg.rules.v1.TableContentViolation
+	3,   // 45: meurpg.rules.v1.TableContentBlocked.reason:type_name -> meurpg.rules.v1.TableContentBlockedReason
+	6,   // 46: meurpg.rules.v1.ListTableEntriesResponse.entries:type_name -> meurpg.rules.v1.TableEntry
+	12,  // 47: meurpg.rules.v1.CreateTableEntryRequest.table_class:type_name -> meurpg.rules.v1.TableClass
+	15,  // 48: meurpg.rules.v1.CreateTableEntryRequest.table_subclass:type_name -> meurpg.rules.v1.TableSubclass
+	16,  // 49: meurpg.rules.v1.CreateTableEntryRequest.table_race:type_name -> meurpg.rules.v1.TableRace
+	17,  // 50: meurpg.rules.v1.CreateTableEntryRequest.table_subrace:type_name -> meurpg.rules.v1.TableSubrace
+	18,  // 51: meurpg.rules.v1.CreateTableEntryRequest.table_background:type_name -> meurpg.rules.v1.TableBackground
+	26,  // 52: meurpg.rules.v1.CreateTableEntryRequest.table_spell:type_name -> meurpg.rules.v1.TableSpell
+	9,   // 53: meurpg.rules.v1.CreateTableEntryRequest.table_feat:type_name -> meurpg.rules.v1.TableFeat
+	6,   // 54: meurpg.rules.v1.CreateTableEntryResponse.entry:type_name -> meurpg.rules.v1.TableEntry
+	12,  // 55: meurpg.rules.v1.UpdateTableEntryRequest.table_class:type_name -> meurpg.rules.v1.TableClass
+	15,  // 56: meurpg.rules.v1.UpdateTableEntryRequest.table_subclass:type_name -> meurpg.rules.v1.TableSubclass
+	16,  // 57: meurpg.rules.v1.UpdateTableEntryRequest.table_race:type_name -> meurpg.rules.v1.TableRace
+	17,  // 58: meurpg.rules.v1.UpdateTableEntryRequest.table_subrace:type_name -> meurpg.rules.v1.TableSubrace
+	18,  // 59: meurpg.rules.v1.UpdateTableEntryRequest.table_background:type_name -> meurpg.rules.v1.TableBackground
+	26,  // 60: meurpg.rules.v1.UpdateTableEntryRequest.table_spell:type_name -> meurpg.rules.v1.TableSpell
+	9,   // 61: meurpg.rules.v1.UpdateTableEntryRequest.table_feat:type_name -> meurpg.rules.v1.TableFeat
+	6,   // 62: meurpg.rules.v1.UpdateTableEntryResponse.entry:type_name -> meurpg.rules.v1.TableEntry
+	30,  // 63: meurpg.rules.v1.UpdateTableEntryResponse.affected_characters:type_name -> meurpg.rules.v1.AffectedCharacter
+	6,   // 64: meurpg.rules.v1.ArchiveTableEntryResponse.entry:type_name -> meurpg.rules.v1.TableEntry
+	6,   // 65: meurpg.rules.v1.UnarchiveTableEntryResponse.entry:type_name -> meurpg.rules.v1.TableEntry
+	6,   // 66: meurpg.rules.v1.TableContentPack.entries:type_name -> meurpg.rules.v1.TableEntry
+	41,  // 67: meurpg.rules.v1.ExportTableContentResponse.pack:type_name -> meurpg.rules.v1.TableContentPack
+	41,  // 68: meurpg.rules.v1.ImportTableContentRequest.pack:type_name -> meurpg.rules.v1.TableContentPack
+	4,   // 69: meurpg.rules.v1.ImportTableContentRequest.mode:type_name -> meurpg.rules.v1.TableImportMode
+	0,   // 70: meurpg.rules.v1.TableImportEntry.kind:type_name -> meurpg.rules.v1.TableContentKind
+	5,   // 71: meurpg.rules.v1.TableImportEntry.status:type_name -> meurpg.rules.v1.TableImportStatus
+	27,  // 72: meurpg.rules.v1.TableImportEntry.violations:type_name -> meurpg.rules.v1.TableContentViolation
+	4,   // 73: meurpg.rules.v1.ImportTableContentResponse.mode:type_name -> meurpg.rules.v1.TableImportMode
+	45,  // 74: meurpg.rules.v1.ImportTableContentResponse.entries:type_name -> meurpg.rules.v1.TableImportEntry
+	46,  // 75: meurpg.rules.v1.ImportTableContentResponse.totals:type_name -> meurpg.rules.v1.TableImportTotals
+	30,  // 76: meurpg.rules.v1.ImportTableContentResponse.affected_characters:type_name -> meurpg.rules.v1.AffectedCharacter
+	0,   // 77: meurpg.rules.v1.OptionSwitchEntry.kind:type_name -> meurpg.rules.v1.TableContentKind
+	50,  // 78: meurpg.rules.v1.ListOptionSwitchesResponse.options:type_name -> meurpg.rules.v1.OptionSwitchEntry
+	48,  // 79: meurpg.rules.v1.SetOptionSwitchesRequest.switches:type_name -> meurpg.rules.v1.OptionSwitch
+	50,  // 80: meurpg.rules.v1.SetOptionSwitchesResponse.options:type_name -> meurpg.rules.v1.OptionSwitchEntry
+	56,  // 81: meurpg.rules.v1.GetClassTableDefaultsResponse.tables:type_name -> meurpg.rules.v1.CastingTableDefault
+	11,  // 82: meurpg.rules.v1.CastingTableDefault.rows:type_name -> meurpg.rules.v1.TableClassLevel
+	59,  // 83: meurpg.rules.v1.GetEffectMenuResponse.types:type_name -> meurpg.rules.v1.EffectMenuType
+	62,  // 84: meurpg.rules.v1.GetEffectMenuResponse.lists:type_name -> meurpg.rules.v1.EffectMenuList
+	63,  // 85: meurpg.rules.v1.GetEffectMenuResponse.option_sets:type_name -> meurpg.rules.v1.EffectOptionSet
+	64,  // 86: meurpg.rules.v1.GetEffectMenuResponse.helpers:type_name -> meurpg.rules.v1.FormulaHelper
+	60,  // 87: meurpg.rules.v1.EffectMenuType.fields:type_name -> meurpg.rules.v1.EffectMenuField
+	61,  // 88: meurpg.rules.v1.EffectMenuList.values:type_name -> meurpg.rules.v1.EffectMenuValue
+	61,  // 89: meurpg.rules.v1.EffectOptionSet.options:type_name -> meurpg.rules.v1.EffectMenuValue
+	31,  // 90: meurpg.rules.v1.TableContentService.ListTableEntries:input_type -> meurpg.rules.v1.ListTableEntriesRequest
+	33,  // 91: meurpg.rules.v1.TableContentService.CreateTableEntry:input_type -> meurpg.rules.v1.CreateTableEntryRequest
+	35,  // 92: meurpg.rules.v1.TableContentService.UpdateTableEntry:input_type -> meurpg.rules.v1.UpdateTableEntryRequest
+	37,  // 93: meurpg.rules.v1.TableContentService.ArchiveTableEntry:input_type -> meurpg.rules.v1.ArchiveTableEntryRequest
+	39,  // 94: meurpg.rules.v1.TableContentService.UnarchiveTableEntry:input_type -> meurpg.rules.v1.UnarchiveTableEntryRequest
+	42,  // 95: meurpg.rules.v1.TableContentService.ExportTableContent:input_type -> meurpg.rules.v1.ExportTableContentRequest
+	44,  // 96: meurpg.rules.v1.TableContentService.ImportTableContent:input_type -> meurpg.rules.v1.ImportTableContentRequest
+	49,  // 97: meurpg.rules.v1.TableContentService.ListOptionSwitches:input_type -> meurpg.rules.v1.ListOptionSwitchesRequest
+	52,  // 98: meurpg.rules.v1.TableContentService.SetOptionSwitches:input_type -> meurpg.rules.v1.SetOptionSwitchesRequest
+	54,  // 99: meurpg.rules.v1.TableContentService.GetClassTableDefaults:input_type -> meurpg.rules.v1.GetClassTableDefaultsRequest
+	57,  // 100: meurpg.rules.v1.TableContentService.GetEffectMenu:input_type -> meurpg.rules.v1.GetEffectMenuRequest
+	32,  // 101: meurpg.rules.v1.TableContentService.ListTableEntries:output_type -> meurpg.rules.v1.ListTableEntriesResponse
+	34,  // 102: meurpg.rules.v1.TableContentService.CreateTableEntry:output_type -> meurpg.rules.v1.CreateTableEntryResponse
+	36,  // 103: meurpg.rules.v1.TableContentService.UpdateTableEntry:output_type -> meurpg.rules.v1.UpdateTableEntryResponse
+	38,  // 104: meurpg.rules.v1.TableContentService.ArchiveTableEntry:output_type -> meurpg.rules.v1.ArchiveTableEntryResponse
+	40,  // 105: meurpg.rules.v1.TableContentService.UnarchiveTableEntry:output_type -> meurpg.rules.v1.UnarchiveTableEntryResponse
+	43,  // 106: meurpg.rules.v1.TableContentService.ExportTableContent:output_type -> meurpg.rules.v1.ExportTableContentResponse
+	47,  // 107: meurpg.rules.v1.TableContentService.ImportTableContent:output_type -> meurpg.rules.v1.ImportTableContentResponse
+	51,  // 108: meurpg.rules.v1.TableContentService.ListOptionSwitches:output_type -> meurpg.rules.v1.ListOptionSwitchesResponse
+	53,  // 109: meurpg.rules.v1.TableContentService.SetOptionSwitches:output_type -> meurpg.rules.v1.SetOptionSwitchesResponse
+	55,  // 110: meurpg.rules.v1.TableContentService.GetClassTableDefaults:output_type -> meurpg.rules.v1.GetClassTableDefaultsResponse
+	58,  // 111: meurpg.rules.v1.TableContentService.GetEffectMenu:output_type -> meurpg.rules.v1.GetEffectMenuResponse
+	101, // [101:112] is the sub-list for method output_type
+	90,  // [90:101] is the sub-list for method input_type
+	90,  // [90:90] is the sub-list for extension type_name
+	90,  // [90:90] is the sub-list for extension extendee
+	0,   // [0:90] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_rules_v1_table_content_proto_init() }
@@ -5222,30 +6088,33 @@ func file_meurpg_rules_v1_table_content_proto_init() {
 		(*TableEntry_TableSubrace)(nil),
 		(*TableEntry_TableBackground)(nil),
 		(*TableEntry_TableSpell)(nil),
+		(*TableEntry_TableFeat)(nil),
 	}
-	file_meurpg_rules_v1_table_content_proto_msgTypes[26].OneofWrappers = []any{
+	file_meurpg_rules_v1_table_content_proto_msgTypes[27].OneofWrappers = []any{
 		(*CreateTableEntryRequest_TableClass)(nil),
 		(*CreateTableEntryRequest_TableSubclass)(nil),
 		(*CreateTableEntryRequest_TableRace)(nil),
 		(*CreateTableEntryRequest_TableSubrace)(nil),
 		(*CreateTableEntryRequest_TableBackground)(nil),
 		(*CreateTableEntryRequest_TableSpell)(nil),
+		(*CreateTableEntryRequest_TableFeat)(nil),
 	}
-	file_meurpg_rules_v1_table_content_proto_msgTypes[28].OneofWrappers = []any{
+	file_meurpg_rules_v1_table_content_proto_msgTypes[29].OneofWrappers = []any{
 		(*UpdateTableEntryRequest_TableClass)(nil),
 		(*UpdateTableEntryRequest_TableSubclass)(nil),
 		(*UpdateTableEntryRequest_TableRace)(nil),
 		(*UpdateTableEntryRequest_TableSubrace)(nil),
 		(*UpdateTableEntryRequest_TableBackground)(nil),
 		(*UpdateTableEntryRequest_TableSpell)(nil),
+		(*UpdateTableEntryRequest_TableFeat)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_rules_v1_table_content_proto_rawDesc), len(file_meurpg_rules_v1_table_content_proto_rawDesc)),
-			NumEnums:      4,
-			NumMessages:   51,
+			NumEnums:      6,
+			NumMessages:   59,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
