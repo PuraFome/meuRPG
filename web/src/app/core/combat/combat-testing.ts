@@ -65,6 +65,7 @@ export function encounter(over: Partial<Encounter> = {}): Encounter {
     turnGroupIds: [],
     npcOnlyGroups: [],
     opportunityOffers: [],
+    deaths: [],
     revision: 1,
     ...over,
   } as unknown as Encounter;

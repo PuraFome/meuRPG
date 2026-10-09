@@ -87,6 +87,11 @@
       />
       }
 
+      @if (isMaster()) {
+        <!-- A Revivify cast outside a combat waits for the master to say whether the creature died in the last minute. -->
+        <app-revivify-ask [campaignId]="campaignId()" [reload]="revivifyTick()" />
+      }
+
       @if (!isMaster()) {
         <!-- A trap noticed, a treasure found: over the page under the app bar, in a combat too (E9-08 G, E9-09 4). -->
         <app-live-toast [toasts]="toasts.toasts()" (dismissed)="toasts.dismiss($event)" />

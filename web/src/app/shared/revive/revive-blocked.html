@@ -1,0 +1,17 @@
+<div class="rb" role="alert">
+  <mat-icon aria-hidden="true">block</mat-icon>
+  <div>
+    <h2 class="rb__title">{{ playerName() }} já tem outro personagem vivo</h2>
+    <p class="rb__text">
+      Cada jogador tem um personagem vivo por campanha, e {{ playerName() }} criou
+      <strong>{{ livingName() }}</strong> depois da morte de {{ deadName() }}. Para reviver
+      {{ deadName() }}, o mestre arquiva {{ livingName() }} ou a marca como morta primeiro.
+    </p>
+    <div class="rb__actions">
+      <a matButton="outlined" class="js-open-living" [routerLink]="livingLink()">
+        Abrir {{ livingName() }}
+      </a>
+      <button matButton type="button" (click)="cancelled.emit()">Cancelar</button>
+    </div>
+  </div>
+</div>

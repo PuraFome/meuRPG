@@ -1,0 +1,58 @@
+<div class="mr-visually-hidden" role="status">{{ announcement() }}</div>
+@if (current(); as r) {
+  @if (refused(); as living) {
+    <app-revive-blocked
+      [deadName]="r.targetName"
+      [livingName]="living.name"
+      [livingLink]="['/campaigns', campaignId(), 'characters', living.characterId]"
+      (cancelled)="cancelRefused()"
+    />
+  } @else {
+    <div class="ask" role="alertdialog" aria-labelledby="ask-title" aria-describedby="ask-text">
+      <mat-icon aria-hidden="true">hourglass_top</mat-icon>
+      <div class="ask__body">
+        <h2 class="ask__title" id="ask-title">
+          {{ r.casterName }} quer conjurar Revivificar em {{ r.targetName }}
+        </h2>
+        <p class="ask__text" id="ask-text">
+          {{ r.targetName }} morreu fora de combate. A magia só vale se {{ pronoun(r) }} morreu no
+          último minuto. Nada foi gasto: {{ r.casterName }} espera a sua resposta.
+        </p>
+        <div class="ask__actions">
+          <button
+            matButton="filled"
+            type="button"
+            class="js-within"
+            [disabled]="answering() !== null"
+            (click)="answer(r, true)"
+          >
+            Faz menos de 1 minuto
+          </button>
+          <button
+            matButton="outlined"
+            type="button"
+            [disabled]="answering() !== null"
+            (click)="answer(r, false)"
+          >
+            Já passou
+          </button>
+        </div>
+        <p class="ask__note">
+          Se você responde “Já passou”, nenhum espaço, ação ou diamante é gasto, e
+          {{ r.casterName }} lê só “O mestre disse que não dá”.
+        </p>
+        @if (more() > 0) {
+          <p class="ask__note">
+            {{ more() === 1 ? 'Mais um pedido espera' : 'Mais ' + more() + ' pedidos esperam' }}
+            depois deste.
+          </p>
+        }
+        @if (error(); as e) {
+          <p class="ask__error" role="alert">
+            <mat-icon aria-hidden="true">error_outline</mat-icon>{{ e }}
+          </p>
+        }
+      </div>
+    </div>
+  }
+}

@@ -1,0 +1,46 @@
+:host {
+  display: block;
+}
+
+.rb {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  max-width: 40rem;
+  padding: 14px 18px;
+  background: var(--mr-danger-surface);
+  border: 2px solid var(--mr-danger-ink);
+  border-radius: var(--mr-radius-lg);
+
+  > .mat-icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--mr-danger-ink);
+  }
+}
+
+.rb__title {
+  margin: 0;
+  font: 700 21px/26px var(--mr-font-display);
+}
+
+.rb__text {
+  margin: var(--mr-space-1) 0 var(--mr-space-3);
+  font-size: 14px;
+}
+
+.rb__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+
+  @media (max-width: 767.98px) {
+    flex-direction: column;
+
+    > * {
+      width: 100%;
+      min-height: 48px;
+    }
+  }
+}

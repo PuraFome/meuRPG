@@ -356,6 +356,7 @@ export function toCharacterSheetVm(character: Character): CharacterSheetVm {
     canEdit: character.canEdit,
     sheetLockedAt: character.sheetLockedAt ? timestampDate(character.sheetLockedAt) : null,
     diedAt: character.diedAt ? timestampDate(character.diedAt) : null,
+    revivedAt: character.revivedAt ? timestampDate(character.revivedAt) : null,
     revision: character.revision,
     sheet,
     story: toStoryVm(character.story),
@@ -363,6 +364,7 @@ export function toCharacterSheetVm(character: Character): CharacterSheetVm {
     storyEditingAllowed: character.storyEditingAllowed,
     canToggleStoryEditing: character.canSetStoryEditing,
     canMarkDead: character.canMarkDead,
+    canRevive: character.canRevive,
     canAccessMasterNotes: character.canAccessMasterNotes,
     canApprove: character.canApprove,
     canRequestChanges: character.canRequestChanges,
@@ -482,6 +484,22 @@ export class CharacterSheetSourceLive implements CharacterSheetSource {
       idempotencyKey,
     });
     return toCharacterSheetVm(res.character!);
+  }
+
+  async reviveCharacter(
+    campaignId: string,
+    characterId: string,
+    idempotencyKey: string,
+  ): Promise<CharacterSheetVm> {
+    const res = await this.client.reviveCharacter({ campaignId, characterId, idempotencyKey });
+    return toCharacterSheetVm(res.character!);
+  }
+
+  async hasLivingCharacter(campaignId: string): Promise<boolean> {
+    const res = await this.client.listCharacters({ campaignId });
+    return res.characters.some(
+      (c) => c.kind === GenCharacterKind.PLAYER && c.state !== GenCharacterState.DEAD,
+    );
   }
 
   async resubmitCharacter(

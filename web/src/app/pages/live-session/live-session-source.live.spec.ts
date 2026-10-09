@@ -170,7 +170,7 @@ describe('LiveSessionSourceLive.watch', () => {
     ).toEqual(['ready', 'contentChanged']);
   });
 
-  it('maps the three character hints to one event with the character, and nothing else', async () => {
+  it('maps the two hints of a character to one event with the character, and the revival to its own', async () => {
     expect(
       await events([
         create(WatchGameSessionResponseSchema, {
@@ -183,7 +183,15 @@ describe('LiveSessionSourceLive.watch', () => {
           event: { case: 'characterRevived', value: { characterId: 'c-3' } },
         }),
       ]),
-    ).toEqual(['characterChanged', 'characterChanged', 'characterChanged']);
+    ).toEqual(['characterChanged', 'characterChanged', 'characterRevived']);
+  });
+
+  it('maps `revivify_changed` to its own event, with no content (RN-10)', async () => {
+    expect(
+      await events([
+        create(WatchGameSessionResponseSchema, { event: { case: 'revivifyChanged', value: {} } }),
+      ]),
+    ).toEqual(['revivifyChanged']);
   });
 
   it('still takes an event it does not know as a sign the stream is alive', async () => {

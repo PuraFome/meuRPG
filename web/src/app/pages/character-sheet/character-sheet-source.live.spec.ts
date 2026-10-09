@@ -489,3 +489,25 @@ describe('the master review of a pending character, read from Character.review',
     expect(toCharacterSheetVm({ ...base, review: undefined }).review).toBeNull();
   });
 });
+
+describe('the revival of a dead character, read from Character', () => {
+  const base = characterWithFullSheet(minimalFullSheet({}));
+
+  it('maps who may revive and when it last happened', () => {
+    const when = new Date(2026, 9, 9, 10, 30);
+    const vm = toCharacterSheetVm({
+      ...base,
+      state: CharacterState.DEAD,
+      canRevive: true,
+      revivedAt: timestampFromDate(when),
+    });
+    expect(vm.canRevive).toBe(true);
+    expect(vm.revivedAt).toEqual(when);
+  });
+
+  it('has no revival for a character that never came back', () => {
+    const vm = toCharacterSheetVm({ ...base, revivedAt: undefined });
+    expect(vm.canRevive).toBe(false);
+    expect(vm.revivedAt).toBeNull();
+  });
+});

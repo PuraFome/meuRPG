@@ -164,8 +164,12 @@ export type LiveEventVm =
   | { readonly kind: 'creaturesChanged' }
   /** `content_changed` (10.1d): the table's content changed; read the catalog again with this member's role. */
   | { readonly kind: 'contentChanged' }
-  /** `character_changes_requested`, `character_resubmitted` or `character_revived`: that character changed; read it again. */
-  | { readonly kind: 'characterChanged'; readonly characterId: string };
+  /** `character_changes_requested` or `character_resubmitted`: that character changed; read it again. */
+  | { readonly kind: 'characterChanged'; readonly characterId: string }
+  /** `character_revived`: a dead character lives again; read it again, and the vitals. */
+  | { readonly kind: 'characterRevived'; readonly characterId: string }
+  /** `revivify_changed`: a Revivify cast outside a combat was asked or answered; the master reads the casts again. */
+  | { readonly kind: 'revivifyChanged' };
 
 /**
  * What a failed call means for the page, from its Connect code and typed

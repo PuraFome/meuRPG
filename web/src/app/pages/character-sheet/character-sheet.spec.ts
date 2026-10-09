@@ -5,6 +5,10 @@ import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { BehaviorSubject, of } from 'rxjs';
 
+import {
+  CharacterBlockedReason,
+  CharacterBlockedSchema,
+} from '../../../gen/meurpg/characters/v1/characters_pb';
 import { ABILITY_KEYS } from '../../core/characters/characters.types';
 import { OpenSessions, type OpenSessionVm } from '../../shell/live-notice/open-sessions';
 import { CharacterSheetPage } from './character-sheet';
@@ -58,6 +62,22 @@ class FakeCharacterSheetSource {
   resubmitCalls: string[] = [];
   resubmitCharacterFn: () => Promise<CharacterSheetVm> = () =>
     Promise.reject(new Error('not stubbed'));
+
+  reviveCalls: Array<{ characterId: string; key: string }> = [];
+  reviveCharacterFn: () => Promise<CharacterSheetVm> = () =>
+    Promise.reject(new Error('not stubbed'));
+  hasLivingFn: () => Promise<boolean> = () => Promise.resolve(false);
+  reviveCharacter(
+    _campaignId: string,
+    characterId: string,
+    key: string,
+  ): Promise<CharacterSheetVm> {
+    this.reviveCalls.push({ characterId, key });
+    return this.reviveCharacterFn();
+  }
+  hasLivingCharacter(): Promise<boolean> {
+    return this.hasLivingFn();
+  }
 
   getXpMode(): Promise<CampaignXpMode> {
     return Promise.resolve(this.xpMode);
@@ -205,6 +225,7 @@ function vm(overrides: Partial<CharacterSheetVm> = {}): CharacterSheetVm {
     canEdit: true,
     sheetLockedAt: null,
     diedAt: null,
+    revivedAt: null,
     revision: 1,
     sheet: fullSheet(),
     story: emptyStory(),
@@ -216,6 +237,7 @@ function vm(overrides: Partial<CharacterSheetVm> = {}): CharacterSheetVm {
     canApprove: false,
     canRequestChanges: false,
     canResubmit: false,
+    canRevive: false,
     review: null,
     isMaster: false,
     playerDisplayName: 'Vinicius',
@@ -2152,5 +2174,223 @@ describe('CharacterSheetPage: answers that arrive late', () => {
 
     expect(el.textContent).toContain('Bravo');
     expect(el.textContent).not.toContain('Alfa');
+  });
+});
+
+describe('CharacterSheetPage: Reviver and "E agora?"', () => {
+  let fake: FakeCharacterSheetSource;
+
+  const deadForMaster = (over: Partial<CharacterSheetVm> = {}) =>
+    vm({
+      name: 'Toren',
+      state: 'dead',
+      diedAt: new Date(2026, 9, 8, 21, 0),
+      isMaster: true,
+      canRevive: true,
+      canAccessMasterNotes: true,
+      playerDisplayName: 'Davi',
+      ...over,
+    });
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [CharacterSheetPage],
+      providers: [
+        { provide: CharacterSheetSource, useClass: FakeCharacterSheetSource },
+        { provide: ActivatedRoute, useValue: activatedRouteFor('camp-1', 'char-1') },
+        ...xpProviders(),
+      ],
+    });
+    fake = TestBed.inject(CharacterSheetSource) as unknown as FakeCharacterSheetSource;
+    fake.getMasterNotesFn = () => Promise.resolve('');
+  });
+
+  async function open(character: CharacterSheetVm) {
+    fake.getCharacterSheetFn = () => Promise.resolve(character);
+    const fixture = TestBed.createComponent(CharacterSheetPage);
+    fixture.detectChanges();
+    await flush();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const button = (text: string) => buttonWithText(el, text);
+    return { fixture, el, button };
+  }
+
+  const livingRefused = () =>
+    new ConnectError('blocked', Code.FailedPrecondition, undefined, [
+      {
+        desc: CharacterBlockedSchema,
+        value: {
+          reason: CharacterBlockedReason.LIVING_CHARACTER_EXISTS,
+          characterId: 'nuvem-1',
+          livingCharacterName: 'Nuvem',
+        },
+      },
+    ]);
+
+  it('gives the master "Reviver" in the place of "Marcar como morto", and keeps the dead page whole', async () => {
+    const { el, button } = await open(deadForMaster());
+
+    expect(button('Reviver')).toBeTruthy();
+    expect(button('Marcar como morto')).toBeUndefined();
+    expect(el.textContent).toContain('Morto');
+    expect(el.textContent).toContain('A ficha fica guardada.');
+    expect(el.querySelector('app-ability-medallions')).not.toBeNull();
+  });
+
+  it('asks in place with the four lines, the outlined "Reviver Toren" focused', async () => {
+    const { fixture, el, button } = await open(deadForMaster());
+
+    button('Reviver')!.click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const dialog = el.querySelector('[role="alertdialog"]')!;
+    expect(dialog.querySelector('h2')?.textContent).toBe('Reviver Toren?');
+    const text = dialog.textContent!.replace(/\s+/g, ' ');
+    expect(text).toContain(
+      'Toren volta com 1 PV, sem a condição Inconsciente e com os testes contra a morte zerados.',
+    );
+    expect(text).toContain('Os espaços de magia e os usos de classe ficam como estavam.');
+    expect(text).toContain(
+      'Com um combate aberto, ele volta à ordem de iniciativa onde estava e age no próximo turno dele.',
+    );
+    expect(text).toContain('O registro diz “O mestre reviveu Toren”.');
+    const confirm = button('Reviver Toren')!;
+    expect(confirm.classList).toContain('mat-mdc-outlined-button');
+    expect(document.activeElement).toBe(confirm);
+    expect(fake.reviveCalls).toEqual([]);
+  });
+
+  it('cancels with Escape and puts the focus back on "Reviver"', async () => {
+    const { fixture, el, button } = await open(deadForMaster());
+    button('Reviver')!.click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    el.querySelector('[role="alertdialog"]')!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    );
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[role="alertdialog"]')).toBeNull();
+    expect(document.activeElement).toBe(button('Reviver'));
+    expect(fake.reviveCalls).toEqual([]);
+  });
+
+  it('revives with one key, shows the living character and says so', async () => {
+    const { fixture, el, button } = await open(deadForMaster());
+    fake.reviveCharacterFn = () =>
+      Promise.resolve(
+        deadForMaster({
+          state: 'locked',
+          diedAt: null,
+          revivedAt: new Date(2026, 9, 9, 10, 0),
+          canRevive: false,
+          canMarkDead: true,
+        }),
+      );
+    button('Reviver')!.click();
+    fixture.detectChanges();
+    button('Reviver Toren')!.click();
+    await flush();
+    fixture.detectChanges();
+
+    expect(fake.reviveCalls).toHaveLength(1);
+    expect(fake.reviveCalls[0].characterId).toBe('char-1');
+    expect(fake.reviveCalls[0].key).not.toBe('');
+    expect(el.querySelector('[role="alertdialog"]')).toBeNull();
+    expect(button('Reviver')).toBeUndefined();
+    expect(button('Marcar como morto')).toBeTruthy();
+    expect(el.textContent).not.toContain('A ficha fica guardada.');
+    expect(el.textContent).toContain('Voltou à vida em');
+    const said = Array.from(el.querySelectorAll('[role="status"]')).map((n) => n.textContent);
+    expect(said).toContain('Toren voltou à vida');
+  });
+
+  it('refuses with the card of the other living character, and links to it', async () => {
+    const { fixture, el, button } = await open(deadForMaster());
+    fake.reviveCharacterFn = () => Promise.reject(livingRefused());
+    button('Reviver')!.click();
+    fixture.detectChanges();
+    button('Reviver Toren')!.click();
+    await flush();
+    fixture.detectChanges();
+
+    const card = el.querySelector('[role="alert"]')!;
+    expect(card.querySelector('h2')?.textContent).toBe('Davi já tem outro personagem vivo');
+    const text = card.textContent!.replace(/\s+/g, ' ');
+    expect(text).toContain('Davi criou Nuvem depois da morte de Toren.');
+    expect(text).toContain('o mestre arquiva Nuvem ou a marca como morta primeiro.');
+    const link = card.querySelector('a')!;
+    expect(link.textContent?.trim()).toBe('Abrir Nuvem');
+    expect(link.getAttribute('href')).toBe('/campaigns/camp-1/characters/nuvem-1');
+
+    button('Cancelar')!.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[role="alert"]')).toBeNull();
+    expect(button('Reviver')).toBeTruthy();
+  });
+
+  it('says in words that the character is not dead, when the server says so', async () => {
+    const { fixture, el, button } = await open(deadForMaster());
+    fake.reviveCharacterFn = () =>
+      Promise.reject(
+        new ConnectError('not dead', Code.FailedPrecondition, undefined, [
+          { desc: CharacterBlockedSchema, value: { reason: CharacterBlockedReason.NOT_DEAD } },
+        ]),
+      );
+    button('Reviver')!.click();
+    fixture.detectChanges();
+    button('Reviver Toren')!.click();
+    await flush();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain('não está morto');
+  });
+
+  it('offers "E agora?" to the owner of a dead character with no living one', async () => {
+    const { fixture, el, button } = await open(
+      vm({ name: 'Toren', state: 'dead', diedAt: new Date(2026, 9, 8), canEdit: false }),
+    );
+    await flush();
+    fixture.detectChanges();
+
+    const panel = sectionTitled(el, 'E agora?');
+    expect(panel.textContent!.replace(/\s+/g, ' ')).toContain(
+      'Você pode criar um novo personagem nesta campanha. Ele precisa da aprovação do mestre, como qualquer ficha nova. Toren fica guardado.',
+    );
+    const create = panel.querySelector('a')!;
+    expect(create.textContent?.trim()).toBe('Criar um novo personagem');
+    expect(create.getAttribute('href')).toBe('/campaigns/camp-1/characters/new');
+    expect(button('Reviver')).toBeUndefined();
+  });
+
+  it('keeps "E agora?" from the owner who already has a living character', async () => {
+    fake.hasLivingFn = () => Promise.resolve(true);
+    const { fixture, el } = await open(vm({ name: 'Toren', state: 'dead', canEdit: false }));
+    await flush();
+    fixture.detectChanges();
+
+    expect(el.textContent).not.toContain('E agora?');
+  });
+
+  it('keeps "E agora?" from the master and from a living character', async () => {
+    const master = await open(deadForMaster());
+    await flush();
+    master.fixture.detectChanges();
+    expect(master.el.textContent).not.toContain('E agora?');
+  });
+
+  it('shows the revival quietly on the page of a character that lives again', async () => {
+    const { el } = await open(vm({ revivedAt: new Date(2026, 9, 9, 10, 0) }));
+
+    expect(el.textContent).toContain('Voltou à vida em');
+    expect(el.textContent).not.toContain('E agora?');
   });
 });

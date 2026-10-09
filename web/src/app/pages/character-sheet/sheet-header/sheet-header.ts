@@ -56,6 +56,12 @@ export class SheetHeader {
     return vm.state === 'dead' && vm.diedAt ? formatDate(vm.diedAt) : null;
   });
 
+  /** A character the master brought back says so, quietly, until it dies again. */
+  protected readonly revivedOn = computed(() => {
+    const vm = this.vm();
+    return vm.state !== 'dead' && vm.revivedAt ? formatDate(vm.revivedAt) : null;
+  });
+
   /** The XP block of a player character in a campaign that counts XP (E7-10). */
   protected readonly xp = computed(() => {
     const vm = this.vm();

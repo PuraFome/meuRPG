@@ -18,10 +18,17 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { setPageSubject } from '../../core/title/page-title';
 import { formatModifier } from '../../core/characters/character-labels';
-import { describeCharacterError } from '../../core/characters/character-errors';
+import {
+  describeCharacterError,
+  livingRefusal,
+  type LivingRefusal,
+} from '../../core/characters/character-errors';
 import { ActionKey } from '../../core/connect/idempotency';
 import type { LevelUpDone } from '../../core/levelup/levelup-flow';
 import { takeLevelUpDone } from '../../core/levelup/levelup-done';
+import { ReviveBlocked } from '../../shared/revive/revive-blocked';
+import { ReviveConfirm } from '../../shared/revive/revive-confirm';
+import { AfterDeath } from './after-death/after-death';
 import { LevelUpBanner } from './level-up-banner/level-up-banner';
 import { LevelUpDoneNotice } from './level-up-banner/level-up-done';
 import { AbilityMedallions } from './ability-medallions/ability-medallions';
@@ -93,6 +100,7 @@ type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'
   selector: 'app-character-sheet',
   imports: [
     AbilityMedallions,
+    AfterDeath,
     BasicSheet,
     ChangedContentNotice,
     CombatColumn,
@@ -109,6 +117,8 @@ type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'
     ProficiencyColumn,
     RejectConfirm,
     RequestChanges,
+    ReviveBlocked,
+    ReviveConfirm,
     RouterLink,
     SheetHeader,
     StoryPanel,
@@ -135,6 +145,16 @@ export class CharacterSheetPage {
    * morte") after "Marcar como morto". */
   protected readonly confirmingDeath = signal(false);
   protected readonly storyToggleState = signal<SavingState>({ status: 'idle' });
+  /** "Reviver" (master, a dead player character): the question is open in place of the button. */
+  protected readonly confirmingRevive = signal(false);
+  protected readonly reviveState = signal<SavingState>({ status: 'idle' });
+  /** The player's other living character that refused the revival: the card says so, with the way to it. */
+  protected readonly reviveRefused = signal<LivingRefusal | null>(null);
+  /** The words a screen reader gets once the character lives again. */
+  protected readonly reviveAnnouncement = signal('');
+  private readonly reviveKey = new ActionKey();
+  /** Whether the owner of a dead character already has another living one: "E agora?" waits for the answer. */
+  protected readonly ownerHasLiving = signal<boolean | null>(null);
   /** "Aprovar personagem" / "Recusar personagem" (MR-024). */
   protected readonly approvalState = signal<SavingState>({ status: 'idle' });
   /** Rejecting deletes the character for good, so it takes a second click
@@ -214,6 +234,18 @@ export class CharacterSheetPage {
         ),
       );
     });
+    // "E agora?" is for the owner of a dead character who has no living one: ask once per dead character on screen.
+    effect(() => {
+      const s = this.state();
+      const id =
+        s.status === 'ready' &&
+        s.vm.state === 'dead' &&
+        s.vm.characterKind === 'player' &&
+        !s.vm.isMaster
+          ? s.vm.id
+          : '';
+      untracked(() => void this.checkOwnerLiving(id));
+    });
     this.destroyRef.onDestroy(() => {
       this.destroyed = true;
       this.xpWatcher.follow(null, () => undefined);
@@ -222,6 +254,7 @@ export class CharacterSheetPage {
 
   private characterId = '';
   private destroyed = false;
+  private livingCheckedFor = '';
   /** Numbers every read and every answer that sets the sheet: an answer older than the latest one, or for a character the page left, is dropped. */
   private sheetSeq = 0;
 
@@ -263,6 +296,12 @@ export class CharacterSheetPage {
     this.resubmitted.set(false);
     this.announcement.set('');
     this.markDeadState.set({ status: 'idle' });
+    this.confirmingRevive.set(false);
+    this.reviveState.set({ status: 'idle' });
+    this.reviveRefused.set(null);
+    this.reviveAnnouncement.set('');
+    this.ownerHasLiving.set(null);
+    this.livingCheckedFor = '';
     this.storyToggleState.set({ status: 'idle' });
     this.approvalState.set({ status: 'idle' });
     this.source.getCharacterSheet(campaignId, characterId).then(
@@ -303,6 +342,61 @@ export class CharacterSheetPage {
   protected cancelDeath(): void {
     this.confirmingDeath.set(false);
     this.focusAfterRender('.js-mark-dead');
+  }
+
+  protected askToRevive(): void {
+    this.reviveState.set({ status: 'idle' });
+    this.reviveRefused.set(null);
+    this.confirmingRevive.set(true);
+  }
+
+  protected cancelRevive(): void {
+    this.confirmingRevive.set(false);
+    this.reviveRefused.set(null);
+    this.focusAfterRender('.js-revive');
+  }
+
+  /** Master only: the character lives again; the page shows it as it was before the death. */
+  protected async revive(campaignId: string, characterId: string, name: string): Promise<void> {
+    this.reviveState.set({ status: 'saving' });
+    try {
+      const key = this.reviveKey.keyFor({ campaignId, characterId });
+      const vm = await this.source.reviveCharacter(campaignId, characterId, key);
+      if (!this.applyWrite(characterId, vm)) {
+        return;
+      }
+      this.reviveKey.renew();
+      this.confirmingRevive.set(false);
+      this.reviveState.set({ status: 'idle' });
+      this.reviveAnnouncement.set(`${name} voltou à vida`);
+    } catch (err) {
+      this.confirmingRevive.set(false);
+      const living = livingRefusal(err);
+      if (living) {
+        this.reviveRefused.set(living);
+        this.focusAfterRender('.js-open-living');
+        return;
+      }
+      this.reviveState.set({ status: 'error', message: describeCharacterError(err) });
+      // Someone else may have changed the character: read it again.
+      void this.reloadQuietly();
+    }
+  }
+
+  private async checkOwnerLiving(characterId: string): Promise<void> {
+    if (characterId === '' || characterId === this.livingCheckedFor) {
+      return;
+    }
+    this.livingCheckedFor = characterId;
+    const campaignId = this.campaignId();
+    try {
+      const living = await this.source.hasLivingCharacter(campaignId);
+      if (!this.destroyed && this.livingCheckedFor === characterId) {
+        this.ownerHasLiving.set(living);
+      }
+    } catch {
+      // Without the answer the panel stays out: "Criar meu personagem" is on the campaign's page.
+    }
   }
 
   protected askToConfirmReject(): void {

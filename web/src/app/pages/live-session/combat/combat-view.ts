@@ -143,6 +143,7 @@ import {
   type OpportunitySheetData,
 } from './opportunity/opportunity-sheet';
 import { NpcCard } from './npc-card/npc-card';
+import { DeathsBlock } from './deaths-block/deaths-block';
 import { OrderList } from './order-list/order-list';
 import { PlayerInitiative } from './player-initiative/player-initiative';
 import { CreatureSource } from '../../../../gen/meurpg/characters/v1/characters_pb';
@@ -217,6 +218,7 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
     OfferPanel,
     OpportunityCard,
     OrderColumn,
+    DeathsBlock,
     OrderList,
     PlayerInitiative,
     TheatreReaction,

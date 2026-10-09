@@ -78,6 +78,7 @@ import { HighlightsCard } from './combat/combat-highlights/highlights-card';
 import { LiveStream } from './live-stream';
 import { PartyPanel } from './party-panel/party-panel';
 import { PlayerVitals } from './player-vitals/player-vitals';
+import { RevivifyAsk } from './revivify-ask/revivify-ask';
 import { MasterLive } from './puzzles/master-live/master-live';
 import { MasterPuzzles } from './puzzles/master-puzzles/master-puzzles';
 import { PuzzleNotice } from './puzzles/puzzle-notice/puzzle-notice';
@@ -144,6 +145,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     PuzzleNotice,
     PuzzlePlayPage,
     PlayerVitals,
+    RevivifyAsk,
     SessionBlocked,
     SessionEnded,
     SessionHeader,
@@ -238,6 +240,8 @@ export class LiveSession {
   protected readonly viewGone = signal('');
   /** Bumped when the stream says a character's creatures changed. */
   protected readonly creaturesTick = signal(0);
+  /** Bumped when the casts of Revivify outside a combat may have changed: the master's question reads them again. */
+  protected readonly revivifyTick = signal(0);
   protected readonly familiarNameNow = signal<string | null>(null);
   protected readonly seeingFamiliar = computed(() => !!this.vitals().at(0)?.familiarSight);
   private readonly familiarEyes = inject(FamiliarEyesClient);
@@ -585,6 +589,9 @@ export class LiveSession {
           }
         },
         onCreaturesChanged: () => this.creaturesTick.update((n) => n + 1),
+        onRevivifyChanged: () => this.revivifyTick.update((n) => n + 1),
+        // A dead character lives again: its vitals are back (the character's page reads itself, on its own stream).
+        onCharacterRevived: () => void this.readVitals(campaignId, generation),
         onPuzzleChanged: (id) => void this.puzzles.changed(id),
         onTokenMoved: (move) => {
           this.scheduleVision();
@@ -709,6 +716,7 @@ export class LiveSession {
       // What a player sees on a fog map, and the creatures, follow the server's current state too.
       this.scheduleVision();
       this.creaturesTick.update((n) => n + 1);
+      this.revivifyTick.update((n) => n + 1);
       if (this.isMaster()) {
         void this.reloadMaps();
       }
@@ -722,6 +730,18 @@ export class LiveSession {
         return;
       }
       this.snapshotFailed(err);
+    }
+  }
+
+  /** The vitals again, from the snapshot, without reading the rest of the page. */
+  private async readVitals(campaignId: string, generation: number): Promise<void> {
+    try {
+      const snapshot = await this.source.getLiveSession(campaignId);
+      if (generation === this.generation) {
+        this.vitals.update((list) => applySnapshot(list, snapshot.vitals));
+      }
+    } catch {
+      // Keep what is on screen: the vitals event of the character, or the next connection, brings it.
     }
   }
 

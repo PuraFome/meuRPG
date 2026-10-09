@@ -1,0 +1,36 @@
+<div
+  class="rv"
+  role="alertdialog"
+  aria-labelledby="rv-title"
+  aria-describedby="rv-text"
+  (keydown.escape)="cancelled.emit()"
+>
+  <mat-icon aria-hidden="true">favorite</mat-icon>
+  <div>
+    <h2 class="rv__title" id="rv-title">Reviver {{ characterName() }}?</h2>
+    <div class="rv__text" id="rv-text">
+      <p>
+        {{ characterName() }} volta com <strong>1 PV</strong>, sem a condição Inconsciente e com os
+        testes contra a morte zerados.
+      </p>
+      <p>Os espaços de magia e os usos de classe ficam como estavam.</p>
+      <p>
+        Com um combate aberto, {{ pronoun() }} volta à ordem de iniciativa onde estava e age no
+        próximo turno {{ pronoun() === 'ela' ? 'dela' : 'dele' }}.
+      </p>
+      <p>O registro diz “O mestre reviveu {{ characterName() }}”.</p>
+    </div>
+    <div class="rv__actions">
+      <button
+        matButton="outlined"
+        type="button"
+        class="js-confirm-revive"
+        [disabled]="busy()"
+        (click)="confirmed.emit()"
+      >
+        Reviver {{ characterName() }}
+      </button>
+      <button matButton type="button" (click)="cancelled.emit()">Cancelar</button>
+    </div>
+  </div>
+</div>

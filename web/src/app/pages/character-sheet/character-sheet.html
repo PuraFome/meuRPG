@@ -61,6 +61,28 @@
           {{ vm.storyEditingAllowed ? 'Travar a história' : 'Permitir editar a história' }}
         </button>
       }
+      @if (vm.canRevive) {
+        @if (reviveRefused(); as living) {
+          <app-revive-blocked
+            [deadName]="vm.name"
+            [playerName]="playerName(vm)"
+            [livingName]="living.name"
+            [livingLink]="['/campaigns', vm.campaignId, 'characters', living.characterId]"
+            (cancelled)="cancelRevive()"
+          />
+        } @else if (confirmingRevive()) {
+          <app-revive-confirm
+            [characterName]="vm.name"
+            [busy]="reviveState().status === 'saving'"
+            (confirmed)="revive(vm.campaignId, vm.id, vm.name)"
+            (cancelled)="cancelRevive()"
+          />
+        } @else {
+          <button matButton="outlined" type="button" class="js-revive" (click)="askToRevive()">
+            Reviver
+          </button>
+        }
+      }
       @if (vm.canMarkDead) {
         @if (confirmingDeath()) {
           <div class="confirm" role="group" aria-labelledby="confirm-death-text">
@@ -95,6 +117,18 @@
           <p>{{ md.message }}</p>
         </div>
       }
+    }
+    @if (reviveState(); as rs) {
+      @if (rs.status === 'error') {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ rs.message }}</p>
+        </div>
+      }
+    }
+    <div class="mr-visually-hidden" role="status">{{ reviveAnnouncement() }}</div>
+    @if (ownerHasLiving() === false && vm.state === 'dead' && !vm.isMaster) {
+      <app-after-death [characterName]="vm.name" [campaignId]="vm.campaignId" />
     }
     @if (storyToggleState(); as ts) {
       @if (ts.status === 'error') {

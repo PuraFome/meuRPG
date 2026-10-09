@@ -28,6 +28,27 @@ export function switchedOffKey(err: unknown): string | null {
     : null;
 }
 
+/** The living character that stops a revival (RN-03): what the card "já tem outro personagem vivo" names and links to. */
+export interface LivingRefusal {
+  readonly characterId: string;
+  readonly name: string;
+}
+
+/**
+ * The living character of the player that refused a revival (`failed_precondition` with `CharacterBlocked`
+ * `LIVING_CHARACTER_EXISTS`, `ReviveCharacter` and `ConfirmRevivifyTime`), or `null` for any other error.
+ */
+export function livingRefusal(err: unknown): LivingRefusal | null {
+  const e = ConnectError.from(err, Code.Unavailable);
+  if (e.code !== Code.FailedPrecondition) {
+    return null;
+  }
+  const [detail] = e.findDetails(CharacterBlockedSchema);
+  return detail?.reason === GenCharacterBlockedReason.LIVING_CHARACTER_EXISTS
+    ? { characterId: detail.characterId, name: detail.livingCharacterName }
+    : null;
+}
+
 /**
  * Turns a `CharacterBlocked.reason` into the message the sheet and the
  * editor show as-is. Kept separate from `describeCharacterError` so both can
@@ -55,6 +76,8 @@ export function characterBlockedMessage(
       return 'Esse personagem já foi aprovado e faz parte da campanha: não dá mais para recusá-lo nem pedir ajustes.';
     case 'no_changes_requested':
       return 'O mestre não tem um pedido de ajustes aberto nesse personagem. Atualize a página.';
+    case 'not_dead':
+      return 'Esse personagem não está morto. Atualize a página.';
     case 'awaiting_approval':
       return 'Esse personagem ainda espera a sua aprovação. Aprove ou recuse antes.';
     default:
@@ -130,6 +153,8 @@ function mapBlockedReason(
       return 'awaiting_approval';
     case GenCharacterBlockedReason.NO_CHANGES_REQUESTED:
       return 'no_changes_requested';
+    case GenCharacterBlockedReason.NOT_DEAD:
+      return 'not_dead';
     case GenCharacterBlockedReason.ARCHIVED_CONTENT:
       return 'archived_content';
     case GenCharacterBlockedReason.SWITCHED_OFF_CONTENT:

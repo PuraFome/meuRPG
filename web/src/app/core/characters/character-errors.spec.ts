@@ -10,6 +10,7 @@ import {
   contentRef,
   describeCharacterError,
   invalidFieldPath,
+  livingRefusal,
   switchedOffKey,
 } from './character-errors';
 
@@ -28,6 +29,7 @@ describe('characterBlockedMessage', () => {
     expect(characterBlockedMessage('not_pending')).toContain('já foi aprovado');
     expect(characterBlockedMessage('awaiting_approval')).toContain('Aprove ou recuse');
     expect(characterBlockedMessage('no_changes_requested')).toContain('pedido de ajustes aberto');
+    expect(characterBlockedMessage('not_dead')).toContain('não está morto');
   });
 
   it('falls back to a generic message when the reason is unknown', () => {
@@ -201,5 +203,33 @@ describe('the content the master retired (RN-23, 10.1d)', () => {
     expect(invalidFieldPath(err)).toBe('full.classes[1].class_key');
     expect(describeCharacterError(err)).toContain('Classe 2: essa classe se repete ou não existe');
     expect(invalidFieldPath(new ConnectError('x', Code.NotFound))).toBeNull();
+  });
+});
+
+describe('livingRefusal', () => {
+  it('reads the living character that stops a revival: its id and name', () => {
+    const err = new ConnectError('blocked', Code.FailedPrecondition, undefined, [
+      {
+        desc: CharacterBlockedSchema,
+        value: {
+          reason: CharacterBlockedReason.LIVING_CHARACTER_EXISTS,
+          characterId: 'nuvem-1',
+          livingCharacterName: 'Nuvem',
+        },
+      },
+    ]);
+    expect(livingRefusal(err)).toEqual({ characterId: 'nuvem-1', name: 'Nuvem' });
+  });
+
+  it('is null for any other refusal and for any other error', () => {
+    expect(livingRefusal(blockedError(CharacterBlockedReason.NOT_DEAD))).toBeNull();
+    expect(livingRefusal(new ConnectError('x', Code.NotFound))).toBeNull();
+    expect(livingRefusal(new Error('network'))).toBeNull();
+  });
+
+  it('says NOT_DEAD in words through describeCharacterError', () => {
+    expect(describeCharacterError(blockedError(CharacterBlockedReason.NOT_DEAD))).toContain(
+      'não está morto',
+    );
   });
 });

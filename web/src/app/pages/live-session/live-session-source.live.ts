@@ -244,8 +244,13 @@ export class LiveSessionSourceLive implements LiveSessionSource {
           break;
         case 'characterChangesRequested':
         case 'characterResubmitted':
-        case 'characterRevived':
           yield { kind: 'characterChanged', characterId: res.event.value.characterId };
+          break;
+        case 'characterRevived':
+          yield { kind: 'characterRevived', characterId: res.event.value.characterId };
+          break;
+        case 'revivifyChanged':
+          yield { kind: 'revivifyChanged' };
           break;
         case 'puzzleChanged':
           yield { kind: 'puzzleChanged', puzzleId: res.event.value.puzzleId };

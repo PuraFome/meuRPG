@@ -46,6 +46,16 @@
   margin-left: auto;
 }
 
+// The master's questions take the line of the actions when they open in place.
+app-revive-confirm,
+app-revive-blocked {
+  flex: 1 1 100%;
+}
+
+.js-revive {
+  margin-left: auto;
+}
+
 .confirm {
   display: flex;
   flex-wrap: wrap;

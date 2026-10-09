@@ -11,6 +11,7 @@ import {
   DeathSaveOutcome,
   JumpKind,
   PendingDamageStatus,
+  SpellEffectKind,
   WildShapeEndReason,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
@@ -937,6 +938,62 @@ describe('the log of a combat without a map (RN-25) and of hidden death saves (R
     } as never);
     expect(logLine(stable)?.text).toBe(
       ' faz um teste contra a morte: sucesso (3 sucessos, 1 falha). Estável: não rola mais',
+    );
+  });
+});
+
+describe('the log of a revival (Reviver and Revivificar)', () => {
+  const master = { master: true, players: new Set(['Ilaria', 'Toren']) };
+  const table = { master: false, players: new Set(['Ilaria', 'Toren']) };
+  const revivify = (spell: object = {}) =>
+    entry({
+      kind: CombatLogKind.SPELL_CAST,
+      actorLabel: 'Ilaria',
+      key: 'spell:revivify',
+      keyNamePt: 'Revivificar',
+      spell: {
+        effectKind: SpellEffectKind.REVIVE,
+        targets: [{ targetLabel: 'Toren' }],
+        ...spell,
+      },
+    } as never);
+
+  it('writes "O mestre reviveu Toren" for the master\'s Reviver, with no actor', () => {
+    const line = logLine(
+      entry({ kind: CombatLogKind.CHARACTER_REVIVED, targetId: 'toren', targetLabel: 'Toren' }),
+    );
+    expect(line).toMatchObject({ actor: '', text: 'O mestre reviveu Toren', icon: 'favorite' });
+  });
+
+  it('writes a Revivify cast for the table: who cast it on whom, and that it came back with 1 HP', () => {
+    const line = logLine(revivify({ revivedDeathRound: 3, materialSpent: false }), '', table);
+    expect(line?.actor).toBe('Ilaria');
+    expect(line?.text).toBe(' conjurou Revivificar em Toren: voltou com 1 PV');
+    expect(line?.note).toBeUndefined();
+  });
+
+  it('adds the round of the death for the master only, and the diamonds on a line of their own', () => {
+    const cast = revivify({ revivedDeathRound: 3, materialSpent: true });
+    const forMaster = logLine(cast, '', master);
+    expect(forMaster?.text).toBe(
+      ' conjurou Revivificar em Toren: voltou com 1 PV (morreu na rodada 3)',
+    );
+    expect(forMaster?.note).toBe('Ilaria gastou diamantes de 300 PO');
+    // The server leaves the round out of the entry for the others, and the sentence never invents it.
+    expect(logLine(revivify({ materialSpent: true }), '', table)?.text).toBe(
+      ' conjurou Revivificar em Toren: voltou com 1 PV',
+    );
+  });
+
+  it('puts an article before a creature that came back', () => {
+    const cast = entry({
+      kind: CombatLogKind.SPELL_CAST,
+      actorLabel: 'Ilaria',
+      keyNamePt: 'Revivificar',
+      spell: { effectKind: SpellEffectKind.REVIVE, targets: [{ targetLabel: 'Goblin 2' }] },
+    } as never);
+    expect(logLine(cast, '', table)?.text).toBe(
+      ' conjurou Revivificar no Goblin 2: voltou com 1 PV',
     );
   });
 });

@@ -272,6 +272,8 @@ export interface CharacterSheetVm {
   readonly canEdit: boolean;
   readonly sheetLockedAt: Date | null;
   readonly diedAt: Date | null;
+  /** When the master last brought the character back (`Character.revived_at`, "Reviver" or Revivify); only the master and the owner get it. */
+  readonly revivedAt: Date | null;
   readonly revision: number;
   readonly sheet: FullSheetVm | BasicSheetVm;
   /**
@@ -304,6 +306,9 @@ export interface CharacterSheetVm {
    * since an NPC can't be marked dead this way (RN-04: its hit points
    * belong to each combat). */
   readonly canMarkDead: boolean;
+  /** `Character.can_revive`: the master, for a dead player character. Gates "Reviver"; the server still answers
+   * `LIVING_CHARACTER_EXISTS` when the player made another character since the death. */
+  readonly canRevive: boolean;
   /** `Character.can_access_master_notes`: the master. Gates both the
    * "Notas do mestre" panel and the `getMasterNotes` call (RN-11). */
   readonly canAccessMasterNotes: boolean;
@@ -400,6 +405,16 @@ export abstract class CharacterSheetSource {
     reason: string,
     idempotencyKey: string,
   ): Promise<CharacterSheetVm>;
+  /** Master only: a dead player character lives again with 1 hit point (`ReviveCharacter`). A refusal because
+   * the player made another living character throws the error `livingRefusal` reads. */
+  abstract reviveCharacter(
+    campaignId: string,
+    characterId: string,
+    idempotencyKey: string,
+  ): Promise<CharacterSheetVm>;
+  /** Whether the caller already has a living player character in the campaign (`ListCharacters`: a player gets
+   * only their own): "E agora?" offers a new one only when not (RN-03). */
+  abstract hasLivingCharacter(campaignId: string): Promise<boolean>;
   /** Owning player only: sends the pending character again after the
    * master's request (`ResubmitCharacter`). */
   abstract resubmitCharacter(

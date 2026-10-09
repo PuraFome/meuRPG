@@ -58,6 +58,10 @@ export interface LiveStreamHandlers {
   onContentChanged?(): void;
   /** `character_changes_requested`, `character_resubmitted` or `character_revived`: that character changed; read it again. */
   onCharacterChanged?(characterId: string): void;
+  /** `character_revived`: a dead character lives again (`onCharacterChanged` is told too); the vitals change with it. */
+  onCharacterRevived?(characterId: string): void;
+  /** `revivify_changed`: a Revivify cast outside a combat was asked or answered; the master reads the casts again. */
+  onRevivifyChanged?(): void;
   /** `puzzle_changed` (MR-038): a puzzle changed; the page reads it again (the server already throttles the hint). */
   onPuzzleChanged?(puzzleId: string): void;
   /** `session_ended`, or `NO_OPEN_SESSION` when (re)connecting. */
@@ -244,6 +248,13 @@ export class LiveStream {
             break;
           case 'characterChanged':
             this.options.handlers.onCharacterChanged?.(event.characterId);
+            break;
+          case 'characterRevived':
+            this.options.handlers.onCharacterChanged?.(event.characterId);
+            this.options.handlers.onCharacterRevived?.(event.characterId);
+            break;
+          case 'revivifyChanged':
+            this.options.handlers.onRevivifyChanged?.();
             break;
           case 'puzzleChanged':
             this.options.handlers.onPuzzleChanged?.(event.puzzleId);

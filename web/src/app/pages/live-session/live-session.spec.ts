@@ -12,6 +12,12 @@ import { textOf } from '../../core/format/text-testing';
 import { RosterClient } from '../../core/maps/roster-client';
 import { ProgressionClient } from '../../core/progression/progression-client';
 import { XpChanges } from '../../core/progression/xp-changes';
+import { RevivifyClient } from '../../core/revivify/revivify-client';
+import {
+  type RevivifyRequest,
+  RevivifyRequestSchema,
+  RevivifyRequestStatus,
+} from '../../../gen/meurpg/play/v1/revivify_pb';
 import { PuzzlesClient } from '../../core/puzzles/puzzles-client';
 import { SceneChecks } from '../../core/maps/scene-actions';
 import {
@@ -166,6 +172,8 @@ class FakeLiveSessionSource implements LiveSessionSource {
 
 describe('LiveSession', () => {
   let source: FakeLiveSessionSource;
+  /** The casts of Revivify outside a combat that wait for the master. */
+  const revivifyList = vi.fn<() => Promise<RevivifyRequest[]>>();
   /** What the master's "Dar XP" reads (MR-016): the party's XP and how the campaign levels. */
   const xpExperience = vi.fn();
   let scenes: FakeSceneClient;
@@ -197,6 +205,7 @@ describe('LiveSession', () => {
         ],
       }),
     );
+    revivifyList.mockReset().mockResolvedValue([]);
     signIn.mockClear();
     openSessions.dismiss.mockClear();
     liveCampaignIds.set(new Set());
@@ -226,6 +235,7 @@ describe('LiveSession', () => {
         { provide: ProgressionClient, useValue: { experience: xpExperience, listAwards: vi.fn() } },
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
         { provide: SceneClient, useValue: scenes },
+        { provide: RevivifyClient, useValue: { list: revivifyList, confirmTime: vi.fn() } },
         { provide: PuzzlesClient, useValue: puzzles },
         { provide: SceneChecks, useValue: fakeChecks },
         { provide: SessionSummaryClient, useValue: { get: summary } },
@@ -1419,6 +1429,56 @@ describe('LiveSession', () => {
         expect(count('layers map-1')).toBeGreaterThan(before.layers);
       });
       expect(count('get map-1')).toBe(before.gets + 1);
+    });
+  });
+  describe('Revivify outside a combat and a character that lives again', () => {
+    const asMaster = () => {
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: true,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
+    };
+    const asked = create(RevivifyRequestSchema, {
+      id: 'r1',
+      status: RevivifyRequestStatus.PENDING,
+      casterName: 'Ilaria',
+      targetName: 'Toren',
+    });
+
+    it('asks the master on the first load, and again when the stream says the casts changed', async () => {
+      asMaster();
+      const el = await render();
+      expect(revivifyList).toHaveBeenCalled();
+      expect(el.querySelector('app-revivify-ask [role="alertdialog"]')).toBeNull();
+
+      revivifyList.mockResolvedValue([asked]);
+      const reads = revivifyList.mock.calls.length;
+      source.push({ kind: 'revivifyChanged' });
+      await new Promise((r) => setTimeout(r));
+      await new Promise((r) => setTimeout(r));
+
+      expect(revivifyList.mock.calls.length).toBeGreaterThan(reads);
+    });
+
+    it('shows the question to the master and never to a player', async () => {
+      revivifyList.mockResolvedValue([asked]);
+      const player = await render();
+      expect(player.querySelector('app-revivify-ask')).toBeNull();
+      expect(revivifyList).not.toHaveBeenCalled();
+    });
+
+    it('reads the vitals again when a character lives again', async () => {
+      asMaster();
+      await render();
+      const reads = vi.spyOn(source, 'getLiveSession');
+      source.push({ kind: 'characterRevived', characterId: 'brisa' });
+      await new Promise((r) => setTimeout(r));
+      await new Promise((r) => setTimeout(r));
+
+      expect(reads).toHaveBeenCalled();
     });
   });
 });

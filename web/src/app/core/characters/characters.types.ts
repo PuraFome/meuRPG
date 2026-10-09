@@ -45,5 +45,6 @@ export type CharacterBlockedReason =
   | 'not_pending'
   | 'awaiting_approval'
   | 'no_changes_requested'
+  | 'not_dead'
   | 'archived_content'
   | 'switched_off_content';

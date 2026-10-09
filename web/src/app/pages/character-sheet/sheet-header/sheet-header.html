@@ -48,6 +48,9 @@
       @if (diedOn(); as date) {
         <p class="head__line">Morreu em {{ date }}. A ficha fica guardada.</p>
       }
+      @if (revivedOn(); as date) {
+        <p class="head__line">Voltou à vida em {{ date }}.</p>
+      }
     </div>
 
     @if (fields().length > 0) {
