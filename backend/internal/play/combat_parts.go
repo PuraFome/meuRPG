@@ -176,7 +176,7 @@ type hitFacts struct {
 	enc              playdb.Encounter
 	viewer           combatViewer
 	freeSlots        bool
-	disadvantaged    bool // some source gives the attack disadvantage, cancelled or not
+	disadvantaged    bool // some source gives the attack disadvantage, canceled or not
 	targetHurt       bool
 	names            func(string) string
 }

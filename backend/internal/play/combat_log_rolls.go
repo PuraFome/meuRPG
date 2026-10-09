@@ -76,7 +76,7 @@ func (e *logEntry) answerChange() *playv1.CombatLogModeChange {
 
 // dressDamage adds the parts and the steps to the damage of an attack, for whoever may
 // have them. A Divine Smite die that did not count is the master's alone.
-func (e *logEntry) dressDamage(d *playv1.CombatLogDamage, v combatViewer, dice, targetsOwn bool) {
+func (e *logEntry) dressDamage(d *playv1.CombatLogDamage, v combatViewer, dice, targetsOwn, holdsHitPoints bool) {
 	if d == nil || e.dmg == nil {
 		return
 	}
@@ -95,7 +95,7 @@ func (e *logEntry) dressDamage(d *playv1.CombatLogDamage, v combatViewer, dice, 
 			d.Parts = append(d.Parts, partRollProto(r, dtPT))
 		}
 	}
-	if !v.master && !targetsOwn {
+	if !v.master && !targetsOwn && holdsHitPoints {
 		// The damage as rolled, before the target's modifiers and with every die the roll made.
 		switch {
 		case len(e.dmg.Parts) > 0:

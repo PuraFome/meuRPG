@@ -572,7 +572,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 			out.Outcome, out.StoppedByReaction = playv1.AttackOutcome_ATTACK_OUTCOME_MISS, true
 		} else if e.ev.Pending != "" {
 			out.Damage = e.damage(dice, v.master, v.master || v.owns(target), out)
-			e.dressDamage(out.Damage, v, dice, v.master || (target.Kind == kindPlayer && v.owns(target)))
+			e.dressDamage(out.Damage, v, dice, v.master || (target.Kind == kindPlayer && v.owns(target)), holdsHP(target))
 		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:
 		if e.ev.Heal { // Retomar o fôlego: only the master and its own player see the numbers

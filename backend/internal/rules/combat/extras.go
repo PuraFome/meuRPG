@@ -87,7 +87,7 @@ type ExtraScene struct {
 	// 5 ft of it, as the roller sees it.
 	EnemyNearTarget bool
 	// DisadvantageSource says some circumstance gives the attack disadvantage, even when an
-	// advantage cancelled it: the ally clause of Sneak Attack asks that the attacker has none.
+	// advantage canceled it: the ally clause of Sneak Attack asks that the attacker has none.
 	DisadvantageSource bool
 	// SneakAttackDice is the rogue's dice (0: no Sneak Attack). SneakUsed says it was
 	// used this turn already.

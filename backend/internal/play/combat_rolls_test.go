@@ -553,7 +553,8 @@ func smiteTable(t *testing.T) (*armed, *playv1.Encounter) {
 			t.Fatalf("MoveCombatant(%s) error = %v", label, err)
 		}
 	}
-	return a, a.begin(t, e)
+	e = a.begin(t, e)
+	return a, e
 }
 
 // A Divine Smite spends the slot, rolls its extra die against any target, and tells a
@@ -561,7 +562,7 @@ func smiteTable(t *testing.T) (*armed, *playv1.Encounter) {
 // the master reads whether the die counts (SRD 5.1, Paladin, Divine Smite).
 func TestPM06b_DivineSmiteRollsTheSameForEveryTargetAndCountsAgainstTheUndeadOnly(t *testing.T) {
 	t.Parallel()
-	a, e := smiteTable(t)
+	a, _ := smiteTable(t)
 	hit := func(target string, face int32) *playv1.PendingDamage {
 		t.Helper()
 		res := a.mustAttack(t, a.caio, a.get(t, a.caio), "Toren", battleaxe, target, d20(face))
@@ -621,7 +622,7 @@ func TestPM06b_DivineSmiteRollsTheSameForEveryTargetAndCountsAgainstTheUndeadOnl
 
 	// The next round: the same smite on a bandit.
 	a.mustEndTurn(t, a.caio, a.get(t, a.caio))
-	e = a.passTo(t, a.get(t, a.master), "Toren")
+	a.passTo(t, a.get(t, a.master), "Toren")
 	banditBefore := hp("Bandido")
 	q := hit("Bandido", 15)
 	human, err := smite(q, map[string]int32{"weapon": 1, "divine-smite": 2, "divine-smite-extra": 1})
@@ -654,7 +655,7 @@ func TestPM06b_DivineSmiteRollsTheSameForEveryTargetAndCountsAgainstTheUndeadOnl
 	}
 	// The master reads which one counted.
 	a.mustEndTurn(t, a.caio, a.get(t, a.caio))
-	e = a.get(t, a.master)
+	e := a.get(t, a.master)
 	for _, r := range a.log(t, a.master, e).GetRounds() {
 		for _, en := range r.GetEntries() {
 			if en.GetKind() != playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK {
@@ -727,11 +728,11 @@ func (a *armed) sneakOffer(t *testing.T, face int32, extra func(*playv1.RollAtta
 }
 
 // An enemy of the target next to it is not enough when the attack has a disadvantage that an
-// advantage cancelled: the attacker still "has disadvantage" (SRD 5.1, Rogue, Sneak Attack).
+// advantage canceled: the attacker still "has disadvantage" (SRD 5.1, Rogue, Sneak Attack).
 func TestPM06b_SneakAttackAllyClauseRefusesACancelledDisadvantage(t *testing.T) {
 	t.Parallel()
 	a, e := rollsTable(t)
-	e = a.passTo(t, e, "Toren")
+	a.passTo(t, e, "Toren")
 	if p := a.sneakOffer(t, 15, nil); !p.GetAvailable() {
 		t.Fatalf("Sneak Attack next to an enemy of the target, with no disadvantage = %v, want it available", p)
 	}
@@ -740,7 +741,7 @@ func TestPM06b_SneakAttackAllyClauseRefusesACancelledDisadvantage(t *testing.T) 
 	a.setConditions(t, e, "Goblin", "condition:restrained")
 	a.setConditions(t, e, "Toren", "condition:poisoned")
 	if p := a.sneakOffer(t, 15, nil); p.GetAvailable() {
-		t.Errorf("Sneak Attack with an advantage and a disadvantage that cancelled = %v, want it refused", p)
+		t.Errorf("Sneak Attack with an advantage and a disadvantage that canceled = %v, want it refused", p)
 	}
 }
 

@@ -57,15 +57,9 @@ func (s *Service) RemoveDamagePart(
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
-		p, err := c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: c.enc.ID, ID: pendingID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("pending damage not found"))
-		}
+		p, err := rolledPending(ctx, c, pendingID)
 		if err != nil {
-			return nil, fmt.Errorf("find the pending damage: %w", err)
-		}
-		if p.Status != pendingRolled && p.Status != pendingApplied {
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_NOT_ROLLED, "the damage was not rolled")
+			return nil, err
 		}
 		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 		if err != nil {
@@ -88,11 +82,7 @@ func (s *Service) RemoveDamagePart(
 
 		byType, total := countedByType(rolls)
 		// The target's modifiers are the ones the roll used: the stored groups say them.
-		var mods []combat.Modifier
-		for _, g := range readStepGroups(p.Steps) {
-			mods = append(mods, g.Mods...)
-		}
-		land := settleSteps(byType, mods, nil)
+		land := settleSteps(byType, modsOfGroups(readStepGroups(p.Steps)), nil)
 		amount := clamp32(total, 0, math.MaxInt32)
 		var after *int32
 		if land.changed {
@@ -211,4 +201,28 @@ func giveBackOnce(ctx context.Context, c *combatTx, attacker playdb.Combatant, k
 		return fmt.Errorf("give back the once-per-turn damage: %w", err)
 	}
 	return nil
+}
+
+// rolledPending finds a pending damage of the combat that was rolled.
+func rolledPending(ctx context.Context, c *combatTx, id string) (playdb.PendingDamage, error) {
+	p, err := c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: c.enc.ID, ID: id})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return p, connect.NewError(connect.CodeNotFound, errors.New("pending damage not found"))
+	}
+	if err != nil {
+		return p, fmt.Errorf("find the pending damage: %w", err)
+	}
+	if p.Status != pendingRolled && p.Status != pendingApplied {
+		return p, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_NOT_ROLLED, "the damage was not rolled")
+	}
+	return p, nil
+}
+
+// modsOfGroups are the modifiers the stored steps were worked out with.
+func modsOfGroups(groups []stepGroup) []combat.Modifier {
+	var mods []combat.Modifier
+	for _, g := range groups {
+		mods = append(mods, g.Mods...)
+	}
+	return mods
 }
