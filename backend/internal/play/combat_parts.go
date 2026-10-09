@@ -456,6 +456,8 @@ type partsRoll struct {
 	// for each damage type, for the steps.
 	total  int
 	byType map[string]int
+	// adjust is what the answers of a held damage's windows do to the total a player reads.
+	adjust func(int) int
 	// faces are the weapon's faces, for the legacy fields of the event.
 	physical bool
 }
@@ -1015,7 +1017,11 @@ func (s *Service) keepRollDetail(ctx context.Context, c *combatTx, g, p playdb.P
 // die counts, also the conditional one that the target's kind keeps out of the real damage,
 // so the total tells nothing of what the target is.
 func (r partsRoll) shownTotal() int {
-	return shownTotalOf(r.rolls)
+	total := shownTotalOf(r.rolls)
+	if r.adjust != nil {
+		total = r.adjust(total)
+	}
+	return total
 }
 
 func shownTotalOf(rolls []partRoll) int {
@@ -1046,4 +1052,39 @@ func shownOfPending(p playdb.PendingDamage) (int32, bool) {
 		return total, true
 	}
 	return 0, false
+}
+
+// heldPartsRoll rebuilds the roll of a damage with extras that a reaction window held.
+func heldPartsRoll(parts []partRecord, rolls []partRoll, physical bool) *partsRoll {
+	out := &partsRoll{parts: parts, rolls: rolls, byType: map[string]int{}, physical: physical}
+	for _, pr := range rolls {
+		if pr.Counted {
+			out.byType[pr.DamageType] += int(pr.Sum) + int(pr.Flat) + int(pr.Fixed)
+		}
+	}
+	for typ, n := range out.byType {
+		out.byType[typ] = max(n, 0)
+		out.total += out.byType[typ]
+	}
+	return out
+}
+
+// scale puts what the reactions took off a held damage on its damage types, in proportion,
+// and on the total a player reads, which a reaction changes in the same way.
+func (r *partsRoll) scale(from, to int, st *replayState) {
+	r.total = to
+	if from > 0 && from != to {
+		left := to
+		var last string
+		for typ, n := range r.byType {
+			scaled := n * to / from
+			r.byType[typ] = scaled
+			left -= scaled
+			last = typ
+		}
+		if last != "" { // the rounding goes to one type
+			r.byType[last] += left
+		}
+	}
+	r.adjust = func(shown int) int { return adjustedDamage(st, shown) }
 }

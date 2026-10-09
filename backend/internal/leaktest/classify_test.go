@@ -139,6 +139,8 @@ var notReads = map[string]classified{
 	playv1connect.CombatServiceCastSpellProcedure:                             {playerAction, "a player casts with their own combatant"},
 	playv1connect.CombatServiceConfirmDeathProcedure:                          {masterWrite, masterOnlyWhy},
 	playv1connect.CombatServiceDeclineOpportunityProcedure:                    {playerAction, "a player declines an opportunity attack of their own combatant"},
+	playv1connect.CombatServiceAnswerReactionProcedure:                        {playerAction, "a player answers the reaction window of their own combatant; the master answers the NPCs' (PM-04)"},
+	playv1connect.CombatServiceResolveConcentrationSaveProcedure:              {playerAction, "a player rolls (or hands to the master) the concentration save of their own combatant (PM-04)"},
 	playv1connect.CombatServiceDeclineReactionProcedure:                       {playerAction, "a player declines a reaction of their own combatant"},
 	playv1connect.CombatServiceDiscardPendingDamageProcedure:                  {masterWrite, masterOnlyWhy},
 	playv1connect.CombatServiceEndConcentrationProcedure:                      {playerAction, "a player ends their own concentration"},

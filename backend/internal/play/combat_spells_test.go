@@ -31,6 +31,7 @@ var spellRPCs = []string{"CastSpell", "UseReaction", "DeclineReaction", "RollDea
 const (
 	magicMissileSpell = "spell:magic-missile"
 	shieldSpell       = "spell:shield"
+	featherFallSpell  = "spell:feather-fall"
 	sleepSpell        = "spell:sleep"
 	burningHands      = "spell:burning-hands"
 	holdPerson        = "spell:hold-person"
@@ -1333,40 +1334,11 @@ func TestRN22_ConditionsAndTheConcentrationReminder(t *testing.T) {
 	if err != nil || applied.GetConcentrationDc() != 10 {
 		t.Fatalf("the damage on a concentrating Pensantus = %v, %v; want the DC 10 reminder", applied, err)
 	}
-	hit = a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", d20(9))
-	if _, err := a.declineReaction(t, a.ana, e, hit.GetPendingDamage().GetId()); err != nil {
-		t.Fatalf("DeclineReaction() error = %v", err)
+	// The damage asks the save, and the turn waits for it (SRD, Duration): the master keeps it.
+	if w := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE); w == nil || w.GetConcentrationSave().GetDc() != 10 {
+		t.Fatalf("Pensantus's windows = %v, want a concentration save of DC 10", a.windows(t, a.ana))
 	}
-	a.h.roller.queue(6)
-	a.mustDamage(t, a.master, e, hit.GetPendingDamage().GetId(), inAppDamage)
-	big := int32(30)
-	res, err := a.master.combat.ApplyPendingDamage(t.Context(), connect.NewRequest(&playv1.ApplyPendingDamageRequest{
-		CampaignId: a.campaignID, EncounterId: e.GetId(), PendingDamageId: hit.GetPendingDamage().GetId(), IdempotencyKey: newKey(), Amount: &big,
-	}))
-	if err != nil || res.Msg.GetPendingDamage().GetConcentrationDc() != 15 {
-		t.Fatalf("the damage of 30 on Pensantus = %v, %v; want the DC 15 reminder (half of 30)", res, err)
-	}
-	// The reminder is in the log for the master and the target's own player, not for others.
-	dcOf := func(u *user) (dc int32, found bool) {
-		for _, r := range a.log(t, u, e).GetRounds() {
-			for _, en := range r.GetEntries() {
-				if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK && en.GetDamage().ConcentrationDc != nil && en.GetDamage().GetStatus() == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED && en.GetDamage().GetAmount() == 30 {
-					return en.GetDamage().GetConcentrationDc(), true
-				}
-			}
-		}
-		return 0, false
-	}
-	if dc, ok := dcOf(a.master); !ok || dc != 15 {
-		t.Errorf("the master's log DC = %d, %v; want 15", dc, ok)
-	}
-	if dc, ok := dcOf(a.ana); !ok || dc != 15 {
-		t.Errorf("Pensantus's player's log DC = %d, %v; want 15", dc, ok)
-	}
-	if _, ok := dcOf(a.caio); ok {
-		t.Error("another player's log has Pensantus's concentration DC")
-	}
-
+	a.keepAllConcentrations(t, e)
 	// His player ends the concentration; the log says which spell ended; the undo puts it back.
 	if _, err := a.conditions(t, a.ana, e, "Pensantus", nil, false, true); err != nil {
 		t.Fatalf("SetCombatantConditions(end_concentration) error = %v", err)
@@ -1388,6 +1360,50 @@ func TestRN22_ConditionsAndTheConcentrationReminder(t *testing.T) {
 	}
 	if got := byLabel(t, a.get(t, a.caio), "Pensantus").GetConcentrationSpell(); got != webSpell {
 		t.Errorf("concentration after the undo = %q, want Teia again", got)
+	}
+
+	hit = a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", d20(9))
+	if _, err := a.declineReaction(t, a.ana, e, hit.GetPendingDamage().GetId()); err != nil {
+		t.Fatalf("DeclineReaction() error = %v", err)
+	}
+	a.h.roller.queue(6)
+	a.mustDamage(t, a.master, e, hit.GetPendingDamage().GetId(), inAppDamage)
+	big := int32(30)
+	res, err := a.master.combat.ApplyPendingDamage(t.Context(), connect.NewRequest(&playv1.ApplyPendingDamageRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), PendingDamageId: hit.GetPendingDamage().GetId(), IdempotencyKey: newKey(), Amount: &big,
+	}))
+	if err != nil || res.Msg.GetPendingDamage().GetConcentrationDc() != 15 {
+		t.Fatalf("the damage of 30 on Pensantus = %v, %v; want the DC 15 reminder (half of 30)", res, err)
+	}
+	a.keepAllConcentrations(t, e)
+	// The reminder is in the log for the master and the target's own player, not for others.
+	dcOf := func(u *user) (dc int32, found bool) {
+		for _, r := range a.log(t, u, e).GetRounds() {
+			for _, en := range r.GetEntries() {
+				if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK && en.GetDamage().ConcentrationDc != nil && en.GetDamage().GetStatus() == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED && en.GetDamage().GetAmount() == 30 {
+					return en.GetDamage().GetConcentrationDc(), true
+				}
+			}
+		}
+		return 0, false
+	}
+	if dc, ok := dcOf(a.master); !ok || dc != 15 {
+		t.Errorf("the master's log DC = %d, %v; want 15", dc, ok)
+	}
+	if dc, ok := dcOf(a.ana); !ok || dc != 15 {
+		t.Errorf("Pensantus's player's log DC = %d, %v; want 15", dc, ok)
+	}
+	if _, ok := dcOf(a.caio); ok {
+		t.Error("another player's log has Pensantus's concentration DC")
+	}
+
+	// At 0 hit points the concentration ends with no save (SRD, Duration): the 30 damage took Pensantus
+	// down, so no window asks one, and the log says which spell ended.
+	if w := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE); w != nil {
+		t.Errorf("a concentration save of %v waits for a character at 0 hit points: the concentration ends without one", w)
+	}
+	if got := byLabel(t, a.get(t, a.caio), "Pensantus").GetConcentrationSpell(); got != "" {
+		t.Errorf("concentration at 0 hit points = %q, want none", got)
 	}
 }
 
@@ -1791,6 +1807,10 @@ func TestCombatUndoTakesBackEveryNewAction(t *testing.T) {
 			t.Fatalf("DeclineReaction() error = %v", err)
 		}
 	})
+	// The turn waits for the answer (PM-04): Pensantus lets the hit go before the next attack.
+	if _, err := b.declineReaction(t, b.ana, eb, hit.GetPendingDamage().GetId()); err != nil {
+		t.Fatalf("DeclineReaction() error = %v", err)
+	}
 	// And a damage at 0 hit points: a failure that the undo takes away.
 	b.correct(t, b.toren, hpIs(0))
 	b.h.roller.queue(3)
@@ -2462,20 +2482,20 @@ func TestReplayedCastDoesNotShowAHiddenTarget(t *testing.T) {
 	}
 }
 
-// Escudo's armor class holds for every hit on the target: a second hit already waiting for
-// the reaction, whose total is under the new armor class, does not land.
+// Escudo's armor class holds for every hit on the target. The turn waits for the
+// reaction (PM-04), so the Capitão's second attack waits for the answer to the first; once
+// Escudo is up (AC 17) the second one, total 13, misses.
 func TestShieldAlsoStopsTheOtherHitsAwaitingTheReaction(t *testing.T) {
 	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFightNPCFirst(t)
 	before := byLabel(t, e, "Pensantus").GetHitPointsCurrent()
 	first := a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", d20(9)) // 13 vs AC 12: a hit
-	second := a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", d20(9))
-	for i, r := range []*playv1.RollAttackResponse{first, second} {
-		if r.GetPendingDamage().GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_REACTION {
-			t.Fatalf("hit %d = %v, want it awaiting the reaction", i+1, r.GetPendingDamage())
-		}
+	if first.GetPendingDamage().GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_REACTION {
+		t.Fatalf("the hit = %v, want it awaiting the reaction", first.GetPendingDamage())
 	}
+	_, err := a.attack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", d20(9))
+	wantBlockedBy(t, "a second attack while the hit waits", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_PENDING)
 	res, err := a.useReaction(t, a.ana, e, first.GetPendingDamage().GetId(), slotOfLevel(1))
 	if err != nil {
 		t.Fatalf("UseReaction() error = %v", err)
@@ -2483,18 +2503,12 @@ func TestShieldAlsoStopsTheOtherHitsAwaitingTheReaction(t *testing.T) {
 	if res.GetOutcome() != playv1.ReactionOutcome_REACTION_OUTCOME_STOPPED {
 		t.Fatalf("outcome = %v, want stopped", res.GetOutcome())
 	}
-	// Escudo is up (AC 17): the other hit, total 13, would miss, so it must not hurt her.
-	if _, err := a.declineReaction(t, a.ana, e, second.GetPendingDamage().GetId()); err != nil {
-		t.Logf("DeclineReaction() error = %v", err)
-	}
-	a.h.roller.queue(7)
-	if _, err := a.damage(t, a.master, e, second.GetPendingDamage().GetId(), inAppDamage); err != nil {
-		t.Logf("RollDamage() error = %v", err)
-	} else if _, err := a.settle(t, a.master, e, second.GetPendingDamage().GetId(), true); err != nil {
-		t.Logf("ApplyPendingDamage() error = %v", err)
+	second := a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", d20(9))
+	if second.GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_MISS || second.GetPendingDamage() != nil {
+		t.Errorf("the second attack = %v, want a miss against the Escudo's AC 17", second.GetRoll())
 	}
 	if got := byLabel(t, a.get(t, a.master), "Pensantus").GetHitPointsCurrent(); got != before {
-		t.Errorf("Pensantus HP = %d, want %d: a hit with total 13 against the Escudo's AC 17 must not land", got, before)
+		t.Errorf("Pensantus HP = %d, want %d: nothing landed", got, before)
 	}
 }
 

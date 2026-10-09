@@ -21,6 +21,12 @@ export interface CombatantMove {
   readonly row: number;
 }
 
+/** The sentence of a window that closed by itself ("Queda Suave fechou. Você já usou a sua reação."). */
+export interface ReactionNotice {
+  readonly windowId: string;
+  readonly text: string;
+}
+
 /** What `CombatState.beginRead` hands out. */
 export interface ReadTicket {
   readonly seq: number;
@@ -50,6 +56,9 @@ export class CombatState {
   /** Goes up on every `combat_log_changed` and every (re)connection: the log
    * panel reads the log again whenever it changes. */
   readonly logTick = signal(0);
+  /** What a reaction window that closed by itself said (`reaction_window_closed`), kept in a status line until it is
+   * dismissed, and gone with the combat. Nothing of it is stored in the browser. */
+  readonly reactionNotice = signal<ReactionNotice | null>(null);
   /** The ended combat the person already left ("Voltar à sessão"). */
   private readonly dismissedId = signal<string | null>(null);
 
@@ -119,8 +128,30 @@ export class CombatState {
     this.logTick.update((n) => n + 1);
   }
 
+  /** The windows the stream announced (`reaction_window_opened`) in this page's life: one that was not announced came
+   * with a read, after a reload, and its prompt says "Combate atualizado agora.". */
+  private readonly announced = new Set<string>();
+
+  noteReactionOpened(windowId: string): void {
+    this.announced.add(windowId);
+  }
+
+  wasAnnounced(windowId: string): boolean {
+    return this.announced.has(windowId);
+  }
+
+  /** `reaction_window_closed`: a window closed by itself; the sentence stays until `dismissReactionNotice`. */
+  noteReactionClosed(windowId: string, text: string): void {
+    this.reactionNotice.set(text ? { windowId, text } : null);
+  }
+
+  dismissReactionNotice(): void {
+    this.reactionNotice.set(null);
+  }
+
   clear(): void {
     this.applied++;
+    this.reactionNotice.set(null);
     this.encounter.set(null);
     this.dismissedId.set(null);
     this.moving.set(false);

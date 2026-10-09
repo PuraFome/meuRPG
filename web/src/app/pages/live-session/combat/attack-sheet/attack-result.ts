@@ -43,13 +43,16 @@ import { D20Faces } from '../roll-mode/d20-faces';
             @if (r.criticalOnHit) {
               <span class="part__line">Acerto crítico automático (a 1,5 m de alvo paralisado ou inconsciente)</span>
             }
+            @if (held(); as h) {
+              <span class="part__line"><b>{{ h.title }}.</b> {{ h.detail }}</span>
+            }
             @if (coverLine()) {
               <span class="part__line">{{ coverLine() }}</span>
             }
           </div>
         </div>
       }
-      @if (showDamage()) {
+      @if (showDamage() && !held()) {
         <div class="part">
           <mat-icon class="part__check" aria-hidden="true">check</mat-icon>
           <div class="part__body">
@@ -68,7 +71,7 @@ import { D20Faces } from '../roll-mode/d20-faces';
                 />
               }
             } @else if (waiting()) {
-              <span class="part__line">Esperando a reação do alvo.</span>
+              <span class="part__line">Esperando o mestre.</span>
             } @else {
               <span class="part__line">Sem dano: o ataque errou.</span>
             }
@@ -84,6 +87,8 @@ export class AttackResult {
   readonly roll = input<AttackRoll | null>(null);
   readonly d20Formula = input('');
   readonly outcome = input<{ word: string; hit: boolean } | null>(null);
+  /** A reaction holds the roll: what the combat waits for, instead of an outcome. */
+  readonly held = input<{ title: string; detail: string } | null>(null);
   /** The Dano step is finished: show it (a miss says there is none). */
   readonly showDamage = input(false);
   readonly damage = input<PendingDamage | null>(null);

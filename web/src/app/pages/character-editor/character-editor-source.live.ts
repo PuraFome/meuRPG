@@ -20,6 +20,7 @@ import {
   CharacterKind as GenCharacterKind,
   CharacterService,
   CharacterState as GenCharacterState,
+  CuttingWordsAsk,
   CustomBackground,
   FullSheet as GenFullSheet,
   HitPointsMethod as GenHitPointsMethod,
@@ -49,6 +50,7 @@ import {
   CharacterFormValue,
   CharacterPreviewVm,
   CreateCharacterInput,
+  CuttingWordsAskKey,
   HitPointsMethod,
   PreviewCharacterInput,
   RulesCatalogVm,
@@ -149,6 +151,26 @@ const PREPARATION_FROM_GEN: Record<GenSpellPreparation, SpellPreparation | null>
   [GenSpellPreparation.PREPARED]: 'prepared',
   [GenSpellPreparation.SPELLBOOK]: 'spellbook',
 };
+
+/** "Só em ataques" is the default the server reads from an unset field, so the form sends the field unset for it:
+ * a sheet that never had the setting is not given one. */
+const CUTTING_WORDS_ASK_TO_GEN: Record<CuttingWordsAskKey, CuttingWordsAsk> = {
+  all: CuttingWordsAsk.ALL,
+  'only-attacks': CuttingWordsAsk.UNSPECIFIED,
+  never: CuttingWordsAsk.NEVER,
+};
+
+/** Unspecified is "só em ataques", the server's default. */
+function cuttingWordsAskFromGen(ask: CuttingWordsAsk): CuttingWordsAskKey {
+  switch (ask) {
+    case CuttingWordsAsk.ALL:
+      return 'all';
+    case CuttingWordsAsk.NEVER:
+      return 'never';
+    default:
+      return 'only-attacks';
+  }
+}
 
 const ALIGNMENT_TO_GEN: Record<AlignmentKey, GenAlignment> = {
   '': GenAlignment.UNSPECIFIED,
@@ -298,6 +320,7 @@ export function toFullSheetInit(v: CharacterFormValue) {
     portraitImageId: v.portraitImageId,
     alignment: ALIGNMENT_TO_GEN[v.alignment],
     customFeaturesText: v.customFeaturesText,
+    cuttingWordsAsk: CUTTING_WORDS_ASK_TO_GEN[v.cuttingWordsAsk],
   };
 }
 
@@ -322,6 +345,10 @@ export function mergeFullSheetInit(original: GenFullSheet | undefined, v: Charac
   // return value, not a re-branded `FullSheet` instance.
   const { $typeName: _typeName, ...rest } = original;
   const init = toFullSheetInit(v);
+  // An explicit "só em ataques" the sheet already had stays as it was read.
+  if (cuttingWordsAskFromGen(original.cuttingWordsAsk) === v.cuttingWordsAsk) {
+    init.cuttingWordsAsk = original.cuttingWordsAsk;
+  }
   // The form edits every field of a custom background now; this only keeps a field a later
   // version of the message adds, so a save never wipes what the editor does not know.
   if (
@@ -441,6 +468,7 @@ export function toFormFullSheet(name: string, full: GenFullSheet): CharacterForm
     portraitImageId: full.portraitImageId,
     alignment: ALIGNMENT_FROM_GEN[full.alignment],
     customFeaturesText: full.customFeaturesText,
+    cuttingWordsAsk: cuttingWordsAskFromGen(full.cuttingWordsAsk),
   };
 }
 
@@ -679,6 +707,7 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         character.derived,
         sheetCase === 'full' ? (character.sheet!.content.value as GenFullSheet) : undefined,
       ),
+      featureKeys: (character.derived?.features ?? []).map((f) => f.key),
       abilityOrigin: abilityOriginFromGen(
         sheetCase === 'full'
           ? (character.sheet!.content.value as GenFullSheet).abilityOrigin

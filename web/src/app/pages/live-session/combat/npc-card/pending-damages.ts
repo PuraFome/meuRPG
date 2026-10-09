@@ -20,7 +20,6 @@ import {
   type Encounter,
   type PendingDamage,
   PendingDamageStatus,
-  ReactionOutcome,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient, newKey } from '../../../../core/combat/combat-client';
 import { damageFormula, diceName, sumRange } from '../../../../core/combat/combat-dice';
@@ -31,6 +30,7 @@ import { hitPointsAfter, hitPointsLine } from '../../../../core/combat/attack-fl
 import { article } from '../../../../core/combat/combat-log';
 import { isPlayer } from '../../../../core/combat/combat-view';
 import { DamageBreakdown } from '../damage-parts/damage-breakdown';
+import { heldReason } from '../../../../core/combat/reaction-master';
 import { RollPicker } from '../roll-picker/roll-picker';
 
 /**
@@ -66,9 +66,6 @@ export class PendingDamages {
   readonly state = input.required<CombatState>();
   /** Inside the attack's own result box: no box of its own. */
   readonly flat = input(false);
-  /** What the master's answer for the target did: Escudo stopped the hit, the
-   * hit still stands, or the master let it go. The card reads it for its result. */
-  readonly reacted = output<'stopped' | 'still' | 'declined'>();
   /** A damage was applied or discarded: the card stays on screen for its note. */
   readonly settledNote = output<void>();
 
@@ -110,11 +107,9 @@ export class PendingDamages {
     // What "Aplicar" applies: the damage after resistance, vulnerability and immunity when a step changed it.
     const total = p.amountAfterSteps ?? p.amount;
     const range = sumRange(p.diceCount, p.diceSides);
-    // The reaction prompt of this hit: Escudo is cast with the lowest free slot.
-    const prompt = e.reactionPrompts.find((r) => r.pendingDamageId === p.id);
-    const slot = [...(prompt?.slots ?? [])]
-      .filter((x) => x.free > 0)
-      .sort((a, b) => a.level - b.level)[0];
+    // A window the combat waits on holds the damage: "Rolar dano" is off, with the reason written (the answer is in
+    // the master's cards, `ReactionQueue`).
+    const held = p.status === PendingDamageStatus.AWAITING_REACTION || !rolled ? heldReason(e) : '';
     return {
       p,
       total,
@@ -124,10 +119,11 @@ export class PendingDamages {
       steps: p.steps ?? [],
       rolled,
       awaiting: p.status === PendingDamageStatus.AWAITING_REACTION,
-      /** The reaction spell's name as the server says it ("Escudo Arcano"). */
-      spell: prompt?.spellNamePt ?? '',
-      slot: slot ? { level: slot.level, pact: slot.pact } : null,
-      pronoun: article(target?.label ?? '') === 'a' ? 'Ela' : 'Ele',
+      held:
+        held ||
+        (p.status === PendingDamageStatus.AWAITING_REACTION
+          ? `Espere a reação ${article(target?.label ?? '') === 'a' ? 'da' : 'do'} ${target?.label ?? 'alvo'}.`
+          : ''),
       // A player rolls the damage of their own attack; the master waits.
       waitsForPlayer: !rolled && !!attacker && isPlayer(attacker),
       attacker: attacker?.label ?? '',
@@ -206,43 +202,6 @@ export class PendingDamages {
         this.keyFor(`roll:${p.id}:${JSON.stringify(die)}`),
       );
       this.state().apply(res.encounter);
-    });
-  }
-
-  /** "Usar Escudo por ele": the master answers for the player. */
-  protected useShield(p: PendingDamage, slot: { level: number; pact: boolean }): Promise<void> {
-    return this.run(async () => {
-      const res = await this.api.useReaction(
-        this.campaignId(),
-        this.encounter().id,
-        p.id,
-        slot,
-        this.keyFor(`reaction:${p.id}:use:${slot.level}:${slot.pact}`),
-      );
-      this.state().apply(res.encounter);
-      const stopped = res.outcome === ReactionOutcome.STOPPED;
-      const name =
-        this.encounter().reactionPrompts.find((r) => r.pendingDamageId === p.id)?.spellNamePt ??
-        'Escudo Arcano';
-      this.settled.set(
-        stopped ? `${name} usado: o ataque errou.` : `${name} usado: o ataque ainda acerta.`,
-      );
-      this.reacted.emit(stopped ? 'stopped' : 'still');
-    });
-  }
-
-  /** "Seguir sem Escudo": the hit goes on to its damage roll. */
-  protected declineShield(p: PendingDamage): Promise<void> {
-    return this.run(async () => {
-      this.state().apply(
-        await this.api.declineReaction(
-          this.campaignId(),
-          this.encounter().id,
-          p.id,
-          this.keyFor(`reaction:${p.id}:decline`),
-        ),
-      );
-      this.reacted.emit('declined');
     });
   }
 

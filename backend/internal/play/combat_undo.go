@@ -62,6 +62,11 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 		if e.Kind == eventCreatureSummoned || e.Kind == eventCreatureDismissed {
 			continue
 		}
+		// A concentration that ended at 0 hit points is written before the damage's own
+		// event, and goes with it when the damage is undone.
+		if ev, err := readEvent(e.Payload); err == nil && ev.Reaction != nil && ev.Reaction.Kind == concentrationEnd {
+			continue
+		}
 		// The offers a move made are written before the move's own event, the same
 		// way: the undo acts on the move.
 		// One the master made by hand (a combat without a grid) is no part of a move:
@@ -101,6 +106,18 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 				continue
 			}
 			if err != nil || (e.Kind == eventFamiliarSight && ev.Sight != "start") {
+				return playdb.ListRecentSessionEventsRow{}, false
+			}
+		}
+		// The event that stands for a held action is no action to undo: nothing of it
+		// happened yet (combat_reaction_hold.go).
+		if ev, err := readEvent(e.Payload); err == nil && ev.Reaction != nil && ev.Reaction.Hold {
+			return playdb.ListRecentSessionEventsRow{}, false
+		}
+		// A fall whose damage waited for a Feather Fall landed by itself: the hit points
+		// it took were not written with the firing, so the firing is no longer undoable.
+		if e.Kind == eventTrapTriggered {
+			if ev, err := readEvent(e.Payload); err == nil && ev.Trap != nil && ev.Trap.Held {
 				return playdb.ListRecentSessionEventsRow{}, false
 			}
 		}
@@ -207,6 +224,22 @@ func (s *Service) UndoLastAction(
 		if last.Kind == eventCombatantMoved {
 			undoneMove = &ev
 		}
+		if last.Kind == eventDamageRolled || last.Kind == eventDamageApplied {
+			// The concentration the damage ended (at 0 hit points) comes back with it.
+			at := slices.IndexFunc(recent, func(e playdb.ListRecentSessionEventsRow) bool { return e.ID == last.ID })
+			for _, older := range recent[at+1:] {
+				pe, err := readEvent(older.Payload)
+				if err != nil || pe.Reaction == nil || pe.Reaction.Kind != concentrationEnd || pe.Reaction.Group != ev.Pending {
+					break
+				}
+				more, err := s.takeBack(ctx, c, older.Kind, pe)
+				if err != nil {
+					return nil, err
+				}
+				vitals = append(vitals, more...)
+				alsoUndone = append(alsoUndone, older.ID)
+			}
+		}
 		if last.Kind == eventTrapTriggered {
 			rearmed = ev.Trap
 			// A firing written as several events is taken back whole.
@@ -296,6 +329,22 @@ func (s *Service) publishUndone(ctx context.Context, campaignID string, d *encou
 // damage that is gone (its character was deleted meanwhile) is skipped: there
 // is nothing left to put back on it.
 func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev actionEvent) ([]*playv1.CharacterVitals, error) {
+	if kind == eventDamageRolled || kind == eventDamageApplied {
+		// The windows the damage opened (a concentration save, a Hellish Rebuke) were
+		// about it: they go with it.
+		pendings := []string{ev.Pending}
+		for _, h := range ev.Settled {
+			pendings = append(pendings, h.Pending)
+		}
+		for _, id := range pendings {
+			if id == "" {
+				continue
+			}
+			if err := c.q.CloseOpenReactionWindowsOfPending(ctx, playdb.CloseOpenReactionWindowsOfPendingParams{EncounterID: c.enc.ID, Pending: id, AnsweredAt: c.now}); err != nil {
+				return nil, fmt.Errorf("close the windows of a damage taken back: %w", err)
+			}
+		}
+	}
 	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 	if err != nil {
 		return nil, fmt.Errorf("list the combatants: %w", err)
@@ -718,13 +767,20 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			break
 		}
 		if ev.Slot != nil {
-			v, err := s.spendSlot(ctx, c, who.CharacterID, *ev.Slot, -1)
-			if err != nil {
+			if who.Kind == kindPlayer {
+				v, err := s.spendSlot(ctx, c, who.CharacterID, *ev.Slot, -1)
+				if err != nil {
+					return nil, err
+				}
+				keep(v)
+			} else if err := s.giveBackNPCSlot(ctx, c, who, *ev.Slot); err != nil { // an NPC's slot is counted on the combatant
 				return nil, err
 			}
-			keep(v)
 		}
 		if err := setEconomy(who, who.ActionUsed, who.BonusActionUsed, ev.ReactionBefore, who.Dashed); err != nil {
+			return nil, err
+		}
+		if err := s.reopenWindowOf(ctx, c, ev); err != nil {
 			return nil, err
 		}
 		if err := c.q.SetCombatantAcBonus(ctx, playdb.SetCombatantAcBonusParams{ID: who.ID, AcBonus: ev.ACBonusBefore}); err != nil {
@@ -741,6 +797,9 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 	case eventReactionDeclined:
 		if ev.OfferID != "" { // an opportunity offer turned down or skipped: it waits again
 			return nil, offerWaits(ctx, c, ev.OfferID)
+		}
+		if err := s.reopenWindowOf(ctx, c, ev); err != nil {
+			return nil, err
 		}
 		return nil, setStatus(ev.Pending, pendingAwaitingReaction)
 	case eventDeathSaveRolled:

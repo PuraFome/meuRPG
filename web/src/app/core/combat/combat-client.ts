@@ -5,6 +5,9 @@ import { createClient } from '@connectrpc/connect';
 import {
   type AttackRoll,
   CombatService,
+  type ConcentrationSaveResult,
+  ReactionChoice,
+  type ReactionResult as GenReactionResult,
   type DeathSave,
   type CoverDegree,
   type CombatantSide,
@@ -20,7 +23,6 @@ import {
   type ParticipantSchema,
   type PendingDamage,
   type PreviewSpellAreaResponse,
-  type ReactionOutcome,
   type SpellCast,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { type RollMode, type RollModeRequest } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
@@ -226,10 +228,37 @@ export interface ConditionChange {
   readonly endConcentration?: boolean;
 }
 
-/** What Escudo did to a hit (`UseReaction`). */
-export interface ReactionResult {
+/** How a window is answered (`AnswerReaction`): "Usar ..." with what it needs, or "Deixar passar". */
+export interface ReactionAnswer {
+  readonly use: boolean;
+  /** The slot of a spell reaction (`pact` for the pact slot). */
+  readonly slot?: SlotRef;
+  /** Hellish Rebuke paid with the Infernal Legacy. */
+  readonly useRacial?: boolean;
+  /** Feather Fall: the falling creatures to save. */
+  readonly creatureIds?: readonly string[];
+  /** The die the answer needs, when it needs one: the app rolls it, or the face typed from a physical die. */
+  readonly die?: { readonly inApp: true } | { readonly typed: number };
+}
+
+/** What `AnswerReaction` answers: the combat and what the answer did. */
+export interface AnswerResult {
   readonly encounter: Encounter;
-  readonly outcome: ReactionOutcome;
+  readonly result: GenReactionResult | undefined;
+}
+
+/** How a concentration window is settled: the d20 in the app, a typed face, "Deixar o mestre rolar por mim", or the
+ * master keeping the concentration. */
+export type ConcentrationAnswer =
+  | { readonly kind: 'app' }
+  | { readonly kind: 'typed'; readonly face: number }
+  | { readonly kind: 'hand' }
+  | { readonly kind: 'keep' };
+
+/** What `ResolveConcentrationSave` answers: the combat and the save (unset when handed to the master or kept). */
+export interface ConcentrationOutcome {
+  readonly encounter: Encounter;
+  readonly result: ConcentrationSaveResult | undefined;
 }
 
 /** One adjustment of an NPC's hit points ("Dano/Cura"): at most one of the
@@ -737,6 +766,7 @@ export class CombatClient {
     asReaction = false,
     opportunityOfferId = '',
     mode?: ModeChoice,
+    catchWindowId = '',
   ): Promise<AttackResult> {
     const res = await this.client.rollAttack({
       campaignId,
@@ -761,6 +791,7 @@ export class CombatClient {
             rollModeRequestId: mode.requestId ?? '',
           }
         : {}),
+      catchWindowId,
     });
     return {
       encounter: need(res.encounter, 'RollAttack'),
@@ -944,38 +975,55 @@ export class CombatClient {
     };
   }
 
-  /** The master answers for the target: cast Escudo with `slot`. */
-  async useReaction(
+  /** `AnswerReaction`: "Usar ..." or "Deixar passar" on a reaction window. The caller makes the key from the request. */
+  async answerReaction(
     campaignId: string,
     encounterId: string,
-    pendingDamageId: string,
-    slot: { level: number; pact: boolean },
+    windowId: string,
+    answer: ReactionAnswer,
     key: string,
-  ): Promise<ReactionResult> {
-    const res = await this.client.useReaction({
+  ): Promise<AnswerResult> {
+    const res = await this.client.answerReaction({
       campaignId,
       encounterId,
-      pendingDamageId,
-      slot,
+      windowId,
+      answer: answer.use ? ReactionChoice.USE : ReactionChoice.PASS,
+      slot: answer.slot ? { level: answer.slot.level, pact: answer.slot.pact } : undefined,
+      useRacial: answer.useRacial ?? false,
+      creatureIds: [...(answer.creatureIds ?? [])],
+      roll: !answer.die
+        ? { case: undefined }
+        : 'inApp' in answer.die
+          ? { case: 'rollInApp', value: true }
+          : { case: 'typed', value: answer.die.typed },
       idempotencyKey: key,
     });
-    return { encounter: need(res.encounter, 'UseReaction'), outcome: res.outcome };
+    return { encounter: need(res.encounter, 'AnswerReaction'), result: res.result };
   }
 
-  /** The master lets the hit go ("Seguir sem Escudo"). */
-  async declineReaction(
+  /** `ResolveConcentrationSave`: the Constitution saving throw of a concentration window. */
+  async resolveConcentrationSave(
     campaignId: string,
     encounterId: string,
-    pendingDamageId: string,
+    windowId: string,
+    how: ConcentrationAnswer,
     key: string,
-  ): Promise<Encounter> {
-    const res = await this.client.declineReaction({
+  ): Promise<ConcentrationOutcome> {
+    const res = await this.client.resolveConcentrationSave({
       campaignId,
       encounterId,
-      pendingDamageId,
+      windowId,
+      roll:
+        how.kind === 'app'
+          ? { case: 'rollInApp', value: true }
+          : how.kind === 'typed'
+            ? { case: 'd20Face', value: how.face }
+            : how.kind === 'hand'
+              ? { case: 'handToMaster', value: true }
+              : { case: 'keep', value: true },
       idempotencyKey: key,
     });
-    return need(res.encounter, 'DeclineReaction');
+    return { encounter: need(res.encounter, 'ResolveConcentrationSave'), result: res.result };
   }
 
   /** A standard action ("standard:dash") or a feature's ("feature:second-wind").

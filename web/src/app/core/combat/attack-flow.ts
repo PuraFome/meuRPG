@@ -155,7 +155,7 @@ export function pendingNote(pendings: readonly PendingDamage[]): string | null {
     return `Falta aplicar ${sum} de dano`;
   }
   if (pendings.some((p) => p.status === PendingDamageStatus.AWAITING_REACTION)) {
-    return 'Falta a reação do alvo (Escudo)';
+    return 'Falta a reação do alvo';
   }
   return pendings.some((p) => p.status === PendingDamageStatus.AWAITING_ROLL)
     ? 'Falta rolar o dano'

@@ -141,7 +141,7 @@ type cave struct {
 
 func newCave(t *testing.T) *cave {
 	t.Helper()
-	return newCaveWith(t, 3, []string{burningHands, magicMissileSpell, shieldSpell})
+	return newCaveWith(t, 3, []string{burningHands, magicMissileSpell, shieldSpell, featherFallSpell})
 }
 
 // newCaveWith is newCave with Pensantus at the given wizard level and spells.

@@ -369,6 +369,51 @@ type Save struct {
 	Known bool
 }
 
+// ReactionStats is what a combatant's sheet or stat block says about its
+// reactions (PM-04): the spells it can cast and its slots, the numbers of each
+// reaction and the features that give them. A player's character spends from its
+// vitals; for anyone else the slots are the sheet's or the stat block's total and
+// the combat counts what a fight spent.
+type ReactionStats struct {
+	// Spells are the keys of the spells it can cast now: every cantrip, the spells
+	// it knows or has prepared, the always-prepared ones and, for a stat block, the
+	// ones its Spellcasting trait lists.
+	Spells []string
+	// SlotsTotal are its slots by spell level (index 0 the 1st), PactLevel and
+	// PactSlots the warlock's pact slots.
+	SlotsTotal           [9]int
+	PactLevel, PactSlots int
+	// CastingMod is the spellcasting ability modifier (what a Counterspell check
+	// adds), SaveDC the spell save DC.
+	CastingMod, SaveDC int
+	// InfernalLegacy says Hellish Rebuke can be cast through the tiefling's trait
+	// (level 3), once a long rest, as a 2nd-level spell; its DC is the Charisma one.
+	InfernalLegacy bool
+	LegacyDC       int
+	// UncannyDodge says the combatant has the rogue's feature.
+	UncannyDodge bool
+	// Deflect says it has Deflect Missiles; MonkLevel and DexMod are its numbers.
+	Deflect           bool
+	MonkLevel, DexMod int
+	// Proficiency is the proficiency bonus (the Deflect Missiles throw back adds it).
+	Proficiency int
+	// CuttingWords says it has the bard's feature, with its bard level (the die)
+	// and the bard's "Perguntar" setting: "all", "attacks" (the default) or "never".
+	CuttingWords bool
+	BardLevel    int
+	CuttingAsk   string
+	// CharmImmune says the stat block is immune to being charmed (Cutting Words
+	// does nothing to it).
+	CharmImmune bool
+	// StatBlock says the combatant is a creature's stat block: its slots come from
+	// the trait and the combat counts them.
+	StatBlock bool
+	// ResourceMax are the uses its features give at its level, by resource key
+	// ("bardic_inspiration", "ki", "infernal_legacy"): the combat counts what an NPC
+	// spent; a player's character spends from its vitals.
+	ResourceMax map[string]int
+}
+
 // Named is a content key with its Portuguese name.
 type Named struct {
 	Key, NamePT string
