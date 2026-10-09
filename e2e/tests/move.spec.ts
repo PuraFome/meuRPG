@@ -133,7 +133,7 @@ test(
       await order.getByRole('button', { name: 'Fechar' }).click();
       await expect(order.getByRole('button', { name: 'Marcar cobertura de Capitão Goblin' })).toBeFocused();
       await order.getByRole('button', { name: 'Mais ações para Goblin 2' }).click();
-      await m.getByRole('menuitem', { name: 'Marcar cobertura…' }).click();
+      await m.getByRole('menuitem', { name: 'Marcar cobertura' }).click();
       await pickRadio(order.getByRole('radiogroup', { name: 'Cobertura marcada de Goblin 2' }), 'Cobertura total');
       await order.getByRole('button', { name: 'Fechar' }).click();
 
@@ -470,6 +470,34 @@ test(
       await expect(m.getByText('Ligado para o próximo arrasto')).toHaveCount(0);
       await expect(m.getByText('Esperando a reação do jogador de Pensantus')).toHaveCount(0);
       await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Goblin 1')?.col).toBe(9);
+    } finally {
+      await done();
+    }
+  },
+);
+
+test(
+  'o salto que sai do alcance de um goblin avisa antes: "Esse salto sai do alcance do Goblin 1" e o ataque de oportunidade de graça',
+  { tag: ['@MR-034', '@RN-21'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    // Toren stands on (5, 7), Goblin 1 on the diagonal (4, 6): one square east takes him out of its reach.
+    const { p, campaignId, done } = await movingTable(browser, 'Salto do alcance', torenFirst, {
+      character: { build: toren, sheet: torenSheet },
+      at: { 'Capitão Goblin': [15, 3], 'Goblin 1': [4, 6], 'Goblin 2': [15, 11] },
+    });
+    try {
+      await openSessionPage(p, campaignId);
+      await expect(p.getByRole('heading', { name: 'Sua vez, Toren' })).toBeVisible();
+      await p.getByRole('button', { name: 'Mover', exact: true }).click();
+      await pickRadio(p, 'Saltar');
+      await expect(p.getByRole('heading', { name: 'Saltar Toren' })).toBeVisible();
+      await tapSquare(p, 6, 7);
+      await expect(p.getByText('Esse salto sai do alcance do Goblin 1. Ele pode atacar você de graça (ataque de oportunidade).')).toBeVisible();
+      await expect(p.getByRole('button', { name: 'Saltar para cá' })).toBeVisible();
+      // A square that stays in its reach has no warning.
+      await tapSquare(p, 5, 6);
+      await expect(p.getByText('Esse salto sai do alcance')).toHaveCount(0);
     } finally {
       await done();
     }

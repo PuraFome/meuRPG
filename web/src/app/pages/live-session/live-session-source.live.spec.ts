@@ -9,6 +9,8 @@ import {
 } from '../../../gen/meurpg/play/v1/play_pb';
 import { Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { TestBed } from '@angular/core/testing';
+import { GetCharacterResponseSchema } from '../../../gen/meurpg/characters/v1/characters_pb';
+import { ProficiencyLevel } from '../../../gen/meurpg/rules/v1/rules_pb';
 import type { Transport } from '@connectrpc/connect';
 
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
@@ -77,6 +79,19 @@ describe('toVitalsVm', () => {
     expect(vm.spellSlots).toEqual([{ level: 1, total: 2, used: 1, created: 0 }]);
     expect(vm.pactSlots).toEqual({ slotLevel: 2, total: 2, used: 0 });
     expect(vm.revision).toBe(7);
+  });
+
+  it('keeps what Ajuda adds to the maximum, which the maximum already counts', () => {
+    const vm = toVitalsVm(
+      create(CharacterVitalsSchema, {
+        characterId: 'c1',
+        hitPointsCurrent: 43,
+        hitPointsMax: 43,
+        hitPointsMaxBonus: 5,
+      }),
+    );
+    expect(vm.hitPointsMaxBonus).toBe(5);
+    expect(vm.hitPointsMax).toBe(43);
   });
 });
 
@@ -251,5 +266,69 @@ describe('LiveSessionSourceLive.watch', () => {
   it('still takes an event it does not know as a sign the stream is alive', async () => {
     // An empty `event` is what a newer server's oneof case looks like to this app.
     expect(await events([create(WatchGameSessionResponseSchema, {})])).toEqual(['heartbeat']);
+  });
+});
+
+describe('LiveSessionSourceLive.getPlayerSheet (the skills a search and a check read)', () => {
+  const skill = (key: string, namePt: string, bonus: number, proficiency: ProficiencyLevel) => ({
+    key,
+    namePt,
+    bonus,
+    proficiency,
+  });
+
+  function sourceWith(features: string[]) {
+    const transport = {
+      unary: async (method: { name: string }) => ({
+        stream: false,
+        service: {},
+        method,
+        header: new Headers(),
+        trailer: new Headers(),
+        message: create(GetCharacterResponseSchema, {
+          character: {
+            derived: {
+              armorClass: 13,
+              features: features.map((key) => ({ key })),
+              skills: [
+                skill('skill:perception', 'Percepção', 1, ProficiencyLevel.NONE),
+                skill('skill:investigation', 'Investigação', 8, ProficiencyLevel.PROFICIENT),
+                skill('skill:arcana', 'Arcanismo', 8, ProficiencyLevel.PROFICIENT),
+                skill('skill:acrobatics', 'Acrobacia', 1, ProficiencyLevel.NONE),
+                skill('skill:athletics', 'Atletismo', -1, ProficiencyLevel.NONE),
+                skill('skill:stealth', 'Furtividade', 5, ProficiencyLevel.EXPERTISE),
+              ],
+            },
+          },
+        }),
+      }),
+    } as unknown as Transport;
+    TestBed.configureTestingModule({
+      providers: [LiveSessionSourceLive, { provide: CONNECT_TRANSPORT, useValue: transport }],
+    });
+    return TestBed.inject(LiveSessionSourceLive);
+  }
+
+  it('lists the other skills with the sheet bonus, alphabetical, without Percepção and Investigação', async () => {
+    const sheet = await sourceWith([]).getPlayerSheet('camp', 'c1');
+    expect(sheet.skills?.perception).toBe(1);
+    expect(sheet.skills?.investigation).toBe(8);
+    expect(sheet.skills?.others).toEqual([
+      { key: 'skill:acrobatics', name: 'Acrobacia', bonus: 1 },
+      { key: 'skill:arcana', name: 'Arcanismo', bonus: 8 },
+      { key: 'skill:athletics', name: 'Atletismo', bonus: -1 },
+      { key: 'skill:stealth', name: 'Furtividade', bonus: 5 },
+    ]);
+  });
+
+  it('names the skills Talento Confiável raises (the proficient ones) only for a sheet that has the feature', async () => {
+    expect((await sourceWith([]).getPlayerSheet('camp', 'c1')).skills?.reliableTalent).toEqual([]);
+    TestBed.resetTestingModule();
+    const rogue = await sourceWith(['feature:reliable-talent']).getPlayerSheet('camp', 'c1');
+    expect(rogue.skills?.reliableTalent).toEqual([
+      'skill:investigation',
+      'skill:arcana',
+      'skill:stealth',
+    ]);
   });
 });

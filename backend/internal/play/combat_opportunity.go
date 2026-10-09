@@ -157,7 +157,7 @@ func provokedBy(cands []candidate, from, to grid.Square) []provoker {
 // the square only). It returns the id the offers share, empty when there is none,
 // and the reactors offered an attack (combatant IDs), whom the stream must tell.
 // The event is written before the move's own, which is what the undo acts on.
-func (s *Service) offerOpportunities(ctx context.Context, c *combatTx, cs []playdb.Combatant, mover playdb.Combatant, from, to grid.Square) (string, []string, error) {
+func (s *Service) offerOpportunities(ctx context.Context, c *combatTx, cs []playdb.Combatant, mover playdb.Combatant, from, to grid.Square, jumped bool) (string, []string, error) {
 	reactors, err := s.opportunityReactors(ctx, c.tx, c.session.CampaignID, cs, mover, nil)
 	if err != nil {
 		return "", nil, err
@@ -175,7 +175,7 @@ func (s *Service) offerOpportunities(ctx context.Context, c *combatTx, cs []play
 		offered = append(offered, p.reactor.ID)
 		offer, err := c.q.InsertOpportunityOffer(ctx, playdb.InsertOpportunityOfferParams{
 			EncounterID: c.enc.ID, MoveID: moveID, MoverID: mover.ID, ReactorID: p.reactor.ID,
-			LeftCol: new(clamp32(p.left.Col, 0, math.MaxInt32)), LeftRow: new(clamp32(p.left.Row, 0, math.MaxInt32)), CreatedAt: c.now,
+			LeftCol: new(clamp32(p.left.Col, 0, math.MaxInt32)), LeftRow: new(clamp32(p.left.Row, 0, math.MaxInt32)), CreatedAt: c.now, Jumped: jumped,
 		})
 		if err != nil {
 			return "", nil, fmt.Errorf("offer the opportunity attack: %w", err)
@@ -460,6 +460,9 @@ func (s *Service) opportunityOffers(ctx context.Context, m authz.Membership, d *
 			continue
 		}
 		offer := &playv1.OpportunityOffer{Id: o.ID, MoverId: mover.ID, MoverLabel: mover.Label, ForYou: answers}
+		if o.Jumped {
+			offer.Jump = playv1.JumpKind_JUMP_KIND_LONG
+		}
 		if v.sees(reactor) {
 			offer.ReactorId, offer.ReactorLabel = reactor.ID, reactor.Label
 		}

@@ -1362,9 +1362,17 @@ type TrapSpec struct {
 	// current state" on an update, so an edit that does not mention it never
 	// re-arms a trap. The master may change it (UpdateMapPoint); the live game
 	// changes it too (slice 9.8).
-	State         TrapState `protobuf:"varint,7,opt,name=state,proto3,enum=meurpg.maps.v1.TrapState" json:"state,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	State TrapState `protobuf:"varint,7,opt,name=state,proto3,enum=meurpg.maps.v1.TrapState" json:"state,omitempty"`
+	// The skills, besides Perception and Investigation, that find this trap when a
+	// player searches with them, against `find_dc`: skill keys ("skill:arcana"), at most 16,
+	// none by default (the app never assumes that a magic trap wants Arcana: the master
+	// decides trap by trap). Refused with `invalid_argument`: Perception, Investigation, a
+	// repeated key and anything that is not a skill of the SRD. An update replaces the whole
+	// trap, so it sends the list it wants (empty clears it). Only the master reads and writes it; a player
+	// never gets the field (RN-10), on the map or in any answer.
+	AlsoFindSkillKeys []string `protobuf:"bytes,8,rep,name=also_find_skill_keys,json=alsoFindSkillKeys,proto3" json:"also_find_skill_keys,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *TrapSpec) Reset() {
@@ -1444,6 +1452,13 @@ func (x *TrapSpec) GetState() TrapState {
 		return x.State
 	}
 	return TrapState_TRAP_STATE_UNSPECIFIED
+}
+
+func (x *TrapSpec) GetAlsoFindSkillKeys() []string {
+	if x != nil {
+		return x.AlsoFindSkillKeys
+	}
+	return nil
 }
 
 // LightSpec is what a LIGHT point is.
@@ -6808,7 +6823,7 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\n" +
 	"remembered\x18\x17 \x01(\bR\n" +
 	"remembered\x126\n" +
-	"\x06stairs\x18\x18 \x01(\x0e2\x1e.meurpg.maps.v1.StairDirectionR\x06stairs\"\x9a\x02\n" +
+	"\x06stairs\x18\x18 \x01(\x0e2\x1e.meurpg.maps.v1.StairDirectionR\x06stairs\"\xcb\x02\n" +
 	"\bTrapSpec\x12\x1d\n" +
 	"\n" +
 	"preset_key\x18\x01 \x01(\tR\tpresetKey\x12\x1b\n" +
@@ -6817,7 +6832,8 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\tarea_size\x18\x04 \x01(\x05R\bareaSize\x126\n" +
 	"\atrigger\x18\x05 \x01(\x0e2\x1c.meurpg.rules.v1.TrapTriggerR\atrigger\x123\n" +
 	"\x06effect\x18\x06 \x01(\v2\x1b.meurpg.rules.v1.TrapEffectR\x06effect\x12/\n" +
-	"\x05state\x18\a \x01(\x0e2\x19.meurpg.maps.v1.TrapStateR\x05state\"^\n" +
+	"\x05state\x18\a \x01(\x0e2\x19.meurpg.maps.v1.TrapStateR\x05state\x12/\n" +
+	"\x14also_find_skill_keys\x18\b \x03(\tR\x11alsoFindSkillKeys\"^\n" +
 	"\tLightSpec\x12\x1d\n" +
 	"\n" +
 	"preset_key\x18\x01 \x01(\tR\tpresetKey\x12\x1b\n" +

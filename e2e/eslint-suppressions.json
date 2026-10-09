@@ -4,7 +4,7 @@
       "count": 3
     },
     "@typescript-eslint/no-unused-vars": {
-      "count": 2
+      "count": 1
     },
     "playwright/no-force-option": {
       "count": 5

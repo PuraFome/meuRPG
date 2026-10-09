@@ -262,15 +262,18 @@ func (s *Service) ListTrapActivity(
 			}
 			sr := &playv1.TrapSearchResult{
 				CharacterId: l.character, CharacterName: names[l.character], FoundPointIds: l.ev.Found,
-				Roll: diceRoll(1, 20, []int32{l.ev.D20}, l.ev.Modifier, l.ev.Total, l.ev.Physical),
+				Roll: checkRoll(l.ev.D20, l.ev.Modifier, l.ev.Physical, l.ev.ReliableTalent),
 			}
-			if l.ev.Key == searchPerception {
+			switch l.ev.Key {
+			case searchPerception:
 				sr.Skill = playv1.TrapSearchSkill_TRAP_SEARCH_SKILL_PERCEPTION
-			} else {
+			case searchInvestigation:
 				sr.Skill = playv1.TrapSearchSkill_TRAP_SEARCH_SKILL_INVESTIGATION
+			default:
+				sr.Skill, sr.OtherSkillKey = playv1.TrapSearchSkill_TRAP_SEARCH_SKILL_OTHER, l.ev.Key
 			}
 			if l.ev.D20B != 0 {
-				sr.SecondRoll = diceRoll(1, 20, []int32{l.ev.D20B}, l.ev.Modifier, l.ev.D20B+l.ev.Modifier, l.ev.Physical)
+				sr.SecondRoll = checkRoll(l.ev.D20B, l.ev.Modifier, l.ev.Physical, l.ev.ReliableTalent)
 			}
 			for _, id := range l.ev.Found {
 				sr.FoundNames = append(sr.FoundNames, trapNames[id])

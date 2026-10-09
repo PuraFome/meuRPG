@@ -126,12 +126,14 @@ func (s *Service) liveFamiliar(ctx context.Context, q *charactersdb.Queries, cam
 // value to its maximum: a sheet that lost a level, or a class, never shows
 // more than it has now.
 func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
+	bonus := derefInt(row.HitPointsMaxBonus) // Aid's, on top of the sheet's maximum
 	v := &playv1.CharacterVitals{
 		CharacterId:        row.ID,
 		Name:               row.Name,
 		PlayerUserId:       deref(row.PlayerUserID),
-		HitPointsCurrent:   i32(m.hitPoints), // fresh: full hit points
-		HitPointsMax:       i32(m.hitPoints),
+		HitPointsCurrent:   i32(m.hitPoints) + bonus, // fresh: full hit points
+		HitPointsMax:       i32(m.hitPoints) + bonus,
+		HitPointsMaxBonus:  bonus,
 		HitPointsTemporary: derefInt(row.HitPointsTemporary),
 		HitDiceTotal:       i32(m.hitDiceTotal),
 		Revision:           derefInt(row.Revision),
@@ -546,4 +548,50 @@ func (s *Service) carryHitPoints(ctx context.Context, q *charactersdb.Queries, c
 		return wrap("carry the current hit points", err)
 	}
 	return nil
+}
+
+// SetHitPointsMaxBonus puts the bonus Aid adds to a character's maximum hit
+// points at bonus (0 or more; 0 ends the spell) inside tx, and returns the vitals
+// before and after. The current hit points follow the bonus: a bonus that grew
+// raises them by the same amount (the spell raises the maximum and the current
+// hit points together, so a character at 0 hit points wakes up with the
+// difference), and a bonus that fell takes away only what is now above the maximum
+// (hit points never pass it, SRD 5.1, "Healing"), never the last hit point of
+// someone who still had one. Setting the bonus it already has changes nothing, not
+// even the revision. `not_found` for anything but a living, active player's
+// character of the campaign. It implements play.VitalsKeeper; the caller records
+// the event and resets the death saves of a character that woke up.
+func (s *Service) SetHitPointsMaxBonus(ctx context.Context, tx pgx.Tx, campaignID, characterID string, bonus int32) (before, after *playv1.CharacterVitals, err error) {
+	bonus = max(bonus, 0)
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, nil, wrap("read rules content", err)
+	}
+	before, _, row, err := s.shapedVitals(ctx, tx, content, campaignID, characterID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if before.GetHitPointsMaxBonus() == bonus {
+		return before, before, nil
+	}
+	sheetMax := before.GetHitPointsMax() - before.GetHitPointsMaxBonus()
+	newMax := sheetMax + bonus
+	current := before.GetHitPointsCurrent()
+	switch {
+	case bonus > before.GetHitPointsMaxBonus():
+		current += bonus - before.GetHitPointsMaxBonus()
+	case current > 0:
+		current = max(min(current, newMax), 1)
+	}
+	current = min(current, newMax)
+	saved, err := s.queries.WithTx(tx).SetVitalsMaxBonus(ctx, charactersdb.SetVitalsMaxBonusParams{
+		CharacterID: row.ID, HitPointsCurrent: &current, HitPointsMaxBonus: bonus, Now: s.now(),
+	})
+	if err != nil {
+		return nil, nil, wrap("save the hit point bonus", err)
+	}
+	after = proto.CloneOf(before)
+	after.HitPointsMaxBonus, after.HitPointsMax, after.HitPointsCurrent = bonus, newMax, current
+	after.Revision, after.UpdatedAt = saved.Revision, timestamppb.New(saved.UpdatedAt)
+	return before, after, nil
 }

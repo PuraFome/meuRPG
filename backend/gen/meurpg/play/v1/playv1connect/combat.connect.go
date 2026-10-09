@@ -150,6 +150,9 @@ const (
 	// CombatServiceEndConcentrationProcedure is the fully-qualified name of the CombatService's
 	// EndConcentration RPC.
 	CombatServiceEndConcentrationProcedure = "/meurpg.play.v1.CombatService/EndConcentration"
+	// CombatServiceEndCombatEffectProcedure is the fully-qualified name of the CombatService's
+	// EndCombatEffect RPC.
+	CombatServiceEndCombatEffectProcedure = "/meurpg.play.v1.CombatService/EndCombatEffect"
 	// CombatServiceAnswerReactionProcedure is the fully-qualified name of the CombatService's
 	// AnswerReaction RPC.
 	CombatServiceAnswerReactionProcedure = "/meurpg.play.v1.CombatService/AnswerReaction"
@@ -1175,6 +1178,24 @@ type CombatServiceClient interface {
 	//     (a creature does not concentrate).
 	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
 	EndConcentration(context.Context, *connect.Request[v1.EndConcentrationRequest]) (*connect.Response[v1.EndConcentrationResponse], error)
+	// EndCombatEffect ends Ajuda on a combatant (the master only): the hit point bonus
+	// goes away, the maximum falls back, and the current hit points lose only what
+	// is above the new maximum (SRD 5.1: hit points never go above the maximum). The
+	// target never drops to 0 because of it, so a target woken by Ajuda stays awake. A
+	// player's character's bonus is kept in its vitals, an NPC's or a creature's on its
+	// combatant. Ajuda has no clock (the app does not count the 8 hours): it ends here, or at
+	// a long rest. Ending an Ajuda the combatant does not have changes nothing and is not an
+	// error. The same key with another request is `invalid_argument`.
+	//
+	// Every stream gets `encounter_changed` and, for a player's character,
+	// `vitals_changed`; the combat log gets an EFFECT_ENDED line.
+	//
+	// Errors:
+	//   - `not_found`: the combatant is not in this combat.
+	//   - `permission_denied`: the caller is not the master.
+	//   - `invalid_argument`: the effect is not AID.
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+	EndCombatEffect(context.Context, *connect.Request[v1.EndCombatEffectRequest]) (*connect.Response[v1.EndCombatEffectResponse], error)
 	// AnswerReaction answers a reaction window (PM-04): "Usar ..." or "Deixar
 	// passar". One window serves the seven reactions (Shield, Uncanny Dodge, Hellish
 	// Rebuke, Counterspell, Cutting Words, Deflect Missiles, Feather Fall), and the
@@ -1493,6 +1514,12 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(combatServiceMethods.ByName("EndConcentration")),
 			connect.WithClientOptions(opts...),
 		),
+		endCombatEffect: connect.NewClient[v1.EndCombatEffectRequest, v1.EndCombatEffectResponse](
+			httpClient,
+			baseURL+CombatServiceEndCombatEffectProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("EndCombatEffect")),
+			connect.WithClientOptions(opts...),
+		),
 		answerReaction: connect.NewClient[v1.AnswerReactionRequest, v1.AnswerReactionResponse](
 			httpClient,
 			baseURL+CombatServiceAnswerReactionProcedure,
@@ -1561,6 +1588,7 @@ type combatServiceClient struct {
 	confirmDeath             *connect.Client[v1.ConfirmDeathRequest, v1.ConfirmDeathResponse]
 	setCombatantConditions   *connect.Client[v1.SetCombatantConditionsRequest, v1.SetCombatantConditionsResponse]
 	endConcentration         *connect.Client[v1.EndConcentrationRequest, v1.EndConcentrationResponse]
+	endCombatEffect          *connect.Client[v1.EndCombatEffectRequest, v1.EndCombatEffectResponse]
 	answerReaction           *connect.Client[v1.AnswerReactionRequest, v1.AnswerReactionResponse]
 	resolveConcentrationSave *connect.Client[v1.ResolveConcentrationSaveRequest, v1.ResolveConcentrationSaveResponse]
 	listCombatLog            *connect.Client[v1.ListCombatLogRequest, v1.ListCombatLogResponse]
@@ -1750,6 +1778,11 @@ func (c *combatServiceClient) SetCombatantConditions(ctx context.Context, req *c
 // EndConcentration calls meurpg.play.v1.CombatService.EndConcentration.
 func (c *combatServiceClient) EndConcentration(ctx context.Context, req *connect.Request[v1.EndConcentrationRequest]) (*connect.Response[v1.EndConcentrationResponse], error) {
 	return c.endConcentration.CallUnary(ctx, req)
+}
+
+// EndCombatEffect calls meurpg.play.v1.CombatService.EndCombatEffect.
+func (c *combatServiceClient) EndCombatEffect(ctx context.Context, req *connect.Request[v1.EndCombatEffectRequest]) (*connect.Response[v1.EndCombatEffectResponse], error) {
+	return c.endCombatEffect.CallUnary(ctx, req)
 }
 
 // AnswerReaction calls meurpg.play.v1.CombatService.AnswerReaction.
@@ -2783,6 +2816,24 @@ type CombatServiceHandler interface {
 	//     (a creature does not concentrate).
 	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
 	EndConcentration(context.Context, *connect.Request[v1.EndConcentrationRequest]) (*connect.Response[v1.EndConcentrationResponse], error)
+	// EndCombatEffect ends Ajuda on a combatant (the master only): the hit point bonus
+	// goes away, the maximum falls back, and the current hit points lose only what
+	// is above the new maximum (SRD 5.1: hit points never go above the maximum). The
+	// target never drops to 0 because of it, so a target woken by Ajuda stays awake. A
+	// player's character's bonus is kept in its vitals, an NPC's or a creature's on its
+	// combatant. Ajuda has no clock (the app does not count the 8 hours): it ends here, or at
+	// a long rest. Ending an Ajuda the combatant does not have changes nothing and is not an
+	// error. The same key with another request is `invalid_argument`.
+	//
+	// Every stream gets `encounter_changed` and, for a player's character,
+	// `vitals_changed`; the combat log gets an EFFECT_ENDED line.
+	//
+	// Errors:
+	//   - `not_found`: the combatant is not in this combat.
+	//   - `permission_denied`: the caller is not the master.
+	//   - `invalid_argument`: the effect is not AID.
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+	EndCombatEffect(context.Context, *connect.Request[v1.EndCombatEffectRequest]) (*connect.Response[v1.EndCombatEffectResponse], error)
 	// AnswerReaction answers a reaction window (PM-04): "Usar ..." or "Deixar
 	// passar". One window serves the seven reactions (Shield, Uncanny Dodge, Hellish
 	// Rebuke, Counterspell, Cutting Words, Deflect Missiles, Feather Fall), and the
@@ -3097,6 +3148,12 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(combatServiceMethods.ByName("EndConcentration")),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceEndCombatEffectHandler := connect.NewUnaryHandler(
+		CombatServiceEndCombatEffectProcedure,
+		svc.EndCombatEffect,
+		connect.WithSchema(combatServiceMethods.ByName("EndCombatEffect")),
+		connect.WithHandlerOptions(opts...),
+	)
 	combatServiceAnswerReactionHandler := connect.NewUnaryHandler(
 		CombatServiceAnswerReactionProcedure,
 		svc.AnswerReaction,
@@ -3199,6 +3256,8 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceSetCombatantConditionsHandler.ServeHTTP(w, r)
 		case CombatServiceEndConcentrationProcedure:
 			combatServiceEndConcentrationHandler.ServeHTTP(w, r)
+		case CombatServiceEndCombatEffectProcedure:
+			combatServiceEndCombatEffectHandler.ServeHTTP(w, r)
 		case CombatServiceAnswerReactionProcedure:
 			combatServiceAnswerReactionHandler.ServeHTTP(w, r)
 		case CombatServiceResolveConcentrationSaveProcedure:
@@ -3362,6 +3421,10 @@ func (UnimplementedCombatServiceHandler) SetCombatantConditions(context.Context,
 
 func (UnimplementedCombatServiceHandler) EndConcentration(context.Context, *connect.Request[v1.EndConcentrationRequest]) (*connect.Response[v1.EndConcentrationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.EndConcentration is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) EndCombatEffect(context.Context, *connect.Request[v1.EndCombatEffectRequest]) (*connect.Response[v1.EndCombatEffectResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.EndCombatEffect is not implemented"))
 }
 
 func (UnimplementedCombatServiceHandler) AnswerReaction(context.Context, *connect.Request[v1.AnswerReactionRequest]) (*connect.Response[v1.AnswerReactionResponse], error) {

@@ -156,3 +156,52 @@ describe('PendingDamages, the critical hint (RN-24)', () => {
     expect(hint(setup({ diceCount: 1 }).nativeElement)).toBe('');
   });
 });
+
+describe("PendingDamages: the damage of a player's critical with Crítico Brutal, waiting for the master (PM-03b)", () => {
+  it("reads the groups of dice with the feature's name", () => {
+    const rolled = {
+      id: 'p9',
+      attackerId: 'rag',
+      targetId: 'hob',
+      status: PendingDamageStatus.ROLLED,
+      diceCount: 2,
+      diceSides: 12,
+      bonus: 3,
+      amount: 25,
+      damageTypePt: 'cortante',
+      critical: true,
+      criticalRule: CriticalDamageRule.DOUBLED_DICE,
+      criticalMax: 0,
+      extraDiceCount: 1,
+      extraDiceNamePt: 'Crítico Brutal',
+      roll: {
+        diceCount: 3,
+        diceSides: 12,
+        faces: [7, 11, 4],
+        modifier: 3,
+        total: 25,
+        physical: false,
+      },
+    } as never;
+    TestBed.configureTestingModule({
+      providers: [{ provide: CombatClient, useValue: {} }],
+    });
+    const fixture = TestBed.createComponent(PendingDamages);
+    fixture.componentRef.setInput('pendings', [rolled]);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        combatants: [
+          combatant({ id: 'rag', label: 'Ragna', kind: CombatantKind.PLAYER }),
+          combatant({ id: 'hob', label: 'Hobgoblin' }),
+        ],
+      }),
+    );
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.componentRef.setInput('state', new CombatState());
+    fixture.detectChanges();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.dmg__formula')?.textContent?.trim(),
+    ).toBe('2d12 (7, 11) + 1d12 Crítico Brutal (4) + 3 = 25 de dano cortante');
+  });
+});
