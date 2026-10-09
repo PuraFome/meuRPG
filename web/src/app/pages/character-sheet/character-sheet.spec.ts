@@ -852,6 +852,14 @@ describe('CharacterSheetPage', () => {
     expect(master.textContent).not.toContain('sem nome');
   });
 
+  it('says a reserved character has no player yet, instead of "Jogador sem nome" (MR-049)', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ playerDisplayName: null, reserved: true }));
+    const el = await render();
+    expect(ddAfter(el, 'Jogador')?.textContent?.trim()).toBe('Reservado: ainda sem jogador');
+  });
+
   it('hides XP for an NPC basic sheet, which has none', async () => {
     configure();
     fake.getCharacterSheetFn = () =>

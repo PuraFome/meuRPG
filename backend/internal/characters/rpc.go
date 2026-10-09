@@ -56,7 +56,8 @@ func (s *Service) CreateCharacter(
 	if !ok {
 		return nil, invalidArgument(fieldErr("kind", "is required"))
 	}
-	if err := checkCreatorKind(m, kind); err != nil {
+	forPlayer := req.Msg.GetForPlayer()
+	if err := checkCreatorKindFor(m, kind, forPlayer); err != nil {
 		return nil, err
 	}
 
@@ -91,9 +92,12 @@ func (s *Service) CreateCharacter(
 	if params.Story, err = storeJSON.Marshal(story); err != nil {
 		return nil, s.dbError(ctx, "encode a story", err)
 	}
-	if kind == kindPlayer {
+	switch {
+	case forPlayer:
+		params.Reserved = true // no owner until a player claims it (MR-049)
+	case kind == kindPlayer:
 		params.PlayerUserID = &m.UserID
-	} else {
+	default:
 		params.MasterUserID = &m.UserID // the NPC is the master's (RN-04)
 	}
 
@@ -148,7 +152,7 @@ func (s *Service) CreateCharacter(
 					}
 				}
 				content = tc
-				if kind == kindPlayer {
+				if kind == kindPlayer && !forPlayer {
 					// The base scores follow the way the player made them, and the table
 					// allows it (RN-24).
 					origin, err := s.checkAbilityScores(ctx, q, m, content, tr, req.Msg.GetAbilityMethod(), sheet.GetFull())
@@ -269,6 +273,7 @@ func (s *Service) ListCharacters(
 	if !isMaster(m) {
 		params.PlayerUserID = &m.UserID // a player sees only their own
 	}
+	now := s.now()
 	if m.Pending {
 		pending := statusPending
 		params.Status = &pending // and a pending member only their pending one (canSee)
@@ -293,6 +298,13 @@ func (s *Service) ListCharacters(
 	if err != nil {
 		return nil, s.dbError(ctx, "read rules content", err)
 	}
+	// Only the master lists the claim links: the reserved characters are theirs alone.
+	var links map[string]charactersdb.ListLatestClaimLinksRow
+	if isMaster(m) {
+		if links, err = s.latestClaimLinks(ctx, m.CampaignID); err != nil {
+			return nil, s.dbError(ctx, "list the claim links", err)
+		}
+	}
 	res := &charactersv1.ListCharactersResponse{}
 	for _, row := range rows {
 		summary := &charactersv1.CharacterSummary{
@@ -303,6 +315,10 @@ func (s *Service) ListCharacters(
 			PlayerUserId:      deref(row.PlayerUserID),
 			PlayerDisplayName: displayNames[deref(row.PlayerUserID)],
 			CreatedAt:         timestamppb.New(row.CreatedAt),
+			Reserved:          row.Reserved,
+		}
+		if isMaster(m) {
+			setClaimState(summary, row.Reserved, row.ClaimedAt, links[row.ID], now)
 		}
 		sheet, err := loadSheet(row.ID, row.Sheet)
 		if err != nil {
@@ -566,6 +582,9 @@ func (s *Service) SetStoryEditing(
 		if row.Kind != kindPlayer {
 			return invalidArgument(fieldErr("character_id", "is an NPC: the master always edits an NPC's story"))
 		}
+		if row.Reserved {
+			return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_RESERVED, row.ID)
+		}
 		if row.StoryEditingAllowed == allowed {
 			return nil // already so: nothing to change
 		}
@@ -617,6 +636,9 @@ func (s *Service) MarkCharacterDead(
 		// (RN-15): the master approves or rejects it instead.
 		if current.Status == statusPending {
 			return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_AWAITING_APPROVAL, current.ID)
+		}
+		if current.Reserved {
+			return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_RESERVED, current.ID)
 		}
 		// RN-03: the character changes status, never row.
 		row, err = q.MarkCharacterDead(ctx, charactersdb.MarkCharacterDeadParams{CampaignID: m.CampaignID, ID: id, Now: s.now()})
@@ -719,6 +741,22 @@ func (s *Service) UpdateMasterNotes(
 		return nil, s.dbError(ctx, "update master notes", err)
 	}
 	return connect.NewResponse(res), nil
+}
+
+// checkCreatorKindFor is checkCreatorKind with the master's for_player: the master makes
+// a PLAYER character for a player to claim (MR-049), which no one else may and which
+// no other kind may be.
+func checkCreatorKindFor(m authz.Membership, kind string, forPlayer bool) error {
+	if !forPlayer {
+		return checkCreatorKind(m, kind)
+	}
+	if !isMaster(m) {
+		return errPermission("only the campaign's master makes a character for a player")
+	}
+	if kind != kindPlayer {
+		return invalidArgument(fieldErr("for_player", "needs the kind PLAYER"))
+	}
+	return nil
 }
 
 // checkCreatorKind is who creates what (RN-04): a player creates their own

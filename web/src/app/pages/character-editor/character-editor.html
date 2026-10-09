@@ -7,6 +7,16 @@
       }
     </header>
 
+    @if (reserved()) {
+      <div class="mr-notice mr-notice--neutral editor__reserved" role="note">
+        <mat-icon aria-hidden="true">visibility_off</mat-icon>
+        <p>
+          <strong>Personagem reservado.</strong> Ninguém é dono ainda: os jogadores só o veem depois que um deles assumir
+          pelo link que você gerar.
+        </p>
+      </div>
+    }
+
     @switch (s.status) {
       @case ('loading') {
         <div class="mr-panel editor__loading" role="status">
@@ -748,7 +758,7 @@
             @if (saveState().status === 'saving') {
               {{ s.mode === 'create' ? 'Criando…' : 'Salvando…' }}
             } @else {
-              {{ s.mode === 'create' ? pageTitle() : 'Salvar ficha' }}
+              {{ s.mode === 'create' ? createLabel() : 'Salvar ficha' }}
             }
           </button>
           <a mat-button class="editor__cancel" [routerLink]="cancelLink()">Cancelar</a>
