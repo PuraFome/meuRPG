@@ -660,6 +660,7 @@ describe('an edit of a sheet of several classes', () => {
         customFeaturesText: '',
         featureChoiceKeys: [],
         featureChoiceText: {},
+        cuttingWordsAsk: 'only-attacks',
       },
     };
     const fixture = TestBed.createComponent(CharacterEditor);
@@ -845,6 +846,7 @@ function emptyEdit(over: Partial<CharacterForEdit['full'] & object> = {}): Chara
       customFeaturesText: '',
       featureChoiceKeys: [],
       featureChoiceText: {},
+      cuttingWordsAsk: 'only-attacks',
       ...over,
     },
   };

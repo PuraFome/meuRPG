@@ -1014,6 +1014,7 @@ describe('CharacterEditor', () => {
           customFeaturesText: '',
           featureChoiceKeys: [],
           featureChoiceText: {},
+          cuttingWordsAsk: 'only-attacks',
         },
         basic: null,
       });
@@ -1989,6 +1990,7 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
       customFeaturesText: '',
       featureChoiceKeys: [],
       featureChoiceText: {},
+      cuttingWordsAsk: 'only-attacks',
       ...over,
     },
   });
@@ -2327,6 +2329,7 @@ describe('CharacterEditor, the NPC portrait', () => {
           customFeaturesText: '',
           featureChoiceKeys: [],
           featureChoiceText: {},
+          cuttingWordsAsk: 'only-attacks',
         },
       };
     };
@@ -2853,6 +2856,7 @@ function fullSheetFor(over: object = {}): CharacterForEdit {
       customFeaturesText: '',
       featureChoiceKeys: [],
       featureChoiceText: {},
+      cuttingWordsAsk: 'only-attacks',
       ...over,
     },
   } as CharacterForEdit;
@@ -3004,5 +3008,74 @@ describe('CharacterEditor, leaving the route while a read or a save is in flight
     expect(cmp.selectedSkills().size).toBe(0);
     expect(cmp.selectedCantrips().size).toBe(0);
     expect(cmp.hitPointsRolls()).toEqual([]);
+  });
+});
+
+/** What the "Perguntar" specs read of the editor. */
+interface EditorProbe {
+  fullForm: {
+    getRawValue(): { cuttingWordsAsk: string };
+    patchValue(value: { cuttingWordsAsk: string }): void;
+  };
+  cuttingWordsOptions: readonly { label: string }[];
+  submit(): Promise<void>;
+}
+
+describe('CharacterEditor, the bard\'s "Perguntar" setting for Palavras de Interrupção', () => {
+  let fake: FakeCharacterEditorSource;
+
+  function configure(): void {
+    TestBed.configureTestingModule({
+      imports: [CharacterEditor],
+      providers: [
+        provideRouter([]),
+        { provide: CharacterEditorSource, useClass: FakeCharacterEditorSource },
+        {
+          provide: ActivatedRoute,
+          useValue: { paramMap: of(convertToParamMap({ id: 'camp-1', characterId: 'char-1' })) },
+        },
+      ],
+    });
+    fake = TestBed.inject(CharacterEditorSource) as unknown as FakeCharacterEditorSource;
+  }
+
+  async function render(featureKeys: readonly string[], over: object = {}) {
+    configure();
+    fake.loadCharacterForEditFn = () => Promise.resolve({ ...fullSheetFor(over), featureKeys });
+    const fixture = TestBed.createComponent(CharacterEditor);
+    fixture.detectChanges();
+    await flush();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return {
+      fixture,
+      el: fixture.nativeElement as HTMLElement,
+      cmp: fixture.componentInstance as unknown as EditorProbe,
+    };
+  }
+
+  it('shows the setting, "só em ataques" by default, for a bard that has the feature', async () => {
+    const { el, cmp } = await render(['feature:cutting-words']);
+    expect(el.textContent).toContain('Palavras de Interrupção');
+    expect(el.querySelector('mat-select[formcontrolname="cuttingWordsAsk"]')).not.toBeNull();
+    expect(cmp.fullForm.getRawValue().cuttingWordsAsk).toBe('only-attacks');
+    expect(cmp.cuttingWordsOptions.map((o) => o.label)).toEqual([
+      'Em todos os testes do inimigo',
+      'Só em ataques',
+      'Nunca',
+    ]);
+  });
+
+  it('leaves the setting out for a character without the feature', async () => {
+    const { el } = await render(['feature:spellcasting']);
+    expect(el.querySelector('mat-select[formcontrolname="cuttingWordsAsk"]')).toBeNull();
+  });
+
+  it('sends the chosen setting when the editor saves the sheet', async () => {
+    const { cmp } = await render(['feature:cutting-words'], { cuttingWordsAsk: 'all' });
+    expect(cmp.fullForm.getRawValue().cuttingWordsAsk).toBe('all');
+    cmp.fullForm.patchValue({ cuttingWordsAsk: 'never' });
+    await cmp.submit();
+    expect(fake.updateCharacterCalls[0].full?.cuttingWordsAsk).toBe('never');
   });
 });

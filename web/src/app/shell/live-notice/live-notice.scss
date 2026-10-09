@@ -4,59 +4,53 @@
 
 // A new notice variant (docs/design.md): surface, a 1.5px accent frame (the
 // same frame as the campaign's "Sessão" panel: accent means "session"), the
-// live icon in accent text, one bold sentence, one stroked action, close.
+// live icon in accent text, one bold sentence, one action, close. One row at
+// every width: on a phone the action is a text button ("Entrar") and the row
+// is about 64px, so the page under it is not pushed a third of a screen down.
 .live-notice {
   display: flex;
-  align-items: flex-start;
-  gap: var(--mr-space-3);
-  margin-bottom: var(--mr-space-5);
-  padding: var(--mr-space-3) var(--mr-space-1) var(--mr-space-4) var(--mr-space-4);
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin-bottom: var(--mr-space-4);
+  padding: var(--mr-space-1) var(--mr-space-1) var(--mr-space-1) var(--mr-space-3);
   background: var(--mr-surface);
   border: 1.5px solid var(--mr-accent);
   border-radius: var(--mr-radius-md);
 
   @media (min-width: 768px) {
-    align-items: center;
+    gap: var(--mr-space-3);
+    margin-bottom: var(--mr-space-5);
     padding: var(--mr-space-2) var(--mr-space-2) var(--mr-space-2) 18px;
   }
 }
 
 .live-notice__icon {
   flex-shrink: 0;
-  // On the phone, centred on the first 22px line of the text, which starts
-  // 11px down: 11 + (22 - 24) / 2.
-  margin-top: 10px;
   color: var(--mr-accent-text);
-
-  @media (min-width: 768px) {
-    margin-top: 0;
-  }
 }
 
 .live-notice__body {
   flex-grow: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-3);
-  padding-top: 11px;
+  align-items: center;
+  gap: var(--mr-space-2);
 
   @media (min-width: 768px) {
-    flex-direction: row;
-    align-items: center;
     gap: var(--mr-space-4);
-    padding-top: 0;
   }
 }
 
 .live-notice__text {
+  flex-grow: 1;
   margin: 0;
-  font-size: 17px;
-  line-height: 22px;
+  font-size: 15px;
+  line-height: 20px;
   overflow-wrap: anywhere;
 
   @media (min-width: 768px) {
-    flex-grow: 1;
+    font-size: 17px;
+    line-height: 22px;
   }
 }
 
@@ -66,19 +60,35 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  min-width: 44px;
   height: 44px;
-  padding: 0 var(--mr-space-4);
-  border: 1px solid var(--mr-accent);
+  padding: 0 var(--mr-space-2);
+  border: 0;
   border-radius: var(--mr-radius-sm);
-  background: var(--mr-surface);
+  background: none;
   color: var(--mr-accent-text);
   font-size: 16px;
   font-weight: 700;
   white-space: nowrap;
-  text-decoration: none;
+  text-decoration: underline;
+
+  @media (min-width: 768px) {
+    padding: 0 var(--mr-space-4);
+    border: 1px solid var(--mr-accent);
+    background: var(--mr-surface);
+    text-decoration: none;
+  }
 
   &:hover {
     background: var(--mr-accent-soft);
+  }
+}
+
+.live-notice__more {
+  display: none;
+
+  @media (min-width: 768px) {
+    display: inline;
   }
 }
 

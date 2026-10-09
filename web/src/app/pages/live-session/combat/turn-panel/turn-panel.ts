@@ -93,6 +93,8 @@ export class TurnPanel {
   readonly concentration = input('');
   /** The combat is played without a map (RN-25): the movement tile has no squares to count. */
   readonly theatre = input(false);
+  /** The page draws the order strip itself, under the actions, on the player's own turn on a phone. */
+  readonly orderBelow = input(false);
 
   readonly endTurn = output<void>();
   /** "Ataque de oportunidade": the key of the melee attack. */

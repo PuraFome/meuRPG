@@ -6,6 +6,7 @@ import {
   CharacterKind,
   CharacterState,
   CharacterStory,
+  CuttingWordsAsk,
   FullSheet,
   LevelUpReason,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
@@ -174,6 +175,7 @@ function minimalFullSheet(overrides: Partial<FullSheet> = {}): FullSheet {
     knownIssues: [],
     contentBaselines: {},
     featureChoiceText: {},
+    cuttingWordsAsk: CuttingWordsAsk.UNSPECIFIED,
     xpValue: 0,
     ...overrides,
   };

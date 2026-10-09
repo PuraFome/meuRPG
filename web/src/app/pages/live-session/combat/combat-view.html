@@ -6,6 +6,17 @@
     </div>
   }
 
+  <!-- A window that closed by itself says why, once, for whoever it was for (never that another reactor acted). -->
+  <div class="view-notices" role="status" aria-live="polite">
+    @if (state().reactionNotice(); as notice) {
+      <div class="mr-notice mr-notice--neutral view-notice" data-testid="reaction-closed">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <p>{{ notice.text }}</p>
+        <button mat-button type="button" (click)="state().dismissReactionNotice()">Entendi</button>
+      </div>
+    }
+  </div>
+
   @if (isMaster()) {
     @switch (e.status) {
       @case (Status.SETUP) {
@@ -277,6 +288,7 @@
                   [trapNote]="trapNote()"
                   [concentration]="ownConcentration()"
                   [theatre]="theatre()"
+                  [orderBelow]="orderBelow()"
                   (endTurn)="nextTurn()"
                   (opportunity)="openAttack($event, true)"
                   (endConcentration)="endOwnConcentration()"
@@ -356,6 +368,9 @@
                   </div>
                 }
               }
+            }
+            @if (orderBelow()) {
+              <app-order-strip class="player__strip" [encounter]="e" />
             }
             @if (theatre()) {
               <app-no-map-panel class="player__map" />
@@ -489,6 +504,8 @@
         }
       </app-npc-card>
     }
+    <!-- The reaction windows the master answers (PM-04): below the card, in the order the server answers them. -->
+    <app-reaction-queue [encounter]="e" [campaignId]="campaignId()" [state]="state()" />
   }
 </ng-template>
 

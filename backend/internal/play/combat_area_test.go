@@ -622,6 +622,17 @@ func TestAPlayersSpellThatHitsHiddenCreaturesHoldsTheTurnUntilTheMasterAnswers(t
 		t.Errorf("another player's combat = held %v, questions %d", other.GetTurnHeld(), len(other.GetPendingHiddenReveals()))
 	}
 
+	// The question is a reaction window too (PM-04): the master reads it as one, every player reads the
+	// same wait as for any NPC's reaction, and no player gets a window.
+	if w := c.windowOf(t, c.master, playv1.ReactionKind_REACTION_KIND_HIDDEN_REVEAL); w == nil || w.GetId() != q.GetId() || w.GetTrigger().GetActorId() != c.id(t, "Pensantus") {
+		t.Errorf("the master's windows = %v, want the hidden reveal question as one", c.windows(t, c.master))
+	}
+	for name, u := range map[string]*user{"the caster": c.ana, "another player": c.caio} {
+		if got := c.get(t, u); got.GetReactionWait().GetTitlePt() != "Esperando o mestre" || len(got.GetReactionWindows()) != 0 {
+			t.Errorf("%s reads %v / %v, want \"Esperando o mestre\" and no window", name, got.GetReactionWait(), got.GetReactionWindows())
+		}
+	}
+
 	c.wantTheTurnHeld(t, e)
 	// A player who answers is refused the same way for a real question and an invented one.
 	_, errReal := resolveReveal(t, c, c.ana, q.GetId(), true)

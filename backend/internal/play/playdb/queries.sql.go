@@ -172,6 +172,71 @@ func (q *Queries) ClearStageSpeakers(ctx context.Context, gameSessionID string) 
 	return err
 }
 
+const closeOpenReactionWindowsOfPending = `-- name: CloseOpenReactionWindowsOfPending :exec
+UPDATE reaction_windows
+SET status = 'closed', closed_reason = 'trigger_gone', answered_at = $2::TIMESTAMPTZ
+WHERE encounter_id = $1 AND status = 'open' AND trigger->>'pending' = $3::TEXT
+`
+
+type CloseOpenReactionWindowsOfPendingParams struct {
+	EncounterID string
+	AnsweredAt  time.Time
+	Pending     string
+}
+
+// The undo of a damage takes back the windows it opened (a concentration save, a
+// Hellish Rebuke): they were about that damage, which is not there any more.
+func (q *Queries) CloseOpenReactionWindowsOfPending(ctx context.Context, arg CloseOpenReactionWindowsOfPendingParams) error {
+	_, err := q.db.Exec(ctx, closeOpenReactionWindowsOfPending, arg.EncounterID, arg.AnsweredAt, arg.Pending)
+	return err
+}
+
+const closeReactionWindow = `-- name: CloseReactionWindow :one
+UPDATE reaction_windows
+SET status = $2, closed_reason = $3, outcome = $4, answered_at = $5
+WHERE id = $1 AND status = 'open'
+RETURNING id, encounter_id, seq, group_id, kind, status, closed_reason, reactor_id, pending_damage_id, hold_id, step, trigger, outcome, created_at, answered_at
+`
+
+type CloseReactionWindowParams struct {
+	ID           string
+	Status       string
+	ClosedReason *string
+	Outcome      []byte
+	AnsweredAt   *time.Time
+}
+
+// A window answered, or closed by itself. Only an open one changes: a second
+// answer finds none.
+func (q *Queries) CloseReactionWindow(ctx context.Context, arg CloseReactionWindowParams) (ReactionWindow, error) {
+	row := q.db.QueryRow(ctx, closeReactionWindow,
+		arg.ID,
+		arg.Status,
+		arg.ClosedReason,
+		arg.Outcome,
+		arg.AnsweredAt,
+	)
+	var i ReactionWindow
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.Seq,
+		&i.GroupID,
+		&i.Kind,
+		&i.Status,
+		&i.ClosedReason,
+		&i.ReactorID,
+		&i.PendingDamageID,
+		&i.HoldID,
+		&i.Step,
+		&i.Trigger,
+		&i.Outcome,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+	)
+	return i, err
+}
+
 const countSceneRolls = `-- name: CountSceneRolls :many
 SELECT character_id, COALESCE(payload->>'action_id', '')::TEXT AS action_id, count(*)::INT8 AS rolls
 FROM session_events
@@ -342,6 +407,24 @@ WHERE puzzle_id = $1 AND shown_at IS NULL
 // edit of the puzzle makes their start wrong, so they go (the master draws another).
 func (q *Queries) DeletePreparedPuzzleRuns(ctx context.Context, puzzleID string) error {
 	_, err := q.db.Exec(ctx, deletePreparedPuzzleRuns, puzzleID)
+	return err
+}
+
+const deleteReactionHoldsOfEncounter = `-- name: DeleteReactionHoldsOfEncounter :exec
+DELETE FROM reaction_holds WHERE encounter_id = $1
+`
+
+func (q *Queries) DeleteReactionHoldsOfEncounter(ctx context.Context, encounterID string) error {
+	_, err := q.db.Exec(ctx, deleteReactionHoldsOfEncounter, encounterID)
+	return err
+}
+
+const deleteReactionWindowsOfEncounter = `-- name: DeleteReactionWindowsOfEncounter :exec
+DELETE FROM reaction_windows WHERE encounter_id = $1
+`
+
+func (q *Queries) DeleteReactionWindowsOfEncounter(ctx context.Context, encounterID string) error {
+	_, err := q.db.Exec(ctx, deleteReactionWindowsOfEncounter, encounterID)
 	return err
 }
 
@@ -1292,6 +1375,126 @@ func (q *Queries) GetPuzzleRunForUpdate(ctx context.Context, arg GetPuzzleRunFor
 	return i, err
 }
 
+const getReactionHold = `-- name: GetReactionHold :one
+SELECT id, encounter_id, group_id, kind, actor_id, actor_user_id, actor_is_master, request, data, state, created_at FROM reaction_holds WHERE encounter_id = $1 AND id = $2
+`
+
+type GetReactionHoldParams struct {
+	EncounterID string
+	ID          string
+}
+
+func (q *Queries) GetReactionHold(ctx context.Context, arg GetReactionHoldParams) (ReactionHold, error) {
+	row := q.db.QueryRow(ctx, getReactionHold, arg.EncounterID, arg.ID)
+	var i ReactionHold
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.GroupID,
+		&i.Kind,
+		&i.ActorID,
+		&i.ActorUserID,
+		&i.ActorIsMaster,
+		&i.Request,
+		&i.Data,
+		&i.State,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getReactionHoldOfGroup = `-- name: GetReactionHoldOfGroup :one
+SELECT id, encounter_id, group_id, kind, actor_id, actor_user_id, actor_is_master, request, data, state, created_at FROM reaction_holds WHERE encounter_id = $1 AND group_id = $2
+`
+
+type GetReactionHoldOfGroupParams struct {
+	EncounterID string
+	GroupID     string
+}
+
+func (q *Queries) GetReactionHoldOfGroup(ctx context.Context, arg GetReactionHoldOfGroupParams) (ReactionHold, error) {
+	row := q.db.QueryRow(ctx, getReactionHoldOfGroup, arg.EncounterID, arg.GroupID)
+	var i ReactionHold
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.GroupID,
+		&i.Kind,
+		&i.ActorID,
+		&i.ActorUserID,
+		&i.ActorIsMaster,
+		&i.Request,
+		&i.Data,
+		&i.State,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getReactionWindow = `-- name: GetReactionWindow :one
+SELECT id, encounter_id, seq, group_id, kind, status, closed_reason, reactor_id, pending_damage_id, hold_id, step, trigger, outcome, created_at, answered_at FROM reaction_windows WHERE encounter_id = $1 AND id = $2
+`
+
+type GetReactionWindowParams struct {
+	EncounterID string
+	ID          string
+}
+
+func (q *Queries) GetReactionWindow(ctx context.Context, arg GetReactionWindowParams) (ReactionWindow, error) {
+	row := q.db.QueryRow(ctx, getReactionWindow, arg.EncounterID, arg.ID)
+	var i ReactionWindow
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.Seq,
+		&i.GroupID,
+		&i.Kind,
+		&i.Status,
+		&i.ClosedReason,
+		&i.ReactorID,
+		&i.PendingDamageID,
+		&i.HoldID,
+		&i.Step,
+		&i.Trigger,
+		&i.Outcome,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+	)
+	return i, err
+}
+
+const getReactionWindowForUpdate = `-- name: GetReactionWindowForUpdate :one
+SELECT id, encounter_id, seq, group_id, kind, status, closed_reason, reactor_id, pending_damage_id, hold_id, step, trigger, outcome, created_at, answered_at FROM reaction_windows WHERE encounter_id = $1 AND id = $2 FOR UPDATE
+`
+
+type GetReactionWindowForUpdateParams struct {
+	EncounterID string
+	ID          string
+}
+
+func (q *Queries) GetReactionWindowForUpdate(ctx context.Context, arg GetReactionWindowForUpdateParams) (ReactionWindow, error) {
+	row := q.db.QueryRow(ctx, getReactionWindowForUpdate, arg.EncounterID, arg.ID)
+	var i ReactionWindow
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.Seq,
+		&i.GroupID,
+		&i.Kind,
+		&i.Status,
+		&i.ClosedReason,
+		&i.ReactorID,
+		&i.PendingDamageID,
+		&i.HoldID,
+		&i.Step,
+		&i.Trigger,
+		&i.Outcome,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+	)
+	return i, err
+}
+
 const getSessionEventByID = `-- name: GetSessionEventByID :one
 SELECT id, kind, encounter_id, payload FROM session_events
 WHERE game_session_id = $1 AND id = $2
@@ -1424,7 +1627,7 @@ INSERT INTO combatants (
     $10, $11, $12, $13, $14, $15, $16, $17, $18,
     $19, $20, $21, $22, $23
 )
-RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left
+RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, slots_used
 `
 
 type InsertCombatantParams struct {
@@ -1534,6 +1737,7 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 		&i.BonusSpellCast,
 		&i.ActionAttackKey,
 		&i.BonusAttacksLeft,
+		&i.SlotsUsed,
 	)
 	return i, err
 }
@@ -1551,7 +1755,7 @@ INSERT INTO combatants (
     $15, $16, $17, $18,
     'party', $19, $20, $21, $22
 )
-RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left
+RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, slots_used
 `
 
 type InsertCreatureCombatantParams struct {
@@ -1664,6 +1868,7 @@ func (q *Queries) InsertCreatureCombatant(ctx context.Context, arg InsertCreatur
 		&i.BonusSpellCast,
 		&i.ActionAttackKey,
 		&i.BonusAttacksLeft,
+		&i.SlotsUsed,
 	)
 	return i, err
 }
@@ -2201,6 +2406,109 @@ func (q *Queries) InsertPuzzleRun(ctx context.Context, arg InsertPuzzleRunParams
 	return i, err
 }
 
+const insertReactionHold = `-- name: InsertReactionHold :one
+INSERT INTO reaction_holds (encounter_id, group_id, kind, actor_id, actor_user_id, actor_is_master, request, data, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, encounter_id, group_id, kind, actor_id, actor_user_id, actor_is_master, request, data, state, created_at
+`
+
+type InsertReactionHoldParams struct {
+	EncounterID   string
+	GroupID       string
+	Kind          string
+	ActorID       string
+	ActorUserID   string
+	ActorIsMaster bool
+	Request       []byte
+	Data          []byte
+	CreatedAt     time.Time
+}
+
+// A held action (PM-04): the request of a cast, an attack or a damage roll that
+// waits for the reaction windows of its group, to be replayed when they are all
+// answered.
+func (q *Queries) InsertReactionHold(ctx context.Context, arg InsertReactionHoldParams) (ReactionHold, error) {
+	row := q.db.QueryRow(ctx, insertReactionHold,
+		arg.EncounterID,
+		arg.GroupID,
+		arg.Kind,
+		arg.ActorID,
+		arg.ActorUserID,
+		arg.ActorIsMaster,
+		arg.Request,
+		arg.Data,
+		arg.CreatedAt,
+	)
+	var i ReactionHold
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.GroupID,
+		&i.Kind,
+		&i.ActorID,
+		&i.ActorUserID,
+		&i.ActorIsMaster,
+		&i.Request,
+		&i.Data,
+		&i.State,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const insertReactionWindow = `-- name: InsertReactionWindow :one
+INSERT INTO reaction_windows (encounter_id, group_id, kind, reactor_id, pending_damage_id, hold_id, step, trigger, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, encounter_id, seq, group_id, kind, status, closed_reason, reactor_id, pending_damage_id, hold_id, step, trigger, outcome, created_at, answered_at
+`
+
+type InsertReactionWindowParams struct {
+	EncounterID     string
+	GroupID         string
+	Kind            string
+	ReactorID       *string
+	PendingDamageID *string
+	HoldID          *string
+	Step            int32
+	Trigger         []byte
+	CreatedAt       time.Time
+}
+
+// A question to a reactor. The windows of one trigger share group_id; seq (the
+// table's own counter) is the order they are answered in.
+func (q *Queries) InsertReactionWindow(ctx context.Context, arg InsertReactionWindowParams) (ReactionWindow, error) {
+	row := q.db.QueryRow(ctx, insertReactionWindow,
+		arg.EncounterID,
+		arg.GroupID,
+		arg.Kind,
+		arg.ReactorID,
+		arg.PendingDamageID,
+		arg.HoldID,
+		arg.Step,
+		arg.Trigger,
+		arg.CreatedAt,
+	)
+	var i ReactionWindow
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.Seq,
+		&i.GroupID,
+		&i.Kind,
+		&i.Status,
+		&i.ClosedReason,
+		&i.ReactorID,
+		&i.PendingDamageID,
+		&i.HoldID,
+		&i.Step,
+		&i.Trigger,
+		&i.Outcome,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+	)
+	return i, err
+}
+
 const insertSessionEvent = `-- name: InsertSessionEvent :one
 INSERT INTO session_events
     (game_session_id, seq, kind, actor_user_id, character_id, payload, idempotency_key, created_at, encounter_id, idempotency_hash)
@@ -2655,7 +2963,7 @@ func (q *Queries) ListCastPendingDamages(ctx context.Context, arg ListCastPendin
 }
 
 const listCombatants = `-- name: ListCombatants :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, slots_used FROM combatants
 WHERE encounter_id = $1 AND NOT dismissed
 ORDER BY order_index, created_at, id
 `
@@ -2725,6 +3033,7 @@ func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Com
 			&i.BonusSpellCast,
 			&i.ActionAttackKey,
 			&i.BonusAttacksLeft,
+			&i.SlotsUsed,
 		); err != nil {
 			return nil, err
 		}
@@ -2737,7 +3046,7 @@ func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Com
 }
 
 const listCombatantsWithDismissed = `-- name: ListCombatantsWithDismissed :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, slots_used FROM combatants
 WHERE encounter_id = $1
 ORDER BY order_index, created_at, id
 `
@@ -2806,6 +3115,7 @@ func (q *Queries) ListCombatantsWithDismissed(ctx context.Context, encounterID s
 			&i.BonusSpellCast,
 			&i.ActionAttackKey,
 			&i.BonusAttacksLeft,
+			&i.SlotsUsed,
 		); err != nil {
 			return nil, err
 		}
@@ -2818,7 +3128,7 @@ func (q *Queries) ListCombatantsWithDismissed(ctx context.Context, encounterID s
 }
 
 const listCreatureCombatants = `-- name: ListCreatureCombatants :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, slots_used FROM combatants
 WHERE encounter_id = $1 AND kind = 'creature' AND NOT dismissed
 ORDER BY order_index, created_at, id
 `
@@ -2888,6 +3198,7 @@ func (q *Queries) ListCreatureCombatants(ctx context.Context, encounterID string
 			&i.BonusSpellCast,
 			&i.ActionAttackKey,
 			&i.BonusAttacksLeft,
+			&i.SlotsUsed,
 		); err != nil {
 			return nil, err
 		}
@@ -3027,8 +3338,44 @@ func (q *Queries) ListGameSessions(ctx context.Context, campaignID string) ([]Ga
 	return items, nil
 }
 
+const listHeldReactionHolds = `-- name: ListHeldReactionHolds :many
+SELECT id, encounter_id, group_id, kind, actor_id, actor_user_id, actor_is_master, request, data, state, created_at FROM reaction_holds WHERE encounter_id = $1 AND state = 'held'
+`
+
+func (q *Queries) ListHeldReactionHolds(ctx context.Context, encounterID string) ([]ReactionHold, error) {
+	rows, err := q.db.Query(ctx, listHeldReactionHolds, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReactionHold
+	for rows.Next() {
+		var i ReactionHold
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.GroupID,
+			&i.Kind,
+			&i.ActorID,
+			&i.ActorUserID,
+			&i.ActorIsMaster,
+			&i.Request,
+			&i.Data,
+			&i.State,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOpenCombatantsOfCreatures = `-- name: ListOpenCombatantsOfCreatures :many
-SELECT cb.id, cb.encounter_id, cb.character_id, cb.user_id, cb.label, cb.kind, cb.hidden, cb.initiative, cb.initiative_bonus, cb.initiative_face, cb.tie_ordered, cb.order_index, cb.grid_col, cb.grid_row, cb.speed_ft, cb.movement_used_ft, cb.dashed, cb.action_used, cb.bonus_action_used, cb.reaction_used, cb.hp_current, cb.hp_max, cb.hp_temp, cb.defeated, cb.death_successes, cb.death_failures, cb.conditions, cb.concentration_spell, cb.created_at, cb.attacks_made, cb.ac_bonus, cb.death_save_rolled, cb.xp_value, cb.turn_state, cb.movement_used_dft, cb.last_move_dft, cb.side, cb.size, cb.speed_fly_ft, cb.jump_long_dft, cb.jump_high_dft, cb.cover_mark, cb.disengaged, cb.creature_id, cb.monster_key, cb.summon_attack, cb.summon_group_id, cb.dismissed, cb.action_surged, cb.spell_cast, cb.bonus_spell_cast, cb.action_attack_key, cb.bonus_attacks_left FROM combatants AS cb
+SELECT cb.id, cb.encounter_id, cb.character_id, cb.user_id, cb.label, cb.kind, cb.hidden, cb.initiative, cb.initiative_bonus, cb.initiative_face, cb.tie_ordered, cb.order_index, cb.grid_col, cb.grid_row, cb.speed_ft, cb.movement_used_ft, cb.dashed, cb.action_used, cb.bonus_action_used, cb.reaction_used, cb.hp_current, cb.hp_max, cb.hp_temp, cb.defeated, cb.death_successes, cb.death_failures, cb.conditions, cb.concentration_spell, cb.created_at, cb.attacks_made, cb.ac_bonus, cb.death_save_rolled, cb.xp_value, cb.turn_state, cb.movement_used_dft, cb.last_move_dft, cb.side, cb.size, cb.speed_fly_ft, cb.jump_long_dft, cb.jump_high_dft, cb.cover_mark, cb.disengaged, cb.creature_id, cb.monster_key, cb.summon_attack, cb.summon_group_id, cb.dismissed, cb.action_surged, cb.spell_cast, cb.bonus_spell_cast, cb.action_attack_key, cb.bonus_attacks_left, cb.slots_used FROM combatants AS cb
 JOIN encounters AS e ON e.id = cb.encounter_id
 JOIN game_sessions AS gs ON gs.id = e.game_session_id
 WHERE gs.campaign_id = $1::UUID
@@ -3108,6 +3455,7 @@ func (q *Queries) ListOpenCombatantsOfCreatures(ctx context.Context, arg ListOpe
 			&i.BonusSpellCast,
 			&i.ActionAttackKey,
 			&i.BonusAttacksLeft,
+			&i.SlotsUsed,
 		); err != nil {
 			return nil, err
 		}
@@ -3204,6 +3552,46 @@ func (q *Queries) ListOpenPendingDamages(ctx context.Context, encounterID string
 			&i.CriticalMax,
 			&i.CriticalMaxRule,
 			&i.Taken,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOpenReactionWindows = `-- name: ListOpenReactionWindows :many
+SELECT id, encounter_id, seq, group_id, kind, status, closed_reason, reactor_id, pending_damage_id, hold_id, step, trigger, outcome, created_at, answered_at FROM reaction_windows WHERE encounter_id = $1 AND status = 'open' ORDER BY seq
+`
+
+func (q *Queries) ListOpenReactionWindows(ctx context.Context, encounterID string) ([]ReactionWindow, error) {
+	rows, err := q.db.Query(ctx, listOpenReactionWindows, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReactionWindow
+	for rows.Next() {
+		var i ReactionWindow
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.Seq,
+			&i.GroupID,
+			&i.Kind,
+			&i.Status,
+			&i.ClosedReason,
+			&i.ReactorID,
+			&i.PendingDamageID,
+			&i.HoldID,
+			&i.Step,
+			&i.Trigger,
+			&i.Outcome,
+			&i.CreatedAt,
+			&i.AnsweredAt,
 		); err != nil {
 			return nil, err
 		}
@@ -3500,6 +3888,51 @@ func (q *Queries) ListPuzzles(ctx context.Context, arg ListPuzzlesParams) ([]Puz
 			&i.OnWrong,
 			&i.CreateKey,
 			&i.CreateHash,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listReactionWindowsOfGroup = `-- name: ListReactionWindowsOfGroup :many
+SELECT id, encounter_id, seq, group_id, kind, status, closed_reason, reactor_id, pending_damage_id, hold_id, step, trigger, outcome, created_at, answered_at FROM reaction_windows WHERE encounter_id = $1 AND group_id = $2 ORDER BY seq
+`
+
+type ListReactionWindowsOfGroupParams struct {
+	EncounterID string
+	GroupID     string
+}
+
+func (q *Queries) ListReactionWindowsOfGroup(ctx context.Context, arg ListReactionWindowsOfGroupParams) ([]ReactionWindow, error) {
+	rows, err := q.db.Query(ctx, listReactionWindowsOfGroup, arg.EncounterID, arg.GroupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReactionWindow
+	for rows.Next() {
+		var i ReactionWindow
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.Seq,
+			&i.GroupID,
+			&i.Kind,
+			&i.Status,
+			&i.ClosedReason,
+			&i.ReactorID,
+			&i.PendingDamageID,
+			&i.HoldID,
+			&i.Step,
+			&i.Trigger,
+			&i.Outcome,
+			&i.CreatedAt,
+			&i.AnsweredAt,
 		); err != nil {
 			return nil, err
 		}
@@ -4077,6 +4510,18 @@ func (q *Queries) NextSessionNumber(ctx context.Context, campaignID string) (int
 	return next, err
 }
 
+const reopenReactionWindow = `-- name: ReopenReactionWindow :exec
+UPDATE reaction_windows
+SET status = 'open', closed_reason = NULL, outcome = NULL, answered_at = NULL
+WHERE id = $1
+`
+
+// The undo of a reaction's answer: the window waits again.
+func (q *Queries) ReopenReactionWindow(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, reopenReactionWindow, id)
+	return err
+}
+
 const resetCombatantTurn = `-- name: ResetCombatantTurn :exec
 UPDATE combatants
 SET movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, action_surged = false, spell_cast = false, bonus_spell_cast = false, action_used = false, bonus_action_used = false, reaction_used = false,
@@ -4623,6 +5068,21 @@ func (q *Queries) SetCombatantSide(ctx context.Context, arg SetCombatantSidePara
 	return err
 }
 
+const setCombatantSlotsUsed = `-- name: SetCombatantSlotsUsed :exec
+UPDATE combatants SET slots_used = $2 WHERE id = $1
+`
+
+type SetCombatantSlotsUsedParams struct {
+	ID        string
+	SlotsUsed []byte
+}
+
+// The slots (and resource uses) a stat block spent in this combat.
+func (q *Queries) SetCombatantSlotsUsed(ctx context.Context, arg SetCombatantSlotsUsedParams) error {
+	_, err := q.db.Exec(ctx, setCombatantSlotsUsed, arg.ID, arg.SlotsUsed)
+	return err
+}
+
 const setCombatantSpellsCast = `-- name: SetCombatantSpellsCast :exec
 UPDATE combatants
 SET spell_cast = $2, bonus_spell_cast = $3
@@ -5124,6 +5584,56 @@ func (q *Queries) SetPuzzleArchived(ctx context.Context, arg SetPuzzleArchivedPa
 		&i.OnWrong,
 		&i.CreateKey,
 		&i.CreateHash,
+	)
+	return i, err
+}
+
+const setReactionHoldState = `-- name: SetReactionHoldState :exec
+UPDATE reaction_holds SET state = $2 WHERE id = $1
+`
+
+type SetReactionHoldStateParams struct {
+	ID    string
+	State string
+}
+
+func (q *Queries) SetReactionHoldState(ctx context.Context, arg SetReactionHoldStateParams) error {
+	_, err := q.db.Exec(ctx, setReactionHoldState, arg.ID, arg.State)
+	return err
+}
+
+const setReactionWindowStep = `-- name: SetReactionWindowStep :one
+UPDATE reaction_windows SET step = $2, trigger = $3 WHERE id = $1 AND status = 'open'
+RETURNING id, encounter_id, seq, group_id, kind, status, closed_reason, reactor_id, pending_damage_id, hold_id, step, trigger, outcome, created_at, answered_at
+`
+
+type SetReactionWindowStepParams struct {
+	ID      string
+	Step    int32
+	Trigger []byte
+}
+
+// The answer asks one more thing: the window stays open at its second step, with
+// the new trigger.
+func (q *Queries) SetReactionWindowStep(ctx context.Context, arg SetReactionWindowStepParams) (ReactionWindow, error) {
+	row := q.db.QueryRow(ctx, setReactionWindowStep, arg.ID, arg.Step, arg.Trigger)
+	var i ReactionWindow
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.Seq,
+		&i.GroupID,
+		&i.Kind,
+		&i.Status,
+		&i.ClosedReason,
+		&i.ReactorID,
+		&i.PendingDamageID,
+		&i.HoldID,
+		&i.Step,
+		&i.Trigger,
+		&i.Outcome,
+		&i.CreatedAt,
+		&i.AnsweredAt,
 	)
 	return i, err
 }

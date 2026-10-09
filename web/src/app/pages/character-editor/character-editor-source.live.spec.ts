@@ -1,6 +1,7 @@
 import {
   Alignment,
   BasicSheet,
+  CuttingWordsAsk,
   DamageType,
   FullSheet,
   HitPointsMethod,
@@ -116,6 +117,7 @@ function fullyPopulatedFullSheet(): FullSheet {
     knownIssues: [],
     contentBaselines: {},
     featureChoiceText: {},
+    cuttingWordsAsk: CuttingWordsAsk.NEVER,
   };
 }
 
@@ -184,6 +186,7 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
       contentRevision: loaded.contentRevision,
       knownIssues: loaded.knownIssues,
       contentBaselines: loaded.contentBaselines,
+      cuttingWordsAsk: loaded.cuttingWordsAsk,
     });
   });
 
@@ -244,6 +247,25 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
       characterId: '',
       sheet: { content: { case: 'full', value: { featureChoiceKeys: form.featureChoiceKeys } } },
     });
+  });
+
+  it('the bard\'s "Perguntar" setting survives the round trip, and an unset one stays unset', () => {
+    for (const ask of [CuttingWordsAsk.ALL, CuttingWordsAsk.NEVER, CuttingWordsAsk.ONLY_ATTACKS]) {
+      const loaded: FullSheet = { ...fullyPopulatedFullSheet(), cuttingWordsAsk: ask };
+      const merged = mergeFullSheetInit(loaded, toFormFullSheet('Orla', loaded));
+      expect(merged.cuttingWordsAsk).toBe(ask);
+    }
+    const unset: FullSheet = {
+      ...fullyPopulatedFullSheet(),
+      cuttingWordsAsk: CuttingWordsAsk.UNSPECIFIED,
+    };
+    const form = toFormFullSheet('Orla', unset);
+    expect(form.cuttingWordsAsk).toBe('only-attacks');
+    expect(mergeFullSheetInit(unset, form).cuttingWordsAsk).toBe(CuttingWordsAsk.UNSPECIFIED);
+    // Changing it on the form is what the save carries.
+    expect(mergeFullSheetInit(unset, { ...form, cuttingWordsAsk: 'all' }).cuttingWordsAsk).toBe(
+      CuttingWordsAsk.ALL,
+    );
   });
 
   it('a custom background with exactly two granted skills round-trips too', () => {

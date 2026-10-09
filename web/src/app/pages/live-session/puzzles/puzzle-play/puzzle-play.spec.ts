@@ -403,7 +403,9 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
       const { el, settle } = await render(riddle({ limits: counted }));
       expect(textOf(el.querySelector('.board-card'))).toContain('Moro embaixo de cada passo seu');
       expect(textOf(el.querySelector('.clue'))).toContain('Procure no chão da Cripta.');
-      expect(textOf(el.querySelector('app-limit-counters'))).toContain('Suas tentativas 3 de 3');
+      expect(textOf(el.querySelector('app-limit-counters'))).toContain(
+        'Tentativas restantes 3 de 3',
+      );
       api.moveResult = () => ({
         run: riddle({
           revision: 2,
@@ -423,7 +425,9 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
       expect(el.querySelector('.mr-notice--danger')?.textContent).toContain(
         'Não é isso. Tente outra resposta.',
       );
-      expect(textOf(el.querySelector('app-limit-counters'))).toContain('Suas tentativas 2 de 3');
+      expect(textOf(el.querySelector('app-limit-counters'))).toContain(
+        'Tentativas restantes 2 de 3',
+      );
       // The typed answer stays in the field, to be changed.
       expect((el.querySelector('input[name="answer"]') as HTMLInputElement).value).toBe(
         'escuridão',
@@ -462,7 +466,7 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
       expect(el.querySelector('input[name="answer"]')).toBeNull();
       expect(el.querySelector('.blocked')?.textContent).toContain('Você não tem mais tentativas.');
       expect(textOf(el.querySelector('app-limit-counters'))).toContain(
-        'Suas tentativas 0 de 3 · acabou',
+        'Tentativas restantes 0 de 3 · acabou',
       );
     });
 
@@ -907,7 +911,7 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
         'true',
       );
       expect(textOf(el.querySelector('app-limit-counters'))).toContain(
-        'Suas tentativas 0 de 2 · acabou',
+        'Tentativas restantes 0 de 2 · acabou',
       );
     });
 

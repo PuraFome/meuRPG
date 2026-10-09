@@ -1046,3 +1046,79 @@ DELETE FROM hidden_reveals WHERE id = $1;
 -- name: DeleteHiddenRevealsOfEncounter :exec
 -- Ending the combat drops what was still to answer.
 DELETE FROM hidden_reveals WHERE encounter_id = $1;
+
+-- name: InsertReactionHold :one
+-- A held action (PM-04): the request of a cast, an attack or a damage roll that
+-- waits for the reaction windows of its group, to be replayed when they are all
+-- answered.
+INSERT INTO reaction_holds (encounter_id, group_id, kind, actor_id, actor_user_id, actor_is_master, request, data, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING *;
+
+-- name: GetReactionHold :one
+SELECT * FROM reaction_holds WHERE encounter_id = $1 AND id = $2;
+
+-- name: GetReactionHoldOfGroup :one
+SELECT * FROM reaction_holds WHERE encounter_id = $1 AND group_id = $2;
+
+-- name: SetReactionHoldState :exec
+UPDATE reaction_holds SET state = $2 WHERE id = $1;
+
+-- name: ListHeldReactionHolds :many
+SELECT * FROM reaction_holds WHERE encounter_id = $1 AND state = 'held';
+
+-- name: InsertReactionWindow :one
+-- A question to a reactor. The windows of one trigger share group_id; seq (the
+-- table's own counter) is the order they are answered in.
+INSERT INTO reaction_windows (encounter_id, group_id, kind, reactor_id, pending_damage_id, hold_id, step, trigger, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING *;
+
+-- name: ListOpenReactionWindows :many
+SELECT * FROM reaction_windows WHERE encounter_id = $1 AND status = 'open' ORDER BY seq;
+
+-- name: ListReactionWindowsOfGroup :many
+SELECT * FROM reaction_windows WHERE encounter_id = $1 AND group_id = $2 ORDER BY seq;
+
+-- name: GetReactionWindow :one
+SELECT * FROM reaction_windows WHERE encounter_id = $1 AND id = $2;
+
+-- name: GetReactionWindowForUpdate :one
+SELECT * FROM reaction_windows WHERE encounter_id = $1 AND id = $2 FOR UPDATE;
+
+-- name: CloseReactionWindow :one
+-- A window answered, or closed by itself. Only an open one changes: a second
+-- answer finds none.
+UPDATE reaction_windows
+SET status = $2, closed_reason = $3, outcome = $4, answered_at = $5
+WHERE id = $1 AND status = 'open'
+RETURNING *;
+
+-- name: SetReactionWindowStep :one
+-- The answer asks one more thing: the window stays open at its second step, with
+-- the new trigger.
+UPDATE reaction_windows SET step = $2, trigger = $3 WHERE id = $1 AND status = 'open'
+RETURNING *;
+
+-- name: DeleteReactionWindowsOfEncounter :exec
+DELETE FROM reaction_windows WHERE encounter_id = $1;
+
+-- name: DeleteReactionHoldsOfEncounter :exec
+DELETE FROM reaction_holds WHERE encounter_id = $1;
+
+-- name: SetCombatantSlotsUsed :exec
+-- The slots (and resource uses) a stat block spent in this combat.
+UPDATE combatants SET slots_used = $2 WHERE id = $1;
+
+-- name: ReopenReactionWindow :exec
+-- The undo of a reaction's answer: the window waits again.
+UPDATE reaction_windows
+SET status = 'open', closed_reason = NULL, outcome = NULL, answered_at = NULL
+WHERE id = $1;
+
+-- name: CloseOpenReactionWindowsOfPending :exec
+-- The undo of a damage takes back the windows it opened (a concentration save, a
+-- Hellish Rebuke): they were about that damage, which is not there any more.
+UPDATE reaction_windows
+SET status = 'closed', closed_reason = 'trigger_gone', answered_at = sqlc.arg(answered_at)::TIMESTAMPTZ
+WHERE encounter_id = $1 AND status = 'open' AND trigger->>'pending' = sqlc.arg(pending)::TEXT;

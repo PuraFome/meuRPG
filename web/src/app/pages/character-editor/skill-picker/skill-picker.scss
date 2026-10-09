@@ -47,6 +47,21 @@
   }
 }
 
+// The headers are abbreviated on a phone, where "Habilidade" does not fit its 40px column and would touch "Especialização".
+.head__short {
+  display: none;
+
+  @media (max-width: 479.98px) {
+    display: inline;
+  }
+}
+
+.head__long {
+  @media (max-width: 479.98px) {
+    display: none;
+  }
+}
+
 // Stacked on a phone, the second column continues the first.
 .skill--head-repeat {
   display: none;
