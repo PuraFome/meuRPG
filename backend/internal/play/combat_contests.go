@@ -169,7 +169,7 @@ func settleContest(ctx context.Context, c *combatTx, row playdb.CombatContest, w
 
 // StartContest implements playv1connect.ContestServiceHandler.
 //
-//nolint:gocognit // the steps of one change in one closure, as RollAttack's are; a helper would only pass the transaction around
+//nolint:gocognit,gocyclo // the steps of one change in one closure, as RollAttack's are; a helper would only pass the transaction around
 func (s *Service) StartContest(
 	ctx context.Context,
 	req *connect.Request[playv1.StartContestRequest],
@@ -419,7 +419,7 @@ func (s *Service) mustBeInReach(c *combatTx, v combatViewer, who, target playdb.
 
 // RespondContest implements playv1connect.ContestServiceHandler.
 //
-//nolint:gocognit // the steps of one change in one closure, as RollAttack's are; a helper would only pass the transaction around
+//nolint:gocognit,gocyclo // the steps of one change in one closure, as RollAttack's are; a helper would only pass the transaction around
 func (s *Service) RespondContest(
 	ctx context.Context,
 	req *connect.Request[playv1.RespondContestRequest],
@@ -627,7 +627,7 @@ func (s *Service) pushPlanOf(terrain, plan grid.Terrain, enc playdb.Encounter, c
 
 // ResolveShove implements playv1connect.ContestServiceHandler.
 //
-//nolint:gocognit // the steps of one change in one closure, as RollAttack's are; a helper would only pass the transaction around
+//nolint:gocognit,gocyclo // the steps of one change in one closure, as RollAttack's are; a helper would only pass the transaction around
 func (s *Service) ResolveShove(
 	ctx context.Context,
 	req *connect.Request[playv1.ResolveShoveRequest],
@@ -896,6 +896,20 @@ func (s *Service) pruneHolds(ctx context.Context, c *combatTx) error {
 		grappler, okR := by[h.GrapplerID]
 		ends := !okG || !okR || !isGrappled(grappled) || grappler.Defeated || grappled.Defeated ||
 			slices.ContainsFunc(grappler.Conditions, func(k string) bool { return slices.Contains(incapacitating, k) })
+		if !ends && (grappler.Kind == kindPlayer || grappled.Kind == kindPlayer) {
+			// A player's character at 0 hit points, dead or not yet revived holds nobody and
+			// is held by nobody (SRD 5.1, "Grappled": the grappler is incapacitated).
+			for _, who := range []playdb.Combatant{grappler, grappled} {
+				if who.Kind != kindPlayer {
+					continue
+				}
+				down, err := s.isDown(ctx, c.tx, c.session.CampaignID, who)
+				if err != nil {
+					return err
+				}
+				ends = ends || down
+			}
+		}
 		if !ends && !isTheatre(c.enc) && placed(grappled) && placed(grappler) {
 			if dist, _ := distanceFt(grappler, grappled); dist > combat.MeleeReachFt {
 				ends = true

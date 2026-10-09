@@ -913,3 +913,22 @@ func TestAContestWaitsInAReactionWindowThatNamesWhoItWaitsFor(t *testing.T) {
 		t.Error("the window outlives the contest")
 	}
 }
+
+// TestAGrappleEndsWhenItsGrapplerFallsToZeroHitPoints (SRD 5.1, "Grappled": the condition
+// ends if the grappler is incapacitated): a player's character at 0 hit points holds nobody.
+func TestAGrappleEndsWhenItsGrapplerFallsToZeroHitPoints(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	c := a.arena(t, arenaPlan{})
+	c.grappleWon(t)
+	a.hurt(t, a.toren, 0)
+	// The next change of the combat settles the holds.
+	if _, err := a.master.combat.SetCombatantConditions(t.Context(), connect.NewRequest(&playv1.SetCombatantConditionsRequest{
+		CampaignId: a.campaignID, EncounterId: c.e.GetId(), CombatantId: c.id(t, "Goblin"), IdempotencyKey: newKey(), Conditions: &playv1.ConditionList{Keys: []string{"condition:poisoned"}},
+	})); err != nil {
+		t.Fatalf("SetCombatantConditions() error = %v", err)
+	}
+	if c.hasCondition(t, c.hob, condGrappled) {
+		t.Error("the grapple outlived its grappler falling to 0 hit points")
+	}
+}

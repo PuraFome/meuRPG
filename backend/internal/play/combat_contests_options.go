@@ -1,10 +1,11 @@
 package play
 
 import (
-	"connectrpc.com/connect"
 	"context"
 	"math"
 	"slices"
+
+	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"

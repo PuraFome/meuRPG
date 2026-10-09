@@ -263,7 +263,7 @@ func TestGroupCheckOfAnEvenPartyPassesWithExactlyHalf(t *testing.T) {
 				a.mustRollGroup(t, u, asked.GetId(), face)
 			}
 			closed := a.mustCloseGroup(t, asked.GetId())
-			if want := passing >= 2; closed.GetGroupPassed() != want || closed.GetPassedCount() != int32(passing) {
+			if want := passing >= 2; closed.GetGroupPassed() != want || closed.GetPassedCount() != int32(passing) { //nolint:gosec // a count of at most six
 				t.Errorf("the master reads %v, want %d passing and the group %v", closed, passing, want)
 			}
 			if memberOf(closed, fourth.GetId()) == nil {

@@ -43,6 +43,7 @@ func (c *cx) helpAttack(t *testing.T, u *user, helper, ally, target string) (*pl
 
 // helped is the Help a call gave; the call must have worked.
 func helped(t *testing.T) func(*playv1.HelpResponse, error) *playv1.HelpView {
+	t.Helper()
 	return func(res *playv1.HelpResponse, err error) *playv1.HelpView {
 		t.Helper()
 		if err != nil {
@@ -316,14 +317,14 @@ func TestHelpAndClearHelpAreIdempotent(t *testing.T) {
 	_, err = a.bia.contests.Help(t.Context(), connect.NewRequest(changed))
 	wantCode(t, "the same key with another ally", err, connect.CodeInvalidArgument)
 
-	clear := &playv1.ClearHelpRequest{CampaignId: a.campaignID, EncounterId: c.e.GetId(), IdempotencyKey: newKey(), HelpId: first.Msg.GetHelp().GetId()}
-	if _, err := a.master.contests.ClearHelp(t.Context(), connect.NewRequest(clear)); err != nil {
+	clearReq := &playv1.ClearHelpRequest{CampaignId: a.campaignID, EncounterId: c.e.GetId(), IdempotencyKey: newKey(), HelpId: first.Msg.GetHelp().GetId()}
+	if _, err := a.master.contests.ClearHelp(t.Context(), connect.NewRequest(clearReq)); err != nil {
 		t.Fatalf("ClearHelp() error = %v", err)
 	}
-	if _, err := a.master.contests.ClearHelp(t.Context(), connect.NewRequest(clear)); err != nil {
+	if _, err := a.master.contests.ClearHelp(t.Context(), connect.NewRequest(clearReq)); err != nil {
 		t.Errorf("ClearHelp(retry) error = %v, want the same answer", err)
 	}
-	other := &playv1.ClearHelpRequest{CampaignId: clear.GetCampaignId(), EncounterId: clear.GetEncounterId(), IdempotencyKey: clear.GetIdempotencyKey(), HelpId: newKey()}
+	other := &playv1.ClearHelpRequest{CampaignId: clearReq.GetCampaignId(), EncounterId: clearReq.GetEncounterId(), IdempotencyKey: clearReq.GetIdempotencyKey(), HelpId: newKey()}
 	_, err = a.master.contests.ClearHelp(t.Context(), connect.NewRequest(other))
 	wantCode(t, "the same key for another Help", err, connect.CodeInvalidArgument)
 }
