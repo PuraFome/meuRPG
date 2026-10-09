@@ -86,7 +86,6 @@ func writeBody(w io.Writer, model string, req Request) error {
 		return err
 	}
 	modelJSON, _ := json.Marshal(model)
-	ratio, _ := json.Marshal(req.AspectRatio)
 	var werr error
 	put := func(s string) {
 		if werr == nil {
@@ -115,8 +114,27 @@ func writeBody(w io.Writer, model string, req Request) error {
 	for _, ref := range req.References {
 		image(ref.Image)
 	}
-	put(`],"response_format":{"type":"image","mime_type":"image/jpeg","aspect_ratio":` + string(ratio) + `,"image_size":"1K"},"store":false}`)
+	// The format is marshalled as a whole and written on its own: no value is
+	// spliced into a JSON string by hand.
+	format, err := json.Marshal(responseFormat{Type: "image", MimeType: "image/jpeg", AspectRatio: req.AspectRatio, ImageSize: "1K"})
+	if err != nil {
+		return err
+	}
+	put(`],"response_format":`)
+	if werr == nil {
+		_, werr = w.Write(format)
+	}
+	put(`,"store":false}`)
 	return werr
+}
+
+// responseFormat is the answer the call asks for: JPEG (the only type the
+// model accepts), in the request's aspect ratio, at 1K.
+type responseFormat struct {
+	Type        string `json:"type"`
+	MimeType    string `json:"mime_type"`
+	AspectRatio string `json:"aspect_ratio"`
+	ImageSize   string `json:"image_size"`
 }
 
 // bodyReader streams writeBody through a pipe: the body of one attempt.
