@@ -774,7 +774,7 @@ func TestMR037_BeastSpellsLetADruidOfLevel18CastInBeastForm(t *testing.T) {
 			e := a.mustAssume(t, a.bia, a.bri, wolfKey).GetEncounter()
 			e = a.passTo(t, a.mustEndTurn(t, a.bia, e), "Sálvia") // Wild Shape took this turn's action
 			_, err := a.cast(t, a.bia, e, "Sálvia", "spell:produce-flame", nil, nil, func(r *playv1.CastSpellRequest) {
-				r.Roll = &playv1.CastSpellRequest_D20Face{D20Face: 10}
+				r.D20Faces = []int32{10, 20} // a hostile creature stands next to her
 			})
 			if level < 18 {
 				wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_NO_SPELLS)

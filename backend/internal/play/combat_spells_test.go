@@ -2108,7 +2108,7 @@ func TestCantripsAreNotPartOfExtraAttack(t *testing.T) {
 	// Turn 2: a cantrip first spends the whole action: no weapon, no second cantrip.
 	a.passTo(t, e, "Pensantus")
 	a.passTo(t, e, "Toren")
-	a.mustAttack(t, a.caio, e, "Toren", fireBolt, "Goblin", d20(3))
+	a.mustAttack(t, a.caio, e, "Toren", fireBolt, "Goblin", disadvantage(3))
 	if c := byLabel(t, a.get(t, a.caio), "Toren"); !c.GetActionUsed() {
 		t.Error("a cantrip did not spend the action")
 	}

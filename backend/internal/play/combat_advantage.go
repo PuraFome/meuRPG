@@ -256,15 +256,13 @@ func (f modeFacts) scene(attacker, target playdb.Combatant, traits link.Traits, 
 	return s
 }
 
-// unseen says the observer cannot see the subject: the master hid it, or a fog
-// map hides it from the observer's player. A player's character is never unseen,
-// and an observer that is an NPC sees every player's character.
+// unseen says the observer cannot see the subject: a fog map hides it from the
+// observer's player. The master's "hidden" mark is no in-fiction fact (it only keeps
+// a combatant from the players' screens), so it changes no roll. A player's character
+// is never unseen, and an observer that is an NPC sees every player's character.
 func (f modeFacts) unseen(observer, subject playdb.Combatant) bool {
 	if subject.Kind != kindNPC || subject.Side == observer.Side {
 		return false
-	}
-	if subject.Hidden {
-		return true
 	}
 	if f.sight != nil && observer.UserID != nil && observer.Kind == kindPlayer {
 		return !f.sight.seesNPC(*observer.UserID, subject)
