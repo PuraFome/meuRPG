@@ -115,6 +115,25 @@ describe('ClaimPage (MR-049)', () => {
     expect(setItem).not.toHaveBeenCalled();
   });
 
+  it('another link opened in the same tab starts the page over with the new secret', async () => {
+    claims.preview.mockResolvedValueOnce(CARD);
+    const fixture = await open('#t=first', SIGNED_IN);
+    expect(claims.preview).toHaveBeenLastCalledWith('first');
+    expect(text(fixture)).toContain('Kai');
+
+    claims.preview.mockResolvedValueOnce({
+      ...CARD,
+      card: { ...CARD.card, characterName: 'Ragna' },
+    });
+    window.location.hash = '#t=second';
+    await flush();
+    fixture.detectChanges();
+
+    expect(claims.preview).toHaveBeenLastCalledWith('second');
+    expect(text(fixture)).toContain('Ragna');
+    expect(window.location.hash).toBe('');
+  });
+
   describe('signed out', () => {
     it('is the same page for every link, valid or not, and asks the server nothing', async () => {
       const withLink = await open('#t=link-one', { status: 'signed-out' });

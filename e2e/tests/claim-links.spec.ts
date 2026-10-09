@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { claimRoute, linkRPC, reservedRPC, revokeLinkRPC, rowOf } from './claim-support';
+import { claimRoute, linkRPC, reservedRPC, rowOf } from './claim-support';
 import {
   authStatePath,
   callRPC,

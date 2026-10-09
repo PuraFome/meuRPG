@@ -8,12 +8,12 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { RouterLink } from '@angular/router';
-import { filter, take } from 'rxjs';
+import { filter, fromEvent, take } from 'rxjs';
 
 import { AuthService, type AuthState } from '../../core/auth/auth.service';
 import { submitLoginForm } from '../../core/auth/login-form';
@@ -94,7 +94,7 @@ export class ClaimPage {
 
   /** The link's secret, read once from `location.hash` and kept only in memory. `''` when the address had none:
    * the server then looks for the link the person signed in with. */
-  private readonly token: string;
+  private token = '';
 
   protected readonly state = signal<State>({ status: 'waiting-for-session' });
   /** The card the person saw, for the sentence of RN-03 ("o link de Kai") and for "Tentar de novo". */
@@ -107,17 +107,7 @@ export class ClaimPage {
   });
 
   constructor() {
-    const match = TOKEN_PATTERN.exec(window.location.hash);
-    let token = '';
-    try {
-      token = match ? decodeURIComponent(match[1]) : '';
-    } catch {
-      // A malformed percent-escape is no token at all.
-    }
-    this.token = token;
-    // The secret must not stay in the address bar, in `history` or in anything that reads `location` later.
-    // `replaceState`, not `pushState`: this is never an entry of its own.
-    history.replaceState(null, '', window.location.pathname + window.location.search);
+    this.readFragment();
 
     toObservable(this.auth.state)
       .pipe(
@@ -125,6 +115,39 @@ export class ClaimPage {
         take(1),
       )
       .subscribe((s) => this.onSession(s));
+
+    // Another link opened in this same tab changes only the fragment, so the page is not made again: it reads the new
+    // secret and starts over, as a person who pastes a second link expects.
+    fromEvent(window, 'hashchange')
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        const hadSecret = this.readFragment();
+        const s = this.auth.state();
+        if (hadSecret && s.status !== 'unknown') {
+          this.seen = null;
+          this.onSession(s);
+        }
+      });
+  }
+
+  /**
+   * Reads the secret from `location.hash` and takes it out of the address at once, so it does not stay in the address bar,
+   * in `history` or in anything that reads `location` later. `replaceState`, not `pushState`: this is never an entry of its
+   * own. Returns whether the fragment held a secret.
+   */
+  private readFragment(): boolean {
+    const match = TOKEN_PATTERN.exec(window.location.hash);
+    let token = '';
+    try {
+      token = match ? decodeURIComponent(match[1]) : '';
+    } catch {
+      // A malformed percent-escape is no token at all.
+    }
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+    if (match) {
+      this.token = token;
+    }
+    return match !== null;
   }
 
   private onSession(s: AuthState): void {
