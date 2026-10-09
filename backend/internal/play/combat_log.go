@@ -16,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
@@ -271,6 +272,8 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_SAVE
 		case eventDeathConfirmed:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_CONFIRMED
+		case eventCharacterRevived:
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_CHARACTER_REVIVED
 		case eventConditionsSet:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED
 		case eventCombatEffectEnded:
@@ -490,7 +493,8 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		actor, target = playdb.Combatant{}, byID[e.ev.Actor] // the affected one is the target
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION:
 		target = playdb.Combatant{} // who attacked is not part of the line
-	case playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_CONFIRMED, playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED:
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_CONFIRMED, playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED,
+		playv1.CombatLogKind_COMBAT_LOG_KIND_CHARACTER_REVIVED:
 		actor, target = playdb.Combatant{}, byID[e.ev.Actor]
 	}
 	// What a player may see: nothing with a hidden combatant in it, when it
@@ -693,10 +697,14 @@ func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *
 	caster := byID[e.ev.Actor]
 	out := &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot), Concentrating: e.ev.Concentrate, ConcentrationEndedKey: e.ev.ConcEnded}
 	out.EffectKind, out.PoolRoll, out.EffectConditionKey, out.EffectThreshold = effectHeader(e.ev, v, caster)
+	out.MaterialSpent = e.ev.Material && (v.master || v.owns(caster)) // the diamonds are the caster's and the master's line
 	if e.ev.Res != nil && e.ev.Res.Kind == resMetamagic {
 		out.MetamagicKeys, out.SorceryPointsSpent = e.ev.Res.Keys, e.ev.Res.Spent
 	}
 	for _, h := range e.ev.Hits {
+		if v.master && h.DeathRound != nil && e.ev.FxKind == rules.SpellKindRevive {
+			out.RevivedDeathRound = h.DeathRound
+		}
 		target := byID[h.Target]
 		// The players' line never lists a creature that was hidden when an area hit it
 		// (not even after the master reveals it: the line would say the spell hit it),

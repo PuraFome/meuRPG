@@ -1,10 +1,12 @@
 import {
   coinEntries,
   formatDate,
+  formatWhen,
   issueTitle,
   keepUnitsTogether,
   spellLimitsText,
   pactSlotRow,
+  pendingTag,
   spellSlotRows,
   stateTagLabel,
 } from './sheet-format';
@@ -106,5 +108,24 @@ describe('sheet-format', () => {
         (c) => `${c.amount} ${c.abbreviation}`,
       ),
     ).toEqual(['15 PO', '5 PC']);
+  });
+
+  it('writes the day, the month and the hour of a review the way the sheet says it', () => {
+    expect(formatWhen(new Date(2026, 9, 8, 21, 10))).toBe('8 de out., 21h10');
+    expect(formatWhen(new Date(2026, 0, 31, 7, 5))).toBe('31 de jan., 7h05');
+  });
+
+  it("tags a pending character with where the master's review stands, in words and an icon", () => {
+    const review = { reason: 'x', requestedAt: null, resubmittedAt: null };
+    expect(pendingTag(null)).toEqual({ label: 'Pendente', icon: 'schedule' });
+    expect(pendingTag({ ...review, status: 'awaiting' }).label).toBe('Pendente');
+    expect(pendingTag({ ...review, status: 'changes_requested' })).toEqual({
+      label: 'Pendente · ajustes pedidos',
+      icon: 'edit',
+    });
+    expect(pendingTag({ ...review, status: 'resubmitted' })).toEqual({
+      label: 'Pendente · reenviado',
+      icon: 'task_alt',
+    });
   });
 });

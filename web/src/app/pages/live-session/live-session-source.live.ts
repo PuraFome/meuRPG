@@ -25,6 +25,7 @@ import {
   Recharge,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
+import { REVIVIFY_KEY } from '../../core/revivify/revivify-flow';
 import type { OtherSkill } from '../../core/traps/trap-search';
 import { hitDiceWords } from '../../core/resources/hit-dice-text';
 import { metersText } from '../../core/units';
@@ -303,6 +304,16 @@ export class LiveSessionSourceLive implements LiveSessionSource {
         case 'contentChanged':
           yield { kind: 'contentChanged' };
           break;
+        case 'characterChangesRequested':
+        case 'characterResubmitted':
+          yield { kind: 'characterChanged', characterId: res.event.value.characterId };
+          break;
+        case 'characterRevived':
+          yield { kind: 'characterRevived', characterId: res.event.value.characterId };
+          break;
+        case 'revivifyChanged':
+          yield { kind: 'revivifyChanged' };
+          break;
         case 'puzzleChanged':
           yield { kind: 'puzzleChanged', puzzleId: res.event.value.puzzleId };
           break;
@@ -384,6 +395,8 @@ export class LiveSessionSourceLive implements LiveSessionSource {
     return {
       armorClass: derived ? derived.armorClass : null,
       summary: [classes, race].filter(Boolean).join(', '),
+      classes,
+      revivify: derived?.spells.some((s) => s.spell?.key === REVIVIFY_KEY && s.prepared) ?? false,
       skills: derived
         ? {
             perception: skill('skill:perception'),

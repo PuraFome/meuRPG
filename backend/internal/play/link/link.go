@@ -635,3 +635,14 @@ type MonsterHitPoints struct {
 	Average                         int
 	DiceCount, DiceSides, DiceBonus int
 }
+
+// DeadCharacter is a player's character the master marked dead: a target Revivify may
+// reach outside a combat, and the master's "Reviver".
+type DeadCharacter struct {
+	ID   string
+	Name string
+	// PlayerUserID is the account that plays it, empty when the player left (RN-16).
+	PlayerUserID string
+	// RevivifyBlocked is the master's switch "Revivificar não funciona nesta morte".
+	RevivifyBlocked bool
+}

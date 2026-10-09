@@ -32,6 +32,7 @@ import { countsSentence } from './death-saves';
 import { degreeWord, sourceWord } from './cover';
 import { effectWords, gainWords, poolRollText, reasonWords } from './hp-effects';
 import { trapLogText } from '../traps/trap-log';
+import { article } from '../format/article';
 
 /**
  * The combat log as the screens read it (E6-11, E6-14, E6-15): the server
@@ -52,6 +53,8 @@ export interface LogLine {
   /** The master's alone ("Só o mestre vê"). */
   readonly hidden: boolean;
   readonly undoable: boolean;
+  /** A second sentence under the line, whole, with its own actor: "Ilaria gastou diamantes de 300 PO". */
+  readonly note?: string;
   /** The master's account of a pool spell (Sono): the dice, each creature and what is left of the total. */
   readonly card?: PoolCard;
   /** The d20 pair of an attack, both faces with the one that counts marked. */
@@ -119,13 +122,7 @@ export interface LogGroup {
   readonly lines: readonly LogLine[];
 }
 
-/** "o" or "a" before a name: by its first word's ending, which is right for
- * the names this table uses (Brisa, Toren, Rapieira, Machado, Raio). */
-export function article(name: string): 'o' | 'a' {
-  // "Aranha-lobo gigante" is read by "Aranha", the word the article agrees with.
-  const first = name.trim().split(/\s+/)[0].split('-')[0].toLowerCase();
-  return /a$/.test(first) || /^(foice|rede|clava|mace)$/.test(first) ? 'a' : 'o';
-}
+export { article };
 
 /** "no Toren", "na Brisa". */
 function inThe(name: string): string {
@@ -369,6 +366,26 @@ function castText(e: CombatLogEntry, ctx: LogContext): { text: string; card?: Po
     out += '. A concentração anterior acabou';
   }
   return { text: out };
+}
+
+/** "Ilaria conjurou Revivificar em Toren: voltou com 1 PV (morreu na rodada 3)", and for whoever may read it the
+ * diamonds on a line of their own. The round of the death is the master's alone; the diamonds, the master's and the
+ * caster's player's (the server leaves the rest out of the entry). */
+function reviveCastText(e: CombatLogEntry, ctx: LogContext): { text: string; note?: string } {
+  const spell = e.spell!;
+  const name = e.keyNamePt || 'Revivificar';
+  const who = spell.targets.at(0)?.targetLabel || e.targetLabel || 'alguém';
+  const prep = ctx.players.has(who) ? `em ${who}` : inThe(who);
+  const round =
+    ctx.master && spell.revivedDeathRound !== undefined
+      ? ` (morreu na rodada ${spell.revivedDeathRound})`
+      : '';
+  return {
+    text: ` conjurou ${name} ${prep}: voltou com 1 PV${round}`,
+    note: spell.materialSpent
+      ? `${e.actorLabel || 'Quem conjurou'} gastou diamantes de 300 PO`
+      : undefined,
+  };
 }
 
 // ---- the spells that read hit points (E8-03) ----
@@ -778,9 +795,20 @@ export function logLine(
     case CombatLogKind.COMBAT_ENDED:
       return { ...base, icon: 'flag', actor: '', text: 'Combate encerrado' };
     case CombatLogKind.SPELL_CAST: {
+      if (e.spell?.effectKind === SpellEffectKind.REVIVE) {
+        return { ...base, icon: 'favorite', ...reviveCastText(e, ctx) };
+      }
       const cast = castText(e, ctx);
       return { ...base, icon: 'auto_awesome', text: cast.text, card: cast.card };
     }
+    case CombatLogKind.CHARACTER_REVIVED:
+      // The master brought a dead character back: the server puts the combatant in the target and sends no actor.
+      return {
+        ...base,
+        actor: '',
+        icon: 'favorite',
+        text: `O mestre reviveu ${e.targetLabel || 'alguém'}`,
+      };
     case CombatLogKind.REACTION: {
       const slot = e.spell?.slot;
       return {

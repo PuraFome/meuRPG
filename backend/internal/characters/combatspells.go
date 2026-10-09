@@ -180,6 +180,22 @@ func (s *Service) MarkDead(ctx context.Context, tx pgx.Tx, campaignID, character
 	return nil
 }
 
+// MarkDeadInCombat is MarkDead for a death the master confirmed in a combat: it also keeps the
+// round and the combat, which the master reads on the character's page (death_round) and
+// Revivify counts its minute from. A character already dead keeps what it had.
+func (s *Service) MarkDeadInCombat(ctx context.Context, tx pgx.Tx, campaignID, characterID string, at time.Time, round int32, encounterID string) error {
+	id, ok := parseUUID(characterID)
+	if !ok {
+		return errCharacterNotFound()
+	}
+	if _, err := s.queries.WithTx(tx).MarkCharacterDead(ctx, charactersdb.MarkCharacterDeadParams{
+		CampaignID: campaignID, ID: id, Now: at, DeathRound: &round, DeathEncounterID: &encounterID,
+	}); err != nil {
+		return wrap("mark dead", err)
+	}
+	return nil
+}
+
 // Conditions implements play.CombatRoster: the SRD's conditions the master may
 // mark as labels (RN-22), with their Portuguese names. They are the SRD's: no
 // table content adds one (plan D1), so this needs no campaign.

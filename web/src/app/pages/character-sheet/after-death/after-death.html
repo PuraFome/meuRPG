@@ -1,0 +1,11 @@
+<section class="ad mr-panel" aria-labelledby="ad-title">
+  <h2 class="mr-panel__title" id="ad-title">E agora?</h2>
+  <p class="ad__text">
+    Você pode criar um novo personagem nesta campanha. Ele precisa da
+    <strong>aprovação do mestre</strong>, como qualquer ficha nova. {{ characterName() }} fica
+    guardado.
+  </p>
+  <a matButton="filled" [routerLink]="['/campaigns', campaignId(), 'characters', 'new']">
+    Criar um novo personagem
+  </a>
+</section>

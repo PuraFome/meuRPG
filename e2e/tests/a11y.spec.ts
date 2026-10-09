@@ -56,6 +56,7 @@ import {
 } from './puzzles-support';
 import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
+import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { archiveEntryRPC, createEntryRPC, entryRoute, raceBody, spellBody, updateEntryRPC } from './content-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
@@ -712,6 +713,82 @@ test('quem está sem personagem passa no axe no tema claro, no desktop', { tag: 
 
 test('quem está sem personagem passa no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-024'] }, async ({ browser }) => {
   await scanPendingMembers(browser, 'dark', 390);
+});
+
+/** "Pedir ajustes" (RN-15, MR-024): the master's three buttons, the form empty and with its error, the notice after the request, the
+ * refusal question, and the owning player's notice and the waiting one after "Enviar de novo". */
+async function scanReviewScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(120_000);
+  const context = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
+  const playerContext = await newSignedInContext(browser, 'Jogador Teste', { colorScheme, viewport: { width, height: 900 } });
+  const page = await context.newPage();
+  const playerPage = await playerContext.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await page.goto('/');
+    const created = await callRPC(page, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', {
+      name: `Acessibilidade ajustes ${Date.now()}`,
+      xpMode: 'XP_MODE_ENEMIES',
+    });
+    const campaignId = (await created.json()).campaign.id as string;
+    const invite = await callRPC(page, 'meurpg.campaigns.v1.CampaignService/CreateInvite', {
+      campaignId,
+      maxUses: 1,
+      expiresIn: '86400s',
+      requiresApproval: true,
+    });
+    const { token } = await invite.json();
+    await playerPage.goto('/');
+    const accepted = await callRPC(playerPage, 'meurpg.campaigns.v1.CampaignService/AcceptInvite', { token });
+    expect(accepted.ok()).toBeTruthy();
+    const character = await createCharacterRPC(playerPage, campaignId, characterRpcBody('PLAYER', pensantus));
+    const route = `/campaigns/${campaignId}/characters/${(await character.json()).character.id as string}`;
+
+    await open(page, route);
+    await expect(page.getByRole('button', { name: 'Pedir ajustes', exact: true })).toBeVisible();
+    await expectScreenPasses(page, `Pendente, os três botões ${where}`);
+
+    await page.getByRole('button', { name: 'Pedir ajustes', exact: true }).click();
+    await page.getByRole('button', { name: 'Enviar pedido' }).click();
+    await expect(page.getByRole('alert').filter({ hasText: 'O pedido não vai sem motivo.' })).toBeVisible();
+    await expectScreenPasses(page, `Pedir ajustes, sem motivo ${where}`);
+
+    await page.getByLabel(/^O que .* precisa ajustar$/).fill('O antecedente não bate com a história. Também falta escolher o equipamento.');
+    await expectScreenPasses(page, `Pedir ajustes, com o motivo ${where}`);
+    await page.getByRole('button', { name: 'Enviar pedido' }).click();
+    await expect(page.getByRole('button', { name: 'Pedir ajustes de novo' })).toBeFocused();
+    await expectScreenPasses(page, `Pendente, ajustes pedidos ${where}`);
+
+    await page.getByRole('button', { name: 'Recusar personagem' }).click();
+    await expect(page.getByRole('button', { name: 'Cancelar' })).toBeFocused();
+    await expectScreenPasses(page, `Recusar, a confirmação ${where}`);
+
+    await open(playerPage, route);
+    await expect(playerPage.getByRole('alert').filter({ hasText: 'O mestre pediu ajustes.' })).toBeVisible();
+    await expectScreenPasses(playerPage, `O jogador, ajustes pedidos ${where}`);
+    await playerPage.getByRole('button', { name: 'Enviar de novo' }).click();
+    await expect(playerPage.getByRole('status').filter({ hasText: 'Ficha enviada de novo.' })).toBeVisible();
+    await expectScreenPasses(playerPage, `O jogador, ficha enviada de novo ${where}`);
+
+    await open(page, route);
+    await expect(page.getByRole('list', { name: 'Estado do personagem' })).toContainText('Pendente · reenviado');
+    await expectScreenPasses(page, `Pendente, reenviado ${where}`);
+  } finally {
+    await playerContext.close();
+    await context.close();
+  }
+}
+
+test('pedir ajustes passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-024', '@RN-15'] }, async ({ browser }) => {
+  await scanReviewScreens(browser, 'light', 1280);
+});
+
+test('pedir ajustes passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-024', '@RN-15'] }, async ({ browser }) => {
+  await scanReviewScreens(browser, 'dark', 390);
 });
 
 /**
@@ -5906,8 +5983,10 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
     const prepare = page.locator('#pick-prepared');
     await expect(prepare).toBeVisible();
     await showAllPicks(prepare);
-    const reason = (await page.locator('#foot-reason').textContent()) ?? '';
-    for (const name of ['Amizade Animal', 'Bom Fruto', 'Criar ou Destruir Água', 'Curar Ferimentos'].slice(0, Number(/(\d+)/.exec(reason)?.[1] ?? '1'))) {
+    // How many to prepare: the list's own "0 de 2", drawn with its rows (the footer's sentence follows it a repaint later).
+    await expect(prepare.locator('.list__count')).toContainText(/\d+ de \d+/);
+    const [had, of] = ((await prepare.locator('.list__count').textContent()) ?? '').match(/\d+/g)!.map(Number);
+    for (const name of ['Amizade Animal', 'Bom Fruto', 'Criar ou Destruir Água', 'Curar Ferimentos'].slice(0, of - had)) {
       await prepare.getByRole('checkbox', { name: new RegExp(`^${name}`) }).check();
     }
     await expectScreenPasses(page, `Subir de nível, as magias ${where}`);
@@ -6370,6 +6449,220 @@ test('as sessões anteriores e o resumo passam no axe e nas conferências de lay
 test('as sessões anteriores e o resumo passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-032'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanPastSessions(browser, 'light', 320);
+});
+
+/** "Reviver" (RN-03, PM-08d states 1 and 5): the master's dead page with "Reviver", the question in place, the refusal because the player
+ * made another character, and the owner's dead page with "E agora?". */
+async function scanReviveScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(120_000);
+  const context = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
+  const playerContext = await newSignedInContext(browser, 'Jogador Teste', { colorScheme, viewport: { width, height: 900 } });
+  const page = await context.newPage();
+  const playerPage = await playerContext.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await page.goto('/');
+    const created = await callRPC(page, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', {
+      name: `Acessibilidade reviver ${Date.now()}`,
+      xpMode: 'XP_MODE_ENEMIES',
+    });
+    const campaignId = (await created.json()).campaign.id as string;
+    const invite = await callRPC(page, 'meurpg.campaigns.v1.CampaignService/CreateInvite', {
+      campaignId,
+      maxUses: 1,
+      expiresIn: '86400s',
+      requiresApproval: false,
+    });
+    const { token } = await invite.json();
+    await playerPage.goto('/');
+    const accepted = await callRPC(playerPage, 'meurpg.campaigns.v1.CampaignService/AcceptInvite', { token });
+    expect(accepted.ok()).toBeTruthy();
+    const character = await createCharacterRPC(playerPage, campaignId, characterRpcBody('PLAYER', pensantus));
+    const characterId = (await character.json()).character.id as string;
+    const dead = await callRPC(page, 'meurpg.characters.v1.CharacterService/MarkCharacterDead', { campaignId, characterId });
+    expect(dead.status()).toBe(200);
+    const route = `/campaigns/${campaignId}/characters/${characterId}`;
+
+    await open(page, route);
+    await expect(page.getByRole('button', { name: 'Reviver', exact: true })).toBeVisible();
+    await expectScreenPasses(page, `Reviver, a ficha do morto ${where}`);
+    await page.getByRole('button', { name: 'Reviver', exact: true }).click();
+    await expect(page.getByRole('button', { name: `Reviver ${pensantus.name}` })).toBeFocused();
+    await expectScreenPasses(page, `Reviver, a confirmação ${where}`);
+
+    await open(playerPage, route);
+    await expect(playerPage.getByRole('heading', { name: 'E agora?' })).toBeVisible();
+    await expectScreenPasses(playerPage, `O jogador do morto, "E agora?" ${where}`);
+
+    const replacement = await createCharacterRPC(playerPage, campaignId, characterRpcBody('PLAYER', { ...pensantus, name: 'Personagem Novo' }));
+    expect(replacement.status()).toBe(200);
+    await page.getByRole('button', { name: `Reviver ${pensantus.name}` }).click();
+    await expect(page.getByRole('alert').filter({ hasText: 'já tem outro personagem vivo' })).toBeVisible();
+    await expectScreenPasses(page, `Reviver, o jogador já tem outro personagem ${where}`);
+  } finally {
+    await playerContext.close();
+    await context.close();
+  }
+}
+
+test('reviver passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-03'] }, async ({ browser }) => {
+  await scanReviveScreens(browser, 'light', 1280);
+});
+
+test('reviver passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-03'] }, async ({ browser }) => {
+  await scanReviveScreens(browser, 'dark', 390);
+});
+
+/** The dead of a combat and the master's question about Revivify (RN-03, RN-10; PM-08d states 2b and 4): "Mortos nesta luta" under the
+ * order with the tag, the switch off and on (the notice only the master reads), and the dialog of a cast outside a combat waiting for him. */
+async function scanDeathsScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(180_000);
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade mortos ${Date.now()}`, true, true);
+    const { campaignId } = table;
+    const enc = await beginAttackCombatRPC(m, table, { 'Capitão Goblin': 20, 'Goblin 1': 12, 'Goblin 2': 3, Pensantus: 15 });
+    const fallen = enc.combatants.find((c) => c.label === 'Goblin 1')!;
+    await combatRPC(m, 'AdjustCombatantHitPoints', { campaignId, encounterId: enc.id, combatantId: fallen.id, damage: 999 });
+
+    await openSessionPage(m, campaignId);
+    const block = m.getByRole('region', { name: /^Mortos nesta luta/ });
+    await expect(block).toContainText('Mortos nesta luta (1)');
+    await expect(block).toContainText('Cabe em Revivificar');
+    await expect(block.getByRole('button', { name: 'Reviver' })).toHaveCount(0);
+    await expectScreenPasses(m, `Mortos nesta luta ${where}`);
+
+    await block.getByRole('switch', { name: 'Revivificar não funciona nesta morte' }).click();
+    await expect(block).toContainText('Revivificar não vai aparecer para ele.');
+    await expect(block).not.toContainText('Cabe em Revivificar');
+    await expectScreenPasses(m, `Mortos nesta luta, o interruptor ligado ${where}`);
+
+    // A cast outside a combat waits for the master: the dialog with the focus on its first button.
+    const cast = {
+      requests: [
+        {
+          id: crypto.randomUUID(),
+          status: 'REVIVIFY_REQUEST_STATUS_PENDING',
+          casterName: 'Ilaria',
+          targetName: 'Toren',
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    };
+    await m.route('**/meurpg.play.v1.RevivifyService/ListRevivifyRequests', (r) =>
+      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(cast) }),
+    );
+    await openSessionPage(m, campaignId);
+    const ask = m.getByRole('alertdialog', { name: 'Ilaria quer conjurar Revivificar em Toren' });
+    await expect(ask).toBeVisible();
+    await expect(ask.getByRole('button', { name: 'Faz menos de 1 minuto' })).toBeFocused();
+    await expectScreenPasses(m, `Revivificar fora de combate, a pergunta do mestre ${where}`);
+    await m.unroute('**/meurpg.play.v1.RevivifyService/ListRevivifyRequests');
+  } finally {
+    await player.close();
+    await master.close();
+  }
+}
+
+test('os mortos da luta e a pergunta de Revivificar passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-03', '@RN-10'] }, async ({ browser }) => {
+  await scanDeathsScreens(browser, 'light', 1280);
+});
+
+test('os mortos da luta e a pergunta de Revivificar passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-03', '@RN-10'] }, async ({ browser }) => {
+  await scanDeathsScreens(browser, 'dark', 390);
+});
+
+/** Revivificar (RN-03, RN-10; PM-08d states 2, 2b and 3): the sheet's three steps in a combat (the target, the diamonds not ticked and
+ * ticked, the result), outside a combat (the target with the master's confirmation, the wait, his "no") and the notice the revived
+ * character's player reads. */
+async function scanRevivifyScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(300_000);
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const sheetOf = (page: Page) => page.getByRole('dialog', { name: /^Revivificar/ });
+  const campaigns = [] as string[];
+  try {
+    await m.goto('/');
+    await p.goto('/');
+
+    // In a combat.
+    const fight = await combatWithTwoDown(m, p, `Acessibilidade revivificar ${Date.now()}`);
+    campaigns.push(fight.table.campaignId);
+    await openSessionPage(p, fight.table.campaignId);
+    await p.getByRole('button', { name: 'Conjurar Revivificar' }).click();
+    let sheet = sheetOf(p);
+    await expect(sheet.getByRole('radiogroup', { name: 'Quem morreu por perto' })).toContainText('Goblin 1');
+    await expectScreenPasses(p, `Revivificar, o alvo ${where}`);
+    await sheet.getByRole('button', { name: 'Próximo' }).click();
+    await expect(sheet.getByRole('heading', { name: 'Revivificar em Goblin 1' })).toBeFocused();
+    await expectScreenPasses(p, `Revivificar, confirmar sem os diamantes ${where}`);
+    await sheet.getByText('Tenho os diamantes', { exact: true }).click();
+    await expectScreenPasses(p, `Revivificar, confirmar com os diamantes ${where}`);
+    await sheet.getByRole('button', { name: 'Conjurar Revivificar' }).click();
+    await expect(sheet.getByRole('status').filter({ hasText: 'Goblin 1 voltou à vida.' })).toBeVisible();
+    await expectScreenPasses(p, `Revivificar, o resultado ${where}`);
+    await endOpenSessionRPC(m, fight.table.campaignId);
+
+    // Outside a combat.
+    const dead = await tableWithDead(m, p, `Acessibilidade revivificar fora ${Date.now()}`, true);
+    campaigns.push(dead.campaignId);
+    await openSessionPage(m, dead.campaignId);
+    await openSessionPage(p, dead.campaignId);
+    await p.getByRole('button', { name: 'Revivificar', exact: true }).click();
+    sheet = sheetOf(p);
+    await expect(sheet).toContainText('O mestre confirma que faz menos de 1 minuto.');
+    await expectScreenPasses(p, `Revivificar fora de combate, o alvo ${where}`);
+    await sheet.getByRole('button', { name: 'Próximo' }).click();
+    await sheet.getByText('Tenho os diamantes', { exact: true }).click();
+    await sheet.getByRole('button', { name: 'Conjurar Revivificar' }).click();
+    await expect(sheet.getByRole('status').filter({ hasText: 'Esperando o mestre' })).toBeVisible();
+    await expectScreenPasses(p, `Revivificar fora de combate, esperando o mestre ${where}`);
+    await m.getByRole('alertdialog', { name: 'Ilaria quer conjurar Revivificar em Toren' }).getByRole('button', { name: 'Já passou' }).click();
+    await expect(sheet.getByRole('status').filter({ hasText: 'O mestre disse que não dá.' })).toBeVisible();
+    await expectScreenPasses(p, `Revivificar fora de combate, o mestre disse que não ${where}`);
+    await endOpenSessionRPC(m, dead.campaignId);
+
+    // The notice of the one who lives again.
+    const only = await tableWithDead(m, p, `Acessibilidade voltou ${Date.now()}`, false);
+    campaigns.push(only.campaignId);
+    await openSessionPage(p, only.campaignId);
+    await reviveRPC(m, only.campaignId, only.deadId);
+    await expect(p.getByRole('status').filter({ hasText: 'Você voltou à vida.' })).toContainText('Está com 1 PV.');
+    await expectScreenPasses(p, `Você voltou à vida ${where}`);
+  } finally {
+    for (const id of campaigns) {
+      await endOpenSessionRPC(m, id);
+    }
+    await player.close();
+    await master.close();
+  }
+}
+
+test('Revivificar passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-03', '@RN-10'] }, async ({ browser }) => {
+  await scanRevivifyScreens(browser, 'light', 1280);
+});
+
+test('Revivificar passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-03', '@RN-10'] }, async ({ browser }) => {
+  await scanRevivifyScreens(browser, 'dark', 390);
+});
+
+test('Revivificar passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@RN-03', '@RN-10'] }, async ({ browser }) => {
+  await scanRevivifyScreens(browser, 'light', 320);
 });
 
 /** Rolls with a mode (PM-06): the attack sheet with the server's mode and its reasons, the

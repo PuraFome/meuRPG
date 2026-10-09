@@ -1,4 +1,9 @@
-import { AbilityKey, CharacterKind, CharacterState } from '../../core/characters/characters.types';
+import {
+  AbilityKey,
+  CharacterKind,
+  CharacterState,
+  ReviewStatus,
+} from '../../core/characters/characters.types';
 import { DamageTypeKey, SkillProficiency } from '../../core/characters/character-labels';
 
 /**
@@ -254,6 +259,15 @@ export interface CharacterStoryVm {
   readonly allies: string;
 }
 
+/** `Character.review` (RN-15): only the master and the owning player ever get it. */
+export interface ReviewVm {
+  readonly status: ReviewStatus;
+  /** What the master asked, 1 to 500 characters; empty while `status` is `'awaiting'`. */
+  readonly reason: string;
+  readonly requestedAt: Date | null;
+  readonly resubmittedAt: Date | null;
+}
+
 export interface CharacterSheetVm {
   readonly id: string;
   readonly campaignId: string;
@@ -269,6 +283,8 @@ export interface CharacterSheetVm {
   readonly canEdit: boolean;
   readonly sheetLockedAt: Date | null;
   readonly diedAt: Date | null;
+  /** When the master last brought the character back (`Character.revived_at`, "Reviver" or Revivify); only the master and the owner get it. */
+  readonly revivedAt: Date | null;
   readonly revision: number;
   readonly sheet: FullSheetVm | BasicSheetVm;
   /**
@@ -301,6 +317,9 @@ export interface CharacterSheetVm {
    * since an NPC can't be marked dead this way (RN-04: its hit points
    * belong to each combat). */
   readonly canMarkDead: boolean;
+  /** `Character.can_revive`: the master, for a dead player character. Gates "Reviver"; the server still answers
+   * `LIVING_CHARACTER_EXISTS` when the player made another character since the death. */
+  readonly canRevive: boolean;
   /** `Character.can_access_master_notes`: the master. Gates both the
    * "Notas do mestre" panel and the `getMasterNotes` call (RN-11). */
   readonly canAccessMasterNotes: boolean;
@@ -308,6 +327,12 @@ export interface CharacterSheetVm {
    * approval (`state === 'pending'`, RN-15 / MR-024). Gates "Aprovar
    * personagem" and "Recusar personagem". */
   readonly canApprove: boolean;
+  /** `Character.can_request_changes`: the master, for a pending character. Gates "Pedir ajustes". */
+  readonly canRequestChanges: boolean;
+  /** `Character.can_resubmit`: the owning player, while the master's request for changes is open. Gates "Enviar de novo". */
+  readonly canResubmit: boolean;
+  /** `Character.review`: the master's request for changes on a pending character; `null` for anyone who may not read it. */
+  readonly review: ReviewVm | null;
   readonly isMaster: boolean;
   readonly playerDisplayName: string | null;
   /** `Character.reserved`: made by the master for a player to claim, with no owner yet (MR-049). Only the master reads it. */
@@ -385,6 +410,31 @@ export abstract class CharacterSheetSource {
    * player's pending membership too (`RejectCharacter`). Nothing comes
    * back: the character is gone. */
   abstract rejectCharacter(campaignId: string, characterId: string): Promise<void>;
+  /** Master only (RN-15): the pending character goes back to its player with
+   * a reason (`RequestCharacterChanges`); it stays pending. */
+  abstract requestCharacterChanges(
+    campaignId: string,
+    characterId: string,
+    reason: string,
+    idempotencyKey: string,
+  ): Promise<CharacterSheetVm>;
+  /** Master only: a dead player character lives again with 1 hit point (`ReviveCharacter`). A refusal because
+   * the player made another living character throws the error `livingRefusal` reads. */
+  abstract reviveCharacter(
+    campaignId: string,
+    characterId: string,
+    idempotencyKey: string,
+  ): Promise<CharacterSheetVm>;
+  /** Whether the caller already has a living player character in the campaign (`ListCharacters`: a player gets
+   * only their own): "E agora?" offers a new one only when not (RN-03). */
+  abstract hasLivingCharacter(campaignId: string): Promise<boolean>;
+  /** Owning player only: sends the pending character again after the
+   * master's request (`ResubmitCharacter`). */
+  abstract resubmitCharacter(
+    campaignId: string,
+    characterId: string,
+    idempotencyKey: string,
+  ): Promise<CharacterSheetVm>;
   /** How many selections of the character's class and race choices are still open (PM-05), for "Esta ficha tem N
    * escolhas pendentes": the master's and the owner's to know. 0 when there are none and for a sheet that has no choices. */
   abstract getPendingChoiceCount(campaignId: string, characterId: string): Promise<number>;

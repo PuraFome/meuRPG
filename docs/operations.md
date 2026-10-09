@@ -226,7 +226,7 @@ The export and import of a campaign (MR-050, [Architecture](architecture.md#camp
 | Download | Up to 30 minutes for the response (a client slower than 1 Mbit/s is cut) |
 | Cleanup | `Sweep` when the server starts and every 10 minutes; it also takes the exports and uploads whose campaign or account no longer exists; a running export that has not moved for 10 minutes is marked interrupted |
 
-**The bucket needs a lifecycle rule** as a second net, in case the instance is down when something expires: delete the objects under `imports/` older than 1 day and those under `campaigns/*/exports/` older than 2 days (Cloud Storage lifecycle rules match by prefix and age). The application deletes them first; the rule only covers a pause of the sweeper. Soft delete keeps a deleted object 7 more days (see [Privacy](privacy.md#what-the-campaign-package-does-mr-050)).
+**The bucket needs a lifecycle rule** as a second net, in case the instance is down when something expires: delete the objects under `imports/` older than 1 day and the export zips (under `campaigns/`, ending in `.zip`) older than 2 days. Cloud Storage lifecycle rules match by prefix, suffix and age; [step 4](#4-the-images-bucket) of the first deploy creates them. The application deletes them first; the rule only covers a pause of the sweeper. Soft delete keeps a deleted object 7 more days (see [Privacy](privacy.md#what-the-campaign-package-does-mr-050)).
 
 **Memory.** The server has 512 MiB and processes one image at a time. An export keeps the campaign's JSON entries in memory (small: the sheets, maps and content, never the images) and streams every image file through a pipe into the store; an import reads the package where it lies in the parts, one entry at a time, and decodes one image at a time in the same slot as an upload. Neither holds the package or the images together.
 
@@ -382,6 +382,21 @@ gcloud storage buckets add-iam-policy-binding gs://$BUCKET \
   --member=serviceAccount:$SA --role=roles/storage.objectUser
 ```
 
+Then the lifecycle rule, the second net of the [campaign package](#campaign-package) cleanup: the upload parts under `imports/` go after 1 day, and the export zips after 2. An export lives at `campaigns/<id>/exports/<id>.zip`, and a lifecycle rule matches a prefix, not a pattern, so the second rule takes the objects under `campaigns/` whose name ends in `.zip`: only exports do (an image is `campaigns/<id>/images/<id>` and its thumbnail `<id>.thumb`).
+
+```bash
+cat > /tmp/meurpg-lifecycle.json <<'EOF'
+{"rule": [
+  {"action": {"type": "Delete"}, "condition": {"age": 1, "matchesPrefix": ["imports/"]}},
+  {"action": {"type": "Delete"}, "condition": {"age": 2, "matchesPrefix": ["campaigns/"], "matchesSuffix": [".zip"]}}
+]}
+EOF
+gcloud storage buckets update gs://$BUCKET --lifecycle-file=/tmp/meurpg-lifecycle.json
+gcloud storage buckets describe gs://$BUCKET --format='yaml(lifecycle_config)'
+```
+
+The last command must show the two rules.
+
 ### 5. Secrets
 
 Three secrets, two created here and one in step 6. Each value is typed at a hidden prompt, so it does not stay in the shell history. The helper below works in **bash and zsh** (the macOS default): it avoids `read -p`, which is bash-only and, in zsh, would fail and leave the value empty. It **refuses an empty value** and, after creating the secret, reads it back and checks that it has content, so an empty secret cannot go unnoticed.
@@ -418,7 +433,7 @@ openssl s_client -starttls postgres -connect $CRDB_HOST:26257 -servername $CRDB_
 
 **On a Mac, `openssl` is LibreSSL, which has neither `-starttls postgres` nor `-verify_hostname`: install Homebrew's (`brew install openssl`) and call `$(brew --prefix openssl)/bin/openssl`, or skip this probe and rely on step 2.** `Verification: OK` (or `Verify return code: 0 (ok)`) means a public CA signs it. A failure such as `unable to get local issuer certificate` means the cluster has its own CA: go to step 2. (Use the port of your string if it is not 26257.)
 
-**2. The real test, with the production image and the production rule.** This runs the image's own `migrate` (it reads the same `DATABASE_URL`) with `K_SERVICE` set, so `config` applies the Cloud Run rule about `sslmode`; `status` only lists applied and pending migrations:
+**2. The real test, with the production image and the production rule.** This runs the image's own `migrate`, which reads the same `DATABASE_URL`; `status` only lists applied and pending migrations. **`migrate` does not apply the Cloud Run rule about `sslmode`** (only the API reads `K_SERVICE`, and a Cloud Run job does not set it), so the string itself must say `sslmode=verify-full`: the driver then refuses a certificate it cannot verify. The `-e K_SERVICE=check` below does nothing for `migrate`; it is there so the same line works if the API is ever run this way.
 
 ```bash
 docker run --rm --platform linux/amd64 -e K_SERVICE=check -e DATABASE_URL="<connection string>" \
@@ -564,8 +579,8 @@ In every case, do the check of [Sign-in rate limit and the client IP](#sign-in-r
 
 In order; stop at the first failure and read the logs (step 13).
 
-- [ ] `curl -s -o /dev/null -w '%{http_code}\n' $APP_URL/readyz` answers `200` (the database answers). `/healthz` too.
-- [ ] The start-up log has `images are stored in Cloud Storage`, and no warning about OIDC or the database.
+- [ ] `curl -s $APP_URL/readyz` answers `200` with the body `{"status":"ready","database":"up"}`. A `200` with `"database":"disabled"` means `DATABASE_URL` was not set: the API starts without it, with sign-in off. `/healthz` answers `200` too.
+- [ ] The start-up log has `sign-in is enabled` and `images are stored in Cloud Storage`, and no `OIDC_ISSUER is not set` or `DATABASE_URL is not set` warning. A variable with a typo in its name does not stop the API: it only shows here.
 - [ ] Open `$APP_URL`: the app loads (the Angular build is served by the API).
 - [ ] Sign in with the master's Google account. A different account sees the creation refused if `CAMPAIGN_CREATORS` is set.
 - [ ] Create a campaign.

@@ -1139,6 +1139,35 @@ export class CombatClient {
     };
   }
 
+  /** Revivify in a combat: the dead creature is a `deadTargetId` (never a combatant target), the diamonds are ticked, the key is the caller's. */
+  async castRevivify(
+    campaignId: string,
+    encounterId: string,
+    casterId: string,
+    slot: SlotRef,
+    deadTargetId: string,
+    key: string,
+  ): Promise<CastResult> {
+    const res = await this.client.castSpell({
+      campaignId,
+      encounterId,
+      casterId,
+      spellKey: 'spell:revivify',
+      slot,
+      targets: [{ deadTargetId }],
+      materialConfirmed: true,
+      idempotencyKey: key,
+    });
+    return {
+      encounter: need(res.encounter, 'CastSpell'),
+      cast: need(res.cast, 'CastSpell'),
+      summoned: res.summonedCombatantIds,
+      area: null,
+      hiddenHits: [],
+      pendingRevealId: '',
+    };
+  }
+
   /** `PreviewSpellArea`: who an area spell placed here reaches and each one's cover, spending nothing. `area` is `null` for a
    * sphere centered on the caster, which has nothing to choose. */
   async previewSpellArea(

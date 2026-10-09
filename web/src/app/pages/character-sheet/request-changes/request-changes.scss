@@ -1,0 +1,56 @@
+:host {
+  display: block;
+}
+
+.rc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  max-width: 40rem;
+  padding: 14px 18px;
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+}
+
+.rc__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.rc__text {
+  margin: 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.rc__problem {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--mr-danger-ink);
+
+  .mat-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.rc__actions {
+  display: flex;
+  gap: 10px;
+
+  @media (max-width: 767.98px) {
+    button {
+      flex: 1;
+      min-height: 48px;
+    }
+  }
+}

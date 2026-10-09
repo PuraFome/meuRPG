@@ -1,0 +1,98 @@
+@if (live() && rows().length > 0) {
+  <section class="mr-panel deaths" aria-labelledby="deaths-title">
+    <div class="mr-visually-hidden" role="status">{{ announcement() }}</div>
+    <h2 class="mr-panel__title deaths__title" id="deaths-title">
+      Mortos nesta luta ({{ rows().length }})
+    </h2>
+    <p class="deaths__sub">{{ subtitle() }}</p>
+
+    <ul class="deaths__list">
+      @for (row of rows(); track row.death.combatantId) {
+        <li class="death" [attr.aria-label]="row.death.name">
+          <app-combatant-token
+            class="death__token"
+            [initial]="initial(row)"
+            [npc]="npc(row)"
+            [size]="28"
+          />
+          <div class="death__text">
+            <span class="death__name">{{ row.death.name }}</span>
+            <span class="death__line">{{ row.line }}</span>
+          </div>
+          <div class="death__tags">
+            @if (row.fits) {
+              <span class="mr-tag mr-tag--success">
+                <mat-icon aria-hidden="true">check_circle</mat-icon>Cabe em Revivificar
+              </span>
+            }
+          </div>
+          <div class="death__actions">
+            @if (canRevive(row) && asking() !== row.death.characterId) {
+              <button
+                matButton="outlined"
+                type="button"
+                [attr.data-revive]="row.death.characterId"
+                [attr.aria-label]="'Reviver ' + row.death.name"
+                (click)="askToRevive(row)"
+              >
+                Reviver
+              </button>
+            }
+          </div>
+
+          <div class="death__switch">
+            <app-hidden-switch
+              label="Revivificar não funciona nesta morte"
+              hint="Velhice, ou partes do corpo que faltam (as limitações do SRD). A criatura deixa de aparecer na lista de Revivificar do jogador, sem motivo. Só você vê este interruptor."
+              [checked]="row.blocked"
+              [disabled]="switching() === row.death.combatantId"
+              (toggle)="setBlocked(row, $event)"
+            />
+            @if (row.blocked) {
+              <p class="death__notice">
+                <mat-icon aria-hidden="true">visibility_off</mat-icon>
+                <span>
+                  <strong>Revivificar não vai aparecer para {{ row.pronoun }}.</strong>
+                  Só você vê este aviso.
+                </span>
+              </p>
+            }
+          </div>
+
+          @if (asking() === row.death.characterId) {
+            <app-revive-confirm
+              class="death__ask"
+              [characterName]="row.death.name"
+              [busy]="saving()"
+              (confirmed)="revive(row)"
+              (cancelled)="cancelRevive(row.death.characterId)"
+            />
+          }
+          @if (refused(); as r) {
+            @if (r.characterId === row.death.characterId) {
+              <app-revive-blocked
+                class="death__ask"
+                [deadName]="row.death.name"
+                [livingName]="r.living.name"
+                [livingLink]="['/campaigns', campaignId(), 'characters', r.living.characterId]"
+                (cancelled)="cancelRevive(row.death.characterId)"
+              />
+            }
+          }
+          @if (error(); as e) {
+            @if (e.id === row.death.characterId || e.id === row.death.combatantId) {
+              <p class="death__error" role="alert">
+                <mat-icon aria-hidden="true">error_outline</mat-icon>{{ e.message }}
+              </p>
+            }
+          }
+        </li>
+      }
+    </ul>
+
+    <p class="deaths__foot">
+      <strong>Só o mestre vê os motivos</strong> quando uma criatura não cabe: longe do conjurador,
+      mais de 10 rodadas, escondida ou marcada “não funciona”.
+    </p>
+  </section>
+}

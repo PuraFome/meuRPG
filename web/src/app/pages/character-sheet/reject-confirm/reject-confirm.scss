@@ -1,0 +1,43 @@
+:host {
+  display: block;
+}
+
+.reject {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  max-width: 40rem;
+  padding: 14px 18px;
+  background: var(--mr-surface);
+  border: 2px solid var(--mr-danger-ink);
+  border-radius: var(--mr-radius-lg);
+
+  > .mat-icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--mr-danger-ink);
+  }
+}
+
+.reject__title {
+  margin: 0;
+  font: 700 21px/26px var(--mr-font-display);
+}
+
+.reject__text {
+  margin: var(--mr-space-1) 0 var(--mr-space-3);
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.reject__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.danger-outline {
+  color: var(--mr-danger-ink);
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+  --mat-button-outlined-outline-color: var(--mr-danger-ink);
+}

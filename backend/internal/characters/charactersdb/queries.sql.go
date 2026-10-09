@@ -14,7 +14,7 @@ const approveCharacter = `-- name: ApproveCharacter :one
 UPDATE characters
 SET status = 'active'
 WHERE campaign_id = $1::UUID AND id = $2 AND status = 'pending'
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
 `
 
 type ApproveCharacterParams struct {
@@ -49,6 +49,12 @@ func (q *Queries) ApproveCharacter(ctx context.Context, arg ApproveCharacterPara
 		&i.CreateHash,
 		&i.Reserved,
 		&i.ClaimedAt,
+		&i.RevivedAt,
+		&i.DeathRound,
+		&i.DeathEncounterID,
+		&i.RevivifyBlocked,
+		&i.ReviveKey,
+		&i.ReviveHash,
 	)
 	return i, err
 }
@@ -240,6 +246,35 @@ type DeleteAbilityRollsParams struct {
 // A sheet used the sets (CreateCharacter): the next character gets new ones.
 func (q *Queries) DeleteAbilityRolls(ctx context.Context, arg DeleteAbilityRollsParams) error {
 	_, err := q.db.Exec(ctx, deleteAbilityRolls, arg.CampaignID, arg.UserID)
+	return err
+}
+
+const deleteCharacterReview = `-- name: DeleteCharacterReview :exec
+DELETE FROM character_reviews WHERE character_id = $1::UUID
+`
+
+// The reason is deleted as soon as the master settles the character (approval, rejection).
+// Deleting the character, the campaign or the player's account deletes it by itself
+// (ON DELETE CASCADE).
+func (q *Queries) DeleteCharacterReview(ctx context.Context, characterID string) error {
+	_, err := q.db.Exec(ctx, deleteCharacterReview, characterID)
+	return err
+}
+
+const deleteCharacterReviewsOfPlayer = `-- name: DeleteCharacterReviewsOfPlayer :exec
+DELETE FROM character_reviews
+WHERE campaign_id = $1::UUID AND player_user_id = $2::UUID
+`
+
+type DeleteCharacterReviewsOfPlayerParams struct {
+	CampaignID   string
+	PlayerUserID string
+}
+
+// An ordinary invite promotes a pending member and counts as the master's approval
+// (ApprovePendingCharacterOfPlayer): the reason goes with the pending state.
+func (q *Queries) DeleteCharacterReviewsOfPlayer(ctx context.Context, arg DeleteCharacterReviewsOfPlayerParams) error {
+	_, err := q.db.Exec(ctx, deleteCharacterReviewsOfPlayer, arg.CampaignID, arg.PlayerUserID)
 	return err
 }
 
@@ -493,7 +528,7 @@ func (q *Queries) GetCampaignContentImport(ctx context.Context, arg GetCampaignC
 }
 
 const getCharacter = `-- name: GetCharacter :one
-SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at FROM characters
+SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash FROM characters
 WHERE campaign_id = $1::UUID AND id = $2
 `
 
@@ -526,12 +561,18 @@ func (q *Queries) GetCharacter(ctx context.Context, arg GetCharacterParams) (Cha
 		&i.CreateHash,
 		&i.Reserved,
 		&i.ClaimedAt,
+		&i.RevivedAt,
+		&i.DeathRound,
+		&i.DeathEncounterID,
+		&i.RevivifyBlocked,
+		&i.ReviveKey,
+		&i.ReviveHash,
 	)
 	return i, err
 }
 
 const getCharacterByCreateKey = `-- name: GetCharacterByCreateKey :one
-SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at FROM characters
+SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash FROM characters
 WHERE campaign_id = $1::UUID AND create_key = $2::UUID
 `
 
@@ -564,6 +605,12 @@ func (q *Queries) GetCharacterByCreateKey(ctx context.Context, arg GetCharacterB
 		&i.CreateHash,
 		&i.Reserved,
 		&i.ClaimedAt,
+		&i.RevivedAt,
+		&i.DeathRound,
+		&i.DeathEncounterID,
+		&i.RevivifyBlocked,
+		&i.ReviveKey,
+		&i.ReviveHash,
 	)
 	return i, err
 }
@@ -685,7 +732,7 @@ func (q *Queries) GetCharacterCreatureForUpdate(ctx context.Context, arg GetChar
 }
 
 const getCharacterForUpdate = `-- name: GetCharacterForUpdate :one
-SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at FROM characters
+SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash FROM characters
 WHERE campaign_id = $1::UUID AND id = $2
 FOR UPDATE
 `
@@ -722,6 +769,36 @@ func (q *Queries) GetCharacterForUpdate(ctx context.Context, arg GetCharacterFor
 		&i.CreateHash,
 		&i.Reserved,
 		&i.ClaimedAt,
+		&i.RevivedAt,
+		&i.DeathRound,
+		&i.DeathEncounterID,
+		&i.RevivifyBlocked,
+		&i.ReviveKey,
+		&i.ReviveHash,
+	)
+	return i, err
+}
+
+const getCharacterReview = `-- name: GetCharacterReview :one
+SELECT character_id, campaign_id, player_user_id, status, reason, requested_at, resubmitted_at, request_key, request_hash, resubmit_key, resubmit_hash FROM character_reviews WHERE character_id = $1::UUID
+`
+
+// The master's request for changes on a pending character, if there is one.
+func (q *Queries) GetCharacterReview(ctx context.Context, characterID string) (CharacterReview, error) {
+	row := q.db.QueryRow(ctx, getCharacterReview, characterID)
+	var i CharacterReview
+	err := row.Scan(
+		&i.CharacterID,
+		&i.CampaignID,
+		&i.PlayerUserID,
+		&i.Status,
+		&i.Reason,
+		&i.RequestedAt,
+		&i.ResubmittedAt,
+		&i.RequestKey,
+		&i.RequestHash,
+		&i.ResubmitKey,
+		&i.ResubmitHash,
 	)
 	return i, err
 }
@@ -1130,7 +1207,7 @@ VALUES (
     $11::BOOL, $12, $12
 )
 ON CONFLICT (campaign_id, create_key) WHERE create_key IS NOT NULL DO NOTHING
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
 `
 
 type InsertCharacterParams struct {
@@ -1191,6 +1268,12 @@ func (q *Queries) InsertCharacter(ctx context.Context, arg InsertCharacterParams
 		&i.CreateHash,
 		&i.Reserved,
 		&i.ClaimedAt,
+		&i.RevivedAt,
+		&i.DeathRound,
+		&i.DeathEncounterID,
+		&i.RevivifyBlocked,
+		&i.ReviveKey,
+		&i.ReviveHash,
 	)
 	return i, err
 }
@@ -1466,7 +1549,7 @@ VALUES (
     $6, $7::UUID, $8, $8
 )
 ON CONFLICT (campaign_id, create_key) WHERE create_key IS NOT NULL DO NOTHING
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
 `
 
 type InsertNpcFromCreatureParams struct {
@@ -1517,6 +1600,12 @@ func (q *Queries) InsertNpcFromCreature(ctx context.Context, arg InsertNpcFromCr
 		&i.CreateHash,
 		&i.Reserved,
 		&i.ClaimedAt,
+		&i.RevivedAt,
+		&i.DeathRound,
+		&i.DeathEncounterID,
+		&i.RevivifyBlocked,
+		&i.ReviveKey,
+		&i.ReviveHash,
 	)
 	return i, err
 }
@@ -1632,6 +1721,37 @@ func (q *Queries) ListCharacterNames(ctx context.Context, arg ListCharacterNames
 	for rows.Next() {
 		var i ListCharacterNamesRow
 		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCharacterReviewStatuses = `-- name: ListCharacterReviewStatuses :many
+SELECT character_id, status FROM character_reviews WHERE campaign_id = $1::UUID
+`
+
+type ListCharacterReviewStatusesRow struct {
+	CharacterID string
+	Status      string
+}
+
+// The status of each open review of the campaign, for the master's list ("Ajustes pedidos")
+// and the owner's own pending character. No reason leaves the table here.
+func (q *Queries) ListCharacterReviewStatuses(ctx context.Context, campaignID string) ([]ListCharacterReviewStatusesRow, error) {
+	rows, err := q.db.Query(ctx, listCharacterReviewStatuses, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCharacterReviewStatusesRow
+	for rows.Next() {
+		var i ListCharacterReviewStatusesRow
+		if err := rows.Scan(&i.CharacterID, &i.Status); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1990,6 +2110,49 @@ func (q *Queries) ListCreaturesByIDs(ctx context.Context, arg ListCreaturesByIDs
 			&i.CharacterCreature.CreateKey,
 			&i.CharacterCreature.CreateHash,
 			&i.PlayerUserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDeadPlayerCharacters = `-- name: ListDeadPlayerCharacters :many
+SELECT id, name, player_user_id, died_at, revivify_blocked
+FROM characters
+WHERE campaign_id = $1::UUID AND kind = 'player' AND status = 'dead'
+ORDER BY died_at DESC, id
+`
+
+type ListDeadPlayerCharactersRow struct {
+	ID              string
+	Name            string
+	PlayerUserID    *string
+	DiedAt          *time.Time
+	RevivifyBlocked bool
+}
+
+// The dead player characters of the campaign, newest death first: the targets Revivify
+// offers outside a combat, and the master's "Reviver". The master's switch comes along.
+func (q *Queries) ListDeadPlayerCharacters(ctx context.Context, campaignID string) ([]ListDeadPlayerCharactersRow, error) {
+	rows, err := q.db.Query(ctx, listDeadPlayerCharacters, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDeadPlayerCharactersRow
+	for rows.Next() {
+		var i ListDeadPlayerCharactersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.PlayerUserID,
+			&i.DiedAt,
+			&i.RevivifyBlocked,
 		); err != nil {
 			return nil, err
 		}
@@ -2646,21 +2809,37 @@ func (q *Queries) LockSheets(ctx context.Context, arg LockSheetsParams) (int64, 
 
 const markCharacterDead = `-- name: MarkCharacterDead :one
 UPDATE characters
-SET status = 'dead', died_at = COALESCE(died_at, $1::TIMESTAMPTZ)
-WHERE campaign_id = $2::UUID AND id = $3
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at
+SET status = 'dead',
+    died_at = CASE WHEN status = 'dead' THEN died_at ELSE $1::TIMESTAMPTZ END,
+    death_round = CASE WHEN status = 'dead' THEN death_round ELSE $2::INT4 END,
+    death_encounter_id = CASE WHEN status = 'dead' THEN death_encounter_id ELSE $3::UUID END,
+    revivify_blocked = CASE WHEN status = 'dead' THEN revivify_blocked ELSE false END
+WHERE campaign_id = $4::UUID AND id = $5
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
 `
 
 type MarkCharacterDeadParams struct {
-	Now        time.Time
-	CampaignID string
-	ID         string
+	Now              time.Time
+	DeathRound       *int32
+	DeathEncounterID *string
+	CampaignID       string
+	ID               string
 }
 
 // Marking a dead character again keeps the first died_at, so the call is
-// idempotent. It changes neither the revision nor updated_at.
+// idempotent. A character that lived again (died_at stays as the history, status
+// 'active') gets a new death: died_at is set again and the switch of Revivify
+// starts off, since it belongs to one death. death_round and death_encounter_id are the
+// combat the master confirmed it in, NULL for a death marked outside a combat. It
+// changes neither the revision nor updated_at.
 func (q *Queries) MarkCharacterDead(ctx context.Context, arg MarkCharacterDeadParams) (Character, error) {
-	row := q.db.QueryRow(ctx, markCharacterDead, arg.Now, arg.CampaignID, arg.ID)
+	row := q.db.QueryRow(ctx, markCharacterDead,
+		arg.Now,
+		arg.DeathRound,
+		arg.DeathEncounterID,
+		arg.CampaignID,
+		arg.ID,
+	)
 	var i Character
 	err := row.Scan(
 		&i.ID,
@@ -2683,6 +2862,51 @@ func (q *Queries) MarkCharacterDead(ctx context.Context, arg MarkCharacterDeadPa
 		&i.CreateHash,
 		&i.Reserved,
 		&i.ClaimedAt,
+		&i.RevivedAt,
+		&i.DeathRound,
+		&i.DeathEncounterID,
+		&i.RevivifyBlocked,
+		&i.ReviveKey,
+		&i.ReviveHash,
+	)
+	return i, err
+}
+
+const markCharacterReviewResubmitted = `-- name: MarkCharacterReviewResubmitted :one
+UPDATE character_reviews
+SET status = 'resubmitted', resubmitted_at = $1, resubmit_key = $2, resubmit_hash = $3
+WHERE character_id = $4::UUID AND status = 'changes_requested'
+RETURNING character_id, campaign_id, player_user_id, status, reason, requested_at, resubmitted_at, request_key, request_hash, resubmit_key, resubmit_hash
+`
+
+type MarkCharacterReviewResubmittedParams struct {
+	Now          *time.Time
+	ResubmitKey  *string
+	ResubmitHash *string
+	CharacterID  string
+}
+
+// ResubmitCharacter: only an open request can be answered. No row means there is none.
+func (q *Queries) MarkCharacterReviewResubmitted(ctx context.Context, arg MarkCharacterReviewResubmittedParams) (CharacterReview, error) {
+	row := q.db.QueryRow(ctx, markCharacterReviewResubmitted,
+		arg.Now,
+		arg.ResubmitKey,
+		arg.ResubmitHash,
+		arg.CharacterID,
+	)
+	var i CharacterReview
+	err := row.Scan(
+		&i.CharacterID,
+		&i.CampaignID,
+		&i.PlayerUserID,
+		&i.Status,
+		&i.Reason,
+		&i.RequestedAt,
+		&i.ResubmittedAt,
+		&i.RequestKey,
+		&i.RequestHash,
+		&i.ResubmitKey,
+		&i.ResubmitHash,
 	)
 	return i, err
 }
@@ -2708,6 +2932,67 @@ func (q *Queries) PortraitInUse(ctx context.Context, arg PortraitInUseParams) (b
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const reviveCharacter = `-- name: ReviveCharacter :one
+UPDATE characters
+SET status = 'active', revived_at = $1::TIMESTAMPTZ, death_round = NULL, death_encounter_id = NULL,
+    revivify_blocked = false, revive_key = $2, revive_hash = $3
+WHERE campaign_id = $4::UUID AND id = $5 AND status = 'dead'
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
+`
+
+type ReviveCharacterParams struct {
+	Now        time.Time
+	ReviveKey  *string
+	ReviveHash *string
+	CampaignID string
+	ID         string
+}
+
+// The master's Reviver, or Revivify: a dead character lives again (RN-03). It goes back to
+// 'active' and keeps the sheet's lock as it was, since a death never touched it. died_at
+// stays as the history. revive_key and revive_hash are the idempotency key of the call and
+// the hash of its request (NULL for the spell, which has its own). It changes neither the
+// revision nor updated_at.
+func (q *Queries) ReviveCharacter(ctx context.Context, arg ReviveCharacterParams) (Character, error) {
+	row := q.db.QueryRow(ctx, reviveCharacter,
+		arg.Now,
+		arg.ReviveKey,
+		arg.ReviveHash,
+		arg.CampaignID,
+		arg.ID,
+	)
+	var i Character
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Kind,
+		&i.PlayerUserID,
+		&i.MasterUserID,
+		&i.Status,
+		&i.Name,
+		&i.Sheet,
+		&i.Story,
+		&i.StoryEditingAllowed,
+		&i.SheetSchema,
+		&i.Revision,
+		&i.SheetLockedAt,
+		&i.DiedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
+		&i.Reserved,
+		&i.ClaimedAt,
+		&i.RevivedAt,
+		&i.DeathRound,
+		&i.DeathEncounterID,
+		&i.RevivifyBlocked,
+		&i.ReviveKey,
+		&i.ReviveHash,
+	)
+	return i, err
 }
 
 const reviveCreatures = `-- name: ReviveCreatures :many
@@ -2851,6 +3136,54 @@ func (q *Queries) SetCharacterCreatureName(ctx context.Context, arg SetCharacter
 	return err
 }
 
+const setCharacterRevivifyBlocked = `-- name: SetCharacterRevivifyBlocked :one
+UPDATE characters
+SET revivify_blocked = $1
+WHERE campaign_id = $2::UUID AND id = $3 AND kind = 'player' AND status = 'dead'
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
+`
+
+type SetCharacterRevivifyBlockedParams struct {
+	Blocked    bool
+	CampaignID string
+	ID         string
+}
+
+// The master's switch "Revivificar não funciona nesta morte", for a dead character.
+func (q *Queries) SetCharacterRevivifyBlocked(ctx context.Context, arg SetCharacterRevivifyBlockedParams) (Character, error) {
+	row := q.db.QueryRow(ctx, setCharacterRevivifyBlocked, arg.Blocked, arg.CampaignID, arg.ID)
+	var i Character
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Kind,
+		&i.PlayerUserID,
+		&i.MasterUserID,
+		&i.Status,
+		&i.Name,
+		&i.Sheet,
+		&i.Story,
+		&i.StoryEditingAllowed,
+		&i.SheetSchema,
+		&i.Revision,
+		&i.SheetLockedAt,
+		&i.DiedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
+		&i.Reserved,
+		&i.ClaimedAt,
+		&i.RevivedAt,
+		&i.DeathRound,
+		&i.DeathEncounterID,
+		&i.RevivifyBlocked,
+		&i.ReviveKey,
+		&i.ReviveHash,
+	)
+	return i, err
+}
+
 const setFamiliarSight = `-- name: SetFamiliarSight :one
 INSERT INTO character_vitals (character_id, familiar_sight_creature_id, familiar_sight_in_combat, familiar_sight_conditions, revision, updated_at)
 VALUES ($1, $2, $3, $4::TEXT[], 1, $5)
@@ -2896,7 +3229,7 @@ const setStoryEditing = `-- name: SetStoryEditing :one
 UPDATE characters
 SET story_editing_allowed = $1
 WHERE campaign_id = $2::UUID AND id = $3
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
 `
 
 type SetStoryEditingParams struct {
@@ -2931,6 +3264,12 @@ func (q *Queries) SetStoryEditing(ctx context.Context, arg SetStoryEditingParams
 		&i.CreateHash,
 		&i.Reserved,
 		&i.ClaimedAt,
+		&i.RevivedAt,
+		&i.DeathRound,
+		&i.DeathEncounterID,
+		&i.RevivifyBlocked,
+		&i.ReviveKey,
+		&i.ReviveHash,
 	)
 	return i, err
 }
@@ -3117,7 +3456,7 @@ const updateCharacterSheet = `-- name: UpdateCharacterSheet :one
 UPDATE characters
 SET name = $1, sheet = $2, revision = revision + 1, updated_at = $3
 WHERE campaign_id = $4::UUID AND id = $5 AND revision = $6
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
 `
 
 type UpdateCharacterSheetParams struct {
@@ -3162,6 +3501,12 @@ func (q *Queries) UpdateCharacterSheet(ctx context.Context, arg UpdateCharacterS
 		&i.CreateHash,
 		&i.Reserved,
 		&i.ClaimedAt,
+		&i.RevivedAt,
+		&i.DeathRound,
+		&i.DeathEncounterID,
+		&i.RevivifyBlocked,
+		&i.ReviveKey,
+		&i.ReviveHash,
 	)
 	return i, err
 }
@@ -3170,7 +3515,7 @@ const updateCharacterStory = `-- name: UpdateCharacterStory :one
 UPDATE characters
 SET story = $1, revision = revision + 1, updated_at = $2
 WHERE campaign_id = $3::UUID AND id = $4 AND revision = $5
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
 `
 
 type UpdateCharacterStoryParams struct {
@@ -3212,6 +3557,66 @@ func (q *Queries) UpdateCharacterStory(ctx context.Context, arg UpdateCharacterS
 		&i.CreateHash,
 		&i.Reserved,
 		&i.ClaimedAt,
+		&i.RevivedAt,
+		&i.DeathRound,
+		&i.DeathEncounterID,
+		&i.RevivifyBlocked,
+		&i.ReviveKey,
+		&i.ReviveHash,
+	)
+	return i, err
+}
+
+const upsertCharacterReviewRequest = `-- name: UpsertCharacterReviewRequest :one
+INSERT INTO character_reviews
+    (character_id, campaign_id, player_user_id, status, reason, requested_at, request_key, request_hash)
+VALUES (
+    $1::UUID, $2::UUID, $3::UUID,
+    'changes_requested', $4, $5, $6, $7
+)
+ON CONFLICT (character_id) DO UPDATE SET
+    status = 'changes_requested', reason = excluded.reason, requested_at = excluded.requested_at,
+    resubmitted_at = NULL, request_key = excluded.request_key, request_hash = excluded.request_hash,
+    resubmit_key = NULL, resubmit_hash = NULL
+RETURNING character_id, campaign_id, player_user_id, status, reason, requested_at, resubmitted_at, request_key, request_hash, resubmit_key, resubmit_hash
+`
+
+type UpsertCharacterReviewRequestParams struct {
+	CharacterID  string
+	CampaignID   string
+	PlayerUserID string
+	Reason       string
+	Now          time.Time
+	RequestKey   *string
+	RequestHash  *string
+}
+
+// RequestCharacterChanges: the first request makes the row; asking again replaces the
+// reason and the time and starts over (CHANGES_REQUESTED, not resubmitted). request_key
+// and request_hash are the call's idempotency key (scoped) and request hash.
+func (q *Queries) UpsertCharacterReviewRequest(ctx context.Context, arg UpsertCharacterReviewRequestParams) (CharacterReview, error) {
+	row := q.db.QueryRow(ctx, upsertCharacterReviewRequest,
+		arg.CharacterID,
+		arg.CampaignID,
+		arg.PlayerUserID,
+		arg.Reason,
+		arg.Now,
+		arg.RequestKey,
+		arg.RequestHash,
+	)
+	var i CharacterReview
+	err := row.Scan(
+		&i.CharacterID,
+		&i.CampaignID,
+		&i.PlayerUserID,
+		&i.Status,
+		&i.Reason,
+		&i.RequestedAt,
+		&i.ResubmittedAt,
+		&i.RequestKey,
+		&i.RequestHash,
+		&i.ResubmitKey,
+		&i.ResubmitHash,
 	)
 	return i, err
 }

@@ -19,11 +19,6 @@
       "count": 1
     }
   },
-  "src/app/core/characters/character-errors.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
   "src/app/core/combat/cast-flow.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 1

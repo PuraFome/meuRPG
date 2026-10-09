@@ -87,6 +87,22 @@
       />
       }
 
+      @if (isMaster()) {
+        <!-- A Revivify cast outside a combat waits for the master to say whether the creature died in the last minute. -->
+        <app-revivify-ask [campaignId]="campaignId()" [reload]="revivifyTick()" />
+      }
+
+      @if (!isMaster()) {
+        <!-- The player's own character lives again (Revivificar or "Reviver"): a polite status, the focus stays where it is. -->
+        <app-revived-notice
+          [class.revived]="revivedId() !== ''"
+          [on]="revivedId() !== ''"
+          [caster]="revivedCaster()"
+          [place]="revivedPlace()"
+          (dismissed)="revivedId.set('')"
+        />
+      }
+
       @if (!isMaster()) {
         <!-- A trap noticed, a treasure found: over the page under the app bar, in a combat too (E9-08 G, E9-09 4). -->
         <app-live-toast [toasts]="toasts.toasts()" (dismissed)="toasts.dismiss($event)" />
@@ -135,6 +151,7 @@
           [sessionNumber]="s.sessionNumber"
           [cardAbove]="!!highlightsFor()"
           [armorClass]="playerSheet()?.armorClass ?? null"
+          [casterClasses]="playerSheet()?.classes ?? ''"
           [diceMode]="campaign()?.diceMode ?? 1"
           [dicePreference]="campaign()?.dicePreference ?? 1"
           [trapSkills]="trapSkills()"
@@ -364,6 +381,11 @@
                 [dicePreference]="campaign()?.dicePreference ?? 1"
                 (vitalsChange)="takeVitals([$event])"
               />
+              @if (playerSheet()?.revivify) {
+                <button matButton="outlined" type="button" class="revivify" (click)="openRevivify()">
+                  <mat-icon aria-hidden="true">favorite</mat-icon>Revivificar
+                </button>
+              }
               <app-casting-panel
                 [campaignId]="campaignId()"
                 [characterId]="v.characterId"

@@ -337,7 +337,8 @@ for (const { width, height } of [
           await spells.getByRole('checkbox', { name: new RegExp(`^${name}`) }).check();
         }
         const prepare = p.locator('#pick-prepared');
-        await showAllPicks(prepare);
+        // Six spells in the book, four rows shown: the button appears once the page has repainted the list.
+        await showAllPicks(prepare, 2);
         for (const name of ['Mísseis Mágicos', 'Escudo Arcano']) {
           await prepare.getByRole('checkbox', { name: new RegExp(`^${name}`) }).check();
         }

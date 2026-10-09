@@ -32,6 +32,11 @@
                           <span class="mr-list__sub">{{ sub }}</span>
                         }
                       </span>
+                      @if (c.reviewStatus === 'changes_requested') {
+                        <span class="mr-tag mr-tag--pending">
+                          <mat-icon aria-hidden="true">edit</mat-icon>Ajustes pedidos
+                        </span>
+                      }
                       <span class="row-action">Revisar</span>
                     </a>
                   </li>

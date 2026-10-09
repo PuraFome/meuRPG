@@ -9,10 +9,12 @@ import {
   Character,
   CharacterKind as GenCharacterKind,
   CharacterService,
+  CharacterReview as GenCharacterReview,
   CharacterState as GenCharacterState,
   CharacterStory as GenCharacterStory,
   FullSheet as GenFullSheet,
   LevelUpReason as GenLevelUpReason,
+  Review as GenReview,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import {
   Ability as GenAbility,
@@ -23,7 +25,12 @@ import {
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { SkillProficiency } from '../../core/characters/character-labels';
 import { metersWithFeet } from '../../core/units';
-import { AbilityKey, CharacterKind, CharacterState } from '../../core/characters/characters.types';
+import {
+  AbilityKey,
+  CharacterKind,
+  CharacterState,
+  ReviewStatus,
+} from '../../core/characters/characters.types';
 import { damageTypeFromGen } from '../../core/characters/damage-type-gen';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import {
@@ -34,6 +41,7 @@ import {
   CharacterSheetVm,
   CharacterStoryVm,
   FullSheetVm,
+  ReviewVm,
 } from './character-sheet.types';
 import { hitDiceWords } from '../../core/resources/hit-dice-text';
 
@@ -54,6 +62,25 @@ const STATE_FROM_GEN: Record<GenCharacterState, CharacterState> = {
   // Created through an invite that requires approval (RN-15, MR-024).
   [GenCharacterState.PENDING]: 'pending',
 };
+
+const REVIEW_FROM_GEN: Partial<Record<GenReview, ReviewStatus>> = {
+  [GenReview.AWAITING]: 'awaiting',
+  [GenReview.CHANGES_REQUESTED]: 'changes_requested',
+  [GenReview.RESUBMITTED]: 'resubmitted',
+};
+
+function toReviewVm(review: GenCharacterReview | undefined): ReviewVm | null {
+  const status = review ? REVIEW_FROM_GEN[review.status] : undefined;
+  if (!review || !status) {
+    return null;
+  }
+  return {
+    status,
+    reason: review.reason,
+    requestedAt: review.requestedAt ? timestampDate(review.requestedAt) : null,
+    resubmittedAt: review.resubmittedAt ? timestampDate(review.resubmittedAt) : null,
+  };
+}
 
 const LEVEL_UP_REASON: Record<GenLevelUpReason, 'xp' | 'milestone' | null> = {
   [GenLevelUpReason.UNSPECIFIED]: null,
@@ -339,6 +366,7 @@ export function toCharacterSheetVm(character: Character): CharacterSheetVm {
     canEdit: character.canEdit,
     sheetLockedAt: character.sheetLockedAt ? timestampDate(character.sheetLockedAt) : null,
     diedAt: character.diedAt ? timestampDate(character.diedAt) : null,
+    revivedAt: character.revivedAt ? timestampDate(character.revivedAt) : null,
     revision: character.revision,
     sheet,
     story: toStoryVm(character.story),
@@ -346,8 +374,12 @@ export function toCharacterSheetVm(character: Character): CharacterSheetVm {
     storyEditingAllowed: character.storyEditingAllowed,
     canToggleStoryEditing: character.canSetStoryEditing,
     canMarkDead: character.canMarkDead,
+    canRevive: character.canRevive,
     canAccessMasterNotes: character.canAccessMasterNotes,
     canApprove: character.canApprove,
+    canRequestChanges: character.canRequestChanges,
+    canResubmit: character.canResubmit,
+    review: toReviewVm(character.review),
     // Character carries no separate "is this caller the master" flag — this
     // one is the unconditional-on-character-state proxy the proto actually
     // offers: true for the master on every character, of any kind or
@@ -448,6 +480,46 @@ export class CharacterSheetSourceLive implements CharacterSheetSource {
 
   async rejectCharacter(campaignId: string, characterId: string): Promise<void> {
     await this.client.rejectCharacter({ campaignId, characterId });
+  }
+
+  async requestCharacterChanges(
+    campaignId: string,
+    characterId: string,
+    reason: string,
+    idempotencyKey: string,
+  ): Promise<CharacterSheetVm> {
+    const res = await this.client.requestCharacterChanges({
+      campaignId,
+      characterId,
+      reason,
+      idempotencyKey,
+    });
+    return toCharacterSheetVm(res.character!);
+  }
+
+  async reviveCharacter(
+    campaignId: string,
+    characterId: string,
+    idempotencyKey: string,
+  ): Promise<CharacterSheetVm> {
+    const res = await this.client.reviveCharacter({ campaignId, characterId, idempotencyKey });
+    return toCharacterSheetVm(res.character!);
+  }
+
+  async hasLivingCharacter(campaignId: string): Promise<boolean> {
+    const res = await this.client.listCharacters({ campaignId });
+    return res.characters.some(
+      (c) => c.kind === GenCharacterKind.PLAYER && c.state !== GenCharacterState.DEAD,
+    );
+  }
+
+  async resubmitCharacter(
+    campaignId: string,
+    characterId: string,
+    idempotencyKey: string,
+  ): Promise<CharacterSheetVm> {
+    const res = await this.client.resubmitCharacter({ campaignId, characterId, idempotencyKey });
+    return toCharacterSheetVm(res.character!);
   }
 
   async getPendingChoiceCount(campaignId: string, characterId: string): Promise<number> {
