@@ -1011,3 +1011,12 @@ SELECT e.* FROM battle_encounters AS e
 JOIN map_points AS p ON p.id = e.map_point_id
 WHERE e.campaign_id = $1 AND e.map_id = $2 AND p.kind = 'battle'
 ORDER BY e.created_at, e.map_point_id;
+
+-- The campaign package (MR-050).
+
+-- name: ListBattleEncountersOfCampaign :many
+-- Every encounter kept on a battle point of the campaign, oldest first, for an export.
+SELECT e.* FROM battle_encounters AS e
+JOIN map_points AS p ON p.id = e.map_point_id
+WHERE e.campaign_id = $1 AND p.kind = 'battle'
+ORDER BY e.created_at, e.map_point_id;

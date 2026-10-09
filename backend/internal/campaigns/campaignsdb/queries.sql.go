@@ -439,6 +439,52 @@ func (q *Queries) InsertCampaignDocument(ctx context.Context, arg InsertCampaign
 	return i, err
 }
 
+const insertImportedCampaign = `-- name: InsertImportedCampaign :one
+INSERT INTO campaigns (id, name, xp_mode, dice_mode, created_by, create_key, create_hash)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING id, name, xp_mode, created_by, created_at, dice_mode, xp_mode_changed_at, create_key, create_hash
+`
+
+type InsertImportedCampaignParams struct {
+	ID         string
+	Name       string
+	XpMode     string
+	DiceMode   string
+	CreatedBy  string
+	CreateKey  *string
+	CreateHash *string
+}
+
+// A campaign made from a package (MR-050): the id is chosen before, because the
+// files of its images are stored under it. create_key and create_hash are the
+// idempotency key of CreateCampaignFromImport; a second call with the key makes
+// no row, and the caller reads the first one (GetCampaignByCreateKey).
+func (q *Queries) InsertImportedCampaign(ctx context.Context, arg InsertImportedCampaignParams) (Campaign, error) {
+	row := q.db.QueryRow(ctx, insertImportedCampaign,
+		arg.ID,
+		arg.Name,
+		arg.XpMode,
+		arg.DiceMode,
+		arg.CreatedBy,
+		arg.CreateKey,
+		arg.CreateHash,
+	)
+	var i Campaign
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.XpMode,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.DiceMode,
+		&i.XpModeChangedAt,
+		&i.CreateKey,
+		&i.CreateHash,
+	)
+	return i, err
+}
+
 const insertInvite = `-- name: InsertInvite :one
 INSERT INTO campaign_invites
     (campaign_id, token_hash, created_by, max_uses, created_at, expires_at, requires_approval)

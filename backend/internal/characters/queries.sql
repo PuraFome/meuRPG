@@ -684,3 +684,26 @@ SELECT id, kind, name, player_user_id, sheet
 FROM characters
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID
 ORDER BY kind <> 'player', created_at, id;
+
+-- The campaign package (MR-050).
+
+-- name: ListCharactersForPackage :many
+-- Every character of the campaign with its sheet and story, oldest first, for an export.
+SELECT id, kind, status, name, sheet, story FROM characters
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID
+ORDER BY created_at, id;
+
+-- name: ListMasterNotesOfCampaign :many
+SELECT character_id, notes FROM character_master_notes
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID;
+
+-- name: InsertImportedNpc :exec
+-- An NPC made from a package: the id is chosen before, and the master owns it.
+INSERT INTO characters (id, campaign_id, kind, master_user_id, status, name, sheet, story, created_at, updated_at)
+VALUES (sqlc.arg(id), sqlc.arg(campaign_id)::UUID, sqlc.arg(kind), sqlc.arg(master_user_id), 'active', sqlc.arg(name), sqlc.arg(sheet),
+        sqlc.arg(story), sqlc.arg(now), sqlc.arg(now));
+
+-- name: InsertImportedCampaignContent :exec
+INSERT INTO campaign_content (campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at)
+VALUES (sqlc.arg(campaign_id)::UUID, sqlc.arg(content_key), sqlc.arg(kind), sqlc.arg(name_pt), sqlc.arg(data), sqlc.arg(revision),
+        sqlc.narg(archived_at), sqlc.arg(now), sqlc.arg(now));

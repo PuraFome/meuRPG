@@ -1135,6 +1135,69 @@ func (q *Queries) InsertContentOff(ctx context.Context, arg InsertContentOffPara
 	return err
 }
 
+const insertImportedCampaignContent = `-- name: InsertImportedCampaignContent :exec
+INSERT INTO campaign_content (campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at)
+VALUES ($1::UUID, $2, $3, $4, $5, $6,
+        $7, $8, $8)
+`
+
+type InsertImportedCampaignContentParams struct {
+	CampaignID string
+	ContentKey string
+	Kind       string
+	NamePt     string
+	Data       []byte
+	Revision   int32
+	ArchivedAt *time.Time
+	Now        time.Time
+}
+
+func (q *Queries) InsertImportedCampaignContent(ctx context.Context, arg InsertImportedCampaignContentParams) error {
+	_, err := q.db.Exec(ctx, insertImportedCampaignContent,
+		arg.CampaignID,
+		arg.ContentKey,
+		arg.Kind,
+		arg.NamePt,
+		arg.Data,
+		arg.Revision,
+		arg.ArchivedAt,
+		arg.Now,
+	)
+	return err
+}
+
+const insertImportedNpc = `-- name: InsertImportedNpc :exec
+INSERT INTO characters (id, campaign_id, kind, master_user_id, status, name, sheet, story, created_at, updated_at)
+VALUES ($1, $2::UUID, $3, $4, 'active', $5, $6,
+        $7, $8, $8)
+`
+
+type InsertImportedNpcParams struct {
+	ID           string
+	CampaignID   string
+	Kind         string
+	MasterUserID *string
+	Name         string
+	Sheet        []byte
+	Story        []byte
+	Now          time.Time
+}
+
+// An NPC made from a package: the id is chosen before, and the master owns it.
+func (q *Queries) InsertImportedNpc(ctx context.Context, arg InsertImportedNpcParams) error {
+	_, err := q.db.Exec(ctx, insertImportedNpc,
+		arg.ID,
+		arg.CampaignID,
+		arg.Kind,
+		arg.MasterUserID,
+		arg.Name,
+		arg.Sheet,
+		arg.Story,
+		arg.Now,
+	)
+	return err
+}
+
 const insertLevelUp = `-- name: InsertLevelUp :one
 INSERT INTO character_level_ups
     (campaign_id, character_id, class_key, from_level, to_level, hp_method, hp_value, choices, created_at)
@@ -1456,6 +1519,51 @@ func (q *Queries) ListCharacters(ctx context.Context, arg ListCharactersParams) 
 			&i.Sheet,
 			&i.SheetLockedAt,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCharactersForPackage = `-- name: ListCharactersForPackage :many
+
+SELECT id, kind, status, name, sheet, story FROM characters
+WHERE campaign_id = $1::UUID
+ORDER BY created_at, id
+`
+
+type ListCharactersForPackageRow struct {
+	ID     string
+	Kind   string
+	Status string
+	Name   string
+	Sheet  []byte
+	Story  []byte
+}
+
+// The campaign package (MR-050).
+// Every character of the campaign with its sheet and story, oldest first, for an export.
+func (q *Queries) ListCharactersForPackage(ctx context.Context, campaignID string) ([]ListCharactersForPackageRow, error) {
+	rows, err := q.db.Query(ctx, listCharactersForPackage, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCharactersForPackageRow
+	for rows.Next() {
+		var i ListCharactersForPackageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.Status,
+			&i.Name,
+			&i.Sheet,
+			&i.Story,
 		); err != nil {
 			return nil, err
 		}
@@ -2000,6 +2108,36 @@ func (q *Queries) ListMapCreatures(ctx context.Context, arg ListMapCreaturesPara
 			&i.MonsterKey,
 			&i.PlayerUserID,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMasterNotesOfCampaign = `-- name: ListMasterNotesOfCampaign :many
+SELECT character_id, notes FROM character_master_notes
+WHERE campaign_id = $1::UUID
+`
+
+type ListMasterNotesOfCampaignRow struct {
+	CharacterID string
+	Notes       string
+}
+
+func (q *Queries) ListMasterNotesOfCampaign(ctx context.Context, campaignID string) ([]ListMasterNotesOfCampaignRow, error) {
+	rows, err := q.db.Query(ctx, listMasterNotesOfCampaign, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMasterNotesOfCampaignRow
+	for rows.Next() {
+		var i ListMasterNotesOfCampaignRow
+		if err := rows.Scan(&i.CharacterID, &i.Notes); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

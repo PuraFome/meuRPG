@@ -125,6 +125,8 @@ func TestStaticHandler_Routing(t *testing.T) {
 		{name: "auth path is a 404, not the app shell", path: "/auth/callback", wantStatus: http.StatusNotFound},
 		{name: "image path is a 404, not the app shell", path: "/images/6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e001", wantStatus: http.StatusNotFound},
 		{name: "upload path is a 404, not the app shell", path: "/uploads/images", wantStatus: http.StatusNotFound},
+		{name: "campaign package part path is a 404, not the app shell", path: "/uploads/campaign-imports/6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e001/parts/1", wantStatus: http.StatusNotFound},
+		{name: "export download path is a 404, not the app shell", path: "/downloads/campaign-exports/0123456789abcdef0123456789abcdef", wantStatus: http.StatusNotFound},
 		{name: "healthz is a 404 here (it is registered elsewhere on the mux)", path: "/healthz", wantStatus: http.StatusNotFound},
 		{name: "readyz is a 404 here (it is registered elsewhere on the mux)", path: "/readyz", wantStatus: http.StatusNotFound},
 		{
