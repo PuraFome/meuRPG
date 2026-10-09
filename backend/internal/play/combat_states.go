@@ -244,7 +244,8 @@ func (s *Service) endOfTurn(ctx context.Context, c *combatTx, v combatViewer, cu
 }
 
 // afterTurnPart does what a combatant's part of the turn ending leaves: the states that
-// end now go, and the rage flags start counting again.
+// end now go, the player's open requests for a mode close, and the rage flags start
+// counting again.
 func (s *Service) afterTurnPart(ctx context.Context, c *combatTx, current playdb.Combatant) error {
 	rows, err := c.q.DeleteEndedCombatantStates(ctx, playdb.DeleteEndedCombatantStatesParams{EncounterID: c.enc.ID, EndsCombatantID: &current.ID})
 	if err != nil {
@@ -254,6 +255,10 @@ func (s *Service) afterTurnPart(ctx context.Context, c *combatTx, current playdb
 		return err
 	}
 	if err := s.dropConditionSourcesEndingNow(ctx, c, current); err != nil {
+		return err
+	}
+	// A request for a better mode lives for the turn it was made in.
+	if err := closeRequestsOf(ctx, c, current.ID); err != nil {
 		return err
 	}
 	if current.AttackedHostile || current.TookDamage || current.RageEndPending {

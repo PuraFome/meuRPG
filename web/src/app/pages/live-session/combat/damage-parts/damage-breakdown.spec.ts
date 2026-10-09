@@ -138,3 +138,25 @@ describe('DamageBreakdown for the master', () => {
     expect(el.querySelector('.step__toggle')).toBeNull();
   });
 });
+
+describe('DamageBreakdown with a single part', () => {
+  it('shows no table and no list when the damage has one part and no step', () => {
+    const { el } = setup({ master: true, rolls: [rolls[0]], amount: 12 });
+    expect(el.querySelector('table')).toBeNull();
+    expect(el.querySelector('thead')).toBeNull();
+    const player = setup({ rolls: [rolls[0]], amount: 12 });
+    expect(player.el.querySelector('ul')).toBeNull();
+  });
+
+  it('keeps the resistance steps of a single part damage, with no table', () => {
+    const { el, plain } = setup({
+      master: true,
+      rolls: [rolls[0]],
+      amount: 10,
+      steps: [fire],
+      amountAfterSteps: 5,
+    });
+    expect(el.querySelector('table')).toBeNull();
+    expect(plain()).toContain('Resistência a fogo (tiefling)');
+  });
+});

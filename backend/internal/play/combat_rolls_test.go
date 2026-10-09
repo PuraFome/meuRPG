@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
@@ -521,5 +522,274 @@ func TestPM06_RollCallsAreAuthorized(t *testing.T) {
 		if err := calls[name](a.bia, t.Context()); connect.CodeOf(err) != connect.CodePermissionDenied {
 			t.Errorf("%s as a player: %v, want permission_denied", name, err)
 		}
+	}
+}
+
+// smiteTable is a table with a paladin (Toren), who plays first next to a skeleton (an
+// undead) and a bandit (not one), both revealed.
+func smiteTable(t *testing.T) (*armed, *playv1.Encounter) {
+	t.Helper()
+	scores := &rulesv1.AbilityScores{Strength: 16, Dexterity: 12, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 14}
+	a := newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:paladin", "race:human", 3, scores, []string{battleaxe}, nil)
+		a.pens = a.ana.hero(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 1, scores, nil, []string{fireBolt})
+		a.bri = a.bia.hero(t, a.campaignID, "Brisa", "class:fighter", "race:human", 2, scores, []string{rapier}, nil)
+	})
+	e := a.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId()}},
+		npcRolls: []int{1},
+		players:  map[string]int32{"Toren": 20, "Pensantus": 10, "Brisa": 5},
+		setup:    true,
+	})
+	a.h.roller.queue(1, 1)
+	e = a.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) {
+		r.CreatureKey, r.Count, r.Hidden = "monster:skeleton", 1, new(false)
+	}).GetEncounter()
+	e = a.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) { r.CreatureKey, r.Count, r.Hidden = bandit, 1, new(false) }).GetEncounter()
+	for label, sq := range map[string][2]int32{"Toren": {3, 3}, "Esqueleto": {4, 3}, "Bandido": {3, 4}, "Pensantus": {12, 3}, "Brisa": {8, 8}, "Goblin": {16, 3}} {
+		if _, err := a.master.combat.MoveCombatant(t.Context(), connect.NewRequest(&playv1.MoveCombatantRequest{
+			CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: byLabel(t, e, label).GetId(), IdempotencyKey: newKey(), Col: sq[0], Row: sq[1],
+		})); err != nil {
+			t.Fatalf("MoveCombatant(%s) error = %v", label, err)
+		}
+	}
+	return a, a.begin(t, e)
+}
+
+// A Divine Smite spends the slot, rolls its extra die against any target, and tells a
+// player the same lines and the same total whether the target is an undead or not: only
+// the master reads whether the die counts (SRD 5.1, Paladin, Divine Smite).
+func TestPM06b_DivineSmiteRollsTheSameForEveryTargetAndCountsAgainstTheUndeadOnly(t *testing.T) {
+	t.Parallel()
+	a, e := smiteTable(t)
+	hit := func(target string, face int32) *playv1.PendingDamage {
+		t.Helper()
+		res := a.mustAttack(t, a.caio, a.get(t, a.caio), "Toren", battleaxe, target, d20(face))
+		if res.GetPendingDamage() == nil {
+			t.Fatalf("the attack on %s = %v, want a hit", target, res.GetRoll())
+		}
+		return res.GetPendingDamage()
+	}
+	smite := func(p *playv1.PendingDamage, sums map[string]int32) (*playv1.PendingDamage, error) {
+		var typed []*playv1.TypedPart
+		for k, n := range sums {
+			typed = append(typed, &playv1.TypedPart{PartKey: k, Sum: n})
+		}
+		res, err := a.damage(t, a.caio, a.get(t, a.caio), p.GetId(), func(r *playv1.RollDamageRequest) {
+			r.ExtrasChosen = true
+			r.SelectedExtras = []*playv1.SelectedExtra{{Key: "divine-smite", SlotLevel: 1}}
+			r.TypedParts = typed
+		})
+		if err != nil {
+			return nil, err
+		}
+		return res.GetPendingDamage(), nil
+	}
+	hp := func(label string) int32 { return byLabel(t, a.get(t, a.master), label).GetHitPointsCurrent() }
+	usedBefore := usedSlots(a.vitals(t, a.toren), 1)
+
+	// The offer: the smite with its slot choice, and a part of the extra die the same for every target.
+	p := hit("Esqueleto", 15)
+	var offered *playv1.DamagePart
+	for _, part := range p.GetParts() {
+		if part.GetKey() == "divine-smite" {
+			offered = part
+		}
+	}
+	if offered == nil || !offered.GetAvailable() || !offered.GetNeedsSlot() || len(offered.GetSlotOptions()) == 0 {
+		t.Fatalf("the offered parts = %v, want Divine Smite available with its slots", p.GetParts())
+	}
+	// Real dice must type a sum inside the dice for every part.
+	if _, err := smite(p, map[string]int32{"weapon": 1, "divine-smite": 99, "divine-smite-extra": 1}); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("a smite sum out of range: %v, want invalid_argument", err)
+	}
+	if _, err := smite(p, map[string]int32{"weapon": 1, "divine-smite": 2}); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("a smite with no sum for its extra die: %v, want invalid_argument", err)
+	}
+	if got := usedSlots(a.vitals(t, a.toren), 1); got != usedBefore {
+		t.Fatalf("a refused roll spent %d slots", got-usedBefore)
+	}
+	skeletonBefore := hp("Esqueleto")
+	undead, err := smite(p, map[string]int32{"weapon": 1, "divine-smite": 2, "divine-smite-extra": 1})
+	if err != nil {
+		t.Fatalf("RollDamage(smite on the undead) error = %v", err)
+	}
+	if got := usedSlots(a.vitals(t, a.toren), 1); got != usedBefore+1 {
+		t.Errorf("slots used after the smite = %d, want %d", got, usedBefore+1)
+	}
+	undeadLost := skeletonBefore - hp("Esqueleto")
+
+	// The next round: the same smite on a bandit.
+	a.mustEndTurn(t, a.caio, a.get(t, a.caio))
+	e = a.passTo(t, a.get(t, a.master), "Toren")
+	banditBefore := hp("Bandido")
+	q := hit("Bandido", 15)
+	human, err := smite(q, map[string]int32{"weapon": 1, "divine-smite": 2, "divine-smite-extra": 1})
+	if err != nil {
+		t.Fatalf("RollDamage(smite on the bandit) error = %v", err)
+	}
+	humanLost := banditBefore - hp("Bandido")
+	if undeadLost != humanLost+1 {
+		t.Errorf("hit points lost: %d from the undead, %d from the bandit; want the extra die to count against the undead alone", undeadLost, humanLost)
+	}
+
+	// What the player reads: the same lines, every die counted, the same total.
+	lines := func(p *playv1.PendingDamage) (keys []string, total int32) {
+		for _, r := range p.GetPartRolls() {
+			if !r.GetCounted() {
+				t.Errorf("a player reads %s as not counted: the extra die must not tell what the target is", r.GetPartKey())
+			}
+			keys = append(keys, r.GetPartKey())
+			total += r.GetSum() + r.GetFlat()
+		}
+		return keys, total
+	}
+	uk, ut := lines(undead)
+	hk, ht := lines(human)
+	if !slices.Equal(uk, hk) || ut != ht || undead.GetAmount() != ut || human.GetAmount() != ht {
+		t.Errorf("the player reads %v = %d (amount %d) for the undead and %v = %d (amount %d) for the bandit; want the same", uk, ut, undead.GetAmount(), hk, ht, human.GetAmount())
+	}
+	if !slices.Contains(uk, "divine-smite-extra") {
+		t.Errorf("the player's lines = %v, want the extra die among them", uk)
+	}
+	// The master reads which one counted.
+	a.mustEndTurn(t, a.caio, a.get(t, a.caio))
+	e = a.get(t, a.master)
+	for _, r := range a.log(t, a.master, e).GetRounds() {
+		for _, en := range r.GetEntries() {
+			if en.GetKind() != playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK {
+				continue
+			}
+			for _, pr := range en.GetDamage().GetParts() {
+				if pr.GetPartKey() != "divine-smite-extra" {
+					continue
+				}
+				if want := en.GetTargetLabel() == "Esqueleto"; pr.GetCounted() != want {
+					t.Errorf("the master reads the extra die on %s as counted = %v, want %v", en.GetTargetLabel(), pr.GetCounted(), want)
+				}
+			}
+		}
+	}
+	// The player's log has the same lines for both, and never a count that differs.
+	for _, r := range a.log(t, a.caio, e).GetRounds() {
+		for _, en := range r.GetEntries() {
+			for _, pr := range en.GetDamage().GetParts() {
+				if !pr.GetCounted() {
+					t.Errorf("the player's log reads %s on %s as not counted", pr.GetPartKey(), en.GetTargetLabel())
+				}
+			}
+		}
+	}
+
+	// A critical hit doubles the dice of every part and never the fixed numbers.
+	e = a.passTo(t, a.get(t, a.master), "Toren")
+	crit := hit("Bandido", 20)
+	flat := func(p *playv1.PendingDamage, key string) (dice, fixed int32) {
+		for _, part := range p.GetParts() {
+			if part.GetKey() == key {
+				return part.GetDiceCount(), part.GetFlat()
+			}
+		}
+		t.Fatalf("no %s part in %v", key, p.GetParts())
+		return 0, 0
+	}
+	wd, wf := flat(crit, "weapon")
+	sd, _ := flat(crit, "divine-smite")
+	if wd != 2 || sd != 4 || wf != 3 {
+		t.Errorf("a critical hit: weapon %dd8%+d, smite %dd8; want 2 dice and the 3 unchanged, and 4 smite dice for a first level slot", wd, wf, sd)
+	}
+	_ = e
+}
+
+// sneakOffer is the Sneak Attack part Toren's player is offered on a hit on the goblin.
+func (a *armed) sneakOffer(t *testing.T, face int32, extra func(*playv1.RollAttackRequest)) *playv1.DamagePart {
+	t.Helper()
+	res := a.mustAttack(t, a.caio, a.get(t, a.caio), "Toren", rapier, "Goblin", func(r *playv1.RollAttackRequest) {
+		r.D20Faces = nil
+		r.Roll = &playv1.RollAttackRequest_D20Face{D20Face: face}
+		if extra != nil {
+			extra(r)
+		}
+	})
+	var found *playv1.DamagePart
+	for _, p := range res.GetPendingDamage().GetParts() {
+		if p.GetKey() == "sneak-attack" {
+			found = p
+		}
+	}
+	if found == nil {
+		t.Fatalf("no Sneak Attack among %v", res.GetPendingDamage().GetParts())
+	}
+	if _, err := a.settle(t, a.master, a.get(t, a.master), res.GetPendingDamage().GetId(), false); err != nil {
+		t.Fatalf("DiscardPendingDamage() error = %v", err)
+	}
+	return found
+}
+
+// An enemy of the target next to it is not enough when the attack has a disadvantage that an
+// advantage cancelled: the attacker still "has disadvantage" (SRD 5.1, Rogue, Sneak Attack).
+func TestPM06b_SneakAttackAllyClauseRefusesACancelledDisadvantage(t *testing.T) {
+	t.Parallel()
+	a, e := rollsTable(t)
+	e = a.passTo(t, e, "Toren")
+	if p := a.sneakOffer(t, 15, nil); !p.GetAvailable() {
+		t.Fatalf("Sneak Attack next to an enemy of the target, with no disadvantage = %v, want it available", p)
+	}
+	// The next turn: the goblin is held (advantage) and Toren is poisoned (disadvantage): they cancel.
+	e = a.passTo(t, a.mustEndTurn(t, a.caio, a.get(t, a.caio)), "Toren")
+	a.setConditions(t, e, "Goblin", "condition:restrained")
+	a.setConditions(t, e, "Toren", "condition:poisoned")
+	if p := a.sneakOffer(t, 15, nil); p.GetAvailable() {
+		t.Errorf("Sneak Attack with an advantage and a disadvantage that cancelled = %v, want it refused", p)
+	}
+}
+
+// Taking Sneak Attack out of a damage gives its use back to the turn.
+func TestPM06b_RemovingSneakAttackGivesTheTurnsUseBack(t *testing.T) {
+	t.Parallel()
+	a, e := rollsTable(t)
+	e = a.passTo(t, e, "Toren")
+	a.setConditions(t, e, "Goblin", "condition:restrained")
+	res := a.mustAttack(t, a.caio, a.get(t, a.caio), "Toren", rapier, "Goblin", func(r *playv1.RollAttackRequest) { r.D20Faces = []int32{5, 18} })
+	pending := res.GetPendingDamage()
+	a.mustDamage(t, a.caio, a.get(t, a.caio), pending.GetId(), func(r *playv1.RollDamageRequest) {
+		r.ExtrasChosen = true
+		r.SelectedExtras = []*playv1.SelectedExtra{{Key: "sneak-attack"}}
+		r.TypedParts = []*playv1.TypedPart{{PartKey: "weapon", Sum: 3}, {PartKey: "sneak-attack", Sum: 5}}
+	})
+	mark := func() *string {
+		var turn *string
+		if err := a.h.pool.QueryRow(t.Context(), `SELECT sneak_attack_turn FROM combatants WHERE id = $1`, a.id(t, "Toren")).Scan(&turn); err != nil {
+			t.Fatalf("read the mark: %v", err)
+		}
+		return turn
+	}
+	if mark() == nil {
+		t.Fatal("the roll left no once-per-turn mark")
+	}
+	if _, err := a.master.combat.RemoveDamagePart(t.Context(), connect.NewRequest(&playv1.RemoveDamagePartRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), PendingDamageId: pending.GetId(), PartKey: "sneak-attack", Reason: "ele não estava distraído", IdempotencyKey: newKey(),
+	})); err != nil {
+		t.Fatalf("RemoveDamagePart() error = %v", err)
+	}
+	if got := mark(); got != nil {
+		t.Errorf("the mark after the removal = %q, want the use given back", *got)
+	}
+}
+
+// A request for a better mode lives for the turn it was made in.
+func TestPM06a_ARequestClosesWhenTheTurnEnds(t *testing.T) {
+	t.Parallel()
+	a, e := rollsTable(t)
+	e = a.passTo(t, e, "Toren")
+	if _, err := a.requestMode(t, a.caio, e, "Toren", rapier, "Goblin", playv1.RollMode_ROLL_MODE_ADVANTAGE, "ele está distraído"); err != nil {
+		t.Fatalf("RequestRollMode() error = %v", err)
+	}
+	if got := a.get(t, a.master).GetRollModeRequests(); len(got) != 1 {
+		t.Fatalf("the queue = %v, want the request", got)
+	}
+	a.mustEndTurn(t, a.caio, a.get(t, a.caio))
+	if got := a.get(t, a.master).GetRollModeRequests(); len(got) != 0 {
+		t.Errorf("the queue after the turn ended = %v, want it empty", got)
 	}
 }

@@ -695,6 +695,9 @@ func (d *damageLog) view(v combatViewer, caster, target playdb.Combatant) *playv
 	}
 	r := d.roll
 	out.Amount, out.DamageTypeKey, out.DamageTypePt = d.hit.Amount, r.DamageType, damageTypePT[r.DamageType]
+	if !v.master && !v.owns(target) && d.hit.Shown > 0 { // as rolled, before the target's modifiers (RN-20)
+		out.Amount = d.hit.Shown
+	}
 	out.Half, out.Healing = d.hit.Half, r.Heal
 	out.CriticalRule, out.CriticalMax = pendingCriticalRule(r.Critical, r.CriticalMaxRule), r.CriticalMax
 	if r.Heal && !v.master && !v.owns(target) {

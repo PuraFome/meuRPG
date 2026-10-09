@@ -176,6 +176,7 @@ type hitFacts struct {
 	enc              playdb.Encounter
 	viewer           combatViewer
 	freeSlots        bool
+	disadvantaged    bool // some source gives the attack disadvantage, cancelled or not
 	targetHurt       bool
 	names            func(string) string
 }
@@ -187,7 +188,7 @@ func (h hitFacts) scene() combat.ExtraScene {
 	key := turnKey(h.enc)
 	return combat.ExtraScene{
 		Weapon: a.Weapon, Melee: a.Melee, Finesse: a.Finesse, Ranged: a.Weapon && !a.Melee, UsesStrength: a.Ability == "str",
-		WeaponName: a.Name, Mode: h.mode, WithoutMap: isTheatre(h.enc), EnemyNearTarget: h.enemyNearTarget(),
+		WeaponName: a.Name, Mode: h.mode, WithoutMap: isTheatre(h.enc), EnemyNearTarget: h.enemyNearTarget(), DisadvantageSource: h.disadvantaged,
 		SneakAttackDice: t.SneakAttackDice, SneakUsed: deref(h.attacker.SneakAttackTurn) == key,
 		DivineSmite: t.DivineSmite, SmiteSlotFree: h.freeSlots, ImprovedDivineSmite: t.ImprovedDivineSmite,
 		HuntersMarkKnown: t.HuntersMark, HuntersMarkActive: deref(h.attacker.ConcentrationSpell) == "spell:hunters-mark",
@@ -315,14 +316,14 @@ func partsProto(p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT f
 	return out
 }
 
-// partRollsProto converts what each part rolled. The extra die of Divine Smite that
-// did not count is the master's alone: a player is never shown it, so it does not
-// tell them what the target is (RN-10, RN-20).
+// partRollsProto converts what each part rolled. The extra die of Divine Smite is a line
+// like the others for a player, counted or not: only the master reads whether it counts,
+// so nothing tells a player what the target is (RN-10, RN-20).
 func partRollsProto(p playdb.PendingDamage, master bool, damageTypePT func(string) string) []*playv1.DamagePartRoll {
 	var out []*playv1.DamagePartRoll
 	for _, r := range readPartRolls(p.PartRolls) {
-		if r.Conditional && !r.Counted && !master {
-			continue
+		if r.Conditional && !master {
+			r.Counted = true // a player reads the same lines whatever the target is
 		}
 		out = append(out, partRollProto(r, damageTypePT))
 	}
@@ -670,7 +671,7 @@ func freeSmiteSlots(v *playv1.CharacterVitals) []*playv1.SlotOption {
 // hitParts works out the parts of the hit of a weapon attack and stores them on the
 // pending damage the attack opened. A hit with no extra and no automatic line has none.
 func (s *Service) hitParts(ctx context.Context, c *combatTx, campaignID string, v combatViewer, in attackModeInputs, attacker, target playdb.Combatant,
-	sheet link.Sheet, attack link.Attack, weaponBonus int, mode combat.RollMode, pendingID string,
+	sheet link.Sheet, attack link.Attack, weaponBonus int, mode combat.RollMode, disadvantaged bool, pendingID string,
 ) error {
 	if !attack.Weapon {
 		return nil
@@ -680,7 +681,7 @@ func (s *Service) hitParts(ctx context.Context, c *combatTx, campaignID string, 
 		return err
 	}
 	h := hitFacts{
-		attacker: attacker, target: target, sheet: sheet, attack: attack, weaponBonus: weaponBonus, mode: mode,
+		attacker: attacker, target: target, sheet: sheet, attack: attack, weaponBonus: weaponBonus, mode: mode, disadvantaged: disadvantaged,
 		cs: in.cs, states: in.states, enc: c.enc, viewer: v, names: names,
 	}
 	if h.targetHurt, err = s.isHurt(ctx, c, campaignID, target); err != nil {
@@ -866,6 +867,16 @@ func dtPT(key string) string { return damageTypePT[key] }
 func (s *Service) pendingView(ctx context.Context, campaignID string, p playdb.PendingDamage, cs []playdb.Combatant, v combatViewer) *playv1.PendingDamage {
 	out := pendingProto(p, cs)
 	out.Parts = partsProto(p, ruleOfPending(p), dtPT)
+	if i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID }); i >= 0 && !v.master && holdsHP(cs[i]) && !v.owns(cs[i]) {
+		// A player reads the damage as rolled: not what the target's modifiers made of it,
+		// nor whether a conditional die counted.
+		if shown, ok := shownOfPending(p); ok {
+			out.Amount = shown
+			if out.Roll != nil {
+				out.Roll.Total = shown
+			}
+		}
+	}
 	out.PartRolls = partRollsProto(p, v.master, dtPT)
 	i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID })
 	if i >= 0 && (v.master || (cs[i].Kind == kindPlayer && v.owns(cs[i]))) {
@@ -998,4 +1009,41 @@ func (s *Service) keepRollDetail(ctx context.Context, c *combatTx, g, p playdb.P
 		return nil
 	}
 	return storePartsRoll(ctx, c, g.ID, parts, rolls, steps.groups, after, landed)
+}
+
+// shownTotal is the damage as the roll made it for a player who is not the target's: every
+// die counts, also the conditional one that the target's kind keeps out of the real damage,
+// so the total tells nothing of what the target is.
+func (r partsRoll) shownTotal() int {
+	return shownTotalOf(r.rolls)
+}
+
+func shownTotalOf(rolls []partRoll) int {
+	byType := map[string]int{}
+	for _, pr := range rolls {
+		if pr.Counted || pr.Conditional {
+			byType[pr.DamageType] += int(pr.Sum) + int(pr.Flat) + int(pr.Fixed)
+		}
+	}
+	total := 0
+	for _, n := range byType {
+		total += max(n, 0)
+	}
+	return total
+}
+
+// shownOfPending is the damage of a pending damage as rolled, for a player who is not
+// the target's, when the target's modifiers or a conditional die made the real one differ.
+func shownOfPending(p playdb.PendingDamage) (int32, bool) {
+	if rolls := readPartRolls(p.PartRolls); len(rolls) > 0 {
+		return clamp32(shownTotalOf(rolls), 0, math.MaxInt32), true
+	}
+	if len(readStepGroups(p.Steps)) > 0 && p.RollTotal != nil {
+		total := *p.RollTotal
+		if p.Half {
+			total = clamp32(combat.HalfDamage(int(total)), 0, math.MaxInt32)
+		}
+		return total, true
+	}
+	return 0, false
 }

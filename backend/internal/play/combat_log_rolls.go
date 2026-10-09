@@ -1,6 +1,9 @@
 package play
 
 import (
+	"math"
+	"slices"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -83,13 +86,28 @@ func (e *logEntry) dressDamage(d *playv1.CombatLogDamage, v combatViewer, dice, 
 	}
 	if dice {
 		for _, r := range e.dmg.Parts {
-			if r.Conditional && !r.Counted && !v.master {
-				continue
-			}
 			if e.removed != nil && r.Key == e.removed.Key {
 				r.Counted = false
 			}
+			if r.Conditional && !v.master {
+				r.Counted = true // the same lines whatever the target is
+			}
 			d.Parts = append(d.Parts, partRollProto(r, dtPT))
+		}
+	}
+	if !v.master && !targetsOwn {
+		// The damage as rolled, before the target's modifiers and with every die the roll made.
+		switch {
+		case len(e.dmg.Parts) > 0:
+			shown := slices.Clone(e.dmg.Parts)
+			for i := range shown {
+				if e.removed != nil && shown[i].Key == e.removed.Key {
+					shown[i].Counted = false
+				}
+			}
+			d.Amount = clamp32(shownTotalOf(shown), 0, math.MaxInt32)
+		case len(e.dmg.Steps) > 0 || e.dmg.Shown > 0:
+			d.Amount = e.dmg.Shown
 		}
 	}
 	if v.master || targetsOwn {
@@ -99,7 +117,7 @@ func (e *logEntry) dressDamage(d *playv1.CombatLogDamage, v combatViewer, dice, 
 		}
 		d.Steps = stepsProto(e.dmg.Steps, ignored, names, dtPT)
 	}
-	if e.removed != nil && e.applied == nil {
+	if e.removed != nil && e.applied == nil && (v.master || targetsOwn) {
 		d.Amount = e.removed.Amount
 	}
 }

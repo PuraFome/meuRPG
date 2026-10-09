@@ -172,6 +172,23 @@ export interface CastExtras {
   readonly revealHidden?: boolean;
 }
 
+/** The roll of a cast as the request's oneof: the app rolls, a typed pool sum, or a typed d20. */
+function castRollOneof(die: AttackDie | PoolDie | PairDie | null) {
+  if (!die) {
+    return { case: undefined };
+  }
+  if ('inApp' in die) {
+    return { case: 'rollInApp' as const, value: true };
+  }
+  if ('poolSum' in die) {
+    return { case: 'poolSum' as const, value: die.poolSum };
+  }
+  if ('face' in die) {
+    return { case: 'd20Face' as const, value: die.face };
+  }
+  return { case: undefined };
+}
+
 function areaOneof(area: AreaChoice | null | undefined) {
   if (!area) {
     return { case: undefined };
@@ -1018,15 +1035,7 @@ export class CombatClient {
       targets: targets.map((t) => ({ combatantId: t.combatantId, darts: t.darts })),
       idempotencyKey: key,
       damageTypeKey,
-      roll: !die
-        ? { case: undefined }
-        : 'inApp' in die
-          ? { case: 'rollInApp', value: true }
-          : 'poolSum' in die
-            ? { case: 'poolSum', value: die.poolSum }
-            : 'face' in die
-              ? { case: 'd20Face', value: die.face }
-              : { case: undefined },
+      roll: castRollOneof(die),
       d20Faces: die && 'faces' in die ? [...die.faces] : [],
       ...(mode ? { rollMode: mode.mode, modeReason: mode.reason } : {}),
       summon: summon

@@ -1,5 +1,6 @@
-@if (rolls().length || steps().length) {
+@if (rolls().length > 1 || steps().length) {
   @if (master()) {
+    @if (rolls().length > 1) {
     <table class="table">
       <caption class="mr-visually-hidden">Dano por parte</caption>
       <thead>
@@ -44,6 +45,7 @@
         }
       </tbody>
     </table>
+    }
     @if (asked(); as r) {
       <form class="ask" role="alertdialog" [attr.aria-labelledby]="id + '-q'" (submit)="$event.preventDefault(); confirm()">
         <p class="ask__q" [id]="id + '-q'">{{ question(r) }}</p>

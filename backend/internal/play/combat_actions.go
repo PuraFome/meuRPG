@@ -852,7 +852,7 @@ func (s *Service) RollAttack(
 			if err != nil {
 				return nil, err
 			}
-			if err := s.hitParts(ctx, c, m.CampaignID, v, modeIn, attacker, target, attackerSheet, attack, bonus, choice.Mode, p.ID); err != nil {
+			if err := s.hitParts(ctx, c, m.CampaignID, v, modeIn, attacker, target, attackerSheet, attack, bonus, choice.Mode, slices.ContainsFunc(truth.Sources, func(s combat.Source) bool { return s.Effect == combat.ModeDisadvantage }), p.ID); err != nil {
 				return nil, err
 			}
 			made.Pending = p.ID
@@ -1123,6 +1123,13 @@ func (s *Service) RollDamage(
 			// immunity, after every bonus and the half of a save (SRD 5.1). An NPC or a
 			// creature takes what is left at once; a player's character waits for the
 			// master with the same account as a preview.
+			// What a player who is not the target's reads is the damage as rolled, before the
+			// target's modifiers and counting every die the roll made (a conditional extra
+			// included): nothing in it says what the target resists or is (RN-10, RN-20).
+			shown := amount
+			if pr != nil && g.ID == p.ID {
+				shown = clamp32(pr.shownTotal(), 0, math.MaxInt32)
+			}
 			var steps landing
 			if !g.Healing {
 				byType := map[string]int{g.DamageType: int(amount)}
@@ -1140,6 +1147,7 @@ func (s *Service) RollDamage(
 			if err != nil {
 				return nil, err
 			}
+			hit.Shown = shown
 			if vit != nil {
 				vitals = append(vitals, vit)
 			}
@@ -1164,7 +1172,7 @@ func (s *Service) RollDamage(
 			}
 			if g.ID == p.ID {
 				made.Amount, made.Applied, made.Before, made.After, made.ConcentrationDC = hit.Amount, hit.Applied, hit.Before, hit.After, hit.ConcentrationDC
-				made.Steps = steps.groups
+				made.Steps, made.Shown = steps.groups, shown
 				made.DeathBefore = hit.DeathBefore
 				// The 0 hit points rule: an opportunity attack that drops its mover to 0
 				// takes it back to where it left the reach.

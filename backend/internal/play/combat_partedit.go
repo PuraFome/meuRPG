@@ -82,6 +82,9 @@ func (s *Service) RemoveDamagePart(
 		if !takeOut(parts, rolls, partKey) {
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE, "that part cannot be taken out")
 		}
+		if err := giveBackOnce(ctx, c, attacker, partKey); err != nil {
+			return nil, err
+		}
 
 		byType, total := countedByType(rolls)
 		// The target's modifiers are the ones the roll used: the stored groups say them.
@@ -189,4 +192,23 @@ func takeOut(parts []partRecord, rolls []partRoll, key string) bool {
 	}
 	parts[pi].Removed, rolls[ri].Counted = true, false
 	return true
+}
+
+// giveBackOnce gives back the use of a once-per-turn extra the master took out: the
+// damage never had it, so the turn may still add it (Sneak Attack, Colossus Slayer).
+func giveBackOnce(ctx context.Context, c *combatTx, attacker playdb.Combatant, key string) error {
+	turn := turnKey(c.enc)
+	sneak, colossus := attacker.SneakAttackTurn, attacker.ColossusSlayerTurn
+	switch {
+	case key == combat.ExtraSneakAttack && deref(sneak) == turn:
+		sneak = nil
+	case key == combat.ExtraColossusSlayer && deref(colossus) == turn:
+		colossus = nil
+	default:
+		return nil
+	}
+	if err := c.q.SetCombatantOncePerTurn(ctx, playdb.SetCombatantOncePerTurnParams{ID: attacker.ID, SneakAttackTurn: sneak, ColossusSlayerTurn: colossus}); err != nil {
+		return fmt.Errorf("give back the once-per-turn damage: %w", err)
+	}
+	return nil
 }

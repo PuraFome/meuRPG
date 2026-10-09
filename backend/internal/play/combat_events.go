@@ -195,6 +195,7 @@ type damageHit struct {
 	Pending     string      `json:"pending_id"`
 	Target      string      `json:"target_id"`
 	Amount      int32       `json:"amount"`
+	Shown       int32       `json:"shown,omitempty"` // the damage a player who is not the target's reads
 	Half        bool        `json:"half,omitempty"`
 	Applied     bool        `json:"applied,omitempty"`
 	Before      *hpState    `json:"before,omitempty"`
@@ -511,6 +512,9 @@ type actionEvent struct {
 	Parts      []partRoll  `json:"parts,omitempty"`
 	OnceBefore *onceMarks  `json:"once_before,omitempty"`
 	Steps      []stepGroup `json:"steps,omitempty"`
+	// Shown is the damage as rolled, before the target's modifiers and with every die the
+	// roll made: what a player who is not the target's reads.
+	Shown int32 `json:"shown,omitempty"`
 	// Ignored are the sources of the steps the master left out when he applied the damage.
 	Ignored []string `json:"ignored,omitempty"`
 
