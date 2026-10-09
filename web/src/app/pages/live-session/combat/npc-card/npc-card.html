@@ -143,8 +143,8 @@
       <div class="res" role="status" aria-live="polite">
         <div class="res__d20">
           <span class="res__formula">{{ r.formula }}{{ r.physical ? ' · dado físico' : '' }}</span>
-          <span class="pill" [class.pill--miss]="!r.hit">
-            <mat-icon aria-hidden="true">{{ r.hit ? 'check' : 'close' }}</mat-icon>{{ r.word }}
+          <span class="pill" [class.pill--miss]="!r.hit && !r.held" [class.pill--held]="r.held">
+            <mat-icon aria-hidden="true">{{ r.held ? 'hourglass_top' : r.hit ? 'check' : 'close' }}</mat-icon>{{ r.word }}
           </span>
           @if (r.against) {
             <span class="res__against">{{ r.against }}</span>
@@ -153,7 +153,7 @@
         @if (last()?.pending) {
           <app-pending-damages
             [flat]="true"
-            (reacted)="onReacted($event)" (settledNote)="settledNote.emit()"
+            (settledNote)="settledNote.emit()"
             [pendings]="inBox()"
             [encounter]="encounter()"
             [campaignId]="campaignId()"
@@ -165,7 +165,7 @@
   }
 
   <app-pending-damages
-    (reacted)="onReacted($event)" (settledNote)="settledNote.emit()"
+    (settledNote)="settledNote.emit()"
     [pendings]="isNpc() ? others() : pendings()"
     [encounter]="encounter()"
     [campaignId]="campaignId()"

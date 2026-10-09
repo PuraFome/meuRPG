@@ -116,7 +116,8 @@
       {"type": "note", "text_pt": "Resistência a dano de fogo."}
     ],
     "trait:infernal-legacy": [
-      {"type": "note", "spells": ["spell:thaumaturgy", "spell:hellish-rebuke", "spell:darkness"]}
+      {"type": "note", "spells": ["spell:thaumaturgy", "spell:hellish-rebuke", "spell:darkness"]},
+      {"type": "resource", "resource": "infernal_legacy", "max": "level() >= 3 ? 1 : 0", "recharge": "long_rest"}
     ]
   }
 }

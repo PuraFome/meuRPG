@@ -514,21 +514,20 @@ test('o jogador pode conjurar Escudo: o mestre responde por ele, o acerto vira e
 
     // A hit that is not critical on a character who can cast Escudo waits for the reaction.
     await roll('15');
-    await expect(card.getByText('Esperando a reação do Pensantus.')).toBeVisible();
-    await expect(card.getByText('Ele pode conjurar Escudo Arcano (+5 na CA). O jogador decide sem ver o total; você pode responder por ele.')).toBeVisible();
-    await expect(card.getByRole('button', { name: 'Rolar dano' })).toHaveAttribute('aria-disabled', 'true');
-    await expect(card.getByText('Espere a reação do Pensantus.')).toBeVisible();
-    // Passing the turn asks, as with a damage to apply.
-    await m.getByRole('button', { name: 'Próximo turno' }).click();
-    await expect(m.getByRole('alertdialog', { name: /Há dano sem aplicar/ })).toBeVisible();
-    await m.getByRole('button', { name: 'Voltar' }).click();
+    const queue = m.getByRole('region', { name: 'Reações a um ataque' });
+    await expect(queue.getByText('Escudo Arcano · o ataque atingiu Pensantus')).toBeVisible();
+    await expect(card.getByText('Espere a reação de Pensantus.')).toBeVisible();
+    await expect(card.getByRole('button', { name: 'Rolar dano' })).toBeDisabled();
+    // The turn waits for the reaction: the pass is not offered, and says why.
+    await expect(m.getByRole('button', { name: 'Próximo turno' })).toBeDisabled();
+    await expect(m.getByText('Esperando a reação de Pensantus')).toBeVisible();
     // The answers have the same size.
-    const use = await layoutSize(card.getByRole('button', { name: 'Usar Escudo Arcano por ele' }));
-    const skip = await layoutSize(card.getByRole('button', { name: 'Seguir sem Escudo Arcano' }));
+    const use = await layoutSize(queue.getByRole('button', { name: 'Usar pelo jogador' }));
+    const skip = await layoutSize(queue.getByRole('button', { name: 'Deixar passar pelo jogador' }));
     expect(use.height).toBe(skip.height);
 
     // Without Escudo the hit goes on to "Rolar dano" and its apply or discard.
-    await card.getByRole('button', { name: 'Seguir sem Escudo Arcano' }).click();
+    await queue.getByRole('button', { name: 'Deixar passar pelo jogador' }).click();
     await card.getByRole('button', { name: 'Rolar dano' }).click();
     await expect(card.getByRole('button', { name: /Aplicar \d+ de dano/ })).toBeVisible();
     await card.getByRole('button', { name: 'Não aplicar' }).click();
@@ -536,8 +535,8 @@ test('o jogador pode conjurar Escudo: o mestre responde por ele, o acerto vira e
 
     // Another attack: 11 + 3 = 14 reaches 13, but not 18: Escudo (+5 na CA) stops it.
     await roll('11');
-    await expect(card.getByText('Esperando a reação do Pensantus.')).toBeVisible();
-    await card.getByRole('button', { name: 'Usar Escudo Arcano por ele' }).click();
+    await expect(card.getByText('Espere a reação de Pensantus.')).toBeVisible();
+    await queue.getByRole('button', { name: 'Usar pelo jogador' }).click();
     await expect(card.locator('.pill', { hasText: 'Errou: o Escudo Arcano segurou' })).toBeVisible();
     await expect(card.getByRole('button', { name: /Rolar dano|Aplicar/ })).toHaveCount(0);
     await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('o Escudo Arcano segurou');
@@ -767,13 +766,11 @@ test('o Escudo: o jogador decide num aviso, o cartão do mestre troca ao vivo, e
     const prompt = p.getByRole('alertdialog', { name: 'Você foi atingido: usar Escudo Arcano?' });
     await expect(prompt).toBeVisible();
     await expect(prompt.getByRole('heading', { name: 'Você foi atingido' })).toBeVisible();
-    await expect(prompt.getByRole('button', { name: 'Não usar' })).toBeFocused();
+    await expect(prompt.getByRole('button', { name: 'Deixar passar' })).toBeFocused();
     await expect(prompt.getByRole('radio', { name: /1º nível/ })).toBeChecked();
-    // No way out without an answer; the master's card waits.
-    await p.keyboard.press('Escape');
-    await expect(prompt).toBeVisible();
-    await expect(card.getByText('Esperando a reação do Pensantus.')).toBeVisible();
-    const no = await layoutSize(prompt.getByRole('button', { name: 'Não usar' }));
+    // The master's card waits for the answer.
+    await expect(card.getByText('Espere a reação de Pensantus.')).toBeVisible();
+    const no = await layoutSize(prompt.getByRole('button', { name: 'Deixar passar' }));
     const yes = await layoutSize(prompt.getByRole('button', { name: 'Conjurar Escudo Arcano' }));
     expect(yes.height).toBe(no.height);
     expect(yes.width).toBe(no.width);
@@ -783,7 +780,7 @@ test('o Escudo: o jogador decide num aviso, o cartão do mestre troca ao vivo, e
     await prompt.getByRole('button', { name: 'Fechar' }).click();
     // The master's card turned the same hit into a miss, without a reload.
     await expect(card.locator('.pill', { hasText: 'Errou: o Escudo Arcano segurou' })).toBeVisible();
-    await expect(card.getByText('Esperando a reação do Pensantus.')).toHaveCount(0);
+    await expect(card.getByText('Espere a reação de Pensantus.')).toHaveCount(0);
     expect((await vitalsOf(m, campaignId, 'Pensantus')).armorClassBonus).toBe(5);
     await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
     await expect(p.getByRole('log', { name: 'Registro do combate' })).toContainText('Pensantus conjura Escudo Arcano (1º nível), com a reação');
@@ -810,10 +807,9 @@ test('o Escudo: o mestre responde pelo jogador enquanto o aviso está aberto, e 
     await card.getByRole('button', { name: 'Confirmar 11' }).click();
     const prompt = p.getByRole('alertdialog', { name: 'Você foi atingido: usar Escudo Arcano?' });
     await expect(prompt).toBeVisible();
-    await card.getByRole('button', { name: 'Seguir sem Escudo Arcano' }).click();
-    // The prompt is no longer awaited: it closes by itself and a notice says why (two prompts never pile up).
-    await expect(p.locator('mat-snack-bar-container').getByText('O mestre respondeu por você')).toBeVisible();
-    await expect(prompt).toHaveCount(0);
+    await m.getByRole('region', { name: 'Reações a um ataque' }).getByRole('button', { name: 'Deixar passar pelo jogador' }).click();
+    await expect(prompt.getByText('O mestre respondeu por você')).toBeVisible();
+    await prompt.getByRole('button', { name: 'Fechar' }).click();
     await expect(card.getByRole('button', { name: 'Rolar dano' })).toBeVisible();
     // The player's own refusal: "Não usar" lets the next hit go on to its damage.
     await card.getByRole('button', { name: 'Rolar dano' }).click();
@@ -824,10 +820,10 @@ test('o Escudo: o mestre responde pelo jogador enquanto o aviso está aberto, e 
     await card.getByRole('button', { name: 'Confirmar 11' }).click();
     const again = p.getByRole('alertdialog', { name: 'Você foi atingido: usar Escudo Arcano?' });
     await expect(again).toBeVisible();
-    await again.getByRole('button', { name: 'Não usar' }).click();
+    await again.getByRole('button', { name: 'Deixar passar' }).click();
     await expect(again).toHaveCount(0);
     await expect(card.getByRole('button', { name: 'Rolar dano' })).toBeVisible();
-    await expect(card.getByText('Esperando a reação do Pensantus.')).toHaveCount(0);
+    await expect(card.getByText('Espere a reação de Pensantus.')).toHaveCount(0);
   } finally {
     await done();
   }

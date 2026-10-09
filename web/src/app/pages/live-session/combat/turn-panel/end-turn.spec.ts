@@ -54,4 +54,17 @@ describe('EndTurn', () => {
     end().click();
     expect(ended).toEqual([1]);
   });
+
+  it('while a reaction is awaited it stays reachable, dashed, with the reason read with it', () => {
+    const { fixture, el, ended, end } = setup({ actionUsed: true, bonusActionUsed: true });
+    fixture.componentRef.setInput('waiting', 'Esperando o mestre');
+    fixture.detectChanges();
+    expect(end().getAttribute('aria-disabled')).toBe('true');
+    expect(end().classList).toContain('end--off');
+    expect(end().tabIndex).toBeGreaterThanOrEqual(0);
+    const why = el.querySelector(`#${end().getAttribute('aria-describedby')}`);
+    expect(why?.textContent).toBe('Esperando o mestre: a vez continua quando responderem.');
+    end().click();
+    expect(ended).toEqual([]);
+  });
 });
