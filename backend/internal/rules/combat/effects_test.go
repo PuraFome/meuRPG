@@ -1,6 +1,7 @@
 package combat
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -146,5 +147,47 @@ func TestOnlyAHumanoidIsHeldByHoldPerson(t *testing.T) {
 		if got := IsHumanoid(typ); got != want {
 			t.Errorf("IsHumanoid(%q) = %v, want %v", typ, got, want)
 		}
+	}
+}
+
+func TestExhaustionAndEffectsChangeTheModeOfARoll(t *testing.T) {
+	t.Parallel()
+	has := func(sources []Source, kind string, effect RollMode) bool {
+		return slices.ContainsFunc(sources, func(s Source) bool { return s.Kind == kind && s.Effect == effect })
+	}
+	// Level 3 and up: disadvantage on attack rolls and saving throws; level 1: on ability checks.
+	atk := AttackMode(AttackScene{Attacker: Creature{Exhaustion: 3}, Target: Creature{}}).Sources
+	if !has(atk, SourceExhaustionAttack, ModeDisadvantage) {
+		t.Errorf("attack sources at level 3 = %v, want the exhaustion", atk)
+	}
+	if has(AttackMode(AttackScene{Attacker: Creature{Exhaustion: 2}, Target: Creature{}}).Sources, SourceExhaustionAttack, ModeDisadvantage) {
+		t.Error("level 2 gives disadvantage on attack rolls")
+	}
+	if !has(SaveMode(SaveScene{Creature: Creature{Exhaustion: 3}, Ability: "wis"}), SourceExhaustionSave, ModeDisadvantage) {
+		t.Error("level 3 gives no disadvantage on saving throws")
+	}
+	if !has(SaveMode(SaveScene{Creature: Creature{Exhaustion: 1}, Ability: "wis", Check: true}), SourceExhaustionCheck, ModeDisadvantage) {
+		t.Error("level 1 gives no disadvantage on ability checks")
+	}
+	if has(SaveMode(SaveScene{Creature: Creature{Exhaustion: 1}, Ability: "wis"}), SourceExhaustionSave, ModeDisadvantage) {
+		t.Error("level 1 gives disadvantage on saving throws")
+	}
+	// Haste: advantage on Dexterity saves; Faerie Fire: advantage against the outlined target.
+	if !has(SaveMode(SaveScene{Creature: Creature{SaveAdvantage: []string{"dex"}}, Ability: "dex"}), SourceEffectSave, ModeAdvantage) {
+		t.Error("an effect's advantage on Dexterity saves is not a source")
+	}
+	if !has(AttackMode(AttackScene{Attacker: Creature{}, Target: Creature{Outlined: true}}).Sources, SourceOutlinedTarget, ModeAdvantage) {
+		t.Error("an outlined target gives no advantage to an attacker who sees it")
+	}
+}
+
+func TestSpeedAddAndCheckBonus(t *testing.T) {
+	t.Parallel()
+	mods := []rules.EffectModifier{{Kind: rules.ModifierSpeedAdd, Value: 10}, {Kind: rules.ModifierCheckBonus, Skill: "skill:stealth", Value: 10}}
+	if got := SpeedAddFt(mods); got != 10 {
+		t.Errorf("SpeedAddFt = %d, want 10", got)
+	}
+	if CheckBonus(mods, "skill:stealth") != 10 || CheckBonus(mods, "skill:perception") != 0 {
+		t.Error("the bonus goes to Stealth alone")
 	}
 }

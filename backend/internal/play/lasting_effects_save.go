@@ -393,3 +393,33 @@ func (s *Service) resolveEffectSave(ctx context.Context, c *combatTx, cs []playd
 	}
 	return nil
 }
+
+// effectDamageSaves opens the saving throw an effect asks again when its target takes damage
+// (Hideous Laughter, SRD 5.1: "each time it takes damage", with advantage). The damage the
+// effect itself deals does not count.
+func (s *Service) effectDamageSaves(ctx context.Context, c *combatTx, target playdb.Combatant, d damageLanded) error {
+	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the effects: %w", err)
+	}
+	var content *rules.Content
+	group := newGroup()
+	for _, st := range rows {
+		if st.CombatantID != target.ID || st.EndSaveAbility == nil || d.key == deref(st.SourceKey) {
+			continue
+		}
+		if content == nil {
+			if content, err = s.contentOf(ctx, c); err != nil {
+				return err
+			}
+		}
+		def, ok := s.effectDef(content, deref(st.SourceKey))
+		if !ok || def.EndSave == nil || !def.EndSave.OnDamage {
+			continue
+		}
+		if _, err := s.openEffectSave(ctx, c, group, st, target, combat.PhaseEnd, true); err != nil {
+			return err
+		}
+	}
+	return nil
+}

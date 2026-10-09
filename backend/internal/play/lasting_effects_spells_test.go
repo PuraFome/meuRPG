@@ -185,3 +185,25 @@ func TestHoldPersonOnABeastHasNoEffectAndOnlyTheMasterReadsWhy(t *testing.T) {
 		t.Errorf("the wolf is held: %v", wolfNow)
 	}
 }
+
+// Hideous Laughter: each time the creature takes damage it repeats the save, with advantage.
+func TestHideousLaughterAsksTheSaveAgainWhenTheTargetTakesDamage(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.closeFight(t)
+	a.mustAddEffect(t, e, "spell:hideous-laughter", []string{"Goblin"}, a.rounds(t, 10, "Pensantus"))
+	hit := a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Goblin", func(r *playv1.RollAttackRequest) { r.D20Faces = []int32{15, 3} })
+	pending := hit.GetPendingDamage()
+	if pending == nil {
+		t.Fatalf("the attack = %v, want a hit", hit.GetRoll())
+	}
+	a.h.roller.queue(2)
+	a.mustDamage(t, a.caio, e, pending.GetId(), inAppDamage)
+	w := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE)
+	if w == nil {
+		t.Fatalf("the master's windows = %v, want the save the damage asks", a.windows(t, a.master))
+	}
+	if p := w.GetEffectSave(); p.GetMode() != "advantage" && p.GetMode() != playv1.RollMode_ROLL_MODE_ADVANTAGE.String() {
+		t.Errorf("the prompt's mode = %q, want advantage", p.GetMode())
+	}
+}

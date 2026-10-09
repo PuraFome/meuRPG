@@ -48,6 +48,9 @@ func (s *Service) afterDamage(ctx context.Context, c *combatTx, target playdb.Co
 	if err := s.hellishWindow(ctx, c, target, d); err != nil {
 		return err
 	}
+	if err := s.effectDamageSaves(ctx, c, target, d); err != nil {
+		return err
+	}
 	if target.ConcentrationSpell == nil {
 		return nil
 	}

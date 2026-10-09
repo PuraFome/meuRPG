@@ -152,8 +152,11 @@ func (s *Service) effectsToCombat(ctx context.Context, c *combatTx, all, added [
 		}
 		touched = append(touched, target.ID)
 	}
-	if len(touched) == 0 {
-		return nil
+	// Every character that joined is worked out again: its exhaustion comes from its vitals.
+	for _, a := range added {
+		if backedByCharacter(a) {
+			touched = append(touched, a.ID)
+		}
 	}
 	slices.Sort(touched)
 	return s.refreshCombatants(ctx, c, slices.Compact(touched)...)
