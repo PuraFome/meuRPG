@@ -38,7 +38,7 @@ func (s *Service) PreviewCharacter(
 		if !ok {
 			return nil, invalidArgument(fieldErr("kind", "is required"))
 		}
-		if err := checkCreatorKind(m, kind); err != nil {
+		if err := checkCreatorKindFor(m, kind, req.Msg.GetForPlayer()); err != nil {
 			return nil, err
 		}
 		if sheet, err = checkNewSheet(content, m, kind, req.Msg.GetSheet()); err != nil {
