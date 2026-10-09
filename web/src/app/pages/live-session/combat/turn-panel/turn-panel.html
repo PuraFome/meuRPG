@@ -78,6 +78,7 @@
   }
 
   @if (banner().mine && own(); as me) {
+    <app-combatant-tags class="turn__states" [names]="conditions(me)" [label]="me.label" [states]="me.states" [sources]="me.conditionSources" [people]="encounter().combatants" />
     @if (down()) {
       <p class="turn__next">{{ downText() }}</p>
     } @else {
@@ -85,6 +86,7 @@
       <p class="turn__next">{{ afterPrefix() }}: <b>{{ after.name }}</b></p>
     }
     <ng-container *ngTemplateOutlet="notes" />
+    <app-rage-status class="turn__rage" [subject]="me" [busy]="busy()" (endRage)="endRage.emit(me.id)" />
     @if (form(); as f) {
       <app-wild-band [beast]="f.name" [detail]="formDetail()" />
     }

@@ -24,6 +24,7 @@ import { claimRoute, linkRPC, reservedRPC, revokeLinkRPC, rowOf } from './claim-
 import { authStatePath, boxOf, callRPC, layoutSize, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn, type TestUser } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
+import { grog, rollsTable, vex } from './combat-rolls-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
 import { movePensantus, pensantusFirst, sq20, thirdPlayer, trapRPC, treasureRPC, type TrapTable } from './trap-support';
@@ -6369,6 +6370,133 @@ test('as sessões anteriores e o resumo passam no axe e nas conferências de lay
 test('as sessões anteriores e o resumo passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-032'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanPastSessions(browser, 'light', 320);
+});
+
+/** Rolls with a mode (PM-06): the attack sheet with the server's mode and its reasons, the
+ * two d20, the damage extras and the parts, the master's queue of requests and his card
+ * with the damage by part. */
+async function scanRollModeScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const { m, p, campaignId, done } = await rollsTable(
+    browser,
+    `Acessibilidade vantagem ${Date.now()}`,
+    vex,
+    { weaponKeys: ['equipment:rapier'] },
+    { Vex: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 },
+    { colorScheme, playerWidth: width, masterWidth: width },
+  );
+  try {
+    const enc = await getEncounterRPC(m, campaignId);
+    const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
+    await openSessionPage(p, campaignId);
+    await openSessionPage(m, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Vex' })).toBeVisible();
+
+    // A better mode than the suggestion is asked of the master: the pending request, on both screens.
+    await p.getByRole('button', { name: /^Atacar com Rapieira/ }).click();
+    await p.locator('label', { hasText: 'Goblin 1' }).click();
+    await expectScreenPasses(p, `Atacar, o modo normal e o pedido ${where}`);
+    await p.locator('.radio__word', { hasText: /^Vantagem$/ }).click();
+    await p.getByLabel(/Motivo/).fill('Ele está distraído');
+    await expectScreenPasses(p, `Atacar, pedir vantagem ao mestre ${where}`);
+    await p.getByRole('button', { name: /Pedir ao mestre/ }).click();
+    await expect(p.getByText(/Aguardando o mestre/)).toBeVisible();
+    await expectScreenPasses(p, `Atacar, aguardando o mestre ${where}`);
+    await expect(m.getByRole('button', { name: 'Aprovar' })).toBeVisible();
+    await expectScreenPasses(m, `Fila do mestre, pedido de vantagem ${where}`);
+    await m.getByRole('button', { name: 'Aprovar' }).click();
+
+    // The approved mode: the two d20 are typed, the extra is marked, the parts are typed.
+    await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await expectScreenPasses(p, `Atacar, os dois d20 ${where}`);
+    await p.getByLabel(/1º|Primeiro/).first().fill('4');
+    await p.getByLabel(/2º|Segundo/).first().fill('17');
+    await p.getByRole('button', { name: /Confirmar/ }).click();
+    await expect(p.getByText(/descartado/).first()).toBeVisible();
+    await expectScreenPasses(p, `Atacar, os dois d20 e o dano a rolar ${where}`);
+    const extra = p.getByRole('checkbox', { name: /Ataque Furtivo/ });
+    if (await extra.isEnabled()) {
+      await extra.check();
+    }
+    await expectScreenPasses(p, `Atacar, as partes do dano ${where}`);
+
+    // The master's card for an NPC that took the hit: the damage by part.
+    await combatRPC(m, 'SetCombatantConditions', { campaignId, encounterId: enc.id, combatantId: id('Goblin 1'), conditions: { keys: ['condition:restrained'] } });
+  } finally {
+    await done().catch(() => undefined);
+  }
+}
+
+test('rolar com vantagem passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@PM-06a', '@PM-06b'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRollModeScreens(browser, 'light', 1280);
+});
+
+test('rolar com vantagem passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@PM-06a', '@PM-06b'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRollModeScreens(browser, 'dark', 390);
+});
+
+/** The rage (PM-07): the chip on the order and the sheet, the damage with its resistance step on the
+ * master's card, and the question when the rage is about to end. */
+async function scanRageScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const { m, p, campaignId, done } = await rollsTable(
+    browser,
+    `Acessibilidade fúria ${Date.now()}`,
+    grog,
+    { weaponKeys: ['equipment:greataxe'] },
+    { Grog: 20, 'Goblin 1': 15, 'Capitão Goblin': 5, 'Goblin 2': 4 },
+    { colorScheme, playerWidth: width, masterWidth: width },
+  );
+  try {
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Grog' })).toBeVisible();
+    await p.getByRole('button', { name: /Fúria/ }).click();
+    await expect(p.getByText('Em fúria').first()).toBeVisible();
+    await expectScreenPasses(p, `Sua vez, em fúria ${where}`);
+
+    // Ending the turn without attacking or taking damage asks before the rage ends (after the
+    // question about the free action).
+    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    await expect(p.getByText('Ainda tem ação disponível. Encerrar mesmo?')).toBeVisible();
+    await p.getByRole('button', { name: /^Encerrar/ }).last().click();
+    const question = p.getByRole('alertdialog', { name: /A sua fúria vai acabar/ });
+    await expect(question).toBeVisible();
+    await expect(question.getByRole('button', { name: 'Voltar e atacar' })).toBeFocused();
+    await expectScreenPasses(p, `A fúria vai acabar? ${where}`);
+    await question.getByRole('button', { name: 'Voltar e atacar' }).click();
+
+    // He swings, the turn passes, and the goblin's blow shows the resistance on the master's card.
+    const enc = await getEncounterRPC(m, campaignId);
+    const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
+    const swing = await callRPC(p, 'meurpg.play.v1.CombatService/RollAttack', {
+      campaignId, encounterId: enc.id, attackerId: id('Grog'), attackKey: 'equipment:greataxe', targetId: id('Goblin 1'), idempotencyKey: crypto.randomUUID(), d20Face: 2,
+    });
+    expect(swing.ok(), await swing.text()).toBeTruthy();
+    const end = await callRPC(p, 'meurpg.play.v1.CombatService/EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: id('Grog'), idempotencyKey: crypto.randomUUID() });
+    expect(end.ok(), await end.text()).toBeTruthy();
+    await openSessionPage(m, campaignId);
+    const card = m;
+    await card.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await card.getByLabel(/Role 1d20/).fill('20');
+    await card.getByRole('button', { name: 'Confirmar 20' }).click();
+    await card.getByRole('button', { name: 'Rolar dano' }).click();
+    await expect(card.getByText(/Resistência/).first()).toBeVisible();
+    await expectScreenPasses(m, `Cartão do mestre, o dano com a resistência da fúria ${where}`);
+  } finally {
+    await done().catch(() => undefined);
+  }
+}
+
+test('a fúria passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@PM-07a', '@PM-07b'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRageScreens(browser, 'light', 1280);
+});
+
+test('a fúria passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@PM-07a', '@PM-07b'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRageScreens(browser, 'dark', 390);
 });
 
 /**

@@ -261,6 +261,12 @@
                 </div>
               }
             </div>
+            <app-rage-question
+              [subject]="rageAsked()"
+              [busy]="busy()"
+              (back)="answerRage($event, false)"
+              (letEnd)="answerRage($event, true)"
+            />
           <div class="player" [class.player--mine]="(myTurn() && !!options()) || !!creatureTab()">
             <div class="player__turn">
               @if (laptop() && showTabs()) {
@@ -291,6 +297,7 @@
                   [theatre]="theatre()"
                   [orderBelow]="orderBelow()"
                   (endTurn)="nextTurn()"
+                  (endRage)="endRageOf($event)"
                   (opportunity)="openAttack($event, true)"
                   (endConcentration)="endOwnConcentration()"
                 />
@@ -453,6 +460,7 @@
 <!-- What the master's side of a running combat is made of: the answers and the card of whoever is on turn, then the order. -->
 <ng-template #masterCards>
   @if (encounter(); as e) {
+    <app-roll-mode-queue [encounter]="e" [campaignId]="campaignId()" [state]="state()" />
     <app-hidden-reveal-card
       [encounter]="e"
       [spellNames]="revealSpellNames()"
@@ -480,6 +488,13 @@
       (confirm)="confirmDeath($event)"
       (later)="deathLaterFor($event)"
     />
+    <app-rage-question
+      [subject]="rageAsked()"
+      [master]="true"
+      [busy]="busy()"
+      (back)="answerRage($event, false)"
+      (letEnd)="answerRage($event, true)"
+    />
     <app-joint-card [encounter]="e" [info]="info()" [busy]="busy()" (endPart)="endPart($event)" />
     @if ((!laptop() || cardVisible() || theatre()) && masterCard(); as who) {
       <app-npc-card
@@ -500,6 +515,7 @@
         (castArea)="openMasterArea($event)"
         (offer)="toggleOffer()"
         (next)="nextTurn($event)"
+        (endRage)="endRageOf($event)"
         (settledNote)="settled()"
       >
         @if (offering()) {

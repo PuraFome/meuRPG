@@ -249,6 +249,7 @@
     "Initiative": 3,
     "ArmorClass": 12,
     "ArmorClassDescription": "Sem armadura",
+    "ArmorCategory": "none",
     "HitPointsMax": 10,
     "HitPointsFromEffects": 0,
     "HitDice": [
@@ -458,6 +459,8 @@
         "Beams": 1,
         "SpellDice": "1d8",
         "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
         "MartialArts": false,
         "AbilityMod": 0,
         "Notes": ""
@@ -495,6 +498,8 @@
         "Beams": 0,
         "SpellDice": "",
         "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
         "MartialArts": false,
         "AbilityMod": 2,
         "Notes": ""
@@ -946,6 +951,7 @@
     "Initiative": 3,
     "ArmorClass": 12,
     "ArmorClassDescription": "Sem armadura",
+    "ArmorCategory": "none",
     "HitPointsMax": 80,
     "HitPointsFromEffects": 0,
     "HitDice": [
@@ -1479,6 +1485,8 @@
         "Beams": 1,
         "SpellDice": "3d8",
         "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
         "MartialArts": false,
         "AbilityMod": 0,
         "Notes": ""
@@ -1516,6 +1524,8 @@
         "Beams": 0,
         "SpellDice": "",
         "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
         "MartialArts": false,
         "AbilityMod": 2,
         "Notes": ""
@@ -2093,6 +2103,7 @@
     "Initiative": 3,
     "ArmorClass": 12,
     "ArmorClassDescription": "Sem armadura",
+    "ArmorCategory": "none",
     "HitPointsMax": 38,
     "HitPointsFromEffects": 0,
     "HitDice": [
@@ -2450,6 +2461,8 @@
         "Beams": 1,
         "SpellDice": "2d8",
         "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
         "MartialArts": false,
         "AbilityMod": 0,
         "Notes": ""
@@ -2487,6 +2500,8 @@
         "Beams": 0,
         "SpellDice": "",
         "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
         "MartialArts": false,
         "AbilityMod": 2,
         "Notes": ""

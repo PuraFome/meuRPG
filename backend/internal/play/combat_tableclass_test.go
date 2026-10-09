@@ -118,7 +118,7 @@ func TestMR025_AThirdCasterOfTheTableCastsATableSpell(t *testing.T) {
 	}
 
 	// Intelligence +3 and proficiency +3: +6 against the Capitão's 18; a 15 hits.
-	hit := a.mustCast(t, a.ana, e, "Pensantus", inkBladeSpell, slotOfLevel(1), a.at(t, "Capitão Goblin"), castD20(15))
+	hit := a.mustCast(t, a.ana, e, "Pensantus", inkBladeSpell, slotOfLevel(1), a.at(t, "Capitão Goblin"), castDisadvantage(15))
 	tg := hit.GetCast().GetTargets()[0]
 	if tg.GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_HIT || tg.GetPendingDamageId() == "" {
 		t.Fatalf("the attack = %v, want a hit with damage to roll", tg)

@@ -51,8 +51,12 @@ export class TrapsClient {
       otherSkillKey: skill === 'other' ? otherSkillKey : '',
       idempotencyKey,
       roll:
-        'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
-      d20Face2: 'inApp' in die ? undefined : die.face2,
+        'inApp' in die || die.face2 !== undefined
+          ? 'inApp' in die
+            ? { case: 'rollInApp', value: true }
+            : { case: undefined }
+          : { case: 'd20Face', value: die.face },
+      d20Faces: 'inApp' in die || die.face2 === undefined ? [] : [die.face, die.face2],
     });
   }
 

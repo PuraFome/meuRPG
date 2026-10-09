@@ -133,6 +133,7 @@ import { CastSheet, type CastMapData, type CastSheetData } from './cast-sheet/ca
 import { ConditionsDialog, type ConditionsData } from './conditions-dialog/conditions-dialog';
 import { DeathQuestion } from './death-question/death-question';
 import { DeathSaves } from './death-saves/death-saves';
+import { RageQuestion } from './rage-end/rage-question';
 import { FeatureSheet, type FeatureSheetData } from './feature-sheet/feature-sheet';
 import { InspirationCard } from './inspiration-card/inspiration-card';
 import { openBardicInspiration, openFlexibleCasting, openLayOnHands } from './resource-sheets';
@@ -166,6 +167,7 @@ import {
   type OpportunitySheetData,
 } from './opportunity/opportunity-sheet';
 import { NpcCard } from './npc-card/npc-card';
+import { RollModeQueue } from './roll-mode/roll-mode-queue';
 import { OrderList } from './order-list/order-list';
 import { PlayerInitiative } from './player-initiative/player-initiative';
 import { CreatureSource } from '../../../../gen/meurpg/characters/v1/characters_pb';
@@ -223,6 +225,7 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
     CreatureHero,
     DeathQuestion,
     DeathSaves,
+    RageQuestion,
     InspirationCard,
     CombatBar,
     HiddenRevealCard,
@@ -246,6 +249,7 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
     OrderStrip,
     OrderList,
     PlayerInitiative,
+    RollModeQueue,
     TheatreReaction,
     ReactionQueue,
     TurnBar,
@@ -1649,6 +1653,7 @@ export class CombatView {
       preference: this.dicePreference(),
       state: this.state(),
       asReaction,
+      master: this.isMaster(),
       ...(catchWindowId ? { catchWindowId } : {}),
       bonusRule: option?.bonusRule,
       bonusAttacksLeft: option?.bonusAttacksLeft,
@@ -1776,6 +1781,7 @@ export class CombatView {
       metamagic: spell?.metamagicOptions ?? [],
       sorceryPoints: poolOf(vitals?.resources, SORCERY_POINTS_RESOURCE),
       attackBonus,
+      master: this.isMaster(),
       diceMode: this.diceMode(),
       preference: this.dicePreference(),
       state: this.state(),
@@ -1913,6 +1919,24 @@ export class CombatView {
       this.confirmDeathKey.renew();
       return res;
     });
+  }
+
+  /** The raging barbarian the turn waits for, when the question is mine to answer: the owner's, or the master's. */
+  protected readonly rageAsked = computed(() => {
+    const e = this.encounter();
+    const id = e?.ragePendingCombatantId;
+    const who = id ? e.combatants.find((c) => c.id === id) : undefined;
+    return who && (this.isMaster() || who.mine) ? who : null;
+  });
+
+  /** "Voltar e atacar" (`endRage` false) or "Deixar a fúria acabar": the answer to the rage question. */
+  protected async answerRage(id: string, endRage: boolean): Promise<void> {
+    await this.run((e) => this.api.answerRageEnd(this.campaignId(), e.id, id, endRage));
+  }
+
+  /** "Encerrar fúria": the bonus action. */
+  protected endRageOf(id: string): Promise<boolean> {
+    return this.run((e) => this.api.endRage(this.campaignId(), e.id, id));
   }
 
   protected deathLaterFor(id: string): void {

@@ -36,6 +36,9 @@ import { metersFixed, reachSquares, squaresText } from '../../../../core/units';
 import { restamText } from '../../../../core/combat/theatre';
 import { ofThe } from '../../../../core/combat/move-plan';
 import { joinDots } from '../../../../core/format/text';
+import { conditionTags } from '../../../../core/combat/conditions';
+import { CombatantTags } from '../combatant-tags/combatant-tags';
+import { RageStatus } from '../rage-end/rage-status';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { attackName } from '../../../../core/combat/combat-options';
 import {
@@ -70,6 +73,7 @@ import { PendingDamages } from './pending-damages';
   selector: 'app-npc-card',
   imports: [
     AttackChoice,
+    CombatantTags,
     CombatantToken,
     MasterSpend,
     MatButtonModule,
@@ -80,6 +84,7 @@ import { PendingDamages } from './pending-damages';
     NextTurn,
     PendingDamages,
     Portrait,
+    RageStatus,
     RollPicker,
     RouterLink,
   ],
@@ -122,6 +127,8 @@ export class NpcCard {
   readonly next = output<boolean>();
   /** A damage was applied or discarded (`PendingDamages`): the page keeps the card for its note. */
   readonly settledNote = output<void>();
+  /** "Encerrar fúria": the id of the raging combatant. */
+  readonly endRage = output<string>();
 
   protected readonly turnKey = computed(
     () => `${this.encounter().currentCombatantId}:${this.encounter().round}`,
@@ -143,6 +150,7 @@ export class NpcCard {
   /** The reaction spell's name, remembered from the prompt that waited (it is gone once answered). */
   protected readonly shieldName = signal('Escudo Arcano');
 
+  protected readonly conditions = computed(() => conditionTags(this.subject()));
   protected readonly round = computed(() => roundLabel(this.encounter().round));
   protected readonly initial = computed(() => combatantInitial(this.subject().label));
   protected readonly isCreatureSubject = computed(() => isCreature(this.subject()));

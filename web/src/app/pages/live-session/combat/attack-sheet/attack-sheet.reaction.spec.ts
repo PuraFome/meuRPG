@@ -197,6 +197,6 @@ describe("AttackSheet: a roll a reaction holds, and the monk's throw back (PM-04
     await rollIt(m);
     const args = m.rollAttack.mock.calls[0];
     expect(args[7]).toBe(true);
-    expect(args[9]).toBe('w2');
+    expect(args[10]).toBe('w2');
   });
 });

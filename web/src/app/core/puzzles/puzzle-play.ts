@@ -3,6 +3,7 @@ import type { MessageInitShape } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import type { DiceRoll } from '../../../gen/meurpg/play/v1/combat_pb';
+import type { AdvantageSource, RollMode } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 import {
   PuzzleBlockedReason,
   type PuzzleMoveSchema,
@@ -10,6 +11,7 @@ import {
   type TryPuzzleHintResponse,
 } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { newKey } from '../connect/idempotency';
+import { needsTwoD20, takesTwo } from '../play/check-roll';
 import { isTransient, puzzleBlocked, puzzleErrorMessage } from './puzzle-errors';
 import type { HintDie, MoveAnswer } from './puzzles-client';
 
@@ -44,6 +46,9 @@ export interface HintTry {
   readonly passed: boolean;
   /** The player's own roll: the d20 and the total with the bonus. Never the DC. */
   readonly roll: DiceRoll | undefined;
+  /** The mode the d20 rolled with and the circumstances behind it. */
+  readonly mode: RollMode;
+  readonly sources: readonly AdvantageSource[];
 }
 
 /** Calls `fn` after `ms` and returns what cancels it: the sequence's reveal reads the run again at each step. */
@@ -87,6 +92,8 @@ export class PuzzlePlay {
   readonly hintBusy = signal(false);
   /** The last try for a hint, until the next one or the next change of the puzzle. */
   readonly hintTry = signal<HintTry | null>(null);
+  /** The next try with a real die takes two d20: the server said so, or the last result had advantage or disadvantage. */
+  readonly hintPair = signal(false);
   /** What to say when the first read of the run failed and nothing is on screen, or `''`; "Tentar de novo" reads again. */
   readonly loadError = signal('');
   /** The server refused a try because the table rolls its dice the other way: the page reads the campaign's dice mode again. */
@@ -136,6 +143,7 @@ export class PuzzlePlay {
     this.loadError.set('');
     this.message.set('');
     this.hintTry.set(null);
+    this.hintPair.set(false);
     this.pendingId = puzzleId;
     await this.refresh();
   }
@@ -319,9 +327,18 @@ export class PuzzlePlay {
         return;
       }
       this.apply(answer.run ?? run);
-      this.hintTry.set({ passed: answer.passed, roll: answer.roll });
+      this.hintTry.set({
+        passed: answer.passed,
+        roll: answer.roll,
+        mode: answer.mode,
+        sources: answer.sources,
+      });
+      this.hintPair.set(takesTwo(answer.mode));
     } catch (err) {
       if (seq !== this.openSeq) {
+        return;
+      }
+      if (this.askForPair(err, die)) {
         return;
       }
       this.message.set(puzzleErrorMessage(err, 'tentar a dica', 'player'));
@@ -337,6 +354,15 @@ export class PuzzlePlay {
         this.hintBusy.set(false);
       }
     }
+  }
+
+  /** A real die refused because the roll takes two d20: the form now asks for both, and nothing is said as an error. */
+  private askForPair(err: unknown, die: HintDie): boolean {
+    if (needsTwoD20(err) && 'face' in die) {
+      this.hintPair.set(true);
+      return true;
+    }
+    return false;
   }
 
   private async sendHintWithRetry(

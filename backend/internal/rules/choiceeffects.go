@@ -32,8 +32,10 @@ type BreathWeapon struct {
 	Text string
 }
 
-// Resistance is a damage type the character resists, and what gives it.
-type Resistance struct {
+// ChoiceResistance is a damage type the character resists because of a choice (the
+// dragonborn's ancestry), and what gives it, for the sheet. Combat applies resistances
+// through Content.Resistances.
+type ChoiceResistance struct {
 	DamageType, DamageTypePT string
 	// SourceKey is the trait that gives it.
 	SourceKey string
@@ -78,7 +80,7 @@ func (x *deriver) choiceEffects() {
 			return
 		}
 		resisted = append(resisted, damageType)
-		x.d.Resistances = append(x.d.Resistances, Resistance{DamageType: damageType, DamageTypePT: c.namePT(damageType), SourceKey: source})
+		x.d.Resistances = append(x.d.Resistances, ChoiceResistance{DamageType: damageType, DamageTypePT: c.namePT(damageType), SourceKey: source})
 	}
 
 	for _, k := range x.b.FeatureChoices {

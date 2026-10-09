@@ -68,6 +68,31 @@ func treatedRoll(face, modifier, total int32, physical bool) *playv1.DiceRoll {
 	return out
 }
 
+// reliableD20 counts the die of a roll with a mode that counts (the higher with
+// advantage, the lower with disadvantage) by Reliable Talent: the total uses 10 for a
+// 9 or lower. Treating each die before the pick and treating the one picked give the
+// same number, so the pick stays the mode's.
+func reliableD20(r d20Roll, modifier int, reliable bool) d20Roll {
+	if counted := countedFace(r.Face(), reliable); counted != r.Face() {
+		r.Total = counted + modifier
+	}
+	return r
+}
+
+// markTreated marks the die of a roll of two d20 that counted, when its total uses
+// another number than the face that came up: Reliable Talent changed it.
+func markTreated(out *playv1.DiceRoll, modifier, total int32) *playv1.DiceRoll {
+	faces := out.GetFaces()
+	i := int(out.GetCountedIndex())
+	if i < 0 || i >= len(faces) {
+		return out
+	}
+	if counted := total - modifier; counted != faces[i] {
+		out.TreatedAs, out.TreatedAsSource = new(clamp32(int(counted), 0, 20)), reliableTalentSource
+	}
+	return out
+}
+
 // checkKeyOf is the scene check key of a trap search's skill: Perception and
 // Investigation have theirs; another skill is its own key.
 func checkKeyOf(skill string) string {

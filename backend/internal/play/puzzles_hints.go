@@ -28,6 +28,7 @@ type hintTryResult struct {
 	run      playdb.PuzzleRun
 	try      playdb.PuzzleHintTry
 	replayed bool
+	sources  []*playv1.AdvantageSource
 }
 
 // TryPuzzleHint implements playv1connect.PuzzleServiceHandler.
@@ -60,7 +61,10 @@ func (s *Service) TryPuzzleHint(
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face must be 1 to 20"))
 		}
 	default:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face"))
+		var err error
+		if in.typedFaces, err = typedD20Faces(req.Msg.GetD20Faces()); err != nil {
+			return nil, err
+		}
 	}
 
 	res := &hintTryResult{}
@@ -87,7 +91,9 @@ func (s *Service) TryPuzzleHint(
 	}
 	return connect.NewResponse(&playv1.TryPuzzleHintResponse{
 		Run:      out,
-		Roll:     treatedRoll(res.try.D20, res.try.Modifier, res.try.Total, res.try.Physical),
+		Roll:     hintRollProto(res.try),
+		Mode:     modeToProto[modeOfKey(res.try.RollMode)],
+		Sources:  res.sources,
 		Passed:   res.try.Passed,
 		Replayed: res.replayed,
 	}), nil
@@ -118,7 +124,7 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	case err == nil:
 		// The key stands for that try, of that player, rolled that way: in the app, or with
 		// that typed die.
-		sameRoll := done.Physical != in.inApp && (in.inApp || int(done.D20) == in.typed)
+		sameRoll := done.Physical != in.inApp && (in.inApp || sameTypedFaces(done.D20, done.D20B, done.Counted, in))
 		if done.UserID == nil || *done.UserID != m.UserID || !sameRoll {
 			return nil, errKeyReused()
 		}
@@ -181,10 +187,18 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	if len(options) != 1 || !options[0].Known {
 		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_SKILL, "your character has no numbers for this skill")
 	}
-	face, roll, err := s.checkD20(in, options[0].Bonus, options[0].ReliableTalent)
+	ability, isCheck := checkKey(d.hintCheck.GetSkillKey())
+	cm, err := s.checkModeOf(ctx, tx, m.CampaignID, session.ID, who.ID, ability, isCheck)
 	if err != nil {
 		return nil, err
 	}
+	d20, err := s.d20With(in, options[0].Bonus, cm.Mode)
+	if err != nil {
+		return nil, err
+	}
+	d20 = reliableD20(d20, options[0].Bonus, options[0].ReliableTalent)
+	roll := d20
+	face := d20.Face()
 	passed := roll.Total >= int(d.hintCheck.GetDc())
 	var granted *int32
 	if passed {
@@ -195,6 +209,7 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 		RunID: run.ID, UserID: &m.UserID, CharacterID: &who.ID, IdempotencyKey: key, HintIndex: clamp32(next, 0, maxHints),
 		Passed: passed, GrantedCount: granted, D20: clamp32(face, 1, 20), Modifier: clamp32(options[0].Bonus, -1000, 1000),
 		Total: clamp32(roll.Total, -1000, 1000), Physical: roll.Physical, CreatedAt: now,
+		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(cm.Mode),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("record the try: %w", err)
@@ -207,5 +222,41 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 		return nil, fmt.Errorf("save the puzzle's run: %w", err)
 	}
 	res.try, res.run = try, saved
+	names, err := s.namerFor(ctx, tx, m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+	res.sources = shownSources(cm.Sources, names)
 	return s.namesOfRuns(ctx, tx, m.CampaignID, saved)
+}
+
+// hintRollProto is the try's d20: the pair when it was rolled with advantage or
+// disadvantage, with the one that counts marked.
+func hintRollProto(t playdb.PuzzleHintTry) *playv1.DiceRoll {
+	if t.D20B == 0 {
+		return treatedRoll(t.D20, t.Modifier, t.Total, t.Physical)
+	}
+	out := diceRoll(2, 20, pairOf(t.D20, t.D20B, t.Counted), t.Modifier, t.Total, t.Physical)
+	out.CountedIndex = t.Counted
+	return markTreated(out, t.Modifier, t.Total)
+}
+
+// sameTypedFaces says whether the dice a call types are the dice of the try made before.
+func sameTypedFaces(counted, other, index int32, in rollInput) bool {
+	if len(in.typedFaces) == 0 {
+		return other == 0 && int(counted) == in.typed
+	}
+	want := pairOf(counted, other, index)
+	if other == 0 {
+		want = []int32{counted}
+	}
+	if len(want) != len(in.typedFaces) {
+		return false
+	}
+	for i, f := range in.typedFaces {
+		if f != int(want[i]) {
+			return false
+		}
+	}
+	return true
 }

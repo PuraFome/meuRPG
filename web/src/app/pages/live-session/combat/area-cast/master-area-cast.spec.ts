@@ -118,7 +118,7 @@ describe("MasterAreaCast: the master casts an NPC's area spell", () => {
     );
     button('Conjurar Bola de Fogo').click();
     await settle();
-    expect(castSpell.mock.calls[0][11]).toEqual({
+    expect(castSpell.mock.calls[0][12]).toEqual({
       area: { origin: { col: 6, row: 4 } },
       revealHidden: true,
     });
@@ -134,7 +134,7 @@ describe("MasterAreaCast: the master casts an NPC's area spell", () => {
     expect(sw.getAttribute('aria-checked')).toBe('true');
     button('Conjurar Bola de Fogo').click();
     await settle();
-    expect(castSpell.mock.calls[0][11].revealHidden).toBe(true);
+    expect(castSpell.mock.calls[0][12].revealHidden).toBe(true);
   });
 
   it('starts the switch on for "Perguntar a cada vez": the master decides here', async () => {
@@ -147,6 +147,6 @@ describe("MasterAreaCast: the master casts an NPC's area spell", () => {
     expect(el.querySelector('[role="switch"]')).toBeNull();
     button('Conjurar Bola de Fogo').click();
     await settle();
-    expect(castSpell.mock.calls[0][11].revealHidden).toBeUndefined();
+    expect(castSpell.mock.calls[0][12].revealHidden).toBeUndefined();
   });
 });

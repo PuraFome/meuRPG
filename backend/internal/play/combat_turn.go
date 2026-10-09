@@ -126,6 +126,11 @@ func startTurn(ctx context.Context, c *combatTx, ids []string, round int32) erro
 		if err := c.svc.endFamiliarSights(ctx, c, ids); err != nil {
 			return err
 		}
+		// The dodge and the reckless attack of the ones whose turn starts end, and so do
+		// the states that end at the start of their turn.
+		if err := c.svc.endStatesAtStart(ctx, c, ids, round); err != nil {
+			return err
+		}
 	}
 	return setCurrent(ctx, c, ids[0], round)
 }

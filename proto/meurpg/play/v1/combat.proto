@@ -11,6 +11,7 @@ syntax = "proto3";
 package meurpg.play.v1;
 
 import "google/protobuf/timestamp.proto";
+import "meurpg/play/v1/combat_rolls.proto";
 import "meurpg/rules/v1/rules.proto";
 
 // CombatService runs a combat (an "encounter") inside the campaign's open
@@ -1259,6 +1260,80 @@ service CombatService {
   rpc GetCombatHighlights(GetCombatHighlightsRequest) returns (GetCombatHighlightsResponse) {
     option idempotency_level = IDEMPOTENT;
   }
+
+  // RequestRollMode asks the master for a better mode than the one the server
+  // suggested for an attack (SRD 5.1, "Advantage and Disadvantage": the master
+  // decides what circumstances do to a roll). A player may roll the suggested mode,
+  // or disadvantage, with no one's leave (RollAttack.roll_mode with a reason); advantage
+  // the server did not suggest, or normal where it suggested disadvantage, needs the
+  // master: this creates the request the master sees in his queue (Encounter.
+  // roll_mode_requests), and the attack waits for the answer. The player rolls it
+  // with RollAttack.roll_mode_request_id once it is ANSWERED. A second request of the
+  // same combatant replaces the first. The master does not use it: he sets any mode on
+  // the roll itself.
+  //
+  // Errors:
+  //   - `not_found`: the combat, the attacker or the target is not in this campaign's
+  //     open session, or the caller is a player and may not see it.
+  //   - `permission_denied`: the caller is a player and the attacker is not their
+  //     character, or the caller is the master (he sets the mode on the roll).
+  //   - `invalid_argument`: the reason is not 1 to 120 characters on one line, the mode
+  //     is unspecified, the attack is not one of the attacker's, or the mode asked for
+  //     is not better than the suggestion (then no request is needed).
+  //   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN.
+  rpc RequestRollMode(RequestRollModeRequest) returns (RequestRollModeResponse);
+
+  // AnswerRollModeRequest is the master's answer to a request for a better mode:
+  // he decides the mode the attack rolls with, advantage if he approves, the
+  // suggested one if he refuses, or any other. Only the master. The answer is idempotent
+  // for the same mode and a different one on an answered request is
+  // `failed_precondition` (ROLL_MODE_REQUEST_CLOSED).
+  //
+  // Errors:
+  //   - `not_found`: no such request in the combat.
+  //   - `permission_denied`: the caller is not the master.
+  //   - `invalid_argument`: the mode is unspecified.
+  //   - `failed_precondition` (EncounterBlocked): ROLL_MODE_REQUEST_CLOSED.
+  rpc AnswerRollModeRequest(AnswerRollModeRequestRequest) returns (AnswerRollModeRequestResponse);
+
+  // CancelRollModeRequest takes a request back: the player's own, or any, for the
+  // master. The attack rolls with the suggested mode afterwards.
+  rpc CancelRollModeRequest(CancelRollModeRequestRequest) returns (CancelRollModeRequestResponse);
+
+  // RemoveDamagePart takes an extra out of a damage that was rolled, with a reason
+  // (1 to 120 characters): the master's correction, when an extra does not hold
+  // (Sneak Attack without an ally near the target in a combat with no map). The total
+  // drops by that part; for an NPC that already took the damage the difference is given
+  // back, up to its maximum. It cannot be undone: the damage would have to be rolled
+  // again. Only the master, only for an extra (never the weapon or an automatic line),
+  // and only while the damage is ROLLED or APPLIED.
+  //
+  // Errors:
+  //   - `not_found`: no such pending damage or part.
+  //   - `permission_denied`: the caller is not the master.
+  //   - `invalid_argument`: the reason is not 1 to 120 characters on one line.
+  //   - `failed_precondition` (EncounterBlocked): DAMAGE_NOT_ROLLED, DAMAGE_PART_NOT_REMOVABLE.
+  rpc RemoveDamagePart(RemoveDamagePartRequest) returns (RemoveDamagePartResponse);
+
+  // AnswerRageEnd answers the question EndTurn asks a raging barbarian whose turn
+  // ends without an attack on a hostile creature and without damage taken (SRD 5.1,
+  // Barbarian, Rage): end_rage true lets the rage end and ends the turn; false drops
+  // the question and the turn goes on (the player attacks). The barbarian's player or
+  // the master.
+  //
+  // Errors:
+  //   - `not_found`, `permission_denied`: as EndTurn.
+  //   - `failed_precondition` (EncounterBlocked): RAGE_END_NOT_PENDING.
+  rpc AnswerRageEnd(AnswerRageEndRequest) returns (AnswerRageEndResponse);
+
+  // EndRage ends a rage with a bonus action on the barbarian's own turn (SRD 5.1,
+  // Barbarian, Rage). The barbarian's player or the master.
+  //
+  // Errors:
+  //   - `not_found`, `permission_denied`: as TakeAction.
+  //   - `failed_precondition` (EncounterBlocked): NOT_YOUR_TURN, BONUS_ACTION_USED,
+  //     NOT_RAGING.
+  rpc EndRage(EndRageRequest) returns (EndRageResponse);
 }
 
 // EncounterMode is how a combat is played (RN-25, ADR-0017): chosen when it
@@ -1636,6 +1711,35 @@ enum EncounterBlockedReason {
   // AnswerReaction: the answer needs a roll (Counterspell's check, Cutting Words'
   // die, Deflect Missiles' die, a saving throw) and none came.
   ENCOUNTER_BLOCKED_REASON_REACTION_NEEDS_ROLL = 73;
+  // RollAttack: the player asked for a mode better than the suggestion (advantage
+  // the server did not suggest) and the master has not approved it. RequestRollMode
+  // asks him.
+  ENCOUNTER_BLOCKED_REASON_ROLL_MODE_NEEDS_APPROVAL = 74;
+  // RollAttack with roll_mode_request_id: the request still waits for the master.
+  ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_PENDING = 75;
+  // AnswerRollModeRequest, RollAttack with roll_mode_request_id: the request is
+  // answered, taken back or used already.
+  ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED = 76;
+  // EndTurn: the barbarian is raging and the turn ends with no attack on a hostile
+  // creature and no damage taken since its last turn, so the rage would end: the
+  // player is asked (AnswerRageEnd) before the turn passes.
+  ENCOUNTER_BLOCKED_REASON_RAGE_END_PENDING = 77;
+  // AnswerRageEnd: no question waits.
+  ENCOUNTER_BLOCKED_REASON_RAGE_END_NOT_PENDING = 78;
+  // CastSpell: a raging character casts no spell and keeps no concentration (SRD 5.1,
+  // Barbarian, Rage).
+  ENCOUNTER_BLOCKED_REASON_RAGING_CANNOT_CAST = 79;
+  // EndRage: the combatant is not raging.
+  ENCOUNTER_BLOCKED_REASON_NOT_RAGING = 80;
+  // RollDamage: a marked extra does not hold (its condition fails, or its slot is not
+  // free). The attack's sheet reads the reason from PendingDamage.parts.
+  ENCOUNTER_BLOCKED_REASON_EXTRA_NOT_AVAILABLE = 81;
+  // RemoveDamagePart: the part is the weapon's or an automatic line, which cannot be
+  // taken out, or it was taken out already.
+  ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE = 82;
+  // TakeAction (Reckless Attack): it is declared with the first attack of the turn,
+  // and an attack was made.
+  ENCOUNTER_BLOCKED_REASON_RECKLESS_TOO_LATE = 83;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -1794,6 +1898,14 @@ message Encounter {
   // them, empty for a player. The app opens its card from this after each
   // `encounter_changed`, also after a reload.
   repeated HiddenRevealQuestion pending_hidden_reveals = 21;
+  // The requests for a better mode that wait or were answered and not used yet
+  // (RollModeRequest), for the caller: the master all, a player the ones of their own
+  // characters. The master's queue opens from this after each `encounter_changed`.
+  repeated RollModeRequest roll_mode_requests = 24;
+  // The raging barbarian the turn waits for (EndTurn asked whether the rage ends), a
+  // combatant ID; empty when nothing waits. Everyone who sees the combatant gets it:
+  // the turn reads "Esperando a decisão de Ragna sobre a fúria".
+  string rage_pending_combatant_id = 25;
 }
 
 // HiddenRevealQuestion is one question the master has to answer: the area spell
@@ -2091,6 +2203,19 @@ message Combatant {
   // (it is answered with AnswerBardicInspiration). Only the master and the combatant's
   // own player get it, so the question is still there when the screen is read again.
   InspirationOffer inspiration_offer = 71;
+  // The states the combatant is in (a rage, a dodge, Reckless Attack, a Hunter's
+  // Mark on it), for everyone who sees it, except the mark, which only the master
+  // and the ranger's player get. An NPC's states are the public chips alone.
+  repeated CombatantEffect states = 73;
+  // Where the conditions in `conditions` that come from something (Stunned by a
+  // Stunning Strike) come from and when they end. The condition itself is in
+  // `conditions` as always.
+  repeated ConditionSource condition_sources = 68;
+  // Since its last turn: it attacked a hostile creature, and it took damage. They
+  // decide whether a rage ends (SRD 5.1, Barbarian, Rage). Only the master and the
+  // combatant's own player.
+  bool attacked_hostile_since_last_turn = 69;
+  bool took_damage_since_last_turn = 72;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -2551,6 +2676,13 @@ message DiceRoll {
   // The feature that did it, as a content key ("feature:reliable-talent"); its
   // Portuguese name is in the content's names. Empty when `treated_as` is unset.
   string treated_as_source = 8;
+  // A d20 rolled with advantage or disadvantage has two faces: the index of the one
+  // that counts (the higher with advantage, the lower with disadvantage). 0 for any
+  // other roll.
+  int32 counted_index = 9;
+  // The dice a fighting style rerolled (Great Weapon Fighting): `faces` holds the
+  // faces that count.
+  repeated Reroll rerolled = 10;
 }
 
 // CriticalDamageRule is what a critical hit does to the damage dice: the table's
@@ -2672,6 +2804,21 @@ message PendingDamage {
   // `bonus`, apart). 0 under any other rule. It is part of `roll.modifier` once
   // the damage is rolled, so `dice (faces) + modifier = total` still holds.
   int32 critical_max = 24;
+  // The parts of the damage: the weapon, the extras the player may add (always listed,
+  // disabled with the reason when their condition fails) and the automatic lines.
+  // Empty for a damage that is one roll (a spell's, a trap's). When there are parts,
+  // dice_count, dice_sides and bonus are the weapon's part alone.
+  repeated DamagePart parts = 27;
+  // The steps that resistance, vulnerability and immunity take the damage through,
+  // once it is rolled. Only the master and the owner of a player's character that
+  // takes it; empty for everyone else, an NPC's included (RN-20).
+  repeated DamageStep steps = 28;
+  // What each part rolled, once the damage is. The extras a player must not learn
+  // the reason of (Divine Smite's extra die) are listed only when they count.
+  repeated DamagePartRoll part_rolls = 29;
+  // The damage after the steps (what ApplyPendingDamage applies unless the master
+  // sets another number). Unset when no step changed it. Same audience as `steps`.
+  optional int32 amount_after_steps = 30;
   // The weapon damage dice a feature adds to a critical hit of a melee attack, on top of
   // `dice_count`: 1, 2 or 3 for a barbarian's Crítico Brutal (levels 9, 13 and 17), same
   // faces as the attack's. 0 for any other hit: a ranged attack, a spell, a creature, an
@@ -2836,6 +2983,16 @@ message TargetInReach {
   // the reason, and does no cover math of its own. Never true for the master,
   // who has the last word, and never for an area spell.
   bool untargetable = 8;
+  // The mode the attack rolls with against this target, worked out by the server
+  // (SRD 5.1, "Advantage and Disadvantage"), and the circumstances behind it as the
+  // caller may read them: a source that rests on something the master hides is
+  // counted in the mode and not listed (RN-10). NORMAL when the combat has no
+  // circumstance, never UNSPECIFIED.
+  RollMode roll_mode = 9;
+  repeated AdvantageSource sources = 10;
+  // A hit on this target is a critical hit: it is paralyzed or unconscious and the
+  // attacker is within 5 ft (SRD 5.1, Conditions).
+  bool critical_on_hit = 11;
 }
 
 // RollAttackRequest rolls an attack.
@@ -2876,6 +3033,22 @@ message RollAttackRequest {
   // throw-back step) that caught the missile. It implies `as_reaction`, spends the
   // monk's ki (1 point) and is part of the same reaction, so it opens no window.
   string catch_window_id = 11;
+  // The mode the caller wants to roll with instead of the server's suggestion, with
+  // the reason (1 to 120 characters on one line, required when it differs). A
+  // player may roll disadvantage freely; a mode better than the suggestion needs the
+  // master: ask with RequestRollMode and roll with `roll_mode_request_id`
+  // (otherwise `failed_precondition`, ROLL_MODE_NEEDS_APPROVAL). The master may set
+  // any mode. Unset takes the server's. The server works the suggestion out again
+  // and never trusts the one the screen showed.
+  RollMode roll_mode = 12;
+  string mode_reason = 13;
+  // An answered request (RollModeRequest.id) whose decided mode this roll uses.
+  string roll_mode_request_id = 14;
+  // Physical dice: the faces of the d20 pair (one face for a normal roll, two for
+  // advantage or disadvantage, 1 to 20 each), instead of `roll` (then `d20_face` is
+  // not set). The number must match the mode the server resolves, else
+  // `invalid_argument`.
+  repeated int32 d20_faces = 15;
 }
 
 // AttackRoll is the attack roll and what it did.
@@ -2905,6 +3078,16 @@ message AttackRoll {
   // UNSPECIFIED. The result comes with the next `encounter_changed`, when the
   // window is answered.
   bool held_for_reaction = 10;
+  // The mode the roll had and the mode the server suggested; they differ when the
+  // caller changed it (then `mode_reason` says why). Only the master and the
+  // attacker's player: a player never learns how an NPC rolled (RN-20).
+  RollMode mode = 11;
+  RollMode suggested_mode = 12;
+  string mode_reason = 13;
+  // The circumstances behind `suggested_mode`, as the caller may read them.
+  repeated AdvantageSource sources = 14;
+  // A hit is a critical hit by the condition of the target, not by the die.
+  bool critical_on_hit = 15;
 }
 
 // InspirationDie is a Bardic Inspiration die a combatant holds (SRD 5.1, Bard): one
@@ -2978,6 +3161,18 @@ message RollDamageRequest {
     // count in both numbers.
     int32 typed_sum = 6;
   }
+  // The extras the player marked (PendingDamage.parts with `choosable`), with the slot
+  // of Divine Smite. The server checks each condition again and refuses a marked extra
+  // that does not hold (EXTRA_NOT_AVAILABLE). Unset marks the ones that come marked
+  // (`selected`), so a client that knows nothing of extras gets the same damage as
+  // a player who changes nothing.
+  repeated SelectedExtra selected_extras = 7;
+  // True when `selected_extras` is the whole choice, even if empty.
+  bool extras_chosen = 8;
+  // Physical dice: one sum for each group of dice (the weapon and each extra with
+  // dice), instead of `typed_sum`, which stays for a damage of one group. The sum of
+  // each is between its dice and its dice times their faces.
+  repeated TypedPart typed_parts = 9;
 }
 
 // RollDamageResponse returns the damage after the roll.
@@ -3000,6 +3195,9 @@ message ApplyPendingDamageRequest {
   // The damage to apply instead of the rolled one, 0 to 9,999: the master's last
   // word. Unset applies what was rolled.
   optional int32 amount = 5;
+  // The sources of the steps (PendingDamage.steps) to leave out, only the master's:
+  // the table decides the damage is not halved. Ignored when `amount` is set.
+  repeated string ignore_modifiers = 6;
 }
 
 // ApplyPendingDamageResponse returns the damage, APPLIED.
@@ -3170,6 +3368,14 @@ message CastSpellRequest {
   // players, for this cast. Without it the table rule decides. A player who sends
   // it gets `permission_denied`, before anything else is checked.
   optional bool reveal_hidden = 15;
+  // The mode of a spell attack's d20, instead of the server's suggestion, with the
+  // reason, and the physical d20 pair; as in RollAttackRequest. They count for every
+  // target the cast attacks. A player may roll the suggestion or disadvantage; a
+  // better mode is the master's to set (RequestRollMode asks for the attacks of the
+  // sheet, the weapons and the attack cantrips, which RollAttack rolls).
+  RollMode roll_mode = 16;
+  string mode_reason = 17;
+  repeated int32 d20_faces = 18;
 }
 
 // MetamagicChoice is one Metamagic option on a casting.
@@ -3330,6 +3536,13 @@ message SaveResult {
   bool bonus_known = 3;
   // The spell's save DC. Only the master and the caster's player.
   int32 dc = 4;
+  // The mode the target rolled the save with and why, as the caller may read it
+  // (the target's player, the master; an NPC's never reach a player, RN-20). A
+  // stunned, paralyzed, unconscious or petrified target fails a Strength or
+  // Dexterity save without rolling: `auto_failed` is true and there is no roll.
+  RollMode mode = 5;
+  repeated AdvantageSource sources = 6;
+  bool auto_failed = 7;
 }
 
 // SpellTargetResult is what a cast did to one target.
@@ -3358,6 +3571,10 @@ message SpellTargetResult {
   // deals more than one damage type (Tempestade de Gelo: pancada and frio), in the
   // spell's order after `pending_damage_id`. Same rules as `pending_damage_id`.
   repeated string more_pending_damage_ids = 10;
+  // A spell attack: the mode the d20 rolled with, the circumstances as the caller may
+  // read them, and whether a hit was a critical hit by the target's condition.
+  RollMode attack_mode = 11;
+  repeated AdvantageSource attack_sources = 12;
 }
 
 // SpellEffectKind is how a spell that reads hit points works. The same four kinds
@@ -3789,6 +4006,41 @@ enum CombatLogKind {
   // A lasting effect on a combatant ended: `effect_end`. Escudo (it ends by itself, at
   // the start of the caster's turn) and Ajuda (the master ended it).
   COMBAT_LOG_KIND_EFFECT_ENDED = 26;
+  // The master took an extra out of a damage with a reason ("o mestre tirou o
+  // Ataque Furtivo"): the actor is the attacker, the target the target, `key` the
+  // part's key and `key_name_pt` its name; the reason is `reason`, for the master
+  // and the attacker's player.
+  COMBAT_LOG_KIND_DAMAGE_PART_REMOVED = 31;
+  // A state began or ended (a rage, a dodge): `state`.
+  COMBAT_LOG_KIND_STATE_CHANGED = 32;
+  // A player asked for a better mode and the master answered ("Brisa pediu
+  // Vantagem; o mestre aprovou"): `mode_change`.
+  COMBAT_LOG_KIND_ROLL_MODE_ANSWERED = 33;
+}
+
+// CombatLogStateChange is a state that began or ended.
+message CombatLogStateChange {
+  CombatantStateKind kind = 2;
+  // True when it began.
+  bool started = 3;
+  // Why it ended (empty when it began): the combatant's own text key, one of
+  // "no_attack" (the turn ended with no attack on a hostile creature or damage taken),
+  // "unconscious", "by_choice", "duration" or "left" (the source's concentration or
+  // the combat ended).
+  string reason = 4;
+}
+
+// CombatLogModeChange is a roll whose mode is not the server's suggestion.
+message CombatLogModeChange {
+  RollMode suggested_mode = 2;
+  RollMode mode = 3;
+  // The master changed it (instead of a player's request).
+  bool by_master = 4;
+  // A player's request the master approved or refused.
+  bool requested = 5;
+  bool approved = 6;
+  // The reason, for the master and the player of the attacker (never for the others).
+  string reason = 7;
 }
 
 // WildShapeEndReason says why a druid's beast form ended.
@@ -3912,6 +4164,13 @@ message CombatLogEntry {
   repeated BonusDie bonus_dice = 91;
   // REACTION_WINDOW: the line, already filtered for the caller.
   string reaction_text_pt = 44;
+  // STATE_CHANGED: the state.
+  CombatLogStateChange state = 93;
+  // ATTACK, ROLL_MODE_ANSWERED: the mode, when it is not the server's suggestion.
+  // The d20 pair of the attack is in `attack_roll`.
+  CombatLogModeChange mode_change = 92;
+  // DAMAGE_PART_REMOVED: the master's reason. Same audience as `mode_change.reason`.
+  string reason = 47;
   // EFFECT_ENDED: which effect, on the actor.
   CombatLogEffectEnd effect_end = 46;
 }
@@ -4101,6 +4360,12 @@ message CombatLogDamage {
   // last `extra_dice_count` faces of `roll` are theirs.
   int32 extra_dice_count = 15;
   string extra_dice_name_pt = 16;
+  // What each part rolled, with the same audience as `roll`; and, only for the
+  // master and the target's own player, the steps resistance took. The log of the
+  // players never prints an NPC's resistances: "caiu pela metade" is not a line they
+  // get, only the final damage.
+  repeated DamagePartRoll parts = 17;
+  repeated DamageStep steps = 18;
 }
 
 // GetCombatHighlightsRequest names the combat.
@@ -4229,6 +4494,11 @@ message TrapAttackRoll {
   AttackOutcome outcome = 2;
   // The target's armor class the total was compared with. Only the master.
   int32 target_armor_class = 3;
+  // The mode the trap's d20 rolled with: the target's conditions count (an attack
+  // against a prone, restrained, stunned... creature has advantage). Same audience
+  // as `roll`.
+  RollMode mode = 4;
+  repeated AdvantageSource sources = 5;
 }
 
 // TrapSaveRoll is the saving throw a creature made against a trap.
@@ -4241,6 +4511,14 @@ message TrapSaveRoll {
   int32 dc = 3;
   // False for a basic-sheet NPC with no saving throw bonus (d20 + 0). Only the master.
   bool bonus_known = 4;
+  // The mode the save rolled with, and why; a creature that fails a Strength or
+  // Dexterity save without rolling (stunned, paralyzed, unconscious, petrified) has
+  // `auto_failed` and no roll. Same audience as `roll`. A fired trap is public, but
+  // a Danger Sense source is named only to the creature's player and the master, and
+  // only for a trap the creature had found (RN-10).
+  RollMode mode = 5;
+  repeated AdvantageSource sources = 6;
+  bool auto_failed = 7;
 }
 
 // TrapDamageDone is the damage of one part of the trap's effect, rolled.
@@ -4714,4 +4992,100 @@ message ConcentrationSaveResult {
   bool kept = 3;
   string spell_key = 4;
   string spell_name_pt = 5;
+}
+
+// RequestRollModeRequest asks the master for a better mode for an attack.
+message RequestRollModeRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The combatant that attacks, the attack and the target.
+  string attacker_id = 3;
+  string attack_key = 4;
+  string target_id = 5;
+  // The mode asked for (ADVANTAGE, or NORMAL where the suggestion was DISADVANTAGE)
+  // and the reason, 1 to 120 characters on one line.
+  RollMode roll_mode = 6;
+  string reason = 7;
+  string idempotency_key = 8;
+}
+
+// RequestRollModeResponse returns the combat and the request.
+message RequestRollModeResponse {
+  Encounter encounter = 1;
+  RollModeRequest request = 2;
+}
+
+// AnswerRollModeRequestRequest is the master's decision.
+message AnswerRollModeRequestRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string request_id = 3;
+  // The mode the attack rolls with: the one asked for to approve, the suggested one
+  // to refuse, or any other.
+  RollMode decided_mode = 4;
+  string idempotency_key = 5;
+}
+
+// AnswerRollModeRequestResponse returns the combat.
+message AnswerRollModeRequestResponse {
+  Encounter encounter = 1;
+}
+
+// CancelRollModeRequestRequest takes a request back.
+message CancelRollModeRequestRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string request_id = 3;
+  string idempotency_key = 4;
+}
+
+// CancelRollModeRequestResponse returns the combat.
+message CancelRollModeRequestResponse {
+  Encounter encounter = 1;
+}
+
+// RemoveDamagePartRequest takes an extra out of a rolled damage.
+message RemoveDamagePartRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string pending_damage_id = 3;
+  // The part's key ("sneak-attack").
+  string part_key = 4;
+  // 1 to 120 characters on one line.
+  string reason = 5;
+  string idempotency_key = 6;
+}
+
+// RemoveDamagePartResponse returns the combat and the damage after the change.
+message RemoveDamagePartResponse {
+  Encounter encounter = 1;
+  PendingDamage pending_damage = 2;
+}
+
+// AnswerRageEndRequest answers whether the rage ends.
+message AnswerRageEndRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string combatant_id = 3;
+  // True: let the rage end and end the turn. False: the turn goes on.
+  bool end_rage = 4;
+  string idempotency_key = 5;
+}
+
+// AnswerRageEndResponse returns the combat.
+message AnswerRageEndResponse {
+  Encounter encounter = 1;
+}
+
+// EndRageRequest ends a rage with a bonus action.
+message EndRageRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string combatant_id = 3;
+  string idempotency_key = 4;
+}
+
+// EndRageResponse returns the combat.
+message EndRageResponse {
+  Encounter encounter = 1;
 }

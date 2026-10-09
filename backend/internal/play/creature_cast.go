@@ -399,6 +399,11 @@ func (s *Service) stopConcentrating(ctx context.Context, c *combatTx, target pla
 		return fmt.Errorf("end the concentration: %w", err)
 	}
 	ev.ConcBefore, ev.ConcEnded = *target.ConcentrationSpell, *target.ConcentrationSpell
+	if *target.ConcentrationSpell == huntersMark {
+		if err := s.clearHuntersMark(ctx, c, target); err != nil {
+			return err
+		}
+	}
 	var err error
 	ev.Dismissed, err = s.endSummons(ctx, c, target)
 	return err

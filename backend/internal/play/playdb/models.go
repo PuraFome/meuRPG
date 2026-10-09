@@ -17,6 +17,14 @@ type BattleEncounter struct {
 	UpdatedAt  time.Time
 }
 
+type CombatReason struct {
+	ID          string
+	EncounterID string
+	Kind        string
+	Reason      string
+	CreatedAt   time.Time
+}
+
 type Combatant struct {
 	ID                      string
 	EncounterID             string
@@ -73,10 +81,30 @@ type Combatant struct {
 	BonusAttacksLeft        int32
 	HpMaxBonus              int32
 	MageArmorAc             *int32
+	AttackedHostile         bool
+	TookDamage              bool
+	RageEndPending          bool
+	ConditionSources        []byte
+	SneakAttackTurn         *string
+	ColossusSlayerTurn      *string
 	InspirationSides        *int32
 	InspirationFrom         *string
 	InspirationExpiresRound *int32
 	SlotsUsed               []byte
+}
+
+type CombatantState struct {
+	ID              string
+	EncounterID     string
+	CombatantID     string
+	Kind            string
+	SourceID        *string
+	EndsCombatantID *string
+	EndsPhase       *string
+	EndsRound       *int32
+	StartedRound    int32
+	Amount          int32
+	CreatedAt       time.Time
 }
 
 type Encounter struct {
@@ -170,6 +198,11 @@ type PendingDamage struct {
 	CriticalMaxRule  bool
 	Taken            *int32
 	ExtraDice        int32
+	Parts            []byte
+	PartRolls        []byte
+	Steps            []byte
+	LandedBefore     []byte
+	AfterSteps       *int32
 }
 
 type Puzzle struct {
@@ -211,6 +244,9 @@ type PuzzleHintTry struct {
 	Total          int32
 	Physical       bool
 	CreatedAt      time.Time
+	D20B           int32
+	Counted        int32
+	RollMode       string
 }
 
 type PuzzleMove struct {
@@ -297,6 +333,21 @@ type RollHold struct {
 	Round          int32
 	AnswerKey      *string
 	CreatedAt      time.Time
+}
+
+type RollModeRequest struct {
+	ID            string
+	EncounterID   string
+	CombatantID   string
+	TargetID      string
+	AttackKey     string
+	SuggestedMode string
+	RequestedMode string
+	DecidedMode   *string
+	Status        string
+	Reason        string
+	CreatedAt     time.Time
+	AnsweredAt    *time.Time
 }
 
 type SpellCast struct {

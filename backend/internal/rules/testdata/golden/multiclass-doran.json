@@ -255,6 +255,7 @@
     "Initiative": 2,
     "ArmorClass": 19,
     "ArmorClassDescription": "Cota de malha + escudo",
+    "ArmorCategory": "heavy",
     "HitPointsMax": 50,
     "HitPointsFromEffects": 0,
     "HitDice": [
@@ -556,6 +557,8 @@
         "Beams": 0,
         "SpellDice": "",
         "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
         "MartialArts": false,
         "AbilityMod": 3,
         "Notes": ""
@@ -593,6 +596,8 @@
         "Beams": 1,
         "SpellDice": "2d10",
         "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
         "MartialArts": false,
         "AbilityMod": 0,
         "Notes": ""
@@ -630,6 +635,8 @@
         "Beams": 0,
         "SpellDice": "",
         "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
         "MartialArts": false,
         "AbilityMod": 3,
         "Notes": ""
@@ -1187,6 +1194,7 @@
     "Initiative": 2,
     "ArmorClass": 19,
     "ArmorClassDescription": "Cota de malha + escudo",
+    "ArmorCategory": "heavy",
     "HitPointsMax": 44,
     "HitPointsFromEffects": 0,
     "HitDice": [
@@ -1251,6 +1259,8 @@
         "Beams": 0,
         "SpellDice": "",
         "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
         "MartialArts": false,
         "AbilityMod": 3,
         "Notes": ""
@@ -1288,6 +1298,8 @@
         "Beams": 0,
         "SpellDice": "",
         "Light": false,
+        "Finesse": false,
+        "TwoHanded": false,
         "MartialArts": false,
         "AbilityMod": 3,
         "Notes": ""

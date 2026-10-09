@@ -1,6 +1,12 @@
 import { type MessageInitShape, create } from '@bufbuild/protobuf';
 
 import {
+  CombatantStateKind,
+  DamageStepKind,
+  RollMode,
+} from '../../../gen/meurpg/play/v1/combat_rolls_pb';
+
+import {
   AttackOutcome,
   type CombatLogEntry,
   CombatLogEntrySchema,
@@ -1018,6 +1024,157 @@ describe('the log of a combat without a map (RN-25) and of hidden death saves (R
     expect(logLine(stable)?.text).toBe(
       ' faz um teste contra a morte: sucesso (3 sucessos, 1 falha). Estável: não rola mais',
     );
+  });
+});
+
+describe('the log of states, roll modes and damage parts', () => {
+  const line = (e: CombatLogEntry, master = false) =>
+    logLine(e, '', { master, players: new Set() });
+
+  it('writes the start and the end of a rage with the reason', () => {
+    const started = line(
+      entry({
+        kind: CombatLogKind.STATE_CHANGED,
+        actorLabel: 'Toren',
+        state: { kind: CombatantStateKind.RAGE, started: true, reason: '' },
+      }),
+    );
+    expect(started?.text).toBe('Fúria de Toren começou');
+    const ended = line(
+      entry({
+        kind: CombatLogKind.STATE_CHANGED,
+        actorLabel: 'Toren',
+        state: { kind: CombatantStateKind.RAGE, started: false, reason: 'no_attack' },
+      }),
+    );
+    expect(ended?.text).toBe('Fúria de Toren acabou (não atacou nem sofreu dano)');
+  });
+
+  it('writes what the master answered to a request for a mode', () => {
+    const approved = line(
+      entry({
+        kind: CombatLogKind.ROLL_MODE_ANSWERED,
+        actorLabel: 'Brisa',
+        modeChange: {
+          mode: RollMode.ADVANTAGE,
+          requested: true,
+          approved: true,
+          reason: 'sobe na mesa',
+        },
+      }),
+    );
+    expect(`${approved?.actor}${approved?.text}`).toBe('Brisa pediu Vantagem; o mestre aprovou');
+    expect(approved?.notes).toEqual(['Motivo: “sobe na mesa”']);
+    const refused = line(
+      entry({
+        kind: CombatLogKind.ROLL_MODE_ANSWERED,
+        actorLabel: 'Brisa',
+        modeChange: { mode: RollMode.ADVANTAGE, requested: true, approved: false },
+      }),
+    );
+    expect(refused?.text).toBe(' pediu Vantagem; o mestre recusou');
+    expect(refused?.notes).toBeUndefined();
+  });
+
+  it('writes the part the master took out, with the reason only when it comes', () => {
+    const withReason = line(
+      entry({
+        kind: CombatLogKind.DAMAGE_PART_REMOVED,
+        keyNamePt: 'Ataque Furtivo',
+        reason: 'o alvo estava sozinho',
+      }),
+    );
+    expect(withReason?.text).toBe('O mestre tirou o Ataque Furtivo: “o alvo estava sozinho”');
+    const hidden = line(
+      entry({ kind: CombatLogKind.DAMAGE_PART_REMOVED, keyNamePt: 'Ataque Furtivo' }),
+    );
+    expect(hidden?.text).toBe('O mestre tirou o Ataque Furtivo');
+  });
+
+  it('shows the d20 pair of an attack with the counted one, and the mode against the suggestion', () => {
+    const l = line(
+      entry({
+        kind: CombatLogKind.ATTACK,
+        actorLabel: 'Toren',
+        targetLabel: 'Goblin',
+        outcome: AttackOutcome.HIT,
+        attackRoll: { diceCount: 2, diceSides: 20, faces: [4, 17], total: 22, countedIndex: 1 },
+        modeChange: {
+          suggestedMode: RollMode.NORMAL,
+          mode: RollMode.ADVANTAGE,
+          reason: 'o alvo está distraído',
+        },
+      }),
+    );
+    expect(l?.roll?.faces).toEqual([
+      { value: 4, counts: false },
+      { value: 17, counts: true },
+    ]);
+    expect(l?.notes).toEqual(['Vantagem (sugerido: Normal) — o alvo está distraído']);
+  });
+
+  it('draws a single d20 as no pair', () => {
+    const l = line(
+      entry({
+        kind: CombatLogKind.ATTACK,
+        actorLabel: 'Toren',
+        targetLabel: 'Goblin',
+        outcome: AttackOutcome.HIT,
+        attackRoll: { diceCount: 1, diceSides: 20, faces: [9], total: 12 },
+      }),
+    );
+    expect(l?.roll).toBeUndefined();
+    expect(l?.notes).toEqual([]);
+  });
+
+  it('lists the parts of a damage and the resistance steps', () => {
+    const l = logLine(
+      create(CombatLogEntrySchema, {
+        id: 'a',
+        kind: CombatLogKind.ATTACK,
+        actorLabel: 'Toren',
+        targetLabel: 'Goblin',
+        outcome: AttackOutcome.HIT,
+        damage: {
+          status: PendingDamageStatus.APPLIED,
+          amount: 6,
+          parts: [
+            {
+              partKey: 'weapon',
+              labelPt: 'Espada curta',
+              diceCount: 1,
+              diceSides: 6,
+              faces: [4],
+              flat: 2,
+              sum: 4,
+              counted: true,
+            },
+            {
+              partKey: 'sneak-attack',
+              labelPt: 'Ataque Furtivo',
+              diceCount: 1,
+              diceSides: 6,
+              faces: [3],
+              sum: 3,
+              counted: false,
+            },
+          ],
+          steps: [
+            {
+              kind: DamageStepKind.RESISTANCE,
+              labelPt: 'Resistência a cortante (fúria)',
+              before: 12,
+              after: 6,
+            },
+          ],
+        },
+      }),
+    );
+    expect(l?.notes).toEqual([
+      'Espada curta 1d6 (4) + 2 = 6',
+      'Ataque Furtivo 1d6 (3) = 3 — não conta',
+      'Resistência a cortante (fúria): 12 → 6',
+    ]);
   });
 });
 
