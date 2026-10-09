@@ -53,3 +53,37 @@ describe('PlayerVitals as a beast (MR-037, E9-11)', () => {
     expect(el.querySelector('.slots')).not.toBeNull();
   });
 });
+
+describe('PlayerVitals hit dice by size (decisions batch 2 B, 6)', () => {
+  function render(over: Parameters<typeof pensantusVitals>[0]) {
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    const fixture = TestBed.createComponent(PlayerVitals);
+    fixture.componentRef.setInput('vitals', pensantusVitals(over));
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+  const flat = (n: Element | null) => n?.textContent?.replace(/\s+/g, ' ').trim();
+
+  it('says the dice by size and what is left of each', () => {
+    const el = render({
+      hitDice: '5d10 e 1d6',
+      hitDiceSizes: [
+        { faces: 10, total: 5, used: 2 },
+        { faces: 6, total: 1, used: 0 },
+      ],
+      hitDiceTotal: 6,
+      hitDiceUsed: 2,
+    });
+    const box = Array.from(el.querySelectorAll('.box')).find((b) =>
+      flat(b)?.startsWith('Dados de vida'),
+    );
+    expect(flat(box?.querySelector('.box__value') ?? null)).toBe('5d10 e 1d6');
+    expect(flat(box?.querySelector('.box__words') ?? null)).toBe('Restam 3 de 5d10 e 1 de 1d6');
+  });
+
+  it('says one size as before: what is left of how many', () => {
+    const el = render({});
+    expect(flat(el.querySelector('.box__words'))).toBe('Restam 2 de 3d6');
+  });
+});

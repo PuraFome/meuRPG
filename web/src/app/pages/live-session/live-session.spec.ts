@@ -273,7 +273,7 @@ describe('LiveSession', () => {
     expect(el.textContent).toContain('de 23');
     expect(el.querySelector('.shield__number')?.textContent).toBe('14');
     expect(el.textContent).toContain('Mago 3, Gnomo das Rochas');
-    expect(el.textContent).toContain('1 de 3 usados');
+    expect(el.textContent).toContain('Restam 2 de 3d6');
     expect(el.querySelector('[aria-label="1º nível: 2 livres de 4"]')).not.toBeNull();
     expect(el.textContent).toContain('O mestre ainda não escolheu um mapa.');
     expect(el.textContent).not.toContain('Ajustar');

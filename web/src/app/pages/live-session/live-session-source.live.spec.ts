@@ -47,7 +47,7 @@ describe('classifyLiveError', () => {
 });
 
 describe('toVitalsVm', () => {
-  it('maps the wire vitals, hit dice as "2d10 + 1d8"', () => {
+  it('maps the wire vitals, hit dice by size as "2d10 e 1d8" with what is spent of each', () => {
     const vm = toVitalsVm(
       create(CharacterVitalsSchema, {
         characterId: 'c1',
@@ -59,12 +59,20 @@ describe('toVitalsVm', () => {
           { faces: 8, count: 1 },
         ],
         hitDiceTotal: 3,
+        hitDiceUsed: 1,
+        hitDiceUsedByDie: { 8: 1 },
         spellSlots: [{ level: 1, total: 2, used: 1 }],
         pactSlots: { slotLevel: 2, total: 2, used: 0 },
         revision: 7,
       }),
     );
-    expect(vm.hitDice).toBe('2d10 + 1d8');
+    expect(vm.hitDice).toBe('2d10 e 1d8');
+    expect(vm.hitDiceSizes).toEqual([
+      { faces: 10, total: 2, used: 0 },
+      { faces: 8, total: 1, used: 1 },
+    ]);
+    expect(vm.hitDiceTotal).toBe(3);
+    expect(vm.hitDiceUsed).toBe(1);
     expect(vm.spellSlots).toEqual([{ level: 1, total: 2, used: 1 }]);
     expect(vm.pactSlots).toEqual({ slotLevel: 2, total: 2, used: 0 });
     expect(vm.revision).toBe(7);

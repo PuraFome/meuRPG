@@ -43,7 +43,7 @@
     <div class="box">
       <dt class="stats__label">
         Dados de vida
-        <span class="box__words">{{ usedWords(v.hitDiceUsed, v.hitDiceTotal) }}</span>
+        <span class="box__words"><span class="mr-visually-hidden">Restam </span>{{ diceLeft() }}</span>
       </dt>
       <dd class="box__value" [class.box__value--long]="v.hitDice.length > 4">{{ v.hitDice }}</dd>
     </div>

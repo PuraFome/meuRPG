@@ -22,7 +22,8 @@ export interface VitalsDraft {
   /** Used slots per spell level. */
   readonly slotsUsed: Readonly<Record<number, number>>;
   readonly pactSlotsUsed: number | null;
-  readonly hitDiceUsed: number;
+  /** Used hit dice per die size. */
+  readonly hitDiceUsed: Readonly<Record<number, number>>;
   /** Used uses per resource key. */
   readonly resourcesUsed: Readonly<Record<string, number>>;
   /** The beast's hit points, while the druid is in Wild Shape; `null` otherwise. */
@@ -38,7 +39,7 @@ export function draftFrom(v: VitalsVm): VitalsDraft {
     hitPointsTemporary: v.hitPointsTemporary,
     slotsUsed: Object.fromEntries(v.spellSlots.map((s) => [s.level, s.used])),
     pactSlotsUsed: v.pactSlots ? v.pactSlots.used : null,
-    hitDiceUsed: v.hitDiceUsed,
+    hitDiceUsed: Object.fromEntries(v.hitDiceSizes.map((d) => [d.faces, d.used])),
     resourcesUsed: Object.fromEntries((v.resources ?? []).map((r) => [r.key, r.used])),
     wildShapeHitPoints: v.wildShape ? v.wildShape.hitPointsCurrent : null,
   };
@@ -56,7 +57,7 @@ export function changeBetween(before: VitalsVm, draft: VitalsDraft): VitalsChang
     hitPointsTemporary?: number;
     spellSlotsUsed?: { level: number; used: number }[];
     pactSlotsUsed?: number;
-    hitDiceUsed?: number;
+    hitDiceUsedByDie?: Record<number, number>;
     resourcesUsed?: { key: string; used: number }[];
     wildShapeHitPointsCurrent?: number;
   } = {};
@@ -79,8 +80,13 @@ export function changeBetween(before: VitalsVm, draft: VitalsDraft): VitalsChang
   ) {
     change.pactSlotsUsed = draft.pactSlotsUsed;
   }
-  if (draft.hitDiceUsed !== before.hitDiceUsed) {
-    change.hitDiceUsed = draft.hitDiceUsed;
+  const dice = before.hitDiceSizes.filter(
+    (d) => draft.hitDiceUsed[d.faces] !== undefined && draft.hitDiceUsed[d.faces] !== d.used,
+  );
+  if (dice.length > 0) {
+    change.hitDiceUsedByDie = Object.fromEntries(
+      dice.map((d) => [d.faces, draft.hitDiceUsed[d.faces]]),
+    );
   }
   const resources = (before.resources ?? [])
     .filter(

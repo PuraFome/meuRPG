@@ -3,10 +3,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
 import { article } from '../../../core/combat/combat-log';
+import { hitDiceLeftWords } from '../../../core/resources/hit-dice-text';
 import { WildPools } from '../../../shared/wild-shape/wild-pools';
 import { PlayerSheetVm, VitalsVm } from '../live-session.types';
 import { SlotDots } from '../slot-dots/slot-dots';
-import { freeWords, hitPointsPercent, slotLevelLabel, slotRowLabel, usedWords } from '../vitals';
+import { freeWords, hitPointsPercent, slotLevelLabel, slotRowLabel } from '../vitals';
 
 interface SlotRowVm {
   readonly key: string;
@@ -66,7 +67,8 @@ export class PlayerVitals {
       : 'Classe de Armadura';
   });
 
-  protected readonly usedWords = usedWords;
+  /** "3 de 5d10 e 1 de 1d6": the dice left by size. */
+  protected readonly diceLeft = computed(() => hitDiceLeftWords(this.vitals().hitDiceSizes));
   protected readonly freeWords = freeWords;
   protected readonly percent = computed(() => hitPointsPercent(this.vitals()));
 
