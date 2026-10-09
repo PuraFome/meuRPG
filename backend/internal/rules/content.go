@@ -34,6 +34,7 @@ type content struct {
 	subclasses    map[string]*srd51.Subclass
 	features      map[string]*srd51.Feature
 	backgrounds   map[string]*srd51.Background
+	feats         map[string]*srd51.Feat
 	proficiencies map[string]*srd51.Proficiency
 	equipment     map[string]*srd51.Equipment
 	spells        map[string]*srd51.Spell
@@ -182,6 +183,7 @@ func load(fsys fs.FS) (*content, error) {
 		subclasses:     map[string]*srd51.Subclass{},
 		features:       map[string]*srd51.Feature{},
 		backgrounds:    map[string]*srd51.Background{},
+		feats:          map[string]*srd51.Feat{},
 		proficiencies:  map[string]*srd51.Proficiency{},
 		equipment:      map[string]*srd51.Equipment{},
 		spells:         map[string]*srd51.Spell{},
@@ -344,6 +346,7 @@ func (c *content) loadData(fsys fs.FS) error {
 		index(fsys, "subclasses.json", func(r *srd51.Subclass) string { return r.Key }, c.subclasses, c.namesEN, func(r *srd51.Subclass) string { return r.Name }),
 		index(fsys, "features.json", func(r *srd51.Feature) string { return r.Key }, c.features, c.namesEN, func(r *srd51.Feature) string { return r.Name }),
 		index(fsys, "backgrounds.json", func(r *srd51.Background) string { return r.Key }, c.backgrounds, c.namesEN, func(r *srd51.Background) string { return r.Name }),
+		index(fsys, "feats.json", func(r *srd51.Feat) string { return r.Key }, c.feats, c.namesEN, func(r *srd51.Feat) string { return r.Name }),
 		index(fsys, "proficiencies.json", func(r *srd51.Proficiency) string { return r.Key }, c.proficiencies, c.namesEN, func(r *srd51.Proficiency) string { return r.Name }),
 		index(fsys, "equipment.json", func(r *srd51.Equipment) string { return r.Key }, c.equipment, c.namesEN, func(r *srd51.Equipment) string { return r.Name }),
 		index(fsys, "spells.json", func(r *srd51.Spell) string { return r.Key }, c.spells, c.namesEN, func(r *srd51.Spell) string { return r.Name }),
@@ -361,6 +364,11 @@ func (c *content) loadData(fsys fs.FS) error {
 	}
 	for _, b := range c.backgrounds {
 		c.namesEN[b.Feature.Key] = b.Feature.Name
+	}
+	for _, k := range sortedKeys(c.feats) {
+		if field, msg := c.checkFeatShape(c.feats[k]); field != "" {
+			return fmt.Errorf("data/feats.json: %s: %s: %s", k, field, msg)
+		}
 	}
 	for _, k := range sortedKeys(c.spells) {
 		s := c.spells[k]
@@ -474,7 +482,7 @@ func (c *content) effectOwnerExists(key string) bool {
 		}
 		return false
 	case strings.HasPrefix(key, "feature:"), strings.HasPrefix(key, "trait:"),
-		strings.HasPrefix(key, "background:"), strings.HasPrefix(key, "race:"),
+		strings.HasPrefix(key, "background:"), strings.HasPrefix(key, "race:"), strings.HasPrefix(key, "feat:"),
 		strings.HasPrefix(key, "subrace:"), strings.HasPrefix(key, "class:"),
 		strings.HasPrefix(key, "subclass:"):
 		return c.exists(key)

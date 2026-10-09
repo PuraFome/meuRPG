@@ -223,24 +223,34 @@ func (s *Service) ListVitals(ctx context.Context, campaignID string) ([]*playv1.
 // GetVitals returns one living, active player character's vitals, or a
 // `not_found` Connect error when characterID is not one in the campaign.
 func (s *Service) GetVitals(ctx context.Context, campaignID, characterID string) (*playv1.CharacterVitals, error) {
-	return s.getVitals(ctx, nil, campaignID, characterID)
+	return s.getVitals(ctx, nil, campaignID, characterID, false)
 }
 
 // GetVitalsTx is GetVitals inside tx, so a change that computes from the
 // vitals and writes them back (the master applying damage) reads what its own
 // transaction will overwrite, never a stale copy.
 func (s *Service) GetVitalsTx(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (*playv1.CharacterVitals, error) {
-	return s.getVitals(ctx, tx, campaignID, characterID)
+	return s.getVitals(ctx, tx, campaignID, characterID, false)
 }
 
-// getVitals reads the vitals in tx (nil: the pool).
-func (s *Service) getVitals(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (*playv1.CharacterVitals, error) {
+// getVitals reads the vitals in tx (nil: the pool). With withDead, the vitals of a
+// character that died answer too: only the reads that serve a dead character's
+// player ask for it; anything that lets a character act or heals it does not.
+func (s *Service) getVitals(ctx context.Context, tx pgx.Tx, campaignID, characterID string, withDead bool) (*playv1.CharacterVitals, error) {
 	q := s.queriesIn(tx)
 	id, ok := parseUUID(characterID)
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
-	row, err := q.GetVitals(ctx, charactersdb.GetVitalsParams{CampaignID: campaignID, ID: id})
+	var row charactersdb.GetVitalsRow
+	var err error
+	if withDead {
+		var dead charactersdb.GetVitalsWithDeadRow
+		dead, err = q.GetVitalsWithDead(ctx, charactersdb.GetVitalsWithDeadParams{CampaignID: campaignID, ID: id})
+		row = charactersdb.GetVitalsRow(dead)
+	} else {
+		row, err = q.GetVitals(ctx, charactersdb.GetVitalsParams{CampaignID: campaignID, ID: id})
+	}
 	if err != nil {
 		return nil, s.dbError(ctx, "get vitals", err) // no row: not_found
 	}

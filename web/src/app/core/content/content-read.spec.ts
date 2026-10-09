@@ -6,6 +6,7 @@ import {
   TableClassLevelSchema,
   TableClassSchema,
   TableContentKind,
+  TableFeatSchema,
   TableRaceSchema,
   TableSubclassSchema,
   TableSpellSchema,
@@ -286,5 +287,37 @@ describe('what a player reads of an entry (E10-01 state 9)', () => {
     expect(rows['Classes']).toBe('Mago');
     expect(read.text).toEqual(['Um risco de tinta negra.']);
     noRawKeys(read.rows.map((r) => r.value));
+  });
+});
+
+describe('what a player reads of a feat (MR-025)', () => {
+  it('reads the prerequisite in words, the ability increase and the text', () => {
+    const e = entry(TableContentKind.FEAT, 'Mestre das Cordas', {
+      body: {
+        case: 'tableFeat',
+        value: create(TableFeatSchema, {
+          namePt: 'Mestre das Cordas',
+          descPt: ['Você prende quem quiser.'],
+          prerequisite: { minimums: { strength: 13 }, proficiencyKey: 'proficiency:medium-armor' },
+          effects: [
+            { type: 'ability_increase', count: 1, from: ['strength', 'dexterity'], value: '1' },
+          ],
+        }),
+      },
+    });
+    const read = readEntry(e, nameOf);
+    expect(read.rows.map((r) => `${r.label}: ${flat(r.value)}`)).toEqual([
+      'Pré-requisito: Força 13, proficiência em Armadura média',
+      'Aumento de habilidade: +1 em uma habilidade à escolha: Força, Destreza',
+    ]);
+    expect(read.text).toEqual(['Você prende quem quiser.']);
+    noRawKeys(read.rows.map((r) => r.value));
+  });
+
+  it('says "Nenhum" for a feat that asks nothing', () => {
+    const e = entry(TableContentKind.FEAT, 'Livre', {
+      body: { case: 'tableFeat', value: create(TableFeatSchema, { namePt: 'Livre' }) },
+    });
+    expect(readEntry(e, nameOf).rows).toEqual([{ label: 'Pré-requisito', value: 'Nenhum' }]);
   });
 });

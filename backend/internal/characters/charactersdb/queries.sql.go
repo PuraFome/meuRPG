@@ -465,6 +465,30 @@ func (q *Queries) GetCampaignContentByCreateKey(ctx context.Context, createKey *
 	return i, err
 }
 
+const getCampaignContentImport = `-- name: GetCampaignContentImport :one
+SELECT create_hash, response FROM campaign_content_imports
+WHERE campaign_id = $1::UUID AND create_key = $2
+`
+
+type GetCampaignContentImportParams struct {
+	CampaignID string
+	CreateKey  string
+}
+
+type GetCampaignContentImportRow struct {
+	CreateHash string
+	Response   []byte
+}
+
+// The answer of the ImportTableContent that carried this idempotency key (the campaign's ID and
+// the key), with the hash of its request.
+func (q *Queries) GetCampaignContentImport(ctx context.Context, arg GetCampaignContentImportParams) (GetCampaignContentImportRow, error) {
+	row := q.db.QueryRow(ctx, getCampaignContentImport, arg.CampaignID, arg.CreateKey)
+	var i GetCampaignContentImportRow
+	err := row.Scan(&i.CreateHash, &i.Response)
+	return i, err
+}
+
 const getCharacter = `-- name: GetCharacter :one
 SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash FROM characters
 WHERE campaign_id = $1::UUID AND id = $2
@@ -850,6 +874,76 @@ func (q *Queries) GetVitals(ctx context.Context, arg GetVitalsParams) (GetVitals
 	return i, err
 }
 
+const getVitalsWithDead = `-- name: GetVitalsWithDead :one
+SELECT c.id, c.name, c.player_user_id, c.sheet,
+       v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
+       v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
+       ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
+       v.familiar_sight_conditions
+FROM characters AS c
+LEFT JOIN character_vitals AS v ON v.character_id = c.id
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
+WHERE c.campaign_id = $1::UUID AND c.id = $2
+  AND c.kind = 'player' AND c.status IN ('active', 'dead')
+`
+
+type GetVitalsWithDeadParams struct {
+	CampaignID string
+	ID         string
+}
+
+type GetVitalsWithDeadRow struct {
+	ID                      string
+	Name                    string
+	PlayerUserID            *string
+	Sheet                   []byte
+	HitPointsCurrent        *int32
+	HitPointsTemporary      *int32
+	SpellSlotsUsed          []int32
+	PactSlotsUsed           *int32
+	HitDiceUsed             *int32
+	HitDiceUsedByDie        []byte
+	SpellSlotsCreated       []int32
+	ResourcesUsed           []byte
+	Revision                *int32
+	UpdatedAt               *time.Time
+	WildShapeBeast          *string
+	WildShapeHp             *int32
+	FamiliarSightCreatureID *string
+	FamiliarSightInCombat   *bool
+	FamiliarSightConditions []string
+}
+
+// GetVitals that also answers for a player character that died: the page of a
+// dead character's player still reads its turn options and its log (a combat
+// that ran keeps them), and nothing here lets the character act again.
+func (q *Queries) GetVitalsWithDead(ctx context.Context, arg GetVitalsWithDeadParams) (GetVitalsWithDeadRow, error) {
+	row := q.db.QueryRow(ctx, getVitalsWithDead, arg.CampaignID, arg.ID)
+	var i GetVitalsWithDeadRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.PlayerUserID,
+		&i.Sheet,
+		&i.HitPointsCurrent,
+		&i.HitPointsTemporary,
+		&i.SpellSlotsUsed,
+		&i.PactSlotsUsed,
+		&i.HitDiceUsed,
+		&i.HitDiceUsedByDie,
+		&i.SpellSlotsCreated,
+		&i.ResourcesUsed,
+		&i.Revision,
+		&i.UpdatedAt,
+		&i.WildShapeBeast,
+		&i.WildShapeHp,
+		&i.FamiliarSightCreatureID,
+		&i.FamiliarSightInCombat,
+		&i.FamiliarSightConditions,
+	)
+	return i, err
+}
+
 const insertAbilityRolls = `-- name: InsertAbilityRolls :execrows
 INSERT INTO character_ability_rolls (campaign_id, user_id, sets, source, rolled_at)
 VALUES ($1::UUID, $2::UUID, $3::JSONB, $4, $5)
@@ -925,6 +1019,34 @@ func (q *Queries) InsertCampaignContent(ctx context.Context, arg InsertCampaignC
 		&i.CreateHash,
 	)
 	return i, err
+}
+
+const insertCampaignContentImport = `-- name: InsertCampaignContentImport :exec
+INSERT INTO campaign_content_imports (campaign_id, create_key, create_hash, response, created_at)
+VALUES ($1::UUID, $2, $3, $4, $5)
+ON CONFLICT (campaign_id, create_key) DO NOTHING
+`
+
+type InsertCampaignContentImportParams struct {
+	CampaignID string
+	CreateKey  string
+	CreateHash string
+	Response   []byte
+	Now        time.Time
+}
+
+// Keeps the key, the request hash and the answer of an applied import. The content revision is held
+// by the transaction (BumpContentRevision), so two imports with one key take turns; ON CONFLICT is
+// the net under that.
+func (q *Queries) InsertCampaignContentImport(ctx context.Context, arg InsertCampaignContentImportParams) error {
+	_, err := q.db.Exec(ctx, insertCampaignContentImport,
+		arg.CampaignID,
+		arg.CreateKey,
+		arg.CreateHash,
+		arg.Response,
+		arg.Now,
+	)
+	return err
 }
 
 const insertCampaignContentWithKey = `-- name: InsertCampaignContentWithKey :one
@@ -1525,6 +1647,61 @@ func (q *Queries) ListCombatCharacters(ctx context.Context, arg ListCombatCharac
 	return items, nil
 }
 
+const listCombatCharactersWithDead = `-- name: ListCombatCharactersWithDead :many
+SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast
+FROM characters AS c
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
+WHERE c.campaign_id = $1::UUID
+  AND c.id = ANY($2::UUID[])
+  AND c.status IN ('active', 'dead')
+ORDER BY c.created_at, c.id
+`
+
+type ListCombatCharactersWithDeadParams struct {
+	CampaignID string
+	Ids        []string
+}
+
+type ListCombatCharactersWithDeadRow struct {
+	ID             string
+	Kind           string
+	Name           string
+	PlayerUserID   *string
+	Sheet          []byte
+	WildShapeBeast *string
+}
+
+// ListCombatCharacters that also returns a character that died, for the reads
+// of a combat that ran (a dead character's sheet names the attacks in the log,
+// and its player's page reads the turn options). Nothing that starts a combat
+// or lets a character act uses it.
+func (q *Queries) ListCombatCharactersWithDead(ctx context.Context, arg ListCombatCharactersWithDeadParams) ([]ListCombatCharactersWithDeadRow, error) {
+	rows, err := q.db.Query(ctx, listCombatCharactersWithDead, arg.CampaignID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCombatCharactersWithDeadRow
+	for rows.Next() {
+		var i ListCombatCharactersWithDeadRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.Name,
+			&i.PlayerUserID,
+			&i.Sheet,
+			&i.WildShapeBeast,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCombatParty = `-- name: ListCombatParty :many
 SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast
 FROM characters AS c
@@ -2059,13 +2236,14 @@ func (q *Queries) ListNpcPortraits(ctx context.Context, arg ListNpcPortraitsPara
 
 const listPartyVision = `-- name: ListPartyVision :many
 SELECT c.id, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast,
-       cc.id AS familiar_id, cc.monster_key AS familiar_monster_key
+       cc.id AS familiar_id, cc.monster_key AS familiar_monster_key,
+       (c.status = 'dead')::BOOL AS is_dead
 FROM characters AS c
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_creatures AS cc ON cc.id = v.familiar_sight_creature_id AND cc.dismissed_at IS NULL
 WHERE c.campaign_id = $1::UUID
-  AND c.kind = 'player' AND c.status = 'active'
+  AND c.kind = 'player' AND c.status IN ('active', 'dead')
 ORDER BY c.created_at, c.id
 `
 
@@ -2076,12 +2254,14 @@ type ListPartyVisionRow struct {
 	WildShapeBeast     *string
 	FamiliarID         *string
 	FamiliarMonsterKey *string
+	IsDead             bool
 }
 
-// The campaign's living, active player characters, oldest first, with what the
+// The campaign's active and dead player characters, oldest first, with what the
 // fog needs to know of how each one sees (package maps): the sheet, the beast of
 // a Wild Shape form, and the familiar the player looks through, if it is still with
-// the character (MR-036, MR-037).
+// the character (MR-036, MR-037). A dead character is listed (is_dead): its
+// player keeps seeing what the living party sees.
 func (q *Queries) ListPartyVision(ctx context.Context, campaignID string) ([]ListPartyVisionRow, error) {
 	rows, err := q.db.Query(ctx, listPartyVision, campaignID)
 	if err != nil {
@@ -2098,6 +2278,7 @@ func (q *Queries) ListPartyVision(ctx context.Context, campaignID string) ([]Lis
 			&i.WildShapeBeast,
 			&i.FamiliarID,
 			&i.FamiliarMonsterKey,
+			&i.IsDead,
 		); err != nil {
 			return nil, err
 		}

@@ -49,7 +49,7 @@ flowchart TD
         t_character_level_ups["character_level_ups, character_level_up_rolls"]
         t_character_ability_rolls["character_ability_rolls"]
         t_character_creatures["character_creatures"]
-        t_campaign_content["campaign_content, campaign_content_state, campaign_content_off"]
+        t_campaign_content["campaign_content, campaign_content_state, campaign_content_off, campaign_content_imports"]
     end
 
     subgraph play["play module"]
@@ -236,6 +236,7 @@ erDiagram
         text death_saves "visible_to_all or owner_and_master"
         bool combat_starts_with_map
         bool fog_on_new_maps
+        bool feats_allowed "Talentos: default false"
         text_array house_rules "up to 20 reminders"
         timestamptz updated_at
     }
@@ -265,6 +266,7 @@ erDiagram
   - Four booleans are the ways to make ability scores (`ability_standard_array`, `ability_point_buy`, `ability_roll_4d6`, `ability_typed`), all on by default, with a `CHECK` that at least one stays on.
   - `critical_rule` is `doubled_dice` (default) or `max_plus_roll`; `death_saves` is `visible_to_all` (default) or `owner_and_master`. Combat applies both.
   - `combat_starts_with_map` (default `true`: `StartEncounter` reads it in its own transaction when the request does not choose the combat mode, RN-25) and `fog_on_new_maps` (default `false`: `maps` reads it when creating a map) complete the three choices that a table style fills.
+  - `feats_allowed` (default `false`, migration 00196) is the rule "Talentos" (MR-025): whether the table plays with feats. The level-up reads it (see [Architecture](architecture.md#table-rules-mr-025-rn-24)).
   - `house_rules` is a `TEXT[]` of up to 20 reminders (the server also limits each to 200 characters), which the app only displays.
   - **The dice mode stays in `campaigns.dice_mode`**: the table style writes it there, in the same transaction. **The style itself is never stored**: it comes from the dice mode, `combat_starts_with_map` and `fog_on_new_maps`, and "Personalizado" is whatever matches none of the three.
   - Free text exists only in the house rules, which the master writes for the table (fiction, no personal data).
@@ -413,6 +415,7 @@ erDiagram
     campaigns ||--o{ campaign_content : "has the table content"
     campaigns ||--o| campaign_content_state : "counts the content writes"
     campaigns ||--o{ campaign_content_off : "turns options off for the players"
+    campaigns ||--o{ campaign_content_imports : "keeps the key of each import"
 ```
 
 ### characters
@@ -429,7 +432,7 @@ erDiagram
 - **Refused character (MR-024).** `RejectCharacter` immediately deletes the pending character's row, with its story, and the player's pending membership. It is the only character deletion outside account deletion, and the query deletes only rows with `status = 'pending'`: an approved character changes state, never row (RN-03).
 - **Index**: `(campaign_id, player_user_id)` serves the lists and the lock. There is no index on `player_user_id` or `master_user_id` alone: only account deletion searches by them.
 - **`character_master_notes`** has the primary key `(campaign_id, character_id)`: the same NPC in two campaigns (MR-022) will have separate notes. Empty notes delete the row. Notes disappear with the campaign or the character, including a refused pending character; that deletion searches the notes by `character_id` without an index, which is cheap on a small table.
-- **Campaign content** (`campaign_content`, `campaign_content_state`, `campaign_content_off`) is described below.
+- **Campaign content** (`campaign_content`, `campaign_content_state`, `campaign_content_off`, `campaign_content_imports`) is described below.
 
 ### Vitals, level-ups and creatures
 
@@ -445,9 +448,10 @@ erDiagram
 
 ### Table content (MR-025, RN-23, ADR-0018)
 
-- **`campaign_content`**: one row per **entry** (class, subclass, race, subrace, background or spell), with the key `<kind>:<name>@mesa` (the server builds it from the name at creation and it never changes), the name in Portuguese, `data` (the protojson of the kind's message, in `rules/v1/table_content.proto`, with the keys of the features the server made), the campaign revision at the entry's last change and `archived_at`. The key is unique per campaign, entries disappear with the campaign (`CASCADE`) and **nothing is deleted**: what a sheet already uses must keep working, so the way out is to archive. The limits are 300 entries per campaign and 64 KiB of `data` per entry (the server rule, which shows the error on the field; the 128 KiB `CHECK` is the last defence, with room for JSONB being longer than compact protojson). Archiving and unarchiving are not changes of the entry: only `archived_at` changes (`revision` and `updated_at` stay, and the campaign revision goes up, for the cache); `updated_at` is the date of the last real change, the one the "A classe mudou" warning shows.
+- **`campaign_content`**: one row per **entry** (class, subclass, race, subrace, background, spell or feat; the `kind` `CHECK` lists the seven since migration 00197), with the key `<kind>:<name>@mesa` (the server builds it from the name at creation and it never changes), the name in Portuguese, `data` (the protojson of the kind's message, in `rules/v1/table_content.proto`, with the keys of the features the server made), the campaign revision at the entry's last change and `archived_at`. The key is unique per campaign, entries disappear with the campaign (`CASCADE`) and **nothing is deleted**: what a sheet already uses must keep working, so the way out is to archive. The limits are 300 entries per campaign and 64 KiB of `data` per entry (the server rule, which shows the error on the field; the 128 KiB `CHECK` is the last defence, with room for JSONB being longer than compact protojson). Archiving and unarchiving are not changes of the entry: only `archived_at` changes (`revision` and `updated_at` stay, and the campaign revision goes up, for the cache); `updated_at` is the date of the last real change, the one the "A classe mudou" warning shows.
 - **`campaign_content_state`** holds the campaign's content revision: one row per campaign, created by the first write (no row means revision 0). It goes up by one **in the same transaction** as every write; every write starts by raising it, so two writes to the same campaign run one after the other, and every content read reads this row inside the caller's transaction (see [Architecture](architecture.md#live-table-content)). It lives in `characters` and not in `campaigns` so `characters` does not write a column of another module.
-- **`campaign_content_off`**: the options the master **turned off** for the players ("Opções para os jogadores"), one row per turned-off option, `(campaign_id, content_key)` as primary key with `created_at`. Everything is on by default, so **no row means on**, and turning on again deletes the row. The key is that of an SRD or table class, subclass, race, subrace, background or spell (`class:wizard`, `race:anao@mesa`); it is not a foreign key (SRD keys live in the rules snapshot, not in a table), and the server checks the key exists before writing. `TableSource` reads it in the same transaction as the revision and adds it to the content (`Overlay.Off`); what is in it never reaches a player, in any read. Each write raises the campaign revision in the same transaction, so cached content, per (campaign, revision), is always read with the set that goes with it.
+- **`campaign_content_off`**: the options the master **turned off** for the players ("Opções para os jogadores"), one row per turned-off option, `(campaign_id, content_key)` as primary key with `created_at`. Everything is on by default, so **no row means on**, and turning on again deletes the row. The key is that of an SRD or table class, subclass, race, subrace, background, spell or feat (`class:wizard`, `race:anao@mesa`, `feat:grappler`); it is not a foreign key (SRD keys live in the rules snapshot, not in a table), and the server checks the key exists before writing. `TableSource` reads it in the same transaction as the revision and adds it to the content (`Overlay.Off`); what is in it never reaches a player, in any read. Each write raises the campaign revision in the same transaction, so cached content, per (campaign, revision), is always read with the set that goes with it.
+- **`campaign_content_imports`** (MR-025, migration 00198) keeps the idempotency key of `ImportTableContent`: one row per applied import that carried a key, `(campaign_id, create_key)` as primary key (the key is the campaign's ID, a colon and the app's key), `create_hash` (the hash of the request minus the key), `response` (the answer, protobuf, at most 1 MiB) and `created_at`. A retry with the same key and request returns `response` and writes nothing; the same key with another request is refused. It goes with the campaign (`CASCADE`). See [Architecture](architecture.md#content-packs-exporttablecontent-importtablecontent).
 - **The revision a sheet was last saved with**, and its warnings (`known_issues`), live **inside the sheet document** (`FullSheet.content_revision` and `known_issues`, written by the server on each save), with no column: an entry that changed after it becomes the "A classe mudou" warning. (A column on `characters` was tried and dropped: the table has a row-level TTL, and any repeated `ALTER` rewrites the TTL expression, which `TestMigrationsAreSafeToRerun` sees as a schema change.) Only names and texts the master writes, no personal data (see [Privacy](privacy.md)).
 
 ## play module

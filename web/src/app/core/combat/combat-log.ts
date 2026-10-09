@@ -163,7 +163,9 @@ function concentrationText(d: CombatLogDamage | undefined): string {
 
 /** The master's own sum for an attack on covered target, "(CA 17: 15 + 2 de meia cobertura, do mapa)":
  * only he gets the armor class and the bonus, so nobody else reads it (RN-20). */
-function coverNote(e: CombatLogEntry): string {
+function coverNote(
+  e: Pick<CombatLogEntry, 'cover' | 'coverSource' | 'targetArmorClass' | 'coverBonus'>,
+): string {
   if (e.targetArmorClass === undefined || e.coverBonus <= 0) {
     return '';
   }
@@ -268,6 +270,12 @@ function attackText(e: CombatLogEntry): string {
     }
     out += concentrationText(d);
   }
+  // An opportunity attack that dropped the mover to 0 hit points sends it back to where it left the reach.
+  if (e.returnedToReach) {
+    out += `. ${target} voltou ao último quadrado dentro do alcance`;
+  } else if (e.returnBlocked) {
+    out += `. ${target} não pôde voltar ao último quadrado dentro do alcance: ele estava ocupado`;
+  }
   return out;
 }
 
@@ -285,7 +293,8 @@ function saveNotes(save: SaveResult, ctx: LogContext): string {
 /** One target of a cast: what the roll, the save and the damage did to it. */
 function castTargetText(t: CombatLogSpellTarget, ctx: LogContext): string {
   const who = t.targetLabel || 'alguém';
-  const damage = t.damage ? damageText(t.damage) : '';
+  // A spell with two damage types (Tempestade de Gelo) rolls each one: the target's text tells all.
+  const damage = t.damage ? [t.damage, ...t.moreDamages].map(damageText).join('') : '';
   let out: string;
   if (t.darts > 0) {
     out = `${t.darts} ${t.darts === 1 ? 'dardo' : 'dardos'} ${inThe(who)}${damage}`;
@@ -293,7 +302,7 @@ function castTargetText(t: CombatLogSpellTarget, ctx: LogContext): string {
     const dc = saveNotes(t.save, ctx);
     out = `${the(who)} ${t.save.outcome === SaveOutcome.SAVED ? 'resistiu' : 'falhou'}${dc}${damage}`;
   } else if (t.outcome !== AttackOutcome.UNSPECIFIED) {
-    out = `${inThe(who)}: ${t.outcome === AttackOutcome.CRITICAL_HIT ? 'crítico' : t.outcome === AttackOutcome.MISS ? 'errou' : 'acertou'}${t.outcome === AttackOutcome.MISS ? '' : damage}`;
+    out = `${inThe(who)}: ${t.outcome === AttackOutcome.CRITICAL_HIT ? 'crítico' : t.outcome === AttackOutcome.MISS ? 'errou' : 'acertou'}${coverNote(t)}${t.outcome === AttackOutcome.MISS ? '' : damage}`;
   } else if (t.damage?.healing) {
     out = `${the(who)}${damage}`;
   } else {

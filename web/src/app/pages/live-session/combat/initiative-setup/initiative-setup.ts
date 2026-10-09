@@ -137,6 +137,13 @@ export class InitiativeSetup {
     const info = this.info().get(c.characterId);
     if (!isPlayer(c)) {
       const parts = [info?.kindLabel ?? 'NPC'];
+      // The master reads each monster's armor class and hit points before the first turn, as the order does.
+      if (c.armorClass !== undefined) {
+        parts.push(`CA ${c.armorClass}`);
+      }
+      if (c.hitPointsMax !== undefined) {
+        parts.push(`PV ${c.hitPointsCurrent ?? c.hitPointsMax} de ${c.hitPointsMax}`);
+      }
       if (c.hidden) {
         parts.push('escondido');
       }

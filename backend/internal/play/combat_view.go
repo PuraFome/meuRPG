@@ -648,7 +648,7 @@ func (s *Service) changedFor(campaignID string, ids ...string) func(ctx context.
 // the players what they may see (a hidden one's turn is "the master's"; on a
 // map with the fog of war, so is the turn of an NPC the player does not see).
 func (s *Service) publishTurnChanged(ctx context.Context, campaignID string, d *encounterData) {
-	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: turnChangedMessage(d.enc, d.turnFor(combatViewer{master: true}))})
+	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: turnChangedMessage(d.enc, d.turnFor(combatViewer{master: true}), d.enc.Revision)})
 	s.publishTurnChangedToPlayers(ctx, campaignID, d)
 }
 

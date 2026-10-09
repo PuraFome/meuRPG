@@ -84,6 +84,7 @@ import {
   offersHolding,
   offersToAnswer,
   reactorAttacks,
+  reachingAttacks,
   reactorIsMasters,
   waitingText,
 } from '../../../core/combat/opportunity';
@@ -103,6 +104,7 @@ import { TurnOptionsState } from '../../../core/combat/turn-options-state';
 import { saveAnnouncement } from '../../../core/combat/death-saves';
 import {
   currentCombatant,
+  isDead,
   isDown,
   isPlayer,
   ownCombatant,
@@ -300,6 +302,8 @@ export class CombatView {
   private readonly confirmDeathKey = new ActionKey();
   private readonly leaveFormKey = new ActionKey();
   private readonly shieldHandled = new Set<string>();
+  /** An Escudo sheet is on screen: the next prompt waits for it to close, so two never pile up. */
+  private readonly shieldOpen = signal(false);
 
   protected readonly encounter = computed(() => this.state().shown());
   protected readonly image = computed(() => {
@@ -736,22 +740,12 @@ export class CombatView {
       !this.active() ||
       own.reactionUsed ||
       isDown(own) ||
+      isDead(own) ||
       !opts?.options
     ) {
       return [];
     }
-    return opts.options.attacks.flatMap((a) => {
-      const atk = a.attack;
-      // The melee reach is 5 ft, whatever range the weapon has when thrown.
-      const reach = atk
-        ? opts.attackTargets
-            .find((t) => t.attackKey === atk.key)
-            ?.targets.some((t) => t.distanceFt !== undefined && t.distanceFt <= 5)
-        : false;
-      return atk && atk.kind === AttackKind.WEAPON && atk.saveDc === 0 && atk.melee && reach
-        ? [{ key: atk.key, name: atk.namePt || atk.name }]
-        : [];
-    });
+    return reachingAttacks(opts);
   });
   /** The characters at three failures: the master is asked to confirm each death (E6-30). */
   protected readonly dying = computed(() =>
@@ -950,11 +944,17 @@ export class CombatView {
         });
       }
     });
-    // A hit on the player's character that waits for their reaction opens Escudo (E6-28).
+    // A hit on the player's character that waits for their reaction opens Escudo (E6-28), one sheet at a time.
     effect(() => {
       const e = this.encounter();
       const own = this.own();
-      if (this.isMaster() || !e || !own || e.status !== EncounterStatus.ACTIVE) {
+      if (
+        this.isMaster() ||
+        this.shieldOpen() ||
+        !e ||
+        !own ||
+        e.status !== EncounterStatus.ACTIVE
+      ) {
         return;
       }
       const prompt = e.reactionPrompts.find((p) => p.targetId === own.id);
@@ -1862,11 +1862,12 @@ export class CombatView {
       state: this.state(),
       armorClass: this.armorClass(),
     };
+    this.shieldOpen.set(true);
     openSheet<ShieldSheet, ShieldSheetData, boolean>(this.dialog, this.bottomSheet, ShieldSheet, {
       data,
       ariaLabel: 'Você foi atingido: usar Escudo Arcano?',
       alert: true,
-    }).subscribe();
+    }).subscribe(() => this.shieldOpen.set(false));
   }
 
   /** A damage was settled: the master's card stays for its note. */
@@ -2364,34 +2365,10 @@ export class CombatView {
     this.state().moving.set(true);
   }
 
-  /** The first free square nearest the middle of the map: where "Colocar no
-   * mapa" puts a combatant that came without a token. */
+  /** "Colocar no mapa": the server picks the square, by the rule that places the
+   * NPCs when the combat begins (free floor, away from the players). */
   protected async place(id: string): Promise<void> {
-    const e = this.encounter();
-    if (!e) {
-      return;
-    }
-    const taken = new Set(e.combatants.filter((c) => c.placed).map((c) => `${c.col},${c.row}`));
-    const middle: Square = { col: Math.floor(e.gridColumns / 2), row: Math.floor(e.gridRows / 2) };
-    let best: Square | null = null;
-    for (let row = 0; row < e.gridRows; row++) {
-      for (let col = 0; col < e.gridColumns; col++) {
-        const d = Math.max(Math.abs(col - middle.col), Math.abs(row - middle.row));
-        const dBest = best
-          ? Math.max(Math.abs(best.col - middle.col), Math.abs(best.row - middle.row))
-          : Infinity;
-        if (!taken.has(`${col},${row}`) && d < dBest) {
-          best = { col, row };
-        }
-      }
-    }
-    if (best) {
-      const spot = best;
-      await this.run(
-        async (current) =>
-          (await this.api.move(this.campaignId(), current.id, id, spot.col, spot.row)).encounter,
-      );
-    }
+    await this.run((current) => this.api.place(this.campaignId(), current.id, id));
   }
 
   protected leave(): void {
