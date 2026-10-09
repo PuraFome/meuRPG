@@ -138,7 +138,7 @@ test(
       await openSessionPage(playerPage, campaignId);
       const vitals = playerPage.getByRole('region', { name: 'Pensantus' });
       await expect(vitals.getByText('23', { exact: true })).toBeVisible();
-      await expect(vitals.getByText('de 23')).toBeVisible();
+      await expect(vitals.getByText('de 23', { exact: true })).toBeVisible();
       // Marks this document: a reload would lose it.
       await playerPage.evaluate(() => ((window as unknown as { sameDocument: boolean }).sameDocument = true));
 

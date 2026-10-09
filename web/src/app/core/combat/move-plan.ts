@@ -143,15 +143,18 @@ function theyWord(labels: readonly string[]): { subject: string; verb: string } 
   return { subject: labels.every((l) => article(l) === 'a') ? 'Elas' : 'Eles', verb: 'podem' };
 }
 
-/** The warning before a move that may provoke, for a walk ("Esse caminho sai do alcance do Goblin 2. Ele pode atacar você de
- * graça (ataque de oportunidade).") or a long jump ("Esse salto sai do alcance..."): a warning, since for a player the server
- * says only "pode". */
+/** The warning before a move that may provoke: a warning, since for a player the server says only "pode". A walk reads "Sair do
+ * alcance do Goblin 2 pode provocar um ataque de oportunidade."; a long jump reads the board's "Esse salto sai do alcance do
+ * Goblin 2. Ele pode atacar você de graça (ataque de oportunidade)." */
 export function provokeWarning(
   labels: readonly string[],
   way: 'caminho' | 'salto' = 'caminho',
 ): string {
+  if (way === 'caminho') {
+    return `Sair do alcance ${ofThe(labels)} pode provocar um ataque de oportunidade.`;
+  }
   const they = theyWord(labels);
-  return `Esse ${way} sai do alcance ${ofThe(labels)}. ${they.subject} ${they.verb} atacar você de graça (ataque de oportunidade).`;
+  return `Esse salto sai do alcance ${ofThe(labels)}. ${they.subject} ${they.verb} atacar você de graça (ataque de oportunidade).`;
 }
 
 /** The note on the jump's card: where it lands and what is left, with the trap the character knows when the landing square is

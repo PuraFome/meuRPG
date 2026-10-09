@@ -96,12 +96,11 @@ describe("the move page reads the server's options", () => {
     ]);
     expect(names).toEqual(['Goblin 2']);
     expect(plain(provokeWarning(names))).toBe(
-      'Esse caminho sai do alcance do Goblin 2. Ele pode atacar você de graça (ataque de oportunidade).',
+      'Sair do alcance do Goblin 2 pode provocar um ataque de oportunidade.',
     );
     expect(plain(provokeWarning(['Goblin 1', 'Brisa']))).toBe(
-      'Esse caminho sai do alcance do Goblin 1 e da Brisa. Eles podem atacar você de graça (ataque de oportunidade).',
+      'Sair do alcance do Goblin 1 e da Brisa pode provocar um ataque de oportunidade.',
     );
-    expect(plain(provokeWarning(['Brisa']))).toContain('Ela pode atacar você de graça');
     expect(provokedBy(options.reachable[0], [goblin])).toEqual([]);
     expect(trapQuestion('Fosso escondido')).toBe(
       'Isso entra no Fosso escondido. Mover assim mesmo?',
@@ -109,10 +108,14 @@ describe("the move page reads the server's options", () => {
     expect(ofThe(['Toren'])).toBe('do Toren');
   });
 
-  it('says "salto" in place of "caminho" for a long jump, and nothing else changes', () => {
+  it('words the warning of a long jump as the board does', () => {
     expect(plain(provokeWarning(['Goblin 2'], 'salto'))).toBe(
       'Esse salto sai do alcance do Goblin 2. Ele pode atacar você de graça (ataque de oportunidade).',
     );
+    expect(plain(provokeWarning(['Goblin 1', 'Brisa'], 'salto'))).toBe(
+      'Esse salto sai do alcance do Goblin 1 e da Brisa. Eles podem atacar você de graça (ataque de oportunidade).',
+    );
+    expect(plain(provokeWarning(['Brisa'], 'salto'))).toContain('Ela pode atacar você de graça');
   });
 
   it('writes the jump card: where it lands, and the trap only when the character knows it', () => {

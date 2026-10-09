@@ -182,7 +182,7 @@ describe('MovePage', () => {
     const { el, choose, press, disengaged } = setup();
     choose(10, 7);
     expect(plain(el.textContent)).toContain(
-      'Esse caminho sai do alcance do Goblin 2. Ele pode atacar você de graça (ataque de oportunidade).',
+      'Sair do alcance do Goblin 2 pode provocar um ataque de oportunidade.',
     );
     expect(plain(el.textContent)).toContain(
       'Com Desengajar, nenhum movimento deste turno provoca isso.',
@@ -194,7 +194,7 @@ describe('MovePage', () => {
   it('does not offer Desengajar when the action is gone', () => {
     const { el, choose } = setup({ canDisengage: false });
     choose(10, 7);
-    expect(plain(el.textContent)).toContain('Esse caminho sai do alcance do Goblin 2');
+    expect(plain(el.textContent)).toContain('Sair do alcance do Goblin 2 pode provocar');
     expect(plain(el.textContent)).not.toContain('Desengajar');
   });
 

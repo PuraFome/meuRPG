@@ -71,7 +71,7 @@ test(
 
       await p.getByRole('button', { name: 'Procurar armadilhas' }).click();
       const sheet = p.getByRole('dialog', { name: 'Procurar armadilhas' });
-      await expect(sheet).toContainText('Algumas armadilhas só se acham com Investigação.');
+      await expect(sheet).toContainText('Algumas armadilhas só se acham com uma perícia específica.');
       await sheet.locator('label', { hasText: 'Investigação' }).click();
       await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
       await sheet.getByLabel(/Role 1d20 para Investigação/).fill('12');
