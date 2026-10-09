@@ -147,8 +147,9 @@ func (l castLens) view(r playdb.SpellCast) *playv1.OutsideCast {
 	}
 	for _, t := range castTargetsOf(r) {
 		ch := l.chars[t.ID]
-		ot := &playv1.OutsideCastTarget{CharacterId: l.idOf(t.ID), Name: ch.Name, Npc: !ch.Player, Effect: castEffectToProto[t.Effect], ExtraHitPoints: t.Extra}
-		if l.master || l.mine(t.ID) { // RN-20: the hit points and the armor class are the target's own
+		ot := &playv1.OutsideCastTarget{CharacterId: l.idOf(t.ID), Name: ch.Name, Npc: !ch.Player}
+		if l.master || l.mine(t.ID) { // RN-20: what the cast did to a target (its effect, hit points, armor class, the Life Domain's extra) is the target's own
+			ot.Effect, ot.ExtraHitPoints = castEffectToProto[t.Effect], t.Extra
 			ot.Amount, ot.HitPointsBefore, ot.HitPointsAfter, ot.ArmorClass = t.Amount, t.Before, t.After, t.AC
 		}
 		out.Targets = append(out.Targets, ot)

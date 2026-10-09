@@ -24,6 +24,8 @@ import {
   isLong,
   lastsWords,
   logLine,
+  queueLine,
+  queueTitle,
   minutesWords,
   namesList,
   needsTarget,
@@ -353,5 +355,32 @@ describe('logLine', () => {
     });
     expect(logLine(failed)).toContain('falhou');
     expect(logLine(failed)).toContain('espaço não foi gasto');
+  });
+});
+
+describe('the master queue card', () => {
+  it('titles a ritual with "(ritual)" and says who casts and for how long', () => {
+    const ritual = create(OutsideCastSchema, {
+      spellNamePt: 'Alarme',
+      casterName: 'Pensantus',
+      ritual: true,
+      castingMinutes: 11,
+      status: OutsideCastStatus.CASTING,
+    });
+    expect(queueTitle(ritual)).toBe('Alarme (ritual)');
+    expect(plain(queueLine(ritual))).toBe('Pensantus · 11 minutos');
+  });
+
+  it('names the slot of a cast with one, and never says how much time has passed', () => {
+    const glyph = create(OutsideCastSchema, {
+      spellNamePt: 'Glifo de Vigilância',
+      casterName: 'Pensantus',
+      slotLevel: 3,
+      castingMinutes: 60,
+      status: OutsideCastStatus.CASTING,
+    });
+    expect(queueTitle(glyph)).toBe('Glifo de Vigilância');
+    expect(plain(queueLine(glyph))).toBe('Pensantus · espaço de 3º nível · 1 hora');
+    expect(queueLine(glyph)).not.toMatch(/há|passou|restam|falta/i);
   });
 });

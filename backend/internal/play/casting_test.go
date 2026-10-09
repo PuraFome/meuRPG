@@ -177,20 +177,18 @@ func TestCastingOutside_HealingBetweenFightsAndTheLifeDomain(t *testing.T) {
 	if got := usedSlots(a.vitals(t, a.bri), 2); got != 1 {
 		t.Errorf("2nd-level slots used = %d, want 1", got)
 	}
-	// What Toren regained is for the master and Toren's player (RN-20), not for the caster's.
-	if tg := cast.GetTargets()[0]; tg.GetExtraHitPoints() != 4 {
-		t.Errorf("Disciple of Life as the caster's player reads it = %d, want 4 (2 + the 2nd level): it comes from the caster's own features", tg.GetExtraHitPoints())
-	}
-	if tg := cast.GetTargets()[0]; tg.GetEffect() != playv1.CastEffect_CAST_EFFECT_HEAL || tg.GetAmount() != 0 || tg.GetHitPointsAfter() != 0 {
-		t.Errorf("target as the caster's player = %v, want the heal without the numbers", tg)
+	// What the cast did to Toren is for the master and Toren's player (RN-20), not for the caster's player: the effect,
+	// the amount and the Disciple of Life's extra hit points stay out of what they read.
+	if tg := cast.GetTargets()[0]; tg.GetExtraHitPoints() != 0 || tg.GetEffect() != playv1.CastEffect_CAST_EFFECT_UNSPECIFIED || tg.GetAmount() != 0 || tg.GetHitPointsAfter() != 0 {
+		t.Errorf("target as the caster's player = %v, want nothing of what the cast did to it", tg)
 	}
 	for _, who := range []*user{a.master, a.caio} {
 		var tg *playv1.OutsideCastTarget
 		for _, c := range a.casts(t, who).GetLog() {
 			tg = c.GetTargets()[0]
 		}
-		if tg.GetAmount() != 16 || tg.GetHitPointsBefore() != 5 || tg.GetHitPointsAfter() != 21 {
-			t.Errorf("target as %s = %v, want a heal of 16 from 5 to 21", who.id, tg)
+		if tg.GetAmount() != 16 || tg.GetHitPointsBefore() != 5 || tg.GetHitPointsAfter() != 21 || tg.GetExtraHitPoints() != 4 || tg.GetEffect() != playv1.CastEffect_CAST_EFFECT_HEAL {
+			t.Errorf("target as %s = %v, want a heal of 16 from 5 to 21, 4 of it from Disciple of Life", who.id, tg)
 		}
 	}
 	// The heal never passes the maximum (SRD 5.1, "Healing").
