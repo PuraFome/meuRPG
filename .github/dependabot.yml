@@ -37,9 +37,7 @@ updates:
           - "minor"
           - "patch"
 
-  # The web app (web/). The repository root's package.json is the old,
-  # deprecated app (src/), which is frozen until it is removed, so it gets
-  # no updates.
+  # The web app (web/).
   - package-ecosystem: "npm"
     directory: "/web"
     schedule:

@@ -16,7 +16,6 @@ This directory is the source of truth about the product, the rules and the archi
 | [privacy.md](privacy.md) | PR authors, reviewers | Which personal data we keep, why and for how long, and the privacy checklist of every PR |
 | [roadmap.md](roadmap.md) | Everyone | The stages up to the MVP and what comes after |
 | [operations.md](operations.md) | Operators | Deploy, secrets, costs and alerts |
-| [legacy-app.md](legacy-app.md) | Anyone consulting the old app | What the Angular app in `src/` and the NestJS server in `server/` did and how they ran (discontinued) |
 | [archive/](archive/README.md) | Anyone looking for history | Decision history, per-stage delivery history and archived notes |
 | `adr/` | Maintainers | Hard-to-reverse decisions. A separate private repository; the local folder is in `.gitignore` and not versioned here |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Everyone | How to run, test and open a PR |

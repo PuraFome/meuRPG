@@ -111,7 +111,7 @@ Copie no PR que mexe em dados, logs, telas ou fornecedores:
 
 **No app antigo (descontinuado)**, `users.name` era guardado, e havia duas colunas sem finalidade: `characters.email` e `sheet.playerName`. Não há migração de dados: as três simplesmente não existem no schema novo (ver [Modelo de dados](../data.md)). No app antigo, mapas ficavam em base64 no banco, e galeria e campanhas ficavam no `localStorage`.
 
-**Bug do app antigo (descontinuado):** o logout e o "Excluir conta" chamavam rotas que não existiam no NestJS (`POST /api/auth/logout` e `DELETE /api/auth/account`). O logout só limpava o navegador, e o token continuava válido no servidor até expirar. A exclusão falhava, então o direito de eliminação (art. 18, VI) não funcionava lá. Ele não é corrigido no app antigo — o sistema novo implementa os dois desde o primeiro deploy com login e prova com teste automático.
+**Bug do app antigo (descontinuado):** o logout e o "Excluir conta" chamavam rotas que não existiam no NestJS (`POST /api/auth/logout` e `DELETE /api/auth/account`). O logout só limpava o navegador, e o token continuava válido no servidor até expirar. A exclusão falhava, então o direito de eliminação (art. 18, VI) não funcionava lá. O código do app antigo saiu do repositório; o sistema novo implementa os dois desde o primeiro deploy com login e prova com teste automático.
 
 ### Os logs da API
 
@@ -295,8 +295,8 @@ Os dados ficam em São Paulo (`southamerica-east1`). O acesso de um fornecedor d
 | Google Cloud | Cloud Run, Cloud Logging, Cloud Storage, Secret Manager | Tudo, em São Paulo | Data Processing Addendum com as cláusulas-padrão brasileiras |
 | Cockroach Labs | Banco CockroachDB gerenciado, no Google Cloud em São Paulo | O banco e os backups | **A definir:** o contrato atual cobre o GDPR |
 | Google (login) | Sign in with Google | O Google é controlador da própria conta; nós recebemos só `sub` e e-mail | Não é nosso operador |
-| Render | App antigo (descontinuado): NestJS. O `server/` será removido do repositório (ver [App antigo](../legacy-app.md)) | O que passava pela API do app antigo | **Lacuna temporária.** Acaba quando `server/` for removido |
-| GitHub Pages | App antigo (descontinuado): Angular, mantido em `src/` só como referência até sair num PR à parte | IP de quem visita | **Lacuna temporária.** Acaba quando `src/` for removido |
+| Render | Hospedagem do servidor NestJS do app antigo (descontinuado; o código dele não está mais no repositório). A fazer: o dono do projeto desliga a hospedagem | O que passava pela API do app antigo | **Lacuna temporária.** Acaba quando o dono do projeto desligar o serviço |
+| GitHub Pages | Hospedagem do build Angular do app antigo (descontinuado; o código dele não está mais no repositório). A fazer: o dono do projeto desliga nas configurações do repositório | IP de quem visita | **Lacuna temporária.** Acaba quando o dono do projeto desligar |
 | Google (API do Gemini) | Gera as imagens que o mestre pede (MR-039, RN-28, ADR-0019), com uma chave do AI Studio, pelo servidor | O texto que o mestre escreve, o estilo, as imagens da galeria que ele escolhe como referência e, num ajuste, a imagem anterior. Nunca nome de pessoa, e-mail nem ficha. O Google pode guardar os dados por pouco tempo, ou em cache, **em qualquer país**: conta como transferência internacional | [Termos dos serviços pagos da API do Gemini](https://ai.google.dev/gemini-api/terms) (Paid Services; nenhum modelo de imagem tem nível gratuito). **A definir:** o cadastro como operador e o mecanismo de transferência (Resolução CD/ANPD nº 19/2024) |
 | Cloudflare Workers AI | Jev, depois do MVP | Só contexto de jogo, sem dado pessoal | **A definir** antes do Jev |
 | Have I Been Pwned | Checa se a senha nova já vazou | 5 caracteres do hash da senha, saindo do servidor. Não identifica ninguém | Não é operador |

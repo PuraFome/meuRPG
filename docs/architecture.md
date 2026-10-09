@@ -33,7 +33,7 @@ Each backend module lives in `backend/internal/<module>`. A module calls another
 - `rules`: the D&D 5e calculations (modifiers, DC, bonuses) and the SRD content as data. It does not touch the database, so it is easy to test.
 - `platform`: what everyone shares: configuration, database, HTTP server, logs and dice (`platform/dice`: parse expressions, roll and check the physical die).
 
-Every module is built from scratch in Go. The old NestJS app is discontinued and will be removed from the repository (see [Legacy app](legacy-app.md)); the new backend covers every MVP story alone. The done criterion is the same as any story's: the module's tests pass (see [Vision](product/vision.md)).
+Every module is built from scratch in Go. The old NestJS app is discontinued and no longer in the repository; the new backend covers every MVP story alone. The done criterion is the same as any story's: the module's tests pass (see [Vision](product/vision.md)).
 
 ### Target architecture diagram
 
@@ -69,7 +69,7 @@ flowchart LR
     BFF -.-> WorkersAI
 ```
 
-The dashed line is future: Jev (Workers AI) only arrives after the MVP. The legacy app (Angular in `src/`, NestJS in `server/`, GitHub Pages and Render) is not in this diagram because it is discontinued; `src/` stays in the repository only as a reference, and `server/` will be removed (see [Legacy app](legacy-app.md)).
+The dashed line is future: Jev (Workers AI) only arrives after the MVP.
 
 Who may touch a sheet and how a player joins a session are in [Rules → Flows and states](product/rules.md#flows-and-states): they are business rules, not infrastructure.
 
