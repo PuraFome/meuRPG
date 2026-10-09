@@ -2142,9 +2142,11 @@ message GetMoveOptionsRequest {
   // walk. HIGH is refused (`invalid_argument`): a high jump changes no square, so it
   // provokes nothing.
   JumpKind jump = 4;
-  // For a LONG jump: the combatant ran 10 ft first (the 3 m of a running start in
-  // metric), so the distance is the whole Strength score and not half of it. Ignored
-  // without a jump.
+  // For a LONG jump: the screen's guess that the combatant ran 10 ft first (the 3 m
+  // of a running start in metric). The squares always follow the running start the
+  // server counted from what the combatant really walked just before (the distance is
+  // the whole Strength score with it, half without), so the preview never offers a
+  // square MoveCombatant would refuse. Ignored without a jump.
   bool jump_running_start = 5;
 }
 
@@ -3415,6 +3417,9 @@ message CombatLogEntry {
   int32 distance_dft = 30;
   JumpKind jump = 31;
   int32 jump_height_dft = 32;
+  // MOVED by a long jump: the combatant had walked 10 ft just before, so the jump
+  // counted with a running start. Everyone who gets the line.
+  bool jump_running_start = 45;
   // MOVED by a long jump, only the master: it landed in difficult terrain, so the
   // line says "Acrobacia CD 10 ou cai Derrubado" (the app rolls nothing).
   bool landing_difficult = 33;

@@ -34,10 +34,12 @@ import {
 import { CONDITIONS } from '../../../core/combat/conditions';
 import type { PointChanges } from '../../../core/maps/maps-client';
 import { MapsClient } from '../../../core/maps/maps-client';
+import { type CheckOption, SceneChecks } from '../../../core/maps/scene-actions';
 import { TrapPresets } from '../../../core/traps/trap-presets';
 import { TrapNoticers } from '../../../shared/trap-noticers/trap-noticers';
 import {
   ABILITIES,
+  ARCANA_KEY,
   type AttackDraft,
   type ConditionDraft,
   DAMAGE_TYPES,
@@ -46,6 +48,7 @@ import {
   MAX_DAMAGE_PARTS,
   type SaveDraft,
   type TrapDraft,
+  alsoFindOptions,
   blankTrapDraft,
   hasTrapErrors,
   isTrapDirty,
@@ -57,6 +60,7 @@ import {
   trapChangesOf,
   trapDraftFromPreset,
   trapDraftOf,
+  toggleAlsoFind,
   trapErrors,
 } from './trap-draft';
 import { PointFoot } from './point-foot';
@@ -88,6 +92,7 @@ import { PointFoot } from './point-foot';
 export class TrapPointPanel {
   private readonly api = inject(MapsClient);
   private readonly presetsApi = inject(TrapPresets);
+  private readonly checks = inject(SceneChecks);
   private readonly injector = inject(Injector);
 
   readonly point = input.required<MapPoint>();
@@ -125,6 +130,23 @@ export class TrapPointPanel {
   protected readonly show = signal(false);
   protected readonly noticers = signal<GetTrapNoticersResponse | undefined>(undefined);
   protected readonly noticersFailed = signal(false);
+
+  /** The skills "Também acham com" offers (the SRD's 18 less Percepção and Investigação), in the list's alphabetical order. */
+  protected readonly skills = signal<readonly CheckOption[]>([]);
+  protected readonly alsoOpen = signal(false);
+  /** The option the listbox's cursor is on (its index): the arrows move it, Space picks it. */
+  protected readonly alsoCursor = signal(0);
+  protected readonly alsoNames = computed(
+    () => new Map(this.skills().map((s) => [s.key, s.label])),
+  );
+  /** The reminder about Arcanismo is only for a magic preset, and goes away when Arcanismo is already picked. */
+  protected readonly arcanaReminder = computed(() => {
+    const d = this.draft();
+    const preset = this.presets().find((p) => p.key === d.presetKey);
+    return preset?.kind === 'magic' && !d.alsoFind.includes(ARCANA_KEY);
+  });
+  private readonly alsoButton = viewChild('alsoButton', { read: ElementRef<HTMLButtonElement> });
+  private readonly alsoList = viewChild('alsoList', { read: ElementRef<HTMLElement> });
 
   protected readonly errors = computed(() => trapErrors(this.draft()));
   protected readonly shown = computed(() =>
@@ -173,6 +195,15 @@ export class TrapPointPanel {
       );
     });
     effect(() => {
+      const campaignId = this.campaignId();
+      void untracked(() =>
+        this.checks.skills(campaignId).then(
+          (all) => this.skills.set(alsoFindOptions(all)),
+          () => this.skills.set([]),
+        ),
+      );
+    });
+    effect(() => {
       const point = this.point();
       untracked(() => {
         if (point.id !== this.currentId) {
@@ -198,6 +229,7 @@ export class TrapPointPanel {
   }
 
   private reset(): void {
+    this.alsoOpen.set(false);
     const draft = trapDraftOf(this.point());
     this.openedState.set(draft.state);
     this.draft.set(draft);
@@ -237,6 +269,88 @@ export class TrapPointPanel {
   protected fromScratch(): void {
     this.draft.set(blankTrapDraft(this.draft().name));
     this.show.set(false);
+  }
+
+  // ---- "Também acham com": the skills that find it besides Percepção and Investigação ----
+
+  protected alsoName(key: string): string {
+    return this.alsoNames().get(key) ?? key;
+  }
+
+  protected toggleSkill(key: string): void {
+    this.patch({
+      alsoFind: toggleAlsoFind(
+        this.draft().alsoFind,
+        key,
+        this.skills().map((s) => s.key),
+      ),
+    });
+  }
+
+  protected removeSkill(key: string): void {
+    this.patch({ alsoFind: this.draft().alsoFind.filter((k) => k !== key) });
+  }
+
+  /** "Acrescentar perícia": opens the list right under the button, with the cursor on the first option. */
+  protected openAlso(): void {
+    if (this.alsoOpen()) {
+      this.closeAlso(false);
+      return;
+    }
+    this.alsoOpen.set(true);
+    this.alsoCursor.set(0);
+    afterNextRender(() => this.alsoList()?.nativeElement.focus(), { injector: this.injector });
+  }
+
+  protected closeAlso(focusButton = true): void {
+    this.alsoOpen.set(false);
+    if (focusButton) {
+      this.alsoButton()?.nativeElement.focus();
+    }
+  }
+
+  /** A tap on an option (the list answers for its options, so the keys and the pointer meet in one place). */
+  protected onAlsoClick(event: MouseEvent): void {
+    const row = (event.target as HTMLElement).closest<HTMLElement>('[role="option"]');
+    const skill = this.skills()[Number(row?.dataset['index'])];
+    if (skill) {
+      this.alsoCursor.set(Number(row?.dataset['index']));
+      this.toggleSkill(skill.key);
+    }
+  }
+
+  /** The listbox's keys: the arrows move the cursor, Space or Enter picks, Escape closes and gives the focus back to the button. */
+  protected onAlsoKey(event: KeyboardEvent): void {
+    const last = this.skills().length - 1;
+    switch (event.key) {
+      case 'ArrowDown':
+        this.alsoCursor.update((i) => Math.min(last, i + 1));
+        break;
+      case 'ArrowUp':
+        this.alsoCursor.update((i) => Math.max(0, i - 1));
+        break;
+      case 'Home':
+        this.alsoCursor.set(0);
+        break;
+      case 'End':
+        this.alsoCursor.set(Math.max(0, last));
+        break;
+      case ' ':
+      case 'Enter': {
+        const skill = this.skills()[this.alsoCursor()];
+        if (skill) {
+          this.toggleSkill(skill.key);
+        }
+        break;
+      }
+      case 'Escape':
+        this.closeAlso();
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
   }
 
   // ---- the effect, in parts ----

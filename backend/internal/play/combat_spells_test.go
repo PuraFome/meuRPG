@@ -722,6 +722,17 @@ func TestShieldTurnsAHitIntoAMiss(t *testing.T) {
 		if c := byLabel(t, e, "Pensantus"); c.GetArmorClassBonus() != 0 || c.GetReactionUsed() {
 			t.Errorf("Pensantus at the start of his turn = bonus %d, reaction used %v; want 0 and available", c.GetArmorClassBonus(), c.GetReactionUsed())
 		}
+		// The log says the Escudo ended, to the master and to its caster; another player
+		// does not read it (the Escudo may have answered an attack they do not see).
+		for name, u := range map[string]*user{"master": a.master, "the caster": a.ana} {
+			ended := effectEndedLines(a.log(t, u, e))
+			if len(ended) != 1 || ended[0].GetActorLabel() != "Pensantus" || ended[0].GetEffectEnd().GetEffect() != playv1.CombatEffect_COMBAT_EFFECT_SHIELD {
+				t.Errorf("%s reads the effect lines %v, want one: Pensantus's Escudo ended", name, ended)
+			}
+		}
+		if ended := effectEndedLines(a.log(t, a.caio, e)); len(ended) != 0 {
+			t.Errorf("another player reads %v, want no line about an Escudo they may not know of", ended)
+		}
 	})
 
 	t.Run("a total that still reaches the new armor class is still a hit", func(t *testing.T) {

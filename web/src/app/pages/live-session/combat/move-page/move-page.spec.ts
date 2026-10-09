@@ -182,7 +182,7 @@ describe('MovePage', () => {
     const { el, choose, press, disengaged } = setup();
     choose(10, 7);
     expect(plain(el.textContent)).toContain(
-      'Sair do alcance do Goblin 2 pode provocar um ataque de oportunidade.',
+      'Esse caminho sai do alcance do Goblin 2. Ele pode atacar você de graça (ataque de oportunidade).',
     );
     expect(plain(el.textContent)).toContain(
       'Com Desengajar, nenhum movimento deste turno provoca isso.',
@@ -194,7 +194,7 @@ describe('MovePage', () => {
   it('does not offer Desengajar when the action is gone', () => {
     const { el, choose } = setup({ canDisengage: false });
     choose(10, 7);
-    expect(plain(el.textContent)).toContain('Sair do alcance do Goblin 2');
+    expect(plain(el.textContent)).toContain('Esse caminho sai do alcance do Goblin 2');
     expect(plain(el.textContent)).not.toContain('Desengajar');
   });
 
@@ -296,9 +296,89 @@ describe('MovePage', () => {
       choose(10, 7); // reachable, and it provokes Goblin 2
       expect(plain(el.querySelector('.status__title')?.textContent)).toBe('Saltar 3,0 m');
       expect(plain(el.textContent)).toContain(
-        'Sair do alcance do Goblin 2 pode provocar um ataque de oportunidade.',
+        'Esse salto sai do alcance do Goblin 2. Ele pode atacar você de graça (ataque de oportunidade).',
       );
       expect(plain(el.textContent)).toContain('Desengajar (gasta a ação)');
+      // The landing square says it leaves the reach, and the cost goes above it.
+      expect(plain(el.querySelector('.cm__note')?.textContent)).toBe('Cai fora do alcance');
+      expect(plain(el.querySelector('.cm__cost')?.textContent)).toBe('3,0 m');
+    });
+
+    it('writes the jump card as the board does, with no trap the character does not know', () => {
+      const { fixture, el, choose } = setup({ jumps });
+      const radios = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
+      radios[1].click();
+      radios[1].dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      choose(10, 7);
+      expect(plain(el.querySelector('.status__text')?.textContent)).toBe(
+        'Cai 3,0 m adiante. Depois restam 6,0 m.',
+      );
+      expect(plain(el.textContent)).not.toMatch(/Fosso|armadilha/);
+    });
+
+    it('names the known trap on the jump card, and only that one', () => {
+      const { fixture, el, choose } = setup({ jumps });
+      const radios = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
+      radios[1].click();
+      radios[1].dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      choose(8, 9);
+      expect(plain(el.querySelector('.status__text')?.textContent)).toBe(
+        'Cai do outro lado do Fosso escondido. Depois restam 6,0 m. O Fosso escondido só dispara onde você cai.',
+      );
+    });
+
+    it('asks the page for the long jump\'s own squares while "Distância" is on, and for the walk\'s otherwise', () => {
+      const { fixture, el } = setup({ jumps });
+      const asked: unknown[] = [];
+      fixture.componentInstance.readJump.subscribe((j) => asked.push(j));
+      const radios = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
+      radios[1].click();
+      radios[1].dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      expect(asked.at(-1)).toEqual({ runningStart: true });
+      // "Altura" is the second kind of the second group: a high jump provokes nothing, so nothing is asked.
+      const kinds = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
+      kinds[3].click();
+      kinds[3].dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      expect(asked.at(-1)).toBeNull();
+    });
+
+    it('chooses Desengajar for the jump, spends it with the jump ("Saltar e desengajar") and takes it back', () => {
+      const { fixture, el, choose, press, jumped, disengaged } = setup({ jumps });
+      const radios = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
+      radios[1].click();
+      radios[1].dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      choose(10, 7);
+      press('Desengajar (gasta a ação)');
+      // Chosen, not taken yet: the action is spent when the jump is made.
+      expect(disengaged()).toBe(0);
+      expect(plain(el.textContent)).toContain('Desengajar escolhido.');
+      expect(plain(el.textContent)).toContain('Gasta a sua ação ao saltar.');
+      expect(plain(el.querySelector('.move__go')?.textContent)).toContain('Saltar e desengajar');
+      press('Voltar atrás (não desengajar)');
+      expect(plain(el.textContent)).toContain('Esse salto sai do alcance do Goblin 2');
+      expect(plain(el.querySelector('.move__go')?.textContent)).toContain('Saltar para cá');
+      press('Desengajar (gasta a ação)');
+      press('Saltar e desengajar');
+      expect(jumped).toEqual([{ kind: 'long', square: { col: 10, row: 7 }, disengage: true }]);
+      expect(fixture.componentInstance).toBeTruthy();
+    });
+
+    it('does not carry the choice of Desengajar to a square that provokes nothing', () => {
+      const { fixture, el, choose, press } = setup({ jumps });
+      const radios = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
+      radios[1].click();
+      radios[1].dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      choose(10, 7);
+      press('Desengajar (gasta a ação)');
+      choose(9, 8);
+      expect(plain(el.querySelector('.move__go')?.textContent)).toContain('Saltar para cá');
+      expect(plain(el.textContent)).not.toContain('Desengajar escolhido');
     });
 
     it('steps the high jump by 0,3 m up to the limit and sends the height', () => {

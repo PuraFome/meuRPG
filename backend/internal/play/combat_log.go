@@ -246,6 +246,8 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_CONFIRMED
 		case eventConditionsSet:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED
+		case eventCombatEffectEnded:
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED
 		case eventTurnPartEnded:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_TURN_PART_ENDED
 		case eventAttackRolled:
@@ -450,6 +452,12 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	if !v.master && (!visible || !seen) {
 		return nil, false
 	}
+	// An Escudo that ended is a line for the master and the combatant's own player: the
+	// Escudo may have answered an attack the other players do not see (a hidden attacker),
+	// and the line would tell them something happened (RN-10).
+	if !v.master && e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED && e.ev.EffectEnd != nil && e.ev.EffectEnd.Effect == effectShield && !v.owns(actor) {
+		return nil, false
+	}
 	// The offer's line is for whoever gets the offer (RN-10): the reactor's player
 	// and the mover's.
 	if !v.master && e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_OPPORTUNITY_OFFERED && !v.owns(actor) && !v.owns(target) {
@@ -487,7 +495,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		}
 		switch e.ev.Jump {
 		case jumpLong:
-			out.Jump = playv1.JumpKind_JUMP_KIND_LONG
+			out.Jump, out.JumpRunningStart = playv1.JumpKind_JUMP_KIND_LONG, e.ev.JumpRunning
 		case jumpHigh:
 			out.Jump, out.JumpHeightDft = playv1.JumpKind_JUMP_KIND_HIGH, e.ev.HeightDFt
 		}
@@ -568,6 +576,14 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED:
 		out.Conditions = e.ev.Conditions
 		out.ConcentrationEndedKey = e.ev.ConcEnded
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED:
+		if end := e.ev.EffectEnd; end != nil {
+			out.EffectEnd = &playv1.CombatLogEffectEnd{Effect: combatEffectToProto[end.Effect]}
+			if v.master { // the numbers are the master's and the player's own (RN-20); the player reads the vitals
+				out.EffectEnd.HitPointsBefore, out.EffectEnd.HitPointsAfter = end.HP0, end.HP1
+				out.EffectEnd.HitPointsMaxBefore, out.EffectEnd.HitPointsMaxAfter = end.Max0, end.Max1
+			}
+		}
 	}
 	return out, true
 }
@@ -670,6 +686,7 @@ func (e *logEntry) damage(dice, master, targetsOwn bool, out *playv1.CombatLogEn
 	d.Amount, d.DamageTypeKey, d.DamageTypePt = e.dmg.Amount, e.dmg.DamageType, damageTypePT[e.dmg.DamageType]
 	d.CriticalRule, d.CriticalMax = pendingCriticalRule(e.dmg.Critical, e.dmg.CriticalMaxRule), e.dmg.CriticalMax
 	if dice {
+		d.ExtraDiceCount, d.ExtraDiceNamePt = e.dmg.ExtraDice, extraDiceName(e.dmg.ExtraDice)
 		d.Roll = diceRoll(e.dmg.DiceCount, e.dmg.DiceSides, e.dmg.Faces, e.dmg.Modifier, e.dmg.Amount, e.dmg.Physical)
 	}
 	if ap := e.applied; ap != nil { // the master's apply of a character's damage

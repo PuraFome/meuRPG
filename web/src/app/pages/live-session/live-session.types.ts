@@ -8,6 +8,7 @@
  */
 
 import type { FamiliarSightVm } from '../../core/play/familiar-eyes';
+import type { SearchSkills } from '../../core/traps/trap-search';
 import type { DiceMode, DicePreference } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { CombatantMove, TurnChange } from '../../core/combat/combat-state';
 
@@ -56,6 +57,8 @@ export interface VitalsVm {
   readonly hitPointsCurrent: number;
   readonly hitPointsMax: number;
   readonly hitPointsTemporary: number;
+  /** What Ajuda adds to the maximum above (0 or absent without it): `hitPointsMax` already counts it, the sheet's own is the difference. */
+  readonly hitPointsMaxBonus?: number;
   /** Only the levels with slots, lowest first. */
   readonly spellSlots: readonly SlotUsageVm[];
   readonly pactSlots: PactSlotsVm | null;
@@ -198,8 +201,8 @@ export interface CampaignInfoVm {
 export interface PlayerSheetVm {
   /** `DerivedSheet.armor_class`; `null` for a sheet without it. */
   readonly armorClass: number | null;
-  /** The bonuses in Percepção and Investigação, for "Procurar armadilhas"; `null` for a sheet without skills. */
-  readonly skills?: { readonly perception: number | null; readonly investigation: number | null };
+  /** The bonuses in Percepção and Investigação and the other skills, for "Procurar armadilhas" and the checks; `undefined` for a sheet without skills. */
+  readonly skills?: SearchSkills;
   /** "Mago 3, Gnomo das Rochas". */
   readonly summary: string;
   /** The character's senses, as the sheet says them in meters: "Visão no escuro: 18 m" (MR-036). */

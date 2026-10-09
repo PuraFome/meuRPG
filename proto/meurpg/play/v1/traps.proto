@@ -231,4 +231,6 @@ message TrapSearchResult {
   // The traps it revealed to the character (map point IDs), with their names.
   repeated string found_point_ids = 6;
   repeated string found_names = 7;
+  // The skill of a search made with OTHER ("skill:arcana"); empty otherwise.
+  string other_skill_key = 8;
 }

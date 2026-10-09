@@ -135,10 +135,40 @@ export function ofThe(labels: readonly string[]): string {
   );
 }
 
-/** The warning before a move that may provoke: a warning, since the server says "pode". */
-export function provokeWarning(labels: readonly string[]): string {
-  return `Sair do alcance ${ofThe(labels)} pode provocar um ataque de oportunidade.`;
+/** "Ele", "Ela" or "Eles", for the one or the ones whose reach the move leaves. */
+function theyWord(labels: readonly string[]): { subject: string; verb: string } {
+  if (labels.length === 1) {
+    return { subject: article(labels[0]) === 'a' ? 'Ela' : 'Ele', verb: 'pode' };
+  }
+  return { subject: labels.every((l) => article(l) === 'a') ? 'Elas' : 'Eles', verb: 'podem' };
 }
+
+/** The warning before a move that may provoke, for a walk ("Esse caminho sai do alcance do Goblin 2. Ele pode atacar você de
+ * graça (ataque de oportunidade).") or a long jump ("Esse salto sai do alcance..."): a warning, since for a player the server
+ * says only "pode". */
+export function provokeWarning(
+  labels: readonly string[],
+  way: 'caminho' | 'salto' = 'caminho',
+): string {
+  const they = theyWord(labels);
+  return `Esse ${way} sai do alcance ${ofThe(labels)}. ${they.subject} ${they.verb} atacar você de graça (ataque de oportunidade).`;
+}
+
+/** The note on the jump's card: where it lands and what is left, with the trap the character knows when the landing square is
+ * inside one ("Cai do outro lado do Fosso. Depois restam 1,5 m. O Fosso só dispara onde você cai."), and no word about a trap
+ * the character does not know (RN-10). */
+export function jumpCardText(costDft: number, leftDft: number, knownTrapName = ''): string {
+  const after = afterText(leftDft, costDft);
+  if (knownTrapName) {
+    const the = `${article(knownTrapName) === 'a' ? 'a' : 'o'} ${knownTrapName}`;
+    const The = `${article(knownTrapName) === 'a' ? 'A' : 'O'} ${knownTrapName}`;
+    return `Cai do outro lado d${the}. ${after} ${The} só dispara onde você cai.`;
+  }
+  return `Cai ${metersFixed(costDft / 10)} adiante. ${after}`;
+}
+
+/** The label under the chosen square of a jump that leaves an enemy's reach. */
+export const LANDS_OUT_OF_REACH = 'Cai fora do alcance';
 
 /** The question before a move into a trap the character knows. */
 export function trapQuestion(name: string): string {

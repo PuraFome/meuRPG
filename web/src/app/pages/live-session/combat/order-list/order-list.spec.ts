@@ -412,3 +412,198 @@ describe('OrderList: the monsters of the bestiary (MR-042, RN-29, E10-08 state 5
     expect(cmp.removing()).toBeNull();
   });
 });
+
+describe('OrderList under Escudo Arcano and Ajuda (PM-03a)', () => {
+  const flat = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim();
+  const pensantus = (bonus: number) =>
+    combatant({
+      id: 'pen',
+      label: 'Pensantus',
+      kind: CombatantKind.PLAYER,
+      characterId: 'pen-c',
+      hitPointsCurrent: 30,
+      hitPointsMax: 30,
+      initiative: 14,
+      armorClass: 13,
+      armorClassBonus: bonus,
+    });
+  const salvia = (over: Partial<Parameters<typeof combatant>[0]> = {}) =>
+    combatant({
+      id: 'sal',
+      label: 'Sálvia',
+      kind: CombatantKind.PLAYER,
+      characterId: 'sal-c',
+      hitPointsCurrent: 31,
+      hitPointsMax: 43,
+      hitPointsMaxBonus: 5,
+      initiative: 13,
+      armorClass: 14,
+      ...over,
+    });
+  const hobgoblin = combatant({
+    id: 'hob',
+    label: 'Hobgoblin',
+    hitPointsCurrent: 27,
+    hitPointsMax: 27,
+    initiative: 12,
+    armorClass: 18,
+  });
+
+  function mount(combatants: ReturnType<typeof combatant>[]) {
+    const fixture = TestBed.createComponent(OrderList);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants, currentCombatantId: 'hob' }),
+    );
+    fixture.componentRef.setInput('adjustable', new Set(['pen-c', 'sal-c']));
+    fixture.detectChanges();
+    return fixture;
+  }
+  const rowOf = (fixture: ReturnType<typeof mount>, name: string) =>
+    Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.row')).find((r) =>
+      r.querySelector('.row__name')?.textContent?.includes(name),
+    )!;
+
+  it('says "CA 13 + 5" in bold and the label under the shield caster\'s name', () => {
+    const row = rowOf(mount([pensantus(5), hobgoblin]), 'Pensantus');
+    expect(flat(row.querySelector('.row__sub'))).toContain('CA 13 + 5');
+    expect(flat(row.querySelector('.row__sub b'))).toBe('CA 13 + 5');
+    expect(flat(row.querySelector('.row__effect'))).toContain('Escudo Arcano +5 até a vez dele');
+  });
+
+  it('says plain "CA 13" with no label when the caster has no shield', () => {
+    const row = rowOf(mount([pensantus(0), hobgoblin]), 'Pensantus');
+    expect(flat(row.querySelector('.row__sub'))).toContain('CA 13');
+    expect(flat(row.querySelector('.row__sub'))).not.toContain('+ 5');
+    expect(row.querySelector('.row__effect')).toBeNull();
+  });
+
+  it('says "31 de 43" with "+5 Ajuda" by the maximum, a striped bar piece and "Ajuda +5 PV" on the row', () => {
+    const row = rowOf(mount([salvia(), hobgoblin]), 'Sálvia');
+    expect(flat(row.querySelector('.row__hp-n'))).toBe('31 de 43+5 Ajuda');
+    expect(flat(row.querySelector('.row__effect--aid'))).toContain('Ajuda +5 PV');
+    const own = row.querySelector<HTMLElement>('.row__fill--own')!;
+    const striped = row.querySelector<HTMLElement>('.row__fill--aid')!;
+    expect(parseFloat(own.style.width)).toBeCloseTo((31 / 43) * 100);
+    expect(parseFloat(striped.style.width)).toBe(0);
+    expect(row.querySelector('.row__bar')?.getAttribute('aria-label')).toBe(
+      '31 de 43 pontos de vida',
+    );
+  });
+
+  it('offers "Encerrar Ajuda em Sálvia" only to a combatant under Ajuda', () => {
+    const fixture = mount([salvia(), pensantus(0), hobgoblin]);
+    const el = fixture.nativeElement as HTMLElement;
+    const more = (name: string) =>
+      el.querySelector<HTMLButtonElement>(`button[aria-label="Mais ações para ${name}"]`)!;
+    more('Sálvia').click();
+    fixture.detectChanges();
+    const items = () =>
+      Array.from(document.querySelectorAll('.mat-mdc-menu-item')).map((i) => flat(i));
+    expect(items().some((i) => i?.includes('Encerrar Ajuda em Sálvia'))).toBe(true);
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.destroy();
+    const other = mount([pensantus(0), hobgoblin]);
+    (other.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('button[aria-label="Mais ações para Pensantus"]')!
+      .click();
+    other.detectChanges();
+    expect(items().some((i) => i?.includes('Encerrar Ajuda'))).toBe(false);
+  });
+
+  function openQuestion(fixture: ReturnType<typeof mount>) {
+    (
+      fixture.componentInstance as unknown as { endingAid: { set(id: string): void } }
+    ).endingAid.set('sal');
+    fixture.detectChanges();
+    return (fixture.nativeElement as HTMLElement).querySelector('app-end-aid-question')!;
+  }
+
+  it('asks in place, with the sum in words, the focus on "Cancelar" and the irreversible button outlined', () => {
+    const fixture = mount([salvia({ hitPointsCurrent: 43 }), hobgoblin]);
+    const question = openQuestion(fixture);
+    const dialog = question.querySelector('[role="alertdialog"]')!;
+    expect(dialog.getAttribute('aria-label')).toBe('Encerrar a Ajuda da Sálvia?');
+    expect(flat(question.querySelector('.ask__text'))).toBe(
+      'O máximo de PV volta a 38. Os PV atuais passam de 43 para 38: o que passa do novo máximo se perde, e isto não se desfaz.',
+    );
+    const buttons = Array.from(question.querySelectorAll('button'));
+    expect(buttons.map((b) => flat(b))).toEqual(['Encerrar Ajuda', 'Cancelar']);
+    expect(buttons[0].classList.contains('danger')).toBe(true);
+    expect(document.activeElement).toBe(buttons[1]);
+  });
+
+  it('says the current hit points stay when they are below the new maximum', () => {
+    const fixture = mount([salvia(), hobgoblin]);
+    const question = openQuestion(fixture);
+    expect(flat(question.querySelector('.ask__text'))).toBe(
+      'O máximo de PV volta a 38. Os PV atuais ficam em 31: só o máximo cai, e isto não se desfaz.',
+    );
+  });
+
+  it('sends the combatant on "Encerrar Ajuda", and nothing on "Cancelar"', () => {
+    const fixture = mount([salvia(), hobgoblin]);
+    const ended: string[] = [];
+    fixture.componentInstance.endAid.subscribe((id) => ended.push(id));
+    const question = openQuestion(fixture);
+    const [end, cancel] = Array.from(question.querySelectorAll<HTMLButtonElement>('button'));
+    cancel.click();
+    fixture.detectChanges();
+    expect(ended).toEqual([]);
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-end-aid-question')).toBeNull();
+    openQuestion(fixture);
+    (fixture.nativeElement as HTMLElement)
+      .querySelectorAll<HTMLButtonElement>('app-end-aid-question button')[0]
+      .click();
+    fixture.detectChanges();
+    expect(ended).toEqual(['sal']);
+    expect(end).toBeDefined();
+  });
+
+  it('closes the question when the stream takes Ajuda away', () => {
+    const fixture = mount([salvia(), hobgoblin]);
+    openQuestion(fixture);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        combatants: [salvia({ hitPointsMaxBonus: 0, hitPointsMax: 38 }), hobgoblin],
+        currentCombatantId: 'hob',
+      }),
+    );
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-end-aid-question')).toBeNull();
+  });
+
+  it('says "O Escudo Arcano de Pensantus acabou" in the list when the bonus goes away, for six seconds', () => {
+    vi.useFakeTimers();
+    try {
+      const fixture = mount([pensantus(5), hobgoblin]);
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.querySelector('.order__ended')).toBeNull();
+      fixture.componentRef.setInput(
+        'encounter',
+        encounter({ combatants: [pensantus(0), hobgoblin], currentCombatantId: 'pen' }),
+      );
+      fixture.detectChanges();
+      expect(flat(el.querySelector('.order__live[role="status"] .order__ended'))).toContain(
+        'O Escudo Arcano de Pensantus acabou',
+      );
+      expect(el.querySelector('.row__effect')).toBeNull();
+      vi.advanceTimersByTime(6000);
+      fixture.detectChanges();
+      expect(el.querySelector('.order__ended')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not say the shield ended when its caster leaves the combat', () => {
+    const fixture = mount([pensantus(5), hobgoblin]);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants: [hobgoblin], currentCombatantId: 'hob' }),
+    );
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('.order__ended')).toBeNull();
+  });
+});

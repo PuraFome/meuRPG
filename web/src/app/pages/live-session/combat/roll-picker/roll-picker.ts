@@ -57,6 +57,11 @@ export class RollPicker {
   readonly totalNote = input('Total');
   /** The fixed parts added to what is typed, said in the field's place of the modifier ("+ 8 do crítico + 3 de modificador"). */
   readonly fixedText = input('');
+  /** The live total written out with the groups of dice ("22 (3d12) + 3 = 25"), in place of the plain sum; then the line under
+   * it says "dado físico" and the total's note. `null`: the plain one; the function may answer `null` for a number that has nothing to add ("14 + 9 = 23"). */
+  readonly typedFormula = input<
+    ((sum: number) => { readonly text: string; readonly total: number } | null) | null
+  >(null);
   /** What the buttons are called when the way is a damage roll. */
   readonly appLabel = input('Rolar no app');
   /** The master's NPC card has no filled button of its own ("Próximo turno" owns it). */
@@ -100,7 +105,15 @@ export class RollPicker {
   );
   protected readonly total = computed(() => {
     const v = this.value();
-    return v === null ? null : { sum: v + this.modifier(), text: typedTotal(v, this.modifier()) };
+    if (v === null) {
+      return null;
+    }
+    const written = this.typedFormula()?.(v) ?? null;
+    return {
+      sum: written?.total ?? v + this.modifier(),
+      text: written?.text ?? typedTotal(v, this.modifier()),
+      grouped: written !== null,
+    };
   });
   protected readonly bonusText = computed(() => {
     if (this.fixedText()) {

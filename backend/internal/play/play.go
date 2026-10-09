@@ -87,6 +87,13 @@ type VitalsKeeper interface {
 	// value outside 0 to its maximum.
 	AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, characterID string, req *playv1.AdjustCharacterVitalsRequest) (before, after *playv1.CharacterVitals, err error)
 
+	// SetHitPointsMaxBonus puts Aid's bonus to the character's maximum hit points
+	// at bonus inside tx (0 ends it) and returns the vitals before and after: the
+	// current hit points rise with a bonus that grew (a character at 0 wakes up) and
+	// lose only the excess when it fell, never the last hit point. `not_found` for
+	// anything but a living, active player character of the campaign.
+	SetHitPointsMaxBonus(ctx context.Context, tx pgx.Tx, campaignID, characterID string, bonus int32) (before, after *playv1.CharacterVitals, err error)
+
 	// The druid's Wild Shape form and the familiar's eyes live on the vitals too
 	// (MR-037, MR-036). This package decides when they start and end, and what they
 	// cost; the characters module keeps them and says what the character is in the

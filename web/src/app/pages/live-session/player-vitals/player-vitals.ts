@@ -1,8 +1,29 @@
-import { Component, computed, effect, input, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
 import { article } from '../../../core/combat/combat-log';
+import {
+  SHIELD_ENDED_MS,
+  aidBar,
+  aidLabel,
+  aidTag,
+  armorClassWithShield,
+  shieldEndedParts,
+  shieldLabelForOwner,
+  shieldSum,
+  sheetMaximum,
+  vitalsSpeech,
+} from '../../../core/combat/combat-effects';
 import { WildPools } from '../../../shared/wild-shape/wild-pools';
 import { PlayerSheetVm, VitalsVm } from '../live-session.types';
 import { SlotDots } from '../slot-dots/slot-dots';
@@ -39,6 +60,9 @@ export class PlayerVitals {
   /** The combat's version (E6-05): the PV box and the shield side by side,
    * then the slots; no temporary HP, hit dice or footer. */
   readonly compact = input(false);
+  /** The Escudo Arcano's bonus on the character's own combatant while a combat runs (0 without the spell); `null`
+   * when there is no combat or no combatant, which is not the shield ending. */
+  readonly armorClassBonus = input<number | null>(null);
 
   /** The two reserves of a druid in a beast form, the beast's first: they take the place of the hit points box. */
   protected readonly pools = computed(() => {
@@ -54,9 +78,45 @@ export class PlayerVitals {
     };
   });
   /** The armor class on the shield: the beast's while it is one, else the sheet's. */
-  protected readonly armorClass = computed(() =>
+  private readonly baseArmorClass = computed(() =>
     this.vitals().wildShape ? this.beastAc() : (this.sheet()?.armorClass ?? null),
   );
+  /** What the shield shows: the armor class already summed with the Escudo Arcano ("18"). */
+  protected readonly armorClass = computed(() => {
+    const base = this.baseArmorClass();
+    return base === null ? null : armorClassWithShield(base, this.shieldBonus());
+  });
+  protected readonly shieldBonus = computed(() => this.armorClassBonus() ?? 0);
+  /** The small sum under the shield: "13 + 5"; empty without the spell. */
+  protected readonly shieldSum = computed(() => {
+    const base = this.baseArmorClass();
+    return base !== null && this.shieldBonus() > 0 ? shieldSum(base, this.shieldBonus()) : '';
+  });
+  protected readonly shieldLabel = shieldLabelForOwner;
+
+  /** Ajuda's bonus: 0 without it. */
+  protected readonly aid = computed(() => Math.max(0, this.vitals().hitPointsMaxBonus ?? 0));
+  protected readonly aidTag = aidTag;
+  protected readonly aidLabel = aidLabel;
+  protected readonly sheetMaximum = computed(() =>
+    sheetMaximum(this.vitals().hitPointsMax, this.aid()),
+  );
+  protected readonly speech = computed(() => {
+    const v = this.vitals();
+    return vitalsSpeech(v.hitPointsCurrent, v.hitPointsMax, this.aid());
+  });
+  protected readonly barLabel = computed(() => {
+    const v = this.vitals();
+    return `${v.hitPointsCurrent} de ${v.hitPointsMax} pontos de vida`;
+  });
+  protected readonly bar = computed(() => {
+    const v = this.vitals();
+    return aidBar(v.hitPointsCurrent, v.hitPointsMax, this.aid());
+  });
+  /** The sentence of a shield that just ended, for a few seconds. */
+  protected readonly shieldEnded = signal<{ lead: string; rest: string } | null>(null);
+  private endedTimer: ReturnType<typeof setTimeout> | undefined;
+  private previousBonus: number | null = null;
 
   /** "Classe de Armadura", or "CA do Lobo" while a beast (the shield is narrow). */
   protected readonly acLabel = computed(() => {
@@ -97,6 +157,19 @@ export class PlayerVitals {
   private previous: VitalsVm | null = null;
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => clearTimeout(this.endedTimer));
+    // The shield that the combat takes away (the bonus goes from above 0 to 0 on this player's own combatant) is said once,
+    // politely, and goes away by itself; a combat that ended or a combatant that is gone is not "the shield ended".
+    effect(() => {
+      const bonus = this.armorClassBonus();
+      const before = this.previousBonus;
+      this.previousBonus = bonus;
+      if (before !== null && before > 0 && bonus === 0) {
+        this.shieldEnded.set(shieldEndedParts(untracked(() => this.baseArmorClass())));
+        clearTimeout(this.endedTimer);
+        this.endedTimer = setTimeout(() => this.shieldEnded.set(null), SHIELD_ENDED_MS);
+      }
+    });
     effect(() => {
       const v = this.vitals();
       const before = this.previous;

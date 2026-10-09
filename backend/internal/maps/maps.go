@@ -202,6 +202,8 @@ type Rules interface {
 	NamePT(key string) string
 	// TrapPreset and LightPreset find a preset by its key.
 	TrapPreset(key string) (rules.TrapPreset, bool)
+	// IsSkill says whether key is one of the SRD's skills ("skill:arcana").
+	IsSkill(key string) bool
 	LightPreset(key string) (rules.LightPreset, bool)
 	// GenerateTreasure, MagicItem and MagicItemValue are the
 	// treasure generator (MR-044, TreasureService): the treasure of a mode, party level

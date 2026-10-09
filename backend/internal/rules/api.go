@@ -627,6 +627,13 @@ type Derived struct {
 	// weapon attack: 20, or 19 with Improved Critical and 18 with Superior
 	// Critical.
 	CriticalRange int
+	// BrutalCriticalDice is how many extra weapon damage dice a melee critical
+	// hit rolls (the barbarian's Brutal Critical: 1, 2 or 3), 0 without it.
+	BrutalCriticalDice int
+	// ReliableTalent says the character has the rogue's Reliable Talent: on an
+	// ability check that adds the proficiency bonus, a d20 of 9 or lower counts
+	// as 10.
+	ReliableTalent bool
 	// TwoWeaponFighting says the character has the fighting style: the damage
 	// of the bonus action attack keeps the ability modifier.
 	TwoWeaponFighting bool

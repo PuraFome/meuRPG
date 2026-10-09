@@ -469,7 +469,7 @@ func (s *Service) MoveCombatant(
 		// enemy is offered an attack. A high jump moves nobody; a placement out of
 		// turn, a forced move and a move that stays put offer nothing.
 		if jump != playv1.JumpKind_JUMP_KIND_HIGH && !forced && onTurn && placed(target) && squareChanged {
-			if moveID, offered, err = s.offerOpportunities(ctx, c, cs, target, squareOfCombatant(target), to); err != nil {
+			if moveID, offered, err = s.offerOpportunities(ctx, c, cs, target, squareOfCombatant(target), to, jump == playv1.JumpKind_JUMP_KIND_LONG); err != nil {
 				return nil, err
 			}
 			made.MoveID = moveID
@@ -489,7 +489,7 @@ func (s *Service) MoveCombatant(
 		made.DistanceDFt, made.DistanceFt = clamp32(length, 0, math.MaxInt32), clamp32(length/10, 0, math.MaxInt32)
 		switch jump {
 		case playv1.JumpKind_JUMP_KIND_LONG:
-			made.Jump = jumpLong
+			made.Jump, made.JumpRunning = jumpLong, combat.HasRunningStart(int(target.LastMoveDft))
 			// SRD: landing in difficult terrain asks for a DC 10 Acrobatics check or
 			// the jumper falls prone. The app rolls nothing: the master's log says it.
 			made.LandingDifficult = !moverOf(target).Flier && terrain.Difficult.Has(to)
@@ -691,14 +691,55 @@ func (s *Service) GetMoveOptions(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the terrain the player knows", err)
 	}
-	out := moveOptions(planOn(v, terrain, known), who, occupantsFor(d.cs, who, v))
+	jump := req.Msg.GetJump()
+	switch jump {
+	case playv1.JumpKind_JUMP_KIND_UNSPECIFIED, playv1.JumpKind_JUMP_KIND_LONG:
+	default:
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("jump must be unset or LONG: a high jump moves nobody"))
+	}
+	var out *playv1.GetMoveOptionsResponse
+	if jump == playv1.JumpKind_JUMP_KIND_LONG {
+		out = jumpOptions(planOn(v, terrain, known), who, occupantsFor(d.cs, who, v))
+	} else {
+		out = moveOptions(planOn(v, terrain, known), who, occupantsFor(d.cs, who, v))
+	}
 	if err := s.markProvokes(ctx, m, enc, d.cs, who, v, sight, out); err != nil {
 		return nil, s.dbError(ctx, "work out the opportunity attacks", err)
 	}
 	if !v.master {
-		s.markKnownTraps(ctx, m.CampaignID, enc, who, out) // the warning before stepping into a trap the character knows
+		s.markKnownTraps(ctx, m.CampaignID, enc, who, out, jump == playv1.JumpKind_JUMP_KIND_LONG) // the warning before stepping into a trap the character knows
 	}
 	return connect.NewResponse(out), nil
+}
+
+// jumpOptions works out where the combatant can land with a long jump (SRD 5.1,
+// "Special Types of Movement": each foot cleared costs a foot of movement; the
+// distance is the Strength score in feet with a running start, half of it without):
+// the squares within the jump's limit that nothing in the way stops (a wall, a door
+// that is not open, a creature holding the landing) and that the movement left
+// pays for. The running start is the one the combatant really has (what it walked
+// just before), as MoveCombatant uses it: the preview never offers a square the move
+// would refuse. Its cost is the length of the line.
+func jumpOptions(t grid.Terrain, who playdb.Combatant, occ grid.OccupantMap) *playv1.GetMoveOptionsResponse {
+	left, from, mover := movementLeftDFt(who), squareOfCombatant(who), moverOf(who)
+	out := &playv1.GetMoveOptionsResponse{MovementLeftDft: clamp32(left, 0, math.MaxInt32), Flier: mover.Flier}
+	limit := min(longJumpDFt(who, combat.HasRunningStart(int(who.LastMoveDft))), left)
+	if limit <= 0 {
+		return out
+	}
+	radius := limit/grid.DFtPerSquare + 1
+	for row := max(from.Row-radius, 0); row <= min(from.Row+radius, t.Grid.Rows-1); row++ {
+		for col := max(from.Col-radius, 0); col <= min(from.Col+radius, t.Grid.Columns-1); col++ {
+			sq := grid.Square{Col: col, Row: row}
+			if sq == from || grid.LengthDFt(from, sq) > limit {
+				continue
+			}
+			if mv := t.Jump(from, sq, occ, mover); !mv.Blocked && mv.CostDFt <= left {
+				out.Reachable = append(out.Reachable, &playv1.ReachableSquare{Col: clamp32(col, 0, math.MaxInt32), Row: clamp32(row, 0, math.MaxInt32), CostDft: clamp32(mv.CostDFt, 0, math.MaxInt32)})
+			}
+		}
+	}
+	return out
 }
 
 // moveOptions works out where the combatant can go in one straight move: the

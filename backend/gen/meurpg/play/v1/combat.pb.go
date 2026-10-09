@@ -4971,9 +4971,11 @@ type GetMoveOptionsRequest struct {
 	// walk. HIGH is refused (`invalid_argument`): a high jump changes no square, so it
 	// provokes nothing.
 	Jump JumpKind `protobuf:"varint,4,opt,name=jump,proto3,enum=meurpg.play.v1.JumpKind" json:"jump,omitempty"`
-	// For a LONG jump: the combatant ran 10 ft first (the 3 m of a running start in
-	// metric), so the distance is the whole Strength score and not half of it. Ignored
-	// without a jump.
+	// For a LONG jump: the screen's guess that the combatant ran 10 ft first (the 3 m
+	// of a running start in metric). The squares always follow the running start the
+	// server counted from what the combatant really walked just before (the distance is
+	// the whole Strength score with it, half without), so the preview never offers a
+	// square MoveCombatant would refuse. Ignored without a jump.
 	JumpRunningStart bool `protobuf:"varint,5,opt,name=jump_running_start,json=jumpRunningStart,proto3" json:"jump_running_start,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -10859,6 +10861,9 @@ type CombatLogEntry struct {
 	DistanceDft   int32    `protobuf:"varint,30,opt,name=distance_dft,json=distanceDft,proto3" json:"distance_dft,omitempty"`
 	Jump          JumpKind `protobuf:"varint,31,opt,name=jump,proto3,enum=meurpg.play.v1.JumpKind" json:"jump,omitempty"`
 	JumpHeightDft int32    `protobuf:"varint,32,opt,name=jump_height_dft,json=jumpHeightDft,proto3" json:"jump_height_dft,omitempty"`
+	// MOVED by a long jump: the combatant had walked 10 ft just before, so the jump
+	// counted with a running start. Everyone who gets the line.
+	JumpRunningStart bool `protobuf:"varint,45,opt,name=jump_running_start,json=jumpRunningStart,proto3" json:"jump_running_start,omitempty"`
 	// MOVED by a long jump, only the master: it landed in difficult terrain, so the
 	// line says "Acrobacia CD 10 ou cai Derrubado" (the app rolls nothing).
 	LandingDifficult bool `protobuf:"varint,33,opt,name=landing_difficult,json=landingDifficult,proto3" json:"landing_difficult,omitempty"`
@@ -11134,6 +11139,13 @@ func (x *CombatLogEntry) GetJumpHeightDft() int32 {
 		return x.JumpHeightDft
 	}
 	return 0
+}
+
+func (x *CombatLogEntry) GetJumpRunningStart() bool {
+	if x != nil {
+		return x.JumpRunningStart
+	}
+	return false
 }
 
 func (x *CombatLogEntry) GetLandingDifficult() bool {
@@ -13479,7 +13491,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\astarted\x18\x03 \x01(\bR\astarted\x12A\n" +
 	"\n" +
 	"end_reason\x18\x04 \x01(\x0e2\".meurpg.play.v1.WildShapeEndReasonR\tendReason\x12%\n" +
-	"\x0ecarried_damage\x18\x05 \x01(\x05R\rcarriedDamage\"\xf2\r\n" +
+	"\x0ecarried_damage\x18\x05 \x01(\x05R\rcarriedDamage\"\xa0\x0e\n" +
 	"\x0eCombatLogEntry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x121\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1d.meurpg.play.v1.CombatLogKindR\x04kind\x12*\n" +
@@ -13522,7 +13534,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"coverBonus\x12!\n" +
 	"\fdistance_dft\x18\x1e \x01(\x05R\vdistanceDft\x12,\n" +
 	"\x04jump\x18\x1f \x01(\x0e2\x18.meurpg.play.v1.JumpKindR\x04jump\x12&\n" +
-	"\x0fjump_height_dft\x18  \x01(\x05R\rjumpHeightDft\x12+\n" +
+	"\x0fjump_height_dft\x18  \x01(\x05R\rjumpHeightDft\x12,\n" +
+	"\x12jump_running_start\x18- \x01(\bR\x10jumpRunningStart\x12+\n" +
 	"\x11landing_difficult\x18! \x01(\bR\x10landingDifficult\x12*\n" +
 	"\x11returned_to_reach\x18\" \x01(\bR\x0freturnedToReach\x12%\n" +
 	"\x0ereturn_blocked\x18# \x01(\bR\rreturnBlocked\x12.\n" +

@@ -1,5 +1,14 @@
 @let v = vitals();
 <section class="vitals" aria-labelledby="vitals-name">
+  <!-- The Escudo Arcano's end: said once, politely, for a few seconds; the focus stays where it is. -->
+  <div class="ended-live" role="status">
+    @if (shieldEnded(); as sentence) {
+      <p class="ended">
+        <mat-icon aria-hidden="true">shield</mat-icon>
+        <span><b>{{ sentence.lead }}</b> {{ sentence.rest }}</span>
+      </p>
+    }
+  </div>
   <div class="vitals__head">
     <h2 class="vitals__name" id="vitals-name">{{ v.name }}</h2>
     @if (sheet()?.summary; as summary) {
@@ -12,21 +21,30 @@
     <app-wild-pools class="top__pools" [beast]="p.beast" [character]="p.character" />
   } @else {
   <div class="hp">
-    <p class="hp__numbers">
+    <p class="mr-visually-hidden">{{ speech() }}</p>
+    <p class="hp__numbers" aria-hidden="true">
       <span class="hp__current">{{ v.hitPointsCurrent }}</span>
       <span class="hp__of">
-        <span class="hp__max">de {{ v.hitPointsMax }}</span>
+        <span class="hp__top">
+          <span class="hp__max">de {{ v.hitPointsMax }}</span>
+          @if (aid() > 0) {
+            <span class="hp__aid">{{ aidTag(aid()) }}</span>
+          }
+        </span>
         <span class="hp__label">Pontos de vida</span>
       </span>
     </p>
-    <div class="hp__bar" aria-hidden="true">
-      <div class="hp__fill" [style.width.%]="percent()"></div>
+    <div class="hp__bar" [class.hp__bar--aid]="aid() > 0" role="img" [attr.aria-label]="barLabel()">
+      <div class="hp__fill" [style.width.%]="aid() > 0 ? bar().solid : percent()"></div>
+      @if (aid() > 0) {
+        <div class="hp__fill hp__fill--aid" [style.width.%]="bar().striped"></div>
+      }
     </div>
   </div>
   }
 
   <dl class="stats">
-    <div class="shield">
+    <div class="shield" [class.shield--sum]="shieldSum() !== ''">
       <dt class="stats__label">{{ acLabel() }}</dt>
       <dd class="shield__value">
         <svg class="shield__shape" width="96" height="112" viewBox="0 0 96 112" aria-hidden="true">
@@ -34,6 +52,9 @@
         </svg>
         <span class="shield__number">{{ armorClass() ?? '–' }}</span>
       </dd>
+      @if (shieldSum(); as sum) {
+        <span class="shield__sum" aria-hidden="true">{{ sum }}</span>
+      }
     </div>
     @if (!compact()) {
     <div class="box">
@@ -49,6 +70,20 @@
     </div>
     }
   </dl>
+  </div>
+
+  <!-- The labels of the effects under the two cards; a live region, so they are said when they come and go. -->
+  <div class="effects" role="status">
+    @if (shieldBonus() > 0) {
+      <span class="effect effect--shield"
+        ><mat-icon aria-hidden="true">shield</mat-icon>{{ shieldLabel(shieldBonus()) }}</span
+      >
+    }
+    @if (aid() > 0) {
+      <span class="effect effect--aid"
+        ><mat-icon aria-hidden="true">favorite_border</mat-icon>{{ aidLabel(aid()) }}</span
+      >
+    }
   </div>
 
   @if (pools()) {

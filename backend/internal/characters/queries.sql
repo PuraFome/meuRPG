@@ -212,7 +212,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions
+       v.familiar_sight_conditions, v.hit_points_max_bonus
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -227,7 +227,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions
+       v.familiar_sight_conditions, v.hit_points_max_bonus
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -506,15 +506,31 @@ DELETE FROM character_wild_shapes WHERE character_id = $1;
 -- The sheet's maximum hit points changed from old_max to new_max (a level-up,
 -- an edit): a character whose current hit points are set gains what the maximum
 -- gained (gain, zero when it fell), so a wound stays a wound, and never ends
--- above the new maximum. NULL is "full" and stays so. The revision moves only
+-- above the new maximum. Both maximums are the sheet's, and Aid's bonus (the
+-- character's hit_points_max_bonus) rides on top of each. NULL is "full" and stays so. The revision moves only
 -- when the number does.
 UPDATE character_vitals
-SET hit_points_current = LEAST(LEAST(hit_points_current, sqlc.arg(old_max)::INT4) + sqlc.arg(gain)::INT4, sqlc.arg(new_max)::INT4),
+SET hit_points_current = LEAST(LEAST(hit_points_current, sqlc.arg(old_max)::INT4 + hit_points_max_bonus) + sqlc.arg(gain)::INT4, sqlc.arg(new_max)::INT4 + hit_points_max_bonus),
     revision = revision + 1,
     updated_at = sqlc.arg(now)
 WHERE character_id = sqlc.arg(character_id)
   AND hit_points_current IS NOT NULL
-  AND hit_points_current <> LEAST(LEAST(hit_points_current, sqlc.arg(old_max)::INT4) + sqlc.arg(gain)::INT4, sqlc.arg(new_max)::INT4);
+  AND hit_points_current <> LEAST(LEAST(hit_points_current, sqlc.arg(old_max)::INT4 + hit_points_max_bonus) + sqlc.arg(gain)::INT4, sqlc.arg(new_max)::INT4 + hit_points_max_bonus);
+
+-- name: SetVitalsMaxBonus :one
+-- Aid's bonus to a character's maximum hit points (hit_points_max_bonus) and the
+-- current hit points that go with it: the first write creates the vitals row, as
+-- TouchVitals does (hit_points_current is only for that insert, and a NULL "full"
+-- stays full of the new maximum). A NULL hit_points_current argument leaves the
+-- stored current hit points alone.
+INSERT INTO character_vitals (character_id, hit_points_current, hit_points_max_bonus, revision, updated_at)
+VALUES (sqlc.arg(character_id), sqlc.narg(hit_points_current), sqlc.arg(hit_points_max_bonus), 1, sqlc.arg(now))
+ON CONFLICT (character_id) DO UPDATE SET
+    hit_points_max_bonus = excluded.hit_points_max_bonus,
+    hit_points_current = COALESCE(excluded.hit_points_current, character_vitals.hit_points_current),
+    revision = character_vitals.revision + 1,
+    updated_at = excluded.updated_at
+RETURNING revision, updated_at;
 
 -- name: TouchVitals :one
 -- Bumps a character's vitals revision for a change made on a table of its own (the

@@ -93,6 +93,23 @@ describe('RollPicker', () => {
     expect(rolled).toEqual(['typed 9']);
   });
 
+  it('writes the live total with the groups of dice when the page gives the formula (Crítico Brutal)', () => {
+    const { fixture, el, type, button } = setup({
+      min: 3,
+      max: 36,
+      modifier: 3,
+      totalNote: 'de cortante',
+      typedFormula: (sum: number) => ({ text: `${sum} (3d12) + 3 = ${sum + 3}`, total: sum + 3 }),
+    });
+    button('Digitar o resultado')!.click();
+    fixture.detectChanges();
+    type('22');
+    const status = el.querySelector('[role="status"]')!;
+    expect(status.querySelector('.type__num')?.textContent).toBe('25');
+    expect(status.textContent?.replace(/\s+/g, ' ')).toContain('22 (3d12) + 3 = 25');
+    expect(status.querySelector('.type__cap')?.textContent).toBe('dado físico · de cortante');
+  });
+
   it('shows only a dash in the well until the number is valid, and keeps "1 a 20" together for a screen reader', () => {
     const { fixture, el, type, button } = setup();
     button('Digitar o resultado')!.click();

@@ -76,6 +76,7 @@
 }
 
 .hp__bar {
+  display: flex;
   height: 8px;
   overflow: hidden;
   border-radius: var(--mr-radius-pill);
@@ -86,6 +87,99 @@
   height: 100%;
   border-radius: var(--mr-radius-pill);
   background: var(--mr-ink);
+}
+
+// Under Ajuda the bar has two pieces, the sheet's own hit points and the striped part of the spell's.
+.hp__bar--aid .hp__fill {
+  flex: none;
+  border-radius: 0;
+}
+
+.hp__fill--aid {
+  background: repeating-linear-gradient(135deg, var(--mr-ink) 0 2px, var(--mr-surface) 2px 5px);
+}
+
+// "de 43" and, hanging off it, "+5 de Ajuda": it breaks to the next line before it squeezes the number.
+.hp__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--mr-space-2);
+}
+
+.hp__aid,
+.effect {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-sizing: border-box;
+  border: 1px solid var(--mr-accent);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-accent-soft);
+  color: var(--mr-accent-text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.hp__aid {
+  min-height: 24px;
+  padding: 0 9px;
+  white-space: nowrap;
+}
+
+// The labels under the two cards: Escudo Arcano in the accent, Ajuda in the warning colours; two lines on a narrow phone.
+.effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+
+  &:empty {
+    display: none;
+  }
+}
+
+.effect {
+  min-height: 28px;
+  padding: 3px 9px;
+
+  .mat-icon {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+
+  &--aid {
+    border-color: var(--mr-warning-line);
+    background: var(--mr-warning-surface);
+    color: var(--mr-warning-ink);
+  }
+}
+
+// "O Escudo Arcano acabou. A sua CA voltou a 13.": over the name, for six seconds.
+.ended-live:empty {
+  display: none;
+}
+
+.ended {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  font-size: 15px;
+  line-height: 20px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
 }
 
 // In a combat the PV box and the shield share a row (E6-05).
@@ -136,6 +230,23 @@
     font-size: 13px;
     line-height: 15px;
   }
+}
+
+// The small sum under the shield: "13 + 5".
+.shield--sum {
+  margin-bottom: 18px;
+}
+
+.shield__sum {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 15px;
+  text-align: center;
+  color: var(--mr-ink-muted);
 }
 
 .shield__value {

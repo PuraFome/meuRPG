@@ -293,10 +293,11 @@ SET hp_current = $2, hp_temp = $3, defeated = $4
 WHERE id = $1;
 
 -- name: SetCombatantHitPointsMax :exec
--- An NPC's maximum hit points, when a spell raises them (Ajuda) or its undo
--- puts them back.
+-- An NPC's or a creature's maximum hit points and the part of them Aid (Ajuda)
+-- added (hp_max includes it), when the spell raises them, the master ends it, or
+-- an undo puts them back.
 UPDATE combatants
-SET hp_max = $2
+SET hp_max = $2, hp_max_bonus = $3
 WHERE id = $1;
 
 -- name: SetCombatantEconomy :exec
@@ -383,12 +384,13 @@ WHERE character_id = sqlc.arg(character_id)
 -- may cast Escudo, for the target's reaction (attack_total is then kept for the
 -- new comparison). A spell's damages carry their cast_id, and may be a heal or
 -- a half damage. critical_max is what a critical hit adds without rolling (the
--- table's rule "máximo mais uma rolagem", RN-24).
+-- table's rule "máximo mais uma rolagem", RN-24). extra_dice are the weapon
+-- dice a feature adds to a critical hit (Brutal Critical), always rolled.
 INSERT INTO pending_damages (
     encounter_id, attacker_id, target_id, attack_key, status, critical,
     dice_count, dice_sides, dice_bonus, damage_type, created_at,
-    cast_id, healing, half, attack_total, attack_armor_class, critical_max, critical_max_rule
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+    cast_id, healing, half, attack_total, attack_armor_class, critical_max, critical_max_rule, extra_dice
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 RETURNING *;
 
 -- name: GetPendingDamage :one
@@ -776,8 +778,8 @@ SELECT * FROM trap_damages WHERE settle_key = $1;
 -- left a reactor's reach.
 
 -- name: InsertOpportunityOffer :one
-INSERT INTO opportunity_offers (encounter_id, move_id, mover_id, reactor_id, left_col, left_row, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO opportunity_offers (encounter_id, move_id, mover_id, reactor_id, left_col, left_row, created_at, jumped)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: ListPendingOpportunityOffers :many

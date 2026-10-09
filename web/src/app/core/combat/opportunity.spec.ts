@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CombatantKind,
+  JumpKind,
   OpportunityAttackSchema,
   OpportunityOfferSchema,
 } from '../../../gen/meurpg/play/v1/combat_pb';
@@ -141,6 +142,10 @@ describe('opportunity attacks in words', () => {
       'O Goblin 2 está saindo do seu alcance. Ataque de oportunidade?',
     );
     expect(plain(masterNews(toGoblin))).toBe('O Toren saiu do alcance do Goblin 2.');
+    // Out of the reach by a long jump, the word is "saltou".
+    expect(
+      plain(masterNews(create(OpportunityOfferSchema, { ...toGoblin, jump: JumpKind.LONG }))),
+    ).toBe('O Toren saltou para fora do alcance do Goblin 2.');
     expect(plain(masterAsk(toGoblin))).toBe('Goblin 2 ataca o Toren?');
   });
 

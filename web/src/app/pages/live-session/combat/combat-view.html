@@ -218,6 +218,7 @@
             [start]="dropStart()"
             (confirm)="confirmMove($event)"
             (jump)="confirmJump($event)"
+            (readJump)="moveJump.set($event)"
             (disengage)="disengage()"
             (back)="closeFullPage()"
           />
@@ -492,6 +493,7 @@
       (reveal)="reveal($event)"
       (remove)="remove($event)"
       (endConcentration)="loseConcentration($event)"
+      (endAid)="endAid($event)"
       (add)="addCombatants()"
       [coverAgainst]="coverAgainst()"
       [turnLabel]="turnLabel()"

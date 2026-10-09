@@ -29,7 +29,7 @@ func (s *Service) SceneOptions(ctx context.Context, tx pgx.Tx, campaignID, chara
 			continue
 		}
 		o := opts[0]
-		out = append(out, link.SceneOption{Known: true, CheckName: o.NamePT, Bonus: o.Bonus, Passive: o.Passive, HasPassive: o.HasPassive})
+		out = append(out, link.SceneOption{Known: true, CheckName: o.NamePT, Bonus: o.Bonus, Passive: o.Passive, HasPassive: o.HasPassive, ReliableTalent: o.ReliableTalent})
 	}
 	return out, nil
 }

@@ -335,6 +335,15 @@ export class LiveSession {
   protected readonly isMaster = computed(() => this.campaign()?.isMaster ?? false);
   /** The player's own character: the only one the server sends them. */
   protected readonly ownVitals = computed(() => this.vitals()[0] ?? null);
+  /** The Escudo Arcano's bonus on the player's own combatant while a combat is on; `null` outside one, so a combat that
+   * ends is not read as the shield ending. */
+  protected readonly ownArmorBonus = computed(() => {
+    const e = this.combat.encounter();
+    if (this.isMaster() || e?.status !== EncounterStatus.ACTIVE) {
+      return null;
+    }
+    return e.combatants.find((c) => c.mine)?.armorClassBonus ?? null;
+  });
   /** The master's "Ver como" list: the living player characters, with their players. */
   protected readonly viewAsPeople = computed<readonly ViewAsPerson[]>(() =>
     this.vitals().map((v) => ({

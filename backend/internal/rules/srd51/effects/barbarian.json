@@ -29,6 +29,15 @@
     "feature:fast-movement": [
       {"type": "modifier", "target": "speed.walk", "mode": "add", "value": "10", "when": "armor() != \"heavy\""}
     ],
+    "feature:brutal-critical-1-die": [
+      {"type": "note", "text_pt": "Crítico Brutal: em um acerto crítico corpo a corpo, você rola 1 dado de dano da arma a mais."}
+    ],
+    "feature:brutal-critical-2-dice": [
+      {"type": "note", "text_pt": "Crítico Brutal: em um acerto crítico corpo a corpo, você rola 2 dados de dano da arma a mais."}
+    ],
+    "feature:brutal-critical-3-dice": [
+      {"type": "note", "text_pt": "Crítico Brutal: em um acerto crítico corpo a corpo, você rola 3 dados de dano da arma a mais."}
+    ],
     "feature:primal-champion": [
       {"type": "modifier", "target": "score.str", "mode": "add", "value": "4", "cap": 24},
       {"type": "modifier", "target": "score.con", "mode": "add", "value": "4", "cap": 24}

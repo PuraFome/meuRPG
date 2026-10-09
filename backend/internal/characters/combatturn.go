@@ -149,7 +149,7 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 		out.Actions = append(out.Actions, link.Action{Key: a.Key, Name: a.NamePT})
 	}
 	out.AttacksPerAction = max(d.AttacksPerAction, 1)
-	out.CriticalRange, out.TwoWeaponFighting = d.CriticalRange, d.TwoWeaponFighting
+	out.CriticalRange, out.TwoWeaponFighting, out.BrutalCriticalDice = d.CriticalRange, d.TwoWeaponFighting, d.BrutalCriticalDice
 	for _, a := range d.Actions {
 		out.FeatureActions = append(out.FeatureActions, link.FeatureAction{
 			Key: a.Key, Name: a.NamePT, Economy: a.Economy, Resource: a.Resource, Pool: poolResources[a.Resource], Standard: a.Standard,

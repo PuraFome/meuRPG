@@ -14,6 +14,7 @@ import {
   indexOptions,
   leftLine,
   ofThe,
+  jumpCardText,
   provokeWarning,
   provokedBy,
   refusalText,
@@ -95,16 +96,32 @@ describe("the move page reads the server's options", () => {
     ]);
     expect(names).toEqual(['Goblin 2']);
     expect(plain(provokeWarning(names))).toBe(
-      'Sair do alcance do Goblin 2 pode provocar um ataque de oportunidade.',
+      'Esse caminho sai do alcance do Goblin 2. Ele pode atacar você de graça (ataque de oportunidade).',
     );
     expect(plain(provokeWarning(['Goblin 1', 'Brisa']))).toBe(
-      'Sair do alcance do Goblin 1 e da Brisa pode provocar um ataque de oportunidade.',
+      'Esse caminho sai do alcance do Goblin 1 e da Brisa. Eles podem atacar você de graça (ataque de oportunidade).',
     );
+    expect(plain(provokeWarning(['Brisa']))).toContain('Ela pode atacar você de graça');
     expect(provokedBy(options.reachable[0], [goblin])).toEqual([]);
     expect(trapQuestion('Fosso escondido')).toBe(
       'Isso entra no Fosso escondido. Mover assim mesmo?',
     );
     expect(ofThe(['Toren'])).toBe('do Toren');
+  });
+
+  it('says "salto" in place of "caminho" for a long jump, and nothing else changes', () => {
+    expect(plain(provokeWarning(['Goblin 2'], 'salto'))).toBe(
+      'Esse salto sai do alcance do Goblin 2. Ele pode atacar você de graça (ataque de oportunidade).',
+    );
+  });
+
+  it('writes the jump card: where it lands, and the trap only when the character knows it', () => {
+    expect(plain(jumpCardText(150, 200))).toBe('Cai 4,5 m adiante. Depois restam 1,5 m.');
+    expect(plain(jumpCardText(150, 200, 'Fosso'))).toBe(
+      'Cai do outro lado do Fosso. Depois restam 1,5 m. O Fosso só dispara onde você cai.',
+    );
+    // A trap the character does not know has no name on the card: the server sends none.
+    expect(jumpCardText(150, 200, '')).not.toMatch(/Fosso|armadilha/i);
   });
 
   it('writes what is left of a part, and what was walked', () => {

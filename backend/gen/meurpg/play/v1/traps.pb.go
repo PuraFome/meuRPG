@@ -1225,6 +1225,8 @@ type TrapSearchResult struct {
 	// The traps it revealed to the character (map point IDs), with their names.
 	FoundPointIds []string `protobuf:"bytes,6,rep,name=found_point_ids,json=foundPointIds,proto3" json:"found_point_ids,omitempty"`
 	FoundNames    []string `protobuf:"bytes,7,rep,name=found_names,json=foundNames,proto3" json:"found_names,omitempty"`
+	// The skill of a search made with OTHER ("skill:arcana"); empty otherwise.
+	OtherSkillKey string `protobuf:"bytes,8,opt,name=other_skill_key,json=otherSkillKey,proto3" json:"other_skill_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1306,6 +1308,13 @@ func (x *TrapSearchResult) GetFoundNames() []string {
 		return x.FoundNames
 	}
 	return nil
+}
+
+func (x *TrapSearchResult) GetOtherSkillKey() string {
+	if x != nil {
+		return x.OtherSkillKey
+	}
+	return ""
 }
 
 var File_meurpg_play_v1_traps_proto protoreflect.FileDescriptor
@@ -1402,7 +1411,7 @@ const file_meurpg_play_v1_traps_proto_rawDesc = "" +
 	"\rcharacter_ids\x18\x01 \x03(\tR\fcharacterIds\x12'\n" +
 	"\x0fcharacter_names\x18\x02 \x03(\tR\x0echaracterNames\x12\x19\n" +
 	"\bpoint_id\x18\x03 \x01(\tR\apointId\x12\x1b\n" +
-	"\ttrap_name\x18\x04 \x01(\tR\btrapName\"\xc5\x02\n" +
+	"\ttrap_name\x18\x04 \x01(\tR\btrapName\"\xed\x02\n" +
 	"\x10TrapSearchResult\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12%\n" +
 	"\x0echaracter_name\x18\x02 \x01(\tR\rcharacterName\x125\n" +
@@ -1412,7 +1421,8 @@ const file_meurpg_play_v1_traps_proto_rawDesc = "" +
 	"secondRoll\x12&\n" +
 	"\x0ffound_point_ids\x18\x06 \x03(\tR\rfoundPointIds\x12\x1f\n" +
 	"\vfound_names\x18\a \x03(\tR\n" +
-	"foundNames*\x98\x01\n" +
+	"foundNames\x12&\n" +
+	"\x0fother_skill_key\x18\b \x01(\tR\rotherSkillKey*\x98\x01\n" +
 	"\x0fTrapSearchSkill\x12!\n" +
 	"\x1dTRAP_SEARCH_SKILL_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cTRAP_SEARCH_SKILL_PERCEPTION\x10\x01\x12#\n" +

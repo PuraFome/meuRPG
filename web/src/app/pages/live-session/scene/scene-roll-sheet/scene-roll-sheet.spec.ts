@@ -120,6 +120,72 @@ describe('SceneRollSheet', () => {
     expect(document.activeElement?.textContent).toContain('Voltar à cena');
   });
 
+  it('says what Talento Confiável did to the d20: the arrow, the sentence and the reading for a screen reader', async () => {
+    const { el, button, settle } = setup();
+    api.made = {
+      ...api.made,
+      roll: {
+        diceCount: 1,
+        diceSides: 20,
+        faces: [6],
+        modifier: 9,
+        total: 19,
+        physical: false,
+        treatedAs: 10,
+        treatedAsSource: 'feature:reliable-talent',
+      },
+    } as never;
+    button('Rolar no app')!.click();
+    await settle();
+    expect(el.querySelector('.res__formula')?.textContent).toBe(
+      'd20: 6 → 10 (Talento Confiável) + 9 = 19',
+    );
+    const cap = Array.from(el.querySelectorAll('.res__cap')).map((n) => n.textContent?.trim());
+    expect(cap).toContain('O d20 de 6 contou como 10: perícia com proficiência.');
+    expect(el.querySelector('.res .mr-visually-hidden')?.textContent).toBe(
+      'd20: 6, contou 10 por Talento Confiável, mais 9, total 19',
+    );
+  });
+
+  it('writes a d20 that no feature changed plainly, with no sentence about a rule', async () => {
+    const { el, button, settle } = setup();
+    api.made = {
+      ...api.made,
+      roll: { diceCount: 1, diceSides: 20, faces: [14], modifier: 9, total: 23, physical: false },
+    } as never;
+    button('Rolar no app')!.click();
+    await settle();
+    expect(el.querySelector('.res__formula')?.textContent).toBe('1d20 (14) + 9 = 23');
+    expect(el.textContent).not.toContain('contou como');
+    expect(el.querySelector('.res .mr-visually-hidden')).toBeNull();
+  });
+
+  it('previews the typed d20 raised by Talento Confiável (6 → 10) only for a skill the sheet says it raises, and a 14 plainly', () => {
+    const { fixture, el, button, type } = setup({
+      action: { ...playerScene().actions[0], key: 'skill:acrobatics' },
+      reliableTalent: ['skill:acrobatics'],
+    });
+    button('Digitar o resultado')!.click();
+    fixture.detectChanges();
+    type('6');
+    const sum = () => el.querySelector('.type__sum')?.textContent?.replace(/\s+/g, ' ');
+    expect(sum()).toContain('6 → 10 (Talento Confiável) + 6 = 16');
+    expect(sum()).toContain('dado físico');
+    expect(el.querySelector('.type__num')?.textContent).toBe('16');
+    type('14');
+    expect(sum()).toContain('14 + 6 = 20 · dado físico');
+    expect(sum()).not.toContain('Talento');
+  });
+
+  it('previews nothing of the rule for a check the feature does not raise (no skill with proficiency)', () => {
+    const { fixture, el, button, type } = setup({ reliableTalent: ['skill:acrobatics'] });
+    button('Digitar o resultado')!.click();
+    fixture.detectChanges();
+    type('6');
+    expect(el.querySelector('.type__sum')?.textContent).not.toContain('Talento');
+    expect(el.querySelector('.type__sum')?.textContent).toContain('6 + 6 = 12');
+  });
+
   it('types a die: 1 to 20, the live total, the button only valid inside', async () => {
     const { fixture, el, button, type, settle } = setup();
     button('Digitar o resultado')!.click();

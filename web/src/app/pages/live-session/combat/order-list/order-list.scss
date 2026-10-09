@@ -219,7 +219,7 @@
 }
 
 .row__bar {
-  display: block;
+  display: flex;
   width: 76px;
   height: 5px;
   margin-top: 6px;
@@ -232,6 +232,82 @@
   display: block;
   height: 100%;
   background: var(--mr-ink);
+}
+
+// Under Ajuda: the sheet's own part solid, the spell's part striped.
+.row__fill--own,
+.row__fill--aid {
+  flex: none;
+}
+
+.row__fill--aid {
+  background: repeating-linear-gradient(135deg, var(--mr-ink) 0 2px, var(--mr-surface) 2px 4px);
+}
+
+.row__aid,
+.row__effect {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  border: 1px solid var(--mr-accent);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-accent-soft);
+  color: var(--mr-accent-text);
+  font: 700 13px/1.2 var(--mr-font-sans);
+  white-space: nowrap;
+}
+
+.row__aid {
+  margin-left: 6px;
+  padding: 1px 8px;
+  vertical-align: 2px;
+}
+
+// The labels under the name: the shield in the accent, Ajuda in the warning colours.
+.row__effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin-top: 4px;
+}
+
+.row__effect {
+  gap: 5px;
+  padding: 2px 9px;
+  white-space: normal;
+
+  .mat-icon {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+
+  &--aid {
+    border-color: var(--mr-warning-line);
+    background: var(--mr-warning-surface);
+    color: var(--mr-warning-ink);
+  }
+}
+
+.order__live:empty {
+  display: none;
+}
+
+.order__ended {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
 }
 
 .row__actions {

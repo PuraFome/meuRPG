@@ -2,6 +2,7 @@ import {
   type Combatant,
   CombatantKind,
   type Encounter,
+  JumpKind,
   type OpportunityOffer,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { Attack } from '../../../gen/meurpg/rules/v1/rules_pb';
@@ -124,9 +125,13 @@ export function spendText(offer: OpportunityOffer, reactorIsCharacter = true): s
   return `${cost} O mestre disse que ${he} saiu do ${reactorIsCharacter ? 'seu alcance' : `alcance ${ofThe([offer.reactorLabel])}`}.`;
 }
 
-/** The master's: "O Toren saiu do alcance do Goblin 2." */
+/** The master's: "O Toren saiu do alcance do Goblin 2.", or "O Toren saltou para fora do alcance do Goblin 2." when the mover
+ * left it by a long jump. */
 export function masterNews(offer: OpportunityOffer): string {
-  return `${capitalize(`${article(offer.moverLabel)} ${offer.moverLabel}`)} saiu do alcance ${ofThe([offer.reactorLabel])}.`;
+  const who = capitalize(`${article(offer.moverLabel)} ${offer.moverLabel}`);
+  return offer.jump === JumpKind.LONG
+    ? `${who} saltou para fora do alcance ${ofThe([offer.reactorLabel])}.`
+    : `${who} saiu do alcance ${ofThe([offer.reactorLabel])}.`;
 }
 
 /** "Goblin 2 ataca o Toren?" */

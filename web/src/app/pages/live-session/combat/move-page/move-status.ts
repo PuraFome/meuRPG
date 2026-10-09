@@ -46,19 +46,33 @@ export interface MoveSummary {
       }
     }
     @if (summary().kind === 'ok' && summary().warning) {
-      <div class="mr-notice mr-notice--warning">
-        <mat-icon aria-hidden="true">warning</mat-icon>
-        <p>
-          {{ summary().warning }}
-          @if (canDisengage()) {
-            <span class="note">Com Desengajar, nenhum movimento deste turno provoca isso.</span>
-          }
-        </p>
-      </div>
-      @if (canDisengage()) {
-        <button mat-button type="button" class="disengage" [disabled]="busy()" (click)="disengage.emit()">
-          Desengajar (gasta a ação)
+      @if (chosen()) {
+        <!-- A jump with Desengajar chosen: the action is spent when the jump is made, so it can still be taken back. -->
+        <div class="mr-notice mr-notice--success" role="status">
+          <mat-icon aria-hidden="true">check_circle</mat-icon>
+          <p>
+            <strong class="err__title">Desengajar escolhido.</strong>Nenhum movimento deste turno provoca ataque de
+            oportunidade. Gasta a sua ação ao saltar.
+          </p>
+        </div>
+        <button mat-button type="button" class="disengage" [disabled]="busy()" (click)="undo.emit()">
+          Voltar atrás (não desengajar)
         </button>
+      } @else {
+        <div class="mr-notice mr-notice--warning">
+          <mat-icon aria-hidden="true">warning</mat-icon>
+          <p>
+            {{ summary().warning }}
+            @if (canDisengage()) {
+              <span class="note">Com Desengajar, nenhum movimento deste turno provoca isso.</span>
+            }
+          </p>
+        </div>
+        @if (canDisengage()) {
+          <button mat-button type="button" class="disengage" [disabled]="busy()" (click)="disengage.emit()">
+            Desengajar (gasta a ação)
+          </button>
+        }
       }
     }
     @if (summary().kind === 'ok' && summary().trap) {
@@ -74,5 +88,8 @@ export class MoveStatus {
   readonly summary = input.required<MoveSummary>();
   readonly canDisengage = input(false);
   readonly busy = input(false);
+  /** Desengajar was chosen for a jump, to be spent with the jump: the notice says so and "Voltar atrás" takes it back. */
+  readonly chosen = input(false);
   readonly disengage = output<void>();
+  readonly undo = output<void>();
 }

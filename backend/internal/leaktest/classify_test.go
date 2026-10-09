@@ -134,6 +134,7 @@ var notReads = map[string]classified{
 	playv1connect.CombatServiceDeclineOpportunityProcedure:                    {playerAction, "a player declines an opportunity attack of their own combatant"},
 	playv1connect.CombatServiceDeclineReactionProcedure:                       {playerAction, "a player declines a reaction of their own combatant"},
 	playv1connect.CombatServiceDiscardPendingDamageProcedure:                  {masterWrite, masterOnlyWhy},
+	playv1connect.CombatServiceEndCombatEffectProcedure:                       {masterWrite, masterOnlyWhy},
 	playv1connect.CombatServiceEndConcentrationProcedure:                      {playerAction, "a player ends their own concentration"},
 	playv1connect.CombatServiceEndEncounterProcedure:                          {masterWrite, masterOnlyWhy},
 	playv1connect.CombatServiceEndTurnProcedure:                               {playerAction, "a player ends their own turn"},

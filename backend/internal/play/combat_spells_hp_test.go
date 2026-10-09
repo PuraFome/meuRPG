@@ -604,9 +604,9 @@ func TestFalseLifeGivesTemporaryHitPoints(t *testing.T) {
 }
 
 // TestAidRaisesTheMaximumHitPoints: Aid raises the maximum and the current hit
-// points of an NPC by 5 (it is not healing: a creature at 0 stays there), and the
-// undo puts both back; a player's character, whose maximum comes from its sheet,
-// gets the 5 as temporary hit points.
+// points of an NPC and of a player's character by 5 (SRD 5.1, Aid: both increase
+// for the duration; it gives no temporary hit points), keeps the bonus on the target
+// and the undo puts everything back.
 func TestAidRaisesTheMaximumHitPoints(t *testing.T) {
 	t.Parallel()
 	a := newTempHPCasters(t)
@@ -614,6 +614,7 @@ func TestAidRaisesTheMaximumHitPoints(t *testing.T) {
 	a.passTo(t, e, "Brisa")
 
 	goblin := byLabel(t, a.get(t, a.master), "Goblin")
+	toren := a.vitals(t, a.toren)
 	a.undoes(t, "Ajuda", func() {
 		a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(2), a.at(t, "Goblin", "Toren"), noCastRoll)
 	})
@@ -622,14 +623,205 @@ func TestAidRaisesTheMaximumHitPoints(t *testing.T) {
 		t.Errorf("the cast = kind %v with %d pending damages, want maximum hit points and no heal", res.GetCast().GetEffectKind(), len(res.GetCast().GetPendingDamages()))
 	}
 	now := byLabel(t, a.get(t, a.master), "Goblin")
-	if now.GetHitPointsMax() != goblin.GetHitPointsMax()+5 || now.GetHitPointsCurrent() != goblin.GetHitPointsCurrent()+5 {
-		t.Errorf("the goblin has %d of %d PV, want %d of %d", now.GetHitPointsCurrent(), now.GetHitPointsMax(), goblin.GetHitPointsCurrent()+5, goblin.GetHitPointsMax()+5)
+	if now.GetHitPointsMax() != goblin.GetHitPointsMax()+5 || now.GetHitPointsCurrent() != goblin.GetHitPointsCurrent()+5 || now.GetHitPointsMaxBonus() != 5 {
+		t.Errorf("the goblin has %d of %d PV with a bonus of %d, want %d of %d and 5", now.GetHitPointsCurrent(), now.GetHitPointsMax(), now.GetHitPointsMaxBonus(), goblin.GetHitPointsCurrent()+5, goblin.GetHitPointsMax()+5)
 	}
-	if v := a.vitals(t, a.toren); v.GetHitPointsTemporary() != 5 {
-		t.Errorf("Toren has %d temporários, want 5", v.GetHitPointsTemporary())
+	v := a.vitals(t, a.toren)
+	if v.GetHitPointsMax() != toren.GetHitPointsMax()+5 || v.GetHitPointsCurrent() != toren.GetHitPointsCurrent()+5 || v.GetHitPointsMaxBonus() != 5 || v.GetHitPointsTemporary() != 0 {
+		t.Errorf("Toren has %d of %d PV, bonus %d and %d temporários; want %d of %d, 5 and 0", v.GetHitPointsCurrent(), v.GetHitPointsMax(), v.GetHitPointsMaxBonus(), v.GetHitPointsTemporary(), toren.GetHitPointsCurrent()+5, toren.GetHitPointsMax()+5)
+	}
+	if c := byLabel(t, a.get(t, a.master), "Toren"); c.GetHitPointsMax() != v.GetHitPointsMax() || c.GetHitPointsMaxBonus() != 5 {
+		t.Errorf("the master's list has Toren at %d with a bonus of %d, want %d and 5", c.GetHitPointsMax(), c.GetHitPointsMaxBonus(), v.GetHitPointsMax())
 	}
 	assertAidGain(t, res, a, "Goblin", playv1.SpellEffectGain_SPELL_EFFECT_GAIN_MAXIMUM)
-	assertAidGain(t, res, a, "Toren", playv1.SpellEffectGain_SPELL_EFFECT_GAIN_TEMPORARY)
+	assertAidGain(t, res, a, "Toren", playv1.SpellEffectGain_SPELL_EFFECT_GAIN_MAXIMUM)
+	// Toren's own player and the master read where Toren stands after the spell.
+	for name, u := range map[string]*user{"the master": a.master, "Toren's player": a.caio} {
+		eff := logEffect(t, spellEntry(t, a.log(t, u, e)), "Toren")
+		if eff.GetHitPointsAfter() != v.GetHitPointsCurrent() || eff.GetHitPointsMaxAfter() != v.GetHitPointsMax() {
+			t.Errorf("%s reads Toren at %d of %d after the spell, want %d of %d", name, eff.GetHitPointsAfter(), eff.GetHitPointsMaxAfter(), v.GetHitPointsCurrent(), v.GetHitPointsMax())
+		}
+	}
+	if eff := logEffect(t, spellEntry(t, a.log(t, a.ana, e)), "Toren"); eff.HitPointsAfter != nil || eff.HitPointsMaxAfter != nil {
+		t.Errorf("another player reads Toren at %d of %d after the spell, want no numbers", eff.GetHitPointsAfter(), eff.GetHitPointsMaxAfter())
+	}
+}
+
+// TestAidDoesNotStack: a second Aid on a target keeps the stronger bonus instead of
+// adding up (SRD 5.1, "Combining Magical Effects"), and the current hit points rise
+// only by what the maximum rose.
+func TestAidDoesNotStack(t *testing.T) {
+	t.Parallel()
+	a := newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
+			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
+		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 3,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt}, nil, nil)
+		a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", "race:human", 5,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{maceKey}, []string{sacredFlame}, nil,
+			[]string{aidSpell})
+	})
+	e := a.castersFight(t, 1)
+	base := a.vitals(t, a.toren)
+
+	e = a.passTo(t, e, "Brisa")
+	a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(2), a.at(t, "Toren", "Goblin"), noCastRoll)
+	e = a.passTo(t, a.passTo(t, e, "Toren"), "Brisa")
+	// The same strength again: nothing changes.
+	res := a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(2), a.at(t, "Toren", "Goblin"), noCastRoll)
+	if v := a.vitals(t, a.toren); v.GetHitPointsMaxBonus() != 5 || v.GetHitPointsMax() != base.GetHitPointsMax()+5 || v.GetHitPointsCurrent() != base.GetHitPointsCurrent()+5 {
+		t.Errorf("after two Ajudas of the 2nd level Toren has %d of %d with a bonus of %d, want %d of %d and 5", v.GetHitPointsCurrent(), v.GetHitPointsMax(), v.GetHitPointsMaxBonus(), base.GetHitPointsCurrent()+5, base.GetHitPointsMax()+5)
+	}
+	if eff := effectOf(t, res.GetEncounter(), res.GetCast().GetTargets(), "Toren"); eff.GetHealed() != 0 {
+		t.Errorf("the second Ajuda raised Toren by %d, want 0", eff.GetHealed())
+	}
+	goblin := byLabel(t, a.get(t, a.master), "Goblin")
+	if goblin.GetHitPointsMaxBonus() != 5 {
+		t.Errorf("the goblin's bonus after two Ajudas = %d, want 5", goblin.GetHitPointsMaxBonus())
+	}
+	// A stronger one (3rd level) takes over: the bonus is 10, not 15, and the current hit
+	// points rise by the 5 the maximum rose.
+	e = a.passTo(t, a.passTo(t, e, "Toren"), "Brisa")
+	a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(3), a.at(t, "Toren", "Goblin"), noCastRoll)
+	if v := a.vitals(t, a.toren); v.GetHitPointsMaxBonus() != 10 || v.GetHitPointsMax() != base.GetHitPointsMax()+10 || v.GetHitPointsCurrent() != base.GetHitPointsCurrent()+10 {
+		t.Errorf("after the 3rd-level Ajuda Toren has %d of %d with a bonus of %d, want %d of %d and 10", v.GetHitPointsCurrent(), v.GetHitPointsMax(), v.GetHitPointsMaxBonus(), base.GetHitPointsCurrent()+10, base.GetHitPointsMax()+10)
+	}
+	// A weaker one over it changes nothing.
+	e = a.passTo(t, a.passTo(t, e, "Toren"), "Brisa")
+	a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(2), a.at(t, "Toren"), noCastRoll)
+	if v := a.vitals(t, a.toren); v.GetHitPointsMaxBonus() != 10 || v.GetHitPointsCurrent() != base.GetHitPointsCurrent()+10 {
+		t.Errorf("a weaker Ajuda changed Toren to %d with a bonus of %d, want %d and 10", v.GetHitPointsCurrent(), v.GetHitPointsMaxBonus(), base.GetHitPointsCurrent()+10)
+	}
+}
+
+// endAid is the master's EndCombatEffect for Ajuda on the combatant with the label.
+func (a *armed) endAid(t *testing.T, u *user, e *playv1.Encounter, label string, key string) (*playv1.Encounter, error) {
+	t.Helper()
+	res, err := u.combat.EndCombatEffect(t.Context(), connect.NewRequest(&playv1.EndCombatEffectRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, label), Effect: playv1.CombatEffect_COMBAT_EFFECT_AID, IdempotencyKey: key,
+	}))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg.GetEncounter(), nil
+}
+
+// effectEndedLines are the lines of the log that say a lasting effect ended.
+func effectEndedLines(log *playv1.ListCombatLogResponse) []*playv1.CombatLogEntry {
+	var out []*playv1.CombatLogEntry
+	for _, r := range log.GetRounds() {
+		for _, en := range r.GetEntries() {
+			if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED {
+				out = append(out, en)
+			}
+		}
+	}
+	return out
+}
+
+// TestEndingAidTakesOffOnlyTheExcess: when the master ends Ajuda the maximum falls
+// back and the current hit points lose only what is above it (SRD 5.1, "Healing":
+// hit points never pass the maximum); a wounded target keeps its hit points, and one
+// the spell woke from 0 stays awake. It works on an NPC too, and the log says it, with
+// the numbers for the master alone.
+func TestEndingAidTakesOffOnlyTheExcess(t *testing.T) { //nolint:tparallel // the first and fourth subtests share one combat, in order
+	t.Parallel()
+	a := newTempHPCasters(t)
+	e := a.castersFight(t, 1)
+	a.passTo(t, e, "Brisa")
+	sheetMax := a.vitals(t, a.toren).GetHitPointsMax()
+	a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(2), a.at(t, "Goblin", "Toren"), noCastRoll)
+
+	t.Run("a full target loses the five it was lent", func(t *testing.T) {
+		out, err := a.endAid(t, a.master, e, "Toren", newKey())
+		if err != nil {
+			t.Fatalf("EndCombatEffect() error = %v", err)
+		}
+		v := a.vitals(t, a.toren)
+		if v.GetHitPointsMax() != sheetMax || v.GetHitPointsCurrent() != sheetMax || v.GetHitPointsMaxBonus() != 0 {
+			t.Errorf("Toren after the end has %d of %d with a bonus of %d, want %d of %d and 0", v.GetHitPointsCurrent(), v.GetHitPointsMax(), v.GetHitPointsMaxBonus(), sheetMax, sheetMax)
+		}
+		if c := byLabel(t, out, "Toren"); c.GetHitPointsMaxBonus() != 0 || c.GetHitPointsMax() != sheetMax {
+			t.Errorf("the master's list has Toren at %d with a bonus of %d, want %d and 0", c.GetHitPointsMax(), c.GetHitPointsMaxBonus(), sheetMax)
+		}
+		lines := effectEndedLines(a.log(t, a.master, out))
+		if len(lines) != 1 || lines[0].GetEffectEnd().GetEffect() != playv1.CombatEffect_COMBAT_EFFECT_AID ||
+			lines[0].GetEffectEnd().GetHitPointsBefore() != sheetMax+5 || lines[0].GetEffectEnd().GetHitPointsAfter() != sheetMax {
+			t.Errorf("the master's line = %v, want Ajuda ended with %d → %d", lines, sheetMax+5, sheetMax)
+		}
+		if lines := effectEndedLines(a.log(t, a.caio, out)); len(lines) != 1 || lines[0].GetEffectEnd().GetHitPointsBefore() != 0 || lines[0].GetEffectEnd().GetHitPointsAfter() != 0 {
+			t.Errorf("the player's line = %v, want the end of Ajuda with no numbers", lines)
+		}
+	})
+	t.Run("a wounded target keeps its hit points", func(t *testing.T) {
+		a := newTempHPCasters(t)
+		e := a.castersFight(t, 1)
+		a.passTo(t, e, "Brisa")
+		a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(2), a.at(t, "Toren"), noCastRoll)
+		a.correct(t, a.toren, hpIs(12))
+		if _, err := a.endAid(t, a.master, e, "Toren", newKey()); err != nil {
+			t.Fatalf("EndCombatEffect() error = %v", err)
+		}
+		if v := a.vitals(t, a.toren); v.GetHitPointsCurrent() != 12 || v.GetHitPointsMax() != sheetMax {
+			t.Errorf("Toren after the end has %d of %d, want 12 of %d", v.GetHitPointsCurrent(), v.GetHitPointsMax(), sheetMax)
+		}
+	})
+	t.Run("a target the spell woke stays awake", func(t *testing.T) {
+		a := newTempHPCasters(t)
+		e := a.castersFight(t, 1)
+		a.passTo(t, e, "Brisa")
+		a.correct(t, a.toren, hpIs(0))
+		a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(2), a.at(t, "Toren"), noCastRoll)
+		if _, err := a.endAid(t, a.master, e, "Toren", newKey()); err != nil {
+			t.Fatalf("EndCombatEffect() error = %v", err)
+		}
+		if v := a.vitals(t, a.toren); v.GetHitPointsCurrent() != 5 || v.GetHitPointsMax() != sheetMax {
+			t.Errorf("Toren after the end has %d of %d, want 5 of %d: never dropped to 0 by it", v.GetHitPointsCurrent(), v.GetHitPointsMax(), sheetMax)
+		}
+		if c := byLabel(t, a.get(t, a.caio), "Toren"); c.GetState() == playv1.CombatantState_COMBATANT_STATE_DOWN {
+			t.Error("Toren is down again after Ajuda ended")
+		}
+	})
+	t.Run("an NPC", func(t *testing.T) {
+		goblin := byLabel(t, a.get(t, a.master), "Goblin")
+		out, err := a.endAid(t, a.master, e, "Goblin", newKey())
+		if err != nil {
+			t.Fatalf("EndCombatEffect() error = %v", err)
+		}
+		now := byLabel(t, out, "Goblin")
+		if now.GetHitPointsMaxBonus() != 0 || now.GetHitPointsMax() != goblin.GetHitPointsMax()-5 || now.GetHitPointsCurrent() != goblin.GetHitPointsMax()-5 {
+			t.Errorf("the goblin after the end has %d of %d with a bonus of %d, want %d of %d and 0", now.GetHitPointsCurrent(), now.GetHitPointsMax(), now.GetHitPointsMaxBonus(), goblin.GetHitPointsMax()-5, goblin.GetHitPointsMax()-5)
+		}
+	})
+	t.Run("who may end it, and what a retry does", func(t *testing.T) {
+		a := newTempHPCasters(t)
+		e := a.castersFight(t, 1)
+		a.passTo(t, e, "Brisa")
+		a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(2), a.at(t, "Toren"), noCastRoll)
+		_, err := a.endAid(t, a.caio, e, "Toren", newKey())
+		wantCode(t, "EndCombatEffect by the target's player", err, connect.CodePermissionDenied)
+		key := newKey()
+		if _, err := a.endAid(t, a.master, e, "Toren", key); err != nil {
+			t.Fatalf("EndCombatEffect() error = %v", err)
+		}
+		before := a.snapshot(t)
+		if _, err := a.endAid(t, a.master, e, "Toren", key); err != nil {
+			t.Errorf("EndCombatEffect() again with the same key error = %v, want the first answer", err)
+		}
+		_, err = a.endAid(t, a.master, e, "Goblin", key)
+		wantCode(t, "the same key for another combatant", err, connect.CodeInvalidArgument)
+		// Ending an Ajuda the target no longer has changes nothing.
+		if _, err := a.endAid(t, a.master, e, "Toren", newKey()); err != nil {
+			t.Errorf("EndCombatEffect() with nothing to end error = %v", err)
+		}
+		if after := a.snapshot(t); after != before {
+			t.Errorf("a retry or an empty end changed the combat:\nbefore %s\nafter  %s", before, after)
+		}
+		_, err = a.master.combat.EndCombatEffect(t.Context(), connect.NewRequest(&playv1.EndCombatEffectRequest{
+			CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Toren"), Effect: playv1.CombatEffect_COMBAT_EFFECT_SHIELD, IdempotencyKey: newKey(),
+		}))
+		wantCode(t, "ending Escudo by hand", err, connect.CodeInvalidArgument)
+	})
 }
 
 // assertAidGain checks what a cast of Aid says the labeled target got.
@@ -665,8 +857,8 @@ func TestAidWakesACharacterAtZero(t *testing.T) {
 	})
 	res := a.mustCast(t, a.bia, e, "Brisa", aidSpell, slotOfLevel(2), a.at(t, "Toren"), noCastRoll)
 	assertAidGain(t, res, a, "Toren", playv1.SpellEffectGain_SPELL_EFFECT_GAIN_CURRENT)
-	if v := a.vitals(t, a.toren); v.GetHitPointsCurrent() != 5 || v.GetHitPointsTemporary() != 0 {
-		t.Errorf("Toren = %d PV and %d temporários, want 5 and 0", v.GetHitPointsCurrent(), v.GetHitPointsTemporary())
+	if v := a.vitals(t, a.toren); v.GetHitPointsCurrent() != 5 || v.GetHitPointsTemporary() != 0 || v.GetHitPointsMaxBonus() != 5 {
+		t.Errorf("Toren = %d PV, %d temporários and a bonus of %d, want 5, 0 and 5", v.GetHitPointsCurrent(), v.GetHitPointsTemporary(), v.GetHitPointsMaxBonus())
 	}
 	if c := byLabel(t, a.get(t, a.caio), "Toren"); c.GetState() == playv1.CombatantState_COMBATANT_STATE_DOWN || c.GetDeathFailures() != 0 || c.GetDeathSuccesses() != 0 {
 		t.Errorf("Toren after Ajuda = state %v, %d failures; want up and the death saves reset", c.GetState(), c.GetDeathFailures())

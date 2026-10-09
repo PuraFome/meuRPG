@@ -58,8 +58,13 @@
       @if (total(); as t) {
         <span class="type__num">{{ t.sum }}</span>
         <span class="type__formula">
-          <span>{{ modifier() === 0 ? t.sum : t.text }} · dado físico</span>
-          <span class="type__cap">{{ totalNote() }}</span>
+          @if (t.grouped) {
+            <span>{{ t.text }}</span>
+            <span class="type__cap">dado físico · {{ totalNote() }}</span>
+          } @else {
+            <span>{{ modifier() === 0 ? t.sum : t.text }} · dado físico</span>
+            <span class="type__cap">{{ totalNote() }}</span>
+          }
         </span>
       } @else {
         <span aria-hidden="true">—</span>

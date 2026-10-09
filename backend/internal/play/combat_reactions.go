@@ -63,7 +63,7 @@ func (s *Service) shieldFor(ctx context.Context, tx pgx.Tx, campaignID string, t
 // is not a critical hit (the SRD's Escudo still works against one, but the
 // table keeps the prompt for the hits it can stop), to wait for the reaction
 // first. attackTotal is kept for the new comparison.
-func (s *Service) openHit(ctx context.Context, c *combatTx, campaignID string, attacker, target playdb.Combatant, key string, dmg link.Dice, critical bool, attackTotal, attackAC int) (playdb.PendingDamage, error) {
+func (s *Service) openHit(ctx context.Context, c *combatTx, campaignID string, attacker, target playdb.Combatant, key string, dmg link.Dice, critical bool, extraDice, attackTotal, attackAC int) (playdb.PendingDamage, error) {
 	status := pendingAwaitingRoll
 	if !critical {
 		slots, err := s.shieldFor(ctx, c.tx, campaignID, target)
@@ -84,6 +84,7 @@ func (s *Service) openHit(ctx context.Context, c *combatTx, campaignID string, a
 		DiceCount: clamp32(count, 0, 100), CriticalMax: clamp32(fixed, 0, 10000), CriticalMaxRule: critical && c.rules.CriticalMaxPlusRoll,
 		DiceSides: clamp32(dmg.Sides, 0, 100), DiceBonus: clamp32(dmg.Bonus, -1000, 1000),
 		DamageType: dmg.DamageType, CreatedAt: c.now, AttackTotal: &total, AttackArmorClass: new(clamp32(attackAC, 0, math.MaxInt32)),
+		ExtraDice: clamp32(extraDice, 0, maxExtraDice),
 	})
 	if err != nil {
 		return playdb.PendingDamage{}, fmt.Errorf("open the pending damage: %w", err)

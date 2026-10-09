@@ -31,10 +31,22 @@ import { ActionKey } from '../../../../core/connect/idempotency';
 import {
   damageFormula,
   diceName,
+  extraDiceOf,
   rollFormula,
   sumRange,
 } from '../../../../core/combat/combat-dice';
-import { criticalHint, criticalTypedHint, fixedParts } from '../../../../core/combat/critical';
+import {
+  brutalLabel,
+  brutalTyped,
+  brutalTypedHint,
+  criticalHint,
+  criticalSentence,
+  criticalSum,
+  criticalTypedHint,
+  fixedParts,
+  hasExtraDice,
+  typedRange,
+} from '../../../../core/combat/critical';
 import { isTheatre } from '../../../../core/combat/theatre';
 import { metersText } from '../../../../core/units';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
@@ -227,13 +239,42 @@ export class AttackSheet {
         }
       : null;
   });
+  /** The damage when a feature adds dice to the critical (Crítico Brutal): the screens say the groups and the feature's name. */
+  protected readonly brutal = computed(() => {
+    const p = this.pending();
+    return p && hasExtraDice(p) ? p : null;
+  });
+  /** "2d12 + 1d12 + 3" and "2d12 do crítico (dados dobrados) e 1d12 do Crítico Brutal (nível 9), mais 3 de modificador, de cortante.". */
+  protected readonly brutalCard = computed(() => {
+    const b = this.brutal();
+    return b ? { sum: criticalSum(b), sentence: criticalSentence(b, b.damageTypePt) } : null;
+  });
   protected readonly range = computed(() => {
+    const b = this.brutal();
+    if (b) {
+      return typedRange(b);
+    }
     const d = this.dice();
     return d ? sumRange(d.count, d.sides) : { min: 1, max: 1 };
   });
   protected readonly damageLine = computed(() => {
     const d = this.damage();
-    return d?.roll ? damageFormula(d.roll, d.damageTypePt) : '';
+    return d?.roll ? damageFormula(d.roll, d.damageTypePt, extraDiceOf(d), d.criticalMax) : '';
+  });
+  /** The typed sum's live total with the groups, only for the damage with extra dice. */
+  protected readonly typedFormula = computed(() => {
+    const b = this.brutal();
+    return b
+      ? (sum: number) => ({ text: brutalTyped(b, sum), total: sum + b.criticalMax + b.bonus })
+      : null;
+  });
+  protected readonly totalNote = computed(() => {
+    const b = this.brutal();
+    return b && b.damageTypePt ? `de ${b.damageTypePt}` : 'Dano total';
+  });
+  protected readonly damageAppLabel = computed(() => {
+    const d = this.dice();
+    return this.brutal() ? 'Rolar dano no app' : `Rolar ${d?.name ?? ''} no app`;
   });
   protected readonly after = computed(() => {
     const d = this.damage();
@@ -286,12 +327,20 @@ export class AttackSheet {
     () => `Role 1d20 para ${this.name} (${this.signedBonus()})`,
   );
   protected readonly damageLabel = computed(() => {
+    const b = this.brutal();
+    if (b) {
+      return brutalLabel(b, `${article(this.name)} ${this.name}`);
+    }
     const d = this.dice();
     return d && d.count > 1
       ? `Role ${d.name} para o dano: some os dois`
       : `Role ${d?.name ?? ''} para o dano`;
   });
   protected readonly damageHint = computed(() => {
+    const b = this.brutal();
+    if (b) {
+      return brutalTypedHint(b);
+    }
     const r = this.range();
     const p = this.pending();
     return criticalTypedHint(
@@ -306,9 +355,14 @@ export class AttackSheet {
   protected readonly damageModifier = computed(
     () => (this.pending()?.bonus ?? 0) + (this.pending()?.criticalMax ?? 0),
   );
-  protected readonly fixedText = computed(() =>
-    fixedParts(this.pending()?.criticalMax ?? 0, this.pending()?.bonus ?? 0),
-  );
+  protected readonly fixedText = computed(() => {
+    const b = this.brutal();
+    if (b) {
+      // The maximum stands in the live total's groups; the field's note is the modifier alone.
+      return b.bonus === 0 ? '' : `${b.bonus < 0 ? '−' : '+'} ${Math.abs(b.bonus)} de bônus`;
+    }
+    return fixedParts(this.pending()?.criticalMax ?? 0, this.pending()?.bonus ?? 0);
+  });
   /** The critical's line only for whoever rolls physical dice (the app's dice are the server's). */
   protected readonly showCritical = computed(() => !this.canApp || this.typing());
   /** The line above the damage's dice: what a critical hit rolls under the table's rule ("role os dados duas vezes", "o máximo mais uma rolagem"), or "Acertou: role o dano.". */
