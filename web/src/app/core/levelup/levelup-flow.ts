@@ -1,4 +1,5 @@
 import {
+  LevelUpProficiencyKind,
   LevelUpSpellsKind,
   type LevelUpFeatureChoice,
   type LevelUpOptions,
@@ -24,9 +25,10 @@ import { joinDots } from '../format/text';
 /** The steps, in the order Vinicius ruled: Habilidades, Vida, Magias, Resumo;
  * "Escolhas" (subclass, feature options, skills, expertise) is the one extra,
  * and sits before Magias because a subclass can add cantrips. */
-export type StepKey = 'abilities' | 'hp' | 'picks' | 'spells' | 'summary';
+export type StepKey = 'class' | 'abilities' | 'hp' | 'picks' | 'spells' | 'summary';
 
 export const STEP_LABELS: Record<StepKey, string> = {
+  class: 'Classe',
   abilities: 'Habilidades',
   hp: 'Vida',
   picks: 'Escolhas',
@@ -49,7 +51,8 @@ export function totalsFor(o: LevelUpOptions, subclassKey: string): Totals {
   return {
     cantrips: o.cantrips + (sub?.cantrips ?? 0),
     spells: o.spells + (sub?.spells ?? 0),
-    skills: o.skillChoices + (sub?.skillChoices ?? 0),
+    skills:
+      o.skillChoices + (sub?.skillChoices ?? 0) + proficiencyPick(o, LevelUpProficiencyKind.SKILL),
     expertise: o.expertiseChoices + (sub?.expertiseChoices ?? 0),
     featureChoices: [...o.featureChoices, ...(sub?.featureChoices ?? [])],
   };
@@ -83,14 +86,26 @@ export function preparedMore(o: LevelUpOptions, maxAfter: number, preparedNow: n
   return o.prepares ? Math.max(0, maxAfter - preparedNow) : 0;
 }
 
-/** The steps this level has: one with nothing to choose does not exist. Vida never goes. */
+/** How many of a multiclass table's picks of this kind a new class asks (a skill, the Bard's instrument). */
+export function proficiencyPick(o: LevelUpOptions, kind: LevelUpProficiencyKind): number {
+  return o.proficiencyChoices.find((c) => c.kind === kind)?.count ?? 0;
+}
+
+/** The steps this level has: one with nothing to choose does not exist. Classe and Vida never go
+ * ("Subir em qual classe?" always opens the flow). */
 export function stepsFor(o: LevelUpOptions, t: Totals, more: number): StepKey[] {
-  const steps: StepKey[] = [];
+  const steps: StepKey[] = ['class'];
   if (o.abilityScoreImprovement) {
     steps.push('abilities');
   }
   steps.push('hp');
-  if (o.subclassDue || t.featureChoices.length > 0 || t.skills > 0 || t.expertise > 0) {
+  if (
+    o.subclassDue ||
+    t.featureChoices.length > 0 ||
+    t.skills > 0 ||
+    t.expertise > 0 ||
+    proficiencyPick(o, LevelUpProficiencyKind.INSTRUMENT) > 0
+  ) {
     steps.push('picks');
   }
   if (t.cantrips > 0 || t.spells > 0 || more > 0) {
@@ -211,7 +226,7 @@ export function preparedOptions(
     );
 }
 
-const ABILITY_FROM_GEN: Record<number, AbilityKey> = {
+export const ABILITY_FROM_GEN: Record<number, AbilityKey> = {
   [GenAbility.STRENGTH]: 'str',
   [GenAbility.DEXTERITY]: 'dex',
   [GenAbility.CONSTITUTION]: 'con',
@@ -225,9 +240,26 @@ function skillItem(skill: Skill): PickItem {
   return { key: skill.key, name: skill.namePt, sub: key ? abilityLabel(key) : '' };
 }
 
-/** New skills: any the character is not trained in yet. */
-export function skillOptions(skills: readonly Skill[], have: SheetKeys): PickItem[] {
+/** New skills: any the character is not trained in yet. A class taken as a later class gives its own list, in which the
+ * skills the character already has stay, turned off ("Você já tem"). */
+export function skillOptions(
+  skills: readonly Skill[],
+  have: SheetKeys,
+  o?: LevelUpOptions,
+): PickItem[] {
   const owned = new Set(have.skills);
+  const pick = o?.proficiencyChoices.find((c) => c.kind === LevelUpProficiencyKind.SKILL);
+  if (pick) {
+    const from = new Map(pick.from.map((f) => [f.key, f.alreadyHave]));
+    return skills
+      .filter((s) => from.has(s.key))
+      .map((s) =>
+        from.get(s.key) || owned.has(s.key)
+          ? { ...skillItem(s), disabled: 'Você já tem' }
+          : skillItem(s),
+      )
+      .sort((a, b) => COLLATOR.compare(a.name, b.name));
+  }
   return skills
     .filter((s) => !owned.has(s.key))
     .map(skillItem)

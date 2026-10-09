@@ -52,10 +52,25 @@ func (x *deriver) armorClass() {
 	}
 
 	// Other bases from effects: the best one wins, and the description
-	// names the feature that gave it.
+	// names the feature that gave it. Unarmored Defense is the exception: a
+	// character that has it from one class never gains it again from another
+	// (SRD 5.1, "Multiclassing", "Unarmored Defense"), so only the first of the
+	// features that read "Unarmored Defense" counts.
+	unarmored := ""
 	for _, a := range x.active {
 		e := a.effect
-		if e.Type != "modifier" || e.Target != "ac.base" || len(e.Tags) > 0 || !x.applies(a) {
+		if e.Type != "modifier" || e.Target != "ac.base" || len(e.Tags) > 0 {
+			continue
+		}
+		if unarmoredDefenseFeatures[a.owner] {
+			if unarmored == "" {
+				unarmored = a.owner
+			}
+			if a.owner != unarmored {
+				continue
+			}
+		}
+		if !x.applies(a) {
 			continue
 		}
 		v, ok := x.value(a)
@@ -82,6 +97,13 @@ func (x *deriver) armorClass() {
 	x.d.ArmorClass = x.modifiers("ac", ac)
 	x.d.ArmorClassDescription = name
 	x.d.ArmorCategory = x.armorCategory
+}
+
+// unarmoredDefenseFeatures are the class features called Unarmored Defense: the
+// barbarian's and the monk's. A character has at most one of them.
+var unarmoredDefenseFeatures = map[string]bool{
+	"feature:barbarian-unarmored-defense": true,
+	"feature:monk-unarmored-defense":      true,
 }
 
 // resolveArmor finds the worn armor. It runs before any effect, because
