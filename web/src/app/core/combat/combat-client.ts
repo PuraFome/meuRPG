@@ -22,6 +22,7 @@ import {
   type ReactionOutcome,
   type SpellCast,
 } from '../../../gen/meurpg/play/v1/combat_pb';
+import { type RollMode, type RollModeRequest } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { newKey } from '../connect/idempotency';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
@@ -71,6 +72,28 @@ export type InitiativeRoll = { readonly inApp: true } | { readonly face: number 
 
 /** How a d20 of an attack comes: the app rolls it, or a typed face. */
 export type AttackDie = InitiativeRoll;
+
+/** Two physical d20 (advantage or disadvantage), in the order they were rolled. */
+export interface PairDie {
+  readonly faces: readonly number[];
+}
+
+/** The mode a d20 is rolled with when it is not the server's suggestion: the reason, and the answered request that allows a better one. */
+export interface ModeChoice {
+  readonly mode: RollMode;
+  readonly reason: string;
+  readonly requestId?: string;
+}
+
+/** What the player marked in the damage sheet: the extras with Divine Smite's slot, and the sums typed for physical dice. */
+export interface DamageChoice {
+  readonly extras: readonly {
+    readonly key: string;
+    readonly slotLevel: number;
+    readonly pact: boolean;
+  }[];
+  readonly typedParts?: readonly { readonly partKey: string; readonly sum: number }[];
+}
 
 /** How the damage comes: the app rolls it, or the sum of the physical dice
  * (without the modifier; the server adds it). */
@@ -358,6 +381,35 @@ export class CombatClient {
     return need(res.encounter, 'EndTurn');
   }
 
+  /** "A sua fúria vai acabar?": `endRage` true lets the rage end and passes the turn, false goes back to the turn. */
+  async answerRageEnd(
+    campaignId: string,
+    encounterId: string,
+    combatantId: string,
+    endRage: boolean,
+  ): Promise<Encounter> {
+    const res = await this.keyed(
+      ['answerRageEnd', campaignId, encounterId, combatantId, endRage],
+      (sent) =>
+        this.client.answerRageEnd({
+          campaignId,
+          encounterId,
+          combatantId,
+          endRage,
+          idempotencyKey: sent,
+        }),
+    );
+    return need(res.encounter, 'AnswerRageEnd');
+  }
+
+  /** "Encerrar fúria": the bonus action that ends a rage. */
+  async endRage(campaignId: string, encounterId: string, combatantId: string): Promise<Encounter> {
+    const res = await this.keyed(['endRage', campaignId, encounterId, combatantId], (sent) =>
+      this.client.endRage({ campaignId, encounterId, combatantId, idempotencyKey: sent }),
+    );
+    return need(res.encounter, 'EndRage');
+  }
+
   /** `MoveCombatant`: a walk to a square, or a jump (`jump`: a long one to the
    * square, or a high one by `jumpHeightDft` tenths of a foot). `stoppedEarly`
    * is "something you did not see stopped you"; `provoked` that an opportunity
@@ -619,10 +671,11 @@ export class CombatClient {
     attackerId: string,
     attackKey: string,
     targetId: string,
-    die: AttackDie,
+    die: AttackDie | PairDie,
     key: string,
     asReaction = false,
     opportunityOfferId = '',
+    mode?: ModeChoice,
   ): Promise<AttackResult> {
     const res = await this.client.rollAttack({
       campaignId,
@@ -632,9 +685,21 @@ export class CombatClient {
       targetId,
       idempotencyKey: key,
       roll:
-        'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
+        'inApp' in die
+          ? { case: 'rollInApp', value: true }
+          : 'face' in die
+            ? { case: 'd20Face', value: die.face }
+            : { case: undefined },
+      d20Faces: 'faces' in die ? [...die.faces] : [],
       asReaction,
       opportunityOfferId,
+      ...(mode
+        ? {
+            rollMode: mode.mode,
+            modeReason: mode.reason,
+            rollModeRequestId: mode.requestId ?? '',
+          }
+        : {}),
     });
     return {
       encounter: need(res.encounter, 'RollAttack'),
@@ -647,8 +712,9 @@ export class CombatClient {
     campaignId: string,
     encounterId: string,
     pendingDamageId: string,
-    die: DamageDie,
+    die: DamageDie | { readonly parts: true },
     key: string,
+    choice?: DamageChoice,
   ): Promise<DamageResult> {
     const res = await this.client.rollDamage({
       campaignId,
@@ -656,7 +722,22 @@ export class CombatClient {
       pendingDamageId,
       idempotencyKey: key,
       roll:
-        'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'typedSum', value: die.sum },
+        'inApp' in die
+          ? { case: 'rollInApp', value: true }
+          : 'sum' in die
+            ? { case: 'typedSum', value: die.sum }
+            : { case: undefined },
+      ...(choice
+        ? {
+            selectedExtras: choice.extras.map((x) => ({
+              key: x.key,
+              slotLevel: x.slotLevel,
+              pact: x.pact,
+            })),
+            extrasChosen: true,
+            typedParts: (choice.typedParts ?? []).map((t) => ({ partKey: t.partKey, sum: t.sum })),
+          }
+        : {}),
     });
     return {
       encounter: need(res.encounter, 'RollDamage'),
@@ -674,9 +755,10 @@ export class CombatClient {
     pendingDamageId: string,
     amount?: number,
     key?: string,
+    ignoreModifiers: readonly string[] = [],
   ): Promise<DamageResult> {
     const res = await this.keyed(
-      ['applyPendingDamage', campaignId, encounterId, pendingDamageId, amount],
+      ['applyPendingDamage', campaignId, encounterId, pendingDamageId, amount, ignoreModifiers],
       (sent) =>
         this.client.applyPendingDamage({
           campaignId,
@@ -684,12 +766,97 @@ export class CombatClient {
           pendingDamageId,
           idempotencyKey: sent,
           amount,
+          ignoreModifiers: [...ignoreModifiers],
         }),
       key,
     );
     return {
       encounter: need(res.encounter, 'ApplyPendingDamage'),
       pending: need(res.pendingDamage, 'ApplyPendingDamage'),
+      cast: [],
+    };
+  }
+
+  /** The player asks the master for a mode better than the suggestion (1 to 120 characters of reason). `key` is the caller's, kept across retries. */
+  async requestRollMode(
+    campaignId: string,
+    encounterId: string,
+    attackerId: string,
+    attackKey: string,
+    targetId: string,
+    rollMode: RollMode,
+    reason: string,
+    key: string,
+  ): Promise<{ readonly encounter: Encounter; readonly request: RollModeRequest }> {
+    const res = await this.client.requestRollMode({
+      campaignId,
+      encounterId,
+      attackerId,
+      attackKey,
+      targetId,
+      rollMode,
+      reason,
+      idempotencyKey: key,
+    });
+    return {
+      encounter: need(res.encounter, 'RequestRollMode'),
+      request: need(res.request, 'RequestRollMode'),
+    };
+  }
+
+  /** The master's answer: the mode the attack rolls with (the requested one, the suggested one, or disadvantage). */
+  async answerRollModeRequest(
+    campaignId: string,
+    encounterId: string,
+    requestId: string,
+    decidedMode: RollMode,
+    key: string,
+  ): Promise<Encounter> {
+    const res = await this.client.answerRollModeRequest({
+      campaignId,
+      encounterId,
+      requestId,
+      decidedMode,
+      idempotencyKey: key,
+    });
+    return need(res.encounter, 'AnswerRollModeRequest');
+  }
+
+  async cancelRollModeRequest(
+    campaignId: string,
+    encounterId: string,
+    requestId: string,
+    key: string,
+  ): Promise<Encounter> {
+    const res = await this.client.cancelRollModeRequest({
+      campaignId,
+      encounterId,
+      requestId,
+      idempotencyKey: key,
+    });
+    return need(res.encounter, 'CancelRollModeRequest');
+  }
+
+  /** The master takes an extra out of a rolled damage, with the reason (1 to 120 characters). */
+  async removeDamagePart(
+    campaignId: string,
+    encounterId: string,
+    pendingDamageId: string,
+    partKey: string,
+    reason: string,
+    key: string,
+  ): Promise<DamageResult> {
+    const res = await this.client.removeDamagePart({
+      campaignId,
+      encounterId,
+      pendingDamageId,
+      partKey,
+      reason,
+      idempotencyKey: key,
+    });
+    return {
+      encounter: need(res.encounter, 'RemoveDamagePart'),
+      pending: need(res.pendingDamage, 'RemoveDamagePart'),
       cast: [],
     };
   }
@@ -791,10 +958,11 @@ export class CombatClient {
     spellKey: string,
     slot: SlotRef | null,
     targets: readonly CastTarget[],
-    die: AttackDie | PoolDie | null,
+    die: AttackDie | PoolDie | PairDie | null,
     key: string,
     summon?: SummonRequest,
     damageTypeKey = '',
+    mode?: Omit<ModeChoice, 'requestId'>,
   ): Promise<CastResult> {
     const res = await this.client.castSpell({
       campaignId,
@@ -811,7 +979,11 @@ export class CombatClient {
           ? { case: 'rollInApp', value: true }
           : 'poolSum' in die
             ? { case: 'poolSum', value: die.poolSum }
-            : { case: 'd20Face', value: die.face },
+            : 'face' in die
+              ? { case: 'd20Face', value: die.face }
+              : { case: undefined },
+      d20Faces: die && 'faces' in die ? [...die.faces] : [],
+      ...(mode ? { rollMode: mode.mode, modeReason: mode.reason } : {}),
       summon: summon
         ? {
             option: summon.option,

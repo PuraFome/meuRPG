@@ -1,9 +1,12 @@
 import {
   AttackOutcome,
   type CombatLogDamage,
+  type DiceRoll,
   type CombatLogEntry,
   CombatLogKind,
   type CombatLogRound,
+  type CombatLogModeChange,
+  type CombatLogStateChange,
   type CombatLogSpellTarget,
   DeathSaveOutcome,
   JumpKind,
@@ -14,7 +17,9 @@ import {
   SpellEffectOutcome,
   WildShapeEndReason,
 } from '../../../gen/meurpg/play/v1/combat_pb';
+import { CombatantStateKind, DamageStepKind } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { rollText } from './combat-dice';
+import { modeWord } from './roll-mode';
 import { conditionName, listNames } from './conditions';
 import { metersFixed, metersText } from '../units';
 import { circleLabel } from './combat-options';
@@ -44,6 +49,16 @@ export interface LogLine {
   readonly undoable: boolean;
   /** The master's account of a pool spell (Sono): the dice, each creature and what is left of the total. */
   readonly card?: PoolCard;
+  /** The d20 pair of an attack, both faces with the one that counts marked. */
+  readonly roll?: LogRoll;
+  /** Lines under the sentence: the mode of the roll, the parts of the damage, the resistance steps, a reason. */
+  readonly notes?: readonly string[];
+}
+
+/** The two d20 of a roll with advantage or disadvantage. */
+export interface LogRoll {
+  readonly label: string;
+  readonly faces: readonly { readonly value: number; readonly counts: boolean }[];
 }
 
 /** One creature of the pool card, in the order the pool went through them. */
@@ -490,6 +505,96 @@ function movedText(e: CombatLogEntry): string {
   return ` anda ${length}`;
 }
 
+/** The d20 pair of a roll, or nothing for a single die. */
+export function pairOf(roll: DiceRoll | undefined, label: string): LogRoll | undefined {
+  if (!roll || roll.diceCount !== 2 || roll.faces.length !== 2) {
+    return undefined;
+  }
+  return {
+    label,
+    faces: roll.faces.map((value, i) => ({ value, counts: i === roll.countedIndex })),
+  };
+}
+
+/** "Vantagem (sugerido: Normal) — o alvo está caído": the mode an attack rolled with when it is not what the server suggested. */
+function modeNote(m: CombatLogModeChange | undefined): string {
+  if (!m) {
+    return '';
+  }
+  const reason = m.reason ? ` — ${m.reason}` : '';
+  return `${modeWord(m.mode)} (sugerido: ${modeWord(m.suggestedMode)})${reason}`;
+}
+
+/** The dice of each part of a damage, "Espada curta 1d6 (4) + 2 = 6", and the steps resistance took. */
+function damageNotes(d: CombatLogDamage | undefined): string[] {
+  if (!d) {
+    return [];
+  }
+  const parts = d.parts.map((p) => {
+    const dice = p.diceCount > 0 ? `${p.diceCount}d${p.diceSides}` : '';
+    const faces = p.faces.length > 0 ? ` (${p.faces.join(', ')})` : '';
+    const flat = p.flat !== 0 ? ` ${p.flat > 0 ? '+' : '−'} ${Math.abs(p.flat)}` : '';
+    const total = p.sum + p.flat;
+    const out = p.counted ? '' : ' — não conta';
+    return `${p.labelPt} ${dice}${faces}${dice ? flat : flat.trim()} = ${total}${out}`.trim();
+  });
+  const steps = d.steps.map((st) => {
+    const word =
+      st.kind === DamageStepKind.IMMUNITY
+        ? 'imunidade'
+        : st.kind === DamageStepKind.VULNERABILITY
+          ? 'vulnerabilidade'
+          : 'resistência';
+    const base = `${st.labelPt || word}: ${st.before} → ${st.after}`;
+    return st.ignored ? `${base} (o mestre deixou de fora)` : base;
+  });
+  return [...parts, ...steps];
+}
+
+/** "Fúria de Toren começou", "Fúria de Toren acabou (não atacou nem sofreu dano)". */
+function stateText(e: CombatLogEntry, st: CombatLogStateChange): string {
+  const noun =
+    st.kind === CombatantStateKind.RAGE
+      ? 'Fúria'
+      : st.kind === CombatantStateKind.HUNTERS_MARK_TARGET
+        ? 'Marca'
+        : st.kind === CombatantStateKind.DODGING
+          ? 'Esquiva'
+          : st.kind === CombatantStateKind.RECKLESS
+            ? 'Ataque descuidado'
+            : 'Estado';
+  const who = e.actorLabel || e.targetLabel;
+  const name = who ? `${noun} de ${who}` : noun;
+  if (st.started) {
+    return `${name} começou`;
+  }
+  const reason = stateReason(st.reason);
+  return `${name} acabou${reason ? ` (${reason})` : ''}`;
+}
+
+function stateReason(key: string): string {
+  switch (key) {
+    case 'no_attack':
+      return 'não atacou nem sofreu dano';
+    case 'unconscious':
+      return 'ficou inconsciente';
+    case 'by_choice':
+      return 'por escolha';
+    case 'duration':
+      return 'a duração acabou';
+    case 'left':
+      return 'a concentração ou o combate acabou';
+    default:
+      return key;
+  }
+}
+
+/** "Brisa pediu Vantagem; o mestre aprovou". */
+function modeAnsweredText(m: CombatLogModeChange): string {
+  const asked = `pediu ${modeWord(m.mode)}`;
+  return ` ${asked}; o mestre ${m.approved ? 'aprovou' : 'recusou'}`;
+}
+
 /** The line of one entry, or `null` for a kind this app doesn't know. */
 export function logLine(
   e: CombatLogEntry,
@@ -513,6 +618,8 @@ export function logLine(
         ...base,
         icon: e.key.startsWith('spell:') ? 'auto_awesome' : 'swords',
         text: attackText(e),
+        roll: pairOf(e.attackRoll, 'd20 do ataque'),
+        notes: [modeNote(e.modeChange), ...damageNotes(e.damage)].filter(Boolean),
       };
     case CombatLogKind.ACTION:
       return {
@@ -588,6 +695,27 @@ export function logLine(
     case CombatLogKind.MONSTERS_ADDED:
       // The master put monsters in the combat (RN-29): the line is his alone, with the hit points and the dice they were rolled with.
       return { ...base, hidden: true, icon: 'pets', actor: '', text: monstersAddedText(e) };
+    case CombatLogKind.DAMAGE_PART_REMOVED:
+      // The master took an extra out of a damage; the reason is only for him and the attacker's player.
+      return {
+        ...base,
+        icon: 'remove_circle_outline',
+        actor: '',
+        text: `O mestre tirou ${e.keyNamePt ? the(e.keyNamePt) : 'um extra'}${e.reason ? `: “${e.reason}”` : ''}`,
+      };
+    case CombatLogKind.STATE_CHANGED:
+      return e.state
+        ? { ...base, icon: 'local_fire_department', actor: '', text: stateText(e, e.state) }
+        : null;
+    case CombatLogKind.ROLL_MODE_ANSWERED:
+      return e.modeChange
+        ? {
+            ...base,
+            icon: 'casino',
+            text: modeAnsweredText(e.modeChange),
+            notes: e.modeChange.reason ? [`Motivo: “${e.modeChange.reason}”`] : undefined,
+          }
+        : null;
     default:
       return null;
   }

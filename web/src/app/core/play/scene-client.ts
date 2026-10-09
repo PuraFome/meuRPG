@@ -7,7 +7,8 @@ import { CONNECT_TRANSPORT } from '../connect/transport';
 
 /** How a scene check's d20 comes (RN-18): the app rolls it, or the player's
  * typed face of a real die. */
-export type SceneDie = { readonly inApp: true } | { readonly face: number };
+export type SceneDie =
+  { readonly inApp: true } | { readonly face: number } | { readonly faces: readonly number[] };
 
 /**
  * Thin wrapper around the RP scene calls of `PlayService` (MR-015, play.proto):
@@ -66,7 +67,12 @@ export class SceneClient {
       actionId,
       idempotencyKey,
       roll:
-        'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
+        'inApp' in die
+          ? { case: 'rollInApp', value: true }
+          : 'face' in die
+            ? { case: 'd20Face', value: die.face }
+            : { case: undefined },
+      d20Faces: 'faces' in die ? [...die.faces] : [],
     });
     return need(res.roll, 'RollSceneCheck');
   }

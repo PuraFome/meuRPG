@@ -151,6 +151,7 @@
           [diceMode]="diceMode()"
           [dicePreference]="dicePreference()"
           [result]="play.hintTry()"
+          [pair]="play.hintPair()"
           (rolled)="play.tryHint($event)"
           (typed)="play.tryHint($event)"
         />

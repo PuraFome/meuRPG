@@ -1,0 +1,150 @@
+:host {
+  display: block;
+}
+
+.parts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+}
+
+.parts__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 24px;
+}
+
+.fixed,
+.extras {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+}
+
+.line__name {
+  font-weight: 700;
+}
+
+.line__what {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.line__crit,
+.line__auto {
+  padding: 0 8px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.line__note {
+  flex-basis: 100%;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.extra {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.extra__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.extra--off .extra__row {
+  cursor: default;
+  color: var(--mr-ink-muted);
+}
+
+.extra__box {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: 10px 0 0;
+  accent-color: var(--mr-accent);
+}
+
+.extra__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-top: 8px;
+}
+
+.extra__why {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding-left: 36px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.slots {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 36px;
+}
+
+.slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 4px 10px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  cursor: pointer;
+
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.slot--on {
+  border: 2px solid var(--mr-accent);
+  background: var(--mr-accent-soft);
+}
+
+.slot--off {
+  border-style: dashed;
+  color: var(--mr-ink-muted);
+  cursor: default;
+}

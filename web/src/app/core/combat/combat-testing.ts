@@ -35,6 +35,8 @@ export function combatant(over: Partial<Combatant> & { id: string; label: string
     deathFailures: 0,
     conditions: [],
     conditionNamesPt: [],
+    conditionSources: [],
+    states: [],
     concentrationSpell: '',
     armorClassBonus: 0,
     deathSaveDue: false,
@@ -65,6 +67,7 @@ export function encounter(over: Partial<Encounter> = {}): Encounter {
     turnGroupIds: [],
     npcOnlyGroups: [],
     opportunityOffers: [],
+    rollModeRequests: [],
     revision: 1,
     ...over,
   } as unknown as Encounter;

@@ -65,6 +65,36 @@
         }
       }
       @if (kind() === 'attack') {
+        @if (chosen().length) {
+          <app-roll-mode-picker
+            [suggested]="suggested()"
+            [sources]="sources()"
+            [approval]="approval"
+            [mixed]="mixed() && picked() === null"
+            [mode]="chosenMode()"
+            (modeChange)="setMode($event)"
+            [(reason)]="reason"
+            [busy]="busy()"
+          />
+        }
+      }
+      @if (kind() === 'attack' && modeReady() && faceCount() === 2 && canType()) {
+        <app-multi-roll
+          [fields]="d20Fields"
+          [canApp]="canApp"
+          [canType]="true"
+          [preferApp]="preferApp"
+          [combine]="combine()"
+          [modifier]="data.attackBonus"
+          totalNote="Total do ataque"
+          appLabel="Conjurar e rolar no app"
+          [hint]="'Role os dois d20 e digite os dois números, na ordem em que saíram (1 a 20 cada). Conta o ' + (combine() === 'lower' ? 'menor' : 'maior') + '.'"
+          [busy]="busy() || !ready()"
+          [(typing)]="typing"
+          (app)="castRolled({ inApp: true })"
+          (typed)="castPair($event)"
+        />
+      } @else if (kind() === 'attack' && modeReady()) {
         <app-roll-picker
           [compact]="true"
           [canApp]="canApp"

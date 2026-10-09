@@ -33,6 +33,14 @@ export function sceneRollFormula(roll: SceneRoll): string {
   if (!dice) {
     return '';
   }
+  if (dice.faces.length === 2 && !dice.physical) {
+    // Advantage or disadvantage: the formula is the die that counts; both dice are drawn beside it.
+    return rollFormula({
+      ...dice,
+      diceCount: 1,
+      faces: [dice.faces[dice.countedIndex] ?? dice.faces[0]],
+    });
+  }
   return dice.physical && dice.modifier === 0 ? `${dice.total}` : rollFormula(dice);
 }
 

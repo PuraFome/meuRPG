@@ -9,6 +9,7 @@ import {
   EncounterBlockedSchema,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { MapPointKind, MapPointSchema } from '../../../../../gen/meurpg/maps/v1/maps_pb';
+import { AdvantageSourceSchema, RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { SearchForTrapsResponseSchema } from '../../../../../gen/meurpg/play/v1/traps_pb';
 import { TrapsClient } from '../../../../core/traps/traps-client';
 import { TrapSearchSheet, type TrapSearchData } from './trap-search-sheet';
@@ -124,7 +125,7 @@ describe('TrapSearchSheet', () => {
     await roller.rollWith({ face: 9 });
     fixture.detectChanges();
     expect(el.textContent).toContain('Digite o segundo dado');
-    expect(el.textContent).toContain('Há penumbra por perto');
+    expect(el.textContent).toContain('leva dois d20');
     await roller.rollWith({ face: 4 });
     expect(sent[1]).toEqual(['perception', { face: 9, face2: 4 }]);
   });
@@ -169,5 +170,44 @@ describe('TrapSearchSheet', () => {
     await roller.rollWith({ inApp: true });
     expect(keys[1]).toBe(keys[0]);
     expect(keys[2]).not.toBe(keys[0]);
+  });
+
+  it('asks for the second die when the roll takes two d20 for the conditions, and shows the mode, the pair and the sources', async () => {
+    const { fixture, el, sent, roller } = setup([
+      new ConnectError('the roll takes 2 d20: type 2 face(s) in d20_faces', Code.InvalidArgument),
+      create(SearchForTrapsResponseSchema, {
+        roll: roll(4, 8),
+        secondRoll: roll(15, 19),
+        mode: RollMode.DISADVANTAGE,
+        sources: [
+          create(AdvantageSourceSchema, {
+            textPt: 'Envenenado: desvantagem em testes de habilidade',
+          }),
+        ],
+        foundPointIds: [],
+      }),
+    ]);
+    roller.pick('investigation');
+    await roller.rollWith({ face: 4 });
+    fixture.detectChanges();
+    expect(el.querySelector('[role="alert"]')).toBeNull();
+    expect(el.textContent).toContain('Digite o segundo dado');
+    await roller.rollWith({ face: 15 });
+    fixture.detectChanges();
+    expect(sent[1]).toEqual(['investigation', { face: 4, face2: 15 }]);
+    expect(el.querySelector('.mode__word')?.textContent).toBe('Desvantagem');
+    expect(
+      Array.from(el.querySelectorAll('.die'), (d) => d.textContent?.replace(/\s+/g, ' ').trim()),
+    ).toEqual(['4 conta', '15 não conta']);
+    expect(el.querySelector('.mode__sources')?.textContent).toContain('Envenenado');
+  });
+
+  it('shows no mode for a normal search', async () => {
+    const { fixture, el, roller } = setup([
+      create(SearchForTrapsResponseSchema, { roll: roll(6, 13), mode: RollMode.NORMAL }),
+    ]);
+    await roller.rollWith({ inApp: true });
+    fixture.detectChanges();
+    expect(el.querySelector('app-check-mode')).toBeNull();
   });
 });

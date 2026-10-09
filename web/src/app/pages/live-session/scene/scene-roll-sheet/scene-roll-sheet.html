@@ -18,6 +18,9 @@
       <span class="res__text">
         <span class="res__formula">{{ formula() }}</span>
         <span class="res__cap">Seu total em {{ action.checkName }}</span>
+        @if (modeInfo()) {
+          <app-check-mode [mode]="r.mode" [sources]="r.sources" [faces]="faces()" />
+        }
         @if (pass(); as p) {
           <span class="mr-tag res__pass" [class.mr-tag--success]="p.ok" [class.mr-tag--danger]="!p.ok">
             <mat-icon aria-hidden="true">{{ p.ok ? 'check' : 'close' }}</mat-icon>{{ p.text }}
@@ -38,6 +41,20 @@
       <p class="how">Role no app, ou role o seu dado e digite o número que saiu.</p>
       <p class="note"><mat-icon aria-hidden="true">visibility</mat-icon>O mestre vê o resultado e diz o que acontece.</p>
     }
+    @if (pair()) {
+      <p class="note" role="status"><mat-icon aria-hidden="true">info</mat-icon>Esta rolagem leva 2 d20, com vantagem ou desvantagem. Digite os dois dados.</p>
+      <app-multi-roll
+        [fields]="pairFields"
+        [canApp]="canApp"
+        [canType]="true"
+        [preferApp]="false"
+        hint="Role os dois d20 e digite cada número (1 a 20), sem o bônus."
+        [busy]="busy()"
+        [(typing)]="typing"
+        (app)="rollWith({ inApp: true })"
+        (typed)="rollWith({ faces: $event })"
+      />
+    } @else {
     <app-roll-picker
       [canApp]="canApp"
       [canType]="canType"
@@ -54,6 +71,7 @@
       (app)="rollWith({ inApp: true })"
       (typed)="rollWith({ face: $event })"
     />
+    }
   }
 
   @if (roll()) {

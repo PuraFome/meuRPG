@@ -32,6 +32,9 @@
     </div>
   }
 
+  <app-combatant-tags class="card__states" [names]="conditions()" [label]="subject().label" [states]="subject().states" [sources]="subject().conditionSources" [people]="encounter().combatants" />
+  <app-rage-status class="card__rage" [subject]="subject()" [busy]="turnBusy()" (endRage)="endRage.emit(subject().id)" />
+
   @if (full()) {
     <div class="stats">
       @if (stats().hp; as hp) {

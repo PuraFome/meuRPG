@@ -21,6 +21,7 @@ import {
   turnBanner,
 } from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
+import { conditionTags } from '../../../../core/combat/conditions';
 import {
   leftSentence,
   listNames,
@@ -35,6 +36,8 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
 import { EndPart } from '../joint-turn/end-part';
 import { JointOthers } from '../joint-turn/joint-others';
 import { JointPill } from '../joint-turn/joint-pill';
+import { CombatantTags } from '../combatant-tags/combatant-tags';
+import { RageStatus } from '../rage-end/rage-status';
 import { EndTurn } from './end-turn';
 import { OrderStrip } from './order-strip';
 import { ConcentrationLine, TurnReaction } from './turn-extras';
@@ -56,6 +59,7 @@ import { ConcentrationLine, TurnReaction } from './turn-extras';
 @Component({
   selector: 'app-turn-panel',
   imports: [
+    CombatantTags,
     CombatantToken,
     ConcentrationLine,
     EndPart,
@@ -65,6 +69,7 @@ import { ConcentrationLine, TurnReaction } from './turn-extras';
     MatIconModule,
     NgTemplateOutlet,
     OrderStrip,
+    RageStatus,
     TurnReaction,
     WildBand,
   ],
@@ -97,6 +102,8 @@ export class TurnPanel {
   /** "Ataque de oportunidade": the key of the melee attack. */
   readonly opportunity = output<string>();
   readonly endConcentration = output<void>();
+  /** "Encerrar fúria": the id of the raging character. */
+  readonly endRage = output<string>();
 
   private readonly hero = viewChild<ElementRef<HTMLElement>>('hero');
 
@@ -284,6 +291,10 @@ export class TurnPanel {
 
   protected initial(c: Combatant): string {
     return combatantInitial(c.label);
+  }
+
+  protected conditions(c: Combatant): string[] {
+    return conditionTags(c);
   }
 
   protected npc(c: Combatant): boolean {

@@ -23,7 +23,8 @@ export type PuzzleInit = Omit<
 >;
 
 /** How the hint's d20 comes (RN-18): the app rolls it, or the player typed the face of a real die. */
-export type HintDie = { readonly inApp: true } | { readonly face: number };
+export type HintDie =
+  { readonly inApp: true } | { readonly face: number } | { readonly faces: readonly number[] };
 
 /** What a move answers: the run as the player reads it now, and whether this move solved the puzzle. */
 export interface MoveAnswer {
@@ -206,7 +207,12 @@ export class PuzzlesClient {
       puzzleId,
       idempotencyKey,
       roll:
-        'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
+        'inApp' in die
+          ? { case: 'rollInApp', value: true }
+          : 'face' in die
+            ? { case: 'd20Face', value: die.face }
+            : { case: undefined },
+      d20Faces: 'faces' in die ? [...die.faces] : [],
     });
   }
 }

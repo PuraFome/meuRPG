@@ -34,6 +34,9 @@
         @for (line of rolls(); track line) {
           <span class="res__formula">{{ line }}</span>
         }
+        @if (modeInfo()) {
+          <app-check-mode [mode]="r.res.mode" [sources]="r.res.sources" [faces]="faces()" />
+        }
         <span class="mr-tag res__tag" [class.mr-tag--success]="found()">
           <mat-icon aria-hidden="true">{{ found() ? 'check' : 'close' }}</mat-icon>{{ found() ? 'Achou' : 'Nada' }}
         </span>

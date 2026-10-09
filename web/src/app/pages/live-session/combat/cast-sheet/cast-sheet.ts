@@ -30,6 +30,7 @@ import {
   SpellDamageChoice,
   SpellRangeKind,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import {
   type Dealt,
@@ -56,10 +57,12 @@ import {
 import {
   type AttackDie,
   type DamageDie,
+  type PairDie,
   type PoolDie,
   CombatClient,
   newKey,
 } from '../../../../core/combat/combat-client';
+import { d20Count, modeStatus, orNormal } from '../../../../core/combat/roll-mode';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { diceName, sumRange } from '../../../../core/combat/combat-dice';
 import { criticalHint, criticalTypedHint, fixedParts } from '../../../../core/combat/critical';
@@ -74,6 +77,8 @@ import { SpellCatalog } from '../../../../core/combat/spell-catalog';
 import { openSpellDetails } from '../../../../shared/spell-details/open-spell-details';
 import { spellDetailsFromGen } from '../../../../shared/spell-details/spell-details-map';
 import { SpellHelp } from '../../../../shared/spell-details/spell-help';
+import { MultiRoll, type RollField } from '../multi-roll/multi-roll';
+import { RollModePicker } from '../roll-mode/roll-mode-picker';
 import { RollPicker } from '../roll-picker/roll-picker';
 import { injectSheet } from '../sheet-host';
 import { SheetFrame } from '../sheet-frame/sheet-frame';
@@ -121,6 +126,8 @@ export interface CastSheetData {
   readonly preference: DicePreference;
   /** Where each answer's combat goes (the page's copy of the combat). */
   readonly state: CombatState;
+  /** The master casts it for an NPC: any roll mode, with no need to ask. */
+  readonly master?: boolean;
   /** The damage of a cast whose sheet was closed before it was rolled: the
    * sheet opens at the damage with it. */
   readonly resume?: readonly PendingDamage[];
@@ -150,6 +157,8 @@ export interface CastSheetData {
     DamageTypePicker,
     MatButtonModule,
     MatIconModule,
+    MultiRoll,
+    RollModePicker,
     RollPicker,
     SheetFrame,
     SlotPicker,
@@ -173,6 +182,9 @@ export class CastSheet {
   protected readonly chosen = signal<string[]>([]);
   protected readonly dealt = signal<Dealt>(new Map());
   protected readonly typing = signal(false);
+  /** The mode of a spell attack's d20 the caster picked; null leaves it to the app's suggestion for each target. */
+  protected readonly picked = signal<RollMode | null>(null);
+  protected readonly reason = signal('');
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly cast = signal<SpellCast | null>(null);
@@ -325,6 +337,43 @@ export class CastSheet {
     const n = this.dartsTotal();
     return dartsStatus(n, this.dealt());
   });
+  /** The targets chosen for a spell attack, with the circumstances of each. */
+  private readonly attacked = computed(() =>
+    (this.data.targets?.targets ?? []).filter((t) => this.chosen().includes(t.combatantId)),
+  );
+  /** The targets suggest different modes: the pick, if any, counts for all of them. */
+  protected readonly mixed = computed(
+    () => new Set(this.attacked().map((t) => orNormal(t.rollMode))).size > 1,
+  );
+  protected readonly suggested = computed(() =>
+    orNormal(this.attacked()[0]?.rollMode ?? RollMode.NORMAL),
+  );
+  protected readonly sources = computed(() =>
+    this.attacked().length === 1 ? this.attacked()[0].sources : [],
+  );
+  protected readonly approval = this.data.master ? 'free' : 'blocked';
+  protected readonly chosenMode = computed(() => this.picked() ?? this.suggested());
+  protected readonly modeState = computed(() =>
+    this.mixed() && this.picked() === null
+      ? 'ready'
+      : modeStatus(this.approval, this.suggested(), this.chosenMode(), this.reason(), null),
+  );
+  /** The d20 of the attack may be rolled: the mode is settled. */
+  protected readonly modeReady = computed(() => this.modeState() === 'ready');
+  protected readonly faceCount = computed(() => d20Count(this.chosenMode()));
+  protected readonly d20Fields: readonly RollField[] = [
+    { key: 'd20-1', label: 'Primeiro d20', min: 1, max: 20 },
+    { key: 'd20-2', label: 'Segundo d20', min: 1, max: 20 },
+  ];
+  protected readonly combine = computed(() =>
+    this.chosenMode() === RollMode.DISADVANTAGE ? 'lower' : 'higher',
+  );
+
+  protected setMode(mode: RollMode): void {
+    this.picked.set(mode);
+    this.castKey = newKey();
+  }
+
   /** The d20 of a spell attack may be typed only for a single target (the server). */
   protected readonly canType = computed(
     () =>
@@ -602,12 +651,17 @@ export class CastSheet {
     return this.doCast(die);
   }
 
+  /** Two physical d20, in the order they were rolled. */
+  protected castPair(faces: number[]): Promise<void> {
+    return this.doCast({ faces });
+  }
+
   /** A pool spell with the dice the table's mode allows: rolled in the app, or the typed sum. */
   protected castPooled(die: PoolDie): Promise<void> {
     return this.doCast(die);
   }
 
-  private async doCast(die: AttackDie | PoolDie | null): Promise<void> {
+  private async doCast(die: AttackDie | PoolDie | PairDie | null): Promise<void> {
     if (this.busy() || !this.ready()) {
       return;
     }
@@ -633,6 +687,9 @@ export class CastSheet {
         this.castKey,
         undefined,
         this.damageType(),
+        this.kind() === 'attack' && this.picked() !== null
+          ? { mode: this.picked()!, reason: this.reason().trim() }
+          : undefined,
       );
       this.data.state.apply(res.encounter);
       this.cast.set(res.cast);

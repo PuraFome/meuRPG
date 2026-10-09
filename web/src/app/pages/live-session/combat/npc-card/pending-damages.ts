@@ -30,6 +30,7 @@ import type { CombatState } from '../../../../core/combat/combat-state';
 import { hitPointsAfter, hitPointsLine } from '../../../../core/combat/attack-flow';
 import { article } from '../../../../core/combat/combat-log';
 import { isPlayer } from '../../../../core/combat/combat-view';
+import { DamageBreakdown } from '../damage-parts/damage-breakdown';
 import { RollPicker } from '../roll-picker/roll-picker';
 
 /**
@@ -44,7 +45,14 @@ import { RollPicker } from '../roll-picker/roll-picker';
  */
 @Component({
   selector: 'app-pending-damages',
-  imports: [MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, RollPicker],
+  imports: [
+    DamageBreakdown,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    RollPicker,
+  ],
   templateUrl: './pending-damages.html',
   styleUrl: './pending-damages.scss',
 })
@@ -76,6 +84,8 @@ export class PendingDamages {
   protected readonly otherText = signal('');
   /** The reminder after a hit on someone who concentrates (RN-22): the save DC. */
   protected readonly reminder = signal('');
+  /** The sources of resistance the master told the app to leave out, by damage. */
+  protected readonly ignored = signal<Readonly<Record<string, readonly string[] | undefined>>>({});
   private readonly keys = new Map<string, string>();
   private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
   private readonly otherInput = viewChild('otherInput', { read: ElementRef<HTMLInputElement> });
@@ -97,6 +107,8 @@ export class PendingDamages {
     const attacker = e.combatants.find((c) => c.id === p.attackerId);
     const target = e.combatants.find((c) => c.id === p.targetId);
     const rolled = p.status === PendingDamageStatus.ROLLED;
+    // What "Aplicar" applies: the damage after resistance, vulnerability and immunity when a step changed it.
+    const total = p.amountAfterSteps ?? p.amount;
     const range = sumRange(p.diceCount, p.diceSides);
     // The reaction prompt of this hit: Escudo is cast with the lowest free slot.
     const prompt = e.reactionPrompts.find((r) => r.pendingDamageId === p.id);
@@ -105,6 +117,11 @@ export class PendingDamages {
       .sort((a, b) => a.level - b.level)[0];
     return {
       p,
+      total,
+      /** The extras the master may take out: the ones the player could choose, while they count. */
+      removable: new Set((p.parts ?? []).filter((x) => x.choosable).map((x) => x.key)),
+      rolls: p.partRolls ?? [],
+      steps: p.steps ?? [],
       rolled,
       awaiting: p.status === PendingDamageStatus.AWAITING_REACTION,
       /** The reaction spell's name as the server says it ("Escudo Arcano"). */
@@ -141,11 +158,7 @@ export class PendingDamages {
               target.label,
               target.hitPointsCurrent ?? 0,
               target.hitPointsMax,
-              hitPointsAfter(
-                target.hitPointsCurrent ?? 0,
-                target.hitPointsTemporary ?? 0,
-                p.amount,
-              ),
+              hitPointsAfter(target.hitPointsCurrent ?? 0, target.hitPointsTemporary ?? 0, total),
             )
           : '',
     };
@@ -244,7 +257,7 @@ export class PendingDamages {
 
   protected askOther(p: PendingDamage): void {
     this.other.set(p.id);
-    this.otherText.set(String(p.amount));
+    this.otherText.set(String(p.amountAfterSteps ?? p.amount));
     // The button that opened the field is gone: the focus goes to the number,
     // selected, so typing replaces it.
     afterNextRender(
@@ -277,25 +290,28 @@ export class PendingDamages {
   /** "Aplicar 5 de dano", or, with `amount`, the master's own number (RN-02). */
   protected apply(p: PendingDamage, amount?: number): Promise<void> {
     return this.run(async () => {
-      const key = this.keyFor(`apply:${p.id}:${amount ?? 'rolled'}`);
+      const ignore = this.ignored()[p.id] ?? [];
+      const key = this.keyFor(`apply:${p.id}:${amount ?? 'rolled'}:${ignore.join(',')}`);
       const res = await this.api.applyDamage(
         this.campaignId(),
         this.encounter().id,
         p.id,
         amount,
         key,
+        ignore,
       );
       this.state().apply(res.encounter);
-      const done = amount ?? p.amount;
+      const total = p.amountAfterSteps ?? p.amount;
+      const done = amount ?? total;
       const target = res.encounter.combatants.find((c) => c.id === p.targetId);
       const hp =
         target?.hitPointsMax !== undefined
           ? ` ${target.label}: ${target.hitPointsCurrent ?? 0} de ${target.hitPointsMax} PV.`
           : '';
       this.settled.set(
-        amount === undefined || amount === p.amount
+        amount === undefined || amount === total
           ? `Dano de ${done} aplicado.${hp}`
-          : `${done} de dano ${done === 1 ? 'aplicado' : 'aplicados'} (o dado deu ${p.amount}).${hp}`,
+          : `${done} de dano ${done === 1 ? 'aplicado' : 'aplicados'} (o dado deu ${total}).${hp}`,
       );
       this.other.set(null);
       this.reminder.set(this.reminderFor(res.pending.concentrationDc, target));
@@ -315,6 +331,25 @@ export class PendingDamages {
     return `${target.label} está concentrad${article(target.label) === 'a' ? 'a' : 'o'} em ${target.concentrationSpellNamePt}. Teste de Constituição, CD ${dc}. O app só lembra: se ${he} falhar, encerre a concentração em "Condições…".`;
   }
 
+  protected setIgnored(id: string, keys: readonly string[]): void {
+    this.ignored.update((all) => ({ ...all, [id]: keys }));
+  }
+
+  /** "Tirar": the extra leaves the damage, with the reason the master gave. */
+  protected takeOut(p: PendingDamage, part: { partKey: string; reason: string }): Promise<void> {
+    return this.run(async () => {
+      const res = await this.api.removeDamagePart(
+        this.campaignId(),
+        this.encounter().id,
+        p.id,
+        part.partKey,
+        part.reason,
+        this.keyFor(`remove:${p.id}:${part.partKey}:${part.reason}`),
+      );
+      this.state().apply(res.encounter);
+    });
+  }
+
   protected askDiscard(id: string): void {
     this.discarding.set(id);
     afterNextRender(() => this.safe()?.nativeElement.focus(), { injector: this.injector });
@@ -325,7 +360,7 @@ export class PendingDamages {
       const res = await this.api.discardDamage(this.campaignId(), this.encounter().id, p.id);
       this.state().apply(res.encounter);
       this.discarding.set(null);
-      this.settled.set(`Dano de ${p.amount} descartado.`);
+      this.settled.set(`Dano de ${p.amountAfterSteps ?? p.amount} descartado.`);
       this.reminder.set('');
       this.settledNote.emit();
     });

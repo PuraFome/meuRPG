@@ -7,9 +7,21 @@
           <span class="dmg__effect">{{ it.effect }}</span>
         }
       </div>
+      <app-damage-breakdown
+        [master]="true"
+        [rolls]="it.rolls"
+        [steps]="it.steps"
+        [amount]="it.p.amount"
+        [amountAfterSteps]="it.p.amountAfterSteps"
+        [removable]="it.removable"
+        [busy]="busy()"
+        [ignored]="ignored()[it.p.id] ?? []"
+        (ignoredChange)="setIgnored(it.p.id, $event)"
+        (remove)="takeOut(it.p, $event)"
+      />
       @if (discarding() === it.p.id) {
-        <div class="ask" role="alertdialog" [attr.aria-label]="'Descartar o dano de ' + it.p.amount">
-          <p class="ask__text">Descartar o dano de {{ it.p.amount }}?</p>
+        <div class="ask" role="alertdialog" [attr.aria-label]="'Descartar o dano de ' + it.total">
+          <p class="ask__text">Descartar o dano de {{ it.total }}?</p>
           <button #safe mat-stroked-button type="button" (click)="discarding.set(null)">Voltar</button>
           <button mat-stroked-button type="button" class="ask__danger" [disabled]="busy()" (click)="discard(it.p)">
             Descartar
@@ -35,7 +47,7 @@
               @if (otherValue() === null) {
                 Digite um número de 0 a 9.999.
               } @else {
-                O dado deu {{ it.p.amount }}. Por exemplo, metade por resistência.
+                O dado deu {{ it.total }}. Por exemplo, metade por resistência.
               }
             </mat-hint>
           </mat-form-field>
@@ -55,7 +67,7 @@
       } @else {
         <div class="dmg__buttons">
           <button mat-stroked-button type="button" class="dmg__apply" [disabled]="busy()" (click)="apply(it.p)">
-            Aplicar {{ it.p.amount }} de dano
+            Aplicar {{ it.total }} de dano
           </button>
           <button mat-stroked-button type="button" class="dmg__skip" (click)="askDiscard(it.p.id)">Não aplicar</button>
         </div>

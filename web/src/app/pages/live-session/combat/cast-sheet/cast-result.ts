@@ -3,6 +3,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { CastRow } from '../../../../core/combat/cast-flow';
 import { SlotDots } from '../../slot-dots/slot-dots';
+import { D20Faces } from '../roll-mode/d20-faces';
 
 /** What the cast left on the sheet: the slots as they are now. */
 export interface SlotAfter {
@@ -24,7 +25,7 @@ export interface SlotAfter {
  */
 @Component({
   selector: 'app-cast-result',
-  imports: [MatIconModule],
+  imports: [D20Faces, MatIconModule],
   template: `
     <div class="res" role="status" aria-live="polite">
       @if (sentence()) {
@@ -51,6 +52,9 @@ export interface SlotAfter {
           </div>
           @for (line of r.lines; track $index) {
             <span class="tg__line">{{ line }}</span>
+          }
+          @for (d of r.d20s ?? []; track d.caption) {
+            <app-d20-faces class="tg__d20" [caption]="d.caption" [roll]="d.roll" [mode]="d.mode" [sources]="d.sources" />
           }
           @if (r.summary) {
             <span class="tg__sum">{{ r.summary }}</span>

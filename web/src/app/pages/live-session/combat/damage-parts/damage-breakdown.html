@@ -1,0 +1,106 @@
+@if (rolls().length || steps().length) {
+  @if (master()) {
+    <table class="table">
+      <caption class="mr-visually-hidden">Dano por parte</caption>
+      <thead>
+        <tr>
+          <th scope="col">Parte</th>
+          <th scope="col">Dados</th>
+          <th scope="col" class="num">Total</th>
+          <th scope="col"><span class="mr-visually-hidden">Ação</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of rolls(); track r.partKey) {
+          <tr [class.row--off]="!r.counted">
+            <th scope="row">
+              {{ r.labelPt }}
+              @if (!r.counted) {
+                <span class="off">não conta</span>
+              }
+            </th>
+            <td>
+              {{ formula(r) }}
+              @if (rerolls(r)) {
+                <span class="re">{{ rerolls(r) }}</span>
+              }
+            </td>
+            <td class="num">{{ r.counted ? r.sum + r.flat : 0 }}</td>
+            <td class="act">
+              @if (removable().has(r.partKey) && r.counted) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="take"
+                  [attr.aria-label]="'Tirar o ' + r.labelPt"
+                  [disabled]="busy()"
+                  (click)="ask(r)"
+                >
+                  Tirar
+                </button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+    @if (asked(); as r) {
+      <form class="ask" role="alertdialog" [attr.aria-labelledby]="id + '-q'" (submit)="$event.preventDefault(); confirm()">
+        <p class="ask__q" [id]="id + '-q'">{{ question(r) }}</p>
+        <label class="ask__label" [for]="id + '-r'">Motivo (aparece no registro)</label>
+        <input
+          #reasonField
+          [id]="id + '-r'"
+          class="ask__field"
+          type="text"
+          maxlength="120"
+          autocomplete="off"
+          [value]="reason()"
+          [attr.aria-describedby]="id + '-h'"
+          (input)="onReason($event)"
+        />
+        <span class="ask__hint" [id]="id + '-h'">{{ reason().trim().length }}/120 · É ficção; não escreva dados reais de pessoas.</span>
+        <div class="ask__buttons">
+          <button mat-stroked-button type="button" (click)="asking.set(null)">Voltar</button>
+          <button mat-stroked-button type="submit" class="ask__danger" [disabled]="!reasonOk() || busy()" disabledInteractive>
+            Tirar
+          </button>
+        </div>
+      </form>
+    }
+  } @else {
+    <ul class="list">
+      @for (r of rolls(); track r.partKey) {
+        <li [class.row--off]="!r.counted">
+          <b>{{ r.labelPt }}</b> {{ formula(r) }}
+          @if (!r.counted) {
+            <span class="off">não conta</span>
+          }
+          @if (rerolls(r)) {
+            <span class="re">{{ rerolls(r) }}</span>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  @if (steps().length) {
+    <ul class="steps" [attr.aria-label]="'Resistências, vulnerabilidades e imunidades'">
+      @for (s of steps(); track $index) {
+        <li class="step" [class.step--ignored]="s.ignored">
+          <mat-icon aria-hidden="true">{{ s.ignored ? 'block' : 'shield' }}</mat-icon>
+          <span class="step__text">{{ step(s) }}{{ s.ignored ? ' (ignorada pelo mestre)' : '' }}</span>
+          @if (canIgnore(s)) {
+            <label class="step__toggle">
+              <input type="checkbox" [checked]="isIgnored(s)" [disabled]="busy()" (change)="toggleIgnore(s)" />
+              {{ ignoreWord(s) }}
+            </label>
+          }
+        </li>
+      }
+    </ul>
+    @if (after() !== undefined) {
+      <p class="after">Dano depois dos ajustes: <b>{{ after() }}</b></p>
+    }
+  }
+}
