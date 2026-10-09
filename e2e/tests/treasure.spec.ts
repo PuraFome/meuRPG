@@ -69,11 +69,12 @@ test(
       await expect(dialog.getByRole('link', { name: 'Créditos' })).toBeVisible();
       await expect(dialog.getByText('Texto do SRD 5.1 (tradução nossa)')).toBeVisible();
       await expect(dialog.locator('.text__body .srd[lang=en]')).toHaveCount(0);
+      await expect(dialog.locator('button[data-initial-focus]')).toBeFocused();
       await dialog.getByRole('button', { name: 'Ver em inglês' }).click();
       await expect(dialog.getByText('Texto do SRD 5.1 (em inglês)')).toBeVisible();
       await expect(dialog.locator('.text__body .srd[lang=en]')).toBeVisible();
       await dialog.getByRole('button', { name: 'Ver em português' }).click();
-      await expect(dialog.locator('button[data-initial-focus]')).toBeFocused();
+      await expect(dialog.locator('.text__body .srd[lang=en]')).toHaveCount(0);
       await master.keyboard.press('Escape');
       await expect(dialog).toHaveCount(0);
       await expect(openFirst).toBeFocused();
