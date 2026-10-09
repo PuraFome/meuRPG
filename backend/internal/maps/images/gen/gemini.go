@@ -114,7 +114,7 @@ func writeBody(w io.Writer, model string, req Request) error {
 	for _, ref := range req.References {
 		image(ref.Image)
 	}
-	// The format is marshalled as a whole and written on its own: no value is
+	// The format is marshaled as a whole and written on its own: no value is
 	// spliced into a JSON string by hand.
 	format, err := json.Marshal(responseFormat{Type: "image", MimeType: "image/jpeg", AspectRatio: req.AspectRatio, ImageSize: "1K"})
 	if err != nil {
