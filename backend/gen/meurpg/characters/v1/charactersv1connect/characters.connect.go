@@ -658,7 +658,11 @@ type CharacterServiceClient interface {
 	//     carries a CharacterBlocked detail with reason CANNOT_LEVEL_UP (it is
 	//     not marked for a milestone and has too little XP, it is at level 20,
 	//     or it is an NPC), CHARACTER_DEAD or AWAITING_APPROVAL.
-	//   - `invalid_argument`: class_key is not a class of the character.
+	//   - `invalid_argument`: class_key is not a class of the content.
+	//   - `failed_precondition` with a LevelUpRefusal: class_key is a class the
+	//     character does not have and the character may not take it (the
+	//     MULTICLASS_PREREQUISITE reasons, MAX_LEVEL, ARCHIVED_CHOICE or
+	//     SWITCHED_OFF_CHOICE).
 	GetLevelUpOptions(context.Context, *connect.Request[v1.GetLevelUpOptionsRequest]) (*connect.Response[v1.GetLevelUpOptionsResponse], error)
 	// PreviewLevelUp tells what the sheet would be like with these choices,
 	// without saving anything: the Summary step of the guided level-up
@@ -737,7 +741,9 @@ type CharacterServiceClient interface {
 	// Secrets, favored enemies and terrains); swapping a spell known for
 	// another, which the SRD lets Bards, Rangers, Sorcerers and Warlocks do when
 	// they level up (a level-up only adds spells, never removes one); and
-	// multiclassing and custom subclasses.
+	// custom subclasses. A class the character does not have is multiclassing
+	// (SRD 5.1, "Multiclassing"): LevelUpChoices.class_key names it, and it joins the
+	// sheet at level 1 if the character meets the prerequisites.
 	//
 	// Who may call it: only the owning player, and only while
 	// Character.can_level_up is true. The master keeps the sheet editor
@@ -1858,7 +1864,11 @@ type CharacterServiceHandler interface {
 	//     carries a CharacterBlocked detail with reason CANNOT_LEVEL_UP (it is
 	//     not marked for a milestone and has too little XP, it is at level 20,
 	//     or it is an NPC), CHARACTER_DEAD or AWAITING_APPROVAL.
-	//   - `invalid_argument`: class_key is not a class of the character.
+	//   - `invalid_argument`: class_key is not a class of the content.
+	//   - `failed_precondition` with a LevelUpRefusal: class_key is a class the
+	//     character does not have and the character may not take it (the
+	//     MULTICLASS_PREREQUISITE reasons, MAX_LEVEL, ARCHIVED_CHOICE or
+	//     SWITCHED_OFF_CHOICE).
 	GetLevelUpOptions(context.Context, *connect.Request[v1.GetLevelUpOptionsRequest]) (*connect.Response[v1.GetLevelUpOptionsResponse], error)
 	// PreviewLevelUp tells what the sheet would be like with these choices,
 	// without saving anything: the Summary step of the guided level-up
@@ -1937,7 +1947,9 @@ type CharacterServiceHandler interface {
 	// Secrets, favored enemies and terrains); swapping a spell known for
 	// another, which the SRD lets Bards, Rangers, Sorcerers and Warlocks do when
 	// they level up (a level-up only adds spells, never removes one); and
-	// multiclassing and custom subclasses.
+	// custom subclasses. A class the character does not have is multiclassing
+	// (SRD 5.1, "Multiclassing"): LevelUpChoices.class_key names it, and it joins the
+	// sheet at level 1 if the character meets the prerequisites.
 	//
 	// Who may call it: only the owning player, and only while
 	// Character.can_level_up is true. The master keeps the sheet editor

@@ -162,6 +162,9 @@ func (s *Service) CreateCharacter(
 					if err := hitPointsRuleRefusal(tr, sheet.GetFull()); err != nil {
 						return row, err
 					}
+					if err := refuseMulticlassGap(content, m, nil, sheet.GetFull()); err != nil {
+						return row, err
+					}
 					// The server records how the scores were made (never the client).
 					sheet.GetFull().AbilityOrigin = origin
 					if params.Sheet, err = storeJSON.Marshal(sheet); err != nil {
@@ -445,6 +448,9 @@ func (s *Service) UpdateCharacter(
 			return err
 		}
 		if err := refuseNewChoices(content, m, current.ID, storedSheet.GetFull(), sheet.GetFull()); err != nil {
+			return err
+		}
+		if err := refuseMulticlassGap(content, m, storedSheet.GetFull(), sheet.GetFull()); err != nil {
 			return err
 		}
 		// The ability origin is the server's: kept from the stored sheet, and a

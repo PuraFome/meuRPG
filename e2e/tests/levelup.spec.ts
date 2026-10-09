@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { endOpenSessionRPC } from './live-session-support';
-import { newSignedInContext, pensantus } from './support';
-import { markMilestoneRPC, tableForLevelUp, toren } from './levelup-support';
+import { newSignedInContext, pensantus, showAllPicks } from './support';
+import { classCard, markMilestoneRPC, passClassStep, tableForLevelUp, toren } from './levelup-support';
 
 // MR-040 (the guided level-up: Habilidades, Vida, Magias, Resumo; the master sees "O que mudou"), RN-01 (the
 // sheet stays locked: only the level's choices change), RN-12 (who can level up). The data comes through
@@ -37,7 +37,8 @@ test(
 
       // Habilidades: +2 in Inteligência, and what it changes, from the server.
       await expect(p.getByRole('heading', { name: 'Subir para o nível 4' })).toBeVisible();
-      await expect(p.getByText('Passo 1 de 4 · Habilidades')).toBeVisible();
+      await passClassStep(p);
+      await expect(p.getByText('Passo 2 de 5 · Habilidades')).toBeVisible();
       await expect(p.getByText('Falta escolher 1 habilidade.')).toBeVisible();
       await row(p, 'Inteligência').click();
       await expect(p.getByText('18 → 20')).toBeVisible();
@@ -45,18 +46,18 @@ test(
       await p.getByRole('button', { name: 'Próximo' }).click();
 
       // Vida: the average is already chosen.
-      await expect(p.getByText('Passo 2 de 4 · Vida')).toBeVisible();
+      await expect(p.getByText('Passo 3 de 5 · Vida')).toBeVisible();
       await expect(p.getByText('Média: 4')).toBeVisible();
       await expect(p.getByText('4 + Constituição +3 · de 23 para 30')).toBeVisible();
       await p.getByRole('button', { name: 'Próximo' }).click();
 
       // Magias: a cantrip, two spells for the book, two to prepare. A missing choice blocks "Próximo".
-      await expect(p.getByText('Passo 3 de 4 · Magias')).toBeVisible();
+      await expect(p.getByText('Passo 4 de 5 · Magias')).toBeVisible();
       await expect(p.getByText('Falta escolher 1 truque.')).toBeVisible();
       // "Próximo" is aria-disabled but still answers a tap: the focus goes to the first missing choice.
       await p.getByRole('button', { name: 'Próximo' }).click({ force: true });
       await expect(p.locator('#pick-cantrips').getByRole('radio').first()).toBeFocused();
-      await expect(p.getByText('Passo 3 de 4 · Magias')).toBeVisible();
+      await expect(p.getByText('Passo 4 de 5 · Magias')).toBeVisible();
       await p.getByRole('button', { name: /Ver os outros \d+ truques/ }).click();
       await row(p, 'Prestidigitação').click();
       await p.getByLabel('Buscar magia').fill('nebuloso');
@@ -72,7 +73,7 @@ test(
       await p.getByRole('button', { name: 'Próximo' }).click();
 
       // Resumo: everything before → after, and the rest stays locked.
-      await expect(p.getByText('Passo 4 de 4 · Resumo')).toBeVisible();
+      await expect(p.getByText('Passo 5 de 5 · Resumo')).toBeVisible();
       const summary = p.getByRole('region', { name: 'O que muda', exact: true });
       await expect(summary).toContainText('Mago 3');
       await expect(summary).toContainText('Mago 4');
@@ -130,7 +131,8 @@ test(
       await p.goto(sheetOf(campaignId, table.characterId));
       await p.getByRole('link', { name: 'Subir para o nível 5' }).click();
 
-      await expect(p.getByText('Passo 1 de 2 · Vida')).toBeVisible();
+      await passClassStep(p);
+      await expect(p.getByText('Passo 2 de 3 · Vida')).toBeVisible();
       await expect(p.getByText('Neste nível não há mais nada para escolher')).toBeVisible();
       await expect(p.getByText('Ataque Extra')).toBeVisible();
       await expect(p.getByText('Média: 6')).toBeVisible();
@@ -141,7 +143,7 @@ test(
       await expect(p.getByText(/Rolado no app: \d+ no d10/)).toBeVisible();
       await p.getByRole('button', { name: 'Próximo' }).click();
 
-      await expect(p.getByText('Passo 2 de 2 · Resumo')).toBeVisible();
+      await expect(p.getByText('Passo 3 de 3 · Resumo')).toBeVisible();
       await expect(p.getByRole('region', { name: 'O que muda', exact: true })).toContainText('Dados de vida');
       await p.getByRole('button', { name: 'Confirmar o nível 5' }).click();
       await expect(p.getByRole('status').filter({ hasText: 'Toren subiu para o nível 5.' })).toBeVisible();
@@ -193,7 +195,7 @@ test(
       // Once the master marks a milestone, the same route opens.
       await markMilestoneRPC(m, campaignId, 'Chegar ao Vale Seco', [table.characterId]);
       await p.goto(`${sheetOf(campaignId, table.characterId)}/level-up`);
-      await expect(p.getByText('Passo 1 de 4 · Habilidades')).toBeVisible();
+      await expect(p.getByText('Passo 1 de 5 · Classe')).toBeVisible();
     } finally {
       await endOpenSessionRPC(m, campaignId);
       await master.close();
@@ -228,17 +230,19 @@ test(
       campaignId = table.campaignId;
       await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}/level-up`);
 
-      // The first class of the sheet is marked: it is what the server uses with no class.
+      // The class step opens the flow: the first class of the sheet is marked, and the server is read with no class.
       await expect(p.getByRole('heading', { name: 'Subir para o nível 5' })).toBeVisible();
-      await expect(p.getByRole('heading', { name: 'Qual classe sobe de nível?' })).toBeVisible();
-      const mago = p.getByRole('radio', { name: /Mago/ });
-      const clerigo = p.getByRole('radio', { name: /Clérigo/ });
+      await expect(p.getByRole('heading', { name: 'Subir em qual classe?' })).toBeVisible();
+      const mago = p.getByRole('radio', { name: /^Mago/ });
+      const clerigo = p.getByRole('radio', { name: /^Clérigo/ });
       await expect(mago).toBeChecked();
       await expect(mago).toBeFocused();
       await expect(p.getByText('Corvina · Mago 3 → Mago 4')).toBeVisible();
 
       // Something chosen: the other class asks first, and "Continuar" keeps everything.
+      await p.getByRole('button', { name: 'Próximo' }).click();
       await row(p, 'Inteligência').click();
+      await p.getByRole('button', { name: 'Voltar' }).click();
       await p.locator('app-class-pick label.card').filter({ hasText: 'Clérigo' }).click();
       const ask = p.getByRole('group', { name: 'Trocar de classe?' });
       await expect(ask).toBeVisible();
@@ -253,7 +257,8 @@ test(
       await ask.getByRole('button', { name: 'Trocar para o Clérigo' }).click();
       await expect(clerigo).toBeChecked();
       await expect(p.getByText('Corvina · Clérigo 1 → Clérigo 2')).toBeVisible();
-      await expect(p.getByRole('status').filter({ hasText: /^Clérigo escolhido\. Passo 1 de \d, / })).toBeAttached();
+      await expect(p.getByRole('status').filter({ hasText: /^Clérigo escolhido\. O nível tem \d passos\./ })).toBeAttached();
+      await p.getByRole('button', { name: 'Próximo' }).click();
       await expect(p.getByText(/Só o que o nível 2 de Clérigo dá fica aberto\./)).toBeVisible();
       await expect(p.getByRole('heading', { name: 'O que o nível 2 de Clérigo dá' })).toBeVisible();
       await expect(p.getByRole('heading', { name: 'Subir para o nível 5' })).toBeVisible();
@@ -264,3 +269,115 @@ test(
     }
   },
 );
+
+// SRD 5.1 "Multiclassing": Doran, Guerreiro 5 (Força 16, Destreza 14, Inteligência 13, Carisma 9), takes the
+// Mago at level 1. The class step opens "Uma classe nova" with each class's prerequisite (the Bardo is closed
+// with the reason), the Vida step says the die of the new class, the summary says why each number moved, and the
+// footer asks in place before the class that does not come undone is added.
+// A phone prepares its spells here the same way a desktop does.
+for (const { width, height } of [
+  { width: 1280, height: 800 },
+  { width: 390, height: 844 },
+]) {
+  test(
+    `Doran, Guerreiro 5, sobe em uma classe nova: o pré-requisito à vista, a pergunta antes de acrescentar o Mago 1 e a ficha com as duas classes, a ${width} px @MR-040 @RN-12`,
+    { tag: ['@MR-040', '@RN-12'] },
+    async ({ browser }) => {
+      test.setTimeout(180_000);
+      const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width, height } });
+      const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width, height } });
+      const m = await master.newPage();
+      const p = await player.newPage();
+      let campaignId = '';
+      try {
+        await m.goto('/');
+        await p.goto('/');
+        const doran = { ...toren, name: 'Doran', level: 5, scores: { for: 15, des: 13, con: 13, int: 12, sab: 10, car: 8 } };
+        const table = await tableForLevelUp(m, p, `Subida em classe nova ${Date.now()}`, { build: doran });
+        campaignId = table.campaignId;
+        await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}/level-up`);
+
+        await expect(p.getByRole('heading', { name: 'Subir em qual classe?' })).toBeVisible();
+        await expect(p.getByRole('radio', { name: /^Guerreiro/ })).toBeChecked();
+        await classCard(p, /^Uma classe nova/).click();
+        await expect(p.getByRole('heading', { name: 'Qual classe nova?' })).toBeVisible();
+        await expect(p.getByText('Você cumpre o pré-requisito do Guerreiro')).toBeVisible();
+        // Closed, in words: the Bardo asks for Carisma 13 and Doran has 9. It stays focusable and cannot be chosen.
+        const bardo = p.getByRole('radio', { name: /^Bardo/ });
+        await expect(bardo).toHaveAttribute('aria-disabled', 'true');
+        await expect(classCard(p, /^Bardo/)).toContainText('Falta: Carisma 13 (você tem 9).');
+        // It keeps the focus (aria-disabled, not disabled) and the keyboard cannot choose it either.
+        await bardo.focus();
+        await p.keyboard.press('Space');
+        await expect(bardo).not.toBeChecked();
+        // "Próximo" waits for the class.
+        await expect(p.getByText('Escolha a classe nova para continuar.')).toBeVisible();
+        await expect(p.getByText('Exige Inteligência 13. Você tem Inteligência 13.')).toBeVisible();
+        await classCard(p, /^Mago/).click();
+        await expect(p.getByText('Doran · Guerreiro 5 → Guerreiro 5 · Mago 1')).toBeVisible();
+        await expect(p.getByText(/Passo 1 de 4 · Classe/)).toBeVisible();
+        await p.getByRole('button', { name: 'Próximo' }).click();
+
+        // Vida: the die of the new class, never the maximum.
+        await expect(p.getByRole('heading', { name: 'Pontos de vida de Mago 1' })).toBeVisible();
+        await expect(p.getByText('O nível 1 de Mago dá um d6, e o personagem vai ao nível total 6.')).toBeVisible();
+        await expect(p.getByText('Média: 4')).toBeVisible();
+        await p.getByRole('button', { name: 'Próximo' }).click();
+
+        // Magias: the counts of the Mago's level 1, not the total level's.
+        await expect(p.getByText('Passo 3 de 4 · Magias')).toBeVisible();
+        const cantrips = p.locator('#pick-cantrips');
+        await showAllPicks(cantrips);
+        for (const name of ['Raio de Fogo', 'Mãos Mágicas', 'Ilusão Menor']) {
+          await cantrips.getByRole('checkbox', { name: new RegExp(`^${name}`) }).check();
+        }
+        const spells = p.locator('#pick-spells');
+        await showAllPicks(spells);
+        for (const name of ['Mísseis Mágicos', 'Sono', 'Escudo Arcano', 'Armadura Arcana', 'Detectar Magia', 'Identificação']) {
+          await spells.getByRole('checkbox', { name: new RegExp(`^${name}`) }).check();
+        }
+        const prepare = p.locator('#pick-prepared');
+        await showAllPicks(prepare);
+        for (const name of ['Mísseis Mágicos', 'Escudo Arcano']) {
+          await prepare.getByRole('checkbox', { name: new RegExp(`^${name}`) }).check();
+        }
+        await p.getByRole('button', { name: 'Próximo' }).click();
+
+        // Resumo: the numbers from the server, and why.
+        await expect(p.getByText('Passo 4 de 4 · Resumo')).toBeVisible();
+        const summary = p.getByRole('region', { name: 'O que muda', exact: true });
+        await expect(summary).toContainText('Nível total');
+        await expect(summary).toContainText('Guerreiro 5 · Mago 1');
+        await expect(summary).toContainText('5d10 + 1d6');
+        await expect(summary).toContainText('Ficam separados por tipo.');
+        await expect(summary).toContainText('Pelo nível total (6): não muda.');
+        await expect(summary).toContainText('Proficiências novas');
+        // The book is six spells every time, not the count of a preview that has not seen the last pick.
+        await expect(summary).toContainText(/Livro de magias[\s\S]*?—\s*para\s*→\s*6\b/);
+        await expect(summary).toContainText('Só a primeira classe dá equipamento.');
+
+        // The question in place: "Voltar" first, and nothing is saved until the class is confirmed.
+        await p.getByRole('button', { name: 'Confirmar o nível 6' }).click();
+        const question = p.getByRole('alertdialog', { name: 'Subir em Mago 1?' });
+        await expect(question).toContainText('Isso acrescenta uma classe nova à ficha: Mago 1, e o nível total vai a 6. Não se desfaz.');
+        await expect(question.getByRole('button', { name: 'Voltar' })).toBeFocused();
+        await question.getByRole('button', { name: 'Voltar' }).click();
+        await expect(question).toBeHidden();
+        await p.getByRole('button', { name: 'Confirmar o nível 6' }).click();
+        await p.getByRole('button', { name: 'Subir em Mago 1' }).click();
+
+        await expect(p).toHaveURL(sheetOf(campaignId, table.characterId));
+        await expect(p.getByText('Doran subiu para o nível 6.')).toBeVisible();
+        await expect(p.getByText(/Guerreiro 5/).first()).toBeVisible();
+        await expect(p.getByText(/Mago 1/).first()).toBeVisible();
+        // Back on the route: nothing more to level up with this milestone.
+        await p.goto(`${sheetOf(campaignId, table.characterId)}/level-up`);
+        await expect(p.getByRole('heading', { name: 'Ainda não dá para subir de nível' })).toBeVisible();
+      } finally {
+        await endOpenSessionRPC(m, campaignId);
+        await master.close();
+        await player.close();
+      }
+    },
+  );
+}

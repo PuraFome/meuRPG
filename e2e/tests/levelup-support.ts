@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 import { startSessionRPC } from './live-session-support';
 import { callRPC, characterRpcBody, createCharacterRPC, pensantus, type CharacterBuild } from './support';
@@ -103,4 +103,18 @@ export async function markMilestoneRPC(masterPage: Page, campaignId: string, rea
     idempotencyKey: crypto.randomUUID(),
   });
   expect(res.ok(), await res.text()).toBeTruthy();
+}
+
+/**
+ * The first step of the guided level-up is "Subir em qual classe?": the class it already has is marked, and "Próximo"
+ * goes on with it. The specs about the steps after it start here.
+ */
+export async function passClassStep(page: Page): Promise<void> {
+  await expect(page.getByText(/Passo 1 de \d+ · Classe/)).toBeVisible();
+  await page.getByRole('button', { name: 'Próximo' }).click();
+}
+
+/** The card of a class in "Subir em qual classe?": the radio inside is visually hidden, so a tap goes to the card. */
+export function classCard(page: Page, name: RegExp): Locator {
+  return page.locator('app-class-pick label.card').filter({ hasText: name }).first();
 }

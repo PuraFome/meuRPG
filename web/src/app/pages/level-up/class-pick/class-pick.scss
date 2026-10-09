@@ -3,10 +3,57 @@
 }
 
 .lead {
-  margin: 0 0 var(--mr-space-3);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: var(--mr-space-3) 0 var(--mr-space-3);
   font-size: 15px;
   line-height: 20px;
-  color: var(--mr-ink-muted);
+  color: var(--mr-ink);
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &--plain {
+    display: block;
+    margin-top: 0;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.sub {
+  margin: var(--mr-space-4) 0 var(--mr-space-1);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+// The classes the character does not qualify for: dashed, readable, never gone; they keep the focus (aria-disabled).
+.card--closed {
+  border-style: dashed;
+  color: var(--mr-ink);
+  cursor: default;
+}
+
+.card__why {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--mr-ink);
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
 }
 
 .cards {
@@ -17,6 +64,12 @@
   @media (min-width: 768px) {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  &--grid {
+    @media (min-width: 1100px) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
   }
 }
 
@@ -48,6 +101,10 @@
 
   &:has(:disabled) {
     cursor: default;
+  }
+
+  &--class {
+    align-items: flex-start;
   }
 }
 
