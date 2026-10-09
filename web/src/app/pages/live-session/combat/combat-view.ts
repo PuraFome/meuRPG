@@ -1,6 +1,9 @@
 import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -138,6 +141,8 @@ import { InitiativeSetup } from './initiative-setup/initiative-setup';
 import { InitiativeSide } from './initiative-side/initiative-side';
 import { type JumpRequest, MovePage } from './move-page/move-page';
 import { OpportunityCard, type MasterAnswer } from './opportunity/opportunity-card';
+import { HiddenRevealCard, type RevealAnswer } from './hidden-reveal/hidden-reveal-card';
+import { heldWait, questions, revealBarText, revealWhy } from '../../../core/combat/hidden-reveal';
 import {
   OpportunitySheet,
   type OpportunityAnswer,
@@ -201,6 +206,7 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
     DeathQuestion,
     DeathSaves,
     CombatBar,
+    HiddenRevealCard,
     CombatLogPanel,
     CombatMapCard,
     CombatSummary,
@@ -237,6 +243,8 @@ export class CombatView {
   private readonly creaturesApi = inject(CreaturesClient);
   private readonly tableRules = inject(TableRulesClient);
   private readonly bottomSheet = inject(MatBottomSheet);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
   protected readonly phone = mediaQuery(PHONE_QUERY);
   /** From 1024px the master has the combat bar (E6-11); below it the turn card does it all (E6-12). */
   protected readonly laptop = mediaQuery('(min-width: 1024px)');
@@ -598,19 +606,35 @@ export class CombatView {
     const e = this.encounter();
     return e ? offersToAnswer(e) : [];
   });
-  /** What the waiting mover reads: their move landed, and each offer waits for its answer. */
+  /** What the waiting mover reads: their move landed, and each offer waits for its answer. Any other wait for the master
+   * (`turn_held`: a question about hidden creatures) is only "Esperando o mestre", on the player's turn and on another's,
+   * never why (RN-10). */
   protected readonly waiting = computed(() => {
     const e = this.encounter();
     const own = this.own();
-    return e && own && !this.isMaster() ? waitingText(e, offersHolding(e, own.id)) : null;
+    if (!e || !own || this.isMaster()) {
+      return null;
+    }
+    return waitingText(e, offersHolding(e, own.id)) ?? heldWait(e, this.myTurn());
   });
-  /** The master's bar: "Esperando a sua reação: Goblin 2". */
+  /** The master's bar: "Esperando a sua resposta: escondidas atingidas", or "Esperando a sua reação: Goblin 2". */
   protected readonly waitNote = computed(() => {
     const e = this.encounter();
-    return e && this.isMaster()
-      ? barText(e, (characterId) => this.info().get(characterId)?.playerName ?? '')
-      : '';
+    if (!e || !this.isMaster()) {
+      return '';
+    }
+    return (
+      revealBarText(e) ||
+      barText(e, (characterId) => this.info().get(characterId)?.playerName ?? '')
+    );
   });
+  /** Why "Próximo turno" waits while questions about hidden creatures are open ("Responda ao pedido abaixo para seguir."). */
+  protected readonly waitWhy = computed(() => {
+    const e = this.encounter();
+    return e && this.isMaster() ? revealWhy(e) : '';
+  });
+  /** The Portuguese name of each spell a question is about, read through the catalog. */
+  protected readonly revealSpellNames = signal<ReadonlyMap<string, string>>(new Map());
   /** The NPC reactors' attacks with their numbers, by offer (read from the reactor's own options). */
   protected readonly reactorOptions = signal<ReadonlyMap<string, GetTurnOptionsResponse>>(
     new Map(),
@@ -1098,6 +1122,25 @@ export class CombatView {
         }
       });
     });
+    // The questions about hidden creatures name their spell: read once per spell through the catalog.
+    effect(() => {
+      const e = this.encounter();
+      const campaignId = this.campaignId();
+      const keys = e && this.isMaster() ? questions(e).map((q) => q.spellKey) : [];
+      untracked(() => {
+        for (const key of new Set(keys)) {
+          if (this.revealSpellNames().has(key)) {
+            continue;
+          }
+          void this.catalog.details(campaignId, key).then((d) => {
+            const name = d?.spell?.namePt || d?.spell?.name;
+            if (name) {
+              this.revealSpellNames.update((m) => new Map(m).set(key, name));
+            }
+          });
+        }
+      });
+    });
     // The master's prompts need each NPC reactor's attacks with their numbers.
     effect(() => {
       const e = this.encounter();
@@ -1226,6 +1269,24 @@ export class CombatView {
       const who = !this.isMaster() && own && acts(e, own) ? own.id : e.currentCombatantId;
       return this.api.endTurn(this.campaignId(), e.id, who, discard, e.round);
     });
+  }
+
+  /** "Revelar" or "Manter escondidas" on a question about hidden creatures (PM-02c state 9). */
+  protected answerReveal(a: RevealAnswer): Promise<boolean> {
+    return this.run((e) => this.api.resolveHiddenReveal(this.campaignId(), e.id, a.id, a.reveal));
+  }
+
+  /** The last question answered: the focus goes on to the order, the next stop of the column. */
+  protected focusOrder(): void {
+    afterNextRender(
+      () =>
+        this.host.nativeElement
+          .querySelector<HTMLElement>(
+            'app-order-list button:not([disabled]), app-order-list [tabindex="0"]',
+          )
+          ?.focus(),
+      { injector: this.injector },
+    );
   }
 
   /** "Encerrar a parte da Brisa": the master ends one member's part. */

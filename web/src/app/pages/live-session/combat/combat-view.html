@@ -79,6 +79,7 @@
               [busy]="busy()"
               [pendingNote]="owed()"
               [waitNote]="waitNote()"
+              [waitWhy]="waitWhy()"
               [theatre]="theatre()"
               (next)="nextTurn($event)"
               (end)="endCombat()"
@@ -418,6 +419,13 @@
 <!-- What the master's side of a running combat is made of: the answers and the card of whoever is on turn, then the order. -->
 <ng-template #masterCards>
   @if (encounter(); as e) {
+    <app-hidden-reveal-card
+      [encounter]="e"
+      [spellNames]="revealSpellNames()"
+      [busy]="busy()"
+      (answer)="answerReveal($event)"
+      (answered)="focusOrder()"
+    />
     <app-opportunity-card
       [encounter]="e"
       [attacksByOffer]="masterAttacks()"
@@ -454,6 +462,7 @@
         [theatre]="theatre()"
         [offering]="offering()"
         [offerWhy]="offerWhy()"
+        [waitWhy]="waitWhy()"
         (offer)="toggleOffer()"
         (next)="nextTurn($event)"
         (settledNote)="settled()"

@@ -111,6 +111,8 @@ export class NpcCard {
   readonly offering = input(false);
   /** Why "Oferecer ataque de oportunidade" cannot be used now ("Ninguém pode reagir agora."), or `''`. */
   readonly offerWhy = input('');
+  /** A question about hidden creatures holds the turn: why "Próximo turno" waits ("Responda ao pedido abaixo para seguir."), or `''`. */
+  readonly waitWhy = input('');
   /** "Oferecer ataque de oportunidade": the page opens the form. */
   readonly offer = output<void>();
   /** "Próximo turno"; `true` when the master passes it with a damage waiting. */
