@@ -41,7 +41,7 @@ import {
 import { ContentWatcher } from '../../core/content/content-watcher';
 import { openSpellDetails } from '../../shared/spell-details/open-spell-details';
 import { AbilitiesStep } from './abilities-step/abilities-step';
-import { ClassPick, type ClassOption } from './class-pick/class-pick';
+import { ClassPick } from './class-pick/class-pick';
 import { HpStep } from './hp-step/hp-step';
 import { LevelUpSession } from './level-up-session';
 import { PicksStep } from './picks-step/picks-step';
@@ -127,14 +127,11 @@ export class LevelUpPage {
   protected readonly step = computed<StepKey>(
     () => this.steps()[Math.min(this.index(), this.steps().length - 1)] ?? 'hp',
   );
-  /** The sheet's classes, with the level each would go to: the cards of "Qual classe sobe de nível?" (two or more only). */
-  protected readonly classOptions = computed<ClassOption[] | null>(() => {
-    const s = this.session();
-    const classes = s?.before.classes ?? [];
-    return classes.length >= 2
-      ? classes.map((c) => ({ key: c.classKey, name: c.namePt, from: c.level, to: c.level + 1 }))
-      : null;
-  });
+  /** "Uma classe nova" is open in the class step: the cards of the new classes show. It follows the options
+   * when they are a new class's, and stays open while the player has not picked one. */
+  protected readonly newMode = signal(false);
+  /** The question "Subir em Mago 1?" asked in place of the footer's buttons, for a class new to the sheet. */
+  protected readonly confirmingNew = signal(false);
   /** The class a tap asked for while choices were made: the question "Trocar de classe?" is open for it. */
   protected readonly classAsking = signal<string | null>(null);
   /** The options of the other class are being read. */
@@ -158,6 +155,9 @@ export class LevelUpPage {
     const first = this.missingHere()[0];
     if (first) {
       return first.text;
+    }
+    if (this.step() === 'class' && this.newMode() && !s?.options.isNewClass) {
+      return 'Escolha a classe nova para continuar.';
     }
     const p = s?.preview.state();
     if (
@@ -290,7 +290,7 @@ export class LevelUpPage {
       afterNextRender(
         () => {
           this.watchFoot();
-          // Two classes or more: the focus opens on the checked card.
+          // The class step opens first: the focus is on the checked card.
           this.host.nativeElement
             .querySelector<HTMLInputElement>('app-class-pick input:checked')
             ?.focus({ preventScroll: true });
@@ -368,6 +368,10 @@ export class LevelUpPage {
 
   protected subtitle(s: LevelUpSession): string {
     const o = s.options;
+    if (o.isNewClass) {
+      const have = s.before.classes.map((c) => `${c.namePt} ${c.level}`).join(' · ');
+      return `${s.character.name} · ${have} → ${have} · ${o.classNamePt} 1`;
+    }
     return `${s.character.name} · ${o.classNamePt} ${o.fromLevel} → ${o.classNamePt} ${o.toLevel}`;
   }
 
@@ -495,6 +499,20 @@ export class LevelUpPage {
     if (!s || this.busy() || s.draft.missing().length > 0) {
       return;
     }
+    // A class new to the sheet does not come undone: the footer asks first, in place (SRD 5.1 "Multiclassing").
+    if (s.options.isNewClass && !this.confirmingNew()) {
+      this.confirmingNew.set(true);
+      afterNextRender(
+        () => {
+          const keep = this.host.nativeElement.querySelector<HTMLElement>('.js-new-keep');
+          keep?.scrollIntoView({ block: 'center' });
+          keep?.focus({ preventScroll: true });
+        },
+        { injector: this.injector },
+      );
+      return;
+    }
+    this.confirmingNew.set(false);
     this.busy.set(true);
     this.failure.set(null);
     try {
@@ -632,8 +650,16 @@ export class LevelUpPage {
   /** A tap on a class card: with nothing chosen yet the level goes to that class at once, else the page asks first. */
   protected pickClass(key: string): void {
     const s = this.session();
-    if (!s || this.classBusy() || key === s.options.classKey) {
+    if (!s || this.classBusy()) {
       return;
+    }
+    const isNew = s.before.classes.every((c) => c.classKey !== key);
+    if (key === s.options.classKey) {
+      this.newMode.set(isNew);
+      return;
+    }
+    if (!isNew) {
+      this.newMode.set(false);
     }
     if (s.draft.dirty()) {
       this.classAsking.set(key);
@@ -650,13 +676,27 @@ export class LevelUpPage {
     void this.switchClass(key);
   }
 
+  /** "Uma classe nova": the cards of the new classes open; the options stay the current class's until one is picked. */
+  protected openNewClasses(): void {
+    this.newMode.set(true);
+  }
+
   /** "Trocar para o ...": the choices of the draft go, and the options of the other class are read. */
   protected confirmClass(): void {
     const key = this.classAsking();
     this.classAsking.set(null);
     if (key) {
+      this.newMode.set(this.session()?.before.classes.every((c) => c.classKey !== key) ?? false);
       void this.switchClass(key);
     }
+  }
+
+  /** "Voltar" of the question: nothing is saved, the footer comes back. */
+  protected keepNotNew(): void {
+    this.confirmingNew.set(false);
+    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>('.js-next')?.focus(), {
+      injector: this.injector,
+    });
   }
 
   /** "Continuar com o ...": the question closes and everything stays as it was. */
@@ -691,9 +731,10 @@ export class LevelUpPage {
       // A die rolled on its way for the old class lands on the old session, which is off screen: never on this class.
       old.stop();
       this.index.set(0);
+      this.confirmingNew.set(false);
       this.state.set({ status: 'ready', session });
       this.classStatus.set(
-        `${options.classNamePt} escolhido. Passo 1 de ${session.draft.steps().length}, ${STEP_LABELS[session.draft.steps()[0]]}.`,
+        `${options.classNamePt} escolhido. O nível tem ${session.draft.steps().length} passos.`,
       );
       this.focusClass();
     } catch (err) {

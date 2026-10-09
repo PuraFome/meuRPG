@@ -1,38 +1,100 @@
 <section class="mr-panel" aria-labelledby="class-title">
-  <h2 class="mr-panel__title" id="class-title">Qual classe sobe de nível?</h2>
-  <p class="lead">{{ lead() }}</p>
+  <h2 class="mr-panel__title" id="class-title">Subir em qual classe?</h2>
   <div class="cards" role="radiogroup" aria-labelledby="class-title">
-    @for (c of classes(); track c.key) {
+    @for (c of have(); track c.classKey) {
       <label class="card">
         <input
           type="radio"
           class="mr-visually-hidden"
           name="level-up-class"
-          [value]="c.key"
-          [checked]="c.key === selected()"
-          [disabled]="busy()"
-          (change)="choose(c.key)"
+          [value]="c.classKey"
+          [checked]="!newMode() && c.classKey === selected()"
+          [disabled]="busy() || !c.available"
+          (change)="choose(c.classKey)"
         />
         <span class="card__dot" aria-hidden="true"></span>
         <span class="card__text">
-          <span class="card__title">{{ c.name }}</span>
-          <span class="card__desc">nível {{ c.from }} → {{ c.to }}</span>
+          <span class="card__title">{{ c.namePt }}</span>
+          <span class="card__desc">{{ next(c) }}</span>
+        </span>
+      </label>
+    }
+    @if (fresh().length > 0) {
+      <label class="card card--new" [class.card--closed]="!newOpen()">
+        <input
+          type="radio"
+          class="mr-visually-hidden"
+          name="level-up-class"
+          value=""
+          [checked]="newMode()"
+          [attr.aria-disabled]="newOpen() ? null : 'true'"
+          [attr.aria-describedby]="newOpen() ? null : 'class-new-lead'"
+          [disabled]="busy()"
+          (change)="chooseNewMode()"
+        />
+        <span class="card__dot" aria-hidden="true"></span>
+        <span class="card__text">
+          <span class="card__title">Uma classe nova</span>
+          <span class="card__desc">Entra com o nível 1 da classe: o seu nível total vai a {{ totalToLevel() }}.</span>
         </span>
       </label>
     }
   </div>
+  @if (fresh().length > 0 && (newMode() || !newOpen())) {
+    <p class="lead" id="class-new-lead">
+      @if (newOpen()) {
+        <mat-icon aria-hidden="true">check_circle</mat-icon>
+      } @else {
+        <mat-icon aria-hidden="true">lock</mat-icon>
+      }
+      <span>{{ lead() }}</span>
+    </p>
+  }
+  @if (newMode() && newOpen()) {
+    <h3 class="sub" id="class-new-title">Qual classe nova?</h3>
+    <p class="lead lead--plain">{{ newIntro() }}</p>
+    <div class="cards cards--grid" role="radiogroup" aria-labelledby="class-new-title">
+      @for (c of fresh(); track c.classKey) {
+        <label class="card card--class" [class.card--closed]="closed(c)">
+          <input
+            type="radio"
+            class="mr-visually-hidden"
+            name="level-up-new-class"
+            [value]="c.classKey"
+            [checked]="c.classKey === selected()"
+            [attr.aria-disabled]="closed(c) ? 'true' : null"
+            [disabled]="busy()"
+            (change)="chooseNew(c)"
+          />
+          <span class="card__dot" aria-hidden="true"></span>
+          <span class="card__text">
+            <span class="card__title">{{ c.namePt }}</span>
+            <span class="card__desc">
+              {{ exige(c) }}
+              @if (c.prerequisiteMet) {
+                {{ reason(c) }}
+              }
+            </span>
+            @if (!c.prerequisiteMet) {
+              <span class="card__why"><mat-icon aria-hidden="true">lock</mat-icon>{{ reason(c) }}</span>
+            }
+          </span>
+        </label>
+      }
+    </div>
+  }
   @if (asked(); as to) {
     <div class="mr-notice mr-notice--warning ask" role="group" aria-labelledby="class-ask-title">
       <mat-icon aria-hidden="true">warning</mat-icon>
       <div class="ask__body">
         <p>
           <strong id="class-ask-title">Trocar de classe?</strong>
-          As escolhas já feitas neste nível, como o aumento de habilidade, são descartadas.
+          As escolhas deste nível são descartadas.
         </p>
         <div class="pair">
-          <button matButton="outlined" type="button" (click)="confirmSwitch.emit()">Trocar para o {{ to.name }}</button>
+          <button matButton="outlined" type="button" (click)="confirmSwitch.emit()">Trocar para {{ to.isNew ? 'a classe nova' : 'o' }} {{ to.namePt }}</button>
           <button matButton="outlined" type="button" class="js-class-keep" (click)="keep.emit()">
-            Continuar com o {{ current()?.name }}
+            Continuar com o {{ current()?.namePt }}
           </button>
         </div>
       </div>
