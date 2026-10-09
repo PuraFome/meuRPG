@@ -638,6 +638,17 @@ func TestDeriveRules(t *testing.T) {
 		if d := Derive(b, c); !slices.Contains(issueCodes(d), IssueSkillCount+" full.skill_proficiency_keys") {
 			t.Errorf("3 wizard skills: issues = %v", issueCodes(d))
 		}
+		short := pensantus()
+		short.SkillProficiencies = short.SkillProficiencies[:1] // one of the wizard's two
+		var missing string
+		for _, is := range Derive(short, c).Issues {
+			if is.Code == IssueSkillCount && is.Field == "full.skill_proficiency_keys" {
+				missing = is.Message
+			}
+		}
+		if missing != "Falta 1 perícia para escolher." {
+			t.Errorf("one skill short: message = %q, want the singular", missing)
+		}
 		b.CustomBackgroundSkills = []string{"skill:arcana"}
 		if d := Derive(b, c); !slices.Contains(issueCodes(d), IssueSkillCount+" full.custom_background.skill_keys") {
 			t.Errorf("1 background skill: issues = %v", issueCodes(d))

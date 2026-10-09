@@ -57,7 +57,7 @@
       />
       <div class="row__text">
         <span class="row__name" [class.row__name--out]="c.defeated">
-          {{ c.label }}
+          <span class="row__label">{{ c.label }}</span>
           @if (current(c)) {
             <span class="row__turn">Vez</span>
           }

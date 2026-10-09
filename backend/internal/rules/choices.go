@@ -145,7 +145,7 @@ func (x *deriver) checkChoices() {
 		case n < allowed:
 			subject, change := x.skillChange(allowed, n)
 			x.issueChange(IssueSkillCount, "full.skill_proficiency_keys", subject, change,
-				fmt.Sprintf("Faltam %d perícias para escolher.", allowed-n))
+				missingSkills(allowed-n))
 		}
 	}
 
@@ -209,6 +209,14 @@ func (x *deriver) checkChoices() {
 // about. With the starting class the only source it is the class ("agora dá 2
 // perícias no nível 1; esta ficha tem 3."); with other sources (a race's trait)
 // it is only the count, and no entry is named.
+// missingSkills: "Falta 1 perícia para escolher." / "Faltam 2 perícias para escolher.".
+func missingSkills(n int) string {
+	if n == 1 {
+		return "Falta 1 perícia para escolher."
+	}
+	return fmt.Sprintf("Faltam %d perícias para escolher.", n)
+}
+
 func (x *deriver) skillChange(allowed, chosen int) (subject, change string) {
 	if len(x.classes) > 0 && allowed == x.classes[0].class.SkillChoices.Choose {
 		return x.classes[0].key, fmt.Sprintf("agora dá %s no nível 1; esta ficha tem %d.", countPT(allowed, "perícia", "perícias"), chosen)

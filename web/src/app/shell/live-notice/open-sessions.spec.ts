@@ -184,8 +184,15 @@ describe('sessionsToAnnounce', () => {
     expect(ids(sessionsToAnnounce(sessions, new Set(), '/campaigns/c2?x=1#y'))).toEqual(['s1']);
   });
 
-  it('announces on the pages under a campaign, such as a sheet', () => {
+  it("doesn't announce a session on the pages under its campaign, such as a sheet", () => {
     expect(ids(sessionsToAnnounce(sessions, new Set(), '/campaigns/c2/characters/p1'))).toEqual([
+      's1',
+    ]);
+    expect(ids(sessionsToAnnounce(sessions, new Set(), '/campaigns/c2/maps/m1'))).toEqual(['s1']);
+  });
+
+  it('announces on the pages of another campaign', () => {
+    expect(ids(sessionsToAnnounce(sessions, new Set(), '/campaigns/c9/characters/p1'))).toEqual([
       's1',
       's2',
     ]);

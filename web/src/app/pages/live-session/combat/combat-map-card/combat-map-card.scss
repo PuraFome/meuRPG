@@ -137,3 +137,13 @@
 .card__zoom {
   width: 200%;
 }
+
+// A player's map cropped to what they know (E9): the window is the card, the
+// map inside is wider than it and shifted. Clicks and drops read the map's own
+// rectangle, so the zoom does not change which square is meant.
+.card__crop--on {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--mr-radius-sm);
+  outline: 1px solid var(--mr-line);
+}

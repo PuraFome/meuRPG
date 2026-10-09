@@ -588,6 +588,15 @@ describe('MapEditor', () => {
       expect(text()).toContain('Precisa da grade definida.');
     });
 
+    it('offers a way to the grid field from the reason, and focuses it', async () => {
+      await setup({ gridColumns: 0, gridRows: 0 });
+      radio('Pintar').click();
+      await settle();
+      button('Ir para a grade').click();
+      await settle();
+      expect(document.activeElement).toBe(el.querySelector('app-grid-panel input'));
+    });
+
     it('while a combat runs says so, still paints, and turns the grid change off', async () => {
       await setup(undefined, { combatRunning: true });
       expect(text()).toContain(

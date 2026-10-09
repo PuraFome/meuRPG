@@ -28,6 +28,7 @@ import type {
 import { TrapTargets, TrapTrigger } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import type { MessageInitShape } from '@bufbuild/protobuf';
 import { TrapPresets } from '../../../core/traps/trap-presets';
+import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { LightPresets } from '../../../core/maps/light-presets';
 import { editorErrorMessage, mapErrorMessage } from '../../../core/maps/map-errors';
 import { DungeonInfo } from '../../../core/maps/dungeon-info';
@@ -172,6 +173,13 @@ export class MapEditor {
   protected readonly map = computed(() => this.state().map());
   /** What a square of the drawing is worth, for the legend of a calibrated map: "3 m". */
   protected readonly factorText = computed(() => factorLabel(this.map()?.squareFactor || 1));
+  /** "Ir para a grade": the map has no grid, so the paint tools wait; the field that sets it is in the side panel, far from the bar. */
+  protected goToGrid(): void {
+    const field = this.host.nativeElement.querySelector<HTMLElement>('app-grid-panel input');
+    field?.scrollIntoView({ block: 'center' });
+    focusWithRing(field);
+  }
+
   protected readonly view = viewChild(MapView);
   private readonly pointPanel = viewChild(PointPanel);
   private readonly lightPanel = viewChild(LightPointPanel);

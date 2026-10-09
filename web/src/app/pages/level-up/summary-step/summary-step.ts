@@ -36,13 +36,6 @@ import { LevelUpSession } from '../level-up-session';
       display: flex;
       flex-direction: column;
       gap: var(--mr-space-4);
-
-      // A summary reads label to value: not wider than a line can be followed.
-      // From 1100px the step has its own column, which it fills like the
-      // other steps, next to "O resto da ficha".
-      @media (min-width: 768px) and (max-width: 1099.98px) {
-        max-width: 640px;
-      }
     }
 
     .lead {

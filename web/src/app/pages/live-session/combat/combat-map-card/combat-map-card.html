@@ -33,27 +33,31 @@
       </p>
     </div>
   }
-  <app-combat-map
-    [fog]="fog()"
-    (fogSettled)="onFogSettled($event)"
-    (fogLoadingChange)="onFogLoading($event)"
-    [image]="image()"
-    [mapName]="mapName()"
-    [columns]="encounter().gridColumns"
-    [rows]="encounter().gridRows"
-    [combatants]="encounter().combatants"
-    [isMaster]="isMaster()"
-    [currentId]="encounter().currentCombatantId"
-    [reach]="reach()"
-    [layers]="layers()"
-    [offers]="offers()"
-    [masterMoves]="isMaster()"
-    [forcedDrag]="forcedSwitch() && forced()"
-    [ownMoveId]="ownMovable() ? (own()?.id ?? null) : null"
-    [doorPicks]="doorTaps() && isMaster()"
-    (doorPick)="doorPick.emit($event)"
-    (tokenDrop)="tokenDrop.emit($event)"
-  />
+  <div class="card__crop" [class.card__crop--on]="!!crop()" [style.aspect-ratio]="crop()?.ratio ?? null">
+    <div class="card__shift" [style.width.%]="crop()?.width ?? 100" [style.transform]="crop()?.shift ?? null">
+      <app-combat-map
+        [fog]="fog()"
+        (fogSettled)="onFogSettled($event)"
+        (fogLoadingChange)="onFogLoading($event)"
+        [image]="image()"
+        [mapName]="mapName()"
+        [columns]="encounter().gridColumns"
+        [rows]="encounter().gridRows"
+        [combatants]="encounter().combatants"
+        [isMaster]="isMaster()"
+        [currentId]="encounter().currentCombatantId"
+        [reach]="reach()"
+        [layers]="layers()"
+        [offers]="offers()"
+        [masterMoves]="isMaster()"
+        [forcedDrag]="forcedSwitch() && forced()"
+        [ownMoveId]="ownMovable() ? (own()?.id ?? null) : null"
+        [doorPicks]="doorTaps() && isMaster()"
+        (doorPick)="doorPick.emit($event)"
+        (tokenDrop)="tokenDrop.emit($event)"
+      />
+    </div>
+  </div>
   }
 
   @if (forcedSwitch() && !preview()) {

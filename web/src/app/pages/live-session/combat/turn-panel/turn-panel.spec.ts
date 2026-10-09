@@ -72,6 +72,30 @@ describe('TurnPanel', () => {
     ]);
   });
 
+  it('keeps the order strip in the card, unless the page draws it under the actions on the own turn', () => {
+    const fixture = TestBed.createComponent(TurnPanel);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants: order, currentCombatantId: 'pen' }),
+    );
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-order-strip')).not.toBeNull();
+
+    fixture.componentRef.setInput('orderBelow', true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-order-strip')).toBeNull();
+    // The four chips are still there, one row of them.
+    expect(fixture.nativeElement.querySelectorAll('.eco > li')).toHaveLength(4);
+
+    // Off turn there are no actions under the card, so the strip stays in it.
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants: order, currentCombatantId: 'cap' }),
+    );
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-order-strip')).not.toBeNull();
+  });
+
   it('says the turn waits for an opportunity attack, and what stopped a move short', () => {
     const fixture = TestBed.createComponent(TurnPanel);
     fixture.componentRef.setInput(

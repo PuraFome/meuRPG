@@ -1,11 +1,11 @@
-import { DicePreference, Member, Role } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { DicePreference, Member } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { roleLabel } from '../../core/campaigns/campaign-labels';
 
 /** One row of the "Membros" panel. */
 export interface MemberRowVm {
   readonly userId: string;
-  /** The display name, or "Mestre sem nome" / "Jogador sem nome": never an
-   * e-mail (docs/privacy.md) and never a bare "Sem nome". */
+  /** The display name, or "Sem nome no perfil" (the role is in its own column):
+   * never an e-mail (docs/privacy.md) and never a bare "Sem nome". */
   readonly name: string;
   /** "mestre" or "jogador", lowercase as in the design's member list. */
   readonly role: string;
@@ -22,7 +22,7 @@ export function memberRows(members: readonly Member[], viewerId: string | null):
     const name = m.displayName.trim();
     return {
       userId: m.userId,
-      name: name || (m.role === Role.MASTER ? 'Mestre sem nome' : 'Jogador sem nome'),
+      name: name || 'Sem nome no perfil',
       role: roleLabel(m.role),
       isViewer: viewerId !== null && m.userId === viewerId,
       hasName: name.length > 0,

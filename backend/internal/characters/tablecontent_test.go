@@ -1522,7 +1522,7 @@ func TestTableContentAnIssueIsBlamedOnItsOwnEntry(t *testing.T) {
 // TestIssuesAreToldApartByTheirWholeIdentity: the code, the field and the sentence.
 func TestIssuesAreToldApartByTheirWholeIdentity(t *testing.T) {
 	t.Parallel()
-	a := rules.Issue{Code: "skill_count", Field: "full.skill_proficiency_keys", Message: "Faltam 1 perícias para escolher."}
+	a := rules.Issue{Code: "skill_count", Field: "full.skill_proficiency_keys", Message: "Falta 1 perícia para escolher."}
 	b := rules.Issue{Code: "skill_count", Field: "full.skill_proficiency_keys", Message: "Há 3 perícias escolhidas; o personagem escolhe 2."}
 	f1 := rules.Issue{Code: "formula", Message: "Um efeito de A foi ignorado."}
 	f2 := rules.Issue{Code: "formula", Message: "Um efeito de B foi ignorado."}

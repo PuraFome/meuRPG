@@ -998,6 +998,44 @@ test('agir no combate passa no axe e nas conferências de layout no tema escuro,
   await scanActionScreens(browser, 'dark', 390);
 });
 
+test('no celular de 390 x 844 as ações da vez ficam acima da dobra, logo sob o título, e a ordem vem depois', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  const viewport = { width: 390, height: 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Ações acima da dobra ${Date.now()}`, true, true);
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+
+    // The four boxes are one compact row; the attack and the spell are on the first screen.
+    const tiles = p.getByRole('list', { name: 'O que você tem neste turno' }).getByRole('listitem');
+    await expect(tiles).toHaveCount(4);
+    const row = await Promise.all((await tiles.all()).map((t) => boxOf(t)));
+    expect(new Set(row.map((b) => Math.round(b.y))).size).toBe(1);
+    expect(Math.max(...row.map((b) => b.height))).toBeLessThanOrEqual(80);
+    await expect(p.getByRole('button', { name: 'Atacar com Raio de Fogo' })).toBeInViewport();
+
+    // The action block comes before the order of initiative.
+    const actions = await boxOf(p.getByRole('heading', { name: 'Ação', exact: true }));
+    const order = await boxOf(p.getByRole('list', { name: 'Ordem de iniciativa' }));
+    expect(actions.y).toBeLessThan(order.y);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+});
+
 /** Moving by the circle, jumping, cover and the opportunity attacks (Etapa 9,
  * slice 9.15; E9-05, E9-06, E9-07, E9-13): the "Mover" page with nothing chosen,
  * with a cost and a warning, with a wall refused, "Saltar" (distance, then
@@ -1905,6 +1943,12 @@ async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark',
     // Not `open()`: with a session open the sheet follows its stream, so the network is never idle.
     await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
     const panel = p.getByRole('region', { name: 'Anotações' });
+    if (width < 1200) {
+      // Under 1200px the notes are one "Anotações (N)" row that opens on a tap.
+      await expect(panel.getByText('Brisa me deve 5 PO')).toBeHidden();
+      await expectScreenPasses(p, `Ficha com as anotações fechadas ${where}`);
+      await panel.getByRole('button', { name: /^Anotações \(\d+\)/ }).click();
+    }
     await expect(panel.getByText('Brisa me deve 5 PO')).toBeVisible();
     await expectScreenPasses(p, `Ficha com as anotações ${where}`);
     await panel.getByRole('button', { name: 'Nova anotação' }).click();
@@ -1941,6 +1985,70 @@ test('pistas, ganchos e anotações passam no axe e nas conferências de layout 
 test('pistas, ganchos e anotações passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-029', '@MR-030'] }, async ({ browser }) => {
   test.setTimeout(600_000);
   await scanNotesScreens(browser, 'light', 320);
+});
+
+/** The player's sheet: the game numbers first on a phone and a tablet (the combat block before the saves and the
+ * skills, the notes last as one row), and the four-column paper sheet from 1200px (docs/design.md). */
+async function scanSheetOrder(browser: Browser, width: number): Promise<{ combat: number; proficiencies: number; features: number; notes: number; notesX: number; combatX: number }> {
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), viewport: { width, height: 844 } });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), viewport: { width, height: 844 } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForScenes(m, p, `Ordem da ficha ${Date.now()}`, false);
+    campaignId = table.campaignId;
+    await createNoteRPC(p, campaignId, 'Brisa me deve 5 PO');
+    await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
+    await expect(p.getByRole('heading', { name: 'Características e traços' })).toBeVisible();
+    const top = async (selector: string) => (await boxOf(p.locator(selector))).y;
+    const abilities = await top('app-ability-medallions');
+    const combat = await top('app-combat-column');
+    const proficiencies = await top('app-proficiency-column');
+    const features = await top('app-features-panel');
+    const notes = await top('app-notes-panel');
+    return {
+      combat: combat - abilities,
+      proficiencies: proficiencies - abilities,
+      features: features - abilities,
+      notes: notes - abilities,
+      notesX: (await boxOf(p.locator('app-notes-panel'))).x,
+      combatX: (await boxOf(p.locator('app-combat-column'))).x,
+    };
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a ficha no celular vai dos números do jogo às anotações, que ficam numa linha só', { tag: ['@a11y', '@MR-004', '@MR-030'] }, async ({ browser }) => {
+  test.setTimeout(120_000);
+  const at = await scanSheetOrder(browser, 390);
+  // The abilities come first, then the combat block, then the saves and skills.
+  expect(at.combat).toBeGreaterThan(0);
+  expect(at.combat).toBeLessThan(at.proficiencies);
+  expect(at.proficiencies).toBeLessThan(at.features);
+  expect(at.features).toBeLessThan(at.notes);
+});
+
+test('a ficha no tablet também põe o combate antes das anotações', { tag: ['@a11y', '@MR-004', '@MR-030'] }, async ({ browser }) => {
+  test.setTimeout(120_000);
+  const at = await scanSheetOrder(browser, 768);
+  expect(at.combat).toBeLessThanOrEqual(at.proficiencies);
+  expect(at.features).toBeLessThan(at.notes);
+});
+
+test('a ficha no desktop de 1280 mantém as quatro colunas, com as anotações no alto da quarta', { tag: ['@a11y', '@MR-004', '@MR-030'] }, async ({ browser }) => {
+  test.setTimeout(120_000);
+  const at = await scanSheetOrder(browser, 1280);
+  // The notes are the first block of the fourth column: level with the combat block, to its right.
+  expect(Math.abs(at.notes - at.combat)).toBeLessThan(2);
+  expect(at.notesX).toBeGreaterThan(at.combatX);
 });
 
 /** The joint turn (MR-013, E8-01): the master's card and boxes, the player's
