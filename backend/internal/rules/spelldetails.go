@@ -214,6 +214,9 @@ type SpellDetails struct {
 	Target SpellTarget
 }
 
+// defaultLineWidthFt is the width of a line the SRD gives no other for: Lightning Bolt's 5 ft.
+const defaultLineWidthFt = 5
+
 var (
 	// cornersRE is the SRD's own words for a spell whose area goes around corners
 	// (Fireball: "The fire spreads around corners"). Message, which can "travel
@@ -239,11 +242,11 @@ func (d *SpellDetails) AreaWidthFt() int {
 		return 0
 	}
 	if m := widthRE.FindStringSubmatch(strings.Join(d.Description, " ")); m != nil {
-		if w, err := strconv.Atoi(m[1]); err == nil && w >= 5 && w%5 == 0 {
+		if w, err := strconv.Atoi(m[1]); err == nil && w >= defaultLineWidthFt && w%5 == 0 {
 			return w
 		}
 	}
-	return 5
+	return defaultLineWidthFt
 }
 
 // SpellDetails returns the details of a spell key, and whether it exists.
