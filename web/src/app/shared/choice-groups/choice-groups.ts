@@ -1,5 +1,15 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, ElementRef, computed, effect, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -19,6 +29,11 @@ import {
   originLine,
   sectionsOf,
 } from './choice-picks';
+
+/** A choice with more options than this offers the "only what I can take" filter. */
+const LONG_LIST = 12;
+/** A spell list longer than this offers a text filter. */
+const FILTER_FROM = 8;
 
 /** What the user did on a choice: its whole selection is now `optionKeys`. */
 export interface ChoiceSelection {
@@ -51,6 +66,7 @@ export interface ChoiceTextEdit {
   imports: [NgTemplateOutlet, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule],
   templateUrl: './choice-groups.html',
   styleUrl: './choice-groups.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ChoiceGroups {
   /** What `PreviewChoices` answered. */
@@ -113,7 +129,9 @@ export class ChoiceGroups {
 
   /** Moves the focus to the title of the first choice that still has something to pick. */
   focusFirstPending(): boolean {
-    const title = this.host.nativeElement.querySelector<HTMLElement>('[data-pending] .choice__title');
+    const title = this.host.nativeElement.querySelector<HTMLElement>(
+      '[data-pending] .choice__title',
+    );
     title?.focus();
     return title !== null;
   }
@@ -132,7 +150,10 @@ export class ChoiceGroups {
 
   protected count(choice: Choice): number {
     const n = Math.min(this.pickedKeys(choice).length, choice.picks);
-    return choice.kind === ChoiceKind.ENEMY && n > 0 && this.needsTexts(choice) && !this.textsComplete(choice)
+    return choice.kind === ChoiceKind.ENEMY &&
+      n > 0 &&
+      this.needsTexts(choice) &&
+      !this.textsComplete(choice)
       ? n - 1
       : n;
   }
@@ -153,7 +174,10 @@ export class ChoiceGroups {
   }
 
   protected isOff(choice: Choice, option: ChoiceOption): boolean {
-    return isBlocked(option) || (!this.isPicked(choice, option) && this.isFull(choice) && !isRadio(choice));
+    return (
+      isBlocked(option) ||
+      (!this.isPicked(choice, option) && this.isFull(choice) && !isRadio(choice))
+    );
   }
 
   protected titleId(choice: Choice): string {
@@ -178,7 +202,7 @@ export class ChoiceGroups {
 
   /** The options in the order shown: for a long list with blocked options, the ones that can be taken first. */
   protected visibleOptions(choice: Choice): { takable: ChoiceOption[]; blocked: ChoiceOption[] } {
-    const split = choice.options.length > 12 && choice.options.some(isBlocked);
+    const split = choice.options.length > LONG_LIST && choice.options.some(isBlocked);
     const byName = (a: ChoiceOption, b: ChoiceOption) => a.namePt.localeCompare(b.namePt, 'pt-BR');
     if (!split) {
       return { takable: this.filtered(choice, [...choice.options]), blocked: [] };
@@ -196,7 +220,7 @@ export class ChoiceGroups {
   }
 
   protected hasFilter(choice: Choice): boolean {
-    return choice.options.length > 12 && choice.options.some(isBlocked);
+    return choice.options.length > LONG_LIST && choice.options.some(isBlocked);
   }
 
   protected setTakable(choice: Choice, only: boolean): void {
@@ -209,7 +233,7 @@ export class ChoiceGroups {
   }
 
   protected hasSpellFilter(choice: Choice): boolean {
-    return choice.kind === ChoiceKind.SPELLS && choice.options.length > 8;
+    return choice.kind === ChoiceKind.SPELLS && choice.options.length > FILTER_FROM;
   }
 
   protected setSpellFilter(choice: Choice, value: string): void {
@@ -278,7 +302,9 @@ export class ChoiceGroups {
     const all = [...options.takable, ...options.blocked];
     const at = all.findIndex((o) => o.key === option.key);
     const target = all[(at + step + all.length) % all.length];
-    this.host.nativeElement.querySelector<HTMLElement>(`#${this.optionId(choice, target)}`)?.focus();
+    this.host.nativeElement
+      .querySelector<HTMLElement>(`#${this.optionId(choice, target)}`)
+      ?.focus();
     if (!isBlocked(target)) {
       this.commit(choice, [target.key]);
     }
@@ -321,7 +347,11 @@ export class ChoiceGroups {
       row.names.push(s.namePt);
       rows.set(s.level, row);
     }
-    return [...rows.entries()].map(([level, r]) => ({ level, names: r.names.join(', '), reached: r.reached }));
+    return [...rows.entries()].map(([level, r]) => ({
+      level,
+      names: r.names.join(', '),
+      reached: r.reached,
+    }));
   }
 
   protected spellLine(option: ChoiceOption): string {

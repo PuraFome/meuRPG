@@ -421,7 +421,7 @@ describe('CharacterEditor, the Escolhas step (PM-05)', () => {
     tab('Magias')!.click();
     await settle(fixture);
 
-    const extra = el.querySelector('.spell-extra');
+    const extra = el.querySelector('.spell-grid__extra');
     expect(extra?.textContent).toContain('Do patrono');
     expect(extra?.textContent).toContain('Mãos Flamejantes');
     // Bola de Fogo comes at the class level 5: not yet.

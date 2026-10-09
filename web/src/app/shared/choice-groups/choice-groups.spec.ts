@@ -11,7 +11,13 @@ import {
 import { ChoiceGroups, type ChoiceSelection } from './choice-groups';
 
 function option(key: string, reasonPt = '') {
-  return create(ChoiceOptionSchema, { key, storedKey: key, namePt: key.toUpperCase(), summaryPt: `s-${key}`, reasonPt });
+  return create(ChoiceOptionSchema, {
+    key,
+    storedKey: key,
+    namePt: key.toUpperCase(),
+    summaryPt: `s-${key}`,
+    reasonPt,
+  });
 }
 
 function group(picks: number, picked: string[] = []) {

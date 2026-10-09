@@ -33,9 +33,7 @@ export function applySelection(
   const stored = new Map(choice.options.map((o) => [o.key, o.storedKey]));
   const before = new Set(choice.picked);
   const after = new Set(nextOptionKeys);
-  const gone = new Set(
-    choice.picked.filter((k) => !after.has(k)).map((k) => stored.get(k) ?? k),
-  );
+  const gone = new Set(choice.picked.filter((k) => !after.has(k)).map((k) => stored.get(k) ?? k));
   const next = keys.filter((k) => !gone.has(k));
   for (const k of nextOptionKeys) {
     const key = stored.get(k) ?? k;
