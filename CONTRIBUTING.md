@@ -156,11 +156,12 @@ The devidp also honours `max_age` and `prompt=login|none`: it keeps its own logi
 
 ## Gallery images
 
-The images the master uploads (MR-019) live in a folder, the one in `BLOB_DIR`. `make up` already turns it on: `compose.yaml` mounts the `images` volume at `/var/lib/meurpg/images`, and it survives `make down` (`docker volume rm meurpg-local_images` deletes the images).
+The images the master uploads (MR-019) live in a folder in the local stack, the one in `BLOB_DIR`, and in a Cloud Storage bucket on Cloud Run (`BLOB_BUCKET`, [Operations](docs/operations.md#images)). `make up` already turns the folder on: `compose.yaml` mounts the `images` volume at `/var/lib/meurpg/images`, and it survives `make down` (`docker volume rm meurpg-local_images` deletes the images).
 
 | Variable | Required | What it is |
 | --- | --- | --- |
-| `BLOB_DIR` | No | The folder where the API stores the images and thumbnails. Without it, images are off: `POST /uploads/images`, `GET /images/...` and `GalleryService` answer `503`/`unavailable`, the startup log warns, and the rest of the app works. A folder without write permission keeps the API from starting. |
+| `BLOB_DIR` | No | The folder where the API stores the images and thumbnails. Without it, images are off: `POST /uploads/images`, `GET /images/...` and `GalleryService` answer `503`/`unavailable`, the startup log warns, and the rest of the app works. A folder without write permission keeps the API from starting. Never together with `BLOB_BUCKET` (the API refuses to start), and refused on Cloud Run. |
+| `BLOB_BUCKET` | No | The Cloud Storage bucket where the API stores the images, with the Cloud Run service account's token. For production only: the local stacks and the tests keep `BLOB_DIR`. If the bucket cannot be reached at start, the log warns and images stay on; each call is tried on its own. The first-deploy steps are in [Operations](docs/operations.md#first-deploy-step-by-step). |
 
 With `make run`, the API runs in the terminal without images; to turn them on, `BLOB_DIR=/tmp/meurpg-images make run` (the folder is created if it does not exist). The tests use a temporary folder each.
 
