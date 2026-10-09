@@ -230,6 +230,8 @@ export function blockedMessage(blocked: EncounterBlocked): string {
       return 'Um dos extras marcados não vale mais. A tela foi atualizada.';
     case EncounterBlockedReason.DAMAGE_PART_NOT_REMOVABLE:
       return 'Só um extra pode ser tirado do dano, e uma vez só.';
+    case EncounterBlockedReason.CHARACTER_RESERVED:
+      return 'Um personagem reservado (ainda sem jogador) não entra no combate. Desmarque-o e tente de novo.';
     default:
       return 'O combate não está num estado que aceite isso. A tela foi atualizada.';
   }

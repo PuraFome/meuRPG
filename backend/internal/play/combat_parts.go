@@ -179,6 +179,8 @@ type hitFacts struct {
 	disadvantaged    bool // some source gives the attack disadvantage, canceled or not
 	targetHurt       bool
 	names            func(string) string
+	// opportunity says an opportunity attack: a melee attack made from the square the mover left.
+	opportunity bool
 }
 
 // scene is the rules' ExtraScene for the hit.
@@ -186,8 +188,11 @@ func (h hitFacts) scene() combat.ExtraScene {
 	t := h.sheet.Traits
 	a := h.attack
 	key := turnKey(h.enc)
+	// A thrown melee weapon thrown at range (beyond 5 ft) is a ranged weapon attack: Rage and the
+	// melee extras do not apply to it; used in melee (within 5 ft) it is still a melee attack.
+	melee := a.Melee && !h.thrownAtRange()
 	return combat.ExtraScene{
-		Weapon: a.Weapon, Melee: a.Melee, Finesse: a.Finesse, Ranged: a.Weapon && !a.Melee, UsesStrength: a.Ability == "str",
+		Weapon: a.Weapon, Melee: melee, Finesse: a.Finesse, Ranged: a.Weapon && !melee, UsesStrength: a.Ability == "str",
 		WeaponName: a.Name, Mode: h.mode, WithoutMap: isTheatre(h.enc), EnemyNearTarget: h.enemyNearTarget(), DisadvantageSource: h.disadvantaged,
 		SneakAttackDice: t.SneakAttackDice, SneakUsed: deref(h.attacker.SneakAttackTurn) == key,
 		DivineSmite: t.DivineSmite, SmiteSlotFree: h.freeSlots, ImprovedDivineSmite: t.ImprovedDivineSmite,
@@ -197,6 +202,16 @@ func (h hitFacts) scene() combat.ExtraScene {
 		TargetHurt: h.targetHurt, TargetState: stateWordPT(h.target), TargetLabel: h.target.Label,
 		Raging: hasState(h.states, h.attacker.ID, stateRage) && !t.HeavyArmor, BarbarianLevel: t.BarbarianLevel,
 	}
+}
+
+// thrownAtRange says the attack is a melee weapon with a throwing range used on a target
+// farther than melee reach (SRD 5.1, "Ranged Attacks": it is then a ranged attack).
+func (h hitFacts) thrownAtRange() bool {
+	if h.opportunity || !h.attack.Melee || h.attack.RangeFt <= meleeReachFt || h.attack.LongRangeFt <= 0 || isTheatre(h.enc) {
+		return false
+	}
+	d, ok := distanceFt(h.attacker, h.target)
+	return ok && d > meleeReachFt
 }
 
 // targetMarked says the attacker's Hunter's Mark is on the target.
@@ -687,7 +702,7 @@ func freeSmiteSlots(v *playv1.CharacterVitals) []*playv1.SlotOption {
 // hitParts works out the parts of the hit of a weapon attack and stores them on the
 // pending damage the attack opened. A hit with no extra and no automatic line has none.
 func (s *Service) hitParts(ctx context.Context, c *combatTx, campaignID string, v combatViewer, in attackModeInputs, attacker, target playdb.Combatant,
-	sheet link.Sheet, attack link.Attack, weaponBonus int, mode combat.RollMode, disadvantaged bool, pendingID string,
+	sheet link.Sheet, attack link.Attack, weaponBonus int, mode combat.RollMode, disadvantaged, opportunity bool, pendingID string,
 ) error {
 	if !attack.Weapon {
 		return nil
@@ -698,7 +713,7 @@ func (s *Service) hitParts(ctx context.Context, c *combatTx, campaignID string, 
 	}
 	h := hitFacts{
 		attacker: attacker, target: target, sheet: sheet, attack: attack, weaponBonus: weaponBonus, mode: mode, disadvantaged: disadvantaged,
-		cs: in.cs, states: in.states, enc: c.enc, viewer: v, names: names,
+		cs: in.cs, states: in.states, enc: c.enc, viewer: v, names: names, opportunity: opportunity,
 	}
 	if h.targetHurt, err = s.isHurt(ctx, c, campaignID, target); err != nil {
 		return err

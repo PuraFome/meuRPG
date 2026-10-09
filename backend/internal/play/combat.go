@@ -274,6 +274,9 @@ func (s *Service) participants(ctx context.Context, campaignID string, in []*pla
 	for i, p := range in {
 		c, ok := byID[ids[i]]
 		if !ok {
+			if err := s.refuseReserved(ctx, campaignID, ids[i]); err != nil {
+				return nil, err
+			}
 			return nil, errCharacterNotFound()
 		}
 		if c.CombatOnly {
@@ -323,6 +326,20 @@ func (s *Service) participants(ctx context.Context, campaignID string, in []*pla
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("a combat has at most %d combatants", maxCombatants))
 	}
 	return out, nil
+}
+
+// refuseReserved turns the "not found" of a reserved character (imported, not claimed by a player
+// yet: it cannot fight) into a failed_precondition that says so, not a missing character.
+func (s *Service) refuseReserved(ctx context.Context, campaignID, characterID string) error {
+	found, err := s.roster.SessionCharacters(ctx, nil, campaignID, []string{characterID})
+	if err != nil {
+		return s.dbError(ctx, "read a character of a combat", err)
+	}
+	if len(found) == 1 && found[0].Reserved {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CHARACTER_RESERVED,
+			"a reserved character (no player yet) cannot fight")
+	}
+	return nil
 }
 
 func errCharacterNotFound() error {

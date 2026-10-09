@@ -139,7 +139,7 @@
         <section aria-labelledby="group-title">
           <div class="sec__head">
             <h3 class="sec__title" id="group-title">Grupo</h3>
-            <span class="sec__count">{{ included().size }} de {{ players().length }} no combate</span>
+            <span class="sec__count">{{ included().size }} de {{ fighters().length }} no combate</span>
           </div>
           @if (state() === 'loading') {
             <p class="mr-muted" role="status">Carregando...</p>
@@ -155,6 +155,7 @@
                   [roll]="roll(p)"
                   [inApp]="rollsInApp(p)"
                   [included]="included().has(p.id)"
+                  [unavailable]="p.reserved ? RESERVED_WHY : ''"
                   (toggle)="toggle(p.id)"
                 />
               </li>
