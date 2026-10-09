@@ -826,7 +826,7 @@ The upload is bound to the account that began it: another account's part, previe
 
 ### Cleaning
 
-The rows of exports and uploads have no foreign key to the campaign or the account: a cascade would delete the row and leave the file where nothing names it. `Sweep` (when the server starts and every 10 minutes while it runs) deletes what expired, file first and row after; `DeleteCampaignPackages` and `DeleteUserPackages` are for the code that deletes a campaign or an account, and the bucket's own lifecycle rule is the last word (see [Operations](operations.md#campaign-package)).
+The rows of exports and uploads have no foreign key to the campaign or the account: a cascade would delete the row and leave the file where nothing names it. `Sweep` (when the server starts and every 10 minutes while it runs) deletes what expired, file first and row after; it also takes the orphans, the exports whose campaign or account no longer exists and the uploads whose account is gone, whatever their expiry (deleting a campaign or an account does not call the package code; the next sweep finds the rows). `DeleteCampaignPackages` and `DeleteUserPackages` delete at once what a campaign or an account owns, for a caller that wants it, and the bucket's own lifecycle rule is the last word (see [Operations](operations.md#campaign-package)).
 
 ## Rules module: rules as data
 
