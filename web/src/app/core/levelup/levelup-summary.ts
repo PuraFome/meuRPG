@@ -7,7 +7,6 @@ import type {
   DerivedSheet,
   DerivedSkill,
   SavingThrow,
-  Spellcasting,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { Ability as GenAbility } from '../../../gen/meurpg/rules/v1/rules_pb';
 import {
@@ -351,13 +350,13 @@ export function changeRows(
     const list = ctx.spellListClassKey || ctx.classKey;
     // A class that learns a fixed number of spells has it from the server, whichever list they came from (a Bard's Magical
     // Secrets); the others (a spellbook, a table class) are counted among the spells of the sheet that are on the class list.
-    const known = (s: DerivedSheet, c: Spellcasting | undefined) =>
-      c && c.spellsKnown > 0
-        ? c.spellsKnown
-        : s.spells.filter((x) => (x.spell?.level ?? 0) > 0 && x.spell?.classKeys.includes(list))
-            .length;
-    const knownBefore = known(before, bc);
-    const knownAfter = known(after, ac);
+    const onList = (s: DerivedSheet) =>
+      s.spells.filter((x) => (x.spell?.level ?? 0) > 0 && x.spell?.classKeys.includes(list)).length;
+    const knownBefore = bc && bc.spellsKnown > 0 ? bc.spellsKnown : onList(before);
+    // The picks of the draft count at once: the preview of the sheet that comes after them can still be the one before
+    // the last pick, and a count read from it alone would flip between runs. The picks are always new spells.
+    const knownAfter =
+      ac.spellsKnown > 0 ? ac.spellsKnown : Math.max(onList(after), onList(before) + ctx.spells.length);
     const missing = ctx.spellsMissing > 0 ? ` (falta ${ctx.spellsMissing})` : '';
     if (ctx.learnsSpells !== false && (knownAfter !== knownBefore || ctx.spells.length > 0)) {
       rows.push({

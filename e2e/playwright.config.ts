@@ -27,6 +27,8 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never' }], ...(process.env.CI ? [['github'] as const] : [])],
   use: {
     baseURL,
+    // A control that never shows up fails in seconds with its locator, not at the test's own timeout.
+    actionTimeout: 20_000,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

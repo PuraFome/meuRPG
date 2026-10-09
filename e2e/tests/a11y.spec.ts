@@ -2563,10 +2563,15 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     await row('Inteligência').click();
     await expect(p.getByText('18 → 20')).toBeVisible();
     await expectScreenPasses(p, `Habilidades, Inteligência 20 ${where}`);
+    // "Cancelar" is the first step's button; the class step is the first one now.
+    await p.getByRole('button', { name: 'Voltar', exact: true }).click();
+    await expect(p.getByText('Passo 1 de 5 · Classe')).toBeVisible();
     await p.getByRole('button', { name: 'Cancelar' }).click();
     await expect(p.getByText('Descartar as escolhas?')).toBeVisible();
     await expectScreenPasses(p, `A pergunta de descartar ${where}`);
     await p.getByRole('button', { name: 'Continuar escolhendo' }).click();
+    await p.getByRole('button', { name: 'Próximo' }).click();
+    await expect(p.getByText('Passo 2 de 5 · Habilidades')).toBeVisible();
     await p.getByRole('button', { name: 'Próximo' }).click();
 
     await expect(p.getByText('Passo 3 de 5 · Vida')).toBeVisible();
