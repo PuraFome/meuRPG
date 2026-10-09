@@ -224,7 +224,7 @@ The export and import of a campaign (MR-050, [Architecture](architecture.md#camp
 | Upload | Parts of 5 MiB (`PUT /uploads/campaign-imports/{id}/parts/{n}`), well under Cloud Run's 32 MiB request limit; 2 minutes to send a part; one upload per person; the parts are kept an hour after the last one |
 | Export file | `campaigns/<id>/exports/<id>.zip`, kept 24 hours, one export running at a time per instance, 20 minutes at most |
 | Download | Up to 30 minutes for the response (a client slower than 1 Mbit/s is cut) |
-| Cleanup | `Sweep` when the server starts and every 10 minutes; a running export that has not moved for 10 minutes is marked interrupted |
+| Cleanup | `Sweep` when the server starts and every 10 minutes; it also takes the exports and uploads whose campaign or account no longer exists; a running export that has not moved for 10 minutes is marked interrupted |
 
 **The bucket needs a lifecycle rule** as a second net, in case the instance is down when something expires: delete the objects under `imports/` older than 1 day and those under `campaigns/*/exports/` older than 2 days (Cloud Storage lifecycle rules match by prefix and age). The application deletes them first; the rule only covers a pause of the sweeper. Soft delete keeps a deleted object 7 more days (see [Privacy](privacy.md#what-the-campaign-package-does-mr-050)).
 

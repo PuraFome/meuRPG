@@ -474,6 +474,69 @@ func TestDeletingACampaignOrAnAccountDeletesItsExports(t *testing.T) {
 	}
 }
 
+// The tables of packages have no foreign key (a cascade would drop the row and
+// leave the file), so nothing deletes them when their campaign or account goes:
+// the sweeper takes the orphans, whatever their expiry.
+func TestTheSweepTakesThePackagesOfACampaignOrAccountThatIsGone(t *testing.T) {
+	h := newHarness(t)
+	ctx := t.Context()
+
+	kept := h.newUser("Fica")
+	keptCampaign := h.smallCampaign(kept)
+	_ = kept.export(keptCampaign)
+
+	gone := h.newUser("Campanha some")
+	goneCampaign := h.smallCampaign(gone)
+	_ = gone.export(goneCampaign)
+	upGone := gone.send("a.zip", h.smallPackage(gone))
+
+	before := h.count(`SELECT count(*)::INT FROM campaign_exports`)
+	h.pkg.Sweep(ctx)
+	if n := h.count(`SELECT count(*)::INT FROM campaign_exports`); n != before || before == 0 {
+		t.Fatalf("a sweep before anything was deleted left %d of %d exports", n, before)
+	}
+
+	if _, err := h.pool.Exec(ctx, `DELETE FROM campaigns WHERE id = $1`, goneCampaign); err != nil {
+		t.Fatal(err)
+	}
+	h.pkg.Sweep(ctx)
+	if n := h.count(`SELECT count(*)::INT FROM campaign_exports WHERE campaign_id = $1`, goneCampaign); n != 0 {
+		t.Errorf("%d export rows of a deleted campaign left", n)
+	}
+	if keys := h.storedKeys("campaigns/" + goneCampaign + "/exports/"); len(keys) != 0 {
+		t.Errorf("files of a deleted campaign left: %v", keys)
+	}
+	if n := h.count(`SELECT count(*)::INT FROM campaign_exports WHERE campaign_id = $1`, keptCampaign); n == 0 {
+		t.Errorf("the sweep took the export of a campaign that exists")
+	}
+	if n := h.count(`SELECT count(*)::INT FROM campaign_imports WHERE user_id = $1`, gone.id); n != 1 {
+		t.Errorf("the upload of an account that exists was taken (%d rows)", n)
+	}
+
+	if _, err := h.pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, gone.id); err != nil {
+		t.Fatal(err)
+	}
+	h.pkg.Sweep(ctx)
+	if n := h.count(`SELECT count(*)::INT FROM campaign_imports WHERE user_id = $1`, gone.id); n != 0 {
+		t.Errorf("%d upload rows of a deleted account left", n)
+	}
+	if keys := h.storedKeys("imports/" + upGone.GetId()); len(keys) != 0 {
+		t.Errorf("parts of a deleted account left: %v", keys)
+	}
+
+	// An export whose campaign still exists but whose requester is gone.
+	if _, err := h.pool.Exec(ctx, `UPDATE campaign_exports SET requested_by = gen_random_uuid() WHERE campaign_id = $1`, keptCampaign); err != nil {
+		t.Fatal(err)
+	}
+	h.pkg.Sweep(ctx)
+	if n := h.count(`SELECT count(*)::INT FROM campaign_exports`); n != 0 {
+		t.Errorf("%d export rows of a deleted account left", n)
+	}
+	if keys := h.storedKeys("campaigns/" + keptCampaign + "/exports/"); len(keys) != 0 {
+		t.Errorf("files of a deleted account left: %v", keys)
+	}
+}
+
 func containsAny(keys []string, parts ...string) bool {
 	for _, k := range keys {
 		for _, p := range parts {
