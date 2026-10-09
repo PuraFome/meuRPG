@@ -106,6 +106,7 @@ func (x *deriver) armorClass() {
 	}
 	x.d.ArmorClass = x.modifiers("ac", ac)
 	x.d.ArmorClassDescription = name
+	x.d.ArmorCategory = x.armorCategory
 }
 
 // unarmoredDefenseFeatures are the class features called Unarmored Defense: the

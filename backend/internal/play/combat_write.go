@@ -125,6 +125,17 @@ const (
 	eventConcentrationSaveRolled = "concentration_save_rolled"
 )
 
+// The kinds of the attack rolls (migration 00198): a player's request for a better
+// mode and the master's answer (roll_mode_answered; it is also the player taking the
+// request back), an extra the master took out of a damage, and a state of a combatant
+// that began or ended (a rage, a dodge).
+const (
+	eventRollModeRequested = "roll_mode_requested"
+	eventRollModeAnswered  = "roll_mode_answered"
+	eventDamagePartRemoved = "damage_part_removed"
+	eventStateChanged      = "state_changed"
+)
+
 // combatWrite describes one change to a combat: who makes it, the idempotency
 // key, the kind of event it becomes, and the combat it is about (empty when
 // the change creates it).

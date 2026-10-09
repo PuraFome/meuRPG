@@ -360,6 +360,29 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
       expect(JSON.stringify(play.hintTry())).not.toMatch(/dc/i);
     });
 
+    it('asks for the pair when a real die is refused with "the roll takes 2 d20", without a message of error', async () => {
+      const { fake, play } = setup();
+      fake.playerRunResult = { ...base, revision: 1 };
+      await play.open('p1');
+      fake.hintResult = (n) => {
+        if (n < 2) {
+          throw new ConnectError(
+            'the roll takes 2 d20: type 2 face(s) in d20_faces',
+            Code.InvalidArgument,
+          );
+        }
+        return hintAnswer({ ...base, revision: 2 }, true, 15);
+      };
+      await play.tryHint({ face: 6 });
+      expect(play.hintPair()).toBe(true);
+      expect(play.message()).toBe('');
+      await play.tryHint({ faces: [6, 15] });
+      expect(fake.calls.filter((c) => c[0] === 'tryHint').map((c) => c[3])).toEqual([
+        { face: 6 },
+        { faces: [6, 15] },
+      ]);
+    });
+
     it('sends again with the SAME key when the answer never came', async () => {
       const { fake, play } = setup();
       fake.playerRunResult = { ...base, revision: 1 };

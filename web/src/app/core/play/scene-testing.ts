@@ -231,7 +231,9 @@ export class FakeSceneClient {
     die: SceneDie,
     key: string,
   ): Promise<SceneRoll> {
-    this.record(`roll ${actionId} ${'inApp' in die ? 'app' : die.face} ${key}`);
+    this.record(
+      `roll ${actionId} ${'inApp' in die ? 'app' : 'face' in die ? die.face : die.faces.join(',')} ${key}`,
+    );
     return this.made;
   }
 

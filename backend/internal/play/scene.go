@@ -81,6 +81,11 @@ type sceneRollEvent struct {
 	// made. The session summary counts a roll only when it is true, so a
 	// scene that hid its DC never gives a pass or a fail to anyone (RN-20).
 	DCShown bool `json:"dc_shown,omitempty"`
+	// The roll had advantage or disadvantage: the other d20, which of the two was
+	// first (D20 is the one that counts) and the mode.
+	D20B     int32  `json:"d20_b,omitempty"`
+	Counted  int32  `json:"counted,omitempty"`
+	RollMode string `json:"roll_mode,omitempty"`
 }
 
 // sceneGrantEvent is the payload of scene_attempt_granted: the action; the
@@ -510,6 +515,12 @@ func sceneRollToProto(id, characterID, characterName string, at time.Time, ev sc
 		Id: id, ActionId: ev.ActionID, CharacterId: characterID, CharacterName: characterName,
 		Roll:     treatedRoll(ev.D20, ev.Modifier, ev.Total, ev.Physical),
 		RolledAt: timestamppb.New(at),
+		Mode:     modeToProto[modeOfKey(ev.RollMode)],
+	}
+	if ev.D20B != 0 {
+		out.Roll = diceRoll(2, 20, pairOf(ev.D20, ev.D20B, ev.Counted), ev.Modifier, ev.Total, ev.Physical)
+		out.Roll.CountedIndex = ev.Counted
+		markTreated(out.Roll, ev.Modifier, ev.Total)
 	}
 	if showPassed {
 		out.Passed = ev.Passed
@@ -600,10 +611,13 @@ func (s *Service) RollSceneCheck(
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face must be 1 to 20"))
 		}
 	default:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face"))
+		if in.typedFaces, err = typedD20Faces(req.Msg.GetD20Faces()); err != nil {
+			return nil, err
+		}
 	}
 
 	var (
+		shown    []*playv1.AdvantageSource // the circumstances of the roll's mode, for the roller
 		ev       sceneRollEvent
 		rollID   string
 		who      link.Character
@@ -708,17 +722,30 @@ func (s *Service) RollSceneCheck(
 		}
 
 		bonus := options[0].Bonus
-		face, roll, err := s.checkD20(in, bonus, options[0].ReliableTalent)
+		// Conditions and states of the character in a running combat: Poisoned and
+		// Frightened are disadvantage on ability checks, a rage advantage on Strength.
+		ability, isCheck := checkKey(action.Key)
+		cm, err := s.checkModeOf(ctx, tx, m.CampaignID, session.ID, who.ID, ability, isCheck)
 		if err != nil {
 			return err
 		}
+		names, err := s.namerFor(ctx, tx, m.CampaignID)
+		if err != nil {
+			return err
+		}
+		shown = shownSources(cm.Sources, names)
+		d20, err := s.d20With(in, bonus, cm.Mode)
+		if err != nil {
+			return err
+		}
+		d20 = reliableD20(d20, bonus, options[0].ReliableTalent)
 		ev = sceneRollEvent{
 			PointID: scene.PointID, ActionID: action.ID, Key: action.Key,
-			D20: clamp32(face, 1, 20), Modifier: clamp32(bonus, math.MinInt32, math.MaxInt32), Total: clamp32(roll.Total, math.MinInt32, math.MaxInt32),
-			Physical: roll.Physical, DCShown: scene.ShowDC,
+			D20: clamp32(d20.Face(), 1, 20), Modifier: clamp32(bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total, math.MinInt32, math.MaxInt32),
+			Physical: d20.Physical, DCShown: scene.ShowDC, D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(cm.Mode),
 		}
 		if action.DC > 0 {
-			ev.Passed = new(roll.Total >= action.DC)
+			ev.Passed = new(d20.Total >= action.DC)
 		}
 		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &who.ID, hash: hash})
 		if err != nil {
@@ -753,9 +780,9 @@ func (s *Service) RollSceneCheck(
 	}
 	// The caller is a player: the pass or fail is in the answer only when the
 	// scene showed its DC (RN-20).
-	return connect.NewResponse(&playv1.RollSceneCheckResponse{
-		Roll: sceneRollToProto(rollID, characterID, name, at, ev, ev.DCShown),
-	}), nil
+	roll := sceneRollToProto(rollID, characterID, name, at, ev, ev.DCShown)
+	roll.Sources = shown
+	return connect.NewResponse(&playv1.RollSceneCheckResponse{Roll: roll}), nil
 }
 
 // GrantSceneAttempt implements playv1connect.PlayServiceHandler.

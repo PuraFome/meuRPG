@@ -847,3 +847,64 @@ func TestAGrappleEndsWhenTheGrapplerIsIncapacitatedOrTheTargetLeavesItsReach(t *
 		t.Error("the grapple outlived its grappler being incapacitated")
 	}
 }
+
+// TestAContestWaitsInAReactionWindowThatNamesWhoItWaitsFor (W7-X decision 3): a contest the
+// defender must answer is a window of kind CONTEST; the defender's player and the master hold
+// it, everybody else reads "Esperando <nome>" (or "Esperando o mestre" for an NPC), and it
+// closes by itself when the contest is settled. AnswerReaction does not answer it.
+func TestAContestWaitsInAReactionWindowThatNamesWhoItWaitsFor(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	c := a.arena(t, arenaPlan{at: map[string][2]int32{"Brisa": {5, 3}}})
+	c.advance(t, c.hob)
+	c.h.roller.queue(17)
+	started := c.mustStart(t, a.master, func(r *playv1.StartContestRequest) {
+		r.InitiatorId, r.TargetId, r.Purpose = c.id(t, c.hob), c.id(t, "Brisa"), playv1.ContestPurpose_CONTEST_PURPOSE_GRAPPLE
+	})
+
+	windowOf := func(e *playv1.Encounter) *playv1.ReactionWindow {
+		for _, w := range e.GetReactionWindows() {
+			if w.GetKind() == playv1.ReactionKind_REACTION_KIND_CONTEST {
+				return w
+			}
+		}
+		return nil
+	}
+	own := windowOf(c.get(t, a.bia))
+	if own == nil || !own.GetForYou() || own.GetContest().GetContestId() != started.GetContest().GetId() {
+		t.Fatalf("Brisa's window = %v, want the contest she answers", own)
+	}
+	if windowOf(c.get(t, a.master)) == nil {
+		t.Error("the master has no window to answer")
+	}
+	other := c.get(t, a.caio)
+	if windowOf(other) != nil {
+		t.Errorf("another player reads a window to answer: %v", windowOf(other))
+	}
+	if got := other.GetReactionWait().GetTitlePt(); got != "Esperando Brisa" {
+		t.Errorf("another player reads %q, want %q", got, "Esperando Brisa")
+	}
+	// A contest is not answered with AnswerReaction.
+	if _, err := a.bia.combat.AnswerReaction(t.Context(), connect.NewRequest(&playv1.AnswerReactionRequest{
+		CampaignId: a.campaignID, EncounterId: c.e.GetId(), IdempotencyKey: newKey(), WindowId: own.GetId(), Answer: playv1.ReactionChoice_REACTION_CHOICE_PASS,
+	})); err == nil {
+		t.Error("AnswerReaction answered a contest")
+	}
+	// The player leaves the roll to the master: the window is now his, and players read it.
+	if _, err := a.bia.contests.RespondContest(t.Context(), connect.NewRequest(&playv1.RespondContestRequest{
+		CampaignId: a.campaignID, EncounterId: c.e.GetId(), IdempotencyKey: newKey(), ContestId: started.GetContest().GetId(),
+		Skill: playv1.ContestSkill_CONTEST_SKILL_ACROBATICS, DeferToMaster: true,
+	})); err != nil {
+		t.Fatalf("RespondContest(leave to the master) error = %v", err)
+	}
+	if got := c.get(t, a.caio).GetReactionWait().GetTitlePt(); got != "Esperando o mestre" {
+		t.Errorf("after the deferral another player reads %q, want %q", got, "Esperando o mestre")
+	}
+	if windowOf(c.get(t, a.bia)) != nil && windowOf(c.get(t, a.bia)).GetForYou() && windowOf(c.get(t, a.bia)).GetAnswerNow() {
+		t.Error("Brisa still holds the window after leaving the roll to the master")
+	}
+	c.mustRespond(t, a.master, started.GetContest().GetId(), playv1.ContestSkill_CONTEST_SKILL_ACROBATICS, 8)
+	if windowOf(c.get(t, a.master)) != nil || c.get(t, a.caio).GetReactionWait() != nil {
+		t.Error("the window outlives the contest")
+	}
+}

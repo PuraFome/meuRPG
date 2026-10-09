@@ -138,7 +138,7 @@ type contestRoll struct {
 	Deferred bool `json:"deferred,omitempty"`
 }
 
-func modeKey(m combat.CheckMode) string {
+func checkModeKey(m combat.CheckMode) string {
 	switch m {
 	case combat.CheckAdvantage:
 		return "advantage"
@@ -160,7 +160,7 @@ func checkModeProto(m combat.CheckMode) playv1.RollModeKind {
 	return playv1.RollModeKind_ROLL_MODE_KIND_NORMAL
 }
 
-func modeOfKey(key string) combat.CheckMode {
+func checkModeOfKey(key string) combat.CheckMode {
 	switch key {
 	case "advantage":
 		return combat.CheckAdvantage
@@ -174,7 +174,7 @@ func modeOfKey(key string) combat.CheckMode {
 func (r contestRoll) proto() *playv1.CheckRoll {
 	out := &playv1.CheckRoll{
 		Skill: skillEnum(r.Skill), SkillKey: r.Skill, Faces: slices.Clone(r.Faces), Modifier: r.Modifier, Total: r.Total, Physical: r.Physical,
-		Mode: checkModeProto(modeOfKey(r.Mode)), Notes: notesProto(r.Notes), BonusKnown: !r.Unknown, RolledByMaster: r.ByMaster,
+		Mode: checkModeProto(checkModeOfKey(r.Mode)), Notes: notesProto(r.Notes), BonusKnown: !r.Unknown, RolledByMaster: r.ByMaster,
 	}
 	return out
 }
@@ -271,7 +271,7 @@ func (s *Service) rollCheck(in checkInput, mode combat.CheckMode, modifier int, 
 	kept := mode.PickD20(faces)
 	out := contestRoll{
 		Skill: skill, Modifier: clamp32(modifier, math.MinInt32, math.MaxInt32), Total: clamp32(kept+modifier, math.MinInt32, math.MaxInt32),
-		Physical: physical, Mode: modeKey(mode), Notes: notes, Unknown: unknown,
+		Physical: physical, Mode: checkModeKey(mode), Notes: notes, Unknown: unknown,
 	}
 	for _, f := range faces {
 		out.Faces = append(out.Faces, clamp32(f, 1, 20))
@@ -344,13 +344,30 @@ func modeShift(m combat.CheckMode) int {
 }
 
 // checkSources are the circumstances that give a combatant's ability check advantage or
-// disadvantage now. It is the seam where the roll modes of attack rolls (the
-// condition sources, Help, hiding) plug in: today it reads the Poisoned condition (SRD
-// 5.1, Conditions: disadvantage on ability checks) and the Helps that hold for the task.
+// disadvantage now: the rules of advantage's SaveMode for an ability check (Poisoned and
+// Frightened, SRD 5.1 Conditions; a raging barbarian's Strength) and the Helps that hold for
+// the task (SRD 5.1, "Help").
 func (s *Service) checkSources(ctx context.Context, c *combatTx, who playdb.Combatant, skill string, cs []playdb.Combatant) ([]rollNote, error) {
 	var out []rollNote
-	if slices.Contains(who.Conditions, condPoisoned) {
-		out = append(out, rollNote{Kind: notePoisoned, Label: labelPoisoned})
+	states, err := c.q.ListCombatantStates(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the states: %w", err)
+	}
+	ability := "dex"
+	if skill == skillAthletics {
+		ability = "str"
+	} else if skill == skillPercept {
+		ability = "wis"
+	}
+	for _, src := range combat.SaveMode(combat.SaveScene{Creature: creatureFacts(who, statesOf(states), link.Traits{}), Ability: ability, Check: true}) {
+		switch src.Kind {
+		case combat.SourcePoisonedCheck:
+			out = append(out, rollNote{Kind: notePoisoned, Label: labelPoisoned})
+		case combat.SourceFrightenedCheck:
+			out = append(out, rollNote{Kind: "frightened", Label: "Amedrontado"})
+		case combat.SourceRageStrength:
+			out = append(out, rollNote{Kind: "rage", Label: "Fúria", Adv: true})
+		}
 	}
 	helps, err := s.liveHelps(ctx, c.q, c.enc, cs)
 	if err != nil {

@@ -42,6 +42,14 @@ type trapTarget struct {
 	// its sheet has one (a basic-sheet NPC does not: d20 + 0).
 	save      int
 	saveKnown bool
+	// attackMode and saveMode are the modes the trap's attack at this creature and its
+	// saving throw roll with (SRD 5.1): the creature's conditions and states, and its
+	// Danger Sense against a trap it knew. saveAuto says it fails the save without
+	// rolling (stunned, paralyzed, unconscious or petrified: Strength and Dexterity).
+	// The sources are the circumstances, kept for the master's and the creature's player's line.
+	attackMode, saveMode       combat.RollMode
+	attackSources, saveSources []combat.Source
+	saveAuto                   bool
 }
 
 // trapDamageRoll is one damage part rolled for one creature.
@@ -65,12 +73,21 @@ type trapAttackRoll struct {
 	d20, bonus, total int
 	armorClass        int
 	hit, critical     bool
+	// other is the d20 that did not count when the roll had advantage or disadvantage
+	// (0 for a normal roll), counted which of the two came first, and mode the mode.
+	other, counted int
+	mode           combat.RollMode
 }
 
 // trapSaveRoll is a creature's saving throw against the trap.
 type trapSaveRoll struct {
 	d20, bonus, total, dc int
 	saved, known          bool
+	// other, counted and mode: see trapAttackRoll. auto says the creature failed
+	// without rolling.
+	other, counted int
+	mode           combat.RollMode
+	auto           bool
 }
 
 // trapOutcome is what the trap did to one creature.
@@ -152,13 +169,14 @@ func resolveTrap(e *rulesv1.TrapEffect, targets []trapTarget, rule combat.Critic
 	if a := e.GetAttack(); a != nil {
 		for n := range int(a.GetCount()) {
 			i := n % len(targets)
-			face, err := d20()
+			face, other, counted, err := rollModed(d20, targets[i].attackMode)
 			if err != nil {
 				return nil, err
 			}
 			r := combat.ResolveAttack(int(a.GetBonus()), targets[i].armorClass, face)
 			out[i].attacks = append(out[i].attacks, trapAttackRoll{
 				d20: face, bonus: int(a.GetBonus()), total: r.Total, armorClass: targets[i].armorClass, hit: r.Hit, critical: r.Critical,
+				other: other, counted: counted, mode: targets[i].attackMode,
 			})
 			if !r.Hit {
 				continue
@@ -193,13 +211,18 @@ func resolveTrap(e *rulesv1.TrapEffect, targets []trapTarget, rule combat.Critic
 				asks = hits[i]
 			}
 			for range asks {
-				face, err := d20()
-				if err != nil {
-					return nil, err
-				}
 				t := out[i].target
-				roll := trapSaveRoll{d20: face, bonus: t.save, total: face + t.save, dc: int(sv.GetDc()), known: t.saveKnown}
-				roll.saved = combat.SaveSucceeded(roll.total, roll.dc)
+				var roll trapSaveRoll
+				if t.saveAuto {
+					roll = trapSaveRoll{bonus: t.save, dc: int(sv.GetDc()), known: t.saveKnown, auto: true}
+				} else {
+					face, other, counted, err := rollModed(d20, t.saveMode)
+					if err != nil {
+						return nil, err
+					}
+					roll = trapSaveRoll{d20: face, bonus: t.save, total: face + t.save, dc: int(sv.GetDc()), known: t.saveKnown, other: other, counted: counted, mode: t.saveMode}
+					roll.saved = combat.SaveSucceeded(roll.total, roll.dc)
+				}
 				out[i].saves = append(out[i].saves, roll)
 				switch {
 				case !roll.saved:
@@ -237,3 +260,21 @@ func appendOnce(list []string, key string) []string {
 
 // clampInt32 is a number as an int32 for the API's and the events' fields.
 func clampInt32(n int) int32 { return clamp32(n, math.MinInt32, math.MaxInt32) }
+
+// rollModed rolls the d20 of a roll with the mode: one die, or two with advantage or
+// disadvantage. It returns the die that counts, the other one (0 when there was one) and
+// which of the two was rolled first.
+func rollModed(d20 func() (int, error), mode combat.RollMode) (face, other, counted int, err error) {
+	faces := make([]int, mode.Dice())
+	for i := range faces {
+		if faces[i], err = d20(); err != nil {
+			return 0, 0, 0, err
+		}
+	}
+	counted = mode.Pick(faces)
+	face = faces[counted]
+	if len(faces) == pairDice {
+		other = faces[1-counted]
+	}
+	return face, other, counted, nil
+}

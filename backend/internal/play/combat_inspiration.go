@@ -32,6 +32,9 @@ import (
 type forcedRoll struct {
 	holdID, answerKey string
 	face              int
+	// faces are both d20 of a roll with advantage or disadvantage, in the order rolled (empty
+	// for a normal roll): the roll that was held is the one the answer settles.
+	faces []int
 	// toHit is the attack bonus the roll was made with (a Cutting Words die already off it).
 	toHit    int
 	physical bool
@@ -71,47 +74,52 @@ type inspirationHold struct {
 // Bardic Inspiration die, when the roll is kept in a hold and returned as held; or the d20 of
 // an answered hold (forcedOf), with the die added when the player used it. A retry of the
 // request that made a hold finds it, and rolls nothing again.
-func (s *Service) rollOrHold(ctx context.Context, c *combatTx, attacker playdb.Combatant, raw *playv1.RollAttackRequest, key string, in rollInput, toHit int) (face int, roll dice.Result, bonus *bonusUse, held *inspirationHold, err error) {
+func (s *Service) rollOrHold(ctx context.Context, c *combatTx, attacker playdb.Combatant, raw *playv1.RollAttackRequest, key string, in rollInput, toHit int, choice modeChoice) (roll d20Roll, bonus *bonusUse, held *inspirationHold, err error) {
 	if f := forcedOf(ctx); f != nil {
 		if err := c.q.AnswerRollHold(ctx, playdb.AnswerRollHoldParams{ID: f.holdID, AnswerKey: &f.answerKey}); err != nil {
-			return 0, dice.Result{}, nil, nil, fmt.Errorf("answer the held roll: %w", err)
+			return d20Roll{}, nil, nil, fmt.Errorf("answer the held roll: %w", err)
 		}
 		if f.bonus != nil {
 			if err := c.q.SetCombatantInspirationDie(ctx, playdb.SetCombatantInspirationDieParams{ID: attacker.ID}); err != nil {
-				return 0, dice.Result{}, nil, nil, fmt.Errorf("use the die: %w", err)
+				return d20Roll{}, nil, nil, fmt.Errorf("use the die: %w", err)
 			}
 		}
-		total := f.face + toHit
+		faces := f.faces
+		if len(faces) == 0 {
+			faces = []int{f.face}
+		}
+		idx := choice.Mode.Pick(faces)
+		total := faces[idx] + toHit
 		if f.bonus != nil {
 			total += int(f.bonus.Face)
 		}
-		return f.face, dice.Result{Expr: dice.Expr{Count: 1, Sides: d20Sides, Modifier: toHit}, Faces: []int{f.face}, Modifier: toHit, Total: total, Physical: f.physical}, f.bonus, nil, nil
+		return d20Roll{Faces: faces, Index: idx, Total: total, Physical: f.physical}, f.bonus, nil, nil
 	}
 	if !holdsDie(attacker, c.enc.Round) {
-		face, roll, err = s.d20(in, toHit)
-		return face, roll, nil, nil, err
+		roll, err = s.d20With(in, toHit, choice.Mode)
+		return roll, nil, nil, err
 	}
 	// The same request again: the hold it made, with the d20 it rolled.
 	if hold, err := c.q.GetRollHoldByKey(ctx, playdb.GetRollHoldByKeyParams{EncounterID: c.enc.ID, IdempotencyKey: key}); err == nil {
-		return 0, dice.Result{}, nil, s.heldOf(attacker, hold, toHit, in), nil
+		return d20Roll{}, nil, s.heldOf(attacker, hold, toHit, in), nil
 	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return 0, dice.Result{}, nil, nil, fmt.Errorf("find the held roll: %w", err)
+		return d20Roll{}, nil, nil, fmt.Errorf("find the held roll: %w", err)
 	}
 	// One question at a time: another roll waits for its answer. A hold of an earlier round
 	// is forgotten.
 	open, err := c.q.GetOpenRollHoldOf(ctx, playdb.GetOpenRollHoldOfParams{EncounterID: c.enc.ID, CombatantID: attacker.ID})
 	switch {
 	case err == nil && open.Round == c.enc.Round:
-		return 0, dice.Result{}, nil, nil, resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING, "answer the Bardic Inspiration question of the roll first")
+		return d20Roll{}, nil, nil, resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING, "answer the Bardic Inspiration question of the roll first")
 	case err == nil:
 		if err := c.q.DeleteRollHold(ctx, open.ID); err != nil {
-			return 0, dice.Result{}, nil, nil, fmt.Errorf("forget the old held roll: %w", err)
+			return d20Roll{}, nil, nil, fmt.Errorf("forget the old held roll: %w", err)
 		}
 	case !errors.Is(err, pgx.ErrNoRows):
-		return 0, dice.Result{}, nil, nil, fmt.Errorf("find the open held roll: %w", err)
+		return d20Roll{}, nil, nil, fmt.Errorf("find the open held roll: %w", err)
 	}
-	if face, roll, err = s.d20(in, toHit); err != nil {
-		return 0, dice.Result{}, nil, nil, err
+	if roll, err = s.d20With(in, toHit, choice.Mode); err != nil {
+		return d20Roll{}, nil, nil, err
 	}
 	// A roll a reaction window held first already has an event under its key (the one that stood
 	// for the held attack): the question gets a key of its own, and the answer resolves under its own.
@@ -119,22 +127,30 @@ func (s *Service) rollOrHold(ctx context.Context, c *combatTx, attacker playdb.C
 	if c.replay != nil {
 		holdKey = key + windowHoldSuffix
 	}
-	body, err := proto.Marshal(raw)
+	// The request is kept with what the roll was made with: the mode, its reason and both
+	// d20 when there are two, so that the answer settles this roll and not another.
+	pinned, _ := proto.Clone(raw).(*playv1.RollAttackRequest)
+	pinned.RollMode, pinned.ModeReason = modeToProto[choice.Mode], choice.Reason
+	pinned.D20Faces = nil
+	if len(roll.Faces) > 1 {
+		pinned.D20Faces = faces32(roll.Faces)
+	}
+	body, err := proto.Marshal(pinned)
 	if err != nil {
-		return 0, dice.Result{}, nil, nil, fmt.Errorf("keep the request: %w", err)
+		return d20Roll{}, nil, nil, fmt.Errorf("keep the request: %w", err)
 	}
 	hold, err := c.q.InsertRollHold(ctx, playdb.InsertRollHoldParams{
 		EncounterID: c.enc.ID, CombatantID: attacker.ID, IdempotencyKey: holdKey, Request: body,
-		Face: clamp32(face, 1, 20), Modifier: clamp32(toHit, math.MinInt32, math.MaxInt32), Round: c.enc.Round, CreatedAt: c.now,
+		Face: clamp32(roll.Face(), 1, d20Sides), Modifier: clamp32(toHit, math.MinInt32, math.MaxInt32), Round: c.enc.Round, CreatedAt: c.now,
 	})
 	if err != nil {
-		return 0, dice.Result{}, nil, nil, fmt.Errorf("hold the roll: %w", err)
+		return d20Roll{}, nil, nil, fmt.Errorf("hold the roll: %w", err)
 	}
 	// The question is part of the combat the master and the player read: its revision moves.
 	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return 0, dice.Result{}, nil, nil, fmt.Errorf("touch the encounter: %w", err)
+		return d20Roll{}, nil, nil, fmt.Errorf("touch the encounter: %w", err)
 	}
-	return face, roll, nil, s.heldOf(attacker, hold, toHit, in), nil
+	return roll, nil, s.heldOf(attacker, hold, toHit, in), nil
 }
 
 // refuseWhileAsking refuses a roll while an earlier roll of the combatant waits for its Bardic
@@ -176,9 +192,15 @@ func offerOf(hold playdb.RollHold, die *playv1.InspirationDie, cs []playdb.Comba
 	}
 	var orig playv1.RollAttackRequest
 	_ = proto.Unmarshal(hold.Request, &orig) // a request this module wrote
+	roll := diceRoll(1, 20, []int32{hold.Face}, hold.Modifier, hold.Face+hold.Modifier, physical)
+	if faces := orig.GetD20Faces(); len(faces) == pairDice { // advantage or disadvantage: both dice, the one that counts marked
+		mode, _ := modeFromProto(orig.GetRollMode())
+		counted := mode.Pick(intsOf(faces))
+		roll = diceRoll(pairDice, 20, faces, hold.Modifier, hold.Face+hold.Modifier, physical)
+		roll.CountedIndex = clamp32(counted, 0, 1)
+	}
 	return &playv1.InspirationOffer{
-		HoldId: hold.ID, Die: die, AttackKey: orig.GetAttackKey(), TargetId: orig.GetTargetId(),
-		D20: diceRoll(1, 20, []int32{hold.Face}, hold.Modifier, hold.Face+hold.Modifier, physical),
+		HoldId: hold.ID, Die: die, AttackKey: orig.GetAttackKey(), TargetId: orig.GetTargetId(), D20: roll,
 	}
 }
 
@@ -213,8 +235,7 @@ func inspirationOfferView(d *encounterData, c playdb.Combatant, v combatViewer) 
 func rollOfHold(h playdb.RollHold) (face int32, physical bool) {
 	var orig playv1.RollAttackRequest
 	_ = proto.Unmarshal(h.Request, &orig)
-	_, physical = orig.GetRoll().(*playv1.RollAttackRequest_D20Face)
-	return h.Face, physical
+	return h.Face, typedRoll(&orig)
 }
 
 // AnswerBardicInspiration implements playv1connect.ResourceServiceHandler: the player of a
@@ -278,9 +299,9 @@ func (s *Service) AnswerBardicInspiration(
 		}
 		return connect.NewResponse(&playv1.AnswerBardicInspirationResponse{Attack: out.Msg}), nil
 	}
-	forced := &forcedRoll{holdID: hold.ID, answerKey: key, face: int(hold.Face), toHit: int(hold.Modifier)}
+	forced := &forcedRoll{holdID: hold.ID, answerKey: key, face: int(hold.Face), toHit: int(hold.Modifier), faces: intsOf(orig.GetD20Faces())}
 	// The d20 was typed when the roll was: the attack knows it from the request.
-	_, forced.physical = orig.GetRoll().(*playv1.RollAttackRequest_D20Face)
+	forced.physical = typedRoll(&orig)
 	if req.Msg.GetUse() {
 		if forced.bonus, err = s.rollBonusDie(ctx, m, hold, in); err != nil {
 			return nil, err
@@ -353,4 +374,25 @@ func (s *Service) heldAnswer(ctx context.Context, m authz.Membership, res combat
 		return nil, s.dbError(ctx, "list the combatants", err)
 	}
 	return connect.NewResponse(heldResponse(out, h, req.GetAttackerId(), req.GetTargetId(), req.GetAttackKey(), cs)), nil
+}
+
+// typedRoll says the d20 of a request came from real dice: a typed face, or typed faces with
+// no roll in the app (a held roll keeps the faces it rolled in the app too, with the app's roll).
+func typedRoll(r *playv1.RollAttackRequest) bool {
+	switch r.GetRoll().(type) {
+	case *playv1.RollAttackRequest_D20Face:
+		return true
+	case nil:
+		return len(r.GetD20Faces()) > 0
+	}
+	return false
+}
+
+// intsOf converts the faces of a request.
+func intsOf(faces []int32) []int {
+	out := make([]int, len(faces))
+	for i, f := range faces {
+		out[i] = int(f)
+	}
+	return out
 }

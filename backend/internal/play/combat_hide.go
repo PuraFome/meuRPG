@@ -427,54 +427,46 @@ func restoreHiding(ctx context.Context, c *combatTx, hider string, snaps []hideS
 	return nil
 }
 
-// attackNotes are the circumstances of this module that give an attack roll advantage: a
-// hidden attacker against a creature that has not noticed it ("Atacante não visto", SRD
-// 5.1, "Unseen Attackers and Targets": when a creature can't see you, you have advantage
-// on attack rolls against it) and the Help of an ally aimed at the target ("Ajuda de
-// Orla", SRD 5.1, "Help"). It is the seam where the attack roll modes plug in: the sources
-// that rest on the combat are worked out here, and the roll reads them.
-func (s *Service) attackNotes(ctx context.Context, c *combatTx, attacker, target playdb.Combatant, cs []playdb.Combatant) ([]rollNote, error) {
-	var out []rollNote
-	rows, err := c.q.ListHiding(ctx, c.enc.ID)
+// contestFacts reads what the attack modes need of the contests' state: who is hidden from
+// whom, and the Helps that hold.
+func (s *Service) contestFacts(ctx context.Context, q *playdb.Queries, enc playdb.Encounter, cs []playdb.Combatant) ([]playdb.CombatHiding, []playdb.CombatHelp, error) {
+	hiding, err := q.ListHiding(ctx, enc.ID)
 	if err != nil {
-		return nil, fmt.Errorf("list the hiding: %w", err)
+		return nil, nil, fmt.Errorf("list the hiding: %w", err)
 	}
-	if slices.ContainsFunc(rows, func(h playdb.CombatHiding) bool {
-		return h.HiderID == attacker.ID && h.ObserverID == target.ID && !h.Noticed
-	}) {
-		out = append(out, rollNote{Kind: noteUnseen, Label: labelUnseen, Adv: true})
-	}
-	helps, err := s.liveHelps(ctx, c.q, c.enc, cs)
-	if err != nil {
-		return nil, err
-	}
-	for _, h := range helps {
-		if h.Kind == helpAttack && h.AllyCharacterID == attacker.CharacterID && deref(h.TargetID) == target.ID {
-			out = append(out, rollNote{Kind: noteHelp, Label: "Ajuda de " + labelOfCharacter(cs, h.HelperCharacterID), Adv: true})
-			break
-		}
-	}
-	return out, nil
+	helps, err := s.liveHelps(ctx, q, enc, cs)
+	return hiding, helps, err
 }
 
 // afterAttack is what an attack roll does to the contests' state: the Help aimed at the
 // target is used by the first attack roll against it, and the hiding ends for every
 // creature, hit or miss. It returns what the hiding was, for the attack's undo.
 func (s *Service) afterAttack(ctx context.Context, c *combatTx, attacker, target playdb.Combatant, cs []playdb.Combatant, made *actionEvent) error {
-	helps, err := s.liveHelps(ctx, c.q, c.enc, cs)
+	used, err := s.consumeHelps(ctx, c, attacker, target, cs)
 	if err != nil {
 		return err
 	}
+	made.HelpUsed = append(made.HelpUsed, used...)
+	made.HidBefore, err = s.endHiding(ctx, c, attacker)
+	return err
+}
+
+// consumeHelps uses the Help aimed at the target for the attacker's attack roll.
+func (s *Service) consumeHelps(ctx context.Context, c *combatTx, attacker, target playdb.Combatant, cs []playdb.Combatant) ([]string, error) {
+	helps, err := s.liveHelps(ctx, c.q, c.enc, cs)
+	if err != nil {
+		return nil, err
+	}
+	var used []string
 	for _, h := range helps {
 		if h.Kind == helpAttack && h.AllyCharacterID == attacker.CharacterID && deref(h.TargetID) == target.ID {
 			if err := c.q.SetHelpConsumed(ctx, playdb.SetHelpConsumedParams{ID: h.ID, ConsumedAt: &c.now}); err != nil {
-				return fmt.Errorf("use the help: %w", err)
+				return nil, fmt.Errorf("use the help: %w", err)
 			}
-			made.HelpUsed = append(made.HelpUsed, h.ID)
+			used = append(used, h.ID)
 		}
 	}
-	made.HidBefore, err = s.endHiding(ctx, c, attacker)
-	return err
+	return used, nil
 }
 
 // restoreContestState gives back what an attack or a cast took from the contests' state:

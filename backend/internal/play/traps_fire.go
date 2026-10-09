@@ -144,7 +144,7 @@ func (s *Service) FireTrap(
 	if extend != "" {
 		firingID = extend
 	}
-	return connect.NewResponse(&playv1.FireTrapResponse{Firing: firingProto(fired, firingID, trap.Name, trapView{master: true, label: func(id string) string { return names[id] }})}), nil
+	return connect.NewResponse(&playv1.FireTrapResponse{Firing: firingProto(fired, firingID, trap.Name, trapView{master: true, names: s.namesFor(ctx, m.CampaignID), label: func(id string) string { return names[id] }})}), nil
 }
 
 // fireHash is the request hash of a trap fired by hand: the trap, the firing it extends and
@@ -218,7 +218,7 @@ func (s *Service) fireByHandInCombat(ctx context.Context, m authz.Membership, ke
 		}
 	}
 	label := s.membersOf(ctx, res)
-	return connect.NewResponse(&playv1.FireTrapResponse{Firing: firingProto(ev.Trap, firingID, trap.Name, trapView{master: true, label: func(id string) string {
+	return connect.NewResponse(&playv1.FireTrapResponse{Firing: firingProto(ev.Trap, firingID, trap.Name, trapView{master: true, names: s.namesFor(ctx, res.session.CampaignID), label: func(id string) string {
 		c, _ := label(id)
 		return c.Label
 	}})}), nil

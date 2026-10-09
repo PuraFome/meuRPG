@@ -165,6 +165,23 @@ const (
 	// CombatServiceGetCombatHighlightsProcedure is the fully-qualified name of the CombatService's
 	// GetCombatHighlights RPC.
 	CombatServiceGetCombatHighlightsProcedure = "/meurpg.play.v1.CombatService/GetCombatHighlights"
+	// CombatServiceRequestRollModeProcedure is the fully-qualified name of the CombatService's
+	// RequestRollMode RPC.
+	CombatServiceRequestRollModeProcedure = "/meurpg.play.v1.CombatService/RequestRollMode"
+	// CombatServiceAnswerRollModeRequestProcedure is the fully-qualified name of the CombatService's
+	// AnswerRollModeRequest RPC.
+	CombatServiceAnswerRollModeRequestProcedure = "/meurpg.play.v1.CombatService/AnswerRollModeRequest"
+	// CombatServiceCancelRollModeRequestProcedure is the fully-qualified name of the CombatService's
+	// CancelRollModeRequest RPC.
+	CombatServiceCancelRollModeRequestProcedure = "/meurpg.play.v1.CombatService/CancelRollModeRequest"
+	// CombatServiceRemoveDamagePartProcedure is the fully-qualified name of the CombatService's
+	// RemoveDamagePart RPC.
+	CombatServiceRemoveDamagePartProcedure = "/meurpg.play.v1.CombatService/RemoveDamagePart"
+	// CombatServiceAnswerRageEndProcedure is the fully-qualified name of the CombatService's
+	// AnswerRageEnd RPC.
+	CombatServiceAnswerRageEndProcedure = "/meurpg.play.v1.CombatService/AnswerRageEnd"
+	// CombatServiceEndRageProcedure is the fully-qualified name of the CombatService's EndRage RPC.
+	CombatServiceEndRageProcedure = "/meurpg.play.v1.CombatService/EndRage"
 )
 
 // CombatServiceClient is a client for the meurpg.play.v1.CombatService service.
@@ -1276,6 +1293,74 @@ type CombatServiceClient interface {
 	//   - `failed_precondition`: the combat is not ended (EncounterBlocked,
 	//     NOT_ENDED); or no open session.
 	GetCombatHighlights(context.Context, *connect.Request[v1.GetCombatHighlightsRequest]) (*connect.Response[v1.GetCombatHighlightsResponse], error)
+	// RequestRollMode asks the master for a better mode than the one the server
+	// suggested for an attack (SRD 5.1, "Advantage and Disadvantage": the master
+	// decides what circumstances do to a roll). A player may roll the suggested mode,
+	// or disadvantage, with no one's leave (RollAttack.roll_mode with a reason); advantage
+	// the server did not suggest, or normal where it suggested disadvantage, needs the
+	// master: this creates the request the master sees in his queue (Encounter.
+	// roll_mode_requests), and the attack waits for the answer. The player rolls it
+	// with RollAttack.roll_mode_request_id once it is ANSWERED. A second request of the
+	// same combatant replaces the first. The master does not use it: he sets any mode on
+	// the roll itself.
+	//
+	// Errors:
+	//   - `not_found`: the combat, the attacker or the target is not in this campaign's
+	//     open session, or the caller is a player and may not see it.
+	//   - `permission_denied`: the caller is a player and the attacker is not their
+	//     character, or the caller is the master (he sets the mode on the roll).
+	//   - `invalid_argument`: the reason is not 1 to 120 characters on one line, the mode
+	//     is unspecified, the attack is not one of the attacker's, or the mode asked for
+	//     is not better than the suggestion (then no request is needed).
+	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN.
+	RequestRollMode(context.Context, *connect.Request[v1.RequestRollModeRequest]) (*connect.Response[v1.RequestRollModeResponse], error)
+	// AnswerRollModeRequest is the master's answer to a request for a better mode:
+	// he decides the mode the attack rolls with, advantage if he approves, the
+	// suggested one if he refuses, or any other. Only the master. The answer is idempotent
+	// for the same mode and a different one on an answered request is
+	// `failed_precondition` (ROLL_MODE_REQUEST_CLOSED).
+	//
+	// Errors:
+	//   - `not_found`: no such request in the combat.
+	//   - `permission_denied`: the caller is not the master.
+	//   - `invalid_argument`: the mode is unspecified.
+	//   - `failed_precondition` (EncounterBlocked): ROLL_MODE_REQUEST_CLOSED.
+	AnswerRollModeRequest(context.Context, *connect.Request[v1.AnswerRollModeRequestRequest]) (*connect.Response[v1.AnswerRollModeRequestResponse], error)
+	// CancelRollModeRequest takes a request back: the player's own, or any, for the
+	// master. The attack rolls with the suggested mode afterwards.
+	CancelRollModeRequest(context.Context, *connect.Request[v1.CancelRollModeRequestRequest]) (*connect.Response[v1.CancelRollModeRequestResponse], error)
+	// RemoveDamagePart takes an extra out of a damage that was rolled, with a reason
+	// (1 to 120 characters): the master's correction, when an extra does not hold
+	// (Sneak Attack without an ally near the target in a combat with no map). The total
+	// drops by that part; for an NPC that already took the damage the difference is given
+	// back, up to its maximum. It cannot be undone: the damage would have to be rolled
+	// again. Only the master, only for an extra (never the weapon or an automatic line),
+	// and only while the damage is ROLLED or APPLIED.
+	//
+	// Errors:
+	//   - `not_found`: no such pending damage or part.
+	//   - `permission_denied`: the caller is not the master.
+	//   - `invalid_argument`: the reason is not 1 to 120 characters on one line.
+	//   - `failed_precondition` (EncounterBlocked): DAMAGE_NOT_ROLLED, DAMAGE_PART_NOT_REMOVABLE.
+	RemoveDamagePart(context.Context, *connect.Request[v1.RemoveDamagePartRequest]) (*connect.Response[v1.RemoveDamagePartResponse], error)
+	// AnswerRageEnd answers the question EndTurn asks a raging barbarian whose turn
+	// ends without an attack on a hostile creature and without damage taken (SRD 5.1,
+	// Barbarian, Rage): end_rage true lets the rage end and ends the turn; false drops
+	// the question and the turn goes on (the player attacks). The barbarian's player or
+	// the master.
+	//
+	// Errors:
+	//   - `not_found`, `permission_denied`: as EndTurn.
+	//   - `failed_precondition` (EncounterBlocked): RAGE_END_NOT_PENDING.
+	AnswerRageEnd(context.Context, *connect.Request[v1.AnswerRageEndRequest]) (*connect.Response[v1.AnswerRageEndResponse], error)
+	// EndRage ends a rage with a bonus action on the barbarian's own turn (SRD 5.1,
+	// Barbarian, Rage). The barbarian's player or the master.
+	//
+	// Errors:
+	//   - `not_found`, `permission_denied`: as TakeAction.
+	//   - `failed_precondition` (EncounterBlocked): NOT_YOUR_TURN, BONUS_ACTION_USED,
+	//     NOT_RAGING.
+	EndRage(context.Context, *connect.Request[v1.EndRageRequest]) (*connect.Response[v1.EndRageResponse], error)
 }
 
 // NewCombatServiceClient constructs a client for the meurpg.play.v1.CombatService service. By
@@ -1546,6 +1631,42 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		requestRollMode: connect.NewClient[v1.RequestRollModeRequest, v1.RequestRollModeResponse](
+			httpClient,
+			baseURL+CombatServiceRequestRollModeProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("RequestRollMode")),
+			connect.WithClientOptions(opts...),
+		),
+		answerRollModeRequest: connect.NewClient[v1.AnswerRollModeRequestRequest, v1.AnswerRollModeRequestResponse](
+			httpClient,
+			baseURL+CombatServiceAnswerRollModeRequestProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("AnswerRollModeRequest")),
+			connect.WithClientOptions(opts...),
+		),
+		cancelRollModeRequest: connect.NewClient[v1.CancelRollModeRequestRequest, v1.CancelRollModeRequestResponse](
+			httpClient,
+			baseURL+CombatServiceCancelRollModeRequestProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("CancelRollModeRequest")),
+			connect.WithClientOptions(opts...),
+		),
+		removeDamagePart: connect.NewClient[v1.RemoveDamagePartRequest, v1.RemoveDamagePartResponse](
+			httpClient,
+			baseURL+CombatServiceRemoveDamagePartProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("RemoveDamagePart")),
+			connect.WithClientOptions(opts...),
+		),
+		answerRageEnd: connect.NewClient[v1.AnswerRageEndRequest, v1.AnswerRageEndResponse](
+			httpClient,
+			baseURL+CombatServiceAnswerRageEndProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("AnswerRageEnd")),
+			connect.WithClientOptions(opts...),
+		),
+		endRage: connect.NewClient[v1.EndRageRequest, v1.EndRageResponse](
+			httpClient,
+			baseURL+CombatServiceEndRageProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("EndRage")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -1593,6 +1714,12 @@ type combatServiceClient struct {
 	resolveConcentrationSave *connect.Client[v1.ResolveConcentrationSaveRequest, v1.ResolveConcentrationSaveResponse]
 	listCombatLog            *connect.Client[v1.ListCombatLogRequest, v1.ListCombatLogResponse]
 	getCombatHighlights      *connect.Client[v1.GetCombatHighlightsRequest, v1.GetCombatHighlightsResponse]
+	requestRollMode          *connect.Client[v1.RequestRollModeRequest, v1.RequestRollModeResponse]
+	answerRollModeRequest    *connect.Client[v1.AnswerRollModeRequestRequest, v1.AnswerRollModeRequestResponse]
+	cancelRollModeRequest    *connect.Client[v1.CancelRollModeRequestRequest, v1.CancelRollModeRequestResponse]
+	removeDamagePart         *connect.Client[v1.RemoveDamagePartRequest, v1.RemoveDamagePartResponse]
+	answerRageEnd            *connect.Client[v1.AnswerRageEndRequest, v1.AnswerRageEndResponse]
+	endRage                  *connect.Client[v1.EndRageRequest, v1.EndRageResponse]
 }
 
 // StartEncounter calls meurpg.play.v1.CombatService.StartEncounter.
@@ -1803,6 +1930,36 @@ func (c *combatServiceClient) ListCombatLog(ctx context.Context, req *connect.Re
 // GetCombatHighlights calls meurpg.play.v1.CombatService.GetCombatHighlights.
 func (c *combatServiceClient) GetCombatHighlights(ctx context.Context, req *connect.Request[v1.GetCombatHighlightsRequest]) (*connect.Response[v1.GetCombatHighlightsResponse], error) {
 	return c.getCombatHighlights.CallUnary(ctx, req)
+}
+
+// RequestRollMode calls meurpg.play.v1.CombatService.RequestRollMode.
+func (c *combatServiceClient) RequestRollMode(ctx context.Context, req *connect.Request[v1.RequestRollModeRequest]) (*connect.Response[v1.RequestRollModeResponse], error) {
+	return c.requestRollMode.CallUnary(ctx, req)
+}
+
+// AnswerRollModeRequest calls meurpg.play.v1.CombatService.AnswerRollModeRequest.
+func (c *combatServiceClient) AnswerRollModeRequest(ctx context.Context, req *connect.Request[v1.AnswerRollModeRequestRequest]) (*connect.Response[v1.AnswerRollModeRequestResponse], error) {
+	return c.answerRollModeRequest.CallUnary(ctx, req)
+}
+
+// CancelRollModeRequest calls meurpg.play.v1.CombatService.CancelRollModeRequest.
+func (c *combatServiceClient) CancelRollModeRequest(ctx context.Context, req *connect.Request[v1.CancelRollModeRequestRequest]) (*connect.Response[v1.CancelRollModeRequestResponse], error) {
+	return c.cancelRollModeRequest.CallUnary(ctx, req)
+}
+
+// RemoveDamagePart calls meurpg.play.v1.CombatService.RemoveDamagePart.
+func (c *combatServiceClient) RemoveDamagePart(ctx context.Context, req *connect.Request[v1.RemoveDamagePartRequest]) (*connect.Response[v1.RemoveDamagePartResponse], error) {
+	return c.removeDamagePart.CallUnary(ctx, req)
+}
+
+// AnswerRageEnd calls meurpg.play.v1.CombatService.AnswerRageEnd.
+func (c *combatServiceClient) AnswerRageEnd(ctx context.Context, req *connect.Request[v1.AnswerRageEndRequest]) (*connect.Response[v1.AnswerRageEndResponse], error) {
+	return c.answerRageEnd.CallUnary(ctx, req)
+}
+
+// EndRage calls meurpg.play.v1.CombatService.EndRage.
+func (c *combatServiceClient) EndRage(ctx context.Context, req *connect.Request[v1.EndRageRequest]) (*connect.Response[v1.EndRageResponse], error) {
+	return c.endRage.CallUnary(ctx, req)
 }
 
 // CombatServiceHandler is an implementation of the meurpg.play.v1.CombatService service.
@@ -2914,6 +3071,74 @@ type CombatServiceHandler interface {
 	//   - `failed_precondition`: the combat is not ended (EncounterBlocked,
 	//     NOT_ENDED); or no open session.
 	GetCombatHighlights(context.Context, *connect.Request[v1.GetCombatHighlightsRequest]) (*connect.Response[v1.GetCombatHighlightsResponse], error)
+	// RequestRollMode asks the master for a better mode than the one the server
+	// suggested for an attack (SRD 5.1, "Advantage and Disadvantage": the master
+	// decides what circumstances do to a roll). A player may roll the suggested mode,
+	// or disadvantage, with no one's leave (RollAttack.roll_mode with a reason); advantage
+	// the server did not suggest, or normal where it suggested disadvantage, needs the
+	// master: this creates the request the master sees in his queue (Encounter.
+	// roll_mode_requests), and the attack waits for the answer. The player rolls it
+	// with RollAttack.roll_mode_request_id once it is ANSWERED. A second request of the
+	// same combatant replaces the first. The master does not use it: he sets any mode on
+	// the roll itself.
+	//
+	// Errors:
+	//   - `not_found`: the combat, the attacker or the target is not in this campaign's
+	//     open session, or the caller is a player and may not see it.
+	//   - `permission_denied`: the caller is a player and the attacker is not their
+	//     character, or the caller is the master (he sets the mode on the roll).
+	//   - `invalid_argument`: the reason is not 1 to 120 characters on one line, the mode
+	//     is unspecified, the attack is not one of the attacker's, or the mode asked for
+	//     is not better than the suggestion (then no request is needed).
+	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN.
+	RequestRollMode(context.Context, *connect.Request[v1.RequestRollModeRequest]) (*connect.Response[v1.RequestRollModeResponse], error)
+	// AnswerRollModeRequest is the master's answer to a request for a better mode:
+	// he decides the mode the attack rolls with, advantage if he approves, the
+	// suggested one if he refuses, or any other. Only the master. The answer is idempotent
+	// for the same mode and a different one on an answered request is
+	// `failed_precondition` (ROLL_MODE_REQUEST_CLOSED).
+	//
+	// Errors:
+	//   - `not_found`: no such request in the combat.
+	//   - `permission_denied`: the caller is not the master.
+	//   - `invalid_argument`: the mode is unspecified.
+	//   - `failed_precondition` (EncounterBlocked): ROLL_MODE_REQUEST_CLOSED.
+	AnswerRollModeRequest(context.Context, *connect.Request[v1.AnswerRollModeRequestRequest]) (*connect.Response[v1.AnswerRollModeRequestResponse], error)
+	// CancelRollModeRequest takes a request back: the player's own, or any, for the
+	// master. The attack rolls with the suggested mode afterwards.
+	CancelRollModeRequest(context.Context, *connect.Request[v1.CancelRollModeRequestRequest]) (*connect.Response[v1.CancelRollModeRequestResponse], error)
+	// RemoveDamagePart takes an extra out of a damage that was rolled, with a reason
+	// (1 to 120 characters): the master's correction, when an extra does not hold
+	// (Sneak Attack without an ally near the target in a combat with no map). The total
+	// drops by that part; for an NPC that already took the damage the difference is given
+	// back, up to its maximum. It cannot be undone: the damage would have to be rolled
+	// again. Only the master, only for an extra (never the weapon or an automatic line),
+	// and only while the damage is ROLLED or APPLIED.
+	//
+	// Errors:
+	//   - `not_found`: no such pending damage or part.
+	//   - `permission_denied`: the caller is not the master.
+	//   - `invalid_argument`: the reason is not 1 to 120 characters on one line.
+	//   - `failed_precondition` (EncounterBlocked): DAMAGE_NOT_ROLLED, DAMAGE_PART_NOT_REMOVABLE.
+	RemoveDamagePart(context.Context, *connect.Request[v1.RemoveDamagePartRequest]) (*connect.Response[v1.RemoveDamagePartResponse], error)
+	// AnswerRageEnd answers the question EndTurn asks a raging barbarian whose turn
+	// ends without an attack on a hostile creature and without damage taken (SRD 5.1,
+	// Barbarian, Rage): end_rage true lets the rage end and ends the turn; false drops
+	// the question and the turn goes on (the player attacks). The barbarian's player or
+	// the master.
+	//
+	// Errors:
+	//   - `not_found`, `permission_denied`: as EndTurn.
+	//   - `failed_precondition` (EncounterBlocked): RAGE_END_NOT_PENDING.
+	AnswerRageEnd(context.Context, *connect.Request[v1.AnswerRageEndRequest]) (*connect.Response[v1.AnswerRageEndResponse], error)
+	// EndRage ends a rage with a bonus action on the barbarian's own turn (SRD 5.1,
+	// Barbarian, Rage). The barbarian's player or the master.
+	//
+	// Errors:
+	//   - `not_found`, `permission_denied`: as TakeAction.
+	//   - `failed_precondition` (EncounterBlocked): NOT_YOUR_TURN, BONUS_ACTION_USED,
+	//     NOT_RAGING.
+	EndRage(context.Context, *connect.Request[v1.EndRageRequest]) (*connect.Response[v1.EndRageResponse], error)
 }
 
 // NewCombatServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -3180,6 +3405,42 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceRequestRollModeHandler := connect.NewUnaryHandler(
+		CombatServiceRequestRollModeProcedure,
+		svc.RequestRollMode,
+		connect.WithSchema(combatServiceMethods.ByName("RequestRollMode")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceAnswerRollModeRequestHandler := connect.NewUnaryHandler(
+		CombatServiceAnswerRollModeRequestProcedure,
+		svc.AnswerRollModeRequest,
+		connect.WithSchema(combatServiceMethods.ByName("AnswerRollModeRequest")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceCancelRollModeRequestHandler := connect.NewUnaryHandler(
+		CombatServiceCancelRollModeRequestProcedure,
+		svc.CancelRollModeRequest,
+		connect.WithSchema(combatServiceMethods.ByName("CancelRollModeRequest")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceRemoveDamagePartHandler := connect.NewUnaryHandler(
+		CombatServiceRemoveDamagePartProcedure,
+		svc.RemoveDamagePart,
+		connect.WithSchema(combatServiceMethods.ByName("RemoveDamagePart")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceAnswerRageEndHandler := connect.NewUnaryHandler(
+		CombatServiceAnswerRageEndProcedure,
+		svc.AnswerRageEnd,
+		connect.WithSchema(combatServiceMethods.ByName("AnswerRageEnd")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceEndRageHandler := connect.NewUnaryHandler(
+		CombatServiceEndRageProcedure,
+		svc.EndRage,
+		connect.WithSchema(combatServiceMethods.ByName("EndRage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.CombatService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CombatServiceStartEncounterProcedure:
@@ -3266,6 +3527,18 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceListCombatLogHandler.ServeHTTP(w, r)
 		case CombatServiceGetCombatHighlightsProcedure:
 			combatServiceGetCombatHighlightsHandler.ServeHTTP(w, r)
+		case CombatServiceRequestRollModeProcedure:
+			combatServiceRequestRollModeHandler.ServeHTTP(w, r)
+		case CombatServiceAnswerRollModeRequestProcedure:
+			combatServiceAnswerRollModeRequestHandler.ServeHTTP(w, r)
+		case CombatServiceCancelRollModeRequestProcedure:
+			combatServiceCancelRollModeRequestHandler.ServeHTTP(w, r)
+		case CombatServiceRemoveDamagePartProcedure:
+			combatServiceRemoveDamagePartHandler.ServeHTTP(w, r)
+		case CombatServiceAnswerRageEndProcedure:
+			combatServiceAnswerRageEndHandler.ServeHTTP(w, r)
+		case CombatServiceEndRageProcedure:
+			combatServiceEndRageHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -3441,4 +3714,28 @@ func (UnimplementedCombatServiceHandler) ListCombatLog(context.Context, *connect
 
 func (UnimplementedCombatServiceHandler) GetCombatHighlights(context.Context, *connect.Request[v1.GetCombatHighlightsRequest]) (*connect.Response[v1.GetCombatHighlightsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.GetCombatHighlights is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) RequestRollMode(context.Context, *connect.Request[v1.RequestRollModeRequest]) (*connect.Response[v1.RequestRollModeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.RequestRollMode is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) AnswerRollModeRequest(context.Context, *connect.Request[v1.AnswerRollModeRequestRequest]) (*connect.Response[v1.AnswerRollModeRequestResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.AnswerRollModeRequest is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) CancelRollModeRequest(context.Context, *connect.Request[v1.CancelRollModeRequestRequest]) (*connect.Response[v1.CancelRollModeRequestResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.CancelRollModeRequest is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) RemoveDamagePart(context.Context, *connect.Request[v1.RemoveDamagePartRequest]) (*connect.Response[v1.RemoveDamagePartResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.RemoveDamagePart is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) AnswerRageEnd(context.Context, *connect.Request[v1.AnswerRageEndRequest]) (*connect.Response[v1.AnswerRageEndResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.AnswerRageEnd is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) EndRage(context.Context, *connect.Request[v1.EndRageRequest]) (*connect.Response[v1.EndRageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.EndRage is not implemented"))
 }

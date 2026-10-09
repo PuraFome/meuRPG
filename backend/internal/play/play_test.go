@@ -834,6 +834,12 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["EndCombatEffect"] = cc.EndCombatEffect(ctx, connect.NewRequest(&playv1.EndCombatEffectRequest{CampaignId: id}))
 	_, combat["ListCombatLog"] = cc.ListCombatLog(ctx, connect.NewRequest(&playv1.ListCombatLogRequest{CampaignId: id}))
 	_, combat["GetCombatHighlights"] = cc.GetCombatHighlights(ctx, connect.NewRequest(&playv1.GetCombatHighlightsRequest{CampaignId: id}))
+	_, combat["RequestRollMode"] = cc.RequestRollMode(ctx, connect.NewRequest(&playv1.RequestRollModeRequest{CampaignId: id}))
+	_, combat["AnswerRollModeRequest"] = cc.AnswerRollModeRequest(ctx, connect.NewRequest(&playv1.AnswerRollModeRequestRequest{CampaignId: id}))
+	_, combat["CancelRollModeRequest"] = cc.CancelRollModeRequest(ctx, connect.NewRequest(&playv1.CancelRollModeRequestRequest{CampaignId: id}))
+	_, combat["RemoveDamagePart"] = cc.RemoveDamagePart(ctx, connect.NewRequest(&playv1.RemoveDamagePartRequest{CampaignId: id}))
+	_, combat["AnswerRageEnd"] = cc.AnswerRageEnd(ctx, connect.NewRequest(&playv1.AnswerRageEndRequest{CampaignId: id}))
+	_, combat["EndRage"] = cc.EndRage(ctx, connect.NewRequest(&playv1.EndRageRequest{CampaignId: id}))
 	combatMethods := playv1.File_meurpg_play_v1_combat_proto.Services().ByName("CombatService").Methods()
 	if len(combat) != combatMethods.Len() {
 		t.Errorf("called %d combat methods, the service has %d", len(combat), combatMethods.Len())

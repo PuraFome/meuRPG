@@ -122,8 +122,10 @@ test(
       await attack.locator('label', { hasText: 'Goblin 1' }).click();
       // A physical die: 18 + 5 hits the goblin's 15.
       await attack.getByRole('button', { name: 'Digitar o resultado' }).click();
-      await attack.getByLabel(/Role 1d20 para Mordida/).fill('18');
-      await attack.getByRole('button', { name: 'Confirmar 18' }).click();
+      // Pack Tactics: an ally of the wolf is next to the goblin, so the roll has advantage and takes two d20.
+      await attack.getByLabel('Primeiro d20').fill('18');
+      await attack.getByLabel('Segundo d20').fill('3');
+      await attack.getByRole('button', { name: /^Confirmar/ }).click();
       await expect(attack.getByText('Acertou: role o dano.')).toBeVisible();
       // The sheet is closed before the damage: the creature says it is owed, and it blocks its turn.
       await attack.getByRole('button', { name: 'Fechar' }).first().click();

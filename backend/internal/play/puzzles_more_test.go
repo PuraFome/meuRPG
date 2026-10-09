@@ -1531,7 +1531,7 @@ func checkPlayerHint(t *testing.T, what string, res *playv1.TryPuzzleHintRespons
 		t.Fatal(err)
 	}
 	for k := range top {
-		if k != "run" && k != "roll" && k != "passed" && k != "replayed" {
+		if k != "run" && k != "roll" && k != "passed" && k != "replayed" && k != "mode" && k != "sources" {
 			t.Errorf("%s: the key %q is not on the list", what, k)
 		}
 	}

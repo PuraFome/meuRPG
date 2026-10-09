@@ -87,6 +87,11 @@ func (s *Service) SetCombatantConditions(
 			}
 			ev.CondSet, ev.Conditions, ev.CondBefore = true, conditions, target.Conditions
 			changed = true
+			// A rage ends when the barbarian is knocked unconscious (SRD 5.1); a condition
+			// the master takes off by hand loses its source.
+			if err := s.afterConditionsSet(ctx, c, target, conditions); err != nil {
+				return nil, err
+			}
 			// A druid that falls unconscious is itself again (SRD).
 			if err := s.endFormIfAsleep(ctx, c, target, conditions); err != nil {
 				return nil, err

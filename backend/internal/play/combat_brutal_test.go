@@ -89,14 +89,6 @@ func TestBrutalCriticalAddsWeaponDiceToAMeleeCritical(t *testing.T) {
 	}
 }
 
-func intsOf(l []int32) []int {
-	out := make([]int, len(l))
-	for i, v := range l {
-		out[i] = int(v)
-	}
-	return out
-}
-
 // TestBrutalCriticalIsOnlyForAMeleeCritical: a normal hit, a ranged attack and a
 // spell attack roll their damage as they always did.
 func TestBrutalCriticalIsOnlyForAMeleeCritical(t *testing.T) {
@@ -111,7 +103,7 @@ func TestBrutalCriticalIsOnlyForAMeleeCritical(t *testing.T) {
 	t.Run("a ranged attack", func(t *testing.T) {
 		t.Parallel()
 		a, e := brutalFight(t, 9)
-		if p := a.mustAttack(t, a.caio, e, "Ragna", shortbowKey, "Goblin", d20(20)).GetPendingDamage(); !p.GetCritical() || p.GetExtraDiceCount() != 0 || p.GetExtraDiceNamePt() != "" {
+		if p := a.mustAttack(t, a.caio, e, "Ragna", shortbowKey, "Goblin", disadvantage(20)).GetPendingDamage(); !p.GetCritical() || p.GetExtraDiceCount() != 0 || p.GetExtraDiceNamePt() != "" {
 			t.Errorf("a ranged critical = %d extra dice named %q, want none", p.GetExtraDiceCount(), p.GetExtraDiceNamePt())
 		}
 	})
@@ -162,5 +154,37 @@ func TestBrutalCriticalCountsInThePhysicalDiceSum(t *testing.T) {
 	r2 := a2.mustDamage(t, a2.caio, e2, p2.GetId(), typedDamage(10)).GetPendingDamage()
 	if r2.GetRoll().GetTotal() != 10+12+r2.GetBonus() {
 		t.Errorf("the roll total = %d, want 10 + the 12 kept + %d", r2.GetRoll().GetTotal(), r2.GetBonus())
+	}
+}
+
+// TestBrutalCriticalIsPartOfTheWeaponLineOfARagingBarbarian: a raging barbarian's damage is
+// made of lines (the weapon and the rage's bonus), and the dice of Crítico Brutal are
+// the weapon line's: it rolls them after the critical's own, in the app and with
+// real dice, and says so.
+func TestBrutalCriticalIsPartOfTheWeaponLineOfARagingBarbarian(t *testing.T) {
+	t.Parallel()
+	a, e := brutalFight(t, 9)
+	e, err := a.action(t, a.caio, e, "Ragna", "feature:rage")
+	if err != nil {
+		t.Fatalf("TakeAction(Rage) error = %v", err)
+	}
+	p := a.mustAttack(t, a.caio, e, "Ragna", greataxe, "Goblin", d20(20)).GetPendingDamage()
+	if len(p.GetParts()) < 2 {
+		t.Fatalf("the raging barbarian's damage has %d lines, want the weapon and the rage", len(p.GetParts()))
+	}
+	weapon := p.GetParts()[0]
+	if weapon.GetDiceCount() != 3 || weapon.GetDiceSides() != 12 {
+		t.Fatalf("the weapon line = %dd%d, want 3d12 (2 of the critical and 1 of Crítico Brutal)", weapon.GetDiceCount(), weapon.GetDiceSides())
+	}
+	a.h.roller.queue(7, 11, 4)
+	rolled := a.mustDamage(t, a.caio, e, p.GetId(), inAppDamage).GetPendingDamage()
+	var got []int32
+	for _, r := range rolled.GetPartRolls() {
+		if r.GetPartKey() == weapon.GetKey() {
+			got = r.GetFaces()
+		}
+	}
+	if len(got) != 3 || got[0] != 7 || got[1] != 11 || got[2] != 4 {
+		t.Errorf("the weapon line rolled %v, want 7, 11 and 4", got)
 	}
 }

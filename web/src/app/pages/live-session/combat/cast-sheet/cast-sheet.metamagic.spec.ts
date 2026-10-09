@@ -216,7 +216,7 @@ describe('CastSheet: Metamagic (PM-07c 11)', () => {
     expect(args[3]).toBe('spell:ray-of-frost');
     expect(args[4]).toBeNull();
     expect(args[5]).toEqual([{ combatantId: 'g1', darts: 0 }]);
-    expect(args[10]).toEqual([
+    expect(args[11]).toEqual([
       {
         key: 'feature:metamagic-twinned-spell',
         targetIds: ['g2'],

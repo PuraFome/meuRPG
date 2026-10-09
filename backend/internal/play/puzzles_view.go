@@ -391,7 +391,7 @@ func masterRunProto(d puzzleDef, run *playdb.PuzzleRun, names runNames, shown bo
 	for _, t := range ex.tries {
 		try := &playv1.PuzzleHintTry{
 			Hint: t.HintIndex + 1, Passed: t.Passed, At: timestamppb.New(t.CreatedAt),
-			Roll: treatedRoll(t.D20, t.Modifier, t.Total, t.Physical),
+			Roll: hintRollProto(t),
 		}
 		if t.CharacterID != nil {
 			try.CharacterName = ex.names[*t.CharacterID]
