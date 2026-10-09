@@ -342,3 +342,52 @@ func TestAFallThatNobodySlowsLandsWhenTheWindowIsPassed(t *testing.T) {
 		t.Errorf("Toren's fall = %s for %d, want it rolled for the master (4)", status, amount)
 	}
 }
+
+func bardAsking(ask charactersv1.CuttingWordsAsk) func(t *testing.T, a *armed) *charactersv1.Character {
+	return func(t *testing.T, a *armed) *charactersv1.Character {
+		t.Helper()
+		sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
+			BaseScores: abilities(10, 14, 12, 10, 16), RaceKey: "race:human", Classes: []*charactersv1.ClassLevel{classLevel("class:bard", 3, "subclass:lore")},
+			WeaponKeys: []string{rapier}, CuttingWordsAsk: ask,
+		}}}
+		res, err := a.ana.characters.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+			CampaignId: a.campaignID, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Reator", Sheet: sheet,
+		}))
+		if err != nil {
+			t.Fatalf("CreateCharacter(Reator) error = %v", err)
+		}
+		return res.Msg.GetCharacter()
+	}
+}
+
+// TestTheBardsSettingChoosesWhatCuttingWordsAsks: "só em ataques" (the default) asks on an
+// attack and not on a damage; "todos" asks on the damage too; "nunca" asks nothing.
+func TestTheBardsSettingChoosesWhatCuttingWordsAsks(t *testing.T) {
+	t.Parallel()
+	never, ne := reactorFight(t, bardAsking(charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_NEVER))
+	held := never.mustAttack(t, never.master, ne, "Goblin", sword, "Toren", d20(8))
+	if held.GetRoll().GetHeldForReaction() || never.windowOf(t, never.ana, playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS) != nil {
+		t.Error("\"nunca\": the attack was held for the bard")
+	}
+
+	attacks, ae := reactorFight(t, loreBard) // the default: only attacks
+	hit := attacks.mustAttack(t, attacks.master, ae, "Goblin", sword, "Toren", d20(19))
+	if !hit.GetRoll().GetHeldForReaction() {
+		t.Fatal("\"só em ataques\": the attack was not held for the bard")
+	}
+	attacks.mustAnswer(t, attacks.ana, ae, attacks.windowOf(t, attacks.ana, playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS).GetId(), passAnswer)
+	pend := attacks.firstPending(t)
+	attacks.mustDamage(t, attacks.master, ae, pend, typedDamage(4))
+	if w := attacks.windowOf(t, attacks.ana, playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS); w != nil {
+		t.Errorf("\"só em ataques\": a damage roll was held for the bard: %v", w)
+	}
+
+	all, le := reactorFight(t, bardAsking(charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL))
+	all.mustAttack(t, all.master, le, "Goblin", sword, "Toren", d20(19))
+	all.mustAnswer(t, all.ana, le, all.windowOf(t, all.ana, playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS).GetId(), passAnswer)
+	all.mustDamage(t, all.master, le, all.firstPending(t), typedDamage(4))
+	w := all.windowOf(t, all.ana, playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS)
+	if w == nil || w.GetCuttingWords().GetRollKind() != playv1.ReactionRollKind_REACTION_ROLL_KIND_DAMAGE {
+		t.Errorf("\"todos\": the damage roll's window = %v, want a Cutting Words on the damage", w)
+	}
+}

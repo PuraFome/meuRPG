@@ -174,3 +174,31 @@ func (a *armed) firstPending(t *testing.T) string {
 	}
 	return id
 }
+
+// TestAHeldCastAnsweredAgainWithItsKeyHoldsOnce: a client that sends the same cast again (its
+// network dropped) gets the same answer and no second window or second hold.
+func TestAHeldCastAnsweredAgainWithItsKeyHoldsOnce(t *testing.T) {
+	t.Parallel()
+	a, e := mageFight(t)
+	a.pensantusTurn(t, e)
+	key := newKey()
+	targets := []*playv1.SpellTarget{darts(a, t, "Goblin", 3)}
+	first, err := a.castKey(t, a.ana, e, "Pensantus", magicMissileSpell, slotOfLevel(1), targets, noCastRoll, key)
+	if err != nil {
+		t.Fatalf("CastSpell() error = %v", err)
+	}
+	again, err := a.castKey(t, a.ana, e, "Pensantus", magicMissileSpell, slotOfLevel(1), targets, noCastRoll, key)
+	if err != nil {
+		t.Fatalf("CastSpell(again) error = %v", err)
+	}
+	if !proto.Equal(first.GetCast(), again.GetCast()) || first.GetCast() != nil {
+		t.Errorf("the second answer differs: %v / %v", first, again)
+	}
+	var holds, windows int
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT (SELECT count(*) FROM reaction_holds), (SELECT count(*) FROM reaction_windows)`).Scan(&holds, &windows); err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if holds != 1 || windows < 1 {
+		t.Errorf("holds %d, windows %d; want one hold", holds, windows)
+	}
+}
