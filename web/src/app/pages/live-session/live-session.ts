@@ -82,6 +82,7 @@ import { HighlightsCard } from './combat/combat-highlights/highlights-card';
 import { LiveStream } from './live-stream';
 import { PartyPanel } from './party-panel/party-panel';
 import { RestCard } from './rest-card/rest-card';
+import { CharacterEffectsPanel } from './effects/character-effects-panel';
 import { PlayerVitals } from './player-vitals/player-vitals';
 import { RevivifyAsk } from './revivify-ask/revivify-ask';
 import { RevivedNotice } from './revived-notice/revived-notice';
@@ -151,6 +152,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     MasterPuzzles,
     PartyPanel,
     RestCard,
+    CharacterEffectsPanel,
     PuzzleNotice,
     PuzzlePlayPage,
     PlayerVitals,
@@ -262,6 +264,9 @@ export class LiveSession {
   );
   /** Counts the `spell_casts_changed` hints (and each `ready`): the casts panel reads again when it moves. */
   protected readonly castsTick = signal(0);
+  /** Goes up when a rest was taken: the effects on the characters are read again with the spell casts. */
+  private readonly restsTick = signal(0);
+  protected readonly effectsTick = computed(() => this.castsTick() + this.restsTick());
   protected readonly familiarNameNow = signal<string | null>(null);
   protected readonly seeingFamiliar = computed(() => !!this.vitals().at(0)?.familiarSight);
   private readonly familiarEyes = inject(FamiliarEyesClient);
@@ -1190,6 +1195,7 @@ export class LiveSession {
   /** A rest or a spent hit die changed these characters: their new numbers, as the server answered (the stream says the same to the other screens). */
   protected takeVitals(taken: readonly VitalsVm[]): void {
     this.vitals.update((list) => taken.reduce((all, v) => applyVitals(all, v), list));
+    this.restsTick.update((n) => n + 1);
   }
 
   /** "Ajustar": a bottom sheet on a phone, a dialog from a tablet up, with

@@ -1,0 +1,261 @@
+// What the effects dialogs of the master share (a dialog from a tablet up, a bottom sheet on a phone).
+:host {
+  display: block;
+}
+
+.note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  margin-top: var(--mr-space-3);
+}
+
+.cap {
+  padding: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+}
+
+// A group of radios drawn as rows: the marked one in the accent, the focus ring on the row.
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  min-width: 0;
+  margin: var(--mr-space-3) 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.choice {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 8px 14px 8px 44px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  cursor: pointer;
+
+  input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  // The round mark, drawn: the state never rests on colour alone (a dot in the middle).
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 14px;
+    box-sizing: border-box;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--mr-control-line);
+    border-radius: 50%;
+    transform: translateY(-50%);
+  }
+
+  &:has(:checked) {
+    padding: 7px 13px 7px 43px;
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+
+  &:has(:checked)::before {
+    left: 13px;
+    border-color: var(--mr-accent);
+    background: radial-gradient(circle, var(--mr-accent) 0 4px, transparent 5px);
+  }
+
+  &:has(:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.choice__title {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+.choice__text {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.sub {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.error {
+  margin-bottom: var(--mr-space-3);
+}
+
+.more {
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+
+  summary {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 14px;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--mr-focus);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.checks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 8px;
+  margin: 0;
+  padding: 0 14px 8px;
+  border: 0;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.check {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  cursor: pointer;
+
+  input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  &:has(:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -2px;
+  }
+}
+
+.check__box {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--mr-ink-muted);
+  border-radius: var(--mr-radius-sm);
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.check:has(:checked) .check__box {
+  border-color: var(--mr-accent);
+  background: var(--mr-accent);
+  color: var(--mr-on-accent);
+}
+
+// The buttons have the same size; on a screen too narrow for both on a line, each takes its own.
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.pair__btn {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-filled-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  width: 100%;
+  white-space: nowrap;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+    --mat-button-filled-container-height: 44px;
+  }
+}
+
+// What cannot be undone: outlined in the danger ink, never filled.
+.pair__btn--danger {
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+  --mat-button-outlined-outline-color: var(--mr-danger-ink);
+}
+
+// The question that replaces the form (level 6): a card with a danger outline and the focus on "Cancelar".
+.ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-4);
+  border: 2px solid var(--mr-danger-ink);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.ask__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+
+  .mat-icon {
+    flex: none;
+    color: var(--mr-danger-ink);
+  }
+}
+
+.ask__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  line-height: 26px;
+  font-weight: 700;
+}
+
+.ask__text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.muted {
+  color: var(--mr-ink-muted);
+}

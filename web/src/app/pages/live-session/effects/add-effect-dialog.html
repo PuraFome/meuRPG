@@ -1,0 +1,146 @@
+<app-sheet-frame title="Adicionar um efeito" titleId="add-effect-t" [phone]="inSheet" (closed)="close()">
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger error" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+  @if (catalog.length === 0) {
+    <p class="note">O catálogo de efeitos não veio. Feche e abra de novo.</p>
+  } @else {
+    <div class="fields">
+      <app-select-field
+        label="Em quem"
+        path="target"
+        [options]="targetOptions()"
+        [value]="target()"
+        (valueChange)="setTarget($any($event))"
+      />
+      @if (others().length > 0) {
+        <details class="more">
+          <summary>Mais alvos (opcional, até {{ maxTargets }} no total)</summary>
+          <fieldset class="checks">
+            <legend class="mr-visually-hidden">Outros alvos do efeito</legend>
+            @for (c of others(); track c.id) {
+              <label class="check">
+                <input
+                  type="checkbox"
+                  [checked]="moreTargets().has(c.id)"
+                  [disabled]="moreFull(c.id)"
+                  (change)="toggleMore(c.id)"
+                />
+                <span class="check__box" aria-hidden="true">
+                  @if (moreTargets().has(c.id)) {
+                    <mat-icon>check</mat-icon>
+                  }
+                </span>
+                <span>{{ c.label }}</span>
+              </label>
+            }
+          </fieldset>
+        </details>
+      }
+      <app-select-field
+        label="Efeito"
+        path="catalog"
+        [options]="effectOptions()"
+        [value]="effectKey()"
+        hint="Do catálogo: magias, as 15 condições e outros efeitos. A exaustão tem o seu próprio controle."
+        (valueChange)="effectKey.set($any($event))"
+      />
+      @if (chosen()?.hasCaster) {
+        <app-select-field
+          label="Quem conjurou"
+          path="caster"
+          [options]="casterOptions()"
+          [value]="casterId()"
+          (valueChange)="casterId.set($any($event))"
+        />
+      }
+      <app-select-field
+        label="Duração"
+        path="duration"
+        [options]="durationOptions()"
+        [value]="durationChoice()"
+        (valueChange)="durationChoice.set($any($event))"
+      />
+      @if (durationChoice() === 'rounds') {
+        <app-text-field
+          label="Rodadas"
+          path="rounds"
+          inputmode="numeric"
+          [value]="rounds()"
+          [issues]="roundsIssues()"
+          hint="De 1 a 600."
+          (valueChange)="rounds.set($event)"
+        />
+      }
+      @if (durationChoice() === 'end-turn' || durationChoice() === 'start-turn') {
+        <app-select-field
+          label="De quem é o turno"
+          path="anchor"
+          [options]="anchorOptions()"
+          [value]="anchorId()"
+          (valueChange)="anchorId.set($any($event))"
+        />
+      }
+      <app-text-field
+        label="CD do teste de resistência (opcional)"
+        path="dc"
+        inputmode="numeric"
+        [value]="dc()"
+        [issues]="dcIssues()"
+        hint="De 1 a 40. Sem ela, vale a CD da magia de quem conjurou."
+        (valueChange)="dc.set($event)"
+      />
+
+      <fieldset class="choices" aria-describedby="add-vis-hint">
+        <legend class="cap">Os jogadores veem este efeito</legend>
+        <p class="note" id="add-vis-hint">
+          Desligado, nada o revela: nem a espera, nem a fonte de vantagem, nem o registro.
+        </p>
+        <label class="choice">
+          <input type="radio" name="add-vis" [checked]="visibility() === 'catalog'" (change)="visibility.set('catalog')" />
+          <span class="choice__title">Como o catálogo define</span>
+          <span class="choice__text">Cada efeito tem a sua regra de quem vê.</span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="add-vis" [checked]="visibility() === 'yes'" (change)="visibility.set('yes')" />
+          <span class="choice__title">Sim</span>
+          <span class="choice__text">Os jogadores veem a etiqueta do efeito.</span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="add-vis" [checked]="visibility() === 'no'" (change)="visibility.set('no')" />
+          <span class="choice__title">Não</span>
+          <span class="choice__text">Só você vê este efeito.</span>
+        </label>
+      </fieldset>
+      @if (visibility() === 'yes') {
+        <div class="sub">
+          <app-visibility-fields
+            [audience]="audience()"
+            [label]="label()"
+            (audienceChange)="audience.set($event)"
+            (labelChange)="label.set($event)"
+          />
+        </div>
+      }
+    </div>
+  }
+  <div foot>
+    <div class="pair">
+      <button
+        mat-flat-button
+        type="button"
+        class="pair__btn"
+        [disabled]="busy() || !valid()"
+        disabledInteractive
+        [attr.aria-busy]="busy()"
+        (click)="add()"
+      >
+        Adicionar
+      </button>
+      <button mat-stroked-button type="button" class="pair__btn" [disabled]="busy()" (click)="close()">Cancelar</button>
+    </div>
+  </div>
+</app-sheet-frame>

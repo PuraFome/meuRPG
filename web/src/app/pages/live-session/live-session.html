@@ -249,6 +249,13 @@
             [party]="vitals()"
             (restTaken)="takeVitals($event)"
           />
+          <!-- The effects on the characters outside a combat, the exhaustion and "Passar o tempo" (W7-E). -->
+          <app-character-effects-panel
+            class="board__effects"
+            [campaignId]="campaignId()"
+            [party]="vitals()"
+            [tick]="effectsTick()"
+          />
           <app-casting-panel
             class="board__casting"
             [campaignId]="campaignId()"

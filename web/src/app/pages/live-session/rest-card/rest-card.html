@@ -67,6 +67,16 @@
         </ul>
       }
 
+      @if (asking() === long) {
+        <app-hidden-switch
+          class="question__food"
+          label="Sem comida ou bebida"
+          hint="Com comida e bebida, o descanso longo baixa 1 nível de exaustão de cada personagem. Ligue se a mesa não teve."
+          [checked]="withoutFood()"
+          (toggle)="withoutFood.set($event)"
+        />
+      }
+
       @for (c of choices(); track c.characterId) {
         <div class="choice" role="group" [attr.aria-label]="'Dados de vida que voltam de ' + c.name">
           <p class="choice__title">

@@ -40,6 +40,7 @@
       'main scene'
       'main party'
       'main rest'
+      'main effects'
       'main casting'
       'main tokens'
       'traps traps';
@@ -67,6 +68,10 @@
 
     .board__party {
       grid-area: party;
+    }
+
+    .board__effects {
+      grid-area: effects;
     }
 
     .board__rest {
@@ -97,6 +102,7 @@
       'main puzzles'
       'main party'
       'main rest'
+      'main effects'
       'main casting'
       'main tokens'
       'traps traps';
@@ -155,6 +161,7 @@
 
 .board__party,
 .board__rest,
+.board__effects,
 .board__casting,
 .board__puzzles,
 .board__fog,
