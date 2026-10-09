@@ -72,7 +72,10 @@ func (s *Service) groupWrite(ctx context.Context, m authz.Membership, key string
 		case !errors.Is(err, pgx.ErrNoRows):
 			return fmt.Errorf("find the event of this idempotency key: %w", err)
 		}
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), hash: hash}
+		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), hash: hash, svc: s})
+		if err != nil {
+			return err
+		}
 		payload, characterID, err := do(q, tx, session)
 		if err != nil {
 			return err

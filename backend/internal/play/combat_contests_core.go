@@ -347,9 +347,9 @@ func modeShift(m combat.CheckMode) int {
 // disadvantage now: the rules of advantage's SaveMode for an ability check (Poisoned and
 // Frightened, SRD 5.1 Conditions; a raging barbarian's Strength) and the Helps that hold for
 // the task (SRD 5.1, "Help").
-func (s *Service) checkSources(ctx context.Context, c *combatTx, who playdb.Combatant, skill string, cs []playdb.Combatant) ([]rollNote, error) {
+func (s *Service) checkSources(ctx context.Context, q *playdb.Queries, enc playdb.Encounter, who playdb.Combatant, skill string, cs []playdb.Combatant) ([]rollNote, error) {
 	var out []rollNote
-	states, err := c.q.ListCombatantStates(ctx, c.enc.ID)
+	states, err := q.ListCombatantStates(ctx, enc.ID)
 	if err != nil {
 		return nil, fmt.Errorf("list the states: %w", err)
 	}
@@ -370,7 +370,7 @@ func (s *Service) checkSources(ctx context.Context, c *combatTx, who playdb.Comb
 			out = append(out, rollNote{Kind: "rage", Label: "Fúria", Adv: true})
 		}
 	}
-	helps, err := s.liveHelps(ctx, c.q, c.enc, cs)
+	helps, err := s.liveHelps(ctx, q, enc, cs)
 	if err != nil {
 		return nil, err
 	}
@@ -384,8 +384,7 @@ func (s *Service) checkSources(ctx context.Context, c *combatTx, who playdb.Comb
 
 // checkSourcesRead is checkSources for a read that holds no transaction.
 func (s *Service) checkSourcesRead(ctx context.Context, enc playdb.Encounter, who playdb.Combatant, skill string, cs []playdb.Combatant) ([]rollNote, error) {
-	c := &combatTx{q: s.queries, enc: enc}
-	return s.checkSources(ctx, c, who, skill, cs)
+	return s.checkSources(ctx, s.queries, enc, who, skill, cs)
 }
 
 func notesMode(notes []rollNote) combat.CheckMode {
@@ -430,7 +429,7 @@ func (s *Service) rollFor(ctx context.Context, c *combatTx, who playdb.Combatant
 	if err != nil {
 		return contestRoll{}, err
 	}
-	notes, err := s.checkSources(ctx, c, who, skill, cs)
+	notes, err := s.checkSources(ctx, c.q, c.enc, who, skill, cs)
 	if err != nil {
 		return contestRoll{}, err
 	}

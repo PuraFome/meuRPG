@@ -54,7 +54,7 @@ func (s *Service) observerOf(ctx context.Context, tx pgx.Tx, campaignID string, 
 	if q == nil {
 		q = s.queries
 	}
-	notes, err := s.checkSources(ctx, &combatTx{q: q, enc: enc}, o, skillPercept, cs)
+	notes, err := s.checkSources(ctx, q, enc, o, skillPercept, cs)
 	if err != nil {
 		return observerView{}, err
 	}

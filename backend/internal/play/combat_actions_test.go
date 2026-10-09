@@ -323,6 +323,15 @@ func (a *armed) settle(t *testing.T, u *user, e *playv1.Encounter, pendingID str
 // action calls TakeAction as u.
 func (a *armed) action(t *testing.T, u *user, e *playv1.Encounter, label, key string) (*playv1.Encounter, error) {
 	t.Helper()
+	if key == actionHide { // Hide has its own call (ContestService.Hide): a die of 10, typed
+		res, err := u.contests.Hide(t.Context(), connect.NewRequest(&playv1.HideRequest{
+			CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, label), ActionKey: key, IdempotencyKey: newKey(), Roll: faces(10),
+		}))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg.GetEncounter(), nil
+	}
 	res, err := u.combat.TakeAction(t.Context(), connect.NewRequest(&playv1.TakeActionRequest{
 		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, label), ActionKey: key, IdempotencyKey: newKey(),
 	}))
@@ -1262,6 +1271,10 @@ func line(e *playv1.CombatLogEntry) string {
 		s = "o combate começa"
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:
 		s = who + ": " + e.GetKeyNamePt()
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_CONTEST: // Hide has its own call: the master reads the attempt
+		if e.GetContest().GetLine() == playv1.ContestLogLine_CONTEST_LOG_LINE_HIDE_TRIED {
+			s = who + ": Esconder"
+		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_TURN_PART_ENDED:
 		s = who + " encerrou a parte"
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:
@@ -1426,7 +1439,6 @@ func TestTimelineRound1And2Log(t *testing.T) {
 		"R1 Toren -> Goblin 1 (Machado de batalha): acertou, 9 cortante, aplicado, derrotado",
 		"R1 Goblin 2 -> Brisa (Arco curto): acertou, 5 perfurante, aplicado",
 		"R1 Capitão Goblin -> Toren (Cimitarra): acertou, 5 cortante, aplicado",
-		"R1 Brisa: Esconder",
 		"R1 o combate começa",
 	})
 	attackAndApply(a.ana, "Pensantus", fireBolt, "Goblin 2", 13, 7) // 1d20 (13) + 6 = 19; 1d10 (7) de fogo
@@ -1491,7 +1503,7 @@ func TestTimelineRound1And2Log(t *testing.T) {
 		"R1 Goblin 2 -> Brisa (Arco curto): acertou, 5 perfurante, aplicado",
 		"R1 Goblin 1 encerrou a parte [só o mestre vê]", // the goblins tie at 12: a group of NPCs alone, the master's
 		"R1 Capitão Goblin -> Toren (Cimitarra): acertou, 5 cortante, aplicado",
-		"R1 Brisa: Esconder",
+		"R1 Brisa: Esconder [só o mestre vê]",
 		"R1 o combate começa",
 	})
 	// A player's: the same, without what only the master sees.
@@ -1506,7 +1518,6 @@ func TestTimelineRound1And2Log(t *testing.T) {
 		"R1 Toren -> Goblin 1 (Machado de batalha): acertou, 9 cortante, aplicado, derrotado",
 		"R1 Goblin 2 -> Brisa (Arco curto): acertou, 5 perfurante, aplicado",
 		"R1 Capitão Goblin -> Toren (Cimitarra): acertou, 5 cortante, aplicado",
-		"R1 Brisa: Esconder",
 		"R1 o combate começa",
 	})
 }

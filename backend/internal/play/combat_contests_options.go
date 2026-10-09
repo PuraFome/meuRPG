@@ -1,6 +1,7 @@
 package play
 
 import (
+	"connectrpc.com/connect"
 	"context"
 	"math"
 	"slices"
@@ -115,6 +116,9 @@ func (s *Service) contestOptionsFor(ctx context.Context, m authz.Membership, d *
 		return nil, state, nil //nolint:nilerr // a combatant that cannot attack has no special attack to list; that is no failure
 	}
 	sheet, err := s.sheetOf(ctx, nil, m.CampaignID, who)
+	if connect.CodeOf(err) == connect.CodeNotFound { // a character that is gone attacks no more
+		return nil, state, nil
+	}
 	if err != nil {
 		return nil, nil, err
 	}
@@ -134,6 +138,9 @@ func (s *Service) contestOptionsFor(ctx context.Context, m authz.Membership, d *
 		reason = &rulesv1.DisabledReason{Code: code}
 	}
 	roll, _, err := s.contestRollOption(ctx, r, who)
+	if connect.CodeOf(err) == connect.CodeNotFound { // a character that is gone attacks no more
+		return nil, state, nil
+	}
 	if err != nil {
 		return nil, nil, err
 	}
@@ -174,6 +181,9 @@ func (s *Service) hideAndHelpActions(ctx context.Context, m authz.Membership, wh
 	}
 	if len(opts.GetFeatureActions()) > 0 {
 		sheet, err := s.sheetOf(ctx, nil, m.CampaignID, who)
+		if connect.CodeOf(err) == connect.CodeNotFound { // a character that is gone has no feature to list
+			return nil
+		}
 		if err != nil {
 			return err
 		}
@@ -185,6 +195,10 @@ func (s *Service) hideAndHelpActions(ctx context.Context, m authz.Membership, wh
 	}
 	if len(state.HideActions) > 0 {
 		n, notes, err := r.optionOf(ctx, who, skillStealth)
+		if connect.CodeOf(err) == connect.CodeNotFound { // a character that is gone hides no more
+			state.HideActions = nil
+			return nil
+		}
 		if err != nil {
 			return err
 		}
