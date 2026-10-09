@@ -47,6 +47,7 @@ How to read a story: the user-story sentence, the priority (MVP, MVP prerequisit
 | [MR-043](#mr-043-generate-encounters) | Combat | MVP |
 | [MR-044](#mr-044-generate-treasure) | Map | MVP |
 | [MR-045](#mr-045-look-up-spells) | Rules | MVP |
+| [MR-050](#mr-050-campaign-package-export-and-import) | Campaign | MVP |
 | [MR-002](#mr-002-generate-an-invite) | Campaign | MVP (prerequisite) |
 | [MR-005](#mr-005-create-npcs) | Character | MVP (prerequisite) |
 | [MR-007](#mr-007-import-a-sheet-from-pdf) | Character | Later |
@@ -1172,6 +1173,30 @@ The story covers own classes **and** subclasses, races and subraces, backgrounds
 
 #### Related
 - A part of [MR-020](#mr-020-look-up-the-rulebook), with only the spells. Letting the GM accept a spell outside the class list is for after the MVP ([MR-046](#mr-046-table-style-feature-by-feature)). Table content: [MR-025](#mr-025-register-table-content).
+
+### MR-050: Campaign package, export and import
+
+**As a** master, **I want** to export my campaign as one file and create it again from that file, on this server or another, **so that** the table's campaign moves without being typed again.
+
+- Priority: MVP
+- Rules: RN-10, RN-30
+- Modules: campaignpackage, campaigns, characters, maps, play
+
+**Export** (the campaign's page, "Exportar campanha"):
+- Only the master. The server reads the campaign in one transaction and writes `<campanha>.meurpg.zip` to the file store; the page shows the progress and may be closed. The file stays 24 hours ("Baixar de novo") and is then deleted, and it is also deleted with the campaign or the account.
+- It carries the campaign document, the table rules, the gallery (the image files), the maps (image, grid, layers, doors, lights, traps, points), the NPCs and creatures with the master's notes, the scenes with their actions, clues and hooks, the puzzles, the battle points with their encounters, the treasure points, the table content and the options switched off, and the players' characters (as reserved, with no owner).
+- It never carries the players' private notes, the session history and logs, accounts (ids, e-mails, names), owners and members, invites and claim links, or what each player remembers of the fog. A map comes back as prepared: traps armed, treasures unfound.
+- The download checks again, on every request, that the caller is the campaign's master.
+
+**Import** (the campaigns page, "Importar campanha"):
+- The file goes up in parts of 5 MiB, so a dropped connection resumes; the upload belongs to the master's account, a person has one at a time, and the parts are deleted an hour after the last one.
+- A preview counts what the package holds and lists every problem in plain words. Any problem blocks "Criar campanha": all or nothing, and a failure halfway leaves no row and no file.
+- A package from a newer MeuRPG is refused ("Este pacote é de uma versão mais nova do MeuRPG, e este servidor ainda não sabe abri-lo."). So is a file that was changed (SHA-256 of every entry), a field this server does not know, an entry over 10 MiB, a package over 200 MiB or 2,000 entries, a compression ratio over 100, a name that climbs out of a folder, and a reference to something the package lacks.
+- Every rule of the app applies as if the master had typed the data: names, sizes, DCs, scene actions, traps, puzzles, sheets (with the package's own table content), the caps of a campaign (300 images, 200 maps, 200 points a map, 300 table entries, the characters and NPCs cap) and the account's cap of campaigns ("Você já tem 10 campanhas.") and the creators list. Images go through the upload's pipeline (re-encoded, metadata dropped).
+- Ids are never reused: every thing gets a new id and every reference, including the links in the document, follows.
+- The players' characters arrive reserved (MR-049): invisible to the players until one claims it with the master's link.
+
+**Tests.** `TestExportThenImportMakesTheSameCampaign` (every kind, field by field), `TestEveryRefusalOfAPackageNamesItsReason`, `TestAPackageWithAnyProblemIsNotCreated`, `TestEveryProblemOfAPackageIsListedNotJustTheFirst`, `TestAFailureInTheLastKindLeavesNoRowAndNoFile`, `TestAnUploadResumesFromTheParts`, `TestAnUploadBelongsToTheAccountThatBeganIt`, `TestThePartsOfAnUploadExpireAnHourAfterTheLastOne`, `TestAnExportIsDownloadedByTheMasterOnly`, `TestAnExportIsKeptTwentyFourHoursThenDeleted`, `TestTheCampaignCapIsEnforcedBeforeTheUploadAndAtTheEnd`, `TestACreateRetriedWithTheSameKeyMakesOneCampaign`, `TestAPackageNeverCarriesWhatBelongsToPlayersSessionsOrAccounts`, `TestImportedPlayerCharactersAreReservedAndInvisibleToPlayers` (all in `backend/internal/campaignpackage`), the leak matrix rows for `CampaignPackageService`, the Vitest specs of `core/campaign-package`, `campaign-export` and `campaign-import`, and Playwright `campaign-package.spec.ts` (`@MR-050 @RN-10`) with the screens in `a11y.spec.ts`.
 
 ## Priority: MVP (prerequisite)
 

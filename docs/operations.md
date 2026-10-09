@@ -208,6 +208,24 @@ Image generation (MR-039, RN-28) calls the Gemini API with a Google AI Studio ke
 
   **The sum against the 400 MiB `GOMEMLIMIT`** (the full table is in [CONTRIBUTING](../CONTRIBUTING.md)): the decoded-image slot (about 200 MB, transient) + the working copies (34 MB) + the tile cache (33.5 MB) + the fog scenes (19 MB) + generation (a response of up to 8 MiB, about 20 MiB, and up to 6 MiB of shrunk images: about 26 MB) = about 313 MB, plus about 50 MB for the rest: **about 363 MB**, within the 400 MiB and the 512 MiB of the instance. The number of simultaneous calls is **1** (`maxGenerating`): with 2 it would be about 389 MB. A second generation waits its turn (the request stays `PENDING` and the long wait stays open).
 
+### Campaign package
+
+The export and import of a campaign (MR-050, [Architecture](architecture.md#campaign-package-mr-050)) store their files in the same blob store as the images, and so they are off, with a clear message, when the store is off (`BLOB_DIR` unset).
+
+| What | Value |
+| --- | --- |
+| Package | At most 200 MiB, 2,000 entries, 10 MiB per entry, 500 MiB of entries once unpacked, a ratio of 100 between an entry and its compressed size |
+| Upload | Parts of 5 MiB (`PUT /uploads/campaign-imports/{id}/parts/{n}`), well under Cloud Run's 32 MiB request limit; 2 minutes to send a part; one upload per person; the parts are kept an hour after the last one |
+| Export file | `campaigns/<id>/exports/<id>.zip`, kept 24 hours, one export running at a time per instance, 20 minutes at most |
+| Download | Up to 30 minutes for the response (a client slower than 1 Mbit/s is cut) |
+| Cleanup | `Sweep` when the server starts and every 10 minutes; a running export that has not moved for 10 minutes is marked interrupted |
+
+**The bucket needs a lifecycle rule** as a second net, in case the instance is down when something expires: delete the objects under `imports/` older than 1 day and those under `campaigns/*/exports/` older than 2 days (Cloud Storage lifecycle rules match by prefix and age). The application deletes them first; the rule only covers a pause of the sweeper. Soft delete keeps a deleted object 7 more days (see [Privacy](privacy.md#what-the-campaign-package-does-mr-050)).
+
+**Memory.** The server has 512 MiB and processes one image at a time. An export keeps the campaign's JSON entries in memory (small: the sheets, maps and content, never the images) and streams every image file through a pipe into the store; an import reads the package where it lies in the parts, one entry at a time, and decodes one image at a time in the same slot as an upload. Neither holds the package or the images together.
+
+**Measured** (`TestMeasureExportAndImportOfALargeCampaign`, with `MEURPG_MEASURE=1`, in-process on the 4 vCPU build machine against CockroachDB and a disk store; a campaign of 20 maps with a 3 MB image each and 50 NPCs): MEASUREMENTS_HERE The heap figures are the growth of the Go heap over the start of the call, with the test's own copy of the package already counted in the baseline.
+
 ## Logs in ELK
 
 The API logs go to an ELK stack (Elasticsearch, Kibana and Filebeat) so that whoever investigates bugs can read and filter them. The local ELK exists; production is still a plan. The API writes one JSON line per event to stdout, in the backend log contract (`backend/internal/platform/logging`: fields, levels and what never goes in); ELK only reads those lines. The files are in `deploy/elk/`.

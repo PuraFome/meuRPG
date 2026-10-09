@@ -29,6 +29,7 @@ Each backend module lives in `backend/internal/<module>`. A module calls another
 - `maps`: maps, points of interest, tokens, the image gallery and generated dungeons. The gallery (uploading, storing and serving images, see [Gallery and images](#maps-module-gallery-and-images)) and the maps, with what each person sees decided on the server (see [Maps, points and tokens](#maps-module-maps-points-and-tokens)).
 - `progression`: the XP the master gives (for enemies, for gold or by hand), milestones, the history and who can level up (`ProgressionService`; see [Progression module](#progression-module-xp-and-milestones)).
 - `notes`: the players' private notes, with a scene label, next to the clues the master revealed to each one (`NotesService`; see [Notes module](#notes-module-player-notes)).
+- `campaignpackage`: the campaign package (MR-050): the export of a campaign as one file and the creation of a campaign from such a file (`CampaignPackageService`; see [Campaign package](#campaign-package-mr-050)). It knows the container, the upload and the jobs; each module above implements the `Part` that reads and writes its own tables for it.
 - `rules`: the D&D 5e calculations (modifiers, DC, bonuses) and the SRD content as data. It does not touch the database, so it is easy to test.
 - `platform`: what everyone shares: configuration, database, HTTP server, logs and dice (`platform/dice`: parse expressions, roll and check the physical die).
 
@@ -189,6 +190,8 @@ There are four in-memory rate limits and three caps on what an account creates (
 | Connect calls | Signed-in user | 200, then 40 per second | Interceptor right **after** the session one (`limitedSessions`, in `cmd/api`) | `resource_exhausted` with the `Retry-After` header |
 | Images, thumbnails and fog tiles | User | 500, then 50 per second | `maps.Mount`, after the session and before authorization | `429`, reason `RATE_LIMITED`, `Retry-After` |
 | Uploads (`POST /uploads/images`) | User | 20, then 1 every 6 s (10 per minute) | the same | the same |
+| Campaign package: start an export, begin, preview and create an import, download an export | User | 6, then 1 every 10 s | `campaignpackage`, in each handler after the session | `resource_exhausted` with `Retry-After` (`429` on the download) |
+| Parts of an import upload (`PUT /uploads/campaign-imports/{id}/parts/{n}`) | User | 60, then 2 per second | the same | `429`, reason `RATE_LIMITED` |
 | `/auth/login` and `/auth/callback` | Client IP | 40, then 1 every 3 s (see [Login attempt limit](#login-attempt-limit)) | `identity`, first thing in each handler | `429` with `Retry-After`, plain text |
 
 - **Why the IP comes before the session.** A request with no session, or with an invented 43-character cookie, costs a database read to be refused. The IP limit stops it before that. It counts everything on the API, with or without a session, because that can only be known after the read; so the value is generous (a table of seven people behind the same Wi-Fi stays under 100 per second), and the per-user limit is what holds back a member who repeats an expensive call (generator, preview, upload).
@@ -691,6 +694,80 @@ sequenceDiagram
     C-->>B: aborted, nothing changes
     Note over B: The screen warns that the document changed and keeps the draft
 ```
+
+## Campaign package (MR-050)
+
+A master exports a campaign as one file, `<campanha>.meurpg.zip`, and creates a campaign from such a file, on this server or another. The code is `backend/internal/campaignpackage`; the format is `proto/meurpg/campaignpackage/v1/format.proto` (the messages written inside the zip, as protobuf JSON with the field names of the `.proto`, embedding the API's own messages for sheets, traps, puzzles and table entries, so the format follows the API); the calls are `campaignpackage.proto`.
+
+### The format
+
+| Entry | Holds |
+| --- | --- |
+| `manifest.json` | Written last. The format version (1), the rules content version of the exporter, the date, the campaign's name and every other entry with its kind, size and SHA-256. |
+| `campaign.json` | The name, the XP mode, the table rules (with the dice mode) and the campaign document. |
+| `images.json`, `images/<n>` | The gallery list and the stored image files. The thumbnail is made again on import. |
+| `maps/<n>.json` | A map with its grid, flags, five layers, points, scene actions and clues. |
+| `npcs/<n>.json`, `characters/<n>.json` | The NPCs and creatures (with the master's notes) and the players' characters. |
+| `puzzles/<n>.json`, `encounters.json` | The puzzles, and the encounter saved on each battle point. |
+| `content/<n>.json`, `content/options.json` | The table content entries and the options switched off. |
+
+Every reader of it is strict: a field the reader does not know is refused (in the manifest and in every entry), and so is a package whose `format_version` is above 1 (told apart from a damaged one by reading that number first). Entry names are only keys: they are lowercase letters, digits, `.`, `-`, `_` and `/` between segments, never `..`, and the reader never extracts an entry to a path (everything maps to ids), so there is no zip-slip. The limits are in `format.go`: 200 MiB for the file, 2,000 entries, 10 MiB for an entry, 500 MiB for the sum of the entries, and a ratio of 100 between an entry and its compressed size (only judged above 1 MiB). The directory's entry count is read from the end record before `archive/zip` builds the directory, an entry is hashed through a reader cut at its declared size, and a zip64 file is refused: a package never needs it.
+
+Ids in the messages are handles inside the package. The importer gives everything a new id (`IDs`, in namespaces image, map, point, clue, character, puzzle) and rewrites every reference, including the `map:`, `character:` and `image:` links of the document; a link to something the package lacks gets an id that names nothing, shown by the app as "apagado".
+
+### What each module owns
+
+A table is written by the module that owns it, so each module implements `campaignpackage.Part`: `Export` (reads, inside the export's read transaction), `Stage` (reads the package's entries, checks them with the rules of the call that makes the same thing by hand, records each problem and goes on, writes nothing to the database) and `Apply` (inserts, inside the import's one transaction, with the ids chosen before). The parts run in this order: the campaign (`campaigns`: the campaign, the master, the table rules, the document), the gallery (`maps`), the table content and characters (`characters`), the maps (`maps`) and the puzzles and encounters (`play`). Facts one part finds for the next (which doors, points and player characters exist) pass in `Import.Facts`, so a puzzle's door, point, clue or part is checked against the package itself.
+
+- **Images** go through `images.Process` in the upload's one-at-a-time slot, one file read at a time, and are stored under the new campaign's prefix only when the import is real (a preview writes nothing).
+- **Maps** check the grid against the image's size, decode each layer with the grid, and run points through `specFor`, the position, name, description and hooks checks, the scene check catalog and the limits of a campaign. A package leaves play out: traps come back armed, treasures unfound, nothing a player found out or remembers. Which maps and points are revealed is preparation, and stays.
+- **Table content** goes through the same shape, feature-key and size checks as `CreateTableEntry` (every feature key in the package is taken as the entry's own), then the whole content is compiled at once with `Content.With`; an entry the engine refuses is a problem naming the entry. The campaign's content revision starts at 1.
+- **Characters** are checked with `checkNewSheet` against that compiled content, so a sheet that needs a class of the table is judged with it. The link of an NPC to its SRD creature (and its scores) is kept. The players' characters are inserted reserved (`characters.reserved`, MR-049): no owner, invisible to the players until claimed.
+- **Puzzles** are built again by the kind (`build`, `fromBuilt`), which proves they can be solved from their start, with the seed kept so the start is the same.
+
+### Export
+
+`StartCampaignExport` records a row in `campaign_exports` (id: 128 random bits as 32 hex digits) and runs the export in the background, one at a time per instance. The campaign is read in one `db.ReadTx`, which sees one moment of the database (the same way every multi-statement read in the app does), into a `Snapshot`: the JSON entries in memory (they are small) and the image files by key. The zip is then streamed through a pipe into the blob store (`Put`), copying each image file through, so no image is held in memory; the progress is written to the row at most once a second, and the same read tells the job it was canceled. A restart leaves a `running` row, which the next read marks as interrupted after 10 minutes. The file lives under `campaigns/<campaign>/exports/<id>.zip` and the row expires 24 hours after it finished.
+
+`GET /downloads/campaign-exports/{id}` checks the session, then that the caller is the master of the export's campaign **now** (any refusal is the same `404`), the state and the expiry, and answers `Content-Type: application/zip`, `Content-Disposition: attachment; filename="<name>"` (the campaign's name made ASCII and safe, `FileName`), `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, a restrictive CSP and `Cross-Origin-Resource-Policy: same-origin`, with ranges.
+
+### Import
+
+```mermaid
+sequenceDiagram
+    participant W as App
+    participant S as CampaignPackageService
+    participant B as Blob store
+    participant DB as CockroachDB
+    W->>S: BeginCampaignImport (name, size, fingerprint)
+    S->>S: who may create, the cap of campaigns
+    S->>DB: one upload per person (the old one is dropped)
+    loop each part of 5 MiB
+        W->>S: PUT /uploads/campaign-imports/{id}/parts/{n}
+        S->>B: Put imports/{id}/parts/{n}
+        S->>DB: the part is recorded, the hour starts again
+    end
+    W->>S: PreviewCampaignImport
+    S->>B: the parts, read as one file (io.ReaderAt)
+    S->>S: Open (zip, manifest, hashes), then every part's Stage
+    S-->>W: counts and problems
+    W->>S: CreateCampaignFromImport (idempotency key)
+    S->>B: Stage again, now writing the image files
+    S->>DB: BEGIN, every part's Apply, COMMIT
+    alt a problem or an error
+        S->>B: delete the files written
+        S-->>W: HAS_PROBLEMS, or an error; nothing exists
+    else it worked
+        S->>B: delete the parts
+        S-->>W: the campaign
+    end
+```
+
+The upload is bound to the account that began it: another account's part, preview, create or cancel is the `404` of an upload that does not exist. The parts are blobs and `campaign_import_parts` says which arrived; a part must have exactly its length, and one sent twice replaces itself. Choosing the same file again (the same fingerprint the app makes from name, size and date) resumes; another file drops the first upload and its parts. The package is read **where it lies**: `partsReader` is an `io.ReaderAt` over the parts, with a 256 KiB block of one part in memory, so the whole package is never assembled. The preview and the create run the same `Stage`; the create differs by writing the files, and then runs every `Apply` in one `db.InTx` whose closure only writes through the transaction with ids chosen before it (a retry makes the same rows). The cap of campaigns is counted inside that transaction too. The idempotency key (scoped to the caller, with the hash of the request) is stored on the campaign: a retry after a lost answer finds the campaign, even with the upload gone, and the same key for another upload is `invalid_argument`.
+
+### Cleaning
+
+The rows of exports and uploads have no foreign key to the campaign or the account: a cascade would delete the row and leave the file where nothing names it. `Sweep` (when the server starts and every 10 minutes while it runs) deletes what expired, file first and row after; `DeleteCampaignPackages` and `DeleteUserPackages` are for the code that deletes a campaign or an account, and the bucket's own lifecycle rule is the last word (see [Operations](operations.md#campaign-package)).
 
 ## Rules module: rules as data
 

@@ -457,6 +457,7 @@ func (p *mapsPart) Stage(_ context.Context, in *campaignpackage.Import) error {
 			for _, pt := range sm.points {
 				in.Facts.PointMap[pt.oldID] = sm.oldID
 				in.Facts.PointKind[pt.oldID] = pt.kind
+				in.Facts.PointName[pt.oldID] = pt.name
 			}
 		}
 	}

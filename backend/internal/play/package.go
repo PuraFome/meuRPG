@@ -141,7 +141,7 @@ func (p *packagePart) stageEncounters(in *campaignpackage.Import, list *pkgv1.Pa
 	var out []*stagedEncounter
 	seen := map[string]bool{}
 	for i, e := range list.GetEncounters() {
-		pointName := e.GetPointId()
+		pointName := in.Facts.PointName[e.GetPointId()]
 		in.IDs.Ref("point", e.GetPointId(), kind, pointName)
 		if in.Facts.PointKind[e.GetPointId()] != "battle" || seen[e.GetPointId()] {
 			in.Problem(kind, pointName, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID, 0)

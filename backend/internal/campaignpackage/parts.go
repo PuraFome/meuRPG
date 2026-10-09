@@ -155,6 +155,8 @@ type Facts struct {
 	// of each point.
 	PointMap  map[string]string
 	PointKind map[string]string
+	// PointName is the point's name, for the problems that name it.
+	PointName map[string]string
 	// Players are the ids of the players' characters, not the NPCs.
 	Players map[string]bool
 }
@@ -164,7 +166,7 @@ func NewImport(pkg *Package, campaignID, userID string, commit bool, blobs blob.
 	return &Import{
 		Pkg: pkg, CampaignID: campaignID, UserID: userID, Commit: commit, Blobs: blobs,
 		IDs: NewIDs(), Counts: &pkgv1.PackageCounts{}, stash: map[string]any{},
-		Facts: Facts{PointMap: map[string]string{}, PointKind: map[string]string{}, Players: map[string]bool{}},
+		Facts: Facts{PointMap: map[string]string{}, PointKind: map[string]string{}, PointName: map[string]string{}, Players: map[string]bool{}},
 	}
 }
 
