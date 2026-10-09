@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import type { MessageInitShape } from '@bufbuild/protobuf';
+import { type MessageInitShape, create } from '@bufbuild/protobuf';
 import { createClient } from '@connectrpc/connect';
 
 import {
@@ -17,12 +17,15 @@ import {
   type GetCombatHighlightsResponse,
   type GetMoveOptionsResponse,
   type GetTurnOptionsResponse,
+  type InspirationOffer,
   type ListCombatLogResponse,
   JumpKind,
   MonsterHitPoints,
   type ParticipantSchema,
   type PendingDamage,
   type PreviewSpellAreaResponse,
+  type RollAttackResponse,
+  AttackRollSchema,
   type SpellCast,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { newKey } from '../connect/idempotency';
@@ -87,6 +90,9 @@ export interface AttackResult {
   readonly encounter: Encounter;
   readonly roll: AttackRoll;
   readonly pending: PendingDamage | undefined;
+  /** The attacker holds a Bardic Inspiration die: the d20 is rolled and the result is held until the player answers
+   * (`AnswerBardicInspiration`). `roll` then carries only the d20, with no outcome. */
+  readonly offer?: InspirationOffer;
 }
 
 /** What a move answers: the combat, and whether it stopped short or provoked. */
@@ -117,6 +123,15 @@ export interface DamageResult {
 export interface SlotRef {
   readonly level: number;
   readonly pact: boolean;
+}
+
+/** One Metamagic option of a cast (`MetamagicChoice`): the creatures it needs (Twinned: the second target, Careful: who
+ * passes on its own, Heightened: who has disadvantage). */
+export interface MetamagicSpec {
+  readonly key: string;
+  readonly targetIds: readonly string[];
+  readonly carefulIds: readonly string[];
+  readonly heightenedId: string;
 }
 
 /** One target of a cast; `darts` is Magic Missile's, 0 for any other spell. */
@@ -711,11 +726,7 @@ export class CombatClient {
       opportunityOfferId,
       catchWindowId,
     });
-    return {
-      encounter: need(res.encounter, 'RollAttack'),
-      roll: need(res.roll, 'RollAttack'),
-      pending: res.pendingDamage,
-    };
+    return attackResult(res);
   }
 
   async rollDamage(
@@ -887,6 +898,7 @@ export class CombatClient {
     key: string,
     summon?: SummonRequest,
     damageTypeKey = '',
+    metamagic: readonly MetamagicSpec[] = [],
     extras: CastExtras = {},
   ): Promise<CastResult> {
     const res = await this.client.castSpell({
@@ -898,6 +910,12 @@ export class CombatClient {
       targets: targets.map((t) => ({ combatantId: t.combatantId, darts: t.darts })),
       idempotencyKey: key,
       damageTypeKey,
+      metamagic: metamagic.map((m) => ({
+        key: m.key,
+        targetIds: [...m.targetIds],
+        carefulIds: [...m.carefulIds],
+        heightenedId: m.heightenedId,
+      })),
       roll: !die
         ? { case: undefined }
         : 'inApp' in die
@@ -1104,6 +1122,17 @@ function toHitPoints(hp: MonsterHp | undefined): MonsterHitPoints {
 
 function toParticipant(spec: JoinSpec): MessageInitShape<typeof ParticipantSchema> {
   return { characterId: spec.characterId, count: spec.count ?? 1, hidden: spec.hidden };
+}
+
+/** The answer of `RollAttack` and of `AnswerBardicInspiration`: a held roll has the d20 in the offer and no outcome yet. */
+export function attackResult(res: RollAttackResponse): AttackResult {
+  const offer = res.inspirationOffer;
+  return {
+    encounter: need(res.encounter, 'RollAttack'),
+    roll: res.roll ?? create(AttackRollSchema, { d20: need(offer?.d20, 'RollAttack') }),
+    pending: res.pendingDamage,
+    offer,
+  };
 }
 
 function need<T>(value: T | undefined, call: string): T {

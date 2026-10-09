@@ -18,61 +18,64 @@ type BattleEncounter struct {
 }
 
 type Combatant struct {
-	ID                 string
-	EncounterID        string
-	CharacterID        string
-	UserID             *string
-	Label              string
-	Kind               string
-	Hidden             bool
-	Initiative         *int32
-	InitiativeBonus    int32
-	InitiativeFace     *int32
-	TieOrdered         bool
-	OrderIndex         int32
-	GridCol            *int32
-	GridRow            *int32
-	SpeedFt            int32
-	MovementUsedFt     int32
-	Dashed             bool
-	ActionUsed         bool
-	BonusActionUsed    bool
-	ReactionUsed       bool
-	HpCurrent          *int32
-	HpMax              *int32
-	HpTemp             *int32
-	Defeated           bool
-	DeathSuccesses     int32
-	DeathFailures      int32
-	Conditions         []string
-	ConcentrationSpell *string
-	CreatedAt          time.Time
-	AttacksMade        int32
-	AcBonus            int32
-	DeathSaveRolled    bool
-	XpValue            int32
-	TurnState          string
-	MovementUsedDft    int32
-	LastMoveDft        int32
-	Side               string
-	Size               string
-	SpeedFlyFt         int32
-	JumpLongDft        int32
-	JumpHighDft        int32
-	CoverMark          string
-	Disengaged         bool
-	CreatureID         *string
-	MonsterKey         *string
-	SummonAttack       *string
-	SummonGroupID      *string
-	Dismissed          bool
-	ActionSurged       bool
-	SpellCast          bool
-	BonusSpellCast     bool
-	ActionAttackKey    *string
-	BonusAttacksLeft   int32
-	MageArmorAc        *int32
-	SlotsUsed          []byte
+	ID                      string
+	EncounterID             string
+	CharacterID             string
+	UserID                  *string
+	Label                   string
+	Kind                    string
+	Hidden                  bool
+	Initiative              *int32
+	InitiativeBonus         int32
+	InitiativeFace          *int32
+	TieOrdered              bool
+	OrderIndex              int32
+	GridCol                 *int32
+	GridRow                 *int32
+	SpeedFt                 int32
+	MovementUsedFt          int32
+	Dashed                  bool
+	ActionUsed              bool
+	BonusActionUsed         bool
+	ReactionUsed            bool
+	HpCurrent               *int32
+	HpMax                   *int32
+	HpTemp                  *int32
+	Defeated                bool
+	DeathSuccesses          int32
+	DeathFailures           int32
+	Conditions              []string
+	ConcentrationSpell      *string
+	CreatedAt               time.Time
+	AttacksMade             int32
+	AcBonus                 int32
+	DeathSaveRolled         bool
+	XpValue                 int32
+	TurnState               string
+	MovementUsedDft         int32
+	LastMoveDft             int32
+	Side                    string
+	Size                    string
+	SpeedFlyFt              int32
+	JumpLongDft             int32
+	JumpHighDft             int32
+	CoverMark               string
+	Disengaged              bool
+	CreatureID              *string
+	MonsterKey              *string
+	SummonAttack            *string
+	SummonGroupID           *string
+	Dismissed               bool
+	ActionSurged            bool
+	SpellCast               bool
+	BonusSpellCast          bool
+	ActionAttackKey         *string
+	BonusAttacksLeft        int32
+	MageArmorAc             *int32
+	InspirationSides        *int32
+	InspirationFrom         *string
+	InspirationExpiresRound *int32
+	SlotsUsed               []byte
 }
 
 type Encounter struct {
@@ -278,6 +281,19 @@ type ReactionWindow struct {
 	Outcome         []byte
 	CreatedAt       time.Time
 	AnsweredAt      *time.Time
+}
+
+type RollHold struct {
+	ID             string
+	EncounterID    string
+	CombatantID    string
+	IdempotencyKey string
+	Request        []byte
+	Face           int32
+	Modifier       int32
+	Round          int32
+	AnswerKey      *string
+	CreatedAt      time.Time
 }
 
 type SpellCast struct {

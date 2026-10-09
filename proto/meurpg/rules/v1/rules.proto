@@ -1983,6 +1983,26 @@ message SpellOption {
   // The slots it can be cast with: at least the spell's level, with a free
   // slot. Empty for a cantrip, and for a spell with no free slot.
   repeated SlotChoice slots = 5;
+  // The Metamagic options the character knows, for this spell at its own level
+  // (SRD 5.1, Sorcerer). Empty for a character with none. The cast checks them again
+  // at the slot it is cast with.
+  repeated MetamagicOption metamagic_options = 30;
+}
+
+// MetamagicOption is one Metamagic option the character knows, and whether the
+// spell takes it.
+message MetamagicOption {
+  // The option's feature key, "feature:metamagic-twinned-spell".
+  string key = 1;
+  // Its name without the "Metamágica:" the feature name carries ("Magia Duplicada").
+  string name_pt = 2;
+  // The sorcery points it takes on this spell.
+  int32 cost = 3;
+  // What it does, in one sentence.
+  string summary_pt = 4;
+  // Whether the spell takes it; when not, the reason in Portuguese.
+  bool allowed = 5;
+  string disabled_reason_pt = 6;
 }
 
 // SlotChoice is a spell slot a spell can be cast with.

@@ -273,6 +273,11 @@
   display: block;
 }
 
+// The Bardic Inspiration die card under the turn bar.
+.player__die {
+  align-self: stretch;
+}
+
 // "Combate atualizado agora." after a reload while the turn waits.
 .refreshed {
   margin: 0;

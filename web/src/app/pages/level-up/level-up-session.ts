@@ -21,6 +21,7 @@ import { LevelUpDraft } from '../../core/levelup/levelup-draft';
 import { describeLevelUpFailure } from '../../core/levelup/levelup-errors';
 import { changeRows, type ChangeRow } from '../../core/levelup/levelup-summary';
 import { LevelUpPreview } from './level-up-preview';
+import { hitDiceSum } from '../../core/resources/hit-dice-text';
 
 const LIST = new Intl.ListFormat('pt-BR', { type: 'conjunction' });
 
@@ -382,7 +383,7 @@ export class LevelUpSession {
         `${pb(o.proficiencyBonusBefore)} → ${pb(o.proficiencyBonusAfter)}`,
       );
     }
-    const dice = (s: DerivedSheet) => s.hitDice.map((x) => `${x.count}d${x.faces}`).join(' + ');
+    const dice = (s: DerivedSheet) => hitDiceSum(s.hitDice);
     out.push({
       title: 'Dados de vida',
       sub: `Entra sozinho · ${dice(this.before)} → ${dice(this.after())}`,

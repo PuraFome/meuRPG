@@ -46,6 +46,9 @@ import {
   mapToken,
 } from '../../core/maps/maps-testing';
 import { SceneClient } from '../../core/play/scene-client';
+import { ResourceClient } from '../../core/resources/resources-client';
+import { restPreview, restPreviewResponse } from '../../core/resources/resources-testing';
+import { CharacterVitalsSchema } from '../../../gen/meurpg/play/v1/play_pb';
 import { CombatClient } from '../../core/combat/combat-client';
 import { CombatState } from '../../core/combat/combat-state';
 import { SpellCatalog } from '../../core/combat/spell-catalog';
@@ -186,6 +189,8 @@ describe('LiveSession', () => {
   /** The summary of the ended session (MR-032); by default it cannot be read, so the page shows the plain notice. */
   const summary = vi.fn();
   const signIn = vi.fn();
+  /** The master's rests (PM-07b 9). */
+  const resources = { restPreview: vi.fn(), takeRest: vi.fn() };
   const liveCampaignIds = signal<ReadonlySet<string>>(new Set());
   const openSessions = {
     liveCampaignIds: liveCampaignIds.asReadonly(),
@@ -209,6 +214,8 @@ describe('LiveSession', () => {
       }),
     );
     signIn.mockClear();
+    resources.restPreview.mockReset();
+    resources.takeRest.mockReset();
     openSessions.dismiss.mockClear();
     liveCampaignIds.set(new Set());
     summary.mockReset().mockRejectedValue(new Error('no summary'));
@@ -238,6 +245,7 @@ describe('LiveSession', () => {
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
         { provide: CastingClient, useValue: new FakeCastingClient() },
         { provide: SceneClient, useValue: scenes },
+        { provide: ResourceClient, useValue: resources },
         { provide: PuzzlesClient, useValue: puzzles },
         { provide: SceneChecks, useValue: fakeChecks },
         { provide: SessionSummaryClient, useValue: { get: summary } },
@@ -285,7 +293,7 @@ describe('LiveSession', () => {
     expect(el.textContent).toContain('de 23');
     expect(el.querySelector('.shield__number')?.textContent).toBe('14');
     expect(el.textContent).toContain('Mago 3, Gnomo das Rochas');
-    expect(el.textContent).toContain('1 de 3 usados');
+    expect(el.textContent).toContain('Restam 2 de 3d6');
     expect(el.querySelector('[aria-label="1º nível: 2 livres de 4"]')).not.toBeNull();
     expect(el.textContent).toContain('O mestre ainda não escolheu um mapa.');
     expect(el.textContent).not.toContain('Ajustar');
@@ -466,6 +474,75 @@ describe('LiveSession', () => {
     );
     expect(el.textContent).toContain('Copiar link da sessão');
     expect(el.textContent).toContain('Encerrar sessão');
+  });
+
+  describe("the master's rests (PM-07b 9)", () => {
+    const asMaster = () => {
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: true,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
+      source.snapshot = {
+        session: { sessionId: 's4', sessionNumber: 4, startedAt: new Date(2026, 8, 30, 20, 5) },
+        vitals: [pensantusVitals(), brisaVitals()],
+        currentMapId: null,
+        shownImage: null,
+        shownImageKeep: false,
+      };
+    };
+
+    it('gives the master the "Descanso" card with the two rests', async () => {
+      asMaster();
+      const el = await render();
+      expect(el.querySelector('app-rest-card h2')?.textContent).toBe('Descanso');
+      expect(button(el, 'Descanso curto')).toBeTruthy();
+      expect(button(el, 'Descanso longo')).toBeTruthy();
+    });
+
+    it('never gives a player the rests', async () => {
+      const el = await render();
+      expect(el.querySelector('app-rest-card')).toBeNull();
+      expect(el.textContent).not.toContain('Descanso longo');
+    });
+
+    it('gives the player "Gastar dados de vida" on their card', async () => {
+      const el = await render();
+      expect(button(el, 'Gastar dados de vida')).toBeTruthy();
+    });
+
+    it("does not put the player's button on the master's party rows", async () => {
+      asMaster();
+      const el = await render();
+      expect(button(el, 'Gastar dados de vida')).toBeUndefined();
+    });
+
+    it('shows the party as the rest left it, without waiting for the stream', async () => {
+      asMaster();
+      resources.restPreview.mockResolvedValue(
+        restPreviewResponse([restPreview({ characterId: 'pensantus', name: 'Pensantus' })]),
+      );
+      resources.takeRest.mockResolvedValue([
+        create(CharacterVitalsSchema, {
+          characterId: 'pensantus',
+          name: 'Pensantus',
+          hitPointsCurrent: 23,
+          hitPointsMax: 23,
+          revision: 9,
+        }),
+      ]);
+      const fixture = TestBed.createComponent(LiveSession);
+      const el = await settle(fixture);
+      expect(el.querySelector('.member__current')?.textContent).toBe('17');
+      button(el, 'Descanso longo').click();
+      await settle(fixture);
+      button(el, 'Descansar').click();
+      await settle(fixture);
+      expect(el.querySelector('.member__current')?.textContent).toBe('23');
+      expect(el.textContent).toContain('Descanso longo feito.');
+    });
   });
 
   it('says "Peça um convite ao mestre", without the name, to a non-member', async () => {

@@ -4,6 +4,7 @@ import {
   ElementRef,
   Injector,
   afterNextRender,
+  computed,
   effect,
   inject,
   signal,
@@ -47,6 +48,8 @@ import { ChangedContentNotice } from './changed-content/changed-content';
 import { issueTitle } from './sheet-format';
 import { StoryPanel } from './story-panel/story-panel';
 import { XpWatcher } from './xp-watcher';
+import { ResourceCounters } from './resource-counters/resource-counters';
+import type { VitalsVm } from '../live-session/live-session.types';
 
 type PageState =
   | { status: 'loading' }
@@ -105,6 +108,7 @@ type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'
     MatIconModule,
     MatProgressSpinnerModule,
     ProficiencyColumn,
+    ResourceCounters,
     RouterLink,
     SheetHeader,
     StoryPanel,
@@ -147,6 +151,14 @@ export class CharacterSheetPage {
   /** How many selections of the class and race choices are still open (PM-05): the banner "Completar" shows with 1 or more. */
   protected readonly pendingChoices = signal(0);
 
+  /** The character's live numbers while the campaign has an open session: the resource counters and the spell slots. `null` outside a session, where the sheet has only the maximums. */
+  protected readonly vitals = signal<VitalsVm | null>(null);
+  /** Whether there are slots to count live: the sheet's own circles give way to them. */
+  protected readonly hasLiveSlots = computed(() => {
+    const v = this.vitals();
+    return v !== null && (v.spellSlots.length > 0 || v.pactSlots !== null);
+  });
+
   /** How the campaign levels: decides whether the header has an XP block or only the tag. */
   protected readonly xpMode = signal<CampaignXpMode | null>(null);
 
@@ -183,7 +195,10 @@ export class CharacterSheetPage {
       const player = s.status === 'ready' && s.vm.characterKind === 'player';
       const live =
         player && id !== '' && this.openSessions.sessions().some((o) => o.campaignId === id);
-      untracked(() =>
+      untracked(() => {
+        if (!live) {
+          this.vitals.set(null);
+        }
         this.xpWatcher.follow(
           live ? id : null,
           () => void this.reloadQuietly(),
@@ -195,8 +210,9 @@ export class CharacterSheetPage {
               this.formTick.update((n) => n + 1);
             }
           },
-        ),
-      );
+          (v) => this.takeVitals(v),
+        );
+      });
     });
     this.destroyRef.onDestroy(() => {
       this.destroyed = true;
@@ -235,6 +251,14 @@ export class CharacterSheetPage {
     );
   }
 
+  /** The live numbers of this character (the session's snapshot or a `vitals_changed`): the newer copy wins; another character's are not kept. */
+  private takeVitals(v: VitalsVm): void {
+    if (v.characterId !== this.characterId) {
+      return;
+    }
+    this.vitals.update((current) => (current && current.revision > v.revision ? current : v));
+  }
+
   /** Reads the character again without the loading state, so the page does not blink. */
   private async reloadQuietly(): Promise<void> {
     const campaignId = this.campaignId();
@@ -256,6 +280,7 @@ export class CharacterSheetPage {
   private load(campaignId: string, characterId: string): void {
     const seq = ++this.sheetSeq;
     this.state.set({ status: 'loading' });
+    this.vitals.set(null);
     this.confirmingDeath.set(false);
     this.confirmingReject.set(false);
     this.markDeadState.set({ status: 'idle' });
