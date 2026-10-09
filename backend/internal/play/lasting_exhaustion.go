@@ -110,7 +110,7 @@ func (s *Service) exhaustionCall(ctx context.Context, campaignID, rawKey, rawEnc
 // changeExhaustion sets the level (a negative number takes that many levels off the one it is
 // now) of a character or a combatant in one transaction: the vitals or the combatant's row, the
 // state the effects leave, the death confirmation of level 6 and the line of the log.
-func (s *Service) changeExhaustion(ctx context.Context, m authz.Membership, key string, hash *string, subject exhaustionTarget, level, expected int32, confirmDeath bool, kind string) (int32, int32, *playv1.Encounter, error) { //nolint:gocognit // the steps of one transaction in one closure, like the other writes of the combat
+func (s *Service) changeExhaustion(ctx context.Context, m authz.Membership, key string, hash *string, subject exhaustionTarget, level, expected int32, confirmDeath bool, kind string) (int32, int32, *playv1.Encounter, error) { //nolint:gocognit,gocyclo // the steps of one transaction in one closure, like the other writes of the combat
 	var final, hpMax int32
 	var vitals *playv1.CharacterVitals
 	var secret bool

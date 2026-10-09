@@ -260,7 +260,7 @@ func lastingDurationOf(ch *playv1.EffectDurationChoice, fallback durationSpec) (
 }
 
 // AddLastingEffect implements playv1connect.LastingEffectServiceHandler.
-func (s *Service) AddLastingEffect( //nolint:gocognit // the steps of one transaction in one closure, like the other writes of the combat
+func (s *Service) AddLastingEffect( //nolint:gocognit,gocyclo // the steps of one transaction in one closure, like the other writes of the combat
 	ctx context.Context,
 	req *connect.Request[playv1.AddLastingEffectRequest],
 ) (*connect.Response[playv1.AddLastingEffectResponse], error) {

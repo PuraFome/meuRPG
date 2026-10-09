@@ -153,7 +153,7 @@ func creatureFacts(c playdb.Combatant, states map[string][]playdb.CombatantState
 // incapacitatedKeys are the conditions that make a creature unable to act or to
 // see (SRD 5.1, Conditions): a hostile creature with one of them gives no
 // disadvantage to a ranged attacker, and an ally with one gives no Pack Tactics.
-var incapacitatedKeys = []string{"condition:incapacitated", conditionParalyzed, "condition:petrified", "condition:stunned", "condition:unconscious"}
+var incapacitatedKeys = []string{"condition:incapacitated", conditionParalyzed, conditionPetrified, "condition:stunned", "condition:unconscious"}
 
 // fighting says the combatant is in the fight (not defeated, not dismissed) and
 // can act: it is not incapacitated.

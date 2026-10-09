@@ -162,7 +162,7 @@ func stateName(st playdb.CombatantState) string {
 // Paralyzed, Petrified, Restrained, Stunned and Unconscious: speed 0 or no movement).
 func cannotMove(k string) bool {
 	switch k {
-	case conditionParalyzed, "condition:petrified", "condition:stunned", "condition:unconscious",
+	case conditionParalyzed, conditionPetrified, "condition:stunned", "condition:unconscious",
 		"condition:grappled", "condition:restrained":
 		return true
 	}
@@ -307,3 +307,6 @@ func (s *Service) endEffectsOfTheDead(ctx context.Context, c *combatTx, cs []pla
 	}
 	return nil
 }
+
+// conditionPetrified is the SRD condition Petrified.
+const conditionPetrified = "condition:petrified"
