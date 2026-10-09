@@ -3485,7 +3485,6 @@ message SpellEffectResult {
   // can read it again. Empty for an NPC. Everyone who gets the entry: it is a name the table
   // already knows.
   string revived_character_id = 10;
-
 }
 
 // SpellEffectGain is what Aid gave one target.
