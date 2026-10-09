@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"uuid"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
-	"uuid"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
@@ -216,6 +216,27 @@ func (s *Service) PreviewRevivify(
 	return connect.NewResponse(res), nil
 }
 
+// revivifyShape checks the request of a Revivify cast and returns the dead creature it names:
+// one target, as dead_target_id, the diamonds ticked, and nothing the spell does not use.
+func revivifyShape(in *playv1.CastSpellRequest) (string, error) {
+	bad := func(msg string) error { return connect.NewError(connect.CodeInvalidArgument, errors.New(msg)) }
+	targets := in.GetTargets()
+	if len(targets) != 1 || targets[0].GetDeadTargetId() == "" || targets[0].GetCombatantId() != "" || targets[0].GetDarts() != 0 {
+		return "", bad("Revivify takes one target: the dead creature, as dead_target_id")
+	}
+	targetID, err := parseCombatID(targets[0].GetDeadTargetId(), "combatant")
+	if err != nil {
+		return "", errRevivifyTarget() // the same answer for an id that is not a combatant
+	}
+	if !in.GetMaterialConfirmed() {
+		return "", bad("material_confirmed is required: the spell consumes diamonds worth 300 gp")
+	}
+	if in.GetRoll() != nil || in.GetSummon() != nil || in.GetDamageTypeKey() != "" {
+		return "", bad("Revivify rolls nothing and takes no summon or damage type")
+	}
+	return targetID, nil
+}
+
 // castRevivify is CastSpell for Revivify inside a combat: the cast spends the slot and the action,
 // touches a creature that died within the minute, and the creature returns with 1 hit point. The
 // caster confirmed the diamonds (material_confirmed); the app only notes that they were spent.
@@ -241,20 +262,9 @@ func (s *Service) castRevivify(
 	if err != nil {
 		return nil, err
 	}
-	bad := func(msg string) error { return connect.NewError(connect.CodeInvalidArgument, errors.New(msg)) }
-	targets := req.Msg.GetTargets()
-	if len(targets) != 1 || targets[0].GetDeadTargetId() == "" || targets[0].GetCombatantId() != "" || targets[0].GetDarts() != 0 {
-		return nil, bad("Revivify takes one target: the dead creature, as dead_target_id")
-	}
-	targetID, err := parseCombatID(targets[0].GetDeadTargetId(), "combatant")
+	targetID, err := revivifyShape(req.Msg)
 	if err != nil {
-		return nil, errRevivifyTarget() // the same answer for an id that is not a combatant
-	}
-	if !req.Msg.GetMaterialConfirmed() {
-		return nil, bad("material_confirmed is required: the spell consumes diamonds worth 300 gp")
-	}
-	if req.Msg.GetRoll() != nil || req.Msg.GetSummon() != nil || req.Msg.GetDamageTypeKey() != "" {
-		return nil, bad("Revivify rolls nothing and takes no summon or damage type")
+		return nil, err
 	}
 	v := viewerOf(m)
 
@@ -268,85 +278,17 @@ func (s *Service) castRevivify(
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
 		v = c.viewer(m, cs)
-		caster, err := findCombatant(cs, casterID, v)
+		caster, slot, err := s.revivifyCaster(ctx, c, m, v, cs, casterID, req.Msg.GetSlot())
 		if err != nil {
 			return nil, err
 		}
-		if err := v.mayAct(caster); err != nil {
-			return nil, err
-		}
-		if err := s.mustActNow(ctx, c, caster); err != nil {
-			return nil, err
-		}
-		if err := s.refuseInShape(ctx, c, caster); err != nil {
-			return nil, err
-		}
-		opts, err := s.optionsOf(ctx, c.tx, m.CampaignID, caster)
+		target, err := s.revivifyTarget(ctx, c, m, v, cs, caster, targetID)
 		if err != nil {
 			return nil, err
 		}
-		cast, err := castableOf(opts, revivifyKey)
-		if err != nil {
+		if made, vitals, err = s.spendForRevivify(ctx, c, caster, slot); err != nil {
 			return nil, err
 		}
-		if !cast.enabled {
-			if err := castError(cast.reason, v.master); err != nil {
-				return nil, err
-			}
-		}
-		slot, err := slotOf(req.Msg.GetSlot(), cast)
-		if err != nil {
-			return nil, err
-		}
-		if slot == nil {
-			return nil, bad("slot must be a spell slot of the 3rd level or more")
-		}
-
-		// The target. Whatever is wrong with it, a player reads the same answer (RN-10).
-		var target *playdb.Combatant
-		for i := range cs {
-			if cs[i].ID == targetID {
-				target = &cs[i]
-			}
-		}
-		if target == nil || !canBeDead(*target) || target.ID == caster.ID || !v.sees(*target) {
-			return nil, errRevivifyTarget()
-		}
-		spec, err := s.reviveSpecOf(ctx, c.tx, m.CampaignID)
-		if err != nil {
-			return nil, err
-		}
-		if reason, _ := revivifyVerdict(spec, c.enc, cs, caster, *target, v, v.master); reason != playv1.RevivifyUnavailableReason_REVIVIFY_UNAVAILABLE_REASON_UNSPECIFIED {
-			return nil, errRevivifyTarget()
-		}
-
-		// The cast spends the slot and the action at once, as every spell does (MR-014).
-		run, err := breakRun(ctx, c, caster)
-		if err != nil {
-			return nil, err
-		}
-		made = actionEvent{
-			RunBefore: run, Round: c.enc.Round, Actor: caster.ID, Key: revivifyKey, CastID: uuid.New().String(), Slot: slot,
-			ActionBefore: caster.ActionUsed, BonusBefore: caster.BonusActionUsed, ReactionBefore: caster.ReactionUsed, DashedBefore: caster.Dashed,
-			SpellCastBefore: caster.SpellCast, BonusSpellBefore: caster.BonusSpellCast,
-			FxKind: rules.SpellKindRevive, Material: true,
-		}
-		if caster.Kind == kindPlayer {
-			slotVitals, err := s.spendSlot(ctx, c, caster.CharacterID, *slot, 1)
-			if err != nil {
-				return nil, err
-			}
-			vitals = append(vitals, slotVitals)
-		}
-		if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
-			ID: caster.ID, ActionUsed: true, BonusActionUsed: caster.BonusActionUsed, ReactionUsed: caster.ReactionUsed, Dashed: caster.Dashed,
-		}); err != nil {
-			return nil, fmt.Errorf("spend the economy: %w", err)
-		}
-		if err := c.q.SetCombatantSpellsCast(ctx, playdb.SetCombatantSpellsCastParams{ID: caster.ID, SpellCast: true, BonusSpellCast: caster.BonusSpellCast}); err != nil {
-			return nil, fmt.Errorf("note the spell cast: %w", err)
-		}
-
 		// The creature lives again. A player's character comes back through the characters
 		// module, as the master's Reviver does it (RN-03 may refuse: nothing is spent then, the
 		// transaction rolls back).
@@ -366,7 +308,7 @@ func (s *Service) castRevivify(
 			vitals = append(vitals, after)
 			told = &revivedCharacter{characterID: target.CharacterID, owner: deref(target.UserID)}
 		}
-		if err := s.reviveCombatant(ctx, c, *target); err != nil {
+		if err := s.reviveCombatant(ctx, c, target); err != nil {
 			return nil, err
 		}
 		made.Hits = []castHit{hit}
@@ -402,6 +344,94 @@ func (s *Service) castRevivify(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out, Cast: spell}), nil
+}
+
+// revivifyCaster finds the caster and checks the cast is theirs to make now: the combatant is
+// visible and the caller's, it is its turn, it has the spell with a slot of the 3rd level or more.
+func (s *Service) revivifyCaster(ctx context.Context, c *combatTx, m authz.Membership, v combatViewer, cs []playdb.Combatant, casterID string, in *playv1.SpellSlot) (playdb.Combatant, *slotRef, error) {
+	caster, err := findCombatant(cs, casterID, v)
+	if err != nil {
+		return caster, nil, err
+	}
+	if err := v.mayAct(caster); err != nil {
+		return caster, nil, err
+	}
+	if err := s.mustActNow(ctx, c, caster); err != nil {
+		return caster, nil, err
+	}
+	if err := s.refuseInShape(ctx, c, caster); err != nil {
+		return caster, nil, err
+	}
+	opts, err := s.optionsOf(ctx, c.tx, m.CampaignID, caster)
+	if err != nil {
+		return caster, nil, err
+	}
+	cast, err := castableOf(opts, revivifyKey)
+	if err != nil {
+		return caster, nil, err
+	}
+	if !cast.enabled {
+		if err := castError(cast.reason, v.master); err != nil {
+			return caster, nil, err
+		}
+	}
+	slot, err := slotOf(in, cast)
+	if err != nil {
+		return caster, nil, err
+	}
+	if slot == nil {
+		return caster, nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slot must be a spell slot of the 3rd level or more"))
+	}
+	return caster, slot, nil
+}
+
+// revivifyTarget finds the dead creature the caster touches. Whatever is wrong with it, a
+// player reads the same answer (RN-10); the master is held to the window and to his switch only.
+func (s *Service) revivifyTarget(ctx context.Context, c *combatTx, m authz.Membership, v combatViewer, cs []playdb.Combatant, caster playdb.Combatant, targetID string) (playdb.Combatant, error) {
+	i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == targetID })
+	if i < 0 || !canBeDead(cs[i]) || cs[i].ID == caster.ID || !v.sees(cs[i]) {
+		return playdb.Combatant{}, errRevivifyTarget()
+	}
+	spec, err := s.reviveSpecOf(ctx, c.tx, m.CampaignID)
+	if err != nil {
+		return playdb.Combatant{}, err
+	}
+	if reason, _ := revivifyVerdict(spec, c.enc, cs, caster, cs[i], v, v.master); reason != playv1.RevivifyUnavailableReason_REVIVIFY_UNAVAILABLE_REASON_UNSPECIFIED {
+		return playdb.Combatant{}, errRevivifyTarget()
+	}
+	return cs[i], nil
+}
+
+// spendForRevivify spends the slot and the action at once, as every spell does (MR-014), and
+// returns the event so far and the vitals the slot changed.
+func (s *Service) spendForRevivify(ctx context.Context, c *combatTx, caster playdb.Combatant, slot *slotRef) (actionEvent, []*playv1.CharacterVitals, error) {
+	run, err := breakRun(ctx, c, caster)
+	if err != nil {
+		return actionEvent{}, nil, err
+	}
+	made := actionEvent{
+		RunBefore: run, Round: c.enc.Round, Actor: caster.ID, Key: revivifyKey, CastID: uuid.New().String(), Slot: slot,
+		ActionBefore: caster.ActionUsed, BonusBefore: caster.BonusActionUsed, ReactionBefore: caster.ReactionUsed, DashedBefore: caster.Dashed,
+		SpellCastBefore: caster.SpellCast, BonusSpellBefore: caster.BonusSpellCast,
+		FxKind: rules.SpellKindRevive, Material: true,
+	}
+	var vitals []*playv1.CharacterVitals
+	if caster.Kind == kindPlayer {
+		slotVitals, err := s.spendSlot(ctx, c, caster.CharacterID, *slot, 1)
+		if err != nil {
+			return actionEvent{}, nil, err
+		}
+		vitals = append(vitals, slotVitals)
+	}
+	if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
+		ID: caster.ID, ActionUsed: true, BonusActionUsed: caster.BonusActionUsed, ReactionUsed: caster.ReactionUsed, Dashed: caster.Dashed,
+	}); err != nil {
+		return actionEvent{}, nil, fmt.Errorf("spend the economy: %w", err)
+	}
+	if err := c.q.SetCombatantSpellsCast(ctx, playdb.SetCombatantSpellsCastParams{ID: caster.ID, SpellCast: true, BonusSpellCast: caster.BonusSpellCast}); err != nil {
+		return actionEvent{}, nil, fmt.Errorf("note the spell cast: %w", err)
+	}
+	return made, vitals, nil
 }
 
 // revivedCharacter is a player's character a cast brought back, for the hint after the commit.
@@ -451,55 +481,17 @@ func (s *Service) SetRevivifyBlocked(
 			if !hasSession {
 				return errNoOpenSession()
 			}
-			who, err := s.combatantInOpenSession(ctx, q, session.ID, combatantID)
-			if err != nil {
-				return err
-			}
-			if !canBeDead(who) {
-				return connect.NewError(connect.CodeFailedPrecondition, errors.New("the creature is not dead"))
-			}
-			if err := q.SetCombatantRevivifyBlocked(ctx, playdb.SetCombatantRevivifyBlockedParams{ID: who.ID, Blocked: blocked}); err != nil {
-				return fmt.Errorf("set the switch: %w", err)
-			}
-			if who.Kind == kindPlayer { // the character carries it too, for the cast outside a combat
-				if err := s.roster.SetRevivifyBlocked(ctx, tx, m.CampaignID, who.CharacterID, blocked); err != nil {
-					return err
-				}
-			}
-			enc, err := q.TouchEncounter(ctx, who.EncounterID)
-			if err != nil {
-				return fmt.Errorf("touch the encounter: %w", err)
-			}
-			encounterID = enc.ID
-			return nil
+			encounterID, err = s.blockCombatant(ctx, tx, q, session.ID, m.CampaignID, combatantID, blocked)
+			return err
 		}
 		if err := s.roster.SetRevivifyBlocked(ctx, tx, m.CampaignID, characterID, blocked); err != nil {
 			return err
 		}
-		// A character that is dead in a combat of the session carries the switch there too.
-		if hasSession {
-			if enc, err := q.GetOpenEncounter(ctx, session.ID); err == nil {
-				cs, err := q.ListCombatants(ctx, enc.ID)
-				if err != nil {
-					return fmt.Errorf("list the combatants: %w", err)
-				}
-				if i := slices.IndexFunc(cs, func(c playdb.Combatant) bool {
-					return c.Kind == kindPlayer && c.CharacterID == characterID && c.Defeated
-				}); i >= 0 {
-					if err := q.SetCombatantRevivifyBlocked(ctx, playdb.SetCombatantRevivifyBlockedParams{ID: cs[i].ID, Blocked: blocked}); err != nil {
-						return fmt.Errorf("set the switch: %w", err)
-					}
-					touched, err := q.TouchEncounter(ctx, enc.ID)
-					if err != nil {
-						return fmt.Errorf("touch the encounter: %w", err)
-					}
-					encounterID = touched.ID
-				}
-			} else if !errors.Is(err, pgx.ErrNoRows) {
-				return fmt.Errorf("find the open encounter: %w", err)
-			}
+		if !hasSession {
+			return nil
 		}
-		return nil
+		encounterID, err = s.blockDeadInCombat(ctx, q, session.ID, characterID, blocked)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "set the Revivify switch", err)
@@ -508,6 +500,61 @@ func (s *Service) SetRevivifyBlocked(
 		s.PublishEncounterChanged(ctx, m.CampaignID, encounterID)
 	}
 	return connect.NewResponse(&playv1.SetRevivifyBlockedResponse{}), nil
+}
+
+// blockCombatant sets the switch on a dead combatant of the open combat, and on its character
+// for a player's character (the cast outside a combat reads that one). It returns the combat.
+func (s *Service) blockCombatant(ctx context.Context, tx pgx.Tx, q *playdb.Queries, sessionID, campaignID, combatantID string, blocked bool) (string, error) {
+	who, err := s.combatantInOpenSession(ctx, q, sessionID, combatantID)
+	if err != nil {
+		return "", err
+	}
+	if !canBeDead(who) {
+		return "", connect.NewError(connect.CodeFailedPrecondition, errors.New("the creature is not dead"))
+	}
+	if err := q.SetCombatantRevivifyBlocked(ctx, playdb.SetCombatantRevivifyBlockedParams{ID: who.ID, Blocked: blocked}); err != nil {
+		return "", fmt.Errorf("set the switch: %w", err)
+	}
+	if who.Kind == kindPlayer {
+		if err := s.roster.SetRevivifyBlocked(ctx, tx, campaignID, who.CharacterID, blocked); err != nil {
+			return "", err
+		}
+	}
+	enc, err := q.TouchEncounter(ctx, who.EncounterID)
+	if err != nil {
+		return "", fmt.Errorf("touch the encounter: %w", err)
+	}
+	return enc.ID, nil
+}
+
+// blockDeadInCombat carries the switch of a dead character to its combatant in the open combat,
+// if it died there. It returns the combat that changed, empty when none did.
+func (s *Service) blockDeadInCombat(ctx context.Context, q *playdb.Queries, sessionID, characterID string, blocked bool) (string, error) {
+	enc, err := q.GetOpenEncounter(ctx, sessionID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("find the open encounter: %w", err)
+	}
+	cs, err := q.ListCombatants(ctx, enc.ID)
+	if err != nil {
+		return "", fmt.Errorf("list the combatants: %w", err)
+	}
+	i := slices.IndexFunc(cs, func(c playdb.Combatant) bool {
+		return c.Kind == kindPlayer && c.CharacterID == characterID && c.Defeated
+	})
+	if i < 0 {
+		return "", nil
+	}
+	if err := q.SetCombatantRevivifyBlocked(ctx, playdb.SetCombatantRevivifyBlockedParams{ID: cs[i].ID, Blocked: blocked}); err != nil {
+		return "", fmt.Errorf("set the switch: %w", err)
+	}
+	touched, err := q.TouchEncounter(ctx, enc.ID)
+	if err != nil {
+		return "", fmt.Errorf("touch the encounter: %w", err)
+	}
+	return touched.ID, nil
 }
 
 // combatantInOpenSession finds a combatant of the combat of the open session that is not ended,

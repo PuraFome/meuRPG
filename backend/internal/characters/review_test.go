@@ -55,7 +55,6 @@ type reviewTable struct {
 	campaign                string
 	pc                      *charactersv1.Character
 	host                    *hostSpy
-	logs                    *bytes.Buffer
 }
 
 // logBuffer is a log handler's destination that tests can read while the server writes.
@@ -79,7 +78,9 @@ func (l *logBuffer) String() string {
 func newReviewTable(t *testing.T) (*reviewTable, *logBuffer) {
 	t.Helper()
 	logs := &logBuffer{}
-	h := newHarnessWith(t, func(c *Config) { c.Logger = slog.New(slog.NewJSONHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug})) })
+	h := newHarnessWith(t, func(c *Config) {
+		c.Logger = slog.New(slog.NewJSONHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	})
 	tb := &reviewTable{h: h, host: &hostSpy{}}
 	h.svc.SetReviewHost(tb.host)
 	tb.master, tb.lia, tb.other, tb.eve = h.newUser("Mestre"), h.newUser("Lia"), h.newUser("Outro"), h.newUser("Eva")

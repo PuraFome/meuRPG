@@ -90,7 +90,7 @@ func eventCase(ev *playv1.WatchGameSessionResponse) string {
 // notTriggered lists the events the script does not make, and why. An event that is neither
 // triggered nor here fails TestLeakMatrix/stream: a new kind of event must be exercised or
 // explained.
-var notTriggered = map[string]string{ //nolint:gosec // G101: names of events and the reasons, no credential
+var notTriggered = map[string]string{
 	"character_revived": "the fixture kills no character: the revive tests of package play check who hears it (the master and the owner)",
 	"revivify_changed":  "the fixture has no caster of Revivify: the revivify tests of package play check who hears it (the master and the caster's player)",
 }

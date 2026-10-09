@@ -87,7 +87,7 @@ func (a *armed) preview(t *testing.T, u *user, e *playv1.Encounter, caster strin
 	return res.Msg, nil
 }
 
-func deathEntry(e *playv1.Encounter, label string, id string) *playv1.CombatDeath {
+func deathEntry(e *playv1.Encounter, _ string, id string) *playv1.CombatDeath {
 	for _, d := range e.GetDeaths() {
 		if d.GetCombatantId() == id {
 			return d
@@ -324,7 +324,9 @@ func TestRN10_APlayerNeverLearnsWhyACreatureCannotBeRevived(t *testing.T) {
 	t.Parallel()
 	a, e := newMortuary(t)
 	a.dies(t, e, "Toren", a.toren)
-	a.adjustHP(t, e, "Goblin", damageHP(99)) // a goblin dead too, at (4,3)
+	if _, err := a.adjustHP(t, e, "Goblin", damageHP(99)); err != nil { // a goblin dead too, at (4,3)
+		t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
+	}
 	move := func(label string, col, row int32) {
 		t.Helper()
 		if _, err := a.master.combat.MoveCombatant(t.Context(), connect.NewRequest(&playv1.MoveCombatantRequest{
@@ -472,7 +474,9 @@ func TestRevivify_ACharacterAtZeroIsNotDeadUntilTheMasterConfirms(t *testing.T) 
 func TestRevivify_AnNPCLivesAgainWithOneHitPoint(t *testing.T) {
 	t.Parallel()
 	a, e := newMortuary(t)
-	a.adjustHP(t, e, "Goblin", damageHP(99))
+	if _, err := a.adjustHP(t, e, "Goblin", damageHP(99)); err != nil {
+		t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
+	}
 	pv, err := a.preview(t, a.ana, e, "Ilaria")
 	if err != nil || len(pv.GetTargets()) != 1 || pv.GetTargets()[0].GetName() != "Goblin" {
 		t.Fatalf("PreviewRevivify() = %v, %v; want the goblin", pv, err)
