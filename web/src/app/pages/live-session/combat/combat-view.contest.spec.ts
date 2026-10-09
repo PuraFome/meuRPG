@@ -417,15 +417,17 @@ describe('CombatView, the contests of the player (W7-X)', () => {
     expect(textOf(surprised.el)).toContain('Reação Indisponível Surpresa até o fim do turno.');
   });
 
-  it('the master’s screen reads no contest and opens no contest sheet', async () => {
-    const { fixture, opened, contestApi } = setup({
+  it('the master’s screen answers a contest in a card of his own and opens no player sheet', async () => {
+    const { fixture, el, opened, contestApi } = setup({
       master: true,
       current: 'h',
       windows: [contestWindow({ reactorId: '', forYou: true })],
       contests: contestState({ contests: [defending()] }),
     });
     await settle(fixture);
-    expect(contestApi.calls).not.toContain('state');
+    // The master reads the contests of the combat for his own cards (W7-X), never for the player's sheets.
+    expect(contestApi.calls).toContain('state');
+    expect(el.querySelector('app-contest-master app-contest-card')).not.toBeNull();
     expect(
       opened.filter((o) => o.component === ContestAnswerSheet || o.component === ContestSheet),
     ).toHaveLength(0);

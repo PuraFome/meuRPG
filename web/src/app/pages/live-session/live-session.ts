@@ -99,6 +99,7 @@ import { ShownImagePanel } from './shown-image-panel/shown-image-panel';
 import { applySnapshot, applyVitals, partyRowSub } from './vitals';
 import { FoundTreasures } from './treasure/found-treasures/found-treasures';
 import { GroupCheckCard } from './group-check/group-check-card';
+import { GroupCheckMaster } from './group-check/group-check-master';
 import { TreasurePanel } from './treasure/treasure-panel/treasure-panel';
 import { TrapActivityList } from './traps/trap-activity/trap-activity';
 import { TrapPanel } from './traps/trap-panel/trap-panel';
@@ -141,6 +142,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     CombatView,
     FoundTreasures,
     GroupCheckCard,
+    GroupCheckMaster,
     HighlightsCard,
     LiveToast,
     MasterLive,

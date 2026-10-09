@@ -41,7 +41,7 @@ const PAIR_FIELDS: readonly RollField[] = [
         [combine]="combine()"
         [modifier]="modifier()"
         [totalNote]="totalNote()"
-        appLabel="Rolar 2d20 no app"
+        [appLabel]="appLabel() || 'Rolar 2d20 no app'"
         [hint]="hint()"
         [busy]="busy()"
         [(typing)]="typing"
@@ -59,6 +59,7 @@ const PAIR_FIELDS: readonly RollField[] = [
         [modifier]="modifier()"
         [busy]="busy()"
         [sticky]="false"
+        [appLabel]="appLabel() || 'Rolar no app'"
         [(typing)]="typing"
         (app)="roll.emit({ inApp: true })"
         (typed)="roll.emit({ faces: [$event] })"
@@ -129,6 +130,8 @@ export class CheckRollForm {
   readonly diceMode = input.required<DiceMode>();
   readonly preference = input.required<DicePreference>();
   readonly busy = input(false);
+  /** The label of the app button when it is not "Rolar no app" (the master's: "Rolar pelo Hobgoblin"). */
+  readonly appLabel = input('');
   /** "Deixar o mestre rolar por mim": the link under the buttons; empty for none. */
   readonly deferLabel = input('');
 

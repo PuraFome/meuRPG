@@ -148,7 +148,9 @@ import {
 } from './reaction-sheet/reaction-sheet';
 import { windowsBarText } from '../../../core/combat/reaction-master';
 import { promptView, reactionWait, sheetWindow } from '../../../core/combat/reactions';
+import { ContestMaster } from './contest-master/contest-master';
 import { ReactionQueue } from './reaction-queue/reaction-queue';
+import { SurpriseCard } from './surprise-card/surprise-card';
 import { CombatLogPanel } from './combat-log/combat-log-panel';
 import type { CombatantInfo } from './combat-info';
 import { CombatBar } from './combat-bar/combat-bar';
@@ -254,6 +256,8 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
     RollModeQueue,
     TheatreReaction,
     ReactionQueue,
+    ContestMaster,
+    SurpriseCard,
     TurnBar,
     TrapDamages,
     TurnPanel,

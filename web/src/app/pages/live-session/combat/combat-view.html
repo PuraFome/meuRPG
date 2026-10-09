@@ -32,6 +32,7 @@
               (order)="setOrder($event)"
             />
             <div class="setup__side">
+              <app-surprise-card [encounter]="e" [campaignId]="campaignId()" [state]="state()" />
               <app-initiative-side
                 [encounter]="e"
                 [info]="info()"
@@ -547,6 +548,15 @@
     }
     <!-- The reaction windows the master answers (PM-04): below the card, in the order the server answers them. -->
     <app-reaction-queue [encounter]="e" [campaignId]="campaignId()" [state]="state()" />
+    <!-- The contests that wait for the master (W7-X): CONTEST windows, Hide, grapples; never answered with AnswerReaction. -->
+    <app-contest-master
+      [encounter]="e"
+      [campaignId]="campaignId()"
+      [state]="state()"
+      [diceMode]="diceMode()"
+      [preference]="dicePreference()"
+      [options]="options()"
+    />
   }
 </ng-template>
 

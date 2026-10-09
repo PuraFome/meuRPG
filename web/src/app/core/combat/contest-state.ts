@@ -5,10 +5,12 @@ import {
   type GetContestStateResponse,
   GetContestStateResponseSchema,
 } from '../../../gen/meurpg/play/v1/contests_pb';
-import type {
-  ContestView,
-  HelpView,
-  HideAttemptView,
+import {
+  type ContestView,
+  type GrappleView,
+  type HelpView,
+  type HideAttemptView,
+  HideAttemptStatus,
 } from '../../../gen/meurpg/play/v1/contest_types_pb';
 import type { ContestClient } from './contest-client';
 
@@ -26,6 +28,14 @@ export class ContestState {
   readonly attempts = computed<readonly HideAttemptView[]>(() => this.data()?.hideAttempts ?? []);
   /** The Helps that hold, for every member. */
   readonly helps = computed<readonly HelpView[]>(() => this.data()?.helps ?? []);
+  /** The Hide actions that wait for the master's decision (his only: a player reads their own latest). */
+  readonly pendingAttempts = computed<readonly HideAttemptView[]>(() =>
+    this.attempts().filter((a) => a.status === HideAttemptStatus.PENDING),
+  );
+  /** Who holds whom, as the caller reads it (the master: all). */
+  readonly grapples = computed<readonly GrappleView[]>(() => this.data()?.grapples ?? []);
+  /** The combatants marked surprised. */
+  readonly surprised = computed<readonly string[]>(() => this.data()?.surprise?.combatantIds ?? []);
   private asked = 0;
   private subject = '';
 

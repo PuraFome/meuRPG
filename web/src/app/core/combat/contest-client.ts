@@ -18,6 +18,8 @@ import {
   type HelpView,
   type HideAttemptView,
   type ShoveOutcome,
+  type SurpriseSuggestion,
+  type SurpriseView,
 } from '../../../gen/meurpg/play/v1/contest_types_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
@@ -36,7 +38,10 @@ export interface StartContestInput {
   readonly purpose: ContestPurpose;
   readonly kind: ContestKind;
   readonly skill: ContestSkill;
-  readonly die: CheckDie;
+  /** The initiator's d20; none for the master's grapple with a fixed escape DC (nobody rolls). */
+  readonly die?: CheckDie;
+  /** The creature's fixed escape DC (1 to 40) of an `ESCAPE_DC` grapple: the master's alone (RN-20). */
+  readonly escapeDc?: number;
 }
 
 /** What the defender answers (`RespondContest`): the skill and the roll, or the roll left to the master. */
@@ -60,6 +65,17 @@ export interface HelpInput {
   readonly taskKey: string;
   /** The creature an ATTACK help is aimed at; empty for a check. */
   readonly targetId: string;
+}
+
+/** The master's decision on a Hide (`ResolveHide`). */
+export interface HideDecision {
+  readonly attemptId: string;
+  /** True refuses it: there is nowhere to hide. */
+  readonly refuse: boolean;
+  /** The master's one sentence of the refusal (1 to 120 characters); empty takes the usual one. */
+  readonly refusal: string;
+  /** The creatures that see the hider clearly, whatever the totals. */
+  readonly seesClearlyIds: readonly string[];
 }
 
 /** The combat and the contest as the caller reads it after a call. */
@@ -108,7 +124,8 @@ export class ContestClient {
       purpose: input.purpose,
       kind: input.kind,
       skill: input.skill,
-      roll: rollInput(input.die),
+      ...(input.die ? { roll: rollInput(input.die) } : {}),
+      ...(input.escapeDc ? { escapeDc: input.escapeDc } : {}),
     });
     return {
       encounter: need(res.encounter, 'StartContest'),
@@ -214,5 +231,151 @@ export class ContestClient {
       roll: rollInput(die),
     });
     return need(res.groupCheck, 'RollGroupCheck');
+  }
+
+  // ---- the master's calls (W7-X): the same service, the other side of the table ----
+
+  /** "Encerrar disputa": ends a contest that waits with no result; the action it spent stays spent. */
+  async closeContest(
+    campaignId: string,
+    encounterId: string,
+    contestId: string,
+    key: string,
+  ): Promise<Encounter> {
+    const res = await this.client.closeContest({
+      campaignId,
+      encounterId,
+      idempotencyKey: key,
+      contestId,
+    });
+    return need(res.encounter, 'CloseContest');
+  }
+
+  /** "Soltar": lets the grappled creature go (the grappler whenever it likes, or the master). */
+  async releaseGrapple(
+    campaignId: string,
+    encounterId: string,
+    grappledId: string,
+    key: string,
+  ): Promise<Encounter> {
+    const res = await this.client.releaseGrapple({
+      campaignId,
+      encounterId,
+      idempotencyKey: key,
+      grappledId,
+    });
+    return need(res.encounter, 'ReleaseGrapple');
+  }
+
+  /** The master's decision on a Hide: applied (with the creatures that see the hider clearly) or refused with a reason. */
+  async resolveHide(
+    campaignId: string,
+    encounterId: string,
+    decision: HideDecision,
+    key: string,
+  ): Promise<{ readonly encounter: Encounter; readonly attempt: HideAttemptView }> {
+    const res = await this.client.resolveHide({
+      campaignId,
+      encounterId,
+      idempotencyKey: key,
+      attemptId: decision.attemptId,
+      refuse: decision.refuse,
+      refusal: decision.refusal,
+      seesClearlyIds: [...decision.seesClearlyIds],
+    });
+    return {
+      encounter: need(res.encounter, 'ResolveHide'),
+      attempt: need(res.attempt, 'ResolveHide'),
+    };
+  }
+
+  /** Takes a Help back (the master, when it should not hold any more). */
+  async clearHelp(
+    campaignId: string,
+    encounterId: string,
+    helpId: string,
+    key: string,
+  ): Promise<Encounter> {
+    const res = await this.client.clearHelp({
+      campaignId,
+      encounterId,
+      idempotencyKey: key,
+      helpId,
+    });
+    return need(res.encounter, 'ClearHelp');
+  }
+
+  /** Marks a creature surprised or not, before the combat begins. */
+  async setSurprised(
+    campaignId: string,
+    encounterId: string,
+    combatantId: string,
+    surprised: boolean,
+    key: string,
+  ): Promise<{ readonly encounter: Encounter; readonly surprise: SurpriseView | undefined }> {
+    const res = await this.client.setSurprised({
+      campaignId,
+      encounterId,
+      idempotencyKey: key,
+      combatantId,
+      surprised,
+    });
+    return { encounter: need(res.encounter, 'SetSurprised'), surprise: res.surprise };
+  }
+
+  /** The app's suggestion of who is surprised, one entry for each combatant that is not defeated. */
+  async surpriseSuggestion(
+    campaignId: string,
+    encounterId: string,
+  ): Promise<readonly SurpriseSuggestion[]> {
+    return (await this.client.getSurpriseSuggestion({ campaignId, encounterId })).suggestions;
+  }
+
+  /** Asks every living character for a check. `dc` 0 is none; `showDc` lets the players read passed and failed. */
+  async requestGroupCheck(
+    campaignId: string,
+    request: { readonly skillKey: string; readonly dc: number; readonly showDc: boolean },
+    key: string,
+  ): Promise<GroupCheckView> {
+    const res = await this.client.requestGroupCheck({
+      campaignId,
+      idempotencyKey: key,
+      skillKey: request.skillKey,
+      dc: request.dc,
+      showDc: request.showDc,
+    });
+    return need(res.groupCheck, 'RequestGroupCheck');
+  }
+
+  /** The master's roll for a character that has not answered. */
+  async rollForPlayer(
+    campaignId: string,
+    groupCheckId: string,
+    characterId: string,
+    die: CheckDie,
+    key: string,
+  ): Promise<GroupCheckView> {
+    const res = await this.client.rollForPlayer({
+      campaignId,
+      idempotencyKey: key,
+      groupCheckId,
+      characterId,
+      roll: rollInput(die),
+    });
+    return need(res.groupCheck, 'RollForPlayer');
+  }
+
+  /** Ends the group check: whoever did not answer counts as failed, and the verdict is worked out. */
+  async closeGroupCheck(
+    campaignId: string,
+    groupCheckId: string,
+    key: string,
+  ): Promise<GroupCheckView> {
+    const res = await this.client.closeGroupCheck({
+      campaignId,
+      idempotencyKey: key,
+      groupCheckId,
+    });
+    return need(res.groupCheck, 'CloseGroupCheck');
   }
 }

@@ -17,6 +17,7 @@ import {
   GroupCheckViewSchema,
   type HelpView,
   HelpViewSchema,
+  type SurpriseSuggestion,
   type HideAttemptView,
   HideAttemptViewSchema,
   RollModeKind,
@@ -28,6 +29,7 @@ import {
 import type {
   ContestClient,
   HelpInput,
+  HideDecision,
   RespondContestInput,
   StartContestInput,
 } from './contest-client';
@@ -174,6 +176,70 @@ export class FakeContestClient {
   rollGroupCheck(_c: string, _id: string, die: unknown, key: string) {
     this.calls.push('rollGroupCheck');
     this.groupRolls.push({ die, key });
+    this.fail();
+    return Promise.resolve(this.group as GroupCheckView);
+  }
+
+  // ---- the master's calls ----
+  readonly closed: { contestId: string; key: string }[] = [];
+  readonly released: { grappledId: string; key: string }[] = [];
+  readonly hideDecisions: { decision: HideDecision; key: string }[] = [];
+  readonly surprised: { combatantId: string; surprised: boolean; key: string }[] = [];
+  readonly groupRequests: { request: unknown; key: string }[] = [];
+  readonly masterRolls: { characterId: string; die: unknown; key: string }[] = [];
+  readonly groupCloses: { id: string; key: string }[] = [];
+  suggestions: readonly SurpriseSuggestion[] = [];
+
+  closeContest(_c: string, _e: string, contestId: string, key: string) {
+    this.calls.push('closeContest');
+    this.closed.push({ contestId, key });
+    this.fail();
+    return Promise.resolve(this.encounterAnswer);
+  }
+
+  releaseGrapple(_c: string, _e: string, grappledId: string, key: string) {
+    this.calls.push('releaseGrapple');
+    this.released.push({ grappledId, key });
+    this.fail();
+    return Promise.resolve(this.encounterAnswer);
+  }
+
+  resolveHide(_c: string, _e: string, decision: HideDecision, key: string) {
+    this.calls.push('resolveHide');
+    this.hideDecisions.push({ decision, key });
+    this.fail();
+    return Promise.resolve({ encounter: this.encounterAnswer, attempt: this.attempt });
+  }
+
+  setSurprised(_c: string, _e: string, combatantId: string, surprised: boolean, key: string) {
+    this.calls.push('setSurprised');
+    this.surprised.push({ combatantId, surprised, key });
+    this.fail();
+    return Promise.resolve({ encounter: this.encounterAnswer, surprise: undefined });
+  }
+
+  surpriseSuggestion() {
+    this.calls.push('surpriseSuggestion');
+    return Promise.resolve(this.suggestions);
+  }
+
+  requestGroupCheck(_c: string, request: unknown, key: string) {
+    this.calls.push('requestGroupCheck');
+    this.groupRequests.push({ request, key });
+    this.fail();
+    return Promise.resolve(this.group as GroupCheckView);
+  }
+
+  rollForPlayer(_c: string, _id: string, characterId: string, die: unknown, key: string) {
+    this.calls.push('rollForPlayer');
+    this.masterRolls.push({ characterId, die, key });
+    this.fail();
+    return Promise.resolve(this.group as GroupCheckView);
+  }
+
+  closeGroupCheck(_c: string, id: string, key: string) {
+    this.calls.push('closeGroupCheck');
+    this.groupCloses.push({ id, key });
     this.fail();
     return Promise.resolve(this.group as GroupCheckView);
   }
