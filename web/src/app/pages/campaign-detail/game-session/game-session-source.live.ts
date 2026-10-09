@@ -43,10 +43,9 @@ export class GameSessionSourceLive implements GameSessionSource {
   private readonly client = createClient(PlayService, inject(CONNECT_TRANSPORT));
   private readonly characters = createClient(CharacterService, inject(CONNECT_TRANSPORT));
 
-  async getCurrentSession(campaignId: string): Promise<GameSessionVm | null> {
+  async listSessions(campaignId: string): Promise<readonly GameSessionVm[]> {
     const res = await this.client.listGameSessions({ campaignId });
-    const open = res.gameSessions.find((gs) => !gs.endedAt);
-    return open ? toVm(open) : null;
+    return res.gameSessions.map(toVm);
   }
 
   async startGameSession(
