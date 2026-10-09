@@ -1,4 +1,5 @@
 import { CastingPanel } from './casting/casting-panel';
+import { OwnEffects } from './effects/own-effects';
 import {
   Component,
   DOCUMENT,
@@ -370,6 +371,13 @@ export class LiveSession {
     }
     const own = e.combatants.find((c) => c.mine);
     return own ? { successes: own.deathSuccesses, failures: own.deathFailures } : null;
+  });
+  /** "Seus efeitos" and the labels of the conditions they hold, for the player's own sheet (RN-22). */
+  protected readonly ownEffects = new OwnEffects({
+    campaignId: this.campaignId,
+    isMaster: this.isMaster,
+    encounter: this.combat.encounter,
+    tick: computed(() => this.castsTick() + (this.ownVitals()?.revision ?? 0)),
   });
   /** The master's "Ver como" list: the living player characters, with their players. */
   protected readonly viewAsPeople = computed<readonly ViewAsPerson[]>(() =>
