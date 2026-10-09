@@ -3,6 +3,7 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 
 import { canvasJpeg, newCampaign, uploadThroughPicker } from './gallery-support';
 import { saveDocumentRPC, tableWithDocumentParts } from './document-support';
+import { exportThroughScreen, joinAsPlayer, tableForPackage, zipWithManifest } from './campaign-package-support';
 import { expectAligned } from './layout';
 import { expectLoaded } from './loaded';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
@@ -18,7 +19,7 @@ import { paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
 import { claimRoute, linkRPC, reservedRPC, revokeLinkRPC, rowOf } from './claim-support';
-import { authStatePath, boxOf, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn } from './support';
+import { authStatePath, boxOf, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn, type TestUser } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
@@ -5972,6 +5973,111 @@ test('as opções para os jogadores passam no axe e nas conferências de layout 
 
 test('as opções para os jogadores passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
   await scanOptions(browser, 'light', 320);
+});
+
+/** The campaign package (MR-050): the export page (idle, running through a
+ * fulfilled `GetCampaignExport`, done with "Baixar de novo") and the import
+ * page (choose, a file refused before upload, preview, refused, newer
+ * version, done). The package is a real one, exported and fetched by the
+ * test; the running export is the one state too quick to catch for real. */
+async function scanPackage(browser: Browser, colorScheme: 'light' | 'dark', width: number, owner: TestUser): Promise<void> {
+  const context = await browser.newContext({
+    storageState: authStatePath(owner),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
+  const page = await context.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const input = page.getByLabel('Arquivo do pacote da campanha');
+  try {
+    await page.goto('/');
+    const table = await tableForPackage(page, `Acessibilidade pacote ${Date.now()}`);
+
+    await open(page, `/campaigns/${table.campaignId}`);
+    await expect(page.getByRole('link', { name: 'Exportar campanha' })).toBeVisible();
+    await expectScreenPasses(page, `Campanha com o painel Pacote da campanha ${where}`);
+
+    await open(page, `/campaigns/${table.campaignId}/export`);
+    await expect(page.getByRole('button', { name: 'Exportar campanha' })).toBeVisible();
+    await expectScreenPasses(page, `Exportar campanha, antes de exportar ${where}`);
+
+    const running = '**/meurpg.campaignpackage.v1.CampaignPackageService/GetCampaignExport';
+    await page.route(running, (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        json: { export: { id: 'a11y', state: 'CAMPAIGN_EXPORT_STATE_RUNNING', percent: 40 }, estimatedBytes: '4096' },
+      }),
+    );
+    await page.reload();
+    await expect(page.getByRole('progressbar', { name: 'Progresso da exportação' })).toBeVisible();
+    await expectScreenPasses(page, `Exportar campanha, exportando ${where}`);
+    await page.unroute(running);
+
+    await exportThroughScreen(page, table.campaignId);
+    await expectLoaded(page);
+    await expectScreenPasses(page, `Exportar campanha, pacote pronto ${where}`);
+    const href = await page.getByRole('link', { name: 'Baixar de novo' }).getAttribute('href');
+    const fetched = await page.request.get(href!);
+    expect(fetched.ok()).toBeTruthy();
+    const zip = await fetched.body();
+
+    await open(page, '/campaigns');
+    await expect(page.getByRole('link', { name: 'Importar campanha' })).toBeVisible();
+    await expectScreenPasses(page, `Minhas campanhas com Importar campanha ${where}`);
+
+    await open(page, '/campaigns/import');
+    await expect(page.getByRole('button', { name: 'Escolher o arquivo' })).toBeVisible();
+    await expectScreenPasses(page, `Importar campanha, escolher o arquivo ${where}`);
+
+    await input.setInputFiles({ name: 'notas.txt', mimeType: 'text/plain', buffer: Buffer.from('não é um pacote') });
+    await expect(page.getByRole('alert').filter({ hasText: 'Esse arquivo não parece um pacote de campanha.' })).toBeVisible();
+    await expectScreenPasses(page, `Importar campanha, arquivo recusado ${where}`);
+
+    await input.setInputFiles({ name: 'falso.meurpg.zip', mimeType: 'application/zip', buffer: Buffer.from('só tem o nome') });
+    await expect(page.getByRole('strong').filter({ hasText: 'Este pacote não pode ser criado.' })).toBeVisible({ timeout: 60_000 });
+    await expectScreenPasses(page, `Importar campanha, pacote recusado ${where}`);
+
+    await page.getByRole('button', { name: 'Escolher outro arquivo' }).click();
+    await input.setInputFiles({ name: 'futuro.meurpg.zip', mimeType: 'application/zip', buffer: zipWithManifest({ format_version: 2 }) });
+    await expect(page.getByRole('strong').filter({ hasText: 'Este pacote é de uma versão mais nova do MeuRPG' })).toBeVisible({ timeout: 60_000 });
+    await expectScreenPasses(page, `Importar campanha, versão mais nova ${where}`);
+
+    await page.getByRole('button', { name: 'Escolher outro arquivo' }).click();
+    await input.setInputFiles({ name: 'pacote.meurpg.zip', mimeType: 'application/zip', buffer: zip });
+    await expect(page.getByRole('button', { name: 'Criar campanha' })).toBeVisible({ timeout: 60_000 });
+    await expectLoaded(page);
+    await expectScreenPasses(page, `Importar campanha, prévia ${where}`);
+
+    await page.getByRole('button', { name: 'Criar campanha' }).click();
+    await expect(page.getByRole('heading', { level: 2, name: 'Campanha criada' })).toBeVisible({ timeout: 60_000 });
+    await expectScreenPasses(page, `Importar campanha, campanha criada ${where}`);
+
+    // The player's side of the export page: only the master exports.
+    const playerContext = await newSignedInContext(browser, 'Mestre Teste', { colorScheme, viewport: { width, height: 900 } });
+    try {
+      const player = await playerContext.newPage();
+      await player.goto('/');
+      await joinAsPlayer(page, player, table.campaignId);
+      await open(player, `/campaigns/${table.campaignId}/export`);
+      await expect(player.getByText('Só o mestre exporta a campanha.')).toBeVisible();
+      await expectScreenPasses(player, `Exportar campanha, vista do jogador ${where}`);
+    } finally {
+      await playerContext.close();
+    }
+  } finally {
+    await context.close();
+  }
+}
+
+test('o pacote da campanha passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-050'] }, async ({ browser }) => {
+  test.slow();
+  // One import upload per account at a time: each scan, and campaign-package.spec.ts, imports as its own account.
+  await scanPackage(browser, 'light', 1280, 'Jogador Teste');
+});
+
+test('o pacote da campanha passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-050'] }, async ({ browser }) => {
+  test.slow();
+  await scanPackage(browser, 'dark', 390, 'E-mail Não Verificado');
 });
 
 /**

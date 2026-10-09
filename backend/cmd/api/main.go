@@ -84,6 +84,7 @@ import (
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/system/v1/systemv1connect"
+	"github.com/PuraFome/meuRPG/backend/internal/campaignpackage"
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns"
 	"github.com/PuraFome/meuRPG/backend/internal/characters"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
@@ -309,6 +310,10 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// call slot gives its slot back, the long polls answer, and a call already
 		// sent is cut off (its slot stays spent). Cloud Run gives 10 s in all.
 		srv.OnShutdown(m.maps.CancelGenerations)
+		// An export in flight stops with the server; the next read marks it
+		// interrupted. The sweeper deletes what expired while it runs.
+		srv.OnShutdown(m.packages.Cancel)
+		m.packages.RunSweeper(ctx)
 	} else {
 		identity.MountDisabled(srv.Handle, connectOpts...)
 		logger.Warn("campaigns, characters, game sessions, images and maps are disabled: they need sign-in")
@@ -378,6 +383,8 @@ func mountModules(handle func(string, http.Handler), m *modules, identityService
 	// GalleryService and MapService, plus the upload and download routes,
 	// which find the session with identityService.AuthenticateRequest.
 	m.maps.Mount(handle, sessions, m.campaigns, opts...)
+	// CampaignPackageService, the part uploads and the export download (MR-050).
+	m.packages.Mount(handle, sessions, m.campaigns, opts...)
 }
 
 // limitedSessions is the identity service as the modules see it, with the
@@ -407,6 +414,7 @@ type modules struct {
 	maps        *maps.Service
 	progression *progression.Service
 	notes       *notes.Service
+	packages    *campaignpackage.Service
 }
 
 // wireOptions are the limits the modules get: zero means each module's own default.
@@ -575,10 +583,30 @@ func wireModules(
 	if err != nil {
 		return nil, err
 	}
+	// The campaign package (MR-050) asks every module for its share, in the order
+	// the parts refer to each other: the campaign first, then the gallery, the
+	// table content and characters, the maps, and the puzzles and encounters
+	// that name them.
+	packageService, err := campaignpackage.New(campaignpackage.Config{
+		Pool:  pool,
+		Blobs: blobs, // nil: packages are off, as images are
+		Parts: []campaignpackage.Part{
+			campaignsService.PackagePart(), mapsService.PackageImagesPart(), charactersService.PackagePart(),
+			mapsService.PackageMapsPart(), playService.PackagePart(rulesContent),
+		},
+		Creation:       campaignsService, // who may create a campaign, and a retried create
+		Logger:         logger,
+		ContentVersion: rulesContent.Version(),
+		Heavy:          opts.Policy.Package,
+		PartsLimit:     opts.Policy.PackageParts,
+	})
+	if err != nil {
+		return nil, err
+	}
 	// Every Set... call above must have happened: see the function's comment.
 	for _, check := range []func() error{
 		campaignsService.CheckWired, charactersService.CheckWired, playService.CheckWired,
-		mapsService.CheckWired, sessionMaps.CheckWired,
+		mapsService.CheckWired, sessionMaps.CheckWired, packageService.CheckWired,
 	} {
 		if err := check(); err != nil {
 			return nil, fmt.Errorf("wiring the modules: %w", err)
@@ -586,7 +614,7 @@ func wireModules(
 	}
 	return &modules{
 		users: users, campaigns: campaignsService, characters: charactersService, play: playService,
-		maps: mapsService, progression: progressionService, notes: notesService,
+		maps: mapsService, progression: progressionService, notes: notesService, packages: packageService,
 	}, nil
 }
 
