@@ -1,4 +1,4 @@
-<app-sheet-frame [title]="title()" [subtitle]="subtitle()" [phone]="inSheet" (closed)="close()">
+<app-sheet-frame [title]="title()" [subtitle]="subtitle()" [phone]="inSheet" [focusableBody]="step() === 'result'" (closed)="close()">
   <div class="body">
     <ol class="steps" aria-label="Passos">
       @for (m of marks(); track m.n) {
