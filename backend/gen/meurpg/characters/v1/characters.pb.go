@@ -1741,6 +1741,9 @@ type CharacterBlocked struct {
 	// For LIVING_CHARACTER_EXISTS on ClaimCharacter, the name of the player's living
 	// character (character_id is its ID), so the app can name it.
 	CharacterName string `protobuf:"bytes,5,opt,name=character_name,json=characterName,proto3" json:"character_name,omitempty"`
+	// For LIVING_CHARACTER_EXISTS on ClaimCharacter, the campaign the claim is for (the
+	// living character's too), so the app can link to that character's sheet.
+	CampaignId    string `protobuf:"bytes,6,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1806,6 +1809,13 @@ func (x *CharacterBlocked) GetPlayerDisplayName() string {
 func (x *CharacterBlocked) GetCharacterName() string {
 	if x != nil {
 		return x.CharacterName
+	}
+	return ""
+}
+
+func (x *CharacterBlocked) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
 	}
 	return ""
 }
@@ -9169,14 +9179,16 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\vclaim_state\x18\f \x01(\x0e2 .meurpg.characters.v1.ClaimStateR\n" +
 	"claimState\x12D\n" +
 	"\x10claim_expires_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\x0eclaimExpiresAt\x125\n" +
-	"\x17claimed_by_display_name\x18\x0e \x01(\tR\x14claimedByDisplayName\"\xf3\x01\n" +
+	"\x17claimed_by_display_name\x18\x0e \x01(\tR\x14claimedByDisplayName\"\x94\x02\n" +
 	"\x10CharacterBlocked\x12D\n" +
 	"\x06reason\x18\x01 \x01(\x0e2,.meurpg.characters.v1.CharacterBlockedReasonR\x06reason\x12!\n" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x1f\n" +
 	"\vcontent_key\x18\x03 \x01(\tR\n" +
 	"contentKey\x12.\n" +
 	"\x13player_display_name\x18\x04 \x01(\tR\x11playerDisplayName\x12%\n" +
-	"\x0echaracter_name\x18\x05 \x01(\tR\rcharacterName\"$\n" +
+	"\x0echaracter_name\x18\x05 \x01(\tR\rcharacterName\x12\x1f\n" +
+	"\vcampaign_id\x18\x06 \x01(\tR\n" +
+	"campaignId\"$\n" +
 	"\fInvalidField\x12\x14\n" +
 	"\x05field\x18\x01 \x01(\tR\x05field\"\x8c\x01\n" +
 	"\x0eCharacterSheet\x125\n" +

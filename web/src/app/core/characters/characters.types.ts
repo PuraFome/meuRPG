@@ -42,4 +42,10 @@ export type CharacterBlockedReason =
   | 'not_pending'
   | 'awaiting_approval'
   | 'archived_content'
-  | 'switched_off_content';
+  | 'switched_off_content'
+  | 'not_reserved'
+  | 'claim_link_used'
+  | 'not_claimed'
+  | 'character_in_combat'
+  | 'claim_own_link'
+  | 'reserved';

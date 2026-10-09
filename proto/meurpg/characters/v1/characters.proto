@@ -1060,6 +1060,9 @@ message CharacterBlocked {
   // For LIVING_CHARACTER_EXISTS on ClaimCharacter, the name of the player's living
   // character (character_id is its ID), so the app can name it.
   string character_name = 5;
+  // For LIVING_CHARACTER_EXISTS on ClaimCharacter, the campaign the claim is for (the
+  // living character's too), so the app can link to that character's sheet.
+  string campaign_id = 6;
 }
 
 // InvalidField is the error detail of CharacterService's `invalid_argument` for a

@@ -130,6 +130,8 @@ type ReadyState = {
   /** The sheet is locked (a session started, RN-01): the XP is no longer
    * typed here, only the master's awards change it (MR-016). */
   xpLocked: boolean;
+  /** The character is reserved (MR-049): the master makes it for a player to claim, and the page says so. */
+  reserved: boolean;
 };
 
 type ErrorState = {
@@ -147,9 +149,12 @@ type PageState = { status: 'loading'; title: string } | ErrorState | ReadyState;
 
 /** The page title: known from the route alone, so the loading state shows
  * it too. */
-function titleFor(mode: CharacterEditorMode, kind: CharacterKind): string {
+function titleFor(mode: CharacterEditorMode, kind: CharacterKind, reserved = false): string {
   if (mode === 'edit') {
     return 'Editar ficha';
+  }
+  if (reserved) {
+    return 'Criar personagem para um jogador';
   }
   return kind === 'player' ? 'Criar personagem' : 'Criar NPC';
 }
@@ -310,6 +315,7 @@ export class CharacterEditor {
       characterId: s.mode === 'edit' ? s.characterId : null,
       kind: s.kind,
       full: this.buildFullValue(),
+      ...(s.reserved && s.mode === 'create' ? { forPlayer: true } : {}),
     });
   });
   /** What the server says the effects add to the hit points of the draft; `null` while it has no answer (the box adds up by itself). */
@@ -921,6 +927,9 @@ export class CharacterEditor {
         ? 'As mudanças valem quando você salvar. Modificadores, Classe de Armadura e pontos de vida são recalculados na hora.'
         : `Ficha curta de ${kind.toLowerCase()}.`;
     }
+    if (s.reserved) {
+      return 'Preencha os passos na ordem que quiser. O personagem fica reservado e nenhum jogador o vê até um deles assumir pelo link que você gerar. Modificadores, Classe de Armadura e pontos de vida são calculados quando você salvar.';
+    }
     if (s.kind === 'player') {
       return 'Preencha os passos na ordem que quiser. Modificadores, Classe de Armadura e pontos de vida são calculados quando você criar.';
     }
@@ -937,7 +946,19 @@ export class CharacterEditor {
     if (s.status === 'error') {
       return s.blocked?.title ?? 'Não foi possível abrir o formulário';
     }
-    return titleFor(s.mode, s.kind);
+    return titleFor(s.mode, s.kind, s.reserved);
+  });
+
+  /** The label of the create button: "Salvar como reservado" for a character made for a player to claim. */
+  protected readonly createLabel = computed(() => {
+    const s = this.state();
+    return s.status === 'ready' && s.reserved ? 'Salvar como reservado' : this.pageTitle();
+  });
+
+  /** Whether the character being made or edited is reserved: the page tells the master so. */
+  protected readonly reserved = computed(() => {
+    const s = this.state();
+    return s.status === 'ready' && s.reserved;
   });
 
   /** Cancel goes back where the person came from: the sheet being edited,
@@ -1074,16 +1095,20 @@ export class CharacterEditor {
       return;
     }
     const kind: CharacterKind = npcKind ? (NPC_ROUTE_KINDS[npcKind] ?? 'enemy') : 'player';
-    this.loadForCreate(campaignId, kind);
+    // `/campaigns/:id/reserved/new` (MR-049): the master makes a player character for a player to claim.
+    this.loadForCreate(campaignId, kind, this.route.routeConfig?.data?.['reserved'] === true);
   }
 
-  private loadForCreate(campaignId: string, kind: CharacterKind): void {
+  private loadForCreate(campaignId: string, kind: CharacterKind, reserved: boolean): void {
     const seq = ++this.loadSeq;
     this.resetEditing();
-    this.state.set({ status: 'loading', title: titleFor('create', kind) });
-    // A player (or a pending member) makes the scores the table's rules allow; the master's NPCs are free.
+    this.state.set({ status: 'loading', title: titleFor('create', kind, reserved) });
+    // A player (or a pending member) makes the scores the table's rules allow; the master's NPCs, and the characters
+    // the master makes for a player to claim, are free.
     const table =
-      kind === 'player' ? this.source.loadAbilityTable(campaignId) : Promise.resolve(null);
+      kind === 'player' && !reserved
+        ? this.source.loadAbilityTable(campaignId)
+        : Promise.resolve(null);
     Promise.all([this.source.loadCatalog(campaignId), table]).then(
       ([catalog, abilityTable]) => {
         if (seq !== this.loadSeq) {
@@ -1104,6 +1129,7 @@ export class CharacterEditor {
           revision: 1,
           catalog,
           xpLocked: false,
+          reserved,
         });
         // A new enemy, boss or minion starts at ND 0 and 10 XP, so nobody is left without a
         // number; a story NPC gives none (and never shows the fields).
@@ -1197,6 +1223,7 @@ export class CharacterEditor {
           revision: existing.revision,
           catalog,
           xpLocked: existing.sheetLocked,
+          reserved: existing.reserved === true,
         });
         if (existing.full) {
           this.patchFullForm(existing.full);
@@ -1558,6 +1585,7 @@ export class CharacterEditor {
           full: isBasic ? null : this.buildFullValue(),
           basic: isBasic ? basicFormToValue(this.basicForm) : null,
           ...(this.abilityTable() && !isBasic ? { abilityMethod: this.abilityMethod() } : {}),
+          ...(s.reserved ? { forPlayer: true } : {}),
         };
         // A retry of the same form (a lost answer, a second tap) sends the same key and makes one character.
         const res = await this.source.createCharacter({
@@ -1568,7 +1596,12 @@ export class CharacterEditor {
         if (!stillHere()) {
           return;
         }
-        await this.router.navigate(['/campaigns', s.campaignId, 'characters', res.characterId]);
+        // A reserved character goes to the list, where its link is made; any other, to its sheet.
+        await this.router.navigate(
+          s.reserved
+            ? ['/campaigns', s.campaignId]
+            : ['/campaigns', s.campaignId, 'characters', res.characterId],
+        );
       } else if (s.characterId) {
         await this.source.updateCharacter({
           campaignId: s.campaignId,

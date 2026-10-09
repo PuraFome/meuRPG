@@ -336,7 +336,7 @@ func TestRN03_AClaimRefusesAPlayerWhoHasALivingCharacterAndTheDeadOnesDoNotCount
 	_, err := lia.claim(t, token)
 	b := blocked(t, "ClaimCharacter(RN-03)", err)
 	if b.GetReason() != charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_LIVING_CHARACTER_EXISTS ||
-		b.GetCharacterId() != icaro.GetId() || b.GetCharacterName() != "Ícaro" {
+		b.GetCharacterId() != icaro.GetId() || b.GetCharacterName() != "Ícaro" || b.GetCampaignId() != campaign {
 		t.Errorf("RN-03 detail = %v; want LIVING_CHARACTER_EXISTS naming Ícaro", b)
 	}
 	if got := master.get(t, campaign, kai.GetId()); !got.GetReserved() {

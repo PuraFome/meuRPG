@@ -9,6 +9,13 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/home/home').then((m) => m.Home),
   },
   {
+    // A reserved character's claim link (MR-049): `/claim#t=<token>`. Public, like the invite: signed out it asks for
+    // sign-in and tells nothing about the link; signed in it shows the card. The secret is in the fragment only.
+    path: 'claim',
+    title: 'Assumir um personagem',
+    loadComponent: () => import('./pages/claim/claim-page').then((m) => m.ClaimPage),
+  },
+  {
     path: 'campaigns',
     title: 'Minhas campanhas',
     canActivate: [authGuard],
@@ -47,6 +54,18 @@ export const routes: Routes = [
     path: 'campaigns/:id/characters/new',
     title: 'Novo personagem',
     canActivate: [authGuard],
+    loadChildren: () =>
+      import('./pages/character-editor/character-editor.routes').then(
+        (m) => m.CHARACTER_EDITOR_ROUTES,
+      ),
+  },
+  {
+    // The master makes a player character for a player to claim (MR-049): the same editor, in the master's mode, that
+    // saves the character as reserved. Before `characters/:characterId`'s family, so "reserved" is no character's ID.
+    path: 'campaigns/:id/reserved/new',
+    title: 'Novo personagem reservado',
+    canActivate: [authGuard],
+    data: { reserved: true },
     loadChildren: () =>
       import('./pages/character-editor/character-editor.routes').then(
         (m) => m.CHARACTER_EDITOR_ROUTES,

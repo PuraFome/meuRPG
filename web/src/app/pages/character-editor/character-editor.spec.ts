@@ -293,8 +293,8 @@ function catalog(): RulesCatalogVm {
   };
 }
 
-function routeParams(params: Record<string, string>) {
-  return { paramMap: of(convertToParamMap(params)) };
+function routeParams(params: Record<string, string>, data: Record<string, unknown> = {}) {
+  return { paramMap: of(convertToParamMap(params)), routeConfig: { data } };
 }
 
 function flush(): Promise<void> {
@@ -319,13 +319,13 @@ async function openStep(fixture: ComponentFixture<CharacterEditor>, label: strin
 describe('CharacterEditor', () => {
   let fake: FakeCharacterEditorSource;
 
-  function configure(params: Record<string, string>): void {
+  function configure(params: Record<string, string>, data: Record<string, unknown> = {}): void {
     TestBed.configureTestingModule({
       imports: [CharacterEditor],
       providers: [
         provideRouter([]),
         { provide: CharacterEditorSource, useClass: FakeCharacterEditorSource },
-        { provide: ActivatedRoute, useValue: routeParams(params) },
+        { provide: ActivatedRoute, useValue: routeParams(params, data) },
       ],
     });
     fake = TestBed.inject(CharacterEditorSource) as unknown as FakeCharacterEditorSource;
@@ -1591,6 +1591,106 @@ describe('CharacterEditor', () => {
       await openKnock(fixture, el);
       expect(document.querySelector('app-spell-details [role=alert]')).not.toBeNull();
       expect(fake.loadSpellDetailsCalls.length).toBe(1);
+    });
+  });
+
+  describe('a character made for a player to claim (MR-049)', () => {
+    function fill(cmp: {
+      fullForm: { patchValue(v: object): void };
+      selectedSkills: { set(v: Set<string>): void };
+    }): void {
+      cmp.fullForm.patchValue({
+        name: 'Kai',
+        race: 'race:gnome',
+        className: 'class:wizard',
+        level: 1,
+        background: 'background:acolyte',
+      });
+      cmp.selectedSkills.set(new Set(['skill:arcana', 'skill:history']));
+    }
+
+    it("opens the editor in the master's mode, titled and labelled for the reserve, with the banner", async () => {
+      configure({ id: 'camp-1' }, { reserved: true });
+      const { el } = await render();
+
+      expect(el.querySelector('h1')?.textContent).toContain('Criar personagem para um jogador');
+      expect(el.querySelector('.editor__reserved')?.textContent).toContain('Personagem reservado.');
+      expect(el.querySelector('.editor__reserved')?.textContent).toContain('Ninguém é dono ainda');
+      expect(el.querySelector('.editor__primary')?.textContent).toContain('Salvar como reservado');
+      // The master's scores are free: the table's ways of making them are for a player.
+      expect(fake.loadAbilityTableCalls).toEqual([]);
+    });
+
+    it('saves it as reserved, with a key of its own, and goes back to the list where its link is made', async () => {
+      configure({ id: 'camp-1' }, { reserved: true });
+      const { fixture } = await render();
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+      fill(cmp);
+
+      await cmp.submit();
+
+      expect(fake.createCharacterCalls.length).toBe(1);
+      expect(fake.createCharacterCalls[0]).toMatchObject({
+        campaignId: 'camp-1',
+        kind: 'player',
+        forPlayer: true,
+      });
+      expect(fake.createCharacterCalls[0].idempotencyKey).toMatch(/^[0-9a-f-]{36}$/);
+      expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1']);
+    });
+
+    it("previews the draft as a reserved one, which the master's rules allow", async () => {
+      configure({ id: 'camp-1' }, { reserved: true });
+      fake.previewCharacterFn = () =>
+        Promise.resolve({ hitPointsMax: 20, hitPointsFromEffects: 1 });
+      const { fixture } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+      vi.useFakeTimers();
+      try {
+        cmp.fullForm.patchValue({
+          race: 'race:gnome',
+          className: 'class:wizard',
+          level: 3,
+          hitPointsMethod: 'rolled',
+          abilities: { con: 14 },
+        });
+        cmp.hitPointsRolls.set([4, 3]);
+        fixture.detectChanges();
+        await openStep(fixture, 'Habilidades');
+        await vi.advanceTimersByTimeAsync(300);
+      } finally {
+        vi.useRealTimers();
+      }
+
+      expect(fake.previewCharacterCalls.length).toBe(1);
+      expect(fake.previewCharacterCalls[0]).toMatchObject({ kind: 'player', forPlayer: true });
+    });
+
+    it('an ordinary player character carries no flag and no banner', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture, el } = await render();
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+      fill(cmp);
+
+      await cmp.submit();
+
+      expect(el.querySelector('.editor__reserved')).toBeNull();
+      expect(fake.createCharacterCalls[0].forPlayer).toBeUndefined();
+    });
+
+    it('editing a reserved character shows the banner too, and saves as any edit', async () => {
+      configure({ id: 'camp-1', characterId: 'kai' });
+      fake.loadCharacterForEditFn = () =>
+        Promise.resolve({ ...fullSheetFor({ name: 'Kai' }), reserved: true });
+      const { el } = await render();
+
+      expect(el.querySelector('.editor__reserved')?.textContent).toContain('Personagem reservado.');
+      expect(el.querySelector('.editor__primary')?.textContent).toContain('Salvar ficha');
     });
   });
 });
