@@ -22,7 +22,7 @@ describe('editor labels', () => {
   it('names only the manual bonuses in use, in sheet order, with their sign', () => {
     expect(describeBonusesInUse({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 })).toBe('');
     expect(describeBonusesInUse({ str: 0, dex: 0, con: 1, int: 2, wis: 0, cha: -1 })).toBe(
-      'Constituição +1, Inteligência +2, Carisma -1',
+      'Constituição +1, Inteligência +2, Carisma \u22121',
     );
     // A field being typed in (not a number yet) is not "in use".
     expect(describeBonusesInUse({ str: null as unknown as number, dex: 0 })).toBe('');

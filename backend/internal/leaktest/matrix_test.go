@@ -206,6 +206,7 @@ func (w *world) ownCharacter(p *person) *charactersv1.Character {
 // readers are still held to their positive control.)
 var unreachable = map[string]string{ //nolint:gosec // G101: kinds of canary and the reasons, no credential
 	"invite-token":  "an invite's token is in the answer to CreateInvite only, once: no read returns it (ListInvites lists the invite, not the secret)",
+	"claim-token":   "a claim link's token is in the answer to CreateClaimLink only, once: no read returns it (the master's list says only the link's state)",
 	"treasure-seed": "the seed goes into PlaceTreasure and is not stored as it is: no read gives it back",
 	"note-Ana":      "a player's private notes have no master's read (MR-030); the owner's ListNotes is the control",
 	"note-Caio":     "a player's private notes have no master's read (MR-030); the owner's ListNotes is the control",

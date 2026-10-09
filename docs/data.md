@@ -48,6 +48,7 @@ flowchart TD
         t_character_vitals["character_vitals, character_wild_shapes"]
         t_character_level_ups["character_level_ups, character_level_up_rolls"]
         t_character_ability_rolls["character_ability_rolls"]
+        t_claim_links["claim_links, claim_sign_ins"]
         t_character_creatures["character_creatures"]
         t_campaign_content["campaign_content, campaign_content_state, campaign_content_off, campaign_content_imports"]
     end
@@ -104,6 +105,8 @@ CockroachDB row-level TTL deletes expired rows with a daily job (hourly for logi
 | `auth_sessions` | `expires_at` | Daily. A `CHECK` also forbids a session longer than 30 days. |
 | `oidc_login_states` | `expires_at` (10 minutes) | Hourly. |
 | `campaign_invites` | `expires_at + INTERVAL '30 days'` | An invite disappears 30 days after it expires. (After a later `ALTER TABLE`, CockroachDB shows the same expression as `expires_at + '30 days'::INTERVAL`; the TTL is the same.) |
+| `claim_links` | `COALESCE(used_at, revoked_at, expires_at) + INTERVAL '30 days'` | A claim link disappears 30 days after it ended: used, revoked or, if neither, expired. |
+| `claim_sign_ins` | `expires_at` (10 minutes) | The link a person signed in with is kept only as long as the login state that carried it. |
 | `campaign_members` | `pending_expires_at` | A pending member who never created the character disappears 30 days after joining (RN-15). The column is `NULL` for everyone else. |
 | `characters` | `CASE WHEN kind = 'player' AND player_user_id IS NULL AND campaign_id IS NULL THEN created_at END` | Deletes only the orphan: a player character with no player (account deleted) and no campaign (campaign deleted). Nobody can reach it, and it still holds its author's free text. `TestOrphanedPlayerCharactersAreDeletedByTheDatabase` reads the table's configuration and checks the expression on real rows. |
 
@@ -288,6 +291,8 @@ erDiagram
         jsonb sheet "CharacterSheet, up to 128 KiB"
         jsonb story "CharacterStory, up to 128 KiB"
         bool story_editing_allowed "story release"
+        bool reserved "made for a player to claim, no owner (MR-049)"
+        timestamptz claimed_at "optional, when a player took it through a link"
         int4 sheet_schema
         int4 revision "goes up on each edit"
         timestamptz sheet_locked_at "optional, RN-01"
@@ -296,6 +301,25 @@ erDiagram
         text create_hash
         timestamptz created_at
         timestamptz updated_at
+    }
+
+    claim_links {
+        uuid id PK
+        uuid campaign_id FK "CASCADE"
+        uuid character_id FK "CASCADE"
+        bytea token_hash "SHA-256, UNIQUE"
+        uuid created_by FK "CASCADE"
+        timestamptz created_at
+        timestamptz expires_at "at most 30 days after created_at"
+        timestamptz revoked_at "optional"
+        timestamptz used_at "optional"
+        uuid used_by FK "optional, SET NULL"
+    }
+
+    claim_sign_ins {
+        uuid user_id PK "and FK to users, CASCADE"
+        bytea token_hash "SHA-256 of the link the person signed in with"
+        timestamptz expires_at "10 minutes, TTL"
     }
 
     character_master_notes {
@@ -401,6 +425,10 @@ erDiagram
     users |o--o{ characters : "plays or owns the NPC"
     campaigns |o--o{ characters : "gathers"
     campaigns ||--o{ character_master_notes : "keeps"
+    characters ||--o{ claim_links : "is offered by"
+    campaigns ||--o{ claim_links : "sends"
+    users |o--o{ claim_links : "takes a character through"
+    users ||--o| claim_sign_ins : "signed in with"
     characters ||--o{ character_master_notes : "has"
     characters ||--o| character_vitals : "has"
     characters ||--o| character_wild_shapes : "is in the form of"
@@ -427,12 +455,21 @@ erDiagram
 - **The basic sheet (NPC)** keeps `initiative_bonus` and `attacks` (up to 3), and, when it comes from a creature, `monster_key` and `ability_scores`. `portrait_image_id` (a gallery image of the campaign) is a field of the sheet JSON, not a column: a player's sheet refuses it, the server checks the image belongs to the campaign, and deleting the gallery image removes the field from the sheets that have it, in the same transaction, raising their `revision`.
 - **The NPC the app keeps for each creature put in combat as monsters** (RN-29) is **one per campaign and creature**, made the first time and reused by every combat. It also carries `combat_only` in the sheet (only the server writes it): `ListCharacters` uses it not to show the NPC to the master, and it refuses the NPC as a participant, on the stage and as a token (no extra column). The monsters in combat are copies of it: each one's name ("Bandido 1") and HP stay on the combatant row, and the NPC is never deleted (combatants, XP and the summary point to it).
 - **The basic sheet has no fly speed**: a monster that flies walks with the speed `npcSheetFromCreature` chooses. Sheets saved with `attack_bonus` and `damage` as text are converted on read, with no migration (see [Architecture](architecture.md#characters-module-characters-and-sheets)). The challenge rating and the XP value of an NPC (`challenge_rating`, `xp_value`) are sheet fields too (`FullSheet` for enemy and boss, `BasicSheet` for minion): no column. The server checks the challenge rating against the `rules` list and the XP (0 to 1,000,000), and a player's sheet refuses both.
+- **A reserved character (MR-049)** has `reserved = true`, `player_user_id` NULL and `status = 'active'` (`CHECK characters_reserved_shape`: only a living player character, with no owner and never claimed). `claimed_at` is set when a player takes the character through a link, stays while they own it and is what lets the master give it back; both columns are explained in [Reserved characters and claim links](#reserved-characters-and-claim-links). The queries that list a party leave out `reserved` characters.
 - **`story_editing_allowed`** is the story release the master gives, character by character (RN-01). The start of each session turns off all the campaign's releases.
 - **`revision`** goes up on each change of name, sheet or story. A save with an old revision gets `aborted` in the API, so two people editing at once do not erase each other's work. Locking, dying and releasing the story do not touch the revision.
 - **Refused character (MR-024).** `RejectCharacter` immediately deletes the pending character's row, with its story, and the player's pending membership. It is the only character deletion outside account deletion, and the query deletes only rows with `status = 'pending'`: an approved character changes state, never row (RN-03).
 - **Index**: `(campaign_id, player_user_id)` serves the lists and the lock. There is no index on `player_user_id` or `master_user_id` alone: only account deletion searches by them.
 - **`character_master_notes`** has the primary key `(campaign_id, character_id)`: the same NPC in two campaigns (MR-022) will have separate notes. Empty notes delete the row. Notes disappear with the campaign or the character, including a refused pending character; that deletion searches the notes by `character_id` without an index, which is cheap on a small table.
 - **Campaign content** (`campaign_content`, `campaign_content_state`, `campaign_content_off`, `campaign_content_imports`) is described below.
+
+### Reserved characters and claim links
+
+A reserved character is a player character the master made (or imported with the campaign) for a player to take. It has no owner (`player_user_id` is NULL, as for a character whose player deleted the account, RN-16, but `reserved` tells the two apart): no player reads it, and the queries that list "the party" (vitals, combat, map tokens, vision) leave it out. Taking it is the **claim**: one transaction sets `player_user_id`, clears `reserved`, sets `claimed_at`, makes the person a member of the campaign and spends the link. Giving it back (`ReturnCharacterToReserve`) is the reverse: no owner, `reserved` again, `claimed_at` cleared; the membership stays.
+
+- **`claim_links`** holds the link the master sent, one row per link. Like `campaign_invites`, only the SHA-256 of the 32-byte token is stored (`token_hash`, `UNIQUE`, 32 bytes); the secret is shown once to the master. A link works while `used_at` and `revoked_at` are NULL and `expires_at` is in the future; `CHECK`s keep the validity at 30 days at most and a link from being both used and revoked. The partial unique index `claim_links_one_live_per_character` allows one live link per character even if two `CreateClaimLink` calls race (a new link revokes the old one first). `used_by` is the person who took the character (`SET NULL` if they delete the account). The row goes with its campaign, its character or the master who made it (`CASCADE`), and by TTL 30 days after the link ended. An index on `(character_id, created_at DESC)` finds a character's latest link for the master's list.
+- **`claim_sign_ins`** keeps, for a person who signed in with a claim link, the SHA-256 of that link for 10 minutes (one row per person, replaced by a newer link), so the page can show the card after the sign-in without the secret in the address. Nothing is claimed by it.
+- **Why `claimed_at` is on the character and not read from the link:** the link row is deleted 30 days after it ends, and the master must be able to give a character back after that.
 
 ### Vitals, level-ups and creatures
 

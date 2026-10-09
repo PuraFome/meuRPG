@@ -31,15 +31,16 @@
   list-style: none;
   // Sizes per count, as shares of the stage (a phone): one or two figures, the
   // speaker larger; three or four, one size on a grid of two columns.
-  --w: 38.5cqw;
-  --ws: 46.6cqw;
+  // On a short phone the vh caps keep the stage under about 45% of the screen, so the scene's actions stay in view.
+  --w: min(38.5cqw, 24vh);
+  --ws: min(46.6cqw, 28vh);
 }
 
 .stage[data-count='3'] .stage__row,
 .stage[data-count='4'] .stage__row {
   align-items: flex-start;
   gap: 14px 12px;
-  --w: min(112px, 34.8cqw);
+  --w: min(112px, 34.8cqw, 14vh);
   --ws: var(--w);
 }
 

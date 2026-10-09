@@ -94,10 +94,12 @@
       @for (t of tiles(); track t.name) {
         <li class="tile" [class.tile--used]="t.used">
           <span class="tile__name">{{ t.name }}</span>
-          <span class="dot" aria-hidden="true">
-            @if (t.used) {<mat-icon>close</mat-icon>}
+          <span class="tile__state">
+            <span class="dot" aria-hidden="true">
+              @if (t.used) {<mat-icon>close</mat-icon>}
+            </span>
+            <span class="tile__word">{{ t.word }}</span>
           </span>
-          <span class="tile__word">{{ t.word }}</span>
         </li>
       }
       @if (movement(); as m) {
@@ -171,7 +173,7 @@
     <app-concentration-line [spell]="concentration()" [busy]="busy()" (end)="endConcentration.emit()" />
   }
 
-  @if (!wide() && !down()) {
+  @if (!wide() && !down() && !(orderBelow() && banner().mine)) {
     <app-order-strip [encounter]="encounter()" />
   }
 </section>

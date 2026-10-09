@@ -66,6 +66,9 @@
     @if (paint.hasGrid() && paint.session.readiness() === 'failed') {
       <button why matButton type="button" (click)="paint.retryRead()">Tentar de novo</button>
     }
+    @if (!paint.hasGrid()) {
+      <button why matButton="outlined" type="button" (click)="goToGrid()">Ir para a grade</button>
+    }
   </app-editor-bar>
 
   <div class="layout" [class.layout--paint]="mode() === 'paint'">

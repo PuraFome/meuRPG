@@ -1,4 +1,5 @@
 import type { GetMapVisionResponse } from '../../../gen/meurpg/maps/v1/maps_pb';
+import type { Square } from '../combat/combat-grid';
 
 /**
  * What `GetMapVision` says of each square (maps.proto): the values of the
@@ -143,6 +144,57 @@ export function seenCount(vision: Vision): number {
     }
   }
   return n;
+}
+
+/** A rectangle of squares: `cols` by `rows` from (`col`, `row`). */
+export interface SquareWindow {
+  readonly col: number;
+  readonly row: number;
+  readonly cols: number;
+  readonly rows: number;
+}
+
+/**
+ * The squares the viewer knows anything of (seen now, seen before, or a wall
+ * beside them) and the extra squares `squares` that hold a token, as the
+ * smallest rectangle around them plus `margin` squares each side, kept on the
+ * grid; `null` when nothing is known. Counting, not rules: the server decided
+ * each square.
+ */
+export function knownWindow(
+  vision: Vision,
+  tokens: readonly Square[],
+  margin: number,
+): SquareWindow | null {
+  let c0 = vision.columns;
+  let r0 = vision.rows;
+  let c1 = -1;
+  let r1 = -1;
+  const take = (col: number, row: number) => {
+    c0 = Math.min(c0, col);
+    r0 = Math.min(r0, row);
+    c1 = Math.max(c1, col);
+    r1 = Math.max(r1, row);
+  };
+  vision.states.forEach((state, n) => {
+    if (state !== Sight.Unseen) {
+      take(n % vision.columns, Math.floor(n / vision.columns));
+    }
+  });
+  for (const t of tokens) {
+    take(t.col, t.row);
+  }
+  if (c1 < 0) {
+    return null;
+  }
+  const col = Math.max(0, c0 - margin);
+  const row = Math.max(0, r0 - margin);
+  return {
+    col,
+    row,
+    cols: Math.min(vision.columns, c1 + margin + 1) - col,
+    rows: Math.min(vision.rows, r1 + margin + 1) - row,
+  };
 }
 
 /** Which states are on the map, for the legend (it names only what is drawn). */

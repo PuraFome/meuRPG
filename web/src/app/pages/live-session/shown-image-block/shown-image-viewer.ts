@@ -85,8 +85,10 @@ import type { ShownImageVm } from '../live-session.types';
 
       img {
         display: block;
-        max-width: 100%;
-        max-height: 100%;
+        // The width and height attributes keep the room reserved; the picture fills the stage, whole (contain), also
+        // when the image is smaller than the window.
+        width: 100%;
+        height: 100%;
         object-fit: contain;
         // Pinch zoom on a phone is the browser's own.
         touch-action: pinch-zoom;

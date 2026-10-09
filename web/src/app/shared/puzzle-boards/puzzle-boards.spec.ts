@@ -351,7 +351,7 @@ describe('RiddleBoard (E10-12 state 6)', () => {
 
   it('keeps the field and the button together (they are the foot of a short screen) and the counters with the notes, apart', () => {
     const rows: CounterRow[] = [
-      { key: 'attempts', label: 'Suas tentativas', value: '2 de 3', spent: false },
+      { key: 'attempts', label: 'Tentativas restantes', value: '2 de 3', spent: false },
     ];
     const { el } = riddle({ mode: 'play', counters: rows, verdict: 'wrong' });
     const form = el.querySelector('form')!;
@@ -361,7 +361,9 @@ describe('RiddleBoard (E10-12 state 6)', () => {
     // The sticky group holds nothing else: the wrong-answer notice and the counters scroll.
     expect(stick.querySelector('app-limit-counters, .mr-notice')).toBeNull();
     const notes = form.querySelector('.ask__notes')!;
-    expect(notes.querySelector('app-limit-counters')?.textContent).toContain('Suas tentativas');
+    expect(notes.querySelector('app-limit-counters')?.textContent).toContain(
+      'Tentativas restantes',
+    );
     expect(notes.querySelector('.mr-notice--danger')?.textContent).toContain('Não é isso.');
   });
 

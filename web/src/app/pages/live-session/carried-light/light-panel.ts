@@ -45,7 +45,7 @@ export class LightPanel {
       .filter((t) => t.kind === CharacterKind.PLAYER && !t.creatureId)
       .map((t) => ({
         token: t,
-        sub: this.info().get(t.characterId)?.playerName ?? 'Jogador sem nome',
+        sub: this.info().get(t.characterId)?.playerName ?? 'Sem nome no perfil',
         options: carriedOptions(this.all(), t.carriedLight),
       })),
   );

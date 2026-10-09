@@ -1,7 +1,7 @@
 <app-combatant-token [initial]="initial()" [size]="32" />
 <div class="rl__body">
   <div class="rl__top">
-    <b class="rl__who">{{ roll().characterName }}</b>
+    <b class="rl__who">{{ who() }}</b>
     <time class="rl__time">{{ clock() }}</time>
   </div>
   <p class="rl__action">{{ action() }}</p>
