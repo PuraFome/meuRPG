@@ -288,7 +288,7 @@ func (q *Queries) InsertSpellCast(ctx context.Context, arg InsertSpellCastParams
 
 const listCarriedSpellCasts = `-- name: ListCarriedSpellCasts :many
 SELECT id, campaign_id, game_session_id, caster_id, spell_key, ritual, slot_level, slot_pact, status, end_reason, concentrating, casting_minutes, lasts, duration_seconds, rest_ends, secret, targets, dice_count, dice_sides, roll_faces, roll_total, physical, creature_ids, carried_encounter_id, started_at, cast_at, ended_at FROM spell_casts
-WHERE carried_encounter_id = $1 AND status = 'active'
+WHERE carried_encounter_id = $1 AND status IN ('casting', 'active')
 `
 
 // The casts whose concentration a combat's combatants hold now.
@@ -505,6 +505,67 @@ func (q *Queries) ListLiveSpellCastsOfCasters(ctx context.Context, casterIds []s
 	return items, nil
 }
 
+const listLiveSpellCastsOnTarget = `-- name: ListLiveSpellCastsOnTarget :many
+SELECT id, campaign_id, game_session_id, caster_id, spell_key, ritual, slot_level, slot_pact, status, end_reason, concentrating, casting_minutes, lasts, duration_seconds, rest_ends, secret, targets, dice_count, dice_sides, roll_faces, roll_total, physical, creature_ids, carried_encounter_id, started_at, cast_at, ended_at FROM spell_casts
+WHERE campaign_id = $1 AND status = 'active' AND targets @> $2::JSONB
+ORDER BY started_at, id
+`
+
+type ListLiveSpellCastsOnTargetParams struct {
+	CampaignID string
+	Target     []byte
+}
+
+// The live casts that name the character among their targets (Mage Armor, Aid): what
+// is still on a target when one of them ends.
+func (q *Queries) ListLiveSpellCastsOnTarget(ctx context.Context, arg ListLiveSpellCastsOnTargetParams) ([]SpellCast, error) {
+	rows, err := q.db.Query(ctx, listLiveSpellCastsOnTarget, arg.CampaignID, arg.Target)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SpellCast
+	for rows.Next() {
+		var i SpellCast
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.GameSessionID,
+			&i.CasterID,
+			&i.SpellKey,
+			&i.Ritual,
+			&i.SlotLevel,
+			&i.SlotPact,
+			&i.Status,
+			&i.EndReason,
+			&i.Concentrating,
+			&i.CastingMinutes,
+			&i.Lasts,
+			&i.DurationSeconds,
+			&i.RestEnds,
+			&i.Secret,
+			&i.Targets,
+			&i.DiceCount,
+			&i.DiceSides,
+			&i.RollFaces,
+			&i.RollTotal,
+			&i.Physical,
+			&i.CreatureIds,
+			&i.CarriedEncounterID,
+			&i.StartedAt,
+			&i.CastAt,
+			&i.EndedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSessionSpellCasts = `-- name: ListSessionSpellCasts :many
 SELECT id, campaign_id, game_session_id, caster_id, spell_key, ritual, slot_level, slot_pact, status, end_reason, concentrating, casting_minutes, lasts, duration_seconds, rest_ends, secret, targets, dice_count, dice_sides, roll_faces, roll_total, physical, creature_ids, carried_encounter_id, started_at, cast_at, ended_at FROM spell_casts
 WHERE game_session_id = $1
@@ -577,6 +638,24 @@ type SetCombatantMageArmorACParams struct {
 
 func (q *Queries) SetCombatantMageArmorAC(ctx context.Context, arg SetCombatantMageArmorACParams) error {
 	_, err := q.db.Exec(ctx, setCombatantMageArmorAC, arg.ID, arg.MageArmorAc)
+	return err
+}
+
+const setMageArmorACOfCharacter = `-- name: SetMageArmorACOfCharacter :exec
+UPDATE combatants
+SET mage_armor_ac = $2
+WHERE character_id = $1
+  AND encounter_id IN (SELECT id FROM encounters WHERE status <> 'ended')
+`
+
+type SetMageArmorACOfCharacterParams struct {
+	CharacterID string
+	MageArmorAc *int32
+}
+
+// Mage Armor is on the character: put it on its combatants in the combats that are not ended.
+func (q *Queries) SetMageArmorACOfCharacter(ctx context.Context, arg SetMageArmorACOfCharacterParams) error {
+	_, err := q.db.Exec(ctx, setMageArmorACOfCharacter, arg.CharacterID, arg.MageArmorAc)
 	return err
 }
 

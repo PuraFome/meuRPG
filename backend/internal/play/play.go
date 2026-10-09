@@ -508,9 +508,10 @@ func (s *Service) namesFor(ctx context.Context, campaignID string) func(key stri
 
 // The compiler checks that Service implements the handler.
 var (
-	_ playv1connect.PlayServiceHandler   = (*Service)(nil)
-	_ playv1connect.CombatServiceHandler = (*Service)(nil)
-	_ playv1connect.PuzzleServiceHandler = (*Service)(nil)
+	_ playv1connect.PlayServiceHandler    = (*Service)(nil)
+	_ playv1connect.CombatServiceHandler  = (*Service)(nil)
+	_ playv1connect.CastingServiceHandler = (*Service)(nil)
+	_ playv1connect.PuzzleServiceHandler  = (*Service)(nil)
 )
 
 // New returns a Service.
@@ -609,6 +610,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	))
 	handle(playv1connect.NewPlayServiceHandler(s, opts...))
 	handle(playv1connect.NewCombatServiceHandler(s, opts...))
+	handle(playv1connect.NewCastingServiceHandler(s, opts...))
 	handle(playv1connect.NewPuzzleServiceHandler(s, opts...))
 	handle(playv1connect.NewEncounterServiceHandler(s, opts...))
 }

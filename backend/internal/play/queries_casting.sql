@@ -43,7 +43,7 @@ LIMIT $2;
 -- name: ListCarriedSpellCasts :many
 -- The casts whose concentration a combat's combatants hold now.
 SELECT * FROM spell_casts
-WHERE carried_encounter_id = $1 AND status = 'active';
+WHERE carried_encounter_id = $1 AND status IN ('casting', 'active');
 
 -- name: FinishSpellCast :one
 -- The casting is done and the spell took effect: it lasts (active) or it is over
@@ -80,3 +80,17 @@ UPDATE combatants
 SET mage_armor_ac = NULL
 WHERE character_id = $1 AND mage_armor_ac IS NOT NULL
   AND encounter_id IN (SELECT id FROM encounters WHERE status <> 'ended');
+
+-- name: SetMageArmorACOfCharacter :exec
+-- Mage Armor is on the character: put it on its combatants in the combats that are not ended.
+UPDATE combatants
+SET mage_armor_ac = $2
+WHERE character_id = $1
+  AND encounter_id IN (SELECT id FROM encounters WHERE status <> 'ended');
+
+-- name: ListLiveSpellCastsOnTarget :many
+-- The live casts that name the character among their targets (Mage Armor, Aid): what
+-- is still on a target when one of them ends.
+SELECT * FROM spell_casts
+WHERE campaign_id = $1 AND status = 'active' AND targets @> sqlc.arg(target)::JSONB
+ORDER BY started_at, id;

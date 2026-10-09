@@ -8,8 +8,8 @@
 -- spent yet, and the caster is concentrating on the casting), 'active' (it took
 -- effect and lasts, or the caster concentrates on it), 'ended' (it took effect and is
 -- over) or 'failed' (the casting did not finish; no slot was spent). end_reason says
--- why a cast is over: 'instant', 'dismissed', 'concentration', 'rest', 'interrupted',
--- 'combat_started' or 'caster_gone'. The app does not count a spell's duration: a
+-- why a cast is over: 'instant', 'dismissed', 'concentration', 'rest', 'interrupted'
+-- or 'caster_gone'. The app does not count a spell's duration: a
 -- lasting spell ends by the master, the caster's concentration or a rest.
 --
 -- caster_id is a character, a player's or an NPC (a cast by an NPC spends nothing).
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS spell_casts (
     CONSTRAINT spell_casts_spell_key_length CHECK (char_length(spell_key) BETWEEN 1 AND 100),
     CONSTRAINT spell_casts_status_valid CHECK (status IN ('casting', 'active', 'ended', 'failed')),
     CONSTRAINT spell_casts_end_reason_valid CHECK (
-        end_reason IS NULL OR end_reason IN ('instant', 'dismissed', 'concentration', 'rest', 'interrupted', 'combat_started', 'caster_gone')
+        end_reason IS NULL OR end_reason IN ('instant', 'dismissed', 'concentration', 'rest', 'interrupted', 'caster_gone')
     ),
     CONSTRAINT spell_casts_over_valid CHECK ((status IN ('ended', 'failed')) = (ended_at IS NOT NULL AND end_reason IS NOT NULL)),
     CONSTRAINT spell_casts_slot_valid CHECK (slot_level BETWEEN 0 AND 9),

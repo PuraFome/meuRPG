@@ -46,7 +46,13 @@ func sheetKey(c playdb.Combatant) string {
 // a creature's stat block with what its spell lets it attack with.
 func (s *Service) sheetOf(ctx context.Context, tx pgx.Tx, campaignID string, c playdb.Combatant) (link.Sheet, error) {
 	if !isCreature(c) {
-		return s.roster.CombatSheet(ctx, tx, campaignID, c.CharacterID)
+		sheet, err := s.roster.CombatSheet(ctx, tx, campaignID, c.CharacterID)
+		// Mage Armor, cast outside the combat, gives the better of the two armor classes
+		// (casting_combat.go).
+		if err == nil && c.MageArmorAc != nil && int(*c.MageArmorAc) > sheet.ArmorClass {
+			sheet.ArmorClass = int(*c.MageArmorAc)
+		}
+		return sheet, err
 	}
 	sheet, ok, err := s.roster.CreatureSheet(ctx, tx, campaignID, deref(c.MonsterKey), deref(c.SummonAttack))
 	if err != nil {

@@ -29,14 +29,17 @@ import "meurpg/rules/v1/rules.proto";
 // is cast in two steps: CastSpellOutsideCombat starts it (the caster is then concentrating on
 // the casting, and no slot is spent), and FinishCast ends it when the time has
 // passed, which is when the slot is spent and the spell takes effect. A cast that
-// is interrupted, or still going when a combat starts, fails and spends nothing
-// (SRD 5.1, "Longer Casting Times"). The app does not keep time: the table says
-// when the minutes have passed.
+// is interrupted (its concentration broke) fails and spends nothing (SRD 5.1,
+// "Longer Casting Times"). A combat that starts meanwhile does not cancel it: the
+// caster spends the action of each turn on it and keeps concentrating, and the combatant
+// carries the concentration. The app keeps no clock: outside a combat the master says
+// when the time has passed and completes the cast.
 //
 // A spell that lasts is kept until the master ends it (EndSpell), the caster stops
 // concentrating, another concentration spell replaces it, or a rest long enough
 // for its whole duration (an hour for a short rest, 8 hours for a long one) ends
-// it. The app does not count a spell's hours.
+// it. Durations are game time, never the wall clock: the app does not count a spell's
+// hours.
 //
 // Who sees what (RN-10, RN-20): the master sees every cast. A player sees the casts
 // of the characters they may see: the player characters, and the NPCs on the stage.
@@ -146,22 +149,21 @@ service CastingService {
   //   - `failed_precondition`: no open session (GameSessionBlocked,
   //     NO_OPEN_SESSION); the caster is in a combat (CastingBlocked, IN_COMBAT:
   //     cast there), has a cast going (CAST_IN_PROGRESS), has no free slot of that
-  //     level (NO_SLOT), is in a beast form (WILD_SHAPE_NO_SPELLS), or a Mage Armor
+  //     level (NO_SLOT), is in a beast form (EncounterBlocked, WILD_SHAPE_NO_SPELLS), or a Mage Armor
   //     target wears armor (TARGET_WEARS_ARMOR).
   rpc CastSpellOutsideCombat(CastSpellOutsideCombatRequest) returns (CastSpellOutsideCombatResponse);
 
-  // FinishCast ends a cast that is in the CASTING state: the time has passed. The slot
+  // FinishCast ends a cast that is in the CASTING state: the master confirms the game
+  // time has passed ("Concluir conjuração"). Only the master may call it. The slot
   // is spent now (NO_SLOT, with nothing changed, when it is no longer free) and the
-  // spell takes effect as CastSpellOutsideCombat describes, with the roll and the summoning choice
-  // this request carries. The caster's player may call it, and the master. A combat
-  // that began meanwhile failed the cast already (the cast is FAILED with the reason
-  // COMBAT_STARTED, and this method refuses with CAST_NOT_GOING).
+  // spell takes effect as CastSpellOutsideCombat describes, with the roll and the summoning
+  // choice this request carries. While the caster is a combatant of a combat that is not
+  // ended the cast goes on there and this method refuses (IN_COMBAT).
   //
   // Errors:
   //   - `not_found`: the cast is not one of the open session's, or the caller may
   //     not see it.
-  //   - `permission_denied`: the caller is a player and the caster is not their
-  //     character.
+  //   - `permission_denied`: the caller is a player.
   //   - `invalid_argument`: as CastSpellOutsideCombat for the roll and the summoning choice.
   //   - `failed_precondition`: no open session; the cast is not going (CastingBlocked,
   //     CAST_NOT_GOING); no free slot (NO_SLOT); the caster is in a combat
@@ -245,10 +247,8 @@ enum OutsideCastEnd {
   OUTSIDE_CAST_END_REST = 4;
   // The casting was interrupted (InterruptCast).
   OUTSIDE_CAST_END_INTERRUPTED = 5;
-  // A combat began while the spell was being cast.
-  OUTSIDE_CAST_END_COMBAT_STARTED = 6;
   // The caster is not a character of the campaign any more (it died, or was removed).
-  OUTSIDE_CAST_END_CASTER_GONE = 7;
+  OUTSIDE_CAST_END_CASTER_GONE = 6;
 }
 
 // RestThatEnds is the rest long enough for a spell's whole duration to pass.
@@ -290,8 +290,6 @@ enum CastingBlockedReason {
   CASTING_BLOCKED_REASON_CAST_NOT_GOING = 5;
   // EndSpell on a cast that is still being cast.
   CASTING_BLOCKED_REASON_CAST_NOT_ACTIVE = 6;
-  // The character is in a beast form and casts nothing.
-  CASTING_BLOCKED_REASON_WILD_SHAPE_NO_SPELLS = 7;
 }
 
 // CastingBlocked is the detail of CastingService's `failed_precondition`.

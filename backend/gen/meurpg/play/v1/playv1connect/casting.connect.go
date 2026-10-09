@@ -143,21 +143,20 @@ type CastingServiceClient interface {
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION); the caster is in a combat (CastingBlocked, IN_COMBAT:
 	//     cast there), has a cast going (CAST_IN_PROGRESS), has no free slot of that
-	//     level (NO_SLOT), is in a beast form (WILD_SHAPE_NO_SPELLS), or a Mage Armor
+	//     level (NO_SLOT), is in a beast form (EncounterBlocked, WILD_SHAPE_NO_SPELLS), or a Mage Armor
 	//     target wears armor (TARGET_WEARS_ARMOR).
 	CastSpellOutsideCombat(context.Context, *connect.Request[v1.CastSpellOutsideCombatRequest]) (*connect.Response[v1.CastSpellOutsideCombatResponse], error)
-	// FinishCast ends a cast that is in the CASTING state: the time has passed. The slot
+	// FinishCast ends a cast that is in the CASTING state: the master confirms the game
+	// time has passed ("Concluir conjuração"). Only the master may call it. The slot
 	// is spent now (NO_SLOT, with nothing changed, when it is no longer free) and the
-	// spell takes effect as CastSpellOutsideCombat describes, with the roll and the summoning choice
-	// this request carries. The caster's player may call it, and the master. A combat
-	// that began meanwhile failed the cast already (the cast is FAILED with the reason
-	// COMBAT_STARTED, and this method refuses with CAST_NOT_GOING).
+	// spell takes effect as CastSpellOutsideCombat describes, with the roll and the summoning
+	// choice this request carries. While the caster is a combatant of a combat that is not
+	// ended the cast goes on there and this method refuses (IN_COMBAT).
 	//
 	// Errors:
 	//   - `not_found`: the cast is not one of the open session's, or the caller may
 	//     not see it.
-	//   - `permission_denied`: the caller is a player and the caster is not their
-	//     character.
+	//   - `permission_denied`: the caller is a player.
 	//   - `invalid_argument`: as CastSpellOutsideCombat for the roll and the summoning choice.
 	//   - `failed_precondition`: no open session; the cast is not going (CastingBlocked,
 	//     CAST_NOT_GOING); no free slot (NO_SLOT); the caster is in a combat
@@ -385,21 +384,20 @@ type CastingServiceHandler interface {
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION); the caster is in a combat (CastingBlocked, IN_COMBAT:
 	//     cast there), has a cast going (CAST_IN_PROGRESS), has no free slot of that
-	//     level (NO_SLOT), is in a beast form (WILD_SHAPE_NO_SPELLS), or a Mage Armor
+	//     level (NO_SLOT), is in a beast form (EncounterBlocked, WILD_SHAPE_NO_SPELLS), or a Mage Armor
 	//     target wears armor (TARGET_WEARS_ARMOR).
 	CastSpellOutsideCombat(context.Context, *connect.Request[v1.CastSpellOutsideCombatRequest]) (*connect.Response[v1.CastSpellOutsideCombatResponse], error)
-	// FinishCast ends a cast that is in the CASTING state: the time has passed. The slot
+	// FinishCast ends a cast that is in the CASTING state: the master confirms the game
+	// time has passed ("Concluir conjuração"). Only the master may call it. The slot
 	// is spent now (NO_SLOT, with nothing changed, when it is no longer free) and the
-	// spell takes effect as CastSpellOutsideCombat describes, with the roll and the summoning choice
-	// this request carries. The caster's player may call it, and the master. A combat
-	// that began meanwhile failed the cast already (the cast is FAILED with the reason
-	// COMBAT_STARTED, and this method refuses with CAST_NOT_GOING).
+	// spell takes effect as CastSpellOutsideCombat describes, with the roll and the summoning
+	// choice this request carries. While the caster is a combatant of a combat that is not
+	// ended the cast goes on there and this method refuses (IN_COMBAT).
 	//
 	// Errors:
 	//   - `not_found`: the cast is not one of the open session's, or the caller may
 	//     not see it.
-	//   - `permission_denied`: the caller is a player and the caster is not their
-	//     character.
+	//   - `permission_denied`: the caller is a player.
 	//   - `invalid_argument`: as CastSpellOutsideCombat for the roll and the summoning choice.
 	//   - `failed_precondition`: no open session; the cast is not going (CastingBlocked,
 	//     CAST_NOT_GOING); no free slot (NO_SLOT); the caster is in a combat

@@ -197,4 +197,3 @@ func (s *Service) MageArmorAC(ctx context.Context, tx pgx.Tx, campaignID, charac
 	b.MageArmor = true
 	return link.MageArmor{Applies: true, AC: rules.Derive(b, content).ArmorClass}, nil
 }
-

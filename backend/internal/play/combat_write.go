@@ -168,6 +168,10 @@ type combatTx struct {
 	// opened: a critical hit and who sees the death saves follow them from the
 	// next roll on, and are never kept longer than the change.
 	rules tablerules.Rules
+	// castsChanged says the casts outside a combat changed in this change (a combat
+	// that began failed a casting, carried a concentration, ended one): castsUnchanged,
+	// castsMasterOnly or castsPublic. write tells the streams after the commit.
+	castsChanged int
 }
 
 // combatResult is what a change leaves for the handler: the session, and
@@ -326,6 +330,9 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 	res.stamped = last
 	if ended != nil {
 		res.lines = ended.lines
+	}
+	if ended != nil && ended.castsChanged != castsUnchanged {
+		s.publishCastsChanged(w.m.CampaignID, ended.castsChanged == castsMasterOnly)
 	}
 	// A turn that started ended some familiar's sight (MR-036): the player's vitals
 	// and the fog's view change.
