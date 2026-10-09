@@ -289,6 +289,8 @@ func (w *world) buildSession() {
 	w.secrets.id("offstage-npc", w.offstage.GetId())
 	must(m.play.PutOnStage(ctx, rq(&playv1.PutOnStageRequest{CampaignId: w.campaign, CharacterId: w.merchant.GetId()})))
 
+	w.buildHealing()
+
 	// A scene prepared and never opened: everything on it is the master's.
 	s2 := w.point(w.fogMap, mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, w.secrets.marker("scene-closed-name"), w.secrets.marker("scene-closed-description"), 6, 8, func(r *mapsv1.CreateMapPointRequest) {
 		r.Hooks = w.secrets.marker("scene-closed-hooks")

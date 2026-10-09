@@ -77,6 +77,28 @@ describe('CastingPanel (MR-048)', () => {
     expect(api.finished[0]).toMatchObject({ castId: 'long', dice: { inApp: true } });
   });
 
+  it("the master's queue card reads as the board draws it: the title, the line, and the note that there is no clock", async () => {
+    const ritual = outsideCast({
+      id: 'r',
+      spellNamePt: 'Alarme',
+      casterName: 'Pensantus',
+      status: OutsideCastStatus.CASTING,
+      ritual: true,
+      castingMinutes: 11,
+    });
+    const { el } = await setup(true, (a) => (a.active = [ritual]));
+    expect(plain(el.querySelector('.cast__name')?.textContent)).toBe('Alarme (ritual)');
+    expect(plain(el.querySelector('.cast__who')?.textContent)).toBe('Pensantus · 11 minutos');
+    expect(plain(el.querySelector('[role="note"] p')?.textContent)).toBe(
+      'Fora do combate não há relógio: a conjuração termina quando você confirma que o tempo passou.',
+    );
+  });
+
+  it('the player has no queue note: they only wait for the master', async () => {
+    const { el } = await setup(false, (a) => (a.active = [casting]));
+    expect(el.querySelector('[role="note"]')).toBeNull();
+  });
+
   it('with physical dice the master types the sum, and it goes along', async () => {
     const { el, api, press, settle } = await setup(
       true,
