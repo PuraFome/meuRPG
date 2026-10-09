@@ -58,8 +58,9 @@ export type Campaign = Message<"meurpg.campaigns.v1.Campaign"> & {
   /**
    * True when the caller is a pending member (RN-15, MR-024): they accepted
    * an invite that requires approval, and the master has not approved their
-   * character yet. Then only id, name and my_role (ROLE_PLAYER) are set:
-   * xp_mode is unspecified and created_at is unset.
+   * character yet. Then only id, name, my_role (ROLE_PLAYER) and xp_mode are
+   * set (the XP mode is no secret, and the editor needs it); created_at is
+   * unset.
    *
    * @generated from field: bool awaiting_approval = 6;
    */
@@ -1672,8 +1673,8 @@ export const DeathSaveVisibilitySchema: GenEnum<DeathSaveVisibility> = /*@__PURE
  * for the master to approve the character they create (see
  * meurpg.characters.v1.CharacterService.ApproveCharacter). A pending member
  * is not a member yet. They see the campaign in ListMyCampaigns and
- * through GetCampaign, both with only its name and `awaiting_approval`
- * set; every other method answers them `not_found`, exactly as for someone
+ * through GetCampaign, both with only its name, the campaign's XP mode and
+ * `awaiting_approval` set; every other method answers them `not_found`, exactly as for someone
  * who is not in the campaign.
  *
  * Responses carry `Cache-Control: no-store`, because they describe the
@@ -1711,7 +1712,7 @@ export const CampaignService: GenService<{
    * ListMyCampaigns lists the campaigns the caller is a member of, newest
    * first, with the caller's role in each. It also lists the campaigns where
    * the caller is a pending member (RN-15, MR-024), with only the id, the
-   * name, my_role and `awaiting_approval` set, so the player can find their
+   * name, my_role, xp_mode and `awaiting_approval` set, so the player can find their
    * way back to the campaign while they wait.
    *
    * Its request is empty, so clients may call it with HTTP GET: the URL
@@ -1730,8 +1731,9 @@ export const CampaignService: GenService<{
    * the URL.
    *
    * A pending member (RN-15, MR-024) may call it too, and gets only the
-   * campaign's id, name, my_role (ROLE_PLAYER) and `awaiting_approval` set:
-   * enough to show "esperando a aprovação do mestre".
+   * campaign's id, name, my_role (ROLE_PLAYER), xp_mode and `awaiting_approval`
+   * set: enough to show "esperando a aprovação do mestre", and for the
+   * character editor to start a new character at its level's XP.
    *
    * @generated from rpc meurpg.campaigns.v1.CampaignService.GetCampaign
    */
@@ -1869,8 +1871,8 @@ export const CampaignService: GenService<{
    *
    * Invites with approval (RN-15, MR-024). When the invite has
    * `requires_approval`, the caller becomes a pending member, not a player:
-   * the returned campaign has `awaiting_approval` set and only its id, name
-   * and my_role. The app takes them straight to creating their character
+   * the returned campaign has `awaiting_approval` set and only its id, name,
+   * my_role and xp_mode. The app takes them straight to creating their character
    * (CharacterService.CreateCharacter), which starts PENDING. They become a
    * player when the master approves that character
    * (CharacterService.ApproveCharacter); if the master rejects it

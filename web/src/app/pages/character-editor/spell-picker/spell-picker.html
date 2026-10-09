@@ -1,6 +1,12 @@
 <section class="picker" [attr.aria-labelledby]="titleId()">
   <h3 class="picker__title" [id]="titleId()">{{ title() }}</h3>
-  <p class="picker__chosen">{{ chosenLine() }}</p>
+  <p class="picker__chosen" [class.picker__chosen--over]="overLimit()">{{ chosenLine() }}</p>
+  @if (overLimit()) {
+    <p class="picker__error" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <span>{{ overLimitReason() }}</span>
+    </p>
+  }
   @if (prepareWarning()) {
     <p class="picker__warn" role="status">{{ prepareWarning() }}</p>
   }

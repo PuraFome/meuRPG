@@ -608,8 +608,9 @@ type Campaign struct {
 	MyRole Role `protobuf:"varint,5,opt,name=my_role,json=myRole,proto3,enum=meurpg.campaigns.v1.Role" json:"my_role,omitempty"`
 	// True when the caller is a pending member (RN-15, MR-024): they accepted
 	// an invite that requires approval, and the master has not approved their
-	// character yet. Then only id, name and my_role (ROLE_PLAYER) are set:
-	// xp_mode is unspecified and created_at is unset.
+	// character yet. Then only id, name, my_role (ROLE_PLAYER) and xp_mode are
+	// set (the XP mode is no secret, and the editor needs it); created_at is
+	// unset.
 	AwaitingApproval bool `protobuf:"varint,6,opt,name=awaiting_approval,json=awaitingApproval,proto3" json:"awaiting_approval,omitempty"`
 	// How the campaign's players roll dice (RN-18). Set for every member;
 	// unspecified for a pending member.
