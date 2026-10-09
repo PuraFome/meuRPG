@@ -13,6 +13,11 @@ import {
   ResourceBlockedReason,
   ResourceBlockedSchema,
 } from '../../../gen/meurpg/play/v1/resources_pb';
+import {
+  type ContestBlocked,
+  ContestBlockedReason,
+  ContestBlockedSchema,
+} from '../../../gen/meurpg/play/v1/contest_types_pb';
 import { describeConnectError } from '../connect/connect-errors';
 import { Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { circleLabel } from './combat-grid';
@@ -32,6 +37,56 @@ export function encounterBlocked(err: unknown): EncounterBlocked | null {
     return null;
   }
   return connectErr.findDetails(EncounterBlockedSchema)[0] ?? null;
+}
+
+/** The typed detail of a `failed_precondition` from `ContestService` (the grapple, the shove, Hide, Help, the group check), or
+ * `null`. The reasons the combat already had keep coming as `EncounterBlocked`. Never read from the message. */
+export function contestBlocked(err: unknown): ContestBlocked | null {
+  const connectErr = ConnectError.from(err, Code.Unavailable);
+  if (connectErr.code !== Code.FailedPrecondition) {
+    return null;
+  }
+  return connectErr.findDetails(ContestBlockedSchema)[0] ?? null;
+}
+
+/** Why a contest or a special action was refused, in words (W7-X). Nothing here names a total, a DC or a creature the player does not see. */
+export function contestBlockedMessage(blocked: ContestBlocked): string {
+  switch (blocked.reason) {
+    case ContestBlockedReason.TARGET_TOO_BIG:
+      return 'Grande demais: no máximo um tamanho acima do seu.';
+    case ContestBlockedReason.NOT_AWAITING:
+      return 'Essa disputa não espera mais por isso. A tela foi atualizada.';
+    case ContestBlockedReason.CONTEST_OPEN:
+      return 'Uma disputa sua ainda espera a resposta.';
+    case ContestBlockedReason.NOT_GRAPPLED:
+      return 'Não há agarrão para soltar. A tela foi atualizada.';
+    case ContestBlockedReason.PUSH_BLOCKED:
+      return 'Há algo na casa de trás: o empurrão não sai do lugar.';
+    case ContestBlockedReason.NO_ROOM_TO_DRAG:
+      return 'Não dá para arrastar por aí: não há casa livre atrás de você para quem você segura.';
+    case ContestBlockedReason.SURPRISED:
+      return 'Surpresa: não se move, não age e não reage até o fim do turno.';
+    case ContestBlockedReason.NOT_AVAILABLE:
+      return 'Essa ação não está na sua ficha.';
+    case ContestBlockedReason.NOT_AN_ALLY:
+      return 'Só dá para ajudar um aliado que ainda está de pé.';
+    case ContestBlockedReason.TASK_NOT_AVAILABLE:
+      return 'Não dá para ajudar nessa tarefa.';
+    case ContestBlockedReason.HIDE_NOT_PENDING:
+      return 'Esse esconderijo já foi decidido. A tela foi atualizada.';
+    case ContestBlockedReason.GROUP_CHECK_OPEN:
+      return 'Já há um teste em grupo aberto.';
+    case ContestBlockedReason.GROUP_CHECK_CLOSED:
+      return 'O mestre já encerrou esse teste em grupo.';
+    case ContestBlockedReason.NOT_IN_GROUP_CHECK:
+      return 'O mestre não pediu esse teste ao seu personagem.';
+    case ContestBlockedReason.ALREADY_ANSWERED:
+      return 'Você já rolou esse teste.';
+    case ContestBlockedReason.COMBAT_BEGUN:
+      return 'O combate já começou.';
+    default:
+      return 'Isso não vale agora. A tela foi atualizada.';
+  }
 }
 
 /** What any action says while a roll of the character waits for the answer about a Bardic Inspiration die: the
@@ -242,6 +297,10 @@ export function combatErrorMessage(err: unknown, what = 'fazer isso'): string {
   const blocked = encounterBlocked(err);
   if (blocked) {
     return blockedMessage(blocked);
+  }
+  const contest = contestBlocked(err);
+  if (contest) {
+    return contestBlockedMessage(contest);
   }
   if (inspirationPending(err)) {
     return INSPIRATION_PENDING_TEXT;
