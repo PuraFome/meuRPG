@@ -85,7 +85,7 @@ async function open(
     over.castSpell ??
     vi.fn().mockResolvedValue({
       encounter: encounter({ combatants: [pensantus, toren, goblin] }),
-      cast: { targets: [], pendingDamages: [], slot: { level: 3, pact: false } },
+      cast: { targets: [], pendingDamages: [], metamagicKeys: [], slot: { level: 3, pact: false } },
       summoned: [],
     });
   const data = {
@@ -208,7 +208,7 @@ describe('CastSheet: an area spell placed on the map', () => {
       .mockRejectedValueOnce(new ConnectError('lost', Code.Unavailable))
       .mockResolvedValue({
         encounter: encounter(),
-        cast: { targets: [], pendingDamages: [] },
+        cast: { targets: [], pendingDamages: [], metamagicKeys: [] },
         summoned: [],
       });
     const { button, placeAt, settle } = await open({

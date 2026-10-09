@@ -325,6 +325,12 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 		if err != nil {
 			return nil, err
 		}
+		// Quickened Spell makes the casting a bonus action: the action being spent
+		// does not stop it (the Metamagic checks the bonus action).
+		if quick := slices.ContainsFunc(req.Msg.GetMetamagic(), func(mc *playv1.MetamagicChoice) bool { return mc.GetKey() == rules.MetamagicQuickened }); quick &&
+			!cast.enabled && cast.reason.GetCode() == rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ACTION_USED {
+			cast.enabled = true
+		}
 		if !cast.enabled {
 			// A summoning spell that takes too long is refused with a reason the screen
 			// can say ("Leva 1 hora: conjure fora do combate").
@@ -367,6 +373,17 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 			}
 		}
 
+		// The Metamagic: checked against the spell and the points, it changes the range
+		// and the casting time, and Twinned Spell adds its second target.
+		meta, err := s.prepareMetamagic(ctx, c, m, v, caster, req.Msg.GetMetamagic(), spellKey, slotLevel, sp, targs, cs)
+		if err != nil {
+			return nil, err
+		}
+		sp, c.meta = meta.apply(sp), meta
+		if meta != nil && meta.second.ID != "" {
+			targs, targets = append(targs, meta.second), append(targets, target{id: meta.second.ID})
+		}
+
 		// Who it touches.
 		known, err := c.sight.knownTerrain(ctx, c.tx, v) // what the player knows of the map, for the cover they are told
 		if err != nil {
@@ -401,6 +418,9 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 		case req.Msg.GetArea() != nil:
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this spell has no area to place on this map: list its targets"))
 		}
+		if err := meta.membersIn(targs); err != nil {
+			return nil, err
+		}
 		darts := dartsOf(sp, slotLevel)
 		dartList := make([]int, len(targets))
 		for i, t := range targets {
@@ -414,7 +434,7 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a summoning spell takes no targets: the creatures appear next to the caster"))
 			}
 		} else if !placedArea {
-			if err := s.checkTargets(v, planOn(v, terrain, known), cs, sp, caster, targs, dartList, darts, slotLevel, isTheatre(c.enc)); err != nil {
+			if err := s.checkMetaTargets(meta, v, planOn(v, terrain, known), cs, sp, caster, targs, dartList, darts, slotLevel, isTheatre(c.enc)); err != nil {
 				return nil, err
 			}
 		}
@@ -479,6 +499,15 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 				return nil, err
 			}
 			vitals = append(vitals, slotVitals)
+		}
+		if meta != nil {
+			// The Metamagic costs sorcery points, spent with the slot.
+			pointsVitals, err := s.spendResource(ctx, c, caster.CharacterID, rules.SorceryPointsKey, clamp32(meta.cost, 0, math.MaxInt32))
+			if err != nil {
+				return nil, err
+			}
+			vitals = append(vitals, pointsVitals)
+			made.Res = &resourceEvent{Kind: resMetamagic, Spent: clamp32(meta.cost, 0, math.MaxInt32), Keys: meta.keys}
 		}
 		after := caster
 		switch sp.Economy {
@@ -814,15 +843,19 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 		// Dexterity saves without rolling (SRD 5.1, Conditions).
 		hit.Save = &saveRoll{DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Auto: true, Unknown: !save.Known}
 	} else {
-		d20, err := s.d20With(rollInput{inApp: true}, save.Bonus, mode)
+		saveMode := mode
+		if c.meta.disadvantaged(target.ID) { // Heightened Spell: disadvantage on its first save, which an advantage cancels
+			saveMode = combat.Resolve(append(slices.Clone(sources), combat.Source{Kind: "heightened-spell", Effect: combat.ModeDisadvantage}))
+		}
+		d20, err := s.d20With(rollInput{inApp: true}, save.Bonus, saveMode)
 		if err != nil {
 			return err
 		}
-		saved = combat.SaveSucceeded(d20.Total, sp.SaveDC)
+		saved = combat.SaveSucceeded(d20.Total, sp.SaveDC) || c.meta.passes(target.ID) // Careful Spell: it passes on its own
 		hit.Save = &saveRoll{
 			D20: clamp32(d20.Face(), 1, 20), Bonus: clamp32(save.Bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total, math.MinInt32, math.MaxInt32),
 			DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Saved: saved, Unknown: !save.Known,
-			D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(mode),
+			D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(saveMode),
 		}
 	}
 	if len(sp.Damages) == 0 || (saved && sp.SaveOnSuccess != "half" && sp.SaveOnSuccess != "other") {

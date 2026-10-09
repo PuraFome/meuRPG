@@ -604,7 +604,4 @@ func (m *spellModes) attach(cast *playv1.SpellCast) {
 }
 
 // The d20 and the pair of them a roll with advantage or disadvantage takes.
-const (
-	d20Sides = 20
-	pairDice = 2
-)
+const pairDice = 2

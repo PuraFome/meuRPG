@@ -526,6 +526,9 @@ type actionEvent struct {
 	StateReason  string `json:"state_reason,omitempty"`
 	StateID      string `json:"state_id,omitempty"`
 
+	// Res is what a class resource flow did (Lay on Hands, Flexible Casting,
+	// Bardic Inspiration): see combat_resources.go.
+	Res *resourceEvent `json:"res,omitempty"`
 	// Reaction is what a reaction window did (PM-04), or marks the event that
 	// stands for a held action (combat_reaction_hold.go).
 	Reaction *reactionEvent `json:"reaction,omitempty"`

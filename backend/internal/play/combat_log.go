@@ -262,6 +262,9 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_REVEAL_CHANGED, !ev.ByArea
 		case eventActionTaken:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION
+			if ev.Res != nil {
+				entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE
+			}
 		case eventHitPointsAdjusted:
 			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED, true
 		case eventDeathSaveRolled:
@@ -531,10 +534,16 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	}
 	switch e.kind {
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK, playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION,
-		playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST, playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION:
+		playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST, playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION,
+		playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:
 		out.KeyNamePt = names.of(ctx, actor, e.ev.Key)
 	}
 	switch e.kind {
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:
+		out.Resource = resourceLogView(e.ev, v, actor, target)
+		if e.ev.Res != nil && e.ev.Res.Kind == resBardicGive && !v.master && !v.owns(actor) && !v.owns(target) {
+			out.TargetId, out.TargetLabel = "", "" // who holds the die is the bard's, the holder's and the master's
+		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_MONSTERS_ADDED:
 		for _, it := range e.ev.Monsters.Items {
 			out.Monsters = append(out.Monsters, &playv1.CombatLogMonster{
@@ -581,6 +590,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 			}
 			out.ModeChange = e.modeChange(e.ev, e.ev.ByMaster)
 			out.Reason = e.rolls.reasonOf(e.ev)
+			out.BonusDice = bonusDiceOf(e.ev)
 		}
 		if len(e.stopped) > 0 { // Escudo stopped it: a miss, with no damage
 			out.Outcome, out.StoppedByReaction = playv1.AttackOutcome_ATTACK_OUTCOME_MISS, true
@@ -659,6 +669,9 @@ func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *
 	caster := byID[e.ev.Actor]
 	out := &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot), Concentrating: e.ev.Concentrate, ConcentrationEndedKey: e.ev.ConcEnded}
 	out.EffectKind, out.PoolRoll, out.EffectConditionKey, out.EffectThreshold = effectHeader(e.ev, v, caster)
+	if e.ev.Res != nil && e.ev.Res.Kind == resMetamagic {
+		out.MetamagicKeys, out.SorceryPointsSpent = e.ev.Res.Keys, e.ev.Res.Spent
+	}
 	for _, h := range e.ev.Hits {
 		target := byID[h.Target]
 		// The players' line never lists a creature that was hidden when an area hit it

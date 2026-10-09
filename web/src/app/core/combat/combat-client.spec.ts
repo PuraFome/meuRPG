@@ -99,6 +99,7 @@ describe('CombatClient area spells', () => {
       undefined,
       '',
       undefined,
+      [],
       { area: { origin: { col: 3, row: 2 } }, revealHidden: false },
     );
     expect(requests[0]['area']).toEqual({ case: 'origin', value: { col: 3, row: 2 } });
@@ -121,6 +122,7 @@ describe('CombatClient area spells', () => {
       undefined,
       '',
       undefined,
+      [],
       { area: { direction: { dx: 1, dy: -1 } } },
     );
     expect('revealHidden' in requests[0]).toBe(false);

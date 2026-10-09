@@ -268,6 +268,7 @@ export class MasterAreaCast {
         undefined,
         '',
         undefined,
+        [],
         { area, revealHidden },
       );
       this.data.state.apply(res.encounter);

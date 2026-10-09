@@ -14,6 +14,8 @@ import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
 import { classCard, passClassStep, tableForLevelUp } from './levelup-support';
+import { aurora, auroraSheet, beginPlacedCombatRPC, nael, naelSheet, orla, orlaSheet, spendForRestRPC } from './rests-support';
+import { castSheet, choiceCard, openCastOf, pickChoice, pickSlotRadio, pickTargetOf, tableForCasting } from './casting-support';
 import { paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
@@ -51,7 +53,6 @@ import {
   tableForPuzzles,
   trapPointRPC,
 } from './puzzles-support';
-import { castSheet, choiceCard, openCastOf, pickChoice, pickSlotRadio, pickTargetOf, tableForCasting } from './casting-support';
 import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { brisa, brisaSheet } from './combat-support';
@@ -6398,6 +6399,316 @@ test('a fúria passa no axe e nas conferências de layout no tema claro, no desk
 test('a fúria passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@PM-07a', '@PM-07b'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanRageScreens(browser, 'dark', 390);
+});
+
+/**
+ * "Descansos e dados de vida" (PM-07b 9, 10): the master's rest card (idle, the short and the long rest asking, done, and the
+ * long rest's warning once one was taken), and the player's "Gastar dados de vida" sheet (the app and the typed roll, the typed
+ * number out of range and valid, a die spent, and no dice left), then the "Recursos" counters on the character sheet.
+ */
+async function scanRestScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width <= 390 ? 700 : 900 };
+  const master = await newSignedInContext(browser, 'Mestre Teste', { colorScheme, viewport });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  m.setDefaultTimeout(20_000);
+  p.setDefaultTimeout(20_000);
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForLevelUp(m, p, `Acessibilidade descansos ${Date.now()}`, { build: toren, sheet: torenSheet, milestone: false });
+    campaignId = table.campaignId;
+    // Toren: 10 of 46 hit points, 3 of 5 d10 spent, Second Wind and Action Surge used.
+    await spendForRestRPC(m, campaignId, table.characterId);
+
+    // The master's card: idle, then the two questions, each with the focus on the button that was tapped.
+    await openSessionPage(m, campaignId);
+    const card = m.getByRole('region', { name: 'Descanso' });
+    await expect(card.getByRole('button', { name: 'Descanso curto' })).toBeVisible();
+    await expectScreenPasses(m, `Descanso, o cartão do mestre ${where}`);
+    await card.getByRole('button', { name: 'Descanso curto' }).click();
+    const question = card.getByRole('alertdialog', { name: 'Começar o descanso curto?' });
+    await expect(question).toContainText('Retomar o Fôlego: Toren 1 de 1');
+    await expectScreenPasses(m, `Descanso curto, a confirmação ${where}`);
+    await card.getByRole('button', { name: 'Descanso longo' }).click();
+    await expect(card.getByRole('alertdialog', { name: 'Começar o descanso longo?' })).toContainText('Metade dos dados de vida');
+    await expectScreenPasses(m, `Descanso longo, a confirmação ${where}`);
+    await card.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(card.getByRole('alertdialog')).toHaveCount(0);
+
+    // The player's sheet of hit dice: the two ways to roll, the typed number, a die spent, no dice left.
+    await openSessionPage(p, campaignId);
+    await p.getByRole('button', { name: 'Gastar dados de vida' }).click();
+    const dice = p.getByRole('dialog', { name: 'Gastar dados de vida' });
+    await expect(dice.getByRole('button', { name: 'Digitar o resultado' })).toBeVisible();
+    await expectScreenPasses(p, `Gastar dados de vida, escolher como rolar ${where}`);
+    await dice.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await expectScreenPasses(p, `Gastar dados de vida, número a digitar ${where}`);
+    await dice.getByLabel(/Role 1d10/).fill('27');
+    await expect(dice.getByRole('alert').filter({ hasText: 'Digite um número de 1 a 10' })).toBeVisible();
+    await expectScreenPasses(p, `Gastar dados de vida, número fora de 1 a 10 ${where}`);
+    await dice.getByLabel(/Role 1d10/).fill('6');
+    await dice.getByRole('button', { name: 'Confirmar 6' }).click();
+    await expect(dice.getByRole('list', { name: 'Dados gastos agora' })).toContainText('Rolou 6 + 3 = 9 · recuperou 9 PV');
+    await expectScreenPasses(p, `Gastar dados de vida, um dado gasto ${where}`);
+    await dice.getByRole('button', { name: /^Rolar d10 no app/ }).click();
+    await expect(dice.getByRole('list', { name: 'Dados gastos agora' }).getByRole('listitem')).toHaveCount(2);
+    await expect(dice.getByText('Não há dados de vida para gastar.')).toBeVisible();
+    await expectScreenPasses(p, `Gastar dados de vida, nenhum dado sobrando ${where}`);
+    await dice.locator('button', { hasText: 'Fechar' }).click();
+    await expect(p.getByRole('dialog')).toHaveCount(0);
+
+    // The rests taken: the done line, and the long rest's warning once one was taken.
+    await card.getByRole('button', { name: 'Descanso curto' }).click();
+    await card.getByRole('button', { name: 'Descansar' }).click();
+    await expect(card.getByText('Descanso curto feito.').first()).toBeVisible();
+    await expectScreenPasses(m, `Descanso curto, feito ${where}`);
+    await card.getByRole('button', { name: 'Descanso longo' }).click();
+    await card.getByRole('button', { name: 'Descansar' }).click();
+    await expect(card.getByText('Descanso longo feito.').first()).toBeVisible();
+    await card.getByRole('button', { name: 'Descanso longo' }).click();
+    await expect(card.getByText('Já houve um descanso longo nesta sessão.')).toBeVisible();
+    await expectScreenPasses(m, `Descanso longo, com o aviso do outro descanso ${where}`);
+    await card.getByRole('button', { name: 'Cancelar' }).click();
+
+    // "Recursos" on the character sheet (a fighter has no spell slots), live while the session is open.
+    await open(p, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    await expect(p.getByRole('region', { name: 'Recursos' }).getByRole('listitem').filter({ hasText: 'Retomar o Fôlego' })).toContainText('1 de 1');
+    await expectScreenPasses(p, `Ficha, os recursos ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('os descansos e os dados de vida passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-012', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRestScreens(browser, 'light', 1280);
+});
+
+test('os descansos e os dados de vida passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-012', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRestScreens(browser, 'dark', 1024);
+});
+
+test('os descansos e os dados de vida passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-012', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRestScreens(browser, 'dark', 390);
+});
+
+test('os descansos e os dados de vida passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-012', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRestScreens(browser, 'light', 320);
+});
+
+/**
+ * "Cura pelas Mãos" and "Inspiração de Bardo" (PM-07c 9 and 12): the paladin's dialog (the touch, the cure, the answer), the
+ * bard's gift (the list, the answer), and the question a held roll asks, "Usar a Inspiração de Bardo (d6)?". Aurora (the
+ * paladin) is Jogador Teste and Orla (the bard) the other player; the master only passes the turns.
+ */
+async function scanLayOnHandsAndInspirationScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width <= 390 ? 700 : 900 };
+  const master = await newSignedInContext(browser, 'Mestre Teste', { colorScheme, viewport });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  m.setDefaultTimeout(20_000);
+  p.setDefaultTimeout(20_000);
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  let bard: Awaited<ReturnType<typeof secondPlayer>> | null = null;
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade mãos ${Date.now()}`, true, false, { build: aurora, sheet: auroraSheet });
+    campaignId = table.campaignId;
+    bard = await secondPlayer(browser, m, campaignId, orla, orlaSheet);
+    await bard.page.setViewportSize(viewport);
+    await bard.page.emulateMedia({ colorScheme });
+    const b = bard.page;
+    b.setDefaultTimeout(20_000);
+    await beginPlacedCombatRPC(
+      m,
+      table,
+      [table.captainId],
+      { Orla: 20, Aurora: 15, 'Capitão Goblin': 5 },
+      { Orla: [7, 9], Aurora: [8, 9], 'Capitão Goblin': [9, 9] },
+    );
+    await adjustVitalsRPC(m, campaignId, bard.characterId, { hitPointsCurrent: 3 });
+    await openSessionPage(p, campaignId);
+    await openSessionPage(b, campaignId);
+
+    // Orla's turn: the gift, the list of who can be inspired, and the answer.
+    await expect(b.getByRole('heading', { name: 'Sua vez, Orla' })).toBeVisible();
+    await b.getByRole('region', { name: 'O que você pode fazer' }).getByRole('button', { name: /^Usar Inspiração de Bardo/ }).click();
+    const gift = b.getByRole('dialog', { name: 'Inspiração de Bardo' });
+    await expect(gift.locator('label', { hasText: 'Aurora' })).toBeVisible();
+    await expectScreenPasses(b, `Inspiração de Bardo, quem inspirar ${where}`);
+    await gift.locator('label', { hasText: 'Aurora' }).click();
+    await gift.getByRole('button', { name: 'Inspirar Aurora' }).click();
+    await expect(gift.getByText('Você inspirou Aurora.')).toBeVisible();
+    await expectScreenPasses(b, `Inspiração de Bardo, dado entregue ${where}`);
+    await gift.locator('button', { hasText: 'Fechar' }).click();
+    await passTurnsTo(m, campaignId, 'Aurora');
+
+    // Aurora's turn: the die card, and the touch on Orla (hurt).
+    await expect(p.getByRole('heading', { name: 'Sua vez, Aurora' })).toBeVisible();
+    await expect(p.getByText('Inspiração de Bardo: d6').first()).toBeVisible();
+    const groups = p.getByRole('region', { name: 'O que você pode fazer' });
+    await expectScreenPasses(p, `Sua vez, com o dado de Inspiração de Bardo ${where}`);
+    await groups.getByRole('button', { name: 'Usar Cura pelas Mãos' }).click();
+    const hands = p.getByRole('dialog', { name: 'Cura pelas Mãos' });
+    await expect(hands.locator('label', { hasText: 'Orla' })).toBeVisible();
+    await expectScreenPasses(p, `Cura pelas Mãos, restaurar PV ${where}`);
+    await hands.locator('label', { hasText: 'Neutralizar um veneno' }).click();
+    await expect(hands.getByRole('button', { name: /^Neutralizar o veneno/ })).toBeVisible();
+    await expectScreenPasses(p, `Cura pelas Mãos, neutralizar um veneno ${where}`);
+    await hands.locator('label', { hasText: 'Restaurar PV' }).click();
+    await hands.locator('label', { hasText: 'Orla' }).click();
+    await hands.getByRole('button', { name: 'Mais um ponto' }).click();
+    await expect(hands.getByRole('button', { name: 'Curar 6 PV em Orla' })).toBeVisible();
+    await expectScreenPasses(p, `Cura pelas Mãos, mais pontos ${where}`);
+    await hands.getByRole('button', { name: 'Curar 6 PV em Orla' }).click();
+    await expect(hands.locator('.pill')).toContainText('Curou');
+    await expectScreenPasses(p, `Cura pelas Mãos, curou ${where}`);
+    await hands.locator('button', { hasText: 'Fechar' }).click();
+
+    // The next round: the attack with the die in hand asks before the result.
+    await passTurnsTo(m, campaignId, 'Orla');
+    await passTurnsTo(m, campaignId, 'Aurora');
+    await expect(p.getByRole('heading', { name: 'Sua vez, Aurora' })).toBeVisible();
+    await groups.getByRole('button', { name: /^Atacar com Espada/ }).click();
+    const attack = p.getByRole('dialog', { name: /Atacar com Espada/ });
+    await attack.locator('label', { hasText: 'Capitão Goblin' }).click();
+    await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await p.getByLabel(/Role 1d20/).fill('1');
+    await p.getByRole('button', { name: 'Confirmar 1' }).click();
+    await expect(p.getByRole('heading', { name: 'Usar a Inspiração de Bardo (d6)?' }).last()).toBeVisible();
+    await expectScreenPasses(p, `Usar a Inspiração de Bardo, a pergunta ${where}`);
+    await p.getByRole('button', { name: 'Digitar o resultado' }).last().click();
+    await expectScreenPasses(p, `Usar a Inspiração de Bardo, digitar o dado ${where}`);
+    await p.getByLabel(/Role 1d6/).last().fill('4');
+    await p.getByRole('button', { name: 'Confirmar 4' }).last().click();
+    await expect(p.getByRole('button', { name: 'Voltar à sua vez' }).last()).toBeVisible();
+    await expectScreenPasses(p, `Atacar, resultado com o dado de Inspiração de Bardo ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await bard?.close();
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a Cura pelas Mãos e a Inspiração de Bardo passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanLayOnHandsAndInspirationScreens(browser, 'light', 1280);
+});
+
+test('a Cura pelas Mãos e a Inspiração de Bardo passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanLayOnHandsAndInspirationScreens(browser, 'dark', 1024);
+});
+
+test('a Cura pelas Mãos e a Inspiração de Bardo passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanLayOnHandsAndInspirationScreens(browser, 'dark', 390);
+});
+
+test('a Cura pelas Mãos e a Inspiração de Bardo passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanLayOnHandsAndInspirationScreens(browser, 'light', 320);
+});
+
+/**
+ * "Conjuração Flexível" and "Metamagia" (PM-07c 10 and 11): the sorcerer's dialog (creating a slot, converting one with the points
+ * at the maximum, and the answer), the cast sheet with the Metamagic section (the options marked, the grey one with its reason),
+ * and the sheet's "Recursos" and "Espaços de magia" with the slot that was created.
+ */
+async function scanFlexibleCastingScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width <= 390 ? 700 : 900 };
+  const master = await newSignedInContext(browser, 'Mestre Teste', { colorScheme, viewport });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  m.setDefaultTimeout(20_000);
+  p.setDefaultTimeout(20_000);
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade feiticeiro ${Date.now()}`, true, false, { build: nael, sheet: naelSheet });
+    campaignId = table.campaignId;
+    await beginPlacedCombatRPC(m, table, [table.captainId], { Nael: 20, 'Capitão Goblin': 5 }, { Nael: [8, 9], 'Capitão Goblin': [9, 9] });
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Nael' })).toBeVisible();
+    const groups = p.getByRole('region', { name: 'O que você pode fazer' });
+
+    // The cast sheet with Metamagic: the options, one marked, and the grey one with its reason.
+    await groups.getByRole('button', { name: 'Conjurar Enfeitiçar Pessoa' }).click();
+    const cast = p.getByRole('dialog', { name: 'Conjurar Enfeitiçar Pessoa' });
+    await cast.locator('label', { hasText: 'Capitão Goblin' }).click();
+    await expect(cast.getByRole('heading', { name: /^Metamagia/ })).toBeVisible();
+    await expect(cast.getByText('Pontos de Feitiçaria: 3 de 3')).toBeVisible();
+    await expectScreenPasses(p, `Conjurar, a Metamagia ${where}`);
+    await cast.locator('label', { hasText: 'Magia Cuidadosa' }).click();
+    await expectScreenPasses(p, `Conjurar, a Magia Cuidadosa marcada ${where}`);
+    await p.keyboard.press('Escape');
+    await expect(p.getByRole('dialog')).toHaveCount(0);
+
+    // Flexible Casting: nothing to convert at the maximum of points (the reason is written), then a slot is created.
+    await groups.getByRole('button', { name: 'Usar Conjuração Flexível: Criar Espaços de Magia' }).click();
+    const flex = p.getByRole('dialog', { name: 'Conjuração Flexível' });
+    await expect(flex).toContainText('Pontos de Feitiçaria: 3 de 3');
+    await expectScreenPasses(p, `Conjuração Flexível, criar um espaço ${where}`);
+    await flex.locator('label', { hasText: 'Espaço → pontos' }).click();
+    await expectScreenPasses(p, `Conjuração Flexível, converter um espaço ${where}`);
+    await flex.locator('label', { hasText: 'Pontos → espaço' }).click();
+    await flex.getByRole('button', { name: /^Criar o espaço de/ }).click();
+    await expect(flex.locator('.pill')).toBeVisible();
+    await expectScreenPasses(p, `Conjuração Flexível, espaço criado ${where}`);
+    await flex.locator('button', { hasText: 'Fechar' }).click();
+
+    // The sheet's counters: Sorcery Points 1 of 3 and a created 1st-level slot.
+    await open(p, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    await expect(p.getByRole('region', { name: 'Recursos' }).getByRole('listitem').filter({ hasText: 'Pontos de Feitiçaria' })).toContainText('1 de 3');
+    await expect(p.getByRole('region', { name: 'Espaços de magia' })).toContainText('criado');
+    await expectScreenPasses(p, `Ficha, os recursos e os espaços criados ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a Conjuração Flexível, a Metamagia e os contadores da ficha passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanFlexibleCastingScreens(browser, 'light', 1280);
+});
+
+test('a Conjuração Flexível, a Metamagia e os contadores da ficha passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanFlexibleCastingScreens(browser, 'dark', 1024);
+});
+
+test('a Conjuração Flexível, a Metamagia e os contadores da ficha passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanFlexibleCastingScreens(browser, 'dark', 390);
+});
+
+test('a Conjuração Flexível, a Metamagia e os contadores da ficha passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanFlexibleCastingScreens(browser, 'light', 320);
 });
 
 // ---- casting outside a combat (MR-048, W7-C) ----

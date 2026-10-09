@@ -112,6 +112,8 @@ type encounterData struct {
 	// roll mode requests that wait or have an answer to use.
 	states   []playdb.CombatantState
 	requests []playdb.RollModeRequest
+	// holds are the attack rolls that wait for the answer about a Bardic Inspiration die.
+	holds []playdb.RollHold
 }
 
 // loadEncounter reads a combat's combatants, in turn order.
@@ -128,7 +130,11 @@ func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter)
 	if err != nil {
 		return nil, fmt.Errorf("list the roll mode requests: %w", err)
 	}
-	return &encounterData{enc: enc, cs: cs, states: states, requests: requests}, nil
+	holds, err := q.ListOpenRollHolds(ctx, enc.ID) // the rolls that wait for the answer about a die
+	if err != nil {
+		return nil, fmt.Errorf("list the held rolls: %w", err)
+	}
+	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds}, nil
 }
 
 // turnView is the turn as one viewer sees it (RN-20, joint turns): who acts,
@@ -276,6 +282,8 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 			if shared && inParty(c) && !v.owns(c) && inTurn(e, c) {
 				shareEconomy(p, c)
 			}
+			p.InspirationDie = inspirationDieView(d.cs, c, e.Round, v)
+			p.InspirationOffer = inspirationOfferView(d, c, v)
 			p.TurnPartEnded = turn.flags && e.Status == statusActive && c.TurnState == turnEnded
 			p.States = statesFor(byCombatant[c.ID], d.cs, v)
 			p.ConditionSources = conditionSourcesFor(c, d.cs, v, names)

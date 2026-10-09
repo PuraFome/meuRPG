@@ -2166,6 +2166,14 @@ message Combatant {
   // ("1/8"), for the stat block and "ND 1/8". A player never gets them (RN-20).
   string bestiary_creature_key = 65;
   string challenge_rating = 66;
+  // The Bardic Inspiration die the combatant holds, if any. Only the master and the
+  // combatant's own player get it; the other players see the bard spend a use
+  // and nothing more.
+  InspirationDie inspiration_die = 70;
+  // The attack roll of this combatant that waits for the answer about the die, if any
+  // (it is answered with AnswerBardicInspiration). Only the master and the combatant's
+  // own player get it, so the question is still there when the screen is read again.
+  InspirationOffer inspiration_offer = 71;
   // The states the combatant is in (a rage, a dodge, Reckless Attack, a Hunter's
   // Mark on it), for everyone who sees it, except the mark, which only the master
   // and the ranger's player get. An NPC's states are the public chips alone.
@@ -2178,7 +2186,7 @@ message Combatant {
   // decide whether a rage ends (SRD 5.1, Barbarian, Rage). Only the master and the
   // combatant's own player.
   bool attacked_hostile_since_last_turn = 69;
-  bool took_damage_since_last_turn = 70;
+  bool took_damage_since_last_turn = 72;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -2792,6 +2800,28 @@ message GetTurnOptionsResponse {
   // combatant's attacks and spells will do to the damage dice, so the screen can
   // say it before the roll. DOUBLED_DICE or MAX_PLUS_ROLL, never UNSPECIFIED.
   CriticalDamageRule critical_rule = 6;
+  // For each feature action of options.feature_actions that picks a creature
+  // (Cura pelas Mãos, Inspiração de Bardo), who it can pick.
+  repeated ResourceTargets resource_targets = 30;
+}
+
+// ResourceTargets lists the creatures a feature action that picks one can choose.
+message ResourceTargets {
+  // The feature action, as in rules.v1.Action.key ("feature:lay-on-hands",
+  // "feature:bardic-inspiration-d6").
+  string action_key = 1;
+  // The combatants the caller sees, in turn order: for Lay on Hands the touch's
+  // reach (5 ft, `too_far` beyond it), for Bardic Inspiration the 60 ft of the bard's
+  // voice. The paladin itself is listed for Lay on Hands, the bard never is.
+  repeated ResourceTarget targets = 2;
+}
+
+// ResourceTarget is one creature a feature action may pick.
+message ResourceTarget {
+  TargetInReach target = 1;
+  // Set when the creature cannot be picked: Bardic Inspiration's "Já tem um dado",
+  // "Não ouve você". Empty when it can. Never a creature's type (RN-10).
+  string disabled_reason_pt = 2;
 }
 
 // SpellTargets lists the targets one spell can choose.
@@ -2978,6 +3008,9 @@ message AttackRoll {
   // CRITICAL_HIT ("role os dados duas vezes" or "o máximo mais uma rolagem"). Set
   // on every roll: the damage itself is PendingDamage (critical_rule).
   CriticalDamageRule critical_rule = 9;
+  // The die added to the d20 after it was rolled (Bardic Inspiration), when the
+  // player answered. The d20's total already has it.
+  repeated BonusDie bonus_dice = 30;
   // True when a reaction window holds the roll (Cutting Words): the d20 is rolled
   // and the action spent, but the result is not told yet, so `outcome` is
   // UNSPECIFIED. The result comes with the next `encounter_changed`, when the
@@ -2995,6 +3028,45 @@ message AttackRoll {
   bool critical_on_hit = 15;
 }
 
+// InspirationDie is a Bardic Inspiration die a combatant holds (SRD 5.1, Bard): one
+// at a time, for 10 minutes.
+message InspirationDie {
+  // The size of the die: 6, 8, 10 or 12.
+  int32 sides = 1;
+  // The bard that gave it (a combatant's ID) and its name, "Orla".
+  string from_combatant_id = 2;
+  string from_label = 3;
+  // The round the die runs out in: it lasts 100 rounds (10 minutes of 6 seconds).
+  int32 expires_at_round = 4;
+}
+
+// InspirationOffer asks the player of a held roll whether to add the Bardic
+// Inspiration die: RollAttack answered it instead of the outcome. The attack
+// is only resolved by AnswerBardicInspiration.
+message InspirationOffer {
+  // The held roll (a UUID).
+  string hold_id = 1;
+  // The die the character holds, and who gave it.
+  InspirationDie die = 2;
+  // The d20 of the held roll, with the attack's bonus as the modifier: what the player
+  // rolled, before the result is told.
+  DiceRoll d20 = 3;
+  // The attack and its target.
+  string attack_key = 4;
+  string target_id = 5;
+}
+
+// BonusDie is a die added to a roll after it was rolled (Bardic Inspiration).
+message BonusDie {
+  // The feature it came from ("feature:bardic-inspiration-d6").
+  string source_key = 1;
+  int32 sides = 2;
+  // The face rolled, 0 for a die the player did not use.
+  int32 face = 3;
+  // Whether the die was added to the total.
+  bool used = 4;
+}
+
 // RollAttackResponse returns the roll and the combat after it.
 message RollAttackResponse {
   // The combat as the caller sees it: the action is spent.
@@ -3003,6 +3075,11 @@ message RollAttackResponse {
   // Set when the attack hit: the damage to roll. For the master and the
   // attacker's player only.
   PendingDamage pending_damage = 3;
+  // Set instead of the outcome (`roll.outcome` is unspecified, no action is spent
+  // and there is no pending damage) when the attacker holds a Bardic Inspiration
+  // die: the d20 is rolled, and the player decides whether to add the die before the
+  // result is told (AnswerBardicInspiration).
+  InspirationOffer inspiration_offer = 30;
 }
 
 // RollDamageRequest rolls the damage of a hit.
@@ -3210,6 +3287,12 @@ message CastSpellRequest {
   // with `invalid_argument` for a spell with nothing to pick or a type that is
   // not one of its types.
   string damage_type_key = 12;
+  // The Metamagic the sorcerer uses on this casting (SRD 5.1, Sorcerer): one
+  // option, or Empowered Spell with one other. Each must be an option the
+  // character knows and the spell takes at this slot (SpellOption.metamagic_options);
+  // otherwise `invalid_argument` with the reason. The cost is spent from the sorcery
+  // points with the slot.
+  repeated MetamagicChoice metamagic = 30;
   // Where an area spell is placed, for a spell that has a placement on a map with
   // a grid (see CastSpell and PreviewSpellArea). At most one is set: a point for a
   // sphere or a cylinder, a direction for a cone, a line and a cube. A sphere or
@@ -3230,6 +3313,20 @@ message CastSpellRequest {
   RollMode roll_mode = 16;
   string mode_reason = 17;
   repeated int32 d20_faces = 18;
+}
+
+// MetamagicChoice is one Metamagic option on a casting.
+message MetamagicChoice {
+  // The option, "feature:metamagic-twinned-spell".
+  string key = 1;
+  // Twinned Spell: the second target (a combatant's ID); the first is the cast's
+  // target.
+  repeated string target_ids = 2;
+  // Careful Spell: the creatures that pass the saving throw on their own, up to
+  // the Charisma modifier (at least one).
+  repeated string careful_ids = 3;
+  // Heightened Spell: the target with disadvantage on its first saving throw.
+  string heightened_id = 4;
 }
 
 // SpellOrigin is a square of the grid the caster chose as the point of origin of an
@@ -3555,6 +3652,11 @@ message SpellCast {
   // A threshold: the most hit points a creature may have to be affected (150,
   // 100). Only the master.
   optional int32 effect_threshold = 11;
+  // The Metamagic options the casting used and the sorcery points they took
+  // (everyone who gets the cast gets them: they are the caster's choice, not a
+  // secret).
+  repeated string metamagic_keys = 30;
+  int32 sorcery_points_spent = 31;
 }
 
 // UseReactionRequest casts Escudo against a hit.
@@ -3753,6 +3855,9 @@ message CombatLogRound {
 // CombatLogKind is what a combat log entry tells.
 enum CombatLogKind {
   COMBAT_LOG_KIND_UNSPECIFIED = 0;
+  // A class resource flow (Lay on Hands, Flexible Casting, Bardic Inspiration): the
+  // actor, the target and `resource`.
+  COMBAT_LOG_KIND_RESOURCE = 90;
   // The combat began (round 1).
   COMBAT_LOG_KIND_COMBAT_BEGUN = 1;
   // An attack: the attacker, the target, the roll, the outcome and, once
@@ -3964,6 +4069,11 @@ message CombatLogEntry {
   CombatLogDoor door = 42;
   // MONSTERS_ADDED: the new monsters, in the order of their names.
   repeated CombatLogMonster monsters = 43;
+  // RESOURCE: what the class resource did.
+  CombatLogResource resource = 90;
+  // ATTACK: the die added to the d20 after it was rolled (Bardic Inspiration). Only
+  // the master and the attacker's player get it, like the d20.
+  repeated BonusDie bonus_dice = 91;
   // REACTION_WINDOW: the line, already filtered for the caller.
   string reaction_text_pt = 44;
   // STATE_CHANGED: the state.
@@ -3973,6 +4083,38 @@ message CombatLogEntry {
   CombatLogModeChange mode_change = 46;
   // DAMAGE_PART_REMOVED: the master's reason. Same audience as `mode_change.reason`.
   string reason = 47;
+}
+
+// CombatLogResource is a Lay on Hands, a Flexible Casting or a Bardic Inspiration
+// line of the log.
+message CombatLogResource {
+  // The flow, "feature:lay-on-hands", "feature:flexible-casting-creating-spell-slots",
+  // "feature:flexible-casting-converting-spell-slot" or "feature:bardic-inspiration".
+  string key = 1;
+  // The points or uses spent from the resource (a Lay on Hands amount or cure,
+  // sorcery points of a created slot, 1 use of Bardic Inspiration).
+  int32 spent = 2;
+  // Flexible Casting: the spell slot level created or expended, and the sorcery
+  // points gained by converting one.
+  int32 slot_level = 3;
+  int32 gained = 4;
+  // Lay on Hands: the hit points the target regained, and the cure. Only the
+  // master and the target's player get `healed`; a disease or a poison is public.
+  optional int32 healed = 5;
+  meurpg.play.v1.LayOnHandsCureKind cure = 6;
+  // The touch did nothing; the reason (undead or construct) is the master's alone.
+  bool nothing_happened = 7;
+  optional string nothing_reason = 8;
+  // Bardic Inspiration: the die given (its size) and the round it runs out in.
+  int32 die_sides = 9;
+  int32 expires_at_round = 10;
+}
+
+// LayOnHandsCureKind is what a Lay on Hands cure fixed.
+enum LayOnHandsCureKind {
+  LAY_ON_HANDS_CURE_KIND_UNSPECIFIED = 0;
+  LAY_ON_HANDS_CURE_KIND_DISEASE = 1;
+  LAY_ON_HANDS_CURE_KIND_POISON = 2;
 }
 
 // CombatLogMonster is a monster of a MONSTERS_ADDED line, only the master's.
@@ -4014,6 +4156,9 @@ message CombatLogSpell {
   DiceRoll pool_roll = 6;
   string effect_condition_key = 7;
   optional int32 effect_threshold = 8;
+  // The Metamagic the casting used, and the sorcery points it spent.
+  repeated string metamagic_keys = 30;
+  int32 sorcery_points_spent = 31;
 }
 
 // CombatLogSpellTarget is what a cast did to one target, in the log. Its fields

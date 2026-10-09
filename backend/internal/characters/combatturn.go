@@ -162,7 +162,17 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 	if err != nil {
 		return link.Sheet{}, err
 	}
-	out := link.Sheet{ArmorClass: d.ArmorClass, Senses: senseRanges(d.Senses), Traits: traitsOf(content, d)}
+	out := link.Sheet{ArmorClass: d.ArmorClass, Senses: senseRanges(d.Senses), Metamagic: rules.MetamagicKnown(d.Features), Traits: traitsOf(content, d)}
+	for _, a := range d.Abilities {
+		if a.Ability == rules.CHA {
+			out.ChaMod = a.Modifier
+		}
+	}
+	for _, cl := range d.Classes {
+		if cl.ClassKey == "class:bard" {
+			out.BardicDie = content.BardicInspirationDie(cl.Level)
+		}
+	}
 	for _, a := range d.Attacks {
 		name := a.NamePT
 		if name == "" {

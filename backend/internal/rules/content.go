@@ -389,6 +389,12 @@ func (c *content) loadData(fsys fs.FS) error {
 	slices.Sort(c.skillOrder)
 	for _, k := range sortedKeys(c.features) {
 		for _, o := range c.features[k].Options {
+			// The first parent in key order is the lowest level one: a feature listed
+			// by metamagic-1, 2 and 3 belongs to metamagic-1, the one a level 3
+			// sorcerer has.
+			if _, set := c.optionParents[o]; set {
+				continue
+			}
 			if f, ok := c.features[o]; ok && f.Parent == "" {
 				c.optionParents[o] = k
 			}

@@ -169,7 +169,7 @@ describe('changeRows: a class that starts casting, and how it learns its spells 
     expect(rows.find((r) => r.key === 'prepared')).toMatchObject({ before: '—', after: '9' });
   });
 
-  it('writes the hit dice of every class, joined by a plus', () => {
+  it('writes the hit dice by size, joined by a "+"', () => {
     const after = pensantus(true);
     after.hitDice = [...after.hitDice, create(HitDiceSchema, { faces: 10, count: 1 })];
     const rows = changeRows(pensantus(false), after, ctx);

@@ -45,6 +45,10 @@ type modeAsk struct {
 	want      playv1.RollMode
 	reason    string
 	requestID string
+	// dry works the mode out without writing (the roll waits for a Bardic Inspiration die and
+	// is settled later); trusted takes the mode a held roll was made with, which was checked
+	// when it was held, even if the circumstances changed meanwhile.
+	dry, trusted bool
 }
 
 // modeChoice is the mode a roll has once the caller's ask is settled.
@@ -93,18 +97,25 @@ func (s *Service) chooseMode(ctx context.Context, c *combatTx, v combatViewer, a
 	if !asked || want == truth {
 		return out, nil
 	}
-	reason, err := cleanReason(ask.reason)
-	if err != nil {
-		return out, err
+	var reason string
+	if !ask.trusted || ask.reason != "" {
+		var err error
+		if reason, err = cleanReason(ask.reason); err != nil {
+			return out, err
+		}
 	}
-	if !v.master && want.Better(truth) {
+	if !ask.trusted && !v.master && want.Better(truth) {
 		return out, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_NEEDS_APPROVAL, "a better mode needs the master's approval")
+	}
+	out.Mode, out.Reason = want, reason
+	if ask.dry || reason == "" {
+		return out, nil
 	}
 	row, err := c.q.InsertCombatReason(ctx, playdb.InsertCombatReasonParams{EncounterID: c.enc.ID, Kind: "roll_mode", Reason: reason, CreatedAt: c.now})
 	if err != nil {
 		return out, fmt.Errorf("keep the reason of the mode: %w", err)
 	}
-	out.Mode, out.ReasonID, out.Reason = want, row.ID, reason
+	out.ReasonID = row.ID
 	return out, nil
 }
 

@@ -1010,7 +1010,8 @@ message CharacterVitals {
   // How many hit dice the character has in all: the sum of hit_dice's
   // counts, the character's level.
   int32 hit_dice_total = 10;
-  // How many of them are used, 0 to hit_dice_total.
+  // How many of them are used, 0 to hit_dice_total: the sum of
+  // hit_dice_used_by_die.
   int32 hit_dice_used = 11;
   // Goes up by one on every correction; 0 while nobody has adjusted the
   // character. Of two copies of the same character's vitals, the one with
@@ -1033,6 +1034,11 @@ message CharacterVitals {
   // familiar's eyes (MR-036); unset otherwise. While it is set the character
   // counts as blind and deaf.
   FamiliarSightState familiar_sight = 16;
+  // How many hit dice of each size are used (die size to count, such as 10 to 2
+  // for two d10 spent), only the sizes with something spent. Hit dice of different
+  // sizes are kept apart (SRD 5.1, "Multiclassing"): a short rest spends them by
+  // size and a long rest gives them back by size.
+  map<int32, int32> hit_dice_used_by_die = 30;
 }
 
 // WildShapeState is a druid's Wild Shape form (MR-037). Like the character's
@@ -1083,10 +1089,14 @@ message ResourceUsage {
 message SpellSlotUsage {
   // The spell level, 1 to 9.
   int32 level = 1;
-  // How many slots of this level the character has (from the sheet).
+  // How many slots of this level the character has: the sheet's, plus the ones
+  // Flexible Casting created.
   int32 total = 2;
   // How many of them are used, 0 to total.
   int32 used = 3;
+  // How many of the slots in `total` Flexible Casting created (SRD 5.1, Sorcerer):
+  // they vanish on a long rest. 0 for a character that created none.
+  int32 created = 10;
 }
 
 // PactSlotUsage is a warlock's pact magic slots: all of one level.
@@ -1465,7 +1475,9 @@ message AdjustCharacterVitalsRequest {
   // New used count of the pact magic slots, 0 to their total. Only for a
   // character with pact slots.
   optional int32 pact_slots_used = 7;
-  // New used count of hit dice, 0 to the character's total.
+  // New used count of hit dice, 0 to the character's total. It takes the
+  // largest dice first (the way a count with no sizes is read); prefer
+  // hit_dice_used_by_die. Not together with it.
   optional int32 hit_dice_used = 8;
   // New used counts of some resources; the others stay as they are. Each
   // resource at most once, and only resources the sheet has.
@@ -1475,6 +1487,10 @@ message AdjustCharacterVitalsRequest {
   // they are: the master carries any leftover damage with hit_points_current).
   // `invalid_argument` when the character is not in a beast form.
   optional int32 wild_shape_hit_points_current = 10;
+  // New used counts of the hit dice of some sizes (die size to count, 0 to the
+  // dice of that size the character has); the other sizes stay as they are.
+  // `invalid_argument` for a size the character does not have.
+  map<int32, int32> hit_dice_used_by_die = 30;
 }
 
 // ResourceUsed sets how many uses of one resource are spent.

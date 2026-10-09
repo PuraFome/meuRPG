@@ -153,7 +153,21 @@
         [damage]="damage()"
         [waiting]="waiting()"
         [damageLine]="damageLine()"
+        [asking]="stage() === 'inspire'"
       />
+
+      @if (stage() === 'inspire') {
+        <app-inspiration-prompt
+          [die]="offer()?.die"
+          [canApp]="canApp"
+          [canType]="canType"
+          [preferApp]="preferApp"
+          [busy]="busy()"
+          [(typing)]="typing"
+          (use)="answerInspiration(true, $event)"
+          (keep)="answerInspiration(false, null)"
+        />
+      }
 
       @if (stage() === 'damage' && dice(); as d) {
         <div class="dmg">

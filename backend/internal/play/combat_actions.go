@@ -244,6 +244,9 @@ func (s *Service) GetTurnOptions(
 	if err != nil {
 		return nil, s.dbError(ctx, "work out the turn options", err)
 	}
+	if err := s.attachMetamagic(ctx, nil, m.CampaignID, who, opts); err != nil {
+		return nil, s.dbError(ctx, "work out the Metamagic", err)
+	}
 	code, err := s.gate(ctx, nil, m.CampaignID, enc, who)
 	if err != nil {
 		return nil, s.dbError(ctx, "check the combatant's turn", err)
@@ -282,6 +285,7 @@ func (s *Service) GetTurnOptions(
 	if res.SpellTargets, err = s.spellTargetsFor(ctx, m.CampaignID, terrain, who, d.cs, v, opts, isTheatre(enc)); err != nil {
 		return nil, s.dbError(ctx, "work out the spell targets", err)
 	}
+	res.ResourceTargets = resourceTargetsFor(terrain, d.cs, who, v, opts, enc)
 	open, err := s.queries.ListOpenPendingDamages(ctx, enc.ID)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the pending damage", err)
@@ -603,7 +607,9 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 	var made actionEvent
 	var shown []*playv1.AdvantageSource // the circumstances of the mode, as the caller may read them
 	var reason string                   // why the mode is not the suggestion (the caller's own text, or the master's)
+	var held *inspirationHold           // the roll waits for the player's answer about a Bardic Inspiration die
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventAttackRolled, encounterID: encID}, func(c *combatTx) (any, error) {
+		held = nil
 		attackKey := attackKey // a throw back is the caught missile, under its own key
 		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 		if err != nil {
@@ -691,6 +697,9 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		if c.replay != nil { // Cutting Words took a die off the roll (PM-04)
 			attack.ToHit -= int(c.replay.reduction)
 		}
+		if f := forcedOf(ctx); f != nil { // the answer to a held roll: its bonus is the one the roll was made with, Cutting Words included
+			attack.ToHit = f.toHit
+		}
 		terrain, err := s.terrainOf(ctx, c.tx, m.CampaignID, c.enc)
 		if err != nil {
 			return nil, err
@@ -759,11 +768,19 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 
 		// A Cutting Words can change the roll: it waits for the windows, and is rolled
 		// when they are answered (PM-04, combat_reaction_hold.go).
-		if held, ok, err := s.holdAttackRoll(ctx, c, m, req.Msg, cs, attacker, target, attackKey); err != nil {
+		// A roll that waits for a Bardic Inspiration answer comes first: nothing else rolls or
+		// opens a window until it is answered, and the answer does not open the windows again
+		// (they were answered before the d20 was kept, combat_inspiration.go).
+		if err := s.refuseWhileAsking(ctx, c, attacker, key); err != nil {
 			return nil, err
-		} else if ok {
-			made = held
-			return made, nil
+		}
+		if forcedOf(ctx) == nil {
+			if held, ok, err := s.holdAttackRoll(ctx, c, m, req.Msg, cs, attacker, target, attackKey); err != nil {
+				return nil, err
+			} else if ok {
+				made = held
+				return made, nil
+			}
 		}
 
 		// The roll, and what it did against the target's armor class (with the
@@ -780,15 +797,28 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 			return nil, err
 		}
 		truth := modeIn.facts(c.enc, c.sight).attackMode(attacker, target, attackerSheet.Traits, shapeOfAttack(attack), actsNow(c.enc, attacker) && !asReaction, v, names)
-		choice, err := s.chooseMode(ctx, c, v, attacker, target, attackKey, truth.Mode,
-			modeAsk{want: req.Msg.GetRollMode(), reason: req.Msg.GetModeReason(), requestID: req.Msg.GetRollModeRequestId()})
+		// A roll that waits for a Bardic Inspiration die is not settled yet: its mode is worked
+		// out without writing, and the answer settles it with the mode the roll was made with.
+		forced := forcedOf(ctx)
+		choice, err := s.chooseMode(ctx, c, v, attacker, target, attackKey, truth.Mode, modeAsk{
+			want: req.Msg.GetRollMode(), reason: req.Msg.GetModeReason(), requestID: req.Msg.GetRollModeRequestId(),
+			dry: forced == nil && holdsDie(attacker, c.enc.Round), trusted: forced != nil,
+		})
 		if err != nil {
 			return nil, err
 		}
 		shown, reason = truth.Shown, choice.Reason
-		d20, err := s.d20With(in, attack.ToHit, choice.Mode)
+		d20, bonus, h, err := s.rollOrHold(ctx, c, attacker, req.Msg, key, in, attack.ToHit, choice)
 		if err != nil {
 			return nil, err
+		}
+		if h != nil {
+			held = h // nothing is resolved, spent or written until the answer
+			return nil, nil
+		}
+		bonusFace := 0
+		if bonus != nil {
+			bonusFace = int(bonus.Face) // the die the player added after rolling
 		}
 		face := d20.Face()
 		roll := d20
@@ -802,7 +832,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		if attack.Spell {
 			criticalFrom = 0
 		}
-		result := combat.ResolveAttackFrom(attack.ToHit, targetAC, face, criticalFrom)
+		result := combat.ResolveAttackFrom(attack.ToHit+bonusFace, targetAC, face, criticalFrom)
 		// A hit on a paralyzed or unconscious creature within 5 ft is a critical hit
 		// whatever the die says (SRD 5.1, Conditions).
 		if result.Hit && truth.CriticalOnHit {
@@ -827,7 +857,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		}
 		made = actionEvent{
 			RunBefore: run, Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: attackKey,
-			D20: clamp32(face, 1, 20), Modifier: clamp32(attack.ToHit, math.MinInt32, math.MaxInt32), Total: clamp32(result.Total, math.MinInt32, math.MaxInt32),
+			D20: clamp32(face, 1, 20), Modifier: clamp32(attack.ToHit+bonusFace, math.MinInt32, math.MaxInt32), Total: clamp32(result.Total, math.MinInt32, math.MaxInt32),
 			Physical: roll.Physical, Outcome: outcomeMiss, AsReaction: asReaction, CriticalMaxRule: c.rules.CriticalMaxPlusRoll,
 			D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(choice.Mode), SuggestedMode: modeKey(choice.Suggested),
 			ReasonID: choice.ReasonID, RequestID: choice.RequestID, CritOnHit: truth.CriticalOnHit && result.Hit,
@@ -839,6 +869,9 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 			TargetAC: clamp32(targetAC, 0, math.MaxInt32),
 			Cover:    cover.key(), CoverSource: cover.sourceKey(), CoverBonus: clamp32(cover.bonus(), 0, 5),
 			CoverRestricted: cp.restricted, CoverSeenBy: cp.seenBy,
+		}
+		if bonus != nil {
+			made.Res = &resourceEvent{Kind: resBardicUse, Sides: bonus.Sides, Face: bonus.Face, FromID: bonus.From, ExpiresRound: bonus.ExpiresRound}
 		}
 		switch {
 		case asReaction:
@@ -923,6 +956,9 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 	if v, err = s.viewerAfter(ctx, m, res, v); err != nil { // a replay never ran the closure: the fog filter still holds
 		return nil, s.dbError(ctx, "work out what the player sees", err)
 	}
+	if held != nil {
+		return s.heldAnswer(ctx, m, res, held, req.Msg)
+	}
 	ev, err := resultEvent(res, made)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the attack", err)
@@ -948,6 +984,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		D20: d20Proto(ev), Outcome: outcomeToProto[ev.Outcome],
 		CriticalRule: criticalRuleProto(tablerules.Rules{CriticalMaxPlusRoll: ev.CriticalMaxRule}),
 		Mode:         modeToProto[modeOfKey(ev.RollMode)], SuggestedMode: modeToProto[modeOfKey(ev.SuggestedMode)], CriticalOnHit: ev.CritOnHit,
+		BonusDice: bonusDiceOf(ev),
 	}
 	roll.Sources, roll.ModeReason = shown, reason
 	coverKey, coverSource := ev.coverFor(v)
@@ -1905,6 +1942,11 @@ func (s *Service) TakeAction(
 		if wildShapeFeature(actionKey) {
 			// It needs the beast: AssumeWildShape takes it (MR-037).
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the Wild Shape action is taken with AssumeWildShape"))
+		}
+		if slices.Contains(resourceFlowActions, actionKey) {
+			// They need a target or a number of points: UseLayOnHands, CreateSpellSlot,
+			// ConvertSpellSlot and GiveBardicInspiration take them.
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this action is taken with the resource service"))
 		}
 		feature := strings.HasPrefix(actionKey, "feature:")
 		list := opts.GetStandardActions()
