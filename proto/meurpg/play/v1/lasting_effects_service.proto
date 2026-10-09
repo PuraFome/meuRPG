@@ -112,6 +112,8 @@ service LastingEffectService {
   // taken to the death confirmation (ConfirmDeath). Only the master, with the
   // session open.
   rpc SetExhaustion(SetExhaustionRequest) returns (SetExhaustionResponse);
+  // The effects on the characters outside a running combat, as the caller may read them.
+  rpc ListCharacterEffects(ListCharacterEffectsRequest) returns (ListCharacterEffectsResponse);
   // Only the master may call it. Moves game time on outside a combat: the effects on the
   // characters lose the seconds, and the ones whose time runs out end (a round is 6 seconds).
   rpc AdvanceGameTime(AdvanceGameTimeRequest) returns (AdvanceGameTimeResponse);
@@ -331,4 +333,12 @@ message AdvanceGameTimeRequest {
 message AdvanceGameTimeResponse {
   // How many effects ended because their time ran out.
   int32 effects_ended = 1;
+}
+
+message ListCharacterEffectsRequest {
+  string campaign_id = 1;
+}
+
+message ListCharacterEffectsResponse {
+  repeated CharacterEffect effects = 1;
 }

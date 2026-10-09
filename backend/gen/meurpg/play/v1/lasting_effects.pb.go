@@ -1948,6 +1948,146 @@ func (x *EffectLabel) GetTextPt() string {
 	return ""
 }
 
+// CharacterEffect is an effect on a character that is not in a running combat, as the caller
+// may read it: the master all of them; a player the ones the master leaves visible, on their own
+// characters (and, for the ones for everyone, on the others they see on the stage).
+type CharacterEffect struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	CharacterId   string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	CharacterName string                 `protobuf:"bytes,3,opt,name=character_name,json=characterName,proto3" json:"character_name,omitempty"`
+	// The spell's or the catalog's key ("spell:bless") and its Portuguese name.
+	SourceKey    string `protobuf:"bytes,4,opt,name=source_key,json=sourceKey,proto3" json:"source_key,omitempty"`
+	SourceNamePt string `protobuf:"bytes,5,opt,name=source_name_pt,json=sourceNamePt,proto3" json:"source_name_pt,omitempty"`
+	// The game time it has left, in seconds (a round is 6 seconds); absent when it lasts until
+	// it is dismissed or its caster stops concentrating.
+	SecondsLeft *int32 `protobuf:"varint,6,opt,name=seconds_left,json=secondsLeft,proto3,oneof" json:"seconds_left,omitempty"`
+	// "dura 1 minuto", "dura 54 segundos", "dura 8 horas", "dura enquanto a conjuradora se concentrar".
+	DurationTextPt   string   `protobuf:"bytes,7,opt,name=duration_text_pt,json=durationTextPt,proto3" json:"duration_text_pt,omitempty"`
+	Concentration    bool     `protobuf:"varint,8,opt,name=concentration,proto3" json:"concentration,omitempty"`
+	TagsPt           []string `protobuf:"bytes,9,rep,name=tags_pt,json=tagsPt,proto3" json:"tags_pt,omitempty"`
+	ConditionNamesPt []string `protobuf:"bytes,10,rep,name=condition_names_pt,json=conditionNamesPt,proto3" json:"condition_names_pt,omitempty"`
+	// Only the master: whether the players read this effect, and to whom.
+	PlayerVisible bool           `protobuf:"varint,11,opt,name=player_visible,json=playerVisible,proto3" json:"player_visible,omitempty"`
+	Audience      EffectAudience `protobuf:"varint,12,opt,name=audience,proto3,enum=meurpg.play.v1.EffectAudience" json:"audience,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CharacterEffect) Reset() {
+	*x = CharacterEffect{}
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CharacterEffect) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CharacterEffect) ProtoMessage() {}
+
+func (x *CharacterEffect) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CharacterEffect.ProtoReflect.Descriptor instead.
+func (*CharacterEffect) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *CharacterEffect) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *CharacterEffect) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *CharacterEffect) GetCharacterName() string {
+	if x != nil {
+		return x.CharacterName
+	}
+	return ""
+}
+
+func (x *CharacterEffect) GetSourceKey() string {
+	if x != nil {
+		return x.SourceKey
+	}
+	return ""
+}
+
+func (x *CharacterEffect) GetSourceNamePt() string {
+	if x != nil {
+		return x.SourceNamePt
+	}
+	return ""
+}
+
+func (x *CharacterEffect) GetSecondsLeft() int32 {
+	if x != nil && x.SecondsLeft != nil {
+		return *x.SecondsLeft
+	}
+	return 0
+}
+
+func (x *CharacterEffect) GetDurationTextPt() string {
+	if x != nil {
+		return x.DurationTextPt
+	}
+	return ""
+}
+
+func (x *CharacterEffect) GetConcentration() bool {
+	if x != nil {
+		return x.Concentration
+	}
+	return false
+}
+
+func (x *CharacterEffect) GetTagsPt() []string {
+	if x != nil {
+		return x.TagsPt
+	}
+	return nil
+}
+
+func (x *CharacterEffect) GetConditionNamesPt() []string {
+	if x != nil {
+		return x.ConditionNamesPt
+	}
+	return nil
+}
+
+func (x *CharacterEffect) GetPlayerVisible() bool {
+	if x != nil {
+		return x.PlayerVisible
+	}
+	return false
+}
+
+func (x *CharacterEffect) GetAudience() EffectAudience {
+	if x != nil {
+		return x.Audience
+	}
+	return EffectAudience_EFFECT_AUDIENCE_UNSPECIFIED
+}
+
 var File_meurpg_play_v1_lasting_effects_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
@@ -2104,7 +2244,23 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\treason_pt\x18\x05 \x01(\tR\breasonPt\"C\n" +
 	"\vEffectLabel\x12\x1b\n" +
 	"\teffect_id\x18\x01 \x01(\tR\beffectId\x12\x17\n" +
-	"\atext_pt\x18\x02 \x01(\tR\x06textPt*\xb5\x01\n" +
+	"\atext_pt\x18\x02 \x01(\tR\x06textPt\"\xe3\x03\n" +
+	"\x0fCharacterEffect\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12%\n" +
+	"\x0echaracter_name\x18\x03 \x01(\tR\rcharacterName\x12\x1d\n" +
+	"\n" +
+	"source_key\x18\x04 \x01(\tR\tsourceKey\x12$\n" +
+	"\x0esource_name_pt\x18\x05 \x01(\tR\fsourceNamePt\x12&\n" +
+	"\fseconds_left\x18\x06 \x01(\x05H\x00R\vsecondsLeft\x88\x01\x01\x12(\n" +
+	"\x10duration_text_pt\x18\a \x01(\tR\x0edurationTextPt\x12$\n" +
+	"\rconcentration\x18\b \x01(\bR\rconcentration\x12\x17\n" +
+	"\atags_pt\x18\t \x03(\tR\x06tagsPt\x12,\n" +
+	"\x12condition_names_pt\x18\n" +
+	" \x03(\tR\x10conditionNamesPt\x12%\n" +
+	"\x0eplayer_visible\x18\v \x01(\bR\rplayerVisible\x12:\n" +
+	"\baudience\x18\f \x01(\x0e2\x1e.meurpg.play.v1.EffectAudienceR\baudienceB\x0f\n" +
+	"\r_seconds_left*\xb5\x01\n" +
 	"\x10EffectSourceKind\x12\"\n" +
 	"\x1eEFFECT_SOURCE_KIND_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18EFFECT_SOURCE_KIND_SPELL\x10\x01\x12\x1e\n" +
@@ -2163,7 +2319,7 @@ func file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_play_v1_lasting_effects_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_meurpg_play_v1_lasting_effects_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_meurpg_play_v1_lasting_effects_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_meurpg_play_v1_lasting_effects_proto_goTypes = []any{
 	(EffectSourceKind)(0),      // 0: meurpg.play.v1.EffectSourceKind
 	(EffectDurationKind)(0),    // 1: meurpg.play.v1.EffectDurationKind
@@ -2187,6 +2343,7 @@ var file_meurpg_play_v1_lasting_effects_proto_goTypes = []any{
 	(*EffectNote)(nil),         // 19: meurpg.play.v1.EffectNote
 	(*ExtraActionOption)(nil),  // 20: meurpg.play.v1.ExtraActionOption
 	(*EffectLabel)(nil),        // 21: meurpg.play.v1.EffectLabel
+	(*CharacterEffect)(nil),    // 22: meurpg.play.v1.CharacterEffect
 }
 var file_meurpg_play_v1_lasting_effects_proto_depIdxs = []int32{
 	2,  // 0: meurpg.play.v1.EffectModifier.kind:type_name -> meurpg.play.v1.EffectModifierKind
@@ -2208,11 +2365,12 @@ var file_meurpg_play_v1_lasting_effects_proto_depIdxs = []int32{
 	5,  // 16: meurpg.play.v1.EffectSavePrompt.phase:type_name -> meurpg.play.v1.EffectPhase
 	17, // 17: meurpg.play.v1.EffectSavePrompt.extra_dice:type_name -> meurpg.play.v1.ExtraDie
 	17, // 18: meurpg.play.v1.EffectSaveResult.extra_dice:type_name -> meurpg.play.v1.ExtraDie
-	19, // [19:19] is the sub-list for method output_type
-	19, // [19:19] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	4,  // 19: meurpg.play.v1.CharacterEffect.audience:type_name -> meurpg.play.v1.EffectAudience
+	20, // [20:20] is the sub-list for method output_type
+	20, // [20:20] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_lasting_effects_proto_init() }
@@ -2224,13 +2382,14 @@ func file_meurpg_play_v1_lasting_effects_proto_init() {
 	file_meurpg_play_v1_lasting_effects_proto_msgTypes[4].OneofWrappers = []any{}
 	file_meurpg_play_v1_lasting_effects_proto_msgTypes[8].OneofWrappers = []any{}
 	file_meurpg_play_v1_lasting_effects_proto_msgTypes[10].OneofWrappers = []any{}
+	file_meurpg_play_v1_lasting_effects_proto_msgTypes[14].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_lasting_effects_proto_rawDesc), len(file_meurpg_play_v1_lasting_effects_proto_rawDesc)),
 			NumEnums:      8,
-			NumMessages:   14,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

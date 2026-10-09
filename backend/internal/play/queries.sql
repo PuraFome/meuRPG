@@ -1380,7 +1380,7 @@ UPDATE combatant_states SET triggers_fired = triggers_fired + 1 WHERE id = $1;
 -- conditions (the ones set by hand and the effects'), the ones that came from effects,
 -- the armor class bonus, the speed in percent and the lethargy.
 UPDATE combatants
-SET conditions = $2, effect_conditions = $3, effect_ac_bonus = $4, effect_speed_pct = $5, effect_no_action = $6, effect_no_move = $7
+SET conditions = $2, effect_conditions = $3, effect_ac_bonus = $4, effect_speed_pct = $5, effect_no_action = $6, effect_no_move = $7, effect_speed_add_ft = $8
 WHERE id = $1;
 
 -- name: SetCombatantExhaustion :exec

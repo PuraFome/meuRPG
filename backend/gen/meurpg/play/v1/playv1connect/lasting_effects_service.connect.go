@@ -59,6 +59,9 @@ const (
 	// LastingEffectServiceSetExhaustionProcedure is the fully-qualified name of the
 	// LastingEffectService's SetExhaustion RPC.
 	LastingEffectServiceSetExhaustionProcedure = "/meurpg.play.v1.LastingEffectService/SetExhaustion"
+	// LastingEffectServiceListCharacterEffectsProcedure is the fully-qualified name of the
+	// LastingEffectService's ListCharacterEffects RPC.
+	LastingEffectServiceListCharacterEffectsProcedure = "/meurpg.play.v1.LastingEffectService/ListCharacterEffects"
 	// LastingEffectServiceAdvanceGameTimeProcedure is the fully-qualified name of the
 	// LastingEffectService's AdvanceGameTime RPC.
 	LastingEffectServiceAdvanceGameTimeProcedure = "/meurpg.play.v1.LastingEffectService/AdvanceGameTime"
@@ -114,6 +117,8 @@ type LastingEffectServiceClient interface {
 	// taken to the death confirmation (ConfirmDeath). Only the master, with the
 	// session open.
 	SetExhaustion(context.Context, *connect.Request[v1.SetExhaustionRequest]) (*connect.Response[v1.SetExhaustionResponse], error)
+	// The effects on the characters outside a running combat, as the caller may read them.
+	ListCharacterEffects(context.Context, *connect.Request[v1.ListCharacterEffectsRequest]) (*connect.Response[v1.ListCharacterEffectsResponse], error)
 	// Only the master may call it. Moves game time on outside a combat: the effects on the
 	// characters lose the seconds, and the ones whose time runs out end (a round is 6 seconds).
 	AdvanceGameTime(context.Context, *connect.Request[v1.AdvanceGameTimeRequest]) (*connect.Response[v1.AdvanceGameTimeResponse], error)
@@ -182,6 +187,12 @@ func NewLastingEffectServiceClient(httpClient connect.HTTPClient, baseURL string
 			connect.WithSchema(lastingEffectServiceMethods.ByName("SetExhaustion")),
 			connect.WithClientOptions(opts...),
 		),
+		listCharacterEffects: connect.NewClient[v1.ListCharacterEffectsRequest, v1.ListCharacterEffectsResponse](
+			httpClient,
+			baseURL+LastingEffectServiceListCharacterEffectsProcedure,
+			connect.WithSchema(lastingEffectServiceMethods.ByName("ListCharacterEffects")),
+			connect.WithClientOptions(opts...),
+		),
 		advanceGameTime: connect.NewClient[v1.AdvanceGameTimeRequest, v1.AdvanceGameTimeResponse](
 			httpClient,
 			baseURL+LastingEffectServiceAdvanceGameTimeProcedure,
@@ -207,6 +218,7 @@ type lastingEffectServiceClient struct {
 	removeEffectTarget          *connect.Client[v1.RemoveEffectTargetRequest, v1.RemoveEffectTargetResponse]
 	rollEffectSave              *connect.Client[v1.RollEffectSaveRequest, v1.RollEffectSaveResponse]
 	setExhaustion               *connect.Client[v1.SetExhaustionRequest, v1.SetExhaustionResponse]
+	listCharacterEffects        *connect.Client[v1.ListCharacterEffectsRequest, v1.ListCharacterEffectsResponse]
 	advanceGameTime             *connect.Client[v1.AdvanceGameTimeRequest, v1.AdvanceGameTimeResponse]
 	lowerExhaustion             *connect.Client[v1.LowerExhaustionRequest, v1.LowerExhaustionResponse]
 }
@@ -250,6 +262,11 @@ func (c *lastingEffectServiceClient) RollEffectSave(ctx context.Context, req *co
 // SetExhaustion calls meurpg.play.v1.LastingEffectService.SetExhaustion.
 func (c *lastingEffectServiceClient) SetExhaustion(ctx context.Context, req *connect.Request[v1.SetExhaustionRequest]) (*connect.Response[v1.SetExhaustionResponse], error) {
 	return c.setExhaustion.CallUnary(ctx, req)
+}
+
+// ListCharacterEffects calls meurpg.play.v1.LastingEffectService.ListCharacterEffects.
+func (c *lastingEffectServiceClient) ListCharacterEffects(ctx context.Context, req *connect.Request[v1.ListCharacterEffectsRequest]) (*connect.Response[v1.ListCharacterEffectsResponse], error) {
+	return c.listCharacterEffects.CallUnary(ctx, req)
 }
 
 // AdvanceGameTime calls meurpg.play.v1.LastingEffectService.AdvanceGameTime.
@@ -310,6 +327,8 @@ type LastingEffectServiceHandler interface {
 	// taken to the death confirmation (ConfirmDeath). Only the master, with the
 	// session open.
 	SetExhaustion(context.Context, *connect.Request[v1.SetExhaustionRequest]) (*connect.Response[v1.SetExhaustionResponse], error)
+	// The effects on the characters outside a running combat, as the caller may read them.
+	ListCharacterEffects(context.Context, *connect.Request[v1.ListCharacterEffectsRequest]) (*connect.Response[v1.ListCharacterEffectsResponse], error)
 	// Only the master may call it. Moves game time on outside a combat: the effects on the
 	// characters lose the seconds, and the ones whose time runs out end (a round is 6 seconds).
 	AdvanceGameTime(context.Context, *connect.Request[v1.AdvanceGameTimeRequest]) (*connect.Response[v1.AdvanceGameTimeResponse], error)
@@ -374,6 +393,12 @@ func NewLastingEffectServiceHandler(svc LastingEffectServiceHandler, opts ...con
 		connect.WithSchema(lastingEffectServiceMethods.ByName("SetExhaustion")),
 		connect.WithHandlerOptions(opts...),
 	)
+	lastingEffectServiceListCharacterEffectsHandler := connect.NewUnaryHandler(
+		LastingEffectServiceListCharacterEffectsProcedure,
+		svc.ListCharacterEffects,
+		connect.WithSchema(lastingEffectServiceMethods.ByName("ListCharacterEffects")),
+		connect.WithHandlerOptions(opts...),
+	)
 	lastingEffectServiceAdvanceGameTimeHandler := connect.NewUnaryHandler(
 		LastingEffectServiceAdvanceGameTimeProcedure,
 		svc.AdvanceGameTime,
@@ -404,6 +429,8 @@ func NewLastingEffectServiceHandler(svc LastingEffectServiceHandler, opts ...con
 			lastingEffectServiceRollEffectSaveHandler.ServeHTTP(w, r)
 		case LastingEffectServiceSetExhaustionProcedure:
 			lastingEffectServiceSetExhaustionHandler.ServeHTTP(w, r)
+		case LastingEffectServiceListCharacterEffectsProcedure:
+			lastingEffectServiceListCharacterEffectsHandler.ServeHTTP(w, r)
 		case LastingEffectServiceAdvanceGameTimeProcedure:
 			lastingEffectServiceAdvanceGameTimeHandler.ServeHTTP(w, r)
 		case LastingEffectServiceLowerExhaustionProcedure:
@@ -447,6 +474,10 @@ func (UnimplementedLastingEffectServiceHandler) RollEffectSave(context.Context, 
 
 func (UnimplementedLastingEffectServiceHandler) SetExhaustion(context.Context, *connect.Request[v1.SetExhaustionRequest]) (*connect.Response[v1.SetExhaustionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.LastingEffectService.SetExhaustion is not implemented"))
+}
+
+func (UnimplementedLastingEffectServiceHandler) ListCharacterEffects(context.Context, *connect.Request[v1.ListCharacterEffectsRequest]) (*connect.Response[v1.ListCharacterEffectsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.LastingEffectService.ListCharacterEffects is not implemented"))
 }
 
 func (UnimplementedLastingEffectServiceHandler) AdvanceGameTime(context.Context, *connect.Request[v1.AdvanceGameTimeRequest]) (*connect.Response[v1.AdvanceGameTimeResponse], error) {

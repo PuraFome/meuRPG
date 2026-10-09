@@ -122,6 +122,7 @@ type Combatant struct {
 	EffectConditions        []string
 	EffectAcBonus           int32
 	EffectSpeedPct          int32
+	EffectSpeedAddFt        int32
 	EffectNoAction          bool
 	EffectNoMove            bool
 	ExtraActionUsed         bool

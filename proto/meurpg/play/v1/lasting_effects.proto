@@ -336,3 +336,26 @@ message EffectLabel {
   // "Paralisado", "Preso numa teia", or the master's free label.
   string text_pt = 2;
 }
+
+// CharacterEffect is an effect on a character that is not in a running combat, as the caller
+// may read it: the master all of them; a player the ones the master leaves visible, on their own
+// characters (and, for the ones for everyone, on the others they see on the stage).
+message CharacterEffect {
+  string id = 1;
+  string character_id = 2;
+  string character_name = 3;
+  // The spell's or the catalog's key ("spell:bless") and its Portuguese name.
+  string source_key = 4;
+  string source_name_pt = 5;
+  // The game time it has left, in seconds (a round is 6 seconds); absent when it lasts until
+  // it is dismissed or its caster stops concentrating.
+  optional int32 seconds_left = 6;
+  // "dura 1 minuto", "dura 54 segundos", "dura 8 horas", "dura enquanto a conjuradora se concentrar".
+  string duration_text_pt = 7;
+  bool concentration = 8;
+  repeated string tags_pt = 9;
+  repeated string condition_names_pt = 10;
+  // Only the master: whether the players read this effect, and to whom.
+  bool player_visible = 11;
+  EffectAudience audience = 12;
+}

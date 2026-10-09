@@ -89,7 +89,7 @@ func (s *Service) effectViewerFor(ctx context.Context, m authz.Membership, d *en
 }
 
 // readsEffect says the viewer reads an effect row on its target: the master always; the target's
-// own player always; the others when the master leaves it visible to everyone and they see the
+// own player when the master leaves it visible; the others when the master leaves it visible to everyone and they see the
 // target.
 func (ev *effectViewer) readsEffect(st playdb.CombatantState) bool {
 	if ev.v.master {
@@ -99,10 +99,13 @@ func (ev *effectViewer) readsEffect(st playdb.CombatantState) bool {
 	if !ok {
 		return false
 	}
+	if !st.PlayerVisible {
+		return false // what the master hides is his alone, the target's player included (RN-10)
+	}
 	if ev.v.owns(target) {
 		return true
 	}
-	return ev.v.sees(target) && st.PlayerVisible && st.Audience == "all"
+	return ev.v.sees(target) && st.Audience == "all"
 }
 
 // conditionHidden says the viewer may not read a condition of a combatant: one with no outward

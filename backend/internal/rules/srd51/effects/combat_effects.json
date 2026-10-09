@@ -87,6 +87,18 @@
       "on_end": "effect:lethargy",
       "tags_pt": ["CA +2", "Deslocamento dobrado", "Vantagem em resistências de Destreza"]
     },
+    "spell:pass-without-trace": {
+      "applies": "all",
+      "visibility": "owner",
+      "modifiers": [{"kind": "check_bonus", "skill": "skill:stealth", "value": 10}],
+      "tags_pt": ["+10 em Furtividade (Destreza)"]
+    },
+    "spell:longstrider": {
+      "applies": "all",
+      "visibility": "owner",
+      "modifiers": [{"kind": "speed_add", "value": 10}],
+      "tags_pt": ["Deslocamento +3 m"]
+    },
     "spell:hold-person": {
       "applies": "failed_save",
       "target_type": "humanoid",

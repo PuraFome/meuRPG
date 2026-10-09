@@ -188,7 +188,7 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_SKILL, "your character has no numbers for this skill")
 	}
 	ability, isCheck := checkKey(d.hintCheck.GetSkillKey())
-	cm, err := s.checkModeOf(ctx, tx, m.CampaignID, session.ID, who.ID, ability, isCheck)
+	cm, err := s.checkModeOf(ctx, tx, m.CampaignID, session.ID, who.ID, d.hintCheck.GetSkillKey(), ability, isCheck)
 	if err != nil {
 		return nil, err
 	}

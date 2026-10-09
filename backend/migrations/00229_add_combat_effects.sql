@@ -26,8 +26,7 @@
 -- trigger_damage_type and trigger_max_triggers the damage dealt to who starts a turn
 -- under it, with triggers_fired how many times it did to this target.
 --
--- player_visible is the master's switch (off: no player but the target's own reads
--- the effect), audience 'all' or 'owner', player_label the master's free label (at
+-- player_visible is the master's switch (off: only the master reads the effect), audience 'all' or 'owner', player_label the master's free label (at
 -- most 30 characters).
 --
 -- One statement with several parts, so re-running it is safe (see 00036).
@@ -123,6 +122,7 @@ ALTER TABLE combatants
     ADD COLUMN IF NOT EXISTS effect_conditions TEXT[] NOT NULL DEFAULT '{}',
     ADD COLUMN IF NOT EXISTS effect_ac_bonus INT4 NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS effect_speed_pct INT4 NOT NULL DEFAULT 100,
+    ADD COLUMN IF NOT EXISTS effect_speed_add_ft INT4 NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS effect_no_action BOOL NOT NULL DEFAULT false,
     ADD COLUMN IF NOT EXISTS effect_no_move BOOL NOT NULL DEFAULT false,
     ADD COLUMN IF NOT EXISTS extra_action_used BOOL NOT NULL DEFAULT false,
@@ -160,6 +160,7 @@ ALTER TABLE combatants
     DROP COLUMN IF EXISTS effect_no_move,
     DROP COLUMN IF EXISTS effect_no_action,
     DROP COLUMN IF EXISTS effect_speed_pct,
+    DROP COLUMN IF EXISTS effect_speed_add_ft,
     DROP COLUMN IF EXISTS effect_ac_bonus,
     DROP COLUMN IF EXISTS effect_conditions;
 DELETE FROM combatant_states WHERE kind = 'effect';

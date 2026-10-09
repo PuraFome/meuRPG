@@ -55,6 +55,11 @@ const (
 	ModifierNoMove = "no_move"
 	// ModifierNoAction stops the creature from taking actions.
 	ModifierNoAction = "no_action"
+	// ModifierCheckBonus adds a bonus to the checks of a skill (Pass without Trace: +10 to
+	// Dexterity (Stealth)).
+	ModifierCheckBonus = "check_bonus"
+	// ModifierSpeedAdd adds feet to the walking speed (Longstrider: +10 ft).
+	ModifierSpeedAdd = "speed_add"
 )
 
 // The rolls a ModifierRollDie applies to.
@@ -86,6 +91,8 @@ type EffectModifier struct {
 	AppliesTo []string `json:"applies_to,omitempty"`
 	// Value is the armor class bonus, or the speed multiplier in percent.
 	Value int `json:"value,omitempty"`
+	// Skill is the skill key of ModifierCheckBonus ("skill:stealth").
+	Skill string `json:"skill,omitempty"`
 	// Abilities are the ability keys of ModifierSaveAdvantage.
 	Abilities []string `json:"abilities,omitempty"`
 	// Allowed are the standard actions an extra action may be ("attack",
@@ -198,7 +205,7 @@ var (
 	effectApplies   = []string{"all", "failed_save"}
 	effectDurations = []string{EffectDurationRounds, EffectDurationUntilStartOfTurnOf, EffectDurationUntilEndOfTurnOf,
 		EffectDurationConcentration, EffectDurationUntilDismissed, EffectDurationLongRest}
-	modifierKinds = []string{ModifierRollDie, ModifierACBonus, ModifierSpeedMultiplier, ModifierSaveAdvantage, ModifierExtraAction, ModifierNoMove, ModifierNoAction}
+	modifierKinds = []string{ModifierRollDie, ModifierACBonus, ModifierSpeedMultiplier, ModifierSaveAdvantage, ModifierExtraAction, ModifierNoMove, ModifierNoAction, ModifierCheckBonus, ModifierSpeedAdd}
 	saveAbilities = []string{"str", "dex", "con", "int", "wis", "cha"}
 	// extraActions are the standard actions an extra action may be: the keys of
 	// effects/standard_actions.json.
@@ -389,6 +396,14 @@ func checkModifier(m EffectModifier) error {
 			if a != RollAppliesAttack && a != RollAppliesSave && a != RollAppliesCheck {
 				return fmt.Errorf("applies_to %q: only attack, save and check", a)
 			}
+		}
+	case ModifierCheckBonus:
+		if m.Skill == "" || m.Value == 0 {
+			return fmt.Errorf("check_bonus needs a skill and a value")
+		}
+	case ModifierSpeedAdd:
+		if m.Value < 1 {
+			return fmt.Errorf("speed_add needs a value in feet")
 		}
 	case ModifierACBonus:
 		if m.Value < 1 {

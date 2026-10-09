@@ -193,3 +193,25 @@ func (e EndsAt) ExpiresAtEnd(member string, round int) bool {
 func IsHumanoid(creatureType string) bool {
 	return creatureType == "" || creatureType == "humanoid"
 }
+
+// SpeedAddFt is the feet the modifiers add to the walking speed (Longstrider).
+func SpeedAddFt(modifiers []rules.EffectModifier) int {
+	n := 0
+	for _, m := range modifiers {
+		if m.Kind == rules.ModifierSpeedAdd {
+			n += m.Value
+		}
+	}
+	return n
+}
+
+// CheckBonus is what the modifiers add to the checks of the skill (Pass without Trace).
+func CheckBonus(modifiers []rules.EffectModifier, skill string) int {
+	n := 0
+	for _, m := range modifiers {
+		if m.Kind == rules.ModifierCheckBonus && m.Skill == skill {
+			n += m.Value
+		}
+	}
+	return n
+}

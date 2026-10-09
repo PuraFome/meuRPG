@@ -423,3 +423,31 @@ func sourceTexts(s []*playv1.AdvantageSource) []string {
 	}
 	return out
 }
+
+// Pass without Trace (SRD 5.1): +10 to Dexterity (Stealth) checks, and the sources of the roll
+// say so. The effect is the character's: the check outside a combat reads it.
+func TestAStealthCheckOutsideACombatTakesPassWithoutTrace(t *testing.T) {
+	t.Parallel()
+	a := newCastingParty(t)
+	a.execSQL(t, `INSERT INTO character_effects (campaign_id, character_id, group_id, source_key, source_kind, modifiers, duration_kind, seconds_left)
+		VALUES ($1, $2, gen_random_uuid(), 'spell:pass-without-trace', 'spell', '[{"kind":"check_bonus","skill":"skill:stealth","value":10}]', 'rounds', 600)`, a.campaignID, a.toren.GetId())
+	point, actions := a.h.newScene(a.mapID, "Corredor", true, 3, sceneSpec{key: "skill:stealth"}, sceneSpec{key: "skill:perception"})
+	a.openScene(t, point)
+	roll := func(i int) *playv1.SceneRoll {
+		a.h.roller.queue(10)
+		res, err := a.caio.play.RollSceneCheck(t.Context(), connect.NewRequest(&playv1.RollSceneCheckRequest{
+			CampaignId: a.campaignID, ActionId: actions[i], IdempotencyKey: newKey(), Roll: &playv1.RollSceneCheckRequest_RollInApp{RollInApp: true},
+		}))
+		if err != nil {
+			t.Fatalf("RollSceneCheck() error = %v", err)
+		}
+		return res.Msg.GetRoll()
+	}
+	stealth, perception := roll(0), roll(1)
+	if !strings.Contains(strings.Join(sourceTexts(stealth.GetSources()), ","), "+10") {
+		t.Errorf("the stealth roll's sources = %v, want the +10", stealth.GetSources())
+	}
+	if strings.Contains(strings.Join(sourceTexts(perception.GetSources()), ","), "+10") {
+		t.Errorf("the Perception roll took the Stealth bonus: %v", perception.GetSources())
+	}
+}

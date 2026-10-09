@@ -675,13 +675,16 @@ func (s *Service) EndLastingEffect(
 	if err != nil {
 		return nil, err
 	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
 	scope := req.Msg.GetScope()
 	if scope != playv1.EffectEndScope_EFFECT_END_SCOPE_THIS && scope != playv1.EffectEndScope_EFFECT_END_SCOPE_CONCENTRATION_GROUP {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("scope must be THIS or CONCENTRATION_GROUP"))
+	}
+	if req.Msg.GetEncounterId() == "" {
+		return s.endCharacterEffect(ctx, m, req.Msg, key)
+	}
+	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
+	if err != nil {
+		return nil, err
 	}
 	rawID := req.Msg.GetEffectId()
 	var ended int32

@@ -22,7 +22,7 @@ import (
 
 // outsideModeOf works out the mode, the dice and the hidden origins of a roll of a character
 // that is not a combatant of a running combat.
-func (s *Service) outsideModeOf(ctx context.Context, tx pgx.Tx, campaignID, characterID, ability string, check bool) (checkMode, error) {
+func (s *Service) outsideModeOf(ctx context.Context, tx pgx.Tx, campaignID, characterID, skillKey, ability string, check bool) (checkMode, error) {
 	rows, err := s.queriesIn(tx).ListCharacterEffects(ctx, []string{characterID})
 	if err != nil {
 		return checkMode{}, fmt.Errorf("list the character's effects: %w", err)
@@ -44,8 +44,12 @@ func (s *Service) outsideModeOf(ctx context.Context, tx pgx.Tx, campaignID, char
 		applies = rules.RollAppliesCheck
 	}
 	var diceOf []effectDie
+	var bonuses []effectBonus
 	for _, r := range rows {
 		mods := modifiersOf(r.Modifiers)
+		if n := combat.CheckBonus(mods, skillKey); n != 0 && check {
+			bonuses = append(bonuses, effectBonus{Key: r.SourceKey, Value: n, Hidden: !r.PlayerVisible})
+		}
 		creature.Conditions = append(creature.Conditions, r.ConditionKeys...)
 		for _, m := range mods {
 			if m.Kind == rules.ModifierSaveAdvantage {
@@ -61,7 +65,7 @@ func (s *Service) outsideModeOf(ctx context.Context, tx pgx.Tx, campaignID, char
 		}
 	}
 	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, Check: check, EffectVisible: true})
-	return checkMode{Mode: combat.Resolve(sources), Sources: sources, Dice: diceOf, hide: hideFor(hiddenConds, hiddenAny)}, nil
+	return checkMode{Mode: combat.Resolve(sources), Sources: sources, Dice: diceOf, Bonuses: bonuses, hide: hideFor(hiddenConds, hiddenAny)}, nil
 }
 
 // hideFor says which sources come from an effect the master hides.
@@ -88,6 +92,9 @@ func modifiersOf(body []byte) []rules.EffectModifier {
 // bonus with them: Bênção's d4 on a saving throw. The dice and where they came from are kept for
 // the sources of the roll.
 func (s *Service) withEffectDice(cm *checkMode, bonus int) (int, error) {
+	for _, b := range cm.Bonuses {
+		bonus += b.Value
+	}
 	if len(cm.Dice) == 0 {
 		return bonus, nil
 	}
@@ -103,6 +110,15 @@ func (s *Service) withEffectDice(cm *checkMode, bonus int) (int, error) {
 // effect added ("Bênção +1d4: 3"). What an effect the master hides gives reads "Outra fonte".
 func (cm checkMode) shownCheck(names func(string) string) []*playv1.AdvantageSource {
 	out := shownSourcesHiding(cm.Sources, names, cm.hide)
+	for _, b := range cm.Bonuses {
+		name := names(b.Key)
+		if b.Hidden {
+			name = "Outra fonte"
+		}
+		out = append(out, &playv1.AdvantageSource{
+			Kind: playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_DIE, TextPt: fmt.Sprintf("%s %+d", name, b.Value),
+		})
+	}
 	for _, d := range cm.Rolled {
 		name, sign := names(d.Key), "+"
 		if d.Sign < 0 {
@@ -119,3 +135,10 @@ func (cm checkMode) shownCheck(names func(string) string) []*playv1.AdvantageSou
 }
 
 var _ = errors.New
+
+// effectBonus is a fixed bonus an effect adds to a check.
+type effectBonus struct {
+	Key    string
+	Value  int
+	Hidden bool
+}

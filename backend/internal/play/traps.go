@@ -247,7 +247,7 @@ func (s *Service) SearchForTraps(
 			return err
 		}
 		ability, isCheck := checkKey(searchCheckKey[skill])
-		cm, err := s.checkModeOf(ctx, tx, m.CampaignID, session.ID, who.ID, ability, isCheck)
+		cm, err := s.checkModeOf(ctx, tx, m.CampaignID, session.ID, who.ID, searchCheckKey[skill], ability, isCheck)
 		// Reliable Talent: a d20 of 9 or lower counts as 10 for a skill the character is
 		// proficient in, each die of a search with disadvantage before the lower is
 		// chosen. Not for the light's penalty: that is the second die, as before.

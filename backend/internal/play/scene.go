@@ -725,7 +725,7 @@ func (s *Service) RollSceneCheck(
 		// Conditions and states of the character in a running combat: Poisoned and
 		// Frightened are disadvantage on ability checks, a rage advantage on Strength.
 		ability, isCheck := checkKey(action.Key)
-		cm, err := s.checkModeOf(ctx, tx, m.CampaignID, session.ID, who.ID, ability, isCheck)
+		cm, err := s.checkModeOf(ctx, tx, m.CampaignID, session.ID, who.ID, action.Key, ability, isCheck)
 		if err != nil {
 			return err
 		}

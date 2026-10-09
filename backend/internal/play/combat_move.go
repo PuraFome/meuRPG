@@ -155,7 +155,7 @@ func speedDFt(c playdb.Combatant) int {
 	if c.EffectNoMove { // the lethargy of a Velocidade that ended (RN-22)
 		return 0
 	}
-	speed := int(max(c.SpeedFt, c.SpeedFlyFt)) * 10
+	speed := (int(max(c.SpeedFt, c.SpeedFlyFt)) + int(c.EffectSpeedAddFt)) * 10
 	if c.Dashed {
 		speed *= 2
 	}

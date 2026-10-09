@@ -344,6 +344,10 @@ var reads = []read{
 		req: func(w *world) proto.Message { return &playv1.GetEncounterRequest{CampaignId: w.campaign} },
 	},
 	{
+		procedure: playv1connect.LastingEffectServiceListCharacterEffectsProcedure, allow: members,
+		req: func(w *world) proto.Message { return &playv1.ListCharacterEffectsRequest{CampaignId: w.campaign} },
+	},
+	{
 		procedure: playv1connect.LastingEffectServiceListLastingEffectsProcedure, allow: masterOnlyRead, why: "the effects in play are the master's panel: what he hides from the players is in it",
 		req: func(w *world) proto.Message {
 			return &playv1.ListLastingEffectsRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId()}

@@ -375,11 +375,11 @@ func (s *Service) refreshCombatants(ctx context.Context, c *combatTx, ids ...str
 		if conds == nil {
 			conds = []string{}
 		}
-		if slices.Equal(conds, cb.Conditions) && slices.Equal(derived, cb.EffectConditions) && int(cb.EffectAcBonus) == ac && int(cb.EffectSpeedPct) == pct && cb.EffectNoAction == noAction && cb.EffectNoMove == noMove {
+		if slices.Equal(conds, cb.Conditions) && slices.Equal(derived, cb.EffectConditions) && int(cb.EffectAcBonus) == ac && int(cb.EffectSpeedPct) == pct && cb.EffectNoAction == noAction && cb.EffectNoMove == noMove && int(cb.EffectSpeedAddFt) == combat.SpeedAddFt(mods) {
 			continue
 		}
 		if err := c.q.SetCombatantEffectState(ctx, playdb.SetCombatantEffectStateParams{
-			ID: cb.ID, Conditions: conds, EffectConditions: derived, EffectAcBonus: int32(ac), EffectSpeedPct: int32(pct), EffectNoAction: noAction, EffectNoMove: noMove, //nolint:gosec // small numbers
+			ID: cb.ID, Conditions: conds, EffectConditions: derived, EffectAcBonus: int32(ac), EffectSpeedPct: int32(pct), EffectNoAction: noAction, EffectNoMove: noMove, EffectSpeedAddFt: int32(combat.SpeedAddFt(mods)), //nolint:gosec // small numbers
 		}); err != nil {
 			return fmt.Errorf("work out the effects' state: %w", err)
 		}
