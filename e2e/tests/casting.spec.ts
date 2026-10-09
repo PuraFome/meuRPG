@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { castSheet, openCastOf, tableForCasting } from './casting-support';
+import { castSheet, openCastOf, pickChoice, pickSlotRadio, pickTargetOf, tableForCasting } from './casting-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { newSignedInContext } from './support';
 
@@ -24,8 +24,8 @@ test(
 
       await openSessionPage(player, campaignId);
       const sheet = await openCastOf(player, 'Armadura Arcana');
-      await sheet.locator('label.row', { hasText: '1º nível' }).click();
-      await sheet.locator('label.row', { hasText: 'Pensantus' }).click();
+      await pickSlotRadio(sheet, '1º nível');
+      await pickTargetOf(sheet, 'Pensantus');
       await sheet.getByRole('button', { name: 'Conjurar Armadura Arcana em Pensantus' }).click();
       await expect(sheet.getByText(/CA 13 \+ Destreza/)).toBeVisible();
       await sheet.getByRole('button', { name: 'Fechar' }).last().click();
@@ -69,7 +69,7 @@ test(
       await openSessionPage(player, campaignId);
       await openSessionPage(master, campaignId);
       const sheet = await openCastOf(player, 'Alarme');
-      await sheet.locator('label.row', { hasText: 'Como ritual' }).click();
+      await pickChoice(sheet, 'Como ritual');
       await expect(sheet.getByText('1 minuto + 10 = 11 minutos')).toBeVisible();
       await expect(sheet.locator('app-slot-picker')).toHaveCount(0);
       await sheet.getByRole('button', { name: 'Começar o ritual' }).click();

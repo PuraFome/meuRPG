@@ -49,7 +49,7 @@ import {
   tableForPuzzles,
   trapPointRPC,
 } from './puzzles-support';
-import { castSheet, openCastOf, tableForCasting } from './casting-support';
+import { castSheet, choiceCard, openCastOf, pickChoice, pickSlotRadio, pickTargetOf, tableForCasting } from './casting-support';
 import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { brisa, brisaSheet } from './combat-support';
@@ -5959,9 +5959,10 @@ async function scanOutsideCastingScreens(browser: Browser, colorScheme: 'light' 
     await p.getByRole('button', { name: 'Conjurar', exact: true }).click();
     await expect(castSheet(p).getByText('Magia', { exact: true }).first()).toBeVisible();
     await expectScreenPasses(p, `Conjurar, a lista de magias ${where}`);
-    await castSheet(p).locator('label.row', { hasText: 'Armadura Arcana' }).click();
-    await castSheet(p).locator('label.row', { hasText: '1º nível' }).click();
-    await castSheet(p).locator('label.row', { hasText: 'Pensantus' }).click();
+    await choiceCard(castSheet(p), 'Armadura Arcana').click();
+    await expect(castSheet(p).locator('.frame__title')).toHaveText('Armadura Arcana');
+    await pickSlotRadio(castSheet(p), '1º nível');
+    await pickTargetOf(castSheet(p), 'Pensantus');
     await expectScreenPasses(p, `Conjurar Armadura Arcana, espaço e alvo ${where}`);
     await castSheet(p).getByRole('button', { name: 'Conjurar Armadura Arcana em Pensantus' }).click();
     await expect(castSheet(p).getByText(/CA 13 \+ Destreza/)).toBeVisible();
@@ -5978,7 +5979,7 @@ async function scanOutsideCastingScreens(browser: Browser, colorScheme: 'light' 
 
     // A ritual: the way, the time computed, and the cast waiting for the master.
     const ritual = await openCastOf(p, 'Alarme');
-    await ritual.locator('label.row', { hasText: 'Como ritual' }).click();
+    await pickChoice(ritual, 'Como ritual');
     await expect(ritual.getByText('1 minuto + 10 = 11 minutos')).toBeVisible();
     await expectScreenPasses(p, `Conjurar Alarme como ritual ${where}`);
     await ritual.getByRole('button', { name: 'Começar o ritual' }).click();
