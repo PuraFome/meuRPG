@@ -2,7 +2,7 @@
 
 The goal is a cost close to zero: with no active session, nothing is running or connected.
 
-**Status.** There is no production deployment yet. This page describes the plan for the first deploy (Cloud Run), the steps to do it ([First deploy, step by step](#first-deploy-step-by-step)) and the settings the code already enforces. Items marked **planned** do not exist yet. The local environment (`make up`, the optional ELK) does exist; see [CONTRIBUTING](../CONTRIBUTING.md).
+**Status.** Production runs on Cloud Run at `https://meurpg.app`, behind the global external Application Load Balancer of [step 10](#10-the-domain), deployed by the steps in [First deploy, step by step](#first-deploy-step-by-step); a new release repeats steps 2, 7 and 8 with the new image. This page also lists the settings the code enforces. Items marked **planned** do not exist yet. The local environment (`make up`, the optional ELK) does exist; see [CONTRIBUTING](../CONTRIBUTING.md).
 
 ## Hosting
 
@@ -463,7 +463,7 @@ docker run --rm --platform linux/amd64 -e K_SERVICE=check -v "$PWD/ca.crt:/etc/c
   --entrypoint /app/migrate $IMAGE status
 ```
 
-Not verified on a real cluster: whether the process (uid 65532, `nonroot`) can read the mounted file; Cloud Run mounts secrets readable, and `migrate status` on the deployed job (step 7) is what shows it. If the service logs `could not read root certificate file`, that is the cause.
+The production cluster passes with `sslmode=verify-full` and no CA file: its certificate is signed by a public CA. Not verified on a real cluster: whether the process (uid 65532, `nonroot`) can read the mounted file; Cloud Run mounts secrets readable, and `migrate status` on the deployed job (step 7) is what shows it. If the service logs `could not read root certificate file`, that is the cause.
 
 #### Create the two secrets
 
@@ -676,17 +676,13 @@ gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name=
 
 The log never holds a password, a token or an e-mail ([Privacy](privacy.md#logs-in-elk)).
 
-## Open items before the first deploy
+## Open items
 
-- The domain: `meurpg.app`, behind a global external Application Load Balancer, since Cloud Run domain mappings are not offered in `southamerica-east1` ([step 10](#10-the-domain)). The first deploy can use the `run.app` URL, and the load balancer follows.
 - Check the region and the backup retention in the CockroachDB Cloud console (São Paulo, 30 days at most).
 - Evaluate whether migrating from CockroachDB to Cloud SQL or another product is worth it, since the legacy plan cannot change without losing Unlimited. It weighs on the account: the code uses CockroachDB's row TTL (sessions, sign-in states and invites) and retries transactions on error `40001`; on PostgreSQL, the cleanup would become a scheduled job.
-- The full list of secrets per environment and who has access.
 - Budget alert thresholds.
 - The production ELK (see [Logs in ELK](#logs-in-elk)): whether it is worth the cost, where Elasticsearch runs, the Cloud Logging sink to Pub/Sub and the pipeline step that reads `jsonPayload`.
-- The Gemini API key in Secret Manager, the daily quota and the key's API restriction (see [Generated images](#generated-images-the-gemini-api)); measure the real cost per image with it, and adjust `IMAGE_MONTHLY_LIMIT`.
-- Run the images bucket and the rest of the first deploy by the steps in [First deploy, step by step](#first-deploy-step-by-step); the Cloud Storage store is in the `blob` package and was tested against a fake of the API only. The real bucket's behaviour (the media upload, the `Range` read, the metadata token) is checked by the smoke test of that section.
-- The CockroachDB Cloud connection string with `sslmode=verify-full`: check its TLS before the deploy, and add the cluster's CA as a mounted file if it needs one ([the database's TLS](#before-the-deploy-the-databases-tls)).
+- The Gemini API key's daily quota and API restriction (the key is in Secret Manager; see [Generated images](#generated-images-the-gemini-api)); measure the real cost per image, and adjust `IMAGE_MONTHLY_LIMIT`.
 
 ## See also
 
