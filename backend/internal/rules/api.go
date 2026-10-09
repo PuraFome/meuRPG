@@ -136,6 +136,12 @@ type Build struct {
 	// is carried.
 	Armor  string
 	Shield bool
+	// MageArmor says Mage Armor is on the character right now (SRD 5.1, Mage
+	// Armor): while it wears no armor, its base AC is 13 + its Dexterity modifier
+	// when that is better than the other bases. It is a spell that lasts a while,
+	// not a part of the sheet, so the caller sets it from the game session and
+	// the sheet never stores it.
+	MageArmor bool
 	// Weapons are the weapons carried, for the sheet's attacks.
 	Weapons []string
 	// Cantrips are level-0 spells. SpellsKnown is the list of spells the

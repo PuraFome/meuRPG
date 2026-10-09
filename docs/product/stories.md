@@ -47,6 +47,7 @@ How to read a story: the user-story sentence, the priority (MVP, MVP prerequisit
 | [MR-043](#mr-043-generate-encounters) | Combat | MVP |
 | [MR-044](#mr-044-generate-treasure) | Map | MVP |
 | [MR-045](#mr-045-look-up-spells) | Rules | MVP |
+| [MR-048](#mr-048-cast-spells-outside-combat) | Combat | MVP |
 | [MR-050](#mr-050-campaign-package-export-and-import) | Campaign | MVP |
 | [MR-049](#mr-049-reserved-characters-and-claim-links) | Character | MVP |
 | [MR-002](#mr-002-generate-an-invite) | Campaign | MVP (prerequisite) |
@@ -1037,7 +1038,7 @@ The story covers own classes **and** subclasses, races and subraces, backgrounds
 **As a** player, when my character can level up, **I want** to edit the sheet to add only what the next level gives, **so that** I do not wait for the GM to apply the level for me.
 
 - Priority: MVP
-- Rules: RN-01, RN-12, RN-32
+- Rules: RN-01, RN-12, RN-33
 - Modules: characters, rules
 
 #### Acceptance criteria
@@ -1052,14 +1053,14 @@ The story covers own classes **and** subclasses, races and subraces, backgrounds
 - **Given** a new class, **when** the player confirms the summary, **then** the footer first asks "Subir em Mago 1? Isso acrescenta uma classe nova à ficha…" with "Voltar" focused; the class joins at level 1 with the average hit points of its die, only the proficiencies of the multiclass table (a skill, and the Bard's instrument, are picked) and no equipment, and the summary says why each number changed (total level, proficiency bonus, hit dice apart, spell slots by the caster level).
 - **Given** a class whose main ability the character lacks, or a character whose current class lacks its own, **when** the player asks for it, **then** the server refuses with the class, the ability, the minimum and the score; the master's editor may go past it, and a player's creation of such a sheet is refused too.
 - **Given** a character whose current hit points are set, **when** the level up raises the maximum, **then** the current rises by the same amount: a wound stays a wound and a character at the maximum stays at the maximum; one whose hit points were never set stays full (RN-12).
-- **Given** a player creating a character whose class or race asks for choices, **when** they reach the step "Escolhas", **then** each choice lists its options with the rule in one line, the ones not yet available dotted with the reason, and "Criar personagem" says what is still missing (RN-32).
-- **Given** a locked sheet with open choices, **when** the owner opens it, **then** it says "N escolhas pendentes" and "Completar" leads to a page with only those; the master sees "N escolhas em aberto" on the campaign (RN-32).
-- **Given** a level-up, **when** the character has choices left behind, **then** "Escolhas que ficaram para trás" comes before "Próximo", and an invocation that asks something the sheet lacks is dotted with the reason (RN-32).
+- **Given** a player creating a character whose class or race asks for choices, **when** they reach the step "Escolhas", **then** each choice lists its options with the rule in one line, the ones not yet available dotted with the reason, and "Criar personagem" says what is still missing (RN-33).
+- **Given** a locked sheet with open choices, **when** the owner opens it, **then** it says "N escolhas pendentes" and "Completar" leads to a page with only those; the master sees "N escolhas em aberto" on the campaign (RN-33).
+- **Given** a level-up, **when** the character has choices left behind, **then** "Escolhas que ficaram para trás" comes before "Próximo", and an invocation that asks something the sheet lacks is dotted with the reason (RN-33).
 
 #### In the app
 - **Pact slots.** Among what the level gives by itself (the Vida step), a Warlock's level lists "Espaços do pacto" (for example "1 de 1º círculo → 2 de 1º círculo") when the number or the level of the pact slots changes.
 - **Server.** `rules` has `LevelUpOptions` (what the class's next level gives), `ApplyLevelUp` (the sheet the choices make) and `CheckLevelUp` (refuses everything the level does not allow, with the field and a reason). `CharacterService` has `GetLevelUpOptions`, `PreviewLevelUp` (the "Resumo": the derived sheet from afterwards, made by the server), `RollLevelUpHitPoints`, `LevelUpCharacter` and `ListLevelUps` (the GM's "O que mudou"). Tables: `character_level_ups` (the record) and `character_level_up_rolls` (the stored die). See [Architecture](../architecture.md#leveling-up-from-the-sheet-mr-040) and [RN-01](rules.md).
-- **Scope.** The server covers hit points, the ability score increase, spells (cantrips, known or spellbook, and prepared), the subclass, the options of the level's features and the Warlock's new invocations. On a sheet with two or more classes, the first panel asks which of them gains the level ("Qual classe sobe de nível?": the first class is marked, as the server does with an empty `class_key`, and changing it after choices asks "Trocar de classe?"); a die already rolled for another class is drawn on the die card with its reason. What stays out (a new class, own subclass; each choice a class asks is part of the level, see RN-32) the GM does in the editor (`LevelUpOptions.master_adds` lists them). The full level-up screen stays in [MR-017](#mr-017-level-up), after the MVP. The GM never vetoes a level up: they are notified, see what changed and fix the sheet if they want.
+- **Scope.** The server covers hit points, the ability score increase, spells (cantrips, known or spellbook, and prepared), the subclass, the options of the level's features and the Warlock's new invocations. On a sheet with two or more classes, the first panel asks which of them gains the level ("Qual classe sobe de nível?": the first class is marked, as the server does with an empty `class_key`, and changing it after choices asks "Trocar de classe?"); a die already rolled for another class is drawn on the die card with its reason. What stays out (a new class, own subclass; each choice a class asks is part of the level, see RN-33) the GM does in the editor (`LevelUpOptions.master_adds` lists them). The full level-up screen stays in [MR-017](#mr-017-level-up), after the MVP. The GM never vetoes a level up: they are notified, see what changed and fix the sheet if they want.
 - **The sheet.** On the locked sheet of a character that "Pode subir de nível", only the owner sees the block "Pensantus pode subir de nível" (the reason, "O mestre marcou “Chegar ao Vale Seco”." or "Você chegou a 2.700 XP.", and the filled button "Subir para o nível 4"). The button opens `/campaigns/:id/characters/:id/level-up`, with the steps Habilidades, Vida, Magias and Resumo. A step with no choice does not exist (Toren at level 5 has only Vida and Resumo); "Escolhas", for the subclass, feature options, skills and expertise, comes before Magias at the levels that give them. Nothing is stored until "Confirmar o nível 4"; "Cancelar" and "Voltar para a ficha" ask in place before discarding.
 - **Numbers and dice.** The "O que muda" numbers come from `PreviewLevelUp` (the browser does not compute rules). The hit die uses the same roll picker as combat and the scene (RN-18). A stale revision (`aborted`) or an engine refusal shows in place, with the reason. "Ler a ficha de novo" keeps only the choices that still fit what the server now asks. The table's hit points rule decides the card (a table that allows only the average has no die). A roll made in the app stays only when it is the one the server kept for this class and level, and a typed roll only for the same level and a die it fits. Prepared spells and expertise are cut back to the new counts, so the screen never sends a pick the level no longer allows. The summary reads the spellcasting of the class being levelled, not the first class of the sheet. It also lists the attacks whose to-hit or damage the level moves (a Strength increase raises a weapon's "+5 · 1d8+3" to "+7 · 1d8+5"; a cantrip rolls more dice), one line each with the damage type, from the attacks of the two derived sheets.
 - **After confirming.** The sheet shows the new level and "Pensantus subiu para o nível 4. O mestre foi avisado.", and the tag disappears. The GM sees "Subiu para o nível N" and a notice at the top of the campaign (for 24 hours, or until dismissed; the open campaign with a session reads again on `xp_changed`), and "O que mudou" opens the choices in place, with the time. See [Design](../design.md#level-up-mr-040).
@@ -1213,6 +1214,32 @@ The story covers own classes **and** subclasses, races and subraces, backgrounds
 
 #### Related
 - A part of [MR-020](#mr-020-look-up-the-rulebook), with only the spells. Letting the GM accept a spell outside the class list is for after the MVP ([MR-046](#mr-046-table-style-feature-by-feature)). Table content: [MR-025](#mr-025-register-table-content).
+
+### MR-048: Cast spells outside combat
+
+**As a** player, **I want** to cast my spells between fights, **so that** I heal the party, prepare Mage Armor or cast a ritual without opening a combat. **As a** master, **I want** to confirm that the time of a long casting has passed, **so that** the slot is spent and the spell takes effect when the story says so.
+
+- Priority: MVP
+- Rules: RN-32, RN-10, RN-18, RN-20
+- Modules: play, characters, rules
+
+#### Acceptance criteria
+- **Given** a cleric with a free slot and a hurt ally, **when** the player casts Cure Wounds with "Conjurar" and picks the ally, **then** the slot is spent, one roll heals the ally up to the maximum, and the party sees the cast in the log.
+- **Given** a wizard with Detect Magic in the spellbook, **when** the player casts it "Como ritual", **then** no slot is spent, the casting takes 10 minutes more and the wizard concentrates on it from the start.
+- **Given** a cast that takes minutes or hours, **when** the master taps "Concluir conjuração", **then** the slot is spent and the spell takes effect. **And when** the caster's concentration breaks first, **then** the cast fails and no slot is spent.
+- **Given** a spell that lasts and a caster who concentrates on it, **when** the caster casts another concentration spell, **then** the screen asks "Isso encerra Bênção" first, and the first spell ends with the new cast.
+- **Given** an active spell, **when** the master or the caster taps "Encerrar", **then** it ends and what it changed goes back (Mage Armor's armor class).
+- **Given** a target that wears armor, **when** Mage Armor is cast on it, **then** the cast is refused with the reason.
+- **Given** an NPC on the stage as a target, **when** a player reads the cast, **then** they read the NPC by its place on the stage and never the character ID, and a cast by an NPC that is not on the stage never reaches them (RN-10, RN-20).
+- **Given** a combat running, **when** its caster tries to cast outside it, **then** the cast is refused and the spell is cast in the combat.
+
+#### In the app
+- **Server.** `CastingService` (`casting.proto`): `GetCastOptions`, `CastSpellOutsideCombat`, `ConfirmCastTimePassed` (master only), `AbandonCast`, `EndActiveSpell` and `ListSpellCasts`, with the typed refusals of `CastingBlocked`. One row of `spell_casts` per casting; the stream hint is `spell_casts_changed`. See [Architecture](../architecture.md#casting-outside-combat-mr-048-rn-31) and [Data model](../data.md#casting-outside-combat-mr-048-rn-31).
+- **Screen.** "Conjurar" opens the spells the character can cast, each with its slots, "Como ritual" when the spell allows it, the time it takes and the targets. The master casts for an NPC with "Conjurar como NPC". "Magias ativas" lists the casts going or lasting, with "Concluir conjuração" (master) and "Encerrar".
+- **Tests (Go).** `TestCastingOutside_*` and `TestRN10_CastingOutsideHidesWhatThePlayersMaySee` in `backend/internal/play`.
+
+#### Related
+- [RN-32](rules.md#rn-32-casting-outside-combat). In a combat the spells are cast there. The maximum hit points of Aid are not raised yet.
 
 ### MR-050: Campaign package, export and import
 

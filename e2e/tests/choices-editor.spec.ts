@@ -5,7 +5,7 @@ import { callRPC, newSignedInContext } from './support';
 
 test.describe.configure({ timeout: 120_000 });
 
-// RN-32 (class and race choices): the "Escolhas" step of the editor. A player does not create a sheet with a choice
+// RN-33 (class and race choices): the "Escolhas" step of the editor. A player does not create a sheet with a choice
 // open; the step shows what the race and the class ask, with the rule of each option, and the options that cannot be
 // taken yet stay in the list, dotted, with the reason. Every test makes its own campaign through the API.
 
@@ -29,8 +29,8 @@ async function storedPicks(page: Page, campaignId: string): Promise<string[]> {
 }
 
 test(
-  'um draconato guerreiro escolhe o ancestral e o estilo de luta, e só então cria o personagem @RN-32',
-  { tag: '@RN-32' },
+  'um draconato guerreiro escolhe o ancestral e o estilo de luta, e só então cria o personagem @RN-33',
+  { tag: '@RN-33' },
   async ({ browser }) => {
     const master = await newSignedInContext(browser, 'Mestre Teste');
     const player = await newSignedInContext(browser, 'Jogador Teste');
@@ -87,8 +87,8 @@ test(
 );
 
 test(
-  'um bruxo de nível 5 escolhe a dádiva e três invocações, e a que ainda não pode ser escolhida fica na lista com o motivo @RN-32',
-  { tag: '@RN-32' },
+  'um bruxo de nível 5 escolhe a dádiva e três invocações, e a que ainda não pode ser escolhida fica na lista com o motivo @RN-33',
+  { tag: '@RN-33' },
   async ({ browser }) => {
     const master = await newSignedInContext(browser, 'Mestre Teste');
     const player = await newSignedInContext(browser, 'Jogador Teste');

@@ -402,7 +402,7 @@ func TestMR040_TheHitPointsOfANewClassUseItsDie(t *testing.T) {
 // TestAMulticlassLevelBringsTheNewClassesChoices: a Wizard that takes Ranger 1 picks the
 // ranger's level 1 choices (a favored enemy and its language, a terrain) at that level:
 // the offer lists them in new_choices, the level is refused without their picks
-// (FEATURE_CHOICE) and goes through with them, leaving no choice open (RN-32).
+// (FEATURE_CHOICE) and goes through with them, leaving no choice open (RN-33).
 func TestAMulticlassLevelBringsTheNewClassesChoices(t *testing.T) {
 	t.Parallel()
 	tb := newLevelUpTable(t, 2700)

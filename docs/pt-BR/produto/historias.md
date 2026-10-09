@@ -47,6 +47,7 @@ Como ler uma história: a frase da história, a prioridade (MVP, MVP pré-requis
 | [MR-043](#mr-043-gerar-encontros) | Combate | MVP |
 | [MR-044](#mr-044-gerar-tesouro) | Mapa | MVP |
 | [MR-045](#mr-045-consultar-as-magias) | Regras | MVP |
+| [MR-048](#mr-048-conjurar-magias-fora-do-combate) | Combate | MVP |
 | [MR-050](#mr-050-pacote-da-campanha-exportar-e-importar) | Campanha | MVP |
 | [MR-049](#mr-049-personagens-reservados-e-links-para-assumir) | Personagem | MVP |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
@@ -1038,7 +1039,7 @@ A história cobre classes **e** subclasses próprias, raças e sub-raças, antec
 **Como** jogador, quando meu personagem pode subir de nível, **quero** editar a ficha para acrescentar só o que o próximo nível dá, **para** não esperar o mestre aplicar o nível por mim.
 
 - Prioridade: MVP
-- Regras: RN-01, RN-12, RN-32
+- Regras: RN-01, RN-12, RN-33
 - Módulos: characters, rules
 
 #### Critérios de aceite
@@ -1053,14 +1054,14 @@ A história cobre classes **e** subclasses próprias, raças e sub-raças, antec
 - **Dado** um personagem com os PV atuais definidos, **quando** a subida de nível aumenta o máximo, **então** o atual sobe o mesmo tanto: um ferimento continua um ferimento e quem estava no máximo continua no máximo; quem nunca teve os PV definidos continua cheio (RN-12).
 - **Dado** que o jogador subiu de nível, **quando** o mestre abre a lista de personagens, **então** é avisado e vê "O que mudou": as escolhas do jogador naquele nível (habilidade, PV e como, truques, magias, preparadas), com a hora. Não há aprovação nem veto: o mestre continua editando a ficha como sempre (RN-02).
 - **Dado** que o jogador confirmou a subida, **quando** a ficha é gravada, **então** "Pode subir de nível" some sozinho.
-- **Dado** um jogador criando um personagem cuja classe ou raça pede escolhas, **quando** chega ao passo "Escolhas", **então** cada escolha lista as opções com a regra em uma linha, as ainda indisponíveis pontilhadas com o motivo, e "Criar personagem" diz o que falta (RN-32).
-- **Dado** uma ficha travada com escolhas abertas, **quando** o dono a abre, **então** ela diz "N escolhas pendentes" e "Completar" leva a uma página só com elas; o mestre vê "N escolhas em aberto" na campanha (RN-32).
-- **Dado** uma subida de nível, **quando** o personagem tem escolhas que ficaram para trás, **então** "Escolhas que ficaram para trás" vem antes de "Próximo", e a invocação que pede algo que a ficha não tem aparece pontilhada com o motivo (RN-32).
+- **Dado** um jogador criando um personagem cuja classe ou raça pede escolhas, **quando** chega ao passo "Escolhas", **então** cada escolha lista as opções com a regra em uma linha, as ainda indisponíveis pontilhadas com o motivo, e "Criar personagem" diz o que falta (RN-33).
+- **Dado** uma ficha travada com escolhas abertas, **quando** o dono a abre, **então** ela diz "N escolhas pendentes" e "Completar" leva a uma página só com elas; o mestre vê "N escolhas em aberto" na campanha (RN-33).
+- **Dado** uma subida de nível, **quando** o personagem tem escolhas que ficaram para trás, **então** "Escolhas que ficaram para trás" vem antes de "Próximo", e a invocação que pede algo que a ficha não tem aparece pontilhada com o motivo (RN-33).
 
 #### No app
 - **Espaços do pacto.** Entre o que o nível dá sozinho (o passo Vida), o nível de um Bruxo lista "Espaços do pacto" (por exemplo "1 de 1º círculo → 2 de 1º círculo") quando muda o número ou o círculo dos espaços do pacto.
 - **Servidor.** O `rules` tem `LevelUpOptions` (o que o próximo nível de uma classe dá), `ApplyLevelUp` (a ficha que as escolhas fazem) e `CheckLevelUp` (recusa tudo o que o nível não permite, com o campo e um motivo). O `CharacterService` tem `GetLevelUpOptions`, `PreviewLevelUp` (o "Resumo": a ficha derivada de depois, feita pelo servidor), `RollLevelUpHitPoints`, `LevelUpCharacter` e `ListLevelUps` (o "O que mudou" do mestre). Tabelas: `character_level_ups` (o registro) e `character_level_up_rolls` (o dado guardado). Ver [Arquitetura](../../architecture.md#leveling-up-from-the-sheet-mr-040) e [RN-01](regras.md).
-- **Alcance.** O servidor cobre os PV, o incremento no valor de habilidade, as magias (truques, conhecidas ou do grimório, e as preparadas), a subclasse, as opções das features do nível e as novas invocações do Bruxo. Numa ficha com duas ou mais classes, o primeiro painel pergunta qual delas ganha o nível ("Qual classe sobe de nível?": a primeira classe vem marcada, como o servidor faz com `class_key` vazio, e trocar depois de escolher pergunta "Trocar de classe?"); um dado já rolado para outra classe aparece no cartão do dado com o motivo. O que fica de fora (uma classe nova, subclasse própria; cada escolha que uma classe pede faz parte do nível, ver RN-32) o mestre faz no editor (`LevelUpOptions.master_adds` lista tudo isso). A tela completa de subir de nível continua na [MR-017](#mr-017-subir-de-nível), depois do MVP. O mestre não veta uma subida: é avisado, vê o que mudou e corrige a ficha se quiser.
+- **Alcance.** O servidor cobre os PV, o incremento no valor de habilidade, as magias (truques, conhecidas ou do grimório, e as preparadas), a subclasse, as opções das features do nível e as novas invocações do Bruxo. Numa ficha com duas ou mais classes, o primeiro painel pergunta qual delas ganha o nível ("Qual classe sobe de nível?": a primeira classe vem marcada, como o servidor faz com `class_key` vazio, e trocar depois de escolher pergunta "Trocar de classe?"); um dado já rolado para outra classe aparece no cartão do dado com o motivo. O que fica de fora (uma classe nova, subclasse própria; cada escolha que uma classe pede faz parte do nível, ver RN-33) o mestre faz no editor (`LevelUpOptions.master_adds` lista tudo isso). A tela completa de subir de nível continua na [MR-017](#mr-017-subir-de-nível), depois do MVP. O mestre não veta uma subida: é avisado, vê o que mudou e corrige a ficha se quiser.
 - **A ficha.** Na ficha travada de quem "Pode subir de nível", só o dono vê o bloco "Pensantus pode subir de nível" (o motivo, "O mestre marcou “Chegar ao Vale Seco”." ou "Você chegou a 2.700 XP.", e o botão cheio "Subir para o nível 4"). O botão abre a página `/campaigns/:id/characters/:id/level-up`, com os passos Habilidades, Vida, Magias e Resumo. O passo sem escolha não existe (Toren no nível 5 só tem Vida e Resumo); "Escolhas", para a subclasse, as opções das features, as perícias e a especialização, entra antes de Magias nos níveis que as dão. Nada é guardado até "Confirmar o nível 4"; "Cancelar" e "Voltar para a ficha" perguntam no lugar antes de descartar.
 - **Números e dado.** Os números do "O que muda" vêm do `PreviewLevelUp` (o navegador não calcula regra). O dado de vida usa o mesmo seletor de rolagem do combate e da cena (RN-18). Uma revisão velha (`aborted`) ou uma recusa do motor aparecem no lugar, com o motivo. "Ler a ficha de novo" guarda só as escolhas que ainda cabem no que o servidor pede agora. A regra de pontos de vida da mesa decide o cartão (mesa que só permite a média não tem dado). Uma rolagem feita no app só fica quando é a que o servidor guardou para esta classe e este nível, e uma digitada só para o mesmo nível e um dado em que caiba. As magias preparadas e a especialização voltam para as contagens novas, para a tela nunca mandar uma escolha que o nível não permite mais. O resumo lê a conjuração da classe que sobe de nível, não a primeira da ficha. Ele também lista os ataques cujo acerto ou dano o nível muda (um aumento de Força leva o "+5 · 1d8+3" de uma arma a "+7 · 1d8+5"; um truque rola mais dados), uma linha para cada, com o tipo de dano, a partir dos ataques das duas fichas derivadas.
 - **Depois de confirmar.** A ficha mostra o nível novo e "Pensantus subiu para o nível 4. O mestre foi avisado.", e a etiqueta some. O mestre vê "Subiu para o nível N" e um aviso no alto da campanha (por 24 horas, ou até dispensar; a campanha aberta com sessão lê de novo no `xp_changed`), e "O que mudou" abre as escolhas no lugar, com a hora. Ver [Design](../../design.md#level-up-mr-040).
@@ -1213,6 +1214,32 @@ A história cobre classes **e** subclasses próprias, raças e sub-raças, antec
 
 #### Relacionadas
 - Uma parte da [MR-020](#mr-020-consultar-o-livro-de-regras), só com as magias. O mestre aceitar uma magia fora da lista da classe fica para depois do MVP ([MR-046](#mr-046-o-estilo-da-mesa-recurso-por-recurso)). Conteúdo da mesa: [MR-025](#mr-025-cadastrar-conteúdo-da-mesa).
+
+### MR-048: Conjurar magias fora do combate
+
+**Como** jogador, **quero** conjurar minhas magias entre os combates, **para** curar o grupo, preparar Armadura Arcana ou conjurar um ritual sem abrir um combate. **Como** mestre, **quero** confirmar que o tempo de uma conjuração longa passou, **para** o espaço ser gasto e a magia fazer efeito quando a história disser.
+
+- Prioridade: MVP
+- Regras: RN-32, RN-10, RN-18, RN-20
+- Módulos: play, characters, rules
+
+#### Critérios de aceite
+- **Dado** um clérigo com um espaço livre e um aliado ferido, **quando** o jogador conjura Curar Ferimentos em "Conjurar" e escolhe o aliado, **então** o espaço é gasto, uma rolagem cura o aliado até o máximo, e o grupo vê a conjuração no registro.
+- **Dado** um mago com Detectar Magia no grimório, **quando** o jogador a conjura "Como ritual", **então** nenhum espaço é gasto, a conjuração leva 10 minutos a mais e o mago se concentra nela desde o início.
+- **Dado** uma conjuração que leva minutos ou horas, **quando** o mestre toca em "Concluir conjuração", **então** o espaço é gasto e a magia faz efeito. **E quando** a concentração do conjurador se quebra antes, **então** a conjuração falha e nenhum espaço é gasto.
+- **Dado** uma magia que dura e um conjurador concentrado nela, **quando** ele conjura outra magia de concentração, **então** a tela pergunta antes "Isso encerra Bênção", e a primeira magia termina com a nova conjuração.
+- **Dado** uma magia ativa, **quando** o mestre ou o conjurador toca em "Encerrar", **então** ela termina e o que ela mudou volta (a CA da Armadura Arcana).
+- **Dado** um alvo que veste armadura, **quando** Armadura Arcana é conjurada nele, **então** a conjuração é recusada com o motivo.
+- **Dado** um NPC em cena como alvo, **quando** um jogador lê a conjuração, **então** ele lê o NPC pelo lugar dele em cena e nunca o ID do personagem, e uma conjuração de um NPC que não está em cena nunca chega a ele (RN-10, RN-20).
+- **Dado** um combate em andamento, **quando** o conjurador tenta conjurar fora dele, **então** a conjuração é recusada e a magia é conjurada no combate.
+
+#### No app
+- **Servidor.** `CastingService` (`casting.proto`): `GetCastOptions`, `CastSpellOutsideCombat`, `ConfirmCastTimePassed` (só o mestre), `AbandonCast`, `EndActiveSpell` e `ListSpellCasts`, com as recusas tipadas do `CastingBlocked`. Uma linha de `spell_casts` por conjuração; a dica de stream é `spell_casts_changed`. Veja a [Arquitetura](../../architecture.md#casting-outside-combat-mr-048-rn-31) e o [Modelo de dados](../../data.md#casting-outside-combat-mr-048-rn-31).
+- **Tela.** "Conjurar" abre as magias que o personagem pode conjurar, cada uma com seus espaços, "Como ritual" quando a magia permite, o tempo que leva e os alvos. O mestre conjura por um NPC com "Conjurar como NPC". "Magias ativas" lista as conjurações em andamento ou duradouras, com "Concluir conjuração" (mestre) e "Encerrar".
+- **Testes (Go).** `TestCastingOutside_*` e `TestRN10_CastingOutsideHidesWhatThePlayersMaySee` em `backend/internal/play`.
+
+#### Relacionadas
+- [RN-32](regras.md#rn-32-conjurar-fora-do-combate). No combate as magias são conjuradas lá. O máximo de pontos de vida de Ajuda ainda não sobe.
 
 ### MR-050: Pacote da campanha, exportar e importar
 
