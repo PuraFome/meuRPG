@@ -69,7 +69,7 @@ describe('XpWatcher (E7-10)', () => {
   it('says which character changed when the master asked for changes, the player sent it again or it was revived', async () => {
     const onCharacter = vi.fn();
     const watcher = TestBed.inject(XpWatcher);
-    watcher.follow('camp-1', vi.fn(), undefined, undefined, undefined, onCharacter);
+    watcher.follow('camp-1', vi.fn(), undefined, undefined, undefined, undefined, onCharacter);
     await flush();
     calls[0].push({ kind: 'ready' });
     calls[0].push({ kind: 'characterChanged', characterId: 'c-1' });

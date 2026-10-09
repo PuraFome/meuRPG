@@ -1768,7 +1768,7 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
       },
     ]);
     const fixture = await render();
-    const onCharacter = xpWatcher.follow.mock.calls.at(-1)![5]!;
+    const onCharacter = xpWatcher.follow.mock.calls.at(-1)![6]!;
 
     onCharacter('other');
     await flush();
@@ -1967,6 +1967,7 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
       expect.any(Function),
       expect.any(Function),
       expect.any(Function),
+      expect.any(Function),
     );
 
     openSessions.set([
@@ -1983,6 +1984,7 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
     await fixture.whenStable();
     expect(xpWatcher.follow).toHaveBeenLastCalledWith(
       'camp-1',
+      expect.any(Function),
       expect.any(Function),
       expect.any(Function),
       expect.any(Function),
