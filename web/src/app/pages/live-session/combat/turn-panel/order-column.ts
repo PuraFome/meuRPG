@@ -19,6 +19,7 @@ import {
   orderItems,
 } from '../../../../core/combat/joint-turn';
 import { conditionTags } from '../../../../core/combat/conditions';
+import { labelTags } from '../../../../core/effects/effects';
 import { coverMarkTags, sideTags } from '../../../../core/combat/cover';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
 import { FormTag } from '../combatant-tags/form-tag';
@@ -100,7 +101,7 @@ export class OrderColumn {
     // The concentration is public: everyone at the table sees who holds a spell (the spell's name stays with the sheet and the master).
     return [
       ...(c.concentrationSpell ? ['Concentração'] : []),
-      ...conditionTags(c),
+      ...labelTags(conditionTags(c), c.effectLabels),
       ...coverMarkTags(c),
     ];
   }

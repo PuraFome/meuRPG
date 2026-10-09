@@ -92,7 +92,18 @@
     @if (woke()) {
       <app-effect-pill tone="ok" icon="check">Acordado · testes contra a morte zerados</app-effect-pill>
     }
+    @for (name of conditions(); track name) {
+      <app-effect-pill tone="down" icon="lock">{{ name }}</app-effect-pill>
+    }
+    @if (exhaustion() > 0) {
+      <app-effect-pill tone="aid" icon="battery_alert">{{ exhaustionLabel(exhaustion()) }}</app-effect-pill>
+    }
   </div>
+
+  <!-- "Seus efeitos" and the exhaustion card (RN-22): nothing is drawn without them. -->
+  @if (effectCards().length > 0 || exhaustion() > 0) {
+    <app-effect-cards class="vitals__effects" [cards]="effectCards()" [exhaustion]="exhaustion()" />
+  }
 
   @if (!compact()) {
     <div class="dice">

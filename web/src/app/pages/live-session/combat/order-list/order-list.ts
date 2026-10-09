@@ -37,6 +37,7 @@ import {
 import { tieNumbers } from '../../../../core/format/text';
 import { joinDots } from '../../../../core/format/text';
 import { conditionTags } from '../../../../core/combat/conditions';
+import { labelTags } from '../../../../core/effects/effects';
 import { coverMark, coverText, sideTags } from '../../../../core/combat/cover';
 import { article } from '../../../../core/combat/combat-log';
 import { combatantInitial, isPlayer, stateWord } from '../../../../core/combat/combat-view';
@@ -218,7 +219,7 @@ export class OrderList {
 
   protected tags(c: Combatant): string[] {
     // The master's list says the cover in the line under the name; "Aliado" is a side, shown apart.
-    return conditionTags(c);
+    return labelTags(conditionTags(c), c.effectLabels);
   }
 
   /** The spell it concentrates on, written out (the combat sends its name). */

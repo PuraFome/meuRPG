@@ -3,6 +3,7 @@ import { Component, computed, input } from '@angular/core';
 
 import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { conditionTags } from '../../../../core/combat/conditions';
+import { labelTags } from '../../../../core/effects/effects';
 import { coverMarkTags, sideTags } from '../../../../core/combat/cover';
 import {
   combatantInitial,
@@ -196,7 +197,7 @@ export class OrderStrip {
     // The chip is 104 px: the cover says its degree only ("Meia cobertura"); the full words ("marcada pelo mestre") are in the lists and the cast.
     return [
       ...(c.concentrationSpell ? ['Concentração'] : []),
-      ...conditionTags(c),
+      ...labelTags(conditionTags(c), c.effectLabels),
       ...coverMarkTags(c).map((t) => t.replace(' · marcada pelo mestre', '')),
     ];
   }

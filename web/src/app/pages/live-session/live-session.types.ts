@@ -62,6 +62,8 @@ export interface VitalsVm {
   readonly hitPointsTemporary: number;
   /** What Ajuda adds to the maximum above (0 or absent without it): `hitPointsMax` already counts it, the sheet's own is the difference. */
   readonly hitPointsMaxBonus?: number;
+  /** The level of exhaustion, 0 to 6 (the master sets it); from level 4 `hitPointsMax` is already half the sheet's. Absent as 0. */
+  readonly exhaustionLevel?: number;
   /** Only the levels with slots, lowest first. */
   readonly spellSlots: readonly SlotUsageVm[];
   readonly pactSlots: PactSlotsVm | null;

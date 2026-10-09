@@ -33,6 +33,8 @@ import {
   vitalsSpeech,
 } from '../../../core/combat/combat-effects';
 import { EffectPill } from '../../../shared/effect-pill/effect-pill';
+import { type EffectCardView, exhaustionLabel } from '../../../core/effects/effects';
+import { EffectCards } from '../effects/effect-cards/effect-cards';
 import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { hitDiceLeftWords, totalDiceLeft } from '../../../core/resources/hit-dice-text';
 import { openHitDice } from '../hit-dice-sheet/hit-dice-sheet';
@@ -61,7 +63,15 @@ interface SlotRowVm {
  */
 @Component({
   selector: 'app-player-vitals',
-  imports: [EffectPill, MatButtonModule, MatIconModule, RouterLink, SlotDots, WildPools],
+  imports: [
+    EffectCards,
+    EffectPill,
+    MatButtonModule,
+    MatIconModule,
+    RouterLink,
+    SlotDots,
+    WildPools,
+  ],
   templateUrl: './player-vitals.html',
   styleUrl: './player-vitals.scss',
 })
@@ -80,6 +90,12 @@ export class PlayerVitals {
   readonly armorClassBonus = input<number | null>(null);
   /** The death saves of the player's own combatant while a combat runs; `null` without one (the pill then says only "Inconsciente"). */
   readonly ownDeathSaves = input<{ successes: number; failures: number } | null>(null);
+
+  /** "Seus efeitos": the cards of the effects the server lets this player read (on the combatant in a combat, on the
+   * character outside one); none draws nothing. */
+  readonly effectCards = input<readonly EffectCardView[]>([]);
+  /** The conditions those effects hold ("Paralisado"), said once in a label under the cards. */
+  readonly conditionNames = input<readonly string[]>([]);
 
   /** How the campaign has the players roll their dice and the player's own choice: the hit die sheet follows them (RN-18). */
   readonly diceMode = input<DiceMode>(DiceMode.PLAYERS_CHOOSE);
@@ -121,6 +137,10 @@ export class PlayerVitals {
     return base !== null && this.shieldBonus() > 0 ? shieldSum(base, this.shieldBonus()) : '';
   });
   protected readonly shieldLabel = shieldLabelForOwner;
+  protected readonly conditions = computed(() => this.conditionNames());
+  /** The level of exhaustion the master set, 0 to 6. */
+  protected readonly exhaustion = computed(() => this.vitals().exhaustionLevel ?? 0);
+  protected readonly exhaustionLabel = exhaustionLabel;
   /** At 0 hit points in the character's own shape: "Inconsciente" and the death save counts. */
   protected readonly down = computed(() => this.vitals().hitPointsCurrent <= 0);
   /** "1 sucesso, 1 falha", or empty when no combat tells the counts. */

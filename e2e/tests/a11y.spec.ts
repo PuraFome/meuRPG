@@ -7407,3 +7407,112 @@ test('o salto que sai do alcance de um inimigo passa no axe e nas conferências 
   test.setTimeout(240_000);
   await scanJumpWarningScreens(browser, 'dark', 390);
 });
+
+/** The effects that last on the player's screens (W7-E, RN-22): "Seus efeitos" and the exhaustion card on the live sheet,
+ * the attack sheet with the d4 of Bênção typed from a physical die, the turn of a paralysed character and the saving
+ * throw of the end of the turn with its three answers, its typed fields and its result. The table and the effects come
+ * through the API, so every run draws the same screens. */
+async function scanEffectsPlayerScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade efeitos ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    campaignId = table.campaignId;
+    const enc = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    const me = enc.combatants.find((c) => c.label === 'Pensantus')!.id;
+    const captain = enc.combatants.find((c) => c.label === 'Capitão Goblin')!.id;
+    const add = async (catalogKey: string, casterId?: string) => {
+      const res = await callRPC(m, 'meurpg.play.v1.LastingEffectService/AddLastingEffect', {
+        campaignId,
+        encounterId: enc.id,
+        idempotencyKey: crypto.randomUUID(),
+        targetIds: [me],
+        catalogKey,
+        ...(casterId ? { casterId } : {}),
+        duration: { kind: 'EFFECT_DURATION_KIND_ROUNDS', rounds: 10 },
+        playerVisible: true,
+        audience: 'EFFECT_AUDIENCE_ALL',
+      });
+      expect(res.ok(), await res.text()).toBeTruthy();
+    };
+
+    // The live sheet: the card of an effect and the exhaustion card.
+    await add('spell:bless');
+    const exhaustion = await callRPC(m, 'meurpg.play.v1.LastingEffectService/SetExhaustion', {
+      campaignId,
+      idempotencyKey: crypto.randomUUID(),
+      characterId: table.characterId,
+      level: 4,
+      expectedLevel: 0,
+    });
+    expect(exhaustion.ok(), await exhaustion.text()).toBeTruthy();
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Seus efeitos' })).toBeVisible();
+    await expect(p.getByRole('group', { name: 'Nível 4' })).toBeVisible();
+    await expectScreenPasses(p, `Seus efeitos e a exaustão na ficha ${where}`);
+
+    // The attack sheet with the d4 of Bênção beside the d20.
+    await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
+    const attack = p.getByRole('dialog', { name: 'Atacar com Raio de Fogo' });
+    await attack.locator('label', { hasText: 'Capitão Goblin' }).click();
+    await attack.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await expect(attack.getByLabel('Resultado do d4 (Bênção)')).toBeVisible();
+    await expectScreenPasses(p, `Atacar com Bênção, o d4 dos dados físicos ${where}`);
+    await attack.getByLabel('Resultado do d4 (Bênção)').fill('3');
+    await attack.getByLabel(/Role 1d20 para Raio de Fogo/).fill('14');
+    await attack.getByRole('button', { name: 'Confirmar 14' }).click();
+    await expect(attack).toContainText('+ 1d4 (3)');
+    await expectScreenPasses(p, `Atacar com Bênção, o resultado com o d4 ${where}`);
+    await p.keyboard.press('Escape');
+    await expect(attack).toBeHidden();
+
+    // The turn of a paralysed character, and the saving throw of the end of the turn.
+    await add('spell:hold-person', captain);
+    await expect(p.getByTestId('effect-note')).toBeVisible();
+    await expectScreenPasses(p, `O turno de quem está paralisado ${where}`);
+    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    const save = p.getByRole('dialog', { name: 'Teste de resistência do fim do turno' });
+    await expect(save.getByRole('button', { name: 'Rolar no app' })).toBeVisible();
+    await expectScreenPasses(p, `Fim do seu turno, as três respostas ${where}`);
+    await save.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await expect(save.getByLabel(/Resultado do d20/)).toBeVisible();
+    await expectScreenPasses(p, `Fim do seu turno, digitando o d20 ${where}`);
+    await save.getByLabel(/Resultado do d20/).fill('20');
+    await save.getByRole('button', { name: /Confirmar/ }).click();
+    await expect(save).toContainText('Passou');
+    await expectScreenPasses(p, `Fim do seu turno, o resultado ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('os efeitos que duram, na tela do jogador, passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanEffectsPlayerScreens(browser, 'light', 1280);
+});
+
+test('os efeitos que duram, na tela do jogador, passam no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanEffectsPlayerScreens(browser, 'light', 390);
+});
+
+test('os efeitos que duram, na tela do jogador, passam no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanEffectsPlayerScreens(browser, 'dark', 1280);
+});
+
+test('os efeitos que duram, na tela do jogador, passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanEffectsPlayerScreens(browser, 'dark', 390);
+});

@@ -194,6 +194,51 @@
     </div>
   </section>
 
+  @if (extraAction(); as extra) {
+    <!-- The extra action an effect gives (Velocidade, RN-22): one action a turn that may only be some standard actions. -->
+    <section class="group" aria-labelledby="g-extra">
+      <header class="group__head">
+        <h3 class="group__name" id="g-extra">{{ extra.labelPt }}</h3>
+        <app-group-state [word]="extra.available ? 'Disponível' : 'Usada'" [used]="!extra.available" />
+      </header>
+      <p class="group__sub" id="extra-allowed">{{ extra.allowedTextPt }}</p>
+      @if (!extra.available && extra.reasonPt) {
+        <p class="group__why" id="extra-why"><mat-icon aria-hidden="true">block</mat-icon>{{ extra.reasonPt }}</p>
+      }
+      @for (a of extraWeapons(); track a.attack?.key) {
+        @if (a.attack; as atk) {
+          <app-action-row
+            [name]="attackName(atk)"
+            [detail]="attackDetail(atk)"
+            button="Atacar"
+            [buttonLabel]="'Atacar com ' + attackName(atk) + ' (' + extra.labelPt + ')'"
+            [off]="!extra.available || !!locked()"
+            [reason]="locked() || extra.reasonPt"
+            [busy]="busy()"
+            (press)="extraAttack.emit(atk.key)"
+          />
+        }
+      }
+      <div class="std" role="group" [attr.aria-label]="extra.labelPt">
+        @for (a of extraStandards(); track a.key) {
+          <button
+            mat-stroked-button
+            type="button"
+            class="std__btn"
+            [class.std__btn--off]="!extra.available || !!locked()"
+            [class.mr-button--off]="!extra.available || !!locked()"
+            [disabled]="!extra.available || !!locked() || busy()"
+            disabledInteractive
+            [attr.aria-describedby]="!extra.available && extra.reasonPt ? 'extra-why' : null"
+            (click)="extra.available && !locked() && extraStandard.emit(a.key)"
+          >
+            {{ a.name }}
+          </button>
+        }
+      </div>
+    </section>
+  }
+
   @if (bonus().features.length || beast()) {
     <section class="group" aria-labelledby="g-bonus">
       <header class="group__head">
