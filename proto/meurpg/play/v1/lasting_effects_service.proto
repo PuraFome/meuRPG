@@ -1,0 +1,315 @@
+syntax = "proto3";
+
+// The calls of the effects that last in a combat (RN-22, Etapa 10); the messages
+// they carry are in lasting_effects.proto.
+package meurpg.play.v1;
+
+import "meurpg/play/v1/combat.proto";
+import "meurpg/play/v1/lasting_effects.proto";
+
+// LastingEffectService is what the master does with the effects of a combat, and
+// how a target answers the saving throw an effect asks at the end (or the start)
+// of its turn.
+//
+// An effect is a line with a source, targets, a duration and an end. The source
+// is a spell, a feature (the Dodge action, the lethargy a Velocidade leaves) or
+// the master; the targets are one or more combatants (Bênção: up to three, under
+// one concentration); the duration is how it ends by itself, and the conditions,
+// the dice and the other modifiers are what it does while it lasts. A condition
+// the master marks by hand is an effect with no origin and no end.
+//
+// The clock. A duration of rounds ends at the start of the caster's turn that many
+// rounds after the casting (one minute is ten rounds: cast in round 1, it ends in
+// round 11), so "Restam N rodadas" is the difference to that round. What ends "at
+// the start of X's turn" ends exactly there (Esquivando). A concentration ends
+// every effect of its casting together. Outside a combat the app does not count
+// time: an effect lasts until the master ends it or a long rest.
+//
+// The order of operations, in one transaction and idempotent under a double
+// EndTurn: at the end of a turn, (1) the saving throws the ending combatant's
+// effects ask open as windows, in a fixed order; (2) they are answered; (3) what
+// ends at the end of that turn expires; (4) the turn passes. At the start of the
+// next turn, (1) what ends at its start expires (Esquivando; a lethargy that
+// covers the turn begins); (2) the damage of an effect that hits who starts the
+// turn under it is rolled, once for each creature when it says so; (3) the damage
+// waits (PENDING_DAMAGE) for the master to apply, or lands on an NPC at once; (4)
+// the saving throws asked at the start of the turn open; (5) the turn is playable.
+//
+// Who sees what (RN-10, RN-20). The master reads everything, including the DC. A
+// player reads, on their own character, each effect they may read, never the DC of
+// an effect that came from an NPC (the card names the ability of the saving throw
+// and the result says passou or falhou); on other combatants they read only the
+// labels of the effects the master leaves visible, and an effect the master hides
+// is read by nobody but the master through any channel: not the order, not a wait
+// ("Esperando o mestre"), not the source of an advantage, not the log or its count.
+//
+// Every procedure is a write that takes an `idempotency_key` (the same key with
+// another request is `invalid_argument`), and every id that is not in the caller's
+// campaign, or that the caller may not see, is `not_found`.
+//
+// Errors, as in CombatService:
+//   - `not_found`: the campaign, the combat, the effect, the window or the
+//     combatant does not exist, or the caller may not see it.
+//   - `permission_denied`: the caller is a player and the procedure is the
+//     master's, or the window is not their character's to answer.
+//   - `invalid_argument`: a field is out of its range.
+//   - `failed_precondition`: the encounter state (EncounterBlocked) or the window
+//     was closed (EFFECT_ENDED, CASTER_LOST_CONCENTRATION: `EncounterBlocked.reason`
+//     is NOT_AWAITING_REACTION and the message says which).
+//   - `aborted`: `expected_level` is not the level now.
+service LastingEffectService {
+  // ListLastingEffects lists the effects of the combat, the clock of the turns that
+  // end them or ask their saving throws, the concentrations and the catalog the
+  // master adds from. Only the master.
+  rpc ListLastingEffects(ListLastingEffectsRequest) returns (ListLastingEffectsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // AddLastingEffect puts an effect of the catalog on one or more combatants: a
+  // spell (Bênção, Perdição, Velocidade, Imobilizar Pessoa, Teia), one of the 15
+  // conditions, Esquivando or the web that burns. Only the master. A spell with a
+  // caster that concentrates ends the caster's other concentration and all its
+  // effects ("one concentration for each caster").
+  rpc AddLastingEffect(AddLastingEffectRequest) returns (AddLastingEffectResponse);
+
+  // ChangeLastingEffectDuration changes how long an effect lasts: a number of
+  // rounds (1 to 600) from now, until the end of someone's turn, or until the
+  // master ends it. Only the master.
+  rpc ChangeLastingEffectDuration(ChangeLastingEffectDurationRequest) returns (ChangeLastingEffectDurationResponse);
+
+  // SetLastingEffectVisibility says whether the players read the effect, to whom
+  // and with which label. Only the master.
+  rpc SetLastingEffectVisibility(SetLastingEffectVisibilityRequest) returns (SetLastingEffectVisibilityResponse);
+
+  // EndLastingEffect ends an effect now: it alone, or with scope
+  // CONCENTRATION_GROUP every effect of its casting. A Velocidade that ends leaves
+  // the lethargy, whatever the cause. Only the master. Ending an effect whose
+  // saving-throw window is open closes the window (EFFECT_ENDED).
+  rpc EndLastingEffect(EndLastingEffectRequest) returns (EndLastingEffectResponse);
+
+  // RemoveEffectTarget takes one combatant off an effect that has several (Bênção
+  // on three), ending the effect only on it. Only the master.
+  rpc RemoveEffectTarget(RemoveEffectTargetRequest) returns (RemoveEffectTargetResponse);
+
+  // RollEffectSave answers a saving-throw window an effect opened (a window of
+  // kind EFFECT_SAVE): the target's player rolls (in the app, or types the d20 of
+  // a physical die, RN-18) or asks the master to roll; the master rolls or types
+  // for an NPC, or skips the save ("Pular o teste", a table option that the app
+  // asks to confirm). The server works out the bonus, the advantage, the dice an
+  // effect adds (Bênção, Perdição) and the automatic failure, and ends the effect
+  // on a pass. The same window answers once: a repeat with the same key returns the
+  // first result.
+  //
+  // Errors: `failed_precondition` when the effect ended or its caster lost the
+  // concentration meanwhile.
+  rpc RollEffectSave(RollEffectSaveRequest) returns (RollEffectSaveResponse);
+
+  // SetExhaustion sets the level of exhaustion of a character (an active player
+  // character) or of a combatant (an NPC in combat), 0 to 6 (SRD 5.1, Conditions:
+  // Exhaustion). Level 4 halves the hit point maximum and cuts the current hit
+  // points to it; going down never heals; level 6 is death, and for a character
+  // the call refuses it unless `confirm_death` is true, and then the character is
+  // taken to the death confirmation (ConfirmDeath). Only the master, with the
+  // session open.
+  rpc SetExhaustion(SetExhaustionRequest) returns (SetExhaustionResponse);
+
+  // LowerExhaustion takes `by` levels off (a long rest with food and drink takes
+  // one). Only the master.
+  rpc LowerExhaustion(LowerExhaustionRequest) returns (LowerExhaustionResponse);
+}
+
+message ListLastingEffectsRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+}
+
+message ListLastingEffectsResponse {
+  repeated LastingEffect effects = 1;
+  // From the turn that is running, in the order of the initiative, until every
+  // effect has ended once.
+  repeated TurnClockEntry turn_clock = 2;
+  repeated ConcentrationEntry concentrations = 3;
+  repeated CatalogEffect catalog = 4;
+  int32 round = 5;
+  // The combatant on turn (a UUID); empty when none.
+  string current_combatant_id = 6;
+}
+
+// EffectDurationChoice is the duration the master picks.
+message EffectDurationChoice {
+  EffectDurationKind kind = 1;
+  // ROUNDS: 1 to 600, counted from now, to the start of the anchor's turn.
+  int32 rounds = 2;
+  // ROUNDS, UNTIL_START_OF_TURN_OF and UNTIL_END_OF_TURN_OF: the combatant whose
+  // turn it is anchored to (a UUID). For ROUNDS, empty means the caster, or the
+  // first target when the effect has no caster.
+  string anchor_combatant_id = 3;
+}
+
+message AddLastingEffectRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  // 1 to 10 combatants (a UUID each).
+  repeated string target_ids = 4;
+  // The catalog key (ListLastingEffectsResponse.catalog).
+  string catalog_key = 5;
+  // Who cast it (a combatant). Optional.
+  string caster_id = 6;
+  EffectDurationChoice duration = 7;
+  // The DC of the effect's saving throws, 1 to 40. Optional: without it the effect
+  // takes the caster's spell save DC when it has one.
+  optional int32 save_dc = 8;
+  // Whether the players read the effect, to whom, and a label (at most 30
+  // characters). Left alone, the catalog's default.
+  optional bool player_visible = 9;
+  EffectAudience audience = 10;
+  string player_label = 11;
+  // Whether the effect holds the caster's concentration (ends the caster's other
+  // one). Only for a spell that concentrates; the default is the spell's.
+  optional bool concentration = 12;
+}
+
+message AddLastingEffectResponse {
+  Encounter encounter = 1;
+  // The effects the call made (a spell with Velocidade: the effect; more than one
+  // when a start-of-turn effect needed a second).
+  repeated LastingEffect effects = 2;
+}
+
+message ChangeLastingEffectDurationRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  string effect_id = 4;
+  EffectDurationChoice duration = 5;
+}
+
+message ChangeLastingEffectDurationResponse {
+  Encounter encounter = 1;
+  LastingEffect effect = 2;
+}
+
+message SetLastingEffectVisibilityRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  string effect_id = 4;
+  bool player_visible = 5;
+  EffectAudience audience = 6;
+  // At most 30 characters; shown to the players only while the effect is visible.
+  // The app does not read the text: no numbers in it.
+  string player_label = 7;
+}
+
+message SetLastingEffectVisibilityResponse {
+  Encounter encounter = 1;
+  LastingEffect effect = 2;
+}
+
+message EndLastingEffectRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  string effect_id = 4;
+  EffectEndScope scope = 5;
+}
+
+message EndLastingEffectResponse {
+  Encounter encounter = 1;
+  // How many effects ended, and the ids of the ones the call made (the lethargy of a
+  // Velocidade).
+  int32 ended = 2;
+  repeated string created_effect_ids = 3;
+}
+
+message RemoveEffectTargetRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  string effect_id = 4;
+  string combatant_id = 5;
+}
+
+message RemoveEffectTargetResponse {
+  Encounter encounter = 1;
+}
+
+message RollEffectSaveRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  string window_id = 4;
+  oneof roll {
+    // The app rolls the d20.
+    bool roll_in_app = 5;
+    // The face of a physical d20, 1 to 20 (RN-18).
+    int32 d20_face = 6;
+    // The player leaves it to the master: the window stays open as theirs to roll.
+    bool delegate_to_master = 7;
+    // The master skips the saving throw (a table option, outside the SRD).
+    bool skip = 8;
+  }
+  // With physical dice and an effect that adds a die (Bênção, Perdição): the faces
+  // of the dice rolled, in the order of EffectSaveWindow.extra_dice.
+  repeated int32 extra_die_faces = 9;
+  // With physical dice and advantage or disadvantage, the second d20.
+  optional int32 second_d20_face = 10;
+}
+
+message RollEffectSaveResponse {
+  Encounter encounter = 1;
+  EffectSaveResult result = 2;
+}
+
+message SetExhaustionRequest {
+  string campaign_id = 1;
+  string idempotency_key = 2;
+  // The character, or the combatant of the combat that is running.
+  oneof subject {
+    string character_id = 3;
+    string combatant_id = 4;
+  }
+  // 0 to 6.
+  int32 level = 5;
+  // The level the caller thinks it is now; the call is `aborted` when it is not.
+  int32 expected_level = 6;
+  // For level 6: confirm that the character dies ("Confirmar a morte" is the call
+  // of ConfirmDeath; this only takes it to the confirmation).
+  bool confirm_death = 7;
+}
+
+message SetExhaustionResponse {
+  // The level now, and the effective hit point maximum.
+  int32 level = 1;
+  int32 hit_points_max = 2;
+  // The combat, when the subject is in the one that is running.
+  Encounter encounter = 3;
+}
+
+message LowerExhaustionRequest {
+  string campaign_id = 1;
+  string idempotency_key = 2;
+  oneof subject {
+    string character_id = 3;
+    string combatant_id = 4;
+  }
+  // How many levels to take off, 1 to 6.
+  int32 by = 5;
+  // Why: a long rest with food and drink.
+  ExhaustionLowerReason reason = 6;
+  int32 expected_level = 7;
+}
+
+enum ExhaustionLowerReason {
+  EXHAUSTION_LOWER_REASON_UNSPECIFIED = 0;
+  EXHAUSTION_LOWER_REASON_LONG_REST = 1;
+  // The master took it off for another reason (a spell, a table decision).
+  EXHAUSTION_LOWER_REASON_MASTER = 2;
+}
+
+message LowerExhaustionResponse {
+  int32 level = 1;
+  int32 hit_points_max = 2;
+  Encounter encounter = 3;
+}

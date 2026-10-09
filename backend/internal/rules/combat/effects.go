@@ -11,80 +11,6 @@ import (
 // the turn clock is here, tested without a database. Every rule is SRD 5.1:
 // "Conditions", "Duration" and "Concentration".
 
-// The condition keys the effects' arithmetic reads.
-const (
-	condIncapacitated = "condition:incapacitated"
-	condGrappled      = "condition:grappled"
-	condRestrained    = "condition:restrained"
-	condParalyzed     = "condition:paralyzed"
-	condPetrified     = "condition:petrified"
-	condStunned       = "condition:stunned"
-	condUnconscious   = "condition:unconscious"
-)
-
-// incapacitatedBy are the conditions that leave a creature without actions and
-// reactions: Incapacitated itself and the ones that include it.
-var incapacitatedBy = []string{condIncapacitated, condParalyzed, condPetrified, condStunned, condUnconscious}
-
-// noMoveBy are the conditions that stop a creature from moving at all.
-var noMoveBy = []string{condParalyzed, condPetrified, condStunned, condUnconscious}
-
-// speedZeroBy are the conditions that bring the speed to 0: the ones above and
-// the two that only set it to 0.
-var speedZeroBy = []string{condGrappled, condRestrained, condParalyzed, condPetrified, condStunned, condUnconscious}
-
-// autoFailBy are the conditions that fail Strength and Dexterity saving
-// throws by themselves.
-var autoFailBy = []string{condParalyzed, condPetrified, condStunned, condUnconscious}
-
-// autoCritBy are the conditions that turn a hit from within 5 feet into a
-// critical hit.
-var autoCritBy = []string{condParalyzed, condUnconscious}
-
-// AutoCritReachFt is how near an attacker must be for the automatic critical:
-// within 5 feet (SRD, Paralyzed and Unconscious).
-const AutoCritReachFt = 5
-
-func hasAny(conditions, of []string) bool {
-	return slices.ContainsFunc(conditions, func(k string) bool { return slices.Contains(of, k) })
-}
-
-// Incapacitated says the creature cannot take actions or reactions.
-func Incapacitated(conditions []string) bool { return hasAny(conditions, incapacitatedBy) }
-
-// CannotMove says the creature cannot move at all (a Paralyzed, Petrified,
-// Stunned or Unconscious one). Grappled and Restrained leave a speed of 0 and
-// no more; SpeedZero covers all of them.
-func CannotMove(conditions []string) bool { return hasAny(conditions, noMoveBy) }
-
-// SpeedZero says the conditions bring the speed to 0.
-func SpeedZero(conditions []string) bool { return hasAny(conditions, speedZeroBy) }
-
-// AutoFailsSave says the creature fails a saving throw of the ability by
-// itself, with no d20: Strength and Dexterity of a Paralyzed, Petrified,
-// Stunned or Unconscious creature.
-func AutoFailsSave(conditions []string, ability string) bool {
-	return (ability == "str" || ability == "dex") && hasAny(conditions, autoFailBy)
-}
-
-// AutoCrit says a hit from distanceFt away is a critical hit against a creature
-// with these conditions: Paralyzed or Unconscious, and the attacker within 5 feet.
-func AutoCrit(conditions []string, distanceFt int) bool {
-	return distanceFt <= AutoCritReachFt && hasAny(conditions, autoCritBy)
-}
-
-// DisadvantageOnDexSaves says Restrained gives disadvantage on Dexterity saving
-// throws (SRD, Restrained).
-func DisadvantageOnDexSaves(conditions []string) bool {
-	return slices.Contains(conditions, condRestrained)
-}
-
-// DodgeHolds says the benefit of the Dodge action still holds: it is lost when
-// the creature is incapacitated or its speed drops to 0 (SRD, Dodge).
-func DodgeHolds(conditions []string, speedFt int) bool {
-	return !Incapacitated(conditions) && speedFt > 0 && !SpeedZero(conditions)
-}
-
 // ---- exhaustion ----
 
 // MaxExhaustion is the level that kills (SRD, Conditions: Exhaustion).
@@ -145,8 +71,8 @@ func ExhaustedSpeedFt(speedFt, level int) int {
 
 // ---- modifiers ----
 
-// ExtraDie is a die an effect adds to (Sign 1) or takes from (Sign -1) a roll.
-type ExtraDie struct {
+// EffectDie is a die an effect adds to (Sign 1) or takes from (Sign -1) a roll.
+type EffectDie struct {
 	// Source is the effect it comes from (its key), Faces the die ("4" is a d4).
 	Source string
 	Faces  int
@@ -154,17 +80,17 @@ type ExtraDie struct {
 }
 
 // Signed is the die's face with its sign: the number added to the roll.
-func (d ExtraDie) Signed(face int) int { return d.Sign * face }
+func (d EffectDie) Signed(face int) int { return d.Sign * face }
 
-// ExtraDice are the dice the modifiers add to a roll of the kind appliesTo
+// EffectDice are the dice the modifiers add to a roll of the kind appliesTo
 // (rules.RollAppliesAttack or rules.RollAppliesSave). A creature under two
 // blessings rolls a d4 for each: the caller removes the repeated spell
 // (SRD, "Combining Magical Effects": the same spell's effects do not combine).
-func ExtraDice(source string, modifiers []rules.EffectModifier, appliesTo string) []ExtraDie {
-	var out []ExtraDie
+func EffectDice(source string, modifiers []rules.EffectModifier, appliesTo string) []EffectDie {
+	var out []EffectDie
 	for _, m := range modifiers {
 		if m.Kind == rules.ModifierRollDie && slices.Contains(m.AppliesTo, appliesTo) {
-			out = append(out, ExtraDie{Source: source, Faces: m.Die, Sign: m.Sign})
+			out = append(out, EffectDie{Source: source, Faces: m.Die, Sign: m.Sign})
 		}
 	}
 	return out

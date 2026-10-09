@@ -1824,6 +1824,12 @@ message DisabledReason {
   int32 min_level = 2;
   // For DISABLED_REASON_CODE_NO_USES: when the uses come back.
   Recharge recharge = 3;
+  // The reason as the caller may read it ("Você não pode agir.", "Indisponível: Impedido."),
+  // already without a cause a player may not read (RN-20). Only the reasons of effects and
+  // conditions carry it.
+  string text_pt = 100;
+  // Only the master: the same with the cause.
+  string text_master_pt = 101;
 }
 
 enum DisabledReasonCode {
@@ -1868,6 +1874,15 @@ enum DisabledReasonCode {
   // Flurry of Blows: it comes right after the Attack action, taken with a weapon
   // or an unarmed strike, and that action has not been taken yet this turn.
   DISABLED_REASON_CODE_ATTACK_ACTION_FIRST = 16;
+  // The combatant is incapacitated (SRD, Conditions: Incapacitated, Paralyzed, Petrified,
+  // Stunned, Unconscious): no actions and no reactions. `text_pt` says it without naming
+  // the cause to a player.
+  DISABLED_REASON_CODE_INCAPACITATED = 100;
+  // The lethargy a Velocidade leaves when it ends: no movement and no action until after
+  // the creature's next turn.
+  DISABLED_REASON_CODE_EFFECT_LETHARGY = 101;
+  // The speed is 0 (Impedido, Agarrado, exhaustion 5, an effect): the movement line only.
+  DISABLED_REASON_CODE_SPEED_ZERO = 102;
 }
 
 // BonusAttackRule is the rule that makes an attack a bonus action attack right

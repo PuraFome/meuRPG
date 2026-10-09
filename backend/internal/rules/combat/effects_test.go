@@ -6,81 +6,6 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-func TestConditionsThatTakeAwayActionsAndMovement(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		condition                          string
-		incapacitated, cannotMove, zero    bool
-		autoFailStr, autoFailDex, autoCrit bool
-	}{
-		{"condition:incapacitated", true, false, false, false, false, false},
-		{"condition:paralyzed", true, true, true, true, true, true},
-		{"condition:stunned", true, true, true, true, true, false},
-		{"condition:unconscious", true, true, true, true, true, true},
-		{"condition:petrified", true, true, true, true, true, false},
-		{"condition:grappled", false, false, true, false, false, false},
-		{"condition:restrained", false, false, true, false, false, false},
-		{"condition:poisoned", false, false, false, false, false, false},
-		{"condition:prone", false, false, false, false, false, false},
-	}
-	for _, tt := range tests {
-		c := []string{tt.condition}
-		if got := Incapacitated(c); got != tt.incapacitated {
-			t.Errorf("%s: Incapacitated = %v, want %v", tt.condition, got, tt.incapacitated)
-		}
-		if got := CannotMove(c); got != tt.cannotMove {
-			t.Errorf("%s: CannotMove = %v, want %v", tt.condition, got, tt.cannotMove)
-		}
-		if got := SpeedZero(c); got != tt.zero {
-			t.Errorf("%s: SpeedZero = %v, want %v", tt.condition, got, tt.zero)
-		}
-		if got := AutoFailsSave(c, "str"); got != tt.autoFailStr {
-			t.Errorf("%s: AutoFailsSave(str) = %v, want %v", tt.condition, got, tt.autoFailStr)
-		}
-		if got := AutoFailsSave(c, "dex"); got != tt.autoFailDex {
-			t.Errorf("%s: AutoFailsSave(dex) = %v, want %v", tt.condition, got, tt.autoFailDex)
-		}
-		if AutoFailsSave(c, "wis") {
-			t.Errorf("%s: a Wisdom save is rolled normally (SRD: only Strength and Dexterity fail by themselves)", tt.condition)
-		}
-		if got := AutoCrit(c, 5); got != tt.autoCrit {
-			t.Errorf("%s: AutoCrit(5 ft) = %v, want %v", tt.condition, got, tt.autoCrit)
-		}
-		if AutoCrit(c, 10) {
-			t.Errorf("%s: a hit from 10 ft is never an automatic critical", tt.condition)
-		}
-	}
-	if Incapacitated(nil) || CannotMove(nil) || SpeedZero(nil) {
-		t.Error("a creature with no condition acts and moves")
-	}
-}
-
-func TestRestrainedGivesDisadvantageOnDexteritySaves(t *testing.T) {
-	t.Parallel()
-	if !DisadvantageOnDexSaves([]string{"condition:restrained"}) {
-		t.Error("Restrained gives disadvantage on Dexterity saving throws")
-	}
-	if DisadvantageOnDexSaves([]string{"condition:grappled"}) {
-		t.Error("Grappled does not")
-	}
-}
-
-func TestDodgeIsLostWhenIncapacitatedOrWithSpeedZero(t *testing.T) {
-	t.Parallel()
-	if !DodgeHolds(nil, 30) {
-		t.Error("a free creature keeps the benefit of Dodge")
-	}
-	if DodgeHolds([]string{"condition:stunned"}, 30) {
-		t.Error("an incapacitated creature loses it")
-	}
-	if DodgeHolds(nil, 0) {
-		t.Error("a speed of 0 loses it")
-	}
-	if DodgeHolds([]string{"condition:restrained"}, 30) {
-		t.Error("a Restrained creature has a speed of 0")
-	}
-}
-
 func TestExhaustionLevelsAddUp(t *testing.T) {
 	t.Parallel()
 	want := []Exhaustion{
@@ -124,15 +49,15 @@ func TestBlessAndBaneAddOrTakeAD4OnAttacksAndSavesOnly(t *testing.T) {
 	t.Parallel()
 	bless := []rules.EffectModifier{{Kind: rules.ModifierRollDie, Die: 4, Sign: 1, AppliesTo: []string{rules.RollAppliesAttack, rules.RollAppliesSave}}}
 	bane := []rules.EffectModifier{{Kind: rules.ModifierRollDie, Die: 4, Sign: -1, AppliesTo: []string{rules.RollAppliesAttack, rules.RollAppliesSave}}}
-	got := ExtraDice("spell:bless", bless, rules.RollAppliesAttack)
+	got := EffectDice("spell:bless", bless, rules.RollAppliesAttack)
 	if len(got) != 1 || got[0].Faces != 4 || got[0].Signed(3) != 3 {
 		t.Fatalf("Bless on an attack = %+v", got)
 	}
-	got = ExtraDice("spell:bane", bane, rules.RollAppliesSave)
+	got = EffectDice("spell:bane", bane, rules.RollAppliesSave)
 	if len(got) != 1 || got[0].Signed(3) != -3 || got[0].Source != "spell:bane" {
 		t.Fatalf("Bane on a save = %+v", got)
 	}
-	if got := ExtraDice("spell:bless", bless, "check"); len(got) != 0 {
+	if got := EffectDice("spell:bless", bless, "check"); len(got) != 0 {
 		t.Errorf("neither spell touches ability checks, got %+v", got)
 	}
 }

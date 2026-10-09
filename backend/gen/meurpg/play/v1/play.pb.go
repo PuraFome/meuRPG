@@ -1611,8 +1611,12 @@ type CharacterVitals struct {
 	// sizes are kept apart (SRD 5.1, "Multiclassing"): a short rest spends them by
 	// size and a long rest gives them back by size.
 	HitDiceUsedByDie map[int32]int32 `protobuf:"bytes,30,rep,name=hit_dice_used_by_die,json=hitDiceUsedByDie,proto3" json:"hit_dice_used_by_die,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The level of exhaustion, 0 to 6 (SRD 5.1, Conditions): the master sets it
+	// (CombatEffectService.SetExhaustion) and a long rest with food takes one off. From
+	// level 4 on, `hit_points_max` is already half of the sheet's.
+	ExhaustionLevel int32 `protobuf:"varint,100,opt,name=exhaustion_level,json=exhaustionLevel,proto3" json:"exhaustion_level,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *CharacterVitals) Reset() {
@@ -1769,6 +1773,13 @@ func (x *CharacterVitals) GetHitDiceUsedByDie() map[int32]int32 {
 		return x.HitDiceUsedByDie
 	}
 	return nil
+}
+
+func (x *CharacterVitals) GetExhaustionLevel() int32 {
+	if x != nil {
+		return x.ExhaustionLevel
+	}
+	return 0
 }
 
 // WildShapeState is a druid's Wild Shape form (MR-037). Like the character's
@@ -4958,7 +4969,7 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x05width\x18\x03 \x01(\x05R\x05width\x12\x16\n" +
 	"\x06height\x18\x04 \x01(\x05R\x06height\x12\x10\n" +
 	"\x03url\x18\x05 \x01(\tR\x03url\x12#\n" +
-	"\rthumbnail_url\x18\x06 \x01(\tR\fthumbnailUrl\"\xed\a\n" +
+	"\rthumbnail_url\x18\x06 \x01(\tR\fthumbnailUrl\"\x98\b\n" +
 	"\x0fCharacterVitals\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12$\n" +
@@ -4982,7 +4993,8 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"wild_shape\x18\x0f \x01(\v2\x1e.meurpg.play.v1.WildShapeStateR\twildShape\x12I\n" +
 	"\x0efamiliar_sight\x18\x10 \x01(\v2\".meurpg.play.v1.FamiliarSightStateR\rfamiliarSight\x12/\n" +
 	"\x14hit_points_max_bonus\x18\x11 \x01(\x05R\x11hitPointsMaxBonus\x12e\n" +
-	"\x14hit_dice_used_by_die\x18\x1e \x03(\v25.meurpg.play.v1.CharacterVitals.HitDiceUsedByDieEntryR\x10hitDiceUsedByDie\x1aC\n" +
+	"\x14hit_dice_used_by_die\x18\x1e \x03(\v25.meurpg.play.v1.CharacterVitals.HitDiceUsedByDieEntryR\x10hitDiceUsedByDie\x12)\n" +
+	"\x10exhaustion_level\x18d \x01(\x05R\x0fexhaustionLevel\x1aC\n" +
 	"\x15HitDiceUsedByDieEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"\xa5\x01\n" +
