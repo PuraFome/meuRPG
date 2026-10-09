@@ -309,28 +309,12 @@ func (s *Service) castRevivify(
 			c.characterID = &caster.CharacterID
 			return made, nil
 		}
-		// The creature lives again. A player's character comes back through the characters
-		// module, as the master's Reviver does it (RN-03 may refuse: nothing is spent then, the
-		// transaction rolls back).
-		hit := castHit{Target: target.ID, Fx: fxAffected, RevivedAfter: 1, DeathRound: target.DeathRound}
-		if target.Kind == kindPlayer {
-			if _, err := s.roster.ReviveDead(ctx, c.tx, m.CampaignID, target.CharacterID, c.now); err != nil {
-				if !v.master && connect.CodeOf(err) == connect.CodeFailedPrecondition {
-					return nil, errRevivifyTarget() // a player never learns why (RN-10)
-				}
-				return nil, err
-			}
-			hit.Revived = target.CharacterID
-			after, err := s.vitals.GetVitalsTx(ctx, c.tx, m.CampaignID, target.CharacterID)
-			if err != nil {
-				return nil, err
-			}
-			vitals = append(vitals, after)
-			told = &revivedCharacter{characterID: target.CharacterID, owner: deref(target.UserID)}
-		}
-		if err := s.reviveCombatant(ctx, c, target); err != nil {
+		hit, more, back, err := s.bringBack(ctx, c, m, v, target)
+		if err != nil {
 			return nil, err
 		}
+		vitals = append(vitals, more...)
+		told = back
 		made.Hits = []castHit{hit}
 		made.Secret = caster.Hidden || target.Hidden
 		c.characterID = &caster.CharacterID
@@ -367,6 +351,34 @@ func (s *Service) castRevivify(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out, Cast: spell}), nil
+}
+
+// bringBack makes the creature live again. A player's character comes back through the
+// characters module, as the master's Reviver does it (RN-03 may refuse: nothing is spent then,
+// the transaction rolls back).
+func (s *Service) bringBack(ctx context.Context, c *combatTx, m authz.Membership, v combatViewer, target playdb.Combatant) (castHit, []*playv1.CharacterVitals, *revivedCharacter, error) {
+	hit := castHit{Target: target.ID, Fx: fxAffected, RevivedAfter: 1, DeathRound: target.DeathRound}
+	var vitals []*playv1.CharacterVitals
+	var told *revivedCharacter
+	if target.Kind == kindPlayer {
+		if _, err := s.roster.ReviveDead(ctx, c.tx, m.CampaignID, target.CharacterID, c.now); err != nil {
+			if !v.master && connect.CodeOf(err) == connect.CodeFailedPrecondition {
+				return hit, nil, nil, errRevivifyTarget() // a player never learns why (RN-10)
+			}
+			return hit, nil, nil, err
+		}
+		hit.Revived = target.CharacterID
+		after, err := s.vitals.GetVitalsTx(ctx, c.tx, m.CampaignID, target.CharacterID)
+		if err != nil {
+			return hit, nil, nil, err
+		}
+		vitals = append(vitals, after)
+		told = &revivedCharacter{characterID: target.CharacterID, owner: deref(target.UserID)}
+	}
+	if err := s.reviveCombatant(ctx, c, target); err != nil {
+		return hit, nil, nil, err
+	}
+	return hit, vitals, told, nil
 }
 
 // revivifyCaster finds the caster and checks the cast is theirs to make now: the combatant is
