@@ -1,0 +1,121 @@
+:host {
+  display: block;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+
+  p {
+    margin: 0;
+  }
+}
+
+.days {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  legend {
+    padding: 0;
+    margin-bottom: 4px;
+  }
+}
+
+.day {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 6px 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  cursor: pointer;
+
+  &--on {
+    border: 2px solid var(--mr-accent);
+    padding: 5px 11px;
+    background: var(--mr-accent-soft);
+    font-weight: 700;
+  }
+
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  input {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    margin: 0;
+  }
+}
+
+.field {
+  display: block;
+}
+
+// The whole link, read-only, wrapping: one tap selects all of it.
+.claim-link__field {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+  resize: none;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.copy {
+  align-self: flex-start;
+  min-height: 48px;
+  width: 100%;
+
+  @media (min-width: 768px) {
+    width: auto;
+    min-height: 44px;
+  }
+}
+
+// Empty until "Copiar link" is pressed: it takes no room then.
+.copied:empty {
+  display: none;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+  }
+}
+
+.go,
+.no {
+  min-height: 48px;
+
+  @media (min-width: 768px) {
+    min-height: 44px;
+  }
+}

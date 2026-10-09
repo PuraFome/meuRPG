@@ -2,7 +2,7 @@
 
 # Histórias e critérios de aceite
 
-O MVP tem 37 histórias: 35 mais 2 pré-requisitos (o convite, MR-002, que leva à MR-003, e os NPCs, MR-005, que são os inimigos do combate). Outras dez histórias ficam para depois do MVP.
+O MVP tem 38 histórias: 36 mais 2 pré-requisitos (o convite, MR-002, que leva à MR-003, e os NPCs, MR-005, que são os inimigos do combate). Outras dez histórias ficam para depois do MVP.
 
 Uma história está pronta quando todos os critérios dela passam. Cada critério vira um teste automático: Playwright para o que aparece na tela, teste em Go para a regra no servidor. Não há testes de caracterização do app antigo; o sistema novo só precisa provar os próprios critérios de aceite.
 
@@ -47,6 +47,7 @@ Como ler uma história: a frase da história, a prioridade (MVP, MVP pré-requis
 | [MR-043](#mr-043-gerar-encontros) | Combate | MVP |
 | [MR-044](#mr-044-gerar-tesouro) | Mapa | MVP |
 | [MR-045](#mr-045-consultar-as-magias) | Regras | MVP |
+| [MR-049](#mr-049-personagens-reservados-e-links-para-assumir) | Personagem | MVP |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
 | [MR-007](#mr-007-importar-ficha-em-pdf) | Personagem | Depois |
@@ -977,7 +978,7 @@ A história cobre classes **e** subclasses próprias, raças e sub-raças, antec
   - Os sinos são de 3 a 8 e os passos de 3 a 12, como o servidor.
 - **Mestre: na sessão.** O painel "Quebra-cabeças" com "Mostrar aos jogadores" e "Ver ao vivo" (a lista fica na coluna ao lado; o cartão ao vivo do quebra-cabeça escolhido, um de cada vez, fica na coluna principal, em cima do mapa): o painel como os jogadores o têm, a última jogada e quem a fez, quantas faltam no mínimo, as dicas, "Mostrar a próxima dica", "Gerar outro começo", "Recomeçar" e "Fechar" perguntados na própria tela, e, resolvido, quem resolveu, o que o servidor fez e a porta aberta no mapa. Só para o mestre e com "Só você vê": as respostas aceitas, os passos da sequência ou a mensagem sem cifra; a última jogada com o que foi digitado ou o sino tocado, as tentativas que cada jogador ainda tem, os contadores de jogadas e de tempo, quantas vezes a sequência foi tocada, a armadilha que disparou e quem errou, quem ganhou uma dica por perícia (com a rolagem) e "Tocar a sequência".
 - **Jogador.** O jogador recebe o aviso "O mestre mostrou um quebra-cabeça" na sessão e joga na página do quebra-cabeça (`?puzzle=ID`, dentro da página da sessão, no lugar do painel, com os avisos da sessão por cima: a armadilha notada, o tesouro achado, a pista que chegou e o combate). Um toque por luz, as rodas da fechadura, os pilares com as ligações e o mural; e o "Resolvido" com o texto do mestre. O painel de 7 × 7 cabe em 320 × 568 px.
-  - O enigma: o campo, "Responder", "Não é isso." com ícone e palavra, sem dizer o quanto chegou perto, "Suas tentativas 2 de 3", e o quadro tracejado com o motivo quando não há mais tentativas.
+  - O enigma: o campo, "Responder", "Não é isso." com ícone e palavra, sem dizer o quanto chegou perto, "Tentativas restantes 2 de 3", e o quadro tracejado com o motivo quando não há mais tentativas.
   - A sequência é vista passo a passo no ritmo do servidor (só os sinos já revelados; o número do passo, o sino em destaque com o nome escrito e falado por um leitor de tela; nenhum som é preciso), depois repetida por qualquer jogador, com "Errou o passo 4. A tentativa recomeçou; a Lia errou." e os "Passos certos 2 de 6" do servidor.
   - A cifra: a carta, a tabela de decifrar (um ajudante que o app nunca confere), o campo da mensagem e "Conferir".
   - "Tentar uma dica · Investigação": a CD nunca aparece; no app ou digitando o d20 do dado físico, como o RN-18 manda; "Você conseguiu. Esta dica é só sua" ou "Não deu desta vez."
@@ -1208,6 +1209,37 @@ A história cobre classes **e** subclasses próprias, raças e sub-raças, antec
 
 #### Relacionadas
 - Uma parte da [MR-020](#mr-020-consultar-o-livro-de-regras), só com as magias. O mestre aceitar uma magia fora da lista da classe fica para depois do MVP ([MR-046](#mr-046-o-estilo-da-mesa-recurso-por-recurso)). Conteúdo da mesa: [MR-025](#mr-025-cadastrar-conteúdo-da-mesa).
+
+### MR-049: Personagens reservados e links para assumir
+
+**Como** mestre, **quero** fazer personagens para os meus jogadores (ou trazê-los com a campanha) e mandar a cada jogador um link para assumir o seu, **para** a mesa começar a jogar sem todo mundo montar uma ficha antes.
+
+- Prioridade: MVP
+- Regras: RN-01, RN-03, RN-10, RN-16
+- Módulos: characters, campaigns, identity, play
+
+#### Critérios de aceite
+- **Dado** que sou o mestre, **quando** escolho "Criar personagem para um jogador" e salvo, **então** o personagem fica **reservado**: não tem dono, aparece em "Personagens reservados" e nenhum jogador o vê, em lista nenhuma, visão do grupo, ordem de combate, token de mapa, resumo da sessão ou imagem.
+- **Dado** um personagem reservado, **quando** escolho "Gerar link para o jogador" (válido por 1, 7 ou 30 dias, 7 por padrão), **então** recebo um link `<app>/claim#t=<código>` que o app mostra **uma vez**, inteiro, com "Copiar link"; gerar outro revoga o anterior.
+- **Dado** o link e nenhuma sessão, **quando** alguém o abre, **então** vê a mesma página de qualquer link, válido ou não (o que é um link de personagem e "Entrar com Google"), sem nada da campanha nem do personagem, **e** entrar só traz a pessoa de volta ao cartão do personagem: entrar nunca assume.
+- **Dado** o cartão, **quando** aperto "Assumir este personagem", **então** viro membro da campanha (sem etapa de aprovação; um pedido de entrada pendente é fechado) e dono do personagem, e o link é gasto.
+- **Dado** um link inválido, expirado, usado ou revogado, ou uma assunção que perde a corrida com uma revogação ou com outra assunção, **quando** qualquer pessoa o abre, **então** lê a mesma página, "Este link não pode ser usado".
+- **Dado** que já tenho um personagem vivo na campanha, **quando** assumo outro, **então** sou recusado com o único motivo específico: leio quem é o personagem vivo e o que fazer (um morto não conta).
+- **Dado** um personagem reservado com link, **quando** o revogo, **então** a linha pergunta ali mesmo e o link deixa de funcionar; **quando** um jogador o usou um instante antes, **então** leio "Este link já foi usado por …" e a lista é lida de novo.
+- **Dado** um personagem que um jogador assumiu, **quando** escolho "Devolver à reserva" (pergunta ali mesmo), **então** o personagem fica sem dono de novo e nenhum jogador o vê, o jogador continua membro e posso mandá-lo a outra pessoa.
+- **Dado** um personagem reservado, **quando** escolho "Excluir" (pergunta ali mesmo), **então** o personagem e o link vivo dele são apagados.
+
+#### No app
+- **O modelo.** `characters.reserved` (personagem de jogador sem dono, CHECK `reserved_shape`) e `characters.claimed_at` (quando um jogador o assumiu por um link, o que deixa o mestre devolvê-lo); `claim_links` (o SHA-256 de 32 bytes aleatórios, validade de no máximo 30 dias, um link vivo por personagem por um índice único parcial, `used_by`, linhas apagadas por TTL 30 dias depois que o link acaba) e `claim_sign_ins` (o hash do link com que a pessoa entrou, 10 minutos). Ver [Modelo de dados](../../data.md) e [Arquitetura](../../architecture.md#the-claim-flow).
+- **Servidor.** `CharacterService`: `CreateCharacter` e `PreviewCharacter` com `for_player` (só o mestre; as regras do mestre, então o jeito de fazer habilidades e a regra de PV da mesa não valem), `CreateClaimLink`, `RevokeClaimLink`, `ReturnCharacterToReserve`, `DeleteReservedCharacter`, `PreviewClaim` e `ClaimCharacter`; `ListCharacters` dá ao mestre o `claim_state` de cada personagem (sem link, enviado até, expirado, revogado, usado por). O intento de login `character_claim` só guarda o hash do link e leva a pessoa a `/claim`. `ClaimCharacter` e `PreviewClaim` têm limite por pessoa e por endereço.
+- **As telas do mestre.** O painel "Personagens reservados" da página da campanha (cada linha diz onde o link está e oferece "Gerar link para o jogador" / "Gerar novo link", "Editar", "Revogar o link", "Excluir" e, num personagem assumido, "Ver ficha" e "Devolver à reserva"; toda pergunta é feita ali mesmo, com o foco em "Cancelar"), o diálogo "Gerar link para o jogador" (uma folha no celular) e o editor em `/campaigns/:id/reserved/new` (o editor de sempre, no modo do mestre, com um aviso e "Salvar como reservado").
+- **A página do jogador.** `/claim#t=<código>` (pública): sem entrar, a página de todo link; entrando, o cartão público (nome, raça, classe, nível; "Enviado por …"; "Assumir este personagem"; "Voltar para minhas campanhas"; "Não é você? Entrar com outra conta", que encerra a sessão e pede ao provedor a escolha de conta, mantendo o link na memória); o resultado, com o link da ficha; a página única de todo link que não vale; "Este link é para um jogador" para o link do próprio mestre; e a página da RN-03.
+- **Nunca visto por um jogador (RN-10).** Um personagem reservado fica de fora da lista de personagens, dos PV do grupo, da lista do combate e dos tokens do mapa (`NOT reserved` em cada consulta), da visão da névoa, da trava das fichas (ele trava com as sessões que começam depois de assumido) e do XP; um personagem devolvido à reserva também fica de fora do resumo das sessões antigas e dos nomes de quebra-cabeças que o jogador lê. Um personagem reservado não pode ser marcado como morto.
+- **Testes (Go).** `TestMR049_TheMasterMakesAReservedCharacterAndNoPlayerSeesIt`, `TestMR049_ForPlayerIsTheMastersAlone`, `TestMR049_TheLinkIsRandomHashedAndReplacedByANewOne`, `TestMR049_ValidityIsOneSevenOrThirtyDays`, `TestMR049_ThePlayerClaimsOnceAndTheMasterSeesWhoUsedIt`, `TestMR049_EveryLinkThatCannotBeUsedIsTheSameRefusal`, `TestRN03_AClaimRefusesAPlayerWhoHasALivingCharacterAndTheDeadOnesDoNotCount`, `TestMR049_ClaimingClosesAPendingJoinRequest`, `TestMR049_TheMasterOpeningTheirOwnLinkGetsNothingAndChangesNothing`, `TestMR049_SigningInWithALinkNeverClaimsAndTheCardComesBackWithoutTheToken`, `TestMR049_TheLinkSignedInWithIsKeptForTenMinutes`, `TestMR049_TheMastersActionsOnTheRow`, `TestMR049_AReservedCharacterIsNotInThePartyAndDoesNotLockWithTheSessions`, `TestMR049_ADeletedAccountLeavesTheClaimedCharacterWithTheMaster`, `TestMR049_TwoClaimsOfOneLinkMakeOneOwner` e `TestMR049_AClaimAndARevokeNeverBothWin` (com `dbtest.PoolSize`), `TestMR049_ClaimingIsRateLimitedPerPersonAndNothingSecretIsLogged`, as linhas do `TestAuthorizationMatrix` e as linhas da RN-10 em `internal/leaktest` (`TestReservedCharacterIsOnNoLiveSurface`, `TestClaimedCharacterIsReadByItsNewOwnerAndNoOneElse`, `TestGivingACharacterBackToTheReserveHidesItFromItsFormerOwner` e os canários da matriz para o nome reservado, a história dele e o link); em `identity`, `TestLoginPromptSelectAccount`.
+- **Testes (navegador).** Vitest (`claim-page`, `reserved-characters`, `claim-link-sheet`, `claim-errors`, `campaign-characters`, `character-editor`); Playwright `claim-links.spec.ts` (`@MR-049 @RN-10 @RN-03`: o mestre faz um personagem, faz o link, um segundo navegador entra e o assume, o mestre lê "Assumido por"; "Devolver à reserva"; o link revogado, inventado e o do próprio mestre; "Excluir"; RN-03; "Entrar com outra conta") e as telas em `a11y.spec.ts`.
+
+#### Relacionadas
+- [MR-002](#mr-002-gerar-convite) e [MR-003](#mr-003-entrar-pelo-convite) (a outra entrada numa campanha), [MR-024](#mr-024-aprovar-o-personagem-do-convite) (membro pendente), [MR-006](#mr-006-ficha-travada). O pacote de uma campanha (exportar e importar) traz os personagens dela como reservados.
 
 ## Prioridade: MVP (pré-requisito)
 

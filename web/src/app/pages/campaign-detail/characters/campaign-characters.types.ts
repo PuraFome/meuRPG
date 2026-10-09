@@ -6,6 +6,18 @@ import { CharacterKind, CharacterState } from '../../../core/characters/characte
  * (plan §4) — nothing below imports from `../../../../gen/...`.
  */
 
+/** Where a character's claim link stands (`ClaimState`): what the master's "Personagens reservados" row says. */
+export type ClaimStateVm = 'none' | 'sent' | 'expired' | 'revoked' | 'used';
+
+/** A reserved character's link, or a claimed character's origin (MR-049). */
+export interface ClaimVm {
+  readonly state: ClaimStateVm;
+  /** When the link stops working: set for `sent` and `expired`. */
+  readonly expiresAt: Date | null;
+  /** Who took the character: the player's display name, `null` when they have none (or deleted the account). */
+  readonly claimedBy: string | null;
+}
+
 export interface CampaignCharacterListItemVm {
   readonly id: string;
   readonly name: string;
@@ -15,6 +27,12 @@ export interface CampaignCharacterListItemVm {
   readonly classSummary: string;
   /** Only set for a player character (`Character.player_display_name`). */
   readonly playerDisplayName: string | null;
+  /** The race in Portuguese, "Halfling": empty for a basic-sheet NPC. */
+  readonly raceName?: string;
+  /** A reserved character: made by the master for a player to claim, with no owner (MR-049). Master only. */
+  readonly reserved?: boolean;
+  /** The claim link's state, for a reserved character or one a player claimed through a link; `null` for any other. */
+  readonly claim?: ClaimVm | null;
 }
 
 export interface CampaignCharactersVm {

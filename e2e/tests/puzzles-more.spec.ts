@@ -99,7 +99,7 @@ test('o enigma: o mestre o faz no formulário, o jogador erra e depois acerta, e
     await player.getByRole('link', { name: 'Abrir o quebra-cabeça' }).click();
     await expect(player.getByRole('heading', { level: 1, name: 'A porta da Cripta pergunta' })).toBeVisible();
     await expect(player.getByText(RIDDLE.text)).toBeVisible();
-    await expect(player.getByText('Suas tentativas')).toBeVisible();
+    await expect(player.getByText('Tentativas restantes')).toBeVisible();
     const puzzleId = new URL(player.url()).searchParams.get('puzzle')!;
     const before = await playerRunText(player, table.campaignId, puzzleId);
     for (const answer of RIDDLE.answers) {
@@ -114,7 +114,7 @@ test('o enigma: o mestre o faz no formulário, o jogador erra e depois acerta, e
     await player.getByRole('button', { name: 'Responder' }).click();
     const wrong = player.getByRole('alert').filter({ hasText: 'Não é isso.' });
     await expect(wrong).toContainText('Tente outra resposta.');
-    await expect(player.locator('app-limit-counters')).toContainText('Suas tentativas 1 de 2');
+    await expect(player.locator('app-limit-counters')).toContainText('Tentativas restantes 1 de 2');
     // What the server keeps of it is the master's: the player's own response has neither the typed answer nor a list of answers.
     const after = await playerRunText(player, table.campaignId, puzzleId);
     expect(after).not.toContain('escuridão');

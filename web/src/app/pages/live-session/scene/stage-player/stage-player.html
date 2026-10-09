@@ -24,6 +24,8 @@
         </li>
       }
     </ul>
-    <span class="stage__hint"><mat-icon aria-hidden="true">zoom_in</mat-icon>Escolha um personagem para ver maior</span>
+    @if (count() > 1) {
+      <span class="stage__hint"><mat-icon aria-hidden="true">zoom_in</mat-icon>Toque num retrato para ver maior</span>
+    }
   </div>
 }
