@@ -25,7 +25,7 @@ let nextId = 0;
   selector: 'app-combatant-tags',
   template: `
     @if (shown().length) {
-      <ul class="tags" [attr.aria-label]="'Condições e estados de ' + label()">
+      <ul class="tags" [attr.aria-label]="'Condições de ' + label()">
         @for (t of shown(); track t.key) {
           @if (t.state; as chip) {
             <li class="tag tag--state">

@@ -44,7 +44,7 @@ describe('CombatantTags: states and sources', () => {
     const { el } = setup({ states: [rage], people });
     const chip = el.querySelector<HTMLButtonElement>('button.tag__btn')!;
     expect(chip.textContent?.trim()).toBe('Em fúria');
-    expect(el.querySelector('ul')?.getAttribute('aria-label')).toBe('Condições e estados de Toren');
+    expect(el.querySelector('ul')?.getAttribute('aria-label')).toBe('Condições de Toren');
   });
 
   it('gives the chip a text description a keyboard and a screen reader reach', () => {
