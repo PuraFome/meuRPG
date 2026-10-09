@@ -2163,7 +2163,8 @@ async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' |
     await p.goto('/');
     const table = await tableForCombat(m, p, `Acessibilidade magias ${Date.now()}`, true, true);
     campaignId = table.campaignId;
-    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    // The three around Goblin 1, so Sono placed on it catches them.
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, { 'Capitão Goblin': [9, 10], 'Goblin 1': [9, 9], 'Goblin 2': [10, 9] });
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
 
@@ -2177,8 +2178,28 @@ async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' |
 
     await p.getByRole('button', { name: 'Conjurar Sono' }).click();
     const sheet = p.getByRole('dialog', { name: 'Conjurar Sono' });
-    await sheet.locator('label', { hasText: 'Goblin 1' }).click();
-    await sheet.locator('label', { hasText: 'Capitão Goblin' }).click();
+    // The area picker (PM-02a, PM-02b): the map before a point, then a point with nobody seen in it and its confirmation.
+    const map = sheet.getByRole('application', { name: 'Mapa: escolha o ponto da Sono' });
+    await expect(map).toBeFocused();
+    await expectScreenPasses(p, `Conjurar Sono, o ponto no mapa ${where}`);
+    await map.press('Shift+ArrowUp');
+    await map.press('Shift+ArrowUp');
+    await map.press('Enter');
+    await expect(sheet.getByText(/Ponto a .* de você/)).toBeVisible();
+    await expectScreenPasses(p, `Conjurar Sono, o ponto colocado ${where}`);
+    await map.press('c');
+    await expect(sheet.getByRole('listbox', { name: 'Centrar em…' })).toBeFocused();
+    await expectScreenPasses(p, `Conjurar Sono, "Centrar em…" ${where}`);
+    await sheet.getByRole('listbox', { name: 'Centrar em…' }).press('Escape');
+    await map.press('Enter');
+    await expect(sheet.getByText('Ninguém que você vê está na área.')).toBeVisible();
+    await expect(sheet.getByRole('button', { name: 'Mudar o local' })).toBeFocused();
+    await expectScreenPasses(p, `Conjurar Sono, ninguém na área ${where}`);
+    await sheet.getByRole('button', { name: 'Mudar o local' }).click();
+    await sheet.getByRole('button', { name: 'Centrar em…' }).click();
+    await sheet.getByRole('listbox', { name: 'Centrar em…' }).getByRole('option', { name: /Goblin 1/ }).click();
+    await sheet.getByRole('button', { name: 'Confirmar local' }).click();
+    await expect(sheet.getByRole('heading', { name: 'Quem está na área' })).toBeFocused();
     await expectScreenPasses(p, `Conjurar Sono, quem está na área ${where}`);
     await sheet.getByRole('button', { name: 'Detalhes de Sono' }).click();
     await expect(p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true })).toBeVisible();
