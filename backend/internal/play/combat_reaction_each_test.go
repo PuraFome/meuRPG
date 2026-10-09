@@ -1,12 +1,13 @@
 package play
 
 import (
-	"connectrpc.com/connect"
-	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
-
 	"errors"
 	"fmt"
 	"testing"
+
+	"connectrpc.com/connect"
+
+	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 
 	"github.com/jackc/pgx/v5"
 
@@ -33,7 +34,8 @@ func reactorFight(t *testing.T, build func(t *testing.T, a *armed) *charactersv1
 		reveal:   []string{"Goblin"},
 		at:       map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Reator": {4, 4}, "Brisa": {8, 8}},
 	})
-	return a, a.passTo(t, e, "Goblin")
+	e = a.passTo(t, e, "Goblin")
+	return a, e
 }
 
 func rogueFive(t *testing.T, a *armed) *charactersv1.Character {

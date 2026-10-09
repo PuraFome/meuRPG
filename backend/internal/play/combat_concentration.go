@@ -82,6 +82,54 @@ func (s *Service) afterDamage(ctx context.Context, c *combatTx, target playdb.Co
 	return err
 }
 
+// handSaveToMaster marks a concentration save as left to the master: the owner can no longer
+// roll it, and the master's card asks for it.
+func (s *Service) handSaveToMaster(ctx context.Context, c *combatTx, w playdb.ReactionWindow, t windowTrigger) error {
+	t.Handed = true
+	body, err := json.Marshal(t)
+	if err != nil {
+		return fmt.Errorf("encode the window's trigger: %w", err)
+	}
+	if _, err := c.q.SetReactionWindowStep(ctx, playdb.SetReactionWindowStepParams{ID: w.ID, Step: w.Step, Trigger: body}); err != nil {
+		return fmt.Errorf("hand the save to the master: %w", err)
+	}
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return fmt.Errorf("touch the encounter: %w", err)
+	}
+	return nil
+}
+
+// concentrationRollOf reads how a concentration save is answered: the app's die, a
+// physical one, "leave it to the master" or the master's "keep".
+func concentrationRollOf(msg *playv1.ResolveConcentrationSaveRequest) (in rollInput, handOver, keep bool, err error) {
+	bad := func(text string) error { return connect.NewError(connect.CodeInvalidArgument, errors.New(text)) }
+	switch roll := msg.GetRoll().(type) {
+	case *playv1.ResolveConcentrationSaveRequest_RollInApp:
+		if !roll.RollInApp {
+			return in, false, false, bad("roll_in_app must be true")
+		}
+		in.inApp = true
+	case *playv1.ResolveConcentrationSaveRequest_D20Face:
+		in.typed = int(roll.D20Face)
+		if in.typed < 1 || in.typed > 20 {
+			return in, false, false, bad("d20_face must be 1 to 20")
+		}
+	case *playv1.ResolveConcentrationSaveRequest_HandToMaster:
+		if !roll.HandToMaster {
+			return in, false, false, bad("hand_to_master must be true")
+		}
+		handOver = true
+	case *playv1.ResolveConcentrationSaveRequest_Keep:
+		if !roll.Keep {
+			return in, false, false, bad("keep must be true")
+		}
+		keep = true
+	default:
+		return in, false, false, bad("set roll_in_app, d20_face, hand_to_master or keep")
+	}
+	return in, handOver, keep, nil
+}
+
 // ResolveConcentrationSave implements playv1connect.CombatServiceHandler.
 func (s *Service) ResolveConcentrationSave(
 	ctx context.Context,
@@ -103,31 +151,9 @@ func (s *Service) ResolveConcentrationSave(
 	if err != nil {
 		return nil, err
 	}
-	var in rollInput
-	handOver, keep := false, false
-	switch roll := req.Msg.GetRoll().(type) {
-	case *playv1.ResolveConcentrationSaveRequest_RollInApp:
-		if !roll.RollInApp {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("roll_in_app must be true"))
-		}
-		in.inApp = true
-	case *playv1.ResolveConcentrationSaveRequest_D20Face:
-		in.typed = int(roll.D20Face)
-		if in.typed < 1 || in.typed > 20 {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face must be 1 to 20"))
-		}
-	case *playv1.ResolveConcentrationSaveRequest_HandToMaster:
-		if !roll.HandToMaster {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("hand_to_master must be true"))
-		}
-		handOver = true
-	case *playv1.ResolveConcentrationSaveRequest_Keep:
-		if !roll.Keep {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("keep must be true"))
-		}
-		keep = true
-	default:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app, d20_face, hand_to_master or keep"))
+	in, handOver, keep, err := concentrationRollOf(req.Msg)
+	if err != nil {
+		return nil, err
 	}
 
 	var made actionEvent
@@ -155,19 +181,7 @@ func (s *Service) ResolveConcentrationSave(
 			return nil, errWindowDenied() // the roll was left to the master
 		}
 		if handOver {
-			t.Handed = true
-			body, err := json.Marshal(t)
-			if err != nil {
-				return nil, err
-			}
-			if _, err := c.q.SetReactionWindowStep(ctx, playdb.SetReactionWindowStepParams{ID: w.ID, Step: w.Step, Trigger: body}); err != nil {
-				return nil, fmt.Errorf("hand the save to the master: %w", err)
-			}
-			var err2 error
-			if c.enc, err2 = c.q.TouchEncounter(ctx, c.enc.ID); err2 != nil {
-				return nil, fmt.Errorf("touch the encounter: %w", err2)
-			}
-			return nil, nil
+			return nil, s.handSaveToMaster(ctx, c, w, t)
 		}
 		dc := clamp32(reaction.ConcentrationDC(int(t.Taken)), 0, math.MaxInt32)
 		ev := actionEvent{Round: c.enc.Round, Secret: reactor.Hidden, Actor: reactor.ID, Target: t.Actor, Key: t.Key, Pending: t.Pending}

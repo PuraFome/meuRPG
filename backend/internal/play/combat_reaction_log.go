@@ -22,7 +22,7 @@ func ordinalLevel(level int32) string { return fmt.Sprintf("%dº nível", level)
 
 // reactionView builds the log entry of an answered window for the viewer, and false
 // when the viewer does not get it.
-func (e *logEntry) reactionEntry(ctx context.Context, v combatViewer, byID map[string]playdb.Combatant, names *keyNames, lastID string) (*playv1.CombatLogEntry, bool) {
+func (e *logEntry) reactionEntry(ctx context.Context, v combatViewer, byID map[string]playdb.Combatant, names *keyNames) (*playv1.CombatLogEntry, bool) {
 	text, named := e.reactionLine(ctx, v, byID, names)
 	if text == "" {
 		return nil, false
@@ -47,7 +47,7 @@ func (e *logEntry) reactionEntry(ctx context.Context, v combatViewer, byID map[s
 }
 
 // reactionLine is the line for the viewer, and whether it names the reactor.
-func (e *logEntry) reactionLine(ctx context.Context, v combatViewer, byID map[string]playdb.Combatant, names *keyNames) (string, bool) {
+func (e *logEntry) reactionLine(ctx context.Context, v combatViewer, byID map[string]playdb.Combatant, names *keyNames) (string, bool) { //nolint:gocognit,gocyclo // one flat case for each reaction; they share the visibility facts above the switch
 	re := e.ev.Reaction
 	if re == nil {
 		return "", false

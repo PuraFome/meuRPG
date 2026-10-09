@@ -41,7 +41,8 @@ func mageFight(t *testing.T) (*armed, *playv1.Encounter) {
 			t.Fatalf("SetCombatantHidden(%s) error = %v", label, err)
 		}
 	}
-	return a, a.begin(t, e)
+	e = a.begin(t, e)
+	return a, e
 }
 
 // TestAnNPCsShieldHoldsAPlayersAttack: Toren hits the Mage, which has Shield and a slot

@@ -82,10 +82,10 @@ func ambientOf(ctx context.Context) *ambient {
 	return a
 }
 
-// ambientDone is the error a replayed change ends with once its event is written.
-type ambientDone struct{ event actionEvent }
+// ambientDoneError is the error a replayed change ends with once its event is written.
+type ambientDoneError struct{ event actionEvent }
 
-func (*ambientDone) Error() string { return "the held action was replayed" }
+func (*ambientDoneError) Error() string { return "the held action was replayed" }
 
 // writeAmbient is write inside an open transaction (see ambient).
 func (s *Service) writeAmbient(ctx context.Context, a *ambient, w combatWrite, do func(c *combatTx) (any, error)) (combatResult, error) {
@@ -106,7 +106,7 @@ func (s *Service) writeAmbient(ctx context.Context, a *ambient, w combatWrite, d
 	if err := insertEvent(ctx, c, w.kind, &w.m.UserID, nil, ev); err != nil {
 		return combatResult{}, err
 	}
-	return combatResult{}, connect.NewError(connect.CodeUnknown, &ambientDone{event: ev})
+	return combatResult{}, connect.NewError(connect.CodeUnknown, &ambientDoneError{event: ev})
 }
 
 // holdAction keeps a request that windows hold, opens the windows and returns the
@@ -199,7 +199,7 @@ func (s *Service) releaseHold(ctx context.Context, c *combatTx, h playdb.Reactio
 	default:
 		return fmt.Errorf("a held action of kind %q", h.Kind)
 	}
-	var done *ambientDone
+	var done *ambientDoneError
 	switch {
 	case errors.As(err, &done):
 		c.tellActorVitals(done.event)

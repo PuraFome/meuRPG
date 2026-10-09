@@ -38,7 +38,7 @@ func (wv *windowView) morePrompt(kind reaction.Kind, w playdb.ReactionWindow, re
 			AttackerLabel: attacker, AttackNamePt: attack, Damage: t.Damage, Halved: int32(reaction.UncannyDodge(int(t.Damage))), //nolint:gosec // a damage
 		}}
 	case reaction.DeflectKind:
-		if w.Step == 2 {
+		if w.Step == stepSecond {
 			out.Prompt = &playv1.ReactionWindow_DeflectThrow{DeflectThrow: &playv1.DeflectMissilesThrowPrompt{
 				KiLeft: k.resourceLeft(resKi), NormalRangeFt: reaction.DeflectNormalRangeFt, LongRangeFt: reaction.DeflectLongRangeFt,
 			}}
@@ -70,7 +70,7 @@ func (wv *windowView) morePrompt(kind reaction.Kind, w playdb.ReactionWindow, re
 	case reaction.FeatherFall:
 		wv.fallPrompt(w, reactor, k, out)
 	case reaction.HellishRebukeKind:
-		if w.Step == 2 {
+		if w.Step == stepSecond {
 			p := &playv1.HellishRebukeSavePrompt{AggressorLabel: attacker, DiceCount: t.Dice}
 			p.SaveDc = clamp32(k.st.SaveDC, 0, math.MaxInt32)
 			if t.Racial {

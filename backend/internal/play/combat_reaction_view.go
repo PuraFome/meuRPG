@@ -6,8 +6,6 @@ import (
 	"math"
 	"slices"
 
-	"github.com/jackc/pgx/v5"
-
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -40,14 +38,6 @@ type windowView struct {
 	d     *encounterData
 	names func(key string) string
 	byID  map[string]playdb.Combatant
-	tx    pgx.Tx
-}
-
-func (w *windowView) label(id string, sees bool) string {
-	if x, ok := w.byID[id]; ok && (w.v.master || sees && w.v.sees(x)) {
-		return x.Label
-	}
-	return ""
 }
 
 // reactionView builds Encounter.reaction_windows and Encounter.reaction_wait for the
@@ -116,14 +106,7 @@ func (s *Service) reactionView(ctx context.Context, m authz.Membership, d *encou
 			continue
 		}
 		if answers {
-			pw := &playv1.ReactionWindow{
-				Id: o.ID, Kind: playv1.ReactionKind_REACTION_KIND_OPPORTUNITY, Status: playv1.ReactionWindowStatus_REACTION_WINDOW_STATUS_OPEN,
-				GroupId: o.MoveID, ReactorId: reactor.ID, ReactorLabel: reactor.Label, ReactorIsPlayer: reactor.Kind == kindPlayer, ForYou: true, AnswerNow: v.master,
-			}
-			if v.master {
-				pw.Trigger = &playv1.ReactionTrigger{ActorId: mover.ID, ActorLabel: mover.Label, TargetId: reactor.ID, TargetLabel: reactor.Label}
-			}
-			windows = append(windows, pw)
+			windows = append(windows, wv.opportunityWindow(o, mover, reactor))
 		}
 		wv.waitOf(playdb.ReactionWindow{Kind: "opportunity"}, &reactor, answers, &wait)
 		if !holdsSet && !answers {
@@ -138,6 +121,19 @@ func (s *Service) reactionView(ctx context.Context, m authz.Membership, d *encou
 		}
 	}
 	return windows, out, nil
+}
+
+// opportunityWindow is the window of an opportunity-attack offer for someone who answers it:
+// the master also reads who moves and who may react.
+func (wv *windowView) opportunityWindow(o playdb.OpportunityOffer, mover, reactor playdb.Combatant) *playv1.ReactionWindow {
+	pw := &playv1.ReactionWindow{
+		Id: o.ID, Kind: playv1.ReactionKind_REACTION_KIND_OPPORTUNITY, Status: playv1.ReactionWindowStatus_REACTION_WINDOW_STATUS_OPEN,
+		GroupId: o.MoveID, ReactorId: reactor.ID, ReactorLabel: reactor.Label, ReactorIsPlayer: reactor.Kind == kindPlayer, ForYou: true, AnswerNow: wv.v.master,
+	}
+	if wv.v.master {
+		pw.Trigger = &playv1.ReactionTrigger{ActorId: mover.ID, ActorLabel: mover.Label, TargetId: reactor.ID, TargetLabel: reactor.Label}
+	}
+	return pw
 }
 
 // waitOf adds a window to the line the caller reads. A window the caller answers is
@@ -197,7 +193,7 @@ func (wv *windowView) window(w playdb.ReactionWindow, reactor *playdb.Combatant,
 	kind := reaction.Kind(w.Kind)
 	out := &playv1.ReactionWindow{
 		Id: w.ID, Kind: reactionKindProto[kind], Status: playv1.ReactionWindowStatus_REACTION_WINDOW_STATUS_OPEN, GroupId: w.GroupID,
-		ForYou: true, SecondStep: w.Step == 2,
+		ForYou: true, SecondStep: w.Step == stepSecond,
 	}
 	if reactor != nil {
 		out.ReactorId, out.ReactorLabel, out.ReactorIsPlayer = reactor.ID, reactor.Label, reactor.Kind == kindPlayer

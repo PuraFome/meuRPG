@@ -57,7 +57,6 @@ func (s *Service) fallWindows(ctx context.Context, c *combatTx, cs []playdb.Comb
 		if near < 0 {
 			continue
 		}
-		r := r
 		specs = append(specs, windowSpec{
 			kind: reaction.FeatherFall, reactor: &r,
 			trigger: windowTrigger{Falling: ids, FallFt: fallFt, Trap: point, Distance: near},

@@ -35,6 +35,13 @@ const (
 	// monk throws back (SRD, Monk 3).
 	DeflectNormalRangeFt = 20
 	DeflectLongRangeFt   = 60
+	// CounterspellCheckBase is the DC of Counterspell's ability check before the spell's
+	// level is added (SRD, Counterspell).
+	CounterspellCheckBase = 10
+	// HellishRebukeBaseDice is the d10 Hellish Rebuke rolls at its base level.
+	HellishRebukeBaseDice = 2
+	// halving is what Uncanny Dodge and the concentration DC divide a damage by.
+	halving = 2
 )
 
 // Counterspell says what a Counterspell cast with a slot does to a spell (SRD,
@@ -48,13 +55,13 @@ func Counterspell(slotLevel, spellLevel int) (auto bool, dc int) {
 	if spellLevel <= slotLevel {
 		return true, 0
 	}
-	return false, 10 + spellLevel
+	return false, CounterspellCheckBase + spellLevel
 }
 
 // UncannyDodge is the damage left after Uncanny Dodge: half, rounded down (the
 // SRD says "halve", and the Player's Handbook rounds down).
 func UncannyDodge(damage int) int {
-	return max(damage, 0) / 2
+	return max(damage, 0) / halving
 }
 
 // DeflectMissiles is the damage left after Deflect Missiles: the damage minus
@@ -67,27 +74,30 @@ func DeflectMissiles(damage, die, dexMod, monkLevel int) (left, reduction int) {
 // HellishRebukeDice is how many d10 Hellish Rebuke rolls cast with a slot of the
 // level: 2d10, and 1d10 more for each slot level above the 1st (SRD).
 func HellishRebukeDice(slotLevel int) int {
-	return 2 + max(slotLevel-HellishRebukeBaseLevel, 0)
+	return HellishRebukeBaseDice + max(slotLevel-HellishRebukeBaseLevel, 0)
 }
 
 // CuttingWordsDie is the Bardic Inspiration die a Cutting Words subtracts: d6 from
 // level 1, d8 from 5, d10 from 10 and d12 from 15 (SRD, Bard).
 func CuttingWordsDie(bardLevel int) int {
-	switch {
-	case bardLevel >= 15: //nolint:mnd // the Bardic Inspiration table
-		return 12
-	case bardLevel >= 10: //nolint:mnd // the Bardic Inspiration table
-		return 10
-	case bardLevel >= 5: //nolint:mnd // the Bardic Inspiration table
-		return 8
+	for _, t := range bardicDice {
+		if bardLevel >= t.level {
+			return t.die
+		}
 	}
-	return 6
+	return bardicBaseDie
 }
+
+// bardicBaseDie is the die of a bard below the 5th level; bardicDice are the levels
+// that raise it, highest first.
+const bardicBaseDie = 6
+
+var bardicDice = []struct{ level, die int }{{15, 12}, {10, 10}, {5, 8}}
 
 // ConcentrationDC is the Constitution save DC to keep a concentration after damage:
 // 10 or half the damage, whichever is higher (SRD, Duration).
 func ConcentrationDC(damage int) int {
-	return max(MinConcentrationDC, max(damage, 0)/2)
+	return max(MinConcentrationDC, max(damage, 0)/halving)
 }
 
 // Kind is the reaction a window asks.

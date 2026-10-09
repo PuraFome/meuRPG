@@ -1,8 +1,9 @@
 package play
 
 import (
-	"connectrpc.com/connect"
 	"testing"
+
+	"connectrpc.com/connect"
 
 	"google.golang.org/protobuf/proto"
 
@@ -65,8 +66,8 @@ func TestTheMastersCheckWaitsOnEveryHitWhenTheTableAsksForIt(t *testing.T) {
 // real Shield on a Mago give the attacker the same words and the same answer (RN-10).
 func TestWhatThePlayersReadDoesNotTellWhetherTheEnemyCouldReact(t *testing.T) {
 	t.Parallel()
-	real, e := mageFight(t)
-	realHit := real.mustAttack(t, real.caio, e, "Toren", battleaxe, "Mago", d20(9))
+	pausing, e := mageFight(t)
+	realHit := pausing.mustAttack(t, pausing.caio, e, "Toren", battleaxe, "Mago", d20(9))
 
 	always := newCasters(t)
 	always.setRules(t, enemyReactionsAlways)
@@ -81,10 +82,10 @@ func TestWhatThePlayersReadDoesNotTellWhetherTheEnemyCouldReact(t *testing.T) {
 	if !proto.Equal(strip(realHit.GetPendingDamage()), strip(maskedHit.GetPendingDamage())) {
 		t.Errorf("the pending damage differs:\n real   %v\n masked %v", realHit.GetPendingDamage(), maskedHit.GetPendingDamage())
 	}
-	if !proto.Equal(real.get(t, real.caio).GetReactionWait(), always.get(t, always.caio).GetReactionWait()) {
-		t.Errorf("the wait differs:\n real   %v\n masked %v", real.get(t, real.caio).GetReactionWait(), always.get(t, always.caio).GetReactionWait())
+	if !proto.Equal(pausing.get(t, pausing.caio).GetReactionWait(), always.get(t, always.caio).GetReactionWait()) {
+		t.Errorf("the wait differs:\n real   %v\n masked %v", pausing.get(t, pausing.caio).GetReactionWait(), always.get(t, always.caio).GetReactionWait())
 	}
-	if !proto.Equal(real.get(t, real.ana).GetReactionWait(), always.get(t, always.ana).GetReactionWait()) {
+	if !proto.Equal(pausing.get(t, pausing.ana).GetReactionWait(), always.get(t, always.ana).GetReactionWait()) {
 		t.Errorf("another player's wait differs")
 	}
 }

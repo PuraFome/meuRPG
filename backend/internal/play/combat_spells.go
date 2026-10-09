@@ -203,7 +203,7 @@ func (s *Service) CastSpell(
 
 // castSpell is CastSpell for a member already authorized: the replay of a held action calls it
 // with the member who made the request (combat_reaction_hold.go).
-func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connect.Request[playv1.CastSpellRequest]) (*connect.Response[playv1.CastSpellResponse], error) {
+func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connect.Request[playv1.CastSpellRequest]) (*connect.Response[playv1.CastSpellResponse], error) { //nolint:gocognit,gocyclo // the cast's steps in one closure, as CastSpell always was; the reaction window only split the handler from its replay
 	var err error
 	key, err := parseKey(req.Msg.GetIdempotencyKey())
 	if err != nil {

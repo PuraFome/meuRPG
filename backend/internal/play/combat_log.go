@@ -431,7 +431,7 @@ func (e *logEntry) land(kind string, ev actionEvent) {
 // view builds the entry the viewer gets, and false when they do not get it.
 func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]playdb.Combatant, names *keyNames, lastID string) (*playv1.CombatLogEntry, bool) {
 	if e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW {
-		return e.reactionEntry(ctx, v, byID, names, lastID)
+		return e.reactionEntry(ctx, v, byID, names)
 	}
 	actor, target := byID[e.ev.Actor], byID[e.ev.Target]
 	switch e.kind {

@@ -535,7 +535,7 @@ func (s *Service) RollAttack(
 
 // rollAttack is RollAttack for a member already authorized: the replay of a held action calls it
 // with the member who made the request (combat_reaction_hold.go).
-func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *connect.Request[playv1.RollAttackRequest]) (*connect.Response[playv1.RollAttackResponse], error) {
+func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *connect.Request[playv1.RollAttackRequest]) (*connect.Response[playv1.RollAttackResponse], error) { //nolint:gocognit,gocyclo // the attack's steps in one closure, as RollAttack always was; the reaction window only split the handler from its replay
 	var err error
 	key, err := parseKey(req.Msg.GetIdempotencyKey())
 	if err != nil {
@@ -957,7 +957,7 @@ func (s *Service) RollDamage(
 
 // rollDamage is RollDamage for a member already authorized: the replay of a held action calls it
 // with the member who made the request (combat_reaction_hold.go).
-func (s *Service) rollDamage(ctx context.Context, m authz.Membership, req *connect.Request[playv1.RollDamageRequest]) (*connect.Response[playv1.RollDamageResponse], error) {
+func (s *Service) rollDamage(ctx context.Context, m authz.Membership, req *connect.Request[playv1.RollDamageRequest]) (*connect.Response[playv1.RollDamageResponse], error) { //nolint:gocognit,gocyclo // the damage's steps in one closure, as RollDamage always was; the reaction window only split the handler from its replay
 	var err error
 	key, err := parseKey(req.Msg.GetIdempotencyKey())
 	if err != nil {

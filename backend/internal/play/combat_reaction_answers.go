@@ -77,7 +77,7 @@ func (s *Service) answerUncannyDodge(ctx context.Context, c *combatTx, w playdb.
 		return err
 	}
 	t := windowTriggerOf(w)
-	after := int32(reaction.UncannyDodge(int(t.Damage)))
+	after := clamp32(reaction.UncannyDodge(int(t.Damage)), 0, math.MaxInt32)
 	if err := s.spendReaction(ctx, c, reactor); err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func (s *Service) answerUncannyDodge(ctx context.Context, c *combatTx, w playdb.
 // window then asks that as its second step.
 func (s *Service) answerDeflect(ctx context.Context, c *combatTx, w playdb.ReactionWindow, reactor playdb.Combatant, use bool, req *playv1.AnswerReactionRequest, got *answered) error {
 	t := windowTriggerOf(w)
-	if w.Step == 2 { // the throw back: only "Guardar a flecha" comes through here
+	if w.Step == stepSecond { // the throw back: only "Guardar a flecha" comes through here
 		if use {
 			return connect.NewError(connect.CodeInvalidArgument, errors.New("the missile is thrown back with RollAttack and catch_window_id"))
 		}
@@ -153,7 +153,7 @@ func (s *Service) answerDeflect(ctx context.Context, c *combatTx, w playdb.React
 		if err != nil {
 			return fmt.Errorf("encode the window's trigger: %w", err)
 		}
-		if _, err := c.q.SetReactionWindowStep(ctx, playdb.SetReactionWindowStepParams{ID: w.ID, Step: 2, Trigger: body}); err != nil {
+		if _, err := c.q.SetReactionWindowStep(ctx, playdb.SetReactionWindowStepParams{ID: w.ID, Step: stepSecond, Trigger: body}); err != nil {
 			return fmt.Errorf("ask for the throw back: %w", err)
 		}
 		got.result.NextWindowId = w.ID
@@ -256,7 +256,7 @@ func (s *Service) canBeCut(ctx context.Context, c *combatTx, rollerID string) (b
 	if err != nil {
 		return false, err
 	}
-	return !(ok && k.st.CharmImmune), nil
+	return !ok || !k.st.CharmImmune, nil
 }
 
 // answerHellishRebuke: the aggressor makes a Dexterity saving throw against the caster's DC
@@ -266,7 +266,7 @@ func (s *Service) canBeCut(ctx context.Context, c *combatTx, rollerID string) (b
 // the window then asks it as its second step.
 func (s *Service) answerHellishRebuke(ctx context.Context, c *combatTx, m authz.Membership, w playdb.ReactionWindow, reactor playdb.Combatant, use bool, req *playv1.AnswerReactionRequest, got *answered) error {
 	t := windowTriggerOf(w)
-	if w.Step == 2 { // the aggressor's saving throw, the master's
+	if w.Step == stepSecond { // the aggressor's saving throw, the master's
 		if !use {
 			return connect.NewError(connect.CodeInvalidArgument, errors.New("the saving throw is rolled: use roll_in_app or typed"))
 		}
@@ -331,7 +331,7 @@ func (s *Service) answerHellishRebuke(ctx context.Context, c *combatTx, m authz.
 		if err != nil {
 			return fmt.Errorf("encode the window's trigger: %w", err)
 		}
-		if _, err := c.q.SetReactionWindowStep(ctx, playdb.SetReactionWindowStepParams{ID: w.ID, Step: 2, Trigger: body}); err != nil {
+		if _, err := c.q.SetReactionWindowStep(ctx, playdb.SetReactionWindowStepParams{ID: w.ID, Step: stepSecond, Trigger: body}); err != nil {
 			return fmt.Errorf("ask for the aggressor's saving throw: %w", err)
 		}
 		got.ev = actionEvent{
@@ -380,13 +380,13 @@ func (s *Service) resolveRebuke(ctx context.Context, c *combatTx, w playdb.React
 	}
 	saved := combat.SaveSucceeded(roll.Total, dc)
 	// The fire: the server rolls it in the app (2d10 and a d10 for each slot level above the 1st).
-	fire, err := dice.Roll(s.roller, dice.Expr{Count: int(t.Dice), Sides: 10})
+	fire, err := dice.Roll(s.roller, dice.Expr{Count: int(t.Dice), Sides: hellishDieSides})
 	if err != nil {
 		return fmt.Errorf("roll the fire: %w", err)
 	}
 	p, err := c.q.InsertPendingDamage(ctx, playdb.InsertPendingDamageParams{
 		EncounterID: c.enc.ID, AttackerID: &reactor.ID, TargetID: aggressor.ID, AttackKey: spellHellishRebuke, Status: pendingAwaitingRoll,
-		DiceCount: t.Dice, DiceSides: 10, DamageType: "damage-type:fire", CreatedAt: c.now, Half: saved,
+		DiceCount: t.Dice, DiceSides: hellishDieSides, DamageType: "damage-type:fire", CreatedAt: c.now, Half: saved,
 	})
 	if err != nil {
 		return fmt.Errorf("open the fire's damage: %w", err)

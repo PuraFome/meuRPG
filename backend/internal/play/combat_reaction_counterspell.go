@@ -90,7 +90,6 @@ func (s *Service) counterspellWindows(ctx context.Context, c *combatTx, cs []pla
 		if !sees {
 			continue
 		}
-		r := r
 		specs = append(specs, windowSpec{
 			kind: reaction.CounterspellKind, reactor: &r,
 			trigger: windowTrigger{Actor: caster.ID, Key: spellKey, Spell: spellKey, Level: level, Distance: dist, Roll: "cast"},

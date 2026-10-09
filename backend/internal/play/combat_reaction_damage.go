@@ -58,7 +58,6 @@ func (s *Service) cuttingWindows(ctx context.Context, c *combatTx, cs []playdb.C
 		if !sees {
 			continue
 		}
-		r := r
 		t := base
 		t.Roll, t.Distance = roll, dist
 		specs = append(specs, windowSpec{kind: reaction.CuttingWords, reactor: &r, trigger: t})
@@ -145,6 +144,11 @@ func (s *Service) damageWindows(ctx context.Context, c *combatTx, cs []playdb.Co
 
 // rankOf is the order windows of one damage are answered in: what changes the roll
 // (Cutting Words) first, then what changes the damage taken, then the master's check.
+const (
+	rankDeflect     = 2
+	rankMasterCheck = 3
+)
+
 func rankOf(k reaction.Kind) int {
 	switch k {
 	case reaction.CuttingWords:
@@ -152,9 +156,9 @@ func rankOf(k reaction.Kind) int {
 	case reaction.UncannyDodgeKind:
 		return 1
 	case reaction.DeflectKind:
-		return 2
+		return rankDeflect
 	}
-	return 3
+	return rankMasterCheck
 }
 
 // rangedWeaponAttack says an attack of the attacker's sheet is a ranged weapon attack

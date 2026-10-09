@@ -121,14 +121,14 @@ func TestAnNPCsReactionIsTheMastersAloneUntilItHappens(t *testing.T) {
 		t.Error("the master's reads do not hold the window: the needle is unreachable")
 	}
 	// A player may not answer it, and asking cannot tell a real window from an invented one.
-	real := w.caio.call(playv1connect.CombatServiceAnswerReactionProcedure, &playv1.AnswerReactionRequest{
+	asked := w.caio.call(playv1connect.CombatServiceAnswerReactionProcedure, &playv1.AnswerReactionRequest{
 		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: window.GetId(), Answer: playv1.ReactionChoice_REACTION_CHOICE_PASS, IdempotencyKey: newKey(),
 	})
 	fake := w.caio.call(playv1connect.CombatServiceAnswerReactionProcedure, &playv1.AnswerReactionRequest{
 		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: newKey(), Answer: playv1.ReactionChoice_REACTION_CHOICE_PASS, IdempotencyKey: newKey(),
 	})
-	if real.ok() || fake.ok() || real.status != fake.status || string(real.body) != string(fake.body) {
-		t.Errorf("a real window is refused with %d %s, an invented one with %d %s: they must read the same", real.status, real.body, fake.status, fake.body)
+	if asked.ok() || fake.ok() || asked.status != fake.status || !bytes.Equal(asked.body, fake.body) {
+		t.Errorf("a real window is refused with %d %s, an invented one with %d %s: they must read the same", asked.status, asked.body, fake.status, fake.body)
 	}
 	// The master uses Shield for the Mago.
 	must(w.master.combat.AnswerReaction(t.Context(), rq(&playv1.AnswerReactionRequest{

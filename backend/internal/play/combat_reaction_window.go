@@ -30,6 +30,13 @@ const (
 	windowClosed   = "closed"
 )
 
+// stepSecond is the step of the question an answer asks (the aggressor's saving throw, the
+// monk's throw back); hellishDieSides is the die of Hellish Rebuke's fire.
+const (
+	stepSecond      = 2
+	hellishDieSides = 10
+)
+
 // windowTrigger is what happened, as a window keeps it: IDs and numbers only (never
 // a name), so a payload of it is safe to store and to log.
 type windowTrigger struct {
@@ -369,7 +376,28 @@ func (s *Service) settleOnce(ctx context.Context, c *combatTx) (bool, error) {
 			openPending[*w.PendingDamageID] = true
 		}
 	}
-	// A hit whose windows are all closed goes on to its damage roll.
+	released, err := s.releaseWaiting(ctx, c, waiting, openPending, openFall, byID)
+	if err != nil {
+		return false, err
+	}
+	changed = changed || released
+	// A held action whose windows are all closed is replayed.
+	for _, h := range holds {
+		if openGroup[h.GroupID] {
+			continue
+		}
+		if err := s.releaseHold(ctx, c, h); err != nil {
+			return false, err
+		}
+		changed = true
+	}
+	return changed, nil
+}
+
+// releaseWaiting lets what waited for windows that are all closed go on: a hit to its damage roll,
+// a fall damage to its target.
+func (s *Service) releaseWaiting(ctx context.Context, c *combatTx, waiting []playdb.PendingDamage, openPending, openFall map[string]bool, byID map[string]playdb.Combatant) (bool, error) {
+	changed := false
 	for _, p := range waiting {
 		if openPending[p.ID] {
 			continue
@@ -390,16 +418,6 @@ func (s *Service) settleOnce(ctx context.Context, c *combatTx) (bool, error) {
 		}
 		if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: p.ID, Status: pendingAwaitingRoll}); err != nil {
 			return false, fmt.Errorf("let the hit go on: %w", err)
-		}
-		changed = true
-	}
-	// A held action whose windows are all closed is replayed.
-	for _, h := range holds {
-		if openGroup[h.GroupID] {
-			continue
-		}
-		if err := s.releaseHold(ctx, c, h); err != nil {
-			return false, err
 		}
 		changed = true
 	}
