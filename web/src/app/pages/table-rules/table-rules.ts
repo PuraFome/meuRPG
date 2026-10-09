@@ -23,6 +23,7 @@ import {
   CriticalRule,
   DeathSaveVisibility,
   DiceMode,
+  EnemyReactionsRule,
   HitPointsRule,
   Role,
   TableStyle,
@@ -142,6 +143,21 @@ const DEATH_SAVE_OPTIONS: readonly DiceOption<DeathSaveVisibility>[] = [
   },
 ];
 
+const ENEMY_REACTION_OPTIONS: readonly DiceOption<EnemyReactionsRule>[] = [
+  {
+    value: EnemyReactionsRule.ONLY_WHEN_POSSIBLE,
+    title: 'Só quando um inimigo pode reagir',
+    description:
+      'O jogo só espera quando algum inimigo tem uma reação disponível. É o padrão e é mais rápido. Atenção: uma pausa pode sugerir aos jogadores que alguém pode reagir.',
+  },
+  {
+    value: EnemyReactionsRule.ALWAYS,
+    title: 'Sempre',
+    description:
+      'Toda ação de um jogador contra um inimigo espera por você, com ou sem reação. Você responde com um toque (“Sem reação”) e a pausa não diz nada aos jogadores. Um pouco mais lento.',
+  },
+];
+
 const DICE_OPTIONS: readonly DiceOption<DiceMode>[] = [
   {
     value: DiceMode.APP,
@@ -216,6 +232,7 @@ export class TableRulesPage {
   protected readonly hitPointOptions = HIT_POINT_OPTIONS;
   protected readonly criticalOptions = CRITICAL_OPTIONS;
   protected readonly deathSaveOptions = DEATH_SAVE_OPTIONS;
+  protected readonly enemyReactionOptions = ENEMY_REACTION_OPTIONS;
   protected readonly diceOptions = DICE_OPTIONS;
   protected readonly combatOptions = COMBAT_OPTIONS;
   protected readonly inertStyle: readonly TableStyle[] = [TableStyle.PERSONALIZADO];
@@ -290,6 +307,10 @@ export class TableRulesPage {
       {
         label: 'Testes contra a morte',
         value: DEATH_SAVE_OPTIONS.find((o) => o.value === d.deathSaves)?.title ?? '',
+      },
+      {
+        label: 'Reações dos inimigos',
+        value: ENEMY_REACTION_OPTIONS.find((o) => o.value === d.enemyReactions)?.title ?? '',
       },
       { label: 'Experiência', value: XP_OPTION_TITLES[s.xpMode] ?? '' },
     ];

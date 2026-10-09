@@ -5,6 +5,7 @@ import {
   CriticalRule,
   DeathSaveVisibility,
   DiceMode,
+  EnemyReactionsRule,
   HitPointsRule,
   TableStyle,
   TableStylePresetSchema,
@@ -52,6 +53,7 @@ const base: RulesDraft = {
   typed: false,
   critical: CriticalRule.DOUBLED_DICE,
   deathSaves: DeathSaveVisibility.VISIBLE_TO_ALL,
+  enemyReactions: EnemyReactionsRule.ONLY_WHEN_POSSIBLE,
   houseRules: [],
 };
 
@@ -111,6 +113,17 @@ describe('table rules', () => {
     expect(d.combatStartsWithMap).toBe(true);
     expect(d.fogOnNewMaps).toBe(false);
     expect(d.houseRules).toEqual([]);
+    expect(d.enemyReactions).toBe(EnemyReactionsRule.ONLY_WHEN_POSSIBLE);
+  });
+
+  it('reads an unspecified rule as the default and counts a change of it', () => {
+    expect(
+      draftFromRules({ enemyReactions: EnemyReactionsRule.UNSPECIFIED } as never).enemyReactions,
+    ).toBe(EnemyReactionsRule.ONLY_WHEN_POSSIBLE);
+    expect(
+      draftFromRules({ enemyReactions: EnemyReactionsRule.ALWAYS } as never).enemyReactions,
+    ).toBe(EnemyReactionsRule.ALWAYS);
+    expect(changeCount({ ...base, enemyReactions: EnemyReactionsRule.ALWAYS }, base)).toBe(1);
   });
 
   it('reads how much XP stood in the way from the typed detail, never from the message', () => {

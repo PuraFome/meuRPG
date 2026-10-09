@@ -8,6 +8,7 @@ import {
   CriticalRule,
   DeathSaveVisibility,
   DiceMode,
+  EnemyReactionsRule,
   HitPointsRule,
   Role,
   TableStyle,
@@ -55,6 +56,7 @@ const saved: RulesDraft = {
   typed: true,
   critical: CriticalRule.DOUBLED_DICE,
   deathSaves: DeathSaveVisibility.VISIBLE_TO_ALL,
+  enemyReactions: EnemyReactionsRule.ONLY_WHEN_POSSIBLE,
   houseRules: ['Beber uma poção é uma ação bônus'],
 };
 
@@ -260,6 +262,41 @@ describe('TableRulesPage', () => {
     });
     expect(text(el)).toContain('Regras salvas.');
     expect(button(el, 'Salvar regras').classList).toContain('mr-button--off');
+  });
+
+  it('draws "Reações dos inimigos" with the default chosen and the attention sentence', async () => {
+    const { el } = await setup();
+    const title = Array.from(el.querySelectorAll('h2')).find(
+      (h) => h.textContent?.trim() === 'Reações dos inimigos',
+    );
+    expect(title).toBeDefined();
+    expect(radio(el, 'Só quando um inimigo pode reagir').checked).toBe(true);
+    expect(radio(el, 'Sempre').checked).toBe(false);
+    expect(text(el)).toContain(
+      'Atenção: uma pausa pode sugerir aos jogadores que alguém pode reagir.',
+    );
+    expect(text(el)).toContain('Vale a partir da próxima ação.');
+    expect(radio(el, 'Sempre').type).toBe('radio');
+    expect(radio(el, 'Sempre').name).toBe(radio(el, 'Só quando um inimigo pode reagir').name);
+  });
+
+  it('saves the chosen enemy reactions rule with "Salvar regras"', async () => {
+    const { fixture, el } = await setup();
+    radio(el, 'Sempre').click();
+    await settle(fixture);
+    expect(text(el)).toContain('1 mudança não salva');
+    button(el, 'Salvar regras').click();
+    await settle(fixture);
+    expect((set.mock.calls[0][1] as RulesDraft).enemyReactions).toBe(EnemyReactionsRule.ALWAYS);
+  });
+
+  it('lets a player read the rule and nothing more', async () => {
+    const { el } = await setup(Role.PLAYER, { enemyReactions: EnemyReactionsRule.ALWAYS });
+    const rows = Array.from(el.querySelectorAll('.read__row')).map(
+      (r) => `${r.querySelector('dt')?.textContent} ${r.querySelector('dd')?.textContent}`,
+    );
+    expect(rows).toContain('Reações dos inimigos Sempre');
+    expect(el.querySelector('input')).toBeNull();
   });
 
   it('keeps at least one way of making scores: with none the save is off and says why', async () => {

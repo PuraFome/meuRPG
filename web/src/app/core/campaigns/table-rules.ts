@@ -6,6 +6,7 @@ import {
   CriticalRule,
   DeathSaveVisibility,
   DiceMode,
+  EnemyReactionsRule,
   HitPointsRule,
   TableStyle,
   XpMode,
@@ -29,6 +30,8 @@ export interface RulesDraft {
   readonly typed: boolean;
   readonly critical: CriticalRule;
   readonly deathSaves: DeathSaveVisibility;
+  /** When the game waits for the master before the result of a player's action against an enemy (PM-04). */
+  readonly enemyReactions: EnemyReactionsRule;
   readonly houseRules: readonly string[];
 }
 
@@ -61,6 +64,8 @@ export function draftFromRules(rules: GetTableRulesResponse['rules']): RulesDraf
     typed: rules?.abilityMethods?.typed ?? true,
     critical: rules?.critical ?? CriticalRule.DOUBLED_DICE,
     deathSaves: rules?.deathSaves ?? DeathSaveVisibility.VISIBLE_TO_ALL,
+    // The server refuses UNSPECIFIED: an old reading is the default rule.
+    enemyReactions: rules?.enemyReactions || EnemyReactionsRule.ONLY_WHEN_POSSIBLE,
     houseRules: rules?.houseRules ?? [],
   };
 }
@@ -114,6 +119,7 @@ export function changeCount(draft: RulesDraft, saved: RulesDraft): number {
     'typed',
     'critical',
     'deathSaves',
+    'enemyReactions',
   ];
   for (const key of scalar) {
     if (draft[key] !== saved[key]) {
@@ -216,6 +222,7 @@ export class TableRulesClient {
         },
         critical: d.critical,
         deathSaves: d.deathSaves,
+        enemyReactions: d.enemyReactions,
         houseRules: [...d.houseRules],
       },
     });
