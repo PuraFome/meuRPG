@@ -1,0 +1,258 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+.cx {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-4);
+
+  @media (min-width: 768px) {
+    padding: var(--mr-space-5);
+  }
+}
+
+.cx__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.cx__titles {
+  min-width: 0;
+}
+
+.cx__title {
+  margin: 0;
+  font-size: 26px;
+  line-height: 30px;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.cx__count {
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.cx__empty {
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.cx__list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.cx__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  padding: var(--mr-space-4);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.cx__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2);
+}
+
+.cx__nametext {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  line-height: 26px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.cx__sub {
+  margin: 0;
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.cx__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  min-height: 24px;
+  padding: 0 10px 0 6px;
+  border: 1px solid var(--mr-accent);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-accent-soft);
+  color: var(--mr-accent-strong);
+  font-size: 14px;
+  font-weight: 700;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.cx__line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    font-size: 18px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.cx__tags {
+  margin: 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.cx__btn {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-filled-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  width: 100%;
+
+  &[data-ring] {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+    --mat-button-filled-container-height: 44px;
+  }
+}
+
+.cx__btn--danger {
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+  --mat-button-outlined-outline-color: var(--mr-danger-ink);
+}
+
+.cx__ask {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-4);
+  border: 2px solid var(--mr-danger-ink);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.cx__askicon {
+  flex: none;
+  color: var(--mr-danger-ink);
+}
+
+.cx__asktext {
+  min-width: 0;
+}
+
+.cx__asktitle {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  line-height: 26px;
+  font-weight: 700;
+}
+
+.cx__askbody {
+  margin: var(--mr-space-1) 0 var(--mr-space-3);
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.cx__askbtns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+  }
+}
+
+// "Passar o tempo": the presets, the seconds and the button.
+.cx__presets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mr-space-2);
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.cx__preset {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+
+  &.cx__preset--on {
+    --mat-button-outlined-outline-color: var(--mr-accent);
+    border-width: 2px;
+    background: var(--mr-accent-soft);
+  }
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+  }
+}
+
+.cx__go {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--mr-space-4);
+  }
+}
+
+.cx__btn--go {
+  @media (min-width: 768px) {
+    width: auto;
+  }
+}
+
+.cx__done {
+  margin: 0;
+  min-height: 1px;
+  font-weight: 700;
+  color: var(--mr-success-ink);
+}

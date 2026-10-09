@@ -1,0 +1,64 @@
+<app-sheet-frame [title]="title" titleId="duration-t" [phone]="inSheet" (closed)="close()">
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger error" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+  <fieldset class="choices">
+    <legend class="mr-visually-hidden">Como o efeito acaba</legend>
+    <label class="choice">
+      <input type="radio" name="duration-mode" [checked]="mode() === 'rounds'" (change)="mode.set('rounds')" />
+      <span class="choice__title">Mais rodadas</span>
+      <span class="choice__text">{{ today() }}</span>
+    </label>
+    <label class="choice">
+      <input type="radio" name="duration-mode" [checked]="mode() === 'turn'" (change)="mode.set('turn')" />
+      <span class="choice__title">Até o fim do turno de alguém</span>
+      <span class="choice__text">Escolha de quem.</span>
+    </label>
+    <label class="choice">
+      <input type="radio" name="duration-mode" [checked]="mode() === 'dismissed'" (change)="mode.set('dismissed')" />
+      <span class="choice__title">Até o mestre encerrar</span>
+      <span class="choice__text">Sem fim marcado.</span>
+    </label>
+  </fieldset>
+  <div class="fields">
+    @if (mode() === 'rounds') {
+      <app-text-field
+        label="Rodadas"
+        path="rounds"
+        inputmode="numeric"
+        [value]="rounds()"
+        [issues]="roundsIssues()"
+        hint="De 1 a 600. Contadas a partir de agora."
+        (valueChange)="rounds.set($event)"
+      />
+    }
+    @if (mode() === 'turn') {
+      <app-select-field
+        label="De quem é o turno"
+        path="anchor"
+        [options]="anchorOptions()"
+        [value]="anchorId()"
+        (valueChange)="anchorId.set($any($event))"
+      />
+    }
+  </div>
+  <div foot>
+    <div class="pair">
+      <button
+        mat-flat-button
+        type="button"
+        class="pair__btn"
+        [disabled]="busy() || !valid()"
+        disabledInteractive
+        [attr.aria-busy]="busy()"
+        (click)="save()"
+      >
+        Salvar
+      </button>
+      <button mat-stroked-button type="button" class="pair__btn" [disabled]="busy()" (click)="close()">Cancelar</button>
+    </div>
+  </div>
+</app-sheet-frame>

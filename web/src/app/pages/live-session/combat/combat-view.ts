@@ -133,6 +133,7 @@ import { CastSheet, type CastMapData, type CastSheetData } from './cast-sheet/ca
 import { ConditionsDialog, type ConditionsData } from './conditions-dialog/conditions-dialog';
 import { DeathQuestion } from './death-question/death-question';
 import { DeathSaves } from './death-saves/death-saves';
+import { EffectsPanel } from '../effects/effects-panel';
 import { RageQuestion } from './rage-end/rage-question';
 import { FeatureSheet, type FeatureSheetData } from './feature-sheet/feature-sheet';
 import { InspirationCard } from './inspiration-card/inspiration-card';
@@ -225,6 +226,7 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
     CreatureHero,
     DeathQuestion,
     DeathSaves,
+    EffectsPanel,
     RageQuestion,
     InspirationCard,
     CombatBar,

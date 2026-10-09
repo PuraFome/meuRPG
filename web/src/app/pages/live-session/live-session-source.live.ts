@@ -115,6 +115,7 @@ export function toVitalsVm(v: CharacterVitals): VitalsVm {
           hitPointsMax: v.wildShape.hitPointsMax,
         }
       : null,
+    exhaustionLevel: v.exhaustionLevel,
   };
 }
 
