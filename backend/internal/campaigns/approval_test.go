@@ -224,13 +224,13 @@ func TestSignInWithAnApprovalInviteGoesToCreateTheCharacter(t *testing.T) {
 }
 
 // wantPendingView fails the test unless c is what a pending member sees:
-// the id, the name and ROLE_PLAYER, with awaiting_approval, and nothing
-// else.
+// the id, the name, the XP mode and ROLE_PLAYER, with awaiting_approval, and
+// nothing else (not the dice mode, not when the campaign was made).
 func wantPendingView(t *testing.T, call string, c *campaignsv1.Campaign, id string) {
 	t.Helper()
 	if c.GetId() != id || c.GetName() != "Mirathel" || c.GetMyRole() != campaignsv1.Role_ROLE_PLAYER || !c.GetAwaitingApproval() ||
-		c.GetXpMode() != campaignsv1.XpMode_XP_MODE_UNSPECIFIED || c.GetCreatedAt() != nil {
-		t.Errorf("%s campaign = %v, want only the id, the name and ROLE_PLAYER, awaiting approval", call, c)
+		c.GetXpMode() == campaignsv1.XpMode_XP_MODE_UNSPECIFIED || c.GetDiceMode() != campaignsv1.DiceMode_DICE_MODE_UNSPECIFIED || c.GetCreatedAt() != nil {
+		t.Errorf("%s campaign = %v, want only the id, the name, the XP mode and ROLE_PLAYER, awaiting approval", call, c)
 	}
 }
 

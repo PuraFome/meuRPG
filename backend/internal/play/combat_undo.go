@@ -625,6 +625,21 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 				return nil, err
 			}
 		}
+		// The question the cast left the master goes away, and the creatures it revealed
+		// are hidden again: the spell never happened (their line is the players' no more
+		// while they are hidden).
+		if ev.PendingReveal != "" {
+			if err := c.q.DeleteHiddenReveal(ctx, ev.PendingReveal); err != nil {
+				return nil, fmt.Errorf("drop the hidden reveal: %w", err)
+			}
+		}
+		for _, id := range ev.Revealed {
+			if target, ok := find(id); ok {
+				if err := c.q.SetCombatantHidden(ctx, playdb.SetCombatantHiddenParams{ID: target.ID, Hidden: true}); err != nil {
+					return nil, fmt.Errorf("hide the combatant again: %w", err)
+				}
+			}
+		}
 		for _, h := range ev.Hits {
 			for _, id := range append([]string{h.Pending}, h.More...) {
 				if id == "" {

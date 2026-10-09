@@ -625,6 +625,60 @@ describe('the log of spells, reactions, the fallen and conditions (slice 6.5c)',
     ).toBe(' ataca o Goblin 1 com a Adaga (ataque de oportunidade): acertou, 4 de dano');
   });
 
+  it('says that an opportunity attack sent the mover back to the reach, or could not', () => {
+    const opportunity = {
+      actorLabel: 'Pensantus',
+      targetLabel: 'Goblin 1',
+      key: 'equipment:dagger',
+      keyNamePt: 'Adaga',
+      asReaction: true,
+      damage: { status: PendingDamageStatus.APPLIED, amount: 9, defeated: true },
+    };
+    expect(logLine(attack({ ...opportunity, returnedToReach: true }))?.text).toBe(
+      ' ataca o Goblin 1 com a Adaga (ataque de oportunidade): acertou, 9 de dano. Goblin 1 derrotado. Goblin 1 voltou ao último quadrado dentro do alcance',
+    );
+    expect(logLine(attack({ ...opportunity, returnBlocked: true }))?.text).toBe(
+      ' ataca o Goblin 1 com a Adaga (ataque de oportunidade): acertou, 9 de dano. Goblin 1 derrotado. Goblin 1 não pôde voltar ao último quadrado dentro do alcance: ele estava ocupado',
+    );
+    expect(logLine(attack(opportunity))?.text).not.toContain('voltou');
+  });
+
+  it('tells every damage type of a spell on a target, and the master the armor class of its attack', () => {
+    const storm = (target: object) =>
+      entry({
+        kind: CombatLogKind.SPELL_CAST,
+        actorLabel: 'Pensantus',
+        keyNamePt: 'Tempestade de Gelo',
+        spell: { slot: { level: 4, pact: false }, targets: [target] },
+      } as never);
+    const damages = {
+      damage: { status: PendingDamageStatus.APPLIED, amount: 12, damageTypePt: 'contundente' },
+      moreDamages: [{ status: PendingDamageStatus.APPLIED, amount: 8, damageTypePt: 'gélido' }],
+    };
+    expect(
+      logLine(
+        storm({ targetId: 'g', targetLabel: 'Goblin 1', save: { outcome: 2, dc: 15 }, ...damages }),
+      )?.text,
+    ).toBe(
+      ' conjura Tempestade de Gelo (4º\u00a0nível): o Goblin 1 falhou (CD 15), 12 de dano, 8 de dano',
+    );
+    const bolt = {
+      targetId: 'g',
+      targetLabel: 'Goblin 1',
+      outcome: AttackOutcome.HIT,
+      damage: { status: PendingDamageStatus.APPLIED, amount: 6 },
+      cover: CoverDegree.HALF,
+      coverSource: CoverSource.MAP,
+    };
+    // Only the master's entry carries the armor class and the cover bonus; the player's line is as before.
+    expect(logLine(storm({ ...bolt, targetArmorClass: 17, coverBonus: 2 }))?.text).toBe(
+      ' conjura Tempestade de Gelo (4º\u00a0nível): no Goblin 1: acertou (CA 17: 15 + 2 de meia cobertura, do mapa), 6 de dano',
+    );
+    expect(logLine(storm(bolt))?.text).toBe(
+      ' conjura Tempestade de Gelo (4º\u00a0nível): no Goblin 1: acertou, 6 de dano',
+    );
+  });
+
   it('writes a damage the master changed, the death save failures and the concentration reminder', () => {
     const hit = entry({
       kind: CombatLogKind.ATTACK,

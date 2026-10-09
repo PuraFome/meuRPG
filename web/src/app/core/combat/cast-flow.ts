@@ -94,7 +94,8 @@ export function freeText(free: number, total: number | null): string {
  * has from the spell's own up (the ones with no free slot are listed too,
  * disabled, so "2º nível: Sem espaço livre" is seen), and the pact slots.
  * `choices` are the server's free slots (`SpellOption.slots`), who decides
- * what is enabled; `usage` has the totals, for "de 4".
+ * what is enabled; `usage` has the totals, for "de 4". A cantrip (level 0)
+ * uses no slot, so it has no rows at all.
  */
 export function slotRows(
   level: number,
@@ -102,6 +103,9 @@ export function slotRows(
   usage: readonly { readonly level: number; readonly total: number; readonly used: number }[],
   pact: { readonly slotLevel: number; readonly total: number; readonly used: number } | null = null,
 ): SlotRow[] {
+  if (level < 1) {
+    return [];
+  }
   const rows: SlotRow[] = [];
   const levels = new Set<number>(choices.filter((c) => !c.pact).map((c) => c.level));
   for (const u of usage) {
@@ -338,6 +342,11 @@ const ABILITY_PT: Partial<Record<Ability, string>> = {
   [Ability.CHARISMA]: 'Carisma',
 };
 
+/** The ability of a spell's saving throw, in Portuguese ("Constituição"); `''` without a save. */
+export function saveAbility(details: SpellDetails | null): string {
+  return ABILITY_PT[details?.save?.ability ?? Ability.UNSPECIFIED] ?? '';
+}
+
 /**
  * The dice a spell makes at a slot level ("8d6"), from its details; `''` when there are none.
  * A cantrip grows with the caster's level, which the details do not know: the server sends the
@@ -398,6 +407,7 @@ export function castSubtitle(
   darts: number,
   cantripDice = '',
   damageType = '',
+  shape = '',
 ): string {
   const parts = [
     economy === ActionEconomy.BONUS_ACTION
@@ -413,6 +423,10 @@ export function castSubtitle(
     parts.push('toque');
   } else if (range?.kind === SpellRangeKind.SELF) {
     parts.push('pessoal');
+  }
+  // An area placed on the map says its form and size ("esfera de 6 m de raio").
+  if (shape) {
+    parts.push(shape);
   }
   const type = details?.damage[0]?.damageTypePt ?? '';
   const dice = damageText(details, slotLevel, cantripDice, damageType);

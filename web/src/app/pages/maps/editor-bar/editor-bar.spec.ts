@@ -70,6 +70,11 @@ describe('EditorBar', () => {
     for (const name of ['Terreno difícil', 'Parede', 'Cobertura', 'Luz', 'Porta', 'Apagar']) {
       expect(button(name), name).toBeTruthy();
     }
+    // No tool is in hand until one is chosen.
+    expect(button('Terreno difícil').getAttribute('aria-pressed')).toBe('false');
+    button('Terreno difícil').click();
+    expect(settings.at(-1)?.tool).toBe('terrain');
+    setup('paint', true, { ...DEFAULT_SETTINGS, tool: 'terrain' });
     expect(button('Terreno difícil').getAttribute('aria-pressed')).toBe('true');
     expect(button('Terreno difícil').textContent).toContain('check');
     button('Parede').click();

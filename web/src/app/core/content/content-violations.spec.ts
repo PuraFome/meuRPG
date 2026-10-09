@@ -462,3 +462,25 @@ describe('the refusals of the server, back on the fields (E10-01 state 5)', () =
     expect(placed.byField.get('a.b')).toHaveLength(1);
   });
 });
+
+describe("the refusals of a feat, on the feat editor's fields", () => {
+  const feat = { aOne: 'um talento' };
+
+  it('writes the prerequisite and the ability increase in Portuguese, by their paths', () => {
+    expect(violationText(v('table_feat.prerequisite.level', 'bad_value'), feat)).toBe(
+      'O nível vai de 1 a 20 (vazio não pede nada).',
+    );
+    expect(violationText(v('table_feat.prerequisite.minimums.strength', 'bad_value'), feat)).toBe(
+      'A pontuação mínima vai de 1 a 30.',
+    );
+    expect(violationText(v('table_feat.prerequisite.race_key', 'dangling_reference'), feat)).toBe(
+      'Esta raça ou sub-raça não existe mais. Escolha outra.',
+    );
+    expect(violationText(v('table_feat.effects[1]', 'limit'), feat)).toBe(
+      'Um talento tem só um aumento de habilidade.',
+    );
+    expect(violationText(v('table_feat.name_pt', 'duplicate_name'), feat)).toBe(
+      'Já existe um talento da mesa com este nome. Escolha outro.',
+    );
+  });
+});

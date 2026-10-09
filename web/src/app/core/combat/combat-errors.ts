@@ -89,6 +89,12 @@ export function blockedMessage(blocked: EncounterBlocked): string {
     }
     case EncounterBlockedReason.MOVE_BLOCKED:
       return 'Não dá para passar por aí: há uma parede ou outra criatura no caminho.';
+    case EncounterBlockedReason.WALL_ON_SQUARE:
+      return 'Esse quadrado é uma parede: ninguém fica dentro dele.';
+    case EncounterBlockedReason.NO_FREE_SQUARE:
+      return 'Não há quadrado livre longe dos jogadores neste mapa.';
+    case EncounterBlockedReason.TARGET_DEAD:
+      return 'Não dá para curar quem já morreu.';
     case EncounterBlockedReason.ENEMY_IN_THE_WAY:
       return 'Um inimigo está no caminho.';
     case EncounterBlockedReason.TARGET_COVER_TOTAL:
@@ -145,6 +151,10 @@ export function blockedMessage(blocked: EncounterBlocked): string {
       return 'Esse personagem não falhou três testes contra a morte. A tela foi atualizada.';
     case EncounterBlockedReason.OPPORTUNITY_PENDING:
       return 'Esperando a reação do mestre: um ataque de oportunidade ainda não foi respondido.';
+    case EncounterBlockedReason.HIDDEN_REVEAL_PENDING:
+      // The turn waits for the master's answer about hidden creatures an area hit: a player reads the same words as any wait
+      // for the master, never why (RN-10). The master's own screen says what it waits for, so this refusal is never news to him.
+      return 'Esperando o mestre.';
     case EncounterBlockedReason.NOT_ENDED:
       return 'O combate ainda não terminou. Os destaques aparecem quando ele acabar.';
     // The creatures and Wild Shape (MR-037): what the server refused, in words.

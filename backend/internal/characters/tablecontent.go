@@ -39,7 +39,7 @@ const (
 	reasonSizeLimit = "size_limit"
 )
 
-// tableKinds describes the six kinds: the key prefix, the proto kind and the
+// tableKinds describes the seven kinds: the key prefix, the proto kind and the
 // feature prefix of what the kind holds.
 var tableKinds = []struct {
 	prefix string
@@ -51,6 +51,7 @@ var tableKinds = []struct {
 	{"subrace", rulesv1.TableContentKind_TABLE_CONTENT_KIND_SUBRACE},
 	{"background", rulesv1.TableContentKind_TABLE_CONTENT_KIND_BACKGROUND},
 	{"spell", rulesv1.TableContentKind_TABLE_CONTENT_KIND_SPELL},
+	{"feat", rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT},
 }
 
 func kindPrefix(k rulesv1.TableContentKind) string {
@@ -99,6 +100,8 @@ func newBody(kind rulesv1.TableContentKind) tableBody {
 		return &rulesv1.TableBackground{}
 	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_SPELL:
 		return &rulesv1.TableSpell{}
+	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT:
+		return &rulesv1.TableFeat{}
 	}
 	return nil
 }
@@ -118,10 +121,12 @@ func setBody(e *rulesv1.TableEntry, b tableBody) {
 		e.Body = &rulesv1.TableEntry_TableBackground{TableBackground: v}
 	case *rulesv1.TableSpell:
 		e.Body = &rulesv1.TableEntry_TableSpell{TableSpell: v}
+	case *rulesv1.TableFeat:
+		e.Body = &rulesv1.TableEntry_TableFeat{TableFeat: v}
 	}
 }
 
-// bodyFields are the six oneof getters of a write request.
+// bodyFields are the seven oneof getters of a write request.
 type bodyFields interface {
 	GetTableClass() *rulesv1.TableClass
 	GetTableSubclass() *rulesv1.TableSubclass
@@ -129,6 +134,7 @@ type bodyFields interface {
 	GetTableSubrace() *rulesv1.TableSubrace
 	GetTableBackground() *rulesv1.TableBackground
 	GetTableSpell() *rulesv1.TableSpell
+	GetTableFeat() *rulesv1.TableFeat
 }
 
 // bodyOf is the body a request carries, with the kind it gives, or nil.
@@ -146,6 +152,8 @@ func bodyOf(r bodyFields) (tableBody, rulesv1.TableContentKind) {
 		return r.GetTableBackground(), rulesv1.TableContentKind_TABLE_CONTENT_KIND_BACKGROUND
 	case r.GetTableSpell() != nil:
 		return r.GetTableSpell(), rulesv1.TableContentKind_TABLE_CONTENT_KIND_SPELL
+	case r.GetTableFeat() != nil:
+		return r.GetTableFeat(), rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT
 	}
 	return nil, rulesv1.TableContentKind_TABLE_CONTENT_KIND_UNSPECIFIED
 }
@@ -225,6 +233,9 @@ func overlayFromEntries(entries []entryRow, revision int) (rules.Overlay, overla
 		case *rulesv1.TableSpell:
 			o.Spells = append(o.Spells, tableSpellOf(te, b))
 			idx["spells"] = append(idx["spells"], e)
+		case *rulesv1.TableFeat:
+			o.Feats = append(o.Feats, tableFeatOf(te, b))
+			idx["feats"] = append(idx["feats"], e)
 		}
 	}
 	return o, idx
@@ -342,9 +353,13 @@ func tableFeaturesOf(in []*rulesv1.TableFeature) []rules.TableFeature {
 }
 
 func tableFeatureOf(f *rulesv1.TableFeature) rules.TableFeature {
-	out := rules.TableFeature{Key: f.GetKey(), NamePT: f.GetNamePt(), DescPT: f.GetDescPt()}
-	for _, e := range f.GetEffects() {
-		out.Effects = append(out.Effects, rules.Effect{
+	return rules.TableFeature{Key: f.GetKey(), NamePT: f.GetNamePt(), DescPT: f.GetDescPt(), Effects: tableEffectsOf(f.GetEffects())}
+}
+
+func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
+	var out []rules.Effect
+	for _, e := range in {
+		out = append(out, rules.Effect{
 			Type: e.GetType(), Target: e.GetTarget(), Mode: e.GetMode(), Value: e.GetValue(), When: e.GetWhen(), Tags: e.GetTags(),
 			Proficiency: e.GetProficiency(), Level: e.GetLevel(), Roll: e.GetRoll(), Targets: e.GetTargets(),
 			Sense: e.GetSense(), RangeFt: int(e.GetRangeFt()), Resource: e.GetResource(), Max: e.GetMax(), Recharge: e.GetRecharge(),
@@ -353,6 +368,18 @@ func tableFeatureOf(f *rulesv1.TableFeature) rules.TableFeature {
 		})
 	}
 	return out
+}
+
+// tableFeatOf is the engine's feat of a stored one.
+func tableFeatOf(te rules.TableEntry, b *rulesv1.TableFeat) rules.TableFeat {
+	p := b.GetPrerequisite()
+	return rules.TableFeat{
+		TableEntry: te, DescPT: b.GetDescPt(), Effects: tableEffectsOf(b.GetEffects()),
+		Prerequisite: rules.FeatPrerequisite{
+			Minimums: tableScoresOf(p.GetMinimums()), AnyOf: tableScoresOf(p.GetAnyOf()), Proficiency: p.GetProficiencyKey(),
+			Spellcasting: p.GetSpellcasting(), Race: p.GetRaceKey(), Level: int(p.GetLevel()),
+		},
+	}
 }
 
 var (
@@ -541,7 +568,7 @@ func violationOf(oe *rules.OverlayError, idx overlayIndex, entry string) *rulesv
 
 // overlayPath splits "classes[2].levels[4]" into the kind's list, the index and
 // the rest.
-var overlayPath = regexp.MustCompile(`^(classes|subclasses|races|subraces|backgrounds|spells)\[(\d+)\](.*)$`)
+var overlayPath = regexp.MustCompile(`^(classes|subclasses|races|subraces|backgrounds|spells|feats)\[(\d+)\](.*)$`)
 
 // slugify makes the slug of a key from a Portuguese name: lower case, without
 // accents, the rest of it a-z0-9 joined by hyphens, at most rules.MaxSlugLength.
@@ -669,7 +696,20 @@ func checkFeatureCount(kind rulesv1.TableContentKind, body tableBody) []*rulesv1
 // entry. It returns a violation for a key the entry never had, which would let a
 // request claim another entry's feature.
 func featureKeys(entryKey string, body, old tableBody) []*rulesv1.TableContentViolation {
-	a := &keyAssigner{entryKey: entryKey, taken: map[string]bool{}, owned: map[string]bool{}, slugs: map[string]bool{}, byName: map[string]string{}}
+	return assignFeatureKeys(entryKey, body, old, false)
+}
+
+// importFeatureKeys is featureKeys for an entry of a content pack: a feature key the
+// stored entry does not have is kept when it is the kind of key the server makes for
+// this entry (its start is the entry's own stem), because a pack carries the keys the
+// sheets of the campaign it came from made their choices on. The engine still refuses a
+// key that another entry or feature of the campaign already has.
+func importFeatureKeys(entryKey string, body, old tableBody) []*rulesv1.TableContentViolation {
+	return assignFeatureKeys(entryKey, body, old, true)
+}
+
+func assignFeatureKeys(entryKey string, body, old tableBody, foreign bool) []*rulesv1.TableContentViolation {
+	a := &keyAssigner{entryKey: entryKey, taken: map[string]bool{}, owned: map[string]bool{}, slugs: map[string]bool{}, byName: map[string]string{}, foreign: foreign}
 	a.collectOld(old)
 	var out []*rulesv1.TableContentViolation
 	a.violations = &out
@@ -715,6 +755,9 @@ type keyAssigner struct {
 	slugs      map[string]bool
 	byName     map[string]string
 	violations *[]*rulesv1.TableContentViolation
+	// foreign lets a key the stored entry does not have stay when it has the entry's own
+	// stem (a content pack's).
+	foreign bool
 }
 
 // featuresOfBody lists the (level, features) groups of a body, in order.
@@ -772,6 +815,11 @@ func (a *keyAssigner) take(key string) {
 func (a *keyAssigner) assign(path, prefix, stem string, level int, features []*rulesv1.TableFeature) {
 	for i, f := range features {
 		if f.GetKey() == "" {
+			continue
+		}
+		if !a.owned[f.GetKey()] && a.foreign && strings.HasPrefix(f.GetKey(), prefix+stem) {
+			a.owned[f.GetKey()] = true // the pack's key: from here on it is the entry's
+			a.take(f.GetKey())
 			continue
 		}
 		if !a.owned[f.GetKey()] {
@@ -857,6 +905,11 @@ func forPlayer(e entryRow, hidden func(string) bool) entryRow {
 		}
 	case *rulesv1.TableSpell:
 		b.ClassKeys = slices.DeleteFunc(b.ClassKeys, func(k string) bool { return hidden(k) })
+	case *rulesv1.TableFeat:
+		dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects()}})
+		if p := b.GetPrerequisite(); hidden(p.GetRaceKey()) {
+			p.RaceKey = "" // a race or subrace the players do not see is not named to them
+		}
 	}
 	e.body = body
 	return e

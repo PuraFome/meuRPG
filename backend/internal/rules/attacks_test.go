@@ -364,65 +364,67 @@ func duelist(weapons ...string) Build {
 	return b
 }
 
-// TestDuelingAddsTwoDamageToTheOneMeleeWeaponInOneHand: SRD 5.1 Dueling gives +2 to
-// damage while a melee weapon is wielded in one hand and no other weapon is. The sheet
-// lists the weapons carried, not the ones in hand, so the bonus is applied to the
-// sole weapon of the sheet, in the damage it rolls in one hand, and left as a note for
-// the master when there are other weapons.
-func TestDuelingAddsTwoDamageToTheOneMeleeWeaponInOneHand(t *testing.T) {
+// TestDuelingAddsTwoDamageToEveryOneHandedMeleeWeapon: SRD 5.1 Dueling gives +2 to
+// damage while a melee weapon is wielded in one hand and no other weapon is. The
+// sheet lists the weapons carried, not the ones in hand, so the bonus is applied to
+// the damage every one-handed melee weapon rolls in one hand, and the attack line
+// says the condition for the table to check.
+func TestDuelingAddsTwoDamageToEveryOneHandedMeleeWeapon(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
-	damageOf := func(d Derived, key string) string {
+	const note = "Inclui +2 de Estilo de Luta: Duelismo (sem outra arma na mão)"
+	attack := func(d Derived, key string) Attack {
 		a, ok := attackOf(d, key)
 		if !ok {
 			t.Fatalf("no attack for %s in %+v", key, d.Attacks)
 		}
-		return a.Damage
+		return a
 	}
 	dueling := func(d Derived) bool {
 		return slices.ContainsFunc(d.Hints, func(h Hint) bool { return h.Source == "feature:fighter-fighting-style-dueling" })
 	}
 
-	// STR 16 (+3): a longsword rolls 1d8 + 3, +2 for Dueling.
+	// STR 16 (+3): a longsword rolls 1d8 + 3, +2 for Dueling, with the condition written on the line.
 	d := Derive(duelist("equipment:longsword"), c)
-	if got := damageOf(d, "equipment:longsword"); got != "1d8+5" {
-		t.Errorf("longsword damage with Dueling = %q, want 1d8+5", got)
-	}
-	if a, _ := attackOf(d, "equipment:longsword"); a.VersatileDamage != "1d10+3" {
-		t.Errorf("longsword two-handed damage = %q, want 1d10+3 (no Dueling with two hands)", a.VersatileDamage)
+	if a := attack(d, "equipment:longsword"); a.Damage != "1d8+5" || a.VersatileDamage != "1d10+3" || a.DamageNotePT != note {
+		t.Errorf("longsword = %q / %q (%q), want 1d8+5, 1d10+3 two-handed and the Dueling note", a.Damage, a.VersatileDamage, a.DamageNotePT)
 	}
 	if dueling(d) {
 		t.Error("the applied bonus is also a hint for the master to apply again")
 	}
 
-	// A weapon wielded with two hands gets nothing.
+	// A sword and a bow: the sword gets the bonus, the bow does not.
+	d = Derive(duelist("equipment:longsword", "equipment:longbow"), c)
+	if a := attack(d, "equipment:longsword"); a.Damage != "1d8+5" || a.DamageNotePT != note {
+		t.Errorf("longsword with a bow carried = %q (%q), want 1d8+5 with the note", a.Damage, a.DamageNotePT)
+	}
+	if a := attack(d, "equipment:longbow"); a.Damage != "1d8+2" || a.DamageNotePT != "" {
+		t.Errorf("longbow = %q (%q), want 1d8+2 and no note", a.Damage, a.DamageNotePT)
+	}
+
+	// Two melee weapons: each one-handed line carries the bonus and the condition.
+	d = Derive(duelist("equipment:longsword", "equipment:dagger"), c)
+	if a := attack(d, "equipment:longsword"); a.Damage != "1d8+5" || a.DamageNotePT != note {
+		t.Errorf("longsword beside a dagger = %q (%q)", a.Damage, a.DamageNotePT)
+	}
+	if a := attack(d, "equipment:dagger"); a.Damage != "1d4+5" || a.DamageNotePT != note {
+		t.Errorf("dagger beside a longsword = %q (%q), want 1d4+5 with the note", a.Damage, a.DamageNotePT)
+	}
+
+	// A two-handed weapon gets nothing; with nothing to apply it to, the bonus stays a hint.
 	d = Derive(duelist("equipment:greatsword"), c)
-	if got := damageOf(d, "equipment:greatsword"); got != "2d6+3" {
-		t.Errorf("greatsword damage = %q, want 2d6+3", got)
+	if a := attack(d, "equipment:greatsword"); a.Damage != "2d6+3" || a.DamageNotePT != "" {
+		t.Errorf("greatsword = %q (%q), want 2d6+3 and no note", a.Damage, a.DamageNotePT)
 	}
 	if !dueling(d) {
 		t.Error("with no weapon to apply it to, the bonus should stay a hint")
 	}
 
-	// Another weapon on the sheet: the app cannot tell what is in hand, so it applies nothing and leaves the hint.
-	d = Derive(duelist("equipment:longsword", "equipment:dagger"), c)
-	if got := damageOf(d, "equipment:longsword"); got != "1d8+3" {
-		t.Errorf("longsword damage with two weapons carried = %q, want 1d8+3", got)
-	}
-	if !dueling(d) {
-		t.Error("two weapons carried: the Dueling bonus should stay a hint for the master")
-	}
-
-	// A ranged weapon is not melee.
-	if got := damageOf(Derive(duelist("equipment:longbow"), c), "equipment:longbow"); got != "1d8+2" {
-		t.Errorf("longbow damage = %q, want 1d8+2 (DEX 14 +2, no Dueling)", got)
-	}
-
-	// Without the style there is no bonus.
+	// Without the style there is no bonus and no note.
 	b := duelist("equipment:longsword")
 	b.FeatureChoices = nil
-	if got := damageOf(Derive(b, c), "equipment:longsword"); got != "1d8+3" {
-		t.Errorf("longsword damage without Dueling = %q, want 1d8+3", got)
+	if a := attack(Derive(b, c), "equipment:longsword"); a.Damage != "1d8+3" || a.DamageNotePT != "" {
+		t.Errorf("longsword without Dueling = %q (%q), want 1d8+3", a.Damage, a.DamageNotePT)
 	}
 }
 

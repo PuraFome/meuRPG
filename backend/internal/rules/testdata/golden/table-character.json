@@ -1,6 +1,6 @@
 {
   "level 1": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.26+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.27+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -438,6 +438,7 @@
         "DamageType": "damage-type:lightning",
         "DamageTypeNamePT": "elétrico",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 1,
           "Sides": 8,
@@ -474,6 +475,7 @@
         "DamageType": "damage-type:bludgeoning",
         "DamageTypeNamePT": "concussão",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 0,
           "Sides": 0,
@@ -695,7 +697,7 @@
     "Issues": null
   },
   "level 11": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.26+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.27+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -1457,6 +1459,7 @@
         "DamageType": "damage-type:lightning",
         "DamageTypeNamePT": "elétrico",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 3,
           "Sides": 8,
@@ -1493,6 +1496,7 @@
         "DamageType": "damage-type:bludgeoning",
         "DamageTypeNamePT": "concussão",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 0,
           "Sides": 0,
@@ -1839,7 +1843,7 @@
     "Issues": null
   },
   "level 5": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.26+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.27+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -2425,6 +2429,7 @@
         "DamageType": "damage-type:lightning",
         "DamageTypeNamePT": "elétrico",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 2,
           "Sides": 8,
@@ -2461,6 +2466,7 @@
         "DamageType": "damage-type:bludgeoning",
         "DamageTypeNamePT": "concussão",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 0,
           "Sides": 0,

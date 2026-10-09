@@ -43,6 +43,7 @@ export async function setTableRulesRPC(master: Page, campaignId: string, rules: 
       abilityMethods: { standardArray: true, pointBuy: true, rolled4d6: true, typed: true },
       critical: 'CRITICAL_RULE_DOUBLED_DICE',
       deathSaves: 'DEATH_SAVE_VISIBILITY_VISIBLE_TO_ALL',
+      hiddenAreaHits: 'HIDDEN_AREA_HIT_RULE_REVEAL',
       houseRules: [],
       ...rules,
     },

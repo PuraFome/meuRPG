@@ -176,8 +176,9 @@ type MapKeeper interface {
 	// when it has none, or a `not_found` Connect error (MR-013).
 	MapGrid(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (link.Grid, error)
 	// BattlePoint returns a battle point of the campaign, or a `not_found`
-	// Connect error for any other point.
-	BattlePoint(ctx context.Context, campaignID, pointID string) (link.BattlePoint, error)
+	// Connect error for any other point. It reads inside tx when the caller has one
+	// (nil: the pool).
+	BattlePoint(ctx context.Context, tx pgx.Tx, campaignID, pointID string) (link.BattlePoint, error)
 	// ScenePoint returns a SCENE point of the campaign, hidden or not, with its
 	// actions and their DCs (MR-015), and the master's hooks and clues (MR-029,
 	// never for a player), or a `not_found` Connect error for any other point.

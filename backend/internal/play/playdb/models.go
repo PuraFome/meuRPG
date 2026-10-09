@@ -106,6 +106,21 @@ type GameSession struct {
 	CreateHash       *string
 }
 
+type HiddenReveal struct {
+	ID           string
+	EncounterID  string
+	CasterID     string
+	SpellKey     string
+	CombatantIds []string
+	OriginCol    int32
+	OriginRow    int32
+	Squares      []int32
+	Seq          int32
+	State        string
+	CreatedAt    time.Time
+	AnsweredAt   *time.Time
+}
+
 type OpportunityOffer struct {
 	ID              string
 	EncounterID     string

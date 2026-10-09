@@ -1,0 +1,177 @@
+@if (!readOnly()) {
+  <p class="hint" [id]="id + '-hint'">{{ hint() }}</p>
+}
+@if (refusal()) {
+  <div class="mr-notice mr-notice--danger" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p><strong>Fora do alcance.</strong> {{ refusal() }}</p>
+  </div>
+}
+
+<div class="zoomable">
+<div class="scroller" [class.scroller--zoomed]="cell() !== null">
+<app-combat-map
+  class="map"
+  [cellPx]="cell()"
+  [image]="image()"
+  [mapName]="mapName()"
+  [columns]="columns()"
+  [rows]="rows()"
+  [combatants]="combatants()"
+  [isMaster]="master()"
+  [layers]="layers()"
+  [fog]="fog()"
+  [showTurn]="false"
+>
+  <div class="am">
+    <svg class="am__cells" aria-hidden="true" preserveAspectRatio="none" [attr.viewBox]="'0 0 ' + columns() + ' ' + rows()">
+      @if (dimPath()) {
+        <path class="am__dim" [attr.d]="dimPath()" />
+      }
+      <path class="am__fill" [class.am__fill--on]="filled()" [attr.d]="fillPath()" />
+      <path class="am__edge-halo" [attr.d]="edgePath()" />
+      <path class="am__edge" [class.am__edge--moving]="!filled()" [attr.d]="edgePath()" />
+    </svg>
+    <svg class="am__lines" aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none">
+      @if (line(); as l) {
+        <line class="am__measure-halo" [attr.x1]="l.x1" [attr.y1]="l.y1" [attr.x2]="l.x2" [attr.y2]="l.y2" />
+        <line class="am__measure" [attr.x1]="l.x1" [attr.y1]="l.y1" [attr.x2]="l.x2" [attr.y2]="l.y2" />
+      }
+      @if (finger(); as f) {
+        @if (line(); as l) {
+          <line class="am__finger" [attr.x1]="f.x" [attr.y1]="f.y" [attr.x2]="l.x2" [attr.y2]="l.y2" />
+        }
+      }
+    </svg>
+    @if (origin(); as o) {
+      <span class="am__diamond" aria-hidden="true" [style.left.%]="pct(o.col + 0.5, columns())" [style.top.%]="pct(o.row + 0.5, rows())"></span>
+    }
+    @if (edgeMark(); as m) {
+      <span class="am__diamond" aria-hidden="true" [style.left.%]="m.x" [style.top.%]="m.y"></span>
+    }
+    @if (tapped(); as t) {
+      <span class="am__tapped" aria-hidden="true" [style.left.%]="pct(t.col + 0.5, columns())" [style.top.%]="pct(t.row + 0.5, rows())">
+        <mat-icon>close</mat-icon>
+      </span>
+    }
+    @if (line(); as l) {
+      @if (filled()) {
+        <span class="am__length" aria-hidden="true" [style.left.%]="l.mx" [style.top.%]="l.my">{{ l.label }}</span>
+      }
+    }
+    <div
+      #app
+      class="am__app"
+      [class.am__app--still]="readOnly()"
+      role="application"
+      tabindex="0"
+      [attr.aria-label]="mapLabel()"
+      [attr.aria-describedby]="readOnly() ? null : id + '-hint'"
+      (pointerdown)="onPointerDown($event)"
+      (pointermove)="onPointerMove($event)"
+      (pointerup)="onPointerUp($event)"
+      (pointerleave)="onPointerLeave($event)"
+      (pointercancel)="onPointerCancel()"
+      (keydown)="onKeydown($event)"
+    ></div>
+  </div>
+</app-combat-map>
+</div>
+@if (zoomable()) {
+  <div class="zoom" role="group" aria-label="Zoom do mapa">
+    <button type="button" aria-label="Aproximar o mapa" [attr.aria-disabled]="zoom() === lastZoom ? 'true' : null" (click)="zoomBy(1)">
+      <mat-icon aria-hidden="true">zoom_in</mat-icon>
+    </button>
+    <button type="button" aria-label="Afastar o mapa" [attr.aria-disabled]="zoom() === 0 ? 'true' : null" (click)="zoomBy(-1)">
+      <mat-icon aria-hidden="true">zoom_out</mat-icon>
+    </button>
+  </div>
+}
+</div>
+
+<ng-template #own>
+  <li><span class="mr-swatch sw-area" aria-hidden="true"></span>Área da magia</li>
+  <li><span class="sw-diamond" aria-hidden="true"></span>Ponto de origem</li>
+  @if (hasHidden()) {
+    <li><span class="mr-swatch sw-hidden" aria-hidden="true"></span>Escondido (só você vê)</li>
+  }
+  @if (dimPath()) {
+    <li><span class="mr-swatch sw-dim" aria-hidden="true"></span>Fora do alcance ({{ rangeText() }})</li>
+  }
+</ng-template>
+@if (layers(); as l) {
+  <app-map-layers-legend [layers]="l" label="Legenda do mapa">
+    <ng-container ngProjectAs="[before]">
+      <ng-container *ngTemplateOutlet="own" />
+    </ng-container>
+  </app-map-layers-legend>
+} @else {
+  <ul class="mr-legend" aria-label="Legenda do mapa">
+    <ng-container *ngTemplateOutlet="own" />
+  </ul>
+}
+
+@if (!readOnly()) {
+  @if (isPoint() && placed()) {
+    <div class="nudge" role="group" [attr.aria-labelledby]="id + '-nudge'">
+      <span class="nudge__cap" [id]="id + '-nudge'">Ajustar o ponto, um quadrado por toque</span>
+      <div class="nudge__row">
+        <button type="button" class="nudge__btn" aria-label="Um quadrado para a esquerda" (click)="nudge(-1, 0)"><mat-icon aria-hidden="true">chevron_left</mat-icon></button>
+        <button type="button" class="nudge__btn" aria-label="Um quadrado para cima" (click)="nudge(0, -1)"><mat-icon aria-hidden="true">arrow_upward</mat-icon></button>
+        <button type="button" class="nudge__btn" aria-label="Um quadrado para baixo" (click)="nudge(0, 1)"><mat-icon aria-hidden="true">expand_more</mat-icon></button>
+        <button type="button" class="nudge__btn" aria-label="Um quadrado para a direita" (click)="nudge(1, 0)"><mat-icon aria-hidden="true">chevron_right</mat-icon></button>
+      </div>
+    </div>
+  }
+
+  <div class="center">
+    <button
+      #center
+      type="button"
+      class="center__btn"
+      aria-haspopup="listbox"
+      [attr.aria-expanded]="listOpen()"
+      [attr.aria-controls]="listOpen() ? id + '-list' : null"
+      (click)="toggleList()"
+    >
+      <span>{{ centerText() }}</span>
+      <mat-icon aria-hidden="true">{{ listOpen() ? 'expand_less' : 'expand_more' }}</mat-icon>
+    </button>
+    @if (listOpen()) {
+      <ul
+        #listbox
+        class="center__list"
+        role="listbox"
+        tabindex="0"
+        [id]="id + '-list'"
+        [attr.aria-label]="centerText()"
+        [attr.aria-activedescendant]="id + '-o' + active()"
+        (keydown)="onListKeydown($event)"
+        (click)="onListClick($event)"
+      >
+        @for (o of options(); track o.id; let i = $index) {
+          <li
+            class="center__opt"
+            role="option"
+            [id]="id + '-o' + i"
+            [class.center__opt--active]="i === active()"
+            [attr.aria-selected]="i === active()"
+            [attr.data-i]="i"
+          >
+            @if (o.square) {
+              <app-combatant-token [initial]="o.initial" [npc]="o.npc" [creature]="o.creature" [size]="28" />
+            } @else {
+              <mat-icon class="center__pin" aria-hidden="true">location_on</mat-icon>
+            }
+            <span class="center__name">{{ o.label }}</span>
+            @if (o.detail) {
+              <span class="center__detail">{{ o.detail }}</span>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </div>
+}
+
+<p class="mr-visually-hidden" role="status" aria-live="polite">{{ spoken() }}</p>

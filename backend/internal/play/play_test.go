@@ -540,7 +540,7 @@ func (noMaps) MapGrid(context.Context, pgx.Tx, string, string) (link.Grid, error
 	return link.Grid{}, errors.New("not in this test")
 }
 
-func (noMaps) BattlePoint(context.Context, string, string) (link.BattlePoint, error) {
+func (noMaps) BattlePoint(context.Context, pgx.Tx, string, string) (link.BattlePoint, error) {
 	return link.BattlePoint{}, errors.New("not in this test")
 }
 
@@ -807,6 +807,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["TakeAction"] = cc.TakeAction(ctx, connect.NewRequest(&playv1.TakeActionRequest{CampaignId: id}))
 	_, combat["AdjustCombatantHitPoints"] = cc.AdjustCombatantHitPoints(ctx, connect.NewRequest(&playv1.AdjustCombatantHitPointsRequest{CampaignId: id}))
 	_, combat["UndoLastAction"] = cc.UndoLastAction(ctx, connect.NewRequest(&playv1.UndoLastActionRequest{CampaignId: id}))
+	_, combat["PreviewSpellArea"] = cc.PreviewSpellArea(ctx, connect.NewRequest(&playv1.PreviewSpellAreaRequest{CampaignId: id}))
+	_, combat["ResolveHiddenReveal"] = cc.ResolveHiddenReveal(ctx, connect.NewRequest(&playv1.ResolveHiddenRevealRequest{CampaignId: id}))
 	_, combat["CastSpell"] = cc.CastSpell(ctx, connect.NewRequest(&playv1.CastSpellRequest{CampaignId: id}))
 	_, combat["UseReaction"] = cc.UseReaction(ctx, connect.NewRequest(&playv1.UseReactionRequest{CampaignId: id}))
 	_, combat["DeclineReaction"] = cc.DeclineReaction(ctx, connect.NewRequest(&playv1.DeclineReactionRequest{CampaignId: id}))

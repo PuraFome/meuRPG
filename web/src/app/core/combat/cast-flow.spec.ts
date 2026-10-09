@@ -55,6 +55,12 @@ describe('the slot step (E6-09)', () => {
     expect(slotRows(2, [], usage).map((r) => r.level)).toEqual([2]);
   });
 
+  it('a cantrip uses no slot: no rows, even with slots and a pact', () => {
+    const pact = { slotLevel: 1, total: 2, used: 0 };
+    expect(slotRows(0, [choice(1, 1), choice(1, 2, true)], usage, pact)).toEqual([]);
+    expect(defaultSlot(slotRows(0, [], usage))).toBeNull();
+  });
+
   it('says "livre" and "livres", with or without the total', () => {
     expect(freeText(1, 4)).toBe('1 livre de 4');
     expect(freeText(2, null)).toBe('2 livres');

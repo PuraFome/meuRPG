@@ -492,8 +492,8 @@ func roleToProto(role authz.Role) campaignsv1.Role {
 }
 
 // campaignToProto builds the Campaign the caller sees. A pending member
-// (RN-15, MR-024) is not a member yet: they see only the id, the name and
-// their role, with awaiting_approval set, enough for the app to say
+// (RN-15, MR-024) is not a member yet: they see only the id, the name, the
+// XP mode and their role, with awaiting_approval set, enough for the app to say
 // "esperando a aprovação do mestre".
 func campaignToProto(c campaignsdb.Campaign, myRole authz.Role, pending bool) *campaignsv1.Campaign {
 	if pending {
@@ -501,6 +501,7 @@ func campaignToProto(c campaignsdb.Campaign, myRole authz.Role, pending bool) *c
 			Id:               c.ID,
 			Name:             c.Name,
 			MyRole:           campaignsv1.Role_ROLE_PLAYER,
+			XpMode:           xpModeFromDB[c.XpMode],
 			AwaitingApproval: true,
 		}
 	}

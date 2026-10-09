@@ -48,6 +48,7 @@ import { ArchiveQuestion } from '../archive/archive-question';
 import { ArchiveSheet } from '../archive/archive-sheet';
 import { BackgroundEditor } from '../background-editor/background-editor';
 import { EntryRead } from '../entry-read/entry-read';
+import { FeatEditor } from '../feat-editor/feat-editor';
 import { RaceEditor } from '../race-editor/race-editor';
 import { type EditorSaved, SpellEditor } from '../spell-editor/spell-editor';
 import { ClassEditor } from '../class-editor/class-editor';
@@ -67,6 +68,7 @@ const NEW_KINDS: Readonly<Record<string, TableContentKind>> = {
   background: TableContentKind.BACKGROUND,
   class: TableContentKind.CLASS,
   subclass: TableContentKind.SUBCLASS,
+  feat: TableContentKind.FEAT,
 };
 
 const NEW_TITLES: Readonly<Record<number, string>> = {
@@ -76,7 +78,17 @@ const NEW_TITLES: Readonly<Record<number, string>> = {
   [TableContentKind.BACKGROUND]: 'Novo antecedente',
   [TableContentKind.CLASS]: 'Nova classe',
   [TableContentKind.SUBCLASS]: 'Nova subclasse',
+  [TableContentKind.FEAT]: 'Novo talento',
 };
+
+/** The table's own feats a "feat" choice may list (the catalog has no feats; the SRD's are not offered by name). */
+function featChoices(
+  entries: readonly TableEntry[],
+): { key: string; namePt: string; hintPt: string }[] {
+  return entries
+    .filter((e) => e.kind === TableContentKind.FEAT && !e.archived)
+    .map((e) => ({ key: e.key, namePt: e.namePt, hintPt: '' }));
+}
 
 const EDITABLE = new Set<TableContentKind>([
   TableContentKind.SPELL,
@@ -85,6 +97,7 @@ const EDITABLE = new Set<TableContentKind>([
   TableContentKind.BACKGROUND,
   TableContentKind.CLASS,
   TableContentKind.SUBCLASS,
+  TableContentKind.FEAT,
 ]);
 
 /**
@@ -101,6 +114,7 @@ const EDITABLE = new Set<TableContentKind>([
     BackgroundEditor,
     ClassEditor,
     EntryRead,
+    FeatEditor,
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
@@ -393,6 +407,7 @@ export class ContentEntry {
       const vm = this.menu();
       if (cat && vm) {
         vm.classNamePt = (key) => cat.nameOf(key);
+        vm.featOptions = featChoices(ctx.entries);
       }
       const [c, m, df] = results;
       this.defaultsError.set(

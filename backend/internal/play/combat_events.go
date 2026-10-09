@@ -123,6 +123,15 @@ type castHit struct {
 	CoverRestricted bool     `json:"cover_restricted,omitempty"`
 	CoverSeenBy     []string `json:"cover_seen_by,omitempty"`
 	CoverSeenMask   uint64   `json:"cover_seen_mask,omitempty"`
+	// HiddenAtCast says the target was a hidden creature when an area spell hit it:
+	// the players' view of the cast never lists it, even after it is revealed, and
+	// the master's marks it.
+	HiddenAtCast bool `json:"hidden_at_cast,omitempty"`
+	// Fogged says the target is an NPC that a map with the fog of war made visible to some
+	// players only, and SeenMask (bits of the event's CoverUsers) says to which, as they stood
+	// when the spell hit: the players' line lists the target only to them.
+	Fogged   bool   `json:"fogged,omitempty"`
+	SeenMask uint64 `json:"seen_mask,omitempty"`
 
 	// A spell that reads hit points (combat_spells_hp.go): whether it reached the
 	// target (the fx* values below), why not, the target's hit points when it did,
@@ -152,6 +161,15 @@ type castHit struct {
 	DeathBefore *deathState `json:"death_before,omitempty"`
 	CondSet     bool        `json:"cond_set,omitempty"`
 	CondBefore  []string    `json:"cond_before,omitempty"`
+}
+
+// unseenBy says the target was an NPC in the fog that this player did not see when it was hit.
+func (h castHit) unseenBy(users []string, userID string) bool {
+	if !h.Fogged {
+		return false
+	}
+	j := slices.Index(users, userID)
+	return j < 0 || h.SeenMask&(1<<j) == 0
 }
 
 // What a spell that reads hit points did to a target, as a cast event stores it.
@@ -258,14 +276,32 @@ type actionEvent struct {
 	// did to each target and the concentration it set or ended; a feature action:
 	// the resource a use of which was spent. For a damage roll of a cast, Settled
 	// is every pending damage the one roll settled.
-	CastID      string      `json:"cast_id,omitempty"`
-	Slot        *slotRef    `json:"slot,omitempty"`
-	Resource    string      `json:"resource,omitempty"`
-	Hits        []castHit   `json:"hits,omitempty"`
-	CoverUsers  []string    `json:"cover_users,omitempty"` // the players the hits' CoverSeenMask counts, bit by bit
-	Settled     []damageHit `json:"settled,omitempty"`
-	Heal        bool        `json:"heal,omitempty"`
-	Concentrate bool        `json:"concentrate,omitempty"`
+	CastID     string      `json:"cast_id,omitempty"`
+	Slot       *slotRef    `json:"slot,omitempty"`
+	Resource   string      `json:"resource,omitempty"`
+	Hits       []castHit   `json:"hits,omitempty"`
+	CoverUsers []string    `json:"cover_users,omitempty"` // the players the hits' CoverSeenMask counts, bit by bit
+	Settled    []damageHit `json:"settled,omitempty"`
+	// Placed says the server worked out who an area spell hit, from the point or the
+	// direction the caster chose (AreaCol and AreaRow, Dx and Dy): the line of the
+	// cast is the players', with the hits on the hidden left out, instead of being
+	// the master's alone because a hidden creature is in it. The answer of a retry
+	// draws the area again from them.
+	Placed  bool  `json:"placed,omitempty"`
+	AreaCol int32 `json:"area_col,omitempty"`
+	AreaRow int32 `json:"area_row,omitempty"`
+	Dx      int32 `json:"dx,omitempty"`
+	Dy      int32 `json:"dy,omitempty"`
+	// Revealed are the hidden creatures the cast made appear, and PendingReveal the
+	// question it opened for the master: what an undo of the cast puts back.
+	Revealed      []string `json:"revealed,omitempty"`
+	PendingReveal string   `json:"pending_reveal,omitempty"`
+	// ByArea says a combatant_hidden_set event revealed the creature because of an
+	// area spell (the table's rule, the master's choice or his answer): the players
+	// get its line, "foi revelado".
+	ByArea      bool `json:"by_area,omitempty"`
+	Heal        bool `json:"heal,omitempty"`
+	Concentrate bool `json:"concentrate,omitempty"`
 	// ConcBefore is the spell the caster concentrated on before (empty: none),
 	// and ConcEnded the one the cast stopped (the same, when it replaced it).
 	ConcBefore string `json:"conc_before,omitempty"`

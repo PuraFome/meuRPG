@@ -230,6 +230,7 @@ export class LiveSessionSourceLive implements LiveSessionSource {
             round: res.event.value.round,
             currentCombatantId: res.event.value.currentCombatantId,
             masterTurn: res.event.value.masterTurn,
+            revision: res.event.value.revision,
           };
           break;
         case 'combatantMoved':

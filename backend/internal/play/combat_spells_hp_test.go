@@ -119,6 +119,7 @@ func TestMR014_SleepUsesTheRealHitPoints(t *testing.T) {
 	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
+	a.stand(t, map[string][2]int32{"Pensantus": {1, 1}, "Toren": {1, 2}, "Brisa": {2, 1}}) // the sphere reaches the Capitão and the goblin only
 
 	// Pensantus rolls 5d8 (2, 4, 1, 5, 3) = 15. The goblin (7 PV) is the lowest:
 	// it falls asleep and 8 are left; the Capitão (27 PV) does not fit.
@@ -209,6 +210,7 @@ func TestMR014_SleepSkipsTheUnconsciousAndTheOneAtZero(t *testing.T) {
 	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
+	a.stand(t, map[string][2]int32{"Pensantus": {1, 1}, "Brisa": {2, 1}}) // the sphere reaches the goblin, Toren and the Capitão only
 	a.setConditions(t, e, "Goblin", unconsciousC)
 	a.correct(t, a.toren, hpIs(0))
 
@@ -237,6 +239,7 @@ func TestMR014_ColorSprayBlindsByThePool(t *testing.T) {
 	t.Parallel()
 	a := newHPCasters(t)
 	e := a.castersFight(t, 1)
+	a.stand(t, map[string][2]int32{"Toren": {5, 3}, "Capitão Goblin": {7, 4}}) // the cone east holds the goblin and the Capitão
 
 	// 6d10 = 36 at the 1st circle: the goblin (7) and the Capitão (27) both fit.
 	a.h.roller.queue(6, 6, 6, 6, 6, 6)
@@ -256,6 +259,7 @@ func TestMR014_ColorSprayBlindsByThePool(t *testing.T) {
 	a.passTo(t, e, "Pensantus")
 	a.h.roller.queue(1, 1, 1, 1, 1, 1, 1, 1)
 	a.setConditions(t, e, "Goblin")
+	a.stand(t, map[string][2]int32{"Capitão Goblin": {0, 9}}) // the second cone holds the goblin alone
 	res = a.mustCast(t, a.ana, a.get(t, a.master), "Pensantus", colorSpray, slotOfLevel(2), a.at(t, "Goblin"), poolInApp)
 	if r := res.GetCast().GetPoolRoll(); r.GetDiceCount() != 8 || len(r.GetFaces()) != 8 || r.GetTotal() != 8 {
 		t.Errorf("the upcast pool = %v, want 8d10 = 8", r)
@@ -433,6 +437,8 @@ func TestRN18_PoolSpellsFollowTheDiceMode(t *testing.T) {
 	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
+	// A sphere can hold the goblin alone, or the goblin and the Capitão, and nobody else.
+	a.stand(t, map[string][2]int32{"Pensantus": {1, 1}, "Toren": {1, 2}, "Brisa": {2, 1}, "Capitão Goblin": {10, 5}})
 
 	// Every player rolls in the app: a typed sum is refused, the app's roll passes.
 	a.forceDice(t, campaignsv1.DiceMode_DICE_MODE_APP)
@@ -511,7 +517,8 @@ func newBeastFormCasters(t *testing.T) (a *armed, e *playv1.Encounter) {
 func TestHPSpellsReadTheBeastPoolOfADruidInBeastForm(t *testing.T) {
 	t.Parallel()
 	a, _ := newBeastFormCasters(t)
-	a.h.roller.queue(2, 4, 1, 5, 3) // 5d8 = 15
+	a.stand(t, map[string][2]int32{"Capitão Goblin": {15, 8}, "Goblin": {16, 8}}) // the sphere holds the druid alone
+	a.h.roller.queue(2, 4, 1, 5, 3)                                               // 5d8 = 15
 	res := a.mustCast(t, a.ana, a.get(t, a.ana), "Pensantus", sleepSpell, slotOfLevel(1), a.at(t, "Sálvia"), poolInApp)
 	pe := res.GetEncounter()
 	eff := effectOf(t, pe, res.GetCast().GetTargets(), "Sálvia")

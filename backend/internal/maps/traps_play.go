@@ -117,6 +117,9 @@ func (s *Service) loadTrapScene(ctx context.Context, tx pgx.Tx, campaignID, mapI
 		return nil, fmt.Errorf("read the party: %w", err)
 	}
 	for _, m := range party {
+		if m.Dead {
+			continue // a dead character notices nothing
+		}
 		ts.members[m.CharacterID] = m
 		ts.order = append(ts.order, m.CharacterID)
 	}
