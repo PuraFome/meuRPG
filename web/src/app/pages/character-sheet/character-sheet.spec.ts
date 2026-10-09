@@ -965,6 +965,7 @@ describe('CharacterSheetPage', () => {
                 damage: '1d4',
                 damageTypePt: 'perfurante',
                 versatileDamage: '',
+                damageNotePt: 'Inclui +2 de Estilo de Luta: Duelismo (sem outra arma na mão)',
                 saveDc: 0,
                 saveAbility: null,
                 beams: 1,
@@ -977,6 +978,8 @@ describe('CharacterSheetPage', () => {
     const rows = Array.from(sectionTitled(el, 'Ataques').querySelectorAll('tbody tr'));
     expect(rows[0].textContent).toContain('Com duas mãos: 1d8');
     expect(rows[1].textContent).not.toContain('duas mãos');
+    expect(rows[1].textContent).toContain('(sem outra arma na mão)');
+    expect(rows[0].textContent).not.toContain('sem outra arma');
   });
 
   it('lists only the coins carried', async () => {
@@ -1334,7 +1337,7 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
     expect(el.textContent).toContain('Editar ficha');
   });
 
-  it('a pending character shows no notes and no creatures panel, only when they will appear', async () => {
+  it('a pending character shows no notes and no creatures panel, and one line under a heading that says when they will appear', async () => {
     fake.getCharacterSheetFn = () => Promise.resolve(vm({ state: 'pending', canApprove: false }));
     const el = (await render()).nativeElement as HTMLElement;
 
@@ -1343,10 +1346,8 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
     const notes = Array.from(el.querySelectorAll('.sheet__pending-note')).map((n) =>
       n.textContent?.trim(),
     );
-    expect(notes).toEqual([
-      'Aparece quando o mestre aprovar o personagem.',
-      'Aparece quando o mestre aprovar o personagem.',
-    ]);
+    expect(notes).toEqual(['Aparece quando o mestre aprovar o personagem.']);
+    expect(el.querySelector('#pending-panels-title')?.textContent).toBe('Anotações e criaturas');
   });
 
   it('an approved character shows the notes and the creatures panels', async () => {

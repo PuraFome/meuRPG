@@ -438,6 +438,7 @@
         "DamageType": "damage-type:lightning",
         "DamageTypeNamePT": "elétrico",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 1,
           "Sides": 8,
@@ -474,6 +475,7 @@
         "DamageType": "damage-type:bludgeoning",
         "DamageTypeNamePT": "concussão",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 0,
           "Sides": 0,
@@ -1455,6 +1457,7 @@
         "DamageType": "damage-type:lightning",
         "DamageTypeNamePT": "elétrico",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 3,
           "Sides": 8,
@@ -1491,6 +1494,7 @@
         "DamageType": "damage-type:bludgeoning",
         "DamageTypeNamePT": "concussão",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 0,
           "Sides": 0,
@@ -2421,6 +2425,7 @@
         "DamageType": "damage-type:lightning",
         "DamageTypeNamePT": "elétrico",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 2,
           "Sides": 8,
@@ -2457,6 +2462,7 @@
         "DamageType": "damage-type:bludgeoning",
         "DamageTypeNamePT": "concussão",
         "VersatileDamage": "",
+        "DamageNotePT": "",
         "DamageDice": {
           "Count": 0,
           "Sides": 0,

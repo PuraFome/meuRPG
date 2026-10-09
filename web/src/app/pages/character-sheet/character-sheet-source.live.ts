@@ -106,6 +106,7 @@ function toAttackVm(attack: GenAttack): AttackVm {
     damage: attack.damage,
     damageTypePt: attack.damageTypePt,
     versatileDamage: attack.versatileDamage,
+    damageNotePt: attack.damageNotePt,
     saveDc: attack.saveDc,
     saveAbility: attack.saveDc > 0 ? ABILITY_FROM_GEN[attack.saveAbility] : null,
     beams: attack.beams,
