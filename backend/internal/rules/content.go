@@ -802,6 +802,10 @@ var creatureCorrectionFields = []string{
 // correct. The set is closed.
 var correctionFields = []string{"invocations_known"}
 
+// multiclassCorrectionFields are the multiclass fields effects/corrections.json
+// may add. The set is closed.
+var multiclassCorrectionFields = []string{"instrument_choices"}
+
 // spellCorrectionSaveSuccess are the outcomes of a saving throw a spell
 // correction may name (the values of Spell.SaveSuccess).
 var spellCorrectionSaveSuccess = []string{"half", "none", "other"}
@@ -870,6 +874,13 @@ func (c *content) applyCorrections(fsys fs.FS) error {
 			Subclass string `json:"subclass"`
 			Source   string `json:"source"`
 		} `json:"expanded_list_corrections"`
+		Multiclass []struct {
+			Class   string   `json:"class"`
+			Field   string   `json:"field"`
+			Source  string   `json:"source"`
+			Choose  int      `json:"choose"`
+			Options []string `json:"options"`
+		} `json:"multiclass_corrections"`
 	}
 	if err := readJSON(fsys, name, &f); err != nil {
 		return err
@@ -959,6 +970,35 @@ func (c *content) applyCorrections(fsys fs.FS) error {
 			}
 			s.DamageChoice = corr.DamageChoice
 		}
+	}
+	seen = map[string]bool{}
+	for _, corr := range f.Multiclass {
+		class, ok := c.classes[corr.Class]
+		if !ok {
+			return fmt.Errorf("%s: unknown class %q", name, corr.Class)
+		}
+		if !slices.Contains(multiclassCorrectionFields, corr.Field) {
+			return fmt.Errorf("%s: %s: field %q cannot be corrected", name, corr.Class, corr.Field)
+		}
+		if corr.Source == "" {
+			return fmt.Errorf("%s: %s: %s needs a source", name, corr.Class, corr.Field)
+		}
+		if seen[corr.Class+"/"+corr.Field] {
+			return fmt.Errorf("%s: %s: %s is corrected twice", name, corr.Class, corr.Field)
+		}
+		seen[corr.Class+"/"+corr.Field] = true
+		if corr.Choose < 1 || corr.Choose > len(corr.Options) {
+			return fmt.Errorf("%s: %s: %s chooses %d of %d", name, corr.Class, corr.Field, corr.Choose, len(corr.Options))
+		}
+		for i, o := range corr.Options {
+			if p, ok := c.proficiencies[o]; !ok || p.Kind != "tool" {
+				return fmt.Errorf("%s: %s: %q is not a tool proficiency", name, corr.Class, o)
+			}
+			if slices.Contains(corr.Options[:i], o) {
+				return fmt.Errorf("%s: %s: %q is listed twice", name, corr.Class, o)
+			}
+		}
+		class.Multiclass.InstrumentChoices = &srd51.Choice{Choose: corr.Choose, From: slices.Clone(corr.Options)}
 	}
 	seen = map[string]bool{}
 	for _, corr := range f.ExpandedLists {

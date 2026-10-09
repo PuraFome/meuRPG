@@ -122,14 +122,7 @@ func (x *deriver) pactMagic(cs caster) {
 func (x *deriver) multiclassSlots(casters []caster) {
 	level := 0
 	for _, cs := range casters {
-		switch cs.e.Progression {
-		case "full":
-			level += cs.oc.level
-		case "half":
-			level += cs.oc.level / 2
-		case "third":
-			level += cs.oc.level / 3
-		}
+		level += casterLevelOf(cs.e.Progression, cs.oc.level)
 	}
 	if level < 1 || x.c.multiclassTable == "" {
 		return
@@ -137,6 +130,22 @@ func (x *deriver) multiclassSlots(casters []caster) {
 	if s := x.c.classLevels[x.c.multiclassTable][min(level, MaxLevel)-1].Spellcasting; s != nil {
 		copy(x.d.SpellSlots, s.Slots[:])
 	}
+}
+
+// casterLevelOf is what a class's levels add to the caster level of the multiclass
+// spellcaster table: all of a full caster's, half (rounded down) of a half
+// caster's, a third (rounded down) of a third caster's, and none of the
+// warlock's, whose Pact Magic is apart (SRD 5.1, "Multiclassing", "Spell Slots").
+func casterLevelOf(progression string, classLevel int) int {
+	switch progression {
+	case "full":
+		return classLevel
+	case "half":
+		return classLevel / 2
+	case "third":
+		return classLevel / 3
+	}
+	return 0
 }
 
 // characterSpells builds Derived.Spells and checks the spell choices.

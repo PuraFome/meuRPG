@@ -1,5 +1,5 @@
 {
-  "_comment": "Corrections to data/ (never edited by hand): values the 5e-database snapshot has wrong or lacks against the SRD 5.1's own text and tables. The loader applies them over the class table rows (corrections), over a creature's stat block (creature_corrections), over a spell's attack, saving throw and damage table (spell_corrections) over the spells a subclass always has (subclass_corrections) and over the subclasses whose spells only join the class list (expanded_list_corrections); it refuses an unknown class, creature, spell, subclass, field or level, a value that does not fit its field, and a correction without a source. A spell correction's damage replaces the spell's whole damage table, and its damage_choice (\"scale\" or \"alternative\") says what the caster picks among the damage types; a spell with a damage table and no saving throw records the dice for display and for the master, and rolls nothing at cast.",
+  "_comment": "Corrections to data/ (never edited by hand): values the 5e-database snapshot has wrong or lacks against the SRD 5.1's own text and tables. The loader applies them over the class table rows (corrections), over a creature's stat block (creature_corrections), over a spell's attack, saving throw and damage table (spell_corrections) over the spells a subclass always has (subclass_corrections), over a class's multiclass proficiencies (multiclass_corrections) and over the subclasses whose spells only join the class list (expanded_list_corrections); it refuses an unknown class, creature, spell, subclass, field or level, a value that does not fit its field, and a correction without a source. A spell correction's damage replaces the spell's whole damage table, and its damage_choice (\"scale\" or \"alternative\") says what the caster picks among the damage types; a spell with a damage table and no saving throw records the dice for display and for the master, and rolls nothing at cast.",
   "corrections": [
     {
       "class": "class:warlock",
@@ -27,6 +27,18 @@
         "19": 8,
         "20": 8
       }
+    }
+  ],
+  "multiclass_corrections": [
+    {
+      "class": "class:bard",
+      "field": "instrument_choices",
+      "choose": 1,
+      "options": [
+        "proficiency:bagpipes", "proficiency:drum", "proficiency:dulcimer", "proficiency:flute", "proficiency:lute",
+        "proficiency:lyre", "proficiency:horn", "proficiency:pan-flute", "proficiency:shawm", "proficiency:viol"
+      ],
+      "source": "SRD 5.1, Multiclassing, Proficiencies table: Bard gains light armor, one skill of your choice and one musical instrument of your choice (the snapshot's multi_classing lists the ten instruments but the importer keeps only the skill)"
     }
   ],
   "creature_corrections": [

@@ -131,6 +131,10 @@ type Multiclass struct {
 	// Proficiencies and SkillChoices are what a multiclass character gets.
 	Proficiencies []string `json:"proficiencies"`
 	SkillChoices  *Choice  `json:"skill_choices,omitempty"`
+	// InstrumentChoices are the musical instruments the player picks from (the
+	// Bard's multiclass proficiency); the importer leaves them out and
+	// effects/corrections.json adds them.
+	InstrumentChoices *Choice `json:"instrument_choices,omitempty"`
 }
 
 // ClassSpellcaster says when a class starts casting and with which
