@@ -60,8 +60,8 @@ func TestTheSpellsThatLastHaveTheirEffects(t *testing.T) {
 func TestSpellDurationsAreInRounds(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
-	// SRD, "Duration": a minute is 10 rounds. Web lasts an hour, which the app does not count.
-	for key, want := range map[string]int{"spell:bless": 10, "spell:bane": 10, "spell:haste": 10, "spell:hold-person": 10, "spell:faerie-fire": 10, "spell:hideous-laughter": 10, "spell:web": 0, "spell:fireball": 0} {
+	// SRD, "Duration": a round is 6 seconds, so a minute is 10 rounds and an hour 600.
+	for key, want := range map[string]int{"spell:bless": 10, "spell:bane": 10, "spell:haste": 10, "spell:hold-person": 10, "spell:faerie-fire": 10, "spell:hideous-laughter": 10, "spell:web": 600, "spell:longstrider": 600, "spell:pass-without-trace": 600, "spell:fireball": 0} {
 		if got := c.SpellEffectRounds(key); got != want {
 			t.Errorf("SpellEffectRounds(%s) = %d, want %d", key, got, want)
 		}
