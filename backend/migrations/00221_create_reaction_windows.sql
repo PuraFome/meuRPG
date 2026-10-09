@@ -80,9 +80,13 @@ ON CONFLICT (kind) DO NOTHING;
 -- "Reações dos inimigos" (RN-24): when a player's action against an enemy waits for
 -- the master. 'only_when_possible' (the default) waits only when an enemy has a
 -- reaction; 'always' waits for the master's one tap on every such action.
+-- The check is its own named constraint, dropped first, so the migration can run twice (an inline
+-- CHECK on ADD COLUMN IF NOT EXISTS adds a second constraint on the rerun).
 ALTER TABLE campaign_table_rules
-    ADD COLUMN IF NOT EXISTS enemy_reactions TEXT NOT NULL DEFAULT 'only_when_possible'
-        CHECK (enemy_reactions IN ('only_when_possible', 'always'));
+    ADD COLUMN IF NOT EXISTS enemy_reactions TEXT NOT NULL DEFAULT 'only_when_possible';
+ALTER TABLE campaign_table_rules DROP CONSTRAINT IF EXISTS campaign_table_rules_enemy_reactions_valid;
+ALTER TABLE campaign_table_rules ADD CONSTRAINT campaign_table_rules_enemy_reactions_valid
+    CHECK (enemy_reactions IN ('only_when_possible', 'always'));
 
 -- The spell slots a monster's stat block spent in a combat, by slot level
 -- ({"1": 2}): a monster has no sheet with slots, so Shield and Counterspell of a
@@ -93,6 +97,7 @@ ALTER TABLE combatants
 
 -- +goose Down
 ALTER TABLE combatants DROP COLUMN IF EXISTS slots_used;
+ALTER TABLE campaign_table_rules DROP CONSTRAINT IF EXISTS campaign_table_rules_enemy_reactions_valid;
 ALTER TABLE campaign_table_rules DROP COLUMN IF EXISTS enemy_reactions;
 DELETE FROM session_events WHERE kind IN ('reaction_answered', 'concentration_save_rolled');
 DELETE FROM session_event_kinds WHERE kind IN ('reaction_answered', 'concentration_save_rolled');
