@@ -239,12 +239,29 @@ var choiceProblemReasons = map[string]charactersv1.ChoiceRefusalReason{
 // player's character saved by its player: nothing left open, and no pick whose
 // prerequisite is unmet or that the sheet does not offer. It refuses with the first
 // reason in that order and lists every issue of it. An NPC, and the master's edit of
-// any sheet, are not refused: the master may leave a choice open.
-func refuseChoices(content *rules.Content, m authz.Membership, kind string, sheet *charactersv1.FullSheet) error {
+// any sheet, are not refused: the master may leave a choice open. A save of a sheet
+// that already had a problem (one made before the choices existed, one the master left
+// open, one a claimed character came with) is not refused for that problem, only for a
+// new one: before is the stored sheet, nil on a create.
+func refuseChoices(content *rules.Content, m authz.Membership, kind string, sheet, before *charactersv1.FullSheet) error {
 	if kind != kindPlayer || isMaster(m) || sheet == nil {
 		return nil
 	}
 	problems := content.Choices(buildOf(sheet)).ChoiceProblems(true)
+	if before != nil {
+		type known struct {
+			code   string
+			choice string
+			option string
+		}
+		had := map[known]bool{}
+		for _, p := range content.Choices(buildOf(before)).ChoiceProblems(true) {
+			had[known{p.Code, p.ChoiceKey, p.OptionKey}] = true
+		}
+		problems = slices.DeleteFunc(problems, func(p rules.ChoiceProblem) bool {
+			return had[known{p.Code, p.ChoiceKey, p.OptionKey}]
+		})
+	}
 	if len(problems) == 0 {
 		return nil
 	}

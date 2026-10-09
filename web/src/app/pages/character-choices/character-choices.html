@@ -58,13 +58,17 @@
       />
     }
 
+    @if (answers().length === 0) {
+      <p id="save-hint" class="foot__hint">Faça pelo menos uma escolha para salvar.</p>
+    }
     <footer class="foot">
       <a matButton="outlined" [routerLink]="sheetLink()">Cancelar</a>
       <button
         matButton="filled"
         type="button"
         class="js-save"
-        [disabled]="saving()"
+        [disabled]="saving() || answers().length === 0"
+        [attr.aria-describedby]="answers().length === 0 ? 'save-hint' : null"
         disabledInteractive
         (click)="save()"
       >

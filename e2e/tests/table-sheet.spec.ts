@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { endOpenSessionRPC } from './live-session-support';
 import { archiveEntryRPC } from './spells-support';
-import { newSignedInContext, showAllPicks } from './support';
+import { newSignedInContext, showAllPicks, fillChoicesStep } from './support';
 import {
   changeGuardianSkillsRPC,
   createGuardianRPC,
@@ -106,6 +106,8 @@ test(
       await skills.getByRole('checkbox', { name: 'Atletismo', exact: true }).check();
       await skills.getByRole('checkbox', { name: 'Natureza', exact: true }).check();
 
+      await fillChoicesStep(p);
+
       await p.getByRole('button', { name: 'Criar personagem' }).click();
       await expect(p).toHaveURL(/\/campaigns\/[^/]+\/characters\/(?!new$)[^/]+$/);
       await expect(p.getByRole('heading', { name: 'Ícaro', level: 1 })).toBeVisible();
@@ -190,6 +192,8 @@ test(
       await expect(out).toContainText('Fora da lista das suas classes');
       await expect(out.getByRole('link', { name: 'Ver em Magias' })).toHaveAttribute('href', `/campaigns/${campaignId}/spells`);
       await expect(out.getByRole('checkbox')).toHaveCount(0);
+
+      await fillChoicesStep(p);
 
       await p.getByRole('button', { name: 'Criar personagem' }).click();
       await expect(p).toHaveURL(/\/campaigns\/[^/]+\/characters\/(?!new$)[^/]+$/);

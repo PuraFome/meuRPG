@@ -172,15 +172,25 @@ describe('CharacterChoicesPage', () => {
     expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1', 'characters', 'ch-1']);
   });
 
-  it('does not send anything while nothing was picked, and says so', async () => {
+  it('keeps "Salvar escolhas" off while nothing was picked, and says why where it can be read', async () => {
     const { fixture, el } = await open();
+
+    expect(save(el).getAttribute('aria-disabled')).toBe('true');
+    expect(save(el).getAttribute('aria-describedby')).toBe('save-hint');
+    expect(el.querySelector('#save-hint')?.textContent).toContain('pelo menos uma escolha');
 
     save(el).click();
     await settle();
     fixture.detectChanges();
 
     expect(client.complete).not.toHaveBeenCalled();
-    expect(el.querySelector('.js-failure')?.textContent).toContain('pelo menos uma escolha');
+
+    cards(el)[0].click();
+    fixture.detectChanges();
+    await settle();
+    fixture.detectChanges();
+    expect(save(el).getAttribute('aria-disabled')).not.toBe('true');
+    expect(el.querySelector('#save-hint')).toBeNull();
   });
 
   it('says why the rules refused, in place, and stays on the page', async () => {

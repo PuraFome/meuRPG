@@ -32,11 +32,8 @@
   gap: 8px;
   margin: 0;
   font: var(--mat-sys-title-medium);
-
-  &:focus-visible {
-    outline: 2px solid var(--mat-sys-primary);
-    outline-offset: 2px;
-  }
+  // Takes focus from the app (to start a screen reader at the choice), so it has no ring of its own: the global
+  // rule for `tabindex="-1"` covers it, as for every other heading that takes focus.
 }
 
 .choice__mark {
@@ -81,6 +78,7 @@
   margin-bottom: 8px;
 
   button {
+    font: inherit;
     min-height: 44px;
     padding: 0 12px;
     border-radius: 20px;
@@ -159,6 +157,7 @@
 }
 
 .card__add {
+  font: inherit;
   align-self: flex-start;
   min-height: 44px;
   padding: 0 12px;

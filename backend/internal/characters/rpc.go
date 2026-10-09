@@ -76,7 +76,7 @@ func (s *Service) CreateCharacter(
 	if err != nil {
 		return nil, err
 	}
-	if err := refuseChoices(content, m, kind, sheet.GetFull()); err != nil {
+	if err := refuseChoices(content, m, kind, sheet.GetFull(), nil); err != nil {
 		return nil, err
 	}
 	if err := s.checkPortrait(ctx, m.CampaignID, kind, sheet); err != nil {
@@ -149,7 +149,7 @@ func (s *Service) CreateCharacter(
 					if err != nil {
 						return row, err
 					}
-					if err := refuseChoices(tc, m, kind, again.GetFull()); err != nil {
+					if err := refuseChoices(tc, m, kind, again.GetFull(), nil); err != nil {
 						return row, err
 					}
 					sheet = again
@@ -446,7 +446,7 @@ func (s *Service) UpdateCharacter(
 			return err
 		}
 		// A player's own save leaves no choice open (the master may).
-		if err := refuseChoices(content, m, current.Kind, sheet.GetFull()); err != nil {
+		if err := refuseChoices(content, m, current.Kind, sheet.GetFull(), storedSheet.GetFull()); err != nil {
 			return err
 		}
 		// The ability origin is the server's: kept from the stored sheet, and a

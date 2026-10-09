@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { layersOf, mapToPaint } from './editor-support';
 import { campaignWithEmptyPlayer, factor, masterCampaign, method, setTableRulesRPC, tableRulesOf, wallSquares } from './table-rules-support';
-import { callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
+import { callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, fillChoicesStep } from './support';
 import { endOpenSessionRPC } from './live-session-support';
 import { tableForLevelUp, toren } from './levelup-support';
 import { pickRadio } from './move-support';
@@ -113,6 +113,8 @@ test(
       // One more point on the 13 costs 2: it fits. On a 10 it fits too, but not on the 14 (it costs 2 and then 2 more).
       await expect(p.getByRole('button', { name: 'Diminuir Inteligência', exact: true })).toHaveAttribute('aria-disabled', 'true');
 
+      await fillChoicesStep(p);
+
       await p.getByRole('button', { name: 'Criar personagem' }).click();
       await expect(p).toHaveURL(/\/campaigns\/[^/]+\/characters\/(?!new$)[^/]+$/);
       const characterId = p.url().split('/').pop()!;
@@ -166,6 +168,7 @@ test(
       for (const [i, ability] of abilities.entries()) {
         await p.getByLabel(ability, { exact: true }).selectOption({ index: i + 1 });
       }
+      await fillChoicesStep(p);
       await p.getByRole('button', { name: 'Criar personagem' }).click();
       await expect(p).toHaveURL(/\/campaigns\/[^/]+\/characters\/(?!new$)[^/]+$/);
       const characterId = p.url().split('/').pop()!;
@@ -198,6 +201,7 @@ test(
       await method(p, 'Digitar');
       await expect(p.getByText('de 3 a 18, antes do bônus da raça')).toBeVisible();
       await p.locator('input').and(p.getByLabel('Força', { exact: true })).fill('19');
+      await fillChoicesStep(p);
       await p.getByRole('button', { name: 'Criar personagem' }).click();
       await expect(p.getByText(/digite valores de 3 a 18/)).toBeVisible();
       await expect(p).toHaveURL(/characters\/new$/);

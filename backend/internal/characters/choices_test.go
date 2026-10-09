@@ -213,9 +213,11 @@ func TestASaveRefusesAPickTheSheetCannotTake(t *testing.T) {
 	}
 }
 
-// TestAPlayerSavesTheirDraftOnlyWithTheChoicesMade: an old sheet that asks for a choice
-// is refused on the player's own save (UpdateCharacter), and saved when the pick comes.
-func TestAPlayerSavesTheirDraftOnlyWithTheChoicesMade(t *testing.T) {
+// TestAPlayerSaveNeverRefusesAChoiceTheSheetAlreadyLacked: an old sheet that asks for a
+// choice (made before the choices existed, or left open by the master) is saved by its
+// player as it is, and the pick that comes is saved too; what the save may not do is add a
+// problem the stored sheet did not have (a pick the sheet does not offer).
+func TestAPlayerSaveNeverRefusesAChoiceTheSheetAlreadyLacked(t *testing.T) {
 	t.Parallel()
 	tb := newChoiceTable(t)
 	c := tb.openChoice(t, tb.ana,
@@ -223,12 +225,20 @@ func TestAPlayerSavesTheirDraftOnlyWithTheChoicesMade(t *testing.T) {
 		choiceSheet("race:human", "", "class:fighter", "", 1))
 	edited := proto.CloneOf(c.GetSheet())
 	edited.GetFull().Languages = []string{"Anão"}
-	_, err := tb.ana.update(t, c, c.GetName(), edited)
-	if r := choiceRefusal(t, "the player's save with the style open", err); r.GetReason() != charactersv1.ChoiceRefusalReason_CHOICE_REFUSAL_REASON_CHOICES_MISSING {
-		t.Errorf("refusal = %v, want CHOICES_MISSING", r)
+	saved, err := tb.ana.update(t, c, c.GetName(), edited)
+	if err != nil {
+		t.Fatalf("the player's save with the style still open: %v", err)
 	}
-	edited.GetFull().FeatureChoiceKeys = []string{"feature:fighter-fighting-style-archery"}
-	if _, err := tb.ana.update(t, c, c.GetName(), edited); err != nil {
+	// A pick the sheet does not offer is a new problem: refused.
+	bad := proto.CloneOf(saved.GetSheet())
+	bad.GetFull().FeatureChoiceKeys = []string{"feature:eldritch-invocation-agonizing-blast"}
+	_, err = tb.ana.update(t, saved, saved.GetName(), bad)
+	if r := choiceRefusal(t, "a pick the sheet does not offer", err); r.GetReason() != charactersv1.ChoiceRefusalReason_CHOICE_REFUSAL_REASON_CHOICE_NOT_OFFERED {
+		t.Errorf("refusal = %v, want CHOICE_NOT_OFFERED", r)
+	}
+	good := proto.CloneOf(saved.GetSheet())
+	good.GetFull().FeatureChoiceKeys = []string{"feature:fighter-fighting-style-archery"}
+	if _, err := tb.ana.update(t, saved, saved.GetName(), good); err != nil {
 		t.Errorf("the player's save with the style: %v", err)
 	}
 }
