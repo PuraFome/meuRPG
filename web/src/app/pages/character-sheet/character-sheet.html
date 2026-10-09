@@ -279,7 +279,11 @@
 
       <div class="sheet" [class.sheet--pnotes]="!vm.isMaster">
         <app-ability-medallions class="sheet__abilities" [abilities]="full.abilities" />
-        <app-combat-column class="sheet__combat" [sheet]="full">
+        <app-combat-column class="sheet__combat" [sheet]="full" [liveSlots]="hasLiveSlots()">
+          <!-- The live counters of an open session (PM-07b 7), right after the combat numbers. -->
+          @if (vitals(); as live) {
+            <app-resource-counters resources [vitals]="live" />
+          }
           <!-- MR-037: the character's creatures, right after Combate and Magias (E9-10). -->
           @if (vm.characterKind === 'player' && vm.state !== 'pending') {
             <app-creatures-panel

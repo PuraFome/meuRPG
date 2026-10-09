@@ -71,14 +71,16 @@
           [(value)]="pact"
         />
       }
-      <app-vitals-stepper
-        label="Dados de vida"
-        [hint]="hitDiceHint()"
-        [max]="v.hitDiceTotal"
-        fieldLabel="Dados de vida usados"
-        [stepLabel]="diceLabel"
-        [(value)]="hitDice"
-      />
+      @for (d of dice; track d.faces) {
+        <app-vitals-stepper
+          [label]="diceName(d.faces)"
+          [hint]="diceHint(d)"
+          [max]="d.total"
+          [fieldLabel]="diceName(d.faces) + ' usados'"
+          [stepLabel]="diceStepLabel(d.faces)"
+          [(value)]="d.used"
+        />
+      }
       @for (res of resources; track res.key) {
         <app-vitals-stepper
           [label]="res.name"

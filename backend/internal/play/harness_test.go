@@ -211,6 +211,7 @@ type user struct {
 	characters charactersv1connect.CharacterServiceClient
 	play       playv1connect.PlayServiceClient
 	combat     playv1connect.CombatServiceClient
+	resource   playv1connect.ResourceServiceClient
 	casting    playv1connect.CastingServiceClient
 	encounters playv1connect.EncounterServiceClient
 	revivify   playv1connect.RevivifyServiceClient
@@ -243,6 +244,7 @@ func (h *harness) clients(userID string) *user {
 		characters: charactersv1connect.NewCharacterServiceClient(c, url),
 		play:       playv1connect.NewPlayServiceClient(c, url),
 		combat:     playv1connect.NewCombatServiceClient(c, url),
+		resource:   playv1connect.NewResourceServiceClient(c, url),
 		casting:    playv1connect.NewCastingServiceClient(c, url),
 		encounters: playv1connect.NewEncounterServiceClient(c, url),
 		revivify:   playv1connect.NewRevivifyServiceClient(c, url),

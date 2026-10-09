@@ -50,13 +50,13 @@ type classified struct {
 const masterOnlyWhy = "only the master may call it (see the .proto comment)"
 
 var notReads = map[string]classified{
-	campaignsv1connect.CampaignDocumentServiceUpdateCampaignDocumentProcedure:        {masterWrite, masterOnlyWhy},
 	campaignpackagev1connect.CampaignPackageServiceBeginCampaignImportProcedure:      {notACampaignCall, "starts the caller's own upload; it names no campaign"},
 	campaignpackagev1connect.CampaignPackageServiceCancelCampaignExportProcedure:     {masterWrite, masterOnlyWhy},
 	campaignpackagev1connect.CampaignPackageServiceCancelCampaignImportProcedure:     {notACampaignCall, "the caller's own upload; it names no campaign"},
 	campaignpackagev1connect.CampaignPackageServiceCreateCampaignFromImportProcedure: {notACampaignCall, "makes a campaign whose master is the caller"},
 	campaignpackagev1connect.CampaignPackageServiceGetCampaignImportProcedure:        {notACampaignCall, "the caller's own upload; it names no campaign"},
 	campaignpackagev1connect.CampaignPackageServicePreviewCampaignImportProcedure:    {notACampaignCall, "reads the caller's own upload; it names no campaign"},
+	campaignsv1connect.CampaignDocumentServiceUpdateCampaignDocumentProcedure:        {masterWrite, masterOnlyWhy},
 	// The campaign package: exporting is the master's; importing makes a campaign of the caller's own.
 	campaignpackagev1connect.CampaignPackageServiceStartCampaignExportProcedure: {masterWrite, masterOnlyWhy},
 	campaignsv1connect.CampaignServiceAcceptInviteProcedure:                     {playerAction, "anyone with an invite token may accept it; the answer is the campaign's id and name"},
@@ -216,6 +216,13 @@ var notReads = map[string]classified{
 	playv1connect.PuzzleServiceShowPuzzleProcedure:                              {masterWrite, masterOnlyWhy},
 	playv1connect.PuzzleServiceUnarchivePuzzleProcedure:                         {masterWrite, masterOnlyWhy},
 	playv1connect.PuzzleServiceUpdatePuzzleProcedure:                            {masterWrite, masterOnlyWhy},
+	playv1connect.ResourceServiceAnswerBardicInspirationProcedure:               {playerAction, "a player answers the question of their own held roll"},
+	playv1connect.ResourceServiceConvertSpellSlotProcedure:                      {playerAction, "a sorcerer's player converts a slot of their own combatant"},
+	playv1connect.ResourceServiceCreateSpellSlotProcedure:                       {playerAction, "a sorcerer's player makes a slot with their own combatant"},
+	playv1connect.ResourceServiceGiveBardicInspirationProcedure:                 {playerAction, "a bard's player gives a die with their own combatant"},
+	playv1connect.ResourceServiceSpendHitDiceProcedure:                          {playerAction, "a player spends a hit die of their own character"},
+	playv1connect.ResourceServiceTakeRestProcedure:                              {masterWrite, masterOnlyWhy},
+	playv1connect.ResourceServiceUseLayOnHandsProcedure:                         {playerAction, "a paladin's player touches a creature with their own combatant"},
 	playv1connect.RevivifyServiceConfirmRevivifyTimeProcedure:                   {masterWrite, masterOnlyWhy},
 	playv1connect.RevivifyServicePreviewRevivifyProcedure:                       {playerAction, "a player previews who their own caster could revive; the lists it holds are the revivify tests' (RN-10)"},
 	playv1connect.RevivifyServiceRequestRevivifyProcedure:                       {playerAction, "a player casts Revivify outside a combat with their own character"},

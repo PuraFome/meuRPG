@@ -553,7 +553,7 @@ func (a *armed) ask(u *user, caster, target *charactersv1.Character, key string,
 	return res.Msg.GetRequest(), nil
 }
 
-func (a *armed) answer(t *testing.T, u *user, id string, within bool, key string) (*playv1.RevivifyRequest, error) {
+func (a *armed) answerRevivify(t *testing.T, u *user, id string, within bool, key string) (*playv1.RevivifyRequest, error) {
 	t.Helper()
 	res, err := u.revivify.ConfirmRevivifyTime(t.Context(), connect.NewRequest(&playv1.ConfirmRevivifyTimeRequest{CampaignId: a.campaignID, PendingId: id, WithinMinute: within, IdempotencyKey: key}))
 	if err != nil {
@@ -624,19 +624,19 @@ func TestRevivify_OutsideACombatTheMasterConfirmsTheMinute(t *testing.T) {
 
 	// Only the master answers; a player is told the request is not there, for any id.
 	for _, id := range []string{req.GetId(), newKey()} {
-		_, err = a.answer(t, a.ana, id, true, newKey())
+		_, err = a.answerRevivify(t, a.ana, id, true, newKey())
 		wantCode(t, "a player's ConfirmRevivifyTime", err, connect.CodeNotFound)
 	}
 	// "Já passou": nothing is spent and Toren stays dead.
 	k := newKey()
-	denied, err := a.answer(t, a.master, req.GetId(), false, k)
+	denied, err := a.answerRevivify(t, a.master, req.GetId(), false, k)
 	if err != nil || denied.GetStatus() != playv1.RevivifyRequestStatus_REVIVIFY_REQUEST_STATUS_DENIED || denied.GetAnsweredAt() == nil {
 		t.Fatalf("ConfirmRevivifyTime(false) = %v, %v; want denied", denied, err)
 	}
-	if again, err := a.answer(t, a.master, req.GetId(), false, k); err != nil || again.GetStatus() != denied.GetStatus() {
+	if again, err := a.answerRevivify(t, a.master, req.GetId(), false, k); err != nil || again.GetStatus() != denied.GetStatus() {
 		t.Errorf("the retry of the answer = %v, %v; want the same", again, err)
 	}
-	_, err = a.answer(t, a.master, req.GetId(), true, newKey())
+	_, err = a.answerRevivify(t, a.master, req.GetId(), true, newKey())
 	wantCode(t, "answering twice", err, connect.CodeFailedPrecondition)
 	if v := a.vitals(t, a.pens); usedSlots(v, 3) != 0 {
 		t.Errorf("slots used after \"Já passou\" = %d, want 0", usedSlots(v, 3))
@@ -650,7 +650,7 @@ func TestRevivify_OutsideACombatTheMasterConfirmsTheMinute(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second RequestRevivify() error = %v", err)
 	}
-	done, err := a.answer(t, a.master, second.GetId(), true, newKey())
+	done, err := a.answerRevivify(t, a.master, second.GetId(), true, newKey())
 	if err != nil || done.GetStatus() != playv1.RevivifyRequestStatus_REVIVIFY_REQUEST_STATUS_CONFIRMED || done.GetSlotsLeft() != 1 {
 		t.Fatalf("ConfirmRevivifyTime(true) = %v, %v; want confirmed, 1 slot left", done, err)
 	}
@@ -720,7 +720,7 @@ func TestRevivify_OutsideACombatTheSwitchAndRN03(t *testing.T) {
 	}
 	a.caio.hero(t, a.campaignID, "Nuvem", "class:fighter", "race:human", 1,
 		&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
-	_, err = a.answer(t, a.master, req.GetId(), true, newKey())
+	_, err = a.answerRevivify(t, a.master, req.GetId(), true, newKey())
 	wantCode(t, "ConfirmRevivifyTime with another living character", err, connect.CodeFailedPrecondition)
 	if got := a.requests(t, a.master); len(got) != 1 || got[0].GetStatus() != playv1.RevivifyRequestStatus_REVIVIFY_REQUEST_STATUS_PENDING {
 		t.Errorf("the request after the refusal = %v, want it still pending", got)
@@ -850,7 +850,7 @@ func TestRevivify_OutsideACombatTheCombatantLivesAgainInAnOpenCombat(t *testing.
 		t.Fatalf("Toren after his death = defeated %v, want true", c.GetDefeated())
 	}
 
-	done, err := a.answer(t, a.master, req.GetId(), true, newKey())
+	done, err := a.answerRevivify(t, a.master, req.GetId(), true, newKey())
 	if err != nil || done.GetStatus() != playv1.RevivifyRequestStatus_REVIVIFY_REQUEST_STATUS_CONFIRMED {
 		t.Fatalf("ConfirmRevivifyTime(true) = %v, %v; want confirmed", done, err)
 	}
@@ -876,5 +876,56 @@ func TestRevivify_OutsideACombatTheCombatantLivesAgainInAnOpenCombat(t *testing.
 	}
 	if err := a.undo(t, a.master, now, newKey()); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Errorf("UndoLastAction after the revival = %v, want nothing to undo", err)
+	}
+}
+
+// A revived character's vitals are what they were: the hit dice spent stay spent (they are
+// not given back by the revival), the resources too, and it has 1 hit point. A rest does not
+// touch the dead; after the revival the character takes part in it like any other.
+func TestRN03_ARevivedCharactersVitalsLineUpWithTheHitDiceAndTheRests(t *testing.T) {
+	t.Parallel()
+	a := newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 4,
+			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
+	})
+	spent := a.correct(t, a.toren, func(r *playv1.AdjustCharacterVitalsRequest) { r.HitDiceUsedByDie = map[int32]int32{10: 3} })
+	if got := hitDiceUsed(spent)[10]; got != 3 {
+		t.Fatalf("hit dice spent before the death = %d, want 3", got)
+	}
+	if _, err := a.master.characters.MarkCharacterDead(t.Context(), connect.NewRequest(&charactersv1.MarkCharacterDeadRequest{CampaignId: a.campaignID, CharacterId: a.toren.GetId()})); err != nil {
+		t.Fatalf("MarkCharacterDead() error = %v", err)
+	}
+	rest := func(kind playv1.RestKind) *playv1.TakeRestResponse {
+		t.Helper()
+		res, err := a.master.resource.TakeRest(t.Context(), connect.NewRequest(&playv1.TakeRestRequest{CampaignId: a.campaignID, Kind: kind, IdempotencyKey: newKey()}))
+		if err != nil {
+			t.Fatalf("TakeRest(%v) error = %v", kind, err)
+		}
+		return res.Msg
+	}
+	for _, v := range rest(playv1.RestKind_REST_KIND_LONG).GetVitals() {
+		if v.GetCharacterId() == a.toren.GetId() {
+			t.Errorf("a long rest touched the dead Toren: %v", v)
+		}
+	}
+	if _, err := a.master.characters.ReviveCharacter(t.Context(), connect.NewRequest(&charactersv1.ReviveCharacterRequest{CampaignId: a.campaignID, CharacterId: a.toren.GetId(), IdempotencyKey: newKey()})); err != nil {
+		t.Fatalf("ReviveCharacter() error = %v", err)
+	}
+	v := a.vitals(t, a.toren)
+	if v.GetHitPointsCurrent() != 1 || hitDiceUsed(v)[10] != 3 {
+		t.Fatalf("Toren revived = %d hit points, hit dice spent %v; want 1 and {10: 3}", v.GetHitPointsCurrent(), hitDiceUsed(v))
+	}
+	// The long rest after it: hit points full and half the dice (2 of 4) back, like any other.
+	var after *playv1.CharacterVitals
+	for _, got := range rest(playv1.RestKind_REST_KIND_LONG).GetVitals() {
+		if got.GetCharacterId() == a.toren.GetId() {
+			after = got
+		}
+	}
+	if after == nil {
+		t.Fatal("a long rest does not touch the revived Toren")
+	}
+	if after.GetHitPointsCurrent() != after.GetHitPointsMax() || hitDiceUsed(after)[10] != 1 {
+		t.Errorf("Toren after the long rest = %d/%d hit points, hit dice spent %v; want full and {10: 1}", after.GetHitPointsCurrent(), after.GetHitPointsMax(), hitDiceUsed(after))
 	}
 }

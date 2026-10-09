@@ -242,6 +242,13 @@
             [info]="partyInfo()"
             (adjust)="adjust($event)"
           />
+          <!-- The master's short and long rests (PM-07b 9). -->
+          <app-rest-card
+            class="board__rest"
+            [campaignId]="campaignId()"
+            [party]="vitals()"
+            (restTaken)="takeVitals($event)"
+          />
           <app-casting-panel
             class="board__casting"
             [campaignId]="campaignId()"
@@ -362,7 +369,15 @@
           </div>
           <div class="board__side">
             @if (ownVitals(); as v) {
-              <app-player-vitals [vitals]="v" [sheet]="playerSheet()" [beastAc]="beastAc()" [campaignId]="campaignId()" />
+              <app-player-vitals
+                [vitals]="v"
+                [sheet]="playerSheet()"
+                [beastAc]="beastAc()"
+                [campaignId]="campaignId()"
+                [diceMode]="campaign()?.diceMode ?? 1"
+                [dicePreference]="campaign()?.dicePreference ?? 1"
+                (vitalsChange)="takeVitals([$event])"
+              />
               @if (playerSheet()?.revivify) {
                 <button matButton="outlined" type="button" class="revivify" (click)="openRevivify()">
                   <mat-icon aria-hidden="true">favorite</mat-icon>Revivificar

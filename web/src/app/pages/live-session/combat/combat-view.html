@@ -294,6 +294,16 @@
                   (endConcentration)="endOwnConcentration()"
                 />
               }
+              @if (ownOffer(); as offer) {
+                <div class="mr-notice mr-notice--warning notice" data-testid="inspiration-pending">
+                  <mat-icon aria-hidden="true">music_note</mat-icon>
+                  <p>A sua rolagem espera a sua resposta: usar a Inspiração de Bardo?</p>
+                  <button mat-button type="button" class="notice__ok" (click)="openHeldRoll()">Responder</button>
+                </div>
+              }
+              @if (ownDie(); as die) {
+                <app-inspiration-card class="player__die" [die]="die" [round]="e.round" />
+              }
             </div>
             @if (wideLayout()) {
               <app-order-column class="player__order" [encounter]="e" />

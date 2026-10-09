@@ -83,7 +83,12 @@ func ambientOf(ctx context.Context) *ambient {
 }
 
 // ambientDoneError is the error a replayed change ends with once its event is written.
-type ambientDoneError struct{ event actionEvent }
+type ambientDoneError struct {
+	event actionEvent
+	// asking says the replayed attack was not resolved: its d20 was kept for the player's
+	// Bardic Inspiration answer (combat_inspiration.go), which resolves it, and no event was written.
+	asking bool
+}
 
 func (*ambientDoneError) Error() string { return "the held action was replayed" }
 
@@ -96,6 +101,9 @@ func (s *Service) writeAmbient(ctx context.Context, a *ambient, w combatWrite, d
 	payload, err := do(c)
 	if err != nil {
 		return combatResult{}, err
+	}
+	if payload == nil { // a roll kept for a Bardic Inspiration question: the answer resolves it
+		return combatResult{}, connect.NewError(connect.CodeUnknown, &ambientDoneError{asking: true})
 	}
 	ev, ok := payload.(actionEvent)
 	if !ok {
@@ -201,13 +209,20 @@ func (s *Service) releaseHold(ctx context.Context, c *combatTx, h playdb.Reactio
 	}
 	var done *ambientDoneError
 	switch {
+	case errors.As(err, &done) && done.asking:
+		return nil
 	case errors.As(err, &done):
 		c.tellActorVitals(done.event)
 		s.completeAnswers(c, windows, st, done.event)
 		return nil
 	case err != nil && clientError(err):
-		// The action cannot happen any more: it is dropped.
-		return c.q.SetReactionHoldState(ctx, playdb.SetReactionHoldStateParams{ID: h.ID, State: "dropped"})
+		// The action cannot happen any more: it is dropped, and the master reads that it was, since the
+		// answers may have spent slots and reactions already.
+		if err := c.q.SetReactionHoldState(ctx, playdb.SetReactionHoldStateParams{ID: h.ID, State: "dropped"}); err != nil {
+			return err
+		}
+		ev := actionEvent{Round: c.enc.Round, Secret: true, Actor: h.ActorID, Reaction: &reactionEvent{Kind: reactionHeldDropped, Used: true, Group: h.GroupID, Roll: h.Kind, Why: err.Error()}}
+		return insertEvent(ctx, c, eventReactionAnswered, &c.actorUserID, nil, ev)
 	case err != nil:
 		return err
 	}

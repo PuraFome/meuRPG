@@ -206,10 +206,17 @@ describe('export texts', () => {
   // The browser's time zone: dates are built in it, so the clock reads the same on every machine.
   const now = new Date(2026, 9, 9, 19, 5);
 
-  it('names the file <campanha>.meurpg.zip, without characters a file name cannot have', () => {
+  it('names the file <campanha>.meurpg.zip the way the server names the download', () => {
     expect(suggestedFileName('Mirathel')).toBe('Mirathel.meurpg.zip');
-    expect(suggestedFileName('A/B: "C"?')).toBe('A B C.meurpg.zip');
+    expect(suggestedFileName('Mirathel verificação')).toBe('Mirathel_verificacao.meurpg.zip');
+    expect(suggestedFileName('A/B: "C"?')).toBe('A_B_C.meurpg.zip');
     expect(suggestedFileName('  ')).toBe('campanha.meurpg.zip');
+    expect(suggestedFileName('..Ação -- do Corvo!..')).toBe('Acao_--_do_Corvo.meurpg.zip');
+    expect(suggestedFileName('🐉')).toBe('campanha.meurpg.zip');
+  });
+
+  it('cuts the campaign part at 60 letters, like the server', () => {
+    expect(suggestedFileName('a'.repeat(100))).toBe(`${'a'.repeat(60)}.meurpg.zip`);
   });
 
   it('says "cerca de N MB" as a whole number, never zero', () => {

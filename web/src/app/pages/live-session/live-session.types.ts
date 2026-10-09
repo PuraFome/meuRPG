@@ -8,6 +8,7 @@
  */
 
 import type { FamiliarSightVm } from '../../core/play/familiar-eyes';
+import type { HitDieSize } from '../../core/resources/hit-dice-text';
 import type { DiceMode, DicePreference } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { CombatantMove, TurnChange } from '../../core/combat/combat-state';
 
@@ -16,6 +17,8 @@ export interface SlotUsageVm {
   readonly level: number;
   readonly total: number;
   readonly used: number;
+  /** How many of `total` Flexible Casting created (they vanish on a long rest); absent or 0 for none. */
+  readonly created?: number;
 }
 
 /** A warlock's pact magic slots (`PactSlotUsage`): all of one level. */
@@ -43,7 +46,7 @@ export interface ResourceUsageVm {
   readonly namePt?: string;
   readonly total: number;
   readonly used: number;
-  /** When the uses come back, for "volta no descanso curto ou longo". */
+  /** When the uses come back: `short_rest` is "num descanso curto ou longo" (`RECHARGE_SHORT_REST`), `long_rest` only "num descanso longo". */
   readonly recharge: 'short_rest' | 'long_rest' | 'dawn' | 'none';
 }
 
@@ -59,9 +62,13 @@ export interface VitalsVm {
   /** Only the levels with slots, lowest first. */
   readonly spellSlots: readonly SlotUsageVm[];
   readonly pactSlots: PactSlotsVm | null;
-  /** "3d6", or "2d10 + 1d8" for a multiclass character. */
+  /** The hit dice by size, "3d6", or "2d10 e 1d8" for a multiclass character (kept apart by size, SRD "Multiclassing"). */
   readonly hitDice: string;
+  /** Each size with how many dice there are and how many are spent, largest die first (`hit_dice` with `hit_dice_used_by_die`). */
+  readonly hitDiceSizes: readonly HitDieSize[];
+  /** All the dice, of every size: the character's level. */
   readonly hitDiceTotal: number;
+  /** All the dice spent, of every size. */
   readonly hitDiceUsed: number;
   /** Of two copies of the same character's vitals, the larger is newer. */
   readonly revision: number;
@@ -247,7 +254,8 @@ export interface VitalsChange {
   readonly hitPointsTemporary?: number;
   readonly spellSlotsUsed?: readonly { readonly level: number; readonly used: number }[];
   readonly pactSlotsUsed?: number;
-  readonly hitDiceUsed?: number;
+  /** How many dice of each size are spent (die size to count), for the sizes that change. */
+  readonly hitDiceUsedByDie?: Readonly<Record<number, number>>;
   /** The resources whose spent uses change (a master gives uses back). */
   readonly resourcesUsed?: readonly { readonly key: string; readonly used: number }[];
   /** The beast's hit points, for a druid in Wild Shape; 0 ends the form. */

@@ -1,0 +1,117 @@
+<section class="mr-panel rest" aria-labelledby="rest-heading">
+  <h2 class="mr-panel__title" id="rest-heading">Descanso</h2>
+
+  <div class="rest__buttons">
+    @for (k of kinds; track k.kind) {
+      <button
+        [matButton]="pressed(k.kind) ? 'filled' : 'outlined'"
+        type="button"
+        [attr.data-rest]="k.key"
+        [attr.aria-expanded]="pressed(k.kind)"
+        [attr.aria-controls]="pressed(k.kind) ? 'rest-question' : null"
+        [attr.aria-busy]="loading() === k.kind"
+        (click)="ask(k.kind)"
+      >
+        <mat-icon aria-hidden="true">{{ k.icon }}</mat-icon>{{ k.label }}
+      </button>
+    }
+  </div>
+
+  @if (error() && !asking()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  @if (summary(); as s) {
+    <div
+      class="question"
+      id="rest-question"
+      role="alertdialog"
+      aria-labelledby="rest-title"
+      aria-describedby="rest-intro"
+      tabindex="-1"
+      (keydown.escape)="cancel()"
+    >
+      <h3 class="question__title" id="rest-title">{{ s.title }}</h3>
+      <p class="question__intro" id="rest-intro">{{ s.intro }}</p>
+
+      @if (s.warning) {
+        <div class="mr-notice mr-notice--warning" role="status">
+          <mat-icon aria-hidden="true">warning</mat-icon>
+          <p>{{ s.warning }}</p>
+        </div>
+      }
+
+      @if (s.empty) {
+        <p class="question__empty">Nenhum personagem de jogador vivo na campanha.</p>
+      } @else {
+        <ul class="back">
+          @for (line of s.lines; track $index) {
+            <li class="back__line">
+              <mat-icon class="back__icon" aria-hidden="true">check</mat-icon>
+              <span>
+                @for (part of line; track $index) {
+                  <span [class.part--bold]="part.bold">{{ part.text }}</span>
+                }
+              </span>
+            </li>
+          }
+          @for (note of s.noBenefit; track note) {
+            <li class="back__line back__line--none">
+              <mat-icon class="back__icon" aria-hidden="true">block</mat-icon>
+              <span>{{ note }}</span>
+            </li>
+          }
+        </ul>
+      }
+
+      @for (c of choices(); track c.characterId) {
+        <div class="choice" role="group" [attr.aria-label]="'Dados de vida que voltam de ' + c.name">
+          <p class="choice__title">
+            <b>{{ c.name }}</b>: dados de vida que voltam (no máximo {{ c.limit }} no total)
+          </p>
+          <div class="choice__sizes">
+            @for (size of c.sizes; track size.faces) {
+              <span class="choice__size">
+                <span class="choice__die">{{ dieName(size.faces) }}</span>
+                <app-count-stepper
+                  [value]="countOf(c.characterId, size.faces, size.start)"
+                  [min]="0"
+                  [max]="maxOf(c, size.faces)"
+                  [noun]="dieName(size.faces)"
+                  [minusLabel]="'Devolver um ' + dieName(size.faces) + ' a menos de ' + c.name"
+                  [plusLabel]="'Devolver um ' + dieName(size.faces) + ' a mais para ' + c.name"
+                  [valueLabel]="'{n} ' + dieName(size.faces) + ' de ' + c.name + ' voltam'"
+                  (valueChange)="setCount(c.characterId, size.faces, $event)"
+                />
+              </span>
+            }
+          </div>
+        </div>
+      }
+
+      @if (error()) {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ error() }}</p>
+        </div>
+      }
+
+      <div class="question__buttons">
+        <button matButton="filled" type="button" [attr.aria-busy]="saving()" (click)="rest()">
+          <mat-icon aria-hidden="true">check</mat-icon>Descansar
+        </button>
+        <button matButton="outlined" type="button" (click)="cancel()">Cancelar</button>
+      </div>
+    </div>
+  }
+
+  <p class="mr-visually-hidden" role="status" aria-live="polite">{{ done() }}</p>
+  @if (done()) {
+    <p class="rest__done" aria-hidden="true">
+      <mat-icon aria-hidden="true">check_circle</mat-icon>{{ done() }}
+    </p>
+  }
+</section>

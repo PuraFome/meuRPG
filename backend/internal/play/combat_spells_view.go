@@ -148,6 +148,9 @@ func (s *Service) castProto(ctx context.Context, res combatResult, ev actionEven
 		ConcentrationEndedSpellKey: ev.ConcEnded,
 	}
 	out.EffectKind, out.PoolRoll, out.EffectConditionKey, out.EffectThreshold = effectHeader(ev, v, caster)
+	if ev.Res != nil && ev.Res.Kind == resMetamagic {
+		out.MetamagicKeys, out.SorceryPointsSpent = ev.Res.Keys, ev.Res.Spent
+	}
 	for _, h := range ev.Hits {
 		target := byID[h.Target]
 		if !v.sees(target) || (!v.master && h.HiddenAtCast) { // a retry is built from the combat as it stands: a target hidden since is not told, and one that was hidden when the area hit it never is

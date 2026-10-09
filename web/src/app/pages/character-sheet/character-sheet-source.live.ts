@@ -43,6 +43,7 @@ import {
   FullSheetVm,
   ReviewVm,
 } from './character-sheet.types';
+import { hitDiceWords } from '../../core/resources/hit-dice-text';
 
 const KIND_FROM_GEN: Record<GenCharacterKind, CharacterKind> = {
   [GenCharacterKind.UNSPECIFIED]: 'player',
@@ -181,7 +182,7 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
     wearsArmor: full.armorKey !== '',
     hasShield: full.shield,
     hitPointsMax: derived.hitPointsMax,
-    hitDice: derived.hitDice.map((hd) => `${hd.count}d${hd.faces}`).join(' + ') || '—',
+    hitDice: hitDiceWords(derived.hitDice),
     speedWalkFt: derived.speedWalkFt,
     senses: derived.senses.map((s) => `${s.namePt}: ${metersWithFeet(s.rangeFt)}`),
     attacks: derived.attacks.map(toAttackVm),

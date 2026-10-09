@@ -28,11 +28,17 @@ class Call {
 
 describe('XpWatcher (E7-10)', () => {
   let calls: Call[];
+  let snapshot: unknown[];
+  let snapshotFails: boolean;
   const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
   beforeEach(() => {
     calls = [];
+    snapshot = [];
+    snapshotFails = false;
     const source = {
+      getLiveSession: () =>
+        snapshotFails ? Promise.reject(new Error('down')) : Promise.resolve({ vitals: snapshot }),
       watch: (campaignId: string, signal: AbortSignal) => {
         const call = new Call(campaignId, signal);
         calls.push(call);
@@ -190,6 +196,50 @@ describe('XpWatcher (E7-10)', () => {
     watcher.follow('camp-1', vi.fn());
     await flush();
     expect(calls).toHaveLength(2);
+    watcher.follow(null, vi.fn());
+  });
+  it('hands over the live numbers: the snapshot on every `ready`, then each vitals event', async () => {
+    const onVitals = vi.fn();
+    const watcher = TestBed.inject(XpWatcher);
+    snapshot = [{ characterId: 'char-1', revision: 1 }];
+    watcher.follow('camp-1', vi.fn(), undefined, undefined, undefined, onVitals);
+    await flush();
+    calls[0].push({ kind: 'ready' });
+    await flush();
+    expect(onVitals.mock.calls).toEqual([[{ characterId: 'char-1', revision: 1 }]]);
+    calls[0].push({ kind: 'vitals', vitals: { characterId: 'char-1', revision: 2 } as never });
+    await flush();
+    expect(onVitals).toHaveBeenLastCalledWith({ characterId: 'char-1', revision: 2 });
+    snapshot = [{ characterId: 'char-1', revision: 3 }];
+    calls[0].push({ kind: 'ready' });
+    await flush();
+    expect(onVitals).toHaveBeenLastCalledWith({ characterId: 'char-1', revision: 3 });
+    watcher.follow(null, vi.fn());
+  });
+
+  it('keeps going when the snapshot cannot be read: the events still arrive', async () => {
+    const onVitals = vi.fn();
+    const watcher = TestBed.inject(XpWatcher);
+    snapshotFails = true;
+    watcher.follow('camp-1', vi.fn(), undefined, undefined, undefined, onVitals);
+    await flush();
+    calls[0].push({ kind: 'ready' });
+    calls[0].push({ kind: 'vitals', vitals: { characterId: 'char-1', revision: 2 } as never });
+    await flush();
+    expect(onVitals).toHaveBeenCalledTimes(1);
+    watcher.follow(null, vi.fn());
+  });
+  it('reads the live numbers again when the same session is followed again, without a second stream', async () => {
+    const onVitals = vi.fn();
+    const watcher = TestBed.inject(XpWatcher);
+    snapshot = [{ characterId: 'char-1', revision: 1 }];
+    watcher.follow('camp-1', vi.fn(), undefined, undefined, undefined, onVitals);
+    await flush();
+    snapshot = [{ characterId: 'char-2', revision: 4 }];
+    watcher.follow('camp-1', vi.fn(), undefined, undefined, undefined, onVitals);
+    await flush();
+    expect(calls).toHaveLength(1);
+    expect(onVitals).toHaveBeenCalledWith({ characterId: 'char-2', revision: 4 });
     watcher.follow(null, vi.fn());
   });
 });

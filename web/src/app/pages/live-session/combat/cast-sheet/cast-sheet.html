@@ -125,6 +125,24 @@
           </div>
         }
       }
+      @if (metaRows().length) {
+        <app-metamagic-picker
+          [rows]="metaRows()"
+          [points]="sorceryPoints"
+          [picks]="picks()"
+          [candidates]="metaCandidates()"
+          [firstTarget]="chosen()[0]"
+          [targetIds]="chosen()"
+          [line]="metaLine()"
+          (flip)="toggleMeta($event)"
+          (picked)="setPicks($event)"
+        />
+        @if (metaCost() > 0) {
+          <button matButton="text" type="button" class="nometa" [disabled]="busy()" (click)="noMetamagic()">
+            Sem Metamagia
+          </button>
+        }
+      }
       @if (pool(); as p) {
         @if (usesPicker() && (!flow || (flow.step() === 'list' && !areaAsks()))) {
           <app-roll-picker
@@ -139,7 +157,7 @@
             [max]="p.count * p.sides"
             [modifier]="0"
             [busy]="busy() || !ready()"
-            [appLabel]="'Conjurar e rolar no app'"
+            [appLabel]="metaCost() > 0 ? castText() : 'Conjurar e rolar no app'"
             [sticky]="true"
             [(typing)]="typing"
             (app)="castPooled({ inApp: true })"
@@ -158,7 +176,7 @@
           totalNote="Total do ataque"
           [modifier]="data.attackBonus"
           [busy]="busy() || !ready()"
-          [appLabel]="'Conjurar e rolar no app'"
+          [appLabel]="metaCost() > 0 ? castText() : 'Conjurar e rolar no app'"
           [sticky]="true"
           [(typing)]="typing"
           (app)="castRolled({ inApp: true })"
@@ -285,7 +303,7 @@
           disabledInteractive
           (click)="castNow()"
         >
-          <mat-icon aria-hidden="true">auto_awesome</mat-icon>Conjurar {{ data.name }}
+          <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ castText() }}
         </button>
         <button mat-stroked-button type="button" class="cancel" [disabled]="busy()" (click)="close()">Cancelar</button>
       </div>
