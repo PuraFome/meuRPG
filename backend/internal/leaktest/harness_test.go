@@ -199,6 +199,7 @@ func newStack(t *testing.T) *stack {
 	}
 	chars.SetLive(live)
 	chars.SetCreatureHost(live)
+	chars.SetReviewHost(live)
 	msvc, err := maps.New(maps.Config{
 		Pool: pool, Blobs: blobs, Characters: chars, Live: live, Generator: &gen.Fake{}, Rules: srd, Combats: live,
 		Defaults: camps, Logger: logger, Now: clock.Now,

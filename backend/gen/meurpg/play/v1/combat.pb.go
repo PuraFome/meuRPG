@@ -8964,8 +8964,8 @@ type SpellEffectResult struct {
 	// player, as `hit_points_before`.
 	HitPointsAfter *int32 `protobuf:"varint,8,opt,name=hit_points_after,json=hitPointsAfter,proto3,oneof" json:"hit_points_after,omitempty"`
 	// Revivify, for a player's character: the character that lives again (a UUID), so the app
-	// can read it again. Empty for an NPC. The master, the caster's player and the target's
-	// player.
+	// can read it again. Empty for an NPC. Everyone who gets the entry: it is a name the table
+	// already knows.
 	RevivedCharacterId string `protobuf:"bytes,9,opt,name=revived_character_id,json=revivedCharacterId,proto3" json:"revived_character_id,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache

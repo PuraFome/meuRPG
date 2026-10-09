@@ -10,6 +10,50 @@ import (
 	"time"
 )
 
+const answerRevivifyRequest = `-- name: AnswerRevivifyRequest :one
+UPDATE revivify_requests
+SET status = $1, answered_at = $2, answer_key = $3, answer_hash = $4
+WHERE id = $5::UUID AND status = 'pending'
+RETURNING id, campaign_id, game_session_id, caster_character_id, target_character_id, requested_by_user_id, slot_level, slot_pact, status, created_at, answered_at, create_key, create_hash, answer_key, answer_hash
+`
+
+type AnswerRevivifyRequestParams struct {
+	Status     string
+	AnsweredAt *time.Time
+	AnswerKey  *string
+	AnswerHash *string
+	ID         string
+}
+
+func (q *Queries) AnswerRevivifyRequest(ctx context.Context, arg AnswerRevivifyRequestParams) (RevivifyRequest, error) {
+	row := q.db.QueryRow(ctx, answerRevivifyRequest,
+		arg.Status,
+		arg.AnsweredAt,
+		arg.AnswerKey,
+		arg.AnswerHash,
+		arg.ID,
+	)
+	var i RevivifyRequest
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.GameSessionID,
+		&i.CasterCharacterID,
+		&i.TargetCharacterID,
+		&i.RequestedByUserID,
+		&i.SlotLevel,
+		&i.SlotPact,
+		&i.Status,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+		&i.CreateKey,
+		&i.CreateHash,
+		&i.AnswerKey,
+		&i.AnswerHash,
+	)
+	return i, err
+}
+
 const clearCombatTurns = `-- name: ClearCombatTurns :exec
 UPDATE combatants
 SET turn_state = 'idle'
@@ -1204,6 +1248,73 @@ func (q *Queries) GetPuzzleRunForUpdate(ctx context.Context, arg GetPuzzleRunFor
 	return i, err
 }
 
+const getRevivifyRequestByCreateKey = `-- name: GetRevivifyRequestByCreateKey :one
+SELECT id, campaign_id, game_session_id, caster_character_id, target_character_id, requested_by_user_id, slot_level, slot_pact, status, created_at, answered_at, create_key, create_hash, answer_key, answer_hash FROM revivify_requests
+WHERE campaign_id = $1::UUID AND create_key = $2
+`
+
+type GetRevivifyRequestByCreateKeyParams struct {
+	CampaignID string
+	CreateKey  *string
+}
+
+func (q *Queries) GetRevivifyRequestByCreateKey(ctx context.Context, arg GetRevivifyRequestByCreateKeyParams) (RevivifyRequest, error) {
+	row := q.db.QueryRow(ctx, getRevivifyRequestByCreateKey, arg.CampaignID, arg.CreateKey)
+	var i RevivifyRequest
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.GameSessionID,
+		&i.CasterCharacterID,
+		&i.TargetCharacterID,
+		&i.RequestedByUserID,
+		&i.SlotLevel,
+		&i.SlotPact,
+		&i.Status,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+		&i.CreateKey,
+		&i.CreateHash,
+		&i.AnswerKey,
+		&i.AnswerHash,
+	)
+	return i, err
+}
+
+const getRevivifyRequestForUpdate = `-- name: GetRevivifyRequestForUpdate :one
+SELECT id, campaign_id, game_session_id, caster_character_id, target_character_id, requested_by_user_id, slot_level, slot_pact, status, created_at, answered_at, create_key, create_hash, answer_key, answer_hash FROM revivify_requests
+WHERE campaign_id = $1::UUID AND id = $2::UUID
+FOR UPDATE
+`
+
+type GetRevivifyRequestForUpdateParams struct {
+	CampaignID string
+	ID         string
+}
+
+func (q *Queries) GetRevivifyRequestForUpdate(ctx context.Context, arg GetRevivifyRequestForUpdateParams) (RevivifyRequest, error) {
+	row := q.db.QueryRow(ctx, getRevivifyRequestForUpdate, arg.CampaignID, arg.ID)
+	var i RevivifyRequest
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.GameSessionID,
+		&i.CasterCharacterID,
+		&i.TargetCharacterID,
+		&i.RequestedByUserID,
+		&i.SlotLevel,
+		&i.SlotPact,
+		&i.Status,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+		&i.CreateKey,
+		&i.CreateHash,
+		&i.AnswerKey,
+		&i.AnswerHash,
+	)
+	return i, err
+}
+
 const getSessionEventByID = `-- name: GetSessionEventByID :one
 SELECT id, kind, encounter_id, payload FROM session_events
 WHERE game_session_id = $1 AND id = $2
@@ -2062,6 +2173,68 @@ func (q *Queries) InsertPuzzleRun(ctx context.Context, arg InsertPuzzleRunParams
 		&i.PlayStartedAt,
 		&i.RoundStartSeq,
 		&i.RoundStartedAt,
+	)
+	return i, err
+}
+
+const insertRevivifyRequest = `-- name: InsertRevivifyRequest :one
+INSERT INTO revivify_requests
+    (campaign_id, game_session_id, caster_character_id, target_character_id, requested_by_user_id,
+     slot_level, slot_pact, created_at, create_key, create_hash)
+VALUES (
+    $1::UUID, $2::UUID, $3::UUID, $4::UUID,
+    $5::UUID, $6, $7, $8,
+    $9, $10
+)
+ON CONFLICT (campaign_id, create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING id, campaign_id, game_session_id, caster_character_id, target_character_id, requested_by_user_id, slot_level, slot_pact, status, created_at, answered_at, create_key, create_hash, answer_key, answer_hash
+`
+
+type InsertRevivifyRequestParams struct {
+	CampaignID        string
+	GameSessionID     string
+	CasterCharacterID string
+	TargetCharacterID string
+	RequestedByUserID *string
+	SlotLevel         int32
+	SlotPact          bool
+	CreatedAt         time.Time
+	CreateKey         *string
+	CreateHash        *string
+}
+
+// A Revivify cast outside a combat, waiting for the master (SRD 5.1, Revivify). A second
+// insert with the same key inserts nothing, and the caller reads the first one.
+func (q *Queries) InsertRevivifyRequest(ctx context.Context, arg InsertRevivifyRequestParams) (RevivifyRequest, error) {
+	row := q.db.QueryRow(ctx, insertRevivifyRequest,
+		arg.CampaignID,
+		arg.GameSessionID,
+		arg.CasterCharacterID,
+		arg.TargetCharacterID,
+		arg.RequestedByUserID,
+		arg.SlotLevel,
+		arg.SlotPact,
+		arg.CreatedAt,
+		arg.CreateKey,
+		arg.CreateHash,
+	)
+	var i RevivifyRequest
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.GameSessionID,
+		&i.CasterCharacterID,
+		&i.TargetCharacterID,
+		&i.RequestedByUserID,
+		&i.SlotLevel,
+		&i.SlotPact,
+		&i.Status,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+		&i.CreateKey,
+		&i.CreateHash,
+		&i.AnswerKey,
+		&i.AnswerHash,
 	)
 	return i, err
 }
@@ -3428,6 +3601,50 @@ func (q *Queries) ListRecentSessionEvents(ctx context.Context, arg ListRecentSes
 			&i.Kind,
 			&i.EncounterID,
 			&i.Payload,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRevivifyRequests = `-- name: ListRevivifyRequests :many
+SELECT id, campaign_id, game_session_id, caster_character_id, target_character_id, requested_by_user_id, slot_level, slot_pact, status, created_at, answered_at, create_key, create_hash, answer_key, answer_hash FROM revivify_requests
+WHERE game_session_id = $1::UUID
+ORDER BY created_at DESC, id
+LIMIT 50
+`
+
+// The casts of a session, newest first. A player's list is filtered by the caller.
+func (q *Queries) ListRevivifyRequests(ctx context.Context, gameSessionID string) ([]RevivifyRequest, error) {
+	rows, err := q.db.Query(ctx, listRevivifyRequests, gameSessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RevivifyRequest
+	for rows.Next() {
+		var i RevivifyRequest
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.GameSessionID,
+			&i.CasterCharacterID,
+			&i.TargetCharacterID,
+			&i.RequestedByUserID,
+			&i.SlotLevel,
+			&i.SlotPact,
+			&i.Status,
+			&i.CreatedAt,
+			&i.AnsweredAt,
+			&i.CreateKey,
+			&i.CreateHash,
+			&i.AnswerKey,
+			&i.AnswerHash,
 		); err != nil {
 			return nil, err
 		}

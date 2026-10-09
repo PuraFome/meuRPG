@@ -234,6 +234,24 @@ type PuzzleRun struct {
 	RoundStartedAt       *time.Time
 }
 
+type RevivifyRequest struct {
+	ID                string
+	CampaignID        string
+	GameSessionID     string
+	CasterCharacterID string
+	TargetCharacterID string
+	RequestedByUserID *string
+	SlotLevel         int32
+	SlotPact          bool
+	Status            string
+	CreatedAt         time.Time
+	AnsweredAt        *time.Time
+	CreateKey         *string
+	CreateHash        *string
+	AnswerKey         *string
+	AnswerHash        *string
+}
+
 type StageNpc struct {
 	ID            string
 	GameSessionID string

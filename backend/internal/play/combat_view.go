@@ -480,6 +480,7 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 	if out.OpportunityOffers, err = s.opportunityOffers(ctx, m, d, v); err != nil {
 		return nil, err
 	}
+	out.Deaths = s.deathsOf(ctx, m, d, v)
 	return out, nil
 }
 

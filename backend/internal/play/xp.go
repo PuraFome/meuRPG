@@ -28,11 +28,11 @@ import (
 // through AppendEvent: progression's XP awards and milestones, and the maps
 // module's clue reveals, trap reveals and treasure found or unmarked, and the
 // characters module's creatures given, dismissed or defeated outside a combat
-// (MR-037). A kind that is not one of them is a bug in the caller, never a write.
+// (MR-037) and a character the master revived outside a combat. A kind that is not one of them is a bug in the caller, never a write.
 var appendableKinds = []string{
 	eventXPAwarded, eventXPAwardUndone, eventMilestoneMarked, eventClueRevealed,
 	eventTrapRevealed, eventTrapNoticed, eventTrapDisarmed, eventTreasureFound, eventTreasureUnfound,
-	eventCreatureSummoned, eventCreatureDismissed,
+	eventCreatureSummoned, eventCreatureDismissed, eventCharacterRevived,
 }
 
 // CampaignEncounter returns what an enemies award needs from the campaign's

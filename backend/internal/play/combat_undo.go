@@ -15,6 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -101,6 +102,13 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 				continue
 			}
 			if err != nil || (e.Kind == eventFamiliarSight && ev.Sight != "start") {
+				return playdb.ListRecentSessionEventsRow{}, false
+			}
+		}
+		// A Revivify cast is not undone: the creature lives again in the characters module, as
+		// after the master's Reviver, and the diamonds are spent. It closes the chain.
+		if e.Kind == eventSpellCast {
+			if ev, err := readEvent(e.Payload); err == nil && ev.FxKind == rules.SpellKindRevive {
 				return playdb.ListRecentSessionEventsRow{}, false
 			}
 		}

@@ -1047,3 +1047,39 @@ SELECT e.* FROM battle_encounters AS e
 JOIN map_points AS p ON p.id = e.map_point_id
 WHERE e.campaign_id = $1 AND e.map_id = $2 AND p.kind = 'battle'
 ORDER BY e.created_at, e.map_point_id;
+
+-- name: InsertRevivifyRequest :one
+-- A Revivify cast outside a combat, waiting for the master (SRD 5.1, Revivify). A second
+-- insert with the same key inserts nothing, and the caller reads the first one.
+INSERT INTO revivify_requests
+    (campaign_id, game_session_id, caster_character_id, target_character_id, requested_by_user_id,
+     slot_level, slot_pact, created_at, create_key, create_hash)
+VALUES (
+    sqlc.arg(campaign_id)::UUID, sqlc.arg(game_session_id)::UUID, sqlc.arg(caster_character_id)::UUID, sqlc.arg(target_character_id)::UUID,
+    sqlc.narg(requested_by_user_id)::UUID, sqlc.arg(slot_level), sqlc.arg(slot_pact), sqlc.arg(created_at),
+    sqlc.narg(create_key), sqlc.narg(create_hash)
+)
+ON CONFLICT (campaign_id, create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING *;
+
+-- name: GetRevivifyRequestByCreateKey :one
+SELECT * FROM revivify_requests
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND create_key = sqlc.arg(create_key);
+
+-- name: GetRevivifyRequestForUpdate :one
+SELECT * FROM revivify_requests
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID
+FOR UPDATE;
+
+-- name: ListRevivifyRequests :many
+-- The casts of a session, newest first. A player's list is filtered by the caller.
+SELECT * FROM revivify_requests
+WHERE game_session_id = sqlc.arg(game_session_id)::UUID
+ORDER BY created_at DESC, id
+LIMIT 50;
+
+-- name: AnswerRevivifyRequest :one
+UPDATE revivify_requests
+SET status = sqlc.arg(status), answered_at = sqlc.arg(answered_at), answer_key = sqlc.narg(answer_key), answer_hash = sqlc.narg(answer_hash)
+WHERE id = sqlc.arg(id)::UUID AND status = 'pending'
+RETURNING *;

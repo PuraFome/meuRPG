@@ -163,7 +163,7 @@ func (s *Service) revivedInCombat(ctx context.Context, tx pgx.Tx, campaignID str
 	if enc != "" || s.creatureHost == nil {
 		return nil
 	}
-	body, err := json.Marshal(map[string]string{"character_id": row.ID, "name": row.Name})
+	body, err := json.Marshal(map[string]string{"character_id": row.ID})
 	if err != nil {
 		return wrap("encode the event", err)
 	}

@@ -90,7 +90,10 @@ func eventCase(ev *playv1.WatchGameSessionResponse) string {
 // notTriggered lists the events the script does not make, and why. An event that is neither
 // triggered nor here fails TestLeakMatrix/stream: a new kind of event must be exercised or
 // explained.
-var notTriggered = map[string]string{}
+var notTriggered = map[string]string{ //nolint:gosec // G101: names of events and the reasons, no credential
+	"character_revived": "the fixture kills no character: the revive tests of package play check who hears it (the master and the owner)",
+	"revivify_changed":  "the fixture has no caster of Revivify: the revivify tests of package play check who hears it (the master and the caster's player)",
+}
 
 func checkStream(t *testing.T, w *world, got *answers) {
 	t.Helper()
@@ -183,6 +186,13 @@ func checkStream(t *testing.T, w *world, got *answers) {
 func (w *world) streamScript() {
 	ctx := w.t.Context()
 	m := w.master
+
+	// -- the pending member sends her character again and the master asks again: the master hears
+	// of both, as a hint with no reason; no player and no stream of anyone else does.
+	must(w.pending.characters.ResubmitCharacter(ctx, rq(&charactersv1.ResubmitCharacterRequest{CampaignId: w.campaign, CharacterId: w.pendingHero.GetId(), IdempotencyKey: newKey()})))
+	must(m.characters.RequestCharacterChanges(ctx, rq(&charactersv1.RequestCharacterChangesRequest{
+		CampaignId: w.campaign, CharacterId: w.pendingHero.GetId(), Reason: w.reviewReason, IdempotencyKey: newKey(),
+	})))
 
 	// -- hidden changes: the players hear nothing, or only a hint with no content.
 	x, y := at(7, 8)

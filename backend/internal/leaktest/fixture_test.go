@@ -48,15 +48,16 @@ type world struct {
 	session                              string
 
 	// The characters.
-	pens, toren *charactersv1.Character // Ana's and Caio's player characters
-	pendingHero *charactersv1.Character // the character that waits for approval
-	boss        *charactersv1.Character // the NPC whose numbers are secret
-	hiddenNPC   *charactersv1.Character // an NPC whose token the master hid
-	bandit      *charactersv1.Character // an NPC made from a bestiary creature
-	merchant    *charactersv1.Character // an NPC on the stage
-	offstage    *charactersv1.Character // an NPC with a portrait, not on the stage
-	seenNPC     *charactersv1.Character // an NPC the master left visible, in Ana's sight
-	stage2      *charactersv1.Character // an NPC the stream test puts on the stage
+	pens, toren  *charactersv1.Character // Ana's and Caio's player characters
+	pendingHero  *charactersv1.Character // the character that waits for approval
+	reviewReason string                  // what the master asked her to change
+	boss         *charactersv1.Character // the NPC whose numbers are secret
+	hiddenNPC    *charactersv1.Character // an NPC whose token the master hid
+	bandit       *charactersv1.Character // an NPC made from a bestiary creature
+	merchant     *charactersv1.Character // an NPC on the stage
+	offstage     *charactersv1.Character // an NPC with a portrait, not on the stage
+	seenNPC      *charactersv1.Character // an NPC the master left visible, in Ana's sight
+	stage2       *charactersv1.Character // an NPC the stream test puts on the stage
 
 	// The gallery.
 	imgMap, imgUnshown, imgShown, imgLeft, imgPortrait, imgStage, imgGenerated, generation string

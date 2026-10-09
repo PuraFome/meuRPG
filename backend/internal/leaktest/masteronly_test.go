@@ -50,6 +50,12 @@ var masterOnly = []masterOnlyField{
 	{"meurpg.play.v1.StageNpc", "character_id", "a player gets an NPC's name and portrait only (RN-20)", nil},
 	{"meurpg.play.v1.SceneActionView", "dc", "the fixture never turns \"Mostrar a CD\" on (RN-20)", nil},
 
+	// --- the dead (RN-10, Revivify): the reasons a creature cannot be revived are the master's
+	{"meurpg.characters.v1.Character", "revivify_blocked", "the master's switch \"Revivificar não funciona nesta morte\"", nil},
+	{"meurpg.play.v1.CombatDeath", "fits_revivify", "whether the minute has run out is the master's", nil},
+	{"meurpg.play.v1.CombatDeath", "revivify_blocked", "the master's switch", nil},
+	{"meurpg.play.v1.PreviewRevivifyResponse", "unavailable", "why a creature is not a target is the master's alone", nil},
+
 	// --- play: the combat (RN-20)
 	{"meurpg.play.v1.Encounter", "map_point_id", "the battle point the master started from", nil},
 	{"meurpg.play.v1.Combatant", "hidden", "a hidden combatant is not sent to a player", nil},

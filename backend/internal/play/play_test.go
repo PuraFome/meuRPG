@@ -596,6 +596,22 @@ func (noRoster) MarkDead(context.Context, pgx.Tx, string, string, time.Time) err
 	return errors.New("not in this test")
 }
 
+func (noRoster) MarkDeadInCombat(context.Context, pgx.Tx, string, string, time.Time, int32, string) error {
+	return errors.New("not in this test")
+}
+
+func (noRoster) DeadCharacters(context.Context, pgx.Tx, string) ([]link.DeadCharacter, error) {
+	return nil, errors.New("not in this test")
+}
+
+func (noRoster) ReviveDead(context.Context, pgx.Tx, string, string, time.Time) (string, error) {
+	return "", errors.New("not in this test")
+}
+
+func (noRoster) SetRevivifyBlocked(context.Context, pgx.Tx, string, string, bool) error {
+	return errors.New("not in this test")
+}
+
 func (noRoster) Conditions() []link.Named { return nil }
 
 func (noRoster) ContentNames(context.Context, pgx.Tx, string) (func(string) string, error) {

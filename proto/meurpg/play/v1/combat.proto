@@ -2971,8 +2971,8 @@ message SpellEffectResult {
   // player, as `hit_points_before`.
   optional int32 hit_points_after = 8;
   // Revivify, for a player's character: the character that lives again (a UUID), so the app
-  // can read it again. Empty for an NPC. The master, the caster's player and the target's
-  // player.
+  // can read it again. Empty for an NPC. Everyone who gets the entry: it is a name the table
+  // already knows.
   string revived_character_id = 9;
 }
 

@@ -213,6 +213,9 @@ func (s *Service) CastSpell(
 	if spellKey == "" || len(spellKey) > 100 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("spell_key must name one of the caster's spells"))
 	}
+	if spellKey == revivifyKey { // brings the dead back: its own target, its own checks (revivify.go)
+		return s.castRevivify(ctx, req)
+	}
 	if len(req.Msg.GetTargets()) > maxSpellTargets {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("targets must have at most %d entries", maxSpellTargets))
 	}

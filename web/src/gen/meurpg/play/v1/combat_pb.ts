@@ -4104,8 +4104,8 @@ export type SpellEffectResult = Message<"meurpg.play.v1.SpellEffectResult"> & {
 
   /**
    * Revivify, for a player's character: the character that lives again (a UUID), so the app
-   * can read it again. Empty for an NPC. The master, the caster's player and the target's
-   * player.
+   * can read it again. Empty for an NPC. Everyone who gets the entry: it is a name the table
+   * already knows.
    *
    * @generated from field: string revived_character_id = 9;
    */

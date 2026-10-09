@@ -16,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // The combat log, "Registro do combate" (D10, MR-012; the history screen
@@ -582,7 +583,11 @@ func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *
 	caster := byID[e.ev.Actor]
 	out := &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot), Concentrating: e.ev.Concentrate, ConcentrationEndedKey: e.ev.ConcEnded}
 	out.EffectKind, out.PoolRoll, out.EffectConditionKey, out.EffectThreshold = effectHeader(e.ev, v, caster)
+	out.MaterialSpent = e.ev.Material && (v.master || v.owns(caster)) // the diamonds are the caster's and the master's line
 	for _, h := range e.ev.Hits {
+		if v.master && h.DeathRound != nil && e.ev.FxKind == rules.SpellKindRevive {
+			out.RevivedDeathRound = h.DeathRound
+		}
 		target := byID[h.Target]
 		t := &playv1.CombatLogSpellTarget{
 			TargetId: target.ID, TargetLabel: target.Label, Darts: h.Darts, Outcome: outcomeToProto[h.Outcome],

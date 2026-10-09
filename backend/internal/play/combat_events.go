@@ -147,6 +147,11 @@ type castHit struct {
 	DeathBefore *deathState `json:"death_before,omitempty"`
 	CondSet     bool        `json:"cond_set,omitempty"`
 	CondBefore  []string    `json:"cond_before,omitempty"`
+	// Revivify (revivify.go): the character that lives again (empty for an NPC), the hit
+	// points it came back with and the round it died in.
+	Revived      string `json:"revived_character_id,omitempty"`
+	RevivedAfter int32  `json:"hp_after,omitempty"`
+	DeathRound   *int32 `json:"death_round,omitempty"`
 }
 
 // What a spell that reads hit points did to a target, as a cast event stores it.
@@ -259,7 +264,9 @@ type actionEvent struct {
 	// DiceSides, Faces, Total and Physical above.
 	FxKind      string `json:"fx_kind,omitempty"`
 	FxCondition string `json:"fx_condition,omitempty"`
-	FxLimit     int32  `json:"fx_limit,omitempty"`
+	// Material says the caster confirmed the diamonds of Revivify, which the spell consumes.
+	Material bool  `json:"material,omitempty"`
+	FxLimit  int32 `json:"fx_limit,omitempty"`
 	// Escudo: the +5 the target had before, the reaction and what it did.
 	ACBonusBefore int32 `json:"ac_bonus_before,omitempty"`
 	Stopped       bool  `json:"stopped,omitempty"`

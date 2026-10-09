@@ -243,6 +243,16 @@ type CombatRoster interface {
 	// MarkDeadInCombat is MarkDead for the death a combat confirms: it also keeps the round
 	// and the combat the master read it in (Character.death_round).
 	MarkDeadInCombat(ctx context.Context, tx pgx.Tx, campaignID, characterID string, at time.Time, round int32, encounterID string) error
+	// DeadCharacters lists the campaign's dead player characters, newest death first.
+	DeadCharacters(ctx context.Context, tx pgx.Tx, campaignID string) ([]link.DeadCharacter, error)
+	// ReviveDead brings a dead player's character back inside tx with 1 hit point, as the
+	// master's Reviver does (RN-03: `failed_precondition` and nothing changes when its player
+	// has another living character). It returns its name. `failed_precondition` for a
+	// character that is not dead.
+	ReviveDead(ctx context.Context, tx pgx.Tx, campaignID, characterID string, at time.Time) (name string, err error)
+	// SetRevivifyBlocked sets the master's switch "Revivificar não funciona nesta morte" on
+	// a dead player's character inside tx; `failed_precondition` when it is not dead.
+	SetRevivifyBlocked(ctx context.Context, tx pgx.Tx, campaignID, characterID string, blocked bool) error
 	// SceneOptions returns, for each key of a scene's checks, the character's
 	// bonus and passive value (the rules engine's SceneOptions), in the order of
 	// keys. `not_found` for any other character.
@@ -600,6 +610,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle(playv1connect.NewCombatServiceHandler(s, opts...))
 	handle(playv1connect.NewPuzzleServiceHandler(s, opts...))
 	handle(playv1connect.NewEncounterServiceHandler(s, opts...))
+	handle(playv1connect.NewRevivifyServiceHandler(s, opts...))
 }
 
 // queriesIn is the queries on the transaction, or on the pool when tx is nil. A
