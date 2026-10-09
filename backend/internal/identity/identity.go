@@ -61,11 +61,14 @@ type Config struct {
 	// system roots plus OIDC.CAFile, with a timeout.
 	HTTPClient *http.Client
 
-	// BehindCloudRun says every request reaches the server through Cloud
-	// Run's front end, so the sign-in rate limit reads the client IP from
-	// X-Forwarded-For (see ratelimit.ClientKey). Never set it where clients
-	// connect directly: they could then claim any IP they like.
-	BehindCloudRun bool
+	// TrustedProxyHops is how many proxies of ours sit between the client
+	// and the server, so the sign-in rate limit knows where the client IP
+	// is (see ratelimit.ClientKey). 0 reads the connection's address and
+	// ignores X-Forwarded-For; 1 is Cloud Run alone (the client is the last
+	// X-Forwarded-For entry); 2 is Cloud Run behind an external Application
+	// Load Balancer (the second from the right). Never above 0 where
+	// clients connect directly: they could then claim any IP they like.
+	TrustedProxyHops int
 
 	// SessionIdleTimeout is how long a session may go unused before it
 	// stops working (SESSION_IDLE_TIMEOUT). Zero means
@@ -89,8 +92,8 @@ type Service struct {
 
 	// loginLimiter caps /auth/login (GET and POST share it), which writes a
 	// login state row on every hit (see loginRateLimit).
-	loginLimiter   *ratelimit.Limiter
-	behindCloudRun bool
+	loginLimiter     *ratelimit.Limiter
+	trustedProxyHops int
 
 	// intents are the sign-in intents, by kind (see IntentHandler).
 	intents map[string]IntentHandler
@@ -138,7 +141,7 @@ func New(ctx context.Context, cfg Config) (*Service, error) {
 	limits := loginRateLimit
 	limits.Now = s.now
 	s.loginLimiter = ratelimit.New(limits)
-	s.behindCloudRun = cfg.BehindCloudRun
+	s.trustedProxyHops = cfg.TrustedProxyHops
 
 	client := cfg.HTTPClient
 	if client == nil {

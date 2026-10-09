@@ -87,6 +87,15 @@ type Config struct {
 	// internal/platform/ratelimit.ClientKey).
 	CloudRun bool
 
+	// TrustedProxyHops is how many proxies of ours sit between the client
+	// and the server (TRUSTED_PROXY_HOPS): it says which X-Forwarded-For
+	// entry, counted from the right, is the client (see
+	// internal/platform/ratelimit.ClientKey). 0 means none: the connection's
+	// address is used and X-Forwarded-For is ignored, which is the only
+	// value off Cloud Run. On Cloud Run it is 1 (Cloud Run alone, the
+	// default) or 2 (behind an external Application Load Balancer).
+	TrustedProxyHops int
+
 	// TraceProject is the Google Cloud project ID (GOOGLE_CLOUD_PROJECT).
 	// It is read only on Cloud Run, where it lets each log line carry the
 	// request's Cloud Trace id; elsewhere it stays empty.
@@ -244,11 +253,17 @@ func Load(getenv func(string) string) (Config, error) {
 		CloudRun:    strings.TrimSpace(getenv("K_SERVICE")) != "",
 	}
 
+	hops, hopsErr := loadTrustedProxyHops(getenv, cfg.CloudRun)
+	cfg.TrustedProxyHops = hops
+
 	if cfg.CloudRun {
 		cfg.TraceProject = strings.TrimSpace(getenv("GOOGLE_CLOUD_PROJECT"))
 	}
 
 	var errs []error
+	if hopsErr != nil {
+		errs = append(errs, hopsErr)
+	}
 
 	if raw := strings.TrimSpace(getenv("PORT")); raw != "" {
 		port, err := strconv.Atoi(raw)
@@ -323,6 +338,28 @@ func Load(getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("invalid configuration: %w", err)
 	}
 	return cfg, nil
+}
+
+// loadTrustedProxyHops reads TRUSTED_PROXY_HOPS. Off Cloud Run the server is
+// never behind a proxy, and trusting X-Forwarded-For there would let any
+// client pick its own rate-limit key, so any value is refused. On Cloud Run
+// it is 1 (unset: Cloud Run alone) or 2 (behind a load balancer).
+func loadTrustedProxyHops(getenv func(string) string, cloudRun bool) (int, error) {
+	raw := strings.TrimSpace(getenv("TRUSTED_PROXY_HOPS"))
+	if !cloudRun {
+		if raw != "" {
+			return 0, errors.New("TRUSTED_PROXY_HOPS is for Cloud Run only; elsewhere the server is not behind a proxy, and trusting X-Forwarded-For would let any client choose its own rate-limit key")
+		}
+		return 0, nil
+	}
+	if raw == "" {
+		return 1, nil
+	}
+	hops, err := strconv.Atoi(raw)
+	if err != nil || (hops != 1 && hops != 2) {
+		return 1, fmt.Errorf("TRUSTED_PROXY_HOPS must be 1 (Cloud Run alone) or 2 (behind an external load balancer), got %q", raw)
+	}
+	return hops, nil
 }
 
 // checkDatabaseTLS refuses, on Cloud Run, a DATABASE_URL whose connection could

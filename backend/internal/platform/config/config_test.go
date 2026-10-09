@@ -68,7 +68,7 @@ func TestLoad(t *testing.T) {
 		{
 			name: "a bucket is allowed on Cloud Run",
 			env:  map[string]string{"K_SERVICE": "meurpg", "BLOB_BUCKET": "meurpg-images"},
-			want: Config{Port: 8080, LogLevel: slog.LevelInfo, WebDir: DefaultWebDir, CloudRun: true, BlobBucket: "meurpg-images"},
+			want: Config{Port: 8080, LogLevel: slog.LevelInfo, WebDir: DefaultWebDir, CloudRun: true, TrustedProxyHops: 1, BlobBucket: "meurpg-images"},
 		},
 		{
 			name: "surrounding whitespace is ignored",
@@ -167,7 +167,7 @@ func TestLoad(t *testing.T) {
 		{
 			name: "on Cloud Run",
 			env:  map[string]string{"K_SERVICE": "meurpg-api"},
-			want: Config{Port: 8080, LogLevel: slog.LevelInfo, WebDir: DefaultWebDir, CloudRun: true},
+			want: Config{Port: 8080, LogLevel: slog.LevelInfo, WebDir: DefaultWebDir, CloudRun: true, TrustedProxyHops: 1},
 		},
 		{
 			name:    "oidc max_age is not a duration",
@@ -356,6 +356,41 @@ func TestLoadImages(t *testing.T) {
 	}
 	if fake, err := Load(env(map[string]string{"IMAGE_GENERATOR": "fake"})); err != nil || !fake.Images.Fake {
 		t.Errorf("the fake: %v, %v", fake.Images, err)
+	}
+}
+
+func TestTrustedProxyHops(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		env     map[string]string
+		want    int
+		wantErr bool
+	}{
+		{name: "unset off Cloud Run", env: nil, want: 0},
+		{name: "unset on Cloud Run", env: map[string]string{"K_SERVICE": "api"}, want: 1},
+		{name: "1 on Cloud Run", env: map[string]string{"K_SERVICE": "api", "TRUSTED_PROXY_HOPS": "1"}, want: 1},
+		{name: "2 on Cloud Run", env: map[string]string{"K_SERVICE": "api", "TRUSTED_PROXY_HOPS": " 2 "}, want: 2},
+		{name: "3 on Cloud Run", env: map[string]string{"K_SERVICE": "api", "TRUSTED_PROXY_HOPS": "3"}, wantErr: true},
+		{name: "0 on Cloud Run", env: map[string]string{"K_SERVICE": "api", "TRUSTED_PROXY_HOPS": "0"}, wantErr: true},
+		{name: "text on Cloud Run", env: map[string]string{"K_SERVICE": "api", "TRUSTED_PROXY_HOPS": "x"}, wantErr: true},
+		{name: "1 off Cloud Run", env: map[string]string{"TRUSTED_PROXY_HOPS": "1"}, wantErr: true},
+		{name: "0 off Cloud Run", env: map[string]string{"TRUSTED_PROXY_HOPS": "0"}, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			cfg, err := Load(env(tt.env))
+			if tt.wantErr {
+				if err == nil || !strings.Contains(err.Error(), "TRUSTED_PROXY_HOPS") {
+					t.Fatalf("Load() error = %v, want one naming TRUSTED_PROXY_HOPS", err)
+				}
+				return
+			}
+			if err != nil || cfg.TrustedProxyHops != tt.want {
+				t.Errorf("hops = %d, err = %v; want %d", cfg.TrustedProxyHops, err, tt.want)
+			}
+		})
 	}
 }
 
