@@ -38,6 +38,11 @@
   @media (min-width: 768px) {
     min-height: 64px;
     padding: 0 var(--mr-gutter);
+    gap: var(--mr-space-4);
+  }
+
+  // From a laptop up the bar has room for the wider gap.
+  @media (min-width: 1024px) {
     gap: var(--mr-space-8);
   }
 }
@@ -128,8 +133,12 @@
 
   @media (min-width: 768px) {
     flex-direction: row;
-    gap: var(--mr-space-6);
+    gap: var(--mr-space-4);
     flex-grow: 1;
+  }
+
+  @media (min-width: 1024px) {
+    gap: var(--mr-space-6);
   }
 }
 

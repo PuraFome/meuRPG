@@ -26,9 +26,6 @@
     @for (line of tieLines(); track line) {
       <li><mat-icon aria-hidden="true">info</mat-icon>{{ line }}</li>
     }
-    @if (!ready()) {
-      <li><mat-icon aria-hidden="true">warning</mat-icon>{{ reason().replace('.', '') }}</li>
-    }
   </ul>
 
   <button
