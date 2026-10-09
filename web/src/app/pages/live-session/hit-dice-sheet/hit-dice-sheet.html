@@ -22,7 +22,7 @@
     </ol>
   }
 
-  <p class="mr-visually-hidden" role="status" aria-live="polite">{{ rolls()[0] ?? '' }}</p>
+  <p class="mr-visually-hidden" role="status" aria-live="polite">{{ latest() }}</p>
 
   @if (anyLeft()) {
     <fieldset class="which">

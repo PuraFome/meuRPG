@@ -115,6 +115,8 @@ export class HitDiceSheet {
   protected readonly error = signal('');
   /** What each die did, newest first. */
   protected readonly rolls = signal<readonly string[]>([]);
+  /** The newest line, for the live region. */
+  protected readonly latest = computed(() => this.rolls().at(0) ?? '');
   private readonly picker = viewChild(RollPicker);
 
   protected readonly subtitle = computed(() => {
