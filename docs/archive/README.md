@@ -8,7 +8,7 @@ Read these files when you need the origin of a rule, the question behind it, the
 | --- | --- |
 | [decisions.md](decisions.md) | The decision history: Samuel's answers (questions 1 to 75), Vinicius's decisions (questions 66 to 86, scope changes, audit decisions), and the decisions that used to sit in the product, privacy, architecture, data, operations and design docs. Ordered by date, then by document. |
 | [etapas.md](etapas.md) | The delivery history: each Etapa (1 to 10, then the Etapa 11 plan) with its PRs and migrations, the slice labels ("fatia 10.x") and what they delivered, per-story and per-rule delivery notes, and every migration with the table it added. |
-| [legacy-code-quality.md](legacy-code-quality.md) | A code-quality audit of the old Angular app in `src/`, discontinued. See [legacy-app.md](../legacy-app.md). |
+| [legacy-code-quality.md](legacy-code-quality.md) | A code-quality audit of the old Angular app in `src/`, discontinued. |
 
 Where to look for what:
 

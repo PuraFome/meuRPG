@@ -23,7 +23,6 @@ Tools: Go 1.27, buf, sqlc 1.31.1, goose, golangci-lint 2.14.0, Docker and Node 2
 | `make e2e` | Starts the local environment (like `make up`), runs the Playwright tests in `e2e/` against it and shows where the report is. The environment stays up; `make down` takes it down. See [End-to-end tests](#end-to-end-tests-playwright). |
 | `make down` | Takes the local environment down (`docker compose down`). |
 | `make elk-up` / `make elk-down` / `make elk-logs` | Starts, stops and shows the logs of the ELK stack (Elasticsearch, Kibana and Filebeat, `deploy/elk/compose.yaml`) that keeps the API's logs: it reads the containers of `make up` and the `~/.meurpg/run*/api.log` files of `LOCAL_STACK=native`. The first run creates `deploy/elk/.env` with random passwords. Kibana is at `http://localhost:5601`; from the terminal, `deploy/elk/logs.sh errors`, `request <id>`, `tail` and more (`logs.sh help`). See [Operations](docs/operations.md#logs-in-elk). |
-| `npm start` | Starts the old Angular app (`src/`), deprecated and kept only as a reference (see [Legacy app](docs/legacy-app.md)). |
 | `make web-install` | Installs the `web/` dependencies: `npm ci --ignore-scripts` (never runs third-party install scripts). To add or update a dependency, use `npm install` with Corepack enabled (`corepack enable`, once): `web/package.json` pins `npm@11.20.0` because the stock `npm` (10.x) hangs resolving the peer-dependency graph of Vitest 4.1; `npm ci` does not have this problem and works with either. |
 | `make web-test` | Runs the Angular tests (`cd web && npm test`). The test files are not isolated from one another (the Angular builder runs Vitest with `isolate: false`), so `web/src/test-setup.ts` undoes every `vi.stubGlobal` at the end of each test, gives each test a fresh `scrollIntoView` and `window.scrollTo` (jsdom has none, and the components call them) and restores the real timers (a fake clock must not leak into another file), and `web/src/test-providers.ts` turns off the Material animations: no test depends on file order or waits real time. |
 | `cd web && npm run lint` | ESLint (`web/eslint.config.js`): typescript-eslint with the type-aware promise rules (`no-floating-promises`, `no-misused-promises`, `await-thenable`) and no `any`; angular-eslint with the template and accessibility rules, OnPush, standalone components and `inject()`; `complexity` 15, `max-depth` 4 and no magic numbers in app code. A ratchet: see [Web and e2e linters](#web-and-e2e-linters). |
@@ -472,8 +471,6 @@ Dependabot (`.github/dependabot.yml`) opens every week the PRs that keep these p
 - the Ubuntu version of CI's machines (`runs-on`), which changes in every job at once, tested in a PR first;
 - a new CockroachDB release line: only the "Regular" lines (26.2, 26.4...), never the "Innovation" ones (26.3), which have no LTS ([CockroachDB's support policy](https://docs.cockroachlabs.com/docs/releases/release-support-policy)); it changes `compose.yaml`, `COCKROACH_IMAGE` in CI, the `Makefile` and the Homebrew formula (`cockroach@26.2`) together.
 
-The root `package.json` is the [legacy app](docs/legacy-app.md)'s (`src/`, deprecated) and gets no update.
-
 ## Test types
 
 | Type | Tool | Covers |
@@ -513,7 +510,7 @@ Which docs have a Portuguese version:
 | Docs | Languages |
 | --- | --- |
 | The readers' docs: `README.md`, `docs/product/*.md`, `docs/privacy.md` (and the user guides, when they exist) | English (canonical) and PT-BR: `README.pt-BR.md` at the root and `docs/pt-BR/` (`docs/pt-BR/produto/*.md`, `docs/pt-BR/privacidade.md`, `docs/pt-BR/README.md`). The PT-BR version is updated in the same PR, with the same structure and the same ids (RN-xx, MR-xx). |
-| The engineering docs: `docs/architecture.md`, `docs/data.md`, `docs/design.md`, `docs/operations.md`, `docs/roadmap.md`, `docs/legacy-app.md` and this file | English only. |
+| The engineering docs: `docs/architecture.md`, `docs/data.md`, `docs/design.md`, `docs/operations.md`, `docs/roadmap.md` and this file | English only. |
 
 The app's UI text stays in Portuguese until i18n lands (after the MVP), so strings quoted from the screen (such as the button "Sair dos outros dispositivos") stay in Portuguese inside the English docs.
 
