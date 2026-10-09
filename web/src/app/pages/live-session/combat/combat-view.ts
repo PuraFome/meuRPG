@@ -969,7 +969,15 @@ export class CombatView {
       const offer = this.ownOffer();
       // The turn options arrive after the combat: the question opens when its attack is in them.
       const ready = this.options() !== null;
-      if (this.isMaster() || !e || !offer || !ready || e.status !== EncounterStatus.ACTIVE) {
+      // While an attack sheet is open it is the one that gets the answer of its own roll.
+      if (
+        this.isMaster() ||
+        !e ||
+        !offer ||
+        !ready ||
+        this.attackSheetOpen() ||
+        e.status !== EncounterStatus.ACTIVE
+      ) {
         return;
       }
       if (!this.inspirationHandled.has(offer.holdId)) {
@@ -1427,6 +1435,7 @@ export class CombatView {
   /** The held rolls the page already opened its question for: a roll's own sheet registers its hold, so the reading
    * of the screen does not open the question a second time. */
   private readonly inspirationHandled = new Set<string>();
+  private readonly attackSheetOpen = signal(false);
 
   /** "Responder": the question of a held roll, at the d20 that was rolled. `false` while the attack is not in the options. */
   protected openHeldRoll(): boolean {
@@ -1552,13 +1561,17 @@ export class CombatView {
         : undefined,
       onHeld: (holdId) => this.inspirationHandled.add(holdId),
     };
+    this.attackSheetOpen.set(true);
     openSheet<AttackSheet, AttackSheetData, boolean>(this.dialog, this.bottomSheet, AttackSheet, {
       data,
       ariaLabel: asReaction
         ? `Ataque de oportunidade com ${attack.namePt || attack.name}`
         : `Atacar com ${attack.namePt || attack.name}${who ? `: ${who.label}` : ''}`,
       labelledBy: 'sheet-t',
-    }).subscribe();
+    }).subscribe({
+      complete: () => this.attackSheetOpen.set(false),
+      error: () => this.attackSheetOpen.set(false),
+    });
   }
 
   /** The master taps a door of the map: its sheet opens (open, close, lock, or reveal a secret door). The map reads itself again on the stream. */
