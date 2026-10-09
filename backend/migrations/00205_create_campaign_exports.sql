@@ -15,8 +15,9 @@
 -- keys on purpose: a row must outlive the campaign or the account long enough
 -- for the cleanup to find its file and delete it (a cascade would drop the row
 -- and leave the file where nothing names it). The cleanup deletes the file
--- first and the row after, and it also takes the rows whose campaign or account
--- is gone.
+-- first and the row after. The sweeper also takes the rows whose campaign or
+-- account is gone (ListExpiredCampaignExports), on its next pass: nothing else
+-- deletes a package when a campaign or an account is deleted.
 --
 -- create_key and create_hash are the idempotency key of StartCampaignExport
 -- (scoped to the caller) and the hash of its request.

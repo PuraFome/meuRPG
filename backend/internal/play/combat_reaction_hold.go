@@ -216,8 +216,13 @@ func (s *Service) releaseHold(ctx context.Context, c *combatTx, h playdb.Reactio
 		s.completeAnswers(c, windows, st, done.event)
 		return nil
 	case err != nil && clientError(err):
-		// The action cannot happen any more: it is dropped.
-		return c.q.SetReactionHoldState(ctx, playdb.SetReactionHoldStateParams{ID: h.ID, State: "dropped"})
+		// The action cannot happen any more: it is dropped, and the master reads that it was, since the
+		// answers may have spent slots and reactions already.
+		if err := c.q.SetReactionHoldState(ctx, playdb.SetReactionHoldStateParams{ID: h.ID, State: "dropped"}); err != nil {
+			return err
+		}
+		ev := actionEvent{Round: c.enc.Round, Secret: true, Actor: h.ActorID, Reaction: &reactionEvent{Kind: reactionHeldDropped, Used: true, Group: h.GroupID, Roll: h.Kind, Why: err.Error()}}
+		return insertEvent(ctx, c, eventReactionAnswered, &c.actorUserID, nil, ev)
 	case err != nil:
 		return err
 	}

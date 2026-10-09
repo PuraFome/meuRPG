@@ -40,8 +40,8 @@ func TestTheMastersCheckWaitsOnEveryHitWhenTheTableAsksForIt(t *testing.T) {
 	b.setRules(t, enemyReactionsAlways)
 	f := b.threeAndAGoblin(t)
 	held := b.mustAttack(t, b.caio, f, "Toren", battleaxe, "Goblin", d20(15))
-	if held.GetPendingDamage().GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_REACTION {
-		t.Fatalf("with \"Sempre\" the hit waits for %v, want the reaction", held.GetPendingDamage().GetStatus())
+	if !held.GetRoll().GetHeldForReaction() {
+		t.Fatalf("with \"Sempre\" the attack = %v, want it held for the master's check before the roll", held.GetRoll())
 	}
 	w := b.windowOf(t, b.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK)
 	if w == nil || !w.GetAnswerNow() || w.GetReactorId() != "" {
@@ -55,38 +55,51 @@ func TestTheMastersCheckWaitsOnEveryHitWhenTheTableAsksForIt(t *testing.T) {
 			t.Errorf("a player got %d windows: the check is the master's", n)
 		}
 	}
-	// "Nada a reagir": one tap, and the hit goes on.
-	b.mustAnswer(t, b.master, f, w.GetId(), passAnswer)
-	if _, err := b.damage(t, b.caio, f, held.GetPendingDamage().GetId(), inAppDamage); err != nil {
-		t.Errorf("RollDamage() after the check error = %v", err)
+	// "Nada a reagir": one tap rolls the attack, a second one on the hit lets it go on to its damage.
+	res := b.mustAnswer(t, b.master, f, w.GetId(), passAnswer)
+	w2 := b.windowOf(t, b.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK)
+	if w2 == nil || w2.GetId() == w.GetId() {
+		t.Fatalf("the hit has no check of its own after the roll: %v (answer %v)", w2, res.GetResult())
+	}
+	b.mustAnswer(t, b.master, f, w2.GetId(), passAnswer)
+	pending := b.firstPending(t)
+	if _, err := b.damage(t, b.caio, f, pending, inAppDamage); err != nil {
+		t.Errorf("RollDamage() after the checks error = %v", err)
 	}
 }
 
-// TestWhatThePlayersReadDoesNotTellWhetherTheEnemyCouldReact: "Sempre" on a Goblin and a
-// real Shield on a Mago give the attacker the same words and the same answer (RN-10).
+// TestWhatThePlayersReadDoesNotTellWhetherTheEnemyCouldReact: with "Sempre", a hit on a Goblin and a
+// hit on a Mago that really has Shield read the same for the attacker: the held attack, the wait,
+// and then, after the master's first answer, a second pause (the hit's check, or the real Shield).
 func TestWhatThePlayersReadDoesNotTellWhetherTheEnemyCouldReact(t *testing.T) {
 	t.Parallel()
-	pausing, e := mageFight(t)
-	realHit := pausing.mustAttack(t, pausing.caio, e, "Toren", battleaxe, "Mago", d20(9))
+	unmasked, e := mageFight(t)
+	unmasked.setRules(t, enemyReactionsAlways)
+	unmaskedHit := unmasked.mustAttack(t, unmasked.caio, e, "Toren", battleaxe, "Mago", d20(9))
 
-	always := newCasters(t)
-	always.setRules(t, enemyReactionsAlways)
-	f := always.threeAndAGoblin(t)
-	maskedHit := always.mustAttack(t, always.caio, f, "Toren", battleaxe, "Goblin", d20(15))
+	masked := newCasters(t)
+	masked.setRules(t, enemyReactionsAlways)
+	f := masked.threeAndAGoblin(t)
+	maskedHit := masked.mustAttack(t, masked.caio, f, "Toren", battleaxe, "Goblin", d20(15))
 
-	strip := func(p *playv1.PendingDamage) *playv1.PendingDamage {
-		q := proto.Clone(p).(*playv1.PendingDamage)
-		q.Id, q.TargetId, q.AttackerId = "", "", ""
+	bare := func(r *playv1.AttackRoll) *playv1.AttackRoll {
+		q := proto.Clone(r).(*playv1.AttackRoll)
+		q.AttackerId, q.TargetId = "", ""
 		return q
 	}
-	if !proto.Equal(strip(realHit.GetPendingDamage()), strip(maskedHit.GetPendingDamage())) {
-		t.Errorf("the pending damage differs:\n real   %v\n masked %v", realHit.GetPendingDamage(), maskedHit.GetPendingDamage())
+	if !proto.Equal(bare(unmaskedHit.GetRoll()), bare(maskedHit.GetRoll())) || !unmaskedHit.GetRoll().GetHeldForReaction() {
+		t.Errorf("the held attacks differ:\n unmasked %v\n masked %v", unmaskedHit.GetRoll(), maskedHit.GetRoll())
 	}
-	if !proto.Equal(pausing.get(t, pausing.caio).GetReactionWait(), always.get(t, always.caio).GetReactionWait()) {
-		t.Errorf("the wait differs:\n real   %v\n masked %v", pausing.get(t, pausing.caio).GetReactionWait(), always.get(t, always.caio).GetReactionWait())
+	for name, u := range map[string][2]*user{"the attacker": {unmasked.caio, masked.caio}, "another player": {unmasked.ana, masked.ana}} {
+		if !proto.Equal(unmasked.get(t, u[0]).GetReactionWait(), masked.get(t, u[1]).GetReactionWait()) {
+			t.Errorf("%s: the wait differs:\n unmasked %v\n masked %v", name, unmasked.get(t, u[0]).GetReactionWait(), masked.get(t, u[1]).GetReactionWait())
+		}
 	}
-	if !proto.Equal(pausing.get(t, pausing.ana).GetReactionWait(), always.get(t, always.ana).GetReactionWait()) {
-		t.Errorf("another player's wait differs")
+	// After the master's first answer both wait a second time, with the same words.
+	unmasked.mustAnswer(t, unmasked.master, e, unmasked.windowOf(t, unmasked.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK).GetId(), passAnswer)
+	masked.mustAnswer(t, masked.master, f, masked.windowOf(t, masked.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK).GetId(), passAnswer)
+	if !proto.Equal(unmasked.get(t, unmasked.caio).GetReactionWait(), masked.get(t, masked.caio).GetReactionWait()) || unmasked.get(t, unmasked.caio).GetReactionWait() == nil {
+		t.Errorf("the second wait differs:\n unmasked %v\n masked %v", unmasked.get(t, unmasked.caio).GetReactionWait(), masked.get(t, masked.caio).GetReactionWait())
 	}
 }
 

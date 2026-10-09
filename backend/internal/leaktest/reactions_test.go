@@ -18,6 +18,12 @@ import (
 // and returns the Mago's combatant. Toren carries a dagger.
 func (w *world) reactionFight() *playv1.Combatant {
 	w.t.Helper()
+	return w.reactionFightNamed(w.secrets.public("mage-name"))
+}
+
+// reactionFightNamed is reactionFight with the name the Mago is given.
+func (w *world) reactionFightNamed(name string) *playv1.Combatant {
+	w.t.Helper()
 	ctx := w.t.Context()
 	m := w.master
 	sheet := w.fullSheet("class:wizard", "race:human", 1)
@@ -27,7 +33,7 @@ func (w *world) reactionFight() *playv1.Combatant {
 	})))
 	hidden := false
 	must(m.combat.AddMonsters(ctx, rq(&playv1.AddMonstersRequest{
-		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), IdempotencyKey: newKey(), CreatureKey: "monster:mage", Count: 1, Name: w.secrets.public("mage-name"), Hidden: &hidden,
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), IdempotencyKey: newKey(), CreatureKey: "monster:mage", Count: 1, Name: name, Hidden: &hidden,
 	})))
 	e := must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
 	var mage *playv1.Combatant
@@ -178,6 +184,130 @@ func TestAnNPCsReactionWindowIsHeardByTheMasterAlone(t *testing.T) {
 	for _, p := range []*person{w.ana, w.caio} {
 		if o, c := count(p.name); o != 0 || c != 0 {
 			t.Errorf("%s heard %d openings and %d closings of an NPC's window", p.name, o, c)
+		}
+	}
+}
+
+// A Hellish Rebuke on a bestiary NPC (it has a sheet of numbers): the tiefling's player answers the
+// first question, and the second one (the aggressor's saving throw) is the master's. The player's
+// window never carries the aggressor's Dexterity modifier (RN-20); the master's does (positive
+// control).
+func TestHellishRebukeNeverGivesThePlayerTheAggressorsModifier(t *testing.T) {
+	w := newWorld(t)
+	ctx := t.Context()
+	m := w.master
+	sheet := w.fullSheet("class:wizard", "race:tiefling", 3)
+	must(m.characters.UpdateCharacter(ctx, rq(&charactersv1.UpdateCharacterRequest{
+		CampaignId: w.campaign, CharacterId: w.toren.GetId(), Revision: w.toren.GetRevision(), Name: w.toren.GetName(), Sheet: sheet,
+	})))
+	toren, bandit := w.combatant(w.toren), w.combatant(w.bandit)
+	// The aggressor is in plain sight of the tiefling (Hellish Rebuke needs to see it): its name is theirs now.
+	must(m.combat.SetCombatantHidden(ctx, rq(&playv1.SetCombatantHiddenRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: bandit.GetId(), IdempotencyKey: newKey(), Hidden: false})))
+	w.allow("bandit-name", w.ana, w.caio)
+	w.secrets.allowNeedle(bandit.GetId(), w.ana, w.caio)
+	for id, sq := range map[string][2]int32{toren.GetId(): {12, 14}, bandit.GetId(): {13, 14}} {
+		must(m.combat.MoveCombatant(ctx, rq(&playv1.MoveCombatantRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: id, IdempotencyKey: newKey(), Col: sq[0], Row: sq[1], Forced: true})))
+	}
+	for range 40 {
+		cur := must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+		if cur.GetCurrentCombatantId() == bandit.GetId() {
+			w.encounter = cur
+			break
+		}
+		must(m.combat.EndTurn(ctx, rq(&playv1.EndTurnRequest{CampaignId: w.campaign, EncounterId: cur.GetId(), IdempotencyKey: newKey(), ExpectedCombatantId: cur.GetCurrentCombatantId(), ExpectedRound: cur.GetRound()})))
+	}
+	opts := must(m.combat.GetTurnOptions(ctx, rq(&playv1.GetTurnOptionsRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: bandit.GetId()})))
+	key := ""
+	for _, a := range opts.GetOptions().GetAttacks() {
+		if a.GetEnabled() && a.GetAttack().GetKey() != "" && a.GetAttack().GetSaveDc() == 0 {
+			key = a.GetAttack().GetKey()
+			break
+		}
+	}
+	if key == "" {
+		t.Fatal("the bandit has no attack to make")
+	}
+	hit := must(m.combat.RollAttack(ctx, rq(&playv1.RollAttackRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), AttackerId: bandit.GetId(), AttackKey: key, TargetId: toren.GetId(), IdempotencyKey: newKey(),
+		Roll: &playv1.RollAttackRequest_D20Face{D20Face: 19},
+	})))
+	if hit.GetPendingDamage().GetId() == "" {
+		t.Fatalf("the bandit's attack = %v, want a hit", hit.GetRoll())
+	}
+	must(m.combat.RollDamage(ctx, rq(&playv1.RollDamageRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), PendingDamageId: hit.GetPendingDamage().GetId(), IdempotencyKey: newKey(), Roll: &playv1.RollDamageRequest_RollInApp{RollInApp: true}})))
+	must(m.combat.ApplyPendingDamage(ctx, rq(&playv1.ApplyPendingDamageRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), PendingDamageId: hit.GetPendingDamage().GetId(), IdempotencyKey: newKey()})))
+
+	first := windowOfKind(w.caio, w, playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE)
+	if first == nil {
+		t.Fatal("the tiefling has no Hellish Rebuke window after the damage")
+	}
+	must(w.caio.combat.AnswerReaction(ctx, rq(&playv1.AnswerReactionRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: first.GetId(), Answer: playv1.ReactionChoice_REACTION_CHOICE_USE, UseRacial: true, IdempotencyKey: newKey(),
+	})))
+
+	asMaster := windowOfKind(m, w, playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE)
+	if asMaster == nil || !asMaster.GetSecondStep() || !asMaster.GetHellishRebukeSave().GetBonusKnown() {
+		t.Fatalf("the master's second step = %v, want the aggressor's modifier (the positive control)", asMaster)
+	}
+	asPlayer := windowOfKind(w.caio, w, playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE)
+	if asPlayer == nil {
+		t.Fatal("the reactor's player lost the window")
+	}
+	if p := asPlayer.GetHellishRebukeSave(); p.GetSaveBonus() != 0 || p.GetBonusKnown() {
+		t.Errorf("the player's second step carries the aggressor's modifier: %v", p)
+	}
+	for _, r := range w.reads(w.caio) {
+		for _, f := range w.inspect(w.caio, r, nil) {
+			t.Errorf("Caio: %s", f)
+		}
+	}
+}
+
+// windowOfKind is the first window of the kind that the person reads in the combat.
+func windowOfKind(p *person, w *world, kind playv1.ReactionKind) *playv1.ReactionWindow {
+	enc := must(p.combat.GetEncounter(w.t.Context(), rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+	for _, win := range enc.GetReactionWindows() {
+		if win.GetKind() == kind {
+			return win
+		}
+	}
+	return nil
+}
+
+// A Mago that is not hidden but is outside what Ana's character sees: when the master uses its
+// Escudo, the line of the log is Caio's (his character sees it) and never Ana's: neither the
+// Mago's name nor the reaction reaches her (RN-10, MR-036). Caio's read is the positive control.
+func TestAReactionOutsideAPlayersVisionIsNotInTheirLog(t *testing.T) {
+	w := newWorld(t)
+	name := w.secrets.marker("mage-seen-by-caio", w.caio)
+	mage := w.reactionFightNamed(name)
+	toren := w.combatant(w.toren)
+	hit := w.caio.call(playv1connect.CombatServiceRollAttackProcedure, &playv1.RollAttackRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), AttackerId: toren.GetId(), AttackKey: "equipment:dagger", TargetId: mage.GetId(),
+		IdempotencyKey: newKey(), Roll: &playv1.RollAttackRequest_D20Face{D20Face: 10},
+	})
+	if !hit.ok() {
+		t.Fatalf("Toren's attack: status %d %s", hit.status, hit.body)
+	}
+	win := windowOfKind(w.master, w, playv1.ReactionKind_REACTION_KIND_SHIELD)
+	if win == nil {
+		t.Fatal("the Mago has no Shield window")
+	}
+	w.reactionNeedles(win.GetId())
+	must(w.master.combat.AnswerReaction(t.Context(), rq(&playv1.AnswerReactionRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: win.GetId(), Answer: playv1.ReactionChoice_REACTION_CHOICE_USE,
+		Slot: &playv1.SpellSlot{Level: 1}, IdempotencyKey: newKey(),
+	})))
+	// What Caio sees he may read: the reaction's names; Ana's reads must hold none of them.
+	w.secrets.allowNeedle("Escudo Arcano", w.caio)
+	w.secrets.allowNeedle("spell:shield", w.caio)
+	caio := w.reads(w.caio)[1]
+	if !contains(caio.body, "Escudo Arcano") || !contains(caio.body, name) {
+		t.Fatalf("Caio's log does not hold the line: %s", caio.body)
+	}
+	for _, r := range w.reads(w.ana) {
+		for _, f := range w.inspect(w.ana, r, nil) {
+			t.Errorf("Ana: %s", f)
 		}
 	}
 }

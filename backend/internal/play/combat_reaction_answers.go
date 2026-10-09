@@ -248,7 +248,11 @@ func (s *Service) canBeCut(ctx context.Context, c *combatTx, rollerID string) (b
 	if i < 0 {
 		return false, nil
 	}
-	roller := cs[i]
+	return s.rollerCanBeCut(ctx, c, cs[i])
+}
+
+// rollerCanBeCut is canBeCut for a combatant already read.
+func (s *Service) rollerCanBeCut(ctx context.Context, c *combatTx, roller playdb.Combatant) (bool, error) {
 	if slices.Contains(roller.Conditions, "condition:deafened") {
 		return false, nil // it cannot hear the bard (SRD, College of Lore)
 	}
