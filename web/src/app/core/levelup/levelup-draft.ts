@@ -3,6 +3,7 @@ import { computed, signal } from '@angular/core';
 import {
   LevelUpHitPointsMethod,
   LevelUpHitPointsRule,
+  LevelUpProficiencyKind,
   LevelUpSpellsKind,
   type LevelUpOptions,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
@@ -19,6 +20,7 @@ import {
   needText,
   preparedMore,
   preparedOptions,
+  proficiencyPick,
   skillOptions,
   spellOptions,
   stepsFor,
@@ -69,6 +71,8 @@ export class LevelUpDraft {
   readonly features: PickSet = signal<ReadonlySet<string>>(new Set());
   readonly skills: PickSet = signal<ReadonlySet<string>>(new Set());
   readonly expertise: PickSet = signal<ReadonlySet<string>>(new Set());
+  /** The musical instrument a Bard taken as a later class picks (a proficiency key), or ''. */
+  readonly instrument = signal('');
   private readonly preparedMax = signal(0);
   /** The new maximum of prepared spells, as `PreviewLevelUp` derives it (an ability increase moves it).
    * Setting it drops the prepared picks beyond the new maximum. */
@@ -134,7 +138,24 @@ export class LevelUpDraft {
   readonly preparedItems = computed<PickItem[]>(() =>
     preparedOptions(this.effective(), this.catalog.spells, this.have, this.spells()),
   );
-  readonly skillItems = computed<PickItem[]>(() => skillOptions(this.catalog.skills, this.have));
+  readonly skillItems = computed<PickItem[]>(() =>
+    skillOptions(this.catalog.skills, this.have, this.options),
+  );
+  /** The instruments of a new Bard, with the ones the character has turned off. */
+  readonly instrumentItems = computed<PickItem[]>(() =>
+    (
+      this.options.proficiencyChoices.find((c) => c.kind === LevelUpProficiencyKind.INSTRUMENT)
+        ?.from ?? []
+    ).map((f) => ({
+      key: f.key,
+      name: f.namePt,
+      sub: '',
+      ...(f.alreadyHave ? { disabled: 'Você já tem' } : {}),
+    })),
+  );
+  readonly instrumentAsked = computed(() =>
+    proficiencyPick(this.options, LevelUpProficiencyKind.INSTRUMENT),
+  );
   readonly expertiseItems = computed<PickItem[]>(() =>
     expertiseOptions(this.catalog.skills, this.have, this.skills()),
   );
@@ -226,6 +247,9 @@ export class LevelUpDraft {
           lack(this.skillsAsked(), this.skillItems(), 'perícias') ||
           needText(n, 'perícia', 'perícias'),
       });
+    if (this.instrumentAsked() > 0 && this.instrument() === '') {
+      out.push({ step: 'picks', id: 'instrument', text: 'Falta escolher o instrumento.' });
+    }
     n = short(this.expertise(), this.expertiseAsked());
     if (n > 0)
       out.push({
@@ -279,6 +303,7 @@ export class LevelUpDraft {
       this.abilityKeys().length > 0 ||
       this.hpCard() !== this.startCard ||
       this.subclassKey() !== '' ||
+      this.instrument() !== '' ||
       [
         this.cantrips(),
         this.spells(),
@@ -303,6 +328,7 @@ export class LevelUpDraft {
       featureChoiceKeys: [...this.features()],
       skillProficiencyKeys: [...this.skills()],
       expertiseSkillKeys: [...this.expertise()],
+      instrumentKey: this.instrument(),
       hitPoints: hp
         ? {
             method:
@@ -403,7 +429,15 @@ export class LevelUpDraft {
       this.totals().featureChoices.flatMap((f) => f.options.map((o) => o.key)),
     );
     this.features.set(new Set([...other.features()].filter((k) => options.has(k))));
-    this.skills.set(keep(other.skills(), this.skillItems()));
+    this.skills.set(
+      keep(
+        other.skills(),
+        this.skillItems().filter((i) => !i.disabled),
+      ),
+    );
+    if (this.instrumentItems().some((i) => i.key === other.instrument() && !i.disabled)) {
+      this.instrument.set(other.instrument());
+    }
     this.expertise.set(keep(other.expertise(), this.expertiseItems()));
     this.reconcile();
   }
@@ -513,8 +547,20 @@ export class LevelUpDraft {
   }
 
   toggleSkill(key: string): void {
+    if (this.skillItems().find((i) => i.key === key)?.disabled && !this.skills().has(key)) {
+      return;
+    }
     this.flip(this.skills, key, this.skillsAsked());
     this.dropUntrainedExpertise();
+  }
+
+  /** The instrument is one pick: tapping the picked one drops it. */
+  toggleInstrument(key: string): void {
+    const item = this.instrumentItems().find((i) => i.key === key);
+    if (item?.disabled) {
+      return;
+    }
+    this.instrument.set(this.instrument() === key ? '' : key);
   }
 
   toggleExpertise(key: string): void {

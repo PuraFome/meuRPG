@@ -124,3 +124,24 @@ describe('an option the master retired (RN-23, 10.1d)', () => {
     expect(refusalStep(LevelUpRefusalReason.SWITCHED_OFF_CHOICE)).toBeNull();
   });
 });
+
+describe('the multiclass refusals', () => {
+  it('send the player to the class step or to the picks, with words of their own', () => {
+    expect(refusalStep(LevelUpRefusalReason.MULTICLASS_PREREQUISITE)).toBe('class');
+    expect(refusalStep(LevelUpRefusalReason.MULTICLASS_PREREQUISITE_CURRENT)).toBe('class');
+    expect(refusalStep(LevelUpRefusalReason.PROFICIENCY_CHOICE)).toBe('picks');
+    expect(refusalStep(LevelUpRefusalReason.INSTRUMENT_CHOICE)).toBe('picks');
+    expect(refusalMessage({ reason: LevelUpRefusalReason.MULTICLASS_PREREQUISITE })).toContain(
+      'Escolha outra classe',
+    );
+    expect(
+      refusalMessage({ reason: LevelUpRefusalReason.MULTICLASS_PREREQUISITE_CURRENT }),
+    ).toContain('nenhuma classe nova entra');
+    expect(refusalMessage({ reason: LevelUpRefusalReason.PROFICIENCY_CHOICE })).toContain(
+      'perícia',
+    );
+    expect(refusalMessage({ reason: LevelUpRefusalReason.INSTRUMENT_CHOICE })).toContain(
+      'instrumento',
+    );
+  });
+});

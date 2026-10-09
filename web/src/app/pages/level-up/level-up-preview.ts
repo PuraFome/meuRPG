@@ -1,6 +1,9 @@
 import { signal } from '@angular/core';
 
-import type { LevelUpRefusal } from '../../../gen/meurpg/characters/v1/characters_pb';
+import type {
+  LevelUpMulticlassSummary,
+  LevelUpRefusal,
+} from '../../../gen/meurpg/characters/v1/characters_pb';
 import type { DerivedSheet } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { LevelUpClient, type LevelUpChoicesInit } from '../../core/levelup/levelup-client';
 import { describeLevelUpFailure } from '../../core/levelup/levelup-errors';
@@ -13,6 +16,8 @@ export interface PreviewState {
   readonly afterAverage: DerivedSheet | null;
   /** The first rule the choices break: unset when `LevelUpCharacter` would accept them. */
   readonly refusal: LevelUpRefusal | null;
+  /** What the summary says about a sheet with several classes after the level; null for one class. */
+  readonly multiclass: LevelUpMulticlassSummary | null;
   /** A read is on its way. */
   readonly loading: boolean;
   /** Why the last read failed ('' when it did not). */
@@ -32,6 +37,7 @@ export class LevelUpPreview {
     after: null,
     afterAverage: null,
     refusal: null,
+    multiclass: null,
     loading: true,
     failed: '',
   });
@@ -68,6 +74,7 @@ export class LevelUpPreview {
             after: now.after ?? null,
             afterAverage: (avg ?? now).after ?? null,
             refusal: now.refusal ?? null,
+            multiclass: now.multiclassSummary ?? null,
             loading: false,
             failed: '',
           });
