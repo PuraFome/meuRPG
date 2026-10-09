@@ -27,6 +27,7 @@ describe('characterBlockedMessage', () => {
     expect(characterBlockedMessage('story_locked')).toContain('Permitir editar a história');
     expect(characterBlockedMessage('not_pending')).toContain('já foi aprovado');
     expect(characterBlockedMessage('awaiting_approval')).toContain('Aprove ou recuse');
+    expect(characterBlockedMessage('no_changes_requested')).toContain('pedido de ajustes aberto');
   });
 
   it('falls back to a generic message when the reason is unknown', () => {
@@ -66,6 +67,16 @@ describe('describeCharacterError', () => {
     expect(
       describeCharacterError(blockedError(CharacterBlockedReason.AWAITING_APPROVAL)),
     ).toContain('Aprove ou recuse');
+  });
+
+  it('reads NO_CHANGES_REQUESTED, and says a reason that is not 1 to 500 characters (the field "reason")', () => {
+    expect(
+      describeCharacterError(blockedError(CharacterBlockedReason.NO_CHANGES_REQUESTED)),
+    ).toContain('pedido de ajustes aberto');
+    const badReason = new ConnectError('bad', Code.InvalidArgument, undefined, [
+      { desc: InvalidFieldSchema, value: { field: 'reason' } },
+    ]);
+    expect(describeCharacterError(badReason)).toBe('O motivo precisa ter de 1 a 500 caracteres.');
   });
 
   it('falls back to a generic message for failed_precondition with no detail', () => {

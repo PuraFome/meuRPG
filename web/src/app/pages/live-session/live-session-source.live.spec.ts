@@ -170,6 +170,22 @@ describe('LiveSessionSourceLive.watch', () => {
     ).toEqual(['ready', 'contentChanged']);
   });
 
+  it('maps the three character hints to one event with the character, and nothing else', async () => {
+    expect(
+      await events([
+        create(WatchGameSessionResponseSchema, {
+          event: { case: 'characterChangesRequested', value: { characterId: 'c-1' } },
+        }),
+        create(WatchGameSessionResponseSchema, {
+          event: { case: 'characterResubmitted', value: { characterId: 'c-2' } },
+        }),
+        create(WatchGameSessionResponseSchema, {
+          event: { case: 'characterRevived', value: { characterId: 'c-3' } },
+        }),
+      ]),
+    ).toEqual(['characterChanged', 'characterChanged', 'characterChanged']);
+  });
+
   it('still takes an event it does not know as a sign the stream is alive', async () => {
     // An empty `event` is what a newer server's oneof case looks like to this app.
     expect(await events([create(WatchGameSessionResponseSchema, {})])).toEqual(['heartbeat']);

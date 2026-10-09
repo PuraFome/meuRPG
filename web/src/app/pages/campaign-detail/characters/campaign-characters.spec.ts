@@ -121,6 +121,31 @@ describe('CampaignCharacters', () => {
     expect(queue.querySelector('a')?.getAttribute('href')).toBe('/campaigns/camp-1/characters/c2');
   });
 
+  it('tags the waiting row "Ajustes pedidos" once the master asked for changes, and no other row', async () => {
+    const pending = (id: string, reviewStatus: 'awaiting' | 'changes_requested') => ({
+      id,
+      name: id,
+      kind: 'player' as const,
+      state: 'pending' as const,
+      classSummary: 'Mago 1',
+      playerDisplayName: 'Lia',
+      reviewStatus,
+    });
+    fake.listCharactersResult = Promise.resolve({
+      playerCharacters: [pending('Lyra', 'changes_requested'), pending('Novata', 'awaiting')],
+      npcs: [],
+      hasLivingCharacter: false,
+    });
+
+    const { el } = await render(true);
+
+    const rows = Array.from(
+      el.querySelectorAll('ul[aria-labelledby="awaiting-approval-heading"] li'),
+    );
+    expect(rows[0].textContent).toContain('Ajustes pedidos');
+    expect(rows[1].textContent).not.toContain('Ajustes pedidos');
+  });
+
   it('shows no "Esperando aprovação" when nobody waits', async () => {
     fake.listCharactersResult = Promise.resolve({
       playerCharacters: [

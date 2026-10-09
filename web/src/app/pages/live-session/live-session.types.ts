@@ -163,7 +163,9 @@ export type LiveEventVm =
   /** `creatures_changed` (MR-037): the character's creatures changed outside a combat; read them again. */
   | { readonly kind: 'creaturesChanged' }
   /** `content_changed` (10.1d): the table's content changed; read the catalog again with this member's role. */
-  | { readonly kind: 'contentChanged' };
+  | { readonly kind: 'contentChanged' }
+  /** `character_changes_requested`, `character_resubmitted` or `character_revived`: that character changed; read it again. */
+  | { readonly kind: 'characterChanged'; readonly characterId: string };
 
 /**
  * What a failed call means for the page, from its Connect code and typed

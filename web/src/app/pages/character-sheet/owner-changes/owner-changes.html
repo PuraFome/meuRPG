@@ -1,0 +1,28 @@
+<div class="oc">
+  <div class="mr-notice mr-notice--warning" role="alert">
+    <mat-icon aria-hidden="true">edit</mat-icon>
+    <div class="oc__body">
+      <p><strong>O mestre pediu ajustes.</strong></p>
+      <blockquote class="oc__reason">“{{ reason() }}”</blockquote>
+      @if (when()) {
+        <p class="oc__when">Pedido em {{ when() }}. Ajuste a ficha e envie de novo.</p>
+      }
+    </div>
+  </div>
+  @if (error(); as e) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ e }}</p>
+    </div>
+  }
+  <div class="oc__actions">
+    <button matButton="filled" type="button" [disabled]="busy()" (click)="resubmit.emit()">
+      Enviar de novo
+    </button>
+    @if (editLink(); as link) {
+      <a matButton="outlined" [routerLink]="link">
+        <mat-icon aria-hidden="true">edit</mat-icon>Editar ficha
+      </a>
+    }
+  </div>
+</div>

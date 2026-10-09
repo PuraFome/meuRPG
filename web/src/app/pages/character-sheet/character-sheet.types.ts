@@ -1,4 +1,9 @@
-import { AbilityKey, CharacterKind, CharacterState } from '../../core/characters/characters.types';
+import {
+  AbilityKey,
+  CharacterKind,
+  CharacterState,
+  ReviewStatus,
+} from '../../core/characters/characters.types';
 import { DamageTypeKey, SkillProficiency } from '../../core/characters/character-labels';
 
 /**
@@ -243,6 +248,15 @@ export interface CharacterStoryVm {
   readonly allies: string;
 }
 
+/** `Character.review` (RN-15): only the master and the owning player ever get it. */
+export interface ReviewVm {
+  readonly status: ReviewStatus;
+  /** What the master asked, 1 to 500 characters; empty while `status` is `'awaiting'`. */
+  readonly reason: string;
+  readonly requestedAt: Date | null;
+  readonly resubmittedAt: Date | null;
+}
+
 export interface CharacterSheetVm {
   readonly id: string;
   readonly campaignId: string;
@@ -297,6 +311,12 @@ export interface CharacterSheetVm {
    * approval (`state === 'pending'`, RN-15 / MR-024). Gates "Aprovar
    * personagem" and "Recusar personagem". */
   readonly canApprove: boolean;
+  /** `Character.can_request_changes`: the master, for a pending character. Gates "Pedir ajustes". */
+  readonly canRequestChanges: boolean;
+  /** `Character.can_resubmit`: the owning player, while the master's request for changes is open. Gates "Enviar de novo". */
+  readonly canResubmit: boolean;
+  /** `Character.review`: the master's request for changes on a pending character; `null` for anyone who may not read it. */
+  readonly review: ReviewVm | null;
   readonly isMaster: boolean;
   readonly playerDisplayName: string | null;
   readonly raceLabel: string;
@@ -372,4 +392,19 @@ export abstract class CharacterSheetSource {
    * player's pending membership too (`RejectCharacter`). Nothing comes
    * back: the character is gone. */
   abstract rejectCharacter(campaignId: string, characterId: string): Promise<void>;
+  /** Master only (RN-15): the pending character goes back to its player with
+   * a reason (`RequestCharacterChanges`); it stays pending. */
+  abstract requestCharacterChanges(
+    campaignId: string,
+    characterId: string,
+    reason: string,
+    idempotencyKey: string,
+  ): Promise<CharacterSheetVm>;
+  /** Owning player only: sends the pending character again after the
+   * master's request (`ResubmitCharacter`). */
+  abstract resubmitCharacter(
+    campaignId: string,
+    characterId: string,
+    idempotencyKey: string,
+  ): Promise<CharacterSheetVm>;
 }

@@ -1,3 +1,5 @@
+import { timestampFromDate } from '@bufbuild/protobuf/wkt';
+
 import {
   Alignment,
   BasicSheet,
@@ -8,6 +10,7 @@ import {
   CharacterStory,
   FullSheet,
   LevelUpReason,
+  Review,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import {
   Attack,
@@ -203,6 +206,11 @@ function characterWithFullSheet(full: FullSheet): Character {
     storyEditingAllowed: false,
     canSetStoryEditing: false,
     canApprove: false,
+    canRequestChanges: false,
+    canResubmit: false,
+    canRevive: false,
+    deathEncounterId: '',
+    revivifyBlocked: false,
     canLevelUp: false,
     levelUpReason: LevelUpReason.UNSPECIFIED,
   };
@@ -449,5 +457,35 @@ describe("the sheet maps a Warlock's Pact Magic apart from the spell slots", () 
     }).spellcasting;
     expect(wizard).toMatchObject({ spellsPreparedMax: 7, spellsKnownMax: 0 });
     expect(sorcerer).toMatchObject({ spellsPreparedMax: 0, spellsKnownMax: 5 });
+  });
+});
+
+describe('the master review of a pending character, read from Character.review', () => {
+  const base = characterWithFullSheet(minimalFullSheet({}));
+
+  it('maps the status, the reason and the dates', () => {
+    const when = new Date(2026, 9, 8, 21, 10);
+    const vm = toCharacterSheetVm({
+      ...base,
+      canRequestChanges: true,
+      review: {
+        $typeName: 'meurpg.characters.v1.CharacterReview',
+        status: Review.CHANGES_REQUESTED,
+        reason: 'Falta o equipamento.',
+        requestedAt: timestampFromDate(when),
+        resubmittedAt: undefined,
+      },
+    });
+    expect(vm.canRequestChanges).toBe(true);
+    expect(vm.review).toEqual({
+      status: 'changes_requested',
+      reason: 'Falta o equipamento.',
+      requestedAt: when,
+      resubmittedAt: null,
+    });
+  });
+
+  it('has no review for anyone who may not read it', () => {
+    expect(toCharacterSheetVm({ ...base, review: undefined }).review).toBeNull();
   });
 });

@@ -19,6 +19,9 @@ export type CharacterKind = 'player' | 'enemy' | 'boss' | 'minion' | 'story';
  * reject it (RN-15, MR-024). */
 export type CharacterState = 'draft' | 'locked' | 'dead' | 'pending';
 
+/** Mirrors `Review`: where the master's review of a pending character stands (RN-15). */
+export type ReviewStatus = 'awaiting' | 'changes_requested' | 'resubmitted';
+
 /** `Character.kind` decides which sheet shape it carries — full for player,
  * enemy and boss; basic for minion and story (`CharacterSheet`'s `oneof`,
  * plan §4). */
@@ -41,5 +44,6 @@ export type CharacterBlockedReason =
   | 'story_locked'
   | 'not_pending'
   | 'awaiting_approval'
+  | 'no_changes_requested'
   | 'archived_content'
   | 'switched_off_content';

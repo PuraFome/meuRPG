@@ -70,6 +70,10 @@ func (s *Service) ApproveCharacter(
 		if err != nil {
 			return wrap("approve character", err)
 		}
+		// The master's reason goes with the pending state (docs/privacy.md).
+		if err := q.DeleteCharacterReview(ctx, id); err != nil {
+			return wrap("delete the review", err)
+		}
 		// A player who deleted their account while waiting has no
 		// membership left: the character alone stays, as in RN-16.
 		if row.PlayerUserID != nil {
@@ -145,11 +149,16 @@ func (s *Service) RejectCharacter(
 // purpose, like LockSheets: the check was made by whoever calls it. Nothing
 // else calls it.
 func (s *Service) ApprovePendingCharacter(ctx context.Context, tx pgx.Tx, campaignID, userID string) error {
-	_, err := s.queries.WithTx(tx).ApprovePendingCharacterOfPlayer(ctx, charactersdb.ApprovePendingCharacterOfPlayerParams{
+	q := s.queries.WithTx(tx)
+	_, err := q.ApprovePendingCharacterOfPlayer(ctx, charactersdb.ApprovePendingCharacterOfPlayerParams{
 		CampaignID: campaignID, PlayerUserID: &userID,
 	})
 	if err != nil {
 		return wrap("approve pending character", err)
+	}
+	// The master's reason, if he asked for changes, goes with the pending state.
+	if err := q.DeleteCharacterReviewsOfPlayer(ctx, charactersdb.DeleteCharacterReviewsOfPlayerParams{CampaignID: campaignID, PlayerUserID: userID}); err != nil {
+		return wrap("delete the review", err)
 	}
 	return nil
 }

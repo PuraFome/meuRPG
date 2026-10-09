@@ -240,6 +240,9 @@ type CombatRoster interface {
 	// MarkCharacterDead does (RN-03): the master confirmed its death in a combat.
 	// It is idempotent.
 	MarkDead(ctx context.Context, tx pgx.Tx, campaignID, characterID string, at time.Time) error
+	// MarkDeadInCombat is MarkDead for the death a combat confirms: it also keeps the round
+	// and the combat the master read it in (Character.death_round).
+	MarkDeadInCombat(ctx context.Context, tx pgx.Tx, campaignID, characterID string, at time.Time, round int32, encounterID string) error
 	// SceneOptions returns, for each key of a scene's checks, the character's
 	// bonus and passive value (the rules engine's SceneOptions), in the order of
 	// keys. `not_found` for any other character.

@@ -6,8 +6,13 @@ import {
   CharacterService,
   CharacterState as GenCharacterState,
   CharacterSummary,
+  Review as GenReview,
 } from '../../../../gen/meurpg/characters/v1/characters_pb';
-import { CharacterKind, CharacterState } from '../../../core/characters/characters.types';
+import {
+  CharacterKind,
+  CharacterState,
+  ReviewStatus,
+} from '../../../core/characters/characters.types';
 import { CONNECT_TRANSPORT } from '../../../core/connect/transport';
 import {
   CampaignCharacterListItemVm,
@@ -32,6 +37,12 @@ const STATE_FROM_GEN: Record<GenCharacterState, CharacterState> = {
   [GenCharacterState.PENDING]: 'pending',
 };
 
+const REVIEW_FROM_GEN: Partial<Record<GenReview, ReviewStatus>> = {
+  [GenReview.AWAITING]: 'awaiting',
+  [GenReview.CHANGES_REQUESTED]: 'changes_requested',
+  [GenReview.RESUBMITTED]: 'resubmitted',
+};
+
 function toListItemVm(c: CharacterSummary): CampaignCharacterListItemVm {
   return {
     id: c.id,
@@ -40,6 +51,7 @@ function toListItemVm(c: CharacterSummary): CampaignCharacterListItemVm {
     state: STATE_FROM_GEN[c.state],
     classSummary: c.classSummary,
     playerDisplayName: c.playerDisplayName || null,
+    reviewStatus: REVIEW_FROM_GEN[c.reviewStatus] ?? null,
   };
 }
 

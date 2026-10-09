@@ -136,7 +136,7 @@ func (s *Service) characterToProto(content *rules.Content, row charactersdb.Char
 		Story:                story,
 		Revision:             row.Revision,
 		SheetLockedAt:        timestamp(row.SheetLockedAt),
-		DiedAt:               timestamp(row.DiedAt),
+		DiedAt:               diedAt(row),
 		CreatedAt:            timestamppb.New(row.CreatedAt),
 		UpdatedAt:            timestamppb.New(row.UpdatedAt),
 		CanEdit:              master || playerEditsSheet(state),
@@ -146,6 +146,17 @@ func (s *Service) characterToProto(content *rules.Content, row charactersdb.Char
 		StoryEditingAllowed:  row.StoryEditingAllowed,
 		CanSetStoryEditing:   master && player,
 		CanApprove:           master && state == charactersv1.CharacterState_CHARACTER_STATE_PENDING,
+		CanRequestChanges:    master && player && state == charactersv1.CharacterState_CHARACTER_STATE_PENDING,
+		CanRevive:            master && player && state == charactersv1.CharacterState_CHARACTER_STATE_DEAD,
+	}
+	if player && mayReadReview(m, row) {
+		c.RevivedAt = timestamp(row.RevivedAt)
+		if state == charactersv1.CharacterState_CHARACTER_STATE_DEAD {
+			c.DeathRound, c.DeathEncounterId = row.DeathRound, deref(row.DeathEncounterID)
+		}
+	}
+	if master && player && state == charactersv1.CharacterState_CHARACTER_STATE_DEAD {
+		c.RevivifyBlocked = row.RevivifyBlocked
 	}
 	if full := sheet.GetFull(); full != nil {
 		build := buildOf(full)
@@ -168,4 +179,13 @@ func timestamp(t *time.Time) *timestamppb.Timestamp {
 		return nil
 	}
 	return timestamppb.New(*t)
+}
+
+// diedAt is when the character died, unset while it lives: a revived character keeps its
+// died_at in the table as the master's history, but it is not dead.
+func diedAt(row charactersdb.Character) *timestamppb.Timestamp {
+	if row.Status != statusDead {
+		return nil
+	}
+	return timestamp(row.DiedAt)
 }

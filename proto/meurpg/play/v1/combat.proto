@@ -3284,6 +3284,10 @@ enum CombatLogKind {
   // (2d8 + 2: 3, 4)"). Only the master gets the line, and it also comes from
   // before the combat begins (round 0).
   COMBAT_LOG_KIND_MONSTERS_ADDED = 24;
+  // The master brought a dead player's character back (ReviveCharacter): "O mestre
+  // reviveu Toren". The revived combatant is `target_id`; no actor. Everyone sees it,
+  // unless the combatant is hidden.
+  COMBAT_LOG_KIND_CHARACTER_REVIVED = 25;
 }
 
 // WildShapeEndReason says why a druid's beast form ended.
@@ -3438,6 +3442,12 @@ message CombatLogSpell {
   DiceRoll pool_roll = 6;
   string effect_condition_key = 7;
   optional int32 effect_threshold = 8;
+  // Revivify (effect_kind REVIVE): the diamonds worth 300 gp were spent ("Ilaria gastou
+  // diamantes de 300 PO"). Only the master and the caster's player.
+  bool material_spent = 9;
+  // Revivify: the round the revived creature died in ("morreu na rodada 3"). Only the
+  // master.
+  optional int32 revived_death_round = 10;
 }
 
 // CombatLogSpellTarget is what a cast did to one target, in the log. Its fields

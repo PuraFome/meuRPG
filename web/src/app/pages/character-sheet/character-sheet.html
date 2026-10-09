@@ -43,9 +43,9 @@
   @case ('ready') {
     @let vm = s.vm;
     <app-sheet-header [vm]="vm" [xpMode]="xpMode()">
-      @if (vm.canEdit) {
+      @if (vm.canEdit && !(vm.state === 'pending' && !vm.isMaster && vm.review?.status === 'changes_requested')) {
         <a
-          [matButton]="vm.canApprove ? 'outlined' : 'filled'"
+          [matButton]="vm.state === 'pending' ? 'outlined' : 'filled'"
           [routerLink]="['/campaigns', vm.campaignId, 'characters', vm.id, 'edit']"
         >
           Editar ficha
@@ -105,30 +105,50 @@
       }
     }
 
-    <!-- Invite with approval (RN-15, MR-024). -->
+    <!-- Invite with approval (RN-15, MR-024), and the master's request for changes. -->
     @if (vm.state === 'pending') {
       @if (vm.canApprove) {
-        <section class="mr-notice mr-notice--warning" aria-label="Aprovação do personagem">
-          <mat-icon aria-hidden="true">hourglass_top</mat-icon>
-          <div class="approval">
-            <p>
-              <strong>Este personagem espera a sua aprovação.</strong> Aprovar põe o personagem e o
-              jogador na campanha. Recusar apaga o personagem, e o jogador precisa de um convite
-              novo para tentar de novo.
-            </p>
-            <div class="approval__actions">
-              @if (confirmingReject()) {
-                <button
-                  matButton="filled"
-                  type="button"
-                  class="danger js-confirm-reject"
-                  [disabled]="approvalState().status === 'saving'"
-                  (click)="reject(vm.campaignId, vm.id)"
-                >
-                  Confirmar recusa
-                </button>
-                <button matButton type="button" (click)="cancelReject()">Cancelar</button>
-              } @else {
+        <!-- The announcements of the master's actions: in the page before they have anything to say. -->
+        <div class="mr-visually-hidden" role="status">{{ announcement() }}</div>
+        @if (requestingChanges()) {
+          <app-request-changes
+            [characterName]="vm.name"
+            [playerName]="playerName(vm)"
+            [busy]="requestChangesState().status === 'saving'"
+            [error]="errorOf(requestChangesState())"
+            (requested)="requestChanges(vm.campaignId, vm.id, $event)"
+            (cancelled)="cancelRequestChanges()"
+          />
+        } @else {
+          <section class="mr-notice mr-notice--warning" aria-label="Aprovação do personagem">
+            <mat-icon aria-hidden="true">{{ vm.review?.status === 'awaiting' || !vm.review ? 'hourglass_top' : 'schedule' }}</mat-icon>
+            <div class="approval">
+              @switch (vm.review?.status) {
+                @case ('changes_requested') {
+                  <p>
+                    <strong>Você pediu ajustes</strong> ({{ whenOf(vm.review?.requestedAt) }}).
+                    Esperando {{ playerName(vm) }} reenviar a ficha. Você ainda pode aprovar ou
+                    recusar.
+                  </p>
+                  <blockquote class="approval__reason">“{{ vm.review?.reason }}”</blockquote>
+                }
+                @case ('resubmitted') {
+                  <p>
+                    <strong>{{ playerNameCapital(vm) }} reenviou a ficha</strong>
+                    ({{ whenOf(vm.review?.resubmittedAt) }}), com ajustes. Seu pedido foi:
+                  </p>
+                  <blockquote class="approval__reason">“{{ vm.review?.reason }}”</blockquote>
+                }
+                @default {
+                  <p>
+                    <strong>Este personagem espera a sua aprovação.</strong> Aprovar põe o
+                    personagem e o jogador na campanha. Pedir ajustes devolve a ficha ao jogador,
+                    com o seu motivo, e o convite continua valendo. Recusar apaga o personagem, e o
+                    jogador precisa de um convite novo para tentar de novo.
+                  </p>
+                }
+              }
+              <div class="approval__actions">
                 <button
                   matButton="filled"
                   type="button"
@@ -137,6 +157,17 @@
                 >
                   Aprovar personagem
                 </button>
+                @if (vm.canRequestChanges) {
+                  <button
+                    matButton="outlined"
+                    type="button"
+                    class="js-ask-changes"
+                    [disabled]="approvalState().status === 'saving'"
+                    (click)="askForChanges()"
+                  >
+                    {{ vm.review && vm.review.status !== 'awaiting' ? 'Pedir ajustes de novo' : 'Pedir ajustes' }}
+                  </button>
+                }
                 <button
                   matButton="outlined"
                   type="button"
@@ -146,15 +177,41 @@
                 >
                   Recusar personagem
                 </button>
+              </div>
+              @if (approvalState(); as a) {
+                @if (a.status === 'error') {
+                  <p class="approval__error" role="alert">{{ a.message }}</p>
+                }
               }
             </div>
-            @if (approvalState(); as a) {
-              @if (a.status === 'error') {
-                <p class="approval__error" role="alert">{{ a.message }}</p>
-              }
-            }
-          </div>
-        </section>
+          </section>
+          @if (confirmingReject()) {
+            <app-reject-confirm
+              [characterName]="vm.name"
+              [playerName]="playerName(vm)"
+              [busy]="approvalState().status === 'saving'"
+              (confirmed)="reject(vm.campaignId, vm.id)"
+              (cancelled)="cancelReject()"
+            />
+          }
+        }
+      } @else if (!vm.isMaster && vm.review?.status === 'changes_requested') {
+        <app-owner-changes
+          [reason]="vm.review?.reason ?? ''"
+          [when]="whenOf(vm.review?.requestedAt)"
+          [busy]="resubmitState().status === 'saving'"
+          [error]="errorOf(resubmitState())"
+          [editLink]="vm.canEdit ? ['/campaigns', vm.campaignId, 'characters', vm.id, 'edit'] : null"
+          (resubmit)="resubmit(vm.campaignId, vm.id)"
+        />
+      } @else if (resubmitted()) {
+        <div class="mr-notice mr-notice--success" role="status">
+          <mat-icon aria-hidden="true">check_circle</mat-icon>
+          <p>
+            <strong>Ficha enviada de novo.</strong> Esperando a aprovação do mestre. Você pode
+            continuar editando a ficha e a história enquanto isso.
+          </p>
+        </div>
       } @else {
         <div class="mr-notice mr-notice--warning" role="status">
           <mat-icon aria-hidden="true">hourglass_top</mat-icon>

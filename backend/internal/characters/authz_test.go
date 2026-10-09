@@ -210,6 +210,22 @@ func TestAuthorizationMatrix(t *testing.T) {
 			return err
 		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
+		// "Pedir ajustes": the master asks, the owner sends it again. The pending caller owns
+		// pendingPC, so the master's row opens the request the owner's row answers. Whoever is
+		// not the owner gets the answer of a character that is not there.
+		{"RequestCharacterChanges", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.RequestCharacterChanges(ctx, connect.NewRequest(&charactersv1.RequestCharacterChangesRequest{
+				CampaignId: campaign, CharacterId: pendingPC.GetId(), Reason: "Falta o equipamento.", IdempotencyKey: uuid.New().String(),
+			}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"ResubmitCharacter", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.ResubmitCharacter(ctx, connect.NewRequest(&charactersv1.ResubmitCharacterRequest{
+				CampaignId: campaign, CharacterId: pendingPC.GetId(), IdempotencyKey: uuid.New().String(),
+			}))
+			return err
+		}, [6]connect.Code{connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
+
 		{"SetStoryEditing", "", nil, func(ctx context.Context, u *user) error {
 			_, err := u.api.SetStoryEditing(ctx, connect.NewRequest(&charactersv1.SetStoryEditingRequest{CampaignId: campaign, CharacterId: pc.GetId(), Allowed: true}))
 			return err
@@ -433,6 +449,14 @@ func TestAuthorizationMatrix(t *testing.T) {
 		// Last, because it changes the owner's character for good.
 		{"MarkCharacterDead", "", nil, func(ctx context.Context, u *user) error {
 			_, err := u.api.MarkCharacterDead(ctx, connect.NewRequest(&charactersv1.MarkCharacterDeadRequest{CampaignId: campaign, CharacterId: pc.GetId()}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		// "Reviver" brings the character the row above killed back: the master's alone.
+		{"ReviveCharacter", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.ReviveCharacter(ctx, connect.NewRequest(&charactersv1.ReviveCharacterRequest{
+				CampaignId: campaign, CharacterId: pc.GetId(), IdempotencyKey: uuid.New().String(),
+			}))
 			return err
 		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 	}

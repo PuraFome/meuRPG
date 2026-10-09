@@ -244,6 +244,8 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_SAVE
 		case eventDeathConfirmed:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_CONFIRMED
+		case eventCharacterRevived:
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_CHARACTER_REVIVED
 		case eventConditionsSet:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED
 		case eventTurnPartEnded:
@@ -425,7 +427,8 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		actor, target = playdb.Combatant{}, byID[e.ev.Actor] // the affected one is the target
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION:
 		target = playdb.Combatant{} // who attacked is not part of the line
-	case playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_CONFIRMED, playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED:
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_CONFIRMED, playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED,
+		playv1.CombatLogKind_COMBAT_LOG_KIND_CHARACTER_REVIVED:
 		actor, target = playdb.Combatant{}, byID[e.ev.Actor]
 	}
 	// What a player may see: nothing with a hidden combatant in it, when it

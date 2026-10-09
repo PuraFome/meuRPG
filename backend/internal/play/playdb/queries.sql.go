@@ -1336,7 +1336,7 @@ INSERT INTO combatants (
     $10, $11, $12, $13, $14, $15, $16, $17, $18,
     $19, $20, $21, $22, $23
 )
-RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left
+RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, death_round, death_order_index, revivify_blocked
 `
 
 type InsertCombatantParams struct {
@@ -1446,6 +1446,9 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 		&i.BonusSpellCast,
 		&i.ActionAttackKey,
 		&i.BonusAttacksLeft,
+		&i.DeathRound,
+		&i.DeathOrderIndex,
+		&i.RevivifyBlocked,
 	)
 	return i, err
 }
@@ -1463,7 +1466,7 @@ INSERT INTO combatants (
     $15, $16, $17, $18,
     'party', $19, $20, $21, $22
 )
-RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left
+RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, death_round, death_order_index, revivify_blocked
 `
 
 type InsertCreatureCombatantParams struct {
@@ -1576,6 +1579,9 @@ func (q *Queries) InsertCreatureCombatant(ctx context.Context, arg InsertCreatur
 		&i.BonusSpellCast,
 		&i.ActionAttackKey,
 		&i.BonusAttacksLeft,
+		&i.DeathRound,
+		&i.DeathOrderIndex,
+		&i.RevivifyBlocked,
 	)
 	return i, err
 }
@@ -2514,7 +2520,7 @@ func (q *Queries) ListCastPendingDamages(ctx context.Context, arg ListCastPendin
 }
 
 const listCombatants = `-- name: ListCombatants :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, death_round, death_order_index, revivify_blocked FROM combatants
 WHERE encounter_id = $1 AND NOT dismissed
 ORDER BY order_index, created_at, id
 `
@@ -2584,6 +2590,9 @@ func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Com
 			&i.BonusSpellCast,
 			&i.ActionAttackKey,
 			&i.BonusAttacksLeft,
+			&i.DeathRound,
+			&i.DeathOrderIndex,
+			&i.RevivifyBlocked,
 		); err != nil {
 			return nil, err
 		}
@@ -2596,7 +2605,7 @@ func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Com
 }
 
 const listCombatantsWithDismissed = `-- name: ListCombatantsWithDismissed :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, death_round, death_order_index, revivify_blocked FROM combatants
 WHERE encounter_id = $1
 ORDER BY order_index, created_at, id
 `
@@ -2665,6 +2674,9 @@ func (q *Queries) ListCombatantsWithDismissed(ctx context.Context, encounterID s
 			&i.BonusSpellCast,
 			&i.ActionAttackKey,
 			&i.BonusAttacksLeft,
+			&i.DeathRound,
+			&i.DeathOrderIndex,
+			&i.RevivifyBlocked,
 		); err != nil {
 			return nil, err
 		}
@@ -2677,7 +2689,7 @@ func (q *Queries) ListCombatantsWithDismissed(ctx context.Context, encounterID s
 }
 
 const listCreatureCombatants = `-- name: ListCreatureCombatants :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, death_round, death_order_index, revivify_blocked FROM combatants
 WHERE encounter_id = $1 AND kind = 'creature' AND NOT dismissed
 ORDER BY order_index, created_at, id
 `
@@ -2747,6 +2759,9 @@ func (q *Queries) ListCreatureCombatants(ctx context.Context, encounterID string
 			&i.BonusSpellCast,
 			&i.ActionAttackKey,
 			&i.BonusAttacksLeft,
+			&i.DeathRound,
+			&i.DeathOrderIndex,
+			&i.RevivifyBlocked,
 		); err != nil {
 			return nil, err
 		}
@@ -2887,7 +2902,7 @@ func (q *Queries) ListGameSessions(ctx context.Context, campaignID string) ([]Ga
 }
 
 const listOpenCombatantsOfCreatures = `-- name: ListOpenCombatantsOfCreatures :many
-SELECT cb.id, cb.encounter_id, cb.character_id, cb.user_id, cb.label, cb.kind, cb.hidden, cb.initiative, cb.initiative_bonus, cb.initiative_face, cb.tie_ordered, cb.order_index, cb.grid_col, cb.grid_row, cb.speed_ft, cb.movement_used_ft, cb.dashed, cb.action_used, cb.bonus_action_used, cb.reaction_used, cb.hp_current, cb.hp_max, cb.hp_temp, cb.defeated, cb.death_successes, cb.death_failures, cb.conditions, cb.concentration_spell, cb.created_at, cb.attacks_made, cb.ac_bonus, cb.death_save_rolled, cb.xp_value, cb.turn_state, cb.movement_used_dft, cb.last_move_dft, cb.side, cb.size, cb.speed_fly_ft, cb.jump_long_dft, cb.jump_high_dft, cb.cover_mark, cb.disengaged, cb.creature_id, cb.monster_key, cb.summon_attack, cb.summon_group_id, cb.dismissed, cb.action_surged, cb.spell_cast, cb.bonus_spell_cast, cb.action_attack_key, cb.bonus_attacks_left FROM combatants AS cb
+SELECT cb.id, cb.encounter_id, cb.character_id, cb.user_id, cb.label, cb.kind, cb.hidden, cb.initiative, cb.initiative_bonus, cb.initiative_face, cb.tie_ordered, cb.order_index, cb.grid_col, cb.grid_row, cb.speed_ft, cb.movement_used_ft, cb.dashed, cb.action_used, cb.bonus_action_used, cb.reaction_used, cb.hp_current, cb.hp_max, cb.hp_temp, cb.defeated, cb.death_successes, cb.death_failures, cb.conditions, cb.concentration_spell, cb.created_at, cb.attacks_made, cb.ac_bonus, cb.death_save_rolled, cb.xp_value, cb.turn_state, cb.movement_used_dft, cb.last_move_dft, cb.side, cb.size, cb.speed_fly_ft, cb.jump_long_dft, cb.jump_high_dft, cb.cover_mark, cb.disengaged, cb.creature_id, cb.monster_key, cb.summon_attack, cb.summon_group_id, cb.dismissed, cb.action_surged, cb.spell_cast, cb.bonus_spell_cast, cb.action_attack_key, cb.bonus_attacks_left, cb.death_round, cb.death_order_index, cb.revivify_blocked FROM combatants AS cb
 JOIN encounters AS e ON e.id = cb.encounter_id
 JOIN game_sessions AS gs ON gs.id = e.game_session_id
 WHERE gs.campaign_id = $1::UUID
@@ -2967,6 +2982,9 @@ func (q *Queries) ListOpenCombatantsOfCreatures(ctx context.Context, arg ListOpe
 			&i.BonusSpellCast,
 			&i.ActionAttackKey,
 			&i.BonusAttacksLeft,
+			&i.DeathRound,
+			&i.DeathOrderIndex,
+			&i.RevivifyBlocked,
 		); err != nil {
 			return nil, err
 		}
@@ -3923,6 +3941,21 @@ func (q *Queries) ResetDeathSavesOfCharacter(ctx context.Context, arg ResetDeath
 	return err
 }
 
+const reviveCombatant = `-- name: ReviveCombatant :exec
+UPDATE combatants
+SET defeated = false, death_successes = 0, death_failures = 0, death_save_rolled = false,
+    turn_state = 'idle', death_round = NULL, death_order_index = NULL, revivify_blocked = false
+WHERE id = $1
+`
+
+// A dead combatant lives again (the master's Reviver, Revivify): back in the fight where it
+// was in the order, no death save counted, and out of the running turn, so it acts on its
+// next turn. An NPC's hit points are set by SetCombatantHitPoints.
+func (q *Queries) ReviveCombatant(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, reviveCombatant, id)
+	return err
+}
+
 const savePuzzleRun = `-- name: SavePuzzleRun :one
 UPDATE puzzle_runs
 SET seed = $2, start = $3, state = $4, released_hints = $5, shown_at = $6, closed_at = $7,
@@ -4202,27 +4235,37 @@ func (q *Queries) SetCombatantCoverMark(ctx context.Context, arg SetCombatantCov
 
 const setCombatantDeathSaves = `-- name: SetCombatantDeathSaves :exec
 UPDATE combatants
-SET death_successes = $2, death_failures = $3, death_save_rolled = $4, defeated = $5
-WHERE id = $1
+SET death_successes = $1, death_failures = $2, death_save_rolled = $3,
+    defeated = $4::BOOL,
+    death_round = CASE
+        WHEN $4::BOOL AND NOT defeated THEN (SELECT e.round FROM encounters AS e WHERE e.id = combatants.encounter_id)
+        WHEN NOT $4::BOOL THEN NULL ELSE death_round END,
+    death_order_index = CASE
+        WHEN $4::BOOL AND NOT defeated THEN (
+            SELECT cur.order_index FROM combatants AS cur JOIN encounters AS e ON e.current_combatant_id = cur.id
+            WHERE e.id = combatants.encounter_id)
+        WHEN NOT $4::BOOL THEN NULL ELSE death_order_index END,
+    revivify_blocked = CASE WHEN $4::BOOL THEN revivify_blocked ELSE false END
+WHERE combatants.id = $5
 `
 
 type SetCombatantDeathSavesParams struct {
-	ID              string
 	DeathSuccesses  int32
 	DeathFailures   int32
 	DeathSaveRolled bool
 	Defeated        bool
+	ID              string
 }
 
 // The death save counts, whether the turn's save was rolled, and whether the
 // combatant is out of the fight (a death the master confirmed), or their undo.
 func (q *Queries) SetCombatantDeathSaves(ctx context.Context, arg SetCombatantDeathSavesParams) error {
 	_, err := q.db.Exec(ctx, setCombatantDeathSaves,
-		arg.ID,
 		arg.DeathSuccesses,
 		arg.DeathFailures,
 		arg.DeathSaveRolled,
 		arg.Defeated,
+		arg.ID,
 	)
 	return err
 }
@@ -4288,25 +4331,36 @@ func (q *Queries) SetCombatantHidden(ctx context.Context, arg SetCombatantHidden
 
 const setCombatantHitPoints = `-- name: SetCombatantHitPoints :exec
 UPDATE combatants
-SET hp_current = $2, hp_temp = $3, defeated = $4
-WHERE id = $1
+SET hp_current = $1, hp_temp = $2, defeated = $3::BOOL,
+    death_round = CASE
+        WHEN $3::BOOL AND NOT defeated THEN (SELECT e.round FROM encounters AS e WHERE e.id = combatants.encounter_id)
+        WHEN NOT $3::BOOL THEN NULL ELSE death_round END,
+    death_order_index = CASE
+        WHEN $3::BOOL AND NOT defeated THEN (
+            SELECT cur.order_index FROM combatants AS cur JOIN encounters AS e ON e.current_combatant_id = cur.id
+            WHERE e.id = combatants.encounter_id)
+        WHEN NOT $3::BOOL THEN NULL ELSE death_order_index END,
+    revivify_blocked = CASE WHEN $3::BOOL THEN revivify_blocked ELSE false END
+WHERE combatants.id = $4
 `
 
 type SetCombatantHitPointsParams struct {
-	ID        string
 	HpCurrent *int32
 	HpTemp    *int32
 	Defeated  bool
+	ID        string
 }
 
 // An NPC's hit points, temporary hit points and defeated flag (damage, healing,
-// the master's hand, an undo).
+// the master's hand, an undo). When the combatant becomes defeated, the round and the
+// place in the order it died at are kept (Revivify counts its minute from them); when it
+// stops being, they and the master's switch go.
 func (q *Queries) SetCombatantHitPoints(ctx context.Context, arg SetCombatantHitPointsParams) error {
 	_, err := q.db.Exec(ctx, setCombatantHitPoints,
-		arg.ID,
 		arg.HpCurrent,
 		arg.HpTemp,
 		arg.Defeated,
+		arg.ID,
 	)
 	return err
 }
@@ -4394,6 +4448,23 @@ type SetCombatantOrderParams struct {
 
 func (q *Queries) SetCombatantOrder(ctx context.Context, arg SetCombatantOrderParams) error {
 	_, err := q.db.Exec(ctx, setCombatantOrder, arg.ID, arg.OrderIndex, arg.TieOrdered)
+	return err
+}
+
+const setCombatantRevivifyBlocked = `-- name: SetCombatantRevivifyBlocked :exec
+UPDATE combatants
+SET revivify_blocked = $1
+WHERE id = $2 AND defeated
+`
+
+type SetCombatantRevivifyBlockedParams struct {
+	Blocked bool
+	ID      string
+}
+
+// The master's switch "Revivificar não funciona nesta morte", for a dead combatant.
+func (q *Queries) SetCombatantRevivifyBlocked(ctx context.Context, arg SetCombatantRevivifyBlockedParams) error {
+	_, err := q.db.Exec(ctx, setCombatantRevivifyBlocked, arg.Blocked, arg.ID)
 	return err
 }
 

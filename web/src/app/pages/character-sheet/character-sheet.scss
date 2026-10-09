@@ -74,7 +74,24 @@
 .approval__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--mr-space-2);
+  gap: 10px;
+
+  @media (max-width: 767.98px) {
+    flex-direction: column;
+
+    > * {
+      width: 100%;
+      min-height: 48px;
+    }
+  }
+}
+
+.approval__reason {
+  margin: 0;
+  padding-left: 14px;
+  border-left: 3px solid var(--mr-warning-ink);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
 }
 
 .approval__error {

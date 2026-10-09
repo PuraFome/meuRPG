@@ -1800,6 +1800,10 @@ const (
 	// (2d8 + 2: 3, 4)"). Only the master gets the line, and it also comes from
 	// before the combat begins (round 0).
 	CombatLogKind_COMBAT_LOG_KIND_MONSTERS_ADDED CombatLogKind = 24
+	// The master brought a dead player's character back (ReviveCharacter): "O mestre
+	// reviveu Toren". The revived combatant is `target_id`; no actor. Everyone sees it,
+	// unless the combatant is hidden.
+	CombatLogKind_COMBAT_LOG_KIND_CHARACTER_REVIVED CombatLogKind = 25
 )
 
 // Enum value maps for CombatLogKind.
@@ -1824,6 +1828,7 @@ var (
 		22: "COMBAT_LOG_KIND_DOOR_OPENED",
 		23: "COMBAT_LOG_KIND_OPPORTUNITY_OFFERED",
 		24: "COMBAT_LOG_KIND_MONSTERS_ADDED",
+		25: "COMBAT_LOG_KIND_CHARACTER_REVIVED",
 	}
 	CombatLogKind_value = map[string]int32{
 		"COMBAT_LOG_KIND_UNSPECIFIED":         0,
@@ -1845,6 +1850,7 @@ var (
 		"COMBAT_LOG_KIND_DOOR_OPENED":         22,
 		"COMBAT_LOG_KIND_OPPORTUNITY_OFFERED": 23,
 		"COMBAT_LOG_KIND_MONSTERS_ADDED":      24,
+		"COMBAT_LOG_KIND_CHARACTER_REVIVED":   25,
 	}
 )
 
@@ -11223,8 +11229,14 @@ type CombatLogSpell struct {
 	PoolRoll           *DiceRoll       `protobuf:"bytes,6,opt,name=pool_roll,json=poolRoll,proto3" json:"pool_roll,omitempty"`
 	EffectConditionKey string          `protobuf:"bytes,7,opt,name=effect_condition_key,json=effectConditionKey,proto3" json:"effect_condition_key,omitempty"`
 	EffectThreshold    *int32          `protobuf:"varint,8,opt,name=effect_threshold,json=effectThreshold,proto3,oneof" json:"effect_threshold,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Revivify (effect_kind REVIVE): the diamonds worth 300 gp were spent ("Ilaria gastou
+	// diamantes de 300 PO"). Only the master and the caster's player.
+	MaterialSpent bool `protobuf:"varint,9,opt,name=material_spent,json=materialSpent,proto3" json:"material_spent,omitempty"`
+	// Revivify: the round the revived creature died in ("morreu na rodada 3"). Only the
+	// master.
+	RevivedDeathRound *int32 `protobuf:"varint,10,opt,name=revived_death_round,json=revivedDeathRound,proto3,oneof" json:"revived_death_round,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *CombatLogSpell) Reset() {
@@ -11309,6 +11321,20 @@ func (x *CombatLogSpell) GetEffectConditionKey() string {
 func (x *CombatLogSpell) GetEffectThreshold() int32 {
 	if x != nil && x.EffectThreshold != nil {
 		return *x.EffectThreshold
+	}
+	return 0
+}
+
+func (x *CombatLogSpell) GetMaterialSpent() bool {
+	if x != nil {
+		return x.MaterialSpent
+	}
+	return false
+}
+
+func (x *CombatLogSpell) GetRevivedDeathRound() int32 {
+	if x != nil && x.RevivedDeathRound != nil {
+		return *x.RevivedDeathRound
 	}
 	return 0
 }
@@ -13303,7 +13329,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\bmodifier\x18\a \x01(\x05R\bmodifier\"3\n" +
 	"\rCombatLogDoor\x12\x10\n" +
 	"\x03col\x18\x01 \x01(\x05R\x03col\x12\x10\n" +
-	"\x03row\x18\x02 \x01(\x05R\x03row\"\xcd\x03\n" +
+	"\x03row\x18\x02 \x01(\x05R\x03row\"\xc1\x04\n" +
 	"\x0eCombatLogSpell\x12-\n" +
 	"\x04slot\x18\x01 \x01(\v2\x19.meurpg.play.v1.SpellSlotR\x04slot\x12>\n" +
 	"\atargets\x18\x02 \x03(\v2$.meurpg.play.v1.CombatLogSpellTargetR\atargets\x12$\n" +
@@ -13313,8 +13339,12 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"effectKind\x125\n" +
 	"\tpool_roll\x18\x06 \x01(\v2\x18.meurpg.play.v1.DiceRollR\bpoolRoll\x120\n" +
 	"\x14effect_condition_key\x18\a \x01(\tR\x12effectConditionKey\x12.\n" +
-	"\x10effect_threshold\x18\b \x01(\x05H\x00R\x0feffectThreshold\x88\x01\x01B\x13\n" +
-	"\x11_effect_threshold\"\xa6\x05\n" +
+	"\x10effect_threshold\x18\b \x01(\x05H\x00R\x0feffectThreshold\x88\x01\x01\x12%\n" +
+	"\x0ematerial_spent\x18\t \x01(\bR\rmaterialSpent\x123\n" +
+	"\x13revived_death_round\x18\n" +
+	" \x01(\x05H\x01R\x11revivedDeathRound\x88\x01\x01B\x13\n" +
+	"\x11_effect_thresholdB\x16\n" +
+	"\x14_revived_death_round\"\xa6\x05\n" +
 	"\x14CombatLogSpellTarget\x12\x1b\n" +
 	"\ttarget_id\x18\x01 \x01(\tR\btargetId\x12!\n" +
 	"\ftarget_label\x18\x02 \x01(\tR\vtargetLabel\x12\x14\n" +
@@ -13605,7 +13635,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1aDEATH_SAVE_OUTCOME_SUCCESS\x10\x01\x12\x1e\n" +
 	"\x1aDEATH_SAVE_OUTCOME_FAILURE\x10\x02\x12'\n" +
 	"#DEATH_SAVE_OUTCOME_CRITICAL_FAILURE\x10\x03\x12\x1e\n" +
-	"\x1aDEATH_SAVE_OUTCOME_REVIVED\x10\x04*\x96\x05\n" +
+	"\x1aDEATH_SAVE_OUTCOME_REVIVED\x10\x04*\xbd\x05\n" +
 	"\rCombatLogKind\x12\x1f\n" +
 	"\x1bCOMBAT_LOG_KIND_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cCOMBAT_LOG_KIND_COMBAT_BEGUN\x10\x01\x12\x1a\n" +
@@ -13626,7 +13656,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1aCOMBAT_LOG_KIND_WILD_SHAPE\x10\x15\x12\x1f\n" +
 	"\x1bCOMBAT_LOG_KIND_DOOR_OPENED\x10\x16\x12'\n" +
 	"#COMBAT_LOG_KIND_OPPORTUNITY_OFFERED\x10\x17\x12\"\n" +
-	"\x1eCOMBAT_LOG_KIND_MONSTERS_ADDED\x10\x18*\xe9\x01\n" +
+	"\x1eCOMBAT_LOG_KIND_MONSTERS_ADDED\x10\x18\x12%\n" +
+	"!COMBAT_LOG_KIND_CHARACTER_REVIVED\x10\x19*\xe9\x01\n" +
 	"\x12WildShapeEndReason\x12%\n" +
 	"!WILD_SHAPE_END_REASON_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aWILD_SHAPE_END_REASON_LEFT\x10\x01\x12 \n" +

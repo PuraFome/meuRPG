@@ -19,6 +19,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { setPageSubject } from '../../core/title/page-title';
 import { formatModifier } from '../../core/characters/character-labels';
 import { describeCharacterError } from '../../core/characters/character-errors';
+import { ActionKey } from '../../core/connect/idempotency';
 import type { LevelUpDone } from '../../core/levelup/levelup-flow';
 import { takeLevelUpDone } from '../../core/levelup/levelup-done';
 import { LevelUpBanner } from './level-up-banner/level-up-banner';
@@ -42,7 +43,10 @@ import { NotesPanel } from '../../shared/notes/notes-panel';
 import { ProficiencyColumn } from './proficiency-column/proficiency-column';
 import { SheetHeader } from './sheet-header/sheet-header';
 import { ChangedContentNotice } from './changed-content/changed-content';
-import { issueTitle } from './sheet-format';
+import { OwnerChanges } from './owner-changes/owner-changes';
+import { RejectConfirm } from './reject-confirm/reject-confirm';
+import { RequestChanges } from './request-changes/request-changes';
+import { formatWhen, issueTitle } from './sheet-format';
 import { StoryPanel } from './story-panel/story-panel';
 import { XpWatcher } from './xp-watcher';
 
@@ -98,10 +102,13 @@ type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'
     LevelUpDoneNotice,
     MasterNotes,
     NotesPanel,
+    OwnerChanges,
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
     ProficiencyColumn,
+    RejectConfirm,
+    RequestChanges,
     RouterLink,
     SheetHeader,
     StoryPanel,
@@ -133,6 +140,17 @@ export class CharacterSheetPage {
   /** Rejecting deletes the character for good, so it takes a second click
    * ("Confirmar recusa") after "Recusar personagem". */
   protected readonly confirmingReject = signal(false);
+  /** "Pedir ajustes" (master): the form is open in place of the approval notice. */
+  protected readonly requestingChanges = signal(false);
+  protected readonly requestChangesState = signal<SavingState>({ status: 'idle' });
+  /** "Enviar de novo" (the owning player). */
+  protected readonly resubmitState = signal<SavingState>({ status: 'idle' });
+  /** The player just sent the sheet again: the waiting notice says so, until the page is left. */
+  protected readonly resubmitted = signal(false);
+  /** The words a screen reader gets once the master's request went out. */
+  protected readonly announcement = signal('');
+  private readonly requestKey = new ActionKey();
+  private readonly resubmitKey = new ActionKey();
 
   /** Bumped when the stream says the character's creatures changed (the panel reads its list again). */
   protected readonly creaturesTick = signal(0);
@@ -187,6 +205,12 @@ export class CharacterSheetPage {
               this.formTick.update((n) => n + 1);
             }
           },
+          // The master asked for changes, the player sent the sheet again, or the character lives again: read it again.
+          (who) => {
+            if (who === this.characterId) {
+              void this.reloadQuietly();
+            }
+          },
         ),
       );
     });
@@ -233,6 +257,11 @@ export class CharacterSheetPage {
     this.state.set({ status: 'loading' });
     this.confirmingDeath.set(false);
     this.confirmingReject.set(false);
+    this.requestingChanges.set(false);
+    this.requestChangesState.set({ status: 'idle' });
+    this.resubmitState.set({ status: 'idle' });
+    this.resubmitted.set(false);
+    this.announcement.set('');
     this.markDeadState.set({ status: 'idle' });
     this.storyToggleState.set({ status: 'idle' });
     this.approvalState.set({ status: 'idle' });
@@ -278,12 +307,81 @@ export class CharacterSheetPage {
 
   protected askToConfirmReject(): void {
     this.confirmingReject.set(true);
-    this.focusAfterRender('.js-confirm-reject');
+    this.focusAfterRender('.js-cancel-reject');
   }
 
   protected cancelReject(): void {
     this.confirmingReject.set(false);
     this.focusAfterRender('.js-reject');
+  }
+
+  protected askForChanges(): void {
+    this.confirmingReject.set(false);
+    this.announcement.set('');
+    this.requestChangesState.set({ status: 'idle' });
+    this.requestingChanges.set(true);
+  }
+
+  protected cancelRequestChanges(): void {
+    this.requestingChanges.set(false);
+    this.focusAfterRender('.js-ask-changes');
+  }
+
+  /** Master only (RN-15): the character goes back to its player with the reason and stays pending. */
+  protected async requestChanges(
+    campaignId: string,
+    characterId: string,
+    reason: string,
+  ): Promise<void> {
+    this.requestChangesState.set({ status: 'saving' });
+    try {
+      const key = this.requestKey.keyFor({ campaignId, characterId, reason });
+      const vm = await this.source.requestCharacterChanges(campaignId, characterId, reason, key);
+      if (!this.applyWrite(characterId, vm)) {
+        return;
+      }
+      this.requestKey.renew();
+      this.requestChangesState.set({ status: 'idle' });
+      this.requestingChanges.set(false);
+      this.announcement.set(`Pedido de ajustes enviado a ${this.playerName(vm)}`);
+      this.focusAfterRender('.js-ask-changes');
+    } catch (err) {
+      this.requestChangesState.set({ status: 'error', message: describeCharacterError(err) });
+    }
+  }
+
+  /** Owning player only (RN-15): the sheet goes to the master again. */
+  protected async resubmit(campaignId: string, characterId: string): Promise<void> {
+    this.resubmitState.set({ status: 'saving' });
+    try {
+      const key = this.resubmitKey.keyFor({ campaignId, characterId });
+      const vm = await this.source.resubmitCharacter(campaignId, characterId, key);
+      if (!this.applyWrite(characterId, vm)) {
+        return;
+      }
+      this.resubmitKey.renew();
+      this.resubmitState.set({ status: 'idle' });
+      this.resubmitted.set(true);
+    } catch (err) {
+      this.resubmitState.set({ status: 'error', message: describeCharacterError(err) });
+    }
+  }
+
+  protected playerName(vm: CharacterSheetVm): string {
+    return vm.playerDisplayName ?? 'o jogador';
+  }
+
+  protected playerNameCapital(vm: CharacterSheetVm): string {
+    const name = this.playerName(vm);
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  }
+
+  protected whenOf(date: Date | null | undefined): string {
+    return date ? formatWhen(date) : '';
+  }
+
+  protected errorOf(state: SavingState): string | null {
+    return state.status === 'error' ? state.message : null;
   }
 
   /** A confirmation replaces the button that asked for it, so the focus

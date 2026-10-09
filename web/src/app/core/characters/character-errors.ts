@@ -52,7 +52,9 @@ export function characterBlockedMessage(
     case 'story_locked':
       return 'O mestre ainda não liberou a edição da história. Peça para ele liberar em "Permitir editar a história".';
     case 'not_pending':
-      return 'Esse personagem já foi aprovado e faz parte da campanha: não dá mais para recusá-lo.';
+      return 'Esse personagem já foi aprovado e faz parte da campanha: não dá mais para recusá-lo nem pedir ajustes.';
+    case 'no_changes_requested':
+      return 'O mestre não tem um pedido de ajustes aberto nesse personagem. Atualize a página.';
     case 'awaiting_approval':
       return 'Esse personagem ainda espera a sua aprovação. Aprove ou recuse antes.';
     default:
@@ -126,6 +128,8 @@ function mapBlockedReason(
       return 'not_pending';
     case GenCharacterBlockedReason.AWAITING_APPROVAL:
       return 'awaiting_approval';
+    case GenCharacterBlockedReason.NO_CHANGES_REQUESTED:
+      return 'no_changes_requested';
     case GenCharacterBlockedReason.ARCHIVED_CONTENT:
       return 'archived_content';
     case GenCharacterBlockedReason.SWITCHED_OFF_CONTENT:
@@ -219,6 +223,9 @@ export function describeCharacterError(
 /** "Classe 2: ..." when the server points at a class block; the generic line otherwise. */
 function invalidArgumentMessage(err: ConnectError): string {
   const field = err.findDetails(InvalidFieldSchema)[0]?.field ?? '';
+  if (field === 'reason') {
+    return 'O motivo precisa ter de 1 a 500 caracteres.';
+  }
   const block = /^full\.classes\[(\d+)\]/.exec(field);
   if (block) {
     return `Classe ${Number(block[1]) + 1}: essa classe se repete ou não existe. Cada classe entra uma vez só; escolha outra no passo Básico.`;

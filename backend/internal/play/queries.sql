@@ -287,10 +287,21 @@ WHERE character_id = sqlc.arg(character_id) AND kind = 'player'
 
 -- name: SetCombatantHitPoints :exec
 -- An NPC's hit points, temporary hit points and defeated flag (damage, healing,
--- the master's hand, an undo).
+-- the master's hand, an undo). When the combatant becomes defeated, the round and the
+-- place in the order it died at are kept (Revivify counts its minute from them); when it
+-- stops being, they and the master's switch go.
 UPDATE combatants
-SET hp_current = $2, hp_temp = $3, defeated = $4
-WHERE id = $1;
+SET hp_current = sqlc.arg(hp_current), hp_temp = sqlc.arg(hp_temp), defeated = sqlc.arg(defeated)::BOOL,
+    death_round = CASE
+        WHEN sqlc.arg(defeated)::BOOL AND NOT defeated THEN (SELECT e.round FROM encounters AS e WHERE e.id = combatants.encounter_id)
+        WHEN NOT sqlc.arg(defeated)::BOOL THEN NULL ELSE death_round END,
+    death_order_index = CASE
+        WHEN sqlc.arg(defeated)::BOOL AND NOT defeated THEN (
+            SELECT cur.order_index FROM combatants AS cur JOIN encounters AS e ON e.current_combatant_id = cur.id
+            WHERE e.id = combatants.encounter_id)
+        WHEN NOT sqlc.arg(defeated)::BOOL THEN NULL ELSE death_order_index END,
+    revivify_blocked = CASE WHEN sqlc.arg(defeated)::BOOL THEN revivify_blocked ELSE false END
+WHERE combatants.id = sqlc.arg(id);
 
 -- name: SetCombatantHitPointsMax :exec
 -- An NPC's maximum hit points, when a spell raises them (Ajuda) or its undo
@@ -347,8 +358,33 @@ WHERE id = $1;
 -- The death save counts, whether the turn's save was rolled, and whether the
 -- combatant is out of the fight (a death the master confirmed), or their undo.
 UPDATE combatants
-SET death_successes = $2, death_failures = $3, death_save_rolled = $4, defeated = $5
-WHERE id = $1;
+SET death_successes = sqlc.arg(death_successes), death_failures = sqlc.arg(death_failures), death_save_rolled = sqlc.arg(death_save_rolled),
+    defeated = sqlc.arg(defeated)::BOOL,
+    death_round = CASE
+        WHEN sqlc.arg(defeated)::BOOL AND NOT defeated THEN (SELECT e.round FROM encounters AS e WHERE e.id = combatants.encounter_id)
+        WHEN NOT sqlc.arg(defeated)::BOOL THEN NULL ELSE death_round END,
+    death_order_index = CASE
+        WHEN sqlc.arg(defeated)::BOOL AND NOT defeated THEN (
+            SELECT cur.order_index FROM combatants AS cur JOIN encounters AS e ON e.current_combatant_id = cur.id
+            WHERE e.id = combatants.encounter_id)
+        WHEN NOT sqlc.arg(defeated)::BOOL THEN NULL ELSE death_order_index END,
+    revivify_blocked = CASE WHEN sqlc.arg(defeated)::BOOL THEN revivify_blocked ELSE false END
+WHERE combatants.id = sqlc.arg(id);
+
+-- name: ReviveCombatant :exec
+-- A dead combatant lives again (the master's Reviver, Revivify): back in the fight where it
+-- was in the order, no death save counted, and out of the running turn, so it acts on its
+-- next turn. An NPC's hit points are set by SetCombatantHitPoints.
+UPDATE combatants
+SET defeated = false, death_successes = 0, death_failures = 0, death_save_rolled = false,
+    turn_state = 'idle', death_round = NULL, death_order_index = NULL, revivify_blocked = false
+WHERE id = sqlc.arg(id);
+
+-- name: SetCombatantRevivifyBlocked :exec
+-- The master's switch "Revivificar não funciona nesta morte", for a dead combatant.
+UPDATE combatants
+SET revivify_blocked = sqlc.arg(blocked)
+WHERE id = sqlc.arg(id) AND defeated;
 
 -- name: ResetDeathSavesOfCharacter :exec
 -- Healing above 0 resets both counts (RN-03): the character's combatant in the

@@ -482,6 +482,9 @@ func wireModules(
 	// dismissing a creature takes it out of the fight, and its events and
 	// stream hints go through play.
 	charactersService.SetCreatureHost(playService)
+	// A review's hints go to the master and the owner on the live stream, and a revived
+	// character goes back to the combat it died in (RN-03).
+	charactersService.SetReviewHost(playService)
 	mapsService, err = maps.New(maps.Config{
 		Pool:       pool,
 		Blobs:      blobs,             // nil: images are off

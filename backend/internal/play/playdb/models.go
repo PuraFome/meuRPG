@@ -71,6 +71,9 @@ type Combatant struct {
 	BonusSpellCast     bool
 	ActionAttackKey    *string
 	BonusAttacksLeft   int32
+	DeathRound         *int32
+	DeathOrderIndex    *int32
+	RevivifyBlocked    bool
 }
 
 type Encounter struct {

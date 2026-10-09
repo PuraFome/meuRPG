@@ -975,6 +975,11 @@ message CharacterSummary {
   // it (MR-031): the app draws "Pôr em cena" with it, with no read of each
   // sheet.
   string portrait_url = 10;
+  // Where the master's review of a PENDING character stands (Character.review), without
+  // the reason: REVIEW_AWAITING, REVIEW_CHANGES_REQUESTED or REVIEW_RESUBMITTED, so the
+  // list can say "Ajustes pedidos". Only the master and the owning player get it;
+  // unspecified for any other character and for anyone else.
+  Review review_status = 11;
 }
 
 // CharacterBlockedReason says why a character cannot be changed now.

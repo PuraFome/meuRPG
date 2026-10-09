@@ -1,4 +1,8 @@
-import { CharacterKind, CharacterState } from '../../../core/characters/characters.types';
+import {
+  CharacterKind,
+  CharacterState,
+  ReviewStatus,
+} from '../../../core/characters/characters.types';
 
 /**
  * The view-model and port `CampaignCharacters` needs. Phase 2 maps
@@ -15,6 +19,8 @@ export interface CampaignCharacterListItemVm {
   readonly classSummary: string;
   /** Only set for a player character (`Character.player_display_name`). */
   readonly playerDisplayName: string | null;
+  /** `CharacterSummary.review_status`: only the master and the owner get it, and only a pending character has one. */
+  readonly reviewStatus?: ReviewStatus | null;
 }
 
 export interface CampaignCharactersVm {

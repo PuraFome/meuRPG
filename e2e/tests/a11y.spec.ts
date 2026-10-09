@@ -707,6 +707,82 @@ test('quem está sem personagem passa no axe no tema escuro, no celular', { tag:
   await scanPendingMembers(browser, 'dark', 390);
 });
 
+/** "Pedir ajustes" (RN-15, MR-024): the master's three buttons, the form empty and with its error, the notice after the request, the
+ * refusal question, and the owning player's notice and the waiting one after "Enviar de novo". */
+async function scanReviewScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(120_000);
+  const context = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
+  const playerContext = await newSignedInContext(browser, 'Jogador Teste', { colorScheme, viewport: { width, height: 900 } });
+  const page = await context.newPage();
+  const playerPage = await playerContext.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await page.goto('/');
+    const created = await callRPC(page, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', {
+      name: `Acessibilidade ajustes ${Date.now()}`,
+      xpMode: 'XP_MODE_ENEMIES',
+    });
+    const campaignId = (await created.json()).campaign.id as string;
+    const invite = await callRPC(page, 'meurpg.campaigns.v1.CampaignService/CreateInvite', {
+      campaignId,
+      maxUses: 1,
+      expiresIn: '86400s',
+      requiresApproval: true,
+    });
+    const { token } = await invite.json();
+    await playerPage.goto('/');
+    const accepted = await callRPC(playerPage, 'meurpg.campaigns.v1.CampaignService/AcceptInvite', { token });
+    expect(accepted.ok()).toBeTruthy();
+    const character = await createCharacterRPC(playerPage, campaignId, characterRpcBody('PLAYER', pensantus));
+    const route = `/campaigns/${campaignId}/characters/${(await character.json()).character.id as string}`;
+
+    await open(page, route);
+    await expect(page.getByRole('button', { name: 'Pedir ajustes', exact: true })).toBeVisible();
+    await expectScreenPasses(page, `Pendente, os três botões ${where}`);
+
+    await page.getByRole('button', { name: 'Pedir ajustes', exact: true }).click();
+    await page.getByRole('button', { name: 'Enviar pedido' }).click();
+    await expect(page.getByRole('alert').filter({ hasText: 'O pedido não vai sem motivo.' })).toBeVisible();
+    await expectScreenPasses(page, `Pedir ajustes, sem motivo ${where}`);
+
+    await page.getByLabel(/^O que .* precisa ajustar$/).fill('O antecedente não bate com a história. Também falta escolher o equipamento.');
+    await expectScreenPasses(page, `Pedir ajustes, com o motivo ${where}`);
+    await page.getByRole('button', { name: 'Enviar pedido' }).click();
+    await expect(page.getByRole('button', { name: 'Pedir ajustes de novo' })).toBeFocused();
+    await expectScreenPasses(page, `Pendente, ajustes pedidos ${where}`);
+
+    await page.getByRole('button', { name: 'Recusar personagem' }).click();
+    await expect(page.getByRole('button', { name: 'Cancelar' })).toBeFocused();
+    await expectScreenPasses(page, `Recusar, a confirmação ${where}`);
+
+    await open(playerPage, route);
+    await expect(playerPage.getByRole('alert').filter({ hasText: 'O mestre pediu ajustes.' })).toBeVisible();
+    await expectScreenPasses(playerPage, `O jogador, ajustes pedidos ${where}`);
+    await playerPage.getByRole('button', { name: 'Enviar de novo' }).click();
+    await expect(playerPage.getByRole('status').filter({ hasText: 'Ficha enviada de novo.' })).toBeVisible();
+    await expectScreenPasses(playerPage, `O jogador, ficha enviada de novo ${where}`);
+
+    await open(page, route);
+    await expect(page.getByRole('list', { name: 'Estado do personagem' })).toContainText('Pendente · reenviado');
+    await expectScreenPasses(page, `Pendente, reenviado ${where}`);
+  } finally {
+    await playerContext.close();
+    await context.close();
+  }
+}
+
+test('pedir ajustes passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-024', '@RN-15'] }, async ({ browser }) => {
+  await scanReviewScreens(browser, 'light', 1280);
+});
+
+test('pedir ajustes passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-024', '@RN-15'] }, async ({ browser }) => {
+  await scanReviewScreens(browser, 'dark', 390);
+});
+
 /**
  * The character editor's rolls and the spell "?" (MR-004, E6-20 to E6-23):
  * the "Habilidades" step with "Rolar 4d6" (half placed, and on the phone with a
