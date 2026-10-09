@@ -1281,6 +1281,104 @@ test('monge 3: o golpe das Artes Marciais e a Rajada de Golpes aparecem como ata
   }
 });
 
+// Pensantus at level 5, with Bola de Fogo (a 3rd-level slot).
+const fireballCaster = {
+  build: { ...pensantus, level: 5 },
+  sheet: {
+    ...pensantusCasting,
+    knownSpellKeys: [...pensantusCasting.knownSpellKeys, 'spell:fireball'],
+    preparedSpellKeys: [...pensantusCasting.preparedSpellKeys, 'spell:fireball'],
+  },
+};
+const aroundGoblin1Far = { 'Capitão Goblin': [12, 3], 'Goblin 1': [12, 7], 'Goblin 2': [13, 8] } as Record<string, [number, number]>;
+
+test('a Bola de Fogo é posta num ponto do mapa: o ponto, quem está na área, a conjuração e o dano rolado uma vez', { tag: ['@MR-014', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  const { m, p, campaignId, done } = await actingTable(browser, 'Bola de Fogo', playerFirst, [], undefined, fireballCaster, aroundGoblin1Far);
+  try {
+    await openSessionPage(p, campaignId);
+    await p.getByRole('button', { name: 'Conjurar Bola de Fogo' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Conjurar Bola de Fogo' });
+    await expect(sheet.getByText('Onde ela explode')).toBeVisible();
+    const map = sheet.getByRole('application', { name: 'Mapa: escolha o ponto da Bola de Fogo' });
+    await expect(map).toBeFocused();
+    await expect(sheet.getByText('Toque no mapa para escolher o ponto.')).toBeVisible();
+    // The keyboard: C opens "Centrar em…"; a creature places the point on its square, Enter on the map confirms.
+    await map.press('c');
+    await sheet.getByRole('listbox', { name: 'Centrar em…' }).getByRole('option', { name: /Goblin 1/ }).click();
+    await expect(sheet.getByText(/Ponto a\s+10,5\s+m de você/)).toBeVisible();
+    await map.press('Enter');
+    await expect(sheet.getByRole('heading', { name: 'Quem está na área' })).toBeFocused();
+    await expect(sheet.getByText('3 criaturas', { exact: true })).toBeVisible();
+    await expect(sheet.getByText(/no teste de Destreza|Sem cobertura/).first()).toBeVisible();
+    // "Mudar o local" goes back with the point; nothing was spent.
+    await sheet.getByRole('button', { name: 'Mudar o local' }).click();
+    await expect(sheet.getByRole('button', { name: 'Confirmar local' })).not.toHaveAttribute('aria-disabled', 'true');
+    await sheet.getByRole('button', { name: 'Confirmar local' }).click();
+    await sheet.getByRole('button', { name: 'Conjurar Bola de Fogo' }).click();
+    await expect(sheet.getByRole('heading', { name: 'Bola de Fogo conjurada' })).toBeVisible();
+    await expect(sheet.getByText(/3º\s+nível · 3 criaturas · teste de resistência de Destreza/)).toBeVisible();
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await sheet.getByLabel(/Role 8d6/).fill('28');
+    await sheet.getByRole('button', { name: 'Confirmar 28' }).click();
+    await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
+    // One roll for all three: each took 28 or 14, and the goblins fell.
+    const goblins = (await getEncounterRPC(m, campaignId)).combatants.filter((c) => c.label.startsWith('Goblin'));
+    expect(goblins.every((g) => g.defeated)).toBe(true);
+  } finally {
+    await done();
+  }
+});
+
+test('"Perguntar a cada vez": a Bola de Fogo segura o turno, o mestre vê a área e responde, e o jogador só lê "Esperando o mestre"', { tag: ['@MR-014', '@RN-10', '@RN-24'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  const { m, p, campaignId, done } = await actingTable(browser, 'Perguntar', playerFirst, ['Goblin 2'], undefined, fireballCaster, aroundGoblin1Far);
+  try {
+    await setTableRulesRPC(m, campaignId, { hiddenAreaHits: 'HIDDEN_AREA_HIT_RULE_ASK' });
+    await openSessionPage(p, campaignId);
+    await openSessionPage(m, campaignId);
+    await p.getByRole('button', { name: 'Conjurar Bola de Fogo' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Conjurar Bola de Fogo' });
+    const map = sheet.getByRole('application', { name: 'Mapa: escolha o ponto da Bola de Fogo' });
+    await map.press('c');
+    await sheet.getByRole('listbox', { name: 'Centrar em…' }).getByRole('option', { name: /Goblin 1/ }).click();
+    await map.press('Enter');
+    // The hidden Goblin 2 is in the area, and the player is told neither its name nor a count that includes it.
+    await expect(sheet.getByRole('heading', { name: 'Quem está na área' })).toBeFocused();
+    await expect(sheet.getByText(/Goblin 2/)).toHaveCount(0);
+    await sheet.getByRole('button', { name: 'Conjurar Bola de Fogo' }).click();
+    await expect(sheet.getByRole('heading', { name: 'Bola de Fogo conjurada' })).toBeVisible();
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await sheet.getByLabel(/Role 8d6/).fill('28');
+    await sheet.getByRole('button', { name: 'Confirmar 28' }).click();
+    await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
+
+    // The player: the turn waits for the master, and nothing says why.
+    await expect(p.getByText('Esperando o mestre').first()).toBeVisible();
+    await expect(p.getByText(/escondid|Goblin 2/i)).toHaveCount(0);
+
+    // The master: the question, the area of the last spell on his map and the wait in the bar.
+    const card = m.getByRole('group', { name: /Bola de Fogo atingiu 1 criatura escondida/ });
+    await expect(card).toBeVisible();
+    await expect(card.getByText('Goblin 2')).toBeVisible();
+    await expect(m.locator('app-area-overlay')).toBeVisible();
+    await expect(m.getByText('Área da última magia')).toBeVisible();
+    await expect(m.getByText('Esperando a sua resposta: escondidas atingidas')).toBeVisible();
+
+    // After a reload the question comes back from the combat, and a line says the screen was rebuilt.
+    await m.reload();
+    await expect(m.getByRole('group', { name: /Bola de Fogo atingiu 1 criatura escondida/ })).toBeVisible();
+    await expect(m.getByRole('status').filter({ hasText: 'Combate atualizado agora.' })).toBeVisible();
+    await expect(m.locator('app-area-overlay')).toBeVisible();
+
+    await m.getByRole('button', { name: 'Revelar', exact: true }).click();
+    await expect(m.getByRole('group', { name: /Bola de Fogo atingiu/ })).toHaveCount(0);
+    await expect(p.getByText('Esperando o mestre')).toHaveCount(0);
+  } finally {
+    await done();
+  }
+});
+
 test('Ajuda sobre quem está a 0 PV: acorda, a ficha mostra o efeito, e o mestre encerra pelo menu da linha com a pergunta', { tag: ['@MR-014', '@RN-02'] }, async ({ browser }) => {
   test.setTimeout(300_000);
   const t = await trapTable(browser, 'Ajuda');
@@ -1407,99 +1505,6 @@ test('Crítico Brutal com dados físicos: o jogador rola três dados, o botão l
 
     await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
     await expect(p.getByRole('log', { name: 'Registro do combate' })).toContainText('dano 3d12 (2d12 + 1d12 Crítico Brutal) = 22 + 3 = 25 de cortante, dados físicos');
-// Pensantus at level 5, with Bola de Fogo (a 3rd-level slot).
-const fireballCaster = {
-  build: { ...pensantus, level: 5 },
-  sheet: {
-    ...pensantusCasting,
-    knownSpellKeys: [...pensantusCasting.knownSpellKeys, 'spell:fireball'],
-    preparedSpellKeys: [...pensantusCasting.preparedSpellKeys, 'spell:fireball'],
-  },
-};
-const aroundGoblin1Far = { 'Capitão Goblin': [12, 3], 'Goblin 1': [12, 7], 'Goblin 2': [13, 8] } as Record<string, [number, number]>;
-
-test('a Bola de Fogo é posta num ponto do mapa: o ponto, quem está na área, a conjuração e o dano rolado uma vez', { tag: ['@MR-014', '@RN-10'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  const { m, p, campaignId, done } = await actingTable(browser, 'Bola de Fogo', playerFirst, [], undefined, fireballCaster, aroundGoblin1Far);
-  try {
-    await openSessionPage(p, campaignId);
-    await p.getByRole('button', { name: 'Conjurar Bola de Fogo' }).click();
-    const sheet = p.getByRole('dialog', { name: 'Conjurar Bola de Fogo' });
-    await expect(sheet.getByText('Onde ela explode')).toBeVisible();
-    const map = sheet.getByRole('application', { name: 'Mapa: escolha o ponto da Bola de Fogo' });
-    await expect(map).toBeFocused();
-    await expect(sheet.getByText('Toque no mapa para escolher o ponto.')).toBeVisible();
-    // The keyboard: C opens "Centrar em…"; a creature places the point on its square, Enter on the map confirms.
-    await map.press('c');
-    await sheet.getByRole('listbox', { name: 'Centrar em…' }).getByRole('option', { name: /Goblin 1/ }).click();
-    await expect(sheet.getByText(/Ponto a\s+10,5\s+m de você/)).toBeVisible();
-    await map.press('Enter');
-    await expect(sheet.getByRole('heading', { name: 'Quem está na área' })).toBeFocused();
-    await expect(sheet.getByText('3 criaturas', { exact: true })).toBeVisible();
-    await expect(sheet.getByText(/no teste de Destreza|Sem cobertura/).first()).toBeVisible();
-    // "Mudar o local" goes back with the point; nothing was spent.
-    await sheet.getByRole('button', { name: 'Mudar o local' }).click();
-    await expect(sheet.getByRole('button', { name: 'Confirmar local' })).not.toHaveAttribute('aria-disabled', 'true');
-    await sheet.getByRole('button', { name: 'Confirmar local' }).click();
-    await sheet.getByRole('button', { name: 'Conjurar Bola de Fogo' }).click();
-    await expect(sheet.getByRole('heading', { name: 'Bola de Fogo conjurada' })).toBeVisible();
-    await expect(sheet.getByText(/3º\s+nível · 3 criaturas · teste de resistência de Destreza/)).toBeVisible();
-    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
-    await sheet.getByLabel(/Role 8d6/).fill('28');
-    await sheet.getByRole('button', { name: 'Confirmar 28' }).click();
-    await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
-    // One roll for all three: each took 28 or 14, and the goblins fell.
-    const goblins = (await getEncounterRPC(m, campaignId)).combatants.filter((c) => c.label.startsWith('Goblin'));
-    expect(goblins.every((g) => g.defeated)).toBe(true);
-  } finally {
-    await done();
-  }
-});
-
-test('"Perguntar a cada vez": a Bola de Fogo segura o turno, o mestre vê a área e responde, e o jogador só lê "Esperando o mestre"', { tag: ['@MR-014', '@RN-10', '@RN-24'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  const { m, p, campaignId, done } = await actingTable(browser, 'Perguntar', playerFirst, ['Goblin 2'], undefined, fireballCaster, aroundGoblin1Far);
-  try {
-    await setTableRulesRPC(m, campaignId, { hiddenAreaHits: 'HIDDEN_AREA_HIT_RULE_ASK' });
-    await openSessionPage(p, campaignId);
-    await openSessionPage(m, campaignId);
-    await p.getByRole('button', { name: 'Conjurar Bola de Fogo' }).click();
-    const sheet = p.getByRole('dialog', { name: 'Conjurar Bola de Fogo' });
-    const map = sheet.getByRole('application', { name: 'Mapa: escolha o ponto da Bola de Fogo' });
-    await map.press('c');
-    await sheet.getByRole('listbox', { name: 'Centrar em…' }).getByRole('option', { name: /Goblin 1/ }).click();
-    await map.press('Enter');
-    // The hidden Goblin 2 is in the area, and the player is told neither its name nor a count that includes it.
-    await expect(sheet.getByRole('heading', { name: 'Quem está na área' })).toBeFocused();
-    await expect(sheet.getByText(/Goblin 2/)).toHaveCount(0);
-    await sheet.getByRole('button', { name: 'Conjurar Bola de Fogo' }).click();
-    await expect(sheet.getByRole('heading', { name: 'Bola de Fogo conjurada' })).toBeVisible();
-    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
-    await sheet.getByLabel(/Role 8d6/).fill('28');
-    await sheet.getByRole('button', { name: 'Confirmar 28' }).click();
-    await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
-
-    // The player: the turn waits for the master, and nothing says why.
-    await expect(p.getByText('Esperando o mestre').first()).toBeVisible();
-    await expect(p.getByText(/escondid|Goblin 2/i)).toHaveCount(0);
-
-    // The master: the question, the area of the last spell on his map and the wait in the bar.
-    const card = m.getByRole('group', { name: /Bola de Fogo atingiu 1 criatura escondida/ });
-    await expect(card).toBeVisible();
-    await expect(card.getByText('Goblin 2')).toBeVisible();
-    await expect(m.locator('app-area-overlay')).toBeVisible();
-    await expect(m.getByText('Área da última magia')).toBeVisible();
-    await expect(m.getByText('Esperando a sua resposta: escondidas atingidas')).toBeVisible();
-
-    // After a reload the question comes back from the combat, and a line says the screen was rebuilt.
-    await m.reload();
-    await expect(m.getByRole('group', { name: /Bola de Fogo atingiu 1 criatura escondida/ })).toBeVisible();
-    await expect(m.getByRole('status').filter({ hasText: 'Combate atualizado agora.' })).toBeVisible();
-    await expect(m.locator('app-area-overlay')).toBeVisible();
-
-    await m.getByRole('button', { name: 'Revelar', exact: true }).click();
-    await expect(m.getByRole('group', { name: /Bola de Fogo atingiu/ })).toHaveCount(0);
-    await expect(p.getByText('Esperando o mestre')).toHaveCount(0);
   } finally {
     await done();
   }
