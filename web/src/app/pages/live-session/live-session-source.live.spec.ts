@@ -304,6 +304,7 @@ describe('LiveSessionSourceLive.getPlayerSheet', () => {
             raceNamePt: 'Humano',
             skills: [],
             senses: [],
+            features: [],
             spells: spells.map((s) => ({ spell: { key: s.key }, prepared: s.prepared })),
           },
         },
