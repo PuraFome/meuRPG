@@ -409,6 +409,88 @@ service CharacterService {
   //     detail with reason NOT_PENDING.
   rpc RejectCharacter(RejectCharacterRequest) returns (RejectCharacterResponse);
 
+  // RequestCharacterChanges is the master's "Pedir ajustes" on a character that
+  // waits for approval (RN-15, MR-024): it stays PENDING and the player sees the
+  // master's reason, edits the sheet and sends it again (ResubmitCharacter). Only
+  // the campaign's master may call it. Nothing is deleted: the invite and the
+  // pending membership stay as they are, and the master may still approve or
+  // reject at any time.
+  //
+  // The reason is 1 to 500 characters after trimming, one block of text. It is
+  // personal data of the player kept by the master: only the master and the
+  // owner read it (Character.review), and the server deletes it when the
+  // character is approved or rejected, when the character, the campaign or the
+  // player's account is deleted (docs/privacy.md). Asking again replaces the reason
+  // and the time, and the review is CHANGES_REQUESTED again.
+  //
+  // It carries an idempotency_key (1 to 64 characters, scoped to the caller): the
+  // same key with the same request returns the first answer and tells the stream
+  // nothing; the same key with another request is `invalid_argument`.
+  //
+  // It sends `character_changes_requested` to the master and the owner.
+  //
+  // Errors:
+  //   - `invalid_argument`: the reason is empty or has only spaces (field
+  //     "reason", InvalidField), it passes 500 characters (field "reason"), the
+  //     key is not valid or was used for another request, or the character is an
+  //     NPC.
+  //   - `not_found`: the character is not in this campaign, the campaign does
+  //     not exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: the character is not PENDING (NOT_PENDING).
+  rpc RequestCharacterChanges(RequestCharacterChangesRequest) returns (RequestCharacterChangesResponse);
+
+  // ResubmitCharacter is the owner's "Enviar de novo": the sheet is ready for
+  // the master to look at again. The character stays PENDING and its review
+  // becomes RESUBMITTED; the reason stays for the master's history until the
+  // character is approved, rejected or deleted. Only the owning player may call it,
+  // and only while a request for changes is open. Editing the sheet does not send
+  // it: the player decides when they are done.
+  //
+  // It carries an idempotency_key like RequestCharacterChanges. It sends
+  // `character_resubmitted` to the master and the owner.
+  //
+  // Errors:
+  //   - `invalid_argument`: the key is not valid or was used for another request.
+  //   - `not_found`: the character is not in this campaign, the campaign does not
+  //     exist, or the caller is not its owner or a member: the same answer for
+  //     both, so nobody probes a character_id.
+  //   - `failed_precondition`: NOT_PENDING (the character was approved), or
+  //     NO_CHANGES_REQUESTED (there is no open request: nothing was asked, or
+  //     it was already sent again).
+  rpc ResubmitCharacter(ResubmitCharacterRequest) returns (ResubmitCharacterResponse);
+
+  // ReviveCharacter is the master's "Reviver" (RN-03, SRD 5.1, "Dropping to 0 Hit
+  // Points"): a dead player character lives again with 1 hit point, with no death
+  // save counted, and goes back to the state it had before it died (a draft or
+  // locked). Spell slots, class uses and hit dice stay as they were. It is not a
+  // spell: it spends nothing and has no time limit. Only the campaign's master may
+  // call it.
+  //
+  // In a combat that is not ended where the character was a combatant, it goes back
+  // to the order where it was and acts on its next turn: the SRD has no "no turn
+  // this round" rule. The log says "O mestre reviveu <name>". The character's
+  // `revived_at` is set; `died_at` stays as the history of the master, and a new
+  // death sets it again.
+  //
+  // RN-03: a player has at most one living character in a campaign. If the player
+  // made another one after this death, reviving is refused until the master
+  // archives it or marks it dead.
+  //
+  // It carries an idempotency_key; the same key with the same request after a
+  // success returns the character as it is.
+  //
+  // Errors:
+  //   - `invalid_argument`: the character is an NPC, or the key is not valid or was
+  //     used for another request.
+  //   - `not_found`: the character is not in this campaign, the campaign does not
+  //     exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: the character is not dead (NOT_DEAD), or its player
+  //     already has another living character in the campaign
+  //     (LIVING_CHARACTER_EXISTS: the error's CharacterBlocked names it).
+  rpc ReviveCharacter(ReviveCharacterRequest) returns (ReviveCharacterResponse);
+
   // GetLevelUpOptions says what the next level of one of the character's
   // classes gives, so the app can draw the guided level-up (MR-040, RN-12):
   // the ability increase, the hit die, the new cantrips and spells, the
@@ -803,6 +885,61 @@ message Character {
   // Why can_level_up is true: XP, or a MILESTONE. Unspecified when it is
   // false.
   LevelUpReason level_up_reason = 24;
+  // Where the master's review of a PENDING character stands, with his reason
+  // (RequestCharacterChanges). Only the master and the owning player get it;
+  // unset for everyone else, for NPCs and for a character that is not PENDING.
+  CharacterReview review = 25;
+  // Whether the caller may call RequestCharacterChanges now: the master, for a
+  // PENDING character.
+  bool can_request_changes = 26;
+  // Whether the caller may call ResubmitCharacter now: the owning player, for a
+  // PENDING character whose review is CHANGES_REQUESTED.
+  bool can_resubmit = 27;
+  // Whether the caller may call ReviveCharacter now (the master, for a dead player
+  // character). It does not look at RN-03: the call says LIVING_CHARACTER_EXISTS.
+  bool can_revive = 28;
+  // When the master last revived the character (ReviveCharacter, or Revivify).
+  // Only the master and the owning player get it; unset if it never was.
+  google.protobuf.Timestamp revived_at = 29;
+  // The combat round in which the master confirmed the death, and the combat
+  // (a UUID). Unset when the death was marked outside a combat. Only the master
+  // and the owning player; while the character is dead.
+  optional int32 death_round = 30;
+  string death_encounter_id = 31;
+  // The master's switch "Revivificar não funciona nesta morte" (old age, missing
+  // body parts: SRD 5.1, Revivify). While it is on, the character is not offered
+  // as a target of the spell. Only the master gets it: a player never reads why a
+  // creature cannot be revived (RN-10).
+  bool revivify_blocked = 32;
+}
+
+// Review is where the master's review of a character that waits for approval
+// stands (RN-15). The state of the character itself stays PENDING in all of them.
+enum Review {
+  REVIEW_UNSPECIFIED = 0;
+  // Nothing was asked: the master has not looked at it, or looked and asked for
+  // nothing.
+  REVIEW_AWAITING = 1;
+  // The master asked for changes (RequestCharacterChanges) and the player has not
+  // sent the sheet again.
+  REVIEW_CHANGES_REQUESTED = 2;
+  // The player sent the sheet again (ResubmitCharacter).
+  REVIEW_RESUBMITTED = 3;
+}
+
+// CharacterReview is the master's request for changes and where it stands. It is
+// personal data: only the master and the owning player read it, and the server
+// deletes it when the character is approved, rejected or deleted, when the player
+// leaves or deletes their account and when the campaign is deleted.
+message CharacterReview {
+  Review status = 1;
+  // What the master asked, 1 to 500 characters. Empty in REVIEW_AWAITING.
+  string reason = 2;
+  // When he asked (the last time, if he asked more than once). Unset in
+  // REVIEW_AWAITING.
+  google.protobuf.Timestamp requested_at = 3;
+  // When the player sent the sheet again. Unset until REVIEW_RESUBMITTED.
+  google.protobuf.Timestamp resubmitted_at = 4;
 }
 
 // LevelUpReason is why a character can go up a level.
@@ -897,6 +1034,11 @@ enum CharacterBlockedReason {
   // the switch hides an option from the players, not from any sheet the master
   // edits (an NPC, or a player's sheet, which then keeps the option).
   CHARACTER_BLOCKED_REASON_SWITCHED_OFF_CONTENT = 15;
+  // ResubmitCharacter on a character that has no open request for changes: the
+  // master asked nothing, or the player already sent the sheet again.
+  CHARACTER_BLOCKED_REASON_NO_CHANGES_REQUESTED = 16;
+  // ReviveCharacter on a character that is not dead.
+  CHARACTER_BLOCKED_REASON_NOT_DEAD = 17;
 }
 
 // CharacterBlocked is the error detail of CharacterService's
@@ -910,6 +1052,10 @@ message CharacterBlocked {
   // For ARCHIVED_CONTENT, SWITCHED_OFF_CONTENT and TABLE_CONTENT_STAYS, the content key that
   // blocks the call; empty otherwise.
   string content_key = 3;
+  // For LIVING_CHARACTER_EXISTS on ReviveCharacter: the name of that living
+  // character (character_id is its id), so the master reads "Davi já tem outro
+  // personagem vivo: Nuvem". Empty otherwise.
+  string living_character_name = 4;
 }
 
 // InvalidField is the error detail of CharacterService's `invalid_argument` for a
@@ -1658,6 +1804,50 @@ message RejectCharacterRequest {
 
 // RejectCharacterResponse is empty: the character is gone.
 message RejectCharacterResponse {}
+
+// RequestCharacterChangesRequest names the pending character and says what the
+// master wants changed.
+message RequestCharacterChangesRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // 1 to 500 characters after trimming, line breaks allowed.
+  string reason = 3;
+  // 1 to 64 characters, required.
+  string idempotency_key = 4;
+}
+
+// RequestCharacterChangesResponse returns the character, still PENDING, with its
+// review CHANGES_REQUESTED.
+message RequestCharacterChangesResponse {
+  Character character = 1;
+}
+
+// ResubmitCharacterRequest names the character the player sends again.
+message ResubmitCharacterRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // 1 to 64 characters, required.
+  string idempotency_key = 3;
+}
+
+// ResubmitCharacterResponse returns the character, still PENDING, with its review
+// RESUBMITTED.
+message ResubmitCharacterResponse {
+  Character character = 1;
+}
+
+// ReviveCharacterRequest names the dead character to bring back.
+message ReviveCharacterRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // 1 to 64 characters, required.
+  string idempotency_key = 3;
+}
+
+// ReviveCharacterResponse returns the character alive again.
+message ReviveCharacterResponse {
+  Character character = 1;
+}
 
 // GetLevelUpOptionsRequest names the character to level up.
 message GetLevelUpOptionsRequest {

@@ -1600,6 +1600,32 @@ message Encounter {
   // it never changes, so a screen can trust it for the whole combat. Never
   // UNSPECIFIED.
   EncounterMode mode = 19;
+  // The creatures that died in this combat, in the order they died: a player's
+  // character the master confirmed dead (ConfirmDeath) and an NPC taken to 0 hit
+  // points, until they are revived or the combat ends. The master gets all of them,
+  // with the window of Revivify and his switch; a player gets only their own
+  // character, with the round and no more; for the others the list does not exist
+  // (RN-10, RN-03).
+  repeated CombatDeath deaths = 20;
+}
+
+// CombatDeath is a creature that died in this combat (Encounter.deaths; Revivify is in revivify.proto): a player's
+// character the master confirmed dead, or an NPC taken to 0 hit points.
+message CombatDeath {
+  // The combatant (a UUID).
+  string combatant_id = 1;
+  string name = 2;
+  // The round it died in.
+  int32 death_round = 3;
+  // Whether the spell still fits in time (the window of 10 rounds). Only the master.
+  optional bool fits_revivify = 4;
+  // The master's switch "Revivificar não funciona nesta morte". Only the master.
+  optional bool revivify_blocked = 5;
+  // True for a player's character (it has "Reviver"), false for an NPC.
+  bool is_player_character = 6;
+  // The character (a UUID) of a player's character, so the app can link to it and call
+  // ReviveCharacter. Empty for an NPC.
+  string character_id = 7;
 }
 
 // OpportunityOffer is the attack a combatant may make on an enemy that left its
@@ -2736,6 +2762,13 @@ message SpellTarget {
   string combatant_id = 1;
   // Magic Missile only: the darts that go to this target, at least 1.
   int32 darts = 2;
+  // Revivify only: the dead creature the spell touches, a combatant of the combat
+  // (PreviewRevivify offers them). It replaces combatant_id, which stays empty. The
+  // server checks it again: dead, within touch, within the 10 rounds of the window,
+  // seen by the caster and not marked by the master. A target that is not valid is
+  // `failed_precondition` with no reason, or `not_found` for a combatant the caller may
+  // not see, and nothing is spent.
+  string dead_target_id = 3;
 }
 
 // CastSpellRequest casts a spell.
@@ -2781,6 +2814,10 @@ message CastSpellRequest {
   // with `invalid_argument` for a spell with nothing to pick or a type that is
   // not one of its types.
   string damage_type_key = 12;
+  // Revivify only: the caster confirmed having the diamonds (worth 300 gp, which the
+  // spell consumes). The app keeps no inventory, so this is a reminder, and the log says
+  // it was spent. Required for Revivify and refused for any other spell.
+  bool material_confirmed = 13;
 }
 
 // SummonChoice is what a casting of a summoning spell brings: one of the
@@ -2875,6 +2912,10 @@ enum SpellEffectKind {
   // as temporary hit points (its maximum comes from the sheet), or as current
   // hit points when it is at 0, which wakes it up.
   SPELL_EFFECT_KIND_MAX_HP = 6;
+  // The target was dead and lives again with 1 hit point (Revivificar, revivify.proto).
+  // `hit_points_before` (0) and `hit_points_after` and `revived_character_id` say it; the
+  // dead creature is `SpellTarget.dead_target_id` and the result's combatant_id.
+  SPELL_EFFECT_KIND_REVIVE = 7;
 }
 
 // SpellEffectOutcome is whether a spell that reads hit points reached a target.
@@ -2926,6 +2967,13 @@ message SpellEffectResult {
   // it is. Everyone gets it: it only says which of three public cases applied
   // (an NPC or creature; a character standing; a character at 0 hit points).
   SpellEffectGain gain = 7;
+  // Revivify: the target's hit points after it (1). Only the master and the target's own
+  // player, as `hit_points_before`.
+  optional int32 hit_points_after = 8;
+  // Revivify, for a player's character: the character that lives again (a UUID), so the app
+  // can read it again. Empty for an NPC. The master, the caster's player and the target's
+  // player.
+  string revived_character_id = 9;
 }
 
 // SpellEffectGain is what Aid gave one target.

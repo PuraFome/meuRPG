@@ -1,0 +1,272 @@
+syntax = "proto3";
+
+// Revivify (SRD 5.1, "Revivificar") and the dead of a combat (RN-03). A Revivify cast
+// inside a combat is CombatService.CastSpell (SpellTarget.dead_target_id,
+// CastSpellRequest.material_confirmed); everything else about the spell is
+// RevivifyService below: who the caster could revive, the cast outside a combat, which
+// waits for the master, and the master's switch.
+//
+// What the spell does, in the app's words. A caster touches a creature that died in the
+// last minute, and it comes back with 1 hit point (SRD 5.1, Revivify: 3rd level, 1
+// action, touch, diamonds worth 300 gp that the spell consumes; it cannot bring back a
+// creature that died of old age, and restores no missing body part). A creature is
+// "dead" for the spell only when the master confirmed it: a player's character at 0 hit
+// points is "Caído" until then (RN-03), and an NPC is dead when it was taken to 0.
+//
+// A minute is 10 rounds (SRD 5.1, "The Order of Combat": a round is about 6 seconds).
+// In a combat the app counts: the creature died in round R at a place in the order, and
+// the spell fits while the current round is at most R + 10 (in round R + 10, only until
+// the place in the order where it died: the app's reading of "in the last minute"). Out of
+// combat the app does not count time: the master says whether it was less than a minute.
+//
+// The reasons a creature cannot be revived (too far, too long ago, hidden, marked by the
+// master) are the master's alone: a player's list holds only creatures the spell can
+// reach now, and nothing says why another is missing (RN-10).
+package meurpg.play.v1;
+
+import "google/protobuf/timestamp.proto";
+import "meurpg/play/v1/combat.proto";
+
+// RevivifyService is the part of Revivify that is not a cast inside a combat.
+//
+// Every method needs a valid session cookie and fails with `unauthenticated` without
+// one, and every request names the campaign (as CombatService).
+service RevivifyService {
+  // PreviewRevivify says who a caster could revive now (the lists of RevivifyTarget).
+  // Read-only. A player asks for their own character; the master for any.
+  //
+  // In a combat a creature is a target when it is dead (a player's character the master
+  // confirmed, an NPC taken to 0), within the touch of the caster, within the window of
+  // 10 rounds, and visible to the caller. Out of combat it is a dead character of the
+  // campaign, and `needs_master_confirmation` is true. A creature the master hid, one he
+  // marked with SetRevivifyBlocked, one that is far or too long dead is not in a
+  // player's answer, and nothing says why. The master's answer lists them in
+  // `unavailable`, with the reason.
+  //
+  // Errors:
+  //   - `not_found`: the combat, the caster or the character is not in this campaign's
+  //     open session, or the caller is a player and may not see it.
+  //   - `permission_denied`: the caller is a player and the caster is not their character.
+  //   - `failed_precondition`: the caster does not have Revivify (REVIVIFY_NOT_PREPARED
+  //     is not a code; the call answers `invalid_argument`).
+  //   - `invalid_argument`: the caster does not have Revivify prepared, or the ids do not
+  //     match (an encounter without a combatant, a combatant outside a combat).
+  rpc PreviewRevivify(PreviewRevivifyRequest) returns (PreviewRevivifyResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // RequestRevivify casts Revivify outside a combat. The spell works only on a creature
+  // that died in the last minute and the app does not count time outside a combat, so
+  // the cast waits for the master (REVIVIFY_TIME_PENDING): nothing is spent, and the
+  // target is not touched, until ConfirmRevivifyTime. It needs an open game session.
+  //
+  // It carries an idempotency_key scoped to the caller; the same key with the same request
+  // returns the first request, and with another request is `invalid_argument`. The
+  // master and the caster's player get `revivify_changed` on the stream.
+  //
+  // Errors:
+  //   - `invalid_argument`: no key or a key used for another request, a slot below the
+  //     3rd level or one the caster does not have free, the caster does not have the spell
+  //     prepared, the diamonds were not confirmed, or the caster is a combatant of a
+  //     combat that is not ended (cast inside it).
+  //   - `not_found`: the caster, the target or the session is not the campaign's, or the
+  //     caller is a player and the caster is not their character. The same answer for a
+  //     target that is not dead, is blocked by the master or does not exist.
+  //   - `failed_precondition` (a message, no detail): there is no open game session.
+  rpc RequestRevivify(RequestRevivifyRequest) returns (RequestRevivifyResponse);
+
+  // ListRevivifyRequests lists the casts of the open game session: all for the master,
+  // the ones of their own characters for a player. It is how the master's prompt and the
+  // caster's "Esperando o mestre" are read again after `revivify_changed`.
+  rpc ListRevivifyRequests(ListRevivifyRequestsRequest) returns (ListRevivifyRequestsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // ConfirmRevivifyTime is the master's answer to a cast outside a combat. With
+  // within_minute the slot is spent, the diamonds are noted in the log and the target
+  // lives again with 1 hit point, as ReviveCharacter does (RN-03 may refuse: see
+  // below). Without it nothing is spent and the caster is told only "O mestre disse que
+  // não dá". Only the master; answering again with the same key returns the first answer.
+  //
+  // Errors:
+  //   - `not_found`: the request is not in this campaign, or the caller is not the master:
+  //     a player gets it for any pending_id.
+  //   - `invalid_argument`: no key, or a key used for another request.
+  //   - `failed_precondition`: the request was answered already with another answer
+  //     (ALREADY_ANSWERED is not a code: the message says so), or the target's player
+  //     already has another living character (RN-03: nothing is spent).
+  rpc ConfirmRevivifyTime(ConfirmRevivifyTimeRequest) returns (ConfirmRevivifyTimeResponse);
+
+  // SetRevivifyBlocked is the master's switch "Revivificar não funciona nesta morte". On, the
+  // creature is no longer offered as a target to a player, with no reason shown. Only the
+  // master. Setting the value it already has changes nothing.
+  //
+  // Errors:
+  //   - `not_found`: the combatant or the character is not in this campaign.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: the creature is not dead.
+  rpc SetRevivifyBlocked(SetRevivifyBlockedRequest) returns (SetRevivifyBlockedResponse);
+}
+
+// RevivifyUnavailableReason is why a dead creature is not a target. The master reads it;
+// a player never does.
+enum RevivifyUnavailableReason {
+  REVIVIFY_UNAVAILABLE_REASON_UNSPECIFIED = 0;
+  // Beyond the touch of the caster.
+  REVIVIFY_UNAVAILABLE_REASON_TOO_FAR = 1;
+  // More than a minute (10 rounds) since it died.
+  REVIVIFY_UNAVAILABLE_REASON_TOO_LONG_AGO = 2;
+  // The caster does not see it (it, or its square, is hidden from the caster).
+  REVIVIFY_UNAVAILABLE_REASON_NOT_SEEN = 3;
+  // Hidden by the master.
+  REVIVIFY_UNAVAILABLE_REASON_HIDDEN = 4;
+  // The master switched "Revivificar não funciona nesta morte" on.
+  REVIVIFY_UNAVAILABLE_REASON_MASTER_BLOCKED = 5;
+}
+
+// PreviewRevivifyRequest asks who a caster could revive now. Read-only.
+message PreviewRevivifyRequest {
+  string campaign_id = 1;
+  // The combat (a UUID) and the combatant that casts. Both empty for the caster outside a
+  // combat, which is named by caster_character_id.
+  string encounter_id = 2;
+  string caster_id = 3;
+  // Outside a combat: the character that casts. A player names their own.
+  string caster_character_id = 4;
+}
+
+// PreviewRevivifyResponse is who a caster could revive.
+message PreviewRevivifyResponse {
+  // The creatures the spell can reach now. For a player, only these; for the master, the
+  // ones that fit as well.
+  repeated RevivifyTarget targets = 1;
+  // The creatures that cannot be revived now, with the reason. Only the master (the
+  // list is empty for a player: RN-10).
+  repeated RevivifyUnavailable unavailable = 2;
+  // The lowest free slot of at least the 3rd level that casts the spell, and how many
+  // of that level are free. Unset when the caster has none.
+  SpellSlot slot = 3;
+  int32 slots_free = 4;
+  // False outside a combat: the app does not count the time, and the master answers
+  // when the spell is cast (RequestRevivify).
+  bool counts_time = 5;
+}
+
+// RevivifyTarget is a creature the spell can reach now.
+message RevivifyTarget {
+  // The dead creature: its combatant (in a combat) or its character (outside one), a UUID.
+  string target_id = 1;
+  // Its name.
+  string name = 2;
+  // In a combat: the round it died in, and how many rounds ago that was. Unset outside
+  // one.
+  optional int32 death_round = 3;
+  optional int32 rounds_since_death = 4;
+  // Outside a combat: true. The target is shown with "O mestre confirma que faz menos
+  // de 1 minuto" and the cast waits for the master.
+  bool needs_master_confirmation = 5;
+}
+
+// RevivifyUnavailable is a dead creature that cannot be revived now. Only the master.
+message RevivifyUnavailable {
+  string target_id = 1;
+  string name = 2;
+  RevivifyUnavailableReason reason = 3;
+  optional int32 death_round = 4;
+  optional int32 rounds_since_death = 5;
+}
+
+// RevivifyRequestStatus is where a cast outside a combat stands.
+enum RevivifyRequestStatus {
+  REVIVIFY_REQUEST_STATUS_UNSPECIFIED = 0;
+  // Waiting for the master (REVIVIFY_TIME_PENDING): nothing was spent.
+  REVIVIFY_REQUEST_STATUS_PENDING = 1;
+  // The master said it was less than a minute: the target lives with 1 hit point.
+  REVIVIFY_REQUEST_STATUS_CONFIRMED = 2;
+  // The master said it was more: nothing was spent. The caster is only told
+  // "O mestre disse que não dá".
+  REVIVIFY_REQUEST_STATUS_DENIED = 3;
+}
+
+// RevivifyRequest is a Revivify cast outside a combat, from the cast to the master's answer.
+message RevivifyRequest {
+  // Stable ID (a UUID): the `pending_id` of ConfirmRevivifyTime.
+  string id = 1;
+  RevivifyRequestStatus status = 2;
+  string caster_character_id = 3;
+  string caster_name = 4;
+  string target_character_id = 5;
+  string target_name = 6;
+  // The slot the spell is cast with.
+  SpellSlot slot = 7;
+  google.protobuf.Timestamp created_at = 8;
+  // When the master answered. Unset while PENDING.
+  google.protobuf.Timestamp answered_at = 9;
+  // CONFIRMED only: the slots left of that level after the cast.
+  int32 slots_left = 10;
+}
+
+// RequestRevivifyRequest casts Revivify outside a combat. Nothing is spent until the
+// master says it was less than a minute.
+message RequestRevivifyRequest {
+  string campaign_id = 1;
+  // The caster (a UUID): a player names their own character; the master any.
+  string caster_character_id = 2;
+  // The dead character (a UUID), one PreviewRevivify offered.
+  string target_character_id = 3;
+  // The slot, of at least the 3rd level, one the caster has free.
+  SpellSlot slot = 4;
+  // The caster ticked "Tenho os diamantes": required. The app does not keep an inventory.
+  bool material_confirmed = 5;
+  // 1 to 64 characters, required.
+  string idempotency_key = 6;
+}
+
+// RequestRevivifyResponse returns the request, PENDING.
+message RequestRevivifyResponse {
+  RevivifyRequest request = 1;
+}
+
+// ListRevivifyRequestsRequest lists the casts of the open game session. The master reads
+// all, a player the ones of their own characters.
+message ListRevivifyRequestsRequest {
+  string campaign_id = 1;
+}
+
+// ListRevivifyRequestsResponse holds the requests of the open game session, newest first,
+// at most 50.
+message ListRevivifyRequestsResponse {
+  repeated RevivifyRequest requests = 1;
+}
+
+// ConfirmRevivifyTimeRequest is the master's answer to a cast outside a combat.
+message ConfirmRevivifyTimeRequest {
+  string campaign_id = 1;
+  // The request (a UUID).
+  string pending_id = 2;
+  // True: it was less than a minute, the spell works. False: it was more, nothing is spent.
+  bool within_minute = 3;
+  // 1 to 64 characters, required.
+  string idempotency_key = 4;
+}
+
+// ConfirmRevivifyTimeResponse returns the request, answered.
+message ConfirmRevivifyTimeResponse {
+  RevivifyRequest request = 1;
+}
+
+// SetRevivifyBlockedRequest is the master's switch "Revivificar não funciona nesta
+// morte" for a creature that died of old age or lost a body part (SRD 5.1, Revivify).
+message SetRevivifyBlockedRequest {
+  string campaign_id = 1;
+  // The dead creature: one of the two. A combatant of a combat that is not ended (an NPC,
+  // or a player's character the master confirmed dead), or a dead character.
+  oneof target {
+    string combatant_id = 2;
+    string character_id = 3;
+  }
+  bool blocked = 4;
+}
+
+// SetRevivifyBlockedResponse is empty: the encounter changed and says so on the stream.
+message SetRevivifyBlockedResponse {}
