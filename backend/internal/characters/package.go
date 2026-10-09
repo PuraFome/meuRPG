@@ -119,7 +119,7 @@ func (p *packagePart) exportCharacters(ctx context.Context, q *charactersdb.Quer
 			continue
 		}
 		name := campaignpackage.EntryName("npcs", snap.Next("npcs"), ".json")
-		out := &pkgv1.PackageNpc{Id: c.ID, Name: c.Name, Sheet: sheet, Story: story, MasterNotes: notes[c.ID]}
+		out := &pkgv1.PackageNpc{Id: c.ID, Name: c.Name, Kind: kindFromDB[c.Kind], Sheet: sheet, Story: story, MasterNotes: notes[c.ID]}
 		if err := snap.AddMessage(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_NPC, name, out); err != nil {
 			return err
 		}
