@@ -428,6 +428,7 @@ func (s *Service) endEffectRows(ctx context.Context, c *combatTx, cs []playdb.Co
 	for _, k := range castings {
 		var targets, ids []string
 		for _, st := range k.rows {
+			c.endedEffects = append(c.endedEffects, st)
 			if err := s.closeEffectWindows(ctx, c, st, reason); err != nil {
 				return err
 			}

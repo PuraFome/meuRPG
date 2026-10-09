@@ -448,6 +448,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		}
 	}
 
+	// What the action ended (an effect whose caster stopped concentrating, a spell it replaced)
+	// comes back with its id and its clock.
+	if err := s.restoreEffects(ctx, c, ev.Restore); err != nil {
+		return nil, err
+	}
 	switch kind {
 	case eventAttackRolled:
 		// The action (or the reaction) comes back and the damage the hit opened goes
@@ -690,6 +695,16 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		}
 		if err := c.q.SetCombatantSpellsCast(ctx, playdb.SetCombatantSpellsCastParams{ID: who.ID, SpellCast: ev.SpellCastBefore, BonusSpellCast: ev.BonusSpellBefore}); err != nil {
 			return nil, fmt.Errorf("put back the spells cast: %w", err)
+		}
+		if ev.Lasting != nil { // the effects the cast put on its targets
+			for _, id := range ev.Lasting.Effects {
+				if err := c.q.DeleteLastingEffect(ctx, id); err != nil {
+					return nil, fmt.Errorf("take the effects of the cast away: %w", err)
+				}
+			}
+			if err := s.refreshCombatants(ctx, c, ev.Lasting.Targets...); err != nil {
+				return nil, err
+			}
 		}
 		if ev.Key == huntersMark { // the mark the cast put on its target
 			if err := s.clearHuntersMark(ctx, c, who); err != nil {

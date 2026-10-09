@@ -257,3 +257,28 @@ func (s *Service) reconcileConditions(ctx context.Context, c *combatTx, target p
 
 // conditionExhaustion is the condition the levels of exhaustion leave on a combatant.
 const conditionExhaustion = "condition:exhaustion"
+
+// restoreEffects puts back the effects an undone action ended, with the id and the clock they had.
+func (s *Service) restoreEffects(ctx context.Context, c *combatTx, rows []playdb.CombatantState) error {
+	var touched []string
+	for _, st := range rows {
+		p := playdb.InsertLastingEffectParams{
+			ID: &st.ID, EncounterID: st.EncounterID, CombatantID: st.CombatantID, StartedRound: st.StartedRound, CreatedAt: st.CreatedAt,
+			GroupID: st.GroupID, SourceKey: st.SourceKey, SourceKind: st.SourceKind, Concentration: st.Concentration, ConditionKeys: st.ConditionKeys,
+			Modifiers: st.Modifiers, DurationKind: st.DurationKind, PlayerVisible: st.PlayerVisible, Audience: st.Audience,
+			SourceID: st.SourceID, EndsCombatantID: st.EndsCombatantID, EndsPhase: st.EndsPhase, EndsRound: st.EndsRound,
+			EndSaveAbility: st.EndSaveAbility, StartSaveAbility: st.StartSaveAbility, SaveDc: st.SaveDc, OnFailEffect: st.OnFailEffect,
+			FollowsKey: st.FollowsKey, TriggerDice: st.TriggerDice, TriggerDamageType: st.TriggerDamageType, TriggerMaxTriggers: st.TriggerMaxTriggers,
+			PlayerLabel: st.PlayerLabel,
+		}
+		if _, err := c.q.InsertLastingEffect(ctx, p); err != nil {
+			return fmt.Errorf("put an effect back: %w", err)
+		}
+		touched = append(touched, st.CombatantID)
+	}
+	if len(touched) == 0 {
+		return nil
+	}
+	slices.Sort(touched)
+	return s.refreshCombatants(ctx, c, slices.Compact(touched)...)
+}

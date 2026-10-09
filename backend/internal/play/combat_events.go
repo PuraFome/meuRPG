@@ -378,6 +378,8 @@ type actionEvent struct {
 	Lasting *lastingEvent `json:"lasting,omitempty"`
 	// Extra are the dice effects added to the roll (Bênção, Perdição).
 	Extra []effectDie `json:"extra,omitempty"`
+	// Restore are the effects the action ended: its undo puts them back.
+	Restore []playdb.CombatantState `json:"restore,omitempty"`
 	// ExtraUsed says the action spent the extra action of an effect (Velocidade).
 	ExtraUsed bool `json:"extra_used,omitempty"`
 

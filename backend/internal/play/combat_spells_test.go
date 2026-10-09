@@ -1754,8 +1754,9 @@ func TestCombatUndoTakesBackEveryNewAction(t *testing.T) {
 			t.Fatalf("TakeAction() error = %v", err)
 		}
 	})
-	a.undoes(t, "an attack of the Attack action", func() { a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Goblin", d20(15)) })
-	a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Goblin", d20(15))
+	// The Goblin is held by Imobilizar Pessoa: a paralyzed target gives advantage (SRD 5.1, Conditions).
+	a.undoes(t, "an attack of the Attack action", func() { a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Goblin", advantage(15)) })
+	a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Goblin", advantage(15))
 	a.undoes(t, "Surto de ação", func() {
 		if _, err := a.feature(t, a.caio, e, "Toren", actionSurgeKey, noTakeRoll); err != nil {
 			t.Fatalf("TakeAction(surge) error = %v", err)
@@ -1768,7 +1769,7 @@ func TestCombatUndoTakesBackEveryNewAction(t *testing.T) {
 		if _, err := a.attackAs(t, a.master, e, "Pensantus", fireBolt, "Goblin", d20(15), true); err == nil {
 			t.Fatal("a ranged opportunity attack worked")
 		}
-		if _, err := a.attackAs(t, a.master, e, "Brisa", maceKey, "Goblin", d20(15), true); err != nil {
+		if _, err := a.attackAs(t, a.master, e, "Brisa", maceKey, "Goblin", advantage(15), true); err != nil {
 			t.Fatalf("RollAttack(as_reaction) error = %v", err)
 		}
 	})
