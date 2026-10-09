@@ -210,6 +210,7 @@ var unreachable = map[string]string{ //nolint:gosec // G101: kinds of canary and
 	"note-Ana":      "a player's private notes have no master's read (MR-030); the owner's ListNotes is the control",
 	"note-Caio":     "a player's private notes have no master's read (MR-030); the owner's ListNotes is the control",
 	"note-id":       "a player's private notes have no master's read (MR-030); the owner's ListNotes is the control",
+	"creature-type": "a creature's type is a pseudo feature of its stat block (creature-type:undead) that only the rules read, for Divine Smite: no answer returns it to anyone, the master included; the needle proves that no player's answer ever does",
 }
 
 // checkCanariesAreReachable is the check of the check: a leak test passes when the secret is

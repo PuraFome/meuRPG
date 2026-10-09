@@ -322,8 +322,8 @@ func partsProto(p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT f
 func partRollsProto(p playdb.PendingDamage, master bool, damageTypePT func(string) string) []*playv1.DamagePartRoll {
 	var out []*playv1.DamagePartRoll
 	for _, r := range readPartRolls(p.PartRolls) {
-		if r.Conditional && !master {
-			r.Counted = true // a player reads the same lines whatever the target is
+		if r.Conditional && !r.Counted && !master {
+			continue
 		}
 		out = append(out, partRollProto(r, damageTypePT))
 	}
