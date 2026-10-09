@@ -269,7 +269,11 @@ describe("ReactionQueue, the master's side of the reaction windows", () => {
       button(el, 'Sem reação').click();
       await flush(fixture);
       expect(api.answerReaction.mock.calls[0][3]).toEqual({ use: false });
-      expect(Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.includes('Usar uma reação'))).toBe(false);
+      expect(
+        Array.from(el.querySelectorAll('button')).some((b) =>
+          b.textContent?.includes('Usar uma reação'),
+        ),
+      ).toBe(false);
     });
   });
 

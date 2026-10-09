@@ -109,7 +109,7 @@ describe('AttackSheet: a hit that waits for the reaction of its target (Escudo)'
     const text = plain(el.textContent);
     expect(text).toContain('Acertou');
     expect(text).not.toContain('Sem dano: o ataque errou.');
-    expect(text.toLowerCase()).toContain('reação');
+    expect(text.toLowerCase()).toContain('esperando o mestre');
   });
 });
 
