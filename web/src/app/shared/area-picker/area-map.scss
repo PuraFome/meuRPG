@@ -57,8 +57,13 @@
 .am__edge-halo,
 .am__edge {
   fill: none;
-  vector-effect: non-scaling-stroke;
   stroke-linecap: square;
+}
+
+// Every line keeps its width whatever the map's size.
+.am path,
+.am line {
+  vector-effect: non-scaling-stroke;
 }
 
 .am__edge-halo {
@@ -74,12 +79,6 @@
 // Before the tap: the dashed template that follows the pointer.
 .am__edge--moving {
   stroke-dasharray: 6 4;
-}
-
-.am__measure-halo,
-.am__measure,
-.am__finger {
-  vector-effect: non-scaling-stroke;
 }
 
 .am__measure-halo {
@@ -109,12 +108,16 @@
   transform: translate(-50%, -50%);
 }
 
-.am__diamond {
+.am__diamond,
+.sw-diamond {
   width: 12px;
   height: 12px;
   border: 2px solid var(--mr-map-token-surface);
   background: var(--mr-map-accent);
   box-shadow: 0 0 0 1.5px var(--mr-map-accent);
+}
+
+.am__diamond {
   transform: translate(-50%, -50%) rotate(45deg);
 }
 
@@ -180,12 +183,7 @@
 .sw-diamond {
   flex: none;
   box-sizing: border-box;
-  width: 12px;
-  height: 12px;
   margin: 0 5px;
-  border: 2px solid var(--mr-map-token-surface);
-  background: var(--mr-map-accent);
-  box-shadow: 0 0 0 1.5px var(--mr-map-accent);
   transform: rotate(45deg);
 }
 
@@ -297,7 +295,7 @@
 }
 
 .center__name {
-  flex: 1 1 auto;
+  flex: 1;
   min-width: 0;
 }
 
