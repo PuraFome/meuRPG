@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -123,6 +124,11 @@ func (f *fakeCloud) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Content-Type", obj.contentType)
+		w.Header().Set("X-Goog-Generation", strconv.Itoa(len(obj.data)))
+		if g := r.URL.Query().Get("generation"); g != "" && g != strconv.Itoa(len(obj.data)) {
+			http.Error(w, `{"error":{"code":404}}`, http.StatusNotFound)
+			return
+		}
 		http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(obj.data))
 	case r.Method == http.MethodDelete && strings.HasPrefix(r.URL.Path, objectPrefix):
 		name := strings.TrimPrefix(r.URL.Path, objectPrefix)
@@ -583,4 +589,25 @@ func TestGCSWorksAfterAFailedCheck(t *testing.T) {
 		t.Fatalf("open after a failed check: %v", err)
 	}
 	_ = obj.Close()
+}
+
+func TestGCSRangeReadOfAReplacedObjectFailsInsteadOfMixingVersions(t *testing.T) {
+	f, g := newFakeCloud(t)
+	f.objects["k"] = fakeObject{"image/png", []byte("0123456789")}
+	obj, err := g.Open(t.Context(), "k")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = obj.Close() }()
+
+	// Another version (another generation) is stored after the open.
+	f.mu.Lock()
+	f.objects["k"] = fakeObject{"image/png", []byte("abcdefghij-longer")}
+	f.mu.Unlock()
+	if _, err := obj.Content.Seek(5, io.SeekStart); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := io.ReadAll(obj.Content); err == nil {
+		t.Fatalf("read %q from another version", got)
+	}
 }

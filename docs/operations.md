@@ -324,7 +324,7 @@ gcloud services enable run.googleapis.com artifactregistry.googleapis.com \
   secretmanager.googleapis.com storage.googleapis.com iam.googleapis.com
 ```
 
-Link a billing account to the project first, and set the budget alerts ([Budget alerts](#budget-alerts)). The Gemini API ([Generated images](#generated-images-the-gemini-api)) is only for AI images; its key is made in Google AI Studio and restricted to the Gemini API there.
+On macOS (zsh), run `setopt interactive_comments` once in the terminal you use for all the steps, or the `# ...` comments in the blocks below are passed to the commands as arguments. Use the same terminal for every step, because the `export` variables live in it. Link a billing account to the project first, and set the budget alerts ([Budget alerts](#budget-alerts)). The Gemini API ([Generated images](#generated-images-the-gemini-api)) is only for AI images; its key is made in Google AI Studio and restricted to the Gemini API there.
 
 ### 2. Build and push the image
 
@@ -366,33 +366,31 @@ gcloud storage buckets add-iam-policy-binding gs://$BUCKET \
 
 ### 5. Secrets
 
-Three secrets. Each value is read from the keyboard, so it does not stay in the shell history. `DATABASE_URL` is the CockroachDB Cloud connection string from its console (`<connection string>`, which this page does not know) and, on Cloud Run, **must say `sslmode=verify-full`** (or `verify-ca`), or the server does not start ([Sign-in settings](#sign-in-settings)). **Check its TLS before the deploy, and add a CA file if the cluster needs one: see [Before the deploy: the database's TLS](#before-the-deploy-the-databases-tls), below step 5.** Add `pool_max_conns` only to change the default of 10 ([The connection pool](#the-connection-pool)). `OIDC_CLIENT_SECRET` comes from step 6, so create that secret after it. `GEMINI_API_KEY` is optional: without it, AI images are off and the rest works.
+Three secrets, two created here and one in step 6. Each value is typed at a hidden prompt, so it does not stay in the shell history. The helper below works in **bash and zsh** (the macOS default): it avoids `read -p`, which is bash-only and, in zsh, would fail and leave the value empty. It **refuses an empty value** and, after creating the secret, reads it back and checks that it has content, so an empty secret cannot go unnoticed.
+
+`DATABASE_URL` is the CockroachDB Cloud connection string from its console (`<connection string>`, which this page does not know) and, on Cloud Run, **must say `sslmode=verify-full`** (or `verify-ca`), or the server does not start ([Sign-in settings](#sign-in-settings)). **Check its TLS before the deploy, and add a CA file if the cluster needs one: see [Before the deploy: the database's TLS](#before-the-deploy-the-databases-tls), below this step.** Add `pool_max_conns` only to change the default of 10 ([The connection pool](#the-connection-pool)). `GEMINI_API_KEY` is optional: without it, AI images are off and the rest works.
 
 ```bash
-read -rs -p "DATABASE_URL: " V; echo
-printf '%s' "$V" | gcloud secrets create database-url --replication-policy=user-managed \
-  --locations=$REGION --data-file=-
-
-read -rs -p "OIDC_CLIENT_SECRET (step 6): " V; echo
-printf '%s' "$V" | gcloud secrets create oidc-client-secret --replication-policy=user-managed \
-  --locations=$REGION --data-file=-
-
-read -rs -p "GEMINI_API_KEY (skip this command to leave AI images off): " V; echo
-printf '%s' "$V" | gcloud secrets create gemini-api-key --replication-policy=user-managed \
-  --locations=$REGION --data-file=-
-unset V
-
-for S in database-url oidc-client-secret gemini-api-key; do   # drop gemini-api-key if you skipped it
-  gcloud secrets add-iam-policy-binding $S \
-    --member=serviceAccount:$SA --role=roles/secretmanager.secretAccessor
-done
+mksecret() {   # mksecret <secret-name> <prompt label>
+  printf '%s: ' "$2"; stty -echo; IFS= read -r V; stty echo; printf '\n'
+  if [ -z "$V" ]; then echo "empty value: $1 was NOT created" >&2; unset V; return 1; fi
+  printf '%s' "$V" | gcloud secrets create "$1" --replication-policy=user-managed \
+    --locations=$REGION --data-file=- || { unset V; return 1; }
+  unset V
+  gcloud secrets add-iam-policy-binding "$1" \
+    --member=serviceAccount:$SA --role=roles/secretmanager.secretAccessor >/dev/null || return 1
+  N=$(gcloud secrets versions access latest --secret="$1" | wc -c | tr -d ' ')
+  if [ "$N" -gt 0 ]; then echo "$1: created, $N bytes"; else echo "$1: EMPTY, delete it and try again" >&2; return 1; fi
+}
 ```
+
+Define the helper now; create the secrets after the database's TLS check below, because the string may need a `sslrootcert` first.
 
 #### Before the deploy: the database's TLS
 
 With `verify-full`, the server checks that the certificate of the database is signed by a CA it trusts and carries the host name in the string. Which CA signs it depends on the cluster (the console says); this page does not know. Check it from your machine before the deploy, in two steps.
 
-**1. Does the host's certificate verify against public CAs?** The production image has them: it is `distroless/static` (see the `Dockerfile`), whose `/etc/ssl/certs/ca-certificates.crt` holds Debian's bundle (checked on the image built from this branch: 150 roots, including ISRG Root X1 and Google Trust Services). So a cluster whose certificate comes from a public CA needs nothing more than `sslmode=verify-full`.
+**1. Does the host's certificate verify against public CAs?** (Optional: step 2 is the real test.) The production image has them: it is `distroless/static` (see the `Dockerfile`), whose `/etc/ssl/certs/ca-certificates.crt` holds Debian's bundle (checked on the image built from this branch: 150 roots, including ISRG Root X1 and Google Trust Services). So a cluster whose certificate comes from a public CA needs nothing more than `sslmode=verify-full`.
 
 ```bash
 export CRDB_HOST=<host from the connection string>
@@ -400,21 +398,21 @@ openssl s_client -starttls postgres -connect $CRDB_HOST:26257 -servername $CRDB_
   -verify_return_error -verify_hostname $CRDB_HOST </dev/null 2>&1 | grep -E 'Verification|Verify return code'
 ```
 
-`Verification: OK` (or `Verify return code: 0 (ok)`) means a public CA signs it. A failure such as `unable to get local issuer certificate` means the cluster has its own CA: go to step 2. (Use the port of your string if it is not 26257.)
+**On a Mac, `openssl` is LibreSSL, which has neither `-starttls postgres` nor `-verify_hostname`: install Homebrew's (`brew install openssl`) and call `$(brew --prefix openssl)/bin/openssl`, or skip this probe and rely on step 2.** `Verification: OK` (or `Verify return code: 0 (ok)`) means a public CA signs it. A failure such as `unable to get local issuer certificate` means the cluster has its own CA: go to step 2. (Use the port of your string if it is not 26257.)
 
 **2. The real test, with the production image and the production rule.** This runs the image's own `migrate` (it reads the same `DATABASE_URL`) with `K_SERVICE` set, so `config` applies the Cloud Run rule about `sslmode`; `status` only lists applied and pending migrations:
 
 ```bash
-docker run --rm -e K_SERVICE=check -e DATABASE_URL="<connection string>" \
+docker run --rm --platform linux/amd64 -e K_SERVICE=check -e DATABASE_URL="<connection string>" \
   --entrypoint /app/migrate $IMAGE status
 ```
 
-A TLS failure shows as `x509: certificate signed by unknown authority` (or `certificate is valid for ..., not ...`): the connection never gets to the database.
+`--platform linux/amd64` matters on Apple silicon: the image is built for amd64 (step 2), and without the flag Docker may warn or refuse. A TLS failure shows as `x509: certificate signed by unknown authority` (or `certificate is valid for ..., not ...`): the connection never gets to the database.
 
 **When the cluster needs its own CA.** Download the CA certificate from the cluster's console (a `.crt` file). Keep it in Secret Manager, mount it as a file on Cloud Run, and point the string at the file with `sslrootcert`. The certificate is public, but a secret keeps one place for it and lets the service account read it with the same role as the others. Note that with `sslrootcert`, only that CA is trusted for the database.
 
 ```bash
-gcloud secrets create cockroach-ca --replication-policy=user-managed \
+test -s <path/to/the-console-ca.crt> && gcloud secrets create cockroach-ca --replication-policy=user-managed \
   --locations=$REGION --data-file=<path/to/the-console-ca.crt>
 gcloud secrets add-iam-policy-binding cockroach-ca \
   --member=serviceAccount:$SA --role=roles/secretmanager.secretAccessor
@@ -423,12 +421,23 @@ gcloud secrets add-iam-policy-binding cockroach-ca \
 Put `&sslrootcert=/etc/cockroach/ca.crt` (the path where it will be mounted) in the `DATABASE_URL` secret, next to `sslmode=verify-full`, and mount the secret as that file in **both** the migration job (step 7) and the service (step 8), by adding to their `--set-secrets`: `/etc/cockroach/ca.crt=cockroach-ca:latest`. Test it before, the same way, mounting the file in Docker:
 
 ```bash
-docker run --rm -e K_SERVICE=check -v "$PWD/ca.crt:/etc/cockroach/ca.crt:ro" \
+docker run --rm --platform linux/amd64 -e K_SERVICE=check -v "$PWD/ca.crt:/etc/cockroach/ca.crt:ro" \
   -e DATABASE_URL="<connection string>&sslrootcert=/etc/cockroach/ca.crt" \
   --entrypoint /app/migrate $IMAGE status
 ```
 
 Not verified on a real cluster: whether the process (uid 65532, `nonroot`) can read the mounted file; Cloud Run mounts secrets readable, and `migrate status` on the deployed job (step 7) is what shows it. If the service logs `could not read root certificate file`, that is the cause.
+
+#### Create the two secrets
+
+Once the connection string passes the checks above (with its `sslrootcert`, if the cluster needs one):
+
+```bash
+mksecret database-url "DATABASE_URL"
+mksecret gemini-api-key "GEMINI_API_KEY (skip this command to leave AI images off)"
+```
+
+Each command must print `<name>: created, <n> bytes` with `n` above 0. If one prints `empty value` or `EMPTY`, the secret is not usable: `gcloud secrets delete <name>` (if it was created) and run it again.
 
 ### 6. Google OAuth client (sign-in)
 
@@ -436,13 +445,17 @@ Sign-in is Google only (`OIDC_ISSUER=https://accounts.google.com`). The OAuth cl
 
 1. Consent screen: user type **External**; app name, support e-mail and developer e-mail as you like; scopes **`openid`** and **`.../auth/userinfo.email`** (the app asks for `openid email`, nothing more, and neither is a sensitive scope). While the screen is in *Testing*, only the e-mails listed as test users can sign in: either add the whole table there, or publish the screen (*In production*), which these scopes do without Google's review.
 2. **Credentials → Create credentials → OAuth client ID → Web application.** Under *Authorized redirect URIs* put exactly the value of `OIDC_REDIRECT_URL`: `https://<host>/auth/callback`, where `<host>` is your domain (step 10) or the `run.app` host. The `run.app` host can be computed before the service exists: `https://$SERVICE-$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)').$REGION.run.app`. After the first deploy, check it against `gcloud run services describe $SERVICE --format='value(status.url)'`; if they differ, fix the redirect URI. Leave *Authorized JavaScript origins* empty (the flow is a server-side redirect).
-3. Copy the client ID and secret. The ID goes into the service as `OIDC_CLIENT_ID`; the secret into Secret Manager (step 5).
+3. Copy the client ID and secret. The ID goes into the service as `OIDC_CLIENT_ID`; the secret goes into Secret Manager, just below.
 
 ```bash
 export OIDC_CLIENT_ID=<client id, ends in .apps.googleusercontent.com>
 export APP_URL=https://<domain or run.app host>          # no trailing slash
 export MASTER_EMAIL=<the master's verified e-mail>        # CAMPAIGN_CREATORS
+
+mksecret oidc-client-secret "OIDC_CLIENT_SECRET"           # the helper of step 5; same terminal
 ```
+
+It must print `oidc-client-secret: created, <n> bytes` with `n` above 0.
 
 ### 7. Migrations: a Cloud Run job, before the service
 
@@ -467,17 +480,23 @@ Every value is from [Hosting](#hosting), [Environment variables and secrets](#en
 - `--timeout=2100`: the stream lives up to 30 minutes; the default of 5 would cut it. `--concurrency=50`.
 - `--cpu=1 --memory=512Mi`, with CPU only during a request (the default, `--cpu-throttling`): the app keeps a request open while an AI image is generated for that reason ([Generated images](#generated-images-the-gemini-api)). `GOMEMLIMIT=400MiB` ([Images](#images)).
 - `--allow-unauthenticated`: Cloud Run's own login is off because the app does its own sign-in. If an organization policy forbids it, the policy has to allow this one service.
-- `CAMPAIGN_CREATORS` holds the e-mails that may create campaigns: with the table's master only, nobody else can open a campaign. It may hold several e-mails separated by commas, which is why the variables use the `^@^` delimiter below (gcloud's escape for commas inside a value). Leave it empty to let any account create.
+- `CAMPAIGN_CREATORS` holds the e-mails that may create campaigns: with the table's master only, nobody else can open a campaign. It may hold several e-mails separated by commas, which is why `--set-env-vars` starts with `^#^`: gcloud's escape that changes the separator between variables from the comma to `#`, so commas (and the `@` of an e-mail) stay inside a value. **A value must not contain `#`**, the new separator; and, because the argument is in double quotes, no `"`, backtick or backslash either. The values here are ids, e-mails, `:` and `/` URLs, so none does; if you add a variable of your own, keep that in mind. Leave `CAMPAIGN_CREATORS` empty to let any account create.
 - `OIDC_MAX_AGE` is **not** set with Google. The limit variables show their defaults; drop the ones you do not want to pin. `LISTEN_HOST` and `PORT` are not set.
-- Leave `GEMINI_API_KEY` out of `--set-secrets` if you skipped it. With a database CA file (step 5), add `,/etc/cockroach/ca.crt=cockroach-ca:latest` to it.
+- **`--set-secrets` must name only secrets that exist**: a missing one fails the deploy. Pick the line below that matches step 5: with `GEMINI_API_KEY` if you created `gemini-api-key`, without it otherwise. With a database CA file (see the TLS part of step 5), add `,/etc/cockroach/ca.crt=cockroach-ca:latest` to the line you picked.
 - Never set `BLOB_DIR`, `IMAGE_GENERATOR=fake` or `MAX_CAMPAIGNS_PER_USER=off`: the server refuses to start on Cloud Run with any of them.
 
 ```bash
+# With the Gemini key (AI images on):
+export SECRETS=OIDC_CLIENT_SECRET=oidc-client-secret:latest,DATABASE_URL=database-url:latest,GEMINI_API_KEY=gemini-api-key:latest
+# OR without it (AI images off); run only one of the two:
+export SECRETS=OIDC_CLIENT_SECRET=oidc-client-secret:latest,DATABASE_URL=database-url:latest
+# With a database CA file, also: export SECRETS="$SECRETS,/etc/cockroach/ca.crt=cockroach-ca:latest"
+
 gcloud run deploy $SERVICE --image=$IMAGE --service-account=$SA \
   --allow-unauthenticated --cpu=1 --memory=512Mi \
   --min-instances=0 --max-instances=1 --concurrency=50 --timeout=2100 \
-  --set-secrets=OIDC_CLIENT_SECRET=oidc-client-secret:latest,DATABASE_URL=database-url:latest,GEMINI_API_KEY=gemini-api-key:latest \
-  --set-env-vars="^@^GOMEMLIMIT=400MiB@GOOGLE_CLOUD_PROJECT=$PROJECT_ID@BLOB_BUCKET=$BUCKET@OIDC_ISSUER=https://accounts.google.com@OIDC_CLIENT_ID=$OIDC_CLIENT_ID@OIDC_REDIRECT_URL=$APP_URL/auth/callback@CAMPAIGN_CREATORS=$MASTER_EMAIL@MAX_CAMPAIGNS_PER_USER=10@IMAGE_DAILY_LIMIT=100@IMAGE_MONTHLY_LIMIT=20@RATE_LIMIT_MULTIPLIER=1"
+  --set-secrets="$SECRETS" \
+  --set-env-vars="^#^GOMEMLIMIT=400MiB#GOOGLE_CLOUD_PROJECT=$PROJECT_ID#BLOB_BUCKET=$BUCKET#OIDC_ISSUER=https://accounts.google.com#OIDC_CLIENT_ID=$OIDC_CLIENT_ID#OIDC_REDIRECT_URL=$APP_URL/auth/callback#CAMPAIGN_CREATORS=$MASTER_EMAIL#MAX_CAMPAIGNS_PER_USER=10#IMAGE_DAILY_LIMIT=100#IMAGE_MONTHLY_LIMIT=20#RATE_LIMIT_MULTIPLIER=1"
 ```
 
 The start-up log must say `images are stored in Cloud Storage`. If it also says `the images bucket could not be reached at start`, images are still on (each call is tried on its own), but read the reason: if it is not a passing network error, uploads and downloads will fail with 503 until you fix the bucket name, the role of step 4 or the service account (`$SA`) and deploy a new revision.
@@ -492,7 +511,7 @@ If you used the `run.app` host in `APP_URL` and it matches, you are done with th
 
 ### 10. The domain
 
-`<domain>` is an open item (from the GitHub Student Developer Pack). **Cloud Run domain mappings are not offered in every region**, so first check whether `southamerica-east1` has them:
+`<domain>` is an open item (from the GitHub Student Developer Pack). **The `run.app` URL is the default for Saturday; the domain can wait.** Cloud Run domain mappings are not offered in every region. The check below is best effort (a listing that works is a good sign, not a guarantee that a mapping will be created and its certificate issued); if you have any doubt, take case B:
 
 ```bash
 gcloud beta run domain-mappings list --region=$REGION
@@ -547,6 +566,8 @@ Revisions are kept. Send the traffic back to the previous one:
 gcloud run revisions list --service=$SERVICE
 gcloud run services update-traffic $SERVICE --to-revisions=<previous-revision>=100
 ```
+
+**After this command the service stays pinned to that revision:** a later `gcloud run deploy` creates a new revision but sends it **no traffic**. Before the next deploy, release the pin with `gcloud run services update-traffic $SERVICE --to-latest`.
 
 A rollback does not undo migrations: the database keeps the schema the job applied, and the previous revision runs on it. Check, before rolling back, that the migrations of the release you are leaving do not break the old code (read their files in `backend/migrations/`); if they do, release a fix forward instead of running `migrate down`. Secrets roll back by version: `gcloud run services update $SERVICE --update-secrets=DATABASE_URL=database-url:<version>`.
 

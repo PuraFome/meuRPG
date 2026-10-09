@@ -85,6 +85,9 @@ func NewGCS(bucket string) (*GCS, error) {
 	}
 	api := http.DefaultTransport.(*http.Transport).Clone() //nolint:forcetypeassert // the standard library's transport
 	api.ResponseHeaderTimeout = gcsHeaderTimeout
+	// The size of an object is the length of its answer: no transparent
+	// gzip, which would hide it and shift every Range.
+	api.DisableCompression = true
 	return &GCS{
 		bucket:       bucket,
 		apiBase:      gcsAPIBase,
@@ -178,6 +181,9 @@ func (g *GCS) Open(ctx context.Context, key string) (*Object, error) {
 		return nil, errors.New("blob: cloud storage open: the answer has no length")
 	}
 	rd.size = resp.ContentLength
+	// A later Range read names this generation, so an object replaced in
+	// between fails instead of giving a mix of two versions.
+	rd.generation = resp.Header.Get("X-Goog-Generation")
 	rd.body = resp.Body
 	contentType := resp.Header.Get("Content-Type")
 	if contentType == "" {
@@ -368,6 +374,8 @@ type gcsReader struct {
 	target string
 	size   int64
 
+	generation string // of the object the first answer described; "" if not sent
+
 	off     int64         // where the next Read starts
 	body    io.ReadCloser // the open answer, at bodyOff; nil if none
 	bodyOff int64
@@ -420,7 +428,11 @@ func (rd *gcsReader) reopen() error {
 	if rd.off > 0 {
 		byteRange = "bytes=" + strconv.FormatInt(rd.off, 10) + "-"
 	}
-	resp, err := rd.g.do(rd.ctx, "read", http.MethodGet, rd.target, "", byteRange, nil, true) //nolint:bodyclose // kept as rd.body, or closed below on every refusal
+	target := rd.target
+	if rd.generation != "" && url.QueryEscape(rd.generation) == rd.generation {
+		target += "&generation=" + rd.generation
+	}
+	resp, err := rd.g.do(rd.ctx, "read", http.MethodGet, target, "", byteRange, nil, true) //nolint:bodyclose // kept as rd.body, or closed below on every refusal
 	if err != nil {
 		return err
 	}
