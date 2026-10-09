@@ -5830,8 +5830,10 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
     const prepare = page.locator('#pick-prepared');
     await expect(prepare).toBeVisible();
     await showAllPicks(prepare);
-    const reason = (await page.locator('#foot-reason').textContent()) ?? '';
-    for (const name of ['Amizade Animal', 'Bom Fruto', 'Criar ou Destruir Água', 'Curar Ferimentos'].slice(0, Number(/(\d+)/.exec(reason)?.[1] ?? '1'))) {
+    // How many to prepare: the list's own "0 de 2", drawn with its rows (the footer's sentence follows it a repaint later).
+    await expect(prepare.locator('.list__count')).toContainText(/\d+ de \d+/);
+    const [had, of] = ((await prepare.locator('.list__count').textContent()) ?? '').match(/\d+/g)!.map(Number);
+    for (const name of ['Amizade Animal', 'Bom Fruto', 'Criar ou Destruir Água', 'Curar Ferimentos'].slice(0, of - had)) {
       await prepare.getByRole('checkbox', { name: new RegExp(`^${name}`) }).check();
     }
     await expectScreenPasses(page, `Subir de nível, as magias ${where}`);

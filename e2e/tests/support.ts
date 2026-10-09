@@ -521,9 +521,18 @@ export async function startGameSession(page: Page, campaignId?: string): Promise
 /**
  * Opens a long level-up pick list ("Ver as outras N ..." or "Ver os outros N ...", it shows 4 rows
  * alphabetically) so a row picked by name is there whatever the names sort like.
+ *
+ * The page repaints after the click that changed a list, so the button is read from a list that has
+ * drawn its rows, never from the one before the last pick: pass `hidden` (how many rows the list
+ * keeps back once it is complete) when the list was just changed, and the call waits for that button.
  */
-export async function showAllPicks(panel: import('@playwright/test').Locator): Promise<void> {
-  const more = panel.getByRole('button', { name: /^Ver (os outros|as outras) \d+/ });
+export async function showAllPicks(panel: import('@playwright/test').Locator, hidden?: number): Promise<void> {
+  const more = panel.getByRole('button', { name: new RegExp(`^Ver (os outros|as outras) ${hidden ?? '\\d+'}\\b`) });
+  if (hidden !== undefined) {
+    await more.click();
+    return;
+  }
+  await panel.locator('input.row__input').first().waitFor();
   if ((await more.count()) > 0) {
     await more.click();
   }
