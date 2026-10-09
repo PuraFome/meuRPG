@@ -374,7 +374,6 @@ Every PR answers them. One "yes" needs a short section of risks and measures in 
 - Before reading rule PDFs with AI (MR-027, after the MVP): choose the processor, say what leaves the server, and handle the copyright of official books (the result only appears to the table). The PDF is not stored: it exists only while being processed and is deleted right after, with a short TTL on the stored file to guarantee deletion even if processing fails. When MR-027 is built, the PDF joins the inventory above with that period.
 - Registration of Google (Gemini API) as processor and its transfer mechanism, and whether the master's free text needs a mention in the privacy notice (see the Gemini rows above).
 - Lawyer review of the privacy notice, the terms of use and the treatment of free text left with the master, before the first public deploy.
-- At the first deploy, create the images bucket in São Paulo, private, with 7-day soft delete and access only for the API's service account (see [Operations](operations.md)).
 - Delete a campaign's image files when it is deleted (the `campaigns/<id>/` prefix), together with the account deletion of `PrivacyService`.
 
 ## Privacy notice outline
