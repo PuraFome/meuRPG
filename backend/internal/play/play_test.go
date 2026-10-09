@@ -592,6 +592,10 @@ func (noRoster) CombatSave(context.Context, pgx.Tx, string, string, string) (lin
 	return link.Save{}, errors.New("not in this test")
 }
 
+func (noRoster) ReactionStats(context.Context, pgx.Tx, string, string) (link.ReactionStats, error) {
+	return link.ReactionStats{}, errors.New("not in this test")
+}
+
 func (noRoster) MarkDead(context.Context, pgx.Tx, string, string, time.Time) error {
 	return errors.New("not in this test")
 }
@@ -806,6 +810,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["CastSpell"] = cc.CastSpell(ctx, connect.NewRequest(&playv1.CastSpellRequest{CampaignId: id}))
 	_, combat["UseReaction"] = cc.UseReaction(ctx, connect.NewRequest(&playv1.UseReactionRequest{CampaignId: id}))
 	_, combat["DeclineReaction"] = cc.DeclineReaction(ctx, connect.NewRequest(&playv1.DeclineReactionRequest{CampaignId: id}))
+	_, combat["AnswerReaction"] = cc.AnswerReaction(ctx, connect.NewRequest(&playv1.AnswerReactionRequest{CampaignId: id}))
+	_, combat["ResolveConcentrationSave"] = cc.ResolveConcentrationSave(ctx, connect.NewRequest(&playv1.ResolveConcentrationSaveRequest{CampaignId: id}))
 	_, combat["DeclineOpportunity"] = cc.DeclineOpportunity(ctx, connect.NewRequest(&playv1.DeclineOpportunityRequest{CampaignId: id}))
 	_, combat["SpendMovement"] = cc.SpendMovement(ctx, connect.NewRequest(&playv1.SpendMovementRequest{CampaignId: id}))
 	_, combat["OfferOpportunity"] = cc.OfferOpportunity(ctx, connect.NewRequest(&playv1.OfferOpportunityRequest{CampaignId: id}))

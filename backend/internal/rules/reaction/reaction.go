@@ -175,6 +175,9 @@ func AnswerNow(all []Window, id string) bool {
 
 // Wait is what the combat waits for, for one reader.
 type Wait struct {
+	// Self: the reader is the master and the reaction is one of his own (an NPC's,
+	// or his one-tap check): "a sua reação".
+	Self bool
 	// Master: the master (or an NPC, or a reactor the reader does not see) holds it.
 	Master bool
 	// Reactors are the labels of the player's characters the reader sees that react.
@@ -189,6 +192,9 @@ type Wait struct {
 // Constituição de Sálvia".
 func (w Wait) Title() string {
 	var parts []string
+	if w.Self {
+		parts = append(parts, "a sua reação")
+	}
 	if w.Master {
 		parts = append(parts, "o mestre")
 	}

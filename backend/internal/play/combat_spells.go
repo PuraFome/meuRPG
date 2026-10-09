@@ -20,6 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // Casting a spell (MR-014, RN-02, RN-18, RN-22, Etapa 6, slice 6.4b). The cast
@@ -197,6 +198,13 @@ func (s *Service) CastSpell(
 	if err != nil {
 		return nil, err
 	}
+	return s.castSpell(ctx, m, req)
+}
+
+// castSpell is CastSpell for a member already authorized: the replay of a held action calls it
+// with the member who made the request (combat_reaction_hold.go).
+func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connect.Request[playv1.CastSpellRequest]) (*connect.Response[playv1.CastSpellResponse], error) {
+	var err error
 	key, err := parseKey(req.Msg.GetIdempotencyKey())
 	if err != nil {
 		return nil, err
@@ -378,6 +386,16 @@ func (s *Service) CastSpell(
 			}
 		}
 
+		// A Counterspell, or the master's check of the table rule "Reações dos inimigos",
+		// can change the cast: it waits for the windows and happens when they are
+		// answered (PM-04, combat_reaction_hold.go).
+		if held, ok, err := s.holdCast(ctx, c, m, req.Msg, cs, caster, spellKey, int32(slotLevel), targs); err != nil { //nolint:gosec // a slot level, 0 to 9
+			return nil, err
+		} else if ok {
+			made = held
+			return made, nil
+		}
+
 		// The cast spends the slot and the economy at once (MR-014).
 		run, err := breakRun(ctx, c, caster)
 		if err != nil {
@@ -414,6 +432,17 @@ func (s *Service) CastSpell(
 			if err := c.q.SetCombatantSpellsCast(ctx, playdb.SetCombatantSpellsCastParams{ID: caster.ID, SpellCast: spellCast, BonusSpellCast: bonusSpellCast}); err != nil {
 				return nil, fmt.Errorf("note the spell cast: %w", err)
 			}
+		}
+		if c.replay != nil && c.replay.countered {
+			// A Counterspell failed the spell: the slot and the action are spent, as
+			// casting it expended them, and nothing else happens (SRD, Counterspell).
+			made.Secret = caster.Hidden
+			made.Reaction = &reactionEvent{Kind: string(reaction.CounterspellKind), Countered: true, Spell: spellKey, Level: int32(slotLevel)} //nolint:gosec // a slot level, 0 to 9
+			if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+				return nil, fmt.Errorf("touch the encounter: %w", err)
+			}
+			c.characterID = &caster.CharacterID
+			return made, nil
 		}
 		if sp.Concentration {
 			made.Concentrate, made.ConcBefore = true, deref(caster.ConcentrationSpell)
@@ -487,6 +516,9 @@ func (s *Service) CastSpell(
 	})
 	if err != nil {
 		return nil, err
+	}
+	if ev.Reaction != nil && ev.Reaction.Hold { // a reaction window holds the cast: nothing of it happened yet
+		return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out}), nil
 	}
 	spell, err := s.castProto(ctx, res, ev, v)
 	if err != nil {
@@ -680,13 +712,26 @@ func (s *Service) openDarts(ctx context.Context, c *combatTx, sp link.Spell, cas
 	// A dart is its own roll: n darts are n dice and n times the bonus. The cast
 	// has no cast id for them: each target's damage is its own roll.
 	dmg := link.Dice{Count: perDart.Count * n, Sides: perDart.Sides, Bonus: perDart.Bonus * n, DamageType: perDart.DamageType}
+	// The darts hit by themselves: a target that can cast Escudo may stop all of them
+	// (SRD, Shield), and the master's check of "Sempre" waits for each target too.
+	specs, err := s.hitWindows(ctx, c, caster, target, sp.Key, false, true, 0, 0)
+	if err != nil {
+		return err
+	}
+	status := pendingAwaitingRoll
+	if len(specs) > 0 {
+		status = pendingAwaitingReaction
+	}
 	p, err := c.q.InsertPendingDamage(ctx, playdb.InsertPendingDamageParams{
-		EncounterID: c.enc.ID, AttackerID: &caster.ID, TargetID: target.ID, AttackKey: sp.Key, Status: pendingAwaitingRoll,
+		EncounterID: c.enc.ID, AttackerID: &caster.ID, TargetID: target.ID, AttackKey: sp.Key, Status: status,
 		DiceCount: clamp32(dmg.Count, 0, 100), DiceSides: clamp32(dmg.Sides, 0, 100), DiceBonus: clamp32(dmg.Bonus, -1000, 1000), DamageType: dmg.DamageType,
 		CreatedAt: c.now,
 	})
 	if err != nil {
 		return fmt.Errorf("open the pending damage: %w", err)
+	}
+	if err := s.openPendingWindows(ctx, c, p, specs); err != nil {
+		return err
 	}
 	hit.Pending = p.ID
 	return nil

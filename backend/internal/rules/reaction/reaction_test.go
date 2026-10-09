@@ -136,6 +136,7 @@ func TestWaitSentences(t *testing.T) {
 		{"both", Wait{Master: true, Reactors: []string{"Sálvia"}}, HoldsTurn, "", "Esperando o mestre e a reação de Sálvia", "O turno continua quando ele responder."},
 		{"two players", Wait{Reactors: []string{"Sálvia", "Brisa"}}, HoldsYourSpell, "", "Esperando a reação de Brisa e Sálvia", "A sua conjuração se resolve quando responder."},
 		{"a save", Wait{Savers: []string{"Sálvia"}}, HoldsTurn, "", "Esperando o teste de Constituição de Sálvia", "O turno continua quando responder."},
+		{"the master's own", Wait{Self: true, Reactors: []string{"Pensantus"}}, HoldsTurn, "", "Esperando a sua reação e a reação de Pensantus", "O turno continua quando responder."},
 		{"nothing", Wait{}, HoldsTurn, "", "", "O turno continua quando responder."},
 	}
 	for _, tt := range tests {
