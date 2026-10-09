@@ -225,3 +225,13 @@ SELECT * FROM campaigns WHERE id = $1 FOR UPDATE;
 -- name: SetCampaignXPMode :one
 -- The master changed how the campaign levels (RN-09).
 UPDATE campaigns SET xp_mode = $2, xp_mode_changed_at = sqlc.arg(now)::TIMESTAMPTZ WHERE id = $1 RETURNING xp_mode, xp_mode_changed_at;
+
+-- name: InsertImportedCampaign :one
+-- A campaign made from a package (MR-050): the id is chosen before, because the
+-- files of its images are stored under it. create_key and create_hash are the
+-- idempotency key of CreateCampaignFromImport; a second call with the key makes
+-- no row, and the caller reads the first one (GetCampaignByCreateKey).
+INSERT INTO campaigns (id, name, xp_mode, dice_mode, created_by, create_key, create_hash)
+VALUES (sqlc.arg(id), sqlc.arg(name), sqlc.arg(xp_mode), sqlc.arg(dice_mode), sqlc.arg(created_by), sqlc.narg(create_key), sqlc.narg(create_hash))
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING *;

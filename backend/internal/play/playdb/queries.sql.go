@@ -2801,6 +2801,43 @@ func (q *Queries) ListBattleEncounters(ctx context.Context, arg ListBattleEncoun
 	return items, nil
 }
 
+const listBattleEncountersOfCampaign = `-- name: ListBattleEncountersOfCampaign :many
+
+SELECT e.map_point_id, e.campaign_id, e.map_id, e.encounter, e.created_at, e.updated_at FROM battle_encounters AS e
+JOIN map_points AS p ON p.id = e.map_point_id
+WHERE e.campaign_id = $1 AND p.kind = 'battle'
+ORDER BY e.created_at, e.map_point_id
+`
+
+// The campaign package (MR-050).
+// Every encounter kept on a battle point of the campaign, oldest first, for an export.
+func (q *Queries) ListBattleEncountersOfCampaign(ctx context.Context, campaignID string) ([]BattleEncounter, error) {
+	rows, err := q.db.Query(ctx, listBattleEncountersOfCampaign, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BattleEncounter
+	for rows.Next() {
+		var i BattleEncounter
+		if err := rows.Scan(
+			&i.MapPointID,
+			&i.CampaignID,
+			&i.MapID,
+			&i.Encounter,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCampaignEncounterNames = `-- name: ListCampaignEncounterNames :many
 SELECT e.id, e.name FROM encounters AS e
 JOIN game_sessions AS gs ON gs.id = e.game_session_id
