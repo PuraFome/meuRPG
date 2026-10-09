@@ -197,15 +197,17 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		if err != nil {
 			return err
 		}
-		// A bucket that cannot be reached now keeps images off, with a
-		// warning, instead of stopping the server: like a missing BLOB_DIR,
-		// the rest of the app works.
+		// The check only reports: a metadata server or network hiccup at
+		// boot must not take images away for the whole revision. The store
+		// stays on, and each call succeeds or fails on its own (the image
+		// routes answer an error when one fails).
 		if err := gcs.Check(ctx); err != nil {
-			logger.Warn("the images bucket cannot be reached; images are off: uploads, image downloads and the gallery answer 503", "error", err)
+			logger.Warn("the images bucket could not be reached at start; images stay on and each call is tried on its own: check BLOB_BUCKET, the service account's role and the metadata server if uploads fail", "error", err)
 		} else {
-			blobs = gcs
-			logger.Info("images are stored in Cloud Storage")
+			logger.Info("the images bucket is reachable")
 		}
+		blobs = gcs
+		logger.Info("images are stored in Cloud Storage")
 	case cfg.BlobDir == "":
 		logger.Warn("BLOB_DIR and BLOB_BUCKET are not set; images are off: uploads, image downloads and the gallery answer 503")
 	default:

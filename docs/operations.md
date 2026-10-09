@@ -168,7 +168,7 @@ Gallery images (MR-019) live in a blob store (see [Architecture](architecture.md
 | `BLOB_DIR` | No | The image folder on disk, for the local environment (`/var/lib/meurpg/images`, on a Docker Compose volume) and the tests. Without either variable, images are off (`503`). **Refused on Cloud Run** (`K_SERVICE` set), whose disk is memory and is lost when the instance stops; the message points to `BLOB_BUCKET` |
 
 - **One store only.** With both `BLOB_BUCKET` and `BLOB_DIR` the server refuses to start, with a message naming both.
-- **At start with `BLOB_BUCKET`,** the server reads a token from the metadata server and lists one object of the bucket (`storage.objects.list`). If that fails (wrong name, missing role, no metadata server), the log says `the images bucket cannot be reached; images are off` with the reason, uploads, downloads and the gallery answer `503`, and the rest of the app works, like a missing `BLOB_DIR`. The check runs once: after fixing the cause, deploy a new revision. On success: `images are stored in Cloud Storage`.
+- **At start with `BLOB_BUCKET`,** the server reads a token from the metadata server and lists one object of the bucket (`storage.objects.list`) and logs the result: `the images bucket is reachable`, or a warning with the reason (`the images bucket could not be reached at start`). **A failed check does not turn images off:** the store stays on, because a hiccup of the metadata server or of the network at boot must not leave the table without maps for the whole revision. Each call succeeds or fails on its own: an upload or a download that fails answers an error (`unavailable`/`503`, the request can be tried again) and the next one is tried again, with a fresh token if the last was refused. If the warning is not a hiccup (wrong bucket name, missing role), every image call fails: fix the cause and deploy a new revision.
 - **No client library.** The store (`blob.GCS`) calls three methods of the Cloud Storage JSON API with `net/http`: a media upload (`POST /upload/storage/v1/b/<bucket>/o?uploadType=media`), a streamed read (`GET .../o/<object>?alt=media`, with a `Range` header when the reader seeks) and a delete. The token is cached until a minute before it expires, and forgotten when the API answers `401`. Every call has a time limit (5 s for the token, 15 s for the answer's headers and for a delete, 2 minutes for an upload and for the whole life of an open read). Only a read is repeated, once, after a network error or a `5xx`. Errors carry the status or the network error, never the token, the response body, the bucket or the object name (keys hold IDs). A missing object is `blob.ErrNotFound` on read, and not an error on delete, as on disk.
 - **Key prefixes.** A key is stored as the object name, unchanged (`campaigns/<campaign>/images/<id>`). A new kind of file takes its own prefix under the campaign's, so a prefix is enough to find and clean up one kind. Nothing else on the server writes files to disk: the only code that does is the `srdimport` tool, which runs on a developer's machine.
 
@@ -366,7 +366,7 @@ gcloud storage buckets add-iam-policy-binding gs://$BUCKET \
 
 ### 5. Secrets
 
-Three secrets. Each value is read from the keyboard, so it does not stay in the shell history. `DATABASE_URL` is the CockroachDB Cloud connection string from its console (`<connection string>`, which this page does not know) and, on Cloud Run, **must say `sslmode=verify-full`** (or `verify-ca`), or the server does not start ([Sign-in settings](#sign-in-settings)). Add `pool_max_conns` only to change the default of 10 ([The connection pool](#the-connection-pool)). `OIDC_CLIENT_SECRET` comes from step 6, so create that secret after it. `GEMINI_API_KEY` is optional: without it, AI images are off and the rest works.
+Three secrets. Each value is read from the keyboard, so it does not stay in the shell history. `DATABASE_URL` is the CockroachDB Cloud connection string from its console (`<connection string>`, which this page does not know) and, on Cloud Run, **must say `sslmode=verify-full`** (or `verify-ca`), or the server does not start ([Sign-in settings](#sign-in-settings)). **Check its TLS before the deploy, and add a CA file if the cluster needs one: see [Before the deploy: the database's TLS](#before-the-deploy-the-databases-tls), below step 5.** Add `pool_max_conns` only to change the default of 10 ([The connection pool](#the-connection-pool)). `OIDC_CLIENT_SECRET` comes from step 6, so create that secret after it. `GEMINI_API_KEY` is optional: without it, AI images are off and the rest works.
 
 ```bash
 read -rs -p "DATABASE_URL: " V; echo
@@ -387,6 +387,48 @@ for S in database-url oidc-client-secret gemini-api-key; do   # drop gemini-api-
     --member=serviceAccount:$SA --role=roles/secretmanager.secretAccessor
 done
 ```
+
+#### Before the deploy: the database's TLS
+
+With `verify-full`, the server checks that the certificate of the database is signed by a CA it trusts and carries the host name in the string. Which CA signs it depends on the cluster (the console says); this page does not know. Check it from your machine before the deploy, in two steps.
+
+**1. Does the host's certificate verify against public CAs?** The production image has them: it is `distroless/static` (see the `Dockerfile`), whose `/etc/ssl/certs/ca-certificates.crt` holds Debian's bundle (checked on the image built from this branch: 150 roots, including ISRG Root X1 and Google Trust Services). So a cluster whose certificate comes from a public CA needs nothing more than `sslmode=verify-full`.
+
+```bash
+export CRDB_HOST=<host from the connection string>
+openssl s_client -starttls postgres -connect $CRDB_HOST:26257 -servername $CRDB_HOST \
+  -verify_return_error -verify_hostname $CRDB_HOST </dev/null 2>&1 | grep -E 'Verification|Verify return code'
+```
+
+`Verification: OK` (or `Verify return code: 0 (ok)`) means a public CA signs it. A failure such as `unable to get local issuer certificate` means the cluster has its own CA: go to step 2. (Use the port of your string if it is not 26257.)
+
+**2. The real test, with the production image and the production rule.** This runs the image's own `migrate` (it reads the same `DATABASE_URL`) with `K_SERVICE` set, so `config` applies the Cloud Run rule about `sslmode`; `status` only lists applied and pending migrations:
+
+```bash
+docker run --rm -e K_SERVICE=check -e DATABASE_URL="<connection string>" \
+  --entrypoint /app/migrate $IMAGE status
+```
+
+A TLS failure shows as `x509: certificate signed by unknown authority` (or `certificate is valid for ..., not ...`): the connection never gets to the database.
+
+**When the cluster needs its own CA.** Download the CA certificate from the cluster's console (a `.crt` file). Keep it in Secret Manager, mount it as a file on Cloud Run, and point the string at the file with `sslrootcert`. The certificate is public, but a secret keeps one place for it and lets the service account read it with the same role as the others. Note that with `sslrootcert`, only that CA is trusted for the database.
+
+```bash
+gcloud secrets create cockroach-ca --replication-policy=user-managed \
+  --locations=$REGION --data-file=<path/to/the-console-ca.crt>
+gcloud secrets add-iam-policy-binding cockroach-ca \
+  --member=serviceAccount:$SA --role=roles/secretmanager.secretAccessor
+```
+
+Put `&sslrootcert=/etc/cockroach/ca.crt` (the path where it will be mounted) in the `DATABASE_URL` secret, next to `sslmode=verify-full`, and mount the secret as that file in **both** the migration job (step 7) and the service (step 8), by adding to their `--set-secrets`: `/etc/cockroach/ca.crt=cockroach-ca:latest`. Test it before, the same way, mounting the file in Docker:
+
+```bash
+docker run --rm -e K_SERVICE=check -v "$PWD/ca.crt:/etc/cockroach/ca.crt:ro" \
+  -e DATABASE_URL="<connection string>&sslrootcert=/etc/cockroach/ca.crt" \
+  --entrypoint /app/migrate $IMAGE status
+```
+
+Not verified on a real cluster: whether the process (uid 65532, `nonroot`) can read the mounted file; Cloud Run mounts secrets readable, and `migrate status` on the deployed job (step 7) is what shows it. If the service logs `could not read root certificate file`, that is the cause.
 
 ### 6. Google OAuth client (sign-in)
 
@@ -413,6 +455,8 @@ gcloud run jobs create meurpg-migrate --image=$IMAGE --service-account=$SA \
 gcloud run jobs execute meurpg-migrate --wait
 ```
 
+With a database CA file (step 5), add `,/etc/cockroach/ca.crt=cockroach-ca:latest` to the job's `--set-secrets`.
+
 On the next deploys: `gcloud run jobs update meurpg-migrate --image=$IMAGE`, then `execute --wait` again, then deploy the service. If the job fails, read its log (step 13) and do not deploy; running `execute` again is safe, because goose applies only what is pending.
 
 ### 8. The service
@@ -425,7 +469,7 @@ Every value is from [Hosting](#hosting), [Environment variables and secrets](#en
 - `--allow-unauthenticated`: Cloud Run's own login is off because the app does its own sign-in. If an organization policy forbids it, the policy has to allow this one service.
 - `CAMPAIGN_CREATORS` holds the e-mails that may create campaigns: with the table's master only, nobody else can open a campaign. It may hold several e-mails separated by commas, which is why the variables use the `^@^` delimiter below (gcloud's escape for commas inside a value). Leave it empty to let any account create.
 - `OIDC_MAX_AGE` is **not** set with Google. The limit variables show their defaults; drop the ones you do not want to pin. `LISTEN_HOST` and `PORT` are not set.
-- Leave `GEMINI_API_KEY` out of `--set-secrets` if you skipped it.
+- Leave `GEMINI_API_KEY` out of `--set-secrets` if you skipped it. With a database CA file (step 5), add `,/etc/cockroach/ca.crt=cockroach-ca:latest` to it.
 - Never set `BLOB_DIR`, `IMAGE_GENERATOR=fake` or `MAX_CAMPAIGNS_PER_USER=off`: the server refuses to start on Cloud Run with any of them.
 
 ```bash
@@ -436,7 +480,7 @@ gcloud run deploy $SERVICE --image=$IMAGE --service-account=$SA \
   --set-env-vars="^@^GOMEMLIMIT=400MiB@GOOGLE_CLOUD_PROJECT=$PROJECT_ID@BLOB_BUCKET=$BUCKET@OIDC_ISSUER=https://accounts.google.com@OIDC_CLIENT_ID=$OIDC_CLIENT_ID@OIDC_REDIRECT_URL=$APP_URL/auth/callback@CAMPAIGN_CREATORS=$MASTER_EMAIL@MAX_CAMPAIGNS_PER_USER=10@IMAGE_DAILY_LIMIT=100@IMAGE_MONTHLY_LIMIT=20@RATE_LIMIT_MULTIPLIER=1"
 ```
 
-The start-up log must say `images are stored in Cloud Storage`. If it says `the images bucket cannot be reached; images are off`, the server is up but uploads answer 503: check the bucket name, the role of step 4, and that the service runs as `$SA`; then deploy a new revision (the check runs once, at start).
+The start-up log must say `images are stored in Cloud Storage`. If it also says `the images bucket could not be reached at start`, images are still on (each call is tried on its own), but read the reason: if it is not a passing network error, uploads and downloads will fail with 503 until you fix the bucket name, the role of step 4 or the service account (`$SA`) and deploy a new revision.
 
 ### 9. The service address
 
@@ -448,15 +492,36 @@ If you used the `run.app` host in `APP_URL` and it matches, you are done with th
 
 ### 10. The domain
 
-`<domain>` is an open item (from the GitHub Student Developer Pack). Until it exists, the table can use the `run.app` URL; nothing else depends on the domain except `OIDC_REDIRECT_URL`. With a domain:
+`<domain>` is an open item (from the GitHub Student Developer Pack). **Cloud Run domain mappings are not offered in every region**, so first check whether `southamerica-east1` has them:
+
+```bash
+gcloud beta run domain-mappings list --region=$REGION
+```
+
+If it lists mappings (or an empty table), the region offers them. If it answers an error saying that the region does not support domain mappings, it does not. The check only reads; nothing is created.
+
+**Case A, the region offers them (domain ready for Saturday):**
 
 ```bash
 export DOMAIN=<domain>
-gcloud beta run domain-mappings create --service=$SERVICE --domain=$DOMAIN
-gcloud beta run domain-mappings describe --domain=$DOMAIN    # the DNS records to create
+gcloud beta run domain-mappings create --service=$SERVICE --domain=$DOMAIN --region=$REGION
+gcloud beta run domain-mappings describe --domain=$DOMAIN --region=$REGION    # the DNS records to create
 ```
 
-Create the DNS records it shows, wait for the certificate (it can take minutes to hours), then, **in this order**: register `https://$DOMAIN/auth/callback` on the OAuth client, update `OIDC_REDIRECT_URL`, and test. **Not verified:** whether Cloud Run domain mappings are available in `southamerica-east1`; if the command is refused, use the `run.app` URL, or put a load balancer in front, which changes how the client IP is read (`cloudRunTrustedHops`, [Sign-in rate limit and the client IP](#sign-in-rate-limit-and-the-client-ip)).
+Create the DNS records it shows and wait for the certificate (minutes to hours). Then, **in this order**: register `https://$DOMAIN/auth/callback` on the OAuth client (step 6), update `OIDC_REDIRECT_URL` (`gcloud run services update $SERVICE --update-env-vars OIDC_REDIRECT_URL=https://$DOMAIN/auth/callback`), and test the sign-in on the domain. Keep the `run.app` redirect registered until the domain works.
+
+**Case B, the region does not offer them (use the `run.app` URL for Saturday, the domain later).** Do nothing here. The table uses the `run.app` URL; the OAuth redirect is the one registered in step 6 with it, and `OIDC_REDIRECT_URL` is `https://<service>-<project number>.southamerica-east1.run.app/auth/callback`, as in the deploy of step 8. The domain waits for a later session: it needs another way in front of the service (a global external load balancer with a serverless network endpoint group, or a region that offers mappings), and nothing in the app needs it first.
+
+What changes in each case:
+
+| | `run.app` (case B, Saturday) | Domain mapping (case A) | Domain behind a load balancer (later) |
+| --- | --- | --- | --- |
+| `OIDC_REDIRECT_URL` | `https://<run.app host>/auth/callback` | `https://<domain>/auth/callback`, registered on the OAuth client **before** the variable changes | the same, with the load balancer's domain |
+| Redirect URI on the OAuth client | the `run.app` one | add the domain's; keep the other until the domain works | the load balancer's domain |
+| `CAMPAIGN_CREATORS` | no change | no change | no change: it holds e-mails, and nothing in it depends on the host |
+| `cloudRunTrustedHops` (`ratelimit.ClientKey`) | stays **1** | stays **1** if the first-deploy check below shows the last `X-Forwarded-For` item is the caller (a mapping goes through Google's front end; **not verified**) | must become **2** (a code change and a new image), because the load balancer appends its own address |
+
+In every case, do the check of [Sign-in rate limit and the client IP](#sign-in-rate-limit-and-the-client-ip) on the first deploy. If `cloudRunTrustedHops` is wrong, nobody bypasses the limit, but all clients share one bucket until it is fixed (`RATE_LIMIT_MULTIPLIER` can be raised meanwhile).
 
 ### 11. Smoke test
 
@@ -503,7 +568,7 @@ The log never holds a password, a token or an e-mail ([Privacy](privacy.md#logs-
 
 ## Open items before the first deploy
 
-- Domain name (comes from the GitHub Student Developer Pack; only needed on the first deploy).
+- Domain name (comes from the GitHub Student Developer Pack). Not needed for Saturday: the `run.app` URL works, and the domain mapping may not exist in `southamerica-east1` ([step 10](#10-the-domain)).
 - Check the region and the backup retention in the CockroachDB Cloud console (São Paulo, 30 days at most).
 - Evaluate whether migrating from CockroachDB to Cloud SQL or another product is worth it, since the legacy plan cannot change without losing Unlimited. It weighs on the account: the code uses CockroachDB's row TTL (sessions, sign-in states and invites) and retries transactions on error `40001`; on PostgreSQL, the cleanup would become a scheduled job.
 - The full list of secrets per environment and who has access.
@@ -511,7 +576,7 @@ The log never holds a password, a token or an e-mail ([Privacy](privacy.md#logs-
 - The production ELK (see [Logs in ELK](#logs-in-elk)): whether it is worth the cost, where Elasticsearch runs, the Cloud Logging sink to Pub/Sub and the pipeline step that reads `jsonPayload`.
 - The Gemini API key in Secret Manager, the daily quota and the key's API restriction (see [Generated images](#generated-images-the-gemini-api)); measure the real cost per image with it, and adjust `IMAGE_MONTHLY_LIMIT`.
 - Run the images bucket and the rest of the first deploy by the steps in [First deploy, step by step](#first-deploy-step-by-step); the Cloud Storage store is in the `blob` package and was tested against a fake of the API only. The real bucket's behaviour (the media upload, the `Range` read, the metadata token) is checked by the smoke test of that section.
-- The CockroachDB Cloud connection string, in the form the console gives for `sslmode=verify-full`: the production image carries no certificate file, so check that the console's string verifies against the system's certificates.
+- The CockroachDB Cloud connection string with `sslmode=verify-full`: check its TLS before the deploy, and add the cluster's CA as a mounted file if it needs one ([the database's TLS](#before-the-deploy-the-databases-tls)).
 
 ## See also
 

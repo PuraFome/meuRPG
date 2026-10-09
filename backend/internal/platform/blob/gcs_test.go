@@ -556,3 +556,31 @@ func TestGCSProductionEndpointsAreTheRealOnes(t *testing.T) {
 		t.Fatalf("endpoints %q, %q", g.apiBase, g.metadataBase)
 	}
 }
+
+func TestGCSWorksAfterAFailedCheck(t *testing.T) {
+	f, g := newFakeCloud(t)
+	// The metadata server is down for the check (a hiccup at boot)...
+	inner := f.server.Config.Handler
+	var down atomic.Bool
+	down.Store(true)
+	f.server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == gcsTokenPath && down.Load() {
+			http.Error(w, "down", http.StatusServiceUnavailable)
+			return
+		}
+		inner.ServeHTTP(w, r)
+	})
+	if err := g.Check(t.Context()); err == nil {
+		t.Fatal("the check passed with the metadata server down")
+	}
+	// ...and each later call is tried on its own, with no memory of the failure.
+	down.Store(false)
+	if err := g.Put(t.Context(), "k", "image/png", strings.NewReader("x")); err != nil {
+		t.Fatalf("put after a failed check: %v", err)
+	}
+	obj, err := g.Open(t.Context(), "k")
+	if err != nil {
+		t.Fatalf("open after a failed check: %v", err)
+	}
+	_ = obj.Close()
+}
