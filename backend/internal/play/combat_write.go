@@ -21,6 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // The kinds of session_events rows a combat writes (session_event_kinds).
@@ -113,6 +114,14 @@ const (
 // RN-26). Written by this package, in the move's transaction.
 const eventDoorOpened = "door_opened"
 
+// The kinds of the reaction window (migration 00196, PM-04): the answer of a window,
+// and a concentration save. The legacy Shield answers keep reaction_used and
+// reaction_declined (their undo knows them).
+const (
+	eventReactionAnswered        = "reaction_answered"
+	eventConcentrationSaveRolled = "concentration_save_rolled"
+)
+
 // combatWrite describes one change to a combat: who makes it, the idempotency
 // key, the kind of event it becomes, and the combat it is about (empty when
 // the change creates it).
@@ -174,6 +183,18 @@ type combatTx struct {
 	// opened: a critical hit and who sees the death saves follow them from the
 	// next roll on, and are never kept longer than the change.
 	rules tablerules.Rules
+	// reactionNotes are the reaction windows the change opened or closed, told
+	// after the commit to their reactor and the master; replay is set while a held
+	// action is replayed (combat_reaction_hold.go); lastAnswered is the reaction the
+	// change answered, for the sentence of the windows it closed; tellIDs are the
+	// combatants whose character vitals a replayed action changed.
+	reactionNotes []reactionNote
+	replay        *replayState
+	lastAnswered  reaction.Kind
+	tellIDs       []string
+	// answered are the answers of this change whose event waits for what the replay
+	// of a held action made of the roll (combat_reaction_hold.go).
+	answered []answeredRef
 }
 
 // combatResult is what a change leaves for the handler: the session, and
@@ -200,6 +221,10 @@ type combatResult struct {
 	sight   *fogSight
 	stamped *actionEvent
 	lines   []actionEvent
+	// notes are the reaction windows the change opened or closed, and tellIDs the
+	// combatants whose vitals a replayed action changed: told after the commit.
+	notes   []reactionNote
+	tellIDs []string
 }
 
 // write runs one change to a combat, as AdjustCharacterVitals runs a vitals
@@ -208,6 +233,9 @@ type combatResult struct {
 // do returns the event's payload, or nil when nothing changed, and then no
 // event is written. Only after the commit does the handler publish.
 func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx) (payload any, err error)) (combatResult, error) {
+	if a := ambientOf(ctx); a != nil { // the replay of a held action: inside the open transaction
+		return s.writeAmbient(ctx, a, w, do)
+	}
 	// What the players see is read first, never inside the transaction: the maps
 	// module asks this one where the combatants stand, and that read would wait for
 	// the rows the change has already written. The sight is read with the combat's
@@ -233,6 +261,7 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 			// Here, after the transaction returned, so a retried transaction
 			// logs once.
 			s.logCombatEvent(ctx, res)
+			s.publishReactions(ctx, w.m.CampaignID, res)
 		}
 		return res, err
 	}
@@ -311,6 +340,11 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 		if err := s.pruneOffers(ctx, c); err != nil {
 			return err
 		}
+		// The reaction windows that stopped being valid close, and what the ones
+		// that are all answered held goes on.
+		if err := s.settleReactions(ctx, c); err != nil {
+			return err
+		}
 		res.encounterID = c.enc.ID
 		res.kind = c.kind
 		res.characterID = deref(c.characterID)
@@ -332,6 +366,7 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 	res.stamped = last
 	if ended != nil {
 		res.lines = ended.lines
+		res.notes, res.tellIDs = ended.reactionNotes, ended.tellIDs
 	}
 	// A turn that started ended some familiar's sight (MR-036): the player's vitals
 	// and the fog's view change.

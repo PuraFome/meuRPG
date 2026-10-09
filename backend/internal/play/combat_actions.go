@@ -23,6 +23,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // What a turn can do (MR-012, MR-014, Etapa 6, slice 6.4a): the options of a
@@ -538,6 +539,13 @@ func (s *Service) RollAttack(
 	if err != nil {
 		return nil, err
 	}
+	return s.rollAttack(ctx, m, req)
+}
+
+// rollAttack is RollAttack for a member already authorized: the replay of a held action calls it
+// with the member who made the request (combat_reaction_hold.go).
+func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *connect.Request[playv1.RollAttackRequest]) (*connect.Response[playv1.RollAttackResponse], error) { //nolint:gocognit,gocyclo // the attack's steps in one closure, as RollAttack always was; the reaction window only split the handler from its replay
+	var err error
 	key, err := parseKey(req.Msg.GetIdempotencyKey())
 	if err != nil {
 		return nil, err
@@ -580,13 +588,15 @@ func (s *Service) RollAttack(
 		}
 	}
 	// An opportunity attack is a reaction attack (MR-034).
-	asReaction := req.Msg.GetAsReaction() || offerID != ""
+	catchID := req.Msg.GetCatchWindowId() // a Deflect Missiles throw back (PM-04)
+	asReaction := req.Msg.GetAsReaction() || offerID != "" || catchID != ""
 	v := viewerOf(m)
 
 	var made actionEvent
-	var held *heldRoll // the roll waits for the player's answer about a Bardic Inspiration die
+	var held *inspirationHold // the roll waits for the player's answer about a Bardic Inspiration die
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventAttackRolled, encounterID: encID}, func(c *combatTx) (any, error) {
 		held = nil
+		attackKey := attackKey // a throw back is the caught missile, under its own key
 		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
@@ -632,7 +642,7 @@ func (s *Service) RollAttack(
 			}
 		}
 		if asReaction {
-			err = s.mustReactNow(ctx, c, attacker, offerID != "")
+			err = s.mustReactNow(ctx, c, attacker, offerID != "" || catchID != "")
 		} else {
 			err = s.mustActNow(ctx, c, attacker)
 		}
@@ -655,11 +665,27 @@ func (s *Service) RollAttack(
 		if err != nil {
 			return nil, err
 		}
+		var caught playdb.ReactionWindow
+		if catchID != "" {
+			thrown, w, err := s.deflectThrow(ctx, c, catchID, attacker, cs)
+			if err != nil {
+				return nil, err
+			}
+			caught = w
+			attackerSheet.Attacks = append(slices.Clone(attackerSheet.Attacks), thrown)
+			attackKey = thrown.Key
+		}
 		i := slices.IndexFunc(attackerSheet.Attacks, func(a link.Attack) bool { return a.Key == attackKey })
 		if i < 0 {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("attack_key is not one of the attacker's attacks"))
 		}
 		attack := attackerSheet.Attacks[i]
+		if c.replay != nil { // Cutting Words took a die off the roll (PM-04)
+			attack.ToHit -= int(c.replay.reduction)
+		}
+		if f := forcedOf(ctx); f != nil { // the answer to a held roll: its bonus is the one the roll was made with, Cutting Words included
+			attack.ToHit = f.toHit
+		}
 		terrain, err := s.terrainOf(ctx, c.tx, m.CampaignID, c.enc)
 		if err != nil {
 			return nil, err
@@ -669,7 +695,7 @@ func (s *Service) RollAttack(
 		}
 		// An opportunity attack is a melee attack (SRD): a melee weapon, thrown or
 		// not (a dagger counts), not a bow or a spell. It reaches 5 ft.
-		if asReaction && !attack.Melee {
+		if asReaction && catchID == "" && !attack.Melee {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an opportunity attack is a melee attack"))
 		}
 		// RN-18, then the economy: a player has one action a turn (the Attack
@@ -679,7 +705,7 @@ func (s *Service) RollAttack(
 		bonusKind := combat.BonusNone
 		if !v.master {
 			switch {
-			case asReaction && attacker.ReactionUsed:
+			case asReaction && attacker.ReactionUsed && catchID == "": // the throw is the reaction already spent
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is used")
 			case !asReaction:
 				if bonusKind, err = attackEconomy(attacker, attackerSheet, attack); err != nil {
@@ -695,7 +721,7 @@ func (s *Service) RollAttack(
 				// An opportunity attack comes right before the mover leaves the reach, so
 				// it asks no reach check (the mover has moved already).
 				dist, _ := distanceFt(attacker, target)
-				if reach := attackReach(attack, asReaction); offerID == "" && dist > reach {
+				if reach := attackReach(attack, asReaction && catchID == ""); offerID == "" && dist > reach {
 					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH, "the target is beyond the attack's range",
 						func(b *playv1.EncounterBlocked) { b.MissingFt = dist - reach })
 				}
@@ -724,6 +750,23 @@ func (s *Service) RollAttack(
 		cover := cp.real
 		if cp.shown.total() && !v.master {
 			return nil, errCoverTotal()
+		}
+
+		// A Cutting Words can change the roll: it waits for the windows, and is rolled
+		// when they are answered (PM-04, combat_reaction_hold.go).
+		// A roll that waits for a Bardic Inspiration answer comes first: nothing else rolls or
+		// opens a window until it is answered, and the answer does not open the windows again
+		// (they were answered before the d20 was kept, combat_inspiration.go).
+		if err := s.refuseWhileAsking(ctx, c, attacker, key); err != nil {
+			return nil, err
+		}
+		if forcedOf(ctx) == nil {
+			if held, ok, err := s.holdAttackRoll(ctx, c, m, req.Msg, cs, attacker, target, attackKey); err != nil {
+				return nil, err
+			} else if ok {
+				made = held
+				return made, nil
+			}
 		}
 
 		// The roll, and what it did against the target's armor class (with the
@@ -802,6 +845,15 @@ func (s *Service) RollAttack(
 		}); err != nil {
 			return nil, fmt.Errorf("spend the action: %w", err)
 		}
+		if catchID != "" { // the ki is spent and the window done with the throw
+			if _, err := s.spendReactionResource(ctx, c, attacker, resKi); err != nil {
+				return nil, err
+			}
+			ct := windowTriggerOf(caught)
+			if _, err := s.closeWindow(ctx, c, caught, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: c.master, Used: true, Reduction: ct.Reduced, Before: ct.Damage, After: 0}, ""); err != nil {
+				return nil, err
+			}
+		}
 		if result.Hit {
 			made.Outcome = outcomeHit
 			if result.Critical {
@@ -858,6 +910,11 @@ func (s *Service) RollAttack(
 	})
 	if err != nil {
 		return nil, err
+	}
+	if ev.Reaction != nil && ev.Reaction.Hold { // a reaction window holds the roll: nothing was rolled yet
+		return connect.NewResponse(&playv1.RollAttackResponse{Encounter: out, Roll: &playv1.AttackRoll{
+			AttackerId: ev.Actor, TargetId: ev.Target, AttackKey: ev.Key, HeldForReaction: true,
+		}}), nil
 	}
 	pending, err := s.pendingFor(ctx, res, ev.Pending, v)
 	if err != nil {
@@ -932,6 +989,13 @@ func (s *Service) RollDamage(
 	if err != nil {
 		return nil, err
 	}
+	return s.rollDamage(ctx, m, req)
+}
+
+// rollDamage is RollDamage for a member already authorized: the replay of a held action calls it
+// with the member who made the request (combat_reaction_hold.go).
+func (s *Service) rollDamage(ctx context.Context, m authz.Membership, req *connect.Request[playv1.RollDamageRequest]) (*connect.Response[playv1.RollDamageResponse], error) { //nolint:gocognit,gocyclo // the damage's steps in one closure, as RollDamage always was; the reaction window only split the handler from its replay
+	var err error
 	key, err := parseKey(req.Msg.GetIdempotencyKey())
 	if err != nil {
 		return nil, err
@@ -963,6 +1027,9 @@ func (s *Service) RollDamage(
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventDamageRolled, encounterID: encID}, func(c *combatTx) (any, error) {
 		vitals = nil
 		if err := notEnded(c.enc); err != nil {
+			return nil, err
+		}
+		if err := s.reactionGate(ctx, c); err != nil { // a reaction window holds the damage too (PM-04)
 			return nil, err
 		}
 		p, err := c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: c.enc.ID, ID: pendingID})
@@ -1036,6 +1103,20 @@ func (s *Service) RollDamage(
 					fmt.Errorf("typed_sum must be %d to %d", expr.Count, expr.Count*expr.Sides))
 			}
 		}
+		if c.replay != nil && c.replay.rolled != nil { // the roll made when a reaction window held the damage
+			roll = replayedRoll(expr, c.replay.rolled)
+		}
+		// A reaction can change the damage (Uncanny Dodge, Deflect Missiles, Cutting
+		// Words): it waits for the windows, and lands when they are answered (PM-04).
+		if held, ok, err := s.holdDamage(ctx, c, m, req.Msg, cs, p, attacker, target, roll); err != nil {
+			return nil, err
+		} else if ok {
+			made = held
+			return made, nil
+		}
+		if c.replay != nil {
+			roll.Total = adjustedDamage(c.replay, roll.Total)
+		}
 		total := max(roll.Total, 0) // damage is never below 0
 		faces := faces32(roll.Faces)
 		rolledTotal := clamp32(total, 0, math.MaxInt32)
@@ -1083,6 +1164,9 @@ func (s *Service) RollDamage(
 					return nil, err
 				}
 			}
+			if err := s.afterDamage(ctx, c, tgt, damageLanded{attacker: attacker.ID, key: g.AttackKey, pending: g, hit: hit}); err != nil {
+				return nil, err
+			}
 			if g.ID == p.ID {
 				made.Amount, made.Applied, made.Before, made.After, made.ConcentrationDC = hit.Amount, hit.Applied, hit.Before, hit.After, hit.ConcentrationDC
 				made.DeathBefore = hit.DeathBefore
@@ -1126,6 +1210,9 @@ func (s *Service) RollDamage(
 		return nil, err
 	}
 	resp := &playv1.RollDamageResponse{Encounter: out}
+	if ev.Reaction != nil && ev.Reaction.Hold { // a reaction window holds the damage: it is not rolled yet
+		return connect.NewResponse(resp), nil
+	}
 	if resp.PendingDamage, err = s.pendingFor(ctx, res, ev.Pending, v); err != nil {
 		return nil, err
 	}
@@ -1367,6 +1454,9 @@ func (s *Service) ApplyPendingDamage(
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
+		if err := s.reactionGate(ctx, c); err != nil { // a reaction window holds the damage too (PM-04)
+			return nil, err
+		}
 		p, attacker, target, err := s.settling(ctx, c, pendingID)
 		if err != nil {
 			return nil, err
@@ -1462,6 +1552,11 @@ func (s *Service) ApplyPendingDamage(
 			if made.ConcentrationDC, err = s.castConcentrationDC(ctx, c, p, target, taken); err != nil {
 				return nil, err
 			}
+		}
+		if err := s.afterDamage(ctx, c, target, damageLanded{attacker: attacker.ID, key: p.AttackKey, pending: p, hit: damageHit{
+			Pending: p.ID, Target: target.ID, Amount: amount, Applied: true, Before: made.Before, After: made.After, ConcentrationDC: made.ConcentrationDC,
+		}}); err != nil {
+			return nil, err
 		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)

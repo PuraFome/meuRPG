@@ -7,6 +7,7 @@ import {
   CriticalRule,
   DeathSaveVisibility,
   DiceMode,
+  EnemyReactionsRule,
   HiddenAreaHitRule,
   HitPointsRule,
   Role,
@@ -44,6 +45,7 @@ const saved: RulesDraft = {
   deathSaves: DeathSaveVisibility.VISIBLE_TO_ALL,
   hiddenAreaHits: HiddenAreaHitRule.REVEAL,
   featsAllowed: false,
+  enemyReactions: EnemyReactionsRule.ONLY_WHEN_POSSIBLE,
   houseRules: ['Beber uma poção é uma ação bônus'],
 };
 

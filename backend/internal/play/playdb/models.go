@@ -74,6 +74,7 @@ type Combatant struct {
 	InspirationSides        *int32
 	InspirationFrom         *string
 	InspirationExpiresRound *int32
+	SlotsUsed               []byte
 }
 
 type Encounter struct {
@@ -247,6 +248,38 @@ type PuzzleRun struct {
 	PlayStartedAt        *time.Time
 	RoundStartSeq        int32
 	RoundStartedAt       *time.Time
+}
+
+type ReactionHold struct {
+	ID            string
+	EncounterID   string
+	GroupID       string
+	Kind          string
+	ActorID       string
+	ActorUserID   string
+	ActorIsMaster bool
+	Request       []byte
+	Data          []byte
+	State         string
+	CreatedAt     time.Time
+}
+
+type ReactionWindow struct {
+	ID              string
+	EncounterID     string
+	Seq             int64
+	GroupID         string
+	Kind            string
+	Status          string
+	ClosedReason    *string
+	ReactorID       *string
+	PendingDamageID *string
+	HoldID          *string
+	Step            int32
+	Trigger         []byte
+	Outcome         []byte
+	CreatedAt       time.Time
+	AnsweredAt      *time.Time
 }
 
 type RollHold struct {

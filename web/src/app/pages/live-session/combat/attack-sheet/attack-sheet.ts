@@ -1,5 +1,14 @@
 import { create } from '@bufbuild/protobuf';
-import { Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -40,6 +49,7 @@ import {
   sumRange,
 } from '../../../../core/combat/combat-dice';
 import { criticalHint, criticalTypedHint, fixedParts } from '../../../../core/combat/critical';
+import { reactionWait } from '../../../../core/combat/reactions';
 import { isTheatre } from '../../../../core/combat/theatre';
 import { metersText } from '../../../../core/units';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
@@ -107,6 +117,9 @@ export interface AttackSheetData {
   readonly inspiration?: { readonly offer: InspirationOffer; readonly targetLabel: string };
   /** A roll of this sheet was held for the Bardic Inspiration question: the page learns the hold, so it does not open the question a second time. */
   readonly onHeld?: (holdId: string) => void;
+  /** The monk's throw back after Defletir Projéteis: the reaction window that caught the missile
+   * (`RollAttack.catch_window_id`). It is part of the same reaction, so it asks nothing more. */
+  readonly catchWindowId?: string;
 }
 
 /**
@@ -248,8 +261,8 @@ export class AttackSheet {
 
   protected readonly outcome = computed(() => {
     const r = this.roll();
-    // A held roll has no result yet: neither a word nor a pill (the master has not said).
-    return r && this.stage() !== 'inspire'
+    // A held roll has no result yet: neither a word nor a pill (the master has not said, or a reaction holds it).
+    return r && !r.heldForReaction && this.stage() !== 'inspire'
       ? {
           word: outcomeWord(r.outcome),
           hit: isHit(r.outcome),
@@ -294,6 +307,17 @@ export class AttackSheet {
       d,
       target ? stateWord(target.state) : '',
     );
+  });
+  /** The d20 is rolled but a reaction holds the result: "Esperando o mestre. O resultado do seu ataque sai quando ele responder." */
+  protected readonly held = computed(() => {
+    const r = this.roll();
+    const e = this.data.state.encounter();
+    return r?.heldForReaction
+      ? ((e ? reactionWait(e) : null) ?? {
+          title: 'Esperando o mestre',
+          detail: 'O resultado do seu ataque sai quando ele responder.',
+        })
+      : null;
   });
   /** The hit is made, but its damage waits for the target's reaction (Escudo). */
   protected readonly waiting = computed(() => awaitsReaction(this.pending()));
@@ -385,6 +409,21 @@ export class AttackSheet {
         this.body()?.nativeElement.scrollTo({ top: 0 });
       }
     });
+    // A roll a reaction window held (Palavras de Interrupção) and a Bardic Inspiration die the attacker holds: once the window
+    // is answered the d20 is kept for the question, and the sheet that waited for the window shows it.
+    effect(() => {
+      const waiting = this.roll()?.heldForReaction === true;
+      const offer = this.data.state
+        .encounter()
+        ?.combatants.find((c) => c.id === this.data.attackerId)?.inspirationOffer;
+      if (waiting && offer && this.stage() === 'done') {
+        untracked(() => {
+          this.offer.set(offer);
+          this.data.onHeld?.(offer.holdId);
+          this.stage.set('inspire');
+        });
+      }
+    });
   }
 
   private signedBonus(): string {
@@ -441,6 +480,7 @@ export class AttackSheet {
         this.attackKeys.keyFor({ id, die }),
         this.data.asReaction ?? false,
         this.data.opportunity?.offerId ?? '',
+        this.data.catchWindowId ?? '',
       );
       this.data.state.apply(res.encounter);
       this.settle(res);
@@ -465,7 +505,13 @@ export class AttackSheet {
       this.data.onHeld?.(res.offer.holdId);
     }
     this.typing.set(false);
-    this.stage.set(res.offer ? 'inspire' : stageAfterRoll(res.roll.outcome, res.pending));
+    this.stage.set(
+      res.offer
+        ? 'inspire'
+        : res.roll.heldForReaction
+          ? 'done'
+          : stageAfterRoll(res.roll.outcome, res.pending),
+    );
   }
 
   /** "Somar o d8" (rolled in the app, or the typed face) or "Guardar o dado": the answer finishes the held attack. */

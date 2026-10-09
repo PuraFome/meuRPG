@@ -256,6 +256,30 @@ describe('AttackSheet: the Bardic Inspiration question of a held roll (PM-07c 12
     expect(button('Somar o d8')).toBeTruthy();
   });
 
+  it('shows the wait for the bard first, and the question when the window is answered and the combat says the d20 is kept', async () => {
+    const { el, state, settle, button } = open();
+    rollAttack.mockImplementation(() =>
+      Promise.resolve({
+        encounter: state.encounter()!,
+        roll: create(AttackRollSchema, { attackKey: longsword.key, heldForReaction: true }),
+        pending: undefined,
+      }),
+    );
+    button('Rolar no app')!.click();
+    await settle();
+    expect(flat(el)).not.toContain('Usar a Inspiração de Bardo');
+    // The window is answered: the combat now carries the question on the attacker.
+    state.apply(
+      encounter({
+        currentCombatantId: 't',
+        combatants: [{ ...toren, inspirationOffer: offer } as typeof toren, cap],
+      }),
+    );
+    await settle();
+    expect(flat(el)).toContain('Usar a Inspiração de Bardo (d8)?');
+    expect(onHeld).toHaveBeenCalledWith('hold-1');
+  });
+
   it('keeps the key of an answer that failed, so a retry never rolls the die twice', async () => {
     const { el, settle, button } = open({ inspiration: { offer, targetLabel: 'Capitão Goblin' } });
     answerBardicInspiration.mockRejectedValue(new ConnectError('down', Code.Unavailable));

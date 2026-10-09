@@ -168,6 +168,21 @@
         </div>
 
         <div class="column">
+          <section class="mr-panel block" aria-labelledby="enemy-title">
+            <h2 class="mr-panel__title" id="enemy-title">Reações dos inimigos</h2>
+            <p class="hint">
+              Quando um jogador ataca, conjura ou causa dano a um inimigo, o inimigo pode ter uma reação (Escudo Arcano, Contramágica, Esquiva Sobrenatural…). Isto decide quando o jogo espera por você.
+            </p>
+            <app-dice-choice
+              name="table-enemy-reactions"
+              label="Reações dos inimigos"
+              [options]="enemyReactionOptions"
+              [value]="d.enemyReactions"
+              (valueChange)="edit({ enemyReactions: $event })"
+            />
+            <p class="hint">Vale a partir da próxima ação. Pode mudar a qualquer hora, no meio da sessão.</p>
+          </section>
+
           <section class="mr-panel block" aria-labelledby="combat-title">
             <h2 class="mr-panel__title" id="combat-title">Combate e névoa</h2>
             @if (was(); as w) {

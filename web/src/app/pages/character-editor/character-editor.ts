@@ -58,6 +58,7 @@ import {
   CharacterEditorSource,
   CharacterForEdit,
   CharacterFormValue,
+  CuttingWordsAskKey,
   ExtraClassValue,
   HitPointsMethod,
   RulesCatalogVm,
@@ -194,6 +195,16 @@ type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'
 /** The "search box" the catalog-backed pickers use to narrow a long list
  * (cantrips, spells) — a plain case-insensitive substring match on the
  * Portuguese name, no new dependency. */
+/** The bard's "Perguntar" choices for Palavras de Interrupção, as the sheet says them. */
+const CUTTING_WORDS_OPTIONS: readonly {
+  readonly value: CuttingWordsAskKey;
+  readonly label: string;
+}[] = [
+  { value: 'all', label: 'Em todos os testes do inimigo' },
+  { value: 'only-attacks', label: 'Só em ataques' },
+  { value: 'never', label: 'Nunca' },
+];
+
 const BONUS_LIST = new Intl.ListFormat('pt-BR', { type: 'conjunction' });
 
 /** "+2 e +1". */
@@ -364,6 +375,9 @@ export class CharacterEditor {
   /** Spells the sheet has that neither a pick of this form nor its subclass gave it (a race's or a feature's spell):
    * only known on an edit, from the server's own derived sheet, as it was when the sheet was opened. */
   protected readonly grantedSpells = signal<readonly SpellOptionVm[]>([]);
+  /** The saved sheet has Palavras de Interrupção (a College of Lore bard): its "Perguntar" setting shows. Known on an edit. */
+  protected readonly hasCuttingWords = signal(false);
+  protected readonly cuttingWordsOptions = CUTTING_WORDS_OPTIONS;
 
   protected readonly isFullSheetKind = isFullSheetKind;
   protected readonly stepLabels = EDITOR_STEP_LABELS;
@@ -413,6 +427,7 @@ export class CharacterEditor {
     portraitImageId: [''],
     alignment: ['' as AlignmentKey],
     customFeaturesText: ['', Validators.maxLength(5000)],
+    cuttingWordsAsk: ['only-attacks' as CuttingWordsAskKey],
     hitPointsMethod: ['average' as HitPointsMethod],
     abilities: this.fb.nonNullable.group({
       str: [10, [Validators.required, Validators.min(1), Validators.max(30)]],
@@ -1155,6 +1170,7 @@ export class CharacterEditor {
     this.selectedSpellsPrepared.set(new Set());
     this.spellFilters.set({});
     this.grantedSpells.set([]);
+    this.hasCuttingWords.set(false);
     this.preparedMaxByClass.set({});
     this.abilityTable.set(null);
     this.abilityMethod.set('typed');
@@ -1320,6 +1336,7 @@ export class CharacterEditor {
         if (existing.full) {
           this.patchFullForm(existing.full);
           this.preparedMaxByClass.set(existing.preparedMax ?? {});
+          this.hasCuttingWords.set((existing.featureKeys ?? []).includes('feature:cutting-words'));
           // What the sheet has from outside the form is told once, as the sheet has it: a spell of the subclass it
           // has now stays out of this list, and stays out when the subclass is changed (the save drops it with the subclass).
           const granted = new Set(existing.grantedSpellKeys ?? []);
@@ -1371,6 +1388,7 @@ export class CharacterEditor {
       portraitImageId: full.portraitImageId,
       alignment: full.alignment,
       customFeaturesText: full.customFeaturesText,
+      cuttingWordsAsk: full.cuttingWordsAsk,
       hitPointsMethod: full.hitPointsMethod,
       abilities: full.abilities,
       extraAbilityBonuses: full.extraAbilityBonuses,
@@ -1567,6 +1585,7 @@ export class CharacterEditor {
       portraitImageId: v.portraitImageId,
       alignment: v.alignment,
       customFeaturesText: v.customFeaturesText,
+      cuttingWordsAsk: v.cuttingWordsAsk,
     };
   }
 

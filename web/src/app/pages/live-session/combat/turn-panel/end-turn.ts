@@ -16,6 +16,8 @@ import { MatIconModule } from '@angular/material/icon';
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { endTurnIsPrimary } from '../../../../core/combat/combat-options';
 
+let nextId = 0;
+
 /**
  * "Encerrar turno" of the player (E6-06, E6-14, timeline.md decision 2): an
  * outline while the Ação or the Ação bônus is still available, the filled
@@ -46,10 +48,15 @@ import { endTurnIsPrimary } from '../../../../core/combat/combat-options';
         [class.mr-button--off]="!!waiting()"
         [disabled]="busy() || !!waiting()"
         disabledInteractive
+        [attr.aria-describedby]="waiting() ? id + '-why' : null"
         (click)="press()"
       >
         <mat-icon aria-hidden="true">flag</mat-icon>{{ label() }}
       </button>
+      @if (waiting()) {
+        <!-- The reason the turn cannot end, read with the button (it stays reachable by Tab). -->
+        <span class="mr-visually-hidden" [id]="id + '-why'">{{ waiting() }}: a vez continua quando responderem.</span>
+      }
     }
   `,
   styles: `
@@ -112,6 +119,7 @@ import { endTurnIsPrimary } from '../../../../core/combat/combat-options';
   `,
 })
 export class EndTurn {
+  protected readonly id = `end-turn-${nextId++}`;
   private readonly injector = inject(Injector);
 
   readonly own = input.required<Pick<Combatant, 'actionUsed' | 'bonusActionUsed'>>();

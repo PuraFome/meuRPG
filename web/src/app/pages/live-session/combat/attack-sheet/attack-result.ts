@@ -37,11 +37,14 @@ import { coverBonusText, degreeWord, sourceWord } from '../../../../core/combat/
                 </span>
               }
             </span>
-            @if (held()) {
+            @if (asking()) {
               <span class="part__line">O mestre ainda não disse se acertou.</span>
             }
             @if (bonusLine()) {
               <span class="part__line">{{ bonusLine() }}</span>
+            }
+            @if (held(); as h) {
+              <span class="part__line"><b>{{ h.title }}.</b> {{ h.detail }}</span>
             }
             @if (coverLine()) {
               <span class="part__line">{{ coverLine() }}</span>
@@ -49,7 +52,7 @@ import { coverBonusText, degreeWord, sourceWord } from '../../../../core/combat/
           </div>
         </div>
       }
-      @if (showDamage()) {
+      @if (showDamage() && !held() && !asking()) {
         <div class="part">
           <mat-icon class="part__check" aria-hidden="true">check</mat-icon>
           <div class="part__body">
@@ -60,7 +63,7 @@ import { coverBonusText, degreeWord, sourceWord } from '../../../../core/combat/
                 <span class="part__formula">{{ damageLine() }}{{ d.roll?.physical ? ' · dado físico' : '' }}</span>
               </span>
             } @else if (waiting()) {
-              <span class="part__line">Esperando a reação do alvo.</span>
+              <span class="part__line">Esperando o mestre.</span>
             } @else {
               <span class="part__line">Sem dano: o ataque errou.</span>
             }
@@ -76,6 +79,8 @@ export class AttackResult {
   readonly roll = input<AttackRoll | null>(null);
   readonly d20Formula = input('');
   readonly outcome = input<{ word: string; hit: boolean } | null>(null);
+  /** A reaction holds the roll: what the combat waits for, instead of an outcome. */
+  readonly held = input<{ title: string; detail: string } | null>(null);
   /** The Dano step is finished: show it (a miss says there is none). */
   readonly showDamage = input(false);
   readonly damage = input<PendingDamage | null>(null);
@@ -83,7 +88,7 @@ export class AttackResult {
   readonly waiting = input(false);
   readonly damageLine = input('');
   /** The roll is held for the Bardic Inspiration question: the d20 is shown, the result is not (and there is no armor class). */
-  readonly held = input(false);
+  readonly asking = input(false);
   /** "+ 6 no d8 da Inspiração de Bardo": the die the player added after the d20; the total already has it. */
   protected readonly bonusLine = computed(() =>
     (this.roll()?.bonusDice ?? [])

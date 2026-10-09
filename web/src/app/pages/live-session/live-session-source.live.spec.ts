@@ -192,6 +192,44 @@ describe('LiveSessionSourceLive.watch', () => {
     expect(out).toEqual([{ kind: 'ready' }, { kind: 'puzzleChanged', puzzleId: 'p-1' }]);
   });
 
+  it('maps `reaction_window_opened` and `reaction_window_closed` to their own events (PM-04)', async () => {
+    const out = [];
+    const responses = [
+      create(WatchGameSessionResponseSchema, { event: { case: 'ready', value: {} } }),
+      create(WatchGameSessionResponseSchema, {
+        event: { case: 'reactionWindowOpened', value: { encounterId: 'e1', windowId: 'w1' } },
+      }),
+      create(WatchGameSessionResponseSchema, {
+        event: {
+          case: 'reactionWindowClosed',
+          value: {
+            encounterId: 'e1',
+            windowId: 'w1',
+            closedByItself: true,
+            textPt: 'Repreensão Infernal fechou. Você está inconsciente e não pode reagir.',
+          },
+        },
+      }),
+    ];
+    for await (const e of sourceAnswering(responses).watch(
+      'camp-1',
+      new AbortController().signal,
+    )) {
+      out.push(e);
+    }
+    expect(out).toEqual([
+      { kind: 'ready' },
+      { kind: 'reactionWindowOpened', encounterId: 'e1', windowId: 'w1' },
+      {
+        kind: 'reactionWindowClosed',
+        encounterId: 'e1',
+        windowId: 'w1',
+        closedByItself: true,
+        text: 'Repreensão Infernal fechou. Você está inconsciente e não pode reagir.',
+      },
+    ]);
+  });
+
   it('maps `content_changed` to its own event, with no content (RN-23, RN-10)', async () => {
     expect(
       await events([

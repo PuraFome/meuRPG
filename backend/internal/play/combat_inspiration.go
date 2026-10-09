@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -31,7 +32,9 @@ import (
 type forcedRoll struct {
 	holdID, answerKey string
 	face              int
-	physical          bool
+	// toHit is the attack bonus the roll was made with (a Cutting Words die already off it).
+	toHit    int
+	physical bool
 	// bonus is the die the player rolled and added, nil when they kept it.
 	bonus *bonusUse
 }
@@ -55,8 +58,8 @@ func forcedOf(ctx context.Context) *forcedRoll {
 	return f
 }
 
-// heldRoll is an attack roll that waits for the answer about a die.
-type heldRoll struct {
+// inspirationHold is an attack roll that waits for the answer about a die.
+type inspirationHold struct {
 	hold     playdb.RollHold
 	die      *playv1.InspirationDie
 	face     int
@@ -68,7 +71,7 @@ type heldRoll struct {
 // Bardic Inspiration die, when the roll is kept in a hold and returned as held; or the d20 of
 // an answered hold (forcedOf), with the die added when the player used it. A retry of the
 // request that made a hold finds it, and rolls nothing again.
-func (s *Service) rollOrHold(ctx context.Context, c *combatTx, attacker playdb.Combatant, raw *playv1.RollAttackRequest, key string, in rollInput, toHit int) (face int, roll dice.Result, bonus *bonusUse, held *heldRoll, err error) {
+func (s *Service) rollOrHold(ctx context.Context, c *combatTx, attacker playdb.Combatant, raw *playv1.RollAttackRequest, key string, in rollInput, toHit int) (face int, roll dice.Result, bonus *bonusUse, held *inspirationHold, err error) {
 	if f := forcedOf(ctx); f != nil {
 		if err := c.q.AnswerRollHold(ctx, playdb.AnswerRollHoldParams{ID: f.holdID, AnswerKey: &f.answerKey}); err != nil {
 			return 0, dice.Result{}, nil, nil, fmt.Errorf("answer the held roll: %w", err)
@@ -110,12 +113,18 @@ func (s *Service) rollOrHold(ctx context.Context, c *combatTx, attacker playdb.C
 	if face, roll, err = s.d20(in, toHit); err != nil {
 		return 0, dice.Result{}, nil, nil, err
 	}
+	// A roll a reaction window held first already has an event under its key (the one that stood
+	// for the held attack): the question gets a key of its own, and the answer resolves under its own.
+	holdKey := key
+	if c.replay != nil {
+		holdKey = key + windowHoldSuffix
+	}
 	body, err := proto.Marshal(raw)
 	if err != nil {
 		return 0, dice.Result{}, nil, nil, fmt.Errorf("keep the request: %w", err)
 	}
 	hold, err := c.q.InsertRollHold(ctx, playdb.InsertRollHoldParams{
-		EncounterID: c.enc.ID, CombatantID: attacker.ID, IdempotencyKey: key, Request: body,
+		EncounterID: c.enc.ID, CombatantID: attacker.ID, IdempotencyKey: holdKey, Request: body,
 		Face: clamp32(face, 1, 20), Modifier: clamp32(toHit, math.MinInt32, math.MaxInt32), Round: c.enc.Round, CreatedAt: c.now,
 	})
 	if err != nil {
@@ -128,13 +137,35 @@ func (s *Service) rollOrHold(ctx context.Context, c *combatTx, attacker playdb.C
 	return face, roll, nil, s.heldOf(attacker, hold, toHit, in), nil
 }
 
+// refuseWhileAsking refuses a roll while an earlier roll of the combatant waits for its Bardic
+// Inspiration answer, before a Cutting Words window can hold the new one. The request that
+// made the question (a retry) and the answer itself pass.
+func (s *Service) refuseWhileAsking(ctx context.Context, c *combatTx, attacker playdb.Combatant, key string) error {
+	if forcedOf(ctx) != nil || c.replay != nil || !holdsDie(attacker, c.enc.Round) {
+		return nil
+	}
+	open, err := c.q.GetOpenRollHoldOf(ctx, playdb.GetOpenRollHoldOfParams{EncounterID: c.enc.ID, CombatantID: attacker.ID})
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return nil
+	case err != nil:
+		return fmt.Errorf("find the open held roll: %w", err)
+	case open.Round == c.enc.Round && open.IdempotencyKey != key:
+		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING, "answer the Bardic Inspiration question of the roll first")
+	}
+	return nil
+}
+
+// windowHoldSuffix marks the key of a held roll that a reaction window held before it was rolled.
+const windowHoldSuffix = "#window"
+
 // d20Sides is the d20 the held roll was made with.
 const d20Sides = 20
 
 // heldOf describes a hold for the answer to the roll: the die the attacker holds and the d20.
-func (s *Service) heldOf(attacker playdb.Combatant, hold playdb.RollHold, toHit int, in rollInput) *heldRoll {
+func (s *Service) heldOf(attacker playdb.Combatant, hold playdb.RollHold, toHit int, in rollInput) *inspirationHold {
 	die := &playv1.InspirationDie{Sides: *attacker.InspirationSides, ExpiresAtRound: *attacker.InspirationExpiresRound, FromCombatantId: deref(attacker.InspirationFrom)}
-	return &heldRoll{hold: hold, die: die, face: int(hold.Face), toHit: toHit, physical: !in.inApp}
+	return &inspirationHold{hold: hold, die: die, face: int(hold.Face), toHit: toHit, physical: !in.inApp}
 }
 
 // offerOf is the question a hold asks the player: the d20 with the attack's bonus, the attack, its
@@ -153,7 +184,7 @@ func offerOf(hold playdb.RollHold, die *playv1.InspirationDie, cs []playdb.Comba
 
 // heldResponse is what RollAttack answers for a held roll: the d20 and the offer, the
 // attack not resolved (no outcome, no action spent, no damage).
-func heldResponse(enc *playv1.Encounter, h *heldRoll, attackerID, targetID, attackKey string, cs []playdb.Combatant) *playv1.RollAttackResponse {
+func heldResponse(enc *playv1.Encounter, h *inspirationHold, attackerID, targetID, attackKey string, cs []playdb.Combatant) *playv1.RollAttackResponse {
 	offer := offerOf(h.hold, h.die, cs, h.physical)
 	return &playv1.RollAttackResponse{
 		Encounter:        enc,
@@ -233,6 +264,9 @@ func (s *Service) AnswerBardicInspiration(
 	if err := proto.Unmarshal(hold.Request, &orig); err != nil || orig.GetCampaignId() != m.CampaignID {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("held roll not found"))
 	}
+	if strings.HasSuffix(hold.IdempotencyKey, windowHoldSuffix) { // the original key belongs to the event that stood for the held attack
+		orig.IdempotencyKey = key
+	}
 	if hold.AnswerKey != nil {
 		// Answered already: the same answer again gives the attack as it was resolved.
 		if *hold.AnswerKey != key {
@@ -244,7 +278,7 @@ func (s *Service) AnswerBardicInspiration(
 		}
 		return connect.NewResponse(&playv1.AnswerBardicInspirationResponse{Attack: out.Msg}), nil
 	}
-	forced := &forcedRoll{holdID: hold.ID, answerKey: key, face: int(hold.Face)}
+	forced := &forcedRoll{holdID: hold.ID, answerKey: key, face: int(hold.Face), toHit: int(hold.Modifier)}
 	// The d20 was typed when the roll was: the attack knows it from the request.
 	_, forced.physical = orig.GetRoll().(*playv1.RollAttackRequest_D20Face)
 	if req.Msg.GetUse() {
@@ -309,7 +343,7 @@ func bonusDiceOf(ev actionEvent) []*playv1.BonusDie {
 
 // heldAnswer is RollAttack's answer for a roll that waits: the combat as the caller sees it,
 // the d20 and the question about the die.
-func (s *Service) heldAnswer(ctx context.Context, m authz.Membership, res combatResult, h *heldRoll, req *playv1.RollAttackRequest) (*connect.Response[playv1.RollAttackResponse], error) {
+func (s *Service) heldAnswer(ctx context.Context, m authz.Membership, res combatResult, h *inspirationHold, req *playv1.RollAttackRequest) (*connect.Response[playv1.RollAttackResponse], error) {
 	out, err := s.finish(ctx, m, res, s.changed(m.CampaignID))
 	if err != nil {
 		return nil, err

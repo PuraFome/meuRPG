@@ -108,11 +108,12 @@
         [roll]="roll()"
         [d20Formula]="d20Formula()"
         [outcome]="outcome()"
+        [held]="held()"
         [showDamage]="stage() === 'done'"
         [damage]="damage()"
         [waiting]="waiting()"
         [damageLine]="damageLine()"
-        [held]="stage() === 'inspire'"
+        [asking]="stage() === 'inspire'"
       />
 
       @if (stage() === 'inspire') {
