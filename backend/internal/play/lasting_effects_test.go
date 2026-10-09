@@ -245,11 +245,21 @@ func TestHoldPersonParalyzesAndTheEndOfTurnSaveFreesTheTarget(t *testing.T) {
 	if cur := a.get(t, a.master).GetCurrentCombatantId(); cur != "" && cur != a.id(t, "Goblin") {
 		t.Errorf("the turn passed to %q before the save was answered", cur)
 	}
-	// A pass frees it and the turn goes on.
-	res, err := a.rollEffectSave(t, a.master, e, w.GetId(), effectSaveFace(20))
+	// A second EndTurn does not pass the turn over the open window.
+	if _, err := a.endTurnRaw(t, a.master, e, true); err == nil {
+		t.Error("a second EndTurn passed the turn while the save waits")
+	}
+	// A pass frees it and the turn goes on; the same answer again returns the first result.
+	req := &playv1.RollEffectSaveRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), WindowId: w.GetId(), IdempotencyKey: newKey(), Roll: &playv1.RollEffectSaveRequest_D20Face{D20Face: 20}}
+	first, err := a.master.lasting.RollEffectSave(t.Context(), connect.NewRequest(req))
 	if err != nil {
 		t.Fatalf("RollEffectSave() error = %v", err)
 	}
+	again, err := a.master.lasting.RollEffectSave(t.Context(), connect.NewRequest(req))
+	if err != nil || again.Msg.GetResult().GetTotal() != first.Msg.GetResult().GetTotal() || !again.Msg.GetResult().GetSaved() {
+		t.Errorf("the same answer again = %v, %v; want the first result", again, err)
+	}
+	res := first.Msg
 	if !res.GetResult().GetSaved() {
 		t.Errorf("the result = %v, want saved", res.GetResult())
 	}

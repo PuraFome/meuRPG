@@ -808,6 +808,13 @@ func (s *Service) EndTurn(
 		// deleted). The master starts the turns again from the top of the order,
 		// in the same round; without this the combat could never move.
 		if !slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.TurnState == turnActing }) {
+			// The turn that ended waits for the saving throws of the effects on its members: it is
+			// held, not orphaned, and another tap changes nothing.
+			if held, err := s.endSaveOpen(ctx, c); err != nil {
+				return nil, err
+			} else if held {
+				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_PENDING, "a reaction waits for its answer")
+			}
 			if !v.master {
 				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the master can start the turns again"))
 			}

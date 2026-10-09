@@ -347,6 +347,9 @@ func (s *Service) RollEffectSave(
 	if err != nil {
 		return nil, err
 	}
+	if result == nil { // a retry the closure never ran for: the first answer is in the event
+		result = savedResultOf(res, made, m.Role == authz.RoleMaster)
+	}
 	return connect.NewResponse(&playv1.RollEffectSaveResponse{Encounter: out, Result: result}), nil
 }
 
@@ -422,4 +425,19 @@ func (s *Service) effectDamageSaves(ctx context.Context, c *combatTx, target pla
 		}
 	}
 	return nil
+}
+
+// savedResultOf rebuilds the answer to a saving throw from the event it wrote, for a retry.
+func savedResultOf(res combatResult, made actionEvent, master bool) *playv1.EffectSaveResult {
+	ev, err := resultEvent(res, made)
+	if err != nil || ev.Lasting == nil {
+		return &playv1.EffectSaveResult{}
+	}
+	le := ev.Lasting
+	out := &playv1.EffectSaveResult{D20: le.D20, Modifier: ev.Modifier, Total: le.Total, Physical: ev.Physical, Saved: le.Change == "saved", Skipped: le.Change == "skipped", EffectEnded: le.Reason == endSaved}
+	if master && le.DC != 0 {
+		dc := le.DC
+		out.Dc = &dc
+	}
+	return out
 }
