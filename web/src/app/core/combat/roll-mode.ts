@@ -54,18 +54,39 @@ export function d20Count(mode: RollMode): 1 | 2 {
   return orNormal(mode) === RollMode.NORMAL ? 1 : 2;
 }
 
+const SENTENCE_SOURCES: ReadonlySet<AdvantageSourceKind> = new Set([
+  AdvantageSourceKind.EFFECT_DIE,
+  AdvantageSourceKind.OTHER_SOURCE,
+  AdvantageSourceKind.EFFECT_SAVE,
+  AdvantageSourceKind.EFFECT_CHECK,
+]);
+
 /** "Vantagem" or "Desvantagem" for the tag of a source. */
 export function sourceWord(source: AdvantageSource): string {
   return source.effect === RollMode.ADVANTAGE ? 'Vantagem' : 'Desvantagem';
 }
 
-/** The line of a source under a roll: "Vantagem: Alvo Paralisado a 1,5 m: vantagem". A die an effect added ("Bênção, de Tavo...") and
- * "Outra fonte" (an effect the master keeps from the players) are the server's sentence as it is: it already says what they are. */
+/** The line of a source under a roll: "Vantagem: Alvo Paralisado a 1,5 m: vantagem". A die an effect added ("Bênção, de Tavo..."),
+ * "Outra fonte" (an effect the master keeps from the players) and the advantage an active effect gives on a saving throw or an
+ * ability check ("Efeito ativo: vantagem em testes de habilidade") are the server's sentence as it is: it already says what they are. */
 export function sourceLine(source: AdvantageSource): string {
-  return source.kind === AdvantageSourceKind.EFFECT_DIE ||
-    source.kind === AdvantageSourceKind.OTHER_SOURCE
+  return SENTENCE_SOURCES.has(source.kind)
     ? source.textPt
     : `${sourceWord(source)}: ${source.textPt}`;
+}
+
+/** The lines "Bênção +1d4: 3" for the dice an effect added to a roll, named after the effect. A roll whose sources already
+ * carry those dice (a check or a saving throw) gets none here, so a die is never said twice. */
+export function extraDieLines(
+  roll: Pick<DiceRoll, 'extraDice'> | null | undefined,
+  sources: readonly AdvantageSource[],
+): string[] {
+  if ((sources ?? []).some((s) => s.kind === AdvantageSourceKind.EFFECT_DIE)) {
+    return [];
+  }
+  return (roll?.extraDice ?? [])
+    .filter((d) => d.face > 0 && d.sourceNamePt !== '')
+    .map((d) => `${d.sourceNamePt} ${d.sign < 0 ? '−' : '+'}1d${d.faces}: ${d.face}`);
 }
 
 /** How the roll mode stands for whoever is about to roll. */

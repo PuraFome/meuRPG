@@ -29,6 +29,7 @@ import {
 import { ActionKey } from '../../../../core/connect/idempotency';
 import type { MapState } from '../../../../core/maps/map-state';
 import { hasModeInfo, needsTwoD20, searchFaces } from '../../../../core/play/check-roll';
+import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
 import { needsTwoDice, trapErrorMessage } from '../../../../core/traps/trap-errors';
 import {
   type OtherSkill,
@@ -45,6 +46,7 @@ import { type SearchDie, type SearchSkill, TrapsClient } from '../../../../core/
 import { SheetFrame } from '../../combat/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../combat/sheet-host';
 import { CheckMode } from '../../scene/check-mode/check-mode';
+import { ExtraDice } from '../../effects/extra-dice/extra-dice';
 
 /** What the page hands "Procurar armadilhas". */
 export interface TrapSearchData {
@@ -89,7 +91,7 @@ export function openTrapSearch(
  */
 @Component({
   selector: 'app-trap-search-sheet',
-  imports: [CheckMode, MatButtonModule, MatIconModule, SheetFrame],
+  imports: [CheckMode, ExtraDice, MatButtonModule, MatIconModule, SheetFrame],
   templateUrl: './trap-search-sheet.html',
   styleUrl: './trap-search-sheet.scss',
 })
@@ -136,6 +138,8 @@ export class TrapSearchSheet {
   /** A request in the air: Esc and the backdrop do not close the sheet under it. */
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
+  /** The d4 an effect adds (Orientação, Bênção) with physical dice: asked when the server says the roll takes them. */
+  protected readonly extra = new ExtraDiceState();
   protected readonly result = signal<{
     res: SearchForTrapsResponse;
     names: readonly string[];
@@ -322,6 +326,11 @@ export class TrapSearchSheet {
     if (this.busy() || !this.ready()) {
       return;
     }
+    const extra = this.extra.take(!('inApp' in die));
+    if (extra === null) {
+      this.error.set(this.extra.missingText());
+      return;
+    }
     this.busy.set(true);
     this.error.set('');
     try {
@@ -333,8 +342,9 @@ export class TrapSearchSheet {
         this.data.campaignId,
         this.skill(),
         sent,
-        this.key.keyFor({ skill: this.skill(), other, die: sent }),
+        this.key.keyFor({ skill: this.skill(), other, die: sent, extra }),
         other,
+        extra,
       );
       // Read the map again: what was found now shows on it, and its name is the map's to give.
       await this.data.state.refresh();
@@ -355,7 +365,7 @@ export class TrapSearchSheet {
         // Not an error: the step's own heading and text ask for the second die and say why.
         this.error.set('');
       } else {
-        this.error.set(trapErrorMessage(err, 'procurar armadilhas'));
+        this.error.set(this.extra.fromRefusal(err) || trapErrorMessage(err, 'procurar armadilhas'));
       }
     } finally {
       this.busy.set(false);

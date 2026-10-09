@@ -17,6 +17,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 
 import {
+  type CatalogEffect,
   type CharacterEffect,
   EffectAudience,
   EffectEndScope,
@@ -36,6 +37,11 @@ import { TextField } from '../../../shared/form-fields/text-field';
 import { openSheet } from '../combat/sheet-host';
 import type { VitalsVm } from '../live-session.types';
 import {
+  AddCharacterEffectDialog,
+  type AddCharacterEffectData,
+  type AddCharacterEffectResult,
+} from './add-character-effect-dialog';
+import {
   ExhaustionDialog,
   type ExhaustionData,
   type ExhaustionOption,
@@ -53,7 +59,7 @@ interface Card {
 /**
  * "Efeitos em jogo" outside a combat (W7-E): the effects on the characters, as the master reads them (all of them, with
  * what the players see), each with "Encerrar" (a concentration asks first, in place), the exhaustion of each character,
- * and "Passar o tempo": outside a combat the app does not count time by itself, so the master says how much went by (1
+ * "Dar efeito" (an effect of the catalog on characters, given between fights) and "Passar o tempo": outside a combat the app does not count time by itself, so the master says how much went by (1
  * second to 24 hours, with presets of a round, a minute, ten minutes and an hour) and the effects whose time runs out
  * end. Read again whenever the page says something changed (`tick`) and after its own writes.
  */
@@ -83,6 +89,8 @@ export class CharacterEffectsPanel {
   protected readonly done = signal('');
   protected readonly asking = signal<string | null>(null);
   protected readonly busy = signal(false);
+  /** The catalog is being read for "Dar efeito". */
+  protected readonly opening = signal(false);
 
   protected readonly presets = TIME_PRESETS;
   protected readonly maxSeconds = MAX_SECONDS;
@@ -248,6 +256,43 @@ export class CharacterEffectsPanel {
         this.done.set(
           `Exaustão de ${options.find((o) => o.key === result.key)?.label}: nível ${result.level}.`,
         );
+      }
+    });
+  }
+
+  /** "Dar efeito": reads the catalog, then asks which effect goes on which characters. */
+  protected async openGive(): Promise<void> {
+    const characters = this.party().map((v) => ({ id: v.characterId, name: v.name }));
+    if (this.opening() || characters.length === 0) {
+      return;
+    }
+    this.opening.set(true);
+    this.error.set('');
+    let catalog: CatalogEffect[];
+    try {
+      catalog = await this.api.catalog(this.campaignId());
+    } catch (err) {
+      this.error.set(effectsErrorMessage(err, 'ler o catálogo de efeitos', 'character'));
+      return;
+    } finally {
+      this.opening.set(false);
+    }
+    const data: AddCharacterEffectData = { campaignId: this.campaignId(), characters, catalog };
+    openSheet<AddCharacterEffectDialog, AddCharacterEffectData, AddCharacterEffectResult | null>(
+      this.dialog,
+      this.bottomSheet,
+      AddCharacterEffectDialog,
+      {
+        data,
+        ariaLabel: 'Dar um efeito',
+        labelledBy: 'give-effect-t',
+        width: '600px',
+        tall: true,
+      },
+    ).subscribe((result) => {
+      if (result) {
+        this.done.set(`${result.effectName} dado a ${result.characterNames.join(', ')}.`);
+        void this.reload();
       }
     });
   }

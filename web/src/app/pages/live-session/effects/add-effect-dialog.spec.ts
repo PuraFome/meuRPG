@@ -6,7 +6,7 @@ import {
 } from '../../../../gen/meurpg/play/v1/lasting_effects_pb';
 import { CombatState } from '../../../core/combat/combat-state';
 import { combatant, encounter } from '../../../core/combat/combat-testing';
-import { boardEffects } from '../../../core/effects/effects-testing';
+import { boardEffects, catalogEffect } from '../../../core/effects/effects-testing';
 import { AddEffectDialog, type AddEffectData } from './add-effect-dialog';
 import { flat, isOff, openDialog } from './effects-dialogs-testing';
 
@@ -193,5 +193,43 @@ describe('AddEffectDialog (W7-E board 4b)', () => {
     const { el, button } = openDialog(AddEffectDialog, { ...data, catalog: [] }, { add });
     expect(flat(el.querySelector('.note'))).toContain('O catálogo de efeitos não veio');
     expect(isOff(button('Adicionar')!)).toBe(true);
+  });
+
+  it('asks which ability Aprimorar Habilidade is for and sends it', async () => {
+    const enhance = catalogEffect({
+      key: 'spell:enhance-ability',
+      namePt: 'Aprimorar Habilidade',
+      concentration: true,
+      hasCaster: true,
+    });
+    const { el, button, pick, settle } = openDialog(
+      AddEffectDialog,
+      { ...data, catalog: [...data.catalog, enhance] },
+      { add },
+    );
+    await pick('catalog', 'Bênção');
+    expect(el.querySelector('app-ability-picker')).toBeNull();
+    await pick('catalog', 'Aprimorar Habilidade');
+    const names = Array.from(el.querySelectorAll('app-ability-picker .row__title')).map(flat);
+    expect(names).toEqual([
+      'Força',
+      'Destreza',
+      'Constituição',
+      'Inteligência',
+      'Sabedoria',
+      'Carisma',
+    ]);
+    expect(flat(el.querySelector('app-ability-picker .row__hint'))).toBe('Touro');
+    expect(isOff(button('Adicionar')!)).toBe(true);
+    const owl = el.querySelectorAll<HTMLInputElement>('app-ability-picker input')[4];
+    owl.click();
+    await settle();
+    expect(isOff(button('Adicionar')!)).toBe(false);
+    button('Adicionar')!.click();
+    await settle();
+    expect(add.mock.calls[0][0]).toMatchObject({
+      catalogKey: 'spell:enhance-ability',
+      abilityKey: 'wis',
+    });
   });
 });

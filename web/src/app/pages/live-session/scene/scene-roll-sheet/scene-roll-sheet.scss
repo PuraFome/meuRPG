@@ -102,3 +102,9 @@
   margin-top: 6px;
   font-weight: 700;
 }
+
+// The d4 an effect adds to a roll typed from physical dice.
+.extra {
+  display: block;
+  margin-bottom: var(--mr-space-3);
+}

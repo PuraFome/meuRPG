@@ -48,6 +48,9 @@
         hint="Do catálogo: magias, as 15 condições e outros efeitos. A exaustão tem o seu próprio controle."
         (valueChange)="effectKey.set($any($event))"
       />
+      @if (asksAbility()) {
+        <app-ability-picker [chosen]="ability()" (pick)="ability.set($event)" />
+      }
       @if (chosen()?.hasCaster) {
         <app-select-field
           label="Quem conjurou"

@@ -98,6 +98,7 @@ import { circleLabel } from '../../../../core/combat/combat-grid';
 import { isPlayer } from '../../../../core/combat/combat-view';
 import { groupFeminine, groupName, isCreature } from '../../../../core/combat/creature-names';
 import { SpellCatalog } from '../../../../core/combat/spell-catalog';
+import { abilityMissing, needsAbility } from '../../../../core/effects/ability-choice';
 import {
   type MetamagicPicks,
   NO_PICKS,
@@ -114,6 +115,7 @@ import type { Pool } from '../../../../core/resources/pools';
 import { openSpellDetails } from '../../../../shared/spell-details/open-spell-details';
 import { spellDetailsFromGen } from '../../../../shared/spell-details/spell-details-map';
 import { SpellHelp } from '../../../../shared/spell-details/spell-help';
+import { AbilityPicker } from '../../effects/ability-picker/ability-picker';
 import { MultiRoll, type RollField } from '../multi-roll/multi-roll';
 import { RollModePicker } from '../roll-mode/roll-mode-picker';
 import { RollPicker } from '../roll-picker/roll-picker';
@@ -213,6 +215,7 @@ export interface CastSheetData {
     CastResult,
     CastSlots,
     CastTargets,
+    AbilityPicker,
     DamageTypePicker,
     MatButtonModule,
     MetamagicPicker,
@@ -295,6 +298,9 @@ export class CastSheet {
     const picked = this.pickedType();
     return choices.find((c) => c.key === picked)?.key ?? choices[0]?.key ?? '';
   });
+  /** Aprimorar Habilidade names the ability it is cast for; empty until picked, and for every other spell. */
+  protected readonly asksAbility = needsAbility(this.data.spellKey);
+  protected readonly ability = signal('');
   protected readonly rows = computed(() =>
     slotRows(this.data.level, this.data.slots, this.data.usage, this.data.pact),
   );
@@ -385,6 +391,10 @@ export class CastSheet {
     }
     if (this.data.level > 0 && !this.slot()) {
       return 'Escolha o espaço de magia.';
+    }
+    const ability = abilityMissing(this.data.spellKey, this.ability());
+    if (ability) {
+      return ability;
     }
     // A placed area takes no target: the server works out who is inside from the point.
     const target = this.flow ? '' : this.targetsMissing();
@@ -826,6 +836,12 @@ export class CastSheet {
     }
   }
 
+  protected pickAbility(key: string): void {
+    this.ability.set(key);
+    this.choiceChanged();
+    this.error.set('');
+  }
+
   protected pickDamageType(key: string): void {
     this.pickedType.set(key);
     this.choiceChanged();
@@ -958,7 +974,10 @@ export class CastSheet {
           ? { mode: this.picked()!, reason: this.reason().trim() }
           : undefined,
         metamagicChoices(this.chosenMeta(), this.picks()),
-        this.flow ? { area } : {},
+        {
+          ...(this.flow ? { area } : {}),
+          ...(this.asksAbility ? { abilityKey: this.ability() } : {}),
+        },
       );
       this.data.state.apply(res.encounter);
       this.cast.set(res.cast);

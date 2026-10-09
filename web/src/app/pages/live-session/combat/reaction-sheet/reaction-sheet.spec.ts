@@ -636,6 +636,37 @@ describe('ReactionSheet', () => {
       expect(closed).toEqual(['closed']);
     });
 
+    it('asks for the d4 of an effect the server says the save takes, and sends it with the d20', async () => {
+      api.resolveConcentrationSave
+        .mockRejectedValueOnce(
+          new ConnectError('the roll takes 1 more die(s): type their faces', Code.InvalidArgument),
+        )
+        .mockResolvedValue({ encounter: encounter(), result: undefined });
+      const { fixture, el } = setup(save());
+      button(el, 'Digitar o resultado').click();
+      fixture.detectChanges();
+      const type = (i: number, text: string) => {
+        const field = el.querySelectorAll<HTMLInputElement>('input[type="text"]')[i];
+        field.value = text;
+        field.dispatchEvent(new Event('input'));
+        fixture.detectChanges();
+      };
+      type(0, '12');
+      button(el, 'Confirmar').click();
+      await flush(fixture);
+      expect(api.resolveConcentrationSave.mock.calls[0][3]).toEqual({ kind: 'typed', face: 12 });
+      expect(plain(el.textContent)).toContain('Esta rolagem leva mais um d4');
+      type(0, '3');
+      type(1, '12');
+      button(el, 'Confirmar').click();
+      await flush(fixture);
+      expect(api.resolveConcentrationSave.mock.calls[1][3]).toEqual({
+        kind: 'typed',
+        face: 12,
+        extra: [3],
+      });
+    });
+
     it('Escape does not decide a concentration save', () => {
       const { el } = setup(save());
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));

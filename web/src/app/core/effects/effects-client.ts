@@ -3,6 +3,7 @@ import { createClient } from '@connectrpc/connect';
 
 import type { Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
 import type {
+  CatalogEffect,
   CharacterEffect,
   EffectAudience,
   EffectDurationKind,
@@ -10,6 +11,7 @@ import type {
   EffectSaveResult,
 } from '../../../gen/meurpg/play/v1/lasting_effects_pb';
 import {
+  type AddCharacterEffectResponse,
   type AddLastingEffectResponse,
   type EndLastingEffectResponse,
   type ExhaustionLowerReason,
@@ -56,6 +58,22 @@ export interface AddEffectSpec {
   readonly playerVisible?: boolean;
   readonly audience?: EffectAudience;
   readonly playerLabel?: string;
+  /** Aprimorar Habilidade only: the ability it is cast for ("str" to "cha"). */
+  readonly abilityKey?: string;
+}
+
+/** What "Dar efeito" sends: an effect of the catalog on characters outside a combat. */
+export interface AddCharacterEffectSpec {
+  readonly campaignId: string;
+  readonly characterIds: readonly string[];
+  readonly catalogKey: string;
+  /** `UNSPECIFIED` (or left out) takes the catalog's own; `ROUNDS` needs `seconds`. */
+  readonly durationKind?: EffectDurationKind;
+  readonly seconds?: number;
+  readonly playerVisible?: boolean;
+  readonly audience?: EffectAudience;
+  readonly playerLabel?: string;
+  readonly abilityKey?: string;
 }
 
 /** Who an exhaustion call is about: a character, or a combatant of the combat that runs. */
@@ -104,6 +122,11 @@ export class EffectsClient {
     return this.client.listLastingEffects({ campaignId, encounterId });
   }
 
+  /** The catalog the master gives effects from outside a combat (no encounter: only the catalog is wanted). */
+  async catalog(campaignId: string): Promise<CatalogEffect[]> {
+    return (await this.client.listLastingEffects({ campaignId, encounterId: '' })).catalog;
+  }
+
   /** The effects on the characters outside a combat; the master reads all of them. */
   async listCharacterEffects(campaignId: string): Promise<CharacterEffect[]> {
     return (await this.client.listCharacterEffects({ campaignId })).effects;
@@ -122,6 +145,26 @@ export class EffectsClient {
       playerVisible: spec.playerVisible,
       audience: spec.audience,
       playerLabel: spec.playerLabel ?? '',
+      abilityKey: spec.abilityKey ?? '',
+    });
+  }
+
+  /** `AddCharacterEffect`: the master gives an effect to characters outside a combat. */
+  addCharacterEffect(
+    spec: AddCharacterEffectSpec,
+    idempotencyKey: string,
+  ): Promise<AddCharacterEffectResponse> {
+    return this.client.addCharacterEffect({
+      campaignId: spec.campaignId,
+      idempotencyKey,
+      characterIds: [...spec.characterIds],
+      catalogKey: spec.catalogKey,
+      durationKind: spec.durationKind,
+      seconds: spec.seconds ?? 0,
+      playerVisible: spec.playerVisible,
+      audience: spec.audience,
+      playerLabel: spec.playerLabel ?? '',
+      abilityKey: spec.abilityKey ?? '',
     });
   }
 

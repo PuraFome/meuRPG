@@ -4,7 +4,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import { EffectAudience, EffectEndScope } from '../../../../gen/meurpg/play/v1/lasting_effects_pb';
 import { EffectsClient } from '../../../core/effects/effects-client';
-import { characterEffect } from '../../../core/effects/effects-testing';
+import { catalogEffect, characterEffect } from '../../../core/effects/effects-testing';
 import { pensantusVitals } from '../testing';
 import { CharacterEffectsPanel } from './character-effects-panel';
 import { isOff } from './effects-dialogs-testing';
@@ -15,6 +15,7 @@ describe('CharacterEffectsPanel (outside a combat)', () => {
   const listCharacterEffects = vi.fn();
   const end = vi.fn();
   const advanceTime = vi.fn();
+  const catalog = vi.fn();
 
   beforeEach(() => {
     listCharacterEffects.mockReset().mockResolvedValue([
@@ -33,8 +34,13 @@ describe('CharacterEffectsPanel (outside a combat)', () => {
     ]);
     end.mockReset().mockResolvedValue({ ended: 1, createdEffectIds: [] });
     advanceTime.mockReset().mockResolvedValue(2);
+    catalog
+      .mockReset()
+      .mockResolvedValue([catalogEffect({ key: 'spell:bless', namePt: 'Bênção' })]);
     TestBed.configureTestingModule({
-      providers: [{ provide: EffectsClient, useValue: { listCharacterEffects, end, advanceTime } }],
+      providers: [
+        { provide: EffectsClient, useValue: { listCharacterEffects, end, advanceTime, catalog } },
+      ],
     });
   });
 
@@ -230,5 +236,39 @@ describe('CharacterEffectsPanel (outside a combat)', () => {
     ]);
     expect(config.data.state).toBeNull();
     TestBed.inject(MatDialog).closeAll();
+  });
+
+  it('reads the catalog and opens "Dar efeito" with the party and the effects', async () => {
+    const { el, settle } = await render();
+    const open = vi.spyOn(TestBed.inject(MatDialog), 'open');
+    (el.querySelector('[data-testid="open-give-effect"]') as HTMLButtonElement).click();
+    await settle();
+    expect(catalog).toHaveBeenCalledWith('camp');
+    const config = open.mock.calls[0][1] as {
+      data: {
+        campaignId: string;
+        characters: { id: string; name: string }[];
+        catalog: { key: string }[];
+      };
+    };
+    expect(config.data.campaignId).toBe('camp');
+    expect(config.data.characters).toEqual([
+      { id: 'ch1', name: 'Toren' },
+      { id: 'ch2', name: 'Ragna' },
+    ]);
+    expect(config.data.catalog.map((c) => c.key)).toEqual(['spell:bless']);
+    TestBed.inject(MatDialog).closeAll();
+  });
+
+  it('says so, in Portuguese, when the catalog could not be read, and opens nothing', async () => {
+    catalog.mockRejectedValueOnce(new ConnectError('x', Code.Unavailable));
+    const { el, settle } = await render();
+    const open = vi.spyOn(TestBed.inject(MatDialog), 'open');
+    (el.querySelector('[data-testid="open-give-effect"]') as HTMLButtonElement).click();
+    await settle();
+    expect(flat(el.querySelector('[role="alert"] p'))).toBe(
+      'Não deu para ler o catálogo de efeitos: o servidor não respondeu. Tente de novo.',
+    );
+    expect(open).not.toHaveBeenCalled();
   });
 });

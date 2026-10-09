@@ -49,7 +49,61 @@ describe('EffectsClient', () => {
       playerVisible: true,
       audience: EffectAudience.OWNER,
       playerLabel: 'Abençoado',
+      abilityKey: '',
     });
+  });
+
+  it('sends the ability Aprimorar Habilidade is cast for', async () => {
+    const addLastingEffect = vi.fn().mockResolvedValue({ effects: [] });
+    const client = clientWith({ addLastingEffect });
+    await client.add(
+      {
+        campaignId: 'c',
+        encounterId: 'e',
+        targetIds: ['t1'],
+        catalogKey: 'spell:enhance-ability',
+        duration: { kind: EffectDurationKind.UNTIL_DISMISSED },
+        abilityKey: 'dex',
+      },
+      'k',
+    );
+    expect(addLastingEffect.mock.calls[0][0]).toMatchObject({ abilityKey: 'dex' });
+  });
+
+  it('gives an effect to characters outside a combat', async () => {
+    const addCharacterEffect = vi.fn().mockResolvedValue({ effectIds: ['x'] });
+    const client = clientWith({ addCharacterEffect });
+    await client.addCharacterEffect(
+      {
+        campaignId: 'c',
+        characterIds: ['a', 'b'],
+        catalogKey: 'spell:bless',
+        durationKind: EffectDurationKind.ROUNDS,
+        seconds: 600,
+        playerVisible: false,
+        abilityKey: 'wis',
+      },
+      'key-2',
+    );
+    expect(addCharacterEffect).toHaveBeenCalledWith({
+      campaignId: 'c',
+      idempotencyKey: 'key-2',
+      characterIds: ['a', 'b'],
+      catalogKey: 'spell:bless',
+      durationKind: EffectDurationKind.ROUNDS,
+      seconds: 600,
+      playerVisible: false,
+      audience: undefined,
+      playerLabel: '',
+      abilityKey: 'wis',
+    });
+  });
+
+  it('reads the catalog outside a combat with an empty encounter id', async () => {
+    const listLastingEffects = vi.fn().mockResolvedValue({ catalog: [{ key: 'spell:bless' }] });
+    const client = clientWith({ listLastingEffects });
+    expect(await client.catalog('c')).toEqual([{ key: 'spell:bless' }]);
+    expect(listLastingEffects).toHaveBeenCalledWith({ campaignId: 'c', encounterId: '' });
   });
 
   it('leaves the catalog to decide what the call does not say', async () => {

@@ -4,9 +4,22 @@
       <h2 class="mr-panel__title cx__title" id="cx-title" tabindex="-1" data-effects-title>Efeitos em jogo</h2>
       <p class="cx__count">{{ subtitle() }} · fora do combate</p>
     </div>
-    <button matButton="outlined" type="button" data-testid="open-exhaustion" (click)="openExhaustion()">
-      <mat-icon aria-hidden="true">battery_alert</mat-icon>Exaustão
-    </button>
+    <div class="cx__actions">
+      <button
+        matButton="outlined"
+        type="button"
+        data-testid="open-give-effect"
+        [disabled]="opening() || party().length === 0"
+        disabledInteractive
+        [attr.aria-busy]="opening()"
+        (click)="openGive()"
+      >
+        <mat-icon aria-hidden="true">add</mat-icon>Dar efeito
+      </button>
+      <button matButton="outlined" type="button" data-testid="open-exhaustion" (click)="openExhaustion()">
+        <mat-icon aria-hidden="true">battery_alert</mat-icon>Exaustão
+      </button>
+    </div>
   </div>
 
   @if (loadError()) {

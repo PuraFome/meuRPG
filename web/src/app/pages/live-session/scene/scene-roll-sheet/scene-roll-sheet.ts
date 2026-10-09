@@ -9,6 +9,7 @@ import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1
 import type { SceneActionView, SceneRoll } from '../../../../../gen/meurpg/play/v1/scene_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import { ActionKey } from '../../../../core/connect/idempotency';
+import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
 import { checkFaces, hasModeInfo, needsTwoD20 } from '../../../../core/play/check-roll';
 import { SceneClient, type SceneDie } from '../../../../core/play/scene-client';
 import { sceneBlocked, sceneErrorMessage } from '../../../../core/play/scene-errors';
@@ -24,6 +25,7 @@ import {
 import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions';
 import { joinDots } from '../../../../core/format/text';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
+import { ExtraDice } from '../../effects/extra-dice/extra-dice';
 import { MultiRoll, type RollField } from '../../combat/multi-roll/multi-roll';
 import { RollPicker } from '../../combat/roll-picker/roll-picker';
 import { SheetFrame } from '../../combat/sheet-frame/sheet-frame';
@@ -72,7 +74,15 @@ export function openSceneRollSheet(
  */
 @Component({
   selector: 'app-scene-roll-sheet',
-  imports: [CheckMode, MatButtonModule, MatIconModule, MultiRoll, RollPicker, SheetFrame],
+  imports: [
+    CheckMode,
+    ExtraDice,
+    MatButtonModule,
+    MatIconModule,
+    MultiRoll,
+    RollPicker,
+    SheetFrame,
+  ],
   templateUrl: './scene-roll-sheet.html',
   styleUrl: './scene-roll-sheet.scss',
 })
@@ -94,6 +104,8 @@ export class SceneRollSheet {
   protected readonly roll = signal<SceneRoll | null>(null);
   /** The server said the roll takes two d20 (advantage or disadvantage with a real die): the form shows two fields. */
   protected readonly pair = signal(false);
+  /** The d4 an effect adds (Orientação, Bênção) with physical dice: asked when the server says the roll takes them. */
+  protected readonly extra = new ExtraDiceState();
   protected readonly pairFields: readonly RollField[] = [
     { key: 'first', label: 'Primeiro d20', min: 1, max: 20 },
     { key: 'second', label: 'Segundo d20', min: 1, max: 20 },
@@ -173,6 +185,11 @@ export class SceneRollSheet {
     if (this.busy()) {
       return;
     }
+    const extra = this.extra.take(!('inApp' in die));
+    if (extra === null) {
+      this.error.set(this.extra.missingText());
+      return;
+    }
     this.busy.set(true);
     this.error.set('');
     try {
@@ -180,7 +197,8 @@ export class SceneRollSheet {
         this.data.campaignId,
         this.action.id,
         die,
-        this.key.keyFor({ action: this.action.id, die }),
+        this.key.keyFor({ action: this.action.id, die, extra }),
+        extra,
       );
       this.roll.set(made);
       this.typing.set(false);
@@ -191,6 +209,11 @@ export class SceneRollSheet {
         // Not an error: this roll has advantage or disadvantage, and the form asks for both dice.
         this.pair.set(true);
         this.typing.set(true);
+        return;
+      }
+      const more = this.extra.fromRefusal(err);
+      if (more) {
+        this.error.set(more);
         return;
       }
       this.error.set(sceneErrorMessage(err, 'rolar a ação'));

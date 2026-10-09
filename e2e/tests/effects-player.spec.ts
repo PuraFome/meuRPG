@@ -22,7 +22,7 @@ interface EffectsTable {
 }
 
 /** A combat with Pensantus (the player's, first), the Capitão and two Goblins; the player is on a 390 px phone. */
-async function effectsTable(browser: Browser, name: string, width = 390): Promise<EffectsTable> {
+async function effectsTable(browser: Browser, name: string, width = 390, hidden: string[] = []): Promise<EffectsTable> {
   const master: BrowserContext = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
   const player: BrowserContext = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width, height: 844 } });
   const m = await master.newPage();
@@ -30,7 +30,7 @@ async function effectsTable(browser: Browser, name: string, width = 390): Promis
   await m.goto('/');
   await p.goto('/');
   const table = await tableForCombat(m, p, `${name} ${Date.now()}`, true, true, { sheet: pensantusAttacks });
-  const enc = await beginAttackCombatRPC(m, table, playerFirst);
+  const enc = await beginAttackCombatRPC(m, table, playerFirst, undefined, hidden);
   return {
     m,
     p,
@@ -96,7 +96,7 @@ test(
       await expect(t.p.getByText(/\bCD\b/)).toHaveCount(0);
 
       // The exhaustion: the label in the header and a card with the lines up to the level.
-      await expect(t.p.getByText('Exaustão 4', { exact: true })).toBeVisible();
+      await expect(t.p.locator('app-effect-pill', { hasText: 'Exaustão 4' })).toBeVisible();
       const exhaustion = t.p.getByRole('group', { name: 'Nível 4' });
       await expect(exhaustion).toContainText('Definida pelo mestre. Cada nível soma aos de baixo.');
       await expect(exhaustion).toContainText('PV máximos pela metade');
@@ -123,15 +123,19 @@ test(
       await addEffectRPC(t, 'spell:hold-person', t.captain);
       await openSessionPage(t.p, t.campaignId);
 
-      // The turn: the server's sentence, and no cause for the paralysis (the caster is an NPC the player does not name).
+      // The turn: the server's sentence, with no cause for the paralysis; the Capitão is on the player's order, so the card names him.
       const note = t.p.getByTestId('effect-note');
       await expect(note).toContainText(/Você está Paralisad[oa]\./);
       await expect(note).not.toContainText('Capitão');
       await expect(t.p.getByText('Você não pode agir.').first()).toBeVisible();
-      await expect(t.p.getByRole('group', { name: 'Imobilizar Pessoa' })).toContainText('De alguém que você não vê');
+      await expect(t.p.getByRole('group', { name: 'Imobilizar Pessoa' })).toContainText('De Capitão Goblin');
+
+      // Nothing of the turn is available, so the Ação does not say "Disponível" and ending the turn does not ask.
+      await expect(t.p.getByText('Disponível', { exact: true })).toHaveCount(0);
 
       // Ending the turn opens the saving throw: the ability, the modifier and the three answers, never a DC.
       await t.p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+      await expect(t.p.getByText('Ainda tem ação disponível. Encerrar mesmo?')).toHaveCount(0);
       const sheet = t.p.getByRole('dialog', { name: 'Teste de resistência do fim do turno' });
       await expect(sheet.getByRole('heading', { name: 'Fim do seu turno' })).toBeVisible();
       await expect(sheet).toContainText('Teste de resistência de Sabedoria.');
@@ -143,7 +147,7 @@ test(
       for (const b of [app, typed, hand]) {
         await expect(b).toBeVisible();
       }
-      await expect(app).toBeFocused();
+      await expect(sheet.getByRole('heading', { name: 'Fim do seu turno' })).toBeFocused();
 
       // At 320 px the three answers stack, full width, and nothing scrolls sideways.
       await t.p.setViewportSize({ width: 320, height: 568 });
@@ -159,7 +163,7 @@ test(
       await sheet.getByRole('button', { name: /Confirmar/ }).click();
       await expect(sheet).toContainText('Passou');
       await expect(sheet).toContainText('Imobilizar Pessoa acabou.');
-      await sheet.getByRole('button', { name: 'Fechar' }).click();
+      await sheet.getByRole('button', { name: 'Fechar', exact: true }).last().click();
       await expect(t.p.getByRole('group', { name: 'Imobilizar Pessoa' })).toHaveCount(0);
     } finally {
       await t.done();
@@ -205,10 +209,12 @@ test(
   { tag: ['@W7-E', '@RN-10'] },
   async ({ browser }) => {
     test.setTimeout(240_000);
-    const t = await effectsTable(browser, 'Rótulos na ordem');
+    const t = await effectsTable(browser, 'Rótulos na ordem', 390, ['Capitão Goblin']);
     try {
       await addEffectRPC(t, 'spell:hold-person', t.captain);
       await openSessionPage(t.p, t.campaignId);
+      // The Capitão is hidden from the players: the card never names him.
+      await expect(t.p.getByRole('group', { name: 'Imobilizar Pessoa' })).toContainText('De alguém que você não vê');
       const enc = await getEncounterRPC(t.m, t.campaignId);
       expect(enc.combatants.find((c) => c.id === t.me)?.conditions ?? []).not.toHaveLength(0);
       // The order lists the condition once, and no sentence names the caster.

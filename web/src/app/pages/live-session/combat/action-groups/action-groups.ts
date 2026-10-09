@@ -31,6 +31,7 @@ import {
   spellLine,
   spellTags,
 } from '../../../../core/combat/combat-options';
+import { cannotAct } from '../../../../core/combat/conditions';
 import { spellSummary } from '../../../../core/combat/spell-summary';
 import { freeText } from '../../../../core/combat/cast-flow';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
@@ -214,7 +215,11 @@ export class ActionGroups {
 
   /** The word on the Ação header: with Extra Attack, once the first attack
    * spent the action, "1 ataque restante" (an open circle: it is not over). */
+  protected readonly cannot = computed(() => cannotAct(this.own()));
   protected readonly actionWord = computed(() => {
+    if (cannotAct(this.own())) {
+      return { word: 'Indisponível', used: true };
+    }
     const used = this.own().actionUsed;
     const left = this.attacksLeft();
     if (used && left > 0 && this.attacksPerAction() > 1) {
@@ -257,7 +262,8 @@ export class ActionGroups {
   }
   protected readonly attackDetail = (a: Parameters<typeof attackDetail>[0]) => attackDetail(a);
   protected readonly reasonText = reasonText;
-  protected readonly state = groupState;
+  protected readonly state = (used: boolean): string =>
+    cannotAct(this.own()) ? 'Indisponível' : groupState(used);
   protected readonly isCantrip = isCantrip;
 
   protected spellTags = spellTags;

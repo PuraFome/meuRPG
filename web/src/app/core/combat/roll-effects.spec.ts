@@ -91,6 +91,11 @@ describe('the sources of a roll that an effect writes', () => {
     effect: RollMode.ADVANTAGE,
     textPt: 'Outra fonte: vantagem',
   });
+  const check = create(AdvantageSourceSchema, {
+    kind: AdvantageSourceKind.EFFECT_CHECK,
+    effect: RollMode.ADVANTAGE,
+    textPt: 'Efeito ativo: vantagem em testes de habilidade',
+  });
   const ordinary = create(AdvantageSourceSchema, {
     kind: AdvantageSourceKind.DODGING_TARGET,
     effect: RollMode.DISADVANTAGE,
@@ -100,6 +105,7 @@ describe('the sources of a roll that an effect writes', () => {
   it('read as the server wrote them, with no word of advantage in front', () => {
     expect(sourceLine(effectDie)).toBe('Bênção, de Tavo: ataques e testes de resistência.');
     expect(sourceLine(other)).toBe('Outra fonte: vantagem');
+    expect(sourceLine(check)).toBe('Efeito ativo: vantagem em testes de habilidade');
     expect(sourceLine(ordinary)).toBe('Desvantagem: Esquivando');
   });
 

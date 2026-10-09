@@ -39,12 +39,18 @@ import {
   toggledTarget,
   waysOf,
 } from '../../../core/casting/cast-out-flow';
-import { CastingClient, type CastDice } from '../../../core/casting/casting-client';
+import {
+  CastingClient,
+  type CastDice,
+  type OutsideCastRequest,
+} from '../../../core/casting/casting-client';
 import { castingErrorText } from '../../../core/casting/casting-errors';
 import { type SlotRow, slotRows } from '../../../core/combat/cast-flow';
 import { ActionKey } from '../../../core/connect/idempotency';
+import { abilityMissing, needsAbility } from '../../../core/effects/ability-choice';
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../shared/sheet/sheet-host';
+import { AbilityPicker } from '../effects/ability-picker/ability-picker';
 import { RollPicker } from '../combat/roll-picker/roll-picker';
 import { SlotPicker } from '../combat/cast-sheet/slot-picker';
 import { type ChoiceRow, ChoiceCards } from './choice-cards';
@@ -89,7 +95,15 @@ export function openCastOut(dialog: MatDialog, bottomSheet: MatBottomSheet, data
 @Component({
   selector: 'app-cast-out-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ChoiceCards, MatButtonModule, MatIconModule, RollPicker, SheetFrame, SlotPicker],
+  imports: [
+    AbilityPicker,
+    ChoiceCards,
+    MatButtonModule,
+    MatIconModule,
+    RollPicker,
+    SheetFrame,
+    SlotPicker,
+  ],
   templateUrl: './cast-out-sheet.html',
   styleUrl: './cast-out-sheet.scss',
 })
@@ -110,6 +124,7 @@ export class CastOutSheet {
   protected readonly way = signal<CastWay>('slot');
   protected readonly slot = signal<SlotRow | null>(null);
   protected readonly chosen = signal<string[]>([]);
+  protected readonly ability = signal('');
   protected readonly typing = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -228,6 +243,7 @@ export class CastOutSheet {
     const s = this.spell();
     return s ? minutesOf(s, this.way()) : 0;
   });
+  protected readonly asksAbility = computed(() => needsAbility(this.spellKey()));
   protected readonly rollsDice = computed(() => !!this.spell()?.rollsDice && !this.long());
   protected readonly dice = computed(() => {
     const m = /^(\d+)d(\d+)$/.exec(this.spell()?.rollDice ?? '');
@@ -245,7 +261,7 @@ export class CastOutSheet {
     if (this.showTargets() && needsTarget(s) && this.chosen().length === 0) {
       return 'Escolha em quem a magia age.';
     }
-    return '';
+    return abilityMissing(this.spellKey(), this.ability());
   });
   protected readonly ready = computed(() => this.missing() === '' && !this.busy());
   protected readonly buttonLabel = computed(() => {
@@ -306,6 +322,7 @@ export class CastOutSheet {
     this.way.set(s ? defaultWay(s) : 'slot');
     this.slot.set(null);
     this.chosen.set([]);
+    this.ability.set('');
     this.error.set('');
     const rows = this.slots();
     const free = rows.filter((r) => r.enabled);
@@ -345,6 +362,22 @@ export class CastOutSheet {
     this.sheet.close(c ?? undefined);
   }
 
+  /** What the cast sends: the way, the slot, the targets, the dice and the ability when the spell asks for one. */
+  private request(dice: CastDice | null): OutsideCastRequest {
+    const slot =
+      this.way() === 'ritual' || (this.spell()?.spell?.level ?? 0) === 0 ? null : this.slot();
+    return {
+      campaignId: this.data.campaignId,
+      casterId: this.casterId(),
+      spellKey: this.spellKey(),
+      asRitual: this.way() === 'ritual',
+      slot: slot ? { level: slot.level, pact: slot.pact } : null,
+      targetIds: this.chosen(),
+      dice: this.rollsDice() ? (dice ?? { inApp: true as const }) : null,
+      ...(this.asksAbility() ? { abilityKey: this.ability() } : {}),
+    };
+  }
+
   /** "Conjurar": asks first when it ends a concentration, then casts. */
   protected async castNow(dice: CastDice | null = null): Promise<void> {
     const s = this.spell();
@@ -367,16 +400,7 @@ export class CastOutSheet {
     }
     this.busy.set(true);
     this.error.set('');
-    const slot = this.way() === 'ritual' || (s.spell?.level ?? 0) === 0 ? null : this.slot();
-    const request = {
-      campaignId: this.data.campaignId,
-      casterId: this.casterId(),
-      spellKey: this.spellKey(),
-      asRitual: this.way() === 'ritual',
-      slot: slot ? { level: slot.level, pact: slot.pact } : null,
-      targetIds: this.chosen(),
-      dice: this.rollsDice() ? (dice ?? { inApp: true as const }) : null,
-    };
+    const request = this.request(dice);
     try {
       const res = await this.api.cast(request, this.key.keyFor(request));
       this.cast.set(res.cast ?? null);

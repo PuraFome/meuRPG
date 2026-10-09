@@ -28,7 +28,7 @@ test('o painel lista os efeitos e o relógio dos turnos, e a tabela é uma lista
     }
     const bless = effectRow(panel, 'Bênção');
     await expect(bless).toContainText('Concentração');
-    await expect(bless.locator('.fx__who')).toContainText('Pensantus, Goblin 1 (2 alvos)');
+    await expect(bless.locator('.fx__who')).toContainText(/(Pensantus, Goblin 1|Goblin 1, Pensantus) \(2 alvos\)/);
     await expect(bless.locator('.fx__origin')).toContainText('De Pensantus');
     await expect(bless.locator('.fx__line').first()).toContainText(/Restam \d+ rodadas?: acaba no turno de Pensantus/);
     const prone = effectRow(panel, 'Derrubado');
@@ -62,7 +62,7 @@ test('"Encerrar" numa concentração pede a confirmação em danger-outline com 
     const end = bless.getByRole('button', { name: /^Encerrar Bênção/ });
     await end.click();
     const ask = panel.getByRole('alertdialog', { name: /Encerrar Bênção de Pensantus\?/ });
-    await expect(ask).toContainText('A concentração de Pensantus acaba e Bênção sai de Pensantus e Goblin 1.');
+    await expect(ask).toContainText(/A concentração de Pensantus acaba e Bênção sai de (Pensantus e Goblin 1|Goblin 1 e Pensantus)\./);
     await expect(ask).toContainText('Isto não se desfaz.');
     await expect(ask.getByRole('button', { name: 'Cancelar' })).toBeFocused();
 
@@ -95,12 +95,12 @@ test('o mestre muda a duração, tira um alvo e muda o que os jogadores veem', {
 
     // "Mudar a duração": three radios, the first marked, and a number of rounds from 1 to 600.
     await bless.getByRole('button', { name: /^Mudar a duração de Bênção/ }).click();
-    let dialog = sheet(t.m, 'Mudar a duração de Bênção em Pensantus, Goblin 1');
+    let dialog = sheet(t.m, /^Mudar a duração de Bênção em (Pensantus, Goblin 1|Goblin 1, Pensantus)$/);
     await expect(dialog.getByRole('radio', { name: /^Mais rodadas/ })).toBeChecked();
     await expect(dialog).toContainText('De 1 a 600.');
-    await dialog.getByLabel('Rodadas').fill('601');
+    await dialog.getByRole('textbox', { name: 'Rodadas' }).fill('601');
     await expect(dialog.getByRole('button', { name: 'Salvar' })).toHaveAttribute('aria-disabled', 'true');
-    await dialog.getByLabel('Rodadas').fill('3');
+    await dialog.getByRole('textbox', { name: 'Rodadas' }).fill('3');
     await dialog.getByRole('button', { name: 'Salvar' }).click();
     await expect(dialog).toHaveCount(0);
     await expect.poll(async () => (await effectRow(panel, 'Bênção').locator('.fx__line').first().innerText()).trim()).not.toBe(before);
@@ -150,7 +150,7 @@ test('"Adicionar efeito": o catálogo, o alvo, quem conjurou e a duração; o ef
     await expect(dialog.getByLabel('Quem conjurou')).toBeVisible();
     await dialog.getByLabel('Quem conjurou').selectOption({ label: 'Pensantus' });
     await dialog.getByLabel('Duração', { exact: true }).selectOption({ label: 'Outro número de rodadas' });
-    await dialog.getByLabel('Rodadas').fill('5');
+    await dialog.getByRole('textbox', { name: 'Rodadas' }).fill('5');
     await dialog.getByRole('button', { name: 'Adicionar' }).click();
     await expect(dialog).toHaveCount(0);
     const haste = effectRow(panel, 'Velocidade');
@@ -215,7 +215,7 @@ test('a 390 px a tabela vira um cartão por efeito, com os botões em largura to
     const panel = await openPanel(t);
     await expect(panel.locator('.fx__cols')).toBeHidden();
     const bless = effectRow(panel, 'Bênção');
-    await expect(bless.locator('.fx__sub')).toContainText('Em Pensantus, Goblin 1 · de Pensantus');
+    await expect(bless.locator('.fx__sub')).toContainText(/Em (Pensantus, Goblin 1|Goblin 1, Pensantus) · de Pensantus/);
     await expect(bless.locator('.fx__who')).toBeHidden();
     const card = await boxOf(bless);
     for (const name of [/^Encerrar Bênção/, /^Mudar a duração de/]) {
@@ -295,6 +295,60 @@ test('fora do combate: o painel lista os efeitos dos personagens, "Passar o temp
     await panel.getByRole('button', { name: 'Exaustão' }).click();
     dialog = sheet(m, /^Exaustão/);
     await expect(dialog.getByRole('radio', { name: /^Nível 1/ })).toBeChecked();
+  } finally {
+    await endOpenSessionRPC(m, campaignId);
+    await master.close();
+    await player.close();
+  }
+});
+
+test('fora do combate: "Dar efeito" põe um efeito do catálogo no personagem, com a duração em tempo de jogo', { tag: ['@W7-E', '@RN-22', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 390, height: 844 } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableWithPensantus(m, p, `Dar efeito ${Date.now()}`);
+    campaignId = table.campaignId;
+    await startSessionRPC(m, campaignId);
+    await openSessionPage(m, campaignId);
+
+    const panel = m.getByRole('region', { name: 'Efeitos em jogo' });
+    await expect(panel.getByText('Nenhum efeito nos personagens agora.')).toBeVisible();
+    await panel.getByRole('button', { name: 'Dar efeito' }).click();
+    const dialog = sheet(m, 'Dar um efeito');
+    await expect(dialog.getByRole('heading', { name: 'Dar um efeito' })).toBeVisible();
+    // Nobody ticked yet: nothing to give.
+    await expect(dialog.getByRole('button', { name: 'Dar efeito' })).toHaveAttribute('aria-disabled', 'true');
+    await dialog.locator('label.check', { hasText: 'Pensantus' }).click();
+    await expect(dialog.getByRole('checkbox', { name: 'Pensantus' })).toBeChecked();
+    await dialog.getByLabel('Efeito', { exact: true }).selectOption({ label: 'Aprimorar Habilidade' });
+
+    // Aprimorar Habilidade is cast for one ability: the six, each with its animal, and nothing goes without one.
+    await expect(dialog.getByRole('radio')).toHaveCount(6 + 3);
+    await expect(dialog).toContainText('Coruja');
+    await expect(dialog.getByRole('button', { name: 'Dar efeito' })).toHaveAttribute('aria-disabled', 'true');
+    await dialog.locator('label.row', { hasText: 'Sabedoria' }).click();
+    await expect(dialog.getByRole('radio', { name: /^Sabedoria/ })).toBeChecked();
+    await dialog.getByLabel('Duração', { exact: true }).selectOption({ label: 'Um tempo de jogo' });
+    await dialog.getByLabel('Quanto tempo').selectOption({ label: '1 hora' });
+    await expect(dialog).toContainText('Dura 1 hora de tempo de jogo.');
+    await dialog.getByRole('button', { name: 'Dar efeito' }).click();
+    await expect(dialog).toHaveCount(0);
+
+    const card = panel.getByRole('listitem').filter({ hasText: 'Aprimorar Habilidade' });
+    await expect(card).toContainText('Em Pensantus');
+    await expect(card).toContainText(/1 hora|3600|60 minutos/);
+
+    // The time the master passes is taken off the effect.
+    const time = m.getByRole('region', { name: 'Passar o tempo' });
+    await time.getByRole('button', { name: '10 minutos' }).click();
+    await time.getByRole('button', { name: 'Passar o tempo' }).click();
+    await expect(time).toContainText('Passou 10 minutos. Nenhum efeito acabou.');
   } finally {
     await endOpenSessionRPC(m, campaignId);
     await master.close();

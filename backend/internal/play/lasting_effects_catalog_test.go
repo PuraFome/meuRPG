@@ -374,3 +374,24 @@ func TestCastingGuidanceAndEnhanceAbilityOutsideACombatPutsTheEffectOnTheCharact
 		t.Errorf("the Enhance Ability modifiers = %s (%v), want Dexterity", mods, err)
 	}
 }
+
+func TestTheCatalogComesWithoutACombatAndHoldsTheNewSpells(t *testing.T) {
+	t.Parallel()
+	a := newCastingParty(t)
+	res, err := a.master.lasting.ListLastingEffects(t.Context(), connect.NewRequest(&playv1.ListLastingEffectsRequest{CampaignId: a.campaignID}))
+	if err != nil {
+		t.Fatalf("ListLastingEffects() with no combat error = %v", err)
+	}
+	have := map[string]bool{}
+	for _, e := range res.Msg.GetCatalog() {
+		have[e.GetKey()] = true
+	}
+	for _, k := range []string{guidanceKey, resistanceKey, enhanceAbilityKey, heroismKey, longstriderKey, blessKey} {
+		if !have[k] {
+			t.Errorf("the catalog lacks %s", k)
+		}
+	}
+	if len(res.Msg.GetEffects()) != 0 {
+		t.Errorf("effects with no combat = %v, want none", res.Msg.GetEffects())
+	}
+}

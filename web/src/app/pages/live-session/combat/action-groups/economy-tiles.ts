@@ -2,6 +2,7 @@ import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { cannotAct } from '../../../../core/combat/conditions';
 import { metersFixed, squaresFree } from '../../../../core/units';
 import { tight } from '../../../../core/format/text';
 
@@ -48,6 +49,13 @@ export class EconomyTiles {
     const c = this.own();
     const left = this.attacksLeft();
     const partial = c.actionUsed && left > 0 && this.attacksPerAction() > 1;
+    if (cannotAct(c)) {
+      return ['Ação', 'Ação bônus', 'Reação'].map((name) => ({
+        name,
+        used: true,
+        word: 'Indisponível',
+      }));
+    }
     return [
       {
         name: 'Ação',

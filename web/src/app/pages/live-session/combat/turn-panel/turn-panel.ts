@@ -24,7 +24,7 @@ import {
   turnBanner,
 } from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
-import { conditionTags } from '../../../../core/combat/conditions';
+import { cannotAct, conditionTags } from '../../../../core/combat/conditions';
 import {
   leftSentence,
   listNames,
@@ -197,6 +197,13 @@ export class TurnPanel {
     }
     const left = this.attacksLeft();
     const partial = c.actionUsed && left > 0 && this.attacksPerAction() > 1;
+    if (cannotAct(c)) {
+      return ['Ação', 'Ação bônus', 'Reação'].map((name) => ({
+        name,
+        used: true,
+        word: 'Indisponível',
+      }));
+    }
     return [
       {
         name: 'Ação',

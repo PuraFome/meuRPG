@@ -34,6 +34,8 @@ export interface OutsideCastRequest {
   readonly targetIds: readonly string[];
   readonly dice: CastDice | null;
   readonly summon?: CastSummon;
+  /** Aprimorar Habilidade only: the ability it is cast for ("str" to "cha"). */
+  readonly abilityKey?: string;
 }
 
 /**
@@ -67,6 +69,7 @@ export class CastingClient {
       targetIds: [...req.targetIds],
       idempotencyKey,
       ...(req.dice ? { roll: diceOf(req.dice) } : {}),
+      ...(req.abilityKey ? { abilityKey: req.abilityKey } : {}),
       ...(req.summon
         ? {
             summon: {

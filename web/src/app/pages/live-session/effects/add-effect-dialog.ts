@@ -18,6 +18,7 @@ import {
 import type { CombatState } from '../../../core/combat/combat-state';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { type DurationSpec, EffectsClient } from '../../../core/effects/effects-client';
+import { abilityMissing, needsAbility } from '../../../core/effects/ability-choice';
 import { effectsErrorMessage } from '../../../core/effects/effects-errors';
 import {
   MAX_LABEL,
@@ -31,6 +32,7 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
 import { TextField } from '../../../shared/form-fields/text-field';
 import { SheetFrame } from '../combat/sheet-frame/sheet-frame';
 import { injectSheet } from '../combat/sheet-host';
+import { AbilityPicker } from './ability-picker/ability-picker';
 import { VisibilityFields } from './visibility-fields';
 
 /** What the page hands "Adicionar efeito". */
@@ -63,7 +65,15 @@ const DURATION_OPTIONS: readonly { value: DurationChoice; label: string }[] = [
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-add-effect-dialog',
-  imports: [MatButtonModule, MatIconModule, SheetFrame, SelectField, TextField, VisibilityFields],
+  imports: [
+    AbilityPicker,
+    MatButtonModule,
+    MatIconModule,
+    SheetFrame,
+    SelectField,
+    TextField,
+    VisibilityFields,
+  ],
   templateUrl: './add-effect-dialog.html',
   styleUrls: ['./effects-sheet.scss'],
 })
@@ -89,6 +99,7 @@ export class AddEffectDialog {
   protected readonly rounds = signal('10');
   protected readonly anchorId = signal(this.data.currentCombatantId || this.firstTarget());
   protected readonly dc = signal('');
+  protected readonly ability = signal('');
   protected readonly visibility = signal<Visibility>('catalog');
   protected readonly audience = signal<EffectAudience>(EffectAudience.ALL);
   protected readonly label = signal('');
@@ -134,6 +145,7 @@ export class AddEffectDialog {
       ? ['Digite uma CD de 1 a 40.']
       : [],
   );
+  protected readonly asksAbility = computed(() => needsAbility(this.effectKey()));
   protected readonly targetIds = computed(() => [this.target(), ...this.moreTargets()]);
   protected readonly valid = computed(
     () =>
@@ -141,7 +153,8 @@ export class AddEffectDialog {
       !!this.chosen() &&
       this.targetIds().length <= MAX_TARGETS &&
       this.roundsIssues().length === 0 &&
-      this.dcIssues().length === 0,
+      this.dcIssues().length === 0 &&
+      abilityMissing(this.effectKey(), this.ability()) === '',
   );
 
   constructor() {
@@ -224,6 +237,7 @@ export class AddEffectDialog {
       playerVisible: visibility === 'catalog' ? undefined : visibility === 'yes',
       audience: visibility === 'yes' ? this.audience() : undefined,
       playerLabel: visibility === 'yes' ? this.label().trim().slice(0, MAX_LABEL) : undefined,
+      abilityKey: this.asksAbility() ? this.ability() : undefined,
     };
     this.busy.set(true);
     this.error.set('');

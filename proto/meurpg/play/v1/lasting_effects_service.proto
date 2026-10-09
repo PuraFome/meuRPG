@@ -130,6 +130,7 @@ service LastingEffectService {
 
 message ListLastingEffectsRequest {
   string campaign_id = 1;
+  // Empty: only the catalog comes (what the master gives a character outside a combat).
   string encounter_id = 2;
 }
 

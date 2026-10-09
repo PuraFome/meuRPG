@@ -7437,9 +7437,9 @@ async function scanEffectsScreens(browser: Browser, colorScheme: 'light' | 'dark
     await dialog('Adicionar um efeito').getByRole('button', { name: 'Cancelar' }).click();
 
     await bless.getByRole('button', { name: /^Mudar a duração de Bênção/ }).click();
-    await expect(dialog('Mudar a duração de Bênção em Pensantus, Goblin 1')).toBeVisible();
+    await expect(dialog(/^Mudar a duração de Bênção em (Pensantus, Goblin 1|Goblin 1, Pensantus)$/)).toBeVisible();
     await expectScreenPasses(m, `Mudar a duração ${where}`);
-    await dialog('Mudar a duração de Bênção em Pensantus, Goblin 1').getByRole('button', { name: 'Cancelar' }).click();
+    await dialog(/^Mudar a duração de Bênção em (Pensantus, Goblin 1|Goblin 1, Pensantus)$/).getByRole('button', { name: 'Cancelar' }).click();
 
     await effectRow(panel, 'Derrubado').getByRole('button', { name: /Jogadores veem/ }).click();
     await expect(dialog('O que os jogadores veem de Derrubado em Goblin 2')).toBeVisible();
@@ -7483,6 +7483,23 @@ async function scanEffectsOutsideScreens(browser: Browser, colorScheme: 'light' 
     await expect(panel.getByText('Nenhum efeito nos personagens agora.')).toBeVisible();
     await expectScreenPasses(m, `Efeitos fora do combate, o painel e "Passar o tempo" ${where}`);
     const time = m.getByRole('region', { name: 'Passar o tempo' });
+    // Each preset keeps its words on one line, inside its button and clear of the field under the row.
+    const fieldBox = await boxOf(time.locator('app-text-field'));
+    for (const preset of await time.getByRole('group', { name: 'Quanto tempo passa' }).getByRole('button').all()) {
+      const box = await boxOf(preset);
+      expect(box.y + box.height, `${await preset.innerText()} over the field`).toBeLessThanOrEqual(fieldBox.y);
+      const text = await preset.evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el.querySelector('.mdc-button__label') ?? el);
+        const rects = [...range.getClientRects()].filter((r) => r.width > 0);
+        const frame = el.getBoundingClientRect();
+        return {
+          lines: new Set(rects.map((r) => Math.round(r.top))).size,
+          inside: rects.every((r) => r.top >= frame.top - 1 && r.bottom <= frame.bottom + 1 && r.left >= frame.left - 1 && r.right <= frame.right + 1),
+        };
+      });
+      expect(text, `${await preset.innerText()} on one line, inside its button`).toEqual({ lines: 1, inside: true });
+    }
     await time.getByRole('button', { name: '10 minutos' }).click();
     await time.getByRole('button', { name: 'Passar o tempo' }).click();
     await expect(time).toContainText('Passou 10 minutos.');
@@ -7577,14 +7594,17 @@ async function scanEffectsPlayerScreens(browser: Browser, colorScheme: 'light' |
 
     // The attack sheet with the d4 of Bênção beside the d20.
     await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
-    const attack = p.getByRole('dialog', { name: 'Atacar com Raio de Fogo' });
+    // The sheet's name changes while the result is typed, and the exhaustion of level 4 makes the attack take two d20.
+    const attack = p.getByRole('dialog');
     await attack.locator('label', { hasText: 'Capitão Goblin' }).click();
     await attack.getByRole('button', { name: 'Digitar o resultado' }).click();
     await expect(attack.getByLabel('Resultado do d4 (Bênção)')).toBeVisible();
     await expectScreenPasses(p, `Atacar com Bênção, o d4 dos dados físicos ${where}`);
     await attack.getByLabel('Resultado do d4 (Bênção)').fill('3');
-    await attack.getByLabel(/Role 1d20 para Raio de Fogo/).fill('14');
-    await attack.getByRole('button', { name: 'Confirmar 14' }).click();
+    // Two low dice: the attack misses, so no damage waits and the turn can end below.
+    await attack.getByLabel('Primeiro d20').fill('2');
+    await attack.getByLabel('Segundo d20').fill('5');
+    await attack.getByRole('button', { name: /^Confirmar/ }).click();
     await expect(attack).toContainText('+ 1d4 (3)');
     await expectScreenPasses(p, `Atacar com Bênção, o resultado com o d4 ${where}`);
     await p.keyboard.press('Escape');
@@ -7595,13 +7615,17 @@ async function scanEffectsPlayerScreens(browser: Browser, colorScheme: 'light' |
     await expect(p.getByTestId('effect-note')).toBeVisible();
     await expectScreenPasses(p, `O turno de quem está paralisado ${where}`);
     await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
-    const save = p.getByRole('dialog', { name: 'Teste de resistência do fim do turno' });
+    // The dialog of a desktop is named by its title, the bottom sheet of a phone by its label.
+    const save = p.getByRole('dialog', { name: /^(Teste de resistência do fim do turno|Fim do seu turno)$/ });
     await expect(save.getByRole('button', { name: 'Rolar no app' })).toBeVisible();
     await expectScreenPasses(p, `Fim do seu turno, as três respostas ${where}`);
     await save.getByRole('button', { name: 'Digitar o resultado' }).click();
-    await expect(save.getByLabel(/Resultado do d20/)).toBeVisible();
+    // The exhaustion of level 4 gives disadvantage on the save (two d20), and Bênção adds its d4.
+    await expect(save.getByLabel('Primeiro d20')).toBeVisible();
     await expectScreenPasses(p, `Fim do seu turno, digitando o d20 ${where}`);
-    await save.getByLabel(/Resultado do d20/).fill('20');
+    await save.getByLabel('Resultado do d4 (Bênção)').fill('2');
+    await save.getByLabel('Primeiro d20').fill('20');
+    await save.getByLabel('Segundo d20').fill('20');
     await save.getByRole('button', { name: /Confirmar/ }).click();
     await expect(save).toContainText('Passou');
     await expectScreenPasses(p, `Fim do seu turno, o resultado ${where}`);

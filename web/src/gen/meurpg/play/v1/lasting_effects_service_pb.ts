@@ -29,6 +29,8 @@ export type ListLastingEffectsRequest = Message<"meurpg.play.v1.ListLastingEffec
   campaignId: string;
 
   /**
+   * Empty: only the catalog comes (what the master gives a character outside a combat).
+   *
    * @generated from field: string encounter_id = 2;
    */
   encounterId: string;

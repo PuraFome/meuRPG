@@ -35,10 +35,19 @@ describe('TrapSearchSheet', () => {
   ) {
     const sent: unknown[] = [];
     const keys: string[] = [];
+    const extras: (readonly number[] | undefined)[] = [];
     const api = {
-      search: async (_c: string, skill: string, die: unknown, key: string, other = '') => {
+      search: async (
+        _c: string,
+        skill: string,
+        die: unknown,
+        key: string,
+        other = '',
+        extra?: readonly number[],
+      ) => {
         sent.push(other ? [skill, die, other] : [skill, die]);
         keys.push(key);
+        extras.push(extra);
         const next = responses.shift();
         if (next instanceof Error) {
           throw next;
@@ -84,7 +93,7 @@ describe('TrapSearchSheet', () => {
       rollWith(d: unknown): Promise<void>;
       pick(s: string): void;
     };
-    return { fixture, el: fixture.nativeElement as HTMLElement, sent, keys, roller };
+    return { fixture, el: fixture.nativeElement as HTMLElement, sent, keys, extras, roller };
   }
 
   it('offers Percepção and Investigação with the bonus, the helper line and the three steps', () => {
@@ -280,6 +289,30 @@ describe('TrapSearchSheet', () => {
     expect(el.textContent).toContain('leva dois d20');
     await roller.rollWith({ face: 4 });
     expect(sent[1]).toEqual(['perception', { face: 9, face2: 4 }]);
+  });
+
+  it('asks for the d4 of an effect when the server says the search takes it, and sends it with the d20', async () => {
+    const { fixture, el, extras, roller } = setup([
+      new ConnectError('the roll takes 1 more die(s): type their faces', Code.InvalidArgument),
+      create(SearchForTrapsResponseSchema, { roll: roll(9, 13), foundPointIds: [] }),
+    ]);
+    (fixture.componentInstance as unknown as { typing: { set(v: boolean): void } }).typing.set(
+      true,
+    );
+    await roller.rollWith({ face: 9 });
+    fixture.detectChanges();
+    expect(el.textContent).toContain('Esta rolagem leva mais um d4');
+    expect(el.querySelector('app-extra-dice label')?.textContent).toContain('Resultado do d4');
+    await roller.rollWith({ face: 9 });
+    expect(extras).toHaveLength(1);
+    fixture.detectChanges();
+    expect(el.textContent).toContain('Digite o resultado do d4 antes de confirmar.');
+    const d4 = el.querySelector<HTMLInputElement>('app-extra-dice input')!;
+    d4.value = '2';
+    d4.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await roller.rollWith({ face: 9 });
+    expect(extras[1]).toEqual([2]);
   });
 
   it('says why the server refused, by reason', async () => {

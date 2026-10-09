@@ -71,7 +71,7 @@
           <div class="fx__see">
             <button type="button" class="fx__seebtn" data-testid="open-visibility" (click)="openVisibility(row)">
               <mat-icon class="fx__eye" aria-hidden="true">{{ row.effect.playerVisible ? 'visibility' : 'visibility_off' }}</mat-icon>
-              <span class="fx__seephone" aria-hidden="true">Jogadores veem: {{ row.seeShort }}</span>
+              <span class="fx__seephone">Jogadores veem: {{ row.seeShort }}</span>
               <span class="fx__seedesk"><span class="mr-visually-hidden">Jogadores veem: </span>{{ row.see }}</span>
               <span class="mr-visually-hidden">. Mudar o que os jogadores veem de {{ row.effect.sourceNamePt }} em {{ row.targets }}</span>
             </button>

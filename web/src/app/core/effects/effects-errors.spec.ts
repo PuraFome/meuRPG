@@ -22,6 +22,15 @@ describe('effectsErrorMessage', () => {
     expect(effectsErrorMessage(err(Code.Aborted), 'x', 'combat')).toContain('mudaram');
   });
 
+  it('says a character is in a combat when an effect is given outside one', () => {
+    expect(effectsErrorMessage(err(Code.FailedPrecondition), 'dar o efeito', 'give')).toBe(
+      'Um dos personagens está em um combate. Dê o efeito por lá, em "Adicionar efeito".',
+    );
+    expect(effectsErrorMessage(err(Code.FailedPrecondition), 'x', 'character')).not.toContain(
+      'combate. Dê',
+    );
+  });
+
   it('says the level of exhaustion changed when expected_level is stale', () => {
     expect(effectsErrorMessage(err(Code.Aborted), 'mudar a exaustão', 'exhaustion')).toContain(
       'nível de exaustão mudou',

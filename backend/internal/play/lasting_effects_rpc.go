@@ -42,6 +42,15 @@ func (s *Service) ListLastingEffects(
 	if err != nil {
 		return nil, err
 	}
+	// Without a combat only the catalog comes: what the master gives a character between fights.
+	if req.Msg.GetEncounterId() == "" {
+		content, err := s.roster.RulesContent(ctx, nil, m.CampaignID)
+		if err != nil {
+			return nil, s.dbError(ctx, "read the rules", err)
+		}
+		ev := &effectViewer{s: s, m: m, v: combatViewer{master: true}, content: content, names: s.namesFor(ctx, m.CampaignID)}
+		return connect.NewResponse(&playv1.ListLastingEffectsResponse{Catalog: ev.catalog()}), nil
+	}
 	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
 	if err != nil {
 		return nil, err
@@ -193,7 +202,7 @@ func (ev *effectViewer) concentrations(groups []effectGroup) []*playv1.Concentra
 // its own call) and what the app adds itself (the web that burns).
 func (ev *effectViewer) catalog() []*playv1.CatalogEffect {
 	var out []*playv1.CatalogEffect
-	for _, key := range []string{"spell:hold-person", "spell:bless", "spell:bane", "spell:haste", "spell:web", "spell:faerie-fire", "spell:hideous-laughter"} {
+	for _, key := range []string{"spell:hold-person", "spell:bless", "spell:bane", "spell:haste", "spell:web", "spell:faerie-fire", "spell:hideous-laughter", "spell:guidance", "spell:resistance", "spell:enhance-ability", "spell:heroism", "spell:longstrider", "spell:mage-armor", "spell:pass-without-trace"} {
 		def, ok := ev.content.CombatSpellEffect(key)
 		if !ok {
 			continue

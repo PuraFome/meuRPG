@@ -243,7 +243,7 @@
     <section class="group" aria-labelledby="g-bonus">
       <header class="group__head">
         <h3 class="group__name" id="g-bonus">Ação bônus</h3>
-        <app-group-state [word]="state(own().bonusActionUsed)" [used]="own().bonusActionUsed" />
+        <app-group-state [word]="state(own().bonusActionUsed)" [used]="own().bonusActionUsed || cannot()" />
       </header>
       @if (beast()) {
         <app-action-row
@@ -276,7 +276,7 @@
     <section class="group" aria-labelledby="g-reaction">
       <header class="group__head">
         <h3 class="group__name" id="g-reaction">Reação</h3>
-        <app-group-state [word]="state(own().reactionUsed)" [used]="own().reactionUsed" />
+        <app-group-state [word]="state(own().reactionUsed)" [used]="own().reactionUsed || cannot()" />
       </header>
       @for (f of reaction().features; track f.action?.key) {
         <app-action-row

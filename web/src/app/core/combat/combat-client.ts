@@ -188,6 +188,8 @@ export interface CastExtras {
   readonly area?: AreaChoice | null;
   /** The master only: whether the hidden creatures the area hits appear to the players. */
   readonly revealHidden?: boolean;
+  /** Aprimorar Habilidade only: the ability it is cast for ("str" to "cha"). */
+  readonly abilityKey?: string;
 }
 
 /** The roll of a cast as the request's oneof: the app rolls, a typed pool sum, or a typed d20. */
@@ -273,7 +275,7 @@ export interface AttackEffects {
  * master keeping the concentration. */
 export type ConcentrationAnswer =
   | { readonly kind: 'app' }
-  | { readonly kind: 'typed'; readonly face: number }
+  | { readonly kind: 'typed'; readonly face: number; readonly extra?: readonly number[] }
   | { readonly kind: 'hand' }
   | { readonly kind: 'keep' };
 
@@ -1052,6 +1054,7 @@ export class CombatClient {
             : how.kind === 'hand'
               ? { case: 'handToMaster', value: true }
               : { case: 'keep', value: true },
+      extraDieFaces: how.kind === 'typed' ? [...(how.extra ?? [])] : [],
       idempotencyKey: key,
     });
     return { encounter: need(res.encounter, 'ResolveConcentrationSave'), result: res.result };
@@ -1137,6 +1140,7 @@ export class CombatClient {
       area: areaOneof(extras.area),
       // Left out unless the master chose: the table rule decides then.
       ...(extras.revealHidden === undefined ? {} : { revealHidden: extras.revealHidden }),
+      ...(extras.abilityKey ? { abilityKey: extras.abilityKey } : {}),
     });
     return {
       encounter: need(res.encounter, 'CastSpell'),
