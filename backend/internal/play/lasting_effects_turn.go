@@ -160,14 +160,7 @@ func stateName(st playdb.CombatantState) string {
 
 // cannotMove says whether a condition takes the speed away (SRD 5.1, Conditions: Grappled,
 // Paralyzed, Petrified, Restrained, Stunned and Unconscious: speed 0 or no movement).
-func cannotMove(k string) bool {
-	switch k {
-	case conditionParalyzed, conditionPetrified, "condition:stunned", "condition:unconscious",
-		"condition:grappled", "condition:restrained":
-		return true
-	}
-	return false
-}
+func cannotMove(k string) bool { return slices.Contains(noSpeed, k) }
 
 // endEffectsOfLeaver ends the effects a combatant leaving the fight carries or holds by
 // concentration, before its row goes.
@@ -307,6 +300,3 @@ func (s *Service) endEffectsOfTheDead(ctx context.Context, c *combatTx, cs []pla
 	}
 	return nil
 }
-
-// conditionPetrified is the SRD condition Petrified.
-const conditionPetrified = "condition:petrified"
