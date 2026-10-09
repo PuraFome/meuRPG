@@ -323,6 +323,9 @@ func (s *Service) ListCharacters(
 			labels := content.Summary(buildOf(full))
 			summary.ClassSummary = labels.ClassSummaryPT
 			summary.RaceNamePt = labels.RaceNamePT
+			if isMaster(m) && row.Kind == kindPlayer && row.Status == statusActive && row.SheetLockedAt == nil {
+				summary.OpenChoices = openChoices(rules.Derive(buildOf(full), content))
+			}
 		}
 		summary.PendingChoiceCount = pendingChoiceCount(content, m, row.Kind, row.Status, row.PlayerUserID, sheet)
 		res.Characters = append(res.Characters, summary)

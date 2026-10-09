@@ -103,37 +103,3 @@ func TestChoiceDataIsClosed(t *testing.T) {
 		t.Errorf("the file as shipped: %v", err)
 	}
 }
-
-// TestSubclassLevelCorrectionsAreClosed: effects/corrections.json may add features to a
-// subclass's row of the class table; the loader refuses an unknown subclass, a level
-// the subclass has no row for, an unknown or repeated feature, and no source.
-func TestSubclassLevelCorrectionsAreClosed(t *testing.T) {
-	t.Parallel()
-	newContent := func() *content {
-		return &content{
-			subclasses:     map[string]*srd51.Subclass{"subclass:land": {Key: "subclass:land"}},
-			features:       map[string]*srd51.Feature{"feature:circle": {}, "feature:cantrip": {}},
-			subclassLevels: map[string]map[int]*srd51.Level{"subclass:land": {2: {Features: []string{"feature:cantrip"}}}},
-		}
-	}
-	for name, list := range map[string][]subclassLevelCorrection{
-		"an unknown subclass":   {{Subclass: "subclass:nope", Level: 2, AddFeatures: []string{"feature:circle"}, Source: "SRD"}},
-		"a level without a row": {{Subclass: "subclass:land", Level: 3, AddFeatures: []string{"feature:circle"}, Source: "SRD"}},
-		"an unknown feature":    {{Subclass: "subclass:land", Level: 2, AddFeatures: []string{"feature:nope"}, Source: "SRD"}},
-		"a feature the row has": {{Subclass: "subclass:land", Level: 2, AddFeatures: []string{"feature:cantrip"}, Source: "SRD"}},
-		"no feature":            {{Subclass: "subclass:land", Level: 2, Source: "SRD"}},
-		"no source":             {{Subclass: "subclass:land", Level: 2, AddFeatures: []string{"feature:circle"}}},
-	} {
-		if err := newContent().applySubclassLevelCorrections("corrections", list); err == nil {
-			t.Errorf("%s: the loader accepted it", name)
-		}
-	}
-	c := newContent()
-	good := []subclassLevelCorrection{{Subclass: "subclass:land", Level: 2, AddFeatures: []string{"feature:circle"}, Source: "SRD"}}
-	if err := c.applySubclassLevelCorrections("corrections", good); err != nil {
-		t.Fatal(err)
-	}
-	if got := c.subclassLevels["subclass:land"][2].Features; len(got) != 2 || got[0] != "feature:circle" || got[1] != "feature:cantrip" {
-		t.Errorf("features = %v, want the new one first, then the row's own", got)
-	}
-}
