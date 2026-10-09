@@ -1512,3 +1512,62 @@ func TestRN10_FogCombatASaveSpellOnManyCoveredTargetsIsOneEvent(t *testing.T) {
 		t.Errorf("%d spell events carry a restricted cover, want 1: the fixture does not put the targets behind the map's cover", cover)
 	}
 }
+
+// TestRN10_FogCombatThePlayerOfACasterKeepsTheLineOfTheirAreaSpell: Pensantus's Fireball
+// hits a goblin in the torch's light and another in the dark. The line is Pensantus's player's
+// whoever they see, with the creature they do not see left out; Toren's player, who sees
+// the lit goblin, has the line with it alone; the master's line has both.
+func TestRN10_FogCombatThePlayerOfACasterKeepsTheLineOfTheirAreaSpell(t *testing.T) {
+	t.Parallel()
+	f := newFogCaveWith(t, newCaveWith(t, 5, []string{fireball}))
+	f.groupVision(t, false)
+	e := f.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: f.goblins.GetId(), Count: 2}},
+		npcRolls: []int{2, 2},
+		players:  map[string]int32{"Pensantus": 20, "Toren": 15, "Brisa": 10},
+		reveal:   []string{"Goblin 1", "Goblin 2"},
+		at:       map[string][2]int32{"Pensantus": {3, 7}, "Toren": {6, 7}, "Brisa": {1, 9}, "Goblin 1": {14, 7}, "Goblin 2": {20, 7}},
+	})
+	seesGoblin := func(u *user, label string) bool {
+		return slices.ContainsFunc(f.get(t, u).GetCombatants(), func(c *playv1.Combatant) bool { return c.GetLabel() == label })
+	}
+	if !seesGoblin(f.caio, "Goblin 1") || seesGoblin(f.caio, "Goblin 2") || seesGoblin(f.ana, "Goblin 2") {
+		t.Fatalf("the fixture: Toren sees Goblin 1 %v and Goblin 2 %v, Pensantus sees Goblin 2 %v; want yes, no, no", seesGoblin(f.caio, "Goblin 1"), seesGoblin(f.caio, "Goblin 2"), seesGoblin(f.ana, "Goblin 2"))
+	}
+	f.h.roller.queue(10, 10, 10)
+	f.mustCastArea(t, f.ana, "Pensantus", fireball, slotOfLevel(3), at(17, 7), nil)
+
+	hitsOf := func(u *user) []string {
+		var out []string
+		for _, r := range f.log(t, u, f.get(t, u)).GetRounds() {
+			for _, en := range r.GetEntries() {
+				if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST {
+					out = nil
+					for _, tg := range en.GetSpell().GetTargets() {
+						out = append(out, tg.GetTargetLabel())
+					}
+					slices.Sort(out)
+					out = append(out, "line")
+				}
+			}
+		}
+		return out
+	}
+	// The master's line has both goblins (the positive control).
+	if got := hitsOf(f.master); !slices.Contains(got, "Goblin 1") || !slices.Contains(got, "Goblin 2") {
+		t.Fatalf("the master's line = %v, want both goblins", got)
+	}
+	// The caster's player has the line, with the goblin in the dark left out.
+	if got := hitsOf(f.ana); !slices.Contains(got, "line") || slices.Contains(got, "Goblin 2") {
+		t.Errorf("Pensantus's player's line = %v, want the line without the goblin they do not see", got)
+	}
+	// Toren's player sees the lit goblin: the line has it alone.
+	if got := hitsOf(f.caio); !slices.Contains(got, "Goblin 1") || slices.Contains(got, "Goblin 2") {
+		t.Errorf("Toren's player's line = %v, want the lit goblin alone", got)
+	}
+	// Brisa's player sees the lit goblin too, by Toren's torch: the line has it alone.
+	if got := hitsOf(f.bia); !slices.Contains(got, "Goblin 1") || slices.Contains(got, "Goblin 2") {
+		t.Errorf("Brisa's player's line = %v, want the lit goblin alone", got)
+	}
+	_ = e
+}

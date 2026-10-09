@@ -127,6 +127,11 @@ type castHit struct {
 	// the players' view of the cast never lists it, even after it is revealed, and
 	// the master's marks it.
 	HiddenAtCast bool `json:"hidden_at_cast,omitempty"`
+	// Fogged says the target is an NPC that a map with the fog of war made visible to some
+	// players only, and SeenMask (bits of the event's CoverUsers) says to which, as they stood
+	// when the spell hit: the players' line lists the target only to them.
+	Fogged   bool   `json:"fogged,omitempty"`
+	SeenMask uint64 `json:"seen_mask,omitempty"`
 
 	// A spell that reads hit points (combat_spells_hp.go): whether it reached the
 	// target (the fx* values below), why not, the target's hit points when it did,
@@ -151,6 +156,15 @@ type castHit struct {
 	DeathBefore *deathState `json:"death_before,omitempty"`
 	CondSet     bool        `json:"cond_set,omitempty"`
 	CondBefore  []string    `json:"cond_before,omitempty"`
+}
+
+// unseenBy says the target was an NPC in the fog that this player did not see when it was hit.
+func (h castHit) unseenBy(users []string, userID string) bool {
+	if !h.Fogged {
+		return false
+	}
+	j := slices.Index(users, userID)
+	return j < 0 || h.SeenMask&(1<<j) == 0
 }
 
 // What a spell that reads hit points did to a target, as a cast event stores it.

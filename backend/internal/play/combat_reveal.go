@@ -26,8 +26,9 @@ import (
 //   - reveal (the default): the creature appears to the players, as when the master
 //     reveals it;
 //   - keep_hidden: it takes the effect and stays hidden;
-//   - ask: a player's spell holds the turn (hidden_reveals) until the master answers
-//     with ResolveHiddenReveal. The master's own spell asks nothing when the request
+//   - ask: every area spell a player casts holds the turn (hidden_reveals) until the
+//     master answers with ResolveHiddenReveal, a hidden creature in the area or not,
+//     so that the wait tells nothing. The master's own spell asks nothing when the request
 //     carries his choice (CastSpellRequest.reveal_hidden).
 //
 // Until a creature is revealed nothing a player receives names or counts it: the
@@ -70,13 +71,19 @@ func (s *Service) settleHidden(ctx context.Context, c *combatTx, m authz.Members
 			hit = append(hit, made.Hits[i].Target)
 		}
 	}
-	if len(hit) == 0 {
-		return nil
-	}
 	if !v.master {
 		choice = nil // a player never chooses (a request that tried was refused at its start)
 	}
 	reveal, ask := revealDecision(c.rules.HiddenAreaHits, choice)
+	if len(hit) == 0 {
+		// Under "Perguntar a cada vez" a player's area spell holds the turn whether or
+		// not it hit a hidden creature: a wait only when one was there would tell the
+		// player that one was (RN-10). The master answers with one tap. His own cast
+		// has nothing to ask him.
+		if !ask || v.master {
+			return nil
+		}
+	}
 	switch {
 	case ask:
 		seq, err := c.q.NextHiddenRevealSeq(ctx, c.enc.ID)
@@ -88,7 +95,7 @@ func (s *Service) settleHidden(ctx context.Context, c *combatTx, m authz.Members
 			flat = append(flat, clamp32(sq.Col, 0, 1<<30), clamp32(sq.Row, 0, 1<<30))
 		}
 		q, err := c.q.InsertHiddenReveal(ctx, playdb.InsertHiddenRevealParams{
-			EncounterID: c.enc.ID, CasterID: made.Actor, SpellKey: spellKey, CombatantIds: hit,
+			EncounterID: c.enc.ID, CasterID: made.Actor, SpellKey: spellKey, CombatantIds: append([]string{}, hit...),
 			OriginCol: clamp32(plan.origin.Col, 0, 1<<30), OriginRow: clamp32(plan.origin.Row, 0, 1<<30), Squares: flat, Seq: seq, CreatedAt: c.now,
 		})
 		if err != nil {

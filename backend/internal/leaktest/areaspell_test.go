@@ -188,6 +188,33 @@ func TestAnAreaSpellThatHitsAHiddenCreatureNamesItToNoPlayerBeforeTheReveal(t *t
 		t.Errorf("the master's combat does not name the hidden creature and the question, so the scan proves nothing")
 	}
 
+	// The player rolls the cast's damage (one roll settles every creature in the area):
+	// the answer, the combat and the log of the roll name only what the player sees.
+	damages := cast.GetCast().GetPendingDamages()
+	if len(damages) == 0 {
+		t.Fatalf("the cast has no damage to roll, so the roll proves nothing: %s", jsonOf(cast))
+	}
+	rolled := must(w.ana.combat.RollDamage(ctx, rq(&playv1.RollDamageRequest{
+		CampaignId: w.campaign, EncounterId: e.GetId(), PendingDamageId: damages[0].GetId(), IdempotencyKey: newKey(),
+		Roll: &playv1.RollDamageRequest_RollInApp{RollInApp: true},
+	})))
+	if found := namesAny(jsonOf(rolled), leak.needles()); len(found) > 0 {
+		t.Errorf("the player's roll of the damage names %v: %s", found, jsonOf(rolled))
+	}
+	if len(rolled.GetCastPendingDamages()) == 0 && rolled.GetPendingDamage() == nil {
+		t.Errorf("the roll answered with no damage, so it proves nothing: %s", jsonOf(rolled))
+	}
+	for _, p := range players {
+		if found := namesAny(readAll(p), leak.needles()); len(found) > 0 {
+			t.Errorf("%s reads %v after the damage was rolled", p.name, found)
+		}
+	}
+	// The positive control: the master's log of the roll does name the hidden creature.
+	masterLog := jsonOf(must(m.combat.ListCombatLog(ctx, rq(&playv1.ListCombatLogRequest{CampaignId: w.campaign, EncounterId: e.GetId()}))))
+	if !strings.Contains(masterLog, hiddenName) && !strings.Contains(masterLog, leak.combatantID) {
+		t.Errorf("the master's log of the cast and its roll does not name the hidden creature, so the scan proves nothing: %s", masterLog)
+	}
+
 	// A player who answers the question gets the same refusal for the real id and for any other.
 	answer := func(id string) error {
 		_, err := w.ana.combat.ResolveHiddenReveal(ctx, rq(&playv1.ResolveHiddenRevealRequest{CampaignId: w.campaign, EncounterId: e.GetId(), PendingRevealId: id, Reveal: true, IdempotencyKey: newKey()}))

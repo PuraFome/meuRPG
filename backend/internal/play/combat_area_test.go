@@ -922,3 +922,61 @@ func TestTheTurnOptionsSayHowEachAreaSpellIsPlaced(t *testing.T) {
 		t.Errorf("Lightning Bolt's width = %d ft, want 5", st.GetAreaWidthFt())
 	}
 }
+
+// TestAPlayersAreaSpellHoldsTheTurnUnderAskWhetherOrNotAHiddenCreatureWasHit: a wait only
+// when a hidden creature was there would tell the player that one was (RN-10), so every
+// area spell of a player holds the turn when the table asks; the master answers with one
+// tap, and "Revelar" and "Manter escondidas" never hold.
+func TestAPlayersAreaSpellHoldsTheTurnUnderAskWhetherOrNotAHiddenCreatureWasHit(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name     string
+		rule     campaignsv1.HiddenAreaHitRule
+		hide     bool
+		wantHeld bool
+	}{
+		{"ask, nobody hidden", campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_ASK, false, true},
+		{"ask, a hidden goblin", campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_ASK, true, true},
+		{"reveal, nobody hidden", campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_REVEAL, false, false},
+		{"keep hidden, nobody hidden", campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_KEEP_HIDDEN, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			c := newAreaCave(t)
+			e := c.areaFight(t)
+			c.setRules(t, func(r *campaignsv1.TableRules) { r.HiddenAreaHits = tc.rule })
+			if tc.hide {
+				c.hide(t, "Goblin 2")
+			}
+			c.h.roller.queue(10, 10, 10, 10)
+			res := c.mustCastArea(t, c.ana, "Pensantus", fireball, slotOfLevel(3), at(20, 7), nil)
+			if res.GetPendingRevealId() != "" || len(res.GetHiddenHits()) != 0 {
+				t.Errorf("the player's answer = pending %q, hidden %v; want nothing of the question", res.GetPendingRevealId(), res.GetHiddenHits())
+			}
+			player, master := c.get(t, c.ana), c.get(t, c.master)
+			if player.GetTurnHeld() != tc.wantHeld || master.GetTurnHeld() != tc.wantHeld {
+				t.Fatalf("turn held for the player %v and the master %v, want %v", player.GetTurnHeld(), master.GetTurnHeld(), tc.wantHeld)
+			}
+			if len(player.GetPendingHiddenReveals()) != 0 {
+				t.Error("the player is shown a question")
+			}
+			if !tc.wantHeld {
+				if len(master.GetPendingHiddenReveals()) != 0 {
+					t.Error("the master is asked though the table does not ask")
+				}
+				return
+			}
+			qs := master.GetPendingHiddenReveals()
+			if len(qs) != 1 || (len(qs[0].GetCombatantIds()) == 0) == tc.hide {
+				t.Fatalf("the master's questions = %v, want one, with creatures only if one was hidden", qs)
+			}
+			c.wantTheTurnHeld(t, e)
+			if _, err := resolveReveal(t, c, c.master, qs[0].GetId(), false); err != nil {
+				t.Fatalf("ResolveHiddenReveal() error = %v", err)
+			}
+			if c.get(t, c.ana).GetTurnHeld() {
+				t.Error("the turn is still held after the master answered")
+			}
+		})
+	}
+}
