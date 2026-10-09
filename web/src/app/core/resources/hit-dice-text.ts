@@ -26,6 +26,14 @@ export function hitDiceWords(
   return sizes.length === 0 ? '—' : listWords(sizes);
 }
 
+/** "5d10 + 1d6": hit dice by size added up, as the level-up rows say them (PM-08M). "—" when there are none. */
+export function hitDiceSum(
+  dice: readonly { readonly faces: number; readonly count: number }[],
+): string {
+  const sizes = dice.filter((d) => d.count > 0).map((d) => `${d.count}${dieName(d.faces)}`);
+  return sizes.length === 0 ? '—' : sizes.join(' + ');
+}
+
 /** The dice a character has left of one size. */
 export function diceLeft(size: HitDieSize): number {
   return Math.max(0, size.total - size.used);

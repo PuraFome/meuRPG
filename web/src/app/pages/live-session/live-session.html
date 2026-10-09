@@ -232,6 +232,14 @@
             [party]="vitals()"
             (restTaken)="takeVitals($event)"
           />
+          <app-casting-panel
+            class="board__casting"
+            [campaignId]="campaignId()"
+            [master]="true"
+            [tick]="castsTick()"
+            [diceMode]="campaign()?.diceMode ?? 1"
+            [preference]="campaign()?.dicePreference ?? 1"
+          />
           <app-shown-image-panel
             class="board__image"
             [campaignId]="campaignId()"
@@ -352,6 +360,14 @@
                 [diceMode]="campaign()?.diceMode ?? 1"
                 [dicePreference]="campaign()?.dicePreference ?? 1"
                 (vitalsChange)="takeVitals([$event])"
+              />
+              <app-casting-panel
+                [campaignId]="campaignId()"
+                [characterId]="v.characterId"
+                [characterName]="v.name"
+                [tick]="castsTick()"
+                [diceMode]="campaign()?.diceMode ?? 1"
+                [preference]="campaign()?.dicePreference ?? 1"
               />
             } @else {
               <div class="mr-notice mr-notice--neutral">

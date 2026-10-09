@@ -121,6 +121,7 @@ describe('LiveStream (ADR-0005 client rules)', () => {
       onNotesChanged: vi.fn(),
       onVisionChanged: vi.fn(),
       onStageChanged: vi.fn(),
+      onSpellCastsChanged: vi.fn(),
       onEnded: vi.fn(),
       onFatal: vi.fn(),
     };
@@ -238,6 +239,15 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     await flush();
     expect(handlers.onVisionChanged).toHaveBeenCalledWith('map-1');
     expect(stream.status()).toBe('live');
+  });
+
+  it('hands `spell_casts_changed` to the page on its own, so the casts are read again (MR-048)', async () => {
+    stream.start();
+    last().push({ kind: 'ready' });
+    last().push({ kind: 'spellCastsChanged' });
+    await flush();
+    expect(handlers.onSpellCastsChanged).toHaveBeenCalledTimes(1);
+    expect(handlers.onStageChanged).not.toHaveBeenCalled();
   });
 
   it('hands `stage_changed` to the page on its own, so the stage is read again (MR-031)', async () => {

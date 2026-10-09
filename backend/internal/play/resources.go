@@ -20,6 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // Rests and the hit dice (SRD 5.1, "Resting"): the master takes a short or a long
@@ -230,8 +231,11 @@ func (s *Service) TakeRest(
 	var after []*playv1.CharacterVitals
 	var repeated []string
 	var touched []playdb.Encounter
+	var castsChanged int // how much of the casts outside a combat the rest changed (casting_combat.go)
+	var spellVitals []*playv1.CharacterVitals
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		after, repeated, touched = nil, nil, nil // a retry starts over
+		after, repeated, touched, spellVitals = nil, nil, nil, nil // a retry starts over
+		castsChanged = castsUnchanged
 		q := s.queries.WithTx(tx)
 		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -258,6 +262,21 @@ func (s *Service) TakeRest(
 		if _, after, err = s.vitals.TakeRest(ctx, tx, m.CampaignID, req.Msg); err != nil {
 			return resourceError(err)
 		}
+		// The spells that last end with the rest when their whole duration fits it (SRD 5.1,
+		// "Resting"): 8 hours or less at a long rest, an hour or less at a short one. The same
+		// transaction, so a rest never leaves a spell running that it ended on the vitals.
+		minutes := rules.ShortRestMinutes
+		if kind == rules.RestLong {
+			minutes = rules.LongRestMinutes
+		}
+		ct, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), kind: eventRestTaken, actorUserID: m.UserID, svc: s, master: true})
+		if err != nil {
+			return err
+		}
+		if _, spellVitals, err = s.endSpellsAtRest(ctx, ct, minutes); err != nil {
+			return err
+		}
+		castsChanged = ct.castsChanged
 		ids := make([]string, 0, len(after))
 		for _, v := range after {
 			ids = append(ids, v.GetCharacterId())
@@ -300,6 +319,10 @@ func (s *Service) TakeRest(
 		return connect.NewResponse(res), nil
 	}
 	s.publishVitalsOf(m.CampaignID, after)
+	s.publishVitalsOf(m.CampaignID, spellVitals)
+	if castsChanged != castsUnchanged {
+		s.publishCastsChanged(m.CampaignID, castsChanged == castsMasterOnly)
+	}
 	pctx, stop := afterCommit(ctx)
 	defer stop()
 	for _, enc := range touched {

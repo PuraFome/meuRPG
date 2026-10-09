@@ -11,11 +11,7 @@ import (
 // 8 hours, and the SRD allows one long rest in 24 hours: the master keeps that
 // clock at the table, and the app only warns when the session already had one.
 
-// Rest kinds.
-const (
-	RestShort = "short"
-	RestLong  = "long"
-)
+// The rest kinds are RestShort and RestLong (casting.go).
 
 // RechargesOnRest says whether a resource that recharges as recharge comes back
 // when the character finishes a rest of the kind. A resource that comes back

@@ -208,10 +208,10 @@ func (m *castMeta) membersIn(targs []playdb.Combatant) error {
 	return nil
 }
 
-// checkCastTargets checks the targets of a casting. With Twinned Spell each of the two is
+// checkMetaTargets checks the targets of a casting. With Twinned Spell each of the two is
 // checked on its own, as the spell's one target: the spell takes one, and the second
 // comes from the Metamagic.
-func (s *Service) checkCastTargets(meta *castMeta, v combatViewer, terrain grid.Terrain, cs []playdb.Combatant, sp link.Spell, caster playdb.Combatant, targs []playdb.Combatant, dartList []int, darts, slotLevel int, theatre bool) error {
+func (s *Service) checkMetaTargets(meta *castMeta, v combatViewer, terrain grid.Terrain, cs []playdb.Combatant, sp link.Spell, caster playdb.Combatant, targs []playdb.Combatant, dartList []int, darts, slotLevel int, theatre bool) error {
 	if meta == nil || meta.second.ID == "" {
 		return s.checkTargets(v, terrain, cs, sp, caster, targs, dartList, darts, slotLevel, theatre)
 	}

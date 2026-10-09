@@ -175,6 +175,15 @@ describe('LiveSessionSourceLive.watch', () => {
     ).toEqual(['ready', 'creaturesChanged']);
   });
 
+  it('maps `spell_casts_changed` to its own event, with no content (MR-048)', async () => {
+    expect(
+      await events([
+        create(WatchGameSessionResponseSchema, { event: { case: 'ready', value: {} } }),
+        create(WatchGameSessionResponseSchema, { event: { case: 'spellCastsChanged', value: {} } }),
+      ]),
+    ).toEqual(['ready', 'spellCastsChanged']);
+  });
+
   it("maps `puzzle_changed` to its own event, with the puzzle's ID and nothing else (MR-038)", async () => {
     const out = [];
     const responses = [

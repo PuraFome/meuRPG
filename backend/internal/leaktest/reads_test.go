@@ -374,6 +374,26 @@ var reads = []read{
 		},
 	},
 
+	// ===== CastingService
+	{
+		procedure: playv1connect.CastingServiceListSpellCastsProcedure, allow: members, why: "the casts of the session: what a player may see; an NPC that is not on the stage casts for the master alone",
+		req: func(w *world) proto.Message {
+			return &playv1.ListSpellCastsRequest{CampaignId: w.campaign}
+		},
+	},
+	{
+		procedure: playv1connect.CastingServiceGetCastOptionsProcedure, label: "Ana's character", allow: onlyAna, why: "a player reads their own character's options; the targets are the party and the NPCs on the stage",
+		req: func(w *world) proto.Message {
+			return &playv1.GetCastOptionsRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}
+		},
+	},
+	{
+		procedure: playv1connect.CastingServiceGetCastOptionsProcedure, label: "the hidden NPC", allow: masterOnlyRead, why: "an NPC is cast for by the master alone, and a player never learns it exists",
+		req: func(w *world) proto.Message {
+			return &playv1.GetCastOptionsRequest{CampaignId: w.campaign, CharacterId: w.casterNPC.GetId()}
+		},
+	},
+
 	// ===== PuzzleService
 	{
 		procedure: playv1connect.PuzzleServiceListShownPuzzlesProcedure, allow: members,

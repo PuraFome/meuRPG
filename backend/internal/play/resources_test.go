@@ -37,8 +37,11 @@ func newRestTable(t *testing.T) *restTable {
 	r.campaign = h.newCampaign(r.master, "Mirathel", r.ana, r.bia, r.caio)
 	r.fighter = r.ana.hero(t, r.campaign, "Toren", "class:fighter", "race:human", 4, abilities(16, 13, 14, 10, 10), []string{battleaxe}, nil)
 	r.barbarian = r.bia.hero(t, r.campaign, "Ragna", "class:barbarian", "race:human", 3, abilities(16, 13, 14, 10, 10), []string{battleaxe}, nil)
+	// Multiclassing needs 13 in the main ability of each class (SRD 5.1): Strength for the fighter, Intelligence for the wizard.
+	scores := abilities(14, 12, 14, 14, 10)
+	scores.Intelligence = 13
 	sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
-		BaseScores: abilities(14, 12, 14, 14, 10), RaceKey: "race:human",
+		BaseScores: scores, RaceKey: "race:human",
 		Classes: []*charactersv1.ClassLevel{{ClassKey: "class:fighter", Level: 3}, {ClassKey: "class:wizard", Level: 2}},
 	}}}
 	res, err := r.caio.characters.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{

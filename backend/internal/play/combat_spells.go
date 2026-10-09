@@ -423,7 +423,7 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a summoning spell takes no targets: the creatures appear next to the caster"))
 			}
 		} else if !placedArea {
-			if err := s.checkCastTargets(meta, v, planOn(v, terrain, known), cs, sp, caster, targs, dartList, darts, slotLevel, isTheatre(c.enc)); err != nil {
+			if err := s.checkMetaTargets(meta, v, planOn(v, terrain, known), cs, sp, caster, targs, dartList, darts, slotLevel, isTheatre(c.enc)); err != nil {
 				return nil, err
 			}
 		}
