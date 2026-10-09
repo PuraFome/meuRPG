@@ -112,3 +112,91 @@ describe('AttackSheet: a hit that waits for the reaction of its target (Escudo)'
     expect(text.toLowerCase()).toContain('reação');
   });
 });
+
+describe("AttackSheet: a roll a reaction holds, and the monk's throw back (PM-04)", () => {
+  function mount(extra: Partial<AttackSheetData>, roll: object) {
+    const toren = combatant({
+      id: 't',
+      label: 'Toren',
+      kind: CombatantKind.PLAYER,
+      side: CombatantSide.PARTY,
+      mine: true,
+    });
+    const enc = encounter({
+      mode: EncounterMode.THEATRE,
+      currentCombatantId: 't',
+      combatants: [toren, combatant({ id: 'g', label: 'Goblin 2' })],
+      reactionWait: {
+        titlePt: 'Esperando o mestre',
+        detailPt: 'O resultado do seu ataque sai quando ele responder.',
+      },
+    } as never);
+    const state = new CombatState();
+    state.apply(enc);
+    const rollAttack = vi.fn().mockResolvedValue({ encounter: enc, roll, pending: undefined });
+    const data: AttackSheetData = {
+      campaignId: 'c',
+      encounterId: 'enc',
+      attackerId: 't',
+      round: 1,
+      attack: sword,
+      targets: [{ combatantId: 'g', label: 'Goblin 2', tooFar: false }] as never,
+      diceMode: DiceMode.APP,
+      preference: DicePreference.APP,
+      state,
+      ...extra,
+    };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: data },
+        { provide: MatDialogRef, useValue: { close: () => undefined } },
+        { provide: CombatClient, useValue: { rollAttack } },
+      ],
+    });
+    const fixture = TestBed.createComponent(AttackSheet);
+    fixture.detectChanges();
+    return { fixture, el: fixture.nativeElement as HTMLElement, rollAttack };
+  }
+
+  async function rollIt(m: ReturnType<typeof mount>) {
+    (m.el.querySelector('input[type=radio]') as HTMLInputElement).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter' }),
+    );
+    m.fixture.detectChanges();
+    [...m.el.querySelectorAll('button')]
+      .find((b) => plain(b.textContent).includes('Rolar no app'))!
+      .click();
+    await m.fixture.whenStable();
+    m.fixture.detectChanges();
+  }
+
+  const d20 = { total: 17, modifier: 6, diceCount: 1, diceSides: 20, faces: [11], physical: false };
+
+  it('shows the wait the server wrote instead of an outcome', async () => {
+    const m = mount({}, { outcome: AttackOutcome.UNSPECIFIED, heldForReaction: true, d20 });
+    await rollIt(m);
+    const text = plain(m.el.textContent);
+    expect(text).toContain(
+      'Esperando o mestre. O resultado do seu ataque sai quando ele responder.',
+    );
+    expect(text).not.toContain('Acertou');
+    expect(text).not.toContain('Errou');
+    expect(text).not.toContain('Sem dano');
+    expect(m.el.querySelector('.pill')).toBeNull();
+  });
+
+  it('still shows the outcome of a roll nothing holds', async () => {
+    const m = mount({}, { outcome: AttackOutcome.HIT, heldForReaction: false, d20 });
+    await rollIt(m);
+    expect(plain(m.el.textContent)).toContain('Acertou');
+  });
+
+  it('names the window that caught the missile, as part of the same reaction', async () => {
+    const m = mount({ asReaction: true, catchWindowId: 'w2' }, { outcome: AttackOutcome.HIT, d20 });
+    await rollIt(m);
+    const args = m.rollAttack.mock.calls[0];
+    expect(args[7]).toBe(true);
+    expect(args[9]).toBe('w2');
+  });
+});

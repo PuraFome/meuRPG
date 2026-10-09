@@ -256,3 +256,32 @@ describe('CombatState', () => {
     });
   });
 });
+
+describe('CombatState, the reaction windows that closed (PM-04)', () => {
+  it('keeps the sentence of a window that closed by itself until it is dismissed, and drops it with the combat', () => {
+    const state = new CombatState();
+    state.noteReactionClosed('w1', 'Queda Suave fechou. Você já usou a sua reação.');
+    expect(state.reactionNotice()).toEqual({
+      windowId: 'w1',
+      text: 'Queda Suave fechou. Você já usou a sua reação.',
+    });
+    state.dismissReactionNotice();
+    expect(state.reactionNotice()).toBeNull();
+    state.noteReactionClosed('w2', 'A Contramágica fechou.');
+    state.clear();
+    expect(state.reactionNotice()).toBeNull();
+  });
+
+  it('a window closed with no sentence (it was answered) leaves no notice', () => {
+    const state = new CombatState();
+    state.noteReactionClosed('w1', '');
+    expect(state.reactionNotice()).toBeNull();
+  });
+
+  it('knows which windows the stream announced: the others came with a read', () => {
+    const state = new CombatState();
+    state.noteReactionOpened('w1');
+    expect(state.wasAnnounced('w1')).toBe(true);
+    expect(state.wasAnnounced('w2')).toBe(false);
+  });
+});
