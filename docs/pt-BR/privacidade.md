@@ -374,7 +374,6 @@ Todo PR responde. Um "sim" pede uma seção curta de riscos e medidas no PR. Doi
 - Antes de ler PDFs de regras com IA (MR-027, depois do MVP): escolher o operador, dizer o que sai do servidor, e tratar o direito autoral de livros oficiais (o resultado só aparece para a mesa). O PDF não fica guardado: só existe enquanto é processado e é apagado logo depois, com um prazo curto (TTL) no arquivo guardado para garantir o apagamento mesmo se o processamento falhar. Quando a MR-027 for construída, o PDF entra no inventário acima com esse prazo.
 - Cadastro do Google (API do Gemini) como operador e o mecanismo de transferência, e se o texto livre do mestre pede aviso no roteiro do aviso de privacidade (ver as linhas do Gemini acima).
 - Revisão por advogado do aviso de privacidade, dos termos de uso e do tratamento do texto livre que fica com o mestre, antes do primeiro deploy público.
-- No primeiro deploy, criar o bucket das imagens em São Paulo, privado, com soft delete de 7 dias e acesso só da conta de serviço da API (ver [Operação](../operations.md)).
 - Apagar os arquivos das imagens de uma campanha quando ela é apagada (o prefixo `campaigns/<id>/`), junto com a exclusão de conta do `PrivacyService`.
 
 ## Roteiro do aviso de privacidade
