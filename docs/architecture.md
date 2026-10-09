@@ -1887,7 +1887,7 @@ A casting takes at most **10 listed targets**, the master's too: what each targe
 
 A concentration spell puts its name in the caster's `concentration_spell`; a second swaps it, and the log says which ended (RN-22). `GetTurnOptions` carries, for each spell that can be cast now, the targets the caller sees, with the distance and `too_far`, and the darts per level.
 
-**The reaction: Shield.** When a non-critical blow hits a player character who can cast Shield now (prepared, with a free slot, reaction free, standing), the pending damage is born `AWAITING_REACTION`, not `AWAITING_ROLL`: the attacker sees "esperando a reação", and the hit player and the master receive the notice in `GetEncounter` (`reaction_prompts`, by who sees: the master all, the player their own character's, without the attacker and without the blow's total). The player decides without knowing the total, as at a table.
+**The reaction: Shield.** When a non-critical blow hits a player character who can cast Shield now (prepared, with a free slot, reaction free, standing), the pending damage is born `AWAITING_REACTION`, not `AWAITING_ROLL`: the attacker sees "esperando a reação", and the hit player and the master receive the notice in `GetEncounter` (`reaction_prompts`, by who sees: the master all, the player their own character's, without the attacker and without the blow's total). The player decides without knowing the total, as at a table. The attacker's sheet follows the answer: on each `encounter_changed` it reads `GetTurnOptions` again, and a pending damage that is gone (Shield stopped the hit) turns the result into a miss, while one back in `AWAITING_ROLL` goes on to the damage. The player learns only that, never the armor class.
 
 ```mermaid
 sequenceDiagram
