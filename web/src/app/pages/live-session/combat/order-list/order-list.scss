@@ -2,8 +2,14 @@
   display: block;
 }
 
+// The row follows the width of its card, not of the window: beside the session's side panels the card is
+// narrow on a wide screen. Three layouts: narrow (under 26rem: the phone's, hit points in the words), medium
+// (26 to 34rem: initiative and hit points in columns, the actions on a line of their own) and wide (34rem and
+// up: everything in one line). Under 20rem the actions leave the line of the words, too.
 .order {
-  --cols: 30px minmax(9rem, 1fr) 54px 84px 154px;
+  --cols: 30px minmax(0, 1fr) 54px 84px 154px;
+  --cols-medium: 30px minmax(0, 1fr) 54px 84px;
+  container: order / inline-size;
 }
 
 .order__head {
@@ -36,11 +42,24 @@
   line-height: 16px;
   color: var(--mr-ink-muted);
 
-  @media (min-width: 768px) {
+  @container order (min-width: 26rem) {
     display: grid;
-    grid-template-columns: var(--cols);
+    grid-template-columns: var(--cols-medium);
     column-gap: 10px;
     margin-bottom: 4px;
+
+    // The actions' column exists only in the wide layout.
+    > :last-child {
+      display: none;
+    }
+  }
+
+  @container order (min-width: 34rem) {
+    grid-template-columns: var(--cols);
+
+    > :last-child {
+      display: block;
+    }
   }
 }
 
@@ -54,7 +73,7 @@
   text-align: center;
 }
 
-// One row: token, words, and from 768px the initiative and hit points.
+// One row: token, words, and (from 26rem of card) the initiative and hit points.
 .row {
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr) auto;
@@ -72,7 +91,19 @@
     border-top: 1px solid var(--mr-rule);
   }
 
-  @media (min-width: 768px) {
+  // Medium card: the columns, and "Dano/Cura" and the menu on a line under the words.
+  @container order (min-width: 26rem) {
+    grid-template-columns: var(--cols-medium);
+    grid-template-areas:
+      'token text init hp'
+      '. actions actions actions'
+      '. cover cover cover'
+      '. death death death'
+      '. extra extra extra';
+  }
+
+  // Wide card: everything in one line.
+  @container order (min-width: 34rem) {
     grid-template-columns: var(--cols);
     grid-template-areas:
       'token text init hp actions'
@@ -82,9 +113,9 @@
   }
 }
 
-// A row with a lasting effect's label stacks on a phone: the label has the width of the words, and "Dano/Cura" goes under it.
+// A row with a lasting effect's label stacks on a narrow card, and a row on a very narrow one: the label has the width of the words, and "Dano/Cura" goes under it.
 .row--effects {
-  @media (max-width: 767.98px) {
+  @container order (max-width: 25.99rem) {
     grid-template-areas:
       'token text text'
       '. actions actions'
@@ -96,6 +127,22 @@
       justify-content: flex-start;
       margin-top: 4px;
     }
+  }
+}
+
+@container order (max-width: 19.99rem) {
+  .row {
+    grid-template-areas:
+      'token text text'
+      '. actions actions'
+      '. cover cover'
+      '. death death'
+      '. extra extra';
+  }
+
+  .row .row__actions {
+    justify-content: flex-start;
+    margin-top: 4px;
   }
 }
 
@@ -174,11 +221,11 @@
   display: flex;
   flex-direction: column;
 
-  @media (max-width: 767.98px) {
+  @container order (max-width: 25.99rem) {
     font-size: 13px;
   }
 
-  @media (min-width: 360px) and (max-width: 767.98px) {
+  @container order (min-width: 18rem) and (max-width: 25.99rem) {
     flex-flow: row wrap;
 
     > *:not(:last-child)::after {
@@ -205,7 +252,7 @@
 }
 
 .row__pv-inline {
-  @media (min-width: 768px) {
+  @container order (min-width: 26rem) {
     display: none;
   }
 }
@@ -217,7 +264,7 @@
   font-weight: 700;
   color: var(--mr-ink);
 
-  @media (min-width: 768px) {
+  @container order (min-width: 26rem) {
     display: block;
   }
 }
@@ -345,7 +392,7 @@
   flex: none;
   min-width: 108px;
 
-  @media (max-width: 767.98px) {
+  @container order (max-width: 25.99rem) {
     min-width: 0;
     padding: 0 8px;
   }
@@ -371,6 +418,7 @@
 .row__extra,
 .row__confirm {
   grid-area: extra;
+  min-width: 0;
 }
 
 .row__extra {

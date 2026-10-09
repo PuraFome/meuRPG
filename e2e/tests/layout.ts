@@ -15,13 +15,16 @@ import { expect, type Page } from '@playwright/test';
 //    at least 6px from the tile's top and bottom edges. Centred or
 //    aligned to the top are both fine (the design decides); words stuck to
 //    an edge are not.
+// 4. Inside a card (`.mr-panel`), no button or link sits outside the card's
+//    box: a row whose columns do not shrink pushed "⋮" and "Revelar aos
+//    jogadores" out of the initiative card beside the session's side panels.
 //
 // None of these asks for things to be centred in general: a button's own
 // line is centred because a button is a fixed-height control, and an icon
 // lines up with its own words. Everything else follows the approved design.
 
 export interface LayoutIssue {
-  kind: 'icon-text' | 'off-centre' | 'overlap' | 'tile';
+  kind: 'icon-text' | 'off-centre' | 'overlap' | 'tile' | 'outside-card';
   where: string;
   detail: string;
 }
@@ -177,6 +180,26 @@ function auditLayout(): LayoutIssue[] {
         where: describe(tile),
         detail: `the words are ${top.toFixed(0)}px from the top edge and ${bottom.toFixed(0)}px from the bottom one (at least 6px each)`,
       });
+    }
+  }
+
+  // 4. Controls stay inside their card. A card that scrolls on purpose is
+  //    left out, and so is a control that is not on screen.
+  for (const card of document.querySelectorAll('.mr-panel')) {
+    if (!visible(card)) continue;
+    const cb = card.getBoundingClientRect();
+    for (const c of card.querySelectorAll('button, a[href]')) {
+      if (!visible(c) || !inFlow(c) || c.closest('.cdk-visually-hidden, .mr-visually-hidden')) continue;
+      const nearest = c.closest('.mr-panel');
+      if (nearest !== card) continue;
+      const r = c.getBoundingClientRect();
+      if (r.right > cb.right + 1 || r.left < cb.left - 1) {
+        issues.push({
+          kind: 'outside-card',
+          where: `<${c.tagName.toLowerCase()}> "${(c.getAttribute('aria-label') || c.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 50)}"`,
+          detail: `sticks out of its card by ${Math.max(r.right - cb.right, cb.left - r.left).toFixed(0)}px`,
+        });
+      }
     }
   }
   return issues;
