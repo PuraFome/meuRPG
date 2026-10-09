@@ -418,6 +418,10 @@ func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Gr
 					return nil, nil, err
 				}
 			}
+			// The spells cast outside the combat go in with it (casting_combat.go).
+			if err := s.carryCasts(ctx, c, inserted); err != nil {
+				return nil, nil, err
+			}
 			all = append(all, inserted)
 			added = append(added, inserted)
 		}
@@ -1270,6 +1274,10 @@ func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Com
 	}
 	// A familiar's sight begun in the fight ends with it (MR-036).
 	if err := s.endCombatSights(ctx, c, cs); err != nil {
+		return err
+	}
+	// The concentration the combatants carried goes back to the casts (casting_combat.go).
+	if err := s.endCarriedCasts(ctx, c, cs); err != nil {
 		return err
 	}
 	if enc.MapID == nil {

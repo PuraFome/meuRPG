@@ -55,6 +55,9 @@ type reactionEvent struct {
 	SaveDC    int32 `json:"save_dc,omitempty"`
 	Saved     bool  `json:"saved,omitempty"`
 	Fire      int32 `json:"fire,omitempty"`
+	// HeldDropped marks the event of a held action that could not happen after its answers (its
+	// kind in Roll, the refusal in Why): a line for the master only.
+	Why string `json:"why,omitempty"`
 	// Concentration: the spell, the DC and whether it was kept.
 	Kept bool `json:"kept,omitempty"`
 	// Feather Fall: the creatures saved.
@@ -62,6 +65,9 @@ type reactionEvent struct {
 	// A reaction that was not answered but closed ("A Contramágica do Mago 2 fechou")
 	// is no event: only answers are written.
 }
+
+// reactionHeldDropped is the kind of the event that says a held action was dropped.
+const reactionHeldDropped = "held_dropped"
 
 // reactionNames are the Portuguese names of the reactions, as names_pt.json has them
 // (TestReactionNamesAreTheOfficialOnes keeps them equal).

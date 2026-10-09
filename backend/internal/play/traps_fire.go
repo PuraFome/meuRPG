@@ -506,7 +506,10 @@ func (s *Service) fireOutside(ctx context.Context, c *combatTx, trap maplink.Tra
 			if err != nil {
 				return nil, err
 			}
-			targets[i].armorClass = sheet.ArmorClass
+			targets[i].armorClass, err = s.armorWithSpells(ctx, c.q, campaignID, ch.ID, sheet.ArmorClass)
+			if err != nil {
+				return nil, err
+			}
 		}
 		if ability != "" {
 			save, err := s.roster.CombatSave(ctx, c.tx, campaignID, ch.ID, ability)

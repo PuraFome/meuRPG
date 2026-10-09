@@ -51,6 +51,7 @@ import {
   tableForPuzzles,
   trapPointRPC,
 } from './puzzles-support';
+import { castSheet, choiceCard, openCastOf, pickChoice, pickSlotRadio, pickTargetOf, tableForCasting } from './casting-support';
 import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { brisa, brisaSheet } from './combat-support';
@@ -6397,4 +6398,85 @@ test('a fúria passa no axe e nas conferências de layout no tema claro, no desk
 test('a fúria passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@PM-07a', '@PM-07b'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanRageScreens(browser, 'dark', 390);
+});
+
+// ---- casting outside a combat (MR-048, W7-C) ----
+
+async function scanOutsideCastingScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width < 700 ? 800 : 900 };
+  const contexts = await Promise.all(
+    (['Mestre Teste', 'Jogador Teste'] as const).map((user) =>
+      browser.newContext({ storageState: authStatePath(user), colorScheme, viewport }),
+    ),
+  );
+  const [m, p] = await Promise.all(contexts.map((c) => c.newPage()));
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForCasting(m, p, `Acessibilidade conjuração ${Date.now()}`);
+    campaignId = table.campaignId;
+    await openSessionPage(p, campaignId);
+    await openSessionPage(m, campaignId);
+    await expect(p.locator('app-casting-panel').getByText('Nada foi conjurado nesta sessão ainda.')).toBeVisible();
+    await expectScreenPasses(p, `A sessão com as magias, vazia ${where}`);
+
+    // The spell, the slot and the target of Armadura Arcana, then what it did.
+    await p.getByRole('button', { name: 'Conjurar', exact: true }).click();
+    await expect(castSheet(p).getByText('Magia', { exact: true }).first()).toBeVisible();
+    await expectScreenPasses(p, `Conjurar, a lista de magias ${where}`);
+    await choiceCard(castSheet(p), 'Armadura Arcana').click();
+    await expect(castSheet(p).locator('.frame__title')).toHaveText('Armadura Arcana');
+    await pickSlotRadio(castSheet(p), '1º nível');
+    await pickTargetOf(castSheet(p), 'Pensantus');
+    await expectScreenPasses(p, `Conjurar Armadura Arcana, espaço e alvo ${where}`);
+    await castSheet(p).getByRole('button', { name: 'Conjurar Armadura Arcana em Pensantus' }).click();
+    await expect(castSheet(p).getByText(/CA 13 \+ Destreza/)).toBeVisible();
+    await expectScreenPasses(p, `Conjurar Armadura Arcana, o resultado ${where}`);
+    await castSheet(p).getByRole('button', { name: 'Fechar' }).last().click();
+
+    // The spell that lasts, and the danger confirmation of ending it.
+    await expect(p.locator('app-casting-panel').getByText('dura 8 horas')).toBeVisible();
+    await expectScreenPasses(p, `Magias ativas ${where}`);
+    await p.locator('app-casting-panel').getByRole('button', { name: 'Encerrar' }).click();
+    await expect(p.locator('app-cast-confirm-sheet').getByText('Encerrar Armadura Arcana de Pensantus?')).toBeVisible();
+    await expectScreenPasses(p, `Encerrar a magia, a confirmação ${where}`);
+    await p.locator('app-cast-confirm-sheet').getByRole('button', { name: 'Cancelar' }).click();
+
+    // A ritual: the way, the time computed, and the cast waiting for the master.
+    const ritual = await openCastOf(p, 'Alarme');
+    await pickChoice(ritual, 'Como ritual');
+    await expect(ritual.getByText('1 minuto + 10 = 11 minutos')).toBeVisible();
+    await expectScreenPasses(p, `Conjurar Alarme como ritual ${where}`);
+    await ritual.getByRole('button', { name: 'Começar o ritual' }).click();
+    await expect(ritual.getByText(/só é gasto quando o mestre conclui/)).toBeVisible();
+    await expectScreenPasses(p, `Conjurando o ritual ${where}`);
+    await ritual.getByRole('button', { name: 'Fechar' }).last().click();
+    await expect(p.locator('app-casting-panel').getByText('Esperando o mestre concluir')).toBeVisible();
+    await expectScreenPasses(p, `A conjuração esperando o mestre ${where}`);
+
+    // The master's queue.
+    await expect(m.locator('app-casting-panel').getByRole('button', { name: 'Concluir conjuração' })).toBeVisible();
+    await expectScreenPasses(m, `A fila de conjurações do mestre ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await Promise.all(contexts.map((c) => c.close()));
+  }
+}
+
+test('as conjurações fora do combate passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-048'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanOutsideCastingScreens(browser, 'light', 1280);
+});
+
+test('as conjurações fora do combate passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-048'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanOutsideCastingScreens(browser, 'dark', 390);
+});
+
+test('as conjurações fora do combate passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-048'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanOutsideCastingScreens(browser, 'light', 320);
 });
