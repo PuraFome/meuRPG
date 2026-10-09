@@ -141,6 +141,10 @@ describe('ContentImport (MR-025)', () => {
     );
     await choose(fixture, el, PACK);
     expect(importPack.mock.calls[0].slice(2, 3)).toEqual(['preview']);
+    // The server gets the file's own bytes, not a parsed pack.
+    expect(ArrayBuffer.isView(importPack.mock.calls[0][1])).toBe(true);
+    expect(new TextDecoder().decode(importPack.mock.calls[0][1])).toBe(PACK);
+    expect(importPack.mock.calls[1]).toBeUndefined();
     const page = text(el);
     expect(page).toContain('Pacote do Vale');
     expect(page).toContain('Classes 1');

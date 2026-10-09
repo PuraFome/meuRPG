@@ -537,3 +537,126 @@ func TestMR025_AnImportedEntryFollowsTheRulesOfAHandMadeOne(t *testing.T) {
 		t.Error("the import sent no content_changed")
 	}
 }
+
+// TestMR025_ImportRefusesAFieldThePackDoesNotKnow: a pack written with a misspelled field
+// ("proficiency" for "proficiency_key") is read strictly. The entry is refused with the path of
+// the field, in the preview too, and nothing is written; the field is never silently dropped.
+func TestMR025_ImportRefusesAFieldThePackDoesNotKnow(t *testing.T) {
+	t.Parallel()
+	pt := newPackTable(t)
+	file := func(feat string) []byte {
+		return []byte(`{"format": "meurpg.table-content", "version": 1, "name": "x", "entries": [
+			{"key": "feat:certo@mesa", "kind": "TABLE_CONTENT_KIND_FEAT", "name_pt": "Certo", "table_feat": {"name_pt": "Certo", "prerequisite": {"proficiencyKey": "proficiency:medium-armor", "level": 4}}},
+			{"key": "feat:errado@mesa", "kind": "TABLE_CONTENT_KIND_FEAT", "name_pt": "Errado", "table_feat": ` + feat + `}]}`)
+	}
+	send := func(raw []byte, mode rulesv1.TableImportMode) (*rulesv1.ImportTableContentResponse, error) {
+		out, err := pt.master.table.ImportTableContent(pt.h.t.Context(), connect.NewRequest(&rulesv1.ImportTableContentRequest{CampaignId: pt.to, PackJson: raw, Mode: mode}))
+		if err != nil {
+			return nil, err
+		}
+		return out.Msg, nil
+	}
+
+	// Both spellings of a known field are read (the proto name and the JSON name).
+	ok, err := send(file(`{"name_pt": "Errado", "prerequisite": {"proficiency_key": "proficiency:light-armor"}}`), rulesv1.TableImportMode_TABLE_IMPORT_MODE_PREVIEW)
+	if err != nil || ok.GetTotals().GetNew() != 2 || ok.GetTotals().GetRefused() != 0 {
+		t.Fatalf("a correct file: %v, %v; want two new entries", ok.GetTotals(), err)
+	}
+
+	typo := file(`{"name_pt": "Errado", "prerequisite": {"proficiency": "proficiency:light-armor", "levl": 4}, "efects": []}`)
+	res, err := send(typo, rulesv1.TableImportMode_TABLE_IMPORT_MODE_PREVIEW)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.GetTotals().GetNew() != 1 || res.GetTotals().GetRefused() != 1 {
+		t.Fatalf("totals = %v, want the right entry new and the misspelled one refused", res.GetTotals())
+	}
+	bad := res.GetEntries()[1]
+	fields := map[string]bool{}
+	for _, v := range bad.GetViolations() {
+		if v.GetReason() != "unknown_field" || v.GetKey() != "feat:errado@mesa" {
+			t.Errorf("violation = %v, want unknown_field of the entry", v)
+		}
+		fields[v.GetField()] = true
+	}
+	for _, want := range []string{"table_feat.prerequisite.proficiency", "table_feat.prerequisite.levl", "table_feat.efects"} {
+		if !fields[want] {
+			t.Errorf("no violation at %s (have %v)", want, fields)
+		}
+	}
+	if _, err := send(typo, rulesv1.TableImportMode_TABLE_IMPORT_MODE_APPLY); len(violationsOfErr(t, err)) != 3 {
+		t.Errorf("apply error = %v, want the three unknown fields", err)
+	}
+	if got := pt.entries(t, pt.to); len(got) != 0 {
+		t.Errorf("a refused import wrote %d entries", len(got))
+	}
+
+	// A field outside any entry is a violation of the pack; garbage and both forms are refused.
+	_, err = send([]byte(`{"format": "meurpg.table-content", "version": 1, "nome": "x"}`), rulesv1.TableImportMode_TABLE_IMPORT_MODE_PREVIEW)
+	if vs := violationsOfErr(t, err); len(vs) != 1 || vs[0].GetField() != "pack.nome" || vs[0].GetReason() != "unknown_field" {
+		t.Errorf("a top-level typo: %v", vs)
+	}
+	if _, err := send([]byte(`not json`), rulesv1.TableImportMode_TABLE_IMPORT_MODE_PREVIEW); len(violationsOfErr(t, err)) != 1 {
+		t.Errorf("garbage: error = %v", err)
+	}
+	_, err = pt.master.table.ImportTableContent(t.Context(), connect.NewRequest(&rulesv1.ImportTableContentRequest{
+		CampaignId: pt.to, PackJson: file(`{}`), Pack: &rulesv1.TableContentPack{}, Mode: rulesv1.TableImportMode_TABLE_IMPORT_MODE_PREVIEW,
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("pack and pack_json together: error = %v, want invalid_argument", err)
+	}
+
+	// An exported pack, as the file the app saves, goes back in whole.
+	pt.fill(t, pt.from)
+	file2, err := storeJSON.Marshal(pt.export(t, pt.from))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res, err := send(file2, rulesv1.TableImportMode_TABLE_IMPORT_MODE_APPLY); err != nil || res.GetTotals().GetNew() != 7 {
+		t.Errorf("the exported file: %v, %v; want seven new", res.GetTotals(), err)
+	}
+}
+
+// TestMR025_ImportPreviewReportsEveryViolationOfAnEntry: an entry with several things wrong
+// (a prerequisite, an effect, a duplicate name) lists all of them, and so does every other
+// refused entry of the pack.
+func TestMR025_ImportPreviewReportsEveryViolationOfAnEntry(t *testing.T) {
+	t.Parallel()
+	pt := newPackTable(t)
+	pt.master.addEntry(t, pt.to, &rulesv1.TableFeat{NamePt: "Repetido", DescPt: []string{"x"}})
+	feat := func(slug, name string, f *rulesv1.TableFeat) *rulesv1.TableEntry {
+		f.NamePt = name
+		return &rulesv1.TableEntry{Key: "feat:" + slug + "@mesa", Kind: rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT, NamePt: name, Body: &rulesv1.TableEntry_TableFeat{TableFeat: f}}
+	}
+	worse := &rulesv1.TableFeat{
+		Prerequisite: &rulesv1.FeatPrerequisite{ProficiencyKey: "proficiency:nada", Level: 21, RaceKey: "race:nada"},
+		Effects: []*rulesv1.TableEffect{
+			{Type: "modifier", Target: "ac", Mode: "add", Value: "1 +"},
+			{Type: "ability_increase", Count: 3, From: []string{"str"}, Value: "1"},
+		},
+	}
+	pack := &rulesv1.TableContentPack{Format: "meurpg.table-content", Version: 1, Entries: []*rulesv1.TableEntry{
+		feat("a", "Repetido", worse),
+		feat("b", "Outro", &rulesv1.TableFeat{Prerequisite: &rulesv1.FeatPrerequisite{Level: 30}}),
+	}}
+	res := pt.preview(t, pt.to, pack)
+	fields := func(e *rulesv1.TableImportEntry) []string {
+		var out []string
+		for _, v := range e.GetViolations() {
+			out = append(out, v.GetField())
+		}
+		return out
+	}
+	got := fields(res.GetEntries()[0])
+	for _, want := range []string{
+		"table_feat.name_pt", "table_feat.prerequisite.proficiency_key", "table_feat.prerequisite.level", "table_feat.prerequisite.race_key",
+		"table_feat.effects[0].value", "table_feat.effects[1].count",
+	} {
+		if !slices.Contains(got, want) {
+			t.Errorf("the first entry's violations lack %s (have %v)", want, got)
+		}
+	}
+	if got := fields(res.GetEntries()[1]); !slices.Contains(got, "table_feat.prerequisite.level") {
+		t.Errorf("the second entry's violations = %v", got)
+	}
+}

@@ -270,6 +270,7 @@ func (b Build) clone() Build {
 	b.SpellsPrepared = slices.Clone(b.SpellsPrepared)
 	b.FeatureChoices = slices.Clone(b.FeatureChoices)
 	b.Feats = slices.Clone(b.Feats)
+	b.FeatSlots = maps.Clone(b.FeatSlots)
 	b.HitPoints.Rolls = slices.Clone(b.HitPoints.Rolls)
 	return b
 }
@@ -450,6 +451,33 @@ func spellcastingOf(d Derived, classKey string) *Spellcasting {
 
 // isASILevel says whether a class table row has an Ability Score
 // Improvement.
+// asiFeatureKey is the Ability Score Improvement feature of a class row, or "".
+func asiFeatureKey(row *srd51.Level) string {
+	if row == nil {
+		return ""
+	}
+	for _, k := range row.Features {
+		if strings.Contains(k, "-ability-score-improvement-") {
+			return k
+		}
+	}
+	return ""
+}
+
+// fixedIncrease is what a feat that raises every ability it lists adds to a sheet: its value
+// to each, and no more than the room left under 20.
+func fixedIncrease(inc *FeatIncrease, d Derived) map[Ability]int {
+	out := map[Ability]int{}
+	for _, s := range d.Abilities {
+		if slices.Contains(inc.From, s.Ability) {
+			if n := min(inc.Value, MaxNormalScore-s.Score); n > 0 {
+				out[s.Ability] = n
+			}
+		}
+	}
+	return out
+}
+
 func isASILevel(row *srd51.Level) bool {
 	return row != nil && slices.ContainsFunc(row.Features, func(k string) bool {
 		return strings.Contains(k, "-ability-score-improvement-")
@@ -675,7 +703,19 @@ func ApplyLevelUp(before Build, ch LevelUpChoices, c *Content) (Build, error) {
 	if ch.Subclass != "" {
 		cl.Subclass = ch.Subclass
 	}
-	for a, v := range ch.AbilityIncrease {
+	increase := ch.AbilityIncrease
+	if f, ok := c.c.feats[ch.Feat]; ok && ch.Feat != "" {
+		if after.FeatSlots == nil {
+			after.FeatSlots = map[string]string{}
+		}
+		after.FeatSlots[ch.Feat] = asiFeatureKey(c.c.classLevels[ch.Class][cl.Level-1])
+		// A feat that raises every ability it lists has nothing to choose: the increase is
+		// the feat's own, stopping at 20 (SRD 5.1, Ability Score Improvement).
+		if e := c.c.featEntry(f); len(increase) == 0 && e.Increase != nil && e.Increase.Count == len(e.Increase.From) {
+			increase = fixedIncrease(e.Increase, derive(before, c.c))
+		}
+	}
+	for a, v := range increase {
 		if after.ExtraAbilityBonuses == nil {
 			after.ExtraAbilityBonuses = map[Ability]int{}
 		}
@@ -751,7 +791,7 @@ func checkLevelUp(before, after Build, c *content) *LevelUpError {
 	if lerr != nil {
 		return lerr
 	}
-	if lerr := checkAbilities(before, after, dAfter, asi, feat); lerr != nil {
+	if lerr := checkAbilities(before, after, dBefore, dAfter, asi, feat); lerr != nil {
 		return lerr
 	}
 	if lerr := checkHitPoints(before, after, idx, class.HitDie, c); lerr != nil {
@@ -941,7 +981,7 @@ func checkFeat(before, after Build, c *content, asi bool) (*FeatEntry, *LevelUpE
 	// feat and what it raises, as the guided level-up offered it.
 	pre := after.clone()
 	pre.Feats, pre.ExtraAbilityBonuses = slices.Clone(before.Feats), maps.Clone(before.ExtraAbilityBonuses)
-	if unmet := c.unmetFeat(entry, pre, derive(pre, c)); len(unmet) > 0 {
+	if unmet := c.unmetPrerequisite(entry, pre, derive(pre, c)); len(unmet) > 0 {
 		return nil, refuse(field, LevelUpReasonFeatPrerequisite, "the character does not meet the prerequisite of the feat (%s)", unmet[0].Kind)
 	}
 	return &entry, nil
@@ -951,7 +991,7 @@ func checkFeat(before, after Build, c *content, asi bool) (*FeatEntry, *LevelUpE
 // ability or +1 in two, and none above 20. With a feat taken in its place the
 // increase is the feat's own: its ability_increase effect's count of different
 // abilities from its list with its value each, and nothing when it has none.
-func checkAbilities(before, after Build, dAfter Derived, asi bool, feat *FeatEntry) *LevelUpError {
+func checkAbilities(before, after Build, dBefore, dAfter Derived, asi bool, feat *FeatEntry) *LevelUpError {
 	const field = "full.extra_ability_bonuses"
 	var raised []Ability
 	total := 0
@@ -980,15 +1020,7 @@ func checkAbilities(before, after Build, dAfter Derived, asi bool, feat *FeatEnt
 	case feat != nil && feat.Increase == nil:
 		return refuse(field, LevelUpReasonAbilityShape, "the feat gives no ability increase")
 	case feat != nil:
-		inc := feat.Increase
-		if len(raised) != inc.Count || total != inc.Count*inc.Value {
-			return refuse(field, LevelUpReasonAbilityShape, "the feat raises %d different abilities by %d each", inc.Count, inc.Value)
-		}
-		for _, a := range raised {
-			if !slices.Contains(inc.From, a) || after.ExtraAbilityBonuses[a]-before.ExtraAbilityBonuses[a] != inc.Value {
-				return refuse(field+"."+protoAbility[a], LevelUpReasonAbilityShape, "the feat raises only the abilities it lists, by %d each", inc.Value)
-			}
-		}
+		return checkFeatIncrease(feat.Increase, before, after, dBefore)
 	case total != abilityScoreImprovementPoints:
 		return refuse(field, LevelUpReasonAbilityShape, "+2 in one ability or +1 in two")
 	}
@@ -1083,6 +1115,52 @@ func checkDuplicates(b Build) *LevelUpError {
 			}
 			seen[k] = true
 		}
+	}
+	return nil
+}
+
+// checkFeatIncrease checks the increase a feat gave. A feat that raises every ability it lists
+// raises each by its value, no more than the room under 20 (nothing on an ability already at
+// 20). A feat that lets the player choose raises as many different abilities of its list as it
+// asks, or as many as still have room when fewer do, each by its value and none above 20
+// (SRD 5.1, Ability Score Improvement: an ability score cannot be raised above 20 by it).
+func checkFeatIncrease(inc *FeatIncrease, before, after Build, dBefore Derived) *LevelUpError {
+	const field = "full.extra_ability_bonuses"
+	score := map[Ability]int{}
+	for _, s := range dBefore.Abilities {
+		score[s.Ability] = s.Score
+	}
+	delta := func(a Ability) int { return after.ExtraAbilityBonuses[a] - before.ExtraAbilityBonuses[a] }
+	for _, a := range AllAbilities() {
+		if delta(a) != 0 && !slices.Contains(inc.From, a) {
+			return refuse(field+"."+protoAbility[a], LevelUpReasonAbilityShape, "the feat raises only the abilities it lists")
+		}
+	}
+	if inc.Count == len(inc.From) {
+		for _, a := range inc.From {
+			if want := max(min(inc.Value, MaxNormalScore-score[a]), 0); delta(a) != want {
+				return refuse(field+"."+protoAbility[a], LevelUpReasonAbilityShape, "the feat raises %s by %d, to 20 at most", protoAbility[a], want)
+			}
+		}
+		return nil
+	}
+	room, picked := 0, 0
+	for _, a := range inc.From {
+		if score[a]+inc.Value <= MaxNormalScore {
+			room++
+		}
+		switch d := delta(a); {
+		case d == 0:
+		case d != inc.Value:
+			return refuse(field+"."+protoAbility[a], LevelUpReasonAbilityShape, "the feat raises each ability it picks by %d", inc.Value)
+		case score[a]+d > MaxNormalScore:
+			return refuse(field+"."+protoAbility[a], LevelUpReasonAbilityAbove20, "an ability score cannot pass 20")
+		default:
+			picked++
+		}
+	}
+	if picked != min(inc.Count, room) {
+		return refuse(field, LevelUpReasonAbilityShape, "the feat raises %d different abilities by %d each", min(inc.Count, room), inc.Value)
 	}
 	return nil
 }

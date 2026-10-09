@@ -471,7 +471,8 @@ message TableContentViolation {
   // (a reference does not exist), "forbidden_effect", "bad_formula", "bad_table",
   // "bad_casting", "bad_value", "overlay" (the content as a whole), "immutable"
   // (a key, kind or parent changed, or a spell crossing between cantrip and
-  // leveled), "duplicate_name" (another entry of the kind has the name) and
+  // leveled), "duplicate_name" (another entry of the kind has the name), "unknown_field" (ImportTableContent:
+  // a field the message does not have) and
   // "size_limit" (64 KiB of data). The 300-entry limit is "limit", with an empty
   // field. In ImportTableContent a violation about the pack itself is at a field
   // that starts with "pack": "pack" (over 2 MiB: "size_limit"), "pack.format" and
@@ -859,6 +860,7 @@ enum TableImportMode {
 // ImportTableContentRequest carries a pack and what to do with it.
 message ImportTableContentRequest {
   string campaign_id = 1;
+  // The pack as a message. Required unless `pack_json` is set.
   TableContentPack pack = 2;
   // Required.
   TableImportMode mode = 3;
@@ -867,6 +869,12 @@ message ImportTableContentRequest {
   // answered instead of importing again. The key is unique in the campaign; the same
   // key with another request is `invalid_argument`.
   string idempotency_key = 4;
+  // The pack file as the master has it, in proto JSON. Prefer it to `pack`: the server
+  // reads it strictly, and a field it does not know (a misspelled "proficiency" for
+  // "proficiency_key") is a violation of its entry at the path of the field (reason
+  // "unknown_field"), never dropped. When set, `pack` must be unset. The 2 MiB limit is
+  // this field's size.
+  bytes pack_json = 5;
 }
 
 // TableImportStatus is what an import does with one entry of the pack.

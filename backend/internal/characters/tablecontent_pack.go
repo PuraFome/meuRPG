@@ -115,13 +115,15 @@ type packEntry struct {
 	key   string
 	kind  rulesv1.TableContentKind
 	body  tableBody
+	// unknown are the fields of the entry's JSON that the message does not have.
+	unknown []*rulesv1.TableContentViolation
 }
 
 // checkPack checks what is about the pack itself, before the database is read: its size,
 // its format and version, its label, the number of entries and, for each, the form of its
 // key, its body and its name, and that no key repeats. It returns the entries that are
 // well formed and every violation found.
-func checkPack(pack *rulesv1.TableContentPack) ([]packEntry, []*rulesv1.TableContentViolation) {
+func checkPack(pack *rulesv1.TableContentPack, unknown map[int][]*rulesv1.TableContentViolation) ([]packEntry, []*rulesv1.TableContentViolation) {
 	var out []*rulesv1.TableContentViolation
 	if size := proto.Size(pack); size > MaxPackBytes {
 		return nil, []*rulesv1.TableContentViolation{packViolation("pack", reasonSizeLimit, "the pack is over %d bytes", MaxPackBytes)}
@@ -169,7 +171,7 @@ func checkPack(pack *rulesv1.TableContentPack) ([]packEntry, []*rulesv1.TableCon
 			out = append(out, packViolation(field+".name_pt", rules.ReasonValue, "the name of an entry is the name in its body"))
 			continue
 		}
-		entries = append(entries, packEntry{index: i, key: e.GetKey(), kind: kind, body: body})
+		entries = append(entries, packEntry{index: i, key: e.GetKey(), kind: kind, body: body, unknown: unknown[i]})
 	}
 	return entries, out
 }
@@ -237,7 +239,10 @@ type planner struct {
 	cands      []importCandidate
 	// lead are the violations an entry has before the engine runs.
 	lead map[int][]*rulesv1.TableContentViolation
-	plan *importPlan
+	// excluded are the entries left out of the engine's check: the ones whose data cannot be
+	// checked, and the ones it has already refused.
+	excluded map[int]bool
+	plan     *importPlan
 }
 
 func refused(r *rulesv1.TableImportEntry) bool {
@@ -259,7 +264,7 @@ func (s *Service) planImport(ctx context.Context, q *charactersdb.Queries, campa
 	}
 	p := &planner{
 		campaignID: campaignID, revision: revision, now: s.now(), srd: s.srd, entries: entries,
-		stored: map[string]entryRow{}, packIdx: map[string]int{}, lead: map[int][]*rulesv1.TableContentViolation{},
+		stored: map[string]entryRow{}, packIdx: map[string]int{}, lead: map[int][]*rulesv1.TableContentViolation{}, excluded: map[int]bool{},
 		plan: &importPlan{results: make([]*rulesv1.TableImportEntry, len(entries))},
 	}
 	for _, e := range storedRows {
@@ -291,6 +296,7 @@ func (s *Service) planImport(ctx context.Context, q *charactersdb.Queries, campa
 func (p *planner) classify(i int, pe packEntry) {
 	res := &rulesv1.TableImportEntry{Key: pe.key, Kind: pe.kind, NamePt: pe.body.GetNamePt()}
 	p.plan.results[i] = res
+	p.lead[i] = append(p.lead[i], pe.unknown...)
 	old, exists := p.stored[pe.key]
 	var oldBody tableBody
 	if exists {
@@ -298,7 +304,8 @@ func (p *planner) classify(i int, pe packEntry) {
 	}
 	st, err := prepareWith(importFeatureKeys, pe.key, pe.kind, pe.body, oldBody)
 	if err != nil {
-		p.lead[i] = violationsOfRefusal(err, pe.key)
+		p.lead[i] = append(p.lead[i], violationsOfRefusal(err, pe.key)...)
+		p.excluded[i] = true
 		res.Status = rulesv1.TableImportStatus_TABLE_IMPORT_STATUS_REFUSED
 		if exists {
 			p.cands = append(p.cands, importCandidate{packIndex: i, row: old}) // the stored one stays for the others to refer to
@@ -353,7 +360,7 @@ func (p *planner) checkNames() {
 func (p *planner) live() []entryRow {
 	var out []entryRow
 	for _, c := range p.cands {
-		if c.packIndex < 0 || !refused(p.plan.results[c.packIndex]) {
+		if c.packIndex < 0 || !p.excluded[c.packIndex] {
 			out = append(out, c.row)
 			continue
 		}
@@ -398,10 +405,10 @@ func (p *planner) blame(violations []*rulesv1.TableContentViolation) bool {
 			continue
 		}
 		res := p.plan.results[i]
-		if !refused(res) {
-			res.Status, res.ChangedFields = rulesv1.TableImportStatus_TABLE_IMPORT_STATUS_REFUSED, nil
-			progressed = true
+		if !p.excluded[i] {
+			p.excluded[i], progressed = true, true
 		}
+		res.Status, res.ChangedFields = rulesv1.TableImportStatus_TABLE_IMPORT_STATUS_REFUSED, nil
 		res.Violations = append(res.Violations, v)
 	}
 	return progressed
@@ -496,6 +503,7 @@ type importCall struct {
 	s       *Service
 	m       authz.Membership
 	msg     *rulesv1.ImportTableContentRequest
+	pack    *rulesv1.TableContentPack
 	entries []packEntry
 	apply   bool
 	// scopedKey and requestHash are the idempotency key of an APPLY and the hash of its request.
@@ -520,7 +528,17 @@ func (s *Service) ImportTableContent(
 	if mode != rulesv1.TableImportMode_TABLE_IMPORT_MODE_PREVIEW && mode != rulesv1.TableImportMode_TABLE_IMPORT_MODE_APPLY {
 		return nil, invalidArgument(fieldErr("mode", "must be preview or apply"))
 	}
-	if req.Msg.GetPack() == nil {
+	pack, unknown := req.Msg.GetPack(), map[int][]*rulesv1.TableContentViolation(nil)
+	if raw := req.Msg.GetPackJson(); len(raw) > 0 {
+		if pack != nil {
+			return nil, invalidArgument(fieldErr("pack_json", "and pack are alternatives: send one"))
+		}
+		var top []*rulesv1.TableContentViolation
+		if pack, unknown, top = readPackJSON(raw); len(top) > 0 {
+			return nil, errRefusedContent(top)
+		}
+	}
+	if pack == nil {
 		return nil, invalidArgument(fieldErr("pack", "is required"))
 	}
 	idemKey, err := idem.Clean(req.Msg.GetIdempotencyKey())
@@ -528,11 +546,11 @@ func (s *Service) ImportTableContent(
 		return nil, err
 	}
 	// What is about the pack itself is answered before the database is read, in both modes.
-	entries, violations := checkPack(req.Msg.GetPack())
+	entries, violations := checkPack(pack, unknown)
 	if len(violations) > 0 {
 		return nil, errRefusedContent(violations)
 	}
-	call := &importCall{s: s, m: m, msg: req.Msg, entries: entries, apply: mode == rulesv1.TableImportMode_TABLE_IMPORT_MODE_APPLY}
+	call := &importCall{s: s, m: m, msg: req.Msg, pack: pack, entries: entries, apply: mode == rulesv1.TableImportMode_TABLE_IMPORT_MODE_APPLY}
 	if call.apply {
 		call.scopedKey, call.requestHash = idem.Scope(m.CampaignID, idemKey), idem.Hash(req.Msg)
 		err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error { return call.run(ctx, tx) })
@@ -593,7 +611,7 @@ func (c *importCall) run(ctx context.Context, tx pgx.Tx) error {
 		return errRefusedContent(plan.global)
 	}
 	c.res = &rulesv1.ImportTableContentResponse{
-		Mode: c.msg.GetMode(), PackName: c.msg.GetPack().GetName(), Entries: plan.results, Totals: importTotals(plan.results),
+		Mode: c.msg.GetMode(), PackName: c.pack.GetName(), Entries: plan.results, Totals: importTotals(plan.results),
 	}
 	if !c.apply {
 		c.res.TableRevision, err = contentRevision(ctx, q, c.m.CampaignID)

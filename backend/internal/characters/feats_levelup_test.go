@@ -171,11 +171,16 @@ func TestMR025_ALevelUpTakesAFeatInPlaceOfTheIncrease(t *testing.T) {
 	listed := false
 	for _, f := range d.GetFeatures() {
 		if f.GetKey() == ft.half.GetKey() {
-			listed = f.GetSourcePt() == "Talento" && f.GetNamePt() == "Mente afiada"
+			listed = f.GetSourcePt() == "Talento · Mago 4" && f.GetNamePt() == "Mente afiada"
 		}
 	}
 	if !listed {
 		t.Errorf("the sheet does not list the feat among the features: %v", d.GetFeatures())
+	}
+	for _, f := range d.GetFeatures() {
+		if strings.Contains(f.GetKey(), "ability-score-improvement") {
+			t.Errorf("the sheet lists %s as taken although the feat replaced it", f.GetKey())
+		}
 	}
 	history, err := ft.levelUps(ft.master, ft.pc.GetId())
 	if err != nil || len(history) != 1 || history[0].GetChoices().GetFeatKey() != ft.half.GetKey() || history[0].GetNamesPt()[ft.half.GetKey()] != "Mente afiada" {

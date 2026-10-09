@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"log/slog"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -900,6 +901,7 @@ func applyLevelUp(full *charactersv1.FullSheet, after rules.Build, idx int) *cha
 	out.PreparedSpellKeys = slices.Clone(after.SpellsPrepared)
 	out.FeatureChoiceKeys = slices.Clone(after.FeatureChoices)
 	out.FeatKeys = slices.Clone(after.Feats)
+	out.FeatSlots = maps.Clone(after.FeatSlots)
 	out.SkillProficiencyKeys = slices.Clone(after.SkillProficiencies)
 	out.ExpertiseSkillKeys = slices.Clone(after.Expertise)
 	return out

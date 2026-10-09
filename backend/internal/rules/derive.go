@@ -379,6 +379,12 @@ func (x *deriver) collectEffects() {
 		x.issue(IssueMissing, "full.background_key", "Escolha um antecedente.")
 	}
 
+	replacedByFeat := map[string]bool{}
+	for feat, slot := range x.b.FeatSlots {
+		if slices.Contains(x.b.Feats, feat) {
+			replacedByFeat[slot] = true
+		}
+	}
 	for _, oc := range x.classes {
 		add(oc.key)
 		if oc.subclass != nil {
@@ -386,6 +392,9 @@ func (x *deriver) collectEffects() {
 		}
 		for lvl := 1; lvl <= oc.level; lvl++ {
 			for _, fk := range c.classLevels[oc.key][lvl-1].Features {
+				if replacedByFeat[fk] {
+					continue // a feat was taken in its place
+				}
 				if f, ok := c.features[fk]; ok {
 					add(fk)
 					feature(fk, f.Name, oc.key, lvl, f.Desc)
@@ -421,6 +430,13 @@ func (x *deriver) collectEffects() {
 			add(key)
 		}
 		feature(key, f.Name, key, 0, f.Desc)
+		if slot, ok := x.b.FeatSlots[key]; ok {
+			// Taken in place of an Ability Score Improvement: the sheet says where.
+			if sf := c.features[slot]; sf != nil {
+				last := &x.d.Features[len(x.d.Features)-1]
+				last.Level, last.SourcePT = sf.Level, fmt.Sprintf("Talento · %s %d", c.namePT(sf.Class), sf.Level)
+			}
+		}
 	}
 
 	// Chosen options count only while their parent feature or trait is

@@ -166,6 +166,7 @@ function minimalFullSheet(overrides: Partial<FullSheet> = {}): FullSheet {
     customFeaturesText: '',
     featureChoiceKeys: [],
     featKeys: [],
+    featSlots: {},
     challengeRating: '',
     portraitImageId: '',
     contentRevision: 0,

@@ -156,6 +156,11 @@ type Build struct {
 	// feature: its effects apply and the sheet lists it. The abilities a feat
 	// raises are in ExtraAbilityBonuses, like an Ability Score Improvement's.
 	Feats []string
+	// FeatSlots says, for a feat taken in place of an Ability Score Improvement, the
+	// feature of that improvement it replaced ("feature:fighter-ability-score-improvement-1"):
+	// the sheet lists the feat at that level and not the improvement. A feat the master added
+	// has none.
+	FeatSlots map[string]string
 }
 
 // ClassLevel is one class of a Build and its level in that class.

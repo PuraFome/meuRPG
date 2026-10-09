@@ -102,4 +102,53 @@ describe('FeatPicker', () => {
     const boxes = Array.from(el.querySelectorAll<HTMLInputElement>('.ability input'));
     expect(boxes.map((b) => b.disabled)).toEqual([false, false, true]);
   });
+
+  it('puts the feats the character meets first under "Disponíveis" and the others under "Ainda não cumpre", each with its reason', () => {
+    const el = setup();
+    const headings = Array.from(el.querySelectorAll('.group')).map(text);
+    expect(headings).toEqual(['Disponíveis', 'Ainda não cumpre']);
+    const lists = Array.from(el.querySelectorAll('.cards'));
+    expect(lists.map((l) => l.querySelectorAll('.card').length)).toEqual([2, 1]);
+    expect(text(lists[1])).toContain('Precisa de Força 15.');
+  });
+
+  it('filters by name with no case and no accents, and says how many were found', () => {
+    const el = setup();
+    const search = el.querySelector<HTMLInputElement>('input')!;
+    search.value = 'AGARRADOR';
+    search.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(cards(el).map((c) => text(c).includes('Agarrador'))).toEqual([true]);
+    expect(el.querySelector('.group')?.textContent).toBe('Disponíveis');
+    expect(text(el.querySelector('[role="status"]')!)).toBe('1 talento encontrado.');
+    search.value = 'mestre das';
+    search.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(Array.from(el.querySelectorAll('.group')).map(text)).toEqual(['Ainda não cumpre']);
+    expect(text(el.querySelector('[role="status"]')!)).toBe('1 talento encontrado.');
+  });
+
+  it('says so when no feat has the name', () => {
+    const el = setup();
+    const search = el.querySelector<HTMLInputElement>('input')!;
+    search.value = 'zzz';
+    search.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(cards(el)).toEqual([]);
+    expect(text(el)).toContain('Nenhum talento com esse nome.');
+    expect(text(el.querySelector('[role="status"]')!)).toBe('Nenhum talento com esse nome.');
+  });
+
+  it('turns off an ability the server says would pass 20, and notes it for a feat that raises every one', () => {
+    const feats = featOptions();
+    feats[1].cappedAbilities = [Ability.STRENGTH];
+    const el = setup({ feats, selected: 'feat:atleta@mesa' });
+    const boxes = Array.from(el.querySelectorAll<HTMLInputElement>('.ability input'));
+    expect(boxes.map((b) => b.disabled)).toEqual([true, false]);
+    expect(text(el.querySelector('.ability')!)).toContain('Força · passaria de 20');
+    feats[1].increase!.count = 2;
+    const fixed = setup({ feats });
+    expect(text(cards(fixed)[1])).toContain('O aumento para em 20 em Força.');
+    expect(fixed.querySelector('.ability')).toBeNull();
+  });
 });

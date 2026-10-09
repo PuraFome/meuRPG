@@ -43,14 +43,16 @@ func (b *overlayBuilder) addFeat(tf *TableFeat, path string) error {
 			}
 		}
 	}
+	// The effects are queued before the entry is judged: if it is refused, its effects'
+	// problems come with the rest (compileEffectsOf).
+	if len(tf.Effects) > 0 {
+		b.pending = append(b.pending, pendingEffects{owner: key, entry: key, effects: tf.Effects, path: path, strict: b.strict[key]})
+	}
 	if err := c.err(); err != nil {
 		return err
 	}
 	b.register(tf.TableEntry)
 	n.feats[key] = feat
-	if len(tf.Effects) > 0 {
-		b.pending = append(b.pending, pendingEffects{owner: key, entry: key, effects: tf.Effects, path: path, strict: b.strict[key]})
-	}
 	return nil
 }
 

@@ -1076,6 +1076,11 @@ message FullSheet {
   // it with the features. The abilities a feat raises are in extra_ability_bonuses.
   // At most 100.
   repeated string feat_keys = 32;
+  // For a feat taken in the guided level-up, the key of the Ability Score Improvement
+  // feature it replaced (feat key to feature key). Set by the level-up; an entry for a feat
+  // the sheet does not have is dropped on save. The sheet then lists the feat at that level and not the improvement. A feat the
+  // master added has none.
+  map<string, string> feat_slots = 33;
 }
 
 // AbilityOrigin is the way a player made a sheet's base scores, as the server
@@ -1955,7 +1960,9 @@ message LevelUpChoices {
   // feats (its rule "Talentos") and the character meets its prerequisite. With a
   // feat, `ability_increase` is the increase the feat gives (its `increase`:
   // `count` different abilities of its list, `value` each, none above 20) and is
-  // unset when the feat gives none. Empty for none.
+  // unset when the feat gives none. A feat that raises every ability it lists needs no
+  // `ability_increase`: the server applies it, stopping at 20 (one that is not exactly that
+  // is refused). Empty for none.
   string feat_key = 11;
 }
 

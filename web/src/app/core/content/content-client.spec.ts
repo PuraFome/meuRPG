@@ -127,12 +127,16 @@ describe('the errors of the table content calls', () => {
 });
 
 describe('the content pack calls (MR-025)', () => {
-  it("sends the idempotency key with an APPLY only, and exports the campaign's pack", async () => {
-    const seen: { mode: TableImportMode; key: string }[] = [];
+  it("sends the file's own bytes, the idempotency key with an APPLY only, and exports the campaign's pack", async () => {
+    const seen: { mode: TableImportMode; key: string; json: string }[] = [];
     const transport = createRouterTransport(({ service }) => {
       service(TableContentService, {
         importTableContent: (req) => {
-          seen.push({ mode: req.mode, key: req.idempotencyKey });
+          seen.push({
+            mode: req.mode,
+            key: req.idempotencyKey,
+            json: new TextDecoder().decode(req.packJson),
+          });
           return create(ImportTableContentResponseSchema);
         },
         exportTableContent: (req) =>
@@ -146,12 +150,13 @@ describe('the content pack calls (MR-025)', () => {
     });
     const client = TestBed.inject(TableContentClient);
     const pack = await client.exportPack('camp-1');
+    const bytes = new TextEncoder().encode('{}');
     expect(pack.name).toBe('camp-1');
-    await client.importPack('camp-1', pack, 'preview', 'key-1');
-    await client.importPack('camp-1', pack, 'apply', 'key-1');
+    await client.importPack('camp-1', bytes, 'preview', 'key-1');
+    await client.importPack('camp-1', bytes, 'apply', 'key-1');
     expect(seen).toEqual([
-      { mode: TableImportMode.PREVIEW, key: '' },
-      { mode: TableImportMode.APPLY, key: 'key-1' },
+      { mode: TableImportMode.PREVIEW, key: '', json: '{}' },
+      { mode: TableImportMode.APPLY, key: 'key-1', json: '{}' },
     ]);
   });
 });

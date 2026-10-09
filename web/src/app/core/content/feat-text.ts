@@ -104,8 +104,6 @@ export function unmetText(u: FeatUnmet, nameOf: KeyName): string {
       return `Precisa ser ${nameOf(u.key)}.`;
     case FeatUnmetKind.LEVEL:
       return `Precisa do nível ${u.value} ou mais.`;
-    case FeatUnmetKind.ABILITY_CAP:
-      return 'Habilidades demais já estão em 20: o aumento do talento não teria onde entrar.';
     default:
       return 'Não atende ao pré-requisito.';
   }

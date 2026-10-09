@@ -237,14 +237,16 @@ func prepareWith(
 	key string, kind rulesv1.TableContentKind, body, old tableBody, lead ...*rulesv1.TableContentViolation,
 ) (stored, error) {
 	b := proto.Clone(body).(tableBody)
-	if v := checkShape(b); len(v) > 0 {
-		return stored{}, errRefusedContent(append(slices.Clone(lead), v...))
+	// Every problem of the body comes at once: the shape, the feature count and the keys.
+	problems := slices.Clone(lead)
+	problems = append(problems, checkShape(b)...)
+	tooMany := checkFeatureCount(kind, b)
+	problems = append(problems, tooMany...)
+	if len(tooMany) == 0 { // the keys of that many features are not worth making
+		problems = append(problems, keys(key, b, old)...)
 	}
-	if v := checkFeatureCount(kind, b); len(v) > 0 {
-		return stored{}, errRefusedContent(append(slices.Clone(lead), v...))
-	}
-	if v := keys(key, b, old); len(v) > 0 {
-		return stored{}, errRefusedContent(append(slices.Clone(lead), v...))
+	if len(problems) > len(lead) {
+		return stored{}, errRefusedContent(problems)
 	}
 	data, err := storedData(b)
 	if err != nil {

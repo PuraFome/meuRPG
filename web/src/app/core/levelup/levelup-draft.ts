@@ -12,6 +12,7 @@ import {
   type Skill,
   type Spell,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { abilityName } from '../content/feat-text';
 import { ABILITY_KEYS, type AbilityKey } from '../characters/characters.types';
 import type { LevelUpChoicesInit } from './levelup-client';
 import {
@@ -200,16 +201,54 @@ export class LevelUpDraft {
   readonly taking = computed(() => this.hasFeats() && this.asiMode() === 'feat');
   /** The picked feat, as the server lists it. */
   readonly feat = computed(() => this.feats().find((f) => f.key === this.featKey()));
-  readonly featAsked = computed(() => this.feat()?.increase?.count ?? 0);
+  /** The feat raises every ability it lists: nothing to pick, and the server applies it (stopping each at 20). */
+  readonly featFixed = computed(() => {
+    const inc = this.feat()?.increase;
+    return inc !== undefined && inc.count >= inc.from.length;
+  });
+  /** The abilities of the feat's list the server says would pass 20. */
+  readonly featCapped = computed<readonly Ability[]>(() => {
+    const feat = this.feat();
+    return feat?.increase ? feat.cappedAbilities : [];
+  });
+  /** How many abilities the player picks for a feat that gives a choice: the count, or fewer when too few are below 20. */
+  readonly featAsked = computed(() => {
+    const inc = this.feat()?.increase;
+    if (!inc || this.featFixed()) {
+      return 0;
+    }
+    const free = inc.from.filter((a) => !this.featCapped().includes(a)).length;
+    return Math.min(inc.count, free);
+  });
+  /** "Talento: Atleta" with "+1 Força, +1 Destreza": what the Resumo and the list of the level say of the feat. */
+  readonly featSummary = computed(() => {
+    const feat = this.feat();
+    if (!this.taking() || !feat) {
+      return null;
+    }
+    const inc = feat.increase;
+    const raised = this.featFixed()
+      ? (inc?.from ?? []).filter((a) => !this.featCapped().includes(a))
+      : this.featAbilities();
+    return {
+      name: feat.namePt,
+      increase: inc ? raised.map((a) => `+${inc.value} ${abilityName(a)}`).join(', ') : '',
+    };
+  });
   /** The abilities raised by what was picked, in the sheet's own keys: the increase, or the feat's. */
   readonly pickedKeys = computed<readonly AbilityKey[]>(() =>
-    this.taking() ? this.featAbilities().map((a) => WIRE_OF_ABILITY[a]) : this.abilityKeys(),
+    this.taking()
+      ? (this.featFixed() ? (this.feat()?.increase?.from ?? []) : this.featAbilities()).map(
+          (a) => WIRE_OF_ABILITY[a],
+        )
+      : this.abilityKeys(),
   );
 
   readonly abilityIncrease = computed<Partial<Record<AbilityKey, number>>>(() => {
     if (this.taking()) {
+      // A feat that raises every ability it lists sends no increase: the server applies it, stopping at 20.
       const inc = this.feat()?.increase;
-      if (!inc || this.featAbilities().length !== inc.count) {
+      if (!inc || this.featFixed() || this.featAbilities().length !== this.featAsked()) {
         return {};
       }
       return Object.fromEntries(this.featAbilities().map((a) => [WIRE_OF_ABILITY[a], inc.value]));
@@ -414,22 +453,23 @@ export class LevelUpDraft {
       return;
     }
     this.featKey.set(key);
-    const inc = feat.increase;
-    this.featAbilities.set(inc && inc.count >= inc.from.length ? [...inc.from] : []);
+    this.featAbilities.set([]);
   }
 
   /** An ability of the feat's increase: picked or dropped, never more than `count`. */
   toggleFeatAbility(ability: Ability): void {
     const inc = this.feat()?.increase;
     const now = this.featAbilities();
-    if (!inc || !inc.from.includes(ability)) {
+    if (!inc || this.featFixed() || !inc.from.includes(ability)) {
       return;
     }
     if (now.includes(ability)) {
       this.featAbilities.set(now.filter((a) => a !== ability));
-    } else if (inc.count === 1) {
+    } else if (this.featCapped().includes(ability)) {
+      return;
+    } else if (this.featAsked() === 1) {
       this.featAbilities.set([ability]);
-    } else if (now.length < inc.count) {
+    } else if (now.length < this.featAsked()) {
       this.featAbilities.set([...now, ability]);
     }
   }
@@ -483,8 +523,8 @@ export class LevelUpDraft {
       this.featAbilities.set(
         other
           .featAbilities()
-          .filter((a) => inc?.from.includes(a))
-          .slice(0, inc?.count ?? 0),
+          .filter((a) => inc?.from.includes(a) && !this.featCapped().includes(a))
+          .slice(0, this.featAsked()),
       );
     }
     this.adoptHitPoints(other);

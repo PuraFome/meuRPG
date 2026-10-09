@@ -2602,7 +2602,8 @@ type TableContentViolation struct {
 	// (a reference does not exist), "forbidden_effect", "bad_formula", "bad_table",
 	// "bad_casting", "bad_value", "overlay" (the content as a whole), "immutable"
 	// (a key, kind or parent changed, or a spell crossing between cantrip and
-	// leveled), "duplicate_name" (another entry of the kind has the name) and
+	// leveled), "duplicate_name" (another entry of the kind has the name), "unknown_field" (ImportTableContent:
+	// a field the message does not have) and
 	// "size_limit" (64 KiB of data). The 300-entry limit is "limit", with an empty
 	// field. In ImportTableContent a violation about the pack itself is at a field
 	// that starts with "pack": "pack" (over 2 MiB: "size_limit"), "pack.format" and
@@ -3840,7 +3841,8 @@ func (x *ExportTableContentResponse) GetPack() *TableContentPack {
 type ImportTableContentRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
-	Pack       *TableContentPack      `protobuf:"bytes,2,opt,name=pack,proto3" json:"pack,omitempty"`
+	// The pack as a message. Required unless `pack_json` is set.
+	Pack *TableContentPack `protobuf:"bytes,2,opt,name=pack,proto3" json:"pack,omitempty"`
 	// Required.
 	Mode TableImportMode `protobuf:"varint,3,opt,name=mode,proto3,enum=meurpg.rules.v1.TableImportMode" json:"mode,omitempty"`
 	// Optional, for APPLY. 1 to 64 characters, chosen once by the app for this action:
@@ -3848,8 +3850,14 @@ type ImportTableContentRequest struct {
 	// answered instead of importing again. The key is unique in the campaign; the same
 	// key with another request is `invalid_argument`.
 	IdempotencyKey string `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The pack file as the master has it, in proto JSON. Prefer it to `pack`: the server
+	// reads it strictly, and a field it does not know (a misspelled "proficiency" for
+	// "proficiency_key") is a violation of its entry at the path of the field (reason
+	// "unknown_field"), never dropped. When set, `pack` must be unset. The 2 MiB limit is
+	// this field's size.
+	PackJson      []byte `protobuf:"bytes,5,opt,name=pack_json,json=packJson,proto3" json:"pack_json,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ImportTableContentRequest) Reset() {
@@ -3908,6 +3916,13 @@ func (x *ImportTableContentRequest) GetIdempotencyKey() string {
 		return x.IdempotencyKey
 	}
 	return ""
+}
+
+func (x *ImportTableContentRequest) GetPackJson() []byte {
+	if x != nil {
+		return x.PackJson
+	}
+	return nil
 }
 
 // TableImportEntry is the outcome for one entry of the pack, in the pack's order.
@@ -5678,13 +5693,14 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\"S\n" +
 	"\x1aExportTableContentResponse\x125\n" +
-	"\x04pack\x18\x01 \x01(\v2!.meurpg.rules.v1.TableContentPackR\x04pack\"\xd2\x01\n" +
+	"\x04pack\x18\x01 \x01(\v2!.meurpg.rules.v1.TableContentPackR\x04pack\"\xef\x01\n" +
 	"\x19ImportTableContentRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x125\n" +
 	"\x04pack\x18\x02 \x01(\v2!.meurpg.rules.v1.TableContentPackR\x04pack\x124\n" +
 	"\x04mode\x18\x03 \x01(\x0e2 .meurpg.rules.v1.TableImportModeR\x04mode\x12'\n" +
-	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"\x9f\x02\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\x12\x1b\n" +
+	"\tpack_json\x18\x05 \x01(\fR\bpackJson\"\x9f\x02\n" +
 	"\x10TableImportEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x125\n" +
 	"\x04kind\x18\x02 \x01(\x0e2!.meurpg.rules.v1.TableContentKindR\x04kind\x12\x17\n" +

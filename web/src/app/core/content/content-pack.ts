@@ -187,6 +187,10 @@ export function packViolationText(
   if (/^pack\.entries\[\d+\]\.body$/.test(field)) {
     return 'Esta entrada está sem conteúdo, ou o conteúdo é de outro tipo que o da chave. Corrija o arquivo.';
   }
+  if (v.reason === 'unknown_field') {
+    const name = field.slice(field.lastIndexOf('.') + 1).replace(/\[\d+\]$/, '');
+    return `Campo desconhecido: ${name}. Confira a grafia no arquivo.`;
+  }
   if (field.startsWith('pack')) {
     return 'O arquivo tem um problema que não dá para importar. Exporte o pacote de novo.';
   }

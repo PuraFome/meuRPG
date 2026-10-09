@@ -382,39 +382,111 @@ func TestLevelUpTakesAFeatInPlaceOfTheIncrease(t *testing.T) {
 	}
 }
 
-// TestFeatAbilityIncreaseNeverPassesTwenty: an ability a feat raises stops at 20
-// (SRD 5.1, Ability Score Improvement): the option says so when the feat cannot be
-// taken, and the level-up refuses an increase above 20.
-func TestFeatAbilityIncreaseNeverPassesTwenty(t *testing.T) {
+// TestFeatAbilityIncreaseStopsAtTwenty: an ability a feat raises stops at 20 (SRD 5.1, Ability
+// Score Improvement: an ability score cannot be raised above 20 by it). A feat that lets the
+// player choose never offers an ability at 20 and refuses picking it; a feat that raises every
+// ability it lists is still taken at 20: the increase is lost and its other effects apply.
+func TestFeatAbilityIncreaseStopsAtTwenty(t *testing.T) {
 	t.Parallel()
-	c := tableFeats(t)
-	half := "feat:meio-talento" + tableSuffix
-	avg := LevelUpHitPoints{Average: true}
-
-	before := torenLevelUp()
-	before.BaseScores[STR] = 19 // human +1: 20
-	offer, err := LevelUpOptions(before, "class:fighter", c)
+	c, err := loadForTest(t).With(Overlay{Revision: 1, Feats: []TableFeat{
+		{
+			TableEntry: TableEntry{Key: "feat:meio-talento" + tableSuffix, NamePT: "Meio talento"}, DescPT: []string{"x"},
+			Effects: []Effect{{Type: "ability_increase", Count: 1, From: []string{"str", "dex"}, Value: "1"}},
+		},
+		{
+			TableEntry: TableEntry{Key: "feat:armadura" + tableSuffix, NamePT: "Mestre de armadura"}, DescPT: []string{"x"},
+			Effects: []Effect{
+				{Type: "ability_increase", Count: 1, From: []string{"str"}, Value: "1"},
+				{Type: "modifier", Target: "initiative", Mode: "add", Value: "3"},
+			},
+		},
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if o := featOption(t, offer.Feats, half); !o.Qualifies {
-		t.Fatalf("with DEX below 20 the half feat is still possible: %+v", o.Unmet)
-	}
-	after := mustApply(t, c, before, LevelUpChoices{Class: "class:fighter", Feat: half, AbilityIncrease: map[Ability]int{STR: 1}, HitPoints: avg})
-	wantRefusal(t, CheckLevelUp(before, after, c), LevelUpReasonAbilityAbove20, "full.extra_ability_bonuses.strength")
-	after = mustApply(t, c, before, LevelUpChoices{Class: "class:fighter", Feat: half, AbilityIncrease: map[Ability]int{DEX: 1}, HitPoints: avg})
-	if err := CheckLevelUp(before, after, c); err != nil {
-		t.Errorf("raising the ability that is below 20: %v", err)
+	half, fixed := "feat:meio-talento"+tableSuffix, "feat:armadura"+tableSuffix
+	avg := LevelUpHitPoints{Average: true}
+	take := func(before Build, ch LevelUpChoices) (Build, error) {
+		ch.Class, ch.HitPoints = "class:fighter", avg
+		after := mustApply(t, c, before, ch)
+		return after, CheckLevelUp(before, after, c)
 	}
 
-	before.BaseScores[DEX] = 19 // human +1: 20 too
-	offer, _ = LevelUpOptions(before, "class:fighter", c)
-	if o := featOption(t, offer.Feats, half); o.Qualifies || !slices.Contains(unmetKinds(o.Unmet), FeatUnmetAbilityCap) {
-		t.Errorf("both abilities at 20: the half feat qualifies=%v unmet=%v", o.Qualifies, unmetKinds(o.Unmet))
+	// Strength at 20, Dexterity below: the choice feat offers Dexterity only.
+	b := torenLevelUp()
+	b.BaseScores[STR] = 19 // human +1: 20
+	offer, _ := LevelUpOptions(b, "class:fighter", c)
+	o := featOption(t, offer.Feats, half)
+	if !o.Qualifies || !slices.Equal(o.Capped, []Ability{STR}) {
+		t.Fatalf("the half feat at Strength 20: qualifies %v, capped %v; want it available, Strength capped", o.Qualifies, o.Capped)
+	}
+	if _, err := take(b, LevelUpChoices{Feat: half, AbilityIncrease: map[Ability]int{STR: 1}}); err == nil {
+		t.Error("the half feat on Strength 20 was accepted")
+	} else {
+		wantRefusal(t, err, LevelUpReasonAbilityAbove20, "full.extra_ability_bonuses.strength")
+	}
+	if _, err := take(b, LevelUpChoices{Feat: half, AbilityIncrease: map[Ability]int{DEX: 1}}); err != nil {
+		t.Errorf("the other ability of the half feat: %v", err)
+	}
+
+	// Both at 20: still available; nothing to raise.
+	b.BaseScores[DEX] = 19
+	offer, _ = LevelUpOptions(b, "class:fighter", c)
+	if o := featOption(t, offer.Feats, half); !o.Qualifies || len(o.Capped) != 2 {
+		t.Errorf("the half feat with both at 20: qualifies %v capped %v", o.Qualifies, o.Capped)
+	}
+	if _, err := take(b, LevelUpChoices{Feat: half}); err != nil {
+		t.Errorf("the half feat with nothing left to raise: %v", err)
+	}
+	if _, err := take(b, LevelUpChoices{Feat: half, AbilityIncrease: map[Ability]int{DEX: 1}}); err == nil {
+		t.Error("an increase past 20 was accepted")
+	}
+
+	// The feat that raises what it lists: taken at 20, the increase is lost, the effects apply.
+	b = torenLevelUp()
+	b.BaseScores[STR] = 19
+	plain := Derive(b, c).Initiative
+	after, err := take(b, LevelUpChoices{Feat: fixed})
+	if err != nil {
+		t.Fatalf("the fixed feat on Strength 20: %v", err)
+	}
+	if got := Derive(after, c); got.Abilities[0].Score != 20 || got.Initiative != plain+3 {
+		t.Errorf("after: Strength %d (want 20), initiative %d (want %d)", got.Abilities[0].Score, got.Initiative, plain+3)
+	}
+	if _, err := take(b, LevelUpChoices{Feat: fixed, AbilityIncrease: map[Ability]int{STR: 1}}); err == nil {
+		t.Error("the fixed feat raised Strength past 20")
+	}
+	// Below 20 the server applies the feat's own +1 when none is sent.
+	b.BaseScores[STR] = 15 // 16
+	after, err = take(b, LevelUpChoices{Feat: fixed})
+	if err != nil || Derive(after, c).Abilities[0].Score != 17 {
+		t.Errorf("the fixed feat on Strength 16: %v, want 17", err)
 	}
 	// The plain Ability Score Improvement keeps its own cap.
-	after = mustApply(t, c, before, LevelUpChoices{Class: "class:fighter", AbilityIncrease: map[Ability]int{STR: 2}, HitPoints: avg})
-	wantRefusal(t, CheckLevelUp(before, after, c), LevelUpReasonAbilityAbove20, "")
+	b.BaseScores[STR] = 19
+	if _, err := take(b, LevelUpChoices{AbilityIncrease: map[Ability]int{STR: 2}}); err == nil {
+		t.Error("+2 on Strength 20 was accepted")
+	}
+
+	// The sheet says the feat was taken at that level, in place of the improvement.
+	b = torenLevelUp()
+	after, err = take(b, LevelUpChoices{Feat: fixed})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := Derive(after, c)
+	for _, f := range d.Features {
+		if strings.Contains(f.Key, "ability-score-improvement") {
+			t.Errorf("the sheet lists %s although a feat replaced it", f.Key)
+		}
+		if f.Key == fixed && (f.SourcePT != "Talento · Guerreiro 4" || f.Level != 4) {
+			t.Errorf("the feat is listed as %q at level %d, want %q at 4", f.SourcePT, f.Level, "Talento · Guerreiro 4")
+		}
+	}
+	plainUp, _ := take(b, LevelUpChoices{AbilityIncrease: map[Ability]int{DEX: 2}})
+	if !slices.ContainsFunc(Derive(plainUp, c).Features, func(f Feature) bool { return strings.Contains(f.Key, "ability-score-improvement") }) {
+		t.Error("a plain Ability Score Improvement disappeared from the sheet")
+	}
 }
 
 // TestAFeatWhoseRequirementIsLostStopsWorking: a character that loses a feat's prerequisite

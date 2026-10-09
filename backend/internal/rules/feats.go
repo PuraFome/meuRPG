@@ -34,9 +34,6 @@ const (
 	FeatUnmetRace = "race"
 	// FeatUnmetLevel: the character level is below Value.
 	FeatUnmetLevel = "level"
-	// FeatUnmetAbilityCap: the feat raises abilities and fewer than the ones it asks
-	// for are below 20 (an ability never goes above 20).
-	FeatUnmetAbilityCap = "ability_cap"
 )
 
 // FeatPrerequisite is what a feat asks of a character. Every condition that is set
@@ -109,6 +106,11 @@ type FeatOption struct {
 	FeatEntry
 	Qualifies bool
 	Unmet     []FeatUnmet
+	// Capped are the abilities of the feat's list that cannot take its increase because
+	// they would pass 20 (SRD 5.1, Ability Score Improvement): a feat that lets the player
+	// choose never offers them. A feat that raises every ability it lists is still taken: the
+	// increase stops at 20 and its other effects apply.
+	Capped []Ability
 }
 
 const (
@@ -183,8 +185,8 @@ func featOptions(b Build, x *content) []FeatOption {
 		if slices.Contains(b.Feats, e.Key) {
 			continue
 		}
-		unmet := x.unmetFeat(e, b, d)
-		out = append(out, FeatOption{FeatEntry: e, Qualifies: len(unmet) == 0, Unmet: unmet})
+		unmet := x.unmetPrerequisite(e, b, d)
+		out = append(out, FeatOption{FeatEntry: e, Qualifies: len(unmet) == 0, Unmet: unmet, Capped: cappedAbilities(e.Increase, d)})
 	}
 	return out
 }
@@ -196,7 +198,7 @@ func CheckFeat(b Build, key string, c *Content) ([]FeatUnmet, error) {
 	if !ok {
 		return nil, fmt.Errorf("rules: unknown feat %q", key)
 	}
-	return c.c.unmetFeat(e, b, derive(b, c.c)), nil
+	return c.c.unmetPrerequisite(e, b, derive(b, c.c)), nil
 }
 
 // lostFeats are the feats the build has and whose prerequisite the derived sheet no
@@ -216,23 +218,15 @@ func (c *content) lostFeats(b Build, d Derived) map[string]bool {
 	return lost
 }
 
-// unmetFeat is what the character lacks to take the feat: its prerequisite, and the
-// abilities it raises when not enough of them can still go up.
-func (c *content) unmetFeat(e FeatEntry, b Build, d Derived) []FeatUnmet {
-	out := c.unmetPrerequisite(e, b, d)
-	if inc := e.Increase; inc != nil {
-		score := map[Ability]int{}
-		for _, s := range d.Abilities {
-			score[s.Ability] = s.Score
-		}
-		room := 0
-		for _, a := range inc.From {
-			if score[a]+inc.Value <= MaxNormalScore {
-				room++
-			}
-		}
-		if room < inc.Count {
-			out = append(out, FeatUnmet{Kind: FeatUnmetAbilityCap})
+// cappedAbilities are the abilities of an increase's list that would pass 20 with it.
+func cappedAbilities(inc *FeatIncrease, d Derived) []Ability {
+	if inc == nil {
+		return nil
+	}
+	var out []Ability
+	for _, s := range d.Abilities {
+		if slices.Contains(inc.From, s.Ability) && s.Score+inc.Value > MaxNormalScore {
+			out = append(out, s.Ability)
 		}
 	}
 	return out

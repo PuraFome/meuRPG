@@ -202,9 +202,9 @@ func tableRulesToProto(r campaignsdb.CampaignTableRule, dice string) *campaignsv
 			StandardArray: r.AbilityStandardArray, PointBuy: r.AbilityPointBuy,
 			Rolled_4D6: r.AbilityRoll4d6, Typed: r.AbilityTyped,
 		},
-		Critical:   criticalFromDB[r.CriticalRule],
-		DeathSaves: deathSavesFromDB[r.DeathSaves],
-		HouseRules: append([]string{}, r.HouseRules...),
+		Critical:     criticalFromDB[r.CriticalRule],
+		DeathSaves:   deathSavesFromDB[r.DeathSaves],
+		HouseRules:   append([]string{}, r.HouseRules...),
 		FeatsAllowed: r.FeatsAllowed,
 	}
 }

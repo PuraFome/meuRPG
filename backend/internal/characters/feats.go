@@ -16,7 +16,6 @@ var featUnmetKinds = map[string]rulesv1.FeatUnmetKind{
 	rules.FeatUnmetSpellcasting:   rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_SPELLCASTING,
 	rules.FeatUnmetRace:           rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_RACE,
 	rules.FeatUnmetLevel:          rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_LEVEL,
-	rules.FeatUnmetAbilityCap:     rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_ABILITY_CAP,
 }
 
 // featOptionsToProto is the feats a character may take, as the app's feat picker reads
@@ -55,6 +54,9 @@ func featOptionOf(o rules.FeatOption) *rulesv1.FeatOption {
 		for _, a := range inc.From {
 			out.Increase.From = append(out.Increase.From, abilityToProto[a])
 		}
+	}
+	for _, a := range o.Capped {
+		out.CappedAbilities = append(out.CappedAbilities, abilityToProto[a])
 	}
 	for _, u := range o.Unmet {
 		pu := &rulesv1.FeatUnmet{Kind: featUnmetKinds[u.Kind], Key: u.Key, Value: i32(u.Value)}

@@ -116,16 +116,16 @@ export class TableContentClient {
     return res.pack as TableContentPack;
   }
 
-  /** PREVIEW writes nothing and answers each entry; APPLY writes all or nothing (`idempotencyKey`: see `ActionKey`). */
+  /** `packJson` is the file's own bytes: the server reads it strictly. PREVIEW writes nothing and answers each entry; APPLY writes all or nothing (`idempotencyKey`: see `ActionKey`). */
   importPack(
     campaignId: string,
-    pack: TableContentPack,
+    packJson: Uint8Array,
     mode: 'preview' | 'apply',
     idempotencyKey = '',
   ): Promise<ImportTableContentResponse> {
     return this.client.importTableContent({
       campaignId,
-      pack,
+      packJson,
       mode: mode === 'apply' ? TableImportMode.APPLY : TableImportMode.PREVIEW,
       idempotencyKey: mode === 'apply' ? idempotencyKey : '',
     });

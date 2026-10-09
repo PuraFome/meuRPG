@@ -11,7 +11,6 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { toJson } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -22,8 +21,6 @@ import { Role } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
   type AffectedCharacter,
   type ImportTableContentResponse,
-  type TableContentPack,
-  TableContentPackSchema,
   TableImportStatus,
   type TableImportEntry,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
@@ -53,8 +50,8 @@ type Access =
 type Step =
   | { step: 'choose' }
   | { step: 'checking'; fileName: string }
-  | { step: 'preview'; fileName: string; pack: TableContentPack; res: ImportTableContentResponse }
-  | { step: 'applying'; fileName: string; pack: TableContentPack; res: ImportTableContentResponse }
+  | { step: 'preview'; fileName: string; json: Uint8Array; res: ImportTableContentResponse }
+  | { step: 'applying'; fileName: string; json: Uint8Array; res: ImportTableContentResponse }
   | { step: 'done'; res: ImportTableContentResponse };
 
 /** One group of the preview: its heading, the word that says what happens and the entries. */
@@ -187,8 +184,10 @@ export class ContentImport {
       return;
     }
     try {
-      const res = await this.client.importPack(this.campaignId(), parsed.pack, 'preview');
-      this.state.set({ step: 'preview', fileName: file.name, pack: parsed.pack, res });
+      // The file's own bytes go to the server, which reads them strictly.
+      const json = new TextEncoder().encode(parsed.text);
+      const res = await this.client.importPack(this.campaignId(), json, 'preview');
+      this.state.set({ step: 'preview', fileName: file.name, json, res });
     } catch (err) {
       this.fail(err, 'ler o pacote');
       this.state.set({ step: 'choose' });
@@ -204,10 +203,10 @@ export class ContentImport {
     this.state.set({ ...s, step: 'applying' });
     const key = this.applyKey.keyFor({
       campaignId: this.campaignId(),
-      pack: toJson(TableContentPackSchema, s.pack),
+      pack: new TextDecoder().decode(s.json),
     });
     try {
-      const res = await this.client.importPack(this.campaignId(), s.pack, 'apply', key);
+      const res = await this.client.importPack(this.campaignId(), s.json, 'apply', key);
       this.applyKey.renew();
       this.state.set({ step: 'done', res });
       afterNextRender(() => this.title()?.nativeElement.focus({ preventScroll: true }), {

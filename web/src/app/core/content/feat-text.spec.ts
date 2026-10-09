@@ -66,6 +66,5 @@ describe('what a feat asks, in Portuguese', () => {
     );
     expect(unmet({ kind: FeatUnmetKind.RACE, key: 'race:dwarf' })).toBe('Precisa ser Anão.');
     expect(unmet({ kind: FeatUnmetKind.LEVEL, value: 8 })).toBe('Precisa do nível 8 ou mais.');
-    expect(unmet({ kind: FeatUnmetKind.ABILITY_CAP })).toContain('já estão em 20');
   });
 });

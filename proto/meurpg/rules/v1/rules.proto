@@ -476,9 +476,7 @@ enum FeatUnmetKind {
   FEAT_UNMET_KIND_RACE = 5;
   // The character level is below `value`.
   FEAT_UNMET_KIND_LEVEL = 6;
-  // The feat raises abilities, and fewer of the abilities it lists than it asks
-  // for are below 20.
-  FEAT_UNMET_KIND_ABILITY_CAP = 7;
+  reserved 7;
 }
 
 // AbilityMinimum is an ability and the score asked of it.
@@ -521,6 +519,11 @@ message FeatOption {
   bool qualifies = 8;
   // What it lacks; empty when `qualifies`. Every unmet condition is listed.
   repeated FeatUnmet unmet = 9;
+  // The abilities of `increase.from` that cannot take the increase because they would pass
+  // 20 (SRD 5.1, Ability Score Improvement). A feat that lets the player choose never offers
+  // them; a feat that raises every ability it lists is still taken, and its increase stops
+  // at 20. The feat is available either way.
+  repeated Ability capped_abilities = 10;
 }
 
 // ProficiencyLevel is how much of the proficiency bonus a check adds.

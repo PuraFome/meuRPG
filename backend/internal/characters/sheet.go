@@ -3,6 +3,7 @@ package characters
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -105,6 +106,8 @@ func checkSheet(content *rules.Content, sheet *charactersv1.CharacterSheet) (*ch
 		// The revision of the table's content this sheet is saved with (RN-23): the
 		// server's, never the client's.
 		full.ContentRevision = i32(content.TableRevision())
+		// A feat's place in the improvements only means something for a feat the sheet has.
+		maps.DeleteFunc(full.FeatSlots, func(feat, _ string) bool { return !slices.Contains(full.FeatKeys, feat) })
 		full.KnownIssues = issueIDs(rules.Derive(buildOf(full), content).Issues)
 		full.ContentBaselines = nil // the server's: carryFlags sets it when a save keeps a flag
 		if err := rules.Validate(buildOf(full), content); err != nil {
@@ -428,6 +431,7 @@ func buildOf(f *charactersv1.FullSheet) rules.Build {
 		SpellsPrepared:      f.GetPreparedSpellKeys(),
 		FeatureChoices:      f.GetFeatureChoiceKeys(),
 		Feats:               f.GetFeatKeys(),
+		FeatSlots:           f.GetFeatSlots(),
 	}
 	for _, c := range f.GetClasses() {
 		b.Classes = append(b.Classes, rules.ClassLevel{

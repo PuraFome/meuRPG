@@ -191,3 +191,15 @@
     opacity: 0.6;
   }
 }
+
+.group {
+  margin: var(--mr-space-4) 0 var(--mr-space-2);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--mr-ink-muted);
+}
+
+.empty {
+  margin: var(--mr-space-3) 0 0;
+  color: var(--mr-ink-muted);
+}

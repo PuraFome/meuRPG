@@ -107,6 +107,9 @@ describe('the content pack file (MR-025)', () => {
     expect(text('table_feat.prerequisite.level')).toBe(
       'O nível vai de 1 a 20 (vazio não pede nada).',
     );
+    expect(
+      packViolationText({ field: 'table_feat.prerequisite.proficiency', reason: 'unknown_field' }),
+    ).toBe('Campo desconhecido: proficiency. Confira a grafia no arquivo.');
     expect(statusWord(TableImportStatus.REFUSED)).toBe('Recusada');
   });
 });
