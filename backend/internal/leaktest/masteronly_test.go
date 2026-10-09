@@ -90,7 +90,7 @@ var masterOnly = []masterOnlyField{
 	{"meurpg.play.v1.Combatant", "initiative_bonus", "only the master and the combatant's player", func(w *world, p *person, m protoreflect.Message) bool { return own(w, p, m) }},
 	{"meurpg.play.v1.Combatant", "initiative_face", "only the master and the combatant's player", func(w *world, p *person, m protoreflect.Message) bool { return own(w, p, m) }},
 	{"meurpg.play.v1.Combatant", "death_successes", "the table keeps the death saves to the owner and the master (RN-24)", func(w *world, p *person, m protoreflect.Message) bool { return own(w, p, m) }},
-	{"meurpg.play.v1.PendingDamage", "steps", "an NPC's resistances are the master's; a player's character's go to its owner", func(w *world, p *person, m protoreflect.Message) bool { return targetsPlayer(w, m) }},
-	{"meurpg.play.v1.PendingDamage", "amount_after_steps", "the damage after an NPC's resistances is the master's", func(w *world, p *person, m protoreflect.Message) bool { return targetsPlayer(w, m) }},
+	{"meurpg.play.v1.PendingDamage", "steps", "an NPC's resistances are the master's; a player's character's go to its owner", func(w *world, _ *person, m protoreflect.Message) bool { return targetsPlayer(w, m) }},
+	{"meurpg.play.v1.PendingDamage", "amount_after_steps", "the damage after an NPC's resistances is the master's", func(w *world, _ *person, m protoreflect.Message) bool { return targetsPlayer(w, m) }},
 	{"meurpg.play.v1.Combatant", "death_failures", "the table keeps the death saves to the owner and the master (RN-24)", func(w *world, p *person, m protoreflect.Message) bool { return own(w, p, m) }},
 }

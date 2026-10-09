@@ -47,7 +47,7 @@ const (
 	dagger   = "equipment:dagger"
 	shortbow = "equipment:shortbow"
 
-	// the labels of the table, other than the markers
+	// The labels of the table, other than the markers.
 	labelToren, labelPens = "Toren", "Pensantus"
 )
 
@@ -79,8 +79,8 @@ func newRollsTable(t *testing.T) *rollsTable {
 	must(m.maps.SetMapRevealed(ctx, rq(&mapsv1.SetMapRevealedRequest{CampaignId: w.campaign, MapId: w.fogMap, Revealed: true})))
 	must(m.maps.SetMapGrid(ctx, rq(&mapsv1.SetMapGridRequest{CampaignId: w.campaign, MapId: w.fogMap, Columns: caveColumns})))
 	var wall [][2]int32
-	for row := range int32(caveGrid.Rows) {
-		wall = append(wall, [2]int32{12, row})
+	for row := range caveGrid.Rows {
+		wall = append(wall, [2]int32{12, int32(row)})
 	}
 	w.paint(w.fogMap, mapsv1.MapLayer_MAP_LAYER_WALL, 1, wall)
 	must(m.maps.SetMapFog(ctx, rq(&mapsv1.SetMapFogRequest{CampaignId: w.campaign, MapId: w.fogMap, FogEnabled: new(true), BaseLight: mapsv1.LightLevel_LIGHT_LEVEL_BRIGHT.Enum()})))
@@ -231,14 +231,6 @@ func (rt *rollsTable) damage(p *person, pendingID string, edit func(*playv1.Roll
 	req := &playv1.RollDamageRequest{CampaignId: rt.campaign, EncounterId: rt.encounter.GetId(), PendingDamageId: pendingID, IdempotencyKey: newKey()}
 	edit(req)
 	return must(p.combat.RollDamage(rt.t.Context(), rq(req)))
-}
-
-func (rt *rollsTable) json(m proto.Message) string {
-	b, err := protojson.MarshalOptions{Multiline: false}.Marshal(m)
-	if err != nil {
-		panic(err)
-	}
-	return string(b)
 }
 
 // ---- what is read, and when ----
