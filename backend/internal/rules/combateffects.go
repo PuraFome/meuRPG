@@ -61,6 +61,7 @@ const (
 const (
 	RollAppliesAttack = "attack"
 	RollAppliesSave   = "save"
+	RollAppliesCheck  = "check"
 )
 
 // The audience values of an effect's visibility: who of the players reads it.
@@ -385,8 +386,8 @@ func checkModifier(m EffectModifier) error {
 			return fmt.Errorf("roll_die needs die, sign (1 or -1) and applies_to")
 		}
 		for _, a := range m.AppliesTo {
-			if a != RollAppliesAttack && a != RollAppliesSave {
-				return fmt.Errorf("applies_to %q: only attack and save", a)
+			if a != RollAppliesAttack && a != RollAppliesSave && a != RollAppliesCheck {
+				return fmt.Errorf("applies_to %q: only attack, save and check", a)
 			}
 		}
 	case ModifierACBonus:

@@ -10,6 +10,65 @@ import (
 	"time"
 )
 
+const advanceCharacterEffects = `-- name: AdvanceCharacterEffects :many
+UPDATE character_effects SET seconds_left = GREATEST(seconds_left - $2::INT4, 0)
+WHERE campaign_id = $1 AND seconds_left IS NOT NULL
+RETURNING id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at
+`
+
+type AdvanceCharacterEffectsParams struct {
+	CampaignID string
+	Column2    int32
+}
+
+// The master moves game time on: what has a clock loses the seconds, and what has none left
+// is returned to be ended.
+func (q *Queries) AdvanceCharacterEffects(ctx context.Context, arg AdvanceCharacterEffectsParams) ([]CharacterEffect, error) {
+	rows, err := q.db.Query(ctx, advanceCharacterEffects, arg.CampaignID, arg.Column2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CharacterEffect
+	for rows.Next() {
+		var i CharacterEffect
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.SourceCharacterID,
+			&i.GroupID,
+			&i.SourceKey,
+			&i.SourceKind,
+			&i.Concentration,
+			&i.ConditionKeys,
+			&i.Modifiers,
+			&i.DurationKind,
+			&i.SecondsLeft,
+			&i.EndSaveAbility,
+			&i.StartSaveAbility,
+			&i.SaveDc,
+			&i.OnFailEffect,
+			&i.FollowsKey,
+			&i.TriggerDice,
+			&i.TriggerDamageType,
+			&i.TriggerMaxTriggers,
+			&i.TriggersFired,
+			&i.PlayerVisible,
+			&i.Audience,
+			&i.PlayerLabel,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const answerHiddenReveal = `-- name: AnswerHiddenReveal :one
 UPDATE hidden_reveals SET state = $1, answered_at = $2
 WHERE encounter_id = $3 AND id = $4 AND state = 'pending'
@@ -467,6 +526,71 @@ func (q *Queries) DeleteBattleEncounter(ctx context.Context, arg DeleteBattleEnc
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const deleteCharacterEffect = `-- name: DeleteCharacterEffect :exec
+DELETE FROM character_effects WHERE id = $1
+`
+
+func (q *Queries) DeleteCharacterEffect(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deleteCharacterEffect, id)
+	return err
+}
+
+const deleteCharacterEffectsOfGroup = `-- name: DeleteCharacterEffectsOfGroup :many
+DELETE FROM character_effects WHERE campaign_id = $1 AND group_id = $2 RETURNING id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at
+`
+
+type DeleteCharacterEffectsOfGroupParams struct {
+	CampaignID string
+	GroupID    string
+}
+
+// The effects of a casting end together.
+func (q *Queries) DeleteCharacterEffectsOfGroup(ctx context.Context, arg DeleteCharacterEffectsOfGroupParams) ([]CharacterEffect, error) {
+	rows, err := q.db.Query(ctx, deleteCharacterEffectsOfGroup, arg.CampaignID, arg.GroupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CharacterEffect
+	for rows.Next() {
+		var i CharacterEffect
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.SourceCharacterID,
+			&i.GroupID,
+			&i.SourceKey,
+			&i.SourceKind,
+			&i.Concentration,
+			&i.ConditionKeys,
+			&i.Modifiers,
+			&i.DurationKind,
+			&i.SecondsLeft,
+			&i.EndSaveAbility,
+			&i.StartSaveAbility,
+			&i.SaveDc,
+			&i.OnFailEffect,
+			&i.FollowsKey,
+			&i.TriggerDice,
+			&i.TriggerDamageType,
+			&i.TriggerMaxTriggers,
+			&i.TriggersFired,
+			&i.PlayerVisible,
+			&i.Audience,
+			&i.PlayerLabel,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const deleteCombatant = `-- name: DeleteCombatant :exec
@@ -1033,6 +1157,48 @@ func (q *Queries) GetCampaignTrapDamageForUpdate(ctx context.Context, arg GetCam
 		&i.SettleHash,
 		&i.SessionNumber,
 		&i.SessionStartedAt,
+	)
+	return i, err
+}
+
+const getCharacterEffect = `-- name: GetCharacterEffect :one
+SELECT id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at FROM character_effects WHERE id = $1 AND campaign_id = $2
+`
+
+type GetCharacterEffectParams struct {
+	ID         string
+	CampaignID string
+}
+
+func (q *Queries) GetCharacterEffect(ctx context.Context, arg GetCharacterEffectParams) (CharacterEffect, error) {
+	row := q.db.QueryRow(ctx, getCharacterEffect, arg.ID, arg.CampaignID)
+	var i CharacterEffect
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.CharacterID,
+		&i.SourceCharacterID,
+		&i.GroupID,
+		&i.SourceKey,
+		&i.SourceKind,
+		&i.Concentration,
+		&i.ConditionKeys,
+		&i.Modifiers,
+		&i.DurationKind,
+		&i.SecondsLeft,
+		&i.EndSaveAbility,
+		&i.StartSaveAbility,
+		&i.SaveDc,
+		&i.OnFailEffect,
+		&i.FollowsKey,
+		&i.TriggerDice,
+		&i.TriggerDamageType,
+		&i.TriggerMaxTriggers,
+		&i.TriggersFired,
+		&i.PlayerVisible,
+		&i.Audience,
+		&i.PlayerLabel,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -2220,6 +2386,110 @@ func (q *Queries) HasTriedPuzzleHint(ctx context.Context, arg HasTriedPuzzleHint
 	return tried, err
 }
 
+const insertCharacterEffect = `-- name: InsertCharacterEffect :one
+INSERT INTO character_effects (
+    id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration,
+    condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc,
+    on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired,
+    player_visible, audience, player_label, created_at
+) VALUES (
+    COALESCE($14::UUID, gen_random_uuid()), $1, $2, $15, $3, $4, $5, $6,
+    $7, $8, $9, $16, $17, $18, $19,
+    $20, $21, $22, $23, $24, $10,
+    $11, $12, $25, $13
+)
+RETURNING id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at
+`
+
+type InsertCharacterEffectParams struct {
+	CampaignID         string
+	CharacterID        string
+	GroupID            string
+	SourceKey          string
+	SourceKind         string
+	Concentration      bool
+	ConditionKeys      []string
+	Modifiers          []byte
+	DurationKind       string
+	TriggersFired      int32
+	PlayerVisible      bool
+	Audience           string
+	CreatedAt          time.Time
+	ID                 *string
+	SourceCharacterID  *string
+	SecondsLeft        *int32
+	EndSaveAbility     *string
+	StartSaveAbility   *string
+	SaveDc             *int32
+	OnFailEffect       *string
+	FollowsKey         *string
+	TriggerDice        *string
+	TriggerDamageType  *string
+	TriggerMaxTriggers *int32
+	PlayerLabel        *string
+}
+
+// An effect on a character out of a running combat, with the id it had in the combat when it
+// comes from one (the record changes home, it is never copied).
+func (q *Queries) InsertCharacterEffect(ctx context.Context, arg InsertCharacterEffectParams) (CharacterEffect, error) {
+	row := q.db.QueryRow(ctx, insertCharacterEffect,
+		arg.CampaignID,
+		arg.CharacterID,
+		arg.GroupID,
+		arg.SourceKey,
+		arg.SourceKind,
+		arg.Concentration,
+		arg.ConditionKeys,
+		arg.Modifiers,
+		arg.DurationKind,
+		arg.TriggersFired,
+		arg.PlayerVisible,
+		arg.Audience,
+		arg.CreatedAt,
+		arg.ID,
+		arg.SourceCharacterID,
+		arg.SecondsLeft,
+		arg.EndSaveAbility,
+		arg.StartSaveAbility,
+		arg.SaveDc,
+		arg.OnFailEffect,
+		arg.FollowsKey,
+		arg.TriggerDice,
+		arg.TriggerDamageType,
+		arg.TriggerMaxTriggers,
+		arg.PlayerLabel,
+	)
+	var i CharacterEffect
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.CharacterID,
+		&i.SourceCharacterID,
+		&i.GroupID,
+		&i.SourceKey,
+		&i.SourceKind,
+		&i.Concentration,
+		&i.ConditionKeys,
+		&i.Modifiers,
+		&i.DurationKind,
+		&i.SecondsLeft,
+		&i.EndSaveAbility,
+		&i.StartSaveAbility,
+		&i.SaveDc,
+		&i.OnFailEffect,
+		&i.FollowsKey,
+		&i.TriggerDice,
+		&i.TriggerDamageType,
+		&i.TriggerMaxTriggers,
+		&i.TriggersFired,
+		&i.PlayerVisible,
+		&i.Audience,
+		&i.PlayerLabel,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const insertCombatReason = `-- name: InsertCombatReason :one
 INSERT INTO combat_reasons (encounter_id, kind, reason, created_at)
 VALUES ($1, $2, $3, $4)
@@ -2850,15 +3120,15 @@ func (q *Queries) InsertHiddenReveal(ctx context.Context, arg InsertHiddenReveal
 const insertLastingEffect = `-- name: InsertLastingEffect :one
 
 INSERT INTO combatant_states (
-    encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at,
+    id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at,
     group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind,
     end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key,
     trigger_dice, trigger_damage_type, trigger_max_triggers, player_visible, audience, player_label
 ) VALUES (
-    $1, $2, 'effect', $14, $15, $16, $17, $3, 0, $4,
+    COALESCE($14::UUID, gen_random_uuid()), $1, $2, 'effect', $15, $16, $17, $18, $3, 0, $4,
     $5, $6, $7, $8, $9, $10, $11,
-    $18, $19, $20, $21, $22,
-    $23, $24, $25, $12, $13, $26
+    $19, $20, $21, $22, $23,
+    $24, $25, $26, $12, $13, $27
 )
 RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label
 `
@@ -2877,6 +3147,7 @@ type InsertLastingEffectParams struct {
 	DurationKind       *string
 	PlayerVisible      bool
 	Audience           string
+	ID                 *string
 	SourceID           *string
 	EndsCombatantID    *string
 	EndsPhase          *string
@@ -2910,6 +3181,7 @@ func (q *Queries) InsertLastingEffect(ctx context.Context, arg InsertLastingEffe
 		arg.DurationKind,
 		arg.PlayerVisible,
 		arg.Audience,
+		arg.ID,
 		arg.SourceID,
 		arg.EndsCombatantID,
 		arg.EndsPhase,
@@ -4061,6 +4333,106 @@ func (q *Queries) ListCastPendingDamages(ctx context.Context, arg ListCastPendin
 			&i.LandedBefore,
 			&i.AfterSteps,
 			&i.EffectSourceKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCharacterEffects = `-- name: ListCharacterEffects :many
+SELECT id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at FROM character_effects WHERE character_id = ANY($1::UUID[]) ORDER BY created_at, id
+`
+
+func (q *Queries) ListCharacterEffects(ctx context.Context, dollar_1 []string) ([]CharacterEffect, error) {
+	rows, err := q.db.Query(ctx, listCharacterEffects, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CharacterEffect
+	for rows.Next() {
+		var i CharacterEffect
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.SourceCharacterID,
+			&i.GroupID,
+			&i.SourceKey,
+			&i.SourceKind,
+			&i.Concentration,
+			&i.ConditionKeys,
+			&i.Modifiers,
+			&i.DurationKind,
+			&i.SecondsLeft,
+			&i.EndSaveAbility,
+			&i.StartSaveAbility,
+			&i.SaveDc,
+			&i.OnFailEffect,
+			&i.FollowsKey,
+			&i.TriggerDice,
+			&i.TriggerDamageType,
+			&i.TriggerMaxTriggers,
+			&i.TriggersFired,
+			&i.PlayerVisible,
+			&i.Audience,
+			&i.PlayerLabel,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCharacterEffectsOfCampaign = `-- name: ListCharacterEffectsOfCampaign :many
+SELECT id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at FROM character_effects WHERE campaign_id = $1 ORDER BY created_at, id
+`
+
+func (q *Queries) ListCharacterEffectsOfCampaign(ctx context.Context, campaignID string) ([]CharacterEffect, error) {
+	rows, err := q.db.Query(ctx, listCharacterEffectsOfCampaign, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CharacterEffect
+	for rows.Next() {
+		var i CharacterEffect
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.SourceCharacterID,
+			&i.GroupID,
+			&i.SourceKey,
+			&i.SourceKind,
+			&i.Concentration,
+			&i.ConditionKeys,
+			&i.Modifiers,
+			&i.DurationKind,
+			&i.SecondsLeft,
+			&i.EndSaveAbility,
+			&i.StartSaveAbility,
+			&i.SaveDc,
+			&i.OnFailEffect,
+			&i.FollowsKey,
+			&i.TriggerDice,
+			&i.TriggerDamageType,
+			&i.TriggerMaxTriggers,
+			&i.TriggersFired,
+			&i.PlayerVisible,
+			&i.Audience,
+			&i.PlayerLabel,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -6160,6 +6532,20 @@ func (q *Queries) SavePuzzleRun(ctx context.Context, arg SavePuzzleRunParams) (P
 		&i.RoundStartedAt,
 	)
 	return i, err
+}
+
+const setCharacterEffectSeconds = `-- name: SetCharacterEffectSeconds :exec
+UPDATE character_effects SET seconds_left = $2 WHERE id = $1
+`
+
+type SetCharacterEffectSecondsParams struct {
+	ID          string
+	SecondsLeft *int32
+}
+
+func (q *Queries) SetCharacterEffectSeconds(ctx context.Context, arg SetCharacterEffectSecondsParams) error {
+	_, err := q.db.Exec(ctx, setCharacterEffectSeconds, arg.ID, arg.SecondsLeft)
+	return err
 }
 
 const setCombatantAcBonus = `-- name: SetCombatantAcBonus :exec

@@ -107,6 +107,12 @@ func (s *Service) takeEffect(ctx context.Context, c *combatTx, m authz.Membershi
 		return out, fmt.Errorf("finish the cast: %w", err)
 	}
 	out.row = row
+	plan.row = row
+	if lasts {
+		if err := s.castCharacterEffects(ctx, c, plan); err != nil {
+			return out, err
+		}
+	}
 	out.ev = out.event()
 	return out, nil
 }

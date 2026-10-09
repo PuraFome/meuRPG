@@ -276,6 +276,10 @@ func (s *Service) TakeRest(
 		if _, spellVitals, err = s.endSpellsAtRest(ctx, ct, minutes); err != nil {
 			return err
 		}
+		// The rest is game time passing: what had a clock loses the hour or the eight hours.
+		if err := s.advanceGameTime(ctx, ct, clamp32(minutes*secondsPerMinute, 0, 1<<30)); err != nil {
+			return err
+		}
 		castsChanged = ct.castsChanged
 		ids := make([]string, 0, len(after))
 		for _, v := range after {

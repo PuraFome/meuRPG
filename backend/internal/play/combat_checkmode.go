@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
@@ -44,6 +45,10 @@ func checkKey(key string) (ability string, check bool) {
 type checkMode struct {
 	Mode    combat.RollMode
 	Sources []combat.Source
+	// Dice are the dice effects add to the roll (Bênção on a saving throw), Rolled the same
+	// with their faces once rolled; hide says which sources come from an effect the master hides.
+	Dice, Rolled []effectDie
+	hide         func(combat.Source) bool
 }
 
 // checkModeOf works out the mode of a check or a saving throw of a player's character.
@@ -52,7 +57,7 @@ func (s *Service) checkModeOf(ctx context.Context, tx pgx.Tx, campaignID, sessio
 	q := s.queriesIn(tx)
 	enc, err := q.GetLatestEncounter(ctx, sessionID)
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && enc.Status == statusEnded) {
-		return checkMode{}, nil
+		return s.outsideModeOf(ctx, tx, campaignID, characterID, ability, check)
 	}
 	if err != nil {
 		return checkMode{}, err
@@ -69,7 +74,7 @@ func (s *Service) checkModeOf(ctx context.Context, tx pgx.Tx, campaignID, sessio
 		}
 	}
 	if !found {
-		return checkMode{}, nil
+		return s.outsideModeOf(ctx, tx, campaignID, characterID, ability, check)
 	}
 	states, err := s.readStates(ctx, tx, enc.ID)
 	if err != nil {
@@ -80,5 +85,12 @@ func (s *Service) checkModeOf(ctx context.Context, tx pgx.Tx, campaignID, sessio
 		return checkMode{}, err
 	}
 	sources := combat.SaveMode(combat.SaveScene{Creature: creatureFacts(who, states, sheet.Traits), Ability: ability, Check: check, EffectVisible: true})
-	return checkMode{Mode: combat.Resolve(sources), Sources: sources}, nil
+	applies := rules.RollAppliesSave
+	if check {
+		applies = rules.RollAppliesCheck
+	}
+	return checkMode{
+		Mode: combat.Resolve(sources), Sources: sources, Dice: effectDiceFor(states, who.ID, applies),
+		hide: hideFor(hiddenConditionsOf(states, who), hasHiddenEffect(states, who.ID)),
+	}, nil
 }

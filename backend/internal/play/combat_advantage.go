@@ -108,6 +108,11 @@ var sourceKindToProto = map[string]playv1.AdvantageSourceKind{
 	combat.SourceDodgingSave:        playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_DODGING_SAVE,
 	combat.SourceDangerSense:        playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_DANGER_SENSE,
 	combat.SourceRageStrength:       playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_RAGE_STRENGTH,
+	combat.SourceExhaustionAttack:   playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EXHAUSTION_ATTACK,
+	combat.SourceExhaustionSave:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EXHAUSTION_SAVE,
+	combat.SourceExhaustionCheck:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EXHAUSTION_CHECK,
+	combat.SourceOutlinedTarget:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET,
+	combat.SourceEffectSave:         playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_SAVE,
 	combat.SourceRestrainedSave:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_RESTRAINED_SAVE,
 	combat.SourcePoisonedCheck:      playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_POISONED_CHECK,
 	combat.SourceFrightenedCheck:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK,
@@ -229,8 +234,10 @@ func (f modeFacts) attackMode(attacker, target playdb.Combatant, attackerTraits 
 	// picked.
 	self := v.master || v.owns(attacker)
 	ctx := textContext{self: self, names: names, attacker: attacker.Label, target: target.Label, allyLabel: f.allyLabelNear(attacker, target)}
+	// What an effect the master hides gives is "Outra fonte" to a player (RN-10).
+	hide := f.hiddenFrom(v, attacker, target)
 	for _, src := range shown.Sources {
-		out.Shown = append(out.Shown, &playv1.AdvantageSource{Kind: sourceKindToProto[src.Kind], Effect: modeToProto[src.Effect], TextPt: ctx.sentence(src)})
+		out.Shown = append(out.Shown, sourceProto(src, ctx, hide))
 	}
 	return out
 }
@@ -400,6 +407,16 @@ func (c textContext) sentence(src combat.Source) string {
 		return fmt.Sprintf("%s: desvantagem em testes de habilidade", c.cond(src.Condition))
 	case combat.SourcePerceptionDim:
 		return "Você vê o chão em penumbra: desvantagem na Percepção"
+	case combat.SourceExhaustionAttack:
+		return "Exaustão: desvantagem em jogadas de ataque"
+	case combat.SourceExhaustionSave:
+		return "Exaustão: desvantagem em testes de resistência"
+	case combat.SourceExhaustionCheck:
+		return "Exaustão: desvantagem em testes de habilidade"
+	case combat.SourceOutlinedTarget:
+		return "Alvo delineado: vantagem se o atacante o vê"
+	case combat.SourceEffectSave:
+		return "Efeito ativo: vantagem no teste de resistência"
 	}
 	return ""
 }
@@ -582,12 +599,31 @@ func (s *Service) spellModes(ctx context.Context, c *combatTx, m authz.Membershi
 
 // shownSources writes the sources of a saving throw or an ability check.
 func shownSources(sources []combat.Source, names func(string) string) []*playv1.AdvantageSource {
+	return shownSourcesHiding(sources, names, nil)
+}
+
+// shownSourcesHiding is shownSources with the sources of an effect the master hides turned
+// into "Outra fonte" (RN-10): hide says which.
+func shownSourcesHiding(sources []combat.Source, names func(string) string, hide func(combat.Source) bool) []*playv1.AdvantageSource {
 	ctx := textContext{self: true, names: names}
 	var out []*playv1.AdvantageSource
 	for _, src := range sources {
-		out = append(out, &playv1.AdvantageSource{Kind: sourceKindToProto[src.Kind], Effect: modeToProto[src.Effect], TextPt: ctx.sentence(src)})
+		out = append(out, sourceProto(src, ctx, hide))
 	}
 	return out
+}
+
+// sourceProto writes one source; one the viewer may not know the origin of reads
+// "Outra fonte" with the effect and no key.
+func sourceProto(src combat.Source, ctx textContext, hide func(combat.Source) bool) *playv1.AdvantageSource {
+	if hide != nil && hide(src) {
+		text := "Outra fonte: vantagem"
+		if src.Effect == combat.ModeDisadvantage {
+			text = "Outra fonte: desvantagem"
+		}
+		return &playv1.AdvantageSource{Kind: playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_OTHER_SOURCE, Effect: modeToProto[src.Effect], TextPt: text}
+	}
+	return &playv1.AdvantageSource{Kind: sourceKindToProto[src.Kind], Effect: modeToProto[src.Effect], TextPt: ctx.sentence(src)}
 }
 
 // attach puts the circumstances of each roll in the answer to the cast. A retry of a

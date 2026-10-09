@@ -733,7 +733,11 @@ func (s *Service) RollSceneCheck(
 		if err != nil {
 			return err
 		}
-		shown = shownSources(cm.Sources, names)
+		// Bênção and Perdição add their die to a saving throw (SRD 5.1).
+		if bonus, err = s.withEffectDice(&cm, bonus); err != nil {
+			return err
+		}
+		shown = cm.shownCheck(names)
 		d20, err := s.d20With(in, bonus, cm.Mode)
 		if err != nil {
 			return err

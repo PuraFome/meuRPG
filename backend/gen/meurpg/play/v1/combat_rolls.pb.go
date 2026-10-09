@@ -143,6 +143,8 @@ const (
 	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET   AdvantageSourceKind = 103
 	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_SAVE       AdvantageSourceKind = 104
 	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_OTHER_SOURCE      AdvantageSourceKind = 105
+	// A die an effect added to the roll ("Bênção +1d4"), outside combat too.
+	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_DIE AdvantageSourceKind = 106
 )
 
 // Enum value maps for AdvantageSourceKind.
@@ -184,6 +186,7 @@ var (
 		103: "ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET",
 		104: "ADVANTAGE_SOURCE_KIND_EFFECT_SAVE",
 		105: "ADVANTAGE_SOURCE_KIND_OTHER_SOURCE",
+		106: "ADVANTAGE_SOURCE_KIND_EFFECT_DIE",
 	}
 	AdvantageSourceKind_value = map[string]int32{
 		"ADVANTAGE_SOURCE_KIND_UNSPECIFIED":         0,
@@ -222,6 +225,7 @@ var (
 		"ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET":     103,
 		"ADVANTAGE_SOURCE_KIND_EFFECT_SAVE":         104,
 		"ADVANTAGE_SOURCE_KIND_OTHER_SOURCE":        105,
+		"ADVANTAGE_SOURCE_KIND_EFFECT_DIE":          106,
 	}
 )
 
@@ -1667,7 +1671,7 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\x15ROLL_MODE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10ROLL_MODE_NORMAL\x10\x01\x12\x17\n" +
 	"\x13ROLL_MODE_ADVANTAGE\x10\x02\x12\x1a\n" +
-	"\x16ROLL_MODE_DISADVANTAGE\x10\x03*\x96\f\n" +
+	"\x16ROLL_MODE_DISADVANTAGE\x10\x03*\xbc\f\n" +
 	"\x13AdvantageSourceKind\x12%\n" +
 	"!ADVANTAGE_SOURCE_KIND_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"ADVANTAGE_SOURCE_KIND_PRONE_TARGET\x10\x01\x12(\n" +
@@ -1705,7 +1709,8 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"&ADVANTAGE_SOURCE_KIND_EXHAUSTION_CHECK\x10f\x12)\n" +
 	"%ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET\x10g\x12%\n" +
 	"!ADVANTAGE_SOURCE_KIND_EFFECT_SAVE\x10h\x12&\n" +
-	"\"ADVANTAGE_SOURCE_KIND_OTHER_SOURCE\x10i*\xb3\x01\n" +
+	"\"ADVANTAGE_SOURCE_KIND_OTHER_SOURCE\x10i\x12$\n" +
+	" ADVANTAGE_SOURCE_KIND_EFFECT_DIE\x10j*\xb3\x01\n" +
 	"\x15RollModeRequestStatus\x12(\n" +
 	"$ROLL_MODE_REQUEST_STATUS_UNSPECIFIED\x10\x00\x12$\n" +
 	" ROLL_MODE_REQUEST_STATUS_PENDING\x10\x01\x12%\n" +

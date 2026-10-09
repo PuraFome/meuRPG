@@ -362,14 +362,13 @@ func (s *Service) refreshCombatants(ctx context.Context, c *combatTx, ids ...str
 		}
 		pct := combat.SpeedPercent(mods)
 		switch ex := combat.ExhaustionAt(level); {
-		case ex.SpeedZero:
-			pct = 0
 		case ex.SpeedHalved:
 			pct /= 2
 		}
 		ac := combat.ArmorClassBonus(mods)
 		noAction := slices.ContainsFunc(mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierNoAction })
-		noMove := slices.ContainsFunc(mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierNoMove })
+		// Speed 0 (exhaustion 5, the lethargy) is no movement; a percentage of 0 is never stored.
+		noMove := ex0(level) || slices.ContainsFunc(mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierNoMove })
 		if derived == nil {
 			derived = []string{}
 		}
@@ -605,3 +604,6 @@ func effectSaveAdvantage(states map[string][]playdb.CombatantState, id string) [
 	}
 	return out
 }
+
+// ex0 says the level of exhaustion takes the speed to 0 (SRD 5.1, Conditions: level 5).
+func ex0(level int) bool { return combat.ExhaustionAt(level).SpeedZero }

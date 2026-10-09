@@ -160,7 +160,10 @@ func speedDFt(c playdb.Combatant) int {
 		speed *= 2
 	}
 	// The speed the effects leave: doubled by Velocidade, halved or 0 by exhaustion (SRD, Conditions).
-	return speed * int(c.EffectSpeedPct) / 100
+	if c.EffectSpeedPct > 0 {
+		speed = speed * int(c.EffectSpeedPct) / 100
+	}
+	return speed
 }
 
 // movementLeftDFt is the movement the combatant has left this turn, in tenths of

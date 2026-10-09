@@ -142,6 +142,7 @@ var notReads = map[string]classified{
 	playv1connect.CastingServiceCastSpellOutsideCombatProcedure:                 {playerAction, "a player casts for their own character; only the master casts for an NPC"},
 	playv1connect.CastingServiceConfirmCastTimePassedProcedure:                  {masterWrite, masterOnlyWhy},
 	playv1connect.CastingServiceEndActiveSpellProcedure:                         {playerAction, "a player ends a spell of their own character; the master any"},
+	playv1connect.LastingEffectServiceAdvanceGameTimeProcedure:                  {masterWrite, masterOnlyWhy},
 	playv1connect.LastingEffectServiceAddLastingEffectProcedure:                 {masterWrite, masterOnlyWhy},
 	playv1connect.LastingEffectServiceChangeLastingEffectDurationProcedure:      {masterWrite, masterOnlyWhy},
 	playv1connect.LastingEffectServiceEndLastingEffectProcedure:                 {masterWrite, masterOnlyWhy},

@@ -192,11 +192,15 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	if err != nil {
 		return nil, err
 	}
-	d20, err := s.d20With(in, options[0].Bonus, cm.Mode)
+	bonus, err := s.withEffectDice(&cm, options[0].Bonus)
 	if err != nil {
 		return nil, err
 	}
-	d20 = reliableD20(d20, options[0].Bonus, options[0].ReliableTalent)
+	d20, err := s.d20With(in, bonus, cm.Mode)
+	if err != nil {
+		return nil, err
+	}
+	d20 = reliableD20(d20, bonus, options[0].ReliableTalent)
 	roll := d20
 	face := d20.Face()
 	passed := roll.Total >= int(d.hintCheck.GetDc())
@@ -207,7 +211,7 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	}
 	try, err := q.InsertPuzzleHintTry(ctx, playdb.InsertPuzzleHintTryParams{
 		RunID: run.ID, UserID: &m.UserID, CharacterID: &who.ID, IdempotencyKey: key, HintIndex: clamp32(next, 0, maxHints),
-		Passed: passed, GrantedCount: granted, D20: clamp32(face, 1, 20), Modifier: clamp32(options[0].Bonus, -1000, 1000),
+		Passed: passed, GrantedCount: granted, D20: clamp32(face, 1, 20), Modifier: clamp32(bonus, -1000, 1000),
 		Total: clamp32(roll.Total, -1000, 1000), Physical: roll.Physical, CreatedAt: now,
 		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(cm.Mode),
 	})
@@ -226,7 +230,7 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	if err != nil {
 		return nil, err
 	}
-	res.sources = shownSources(cm.Sources, names)
+	res.sources = cm.shownCheck(names)
 	return s.namesOfRuns(ctx, tx, m.CampaignID, saved)
 }
 

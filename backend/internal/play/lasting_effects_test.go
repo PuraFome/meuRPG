@@ -232,7 +232,7 @@ func TestHoldPersonParalyzesAndTheEndOfTurnSaveFreesTheTarget(t *testing.T) {
 	if len(opts.GetOptions().GetAttacks()) > 0 && opts.GetOptions().GetAttacks()[0].GetEnabled() {
 		t.Error("a paralyzed Goblin can attack")
 	}
-	if _, err := a.endTurn(t, a.master, e, true); err != nil {
+	if _, err := a.endTurnRaw(t, a.master, e, true); err != nil {
 		t.Fatalf("EndTurn() error = %v", err)
 	}
 	w := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE)
@@ -299,4 +299,127 @@ func TestAnOutsideCastEntersACombatInRoundsAndLeavesItInGameTime(t *testing.T) {
 	if c == nil || c.GetStatus() != playv1.OutsideCastStatus_OUTSIDE_CAST_STATUS_ACTIVE || c.GetDurationSeconds() != 54 {
 		t.Errorf("after the combat the cast = %v, want active with 54 seconds", c)
 	}
+}
+
+// advanceGameTime has the master move game time on by seconds.
+func (a *armed) advanceGameTime(t *testing.T, seconds int32) *playv1.AdvanceGameTimeResponse {
+	t.Helper()
+	res, err := a.master.lasting.AdvanceGameTime(t.Context(), connect.NewRequest(&playv1.AdvanceGameTimeRequest{CampaignId: a.campaignID, IdempotencyKey: newKey(), Seconds: seconds}))
+	if err != nil {
+		t.Fatalf("AdvanceGameTime() error = %v", err)
+	}
+	return res.Msg
+}
+
+// The effect of a spell cast before a fight is the same record in it: Bless cast outside a
+// combat a round before the fight (6 seconds of game time) enters with 9 rounds, and a saving
+// throw inside the combat adds its d4 (SRD 5.1, Bless: 1 minute, 1d4 on attack rolls and
+// saving throws).
+func TestABuffCastBeforeTheFightEntersItWithTheTimeItHasLeft(t *testing.T) {
+	t.Parallel()
+	a := newCastingParty(t)
+	a.mustCastOut(t, a.bia, a.bri, blessKey, slotOfLevel(1), false, []*charactersv1.Character{a.toren})
+	a.advanceGameTime(t, 6)
+	e := a.closeFight(t)
+	f := cardOf(t, byLabel(t, e, "Toren"), blessKey)
+	if f == nil || f.GetRoundsLeft() != 9 {
+		t.Fatalf("Toren's Bless = %v, want 9 rounds left (54 seconds, a partial round does not count)", f)
+	}
+	// A saving throw in the combat takes the die.
+	a.mustAddEffect(t, e, holdPerson, []string{"Toren"}, a.rounds(t, 10, "Toren"))
+	a.passTo(t, e, "Toren")
+	if _, err := a.endTurnRaw(t, a.master, e, true); err != nil {
+		t.Fatalf("EndTurn() error = %v", err)
+	}
+	w := a.windowOf(t, a.caio, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE)
+	if w == nil {
+		t.Fatalf("Toren's windows = %v, want the save of Hold Person", a.windows(t, a.caio))
+	}
+	if got := w.GetEffectSave().GetExtraDice(); len(got) != 1 || got[0].GetFaces() != 4 || got[0].GetSign() != 1 {
+		t.Errorf("the prompt's extra dice = %v, want Bless's d4", got)
+	}
+	a.h.roller.queue(10, 3)
+	res, err := a.rollEffectSave(t, a.caio, e, w.GetId(), func(r *playv1.RollEffectSaveRequest) {
+		r.Roll = &playv1.RollEffectSaveRequest_RollInApp{RollInApp: true}
+	})
+	if err != nil {
+		t.Fatalf("RollEffectSave() error = %v", err)
+	}
+	if got := res.GetResult().GetExtraDice(); len(got) != 1 || got[0].GetFace() != 3 {
+		t.Errorf("the result's extra dice = %v, want a d4 that rolled 3", got)
+	}
+	// The record is the same one all along: it goes back to game time with the rounds left.
+	if _, err := a.master.combat.EndEncounter(t.Context(), connect.NewRequest(&playv1.EndEncounterRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), IdempotencyKey: newKey()})); err != nil {
+		t.Fatalf("EndEncounter() error = %v", err)
+	}
+	var left int32
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT seconds_left FROM character_effects WHERE source_key = $1`, blessKey).Scan(&left); err != nil {
+		t.Fatalf("the effect did not go back to the character: %v", err)
+	}
+	if left%6 != 0 || left > 54 || left < 6 {
+		t.Errorf("seconds left after the combat = %d, want whole rounds of at most 54", left)
+	}
+}
+
+// Outside a combat the effects count in the saving throws a scene asks: Bless adds its d4, and
+// the sources of the roll say so.
+func TestAnOutsideSavingThrowTakesTheDiceOfItsEffects(t *testing.T) {
+	t.Parallel()
+	a := newCastingParty(t)
+	a.mustCastOut(t, a.bia, a.bri, blessKey, slotOfLevel(1), false, []*charactersv1.Character{a.toren})
+	point, actions := a.h.newScene(a.mapID, "Ponte", true, 3, sceneSpec{key: "save:wis"})
+	a.openScene(t, point)
+	a.h.roller.queue(10, 4)
+	res, err := a.caio.play.RollSceneCheck(t.Context(), connect.NewRequest(&playv1.RollSceneCheckRequest{
+		CampaignId: a.campaignID, ActionId: actions[0], IdempotencyKey: newKey(), Roll: &playv1.RollSceneCheckRequest_RollInApp{RollInApp: true},
+	}))
+	if err != nil {
+		t.Fatalf("RollSceneCheck() error = %v", err)
+	}
+	var die *playv1.AdvantageSource
+	for _, src := range res.Msg.GetRoll().GetSources() {
+		if src.GetKind() == playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_DIE {
+			die = src
+		}
+	}
+	if die == nil || !strings.Contains(die.GetTextPt(), "Bênção") || !strings.Contains(die.GetTextPt(), "1d4") {
+		t.Errorf("the sources = %v, want Bênção +1d4", res.Msg.GetRoll().GetSources())
+	}
+}
+
+// RN-10: an effect the master hides from the players is "Outra fonte" in the sources of a roll.
+func TestAHiddenEffectIsAnotherSourceInAScenesRoll(t *testing.T) {
+	t.Parallel()
+	a := newCastingParty(t)
+	a.execSQL(t, `INSERT INTO character_effects (campaign_id, character_id, group_id, source_key, source_kind, condition_keys, duration_kind, player_visible)
+		VALUES ($1, $2, gen_random_uuid(), 'effect:LEAKCANARY-source-1', 'master', ARRAY['condition:poisoned'], 'until_dismissed', false)`, a.campaignID, a.toren.GetId())
+	point, actions := a.h.newScene(a.mapID, "Ponte", true, 3, sceneSpec{key: "skill:perception"})
+	a.openScene(t, point)
+	a.h.roller.queue(10, 12)
+	res, err := a.caio.play.RollSceneCheck(t.Context(), connect.NewRequest(&playv1.RollSceneCheckRequest{
+		CampaignId: a.campaignID, ActionId: actions[0], IdempotencyKey: newKey(), Roll: &playv1.RollSceneCheckRequest_RollInApp{RollInApp: true},
+	}))
+	if err != nil {
+		t.Fatalf("RollSceneCheck() error = %v", err)
+	}
+	roll := res.Msg.GetRoll()
+	if roll.GetMode() == 0 && len(roll.GetSources()) == 0 {
+		t.Fatalf("the hidden Poisoned changed nothing: %v", roll)
+	}
+	for _, src := range roll.GetSources() {
+		if strings.Contains(src.GetTextPt(), "Envenenado") || src.GetKind() != playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_OTHER_SOURCE {
+			t.Errorf("source %v: a hidden effect must read Outra fonte", src)
+		}
+	}
+	if !strings.Contains(strings.Join(sourceTexts(roll.GetSources()), ","), "Outra fonte") {
+		t.Errorf("the sources = %v, want Outra fonte", roll.GetSources())
+	}
+}
+
+func sourceTexts(s []*playv1.AdvantageSource) []string {
+	var out []string
+	for _, x := range s {
+		out = append(out, x.GetTextPt())
+	}
+	return out
 }

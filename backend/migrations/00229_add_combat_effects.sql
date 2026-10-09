@@ -68,6 +68,44 @@ ALTER TABLE combatant_states
     DROP CONSTRAINT IF EXISTS combatant_states_modifiers_valid,
     ADD CONSTRAINT combatant_states_modifiers_valid CHECK (jsonb_typeof(modifiers) = 'array' AND jsonb_array_length(modifiers) <= 8);
 
+-- The same effect on a character that is not in a running combat: the record changes home
+-- with the character, whole and with the same id, when a combat takes it in or lets it go,
+-- so there is never a copy of it. Out of combat there are no turns and no running clock:
+-- seconds_left is the game time the effect has left (a round is 6 seconds, in a combat and
+-- out of it), and it only moves when the master moves game time (a cast that took time, a
+-- rest) or ends the effect. NULL means it lasts until it is dismissed or its caster stops
+-- concentrating. source_character_id is the caster (a character), NULL for the master.
+-- An effect of a monster (no character) lives in a combat alone and ends with it.
+CREATE TABLE IF NOT EXISTS character_effects (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    campaign_id UUID NOT NULL REFERENCES campaigns (id) ON DELETE CASCADE,
+    character_id UUID NOT NULL REFERENCES characters (id) ON DELETE CASCADE,
+    source_character_id UUID NULL REFERENCES characters (id) ON DELETE SET NULL,
+    group_id UUID NOT NULL,
+    source_key TEXT NOT NULL,
+    source_kind TEXT NOT NULL CHECK (source_kind IN ('spell', 'feature', 'master')),
+    concentration BOOL NOT NULL DEFAULT false,
+    condition_keys TEXT[] NOT NULL DEFAULT '{}',
+    modifiers JSONB NOT NULL DEFAULT '[]' CHECK (jsonb_typeof(modifiers) = 'array' AND jsonb_array_length(modifiers) <= 8),
+    duration_kind TEXT NOT NULL CHECK (duration_kind IN ('rounds', 'until_start_of_turn_of', 'until_end_of_turn_of', 'concentration', 'until_dismissed', 'long_rest')),
+    seconds_left INT4 NULL CHECK (seconds_left IS NULL OR seconds_left >= 0),
+    end_save_ability TEXT NULL,
+    start_save_ability TEXT NULL,
+    save_dc INT4 NULL CHECK (save_dc IS NULL OR save_dc BETWEEN 1 AND 40),
+    on_fail_effect TEXT NULL,
+    follows_key TEXT NULL,
+    trigger_dice TEXT NULL,
+    trigger_damage_type TEXT NULL,
+    trigger_max_triggers INT4 NULL,
+    triggers_fired INT4 NOT NULL DEFAULT 0,
+    player_visible BOOL NOT NULL DEFAULT true,
+    audience TEXT NOT NULL DEFAULT 'all' CHECK (audience IN ('all', 'owner')),
+    player_label TEXT NULL CHECK (player_label IS NULL OR char_length(player_label) BETWEEN 1 AND 30),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS character_effects_character_idx ON character_effects (character_id);
+CREATE INDEX IF NOT EXISTS character_effects_campaign_group_idx ON character_effects (campaign_id, group_id);
+
 -- What the effects leave on a combatant, worked out again whenever one starts or
 -- ends so that every read of the combatant sees it: effect_conditions are the
 -- conditions the effects give (they are also in conditions; the service tells them
@@ -108,6 +146,7 @@ ALTER TABLE pending_damages
     ADD COLUMN IF NOT EXISTS effect_source_key TEXT NULL;
 
 -- +goose Down
+DROP TABLE IF EXISTS character_effects;
 ALTER TABLE pending_damages DROP COLUMN IF EXISTS effect_source_key;
 ALTER TABLE character_vitals
     DROP CONSTRAINT IF EXISTS character_vitals_exhaustion_level_valid,

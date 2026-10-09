@@ -41,6 +41,10 @@ func (s *Service) closeCast(ctx context.Context, c *combatTx, r playdb.SpellCast
 	if err != nil {
 		return r, nil, nil, fmt.Errorf("end the cast: %w", err)
 	}
+	// What the cast left on the characters out of a combat goes with it.
+	if err := s.endCharacterEffectsOfCast(ctx, c, r.ID); err != nil {
+		return r, nil, nil, err
+	}
 	var vitals []*playv1.CharacterVitals
 	if was.Status == castActive {
 		v, err := s.takeBackCast(ctx, c, row)
@@ -252,6 +256,10 @@ func (s *Service) ConfirmCastTimePassed(
 		}
 		plan.in, plan.rolled, plan.pick, plan.row = in, rolled, pick, row
 		if err := s.checkCastInput(ctx, c, m, plan); err != nil {
+			return nil, err
+		}
+		// The time the casting took has passed: game time moves on for what had a clock.
+		if err := s.advanceGameTime(ctx, c, clamp32(int(row.CastingMinutes)*60, 0, 1<<30)); err != nil {
 			return nil, err
 		}
 		out, err := s.takeEffect(ctx, c, m, plan)

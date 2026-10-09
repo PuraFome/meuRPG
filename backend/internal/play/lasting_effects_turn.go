@@ -172,6 +172,10 @@ func cannotMove(k string) bool {
 // endEffectsOfLeaver ends the effects a combatant leaving the fight carries or holds by
 // concentration, before its row goes.
 func (s *Service) endEffectsOfLeaver(ctx context.Context, c *combatTx, cs []playdb.Combatant, who playdb.Combatant) error {
+	// A character keeps what is on it: its effects go back to game time.
+	if err := s.effectsToCharacters(ctx, c, cs, []playdb.Combatant{who}); err != nil {
+		return err
+	}
 	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
 	if err != nil {
 		return fmt.Errorf("list the effects: %w", err)

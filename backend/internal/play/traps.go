@@ -259,14 +259,17 @@ func (s *Service) SearchForTraps(
 		if err != nil {
 			return err
 		}
-		shown = shownSources(cm.Sources, names)
 		var (
 			face, face2 int
 			totals      []int
 			roll        dice.Result
 			counted     int
 		)
-		bonus := options[0].Bonus
+		bonus, err := s.withEffectDice(&cm, options[0].Bonus)
+		if err != nil {
+			return err
+		}
+		shown = cm.shownCheck(names)
 		if cm.Mode != combat.ModeNormal {
 			// The conditions change the roll: two dice, the better or the worse counts. Where
 			// the light is dim to a Perception searcher, that disadvantage cancels an

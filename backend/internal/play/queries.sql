@@ -1335,12 +1335,12 @@ WHERE encounter_id = $1 AND status = 'open' AND trigger->>'pending' = sqlc.arg(p
 
 -- name: InsertLastingEffect :one
 INSERT INTO combatant_states (
-    encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at,
+    id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at,
     group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind,
     end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key,
     trigger_dice, trigger_damage_type, trigger_max_triggers, player_visible, audience, player_label
 ) VALUES (
-    $1, $2, 'effect', sqlc.narg(source_id), sqlc.narg(ends_combatant_id), sqlc.narg(ends_phase), sqlc.narg(ends_round), $3, 0, $4,
+    COALESCE(sqlc.narg(id)::UUID, gen_random_uuid()), $1, $2, 'effect', sqlc.narg(source_id), sqlc.narg(ends_combatant_id), sqlc.narg(ends_phase), sqlc.narg(ends_round), $3, 0, $4,
     $5, $6, $7, $8, $9, $10, $11,
     sqlc.narg(end_save_ability), sqlc.narg(start_save_ability), sqlc.narg(save_dc), sqlc.narg(on_fail_effect), sqlc.narg(follows_key),
     sqlc.narg(trigger_dice), sqlc.narg(trigger_damage_type), sqlc.narg(trigger_max_triggers), $12, $13, sqlc.narg(player_label)
@@ -1409,4 +1409,46 @@ INSERT INTO pending_damages (
 ) VALUES (
     $1, NULL, $2, 'effect', $3, false, $4, $5, $6, $7, $8, $9, $10, false, $11, sqlc.narg(resolved_at), $12
 )
+RETURNING *;
+
+-- name: InsertCharacterEffect :one
+-- An effect on a character out of a running combat, with the id it had in the combat when it
+-- comes from one (the record changes home, it is never copied).
+INSERT INTO character_effects (
+    id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration,
+    condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc,
+    on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired,
+    player_visible, audience, player_label, created_at
+) VALUES (
+    COALESCE(sqlc.narg(id)::UUID, gen_random_uuid()), $1, $2, sqlc.narg(source_character_id), $3, $4, $5, $6,
+    $7, $8, $9, sqlc.narg(seconds_left), sqlc.narg(end_save_ability), sqlc.narg(start_save_ability), sqlc.narg(save_dc),
+    sqlc.narg(on_fail_effect), sqlc.narg(follows_key), sqlc.narg(trigger_dice), sqlc.narg(trigger_damage_type), sqlc.narg(trigger_max_triggers), $10,
+    $11, $12, sqlc.narg(player_label), $13
+)
+RETURNING *;
+
+-- name: ListCharacterEffects :many
+SELECT * FROM character_effects WHERE character_id = ANY($1::UUID[]) ORDER BY created_at, id;
+
+-- name: ListCharacterEffectsOfCampaign :many
+SELECT * FROM character_effects WHERE campaign_id = $1 ORDER BY created_at, id;
+
+-- name: GetCharacterEffect :one
+SELECT * FROM character_effects WHERE id = $1 AND campaign_id = $2;
+
+-- name: DeleteCharacterEffect :exec
+DELETE FROM character_effects WHERE id = $1;
+
+-- name: DeleteCharacterEffectsOfGroup :many
+-- The effects of a casting end together.
+DELETE FROM character_effects WHERE campaign_id = $1 AND group_id = $2 RETURNING *;
+
+-- name: SetCharacterEffectSeconds :exec
+UPDATE character_effects SET seconds_left = $2 WHERE id = $1;
+
+-- name: AdvanceCharacterEffects :many
+-- The master moves game time on: what has a clock loses the seconds, and what has none left
+-- is returned to be ended.
+UPDATE character_effects SET seconds_left = GREATEST(seconds_left - $2::INT4, 0)
+WHERE campaign_id = $1 AND seconds_left IS NOT NULL
 RETURNING *;

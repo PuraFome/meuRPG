@@ -440,7 +440,7 @@ func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Gr
 		}
 		added = append(added, joined...)
 	}
-	if err := s.carryLastingEffects(ctx, c, all, added); err != nil {
+	if err := s.effectsToCombat(ctx, c, all, added); err != nil {
 		return nil, nil, err
 	}
 	order, err = saveOrder(ctx, c.q, all, orderCombatants(all))
@@ -1291,8 +1291,8 @@ func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Com
 	if err := s.endCombatSights(ctx, c, cs); err != nil {
 		return err
 	}
-	// The rounds the effects of an outside cast have left go back to game time.
-	if err := s.carryEffectsOut(ctx, c); err != nil {
+	// The effects on the characters go back to game time with the rounds they have left.
+	if err := s.effectsToCharacters(ctx, c, cs, nil); err != nil {
 		return err
 	}
 	// The concentration the combatants carried goes back to the casts (casting_combat.go).

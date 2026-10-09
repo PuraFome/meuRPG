@@ -211,8 +211,8 @@ func TestMR036_FamiliarSightInCombat(t *testing.T) {
 		t.Errorf("combatant = action %v, conditions %v, sight %q; want the action spent, blinded and deafened, the owl", got.GetActionUsed(), got.GetConditions(), got.GetFamiliarSightCreatureId())
 	}
 	// Who is told which creature: the owner and the master; the others see the conditions only.
-	if other := byLabel(t, a.get(t, s.caio), "Pensantus"); other.GetFamiliarSightCreatureId() != "" || !slices.Equal(other.GetConditions(), blindAndDeaf) {
-		t.Errorf("another player's copy = sight %q, conditions %v, want no creature ID", other.GetFamiliarSightCreatureId(), other.GetConditions())
+	if other := byLabel(t, a.get(t, s.caio), "Pensantus"); other.GetFamiliarSightCreatureId() != "" || !slices.Equal(other.GetConditions(), []string{"condition:blinded"}) {
+		t.Errorf("another player's copy = sight %q, conditions %v, want no creature ID and Blinded alone (Deafened is the owner's and the master's)", other.GetFamiliarSightCreatureId(), other.GetConditions())
 	}
 	if byLabel(t, a.get(t, s.master), "Pensantus").GetFamiliarSightCreatureId() == "" {
 		t.Error("the master's copy lacks the familiar's ID")

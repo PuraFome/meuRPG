@@ -17,6 +17,34 @@ type BattleEncounter struct {
 	UpdatedAt  time.Time
 }
 
+type CharacterEffect struct {
+	ID                 string
+	CampaignID         string
+	CharacterID        string
+	SourceCharacterID  *string
+	GroupID            string
+	SourceKey          string
+	SourceKind         string
+	Concentration      bool
+	ConditionKeys      []string
+	Modifiers          []byte
+	DurationKind       string
+	SecondsLeft        *int32
+	EndSaveAbility     *string
+	StartSaveAbility   *string
+	SaveDc             *int32
+	OnFailEffect       *string
+	FollowsKey         *string
+	TriggerDice        *string
+	TriggerDamageType  *string
+	TriggerMaxTriggers *int32
+	TriggersFired      int32
+	PlayerVisible      bool
+	Audience           string
+	PlayerLabel        *string
+	CreatedAt          time.Time
+}
+
 type CombatReason struct {
 	ID          string
 	EncounterID string
