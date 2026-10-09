@@ -1164,6 +1164,15 @@ SELECT * FROM combat_reasons
 WHERE encounter_id = $1
 ORDER BY created_at, id;
 
+-- The campaign package (MR-050).
+
+-- name: ListBattleEncountersOfCampaign :many
+-- Every encounter kept on a battle point of the campaign, oldest first, for an export.
+SELECT e.* FROM battle_encounters AS e
+JOIN map_points AS p ON p.id = e.map_point_id
+WHERE e.campaign_id = $1 AND p.kind = 'battle'
+ORDER BY e.created_at, e.map_point_id;
+
 -- name: NextHiddenRevealSeq :one
 -- The place of the next question of the combat in the order they are answered.
 SELECT (COALESCE(MAX(seq), 0) + 1)::INT4 FROM hidden_reveals WHERE encounter_id = $1;
