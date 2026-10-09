@@ -150,6 +150,9 @@ func (s *Service) mustActNow(ctx context.Context, c *combatTx, who playdb.Combat
 	if code != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED {
 		return gateError(code)
 	}
+	if err := s.mustNotHold(ctx, c); err != nil { // a question waits for the master: nobody's turn goes on
+		return err
+	}
 	return s.mustNotWait(ctx, c, who)
 }
 
@@ -320,6 +323,8 @@ func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrai
 		}
 		st := &playv1.SpellTargets{
 			SpellKey: e.key, Targets: spellTargetList(terrain, cs, who, v, sp, theatre),
+			Placement: placementFor(sp, theatre), AreaShape: areaShapeProto(sp, theatre), AreaSizeFt: areaSizeFor(sp, theatre),
+			AreaWidthFt: areaWidthFor(sp, theatre), RangeFt: placedRangeFor(sp, theatre),
 			MaxTargets: clamp32(maxTargetsOf(sp, e.level), 0, maxCombatants), ExtraTargetPerLevel: sp.ExtraTargetPerLevel || sp.Key == magicMissile,
 			TargetsPerLevel: clamp32(sp.TargetPerLevel, 0, maxCombatants),
 		}
@@ -1042,7 +1047,10 @@ func (s *Service) RollDamage(
 		}
 		for _, g := range group {
 			tgt, _ := findCombatant(cs, g.TargetID, combatViewer{master: true})
-			made.Secret = made.Secret || tgt.Hidden
+			// A hidden creature in the one roll of a cast that settles several makes the
+			// roll the master's alone, unless the cast lists its targets for each viewer:
+			// an area's line leaves out the hidden ones itself (spellView).
+			made.Secret = made.Secret || (tgt.Hidden && p.CastID == nil)
 			amount := clamp32(total, 0, math.MaxInt32)
 			if g.Half {
 				amount = clamp32(combat.HalfDamage(total), 0, math.MaxInt32)

@@ -13,6 +13,8 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
+let nextWhy = 0;
+
 /**
  * The master's "Próximo turno" (E6-11, E6-12): the one filled button of the
  * screen, 52px. With a damage still to roll or apply it asks in place, "Há
@@ -34,9 +36,21 @@ import { MatIconModule } from '@angular/material/icon';
         </div>
       </div>
     } @else {
-      <button mat-flat-button type="button" class="next" [class.next--off]="waiting()" [disabled]="busy() || waiting()" disabledInteractive (click)="press()">
+      <button
+        mat-flat-button
+        type="button"
+        class="next"
+        [class.next--off]="waiting()"
+        [disabled]="busy() || waiting()"
+        disabledInteractive
+        [attr.aria-describedby]="waiting() && why() ? whyId : null"
+        (click)="press()"
+      >
         <mat-icon aria-hidden="true">skip_next</mat-icon>Próximo turno
       </button>
+      @if (waiting() && why()) {
+        <p class="why" [id]="whyId"><mat-icon aria-hidden="true">lock</mat-icon>{{ why() }}</p>
+      }
     }
   `,
   styles: `
@@ -47,6 +61,25 @@ import { MatIconModule } from '@angular/material/icon';
     .next {
       --mat-button-filled-container-height: 52px;
       width: 100%;
+    }
+
+    // Why the turn cannot pass ("Responda ao pedido abaixo para seguir."), under the button, at its right edge.
+    .why {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+      margin: 6px 0 0;
+      font-size: 13px;
+      line-height: 17px;
+      color: var(--mr-ink-muted);
+
+      .mat-icon {
+        flex: none;
+        width: 14px;
+        height: 14px;
+        font-size: 14px;
+      }
     }
 
     // Waiting for an opportunity attack's answer: the app's dashed, off button.
@@ -118,6 +151,9 @@ export class NextTurn {
   readonly busy = input(false);
   /** An opportunity attack waits for an answer: the turn cannot pass yet. */
   readonly waiting = input(false);
+  /** Why it cannot pass, written under the button and linked to it ("Responda ao pedido abaixo para seguir."), or `''`. */
+  readonly why = input('');
+  protected readonly whyId = `next-why-${nextWhy++}`;
   /** Whose turn it is and the round: the question belongs to one turn. */
   readonly turn = input('');
   /** `true` when the master passes the turn although a damage waits. */

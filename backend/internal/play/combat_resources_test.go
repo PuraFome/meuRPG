@@ -892,11 +892,48 @@ func (a *armed) castWith(t *testing.T, u *user, e *playv1.Encounter, caster, spe
 		CampaignId: a.campaignID, EncounterId: e.GetId(), CasterId: a.id(t, caster), SpellKey: spell, Slot: slot, Targets: targets,
 		IdempotencyKey: newKey(), Metamagic: meta, Roll: &playv1.CastSpellRequest_RollInApp{RollInApp: true},
 	}
+	a.placeArea(t, req)
 	res, err := u.combat.CastSpell(t.Context(), connect.NewRequest(req))
 	if err != nil {
 		return nil, err
 	}
 	return res.Msg, nil
+}
+
+// placeArea puts the area of a spell on the first target's square (a sphere) or toward it from
+// the caster (a cone), as a placed area spell asks on a map; the targets then follow from the area.
+func (a *armed) placeArea(t *testing.T, req *playv1.CastSpellRequest) {
+	t.Helper()
+	if len(req.GetTargets()) == 0 || (req.GetSpellKey() != fireballSpell && req.GetSpellKey() != burningHands) {
+		return
+	}
+	var first, caster *playv1.Combatant
+	for _, c := range a.get(t, a.master).GetCombatants() {
+		switch c.GetId() {
+		case req.GetTargets()[0].GetCombatantId():
+			first = c
+		case req.GetCasterId():
+			caster = c
+		}
+	}
+	if first == nil || caster == nil {
+		return
+	}
+	if req.GetSpellKey() == fireballSpell {
+		req.Area = &playv1.CastSpellRequest_Origin{Origin: &playv1.SpellOrigin{Col: first.GetCol(), Row: first.GetRow()}}
+		return
+	}
+	req.Area = &playv1.CastSpellRequest_Direction{Direction: &playv1.SpellDirection{Dx: sign(first.GetCol() - caster.GetCol()), Dy: sign(first.GetRow() - caster.GetRow())}}
+}
+
+func sign(n int32) int32 {
+	switch {
+	case n > 0:
+		return 1
+	case n < 0:
+		return -1
+	}
+	return 0
 }
 
 func choice(key string) *playv1.MetamagicChoice { return &playv1.MetamagicChoice{Key: key} }
@@ -1057,7 +1094,7 @@ func TestTwinnedSpellReachesASecondTargetForTheSpellLevel(t *testing.T) {
 func TestMetamagicRefusals(t *testing.T) {
 	t.Parallel()
 	a := newResourceTable(t)
-	e := a.sorcererFight(t, nil)
+	e := a.sorcererFight(t, map[string][2]int32{"Nael": {4, 9}, "Tavo": {9, 3}, "Orla": {10, 3}, "Goblin": {4, 4}, "Capitão Goblin": {9, 9}})
 	goblin, captain := a.id(t, "Goblin"), a.id(t, "Capitão Goblin")
 	for name, meta := range map[string][]*playv1.MetamagicChoice{
 		"an option the sorcerer does not know":         {choice(rules.MetamagicSubtle)},
@@ -1161,7 +1198,7 @@ func TestDistantQuickenedHeightenedAndSubtleSpell(t *testing.T) {
 	t.Run("Heightened Spell: disadvantage on the first saving throw", func(t *testing.T) {
 		t.Parallel()
 		a := newResourceTableWith(t, []string{rules.MetamagicHeightened, rules.MetamagicSubtle})
-		e := a.sorcererFight(t, nil)
+		e := a.sorcererFight(t, map[string][2]int32{"Nael": {4, 9}, "Tavo": {9, 3}, "Orla": {10, 3}, "Goblin": {4, 4}, "Capitão Goblin": {9, 9}})
 		// The goblin's d20 would be 18 and pass the DC 14; with disadvantage the lower of two (2) counts.
 		a.h.roller.queue(18, 2)
 		res, err := a.castWith(t, a.ana, e, "Nael", fireballSpell, slotOfLevel(3), a.at(t, "Goblin"),

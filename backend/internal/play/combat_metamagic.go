@@ -138,9 +138,6 @@ func (s *Service) prepareMetamagic(
 // take reads the parameters of one option: Twinned Spell's second target, the creatures
 // Careful Spell protects and the target of Heightened Spell.
 func (m *castMeta) take(ch *playv1.MetamagicChoice, chaMod int, v combatViewer, targs, cs []playdb.Combatant) error {
-	listed := func(id string) bool {
-		return slices.ContainsFunc(targs, func(t playdb.Combatant) bool { return t.ID == id })
-	}
 	switch ch.GetKey() {
 	case rules.MetamagicTwinned:
 		if len(ch.GetTargetIds()) != 1 || len(targs) != 1 {
@@ -171,9 +168,6 @@ func (m *castMeta) take(ch *playv1.MetamagicChoice, chaMod int, v combatViewer, 
 			if err != nil {
 				return err
 			}
-			if !listed(id) {
-				return metaRefusal("a protected creature must be one of the spell's targets")
-			}
 			m.careful[id] = true
 		}
 		if len(m.careful) != len(ids) {
@@ -184,14 +178,32 @@ func (m *castMeta) take(ch *playv1.MetamagicChoice, chaMod int, v combatViewer, 
 		if err != nil {
 			return err
 		}
-		if !listed(id) {
-			return metaRefusal("the creature with disadvantage must be one of the spell's targets")
-		}
 		m.heightened = id
 	case rules.MetamagicQuickened:
 		m.quickened = true
 	case rules.MetamagicDistant:
 		m.distant = true
+	}
+	return nil
+}
+
+// membersIn checks that the creatures Careful Spell protects and Heightened Spell burdens are
+// among the spell's targets. An area spell on a map only knows its targets once the area is
+// placed, so it runs after them.
+func (m *castMeta) membersIn(targs []playdb.Combatant) error {
+	if m == nil {
+		return nil
+	}
+	listed := func(id string) bool {
+		return slices.ContainsFunc(targs, func(t playdb.Combatant) bool { return t.ID == id })
+	}
+	for id := range m.careful {
+		if !listed(id) {
+			return metaRefusal("a protected creature must be one of the spell's targets")
+		}
+	}
+	if m.heightened != "" && !listed(m.heightened) {
+		return metaRefusal("the creature with disadvantage must be one of the spell's targets")
 	}
 	return nil
 }

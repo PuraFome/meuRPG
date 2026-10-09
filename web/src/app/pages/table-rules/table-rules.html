@@ -192,6 +192,19 @@
             </div>
           </section>
 
+          <section class="mr-panel block" aria-labelledby="hidden-area-title">
+            <h2 class="mr-panel__title" id="hidden-area-title">Criaturas escondidas atingidas por uma área</h2>
+            <p class="hint">A magia de área sempre atinge as criaturas escondidas: o efeito vale. Isto decide só se elas aparecem para os jogadores.</p>
+            <app-dice-choice
+              name="table-hidden-area"
+              label="Criaturas escondidas atingidas por uma área"
+              [options]="hiddenAreaOptions"
+              [value]="d.hiddenAreaHits"
+              (valueChange)="edit({ hiddenAreaHits: $event })"
+            />
+            <p class="hint">Você pode mudar isto a qualquer hora, no meio da sessão. Vale a partir da próxima magia.</p>
+          </section>
+
           <app-xp-mode-panel [campaignId]="campaignId()" [mode]="s.xpMode" (questionOpen)="questionOpen.set($event)" />
 
           <section class="mr-panel block" aria-labelledby="reminders-title">

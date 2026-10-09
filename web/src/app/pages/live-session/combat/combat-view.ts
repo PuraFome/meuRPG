@@ -1,6 +1,9 @@
 import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -18,6 +21,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import type { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import {
+  AreaPlacement,
   type Combatant,
   type InspirationOffer,
   CombatLogKind,
@@ -124,7 +128,7 @@ import type { PartyMemberInfoVm, VitalsVm } from '../live-session.types';
 import { ActionGroups } from './action-groups/action-groups';
 import { AdjustNpc, type AdjustNpcData } from './adjust-npc/adjust-npc';
 import { AttackSheet, type AttackSheetData } from './attack-sheet/attack-sheet';
-import { CastSheet, type CastSheetData } from './cast-sheet/cast-sheet';
+import { CastSheet, type CastMapData, type CastSheetData } from './cast-sheet/cast-sheet';
 import { ConditionsDialog, type ConditionsData } from './conditions-dialog/conditions-dialog';
 import { DeathQuestion } from './death-question/death-question';
 import { DeathSaves } from './death-saves/death-saves';
@@ -144,6 +148,10 @@ import { InitiativeSetup } from './initiative-setup/initiative-setup';
 import { InitiativeSide } from './initiative-side/initiative-side';
 import { type JumpRequest, MovePage } from './move-page/move-page';
 import { OpportunityCard, type MasterAnswer } from './opportunity/opportunity-card';
+import { HiddenRevealCard, type RevealAnswer } from './hidden-reveal/hidden-reveal-card';
+import { MasterAreaCast, type MasterAreaCastData } from './area-cast/master-area-cast';
+import { defaultSlot, slotRows } from '../../../core/combat/cast-flow';
+import { heldWait, questions, revealBarText, revealWhy } from '../../../core/combat/hidden-reveal';
 import {
   OpportunitySheet,
   type OpportunityAnswer,
@@ -208,6 +216,7 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
     DeathSaves,
     InspirationCard,
     CombatBar,
+    HiddenRevealCard,
     CombatLogPanel,
     CombatMapCard,
     CombatSummary,
@@ -244,6 +253,8 @@ export class CombatView {
   private readonly creaturesApi = inject(CreaturesClient);
   private readonly tableRules = inject(TableRulesClient);
   private readonly bottomSheet = inject(MatBottomSheet);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
   protected readonly phone = mediaQuery(PHONE_QUERY);
   /** From 1024px the master has the combat bar (E6-11); below it the turn card does it all (E6-12). */
   protected readonly laptop = mediaQuery('(min-width: 1024px)');
@@ -306,6 +317,10 @@ export class CombatView {
   private readonly shieldOpen = signal(false);
 
   protected readonly encounter = computed(() => this.state().shown());
+  /** "Combate atualizado agora." (PM-02c 9c): said once when the page comes up with the turn on hold, that is, after a reload;
+   * it goes when the wait is over. Nothing here is kept in the browser: the combat says what waits. */
+  protected readonly refreshed = signal('');
+  private refreshChecked = false;
   protected readonly image = computed(() => {
     const e = this.encounter();
     const map = this.mapState().map();
@@ -607,19 +622,35 @@ export class CombatView {
     const e = this.encounter();
     return e ? offersToAnswer(e) : [];
   });
-  /** What the waiting mover reads: their move landed, and each offer waits for its answer. */
+  /** What the waiting mover reads: their move landed, and each offer waits for its answer. Any other wait for the master
+   * (`turn_held`: a question about hidden creatures) is only "Esperando o mestre", on the player's turn and on another's,
+   * never why (RN-10). */
   protected readonly waiting = computed(() => {
     const e = this.encounter();
     const own = this.own();
-    return e && own && !this.isMaster() ? waitingText(e, offersHolding(e, own.id)) : null;
+    if (!e || !own || this.isMaster()) {
+      return null;
+    }
+    return waitingText(e, offersHolding(e, own.id)) ?? heldWait(e, this.myTurn());
   });
-  /** The master's bar: "Esperando a sua reação: Goblin 2". */
+  /** The master's bar: "Esperando a sua resposta: escondidas atingidas", or "Esperando a sua reação: Goblin 2". */
   protected readonly waitNote = computed(() => {
     const e = this.encounter();
-    return e && this.isMaster()
-      ? barText(e, (characterId) => this.info().get(characterId)?.playerName ?? '')
-      : '';
+    if (!e || !this.isMaster()) {
+      return '';
+    }
+    return (
+      revealBarText(e) ||
+      barText(e, (characterId) => this.info().get(characterId)?.playerName ?? '')
+    );
   });
+  /** Why "Próximo turno" waits while questions about hidden creatures are open ("Responda ao pedido abaixo para seguir."). */
+  protected readonly waitWhy = computed(() => {
+    const e = this.encounter();
+    return e && this.isMaster() ? revealWhy(e) : '';
+  });
+  /** The Portuguese name of each spell a question is about, read through the catalog. */
+  protected readonly revealSpellNames = signal<ReadonlyMap<string, string>>(new Map());
   /** The NPC reactors' attacks with their numbers, by offer (read from the reactor's own options). */
   protected readonly reactorOptions = signal<ReadonlyMap<string, GetTurnOptionsResponse>>(
     new Map(),
@@ -825,6 +856,19 @@ export class CombatView {
   }
 
   constructor() {
+    effect(() => {
+      const e = this.encounter();
+      untracked(() => {
+        const held =
+          !!e && e.status === EncounterStatus.ACTIVE && (e.turnHeld || questions(e).length > 0);
+        if (e && !this.refreshChecked) {
+          this.refreshChecked = true;
+          this.refreshed.set(held ? 'Combate atualizado agora.' : '');
+        } else if (!held) {
+          this.refreshed.set('');
+        }
+      });
+    });
     effect(() => {
       const e = this.encounter();
       const campaignId = this.campaignId();
@@ -1128,6 +1172,25 @@ export class CombatView {
         }
       });
     });
+    // The questions about hidden creatures name their spell: read once per spell through the catalog.
+    effect(() => {
+      const e = this.encounter();
+      const campaignId = this.campaignId();
+      const keys = e && this.isMaster() ? questions(e).map((q) => q.spellKey) : [];
+      untracked(() => {
+        for (const key of new Set(keys)) {
+          if (this.revealSpellNames().has(key)) {
+            continue;
+          }
+          void this.catalog.details(campaignId, key).then((d) => {
+            const name = d?.spell?.namePt || d?.spell?.name;
+            if (name) {
+              this.revealSpellNames.update((m) => new Map(m).set(key, name));
+            }
+          });
+        }
+      });
+    });
     // The master's prompts need each NPC reactor's attacks with their numbers.
     effect(() => {
       const e = this.encounter();
@@ -1256,6 +1319,24 @@ export class CombatView {
       const who = !this.isMaster() && own && acts(e, own) ? own.id : e.currentCombatantId;
       return this.api.endTurn(this.campaignId(), e.id, who, discard, e.round);
     });
+  }
+
+  /** "Revelar" or "Manter escondidas" on a question about hidden creatures (PM-02c state 9). */
+  protected answerReveal(a: RevealAnswer): Promise<boolean> {
+    return this.run((e) => this.api.resolveHiddenReveal(this.campaignId(), e.id, a.id, a.reveal));
+  }
+
+  /** The last question answered: the focus goes on to the order, the next stop of the column. */
+  protected focusOrder(): void {
+    afterNextRender(
+      () =>
+        this.host.nativeElement
+          .querySelector<HTMLElement>(
+            'app-order-list button:not([disabled]), app-order-list [tabindex="0"]',
+          )
+          ?.focus(),
+      { injector: this.injector },
+    );
   }
 
   /** "Encerrar a parte da Brisa": the master ends one member's part. */
@@ -1670,12 +1751,95 @@ export class CombatView {
       preference: this.dicePreference(),
       state: this.state(),
       resume,
+      map: this.castMap(),
     };
+    // A spell placed on the map opens on the map, its first step (PM-02a); any other on the title.
+    const placed =
+      !resume &&
+      !!data.map &&
+      !!data.targets &&
+      data.targets.placement !== AreaPlacement.UNSPECIFIED &&
+      data.targets.placement !== AreaPlacement.CASTER;
     openSheet<CastSheet, CastSheetData, boolean>(this.dialog, this.bottomSheet, CastSheet, {
       data,
       ariaLabel: resume ? `Rolar o dano de ${name}` : `Conjurar ${name}`,
       labelledBy: 'sheet-t',
+      ...(placed ? { focus: '[role="application"]' } : {}),
     }).subscribe();
+  }
+
+  /** The battle map an area spell is placed on: the picture, the grid, the layers and, for a player, what the fog lets them
+   * see. `null` without a map (theatre of the mind), where every area spell keeps its list. */
+  private castMap(): CastMapData | null {
+    const e = this.encounter();
+    const img = this.image();
+    if (!e || !img || this.theatre()) {
+      return null;
+    }
+    return {
+      image: img,
+      mapName: this.mapName(),
+      columns: e.gridColumns,
+      rows: e.gridRows,
+      layers: this.layers(),
+      fog: this.fogVision(),
+    };
+  }
+
+  /** A spell of the options with its targets, its level and its Portuguese name; `null` when the options lack it. */
+  private areaSpell(key: string) {
+    const opts = this.options();
+    const spell = opts?.options?.spells.find((s) => s.spell?.key === key);
+    const targets = opts?.spellTargets.find((t) => t.spellKey === key);
+    if (!spell?.spell || !targets) {
+      return null;
+    }
+    return {
+      spell,
+      targets,
+      level: spell.spell.level,
+      name: spell.spell.namePt || spell.spell.name,
+    };
+  }
+
+  /** "Conjurar" on an NPC's area spell: the master's picker in a dialog (PM-02d state 11), the same steps as the player's. */
+  protected openMasterArea(key: string): void {
+    const e = this.encounter();
+    const who = e ? currentCombatant(e) : null;
+    const found = this.areaSpell(key);
+    const map = this.castMap();
+    if (!e || !who || !found || !map) {
+      return;
+    }
+    const { spell, targets, level, name } = found;
+    // The NPC's slots are not counted: the lowest the options offer, or the spell's own level.
+    const row = defaultSlot(slotRows(level, spell.slots, [], null));
+    const data: MasterAreaCastData = {
+      campaignId: this.campaignId(),
+      encounterId: e.id,
+      caster: who,
+      spellKey: key,
+      name,
+      level,
+      slot: level > 0 ? { level: row?.level ?? level, pact: row?.pact ?? false } : null,
+      economy: spell.economy,
+      targets,
+      map,
+      state: this.state(),
+    };
+    openSheet<MasterAreaCast, MasterAreaCastData, boolean>(
+      this.dialog,
+      this.bottomSheet,
+      MasterAreaCast,
+      {
+        data,
+        ariaLabel: `${who.label} conjura ${name}`,
+        labelledBy: 'sheet-t',
+        width: '1100px',
+        tall: true,
+        ...(targets.placement === AreaPlacement.CASTER ? {} : { focus: '[role="application"]' }),
+      },
+    ).subscribe();
   }
 
   /** The spell attack bonus, for a typed d20: the one of a spell attack in the

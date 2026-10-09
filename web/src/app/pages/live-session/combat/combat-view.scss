@@ -273,3 +273,11 @@
 .player__die {
   align-self: stretch;
 }
+
+// "Combate atualizado agora." after a reload while the turn waits.
+.refreshed {
+  margin: 0;
+  color: var(--mr-ink-muted);
+  font-size: 14px;
+  line-height: 20px;
+}
