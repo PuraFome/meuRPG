@@ -585,6 +585,10 @@ export function logLine(
     case CombatLogKind.DOOR_OPENED:
       // A move opened a closed door (RN-26): "Toren abriu a porta." The server sends the line only to who saw or remembers the door.
       return { ...base, icon: 'door_open', text: ' abriu a porta' };
+    case CombatLogKind.REACTION_WINDOW:
+      // A reaction was answered or closed (PM-04): one line, written on the server for who reads it (the master's has the
+      // numbers of the NPCs, the players' never names a reactor they do not see).
+      return { ...base, icon: 'bolt', actor: '', text: e.reactionTextPt };
     case CombatLogKind.MONSTERS_ADDED:
       // The master put monsters in the combat (RN-29): the line is his alone, with the hit points and the dice they were rolled with.
       return { ...base, hidden: true, icon: 'pets', actor: '', text: monstersAddedText(e) };
