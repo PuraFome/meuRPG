@@ -258,6 +258,12 @@ func (s *Service) triggerGone(ctx context.Context, c *combatTx, w playdb.Reactio
 	case reaction.Concentration:
 		r, ok := byID[deref(w.ReactorID)]
 		return !ok || r.ConcentrationSpell == nil || *r.ConcentrationSpell != t.Spell, nil
+	case reaction.FeatherFall:
+		pend, err := fallPendingsOf(ctx, c, t.Trap)
+		if err != nil {
+			return false, err
+		}
+		return !slices.ContainsFunc(pend, func(p playdb.PendingDamage) bool { return slices.Contains(t.Falling, p.TargetID) }), nil
 	case reaction.Shield, reaction.MasterCheck:
 		if w.PendingDamageID != nil {
 			p, err := c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: c.enc.ID, ID: *w.PendingDamageID})
@@ -351,8 +357,14 @@ func (s *Service) settleOnce(ctx context.Context, c *combatTx) (bool, error) {
 	}
 	openGroup := map[string]bool{}
 	openPending := map[string]bool{}
+	openFall := map[string]bool{} // the creatures a Feather Fall window may still save
 	for _, w := range open {
 		openGroup[w.GroupID] = true
+		if reaction.Kind(w.Kind) == reaction.FeatherFall {
+			for _, id := range windowTriggerOf(w).Falling {
+				openFall[id+"/"+windowTriggerOf(w).Trap] = true
+			}
+		}
 		if w.PendingDamageID != nil {
 			openPending[*w.PendingDamageID] = true
 		}
@@ -360,6 +372,16 @@ func (s *Service) settleOnce(ctx context.Context, c *combatTx) (bool, error) {
 	// A hit whose windows are all closed goes on to its damage roll.
 	for _, p := range waiting {
 		if openPending[p.ID] {
+			continue
+		}
+		if p.TrapPointID != nil { // a fall damage: it lands when no Feather Fall can take it away
+			if openFall[p.TargetID+"/"+*p.TrapPointID] {
+				continue
+			}
+			if err := s.releaseFall(ctx, c, p, byID); err != nil {
+				return false, err
+			}
+			changed = true
 			continue
 		}
 		cur, err := c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: c.enc.ID, ID: p.ID})

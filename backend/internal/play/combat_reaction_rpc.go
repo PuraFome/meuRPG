@@ -196,6 +196,8 @@ func (s *Service) answerMore(ctx context.Context, c *combatTx, m authz.Membershi
 		return s.answerCuttingWords(ctx, c, w, reactor, use, req, got)
 	case reaction.HellishRebukeKind:
 		return s.answerHellishRebuke(ctx, c, m, w, reactor, use, req, got)
+	case reaction.FeatherFall:
+		return s.answerFeatherFall(ctx, c, w, reactor, use, req, got)
 	}
 	return connect.NewError(connect.CodeUnimplemented, fmt.Errorf("the reaction %s is not built yet", w.Kind))
 }

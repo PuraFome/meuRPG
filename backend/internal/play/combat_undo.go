@@ -114,6 +114,13 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 		if ev, err := readEvent(e.Payload); err == nil && ev.Reaction != nil && ev.Reaction.Hold {
 			return playdb.ListRecentSessionEventsRow{}, false
 		}
+		// A fall whose damage waited for a Feather Fall landed by itself: the hit points
+		// it took were not written with the firing, so the firing is no longer undoable.
+		if e.Kind == eventTrapTriggered {
+			if ev, err := readEvent(e.Payload); err == nil && ev.Trap != nil && ev.Trap.Held {
+				return playdb.ListRecentSessionEventsRow{}, false
+			}
+		}
 		if slices.Contains(undoableKinds, e.Kind) && e.EncounterID != nil && *e.EncounterID == encounterID {
 			// A move written before the undo knew moves says where it came from
 			// nowhere: there is nothing to put back.

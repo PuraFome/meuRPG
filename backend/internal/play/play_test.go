@@ -894,6 +894,8 @@ func (emptyTrapBook) Traps(context.Context, pgx.Tx, string, string) ([]maplink.T
 	return nil, nil
 }
 
+func (emptyTrapBook) FallFt(string) int { return 0 }
+
 func (emptyTrapBook) KnownTraps(context.Context, string, string, string) ([]maplink.Trap, error) {
 	return nil, nil
 }

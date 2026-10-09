@@ -67,6 +67,8 @@ func (wv *windowView) morePrompt(kind reaction.Kind, w playdb.ReactionWindow, re
 			p.DistanceFt = &t.Distance
 		}
 		out.Prompt = &playv1.ReactionWindow_CuttingWords{CuttingWords: p}
+	case reaction.FeatherFall:
+		wv.fallPrompt(w, reactor, k, out)
 	case reaction.HellishRebukeKind:
 		if w.Step == 2 {
 			p := &playv1.HellishRebukeSavePrompt{AggressorLabel: attacker, DiceCount: t.Dice}

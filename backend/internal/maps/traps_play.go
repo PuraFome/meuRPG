@@ -801,3 +801,15 @@ func (s *Service) creatureLanded(ctx context.Context, campaignID, actorUserID, m
 		s.logger.ErrorContext(ctx, "maps: cannot fire a trap for a creature's token", "error", err)
 	}
 }
+
+// FallFt implements play.TrapBook: the depth of a pit preset, in feet.
+func (s *Service) FallFt(presetKey string) int {
+	if presetKey == "" {
+		return 0
+	}
+	p, ok := s.rules.TrapPreset(presetKey)
+	if !ok {
+		return 0
+	}
+	return p.FallFt
+}
