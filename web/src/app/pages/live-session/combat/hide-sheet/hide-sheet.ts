@@ -17,7 +17,12 @@ import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { type CheckDie, ContestClient } from '../../../../core/combat/contest-client';
 import type { ContestState } from '../../../../core/combat/contest-state';
-import { contestSteps, hiddenWord, refusalParts, signed } from '../../../../core/combat/contest-view';
+import {
+  contestSteps,
+  hiddenWord,
+  refusalParts,
+  signed,
+} from '../../../../core/combat/contest-view';
 import { AttackSteps } from '../attack-sheet/attack-steps';
 import { CheckRollForm } from '../check-roll-form/check-roll-form';
 import { ContestRoll } from '../contest-roll/contest-roll';
@@ -99,13 +104,12 @@ export class HideSheet {
     return id ? this.data.contests.attempt(id) : undefined;
   });
   protected readonly mode = this.data.option?.mode ?? RollModeKind.NORMAL;
+  protected readonly notes = this.data.option?.notes ?? [];
   protected readonly modifier = this.data.option?.modifier ?? 0;
   protected readonly modifierText = signed(this.modifier);
   protected readonly subtitle = `${this.data.economy} · Destreza (${CHECK})`;
   /** "quem a vê claramente" / "quem o vê claramente", by the character's name. */
-  protected readonly seen = computed(() =>
-    article(this.own()?.label ?? '') === 'a' ? 'a' : 'o',
-  );
+  protected readonly seen = computed(() => (article(this.own()?.label ?? '') === 'a' ? 'a' : 'o'));
   protected readonly status = computed(() => this.attempt()?.status);
   protected readonly Pending = HideAttemptStatus.PENDING;
   protected readonly Applied = HideAttemptStatus.APPLIED;

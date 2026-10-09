@@ -163,7 +163,9 @@ describe('HideSheet (board W7-Xc 8)', () => {
     fixture.detectChanges();
     await settle();
     expect(text()).toContain('Alguém vê você claramente: não dá para se esconder agora.');
-    expect(el.querySelector('.mr-notice--danger b')?.textContent).toBe('Alguém vê você claramente:');
+    expect(el.querySelector('.mr-notice--danger b')?.textContent).toBe(
+      'Alguém vê você claramente:',
+    );
   });
 
   it('hands the page the attempt when the sheet is hidden while it waits', async () => {

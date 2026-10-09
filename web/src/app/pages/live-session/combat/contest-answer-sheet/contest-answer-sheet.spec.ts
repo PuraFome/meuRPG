@@ -180,7 +180,10 @@ describe('ContestAnswerSheet (board W7-Xb 4)', () => {
     await settle();
     button('Confirmar')!.click();
     await settle();
-    expect(api.responded[0].input).toMatchObject({ skill: ContestSkill.ATHLETICS, die: { faces: [14] } });
+    expect(api.responded[0].input).toMatchObject({
+      skill: ContestSkill.ATHLETICS,
+      die: { faces: [14] },
+    });
   });
 
   it('asks for the two d20 when a skill rolls with advantage or disadvantage', async () => {
@@ -188,7 +191,9 @@ describe('ContestAnswerSheet (board W7-Xb 4)', () => {
       skill: ContestSkill.ACROBATICS,
       modifier: 7,
       mode: RollModeKind.DISADVANTAGE,
-      notes: [create(RollNoteSchema, { kind: 'poisoned', labelPt: 'Envenenado', advantage: false })],
+      notes: [
+        create(RollNoteSchema, { kind: 'poisoned', labelPt: 'Envenenado', advantage: false }),
+      ],
     });
     const { el, button, settle, text } = setup(
       contestView({

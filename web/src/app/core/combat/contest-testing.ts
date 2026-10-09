@@ -72,7 +72,9 @@ export function skillOption(
   });
 }
 
-export function hideAttempt(over: MessageInitShape<typeof HideAttemptViewSchema> = {}): HideAttemptView {
+export function hideAttempt(
+  over: MessageInitShape<typeof HideAttemptViewSchema> = {},
+): HideAttemptView {
   return create(HideAttemptViewSchema, { id: 'hd1', hiderId: 'b', ...over });
 }
 
@@ -80,7 +82,9 @@ export function helpView(over: MessageInitShape<typeof HelpViewSchema> = {}): He
   return create(HelpViewSchema, { id: 'hp1', helperId: 'o', allyId: 'v', ...over });
 }
 
-export function groupCheck(over: MessageInitShape<typeof GroupCheckViewSchema> = {}): GroupCheckView {
+export function groupCheck(
+  over: MessageInitShape<typeof GroupCheckViewSchema> = {},
+): GroupCheckView {
   return create(GroupCheckViewSchema, {
     id: 'gc1',
     skillKey: 'skill:stealth',
@@ -195,5 +199,9 @@ export function textOf(el: Element): string {
     }
   };
   walk(el);
-  return parts.join('').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+  return parts
+    .join('')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

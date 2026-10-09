@@ -71,11 +71,14 @@ export class GroupCheckSheet {
   protected readonly stage = computed<'roll' | 'result'>(() =>
     this.check()?.youRoll && !this.own()?.answered ? 'roll' : 'result',
   );
-  protected readonly stepList = computed(() => contestSteps(STEPS, this.stage() === 'roll' ? 0 : 1));
+  protected readonly stepList = computed(() =>
+    contestSteps(STEPS, this.stage() === 'roll' ? 0 : 1),
+  );
   protected readonly open = computed(() => this.check()?.open ?? false);
   protected readonly option = computed(() => this.check()?.yourOption);
   protected readonly mode = computed(() => this.option()?.mode ?? RollModeKind.NORMAL);
   protected readonly modifier = computed(() => this.option()?.modifier ?? 0);
+  protected readonly notes = computed(() => this.option()?.notes ?? []);
   protected readonly modifierText = computed(() => signed(this.modifier()));
   /** "Passou" or "Falhou", only when the master shows the DC. */
   protected readonly ownPass = computed(() => {
@@ -84,7 +87,11 @@ export class GroupCheckSheet {
   });
   protected readonly verdict = computed(() => {
     const c = this.check();
-    return c && !c.open && c.verdictKnown ? (c.groupPassed ? 'O grupo passou.' : 'O grupo falhou.') : '';
+    return c && !c.open && c.verdictKnown
+      ? c.groupPassed
+        ? 'O grupo passou.'
+        : 'O grupo falhou.'
+      : '';
   });
 
   constructor() {

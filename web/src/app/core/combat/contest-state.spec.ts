@@ -24,7 +24,11 @@ describe('ContestState', () => {
     const state = new ContestState();
     let release: (v: ReturnType<typeof contestState>) => void = () => undefined;
     const slow = new Promise<ReturnType<typeof contestState>>((r) => (release = r));
-    const first = state.load(api(() => slow), 'c', 'e');
+    const first = state.load(
+      api(() => slow),
+      'c',
+      'e',
+    );
     await state.load(
       api(() => Promise.resolve(contestState({ contests: [contestView({ id: 'new' })] }))),
       'c',
@@ -37,16 +41,32 @@ describe('ContestState', () => {
 
   it('never shows the contests of another combat while the answer comes', async () => {
     const state = new ContestState();
-    await state.load(api(() => Promise.resolve(contestState({ contests: [contestView()] }))), 'c', 'e1');
+    await state.load(
+      api(() => Promise.resolve(contestState({ contests: [contestView()] }))),
+      'c',
+      'e1',
+    );
     const slow = new Promise<ReturnType<typeof contestState>>(() => undefined);
-    void state.load(api(() => slow), 'c', 'e2');
+    void state.load(
+      api(() => slow),
+      'c',
+      'e2',
+    );
     expect(state.contests()).toEqual([]);
   });
 
   it('keeps what it had when a read fails', async () => {
     const state = new ContestState();
-    await state.load(api(() => Promise.resolve(contestState({ contests: [contestView()] }))), 'c', 'e');
-    await state.load(api(() => Promise.reject(new Error('lost'))), 'c', 'e');
+    await state.load(
+      api(() => Promise.resolve(contestState({ contests: [contestView()] }))),
+      'c',
+      'e',
+    );
+    await state.load(
+      api(() => Promise.reject(new Error('lost'))),
+      'c',
+      'e',
+    );
     expect(state.contests()).toHaveLength(1);
   });
 

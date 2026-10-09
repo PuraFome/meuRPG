@@ -725,7 +725,9 @@ function modeAnsweredText(m: CombatLogModeChange): string {
 
 /** "do Hobgoblin", "de Brisa". */
 function ofSubject(label: string, ctx: LogContext): string {
-  return ctx.players.has(label) ? `de ${label}` : `${article(label) === 'a' ? 'da' : 'do'} ${label}`;
+  return ctx.players.has(label)
+    ? `de ${label}`
+    : `${article(label) === 'a' ? 'da' : 'do'} ${label}`;
 }
 
 /** "surpreso" or "surpresa", by the name. */

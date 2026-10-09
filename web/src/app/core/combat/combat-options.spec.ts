@@ -37,6 +37,8 @@ describe('the reasons an option is disabled', () => {
       [DisabledReasonCode.COMBAT_NOT_ACTIVE, 'O combate não está em andamento'],
       [DisabledReasonCode.COMBATANT_DOWN, 'Caído: não pode agir'],
       [DisabledReasonCode.COMBATANT_DEFEATED, 'Derrotado: fora do combate'],
+      // W7-X: a surprised combatant's options are all off for this reason.
+      [DisabledReasonCode.SURPRISED, 'Surpresa'],
     ];
     for (const [code, text] of cases) {
       expect(reasonText(reason(code))).toBe(text);

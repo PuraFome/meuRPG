@@ -1,9 +1,6 @@
 import { create } from '@bufbuild/protobuf';
 
-import {
-  CombatLogEntrySchema,
-  CombatLogKind,
-} from '../../../gen/meurpg/play/v1/combat_pb';
+import { CombatLogEntrySchema, CombatLogKind } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   CombatLogContestSchema,
   ContestLogLine,
@@ -35,7 +32,12 @@ describe('the contest lines of the combat log (W7-X)', () => {
     [ContestLogLine.GRAPPLE_FAILED, 'Toren', 'Hobgoblin', ' não conseguiu agarrar o Hobgoblin'],
     [ContestLogLine.SHOVE_PRONE, 'Toren', 'Hobgoblin', ' derrubou o Hobgoblin'],
     [ContestLogLine.SHOVE_PUSHED, 'Toren', 'Hobgoblin', ' empurrou o Hobgoblin 1,5 m'],
-    [ContestLogLine.SHOVE_STAYS, 'Toren', 'Hobgoblin', ' empurrou o Hobgoblin, que não saiu do lugar'],
+    [
+      ContestLogLine.SHOVE_STAYS,
+      'Toren',
+      'Hobgoblin',
+      ' empurrou o Hobgoblin, que não saiu do lugar',
+    ],
     [ContestLogLine.SHOVE_FAILED, 'Toren', 'Hobgoblin', ' não conseguiu empurrar o Hobgoblin'],
     [ContestLogLine.ESCAPED, 'Brisa', 'Hobgoblin', ' se soltou do Hobgoblin'],
     [ContestLogLine.ESCAPE_FAILED, 'Brisa', 'Hobgoblin', ' não conseguiu se soltar do Hobgoblin'],

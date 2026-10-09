@@ -48,6 +48,10 @@ const REASON_TEXT: Partial<Record<DisabledReasonCode, string>> = {
   [DisabledReasonCode.COMBAT_NOT_ACTIVE]: 'O combate não está em andamento',
   [DisabledReasonCode.COMBATANT_DOWN]: 'Caído: não pode agir',
   [DisabledReasonCode.COMBATANT_DEFEATED]: 'Derrotado: fora do combate',
+  // A surprised combatant does not move, act or react until its first turn ends (W7-X, SRD 5.1, Surprise).
+  [DisabledReasonCode.SURPRISED]: 'Surpresa',
+  // A grappled combatant's speed is 0 (SRD 5.1, Conditions); the turn's own line says it by the character's gender.
+  [DisabledReasonCode.GRAPPLED]: 'Em um agarrão',
 };
 
 /** Why an option is disabled, in words, by code. `''` when there is none. */

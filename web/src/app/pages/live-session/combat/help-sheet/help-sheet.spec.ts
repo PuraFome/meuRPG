@@ -50,7 +50,12 @@ describe('HelpSheet (board W7-Xc 9)', () => {
     state.encounter.set(
       encounter({
         combatants: [
-          combatant({ id: 'o', label: 'Orla', kind: CombatantKind.PLAYER, side: CombatantSide.PARTY }),
+          combatant({
+            id: 'o',
+            label: 'Orla',
+            kind: CombatantKind.PLAYER,
+            side: CombatantSide.PARTY,
+          }),
           alien,
           goblin,
         ],
@@ -122,9 +127,9 @@ describe('HelpSheet (board W7-Xc 9)', () => {
     const { el, button, settle, text } = setup();
     button('Continuar')!.click();
     await settle();
-    const perception = Array.from(el.querySelectorAll<HTMLInputElement>('input[name="help-task"]')).find(
-      (r) => textOf(r.closest('label')!).startsWith('Tavo · Percepção'),
-    )!;
+    const perception = Array.from(
+      el.querySelectorAll<HTMLInputElement>('input[name="help-task"]'),
+    ).find((r) => textOf(r.closest('label')!).startsWith('Tavo · Percepção'))!;
     perception.click();
     await settle();
     button('Ajudar Tavo')!.click();
@@ -147,9 +152,9 @@ describe('HelpSheet (board W7-Xc 9)', () => {
   it('switches to "Ajudar um ataque": the target within 1,5 m is chosen, the farther one is refused with the reason', async () => {
     const { el, button, settle, text } = setup();
     // The kind is a segmented choice.
-    Array.from(el.querySelectorAll<HTMLInputElement>('app-segmented input')).find(
-      (i) => i.value === 'attack',
-    )!.click();
+    Array.from(el.querySelectorAll<HTMLInputElement>('app-segmented input'))
+      .find((i) => i.value === 'attack')!
+      .click();
     await settle();
     expect(textOf(el.querySelector('h2')!)).toBe('Ajudar um ataque');
     button('Continuar')!.click();
@@ -158,7 +163,9 @@ describe('HelpSheet (board W7-Xc 9)', () => {
       'O alvo precisa estar a até 1,5 m de você. O primeiro ataque de Tavo contra ele terá vantagem.',
     );
     expect(text()).toContain('Tavo ataca o Hobgoblin O Hobgoblin está a 1,5 m de você.');
-    expect(text()).toContain('Tavo ataca o Goblin 1 A 4,5 m de você. Longe demais: no máximo 1,5 m.');
+    expect(text()).toContain(
+      'Tavo ataca o Goblin 1 A 4,5 m de você. Longe demais: no máximo 1,5 m.',
+    );
     const radios = el.querySelectorAll<HTMLInputElement>('input[name="help-target"]');
     expect(radios[0].checked).toBe(true);
     expect(radios[1].disabled).toBe(true);
@@ -170,7 +177,9 @@ describe('HelpSheet (board W7-Xc 9)', () => {
       targetId: 'h',
       taskKey: '',
     });
-    expect(text()).toContain('Você ajudou Tavo. O primeiro ataque dele contra o Hobgoblin terá vantagem.');
+    expect(text()).toContain(
+      'Você ajudou Tavo. O primeiro ataque dele contra o Hobgoblin terá vantagem.',
+    );
   });
 
   it('goes back to the ally from the task', async () => {

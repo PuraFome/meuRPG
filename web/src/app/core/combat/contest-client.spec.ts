@@ -80,7 +80,12 @@ describe('ContestClient', () => {
 
   it('answers a contest with the skill and the typed d20, or leaves the roll to the master', async () => {
     const { client, sent } = clientWith();
-    const base = { campaignId: 'c', encounterId: 'e', contestId: 'ct1', skill: ContestSkill.ACROBATICS };
+    const base = {
+      campaignId: 'c',
+      encounterId: 'e',
+      contestId: 'ct1',
+      skill: ContestSkill.ACROBATICS,
+    };
     await client.respond({ ...base, die: { faces: [8] } }, 'k2');
     await client.respond({ ...base, die: null }, 'k3');
     expect(sent[0]).toMatchObject({
@@ -149,7 +154,11 @@ describe('ContestClient', () => {
     expect((await client.state('c', 'e')).contests).toHaveLength(1);
     expect((await client.groupCheck('c'))?.id).toBe('gc1');
     await client.rollGroupCheck('c', 'gc1', { faces: [12] }, 'k7');
-    expect(sent.map((s) => s['rpc'])).toEqual(['getContestState', 'getGroupCheck', 'rollGroupCheck']);
+    expect(sent.map((s) => s['rpc'])).toEqual([
+      'getContestState',
+      'getGroupCheck',
+      'rollGroupCheck',
+    ]);
     expect(sent[2]).toMatchObject({
       groupCheckId: 'gc1',
       idempotencyKey: 'k7',

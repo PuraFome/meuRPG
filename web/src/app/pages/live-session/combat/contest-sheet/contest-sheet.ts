@@ -114,14 +114,7 @@ export function openContestSheet(
  */
 @Component({
   selector: 'app-contest-sheet',
-  imports: [
-    AttackSteps,
-    CheckRollForm,
-    ContestRoll,
-    MatButtonModule,
-    MatIconModule,
-    SheetFrame,
-  ],
+  imports: [AttackSteps, CheckRollForm, ContestRoll, MatButtonModule, MatIconModule, SheetFrame],
   templateUrl: './contest-sheet.html',
   styleUrl: './contest-sheet.scss',
 })
@@ -227,12 +220,22 @@ export class ContestSheet {
   protected readonly check = computed(() => {
     if (this.escape) {
       const o = this.options().find((x) => x.skill === this.skill()) ?? this.options()[0];
-      return { modifier: o?.modifier ?? 0, mode: o?.mode ?? RollModeKind.NORMAL };
+      return {
+        modifier: o?.modifier ?? 0,
+        mode: o?.mode ?? RollModeKind.NORMAL,
+        notes: o?.notes ?? [],
+      };
     }
     const o = this.data.attack?.rollOption;
-    return { modifier: o?.modifier ?? 0, mode: o?.mode ?? RollModeKind.NORMAL };
+    return {
+      modifier: o?.modifier ?? 0,
+      mode: o?.mode ?? RollModeKind.NORMAL,
+      notes: o?.notes ?? [],
+    };
   });
-  protected readonly checkLine = computed(() => skillLine(this.escape ? this.skill() : ContestSkill.ATHLETICS));
+  protected readonly checkLine = computed(() =>
+    skillLine(this.escape ? this.skill() : ContestSkill.ATHLETICS),
+  );
   protected readonly modifierText = computed(() => signed(this.check().modifier));
   protected readonly rollSkill = computed(() => {
     const c = this.contest();
@@ -283,7 +286,12 @@ export class ContestSheet {
   });
   protected readonly holds = computed(() => {
     const c = this.contest();
-    return !this.escape && this.data.purpose === ContestPurpose.GRAPPLE && !!c && this.verdict()?.won === true;
+    return (
+      !this.escape &&
+      this.data.purpose === ContestPurpose.GRAPPLE &&
+      !!c &&
+      this.verdict()?.won === true
+    );
   });
   protected readonly hold = computed(() => holdLine(this.other().label));
 
@@ -299,9 +307,7 @@ export class ContestSheet {
   });
   protected readonly pushText = computed(() => pushLine(this.pushBlocked()));
   protected readonly proneText = computed(() => proneLine(this.other()));
-  protected readonly choiceLead = computed(
-    () => `Escolha o que fazer com ${named(this.other())}.`,
-  );
+  protected readonly choiceLead = computed(() => `Escolha o que fazer com ${named(this.other())}.`);
   protected readonly upFirst = upFirst;
   protected readonly ofNamed = ofNamed;
 

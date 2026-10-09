@@ -52,7 +52,9 @@ export interface Who {
 
 /** A combatant as a sentence names it. */
 export function whoIs(c: Pick<Combatant, 'label' | 'kind'> | undefined): Who {
-  return c ? { label: c.label, player: isPlayer(c as Combatant) } : { label: 'alguém', player: true };
+  return c
+    ? { label: c.label, player: isPlayer(c as Combatant) }
+    : { label: 'alguém', player: true };
 }
 
 /** "o Hobgoblin", "Brisa": a player's character is named bare, a creature with its article. */
@@ -162,12 +164,15 @@ export function countedFace(roll: CheckRoll): number {
 /** "1d20 (15) + 5": the d20 that counts and the modifier; the two dice of a pair are said apart (`pairOf`). */
 export function rollFormula(roll: CheckRoll): string {
   const face = countedFace(roll);
-  const mod = roll.modifier === 0 ? '' : ` ${roll.modifier < 0 ? '−' : '+'} ${Math.abs(roll.modifier)}`;
+  const mod =
+    roll.modifier === 0 ? '' : ` ${roll.modifier < 0 ? '−' : '+'} ${Math.abs(roll.modifier)}`;
   return `1d20 (${face})${mod}`;
 }
 
 /** The two d20 of a roll with advantage or disadvantage, the one that counts marked; empty for a single die. */
-export function pairOf(roll: CheckRoll): readonly { readonly value: number; readonly counts: boolean }[] {
+export function pairOf(
+  roll: CheckRoll,
+): readonly { readonly value: number; readonly counts: boolean }[] {
   if (roll.faces.length < 2) {
     return [];
   }
@@ -194,7 +199,9 @@ export function modeLabel(mode: RollModeKind): string {
 }
 
 /** The skills a defender (or the grappled one) picks from: the higher modifier first, as the board draws them. */
-export function skillChoices(options: readonly ContestSkillOption[]): readonly ContestSkillOption[] {
+export function skillChoices(
+  options: readonly ContestSkillOption[],
+): readonly ContestSkillOption[] {
   return [...options].sort((a, b) => b.modifier - a.modifier);
 }
 
@@ -213,10 +220,7 @@ export function waitTitle(e: Encounter | null, contest: ContestView | undefined)
 }
 
 /** The sentence after the wait: who answers and what they do ("O Hobgoblin escolhe Atletismo ou Acrobacia e rola."). */
-export function waitDetail(
-  e: Encounter | null,
-  contest: ContestView | undefined,
-): string {
+export function waitDetail(e: Encounter | null, contest: ContestView | undefined): string {
   if (!contest) {
     return '';
   }
@@ -421,7 +425,10 @@ export interface ContestNote {
 }
 
 /** The tags the turn shows for what `contest_state` says: hidden ("Você está escondida.", never from whom) and surprised. */
-export function contestNotes(state: ContestTurnState | undefined, ownLabel: string): readonly ContestNote[] {
+export function contestNotes(
+  state: ContestTurnState | undefined,
+  ownLabel: string,
+): readonly ContestNote[] {
   const notes: ContestNote[] = [];
   if (state?.hidden) {
     notes.push({

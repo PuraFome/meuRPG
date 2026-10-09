@@ -69,7 +69,16 @@ function setup(options = dragging) {
   const choose = (col: number, row: number) => {
     const surface = el.querySelector<HTMLElement>('.cm__surface')!;
     surface.getBoundingClientRect = () =>
-      ({ left: 0, top: 0, width: 200, height: 140, right: 200, bottom: 140, x: 0, y: 0 }) as DOMRect;
+      ({
+        left: 0,
+        top: 0,
+        width: 200,
+        height: 140,
+        right: 200,
+        bottom: 140,
+        x: 0,
+        y: 0,
+      }) as DOMRect;
     surface.dispatchEvent(
       new MouseEvent('click', { clientX: col * 10 + 5, clientY: row * 10 + 5, bubbles: true }),
     );

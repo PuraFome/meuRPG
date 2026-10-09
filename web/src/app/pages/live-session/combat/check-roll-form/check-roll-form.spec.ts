@@ -1,7 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { RollModeKind } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
+import { create } from '@bufbuild/protobuf';
+import { RollModeKind, RollNoteSchema } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
 import type { CheckDie } from '../../../../core/combat/contest-client';
 import { textOf } from '../../../../core/combat/contest-testing';
 import { CheckRollForm } from './check-roll-form';
@@ -93,5 +94,20 @@ describe('CheckRollForm', () => {
     TestBed.resetTestingModule();
     const app = form({ diceMode: DiceMode.APP });
     expect(app.button('Digitar o resultado')).toBeUndefined();
+  });
+
+  it('says the mode and why above the buttons, one sentence each, and nothing for a normal roll', () => {
+    const note = (labelPt: string, advantage: boolean) =>
+      create(RollNoteSchema, { kind: 'x', labelPt, advantage });
+    const { el } = form({
+      mode: RollModeKind.ADVANTAGE,
+      notes: [note('Ajuda de Orla', true)],
+    });
+    expect(Array.from(el.querySelectorAll('.why li'), (li) => textOf(li))).toEqual([
+      'Vantagem',
+      'Vantagem: Ajuda de Orla',
+    ]);
+    TestBed.resetTestingModule();
+    expect(form().el.querySelector('.why')).toBeNull();
   });
 });

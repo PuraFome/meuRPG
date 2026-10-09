@@ -99,9 +99,7 @@ export class HelpSheet {
   protected readonly title = computed(() =>
     this.kind() === 'check' ? 'Ajudar em um teste' : 'Ajudar um ataque',
   );
-  protected readonly stepList = computed(() =>
-    contestSteps(STEPS[this.kind()], AT[this.stage()]),
-  );
+  protected readonly stepList = computed(() => contestSteps(STEPS[this.kind()], AT[this.stage()]));
   protected readonly tasks = computed(() => {
     const ally = this.ally();
     return ally ? HELP_TASKS.map((t) => ({ ...t, ...taskRow(ally, t.name) })) : [];

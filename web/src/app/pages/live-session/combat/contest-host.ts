@@ -159,9 +159,7 @@ export class ContestHost {
   /** "Agarrar" or "Empurrar": the target, the roll and the wait. */
   openAttack(kind: ContestAttackOptionKind): void {
     const own = this.deps.own();
-    const option = this.deps
-      .options()
-      ?.contestAttackOptions.find((o) => o.kind === kind);
+    const option = this.deps.options()?.contestAttackOptions.find((o) => o.kind === kind);
     const e = this.deps.encounter();
     if (!own || !option || !e) {
       return;
@@ -171,7 +169,8 @@ export class ContestHost {
         campaignId: this.deps.campaignId(),
         encounterId: e.id,
         initiatorId: own.id,
-        purpose: kind === ContestAttackOptionKind.SHOVE ? ContestPurpose.SHOVE : ContestPurpose.GRAPPLE,
+        purpose:
+          kind === ContestAttackOptionKind.SHOVE ? ContestPurpose.SHOVE : ContestPurpose.GRAPPLE,
         attack: option,
         diceMode: this.deps.diceMode(),
         preference: this.deps.preference(),

@@ -50,7 +50,9 @@ describe('GroupCheckCard', () => {
     const { el, settle, fixture } = setup();
     await settle();
     expect(opened).toHaveBeenCalledTimes(1);
-    expect(textOf(el)).toContain('Teste em grupo. O mestre pediu um teste de Furtividade de todo o grupo.');
+    expect(textOf(el)).toContain(
+      'Teste em grupo. O mestre pediu um teste de Furtividade de todo o grupo.',
+    );
     // The same check never opens the sheet a second time by itself.
     fixture.componentRef.setInput('tick', 1);
     await settle();
@@ -71,7 +73,9 @@ describe('GroupCheckCard', () => {
     );
     await settle();
     expect(opened).not.toHaveBeenCalled();
-    expect(textOf(el)).toContain('Esperando o mestre. O resultado do grupo aparece quando ele encerrar o teste de Furtividade.');
+    expect(textOf(el)).toContain(
+      'Esperando o mestre. O resultado do grupo aparece quando ele encerrar o teste de Furtividade.',
+    );
     expect(textOf(el)).toContain('Abrir a folha');
   });
 

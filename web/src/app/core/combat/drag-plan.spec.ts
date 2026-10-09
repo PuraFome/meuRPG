@@ -50,7 +50,9 @@ describe('moving with a grappled creature (W7-X)', () => {
     expect(plain(dragSentence({ col: 5, row: 4 }, { col: 3, row: 4 }, hob, 150))).toBe(
       'Você anda 2 casas para o oeste; o Hobgoblin, que você agarra, vem atrás e para na casa que você deixou. Cabem até 4,5 m neste turno.',
     );
-    expect(dragSentence({ col: 5, row: 4 }, { col: 4, row: 4 }, hob, 150)).toContain('Você anda 1 casa para');
+    expect(dragSentence({ col: 5, row: 4 }, { col: 4, row: 4 }, hob, 150)).toContain(
+      'Você anda 1 casa para',
+    );
   });
 
   it('reads the square the server chose for the dragged creature, never one of its own', () => {

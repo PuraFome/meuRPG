@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { RollModeKind } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
+import { type RollNote, RollModeKind } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import type { CheckDie } from '../../../../core/combat/contest-client';
+import { modeLabel, noteLines } from '../../../../core/combat/contest-view';
 import { MultiRoll, type RollField } from '../multi-roll/multi-roll';
 import { RollPicker } from '../roll-picker/roll-picker';
 
@@ -24,6 +25,13 @@ const PAIR_FIELDS: readonly RollField[] = [
   selector: 'app-check-roll-form',
   imports: [MultiRoll, RollPicker],
   template: `
+    @if (why().length) {
+      <ul class="why" aria-label="Como o d20 é rolado">
+        @for (line of why(); track $index) {
+          <li>{{ line }}</li>
+        }
+      </ul>
+    }
     @if (pair()) {
       <app-multi-roll
         [fields]="fields"
@@ -67,6 +75,20 @@ const PAIR_FIELDS: readonly RollField[] = [
       display: block;
     }
 
+    .why {
+      margin: 0 0 var(--mr-space-3);
+      padding: 0;
+      list-style: none;
+      font-size: 14px;
+      line-height: 20px;
+      color: var(--mr-ink-muted);
+    }
+
+    .why li:first-child:not(:only-child) {
+      font-weight: 700;
+      color: var(--mr-ink);
+    }
+
     .defer {
       display: block;
       width: 100%;
@@ -101,6 +123,8 @@ export class CheckRollForm {
   readonly modifier = input(0);
   /** The name of the check, for the typed field's label: "Força (Atletismo)". */
   readonly checkName = input.required<string>();
+  /** The circumstances behind the mode ("Ajuda de Orla", "Envenenado"), said above the buttons one sentence each; none: nothing is said. */
+  readonly notes = input<readonly RollNote[]>([]);
   readonly totalNote = input('Total do teste');
   readonly diceMode = input.required<DiceMode>();
   readonly preference = input.required<DicePreference>();
@@ -121,6 +145,12 @@ export class CheckRollForm {
   protected readonly pair = computed(
     () => this.mode() === RollModeKind.ADVANTAGE || this.mode() === RollModeKind.DISADVANTAGE,
   );
+  /** "Vantagem" and why, so the player knows the dice they are about to roll are two. */
+  protected readonly why = computed(() => {
+    const lines = noteLines({ notes: [...this.notes()] });
+    const word = modeLabel(this.mode());
+    return word || lines.length ? [word, ...lines].filter(Boolean) : [];
+  });
   protected readonly combine = computed(() =>
     this.mode() === RollModeKind.DISADVANTAGE ? 'lower' : 'higher',
   );

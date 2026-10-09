@@ -53,7 +53,9 @@ describe('TurnPanel: Escondida and Surpresa (W7-X)', () => {
     expect(textOf(end!)).toBe('Passar o turno');
     expect(end?.classList).toContain('end--filled');
     const normal = panel('Nael', {});
-    expect(textOf(normal.querySelector<HTMLButtonElement>('app-end-turn button')!)).toBe('Encerrar turno');
+    expect(textOf(normal.querySelector<HTMLButtonElement>('app-end-turn button')!)).toBe(
+      'Encerrar turno',
+    );
   });
 
   it('says nothing for a turn with no such state', () => {

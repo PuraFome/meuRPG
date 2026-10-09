@@ -140,7 +140,10 @@ describe('the words of the contests (W7-X)', () => {
   describe('the wait', () => {
     it('says the combat’s own wait, and for a player the name', () => {
       const e = encounter({
-        reactionWait: { titlePt: 'Esperando o mestre', detailPt: 'O turno continua quando ele responder.' },
+        reactionWait: {
+          titlePt: 'Esperando o mestre',
+          detailPt: 'O turno continua quando ele responder.',
+        },
         combatants: [combatant({ id: 'b', label: 'Brisa', kind: CombatantKind.PLAYER })],
       } as never);
       expect(waitTitle(e, contestView())).toBe('Esperando o mestre');
@@ -163,7 +166,9 @@ describe('the words of the contests (W7-X)', () => {
           combatant({ id: 'b', label: 'Brisa', kind: CombatantKind.PLAYER }),
         ],
       });
-      expect(waitDetail(e, contestView())).toBe('O Hobgoblin escolhe Atletismo ou Acrobacia e rola.');
+      expect(waitDetail(e, contestView())).toBe(
+        'O Hobgoblin escolhe Atletismo ou Acrobacia e rola.',
+      );
       expect(waitDetail(e, contestView({ defenderId: 'b' }))).toBe(
         'Ela escolhe Atletismo ou Acrobacia e rola.',
       );
@@ -202,13 +207,17 @@ describe('the words of the contests (W7-X)', () => {
       });
       const tie = contestView({ status: ContestStatus.RESOLVED, winner: ContestWinner.TIE });
       expect(initiatorVerdict(tie, hob, 'Toren')?.lead).toBe('Empate: nada muda.');
-      expect(initiatorVerdict(tie, hob, 'Toren')?.rest).toBe('Você não conseguiu agarrar o Hobgoblin.');
+      expect(initiatorVerdict(tie, hob, 'Toren')?.rest).toBe(
+        'Você não conseguiu agarrar o Hobgoblin.',
+      );
       const shove = contestView({
         purpose: ContestPurpose.SHOVE,
         status: ContestStatus.RESOLVED,
         winner: ContestWinner.DEFENDER,
       });
-      expect(initiatorVerdict(shove, hob, 'Toren')?.lead).toBe('Você não conseguiu empurrar o Hobgoblin.');
+      expect(initiatorVerdict(shove, hob, 'Toren')?.lead).toBe(
+        'Você não conseguiu empurrar o Hobgoblin.',
+      );
     });
 
     it('says nothing while the contest waits, and that the master closed one', () => {
@@ -282,9 +291,9 @@ describe('the words of the contests (W7-X)', () => {
         rest: 'Brisa não conseguiu agarrar você.',
         won: true,
       });
-      expect(
-        defenderVerdict({ ...won, winner: ContestWinner.TIE }, hob, 'Brisa')?.lead,
-      ).toBe('Empate: nada muda.');
+      expect(defenderVerdict({ ...won, winner: ContestWinner.TIE }, hob, 'Brisa')?.lead).toBe(
+        'Empate: nada muda.',
+      );
     });
 
     it('a lost shove says what the winner did, and waits while they choose', () => {
@@ -295,11 +304,12 @@ describe('the words of the contests (W7-X)', () => {
         shoveOutcome: ShoveOutcome.PRONE,
       });
       expect(defenderVerdict(shove, hob, 'Brisa')?.rest).toBe('O Hobgoblin derrubou você.');
-      expect(defenderVerdict({ ...shove, shoveOutcome: ShoveOutcome.STAYS }, hob, 'Brisa')?.rest).toBe(
-        'O Hobgoblin não tirou você do lugar.',
-      );
       expect(
-        defenderVerdict(contestView({ status: ContestStatus.AWAITING_OUTCOME }), hob, 'Brisa')?.lead,
+        defenderVerdict({ ...shove, shoveOutcome: ShoveOutcome.STAYS }, hob, 'Brisa')?.rest,
+      ).toBe('O Hobgoblin não tirou você do lugar.');
+      expect(
+        defenderVerdict(contestView({ status: ContestStatus.AWAITING_OUTCOME }), hob, 'Brisa')
+          ?.lead,
       ).toBe('Você perdeu a disputa.');
       expect(defenderVerdict(contestView(), hob, 'Brisa')).toBeNull();
     });
@@ -340,7 +350,10 @@ describe('the words of the contests (W7-X)', () => {
         lead: 'Alguém vê você claramente:',
         rest: 'não dá para se esconder agora.',
       });
-      expect(refusalParts('Sem lugar para isso.')).toEqual({ lead: '', rest: 'Sem lugar para isso.' });
+      expect(refusalParts('Sem lugar para isso.')).toEqual({
+        lead: '',
+        rest: 'Sem lugar para isso.',
+      });
     });
   });
 

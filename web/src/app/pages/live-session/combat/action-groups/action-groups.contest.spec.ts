@@ -68,10 +68,7 @@ function setup(inputs: {
 
 describe('ActionGroups: the special attacks, escape and the states of the turn (W7-X)', () => {
   describe('Agarrar and Empurrar (board W7-Xa 2)', () => {
-    const both = [
-      special(ContestAttackOptionKind.GRAPPLE),
-      special(ContestAttackOptionKind.SHOVE),
-    ];
+    const both = [special(ContestAttackOptionKind.GRAPPLE), special(ContestAttackOptionKind.SHOVE)];
 
     it('lists them under the attacks, each saying it replaces an attack, with the note of the board', () => {
       const { el, row } = setup({ contestAttacks: both });
@@ -134,7 +131,10 @@ describe('ActionGroups: the special attacks, escape and the states of the turn (
 
     it('turns "Escapar" off with the reason when the action is spent', () => {
       const { row, escapes } = setup({
-        contest: grappled({ canEscape: false, escapeReason: { code: DisabledReasonCode.ACTION_USED } }),
+        contest: grappled({
+          canEscape: false,
+          escapeReason: { code: DisabledReasonCode.ACTION_USED },
+        }),
       });
       expect(textOf(row('Escapar')!)).toContain('Ação já usada');
       row('Escapar')!.querySelector<HTMLButtonElement>('button')!.click();

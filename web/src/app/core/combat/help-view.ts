@@ -122,9 +122,7 @@ export function attackRow(
   return {
     name: `${ally.label} ataca ${the}`,
     sub: tight(far ? (target.reachable ? `${upFirst(the)} está ${far}.` : `${upFirst(far)}.`) : ''),
-    blocked: target.reachable
-      ? ''
-      : tight(`Longe demais: no máximo ${metersText(HELP_REACH_FT)}.`),
+    blocked: target.reachable ? '' : tight(`Longe demais: no máximo ${metersText(HELP_REACH_FT)}.`),
   };
 }
 

@@ -67,7 +67,10 @@ describe('a contest waits in a window of kind CONTEST (W7-X)', () => {
   it('is told to everybody else with the combat’s own wait line', () => {
     const e = encounter({
       reactionWindows: [],
-      reactionWait: { titlePt: 'Esperando Brisa', detailPt: 'O turno continua quando ele responder.' },
+      reactionWait: {
+        titlePt: 'Esperando Brisa',
+        detailPt: 'O turno continua quando ele responder.',
+      },
     } as never);
     expect(reactionWait(e)).toEqual({
       title: 'Esperando Brisa',

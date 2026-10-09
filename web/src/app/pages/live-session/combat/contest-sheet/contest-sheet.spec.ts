@@ -20,6 +20,7 @@ import {
   ContestWaitFor,
   ContestWinner,
   RollModeKind,
+  RollNoteSchema,
   ShoveBlockedReason,
   ShoveChoiceSchema,
   ShoveOutcome,
@@ -38,7 +39,8 @@ import {
 } from '../../../../core/combat/contest-testing';
 import { ContestSheet, type ContestSheetData } from './contest-sheet';
 
-const plain = (s: string | null | undefined) => (s ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const plain = (s: string | null | undefined) =>
+  (s ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
 
 const target = (id: string, size: CreatureSize, eligible = true) =>
   create(ContestTargetSchema, {
@@ -66,7 +68,13 @@ function grappleOption(kind = ContestAttackOptionKind.GRAPPLE) {
 function table() {
   return encounter({
     combatants: [
-      combatant({ id: 't', label: 'Toren', kind: CombatantKind.PLAYER, side: CombatantSide.PARTY, size: CreatureSize.MEDIUM } as never),
+      combatant({
+        id: 't',
+        label: 'Toren',
+        kind: CombatantKind.PLAYER,
+        side: CombatantSide.PARTY,
+        size: CreatureSize.MEDIUM,
+      } as never),
       combatant({ id: 'h', label: 'Hobgoblin' }),
       combatant({ id: 'g', label: 'Goblin 1' }),
       combatant({ id: 'x', label: 'Gigante da colina' }),
@@ -170,7 +178,10 @@ describe('ContestSheet', () => {
         ...grappleOption(),
         targets: [
           target('h', CreatureSize.MEDIUM),
-          create(ContestTargetSchema, { combatantId: 'g', reason: ContestTargetReason.OUT_OF_REACH }),
+          create(ContestTargetSchema, {
+            combatantId: 'g',
+            reason: ContestTargetReason.OUT_OF_REACH,
+          }),
         ],
       });
       const { el } = setup({ attack: out });
@@ -182,7 +193,9 @@ describe('ContestSheet', () => {
       const go = button('Rolar a disputa')!;
       expect(go.getAttribute('aria-disabled')).toBe('true');
       expect(go.classList).toContain('foot__btn--off');
-      expect(el.querySelector('#contest-why')?.textContent).toContain('Confirme que tem uma mão livre');
+      expect(el.querySelector('#contest-why')?.textContent).toContain(
+        'Confirme que tem uma mão livre',
+      );
       go.click();
       expect(text()).not.toContain('Seu teste de');
       await mark();
@@ -216,6 +229,25 @@ describe('ContestSheet', () => {
       expect(button('Digitar o resultado')).toBeTruthy();
     });
 
+    it('says the mode of the roll and why before it, for what the server says changes it', async () => {
+      const poisoned = create(ContestAttackOptionSchema, {
+        ...grappleOption(),
+        rollOption: create(CheckOptionSchema, {
+          modifier: 5,
+          mode: RollModeKind.DISADVANTAGE,
+          notes: [
+            create(RollNoteSchema, { kind: 'poisoned', labelPt: 'Envenenado', advantage: false }),
+          ],
+        }),
+      });
+      const s = setup({ attack: poisoned });
+      await s.mark();
+      s.button('Rolar a disputa')!.click();
+      await s.settle();
+      expect(s.text()).toContain('Desvantagem Desvantagem: Envenenado');
+      expect(s.button('Rolar 2d20 no app')).toBeTruthy();
+    });
+
     it('rolls in the app once, with the request the contract names and one key', async () => {
       const { button, settle } = await toRoll();
       api.contest = contestView({ initiatorRoll: checkRoll() });
@@ -240,13 +272,18 @@ describe('ContestSheet', () => {
       api.contest = contestView({ initiatorRoll: checkRoll() });
       api.encounterAnswer = encounter({
         combatants: table().combatants,
-        reactionWait: { titlePt: 'Esperando o mestre', detailPt: 'O turno continua quando ele responder.' },
+        reactionWait: {
+          titlePt: 'Esperando o mestre',
+          detailPt: 'O turno continua quando ele responder.',
+        },
       } as never);
       button('Rolar no app')!.click();
       await settle();
       expect(el.querySelector('.roll__box')?.textContent).toBe('15');
       expect(el.querySelector('.roll__total')?.textContent).toBe('20');
-      expect(plain(el.querySelector('.roll__formula')?.textContent)).toBe('1d20 (15) + 5 · Atletismo');
+      expect(plain(el.querySelector('.roll__formula')?.textContent)).toBe(
+        '1d20 (15) + 5 · Atletismo',
+      );
       expect(textOf(el.querySelector('[data-testid="contest-wait"]')!)).toBe(
         'Esperando o mestre. O Hobgoblin escolhe Atletismo ou Acrobacia e rola.',
       );
@@ -382,7 +419,9 @@ describe('ContestSheet', () => {
       expect(text()).toContain(
         'Você o segura enquanto quiser (solte sem gastar ação). Se você se mover, leva-o junto, com o deslocamento pela metade.',
       );
-      expect(Array.from(el.querySelectorAll('.steps__item')).at(2)?.getAttribute('aria-current')).toBe('step');
+      expect(
+        Array.from(el.querySelectorAll('.steps__item')).at(2)?.getAttribute('aria-current'),
+      ).toBe('step');
       expect(button('Fechar')).toBeTruthy();
       expect(document.activeElement?.textContent).toContain('Fechar');
     });
@@ -554,7 +593,9 @@ describe('ContestSheet', () => {
       });
       expect(el.querySelector('.roll__box')?.textContent).toBe('9');
       expect(el.querySelector('.roll__total')?.textContent).toBe('16');
-      expect(plain(el.querySelector('.roll__formula')?.textContent)).toBe('1d20 (9) + 7 · Acrobacia');
+      expect(plain(el.querySelector('.roll__formula')?.textContent)).toBe(
+        '1d20 (9) + 7 · Acrobacia',
+      );
       expect(text()).toContain('Continua agarrada. A ação foi gasta.');
       expect(contests.contests()).toHaveLength(1);
     });
@@ -583,7 +624,10 @@ describe('ContestSheet', () => {
       api.contest = contestView({ purpose: ContestPurpose.ESCAPE, initiatorId: 'b' });
       api.encounterAnswer = encounter({
         combatants: table().combatants,
-        reactionWait: { titlePt: 'Esperando o mestre', detailPt: 'O turno continua quando ele responder.' },
+        reactionWait: {
+          titlePt: 'Esperando o mestre',
+          detailPt: 'O turno continua quando ele responder.',
+        },
       } as never);
       button('Rolar no app')!.click();
       await settle();

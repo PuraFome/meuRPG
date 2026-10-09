@@ -27,7 +27,13 @@ function table() {
     combatants: [
       combatant({ id: 'o', label: 'Orla', kind: CombatantKind.PLAYER, side: party }),
       combatant({ id: 'v', label: 'Toren', kind: CombatantKind.PLAYER, side: party }),
-      combatant({ id: 'n', label: 'Nael', kind: CombatantKind.PLAYER, side: party, defeated: true }),
+      combatant({
+        id: 'n',
+        label: 'Nael',
+        kind: CombatantKind.PLAYER,
+        side: party,
+        defeated: true,
+      }),
       combatant({
         id: 'd',
         label: 'Ragna',

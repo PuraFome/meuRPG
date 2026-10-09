@@ -15,6 +15,7 @@ import type { Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { CombatState } from '../../../../core/combat/combat-state';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
+import { textOf } from '../../../../core/combat/contest-testing';
 import { AttackSheet, type AttackSheetData } from './attack-sheet';
 
 const plain = (t: string | null | undefined) => (t ?? '').replace(/\s+/g, ' ').trim();
@@ -144,6 +145,60 @@ function setup(opts: { targets: unknown[]; diceMode?: DiceMode; master?: boolean
   };
   return { fixture, el, api, state, enc, button, chooseTarget, radio, pick, write };
 }
+
+describe('AttackSheet: the attack of a hidden attacker (W7-X, board W7-Xc 8b)', () => {
+  const unseen = {
+    kind: 19,
+    effect: RollMode.ADVANTAGE,
+    textPt: 'Atacante que o alvo não vê: vantagem',
+  };
+
+  it('says the server chose advantage because the target does not see the attacker, and asks for the pair', () => {
+    const s = setup({ targets: [target({ rollMode: RollMode.ADVANTAGE, sources: [unseen] })] });
+    s.chooseTarget();
+    expect(plain(s.el.textContent)).toContain('Atacante que o alvo não vê: vantagem');
+    expect(s.radio('Vantagem').querySelector('input')!.checked).toBe(true);
+    expect(s.button('Rolar 2d20 no app')).toBeTruthy();
+  });
+
+  it('shows the pair of the roll with the one that counts, and the source behind it, once rolled', async () => {
+    const api = {
+      rollAttack: vi.fn().mockResolvedValue({
+        encounter: encounter({ currentCombatantId: 't', combatants: [toren, cap] } as never),
+        roll: {
+          outcome: AttackOutcome.MISS,
+          mode: RollMode.ADVANTAGE,
+          suggestedMode: RollMode.ADVANTAGE,
+          modeReason: '',
+          sources: [unseen],
+          criticalOnHit: false,
+          d20: {
+            diceCount: 2,
+            diceSides: 20,
+            faces: [4, 17],
+            modifier: 5,
+            total: 22,
+            countedIndex: 1,
+          },
+        },
+        pending: undefined,
+      }),
+    };
+    const s = setup({
+      targets: [target({ rollMode: RollMode.ADVANTAGE, sources: [unseen] })],
+      api,
+    });
+    s.chooseTarget();
+    s.button('Rolar 2d20 no app')!.click();
+    await s.fixture.whenStable();
+    s.fixture.detectChanges();
+    const text = textOf(s.el.querySelector('app-attack-result')!);
+    expect(text).toContain('Vantagem');
+    expect(text).toContain('17 vale');
+    expect(text).toContain('4 descartado');
+    expect(text).toContain('Atacante que o alvo não vê: vantagem');
+  });
+});
 
 describe('AttackSheet: advantage and disadvantage', () => {
   it('shows the suggested mode with its sources and rolls the pair in the app with no change to report', async () => {

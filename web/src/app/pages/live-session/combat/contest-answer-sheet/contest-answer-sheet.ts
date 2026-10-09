@@ -120,11 +120,15 @@ export class ContestAnswerSheet {
     }
     return c.youAnswer ? 'choose' : 'wait';
   });
-  protected readonly stepList = computed(() => contestSteps(STEPS, this.stage() === 'result' ? 1 : 0));
+  protected readonly stepList = computed(() =>
+    contestSteps(STEPS, this.stage() === 'result' ? 1 : 0),
+  );
   protected readonly title = computed(() =>
     defenderTitle(this.initiator()?.label ?? 'Alguém', this.purpose()),
   );
-  protected readonly byPlayer = computed(() => !!this.initiator() && whoIs(this.initiator()).player);
+  protected readonly byPlayer = computed(
+    () => !!this.initiator() && whoIs(this.initiator()).player,
+  );
   /** "contra o teste dele (SRD, Grappling)": the citation is the board's wording for an NPC's test. */
   protected readonly intro = computed(() => {
     const label = this.initiator()?.label ?? '';
@@ -157,9 +161,7 @@ export class ContestAnswerSheet {
   });
   protected readonly verdict = computed(() => {
     const c = this.contest();
-    return c
-      ? defenderVerdict(c, whoIs(this.initiator()), this.own()?.label ?? '')
-      : null;
+    return c ? defenderVerdict(c, whoIs(this.initiator()), this.own()?.label ?? '') : null;
   });
   protected readonly signedText = signed;
   protected readonly skillLabel = skillLine;

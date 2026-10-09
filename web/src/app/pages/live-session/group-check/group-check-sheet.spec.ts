@@ -93,7 +93,13 @@ describe('GroupCheckSheet (board W7-Xc 10)', () => {
       members: [
         member({
           answered: true,
-          roll: checkRoll({ skill: 0, skillKey: 'skill:stealth', faces: [12], modifier: 7, total: 19 }),
+          roll: checkRoll({
+            skill: 0,
+            skillKey: 'skill:stealth',
+            faces: [12],
+            modifier: 7,
+            total: 19,
+          }),
         }),
       ],
     });
@@ -149,7 +155,9 @@ describe('GroupCheckSheet (board W7-Xc 10)', () => {
   it('says only that the master closed it when the DC stays with the master', () => {
     const closed = groupCheck({
       open: false,
-      members: [member({ answered: true, roll: checkRoll({ faces: [12], modifier: 7, total: 19 }) })],
+      members: [
+        member({ answered: true, roll: checkRoll({ faces: [12], modifier: 7, total: 19 }) }),
+      ],
     });
     const { text, el } = setup(closed);
     expect(text()).toContain('O mestre encerrou o teste.');
@@ -169,7 +177,9 @@ describe('GroupCheckSheet (board W7-Xc 10)', () => {
   it('hides on "Fechar a folha"', async () => {
     const { button, settle } = setup(
       groupCheck({
-        members: [member({ answered: true, roll: checkRoll({ faces: [12], modifier: 7, total: 19 }) })],
+        members: [
+          member({ answered: true, roll: checkRoll({ faces: [12], modifier: 7, total: 19 }) }),
+        ],
       }),
     );
     await settle();

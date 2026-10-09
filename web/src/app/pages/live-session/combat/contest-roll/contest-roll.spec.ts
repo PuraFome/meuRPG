@@ -38,7 +38,9 @@ describe('ContestRoll', () => {
         faces: [8, 15],
         mode: RollModeKind.ADVANTAGE,
         total: 20,
-        notes: [create(RollNoteSchema, { kind: 'help', labelPt: 'Ajuda de Orla', advantage: true })],
+        notes: [
+          create(RollNoteSchema, { kind: 'help', labelPt: 'Ajuda de Orla', advantage: true }),
+        ],
       }),
     );
     expect(el.querySelector('.roll__box')?.textContent).toBe('15');
