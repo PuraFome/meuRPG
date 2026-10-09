@@ -135,6 +135,15 @@ func (t Terrain) solid(sq Square) bool {
 	return t.solidGround(sq) || t.door(sq).BlocksMove()
 }
 
+// Standable says whether a creature can stand on the square: it is on the grid
+// and is neither a wall, a square of three-quarters cover (a column) nor a door
+// that is shut (closed, locked, barred or secret; an open door is floor). Whoever
+// else stands there is the caller's to check.
+func (t Terrain) Standable(sq Square) bool {
+	d := t.door(sq)
+	return !t.solidGround(sq) && !d.BlocksSight() && !d.BlocksMove()
+}
+
 // Mover says how a creature moves. A flier ignores difficult terrain (walls
 // stop everyone, and another creature's space still costs). Size decides
 // whether it may pass a hostile creature and whether it may share a square.
