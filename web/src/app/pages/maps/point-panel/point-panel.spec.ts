@@ -1,7 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
-import { MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import { create } from '@bufbuild/protobuf';
+
+import { MapPointKind, MapRefSchema } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import { GalleryClient } from '../../../core/images/gallery-client';
+import {
+  FakeGalleryClient,
+  galleryImage,
+  galleryUsage,
+} from '../../../core/images/gallery-testing';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { FakeMapsClient, mapPoint } from '../../../core/maps/maps-testing';
 import { PointPanel } from './point-panel';
@@ -208,5 +216,125 @@ describe('PointPanel: a battle point and its encounter (MR-043)', () => {
 
   it('another kind of point has no such link', () => {
     expect(panel(MapPointKind.SCENE).querySelector('.pp__enc')).toBeNull();
+  });
+});
+
+describe('PointPanel: a Submapa and its map (open and create)', () => {
+  let api: FakeMapsClient;
+
+  function panel(over: { target?: string; maps?: { id: string; name: string }[] } = {}) {
+    api = new FakeMapsClient();
+    const gallery = new FakeGalleryClient();
+    gallery.listResult = Promise.resolve({
+      images: [galleryImage('img-torre', 'Planta da torre')],
+      usage: galleryUsage(),
+    });
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: MapsClient, useValue: api },
+        { provide: GalleryClient, useValue: gallery },
+      ],
+    });
+    const fixture = TestBed.createComponent(PointPanel);
+    fixture.componentRef.setInput(
+      'point',
+      mapPoint('pt-1', 'Torre de Mirathel', {
+        kind: MapPointKind.SUBMAP,
+        targetMap: over.target ? create(MapRefSchema, { id: over.target, name: 'x' }) : undefined,
+      }),
+    );
+    fixture.componentRef.setInput('campaignId', 'camp-1');
+    fixture.componentRef.setInput('maps', over.maps ?? [{ id: 'm2', name: 'Interior da torre' }]);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  const select = (el: HTMLElement) => el.querySelector('select') as HTMLSelectElement;
+  const button = (el: HTMLElement, text: string) =>
+    Array.from(el.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes(text),
+    ) as HTMLButtonElement;
+
+  function choose(fixture: ComponentFixture<PointPanel>, value: string) {
+    const s = select(fixture.nativeElement);
+    s.value = value;
+    s.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+  }
+
+  it('offers no "Abrir" until a map is chosen, then links to that map\'s editor', () => {
+    const fixture = panel();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.pp__open')).toBeNull();
+    choose(fixture, 'm2');
+    const link = el.querySelector<HTMLAnchorElement>('.pp__open')!;
+    expect(link.textContent).toContain('Abrir Interior da torre');
+    expect(link.getAttribute('href')).toBe('/campaigns/camp-1/maps/m2');
+  });
+
+  it('lists "Criar mapa novo…" last and opens the form named after the point', () => {
+    const fixture = panel();
+    const el = fixture.nativeElement as HTMLElement;
+    const labels = Array.from(select(el).options).map((o) => o.textContent?.trim());
+    expect(labels.at(-1)).toBe('Criar mapa novo…');
+    choose(fixture, '__new__');
+    expect(select(el).value).toBe('');
+    expect((el.querySelector('.pp__new input') as HTMLInputElement).value).toBe(
+      'Torre de Mirathel',
+    );
+  });
+
+  it('asks for an image before creating', async () => {
+    const fixture = panel();
+    const el = fixture.nativeElement as HTMLElement;
+    choose(fixture, '__new__');
+    button(el, 'Criar mapa e usar').click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(el.textContent).toContain('Escolha uma imagem para o mapa.');
+    expect(api.calls.some((c) => c.startsWith('create'))).toBe(false);
+  });
+
+  it('creates the map, points the draft at it and asks the page to save', async () => {
+    const fixture = panel();
+    const el = fixture.nativeElement as HTMLElement;
+    const events: string[] = [];
+    fixture.componentInstance.saveRequested.subscribe(() => events.push('save'));
+    fixture.componentInstance.mapCreated.subscribe((m) => events.push(`made:${m.id}`));
+    choose(fixture, '__new__');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    (el.querySelector('.pp__new [role="radio"]') as HTMLElement).click();
+    fixture.detectChanges();
+    button(el, 'Criar mapa e usar').click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(api.calls).toContain('create Torre de Mirathel img-torre');
+    expect(events).toEqual(['made:new-map', 'save']);
+    expect(fixture.componentInstance.changes()).toEqual({ targetMapId: 'new-map' });
+    expect(el.querySelector('.pp__new')).toBeNull();
+    expect(el.querySelector('.pp__open')?.textContent).toContain('Abrir Torre de Mirathel');
+  });
+
+  it('says why a create failed and keeps the form', async () => {
+    const fixture = panel();
+    const el = fixture.nativeElement as HTMLElement;
+    api.create = async () => {
+      const { ConnectError, Code } = await import('@connectrpc/connect');
+      throw new ConnectError('too many', Code.ResourceExhausted);
+    };
+    choose(fixture, '__new__');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    (el.querySelector('.pp__new [role="radio"]') as HTMLElement).click();
+    fixture.detectChanges();
+    button(el, 'Criar mapa e usar').click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(el.querySelector('.pp__new [role="alert"]')?.textContent).toContain(
+      'limite de 200 mapas',
+    );
+    expect(el.querySelector('.pp__new')).not.toBeNull();
   });
 });

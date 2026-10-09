@@ -6,7 +6,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MapState, tokenKey } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { SceneClient } from '../../../core/play/scene-client';
-import { mapMessage, mapResponse, mapToken } from '../../../core/maps/maps-testing';
+import { mapMessage, mapPoint, mapResponse, mapToken } from '../../../core/maps/maps-testing';
+import { create } from '@bufbuild/protobuf';
+
+import { MapPointKind, MapRefSchema } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { MapView } from '../../../shared/map-view/map-view';
 import { LiveSessionSource } from '../live-session.types';
 import { SessionMap } from './session-map';
@@ -86,5 +89,75 @@ describe('SessionMap dragging a token', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(banner()).toBeNull();
+  });
+});
+
+describe('SessionMap: "Ir para <mapa>" on a Submapa point', () => {
+  const setCurrentMap = vi.fn();
+
+  async function mount() {
+    const stairs = mapPoint('p-sub', 'Torre', {
+      kind: MapPointKind.SUBMAP,
+      revealed: true,
+      targetMap: create(MapRefSchema, { id: 'map-2', name: 'Interior da torre' }),
+    });
+    const noTarget = mapPoint('p-none', 'Escada', { kind: MapPointKind.SUBMAP, revealed: true });
+    const state = new MapState(async () =>
+      mapResponse(mapMessage('map-1', 'Torre', { revealed: true }), [stairs, noTarget], []),
+    );
+    await state.open('map-1');
+    const fixture = TestBed.createComponent(SessionMap);
+    fixture.componentRef.setInput('campaignId', 'camp-1');
+    fixture.componentRef.setInput('state', state);
+    fixture.componentRef.setInput('mapId', 'map-1');
+    fixture.componentRef.setInput('isMaster', true);
+    const changed: (string | null)[] = [];
+    fixture.componentInstance.currentChanged.subscribe((m) => changed.push(m));
+    fixture.detectChanges();
+    return { fixture, changed, el: fixture.nativeElement as HTMLElement };
+  }
+
+  beforeEach(() => {
+    setCurrentMap.mockReset();
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: MapsClient, useValue: {} },
+        { provide: LiveSessionSource, useValue: { setCurrentMap } },
+        { provide: SceneClient, useValue: {} },
+      ],
+    });
+  });
+
+  const goButtons = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.row__go'));
+
+  it('offers it only on a Submapa point that has a destination', async () => {
+    const { el } = await mount();
+    expect(goButtons(el)).toHaveLength(1);
+    expect(goButtons(el)[0].textContent).toContain('Ir para Interior da torre');
+    expect(goButtons(el)[0].getAttribute('aria-label')).toBe(
+      'Levar a sessão para Interior da torre',
+    );
+  });
+
+  it("changes the session's current map to the destination", async () => {
+    setCurrentMap.mockResolvedValue('map-2');
+    const { fixture, changed, el } = await mount();
+    goButtons(el)[0].click();
+    await fixture.whenStable();
+    expect(setCurrentMap).toHaveBeenCalledWith('camp-1', 'map-2');
+    expect(changed).toEqual(['map-2']);
+  });
+
+  it('says so when the session is over', async () => {
+    const { ConnectError, Code } = await import('@connectrpc/connect');
+    setCurrentMap.mockRejectedValue(new ConnectError('no', Code.FailedPrecondition));
+    const { fixture, changed, el } = await mount();
+    goButtons(el)[0].click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(changed).toEqual([]);
+    expect(el.textContent).toContain('A sessão acabou: o mapa só muda durante a sessão.');
   });
 });

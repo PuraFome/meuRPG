@@ -521,6 +521,14 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
       await masterPage.getByRole('button', { name: 'Ruínas élficas, Cena de RP, escondido' }).click();
       await expect(masterPage.getByRole('heading', { name: 'Ruínas élficas' })).toBeVisible();
       await expectScreenPasses(masterPage, `Editor com um ponto escolhido ${suffix}`);
+      // A Submapa with a destination ("Abrir <mapa>"), then "Criar mapa novo…" open in the panel.
+      await masterPage.getByRole('button', { name: 'Torre de Mirathel, Submapa' }).first().click();
+      await expect(masterPage.getByRole('link', { name: /^Abrir / })).toBeVisible();
+      await expectScreenPasses(masterPage, `Editor, submapa com "Abrir" ${suffix}`);
+      await masterPage.getByLabel('Leva para').selectOption({ label: 'Criar mapa novo…' });
+      await expect(masterPage.getByRole('button', { name: 'Criar mapa e usar' })).toBeVisible();
+      await masterPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+      await expectScreenPasses(masterPage, `Editor, "Criar mapa novo…" ${suffix}`);
     }
 
     await open(playerPage, `/campaigns/${campaignId}/maps/${world}`);

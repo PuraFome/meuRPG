@@ -185,7 +185,7 @@ export class MapPage {
     }
   }
 
-  private async reloadMaps(): Promise<void> {
+  protected async reloadMaps(): Promise<void> {
     try {
       this.maps.set(await this.api.list(this.campaignId()));
     } catch {

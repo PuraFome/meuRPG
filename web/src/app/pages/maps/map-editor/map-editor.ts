@@ -170,6 +170,8 @@ export class MapEditor {
   readonly erasesChange = output<boolean>();
   /** The page's flags may be out of date (a refusal said a combat runs, or does not): read them again. */
   readonly staleFlags = output<void>();
+  /** A map was made from a Submapa point: the page reads the campaign's maps again. */
+  readonly mapsChanged = output<void>();
 
   protected readonly map = computed(() => this.state().map());
   /** What a square of the drawing is worth, for the legend of a calibrated map: "3 m". */
