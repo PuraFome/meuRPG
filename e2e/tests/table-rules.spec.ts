@@ -4,7 +4,7 @@ import { layersOf, mapToPaint } from './editor-support';
 import { campaignWithEmptyPlayer, factor, masterCampaign, method, setTableRulesRPC, tableRulesOf, wallSquares } from './table-rules-support';
 import { callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 import { endOpenSessionRPC } from './live-session-support';
-import { tableForLevelUp, toren } from './levelup-support';
+import { passClassStep, tableForLevelUp, toren } from './levelup-support';
 import { pickRadio } from './move-support';
 import { awardXpRPC, tableForXp } from './xp-support';
 
@@ -344,7 +344,8 @@ test(
 
       // The default: the player chooses, two cards.
       await p.goto(page);
-      await expect(p.getByText('Passo 1 de 2 · Vida')).toBeVisible();
+      await passClassStep(p);
+      await expect(p.getByText('Passo 2 de 3 · Vida')).toBeVisible();
       await expect(p.getByRole('radio', { name: /Média:/ })).toBeVisible();
       await expect(p.getByRole('radio', { name: /Rolar 1d10/ })).toBeVisible();
 

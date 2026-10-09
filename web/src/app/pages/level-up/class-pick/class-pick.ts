@@ -178,9 +178,10 @@ export class ClassPick {
   protected chooseNew(c: LevelUpClassChoice): void {
     if (c.available) {
       this.pick.emit(c.classKey);
-      queueMicrotask(() => this.syncRadios());
-      setTimeout(() => this.syncRadios());
     }
+    // A closed card (aria-disabled) is focusable, and the browser still checks it on Space: it goes back at once.
+    queueMicrotask(() => this.syncRadios());
+    setTimeout(() => this.syncRadios());
   }
 
   protected choose(key: string): void {

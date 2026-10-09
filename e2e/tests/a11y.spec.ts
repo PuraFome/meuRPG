@@ -12,7 +12,7 @@ import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC,
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
-import { tableForLevelUp } from './levelup-support';
+import { classCard, passClassStep, tableForLevelUp } from './levelup-support';
 import { paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
@@ -2420,7 +2420,36 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `A ficha que pode subir de nível ${where}`);
 
     await p.getByRole('link', { name: 'Subir para o nível 4' }).click();
-    await expect(p.getByText('Passo 1 de 4 · Habilidades')).toBeVisible();
+    await expect(p.getByText('Passo 1 de 5 · Classe')).toBeVisible();
+    await expectScreenPasses(p, `Subir em qual classe?, a classe que ele tem ${where}`);
+    await classCard(p, /^Uma classe nova/).click();
+    await expect(p.getByRole('heading', { name: 'Qual classe nova?' })).toBeVisible();
+    await expectScreenPasses(p, `Subir em qual classe?, "Uma classe nova" aberta com os pré-requisitos ${where}`);
+    // A new class end to end, before the level goes to the Mago he has: the Guerreiro (Destreza 16 meets "Força ou Destreza").
+    await classCard(p, /^Guerreiro/).click();
+    await expect(p.getByText('Pensantus · Mago 3 → Mago 3 · Guerreiro 1')).toBeVisible();
+    await expectScreenPasses(p, `Subir em qual classe?, a classe nova escolhida ${where}`);
+    await p.getByRole('button', { name: 'Próximo' }).click();
+    await expect(p.getByRole('heading', { name: 'Pontos de vida de Guerreiro 1' })).toBeVisible();
+    await expectScreenPasses(p, `Vida da classe nova ${where}`);
+    await p.getByRole('button', { name: 'Próximo' }).click();
+    await p.locator('#pick-feature-0').getByRole('radio').first().click();
+    await expectScreenPasses(p, `Escolhas da classe nova, o Estilo de Luta ${where}`);
+    await p.getByRole('button', { name: 'Próximo' }).click();
+    await expect(p.getByText('Passo 4 de 4 · Resumo')).toBeVisible();
+    await expectScreenPasses(p, `Resumo da classe nova ${where}`);
+    await p.getByRole('button', { name: 'Confirmar o nível 4' }).click();
+    await expect(p.getByRole('alertdialog', { name: 'Subir em Guerreiro 1?' })).toBeVisible();
+    await expectScreenPasses(p, `A pergunta antes de acrescentar a classe ${where}`);
+    await p.getByRole('button', { name: 'Voltar', exact: true }).click();
+    for (let i = 0; i < 3; i++) {
+      await p.getByRole('button', { name: 'Voltar', exact: true }).click();
+    }
+    await classCard(p, /^Mago/).click();
+    await p.getByRole('button', { name: 'Trocar para o Mago' }).click();
+    await expect(p.getByText('Pensantus · Mago 3 → Mago 4')).toBeVisible();
+    await p.getByRole('button', { name: 'Próximo' }).click();
+    await expect(p.getByText('Passo 2 de 5 · Habilidades')).toBeVisible();
     await expectScreenPasses(p, `Habilidades, com a escolha faltando ${where}`);
     await row('Inteligência').click();
     await expect(p.getByText('18 → 20')).toBeVisible();
@@ -2431,7 +2460,7 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     await p.getByRole('button', { name: 'Continuar escolhendo' }).click();
     await p.getByRole('button', { name: 'Próximo' }).click();
 
-    await expect(p.getByText('Passo 2 de 4 · Vida')).toBeVisible();
+    await expect(p.getByText('Passo 3 de 5 · Vida')).toBeVisible();
     await expectScreenPasses(p, `Vida, a média ${where}`);
     await p.locator('.dice-choice__card').filter({ hasText: 'Rolar 1d6' }).click();
     await expectScreenPasses(p, `Vida, rolar o dado ${where}`);
@@ -2443,7 +2472,7 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `Vida, o resultado do dado ${where}`);
     await p.getByRole('button', { name: 'Próximo' }).click();
 
-    await expect(p.getByText('Passo 3 de 4 · Magias')).toBeVisible();
+    await expect(p.getByText('Passo 4 de 5 · Magias')).toBeVisible();
     await expectScreenPasses(p, `Magias, com a escolha faltando ${where}`);
     await p.getByRole('button', { name: /Ver os outros \d+ truques/ }).click();
     await row('Prestidigitação').click();
@@ -2464,7 +2493,7 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `Magias, tudo escolhido ${where}`);
     await p.getByRole('button', { name: 'Próximo' }).click();
 
-    await expect(p.getByText('Passo 4 de 4 · Resumo')).toBeVisible();
+    await expect(p.getByText('Passo 5 de 5 · Resumo')).toBeVisible();
     await expectScreenPasses(p, `Resumo ${where}`);
     await p.getByRole('button', { name: 'Confirmar o nível 4' }).click();
     await expect(p.getByText('Pensantus subiu para o nível 4.').first()).toBeVisible();
@@ -5453,7 +5482,8 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     };
     await openLive(`/campaigns/${campaignId}/characters/${characterId}/level-up`);
-    await expect(page.getByText(/Passo 1 de \d · Vida/)).toBeVisible();
+    await passClassStep(page);
+    await expect(page.getByText(/Passo 2 de \d · Vida/)).toBeVisible();
     await expectScreenPasses(page, `Subir de nível, a vida ${where}`);
     await page.getByRole('button', { name: 'Próximo' }).click();
     await expect(page.getByText(/Escolhas/).first()).toBeVisible();
@@ -5484,6 +5514,7 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
     const runico = await createSheetRPC(page, campaignD, fighter);
     await lockAndMilestone(m, campaignD, runico);
     await openLive(`/campaigns/${campaignD}/characters/${runico}/level-up`);
+    await passClassStep(page);
     await page.getByRole('button', { name: 'Próximo' }).click();
     await page.locator('#pick-subclass').getByRole('radio', { name: /Lâmina de Tinta/ }).click();
     await page.getByRole('button', { name: 'Próximo' }).click();
