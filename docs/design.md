@@ -658,6 +658,29 @@ The "Imprimir o mapa" screen (MR-033, design E8-12), master only, in `pages/maps
 
 **The paper rule.** What comes out of the printer is print CSS only, and none of it appears on screen. The sheets (`print-sheets`) only exist on the page while the browser prints (they enter on `beforeprint` and leave on `afterprint`: a big map is thousands of them); in `@media print` the bar, the footer and the whole screen disappear, and one sheet per page remains, the size of the usable area. The chosen paper's `@page` (size and 1 cm margin) is written to a `<style>` in the `head` while the screen is open. The sheet's colors are fixed (white paper, black ink), not the theme tokens: paper has no dark theme. The grid is SVG in centimeters over the image, never an edit of the image; the overlap strips are tinted, with a dashed line, a cross at each corner and the neighboring sheet's name; the sheet's label sits in the top strip and the 5 cm ruler says "confira a escala".
 
+### Logo and icons
+
+The mark is a d20 seen from the front, with the front face in burgundy (Claude Design, "MeuRPG — marca e páginas legais"). It is original work: a generic polyhedral die, no trademark or trade dress of any publisher. The app bar keeps the name alone in Alegreya 800 (the burgundy fill of a screen is the main button); the d20 shows in the footer, the browser tab and the phone's home screen.
+
+| Piece | Rule |
+| --- | --- |
+| Parts | The mark (the die alone), the wordmark ("MeuRPG", Alegreya 800 in `ink`, letters a little closer, drawn as paths: no embedded font), the horizontal lockup (the die is 1.75 times the capital height and centred on it; the gap to the name is 0.3 of the die's width) and the stacked lockup (the die is 2.8 times the capital height) |
+| One drawing per size | From 48 px up: the nine edges and the outlined burgundy face. From 24 to 47 px: the same edges, thinner. Below 24 px: a 2 px outline, a bigger burgundy face and one edge, the top one, on whole pixels. The thin edges vanish at 16 px, so the small die is another drawing, not the big one shrunk |
+| Minimum size | The die 16 px, the name 16 px tall, the horizontal lockup 24 px tall, the stacked 48 px tall. Below these, the die alone |
+| Clear space | `x` = the height of the M of the name, on every side of a lockup; half the die's width around the die alone |
+| Colours | Tokens only. Face `accent`; outline, edges and name `ink`; body `surface`. In the dark theme the die changes with the app (`favicon.svg` does it by itself, through `prefers-color-scheme`). The footer's die is one colour, `ink-muted` |
+| Never | Another face colour, painted side faces, shadow, glow or gradient; stretching or rotating; the name in another font |
+
+The files are in `web/public/` (the build copies them as they are, with no hash in the name): `favicon.ico` (16, 32 and 48 inside), `favicon.svg`, `apple-touch-icon-180.png` (white background; the phone rounds it), `icon-192.png` and `icon-512.png` (transparent), `icon-maskable-512.png` (white to the edge, the die inside the 80% safe circle) and `site.webmanifest` (name, `theme_color` = `surface`, `background_color` = `ground`). `web/src/index.html` links them: the `.ico` with `sizes="32x32"`, so a browser that reads SVG prefers `favicon.svg`; the `theme-color` meta twice, light and dark. The server sends `site.webmanifest` as `application/manifest+json`, the `.ico` as `image/x-icon` and the `.svg` as `image/svg+xml`, with `no-cache` (see [Architecture](architecture.md#web-app-web)). The site is not for search engines: `robots.txt` says `Disallow: /` and `index.html` has `<meta name="robots" content="noindex, nofollow">`.
+
+### Footer (`shell/app-footer`)
+
+A quiet strip at the end of every page, signed in or not: a 1 px `line` rule as wide as the content, 48 px below the end of the page, then the one-colour d20 and "© <year> MeuRPG" at the left and three links at the right: "Termos de uso" (`/terms`), "Privacidade" (`/privacy`) and "Créditos" (`/credits`). Text 14 px in `ink-muted`; each link is underlined in `line` (3 px offset) and becomes `ink` on hover; every target is 44 px tall with 24 px between them. The page that is open has `aria-current="page"`, in `ink`, medium weight. On a phone the links come first and the year below them (`flex-wrap: wrap-reverse`). The footer sits in the flow after the page, never fixed and never over content, so the live session, the combat and the map editor keep their layouts; it is left out of the printed page.
+
+### Legal pages (`pages/legal`)
+
+`/terms` ("Termos de uso") and `/privacy` ("Política de privacidade") are public: Google's consent screen links to them. A reading layout: the title (the page-title style), "Última atualização: 09/10/2026" and the line that the text has had no legal review, in 14 px `ink-muted`; a summary box ("Em resumo", `surface`, `line` border, 12 px corners, 3 or 4 bullets); then the contents ("Nesta página", `app-legal-toc`: a `details` that is open beside the text from 768 px and closed on a phone, with the section number apart from its title and 36 px links) next to the article (`surface` card, at most 760 px, 16/26 text, a 21 px Alegreya section title with `scroll-margin-top: 80px` under the sticky bar). A list whose items start with a bold name is drawn as rows with a `rule` between them; the retention periods are a table with column and row headers. The text is the template itself (no `innerHTML`, no Markdown at runtime) and must say the same as [Privacy](privacy.md); the e-mail is plain bold text. A contents link scrolls to the heading, keeps `#section` in the address and gives the heading the focus; opening `/terms#lei` straight scrolls to it.
+
 ### Page title, "Pular para o conteúdo" and focus on navigation
 
 Every page has its own title in the tab and in the history (WCAG 2.4.2), a first Tab that skips the bar (2.4.1) and takes focus to the new page's title on navigation (2.4.3).

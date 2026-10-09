@@ -4,12 +4,12 @@
 
 O MeuRPG coleta só o que a mesa precisa para jogar, guarda tudo em São Paulo e trata cada direito do titular como uma funcionalidade. Este documento diz que dados pessoais existem no sistema, por quê, por quanto tempo, e o que todo PR precisa respeitar.
 
-> **Não é parecer jurídico.** É orientação de engenharia, escrita por devs. A decisão completa está na ADR-0010 (repositório privado): "privacidade desde a concepção, LGPD como base e GDPR como régua". Ela ainda é **proposta**, até o Samuel aceitar. O aviso de privacidade para quem usa o app é outro documento, ainda a escrever (roteiro no fim desta página).
+> **Não é parecer jurídico.** É orientação de engenharia, escrita por devs. A decisão completa está na ADR-0010 (repositório privado): "privacidade desde a concepção, LGPD como base e GDPR como régua". Ela ainda é **proposta**, até o Samuel aceitar. O aviso de privacidade para quem usa o app está publicado no app em `/privacy`, com os termos de uso em `/terms` (ver [O aviso de privacidade e os termos](#o-aviso-de-privacidade-e-os-termos)). As duas páginas dizem, logo no começo, que não passaram por revisão jurídica.
 
 ## Em resumo
 
 - **A lei que vale é a LGPD** (Lei 13.709/2018). O GDPR europeu hoje não se aplica, porque não oferecemos o app para a União Europeia. Mesmo assim, em cada tema, seguimos a regra mais rigorosa das duas.
-- **Somos agente de tratamento de pequeno porte** (Resolução CD/ANPD nº 2/2022). Mesmo dispensados, indicamos um encarregado e publicamos um canal de contato. O Samuel é o controlador, o Vinicius é o encarregado, e o canal é um e-mail só para isso até existir o domínio.
+- **Somos agente de tratamento de pequeno porte** (Resolução CD/ANPD nº 2/2022). Mesmo dispensados, indicamos um encarregado e publicamos um canal de contato. O controlador é o MeuRPG, e o canal do encarregado é `privacidade@meurpg.app`, o contato das duas páginas públicas.
 - **O jogador não precisa dar e-mail nem nome real.** (RN-17) O jogador entra por um login anônimo, com o apelido do mestre junto do apelido do jogador, sem conta Google (ver [Regras de negócio](produto/regras.md)). Ainda não construído: hoje toda conta entra com o Google.
 - **A base legal é o contrato**, não o consentimento. O app precisa desses dados para funcionar. Segurança e logs usam legítimo interesse.
 - **Sem cookies de terceiros, analytics, pixel ou fonte de CDN.** Os únicos cookies são o de sessão e o de login, de vida curta, ambos estritamente necessários, então não há banner.
@@ -297,7 +297,7 @@ Os dados ficam em São Paulo (`southamerica-east1`). O acesso de um fornecedor d
 | Google (login) | Sign in with Google | O Google é controlador da própria conta; nós recebemos só `sub` e e-mail | Não é nosso operador |
 | Render | Hospedagem do servidor NestJS do app antigo (descontinuado; o código dele não está mais no repositório). A fazer: o dono do projeto desliga a hospedagem | O que passava pela API do app antigo | **Lacuna temporária.** Acaba quando o dono do projeto desligar o serviço |
 | GitHub Pages | Hospedagem do build Angular do app antigo (descontinuado; o código dele não está mais no repositório). A fazer: o dono do projeto desliga nas configurações do repositório | IP de quem visita | **Lacuna temporária.** Acaba quando o dono do projeto desligar |
-| Google (API do Gemini) | Gera as imagens que o mestre pede (MR-039, RN-28, ADR-0019), com uma chave do AI Studio, pelo servidor | O texto que o mestre escreve, o estilo, as imagens da galeria que ele escolhe como referência e, num ajuste, a imagem anterior. Nunca nome de pessoa, e-mail nem ficha. O Google pode guardar os dados por pouco tempo, ou em cache, **em qualquer país**: conta como transferência internacional | [Termos dos serviços pagos da API do Gemini](https://ai.google.dev/gemini-api/terms) (Paid Services; nenhum modelo de imagem tem nível gratuito). **A definir:** o cadastro como operador e o mecanismo de transferência (Resolução CD/ANPD nº 19/2024) |
+| Google (API do Gemini) | Gera as imagens que o mestre pede (MR-039, RN-28, ADR-0019), com uma chave do AI Studio, pelo servidor | O texto que o mestre escreve, o estilo, as imagens da galeria que ele escolhe como referência e, num ajuste, a imagem anterior. Nunca nome de pessoa, e-mail nem ficha. O Google pode guardar os dados por pouco tempo, ou em cache, **em qualquer país**: conta como transferência internacional | [Termos dos serviços pagos da API do Gemini](https://ai.google.dev/gemini-api/terms) (Paid Services; nenhum modelo de imagem tem nível gratuito). O aviso de privacidade nomeia o Google como operador e declara a transferência. **A definir:** o mecanismo de transferência (Resolução CD/ANPD nº 19/2024) |
 | Cloudflare Workers AI | Jev, depois do MVP | Só contexto de jogo, sem dado pessoal | **A definir** antes do Jev |
 | Have I Been Pwned | Checa se a senha nova já vazou | 5 caracteres do hash da senha, saindo do servidor. Não identifica ninguém | Não é operador |
 
@@ -317,7 +317,7 @@ O CockroachDB do app antigo (usado pelo NestJS) pode ser apagado. Não é o mesm
 
   Os retratos de NPCs só vão na arte da cena e na vista isométrica (o mapa com textura não leva nenhum), e são só os dos NPCs que os jogadores veem agora; o retrato de um NPC do mapa que eles não veem é recusado também como imagem de personagem. O nome do NPC e o do personagem de um jogador nunca vão (o texto da chamada não tem campo para eles; `TestMR039_TheSceneArtAndTheIsometricViewOfAMap` confere o texto), e o desenho não fica guardado em lugar nenhum: é refeito a cada pedido. O que o app mostra ao mestre antes de pedir (o desenho em miniatura e a lista de NPCs) é só dele.
 - **O que a tela diz.** O diálogo "Gerar imagem" diz, embaixo de cada campo, o que vai ao Google: o texto e as imagens de referência ("Não escreva nomes de pessoas."; "Não use foto de pessoa."), o estilo, a proporção e, num ajuste, a imagem anterior e o pedido de antes (a tela diz isso embaixo do campo do ajuste: "O ajuste que você escrever vai ao Google, junto com a imagem anterior e o seu pedido de antes."); num mapa, o desenho do que os jogadores veem (ou do mapa inteiro, no mapa com textura) e, só aí e só numa masmorra gerada, a lista das salas. A marca d'água SynthID é dita uma vez, no rodapé. O nome de um NPC aparece só na lista do mestre e nunca vai.
-- **O que o Google guarda:** a chamada vai com `store=false` (a Interactions API; o padrão guardaria a interação por 55 dias no nível pago), então nada fica guardado por nossa conta. Pelos termos dos serviços pagos, o Google ainda pode guardar os dados por pouco tempo ou em cache, em qualquer país (por isso a linha acima de transferência internacional). A definir: se o texto livre do mestre pede aviso no roteiro do aviso de privacidade.
+- **O que o Google guarda:** a chamada vai com `store=false` (a Interactions API; o padrão guardaria a interação por 55 dias no nível pago), então nada fica guardado por nossa conta. Pelos termos dos serviços pagos, o Google ainda pode guardar os dados por pouco tempo ou em cache, em qualquer país (por isso a linha acima de transferência internacional). O aviso de privacidade e os termos dizem que o texto que o mestre escreve vai para o Google como foi escrito.
 - **A idade mínima dos termos:** os termos pedem que quem usa os serviços tenha 18 anos ou mais. O MVP já é só para maiores de 18 anos (ADR-0010), e quem pede a imagem é o mestre; um jogador menor, se houver, nunca chama o serviço (só o mestre gera) e seu nome nunca vai.
 - **A marca d'água SynthID:** toda imagem gerada leva uma marca invisível que mostra que foi feita por IA; o app diz isso uma vez, na tela de gerar. Guardamos a imagem como o Google a devolveu, recodificada pelo mesmo caminho de um envio (a recodificação não é um jeito de tirar a marca: não a tocamos de propósito).
 - **A referência de uma imagem** (um JPEG de 1024 px feito da imagem, guardado ao lado dela no blob store) é derivada da imagem já sem metadados (ADR-0012), tem a mesma retenção e é apagada junto com ela.
@@ -368,31 +368,21 @@ Todo PR responde. Um "sim" pede uma seção curta de riscos e medidas no PR. Doi
 
 ## A definir
 
-- Criar o e-mail do canal do encarregado (um endereço só para isso, até ter domínio) e publicá-lo no aviso de privacidade.
+- Criar a caixa `privacidade@meurpg.app` (o contato de `/terms` e `/privacy`) e encaminhá-la para quem responde aos pedidos sobre dados.
 - Contrato LGPD com a Cockroach Labs; contratos para Render, GitHub Pages e Cloudflare enquanto forem usados.
 - Conferir no console do CockroachDB Cloud que os backups ficam em São Paulo e são guardados por no máximo 30 dias. O plano atual, o legado Unlimited, fica; trocar de plano perde o Unlimited, e está em avaliação se vale migrar para o Cloud SQL ou outro produto (ver [Operação](../operations.md)).
 - Antes de ler PDFs de regras com IA (MR-027, depois do MVP): escolher o operador, dizer o que sai do servidor, e tratar o direito autoral de livros oficiais (o resultado só aparece para a mesa). O PDF não fica guardado: só existe enquanto é processado e é apagado logo depois, com um prazo curto (TTL) no arquivo guardado para garantir o apagamento mesmo se o processamento falhar. Quando a MR-027 for construída, o PDF entra no inventário acima com esse prazo.
-- Cadastro do Google (API do Gemini) como operador e o mecanismo de transferência, e se o texto livre do mestre pede aviso no roteiro do aviso de privacidade (ver as linhas do Gemini acima).
-- Revisão por advogado do aviso de privacidade, dos termos de uso e do tratamento do texto livre que fica com o mestre, antes do primeiro deploy público.
+- O mecanismo de transferência do Google (API do Gemini), Resolução CD/ANPD nº 19/2024 (ver as linhas do Gemini acima).
+- Revisão por advogado do aviso de privacidade, dos termos de uso e do tratamento do texto livre que fica com o mestre. Até lá, as duas páginas dizem que não passaram por revisão.
 - Apagar os arquivos das imagens de uma campanha quando ela é apagada (o prefixo `campaigns/<id>/`), junto com a exclusão de conta do `PrivacyService`.
 
-## Roteiro do aviso de privacidade
+## O aviso de privacidade e os termos
 
-Este é o esqueleto do texto para quem usa o app. Português simples, com versão e data. Mudança relevante é avisada no app.
+O aviso de privacidade é a página `/privacy` e os termos de uso são `/terms`: páginas públicas (sem login), ligadas no rodapé de toda página e na tela de consentimento do Google, em português simples, com data ("Última atualização") e uma caixa de resumo. Mudança relevante é avisada no app e muda a data. O texto mora nos templates das páginas (`web/src/app/pages/legal/privacy` e `.../terms`) e precisa dizer o que este documento diz: mudar o inventário de dados, os operadores, os prazos ou os cookies só termina quando a página muda também.
 
-1. Quem somos: controlador, encarregado e canal de contato.
-2. Que dados coletamos, por tipo de conta: mestre com Google, jogador só com handle, jogador com Google.
-3. Para que usamos cada dado, e com que base legal.
-4. O que o mestre vê e pode fazer, incluindo o link de reentrada e o fato de que, na própria mesa, ele pode entrar como o jogador.
-5. Com quem compartilhamos: operadores, países, garantias e a seção de transferência internacional.
-6. Por quanto tempo guardamos, incluindo backups e logs.
-7. Cookies e armazenamento no navegador.
-8. Seus direitos: como pedir, em quanto tempo, e como reclamar à ANPD.
-9. Segurança e o que fazemos em caso de incidente.
-10. Idade mínima.
-11. Mudanças neste aviso.
+O aviso tem 14 seções: quem cuida dos dados (controlador MeuRPG; o canal do encarregado é o e-mail de contato); os dados que usamos e por quê, com a base legal; os dados da conta Google (só o identificador da conta e o e-mail verificado, escopos `openid` e `email`, usados só para entrar e como contato de segurança); onde os dados ficam e os operadores (Google Cloud, Cockroach Labs, a API do Gemini do Google quando o mestre gera uma imagem, com a transferência internacional); prazos (uma tabela); cookies (os dois estritamente necessários); o que não fazemos (sem anúncios, rastreadores nem venda de dados); quem vê o quê no app; os direitos e como pedir (o e-mail, resposta em até 15 dias); exclusão da conta; segurança e incidentes; a idade mínima (18); mudanças; e o contato. Os termos têm 12: o que é o serviço, quem pode usar, login com o Google, campanhas, uso aceitável, conteúdo e imagens, os créditos do SRD (e a falta de vínculo com a Wizards of the Coast), disponibilidade e garantia, encerramento, mudanças, lei brasileira e o contato.
 
-Os termos de uso vêm junto: quem pode usar (18+), o papel do mestre, conduta (é ficção; não publicar dados reais de terceiros), conteúdo do usuário, sem garantia de disponibilidade, exclusão da conta, lei e foro brasileiros.
+A exclusão da conta e a cópia dos dados são pedidas por e-mail por enquanto, e as duas páginas dizem isso. Quando o `PrivacyService` existir, mude as seções de direitos e de exclusão.
 
 ## Ver também
 

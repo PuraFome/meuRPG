@@ -181,16 +181,6 @@
   }
 }
 
-.app-footer {
-  padding: var(--mr-space-4) var(--mr-gutter) var(--mr-space-6);
-  text-align: center;
-  font-size: 14px;
-
-  a {
-    color: var(--mr-ink-muted);
-  }
-}
-
 // On paper only the page's own print layout shows (the printed map, MR-033):
 // no bar, no footer, no gutter, and no theme background.
 @media print {
@@ -200,7 +190,6 @@
   }
 
   .app-bar,
-  .app-footer,
   app-live-notice {
     display: none;
   }

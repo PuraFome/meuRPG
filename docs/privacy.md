@@ -4,12 +4,12 @@
 
 MeuRPG collects only what the table needs to play, keeps everything in São Paulo, and treats each data subject right as a feature. This document says which personal data exists in the system, why, for how long, and what every PR must respect.
 
-> **This is not legal advice.** It is engineering guidance, written by developers. The full decision is in ADR-0010 (private repository): "privacy by design, LGPD as the base and GDPR as the yardstick". The ADR is still a **proposal** until Samuel accepts it. The privacy notice for people who use the app is a separate document, not written yet (outline at the end of this page).
+> **This is not legal advice.** It is engineering guidance, written by developers. The full decision is in ADR-0010 (private repository): "privacy by design, LGPD as the base and GDPR as the yardstick". The ADR is still a **proposal** until Samuel accepts it. The privacy notice for people who use the app is published in the app at `/privacy`, with the terms of use at `/terms` (see [The privacy notice and the terms](#the-privacy-notice-and-the-terms)). Both say on their face that they have had no legal review.
 
 ## In short
 
 - **The law that applies is the LGPD** (Brazilian Law 13.709/2018). The European GDPR does not apply today, because we do not offer the app to the European Union. Even so, on each topic we follow the stricter of the two.
-- **We are a small-scale processing agent** (ANPD Resolution CD/ANPD no. 2/2022). Even though we are exempt, we appoint a data protection officer (encarregado) and publish a contact channel. Samuel is the controller, Vinicius is the data protection officer, and the channel is a dedicated e-mail address until the domain exists.
+- **We are a small-scale processing agent** (ANPD Resolution CD/ANPD no. 2/2022). Even though we are exempt, we appoint a data protection officer (encarregado) and publish a contact channel. The controller is MeuRPG, and the data protection officer's channel is `privacidade@meurpg.app`, the contact on both public pages.
 - **Players do not need to give an e-mail or a real name** (RN-17). A player signs in with an anonymous login, using the game master's nickname together with the player's own nickname, with no Google account (see [Business rules](product/rules.md)). Not built yet: today every account signs in with Google.
 - **The legal basis is the contract**, not consent. The app needs this data to work. Security and logs rely on legitimate interest.
 - **No third-party cookies, analytics, pixels or CDN fonts.** The only cookies are the session cookie and the short-lived login cookie, both strictly necessary, so there is no banner.
@@ -297,7 +297,7 @@ Data lives in São Paulo (`southamerica-east1`). Access by a vendor outside Braz
 | Google (sign-in) | Sign in with Google | Google controls its own account; we receive only `sub` and e-mail | Not our processor |
 | Render | Hosting of the legacy app's NestJS server (discontinued; its code is no longer in the repository). To do: the project owner turns the hosting off | What went through the legacy app's API | **Temporary gap.** Ends when the project owner turns the service off |
 | GitHub Pages | Hosting of the legacy app's Angular build (discontinued; its code is no longer in the repository). To do: the project owner turns it off in the repository settings | IP of visitors | **Temporary gap.** Ends when the project owner turns it off |
-| Google (Gemini API) | Generates the images the master asks for (MR-039, RN-28, ADR-0019), with an AI Studio key, through the server | The text the master writes, the style, the gallery images the master picks as reference and, in a refinement, the previous image. Never a person's name, e-mail or sheet. Google may keep the data briefly, or in cache, **in any country**: it counts as an international transfer | [Gemini API Paid Services terms](https://ai.google.dev/gemini-api/terms) (no image model has a free tier). **To be defined:** registration as processor and the transfer mechanism (Resolution CD/ANPD no. 19/2024) |
+| Google (Gemini API) | Generates the images the master asks for (MR-039, RN-28, ADR-0019), with an AI Studio key, through the server | The text the master writes, the style, the gallery images the master picks as reference and, in a refinement, the previous image. Never a person's name, e-mail or sheet. Google may keep the data briefly, or in cache, **in any country**: it counts as an international transfer | [Gemini API Paid Services terms](https://ai.google.dev/gemini-api/terms) (no image model has a free tier). The privacy notice names Google as a processor and states the transfer. **To be defined:** the transfer mechanism (Resolution CD/ANPD no. 19/2024) |
 | Cloudflare Workers AI | Jev, after the MVP | Only game context, no personal data | **To be defined** before Jev |
 | Have I Been Pwned | Checks whether a new password has leaked | 5 characters of the password hash, leaving the server. Identifies nobody | Not a processor |
 
@@ -317,7 +317,7 @@ The legacy app's CockroachDB (used by NestJS) can be deleted. It is not the new 
 
   NPC portraits go only in the scene art and the isometric view (the textured map carries none), and only those of the NPCs the players see now; the portrait of an NPC on the map that they do not see is refused as a character image too, and, for the textured map, the portrait of any NPC on the map is refused as an object image. The NPC's name and the name of a player's character never go (the call's text has no field for them; `TestMR039_TheSceneArtAndTheIsometricViewOfAMap` checks the text), and the drawing is stored nowhere: it is redone at each request. What the app shows the master before asking (the thumbnail drawing and the NPC list) is the master's alone.
 - **What the screen says.** The "Gerar imagem" dialog says, under each field, what goes to Google: the text and the reference images ("Não escreva nomes de pessoas."; "Não use foto de pessoa."), the style, the aspect ratio and, in a refinement, the previous image and the earlier request (the screen says this under the refinement field: "O ajuste que você escrever vai ao Google, junto com a imagem anterior e o seu pedido de antes."); for a map, the drawing of what the players see (or of the whole map, for the textured map) and, only there and only for a generated dungeon, the room list. The SynthID watermark is mentioned once, in the footer. An NPC's name appears only in the master's list and never goes.
-- **What Google keeps.** The call goes with `store=false` (the Interactions API; the default would keep the interaction for 55 days on the paid tier), so nothing is stored on our account. Under the paid-services terms, Google may still keep data briefly or in cache, in any country (hence the international transfer row above). To be defined: whether the master's free text needs a mention in the privacy notice outline.
+- **What Google keeps.** The call goes with `store=false` (the Interactions API; the default would keep the interaction for 55 days on the paid tier), so nothing is stored on our account. Under the paid-services terms, Google may still keep data briefly or in cache, in any country (hence the international transfer row above). The privacy notice and the terms say that the text the master writes goes to Google as written.
 - **Minimum age in the terms.** The terms require users to be 18 or older. The MVP is already for people over 18 only (ADR-0010), and the master is the one who asks for the image. A minor player, if there is one, never calls the service (only the master generates) and the minor's name never goes.
 - **The SynthID watermark.** Every generated image carries an invisible mark showing it was made by AI; the app says this once, on the generate screen. We store the image as Google returned it, re-encoded through the same path as an upload (re-encoding is not a way to remove the mark: we do not touch it on purpose).
 - **An image's reference** (a 1024 px JPEG made from the image, stored beside it in the blob store) is derived from the image after metadata is removed (ADR-0012), has the same retention and is deleted together with it.
@@ -368,31 +368,21 @@ Every PR answers them. One "yes" needs a short section of risks and measures in 
 
 ## To be defined
 
-- Create the DPO channel e-mail (an address just for this, until there is a domain) and publish it in the privacy notice.
+- Create the mailbox `privacidade@meurpg.app` (the contact on `/terms` and `/privacy`) and forward it to the people who answer data requests.
 - LGPD contract with Cockroach Labs; contracts for Render, GitHub Pages and Cloudflare while they are used.
 - Check in the CockroachDB Cloud console that backups stay in São Paulo and are kept for 30 days at most. The current plan, the legacy Unlimited, stays; changing plan loses Unlimited, and whether to migrate to Cloud SQL or another product is under evaluation (see [Operations](operations.md)).
 - Before reading rule PDFs with AI (MR-027, after the MVP): choose the processor, say what leaves the server, and handle the copyright of official books (the result only appears to the table). The PDF is not stored: it exists only while being processed and is deleted right after, with a short TTL on the stored file to guarantee deletion even if processing fails. When MR-027 is built, the PDF joins the inventory above with that period.
-- Registration of Google (Gemini API) as processor and its transfer mechanism, and whether the master's free text needs a mention in the privacy notice (see the Gemini rows above).
-- Lawyer review of the privacy notice, the terms of use and the treatment of free text left with the master, before the first public deploy.
+- The transfer mechanism for Google (Gemini API), Resolution CD/ANPD no. 19/2024 (see the Gemini rows above).
+- Lawyer review of the privacy notice, the terms of use and the treatment of free text left with the master. Until then both pages say they have had none.
 - Delete a campaign's image files when it is deleted (the `campaigns/<id>/` prefix), together with the account deletion of `PrivacyService`.
 
-## Privacy notice outline
+## The privacy notice and the terms
 
-This is the skeleton of the text for people who use the app. Plain Portuguese, with a version and a date. A relevant change is announced in the app.
+The privacy notice is the page `/privacy` and the terms of use are `/terms`: public pages (no sign-in), linked from the footer of every page and from Google's consent screen, in plain Portuguese, dated ("Última atualização") and with a summary box. A relevant change is announced in the app and moves the date. The text lives in the page templates (`web/src/app/pages/legal/privacy` and `.../terms`) and has to say what this document says: a change to the data inventory, the processors, the retention periods or the cookies is not done until the page changes too.
 
-1. Who we are: controller, DPO and contact channel.
-2. What data we collect, by account type: master with Google, player with a handle only, player with Google.
-3. What we use each datum for, and the legal basis.
-4. What the master sees and can do, including the re-entry link and the fact that, at their own table, the master can enter as the player.
-5. Who we share with: processors, countries, safeguards and the international transfer section.
-6. How long we keep data, including backups and logs.
-7. Cookies and browser storage.
-8. Your rights: how to ask, how fast, and how to complain to the ANPD.
-9. Security and what we do in case of an incident.
-10. Minimum age.
-11. Changes to this notice.
+The notice has 14 sections: who looks after the data (controller MeuRPG; the officer's channel is the contact e-mail); the data we use and why, with the legal basis; the Google account data (only the account identifier and the verified e-mail, scopes `openid` and `email`, used only to sign in and as a security contact); where the data lives and the processors (Google Cloud, Cockroach Labs, Google's Gemini API when the master generates an image, with the international transfer); retention (a table); cookies (the two strictly necessary ones); what we do not do (no ads, trackers or sale of data); who sees what in the app; the rights and how to ask (the e-mail, answered within 15 days); account deletion; security and incidents; the minimum age (18); changes; and the contact. The terms have 12: what the service is, who may use it, Google sign-in, campaigns, acceptable use, content and images, the SRD credits (and no tie to Wizards of the Coast), availability and warranty, termination, changes, Brazilian law and the contact.
 
-The terms of use come with it: who may use the app (18+), the master's role, conduct (it is fiction; do not publish real data about third parties), user content, no availability guarantee, account deletion, Brazilian law and courts.
+Account deletion and data export are handled by e-mail for now, so both pages say so. When `PrivacyService` exists, change the sections on rights and deletion.
 
 ## See also
 

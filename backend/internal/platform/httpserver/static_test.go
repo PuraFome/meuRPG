@@ -159,6 +159,46 @@ func TestStaticHandler_Routing(t *testing.T) {
 	}
 }
 
+// TestStaticHandler_BrandFileTypes: the icons, the manifest and robots.txt go out with the type a
+// browser expects, and revalidated (they keep their names, so they carry no hash).
+func TestStaticHandler_BrandFileTypes(t *testing.T) {
+	t.Parallel()
+
+	dir := newTestBuild(t)
+	writeFile(t, filepath.Join(dir, "favicon.svg"), `<svg xmlns="http://www.w3.org/2000/svg"></svg>`)
+	writeFile(t, filepath.Join(dir, "site.webmanifest"), `{"name":"MeuRPG"}`)
+	writeFile(t, filepath.Join(dir, "robots.txt"), "User-agent: *\nDisallow: /\n")
+	handler, ok, _ := NewStatic(dir)
+	if !ok {
+		t.Fatal("NewStatic ok = false, want true")
+	}
+
+	tests := []struct{ path, wantType string }{
+		{"/favicon.ico", "image/x-icon"},
+		{"/favicon.svg", "image/svg+xml"},
+		{"/site.webmanifest", "application/manifest+json"},
+		{"/robots.txt", "text/plain; charset=utf-8"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			t.Parallel()
+
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, tt.path, nil))
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200", rec.Code)
+			}
+			if got := rec.Header().Get("Content-Type"); got != tt.wantType {
+				t.Errorf("Content-Type = %q, want %q", got, tt.wantType)
+			}
+			if got := rec.Header().Get("Cache-Control"); got != "no-cache" {
+				t.Errorf("Cache-Control = %q, want no-cache", got)
+			}
+		})
+	}
+}
+
 func TestStaticHandler_SecurityHeaders(t *testing.T) {
 	t.Parallel()
 
