@@ -244,6 +244,8 @@ export class EffectMenuVm {
   readonly maxTags: number;
   /** The Portuguese name of a class key, set by the page once it has the catalog. */
   classNamePt: (key: string) => string = (key) => key.replace(/^class:/, '');
+  /** The feats a "feat" choice may list in `from` (the table's own, set by the page from the entries); the SRD's are not in the catalog. */
+  featOptions: readonly MenuOption[] = [];
 
   constructor(res: GetEffectMenuResponse) {
     this.types = res.types;
@@ -270,6 +272,11 @@ export class EffectMenuVm {
     return prefixes.length > 0
       ? `Separe por vírgula, começando por ${prefixes.join(' ou ')}. O app só lembra; o mestre decide.`
       : 'Separe por vírgula. O app só lembra; o mestre decide.';
+  }
+
+  /** The types an editor offers: the ones only a feat has (`feat_only`) are left out unless it is the feat editor. */
+  typesFor(featEditor: boolean): readonly EffectMenuType[] {
+    return featEditor ? this.types : this.types.filter((t) => !t.featOnly);
   }
 
   typeOf(type: string): EffectMenuType | undefined {
@@ -303,6 +310,8 @@ export class EffectMenuVm {
           namePt: this.classNamePt(`class:${i}`),
           hintPt: '',
         }));
+      case 'feat':
+        return this.featOptions;
       case 'feature':
         return this.optionSets.map((s) => ({ key: s.key, namePt: s.namePt, hintPt: '' }));
       default:

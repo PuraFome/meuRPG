@@ -44,6 +44,10 @@ type deriver struct {
 	skillLevel      map[string]ProficiencyLevel
 	automaticSkills map[string]bool
 
+	// inactiveFeats are the feats the character took and no longer meets the prerequisite
+	// of: the sheet lists them but their effects do not apply.
+	inactiveFeats map[string]bool
+
 	env *formula.Env
 	// conditions caches each effect's `when` result: the character does
 	// not change during one Derive, and a broken condition must report one
@@ -70,8 +74,24 @@ type activeEffect struct {
 }
 
 func derive(b Build, c *content) Derived {
+	d := deriveWith(b, c, nil)
+	if len(b.Feats) == 0 {
+		return d
+	}
+	// A character that loses a feat's prerequisite cannot use the feat until it has the
+	// prerequisite again (SRD 5.1, Feats). What the character has is judged with the
+	// feats in place, and the sheet is made again without the ones that no longer fit.
+	lost := c.lostFeats(b, d)
+	if len(lost) == 0 {
+		return d
+	}
+	return deriveWith(b, c, lost)
+}
+
+// deriveWith is derive with the feats in inactive (by key) listed but not applied.
+func deriveWith(b Build, c *content, inactive map[string]bool) Derived {
 	d := &Derived{ContentVersion: c.version}
-	x := &deriver{b: b, c: c, d: d, proficient: map[string]bool{}, conditions: map[*Effect]bool{}, appliedTagged: map[*Effect]bool{}}
+	x := &deriver{b: b, c: c, d: d, proficient: map[string]bool{}, conditions: map[*Effect]bool{}, appliedTagged: map[*Effect]bool{}, inactiveFeats: inactive}
 
 	x.resolve()
 	x.resolveArmor()
@@ -380,6 +400,12 @@ func (x *deriver) collectEffects() {
 		x.issue(IssueMissing, "full.background_key", "Escolha um antecedente.")
 	}
 
+	replacedByFeat := map[string]bool{}
+	for feat, slot := range x.b.FeatSlots {
+		if slices.Contains(x.b.Feats, feat) {
+			replacedByFeat[slot] = true
+		}
+	}
 	for _, oc := range x.classes {
 		add(oc.key)
 		if oc.subclass != nil {
@@ -387,6 +413,9 @@ func (x *deriver) collectEffects() {
 		}
 		for lvl := 1; lvl <= oc.level; lvl++ {
 			for _, fk := range c.classLevels[oc.key][lvl-1].Features {
+				if replacedByFeat[fk] {
+					continue // a feat was taken in its place
+				}
 				if f, ok := c.features[fk]; ok {
 					add(fk)
 					feature(fk, f.Name, oc.key, lvl, f.Desc)
@@ -404,6 +433,29 @@ func (x *deriver) collectEffects() {
 					add(fk)
 					feature(fk, f.Name, oc.subclass.Key, lvl, f.Desc)
 				}
+			}
+		}
+	}
+
+	// The feats the character took apply like features. A key the content does
+	// not have is an issue, not a failure: the sheet still opens.
+	for i, key := range x.b.Feats {
+		f, ok := c.feats[key]
+		if !ok {
+			x.issue(IssueUnknownKey, fmt.Sprintf("full.feat_keys[%d]", i), "O talento escolhido não existe no conteúdo %s.", c.version)
+			continue
+		}
+		if x.inactiveFeats[key] {
+			x.issue(IssueFeatPrerequisite, fmt.Sprintf("full.feat_keys[%d]", i), "O personagem não cumpre mais o pré-requisito de %s: o talento só vale de novo quando cumprir.", c.namePT(key))
+		} else {
+			add(key)
+		}
+		feature(key, f.Name, key, 0, f.Desc)
+		if slot, ok := x.b.FeatSlots[key]; ok {
+			// Taken in place of an Ability Score Improvement: the sheet says where.
+			if sf := c.features[slot]; sf != nil {
+				last := &x.d.Features[len(x.d.Features)-1]
+				last.Level, last.SourcePT = sf.Level, fmt.Sprintf("Talento · %s %d", c.namePT(sf.Class), sf.Level)
 			}
 		}
 	}
@@ -462,6 +514,8 @@ func (x *deriver) collectEffects() {
 func (x *deriver) sourcePT(source string, level int) string {
 	c := x.c
 	switch {
+	case strings.HasPrefix(source, "feat:"):
+		return "Talento"
 	case strings.HasPrefix(source, "class:"):
 		return fmt.Sprintf("%s %d", c.namePT(source), level)
 	case strings.HasPrefix(source, "subclass:"):

@@ -3,12 +3,14 @@ import { create } from '@bufbuild/protobuf';
 import {
   TableBackgroundSchema,
   TableContentKind,
+  TableFeatSchema,
   TableEntrySchema,
   TableRaceSchema,
   TableSpellSchema,
   TableSubraceSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { type EntryRead, type NameOf, readEntry } from './content-read';
+import type { FeatInit } from './feat-draft';
 import type { BackgroundInit, RaceInit, SubraceInit } from './feature-draft';
 import type { SpellInit } from './spell-draft';
 
@@ -20,7 +22,8 @@ export type PreviewBody =
   | { readonly case: 'tableSpell'; readonly value: SpellInit }
   | { readonly case: 'tableRace'; readonly value: RaceInit }
   | { readonly case: 'tableSubrace'; readonly value: SubraceInit }
-  | { readonly case: 'tableBackground'; readonly value: BackgroundInit };
+  | { readonly case: 'tableBackground'; readonly value: BackgroundInit }
+  | { readonly case: 'tableFeat'; readonly value: FeatInit };
 
 export function previewRead(body: PreviewBody, nameOf: NameOf): EntryRead {
   switch (body.case) {
@@ -53,6 +56,14 @@ export function previewRead(body: PreviewBody, nameOf: NameOf): EntryRead {
         create(TableEntrySchema, {
           kind: TableContentKind.BACKGROUND,
           body: { case: 'tableBackground', value: create(TableBackgroundSchema, body.value) },
+        }),
+        nameOf,
+      );
+    case 'tableFeat':
+      return readEntry(
+        create(TableEntrySchema, {
+          kind: TableContentKind.FEAT,
+          body: { case: 'tableFeat', value: create(TableFeatSchema, body.value) },
         }),
         nameOf,
       );

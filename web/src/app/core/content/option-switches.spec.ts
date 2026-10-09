@@ -83,7 +83,7 @@ describe('option switches: counts and words (E10-01 state 3)', () => {
       'Tiefling',
       'Anão da Colina',
     ]);
-    expect(CONTENT_NAV.map((n) => groupRows(mixed, n).length)).toEqual([1, 0, 4, 0, 1]);
+    expect(CONTENT_NAV.map((n) => groupRows(mixed, n).length)).toEqual([1, 0, 4, 0, 1, 0]);
   });
 
   it('says how many sheets use an option only above zero, and "Nenhuma ficha usa" only on an off row, with no-break spaces', () => {

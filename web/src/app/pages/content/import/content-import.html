@@ -1,0 +1,182 @@
+@let a = access();
+@if (a.status !== 'not-found') {
+  <a class="back" [routerLink]="back()">
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>
+    Voltar para o conteúdo da mesa
+  </a>
+}
+@switch (a.status) {
+  @case ('loading') {
+    <div>
+      <h1 class="mr-page-title">Importar pacote</h1>
+      <p class="page-status" role="status">
+        <mat-spinner diameter="24" aria-label="Carregando" />
+        Carregando...
+      </p>
+    </div>
+  }
+  @case ('not-found') {
+    <div>
+      <h1 class="mr-page-title">Campanha não encontrada</h1>
+      <div class="mr-notice mr-notice--neutral" role="alert">
+        <mat-icon aria-hidden="true">search_off</mat-icon>
+        <p><strong>Essa campanha não existe, ou você não é membro dela.</strong> Confira o link com o mestre.</p>
+      </div>
+    </div>
+  }
+  @case ('not-master') {
+    <div>
+      <h1 class="mr-page-title">Importar pacote</h1>
+      <div class="mr-notice mr-notice--neutral" role="alert">
+        <mat-icon aria-hidden="true">lock</mat-icon>
+        <p><strong>Só o mestre importa conteúdo.</strong> O que a mesa tem você lê em “Conteúdo da mesa”.</p>
+      </div>
+    </div>
+  }
+  @case ('error') {
+    <div>
+      <h1 class="mr-page-title">Não foi possível abrir a importação</h1>
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ a.message }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="retry" (click)="retry()">Tentar de novo</button>
+    </div>
+  }
+  @case ('ok') {
+    <header class="head">
+      <h1 class="mr-page-title" tabindex="-1" #title>{{ done() ? 'Pacote importado' : 'Importar pacote' }}</h1>
+      <p class="mr-page-lead">{{ a.campaignName }} · Um pacote é um arquivo de conteúdo exportado de uma campanha. Você vê o que muda antes de importar.</p>
+    </header>
+
+    <input #picker type="file" class="mr-visually-hidden" tabindex="-1" aria-hidden="true" accept=".json,application/json" (change)="choose(picker)" />
+
+    @if (problem()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <div>
+          <p>{{ problem() }}</p>
+          @if (packProblems().length > 0) {
+            <ul class="problems">
+              @for (p of packProblems(); track p) {
+                <li>{{ p }}</li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+    }
+
+    @if (done(); as res) {
+      <section class="mr-panel block" aria-labelledby="done-t">
+        <h2 class="mr-panel__title" id="done-t">{{ res.packName || 'Pacote' }}</h2>
+        @if ((res.totals?.new ?? 0) + (res.totals?.updated ?? 0) === 0) {
+          <p>O pacote não mudou nada: a mesa já tinha tudo isso.</p>
+        } @else {
+          <p>Pronto. A mesa já usa o conteúdo novo.</p>
+        }
+        <ul class="totals">
+          <li><strong>{{ res.totals?.new ?? 0 }}</strong> {{ res.totals?.new === 1 ? 'nova' : 'novas' }}</li>
+          <li><strong>{{ res.totals?.updated ?? 0 }}</strong> {{ res.totals?.updated === 1 ? 'atualizada' : 'atualizadas' }}</li>
+          <li><strong>{{ res.totals?.unchanged ?? 0 }}</strong> sem mudança</li>
+        </ul>
+        @if (res.affectedCharacters.length > 0) {
+          <div class="mr-notice mr-notice--warning">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            <div>
+              <p>
+                @if (res.affectedCharacters.length === 1) {
+                  <strong>1 ficha ficou com aviso.</strong> Ela usa uma entrada atualizada e não fecha mais com a regra nova:
+                } @else {
+                  <strong>{{ res.affectedCharacters.length }} fichas ficaram com aviso.</strong> Elas usam entradas atualizadas e não fecham mais com a regra nova:
+                }
+              </p>
+              <ul class="affected">
+                @for (c of res.affectedCharacters; track c.characterId) {
+                  <li>
+                    <a [routerLink]="characterLink(c)">{{ c.name }}</a>
+                    @if (c.playerDisplayName) {
+                      <span class="mr-muted"> · {{ c.playerDisplayName }}</span>
+                    }
+                    · {{ c.issues === 1 ? '1 aviso' : c.issues + ' avisos' }}
+                  </li>
+                }
+              </ul>
+            </div>
+          </div>
+        }
+        <div class="actions">
+          <a matButton="filled" [routerLink]="back()">Ver o conteúdo da mesa</a>
+          <button matButton="outlined" type="button" (click)="again()">Importar outro pacote</button>
+        </div>
+      </section>
+    } @else if (preview(); as p) {
+      <section class="mr-panel block" aria-labelledby="sum-t">
+        <h2 class="mr-panel__title" id="sum-t">{{ p.res.packName || 'Pacote' }}</h2>
+        <p class="file">Arquivo {{ p.fileName }} · {{ p.res.entries.length }} {{ p.res.entries.length === 1 ? 'entrada' : 'entradas' }}</p>
+        <ul class="totals">
+          <li><strong>{{ p.res.totals?.new ?? 0 }}</strong> {{ p.res.totals?.new === 1 ? 'nova' : 'novas' }}</li>
+          <li><strong>{{ p.res.totals?.updated ?? 0 }}</strong> {{ p.res.totals?.updated === 1 ? 'atualizada' : 'atualizadas' }}</li>
+          <li><strong>{{ p.res.totals?.unchanged ?? 0 }}</strong> sem mudança</li>
+          <li><strong>{{ refused() }}</strong> {{ refused() === 1 ? 'recusada' : 'recusadas' }}</li>
+        </ul>
+        <ul class="kinds" aria-label="Entradas por tipo">
+          @for (k of kinds(); track k.nav.slug) {
+            <li>{{ k.nav.plural }} <strong>{{ k.count }}</strong></li>
+          }
+        </ul>
+      </section>
+
+      @for (g of groups(); track g.key) {
+        <section class="mr-panel block" [attr.aria-labelledby]="'g-' + g.key">
+          <h2 class="mr-panel__title" [id]="'g-' + g.key">{{ g.title }} · {{ g.rows.length }}</h2>
+          <ul class="mr-list">
+            @for (e of g.rows; track e.key) {
+              <li class="entry">
+                <span class="entry__name">{{ e.namePt || e.key }}</span>
+                <span class="entry__sub">{{ kindWord(e) }}</span>
+                @if (g.key === 'updated') {
+                  <span class="entry__note">{{ changed(e) }}</span>
+                }
+                @if (g.key === 'refused') {
+                  <ul class="reasons">
+                    @for (v of e.violations; track $index) {
+                      <li>{{ reason(v, e) }}</li>
+                    }
+                  </ul>
+                }
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      @if (refused() > 0) {
+        <div class="mr-notice mr-notice--warning" role="status">
+          <mat-icon aria-hidden="true">warning</mat-icon>
+          <p><strong>{{ refused() === 1 ? 'Uma entrada foi recusada' : refused() + ' entradas foram recusadas' }}, então nada pode ser importado.</strong> Edite o arquivo para corrigir o que está acima e escolha-o de novo.</p>
+        </div>
+      }
+      <div class="actions">
+        <button matButton="filled" type="button" [disabled]="refused() > 0 || writes() === 0 || busy()" (click)="apply()">{{ applyLabel() }}</button>
+        <button matButton="outlined" type="button" [disabled]="busy()" (click)="picker.click()">Escolher outro arquivo</button>
+      </div>
+      @if (writes() === 0 && refused() === 0) {
+        <p class="note">O pacote não traz nada de novo: a mesa já tem todas estas entradas iguais.</p>
+      }
+    } @else {
+      <section class="mr-panel block" aria-labelledby="pick-t">
+        <h2 class="mr-panel__title" id="pick-t">Escolha o arquivo do pacote</h2>
+        <p class="note">Um arquivo .json de até 2 MiB, exportado pelo botão “Exportar” do conteúdo da mesa. Nada é importado antes de você ver o que muda.</p>
+        @if (state().step === 'checking') {
+          <p class="page-status" role="status">
+            <mat-spinner diameter="24" aria-label="Lendo o pacote" />
+            Lendo o pacote...
+          </p>
+        } @else {
+          <button matButton="filled" type="button" (click)="picker.click()"><mat-icon aria-hidden="true">upload_file</mat-icon>Escolher arquivo</button>
+        }
+      </section>
+    }
+  }
+}
