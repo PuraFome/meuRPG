@@ -148,6 +148,37 @@ describe('CombatState', () => {
     ).toBe(true);
   });
 
+  it('keeps a patched turn from being overwritten by an older answer, and ignores an older turn event', () => {
+    const state = new CombatState();
+    state.apply(encounter({ combatants: two, currentCombatantId: 'a', round: 1, revision: 4 }));
+    // The event of the turn change carries the revision it made.
+    state.applyTurn({
+      encounterId: 'enc',
+      round: 2,
+      currentCombatantId: 'b',
+      masterTurn: false,
+      revision: 6,
+    });
+    expect(state.encounter()).toMatchObject({ round: 2, currentCombatantId: 'b', revision: 6 });
+    // The answer of a call that began before the turn changed is older: it does not bring the turn back.
+    state.apply(encounter({ combatants: two, currentCombatantId: 'a', round: 1, revision: 5 }));
+    expect(state.encounter()).toMatchObject({ round: 2, currentCombatantId: 'b' });
+    // An event about a turn older than the one on screen changes nothing.
+    expect(
+      state.applyTurn({
+        encounterId: 'enc',
+        round: 1,
+        currentCombatantId: 'a',
+        masterTurn: false,
+        revision: 5,
+      }),
+    ).toBe(true);
+    expect(state.encounter()).toMatchObject({ round: 2, currentCombatantId: 'b', revision: 6 });
+    // No number to compare (a player on a fog map): the turn applies and the revision stays.
+    state.applyTurn({ encounterId: 'enc', round: 3, currentCombatantId: 'a', masterTurn: false });
+    expect(state.encounter()).toMatchObject({ round: 3, revision: 6 });
+  });
+
   it('drops a read that started before combatant_moved', () => {
     const state = new CombatState();
     state.apply(encounter({ combatants: two }));

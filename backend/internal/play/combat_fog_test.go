@@ -21,6 +21,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/maps"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -1570,4 +1571,101 @@ func TestRN10_FogCombatThePlayerOfACasterKeepsTheLineOfTheirAreaSpell(t *testing
 		t.Errorf("Brisa's player's line = %v, want the lit goblin alone", got)
 	}
 	_ = e
+}
+
+// deadPlayerCanary is the NPC the master hides in the dead player's test: a name that
+// must never reach that player.
+const deadPlayerCanary = "LEAKCANARY-dead-player-1"
+
+// TestRN10_FogCombatADeadCharactersPlayerSeesWhatTheLivingPartySees: after a character
+// died, its player reads the turn options, the map and the log without errors and
+// receives the NPCs the living party sees (the union of their views), never one
+// nobody sees and never one the master hides.
+func TestRN10_FogCombatADeadCharactersPlayerSeesWhatTheLivingPartySees(t *testing.T) {
+	t.Parallel()
+	f := newFogCave(t)
+	// Pensantus alone sees the Capitão Goblin, 11 squares off in the dark; Toren's torch
+	// lights the canary NPC, whom the master keeps hidden, and the squire is behind the party.
+	canary := f.master.sizedNPC(t, f.campaignID, deadPlayerCanary, 7, 12, rulesv1.CreatureSize_CREATURE_SIZE_SMALL)
+	f.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: f.capitao.GetId()}, {CharacterId: f.squire.GetId()}, {CharacterId: canary.GetId()}},
+		npcRolls: []int{2, 2, 2},
+		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1},
+		reveal:   []string{"Capitão Goblin", "Escudeiro"},
+		at: map[string][2]int32{
+			"Toren": {6, 7}, "Pensantus": {5, 8}, "Brisa": {4, 7}, "Escudeiro": {3, 8}, "Capitão Goblin": {16, 7}, deadPlayerCanary: {8, 8},
+		},
+	})
+
+	before := f.get(t, f.ana)
+	wantNPCs(t, "Pensantus's player, alive", before, "Capitão Goblin", "Escudeiro")
+
+	// Pensantus fails three death saves and the master confirms the death.
+	if _, err := f.h.pool.Exec(t.Context(), `UPDATE combatants SET death_failures = 3 WHERE id = $1`, f.id(t, "Pensantus")); err != nil {
+		t.Fatalf("set the failed saves: %v", err)
+	}
+	if _, err := f.master.combat.ConfirmDeath(t.Context(), connect.NewRequest(&playv1.ConfirmDeathRequest{
+		CampaignId: f.campaignID, EncounterId: before.GetId(), CombatantId: f.id(t, "Pensantus"), IdempotencyKey: newKey(),
+	})); err != nil {
+		t.Fatalf("ConfirmDeath() error = %v", err)
+	}
+
+	e := f.get(t, f.master)
+
+	got := f.get(t, f.ana)
+	wantNPCs(t, "Pensantus's dead player", got, "Escudeiro") // the living party's view: not what she alone saw, not what the master hides
+	f.noLeak(t, "the dead player's encounter", asJSON(t, got), "Capitão Goblin", deadPlayerCanary)
+	f.noLeak(t, "the dead player's log", asJSON(t, f.log(t, f.ana, got)), "Capitão Goblin", deadPlayerCanary)
+	// Positive controls: the master's own read carries the canary, and the dead player's
+	// carries the squire, so the checks above can fail.
+	if !strings.Contains(asJSON(t, e), deadPlayerCanary) || !strings.Contains(asJSON(t, got), "Escudeiro") {
+		t.Fatal("the master's encounter lacks the canary NPC: the leak check proves nothing")
+	}
+
+	// The page of a dead character reads without errors.
+	res, err := f.ana.combat.GetTurnOptions(t.Context(), connect.NewRequest(&playv1.GetTurnOptionsRequest{
+		CampaignId: f.campaignID, EncounterId: e.GetId(), CombatantId: f.id(t, "Pensantus"),
+	}))
+	if err != nil {
+		t.Fatalf("GetTurnOptions for the dead character error = %v", err)
+	}
+	f.noLeak(t, "the dead player's turn options", asJSON(t, res.Msg), "Capitão Goblin", deadPlayerCanary)
+	// "Ver como" a dead character is not found: it is no one to look as.
+	_, err = f.mapsAs(f.master).GetMapVision(t.Context(), connect.NewRequest(&mapsv1.GetMapVisionRequest{
+		CampaignId: f.campaignID, MapId: f.mapID, AsCharacterId: f.pens.GetId(),
+	}))
+	wantCode(t, "GetMapVision as a dead character", err, connect.CodeNotFound)
+	// The map: the squares of the living party, not nothing.
+	toren := f.who(t, f.master, "Toren")
+	if !f.seesSquare(t, f.ana, int(toren.GetCol()), int(toren.GetRow())) {
+		t.Error("the dead player sees nothing of the map: want the living party's view")
+	}
+	capitao := f.who(t, f.master, "Capitão Goblin")
+	if f.seesSquare(t, f.ana, int(capitao.GetCol()), int(capitao.GetRow())) {
+		t.Error("the dead player sees the square only the dead character saw")
+	}
+	// The sheet the log reads for a name.
+	if _, err := f.h.svc.sheetOf(t.Context(), nil, f.campaignID, playdb.Combatant{CharacterID: f.pens.GetId(), Kind: kindPlayer}); err != nil {
+		t.Errorf("the sheet of the dead character = %v", err)
+	}
+}
+
+// TestRN10_FogCombatAnEndedCombatHasNoFog: the summary of an ended combat is the same
+// for every member: every combatant the master did not hide, seen or not.
+func TestRN10_FogCombatAnEndedCombatHasNoFog(t *testing.T) {
+	t.Parallel()
+	f := newFogCave(t)
+	f.fight(t)
+	f.stage(t)
+	e := f.get(t, f.master)
+	f.hide(t, "Ogro")
+	wantNPCs(t, "Toren's player, during the combat", f.get(t, f.caio), "Escudeiro", "Goblin 2")
+	if _, err := f.master.combat.EndEncounter(t.Context(), connect.NewRequest(&playv1.EndEncounterRequest{
+		CampaignId: f.campaignID, EncounterId: e.GetId(), IdempotencyKey: newKey(),
+	})); err != nil {
+		t.Fatalf("EndEncounter() error = %v", err)
+	}
+	for name, u := range map[string]*user{"Toren's player": f.caio, "Pensantus's player": f.ana, "Brisa's player": f.bia} {
+		wantNPCs(t, name+", after the end", f.get(t, u), "Capitão Goblin", "Escudeiro", "Goblin 1", "Goblin 2", "Goblin 3")
+	}
 }

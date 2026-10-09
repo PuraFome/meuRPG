@@ -65,6 +65,14 @@ func (x *deriver) attacks() {
 			bonus += x.prof
 		}
 		dmg := x.modifiers("damage.weapon."+kind, x.mods[ab])
+		oneHanded, note := dmg, ""
+		if kind == "melee" && !slices.Contains(w.Properties, "weapon-property:two-handed") {
+			bonus, source := x.oneMeleeWeaponBonus()
+			if source != "" {
+				oneHanded += bonus
+				note = fmt.Sprintf("Inclui %s de %s (sem outra arma na mão)", signed(bonus), x.c.namePT(source))
+			}
+		}
 		dice := w.Damage
 		if monkWeapon && martialDie > 0 {
 			dice = biggerDie(dice, martialDie)
@@ -74,10 +82,11 @@ func (x *deriver) attacks() {
 			AttackBonus: x.modifiers("attack.weapon."+kind, bonus), Proficient: proficient,
 			DamageType: w.DamageType, DamageTypeNamePT: c.namePT(w.DamageType),
 			Melee: kind == "melee", MartialArts: monkWeapon, AbilityMod: x.mods[ab],
-			Light: kind == "melee" && slices.Contains(w.Properties, "weapon-property:light"),
+			Light:        kind == "melee" && slices.Contains(w.Properties, "weapon-property:light"),
+			DamageNotePT: note,
 		}
 		if dice != "" {
-			a.Damage = withModifier(dice, dmg)
+			a.Damage = withModifier(dice, oneHanded)
 		}
 		if w.TwoHandedDamage != "" {
 			two := w.TwoHandedDamage
@@ -127,6 +136,34 @@ func (x *deriver) attacks() {
 
 	// Last, so the weapons and cantrips stay the first lines of the sheet.
 	x.unarmedStrike(martialArts, martialDie)
+}
+
+// wieldingOneMeleeWeapon is the tag of a damage bonus that holds while the
+// character wields one melee weapon in one hand and no other weapon (the
+// Dueling fighting style, SRD 5.1).
+const wieldingOneMeleeWeapon = "wielding:one-melee-weapon"
+
+// oneMeleeWeaponBonus is the sum of the damage bonuses that need a melee weapon
+// wielded in one hand and no other weapon, and the feature that gives the first
+// of them ("" when there is none). The sheet lists the weapons carried, not the
+// ones in hand, so the caller grants it to every one-handed melee weapon and
+// writes the condition on the attack line, for the table to check. An applied
+// effect is recorded so effectHints does not repeat it.
+func (x *deriver) oneMeleeWeaponBonus() (total int, source string) {
+	for _, a := range x.active {
+		e := a.effect
+		if e.Type != "modifier" || e.Target != "damage.weapon.melee" || e.Mode != "add" || !slices.Equal(e.Tags, []string{wieldingOneMeleeWeapon}) || !x.applies(a) {
+			continue
+		}
+		if v, ok := x.value(a); ok {
+			total += v
+			x.appliedTagged[e] = true
+			if source == "" {
+				source = a.owner
+			}
+		}
+	}
+	return total, source
 }
 
 // unarmedReachFt is the reach of an unarmed strike.

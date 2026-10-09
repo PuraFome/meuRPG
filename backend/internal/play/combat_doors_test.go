@@ -430,7 +430,13 @@ func TestMR025_ACombatOnACalibratedMapWalksThroughADoorBlock(t *testing.T) {
 	})); err != nil {
 		t.Fatalf("SetMapGrid(24, factor 2) error = %v", err)
 	}
-	f.fight(t)
+	// The fixture's squares are those of the 24 x 16 cave, and some are walls on this grid: the
+	// party starts off the map and the master puts Toren on open floor below.
+	f.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: f.goblins.GetId()}},
+		npcRolls: []int{2},
+		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1},
+	})
 	if e := f.get(t, f.master); e.GetGridColumns() != 48 || e.GetGridRows() != 32 {
 		t.Fatalf("the combat copied a grid of %d x %d, want 48 x 32", e.GetGridColumns(), e.GetGridRows())
 	}
@@ -464,4 +470,35 @@ func TestMR025_ACombatOnACalibratedMapWalksThroughADoorBlock(t *testing.T) {
 	if lines := doorLines(f.log(t, f.master, f.get(t, f.master))); len(lines) != 1 {
 		t.Errorf("the log has %d door lines, want one for the door", len(lines))
 	}
+}
+
+// RN-10: on a fog map, the line "Goblin 2 abriu a porta" names an NPC, so a player
+// who remembers the door but saw the NPC neither where it came from nor where it
+// stands does not get it. Pensantus saw the door along the corridor, then went to
+// the room below; Goblin 2 walks through it from the dark. The master's log is the
+// positive control.
+func TestRN10_FogTheDoorLineOfAnNPCNeedsSeeingTheNPC(t *testing.T) {
+	t.Parallel()
+	f := newFogCave(t)
+	f.torch(t, false)
+	f.fight(t)
+	f.paint(t, doorLayer, int32(mapsv1.DoorState_DOOR_STATE_CLOSED), &mapsv1.MapSquare{Col: 16, Row: 7})
+	f.seesSquare(t, f.ana, 15, 7) // Pensantus reads the corridor: the door stays in what she knows
+	f.mustMove(t, f.master, "Pensantus", 10, 13)
+	for _, col := range []int{12, 20} {
+		if f.seesSquare(t, f.ana, col, 7) {
+			t.Fatalf("Pensantus still sees column %d from the room", col)
+		}
+	}
+	if _, err := f.moveResponse(t, f.master, "Goblin 2", 12, 7); err != nil {
+		t.Fatalf("MoveCombatant(Goblin 2 to 12,7) error = %v", err)
+	}
+	if lines := doorLines(f.log(t, f.master, f.get(t, f.master))); len(lines) != 1 || lines[0].GetActorLabel() != "Goblin 2" {
+		t.Fatalf("the master's log has %v, want the door Goblin 2 opened", lines)
+	}
+	log := f.log(t, f.ana, f.get(t, f.ana))
+	if got := len(doorLines(log)); got != 0 {
+		t.Errorf("Pensantus's player has %d door lines, want 0 (she saw no one open it)", got)
+	}
+	f.noLeak(t, "Pensantus's log", asJSON(t, log), "Goblin 2")
 }

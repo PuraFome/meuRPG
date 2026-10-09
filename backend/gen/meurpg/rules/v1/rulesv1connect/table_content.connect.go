@@ -2,9 +2,10 @@
 //
 // Source: meurpg/rules/v1/table_content.proto
 
-// The table's own rules content (MR-025, RN-23, ADR-0018): the classes,
-// subclasses, races, subraces, backgrounds and spells that the master writes for
-// one campaign. The RPCs are TableContentService's, below; the catalog the
+// The table's own rules content (MR-025, MR-025, RN-23, ADR-0018): the classes,
+// subclasses, races, subraces, backgrounds, spells and feats that the master writes
+// for one campaign, and the content pack that carries them from one campaign to
+// another (ExportTableContent, ImportTableContent). The RPCs are TableContentService's, below; the catalog the
 // character editor builds from is ContentService.ListContent (rules.proto).
 //
 // One typed message per kind, each mapping one to one onto the fields the rules
@@ -70,6 +71,12 @@ const (
 	// TableContentServiceUnarchiveTableEntryProcedure is the fully-qualified name of the
 	// TableContentService's UnarchiveTableEntry RPC.
 	TableContentServiceUnarchiveTableEntryProcedure = "/meurpg.rules.v1.TableContentService/UnarchiveTableEntry"
+	// TableContentServiceExportTableContentProcedure is the fully-qualified name of the
+	// TableContentService's ExportTableContent RPC.
+	TableContentServiceExportTableContentProcedure = "/meurpg.rules.v1.TableContentService/ExportTableContent"
+	// TableContentServiceImportTableContentProcedure is the fully-qualified name of the
+	// TableContentService's ImportTableContent RPC.
+	TableContentServiceImportTableContentProcedure = "/meurpg.rules.v1.TableContentService/ImportTableContent"
 	// TableContentServiceListOptionSwitchesProcedure is the fully-qualified name of the
 	// TableContentService's ListOptionSwitches RPC.
 	TableContentServiceListOptionSwitchesProcedure = "/meurpg.rules.v1.TableContentService/ListOptionSwitches"
@@ -144,8 +151,56 @@ type TableContentServiceClient interface {
 	// Errors: `permission_denied`, `not_found`, `failed_precondition` (NOT_ARCHIVED),
 	// `invalid_argument` (a TableContentRefusal).
 	UnarchiveTableEntry(context.Context, *connect.Request[v1.UnarchiveTableEntryRequest]) (*connect.Response[v1.UnarchiveTableEntryResponse], error)
+	// ExportTableContent returns the campaign's own entries as one content pack
+	// (MR-025): the file the master keeps and imports into another campaign, or back
+	// into this one. Only the master. Every entry is in it, archived ones included,
+	// as a TableEntry with its `key`, `kind`, `name_pt` and its body; what the server
+	// manages (revision, timestamps, the count of characters, `off` and `archived`)
+	// is left out, and so is every switch: a pack carries content, not a campaign's
+	// choices about it. The features keep their keys, so a pack imported back keeps
+	// the choices sheets made. The pack is the file the app saves as
+	// "<campanha>-conteudo.json", in proto JSON.
+	//
+	// Errors: `permission_denied`, `not_found`.
+	ExportTableContent(context.Context, *connect.Request[v1.ExportTableContentRequest]) (*connect.Response[v1.ExportTableContentResponse], error)
+	// ImportTableContent loads a content pack into the campaign (MR-025). Only the
+	// master. A pack is untrusted input: every entry goes through the rules that
+	// CreateTableEntry and UpdateTableEntry apply, with the same violations, and
+	// nothing in it is run.
+	//
+	// With PREVIEW nothing is written: the answer says, for each entry, whether it
+	// would be new, updated (and which fields change), unchanged or refused (every
+	// violation with its field), and the totals. With APPLY everything is written in
+	// one transaction, all or nothing: an entry of the pack whose key the campaign has
+	// is updated, keeping its features' keys (and its archived mark and its switch);
+	// a key the campaign does not have is created, with the pack's key. An entry that
+	// is refused makes APPLY `invalid_argument` with a TableContentRefusal that lists
+	// every violation, each with the entry's key, and writes nothing. The content
+	// revision goes up once for the whole import, the live content is the new one for
+	// every request and sheet, the sheets that use an updated entry recalculate (the
+	// answer lists the ones left with issues), and the campaign's session gets
+	// `content_changed`. An import that changes nothing writes nothing and does not
+	// raise the revision. A new entry is on for the players, as a hand-made one; the
+	// import never switches anything off or on.
+	//
+	// The limits are the ones of the editors, checked on the whole campaign: 300
+	// entries, 64 KiB of data per entry; and the pack itself is at most 2 MiB (in
+	// proto JSON), has `format` "meurpg.table-content" and `version` 1, and every key
+	// is "<kind>:<slug>@mesa" of its entry's kind, without repeats. The
+	// violation reasons of a pack are in TableContentViolation.
+	//
+	// Errors: `permission_denied`, `not_found`; `invalid_argument` with a
+	// TableContentRefusal for a pack the rules refuse (APPLY; PREVIEW answers it as
+	// data, except for the pack-level violations, which are `invalid_argument` in
+	// both modes).
+	//
+	// Safe to retry when the request carries an idempotency_key (APPLY): a second call
+	// with the same key and the same request returns what the first one answered and
+	// writes nothing; the same key with another request is `invalid_argument`. Without
+	// a key the call is not deduplicated. PREVIEW ignores the key.
+	ImportTableContent(context.Context, *connect.Request[v1.ImportTableContentRequest]) (*connect.Response[v1.ImportTableContentResponse], error)
 	// ListOptionSwitches is the master's "Opções para os jogadores" (MR-025, RN-23):
-	// every class, subclass, race, subrace, background and spell of the campaign, the
+	// every class, subclass, race, subrace, background, spell and feat of the campaign, the
 	// SRD's and the table's, each with its on/off state and how many of the
 	// campaign's player characters use it, sorted by kind and Portuguese name. It is
 	// what the screen draws "o que cada jogador vê" from. Only the master; what a
@@ -171,7 +226,7 @@ type TableContentServiceClient interface {
 	// Errors:
 	//   - `permission_denied`, `not_found`;
 	//   - `invalid_argument`: no switch at all, more than 700, a key that is not a
-	//     class, subclass, race, subrace, background or spell of the campaign's
+	//     class, subclass, race, subrace, background, spell or feat of the campaign's
 	//     content, or the same key twice.
 	//
 	// An archived table entry can be switched like any other (it stays hidden from
@@ -245,6 +300,19 @@ func NewTableContentServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(tableContentServiceMethods.ByName("UnarchiveTableEntry")),
 			connect.WithClientOptions(opts...),
 		),
+		exportTableContent: connect.NewClient[v1.ExportTableContentRequest, v1.ExportTableContentResponse](
+			httpClient,
+			baseURL+TableContentServiceExportTableContentProcedure,
+			connect.WithSchema(tableContentServiceMethods.ByName("ExportTableContent")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		importTableContent: connect.NewClient[v1.ImportTableContentRequest, v1.ImportTableContentResponse](
+			httpClient,
+			baseURL+TableContentServiceImportTableContentProcedure,
+			connect.WithSchema(tableContentServiceMethods.ByName("ImportTableContent")),
+			connect.WithClientOptions(opts...),
+		),
 		listOptionSwitches: connect.NewClient[v1.ListOptionSwitchesRequest, v1.ListOptionSwitchesResponse](
 			httpClient,
 			baseURL+TableContentServiceListOptionSwitchesProcedure,
@@ -282,6 +350,8 @@ type tableContentServiceClient struct {
 	updateTableEntry      *connect.Client[v1.UpdateTableEntryRequest, v1.UpdateTableEntryResponse]
 	archiveTableEntry     *connect.Client[v1.ArchiveTableEntryRequest, v1.ArchiveTableEntryResponse]
 	unarchiveTableEntry   *connect.Client[v1.UnarchiveTableEntryRequest, v1.UnarchiveTableEntryResponse]
+	exportTableContent    *connect.Client[v1.ExportTableContentRequest, v1.ExportTableContentResponse]
+	importTableContent    *connect.Client[v1.ImportTableContentRequest, v1.ImportTableContentResponse]
 	listOptionSwitches    *connect.Client[v1.ListOptionSwitchesRequest, v1.ListOptionSwitchesResponse]
 	setOptionSwitches     *connect.Client[v1.SetOptionSwitchesRequest, v1.SetOptionSwitchesResponse]
 	getClassTableDefaults *connect.Client[v1.GetClassTableDefaultsRequest, v1.GetClassTableDefaultsResponse]
@@ -311,6 +381,16 @@ func (c *tableContentServiceClient) ArchiveTableEntry(ctx context.Context, req *
 // UnarchiveTableEntry calls meurpg.rules.v1.TableContentService.UnarchiveTableEntry.
 func (c *tableContentServiceClient) UnarchiveTableEntry(ctx context.Context, req *connect.Request[v1.UnarchiveTableEntryRequest]) (*connect.Response[v1.UnarchiveTableEntryResponse], error) {
 	return c.unarchiveTableEntry.CallUnary(ctx, req)
+}
+
+// ExportTableContent calls meurpg.rules.v1.TableContentService.ExportTableContent.
+func (c *tableContentServiceClient) ExportTableContent(ctx context.Context, req *connect.Request[v1.ExportTableContentRequest]) (*connect.Response[v1.ExportTableContentResponse], error) {
+	return c.exportTableContent.CallUnary(ctx, req)
+}
+
+// ImportTableContent calls meurpg.rules.v1.TableContentService.ImportTableContent.
+func (c *tableContentServiceClient) ImportTableContent(ctx context.Context, req *connect.Request[v1.ImportTableContentRequest]) (*connect.Response[v1.ImportTableContentResponse], error) {
+	return c.importTableContent.CallUnary(ctx, req)
 }
 
 // ListOptionSwitches calls meurpg.rules.v1.TableContentService.ListOptionSwitches.
@@ -394,8 +474,56 @@ type TableContentServiceHandler interface {
 	// Errors: `permission_denied`, `not_found`, `failed_precondition` (NOT_ARCHIVED),
 	// `invalid_argument` (a TableContentRefusal).
 	UnarchiveTableEntry(context.Context, *connect.Request[v1.UnarchiveTableEntryRequest]) (*connect.Response[v1.UnarchiveTableEntryResponse], error)
+	// ExportTableContent returns the campaign's own entries as one content pack
+	// (MR-025): the file the master keeps and imports into another campaign, or back
+	// into this one. Only the master. Every entry is in it, archived ones included,
+	// as a TableEntry with its `key`, `kind`, `name_pt` and its body; what the server
+	// manages (revision, timestamps, the count of characters, `off` and `archived`)
+	// is left out, and so is every switch: a pack carries content, not a campaign's
+	// choices about it. The features keep their keys, so a pack imported back keeps
+	// the choices sheets made. The pack is the file the app saves as
+	// "<campanha>-conteudo.json", in proto JSON.
+	//
+	// Errors: `permission_denied`, `not_found`.
+	ExportTableContent(context.Context, *connect.Request[v1.ExportTableContentRequest]) (*connect.Response[v1.ExportTableContentResponse], error)
+	// ImportTableContent loads a content pack into the campaign (MR-025). Only the
+	// master. A pack is untrusted input: every entry goes through the rules that
+	// CreateTableEntry and UpdateTableEntry apply, with the same violations, and
+	// nothing in it is run.
+	//
+	// With PREVIEW nothing is written: the answer says, for each entry, whether it
+	// would be new, updated (and which fields change), unchanged or refused (every
+	// violation with its field), and the totals. With APPLY everything is written in
+	// one transaction, all or nothing: an entry of the pack whose key the campaign has
+	// is updated, keeping its features' keys (and its archived mark and its switch);
+	// a key the campaign does not have is created, with the pack's key. An entry that
+	// is refused makes APPLY `invalid_argument` with a TableContentRefusal that lists
+	// every violation, each with the entry's key, and writes nothing. The content
+	// revision goes up once for the whole import, the live content is the new one for
+	// every request and sheet, the sheets that use an updated entry recalculate (the
+	// answer lists the ones left with issues), and the campaign's session gets
+	// `content_changed`. An import that changes nothing writes nothing and does not
+	// raise the revision. A new entry is on for the players, as a hand-made one; the
+	// import never switches anything off or on.
+	//
+	// The limits are the ones of the editors, checked on the whole campaign: 300
+	// entries, 64 KiB of data per entry; and the pack itself is at most 2 MiB (in
+	// proto JSON), has `format` "meurpg.table-content" and `version` 1, and every key
+	// is "<kind>:<slug>@mesa" of its entry's kind, without repeats. The
+	// violation reasons of a pack are in TableContentViolation.
+	//
+	// Errors: `permission_denied`, `not_found`; `invalid_argument` with a
+	// TableContentRefusal for a pack the rules refuse (APPLY; PREVIEW answers it as
+	// data, except for the pack-level violations, which are `invalid_argument` in
+	// both modes).
+	//
+	// Safe to retry when the request carries an idempotency_key (APPLY): a second call
+	// with the same key and the same request returns what the first one answered and
+	// writes nothing; the same key with another request is `invalid_argument`. Without
+	// a key the call is not deduplicated. PREVIEW ignores the key.
+	ImportTableContent(context.Context, *connect.Request[v1.ImportTableContentRequest]) (*connect.Response[v1.ImportTableContentResponse], error)
 	// ListOptionSwitches is the master's "Opções para os jogadores" (MR-025, RN-23):
-	// every class, subclass, race, subrace, background and spell of the campaign, the
+	// every class, subclass, race, subrace, background, spell and feat of the campaign, the
 	// SRD's and the table's, each with its on/off state and how many of the
 	// campaign's player characters use it, sorted by kind and Portuguese name. It is
 	// what the screen draws "o que cada jogador vê" from. Only the master; what a
@@ -421,7 +549,7 @@ type TableContentServiceHandler interface {
 	// Errors:
 	//   - `permission_denied`, `not_found`;
 	//   - `invalid_argument`: no switch at all, more than 700, a key that is not a
-	//     class, subclass, race, subrace, background or spell of the campaign's
+	//     class, subclass, race, subrace, background, spell or feat of the campaign's
 	//     content, or the same key twice.
 	//
 	// An archived table entry can be switched like any other (it stays hidden from
@@ -491,6 +619,19 @@ func NewTableContentServiceHandler(svc TableContentServiceHandler, opts ...conne
 		connect.WithSchema(tableContentServiceMethods.ByName("UnarchiveTableEntry")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tableContentServiceExportTableContentHandler := connect.NewUnaryHandler(
+		TableContentServiceExportTableContentProcedure,
+		svc.ExportTableContent,
+		connect.WithSchema(tableContentServiceMethods.ByName("ExportTableContent")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	tableContentServiceImportTableContentHandler := connect.NewUnaryHandler(
+		TableContentServiceImportTableContentProcedure,
+		svc.ImportTableContent,
+		connect.WithSchema(tableContentServiceMethods.ByName("ImportTableContent")),
+		connect.WithHandlerOptions(opts...),
+	)
 	tableContentServiceListOptionSwitchesHandler := connect.NewUnaryHandler(
 		TableContentServiceListOptionSwitchesProcedure,
 		svc.ListOptionSwitches,
@@ -530,6 +671,10 @@ func NewTableContentServiceHandler(svc TableContentServiceHandler, opts ...conne
 			tableContentServiceArchiveTableEntryHandler.ServeHTTP(w, r)
 		case TableContentServiceUnarchiveTableEntryProcedure:
 			tableContentServiceUnarchiveTableEntryHandler.ServeHTTP(w, r)
+		case TableContentServiceExportTableContentProcedure:
+			tableContentServiceExportTableContentHandler.ServeHTTP(w, r)
+		case TableContentServiceImportTableContentProcedure:
+			tableContentServiceImportTableContentHandler.ServeHTTP(w, r)
 		case TableContentServiceListOptionSwitchesProcedure:
 			tableContentServiceListOptionSwitchesHandler.ServeHTTP(w, r)
 		case TableContentServiceSetOptionSwitchesProcedure:
@@ -565,6 +710,14 @@ func (UnimplementedTableContentServiceHandler) ArchiveTableEntry(context.Context
 
 func (UnimplementedTableContentServiceHandler) UnarchiveTableEntry(context.Context, *connect.Request[v1.UnarchiveTableEntryRequest]) (*connect.Response[v1.UnarchiveTableEntryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.TableContentService.UnarchiveTableEntry is not implemented"))
+}
+
+func (UnimplementedTableContentServiceHandler) ExportTableContent(context.Context, *connect.Request[v1.ExportTableContentRequest]) (*connect.Response[v1.ExportTableContentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.TableContentService.ExportTableContent is not implemented"))
+}
+
+func (UnimplementedTableContentServiceHandler) ImportTableContent(context.Context, *connect.Request[v1.ImportTableContentRequest]) (*connect.Response[v1.ImportTableContentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.TableContentService.ImportTableContent is not implemented"))
 }
 
 func (UnimplementedTableContentServiceHandler) ListOptionSwitches(context.Context, *connect.Request[v1.ListOptionSwitchesRequest]) (*connect.Response[v1.ListOptionSwitchesResponse], error) {

@@ -34,6 +34,10 @@ type Rules struct {
 	// HiddenAreaHits is what an area spell does to the hiding of a hidden creature
 	// it hits (the effect always applies). The zero value reveals it.
 	HiddenAreaHits HiddenAreaHitRule
+	// FeatsAllowed lets the table play with feats, an optional rule of the game:
+	// the level-up's Ability Score Improvement step then offers a feat in place of
+	// the ability increase. The zero value is the SRD's: feats are not used.
+	FeatsAllowed bool
 	// Reminders are the table's house rules: short texts shown on "Regras da
 	// mesa" and never enforced; none by default.
 	Reminders []string

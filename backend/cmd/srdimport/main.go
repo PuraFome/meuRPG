@@ -60,6 +60,7 @@ var inputHashes = map[string]string{
 	"5e-SRD-Subclasses.json":        "b3502390228ffd15c9043f6b5f25d365a9935e12056debccc2e2749e3d6c3ab1",
 	"5e-SRD-Features.json":          "fd20a2a5c27996eb66c023053b1629d93dac2d1d108e5d81dfc53ddf0d6ad93c",
 	"5e-SRD-Backgrounds.json":       "f98c556f1b842c2570058cd071b7c20743290358559a1f46140dbedf36f418aa",
+	"5e-SRD-Feats.json":             "77ec1eeab03643714250c617ee54f558ff6600a12d25fc17ae709a1bc9513482",
 	"5e-SRD-Proficiencies.json":     "60127a2130a5dd0a0a9b4cc20adf9061be81e9ad95218273d3b434c49d229333",
 	"5e-SRD-Equipment.json":         "6dc4dc61ac71c9ae2ffffe8deae087f2dbe8f1a7b5a8675077adb5df649901c3",
 	"5e-SRD-Spells.json":            "abebe7d860ec32985b804e087ecd3986145b1b772fa0c2e43cce9964b382f2ae",
@@ -147,7 +148,7 @@ func convert(in *inputs) ([]output, error) {
 	var outs []output
 	steps := []func(*inputs) (output, error){
 		convertAbilities, convertSkills, convertRaces, convertSubraces, convertTraits,
-		convertClasses, convertLevels, convertSubclasses, convertFeatures, convertBackgrounds,
+		convertClasses, convertLevels, convertSubclasses, convertFeatures, convertBackgrounds, convertFeats,
 		convertProficiencies, convertEquipment, convertSpells, convertLanguages, convertMonsters, convertMagicItems,
 		named("5e-SRD-Damage-Types.json", "damage-types.json", "damage-type:"),
 		named("5e-SRD-Magic-Schools.json", "magic-schools.json", "school:"),
@@ -763,6 +764,37 @@ func convertBackgrounds(in *inputs) (output, error) {
 	}
 	sortByKey(out, func(b srd51.Background) string { return b.Key })
 	return output{"backgrounds.json", out}, nil
+}
+
+// convertFeats reads the feats: their name, their text and the ability score
+// minimums they ask for (every one must be met).
+func convertFeats(in *inputs) (output, error) {
+	type src struct {
+		Index         string   `json:"index"`
+		Name          string   `json:"name"`
+		Desc          []string `json:"desc"`
+		Prerequisites []struct {
+			AbilityScore ref `json:"ability_score"`
+			MinimumScore int `json:"minimum_score"`
+		} `json:"prerequisites"`
+	}
+	rows, err := decode[src](in, "5e-SRD-Feats.json")
+	if err != nil {
+		return output{}, err
+	}
+	out := make([]srd51.Feat, 0, len(rows))
+	for _, r := range rows {
+		f := srd51.Feat{Key: "feat:" + r.Index, Name: r.Name, Desc: r.Desc}
+		for _, p := range r.Prerequisites {
+			if f.Minimums == nil {
+				f.Minimums = map[string]int{}
+			}
+			f.Minimums[p.AbilityScore.Index] = p.MinimumScore
+		}
+		out = append(out, f)
+	}
+	sortByKey(out, func(f srd51.Feat) string { return f.Key })
+	return output{"feats.json", out}, nil
 }
 
 // slug turns "Shelter of the Faithful" into "shelter-of-the-faithful".

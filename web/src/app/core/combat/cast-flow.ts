@@ -92,7 +92,8 @@ export function freeText(free: number, total: number | null): string {
  * has from the spell's own up (the ones with no free slot are listed too,
  * disabled, so "2º nível: Sem espaço livre" is seen), and the pact slots.
  * `choices` are the server's free slots (`SpellOption.slots`), who decides
- * what is enabled; `usage` has the totals, for "de 4".
+ * what is enabled; `usage` has the totals, for "de 4". A cantrip (level 0)
+ * uses no slot, so it has no rows at all.
  */
 export function slotRows(
   level: number,
@@ -100,6 +101,9 @@ export function slotRows(
   usage: readonly { readonly level: number; readonly total: number; readonly used: number }[],
   pact: { readonly slotLevel: number; readonly total: number; readonly used: number } | null = null,
 ): SlotRow[] {
+  if (level < 1) {
+    return [];
+  }
   const rows: SlotRow[] = [];
   const levels = new Set<number>(choices.filter((c) => !c.pact).map((c) => c.level));
   for (const u of usage) {

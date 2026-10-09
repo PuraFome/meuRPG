@@ -843,6 +843,16 @@ const (
 	// with a weapon or an unarmed strike, and that action has not been taken yet
 	// this turn. GetTurnOptions says it before, as ATTACK_ACTION_FIRST.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST EncounterBlockedReason = 67
+	// MoveCombatant: the master asked for a square that is a wall. Nobody stands in
+	// a wall, and a creature in one is seen by no player.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WALL_ON_SQUARE EncounterBlockedReason = 68
+	// CastSpell, TakeAction: a healing aimed at a character that died, or that has
+	// failed three death saves. A dead creature regains no hit points (SRD 5.1,
+	// "Dropping to 0 Hit Points"), so nothing is spent.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEAD EncounterBlockedReason = 69
+	// MoveCombatant with `place`: the map has no free square a creature can stand
+	// on, so the server found none to place the combatant on.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_FREE_SQUARE EncounterBlockedReason = 70
 )
 
 // Enum value maps for EncounterBlockedReason.
@@ -911,6 +921,9 @@ var (
 		65: "ENCOUNTER_BLOCKED_REASON_ALREADY_USED_THIS_TURN",
 		66: "ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT",
 		67: "ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST",
+		68: "ENCOUNTER_BLOCKED_REASON_WALL_ON_SQUARE",
+		69: "ENCOUNTER_BLOCKED_REASON_TARGET_DEAD",
+		70: "ENCOUNTER_BLOCKED_REASON_NO_FREE_SQUARE",
 	}
 	EncounterBlockedReason_value = map[string]int32{
 		"ENCOUNTER_BLOCKED_REASON_UNSPECIFIED":                  0,
@@ -976,6 +989,9 @@ var (
 		"ENCOUNTER_BLOCKED_REASON_ALREADY_USED_THIS_TURN":       65,
 		"ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT":     66,
 		"ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST":          67,
+		"ENCOUNTER_BLOCKED_REASON_WALL_ON_SQUARE":               68,
+		"ENCOUNTER_BLOCKED_REASON_TARGET_DEAD":                  69,
+		"ENCOUNTER_BLOCKED_REASON_NO_FREE_SQUARE":               70,
 	}
 )
 
@@ -4490,7 +4506,12 @@ type MoveCombatantRequest struct {
 	// right. It never provokes an opportunity attack. A player sending it gets
 	// `permission_denied`. Without it, the master's move of the combatant that is
 	// on turn is a move like any, and provokes.
-	Forced        bool `protobuf:"varint,9,opt,name=forced,proto3" json:"forced,omitempty"`
+	Forced bool `protobuf:"varint,9,opt,name=forced,proto3" json:"forced,omitempty"`
+	// Only the master: the server picks the square of a combatant that has none
+	// ("Colocar no mapa"), by the same rule that places the NPCs when the combat
+	// begins. col and row are ignored. A player sending it gets `permission_denied`,
+	// and a combatant already on the map is refused with `invalid_argument`.
+	Place         bool `protobuf:"varint,10,opt,name=place,proto3" json:"place,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4584,6 +4605,13 @@ func (x *MoveCombatantRequest) GetJumpHeightDft() int32 {
 func (x *MoveCombatantRequest) GetForced() bool {
 	if x != nil {
 		return x.Forced
+	}
+	return false
+}
+
+func (x *MoveCombatantRequest) GetPlace() bool {
+	if x != nil {
+		return x.Place
 	}
 	return false
 }
@@ -13524,7 +13552,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x16discard_pending_damage\x18\x05 \x01(\bR\x14discardPendingDamage\x12%\n" +
 	"\x0eexpected_round\x18\x06 \x01(\x05R\rexpectedRound\"J\n" +
 	"\x0fEndTurnResponse\x127\n" +
-	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xb8\x02\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xce\x02\n" +
 	"\x14MoveCombatantRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -13535,7 +13563,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x03row\x18\x06 \x01(\x05R\x03row\x12,\n" +
 	"\x04jump\x18\a \x01(\x0e2\x18.meurpg.play.v1.JumpKindR\x04jump\x12&\n" +
 	"\x0fjump_height_dft\x18\b \x01(\x05R\rjumpHeightDft\x12\x16\n" +
-	"\x06forced\x18\t \x01(\bR\x06forced\"\xb2\x01\n" +
+	"\x06forced\x18\t \x01(\bR\x06forced\x12\x14\n" +
+	"\x05place\x18\n" +
+	" \x01(\bR\x05place\"\xb2\x01\n" +
 	"\x15MoveCombatantResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x12#\n" +
 	"\rstopped_early\x18\x02 \x01(\bR\fstoppedEarly\x12\x1a\n" +
@@ -14327,7 +14357,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x14COMBATANT_STATE_DOWN\x10\x05\x12\x19\n" +
 	"\x15COMBATANT_STATE_DYING\x10\x06\x12\x1a\n" +
 	"\x16COMBATANT_STATE_STABLE\x10\a\x12\x18\n" +
-	"\x14COMBATANT_STATE_DEAD\x10\b*\xb0\x17\n" +
+	"\x14COMBATANT_STATE_DEAD\x10\b*\xb4\x18\n" +
 	"\x16EncounterBlockedReason\x12(\n" +
 	"$ENCOUNTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN\x10\x01\x12+\n" +
@@ -14392,7 +14422,10 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"'ENCOUNTER_BLOCKED_REASON_NO_OPPORTUNITY\x10@\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ALREADY_USED_THIS_TURN\x10A\x125\n" +
 	"1ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT\x10B\x120\n" +
-	",ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST\x10C*\x91\x03\n" +
+	",ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST\x10C\x12+\n" +
+	"'ENCOUNTER_BLOCKED_REASON_WALL_ON_SQUARE\x10D\x12(\n" +
+	"$ENCOUNTER_BLOCKED_REASON_TARGET_DEAD\x10E\x12+\n" +
+	"'ENCOUNTER_BLOCKED_REASON_NO_FREE_SQUARE\x10F*\x91\x03\n" +
 	"\x1aFamiliarSightBlockedReason\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR\x10\x01\x12,\n" +

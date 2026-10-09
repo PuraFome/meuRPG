@@ -57,6 +57,9 @@ export function choiceRows(levelUp: LevelUp): ChoiceRow[] {
           : LIST.format(up.map((u) => `+${u.by} em ${abilityLabel(u.key)}`)),
     });
   }
+  if (c.featKey) {
+    rows.push({ label: 'Talento', value: names([c.featKey]) });
+  }
   const hp = c.hitPoints;
   if (hp && hp.value > 0) {
     const how =

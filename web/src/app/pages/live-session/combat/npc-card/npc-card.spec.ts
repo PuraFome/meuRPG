@@ -73,6 +73,40 @@ describe('NpcCard: the idempotency key follows the target', () => {
     expect(second[4]).toBe('t2');
     expect(second[6]).not.toBe(first[6]);
   });
+
+  it('does not roll a second attack while a hit of this attacker still has its damage open, and says why', async () => {
+    TestBed.resetTestingModule();
+    const rollAttack = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [{ provide: CombatClient, useValue: { rollAttack } }],
+    });
+    const fixture = TestBed.createComponent(NpcCard);
+    fixture.componentRef.setInput('campaignId', 'c');
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants: [combatant({ id: 'npc', label: 'Goblin' })] }),
+    );
+    fixture.componentRef.setInput('subject', combatant({ id: 'npc', label: 'Goblin' }));
+    fixture.componentRef.setInput('state', { apply: vi.fn() } as unknown as CombatState);
+    const open = { ...(opts(['t1']) as object), pendingDamages: [{ id: 'p1' }] } as never;
+    fixture.componentRef.setInput('options', open);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const card = fixture.componentInstance as unknown as { rollApp(): Promise<void> };
+    await card.rollApp();
+    expect(rollAttack).not.toHaveBeenCalled();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('#roll-why')?.textContent,
+    ).toContain('dano do ataque anterior');
+    // Once the damage is applied the options carry none, and the attack rolls again.
+    rollAttack.mockRejectedValue(new Error('stop'));
+    fixture.componentRef.setInput('options', opts(['t1']));
+    fixture.detectChanges();
+    await card.rollApp();
+    expect(rollAttack).toHaveBeenCalledTimes(1);
+    expect((fixture.nativeElement as HTMLElement).querySelector('#roll-why')).toBeNull();
+  });
 });
 
 describe("NpcCard: an NPC's area spell", () => {
