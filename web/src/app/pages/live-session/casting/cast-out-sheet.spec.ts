@@ -154,6 +154,25 @@ describe('CastOutSheet (MR-048)', () => {
     expect(api.casts[0].req).toMatchObject({ asRitual: true, slot: null });
   });
 
+  it('a spell that is only a ritual for this caster says so, with its time, and spends no slot', async () => {
+    const book = castingSpell('spell:alarm', 'Alarme', 1, {
+      canCast: false,
+      ritualAllowed: true,
+      ritualMinutes: 11,
+      castingMinutes: 1,
+      castingTimePt: '1 minuto',
+      slots: [],
+    });
+    const { el, api, click } = await setup(withSpells(book));
+    await click('label.row', 'Alarme');
+    const way = plain(el.querySelector('app-choice-cards:nth-of-type(1)')?.textContent);
+    expect(way).toContain('Como ritual');
+    expect(plain(el.textContent)).toContain('1 minuto + 10 = 11 minutos');
+    expect(el.querySelector('app-slot-picker')).toBeNull();
+    await click('button.cast');
+    expect(api.casts[0].req).toMatchObject({ asRitual: true, slot: null });
+  });
+
   it('asks before a concentration ends another one, and casts nothing if cancelled', async () => {
     const bless = castingSpell('spell:bless', 'Bênção', 1, {
       lasts: true,

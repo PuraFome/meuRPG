@@ -51,7 +51,7 @@
         <p class="loading">Nenhuma magia para conjurar fora do combate.</p>
       }
     } @else {
-      @if (wayRows().length > 1) {
+      @if (ways().includes('ritual')) {
         <app-choice-cards label="Como conjurar" [rows]="wayRows()" [chosen]="[way()]" (choose)="pickWay($event)" />
       }
       @if (slots().length) {
