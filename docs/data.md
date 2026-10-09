@@ -287,11 +287,31 @@ erDiagram
         int4 sheet_schema
         int4 revision "goes up on each edit"
         timestamptz sheet_locked_at "optional, RN-01"
-        timestamptz died_at "optional, RN-03"
+        timestamptz died_at "optional, RN-03; stays after a revival as the master's history"
+        timestamptz revived_at "optional, the last time it lived again"
+        int4 death_round "optional, the round of the combat in which the death was confirmed"
+        uuid death_encounter_id "optional, that combat, no foreign key"
+        bool revivify_blocked "the master's switch Revivificar nao funciona nesta morte"
+        text revive_key "idempotency of ReviveCharacter"
+        text revive_hash
         uuid create_key "idempotency of Create NPC (MR-042) and CreateCharacter"
         text create_hash
         timestamptz created_at
         timestamptz updated_at
+    }
+
+    character_reviews {
+        uuid character_id PK "and FK to characters, CASCADE"
+        uuid campaign_id FK "CASCADE"
+        uuid player_user_id FK "CASCADE"
+        text status "changes_requested or resubmitted"
+        text reason "1 to 500, the master's text about the player"
+        timestamptz requested_at
+        timestamptz resubmitted_at "optional"
+        text request_key "idempotency of the last request"
+        text request_hash
+        text resubmit_key "idempotency of the last resubmit"
+        text resubmit_hash
     }
 
     character_master_notes {
@@ -398,6 +418,7 @@ erDiagram
     campaigns |o--o{ characters : "gathers"
     campaigns ||--o{ character_master_notes : "keeps"
     characters ||--o{ character_master_notes : "has"
+    characters ||--o| character_reviews : "was sent back"
     characters ||--o| character_vitals : "has"
     characters ||--o| character_wild_shapes : "is in the form of"
     characters ||--o{ character_level_ups : "gained a level"
@@ -417,7 +438,7 @@ erDiagram
 
 - **The campaign is on the character row.** `characters.campaign_id` replaces, for now, a `campaign_characters` link table. With a link table, guaranteeing RN-03 would need to copy `kind` into it and a composite foreign key, and still could not guarantee "one living character per player". With the column, RN-03 is a partial unique index with `status <> 'dead'`, so a pending character (MR-024) also counts as living. An NPC stays in the campaign where it was created; using the same NPC in other campaigns (MR-022, planned) brings the link table back, only for NPCs, without redoing anything.
 - **The owner is in two columns**, each with the right `ON DELETE`: `player_user_id` (player characters only) with `SET NULL`, and `master_user_id` (NPCs only) with `CASCADE`. When the player deletes the account the character stays with the campaign's master (RN-16); when the master deletes the account his NPCs go with it. `campaign_id` uses `SET NULL`: when the campaign is deleted, the player character stays with the player. A `CHECK` (`characters_owner`) guarantees that a player character has no master owner, and an NPC has a master and no player.
-- **State** is `status` plus `sheet_locked_at`; the API computes `CharacterState` from the two (see [Sheet lifecycle](product/rules.md#character-lifecycle)). `status` is `active`, `dead` or `pending`. The dead character changes state, never row (RN-03), and gets `died_at` (`CHECK characters_dead_since`). Other `CHECK`s guarantee that only a player character dies, is pending, is locked or gets the story release. The character created by a pending member is born `pending` (MR-024); the session does not lock it (`LockSheets` locks only `active`), and it cannot die: the master approves it (`active`, same revision) or refuses it.
+- **State** is `status` plus `sheet_locked_at`; the API computes `CharacterState` from the two (see [Sheet lifecycle](product/rules.md#character-lifecycle)). `status` is `active`, `dead` or `pending`. The dead character changes state, never row (RN-03), and gets `died_at` (`CHECK characters_dead_has_died_at`: a dead character has one). The master can bring it back (`ReviveCharacter`, Revivify): `status` goes back to `active`, `sheet_locked_at` is untouched, `revived_at` is set and `died_at` stays as the master's history; a new death sets `died_at` again and turns the Revivify switch off. `death_round` and `death_encounter_id` (no foreign key) are the combat and round in which the master confirmed the death, `NULL` for a death marked outside a combat; `revivify_blocked` is the switch "Revivificar não funciona nesta morte"; `revive_key` and `revive_hash` are the idempotency key of the last `ReviveCharacter` (scoped to the campaign and the caller) and the hash of its request. Other `CHECK`s guarantee that only a player character dies, is pending, is locked or gets the story release. The character created by a pending member is born `pending` (MR-024); the session does not lock it (`LockSheets` locks only `active`), and it cannot die: the master approves it (`active`, same revision) or refuses it.
 - **The sheet is a document.** `sheet` is the protojson of `CharacterSheet`: the player's choices, by content key such as `class:wizard`. `story` is the protojson of `CharacterStory`: personality, appearance, history and allies. `CHECK`s guarantee that both are JSON objects of up to 128 KiB; the API limits, counted in characters, are well below. `sheet_schema` marks the sheet document's version, for a future v2.
 - **The basic sheet (NPC)** keeps `initiative_bonus` and `attacks` (up to 3), and, when it comes from a creature, `monster_key` and `ability_scores`. `portrait_image_id` (a gallery image of the campaign) is a field of the sheet JSON, not a column: a player's sheet refuses it, the server checks the image belongs to the campaign, and deleting the gallery image removes the field from the sheets that have it, in the same transaction, raising their `revision`.
 - **The NPC the app keeps for each creature put in combat as monsters** (RN-29) is **one per campaign and creature**, made the first time and reused by every combat. It also carries `combat_only` in the sheet (only the server writes it): `ListCharacters` uses it not to show the NPC to the master, and it refuses the NPC as a participant, on the stage and as a token (no extra column). The monsters in combat are copies of it: each one's name ("Bandido 1") and HP stay on the combatant row, and the NPC is never deleted (combatants, XP and the summary point to it).
@@ -427,6 +448,7 @@ erDiagram
 - **Refused character (MR-024).** `RejectCharacter` immediately deletes the pending character's row, with its story, and the player's pending membership. It is the only character deletion outside account deletion, and the query deletes only rows with `status = 'pending'`: an approved character changes state, never row (RN-03).
 - **Index**: `(campaign_id, player_user_id)` serves the lists and the lock. There is no index on `player_user_id` or `master_user_id` alone: only account deletion searches by them.
 - **`character_master_notes`** has the primary key `(campaign_id, character_id)`: the same NPC in two campaigns (MR-022) will have separate notes. Empty notes delete the row. Notes disappear with the campaign or the character, including a refused pending character; that deletion searches the notes by `character_id` without an index, which is cheap on a small table.
+- **`character_reviews`** (RN-15) is the master's "Pedir ajustes" on a pending character: one row per character that was sent back, none while the review is `REVIEW_AWAITING`. `status` is `changes_requested` or `resubmitted` (with `resubmitted_at`, by `CHECK`), `reason` is 1 to 500 characters (by `CHECK`) of the master's text about the player, which is personal data of the player (see [Privacy](privacy.md)). The deleting is done by the foreign keys: `character_id` (the character is deleted, or rejected), `campaign_id` (the campaign is deleted) and `player_user_id` (the player deletes the account) are all `ON DELETE CASCADE`, and approval deletes the row in its own transaction. `request_key`/`request_hash` and `resubmit_key`/`resubmit_hash` are the idempotency key of the last request and of the last resubmit (scoped to the campaign and the caller) with the hash of the request: only the latest of each is kept.
 - **Campaign content** (`campaign_content`, `campaign_content_state`, `campaign_content_off`) is described below.
 
 ### Vitals, level-ups and creatures
@@ -527,6 +549,9 @@ erDiagram
         int4 initiative_face "the d20, optional"
         bool tie_ordered "RN-19"
         int4 order_index "turn order"
+        int4 death_round "optional, the round it died in (Revivify)"
+        int4 death_order_index "optional, its place in the order when it died"
+        bool revivify_blocked "the master's switch for this death"
         int4 grid_col "optional"
         int4 grid_row "optional"
         int4 speed_ft
@@ -806,6 +831,7 @@ erDiagram
   - Also copied from the sheet on entry (MR-034): `size` (the race's size, or `BasicSheet.size`; Medium by default), `speed_fly_ft` (0 for one that does not fly) and the jump limits with a run-up (`jump_long_dft`, `jump_high_dft`, from `rules/combat.JumpLimits`; standing is half). `side` (`party` or `enemy`: a player character enters `party`, an NPC `enemy`, and the master changes it with `SetCombatantSide`) and `cover_mark` (the cover the master marked by hand, which disappears when the combatant moves) belong to the master and the combat, not the sheet.
   - **Only the NPC and the creature have HP here** (`hp_current`, `hp_max`, `hp_temp`, checked by `CHECK` according to `kind`; the creature's returns to `character_creatures` when the combat ends): a player character's stays in `character_vitals`, one source only (RN-02), and the combat never changes the NPC's sheet (RN-04). `xp_value` is the XP an NPC gives when defeated, copied from the sheet on entry (MR-016), so editing the sheet later does not touch a running combat; only the master receives it (RN-20).
   - `defeated` is set by damage and by the master's "Dano/Cura": an NPC at 0 HP is defeated, and healed above 0 returns to the order. A player character at 0 HP is **not** `defeated` (it stays in the turns, for death saves): the "Caído" that `GetEncounter` shows comes from `character_vitals`. Only the death the master confirms (`ConfirmDeath`) makes it `defeated`, and then it leaves the order and the character becomes `dead` in `characters`. `death_successes` and `death_failures` (0 to 3) keep the death saves (RN-03) and stay on the row after the combat, for the summary; `conditions` (SRD keys, up to 20) and `concentration_spell` (the spell's key) are the RN-22 labels, without effect.
+  - `death_round` and `death_order_index` are set, in the same `UPDATE` that sets `defeated`, to the combat's round and to the place in the order of the combatant on turn; they say how long ago it died, which Revivify counts (a minute is 10 rounds; in the tenth, only up to that place). `revivify_blocked` is the master's switch for this death. All three go back to their defaults when it lives again (`ReviveCombatant`).
   - Indexes: `character_id` (deleting a character removes its combatants), `user_id` (partial, `user_id IS NOT NULL`: deleting an account clears it), the combatant of a creature (partial, `creature_id IS NOT NULL`: dismissing a creature takes it out of the combat) and combatants in turn order.
 - **`pending_damages`** (MR-012, MR-014) keeps the damage of a strike that hit, from the d20 to the end. `status` is `awaiting_reaction` (the strike hit a character who can cast Shield and waits for the answer), `awaiting_roll` (hit, damage still to roll), `rolled` (rolled, on a player character, waiting for the master), `applied` or `discarded`.
   - `dice_count` (already doubled on a critical, or the usual dice when the table uses "max plus roll"), `dice_sides` and `dice_bonus` are the damage to roll, and `critical_max` the amount a critical adds without rolling (the maximum of the dice, only under that rule; 0 otherwise), **copied from the sheet** when the strike hits, so changing the sheet later does not touch an open roll; zero dice is a fixed number. `critical_max_rule` records that the rule was that when the hit was opened, so a fixed-damage critical also states the rule. `faces`, `physical` and `amount` are what was rolled (or the typed sum with physical dice) and the damage, null until rolled. `damage_type` is the content key, such as `damage-type:fire`. `taken` is what a damage that landed cost its target once temporary hit points absorbed their share; the cast's rows for one target add up to the damage its concentration save is set from (RN-22), and an undo clears it.
@@ -814,6 +840,7 @@ erDiagram
   - It disappears with the combat or either combatant (`CASCADE`). Indexes by `target_id` and by `attacker_id` (partial, `attacker_id IS NOT NULL`: a trap has none) serve that cascade.
 - **`trap_damages`** (MR-035, RN-02) is the damage a triggered trap did to a player character when **there is no combat** on the map, one row per damage part. The server rolls when the trap fires: `dice_count` (doubled on the trap attack's critical), `dice_sides` and `dice_bonus` are the rolled damage, `faces` what came out, `roll_total` the whole roll and `amount` what counts (half, rounded down, for one who passed a save that halves the damage). `status` is `rolled` (waits for the master), `applied` or `discarded`, and `applied_amount` is the amount the master applied when it was not the rolled one. `fire_id` labels the damages of one trigger; `trap_point_id` has no foreign key (the same cycle reason as `pending_damages`). It disappears with the session or the character (`CASCADE`); the index is by session. `settle_key` (unique where set) and `settle_hash` keep the idempotency key, scoped to the campaign, and the hash of the call that applied or discarded it: the damage can be settled with no session open, where no session event can hold the key, so a retry gets the first answer and the same key for another damage, amount or action is refused. It survives the end of the session (the session stays stored): the master reads those waiting in the whole campaign. The end of a combat turns the trap damage still waiting in `pending_damages` into rows here. Fantasy, numbers and IDs only.
 - **`opportunity_offers`** (MR-034, RN-21) keeps the opportunity attack a move offered to a hostile reactor: who moved, the reactor, the square of the line where he left the reach (where he returns if the attack takes him to 0 HP) and the `state`. `pending` waits for the answer, and the mover's turn waits too; `attacked` is the attack made (`attack_pending_id` is the damage it opened, and goes away, `SET NULL`, if the undo deletes the damage); `declined` and `skipped` are the controller's "Não atacar" and the master's "Seguir sem esperar" (which is also what happens when the master ends the mover's turn); `withdrawn` is the master's "Retirar a oferta", and the undo puts the offer back to `pending`. In a gridless combat (`encounters.mode = 'theatre'`) the master makes the offer (`OfferOpportunity`): nobody left a square, so `left_col` and `left_row` are `NULL` (both or neither) and `move_id` is just the offer's identifier. `move_id` is the same across a move's offers: the move's undo deletes them. Indexes: the pending ones of a combat (partial), those of a move (the undo), of the mover and of the reactor (the cascades) and the one of the damage (the 0 HP rule). No personal data: ids, squares and a state.
+- **`revivify_requests`** (Revivify, SRD 5.1) is a cast of the spell **outside a combat**, waiting for the master: the app does not count time out of combat, so he says whether the creature died less than a minute ago. `game_session_id` (`CASCADE`: it goes with the session), the caster and the target (`characters`, `CASCADE`), the slot (`slot_level` 3 to 9, `slot_pact`), `status` (`pending`, `confirmed`, `denied`; `answered_at` is set exactly when it is not pending, by `CHECK`) and the idempotency keys of the cast (`create_key`, unique per campaign, and `create_hash`) and of the answer (`answer_key`, `answer_hash`). Nothing is spent while it is `pending`.
 
 ### Battle encounters
 

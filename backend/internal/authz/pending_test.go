@@ -43,6 +43,8 @@ func TestRN15_PendingMemberOnlyGetsThroughTheAllowedCalls(t *testing.T) {
 		campaignsv1connect.CampaignServiceCreateInviteProcedure,
 		charactersv1connect.CharacterServiceApproveCharacterProcedure,
 		charactersv1connect.CharacterServiceMarkCharacterDeadProcedure,
+		charactersv1connect.CharacterServiceRequestCharacterChangesProcedure,
+		charactersv1connect.CharacterServiceReviveCharacterProcedure,
 		charactersv1connect.CharacterServiceGetMasterNotesProcedure,
 		playv1connect.PlayServiceListGameSessionsProcedure,
 		"", // no procedure at all
@@ -95,7 +97,8 @@ func TestRN15_PendingMemberLooksLikeAStranger(t *testing.T) {
 
 // TestPendingMayCallIsTheAgreedList pins the allowance to the product
 // decision (RN-15, MR-024, docs/architecture.md): a pending member may see
-// the campaign's name and work on their one character, nothing else.
+// the campaign's name and work on their one character (and send it again when the master asked
+// for changes), nothing else.
 // Changing the list means changing this test, the matrices and the docs.
 func TestPendingMayCallIsTheAgreedList(t *testing.T) {
 	t.Parallel()
@@ -108,6 +111,7 @@ func TestPendingMayCallIsTheAgreedList(t *testing.T) {
 		charactersv1connect.CharacterServicePreviewCharacterProcedure,
 		charactersv1connect.CharacterServiceUpdateCharacterProcedure,
 		charactersv1connect.CharacterServiceUpdateCharacterStoryProcedure,
+		charactersv1connect.CharacterServiceResubmitCharacterProcedure,
 		charactersv1connect.CharacterServiceGetAbilityRollsProcedure,
 		charactersv1connect.CharacterServiceRollAbilityScoresProcedure,
 		rulesv1connect.ContentServiceListContentProcedure,

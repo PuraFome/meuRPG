@@ -334,7 +334,10 @@ func (s *Service) ConfirmRevivifyTime(
 // reviveOutside is the master's "less than a minute": the slot is spent, the diamonds are noted,
 // and the target lives again with 1 hit point. RN-03 may refuse, and nothing is spent then.
 func (s *Service) reviveOutside(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, m authz.Membership, row playdb.RevivifyRequest) ([]*playv1.CharacterVitals, int32, error) {
-	c := &combatTx{tx: tx, q: q, session: session, svc: s}
+	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, svc: s})
+	if err != nil {
+		return nil, 0, err
+	}
 	slot := slotRef{Level: row.SlotLevel, Pact: row.SlotPact}
 	spent, err := s.spendSlot(ctx, c, row.CasterCharacterID, slot, 1)
 	if err != nil {
