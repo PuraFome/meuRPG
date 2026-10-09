@@ -354,6 +354,7 @@ export function toCharacterSheetVm(character: Character): CharacterSheetVm {
     // gated on the character being a living player character.
     isMaster: character.canAccessMasterNotes,
     playerDisplayName: character.playerDisplayName || null,
+    reserved: character.reserved,
     // The subrace's name already says the race ("Gnomo das Rochas"), as the
     // paper sheet's "Raça" box does; the race alone when there is none.
     raceLabel: character.derived?.subraceNamePt || character.derived?.raceNamePt || '',

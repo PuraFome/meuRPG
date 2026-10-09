@@ -29,6 +29,12 @@ describe('characterBlockedMessage', () => {
     expect(characterBlockedMessage('story_locked')).toContain('Permitir editar a história');
     expect(characterBlockedMessage('not_pending')).toContain('já foi aprovado');
     expect(characterBlockedMessage('awaiting_approval')).toContain('Aprove ou recuse');
+    expect(characterBlockedMessage('not_reserved')).toContain('já tem dono');
+    expect(characterBlockedMessage('claim_link_used')).toContain('já foi usado');
+    expect(characterBlockedMessage('not_claimed')).toContain('não veio de um link');
+    expect(characterBlockedMessage('character_in_combat')).toContain('Encerre o combate');
+    expect(characterBlockedMessage('claim_own_link')).toContain('Este link é para um jogador');
+    expect(characterBlockedMessage('reserved')).toContain('reservado');
   });
 
   it('falls back to a generic message when the reason is unknown', () => {

@@ -2,7 +2,7 @@
 
 # Stories and acceptance criteria
 
-The MVP has 37 stories: 35 plus 2 prerequisites (the invite, MR-002, which leads to MR-003, and the NPCs, MR-005, who are the combat enemies). Ten more stories are planned for after the MVP.
+The MVP has 38 stories: 36 plus 2 prerequisites (the invite, MR-002, which leads to MR-003, and the NPCs, MR-005, who are the combat enemies). Ten more stories are planned for after the MVP.
 
 A story is done when all its criteria pass. Each criterion becomes an automated test: Playwright for what shows on screen, a Go test for the rule on the server. There are no characterization tests of the legacy app; the new system only has to prove its own acceptance criteria.
 
@@ -47,6 +47,7 @@ How to read a story: the user-story sentence, the priority (MVP, MVP prerequisit
 | [MR-043](#mr-043-generate-encounters) | Combat | MVP |
 | [MR-044](#mr-044-generate-treasure) | Map | MVP |
 | [MR-045](#mr-045-look-up-spells) | Rules | MVP |
+| [MR-049](#mr-049-reserved-characters-and-claim-links) | Character | MVP |
 | [MR-002](#mr-002-generate-an-invite) | Campaign | MVP (prerequisite) |
 | [MR-005](#mr-005-create-npcs) | Character | MVP (prerequisite) |
 | [MR-007](#mr-007-import-a-sheet-from-pdf) | Character | Later |
@@ -1207,6 +1208,37 @@ The story covers own classes **and** subclasses, races and subraces, backgrounds
 
 #### Related
 - A part of [MR-020](#mr-020-look-up-the-rulebook), with only the spells. Letting the GM accept a spell outside the class list is for after the MVP ([MR-046](#mr-046-table-style-feature-by-feature)). Table content: [MR-025](#mr-025-register-table-content).
+
+### MR-049: Reserved characters and claim links
+
+**As a** game master, **I want** to make characters for my players (or bring them in with the campaign) and send each player a link to take theirs, **so that** the table starts playing without everybody building a sheet first.
+
+- Priority: MVP
+- Rules: RN-01, RN-03, RN-10, RN-16
+- Modules: characters, campaigns, identity, play
+
+#### Acceptance criteria
+- **Given** I am the master, **when** I choose "Criar personagem para um jogador" and save, **then** the character is **reserved**: it has no owner, it appears in "Personagens reservados" and no player sees it, in any list, party view, combat order, map token, session summary or image.
+- **Given** a reserved character, **when** I choose "Gerar link para o jogador" (valid for 1, 7 or 30 days, 7 by default), **then** I get a link `<app>/claim#t=<token>` that the app shows **once**, whole, with "Copiar link"; making another link revokes the previous one.
+- **Given** the link and no session, **when** someone opens it, **then** they see the same page as for any link, valid or not (what a claim link is and "Entrar com Google"), with nothing about the campaign or the character, **and** signing in only brings them back to the character's card: signing in never claims.
+- **Given** the card, **when** I press "Assumir este personagem", **then** I become a member of the campaign (no approval step; a pending join request is closed) and the owner of the character, and the link is spent.
+- **Given** a link that is invalid, expired, used or revoked, or a claim that loses a race with a revoke or with another claim, **when** anyone opens it, **then** they read the same page, "Este link não pode ser usado".
+- **Given** I already have a living character in the campaign, **when** I claim another, **then** I am refused with the one specific reason: I read who the living character is and what to do (a dead one does not count).
+- **Given** a reserved character with a link, **when** I revoke it, **then** the row asks in place and the link stops working; **when** a player used it a moment before, **then** I read "Este link já foi usado por …" and the list is read again.
+- **Given** a character a player claimed, **when** I choose "Devolver à reserva" (a question in place), **then** the character has no owner again and no player sees it, the player stays a member, and I can send it to someone else.
+- **Given** a reserved character, **when** I choose "Excluir" (a question in place), **then** the character and its live link are deleted.
+
+#### In the app
+- **The model.** `characters.reserved` (a player character with no owner, `reserved_shape` CHECK) and `characters.claimed_at` (when a player took it through a link, which is what lets the master give it back); `claim_links` (the SHA-256 of 32 random bytes, a validity of at most 30 days, one live link per character by a partial unique index, `used_by`, rows deleted by TTL 30 days after the link ends) and `claim_sign_ins` (the hash of the link a person signed in with, 10 minutes). See [Data model](../data.md) and [Architecture](../architecture.md#the-claim-flow).
+- **Server.** `CharacterService`: `CreateCharacter` and `PreviewCharacter` with `for_player` (master only; the master's rules, so the table's ability-score method and hit-point rule are not applied), `CreateClaimLink`, `RevokeClaimLink`, `ReturnCharacterToReserve`, `DeleteReservedCharacter`, `PreviewClaim` and `ClaimCharacter`; `ListCharacters` gives the master each character's `claim_state` (none, sent until, expired, revoked, used by). The sign-in intent `character_claim` only keeps the link's hash and sends the person to `/claim`. `ClaimCharacter` and `PreviewClaim` are limited per person and per address.
+- **The master's screens.** The "Personagens reservados" panel of the campaign page (each row says where its link stands and offers "Gerar link para o jogador" / "Gerar novo link", "Editar", "Revogar o link", "Excluir", and, for a claimed character, "Ver ficha" and "Devolver à reserva"; every question is asked in place, with the focus on "Cancelar"), the dialog "Gerar link para o jogador" (a sheet on the phone) and the editor at `/campaigns/:id/reserved/new` (the usual editor in the master's mode, with a notice and "Salvar como reservado").
+- **The player's page.** `/claim#t=<token>` (public): signed out, the page for every link; signed in, the public card (name, race, class, level; "Enviado por …"; "Assumir este personagem"; "Voltar para minhas campanhas"; "Não é você? Entrar com outra conta", which ends the session and asks the provider for its account chooser, keeping the link in memory); the result, with the sheet's link; the one page of every link that does not work; "Este link é para um jogador" for the master's own link; and the RN-03 page.
+- **Never seen by a player (RN-10).** A reserved character is left out of the characters list, the party's vitals, the combat's roster and the map's tokens (`NOT reserved` in each query), of the fog's vision, of the sheets' lock (it locks with the sessions that start after it is claimed) and of the XP; a character given back to the reserve is also left out of the old session summary and the puzzle names a player reads. A reserved character cannot be marked dead.
+- **Tests (Go).** `TestMR049_TheMasterMakesAReservedCharacterAndNoPlayerSeesIt`, `TestMR049_ForPlayerIsTheMastersAlone`, `TestMR049_TheLinkIsRandomHashedAndReplacedByANewOne`, `TestMR049_ValidityIsOneSevenOrThirtyDays`, `TestMR049_ThePlayerClaimsOnceAndTheMasterSeesWhoUsedIt`, `TestMR049_EveryLinkThatCannotBeUsedIsTheSameRefusal`, `TestRN03_AClaimRefusesAPlayerWhoHasALivingCharacterAndTheDeadOnesDoNotCount`, `TestMR049_ClaimingClosesAPendingJoinRequest`, `TestMR049_TheMasterOpeningTheirOwnLinkGetsNothingAndChangesNothing`, `TestMR049_SigningInWithALinkNeverClaimsAndTheCardComesBackWithoutTheToken`, `TestMR049_TheLinkSignedInWithIsKeptForTenMinutes`, `TestMR049_TheMastersActionsOnTheRow`, `TestMR049_AReservedCharacterIsNotInThePartyAndDoesNotLockWithTheSessions`, `TestMR049_ADeletedAccountLeavesTheClaimedCharacterWithTheMaster`, `TestMR049_TwoClaimsOfOneLinkMakeOneOwner` and `TestMR049_AClaimAndARevokeNeverBothWin` (with `dbtest.PoolSize`), `TestMR049_ClaimingIsRateLimitedPerPersonAndNothingSecretIsLogged`, the rows of `TestAuthorizationMatrix`, and the RN-10 rows in `internal/leaktest` (`TestReservedCharacterIsOnNoLiveSurface`, `TestClaimedCharacterIsReadByItsNewOwnerAndNoOneElse`, `TestGivingACharacterBackToTheReserveHidesItFromItsFormerOwner`, and the matrix's canaries for the reserved name, its story and its link); in `identity`, `TestLoginPromptSelectAccount`.
+- **Tests (browser).** Vitest (`claim-page`, `reserved-characters`, `claim-link-sheet`, `claim-errors`, `campaign-characters`, `character-editor`); Playwright `claim-links.spec.ts` (`@MR-049 @RN-10 @RN-03`: the master makes a character, makes the link, a second browser signs in and takes it, the master reads "Assumido por"; "Devolver à reserva"; the revoked, invented and own link; "Excluir"; RN-03; "Entrar com outra conta") and the screens in `a11y.spec.ts`.
+
+#### Related
+- [MR-002](#mr-002-generate-an-invite) and [MR-003](#mr-003-join-through-the-invite) (the other way into a campaign), [MR-024](#mr-024-approve-the-character-from-the-invite) (a pending member), [MR-006](#mr-006-locked-sheet). The package of a campaign (export and import) brings its characters in as reserved.
 
 ## Priority: MVP (prerequisite)
 

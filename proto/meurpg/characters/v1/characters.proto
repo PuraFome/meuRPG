@@ -409,6 +409,97 @@ service CharacterService {
   //     detail with reason NOT_PENDING.
   rpc RejectCharacter(RejectCharacterRequest) returns (RejectCharacterResponse);
 
+  // CreateClaimLink makes the link a player uses to take a reserved character
+  // (the character the master made with CreateCharacter.for_player). Only the
+  // campaign's master may call it. The app builds the link as
+  // `https://<app>/claim#t=<token>`: the token is a random secret that comes back
+  // once, here, and the server keeps only its SHA-256 (as for an invite). A
+  // character has one live link: making another revokes the previous one, in the
+  // same transaction. The link works for `validity_days` (1, 7 or 30; 0 means 7)
+  // and once.
+  //
+  // Errors:
+  //   - `invalid_argument`: `validity_days` is not 0, 1, 7 or 30, or the
+  //     character is not a player character.
+  //   - `not_found`: the character is not in this campaign, the campaign does not
+  //     exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: the character is not reserved (a CharacterBlocked
+  //     detail with reason NOT_RESERVED).
+  rpc CreateClaimLink(CreateClaimLinkRequest) returns (CreateClaimLinkResponse);
+
+  // RevokeClaimLink ends the character's live link, if it has one: whoever opens
+  // it sees the generic "this link cannot be used" page. Revoking when there is no
+  // live link, or twice, is not an error. Only the campaign's master may call it.
+  //
+  // Errors:
+  //   - `not_found`, `permission_denied`: as CreateClaimLink.
+  //   - `failed_precondition`: a player used the link first (a CharacterBlocked
+  //     detail with reason CLAIM_LINK_USED and the player's display name), or the
+  //     character is not reserved (NOT_RESERVED).
+  rpc RevokeClaimLink(RevokeClaimLinkRequest) returns (RevokeClaimLinkResponse);
+
+  // ReturnCharacterToReserve takes a character a player claimed through a link
+  // back: it has no owner again and is reserved (invisible to the players), and
+  // its link is gone. The player stays a member of the campaign. Only the
+  // campaign's master may call it. Safe to repeat: a character that is reserved
+  // already is answered with `failed_precondition` NOT_CLAIMED, which the app
+  // reads as done.
+  //
+  // Errors:
+  //   - `not_found`, `permission_denied`: as CreateClaimLink.
+  //   - `failed_precondition`: NOT_CLAIMED (the character did not come from a link,
+  //     is reserved already, or is dead) or CHARACTER_IN_COMBAT.
+  rpc ReturnCharacterToReserve(ReturnCharacterToReserveRequest) returns (ReturnCharacterToReserveResponse);
+
+  // DeleteReservedCharacter deletes a reserved character, with its story and its
+  // notes, and its live link (the same transaction). Only the campaign's master
+  // may call it, and only for a reserved character: a character with an owner
+  // never goes this way (RN-03). Deleting twice is `not_found`.
+  //
+  // Errors:
+  //   - `not_found`, `permission_denied`: as CreateClaimLink.
+  //   - `failed_precondition`: the character is not reserved (NOT_RESERVED).
+  rpc DeleteReservedCharacter(DeleteReservedCharacterRequest) returns (DeleteReservedCharacterResponse);
+
+  // PreviewClaim says which character a claim link is for, to the signed-in person
+  // who opened it, so they can decide before ClaimCharacter. It shows only what
+  // the public card shows: the name, race, class and level, who sent the link and
+  // from which campaign. It changes nothing, and it is never called before sign-in:
+  // the page asks only after the person has a session.
+  //
+  // `token` is the link's secret, in the request body only. Empty, it means the
+  // link the person signed in with (the sign-in intent `character_claim` keeps it
+  // for 10 minutes; signing in never claims).
+  //
+  // Errors:
+  //   - `unauthenticated`: no session.
+  //   - `not_found`: the link is invalid, expired, used or revoked, or its character
+  //     is gone. One fixed message for all of them (the same code, the same
+  //     sentence): nobody learns which.
+  //   - `resource_exhausted`: too many tries by this person or from this address.
+  rpc PreviewClaim(PreviewClaimRequest) returns (PreviewClaimResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // ClaimCharacter makes the signed-in person the owner of the reserved character
+  // the link is for, and a member of its campaign (no approval step; a pending
+  // join request is closed). The link is spent. Only this call claims: signing in
+  // with a link never does.
+  //
+  // `token` as in PreviewClaim. Claiming again with the link the same person
+  // used is `not_found`, like any used link.
+  //
+  // Errors:
+  //   - `unauthenticated`, `not_found`, `resource_exhausted`: as PreviewClaim. A
+  //     claim that loses a race with a revoke or with another claim is the same
+  //     `not_found`.
+  //   - `failed_precondition`: a CharacterBlocked detail with reason
+  //     LIVING_CHARACTER_EXISTS (RN-03: the person already has a living character
+  //     in the campaign; the detail names it), or CLAIM_OWN_LINK (the caller is the
+  //     campaign's master).
+  rpc ClaimCharacter(ClaimCharacterRequest) returns (ClaimCharacterResponse);
+
   // GetLevelUpOptions says what the next level of one of the character's
   // classes gives, so the app can draw the guided level-up (MR-040, RN-12):
   // the ability increase, the hit die, the new cantrips and spells, the
@@ -860,6 +951,12 @@ message Character {
   // Why can_level_up is true: XP, or a MILESTONE. Unspecified when it is
   // false.
   LevelUpReason level_up_reason = 24;
+  // Whether the character is reserved: a player character the master made for a
+  // player to claim (ClaimCharacter), with no owner yet. A reserved character is
+  // invisible to every player, in every read and every stream event, until it is
+  // claimed (RN-10); only the master reads it. `player_user_id` is empty while it
+  // is reserved.
+  bool reserved = 25;
 }
 
 // LevelUpReason is why a character can go up a level.
@@ -901,12 +998,24 @@ message CharacterSummary {
   // one that starting a game session locks (RN-01); empty otherwise, and for a
   // complete sheet.
   repeated OpenChoice open_choices = 11;
+  // Whether the character is reserved (Character.reserved). Only the master's
+  // list holds a reserved character, so only the master reads true.
+  bool reserved = 12;
+  // The state of the character's claim link, for the master's list of reserved
+  // characters. UNSPECIFIED for everyone else, for an NPC and for a character
+  // that was never reserved.
+  ClaimState claim_state = 13;
+  // When the link stops working: set for SENT and EXPIRED.
+  google.protobuf.Timestamp claim_expires_at = 14;
+  // For USED: the display name of the player who claimed the character (empty if
+  // they have none, or deleted the account).
+  string claimed_by_display_name = 15;
 
   // How many selections of the character's choices are still open (a Fighting Style,
   // an invocation...). Set only for the master and the owning player, never 0 for
   // anyone else: for another player it is unset, because how many choices a
   // character lacks is not their information (RN-10).
-  optional int32 pending_choice_count = 12;
+  optional int32 pending_choice_count = 16;
 }
 
 // OpenChoiceKind is what a sheet has not picked yet.
@@ -927,6 +1036,23 @@ message OpenChoice {
   OpenChoiceKind kind = 1;
   // How many picks are left, at least 1.
   int32 missing = 2;
+}
+
+// ClaimState is where a reserved character's claim link stands (the master's
+// list). A character the player claimed keeps USED while the player owns it; a
+// character the master gave back to the reserve starts with NONE again.
+enum ClaimState {
+  CLAIM_STATE_UNSPECIFIED = 0;
+  // No link was made, or the character went back to the reserve.
+  CLAIM_STATE_NONE = 1;
+  // A link works until `claim_expires_at`.
+  CLAIM_STATE_SENT = 2;
+  // The link ran out before anyone used it.
+  CLAIM_STATE_EXPIRED = 3;
+  // The master revoked the link.
+  CLAIM_STATE_REVOKED = 4;
+  // A player claimed the character through the link.
+  CLAIM_STATE_USED = 5;
 }
 
 // CharacterBlockedReason says why a character cannot be changed now.
@@ -986,6 +1112,25 @@ enum CharacterBlockedReason {
   // the switch hides an option from the players, not from any sheet the master
   // edits (an NPC, or a player's sheet, which then keeps the option).
   CHARACTER_BLOCKED_REASON_SWITCHED_OFF_CONTENT = 15;
+  // CreateClaimLink, RevokeClaimLink or DeleteReservedCharacter on a character
+  // that is not reserved (it has an owner): the master gives a claimed character
+  // back to the reserve first (ReturnCharacterToReserve).
+  CHARACTER_BLOCKED_REASON_NOT_RESERVED = 16;
+  // RevokeClaimLink on a link a player used already, maybe a moment before (the
+  // two race for the same row, and one wins): `player_display_name` says who.
+  CHARACTER_BLOCKED_REASON_CLAIM_LINK_USED = 17;
+  // ReturnCharacterToReserve on a character no link brought to its player (one
+  // the player made, or one that is reserved already), or one that is dead.
+  CHARACTER_BLOCKED_REASON_NOT_CLAIMED = 18;
+  // ReturnCharacterToReserve on a character that is a combatant of the open
+  // combat: the master ends the combat first.
+  CHARACTER_BLOCKED_REASON_CHARACTER_IN_COMBAT = 19;
+  // ClaimCharacter by the master of the campaign, who owns the link: it is
+  // for a player.
+  CHARACTER_BLOCKED_REASON_CLAIM_OWN_LINK = 20;
+  // MarkCharacterDead or SetStoryEditing on a reserved character: it has no
+  // player yet, so there is nothing of a player's to change.
+  CHARACTER_BLOCKED_REASON_RESERVED = 21;
 }
 
 // CharacterBlocked is the error detail of CharacterService's
@@ -999,6 +1144,14 @@ message CharacterBlocked {
   // For ARCHIVED_CONTENT, SWITCHED_OFF_CONTENT and TABLE_CONTENT_STAYS, the content key that
   // blocks the call; empty otherwise.
   string content_key = 3;
+  // For CLAIM_LINK_USED, the display name of the player who used the link.
+  string player_display_name = 4;
+  // For LIVING_CHARACTER_EXISTS on ClaimCharacter, the name of the player's living
+  // character (character_id is its ID), so the app can name it.
+  string character_name = 5;
+  // For LIVING_CHARACTER_EXISTS on ClaimCharacter, the campaign the claim is for (the
+  // living character's too), so the app can link to that character's sheet.
+  string campaign_id = 6;
 }
 
 // InvalidField is the error detail of CharacterService's `invalid_argument` for a
@@ -1477,6 +1630,12 @@ message CreateCharacterRequest {
   // The key is unique in the campaign; the same key with another request is `invalid_argument`.
   // Empty: the call is not deduplicated. It must be a UUID.
   string idempotency_key = 7;
+  // Only the master may send it, with kind PLAYER: the character is made for a
+  // player to claim (ClaimCharacter), saved as reserved, with no owner and no
+  // approval step. The sheet's rules are the master's (the table's ability-score
+  // method and hit-point rule are not checked, as for any sheet the master edits).
+  // From a player, or with another kind, it is `invalid_argument`.
+  bool for_player = 8;
 }
 
 // PreviewCharacterRequest is a sheet to derive without saving it.
@@ -1489,6 +1648,9 @@ message PreviewCharacterRequest {
   CharacterKind kind = 3;
   // Required: full for PLAYER, ENEMY and BOSS; basic for MINION and STORY.
   CharacterSheet sheet = 4;
+  // As CreateCharacterRequest.for_player: the master previews the sheet of a
+  // reserved character, which the master's rules allow.
+  bool for_player = 5;
 }
 
 // PreviewCharacterResponse is what the sheet would be once saved.
@@ -1771,6 +1933,99 @@ message RejectCharacterRequest {
 
 // RejectCharacterResponse is empty: the character is gone.
 message RejectCharacterResponse {}
+
+// CreateClaimLinkRequest names the reserved character to make a link for.
+message CreateClaimLinkRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // How long the link works: 1, 7 or 30 days. 0 means 7. It cannot change after
+  // the link is made.
+  int32 validity_days = 3;
+}
+
+// CreateClaimLinkResponse carries the link's secret, once.
+message CreateClaimLinkResponse {
+  // The secret of the link, 43 URL-safe characters. The app builds
+  // `<origin>/claim#t=<token>`. The server never shows it again.
+  string token = 1;
+  // When the link stops working.
+  google.protobuf.Timestamp expires_at = 2;
+}
+
+// RevokeClaimLinkRequest names the character whose live link ends.
+message RevokeClaimLinkRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+}
+
+// RevokeClaimLinkResponse is empty: the character has no live link.
+message RevokeClaimLinkResponse {}
+
+// ReturnCharacterToReserveRequest names the claimed character to take back.
+message ReturnCharacterToReserveRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+}
+
+// ReturnCharacterToReserveResponse returns the character as it is now.
+message ReturnCharacterToReserveResponse {
+  // The character, reserved and with no owner.
+  Character character = 1;
+}
+
+// DeleteReservedCharacterRequest names the reserved character to delete.
+message DeleteReservedCharacterRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+}
+
+// DeleteReservedCharacterResponse is empty: the character is gone.
+message DeleteReservedCharacterResponse {}
+
+// PreviewClaimRequest carries the link's secret.
+message PreviewClaimRequest {
+  // The secret from the link's fragment, in the body only. Empty means the link
+  // the person signed in with.
+  string token = 1;
+}
+
+// ClaimCard is what the public card of a reserved character shows to someone who
+// holds its link.
+message ClaimCard {
+  // The character's name.
+  string character_name = 1;
+  // The race's Portuguese name (the subrace's if the sheet has one), such as
+  // "Humano". Empty for a sheet without one.
+  string race_name_pt = 2;
+  // Classes and levels in Portuguese, such as "Monge 5".
+  string class_summary = 3;
+  // The campaign's name.
+  string campaign_name = 4;
+  // The display name of whoever made the link (the master); empty if they have none.
+  string sent_by_display_name = 5;
+}
+
+// PreviewClaimResponse is the card of the character the link is for.
+message PreviewClaimResponse {
+  ClaimCard card = 1;
+  // True when the caller is the campaign's master, who owns the link: the app
+  // says the link is for a player, and the card is left empty.
+  bool own_link = 2;
+}
+
+// ClaimCharacterRequest carries the link's secret.
+message ClaimCharacterRequest {
+  // As PreviewClaimRequest.token.
+  string token = 1;
+}
+
+// ClaimCharacterResponse says what the person took.
+message ClaimCharacterResponse {
+  string campaign_id = 1;
+  string campaign_name = 2;
+  string character_id = 3;
+  string character_name = 4;
+}
 
 // GetLevelUpOptionsRequest names the character to level up.
 message GetLevelUpOptionsRequest {

@@ -674,6 +674,7 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
           : 'sheet_locked',
       sheetLocked:
         character.state === GenCharacterState.LOCKED || character.state === GenCharacterState.DEAD,
+      reserved: character.reserved,
       preparedMax: Object.fromEntries(
         (character.derived?.spellcasting ?? [])
           .filter((c) => c.preparedMax > 0)
@@ -752,6 +753,7 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
       campaignId: input.campaignId,
       characterId: input.characterId ?? '',
       kind: KIND_TO_GEN[input.kind],
+      ...(input.forPlayer ? { forPlayer: true } : {}),
       sheet: {
         content: {
           case: 'full',
@@ -804,6 +806,7 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
       kind: KIND_TO_GEN[input.kind],
       name: input.full?.name ?? input.basic?.name ?? '',
       idempotencyKey: input.idempotencyKey,
+      ...(input.forPlayer ? { forPlayer: true } : {}),
       ...(input.abilityMethod ? { abilityMethod: ABILITY_METHOD_TO_GEN[input.abilityMethod] } : {}),
       sheet: input.full
         ? { content: { case: 'full', value: toFullSheetInit(input.full) } }

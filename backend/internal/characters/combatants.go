@@ -104,7 +104,7 @@ func (s *Service) SessionCharacters(ctx context.Context, tx pgx.Tx, campaignID s
 	}
 	out := make([]link.Character, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, link.Character{ID: r.ID, Name: r.Name, Player: r.Kind == "player", PlayerUserID: deref(r.PlayerUserID)})
+		out = append(out, link.Character{ID: r.ID, Name: r.Name, Player: r.Kind == "player", PlayerUserID: deref(r.PlayerUserID), Reserved: r.Reserved})
 	}
 	return out, nil
 }

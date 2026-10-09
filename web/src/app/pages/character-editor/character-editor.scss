@@ -329,3 +329,8 @@
 .editor__primary[aria-disabled='true'] {
   opacity: 0.7;
 }
+
+// "Personagem reservado" under the title (MR-049): the master is told nobody owns it yet.
+.editor__reserved {
+  margin-bottom: var(--mr-space-4);
+}
