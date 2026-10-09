@@ -276,6 +276,13 @@ func (s *Service) MoveCombatant(
 	if forced && !v.master {
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the master may force a move"))
 	}
+	place := req.Msg.GetPlace()
+	if place && !v.master {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the master may place a combatant"))
+	}
+	if place && jump != playv1.JumpKind_JUMP_KIND_UNSPECIFIED {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a placement is not a jump"))
+	}
 
 	var moved playdb.Combatant
 	var made actionEvent
@@ -307,7 +314,21 @@ func (s *Service) MoveCombatant(
 		if err := v.mayAct(target); err != nil {
 			return nil, err
 		}
-		if jump != playv1.JumpKind_JUMP_KIND_HIGH && !inGrid(c.enc, col, row) {
+		col, row := col, row // the closure runs again on a retry: a placement picks its square afresh
+		switch {
+		case place && placed(target):
+			return nil, errAlreadyPlaced
+		case place:
+			p, err := s.placementFor(ctx, c, cs)
+			if err != nil {
+				return nil, err
+			}
+			sq, ok := p.next()
+			if !ok {
+				return nil, errNoRoom()
+			}
+			col, row = clamp32(sq.Col, 0, math.MaxInt32), clamp32(sq.Row, 0, math.MaxInt32)
+		case jump != playv1.JumpKind_JUMP_KIND_HIGH && !inGrid(c.enc, col, row):
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("col and row must be a square of the grid"))
 		}
 		if jump != playv1.JumpKind_JUMP_KIND_UNSPECIFIED && !placed(target) {
@@ -316,6 +337,9 @@ func (s *Service) MoveCombatant(
 		terrain, err := s.terrainOf(ctx, c.tx, m.CampaignID, c.enc)
 		if err != nil {
 			return nil, err
+		}
+		if v.master && jump != playv1.JumpKind_JUMP_KIND_HIGH && terrain.Walls.Has(grid.Square{Col: int(col), Row: int(row)}) {
+			return nil, errWall() // nobody stands in a wall, and a creature in one is seen by no player
 		}
 		onTurn := actsNow(c.enc, target)
 		if !v.master {
@@ -348,6 +372,11 @@ func (s *Service) MoveCombatant(
 			length = grid.LengthDFt(squareOfCombatant(target), to)
 		}
 
+		if !v.master || actsNow(c.enc, target) { // the turn's move waits for the master's answer; his own moves of a token off turn do not
+			if err := s.mustNotHold(ctx, c); err != nil {
+				return nil, err
+			}
+		}
 		if !v.master {
 			if err := s.mustNotWait(ctx, c, target); err != nil {
 				return nil, err

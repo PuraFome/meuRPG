@@ -11,6 +11,9 @@ import {
   DerivedAbilitySchema,
   DerivedClassSchema,
   DerivedSheetSchema,
+  FeatOptionSchema,
+  FeatUnmetKind,
+  type FeatOption,
   DerivedSkillSchema,
   HitDiceSchema,
   ProficiencyLevel,
@@ -213,4 +216,41 @@ export function pensantus(
     ],
     ...over,
   });
+}
+
+/** The feats a table that allows them offers at the level: one with no increase, one that raises one of two abilities, and one the character does not qualify for. */
+export function featOptions(): FeatOption[] {
+  return [
+    create(FeatOptionSchema, {
+      key: 'feat:grappler',
+      namePt: 'Agarrador',
+      name: 'Grappler',
+      desc: ['You have advantage on attack rolls against a creature you are grappling.'],
+      prerequisite: { minimums: { strength: 13 } },
+      qualifies: true,
+    }),
+    create(FeatOptionSchema, {
+      key: 'feat:atleta@mesa',
+      namePt: 'Atleta',
+      desc: ['Você corre e escala melhor.'],
+      table: true,
+      increase: { count: 1, from: [Ability.STRENGTH, Ability.DEXTERITY], value: 1 },
+      qualifies: true,
+    }),
+    create(FeatOptionSchema, {
+      key: 'feat:mestre@mesa',
+      namePt: 'Mestre das Armas',
+      desc: ['Texto.'],
+      table: true,
+      prerequisite: { minimums: { strength: 15 }, level: 8 },
+      qualifies: false,
+      unmet: [
+        {
+          kind: FeatUnmetKind.ABILITY_MINIMUM,
+          abilities: [{ ability: Ability.STRENGTH, minimum: 15 }],
+        },
+        { kind: FeatUnmetKind.LEVEL, value: 8 },
+      ],
+    }),
+  ];
 }

@@ -238,6 +238,21 @@ LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID AND c.id = sqlc.arg(id)
   AND c.kind = 'player' AND c.status = 'active' AND NOT c.reserved;
 
+-- name: GetVitalsWithDead :one
+-- GetVitals that also answers for a player character that died: the page of a
+-- dead character's player still reads its turn options and its log (a combat
+-- that ran keeps them), and nothing here lets the character act again.
+SELECT c.id, c.name, c.player_user_id, c.sheet,
+       v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
+       v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
+       ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
+       v.familiar_sight_conditions
+FROM characters AS c
+LEFT JOIN character_vitals AS v ON v.character_id = c.id
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
+WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID AND c.id = sqlc.arg(id)
+  AND c.kind = 'player' AND c.status IN ('active', 'dead') AND NOT c.reserved;
+
 -- name: UpsertVitals :one
 -- Saves a character's vitals: the first save creates the row with revision
 -- 1, and every later one adds 1. A NULL hit_points_current is "never set":
@@ -307,6 +322,19 @@ LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
   AND c.id = ANY(sqlc.arg(ids)::UUID[])
   AND c.status = 'active' AND NOT c.reserved
+ORDER BY c.created_at, c.id;
+
+-- name: ListCombatCharactersWithDead :many
+-- ListCombatCharacters that also returns a character that died, for the reads
+-- of a combat that ran (a dead character's sheet names the attacks in the log,
+-- and its player's page reads the turn options). Nothing that starts a combat
+-- or lets a character act uses it.
+SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast
+FROM characters AS c
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
+WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
+  AND c.id = ANY(sqlc.arg(ids)::UUID[])
+  AND c.status IN ('active', 'dead') AND NOT c.reserved
 ORDER BY c.created_at, c.id;
 
 -- name: ListSessionCharacters :many
@@ -547,18 +575,20 @@ ON CONFLICT (character_id) DO UPDATE SET
 RETURNING revision, updated_at;
 
 -- name: ListPartyVision :many
--- The campaign's living, active player characters, oldest first, with what the
+-- The campaign's active and dead player characters, oldest first, with what the
 -- fog needs to know of how each one sees (package maps): the sheet, the beast of
 -- a Wild Shape form, and the familiar the player looks through, if it is still with
--- the character (MR-036, MR-037).
+-- the character (MR-036, MR-037). A dead character is listed (is_dead): its
+-- player keeps seeing what the living party sees.
 SELECT c.id, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast,
-       cc.id AS familiar_id, cc.monster_key AS familiar_monster_key
+       cc.id AS familiar_id, cc.monster_key AS familiar_monster_key,
+       (c.status = 'dead')::BOOL AS is_dead
 FROM characters AS c
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_creatures AS cc ON cc.id = v.familiar_sight_creature_id AND cc.dismissed_at IS NULL
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
-  AND c.kind = 'player' AND c.status = 'active' AND NOT c.reserved
+  AND c.kind = 'player' AND c.status IN ('active', 'dead') AND NOT c.reserved
 ORDER BY c.created_at, c.id;
 
 -- name: ListMapCreatures :many
@@ -646,6 +676,20 @@ RETURNING *;
 -- name: GetCampaignContentByCreateKey :one
 -- The entry a CreateTableEntry with this idempotency key made, if any (the key carries the campaign's ID).
 SELECT * FROM campaign_content WHERE create_key = $1;
+
+-- name: GetCampaignContentImport :one
+-- The answer of the ImportTableContent that carried this idempotency key (the campaign's ID and
+-- the key), with the hash of its request.
+SELECT create_hash, response FROM campaign_content_imports
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND create_key = sqlc.arg(create_key);
+
+-- name: InsertCampaignContentImport :exec
+-- Keeps the key, the request hash and the answer of an applied import. The content revision is held
+-- by the transaction (BumpContentRevision), so two imports with one key take turns; ON CONFLICT is
+-- the net under that.
+INSERT INTO campaign_content_imports (campaign_id, create_key, create_hash, response, created_at)
+VALUES (sqlc.arg(campaign_id)::UUID, sqlc.arg(create_key), sqlc.arg(create_hash), sqlc.arg(response), sqlc.arg(now))
+ON CONFLICT (campaign_id, create_key) DO NOTHING;
 
 -- name: UpdateCampaignContent :one
 -- The body and the name; the key, the kind and the archive mark stay.

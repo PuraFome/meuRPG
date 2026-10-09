@@ -23,6 +23,7 @@ import {
   CriticalRule,
   DeathSaveVisibility,
   DiceMode,
+  HiddenAreaHitRule,
   HitPointsRule,
   Role,
   TableStyle,
@@ -142,6 +143,58 @@ const DEATH_SAVE_OPTIONS: readonly DiceOption<DeathSaveVisibility>[] = [
   },
 ];
 
+/** What an area spell does to the hiding of a hidden creature it hits (PM-02c state 8), from "asks least" to "asks most". */
+const HIDDEN_AREA_OPTIONS: readonly DiceOption<HiddenAreaHitRule>[] = [
+  {
+    value: HiddenAreaHitRule.REVEAL,
+    title: 'Revelar',
+    description: 'A criatura aparece para os jogadores, como num “Revelar” seu. É o padrão.',
+  },
+  {
+    value: HiddenAreaHitRule.KEEP_HIDDEN,
+    title: 'Manter escondidas',
+    description:
+      'A criatura sofre o efeito e continua escondida. Os jogadores não ficam sabendo dela.',
+  },
+  {
+    value: HiddenAreaHitRule.ASK,
+    title: 'Perguntar a cada vez',
+    description:
+      'Toda magia de área de um jogador faz o turno esperar, atinja ou não uma criatura escondida (a espera não conta nada a ele); você responde na hora.',
+  },
+];
+
+/** The title of the option a rule has, for the read-only rows. */
+function titleOf<T extends number>(options: readonly DiceOption<T>[], value: T): string {
+  return options.find((o) => o.value === value)?.title ?? '';
+}
+
+/** The ways of making ability scores a table allows, in words. */
+function methodWords(d: RulesDraft): string[] {
+  return [
+    d.standardArray ? 'Conjunto padrão' : '',
+    d.pointBuy ? 'Compra por pontos' : '',
+    d.rolled4d6 ? '4d6, descartando o menor' : '',
+    d.typed ? 'Digitar os valores' : '',
+  ].filter((m) => m !== '');
+}
+
+/** "Talentos": 1 is allowed, 0 is not used (the radio cards take numbers). */
+const FEAT_OPTIONS: readonly DiceOption<number>[] = [
+  {
+    value: 0,
+    title: 'Não usados',
+    description:
+      'Todo incremento no valor de habilidade é o do SRD: +2 em uma habilidade ou +1 em duas.',
+  },
+  {
+    value: 1,
+    title: 'Permitidos',
+    description:
+      'No lugar do incremento, o jogador pode pegar um talento da mesa, se a ficha atender ao pré-requisito.',
+  },
+];
+
 const DICE_OPTIONS: readonly DiceOption<DiceMode>[] = [
   {
     value: DiceMode.APP,
@@ -216,7 +269,9 @@ export class TableRulesPage {
   protected readonly hitPointOptions = HIT_POINT_OPTIONS;
   protected readonly criticalOptions = CRITICAL_OPTIONS;
   protected readonly deathSaveOptions = DEATH_SAVE_OPTIONS;
+  protected readonly hiddenAreaOptions = HIDDEN_AREA_OPTIONS;
   protected readonly diceOptions = DICE_OPTIONS;
+  protected readonly featOptions = FEAT_OPTIONS;
   protected readonly combatOptions = COMBAT_OPTIONS;
   protected readonly inertStyle: readonly TableStyle[] = [TableStyle.PERSONALIZADO];
   protected readonly maxLength = HOUSE_RULE_MAX_LENGTH;
@@ -265,12 +320,7 @@ export class TableRulesPage {
       return [];
     }
     const d = s.vm.saved;
-    const methods = [
-      d.standardArray ? 'Conjunto padrão' : '',
-      d.pointBuy ? 'Compra por pontos' : '',
-      d.rolled4d6 ? '4d6, descartando o menor' : '',
-      d.typed ? 'Digitar os valores' : '',
-    ].filter((m) => m !== '');
+    const methods = methodWords(d);
     return [
       { label: 'Dados', value: DICE_TITLES[d.diceMode] },
       {
@@ -280,17 +330,22 @@ export class TableRulesPage {
       { label: 'Névoa de guerra nos mapas novos', value: d.fogOnNewMaps ? 'Ligada' : 'Desligada' },
       {
         label: 'Pontos de vida ao subir de nível',
-        value: HIT_POINT_OPTIONS.find((o) => o.value === d.hitPoints)?.title ?? '',
+        value: titleOf(HIT_POINT_OPTIONS, d.hitPoints),
       },
       { label: 'Habilidades de uma ficha nova', value: methods.join(', ') },
       {
         label: 'Acertos críticos',
-        value: CRITICAL_OPTIONS.find((o) => o.value === d.critical)?.title ?? '',
+        value: titleOf(CRITICAL_OPTIONS, d.critical),
       },
       {
         label: 'Testes contra a morte',
-        value: DEATH_SAVE_OPTIONS.find((o) => o.value === d.deathSaves)?.title ?? '',
+        value: titleOf(DEATH_SAVE_OPTIONS, d.deathSaves),
       },
+      {
+        label: 'Criaturas escondidas atingidas por uma área',
+        value: titleOf(HIDDEN_AREA_OPTIONS, d.hiddenAreaHits),
+      },
+      { label: 'Talentos', value: d.featsAllowed ? 'Permitidos' : 'Não usados' },
       { label: 'Experiência', value: XP_OPTION_TITLES[s.xpMode] ?? '' },
     ];
   });

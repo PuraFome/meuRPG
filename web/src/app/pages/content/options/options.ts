@@ -192,15 +192,13 @@ export class ContentOptions {
   protected readonly turnOffDisabled = computed(
     () => this.classPending() || this.rows().every((o) => o.off),
   );
-  protected readonly allWord = computed(() =>
-    this.current().slug === 'backgrounds' ? 'todos' : 'todas',
+  /** Backgrounds and feats are masculine: "todos", "Ligado". */
+  private readonly masculine = computed(() =>
+    ['backgrounds', 'feats'].includes(this.current().slug),
   );
-  protected readonly onWord = computed(() =>
-    this.current().slug === 'backgrounds' ? 'Ligado' : 'Ligada',
-  );
-  protected readonly offWord = computed(() =>
-    this.current().slug === 'backgrounds' ? 'Desligado' : 'Desligada',
-  );
+  protected readonly allWord = computed(() => (this.masculine() ? 'todos' : 'todas'));
+  protected readonly onWord = computed(() => (this.masculine() ? 'Ligado' : 'Ligada'));
+  protected readonly offWord = computed(() => (this.masculine() ? 'Desligado' : 'Desligada'));
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe((params) => {

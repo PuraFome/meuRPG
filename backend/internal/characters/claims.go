@@ -85,7 +85,7 @@ func errBlockedUsed(characterID, playerDisplayName string) error {
 }
 
 // livingForClaimError is the claim's RN-03 refusal, carrying the living character's name.
-type livingForClaimError struct{ id, name string }
+type livingForClaimError struct{ campaignID, id, name string }
 
 func (*livingForClaimError) Error() string {
 	return "you already have a living character in this campaign"
@@ -97,6 +97,7 @@ func (e *livingForClaimError) connectError() error {
 		Reason:        charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_LIVING_CHARACTER_EXISTS,
 		CharacterId:   e.id,
 		CharacterName: e.name,
+		CampaignId:    e.campaignID,
 	}); detailErr == nil {
 		err.AddDetail(detail)
 	}
@@ -512,6 +513,7 @@ func (s *Service) ClaimCharacter(
 	}
 	now := s.now()
 	var res charactersv1.ClaimCharacterResponse
+	var linkCampaign string // the link's campaign, for an RN-03 refusal that comes from the unique index
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		hash, err := s.claimHash(ctx, q, userID, req.Msg.GetToken(), now)
@@ -544,6 +546,7 @@ func (s *Service) ClaimCharacter(
 		if !linkWorks(link, now) || !row.Reserved || row.Kind != kindPlayer {
 			return errClaimLinkUnusable()
 		}
+		linkCampaign = link.CampaignID
 		_, master, err := s.members.CampaignForClaim(ctx, tx, link.CampaignID, userID)
 		if err != nil {
 			return wrap("read the campaign of a claim link", err)
@@ -559,7 +562,7 @@ func (s *Service) ClaimCharacter(
 			if err != nil {
 				return wrap("read the living character", err)
 			}
-			return &livingForClaimError{id: living, name: existing.Name}
+			return &livingForClaimError{campaignID: link.CampaignID, id: living, name: existing.Name}
 		case !errors.Is(err, pgx.ErrNoRows):
 			return wrap("find the living character", err)
 		}
@@ -594,11 +597,11 @@ func (s *Service) ClaimCharacter(
 	if isUniqueViolation(err, "characters_one_living_player_character") {
 		// Another claim or another character of this person won the race: answer as the
 		// check above would have.
-		living, lookupErr := s.queries.GetLivingPlayerCharacterID(ctx, charactersdb.GetLivingPlayerCharacterIDParams{CampaignID: res.GetCampaignId(), PlayerUserID: userID})
+		living, lookupErr := s.queries.GetLivingPlayerCharacterID(ctx, charactersdb.GetLivingPlayerCharacterIDParams{CampaignID: linkCampaign, PlayerUserID: userID})
 		if lookupErr != nil {
 			living = ""
 		}
-		return nil, (&livingForClaimError{id: living}).connectError()
+		return nil, (&livingForClaimError{campaignID: linkCampaign, id: living}).connectError()
 	}
 	if err != nil {
 		return nil, s.claimError(ctx, "claim a character", err)

@@ -151,6 +151,16 @@ type Build struct {
 	// invocation. Derive applies an option only while the build has the
 	// feature or trait it belongs to.
 	FeatureChoices []string
+	// Feats are the feats the character took (an optional rule of the game, MR-025):
+	// "feat:grappler" or a table's "feat:<slug>@mesa". Derive treats each like a
+	// feature: its effects apply and the sheet lists it. The abilities a feat
+	// raises are in ExtraAbilityBonuses, like an Ability Score Improvement's.
+	Feats []string
+	// FeatSlots says, for a feat taken in place of an Ability Score Improvement, the
+	// feature of that improvement it replaced ("feature:fighter-ability-score-improvement-1"):
+	// the sheet lists the feat at that level and not the improvement. A feat the master added
+	// has none.
+	FeatSlots map[string]string
 }
 
 // ClassLevel is one class of a Build and its level in that class.
@@ -787,6 +797,10 @@ type Attack struct {
 	DamageType       string
 	DamageTypeNamePT string
 	VersatileDamage  string
+	// DamageNotePT says the damage includes a bonus that holds only under a
+	// condition the sheet cannot check (Dueling: no other weapon in hand), with
+	// the condition; empty otherwise.
+	DamageNotePT string
 	// DamageDice and VersatileDice are Damage and VersatileDamage as
 	// numbers, for the combat functions. Both are zero when the weapon has
 	// no damage dice.
@@ -958,6 +972,9 @@ const (
 	IssueMulticlass = "multiclass_prerequisite"
 	// IssueHitPointRolls: fewer or more hit point rolls than levels.
 	IssueHitPointRolls = "hit_point_rolls"
+	// IssueFeatPrerequisite: a feat the character took whose prerequisite it no longer
+	// meets; the feat does not apply until it does again (SRD 5.1, Feats).
+	IssueFeatPrerequisite = "feat_prerequisite"
 	// IssueArmorProficiency: armor or a shield without the proficiency.
 	IssueArmorProficiency = "armor_proficiency"
 	// IssueScoreAbove20: a score above 20 without a manual bonus.

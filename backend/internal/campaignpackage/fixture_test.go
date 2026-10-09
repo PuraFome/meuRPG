@@ -46,7 +46,8 @@ func (h *harness) buildFixture(master *user) *fixture {
 		HitPoints:      campaignsv1.HitPointsRule_HIT_POINTS_RULE_AVERAGE,
 		AbilityMethods: &campaignsv1.AbilityMethods{StandardArray: true, PointBuy: false, Rolled_4D6: true, Typed: false},
 		Critical:       campaignsv1.CriticalRule_CRITICAL_RULE_MAX_PLUS_ROLL, DeathSaves: campaignsv1.DeathSaveVisibility_DEATH_SAVE_VISIBILITY_OWNER_AND_MASTER,
-		HouseRules: []string{"Beber uma poção é uma ação bônus.", "Ninguém ressuscita no primeiro dia."},
+		HouseRules:     []string{"Beber uma poção é uma ação bônus.", "Ninguém ressuscita no primeiro dia."},
+		HiddenAreaHits: campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_ASK,
 	}})))
 
 	// The gallery: two map backgrounds and a portrait.

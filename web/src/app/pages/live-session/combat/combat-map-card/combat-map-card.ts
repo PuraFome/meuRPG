@@ -15,6 +15,8 @@ import {
   type TokenDrop,
 } from '../../../../shared/combat-map/combat-map';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
+import { AreaOverlay } from '../../../../shared/area-picker/area-overlay';
+import { lastArea } from '../../../../core/combat/hidden-reveal';
 import { MapLayersLegend } from '../../../../shared/map-layers/map-layers-legend';
 import { type Vision, tileProgress, tileRects, visionLegend } from '../../../../core/maps/vision';
 
@@ -32,7 +34,14 @@ import { type Vision, tileProgress, tileRects, visionLegend } from '../../../../
  */
 @Component({
   selector: 'app-combat-map-card',
-  imports: [CombatMap, CombatantToken, MapLayersLegend, MatButtonModule, MatIconModule],
+  imports: [
+    AreaOverlay,
+    CombatMap,
+    CombatantToken,
+    MapLayersLegend,
+    MatButtonModule,
+    MatIconModule,
+  ],
   templateUrl: './combat-map-card.html',
   styleUrl: './combat-map-card.scss',
 })
@@ -125,6 +134,10 @@ export class CombatMapCard {
     const e = this.encounter();
     return `${e.gridColumns} × ${e.gridRows} quadrados de 1,5 m`;
   });
+  /** "Área da última magia": the area a player's spell reached, while its question waits (the master's map only). */
+  protected readonly lastArea = computed(() =>
+    this.isMaster() ? lastArea(this.encounter()) : null,
+  );
   protected readonly emptyLayers = NO_LAYERS;
   protected readonly reachMeters = computed(() => metersFixed((this.reach()?.leftDft ?? 0) / 10));
   protected readonly hasHidden = computed(() => this.encounter().combatants.some((c) => c.hidden));

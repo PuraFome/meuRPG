@@ -83,6 +83,23 @@
   gap: 10px;
 }
 
+// An area's buttons (PM-02a, PM-02b): one under the other, the whole width, the main one on top, 48 px.
+.actions--stack {
+  grid-template-columns: minmax(0, 1fr);
+
+  .cancel {
+    order: 0;
+  }
+}
+
+// "Cancelar" under "Confirmar local": a text button in the accent.
+.quiet {
+  --mat-button-text-container-height: 48px;
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  width: 100%;
+  font-weight: 700;
+}
+
 // "Constrição encerra a concentração em Conjurar Animais. Os 2 Lobos atrozes somem.": above the cast button, like the summon sheet's line.
 .ends {
   display: flex;

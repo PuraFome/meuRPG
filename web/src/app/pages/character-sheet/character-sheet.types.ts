@@ -51,6 +51,8 @@ export interface AttackVm {
   readonly damageTypePt: string;
   /** The two-handed damage of a versatile weapon ("1d8+1"); empty otherwise. */
   readonly versatileDamage: string;
+  /** The condition of a bonus the damage already includes ("Inclui +2 de Estilo de Luta: Duelismo (sem outra arma na mão)"); absent or empty when there is none. */
+  readonly damageNotePt?: string;
   /** > 0 only for a spell that asks for a saving throw. */
   readonly saveDc: number;
   readonly saveAbility: AbilityKey | null;
@@ -299,6 +301,8 @@ export interface CharacterSheetVm {
   readonly canApprove: boolean;
   readonly isMaster: boolean;
   readonly playerDisplayName: string | null;
+  /** `Character.reserved`: made by the master for a player to claim, with no owner yet (MR-049). Only the master reads it. */
+  readonly reserved?: boolean;
   readonly raceLabel: string;
   /** e.g. "Mago 3" (`CharacterSummary.class_summary`, plan §4). */
   readonly classSummary: string;

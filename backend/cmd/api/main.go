@@ -468,6 +468,7 @@ func wireModules(
 	// characters now that it exists: an invite without approval accepted
 	// by a pending member approves their character (RN-15).
 	campaignsService.SetCharacters(charactersService)
+	charactersService.SetCampaignNames(campaignsService) // the label of an exported content pack
 	// maps.SessionMaps needs nothing but the database, so characters gets
 	// it now too: an NPC's portrait must be an image of the campaign's
 	// gallery (MR-031).

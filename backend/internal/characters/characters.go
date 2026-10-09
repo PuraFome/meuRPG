@@ -101,6 +101,14 @@ type PendingMembers interface {
 	JoinAsPlayer(ctx context.Context, tx pgx.Tx, campaignID, userID string) (name string, err error)
 }
 
+// CampaignNames tells a campaign's name, for the label of an exported content pack
+// (ExportTableContent). The campaigns module implements it (campaigns.Service), because
+// campaigns is its table; cmd/api connects the two with SetCampaignNames.
+type CampaignNames interface {
+	// CampaignName returns the campaign's name, read inside tx (nil: the pool).
+	CampaignName(ctx context.Context, tx pgx.Tx, campaignID string) (string, error)
+}
+
 // Config holds what the characters service needs.
 type Config struct {
 	// Pool is the CockroachDB connection pool. Required.
@@ -165,6 +173,9 @@ type Service struct {
 	dice   DiceRules
 	roller dice.Roller
 	live   Live
+	// campaignNames is the campaigns module, connected by SetCampaignNames; nil
+	// leaves an exported pack without a name.
+	campaignNames CampaignNames
 	// creatureHost is package play, connected by SetCreatureHost: the combat
 	// that holds a character's creatures and the history they are written to
 	// (MR-037). Nil until then.
@@ -227,6 +238,10 @@ func New(cfg Config) (*Service, error) {
 	}
 	return s, nil
 }
+
+// SetCampaignNames says who tells a campaign's name. Call it once, before any call; without
+// it an exported content pack has no name.
+func (s *Service) SetCampaignNames(n CampaignNames) { s.campaignNames = n }
 
 // Sessions is what this package needs to know who is calling: an
 // interceptor that finds the caller's session, and the authz.Caller that

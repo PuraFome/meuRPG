@@ -36,6 +36,8 @@ import {
   KIND_NOUNS,
 } from '../../../core/content/content-kinds';
 import { type CatalogVm, catalogVm } from '../../../core/content/catalog';
+import { packFileName, packToText } from '../../../core/content/content-pack';
+import { saveTextFile } from '../../../core/content/save-file';
 import { ContentWatcher } from '../../../core/content/content-watcher';
 import { LiveSessionSourceLive } from '../../live-session/live-session-source.live';
 import { TextField } from '../../../shared/form-fields/text-field';
@@ -99,6 +101,7 @@ export class ContentList {
   protected readonly status = signal('');
   protected readonly actionError = signal('');
   protected readonly busyKey = signal('');
+  protected readonly exporting = signal(false);
 
   protected readonly ctx = computed(() => {
     const s = this.state();
@@ -190,6 +193,27 @@ export class ContentList {
         status: 'error',
         message: contentErrorText(err, 'abrir o conteúdo da mesa'),
       });
+    }
+  }
+
+  /** "Exportar": the campaign's own entries as a file the master keeps (`<campanha>-conteudo.json`). */
+  protected async exportPack(): Promise<void> {
+    const ctx = this.ctx();
+    if (!ctx || this.exporting()) {
+      return;
+    }
+    this.actionError.set('');
+    this.status.set('');
+    this.exporting.set(true);
+    try {
+      const pack = await this.client.exportPack(this.campaignId());
+      const name = packFileName(ctx.campaignName);
+      saveTextFile(name, packToText(pack));
+      this.status.set(`O pacote foi salvo no arquivo ${name}.`);
+    } catch (err) {
+      this.actionError.set(contentErrorText(err, 'exportar o conteúdo'));
+    } finally {
+      this.exporting.set(false);
     }
   }
 

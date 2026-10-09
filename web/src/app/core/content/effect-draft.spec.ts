@@ -153,3 +153,35 @@ describe("an effect from the server's menu (ADR-0018, section 4)", () => {
     }
   });
 });
+
+describe('the effects only a feat has (MR-025)', () => {
+  const m = menu();
+
+  it('leaves "ability_increase" out of every editor but the feat\'s', () => {
+    expect(m.typesFor(false).map((t) => t.type)).not.toContain('ability_increase');
+    expect(m.typesFor(true).map((t) => t.type)).toContain('ability_increase');
+  });
+
+  it('sends how many, from which abilities and how much, and asks for all three', () => {
+    const d = {
+      ...emptyEffect('ability_increase'),
+      count: 2,
+      from: ['strength', 'dexterity'],
+      value: '1',
+      target: 'ac',
+    };
+    expect(draftToEffect(d, m)).toEqual({
+      type: 'ability_increase',
+      count: 2,
+      from: ['strength', 'dexterity'],
+      value: '1',
+    });
+    expect(missingRequired(emptyEffect('ability_increase'), m)).toEqual(['count', 'value']);
+  });
+
+  it("offers the table's feats to a choice of feats, and none by itself", () => {
+    expect(m.fromOptions('feat')).toEqual([]);
+    m.featOptions = [{ key: 'feat:mestre@mesa', namePt: 'Mestre', hintPt: '' }];
+    expect(m.fromOptions('feat').map((o) => o.namePt)).toEqual(['Mestre']);
+  });
+});

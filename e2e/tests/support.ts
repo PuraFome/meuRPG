@@ -360,6 +360,8 @@ export async function createCharacterViaUI(
   campaignId: string,
   build: CharacterBuild = pensantus,
   entryPath: string = `/campaigns/${campaignId}/characters/new`,
+  /** The master's "Criar personagem para um jogador" (MR-049): saved as reserved, it lands on the campaign's list. */
+  reserved = false,
 ): Promise<string> {
   await page.goto(entryPath);
 
@@ -424,6 +426,12 @@ export async function createCharacterViaUI(
   const classSkillsGroup = page.getByRole('group', { name: 'Perícias', exact: true });
   for (const skill of build.extraSkills) {
     await classSkillsGroup.getByRole('checkbox', { name: skill, exact: true }).check();
+  }
+
+  if (reserved) {
+    await page.getByRole('button', { name: 'Salvar como reservado' }).click();
+    await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}$`));
+    return '';
   }
 
   // "Criar personagem" for a player, "Criar NPC" from the master's menu.
@@ -511,11 +519,11 @@ export async function startGameSession(page: Page, campaignId?: string): Promise
 }
 
 /**
- * Opens a long level-up pick list ("Ver os outros N ...", it shows 4 rows
+ * Opens a long level-up pick list ("Ver as outras N ..." or "Ver os outros N ...", it shows 4 rows
  * alphabetically) so a row picked by name is there whatever the names sort like.
  */
 export async function showAllPicks(panel: import('@playwright/test').Locator): Promise<void> {
-  const more = panel.getByRole('button', { name: /^Ver os outros \d+/ });
+  const more = panel.getByRole('button', { name: /^Ver (os outros|as outras) \d+/ });
   if ((await more.count()) > 0) {
     await more.click();
   }

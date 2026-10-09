@@ -171,6 +171,20 @@ export class AuthService {
   }
 
   /**
+   * Ends the session on the server and stays on the page: what "Não é você? Entrar com outra conta" does
+   * before it starts a new sign-in, which the page holds in memory (a link's secret is not in the address
+   * any more). `state` becomes `signed-out` even if `SignOut` failed, as `signOut` goes home anyway.
+   */
+  async endSessionHere(): Promise<void> {
+    try {
+      await this.client.signOut({});
+    } catch {
+      // Best-effort, as in `signOut`: the person asked to leave.
+    }
+    this.stateSignal.set({ status: 'signed-out' });
+  }
+
+  /**
    * Ends the session on the server, then always returns to the home page
    * with a full navigation, so the next `AuthService` starts clean and
    * `GetMe` reports the real state. The navigation still happens even if

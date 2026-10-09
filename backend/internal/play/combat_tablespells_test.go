@@ -209,6 +209,7 @@ func TestMR025_ATableAreaSpellWithASaveAgainstThreeTargets(t *testing.T) {
 	}
 
 	// DC 14 = 8 + 3 + 3. Goblin 1 rolls 5 and Capitão 12 and fail; Goblin 2 rolls 18 and saves.
+	a.stand(t, map[string][2]int32{"Goblin 1": {7, 5}, "Capitão Goblin": {8, 6}}) // the cone east of Pensantus holds the three
 	a.h.roller.queue(5, 18, 12)
 	cast := a.mustCast(t, a.ana, e, "Pensantus", tableBreath, slotOfLevel(1), a.at(t, "Goblin 1", "Goblin 2", "Capitão Goblin"), noCastRoll)
 	saves := map[string]*playv1.SaveResult{}
@@ -257,6 +258,7 @@ func TestMR025_ATableAreaSpellWithASaveAgainstThreeTargets(t *testing.T) {
 	}
 
 	// At the 2nd circle: 4d6, and an area with no target at all is a cast too.
+	a.stand(t, map[string][2]int32{"Goblin 2": {0, 9}}) // the cone east holds the Capitão alone
 	up := a.mustCast(t, a.master, e, "Pensantus", tableBreath, slotOfLevel(2), a.at(t, "Capitão Goblin"), noCastRoll)
 	if p := up.GetCast().GetPendingDamages(); len(p) != 1 || p[0].GetDiceCount() != 4 || p[0].GetDiceSides() != 6 {
 		t.Errorf("at the 2nd circle: pending damage = %v, want 4d6", p)

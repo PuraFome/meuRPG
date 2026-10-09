@@ -1020,3 +1020,38 @@ SELECT e.* FROM battle_encounters AS e
 JOIN map_points AS p ON p.id = e.map_point_id
 WHERE e.campaign_id = $1 AND p.kind = 'battle'
 ORDER BY e.created_at, e.map_point_id;
+
+-- name: NextHiddenRevealSeq :one
+-- The place of the next question of the combat in the order they are answered.
+SELECT (COALESCE(MAX(seq), 0) + 1)::INT4 FROM hidden_reveals WHERE encounter_id = $1;
+
+-- name: InsertHiddenReveal :one
+-- A player's area spell hit hidden creatures and the table asks the master: the
+-- question, with where the area landed.
+INSERT INTO hidden_reveals (encounter_id, caster_id, spell_key, combatant_ids, origin_col, origin_row, squares, seq, created_at)
+VALUES (
+    sqlc.arg(encounter_id), sqlc.arg(caster_id), sqlc.arg(spell_key), sqlc.arg(combatant_ids)::TEXT[],
+    sqlc.arg(origin_col), sqlc.arg(origin_row), sqlc.arg(squares)::INT4[], sqlc.arg(seq), sqlc.arg(created_at)
+)
+RETURNING *;
+
+-- name: ListPendingHiddenReveals :many
+-- The questions the master has still to answer, oldest first. They hold the turn.
+SELECT * FROM hidden_reveals WHERE encounter_id = $1 AND state = 'pending' ORDER BY seq;
+
+-- name: GetHiddenReveal :one
+SELECT * FROM hidden_reveals WHERE encounter_id = $1 AND id = $2;
+
+-- name: AnswerHiddenReveal :one
+-- The master's answer; only a question that waits can be answered.
+UPDATE hidden_reveals SET state = sqlc.arg(state), answered_at = sqlc.arg(answered_at)
+WHERE encounter_id = sqlc.arg(encounter_id) AND id = sqlc.arg(id) AND state = 'pending'
+RETURNING *;
+
+-- name: DeleteHiddenReveal :exec
+-- An undo of the cast that opened the question takes it away.
+DELETE FROM hidden_reveals WHERE id = $1;
+
+-- name: DeleteHiddenRevealsOfEncounter :exec
+-- Ending the combat drops what was still to answer.
+DELETE FROM hidden_reveals WHERE encounter_id = $1;

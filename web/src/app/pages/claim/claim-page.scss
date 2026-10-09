@@ -1,0 +1,93 @@
+// docs/design.md: the claim page has one state at a time, in a panel at reading width, with
+// full-width 48 px buttons on a phone and the buttons side by side from a tablet up.
+:host {
+  display: block;
+}
+
+.claim {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  max-width: 640px;
+
+  p {
+    margin: 0;
+  }
+}
+
+.claim__loading {
+  flex-direction: row;
+  align-items: center;
+}
+
+.claim__campaign {
+  font-size: 15px;
+}
+
+.claim__character {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  width: 100%;
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+}
+
+.claim__who {
+  min-width: 0;
+
+  p {
+    margin: 0;
+  }
+}
+
+.claim__name {
+  font-family: var(--mr-font-display);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 30px;
+  overflow-wrap: anywhere;
+}
+
+.claim__sub {
+  font-size: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.claim__note {
+  font-size: 15px;
+}
+
+.claim__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  width: 100%;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    width: auto;
+  }
+}
+
+.claim__action {
+  width: 100%;
+  min-height: 48px;
+
+  @media (min-width: 768px) {
+    width: auto;
+    min-height: 44px;
+  }
+}
+
+.claim__other {
+  min-height: 44px;
+  margin-left: -12px;
+}
+
+[tabindex='-1']:focus {
+  outline: none;
+}

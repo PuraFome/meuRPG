@@ -160,3 +160,11 @@ describe('layerLines', () => {
     );
   });
 });
+
+describe('no tool in hand', () => {
+  it('starts without a tool, so a stroke sends nothing and the hint asks for one', () => {
+    expect(DEFAULT_SETTINGS.tool).toBeNull();
+    expect(strokeOf(DEFAULT_SETTINGS)).toBeNull();
+    expect(paintHint(DEFAULT_SETTINGS)).toBe('Escolha uma ferramenta para pintar');
+  });
+});
