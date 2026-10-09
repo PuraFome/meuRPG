@@ -69,7 +69,8 @@ func (g *Gemini) Model() string {
 }
 
 // writeBody writes the call's JSON to w: the text, then the previous picture
-// (an edit), then the references, as `input`; PNG out, 1K, and store=false.
+// (an edit), then the references, as `input`; JPEG out (the only type the model accepts for
+// response_format.mime_type), 1K, and store=false.
 // Nothing else is in it: the Request has nothing personal to put. The images
 // are base64-encoded as they are written, so the body never exists in memory
 // as one piece. Interactions use snake_case.
@@ -114,7 +115,7 @@ func writeBody(w io.Writer, model string, req Request) error {
 	for _, ref := range req.References {
 		image(ref.Image)
 	}
-	put(`],"response_format":{"type":"image","mime_type":"image/png","aspect_ratio":` + string(ratio) + `,"image_size":"1K"},"store":false}`)
+	put(`],"response_format":{"type":"image","mime_type":"image/jpeg","aspect_ratio":` + string(ratio) + `,"image_size":"1K"},"store":false}`)
 	return werr
 }
 
@@ -252,11 +253,15 @@ type (
 		Code    string `json:"code"`
 		Message string `json:"message"`
 	}
-	// apiErrorBody is Google's error answer: {"error": {code, message, status, details}}.
+	// apiErrorBody is Google's error answer. The Interactions API sends
+	// {"error": {"message", "code": "invalid_request"}}; the older Google style
+	// is {"error": {"code": 403, "message", "status", "details"}}. Code is a
+	// string in the first and a number in the second, so it is kept raw (and
+	// only logged): decoding it as one type lost the whole message.
 	apiErrorBody struct {
-		Code    int    `json:"code"`
-		Message string `json:"message"`
-		Status  string `json:"status"`
+		Code    json.RawMessage `json:"code"`
+		Message string          `json:"message"`
+		Status  string          `json:"status"`
 		Details []struct {
 			Reason string `json:"reason"`
 		} `json:"details"`
@@ -308,9 +313,17 @@ func parseAnswer(status int, body io.Reader) (Image, error) {
 			if word := safetyWord(e.Message); word != "" && status == http.StatusBadRequest {
 				return Image{}, &RefusedError{Reason: word}
 			}
+			if reason == "" {
+				reason = strings.Trim(string(e.Code), `"`)
+			}
 		}
 		if status == http.StatusUnauthorized || status == http.StatusForbidden {
 			return Image{}, &NotAuthorizedError{Status: status, Reason: reason}
+		}
+		// Google's own words go up for the log only (the caller logs the error and
+		// shows the master a fixed reason), cut short: it can quote part of the request.
+		if e := doc.Error; e != nil && e.Message != "" {
+			return Image{}, errors.Join(ErrUnavailable, fmt.Errorf("status %d: %s: %s", status, reason, truncate(e.Message, maxLoggedMessage)))
 		}
 		return Image{}, errors.Join(ErrUnavailable, fmt.Errorf("status %d", status))
 	}
@@ -344,9 +357,19 @@ func parseAnswer(status int, body io.Reader) (Image, error) {
 	}
 	mime := last.MimeType
 	if mime == "" {
-		mime = "image/png"
+		mime = "image/jpeg" // what writeBody asks for
 	}
 	return Image{MimeType: mime, Data: data}, nil
+}
+
+// maxLoggedMessage is the most of Google's error message that is logged.
+const maxLoggedMessage = 300
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return strings.ToValidUTF8(s[:n], "") + "..."
 }
 
 func safetyWord(s string) string {
