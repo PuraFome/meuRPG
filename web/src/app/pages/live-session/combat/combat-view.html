@@ -73,12 +73,17 @@
           />
         } @else {
         <div class="stack">
+          @if (refreshed()) {
+            <!-- The page was reloaded while the turn waits (PM-02c 9c): a line says the screen was rebuilt from the combat as it stands. -->
+            <p class="refreshed" role="status">{{ refreshed() }}</p>
+          }
           @if (laptop()) {
             <app-combat-bar
               [encounter]="e"
               [busy]="busy()"
               [pendingNote]="owed()"
               [waitNote]="waitNote()"
+              [waitWhy]="waitWhy()"
               [theatre]="theatre()"
               (next)="nextTurn($event)"
               (end)="endCombat()"
@@ -223,6 +228,10 @@
           />
         } @else {
           <div class="stack">
+            @if (refreshed()) {
+              <!-- The page was reloaded while the turn waits (PM-02c 9c): a line says the screen was rebuilt from the combat as it stands. -->
+              <p class="refreshed" role="status">{{ refreshed() }}</p>
+            }
             <!-- What ended without the player asking (the beast fell, the concentration was lost): stays until it is touched. -->
             <div class="notices" role="status" aria-live="polite">
               @if (formNotice(); as text) {
@@ -426,6 +435,13 @@
 <ng-template #masterCards>
   @if (encounter(); as e) {
     <app-roll-mode-queue [encounter]="e" [campaignId]="campaignId()" [state]="state()" />
+    <app-hidden-reveal-card
+      [encounter]="e"
+      [spellNames]="revealSpellNames()"
+      [busy]="busy()"
+      (answer)="answerReveal($event)"
+      (answered)="focusOrder()"
+    />
     <app-opportunity-card
       [encounter]="e"
       [attacksByOffer]="masterAttacks()"
@@ -469,6 +485,8 @@
         [theatre]="theatre()"
         [offering]="offering()"
         [offerWhy]="offerWhy()"
+        [waitWhy]="waitWhy()"
+        (castArea)="openMasterArea($event)"
         (offer)="toggleOffer()"
         (next)="nextTurn($event)"
         (endRage)="endRageOf($event)"

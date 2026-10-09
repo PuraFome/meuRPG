@@ -31,6 +31,9 @@ type Rules struct {
 	CombatWithoutMap bool
 	// FogOnNewMaps makes a map created from now on start with the fog of war on.
 	FogOnNewMaps bool
+	// HiddenAreaHits is what an area spell does to the hiding of a hidden creature
+	// it hits (the effect always applies). The zero value reveals it.
+	HiddenAreaHits HiddenAreaHitRule
 	// FeatsAllowed lets the table play with feats, an optional rule of the game:
 	// the level-up's Ability Score Improvement step then offers a feat in place of
 	// the ability increase. The zero value is the SRD's: feats are not used.
@@ -51,6 +54,20 @@ const (
 	HitPointsRoll HitPointsRule = "roll"
 	// HitPointsAverage makes everybody take the average; a roll is refused.
 	HitPointsAverage HitPointsRule = "average"
+)
+
+// HiddenAreaHitRule is whether a hit by an area spell reveals a hidden creature.
+type HiddenAreaHitRule string
+
+// The rules for a hidden creature an area spell hits. The zero value is the
+// default: the creature appears to the players.
+const (
+	// HiddenAreaHitsReveal makes the creature appear to the players.
+	HiddenAreaHitsReveal HiddenAreaHitRule = ""
+	// HiddenAreaHitsKeepHidden lets it take the effect and stay hidden.
+	HiddenAreaHitsKeepHidden HiddenAreaHitRule = "keep_hidden"
+	// HiddenAreaHitsAsk holds the turn of a player's spell until the master chooses.
+	HiddenAreaHitsAsk HiddenAreaHitRule = "ask"
 )
 
 // AbilityMethods is a set of ways of making ability scores.

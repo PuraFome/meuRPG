@@ -150,6 +150,8 @@ var notReads = map[string]classified{
 	playv1connect.CombatServiceRollDamageProcedure:                            {playerAction, "a player rolls the damage of their own attack"},
 	playv1connect.CombatServiceRollDeathSaveProcedure:                         {playerAction, "a player rolls the death save of their own character"},
 	playv1connect.CombatServiceSetCombatantConditionsProcedure:                {masterWrite, masterOnlyWhy},
+	playv1connect.CombatServicePreviewSpellAreaProcedure:                      {playerAction, "a player previews the area of their own combatant's spell: only what they see (areaspell_test.go)"},
+	playv1connect.CombatServiceResolveHiddenRevealProcedure:                   {masterWrite, "only the master answers; a player gets the same refusal for any id (RN-10)"},
 	playv1connect.CombatServiceSetCombatantCoverProcedure:                     {masterWrite, masterOnlyWhy},
 	playv1connect.CombatServiceSetCombatantHiddenProcedure:                    {masterWrite, masterOnlyWhy},
 	playv1connect.CombatServiceSetCombatantSideProcedure:                      {masterWrite, masterOnlyWhy},

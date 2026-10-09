@@ -137,3 +137,21 @@
 .card__zoom {
   width: 200%;
 }
+
+// The legend's samples of "Área da última magia" and "Ponto de origem" (the same as the picker's).
+.sw-area {
+  border-color: var(--mr-map-accent);
+  background: color-mix(in srgb, var(--mr-map-accent) 38%, var(--mr-map-token-surface));
+}
+
+.sw-diamond {
+  flex: none;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  margin: 0 5px;
+  border: 2px solid var(--mr-map-token-surface);
+  background: var(--mr-map-accent);
+  box-shadow: 0 0 0 1.5px var(--mr-map-accent);
+  transform: rotate(45deg);
+}

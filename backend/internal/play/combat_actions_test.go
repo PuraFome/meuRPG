@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -46,6 +47,9 @@ type armed struct {
 	toren, pens, bri *charactersv1.Character
 	capitao, goblin  *charactersv1.Character
 	mapID            string
+	// placedBy is the area placeFor chose for each idempotency key, so that a retry of the
+	// same cast is the same request.
+	placedBy sync.Map
 }
 
 // hero creates a player's character with a full sheet.

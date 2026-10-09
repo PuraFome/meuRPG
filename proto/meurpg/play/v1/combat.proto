@@ -836,6 +836,26 @@ service CombatService {
   // and a spell that does nothing the table cannot see is still spent. A
   // reaction spell (Escudo) is not cast here: UseReaction.
   //
+  // An area spell placed on the map (a spell whose area comes out of the caster
+  // or is centered on a point, in a combat with a grid: SpellTargets.placement is
+  // not UNSPECIFIED, see PreviewSpellArea) is cast with `area`, the point or the
+  // direction the caster chose. The server decides who is inside, and each one's
+  // cover from the point of origin: `targets` is ignored. Everyone inside is
+  // affected, allies and the caster included, hidden creatures too (the table
+  // rule TableRules.hidden_area_hits only decides whether a hit reveals them), and
+  // an area with nobody in it is still cast and spends the slot and the action.
+  // A cast with `area` for a spell that has none, or without it for one that
+  // needs it, is `invalid_argument`. Without a grid (THEATRE) the caster lists
+  // `targets` as before, and the master judges what is inside and the cover.
+  //
+  // reveal_hidden (the master only) says whether the hidden creatures the area
+  // hits appear to the players; without it the table rule decides. A player who
+  // sends it is `permission_denied`, before anything else is checked. When a
+  // player casts and the rule is ASK, the cast holds the turn until the master
+  // answers (ResolveHiddenReveal): while a question is open the server refuses
+  // MoveCombatant, RollAttack, TakeAction, CastSpell, EndTurn and the master's
+  // turn passing with EncounterBlocked HIDDEN_REVEAL_PENDING.
+  //
   // targets are who it touches, as the caller sees them, in range (the spell's
   // range from the caster, a king's move at 5 ft a square; Self is the caster
   // alone, Touch is 5 ft; the master is never held to the range, and the caster
@@ -910,6 +930,73 @@ service CombatService {
   //     NO_SLOT (with min_level), NOT_PLACED and TARGET_OUT_OF_REACH (with
   //     missing_ft; a player), TARGET_DEFEATED and WRONG_DICE_MODE.
   rpc CastSpell(CastSpellRequest) returns (CastSpellResponse);
+
+  // PreviewSpellArea says who an area spell reaches when it is placed at a point
+  // or in a direction, and the cover each one has, without spending anything: the
+  // second step of "Conjurar" on a map ("Quem está na área"). CastSpell works it
+  // all out again and trusts nothing of this answer.
+  //
+  // The point of origin (SRD 5.1, "Areas of Effect"): a sphere or a cylinder is
+  // centered on a point within the spell's range (`origin`); a cone, a line and a
+  // cube come out of the caster, who points a direction (`direction`), and the
+  // caster's own square is not inside; a sphere or a cylinder that is itself Self
+  // ("a 15-foot radius around you") is centered on the caster and needs neither.
+  // A location is outside the area when no unblocked straight line runs from the
+  // origin to it, and only total cover (a wall, a closed door) blocks; a spell
+  // that "spreads around corners" (Fireball) reaches the part of its shape
+  // connected to the origin instead. A point the caster does not see because a wall
+  // is in the way comes into being on the near side of the wall (SRD, "Targets"):
+  // `origin` of the answer is the effective one (the master is not held to this,
+  // and nor to the range).
+  //
+  // The cover of each target is measured from the point of origin, not from the
+  // caster, and counts only when the spell's saving throw is a Dexterity one
+  // (`cover_counts`; SRD, "Cover": +2 or +5 to Dexterity saving throws): a spell
+  // with another save (Onda Trovejante, Constitution) gives no bonus. A creature
+  // reached only around a corner gets no cover bonus of its own: the master marks
+  // it (SetCombatantCover).
+  //
+  // The answer lists only what the caller sees (RN-10, RN-20): a hidden creature
+  // is not in `targets` for a player, nor counted anywhere, and an area drawn by
+  // the map the player knows leaves the walls they do not know out. The master
+  // gets everyone, the hidden ones marked.
+  //
+  // Errors:
+  //   - `not_found`: the combat or the caster is not in this campaign's open
+  //     session, or the caller is a player and may not see it.
+  //   - `permission_denied`: the caller is a player and the caster is not their
+  //     character.
+  //   - `invalid_argument`: the spell is not one of the caster's, is no placed area,
+  //     the slot does not fit, both or neither of origin and direction for a spell
+  //     that needs one, a point off the map, or a direction with both numbers 0.
+  //   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_PLACED (the
+  //     caster has no square), and, for a player, TARGET_OUT_OF_REACH (with
+  //     missing_ft) for an origin beyond the spell's range.
+  rpc PreviewSpellArea(PreviewSpellAreaRequest) returns (PreviewSpellAreaResponse);
+
+  // ResolveHiddenReveal answers the question a player's area spell opened when it
+  // hit hidden creatures and the table rule is "Perguntar a cada vez" (Encounter.
+  // pending_hidden_reveals): `reveal` true makes them appear to the players, as
+  // SetCombatantHidden does; false keeps them hidden. It lets the turn go on when
+  // the last question is answered. Questions are answered in the order they were
+  // opened, the oldest first.
+  //
+  // Only the master may answer. A player gets `permission_denied` for any
+  // pending_reveal_id, existing or not, checked before the id is looked up: a
+  // different answer would tell the player whether a question is open, and so
+  // whether the spell hit a hidden creature (RN-10). Answering the same way twice
+  // is not an error (the answer is the same); the other way, after the first
+  // answer, is `failed_precondition`, and answering a question while an older one
+  // waits is `failed_precondition` too. Ending the combat drops the questions.
+  //
+  // Errors:
+  //   - `permission_denied`: the caller is not the master.
+  //   - `invalid_argument`: a malformed id.
+  //   - `not_found`: the combat is not in this campaign, or the question does not
+  //     exist.
+  //   - `failed_precondition`: answered the other way already, or an older question
+  //     is open.
+  rpc ResolveHiddenReveal(ResolveHiddenRevealRequest) returns (ResolveHiddenRevealResponse);
 
   // UseReaction casts Escudo (the spell) when a hit lands on a player's
   // character: the hit's pending damage waits in AWAITING_REACTION, and the
@@ -1476,6 +1563,13 @@ enum EncounterBlockedReason {
   // `opportunity_offer_id` refuses a used reaction with REACTION_USED, and a
   // defeated or down reactor with the usual reasons.)
   ENCOUNTER_BLOCKED_REASON_OPPORTUNITY_PENDING = 46;
+  // MoveCombatant, RollAttack, TakeAction, CastSpell, EndTurn: the turn waits for
+  // the master to answer a question (Encounter.pending_hidden_reveals), and the
+  // master's own EndTurn waits too. The turn is held for everyone alike, so a
+  // player's screen says only "Esperando o mestre" (Encounter.turn_held) and
+  // nothing in the answer says why: the reason is the same as a wait for an
+  // opportunity attack to the player's eyes, and the master reads the question.
+  ENCOUNTER_BLOCKED_REASON_HIDDEN_REVEAL_PENDING = 47;
   // The traps (MR-035, PlayService.SearchForTraps and FireTrap). The first three
   // are 9.8's; 53 and 54 are free.
   //
@@ -1714,14 +1808,40 @@ message Encounter {
   // it never changes, so a screen can trust it for the whole combat. Never
   // UNSPECIFIED.
   EncounterMode mode = 19;
+  // True when the turn waits for the master to answer something the caller is not
+  // told (the master reads `pending_hidden_reveals`): the app says "Esperando o
+  // mestre" and offers no move, attack, action, spell or end of turn. A player
+  // gets the same value for any reason the turn waits for the master that is not
+  // an opportunity offer (those have their own list), so it says nothing of why.
+  bool turn_held = 20;
+  // The questions the master has still to answer, oldest first (a player's area
+  // spell hit hidden creatures and the table rule asks): only the master gets
+  // them, empty for a player. The app opens its card from this after each
+  // `encounter_changed`, also after a reload.
+  repeated HiddenRevealQuestion pending_hidden_reveals = 21;
   // The requests for a better mode that wait or were answered and not used yet
   // (RollModeRequest), for the caller: the master all, a player the ones of their own
   // characters. The master's queue opens from this after each `encounter_changed`.
-  repeated RollModeRequest roll_mode_requests = 20;
+  repeated RollModeRequest roll_mode_requests = 22;
   // The raging barbarian the turn waits for (EndTurn asked whether the rage ends), a
   // combatant ID; empty when nothing waits. Everyone who sees the combatant gets it:
   // the turn reads "Esperando a decisão de Ragna sobre a fúria".
-  string rage_pending_combatant_id = 21;
+  string rage_pending_combatant_id = 23;
+}
+
+// HiddenRevealQuestion is one question the master has to answer: the area spell
+// of a player hit hidden creatures, and the table asks whether they appear.
+message HiddenRevealQuestion {
+  // Stable ID (a UUID): what ResolveHiddenReveal names.
+  string id = 1;
+  // The combatant that cast (a UUID) and the spell (rules.v1.Spell.key).
+  string caster_id = 2;
+  string spell_key = 3;
+  // The hidden creatures the area hit (UUIDs), in the combat's order.
+  repeated string combatant_ids = 4;
+  // The area of the cast, so that the map can draw it: the point of origin and the
+  // squares inside.
+  SpellArea area = 5;
 }
 
 // OpportunityOffer is the attack a combatant may make on an enemy that left its
@@ -2638,6 +2758,33 @@ message SpellTargets {
   // spell's level)`. 0 when it takes no more. `extra_target_per_level` is true
   // when this is above 0.
   int32 targets_per_level = 6;
+  // How the spell is placed on a map with a grid; UNSPECIFIED for a spell that is
+  // not a placed area (it takes `targets` as before, and in a combat without a map
+  // every area spell does). The screen draws the placement picker for the others.
+  AreaPlacement placement = 7;
+  // The area's form and size, for the picker's outline: the radius of a sphere or
+  // a cylinder, the length of a cone or a line, the side of a cube, in feet; and a
+  // line's width in feet. Only with a `placement`.
+  meurpg.rules.v1.SpellAreaShape area_shape = 8;
+  int32 area_size_ft = 9;
+  int32 area_width_ft = 10;
+  // How far the point of origin may be from the caster, in feet, for POINT; 0 for
+  // the others. The master is not held to it.
+  int32 range_ft = 11;
+}
+
+// AreaPlacement is how a spell's area is set on a map with a grid (SRD 5.1,
+// "Areas of Effect" and "Spell Range").
+enum AreaPlacement {
+  AREA_PLACEMENT_UNSPECIFIED = 0;
+  // A sphere or a cylinder centered on a point the caster chooses within range.
+  AREA_PLACEMENT_POINT = 1;
+  // A cone, a line or a cube that comes out of the caster (range Self): the
+  // caster picks one of eight directions.
+  AREA_PLACEMENT_DIRECTION = 2;
+  // A sphere or a cylinder that is Self: centered on the caster, nothing to
+  // choose.
+  AREA_PLACEMENT_CASTER = 3;
 }
 
 // DartsAtSlot is how many darts a slot level makes.
@@ -2994,14 +3141,131 @@ message CastSpellRequest {
   // with `invalid_argument` for a spell with nothing to pick or a type that is
   // not one of its types.
   string damage_type_key = 12;
+  // Where an area spell is placed, for a spell that has a placement on a map with
+  // a grid (see CastSpell and PreviewSpellArea). At most one is set: a point for a
+  // sphere or a cylinder, a direction for a cone, a line and a cube. A sphere or
+  // a cylinder that is Self takes neither.
+  oneof area {
+    SpellOrigin origin = 13;
+    SpellDirection direction = 14;
+  }
+  // The master only: whether the hidden creatures the area hits appear to the
+  // players, for this cast. Without it the table rule decides. A player who sends
+  // it gets `permission_denied`, before anything else is checked.
+  optional bool reveal_hidden = 15;
   // The mode of a spell attack's d20, instead of the server's suggestion, with the
   // reason, and the physical d20 pair; as in RollAttackRequest. They count for every
   // target the cast attacks. A player may roll the suggestion or disadvantage; a
   // better mode is the master's to set (RequestRollMode asks for the attacks of the
   // sheet, the weapons and the attack cantrips, which RollAttack rolls).
-  RollMode roll_mode = 13;
-  string mode_reason = 14;
-  repeated int32 d20_faces = 15;
+  RollMode roll_mode = 16;
+  string mode_reason = 17;
+  repeated int32 d20_faces = 18;
+}
+
+// SpellOrigin is a square of the grid the caster chose as the point of origin of an
+// area: col 0 to grid_columns - 1 and row 0 to grid_rows - 1, from the top left.
+message SpellOrigin {
+  int32 col = 1;
+  int32 row = 2;
+}
+
+// SpellDirection is one of the eight directions a cone, a line or a cube points
+// (every 45 degrees): `dx` is -1 (west), 0 or 1 (east), `dy` is -1 (north), 0 or 1
+// (south), and never both 0.
+message SpellDirection {
+  int32 dx = 1;
+  int32 dy = 2;
+}
+
+// SpellArea is where an area spell landed: the point of origin it really had (the
+// caster's square for a cone, a line and a cube) and the squares it covers, after
+// the line of effect cut it (walls and doors cut it; cover does not).
+message SpellArea {
+  SpellOrigin origin = 1;
+  repeated SpellOrigin squares = 2;
+}
+
+// PreviewSpellAreaRequest places an area spell for the preview.
+message PreviewSpellAreaRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The combatant that casts (a UUID).
+  string caster_id = 3;
+  // The spell, one of GetTurnOptions' options.spells keys.
+  string spell_key = 4;
+  // The slot, as in CastSpellRequest. Unset for a cantrip.
+  SpellSlot slot = 5;
+  // Where it is placed: as in CastSpellRequest.
+  oneof area {
+    SpellOrigin origin = 6;
+    SpellDirection direction = 7;
+  }
+}
+
+// PreviewSpellAreaResponse is who an area reaches.
+message PreviewSpellAreaResponse {
+  // The point of origin the area really has: the one asked for, or the near side
+  // of a wall for a player's point behind it; the caster's square for a cone, a
+  // line and a cube.
+  SpellOrigin origin = 1;
+  // The squares inside, in rows from the top.
+  repeated SpellOrigin squares = 2;
+  // The creatures inside, as the caller sees them, in the combat's order: the
+  // caster too, when inside.
+  repeated AreaTarget targets = 3;
+  // True when the spell's saving throw is a Dexterity one, the only save cover
+  // helps (SRD, "Cover"); with another ability each target's `cover` is NONE and
+  // the screen says the spell gets no cover bonus.
+  bool cover_counts = 4;
+  // The most the area can reach from the caster, in feet: the spell's range for a
+  // sphere or a cylinder, 0 for a spell that comes out of the caster. The screen
+  // dims the squares beyond it.
+  int32 range_ft = 5;
+  // True when the point of origin is not the one asked for (a wall was in the
+  // way).
+  bool moved = 6;
+}
+
+// AreaTarget is a creature inside a placed area.
+message AreaTarget {
+  string combatant_id = 1;
+  string label = 2;
+  // How hurt it is, as a word: never hit points (RN-20). Unset for a player's
+  // character, as in the order: its hit points are on the table and the app reads
+  // them from the combatant.
+  CombatantState state = 3;
+  // The cover it has against the point of origin (D4), where it comes from, and
+  // only when the save is Dexterity (see `cover_counts`), NONE when it has none
+  // and unset when the save gets none; never TOTAL: a creature with total cover is not
+  // inside.
+  CoverDegree cover = 4;
+  CoverSource cover_source = 5;
+  // True for a creature on the caster's side: a player's character or creature
+  // for a player caster, an NPC for the master's. The caster itself has `self`.
+  bool ally = 6;
+  bool self = 7;
+  // The distance in feet from the point of origin, the squares between the
+  // centers rounded down times 5 ft (RN-21).
+  int32 distance_ft = 8;
+  // Only the master gets it: the creature is hidden from the players.
+  bool hidden = 9;
+}
+
+// ResolveHiddenRevealRequest answers a question of Encounter.pending_hidden_reveals.
+message ResolveHiddenRevealRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The question (a UUID).
+  string pending_reveal_id = 3;
+  // True: the hidden creatures appear to the players. False: they stay hidden.
+  bool reveal = 4;
+  string idempotency_key = 5;
+}
+
+// ResolveHiddenRevealResponse returns the combat as it is now.
+message ResolveHiddenRevealResponse {
+  Encounter encounter = 1;
 }
 
 // SummonChoice is what a casting of a summoning spell brings: one of the
@@ -3181,6 +3445,17 @@ message CastSpellResponse {
   // order of `summon.creature_keys`. They share one initiative total, so they
   // take a joint turn. Empty for any other spell.
   repeated string summoned_combatant_ids = 3;
+  // An area spell placed on the map: where it landed (the master's, the caster's
+  // player's: the map as the caller knows it). Unset for any other cast.
+  SpellArea area = 4;
+  // The hidden creatures the area hit (UUIDs). Only the master gets them: empty
+  // for a player, who is told nothing that names or counts a hidden creature
+  // (RN-10).
+  repeated string hidden_hits = 5;
+  // The question this cast opened for the master (Encounter.pending_hidden_reveals),
+  // when the table rule is "Perguntar a cada vez" and a player cast. Only the master
+  // gets it.
+  string pending_reveal_id = 6;
 }
 
 // SpellCast is a cast, as the caller may see it.
@@ -3691,6 +3966,9 @@ message CombatLogSpellTarget {
   // The damage of the cast's other damage types, once rolled, in the spell's
   // order after `damage`.
   repeated CombatLogDamage more_damages = 13;
+  // Only the master: the creature was hidden from the players when the spell hit
+  // it. A player's entry never has such a target (RN-10).
+  bool hidden = 14;
 }
 
 // CombatLogDeathSave is a death save in the log. When the table hides the death

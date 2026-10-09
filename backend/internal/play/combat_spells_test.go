@@ -111,11 +111,129 @@ func (a *armed) castKey(t *testing.T, u *user, e *playv1.Encounter, caster, spel
 		CampaignId: a.campaignID, EncounterId: e.GetId(), CasterId: a.id(t, caster), SpellKey: spell, Slot: slot, Targets: targets, IdempotencyKey: key,
 	}
 	roll(req)
+	a.placeFor(t, req, targets)
 	res, err := u.combat.CastSpell(t.Context(), connect.NewRequest(req))
 	if err != nil {
 		return nil, err
 	}
 	return res.Msg, nil
+}
+
+// placeFor puts an area spell that the map places (a sphere at a point, a cone, a line or a
+// cube from the caster) where it reaches exactly the targets the test names, the way a table
+// that wants to hit those creatures would aim it: it asks the server's own preview, as the
+// master, which squares or directions give that set, and takes the first. The tests that
+// use it are about what a spell does to its targets, not about where it lands (the area
+// tests in combat_area_test.go are). A spell that is not placed, a cast with an area already
+// and a spell that cannot be cast now are left as they are.
+func (a *armed) placeFor(t *testing.T, req *playv1.CastSpellRequest, targets []*playv1.SpellTarget) {
+	t.Helper()
+	if req.GetArea() != nil {
+		return
+	}
+	if done, ok := a.placedBy.Load(req.GetIdempotencyKey()); ok {
+		switch p := done.(type) {
+		case *playv1.SpellOrigin:
+			req.Area = &playv1.CastSpellRequest_Origin{Origin: p}
+		case *playv1.SpellDirection:
+			req.Area = &playv1.CastSpellRequest_Direction{Direction: p}
+		}
+		return
+	}
+	opts, err := a.master.combat.GetTurnOptions(t.Context(), connect.NewRequest(&playv1.GetTurnOptionsRequest{CampaignId: a.campaignID, EncounterId: req.GetEncounterId(), CombatantId: req.GetCasterId()}))
+	if err != nil {
+		return
+	}
+	placement := playv1.AreaPlacement_AREA_PLACEMENT_UNSPECIFIED
+	if st := spellTargetsOf(opts.Msg, req.GetSpellKey()); st != nil {
+		placement = st.GetPlacement()
+	} else {
+		// A spell the options leave out (the master casts it again with the action used): the
+		// server's own refusal says how it is placed.
+		_, err := a.master.combat.PreviewSpellArea(t.Context(), connect.NewRequest(&playv1.PreviewSpellAreaRequest{
+			CampaignId: a.campaignID, EncounterId: req.GetEncounterId(), CasterId: req.GetCasterId(), SpellKey: req.GetSpellKey(), Slot: req.GetSlot(),
+		}))
+		switch {
+		case err == nil:
+		case strings.Contains(err.Error(), "placed at a point"):
+			placement = playv1.AreaPlacement_AREA_PLACEMENT_POINT
+		case strings.Contains(err.Error(), "comes out of the caster"):
+			placement = playv1.AreaPlacement_AREA_PLACEMENT_DIRECTION
+		}
+	}
+	if placement == playv1.AreaPlacement_AREA_PLACEMENT_UNSPECIFIED || placement == playv1.AreaPlacement_AREA_PLACEMENT_CASTER {
+		return
+	}
+	want := map[string]bool{}
+	for _, tg := range targets {
+		want[tg.GetCombatantId()] = true
+	}
+	reaches := func(origin *playv1.SpellOrigin, dir *playv1.SpellDirection) bool {
+		pr := &playv1.PreviewSpellAreaRequest{CampaignId: a.campaignID, EncounterId: req.GetEncounterId(), CasterId: req.GetCasterId(), SpellKey: req.GetSpellKey(), Slot: req.GetSlot()}
+		if origin != nil {
+			pr.Area = &playv1.PreviewSpellAreaRequest_Origin{Origin: origin}
+		} else {
+			pr.Area = &playv1.PreviewSpellAreaRequest_Direction{Direction: dir}
+		}
+		res, err := a.master.combat.PreviewSpellArea(t.Context(), connect.NewRequest(pr))
+		if err != nil || len(res.Msg.GetTargets()) != len(want) {
+			return false
+		}
+		for _, tg := range res.Msg.GetTargets() {
+			if !want[tg.GetCombatantId()] {
+				return false
+			}
+		}
+		return true
+	}
+	enc := a.get(t, a.master)
+	if placement == playv1.AreaPlacement_AREA_PLACEMENT_DIRECTION {
+		for _, d := range [][2]int32{{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}} {
+			if dir := (&playv1.SpellDirection{Dx: d[0], Dy: d[1]}); reaches(nil, dir) {
+				req.Area = &playv1.CastSpellRequest_Direction{Direction: dir}
+				a.placedBy.Store(req.GetIdempotencyKey(), dir)
+				return
+			}
+		}
+		t.Fatalf("no direction of %s reaches exactly %d targets", req.GetSpellKey(), len(want))
+	}
+	var squares []*playv1.SpellOrigin
+	for _, c := range enc.GetCombatants() {
+		if want[c.GetId()] && c.GetPlaced() {
+			squares = append(squares, &playv1.SpellOrigin{Col: c.GetCol(), Row: c.GetRow()})
+		}
+	}
+	for row := range enc.GetGridRows() {
+		for col := range enc.GetGridColumns() {
+			squares = append(squares, &playv1.SpellOrigin{Col: col, Row: row})
+		}
+	}
+	for _, sq := range squares {
+		if reaches(sq, nil) {
+			req.Area = &playv1.CastSpellRequest_Origin{Origin: sq}
+			a.placedBy.Store(req.GetIdempotencyKey(), sq)
+			return
+		}
+	}
+	t.Fatalf("no point reaches exactly the %d targets of %s", len(want), req.GetSpellKey())
+}
+
+// stand puts each combatant on its square, as the master does when he sets the table.
+func (a *armed) stand(t *testing.T, at map[string][2]int32) {
+	t.Helper()
+	for label, sq := range at {
+		a.put(t, label, sq[0], sq[1])
+	}
+}
+
+// put moves a combatant to a square, as the master does when he sets the table.
+func (a *armed) put(t *testing.T, label string, col, row int32) {
+	t.Helper()
+	if _, err := a.master.combat.MoveCombatant(t.Context(), connect.NewRequest(&playv1.MoveCombatantRequest{
+		CampaignId: a.campaignID, EncounterId: a.get(t, a.master).GetId(), CombatantId: a.id(t, label), IdempotencyKey: newKey(), Col: col, Row: row, Forced: true,
+	})); err != nil {
+		t.Fatalf("MoveCombatant(%s to %d,%d) error = %v", label, col, row, err)
+	}
 }
 
 func (a *armed) mustCast(t *testing.T, u *user, e *playv1.Encounter, caster, spell string, slot *playv1.SpellSlot, targets []*playv1.SpellTarget, roll func(*playv1.CastSpellRequest)) *playv1.CastSpellResponse {
@@ -445,6 +563,10 @@ func TestSaveSpellRollsOnceForTheCast(t *testing.T) {
 	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 2)
+	// The cone of Mãos Flamejantes east of Pensantus: Goblin 1 (7,5), Goblin 2 (7,4) and the
+	// Capitão (8,6), with nobody in the way of any of them and Toren, Brisa out of it.
+	a.put(t, "Goblin 1", 7, 5)
+	a.put(t, "Capitão Goblin", 8, 6)
 
 	// Saves (DC 14 = 8 + 2 + 4: the gnome has Intelligence 18): Goblin 1 rolls 5, Goblin 2 rolls 18 and saves, the
 	// Capitão rolls 12; the NPCs have no bonus.
@@ -1566,6 +1688,8 @@ func TestCombatUndoTakesBackEveryNewAction(t *testing.T) {
 		a.mustCast(t, a.ana, e, "Pensantus", magicMissileSpell, slotOfLevel(1), []*playv1.SpellTarget{darts(a, t, "Goblin", 2), darts(a, t, "Capitão Goblin", 1)}, noCastRoll)
 	})
 	// The damage roll of an area spell settles every pending damage of the cast.
+	// A cone to the north holds the goblin and the Capitão, and not Toren, who stays at his axe's reach of the goblin.
+	a.stand(t, map[string][2]int32{"Goblin": {6, 3}, "Capitão Goblin": {6, 2}})
 	beforeCast := a.snapshot(t)
 	cast := a.mustCast(t, a.ana, e, "Pensantus", burningHands, slotOfLevel(1), both, noCastRoll)
 	a.undoes(t, "the damage roll of an area spell", func() {
@@ -1578,6 +1702,7 @@ func TestCombatUndoTakesBackEveryNewAction(t *testing.T) {
 	if got := a.snapshot(t); got != beforeCast {
 		t.Errorf("the undo of the area spell left the combat different:\nbefore %s\nafter  %s", beforeCast, got)
 	}
+	a.stand(t, map[string][2]int32{"Goblin": {7, 5}, "Capitão Goblin": {4, 4}})
 	// Ending a concentration, and the conditions, are undone too.
 	a.mustCast(t, a.ana, e, "Pensantus", holdPerson, slotOfLevel(2), a.at(t, "Goblin"), noCastRoll)
 	a.undoes(t, "ending the concentration", func() {
@@ -1759,16 +1884,22 @@ func TestRN20_PlayersNeverReceiveSpellAndReactionSecrets(t *testing.T) {
 	note("Pensantus's player", cast, a.log(t, a.ana, e))
 	note("Toren's player", a.log(t, a.caio, e))
 
-	// The master casts for Pensantus at the hidden Capitão and the goblin: the line is his alone.
+	// The master casts for Pensantus a cone that reaches the hidden Capitão and the goblin, and
+	// keeps the Capitão hidden: the players' line lists the goblin alone.
+	a.stand(t, map[string][2]int32{"Toren": {5, 3}, "Capitão Goblin": {7, 4}, "Goblin": {7, 5}})
 	a.h.roller.queue(5, 6)
-	a.mustCast(t, a.master, e, "Pensantus", burningHands, slotOfLevel(1), a.at(t, "Capitão Goblin", "Goblin"), noCastRoll)
+	a.mustCast(t, a.master, e, "Pensantus", burningHands, slotOfLevel(1), a.at(t, "Capitão Goblin", "Goblin"), func(r *playv1.CastSpellRequest) { r.RevealHidden = new(false) })
 	note("Toren's player", a.get(t, a.caio), a.log(t, a.caio, e))
+	var line *playv1.CombatLogEntry
 	for _, r := range a.log(t, a.caio, e).GetRounds() {
 		for _, en := range r.GetEntries() {
 			if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST && en.GetKey() == burningHands {
-				t.Errorf("a player's log has a cast that touched a hidden combatant: %v", en)
+				line = en
 			}
 		}
+	}
+	if line == nil || len(line.GetSpell().GetTargets()) != 1 || line.GetSpell().GetTargets()[0].GetTargetLabel() != "Goblin" {
+		t.Errorf("a player's line of a cone that touched a hidden combatant = %v, want the goblin alone", line)
 	}
 	for _, text := range seen {
 		for _, banned := range []string{`"armorClass"`, "targetArmorClass", "hitPointsCurrent", "hitPointsMax", hidden, "Capitão", a.capitao.GetId()} {
@@ -1794,6 +1925,7 @@ func TestCombatSpellsAreIdempotent(t *testing.T) {
 	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
+	a.stand(t, map[string][2]int32{"Toren": {5, 3}}) // out of the cone to the goblin
 	events := func() int { return a.events(t) }
 
 	// CastSpell: the slot once, the same cast.
@@ -2157,17 +2289,25 @@ func TestCantripsAreNotPartOfExtraAttack(t *testing.T) {
 	wantBlockedBy(t, "a second cantrip", err, blockedActionUsed)
 }
 
-// TestSpellCastIsLimitedToTenTargets: a cast and the damage roll that settles it
-// fit a session event (4 KiB): ten targets work, eleven are refused.
+// TestSpellCastIsLimitedToTenTargets: on a combat without a map the caster lists who a
+// spell touches, and a cast and the damage roll that settles it fit a session event: ten
+// targets work, eleven are refused. (On a map the server finds who is inside, up to every
+// creature of the combat: TestAnAreaCastFitsTheEventWithEveryCreatureOfTheCombat.)
 func TestSpellCastIsLimitedToTenTargets(t *testing.T) {
 	t.Parallel()
 	a := newCasters(t)
-	e := a.castersFight(t, 10)
 	var labels []string
 	for i := 1; i <= 10; i++ {
 		labels = append(labels, fmt.Sprintf("Goblin %d", i))
 	}
-	_, err := a.cast(t, a.ana, e, "Pensantus", burningHands, slotOfLevel(1), a.at(t, append(labels, "Capitão Goblin")...), noCastRoll)
+	e := a.start(t, plan{
+		theatre:  true,
+		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId(), Count: 10}, {CharacterId: a.capitao.GetId()}},
+		npcRolls: slices.Repeat([]int{1}, 11),
+		players:  map[string]int32{"Pensantus": 20, "Toren": 15, "Brisa": 10},
+		reveal:   append(slices.Clone(labels), "Capitão Goblin"),
+	})
+	_, err := a.cast(t, a.ana, e, "Pensantus", burningHands, slotOfLevel(1), a.at(t, append(slices.Clone(labels), "Capitão Goblin")...), noCastRoll)
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("a cast on 11 targets = %v, want invalid_argument", err)
 	}
@@ -2750,6 +2890,13 @@ func TestSpellSaveAgainstACreatureUsesItsStatBlock(t *testing.T) {
 	added := a.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) {
 		r.CreatureKey, r.Count, r.Hidden = "monster:goblin", 1, new(false)
 	})
+	// The cone east of Pensantus holds the new monster (7,4) and Goblin 1 (7,5), and nobody else.
+	a.stand(t, map[string][2]int32{"Goblin 1": {7, 5}, "Goblin 2": {0, 9}})
+	if _, err := a.master.combat.MoveCombatant(t.Context(), connect.NewRequest(&playv1.MoveCombatantRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: added.GetCombatantIds()[0], IdempotencyKey: newKey(), Col: 7, Row: 4, Forced: true,
+	})); err != nil {
+		t.Fatalf("MoveCombatant(the monster) error = %v", err)
+	}
 	a.h.roller.queue(10, 10) // the monster's save and the typed Goblin's
 	res := a.mustCast(t, a.master, added.GetEncounter(), "Pensantus", burningHands, slotOfLevel(1),
 		[]*playv1.SpellTarget{{CombatantId: added.GetCombatantIds()[0]}, {CombatantId: a.id(t, "Goblin 1")}}, noCastRoll)
@@ -2786,6 +2933,7 @@ func TestSpellWithTwoDamageTypesFitsTenTargets(t *testing.T) {
 			[]string{cureWounds})
 	})
 	e := a.castersFight(t, 10)
+	a.stand(t, map[string][2]int32{"Pensantus": {0, 0}, "Toren": {0, 1}, "Brisa": {1, 0}, "Capitão Goblin": {0, 9}}) // the cylinder holds the goblins and nobody else
 	var labels []string
 	for i := 1; i <= 10; i++ {
 		labels = append(labels, fmt.Sprintf("Goblin %d", i))

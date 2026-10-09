@@ -342,6 +342,11 @@ const ABILITY_PT: Partial<Record<Ability, string>> = {
   [Ability.CHARISMA]: 'Carisma',
 };
 
+/** The ability of a spell's saving throw, in Portuguese ("Constituição"); `''` without a save. */
+export function saveAbility(details: SpellDetails | null): string {
+  return ABILITY_PT[details?.save?.ability ?? Ability.UNSPECIFIED] ?? '';
+}
+
 /**
  * The dice a spell makes at a slot level ("8d6"), from its details; `''` when there are none.
  * A cantrip grows with the caster's level, which the details do not know: the server sends the
@@ -402,6 +407,7 @@ export function castSubtitle(
   darts: number,
   cantripDice = '',
   damageType = '',
+  shape = '',
 ): string {
   const parts = [
     economy === ActionEconomy.BONUS_ACTION
@@ -417,6 +423,10 @@ export function castSubtitle(
     parts.push('toque');
   } else if (range?.kind === SpellRangeKind.SELF) {
     parts.push('pessoal');
+  }
+  // An area placed on the map says its form and size ("esfera de 6 m de raio").
+  if (shape) {
+    parts.push(shape);
   }
   const type = details?.damage[0]?.damageTypePt ?? '';
   const dice = damageText(details, slotLevel, cantripDice, damageType);
