@@ -49,6 +49,8 @@ type world struct {
 
 	// The characters.
 	pens, toren  *charactersv1.Character // Ana's and Caio's player characters
+	reserved     *charactersv1.Character // a character the master made for a player to claim: nobody's
+	claimToken   string                  // its claim link's secret, shown once to the master
 	pendingHero  *charactersv1.Character // the character that waits for approval
 	reviewReason string                  // what the master asked her to change
 	boss         *charactersv1.Character // the NPC whose numbers are secret

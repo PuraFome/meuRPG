@@ -1,0 +1,109 @@
+<section class="mr-panel reserved" aria-labelledby="reserved-heading">
+  <h3 class="mr-panel__title" id="reserved-heading">Personagens reservados</h3>
+  <p class="reserved__hint">
+    Reservados: ninguém é dono ainda. Os jogadores não os veem até um deles assumir.
+  </p>
+
+  <div class="reserved__live" role="status" aria-live="polite">
+    @if (notice(); as n) {
+      <div class="mr-notice" [class.mr-notice--success]="n.tone === 'success'" [class.mr-notice--danger]="n.tone === 'danger'">
+        <mat-icon aria-hidden="true">{{ n.tone === 'success' ? 'check' : 'error' }}</mat-icon>
+        <p><strong>{{ n.title }}</strong> {{ n.text }}</p>
+      </div>
+    }
+  </div>
+
+  @if (rows().length > 0) {
+    <ul class="mr-list reserved__list">
+      @for (c of rows(); track c.id) {
+        <li class="row" [id]="'row-' + c.id">
+          <div class="row__head">
+            <app-portrait [name]="c.name" [size]="40" [decorative]="true" />
+            <span class="mr-list__text">
+              <span class="mr-list__name">{{ c.name }}</span>
+              @if (reservedRowSub(c); as sub) {
+                <span class="mr-list__sub">{{ sub }}</span>
+              }
+            </span>
+            @if (c.claim; as claim) {
+              <span class="mr-tag" [class]="claimTagClass(claim.state)">{{ claimStateLabel(claim) }}</span>
+            }
+          </div>
+
+          @if (isAsking(c, 'revoke')) {
+            <div class="mr-notice mr-notice--danger ask" role="group" [attr.aria-labelledby]="'ask-t-' + c.id" [id]="'ask-' + c.id">
+              <mat-icon aria-hidden="true">link_off</mat-icon>
+              <div>
+                <p [id]="'ask-t-' + c.id"><strong>Revogar o link de {{ c.name }}?</strong></p>
+                <p>Quem abrir o link verá apenas “Este link não pode ser usado”. Você pode gerar outro depois.</p>
+                <div class="ask__buttons">
+                  <button type="button" mat-stroked-button class="danger" [disabled]="busy() !== null" (click)="confirm(c)">Revogar o link</button>
+                  <button type="button" mat-stroked-button data-cancel [disabled]="busy() !== null" (click)="cancel(c)">Cancelar</button>
+                </div>
+              </div>
+            </div>
+          } @else if (isAsking(c, 'return')) {
+            <div class="mr-notice mr-notice--danger ask" role="group" [attr.aria-labelledby]="'ask-t-' + c.id" [id]="'ask-' + c.id">
+              <mat-icon aria-hidden="true">undo</mat-icon>
+              <div>
+                <p [id]="'ask-t-' + c.id"><strong>Devolver {{ c.name }} à reserva?</strong></p>
+                <p>
+                  {{ c.name }} fica sem dono e o link deixa de existir.
+                  @if (c.claim?.claimedBy; as who) {
+                    {{ who }} continua na campanha como membro.
+                  } @else {
+                    Quem assumiu continua na campanha como membro.
+                  }
+                </p>
+                <div class="ask__buttons">
+                  <button type="button" mat-stroked-button class="danger" [disabled]="busy() !== null" (click)="confirm(c)">Devolver à reserva</button>
+                  <button type="button" mat-stroked-button data-cancel [disabled]="busy() !== null" (click)="cancel(c)">Cancelar</button>
+                </div>
+              </div>
+            </div>
+          } @else if (isAsking(c, 'delete')) {
+            <div class="mr-notice mr-notice--danger ask" role="group" [attr.aria-labelledby]="'ask-t-' + c.id" [id]="'ask-' + c.id">
+              <mat-icon aria-hidden="true">delete</mat-icon>
+              <div>
+                <p [id]="'ask-t-' + c.id"><strong>Excluir {{ c.name }}?</strong></p>
+                <p>O personagem é apagado e o link enviado deixa de valer. Isto não se desfaz.</p>
+                <div class="ask__buttons">
+                  <button type="button" mat-stroked-button class="danger" [disabled]="busy() !== null" (click)="confirm(c)">Excluir {{ c.name }}</button>
+                  <button type="button" mat-stroked-button data-cancel [disabled]="busy() !== null" (click)="cancel(c)">Cancelar</button>
+                </div>
+              </div>
+            </div>
+          } @else {
+            <div class="row__actions">
+              @if (isClaimed(c)) {
+                <a mat-stroked-button [routerLink]="['/campaigns', campaignId(), 'characters', c.id]" [attr.aria-label]="'Ver ficha de ' + c.name">Ver ficha</a>
+                <button type="button" mat-stroked-button class="danger" data-opener="return" [attr.aria-label]="'Devolver ' + c.name + ' à reserva'" (click)="ask(c, 'return')">Devolver à reserva</button>
+              } @else {
+                @switch (c.claim?.state) {
+                  @case ('sent') {
+                    <a mat-stroked-button [routerLink]="['/campaigns', campaignId(), 'characters', c.id, 'edit']" [attr.aria-label]="'Editar ' + c.name">Editar</a>
+                    <button type="button" mat-stroked-button data-opener="revoke" [attr.aria-label]="'Revogar o link de ' + c.name" (click)="ask(c, 'revoke')">Revogar o link</button>
+                  }
+                  @case ('none') {
+                    <button type="button" mat-flat-button [attr.aria-label]="'Gerar link para o jogador: ' + c.name" (click)="openLinkDialog(c)">Gerar link para o jogador</button>
+                    <a mat-stroked-button [routerLink]="['/campaigns', campaignId(), 'characters', c.id, 'edit']" [attr.aria-label]="'Editar ' + c.name">Editar</a>
+                  }
+                  @default {
+                    <button type="button" mat-stroked-button [attr.aria-label]="'Gerar novo link: ' + c.name" (click)="openLinkDialog(c)">Gerar novo link</button>
+                    <a mat-stroked-button [routerLink]="['/campaigns', campaignId(), 'characters', c.id, 'edit']" [attr.aria-label]="'Editar ' + c.name">Editar</a>
+                  }
+                }
+                <button type="button" mat-stroked-button class="danger" data-opener="delete" [attr.aria-label]="'Excluir ' + c.name" (click)="ask(c, 'delete')">Excluir</button>
+              }
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  <a mat-stroked-button class="reserved__create" [routerLink]="['/campaigns', campaignId(), 'reserved', 'new']">
+    <mat-icon aria-hidden="true">add</mat-icon>
+    Criar personagem para um jogador
+  </a>
+</section>

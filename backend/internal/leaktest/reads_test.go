@@ -85,6 +85,19 @@ var reads = []read{
 		},
 	},
 	{
+		procedure: charactersv1connect.CharacterServiceGetCharacterProcedure, label: "a reserved character", allow: masterOnlyRead, why: "nobody owns it: no player reads it until one claims it (MR-049)",
+		req: func(w *world) proto.Message {
+			return &charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.reserved.GetId()}
+		},
+	},
+	{
+		procedure: charactersv1connect.CharacterServicePreviewClaimProcedure, allow: everyone, ignore: []string{"reserved-name"},
+		why: "whoever holds the link reads the public card of the character it is for: its name, race, class and level, and who sent it; nothing else. The master gets \"this link is for a player\"",
+		req: func(w *world) proto.Message {
+			return &charactersv1.PreviewClaimRequest{Token: w.claimToken}
+		},
+	},
+	{
 		procedure: charactersv1connect.CharacterServiceGetCharacterProcedure, label: "the pending character, sent back by the master", allow: func(w *world) []*person { return []*person{w.pending} },
 		why: "the master's reason belongs to the master and the pending member who owns the character (RN-15)",
 		req: func(w *world) proto.Message {

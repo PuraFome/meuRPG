@@ -98,8 +98,14 @@ export class SheetHeader {
       { label: 'Raça', value: vm.raceLabel },
       { label: 'Antecedente', value: vm.backgroundLabel },
     ];
-    if (!this.isNpc()) {
-      fields.push({ label: 'Jogador', value: vm.playerDisplayName ?? 'Jogador sem nome' });
+    // A reserved character has no player yet (MR-049). Otherwise a player reads only their own
+    // sheet, so without a display name the field says "Você"; the master's sheet of a player who
+    // never chose a name has no field instead of a placeholder.
+    const player = vm.reserved
+      ? 'Reservado: ainda sem jogador'
+      : (vm.playerDisplayName ?? (vm.isMaster ? null : 'Você'));
+    if (!this.isNpc() && player !== null) {
+      fields.push({ label: 'Jogador', value: player });
     }
     fields.push({ label: 'Tendência', value: vm.alignmentLabel });
     // What an enemy, a boss or a minion is worth when defeated: the master's

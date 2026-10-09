@@ -1,0 +1,101 @@
+:host {
+  display: block;
+}
+
+.reserved__hint {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+}
+
+// Empty until an action says something: it takes no room then.
+.reserved__live:empty {
+  display: none;
+}
+
+.reserved__live {
+  margin-bottom: var(--mr-space-2);
+}
+
+.reserved__list {
+  margin-bottom: var(--mr-space-2);
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  padding: var(--mr-space-3) 0;
+}
+
+// The name, its second line and the link's state; on a phone the state goes under them.
+.row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-3);
+
+  .mr-list__text {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+
+  .mr-tag {
+    white-space: normal;
+    height: auto;
+    min-height: 26px;
+    padding: 4px 10px;
+    line-height: 1.2;
+  }
+}
+
+// The buttons on lines of their own on a phone (44 px targets, 320 px wide), side by side from a tablet up.
+.row__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  > * {
+    min-height: 44px;
+  }
+}
+
+.danger {
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+  --mat-button-outlined-outline-color: var(--mr-danger-ink);
+}
+
+.ask {
+  p {
+    margin: 0 0 var(--mr-space-1);
+  }
+}
+
+.ask__buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin-top: var(--mr-space-2);
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+  }
+
+  > * {
+    min-height: 44px;
+  }
+}
+
+.reserved__create {
+  width: 100%;
+  min-height: 44px;
+
+  @media (min-width: 768px) {
+    width: auto;
+  }
+}

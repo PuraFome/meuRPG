@@ -541,7 +541,7 @@ describe('CharacterSheetPage', () => {
     expect(pact?.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('2 espaços');
   });
 
-  it("renders every official-sheet section as an <h2>, in the paper sheet's column order", async () => {
+  it('renders every official-sheet section as an <h2>, in the order of use on a phone', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
       Promise.resolve(
@@ -564,22 +564,23 @@ describe('CharacterSheetPage', () => {
 
     const el = await render();
     const headings = Array.from(el.querySelectorAll('h2')).map((h) => h.textContent?.trim());
-    // Document order is the paper sheet's column order (the medallions;
-    // saves and skills; combat, spells and equipment; features and story),
-    // the same on every screen size: the phone shows it in one column.
+    // Document order is the order of a phone, which is the order of use: the
+    // medallions, then the numbers used in play (combat, spells and equipment),
+    // then saves and skills, the features and the player's notes, and the story.
+    // From 1200px the grid puts the four columns in the paper sheet's order.
     // "Habilidades" and "Combate" are for screen readers only; the
     // medallions and the shield are their visible titles. No "Ataques"
     // here: this sheet has no attacks.
     expect(headings).toEqual([
       'Habilidades',
-      'Testes de resistência',
-      'Perícias',
       'Combate',
       'Magias de mago',
       'Equipamento',
-      // The player's own notes, the first block of the fourth column (E8-07).
-      'Anotações',
+      'Testes de resistência',
+      'Perícias',
       'Características e traços',
+      // The player's own notes: after the game numbers and the features; the first block of the fourth column from 1200px (E8-07).
+      'Anotações',
       'História',
     ]);
   });
@@ -883,12 +884,26 @@ describe('CharacterSheetPage', () => {
     expect(ddAfter(el, 'Tendência')).toBeNull();
   });
 
-  it('shows "Jogador sem nome" for a player without a display name, and no player field for an NPC', async () => {
+  it('says "Você" for the player\'s own sheet without a display name, and has no player field for the master or an NPC', async () => {
     configure();
     fake.getCharacterSheetFn = () => Promise.resolve(vm({ playerDisplayName: null }));
     const el = await render();
-    expect(ddAfter(el, 'Jogador')?.textContent?.trim()).toBe('Jogador sem nome');
-    expect(el.textContent).not.toContain('Sem nome');
+    expect(ddAfter(el, 'Jogador')?.textContent?.trim()).toBe('Você');
+    expect(el.textContent).not.toContain('sem nome');
+
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ playerDisplayName: null, isMaster: true }));
+    const master = await render();
+    expect(ddAfter(master, 'Jogador')).toBeNull();
+    expect(master.textContent).not.toContain('sem nome');
+  });
+
+  it('says a reserved character has no player yet, instead of "Jogador sem nome" (MR-049)', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ playerDisplayName: null, reserved: true }));
+    const el = await render();
+    expect(ddAfter(el, 'Jogador')?.textContent?.trim()).toBe('Reservado: ainda sem jogador');
   });
 
   it('hides XP for an NPC basic sheet, which has none', async () => {

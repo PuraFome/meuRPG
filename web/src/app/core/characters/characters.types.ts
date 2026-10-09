@@ -47,4 +47,10 @@ export type CharacterBlockedReason =
   | 'no_changes_requested'
   | 'not_dead'
   | 'archived_content'
-  | 'switched_off_content';
+  | 'switched_off_content'
+  | 'not_reserved'
+  | 'claim_link_used'
+  | 'not_claimed'
+  | 'character_in_combat'
+  | 'claim_own_link'
+  | 'reserved';

@@ -300,4 +300,91 @@ describe('CampaignCharacters', () => {
       expect(el.textContent).toContain('Pensantus');
     });
   });
+
+  describe('the reserved characters (MR-049)', () => {
+    const reservedKai = {
+      id: 'kai',
+      name: 'Kai',
+      kind: 'player' as const,
+      state: 'draft' as const,
+      classSummary: 'Monge 5',
+      playerDisplayName: null,
+      raceName: 'Humano',
+      reserved: true,
+      claim: { state: 'none' as const, expiresAt: null, claimedBy: null },
+    };
+    const claimedBrisa = {
+      id: 'brisa',
+      name: 'Brisa',
+      kind: 'player' as const,
+      state: 'draft' as const,
+      classSummary: 'Ladino 5',
+      playerDisplayName: 'Lia',
+      raceName: 'Halfling',
+      reserved: false,
+      claim: { state: 'used' as const, expiresAt: null, claimedBy: 'Lia' },
+    };
+    const pensantus = {
+      id: 'c1',
+      name: 'Pensantus',
+      kind: 'player' as const,
+      state: 'draft' as const,
+      classSummary: 'Mago 3',
+      playerDisplayName: 'Vinicius',
+    };
+
+    it("shows the master a panel of their own, apart from the players' characters, with the way to make one", async () => {
+      fake.listCharactersResult = Promise.resolve({
+        playerCharacters: [pensantus, reservedKai, claimedBrisa],
+        npcs: [],
+        hasLivingCharacter: true,
+      });
+
+      const { el } = await render(true);
+
+      const players = el.querySelector('#players-heading')!.closest('section')!;
+      expect(players.textContent).toContain('Pensantus');
+      expect(players.textContent).not.toContain('Kai');
+      // A character a player took stays among the players': it is theirs now, with everything that goes with it.
+      expect(players.textContent).toContain('Brisa');
+      const reserved = el.querySelector('app-reserved-characters')!;
+      expect(reserved.querySelector('h3')?.textContent).toContain('Personagens reservados');
+      expect(reserved.textContent).toContain('Kai');
+      expect(reserved.textContent).toContain('Sem link');
+      expect(reserved.textContent).toContain('Assumido por Lia');
+      expect(reserved.textContent).not.toContain('Pensantus');
+      expect(reserved.querySelector('a.reserved__create')?.getAttribute('href')).toBe(
+        '/campaigns/camp-1/reserved/new',
+      );
+    });
+
+    it('shows the panel with only its call to action while there is nothing reserved', async () => {
+      fake.listCharactersResult = Promise.resolve({
+        playerCharacters: [pensantus],
+        npcs: [],
+        hasLivingCharacter: true,
+      });
+
+      const { el } = await render(true);
+
+      expect(el.querySelector('app-reserved-characters .reserved__list')).toBeNull();
+      expect(el.querySelector('app-reserved-characters')?.textContent).toContain(
+        'Criar personagem para um jogador',
+      );
+    });
+
+    it('never shows a player the panel, and a reserved character does not count as theirs', async () => {
+      fake.listCharactersResult = Promise.resolve({
+        playerCharacters: [],
+        npcs: [],
+        hasLivingCharacter: false,
+      });
+
+      const { el } = await render(false);
+
+      expect(el.querySelector('app-reserved-characters')).toBeNull();
+      expect(el.textContent).not.toContain('Personagens reservados');
+      expect(el.textContent).toContain('Criar meu personagem');
+    });
+  });
 });

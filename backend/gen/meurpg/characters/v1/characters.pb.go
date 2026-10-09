@@ -350,6 +350,72 @@ func (OpenChoiceKind) EnumDescriptor() ([]byte, []int) {
 	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{4}
 }
 
+// ClaimState is where a reserved character's claim link stands (the master's
+// list). A character the player claimed keeps USED while the player owns it; a
+// character the master gave back to the reserve starts with NONE again.
+type ClaimState int32
+
+const (
+	ClaimState_CLAIM_STATE_UNSPECIFIED ClaimState = 0
+	// No link was made, or the character went back to the reserve.
+	ClaimState_CLAIM_STATE_NONE ClaimState = 1
+	// A link works until `claim_expires_at`.
+	ClaimState_CLAIM_STATE_SENT ClaimState = 2
+	// The link ran out before anyone used it.
+	ClaimState_CLAIM_STATE_EXPIRED ClaimState = 3
+	// The master revoked the link.
+	ClaimState_CLAIM_STATE_REVOKED ClaimState = 4
+	// A player claimed the character through the link.
+	ClaimState_CLAIM_STATE_USED ClaimState = 5
+)
+
+// Enum value maps for ClaimState.
+var (
+	ClaimState_name = map[int32]string{
+		0: "CLAIM_STATE_UNSPECIFIED",
+		1: "CLAIM_STATE_NONE",
+		2: "CLAIM_STATE_SENT",
+		3: "CLAIM_STATE_EXPIRED",
+		4: "CLAIM_STATE_REVOKED",
+		5: "CLAIM_STATE_USED",
+	}
+	ClaimState_value = map[string]int32{
+		"CLAIM_STATE_UNSPECIFIED": 0,
+		"CLAIM_STATE_NONE":        1,
+		"CLAIM_STATE_SENT":        2,
+		"CLAIM_STATE_EXPIRED":     3,
+		"CLAIM_STATE_REVOKED":     4,
+		"CLAIM_STATE_USED":        5,
+	}
+)
+
+func (x ClaimState) Enum() *ClaimState {
+	p := new(ClaimState)
+	*p = x
+	return p
+}
+
+func (x ClaimState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ClaimState) Descriptor() protoreflect.EnumDescriptor {
+	return file_meurpg_characters_v1_characters_proto_enumTypes[5].Descriptor()
+}
+
+func (ClaimState) Type() protoreflect.EnumType {
+	return &file_meurpg_characters_v1_characters_proto_enumTypes[5]
+}
+
+func (x ClaimState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ClaimState.Descriptor instead.
+func (ClaimState) EnumDescriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{5}
+}
+
 // CharacterBlockedReason says why a character cannot be changed now.
 type CharacterBlockedReason int32
 
@@ -409,11 +475,30 @@ const (
 	// the switch hides an option from the players, not from any sheet the master
 	// edits (an NPC, or a player's sheet, which then keeps the option).
 	CharacterBlockedReason_CHARACTER_BLOCKED_REASON_SWITCHED_OFF_CONTENT CharacterBlockedReason = 15
+	// CreateClaimLink, RevokeClaimLink or DeleteReservedCharacter on a character
+	// that is not reserved (it has an owner): the master gives a claimed character
+	// back to the reserve first (ReturnCharacterToReserve).
+	CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NOT_RESERVED CharacterBlockedReason = 16
+	// RevokeClaimLink on a link a player used already, maybe a moment before (the
+	// two race for the same row, and one wins): `player_display_name` says who.
+	CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CLAIM_LINK_USED CharacterBlockedReason = 17
+	// ReturnCharacterToReserve on a character no link brought to its player (one
+	// the player made, or one that is reserved already), or one that is dead.
+	CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NOT_CLAIMED CharacterBlockedReason = 18
+	// ReturnCharacterToReserve on a character that is a combatant of the open
+	// combat: the master ends the combat first.
+	CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CHARACTER_IN_COMBAT CharacterBlockedReason = 19
+	// ClaimCharacter by the master of the campaign, who owns the link: it is
+	// for a player.
+	CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CLAIM_OWN_LINK CharacterBlockedReason = 20
+	// MarkCharacterDead or SetStoryEditing on a reserved character: it has no
+	// player yet, so there is nothing of a player's to change.
+	CharacterBlockedReason_CHARACTER_BLOCKED_REASON_RESERVED CharacterBlockedReason = 21
 	// ResubmitCharacter on a character that has no open request for changes: the
 	// master asked nothing, or the player already sent the sheet again.
-	CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NO_CHANGES_REQUESTED CharacterBlockedReason = 16
+	CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NO_CHANGES_REQUESTED CharacterBlockedReason = 22
 	// ReviveCharacter on a character that is not dead.
-	CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NOT_DEAD CharacterBlockedReason = 17
+	CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NOT_DEAD CharacterBlockedReason = 23
 )
 
 // Enum value maps for CharacterBlockedReason.
@@ -435,8 +520,14 @@ var (
 		13: "CHARACTER_BLOCKED_REASON_ARCHIVED_CONTENT",
 		14: "CHARACTER_BLOCKED_REASON_TABLE_CONTENT_STAYS",
 		15: "CHARACTER_BLOCKED_REASON_SWITCHED_OFF_CONTENT",
-		16: "CHARACTER_BLOCKED_REASON_NO_CHANGES_REQUESTED",
-		17: "CHARACTER_BLOCKED_REASON_NOT_DEAD",
+		16: "CHARACTER_BLOCKED_REASON_NOT_RESERVED",
+		17: "CHARACTER_BLOCKED_REASON_CLAIM_LINK_USED",
+		18: "CHARACTER_BLOCKED_REASON_NOT_CLAIMED",
+		19: "CHARACTER_BLOCKED_REASON_CHARACTER_IN_COMBAT",
+		20: "CHARACTER_BLOCKED_REASON_CLAIM_OWN_LINK",
+		21: "CHARACTER_BLOCKED_REASON_RESERVED",
+		22: "CHARACTER_BLOCKED_REASON_NO_CHANGES_REQUESTED",
+		23: "CHARACTER_BLOCKED_REASON_NOT_DEAD",
 	}
 	CharacterBlockedReason_value = map[string]int32{
 		"CHARACTER_BLOCKED_REASON_UNSPECIFIED":             0,
@@ -455,8 +546,14 @@ var (
 		"CHARACTER_BLOCKED_REASON_ARCHIVED_CONTENT":        13,
 		"CHARACTER_BLOCKED_REASON_TABLE_CONTENT_STAYS":     14,
 		"CHARACTER_BLOCKED_REASON_SWITCHED_OFF_CONTENT":    15,
-		"CHARACTER_BLOCKED_REASON_NO_CHANGES_REQUESTED":    16,
-		"CHARACTER_BLOCKED_REASON_NOT_DEAD":                17,
+		"CHARACTER_BLOCKED_REASON_NOT_RESERVED":            16,
+		"CHARACTER_BLOCKED_REASON_CLAIM_LINK_USED":         17,
+		"CHARACTER_BLOCKED_REASON_NOT_CLAIMED":             18,
+		"CHARACTER_BLOCKED_REASON_CHARACTER_IN_COMBAT":     19,
+		"CHARACTER_BLOCKED_REASON_CLAIM_OWN_LINK":          20,
+		"CHARACTER_BLOCKED_REASON_RESERVED":                21,
+		"CHARACTER_BLOCKED_REASON_NO_CHANGES_REQUESTED":    22,
+		"CHARACTER_BLOCKED_REASON_NOT_DEAD":                23,
 	}
 )
 
@@ -471,11 +568,11 @@ func (x CharacterBlockedReason) String() string {
 }
 
 func (CharacterBlockedReason) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_characters_v1_characters_proto_enumTypes[5].Descriptor()
+	return file_meurpg_characters_v1_characters_proto_enumTypes[6].Descriptor()
 }
 
 func (CharacterBlockedReason) Type() protoreflect.EnumType {
-	return &file_meurpg_characters_v1_characters_proto_enumTypes[5]
+	return &file_meurpg_characters_v1_characters_proto_enumTypes[6]
 }
 
 func (x CharacterBlockedReason) Number() protoreflect.EnumNumber {
@@ -484,7 +581,7 @@ func (x CharacterBlockedReason) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CharacterBlockedReason.Descriptor instead.
 func (CharacterBlockedReason) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{5}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{6}
 }
 
 // HitPointsMethod is how a character's maximum hit points grow after the
@@ -526,11 +623,11 @@ func (x HitPointsMethod) String() string {
 }
 
 func (HitPointsMethod) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_characters_v1_characters_proto_enumTypes[6].Descriptor()
+	return file_meurpg_characters_v1_characters_proto_enumTypes[7].Descriptor()
 }
 
 func (HitPointsMethod) Type() protoreflect.EnumType {
-	return &file_meurpg_characters_v1_characters_proto_enumTypes[6]
+	return &file_meurpg_characters_v1_characters_proto_enumTypes[7]
 }
 
 func (x HitPointsMethod) Number() protoreflect.EnumNumber {
@@ -539,7 +636,7 @@ func (x HitPointsMethod) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use HitPointsMethod.Descriptor instead.
 func (HitPointsMethod) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{6}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{7}
 }
 
 // Alignment is the character's moral and ethical outlook.
@@ -607,11 +704,11 @@ func (x Alignment) String() string {
 }
 
 func (Alignment) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_characters_v1_characters_proto_enumTypes[7].Descriptor()
+	return file_meurpg_characters_v1_characters_proto_enumTypes[8].Descriptor()
 }
 
 func (Alignment) Type() protoreflect.EnumType {
-	return &file_meurpg_characters_v1_characters_proto_enumTypes[7]
+	return &file_meurpg_characters_v1_characters_proto_enumTypes[8]
 }
 
 func (x Alignment) Number() protoreflect.EnumNumber {
@@ -620,7 +717,7 @@ func (x Alignment) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Alignment.Descriptor instead.
 func (Alignment) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{7}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{8}
 }
 
 // DamageType is a kind of damage of the SRD 5.1.
@@ -690,11 +787,11 @@ func (x DamageType) String() string {
 }
 
 func (DamageType) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_characters_v1_characters_proto_enumTypes[8].Descriptor()
+	return file_meurpg_characters_v1_characters_proto_enumTypes[9].Descriptor()
 }
 
 func (DamageType) Type() protoreflect.EnumType {
-	return &file_meurpg_characters_v1_characters_proto_enumTypes[8]
+	return &file_meurpg_characters_v1_characters_proto_enumTypes[9]
 }
 
 func (x DamageType) Number() protoreflect.EnumNumber {
@@ -703,7 +800,7 @@ func (x DamageType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use DamageType.Descriptor instead.
 func (DamageType) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{8}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{9}
 }
 
 // AbilityMethod is how a player made the base scores of a new sheet (RN-24). The
@@ -757,11 +854,11 @@ func (x AbilityMethod) String() string {
 }
 
 func (AbilityMethod) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_characters_v1_characters_proto_enumTypes[9].Descriptor()
+	return file_meurpg_characters_v1_characters_proto_enumTypes[10].Descriptor()
 }
 
 func (AbilityMethod) Type() protoreflect.EnumType {
-	return &file_meurpg_characters_v1_characters_proto_enumTypes[9]
+	return &file_meurpg_characters_v1_characters_proto_enumTypes[10]
 }
 
 func (x AbilityMethod) Number() protoreflect.EnumNumber {
@@ -770,7 +867,7 @@ func (x AbilityMethod) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AbilityMethod.Descriptor instead.
 func (AbilityMethod) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{9}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{10}
 }
 
 // AbilityScoresRefusalReason says why the ability scores of a new sheet, or a
@@ -849,11 +946,11 @@ func (x AbilityScoresRefusalReason) String() string {
 }
 
 func (AbilityScoresRefusalReason) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_characters_v1_characters_proto_enumTypes[10].Descriptor()
+	return file_meurpg_characters_v1_characters_proto_enumTypes[11].Descriptor()
 }
 
 func (AbilityScoresRefusalReason) Type() protoreflect.EnumType {
-	return &file_meurpg_characters_v1_characters_proto_enumTypes[10]
+	return &file_meurpg_characters_v1_characters_proto_enumTypes[11]
 }
 
 func (x AbilityScoresRefusalReason) Number() protoreflect.EnumNumber {
@@ -862,7 +959,7 @@ func (x AbilityScoresRefusalReason) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AbilityScoresRefusalReason.Descriptor instead.
 func (AbilityScoresRefusalReason) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{10}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{11}
 }
 
 // LevelUpSpellsKind says where the new spells of a level go.
@@ -903,11 +1000,11 @@ func (x LevelUpSpellsKind) String() string {
 }
 
 func (LevelUpSpellsKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_characters_v1_characters_proto_enumTypes[11].Descriptor()
+	return file_meurpg_characters_v1_characters_proto_enumTypes[12].Descriptor()
 }
 
 func (LevelUpSpellsKind) Type() protoreflect.EnumType {
-	return &file_meurpg_characters_v1_characters_proto_enumTypes[11]
+	return &file_meurpg_characters_v1_characters_proto_enumTypes[12]
 }
 
 func (x LevelUpSpellsKind) Number() protoreflect.EnumNumber {
@@ -916,7 +1013,7 @@ func (x LevelUpSpellsKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use LevelUpSpellsKind.Descriptor instead.
 func (LevelUpSpellsKind) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{11}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{12}
 }
 
 // LevelUpDiceRule is what the campaign's dice setting makes the player do
@@ -962,11 +1059,11 @@ func (x LevelUpDiceRule) String() string {
 }
 
 func (LevelUpDiceRule) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_characters_v1_characters_proto_enumTypes[12].Descriptor()
+	return file_meurpg_characters_v1_characters_proto_enumTypes[13].Descriptor()
 }
 
 func (LevelUpDiceRule) Type() protoreflect.EnumType {
-	return &file_meurpg_characters_v1_characters_proto_enumTypes[12]
+	return &file_meurpg_characters_v1_characters_proto_enumTypes[13]
 }
 
 func (x LevelUpDiceRule) Number() protoreflect.EnumNumber {
@@ -975,7 +1072,7 @@ func (x LevelUpDiceRule) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use LevelUpDiceRule.Descriptor instead.
 func (LevelUpDiceRule) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{12}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{13}
 }
 
 // LevelUpHitPointsRule is which methods of deciding a level's hit points the
@@ -1019,11 +1116,11 @@ func (x LevelUpHitPointsRule) String() string {
 }
 
 func (LevelUpHitPointsRule) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_characters_v1_characters_proto_enumTypes[13].Descriptor()
+	return file_meurpg_characters_v1_characters_proto_enumTypes[14].Descriptor()
 }
 
 func (LevelUpHitPointsRule) Type() protoreflect.EnumType {
-	return &file_meurpg_characters_v1_characters_proto_enumTypes[13]
+	return &file_meurpg_characters_v1_characters_proto_enumTypes[14]
 }
 
 func (x LevelUpHitPointsRule) Number() protoreflect.EnumNumber {
@@ -1032,7 +1129,7 @@ func (x LevelUpHitPointsRule) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use LevelUpHitPointsRule.Descriptor instead.
 func (LevelUpHitPointsRule) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{13}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{14}
 }
 
 // LevelUpHitPointsMethod is how the hit points of the new level are decided.
@@ -1076,11 +1173,11 @@ func (x LevelUpHitPointsMethod) String() string {
 }
 
 func (LevelUpHitPointsMethod) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_characters_v1_characters_proto_enumTypes[14].Descriptor()
+	return file_meurpg_characters_v1_characters_proto_enumTypes[15].Descriptor()
 }
 
 func (LevelUpHitPointsMethod) Type() protoreflect.EnumType {
-	return &file_meurpg_characters_v1_characters_proto_enumTypes[14]
+	return &file_meurpg_characters_v1_characters_proto_enumTypes[15]
 }
 
 func (x LevelUpHitPointsMethod) Number() protoreflect.EnumNumber {
@@ -1089,7 +1186,7 @@ func (x LevelUpHitPointsMethod) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use LevelUpHitPointsMethod.Descriptor instead.
 func (LevelUpHitPointsMethod) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{14}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{15}
 }
 
 // LevelUpRefusalReason says why the rules refuse a set of choices, so the app
@@ -1238,11 +1335,11 @@ func (x LevelUpRefusalReason) String() string {
 }
 
 func (LevelUpRefusalReason) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_characters_v1_characters_proto_enumTypes[15].Descriptor()
+	return file_meurpg_characters_v1_characters_proto_enumTypes[16].Descriptor()
 }
 
 func (LevelUpRefusalReason) Type() protoreflect.EnumType {
-	return &file_meurpg_characters_v1_characters_proto_enumTypes[15]
+	return &file_meurpg_characters_v1_characters_proto_enumTypes[16]
 }
 
 func (x LevelUpRefusalReason) Number() protoreflect.EnumNumber {
@@ -1251,7 +1348,7 @@ func (x LevelUpRefusalReason) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use LevelUpRefusalReason.Descriptor instead.
 func (LevelUpRefusalReason) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{15}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{16}
 }
 
 // CreatureSource is where a creature came from.
@@ -1298,11 +1395,11 @@ func (x CreatureSource) String() string {
 }
 
 func (CreatureSource) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_characters_v1_characters_proto_enumTypes[16].Descriptor()
+	return file_meurpg_characters_v1_characters_proto_enumTypes[17].Descriptor()
 }
 
 func (CreatureSource) Type() protoreflect.EnumType {
-	return &file_meurpg_characters_v1_characters_proto_enumTypes[16]
+	return &file_meurpg_characters_v1_characters_proto_enumTypes[17]
 }
 
 func (x CreatureSource) Number() protoreflect.EnumNumber {
@@ -1311,7 +1408,7 @@ func (x CreatureSource) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CreatureSource.Descriptor instead.
 func (CreatureSource) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{16}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{17}
 }
 
 // Character is a character as its reader may see it. It never carries the
@@ -1385,32 +1482,38 @@ type Character struct {
 	// Why can_level_up is true: XP, or a MILESTONE. Unspecified when it is
 	// false.
 	LevelUpReason LevelUpReason `protobuf:"varint,24,opt,name=level_up_reason,json=levelUpReason,proto3,enum=meurpg.characters.v1.LevelUpReason" json:"level_up_reason,omitempty"`
+	// Whether the character is reserved: a player character the master made for a
+	// player to claim (ClaimCharacter), with no owner yet. A reserved character is
+	// invisible to every player, in every read and every stream event, until it is
+	// claimed (RN-10); only the master reads it. `player_user_id` is empty while it
+	// is reserved.
+	Reserved bool `protobuf:"varint,25,opt,name=reserved,proto3" json:"reserved,omitempty"`
 	// Where the master's review of a PENDING character stands, with his reason
 	// (RequestCharacterChanges). Only the master and the owning player get it;
 	// unset for everyone else, for NPCs and for a character that is not PENDING.
-	Review *CharacterReview `protobuf:"bytes,25,opt,name=review,proto3" json:"review,omitempty"`
+	Review *CharacterReview `protobuf:"bytes,26,opt,name=review,proto3" json:"review,omitempty"`
 	// Whether the caller may call RequestCharacterChanges now: the master, for a
 	// PENDING character.
-	CanRequestChanges bool `protobuf:"varint,26,opt,name=can_request_changes,json=canRequestChanges,proto3" json:"can_request_changes,omitempty"`
+	CanRequestChanges bool `protobuf:"varint,27,opt,name=can_request_changes,json=canRequestChanges,proto3" json:"can_request_changes,omitempty"`
 	// Whether the caller may call ResubmitCharacter now: the owning player, for a
 	// PENDING character whose review is CHANGES_REQUESTED.
-	CanResubmit bool `protobuf:"varint,27,opt,name=can_resubmit,json=canResubmit,proto3" json:"can_resubmit,omitempty"`
+	CanResubmit bool `protobuf:"varint,28,opt,name=can_resubmit,json=canResubmit,proto3" json:"can_resubmit,omitempty"`
 	// Whether the caller may call ReviveCharacter now (the master, for a dead player
 	// character). It does not look at RN-03: the call says LIVING_CHARACTER_EXISTS.
-	CanRevive bool `protobuf:"varint,28,opt,name=can_revive,json=canRevive,proto3" json:"can_revive,omitempty"`
+	CanRevive bool `protobuf:"varint,29,opt,name=can_revive,json=canRevive,proto3" json:"can_revive,omitempty"`
 	// When the master last revived the character (ReviveCharacter, or Revivify).
 	// Only the master and the owning player get it; unset if it never was.
-	RevivedAt *timestamppb.Timestamp `protobuf:"bytes,29,opt,name=revived_at,json=revivedAt,proto3" json:"revived_at,omitempty"`
+	RevivedAt *timestamppb.Timestamp `protobuf:"bytes,30,opt,name=revived_at,json=revivedAt,proto3" json:"revived_at,omitempty"`
 	// The combat round in which the master confirmed the death, and the combat
 	// (a UUID). Unset when the death was marked outside a combat. Only the master
 	// and the owning player; while the character is dead.
-	DeathRound       *int32 `protobuf:"varint,30,opt,name=death_round,json=deathRound,proto3,oneof" json:"death_round,omitempty"`
-	DeathEncounterId string `protobuf:"bytes,31,opt,name=death_encounter_id,json=deathEncounterId,proto3" json:"death_encounter_id,omitempty"`
+	DeathRound       *int32 `protobuf:"varint,31,opt,name=death_round,json=deathRound,proto3,oneof" json:"death_round,omitempty"`
+	DeathEncounterId string `protobuf:"bytes,32,opt,name=death_encounter_id,json=deathEncounterId,proto3" json:"death_encounter_id,omitempty"`
 	// The master's switch "Revivificar não funciona nesta morte" (old age, missing
 	// body parts: SRD 5.1, Revivify). While it is on, the character is not offered
 	// as a target of the spell. Only the master gets it: a player never reads why a
 	// creature cannot be revived (RN-10).
-	RevivifyBlocked bool `protobuf:"varint,32,opt,name=revivify_blocked,json=revivifyBlocked,proto3" json:"revivify_blocked,omitempty"`
+	RevivifyBlocked bool `protobuf:"varint,33,opt,name=revivify_blocked,json=revivifyBlocked,proto3" json:"revivify_blocked,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1613,6 +1716,13 @@ func (x *Character) GetLevelUpReason() LevelUpReason {
 	return LevelUpReason_LEVEL_UP_REASON_UNSPECIFIED
 }
 
+func (x *Character) GetReserved() bool {
+	if x != nil {
+		return x.Reserved
+	}
+	return false
+}
+
 func (x *Character) GetReview() *CharacterReview {
 	if x != nil {
 		return x.Review
@@ -1776,11 +1886,23 @@ type CharacterSummary struct {
 	// one that starting a game session locks (RN-01); empty otherwise, and for a
 	// complete sheet.
 	OpenChoices []*OpenChoice `protobuf:"bytes,11,rep,name=open_choices,json=openChoices,proto3" json:"open_choices,omitempty"`
+	// Whether the character is reserved (Character.reserved). Only the master's
+	// list holds a reserved character, so only the master reads true.
+	Reserved bool `protobuf:"varint,12,opt,name=reserved,proto3" json:"reserved,omitempty"`
+	// The state of the character's claim link, for the master's list of reserved
+	// characters. UNSPECIFIED for everyone else, for an NPC and for a character
+	// that was never reserved.
+	ClaimState ClaimState `protobuf:"varint,13,opt,name=claim_state,json=claimState,proto3,enum=meurpg.characters.v1.ClaimState" json:"claim_state,omitempty"`
+	// When the link stops working: set for SENT and EXPIRED.
+	ClaimExpiresAt *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=claim_expires_at,json=claimExpiresAt,proto3" json:"claim_expires_at,omitempty"`
+	// For USED: the display name of the player who claimed the character (empty if
+	// they have none, or deleted the account).
+	ClaimedByDisplayName string `protobuf:"bytes,15,opt,name=claimed_by_display_name,json=claimedByDisplayName,proto3" json:"claimed_by_display_name,omitempty"`
 	// Where the master's review of a PENDING character stands (Character.review), without
 	// the reason: REVIEW_AWAITING, REVIEW_CHANGES_REQUESTED or REVIEW_RESUBMITTED, so the
 	// list can say "Ajustes pedidos". Only the master and the owning player get it;
 	// unspecified for any other character and for anyone else.
-	ReviewStatus  Review `protobuf:"varint,12,opt,name=review_status,json=reviewStatus,proto3,enum=meurpg.characters.v1.Review" json:"review_status,omitempty"`
+	ReviewStatus  Review `protobuf:"varint,16,opt,name=review_status,json=reviewStatus,proto3,enum=meurpg.characters.v1.Review" json:"review_status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1892,6 +2014,34 @@ func (x *CharacterSummary) GetOpenChoices() []*OpenChoice {
 	return nil
 }
 
+func (x *CharacterSummary) GetReserved() bool {
+	if x != nil {
+		return x.Reserved
+	}
+	return false
+}
+
+func (x *CharacterSummary) GetClaimState() ClaimState {
+	if x != nil {
+		return x.ClaimState
+	}
+	return ClaimState_CLAIM_STATE_UNSPECIFIED
+}
+
+func (x *CharacterSummary) GetClaimExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ClaimExpiresAt
+	}
+	return nil
+}
+
+func (x *CharacterSummary) GetClaimedByDisplayName() string {
+	if x != nil {
+		return x.ClaimedByDisplayName
+	}
+	return ""
+}
+
 func (x *CharacterSummary) GetReviewStatus() Review {
 	if x != nil {
 		return x.ReviewStatus
@@ -1965,10 +2115,18 @@ type CharacterBlocked struct {
 	// For ARCHIVED_CONTENT, SWITCHED_OFF_CONTENT and TABLE_CONTENT_STAYS, the content key that
 	// blocks the call; empty otherwise.
 	ContentKey string `protobuf:"bytes,3,opt,name=content_key,json=contentKey,proto3" json:"content_key,omitempty"`
+	// For CLAIM_LINK_USED, the display name of the player who used the link.
+	PlayerDisplayName string `protobuf:"bytes,4,opt,name=player_display_name,json=playerDisplayName,proto3" json:"player_display_name,omitempty"`
+	// For LIVING_CHARACTER_EXISTS on ClaimCharacter, the name of the player's living
+	// character (character_id is its ID), so the app can name it.
+	CharacterName string `protobuf:"bytes,5,opt,name=character_name,json=characterName,proto3" json:"character_name,omitempty"`
+	// For LIVING_CHARACTER_EXISTS on ClaimCharacter, the campaign the claim is for (the
+	// living character's too), so the app can link to that character's sheet.
+	CampaignId string `protobuf:"bytes,6,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	// For LIVING_CHARACTER_EXISTS on ReviveCharacter: the name of that living
 	// character (character_id is its id), so the master reads "Davi já tem outro
 	// personagem vivo: Nuvem". Empty otherwise.
-	LivingCharacterName string `protobuf:"bytes,4,opt,name=living_character_name,json=livingCharacterName,proto3" json:"living_character_name,omitempty"`
+	LivingCharacterName string `protobuf:"bytes,7,opt,name=living_character_name,json=livingCharacterName,proto3" json:"living_character_name,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -2020,6 +2178,27 @@ func (x *CharacterBlocked) GetCharacterId() string {
 func (x *CharacterBlocked) GetContentKey() string {
 	if x != nil {
 		return x.ContentKey
+	}
+	return ""
+}
+
+func (x *CharacterBlocked) GetPlayerDisplayName() string {
+	if x != nil {
+		return x.PlayerDisplayName
+	}
+	return ""
+}
+
+func (x *CharacterBlocked) GetCharacterName() string {
+	if x != nil {
+		return x.CharacterName
+	}
+	return ""
+}
+
+func (x *CharacterBlocked) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
 	}
 	return ""
 }
@@ -3657,8 +3836,14 @@ type CreateCharacterRequest struct {
 	// The key is unique in the campaign; the same key with another request is `invalid_argument`.
 	// Empty: the call is not deduplicated. It must be a UUID.
 	IdempotencyKey string `protobuf:"bytes,7,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Only the master may send it, with kind PLAYER: the character is made for a
+	// player to claim (ClaimCharacter), saved as reserved, with no owner and no
+	// approval step. The sheet's rules are the master's (the table's ability-score
+	// method and hit-point rule are not checked, as for any sheet the master edits).
+	// From a player, or with another kind, it is `invalid_argument`.
+	ForPlayer     bool `protobuf:"varint,8,opt,name=for_player,json=forPlayer,proto3" json:"for_player,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateCharacterRequest) Reset() {
@@ -3740,6 +3925,13 @@ func (x *CreateCharacterRequest) GetIdempotencyKey() string {
 	return ""
 }
 
+func (x *CreateCharacterRequest) GetForPlayer() bool {
+	if x != nil {
+		return x.ForPlayer
+	}
+	return false
+}
+
 // PreviewCharacterRequest is a sheet to derive without saving it.
 type PreviewCharacterRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
@@ -3750,7 +3942,10 @@ type PreviewCharacterRequest struct {
 	// With a character_id the character's own kind is used and this is ignored.
 	Kind CharacterKind `protobuf:"varint,3,opt,name=kind,proto3,enum=meurpg.characters.v1.CharacterKind" json:"kind,omitempty"`
 	// Required: full for PLAYER, ENEMY and BOSS; basic for MINION and STORY.
-	Sheet         *CharacterSheet `protobuf:"bytes,4,opt,name=sheet,proto3" json:"sheet,omitempty"`
+	Sheet *CharacterSheet `protobuf:"bytes,4,opt,name=sheet,proto3" json:"sheet,omitempty"`
+	// As CreateCharacterRequest.for_player: the master previews the sheet of a
+	// reserved character, which the master's rules allow.
+	ForPlayer     bool `protobuf:"varint,5,opt,name=for_player,json=forPlayer,proto3" json:"for_player,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3811,6 +4006,13 @@ func (x *PreviewCharacterRequest) GetSheet() *CharacterSheet {
 		return x.Sheet
 	}
 	return nil
+}
+
+func (x *PreviewCharacterRequest) GetForPlayer() bool {
+	if x != nil {
+		return x.ForPlayer
+	}
+	return false
 }
 
 // PreviewCharacterResponse is what the sheet would be once saved.
@@ -5804,6 +6006,705 @@ func (x *ReviveCharacterResponse) GetCharacter() *Character {
 	return nil
 }
 
+// CreateClaimLinkRequest names the reserved character to make a link for.
+type CreateClaimLinkRequest struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId  string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	CharacterId string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	// How long the link works: 1, 7 or 30 days. 0 means 7. It cannot change after
+	// the link is made.
+	ValidityDays  int32 `protobuf:"varint,3,opt,name=validity_days,json=validityDays,proto3" json:"validity_days,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateClaimLinkRequest) Reset() {
+	*x = CreateClaimLinkRequest{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[58]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateClaimLinkRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateClaimLinkRequest) ProtoMessage() {}
+
+func (x *CreateClaimLinkRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[58]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateClaimLinkRequest.ProtoReflect.Descriptor instead.
+func (*CreateClaimLinkRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{58}
+}
+
+func (x *CreateClaimLinkRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *CreateClaimLinkRequest) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *CreateClaimLinkRequest) GetValidityDays() int32 {
+	if x != nil {
+		return x.ValidityDays
+	}
+	return 0
+}
+
+// CreateClaimLinkResponse carries the link's secret, once.
+type CreateClaimLinkResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The secret of the link, 43 URL-safe characters. The app builds
+	// `<origin>/claim#t=<token>`. The server never shows it again.
+	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	// When the link stops working.
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateClaimLinkResponse) Reset() {
+	*x = CreateClaimLinkResponse{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[59]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateClaimLinkResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateClaimLinkResponse) ProtoMessage() {}
+
+func (x *CreateClaimLinkResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[59]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateClaimLinkResponse.ProtoReflect.Descriptor instead.
+func (*CreateClaimLinkResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{59}
+}
+
+func (x *CreateClaimLinkResponse) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *CreateClaimLinkResponse) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+// RevokeClaimLinkRequest names the character whose live link ends.
+type RevokeClaimLinkRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	CharacterId   string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeClaimLinkRequest) Reset() {
+	*x = RevokeClaimLinkRequest{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[60]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeClaimLinkRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeClaimLinkRequest) ProtoMessage() {}
+
+func (x *RevokeClaimLinkRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[60]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeClaimLinkRequest.ProtoReflect.Descriptor instead.
+func (*RevokeClaimLinkRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{60}
+}
+
+func (x *RevokeClaimLinkRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *RevokeClaimLinkRequest) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+// RevokeClaimLinkResponse is empty: the character has no live link.
+type RevokeClaimLinkResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeClaimLinkResponse) Reset() {
+	*x = RevokeClaimLinkResponse{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[61]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeClaimLinkResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeClaimLinkResponse) ProtoMessage() {}
+
+func (x *RevokeClaimLinkResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[61]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeClaimLinkResponse.ProtoReflect.Descriptor instead.
+func (*RevokeClaimLinkResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{61}
+}
+
+// ReturnCharacterToReserveRequest names the claimed character to take back.
+type ReturnCharacterToReserveRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	CharacterId   string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReturnCharacterToReserveRequest) Reset() {
+	*x = ReturnCharacterToReserveRequest{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[62]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReturnCharacterToReserveRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReturnCharacterToReserveRequest) ProtoMessage() {}
+
+func (x *ReturnCharacterToReserveRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[62]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReturnCharacterToReserveRequest.ProtoReflect.Descriptor instead.
+func (*ReturnCharacterToReserveRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{62}
+}
+
+func (x *ReturnCharacterToReserveRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *ReturnCharacterToReserveRequest) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+// ReturnCharacterToReserveResponse returns the character as it is now.
+type ReturnCharacterToReserveResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The character, reserved and with no owner.
+	Character     *Character `protobuf:"bytes,1,opt,name=character,proto3" json:"character,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReturnCharacterToReserveResponse) Reset() {
+	*x = ReturnCharacterToReserveResponse{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[63]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReturnCharacterToReserveResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReturnCharacterToReserveResponse) ProtoMessage() {}
+
+func (x *ReturnCharacterToReserveResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[63]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReturnCharacterToReserveResponse.ProtoReflect.Descriptor instead.
+func (*ReturnCharacterToReserveResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{63}
+}
+
+func (x *ReturnCharacterToReserveResponse) GetCharacter() *Character {
+	if x != nil {
+		return x.Character
+	}
+	return nil
+}
+
+// DeleteReservedCharacterRequest names the reserved character to delete.
+type DeleteReservedCharacterRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	CharacterId   string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteReservedCharacterRequest) Reset() {
+	*x = DeleteReservedCharacterRequest{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[64]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteReservedCharacterRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteReservedCharacterRequest) ProtoMessage() {}
+
+func (x *DeleteReservedCharacterRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[64]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteReservedCharacterRequest.ProtoReflect.Descriptor instead.
+func (*DeleteReservedCharacterRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{64}
+}
+
+func (x *DeleteReservedCharacterRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *DeleteReservedCharacterRequest) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+// DeleteReservedCharacterResponse is empty: the character is gone.
+type DeleteReservedCharacterResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteReservedCharacterResponse) Reset() {
+	*x = DeleteReservedCharacterResponse{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[65]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteReservedCharacterResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteReservedCharacterResponse) ProtoMessage() {}
+
+func (x *DeleteReservedCharacterResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[65]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteReservedCharacterResponse.ProtoReflect.Descriptor instead.
+func (*DeleteReservedCharacterResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{65}
+}
+
+// PreviewClaimRequest carries the link's secret.
+type PreviewClaimRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The secret from the link's fragment, in the body only. Empty means the link
+	// the person signed in with.
+	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PreviewClaimRequest) Reset() {
+	*x = PreviewClaimRequest{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[66]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewClaimRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewClaimRequest) ProtoMessage() {}
+
+func (x *PreviewClaimRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[66]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewClaimRequest.ProtoReflect.Descriptor instead.
+func (*PreviewClaimRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{66}
+}
+
+func (x *PreviewClaimRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+// ClaimCard is what the public card of a reserved character shows to someone who
+// holds its link.
+type ClaimCard struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The character's name.
+	CharacterName string `protobuf:"bytes,1,opt,name=character_name,json=characterName,proto3" json:"character_name,omitempty"`
+	// The race's Portuguese name (the subrace's if the sheet has one), such as
+	// "Humano". Empty for a sheet without one.
+	RaceNamePt string `protobuf:"bytes,2,opt,name=race_name_pt,json=raceNamePt,proto3" json:"race_name_pt,omitempty"`
+	// Classes and levels in Portuguese, such as "Monge 5".
+	ClassSummary string `protobuf:"bytes,3,opt,name=class_summary,json=classSummary,proto3" json:"class_summary,omitempty"`
+	// The campaign's name.
+	CampaignName string `protobuf:"bytes,4,opt,name=campaign_name,json=campaignName,proto3" json:"campaign_name,omitempty"`
+	// The display name of whoever made the link (the master); empty if they have none.
+	SentByDisplayName string `protobuf:"bytes,5,opt,name=sent_by_display_name,json=sentByDisplayName,proto3" json:"sent_by_display_name,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *ClaimCard) Reset() {
+	*x = ClaimCard{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[67]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClaimCard) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClaimCard) ProtoMessage() {}
+
+func (x *ClaimCard) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[67]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClaimCard.ProtoReflect.Descriptor instead.
+func (*ClaimCard) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{67}
+}
+
+func (x *ClaimCard) GetCharacterName() string {
+	if x != nil {
+		return x.CharacterName
+	}
+	return ""
+}
+
+func (x *ClaimCard) GetRaceNamePt() string {
+	if x != nil {
+		return x.RaceNamePt
+	}
+	return ""
+}
+
+func (x *ClaimCard) GetClassSummary() string {
+	if x != nil {
+		return x.ClassSummary
+	}
+	return ""
+}
+
+func (x *ClaimCard) GetCampaignName() string {
+	if x != nil {
+		return x.CampaignName
+	}
+	return ""
+}
+
+func (x *ClaimCard) GetSentByDisplayName() string {
+	if x != nil {
+		return x.SentByDisplayName
+	}
+	return ""
+}
+
+// PreviewClaimResponse is the card of the character the link is for.
+type PreviewClaimResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Card  *ClaimCard             `protobuf:"bytes,1,opt,name=card,proto3" json:"card,omitempty"`
+	// True when the caller is the campaign's master, who owns the link: the app
+	// says the link is for a player, and the card is left empty.
+	OwnLink       bool `protobuf:"varint,2,opt,name=own_link,json=ownLink,proto3" json:"own_link,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PreviewClaimResponse) Reset() {
+	*x = PreviewClaimResponse{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[68]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreviewClaimResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreviewClaimResponse) ProtoMessage() {}
+
+func (x *PreviewClaimResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[68]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreviewClaimResponse.ProtoReflect.Descriptor instead.
+func (*PreviewClaimResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{68}
+}
+
+func (x *PreviewClaimResponse) GetCard() *ClaimCard {
+	if x != nil {
+		return x.Card
+	}
+	return nil
+}
+
+func (x *PreviewClaimResponse) GetOwnLink() bool {
+	if x != nil {
+		return x.OwnLink
+	}
+	return false
+}
+
+// ClaimCharacterRequest carries the link's secret.
+type ClaimCharacterRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// As PreviewClaimRequest.token.
+	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClaimCharacterRequest) Reset() {
+	*x = ClaimCharacterRequest{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[69]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClaimCharacterRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClaimCharacterRequest) ProtoMessage() {}
+
+func (x *ClaimCharacterRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[69]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClaimCharacterRequest.ProtoReflect.Descriptor instead.
+func (*ClaimCharacterRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{69}
+}
+
+func (x *ClaimCharacterRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+// ClaimCharacterResponse says what the person took.
+type ClaimCharacterResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	CampaignName  string                 `protobuf:"bytes,2,opt,name=campaign_name,json=campaignName,proto3" json:"campaign_name,omitempty"`
+	CharacterId   string                 `protobuf:"bytes,3,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	CharacterName string                 `protobuf:"bytes,4,opt,name=character_name,json=characterName,proto3" json:"character_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClaimCharacterResponse) Reset() {
+	*x = ClaimCharacterResponse{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[70]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClaimCharacterResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClaimCharacterResponse) ProtoMessage() {}
+
+func (x *ClaimCharacterResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[70]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClaimCharacterResponse.ProtoReflect.Descriptor instead.
+func (*ClaimCharacterResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{70}
+}
+
+func (x *ClaimCharacterResponse) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *ClaimCharacterResponse) GetCampaignName() string {
+	if x != nil {
+		return x.CampaignName
+	}
+	return ""
+}
+
+func (x *ClaimCharacterResponse) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *ClaimCharacterResponse) GetCharacterName() string {
+	if x != nil {
+		return x.CharacterName
+	}
+	return ""
+}
+
 // GetLevelUpOptionsRequest names the character to level up.
 type GetLevelUpOptionsRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
@@ -5819,7 +6720,7 @@ type GetLevelUpOptionsRequest struct {
 
 func (x *GetLevelUpOptionsRequest) Reset() {
 	*x = GetLevelUpOptionsRequest{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[58]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5831,7 +6732,7 @@ func (x *GetLevelUpOptionsRequest) String() string {
 func (*GetLevelUpOptionsRequest) ProtoMessage() {}
 
 func (x *GetLevelUpOptionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[58]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5844,7 +6745,7 @@ func (x *GetLevelUpOptionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLevelUpOptionsRequest.ProtoReflect.Descriptor instead.
 func (*GetLevelUpOptionsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{58}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *GetLevelUpOptionsRequest) GetCampaignId() string {
@@ -5878,7 +6779,7 @@ type GetLevelUpOptionsResponse struct {
 
 func (x *GetLevelUpOptionsResponse) Reset() {
 	*x = GetLevelUpOptionsResponse{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[59]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5890,7 +6791,7 @@ func (x *GetLevelUpOptionsResponse) String() string {
 func (*GetLevelUpOptionsResponse) ProtoMessage() {}
 
 func (x *GetLevelUpOptionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[59]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5903,7 +6804,7 @@ func (x *GetLevelUpOptionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLevelUpOptionsResponse.ProtoReflect.Descriptor instead.
 func (*GetLevelUpOptionsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{59}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *GetLevelUpOptionsResponse) GetOptions() *LevelUpOptions {
@@ -5924,7 +6825,7 @@ type LevelUpNamedKey struct {
 
 func (x *LevelUpNamedKey) Reset() {
 	*x = LevelUpNamedKey{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[60]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5936,7 +6837,7 @@ func (x *LevelUpNamedKey) String() string {
 func (*LevelUpNamedKey) ProtoMessage() {}
 
 func (x *LevelUpNamedKey) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[60]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5949,7 +6850,7 @@ func (x *LevelUpNamedKey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LevelUpNamedKey.ProtoReflect.Descriptor instead.
 func (*LevelUpNamedKey) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{60}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *LevelUpNamedKey) GetKey() string {
@@ -6089,7 +6990,7 @@ type LevelUpOptions struct {
 
 func (x *LevelUpOptions) Reset() {
 	*x = LevelUpOptions{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[61]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6101,7 +7002,7 @@ func (x *LevelUpOptions) String() string {
 func (*LevelUpOptions) ProtoMessage() {}
 
 func (x *LevelUpOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[61]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6114,7 +7015,7 @@ func (x *LevelUpOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LevelUpOptions.ProtoReflect.Descriptor instead.
 func (*LevelUpOptions) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{61}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *LevelUpOptions) GetClassKey() string {
@@ -6417,7 +7318,7 @@ type LevelUpSubclass struct {
 
 func (x *LevelUpSubclass) Reset() {
 	*x = LevelUpSubclass{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[62]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6429,7 +7330,7 @@ func (x *LevelUpSubclass) String() string {
 func (*LevelUpSubclass) ProtoMessage() {}
 
 func (x *LevelUpSubclass) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[62]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6442,7 +7343,7 @@ func (x *LevelUpSubclass) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LevelUpSubclass.ProtoReflect.Descriptor instead.
 func (*LevelUpSubclass) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{62}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *LevelUpSubclass) GetKey() string {
@@ -6561,7 +7462,7 @@ type LevelUpFeatureChoice struct {
 
 func (x *LevelUpFeatureChoice) Reset() {
 	*x = LevelUpFeatureChoice{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[63]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6573,7 +7474,7 @@ func (x *LevelUpFeatureChoice) String() string {
 func (*LevelUpFeatureChoice) ProtoMessage() {}
 
 func (x *LevelUpFeatureChoice) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[63]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6586,7 +7487,7 @@ func (x *LevelUpFeatureChoice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LevelUpFeatureChoice.ProtoReflect.Descriptor instead.
 func (*LevelUpFeatureChoice) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{63}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *LevelUpFeatureChoice) GetFeature() *LevelUpNamedKey {
@@ -6631,7 +7532,7 @@ type LevelUpHitPoints struct {
 
 func (x *LevelUpHitPoints) Reset() {
 	*x = LevelUpHitPoints{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[64]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6643,7 +7544,7 @@ func (x *LevelUpHitPoints) String() string {
 func (*LevelUpHitPoints) ProtoMessage() {}
 
 func (x *LevelUpHitPoints) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[64]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6656,7 +7557,7 @@ func (x *LevelUpHitPoints) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LevelUpHitPoints.ProtoReflect.Descriptor instead.
 func (*LevelUpHitPoints) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{64}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *LevelUpHitPoints) GetMethod() LevelUpHitPointsMethod {
@@ -6712,7 +7613,7 @@ type LevelUpChoices struct {
 
 func (x *LevelUpChoices) Reset() {
 	*x = LevelUpChoices{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[65]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6724,7 +7625,7 @@ func (x *LevelUpChoices) String() string {
 func (*LevelUpChoices) ProtoMessage() {}
 
 func (x *LevelUpChoices) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[65]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6737,7 +7638,7 @@ func (x *LevelUpChoices) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LevelUpChoices.ProtoReflect.Descriptor instead.
 func (*LevelUpChoices) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{65}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *LevelUpChoices) GetClassKey() string {
@@ -6834,7 +7735,7 @@ type LevelUpRefusal struct {
 
 func (x *LevelUpRefusal) Reset() {
 	*x = LevelUpRefusal{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[66]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6846,7 +7747,7 @@ func (x *LevelUpRefusal) String() string {
 func (*LevelUpRefusal) ProtoMessage() {}
 
 func (x *LevelUpRefusal) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[66]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6859,7 +7760,7 @@ func (x *LevelUpRefusal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LevelUpRefusal.ProtoReflect.Descriptor instead.
 func (*LevelUpRefusal) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{66}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *LevelUpRefusal) GetField() string {
@@ -6897,7 +7798,7 @@ type PreviewLevelUpRequest struct {
 
 func (x *PreviewLevelUpRequest) Reset() {
 	*x = PreviewLevelUpRequest{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[67]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6909,7 +7810,7 @@ func (x *PreviewLevelUpRequest) String() string {
 func (*PreviewLevelUpRequest) ProtoMessage() {}
 
 func (x *PreviewLevelUpRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[67]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6922,7 +7823,7 @@ func (x *PreviewLevelUpRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewLevelUpRequest.ProtoReflect.Descriptor instead.
 func (*PreviewLevelUpRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{67}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *PreviewLevelUpRequest) GetCampaignId() string {
@@ -6967,7 +7868,7 @@ type PreviewLevelUpResponse struct {
 
 func (x *PreviewLevelUpResponse) Reset() {
 	*x = PreviewLevelUpResponse{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[68]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6979,7 +7880,7 @@ func (x *PreviewLevelUpResponse) String() string {
 func (*PreviewLevelUpResponse) ProtoMessage() {}
 
 func (x *PreviewLevelUpResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[68]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6992,7 +7893,7 @@ func (x *PreviewLevelUpResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewLevelUpResponse.ProtoReflect.Descriptor instead.
 func (*PreviewLevelUpResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{68}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *PreviewLevelUpResponse) GetAfter() *v1.DerivedSheet {
@@ -7027,7 +7928,7 @@ type RollLevelUpHitPointsRequest struct {
 
 func (x *RollLevelUpHitPointsRequest) Reset() {
 	*x = RollLevelUpHitPointsRequest{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[69]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7039,7 +7940,7 @@ func (x *RollLevelUpHitPointsRequest) String() string {
 func (*RollLevelUpHitPointsRequest) ProtoMessage() {}
 
 func (x *RollLevelUpHitPointsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[69]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7052,7 +7953,7 @@ func (x *RollLevelUpHitPointsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollLevelUpHitPointsRequest.ProtoReflect.Descriptor instead.
 func (*RollLevelUpHitPointsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{69}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *RollLevelUpHitPointsRequest) GetCampaignId() string {
@@ -7097,7 +7998,7 @@ type RollLevelUpHitPointsResponse struct {
 
 func (x *RollLevelUpHitPointsResponse) Reset() {
 	*x = RollLevelUpHitPointsResponse{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[70]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7109,7 +8010,7 @@ func (x *RollLevelUpHitPointsResponse) String() string {
 func (*RollLevelUpHitPointsResponse) ProtoMessage() {}
 
 func (x *RollLevelUpHitPointsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[70]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7122,7 +8023,7 @@ func (x *RollLevelUpHitPointsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollLevelUpHitPointsResponse.ProtoReflect.Descriptor instead.
 func (*RollLevelUpHitPointsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{70}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *RollLevelUpHitPointsResponse) GetDie() int32 {
@@ -7161,7 +8062,7 @@ type LevelUpCharacterRequest struct {
 
 func (x *LevelUpCharacterRequest) Reset() {
 	*x = LevelUpCharacterRequest{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[71]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7173,7 +8074,7 @@ func (x *LevelUpCharacterRequest) String() string {
 func (*LevelUpCharacterRequest) ProtoMessage() {}
 
 func (x *LevelUpCharacterRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[71]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7186,7 +8087,7 @@ func (x *LevelUpCharacterRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LevelUpCharacterRequest.ProtoReflect.Descriptor instead.
 func (*LevelUpCharacterRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{71}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *LevelUpCharacterRequest) GetCampaignId() string {
@@ -7229,7 +8130,7 @@ type LevelUpCharacterResponse struct {
 
 func (x *LevelUpCharacterResponse) Reset() {
 	*x = LevelUpCharacterResponse{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[72]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7241,7 +8142,7 @@ func (x *LevelUpCharacterResponse) String() string {
 func (*LevelUpCharacterResponse) ProtoMessage() {}
 
 func (x *LevelUpCharacterResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[72]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7254,7 +8155,7 @@ func (x *LevelUpCharacterResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LevelUpCharacterResponse.ProtoReflect.Descriptor instead.
 func (*LevelUpCharacterResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{72}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *LevelUpCharacterResponse) GetCharacter() *Character {
@@ -7280,7 +8181,7 @@ type ListLevelUpsRequest struct {
 
 func (x *ListLevelUpsRequest) Reset() {
 	*x = ListLevelUpsRequest{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[73]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7292,7 +8193,7 @@ func (x *ListLevelUpsRequest) String() string {
 func (*ListLevelUpsRequest) ProtoMessage() {}
 
 func (x *ListLevelUpsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[73]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7305,7 +8206,7 @@ func (x *ListLevelUpsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListLevelUpsRequest.ProtoReflect.Descriptor instead.
 func (*ListLevelUpsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{73}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *ListLevelUpsRequest) GetCampaignId() string {
@@ -7349,7 +8250,7 @@ type ListLevelUpsResponse struct {
 
 func (x *ListLevelUpsResponse) Reset() {
 	*x = ListLevelUpsResponse{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[74]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7361,7 +8262,7 @@ func (x *ListLevelUpsResponse) String() string {
 func (*ListLevelUpsResponse) ProtoMessage() {}
 
 func (x *ListLevelUpsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[74]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7374,7 +8275,7 @@ func (x *ListLevelUpsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListLevelUpsResponse.ProtoReflect.Descriptor instead.
 func (*ListLevelUpsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{74}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *ListLevelUpsResponse) GetLevelUps() []*LevelUp {
@@ -7419,7 +8320,7 @@ type LevelUp struct {
 
 func (x *LevelUp) Reset() {
 	*x = LevelUp{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[75]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7431,7 +8332,7 @@ func (x *LevelUp) String() string {
 func (*LevelUp) ProtoMessage() {}
 
 func (x *LevelUp) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[75]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7444,7 +8345,7 @@ func (x *LevelUp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LevelUp.ProtoReflect.Descriptor instead.
 func (*LevelUp) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{75}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *LevelUp) GetId() string {
@@ -7561,7 +8462,7 @@ type CharacterCreature struct {
 
 func (x *CharacterCreature) Reset() {
 	*x = CharacterCreature{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[76]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7573,7 +8474,7 @@ func (x *CharacterCreature) String() string {
 func (*CharacterCreature) ProtoMessage() {}
 
 func (x *CharacterCreature) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[76]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7586,7 +8487,7 @@ func (x *CharacterCreature) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CharacterCreature.ProtoReflect.Descriptor instead.
 func (*CharacterCreature) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{76}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *CharacterCreature) GetId() string {
@@ -7686,7 +8587,7 @@ type ListCharacterCreaturesRequest struct {
 
 func (x *ListCharacterCreaturesRequest) Reset() {
 	*x = ListCharacterCreaturesRequest{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[77]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7698,7 +8599,7 @@ func (x *ListCharacterCreaturesRequest) String() string {
 func (*ListCharacterCreaturesRequest) ProtoMessage() {}
 
 func (x *ListCharacterCreaturesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[77]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7711,7 +8612,7 @@ func (x *ListCharacterCreaturesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCharacterCreaturesRequest.ProtoReflect.Descriptor instead.
 func (*ListCharacterCreaturesRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{77}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *ListCharacterCreaturesRequest) GetCampaignId() string {
@@ -7739,7 +8640,7 @@ type ListCharacterCreaturesResponse struct {
 
 func (x *ListCharacterCreaturesResponse) Reset() {
 	*x = ListCharacterCreaturesResponse{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[78]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7751,7 +8652,7 @@ func (x *ListCharacterCreaturesResponse) String() string {
 func (*ListCharacterCreaturesResponse) ProtoMessage() {}
 
 func (x *ListCharacterCreaturesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[78]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7764,7 +8665,7 @@ func (x *ListCharacterCreaturesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCharacterCreaturesResponse.ProtoReflect.Descriptor instead.
 func (*ListCharacterCreaturesResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{78}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *ListCharacterCreaturesResponse) GetCreatures() []*CharacterCreature {
@@ -7797,7 +8698,7 @@ type GiveCreatureRequest struct {
 
 func (x *GiveCreatureRequest) Reset() {
 	*x = GiveCreatureRequest{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[79]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7809,7 +8710,7 @@ func (x *GiveCreatureRequest) String() string {
 func (*GiveCreatureRequest) ProtoMessage() {}
 
 func (x *GiveCreatureRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[79]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7822,7 +8723,7 @@ func (x *GiveCreatureRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GiveCreatureRequest.ProtoReflect.Descriptor instead.
 func (*GiveCreatureRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{79}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *GiveCreatureRequest) GetCampaignId() string {
@@ -7870,7 +8771,7 @@ type GiveCreatureResponse struct {
 
 func (x *GiveCreatureResponse) Reset() {
 	*x = GiveCreatureResponse{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[80]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7882,7 +8783,7 @@ func (x *GiveCreatureResponse) String() string {
 func (*GiveCreatureResponse) ProtoMessage() {}
 
 func (x *GiveCreatureResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[80]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7895,7 +8796,7 @@ func (x *GiveCreatureResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GiveCreatureResponse.ProtoReflect.Descriptor instead.
 func (*GiveCreatureResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{80}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *GiveCreatureResponse) GetCreature() *CharacterCreature {
@@ -7921,7 +8822,7 @@ type RenameCreatureRequest struct {
 
 func (x *RenameCreatureRequest) Reset() {
 	*x = RenameCreatureRequest{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[81]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7933,7 +8834,7 @@ func (x *RenameCreatureRequest) String() string {
 func (*RenameCreatureRequest) ProtoMessage() {}
 
 func (x *RenameCreatureRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[81]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7946,7 +8847,7 @@ func (x *RenameCreatureRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameCreatureRequest.ProtoReflect.Descriptor instead.
 func (*RenameCreatureRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{81}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *RenameCreatureRequest) GetCampaignId() string {
@@ -7980,7 +8881,7 @@ type RenameCreatureResponse struct {
 
 func (x *RenameCreatureResponse) Reset() {
 	*x = RenameCreatureResponse{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[82]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7992,7 +8893,7 @@ func (x *RenameCreatureResponse) String() string {
 func (*RenameCreatureResponse) ProtoMessage() {}
 
 func (x *RenameCreatureResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[82]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8005,7 +8906,7 @@ func (x *RenameCreatureResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameCreatureResponse.ProtoReflect.Descriptor instead.
 func (*RenameCreatureResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{82}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{95}
 }
 
 func (x *RenameCreatureResponse) GetCreature() *CharacterCreature {
@@ -8028,7 +8929,7 @@ type DismissCreatureRequest struct {
 
 func (x *DismissCreatureRequest) Reset() {
 	*x = DismissCreatureRequest{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[83]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8040,7 +8941,7 @@ func (x *DismissCreatureRequest) String() string {
 func (*DismissCreatureRequest) ProtoMessage() {}
 
 func (x *DismissCreatureRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[83]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8053,7 +8954,7 @@ func (x *DismissCreatureRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DismissCreatureRequest.ProtoReflect.Descriptor instead.
 func (*DismissCreatureRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{83}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *DismissCreatureRequest) GetCampaignId() string {
@@ -8079,7 +8980,7 @@ type DismissCreatureResponse struct {
 
 func (x *DismissCreatureResponse) Reset() {
 	*x = DismissCreatureResponse{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[84]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8091,7 +8992,7 @@ func (x *DismissCreatureResponse) String() string {
 func (*DismissCreatureResponse) ProtoMessage() {}
 
 func (x *DismissCreatureResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[84]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8104,7 +9005,7 @@ func (x *DismissCreatureResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DismissCreatureResponse.ProtoReflect.Descriptor instead.
 func (*DismissCreatureResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{84}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{97}
 }
 
 // AdjustCreatureHitPointsRequest corrects a creature's hit points.
@@ -8128,7 +9029,7 @@ type AdjustCreatureHitPointsRequest struct {
 
 func (x *AdjustCreatureHitPointsRequest) Reset() {
 	*x = AdjustCreatureHitPointsRequest{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[85]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[98]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8140,7 +9041,7 @@ func (x *AdjustCreatureHitPointsRequest) String() string {
 func (*AdjustCreatureHitPointsRequest) ProtoMessage() {}
 
 func (x *AdjustCreatureHitPointsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[85]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[98]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8153,7 +9054,7 @@ func (x *AdjustCreatureHitPointsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdjustCreatureHitPointsRequest.ProtoReflect.Descriptor instead.
 func (*AdjustCreatureHitPointsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{85}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{98}
 }
 
 func (x *AdjustCreatureHitPointsRequest) GetCampaignId() string {
@@ -8240,7 +9141,7 @@ type AdjustCreatureHitPointsResponse struct {
 
 func (x *AdjustCreatureHitPointsResponse) Reset() {
 	*x = AdjustCreatureHitPointsResponse{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[86]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[99]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8252,7 +9153,7 @@ func (x *AdjustCreatureHitPointsResponse) String() string {
 func (*AdjustCreatureHitPointsResponse) ProtoMessage() {}
 
 func (x *AdjustCreatureHitPointsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[86]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[99]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8265,7 +9166,7 @@ func (x *AdjustCreatureHitPointsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdjustCreatureHitPointsResponse.ProtoReflect.Descriptor instead.
 func (*AdjustCreatureHitPointsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{86}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{99}
 }
 
 func (x *AdjustCreatureHitPointsResponse) GetCreature() *CharacterCreature {
@@ -8288,7 +9189,7 @@ type ListWildShapeFormsRequest struct {
 
 func (x *ListWildShapeFormsRequest) Reset() {
 	*x = ListWildShapeFormsRequest{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[87]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[100]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8300,7 +9201,7 @@ func (x *ListWildShapeFormsRequest) String() string {
 func (*ListWildShapeFormsRequest) ProtoMessage() {}
 
 func (x *ListWildShapeFormsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[87]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[100]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8313,7 +9214,7 @@ func (x *ListWildShapeFormsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWildShapeFormsRequest.ProtoReflect.Descriptor instead.
 func (*ListWildShapeFormsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{87}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{100}
 }
 
 func (x *ListWildShapeFormsRequest) GetCampaignId() string {
@@ -8347,7 +9248,7 @@ type ListWildShapeFormsResponse struct {
 
 func (x *ListWildShapeFormsResponse) Reset() {
 	*x = ListWildShapeFormsResponse{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[88]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[101]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8359,7 +9260,7 @@ func (x *ListWildShapeFormsResponse) String() string {
 func (*ListWildShapeFormsResponse) ProtoMessage() {}
 
 func (x *ListWildShapeFormsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[88]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[101]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8372,7 +9273,7 @@ func (x *ListWildShapeFormsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWildShapeFormsResponse.ProtoReflect.Descriptor instead.
 func (*ListWildShapeFormsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{88}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{101}
 }
 
 func (x *ListWildShapeFormsResponse) GetForms() []*v1.CreatureSummary {
@@ -8416,7 +9317,7 @@ type GetSummonOptionsRequest struct {
 
 func (x *GetSummonOptionsRequest) Reset() {
 	*x = GetSummonOptionsRequest{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[89]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[102]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8428,7 +9329,7 @@ func (x *GetSummonOptionsRequest) String() string {
 func (*GetSummonOptionsRequest) ProtoMessage() {}
 
 func (x *GetSummonOptionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[89]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[102]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8441,7 +9342,7 @@ func (x *GetSummonOptionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSummonOptionsRequest.ProtoReflect.Descriptor instead.
 func (*GetSummonOptionsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{89}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{102}
 }
 
 func (x *GetSummonOptionsRequest) GetCampaignId() string {
@@ -8472,7 +9373,7 @@ type GetSummonOptionsResponse struct {
 
 func (x *GetSummonOptionsResponse) Reset() {
 	*x = GetSummonOptionsResponse{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[90]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[103]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8484,7 +9385,7 @@ func (x *GetSummonOptionsResponse) String() string {
 func (*GetSummonOptionsResponse) ProtoMessage() {}
 
 func (x *GetSummonOptionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[90]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[103]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8497,7 +9398,7 @@ func (x *GetSummonOptionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSummonOptionsResponse.ProtoReflect.Descriptor instead.
 func (*GetSummonOptionsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{90}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{103}
 }
 
 func (x *GetSummonOptionsResponse) GetSpells() []*SummonSpellOptions {
@@ -8551,7 +9452,7 @@ type SummonSpellOptions struct {
 
 func (x *SummonSpellOptions) Reset() {
 	*x = SummonSpellOptions{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[91]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[104]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8563,7 +9464,7 @@ func (x *SummonSpellOptions) String() string {
 func (*SummonSpellOptions) ProtoMessage() {}
 
 func (x *SummonSpellOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[91]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[104]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8576,7 +9477,7 @@ func (x *SummonSpellOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SummonSpellOptions.ProtoReflect.Descriptor instead.
 func (*SummonSpellOptions) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{91}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{104}
 }
 
 func (x *SummonSpellOptions) GetSpellKey() string {
@@ -8662,7 +9563,7 @@ type SummonCircle struct {
 
 func (x *SummonCircle) Reset() {
 	*x = SummonCircle{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[92]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[105]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8674,7 +9575,7 @@ func (x *SummonCircle) String() string {
 func (*SummonCircle) ProtoMessage() {}
 
 func (x *SummonCircle) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[92]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[105]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8687,7 +9588,7 @@ func (x *SummonCircle) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SummonCircle.ProtoReflect.Descriptor instead.
 func (*SummonCircle) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{92}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{105}
 }
 
 func (x *SummonCircle) GetCircle() int32 {
@@ -8732,7 +9633,7 @@ type SummonOption struct {
 
 func (x *SummonOption) Reset() {
 	*x = SummonOption{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[93]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[106]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8744,7 +9645,7 @@ func (x *SummonOption) String() string {
 func (*SummonOption) ProtoMessage() {}
 
 func (x *SummonOption) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[93]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[106]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8757,7 +9658,7 @@ func (x *SummonOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SummonOption.ProtoReflect.Descriptor instead.
 func (*SummonOption) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{93}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{106}
 }
 
 func (x *SummonOption) GetCount() int32 {
@@ -8810,7 +9711,7 @@ type SummonForm struct {
 
 func (x *SummonForm) Reset() {
 	*x = SummonForm{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[94]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[107]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8822,7 +9723,7 @@ func (x *SummonForm) String() string {
 func (*SummonForm) ProtoMessage() {}
 
 func (x *SummonForm) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[94]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[107]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8835,7 +9736,7 @@ func (x *SummonForm) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SummonForm.ProtoReflect.Descriptor instead.
 func (*SummonForm) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{94}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{107}
 }
 
 func (x *SummonForm) GetMonsterKey() string {
@@ -8876,7 +9777,7 @@ type SummonSlot struct {
 
 func (x *SummonSlot) Reset() {
 	*x = SummonSlot{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[95]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[108]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8888,7 +9789,7 @@ func (x *SummonSlot) String() string {
 func (*SummonSlot) ProtoMessage() {}
 
 func (x *SummonSlot) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[95]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[108]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8901,7 +9802,7 @@ func (x *SummonSlot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SummonSlot.ProtoReflect.Descriptor instead.
 func (*SummonSlot) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{95}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{108}
 }
 
 func (x *SummonSlot) GetLevel() int32 {
@@ -8947,7 +9848,7 @@ type ReplacedCreature struct {
 
 func (x *ReplacedCreature) Reset() {
 	*x = ReplacedCreature{}
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[96]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[109]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8959,7 +9860,7 @@ func (x *ReplacedCreature) String() string {
 func (*ReplacedCreature) ProtoMessage() {}
 
 func (x *ReplacedCreature) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[96]
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[109]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8972,7 +9873,7 @@ func (x *ReplacedCreature) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplacedCreature.ProtoReflect.Descriptor instead.
 func (*ReplacedCreature) Descriptor() ([]byte, []int) {
-	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{96}
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{109}
 }
 
 func (x *ReplacedCreature) GetId() string {
@@ -9007,7 +9908,7 @@ var File_meurpg_characters_v1_characters_proto protoreflect.FileDescriptor
 
 const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\n" +
-	"%meurpg/characters/v1/characters.proto\x12\x14meurpg.characters.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"\xe5\v\n" +
+	"%meurpg/characters/v1/characters.proto\x12\x14meurpg.characters.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"\x81\f\n" +
 	"\tCharacter\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vcampaign_id\x18\x02 \x01(\tR\n" +
@@ -9038,24 +9939,25 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"canApprove\x12 \n" +
 	"\fcan_level_up\x18\x17 \x01(\bR\n" +
 	"canLevelUp\x12K\n" +
-	"\x0flevel_up_reason\x18\x18 \x01(\x0e2#.meurpg.characters.v1.LevelUpReasonR\rlevelUpReason\x12=\n" +
-	"\x06review\x18\x19 \x01(\v2%.meurpg.characters.v1.CharacterReviewR\x06review\x12.\n" +
-	"\x13can_request_changes\x18\x1a \x01(\bR\x11canRequestChanges\x12!\n" +
-	"\fcan_resubmit\x18\x1b \x01(\bR\vcanResubmit\x12\x1d\n" +
+	"\x0flevel_up_reason\x18\x18 \x01(\x0e2#.meurpg.characters.v1.LevelUpReasonR\rlevelUpReason\x12\x1a\n" +
+	"\breserved\x18\x19 \x01(\bR\breserved\x12=\n" +
+	"\x06review\x18\x1a \x01(\v2%.meurpg.characters.v1.CharacterReviewR\x06review\x12.\n" +
+	"\x13can_request_changes\x18\x1b \x01(\bR\x11canRequestChanges\x12!\n" +
+	"\fcan_resubmit\x18\x1c \x01(\bR\vcanResubmit\x12\x1d\n" +
 	"\n" +
-	"can_revive\x18\x1c \x01(\bR\tcanRevive\x129\n" +
+	"can_revive\x18\x1d \x01(\bR\tcanRevive\x129\n" +
 	"\n" +
-	"revived_at\x18\x1d \x01(\v2\x1a.google.protobuf.TimestampR\trevivedAt\x12$\n" +
-	"\vdeath_round\x18\x1e \x01(\x05H\x00R\n" +
+	"revived_at\x18\x1e \x01(\v2\x1a.google.protobuf.TimestampR\trevivedAt\x12$\n" +
+	"\vdeath_round\x18\x1f \x01(\x05H\x00R\n" +
 	"deathRound\x88\x01\x01\x12,\n" +
-	"\x12death_encounter_id\x18\x1f \x01(\tR\x10deathEncounterId\x12)\n" +
-	"\x10revivify_blocked\x18  \x01(\bR\x0frevivifyBlockedB\x0e\n" +
+	"\x12death_encounter_id\x18  \x01(\tR\x10deathEncounterId\x12)\n" +
+	"\x10revivify_blocked\x18! \x01(\bR\x0frevivifyBlockedB\x0e\n" +
 	"\f_death_round\"\xe1\x01\n" +
 	"\x0fCharacterReview\x124\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x1c.meurpg.characters.v1.ReviewR\x06status\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12=\n" +
 	"\frequested_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\vrequestedAt\x12A\n" +
-	"\x0eresubmitted_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\rresubmittedAt\"\xae\x04\n" +
+	"\x0eresubmitted_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\rresubmittedAt\"\x8a\x06\n" +
 	"\x10CharacterSummary\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x127\n" +
 	"\x04kind\x18\x02 \x01(\x0e2#.meurpg.characters.v1.CharacterKindR\x04kind\x12:\n" +
@@ -9070,18 +9972,27 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12!\n" +
 	"\fportrait_url\x18\n" +
 	" \x01(\tR\vportraitUrl\x12C\n" +
-	"\fopen_choices\x18\v \x03(\v2 .meurpg.characters.v1.OpenChoiceR\vopenChoices\x12A\n" +
-	"\rreview_status\x18\f \x01(\x0e2\x1c.meurpg.characters.v1.ReviewR\freviewStatus\"`\n" +
+	"\fopen_choices\x18\v \x03(\v2 .meurpg.characters.v1.OpenChoiceR\vopenChoices\x12\x1a\n" +
+	"\breserved\x18\f \x01(\bR\breserved\x12A\n" +
+	"\vclaim_state\x18\r \x01(\x0e2 .meurpg.characters.v1.ClaimStateR\n" +
+	"claimState\x12D\n" +
+	"\x10claim_expires_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\x0eclaimExpiresAt\x125\n" +
+	"\x17claimed_by_display_name\x18\x0f \x01(\tR\x14claimedByDisplayName\x12A\n" +
+	"\rreview_status\x18\x10 \x01(\x0e2\x1c.meurpg.characters.v1.ReviewR\freviewStatus\"`\n" +
 	"\n" +
 	"OpenChoice\x128\n" +
 	"\x04kind\x18\x01 \x01(\x0e2$.meurpg.characters.v1.OpenChoiceKindR\x04kind\x12\x18\n" +
-	"\amissing\x18\x02 \x01(\x05R\amissing\"\xd0\x01\n" +
+	"\amissing\x18\x02 \x01(\x05R\amissing\"\xc8\x02\n" +
 	"\x10CharacterBlocked\x12D\n" +
 	"\x06reason\x18\x01 \x01(\x0e2,.meurpg.characters.v1.CharacterBlockedReasonR\x06reason\x12!\n" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x1f\n" +
 	"\vcontent_key\x18\x03 \x01(\tR\n" +
-	"contentKey\x122\n" +
-	"\x15living_character_name\x18\x04 \x01(\tR\x13livingCharacterName\"$\n" +
+	"contentKey\x12.\n" +
+	"\x13player_display_name\x18\x04 \x01(\tR\x11playerDisplayName\x12%\n" +
+	"\x0echaracter_name\x18\x05 \x01(\tR\rcharacterName\x12\x1f\n" +
+	"\vcampaign_id\x18\x06 \x01(\tR\n" +
+	"campaignId\x122\n" +
+	"\x15living_character_name\x18\a \x01(\tR\x13livingCharacterName\"$\n" +
 	"\fInvalidField\x12\x14\n" +
 	"\x05field\x18\x01 \x01(\tR\x05field\"\x8c\x01\n" +
 	"\x0eCharacterSheet\x125\n" +
@@ -9218,7 +10129,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x04eyes\x18\x04 \x01(\tR\x04eyes\x12\x12\n" +
 	"\x04skin\x18\x05 \x01(\tR\x04skin\x12\x12\n" +
 	"\x04hair\x18\x06 \x01(\tR\x04hair\x12 \n" +
-	"\vdescription\x18\a \x01(\tR\vdescription\"\xf3\x02\n" +
+	"\vdescription\x18\a \x01(\tR\vdescription\"\x92\x03\n" +
 	"\x16CreateCharacterRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x127\n" +
@@ -9227,13 +10138,17 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x05sheet\x18\x04 \x01(\v2$.meurpg.characters.v1.CharacterSheetR\x05sheet\x12:\n" +
 	"\x05story\x18\x05 \x01(\v2$.meurpg.characters.v1.CharacterStoryR\x05story\x12J\n" +
 	"\x0eability_method\x18\x06 \x01(\x0e2#.meurpg.characters.v1.AbilityMethodR\rabilityMethod\x12'\n" +
-	"\x0fidempotency_key\x18\a \x01(\tR\x0eidempotencyKey\"\xd2\x01\n" +
+	"\x0fidempotency_key\x18\a \x01(\tR\x0eidempotencyKey\x12\x1d\n" +
+	"\n" +
+	"for_player\x18\b \x01(\bR\tforPlayer\"\xf1\x01\n" +
 	"\x17PreviewCharacterRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x127\n" +
 	"\x04kind\x18\x03 \x01(\x0e2#.meurpg.characters.v1.CharacterKindR\x04kind\x12:\n" +
-	"\x05sheet\x18\x04 \x01(\v2$.meurpg.characters.v1.CharacterSheetR\x05sheet\"S\n" +
+	"\x05sheet\x18\x04 \x01(\v2$.meurpg.characters.v1.CharacterSheetR\x05sheet\x12\x1d\n" +
+	"\n" +
+	"for_player\x18\x05 \x01(\bR\tforPlayer\"S\n" +
 	"\x18PreviewCharacterResponse\x127\n" +
 	"\aderived\x18\x01 \x01(\v2\x1d.meurpg.rules.v1.DerivedSheetR\aderived\"X\n" +
 	"\x17CreateCharacterResponse\x12=\n" +
@@ -9362,7 +10277,52 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12'\n" +
 	"\x0fidempotency_key\x18\x03 \x01(\tR\x0eidempotencyKey\"X\n" +
 	"\x17ReviveCharacterResponse\x12=\n" +
-	"\tcharacter\x18\x01 \x01(\v2\x1f.meurpg.characters.v1.CharacterR\tcharacter\"{\n" +
+	"\tcharacter\x18\x01 \x01(\v2\x1f.meurpg.characters.v1.CharacterR\tcharacter\"\x81\x01\n" +
+	"\x16CreateClaimLinkRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12#\n" +
+	"\rvalidity_days\x18\x03 \x01(\x05R\fvalidityDays\"j\n" +
+	"\x17CreateClaimLinkResponse\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x129\n" +
+	"\n" +
+	"expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"\\\n" +
+	"\x16RevokeClaimLinkRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\"\x19\n" +
+	"\x17RevokeClaimLinkResponse\"e\n" +
+	"\x1fReturnCharacterToReserveRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\"a\n" +
+	" ReturnCharacterToReserveResponse\x12=\n" +
+	"\tcharacter\x18\x01 \x01(\v2\x1f.meurpg.characters.v1.CharacterR\tcharacter\"d\n" +
+	"\x1eDeleteReservedCharacterRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\"!\n" +
+	"\x1fDeleteReservedCharacterResponse\"+\n" +
+	"\x13PreviewClaimRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"\xcf\x01\n" +
+	"\tClaimCard\x12%\n" +
+	"\x0echaracter_name\x18\x01 \x01(\tR\rcharacterName\x12 \n" +
+	"\frace_name_pt\x18\x02 \x01(\tR\n" +
+	"raceNamePt\x12#\n" +
+	"\rclass_summary\x18\x03 \x01(\tR\fclassSummary\x12#\n" +
+	"\rcampaign_name\x18\x04 \x01(\tR\fcampaignName\x12/\n" +
+	"\x14sent_by_display_name\x18\x05 \x01(\tR\x11sentByDisplayName\"f\n" +
+	"\x14PreviewClaimResponse\x123\n" +
+	"\x04card\x18\x01 \x01(\v2\x1f.meurpg.characters.v1.ClaimCardR\x04card\x12\x19\n" +
+	"\bown_link\x18\x02 \x01(\bR\aownLink\"-\n" +
+	"\x15ClaimCharacterRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"\xa8\x01\n" +
+	"\x16ClaimCharacterResponse\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12#\n" +
+	"\rcampaign_name\x18\x02 \x01(\tR\fcampaignName\x12!\n" +
+	"\fcharacter_id\x18\x03 \x01(\tR\vcharacterId\x12%\n" +
+	"\x0echaracter_name\x18\x04 \x01(\tR\rcharacterName\"{\n" +
 	"\x18GetLevelUpOptionsRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -9655,7 +10615,15 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x17OPEN_CHOICE_KIND_SKILLS\x10\x01\x12\x1d\n" +
 	"\x19OPEN_CHOICE_KIND_CANTRIPS\x10\x02\x12!\n" +
 	"\x1dOPEN_CHOICE_KIND_SPELLS_KNOWN\x10\x03\x12$\n" +
-	" OPEN_CHOICE_KIND_SPELLS_PREPARED\x10\x04*\xe9\x06\n" +
+	" OPEN_CHOICE_KIND_SPELLS_PREPARED\x10\x04*\x9d\x01\n" +
+	"\n" +
+	"ClaimState\x12\x1b\n" +
+	"\x17CLAIM_STATE_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10CLAIM_STATE_NONE\x10\x01\x12\x14\n" +
+	"\x10CLAIM_STATE_SENT\x10\x02\x12\x17\n" +
+	"\x13CLAIM_STATE_EXPIRED\x10\x03\x12\x17\n" +
+	"\x13CLAIM_STATE_REVOKED\x10\x04\x12\x14\n" +
+	"\x10CLAIM_STATE_USED\x10\x05*\xf2\b\n" +
 	"\x16CharacterBlockedReason\x12(\n" +
 	"$CHARACTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12)\n" +
 	"%CHARACTER_BLOCKED_REASON_SHEET_LOCKED\x10\x01\x12+\n" +
@@ -9673,9 +10641,15 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"0CHARACTER_BLOCKED_REASON_HIT_POINTS_AVERAGE_ONLY\x10\f\x12-\n" +
 	")CHARACTER_BLOCKED_REASON_ARCHIVED_CONTENT\x10\r\x120\n" +
 	",CHARACTER_BLOCKED_REASON_TABLE_CONTENT_STAYS\x10\x0e\x121\n" +
-	"-CHARACTER_BLOCKED_REASON_SWITCHED_OFF_CONTENT\x10\x0f\x121\n" +
-	"-CHARACTER_BLOCKED_REASON_NO_CHANGES_REQUESTED\x10\x10\x12%\n" +
-	"!CHARACTER_BLOCKED_REASON_NOT_DEAD\x10\x11*q\n" +
+	"-CHARACTER_BLOCKED_REASON_SWITCHED_OFF_CONTENT\x10\x0f\x12)\n" +
+	"%CHARACTER_BLOCKED_REASON_NOT_RESERVED\x10\x10\x12,\n" +
+	"(CHARACTER_BLOCKED_REASON_CLAIM_LINK_USED\x10\x11\x12(\n" +
+	"$CHARACTER_BLOCKED_REASON_NOT_CLAIMED\x10\x12\x120\n" +
+	",CHARACTER_BLOCKED_REASON_CHARACTER_IN_COMBAT\x10\x13\x12+\n" +
+	"'CHARACTER_BLOCKED_REASON_CLAIM_OWN_LINK\x10\x14\x12%\n" +
+	"!CHARACTER_BLOCKED_REASON_RESERVED\x10\x15\x121\n" +
+	"-CHARACTER_BLOCKED_REASON_NO_CHANGES_REQUESTED\x10\x16\x12%\n" +
+	"!CHARACTER_BLOCKED_REASON_NOT_DEAD\x10\x17*q\n" +
 	"\x0fHitPointsMethod\x12!\n" +
 	"\x1dHIT_POINTS_METHOD_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19HIT_POINTS_METHOD_AVERAGE\x10\x01\x12\x1c\n" +
@@ -9778,7 +10752,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x18CREATURE_SOURCE_FAMILIAR\x10\x01\x12 \n" +
 	"\x1cCREATURE_SOURCE_ANIMATE_DEAD\x10\x02\x12#\n" +
 	"\x1fCREATURE_SOURCE_CONJURE_ANIMALS\x10\x03\x12\x1a\n" +
-	"\x16CREATURE_SOURCE_MASTER\x10\x042\xee\x1b\n" +
+	"\x16CREATURE_SOURCE_MASTER\x10\x042\xbc!\n" +
 	"\x10CharacterService\x12n\n" +
 	"\x0fCreateCharacter\x12,.meurpg.characters.v1.CreateCharacterRequest\x1a-.meurpg.characters.v1.CreateCharacterResponse\x12s\n" +
 	"\x0fGetAbilityRolls\x12,.meurpg.characters.v1.GetAbilityRollsRequest\x1a-.meurpg.characters.v1.GetAbilityRollsResponse\"\x03\x90\x02\x02\x12t\n" +
@@ -9796,7 +10770,13 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x0fRejectCharacter\x12,.meurpg.characters.v1.RejectCharacterRequest\x1a-.meurpg.characters.v1.RejectCharacterResponse\x12\x86\x01\n" +
 	"\x17RequestCharacterChanges\x124.meurpg.characters.v1.RequestCharacterChangesRequest\x1a5.meurpg.characters.v1.RequestCharacterChangesResponse\x12t\n" +
 	"\x11ResubmitCharacter\x12..meurpg.characters.v1.ResubmitCharacterRequest\x1a/.meurpg.characters.v1.ResubmitCharacterResponse\x12n\n" +
-	"\x0fReviveCharacter\x12,.meurpg.characters.v1.ReviveCharacterRequest\x1a-.meurpg.characters.v1.ReviveCharacterResponse\x12y\n" +
+	"\x0fReviveCharacter\x12,.meurpg.characters.v1.ReviveCharacterRequest\x1a-.meurpg.characters.v1.ReviveCharacterResponse\x12n\n" +
+	"\x0fCreateClaimLink\x12,.meurpg.characters.v1.CreateClaimLinkRequest\x1a-.meurpg.characters.v1.CreateClaimLinkResponse\x12n\n" +
+	"\x0fRevokeClaimLink\x12,.meurpg.characters.v1.RevokeClaimLinkRequest\x1a-.meurpg.characters.v1.RevokeClaimLinkResponse\x12\x89\x01\n" +
+	"\x18ReturnCharacterToReserve\x125.meurpg.characters.v1.ReturnCharacterToReserveRequest\x1a6.meurpg.characters.v1.ReturnCharacterToReserveResponse\x12\x86\x01\n" +
+	"\x17DeleteReservedCharacter\x124.meurpg.characters.v1.DeleteReservedCharacterRequest\x1a5.meurpg.characters.v1.DeleteReservedCharacterResponse\x12j\n" +
+	"\fPreviewClaim\x12).meurpg.characters.v1.PreviewClaimRequest\x1a*.meurpg.characters.v1.PreviewClaimResponse\"\x03\x90\x02\x02\x12k\n" +
+	"\x0eClaimCharacter\x12+.meurpg.characters.v1.ClaimCharacterRequest\x1a,.meurpg.characters.v1.ClaimCharacterResponse\x12y\n" +
 	"\x11GetLevelUpOptions\x12..meurpg.characters.v1.GetLevelUpOptionsRequest\x1a/.meurpg.characters.v1.GetLevelUpOptionsResponse\"\x03\x90\x02\x02\x12p\n" +
 	"\x0ePreviewLevelUp\x12+.meurpg.characters.v1.PreviewLevelUpRequest\x1a,.meurpg.characters.v1.PreviewLevelUpResponse\"\x03\x90\x02\x02\x12v\n" +
 	"\x10PreviewCharacter\x12-.meurpg.characters.v1.PreviewCharacterRequest\x1a..meurpg.characters.v1.PreviewCharacterResponse\"\x03\x90\x02\x02\x12}\n" +
@@ -9824,316 +10804,347 @@ func file_meurpg_characters_v1_characters_proto_rawDescGZIP() []byte {
 	return file_meurpg_characters_v1_characters_proto_rawDescData
 }
 
-var file_meurpg_characters_v1_characters_proto_enumTypes = make([]protoimpl.EnumInfo, 17)
-var file_meurpg_characters_v1_characters_proto_msgTypes = make([]protoimpl.MessageInfo, 100)
+var file_meurpg_characters_v1_characters_proto_enumTypes = make([]protoimpl.EnumInfo, 18)
+var file_meurpg_characters_v1_characters_proto_msgTypes = make([]protoimpl.MessageInfo, 113)
 var file_meurpg_characters_v1_characters_proto_goTypes = []any{
-	(CharacterKind)(0),                      // 0: meurpg.characters.v1.CharacterKind
-	(CharacterState)(0),                     // 1: meurpg.characters.v1.CharacterState
-	(Review)(0),                             // 2: meurpg.characters.v1.Review
-	(LevelUpReason)(0),                      // 3: meurpg.characters.v1.LevelUpReason
-	(OpenChoiceKind)(0),                     // 4: meurpg.characters.v1.OpenChoiceKind
-	(CharacterBlockedReason)(0),             // 5: meurpg.characters.v1.CharacterBlockedReason
-	(HitPointsMethod)(0),                    // 6: meurpg.characters.v1.HitPointsMethod
-	(Alignment)(0),                          // 7: meurpg.characters.v1.Alignment
-	(DamageType)(0),                         // 8: meurpg.characters.v1.DamageType
-	(AbilityMethod)(0),                      // 9: meurpg.characters.v1.AbilityMethod
-	(AbilityScoresRefusalReason)(0),         // 10: meurpg.characters.v1.AbilityScoresRefusalReason
-	(LevelUpSpellsKind)(0),                  // 11: meurpg.characters.v1.LevelUpSpellsKind
-	(LevelUpDiceRule)(0),                    // 12: meurpg.characters.v1.LevelUpDiceRule
-	(LevelUpHitPointsRule)(0),               // 13: meurpg.characters.v1.LevelUpHitPointsRule
-	(LevelUpHitPointsMethod)(0),             // 14: meurpg.characters.v1.LevelUpHitPointsMethod
-	(LevelUpRefusalReason)(0),               // 15: meurpg.characters.v1.LevelUpRefusalReason
-	(CreatureSource)(0),                     // 16: meurpg.characters.v1.CreatureSource
-	(*Character)(nil),                       // 17: meurpg.characters.v1.Character
-	(*CharacterReview)(nil),                 // 18: meurpg.characters.v1.CharacterReview
-	(*CharacterSummary)(nil),                // 19: meurpg.characters.v1.CharacterSummary
-	(*OpenChoice)(nil),                      // 20: meurpg.characters.v1.OpenChoice
-	(*CharacterBlocked)(nil),                // 21: meurpg.characters.v1.CharacterBlocked
-	(*InvalidField)(nil),                    // 22: meurpg.characters.v1.InvalidField
-	(*CharacterSheet)(nil),                  // 23: meurpg.characters.v1.CharacterSheet
-	(*FullSheet)(nil),                       // 24: meurpg.characters.v1.FullSheet
-	(*AbilityOrigin)(nil),                   // 25: meurpg.characters.v1.AbilityOrigin
-	(*ClassLevel)(nil),                      // 26: meurpg.characters.v1.ClassLevel
-	(*CustomBackground)(nil),                // 27: meurpg.characters.v1.CustomBackground
-	(*HitPoints)(nil),                       // 28: meurpg.characters.v1.HitPoints
-	(*Item)(nil),                            // 29: meurpg.characters.v1.Item
-	(*Coins)(nil),                           // 30: meurpg.characters.v1.Coins
-	(*BasicSheet)(nil),                      // 31: meurpg.characters.v1.BasicSheet
-	(*BasicAttack)(nil),                     // 32: meurpg.characters.v1.BasicAttack
-	(*CharacterStory)(nil),                  // 33: meurpg.characters.v1.CharacterStory
-	(*Personality)(nil),                     // 34: meurpg.characters.v1.Personality
-	(*Appearance)(nil),                      // 35: meurpg.characters.v1.Appearance
-	(*CreateCharacterRequest)(nil),          // 36: meurpg.characters.v1.CreateCharacterRequest
-	(*PreviewCharacterRequest)(nil),         // 37: meurpg.characters.v1.PreviewCharacterRequest
-	(*PreviewCharacterResponse)(nil),        // 38: meurpg.characters.v1.PreviewCharacterResponse
-	(*CreateCharacterResponse)(nil),         // 39: meurpg.characters.v1.CreateCharacterResponse
-	(*AbilityScoresRefusal)(nil),            // 40: meurpg.characters.v1.AbilityScoresRefusal
-	(*AbilityRollSet)(nil),                  // 41: meurpg.characters.v1.AbilityRollSet
-	(*AbilityRolls)(nil),                    // 42: meurpg.characters.v1.AbilityRolls
-	(*GetAbilityRollsRequest)(nil),          // 43: meurpg.characters.v1.GetAbilityRollsRequest
-	(*GetAbilityRollsResponse)(nil),         // 44: meurpg.characters.v1.GetAbilityRollsResponse
-	(*RollAbilityScoresRequest)(nil),        // 45: meurpg.characters.v1.RollAbilityScoresRequest
-	(*RollAbilityScoresResponse)(nil),       // 46: meurpg.characters.v1.RollAbilityScoresResponse
-	(*CreateNpcFromCreatureRequest)(nil),    // 47: meurpg.characters.v1.CreateNpcFromCreatureRequest
-	(*CreateNpcFromCreatureResponse)(nil),   // 48: meurpg.characters.v1.CreateNpcFromCreatureResponse
-	(*GetCharacterRequest)(nil),             // 49: meurpg.characters.v1.GetCharacterRequest
-	(*GetCharacterResponse)(nil),            // 50: meurpg.characters.v1.GetCharacterResponse
-	(*ListCharactersRequest)(nil),           // 51: meurpg.characters.v1.ListCharactersRequest
-	(*ListCharactersResponse)(nil),          // 52: meurpg.characters.v1.ListCharactersResponse
-	(*UpdateCharacterRequest)(nil),          // 53: meurpg.characters.v1.UpdateCharacterRequest
-	(*UpdateCharacterResponse)(nil),         // 54: meurpg.characters.v1.UpdateCharacterResponse
-	(*UpdateCharacterStoryRequest)(nil),     // 55: meurpg.characters.v1.UpdateCharacterStoryRequest
-	(*UpdateCharacterStoryResponse)(nil),    // 56: meurpg.characters.v1.UpdateCharacterStoryResponse
-	(*SetStoryEditingRequest)(nil),          // 57: meurpg.characters.v1.SetStoryEditingRequest
-	(*SetStoryEditingResponse)(nil),         // 58: meurpg.characters.v1.SetStoryEditingResponse
-	(*MarkCharacterDeadRequest)(nil),        // 59: meurpg.characters.v1.MarkCharacterDeadRequest
-	(*MarkCharacterDeadResponse)(nil),       // 60: meurpg.characters.v1.MarkCharacterDeadResponse
-	(*GetMasterNotesRequest)(nil),           // 61: meurpg.characters.v1.GetMasterNotesRequest
-	(*GetMasterNotesResponse)(nil),          // 62: meurpg.characters.v1.GetMasterNotesResponse
-	(*UpdateMasterNotesRequest)(nil),        // 63: meurpg.characters.v1.UpdateMasterNotesRequest
-	(*UpdateMasterNotesResponse)(nil),       // 64: meurpg.characters.v1.UpdateMasterNotesResponse
-	(*ApproveCharacterRequest)(nil),         // 65: meurpg.characters.v1.ApproveCharacterRequest
-	(*ApproveCharacterResponse)(nil),        // 66: meurpg.characters.v1.ApproveCharacterResponse
-	(*RejectCharacterRequest)(nil),          // 67: meurpg.characters.v1.RejectCharacterRequest
-	(*RejectCharacterResponse)(nil),         // 68: meurpg.characters.v1.RejectCharacterResponse
-	(*RequestCharacterChangesRequest)(nil),  // 69: meurpg.characters.v1.RequestCharacterChangesRequest
-	(*RequestCharacterChangesResponse)(nil), // 70: meurpg.characters.v1.RequestCharacterChangesResponse
-	(*ResubmitCharacterRequest)(nil),        // 71: meurpg.characters.v1.ResubmitCharacterRequest
-	(*ResubmitCharacterResponse)(nil),       // 72: meurpg.characters.v1.ResubmitCharacterResponse
-	(*ReviveCharacterRequest)(nil),          // 73: meurpg.characters.v1.ReviveCharacterRequest
-	(*ReviveCharacterResponse)(nil),         // 74: meurpg.characters.v1.ReviveCharacterResponse
-	(*GetLevelUpOptionsRequest)(nil),        // 75: meurpg.characters.v1.GetLevelUpOptionsRequest
-	(*GetLevelUpOptionsResponse)(nil),       // 76: meurpg.characters.v1.GetLevelUpOptionsResponse
-	(*LevelUpNamedKey)(nil),                 // 77: meurpg.characters.v1.LevelUpNamedKey
-	(*LevelUpOptions)(nil),                  // 78: meurpg.characters.v1.LevelUpOptions
-	(*LevelUpSubclass)(nil),                 // 79: meurpg.characters.v1.LevelUpSubclass
-	(*LevelUpFeatureChoice)(nil),            // 80: meurpg.characters.v1.LevelUpFeatureChoice
-	(*LevelUpHitPoints)(nil),                // 81: meurpg.characters.v1.LevelUpHitPoints
-	(*LevelUpChoices)(nil),                  // 82: meurpg.characters.v1.LevelUpChoices
-	(*LevelUpRefusal)(nil),                  // 83: meurpg.characters.v1.LevelUpRefusal
-	(*PreviewLevelUpRequest)(nil),           // 84: meurpg.characters.v1.PreviewLevelUpRequest
-	(*PreviewLevelUpResponse)(nil),          // 85: meurpg.characters.v1.PreviewLevelUpResponse
-	(*RollLevelUpHitPointsRequest)(nil),     // 86: meurpg.characters.v1.RollLevelUpHitPointsRequest
-	(*RollLevelUpHitPointsResponse)(nil),    // 87: meurpg.characters.v1.RollLevelUpHitPointsResponse
-	(*LevelUpCharacterRequest)(nil),         // 88: meurpg.characters.v1.LevelUpCharacterRequest
-	(*LevelUpCharacterResponse)(nil),        // 89: meurpg.characters.v1.LevelUpCharacterResponse
-	(*ListLevelUpsRequest)(nil),             // 90: meurpg.characters.v1.ListLevelUpsRequest
-	(*ListLevelUpsResponse)(nil),            // 91: meurpg.characters.v1.ListLevelUpsResponse
-	(*LevelUp)(nil),                         // 92: meurpg.characters.v1.LevelUp
-	(*CharacterCreature)(nil),               // 93: meurpg.characters.v1.CharacterCreature
-	(*ListCharacterCreaturesRequest)(nil),   // 94: meurpg.characters.v1.ListCharacterCreaturesRequest
-	(*ListCharacterCreaturesResponse)(nil),  // 95: meurpg.characters.v1.ListCharacterCreaturesResponse
-	(*GiveCreatureRequest)(nil),             // 96: meurpg.characters.v1.GiveCreatureRequest
-	(*GiveCreatureResponse)(nil),            // 97: meurpg.characters.v1.GiveCreatureResponse
-	(*RenameCreatureRequest)(nil),           // 98: meurpg.characters.v1.RenameCreatureRequest
-	(*RenameCreatureResponse)(nil),          // 99: meurpg.characters.v1.RenameCreatureResponse
-	(*DismissCreatureRequest)(nil),          // 100: meurpg.characters.v1.DismissCreatureRequest
-	(*DismissCreatureResponse)(nil),         // 101: meurpg.characters.v1.DismissCreatureResponse
-	(*AdjustCreatureHitPointsRequest)(nil),  // 102: meurpg.characters.v1.AdjustCreatureHitPointsRequest
-	(*AdjustCreatureHitPointsResponse)(nil), // 103: meurpg.characters.v1.AdjustCreatureHitPointsResponse
-	(*ListWildShapeFormsRequest)(nil),       // 104: meurpg.characters.v1.ListWildShapeFormsRequest
-	(*ListWildShapeFormsResponse)(nil),      // 105: meurpg.characters.v1.ListWildShapeFormsResponse
-	(*GetSummonOptionsRequest)(nil),         // 106: meurpg.characters.v1.GetSummonOptionsRequest
-	(*GetSummonOptionsResponse)(nil),        // 107: meurpg.characters.v1.GetSummonOptionsResponse
-	(*SummonSpellOptions)(nil),              // 108: meurpg.characters.v1.SummonSpellOptions
-	(*SummonCircle)(nil),                    // 109: meurpg.characters.v1.SummonCircle
-	(*SummonOption)(nil),                    // 110: meurpg.characters.v1.SummonOption
-	(*SummonForm)(nil),                      // 111: meurpg.characters.v1.SummonForm
-	(*SummonSlot)(nil),                      // 112: meurpg.characters.v1.SummonSlot
-	(*ReplacedCreature)(nil),                // 113: meurpg.characters.v1.ReplacedCreature
-	nil,                                     // 114: meurpg.characters.v1.FullSheet.ContentBaselinesEntry
-	nil,                                     // 115: meurpg.characters.v1.FullSheet.FeatSlotsEntry
-	nil,                                     // 116: meurpg.characters.v1.LevelUp.NamesPtEntry
-	(*v1.DerivedSheet)(nil),                 // 117: meurpg.rules.v1.DerivedSheet
-	(*timestamppb.Timestamp)(nil),           // 118: google.protobuf.Timestamp
-	(*v1.AbilityScores)(nil),                // 119: meurpg.rules.v1.AbilityScores
-	(v1.CreatureSize)(0),                    // 120: meurpg.rules.v1.CreatureSize
-	(*v1.PactMagic)(nil),                    // 121: meurpg.rules.v1.PactMagic
-	(*v1.FeatOption)(nil),                   // 122: meurpg.rules.v1.FeatOption
-	(*v1.CreatureSummary)(nil),              // 123: meurpg.rules.v1.CreatureSummary
+	(CharacterKind)(0),                       // 0: meurpg.characters.v1.CharacterKind
+	(CharacterState)(0),                      // 1: meurpg.characters.v1.CharacterState
+	(Review)(0),                              // 2: meurpg.characters.v1.Review
+	(LevelUpReason)(0),                       // 3: meurpg.characters.v1.LevelUpReason
+	(OpenChoiceKind)(0),                      // 4: meurpg.characters.v1.OpenChoiceKind
+	(ClaimState)(0),                          // 5: meurpg.characters.v1.ClaimState
+	(CharacterBlockedReason)(0),              // 6: meurpg.characters.v1.CharacterBlockedReason
+	(HitPointsMethod)(0),                     // 7: meurpg.characters.v1.HitPointsMethod
+	(Alignment)(0),                           // 8: meurpg.characters.v1.Alignment
+	(DamageType)(0),                          // 9: meurpg.characters.v1.DamageType
+	(AbilityMethod)(0),                       // 10: meurpg.characters.v1.AbilityMethod
+	(AbilityScoresRefusalReason)(0),          // 11: meurpg.characters.v1.AbilityScoresRefusalReason
+	(LevelUpSpellsKind)(0),                   // 12: meurpg.characters.v1.LevelUpSpellsKind
+	(LevelUpDiceRule)(0),                     // 13: meurpg.characters.v1.LevelUpDiceRule
+	(LevelUpHitPointsRule)(0),                // 14: meurpg.characters.v1.LevelUpHitPointsRule
+	(LevelUpHitPointsMethod)(0),              // 15: meurpg.characters.v1.LevelUpHitPointsMethod
+	(LevelUpRefusalReason)(0),                // 16: meurpg.characters.v1.LevelUpRefusalReason
+	(CreatureSource)(0),                      // 17: meurpg.characters.v1.CreatureSource
+	(*Character)(nil),                        // 18: meurpg.characters.v1.Character
+	(*CharacterReview)(nil),                  // 19: meurpg.characters.v1.CharacterReview
+	(*CharacterSummary)(nil),                 // 20: meurpg.characters.v1.CharacterSummary
+	(*OpenChoice)(nil),                       // 21: meurpg.characters.v1.OpenChoice
+	(*CharacterBlocked)(nil),                 // 22: meurpg.characters.v1.CharacterBlocked
+	(*InvalidField)(nil),                     // 23: meurpg.characters.v1.InvalidField
+	(*CharacterSheet)(nil),                   // 24: meurpg.characters.v1.CharacterSheet
+	(*FullSheet)(nil),                        // 25: meurpg.characters.v1.FullSheet
+	(*AbilityOrigin)(nil),                    // 26: meurpg.characters.v1.AbilityOrigin
+	(*ClassLevel)(nil),                       // 27: meurpg.characters.v1.ClassLevel
+	(*CustomBackground)(nil),                 // 28: meurpg.characters.v1.CustomBackground
+	(*HitPoints)(nil),                        // 29: meurpg.characters.v1.HitPoints
+	(*Item)(nil),                             // 30: meurpg.characters.v1.Item
+	(*Coins)(nil),                            // 31: meurpg.characters.v1.Coins
+	(*BasicSheet)(nil),                       // 32: meurpg.characters.v1.BasicSheet
+	(*BasicAttack)(nil),                      // 33: meurpg.characters.v1.BasicAttack
+	(*CharacterStory)(nil),                   // 34: meurpg.characters.v1.CharacterStory
+	(*Personality)(nil),                      // 35: meurpg.characters.v1.Personality
+	(*Appearance)(nil),                       // 36: meurpg.characters.v1.Appearance
+	(*CreateCharacterRequest)(nil),           // 37: meurpg.characters.v1.CreateCharacterRequest
+	(*PreviewCharacterRequest)(nil),          // 38: meurpg.characters.v1.PreviewCharacterRequest
+	(*PreviewCharacterResponse)(nil),         // 39: meurpg.characters.v1.PreviewCharacterResponse
+	(*CreateCharacterResponse)(nil),          // 40: meurpg.characters.v1.CreateCharacterResponse
+	(*AbilityScoresRefusal)(nil),             // 41: meurpg.characters.v1.AbilityScoresRefusal
+	(*AbilityRollSet)(nil),                   // 42: meurpg.characters.v1.AbilityRollSet
+	(*AbilityRolls)(nil),                     // 43: meurpg.characters.v1.AbilityRolls
+	(*GetAbilityRollsRequest)(nil),           // 44: meurpg.characters.v1.GetAbilityRollsRequest
+	(*GetAbilityRollsResponse)(nil),          // 45: meurpg.characters.v1.GetAbilityRollsResponse
+	(*RollAbilityScoresRequest)(nil),         // 46: meurpg.characters.v1.RollAbilityScoresRequest
+	(*RollAbilityScoresResponse)(nil),        // 47: meurpg.characters.v1.RollAbilityScoresResponse
+	(*CreateNpcFromCreatureRequest)(nil),     // 48: meurpg.characters.v1.CreateNpcFromCreatureRequest
+	(*CreateNpcFromCreatureResponse)(nil),    // 49: meurpg.characters.v1.CreateNpcFromCreatureResponse
+	(*GetCharacterRequest)(nil),              // 50: meurpg.characters.v1.GetCharacterRequest
+	(*GetCharacterResponse)(nil),             // 51: meurpg.characters.v1.GetCharacterResponse
+	(*ListCharactersRequest)(nil),            // 52: meurpg.characters.v1.ListCharactersRequest
+	(*ListCharactersResponse)(nil),           // 53: meurpg.characters.v1.ListCharactersResponse
+	(*UpdateCharacterRequest)(nil),           // 54: meurpg.characters.v1.UpdateCharacterRequest
+	(*UpdateCharacterResponse)(nil),          // 55: meurpg.characters.v1.UpdateCharacterResponse
+	(*UpdateCharacterStoryRequest)(nil),      // 56: meurpg.characters.v1.UpdateCharacterStoryRequest
+	(*UpdateCharacterStoryResponse)(nil),     // 57: meurpg.characters.v1.UpdateCharacterStoryResponse
+	(*SetStoryEditingRequest)(nil),           // 58: meurpg.characters.v1.SetStoryEditingRequest
+	(*SetStoryEditingResponse)(nil),          // 59: meurpg.characters.v1.SetStoryEditingResponse
+	(*MarkCharacterDeadRequest)(nil),         // 60: meurpg.characters.v1.MarkCharacterDeadRequest
+	(*MarkCharacterDeadResponse)(nil),        // 61: meurpg.characters.v1.MarkCharacterDeadResponse
+	(*GetMasterNotesRequest)(nil),            // 62: meurpg.characters.v1.GetMasterNotesRequest
+	(*GetMasterNotesResponse)(nil),           // 63: meurpg.characters.v1.GetMasterNotesResponse
+	(*UpdateMasterNotesRequest)(nil),         // 64: meurpg.characters.v1.UpdateMasterNotesRequest
+	(*UpdateMasterNotesResponse)(nil),        // 65: meurpg.characters.v1.UpdateMasterNotesResponse
+	(*ApproveCharacterRequest)(nil),          // 66: meurpg.characters.v1.ApproveCharacterRequest
+	(*ApproveCharacterResponse)(nil),         // 67: meurpg.characters.v1.ApproveCharacterResponse
+	(*RejectCharacterRequest)(nil),           // 68: meurpg.characters.v1.RejectCharacterRequest
+	(*RejectCharacterResponse)(nil),          // 69: meurpg.characters.v1.RejectCharacterResponse
+	(*RequestCharacterChangesRequest)(nil),   // 70: meurpg.characters.v1.RequestCharacterChangesRequest
+	(*RequestCharacterChangesResponse)(nil),  // 71: meurpg.characters.v1.RequestCharacterChangesResponse
+	(*ResubmitCharacterRequest)(nil),         // 72: meurpg.characters.v1.ResubmitCharacterRequest
+	(*ResubmitCharacterResponse)(nil),        // 73: meurpg.characters.v1.ResubmitCharacterResponse
+	(*ReviveCharacterRequest)(nil),           // 74: meurpg.characters.v1.ReviveCharacterRequest
+	(*ReviveCharacterResponse)(nil),          // 75: meurpg.characters.v1.ReviveCharacterResponse
+	(*CreateClaimLinkRequest)(nil),           // 76: meurpg.characters.v1.CreateClaimLinkRequest
+	(*CreateClaimLinkResponse)(nil),          // 77: meurpg.characters.v1.CreateClaimLinkResponse
+	(*RevokeClaimLinkRequest)(nil),           // 78: meurpg.characters.v1.RevokeClaimLinkRequest
+	(*RevokeClaimLinkResponse)(nil),          // 79: meurpg.characters.v1.RevokeClaimLinkResponse
+	(*ReturnCharacterToReserveRequest)(nil),  // 80: meurpg.characters.v1.ReturnCharacterToReserveRequest
+	(*ReturnCharacterToReserveResponse)(nil), // 81: meurpg.characters.v1.ReturnCharacterToReserveResponse
+	(*DeleteReservedCharacterRequest)(nil),   // 82: meurpg.characters.v1.DeleteReservedCharacterRequest
+	(*DeleteReservedCharacterResponse)(nil),  // 83: meurpg.characters.v1.DeleteReservedCharacterResponse
+	(*PreviewClaimRequest)(nil),              // 84: meurpg.characters.v1.PreviewClaimRequest
+	(*ClaimCard)(nil),                        // 85: meurpg.characters.v1.ClaimCard
+	(*PreviewClaimResponse)(nil),             // 86: meurpg.characters.v1.PreviewClaimResponse
+	(*ClaimCharacterRequest)(nil),            // 87: meurpg.characters.v1.ClaimCharacterRequest
+	(*ClaimCharacterResponse)(nil),           // 88: meurpg.characters.v1.ClaimCharacterResponse
+	(*GetLevelUpOptionsRequest)(nil),         // 89: meurpg.characters.v1.GetLevelUpOptionsRequest
+	(*GetLevelUpOptionsResponse)(nil),        // 90: meurpg.characters.v1.GetLevelUpOptionsResponse
+	(*LevelUpNamedKey)(nil),                  // 91: meurpg.characters.v1.LevelUpNamedKey
+	(*LevelUpOptions)(nil),                   // 92: meurpg.characters.v1.LevelUpOptions
+	(*LevelUpSubclass)(nil),                  // 93: meurpg.characters.v1.LevelUpSubclass
+	(*LevelUpFeatureChoice)(nil),             // 94: meurpg.characters.v1.LevelUpFeatureChoice
+	(*LevelUpHitPoints)(nil),                 // 95: meurpg.characters.v1.LevelUpHitPoints
+	(*LevelUpChoices)(nil),                   // 96: meurpg.characters.v1.LevelUpChoices
+	(*LevelUpRefusal)(nil),                   // 97: meurpg.characters.v1.LevelUpRefusal
+	(*PreviewLevelUpRequest)(nil),            // 98: meurpg.characters.v1.PreviewLevelUpRequest
+	(*PreviewLevelUpResponse)(nil),           // 99: meurpg.characters.v1.PreviewLevelUpResponse
+	(*RollLevelUpHitPointsRequest)(nil),      // 100: meurpg.characters.v1.RollLevelUpHitPointsRequest
+	(*RollLevelUpHitPointsResponse)(nil),     // 101: meurpg.characters.v1.RollLevelUpHitPointsResponse
+	(*LevelUpCharacterRequest)(nil),          // 102: meurpg.characters.v1.LevelUpCharacterRequest
+	(*LevelUpCharacterResponse)(nil),         // 103: meurpg.characters.v1.LevelUpCharacterResponse
+	(*ListLevelUpsRequest)(nil),              // 104: meurpg.characters.v1.ListLevelUpsRequest
+	(*ListLevelUpsResponse)(nil),             // 105: meurpg.characters.v1.ListLevelUpsResponse
+	(*LevelUp)(nil),                          // 106: meurpg.characters.v1.LevelUp
+	(*CharacterCreature)(nil),                // 107: meurpg.characters.v1.CharacterCreature
+	(*ListCharacterCreaturesRequest)(nil),    // 108: meurpg.characters.v1.ListCharacterCreaturesRequest
+	(*ListCharacterCreaturesResponse)(nil),   // 109: meurpg.characters.v1.ListCharacterCreaturesResponse
+	(*GiveCreatureRequest)(nil),              // 110: meurpg.characters.v1.GiveCreatureRequest
+	(*GiveCreatureResponse)(nil),             // 111: meurpg.characters.v1.GiveCreatureResponse
+	(*RenameCreatureRequest)(nil),            // 112: meurpg.characters.v1.RenameCreatureRequest
+	(*RenameCreatureResponse)(nil),           // 113: meurpg.characters.v1.RenameCreatureResponse
+	(*DismissCreatureRequest)(nil),           // 114: meurpg.characters.v1.DismissCreatureRequest
+	(*DismissCreatureResponse)(nil),          // 115: meurpg.characters.v1.DismissCreatureResponse
+	(*AdjustCreatureHitPointsRequest)(nil),   // 116: meurpg.characters.v1.AdjustCreatureHitPointsRequest
+	(*AdjustCreatureHitPointsResponse)(nil),  // 117: meurpg.characters.v1.AdjustCreatureHitPointsResponse
+	(*ListWildShapeFormsRequest)(nil),        // 118: meurpg.characters.v1.ListWildShapeFormsRequest
+	(*ListWildShapeFormsResponse)(nil),       // 119: meurpg.characters.v1.ListWildShapeFormsResponse
+	(*GetSummonOptionsRequest)(nil),          // 120: meurpg.characters.v1.GetSummonOptionsRequest
+	(*GetSummonOptionsResponse)(nil),         // 121: meurpg.characters.v1.GetSummonOptionsResponse
+	(*SummonSpellOptions)(nil),               // 122: meurpg.characters.v1.SummonSpellOptions
+	(*SummonCircle)(nil),                     // 123: meurpg.characters.v1.SummonCircle
+	(*SummonOption)(nil),                     // 124: meurpg.characters.v1.SummonOption
+	(*SummonForm)(nil),                       // 125: meurpg.characters.v1.SummonForm
+	(*SummonSlot)(nil),                       // 126: meurpg.characters.v1.SummonSlot
+	(*ReplacedCreature)(nil),                 // 127: meurpg.characters.v1.ReplacedCreature
+	nil,                                      // 128: meurpg.characters.v1.FullSheet.ContentBaselinesEntry
+	nil,                                      // 129: meurpg.characters.v1.FullSheet.FeatSlotsEntry
+	nil,                                      // 130: meurpg.characters.v1.LevelUp.NamesPtEntry
+	(*v1.DerivedSheet)(nil),                  // 131: meurpg.rules.v1.DerivedSheet
+	(*timestamppb.Timestamp)(nil),            // 132: google.protobuf.Timestamp
+	(*v1.AbilityScores)(nil),                 // 133: meurpg.rules.v1.AbilityScores
+	(v1.CreatureSize)(0),                     // 134: meurpg.rules.v1.CreatureSize
+	(*v1.PactMagic)(nil),                     // 135: meurpg.rules.v1.PactMagic
+	(*v1.FeatOption)(nil),                    // 136: meurpg.rules.v1.FeatOption
+	(*v1.CreatureSummary)(nil),               // 137: meurpg.rules.v1.CreatureSummary
 }
 var file_meurpg_characters_v1_characters_proto_depIdxs = []int32{
 	0,   // 0: meurpg.characters.v1.Character.kind:type_name -> meurpg.characters.v1.CharacterKind
 	1,   // 1: meurpg.characters.v1.Character.state:type_name -> meurpg.characters.v1.CharacterState
-	23,  // 2: meurpg.characters.v1.Character.sheet:type_name -> meurpg.characters.v1.CharacterSheet
-	33,  // 3: meurpg.characters.v1.Character.story:type_name -> meurpg.characters.v1.CharacterStory
-	117, // 4: meurpg.characters.v1.Character.derived:type_name -> meurpg.rules.v1.DerivedSheet
-	118, // 5: meurpg.characters.v1.Character.sheet_locked_at:type_name -> google.protobuf.Timestamp
-	118, // 6: meurpg.characters.v1.Character.died_at:type_name -> google.protobuf.Timestamp
-	118, // 7: meurpg.characters.v1.Character.created_at:type_name -> google.protobuf.Timestamp
-	118, // 8: meurpg.characters.v1.Character.updated_at:type_name -> google.protobuf.Timestamp
+	24,  // 2: meurpg.characters.v1.Character.sheet:type_name -> meurpg.characters.v1.CharacterSheet
+	34,  // 3: meurpg.characters.v1.Character.story:type_name -> meurpg.characters.v1.CharacterStory
+	131, // 4: meurpg.characters.v1.Character.derived:type_name -> meurpg.rules.v1.DerivedSheet
+	132, // 5: meurpg.characters.v1.Character.sheet_locked_at:type_name -> google.protobuf.Timestamp
+	132, // 6: meurpg.characters.v1.Character.died_at:type_name -> google.protobuf.Timestamp
+	132, // 7: meurpg.characters.v1.Character.created_at:type_name -> google.protobuf.Timestamp
+	132, // 8: meurpg.characters.v1.Character.updated_at:type_name -> google.protobuf.Timestamp
 	3,   // 9: meurpg.characters.v1.Character.level_up_reason:type_name -> meurpg.characters.v1.LevelUpReason
-	18,  // 10: meurpg.characters.v1.Character.review:type_name -> meurpg.characters.v1.CharacterReview
-	118, // 11: meurpg.characters.v1.Character.revived_at:type_name -> google.protobuf.Timestamp
+	19,  // 10: meurpg.characters.v1.Character.review:type_name -> meurpg.characters.v1.CharacterReview
+	132, // 11: meurpg.characters.v1.Character.revived_at:type_name -> google.protobuf.Timestamp
 	2,   // 12: meurpg.characters.v1.CharacterReview.status:type_name -> meurpg.characters.v1.Review
-	118, // 13: meurpg.characters.v1.CharacterReview.requested_at:type_name -> google.protobuf.Timestamp
-	118, // 14: meurpg.characters.v1.CharacterReview.resubmitted_at:type_name -> google.protobuf.Timestamp
+	132, // 13: meurpg.characters.v1.CharacterReview.requested_at:type_name -> google.protobuf.Timestamp
+	132, // 14: meurpg.characters.v1.CharacterReview.resubmitted_at:type_name -> google.protobuf.Timestamp
 	0,   // 15: meurpg.characters.v1.CharacterSummary.kind:type_name -> meurpg.characters.v1.CharacterKind
 	1,   // 16: meurpg.characters.v1.CharacterSummary.state:type_name -> meurpg.characters.v1.CharacterState
-	118, // 17: meurpg.characters.v1.CharacterSummary.created_at:type_name -> google.protobuf.Timestamp
-	20,  // 18: meurpg.characters.v1.CharacterSummary.open_choices:type_name -> meurpg.characters.v1.OpenChoice
-	2,   // 19: meurpg.characters.v1.CharacterSummary.review_status:type_name -> meurpg.characters.v1.Review
-	4,   // 20: meurpg.characters.v1.OpenChoice.kind:type_name -> meurpg.characters.v1.OpenChoiceKind
-	5,   // 21: meurpg.characters.v1.CharacterBlocked.reason:type_name -> meurpg.characters.v1.CharacterBlockedReason
-	24,  // 22: meurpg.characters.v1.CharacterSheet.full:type_name -> meurpg.characters.v1.FullSheet
-	31,  // 23: meurpg.characters.v1.CharacterSheet.basic:type_name -> meurpg.characters.v1.BasicSheet
-	119, // 24: meurpg.characters.v1.FullSheet.base_scores:type_name -> meurpg.rules.v1.AbilityScores
-	26,  // 25: meurpg.characters.v1.FullSheet.classes:type_name -> meurpg.characters.v1.ClassLevel
-	27,  // 26: meurpg.characters.v1.FullSheet.custom_background:type_name -> meurpg.characters.v1.CustomBackground
-	119, // 27: meurpg.characters.v1.FullSheet.extra_ability_bonuses:type_name -> meurpg.rules.v1.AbilityScores
-	28,  // 28: meurpg.characters.v1.FullSheet.hit_points:type_name -> meurpg.characters.v1.HitPoints
-	29,  // 29: meurpg.characters.v1.FullSheet.equipment:type_name -> meurpg.characters.v1.Item
-	30,  // 30: meurpg.characters.v1.FullSheet.coins:type_name -> meurpg.characters.v1.Coins
-	7,   // 31: meurpg.characters.v1.FullSheet.alignment:type_name -> meurpg.characters.v1.Alignment
-	25,  // 32: meurpg.characters.v1.FullSheet.ability_origin:type_name -> meurpg.characters.v1.AbilityOrigin
-	114, // 33: meurpg.characters.v1.FullSheet.content_baselines:type_name -> meurpg.characters.v1.FullSheet.ContentBaselinesEntry
-	115, // 34: meurpg.characters.v1.FullSheet.feat_slots:type_name -> meurpg.characters.v1.FullSheet.FeatSlotsEntry
-	9,   // 35: meurpg.characters.v1.AbilityOrigin.method:type_name -> meurpg.characters.v1.AbilityMethod
-	41,  // 36: meurpg.characters.v1.AbilityOrigin.rolls:type_name -> meurpg.characters.v1.AbilityRollSet
-	6,   // 37: meurpg.characters.v1.HitPoints.method:type_name -> meurpg.characters.v1.HitPointsMethod
-	32,  // 38: meurpg.characters.v1.BasicSheet.attacks:type_name -> meurpg.characters.v1.BasicAttack
-	120, // 39: meurpg.characters.v1.BasicSheet.size:type_name -> meurpg.rules.v1.CreatureSize
-	119, // 40: meurpg.characters.v1.BasicSheet.ability_scores:type_name -> meurpg.rules.v1.AbilityScores
-	8,   // 41: meurpg.characters.v1.BasicAttack.damage_type:type_name -> meurpg.characters.v1.DamageType
-	34,  // 42: meurpg.characters.v1.CharacterStory.personality:type_name -> meurpg.characters.v1.Personality
-	35,  // 43: meurpg.characters.v1.CharacterStory.appearance:type_name -> meurpg.characters.v1.Appearance
-	0,   // 44: meurpg.characters.v1.CreateCharacterRequest.kind:type_name -> meurpg.characters.v1.CharacterKind
-	23,  // 45: meurpg.characters.v1.CreateCharacterRequest.sheet:type_name -> meurpg.characters.v1.CharacterSheet
-	33,  // 46: meurpg.characters.v1.CreateCharacterRequest.story:type_name -> meurpg.characters.v1.CharacterStory
-	9,   // 47: meurpg.characters.v1.CreateCharacterRequest.ability_method:type_name -> meurpg.characters.v1.AbilityMethod
-	0,   // 48: meurpg.characters.v1.PreviewCharacterRequest.kind:type_name -> meurpg.characters.v1.CharacterKind
-	23,  // 49: meurpg.characters.v1.PreviewCharacterRequest.sheet:type_name -> meurpg.characters.v1.CharacterSheet
-	117, // 50: meurpg.characters.v1.PreviewCharacterResponse.derived:type_name -> meurpg.rules.v1.DerivedSheet
-	17,  // 51: meurpg.characters.v1.CreateCharacterResponse.character:type_name -> meurpg.characters.v1.Character
-	10,  // 52: meurpg.characters.v1.AbilityScoresRefusal.reason:type_name -> meurpg.characters.v1.AbilityScoresRefusalReason
-	9,   // 53: meurpg.characters.v1.AbilityScoresRefusal.method:type_name -> meurpg.characters.v1.AbilityMethod
-	41,  // 54: meurpg.characters.v1.AbilityRolls.sets:type_name -> meurpg.characters.v1.AbilityRollSet
-	118, // 55: meurpg.characters.v1.AbilityRolls.rolled_at:type_name -> google.protobuf.Timestamp
-	42,  // 56: meurpg.characters.v1.GetAbilityRollsResponse.rolls:type_name -> meurpg.characters.v1.AbilityRolls
-	41,  // 57: meurpg.characters.v1.RollAbilityScoresRequest.typed_dice:type_name -> meurpg.characters.v1.AbilityRollSet
-	42,  // 58: meurpg.characters.v1.RollAbilityScoresResponse.rolls:type_name -> meurpg.characters.v1.AbilityRolls
-	0,   // 59: meurpg.characters.v1.CreateNpcFromCreatureRequest.kind:type_name -> meurpg.characters.v1.CharacterKind
-	17,  // 60: meurpg.characters.v1.CreateNpcFromCreatureResponse.character:type_name -> meurpg.characters.v1.Character
-	17,  // 61: meurpg.characters.v1.GetCharacterResponse.character:type_name -> meurpg.characters.v1.Character
-	19,  // 62: meurpg.characters.v1.ListCharactersResponse.characters:type_name -> meurpg.characters.v1.CharacterSummary
-	23,  // 63: meurpg.characters.v1.UpdateCharacterRequest.sheet:type_name -> meurpg.characters.v1.CharacterSheet
-	17,  // 64: meurpg.characters.v1.UpdateCharacterResponse.character:type_name -> meurpg.characters.v1.Character
-	33,  // 65: meurpg.characters.v1.UpdateCharacterStoryRequest.story:type_name -> meurpg.characters.v1.CharacterStory
-	17,  // 66: meurpg.characters.v1.UpdateCharacterStoryResponse.character:type_name -> meurpg.characters.v1.Character
-	17,  // 67: meurpg.characters.v1.SetStoryEditingResponse.character:type_name -> meurpg.characters.v1.Character
-	17,  // 68: meurpg.characters.v1.MarkCharacterDeadResponse.character:type_name -> meurpg.characters.v1.Character
-	118, // 69: meurpg.characters.v1.GetMasterNotesResponse.updated_at:type_name -> google.protobuf.Timestamp
-	118, // 70: meurpg.characters.v1.UpdateMasterNotesResponse.updated_at:type_name -> google.protobuf.Timestamp
-	17,  // 71: meurpg.characters.v1.ApproveCharacterResponse.character:type_name -> meurpg.characters.v1.Character
-	17,  // 72: meurpg.characters.v1.RequestCharacterChangesResponse.character:type_name -> meurpg.characters.v1.Character
-	17,  // 73: meurpg.characters.v1.ResubmitCharacterResponse.character:type_name -> meurpg.characters.v1.Character
-	17,  // 74: meurpg.characters.v1.ReviveCharacterResponse.character:type_name -> meurpg.characters.v1.Character
-	78,  // 75: meurpg.characters.v1.GetLevelUpOptionsResponse.options:type_name -> meurpg.characters.v1.LevelUpOptions
-	12,  // 76: meurpg.characters.v1.LevelUpOptions.dice_rule:type_name -> meurpg.characters.v1.LevelUpDiceRule
-	79,  // 77: meurpg.characters.v1.LevelUpOptions.subclasses:type_name -> meurpg.characters.v1.LevelUpSubclass
-	11,  // 78: meurpg.characters.v1.LevelUpOptions.spells_kind:type_name -> meurpg.characters.v1.LevelUpSpellsKind
-	80,  // 79: meurpg.characters.v1.LevelUpOptions.feature_choices:type_name -> meurpg.characters.v1.LevelUpFeatureChoice
-	121, // 80: meurpg.characters.v1.LevelUpOptions.pact_magic_before:type_name -> meurpg.rules.v1.PactMagic
-	121, // 81: meurpg.characters.v1.LevelUpOptions.pact_magic_after:type_name -> meurpg.rules.v1.PactMagic
-	77,  // 82: meurpg.characters.v1.LevelUpOptions.new_features:type_name -> meurpg.characters.v1.LevelUpNamedKey
-	77,  // 83: meurpg.characters.v1.LevelUpOptions.master_adds:type_name -> meurpg.characters.v1.LevelUpNamedKey
-	13,  // 84: meurpg.characters.v1.LevelUpOptions.hit_points_rule:type_name -> meurpg.characters.v1.LevelUpHitPointsRule
-	122, // 85: meurpg.characters.v1.LevelUpOptions.feats:type_name -> meurpg.rules.v1.FeatOption
-	80,  // 86: meurpg.characters.v1.LevelUpSubclass.feature_choices:type_name -> meurpg.characters.v1.LevelUpFeatureChoice
-	11,  // 87: meurpg.characters.v1.LevelUpSubclass.spells_kind:type_name -> meurpg.characters.v1.LevelUpSpellsKind
-	77,  // 88: meurpg.characters.v1.LevelUpFeatureChoice.feature:type_name -> meurpg.characters.v1.LevelUpNamedKey
-	77,  // 89: meurpg.characters.v1.LevelUpFeatureChoice.options:type_name -> meurpg.characters.v1.LevelUpNamedKey
-	14,  // 90: meurpg.characters.v1.LevelUpHitPoints.method:type_name -> meurpg.characters.v1.LevelUpHitPointsMethod
-	119, // 91: meurpg.characters.v1.LevelUpChoices.ability_increase:type_name -> meurpg.rules.v1.AbilityScores
-	81,  // 92: meurpg.characters.v1.LevelUpChoices.hit_points:type_name -> meurpg.characters.v1.LevelUpHitPoints
-	15,  // 93: meurpg.characters.v1.LevelUpRefusal.reason:type_name -> meurpg.characters.v1.LevelUpRefusalReason
-	82,  // 94: meurpg.characters.v1.PreviewLevelUpRequest.choices:type_name -> meurpg.characters.v1.LevelUpChoices
-	117, // 95: meurpg.characters.v1.PreviewLevelUpResponse.after:type_name -> meurpg.rules.v1.DerivedSheet
-	83,  // 96: meurpg.characters.v1.PreviewLevelUpResponse.refusal:type_name -> meurpg.characters.v1.LevelUpRefusal
-	82,  // 97: meurpg.characters.v1.LevelUpCharacterRequest.choices:type_name -> meurpg.characters.v1.LevelUpChoices
-	17,  // 98: meurpg.characters.v1.LevelUpCharacterResponse.character:type_name -> meurpg.characters.v1.Character
-	92,  // 99: meurpg.characters.v1.ListLevelUpsResponse.level_ups:type_name -> meurpg.characters.v1.LevelUp
-	82,  // 100: meurpg.characters.v1.LevelUp.choices:type_name -> meurpg.characters.v1.LevelUpChoices
-	116, // 101: meurpg.characters.v1.LevelUp.names_pt:type_name -> meurpg.characters.v1.LevelUp.NamesPtEntry
-	118, // 102: meurpg.characters.v1.LevelUp.created_at:type_name -> google.protobuf.Timestamp
-	16,  // 103: meurpg.characters.v1.CharacterCreature.source:type_name -> meurpg.characters.v1.CreatureSource
-	118, // 104: meurpg.characters.v1.CharacterCreature.created_at:type_name -> google.protobuf.Timestamp
-	93,  // 105: meurpg.characters.v1.ListCharacterCreaturesResponse.creatures:type_name -> meurpg.characters.v1.CharacterCreature
-	93,  // 106: meurpg.characters.v1.GiveCreatureResponse.creature:type_name -> meurpg.characters.v1.CharacterCreature
-	93,  // 107: meurpg.characters.v1.RenameCreatureResponse.creature:type_name -> meurpg.characters.v1.CharacterCreature
-	93,  // 108: meurpg.characters.v1.AdjustCreatureHitPointsResponse.creature:type_name -> meurpg.characters.v1.CharacterCreature
-	123, // 109: meurpg.characters.v1.ListWildShapeFormsResponse.forms:type_name -> meurpg.rules.v1.CreatureSummary
-	108, // 110: meurpg.characters.v1.GetSummonOptionsResponse.spells:type_name -> meurpg.characters.v1.SummonSpellOptions
-	112, // 111: meurpg.characters.v1.GetSummonOptionsResponse.slots:type_name -> meurpg.characters.v1.SummonSlot
-	109, // 112: meurpg.characters.v1.SummonSpellOptions.circles:type_name -> meurpg.characters.v1.SummonCircle
-	113, // 113: meurpg.characters.v1.SummonSpellOptions.replaces:type_name -> meurpg.characters.v1.ReplacedCreature
-	110, // 114: meurpg.characters.v1.SummonCircle.options:type_name -> meurpg.characters.v1.SummonOption
-	111, // 115: meurpg.characters.v1.SummonOption.forms:type_name -> meurpg.characters.v1.SummonForm
-	36,  // 116: meurpg.characters.v1.CharacterService.CreateCharacter:input_type -> meurpg.characters.v1.CreateCharacterRequest
-	43,  // 117: meurpg.characters.v1.CharacterService.GetAbilityRolls:input_type -> meurpg.characters.v1.GetAbilityRollsRequest
-	45,  // 118: meurpg.characters.v1.CharacterService.RollAbilityScores:input_type -> meurpg.characters.v1.RollAbilityScoresRequest
-	47,  // 119: meurpg.characters.v1.CharacterService.CreateNpcFromCreature:input_type -> meurpg.characters.v1.CreateNpcFromCreatureRequest
-	49,  // 120: meurpg.characters.v1.CharacterService.GetCharacter:input_type -> meurpg.characters.v1.GetCharacterRequest
-	51,  // 121: meurpg.characters.v1.CharacterService.ListCharacters:input_type -> meurpg.characters.v1.ListCharactersRequest
-	53,  // 122: meurpg.characters.v1.CharacterService.UpdateCharacter:input_type -> meurpg.characters.v1.UpdateCharacterRequest
-	55,  // 123: meurpg.characters.v1.CharacterService.UpdateCharacterStory:input_type -> meurpg.characters.v1.UpdateCharacterStoryRequest
-	57,  // 124: meurpg.characters.v1.CharacterService.SetStoryEditing:input_type -> meurpg.characters.v1.SetStoryEditingRequest
-	59,  // 125: meurpg.characters.v1.CharacterService.MarkCharacterDead:input_type -> meurpg.characters.v1.MarkCharacterDeadRequest
-	61,  // 126: meurpg.characters.v1.CharacterService.GetMasterNotes:input_type -> meurpg.characters.v1.GetMasterNotesRequest
-	63,  // 127: meurpg.characters.v1.CharacterService.UpdateMasterNotes:input_type -> meurpg.characters.v1.UpdateMasterNotesRequest
-	65,  // 128: meurpg.characters.v1.CharacterService.ApproveCharacter:input_type -> meurpg.characters.v1.ApproveCharacterRequest
-	67,  // 129: meurpg.characters.v1.CharacterService.RejectCharacter:input_type -> meurpg.characters.v1.RejectCharacterRequest
-	69,  // 130: meurpg.characters.v1.CharacterService.RequestCharacterChanges:input_type -> meurpg.characters.v1.RequestCharacterChangesRequest
-	71,  // 131: meurpg.characters.v1.CharacterService.ResubmitCharacter:input_type -> meurpg.characters.v1.ResubmitCharacterRequest
-	73,  // 132: meurpg.characters.v1.CharacterService.ReviveCharacter:input_type -> meurpg.characters.v1.ReviveCharacterRequest
-	75,  // 133: meurpg.characters.v1.CharacterService.GetLevelUpOptions:input_type -> meurpg.characters.v1.GetLevelUpOptionsRequest
-	84,  // 134: meurpg.characters.v1.CharacterService.PreviewLevelUp:input_type -> meurpg.characters.v1.PreviewLevelUpRequest
-	37,  // 135: meurpg.characters.v1.CharacterService.PreviewCharacter:input_type -> meurpg.characters.v1.PreviewCharacterRequest
-	86,  // 136: meurpg.characters.v1.CharacterService.RollLevelUpHitPoints:input_type -> meurpg.characters.v1.RollLevelUpHitPointsRequest
-	88,  // 137: meurpg.characters.v1.CharacterService.LevelUpCharacter:input_type -> meurpg.characters.v1.LevelUpCharacterRequest
-	90,  // 138: meurpg.characters.v1.CharacterService.ListLevelUps:input_type -> meurpg.characters.v1.ListLevelUpsRequest
-	94,  // 139: meurpg.characters.v1.CharacterService.ListCharacterCreatures:input_type -> meurpg.characters.v1.ListCharacterCreaturesRequest
-	104, // 140: meurpg.characters.v1.CharacterService.ListWildShapeForms:input_type -> meurpg.characters.v1.ListWildShapeFormsRequest
-	96,  // 141: meurpg.characters.v1.CharacterService.GiveCreature:input_type -> meurpg.characters.v1.GiveCreatureRequest
-	98,  // 142: meurpg.characters.v1.CharacterService.RenameCreature:input_type -> meurpg.characters.v1.RenameCreatureRequest
-	100, // 143: meurpg.characters.v1.CharacterService.DismissCreature:input_type -> meurpg.characters.v1.DismissCreatureRequest
-	102, // 144: meurpg.characters.v1.CharacterService.AdjustCreatureHitPoints:input_type -> meurpg.characters.v1.AdjustCreatureHitPointsRequest
-	106, // 145: meurpg.characters.v1.CharacterService.GetSummonOptions:input_type -> meurpg.characters.v1.GetSummonOptionsRequest
-	39,  // 146: meurpg.characters.v1.CharacterService.CreateCharacter:output_type -> meurpg.characters.v1.CreateCharacterResponse
-	44,  // 147: meurpg.characters.v1.CharacterService.GetAbilityRolls:output_type -> meurpg.characters.v1.GetAbilityRollsResponse
-	46,  // 148: meurpg.characters.v1.CharacterService.RollAbilityScores:output_type -> meurpg.characters.v1.RollAbilityScoresResponse
-	48,  // 149: meurpg.characters.v1.CharacterService.CreateNpcFromCreature:output_type -> meurpg.characters.v1.CreateNpcFromCreatureResponse
-	50,  // 150: meurpg.characters.v1.CharacterService.GetCharacter:output_type -> meurpg.characters.v1.GetCharacterResponse
-	52,  // 151: meurpg.characters.v1.CharacterService.ListCharacters:output_type -> meurpg.characters.v1.ListCharactersResponse
-	54,  // 152: meurpg.characters.v1.CharacterService.UpdateCharacter:output_type -> meurpg.characters.v1.UpdateCharacterResponse
-	56,  // 153: meurpg.characters.v1.CharacterService.UpdateCharacterStory:output_type -> meurpg.characters.v1.UpdateCharacterStoryResponse
-	58,  // 154: meurpg.characters.v1.CharacterService.SetStoryEditing:output_type -> meurpg.characters.v1.SetStoryEditingResponse
-	60,  // 155: meurpg.characters.v1.CharacterService.MarkCharacterDead:output_type -> meurpg.characters.v1.MarkCharacterDeadResponse
-	62,  // 156: meurpg.characters.v1.CharacterService.GetMasterNotes:output_type -> meurpg.characters.v1.GetMasterNotesResponse
-	64,  // 157: meurpg.characters.v1.CharacterService.UpdateMasterNotes:output_type -> meurpg.characters.v1.UpdateMasterNotesResponse
-	66,  // 158: meurpg.characters.v1.CharacterService.ApproveCharacter:output_type -> meurpg.characters.v1.ApproveCharacterResponse
-	68,  // 159: meurpg.characters.v1.CharacterService.RejectCharacter:output_type -> meurpg.characters.v1.RejectCharacterResponse
-	70,  // 160: meurpg.characters.v1.CharacterService.RequestCharacterChanges:output_type -> meurpg.characters.v1.RequestCharacterChangesResponse
-	72,  // 161: meurpg.characters.v1.CharacterService.ResubmitCharacter:output_type -> meurpg.characters.v1.ResubmitCharacterResponse
-	74,  // 162: meurpg.characters.v1.CharacterService.ReviveCharacter:output_type -> meurpg.characters.v1.ReviveCharacterResponse
-	76,  // 163: meurpg.characters.v1.CharacterService.GetLevelUpOptions:output_type -> meurpg.characters.v1.GetLevelUpOptionsResponse
-	85,  // 164: meurpg.characters.v1.CharacterService.PreviewLevelUp:output_type -> meurpg.characters.v1.PreviewLevelUpResponse
-	38,  // 165: meurpg.characters.v1.CharacterService.PreviewCharacter:output_type -> meurpg.characters.v1.PreviewCharacterResponse
-	87,  // 166: meurpg.characters.v1.CharacterService.RollLevelUpHitPoints:output_type -> meurpg.characters.v1.RollLevelUpHitPointsResponse
-	89,  // 167: meurpg.characters.v1.CharacterService.LevelUpCharacter:output_type -> meurpg.characters.v1.LevelUpCharacterResponse
-	91,  // 168: meurpg.characters.v1.CharacterService.ListLevelUps:output_type -> meurpg.characters.v1.ListLevelUpsResponse
-	95,  // 169: meurpg.characters.v1.CharacterService.ListCharacterCreatures:output_type -> meurpg.characters.v1.ListCharacterCreaturesResponse
-	105, // 170: meurpg.characters.v1.CharacterService.ListWildShapeForms:output_type -> meurpg.characters.v1.ListWildShapeFormsResponse
-	97,  // 171: meurpg.characters.v1.CharacterService.GiveCreature:output_type -> meurpg.characters.v1.GiveCreatureResponse
-	99,  // 172: meurpg.characters.v1.CharacterService.RenameCreature:output_type -> meurpg.characters.v1.RenameCreatureResponse
-	101, // 173: meurpg.characters.v1.CharacterService.DismissCreature:output_type -> meurpg.characters.v1.DismissCreatureResponse
-	103, // 174: meurpg.characters.v1.CharacterService.AdjustCreatureHitPoints:output_type -> meurpg.characters.v1.AdjustCreatureHitPointsResponse
-	107, // 175: meurpg.characters.v1.CharacterService.GetSummonOptions:output_type -> meurpg.characters.v1.GetSummonOptionsResponse
-	146, // [146:176] is the sub-list for method output_type
-	116, // [116:146] is the sub-list for method input_type
-	116, // [116:116] is the sub-list for extension type_name
-	116, // [116:116] is the sub-list for extension extendee
-	0,   // [0:116] is the sub-list for field type_name
+	132, // 17: meurpg.characters.v1.CharacterSummary.created_at:type_name -> google.protobuf.Timestamp
+	21,  // 18: meurpg.characters.v1.CharacterSummary.open_choices:type_name -> meurpg.characters.v1.OpenChoice
+	5,   // 19: meurpg.characters.v1.CharacterSummary.claim_state:type_name -> meurpg.characters.v1.ClaimState
+	132, // 20: meurpg.characters.v1.CharacterSummary.claim_expires_at:type_name -> google.protobuf.Timestamp
+	2,   // 21: meurpg.characters.v1.CharacterSummary.review_status:type_name -> meurpg.characters.v1.Review
+	4,   // 22: meurpg.characters.v1.OpenChoice.kind:type_name -> meurpg.characters.v1.OpenChoiceKind
+	6,   // 23: meurpg.characters.v1.CharacterBlocked.reason:type_name -> meurpg.characters.v1.CharacterBlockedReason
+	25,  // 24: meurpg.characters.v1.CharacterSheet.full:type_name -> meurpg.characters.v1.FullSheet
+	32,  // 25: meurpg.characters.v1.CharacterSheet.basic:type_name -> meurpg.characters.v1.BasicSheet
+	133, // 26: meurpg.characters.v1.FullSheet.base_scores:type_name -> meurpg.rules.v1.AbilityScores
+	27,  // 27: meurpg.characters.v1.FullSheet.classes:type_name -> meurpg.characters.v1.ClassLevel
+	28,  // 28: meurpg.characters.v1.FullSheet.custom_background:type_name -> meurpg.characters.v1.CustomBackground
+	133, // 29: meurpg.characters.v1.FullSheet.extra_ability_bonuses:type_name -> meurpg.rules.v1.AbilityScores
+	29,  // 30: meurpg.characters.v1.FullSheet.hit_points:type_name -> meurpg.characters.v1.HitPoints
+	30,  // 31: meurpg.characters.v1.FullSheet.equipment:type_name -> meurpg.characters.v1.Item
+	31,  // 32: meurpg.characters.v1.FullSheet.coins:type_name -> meurpg.characters.v1.Coins
+	8,   // 33: meurpg.characters.v1.FullSheet.alignment:type_name -> meurpg.characters.v1.Alignment
+	26,  // 34: meurpg.characters.v1.FullSheet.ability_origin:type_name -> meurpg.characters.v1.AbilityOrigin
+	128, // 35: meurpg.characters.v1.FullSheet.content_baselines:type_name -> meurpg.characters.v1.FullSheet.ContentBaselinesEntry
+	129, // 36: meurpg.characters.v1.FullSheet.feat_slots:type_name -> meurpg.characters.v1.FullSheet.FeatSlotsEntry
+	10,  // 37: meurpg.characters.v1.AbilityOrigin.method:type_name -> meurpg.characters.v1.AbilityMethod
+	42,  // 38: meurpg.characters.v1.AbilityOrigin.rolls:type_name -> meurpg.characters.v1.AbilityRollSet
+	7,   // 39: meurpg.characters.v1.HitPoints.method:type_name -> meurpg.characters.v1.HitPointsMethod
+	33,  // 40: meurpg.characters.v1.BasicSheet.attacks:type_name -> meurpg.characters.v1.BasicAttack
+	134, // 41: meurpg.characters.v1.BasicSheet.size:type_name -> meurpg.rules.v1.CreatureSize
+	133, // 42: meurpg.characters.v1.BasicSheet.ability_scores:type_name -> meurpg.rules.v1.AbilityScores
+	9,   // 43: meurpg.characters.v1.BasicAttack.damage_type:type_name -> meurpg.characters.v1.DamageType
+	35,  // 44: meurpg.characters.v1.CharacterStory.personality:type_name -> meurpg.characters.v1.Personality
+	36,  // 45: meurpg.characters.v1.CharacterStory.appearance:type_name -> meurpg.characters.v1.Appearance
+	0,   // 46: meurpg.characters.v1.CreateCharacterRequest.kind:type_name -> meurpg.characters.v1.CharacterKind
+	24,  // 47: meurpg.characters.v1.CreateCharacterRequest.sheet:type_name -> meurpg.characters.v1.CharacterSheet
+	34,  // 48: meurpg.characters.v1.CreateCharacterRequest.story:type_name -> meurpg.characters.v1.CharacterStory
+	10,  // 49: meurpg.characters.v1.CreateCharacterRequest.ability_method:type_name -> meurpg.characters.v1.AbilityMethod
+	0,   // 50: meurpg.characters.v1.PreviewCharacterRequest.kind:type_name -> meurpg.characters.v1.CharacterKind
+	24,  // 51: meurpg.characters.v1.PreviewCharacterRequest.sheet:type_name -> meurpg.characters.v1.CharacterSheet
+	131, // 52: meurpg.characters.v1.PreviewCharacterResponse.derived:type_name -> meurpg.rules.v1.DerivedSheet
+	18,  // 53: meurpg.characters.v1.CreateCharacterResponse.character:type_name -> meurpg.characters.v1.Character
+	11,  // 54: meurpg.characters.v1.AbilityScoresRefusal.reason:type_name -> meurpg.characters.v1.AbilityScoresRefusalReason
+	10,  // 55: meurpg.characters.v1.AbilityScoresRefusal.method:type_name -> meurpg.characters.v1.AbilityMethod
+	42,  // 56: meurpg.characters.v1.AbilityRolls.sets:type_name -> meurpg.characters.v1.AbilityRollSet
+	132, // 57: meurpg.characters.v1.AbilityRolls.rolled_at:type_name -> google.protobuf.Timestamp
+	43,  // 58: meurpg.characters.v1.GetAbilityRollsResponse.rolls:type_name -> meurpg.characters.v1.AbilityRolls
+	42,  // 59: meurpg.characters.v1.RollAbilityScoresRequest.typed_dice:type_name -> meurpg.characters.v1.AbilityRollSet
+	43,  // 60: meurpg.characters.v1.RollAbilityScoresResponse.rolls:type_name -> meurpg.characters.v1.AbilityRolls
+	0,   // 61: meurpg.characters.v1.CreateNpcFromCreatureRequest.kind:type_name -> meurpg.characters.v1.CharacterKind
+	18,  // 62: meurpg.characters.v1.CreateNpcFromCreatureResponse.character:type_name -> meurpg.characters.v1.Character
+	18,  // 63: meurpg.characters.v1.GetCharacterResponse.character:type_name -> meurpg.characters.v1.Character
+	20,  // 64: meurpg.characters.v1.ListCharactersResponse.characters:type_name -> meurpg.characters.v1.CharacterSummary
+	24,  // 65: meurpg.characters.v1.UpdateCharacterRequest.sheet:type_name -> meurpg.characters.v1.CharacterSheet
+	18,  // 66: meurpg.characters.v1.UpdateCharacterResponse.character:type_name -> meurpg.characters.v1.Character
+	34,  // 67: meurpg.characters.v1.UpdateCharacterStoryRequest.story:type_name -> meurpg.characters.v1.CharacterStory
+	18,  // 68: meurpg.characters.v1.UpdateCharacterStoryResponse.character:type_name -> meurpg.characters.v1.Character
+	18,  // 69: meurpg.characters.v1.SetStoryEditingResponse.character:type_name -> meurpg.characters.v1.Character
+	18,  // 70: meurpg.characters.v1.MarkCharacterDeadResponse.character:type_name -> meurpg.characters.v1.Character
+	132, // 71: meurpg.characters.v1.GetMasterNotesResponse.updated_at:type_name -> google.protobuf.Timestamp
+	132, // 72: meurpg.characters.v1.UpdateMasterNotesResponse.updated_at:type_name -> google.protobuf.Timestamp
+	18,  // 73: meurpg.characters.v1.ApproveCharacterResponse.character:type_name -> meurpg.characters.v1.Character
+	18,  // 74: meurpg.characters.v1.RequestCharacterChangesResponse.character:type_name -> meurpg.characters.v1.Character
+	18,  // 75: meurpg.characters.v1.ResubmitCharacterResponse.character:type_name -> meurpg.characters.v1.Character
+	18,  // 76: meurpg.characters.v1.ReviveCharacterResponse.character:type_name -> meurpg.characters.v1.Character
+	132, // 77: meurpg.characters.v1.CreateClaimLinkResponse.expires_at:type_name -> google.protobuf.Timestamp
+	18,  // 78: meurpg.characters.v1.ReturnCharacterToReserveResponse.character:type_name -> meurpg.characters.v1.Character
+	85,  // 79: meurpg.characters.v1.PreviewClaimResponse.card:type_name -> meurpg.characters.v1.ClaimCard
+	92,  // 80: meurpg.characters.v1.GetLevelUpOptionsResponse.options:type_name -> meurpg.characters.v1.LevelUpOptions
+	13,  // 81: meurpg.characters.v1.LevelUpOptions.dice_rule:type_name -> meurpg.characters.v1.LevelUpDiceRule
+	93,  // 82: meurpg.characters.v1.LevelUpOptions.subclasses:type_name -> meurpg.characters.v1.LevelUpSubclass
+	12,  // 83: meurpg.characters.v1.LevelUpOptions.spells_kind:type_name -> meurpg.characters.v1.LevelUpSpellsKind
+	94,  // 84: meurpg.characters.v1.LevelUpOptions.feature_choices:type_name -> meurpg.characters.v1.LevelUpFeatureChoice
+	135, // 85: meurpg.characters.v1.LevelUpOptions.pact_magic_before:type_name -> meurpg.rules.v1.PactMagic
+	135, // 86: meurpg.characters.v1.LevelUpOptions.pact_magic_after:type_name -> meurpg.rules.v1.PactMagic
+	91,  // 87: meurpg.characters.v1.LevelUpOptions.new_features:type_name -> meurpg.characters.v1.LevelUpNamedKey
+	91,  // 88: meurpg.characters.v1.LevelUpOptions.master_adds:type_name -> meurpg.characters.v1.LevelUpNamedKey
+	14,  // 89: meurpg.characters.v1.LevelUpOptions.hit_points_rule:type_name -> meurpg.characters.v1.LevelUpHitPointsRule
+	136, // 90: meurpg.characters.v1.LevelUpOptions.feats:type_name -> meurpg.rules.v1.FeatOption
+	94,  // 91: meurpg.characters.v1.LevelUpSubclass.feature_choices:type_name -> meurpg.characters.v1.LevelUpFeatureChoice
+	12,  // 92: meurpg.characters.v1.LevelUpSubclass.spells_kind:type_name -> meurpg.characters.v1.LevelUpSpellsKind
+	91,  // 93: meurpg.characters.v1.LevelUpFeatureChoice.feature:type_name -> meurpg.characters.v1.LevelUpNamedKey
+	91,  // 94: meurpg.characters.v1.LevelUpFeatureChoice.options:type_name -> meurpg.characters.v1.LevelUpNamedKey
+	15,  // 95: meurpg.characters.v1.LevelUpHitPoints.method:type_name -> meurpg.characters.v1.LevelUpHitPointsMethod
+	133, // 96: meurpg.characters.v1.LevelUpChoices.ability_increase:type_name -> meurpg.rules.v1.AbilityScores
+	95,  // 97: meurpg.characters.v1.LevelUpChoices.hit_points:type_name -> meurpg.characters.v1.LevelUpHitPoints
+	16,  // 98: meurpg.characters.v1.LevelUpRefusal.reason:type_name -> meurpg.characters.v1.LevelUpRefusalReason
+	96,  // 99: meurpg.characters.v1.PreviewLevelUpRequest.choices:type_name -> meurpg.characters.v1.LevelUpChoices
+	131, // 100: meurpg.characters.v1.PreviewLevelUpResponse.after:type_name -> meurpg.rules.v1.DerivedSheet
+	97,  // 101: meurpg.characters.v1.PreviewLevelUpResponse.refusal:type_name -> meurpg.characters.v1.LevelUpRefusal
+	96,  // 102: meurpg.characters.v1.LevelUpCharacterRequest.choices:type_name -> meurpg.characters.v1.LevelUpChoices
+	18,  // 103: meurpg.characters.v1.LevelUpCharacterResponse.character:type_name -> meurpg.characters.v1.Character
+	106, // 104: meurpg.characters.v1.ListLevelUpsResponse.level_ups:type_name -> meurpg.characters.v1.LevelUp
+	96,  // 105: meurpg.characters.v1.LevelUp.choices:type_name -> meurpg.characters.v1.LevelUpChoices
+	130, // 106: meurpg.characters.v1.LevelUp.names_pt:type_name -> meurpg.characters.v1.LevelUp.NamesPtEntry
+	132, // 107: meurpg.characters.v1.LevelUp.created_at:type_name -> google.protobuf.Timestamp
+	17,  // 108: meurpg.characters.v1.CharacterCreature.source:type_name -> meurpg.characters.v1.CreatureSource
+	132, // 109: meurpg.characters.v1.CharacterCreature.created_at:type_name -> google.protobuf.Timestamp
+	107, // 110: meurpg.characters.v1.ListCharacterCreaturesResponse.creatures:type_name -> meurpg.characters.v1.CharacterCreature
+	107, // 111: meurpg.characters.v1.GiveCreatureResponse.creature:type_name -> meurpg.characters.v1.CharacterCreature
+	107, // 112: meurpg.characters.v1.RenameCreatureResponse.creature:type_name -> meurpg.characters.v1.CharacterCreature
+	107, // 113: meurpg.characters.v1.AdjustCreatureHitPointsResponse.creature:type_name -> meurpg.characters.v1.CharacterCreature
+	137, // 114: meurpg.characters.v1.ListWildShapeFormsResponse.forms:type_name -> meurpg.rules.v1.CreatureSummary
+	122, // 115: meurpg.characters.v1.GetSummonOptionsResponse.spells:type_name -> meurpg.characters.v1.SummonSpellOptions
+	126, // 116: meurpg.characters.v1.GetSummonOptionsResponse.slots:type_name -> meurpg.characters.v1.SummonSlot
+	123, // 117: meurpg.characters.v1.SummonSpellOptions.circles:type_name -> meurpg.characters.v1.SummonCircle
+	127, // 118: meurpg.characters.v1.SummonSpellOptions.replaces:type_name -> meurpg.characters.v1.ReplacedCreature
+	124, // 119: meurpg.characters.v1.SummonCircle.options:type_name -> meurpg.characters.v1.SummonOption
+	125, // 120: meurpg.characters.v1.SummonOption.forms:type_name -> meurpg.characters.v1.SummonForm
+	37,  // 121: meurpg.characters.v1.CharacterService.CreateCharacter:input_type -> meurpg.characters.v1.CreateCharacterRequest
+	44,  // 122: meurpg.characters.v1.CharacterService.GetAbilityRolls:input_type -> meurpg.characters.v1.GetAbilityRollsRequest
+	46,  // 123: meurpg.characters.v1.CharacterService.RollAbilityScores:input_type -> meurpg.characters.v1.RollAbilityScoresRequest
+	48,  // 124: meurpg.characters.v1.CharacterService.CreateNpcFromCreature:input_type -> meurpg.characters.v1.CreateNpcFromCreatureRequest
+	50,  // 125: meurpg.characters.v1.CharacterService.GetCharacter:input_type -> meurpg.characters.v1.GetCharacterRequest
+	52,  // 126: meurpg.characters.v1.CharacterService.ListCharacters:input_type -> meurpg.characters.v1.ListCharactersRequest
+	54,  // 127: meurpg.characters.v1.CharacterService.UpdateCharacter:input_type -> meurpg.characters.v1.UpdateCharacterRequest
+	56,  // 128: meurpg.characters.v1.CharacterService.UpdateCharacterStory:input_type -> meurpg.characters.v1.UpdateCharacterStoryRequest
+	58,  // 129: meurpg.characters.v1.CharacterService.SetStoryEditing:input_type -> meurpg.characters.v1.SetStoryEditingRequest
+	60,  // 130: meurpg.characters.v1.CharacterService.MarkCharacterDead:input_type -> meurpg.characters.v1.MarkCharacterDeadRequest
+	62,  // 131: meurpg.characters.v1.CharacterService.GetMasterNotes:input_type -> meurpg.characters.v1.GetMasterNotesRequest
+	64,  // 132: meurpg.characters.v1.CharacterService.UpdateMasterNotes:input_type -> meurpg.characters.v1.UpdateMasterNotesRequest
+	66,  // 133: meurpg.characters.v1.CharacterService.ApproveCharacter:input_type -> meurpg.characters.v1.ApproveCharacterRequest
+	68,  // 134: meurpg.characters.v1.CharacterService.RejectCharacter:input_type -> meurpg.characters.v1.RejectCharacterRequest
+	70,  // 135: meurpg.characters.v1.CharacterService.RequestCharacterChanges:input_type -> meurpg.characters.v1.RequestCharacterChangesRequest
+	72,  // 136: meurpg.characters.v1.CharacterService.ResubmitCharacter:input_type -> meurpg.characters.v1.ResubmitCharacterRequest
+	74,  // 137: meurpg.characters.v1.CharacterService.ReviveCharacter:input_type -> meurpg.characters.v1.ReviveCharacterRequest
+	76,  // 138: meurpg.characters.v1.CharacterService.CreateClaimLink:input_type -> meurpg.characters.v1.CreateClaimLinkRequest
+	78,  // 139: meurpg.characters.v1.CharacterService.RevokeClaimLink:input_type -> meurpg.characters.v1.RevokeClaimLinkRequest
+	80,  // 140: meurpg.characters.v1.CharacterService.ReturnCharacterToReserve:input_type -> meurpg.characters.v1.ReturnCharacterToReserveRequest
+	82,  // 141: meurpg.characters.v1.CharacterService.DeleteReservedCharacter:input_type -> meurpg.characters.v1.DeleteReservedCharacterRequest
+	84,  // 142: meurpg.characters.v1.CharacterService.PreviewClaim:input_type -> meurpg.characters.v1.PreviewClaimRequest
+	87,  // 143: meurpg.characters.v1.CharacterService.ClaimCharacter:input_type -> meurpg.characters.v1.ClaimCharacterRequest
+	89,  // 144: meurpg.characters.v1.CharacterService.GetLevelUpOptions:input_type -> meurpg.characters.v1.GetLevelUpOptionsRequest
+	98,  // 145: meurpg.characters.v1.CharacterService.PreviewLevelUp:input_type -> meurpg.characters.v1.PreviewLevelUpRequest
+	38,  // 146: meurpg.characters.v1.CharacterService.PreviewCharacter:input_type -> meurpg.characters.v1.PreviewCharacterRequest
+	100, // 147: meurpg.characters.v1.CharacterService.RollLevelUpHitPoints:input_type -> meurpg.characters.v1.RollLevelUpHitPointsRequest
+	102, // 148: meurpg.characters.v1.CharacterService.LevelUpCharacter:input_type -> meurpg.characters.v1.LevelUpCharacterRequest
+	104, // 149: meurpg.characters.v1.CharacterService.ListLevelUps:input_type -> meurpg.characters.v1.ListLevelUpsRequest
+	108, // 150: meurpg.characters.v1.CharacterService.ListCharacterCreatures:input_type -> meurpg.characters.v1.ListCharacterCreaturesRequest
+	118, // 151: meurpg.characters.v1.CharacterService.ListWildShapeForms:input_type -> meurpg.characters.v1.ListWildShapeFormsRequest
+	110, // 152: meurpg.characters.v1.CharacterService.GiveCreature:input_type -> meurpg.characters.v1.GiveCreatureRequest
+	112, // 153: meurpg.characters.v1.CharacterService.RenameCreature:input_type -> meurpg.characters.v1.RenameCreatureRequest
+	114, // 154: meurpg.characters.v1.CharacterService.DismissCreature:input_type -> meurpg.characters.v1.DismissCreatureRequest
+	116, // 155: meurpg.characters.v1.CharacterService.AdjustCreatureHitPoints:input_type -> meurpg.characters.v1.AdjustCreatureHitPointsRequest
+	120, // 156: meurpg.characters.v1.CharacterService.GetSummonOptions:input_type -> meurpg.characters.v1.GetSummonOptionsRequest
+	40,  // 157: meurpg.characters.v1.CharacterService.CreateCharacter:output_type -> meurpg.characters.v1.CreateCharacterResponse
+	45,  // 158: meurpg.characters.v1.CharacterService.GetAbilityRolls:output_type -> meurpg.characters.v1.GetAbilityRollsResponse
+	47,  // 159: meurpg.characters.v1.CharacterService.RollAbilityScores:output_type -> meurpg.characters.v1.RollAbilityScoresResponse
+	49,  // 160: meurpg.characters.v1.CharacterService.CreateNpcFromCreature:output_type -> meurpg.characters.v1.CreateNpcFromCreatureResponse
+	51,  // 161: meurpg.characters.v1.CharacterService.GetCharacter:output_type -> meurpg.characters.v1.GetCharacterResponse
+	53,  // 162: meurpg.characters.v1.CharacterService.ListCharacters:output_type -> meurpg.characters.v1.ListCharactersResponse
+	55,  // 163: meurpg.characters.v1.CharacterService.UpdateCharacter:output_type -> meurpg.characters.v1.UpdateCharacterResponse
+	57,  // 164: meurpg.characters.v1.CharacterService.UpdateCharacterStory:output_type -> meurpg.characters.v1.UpdateCharacterStoryResponse
+	59,  // 165: meurpg.characters.v1.CharacterService.SetStoryEditing:output_type -> meurpg.characters.v1.SetStoryEditingResponse
+	61,  // 166: meurpg.characters.v1.CharacterService.MarkCharacterDead:output_type -> meurpg.characters.v1.MarkCharacterDeadResponse
+	63,  // 167: meurpg.characters.v1.CharacterService.GetMasterNotes:output_type -> meurpg.characters.v1.GetMasterNotesResponse
+	65,  // 168: meurpg.characters.v1.CharacterService.UpdateMasterNotes:output_type -> meurpg.characters.v1.UpdateMasterNotesResponse
+	67,  // 169: meurpg.characters.v1.CharacterService.ApproveCharacter:output_type -> meurpg.characters.v1.ApproveCharacterResponse
+	69,  // 170: meurpg.characters.v1.CharacterService.RejectCharacter:output_type -> meurpg.characters.v1.RejectCharacterResponse
+	71,  // 171: meurpg.characters.v1.CharacterService.RequestCharacterChanges:output_type -> meurpg.characters.v1.RequestCharacterChangesResponse
+	73,  // 172: meurpg.characters.v1.CharacterService.ResubmitCharacter:output_type -> meurpg.characters.v1.ResubmitCharacterResponse
+	75,  // 173: meurpg.characters.v1.CharacterService.ReviveCharacter:output_type -> meurpg.characters.v1.ReviveCharacterResponse
+	77,  // 174: meurpg.characters.v1.CharacterService.CreateClaimLink:output_type -> meurpg.characters.v1.CreateClaimLinkResponse
+	79,  // 175: meurpg.characters.v1.CharacterService.RevokeClaimLink:output_type -> meurpg.characters.v1.RevokeClaimLinkResponse
+	81,  // 176: meurpg.characters.v1.CharacterService.ReturnCharacterToReserve:output_type -> meurpg.characters.v1.ReturnCharacterToReserveResponse
+	83,  // 177: meurpg.characters.v1.CharacterService.DeleteReservedCharacter:output_type -> meurpg.characters.v1.DeleteReservedCharacterResponse
+	86,  // 178: meurpg.characters.v1.CharacterService.PreviewClaim:output_type -> meurpg.characters.v1.PreviewClaimResponse
+	88,  // 179: meurpg.characters.v1.CharacterService.ClaimCharacter:output_type -> meurpg.characters.v1.ClaimCharacterResponse
+	90,  // 180: meurpg.characters.v1.CharacterService.GetLevelUpOptions:output_type -> meurpg.characters.v1.GetLevelUpOptionsResponse
+	99,  // 181: meurpg.characters.v1.CharacterService.PreviewLevelUp:output_type -> meurpg.characters.v1.PreviewLevelUpResponse
+	39,  // 182: meurpg.characters.v1.CharacterService.PreviewCharacter:output_type -> meurpg.characters.v1.PreviewCharacterResponse
+	101, // 183: meurpg.characters.v1.CharacterService.RollLevelUpHitPoints:output_type -> meurpg.characters.v1.RollLevelUpHitPointsResponse
+	103, // 184: meurpg.characters.v1.CharacterService.LevelUpCharacter:output_type -> meurpg.characters.v1.LevelUpCharacterResponse
+	105, // 185: meurpg.characters.v1.CharacterService.ListLevelUps:output_type -> meurpg.characters.v1.ListLevelUpsResponse
+	109, // 186: meurpg.characters.v1.CharacterService.ListCharacterCreatures:output_type -> meurpg.characters.v1.ListCharacterCreaturesResponse
+	119, // 187: meurpg.characters.v1.CharacterService.ListWildShapeForms:output_type -> meurpg.characters.v1.ListWildShapeFormsResponse
+	111, // 188: meurpg.characters.v1.CharacterService.GiveCreature:output_type -> meurpg.characters.v1.GiveCreatureResponse
+	113, // 189: meurpg.characters.v1.CharacterService.RenameCreature:output_type -> meurpg.characters.v1.RenameCreatureResponse
+	115, // 190: meurpg.characters.v1.CharacterService.DismissCreature:output_type -> meurpg.characters.v1.DismissCreatureResponse
+	117, // 191: meurpg.characters.v1.CharacterService.AdjustCreatureHitPoints:output_type -> meurpg.characters.v1.AdjustCreatureHitPointsResponse
+	121, // 192: meurpg.characters.v1.CharacterService.GetSummonOptions:output_type -> meurpg.characters.v1.GetSummonOptionsResponse
+	157, // [157:193] is the sub-list for method output_type
+	121, // [121:157] is the sub-list for method input_type
+	121, // [121:121] is the sub-list for extension type_name
+	121, // [121:121] is the sub-list for extension extendee
+	0,   // [0:121] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_characters_v1_characters_proto_init() }
@@ -10154,7 +11165,7 @@ func file_meurpg_characters_v1_characters_proto_init() {
 		(*ClassLevel_SubclassKey)(nil),
 		(*ClassLevel_CustomSubclassName)(nil),
 	}
-	file_meurpg_characters_v1_characters_proto_msgTypes[85].OneofWrappers = []any{
+	file_meurpg_characters_v1_characters_proto_msgTypes[98].OneofWrappers = []any{
 		(*AdjustCreatureHitPointsRequest_Damage)(nil),
 		(*AdjustCreatureHitPointsRequest_Heal)(nil),
 		(*AdjustCreatureHitPointsRequest_HitPoints)(nil),
@@ -10164,8 +11175,8 @@ func file_meurpg_characters_v1_characters_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_characters_v1_characters_proto_rawDesc), len(file_meurpg_characters_v1_characters_proto_rawDesc)),
-			NumEnums:      17,
-			NumMessages:   100,
+			NumEnums:      18,
+			NumMessages:   113,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

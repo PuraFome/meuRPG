@@ -69,6 +69,14 @@ func (noMembers) ClearPendingExpiry(context.Context, pgx.Tx, string, string) err
 	return errors.New("not in this test")
 }
 
+func (noMembers) CampaignForClaim(context.Context, pgx.Tx, string, string) (string, bool, error) {
+	return "", false, errors.New("not in this test")
+}
+
+func (noMembers) JoinAsPlayer(context.Context, pgx.Tx, string, string) (string, error) {
+	return "", errors.New("not in this test")
+}
+
 // offlineService is a Service whose database cannot be reached.
 func offlineService(t *testing.T) *Service {
 	t.Helper()
@@ -121,6 +129,12 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["MarkCharacterDead"] = c.MarkCharacterDead(ctx, connect.NewRequest(&charactersv1.MarkCharacterDeadRequest{CampaignId: id, CharacterId: id}))
 	_, calls["GetMasterNotes"] = c.GetMasterNotes(ctx, connect.NewRequest(&charactersv1.GetMasterNotesRequest{CampaignId: id, CharacterId: id}))
 	_, calls["UpdateMasterNotes"] = c.UpdateMasterNotes(ctx, connect.NewRequest(&charactersv1.UpdateMasterNotesRequest{CampaignId: id, CharacterId: id}))
+	_, calls["CreateClaimLink"] = c.CreateClaimLink(ctx, connect.NewRequest(&charactersv1.CreateClaimLinkRequest{CampaignId: id, CharacterId: id}))
+	_, calls["RevokeClaimLink"] = c.RevokeClaimLink(ctx, connect.NewRequest(&charactersv1.RevokeClaimLinkRequest{CampaignId: id, CharacterId: id}))
+	_, calls["ReturnCharacterToReserve"] = c.ReturnCharacterToReserve(ctx, connect.NewRequest(&charactersv1.ReturnCharacterToReserveRequest{CampaignId: id, CharacterId: id}))
+	_, calls["DeleteReservedCharacter"] = c.DeleteReservedCharacter(ctx, connect.NewRequest(&charactersv1.DeleteReservedCharacterRequest{CampaignId: id, CharacterId: id}))
+	_, calls["PreviewClaim"] = c.PreviewClaim(ctx, connect.NewRequest(&charactersv1.PreviewClaimRequest{Token: "x"}))
+	_, calls["ClaimCharacter"] = c.ClaimCharacter(ctx, connect.NewRequest(&charactersv1.ClaimCharacterRequest{Token: "x"}))
 	_, calls["ApproveCharacter"] = c.ApproveCharacter(ctx, connect.NewRequest(&charactersv1.ApproveCharacterRequest{CampaignId: id, CharacterId: id}))
 	_, calls["RejectCharacter"] = c.RejectCharacter(ctx, connect.NewRequest(&charactersv1.RejectCharacterRequest{CampaignId: id, CharacterId: id}))
 	_, calls["RequestCharacterChanges"] = c.RequestCharacterChanges(ctx, connect.NewRequest(&charactersv1.RequestCharacterChangesRequest{CampaignId: id, CharacterId: id}))
@@ -198,8 +212,8 @@ func TestReadsWithIDsArePostOnly(t *testing.T) {
 			}
 		}
 	}
-	if len(reads) != 22 {
-		t.Errorf("found %d reads, want 22 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, PreviewCharacter, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListSpells, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries, ListOptionSwitches, GetClassTableDefaults, GetEffectMenu)", len(reads))
+	if len(reads) != 23 {
+		t.Errorf("found %d reads, want 23 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, PreviewCharacter, PreviewClaim, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListSpells, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries, ListOptionSwitches, GetClassTableDefaults, GetEffectMenu)", len(reads))
 	}
 	for procedure, method := range reads {
 		opts, _ := method.Options().(*descriptorpb.MethodOptions)

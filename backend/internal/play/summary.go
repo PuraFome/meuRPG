@@ -157,6 +157,11 @@ func (s *Service) GetSessionSummary(
 			t.name = chars[t.characterID].Name
 		}
 	}
+	if m.Role != authz.RoleMaster {
+		// A character the master gave back to the reserve is invisible to the players,
+		// in the sessions it played before too (RN-10).
+		st.list = slices.DeleteFunc(st.list, func(t *characterTally) bool { return chars[t.characterID].Reserved })
+	}
 
 	sum := &playv1.SessionSummary{
 		StartedAt:  timestamppb.New(session.StartedAt),

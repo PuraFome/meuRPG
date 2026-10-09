@@ -772,3 +772,60 @@ func TestOldSessionSurvivesAFailedRelogin(t *testing.T) {
 		t.Fatalf("old session no longer valid after failed re-login (user logged out): %v", err)
 	}
 }
+
+// TestLoginPromptSelectAccount: the form may ask the provider for its account chooser
+// ("Entrar com outra conta"), and only that: a sign-in without the field sends no prompt,
+// any other value is refused, and the field is not read from the URL.
+func TestLoginPromptSelectAccount(t *testing.T) {
+	t.Parallel()
+
+	t.Run("select_account reaches the provider", func(t *testing.T) {
+		t.Parallel()
+		h := newHarness(t)
+		form := url.Values{"return_to": {"/claim"}, "prompt": {"select_account"}}
+		rec := h.postLogin(h.mux, form, nil)
+		if rec.Code != http.StatusSeeOther {
+			t.Fatalf("status = %d, want 303; body: %s", rec.Code, rec.Body)
+		}
+		h.authorize(rec.Header().Get("Location"))
+		if got := h.idp.LastAuthorize().Get("prompt"); got != "select_account" {
+			t.Errorf("authorize prompt = %q, want select_account", got)
+		}
+	})
+
+	t.Run("no prompt without the field", func(t *testing.T) {
+		t.Parallel()
+		h := newHarness(t)
+		h.beginLogin("/")
+		if h.idp.LastAuthorize().Has("prompt") {
+			t.Errorf("authorize prompt = %q, want none", h.idp.LastAuthorize().Get("prompt"))
+		}
+	})
+
+	t.Run("another prompt is refused", func(t *testing.T) {
+		t.Parallel()
+		h := newHarness(t)
+		for _, prompt := range []string{"none", "login", "consent", "select_account select_account", "Select_Account"} {
+			rec := h.postLogin(h.mux, url.Values{"return_to": {"/"}, "prompt": {prompt}}, nil)
+			if rec.Code != http.StatusBadRequest {
+				t.Errorf("prompt %q: status = %d, want 400", prompt, rec.Code)
+			}
+		}
+		if n := len(h.mem.loginStates); n != 0 {
+			t.Errorf("saved %d login states, want 0", n)
+		}
+	})
+
+	t.Run("the URL cannot carry it", func(t *testing.T) {
+		t.Parallel()
+		h := newHarness(t)
+		rec := h.get("/auth/login?return_to=/&prompt=select_account")
+		if rec.Code != http.StatusFound {
+			t.Fatalf("status = %d, want 302", rec.Code)
+		}
+		h.authorize(rec.Header().Get("Location"))
+		if h.idp.LastAuthorize().Has("prompt") {
+			t.Error("a prompt in the URL reached the provider")
+		}
+	})
+}

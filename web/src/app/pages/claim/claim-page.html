@@ -1,0 +1,180 @@
+@switch (state().status) {
+  @case ('waiting-for-session') {
+    <h1 class="mr-page-title" tabindex="-1">Assumir um personagem</h1>
+    <section class="mr-panel claim claim__loading" role="status" aria-live="polite">
+      <mat-spinner diameter="28" aria-label="Confirmando sua sessão" />
+      <p>Confirmando sua sessão...</p>
+    </section>
+  }
+  @case ('signed-out') {
+    <h1 class="mr-page-title" tabindex="-1">Assumir um personagem</h1>
+    <section class="mr-panel claim">
+      <p>
+        Um link como este é de um personagem que o mestre de uma campanha preparou para um jogador. Entre com
+        a sua conta Google para ver de quem é e decidir se é seu.
+      </p>
+      <button mat-flat-button type="button" class="claim__action" data-initial-focus (click)="signIn()">
+        Entrar com Google
+      </button>
+      <p class="mr-muted claim__note">
+        Entrar não assume nada: depois do login você vê o personagem e escolhe.
+      </p>
+    </section>
+  }
+  @case ('loading') {
+    <h1 class="mr-page-title" tabindex="-1">Assumir um personagem</h1>
+    <section class="mr-panel claim claim__loading" role="status" aria-live="polite">
+      <mat-spinner diameter="28" aria-label="Lendo o link" />
+      <p>Lendo o link...</p>
+    </section>
+  }
+  @case ('claiming') {
+    <h1 class="mr-page-title" tabindex="-1">Assumir um personagem</h1>
+    <section class="mr-panel claim claim__loading" role="status" aria-live="polite">
+      <mat-spinner diameter="28" aria-label="Assumindo o personagem" />
+      <p>Assumindo o personagem...</p>
+    </section>
+  }
+  @case ('card') {
+    @if (state(); as s) {
+      @if (s.status === 'card') {
+        <h1 class="mr-page-title" tabindex="-1">Este personagem é seu?</h1>
+        <section class="mr-panel claim" aria-labelledby="claim-card-name">
+          <p class="claim__campaign mr-muted">Campanha {{ s.card.campaignName }}</p>
+          <div class="claim__character">
+            <app-portrait [name]="s.card.characterName" [size]="64" [decorative]="true" />
+            <div class="claim__who">
+              <p class="claim__name" id="claim-card-name">{{ s.card.characterName }}</p>
+              @if (s.card.raceAndClass) {
+                <p class="claim__sub">{{ s.card.raceAndClass }}</p>
+              }
+            </div>
+          </div>
+          <p>
+            @if (s.card.sentBy) {
+              Enviado por <strong>{{ s.card.sentBy }}</strong> (mestre de {{ s.card.campaignName }}).
+            } @else {
+              Enviado pelo mestre de {{ s.card.campaignName }}.
+            }
+          </p>
+          <p class="mr-muted">
+            Ao assumir, você entra na campanha e passa a ser o dono do personagem.
+            @if (signedInAs()) {
+              Você entrou como {{ signedInAs() }}.
+            }
+          </p>
+          <div class="claim__actions">
+            <button mat-flat-button type="button" class="claim__action" data-initial-focus (click)="claim()">
+              Assumir este personagem
+            </button>
+            <a mat-stroked-button class="claim__action" routerLink="/campaigns">Voltar para minhas campanhas</a>
+          </div>
+          <button mat-button type="button" class="claim__other" (click)="signInAsAnother()">
+            Não é você? Entrar com outra conta
+          </button>
+        </section>
+      }
+    }
+  }
+  @case ('done') {
+    @if (state(); as s) {
+      @if (s.status === 'done') {
+        <h1 class="mr-page-title" tabindex="-1">Pronto: {{ s.result.characterName }} é seu</h1>
+        <section class="mr-panel claim">
+          <p class="claim__campaign mr-muted">Campanha {{ s.result.campaignName }}</p>
+          <div class="mr-notice mr-notice--success" role="status">
+            <mat-icon aria-hidden="true">check_circle</mat-icon>
+            <p>
+              Você agora é membro de <strong>{{ s.result.campaignName }}</strong> e o dono de
+              <strong>{{ s.result.characterName }}</strong>.
+            </p>
+          </div>
+          <div class="claim__actions">
+            <a
+              mat-flat-button
+              class="claim__action"
+              data-initial-focus
+              [routerLink]="['/campaigns', s.result.campaignId, 'characters', s.result.characterId]"
+            >
+              Abrir a ficha de {{ s.result.characterName }}
+            </a>
+            <a mat-stroked-button class="claim__action" [routerLink]="['/campaigns', s.result.campaignId]">
+              Ir para a campanha
+            </a>
+          </div>
+        </section>
+      }
+    }
+  }
+  @case ('unusable') {
+    <h1 class="mr-page-title" tabindex="-1">Este link não pode ser usado</h1>
+    <section class="mr-panel claim">
+      <p>Este link não existe ou não vale mais.</p>
+      <p>Peça ao mestre um link novo.</p>
+      <a mat-flat-button class="claim__action" data-initial-focus routerLink="/campaigns">Ir para minhas campanhas</a>
+    </section>
+  }
+  @case ('own-link') {
+    <h1 class="mr-page-title" tabindex="-1">Este link é para um jogador</h1>
+    <section class="mr-panel claim">
+      <p>Este link é para um jogador. Copie e envie para ele.</p>
+      <a mat-flat-button class="claim__action" data-initial-focus routerLink="/campaigns">Voltar para minhas campanhas</a>
+    </section>
+  }
+  @case ('living') {
+    @if (state(); as s) {
+      @if (s.status === 'living') {
+        <h1 class="mr-page-title" tabindex="-1">Você já tem um personagem vivo aqui</h1>
+        <section class="mr-panel claim">
+          <p>
+            Você já tem um personagem vivo nesta campanha:
+            @if (s.characterName) {
+              <strong>{{ s.characterName }}</strong>.
+            } @else {
+              o seu.
+            }
+            Cada jogador tem um personagem por campanha.
+          </p>
+          <p>
+            <strong>O que fazer:</strong> fale com o mestre: dá para devolver
+            {{ s.characterName || 'o seu personagem' }}
+            à reserva ou mandar o link
+            @if (cardName()) {
+              de {{ cardName() }}
+            }
+            para outra pessoa.
+          </p>
+          <div class="claim__actions">
+            @if (s.campaignId && s.characterId) {
+              <a
+                mat-flat-button
+                class="claim__action"
+                data-initial-focus
+                [routerLink]="['/campaigns', s.campaignId, 'characters', s.characterId]"
+              >
+                Abrir a ficha{{ s.characterName ? ' de ' + s.characterName : '' }}
+              </a>
+            }
+            <a mat-stroked-button class="claim__action" routerLink="/campaigns">Voltar para minhas campanhas</a>
+          </div>
+        </section>
+      }
+    }
+  }
+  @case ('error') {
+    @if (state(); as s) {
+      @if (s.status === 'error') {
+        <h1 class="mr-page-title" tabindex="-1">Assumir um personagem</h1>
+        <div class="claim">
+          <div class="mr-notice mr-notice--danger" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ s.message }}</p>
+          </div>
+          <button mat-stroked-button type="button" class="claim__action" data-initial-focus (click)="retry()">
+            Tentar de novo
+          </button>
+        </div>
+      }
+    }
+  }
+}

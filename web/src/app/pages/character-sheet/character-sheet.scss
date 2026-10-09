@@ -124,15 +124,17 @@ app-revive-blocked {
   list-style: none;
 }
 
-// The sheet: one column in the paper sheet's order on a phone; the
-// medallions in a row over two columns on a tablet; four columns from
+// The sheet: one column on a phone with the numbers used in play first (the
+// abilities, then the combat block, then the saves and skills); the
+// medallions in a row over two columns on a tablet, the combat block at the
+// left of the saves and skills; four columns in the paper sheet's order from
 // 1200px. From a tablet up, the master's notes sit under the combat column:
 // their row is `1fr`, so a longer column next to them (spanning both rows)
 // grows that row instead of pushing the notes down.
 .sheet {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: 'abilities' 'proficiencies' 'combat' 'traits' 'notes';
+  grid-template-areas: 'abilities' 'combat' 'proficiencies' 'traits' 'notes';
   align-items: start;
   gap: var(--mr-space-4);
 
@@ -141,8 +143,8 @@ app-revive-blocked {
     grid-template-rows: auto auto 1fr auto;
     grid-template-areas:
       'abilities abilities'
-      'proficiencies combat'
-      'proficiencies notes'
+      'combat proficiencies'
+      'notes proficiencies'
       'traits traits';
     gap: var(--mr-space-4) 20px;
   }
@@ -211,12 +213,13 @@ app-revive-blocked {
 }
 
 // With the player's notes (E8-07): the panel is the first block of the fourth
-// column from 1200px, and right after the header on a narrower screen, where
-// the traits' wrapper dissolves so the notes, the features and the story are
-// cells of the sheet's own grid.
+// column from 1200px. On a narrower screen the traits' wrapper dissolves, so
+// the features, the notes and the story are cells of the sheet's own grid and
+// the notes (one "Anotações (N)" row) come after the features, never before
+// the game numbers.
 .sheet--pnotes {
   @media (max-width: 1199.98px) {
-    grid-template-areas: 'pnotes' 'abilities' 'proficiencies' 'combat' 'features' 'tstory' 'notes';
+    grid-template-areas: 'abilities' 'combat' 'proficiencies' 'features' 'pnotes' 'tstory' 'notes';
 
     .sheet__traits {
       display: contents;
@@ -224,19 +227,24 @@ app-revive-blocked {
   }
 
   @media (min-width: 768px) and (max-width: 1199.98px) {
-    grid-template-rows: auto auto auto 1fr auto;
+    grid-template-rows: auto auto 1fr auto auto;
     grid-template-areas:
-      'pnotes pnotes'
       'abilities abilities'
-      'proficiencies combat'
-      'proficiencies notes'
-      'features tstory';
+      'combat proficiencies'
+      'notes proficiencies'
+      'features tstory'
+      'pnotes pnotes';
   }
 }
 
 .sheet__pnotes {
   grid-area: pnotes;
   min-width: 0;
+
+  // First in the fourth column, though it follows the features in the markup.
+  @media (min-width: 1200px) {
+    order: -1;
+  }
 }
 
 .sheet__features {

@@ -1,4 +1,4 @@
-<section class="mr-panel exp" aria-labelledby="exp-title">
+<section class="mr-panel exp" aria-labelledby="exp-title" [hidden]="nothingToShow()">
   <div #status class="exp__status" role="status">
     @if (confirmation()) {
       <p class="mr-notice mr-notice--success">

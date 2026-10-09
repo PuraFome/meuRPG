@@ -326,6 +326,8 @@ export interface CharacterSheetVm {
   readonly review: ReviewVm | null;
   readonly isMaster: boolean;
   readonly playerDisplayName: string | null;
+  /** `Character.reserved`: made by the master for a player to claim, with no owner yet (MR-049). Only the master reads it. */
+  readonly reserved?: boolean;
   readonly raceLabel: string;
   /** e.g. "Mago 3" (`CharacterSummary.class_summary`, plan §4). */
   readonly classSummary: string;

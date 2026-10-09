@@ -44,6 +44,12 @@ var masterOnly = []masterOnlyField{
 	{"meurpg.maps.v1.MapToken", "hidden", "a hidden token is not sent to a player at all", nil},
 	{"meurpg.maps.v1.MapToken", "carried_light", "only the master and the character's own player", func(w *world, p *person, m protoreflect.Message) bool { return own(w, p, m) }},
 
+	// --- characters: reserved characters and claim links (MR-049)
+	{"meurpg.characters.v1.CharacterSummary", "reserved", "only the master's list holds a reserved character", nil},
+	{"meurpg.characters.v1.CharacterSummary", "claim_state", "the state of a claim link is the master's", nil},
+	{"meurpg.characters.v1.CharacterSummary", "claim_expires_at", "when a claim link ends is the master's", nil},
+	{"meurpg.characters.v1.CharacterSummary", "claimed_by_display_name", "who took a character through a link is the master's", nil},
+
 	// --- play: the open scene and the stage
 	{"meurpg.play.v1.OpenSceneInfo", "hooks", "the master's private text (RN-20)", nil},
 	{"meurpg.play.v1.OpenSceneInfo", "clues", "the clues are in the player's notes, not on the scene", nil},

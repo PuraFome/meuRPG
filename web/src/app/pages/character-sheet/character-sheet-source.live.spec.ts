@@ -215,6 +215,7 @@ function characterWithFullSheet(full: FullSheet): Character {
     revivifyBlocked: false,
     canLevelUp: false,
     levelUpReason: LevelUpReason.UNSPECIFIED,
+    reserved: false,
   };
 }
 

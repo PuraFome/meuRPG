@@ -41,6 +41,8 @@ type Character struct {
 	UpdatedAt           time.Time
 	CreateKey           *string
 	CreateHash          *string
+	Reserved            bool
+	ClaimedAt           *time.Time
 	RevivedAt           *time.Time
 	DeathRound          *int32
 	DeathEncounterID    *string
@@ -93,4 +95,17 @@ type CharacterReview struct {
 	RequestHash   *string
 	ResubmitKey   *string
 	ResubmitHash  *string
+}
+
+type ClaimLink struct {
+	ID          string
+	CampaignID  string
+	CharacterID string
+	TokenHash   []byte
+	CreatedBy   string
+	CreatedAt   time.Time
+	ExpiresAt   time.Time
+	RevokedAt   *time.Time
+	UsedAt      *time.Time
+	UsedBy      *string
 }

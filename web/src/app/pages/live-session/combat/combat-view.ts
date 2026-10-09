@@ -180,6 +180,7 @@ import { type StartCombatData, StartCombatDialog } from './start-combat/start-co
 import { TrapDamages } from '../traps/trap-damages/trap-damages';
 import { openTrapSearch } from '../traps/trap-search-sheet/trap-search-sheet';
 import { OrderColumn } from './turn-panel/order-column';
+import { OrderStrip } from './turn-panel/order-strip';
 import { TurnBar } from './turn-panel/turn-bar';
 import { TurnPanel } from './turn-panel/turn-panel';
 import { CoverPanel } from './theatre/cover-panel';
@@ -232,6 +233,7 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
     OpportunityCard,
     OrderColumn,
     DeathsBlock,
+    OrderStrip,
     OrderList,
     PlayerInitiative,
     TheatreReaction,
@@ -506,6 +508,10 @@ export class CombatView {
     const own = this.own();
     return !!e && !!own && acts(e, own);
   });
+  /** On a phone, on the player's own turn, the order strip goes under the actions instead of between the title and them. */
+  protected readonly orderBelow = computed(
+    () => !this.laptop() && this.myTurn() && !this.ownDown() && !this.creatureTab(),
+  );
   // ---- what the player plays: the character and its creatures (MR-037, E9-12) ----
 
   /** The tabs of the turn bar: the character, then each group of creatures (a casting's, in a joint turn, or one alone). */

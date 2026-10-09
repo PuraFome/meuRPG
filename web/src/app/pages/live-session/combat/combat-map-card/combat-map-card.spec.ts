@@ -9,6 +9,8 @@ import {
   HiddenRevealQuestionSchema,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
+import { decodeVision } from '../../../../core/maps/vision';
+import { visionResponse } from '../../../../core/maps/vision-testing';
 import { CombatMap } from '../../../../shared/combat-map/combat-map';
 import { CombatMapCard } from './combat-map-card';
 
@@ -128,6 +130,49 @@ describe('CombatMapCard: "Movimento forçado"', () => {
       expect(dragged(false, { col: 5, row: 4 }).querySelector('.cm__origin')).toBeNull();
       expect(dragged(true, { col: 0, row: 0 }).querySelector('.cm__origin')).toBeNull();
     });
+  });
+});
+
+describe('CombatMapCard, a player on a fog map', () => {
+  // 20 x 14 squares, the player knows a 4 x 3 corner: the card shows that part, not the black field around it.
+  const grid = (known: string) =>
+    Array.from({ length: 14 }, (_, r) =>
+      r >= 5 && r < 8 ? '.'.repeat(8) + known + '.'.repeat(8) : '.'.repeat(20),
+    );
+
+  const standing = encounter({
+    currentCombatantId: 'p',
+    combatants: [
+      combatant({ id: 'p', label: 'Pensantus', kind: CombatantKind.PLAYER, col: 9, row: 6 }),
+    ],
+  });
+
+  it('crops to what the player knows, wider than the card so the tokens are readable', () => {
+    const { el } = mount({
+      isMaster: false,
+      encounter: standing,
+      fog: decodeVision(visionResponse(grid('BBBB'))),
+    });
+    const crop = el.querySelector<HTMLElement>('.card__crop--on');
+    expect(crop).not.toBeNull();
+    // 4 known columns and 3 rows, two squares around: 8 x 7 squares, shown as at least a square, of a 20-column grid.
+    expect(el.querySelector<HTMLElement>('.card__shift')?.style.width).toBe('250%');
+  });
+
+  it('shows the whole map when the player knows most of it, and to the master', () => {
+    const everything = Array.from({ length: 14 }, () => 'B'.repeat(20));
+    expect(
+      mount({ isMaster: false, fog: decodeVision(visionResponse(everything)) }).el.querySelector(
+        '.card__crop--on',
+      ),
+    ).toBeNull();
+    const master = mount({
+      isMaster: true,
+      encounter: standing,
+      fog: decodeVision(visionResponse(grid('BBBB'))),
+    });
+    expect(master.el.querySelector('.card__crop--on')).toBeNull();
+    expect(mount({ isMaster: false }).el.querySelector('.card__crop--on')).toBeNull();
   });
 });
 
