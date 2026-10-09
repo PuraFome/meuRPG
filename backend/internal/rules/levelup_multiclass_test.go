@@ -3,6 +3,7 @@ package rules
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -198,6 +199,12 @@ var prerequisiteTable = []struct {
 	{"class:wizard", []Ability{INT}, false},
 }
 
+// asRefusal is the *LevelUpError an error holds.
+func asRefusal(err error) *LevelUpError {
+	le, _ := errors.AsType[*LevelUpError](err)
+	return le
+}
+
 // wizardWith is a Wizard 1 (the character already has a class whose prerequisite
 // is Intelligence 13) with these final scores: the human's +1 is taken out of the
 // base scores.
@@ -275,7 +282,7 @@ func TestMulticlassPrerequisites(t *testing.T) {
 					continue
 				}
 				wantRefusal(t, err, LevelUpReasonMulticlassPrerequisite, "class_key")
-				le := err.(*LevelUpError)
+				le := asRefusal(err)
 				if le.ClassKey != row.class || le.Ability != low || le.Minimum != minimum || le.Have != minimum-1 {
 					t.Errorf("%s one below: refusal = %+v, want class %s, %s, minimum %d, have %d", low, le, row.class, low, minimum, minimum-1)
 				}
@@ -317,7 +324,7 @@ func TestMulticlassPrerequisitesOfTheClassesTheCharacterHas(t *testing.T) {
 	// has the Intelligence for the Wizard; it still levels the Fighter.
 	_, err := LevelUpOptions(fighter(12, 12), "class:wizard", c)
 	wantRefusal(t, err, LevelUpReasonMulticlassPrerequisiteCurrent, "class_key")
-	if le := err.(*LevelUpError); le.ClassKey != "class:fighter" || le.Minimum != 13 || le.Have != 12 {
+	if le := asRefusal(err); le.ClassKey != "class:fighter" || le.Minimum != 13 || le.Have != 12 {
 		t.Errorf("refusal = %+v, want the Fighter's 13, have 12", le)
 	}
 	if _, err := LevelUpOptions(fighter(12, 12), "class:fighter", c); err != nil {
@@ -341,7 +348,7 @@ func TestMulticlassPrerequisitesOfTheClassesTheCharacterHas(t *testing.T) {
 	b.BaseScores[INT] = 11
 	_, err = LevelUpOptions(b, "class:rogue", c)
 	wantRefusal(t, err, LevelUpReasonMulticlassPrerequisiteCurrent, "class_key")
-	if le := err.(*LevelUpError); le.ClassKey != "class:wizard" || le.Ability != INT || le.Have != 12 {
+	if le := asRefusal(err); le.ClassKey != "class:wizard" || le.Ability != INT || le.Have != 12 {
 		t.Errorf("refusal = %+v, want the Wizard's Intelligence, have 12", le)
 	}
 
@@ -442,17 +449,51 @@ func TestMulticlassClassChoices(t *testing.T) {
 // Slots per Spell Level": the slots of each spell level (1st to 9th) by caster
 // level, 1 to 20.
 var multiclassSlotTable = [20][9]int{
-	{2}, {3}, {4, 2}, {4, 3}, {4, 3, 2}, {4, 3, 3}, {4, 3, 3, 1}, {4, 3, 3, 2}, {4, 3, 3, 3, 1}, {4, 3, 3, 3, 2},
-	{4, 3, 3, 3, 2, 1}, {4, 3, 3, 3, 2, 1}, {4, 3, 3, 3, 2, 1, 1}, {4, 3, 3, 3, 2, 1, 1}, {4, 3, 3, 3, 2, 1, 1, 1},
-	{4, 3, 3, 3, 2, 1, 1, 1}, {4, 3, 3, 3, 2, 1, 1, 1, 1}, {4, 3, 3, 3, 3, 1, 1, 1, 1}, {4, 3, 3, 3, 3, 2, 1, 1, 1},
+	{2},
+	{3},
+	{4, 2},
+	{4, 3},
+	{4, 3, 2},
+	{4, 3, 3},
+	{4, 3, 3, 1},
+	{4, 3, 3, 2},
+	{4, 3, 3, 3, 1},
+	{4, 3, 3, 3, 2},
+	{4, 3, 3, 3, 2, 1},
+	{4, 3, 3, 3, 2, 1},
+	{4, 3, 3, 3, 2, 1, 1},
+	{4, 3, 3, 3, 2, 1, 1},
+	{4, 3, 3, 3, 2, 1, 1, 1},
+	{4, 3, 3, 3, 2, 1, 1, 1},
+	{4, 3, 3, 3, 2, 1, 1, 1, 1},
+	{4, 3, 3, 3, 3, 1, 1, 1, 1},
+	{4, 3, 3, 3, 3, 2, 1, 1, 1},
 	{4, 3, 3, 3, 3, 2, 2, 1, 1},
 }
 
 // pactTable is SRD 5.1 Warlock, "Pact Magic": the slots and their level by warlock
 // level.
 var pactTable = [20][2]int{
-	{1, 1}, {2, 1}, {2, 2}, {2, 2}, {2, 3}, {2, 3}, {2, 4}, {2, 4}, {2, 5}, {2, 5},
-	{3, 5}, {3, 5}, {3, 5}, {3, 5}, {3, 5}, {3, 5}, {4, 5}, {4, 5}, {4, 5}, {4, 5},
+	{1, 1},
+	{2, 1},
+	{2, 2},
+	{2, 2},
+	{2, 3},
+	{2, 3},
+	{2, 4},
+	{2, 4},
+	{2, 5},
+	{2, 5},
+	{3, 5},
+	{3, 5},
+	{3, 5},
+	{3, 5},
+	{3, 5},
+	{3, 5},
+	{4, 5},
+	{4, 5},
+	{4, 5},
+	{4, 5},
 }
 
 // slotCaster is a class that has the Spellcasting feature, by how much of its
@@ -465,9 +506,15 @@ type slotCaster struct {
 }
 
 var slotCasters = []slotCaster{
-	{"class:bard", "", 1, 1}, {"class:cleric", "", 1, 1}, {"class:druid", "", 1, 1}, {"class:sorcerer", "", 1, 1}, {"class:wizard", "", 1, 1},
-	{"class:paladin", "", 2, 2}, {"class:ranger", "", 2, 2},
-	{"class:fighter", "subclass:cavaleiro-runico@mesa", 3, 3}, {"class:rogue", "subclass:trapaceiro-mistico@mesa", 3, 3},
+	{"class:bard", "", 1, 1},
+	{"class:cleric", "", 1, 1},
+	{"class:druid", "", 1, 1},
+	{"class:sorcerer", "", 1, 1},
+	{"class:wizard", "", 1, 1},
+	{"class:paladin", "", 2, 2},
+	{"class:ranger", "", 2, 2},
+	{"class:fighter", "subclass:cavaleiro-runico@mesa", 3, 3},
+	{"class:rogue", "subclass:trapaceiro-mistico@mesa", 3, 3},
 }
 
 // slotsBuild is a Build with these classes at these levels, for the slots only.
@@ -904,9 +951,9 @@ func TestMulticlassPicksOfTheNewClass(t *testing.T) {
 	if len(after.ToolProficiencies) != 1 || after.ToolProficiencies[0] != c.c.proficiencyNamePT(bard.Instrument) {
 		t.Errorf("tool proficiencies = %v, want the instrument's name", after.ToolProficiencies)
 	}
-	any := bard
-	any.SkillProficiencies = []string{"skill:arcana"}
-	if err := check(any); err != nil {
+	anyList := bard
+	anyList.SkillProficiencies = []string{"skill:arcana"}
+	if err := check(anyList); err != nil {
 		t.Errorf("the Bard's skill is from any list: %v", err)
 	}
 	for name, mod := range map[string]func(ch *LevelUpChoices){
@@ -1100,7 +1147,7 @@ func TestMulticlassTableClass(t *testing.T) {
 	} {
 		_, err := LevelUpOptions(wizardWith(scores), "class:gen-ambos@mesa", c)
 		wantRefusal(t, err, LevelUpReasonMulticlassPrerequisite, "class_key")
-		if le := err.(*LevelUpError); le.ClassKey != "class:gen-ambos@mesa" {
+		if le := asRefusal(err); le.ClassKey != "class:gen-ambos@mesa" {
 			t.Errorf("%s: refusal = %+v", name, le)
 		}
 	}
@@ -1153,7 +1200,6 @@ func TestMulticlassOffersOfEveryClass(t *testing.T) {
 		cantrips, spells    int
 		spellsKind          string
 		prepares            bool
-		choices             int // feature choices to make
 		expertise, hitDie   int
 		slots               [9]int
 		pactSlots, pactLeve int

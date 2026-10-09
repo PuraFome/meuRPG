@@ -15,11 +15,14 @@ import (
 // qualify for (package rules); a player's save refuses the same, and the master's
 // editor goes past it, with the sheet's multiclass_prerequisite issue.
 
+// minClassesForMulticlass is how many classes make a sheet multiclass.
+const minClassesForMulticlass = 2
+
 // unmetMulticlass lists the classes of a sheet whose multiclass prerequisite the
 // final scores do not meet, with the prerequisite, in the sheet's order. A sheet
 // with one class has no multiclass prerequisite to meet.
 func unmetMulticlass(content *rules.Content, f *charactersv1.FullSheet) []rules.MulticlassPrerequisite {
-	if len(f.GetClasses()) < 2 {
+	if len(f.GetClasses()) < minClassesForMulticlass {
 		return nil
 	}
 	b := buildOf(f)

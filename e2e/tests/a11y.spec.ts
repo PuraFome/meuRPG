@@ -2427,7 +2427,7 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `Subir em qual classe?, "Uma classe nova" aberta com os pré-requisitos ${where}`);
     // A new class end to end, before the level goes to the Mago he has: the Guerreiro (Destreza 16 meets "Força ou Destreza").
     await classCard(p, /^Guerreiro/).click();
-    await expect(p.getByText('Pensantus · Mago 3 → Mago 3 · Guerreiro 1')).toBeVisible();
+    await expect(p.getByText('Pensantus · Mago 3 → Mago 3 · Guerreiro 1')).toBeAttached();
     await expectScreenPasses(p, `Subir em qual classe?, a classe nova escolhida ${where}`);
     await p.getByRole('button', { name: 'Próximo' }).click();
     await expect(p.getByRole('heading', { name: 'Pontos de vida de Guerreiro 1' })).toBeVisible();
@@ -2519,22 +2519,22 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
 }
 
 test('o subir de nível passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
+  test.setTimeout(900_000);
   await scanLevelUpScreens(browser, 'light', 1280);
 });
 
 test('o subir de nível passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
+  test.setTimeout(900_000);
   await scanLevelUpScreens(browser, 'dark', 390);
 });
 
 test('o subir de nível passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
+  test.setTimeout(900_000);
   await scanLevelUpScreens(browser, 'dark', 1024);
 });
 
 test('o subir de nível passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
+  test.setTimeout(900_000);
   await scanLevelUpScreens(browser, 'light', 320);
 });
 

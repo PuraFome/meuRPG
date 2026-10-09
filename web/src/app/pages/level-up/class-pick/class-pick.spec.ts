@@ -56,7 +56,7 @@ describe('ClassPick', () => {
     const f = make(false);
     expect(text(f)).toContain('Guerreironível 5 → 6');
     expect(text(f)).toContain(
-      'Uma classe nova Entra com o nível 1 da classe: o seu nível total vai a 6.',
+      'Uma classe novaEntra com o nível 1 da classe: o seu nível total vai a 6.',
     );
     expect(text(f)).not.toContain('Qual classe nova?');
   });

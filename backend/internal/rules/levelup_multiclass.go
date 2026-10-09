@@ -27,6 +27,9 @@ import (
 // Derive already follows the rules above for a sheet that has several classes:
 // this file adds the way into a new class, and what the screens need to draw it.
 
+// minClassesForMulticlass is how many classes make a sheet multiclass.
+const minClassesForMulticlass = 2
+
 // wizardStartingSpells is the number of 1st-level spells the Wizard's spellbook
 // has when the class is taken (SRD 5.1, Wizard, "Spellbook").
 const wizardStartingSpells = 6
@@ -92,9 +95,9 @@ func (c *content) prerequisite(classKey string, scores map[Ability]int) Multicla
 		table, p.AnyOf = mc.AnyOf, true
 	}
 	for _, a := range AllAbilities() {
-		if min, ok := table[string(a)]; ok {
+		if minimum, ok := table[string(a)]; ok {
 			have := scores[a]
-			p.Requirements = append(p.Requirements, MulticlassRequirement{Ability: a, Minimum: min, Have: have, Met: have >= min})
+			p.Requirements = append(p.Requirements, MulticlassRequirement{Ability: a, Minimum: minimum, Have: have, Met: have >= minimum})
 		}
 	}
 	if p.AnyOf {
@@ -479,7 +482,7 @@ const (
 // has several classes after it; ok is false for a single-class sheet. newClass
 // is the class the level adds, or "".
 func MulticlassSummaryOf(before, after Build, newClass string, c *Content) (MulticlassSummary, bool) {
-	if len(after.Classes) < 2 {
+	if len(after.Classes) < minClassesForMulticlass {
 		return MulticlassSummary{}, false
 	}
 	x := c.c

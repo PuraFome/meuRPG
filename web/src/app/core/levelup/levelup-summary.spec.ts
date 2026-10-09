@@ -441,6 +441,8 @@ describe('changeRows: the attacks a level moves', () => {
     const after = pensantus(true, { attacks: [sword(5, '1d8+3'), bolt('1d10')] });
 
     expect(changeRows(before, after, ctx).some((r) => r.key.startsWith('attack-'))).toBe(false);
+  });
+});
 
 describe('changeRows: a class new to the sheet (SRD 5.1, "Multiclassing")', () => {
   const fighter = (level: number, hp: number, dice: [number, number][]) =>

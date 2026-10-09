@@ -132,6 +132,12 @@ func (x *deriver) multiclassSlots(casters []caster) {
 	}
 }
 
+// The divisors of the multiclass caster level for half and third casters.
+const (
+	halfCasterDivisor  = 2
+	thirdCasterDivisor = 3
+)
+
 // casterLevelOf is what a class's levels add to the caster level of the multiclass
 // spellcaster table: all of a full caster's, half (rounded down) of a half
 // caster's, a third (rounded down) of a third caster's, and none of the
@@ -141,9 +147,9 @@ func casterLevelOf(progression string, classLevel int) int {
 	case "full":
 		return classLevel
 	case "half":
-		return classLevel / 2
+		return classLevel / halfCasterDivisor
 	case "third":
-		return classLevel / 3
+		return classLevel / thirdCasterDivisor
 	}
 	return 0
 }
