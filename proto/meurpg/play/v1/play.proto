@@ -1183,21 +1183,34 @@ message WatchGameSessionResponse {
     // queue is not queued twice; at most one goes out per campaign every 250 ms, and
     // the last change is never left unannounced.
     ContentChanged content_changed = 23;
+    // A player's area spell hit hidden creatures and the table asks the master
+    // whether they appear (CombatService.ResolveHiddenReveal). Only the master
+    // gets it; no player's stream ever carries it (RN-10).
+    HiddenHitPending hidden_hit_pending = 24;
     // A Revivify cast outside a combat was asked, or the master answered it: read
     // RevivifyService.ListRevivifyRequests again. A hint with no content. Only the master
     // and the caster's player get it (RN-10).
-    RevivifyChanged revivify_changed = 24;
+    RevivifyChanged revivify_changed = 25;
     // The master asked for changes on a pending character: read the character again
     // (CharacterService.GetCharacter). A hint with no reason: the reason is read, never
     // streamed. Only the master and the character's owner get it.
-    CharacterChangesRequested character_changes_requested = 25;
+    CharacterChangesRequested character_changes_requested = 26;
     // The owner sent a pending character again. As above: read it again. Only the master
     // and the owner.
-    CharacterResubmitted character_resubmitted = 26;
+    CharacterResubmitted character_resubmitted = 27;
     // A dead character lives again (ReviveCharacter, or Revivify): read it again, and the
     // vitals. The master and the character's owner get it; the table reads the line of
     // the log.
-    CharacterRevived character_revived = 27;
+    CharacterRevived character_revived = 28;
+  }
+
+  // HiddenHitPending says a question waits for the master in a combat. It names
+  // no creature: the master reads Encounter.pending_hidden_reveals.
+  message HiddenHitPending {
+    // The combat (a UUID).
+    string encounter_id = 1;
+    // The question (a UUID).
+    string pending_reveal_id = 2;
   }
 
   // RevivifyChanged is the content-free hint that the casts of Revivify outside a combat

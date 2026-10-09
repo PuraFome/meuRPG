@@ -53,7 +53,12 @@ func atBP(sq grid.Square) (x, y int32) {
 // torch. The base light is dark and no other light shines.
 func newFogCave(t *testing.T) *fogCave {
 	t.Helper()
-	c := newCave(t)
+	return newFogCaveWith(t, newCave(t))
+}
+
+// newFogCaveWith is newFogCave on a cave the test made (another level and spells for Pensantus).
+func newFogCaveWith(t *testing.T, c *cave) *fogCave {
+	t.Helper()
 	content, err := testRules()
 	if err != nil {
 		t.Fatalf("rules.LoadSRD() error = %v", err)
@@ -985,8 +990,8 @@ func TestRN10_FogCombatNamingAnUnseenNPCIsNotFoundOnEveryCall(t *testing.T) {
 	inApp := func(r *playv1.CastSpellRequest) { r.Roll = &playv1.CastSpellRequest_RollInApp{RollInApp: true} }
 	_, err = f.cast(t, f.ana, e, "Pensantus", fireBolt, nil, f.at(t, "Goblin 1"), inApp)
 	wantCode(t, "CastSpell (a cantrip) on an unseen NPC", err, connect.CodeNotFound)
-	_, err = f.cast(t, f.ana, e, "Pensantus", burningHands, slotOfLevel(1), f.at(t, "Goblin 1", "Goblin 3"), inApp)
-	wantCode(t, "CastSpell (an area) with unseen NPCs", err, connect.CodeNotFound)
+	// An area spell on a map does not read the list at all: the server finds who is inside
+	// (TestTheTableRuleDecidesWhatAHitDoesToAHiddenCreature).
 	_ = room
 }
 
@@ -1467,7 +1472,7 @@ func TestRN10_FogCombatADroppedAttackOutOfSightPingsNoPlayer(t *testing.T) {
 // the table still fit the event, and the cast works.
 func TestRN10_FogCombatASaveSpellOnManyCoveredTargetsIsOneEvent(t *testing.T) {
 	t.Parallel()
-	f := newFogCave(t)
+	f := newFogCaveWith(t, newCaveWith(t, 5, []string{burningHands, fireball}))
 	var shelf []*mapsv1.MapSquare
 	for row := int32(2); row <= 9; row++ {
 		if row != 7 && row != 8 { // the crates are already there
@@ -1492,9 +1497,9 @@ func TestRN10_FogCombatASaveSpellOnManyCoveredTargetsIsOneEvent(t *testing.T) {
 		players:  map[string]int32{"Pensantus": 20, "Toren": 15, "Brisa": 10},
 		reveal:   reveal, at: at,
 	})
-	res, err := f.cast(t, f.ana, e, "Pensantus", burningHands, slotOfLevel(1), f.at(t, targets...), noCastRoll)
+	res, err := f.cast(t, f.ana, e, "Pensantus", fireball, slotOfLevel(3), f.at(t, targets...), noCastRoll)
 	if err != nil {
-		t.Fatalf("CastSpell(Mãos Flamejantes) on %d covered goblins error = %v, want it to work", goblins, err)
+		t.Fatalf("CastSpell(Bola de Fogo) on %d covered goblins error = %v, want it to work", goblins, err)
 	}
 	if got := len(res.GetEncounter().GetCombatants()); got < goblins {
 		t.Errorf("the answer has %d combatants, want at least the %d goblins", got, goblins)
@@ -1507,6 +1512,65 @@ func TestRN10_FogCombatASaveSpellOnManyCoveredTargetsIsOneEvent(t *testing.T) {
 	if cover != 1 {
 		t.Errorf("%d spell events carry a restricted cover, want 1: the fixture does not put the targets behind the map's cover", cover)
 	}
+}
+
+// TestRN10_FogCombatThePlayerOfACasterKeepsTheLineOfTheirAreaSpell: Pensantus's Fireball
+// hits a goblin in the torch's light and another in the dark. The line is Pensantus's player's
+// whoever they see, with the creature they do not see left out; Toren's player, who sees
+// the lit goblin, has the line with it alone; the master's line has both.
+func TestRN10_FogCombatThePlayerOfACasterKeepsTheLineOfTheirAreaSpell(t *testing.T) {
+	t.Parallel()
+	f := newFogCaveWith(t, newCaveWith(t, 5, []string{fireball}))
+	f.groupVision(t, false)
+	e := f.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: f.goblins.GetId(), Count: 2}},
+		npcRolls: []int{2, 2},
+		players:  map[string]int32{"Pensantus": 20, "Toren": 15, "Brisa": 10},
+		reveal:   []string{"Goblin 1", "Goblin 2"},
+		at:       map[string][2]int32{"Pensantus": {3, 7}, "Toren": {6, 7}, "Brisa": {1, 9}, "Goblin 1": {14, 7}, "Goblin 2": {20, 7}},
+	})
+	seesGoblin := func(u *user, label string) bool {
+		return slices.ContainsFunc(f.get(t, u).GetCombatants(), func(c *playv1.Combatant) bool { return c.GetLabel() == label })
+	}
+	if !seesGoblin(f.caio, "Goblin 1") || seesGoblin(f.caio, "Goblin 2") || seesGoblin(f.ana, "Goblin 2") {
+		t.Fatalf("the fixture: Toren sees Goblin 1 %v and Goblin 2 %v, Pensantus sees Goblin 2 %v; want yes, no, no", seesGoblin(f.caio, "Goblin 1"), seesGoblin(f.caio, "Goblin 2"), seesGoblin(f.ana, "Goblin 2"))
+	}
+	f.h.roller.queue(10, 10, 10)
+	f.mustCastArea(t, f.ana, "Pensantus", fireball, slotOfLevel(3), at(17, 7), nil)
+
+	hitsOf := func(u *user) []string {
+		var out []string
+		for _, r := range f.log(t, u, f.get(t, u)).GetRounds() {
+			for _, en := range r.GetEntries() {
+				if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST {
+					out = nil
+					for _, tg := range en.GetSpell().GetTargets() {
+						out = append(out, tg.GetTargetLabel())
+					}
+					slices.Sort(out)
+					out = append(out, "line")
+				}
+			}
+		}
+		return out
+	}
+	// The master's line has both goblins (the positive control).
+	if got := hitsOf(f.master); !slices.Contains(got, "Goblin 1") || !slices.Contains(got, "Goblin 2") {
+		t.Fatalf("the master's line = %v, want both goblins", got)
+	}
+	// The caster's player has the line, with the goblin in the dark left out.
+	if got := hitsOf(f.ana); !slices.Contains(got, "line") || slices.Contains(got, "Goblin 2") {
+		t.Errorf("Pensantus's player's line = %v, want the line without the goblin they do not see", got)
+	}
+	// Toren's player sees the lit goblin: the line has it alone.
+	if got := hitsOf(f.caio); !slices.Contains(got, "Goblin 1") || slices.Contains(got, "Goblin 2") {
+		t.Errorf("Toren's player's line = %v, want the lit goblin alone", got)
+	}
+	// Brisa's player sees the lit goblin too, by Toren's torch: the line has it alone.
+	if got := hitsOf(f.bia); !slices.Contains(got, "Goblin 1") || slices.Contains(got, "Goblin 2") {
+		t.Errorf("Brisa's player's line = %v, want the lit goblin alone", got)
+	}
+	_ = e
 }
 
 // deadPlayerCanary is the NPC the master hides in the dead player's test: a name that

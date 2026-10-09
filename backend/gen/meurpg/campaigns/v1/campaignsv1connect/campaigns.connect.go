@@ -98,7 +98,7 @@ type CampaignServiceClient interface {
 	// ListMyCampaigns lists the campaigns the caller is a member of, newest
 	// first, with the caller's role in each. It also lists the campaigns where
 	// the caller is a pending member (RN-15, MR-024), with only the id, the
-	// name, my_role and `awaiting_approval` set, so the player can find their
+	// name, my_role, xp_mode and `awaiting_approval` set, so the player can find their
 	// way back to the campaign while they wait.
 	//
 	// Its request is empty, so clients may call it with HTTP GET: the URL
@@ -109,8 +109,9 @@ type CampaignServiceClient interface {
 	// the URL.
 	//
 	// A pending member (RN-15, MR-024) may call it too, and gets only the
-	// campaign's id, name, my_role (ROLE_PLAYER) and `awaiting_approval` set:
-	// enough to show "esperando a aprovação do mestre".
+	// campaign's id, name, my_role (ROLE_PLAYER), xp_mode and `awaiting_approval`
+	// set: enough to show "esperando a aprovação do mestre", and for the
+	// character editor to start a new character at its level's XP.
 	GetCampaign(context.Context, *connect.Request[v1.GetCampaignRequest]) (*connect.Response[v1.GetCampaignResponse], error)
 	// ListMembers lists a campaign's members: the master first, then the
 	// players in the order they joined. Any member may call it. It only
@@ -192,8 +193,8 @@ type CampaignServiceClient interface {
 	//
 	// Invites with approval (RN-15, MR-024). When the invite has
 	// `requires_approval`, the caller becomes a pending member, not a player:
-	// the returned campaign has `awaiting_approval` set and only its id, name
-	// and my_role. The app takes them straight to creating their character
+	// the returned campaign has `awaiting_approval` set and only its id, name,
+	// my_role and xp_mode. The app takes them straight to creating their character
 	// (CharacterService.CreateCharacter), which starts PENDING. They become a
 	// player when the master approves that character
 	// (CharacterService.ApproveCharacter); if the master rejects it
@@ -490,7 +491,7 @@ type CampaignServiceHandler interface {
 	// ListMyCampaigns lists the campaigns the caller is a member of, newest
 	// first, with the caller's role in each. It also lists the campaigns where
 	// the caller is a pending member (RN-15, MR-024), with only the id, the
-	// name, my_role and `awaiting_approval` set, so the player can find their
+	// name, my_role, xp_mode and `awaiting_approval` set, so the player can find their
 	// way back to the campaign while they wait.
 	//
 	// Its request is empty, so clients may call it with HTTP GET: the URL
@@ -501,8 +502,9 @@ type CampaignServiceHandler interface {
 	// the URL.
 	//
 	// A pending member (RN-15, MR-024) may call it too, and gets only the
-	// campaign's id, name, my_role (ROLE_PLAYER) and `awaiting_approval` set:
-	// enough to show "esperando a aprovação do mestre".
+	// campaign's id, name, my_role (ROLE_PLAYER), xp_mode and `awaiting_approval`
+	// set: enough to show "esperando a aprovação do mestre", and for the
+	// character editor to start a new character at its level's XP.
 	GetCampaign(context.Context, *connect.Request[v1.GetCampaignRequest]) (*connect.Response[v1.GetCampaignResponse], error)
 	// ListMembers lists a campaign's members: the master first, then the
 	// players in the order they joined. Any member may call it. It only
@@ -584,8 +586,8 @@ type CampaignServiceHandler interface {
 	//
 	// Invites with approval (RN-15, MR-024). When the invite has
 	// `requires_approval`, the caller becomes a pending member, not a player:
-	// the returned campaign has `awaiting_approval` set and only its id, name
-	// and my_role. The app takes them straight to creating their character
+	// the returned campaign has `awaiting_approval` set and only its id, name,
+	// my_role and xp_mode. The app takes them straight to creating their character
 	// (CharacterService.CreateCharacter), which starts PENDING. They become a
 	// player when the master approves that character
 	// (CharacterService.ApproveCharacter); if the master rejects it

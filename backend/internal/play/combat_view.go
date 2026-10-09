@@ -481,6 +481,11 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 		return nil, err
 	}
 	out.Deaths = s.deathsOf(ctx, m, d, v)
+	// The turn waits for the master's answer: everyone is told it waits, only the
+	// master why.
+	if out.PendingHiddenReveals, out.TurnHeld, err = s.hiddenRevealsView(ctx, d, v); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 

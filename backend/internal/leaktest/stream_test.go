@@ -93,6 +93,7 @@ func eventCase(ev *playv1.WatchGameSessionResponse) string {
 var notTriggered = map[string]string{
 	"character_revived": "the fixture kills no character: the revive tests of package play check who hears it (the master and the owner)",
 	"revivify_changed":  "the fixture has no caster of Revivify: the revivify tests of package play check who hears it (the master and the caster's player)",
+	"hidden_hit_pending": "needs a player's area spell that hits a hidden creature, which has a world of its own: TestAnAreaSpellThatHitsAHiddenCreatureNamesItToNoPlayerBeforeTheReveal (the master hears it, no player does)",
 }
 
 func checkStream(t *testing.T, w *world, got *answers) {

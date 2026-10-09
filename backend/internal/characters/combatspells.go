@@ -97,6 +97,10 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 	// Whom it reaches: the table spell's own target, or the SRD spell's (the
 	// structured area, then the text; see rules.SpellTarget).
 	out.Area = det.Target.AnyNumber()
+	if det.Target.Kind == rules.TargetArea {
+		out.AreaShape, out.AreaSizeFt, out.AreaWidthFt = det.Target.Shape, det.Target.SizeFt, det.AreaWidthFt()
+		out.SpreadsAroundCorners = det.SpreadsAroundCorners()
+	}
 	out.CasterOnly = det.Target.CasterOnly()
 	out.TargetCount = det.Target.MaxTargets(det.Spell.Level, det.Spell.Level)
 	out.TargetPerLevel = det.Target.PerSlotLevel

@@ -58,6 +58,11 @@ var masterOnly = []masterOnlyField{
 
 	// --- play: the combat (RN-20)
 	{"meurpg.play.v1.Encounter", "map_point_id", "the battle point the master started from", nil},
+	{"meurpg.play.v1.Encounter", "pending_hidden_reveals", "the questions an area spell left the master: they name the hidden creatures it hit", nil},
+	{"meurpg.play.v1.CastSpellResponse", "hidden_hits", "the hidden creatures an area hit are the master's", nil},
+	{"meurpg.play.v1.CastSpellResponse", "pending_reveal_id", "a question exists only when the spell hit a hidden creature", nil},
+	{"meurpg.play.v1.AreaTarget", "hidden", "who is hidden is the master's", nil},
+	{"meurpg.play.v1.CombatLogSpellTarget", "hidden", "who was hidden when the spell hit is the master's", nil},
 	{"meurpg.play.v1.Combatant", "hidden", "a hidden combatant is not sent to a player", nil},
 	{"meurpg.play.v1.Combatant", "tie_unresolved", "the master's bookkeeping", nil},
 	{"meurpg.play.v1.Combatant", "armor_class", "a player never learns an armor class", nil},

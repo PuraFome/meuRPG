@@ -56,7 +56,7 @@ flowchart TD
         t_game_sessions["game_sessions, campaign_left_images"]
         t_encounters["encounters"]
         t_combatants["combatants"]
-        t_damage["pending_damages, trap_damages, opportunity_offers"]
+        t_damage["pending_damages, trap_damages, opportunity_offers, hidden_reveals"]
         t_session_events["session_events, session_event_kinds"]
         t_stage_npcs["stage_npcs"]
         t_puzzles["puzzles, puzzle_runs, puzzle_moves, puzzle_hint_tries"]
@@ -238,6 +238,7 @@ erDiagram
         bool fog_on_new_maps
         bool feats_allowed "Talentos: default false"
         text_array house_rules "up to 20 reminders"
+        text hidden_area_hits "reveal, keep_hidden or ask"
         timestamptz updated_at
     }
 
@@ -268,6 +269,7 @@ erDiagram
   - `combat_starts_with_map` (default `true`: `StartEncounter` reads it in its own transaction when the request does not choose the combat mode, RN-25) and `fog_on_new_maps` (default `false`: `maps` reads it when creating a map) complete the three choices that a table style fills.
   - `feats_allowed` (default `false`, migration 00196) is the rule "Talentos" (MR-025): whether the table plays with feats. The level-up reads it (see [Architecture](architecture.md#table-rules-mr-025-rn-24)).
   - `house_rules` is a `TEXT[]` of up to 20 reminders (the server also limits each to 200 characters), which the app only displays.
+  - `hidden_area_hits` is `reveal` (default), `keep_hidden` or `ask`: what an area spell does to the hiding of a hidden creature it hits (RN-24). Combat reads it when each spell is cast.
   - **The dice mode stays in `campaigns.dice_mode`**: the table style writes it there, in the same transaction. **The style itself is never stored**: it comes from the dice mode, `combat_starts_with_map` and `fog_on_new_maps`, and "Personalizado" is whatever matches none of the three.
   - Free text exists only in the house rules, which the master writes for the table (fiction, no personal data).
 
@@ -508,7 +510,7 @@ erDiagram
         uuid actor_user_id FK "optional, SET NULL"
         uuid character_id FK "optional, SET NULL"
         uuid encounter_id FK "optional, CASCADE"
-        jsonb payload "numbers before and after, up to 4 KiB"
+        jsonb payload "numbers before and after, up to 16 KiB"
         uuid idempotency_key "optional, UNIQUE per session"
         timestamptz created_at
     }
@@ -665,6 +667,21 @@ erDiagram
         timestamptz answered_at "optional"
     }
 
+    hidden_reveals {
+        uuid id PK
+        uuid encounter_id FK "CASCADE"
+        uuid caster_id FK "combatants, CASCADE"
+        text spell_key
+        text_array combatant_ids "the hidden creatures the area hit; no FK"
+        int4 origin_col
+        int4 origin_row
+        int4_array squares "col, row, col, row..."
+        int4 seq "the order they are answered in, one count per combat"
+        text state "pending, revealed or kept"
+        timestamptz created_at
+        timestamptz answered_at "optional"
+    }
+
     puzzles {
         uuid id PK
         uuid campaign_id FK "CASCADE"
@@ -779,6 +796,8 @@ erDiagram
     encounters ||--o{ pending_damages : "has"
     combatants ||--o{ pending_damages : "attacks"
     combatants ||--o{ pending_damages : "suffers"
+    encounters ||--o{ hidden_reveals : "asks"
+    combatants ||--o{ hidden_reveals : "casts"
     encounters ||--o{ opportunity_offers : "has"
     combatants ||--o{ opportunity_offers : "moves"
     combatants ||--o{ opportunity_offers : "reacts"
@@ -812,7 +831,7 @@ erDiagram
 
 - `seq` numbers each session's events from 1, in the order they happened: the next is the highest plus 1, read with the session row locked (`FOR UPDATE`), and `UNIQUE (game_session_id, seq)` is the final guarantee.
 - `idempotency_key` is the UUID the app sends with the change; see [Idempotency columns](#idempotency-columns).
-- `payload` is a small JSON (an object, up to 4 KiB, by `CHECK`) with the numbers before and after: no free text, no names. `actor_user_id` is who made the change (`ON DELETE SET NULL`: a deleted account vanishes from the history) and `character_id` the character (`SET NULL` if it is deleted, which keeps the history). Account IDs inside payloads do not disappear with the account (see [Privacy](privacy.md)).
+- `payload` is a small JSON (an object, up to 16 KiB, by `CHECK`: an area spell that hits every creature of a combat, 40, keeps what each one did) with the numbers before and after: no free text, no names. `actor_user_id` is who made the change (`ON DELETE SET NULL`: a deleted account vanishes from the history) and `character_id` the character (`SET NULL` if it is deleted, which keeps the history). Account IDs inside payloads do not disappear with the account (see [Privacy](privacy.md)).
 - `encounter_id` (optional, `CASCADE`) says which combat the event belongs to, for the log and the undo; it is `NULL` on HP corrections and on events from before it existed. A partial index serves a combat's events in order. Two partial indexes, by `character_id` and by `actor_user_id` (where not `NULL`), serve the `SET NULL` when a character or an account is deleted, so that deletion does not scan the history.
 - **The event types** are the rows of `session_event_kinds`. They are: the master's HP correction (`character_vitals_adjusted`, RN-02); the combat (`encounter_started`, `initiative_submitted`, `initiative_order_set`, `combat_begun`, `turn_ended`, `turn_part_ended`, `combatant_moved`, `combatant_hidden_set`, `combatants_added`, `combatant_removed`, `encounter_ended`); the actions (`attack_rolled`, `damage_rolled`, `damage_applied`, `damage_discarded`, `action_taken`, `hit_points_adjusted`, `action_undone`: the undo is a compensating row, the undone one stays); spells and the rest (`spell_cast`, `reaction_used`, `reaction_declined`, `death_save_rolled`, `death_confirmed`, `conditions_set`); XP and scenes (`xp_awarded`, `xp_award_undone`, `milestone_marked`, `scene_opened`, `scene_closed`, `scene_check_rolled`, `scene_attempt_granted`); the table (`clue_revealed`, `stage_changed`); traps, treasure, cover and sides (`trap_noticed`, `trap_searched`, `trap_triggered`, `trap_disarmed`, `trap_revealed`, `treasure_found`, `treasure_unfound`, `cover_set`, `side_set`); opportunity attacks (`opportunity_offered`); creatures (`creature_summoned`, `creature_dismissed`, `wild_shape_started`, `wild_shape_ended`, `familiar_sight`); doors (`door_opened`); and puzzles (`puzzle_shown`, `puzzle_solved`, `puzzle_reset`, `puzzle_closed`).
 - **Payload rules.** Payloads hold only IDs, keys and numbers: a weapon's name never enters (the log reads it from the sheet); the reason of an XP award stays in `xp_awards`, never in the payload. Action events carry the round, `secret` (a hidden combatant was in it: the player never receives the row, even if the master shows the combatant later, RN-20) and the "before" of everything the undo restores (`combat_events.go`). Notable payloads:
@@ -843,6 +862,7 @@ erDiagram
   - **Trap damage in a combat:** `attacker_id` is `NULL`, `trap_point_id` says the trap, `attack_key` is `trap`, and the row is born already rolled (the server rolls when the trap fires): `rolled` for a player character (waits for the master, RN-02) and `applied` for an NPC or creature (took it at once). A `CHECK` requires an attacker or a trap.
   - It disappears with the combat or either combatant (`CASCADE`). Indexes by `target_id` and by `attacker_id` (partial, `attacker_id IS NOT NULL`: a trap has none) serve that cascade.
 - **`trap_damages`** (MR-035, RN-02) is the damage a triggered trap did to a player character when **there is no combat** on the map, one row per damage part. The server rolls when the trap fires: `dice_count` (doubled on the trap attack's critical), `dice_sides` and `dice_bonus` are the rolled damage, `faces` what came out, `roll_total` the whole roll and `amount` what counts (half, rounded down, for one who passed a save that halves the damage). `status` is `rolled` (waits for the master), `applied` or `discarded`, and `applied_amount` is the amount the master applied when it was not the rolled one. `fire_id` labels the damages of one trigger; `trap_point_id` has no foreign key (the same cycle reason as `pending_damages`). It disappears with the session or the character (`CASCADE`); the index is by session. `settle_key` (unique where set) and `settle_hash` keep the idempotency key, scoped to the campaign, and the hash of the call that applied or discarded it: the damage can be settled with no session open, where no session event can hold the key, so a retry gets the first answer and the same key for another damage, amount or action is refused. It survives the end of the session (the session stays stored): the master reads those waiting in the whole campaign. The end of a combat turns the trap damage still waiting in `pending_damages` into rows here. Fantasy, numbers and IDs only.
+- **`hidden_reveals`** (RN-10, RN-24) is the question a player's area spell leaves the master when it hit hidden creatures and the table rule is `ask`: the caster, the spell, the hidden creatures it hit (`combatant_ids`, ids only, no FK: one that left the combat is skipped when answered), where the area landed (so the master's map draws it after a reload) and the `state` (`pending`, `revealed`, `kept`). While one is `pending` the combat's turn waits (`HIDDEN_REVEAL_PENDING`); `seq` orders them, oldest answered first. It disappears with the combat or the caster (`CASCADE`), ending the combat deletes the questions, and undoing the cast that opened one deletes it. An answered question stays, so that repeating the answer is told from the opposite one. The answer is the event `hidden_reveal_answered`; a reveal also writes a `combatant_hidden_set` event for each creature, with `by_area`, which is the only hide/reveal event the players get a line for.
 - **`opportunity_offers`** (MR-034, RN-21) keeps the opportunity attack a move offered to a hostile reactor: who moved, the reactor, the square of the line where he left the reach (where he returns if the attack takes him to 0 HP) and the `state`. `pending` waits for the answer, and the mover's turn waits too; `attacked` is the attack made (`attack_pending_id` is the damage it opened, and goes away, `SET NULL`, if the undo deletes the damage); `declined` and `skipped` are the controller's "Não atacar" and the master's "Seguir sem esperar" (which is also what happens when the master ends the mover's turn); `withdrawn` is the master's "Retirar a oferta", and the undo puts the offer back to `pending`. In a gridless combat (`encounters.mode = 'theatre'`) the master makes the offer (`OfferOpportunity`): nobody left a square, so `left_col` and `left_row` are `NULL` (both or neither) and `move_id` is just the offer's identifier. `move_id` is the same across a move's offers: the move's undo deletes them. Indexes: the pending ones of a combat (partial), those of a move (the undo), of the mover and of the reactor (the cascades) and the one of the damage (the 0 HP rule). No personal data: ids, squares and a state.
 - **`revivify_requests`** (Revivify, SRD 5.1) is a cast of the spell **outside a combat**, waiting for the master: the app does not count time out of combat, so he says whether the creature died less than a minute ago. `game_session_id` (`CASCADE`: it goes with the session), the caster and the target (`characters`, `CASCADE`), the slot (`slot_level` 3 to 9, `slot_pact`), `status` (`pending`, `confirmed`, `denied`; `answered_at` is set exactly when it is not pending, by `CHECK`) and the idempotency keys of the cast (`create_key`, unique per campaign, and `create_hash`) and of the answer (`answer_key`, `answer_hash`). Nothing is spent while it is `pending`.
 

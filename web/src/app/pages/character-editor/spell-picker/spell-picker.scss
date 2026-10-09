@@ -19,6 +19,29 @@
   color: var(--mr-ink-muted);
 }
 
+// More spells than the class takes: the count and the reason in the error color, with the icon (never color alone).
+.picker__chosen--over {
+  color: var(--mr-danger-ink);
+  font-weight: 500;
+}
+
+.picker__error {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0 0 var(--mr-space-3);
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-danger-ink);
+
+  mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
 // Fewer spells prepared than the class takes.
 .picker__warn {
   margin: 0 0 var(--mr-space-3);

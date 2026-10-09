@@ -16,7 +16,7 @@ import {
 import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { Role } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { Role, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import { CreatureSize } from '../../../gen/meurpg/rules/v1/rules_pb';
@@ -510,6 +510,17 @@ describe('the catalog the editor reads (slice 10.12b)', () => {
     it('fails the load when the role cannot be read, instead of showing a master the player view', async () => {
       const source = sourceWith(() => Promise.reject(new Error('transient')));
       await expect(source.loadCatalog('camp-1')).rejects.toThrow('transient');
+    });
+
+    it("reads the campaign's XP mode, also for a member waiting for approval", async () => {
+      const source = sourceWith(() =>
+        Promise.resolve({
+          campaign: { myRole: Role.PLAYER, awaitingApproval: true, xpMode: XpMode.ENEMIES },
+        }),
+      );
+      const catalog = await source.loadCatalog('camp-1');
+      expect(catalog.xpMode).toBe('enemies');
+      expect(catalog.viewerIsMaster).toBe(false);
     });
 
     it('takes a refusal of the campaign as "not the master"', async () => {
