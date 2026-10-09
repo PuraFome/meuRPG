@@ -425,6 +425,9 @@ func (s *Service) EndRage(
 func statesFor(states []playdb.CombatantState, cs []playdb.Combatant, v combatViewer) []*playv1.CombatantEffect {
 	var out []*playv1.CombatantEffect
 	for _, st := range states {
+		if isEffect(st) { // the effects that last have their own cards (lasting_effects_view.go)
+			continue
+		}
 		source, _ := findByID(cs, deref(st.SourceID))
 		if st.Kind == stateMark && !v.master && !v.owns(source) {
 			continue

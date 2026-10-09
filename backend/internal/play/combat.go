@@ -914,6 +914,10 @@ func (s *Service) EndTurn(
 		if err := s.afterTurnPart(ctx, c, current); err != nil {
 			return nil, err
 		}
+		// The saving throws the effects on the member ask at the end of its turn open now.
+		if err := s.openEndSaves(ctx, c, current); err != nil {
+			return nil, err
+		}
 		// Who still acts: the turn passes only when the last member ends.
 		if acting := othersActing(cs, current.ID); len(acting) > 0 {
 			// A part of a group of NPCs alone is the master's, like the group (RN-20),
@@ -924,6 +928,14 @@ func (s *Service) EndTurn(
 			if err := setCurrent(ctx, c, acting[0], c.enc.Round); err != nil {
 				return nil, err
 			}
+			return actionEvent{Round: c.enc.Round, Secret: secret, Actor: current.ID}, nil
+		}
+		// The turn waits for the saving throws of the effects: it passes when they are answered.
+		if held, err := s.endSaveOpen(ctx, c); err != nil {
+			return nil, err
+		} else if held {
+			secret = current.Hidden
+			c.kind = eventTurnPartEnded
 			return actionEvent{Round: c.enc.Round, Secret: secret, Actor: current.ID}, nil
 		}
 		next, newRound, ok := nextTurnGroup(cs, current.ID, "")

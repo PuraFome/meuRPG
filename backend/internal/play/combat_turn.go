@@ -107,6 +107,12 @@ func turnMembers(cs []playdb.Combatant) []playdb.Combatant {
 // one's turn starts at once (the economy resets, the Escudo bonus ends, a
 // death save is due again), and the combat's state points at the first.
 func startTurn(ctx context.Context, c *combatTx, ids []string, round int32) error {
+	// What ends at the end of the turn that is over ends first (RN-22).
+	if c.svc != nil {
+		if err := c.svc.effectsBeforeTurn(ctx, c); err != nil {
+			return err
+		}
+	}
 	if err := c.q.ClearCombatTurns(ctx, c.enc.ID); err != nil {
 		return fmt.Errorf("clear the turn: %w", err)
 	}
@@ -129,6 +135,11 @@ func startTurn(ctx context.Context, c *combatTx, ids []string, round int32) erro
 		// The dodge and the reckless attack of the ones whose turn starts end, and so do
 		// the states that end at the start of their turn.
 		if err := c.svc.endStatesAtStart(ctx, c, ids, round); err != nil {
+			return err
+		}
+		// The effects that last: what ends now, the damage a turn under them brings and
+		// the saving throws of the start of the turn (RN-22).
+		if err := c.svc.effectsAfterTurnStart(ctx, c, ids, round); err != nil {
 			return err
 		}
 	}

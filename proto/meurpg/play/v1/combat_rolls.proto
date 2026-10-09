@@ -67,6 +67,16 @@ enum AdvantageSourceKind {
   ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK = 28;
   // A search for traps in dim light (Perception, MR-035).
   ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM = 29;
+  // Effects that last (RN-22): exhaustion levels 3 (attack rolls and saving throws) and 1
+  // (ability checks), Faerie Fire's outline on the target, and the advantage on saving
+  // throws an effect gives (Velocidade). "Outra fonte" is the same kind with no name,
+  // for a player when the master hides the effect.
+  ADVANTAGE_SOURCE_KIND_EXHAUSTION_ATTACK = 100;
+  ADVANTAGE_SOURCE_KIND_EXHAUSTION_SAVE = 101;
+  ADVANTAGE_SOURCE_KIND_EXHAUSTION_CHECK = 102;
+  ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET = 103;
+  ADVANTAGE_SOURCE_KIND_EFFECT_SAVE = 104;
+  ADVANTAGE_SOURCE_KIND_OTHER_SOURCE = 105;
 }
 
 // AdvantageSource is one circumstance of a roll, as the caller may read it. A

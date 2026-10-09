@@ -365,6 +365,9 @@ type actionEvent struct {
 	Conditions []string `json:"conditions,omitempty"`
 	CondBefore []string `json:"cond_before,omitempty"`
 
+	// An effect that lasts began, changed, ended or asked a saving throw (RN-22).
+	Lasting *lastingEvent `json:"lasting,omitempty"`
+
 	// What the undo of an action puts back.
 	ActionBefore   bool `json:"action_before,omitempty"`
 	BonusBefore    bool `json:"bonus_before,omitempty"`

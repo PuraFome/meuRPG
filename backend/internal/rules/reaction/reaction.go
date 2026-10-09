@@ -114,6 +114,8 @@ const (
 	FeatherFall       Kind = "feather_fall"
 	Concentration     Kind = "concentration_save"
 	MasterCheck       Kind = "master_check"
+	// EffectSave is the saving throw an effect that lasts asks at a turn (RN-22).
+	EffectSave Kind = "effect_save"
 )
 
 // Reason is why a window closed by itself.
@@ -125,6 +127,10 @@ const (
 	ReasonReactionSpent        Reason = "reaction_spent"
 	ReasonReactorIncapacitated Reason = "reactor_incapacitated"
 	ReasonTriggerGone          Reason = "trigger_gone"
+	// ReasonEffectEnded and ReasonCasterLostConcentration close the saving throw of an
+	// effect that ended, or whose caster lost the concentration.
+	ReasonEffectEnded             Reason = "effect_ended"
+	ReasonCasterLostConcentration Reason = "caster_lost_concentration"
 )
 
 // Facts are what decides whether an open window still stands.
@@ -142,9 +148,9 @@ type Facts struct {
 // ignores ReactionUsed. Incapacitated wins over a spent reaction, and both over a
 // gone trigger: the reason a reactor reads is about itself first.
 func Closure(kind Kind, f Facts) (Reason, bool) {
-	usesReaction := kind != Concentration && kind != MasterCheck
+	usesReaction := kind != Concentration && kind != MasterCheck && kind != EffectSave
 	switch {
-	case f.Incapacitated && kind != MasterCheck && kind != Concentration:
+	case f.Incapacitated && usesReaction:
 		return ReasonReactorIncapacitated, true
 	case f.ReactionUsed && usesReaction:
 		return ReasonReactionSpent, true
@@ -195,6 +201,8 @@ type Wait struct {
 	// Savers are the labels of the player's characters the reader sees that owe a
 	// concentration save.
 	Savers []string
+	// EffectSavers are the ones that owe the saving throw of an effect that lasts.
+	EffectSavers []string
 }
 
 // Title is the line "Esperando ...": "Esperando o mestre", "Esperando a reação de
@@ -213,6 +221,9 @@ func (w Wait) Title() string {
 	}
 	if len(w.Savers) > 0 {
 		parts = append(parts, "o teste de Constituição de "+join(sorted(w.Savers)))
+	}
+	if len(w.EffectSavers) > 0 {
+		parts = append(parts, "o teste de "+join(sorted(w.EffectSavers)))
 	}
 	if len(parts) == 0 {
 		return ""

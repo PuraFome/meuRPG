@@ -94,6 +94,18 @@
       "conditions": ["condition:paralyzed"],
       "end_save": {"ability": "wis", "on_pass": "end"}
     },
+    "spell:faerie-fire": {
+      "applies": "failed_save",
+      "visibility": "public",
+      "player_label_pt": "Delineado",
+      "tags_pt": ["Ataques contra você têm vantagem se quem ataca vê você", "Você não se beneficia de invisibilidade"]
+    },
+    "spell:hideous-laughter": {
+      "applies": "failed_save",
+      "visibility": "public",
+      "conditions": ["condition:prone", "condition:incapacitated"],
+      "end_save": {"ability": "wis", "on_pass": "end", "on_damage": true}
+    },
     "spell:web": {
       "applies": "all",
       "visibility": "owner",

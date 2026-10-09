@@ -108,6 +108,9 @@ type EffectSave struct {
 	// start-of-turn save that fails adds OnFail, an effect key.
 	OnPass string `json:"on_pass,omitempty"`
 	OnFail string `json:"on_fail,omitempty"`
+	// OnDamage says the save is asked again each time the target takes damage, with
+	// advantage (Hideous Laughter).
+	OnDamage bool `json:"on_damage,omitempty"`
 }
 
 // EffectTrigger is damage an effect deals to a creature that starts its turn

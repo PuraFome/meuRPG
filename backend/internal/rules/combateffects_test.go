@@ -32,6 +32,14 @@ func TestTheSpellsThatLastHaveTheirEffects(t *testing.T) {
 	if haste.OnEnd != "effect:lethargy" || len(haste.Modifiers) != 4 {
 		t.Errorf("Haste = %+v", haste)
 	}
+	fairy, _ := c.CombatSpellEffect("spell:faerie-fire")
+	if fairy.Applies != "failed_save" || fairy.PlayerLabelPT != "Delineado" {
+		t.Errorf("Faerie Fire outlines the targets that failed the save: %+v", fairy)
+	}
+	laugh, _ := c.CombatSpellEffect("spell:hideous-laughter")
+	if len(laugh.Conditions) != 2 || laugh.EndSave == nil || !laugh.EndSave.OnDamage || laugh.EndSave.Ability != "wis" {
+		t.Errorf("Hideous Laughter = %+v", laugh)
+	}
 	web, _ := c.CombatSpellEffect("spell:web")
 	if web.StartSave == nil || web.StartSave.Ability != "dex" || web.StartSave.OnFail != "effect:web-restrained" {
 		t.Errorf("Web = %+v", web)
@@ -53,7 +61,7 @@ func TestSpellDurationsAreInRounds(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
 	// SRD, "Duration": a minute is 10 rounds. Web lasts an hour, which the app does not count.
-	for key, want := range map[string]int{"spell:bless": 10, "spell:bane": 10, "spell:haste": 10, "spell:hold-person": 10, "spell:web": 0, "spell:fireball": 0} {
+	for key, want := range map[string]int{"spell:bless": 10, "spell:bane": 10, "spell:haste": 10, "spell:hold-person": 10, "spell:faerie-fire": 10, "spell:hideous-laughter": 10, "spell:web": 0, "spell:fireball": 0} {
 		if got := c.SpellEffectRounds(key); got != want {
 			t.Errorf("SpellEffectRounds(%s) = %d, want %d", key, got, want)
 		}

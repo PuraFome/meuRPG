@@ -73,6 +73,12 @@ type windowTrigger struct {
 	Trap    string   `json:"trap,omitempty"`
 	// Handed says a concentration's owner left the roll to the master.
 	Handed bool `json:"handed,omitempty"`
+	// Effect is the state (the effect that lasts) an EFFECT_SAVE window asks the saving throw
+	// of, Phase says at the end or the start of the turn, and Damage that the window opened
+	// because the target took damage (advantage on the roll).
+	Effect   string `json:"effect,omitempty"`
+	Phase    string `json:"phase,omitempty"`
+	OnDamage bool   `json:"on_damage,omitempty"`
 	// Hellish Rebuke's second step: the level it was cast at, whether through the
 	// Infernal Legacy, and the damage dice.
 	CastLevel int32 `json:"cast_level,omitempty"`
@@ -310,8 +316,12 @@ func (s *Service) settleReactions(ctx context.Context, c *combatTx) error {
 	const maxRounds = 8
 	for range maxRounds {
 		changed, err := s.settleOnce(ctx, c)
-		if err != nil || !changed {
+		if err != nil {
 			return err
+		}
+		if !changed {
+			// A turn that waited for the saving throw of an effect passes when none is open (RN-22).
+			return s.releaseHeldTurn(ctx, c)
 		}
 	}
 	return nil
