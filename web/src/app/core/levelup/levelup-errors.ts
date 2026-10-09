@@ -35,6 +35,12 @@ export function refusalStep(reason: LevelUpRefusalReason, field = ''): StepKey |
     case LevelUpRefusalReason.HIT_POINT_ROLL_MISSING:
     case LevelUpRefusalReason.HIT_POINT_ROLL_OTHER_CLASS:
       return 'hp';
+    case LevelUpRefusalReason.MULTICLASS_PREREQUISITE:
+    case LevelUpRefusalReason.MULTICLASS_PREREQUISITE_CURRENT:
+    case LevelUpRefusalReason.CLASS:
+      return 'class';
+    case LevelUpRefusalReason.PROFICIENCY_CHOICE:
+    case LevelUpRefusalReason.INSTRUMENT_CHOICE:
     case LevelUpRefusalReason.SUBCLASS:
     case LevelUpRefusalReason.FEATURE_CHOICE:
     case LevelUpRefusalReason.SKILLS:
@@ -60,6 +66,14 @@ export function refusalMessage(refusal: Pick<LevelUpRefusal, 'reason'>): string 
       return 'Esse nível não vale para a classe escolhida. Volte para a ficha e comece de novo.';
     case LevelUpRefusalReason.MAX_LEVEL:
       return 'Este personagem já está no nível máximo.';
+    case LevelUpRefusalReason.MULTICLASS_PREREQUISITE:
+      return 'Esta classe nova pede uma habilidade que o personagem ainda não tem. Escolha outra classe.';
+    case LevelUpRefusalReason.MULTICLASS_PREREQUISITE_CURRENT:
+      return 'Uma classe que o personagem já tem pede uma habilidade que ele não tem, e por isso nenhuma classe nova entra. Suba uma classe que ele já tem.';
+    case LevelUpRefusalReason.PROFICIENCY_CHOICE:
+      return 'Escolha a perícia que a classe nova dá, da lista dela e que o personagem ainda não tenha.';
+    case LevelUpRefusalReason.INSTRUMENT_CHOICE:
+      return 'Escolha o instrumento musical da classe nova, entre os da lista.';
     case LevelUpRefusalReason.LOCKED_FIELD:
       return 'Algo que o nível não muda ficou diferente na ficha. Volte para a ficha e comece de novo.';
     case LevelUpRefusalReason.ABILITY_NOT_DUE:
