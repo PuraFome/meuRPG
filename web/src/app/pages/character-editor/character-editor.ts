@@ -1096,7 +1096,16 @@ export class CharacterEditor {
     }
     const kind: CharacterKind = npcKind ? (NPC_ROUTE_KINDS[npcKind] ?? 'enemy') : 'player';
     // `/campaigns/:id/reserved/new` (MR-049): the master makes a player character for a player to claim.
-    this.loadForCreate(campaignId, kind, this.route.routeConfig?.data?.['reserved'] === true);
+    this.loadForCreate(campaignId, kind, this.isReservedRoute());
+  }
+
+  /**
+   * Whether the route is `/campaigns/:id/reserved/new`: its `data` says so. The router hands a child route the data of its
+   * parent (an empty path under a lazy parent), so the snapshot is where it is read; a route a test builds by hand may have none.
+   */
+  private isReservedRoute(): boolean {
+    const snapshot = (this.route as Partial<ActivatedRoute>).snapshot;
+    return snapshot?.data['reserved'] === true;
   }
 
   private loadForCreate(campaignId: string, kind: CharacterKind, reserved: boolean): void {

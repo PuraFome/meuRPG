@@ -60,7 +60,9 @@ export function claimStateLabel(claim: ClaimVm): string {
     case 'revoked':
       return 'Link revogado';
     case 'used':
-      return claim.claimedBy ? `Assumido por ${claim.claimedBy}` : 'Assumido';
+      return claim.claimedBy
+        ? `Assumido por ${claim.claimedBy}`
+        : 'Assumido por um jogador sem nome';
     default:
       return 'Sem link';
   }

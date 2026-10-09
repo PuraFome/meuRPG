@@ -294,7 +294,7 @@ function catalog(): RulesCatalogVm {
 }
 
 function routeParams(params: Record<string, string>, data: Record<string, unknown> = {}) {
-  return { paramMap: of(convertToParamMap(params)), routeConfig: { data } };
+  return { paramMap: of(convertToParamMap(params)), snapshot: { data } };
 }
 
 function flush(): Promise<void> {
