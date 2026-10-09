@@ -23,6 +23,7 @@ import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_p
 import {
   AreaPlacement,
   type Combatant,
+  type InspirationOffer,
   CombatLogKind,
   CombatantState,
   DeathSaveOutcome,
@@ -132,6 +133,10 @@ import { ConditionsDialog, type ConditionsData } from './conditions-dialog/condi
 import { DeathQuestion } from './death-question/death-question';
 import { DeathSaves } from './death-saves/death-saves';
 import { FeatureSheet, type FeatureSheetData } from './feature-sheet/feature-sheet';
+import { InspirationCard } from './inspiration-card/inspiration-card';
+import { openBardicInspiration, openFlexibleCasting, openLayOnHands } from './resource-sheets';
+import { resourceFlow } from '../../../core/resources/resource-actions';
+import { SORCERY_POINTS_RESOURCE, poolOf } from '../../../core/resources/pools';
 import {
   ReactionSheet,
   type ReactionSheetData,
@@ -217,6 +222,7 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
     CreatureHero,
     DeathQuestion,
     DeathSaves,
+    InspirationCard,
     CombatBar,
     HiddenRevealCard,
     CombatLogPanel,
@@ -1021,6 +1027,31 @@ export class CombatView {
         untracked(() => this.openReaction(window));
       }
     });
+    // A roll held for Bardic Inspiration (the player read the screen again, or left the sheet): the question opens by itself, once.
+    effect(() => {
+      const e = this.encounter();
+      const offer = this.ownOffer();
+      // The turn options arrive after the combat: the question opens when its attack is in them.
+      const ready = this.options() !== null;
+      // While an attack sheet is open it is the one that gets the answer of its own roll.
+      if (
+        this.isMaster() ||
+        !e ||
+        !offer ||
+        !ready ||
+        this.attackSheetOpen() ||
+        e.status !== EncounterStatus.ACTIVE
+      ) {
+        return;
+      }
+      if (!this.inspirationHandled.has(offer.holdId)) {
+        untracked(() => {
+          if (this.openHeldRoll()) {
+            this.inspirationHandled.add(offer.holdId);
+          }
+        });
+      }
+    });
     // "Mover" belongs to the player's turn: when it ends, the page closes.
     effect(() => {
       if (!this.moverActs() || !this.active()) {
@@ -1422,6 +1453,11 @@ export class CombatView {
       return;
     }
     const name = option.action.namePt;
+    const flow = resourceFlow(key);
+    if (flow) {
+      this.openResourceFlow(flow, key, own.id, e.id);
+      return;
+    }
     if (key === 'feature:second-wind') {
       const data: FeatureSheetData = {
         campaignId: this.campaignId(),
@@ -1460,6 +1496,57 @@ export class CombatView {
     ) {
       this.actionNote.set(note);
     }
+  }
+
+  /** The dialog of a class resource (Cura pelas Mãos, Conjuração Flexível, Inspiração de Bardo): `TakeAction` refuses
+   * these actions, `ResourceService` runs them. */
+  private openResourceFlow(
+    flow: NonNullable<ReturnType<typeof resourceFlow>>,
+    key: string,
+    actorId: string,
+    encounterId: string,
+  ): void {
+    const base = {
+      campaignId: this.campaignId(),
+      encounterId,
+      actorId,
+      vitals: this.ownVitals,
+      state: this.state(),
+    };
+    const targets = this.options()?.resourceTargets.find((t) => t.actionKey === key)?.targets ?? [];
+    switch (flow) {
+      case 'lay-on-hands':
+        openLayOnHands(this.dialog, this.bottomSheet, { ...base, targets }).subscribe();
+        break;
+      case 'bardic-give':
+        openBardicInspiration(this.dialog, this.bottomSheet, { ...base, targets }).subscribe();
+        break;
+      default:
+        openFlexibleCasting(this.dialog, this.bottomSheet, {
+          ...base,
+          direction: flow === 'flexible-create' ? 'create' : 'convert',
+        }).subscribe();
+    }
+  }
+
+  /** The Bardic Inspiration die the player's character holds (the server sends it to the holder and the master only). */
+  protected readonly ownDie = computed(() => this.own()?.inspirationDie ?? null);
+  /** The attack roll of the player's character that waits for the answer about the die. */
+  protected readonly ownOffer = computed(() => this.own()?.inspirationOffer ?? null);
+  /** The held rolls the page already opened its question for: a roll's own sheet registers its hold, so the reading
+   * of the screen does not open the question a second time. */
+  private readonly inspirationHandled = new Set<string>();
+  private readonly attackSheetOpen = signal(false);
+
+  /** "Responder": the question of a held roll, at the d20 that was rolled. `false` while the attack is not in the options. */
+  protected openHeldRoll(): boolean {
+    const offer = this.ownOffer();
+    const attack = this.options()?.options?.attacks.find((a) => a.attack?.key === offer?.attackKey);
+    if (!offer || !attack) {
+      return false;
+    }
+    this.attackSheet(offer.attackKey, undefined, false, undefined, undefined, offer);
+    return true;
   }
 
   /** "Atacar": the attack sheet (Alvo, Rolar, Dano). `asReaction` is the
@@ -1533,6 +1620,7 @@ export class CombatView {
     asReaction = false,
     who?: Combatant,
     creatureOpts?: GetTurnOptionsResponse | null,
+    held?: InspirationOffer,
     catchWindowId = '',
   ): void {
     const e = this.encounter();
@@ -1568,14 +1656,25 @@ export class CombatView {
             targetLabel: e.combatants.find((c) => c.id === resume.targetId)?.label ?? '',
           }
         : undefined,
+      inspiration: held
+        ? {
+            offer: held,
+            targetLabel: e.combatants.find((c) => c.id === held.targetId)?.label ?? '',
+          }
+        : undefined,
+      onHeld: (holdId) => this.inspirationHandled.add(holdId),
     };
+    this.attackSheetOpen.set(true);
     openSheet<AttackSheet, AttackSheetData, boolean>(this.dialog, this.bottomSheet, AttackSheet, {
       data,
       ariaLabel: asReaction
         ? `Ataque de oportunidade com ${attack.namePt || attack.name}`
         : `Atacar com ${attack.namePt || attack.name}${who ? `: ${who.label}` : ''}`,
       labelledBy: 'sheet-t',
-    }).subscribe();
+    }).subscribe({
+      complete: () => this.attackSheetOpen.set(false),
+      error: () => this.attackSheetOpen.set(false),
+    });
   }
 
   /** The master taps a door of the map: its sheet opens (open, close, lock, or reveal a secret door). The map reads itself again on the stream. */
@@ -1667,6 +1766,8 @@ export class CombatView {
       targets: opts.spellTargets.find((t) => t.spellKey === key),
       shieldFree: shield ? shield.slots.reduce((n, s) => n + s.free, 0) : null,
       shieldName: shield?.spell?.namePt || 'Escudo Arcano',
+      metamagic: spell?.metamagicOptions ?? [],
+      sorceryPoints: poolOf(vitals?.resources, SORCERY_POINTS_RESOURCE),
       attackBonus,
       diceMode: this.diceMode(),
       preference: this.dicePreference(),
@@ -1978,7 +2079,7 @@ export class CombatView {
         (a) => a.attack?.kind === AttackKind.WEAPON && a.attack.saveDc === 0 && !a.attack.melee,
       ) ?? attacks.find((a) => a.attack?.kind === AttackKind.WEAPON && a.attack.saveDc === 0);
     if (pick?.attack) {
-      this.attackSheet(pick.attack.key, undefined, true, undefined, undefined, windowId);
+      this.attackSheet(pick.attack.key, undefined, true, undefined, undefined, undefined, windowId);
     }
   }
 

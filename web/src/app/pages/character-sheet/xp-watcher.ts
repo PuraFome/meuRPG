@@ -1,6 +1,7 @@
 import { DOCUMENT, Injectable, inject } from '@angular/core';
 
 import { LiveSessionSourceLive } from '../live-session/live-session-source.live';
+import type { VitalsVm } from '../live-session/live-session.types';
 import { LiveStream } from '../live-session/live-stream';
 
 /**
@@ -26,15 +27,23 @@ export class XpWatcher {
    * `onCreatures`, when given, on every `creatures_changed` and on a reconnection too, and `onContent` on every
    * `content_changed` (the table's content moved: the editor and the level-up read their catalog again), and
    * `onForm` when a character's hit points or the combat changed (a Wild Shape form ends that way), with the
-   * character of a vitals event, or `null` when it is the combat that changed. */
+   * character of a vitals event, or `null` when it is the combat that changed. `onVitals`, when given, gets the live
+   * numbers of the session's characters (the counters on the sheet): the snapshot on every `ready` (the master's has them
+   * all, a player's only their own character) and each `vitals_changed` after it. */
   follow(
     campaignId: string | null,
     onChange: () => void,
     onCreatures?: () => void,
     onContent?: () => void,
     onForm?: (characterId: string | null) => void,
+    onVitals?: (vitals: VitalsVm) => void,
   ): void {
     if (campaignId === this.campaignId) {
+      // The same session, asked again (the page moved to another character of it, or read its sheet again): the live
+      // numbers are read again, the stream stays.
+      if (campaignId !== null && onVitals) {
+        this.readVitals(campaignId, onVitals);
+      }
       return;
     }
     this.stream?.stop();
@@ -52,6 +61,9 @@ export class XpWatcher {
         // The page reads on load itself: only a later `ready` (a reconnection, the tab back after a
         // while) reads again, both the XP and the creatures: an event may have been missed.
         onReady: () => {
+          if (onVitals) {
+            this.readVitals(campaignId, onVitals);
+          }
           if (!first) {
             onChange();
             onCreatures?.();
@@ -60,7 +72,10 @@ export class XpWatcher {
           }
           first = false;
         },
-        onVitals: (v) => onForm?.(v.characterId),
+        onVitals: (v) => {
+          onVitals?.(v);
+          onForm?.(v.characterId);
+        },
         onEncounterChanged: () => onForm?.(null),
         onXpChanged: onChange,
         onCreaturesChanged: onCreatures,
@@ -71,6 +86,14 @@ export class XpWatcher {
     });
     this.stream = stream;
     stream.start();
+  }
+
+  /** The snapshot is a read: a failed one leaves what is on screen, and the next event or reconnection reads again. */
+  private readVitals(campaignId: string, onVitals: (vitals: VitalsVm) => void): void {
+    this.source.getLiveSession(campaignId).then(
+      (snapshot) => snapshot.vitals.forEach((v) => onVitals(v)),
+      () => undefined,
+    );
   }
 
   private stop(stream: LiveStream): void {

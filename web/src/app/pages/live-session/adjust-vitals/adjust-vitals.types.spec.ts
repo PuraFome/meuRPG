@@ -18,11 +18,35 @@ describe('changeBetween', () => {
 
   it('covers temporary HP, hit dice and pact slots', () => {
     const v = brisaVitals({ pactSlots: { slotLevel: 2, total: 2, used: 0 } });
-    const draft = { ...draftFrom(v), hitPointsTemporary: 0, hitDiceUsed: 2, pactSlotsUsed: 1 };
+    const draft = {
+      ...draftFrom(v),
+      hitPointsTemporary: 0,
+      hitDiceUsed: { 8: 2 },
+      pactSlotsUsed: 1,
+    };
     expect(changeBetween(v, draft)).toEqual({
       hitPointsTemporary: 0,
       pactSlotsUsed: 1,
-      hitDiceUsed: 2,
+      hitDiceUsedByDie: { 8: 2 },
+    });
+  });
+
+  it('sends the hit dice by size, only the sizes that changed', () => {
+    const v = pensantusVitals({
+      hitDice: '2d10 e 1d6',
+      hitDiceSizes: [
+        { faces: 10, total: 2, used: 1 },
+        { faces: 6, total: 1, used: 0 },
+      ],
+      hitDiceTotal: 3,
+      hitDiceUsed: 1,
+    });
+    expect(draftFrom(v).hitDiceUsed).toEqual({ 10: 1, 6: 0 });
+    expect(changeBetween(v, { ...draftFrom(v), hitDiceUsed: { 10: 1, 6: 1 } })).toEqual({
+      hitDiceUsedByDie: { 6: 1 },
+    });
+    expect(changeBetween(v, { ...draftFrom(v), hitDiceUsed: { 10: 0, 6: 1 } })).toEqual({
+      hitDiceUsedByDie: { 10: 0, 6: 1 },
     });
   });
 });

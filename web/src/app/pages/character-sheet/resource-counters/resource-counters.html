@@ -1,0 +1,40 @@
+@if (boxes().length > 0) {
+  <section class="block" aria-labelledby="resources-heading">
+    <h2 class="block__title" id="resources-heading">Recursos</h2>
+    <ul class="boxes">
+      @for (box of boxes(); track box.key) {
+        <li class="box">
+          <span class="box__name">{{ box.name }}</span>
+          <span class="box__count">{{ box.count }}</span>
+          @if (box.pips; as pips) {
+            <app-count-pips [left]="pips.left" [total]="pips.total" />
+          }
+          @if (box.again) {
+            <span class="box__again">{{ box.again }}</span>
+          }
+        </li>
+      }
+    </ul>
+  </section>
+}
+
+@if (slots().length > 0) {
+  <section class="block" aria-labelledby="slots-heading">
+    <h2 class="block__title" id="slots-heading">Espaços de magia</h2>
+    <ul class="rows">
+      @for (row of slots(); track row.key) {
+        <li class="row">
+          <span class="row__level">{{ row.label }}</span>
+          <app-count-pips [left]="row.left" [total]="row.total" />
+          <span class="row__count">
+            {{ row.count }}
+            @if (row.created) {
+              <span class="row__created">· {{ row.created }}</span>
+            }
+          </span>
+        </li>
+      }
+    </ul>
+    <p class="block__note">{{ footnote() }}</p>
+  </section>
+}

@@ -1,0 +1,127 @@
+:host {
+  display: block;
+}
+
+.which {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.which__legend {
+  margin: 0 0 var(--mr-space-2);
+  padding: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+// A radio card: the chosen one has a thicker accent border and a soft fill (the dot is filled too).
+.opt {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  min-height: 56px;
+  margin-bottom: var(--mr-space-2);
+  padding: 8px 14px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  cursor: pointer;
+
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  &--on {
+    padding: 7px 13px;
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+
+  // A size with none left: dashed and quiet, still read by a screen reader.
+  &--none {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+}
+
+.opt__radio {
+  flex: none;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 50%;
+
+  .opt--on & {
+    border: 6px solid var(--mr-accent);
+  }
+}
+
+.opt__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.opt__sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// What each die did: the newest on top, in the live region.
+.rolls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rolls__line {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  font-size: 17px;
+  line-height: 23px;
+  font-weight: 700;
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+    color: var(--mr-success-ink);
+  }
+
+  &:not(:first-child) {
+    font-weight: 400;
+    color: var(--mr-ink-muted);
+
+    .mat-icon {
+      color: var(--mr-ink-muted);
+    }
+  }
+}

@@ -73,6 +73,8 @@ type SheetLocker interface {
 // authorization check, and their errors are Connect errors to return as
 // they are.
 type VitalsKeeper interface {
+	// RestKeeper is the rests and the resources that move points between the vitals.
+	RestKeeper
 	// ListVitals returns the vitals of the campaign's living, active player
 	// characters, oldest first.
 	ListVitals(ctx context.Context, campaignID string) ([]*playv1.CharacterVitals, error)
@@ -614,6 +616,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	))
 	handle(playv1connect.NewPlayServiceHandler(s, opts...))
 	handle(playv1connect.NewCombatServiceHandler(s, opts...))
+	handle(playv1connect.NewResourceServiceHandler(s, opts...))
 	handle(playv1connect.NewCastingServiceHandler(s, opts...))
 	handle(playv1connect.NewPuzzleServiceHandler(s, opts...))
 	handle(playv1connect.NewEncounterServiceHandler(s, opts...))

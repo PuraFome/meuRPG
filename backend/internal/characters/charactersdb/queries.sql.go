@@ -816,7 +816,7 @@ func (q *Queries) GetMasterNotes(ctx context.Context, arg GetMasterNotesParams) 
 const getVitals = `-- name: GetVitals :one
 SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
-       v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
+       v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
        v.familiar_sight_conditions
 FROM characters AS c
@@ -841,6 +841,8 @@ type GetVitalsRow struct {
 	SpellSlotsUsed          []int32
 	PactSlotsUsed           *int32
 	HitDiceUsed             *int32
+	HitDiceUsedByDie        []byte
+	SpellSlotsCreated       []int32
 	ResourcesUsed           []byte
 	Revision                *int32
 	UpdatedAt               *time.Time
@@ -866,6 +868,8 @@ func (q *Queries) GetVitals(ctx context.Context, arg GetVitalsParams) (GetVitals
 		&i.SpellSlotsUsed,
 		&i.PactSlotsUsed,
 		&i.HitDiceUsed,
+		&i.HitDiceUsedByDie,
+		&i.SpellSlotsCreated,
 		&i.ResourcesUsed,
 		&i.Revision,
 		&i.UpdatedAt,
@@ -881,7 +885,7 @@ func (q *Queries) GetVitals(ctx context.Context, arg GetVitalsParams) (GetVitals
 const getVitalsWithDead = `-- name: GetVitalsWithDead :one
 SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
-       v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
+       v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
        v.familiar_sight_conditions
 FROM characters AS c
@@ -906,6 +910,8 @@ type GetVitalsWithDeadRow struct {
 	SpellSlotsUsed          []int32
 	PactSlotsUsed           *int32
 	HitDiceUsed             *int32
+	HitDiceUsedByDie        []byte
+	SpellSlotsCreated       []int32
 	ResourcesUsed           []byte
 	Revision                *int32
 	UpdatedAt               *time.Time
@@ -932,6 +938,8 @@ func (q *Queries) GetVitalsWithDead(ctx context.Context, arg GetVitalsWithDeadPa
 		&i.SpellSlotsUsed,
 		&i.PactSlotsUsed,
 		&i.HitDiceUsed,
+		&i.HitDiceUsedByDie,
+		&i.SpellSlotsCreated,
 		&i.ResourcesUsed,
 		&i.Revision,
 		&i.UpdatedAt,
@@ -2519,7 +2527,7 @@ func (q *Queries) ListSessionCharacters(ctx context.Context, arg ListSessionChar
 const listVitals = `-- name: ListVitals :many
 SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
-       v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
+       v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
        v.familiar_sight_conditions
 FROM characters AS c
@@ -2540,6 +2548,8 @@ type ListVitalsRow struct {
 	SpellSlotsUsed          []int32
 	PactSlotsUsed           *int32
 	HitDiceUsed             *int32
+	HitDiceUsedByDie        []byte
+	SpellSlotsCreated       []int32
 	ResourcesUsed           []byte
 	Revision                *int32
 	UpdatedAt               *time.Time
@@ -2574,6 +2584,8 @@ func (q *Queries) ListVitals(ctx context.Context, campaignID string) ([]ListVita
 			&i.SpellSlotsUsed,
 			&i.PactSlotsUsed,
 			&i.HitDiceUsed,
+			&i.HitDiceUsedByDie,
+			&i.SpellSlotsCreated,
 			&i.ResourcesUsed,
 			&i.Revision,
 			&i.UpdatedAt,
@@ -3146,11 +3158,12 @@ func (q *Queries) UpsertMasterNotes(ctx context.Context, arg UpsertMasterNotesPa
 const upsertVitals = `-- name: UpsertVitals :one
 INSERT INTO character_vitals
     (character_id, hit_points_current, hit_points_temporary, spell_slots_used,
-     pact_slots_used, hit_dice_used, resources_used, revision, updated_at)
+     pact_slots_used, hit_dice_used, hit_dice_used_by_die, spell_slots_created, resources_used, revision, updated_at)
 VALUES (
     $1, $2, $3,
     $4::INT4[], $5, $6,
-    $7::JSONB, 1, $8
+    $7::JSONB, $8::INT4[],
+    $9::JSONB, 1, $10
 )
 ON CONFLICT (character_id) DO UPDATE SET
     hit_points_current = excluded.hit_points_current,
@@ -3158,6 +3171,8 @@ ON CONFLICT (character_id) DO UPDATE SET
     spell_slots_used = excluded.spell_slots_used,
     pact_slots_used = excluded.pact_slots_used,
     hit_dice_used = excluded.hit_dice_used,
+    hit_dice_used_by_die = excluded.hit_dice_used_by_die,
+    spell_slots_created = excluded.spell_slots_created,
     resources_used = excluded.resources_used,
     revision = character_vitals.revision + 1,
     updated_at = excluded.updated_at
@@ -3171,6 +3186,8 @@ type UpsertVitalsParams struct {
 	SpellSlotsUsed     []int32
 	PactSlotsUsed      int32
 	HitDiceUsed        int32
+	HitDiceUsedByDie   []byte
+	SpellSlotsCreated  []int32
 	ResourcesUsed      []byte
 	Now                time.Time
 }
@@ -3191,6 +3208,8 @@ func (q *Queries) UpsertVitals(ctx context.Context, arg UpsertVitalsParams) (Ups
 		arg.SpellSlotsUsed,
 		arg.PactSlotsUsed,
 		arg.HitDiceUsed,
+		arg.HitDiceUsedByDie,
+		arg.SpellSlotsCreated,
 		arg.ResourcesUsed,
 		arg.Now,
 	)

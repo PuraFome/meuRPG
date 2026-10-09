@@ -85,7 +85,7 @@ async function open(
     over.castSpell ??
     vi.fn().mockResolvedValue({
       encounter: encounter({ combatants: [pensantus, toren, goblin] }),
-      cast: { targets: [], pendingDamages: [], slot: { level: 3, pact: false } },
+      cast: { targets: [], pendingDamages: [], metamagicKeys: [], slot: { level: 3, pact: false } },
       summoned: [],
     });
   const data = {
@@ -197,7 +197,7 @@ describe('CastSheet: an area spell placed on the map', () => {
     expect(castSpell).toHaveBeenCalledTimes(1);
     const call = castSpell.mock.calls[0] as unknown[];
     expect(call[5]).toEqual([]);
-    expect(call[10]).toEqual({ area: { origin: { col: 6, row: 4 } } });
+    expect(call[11]).toEqual({ area: { origin: { col: 6, row: 4 } } });
     expect(plain(el.querySelector('.frame__title')?.textContent)).toBe('Bola de Fogo conjurada');
     expect(button('Voltar à sua vez')).toBeDefined();
   });
@@ -208,7 +208,7 @@ describe('CastSheet: an area spell placed on the map', () => {
       .mockRejectedValueOnce(new ConnectError('lost', Code.Unavailable))
       .mockResolvedValue({
         encounter: encounter(),
-        cast: { targets: [], pendingDamages: [] },
+        cast: { targets: [], pendingDamages: [], metamagicKeys: [] },
         summoned: [],
       });
     const { button, placeAt, settle } = await open({

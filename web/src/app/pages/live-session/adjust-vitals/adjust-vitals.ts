@@ -1,4 +1,4 @@
-import { Component, ElementRef, computed, effect, inject, signal } from '@angular/core';
+import { Component, ElementRef, effect, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { LiveSessionSource, VitalsChange } from '../live-session.types';
+import { dieName } from '../../../core/resources/hit-dice-text';
 import { slotLevelLabel, usedWords, whoSeesTheChange } from '../vitals';
 import { VitalsStepper } from '../vitals-stepper/vitals-stepper';
 import {
@@ -68,7 +69,13 @@ export class AdjustVitals {
   private readonly initial = draftFrom(this.v);
   protected readonly hp = signal(this.initial.hitPointsCurrent);
   protected readonly temp = signal(this.initial.hitPointsTemporary);
-  protected readonly hitDice = signal(this.initial.hitDiceUsed);
+  /** One row per die size (SRD "Multiclassing": hit dice of different sizes are kept apart). */
+  protected readonly dice = this.v.hitDiceSizes.map((d) => ({
+    faces: d.faces,
+    total: d.total,
+    used: signal(d.used),
+  }));
+  protected readonly manySizes = this.v.hitDiceSizes.length > 1;
   protected readonly pact = signal(this.initial.pactSlotsUsed ?? 0);
   protected readonly slots = this.v.spellSlots.map((s) => ({
     level: s.level,
@@ -86,10 +93,6 @@ export class AdjustVitals {
     }));
   protected readonly beast = this.v.wildShape ?? null;
   protected readonly beastHp = signal(this.initial.wildShapeHitPoints ?? 0);
-
-  protected readonly hitDiceHint = computed(
-    () => `${this.v.hitDice}, ${usedWords(this.hitDice(), this.v.hitDiceTotal)}`,
-  );
 
   protected readonly saveState = signal<SaveState>({ status: 'idle' });
   /** The save is in the air: Esc and the backdrop do not close the sheet under it. */
@@ -112,8 +115,17 @@ export class AdjustVitals {
     step < 0 ? `Tirar ${-step} PV` : `Somar ${step} PV`;
   protected readonly tempLabel = (step: number) =>
     step < 0 ? 'Tirar 1 PV temporário' : 'Somar 1 PV temporário';
-  protected readonly diceLabel = (step: number) =>
-    step < 0 ? 'Devolver 1 dado de vida' : 'Usar 1 dado de vida';
+  /** "Dados de vida", or "Dados de vida d10" when the character has dice of several sizes. */
+  protected diceName(faces: number): string {
+    return this.manySizes ? `Dados de vida ${dieName(faces)}` : 'Dados de vida';
+  }
+  protected diceHint(d: { faces: number; total: number; used: () => number }): string {
+    return `${d.total}${dieName(d.faces)}, ${usedWords(d.used(), d.total)}`;
+  }
+  protected diceStepLabel(faces: number): (step: number) => string {
+    const of = this.manySizes ? ` ${dieName(faces)}` : '';
+    return (step) => (step < 0 ? `Devolver 1 dado de vida${of}` : `Usar 1 dado de vida${of}`);
+  }
   protected slotLabel(level: number): (step: number) => string {
     const name = slotLevelLabel(level);
     return (step) => (step < 0 ? `Devolver 1 espaço de ${name}` : `Usar 1 espaço de ${name}`);
@@ -135,7 +147,7 @@ export class AdjustVitals {
       hitPointsTemporary: this.temp(),
       slotsUsed: Object.fromEntries(this.slots.map((s) => [s.level, s.used()])),
       pactSlotsUsed: this.v.pactSlots ? this.pact() : null,
-      hitDiceUsed: this.hitDice(),
+      hitDiceUsed: Object.fromEntries(this.dice.map((d) => [d.faces, d.used()])),
       resourcesUsed: Object.fromEntries(this.resources.map((r) => [r.key, r.used()])),
       wildShapeHitPoints: this.beast ? this.beastHp() : null,
     };
@@ -146,7 +158,7 @@ export class AdjustVitals {
     return (
       whole(this.hp(), this.v.hitPointsMax) &&
       whole(this.temp(), MAX_TEMPORARY_HP) &&
-      whole(this.hitDice(), this.v.hitDiceTotal) &&
+      this.dice.every((d) => whole(d.used(), d.total)) &&
       this.slots.every((s) => whole(s.used(), s.total)) &&
       this.resources.every((r) => whole(r.used(), r.total)) &&
       (!this.beast || whole(this.beastHp(), this.beast.hitPointsMax)) &&
