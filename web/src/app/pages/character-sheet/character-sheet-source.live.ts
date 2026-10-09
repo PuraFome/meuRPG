@@ -96,6 +96,11 @@ const ALIGNMENT_LABEL_FROM_GEN: Record<GenAlignment, string> = {
   [GenAlignment.CHAOTIC_EVIL]: 'Caótico e mau',
 };
 
+/** "fogo" → "Fogo": a damage type's name starts a pill. */
+function capitalized(text: string): string {
+  return text === '' ? text : text[0].toLocaleUpperCase('pt-BR') + text.slice(1);
+}
+
 function toAttackVm(attack: GenAttack): AttackVm {
   return {
     key: attack.key,
@@ -183,7 +188,10 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
       name: f.namePt,
       sourcePt: f.sourcePt,
       description: f.description,
+      summaryPt: f.summaryPt,
     })),
+    breathWeapon: derived.breathWeapon?.textPt ?? '',
+    resistances: derived.resistances.map((r) => capitalized(r.damageTypeNamePt)),
     languages: derived.languages,
     proficiencies: [
       ...(derived.proficiencies?.armor ?? []),
@@ -437,5 +445,16 @@ export class CharacterSheetSourceLive implements CharacterSheetSource {
 
   async rejectCharacter(campaignId: string, characterId: string): Promise<void> {
     await this.client.rejectCharacter({ campaignId, characterId });
+  }
+
+  async getPendingChoiceCount(campaignId: string, characterId: string): Promise<number> {
+    try {
+      // The stored sheet's choices: what is not done yet is what is pending.
+      const res = await this.client.previewChoices({ campaignId, characterId });
+      return Math.max(res.total - res.done, 0);
+    } catch {
+      // A sheet that asks nothing (a basic one) or that the caller cannot read has no banner.
+      return 0;
+    }
   }
 }

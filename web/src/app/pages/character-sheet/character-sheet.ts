@@ -21,6 +21,7 @@ import { formatModifier } from '../../core/characters/character-labels';
 import { describeCharacterError } from '../../core/characters/character-errors';
 import type { LevelUpDone } from '../../core/levelup/levelup-flow';
 import { takeLevelUpDone } from '../../core/levelup/levelup-done';
+import { PendingChoicesBanner } from './pending-choices-banner/pending-choices-banner';
 import { LevelUpBanner } from './level-up-banner/level-up-banner';
 import { LevelUpDoneNotice } from './level-up-banner/level-up-done';
 import { AbilityMedallions } from './ability-medallions/ability-medallions';
@@ -98,6 +99,7 @@ type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'
     LevelUpDoneNotice,
     MasterNotes,
     NotesPanel,
+    PendingChoicesBanner,
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
@@ -138,6 +140,9 @@ export class CharacterSheetPage {
   protected readonly creaturesTick = signal(0);
   /** Bumped when this character's vitals or the combat changed: a Wild Shape form may have ended. */
   protected readonly formTick = signal(0);
+
+  /** How many selections of the class and race choices are still open (PM-05): the banner "Completar" shows with 1 or more. */
+  protected readonly pendingChoices = signal(0);
 
   /** How the campaign levels: decides whether the header has an XP block or only the tag. */
   protected readonly xpMode = signal<CampaignXpMode | null>(null);
@@ -211,6 +216,22 @@ export class CharacterSheetPage {
     return true;
   }
 
+  /** The open choices of a living player character with a full sheet; asked of the server, never counted here. */
+  private refreshPendingChoices(campaignId: string, vm: CharacterSheetVm, seq: number): void {
+    if (vm.characterKind !== 'player' || vm.sheet.kind !== 'full' || vm.state === 'dead') {
+      this.pendingChoices.set(0);
+      return;
+    }
+    this.source.getPendingChoiceCount(campaignId, vm.id).then(
+      (n) => {
+        if (seq === this.sheetSeq && !this.destroyed) {
+          this.pendingChoices.set(n);
+        }
+      },
+      () => undefined,
+    );
+  }
+
   /** Reads the character again without the loading state, so the page does not blink. */
   private async reloadQuietly(): Promise<void> {
     const campaignId = this.campaignId();
@@ -222,6 +243,7 @@ export class CharacterSheetPage {
       const vm = await this.source.getCharacterSheet(campaignId, this.characterId);
       if (seq === this.sheetSeq && this.state().status === 'ready') {
         this.state.set({ status: 'ready', vm });
+        this.refreshPendingChoices(campaignId, vm, seq);
       }
     } catch {
       // Keep what is on screen: the next change reads again.
@@ -236,10 +258,12 @@ export class CharacterSheetPage {
     this.markDeadState.set({ status: 'idle' });
     this.storyToggleState.set({ status: 'idle' });
     this.approvalState.set({ status: 'idle' });
+    this.pendingChoices.set(0);
     this.source.getCharacterSheet(campaignId, characterId).then(
       (vm) => {
         if (seq === this.sheetSeq) {
           this.state.set({ status: 'ready', vm });
+          this.refreshPendingChoices(campaignId, vm, seq);
         }
       },
       (err: unknown) => {

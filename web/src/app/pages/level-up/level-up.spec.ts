@@ -5,6 +5,11 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import { DicePreference, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
+  ChoiceGroupSchema,
+  ChoiceKind,
+  ChoiceOptionSchema,
+  ChoiceSchema,
+  LevelUpFeatureChoiceSchema,
   CharacterBlockedReason,
   CharacterBlockedSchema,
   CharacterSchema,
@@ -734,6 +739,115 @@ describe('LevelUpPage', () => {
         expect(text(f)).toContain('Passo 2 de 4 · Vida');
         expect(text(f)).toContain('Rolado no app: 7 no d6');
       });
+    });
+  });
+
+  describe('choices left behind and new scoped choices (PM-05)', () => {
+    const style = create(ChoiceSchema, {
+      key: 'style',
+      featureKey: 'feature:fighting-style',
+      kind: ChoiceKind.OPTIONS,
+      titlePt: 'Estilo de Luta',
+      labelPt: 'Estilo de Luta (Guerreiro, nível 1)',
+      picks: 1,
+      missing: 1,
+      options: [
+        create(ChoiceOptionSchema, {
+          key: 'defense',
+          storedKey: 'stored:defense',
+          namePt: 'Defesa',
+        }),
+        create(ChoiceOptionSchema, { key: 'duel', storedKey: 'stored:duel', namePt: 'Duelo' }),
+      ],
+    });
+    const terrain = create(ChoiceSchema, {
+      key: 'terrain',
+      featureKey: 'feature:natural-explorer',
+      kind: ChoiceKind.OPTIONS,
+      titlePt: 'Explorador Natural',
+      labelPt: 'Explorador Natural',
+      picks: 1,
+      missing: 1,
+      options: [
+        create(ChoiceOptionSchema, {
+          key: 'forest',
+          storedKey: 'stored:forest',
+          namePt: 'Floresta',
+        }),
+      ],
+    });
+    const late = () => [
+      create(ChoiceGroupSchema, { sourceNamePt: 'Estilo de Luta', level: 1, choices: [style] }),
+    ];
+
+    it('shows "Escolhas que ficaram para trás" in a step of its own and holds "Próximo" until they are made', async () => {
+      const f = await setup(fighterOptions({ lateChoices: late() }));
+      await click(f, button(f, 'Próximo'));
+      expect(text(f)).toContain('Passo 2 de 3 · Escolhas');
+      expect(text(f)).toContain('Escolhas que ficaram para trás');
+      expect(text(f)).toContain('Falta escolher 1 escolha que ficou para trás.');
+      expect(button(f, 'Próximo').getAttribute('aria-disabled')).toBe('true');
+
+      await click(f, el(f).querySelector<HTMLElement>('#pick-late [role="radio"]'));
+      expect(text(f)).not.toContain('Falta escolher 1 escolha que ficou para trás.');
+      expect(button(f, 'Próximo').getAttribute('aria-disabled')).toBeNull();
+    });
+
+    it('sends the late picks in late_choice_keys and the new ones with the feature options, then confirms', async () => {
+      const f = await setup(
+        fighterOptions({
+          lateChoices: late(),
+          newChoices: [
+            create(ChoiceGroupSchema, {
+              sourceNamePt: 'Explorador Natural',
+              level: 5,
+              choices: [terrain],
+            }),
+          ],
+        }),
+      );
+      await click(f, button(f, 'Próximo'));
+      expect(text(f)).toContain('Escolhas do nível 5');
+      const radios = Array.from(el(f).querySelectorAll<HTMLElement>('[role="radio"]'));
+      await click(f, radios[1]);
+      await click(f, el(f).querySelector<HTMLElement>('#pick-new [role="radio"]'));
+      await click(f, button(f, 'Próximo'));
+      await click(f, button(f, 'Confirmar o nível 5'));
+
+      const choices = client.levelUp.mock.calls[0][3];
+      expect(choices).toMatchObject({
+        lateChoiceKeys: ['stored:duel'],
+        featureChoiceKeys: ['stored:forest'],
+      });
+    });
+
+    it('lists a blocked option dotted, off, with the reason, and never picks it', async () => {
+      const f = await setup(
+        fighterOptions({
+          featureChoices: [
+            create(LevelUpFeatureChoiceSchema, {
+              feature: { key: 'feature:eldritch-invocations', namePt: 'Invocações Místicas' },
+              choose: 1,
+              options: [{ key: 'invocation:agonizing', namePt: 'Rajada Agonizante' }],
+              blocked: [
+                {
+                  option: { key: 'invocation:lifedrinker', namePt: 'Sede de Vida' },
+                  reasonPt: 'Exige o nível 12 de Bruxo. Você está no 5.',
+                },
+              ],
+            }),
+          ],
+        }),
+      );
+      await click(f, button(f, 'Próximo'));
+      const blocked = pickRow(f, 'Sede de Vida');
+      expect(blocked.textContent).toContain('Exige o nível 12 de Bruxo. Você está no 5.');
+      expect(blocked.querySelector<HTMLInputElement>('input')!.disabled).toBe(true);
+    });
+
+    it('has no such section when the level leaves nothing behind', async () => {
+      const f = await setup(fighterOptions());
+      expect(text(f)).not.toContain('Escolhas que ficaram para trás');
     });
   });
 

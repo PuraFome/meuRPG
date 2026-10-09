@@ -90,7 +90,14 @@ export function stepsFor(o: LevelUpOptions, t: Totals, more: number): StepKey[] 
     steps.push('abilities');
   }
   steps.push('hp');
-  if (o.subclassDue || t.featureChoices.length > 0 || t.skills > 0 || t.expertise > 0) {
+  if (
+    o.subclassDue ||
+    t.featureChoices.length > 0 ||
+    t.skills > 0 ||
+    t.expertise > 0 ||
+    o.lateChoices.length > 0 ||
+    o.newChoices.length > 0
+  ) {
     steps.push('picks');
   }
   if (t.cantrips > 0 || t.spells > 0 || more > 0) {

@@ -17,6 +17,15 @@ export interface CampaignCharacterListItemVm {
   readonly playerDisplayName: string | null;
 }
 
+/** A living player character with choices still open (PM-05), as the master's list shows it. */
+export interface OpenChoicesVm {
+  readonly characterId: string;
+  /** How many selections are open. */
+  readonly count: number;
+  /** What is open, one label for each choice ("Estilo de Luta (Patrulheiro, nível 2)"). */
+  readonly labels: readonly string[];
+}
+
 export interface CampaignCharactersVm {
   /** Master: every player character in the campaign, those waiting for
    * approval included (state `'pending'`, MR-024). Player: only their own
@@ -38,4 +47,6 @@ export interface CampaignCharactersVm {
  */
 export abstract class CampaignCharactersSource {
   abstract listCharacters(campaignId: string): Promise<CampaignCharactersVm>;
+  /** Master only (`GetCampaignOpenChoices`): the player characters with choices still open. A player is refused. */
+  abstract openChoices(campaignId: string): Promise<readonly OpenChoicesVm[]>;
 }

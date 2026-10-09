@@ -1,6 +1,8 @@
 import { create } from '@bufbuild/protobuf';
 
 import {
+  ChoiceGroupSchema,
+  ChoiceSchema,
   LevelUpFeatureChoiceSchema,
   LevelUpSubclassSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
@@ -158,5 +160,24 @@ describe('needText', () => {
     expect(needText(1, 'magia', 'magias')).toBe('Falta escolher 1 magia.');
     expect(needText(2, 'magia', 'magias')).toBe('Faltam escolher 2 magias.');
     expect(needText(2, 'magia', 'magias', 'preparar')).toBe('Faltam preparar 2 magias.');
+  });
+});
+
+describe('the steps of a level-up: choices an earlier level left open (PM-05)', () => {
+  const group = (key: string) =>
+    create(ChoiceGroupSchema, { choices: [create(ChoiceSchema, { key, picks: 1, missing: 1 })] });
+
+  it('has the Escolhas step for a late choice or a new scoped one, and none without them', () => {
+    expect(steps(fighterOptions())).toEqual(['hp', 'summary']);
+    expect(steps(fighterOptions({ lateChoices: [group('c1')] }))).toEqual([
+      'hp',
+      'picks',
+      'summary',
+    ]);
+    expect(steps(fighterOptions({ newChoices: [group('c2')] }))).toEqual([
+      'hp',
+      'picks',
+      'summary',
+    ]);
   });
 });

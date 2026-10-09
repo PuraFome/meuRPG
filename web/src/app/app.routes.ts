@@ -88,6 +88,15 @@ export const routes: Routes = [
       ),
   },
   {
+    // The choices a locked sheet left open (PM-05): the owning player's or the master's page that completes them,
+    // without the editor. The server answers for anyone else, and the page says so.
+    path: 'campaigns/:id/characters/:characterId/choices',
+    title: 'Completar escolhas pendentes',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/character-choices/character-choices').then((m) => m.CharacterChoicesPage),
+  },
+  {
     // The guided level-up of a locked sheet (MR-040, RN-01's exception, RN-12): the owning
     // player's own page; the server answers for anyone else, and the page says so.
     path: 'campaigns/:id/characters/:characterId/level-up',

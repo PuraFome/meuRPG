@@ -3,6 +3,8 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import {
   CharacterBlockedReason,
   CharacterBlockedSchema,
+  ChoiceRefusalReason,
+  ChoiceRefusalSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { InvalidFieldSchema } from '../../../gen/meurpg/characters/v1/characters_pb';
 import {
@@ -101,6 +103,32 @@ describe('describeCharacterError', () => {
     expect(describeCharacterError(new Error('network down'))).toContain(
       'Não foi possível falar com o servidor',
     );
+  });
+});
+
+describe('the choices a sheet leaves open (CHOICES_MISSING)', () => {
+  const missing = (...labels: string[]) =>
+    new ConnectError('open', Code.FailedPrecondition, undefined, [
+      {
+        desc: ChoiceRefusalSchema,
+        value: {
+          reason: ChoiceRefusalReason.CHOICES_MISSING,
+          issues: labels.map((labelPt) => ({ labelPt })),
+        },
+      },
+    ]);
+
+  it('names the open choices by the labels the server sends', () => {
+    expect(describeCharacterError(missing('Estilo de Luta'))).toBe(
+      'Falta uma escolha: Estilo de Luta. Faça-a no passo "Escolhas".',
+    );
+    expect(describeCharacterError(missing('Estilo de Luta', 'Invocações'))).toBe(
+      'Faltam escolhas: Estilo de Luta; Invocações. Faça-as no passo "Escolhas".',
+    );
+  });
+
+  it('still says something when the server sends no label', () => {
+    expect(describeCharacterError(missing())).toContain('Faltam escolhas');
   });
 });
 

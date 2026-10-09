@@ -31,6 +31,7 @@ import {
   CampaignCharacterListItemVm,
   CampaignCharactersSource,
   CampaignCharactersVm,
+  OpenChoicesVm,
 } from './campaign-characters.types';
 
 type ListState =
@@ -102,6 +103,9 @@ export class CampaignCharacters implements OnInit {
   protected readonly creaturesTick = signal(0);
   /** "Mastim dado ao Toren. Ele aparece na ficha dele, que foi avisado.": the live region's words after a gift. */
   protected readonly giftNotice = signal('');
+
+  /** The master's "N escolhas em aberto", by character (PM-05). Empty for a player, who never asks. */
+  protected readonly openChoices = signal<ReadonlyMap<string, OpenChoicesVm>>(new Map());
 
   /** Whose "O que mudou" is open, in place under its row. */
   protected readonly openChanges = signal<string | null>(null);
@@ -196,7 +200,28 @@ export class CampaignCharacters implements OnInit {
     this.load();
     if (this.isMaster()) {
       void this.levelUps?.load(this.campaignId());
+      this.loadOpenChoices();
     }
+  }
+
+  /** "1 escolha em aberto" / "3 escolhas em aberto"; empty when the character has none. */
+  protected openChoicesText(characterId: string): string {
+    const n = this.openChoices().get(characterId)?.count ?? 0;
+    return n === 0 ? '' : n === 1 ? '1 escolha em aberto' : `${n} escolhas em aberto`;
+  }
+
+  /** What is open, for a screen reader: "Em aberto: Estilo de Luta (Guerreiro, nível 1)". */
+  protected openChoicesLabels(characterId: string): string {
+    const labels = this.openChoices().get(characterId)?.labels ?? [];
+    return labels.length === 0 ? '' : `Em aberto: ${labels.join('; ')}.`;
+  }
+
+  /** Master only: a failure here only leaves the tags out, the list is still right. */
+  private loadOpenChoices(): void {
+    this.source.openChoices(this.campaignId()).then(
+      (list) => this.openChoices.set(new Map(list.map((o) => [o.characterId, o]))),
+      () => this.openChoices.set(new Map()),
+    );
   }
 
   private load(): void {

@@ -81,6 +81,9 @@ export class EditorStepper extends CdkStepper {
    * scores (an unplaced roll must stop the save even if nobody opened the step). */
   readonly eager = input<readonly string[]>([]);
 
+  /** Steps (by label) with something left to do that is not an error: the tab carries a "!" and "Escolha pendente". */
+  readonly pending = input<readonly string[]>([]);
+
   /** The steps opened so far: their content is built and kept. The first is open from the start. */
   private readonly visited = signal<ReadonlySet<number>>(new Set([0]));
 
@@ -95,6 +98,10 @@ export class EditorStepper extends CdkStepper {
   /** Whether step `index` has its content: it was opened at least once, or it is eager. */
   protected rendered(index: number): boolean {
     return this.visited().has(index) || this.eager().includes(this.labelAt(index));
+  }
+
+  protected isPending(index: number): boolean {
+    return this.pending().includes(this.labelAt(index));
   }
 
   protected labelAt(index: number): string {

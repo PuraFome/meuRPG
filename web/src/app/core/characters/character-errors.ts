@@ -5,6 +5,8 @@ import {
   AbilityScoresRefusalSchema,
   CharacterBlockedReason as GenCharacterBlockedReason,
   CharacterBlockedSchema,
+  ChoiceRefusalReason,
+  ChoiceRefusalSchema,
   InvalidFieldSchema,
   LevelUpRefusalReason,
   LevelUpRefusalSchema,
@@ -173,6 +175,36 @@ export function abilityRefusalMessage(reason: AbilityScoresRefusalReason): strin
 }
 
 /**
+ * What a `ChoiceRefusal` says (PM-05): the choices a player's sheet still has open, or a pick the rules do not
+ * take, by the typed reason and the labels the server sends, never by its message. `null` for any other error.
+ */
+export function choiceRefusalMessage(err: unknown): string | null {
+  const connectErr = ConnectError.from(err, Code.Unavailable);
+  if (connectErr.code !== Code.FailedPrecondition) {
+    return null;
+  }
+  const [refusal] = connectErr.findDetails(ChoiceRefusalSchema);
+  if (!refusal) {
+    return null;
+  }
+  const labels = refusal.issues.map((i) => i.labelPt).filter((l) => l !== '');
+  switch (refusal.reason) {
+    case ChoiceRefusalReason.CHOICES_MISSING:
+      return labels.length === 0
+        ? 'Faltam escolhas de classe ou de raça. Faça-as no passo "Escolhas".'
+        : labels.length === 1
+          ? `Falta uma escolha: ${labels[0]}. Faça-a no passo "Escolhas".`
+          : `Faltam escolhas: ${labels.join('; ')}. Faça-as no passo "Escolhas".`;
+    case ChoiceRefusalReason.PREREQUISITE_UNMET:
+      return 'Uma das opções escolhidas pede algo que a ficha ainda não tem. Confira o passo "Escolhas".';
+    case ChoiceRefusalReason.CHOICE_NOT_OFFERED:
+      return 'Uma das escolhas não existe mais para essa ficha, ou passou do número permitido. Confira o passo "Escolhas".';
+    default:
+      return 'As escolhas da ficha não seguem as regras. Confira o passo "Escolhas".';
+  }
+}
+
+/**
  * Maps any `CharacterService` error to a message a form can show as-is.
  *
  * For `failed_precondition`, this reads the `CharacterBlocked` detail off
@@ -194,6 +226,10 @@ export function describeCharacterError(
     const [hp] = connectErr.findDetails(LevelUpRefusalSchema);
     if (hp?.reason === LevelUpRefusalReason.HIT_POINTS_RULE) {
       return 'A mesa decidiu como se ganham os pontos de vida dos níveis acima do 1º. Use o jeito que ela deixa, no passo "Habilidades".';
+    }
+    const choices = choiceRefusalMessage(connectErr);
+    if (choices !== null) {
+      return choices;
     }
     const [detail] = connectErr.findDetails(CharacterBlockedSchema);
     const content = detail?.contentKey

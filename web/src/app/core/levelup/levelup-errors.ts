@@ -34,6 +34,7 @@ export function refusalStep(reason: LevelUpRefusalReason, field = ''): StepKey |
       return 'hp';
     case LevelUpRefusalReason.SUBCLASS:
     case LevelUpRefusalReason.FEATURE_CHOICE:
+    case LevelUpRefusalReason.LATE_CHOICE_MISSING:
     case LevelUpRefusalReason.SKILLS:
     case LevelUpRefusalReason.EXPERTISE:
       return 'picks';
@@ -79,6 +80,8 @@ export function refusalMessage(refusal: Pick<LevelUpRefusal, 'reason'>): string 
       return 'As magias preparadas só ganham vagas novas: nenhuma sai.';
     case LevelUpRefusalReason.FEATURE_CHOICE:
       return 'Escolha todas as opções das novas características.';
+    case LevelUpRefusalReason.LATE_CHOICE_MISSING:
+      return 'Ainda há escolhas que ficaram para trás em níveis anteriores. Faça todas antes de subir de nível.';
     case LevelUpRefusalReason.SKILLS:
       return 'Escolha todas as perícias novas do nível.';
     case LevelUpRefusalReason.EXPERTISE:

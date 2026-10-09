@@ -123,4 +123,12 @@ describe('an option the master retired (RN-23, 10.1d)', () => {
     expect(f.message).not.toContain('As regras não aceitaram');
     expect(refusalStep(LevelUpRefusalReason.SWITCHED_OFF_CHOICE)).toBeNull();
   });
+
+  it('sends a level refused for a late choice to the Escolhas step, with its own words', () => {
+    const f = describeLevelUpFailure(
+      refusedAt(LevelUpRefusalReason.LATE_CHOICE_MISSING, 'full.feature_choice_keys'),
+    );
+    expect(f).toMatchObject({ kind: 'refusal', step: 'picks' });
+    expect(f.message).toContain('escolhas que ficaram para trás');
+  });
 });

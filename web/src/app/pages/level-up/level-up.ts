@@ -425,7 +425,7 @@ export class LevelUpPage {
           ? root.querySelector<HTMLElement>(`#pick-${first.id}`)
           : root.querySelector<HTMLElement>('.body section');
         const target = card?.querySelector<HTMLElement>(
-          '.rows input:not(:disabled), input:not(:disabled), button',
+          '.rows input:not(:disabled), input:not(:disabled), [data-pending] .choice__title, button',
         );
         card?.setAttribute('data-attn', '');
         target?.scrollIntoView({ block: 'center' });

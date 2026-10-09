@@ -13,6 +13,7 @@ import {
   CampaignCharacterListItemVm,
   CampaignCharactersSource,
   CampaignCharactersVm,
+  OpenChoicesVm,
 } from './campaign-characters.types';
 
 const KIND_FROM_GEN: Record<GenCharacterKind, CharacterKind> = {
@@ -69,5 +70,14 @@ export class CampaignCharactersSourceLive implements CampaignCharactersSource {
       npcs,
       hasLivingCharacter: playerCharacters.some((c) => c.state !== 'dead'),
     };
+  }
+
+  async openChoices(campaignId: string): Promise<readonly OpenChoicesVm[]> {
+    const res = await this.client.getCampaignOpenChoices({ campaignId });
+    return res.characters.map((c) => ({
+      characterId: c.characterId,
+      count: c.pendingCount,
+      labels: c.labelsPt,
+    }));
   }
 }

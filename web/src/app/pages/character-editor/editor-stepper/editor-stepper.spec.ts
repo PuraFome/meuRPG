@@ -7,7 +7,7 @@ import { EditorStepper } from './editor-stepper';
 @Component({
   imports: [EditorStepper, CdkStep],
   template: `
-    <app-editor-stepper>
+    <app-editor-stepper [pending]="pending()">
       <cdk-step label="Básico" [hasError]="basicoHasError()"><p>conteúdo básico</p></cdk-step>
       <cdk-step label="Habilidades"><p>conteúdo habilidades</p></cdk-step>
       <cdk-step label="Equipamento"><p>conteúdo equipamento</p></cdk-step>
@@ -16,6 +16,7 @@ import { EditorStepper } from './editor-stepper';
 })
 class Host {
   readonly basicoHasError = signal(false);
+  readonly pending = signal<readonly string[]>([]);
 }
 
 describe('EditorStepper', () => {
@@ -78,5 +79,17 @@ describe('EditorStepper', () => {
 
     expect(tabs()[0].textContent).toContain('(com erro)');
     expect(tabs()[1].textContent).not.toContain('(com erro)');
+  });
+
+  it('marks a step with something left to do with "!" and "Escolha pendente", in words too', async () => {
+    const { fixture, tabs } = await render();
+
+    fixture.componentInstance.pending.set(['Habilidades']);
+    fixture.detectChanges();
+
+    expect(tabs()[1].querySelector('.stepper__pending')?.textContent).toBe('!');
+    expect(tabs()[1].querySelector('.stepper__pending')?.getAttribute('aria-hidden')).toBe('true');
+    expect(tabs()[1].textContent).toContain('Escolha pendente');
+    expect(tabs()[0].textContent).not.toContain('Escolha pendente');
   });
 });

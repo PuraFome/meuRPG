@@ -320,3 +320,20 @@
   display: block;
   margin-top: var(--mr-space-5);
 }
+
+// "Criar personagem" with a choice open: aria-disabled, still focusable, and said to be waiting.
+.editor__primary[aria-disabled='true'] {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.editor__missing {
+  flex-basis: 100%;
+  color: var(--mr-ink);
+}
+
+.spell-extra {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}

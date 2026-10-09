@@ -55,6 +55,13 @@
   </section>
 }
 
+@if (s.breathWeapon) {
+  <section class="mr-panel" aria-labelledby="sopro-heading">
+    <h2 id="sopro-heading" class="mr-panel__title">Arma de sopro</h2>
+    <p class="breath">{{ s.breathWeapon }}</p>
+  </section>
+}
+
 @if (s.spellcasting.length > 0) {
   <section class="mr-panel spells" aria-labelledby="magias-heading">
     <h2 id="magias-heading" class="mr-panel__title">{{ spellsTitle() }}</h2>

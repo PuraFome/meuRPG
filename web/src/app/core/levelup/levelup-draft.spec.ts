@@ -1,6 +1,10 @@
 import { create } from '@bufbuild/protobuf';
 
 import {
+  ChoiceGroupSchema,
+  ChoiceKind,
+  ChoiceOptionSchema,
+  ChoiceSchema,
   LevelUpFeatureChoiceSchema,
   LevelUpHitPointsMethod,
   LevelUpHitPointsRule,
@@ -373,5 +377,71 @@ describe('LevelUpDraft: adopt after the sheet is read again', () => {
     );
     nextLevel.adopt(old);
     expect(nextLevel.rolled()).toBeNull();
+  });
+});
+
+describe('LevelUpDraft: choices an earlier level left open (PM-05)', () => {
+  const style = create(ChoiceSchema, {
+    key: 'style',
+    labelPt: 'Estilo de Luta (Guerreiro, nível 1)',
+    kind: ChoiceKind.OPTIONS,
+    picks: 1,
+    missing: 1,
+    options: [
+      create(ChoiceOptionSchema, { key: 'defense', storedKey: 'stored:defense', namePt: 'Defesa' }),
+      create(ChoiceOptionSchema, { key: 'duel', storedKey: 'stored:duel', namePt: 'Duelo' }),
+    ],
+  });
+  const terrain = create(ChoiceSchema, {
+    key: 'terrain',
+    labelPt: 'Explorador Natural',
+    kind: ChoiceKind.OPTIONS,
+    picks: 1,
+    missing: 1,
+    options: [
+      create(ChoiceOptionSchema, { key: 'forest', storedKey: 'stored:forest', namePt: 'Floresta' }),
+    ],
+  });
+  const withChoices = () =>
+    new LevelUpDraft(
+      fighterOptions({
+        lateChoices: [create(ChoiceGroupSchema, { choices: [style] })],
+        newChoices: [create(ChoiceGroupSchema, { choices: [terrain] })],
+      }),
+      WIZARD_KEYS,
+      catalog,
+    );
+
+  it('asks for the late choices first and holds "Próximo" of the step until they are made', () => {
+    const d = withChoices();
+    expect(d.missingIn('picks').map((m) => [m.id, m.text])).toEqual([
+      ['late', 'Falta escolher 1 escolha que ficou para trás.'],
+      ['new', 'Falta escolher 1 escolha do nível.'],
+    ]);
+    d.selectLate(style, ['duel']);
+    expect(d.missingIn('picks').map((m) => m.id)).toEqual(['new']);
+    d.selectNew(terrain, ['forest']);
+    expect(d.missingIn('picks')).toEqual([]);
+  });
+
+  it('sends the late picks apart from the feature options, and the new ones among them', () => {
+    const d = withChoices();
+    d.selectLate(style, ['duel']);
+    d.selectNew(terrain, ['forest']);
+    expect(d.choices()).toMatchObject({
+      lateChoiceKeys: ['stored:duel'],
+      featureChoiceKeys: ['stored:forest'],
+      featureChoiceText: {},
+    });
+  });
+
+  it('is dirty once a late choice was picked, and takes the picks over after the sheet is read again', () => {
+    const d = withChoices();
+    expect(d.dirty()).toBe(false);
+    d.selectLate(style, ['defense']);
+    expect(d.dirty()).toBe(true);
+    const next = withChoices();
+    next.adopt(d);
+    expect(next.choices()).toMatchObject({ lateChoiceKeys: ['stored:defense'] });
   });
 });

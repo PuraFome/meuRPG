@@ -1,6 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 
 import type { PickItem } from '../../../core/levelup/levelup-flow';
+import { ChoiceGroups } from '../../../shared/choice-groups/choice-groups';
 import { PickList } from '../pick-list/pick-list';
 import { LevelUpSession } from '../level-up-session';
 
@@ -14,8 +15,35 @@ import { LevelUpSession } from '../level-up-session';
  */
 @Component({
   selector: 'app-picks-step',
-  imports: [PickList],
+  imports: [ChoiceGroups, PickList],
   template: `
+    @if (s().options.lateChoices.length > 0) {
+      <section class="choices" id="pick-late" aria-labelledby="late-title">
+        <h2 class="choices__title" id="late-title">Escolhas que ficaram para trás</h2>
+        <p class="choices__lead">
+          Estas escolhas ficaram abertas em níveis anteriores. Faça todas antes de subir de nível: o que já foi escolhido não muda.
+        </p>
+        <app-choice-groups
+          [groups]="s().options.lateChoices"
+          [onlyOpen]="true"
+          [offerCantrips]="false"
+          (selected)="s().draft.selectLate($event.choice, $event.optionKeys)"
+          (textEdited)="s().draft.editLateText($event.choice, $event.n, $event.text)"
+        />
+      </section>
+    }
+    @if (s().options.newChoices.length > 0) {
+      <section class="choices" id="pick-new" aria-labelledby="new-title">
+        <h2 class="choices__title" id="new-title">Escolhas do nível {{ s().options.toLevel }}</h2>
+        <app-choice-groups
+          [groups]="s().options.newChoices"
+          [onlyOpen]="true"
+          [offerCantrips]="false"
+          (selected)="s().draft.selectNew($event.choice, $event.optionKeys)"
+          (textEdited)="s().draft.editNewText($event.choice, $event.n, $event.text)"
+        />
+      </section>
+    }
     @if (s().options.subclassDue) {
       <app-pick-list
         pickId="subclass"
@@ -78,6 +106,26 @@ import { LevelUpSession } from '../level-up-session';
       flex-direction: column;
       gap: var(--mr-space-4);
     }
+
+    .choices__title {
+      margin: 0 0 var(--mr-space-1);
+      font-family: var(--mr-font-display);
+      font-size: 21px;
+      font-weight: 700;
+      line-height: 26px;
+    }
+
+    .choices__lead {
+      margin: 0 0 var(--mr-space-3);
+      color: var(--mr-ink-muted);
+    }
+
+    // The first missing choice, after a tap on the dashed "Próximo".
+    .choices[data-attn] {
+      outline: 2px solid var(--mr-warning-ink);
+      outline-offset: 6px;
+      border-radius: var(--mr-radius-md);
+    }
   `,
 })
 export class PicksStep {
@@ -95,8 +143,18 @@ export class PicksStep {
     const d = this.s().draft;
     const chosen = d.features();
     return d.totals().featureChoices.map((f, i) => {
-      const items = f.options.map((o) => ({ key: o.key, name: o.namePt, sub: '' }));
-      const keys = items.map((o) => o.key);
+      const takable = f.options.map((o) => ({ key: o.key, name: o.namePt, sub: '' }));
+      const keys = takable.map((o) => o.key);
+      // An option the character cannot take now stays on the list, off, with why (an invocation whose prerequisite is unmet).
+      const items = [
+        ...takable,
+        ...f.blocked.map((b) => ({
+          key: b.option?.key ?? '',
+          name: b.option?.namePt ?? '',
+          sub: '',
+          disabled: b.reasonPt,
+        })),
+      ];
       return {
         id: `feature-${i}`,
         title: f.feature?.namePt ?? 'Característica',
