@@ -27,8 +27,8 @@
       @for (c of going(); track c.id) {
         <li class="cast">
           <div class="cast__text">
-            <b class="cast__name">{{ c.spellNamePt }}</b>
-            <span class="cast__who">{{ c.casterName }}{{ c.ritual ? ' · ritual' : '' }} · {{ minutesWords(c.castingMinutes) }}</span>
+            <b class="cast__name">{{ master() ? queueTitle(c) : c.spellNamePt }}</b>
+            <span class="cast__who">{{ master() ? queueLine(c) : c.casterName + (c.ritual ? ' · ritual' : '') + ' · ' + minutesWords(c.castingMinutes) }}</span>
             <span class="cast__chip"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>concentração</span>
           </div>
           @if (master()) {
@@ -52,6 +52,12 @@
         </li>
       }
     </ul>
+    @if (master()) {
+      <div class="mr-notice mr-notice--neutral" role="note">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <p>{{ noteBefore }}<strong>{{ noteStrong }}</strong>{{ noteAfter }}</p>
+      </div>
+    }
   }
 
   @if (lasting().length) {

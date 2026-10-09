@@ -431,3 +431,36 @@ export function logLine(cast: OutsideCast): string {
       : '';
   return `${who} conjurou ${cast.spellNamePt}${ritual}${on}${end}.`;
 }
+
+// ---- the master's queue ----
+
+/** The queue card's title: the spell, and "(ritual)" when it is cast as one ("Alarme (ritual)"). */
+export function queueTitle(cast: OutsideCast): string {
+  return cast.ritual ? `${cast.spellNamePt} (ritual)` : cast.spellNamePt;
+}
+
+/**
+ * The queue card's line under the title: who casts, the slot (none for a ritual or a cantrip) and how long the casting
+ * takes ("Pensantus · 11 minutos", "Pensantus · espaço de 3º nível · 1 hora"). The app keeps no clock, so it never says how
+ * much of that time has passed: the master decides when it has.
+ */
+export function queueLine(cast: OutsideCast): string {
+  const slot =
+    cast.slotLevel > 0
+      ? cast.slotPact
+        ? `espaço de pacto de ${circleLabel(cast.slotLevel)}`
+        : `espaço de ${circleLabel(cast.slotLevel)}`
+      : '';
+  return joinDots(
+    [
+      cast.casterName,
+      slot,
+      cast.castingMinutes > 0 ? minutesWords(cast.castingMinutes) : '',
+    ].filter((p) => p !== ''),
+  );
+}
+
+/** The note under the queue: outside a combat there is no clock, so the master is the one who says the time has passed. */
+export const QUEUE_NOTE_BEFORE = 'Fora do combate não há relógio: a conjuração termina quando ';
+export const QUEUE_NOTE_STRONG = 'você confirma';
+export const QUEUE_NOTE_AFTER = ' que o tempo passou.';

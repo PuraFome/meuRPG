@@ -22,6 +22,11 @@ import {
   isCasting,
   logLine,
   minutesWords,
+  QUEUE_NOTE_AFTER,
+  QUEUE_NOTE_BEFORE,
+  QUEUE_NOTE_STRONG,
+  queueLine,
+  queueTitle,
 } from '../../../core/casting/cast-out-flow';
 import { RosterClient } from '../../../core/maps/roster-client';
 import { CastingClient } from '../../../core/casting/casting-client';
@@ -88,6 +93,11 @@ export class CastingPanel {
 
   protected chip = activeChip;
   protected minutesWords = minutesWords;
+  protected queueTitle = queueTitle;
+  protected queueLine = queueLine;
+  protected readonly noteBefore = QUEUE_NOTE_BEFORE;
+  protected readonly noteStrong = QUEUE_NOTE_STRONG;
+  protected readonly noteAfter = QUEUE_NOTE_AFTER;
 
   private keyOf(what: string): ActionKey {
     let k = this.keys.get(what);
