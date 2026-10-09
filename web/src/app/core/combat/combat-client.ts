@@ -906,6 +906,9 @@ export class CombatClient {
       encounter: need(res.encounter, 'CastSpell'),
       cast: need(res.cast, 'CastSpell'),
       summoned: res.summonedCombatantIds,
+      area: null,
+      hiddenHits: [],
+      pendingRevealId: '',
     };
   }
 
