@@ -71,6 +71,7 @@ type Combatant struct {
 	BonusSpellCast     bool
 	ActionAttackKey    *string
 	BonusAttacksLeft   int32
+	MageArmorAc        *int32
 	SlotsUsed          []byte
 	DeathRound         *int32
 	DeathOrderIndex    *int32
@@ -298,6 +299,36 @@ type RevivifyRequest struct {
 	CreateHash        *string
 	AnswerKey         *string
 	AnswerHash        *string
+}
+
+type SpellCast struct {
+	ID                 string
+	CampaignID         string
+	GameSessionID      string
+	CasterID           string
+	SpellKey           string
+	Ritual             bool
+	SlotLevel          int32
+	SlotPact           bool
+	Status             string
+	EndReason          *string
+	Concentrating      bool
+	CastingMinutes     int32
+	Lasts              bool
+	DurationSeconds    *int32
+	RestEnds           *string
+	Secret             bool
+	Targets            []byte
+	DiceCount          int32
+	DiceSides          int32
+	RollFaces          []int32
+	RollTotal          int32
+	Physical           bool
+	CreatureIds        []string
+	CarriedEncounterID *string
+	StartedAt          time.Time
+	CastAt             *time.Time
+	EndedAt            *time.Time
 }
 
 type StageNpc struct {

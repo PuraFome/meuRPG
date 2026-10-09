@@ -1,3 +1,4 @@
+import { CastingPanel } from './casting/casting-panel';
 import {
   Component,
   DOCUMENT,
@@ -138,6 +139,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     FamiliarBand,
     BattleEncounters,
     CombatLaunch,
+    CastingPanel,
     CombatView,
     FoundTreasures,
     HighlightsCard,
@@ -255,6 +257,8 @@ export class LiveSession {
   protected readonly revivedPlace = computed(() =>
     returnPlace(this.combat.encounter(), this.revivedId()),
   );
+  /** Counts the `spell_casts_changed` hints (and each `ready`): the casts panel reads again when it moves. */
+  protected readonly castsTick = signal(0);
   protected readonly familiarNameNow = signal<string | null>(null);
   protected readonly seeingFamiliar = computed(() => !!this.vitals().at(0)?.familiarSight);
   private readonly familiarEyes = inject(FamiliarEyesClient);
@@ -623,6 +627,7 @@ export class LiveSession {
           void this.readVitals(campaignId, generation);
           void this.characterRevived(campaignId, generation, characterId);
         },
+        onSpellCastsChanged: () => this.castsTick.update((n) => n + 1),
         onPuzzleChanged: (id) => void this.puzzles.changed(id),
         onTokenMoved: (move) => {
           this.scheduleVision();
@@ -760,6 +765,7 @@ export class LiveSession {
       this.scheduleVision();
       this.creaturesTick.update((n) => n + 1);
       this.revivifyTick.update((n) => n + 1);
+      this.castsTick.update((n) => n + 1);
       if (this.isMaster()) {
         void this.reloadMaps();
       }

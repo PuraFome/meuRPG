@@ -10,6 +10,8 @@ import { MapsClient } from '../../core/maps/maps-client';
 import { visionResponse } from '../../core/maps/vision-testing';
 import { FamiliarEyesClient } from '../../core/play/familiar-eyes';
 import { textOf } from '../../core/format/text-testing';
+import { CastingClient } from '../../core/casting/casting-client';
+import { FakeCastingClient } from '../../core/casting/casting-testing';
 import { RosterClient } from '../../core/maps/roster-client';
 import { ProgressionClient } from '../../core/progression/progression-client';
 import { XpChanges } from '../../core/progression/xp-changes';
@@ -244,6 +246,7 @@ describe('LiveSession', () => {
         },
         { provide: ProgressionClient, useValue: { experience: xpExperience, listAwards: vi.fn() } },
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
+        { provide: CastingClient, useValue: new FakeCastingClient() },
         { provide: SceneClient, useValue: scenes },
         { provide: RevivifyClient, useValue: { list: revivifyList, confirmTime: vi.fn() } },
         { provide: PuzzlesClient, useValue: puzzles },
