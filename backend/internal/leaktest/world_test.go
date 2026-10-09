@@ -35,6 +35,7 @@ func newWorld(t *testing.T) *world {
 	w.buildOtherMaps()
 	w.buildTraps()
 	w.buildSession()
+	w.buildCasting()
 	w.buildCombat()
 	w.buildPuzzles()
 	w.buildNotesAndProgress()

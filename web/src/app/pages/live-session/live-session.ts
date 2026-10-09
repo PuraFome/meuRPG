@@ -1,3 +1,4 @@
+import { CastingPanel } from './casting/casting-panel';
 import {
   Component,
   DOCUMENT,
@@ -134,6 +135,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     FamiliarBand,
     BattleEncounters,
     CombatLaunch,
+    CastingPanel,
     CombatView,
     FoundTreasures,
     HighlightsCard,
@@ -239,6 +241,8 @@ export class LiveSession {
   protected readonly viewGone = signal('');
   /** Bumped when the stream says a character's creatures changed. */
   protected readonly creaturesTick = signal(0);
+  /** Counts the `spell_casts_changed` hints (and each `ready`): the casts panel reads again when it moves. */
+  protected readonly castsTick = signal(0);
   protected readonly familiarNameNow = signal<string | null>(null);
   protected readonly seeingFamiliar = computed(() => !!this.vitals().at(0)?.familiarSight);
   private readonly familiarEyes = inject(FamiliarEyesClient);
@@ -619,6 +623,7 @@ export class LiveSession {
           }
         },
         onCreaturesChanged: () => this.creaturesTick.update((n) => n + 1),
+        onSpellCastsChanged: () => this.castsTick.update((n) => n + 1),
         onPuzzleChanged: (id) => void this.puzzles.changed(id),
         onTokenMoved: (move) => {
           this.scheduleVision();
@@ -755,6 +760,7 @@ export class LiveSession {
       // What a player sees on a fog map, and the creatures, follow the server's current state too.
       this.scheduleVision();
       this.creaturesTick.update((n) => n + 1);
+      this.castsTick.update((n) => n + 1);
       if (this.isMaster()) {
         void this.reloadMaps();
       }

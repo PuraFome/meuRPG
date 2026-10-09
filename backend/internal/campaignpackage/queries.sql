@@ -64,7 +64,13 @@ SET state = 'failed', failure = 'interrupted', updated_at = sqlc.arg(now), finis
 WHERE state = 'running' AND updated_at < sqlc.arg(stale_before);
 
 -- name: ListExpiredCampaignExports :many
-SELECT * FROM campaign_exports WHERE expires_at <= $1 ORDER BY expires_at LIMIT $2;
+-- What the sweeper takes: the exports past their time and the orphans, whose campaign
+-- or account no longer exists (neither column has a foreign key, see migration 00205).
+SELECT * FROM campaign_exports AS e
+WHERE e.expires_at <= $1
+   OR NOT EXISTS (SELECT 1 FROM campaigns AS c WHERE c.id = e.campaign_id)
+   OR NOT EXISTS (SELECT 1 FROM users AS u WHERE u.id = e.requested_by)
+ORDER BY e.expires_at LIMIT $2;
 
 -- name: ListCampaignExportsOfCampaign :many
 SELECT * FROM campaign_exports WHERE campaign_id = $1;
@@ -109,7 +115,12 @@ SELECT * FROM campaign_import_parts WHERE import_id = $1 ORDER BY part_number;
 DELETE FROM campaign_imports WHERE id = $1;
 
 -- name: ListExpiredCampaignImports :many
-SELECT * FROM campaign_imports WHERE expires_at <= $1 ORDER BY expires_at LIMIT $2;
+-- What the sweeper takes: the uploads past their time and the orphans, whose account
+-- no longer exists (user_id has no foreign key, see migration 00207).
+SELECT * FROM campaign_imports AS i
+WHERE i.expires_at <= $1
+   OR NOT EXISTS (SELECT 1 FROM users AS u WHERE u.id = i.user_id)
+ORDER BY i.expires_at LIMIT $2;
 
 -- name: ListCampaignImportsOfUser :many
 SELECT * FROM campaign_imports WHERE user_id = $1;

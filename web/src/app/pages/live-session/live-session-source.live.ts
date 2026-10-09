@@ -286,6 +286,9 @@ export class LiveSessionSourceLive implements LiveSessionSource {
         case 'creaturesChanged':
           yield { kind: 'creaturesChanged' };
           break;
+        case 'spellCastsChanged':
+          yield { kind: 'spellCastsChanged' };
+          break;
         case 'contentChanged':
           yield { kind: 'contentChanged' };
           break;

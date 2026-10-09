@@ -76,7 +76,9 @@ func (wv *windowView) morePrompt(kind reaction.Kind, w playdb.ReactionWindow, re
 			if t.Racial {
 				p.SaveDc = clamp32(k.st.LegacyDC, 0, math.MaxInt32)
 			}
-			if a, ok := wv.byID[t.Actor]; ok {
+			// The aggressor's modifier is the master's: the reactor's player rolls nothing here and never
+			// reads an NPC's number (RN-20).
+			if a, ok := wv.byID[t.Actor]; ok && wv.v.master {
 				if save, err := wv.s.saveOf(wv.ctx, nil, wv.m.CampaignID, a, "dex"); err == nil {
 					p.SaveBonus, p.BonusKnown = clamp32(save.Bonus, math.MinInt32, math.MaxInt32), save.Known
 				}

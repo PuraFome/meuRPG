@@ -644,7 +644,11 @@ func (q *Queries) ListCampaignImportsOfUser(ctx context.Context, userID string) 
 }
 
 const listExpiredCampaignExports = `-- name: ListExpiredCampaignExports :many
-SELECT id, campaign_id, requested_by, state, percent, failure, file_name, blob_key, byte_size, entry_count, create_key, create_hash, created_at, updated_at, finished_at, expires_at FROM campaign_exports WHERE expires_at <= $1 ORDER BY expires_at LIMIT $2
+SELECT id, campaign_id, requested_by, state, percent, failure, file_name, blob_key, byte_size, entry_count, create_key, create_hash, created_at, updated_at, finished_at, expires_at FROM campaign_exports AS e
+WHERE e.expires_at <= $1
+   OR NOT EXISTS (SELECT 1 FROM campaigns AS c WHERE c.id = e.campaign_id)
+   OR NOT EXISTS (SELECT 1 FROM users AS u WHERE u.id = e.requested_by)
+ORDER BY e.expires_at LIMIT $2
 `
 
 type ListExpiredCampaignExportsParams struct {
@@ -652,6 +656,8 @@ type ListExpiredCampaignExportsParams struct {
 	Limit     int32
 }
 
+// What the sweeper takes: the exports past their time and the orphans, whose campaign
+// or account no longer exists (neither column has a foreign key, see migration 00205).
 func (q *Queries) ListExpiredCampaignExports(ctx context.Context, arg ListExpiredCampaignExportsParams) ([]CampaignExport, error) {
 	rows, err := q.db.Query(ctx, listExpiredCampaignExports, arg.ExpiresAt, arg.Limit)
 	if err != nil {
@@ -690,7 +696,10 @@ func (q *Queries) ListExpiredCampaignExports(ctx context.Context, arg ListExpire
 }
 
 const listExpiredCampaignImports = `-- name: ListExpiredCampaignImports :many
-SELECT id, user_id, file_name, fingerprint, total_bytes, part_size, part_count, created_at, updated_at, expires_at FROM campaign_imports WHERE expires_at <= $1 ORDER BY expires_at LIMIT $2
+SELECT id, user_id, file_name, fingerprint, total_bytes, part_size, part_count, created_at, updated_at, expires_at FROM campaign_imports AS i
+WHERE i.expires_at <= $1
+   OR NOT EXISTS (SELECT 1 FROM users AS u WHERE u.id = i.user_id)
+ORDER BY i.expires_at LIMIT $2
 `
 
 type ListExpiredCampaignImportsParams struct {
@@ -698,6 +707,8 @@ type ListExpiredCampaignImportsParams struct {
 	Limit     int32
 }
 
+// What the sweeper takes: the uploads past their time and the orphans, whose account
+// no longer exists (user_id has no foreign key, see migration 00207).
 func (q *Queries) ListExpiredCampaignImports(ctx context.Context, arg ListExpiredCampaignImportsParams) ([]CampaignImport, error) {
 	rows, err := q.db.Query(ctx, listExpiredCampaignImports, arg.ExpiresAt, arg.Limit)
 	if err != nil {

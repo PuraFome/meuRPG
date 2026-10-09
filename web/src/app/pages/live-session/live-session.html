@@ -225,6 +225,14 @@
             [info]="partyInfo()"
             (adjust)="adjust($event)"
           />
+          <app-casting-panel
+            class="board__casting"
+            [campaignId]="campaignId()"
+            [master]="true"
+            [tick]="castsTick()"
+            [diceMode]="campaign()?.diceMode ?? 1"
+            [preference]="campaign()?.dicePreference ?? 1"
+          />
           <app-shown-image-panel
             class="board__image"
             [campaignId]="campaignId()"
@@ -339,6 +347,14 @@
           <div class="board__side">
             @if (ownVitals(); as v) {
               <app-player-vitals [vitals]="v" [sheet]="playerSheet()" [beastAc]="beastAc()" [campaignId]="campaignId()" [armorClassBonus]="ownArmorBonus()" [ownDeathSaves]="ownDeathSaves()" />
+              <app-casting-panel
+                [campaignId]="campaignId()"
+                [characterId]="v.characterId"
+                [characterName]="v.name"
+                [tick]="castsTick()"
+                [diceMode]="campaign()?.diceMode ?? 1"
+                [preference]="campaign()?.dicePreference ?? 1"
+              />
             } @else {
               <div class="mr-notice mr-notice--neutral">
                 <mat-icon aria-hidden="true">person_off</mat-icon>

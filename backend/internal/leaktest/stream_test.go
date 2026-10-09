@@ -242,6 +242,12 @@ func (w *world) streamScript() {
 	w.allow("stage2-description")
 	w.secrets.allowNeedle(w.stage2.GetId())
 
+	// -- a spell cast outside the combat by an NPC that is not on the stage: the hint is the master's alone
+	must(m.casting.CastSpellOutsideCombat(ctx, rq(&playv1.CastSpellOutsideCombatRequest{
+		CampaignId: w.campaign, CasterCharacterId: w.casterNPC.GetId(), SpellKey: "spell:mage-armor", Slot: &playv1.SpellSlot{Level: 1},
+		TargetIds: []string{w.toren.GetId()}, IdempotencyKey: newKey(),
+	})))
+
 	// -- vitals, XP, the creature of Caio, the table's content
 	must(m.play.AdjustCharacterVitals(ctx, rq(&playv1.AdjustCharacterVitalsRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId(), IdempotencyKey: newKey(), HitPointsCurrent: proto.Int32(3)})))
 	must(m.xp.MarkMilestoneReached(ctx, rq(&progressionv1.MarkMilestoneReachedRequest{CampaignId: w.campaign, MilestoneId: w.milestoneStream, CharacterIds: []string{w.pens.GetId()}, IdempotencyKey: newKey()})))
