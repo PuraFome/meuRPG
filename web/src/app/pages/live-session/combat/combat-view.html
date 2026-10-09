@@ -277,6 +277,7 @@
                   [trapNote]="trapNote()"
                   [concentration]="ownConcentration()"
                   [theatre]="theatre()"
+                  [orderBelow]="orderBelow()"
                   (endTurn)="nextTurn()"
                   (opportunity)="openAttack($event, true)"
                   (endConcentration)="endOwnConcentration()"
@@ -366,6 +367,9 @@
                   </div>
                 }
               }
+            }
+            @if (orderBelow()) {
+              <app-order-strip class="player__strip" [encounter]="e" />
             }
             @if (theatre()) {
               <app-no-map-panel class="player__map" />

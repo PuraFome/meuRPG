@@ -46,6 +46,8 @@ export class NotesPanel implements OnInit {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   readonly campaignId = input.required<string>();
+  /** The panel is one "Anotações (N)" row that opens on a tap (the sheet on a phone and a tablet); from 1200px it is always open. */
+  readonly collapsible = input(false);
 
   protected readonly state = new NotesState(inject(NotesClient), () => this.campaignId());
   protected readonly editing = new NoteEditing(this.state);
@@ -57,6 +59,11 @@ export class NotesPanel implements OnInit {
   protected readonly chosen = computed(() => this.options().find((o) => o.value === this.filter()));
   protected readonly count = computed(() => entryCount(this.state.notes().length));
   protected readonly announce = signal('');
+  private readonly opened = signal(false);
+  /** The body is shown when the panel is not collapsible, was opened, or has a note form in it. */
+  protected readonly shown = computed(
+    () => !this.collapsible() || this.opened() || this.editing.stage() === 'form',
+  );
 
   private readonly newButton = viewChild('newButton', { read: ElementRef<HTMLButtonElement> });
   private readonly keepButton = viewChild('keep', { read: ElementRef<HTMLButtonElement> });
@@ -64,6 +71,12 @@ export class NotesPanel implements OnInit {
 
   ngOnInit(): void {
     void this.state.refresh();
+  }
+
+  protected toggle(): void {
+    if (this.editing.stage() !== 'form') {
+      this.opened.update((open) => !open);
+    }
   }
 
   protected setFilter(value: string): void {

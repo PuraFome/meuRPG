@@ -10,16 +10,17 @@ SELECT count(*)::INT4 FROM characters WHERE campaign_id = sqlc.arg(campaign_id):
 
 -- name: InsertCharacter :one
 -- status is 'active', or 'pending' for a character created by a pending
--- member (RN-15, MR-024).
+-- member (RN-15, MR-024). reserved is true for the character the master makes for a
+-- player to claim (MR-049): no owner.
 -- create_key (a UUID, unique in the campaign: characters_campaign_id_create_key_idx) and create_hash
 -- are the idempotency key of CreateCharacter and the hash of its request; NULL when the call sent
 -- no key. A retry reads the first character with GetCharacterByCreateKey.
 INSERT INTO characters
-    (campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, create_key, create_hash, created_at, updated_at)
+    (campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, create_key, create_hash, reserved, created_at, updated_at)
 VALUES (
     sqlc.arg(campaign_id)::UUID, sqlc.arg(kind), sqlc.narg(player_user_id), sqlc.narg(master_user_id),
     sqlc.arg(status), sqlc.arg(name), sqlc.arg(sheet), sqlc.arg(story), sqlc.narg(create_key)::UUID, sqlc.narg(create_hash),
-    sqlc.arg(now), sqlc.arg(now)
+    sqlc.arg(reserved)::BOOL, sqlc.arg(now), sqlc.arg(now)
 )
 ON CONFLICT (campaign_id, create_key) WHERE create_key IS NOT NULL DO NOTHING
 RETURNING *;
@@ -70,12 +71,12 @@ LIMIT 1;
 -- characters in that status (a pending member sees only their pending
 -- character, RN-15). Players' characters come first, then NPCs, each group
 -- oldest first. The story is left out: a list does not show it.
-SELECT id, kind, status, name, player_user_id, sheet, sheet_locked_at, created_at
+SELECT id, kind, status, name, player_user_id, sheet, sheet_locked_at, created_at, reserved, claimed_at
 FROM characters
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID
   AND (
       sqlc.narg(player_user_id)::UUID IS NULL
-      OR (kind = 'player' AND player_user_id = sqlc.narg(player_user_id)::UUID)
+      OR (kind = 'player' AND player_user_id = sqlc.narg(player_user_id)::UUID AND NOT reserved)
   )
   AND (sqlc.narg(status)::TEXT IS NULL OR status = sqlc.narg(status)::TEXT)
   -- The NPCs the app makes for the monsters of a combat (RN-29) are not the
@@ -168,11 +169,14 @@ WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id) AND status
 -- name: LockSheets :execrows
 -- RN-01: when a game session starts, the sheets of the campaign's living
 -- player characters that are still drafts lock. A character waiting for
--- approval (MR-024) does not lock yet, and NPCs never lock.
+-- approval (MR-024) does not lock yet, and NPCs never lock. A reserved character
+-- (MR-049) has no player to lock out: it locks with the sessions that start after
+-- its player claims it.
 UPDATE characters
 SET sheet_locked_at = sqlc.arg(now)::TIMESTAMPTZ
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID
-  AND kind = 'player' AND status = 'active' AND sheet_locked_at IS NULL;
+  AND kind = 'player' AND status = 'active' AND sheet_locked_at IS NULL
+  AND NOT reserved;
 
 -- name: EndStoryEditing :execrows
 -- When a game session starts, every permission to edit a story ends.
@@ -217,7 +221,7 @@ FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
-  AND c.kind = 'player' AND c.status = 'active'
+  AND c.kind = 'player' AND c.status = 'active' AND NOT c.reserved
 ORDER BY c.created_at, c.id;
 
 -- name: GetVitals :one
@@ -232,7 +236,7 @@ FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID AND c.id = sqlc.arg(id)
-  AND c.kind = 'player' AND c.status = 'active';
+  AND c.kind = 'player' AND c.status = 'active' AND NOT c.reserved;
 
 -- name: GetVitalsWithDead :one
 -- GetVitals that also answers for a player character that died: the page of a
@@ -247,7 +251,7 @@ FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID AND c.id = sqlc.arg(id)
-  AND c.kind = 'player' AND c.status IN ('active', 'dead');
+  AND c.kind = 'player' AND c.status IN ('active', 'dead') AND NOT c.reserved;
 
 -- name: UpsertVitals :one
 -- Saves a character's vitals: the first save creates the row with revision
@@ -283,7 +287,7 @@ RETURNING revision, updated_at;
 SELECT id, kind, name, player_user_id FROM characters
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID
   AND id = ANY(sqlc.arg(ids)::UUID[])
-  AND status = 'active'
+  AND status = 'active' AND NOT reserved
 ORDER BY kind <> 'player', created_at, id;
 
 -- name: ListNpcPortraits :many
@@ -308,7 +312,7 @@ SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_b
 FROM characters AS c
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
-  AND c.kind = 'player' AND c.status = 'active'
+  AND c.kind = 'player' AND c.status = 'active' AND NOT c.reserved
 ORDER BY c.created_at, c.id;
 
 -- name: ListCombatCharacters :many
@@ -320,7 +324,7 @@ FROM characters AS c
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
   AND c.id = ANY(sqlc.arg(ids)::UUID[])
-  AND c.status = 'active'
+  AND c.status = 'active' AND NOT c.reserved
 ORDER BY c.created_at, c.id;
 
 -- name: ListCombatCharactersWithDead :many
@@ -333,14 +337,15 @@ FROM characters AS c
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
   AND c.id = ANY(sqlc.arg(ids)::UUID[])
-  AND c.status IN ('active', 'dead')
+  AND c.status IN ('active', 'dead') AND NOT c.reserved
 ORDER BY c.created_at, c.id;
 
 -- name: ListSessionCharacters :many
 -- Those of the given characters of the campaign, whatever their status: the
 -- session summary names a character that died or left during the session
--- (package play).
-SELECT id, kind, name, player_user_id FROM characters
+-- (package play). reserved says the master gave the character back to the reserve
+-- since: a player's reads leave it out (RN-10).
+SELECT id, kind, name, player_user_id, reserved FROM characters
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID
   AND id = ANY(sqlc.arg(ids)::UUID[]);
 
@@ -586,7 +591,7 @@ LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_creatures AS cc ON cc.id = v.familiar_sight_creature_id AND cc.dismissed_at IS NULL
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
-  AND c.kind = 'player' AND c.status IN ('active', 'dead')
+  AND c.kind = 'player' AND c.status IN ('active', 'dead') AND NOT c.reserved
 ORDER BY c.created_at, c.id;
 
 -- name: ListMapCreatures :many

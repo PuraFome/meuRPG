@@ -55,7 +55,7 @@ test(
       await expect(como.getByText('Salvo.')).toBeVisible();
 
       await masterPage.goto(`/campaigns/${campaignId}`);
-      await expect(dados.getByRole('listitem').filter({ hasText: 'Jogador sem nome' })).toContainText('Meus próprios dados');
+      await expect(dados.getByRole('listitem').filter({ hasText: 'Sem nome no perfil' })).toContainText('Meus próprios dados');
     } finally {
       await master.close();
       await player.close();

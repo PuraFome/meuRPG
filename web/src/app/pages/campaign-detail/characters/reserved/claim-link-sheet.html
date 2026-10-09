@@ -1,0 +1,98 @@
+<app-sheet-frame
+  title="Gerar link para o jogador"
+  [phone]="inSheet"
+  titleId="claim-link-t"
+  (closed)="close()"
+>
+  <div class="stack">
+    @if (step(); as s) {
+      @if (s.status !== 'shown') {
+        <p>
+          Personagem: <strong>{{ data.characterName }}</strong>{{ aboutIt }}. O jogador entra com a conta Google dele e
+          assume o personagem.
+        </p>
+
+        <fieldset class="days" [disabled]="s.status === 'making'">
+          <legend class="mr-label">Válido por</legend>
+          @for (d of choices; track d) {
+            <label class="day" [class.day--on]="days() === d">
+              <input
+                type="radio"
+                class="mr-check-input"
+                name="claim-days"
+                [value]="d"
+                [checked]="days() === d"
+                (change)="pick(d)"
+              />
+              <span>{{ d }} {{ daysWord(d) }}</span>
+            </label>
+          }
+        </fieldset>
+        <p class="mr-muted">Uso único. Depois que o link é mostrado, a validade não muda.</p>
+
+        @if (error()) {
+          <div class="mr-notice mr-notice--danger" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ error() }}</p>
+          </div>
+        }
+      } @else {
+        <p>
+          Link de <strong>{{ data.characterName }}</strong> · válido por {{ s.days }} {{ daysWord(s.days) }} (até
+          {{ dayMonthTime(s.expiresAt) }}) · uso único.
+        </p>
+        <label class="field">
+          <span class="mr-visually-hidden">Link do personagem</span>
+          <textarea
+            #linkField
+            class="claim-link__field"
+            readonly
+            rows="3"
+            spellcheck="false"
+            [value]="s.link"
+            (focus)="selectAll($event)"
+          ></textarea>
+        </label>
+        <button type="button" mat-stroked-button class="copy" data-copy (click)="copy(s.link)">
+          <mat-icon aria-hidden="true">content_copy</mat-icon>
+          Copiar link
+        </button>
+        <p class="copied" role="status" aria-live="polite">{{ copyNote() }}</p>
+        <p class="mr-muted">
+          “Copiar link” copia o link inteiro. Quem tiver o link pode assumir o personagem: mande só para o jogador.
+        </p>
+        <div class="mr-notice mr-notice--warning">
+          <mat-icon aria-hidden="true">warning</mat-icon>
+          <p>
+            <strong>Este link aparece só agora.</strong> Depois, só dá para gerar outro; o anterior deixa de valer. Para
+            revogar, use a linha do personagem.
+          </p>
+        </div>
+      }
+    }
+  </div>
+
+  <div foot>
+    <div class="actions">
+      @if (step(); as s) {
+        @if (s.status === 'shown') {
+          <button type="button" mat-flat-button class="go" (click)="close()">Fechar</button>
+        } @else {
+          <button
+            type="button"
+            mat-flat-button
+            class="go"
+            data-initial-focus
+            [disabled]="s.status === 'making'"
+            (click)="make()"
+          >
+            {{ s.status === 'making' ? 'Gerando...' : 'Gerar link' }}
+          </button>
+          <button type="button" mat-stroked-button class="no" [disabled]="s.status === 'making'" (click)="close()">
+            Cancelar
+          </button>
+        }
+      }
+    </div>
+  </div>
+</app-sheet-frame>

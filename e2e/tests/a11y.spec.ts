@@ -17,6 +17,7 @@ import { aurora, auroraSheet, beginPlacedCombatRPC, nael, naelSheet, orla, orlaS
 import { paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
+import { claimRoute, linkRPC, reservedRPC, revokeLinkRPC, rowOf } from './claim-support';
 import { authStatePath, boxOf, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
@@ -999,6 +1000,48 @@ test('agir no combate passa no axe e nas conferências de layout no tema escuro,
   await scanActionScreens(browser, 'dark', 390);
 });
 
+async function checkTurnAboveTheFold(browser: Browser): Promise<void> {
+  const viewport = { width: 390, height: 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Ações acima da dobra ${Date.now()}`, true, true);
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+
+    // The four boxes are one compact row; the attack and the spell are on the first screen.
+    const tiles = p.getByRole('list', { name: 'O que você tem neste turno' }).getByRole('listitem');
+    await expect(tiles).toHaveCount(4);
+    const row = await Promise.all((await tiles.all()).map((t) => boxOf(t)));
+    expect(new Set(row.map((b) => Math.round(b.y))).size).toBe(1);
+    expect(Math.max(...row.map((b) => b.height))).toBeLessThanOrEqual(80);
+    await expect(p.getByRole('button', { name: 'Atacar com Raio de Fogo' })).toBeInViewport();
+
+    // The action block comes before the order of initiative.
+    const actions = await boxOf(p.getByRole('heading', { name: 'Ação', exact: true }));
+    const order = await boxOf(p.getByRole('list', { name: 'Ordem de iniciativa' }));
+    expect(actions.y).toBeLessThan(order.y);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('no celular de 390 x 844 as ações da vez ficam acima da dobra, logo sob o título, e a ordem vem depois', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await checkTurnAboveTheFold(browser);
+});
+
 /** Moving by the circle, jumping, cover and the opportunity attacks (Etapa 9,
  * slice 9.15; E9-05, E9-06, E9-07, E9-13): the "Mover" page with nothing chosen,
  * with a cost and a warning, with a wall refused, "Saltar" (distance, then
@@ -1906,6 +1949,11 @@ async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark',
     // Not `open()`: with a session open the sheet follows its stream, so the network is never idle.
     await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
     const panel = p.getByRole('region', { name: 'Anotações' });
+    // Under 1200px the notes are one "Anotações (N)" row that opens on a tap (no such button on the four-column sheet).
+    await expectScreenPasses(p, `Ficha com as anotações, primeira vista ${where}`);
+    for (const toggle of await panel.getByRole('button', { name: /^Anotações \(\d+\)/ }).all()) {
+      await toggle.click();
+    }
     await expect(panel.getByText('Brisa me deve 5 PO')).toBeVisible();
     await expectScreenPasses(p, `Ficha com as anotações ${where}`);
     await panel.getByRole('button', { name: 'Nova anotação' }).click();
@@ -1942,6 +1990,70 @@ test('pistas, ganchos e anotações passam no axe e nas conferências de layout 
 test('pistas, ganchos e anotações passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-029', '@MR-030'] }, async ({ browser }) => {
   test.setTimeout(600_000);
   await scanNotesScreens(browser, 'light', 320);
+});
+
+/** The player's sheet: the game numbers first on a phone and a tablet (the combat block before the saves and the
+ * skills, the notes last as one row), and the four-column paper sheet from 1200px (docs/design.md). */
+async function scanSheetOrder(browser: Browser, width: number): Promise<{ combat: number; proficiencies: number; features: number; notes: number; notesX: number; combatX: number }> {
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), viewport: { width, height: 844 } });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), viewport: { width, height: 844 } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForScenes(m, p, `Ordem da ficha ${Date.now()}`, false);
+    campaignId = table.campaignId;
+    await createNoteRPC(p, campaignId, 'Brisa me deve 5 PO');
+    await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
+    await expect(p.getByRole('heading', { name: 'Características e traços' })).toBeVisible();
+    const top = async (selector: string) => (await boxOf(p.locator(selector))).y;
+    const abilities = await top('app-ability-medallions');
+    const combat = await top('app-combat-column');
+    const proficiencies = await top('app-proficiency-column');
+    const features = await top('app-features-panel');
+    const notes = await top('app-notes-panel');
+    return {
+      combat: combat - abilities,
+      proficiencies: proficiencies - abilities,
+      features: features - abilities,
+      notes: notes - abilities,
+      notesX: (await boxOf(p.locator('app-notes-panel'))).x,
+      combatX: (await boxOf(p.locator('app-combat-column'))).x,
+    };
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a ficha no celular vai dos números do jogo às anotações, que ficam numa linha só', { tag: ['@a11y', '@MR-004', '@MR-030'] }, async ({ browser }) => {
+  test.setTimeout(120_000);
+  const at = await scanSheetOrder(browser, 390);
+  // The abilities come first, then the combat block, then the saves and skills.
+  expect(at.combat).toBeGreaterThan(0);
+  expect(at.combat).toBeLessThan(at.proficiencies);
+  expect(at.proficiencies).toBeLessThan(at.features);
+  expect(at.features).toBeLessThan(at.notes);
+});
+
+test('a ficha no tablet também põe o combate antes das anotações', { tag: ['@a11y', '@MR-004', '@MR-030'] }, async ({ browser }) => {
+  test.setTimeout(120_000);
+  const at = await scanSheetOrder(browser, 768);
+  expect(at.combat).toBeLessThanOrEqual(at.proficiencies);
+  expect(at.features).toBeLessThan(at.notes);
+});
+
+test('a ficha no desktop de 1280 mantém as quatro colunas, com as anotações no alto da quarta', { tag: ['@a11y', '@MR-004', '@MR-030'] }, async ({ browser }) => {
+  test.setTimeout(120_000);
+  const at = await scanSheetOrder(browser, 1280);
+  // The notes are the first block of the fourth column: level with the combat block, to its right.
+  expect(Math.abs(at.notes - at.combat)).toBeLessThan(2);
+  expect(at.notesX).toBeGreaterThan(at.combatX);
 });
 
 /** The joint turn (MR-013, E8-01): the master's card and boxes, the player's
@@ -5739,6 +5851,112 @@ test('as opções para os jogadores passam no axe e nas conferências de layout 
 
 test('as opções para os jogadores passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
   await scanOptions(browser, 'light', 320);
+});
+
+/**
+ * The reserved characters and their claim links (MR-049, PM-09): the master's list with a row in each state of the link, a
+ * question asked in place, the dialog that makes the link (before and after), the editor of a reserved character, and the page
+ * a player opens with the link: signed out (the same for every link), the card, the page of a link that cannot be used and the
+ * master's own link.
+ */
+async function scanClaims(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(150_000);
+  const view = { colorScheme, viewport: { width, height: 900 } } as const;
+  // The master's "Copiar link" writes to the clipboard, which a headless browser allows only when it is granted.
+  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), permissions: ['clipboard-read', 'clipboard-write'], ...view });
+  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), ...view });
+  const gContext = await browser.newContext({ storageState: { cookies: [], origins: [] }, ...view });
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    const g = await gContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const created = await callRPC(m, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', { name: `Acessibilidade reservados ${Date.now()}`, xpMode: 'XP_MODE_ENEMIES' });
+    expect(created.ok()).toBeTruthy();
+    const campaignId = (await created.json()).campaign.id as string;
+    const kai = await reservedRPC(m, campaignId, 'Kai');
+    const salvia = await reservedRPC(m, campaignId, 'Sálvia');
+    const ragna = await reservedRPC(m, campaignId, 'Ragna');
+    const brisa = await reservedRPC(m, campaignId, 'Brisa');
+    const salviaToken = await linkRPC(m, campaignId, salvia);
+    await linkRPC(m, campaignId, ragna);
+    await revokeLinkRPC(m, campaignId, ragna);
+    const kaiToken = await linkRPC(m, campaignId, kai);
+    const brisaToken = await linkRPC(m, campaignId, brisa);
+    // The player takes Brisa, so the list has "Assumido por".
+    await p.goto(claimRoute(brisaToken));
+    await p.getByRole('button', { name: 'Assumir este personagem' }).click();
+    await expect(p.getByRole('heading', { level: 1 })).toHaveText('Pronto: Brisa é seu');
+
+    // The master's list: no link, sent, revoked and claimed, one row each.
+    await open(m, `/campaigns/${campaignId}`);
+    await expect(rowOf(m, 'Sálvia')).toContainText('Link enviado');
+    await expect(rowOf(m, 'Ragna')).toContainText('Link revogado');
+    await expect(rowOf(m, 'Brisa')).toContainText('Assumido por');
+    await expectScreenPasses(m, `Personagens reservados ${where}`);
+    await rowOf(m, 'Sálvia').getByRole('button', { name: /Revogar o link de Sálvia/ }).click();
+    await expect(rowOf(m, 'Sálvia').getByRole('group', { name: 'Revogar o link de Sálvia?' })).toBeVisible();
+    await expectScreenPasses(m, `Personagens reservados, revogar o link ${where}`);
+    await rowOf(m, 'Sálvia').getByRole('button', { name: 'Cancelar' }).click();
+    await rowOf(m, 'Brisa').getByRole('button', { name: /Devolver Brisa à reserva/ }).click();
+    await expect(rowOf(m, 'Brisa').getByRole('group', { name: 'Devolver Brisa à reserva?' })).toBeVisible();
+    await expectScreenPasses(m, `Personagens reservados, devolver à reserva ${where}`);
+    await rowOf(m, 'Brisa').getByRole('button', { name: 'Cancelar' }).click();
+    await rowOf(m, 'Ragna').getByRole('button', { name: 'Excluir Ragna' }).click();
+    await expect(rowOf(m, 'Ragna').getByRole('group', { name: 'Excluir Ragna?' })).toBeVisible();
+    await expectScreenPasses(m, `Personagens reservados, excluir ${where}`);
+    await rowOf(m, 'Ragna').getByRole('button', { name: 'Cancelar' }).click();
+
+    // The dialog: the validity, then the link shown once.
+    await rowOf(m, 'Ragna').getByRole('button', { name: /Gerar novo link/ }).click();
+    const dialog = m.getByRole('dialog', { name: 'Gerar link para o jogador' });
+    await expect(dialog.getByRole('radio', { name: '7 dias' })).toBeChecked();
+    await expectScreenPasses(m, `Gerar link para o jogador ${where}`);
+    await dialog.getByRole('button', { name: 'Gerar link' }).click();
+    await expect(dialog.locator('.claim-link__field')).toBeVisible();
+    await expectScreenPasses(m, `Gerar link para o jogador, o link ${where}`);
+    await dialog.getByRole('button', { name: 'Copiar link' }).click();
+    await expect(dialog.getByText('Link copiado.')).toBeVisible();
+    await expectScreenPasses(m, `Gerar link para o jogador, link copiado ${where}`);
+
+    await open(m, `/campaigns/${campaignId}/reserved/new`);
+    await expect(m.getByText('Personagem reservado.')).toBeVisible();
+    await expectScreenPasses(m, `Criar personagem para um jogador ${where}`);
+
+    // The player's pages: the card, the page of a link that cannot be used, the master's own link and the signed-out page.
+    await p.goto(claimRoute(kaiToken));
+    await expect(p.getByRole('heading', { level: 1 })).toHaveText('Este personagem é seu?');
+    await expectScreenPasses(p, `Link do personagem, o cartão ${where}`);
+    await p.goto(claimRoute('x'));
+    await expect(p.getByRole('heading', { level: 1 })).toHaveText('Este link não pode ser usado');
+    await expectScreenPasses(p, `Link do personagem, o link que não vale ${where}`);
+    await m.goto(claimRoute(salviaToken));
+    await expect(m.getByRole('heading', { level: 1 })).toHaveText('Este link é para um jogador');
+    await expectScreenPasses(m, `Link do personagem, o link do próprio mestre ${where}`);
+    await g.goto(claimRoute(salviaToken));
+    await expect(g.getByRole('heading', { level: 1 })).toHaveText('Assumir um personagem');
+    await expect(g.getByRole('button', { name: 'Entrar com Google' })).toBeVisible();
+    await expectScreenPasses(g, `Link do personagem, sem entrar ${where}`);
+  } finally {
+    await Promise.all([mContext.close(), pContext.close(), gContext.close()]);
+  }
+}
+
+test('os reservados e os links passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-049'] }, async ({ browser }) => {
+  await scanClaims(browser, 'light', 1280);
+});
+
+test('os reservados e os links passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-049'] }, async ({ browser }) => {
+  await scanClaims(browser, 'dark', 1024);
+});
+
+test('os reservados e os links passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-049'] }, async ({ browser }) => {
+  await scanClaims(browser, 'dark', 390);
+});
+
+test('os reservados e os links passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-049'] }, async ({ browser }) => {
+  await scanClaims(browser, 'light', 320);
 });
 
 /**

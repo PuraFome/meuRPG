@@ -19,6 +19,7 @@ describe('NotesPanel (the character sheet)', () => {
         clue: true,
       }),
     ],
+    collapsible = false,
   ) {
     api = new FakeNotesClient();
     api.notes = notes;
@@ -27,6 +28,7 @@ describe('NotesPanel (the character sheet)', () => {
     Element.prototype.scrollIntoView = vi.fn();
     const fixture = TestBed.createComponent(NotesPanel);
     fixture.componentRef.setInput('campaignId', 'c1');
+    fixture.componentRef.setInput('collapsible', collapsible);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     const settle = async () => {
@@ -119,4 +121,43 @@ describe('NotesPanel (the character sheet)', () => {
     expect(button('Nova anotação').getAttribute('aria-describedby')).toBe('np-limit');
     // 300 rows render in about half a second alone, but past the 5 s default while the whole suite runs in parallel on a busy machine.
   }, 20_000);
+
+  describe('collapsed to one row (a phone and a tablet)', () => {
+    const toggle = (el: HTMLElement) => el.querySelector<HTMLButtonElement>('.np__toggle')!;
+
+    it('is one "Anotações (N)" row with the list shut, and opens on a tap', async () => {
+      const { el, settle, flat } = await setup(undefined, true);
+      expect(flat(toggle(el))).toContain('Anotações (2)');
+      expect(toggle(el).getAttribute('aria-expanded')).toBe('false');
+      expect(el.querySelector<HTMLElement>('#np-body')?.hidden).toBe(true);
+
+      toggle(el).click();
+      await settle();
+      expect(toggle(el).getAttribute('aria-expanded')).toBe('true');
+      expect(el.querySelector<HTMLElement>('#np-body')?.hidden).toBe(false);
+      expect(el.querySelectorAll('.nl__row')).toHaveLength(2);
+
+      toggle(el).click();
+      await settle();
+      expect(el.querySelector<HTMLElement>('#np-body')?.hidden).toBe(true);
+    });
+
+    it('stays open while a note is being written', async () => {
+      const { el, settle, button } = await setup(undefined, true);
+      toggle(el).click();
+      await settle();
+      button('Nova anotação').click();
+      await settle();
+      toggle(el).click();
+      await settle();
+      expect(el.querySelector<HTMLElement>('#np-body')?.hidden).toBe(false);
+      expect(el.querySelector('.np__form-t')).not.toBeNull();
+    });
+
+    it('is the full panel, with no row to tap, when it is not collapsible (the four-column sheet)', async () => {
+      const { el } = await setup();
+      expect(el.querySelector('.np__toggle')).toBeNull();
+      expect(el.querySelector<HTMLElement>('#np-body')?.hidden).toBe(false);
+    });
+  });
 });
