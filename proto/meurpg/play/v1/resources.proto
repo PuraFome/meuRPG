@@ -1,0 +1,352 @@
+syntax = "proto3";
+
+// Class resources at the table: the master's short and long rests (SRD 5.1,
+// "Resting"), the hit dice a player spends on a short rest, and the four
+// resource flows that need a dialog of their own: the paladin's Lay on Hands,
+// the sorcerer's Flexible Casting, and the bard's Bardic Inspiration (Metamagic
+// rides on CastSpell, in combat.proto).
+package meurpg.play.v1;
+
+import "meurpg/play/v1/combat.proto";
+import "meurpg/play/v1/play.proto";
+import "meurpg/rules/v1/rules.proto";
+
+// ResourceService runs the rests and the class resources of a campaign's open
+// game session.
+//
+// Every method needs a valid session cookie and fails with `unauthenticated`
+// without one. For a campaign the caller is not a member of, methods answer
+// `not_found`. Without an open game session they fail with `failed_precondition`
+// and a GameSessionBlocked detail (NO_OPEN_SESSION). A refusal that comes from a
+// rule carries a ResourceBlocked detail, so the app words it without reading the
+// message. Every method that writes carries an idempotency key; the same key
+// with another request is `invalid_argument`.
+service ResourceService {
+  // GetRestPreview says, for each living, active player character, what a rest
+  // would give back: nothing is written. Master only.
+  //
+  // Errors: `permission_denied` for a player; `failed_precondition` with no open
+  // session.
+  rpc GetRestPreview(GetRestPreviewRequest) returns (GetRestPreviewResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // TakeRest records a short or a long rest for the whole party and gives back
+  // what the SRD says each kind restores (see RestPreview): the resources by
+  // their recharge, the spell slots (pact slots on a short rest too), and, on a
+  // long rest, the hit points, half of the hit dice and the end of the temporary
+  // hit points (and with them Aid) and of the slots Flexible Casting created.
+  // The new vitals go out on the session's stream, and the rest is written to
+  // the session's history. Master only.
+  //
+  // Errors: `permission_denied` for a player; `failed_precondition` with no open
+  // session, or with ResourceBlocked COMBAT_OPEN while a combat is not ended;
+  // `invalid_argument` for a hit dice choice that is not the character's.
+  rpc TakeRest(TakeRestRequest) returns (TakeRestResponse);
+
+  // SpendHitDice spends one hit die of the character on a short rest: the die
+  // is rolled and the Constitution modifier added, and the character regains
+  // that many hit points (SRD 5.1, "Short Rest"). The player decides whether to
+  // spend another one after each roll, so one call spends one die. The
+  // character's player or the master.
+  //
+  // Errors: `permission_denied` for another player's character;
+  // `failed_precondition` with ResourceBlocked NO_HIT_DICE_LEFT; `invalid_argument`
+  // for a die size the character does not have, or a typed face outside the die.
+  rpc SpendHitDice(SpendHitDiceRequest) returns (SpendHitDiceResponse);
+
+  // UseLayOnHands touches a creature and draws from the pool: heals up to the
+  // amount, or spends 5 points to cure a disease or neutralize a poison (SRD
+  // 5.1, Paladin). The touch is an action of the paladin's turn. Whatever the
+  // creature is, the action and the points are spent; on an undead or a
+  // construct the touch has no effect, and the answer does not say why.
+  //
+  // Errors: the combat's (EncounterBlocked: not the combatant's turn, ACTION_USED);
+  // `failed_precondition` with ResourceBlocked NOT_ENOUGH_POINTS;
+  // `invalid_argument` for an amount outside 1 to what the pool has left.
+  rpc UseLayOnHands(UseLayOnHandsRequest) returns (UseLayOnHandsResponse);
+
+  // CreateSpellSlot turns sorcery points into a spell slot of level 1 to 5 as a
+  // bonus action (SRD 5.1, Sorcerer, Flexible Casting). The slot vanishes on a
+  // long rest.
+  //
+  // Errors: the combat's (BONUS_ACTION_USED); ResourceBlocked NOT_ENOUGH_POINTS
+  // and SLOT_LEVEL_TOO_HIGH.
+  rpc CreateSpellSlot(CreateSpellSlotRequest) returns (CreateSpellSlotResponse);
+
+  // ConvertSpellSlot expends a free spell slot for as many sorcery points as its
+  // level, as a bonus action. Refused when the points would pass the maximum
+  // (the sorcerer's level).
+  //
+  // Errors: the combat's; ResourceBlocked NO_FREE_SLOT, SORCERY_POINTS_FULL and
+  // SORCERY_POINTS_OVER.
+  rpc ConvertSpellSlot(ConvertSpellSlotRequest) returns (ConvertSpellSlotResponse);
+
+  // GiveBardicInspiration gives a creature a die for 10 minutes (100 rounds) as
+  // a bonus action, spending one use. The target is not the bard, is seen within
+  // 60 feet, hears the bard and holds no die yet.
+  //
+  // Errors: the combat's; ResourceBlocked NO_USES_LEFT, TARGET_REFUSED.
+  rpc GiveBardicInspiration(GiveBardicInspirationRequest) returns (GiveBardicInspirationResponse);
+
+  // AnswerBardicInspiration answers the question a held attack roll asks: use
+  // the die on it, or keep it. RollAttack holds the result of a character that has
+  // a die until this call (the roll is only resolved after the answer: SRD 5.1
+  // lets the creature wait until after the d20 and decide before the GM says
+  // whether the roll succeeds). The roll's owner or the master.
+  //
+  // Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed
+  // face outside the die.
+  rpc AnswerBardicInspiration(AnswerBardicInspirationRequest) returns (AnswerBardicInspirationResponse);
+}
+
+// ResourceBlocked is the detail of a refusal that comes from a rule.
+message ResourceBlocked {
+  ResourceBlockedReason reason = 1;
+  // NOT_ENOUGH_POINTS and SORCERY_POINTS_*: the points the action needs, and
+  // the ones there are.
+  int32 needed = 2;
+  int32 available = 3;
+}
+
+// ResourceBlockedReason is why a resource call was refused.
+enum ResourceBlockedReason {
+  RESOURCE_BLOCKED_REASON_UNSPECIFIED = 0;
+  // TakeRest: a combat is open (not ended).
+  RESOURCE_BLOCKED_REASON_COMBAT_OPEN = 1;
+  // SpendHitDice: the character has no die of that size left.
+  RESOURCE_BLOCKED_REASON_NO_HIT_DICE_LEFT = 2;
+  // UseLayOnHands, CreateSpellSlot: not enough points in the pool.
+  RESOURCE_BLOCKED_REASON_NOT_ENOUGH_POINTS = 3;
+  // CreateSpellSlot: Flexible Casting makes slots of level 1 to 5 only.
+  RESOURCE_BLOCKED_REASON_SLOT_LEVEL_TOO_HIGH = 4;
+  // ConvertSpellSlot: the character has no free slot of that level.
+  RESOURCE_BLOCKED_REASON_NO_FREE_SLOT = 5;
+  // ConvertSpellSlot: the sorcerer already has the maximum of points.
+  RESOURCE_BLOCKED_REASON_SORCERY_POINTS_FULL = 6;
+  // ConvertSpellSlot: the slot would take the points past the maximum.
+  RESOURCE_BLOCKED_REASON_SORCERY_POINTS_OVER = 7;
+  // GiveBardicInspiration: no use of Bardic Inspiration is left.
+  RESOURCE_BLOCKED_REASON_NO_USES_LEFT = 8;
+  // GiveBardicInspiration: the target cannot get a die (the bard itself, out of
+  // sight, beyond 60 feet, cannot hear, already holds one).
+  RESOURCE_BLOCKED_REASON_TARGET_REFUSED = 9;
+  // The character does not have the feature.
+  RESOURCE_BLOCKED_REASON_NOT_AVAILABLE = 10;
+  // A roll is held, waiting for the player's answer about a Bardic Inspiration
+  // die: the combatant does nothing else until it is answered.
+  RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING = 11;
+}
+
+// RestKind is the kind of a rest.
+enum RestKind {
+  REST_KIND_UNSPECIFIED = 0;
+  // At least 1 hour (SRD 5.1, "Short Rest").
+  REST_KIND_SHORT = 1;
+  // At least 8 hours (SRD 5.1, "Long Rest").
+  REST_KIND_LONG = 2;
+}
+
+message GetRestPreviewRequest {
+  string campaign_id = 1;
+  RestKind kind = 2;
+}
+
+message GetRestPreviewResponse {
+  repeated RestPreview characters = 1;
+  // A long rest was already taken in this game session: the SRD allows one in 24
+  // hours and the app does not count the hours, so the master is warned and
+  // decides. Only for a long rest.
+  bool long_rest_already_taken = 2;
+}
+
+// RestPreview is what a rest gives back to one character.
+message RestPreview {
+  string character_id = 1;
+  string name = 2;
+  // The resources that come back, with the uses spent now. Only those with
+  // something spent.
+  repeated RestResourceBack resources = 3;
+  // A long rest of a character at 0 hit points gives nothing: "must have at least
+  // 1 hit point at the start of the rest" (SRD 5.1). The rest of the preview is
+  // empty then.
+  bool no_benefit = 4;
+  // A long rest: the hit points now and the maximum they go back to.
+  int32 hit_points_current = 5;
+  int32 hit_points_max = 6;
+  // A long rest: the temporary hit points that end (Aid among them).
+  int32 temporary_hit_points_lost = 7;
+  // The hit dice spent now, by die size, and (long rest) the ones that come back by
+  // default: half of the total, at least one, largest dice first.
+  repeated meurpg.rules.v1.HitDice hit_dice_spent = 8;
+  repeated meurpg.rules.v1.HitDice hit_dice_back = 9;
+  // How many dice a long rest may give back: half of the total, at least one.
+  int32 hit_dice_back_limit = 10;
+  // The spell slots that come back (spell level and how many), the pact slots,
+  // and the slots Flexible Casting created that vanish (a long rest).
+  repeated SpellSlotBack spell_slots_back = 11;
+  int32 pact_slots_back = 12;
+  int32 created_slots_lost = 13;
+}
+
+message RestResourceBack {
+  string key = 1;
+  string name_pt = 2;
+  int32 spent = 3;
+  int32 total = 4;
+}
+
+message SpellSlotBack {
+  int32 level = 1;
+  int32 count = 2;
+}
+
+message TakeRestRequest {
+  string campaign_id = 1;
+  RestKind kind = 2;
+  // A UUID the app makes for each rest.
+  string idempotency_key = 3;
+  // Long rest: which hit dice come back, for the characters whose player chose;
+  // a character without a choice gets the default (the largest dice first).
+  repeated HitDiceChoice hit_dice_choices = 4;
+}
+
+message HitDiceChoice {
+  string character_id = 1;
+  // How many of each die size come back; the sum is at most the limit.
+  repeated meurpg.rules.v1.HitDice dice = 2;
+}
+
+message TakeRestResponse {
+  // The vitals of every character the rest touched, after it.
+  repeated CharacterVitals vitals = 1;
+}
+
+message SpendHitDiceRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // The size of the die to spend (6 for a d6).
+  int32 faces = 3;
+  string idempotency_key = 4;
+  // How the die comes (RN-18): the app rolls it, or the player typed the face of a
+  // real die. Required: one of them.
+  oneof roll {
+    bool roll_in_app = 5;
+    int32 typed_face = 6;
+  }
+}
+
+message SpendHitDiceResponse {
+  CharacterVitals vitals = 1;
+  // The face rolled, the Constitution modifier, and the hit points regained: the
+  // total, cut to the maximum. The total is at least 0.
+  int32 face = 2;
+  int32 constitution_modifier = 3;
+  int32 healed = 4;
+}
+
+enum LayOnHandsCure {
+  LAY_ON_HANDS_CURE_UNSPECIFIED = 0;
+  LAY_ON_HANDS_CURE_DISEASE = 1;
+  LAY_ON_HANDS_CURE_POISON = 2;
+}
+
+message UseLayOnHandsRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The paladin's combatant (a UUID).
+  string actor_id = 3;
+  // The creature touched (a UUID): any combatant the caller sees, the paladin
+  // itself included.
+  string target_id = 4;
+  // What the touch does: restore hit points (the points spent, 1 to what the pool
+  // has left), or cure a disease or a poison (5 points).
+  oneof effect {
+    int32 amount = 5;
+    LayOnHandsCure cure = 6;
+  }
+  string idempotency_key = 7;
+}
+
+message UseLayOnHandsResponse {
+  Encounter encounter = 1;
+  // The points the touch took from the pool, and what is left.
+  int32 spent = 2;
+  int32 pool_left = 3;
+  // The hit points the target regained (cut to its maximum). Only the master and
+  // the target's own player get it: on an NPC the number would say how many hit
+  // points were missing.
+  optional int32 healed = 4;
+  // The touch did nothing: "Sem efeito. Nada acontece." The reason is never said
+  // (the master reads it in the log).
+  bool nothing_happened = 5;
+}
+
+message CreateSpellSlotRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string actor_id = 3;
+  // The level of the slot to create, 1 to 5.
+  int32 slot_level = 4;
+  string idempotency_key = 5;
+}
+
+message CreateSpellSlotResponse {
+  Encounter encounter = 1;
+  CharacterVitals vitals = 2;
+  // The points the slot cost.
+  int32 cost = 3;
+}
+
+message ConvertSpellSlotRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string actor_id = 3;
+  // The level of the free slot to expend, 1 to 9.
+  int32 slot_level = 4;
+  string idempotency_key = 5;
+}
+
+message ConvertSpellSlotResponse {
+  Encounter encounter = 1;
+  CharacterVitals vitals = 2;
+  // The points gained.
+  int32 gain = 3;
+}
+
+message GiveBardicInspirationRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The bard's combatant (a UUID).
+  string actor_id = 3;
+  // The creature that gets the die (a UUID).
+  string target_id = 4;
+  string idempotency_key = 5;
+}
+
+message GiveBardicInspirationResponse {
+  Encounter encounter = 1;
+  CharacterVitals vitals = 2;
+}
+
+message AnswerBardicInspirationRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The held roll (a UUID), from RollAttackResponse.inspiration_offer.
+  string hold_id = 3;
+  // True: roll the die and add it to the total. False: keep the die, and the roll
+  // goes on without it.
+  bool use = 4;
+  // How the bonus die comes (RN-18) when `use` is true: the app rolls it, or the
+  // player typed the face. Required then.
+  oneof roll {
+    bool roll_in_app = 5;
+    int32 typed_face = 6;
+  }
+  string idempotency_key = 7;
+}
+
+message AnswerBardicInspirationResponse {
+  // The attack, resolved, as RollAttack answers it.
+  RollAttackResponse attack = 1;
+}

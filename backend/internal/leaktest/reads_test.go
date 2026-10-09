@@ -303,6 +303,14 @@ var reads = []read{
 		req: func(w *world) proto.Message { return &playv1.ListTrapDamagesRequest{CampaignId: w.campaign} },
 	},
 
+	// ===== ResourceService
+	{
+		procedure: playv1connect.ResourceServiceGetRestPreviewProcedure, allow: masterOnlyRead, why: "what a rest gives back, character by character, is the master's to read",
+		req: func(w *world) proto.Message {
+			return &playv1.GetRestPreviewRequest{CampaignId: w.campaign, Kind: playv1.RestKind_REST_KIND_LONG}
+		},
+	},
+
 	// ===== CombatService
 	{
 		procedure: playv1connect.CombatServiceGetEncounterProcedure, allow: members,

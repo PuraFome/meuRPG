@@ -1306,6 +1306,22 @@ func (q *Queries) GetTrapDamageBySettleKey(ctx context.Context, settleKey *strin
 	return i, err
 }
 
+const hasLongRestInSession = `-- name: HasLongRestInSession :one
+SELECT EXISTS (
+    SELECT 1 FROM session_events
+    WHERE game_session_id = $1 AND kind = 'rest_taken' AND payload ->> 'kind' = 'long'
+) AS taken
+`
+
+// Whether the master already took a long rest in the session: the SRD allows one
+// in 24 hours and the app does not count hours, so the master is warned.
+func (q *Queries) HasLongRestInSession(ctx context.Context, gameSessionID string) (bool, error) {
+	row := q.db.QueryRow(ctx, hasLongRestInSession, gameSessionID)
+	var taken bool
+	err := row.Scan(&taken)
+	return taken, err
+}
+
 const hasTriedPuzzleHint = `-- name: HasTriedPuzzleHint :one
 SELECT EXISTS (
     SELECT 1 FROM puzzle_hint_tries WHERE run_id = $1 AND user_id = $2 AND hint_index = $3

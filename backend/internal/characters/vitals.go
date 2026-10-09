@@ -56,6 +56,8 @@ type vitalsMax struct {
 	pactSlots    int
 	hitDice      []rules.HitDice
 	hitDiceTotal int
+	// conMod is the Constitution modifier: what a spent hit die adds to its roll.
+	conMod int
 	// resources are the class and race resources the sheet has at its level.
 	resources []rules.Resource
 	// beast is the Wild Shape form the character is in (MR-037): its content key,
@@ -92,6 +94,11 @@ func maxima(content *rules.Content, characterID string, doc []byte, beast *strin
 	for _, hd := range d.HitDice {
 		m.hitDiceTotal += hd.Count
 	}
+	for _, a := range d.Abilities {
+		if a.Ability == rules.CON {
+			m.conMod = a.Modifier
+		}
+	}
 	return m, nil
 }
 
@@ -127,14 +134,23 @@ func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
 		HitPointsMax:       i32(m.hitPoints),
 		HitPointsTemporary: derefInt(row.HitPointsTemporary),
 		HitDiceTotal:       i32(m.hitDiceTotal),
-		HitDiceUsed:        min(derefInt(row.HitDiceUsed), i32(m.hitDiceTotal)),
 		Revision:           derefInt(row.Revision),
 		UpdatedAt:          timestamp(row.UpdatedAt),
 	}
 	if row.HitPointsCurrent != nil {
 		v.HitPointsCurrent = min(*row.HitPointsCurrent, v.HitPointsMax)
 	}
-	for k, total := range m.slots {
+	// The hit dice spent, by size: the sum is the count the older clients read.
+	spent := hitDiceUsedOf(row, m)
+	v.HitDiceUsed = i32(spent.Total())
+	v.HitDiceUsedByDie = hitDiceToProto(spent)
+	for k, sheetTotal := range m.slots {
+		// The slots Flexible Casting created add to the sheet's.
+		var created int32
+		if k < len(row.SpellSlotsCreated) {
+			created = max(row.SpellSlotsCreated[k], 0)
+		}
+		total := sheetTotal + int(created)
 		if total == 0 {
 			continue
 		}
@@ -142,7 +158,7 @@ func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
 		if k < len(row.SpellSlotsUsed) {
 			used = min(row.SpellSlotsUsed[k], i32(total))
 		}
-		v.SpellSlots = append(v.SpellSlots, &playv1.SpellSlotUsage{Level: i32(k + 1), Total: i32(total), Used: used})
+		v.SpellSlots = append(v.SpellSlots, &playv1.SpellSlotUsage{Level: i32(k + 1), Total: i32(total), Used: used, Created: created})
 	}
 	if m.pactSlots > 0 {
 		v.PactSlots = &playv1.PactSlotUsage{
@@ -295,12 +311,15 @@ func (s *Service) AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, chara
 	for _, change := range req.GetSpellSlotsUsed() {
 		used[change.GetLevel()-1] = change.GetUsed()
 	}
-	pactUsed, hitDiceUsed := derefInt(row.PactSlotsUsed), derefInt(row.HitDiceUsed)
+	pactUsed := derefInt(row.PactSlotsUsed)
 	if req.PactSlotsUsed != nil {
 		pactUsed = after.GetPactSlots().GetUsed()
 	}
-	if req.HitDiceUsed != nil {
-		hitDiceUsed = after.GetHitDiceUsed()
+	// The hit dice are kept by size. A correction that leaves them alone writes what
+	// was read (a row from before the sizes were kept gets them now).
+	hitDiceJSON, hitDiceUsed, err := encodeHitDiceUsed(hitDiceFromProto(after.GetHitDiceUsedByDie()))
+	if err != nil {
+		return nil, nil, wrap("encode the hit dice", err)
 	}
 	usedResources := map[string]int32{}
 	_ = json.Unmarshal(row.ResourcesUsed, &usedResources)
@@ -331,6 +350,8 @@ func (s *Service) AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, chara
 		SpellSlotsUsed:     used,
 		PactSlotsUsed:      pactUsed,
 		HitDiceUsed:        hitDiceUsed,
+		HitDiceUsedByDie:   hitDiceJSON,
+		SpellSlotsCreated:  slotsCreatedOf(current),
 		ResourcesUsed:      resourcesJSON,
 		Now:                s.now(),
 	})
@@ -359,7 +380,7 @@ func (s *Service) AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, chara
 // request's field names.
 func applyVitalsChange(v *playv1.CharacterVitals, req *playv1.AdjustCharacterVitalsRequest) error {
 	if req.HitPointsCurrent == nil && req.HitPointsTemporary == nil && len(req.GetSpellSlotsUsed()) == 0 &&
-		req.PactSlotsUsed == nil && req.HitDiceUsed == nil && len(req.GetResourcesUsed()) == 0 && req.WildShapeHitPointsCurrent == nil {
+		req.PactSlotsUsed == nil && req.HitDiceUsed == nil && len(req.GetHitDiceUsedByDie()) == 0 && len(req.GetResourcesUsed()) == 0 && req.WildShapeHitPointsCurrent == nil {
 		return fieldErr("request", "must set at least one value to change")
 	}
 	if req.WildShapeHitPointsCurrent != nil {
@@ -414,11 +435,34 @@ func applyVitalsChange(v *playv1.CharacterVitals, req *playv1.AdjustCharacterVit
 		}
 		v.PactSlots.Used = req.GetPactSlotsUsed()
 	}
+	if req.HitDiceUsed != nil && len(req.GetHitDiceUsedByDie()) > 0 {
+		return fieldErr("hit_dice_used", "must not be set together with hit_dice_used_by_die")
+	}
 	if req.HitDiceUsed != nil {
 		if err := inRange("hit_dice_used", req.GetHitDiceUsed(), v.GetHitDiceTotal()); err != nil {
 			return err
 		}
-		v.HitDiceUsed = req.GetHitDiceUsed()
+		// A count with no sizes spends the largest dice first.
+		setHitDiceUsed(v, rules.SplitHitDiceUsed(hitDiceOf(v), int(req.GetHitDiceUsed())))
+	}
+	if len(req.GetHitDiceUsedByDie()) > 0 {
+		next := hitDiceFromProto(v.GetHitDiceUsedByDie())
+		for die, n := range req.GetHitDiceUsedByDie() {
+			field := fmt.Sprintf("hit_dice_used_by_die[%d]", die)
+			i := slices.IndexFunc(v.GetHitDice(), func(hd *rulesv1.HitDice) bool { return hd.GetFaces() == die })
+			if i < 0 {
+				return fieldErr(field, "must be a die size the character has")
+			}
+			if err := inRange(field, n, v.GetHitDice()[i].GetCount()); err != nil {
+				return err
+			}
+			if n == 0 {
+				delete(next, int(die))
+			} else {
+				next[int(die)] = int(n)
+			}
+		}
+		setHitDiceUsed(v, next)
 	}
 	seenResource := map[string]bool{}
 	for i, change := range req.GetResourcesUsed() {
