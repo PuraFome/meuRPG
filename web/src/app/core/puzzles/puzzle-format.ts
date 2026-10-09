@@ -274,7 +274,7 @@ export function clockOf(at: Date): string {
   return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
 }
 
-/** One counter that stays on a player's screen: "Suas tentativas  2 de 3". */
+/** One counter that stays on a player's screen: "Tentativas restantes  2 de 3". */
 export interface CounterRow {
   readonly key: 'attempts' | 'moves' | 'time';
   readonly label: string;
@@ -297,7 +297,7 @@ export function limitRows(run: PuzzleRun, now: Date): CounterRow[] {
   if (limits.attemptsPerPlayer > 0) {
     rows.push({
       key: 'attempts',
-      label: 'Suas tentativas',
+      label: 'Tentativas restantes',
       value: `${limits.attemptsLeft} de ${limits.attemptsPerPlayer}`,
       spent: limits.attemptsLeft <= 0 && !run.solved,
     });

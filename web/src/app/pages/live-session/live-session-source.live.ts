@@ -223,6 +223,22 @@ export class LiveSessionSourceLive implements LiveSessionSource {
             mode: res.event.value.mode,
           };
           break;
+        case 'reactionWindowOpened':
+          yield {
+            kind: 'reactionWindowOpened',
+            encounterId: res.event.value.encounterId,
+            windowId: res.event.value.windowId,
+          };
+          break;
+        case 'reactionWindowClosed':
+          yield {
+            kind: 'reactionWindowClosed',
+            encounterId: res.event.value.encounterId,
+            windowId: res.event.value.windowId,
+            closedByItself: res.event.value.closedByItself,
+            text: res.event.value.textPt,
+          };
+          break;
         case 'turnChanged':
           yield {
             kind: 'turnChanged',

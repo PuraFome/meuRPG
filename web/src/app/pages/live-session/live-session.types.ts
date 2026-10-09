@@ -144,6 +144,20 @@ export type LiveEventVm =
       readonly revision: number;
       readonly mode?: number;
     }
+  /** `reaction_window_opened` (PM-04): a window waits for this player or for the master; read the combat again for the prompt. */
+  | {
+      readonly kind: 'reactionWindowOpened';
+      readonly encounterId: string;
+      readonly windowId: string;
+    }
+  /** `reaction_window_closed`: a window is no longer open. `text` is the reason when it closed by itself, written for this person. */
+  | {
+      readonly kind: 'reactionWindowClosed';
+      readonly encounterId: string;
+      readonly windowId: string;
+      readonly closedByItself: boolean;
+      readonly text: string;
+    }
   /** `turn_changed`, as this member may see it. */
   | ({ readonly kind: 'turnChanged' } & TurnChange)
   /** `combatant_moved`. */

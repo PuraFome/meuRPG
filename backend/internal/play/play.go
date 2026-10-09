@@ -244,6 +244,9 @@ type CombatRoster interface {
 	// CombatSave returns the character's saving throw bonus for an ability
 	// ("dex"). A basic-sheet NPC has none: Known is false.
 	CombatSave(ctx context.Context, tx pgx.Tx, campaignID, characterID, ability string) (link.Save, error)
+	// ReactionStats is what the sheet (or the stat block of an NPC made from a
+	// creature) says about the combatant's reactions.
+	ReactionStats(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (link.ReactionStats, error)
 	// MarkDead marks a player's character dead inside tx, as the master's
 	// MarkCharacterDead does (RN-03): the master confirmed its death in a combat.
 	// It is idempotent.

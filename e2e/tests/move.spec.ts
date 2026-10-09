@@ -262,7 +262,8 @@ test(
       await p.getByRole('button', { name: 'Mover para cá' }).click();
 
       // The move landed; the player's turn waits, and every action says why instead of failing on click.
-      await expect(p.getByRole('status').filter({ hasText: 'Esperando a reação do mestre.' })).toContainText('O Goblin 1 pode fazer um ataque de oportunidade.');
+      // The player reads the same words for any NPC's reaction: never which NPC or why (RN-10).
+      await expect(p.getByRole('status').filter({ hasText: 'Esperando o mestre.' })).toContainText('O turno continua quando ele responder.');
       await expect(p.getByRole('button', { name: 'Mover', exact: true })).toHaveAttribute('aria-disabled', 'true');
       await expect(p.getByRole('button', { name: 'Atacar com Raio de Fogo' })).toHaveAttribute('aria-disabled', 'true');
 
@@ -284,7 +285,7 @@ test(
       await expect(sheet.getByText('A reação dele foi usada.')).toBeVisible();
       await sheet.getByRole('button', { name: 'Fechar' }).last().click();
       await expect(card).toHaveCount(0);
-      await expect(p.getByText('Esperando a reação do mestre.')).toHaveCount(0);
+      await expect(p.getByText('Esperando o mestre.')).toHaveCount(0);
       await expect(p.getByRole('button', { name: 'Mover', exact: true })).not.toHaveAttribute('aria-disabled', 'true');
       await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Goblin 1 ataca o Pensantus com a Cimitarra (ataque de oportunidade): errou');
     } finally {
@@ -309,7 +310,7 @@ test(
       const card = m.getByRole('group', { name: 'Ataque de oportunidade de Goblin 1' });
       await card.getByRole('button', { name: 'Não atacar' }).click();
       await expect(card).toHaveCount(0);
-      await expect(p.getByText('Esperando a reação do mestre.')).toHaveCount(0);
+      await expect(p.getByText('Esperando o mestre.')).toHaveCount(0);
       await expect(p.getByRole('button', { name: 'Mover', exact: true })).not.toHaveAttribute('aria-disabled', 'true');
     } finally {
       await done();

@@ -59,10 +59,11 @@ export function characterStateLabel(state: CharacterState): string {
  * the sheet: always with a sign, even for zero. The sheet never recomputes
  * this from the score — it only formats whatever number the server sent, so
  * an inconsistent pair (e.g. score 18 with modifier +9) still renders
- * "+9" verbatim (`character-sheet.spec.ts`).
+ * "+9" verbatim (`character-sheet.spec.ts`). A negative one uses the real
+ * minus "−", as the rest of the app does.
  */
 export function formatModifier(modifier: number): string {
-  return modifier >= 0 ? `+${modifier}` : `${modifier}`;
+  return modifier >= 0 ? `+${modifier}` : `\u2212${Math.abs(modifier)}`;
 }
 
 /** An SRD damage type, by the lower-case name of `DamageType`'s value

@@ -5,25 +5,107 @@ import { canvasJpeg, newCampaign, uploadThroughPicker } from './gallery-support'
 import { saveDocumentRPC, tableWithDocumentParts } from './document-support';
 import { expectAligned } from './layout';
 import { expectLoaded } from './loaded';
-import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
-import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
-import { adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
-import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
+import {
+  endOpenSessionRPC,
+  endSessionRPC,
+  openSessionPage,
+  startSessionRPC,
+  tableWithPensantus,
+} from './live-session-support';
+import {
+  canvasPng,
+  createMapRPC,
+  createPointRPC,
+  placeTokenRPC,
+  revealMapRPC,
+  setCurrentMapRPC,
+  tableForMaps,
+  uploadImageRPC,
+} from './maps-support';
+import {
+  adjustVitalsRPC,
+  beginAttackCombatRPC,
+  setGridRPC,
+  combatRPC,
+  getEncounterRPC,
+  startEncounterRPC,
+  endTurnOf,
+  passTurnsTo,
+  pensantusCasting,
+  waitTurnLeaves,
+  tableForCombat,
+  toren,
+  torenSheet,
+} from './combat-support';
+import {
+  addActionRPC,
+  cartActions,
+  getOpenSceneRPC,
+  openSceneRPC,
+  rollSceneRPC,
+  sceneActionIdsRPC,
+  setAttemptsRPC,
+  setShowDcRPC,
+  tableForScenes,
+} from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
-import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
+import {
+  createCapitaoRPC,
+  createMiraRPC,
+  playedCombatRPC,
+  putOnStageRPC,
+  uploadPortrait,
+} from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
 import { tableForLevelUp } from './levelup-support';
 import { paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog } from './fog-support';
-import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
-import { authStatePath, boxOf, callRPC, layoutSize, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn } from './support';
+import {
+  beginCreatureCombat,
+  hitAndApply,
+  tableForCreatureCombat,
+} from './creatures-combat-support';
+import { claimRoute, linkRPC, reservedRPC, revokeLinkRPC, rowOf } from './claim-support';
+import {
+  authStatePath,
+  boxOf,
+  callRPC,
+  layoutSize,
+  characterRpcBody,
+  createCharacterRPC,
+  newSignedInContext,
+  pensantus,
+  showAllPicks,
+  signIn,
+} from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
-import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
+import {
+  awardXpRPC,
+  createEnemyRPC,
+  tableForXp,
+  tableForXpCombat,
+  winCombatRPC,
+} from './xp-support';
 import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
-import { movePensantus, pensantusFirst, sq20, thirdPlayer, trapRPC, treasureRPC, type TrapTable } from './trap-support';
+import {
+  movePensantus,
+  pensantusFirst,
+  sq20,
+  thirdPlayer,
+  trapRPC,
+  treasureRPC,
+  type TrapTable,
+} from './trap-support';
 import { cavePoints, clickSquare, dragSquares, editorRoute, mapToPaint } from './editor-support';
-import { campaignWithEmptyPlayer, factor, masterCampaign, method, setTableRulesRPC, wallSquares } from './table-rules-support';
+import {
+  campaignWithEmptyPlayer,
+  factor,
+  masterCampaign,
+  method,
+  setTableRulesRPC,
+  wallSquares,
+} from './table-rules-support';
 import {
   CIPHER,
   SEQUENCE,
@@ -50,8 +132,23 @@ import {
 } from './puzzles-support';
 import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
-import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
-import { archiveEntryRPC, createEntryRPC, entryRoute, raceBody, spellBody, updateEntryRPC } from './content-support';
+import {
+  brisa,
+  brisaAidSheet,
+  brisaSheet,
+  dalila,
+  dalilaSheet,
+  ragna,
+  ragnaSheet,
+} from './combat-support';
+import {
+  archiveEntryRPC,
+  createEntryRPC,
+  entryRoute,
+  raceBody,
+  spellBody,
+  updateEntryRPC,
+} from './content-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
 import { classBody, createClassRPC, createSubclassRPC, halfCasterBody } from './classes-support';
@@ -90,14 +187,22 @@ async function expectScreenPasses(page: Page, screen: string): Promise<void> {
     () =>
       document
         .getAnimations()
-        .every((a) => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity),
+        .every(
+          (a) => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity,
+        ),
     undefined,
     { timeout: 5_000 },
   );
   const results = await new AxeBuilder({ page }).withTags(wcag).analyze();
   const serious = results.violations
     .filter((v) => v.impact === 'serious' || v.impact === 'critical')
-    .map((v) => `${screen}: ${v.id} (${v.impact}) ${v.help}: ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join(' | ')}`);
+    .map(
+      (v) =>
+        `${screen}: ${v.id} (${v.impact}) ${v.help}: ${v.nodes
+          .slice(0, 3)
+          .map((n) => n.target.join(' '))
+          .join(' | ')}`,
+    );
   expect(serious).toEqual([]);
   await expectAligned(page, screen);
 }
@@ -121,12 +226,20 @@ async function campaignWithNpc(page: Page): Promise<{ campaignId: string; npcId:
   });
   expect(created.ok()).toBeTruthy();
   const campaignId = (await created.json()).campaign.id as string;
-  const npc = await createCharacterRPC(page, campaignId, characterRpcBody('ENEMY', { ...pensantus, name: 'Capitão Goblin' }));
+  const npc = await createCharacterRPC(
+    page,
+    campaignId,
+    characterRpcBody('ENEMY', { ...pensantus, name: 'Capitão Goblin' }),
+  );
   expect(npc.ok()).toBeTruthy();
   return { campaignId, npcId: (await npc.json()).character.id as string };
 }
 
-async function scanMasterScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanMasterScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const context = await browser.newContext({
     storageState: authStatePath('Mestre Teste'),
     colorScheme,
@@ -154,19 +267,31 @@ async function scanMasterScreens(browser: Browser, colorScheme: 'light' | 'dark'
   }
 }
 
-test('as telas do mestre passam no axe no tema claro, no desktop', { tag: '@a11y' }, async ({ browser }) => {
-  await scanMasterScreens(browser, 'light', 1280);
-});
+test(
+  'as telas do mestre passam no axe no tema claro, no desktop',
+  { tag: '@a11y' },
+  async ({ browser }) => {
+    await scanMasterScreens(browser, 'light', 1280);
+  },
+);
 
-test('as telas do mestre passam no axe no tema escuro, no celular', { tag: '@a11y' }, async ({ browser }) => {
-  await scanMasterScreens(browser, 'dark', 390);
-});
+test(
+  'as telas do mestre passam no axe no tema escuro, no celular',
+  { tag: '@a11y' },
+  async ({ browser }) => {
+    await scanMasterScreens(browser, 'dark', 390);
+  },
+);
 
 /** "Sessões" on the profile page: the count with its button, and the in-place
  * confirmation. A second, real sign-in of the master gives the page another
  * device to show (it sends no cookie, so it revokes nothing); the scan only
  * opens the confirmation and cancels, so no shared session ends. */
-async function scanSessions(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanSessions(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const other = await browser.newContext({ colorScheme });
   const context = await browser.newContext({
     storageState: authStatePath('Mestre Teste'),
@@ -192,20 +317,32 @@ async function scanSessions(browser: Browser, colorScheme: 'light' | 'dark', wid
   }
 }
 
-test('"Sessões" do perfil passa no axe no tema claro, no desktop', { tag: '@a11y' }, async ({ browser }) => {
-  await scanSessions(browser, 'light', 1280);
-});
+test(
+  '"Sessões" do perfil passa no axe no tema claro, no desktop',
+  { tag: '@a11y' },
+  async ({ browser }) => {
+    await scanSessions(browser, 'light', 1280);
+  },
+);
 
-test('"Sessões" do perfil passa no axe no tema escuro, no celular', { tag: '@a11y' }, async ({ browser }) => {
-  await scanSessions(browser, 'dark', 390);
-});
+test(
+  '"Sessões" do perfil passa no axe no tema escuro, no celular',
+  { tag: '@a11y' },
+  async ({ browser }) => {
+    await scanSessions(browser, 'dark', 390);
+  },
+);
 
 /** The gallery (MR-019): empty, with images, a refused upload's notice,
  * a card's delete confirmation and the lightbox open. The gallery picker
  * (shared/gallery-picker) has no screen of its own until the map form
  * (5.3) uses it; its radio-group semantics are covered by its unit tests,
  * and it joins this scan with that screen. */
-async function scanGallery(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanGallery(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const context = await browser.newContext({
     storageState: authStatePath('Mestre Teste'),
     colorScheme,
@@ -222,10 +359,16 @@ async function scanGallery(browser: Browser, colorScheme: 'light' | 'dark', widt
 
     await uploadThroughPicker(page, [
       { name: 'Taverna do Javali.jpg', mimeType: 'image/jpeg', buffer: await canvasJpeg(page) },
-      { name: 'Covil dos goblins.jpg', mimeType: 'image/jpeg', buffer: await canvasJpeg(page, '#5b4834') },
+      {
+        name: 'Covil dos goblins.jpg',
+        mimeType: 'image/jpeg',
+        buffer: await canvasJpeg(page, '#5b4834'),
+      },
       { name: 'mapa-antigo.gif', mimeType: 'image/gif', buffer: Buffer.from('GIF89a') },
     ]);
-    await expect(page.getByRole('article', { name: 'Covil dos goblins', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('article', { name: 'Covil dos goblins', exact: true }),
+    ).toBeVisible();
     await expect(page.getByRole('alert')).toBeVisible();
     await expectScreenPasses(page, `Galeria com imagens e um envio recusado ${where}`);
 
@@ -249,19 +392,31 @@ async function scanGallery(browser: Browser, colorScheme: 'light' | 'dark', widt
 }
 
 // Five scans and three uploads in one test: more room than the default.
-test('a galeria passa no axe no tema claro, no desktop', { tag: ['@a11y', '@MR-019'] }, async ({ browser }) => {
-  test.slow();
-  await scanGallery(browser, 'light', 1280);
-});
+test(
+  'a galeria passa no axe no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-019'] },
+  async ({ browser }) => {
+    test.slow();
+    await scanGallery(browser, 'light', 1280);
+  },
+);
 
-test('a galeria passa no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-019'] }, async ({ browser }) => {
-  test.slow();
-  await scanGallery(browser, 'dark', 390);
-});
+test(
+  'a galeria passa no axe no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-019'] },
+  async ({ browser }) => {
+    test.slow();
+    await scanGallery(browser, 'dark', 390);
+  },
+);
 
 /** The campaign document (MR-018): read mode, edit mode (with its toolbar
  * and the preview), the map dialog and the image picker dialog. */
-async function scanDocument(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanDocument(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const context = await browser.newContext({
     storageState: authStatePath('Mestre Teste'),
     colorScheme,
@@ -273,8 +428,19 @@ async function scanDocument(browser: Browser, colorScheme: 'light' | 'dark', wid
     await page.goto('/');
     const t = await tableWithDocumentParts(page, `Acessibilidade documento ${Date.now()}`);
     // The map dialog draws the points: one revealed, one hidden (E5-29).
-    await createPointRPC(page, t.campaignId, t.mapId, { kind: 'BATTLE', name: 'Emboscada na estrada', xBp: 5000, yBp: 6500, revealed: true });
-    await createPointRPC(page, t.campaignId, t.mapId, { kind: 'SUBMAP', name: 'Covil dos goblins', xBp: 2500, yBp: 3000 });
+    await createPointRPC(page, t.campaignId, t.mapId, {
+      kind: 'BATTLE',
+      name: 'Emboscada na estrada',
+      xBp: 5000,
+      yBp: 6500,
+      revealed: true,
+    });
+    await createPointRPC(page, t.campaignId, t.mapId, {
+      kind: 'SUBMAP',
+      name: 'Covil dos goblins',
+      xBp: 2500,
+      yBp: 3000,
+    });
     await saveDocumentRPC(
       page,
       t.campaignId,
@@ -287,9 +453,13 @@ async function scanDocument(browser: Browser, colorScheme: 'light' | 'dark', wid
 
     await page.getByRole('button', { name: 'Mirathel e arredores' }).click();
     const dialog = page.getByRole('dialog', { name: 'Mirathel e arredores' });
-    await expect(dialog.getByRole('img', { name: 'Prévia do mapa Mirathel e arredores' })).toBeVisible();
+    await expect(
+      dialog.getByRole('img', { name: 'Prévia do mapa Mirathel e arredores' }),
+    ).toBeVisible();
     // The names show on the picture from 520 px of map (a phone's smaller one leaves them to this list).
-    await expect(dialog.getByRole('list', { name: 'Pontos deste mapa' })).toContainText('Covil dos goblins');
+    await expect(dialog.getByRole('list', { name: 'Pontos deste mapa' })).toContainText(
+      'Covil dos goblins',
+    );
     await expectScreenPasses(page, `Documento, janela do mapa ${where}`);
     await page.keyboard.press('Escape');
 
@@ -298,41 +468,55 @@ async function scanDocument(browser: Browser, colorScheme: 'light' | 'dark', wid
     await expectScreenPasses(page, `Documento, edição ${where}`);
 
     await page.getByRole('button', { name: 'Imagem da galeria' }).click();
-    await expect(page.getByRole('dialog', { name: 'Imagem da galeria' }).getByRole('radio').first()).toBeVisible();
+    await expect(
+      page.getByRole('dialog', { name: 'Imagem da galeria' }).getByRole('radio').first(),
+    ).toBeVisible();
     await expectScreenPasses(page, `Documento, escolher imagem ${where}`);
   } finally {
     await context.close();
   }
 }
 
-test('o documento passa no axe no tema claro, no desktop', { tag: ['@a11y', '@MR-018'] }, async ({ browser }) => {
-  test.slow();
-  await scanDocument(browser, 'light', 1280);
-});
+test(
+  'o documento passa no axe no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-018'] },
+  async ({ browser }) => {
+    test.slow();
+    await scanDocument(browser, 'light', 1280);
+  },
+);
 
-test('o documento passa no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-018'] }, async ({ browser }) => {
-  test.slow();
-  await scanDocument(browser, 'dark', 390);
-});
+test(
+  'o documento passa no axe no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-018'] },
+  async ({ browser }) => {
+    test.slow();
+    await scanDocument(browser, 'dark', 390);
+  },
+);
 
-test('as telas de quem não entrou passam no axe, nos dois temas', { tag: '@a11y' }, async ({ browser }) => {
-  for (const colorScheme of ['light', 'dark'] as const) {
-    const context = await browser.newContext({ colorScheme });
-    const page = await context.newPage();
-    try {
-      for (const [screen, route] of [
-        ['Início', '/'],
-        ['Créditos', '/credits'],
-        ['Página não encontrada', '/nao-existe'],
-      ]) {
-        await open(page, route);
-        await expectScreenPasses(page, `${screen} (${colorScheme}, sem login)`);
+test(
+  'as telas de quem não entrou passam no axe, nos dois temas',
+  { tag: '@a11y' },
+  async ({ browser }) => {
+    for (const colorScheme of ['light', 'dark'] as const) {
+      const context = await browser.newContext({ colorScheme });
+      const page = await context.newPage();
+      try {
+        for (const [screen, route] of [
+          ['Início', '/'],
+          ['Créditos', '/credits'],
+          ['Página não encontrada', '/nao-existe'],
+        ]) {
+          await open(page, route);
+          await expectScreenPasses(page, `${screen} (${colorScheme}, sem login)`);
+        }
+      } finally {
+        await context.close();
       }
-    } finally {
-      await context.close();
     }
-  }
-});
+  },
+);
 
 // docs/design.md#cor: every control that takes focus shows the same 2px
 // ring. Material's buttons remove their outline in their own styles, so
@@ -353,7 +537,9 @@ test('os botões do Material mostram o anel de foco @a11y', async ({ page }) => 
 // docs/design.md#título-da-página-pular-para-o-conteúdo-e-foco-ao-navegar: every page has its own
 // title (WCAG 2.4.2), the first Tab stop is "Pular para o conteúdo" (2.4.1), and a
 // navigation to another page moves the focus to its heading (2.4.3).
-test('cada página tem o próprio título, o primeiro Tab pula para o conteúdo e navegar leva o foco ao título @a11y', async ({ page }) => {
+test('cada página tem o próprio título, o primeiro Tab pula para o conteúdo e navegar leva o foco ao título @a11y', async ({
+  page,
+}) => {
   await page.goto('/credits');
   await expect(page).toHaveTitle('Créditos · MeuRPG');
 
@@ -381,18 +567,32 @@ test('cada página tem o próprio título, o primeiro Tab pula para o conteúdo 
  * campaign. The session page keeps a stream open, so these wait for the
  * page's own "Ao vivo" instead of `networkidle`.
  */
-async function scanLiveSessionScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanLiveSessionScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   test.setTimeout(90_000);
   const options = { colorScheme, viewport: { width, height: 900 } };
-  const master = await browser.newContext({ ...options, storageState: authStatePath('Mestre Teste') });
-  const player = await browser.newContext({ ...options, storageState: authStatePath('Jogador Teste') });
+  const master = await browser.newContext({
+    ...options,
+    storageState: authStatePath('Mestre Teste'),
+  });
+  const player = await browser.newContext({
+    ...options,
+    storageState: authStatePath('Jogador Teste'),
+  });
   const masterPage = await master.newPage();
   const playerPage = await player.newPage();
   const suffix = `(${colorScheme}, ${width}px)`;
   try {
     await masterPage.goto('/');
     await playerPage.goto('/');
-    const { campaignId } = await tableWithPensantus(masterPage, playerPage, `Acessibilidade ao vivo ${Date.now()}`);
+    const { campaignId } = await tableWithPensantus(
+      masterPage,
+      playerPage,
+      `Acessibilidade ao vivo ${Date.now()}`,
+    );
     const sessionId = await startSessionRPC(masterPage, campaignId);
 
     await openSessionPage(masterPage, campaignId);
@@ -402,7 +602,9 @@ async function scanLiveSessionScreens(browser: Browser, colorScheme: 'light' | '
     await expect(masterPage.getByRole('dialog', { name: 'Ajustar Pensantus' })).toBeVisible();
     // Scan the sheet once it's in place: mid-animation, its text is still
     // fading in, and axe would measure the contrast of a half-drawn frame.
-    await masterPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await masterPage.waitForFunction(() =>
+      document.getAnimations().every((a) => a.playState !== 'running'),
+    );
     await expectScreenPasses(masterPage, `Ajustar PV ${suffix}`);
     await masterPage.getByRole('button', { name: 'Cancelar' }).click();
 
@@ -416,7 +618,9 @@ async function scanLiveSessionScreens(browser: Browser, colorScheme: 'light' | '
       xpMode: 'XP_MODE_ENEMIES',
     });
     await playerPage.goto(`/campaigns/${(await closed.json()).campaign.id}/session`);
-    await expect(playerPage.getByRole('heading', { level: 1, name: 'Peça um convite ao mestre' })).toBeVisible();
+    await expect(
+      playerPage.getByRole('heading', { level: 1, name: 'Peça um convite ao mestre' }),
+    ).toBeVisible();
     await expectScreenPasses(playerPage, `Sessão sem acesso ${suffix}`);
 
     await endSessionRPC(masterPage, campaignId, sessionId);
@@ -426,13 +630,21 @@ async function scanLiveSessionScreens(browser: Browser, colorScheme: 'light' | '
   }
 }
 
-test('as telas da sessão ao vivo passam no axe no tema claro, no desktop', { tag: ['@a11y', '@MR-012'] }, async ({ browser }) => {
-  await scanLiveSessionScreens(browser, 'light', 1280);
-});
+test(
+  'as telas da sessão ao vivo passam no axe no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-012'] },
+  async ({ browser }) => {
+    await scanLiveSessionScreens(browser, 'light', 1280);
+  },
+);
 
-test('as telas da sessão ao vivo passam no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-012'] }, async ({ browser }) => {
-  await scanLiveSessionScreens(browser, 'dark', 390);
-});
+test(
+  'as telas da sessão ao vivo passam no axe no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-012'] },
+  async ({ browser }) => {
+    await scanLiveSessionScreens(browser, 'dark', 390);
+  },
+);
 
 /**
  * The maps' screens (Etapa 5, MR-008, MR-009, MR-012, MR-028): "Novo mapa",
@@ -440,11 +652,21 @@ test('as telas da sessão ao vivo passam no axe no tema escuro, no celular', { t
  * open, the picker dialog, and the session page with the current map and
  * with an image on show, for the master and for the player.
  */
-async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanMapScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   test.setTimeout(120_000);
   const options = { colorScheme, viewport: { width, height: 900 } };
-  const master = await browser.newContext({ ...options, storageState: authStatePath('Mestre Teste') });
-  const player = await browser.newContext({ ...options, storageState: authStatePath('Jogador Teste') });
+  const master = await browser.newContext({
+    ...options,
+    storageState: authStatePath('Mestre Teste'),
+  });
+  const player = await browser.newContext({
+    ...options,
+    storageState: authStatePath('Jogador Teste'),
+  });
   const masterPage = await master.newPage();
   const playerPage = await player.newPage();
   const suffix = `(${colorScheme}, ${width}px)`;
@@ -452,18 +674,57 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
   try {
     await masterPage.goto('/');
     await playerPage.goto('/');
-    const table = await tableForMaps(masterPage, playerPage, `Acessibilidade mapas ${Date.now()}`, true);
+    const table = await tableForMaps(
+      masterPage,
+      playerPage,
+      `Acessibilidade mapas ${Date.now()}`,
+      true,
+    );
     campaignId = table.campaignId;
-    const worldImage = await uploadImageRPC(masterPage, campaignId, 'Mapa de Mirathel', await canvasPng(masterPage, 1200, 800, 'Mirathel'));
-    const towerImage = await uploadImageRPC(masterPage, campaignId, 'Planta da torre', await canvasPng(masterPage, 800, 800, 'Torre', '#5b4834'));
-    await uploadImageRPC(masterPage, campaignId, 'Capitão Goblin', await canvasPng(masterPage, 400, 500, 'Capitão Goblin', '#3a3a2a'));
+    const worldImage = await uploadImageRPC(
+      masterPage,
+      campaignId,
+      'Mapa de Mirathel',
+      await canvasPng(masterPage, 1200, 800, 'Mirathel'),
+    );
+    const towerImage = await uploadImageRPC(
+      masterPage,
+      campaignId,
+      'Planta da torre',
+      await canvasPng(masterPage, 800, 800, 'Torre', '#5b4834'),
+    );
+    await uploadImageRPC(
+      masterPage,
+      campaignId,
+      'Capitão Goblin',
+      await canvasPng(masterPage, 400, 500, 'Capitão Goblin', '#3a3a2a'),
+    );
     const tower = await createMapRPC(masterPage, campaignId, 'Torre de Mirathel', towerImage);
     const world = await createMapRPC(masterPage, campaignId, 'Mirathel e arredores', worldImage);
     await revealMapRPC(masterPage, campaignId, tower);
     await revealMapRPC(masterPage, campaignId, world);
-    await createPointRPC(masterPage, campaignId, world, { kind: 'BATTLE', name: 'Emboscada na estrada', xBp: 3800, yBp: 6200, revealed: true });
-    await createPointRPC(masterPage, campaignId, world, { kind: 'SUBMAP', name: 'Torre de Mirathel', description: 'Uma torre antiga na colina.', xBp: 7100, yBp: 2800, targetMapId: tower, revealed: true });
-    await createPointRPC(masterPage, campaignId, world, { kind: 'SCENE', name: 'Ruínas élficas', xBp: 8300, yBp: 7600 });
+    await createPointRPC(masterPage, campaignId, world, {
+      kind: 'BATTLE',
+      name: 'Emboscada na estrada',
+      xBp: 3800,
+      yBp: 6200,
+      revealed: true,
+    });
+    await createPointRPC(masterPage, campaignId, world, {
+      kind: 'SUBMAP',
+      name: 'Torre de Mirathel',
+      description: 'Uma torre antiga na colina.',
+      xBp: 7100,
+      yBp: 2800,
+      targetMapId: tower,
+      revealed: true,
+    });
+    await createPointRPC(masterPage, campaignId, world, {
+      kind: 'SCENE',
+      name: 'Ruínas élficas',
+      xBp: 8300,
+      yBp: 7600,
+    });
     await placeTokenRPC(masterPage, campaignId, world, table.characterId, 5200, 5400);
     await placeTokenRPC(masterPage, campaignId, world, table.npcId!, 3700, 6000);
 
@@ -471,7 +732,9 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
     await expectScreenPasses(masterPage, `Novo mapa ${suffix}`);
     await masterPage.getByRole('button', { name: 'Criar mapa' }).click();
     await expect(masterPage.getByText('Dê um nome ao mapa.')).toBeVisible();
-    await masterPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await masterPage.waitForFunction(() =>
+      document.getAnimations().every((a) => a.playState !== 'running'),
+    );
     await expectScreenPasses(masterPage, `Novo mapa com erros ${suffix}`);
 
     await open(masterPage, `/campaigns/${campaignId}/maps/${world}`);
@@ -482,11 +745,18 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
     await expectScreenPasses(masterPage, `Mapa, renomear ${suffix}`);
     await masterPage.getByRole('button', { name: 'Cancelar' }).click();
     await masterPage.getByRole('button', { name: 'Apagar mapa' }).click();
-    await expect(masterPage.getByRole('group', { name: /^Apagar / }).getByRole('button', { name: 'Cancelar' })).toBeFocused();
+    await expect(
+      masterPage.getByRole('group', { name: /^Apagar / }).getByRole('button', { name: 'Cancelar' }),
+    ).toBeFocused();
     await expectScreenPasses(masterPage, `Mapa, apagar ${suffix}`);
-    await masterPage.getByRole('group', { name: /^Apagar / }).getByRole('button', { name: 'Cancelar' }).click();
+    await masterPage
+      .getByRole('group', { name: /^Apagar / })
+      .getByRole('button', { name: 'Cancelar' })
+      .click();
     if (width >= 768) {
-      await masterPage.getByRole('button', { name: 'Ruínas élficas, Cena de RP, escondido' }).click();
+      await masterPage
+        .getByRole('button', { name: 'Ruínas élficas, Cena de RP, escondido' })
+        .click();
       await expect(masterPage.getByRole('heading', { name: 'Ruínas élficas' })).toBeVisible();
       await expectScreenPasses(masterPage, `Editor com um ponto escolhido ${suffix}`);
     }
@@ -503,32 +773,47 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
     await expect(masterPage.getByRole('heading', { name: 'Pontos do mapa' })).toBeVisible();
     await expectScreenPasses(masterPage, `Sessão com mapa, mestre ${suffix}`);
     await openSessionPage(playerPage, campaignId);
-    await expect(playerPage.getByRole('img', { name: 'Prévia do mapa Mirathel e arredores' })).toBeVisible();
+    await expect(
+      playerPage.getByRole('img', { name: 'Prévia do mapa Mirathel e arredores' }),
+    ).toBeVisible();
     await expectScreenPasses(playerPage, `Sessão com mapa, jogador ${suffix}`);
 
     // The picker, then an image on show.
     await masterPage.getByRole('button', { name: 'Mostrar imagem' }).click();
     const dialog = masterPage.getByRole('dialog', { name: 'Mostrar uma imagem aos jogadores' });
     await dialog.getByRole('radio', { name: /Capitão Goblin/ }).click();
-    await masterPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await masterPage.waitForFunction(() =>
+      document.getAnimations().every((a) => a.playState !== 'running'),
+    );
     await expectScreenPasses(masterPage, `Mostrar imagem, seletor ${suffix}`);
     await dialog.getByRole('button', { name: 'Mostrar aos jogadores' }).click();
     await expect(masterPage.getByRole('button', { name: 'Parar de mostrar' })).toBeVisible();
     await expectScreenPasses(masterPage, `Sessão com imagem à mostra, mestre ${suffix}`);
     await expect(playerPage.getByRole('region', { name: 'O mestre está mostrando' })).toBeVisible();
-    await playerPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await playerPage.waitForFunction(() =>
+      document.getAnimations().every((a) => a.playState !== 'running'),
+    );
     await expectScreenPasses(playerPage, `Sessão com imagem à mostra, jogador ${suffix}`);
 
     // "Deixar com os jogadores" on, then the image left with the players.
     const keep = masterPage.getByRole('switch', { name: 'Deixar com os jogadores' });
     await keep.click();
     await expect(keep).toHaveAttribute('aria-checked', 'true');
-    await expectScreenPasses(masterPage, `Sessão com "Deixar com os jogadores" ligado, mestre ${suffix}`);
+    await expectScreenPasses(
+      masterPage,
+      `Sessão com "Deixar com os jogadores" ligado, mestre ${suffix}`,
+    );
     await masterPage.getByRole('button', { name: 'Parar de mostrar' }).click();
-    await expect(masterPage.getByRole('button', { name: 'Tirar Capitão Goblin dos jogadores' })).toBeVisible();
+    await expect(
+      masterPage.getByRole('button', { name: 'Tirar Capitão Goblin dos jogadores' }),
+    ).toBeVisible();
     await expectScreenPasses(masterPage, `Sessão com uma imagem deixada, mestre ${suffix}`);
-    await expect(playerPage.getByRole('region', { name: 'Imagens que o mestre deixou' })).toBeVisible();
-    await playerPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expect(
+      playerPage.getByRole('region', { name: 'Imagens que o mestre deixou' }),
+    ).toBeVisible();
+    await playerPage.waitForFunction(() =>
+      document.getAnimations().every((a) => a.playState !== 'running'),
+    );
     await expectScreenPasses(playerPage, `Sessão com uma imagem deixada, jogador ${suffix}`);
   } finally {
     await endOpenSessionRPC(masterPage, campaignId);
@@ -537,35 +822,59 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
   }
 }
 
-test('as telas de mapa e da imagem mostrada passam no axe no tema claro, no desktop', { tag: ['@a11y', '@MR-008', '@MR-028'] }, async ({ browser }) => {
-  await scanMapScreens(browser, 'light', 1280);
-});
+test(
+  'as telas de mapa e da imagem mostrada passam no axe no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-008', '@MR-028'] },
+  async ({ browser }) => {
+    await scanMapScreens(browser, 'light', 1280);
+  },
+);
 
-test('as telas de mapa e da imagem mostrada passam no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-009', '@MR-028'] }, async ({ browser }) => {
-  await scanMapScreens(browser, 'dark', 390);
-});
+test(
+  'as telas de mapa e da imagem mostrada passam no axe no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-009', '@MR-028'] },
+  async ({ browser }) => {
+    await scanMapScreens(browser, 'dark', 390);
+  },
+);
 
 /** Printing a map to scale (MR-033, E8-12): the map page's entry with and
  * without a grid, and the print view in its states: the defaults, a size and
  * a paper that need 3 sheets, one that needs 36 (the amber notice, the labels
  * shrunk), 136 (the labels gone), an invalid size, and a map without a grid.
  * On a phone the setup stacks above the preview. */
-async function scanPrintScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanPrintScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   test.setTimeout(180_000);
   const options = { colorScheme, viewport: { width, height: 900 } };
-  const master = await browser.newContext({ ...options, storageState: authStatePath('Mestre Teste') });
-  const player = await browser.newContext({ ...options, storageState: authStatePath('Jogador Teste') });
+  const master = await browser.newContext({
+    ...options,
+    storageState: authStatePath('Mestre Teste'),
+  });
+  const player = await browser.newContext({
+    ...options,
+    storageState: authStatePath('Jogador Teste'),
+  });
   const masterPage = await master.newPage();
   const playerPage = await player.newPage();
   const suffix = `(${colorScheme}, ${width}px)`;
   try {
     await masterPage.goto('/');
-    const table = await tableForPrinting(masterPage, playerPage, `Acessibilidade impressão ${Date.now()}`);
+    const table = await tableForPrinting(
+      masterPage,
+      playerPage,
+      `Acessibilidade impressão ${Date.now()}`,
+    );
 
     await open(masterPage, `/campaigns/${table.campaignId}/maps/${table.gridMapId}`);
     await expectScreenPasses(masterPage, `Mapa com grade, entrada de impressão ${suffix}`);
     await open(masterPage, `/campaigns/${table.campaignId}/maps/${table.plainMapId}`);
-    await expect(masterPage.getByText('Defina a grade do mapa para imprimir em escala')).toBeVisible();
+    await expect(
+      masterPage.getByText('Defina a grade do mapa para imprimir em escala'),
+    ).toBeVisible();
     await expectScreenPasses(masterPage, `Mapa sem grade, entrada de impressão ${suffix}`);
 
     await open(masterPage, printRoute(table.campaignId, table.gridMapId));
@@ -588,7 +897,9 @@ async function scanPrintScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await expectScreenPasses(masterPage, `Imprimir o mapa, 136 folhas sem rótulos ${suffix}`);
 
     await square.fill('0,5');
-    await expect(masterPage.getByRole('alert').filter({ hasText: 'Use um tamanho de 1 a 10 cm.' })).toBeVisible();
+    await expect(
+      masterPage.getByRole('alert').filter({ hasText: 'Use um tamanho de 1 a 10 cm.' }),
+    ).toBeVisible();
     await expectScreenPasses(masterPage, `Imprimir o mapa, tamanho inválido ${suffix}`);
 
     await open(masterPage, printRoute(table.campaignId, table.plainMapId));
@@ -603,41 +914,77 @@ async function scanPrintScreens(browser: Browser, colorScheme: 'light' | 'dark',
   }
 }
 
-test('a impressão do mapa passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-033'] }, async ({ browser }) => {
-  await scanPrintScreens(browser, 'light', 1280);
-});
+test(
+  'a impressão do mapa passa no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-033'] },
+  async ({ browser }) => {
+    await scanPrintScreens(browser, 'light', 1280);
+  },
+);
 
-test('a impressão do mapa passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-033'] }, async ({ browser }) => {
-  await scanPrintScreens(browser, 'dark', 390);
-});
+test(
+  'a impressão do mapa passa no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-033'] },
+  async ({ browser }) => {
+    await scanPrintScreens(browser, 'dark', 390);
+  },
+);
 
-test('a impressão do mapa passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-033'] }, async ({ browser }) => {
-  await scanPrintScreens(browser, 'dark', 1024);
-});
+test(
+  'a impressão do mapa passa no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-033'] },
+  async ({ browser }) => {
+    await scanPrintScreens(browser, 'dark', 1024);
+  },
+);
 
-test('a impressão do mapa passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-033'] }, async ({ browser }) => {
-  await scanPrintScreens(browser, 'light', 320);
-});
+test(
+  'a impressão do mapa passa no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-033'] },
+  async ({ browser }) => {
+    await scanPrintScreens(browser, 'light', 320);
+  },
+);
 
 /** The dice settings (RN-18): the master's "Dados" panel and the player's
  * "Como você rola os dados", as a choice and locked (the master decided). */
-async function scanDiceScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanDiceScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const masterPage = await master.newPage();
   const playerPage = await player.newPage();
   try {
     await masterPage.goto('/');
     await playerPage.goto('/');
-    const { campaignId } = await tableWithPensantus(masterPage, playerPage, `Acessibilidade dados ${Date.now()}`);
+    const { campaignId } = await tableWithPensantus(
+      masterPage,
+      playerPage,
+      `Acessibilidade dados ${Date.now()}`,
+    );
     const suffix = `(${colorScheme}, ${width}px)`;
     await open(masterPage, `/campaigns/${campaignId}`);
     await expectScreenPasses(masterPage, `Campanha com Dados, mestre ${suffix}`);
     await open(playerPage, `/campaigns/${campaignId}`);
     await expectScreenPasses(playerPage, `Campanha com Como você rola os dados, jogador ${suffix}`);
 
-    const set = await callRPC(masterPage, 'meurpg.campaigns.v1.CampaignService/SetCampaignDiceMode', { campaignId, mode: 'DICE_MODE_APP' });
+    const set = await callRPC(
+      masterPage,
+      'meurpg.campaigns.v1.CampaignService/SetCampaignDiceMode',
+      { campaignId, mode: 'DICE_MODE_APP' },
+    );
     expect(set.ok()).toBeTruthy();
     await open(masterPage, `/campaigns/${campaignId}`);
     await expectScreenPasses(masterPage, `Campanha com Dados, todos no app, mestre ${suffix}`);
@@ -649,17 +996,29 @@ async function scanDiceScreens(browser: Browser, colorScheme: 'light' | 'dark', 
   }
 }
 
-test('as configurações de dados passam no axe no tema claro, no desktop', { tag: ['@a11y', '@RN-18'] }, async ({ browser }) => {
-  await scanDiceScreens(browser, 'light', 1280);
-});
+test(
+  'as configurações de dados passam no axe no tema claro, no desktop',
+  { tag: ['@a11y', '@RN-18'] },
+  async ({ browser }) => {
+    await scanDiceScreens(browser, 'light', 1280);
+  },
+);
 
-test('as configurações de dados passam no axe no tema escuro, no celular', { tag: ['@a11y', '@RN-18'] }, async ({ browser }) => {
-  await scanDiceScreens(browser, 'dark', 390);
-});
+test(
+  'as configurações de dados passam no axe no tema escuro, no celular',
+  { tag: ['@a11y', '@RN-18'] },
+  async ({ browser }) => {
+    await scanDiceScreens(browser, 'dark', 390);
+  },
+);
 
 /** The campaign page with someone waiting to create a character (MR-024):
  * the "Membros" row with its tag, and the removal confirmation open. */
-async function scanPendingMembers(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanPendingMembers(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const context = await browser.newContext({
     storageState: authStatePath('Mestre Teste'),
     colorScheme,
@@ -684,11 +1043,15 @@ async function scanPendingMembers(browser: Browser, colorScheme: 'light' | 'dark
     const { token } = await invite.json();
     const playerPage = await playerContext.newPage();
     await playerPage.goto('/');
-    const accepted = await callRPC(playerPage, 'meurpg.campaigns.v1.CampaignService/AcceptInvite', { token });
+    const accepted = await callRPC(playerPage, 'meurpg.campaigns.v1.CampaignService/AcceptInvite', {
+      token,
+    });
     expect(accepted.ok()).toBeTruthy();
 
     await open(page, `/campaigns/${campaignId}`);
-    await expect(page.getByRole('list', { name: 'Esperando para criar o personagem' })).toBeVisible();
+    await expect(
+      page.getByRole('list', { name: 'Esperando para criar o personagem' }),
+    ).toBeVisible();
     await expectScreenPasses(page, `Campanha com alguém sem personagem ${where}`);
     await page.getByRole('button', { name: /^Remover .* da campanha$/ }).click();
     await expect(page.getByRole('alertdialog')).toBeVisible();
@@ -699,13 +1062,21 @@ async function scanPendingMembers(browser: Browser, colorScheme: 'light' | 'dark
   }
 }
 
-test('quem está sem personagem passa no axe no tema claro, no desktop', { tag: ['@a11y', '@MR-024'] }, async ({ browser }) => {
-  await scanPendingMembers(browser, 'light', 1280);
-});
+test(
+  'quem está sem personagem passa no axe no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-024'] },
+  async ({ browser }) => {
+    await scanPendingMembers(browser, 'light', 1280);
+  },
+);
 
-test('quem está sem personagem passa no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-024'] }, async ({ browser }) => {
-  await scanPendingMembers(browser, 'dark', 390);
-});
+test(
+  'quem está sem personagem passa no axe no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-024'] },
+  async ({ browser }) => {
+    await scanPendingMembers(browser, 'dark', 390);
+  },
+);
 
 /**
  * The character editor's rolls and the spell "?" (MR-004, E6-20 to E6-23):
@@ -713,14 +1084,25 @@ test('quem está sem personagem passa no axe no tema escuro, no celular', { tag:
  * result chosen), the rolled hit points, the "Magias" step with its search
  * fields, and the spell dialog (a bottom sheet on the phone).
  */
-async function scanEditorRolls(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanEditorRolls(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   test.setTimeout(90_000);
-  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const context = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
   const page = await context.newPage();
   const where = `(${colorScheme}, ${width}px)`;
   try {
     await page.goto('/');
-    const created = await callRPC(page, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', { name: `Acessibilidade rolagens ${Date.now()}`, xpMode: 'XP_MODE_ENEMIES' });
+    const created = await callRPC(page, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', {
+      name: `Acessibilidade rolagens ${Date.now()}`,
+      xpMode: 'XP_MODE_ENEMIES',
+    });
     expect(created.ok()).toBeTruthy();
     const campaignId = (await created.json()).campaign.id as string;
     await open(page, `/campaigns/${campaignId}/characters/new`);
@@ -734,9 +1116,15 @@ async function scanEditorRolls(browser: Browser, colorScheme: 'light' | 'dark', 
     await page.getByRole('tab', { name: 'Habilidades' }).click();
     await page.getByRole('radio', { name: /Rolar 4d6/ }).check();
     if (width < 768) {
-      await page.getByRole('button', { name: /^\d+: dados .* Livre\.$/ }).first().click();
+      await page
+        .getByRole('button', { name: /^\d+: dados .* Livre\.$/ })
+        .first()
+        .click();
       await page.getByRole('button', { name: /^Força: colocar o/ }).click();
-      await page.getByRole('button', { name: /^\d+: dados .* Livre\.$/ }).first().click();
+      await page
+        .getByRole('button', { name: /^\d+: dados .* Livre\.$/ })
+        .first()
+        .click();
     } else {
       await page.getByLabel('Força', { exact: true }).selectOption({ index: 1 });
     }
@@ -748,7 +1136,10 @@ async function scanEditorRolls(browser: Browser, colorScheme: 'light' | 'dark', 
 
     await page.getByRole('tab', { name: 'Magias' }).click();
     await expectScreenPasses(page, `Magias ${where}`);
-    await page.getByRole('group', { name: 'Magias conhecidas', exact: true }).getByRole('button', { name: 'Descrição de Mísseis Mágicos' }).click();
+    await page
+      .getByRole('group', { name: 'Magias conhecidas', exact: true })
+      .getByRole('button', { name: 'Descrição de Mísseis Mágicos' })
+      .click();
     await expect(page.getByText('Texto do SRD 5.1 (em inglês)')).toBeVisible();
     await expectScreenPasses(page, `Descrição da magia ${where}`);
   } finally {
@@ -756,23 +1147,43 @@ async function scanEditorRolls(browser: Browser, colorScheme: 'light' | 'dark', 
   }
 }
 
-test('as rolagens e a descrição da magia passam no axe no tema claro, no desktop', { tag: ['@a11y', '@MR-004'] }, async ({ browser }) => {
-  await scanEditorRolls(browser, 'light', 1280);
-});
+test(
+  'as rolagens e a descrição da magia passam no axe no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-004'] },
+  async ({ browser }) => {
+    await scanEditorRolls(browser, 'light', 1280);
+  },
+);
 
-test('as rolagens e a descrição da magia passam no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-004'] }, async ({ browser }) => {
-  await scanEditorRolls(browser, 'dark', 390);
-});
+test(
+  'as rolagens e a descrição da magia passam no axe no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-004'] },
+  async ({ browser }) => {
+    await scanEditorRolls(browser, 'dark', 390);
+  },
+);
 
 /** The combat (MR-013, E6-01 to E6-16): the grid page, the start dialog, the
  * initiative of the master and of the player, the running combat for each, the
  * "Mover" page in each of its states, the end confirmation and the summary.
  * The master and the player each have a page at `width`; the NPCs' initiative is
  * set through the API so the screens are the same on every run. */
-async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanCombatScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -807,7 +1218,12 @@ async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark'
     let enc = await getEncounterRPC(m, campaignId);
     const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
     const face = async (label: string, d20Face: number) => {
-      enc = await combatRPC(m, 'SubmitInitiative', { campaignId, encounterId: enc.id, combatantId: id(label), d20Face });
+      enc = await combatRPC(m, 'SubmitInitiative', {
+        campaignId,
+        encounterId: enc.id,
+        combatantId: id(label),
+        d20Face,
+      });
     };
     await face('Capitão Goblin', 20);
     await face('Goblin 1', 7);
@@ -821,8 +1237,19 @@ async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await m.getByRole('button', { name: 'Salvar', exact: true }).click();
     await expect(p.getByText('Esperando o mestre começar o combate')).toBeVisible();
     await expectScreenPasses(p, `Iniciativa do jogador, depois de rolar ${where}`);
-    for (const [label, col, row] of [['Goblin 1', 9, 9], ['Goblin 2', 14, 10], ['Goblin 3', 15, 4], ['Capitão Goblin', 11, 5]] as const) {
-      enc = await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: enc.id, combatantId: id(label), col, row });
+    for (const [label, col, row] of [
+      ['Goblin 1', 9, 9],
+      ['Goblin 2', 14, 10],
+      ['Goblin 3', 15, 4],
+      ['Capitão Goblin', 11, 5],
+    ] as const) {
+      enc = await combatRPC(m, 'MoveCombatant', {
+        campaignId,
+        encounterId: enc.id,
+        combatantId: id(label),
+        col,
+        row,
+      });
     }
 
     // The combat runs: the master's screen, the player out of turn (the captain is hidden: "Vez do mestre").
@@ -833,7 +1260,12 @@ async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expect(p.getByRole('heading', { name: 'Vez do mestre' })).toBeVisible();
     await expectScreenPasses(p, `Combate do jogador, vez do mestre ${where}`);
     enc = await getEncounterRPC(m, campaignId);
-    await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: enc.id, combatantId: id('Capitão Goblin'), hidden: false });
+    await combatRPC(m, 'SetCombatantHidden', {
+      campaignId,
+      encounterId: enc.id,
+      combatantId: id('Capitão Goblin'),
+      hidden: false,
+    });
     await expect(p.getByRole('heading', { name: 'Vez do Capitão Goblin' })).toBeVisible();
     await expectScreenPasses(p, `Combate do jogador, fora da vez ${where}`);
 
@@ -847,7 +1279,10 @@ async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark'
     const map = p.getByRole('group', { name: /Mapa de batalha/ });
     const box = await boxOf(map);
     const own = (await getEncounterRPC(p, campaignId)).combatants.find((c) => c.mine)!;
-    const at = (dc: number, dr: number) => ({ x: ((own.col ?? 0) + dc + 0.5) * (box.width / 20), y: ((own.row ?? 0) + dr + 0.5) * (box.height / 14) });
+    const at = (dc: number, dr: number) => ({
+      x: ((own.col ?? 0) + dc + 0.5) * (box.width / 20),
+      y: ((own.row ?? 0) + dr + 0.5) * (box.height / 14),
+    });
     await map.click({ position: at(2, 1) });
     await expect(p.getByText('Mover 3,4 m')).toBeVisible();
     await expectScreenPasses(p, `Mover, quadrado escolhido ${where}`);
@@ -874,25 +1309,45 @@ async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark'
   }
 }
 
-test('o combate passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-013'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanCombatScreens(browser, 'light', 1280);
-});
+test(
+  'o combate passa no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-013'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanCombatScreens(browser, 'light', 1280);
+  },
+);
 
-test('o combate passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-013'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanCombatScreens(browser, 'dark', 390);
-});
+test(
+  'o combate passa no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-013'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanCombatScreens(browser, 'dark', 390);
+  },
+);
 
 /** Acting in a combat (Etapa 6, slice 6.5b; E6-06, E6-07, E6-08, E6-15, E6-11):
  * the player's "Sua vez" groups, the end-turn question, every step of the
  * attack sheet (typed roll empty, wrong, valid; the result), the log sheet on a
  * phone, and the master's card with the armor class, "Aplicar" and its
  * questions, "Desfazer última ação" and "Dano/Cura". */
-async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanActionScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -902,7 +1357,12 @@ async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await p.goto('/');
     const table = await tableForCombat(m, p, `Acessibilidade ações ${Date.now()}`, true, true);
     campaignId = table.campaignId;
-    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await beginAttackCombatRPC(m, table, {
+      Pensantus: 20,
+      'Capitão Goblin': 15,
+      'Goblin 1': 5,
+      'Goblin 2': 4,
+    });
 
     // The player's turn: the groups, the question when the action is free, and the attack.
     await openSessionPage(p, campaignId);
@@ -922,10 +1382,14 @@ async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await p.getByRole('button', { name: 'Digitar o resultado' }).click();
     await expectScreenPasses(p, `Rolagem física, vazia ${where}`);
     await p.getByLabel(/Role 1d20/).fill('27');
-    await expect(p.getByRole('alert').filter({ hasText: 'Digite um número de 1 a 20' })).toBeVisible();
+    await expect(
+      p.getByRole('alert').filter({ hasText: 'Digite um número de 1 a 20' }),
+    ).toBeVisible();
     await expectScreenPasses(p, `Rolagem física, número fora de 1 a 20 ${where}`);
     await p.getByLabel(/Role 1d20/).fill('16');
-    await expect(p.getByText('22 · dado físico').or(p.getByText('16 + 6 = 22 · dado físico'))).toBeVisible();
+    await expect(
+      p.getByText('22 · dado físico').or(p.getByText('16 + 6 = 22 · dado físico')),
+    ).toBeVisible();
     await expectScreenPasses(p, `Rolagem física, número válido ${where}`);
     await p.getByRole('button', { name: 'Confirmar 16' }).click();
     await expect(p.locator('.pill', { hasText: 'Acertou' })).toBeVisible();
@@ -947,17 +1411,24 @@ async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark'
     // The master: the captain's card, the roll with the armor class, the damage and the questions.
     await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
     await openSessionPage(m, campaignId);
-    await expect(m.getByRole('heading', { name: /Ações do Capitão Goblin|Vez do Capitão Goblin/ })).toBeVisible();
+    await expect(
+      m.getByRole('heading', { name: /Ações do Capitão Goblin|Vez do Capitão Goblin/ }),
+    ).toBeVisible();
     await expectScreenPasses(m, `Cartão do mestre, antes de rolar ${where}`);
     await m.getByRole('button', { name: 'Digitar o resultado' }).click();
     await m.getByLabel(/Role 1d20/).fill('18');
     await m.getByRole('button', { name: 'Confirmar 18' }).click();
-    await expect(m.getByText(/contra CA \d+ da Pensantus|contra CA \d+ do Pensantus/)).toBeVisible();
+    await expect(
+      m.getByText(/contra CA \d+ da Pensantus|contra CA \d+ do Pensantus/),
+    ).toBeVisible();
     // Pensantus can cast Escudo: a hit that is not critical waits for his reaction (E6-28b).
-    await expect(m.getByText('Esperando a reação do Pensantus.')).toBeVisible();
-    await expect(m.getByRole('button', { name: 'Rolar dano' })).toHaveAttribute('aria-disabled', 'true');
+    await expect(m.getByRole('region', { name: 'Reações a um ataque' })).toBeVisible();
+    await expect(m.getByRole('button', { name: 'Rolar dano' })).toBeDisabled();
     await expectScreenPasses(m, `Cartão do mestre, esperando a reação (Escudo) ${where}`);
-    await m.getByRole('button', { name: 'Seguir sem Escudo' }).click();
+    await m
+      .getByRole('region', { name: 'Reações a um ataque' })
+      .getByRole('button', { name: 'Deixar passar pelo jogador' })
+      .click();
     await m.getByRole('button', { name: 'Rolar dano' }).click();
     await expect(m.getByRole('button', { name: /Aplicar \d+ de dano/ })).toBeVisible();
     await expectScreenPasses(m, `Cartão do mestre, dano para aplicar ${where}`);
@@ -988,15 +1459,80 @@ async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark'
   }
 }
 
-test('agir no combate passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanActionScreens(browser, 'light', 1280);
-});
+test(
+  'agir no combate passa no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-014'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanActionScreens(browser, 'light', 1280);
+  },
+);
 
-test('agir no combate passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanActionScreens(browser, 'dark', 390);
-});
+test(
+  'agir no combate passa no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-014'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanActionScreens(browser, 'dark', 390);
+  },
+);
+
+async function checkTurnAboveTheFold(browser: Browser): Promise<void> {
+  const viewport = { width: 390, height: 844 };
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    viewport,
+  });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Ações acima da dobra ${Date.now()}`, true, true);
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, {
+      Pensantus: 20,
+      'Capitão Goblin': 15,
+      'Goblin 1': 5,
+      'Goblin 2': 4,
+    });
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+
+    // The four boxes are one compact row; the attack and the spell are on the first screen.
+    const tiles = p.getByRole('list', { name: 'O que você tem neste turno' }).getByRole('listitem');
+    await expect(tiles).toHaveCount(4);
+    const row = await Promise.all((await tiles.all()).map((t) => boxOf(t)));
+    expect(new Set(row.map((b) => Math.round(b.y))).size).toBe(1);
+    expect(Math.max(...row.map((b) => b.height))).toBeLessThanOrEqual(80);
+    await expect(p.getByRole('button', { name: 'Atacar com Raio de Fogo' })).toBeInViewport();
+
+    // The action block comes before the order of initiative.
+    const actions = await boxOf(p.getByRole('heading', { name: 'Ação', exact: true }));
+    const order = await boxOf(p.getByRole('list', { name: 'Ordem de iniciativa' }));
+    expect(actions.y).toBeLessThan(order.y);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test(
+  'no celular de 390 x 844 as ações da vez ficam acima da dobra, logo sob o título, e a ordem vem depois',
+  { tag: ['@a11y', '@MR-014'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await checkTurnAboveTheFold(browser);
+  },
+);
 
 /** Moving by the circle, jumping, cover and the opportunity attacks (Etapa 9,
  * slice 9.15; E9-05, E9-06, E9-07, E9-13): the "Mover" page with nothing chosen,
@@ -1004,10 +1540,22 @@ test('agir no combate passa no axe e nas conferências de layout no tema escuro,
  * height), the target list with its cover, the master's order with the mark open,
  * the master's prompt, the waiting mover, and the player's `alertdialog`. The
  * squares are chosen with the arrows under the map, which every width has. */
-async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanMoveScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -1020,7 +1568,9 @@ async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', 
   try {
     await m.goto('/');
     await p.goto('/');
-    const table = await tableForCombat(m, p, `Acessibilidade movimento ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    const table = await tableForCombat(m, p, `Acessibilidade movimento ${Date.now()}`, true, true, {
+      sheet: pensantusCasting,
+    });
     campaignId = table.campaignId;
     await paintRPC(m, table, 'MAP_LAYER_DIFFICULT_TERRAIN', 1, [[4, 7]]);
     await paintRPC(m, table, 'MAP_LAYER_WALL', 1, [[5, 5]]);
@@ -1041,7 +1591,9 @@ async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await expectScreenPasses(p, `Mover, nada escolhido ${where}`);
     await nudge('Um quadrado para a esquerda');
     await expect(p.getByText('Mover 3,0 m', { exact: true })).toBeVisible();
-    await expect(p.getByText('Sair do alcance do Goblin 1 pode provocar um ataque de oportunidade.')).toBeVisible();
+    await expect(
+      p.getByText('Sair do alcance do Goblin 1 pode provocar um ataque de oportunidade.'),
+    ).toBeVisible();
     await expectScreenPasses(p, `Mover, custo e aviso de ataque de oportunidade ${where}`);
     await nudge('Um quadrado para a direita');
     await nudge('Um quadrado para cima', 2);
@@ -1060,7 +1612,7 @@ async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     // The move that provokes: the turn waits for the master, who has the prompt.
     await nudge('Um quadrado para a esquerda');
     await p.getByRole('button', { name: 'Mover para cá' }).click();
-    await expect(p.getByRole('status').filter({ hasText: 'Esperando a reação do mestre.' })).toBeVisible();
+    await expect(p.getByRole('status').filter({ hasText: 'Esperando o mestre.' })).toBeVisible();
     await expectScreenPasses(p, `Sua vez, esperando a reação do mestre ${where}`);
     const card = m.getByRole('group', { name: 'Ataque de oportunidade de Goblin 1' });
     await expect(card.getByRole('button', { name: 'Não atacar' })).toBeFocused();
@@ -1070,17 +1622,25 @@ async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', 
 
     // Cover: the target list, and the master's order with the mark in place.
     await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
-    await expect(p.locator('label', { hasText: 'Capitão Goblin' })).toContainText('Meia cobertura (do mapa)');
+    await expect(p.locator('label', { hasText: 'Capitão Goblin' })).toContainText(
+      'Meia cobertura (do mapa)',
+    );
     await expectScreenPasses(p, `Atacar, alvos com cobertura ${where}`);
     await p.getByRole('button', { name: 'Fechar' }).click();
     const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
-    await expect(order.getByText('Meia cobertura (do mapa) contra o Pensantus').first()).toBeVisible();
+    await expect(
+      order.getByText('Meia cobertura (do mapa) contra o Pensantus').first(),
+    ).toBeVisible();
     await expectScreenPasses(m, `Ordem do mestre, com a cobertura contra quem tem a vez ${where}`);
     await order.getByRole('button', { name: 'Marcar cobertura de Capitão Goblin' }).click();
-    await expect(order.getByRole('radiogroup', { name: 'Cobertura marcada de Capitão Goblin' })).toBeVisible();
+    await expect(
+      order.getByRole('radiogroup', { name: 'Cobertura marcada de Capitão Goblin' }),
+    ).toBeVisible();
     await expectScreenPasses(m, `Marcar cobertura, no lugar ${where}`);
     await pickRadio(order, 'Três quartos');
-    await expect(order.getByText('Três quartos (marcada pelo mestre) contra o Pensantus')).toBeVisible();
+    await expect(
+      order.getByText('Três quartos (marcada pelo mestre) contra o Pensantus'),
+    ).toBeVisible();
     await order.getByRole('button', { name: 'Fechar' }).click();
     await order.getByRole('button', { name: 'Mais ações para Goblin 2' }).click();
     await m.getByRole('menuitem', { name: 'Marcar como aliado' }).click();
@@ -1095,7 +1655,13 @@ async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     const now = await getEncounterRPC(m, campaignId);
     const goblin = now.combatants.find((c) => c.label === 'Goblin 1')!.id;
     for (const col of [5, 9]) {
-      await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: now.id, combatantId: goblin, col, row: 7 });
+      await combatRPC(m, 'MoveCombatant', {
+        campaignId,
+        encounterId: now.id,
+        combatantId: goblin,
+        col,
+        row: 7,
+      });
     }
     const prompt = p.getByRole('alertdialog', { name: 'Ataque de oportunidade' });
     await expect(prompt.getByRole('button', { name: 'Não atacar' })).toBeFocused();
@@ -1112,20 +1678,32 @@ async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', 
   }
 }
 
-test('mover, saltar, a cobertura e o ataque de oportunidade passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-034'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanMoveScreens(browser, 'light', 1280);
-});
+test(
+  'mover, saltar, a cobertura e o ataque de oportunidade passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-034'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanMoveScreens(browser, 'light', 1280);
+  },
+);
 
-test('mover, saltar, a cobertura e o ataque de oportunidade passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-034'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanMoveScreens(browser, 'dark', 390);
-});
+test(
+  'mover, saltar, a cobertura e o ataque de oportunidade passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-034'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanMoveScreens(browser, 'dark', 390);
+  },
+);
 
-test('mover e a pergunta do ataque de oportunidade passam no axe no tema claro, no celular de 320', { tag: ['@a11y', '@MR-034'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanMoveScreens(browser, 'light', 320);
-});
+test(
+  'mover e a pergunta do ataque de oportunidade passam no axe no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-034'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanMoveScreens(browser, 'light', 320);
+  },
+);
 
 /** Casting, the fallen, Escudo, conditions and the master's other amount (Etapa 6,
  * slice 6.5c; E6-09, E6-13, E6-28 to E6-31): every step of the cast sheet, the
@@ -1133,10 +1711,22 @@ test('mover e a pergunta do ataque de oportunidade passam no axe no tema claro, 
  * player's concentration line, the opportunity-attack sheet, "Aplicar outro
  * valor" with the concentration reminder, the death saves (stable, then three
  * failures) and the question that confirms a death. */
-async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanCastingScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -1144,19 +1734,41 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
   try {
     await m.goto('/');
     await p.goto('/');
-    const table = await tableForCombat(m, p, `Acessibilidade conjurar ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    const table = await tableForCombat(m, p, `Acessibilidade conjurar ${Date.now()}`, true, true, {
+      sheet: pensantusCasting,
+    });
     campaignId = table.campaignId;
-    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
-    await adjustVitalsRPC(m, campaignId, table.characterId, { spellSlotsUsed: [{ level: 1, used: 3 }, { level: 2, used: 2 }] });
+    await beginAttackCombatRPC(m, table, {
+      Pensantus: 20,
+      'Capitão Goblin': 15,
+      'Goblin 1': 5,
+      'Goblin 2': 4,
+    });
+    await adjustVitalsRPC(m, campaignId, table.characterId, {
+      spellSlotsUsed: [
+        { level: 1, used: 3 },
+        { level: 2, used: 2 },
+      ],
+    });
     // Pensantus stands next to Goblin 1, so the dagger reaches it for an opportunity attack.
     const begun = await getEncounterRPC(m, campaignId);
-    await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: begun.id, combatantId: begun.combatants.find((c) => c.label === 'Pensantus')!.id, col: 8, row: 9 });
+    await combatRPC(m, 'MoveCombatant', {
+      campaignId,
+      encounterId: begun.id,
+      combatantId: begun.combatants.find((c) => c.label === 'Pensantus')!.id,
+      col: 8,
+      row: 9,
+    });
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
 
     // The cast sheet: the slot and the darts, then the result and the damage to roll.
     await p.getByRole('button', { name: 'Conjurar Mísseis Mágicos' }).click();
-    await expect(p.getByText('É o seu último espaço de 1º nível: depois dele, o Escudo Arcano fica sem espaço.')).toBeVisible();
+    await expect(
+      p.getByText(
+        'É o seu último espaço de 1º nível: depois dele, o Escudo Arcano fica sem espaço.',
+      ),
+    ).toBeVisible();
     await expectScreenPasses(p, `Conjurar, o espaço e os dardos ${where}`);
     const more = (who: string) => p.getByRole('button', { name: `Pôr um dardo em ${who}` });
     await more('Capitão Goblin').click();
@@ -1169,7 +1781,9 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `Conjurar, resultado com dano a rolar ${where}`);
     await p.getByRole('button', { name: 'Digitar o resultado' }).click();
     await p.getByLabel(/Role 2d4/).fill('9');
-    await expect(p.getByRole('alert').filter({ hasText: 'Digite um número de 2 a 8' })).toBeVisible();
+    await expect(
+      p.getByRole('alert').filter({ hasText: 'Digite um número de 2 a 8' }),
+    ).toBeVisible();
     await expect(p.getByRole('button', { name: /Confirmar/ })).toBeInViewport({ ratio: 1 });
     await expect(p.getByLabel(/Role 2d4/)).toBeInViewport({ ratio: 1 });
     await expectScreenPasses(p, `Conjurar, rolagem do dano inválida ${where}`);
@@ -1194,7 +1808,12 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(m, `Condições, as etiquetas na ordem do mestre ${where}`);
 
     // Escudo Arcano: the prompt, its answer, and the master's card meanwhile (the slots are given back: the cast took the last one).
-    await adjustVitalsRPC(m, campaignId, table.characterId, { spellSlotsUsed: [{ level: 1, used: 2 }, { level: 2, used: 0 }] });
+    await adjustVitalsRPC(m, campaignId, table.characterId, {
+      spellSlotsUsed: [
+        { level: 1, used: 2 },
+        { level: 2, used: 0 },
+      ],
+    });
     await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
     const card = m.getByRole('region', { name: /Ações do Capitão Goblin|Vez do Capitão Goblin/ });
     await card.getByRole('button', { name: 'Digitar o resultado' }).click();
@@ -1206,10 +1825,14 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `Escudo, o aviso ${where}`);
     await expectScreenPasses(m, `Escudo, o cartão do mestre esperando ${where}`);
     await prompt.getByRole('button', { name: 'Conjurar Escudo Arcano' }).click();
-    await expect(prompt.getByText('O Escudo Arcano segurou o ataque do Capitão Goblin.')).toBeVisible();
+    await expect(
+      prompt.getByText('O Escudo Arcano segurou o ataque do Capitão Goblin.'),
+    ).toBeVisible();
     await expectScreenPasses(p, `Escudo, o resultado ${where}`);
     // On the master's row the shield's label stays on one line, whatever the width of the screen.
-    const shieldChip = m.getByRole('region', { name: 'Ordem de iniciativa' }).locator('.row__effect', { hasText: 'Escudo Arcano' });
+    const shieldChip = m
+      .getByRole('region', { name: 'Ordem de iniciativa' })
+      .locator('.row__effect', { hasText: 'Escudo Arcano' });
     await expect(shieldChip).toBeVisible();
     expect((await layoutSize(shieldChip)).height).toBeLessThan(30);
     await prompt.getByRole('button', { name: 'Fechar' }).click();
@@ -1262,8 +1885,17 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await card2.getByLabel('Dano a aplicar').fill('1');
     await card2.getByRole('button', { name: 'Aplicar 1 de dano' }).click();
     await expect(card2.getByText(/1 de dano aplicado/).first()).toBeVisible();
-    await expect(card2.getByText('Pensantus está concentrado em Teia. Teste de Constituição, CD 10.')).toBeVisible();
-    await expectScreenPasses(m, `Aplicar outro valor, o lembrete da concentração ${where}`);
+    // The damage on a concentrating character asks its owner for the save (PM-04): the prompt, the master's card, the result.
+    const save = p.getByRole('alertdialog', {
+      name: 'Concentração em risco: teste de resistência de Constituição contra CD 10',
+    });
+    await expect(save).toBeVisible();
+    await expectScreenPasses(p, `Concentração em risco, o aviso ${where}`);
+    await expectScreenPasses(m, `Concentração em risco, o cartão do mestre ${where}`);
+    await save.getByRole('button', { name: 'Rolar no app' }).click();
+    await expect(save.getByRole('button', { name: 'Fechar' })).toBeVisible();
+    await expectScreenPasses(p, `Concentração em risco, o resultado ${where}`);
+    await save.getByRole('button', { name: 'Fechar' }).click();
 
     // The fallen, first stable: three successes.
     await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 0 });
@@ -1303,7 +1935,9 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
       await endTurnOf(p, m, campaignId, 'Pensantus');
     }
     await expect(m.getByRole('alertdialog', { name: /Confirmar a morte/ })).toBeVisible();
-    await expect(m.getByRole('alertdialog', { name: /Confirmar a morte/ })).toBeInViewport({ ratio: 1 });
+    await expect(m.getByRole('alertdialog', { name: /Confirmar a morte/ })).toBeInViewport({
+      ratio: 1,
+    });
     await expectScreenPasses(m, `Confirmar a morte ${where}`);
     await expectScreenPasses(p, `Caído, três falhas, para o jogador ${where}`);
   } finally {
@@ -1315,22 +1949,42 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
   }
 }
 
-test('conjurar, cair, o Escudo e as condições passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
-  test.setTimeout(400_000);
-  await scanCastingScreens(browser, 'light', 1280);
-});
+test(
+  'conjurar, cair, o Escudo e as condições passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-014'] },
+  async ({ browser }) => {
+    test.setTimeout(400_000);
+    await scanCastingScreens(browser, 'light', 1280);
+  },
+);
 
-test('conjurar, cair, o Escudo e as condições passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
-  test.setTimeout(400_000);
-  await scanCastingScreens(browser, 'dark', 390);
-});
+test(
+  'conjurar, cair, o Escudo e as condições passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-014'] },
+  async ({ browser }) => {
+    test.setTimeout(400_000);
+    await scanCastingScreens(browser, 'dark', 390);
+  },
+);
 
-/** The fighter's turn (Etapa 6, slice 6.5c): Extra Attack's "1 ataque restante", Retomar o
- * Fôlego's sheet and Surto de Ação's note. */
-async function scanFighterScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+/** The reaction window of an NPC (PM-04): the player's wait, the master's card of the Mago for Escudo and for
+ * Contramágica, and the concentration save's prompt. */
+async function scanReactionScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -1338,12 +1992,151 @@ async function scanFighterScreens(browser: Browser, colorScheme: 'light' | 'dark
   try {
     await m.goto('/');
     await p.goto('/');
-    const table = await tableForCombat(m, p, `Acessibilidade guerreiro ${Date.now()}`, true, true, { build: toren, sheet: torenSheet });
+    const table = await tableForCombat(m, p, `Acessibilidade reações ${Date.now()}`, true, true, {
+      sheet: pensantusCasting,
+    });
     campaignId = table.campaignId;
-    await beginAttackCombatRPC(m, table, { Toren: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await beginAttackCombatRPC(m, table, {
+      Pensantus: 20,
+      'Capitão Goblin': 15,
+      'Goblin 1': 5,
+      'Goblin 2': 4,
+    });
+    let enc = await getEncounterRPC(m, campaignId);
+    const added = await combatRPC(m, 'AddMonsters', {
+      campaignId,
+      encounterId: enc.id,
+      creatureKey: 'monster:mage',
+      count: 1,
+      hidden: false,
+    });
+    const mage = added.combatants.find((c) => c.label.startsWith('Mago'))!;
+    await combatRPC(m, 'MoveCombatant', {
+      campaignId,
+      encounterId: enc.id,
+      combatantId: mage.id,
+      col: 8,
+      row: 8,
+      forced: true,
+    });
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+
+    // Escudo of the Mago: the player's wait, then the master's card.
+    await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Atacar com Raio de Fogo' });
+    await sheet.locator('label', { hasText: mage.label }).click();
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await p.getByLabel(/Role 1d20 para Raio de Fogo/).fill('10');
+    await p.getByRole('button', { name: 'Confirmar 10' }).click();
+    await expect(p.getByText('Esperando o mestre.').first()).toBeVisible();
+    await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
+    await expect(p.getByRole('status').filter({ hasText: 'Esperando o mestre.' })).toBeVisible();
+    await expectScreenPasses(p, `Esperando o mestre, a reação de um NPC ${where}`);
+    const card = m.getByRole('region', { name: mage.label });
+    await expect(
+      card.getByRole('button', { name: `Usar Escudo Arcano pelo ${mage.label}` }),
+    ).toBeVisible();
+    await expectScreenPasses(m, `A reação do Mago, Escudo Arcano ${where}`);
+    await card.getByRole('button', { name: 'Deixar passar' }).click();
+    await expect(p.getByRole('status').filter({ hasText: 'Esperando o mestre.' })).toHaveCount(0);
+
+    // Contramágica of the Mago against Pensantus's cast, on his next turn.
+    enc = await getEncounterRPC(m, campaignId);
+    await combatRPC(m, 'EndTurn', {
+      campaignId,
+      encounterId: enc.id,
+      expectedCombatantId: enc.combatants.find((c) => c.label === 'Pensantus')!.id,
+      discardPendingDamage: true,
+    });
+    enc = await passTurnsTo(m, campaignId, 'Pensantus');
+    const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
+    const cast = await callRPC(p, 'meurpg.play.v1.CombatService/CastSpell', {
+      campaignId,
+      encounterId: enc.id,
+      casterId: id('Pensantus'),
+      spellKey: 'spell:magic-missile',
+      slot: { level: 1 },
+      targets: [{ combatantId: id('Goblin 1'), darts: 3 }],
+      idempotencyKey: crypto.randomUUID(),
+    });
+    expect(cast.ok(), await cast.text()).toBeTruthy();
+    await expect(card.getByRole('button', { name: /Usar Contramágica/ })).toBeVisible();
+    await expectScreenPasses(p, `Esperando o mestre, uma conjuração ${where}`);
+    await expectScreenPasses(m, `A reação do Mago, Contramágica ${where}`);
+    await card.getByRole('button', { name: 'Deixar passar' }).click();
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test(
+  'as reações dos NPCs passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@PM-04'] },
+  async ({ browser }) => {
+    test.setTimeout(400_000);
+    await scanReactionScreens(browser, 'light', 1280);
+  },
+);
+
+test(
+  'as reações dos NPCs passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@PM-04'] },
+  async ({ browser }) => {
+    test.setTimeout(400_000);
+    await scanReactionScreens(browser, 'dark', 390);
+  },
+);
+
+/** The fighter's turn (Etapa 6, slice 6.5c): Extra Attack's "1 ataque restante", Retomar o
+ * Fôlego's sheet and Surto de Ação's note. */
+async function scanFighterScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade guerreiro ${Date.now()}`, true, true, {
+      build: toren,
+      sheet: torenSheet,
+    });
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, {
+      Toren: 20,
+      'Capitão Goblin': 15,
+      'Goblin 1': 5,
+      'Goblin 2': 4,
+    });
     await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 20 });
     const start = await getEncounterRPC(m, campaignId);
-    await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: start.id, combatantId: start.combatants.find((c) => c.label === 'Toren')!.id, col: 8, row: 9 });
+    await combatRPC(m, 'MoveCombatant', {
+      campaignId,
+      encounterId: start.id,
+      combatantId: start.combatants.find((c) => c.label === 'Toren')!.id,
+      col: 8,
+      row: 9,
+    });
     await openSessionPage(p, campaignId);
     const groups = p.getByRole('region', { name: 'O que você pode fazer' });
     await expectScreenPasses(p, `Guerreiro, a vez com as habilidades ${where}`);
@@ -1378,24 +2171,44 @@ async function scanFighterScreens(browser: Browser, colorScheme: 'light' | 'dark
   }
 }
 
-test('o guerreiro (Ataque Extra, Retomar o Fôlego, Surto de Ação) passa no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanFighterScreens(browser, 'dark', 1280);
-});
+test(
+  'o guerreiro (Ataque Extra, Retomar o Fôlego, Surto de Ação) passa no axe e nas conferências de layout no tema escuro, no desktop',
+  { tag: ['@a11y', '@MR-014'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanFighterScreens(browser, 'dark', 1280);
+  },
+);
 
-test('o guerreiro (Ataque Extra, Retomar o Fôlego, Surto de Ação) passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanFighterScreens(browser, 'light', 390);
-});
+test(
+  'o guerreiro (Ataque Extra, Retomar o Fôlego, Surto de Ação) passa no axe e nas conferências de layout no tema claro, no celular',
+  { tag: ['@a11y', '@MR-014'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanFighterScreens(browser, 'light', 390);
+  },
+);
 
 /** The XP screens (Etapa 7, MR-016, RN-12): the end of a combat with "Dar XP" in each of its states, the
  * "Dar XP" dialog or sheet with its errors, the campaign's "Experiência" with its history and the question
  * of "Desfazer", the milestone's dialog and panel, the sheet with the XP block and the tag, and the NPC's
  * ND and XP (the list open, "Usar 50 XP"). Built in one function so the sweep is one place. */
-async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanXpScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -1403,14 +2216,20 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
   /** A page that keeps its stream open never goes idle: wait for its h1 instead. */
   const openLive = async (page: Page, route: string, heading?: string) => {
     await page.goto(route);
-    await expect(heading ? page.getByRole('heading', { name: heading }) : page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 30_000 });
+    await expect(
+      heading
+        ? page.getByRole('heading', { name: heading })
+        : page.getByRole('heading', { level: 1 }),
+    ).toBeVisible({ timeout: 30_000 });
   };
   try {
     await m.goto('/');
     await p.goto('/');
 
     // The end of a combat, before the XP is given.
-    const combat = await tableForXpCombat(m, p, `Acessibilidade XP ${Date.now()}`, { experiencePoints: 2600 });
+    const combat = await tableForXpCombat(m, p, `Acessibilidade XP ${Date.now()}`, {
+      experiencePoints: 2600,
+    });
     const campaignId = combat.table.campaignId;
     campaigns.push(campaignId);
     await winCombatRPC(m, combat);
@@ -1443,10 +2262,17 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
     await expectScreenPasses(m, `Fim do combate, XP dado ${where}`);
 
     // The campaign page: the panel with its history, the question, the player's view and the sheet.
-    await awardXpRPC(m, campaignId, { mode: 'MANUAL', reason: 'Pela ajuda ao ferreiro', characterIds: [combat.table.characterId], amount: 40 });
+    await awardXpRPC(m, campaignId, {
+      mode: 'MANUAL',
+      reason: 'Pela ajuda ao ferreiro',
+      characterIds: [combat.table.characterId],
+      amount: 40,
+    });
     // The campaign page of a master with a session open keeps the session's stream (MR-040): not `open`.
     await openLive(m, `/campaigns/${campaignId}`);
-    await expect(m.getByRole('region', { name: 'Experiência', exact: true })).toContainText('Pela ajuda ao ferreiro');
+    await expect(m.getByRole('region', { name: 'Experiência', exact: true })).toContainText(
+      'Pela ajuda ao ferreiro',
+    );
     await expectScreenPasses(m, `Campanha com Experiência, mestre ${where}`);
     await m.getByRole('button', { name: /^Desfazer/ }).click();
     await expect(m.getByRole('alertdialog')).toBeVisible();
@@ -1459,7 +2285,9 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
     await expectScreenPasses(m, `Dar XP, a qualquer hora ${where}`);
     await m.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click();
     await open(p, `/campaigns/${campaignId}`);
-    await expect(p.getByRole('region', { name: 'Experiência', exact: true })).toContainText('Todos da campanha veem este histórico.');
+    await expect(p.getByRole('region', { name: 'Experiência', exact: true })).toContainText(
+      'Todos da campanha veem este histórico.',
+    );
     await expectScreenPasses(p, `Campanha com Experiência, jogador ${where}`);
     await openLive(p, `/campaigns/${campaignId}/characters/${combat.table.characterId}`);
     // The level-up block says it (MR-040), not the XP block's tag.
@@ -1467,7 +2295,12 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
     await expectScreenPasses(p, `Ficha com XP e Pode subir de nível ${where}`);
 
     // Milestones: the dialog, the panel after it and the sheet with only the tag.
-    const marks = await tableForXp(m, p, `Acessibilidade marcos ${Date.now()}`, 'XP_MODE_MILESTONES');
+    const marks = await tableForXp(
+      m,
+      p,
+      `Acessibilidade marcos ${Date.now()}`,
+      'XP_MODE_MILESTONES',
+    );
     campaigns.push(marks.campaignId);
     await startSessionRPC(m, marks.campaignId);
     await openLive(m, `/campaigns/${marks.campaignId}`);
@@ -1509,15 +2342,23 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
   }
 }
 
-test('as telas de XP passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-016'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanXpScreens(browser, 'light', 1280);
-});
+test(
+  'as telas de XP passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-016'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanXpScreens(browser, 'light', 1280);
+  },
+);
 
-test('as telas de XP passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-016'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanXpScreens(browser, 'dark', 390);
-});
+test(
+  'as telas de XP passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-016'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanXpScreens(browser, 'dark', 390);
+  },
+);
 
 /**
  * The RP scenes (Etapa 7, MR-015; E7-01 to E7-05): the point panel with its
@@ -1528,10 +2369,22 @@ test('as telas de XP passam no axe e nas conferências de layout no tema escuro,
  * row and the page without a scene. The rolls of the master's screen are made
  * through the API so the screens are the same on every run.
  */
-async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanSceneScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -1552,7 +2405,10 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
       await expect(m.getByRole('form', { name: 'Nova ação' })).toBeVisible();
       await expectScreenPasses(m, `Nova ação ${where}`);
       await m.getByLabel('CD (opcional)').fill('31');
-      await m.getByRole('form', { name: 'Nova ação' }).getByRole('button', { name: 'Adicionar ação' }).click();
+      await m
+        .getByRole('form', { name: 'Nova ação' })
+        .getByRole('button', { name: 'Adicionar ação' })
+        .click();
       await expect(m.getByText('A CD vai de 1 a 30.')).toBeVisible();
       await expectScreenPasses(m, `Nova ação com a CD fora de 1 a 30 ${where}`);
       await m.getByRole('button', { name: 'Cancelar' }).click();
@@ -1564,7 +2420,9 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
       }
       await open(m, `/campaigns/${campaignId}/maps/${table.mapId}`);
       await m.getByRole('button', { name: /^Vau do riacho, Cena de RP/ }).click();
-      await expect(m.getByText('Limite de 20 ações. Remova uma para adicionar outra.')).toBeVisible();
+      await expect(
+        m.getByText('Limite de 20 ações. Remova uma para adicionar outra.'),
+      ).toBeVisible();
       await expectScreenPasses(m, `Ações da cena, lista cheia ${where}`);
     }
 
@@ -1616,13 +2474,18 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await expectScreenPasses(m, `Cena aberta com três rolagens ${where}`);
     if (width < 768) {
       await m.getByRole('button', { name: 'Ações da cena' }).click();
-      await expect(m.getByRole('button', { name: 'Ações da cena' })).toHaveAttribute('aria-expanded', 'false');
+      await expect(m.getByRole('button', { name: 'Ações da cena' })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      );
       await expectScreenPasses(m, `Cena aberta, ações recolhidas ${where}`);
       await m.getByRole('button', { name: 'Ações da cena' }).click();
     }
     // With a scene open, the points of the map say what they do with it.
     await expect(m.getByText('Cena aberta agora')).toBeVisible();
-    await expect(m.getByRole('button', { name: 'Trocar para a cena Posto da guarda' })).toBeVisible();
+    await expect(
+      m.getByRole('button', { name: 'Trocar para a cena Posto da guarda' }),
+    ).toBeVisible();
     await expectScreenPasses(m, `Pontos do mapa com a cena aberta ${where}`);
     await m.getByRole('button', { name: 'Trocar cena' }).click();
     await expect(m.getByRole('dialog', { name: 'Abrir uma cena' })).toBeVisible();
@@ -1644,25 +2507,41 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
   }
 }
 
-test('as cenas de RP passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanSceneScreens(browser, 'light', 1280);
-});
+test(
+  'as cenas de RP passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-015'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanSceneScreens(browser, 'light', 1280);
+  },
+);
 
-test('as cenas de RP passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanSceneScreens(browser, 'dark', 390);
-});
+test(
+  'as cenas de RP passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-015'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanSceneScreens(browser, 'dark', 390);
+  },
+);
 
-test('as cenas de RP passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanSceneScreens(browser, 'dark', 1024);
-});
+test(
+  'as cenas de RP passam no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-015'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanSceneScreens(browser, 'dark', 1024);
+  },
+);
 
-test('as cenas de RP passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanSceneScreens(browser, 'light', 320);
-});
+test(
+  'as cenas de RP passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-015'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanSceneScreens(browser, 'light', 320);
+  },
+);
 
 /**
  * The planned milestones (Etapa 8, MR-016, RN-12, RN-20; E8-14): the empty panel, "Adicionar marco" open with its
@@ -1671,10 +2550,22 @@ test('as cenas de RP passam no axe e nas conferências de layout no tema claro, 
  * "Desfazer"'s question, and the player's panel before and after the first milestone. Built in one function so
  * the sweep is one place.
  */
-async function scanMilestoneScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanMilestoneScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: width <= 390 ? 700 : 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -1682,7 +2573,12 @@ async function scanMilestoneScreens(browser: Browser, colorScheme: 'light' | 'da
   try {
     await m.goto('/');
     await p.goto('/');
-    const table = await tableForXp(m, p, `Acessibilidade marcos planejados ${Date.now()}`, 'XP_MODE_MILESTONES');
+    const table = await tableForXp(
+      m,
+      p,
+      `Acessibilidade marcos planejados ${Date.now()}`,
+      'XP_MODE_MILESTONES',
+    );
     const route = `/campaigns/${table.campaignId}`;
 
     // Nothing planned yet, and the player's empty state.
@@ -1701,7 +2597,9 @@ async function scanMilestoneScreens(browser: Browser, colorScheme: 'light' | 'da
     for (const text of ['Salvar o mercador', 'Chegar ao Vale Seco', 'Derrotar o Barão Ivo']) {
       await experience(m).getByLabel('Nome do marco').fill(text);
       await experience(m).getByLabel('Nome do marco').press('Enter');
-      await expect(experience(m).getByRole('button', { name: `Marcar “${text}” como alcançado` })).toBeVisible();
+      await expect(
+        experience(m).getByRole('button', { name: `Marcar “${text}” como alcançado` }),
+      ).toBeVisible();
       if (text !== 'Derrotar o Barão Ivo') {
         await experience(m).getByRole('button', { name: 'Adicionar marco', exact: true }).click();
       }
@@ -1719,11 +2617,17 @@ async function scanMilestoneScreens(browser: Browser, colorScheme: 'light' | 'da
     await m.getByRole('button', { name: 'Voltar' }).click();
 
     // "Marcar como alcançado".
-    await experience(m).getByRole('button', { name: 'Marcar “Chegar ao Vale Seco” como alcançado' }).click();
-    await expect(m.getByRole('dialog', { name: 'Marcar “Chegar ao Vale Seco” como alcançado' })).toBeVisible();
+    await experience(m)
+      .getByRole('button', { name: 'Marcar “Chegar ao Vale Seco” como alcançado' })
+      .click();
+    await expect(
+      m.getByRole('dialog', { name: 'Marcar “Chegar ao Vale Seco” como alcançado' }),
+    ).toBeVisible();
     await expectScreenPasses(m, `Marcar como alcançado ${where}`);
     await m.getByRole('dialog').getByRole('button', { name: 'Marcar como alcançado' }).click();
-    await expect(experience(m).getByRole('status').filter({ hasText: 'Marco alcançado' })).toBeVisible();
+    await expect(
+      experience(m).getByRole('status').filter({ hasText: 'Marco alcançado' }),
+    ).toBeVisible();
     await expectScreenPasses(m, `Marcos, depois de alcançar ${where}`);
 
     // "Desfazer" asks in place.
@@ -1742,20 +2646,32 @@ async function scanMilestoneScreens(browser: Browser, colorScheme: 'light' | 'da
   }
 }
 
-test('os marcos planejados passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-016'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanMilestoneScreens(browser, 'light', 1280);
-});
+test(
+  'os marcos planejados passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-016'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanMilestoneScreens(browser, 'light', 1280);
+  },
+);
 
-test('os marcos planejados passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-016'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanMilestoneScreens(browser, 'dark', 390);
-});
+test(
+  'os marcos planejados passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-016'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanMilestoneScreens(browser, 'dark', 390);
+  },
+);
 
-test('os marcos planejados passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-016'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanMilestoneScreens(browser, 'light', 320);
-});
+test(
+  'os marcos planejados passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-016'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanMilestoneScreens(browser, 'light', 320);
+  },
+);
 
 /**
  * Clues, hooks and the players' notes (Etapa 8, MR-029, MR-030, E8-04 to
@@ -1768,10 +2684,22 @@ test('os marcos planejados passam no axe e nas conferências de layout no tema c
  * limit of 2.000, editing with its two questions); and the panel on the
  * character sheet (list, form, empty).
  */
-async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanNotesScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -1799,10 +2727,16 @@ async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark',
       await m.getByRole('button', { name: 'Adicionar pista' }).click();
       await expect(m.getByRole('form', { name: 'Nova pista' })).toBeVisible();
       await expectScreenPasses(m, `Nova pista ${where}`);
-      await m.getByRole('form', { name: 'Nova pista' }).getByRole('button', { name: 'Adicionar pista' }).click();
+      await m
+        .getByRole('form', { name: 'Nova pista' })
+        .getByRole('button', { name: 'Adicionar pista' })
+        .click();
       await expect(m.getByText('Escreva a pista antes de salvar.')).toBeVisible();
       await expectScreenPasses(m, `Nova pista, com o erro ${where}`);
-      await m.getByRole('form', { name: 'Nova pista' }).getByLabel('Texto da pista').fill('x'.repeat(512));
+      await m
+        .getByRole('form', { name: 'Nova pista' })
+        .getByLabel('Texto da pista')
+        .fill('x'.repeat(512));
       await expect(m.getByText('512 de 500')).toBeVisible();
       await expectScreenPasses(m, `Nova pista, passou de 500 caracteres ${where}`);
       await m.getByRole('button', { name: 'Cancelar' }).click();
@@ -1816,16 +2750,28 @@ async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark',
       }
       await open(m, `/campaigns/${campaignId}/maps/${table.mapId}`);
       await m.getByRole('button', { name: /^Vau do riacho, Cena de RP/ }).click();
-      await expect(m.getByText('Limite de 30 pistas. Remova uma para adicionar outra.')).toBeVisible();
+      await expect(
+        m.getByText('Limite de 30 pistas. Remova uma para adicionar outra.'),
+      ).toBeVisible();
       await expectScreenPasses(m, `Pistas, lista cheia ${where}`);
     } else {
       for (const text of cartClues) {
         await addClueRPC(m, table, table.cartId, text);
       }
-      const hooks = await callRPC(m, 'meurpg.maps.v1.MapService/UpdateMapPoint', { campaignId, mapId: table.mapId, pointId: table.cartId, hooks: cartHooks });
+      const hooks = await callRPC(m, 'meurpg.maps.v1.MapService/UpdateMapPoint', {
+        campaignId,
+        mapId: table.mapId,
+        pointId: table.cartId,
+        hooks: cartHooks,
+      });
       expect(hooks.ok()).toBeTruthy();
     }
-    await callRPC(m, 'meurpg.maps.v1.MapService/UpdateMapPoint', { campaignId, mapId: table.mapId, pointId: table.cartId, hooks: cartHooks });
+    await callRPC(m, 'meurpg.maps.v1.MapService/UpdateMapPoint', {
+      campaignId,
+      mapId: table.mapId,
+      pointId: table.cartId,
+      hooks: cartHooks,
+    });
 
     // The player's notes before anything arrived: the empty sheet.
     await openSessionPage(m, campaignId);
@@ -1873,13 +2819,17 @@ async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await sheet.getByLabel('Anotação', { exact: true }).fill('x'.repeat(2000));
     await expect(sheet.getByText('Chegou ao limite de 2.000 caracteres.')).toBeVisible();
     await expectScreenPasses(p, `Nova anotação, no limite de 2.000 ${where}`);
-    await sheet.getByLabel('Anotação', { exact: true }).fill('Perguntar ao ferreiro sobre o brasão de lobo');
+    await sheet
+      .getByLabel('Anotação', { exact: true })
+      .fill('Perguntar ao ferreiro sobre o brasão de lobo');
     await sheet.getByRole('combobox', { name: /Cena \(opcional\)/ }).click();
     await expect(p.getByRole('option', { name: 'A carroça tombada' })).toBeVisible();
     await expectScreenPasses(p, `Nova anotação, escolhendo a cena ${where}`);
     await p.getByRole('option', { name: 'A carroça tombada' }).click();
     await sheet.getByRole('button', { name: 'Cancelar' }).click();
-    await expect(sheet.getByRole('alertdialog', { name: 'Descartar o que você escreveu?' })).toBeVisible();
+    await expect(
+      sheet.getByRole('alertdialog', { name: 'Descartar o que você escreveu?' }),
+    ).toBeVisible();
     await expectScreenPasses(p, `Nova anotação, descartar ${where}`);
     await sheet.getByRole('button', { name: 'Continuar' }).click();
     await sheet.getByRole('button', { name: 'Salvar anotação' }).click();
@@ -1909,6 +2859,11 @@ async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark',
     // Not `open()`: with a session open the sheet follows its stream, so the network is never idle.
     await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
     const panel = p.getByRole('region', { name: 'Anotações' });
+    // Under 1200px the notes are one "Anotações (N)" row that opens on a tap (no such button on the four-column sheet).
+    await expectScreenPasses(p, `Ficha com as anotações, primeira vista ${where}`);
+    for (const toggle of await panel.getByRole('button', { name: /^Anotações \(\d+\)/ }).all()) {
+      await toggle.click();
+    }
     await expect(panel.getByText('Brisa me deve 5 PO')).toBeVisible();
     await expectScreenPasses(p, `Ficha com as anotações ${where}`);
     await panel.getByRole('button', { name: 'Nova anotação' }).click();
@@ -1927,33 +2882,153 @@ async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark',
   }
 }
 
-test('pistas, ganchos e anotações passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-029', '@MR-030'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanNotesScreens(browser, 'light', 1280);
-});
+test(
+  'pistas, ganchos e anotações passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-029', '@MR-030'] },
+  async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanNotesScreens(browser, 'light', 1280);
+  },
+);
 
-test('pistas, ganchos e anotações passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-029', '@MR-030'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanNotesScreens(browser, 'dark', 390);
-});
+test(
+  'pistas, ganchos e anotações passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-029', '@MR-030'] },
+  async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanNotesScreens(browser, 'dark', 390);
+  },
+);
 
-test('pistas, ganchos e anotações passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-029', '@MR-030'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanNotesScreens(browser, 'dark', 1024);
-});
+test(
+  'pistas, ganchos e anotações passam no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-029', '@MR-030'] },
+  async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanNotesScreens(browser, 'dark', 1024);
+  },
+);
 
-test('pistas, ganchos e anotações passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-029', '@MR-030'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanNotesScreens(browser, 'light', 320);
-});
+test(
+  'pistas, ganchos e anotações passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-029', '@MR-030'] },
+  async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanNotesScreens(browser, 'light', 320);
+  },
+);
+
+/** The player's sheet: the game numbers first on a phone and a tablet (the combat block before the saves and the
+ * skills, the notes last as one row), and the four-column paper sheet from 1200px (docs/design.md). */
+async function scanSheetOrder(
+  browser: Browser,
+  width: number,
+): Promise<{
+  combat: number;
+  proficiencies: number;
+  features: number;
+  notes: number;
+  notesX: number;
+  combatX: number;
+}> {
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    viewport: { width, height: 844 },
+  });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    viewport: { width, height: 844 },
+  });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForScenes(m, p, `Ordem da ficha ${Date.now()}`, false);
+    campaignId = table.campaignId;
+    await createNoteRPC(p, campaignId, 'Brisa me deve 5 PO');
+    await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
+    await expect(p.getByRole('heading', { name: 'Características e traços' })).toBeVisible();
+    const top = async (selector: string) => (await boxOf(p.locator(selector))).y;
+    const abilities = await top('app-ability-medallions');
+    const combat = await top('app-combat-column');
+    const proficiencies = await top('app-proficiency-column');
+    const features = await top('app-features-panel');
+    const notes = await top('app-notes-panel');
+    return {
+      combat: combat - abilities,
+      proficiencies: proficiencies - abilities,
+      features: features - abilities,
+      notes: notes - abilities,
+      notesX: (await boxOf(p.locator('app-notes-panel'))).x,
+      combatX: (await boxOf(p.locator('app-combat-column'))).x,
+    };
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test(
+  'a ficha no celular vai dos números do jogo às anotações, que ficam numa linha só',
+  { tag: ['@a11y', '@MR-004', '@MR-030'] },
+  async ({ browser }) => {
+    test.setTimeout(120_000);
+    const at = await scanSheetOrder(browser, 390);
+    // The abilities come first, then the combat block, then the saves and skills.
+    expect(at.combat).toBeGreaterThan(0);
+    expect(at.combat).toBeLessThan(at.proficiencies);
+    expect(at.proficiencies).toBeLessThan(at.features);
+    expect(at.features).toBeLessThan(at.notes);
+  },
+);
+
+test(
+  'a ficha no tablet também põe o combate antes das anotações',
+  { tag: ['@a11y', '@MR-004', '@MR-030'] },
+  async ({ browser }) => {
+    test.setTimeout(120_000);
+    const at = await scanSheetOrder(browser, 768);
+    expect(at.combat).toBeLessThanOrEqual(at.proficiencies);
+    expect(at.features).toBeLessThan(at.notes);
+  },
+);
+
+test(
+  'a ficha no desktop de 1280 mantém as quatro colunas, com as anotações no alto da quarta',
+  { tag: ['@a11y', '@MR-004', '@MR-030'] },
+  async ({ browser }) => {
+    test.setTimeout(120_000);
+    const at = await scanSheetOrder(browser, 1280);
+    // The notes are the first block of the fourth column: level with the combat block, to its right.
+    expect(Math.abs(at.notes - at.combat)).toBeLessThan(2);
+    expect(at.notesX).toBeGreaterThan(at.combatX);
+  },
+);
 
 /** The joint turn (MR-013, E8-01): the master's card and boxes, the player's
  * pill, the other members' card, "Encerrar a minha parte" and its question, the
  * state after the part ended, and the goblins' turn (a group of NPCs alone). */
-async function scanJointTurnScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanJointTurnScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -1974,7 +3049,10 @@ async function scanJointTurnScreens(browser: Browser, colorScheme: 'light' | 'da
     await p.getByRole('button', { name: 'Encerrar a minha parte' }).click();
     await expect(p.getByRole('alertdialog', { name: 'Encerrar a sua parte?' })).toBeVisible();
     await expectScreenPasses(p, `Encerrar a minha parte, com pergunta ${where}`);
-    await p.getByRole('alertdialog').getByRole('button', { name: 'Encerrar a minha parte' }).click();
+    await p
+      .getByRole('alertdialog')
+      .getByRole('button', { name: 'Encerrar a minha parte' })
+      .click();
     await expect(p.getByRole('heading', { name: 'Você encerrou a sua parte' })).toBeVisible();
     await expectScreenPasses(p, `Turno conjunto, depois de encerrar ${where}`);
     await expectScreenPasses(m, `Turno conjunto, uma parte encerrada ${where}`);
@@ -1992,28 +3070,51 @@ async function scanJointTurnScreens(browser: Browser, colorScheme: 'light' | 'da
   }
 }
 
-test('o turno conjunto passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-013'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanJointTurnScreens(browser, 'light', 1280);
-});
+test(
+  'o turno conjunto passa no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-013'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanJointTurnScreens(browser, 'light', 1280);
+  },
+);
 
-test('o turno conjunto passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-013'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanJointTurnScreens(browser, 'dark', 390);
-});
+test(
+  'o turno conjunto passa no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-013'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanJointTurnScreens(browser, 'dark', 390);
+  },
+);
 
-test('o turno conjunto passa no axe e nas conferências de layout no celular de 320', { tag: ['@a11y', '@MR-013'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanJointTurnScreens(browser, 'light', 320);
-});
-
+test(
+  'o turno conjunto passa no axe e nas conferências de layout no celular de 320',
+  { tag: ['@a11y', '@MR-013'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanJointTurnScreens(browser, 'light', 320);
+  },
+);
 
 // Etapa 8.6 (MR-031, MR-032): the NPC's portrait field, the master's and the
 // players' stage with its larger view, and the combat highlights.
-async function scanStageScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanStageScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -2037,7 +3138,10 @@ async function scanStageScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await expect(m.getByRole('dialog', { name: 'Escolher o retrato de Mira' })).toBeVisible();
     await m.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
     await expectScreenPasses(m, `Escolher o retrato ${where}`);
-    await m.getByRole('dialog').getByRole('radio', { name: /Retrato do Capitão/ }).click();
+    await m
+      .getByRole('dialog')
+      .getByRole('radio', { name: /Retrato do Capitão/ })
+      .click();
     await expectScreenPasses(m, `Escolher o retrato, uma imagem escolhida ${where}`);
     await m.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click();
     await m.getByRole('button', { name: 'Remover retrato' }).click();
@@ -2061,11 +3165,21 @@ async function scanStageScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await expectScreenPasses(m, `Pôr em cena ${where}`);
     for (const name of ['Mira', 'Capitão Goblin']) {
       await m.getByRole('button', { name: `Pôr ${name} em cena` }).click();
-      await expect(m.getByRole('button', { name: `Tirar ${name} de cena` }).or(m.getByText(`${name} entrou na cena.`).first()).first()).toBeVisible();
+      await expect(
+        m
+          .getByRole('button', { name: `Tirar ${name} de cena` })
+          .or(m.getByText(`${name} entrou na cena.`).first())
+          .first(),
+      ).toBeVisible();
     }
-    await m.getByRole('button', { name: width >= 768 ? 'Fechar' : 'Fechar', exact: true }).last().click();
+    await m
+      .getByRole('button', { name: width >= 768 ? 'Fechar' : 'Fechar', exact: true })
+      .last()
+      .click();
     await m.getByRole('button', { name: 'Dar a fala a Capitão Goblin' }).click();
-    await expect(m.getByRole('button', { name: 'Capitão Goblin está com a fala. Tirar a fala' })).toBeVisible();
+    await expect(
+      m.getByRole('button', { name: 'Capitão Goblin está com a fala. Tirar a fala' }),
+    ).toBeVisible();
     await expectScreenPasses(m, `Em cena, dois NPCs, um falando ${where}`);
 
     const stage = p.getByRole('group', { name: 'Em cena: Mira e Capitão Goblin' });
@@ -2101,15 +3215,29 @@ async function scanStageScreens(browser: Browser, colorScheme: 'light' | 'dark',
   }
 
   // The combat highlights, in a table of their own.
-  const master2 = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player2 = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master2 = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player2 = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m2 = await master2.newPage();
   const p2 = await player2.newPage();
   let id2 = '';
   try {
     await m2.goto('/');
     await p2.goto('/');
-    const table = await tableForCombat(m2, p2, `Acessibilidade destaques ${Date.now()}`, true, true);
+    const table = await tableForCombat(
+      m2,
+      p2,
+      `Acessibilidade destaques ${Date.now()}`,
+      true,
+      true,
+    );
     id2 = table.campaignId;
     const enc = await playedCombatRPC(m2, p2, table);
     await openSessionPage(m2, id2);
@@ -2117,8 +3245,12 @@ async function scanStageScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await combatRPC(m2, 'EndEncounter', { campaignId: id2, encounterId: enc.id });
     await expect(m2.getByRole('region', { name: 'Destaques do combate' })).toBeVisible();
     await expect(p2.getByRole('region', { name: 'Destaques do combate' })).toBeVisible();
-    await m2.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
-    await p2.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await m2.waitForFunction(() =>
+      document.getAnimations().every((a) => a.playState !== 'running'),
+    );
+    await p2.waitForFunction(() =>
+      document.getAnimations().every((a) => a.playState !== 'running'),
+    );
     await expectScreenPasses(m2, `Destaques do combate, o mestre ${where}`);
     await expectScreenPasses(p2, `Destaques do combate, o cartão do jogador ${where}`);
   } finally {
@@ -2130,33 +3262,61 @@ async function scanStageScreens(browser: Browser, colorScheme: 'light' | 'dark',
   }
 }
 
-test('o retrato, o palco e os destaques passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-031', '@MR-032'] }, async ({ browser }) => {
-  test.setTimeout(480_000);
-  await scanStageScreens(browser, 'light', 1280);
-});
+test(
+  'o retrato, o palco e os destaques passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-031', '@MR-032'] },
+  async ({ browser }) => {
+    test.setTimeout(480_000);
+    await scanStageScreens(browser, 'light', 1280);
+  },
+);
 
-test('o retrato, o palco e os destaques passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-031', '@MR-032'] }, async ({ browser }) => {
-  test.setTimeout(480_000);
-  await scanStageScreens(browser, 'dark', 390);
-});
+test(
+  'o retrato, o palco e os destaques passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-031', '@MR-032'] },
+  async ({ browser }) => {
+    test.setTimeout(480_000);
+    await scanStageScreens(browser, 'dark', 390);
+  },
+);
 
-test('o retrato, o palco e os destaques passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-031', '@MR-032'] }, async ({ browser }) => {
-  test.setTimeout(480_000);
-  await scanStageScreens(browser, 'dark', 1024);
-});
+test(
+  'o retrato, o palco e os destaques passam no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-031', '@MR-032'] },
+  async ({ browser }) => {
+    test.setTimeout(480_000);
+    await scanStageScreens(browser, 'dark', 1024);
+  },
+);
 
-test('o retrato, o palco e os destaques passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-031', '@MR-032'] }, async ({ browser }) => {
-  test.setTimeout(480_000);
-  await scanStageScreens(browser, 'light', 320);
-});
+test(
+  'o retrato, o palco e os destaques passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-031', '@MR-032'] },
+  async ({ browser }) => {
+    test.setTimeout(480_000);
+    await scanStageScreens(browser, 'light', 320);
+  },
+);
 
 /** The spells in the session (Etapa 8, slice 8.4; E8-02, E8-03): the list with its "?" and slot
  * rows, the details sheet, the cast sheet with its "?", the details over it, the result a player
  * reads, and the master's card under Sono in the log. */
-async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanCombatDetailsScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -2168,15 +3328,25 @@ async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' |
     const table = await tableForCombat(m, p, `Acessibilidade magias ${Date.now()}`, true, true);
     campaignId = table.campaignId;
     // The three around Goblin 1, so Sono placed on it catches them.
-    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, { 'Capitão Goblin': [9, 10], 'Goblin 1': [9, 9], 'Goblin 2': [10, 9] });
+    await beginAttackCombatRPC(
+      m,
+      table,
+      { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 },
+      { 'Capitão Goblin': [9, 10], 'Goblin 1': [9, 9], 'Goblin 2': [10, 9] },
+    );
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
 
     await expect(p.getByRole('button', { name: 'Detalhes de Sono' })).toBeVisible();
     await expectScreenPasses(p, `Magias com o "?" e os espaços ${where}`);
     await p.getByRole('button', { name: 'Detalhes de Sono' }).click();
-    const details = p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true });
-    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
+    const details = p.getByRole('dialog', {
+      name: phone ? 'Descrição de Sono' : 'Sono',
+      exact: true,
+    });
+    await expect(
+      details.getByText('This spell sends creatures into a magical slumber.'),
+    ).toBeVisible();
     await expectScreenPasses(p, `Detalhes de Sono na sessão ${where}`);
     await details.getByRole('button', { name: 'Fechar' }).last().click();
 
@@ -2206,14 +3376,23 @@ async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' |
     await expectScreenPasses(p, `Conjurar Sono, ninguém na área ${where}`);
     await sheet.getByRole('button', { name: 'Mudar o local' }).click();
     await sheet.getByRole('button', { name: 'Centrar em…' }).click();
-    await sheet.getByRole('listbox', { name: 'Centrar em…' }).getByRole('option', { name: /Goblin 1/ }).click();
+    await sheet
+      .getByRole('listbox', { name: 'Centrar em…' })
+      .getByRole('option', { name: /Goblin 1/ })
+      .click();
     await sheet.getByRole('button', { name: 'Confirmar local' }).click();
     await expect(sheet.getByRole('heading', { name: 'Quem está na área' })).toBeFocused();
     await expectScreenPasses(p, `Conjurar Sono, quem está na área ${where}`);
     await sheet.getByRole('button', { name: 'Detalhes de Sono' }).click();
-    await expect(p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true })).toBeVisible();
+    await expect(
+      p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true }),
+    ).toBeVisible();
     await expectScreenPasses(p, `Detalhes de Sono por cima de Conjurar ${where}`);
-    await p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true }).getByRole('button', { name: 'Fechar' }).last().click();
+    await p
+      .getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true })
+      .getByRole('button', { name: 'Fechar' })
+      .last()
+      .click();
     // A dialog on a desktop is named by its title, which changes with the step: ask the page.
     await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
     await p.getByLabel(/Role 5d8/).fill('20');
@@ -2237,15 +3416,23 @@ async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' |
   }
 }
 
-test('as magias na sessão passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanCombatDetailsScreens(browser, 'light', 1280);
-});
+test(
+  'as magias na sessão passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-014'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanCombatDetailsScreens(browser, 'light', 1280);
+  },
+);
 
-test('as magias na sessão passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanCombatDetailsScreens(browser, 'dark', 390);
-});
+test(
+  'as magias na sessão passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-014'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanCombatDetailsScreens(browser, 'dark', 390);
+  },
+);
 
 /**
  * The area spell the table asks about (PM-02c 9 and 9c, PM-02b 5): the master's question with the area of the last spell
@@ -2253,10 +3440,23 @@ test('as magias na sessão passam no axe e nas conferências de layout no tema e
  * atualizado agora." after a reload, and the picker's zoom on a map of 40 columns. The desktop scan hides a goblin in the
  * area; the phone scan has none in it. The table asks (`Perguntar a cada vez`), so the cast holds the turn either way.
  */
-async function scanHiddenAreaScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number, hiddenInArea: boolean): Promise<void> {
+async function scanHiddenAreaScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+  hiddenInArea: boolean,
+): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -2271,8 +3471,18 @@ async function scanHiddenAreaScreens(browser: Browser, colorScheme: 'light' | 'd
       await setGridRPC(m, campaignId, table.mapId, 40);
     }
     // Sono's area is 4 squares around the point: Goblin 2 is in it, or far from it.
-    const at: Record<string, [number, number]> = { 'Capitão Goblin': [9, 10], 'Goblin 1': [9, 9], 'Goblin 2': hiddenInArea ? [10, 9] : [20, 3] };
-    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, at, ['Goblin 2']);
+    const at: Record<string, [number, number]> = {
+      'Capitão Goblin': [9, 10],
+      'Goblin 1': [9, 9],
+      'Goblin 2': hiddenInArea ? [10, 9] : [20, 3],
+    };
+    await beginAttackCombatRPC(
+      m,
+      table,
+      { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 },
+      at,
+      ['Goblin 2'],
+    );
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
 
@@ -2287,7 +3497,10 @@ async function scanHiddenAreaScreens(browser: Browser, colorScheme: 'light' | 'd
       await sheet.getByRole('button', { name: 'Afastar o mapa' }).click();
     }
     await map.press('c');
-    await sheet.getByRole('listbox', { name: 'Centrar em…' }).getByRole('option', { name: /Goblin 1/ }).click();
+    await sheet
+      .getByRole('listbox', { name: 'Centrar em…' })
+      .getByRole('option', { name: /Goblin 1/ })
+      .click();
     await map.press('Enter');
     await expect(sheet.getByRole('heading', { name: 'Quem está na área' })).toBeFocused();
     await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
@@ -2298,17 +3511,26 @@ async function scanHiddenAreaScreens(browser: Browser, colorScheme: 'light' | 'd
     await expectScreenPasses(p, `Esperando o mestre, a vez parada ${where}`);
 
     if (width < 768) {
-      await m.getByRole('button', { name: 'Abrir o registro' }).click().catch(() => undefined);
+      await m
+        .getByRole('button', { name: 'Abrir o registro' })
+        .click()
+        .catch(() => undefined);
     }
-    const card = m.getByRole('group', { name: hiddenInArea ? /atingiu 1 criatura escondida/ : /nenhuma criatura escondida na área/ });
+    const card = m.getByRole('group', {
+      name: hiddenInArea ? /atingiu 1 criatura escondida/ : /nenhuma criatura escondida na área/,
+    });
     await expect(card).toBeVisible({ timeout: 20_000 });
     await expect(m.locator('app-area-overlay')).toBeVisible();
     await expectScreenPasses(m, `A pergunta ao mestre, com a área da última magia ${where}`);
     await m.reload();
-    await expect(m.getByRole('status').filter({ hasText: 'Combate atualizado agora.' })).toBeVisible();
+    await expect(
+      m.getByRole('status').filter({ hasText: 'Combate atualizado agora.' }),
+    ).toBeVisible();
     await expect(card).toBeVisible();
     await expectScreenPasses(m, `A pergunta depois de recarregar ${where}`);
-    await m.getByRole('button', { name: hiddenInArea ? 'Revelar' : 'Sem escondidas', exact: true }).click();
+    await m
+      .getByRole('button', { name: hiddenInArea ? 'Revelar' : 'Sem escondidas', exact: true })
+      .click();
     await expect(card).toHaveCount(0);
     await expectScreenPasses(p, `A vez volta ao jogador ${where}`);
   } finally {
@@ -2320,15 +3542,23 @@ async function scanHiddenAreaScreens(browser: Browser, colorScheme: 'light' | 'd
   }
 }
 
-test('a pergunta das escondidas e a área da última magia passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014', '@RN-10'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanHiddenAreaScreens(browser, 'light', 1280, true);
-});
+test(
+  'a pergunta das escondidas e a área da última magia passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-014', '@RN-10'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanHiddenAreaScreens(browser, 'light', 1280, true);
+  },
+);
 
-test('a pergunta sem escondidas e o zoom do mapa grande passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@RN-10'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanHiddenAreaScreens(browser, 'dark', 390, false);
-});
+test(
+  'a pergunta sem escondidas e o zoom do mapa grande passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-014', '@RN-10'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanHiddenAreaScreens(browser, 'dark', 390, false);
+  },
+);
 
 /**
  * The options of the scene (Etapa 8, MR-015, RN-20; E8-13): the point panel with the DC switch off and on and the
@@ -2338,10 +3568,22 @@ test('a pergunta sem escondidas e o zoom do mapa grande passam no axe e nas conf
  * "Sem mais tentativas") and the page with the DC hidden. The rolls are made through the API, so the screens are
  * the same on every run.
  */
-async function scanSceneOptionsScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanSceneOptionsScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -2361,7 +3603,9 @@ async function scanSceneOptionsScreens(browser: Browser, colorScheme: 'light' | 
     await open(m, `/campaigns/${campaignId}/maps/${table.mapId}`);
     const cart = m.getByRole('button', { name: /^A carroça tombada, Cena de RP/ });
     if (width < 768) {
-      await expect(m.getByText('Para mudar pontos e tokens de lugar, abra o mapa no computador.')).toBeVisible();
+      await expect(
+        m.getByText('Para mudar pontos e tokens de lugar, abra o mapa no computador.'),
+      ).toBeVisible();
       await expect(cart).toHaveCount(0);
     } else {
       await cart.click();
@@ -2370,7 +3614,9 @@ async function scanSceneOptionsScreens(browser: Browser, colorScheme: 'light' | 
       await m.getByRole('switch', { name: 'Mostrar a CD aos jogadores' }).click();
       await expect(m.getByText('Como o jogador vê, antes e depois de rolar')).toBeVisible();
       await expectScreenPasses(m, `Ações da cena com o interruptor da CD ligado ${where}`);
-      await expect(m.getByRole('status').filter({ hasText: 'Os jogadores agora veem a CD.' })).toHaveCount(1);
+      await expect(
+        m.getByRole('status').filter({ hasText: 'Os jogadores agora veem a CD.' }),
+      ).toHaveCount(1);
       await expect(m.getByText('Sem limite: o jogador rola quantas vezes quiser')).toBeVisible();
       await expectScreenPasses(m, `Ações da cena com "Sem limite" ${where}`);
     }
@@ -2400,15 +3646,21 @@ async function scanSceneOptionsScreens(browser: Browser, colorScheme: 'light' | 
     await expect(m.getByText('Os jogadores veem a CD')).toBeVisible();
     await expect(m.getByText('Tentativa 1 de 1').first()).toBeVisible();
     await expectScreenPasses(m, `Cena aberta do mestre com os limites e as tentativas ${where}`);
-    const grant = m.getByRole('button', { name: 'Dar mais uma tentativa a Pensantus em Resistir ao cheiro de fumaça' });
+    const grant = m.getByRole('button', {
+      name: 'Dar mais uma tentativa a Pensantus em Resistir ao cheiro de fumaça',
+    });
     await grant.click();
     const ask = m.getByRole('alertdialog', { name: 'Dar mais uma tentativa a Pensantus?' });
     await expect(ask.getByRole('button', { name: 'Voltar' })).toBeFocused();
     await expectScreenPasses(m, `Dar mais uma tentativa, a pergunta no lugar ${where}`);
     await ask.getByRole('button', { name: 'Dar mais uma tentativa' }).click();
-    await expect(m.getByRole('status').filter({ hasText: 'Mais uma tentativa dada a Pensantus' })).toBeVisible();
+    await expect(
+      m.getByRole('status').filter({ hasText: 'Mais uma tentativa dada a Pensantus' }),
+    ).toBeVisible();
     await expectScreenPasses(m, `Dar mais uma tentativa, depois de dar ${where}`);
-    await expect(scene.getByText('Restam 1 de 1 tentativas').or(scene.getByText('1 tentativa')).first()).toBeVisible();
+    await expect(
+      scene.getByText('Restam 1 de 1 tentativas').or(scene.getByText('1 tentativa')).first(),
+    ).toBeVisible();
     await expectScreenPasses(p, `Cena do jogador com uma tentativa a mais ${where}`);
 
     // The DC hidden (the default): no CD and no "Passou" for the player.
@@ -2424,35 +3676,63 @@ async function scanSceneOptionsScreens(browser: Browser, colorScheme: 'light' | 
   }
 }
 
-test('as opções da cena passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanSceneOptionsScreens(browser, 'light', 1280);
-});
+test(
+  'as opções da cena passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-015'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanSceneOptionsScreens(browser, 'light', 1280);
+  },
+);
 
-test('as opções da cena passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanSceneOptionsScreens(browser, 'dark', 390);
-});
+test(
+  'as opções da cena passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-015'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanSceneOptionsScreens(browser, 'dark', 390);
+  },
+);
 
-test('as opções da cena passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanSceneOptionsScreens(browser, 'dark', 1024);
-});
+test(
+  'as opções da cena passam no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-015'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanSceneOptionsScreens(browser, 'dark', 1024);
+  },
+);
 
-test('as opções da cena passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanSceneOptionsScreens(browser, 'light', 320);
-});
+test(
+  'as opções da cena passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-015'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanSceneOptionsScreens(browser, 'light', 320);
+  },
+);
 
 /**
  * The session summary (Etapa 8, MR-032, RN-20; E8-11 states 4 and 5): the master's "Sessão encerrada" with the
  * highlights and the table, the player's card "A sessão acabou" and the plain notice after "Fechar". The rolls are
  * made through the API, with the DC shown, so the numbers are the same on every run.
  */
-async function scanSessionSummaryScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanSessionSummaryScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -2494,28 +3774,52 @@ async function scanSessionSummaryScreens(browser: Browser, colorScheme: 'light' 
   }
 }
 
-test('o resumo da sessão passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-032'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanSessionSummaryScreens(browser, 'light', 1280);
-});
+test(
+  'o resumo da sessão passa no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-032'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanSessionSummaryScreens(browser, 'light', 1280);
+  },
+);
 
-test('o resumo da sessão passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-032'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanSessionSummaryScreens(browser, 'dark', 390);
-});
+test(
+  'o resumo da sessão passa no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-032'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanSessionSummaryScreens(browser, 'dark', 390);
+  },
+);
 
-test('o resumo da sessão passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-032'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanSessionSummaryScreens(browser, 'light', 320);
-});
+test(
+  'o resumo da sessão passa no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-032'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanSessionSummaryScreens(browser, 'light', 320);
+  },
+);
 
 // The guided level-up (MR-040, E8-15): the sheet's block, every step and state of the page, the question
 // before discarding, the blocked route, and the master's "O que mudou". Pensantus goes from Mago 3 to 4.
-async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanLevelUpScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const where = `${colorScheme === 'light' ? 'no tema claro' : 'no tema escuro'}, a ${width} px`;
   const height = width === 320 ? 568 : width === 1024 ? 768 : width < 768 ? 844 : 800;
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height } });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height } });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height },
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport: { width, height },
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const row = (name: string) => p.locator('.row__main, .row').filter({ hasText: name }).first();
@@ -2584,14 +3888,20 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `A ficha depois de subir ${where}`);
 
     await p.goto(`${sheet}/level-up`);
-    await expect(p.getByRole('heading', { name: 'Ainda não dá para subir de nível' })).toBeVisible();
+    await expect(
+      p.getByRole('heading', { name: 'Ainda não dá para subir de nível' }),
+    ).toBeVisible();
     await expectScreenPasses(p, `A rota sem a marca ${where}`);
 
     await m.goto(`/campaigns/${campaignId}`);
-    await expect(m.getByRole('status').filter({ hasText: 'Pensantus subiu para o nível 4.' })).toBeVisible();
+    await expect(
+      m.getByRole('status').filter({ hasText: 'Pensantus subiu para o nível 4.' }),
+    ).toBeVisible();
     await expectScreenPasses(m, `O mestre, o aviso da subida ${where}`);
     await m.getByRole('button', { name: 'O que mudou: Pensantus' }).click();
-    await expect(m.getByRole('region', { name: 'O que Pensantus escolheu no nível 4' })).toBeVisible();
+    await expect(
+      m.getByRole('region', { name: 'O que Pensantus escolheu no nível 4' }),
+    ).toBeVisible();
     await expectScreenPasses(m, `O mestre, "O que mudou" aberto ${where}`);
   } finally {
     if (campaignId) {
@@ -2602,25 +3912,41 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
   }
 }
 
-test('o subir de nível passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanLevelUpScreens(browser, 'light', 1280);
-});
+test(
+  'o subir de nível passa no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-040'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanLevelUpScreens(browser, 'light', 1280);
+  },
+);
 
-test('o subir de nível passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanLevelUpScreens(browser, 'dark', 390);
-});
+test(
+  'o subir de nível passa no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-040'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanLevelUpScreens(browser, 'dark', 390);
+  },
+);
 
-test('o subir de nível passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanLevelUpScreens(browser, 'dark', 1024);
-});
+test(
+  'o subir de nível passa no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-040'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanLevelUpScreens(browser, 'dark', 1024);
+  },
+);
 
-test('o subir de nível passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanLevelUpScreens(browser, 'light', 320);
-});
+test(
+  'o subir de nível passa no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-040'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanLevelUpScreens(browser, 'light', 320);
+  },
+);
 
 /**
  * "Voltar à cidade" and "Mais tesouro encontrado" (Etapa 9, MR-041, MR-032; E9-09): the Experiência panel of a
@@ -2628,10 +3954,22 @@ test('o subir de nível passa no axe e nas conferências de layout no tema claro
  * checked, a change, nothing checked, a refusal, nothing to convert), the history line and the question to undo,
  * the player's view, the campaign by enemies, and the session summary with the treasure block and the card.
  */
-async function scanGoldScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanGoldScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -2672,7 +4010,9 @@ async function scanGoldScreens(browser: Browser, colorScheme: 'light' | 'dark', 
 
     // Converted meanwhile: the refusal stays in the dialog.
     await panel(m).getByRole('button', { name: 'Voltar à cidade', exact: true }).click();
-    await expect(m.getByRole('dialog', { name: 'Voltar à cidade' })).toContainText('420 XP ÷ 1 = 420 XP para cada');
+    await expect(m.getByRole('dialog', { name: 'Voltar à cidade' })).toContainText(
+      '420 XP ÷ 1 = 420 XP para cada',
+    );
     const other = await callRPC(m, 'meurpg.progression.v1.ProgressionService/AwardXP', {
       campaignId: gold.campaignId,
       mode: 'XP_AWARD_MODE_GOLD',
@@ -2682,15 +4022,29 @@ async function scanGoldScreens(browser: Browser, colorScheme: 'light' | 'dark', 
       idempotencyKey: crypto.randomUUID(),
     });
     expect(other.ok(), await other.text()).toBeTruthy();
-    await m.getByRole('dialog', { name: 'Voltar à cidade' }).getByRole('button', { name: /^Dar 420 XP/ }).click();
-    await expect(m.getByRole('dialog', { name: 'Voltar à cidade' }).getByRole('alert')).toContainText('já virou XP em outro prêmio');
+    await m
+      .getByRole('dialog', { name: 'Voltar à cidade' })
+      .getByRole('button', { name: /^Dar 420 XP/ })
+      .click();
+    await expect(
+      m.getByRole('dialog', { name: 'Voltar à cidade' }).getByRole('alert'),
+    ).toContainText('já virou XP em outro prêmio');
     await expectScreenPasses(m, `Voltar à cidade, o erro no lugar ${where}`);
-    await m.getByRole('dialog', { name: 'Voltar à cidade' }).getByRole('button', { name: /^Dar 170 XP/ }).click();
-    await expect(panel(m).getByRole('status').filter({ hasText: 'foram convertidos' })).toContainText('Os 2 tesouros foram convertidos.');
+    await m
+      .getByRole('dialog', { name: 'Voltar à cidade' })
+      .getByRole('button', { name: /^Dar 170 XP/ })
+      .click();
+    await expect(
+      panel(m).getByRole('status').filter({ hasText: 'foram convertidos' }),
+    ).toContainText('Os 2 tesouros foram convertidos.');
     await expect(panel(m).getByText('Voltar à cidade · 170 PO em 2 tesouros')).toBeVisible();
     await expectScreenPasses(m, `Experiência, depois de converter ${where}`);
-    await panel(m).getByRole('button', { name: /^Desfazer/ }).click();
-    await expect(panel(m).getByRole('alertdialog')).toContainText('voltam a “encontrado, não convertido”');
+    await panel(m)
+      .getByRole('button', { name: /^Desfazer/ })
+      .click();
+    await expect(panel(m).getByRole('alertdialog')).toContainText(
+      'voltam a “encontrado, não convertido”',
+    );
     await expectScreenPasses(m, `Experiência, desfazer a conversão ${where}`);
     await panel(m).getByRole('alertdialog').getByRole('button', { name: 'Desfazer XP' }).click();
     await expect(panel(m).getByRole('status').filter({ hasText: 'XP desfeito' })).toBeVisible();
@@ -2705,18 +4059,34 @@ async function scanGoldScreens(browser: Browser, colorScheme: 'light' | 'dark', 
 
     // The player: the history line and the strip's absence.
     await panel(m).getByRole('button', { name: 'Voltar à cidade', exact: true }).click();
-    await m.getByRole('dialog', { name: 'Voltar à cidade' }).getByRole('button', { name: /^Dar 170 XP/ }).click();
-    await expect(panel(m).getByRole('status').filter({ hasText: 'foram convertidos' })).toContainText('Os 2 tesouros foram convertidos.');
+    await m
+      .getByRole('dialog', { name: 'Voltar à cidade' })
+      .getByRole('button', { name: /^Dar 170 XP/ })
+      .click();
+    await expect(
+      panel(m).getByRole('status').filter({ hasText: 'foram convertidos' }),
+    ).toContainText('Os 2 tesouros foram convertidos.');
     await open(p, `/campaigns/${gold.campaignId}`);
     await expect(panel(p)).toContainText('Voltar à cidade · 170 PO em 2 tesouros');
     await expectScreenPasses(p, `Experiência por ouro, jogador ${where}`);
 
     // A campaign by enemies: no button, the line why.
-    const enemies = await tableForGold(m, p, `Acessibilidade inimigos ${Date.now()}`, 'XP_MODE_ENEMIES');
+    const enemies = await tableForGold(
+      m,
+      p,
+      `Acessibilidade inimigos ${Date.now()}`,
+      'XP_MODE_ENEMIES',
+    );
     campaigns.push(enemies.campaignId);
-    await treasureFoundRPC(m, enemies, { name: 'Baú de moedas', valuePo: 250, finders: [enemies.characterIds[0]] });
+    await treasureFoundRPC(m, enemies, {
+      name: 'Baú de moedas',
+      valuePo: 250,
+      finders: [enemies.characterIds[0]],
+    });
     await open(m, `/campaigns/${enemies.campaignId}`);
-    await expect(panel(m)).toContainText('Esta campanha dá XP por inimigos, então o tesouro não vira XP.');
+    await expect(panel(m)).toContainText(
+      'Esta campanha dá XP por inimigos, então o tesouro não vira XP.',
+    );
     await expectScreenPasses(m, `Experiência por inimigos, com tesouro ${where}`);
 
     // "Dar XP" of the live session (state 6c): the strip with the way in, then the conversion from it.
@@ -2730,13 +4100,23 @@ async function scanGoldScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await expect(liveGive).toContainText('3 tesouros · 420 PO');
     await expectScreenPasses(m, `Dar XP da sessão com a faixa de tesouros ${where}`);
     await liveGive.getByRole('button', { name: 'Voltar à cidade' }).click();
-    await expect(m.getByRole('dialog', { name: 'Voltar à cidade' })).toContainText('420 XP ÷ 1 = 420 XP para cada');
+    await expect(m.getByRole('dialog', { name: 'Voltar à cidade' })).toContainText(
+      '420 XP ÷ 1 = 420 XP para cada',
+    );
     await expectScreenPasses(m, `Voltar à cidade aberto do Dar XP da sessão ${where}`);
-    await m.getByRole('dialog', { name: 'Voltar à cidade' }).getByRole('button', { name: 'Cancelar' }).click();
+    await m
+      .getByRole('dialog', { name: 'Voltar à cidade' })
+      .getByRole('button', { name: 'Cancelar' })
+      .click();
     await endOpenSessionRPC(m, live.campaignId);
 
     // The session summary: the master's block and the player's card.
-    const summary = await tableForGold(m, p, `Acessibilidade resumo ouro ${Date.now()}`, 'XP_MODE_ENEMIES');
+    const summary = await tableForGold(
+      m,
+      p,
+      `Acessibilidade resumo ouro ${Date.now()}`,
+      'XP_MODE_ENEMIES',
+    );
     campaigns.push(summary.campaignId);
     await startSessionRPC(m, summary.campaignId);
     await threeTreasuresRPC(m, summary);
@@ -2760,30 +4140,50 @@ async function scanGoldScreens(browser: Browser, colorScheme: 'light' | 'dark', 
   }
 }
 
-test('"Voltar à cidade" e o tesouro no resumo passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-041', '@MR-032'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanGoldScreens(browser, 'light', 1280);
-});
+test(
+  '"Voltar à cidade" e o tesouro no resumo passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-041', '@MR-032'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanGoldScreens(browser, 'light', 1280);
+  },
+);
 
-test('"Voltar à cidade" e o tesouro no resumo passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-041', '@MR-032'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanGoldScreens(browser, 'dark', 390);
-});
+test(
+  '"Voltar à cidade" e o tesouro no resumo passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-041', '@MR-032'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanGoldScreens(browser, 'dark', 390);
+  },
+);
 
-test('"Voltar à cidade" e o tesouro no resumo passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-041', '@MR-032'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanGoldScreens(browser, 'dark', 1024);
-});
+test(
+  '"Voltar à cidade" e o tesouro no resumo passam no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-041', '@MR-032'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanGoldScreens(browser, 'dark', 1024);
+  },
+);
 
-test('"Voltar à cidade" e o tesouro no resumo passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-041', '@MR-032'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanGoldScreens(browser, 'light', 320);
-});
+test(
+  '"Voltar à cidade" e o tesouro no resumo passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-041', '@MR-032'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanGoldScreens(browser, 'light', 320);
+  },
+);
 
 // Etapa 9, MR-037: the character's creatures. The sheet's "Criaturas" panel (empty, outside a
 // session, with a creature), the cast sheet, the questions in place, the stat block, and the
 // master's list with "Dar uma criatura" (a computer's dialog: not on a phone).
-async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanCreatureScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const height = width < 768 ? (width < 360 ? 568 : 844) : width === 1024 ? 768 : 800;
   const options = { colorScheme, viewport: { width, height } };
   const master = await newSignedInContext(browser, 'Mestre Teste', options);
@@ -2797,7 +4197,9 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
     await p.goto('/');
     const closed = await tableForCreatures(m, p, `Criaturas fechada ${Date.now()}`, false);
     await p.goto(`/campaigns/${closed.campaignId}/characters/${closed.characterId}`);
-    await expect(p.locator('app-creatures-panel').getByRole('heading', { name: 'Criaturas' })).toBeVisible();
+    await expect(
+      p.locator('app-creatures-panel').getByRole('heading', { name: 'Criaturas' }),
+    ).toBeVisible();
     await expectScreenPasses(p, `Criaturas, fora de uma sessão ${where}`);
 
     const table = await tableForCreatures(m, p, `Criaturas ${Date.now()}`);
@@ -2808,12 +4210,16 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expectScreenPasses(p, `Criaturas, vazio ${where}`);
 
     await panel.getByRole('button', { name: 'Convocar Familiar' }).click();
-    const sheet = p.getByRole('dialog', { name: 'Convocar Familiar' }).or(p.locator('mat-bottom-sheet-container'));
+    const sheet = p
+      .getByRole('dialog', { name: 'Convocar Familiar' })
+      .or(p.locator('mat-bottom-sheet-container'));
     await expect(sheet.getByText('Escolha a forma e dê um nome ao familiar.')).toBeVisible();
     await expectScreenPasses(p, `Convocar Familiar, faltando o nome ${where}`);
     await sheet.getByLabel('Nome do familiar').fill('Nanquim');
     await sheet.locator('label', { hasText: /Corvo/ }).click();
-    await expect(sheet.getByText('Conjurar como ritual · 1 hora · sem gastar espaço')).toBeVisible();
+    await expect(
+      sheet.getByText('Conjurar como ritual · 1 hora · sem gastar espaço'),
+    ).toBeVisible();
     await expectScreenPasses(p, `Convocar Familiar, pronto ${where}`);
     await sheet.getByRole('button', { name: 'Convocar o familiar' }).click();
     await expect(panel.getByText('Nanquim chegou.')).toBeVisible();
@@ -2867,8 +4273,12 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expectScreenPasses(m, `O mestre, corrigir os PV da criatura ${where}`);
 
     // A creature that is not there (or that the viewer may not read): the page's not-found state.
-    await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}/creatures/6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e001`);
-    await expect(p.getByRole('heading', { name: 'Criatura não encontrada', level: 1 })).toBeVisible();
+    await p.goto(
+      `/campaigns/${campaignId}/characters/${table.characterId}/creatures/6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e001`,
+    );
+    await expect(
+      p.getByRole('heading', { name: 'Criatura não encontrada', level: 1 }),
+    ).toBeVisible();
     await expectScreenPasses(p, `A ficha da criatura, não encontrada ${where}`);
 
     // A druid: the slot picker, "Quantas criaturas", the list with "−" and "+", the warning of what a new
@@ -2879,21 +4289,30 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
       await p.goto(`/campaigns/${druidCampaign}/characters/${druid.characterId}`);
       const dpanel = p.locator('app-creatures-panel');
       await dpanel.getByRole('button', { name: 'Conjurar Animais' }).click();
-      const cast = p.getByRole('dialog', { name: 'Conjurar Animais' }).or(p.locator('mat-bottom-sheet-container'));
+      const cast = p
+        .getByRole('dialog', { name: 'Conjurar Animais' })
+        .or(p.locator('mat-bottom-sheet-container'));
       await expect(cast.getByText('Quantas criaturas')).toBeVisible();
       await expectScreenPasses(p, `Conjurar Animais, as opções e o espaço ${where}`);
       await cast.locator('label', { hasText: /2\s+feras\s+de\s+ND\s+1\s/ }).click();
       // A row not chosen yet has only "Escolher"; once chosen it has "Menos" and "Mais".
       await cast.getByRole('button', { name: 'Escolher Lobo', exact: true }).click();
       await cast.getByRole('button', { name: 'Mais Lobo', exact: true }).click();
-      await expect(cast.locator('.line')).toContainText('2 criaturas · 1 ação · gasta um espaço de 3º nível');
+      await expect(cast.locator('.line')).toContainText(
+        '2 criaturas · 1 ação · gasta um espaço de 3º nível',
+      );
       await expectScreenPasses(p, `Conjurar Animais, a mistura pronta ${where}`);
       await cast.getByRole('button', { name: 'Conjurar Animais', exact: true }).click();
       await expect(dpanel.getByText('2 criaturas chegaram.')).toBeVisible();
 
       await dpanel.getByRole('button', { name: 'Conjurar Animais' }).click();
-      await expect(cast.getByText('Isso encerra Conjurar Animais e dispensa 2 criaturas')).toBeVisible();
-      await expectScreenPasses(p, `Conjurar Animais, o aviso do que a concentração encerra ${where}`);
+      await expect(
+        cast.getByText('Isso encerra Conjurar Animais e dispensa 2 criaturas'),
+      ).toBeVisible();
+      await expectScreenPasses(
+        p,
+        `Conjurar Animais, o aviso do que a concentração encerra ${where}`,
+      );
       // The session ends while the sheet is open: the server refuses, and the sheet says so, still open.
       await cast.locator('label', { hasText: /1\s+fera\s+de\s+ND\s+2\s/ }).click();
       await cast.locator('app-creature-choice-list label.row').first().click();
@@ -2913,30 +4332,50 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
   }
 }
 
-test('as criaturas passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanCreatureScreens(browser, 'light', 1280);
-});
+test(
+  'as criaturas passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-037'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanCreatureScreens(browser, 'light', 1280);
+  },
+);
 
-test('as criaturas passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanCreatureScreens(browser, 'dark', 390);
-});
+test(
+  'as criaturas passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-037'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanCreatureScreens(browser, 'dark', 390);
+  },
+);
 
-test('as criaturas passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanCreatureScreens(browser, 'dark', 1024);
-});
+test(
+  'as criaturas passam no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-037'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanCreatureScreens(browser, 'dark', 1024);
+  },
+);
 
-test('as criaturas passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanCreatureScreens(browser, 'light', 320);
-});
+test(
+  'as criaturas passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-037'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanCreatureScreens(browser, 'light', 320);
+  },
+);
 
 // The fog of war (Etapa 9, MR-036, E9-03 and E9-04): the player's map with its legend and caption, the tiles on their way,
 // what was seen before, the character who is not on the map, the carried light (the row, the sheet, the toast), the
 // master's "Ver como" and "Luz dos personagens", and the familiar's eyes (the band, in and out of a combat).
-async function scanFogScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanFogScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: width < 700 ? 800 : 900 };
   const contexts = await Promise.all(
     (['Mestre Teste', 'Jogador Teste', 'E-mail Não Verificado'] as const).map((user) =>
@@ -2952,7 +4391,10 @@ async function scanFogScreens(browser: Browser, colorScheme: 'light' | 'dark', w
   };
   try {
     await Promise.all([m.goto('/'), p.goto('/'), t.goto('/')]);
-    const table = await tableForFog(m, p, t, `Acessibilidade névoa ${Date.now()}`, { familiar: { col: 15, row: 8 }, torenOffMap: true });
+    const table = await tableForFog(m, p, t, `Acessibilidade névoa ${Date.now()}`, {
+      familiar: { col: 15, row: 8 },
+      torenOffMap: true,
+    });
     campaignId = table.campaignId;
 
     // The player: the map, the legend, the caption, the row of the light; the party's chips on a phone.
@@ -2995,13 +4437,23 @@ async function scanFogScreens(browser: Browser, colorScheme: 'light' | 'dark', w
     // The master: "Ver como" and "Luz dos personagens", then the map as Pensantus sees it.
     await m.goto(sessionRoute(campaignId));
     const list = m.getByRole('radiogroup', { name: 'Ver como' });
-    await expect(list.getByRole('radio', { name: /Pensantus/ })).toContainText(/\d+\s+quadrados vistos/);
+    await expect(list.getByRole('radio', { name: /Pensantus/ })).toContainText(
+      /\d+\s+quadrados vistos/,
+    );
     await expectScreenPasses(m, `Ver como, a lista e a luz dos personagens ${where}`);
     // Nothing sticks out of the page, whatever its width (the "Ver como" and light cards at 320 px did).
-    expect(await m.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), `rolagem lateral do mestre ${where}`).toBeLessThanOrEqual(0);
-    expect(await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), `rolagem lateral do jogador ${where}`).toBeLessThanOrEqual(0);
+    expect(
+      await m.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
+      `rolagem lateral do mestre ${where}`,
+    ).toBeLessThanOrEqual(0);
+    expect(
+      await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
+      `rolagem lateral do jogador ${where}`,
+    ).toBeLessThanOrEqual(0);
     await list.getByRole('radio', { name: /Pensantus/ }).click();
-    await expect(m.getByText('Você está vendo o mapa como Pensantus.', { exact: false })).toBeVisible();
+    await expect(
+      m.getByText('Você está vendo o mapa como Pensantus.', { exact: false }),
+    ).toBeVisible();
     await loaded(m);
     await expectScreenPasses(m, `Ver como, o mapa de Pensantus ${where}`);
 
@@ -3026,30 +4478,49 @@ async function scanFogScreens(browser: Browser, colorScheme: 'light' | 'dark', w
   }
 }
 
-test('a névoa de guerra passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-036'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanFogScreens(browser, 'light', 1280);
-});
+test(
+  'a névoa de guerra passa no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-036'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanFogScreens(browser, 'light', 1280);
+  },
+);
 
-test('a névoa de guerra passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-036'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanFogScreens(browser, 'dark', 390);
-});
+test(
+  'a névoa de guerra passa no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-036'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanFogScreens(browser, 'dark', 390);
+  },
+);
 
-test('a névoa de guerra passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-036'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanFogScreens(browser, 'dark', 1024);
-});
+test(
+  'a névoa de guerra passa no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-036'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanFogScreens(browser, 'dark', 1024);
+  },
+);
 
-test('a névoa de guerra passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-036'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanFogScreens(browser, 'light', 320);
-});
-
+test(
+  'a névoa de guerra passa no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-036'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanFogScreens(browser, 'light', 320);
+  },
+);
 
 // The fog in a combat (Etapa 9, MR-036): the combat's map with the same fog and legend, the action "Ver pelos olhos do Nanquim", the band
 // "Até o começo da sua próxima vez" with the "Cego" line, and the master's "Ver como" and "Luz dos personagens" under the combat.
-async function scanFogCombatScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanFogCombatScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: width < 700 ? 800 : 900 };
   const contexts = await Promise.all(
     (['Mestre Teste', 'Jogador Teste', 'E-mail Não Verificado'] as const).map((user) =>
@@ -3061,7 +4532,9 @@ async function scanFogCombatScreens(browser: Browser, colorScheme: 'light' | 'da
   let campaignId = '';
   try {
     await Promise.all([m.goto('/'), p.goto('/'), t.goto('/')]);
-    const table = await tableForFog(m, p, t, `Acessibilidade névoa no combate ${Date.now()}`, { familiar: { col: 15, row: 8 } });
+    const table = await tableForFog(m, p, t, `Acessibilidade névoa no combate ${Date.now()}`, {
+      familiar: { col: 15, row: 8 },
+    });
     campaignId = table.campaignId;
     await beginFogCombat(m, table);
 
@@ -3097,23 +4570,43 @@ async function scanFogCombatScreens(browser: Browser, colorScheme: 'light' | 'da
   }
 }
 
-test('a névoa no combate passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-036'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanFogCombatScreens(browser, 'light', 1280);
-});
+test(
+  'a névoa no combate passa no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-036'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanFogCombatScreens(browser, 'light', 1280);
+  },
+);
 
-test('a névoa no combate passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-036'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanFogCombatScreens(browser, 'dark', 390);
-});
+test(
+  'a névoa no combate passa no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-036'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanFogCombatScreens(browser, 'dark', 390);
+  },
+);
 
 // Traps and treasure in the session (slice 9.14, MR-035, MR-041, E9-08, E9-09): the master's cards and
 // their dialogs, the damage that waits, the player's search sheet in each step, the toast and the treasure's
 // sheet. Every state goes through axe and the alignment checks.
-async function scanTrapScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanTrapScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -3138,16 +4631,24 @@ async function scanTrapScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await card.getByRole('button', { name: 'Revelar para…' }).click();
     await expect(m.getByRole('dialog', { name: 'Revelar armadilha' })).toBeVisible();
     await expectScreenPasses(m, `Revelar armadilha ${where}`);
-    await m.getByRole('dialog', { name: 'Revelar armadilha' }).getByRole('button', { name: 'Cancelar' }).click();
+    await m
+      .getByRole('dialog', { name: 'Revelar armadilha' })
+      .getByRole('button', { name: 'Cancelar' })
+      .click();
     await card.getByRole('button', { name: 'Disparar…' }).click();
     await expect(m.getByRole('dialog', { name: /Disparar/ })).toBeVisible();
     await expectScreenPasses(m, `Disparar a armadilha ${where}`);
-    await m.getByRole('dialog', { name: /Disparar/ }).getByRole('button', { name: 'Disparar para quem está na área' }).click();
+    await m
+      .getByRole('dialog', { name: /Disparar/ })
+      .getByRole('button', { name: 'Disparar para quem está na área' })
+      .click();
     await expect(card).toContainText('Disparada');
     await expectScreenPasses(m, `Armadilha disparada e o registro ${where}`);
 
     // The treasure: hidden, the form in place, found, the question in place.
-    const chest = m.getByRole('region', { name: 'Tesouros do mapa' }).getByRole('article', { name: 'Baú de moedas' });
+    const chest = m
+      .getByRole('region', { name: 'Tesouros do mapa' })
+      .getByRole('article', { name: 'Baú de moedas' });
     await expectScreenPasses(m, `Tesouros do mapa, escondido ${where}`);
     await chest.getByRole('button', { name: 'Marcar o Baú de moedas como encontrado' }).click();
     await expectScreenPasses(m, `Marcar como encontrado no lugar ${where}`);
@@ -3155,7 +4656,9 @@ async function scanTrapScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await chest.getByRole('button', { name: 'Marcar como encontrado' }).click();
     await expect(chest).toContainText('Encontrado por Pensantus');
     // The toast goes away on its own: scan the player's screen before the master's.
-    await expect(p.getByRole('status').filter({ hasText: 'Pensantus encontrou: Baú de moedas' })).toBeVisible();
+    await expect(
+      p.getByRole('status').filter({ hasText: 'Pensantus encontrou: Baú de moedas' }),
+    ).toBeVisible();
     await expectScreenPasses(p, `Aviso do tesouro achado, jogador ${where}`);
     await expectScreenPasses(m, `Tesouro achado ${where}`);
     await chest.getByRole('button', { name: 'Desmarcar' }).click();
@@ -3166,7 +4669,11 @@ async function scanTrapScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await p.getByRole('button', { name: /Baú de moedas, Tesouro/ }).click();
     await expect(p.getByRole('dialog', { name: 'Baú de moedas' })).toBeVisible();
     await expectScreenPasses(p, `Folha do tesouro, jogador ${where}`);
-    await p.getByRole('dialog', { name: 'Baú de moedas' }).getByRole('button', { name: 'Fechar', exact: true }).last().click();
+    await p
+      .getByRole('dialog', { name: 'Baú de moedas' })
+      .getByRole('button', { name: 'Fechar', exact: true })
+      .last()
+      .click();
     await p.getByRole('button', { name: 'Procurar armadilhas' }).click();
     const sheet = p.getByRole('dialog', { name: 'Procurar armadilhas' });
     await expectScreenPasses(p, `Procurar armadilhas, como ${where}`);
@@ -3183,7 +4690,10 @@ async function scanTrapScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await sheet.locator('label', { hasText: 'Outra perícia…' }).click();
     await expect(sheet.getByRole('listbox', { name: 'Perícia' })).toBeVisible();
     await expectScreenPasses(p, `Procurar armadilhas, Outra perícia ${where}`);
-    await sheet.getByRole('listbox', { name: 'Perícia' }).getByRole('option', { name: /^Arcanismo/ }).click();
+    await sheet
+      .getByRole('listbox', { name: 'Perícia' })
+      .getByRole('option', { name: /^Arcanismo/ })
+      .click();
     await expect(sheet.getByText('Escolha uma perícia')).toHaveCount(0);
     await expectScreenPasses(p, `Procurar armadilhas, a perícia escolhida ${where}`);
     await p.keyboard.press('Escape');
@@ -3204,25 +4714,41 @@ async function scanTrapScreens(browser: Browser, colorScheme: 'light' | 'dark', 
   }
 }
 
-test('as armadilhas e os tesouros na sessão passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-035', '@MR-041'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanTrapScreens(browser, 'light', 1280);
-});
+test(
+  'as armadilhas e os tesouros na sessão passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-035', '@MR-041'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanTrapScreens(browser, 'light', 1280);
+  },
+);
 
-test('as armadilhas e os tesouros na sessão passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-035', '@MR-041'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanTrapScreens(browser, 'dark', 390);
-});
+test(
+  'as armadilhas e os tesouros na sessão passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-035', '@MR-041'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanTrapScreens(browser, 'dark', 390);
+  },
+);
 
-test('as armadilhas e os tesouros na sessão passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-035', '@MR-041'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanTrapScreens(browser, 'dark', 1024);
-});
+test(
+  'as armadilhas e os tesouros na sessão passam no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-035', '@MR-041'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanTrapScreens(browser, 'dark', 1024);
+  },
+);
 
-test('as armadilhas e os tesouros na sessão passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-035', '@MR-041'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanTrapScreens(browser, 'light', 320);
-});
+test(
+  'as armadilhas e os tesouros na sessão passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-035', '@MR-041'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanTrapScreens(browser, 'light', 320);
+  },
+);
 
 // ---- the creatures in combat and Wild Shape (MR-037, E9-11, E9-12) ----
 
@@ -3235,7 +4761,11 @@ async function tapAboveBar(button: import('@playwright/test').Locator): Promise<
   await button.click();
 }
 
-async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanCreatureCombatScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: width < 700 ? 800 : 900 };
   const contexts = await Promise.all(
     (['Mestre Teste', 'Jogador Teste', 'E-mail Não Verificado'] as const).map((user) =>
@@ -3249,7 +4779,13 @@ async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' 
     await Promise.all([m.goto('/'), p.goto('/'), t.goto('/')]);
     const table = await tableForCreatureCombat(m, p, t, `Acessibilidade criaturas ${Date.now()}`);
     campaignId = table.campaignId;
-    await beginCreatureCombat(m, table, { Sálvia: p, Toren: t }, { Toren: 20, Sálvia: 13, 'Capitão Goblin': 5, 'Goblin 1': 4, 'Goblin 2': 4 }, { 'Capitão Goblin': [21, 3], 'Goblin 1': [6, 6], 'Goblin 2': [20, 7] });
+    await beginCreatureCombat(
+      m,
+      table,
+      { Sálvia: p, Toren: t },
+      { Toren: 20, Sálvia: 13, 'Capitão Goblin': 5, 'Goblin 1': 4, 'Goblin 2': 4 },
+      { 'Capitão Goblin': [21, 3], 'Goblin 1': [6, 6], 'Goblin 2': [20, 7] },
+    );
     await passTurnsTo(m, campaignId, 'Sálvia');
     await p.goto(sessionRoute(campaignId));
     await expect(p.getByRole('heading', { name: 'Sua vez, Sálvia' })).toBeVisible();
@@ -3316,7 +4852,10 @@ async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' 
     await order.getByRole('button', { name: 'Perdeu a concentração' }).click();
     await expect(order.getByRole('alertdialog')).toBeVisible();
     await expectScreenPasses(m, `Perdeu a concentração, a pergunta ${where}`);
-    await order.getByRole('alertdialog').getByRole('button', { name: 'Dispensar os Lobos' }).click();
+    await order
+      .getByRole('alertdialog')
+      .getByRole('button', { name: 'Dispensar os Lobos' })
+      .click();
     await expect(p.getByTestId('concentration-lost')).toBeVisible();
     await expectScreenPasses(p, `O aviso da concentração perdida ${where}`);
   } finally {
@@ -3327,32 +4866,56 @@ async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' 
   }
 }
 
-test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
-  test.setTimeout(360_000);
-  await scanCreatureCombatScreens(browser, 'light', 1280);
-});
+test(
+  'as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-037'] },
+  async ({ browser }) => {
+    test.setTimeout(360_000);
+    await scanCreatureCombatScreens(browser, 'light', 1280);
+  },
+);
 
-test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
-  test.setTimeout(360_000);
-  await scanCreatureCombatScreens(browser, 'dark', 390);
-});
+test(
+  'as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-037'] },
+  async ({ browser }) => {
+    test.setTimeout(360_000);
+    await scanCreatureCombatScreens(browser, 'dark', 390);
+  },
+);
 
-test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
-  test.setTimeout(360_000);
-  await scanCreatureCombatScreens(browser, 'dark', 1024);
-});
+test(
+  'as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-037'] },
+  async ({ browser }) => {
+    test.setTimeout(360_000);
+    await scanCreatureCombatScreens(browser, 'dark', 1024);
+  },
+);
 
-test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
-  test.setTimeout(360_000);
-  await scanCreatureCombatScreens(browser, 'light', 320);
-});
+test(
+  'as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-037'] },
+  async ({ browser }) => {
+    test.setTimeout(360_000);
+    await scanCreatureCombatScreens(browser, 'light', 320);
+  },
+);
 
 // The map editor (slice 9.12, MR-034, MR-035, MR-036, MR-041, E9-01 and E9-02): painting with each tool, the in-place questions, the
 // fog's settings, the Luz, Armadilha and Tesouro panels in each state, the map with no grid, with a combat on it, "Ver como", and,
 // on a phone, the manage view with its fixed notice. Every state goes through axe and the alignment checks.
-async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanMapEditorScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
   const pensantus = await newSignedInContext(browser, 'Jogador Teste');
   const toren = await newSignedInContext(browser, 'E-mail Não Verificado');
   const [m, ap, bp] = [await master.newPage(), await pensantus.newPage(), await toren.newPage()];
@@ -3364,7 +4927,12 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
     const table = await tableForFog(m, ap, bp, `Acessibilidade editor ${Date.now()}`, {});
     campaignId = table.campaignId;
     await cavePoints(m, table);
-    const image = await uploadImageRPC(m, campaignId, 'Sem grade', await canvasPng(m, 960, 640, 'Sem grade'));
+    const image = await uploadImageRPC(
+      m,
+      campaignId,
+      'Sem grade',
+      await canvasPng(m, 960, 640, 'Sem grade'),
+    );
     const noGrid = await createMapRPC(m, campaignId, 'Mapa sem grade', image);
     const map = { columns: 24, rows: 16 };
     const route = editorRoute(campaignId, table.mapId);
@@ -3403,7 +4971,10 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
     await m.getByRole('button', { name: 'Acrescentar perícia' }).click();
     await expect(m.getByRole('listbox', { name: 'Também acham com' })).toBeVisible();
     await expectScreenPasses(m, `Armadilha, Também acham com, a lista ${where}`);
-    await m.getByRole('listbox', { name: 'Também acham com' }).getByRole('option', { name: 'Arcanismo' }).click();
+    await m
+      .getByRole('listbox', { name: 'Também acham com' })
+      .getByRole('option', { name: 'Arcanismo' })
+      .click();
     await m.keyboard.press('Escape');
     await expect(m.locator('.tp__chip', { hasText: 'Arcanismo' })).toBeVisible();
     await expectScreenPasses(m, `Armadilha, Também acham com, a etiqueta ${where}`);
@@ -3429,21 +5000,29 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
     // The list is drawn a moment after the page: pick the row again until the panel is there.
     await expect(async () => {
       await list.getByRole('button', { name: /Baú de moedas/ }).click();
-      await expect(m.getByRole('heading', { name: 'Baú de moedas', level: 2 })).toBeVisible({ timeout: 2_000 });
+      await expect(m.getByRole('heading', { name: 'Baú de moedas', level: 2 })).toBeVisible({
+        timeout: 2_000,
+      });
     }).toPass();
     await expect(m.locator('app-treasure-point-panel').getByText('Não encontrado')).toBeVisible();
     await expectScreenPasses(m, `Tesouro escondido ${where}`);
     await m.getByRole('button', { name: 'Marcar como encontrado' }).click();
     await expect(m.getByRole('group', { name: /Quem encontrou/ })).toBeVisible();
     await expectScreenPasses(m, `Tesouro, quem encontrou ${where}`);
-    await m.getByRole('group', { name: /Quem encontrou/ }).locator('label', { hasText: 'Pensantus' }).click();
+    await m
+      .getByRole('group', { name: /Quem encontrou/ })
+      .locator('label', { hasText: 'Pensantus' })
+      .click();
     await m.getByRole('button', { name: 'Marcar como encontrado' }).last().click();
     await expect(m.getByText(/Encontrado por Pensantus/)).toBeVisible();
     await expectScreenPasses(m, `Tesouro encontrado ${where}`);
     await m.getByRole('button', { name: 'Desmarcar' }).click();
     await expect(m.getByRole('group', { name: /^Desmarcar / })).toBeVisible();
     await expectScreenPasses(m, `Tesouro, desmarcar no lugar ${where}`);
-    await m.getByRole('group', { name: /^Desmarcar / }).getByRole('button', { name: 'Desmarcar' }).click();
+    await m
+      .getByRole('group', { name: /^Desmarcar / })
+      .getByRole('button', { name: 'Desmarcar' })
+      .click();
     await reopen();
 
     // Ver como
@@ -3510,40 +5089,69 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
   }
 }
 
-test('o editor do mapa passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-034', '@MR-035', '@MR-036', '@MR-041'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanMapEditorScreens(browser, 'light', 1280);
-});
+test(
+  'o editor do mapa passa no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-034', '@MR-035', '@MR-036', '@MR-041'] },
+  async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanMapEditorScreens(browser, 'light', 1280);
+  },
+);
 
-test('o editor do mapa passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-034', '@MR-036'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanMapEditorScreens(browser, 'dark', 390);
-});
+test(
+  'o editor do mapa passa no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-034', '@MR-036'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanMapEditorScreens(browser, 'dark', 390);
+  },
+);
 
-test('o editor do mapa passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-034', '@MR-035', '@MR-036', '@MR-041'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanMapEditorScreens(browser, 'dark', 1024);
-});
+test(
+  'o editor do mapa passa no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-034', '@MR-035', '@MR-036', '@MR-041'] },
+  async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanMapEditorScreens(browser, 'dark', 1024);
+  },
+);
 
-test('o editor do mapa passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-034', '@MR-036'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanMapEditorScreens(browser, 'light', 320);
-});
+test(
+  'o editor do mapa passa no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-034', '@MR-036'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanMapEditorScreens(browser, 'light', 320);
+  },
+);
 
 // The doors (slice 10.14a, MR-010, RN-26, RN-10; E10-05 7 to 11): the "Porta" tool in "Pintar" with its panel, its refusal and its
 // question; the master's door sheet in the session (a door, a secret door and the question before revealing it); what a player's
 // map says (only "Porta fechada"); and the "Mover" page after a locked door stopped the move. Every state goes through axe and the
 // alignment checks. On a phone the editor is "Pintar só no computador" (the existing scans), so only the session's states run there.
-async function scanDoorScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanDoorScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const pensantus = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const pensantus = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const toren = await newSignedInContext(browser, 'E-mail Não Verificado');
   const [m, ap, bp] = [await master.newPage(), await pensantus.newPage(), await toren.newPage()];
   const where = `(${colorScheme}, ${width}px)`;
   const phone = width < 768;
   let campaignId = '';
-  const door = (state: string, col: number, row: number) => m.getByRole('button', { name: new RegExp(`^${state}, coluna ${col}, linha ${row}`) });
+  const door = (state: string, col: number, row: number) =>
+    m.getByRole('button', { name: new RegExp(`^${state}, coluna ${col}, linha ${row}`) });
   // Opens a door's sheet by keyboard: a phone's map is zoomed on the party, so the door may be off the screen.
   const openDoor = async (state: string, col: number, row: number) => {
     await door(state, col, row).focus();
@@ -3555,11 +5163,19 @@ async function scanDoorScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     campaignId = table.campaignId;
     const target = { campaignId, mapId: table.mapId };
     const paint = async (layer: string, value: number, squares: [number, number][]) => {
-      const res = await callRPC(m, 'meurpg.maps.v1.MapService/PaintMapCells', { ...target, layer, value, squares: squares.map(([col, row]) => ({ col, row })) });
+      const res = await callRPC(m, 'meurpg.maps.v1.MapService/PaintMapCells', {
+        ...target,
+        layer,
+        value,
+        squares: squares.map(([col, row]) => ({ col, row })),
+      });
       expect(res.ok(), await res.text()).toBeTruthy();
     };
     // The wall at (7, 9) and (7, 10) has floor on both sides: a closed and a locked door; a grade, an open door and a secret one stand on the floor.
-    await paint('MAP_LAYER_WALL', 0, [[7, 9], [7, 10]]);
+    await paint('MAP_LAYER_WALL', 0, [
+      [7, 9],
+      [7, 10],
+    ]);
     await paint('MAP_LAYER_DOORS', 2, [[7, 9]]);
     await paint('MAP_LAYER_DOORS', 3, [[7, 10]]);
     await paint('MAP_LAYER_DOORS', 4, [[3, 7]]);
@@ -3573,22 +5189,35 @@ async function scanDoorScreens(browser: Browser, colorScheme: 'light' | 'dark', 
       await m.getByRole('radio', { name: 'Pintar' }).click();
       const tools = m.getByRole('group', { name: 'Ferramenta de pintura' });
       await tools.getByRole('button', { name: 'Porta' }).click();
-      await expect(m.getByText('Toque num quadrado para pôr a porta do tipo escolhido.')).toBeVisible();
+      await expect(
+        m.getByText('Toque num quadrado para pôr a porta do tipo escolhido.'),
+      ).toBeVisible();
       await expect(m.locator('app-layers-panel').getByText('Tudo salvo').first()).toBeVisible();
       await expectScreenPasses(m, `Editor, Pintar, a ferramenta Porta ${where}`);
-      await m.getByRole('group', { name: 'Tipo de porta' }).getByRole('button', { name: 'Trancada' }).click();
+      await m
+        .getByRole('group', { name: 'Tipo de porta' })
+        .getByRole('button', { name: 'Trancada' })
+        .click();
       await expectScreenPasses(m, `Editor, Porta trancada escolhida ${where}`);
       const map = { columns: 24, rows: 16 };
       await clickSquare(m, map, 12, 12);
-      await expect(m.getByRole('alert').filter({ hasText: 'uma porta precisa de chão dos dois lados' })).toBeVisible();
+      await expect(
+        m.getByRole('alert').filter({ hasText: 'uma porta precisa de chão dos dois lados' }),
+      ).toBeVisible();
       await expectScreenPasses(m, `Editor, Porta: um toque que não serve ${where}`);
       // Toren stands on a wall square that has floor on both sides: a closed door there asks first.
       await moveTo(m, table, table.torenId, 7, 11);
       await paint('MAP_LAYER_WALL', 1, [[7, 11]]);
       await m.goto(editorRoute(campaignId, table.mapId));
       await m.getByRole('radio', { name: 'Pintar' }).click();
-      await m.getByRole('group', { name: 'Ferramenta de pintura' }).getByRole('button', { name: 'Porta' }).click();
-      await m.getByRole('group', { name: 'Tipo de porta' }).getByRole('button', { name: 'Fechada' }).click();
+      await m
+        .getByRole('group', { name: 'Ferramenta de pintura' })
+        .getByRole('button', { name: 'Porta' })
+        .click();
+      await m
+        .getByRole('group', { name: 'Tipo de porta' })
+        .getByRole('button', { name: 'Fechada' })
+        .click();
       await clickSquare(m, map, 7, 11);
       await expect(m.getByText('Pôr a porta onde há alguém?')).toBeVisible();
       await expectScreenPasses(m, `Editor, Porta: a pergunta de quem está no quadrado ${where}`);
@@ -3597,14 +5226,20 @@ async function scanDoorScreens(browser: Browser, colorScheme: 'light' | 'dark', 
 
     // The session: the master's map names every door and each door has its sheet; the player's names only "Porta fechada".
     await Promise.all([m.goto(sessionRoute(campaignId)), ap.goto(sessionRoute(campaignId))]);
-    await expect(m.getByRole('list', { name: 'Legenda do mapa' }).getByText('Porta secreta (só você vê)')).toBeVisible();
+    await expect(
+      m.getByRole('list', { name: 'Legenda do mapa' }).getByText('Porta secreta (só você vê)'),
+    ).toBeVisible();
     await expect(m.getByRole('group', { name: /^Mapa A caverna/ })).toBeVisible();
     await expectScreenPasses(m, `Sessão, o mestre, o mapa com as portas e a legenda ${where}`);
-    await expect(ap.getByRole('list', { name: 'Legenda do mapa' }).getByText('Porta fechada')).toBeVisible();
+    await expect(
+      ap.getByRole('list', { name: 'Legenda do mapa' }).getByText('Porta fechada'),
+    ).toBeVisible();
     await expect(ap.locator('app-fog-base').first()).toBeVisible();
     await expectScreenPasses(ap, `Sessão, o jogador, o mapa com "Porta fechada" ${where}`);
     await openDoor('Porta fechada', 8, 10);
-    await expect(m.getByRole('dialog', { name: 'Porta' }).getByRole('radio', { name: /Fechada/ })).toHaveAttribute('aria-checked', 'true');
+    await expect(
+      m.getByRole('dialog', { name: 'Porta' }).getByRole('radio', { name: /Fechada/ }),
+    ).toHaveAttribute('aria-checked', 'true');
     await expectScreenPasses(m, `Sessão, a folha da porta fechada ${where}`);
     await m.keyboard.press('Escape');
     await expect(m.getByRole('dialog', { name: 'Porta' })).toHaveCount(0);
@@ -3631,25 +5266,58 @@ async function scanDoorScreens(browser: Browser, colorScheme: 'light' | 'dark', 
   }
 
   // The "Mover" page after a locked door stopped the move: the notice with the lock, and the map still "Porta fechada".
-  const mover = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const moverPlayer = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const mover = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const moverPlayer = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const [mm, pp] = [await mover.newPage(), await moverPlayer.newPage()];
   let moveCampaign = '';
   try {
     await Promise.all([mm.goto('/'), pp.goto('/')]);
-    const table = await tableForCombat(mm, pp, `Acessibilidade porta trancada ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    const table = await tableForCombat(
+      mm,
+      pp,
+      `Acessibilidade porta trancada ${Date.now()}`,
+      true,
+      true,
+      { sheet: pensantusCasting },
+    );
     moveCampaign = table.campaignId;
-    await paintRPC(mm, table, 'MAP_LAYER_WALL', 1, [[3, 5], [4, 5], [6, 5], [7, 5]]);
-    const res = await callRPC(mm, 'meurpg.maps.v1.MapService/PaintMapCells', { campaignId: table.campaignId, mapId: table.mapId, layer: 'MAP_LAYER_DOORS', value: 3, squares: [{ col: 5, row: 5 }] });
+    await paintRPC(mm, table, 'MAP_LAYER_WALL', 1, [
+      [3, 5],
+      [4, 5],
+      [6, 5],
+      [7, 5],
+    ]);
+    const res = await callRPC(mm, 'meurpg.maps.v1.MapService/PaintMapCells', {
+      campaignId: table.campaignId,
+      mapId: table.mapId,
+      layer: 'MAP_LAYER_DOORS',
+      value: 3,
+      squares: [{ col: 5, row: 5 }],
+    });
     expect(res.ok(), await res.text()).toBeTruthy();
-    await beginAttackCombatRPC(mm, table, { Pensantus: 20, 'Goblin 1': 15, 'Capitão Goblin': 10, 'Goblin 2': 4 }, { 'Capitão Goblin': [11, 9], 'Goblin 1': [14, 7], 'Goblin 2': [15, 11] });
+    await beginAttackCombatRPC(
+      mm,
+      table,
+      { Pensantus: 20, 'Goblin 1': 15, 'Capitão Goblin': 10, 'Goblin 2': 4 },
+      { 'Capitão Goblin': [11, 9], 'Goblin 1': [14, 7], 'Goblin 2': [15, 11] },
+    );
     await openSessionPage(pp, moveCampaign);
     await expect(pp.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
     await pp.getByRole('button', { name: 'Mover', exact: true }).click();
     await expect(pp.getByRole('heading', { name: 'Mover Pensantus' })).toBeVisible();
     await tapSquare(pp, 5, 4);
     await pp.getByRole('button', { name: 'Mover para cá' }).click();
-    await expect(pp.getByRole('status').filter({ hasText: 'A porta está trancada.' })).toBeVisible();
+    await expect(
+      pp.getByRole('status').filter({ hasText: 'A porta está trancada.' }),
+    ).toBeVisible();
     await expectScreenPasses(pp, `Mover, uma porta trancada parou o movimento ${where}`);
   } finally {
     if (moveCampaign) {
@@ -3659,32 +5327,52 @@ async function scanDoorScreens(browser: Browser, colorScheme: 'light' | 'dark', 
   }
 }
 
-test('as portas passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-010', '@RN-26'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanDoorScreens(browser, 'light', 1280);
-});
+test(
+  'as portas passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-010', '@RN-26'] },
+  async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanDoorScreens(browser, 'light', 1280);
+  },
+);
 
-test('as portas passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-010', '@RN-26'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanDoorScreens(browser, 'dark', 390);
-});
+test(
+  'as portas passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-010', '@RN-26'] },
+  async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanDoorScreens(browser, 'dark', 390);
+  },
+);
 
-test('as portas passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-010', '@RN-26'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanDoorScreens(browser, 'dark', 1024);
-});
+test(
+  'as portas passam no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-010', '@RN-26'] },
+  async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanDoorScreens(browser, 'dark', 1024);
+  },
+);
 
-test('as portas passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-010', '@RN-26'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanDoorScreens(browser, 'light', 320);
-});
+test(
+  'as portas passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-010', '@RN-26'] },
+  async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanDoorScreens(browser, 'light', 320);
+  },
+);
 
 /**
  * The bestiary (MR-042, E10-08): the list, loading and failing, a search with results, one with none, a
  * filter set, the Ogre's stat block, the "Criar NPC" dialog (a sheet on a phone), its empty-name error, the
  * confirmation after the NPC is made, the player's notice and the campaign page with its "Bestiário" panel.
  */
-async function scanBestiaryScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanBestiaryScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const context = await browser.newContext({
     storageState: authStatePath('Mestre Teste'),
     colorScheme,
@@ -3702,7 +5390,11 @@ async function scanBestiaryScreens(browser: Browser, colorScheme: 'light' | 'dar
   try {
     await page.goto('/');
     await player.goto('/');
-    const { campaignId } = await tableForMaps(page, player, `Acessibilidade bestiário ${Date.now()}`);
+    const { campaignId } = await tableForMaps(
+      page,
+      player,
+      `Acessibilidade bestiário ${Date.now()}`,
+    );
 
     // Loading: the answer is held until the scan is done.
     let release!: () => void;
@@ -3721,7 +5413,11 @@ async function scanBestiaryScreens(browser: Browser, colorScheme: 'light' | 'dar
 
     // Failing: the server does not answer.
     await page.route('**/meurpg.rules.v1.ContentService/ListCreatures', (route) =>
-      route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ code: 'unavailable', message: 'down' }) }),
+      route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ code: 'unavailable', message: 'down' }),
+      }),
     );
     await page.getByRole('searchbox', { name: 'Nome' }).fill('lobo');
     await expect(page.getByRole('alert')).toContainText('o servidor não respondeu');
@@ -3743,7 +5439,9 @@ async function scanBestiaryScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expectScreenPasses(page, `Bestiário, filtros ligados ${where}`);
 
     await page.goto(`/campaigns/${campaignId}/bestiary/ogre`);
-    await expect(page.getByText('Os textos abaixo são do livro de regras (SRD 5.1), em inglês.')).toBeVisible();
+    await expect(
+      page.getByText('Os textos abaixo são do livro de regras (SRD 5.1), em inglês.'),
+    ).toBeVisible();
     await expectScreenPasses(page, `Bestiário, a ficha do Ogro ${where}`);
 
     await page.getByRole('button', { name: 'Criar NPC' }).click();
@@ -3778,42 +5476,73 @@ async function scanBestiaryScreens(browser: Browser, colorScheme: 'light' | 'dar
   }
 }
 
-test('o bestiário passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-042'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanBestiaryScreens(browser, 'light', 1280);
-});
+test(
+  'o bestiário passa no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-042'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanBestiaryScreens(browser, 'light', 1280);
+  },
+);
 
-test('o bestiário passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-042'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanBestiaryScreens(browser, 'dark', 390);
-});
+test(
+  'o bestiário passa no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-042'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanBestiaryScreens(browser, 'dark', 390);
+  },
+);
 
-test('o bestiário passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-042'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanBestiaryScreens(browser, 'dark', 1024);
-});
+test(
+  'o bestiário passa no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-042'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanBestiaryScreens(browser, 'dark', 1024);
+  },
+);
 
-test('o bestiário passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-042'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanBestiaryScreens(browser, 'light', 320);
-});
+test(
+  'o bestiário passa no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-042'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanBestiaryScreens(browser, 'light', 320);
+  },
+);
 
 /**
  * "Regras da mesa" (MR-025, RN-24, RN-09; E10-03 states 1 to 3): the page as saved, a style chosen (the notice and
  * the "Mudou" tags, the save bar lit), the XP mode question open in place, and the rules for a table with a long
  * list of reminders. The XP question needs XP already given, so the campaign has Pensantus and an award.
  */
-async function scanTableRules(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanTableRules(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   test.setTimeout(120_000);
-  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const mContext = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
   const pContext = await newSignedInContext(browser, 'Jogador Teste');
   try {
     const m = await mContext.newPage();
     const p = await pContext.newPage();
     await Promise.all([m.goto('/'), p.goto('/')]);
     const table = await tableForXp(m, p, `Acessibilidade regras ${Date.now()}`);
-    await awardXpRPC(m, table.campaignId, { mode: 'MANUAL', reason: 'A porta da torre', characterIds: [table.characterId], amount: 50 });
-    await setTableRulesRPC(m, table.campaignId, { houseRules: ['Beber uma poção é uma ação bônus', 'Quem cai fica caído até o fim do turno'] });
+    await awardXpRPC(m, table.campaignId, {
+      mode: 'MANUAL',
+      reason: 'A porta da torre',
+      characterIds: [table.characterId],
+      amount: 50,
+    });
+    await setTableRulesRPC(m, table.campaignId, {
+      houseRules: ['Beber uma poção é uma ação bônus', 'Quem cai fica caído até o fim do turno'],
+    });
     const where = `(${colorScheme}, ${width}px)`;
 
     await m.goto(`/campaigns/${table.campaignId}`);
@@ -3840,32 +5569,56 @@ async function scanTableRules(browser: Browser, colorScheme: 'light' | 'dark', w
   }
 }
 
-test('as regras da mesa passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-24', '@RN-09'] }, async ({ browser }) => {
-  await scanTableRules(browser, 'light', 1280);
-});
+test(
+  'as regras da mesa passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@RN-24', '@RN-09'] },
+  async ({ browser }) => {
+    await scanTableRules(browser, 'light', 1280);
+  },
+);
 
-test('as regras da mesa passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-24', '@RN-09'] }, async ({ browser }) => {
-  await scanTableRules(browser, 'dark', 390);
-});
+test(
+  'as regras da mesa passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@RN-24', '@RN-09'] },
+  async ({ browser }) => {
+    await scanTableRules(browser, 'dark', 390);
+  },
+);
 
-test('as regras da mesa passam no axe e nas conferências de layout no tema escuro, no celular de 320', { tag: ['@a11y', '@RN-24'] }, async ({ browser }) => {
-  await scanTableRules(browser, 'dark', 320);
-});
+test(
+  'as regras da mesa passam no axe e nas conferências de layout no tema escuro, no celular de 320',
+  { tag: ['@a11y', '@RN-24'] },
+  async ({ browser }) => {
+    await scanTableRules(browser, 'dark', 320);
+  },
+);
 
 /**
  * The "Habilidades" step of a player who makes a new sheet by the table's rules (E10-03 state 4): the four ways, each
  * with what it shows (the placing of the standard array, the point buy with the points left, the 4d6 the server
  * rolled and the physical dice to type, and the typed values).
  */
-async function scanTableAbilities(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanTableAbilities(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   test.setTimeout(180_000);
   const mContext = await newSignedInContext(browser, 'Mestre Teste');
-  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  const pContext = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
   try {
     const m = await mContext.newPage();
     const p = await pContext.newPage();
     await Promise.all([m.goto('/'), p.goto('/')]);
-    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade habilidades ${Date.now()}`);
+    const campaignId = await campaignWithEmptyPlayer(
+      m,
+      p,
+      `Acessibilidade habilidades ${Date.now()}`,
+    );
     const where = `(${colorScheme}, ${width}px)`;
     await open(p, `/campaigns/${campaignId}/characters/new`);
     await p.getByLabel('Nome do personagem', { exact: true }).fill('Ícaro');
@@ -3887,7 +5640,10 @@ async function scanTableAbilities(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `Habilidades, 4d6 rolados pelo servidor ${where}`);
 
     await method(p, 'Digitar');
-    await p.locator('input').and(p.getByLabel('Força', { exact: true })).fill('19');
+    await p
+      .locator('input')
+      .and(p.getByLabel('Força', { exact: true }))
+      .fill('19');
     await expectScreenPasses(p, `Habilidades, digitar com um valor fora do limite ${where}`);
 
     // Physical dice: a second campaign where everybody rolls their own.
@@ -3903,28 +5659,54 @@ async function scanTableAbilities(browser: Browser, colorScheme: 'light' | 'dark
   }
 }
 
-test('as habilidades por jeito passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-24'] }, async ({ browser }) => {
-  await scanTableAbilities(browser, 'light', 1280);
-});
+test(
+  'as habilidades por jeito passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@RN-24'] },
+  async ({ browser }) => {
+    await scanTableAbilities(browser, 'light', 1280);
+  },
+);
 
-test('as habilidades por jeito passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-24'] }, async ({ browser }) => {
-  await scanTableAbilities(browser, 'dark', 390);
-});
+test(
+  'as habilidades por jeito passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@RN-24'] },
+  async ({ browser }) => {
+    await scanTableAbilities(browser, 'dark', 390);
+  },
+);
 
-test('as habilidades por jeito passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@RN-24'] }, async ({ browser }) => {
-  await scanTableAbilities(browser, 'light', 320);
-});
+test(
+  'as habilidades por jeito passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@RN-24'] },
+  async ({ browser }) => {
+    await scanTableAbilities(browser, 'light', 320);
+  },
+);
 
 /** The grid calibration (E10-03 state 5): the panel of a calibrated map, the question with "Outro", and "Mudar a grade?". */
-async function scanCalibration(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanCalibration(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   test.setTimeout(180_000);
-  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const context = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
   try {
     const page = await context.newPage();
     await page.goto('/');
     const campaignId = await masterCampaign(page, `Acessibilidade calibração ${Date.now()}`);
     const map = await mapToPaint(page, campaignId, 'A torre em ruínas', 12);
-    const painted = await callRPC(page, 'meurpg.maps.v1.MapService/PaintMapCells', { campaignId, mapId: map.mapId, layer: 'MAP_LAYER_WALL', value: 1, squares: wallSquares() });
+    const painted = await callRPC(page, 'meurpg.maps.v1.MapService/PaintMapCells', {
+      campaignId,
+      mapId: map.mapId,
+      layer: 'MAP_LAYER_WALL',
+      value: 1,
+      squares: wallSquares(),
+    });
     expect(painted.ok()).toBeTruthy();
     const where = `(${colorScheme}, ${width}px)`;
     await page.goto(editorRoute(campaignId, map.mapId));
@@ -3932,7 +5714,9 @@ async function scanCalibration(browser: Browser, colorScheme: 'light' | 'dark', 
     await page.getByRole('radio', { name: 'Pintar' }).click();
     const grid = page.getByRole('region', { name: 'Grade' });
     await grid.getByRole('button', { name: 'Calibrar o quadrado' }).click();
-    await expect(page.getByRole('heading', { name: 'Cada quadrado deste desenho vale' })).toBeFocused();
+    await expect(
+      page.getByRole('heading', { name: 'Cada quadrado deste desenho vale' }),
+    ).toBeFocused();
     await expectScreenPasses(page, `Calibração da grade, a pergunta ${where}`);
     await pickRadio(page.locator('app-calibrate-ask'), /Outro/);
     await page.getByLabel('Quanto vale o quadrado', { exact: true }).fill('4,5');
@@ -3952,48 +5736,88 @@ async function scanCalibration(browser: Browser, colorScheme: 'light' | 'dark', 
   }
 }
 
-test('a calibração da grade passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-25'] }, async ({ browser }) => {
-  await scanCalibration(browser, 'light', 1280);
-});
+test(
+  'a calibração da grade passa no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@RN-25'] },
+  async ({ browser }) => {
+    await scanCalibration(browser, 'light', 1280);
+  },
+);
 
-test('a calibração da grade passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@RN-25'] }, async ({ browser }) => {
-  await scanCalibration(browser, 'dark', 1024);
-});
+test(
+  'a calibração da grade passa no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@RN-25'] },
+  async ({ browser }) => {
+    await scanCalibration(browser, 'dark', 1024);
+  },
+);
 
-test('a calibração da grade passa no axe e nas conferências de layout no tema claro, no tablet de 768', { tag: ['@a11y', '@RN-25'] }, async ({ browser }) => {
-  await scanCalibration(browser, 'light', 768);
-});
+test(
+  'a calibração da grade passa no axe e nas conferências de layout no tema claro, no tablet de 768',
+  { tag: ['@a11y', '@RN-25'] },
+  async ({ browser }) => {
+    await scanCalibration(browser, 'light', 768);
+  },
+);
 
-test('a página Créditos, com a atribuição do SRD 5.2.1, passa no axe nos dois temas', { tag: ['@a11y', '@licenca'] }, async ({ browser }) => {
-  for (const [scheme, width] of [['light', 1280], ['dark', 390]] as const) {
-    const context = await browser.newContext({ colorScheme: scheme, viewport: { width, height: 900 } });
-    try {
-      const page = await context.newPage();
-      await open(page, '/credits');
-      await expect(page.getByText('System Reference Document 5.2.1', { exact: false }).first()).toBeVisible();
-      await expectScreenPasses(page, `Créditos (${scheme}, ${width}px)`);
-    } finally {
-      await context.close();
+test(
+  'a página Créditos, com a atribuição do SRD 5.2.1, passa no axe nos dois temas',
+  { tag: ['@a11y', '@licenca'] },
+  async ({ browser }) => {
+    for (const [scheme, width] of [
+      ['light', 1280],
+      ['dark', 390],
+    ] as const) {
+      const context = await browser.newContext({
+        colorScheme: scheme,
+        viewport: { width, height: 900 },
+      });
+      try {
+        const page = await context.newPage();
+        await open(page, '/credits');
+        await expect(
+          page.getByText('System Reference Document 5.2.1', { exact: false }).first(),
+        ).toBeVisible();
+        await expectScreenPasses(page, `Créditos (${scheme}, ${width}px)`);
+      } finally {
+        await context.close();
+      }
     }
-  }
-});
+  },
+);
 
 // The dungeon generator (slice 10.14b, MR-010, RN-26, RN-10; E10-05 1 to 6): the "Gerar masmorra" page (the options and the server's preview,
 // a refused size, the preview loading and failing, a map being created), the generated map with its rooms list (and a room chosen),
 // "Redesenhar" asked in place, and the "Imagem" panel in "Pintar". On a phone the page only says it is for a computer, and the master reads
 // the rooms list under the map. Every state goes through axe and the alignment checks.
-async function scanDungeonScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanDungeonScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const context = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await context.newPage();
   const where = `(${colorScheme}, ${width}px)`;
   const phone = width < 768;
   try {
     await m.goto('/');
-    const created = await callRPC(m, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', { name: `Acessibilidade masmorra ${Date.now()}`, xpMode: 'XP_MODE_ENEMIES' });
+    const created = await callRPC(m, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', {
+      name: `Acessibilidade masmorra ${Date.now()}`,
+      xpMode: 'XP_MODE_ENEMIES',
+    });
     expect(created.ok()).toBeTruthy();
     const campaignId = (await created.json()).campaign.id as string;
-    const made = await callRPC(m, 'meurpg.maps.v1.DungeonService/CreateDungeonMap', { campaignId, name: 'A masmorra do teste', seed: '48213', options: { width: 31, height: 21, roomSideMin: 3, roomSideMax: 9 } });
+    const made = await callRPC(m, 'meurpg.maps.v1.DungeonService/CreateDungeonMap', {
+      campaignId,
+      name: 'A masmorra do teste',
+      seed: '48213',
+      options: { width: 31, height: 21, roomSideMin: 3, roomSideMax: 9 },
+    });
     expect(made.ok(), await made.text()).toBeTruthy();
     const mapId = (await made.json()).map.id as string;
     const route = `/campaigns/${campaignId}/maps/dungeon`;
@@ -4017,14 +5841,22 @@ async function scanDungeonScreens(browser: Browser, colorScheme: 'light' | 'dark
       await expectScreenPasses(m, `Gerar masmorra, um tamanho recusado ${where}`);
 
       // The preview loading, and failing.
-      await m.route('**/*DungeonService/PreviewDungeon', (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"unavailable","message":"x"}' }));
+      await m.route('**/*DungeonService/PreviewDungeon', (r) =>
+        r.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: '{"code":"unavailable","message":"x"}',
+        }),
+      );
       await m.goto(route);
       await expect(m.getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
       await expectScreenPasses(m, `Gerar masmorra, a prévia com falha ${where}`);
       await m.unroute('**/*DungeonService/PreviewDungeon');
       await m.route('**/*DungeonService/PreviewDungeon', () => new Promise(() => undefined));
       await m.goto(route);
-      await expect(m.getByRole('status').filter({ hasText: 'Carregando a prévia...' })).toBeVisible();
+      await expect(
+        m.getByRole('status').filter({ hasText: 'Carregando a prévia...' }),
+      ).toBeVisible();
       await expectScreenPasses(m, `Gerar masmorra, carregando a prévia ${where}`);
       await m.unroute('**/*DungeonService/PreviewDungeon');
 
@@ -4046,7 +5878,10 @@ async function scanDungeonScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expect(m.locator('app-dungeon-rooms .room--on')).toHaveCount(1);
     await expectScreenPasses(m, `Mapa gerado, uma sala escolhida ${where}`);
     if (!phone) {
-      await m.getByRole('region', { name: 'Imagem' }).getByRole('button', { name: 'Redesenhar' }).click();
+      await m
+        .getByRole('region', { name: 'Imagem' })
+        .getByRole('button', { name: 'Redesenhar' })
+        .click();
       await expect(m.getByRole('heading', { name: 'Redesenhar a imagem?' })).toBeVisible();
       await expectScreenPasses(m, `Mapa gerado, "Redesenhar" perguntado ${where}`);
       await m.getByRole('button', { name: 'Voltar' }).click();
@@ -4066,12 +5901,15 @@ for (const [scheme, width, label] of [
   ['dark', 1024, 'tema escuro, no desktop de 1024'],
   ['light', 320, 'tema claro, no celular de 320'],
 ] as const) {
-  test(`o gerador de masmorras passa no axe e nas conferências de layout no ${label}`, { tag: ['@a11y', '@MR-010'] }, async ({ browser }) => {
-    test.setTimeout(600_000);
-    await scanDungeonScreens(browser, scheme, width);
-  });
+  test(
+    `o gerador de masmorras passa no axe e nas conferências de layout no ${label}`,
+    { tag: ['@a11y', '@MR-010'] },
+    async ({ browser }) => {
+      test.setTimeout(600_000);
+      await scanDungeonScreens(browser, scheme, width);
+    },
+  );
 }
-
 
 /**
  * Puzzles (Etapa 10, slice 10.15a: MR-038, RN-27, RN-10; E10-06 states 1 to 9): the master's list and the three forms, his live view of
@@ -4079,7 +5917,12 @@ for (const [scheme, width, label] of [
  * notice and boards (the lights, the lock, the pillars, solved, a 7 × 7 board). `masterToo` is false on the narrowest phone, where only the
  * player's boards are the screens of the artboards (state 9).
  */
-async function scanPuzzleScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number, masterToo = true): Promise<void> {
+async function scanPuzzleScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+  masterToo = true,
+): Promise<void> {
   // Not `open()`: a campaign with a session open keeps a stream going (the XP watcher's), so the network is never idle.
   const openPage = async (page: Page, route: string) => {
     await page.goto(route);
@@ -4089,32 +5932,62 @@ async function scanPuzzleScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expectScreenPasses(page, screen);
   };
   const height = width < 400 ? 640 : 900;
-  const masterContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height } });
-  const playerContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height } });
+  const masterContext = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height },
+  });
+  const playerContext = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport: { width, height },
+  });
   const master = await masterContext.newPage();
   const player = await playerContext.newPage();
   const where = `(${colorScheme}, ${width}px)`;
   let campaignId = '';
   try {
     await Promise.all([master.goto('/'), player.goto('/')]);
-    const table = await tableForPuzzles(master, player, `Acessibilidade quebra-cabeças ${Date.now()}`);
+    const table = await tableForPuzzles(
+      master,
+      player,
+      `Acessibilidade quebra-cabeças ${Date.now()}`,
+    );
     campaignId = table.campaignId;
-    const lights = await createLightsRPC(master, campaignId, 'O selo da Capela', 5, { clue: 'Só o selo apagado abre o caminho.', hints: ['A luz do selo responde ao toque.', 'Cada toque troca cinco luzes de uma vez.'] });
+    const lights = await createLightsRPC(master, campaignId, 'O selo da Capela', 5, {
+      clue: 'Só o selo apagado abre o caminho.',
+      hints: ['A luz do selo responde ao toque.', 'Cada toque troca cinco luzes de uma vez.'],
+    });
     const lock = await createLockRPC(master, campaignId, 'O cofre do Refeitório', {
       clue: 'O fogo nasce antes da lua, e a raiz vê tudo.',
       hints: ['A pista fala de três coisas da natureza.'],
-      onSolve: { action: 'PUZZLE_SOLVE_ACTION_OPEN_DOOR', message: 'A porta da Capela se abriu.', door: { mapId: table.map.mapId, col: table.door.col, row: table.door.row } },
+      onSolve: {
+        action: 'PUZZLE_SOLVE_ACTION_OPEN_DOOR',
+        message: 'A porta da Capela se abriu.',
+        door: { mapId: table.map.mapId, col: table.door.col, row: table.door.row },
+      },
     });
-    const pillars = await createPillarsRPC(master, campaignId, 'Os pilares da Galeria', { clue: 'Os pilares obedecem ao mural.' });
-    const big = await createLightsRPC(master, campaignId, 'Os candelabros da cripta', 7, { clue: 'Os candelabros guardam a cripta.' });
+    const pillars = await createPillarsRPC(master, campaignId, 'Os pilares da Galeria', {
+      clue: 'Os pilares obedecem ao mural.',
+    });
+    const big = await createLightsRPC(master, campaignId, 'Os candelabros da cripta', 7, {
+      clue: 'Os candelabros guardam a cripta.',
+    });
     // A puzzle a limit stops after one move, one the master will close under the player, and pillars the table solves.
-    const stopped = await createLightsRPC(master, campaignId, 'A sala dos espelhos', 3, { onWrong: { maxMoves: 1 } });
+    const stopped = await createLightsRPC(master, campaignId, 'A sala dos espelhos', 3, {
+      onWrong: { maxMoves: 1 },
+    });
     const closing = await createLightsRPC(master, campaignId, 'O salão fechado', 3);
-    const donePillars = await createPillarsRPC(master, campaignId, 'Os pilares resolvidos', { clue: 'Os pilares obedecem ao mural.' });
+    const donePillars = await createPillarsRPC(master, campaignId, 'Os pilares resolvidos', {
+      clue: 'Os pilares obedecem ao mural.',
+    });
 
     if (masterToo) {
       // The list with no puzzle at all (state 1, empty): another campaign of the master's.
-      const empty = await callRPC(master, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', { name: `Sem quebra-cabeças ${Date.now()}`, xpMode: 'XP_MODE_ENEMIES' });
+      const empty = await callRPC(master, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', {
+        name: `Sem quebra-cabeças ${Date.now()}`,
+        xpMode: 'XP_MODE_ENEMIES',
+      });
       expect(empty.ok()).toBeTruthy();
       await openPage(master, puzzleRoute(((await empty.json()).campaign as { id: string }).id));
       await expect(master.getByText('Nenhum quebra-cabeça ainda.')).toBeVisible();
@@ -4122,22 +5995,33 @@ async function scanPuzzleScreens(browser: Browser, colorScheme: 'light' | 'dark'
 
       // The list (state 1) and the three forms (state 2), the edit form.
       await openPage(master, puzzleRoute(campaignId));
-      await expect(master.getByRole('region', { name: 'Quebra-cabeças' }).getByText('O selo da Capela')).toBeVisible();
+      await expect(
+        master.getByRole('region', { name: 'Quebra-cabeças' }).getByText('O selo da Capela'),
+      ).toBeVisible();
       await stepPasses(master, `Lista de quebra-cabeças ${where}`);
-      await master.getByRole('region', { name: 'Quebra-cabeças' }).getByRole('button', { name: 'Arquivar O selo da Capela' }).click();
-      await expect(master.getByRole('heading', { name: 'Arquivar “O selo da Capela”?' })).toBeFocused();
+      await master
+        .getByRole('region', { name: 'Quebra-cabeças' })
+        .getByRole('button', { name: 'Arquivar O selo da Capela' })
+        .click();
+      await expect(
+        master.getByRole('heading', { name: 'Arquivar “O selo da Capela”?' }),
+      ).toBeFocused();
       await stepPasses(master, `Arquivar na lista ${where}`);
       await master.getByRole('button', { name: 'Voltar' }).click();
 
       await openPage(master, puzzleRoute(campaignId, 'puzzles', 'new'));
-      await expect(master.getByText(/\d+ acesas?, \d+ apagadas?\./)).toBeVisible({ timeout: 30_000 });
+      await expect(master.getByText(/\d+ acesas?, \d+ apagadas?\./)).toBeVisible({
+        timeout: 30_000,
+      });
       await stepPasses(master, `Novo quebra-cabeça: as luzes ${where}`);
       await master.getByRole('radio', { name: /^Fechadura de combinação/ }).check();
       await master.getByRole('radio', { name: 'Abrir uma porta' }).check();
       await expect(master.getByLabel('Mapa', { exact: true })).toBeVisible();
       await stepPasses(master, `Novo quebra-cabeça: a fechadura, abrir uma porta ${where}`);
       await master.getByRole('radio', { name: /^Símbolos giratórios/ }).check();
-      await expect(master.getByText(/Dá para resolver em \d+ giros?, no mínimo\./)).toBeVisible({ timeout: 30_000 });
+      await expect(master.getByText(/Dá para resolver em \d+ giros?, no mínimo\./)).toBeVisible({
+        timeout: 30_000,
+      });
       await stepPasses(master, `Novo quebra-cabeça: os símbolos giratórios ${where}`);
       await master.getByRole('button', { name: 'Criar quebra-cabeça' }).click();
       await expect(master.getByText('Dê um nome ao quebra-cabeça.')).toBeVisible();
@@ -4165,11 +6049,15 @@ async function scanPuzzleScreens(browser: Browser, colorScheme: 'light' | 'dark'
       await panel.getByRole('button', { name: 'Ver ao vivo O selo da Capela' }).click();
       const lightsCard = master.getByRole('article', { name: 'O selo da Capela' });
       await lightsCard.getByRole('button', { name: 'Recomeçar' }).click();
-      await expect(lightsCard.getByRole('heading', { name: 'Recomeçar “O selo da Capela”?' })).toBeFocused();
+      await expect(
+        lightsCard.getByRole('heading', { name: 'Recomeçar “O selo da Capela”?' }),
+      ).toBeFocused();
       await stepPasses(master, `Recomeçar perguntado na tela ${where}`);
       await lightsCard.getByRole('button', { name: 'Voltar' }).click();
       await lightsCard.getByRole('button', { name: 'Fechar' }).click();
-      await expect(lightsCard.getByRole('heading', { name: 'Fechar “O selo da Capela”?' })).toBeFocused();
+      await expect(
+        lightsCard.getByRole('heading', { name: 'Fechar “O selo da Capela”?' }),
+      ).toBeFocused();
       await stepPasses(master, `Fechar perguntado na tela ${where}`);
       await lightsCard.getByRole('button', { name: 'Voltar' }).click();
       void panel;
@@ -4185,11 +6073,15 @@ async function scanPuzzleScreens(browser: Browser, colorScheme: 'light' | 'dark'
 
     // The player: the notice on the session page (state 6), then each board.
     await openSessionPage(player, campaignId);
-    await expect(player.getByText('O mestre mostrou um quebra-cabeça').first()).toBeVisible({ timeout: 30_000 });
+    await expect(player.getByText('O mestre mostrou um quebra-cabeça').first()).toBeVisible({
+      timeout: 30_000,
+    });
     await stepPasses(player, `Aviso do quebra-cabeça mostrado ${where}`);
     const playTo = async (id: string, name: string) => {
       await player.goto(`/campaigns/${campaignId}/session?puzzle=${id}`);
-      await expect(player.getByRole('heading', { level: 1, name })).toBeVisible({ timeout: 30_000 });
+      await expect(player.getByRole('heading', { level: 1, name })).toBeVisible({
+        timeout: 30_000,
+      });
     };
     await playTo(lights, 'O selo da Capela');
     await expect(player.getByRole('button', { name: /^Luz na linha 1, coluna 1/ })).toBeVisible();
@@ -4250,25 +6142,41 @@ async function scanPuzzleScreens(browser: Browser, colorScheme: 'light' | 'dark'
   }
 }
 
-test('os quebra-cabeças passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-038'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanPuzzleScreens(browser, 'light', 1280);
-});
+test(
+  'os quebra-cabeças passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-038'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanPuzzleScreens(browser, 'light', 1280);
+  },
+);
 
-test('os quebra-cabeças passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-038'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanPuzzleScreens(browser, 'dark', 390);
-});
+test(
+  'os quebra-cabeças passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-038'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanPuzzleScreens(browser, 'dark', 390);
+  },
+);
 
-test('os quebra-cabeças passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-038'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanPuzzleScreens(browser, 'light', 320, false);
-});
+test(
+  'os quebra-cabeças passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-038'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanPuzzleScreens(browser, 'light', 320, false);
+  },
+);
 
-test('os quebra-cabeças passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-038'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanPuzzleScreens(browser, 'dark', 1024);
-});
+test(
+  'os quebra-cabeças passam no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-038'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanPuzzleScreens(browser, 'dark', 1024);
+  },
+);
 
 /**
  * More puzzles (Etapa 10, slice 10.15b: MR-038, RN-27, RN-10, RN-18; E10-12 states 1 to 10): the master's forms for the riddle, the
@@ -4277,7 +6185,12 @@ test('os quebra-cabeças passam no axe e nas conferências de layout no tema esc
  * step with the trap), the cipher (the key not found, found, a wrong message) and a hint by a skill check (the button, a typed d20, a
  * fail, a pass) with the split information. `masterToo` is false on the narrowest phone, where only the player's phone is a screen.
  */
-async function scanMorePuzzleScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number, masterToo = true): Promise<void> {
+async function scanMorePuzzleScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+  masterToo = true,
+): Promise<void> {
   const openPage = async (page: Page, route: string) => {
     await page.goto(route);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
@@ -4287,8 +6200,16 @@ async function scanMorePuzzleScreens(browser: Browser, colorScheme: 'light' | 'd
   };
   // The phone states are scanned at the phones' real heights: 568 px at 320, 667 at 375.
   const height = width === 320 ? 568 : width < 400 ? (width === 375 ? 667 : 640) : 900;
-  const masterContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height } });
-  const playerContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height } });
+  const masterContext = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height },
+  });
+  const playerContext = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport: { width, height },
+  });
   const master = await masterContext.newPage();
   const player = await playerContext.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -4296,26 +6217,50 @@ async function scanMorePuzzleScreens(browser: Browser, colorScheme: 'light' | 'd
   let toren: Awaited<ReturnType<typeof puzzlesSecondPlayer>> | undefined;
   try {
     await Promise.all([master.goto('/'), player.goto('/')]);
-    const table = await tableForPuzzles(master, player, `Acessibilidade mais quebra-cabeças ${Date.now()}`);
+    const table = await tableForPuzzles(
+      master,
+      player,
+      `Acessibilidade mais quebra-cabeças ${Date.now()}`,
+    );
     campaignId = table.campaignId;
     toren = await puzzlesSecondPlayer(browser, master, campaignId);
     await setCurrentMapRPC(master, campaignId, table.map.mapId);
     const trap = await trapPointRPC(master, campaignId, table.map.mapId, 'Dardos envenenados');
-    const clueId = await sceneClueRPC(master, campaignId, table.map.mapId, 'A biblioteca', 'Cada letra anda três para trás.');
+    const clueId = await sceneClueRPC(
+      master,
+      campaignId,
+      table.map.mapId,
+      'A biblioteca',
+      'Cada letra anda três para trás.',
+    );
 
     const riddle = await createRiddleRPC(master, campaignId, 'A porta da Cripta pergunta', {
       clue: 'Procure no chão da Cripta.',
       hints: ['Pense no que acompanha você ao meio-dia.', 'Ela some quando a tocha apaga.'],
       hintCheck: { skillKey: 'skill:investigation', dc: 13 },
       parts: [
-        { characterId: table.characterId, text: '…os tambores ecoam três vezes antes de a porta ceder.' },
+        {
+          characterId: table.characterId,
+          text: '…os tambores ecoam três vezes antes de a porta ceder.',
+        },
         { characterId: toren.characterId, text: 'A porta ouve o que o chão esconde…' },
       ],
       onWrong: { attemptsPerPlayer: 4 },
     });
-    const sequence = await createSequenceRPC(master, campaignId, 'Os sinos do Salão do trono', { clue: 'Quem toca os sinos escuta o trono.', onWrong: { trap: { mapId: table.map.mapId, pointId: trap } } });
-    const cipher = await createCipherRPC(master, campaignId, 'A carta do Capitão', { onWrong: { maxMoves: 10, timeLimitSeconds: 3600 } }, clueId);
-    const stopped = await createRiddleRPC(master, campaignId, 'A porta selada', { onWrong: { maxMoves: 1 } });
+    const sequence = await createSequenceRPC(master, campaignId, 'Os sinos do Salão do trono', {
+      clue: 'Quem toca os sinos escuta o trono.',
+      onWrong: { trap: { mapId: table.map.mapId, pointId: trap } },
+    });
+    const cipher = await createCipherRPC(
+      master,
+      campaignId,
+      'A carta do Capitão',
+      { onWrong: { maxMoves: 10, timeLimitSeconds: 3600 } },
+      clueId,
+    );
+    const stopped = await createRiddleRPC(master, campaignId, 'A porta selada', {
+      onWrong: { maxMoves: 1 },
+    });
     const done = await createRiddleRPC(master, campaignId, 'O enigma resolvido');
 
     // Shown from the start: the master's live cards and the players' screens read the same three, with one wrong answer already made.
@@ -4330,20 +6275,29 @@ async function scanMorePuzzleScreens(browser: Browser, colorScheme: 'light' | 'd
       await master.getByRole('radio', { name: /^Enigma/ }).check();
       await stepPasses(master, `Novo quebra-cabeça: o enigma, vazio ${where}`);
       await master.getByLabel('Nome').fill('A porta da Cripta pergunta');
-      await master.getByLabel('O enigma').fill('Moro embaixo de cada passo seu, mas nunca peso nada. O que sou?');
+      await master
+        .getByLabel('O enigma')
+        .fill('Moro embaixo de cada passo seu, mas nunca peso nada. O que sou?');
       for (const answer of ['sombra', 'a sombra']) {
         await master.getByLabel(/^(Uma|Outra) resposta$/).fill(answer);
         await master.getByRole('button', { name: 'Adicionar', exact: true }).click();
       }
       await master.getByRole('radio', { name: 'Gastar uma tentativa do jogador' }).check();
       await master.getByRole('button', { name: 'Adicionar uma dica' }).click();
-      await master.getByRole('textbox', { name: 'Dica 1' }).fill('Pense no que acompanha você ao meio-dia.');
+      await master
+        .getByRole('textbox', { name: 'Dica 1' })
+        .fill('Pense no que acompanha você ao meio-dia.');
       await master.getByLabel('Perícia', { exact: true }).selectOption('skill:investigation');
       await master.getByLabel('CD', { exact: true }).fill('13');
       await master.getByRole('button', { name: 'Adicionar parte' }).click();
       await master.getByLabel('Para quem (parte 1)').selectOption(table.characterId);
-      await master.getByLabel('O que o jogador lê (parte 1)').fill('…os tambores ecoam três vezes antes de a porta ceder.');
-      await stepPasses(master, `Novo quebra-cabeça: o enigma, com perícia, parte e tentativas ${where}`);
+      await master
+        .getByLabel('O que o jogador lê (parte 1)')
+        .fill('…os tambores ecoam três vezes antes de a porta ceder.');
+      await stepPasses(
+        master,
+        `Novo quebra-cabeça: o enigma, com perícia, parte e tentativas ${where}`,
+      );
       await master.getByRole('radio', { name: 'Disparar uma armadilha do mapa' }).check();
       await expect(master.getByLabel('Armadilha do mapa', { exact: true })).toBeVisible();
       await master.getByRole('button', { name: 'Criar quebra-cabeça' }).click();
@@ -4357,14 +6311,18 @@ async function scanMorePuzzleScreens(browser: Browser, colorScheme: 'light' | 'd
         await master.locator('app-bells-board').getByRole('button', { name: bell }).click();
       }
       await master.getByRole('radio', { name: 'Disparar uma armadilha do mapa' }).check();
-      await master.getByLabel('Armadilha do mapa', { exact: true }).selectOption({ label: 'Dardos envenenados · A capela' });
+      await master
+        .getByLabel('Armadilha do mapa', { exact: true })
+        .selectOption({ label: 'Dardos envenenados · A capela' });
       await stepPasses(master, `Novo quebra-cabeça: a sequência, com a armadilha ${where}`);
       await master.getByRole('button', { name: 'Tocar para testar' }).click();
       await stepPasses(master, `A sequência tocando para o teste ${where}`);
 
       await master.getByRole('radio', { name: /^Cifra/ }).check();
       await master.getByLabel('Mensagem', { exact: true }).fill(CIPHER.message);
-      await expect(master.locator('app-cipher-form .cipher')).toHaveText(CIPHER.ciphertext, { timeout: 30_000 });
+      await expect(master.locator('app-cipher-form .cipher')).toHaveText(CIPHER.ciphertext, {
+        timeout: 30_000,
+      });
       await master.getByLabel('Qual pista guarda a chave').selectOption(clueId);
       await stepPasses(master, `Novo quebra-cabeça: a cifra, com a chave ${where}`);
       await master.getByRole('radio', { name: 'Palavra-chave' }).check();
@@ -4378,7 +6336,9 @@ async function scanMorePuzzleScreens(browser: Browser, colorScheme: 'light' | 'd
       const panel = master.getByRole('region', { name: 'Quebra-cabeças' });
       await panel.getByRole('button', { name: 'Ver ao vivo A porta da Cripta pergunta' }).click();
       const riddleCard = master.getByRole('article', { name: 'A porta da Cripta pergunta' });
-      await expect(riddleCard.getByText(/Última jogada: Pensantus tentou “escuridão”: errou/)).toBeVisible();
+      await expect(
+        riddleCard.getByText(/Última jogada: Pensantus tentou “escuridão”: errou/),
+      ).toBeVisible();
       await riddleCard.scrollIntoViewIfNeeded();
       await stepPasses(master, `O enigma ao vivo ${where}`);
       await playSequenceRPC(master, campaignId, sequence);
@@ -4399,12 +6359,16 @@ async function scanMorePuzzleScreens(browser: Browser, colorScheme: 'light' | 'd
 
     const playTo = async (id: string, name: string) => {
       await player.goto(`/campaigns/${campaignId}/session?puzzle=${id}`);
-      await expect(player.getByRole('heading', { level: 1, name })).toBeVisible({ timeout: 30_000 });
+      await expect(player.getByRole('heading', { level: 1, name })).toBeVisible({
+        timeout: 30_000,
+      });
     };
 
     // The riddle (state 6): the field, the hint button and the player's own part (states 9).
     await playTo(riddle, 'A porta da Cripta pergunta');
-    await expect(player.getByRole('button', { name: 'Tentar uma dica · Investigação' })).toBeVisible();
+    await expect(
+      player.getByRole('button', { name: 'Tentar uma dica · Investigação' }),
+    ).toBeVisible();
     await stepPasses(player, `O enigma, com a dica por perícia e a parte ${where}`);
     await player.getByLabel('Sua resposta').fill('escuridão');
     await player.getByRole('button', { name: 'Responder' }).click();
@@ -4419,29 +6383,41 @@ async function scanMorePuzzleScreens(browser: Browser, colorScheme: 'light' | 'd
     await expect(player.getByText('Não deu desta vez.')).toBeVisible();
     await stepPasses(player, `A dica por perícia que falhou ${where}`);
     await releaseHintRPC(master, campaignId, riddle);
-    await expect(player.getByRole('button', { name: 'Tentar uma dica · Investigação' })).toBeVisible({ timeout: 30_000 });
+    await expect(
+      player.getByRole('button', { name: 'Tentar uma dica · Investigação' }),
+    ).toBeVisible({ timeout: 30_000 });
     await setDiceModeRPC(master, campaignId, 'DICE_MODE_APP');
     await player.reload();
-    await expect(player.getByRole('button', { name: 'Tentar uma dica · Investigação' })).toBeVisible({ timeout: 30_000 });
+    await expect(
+      player.getByRole('button', { name: 'Tentar uma dica · Investigação' }),
+    ).toBeVisible({ timeout: 30_000 });
     await player.getByRole('button', { name: 'Tentar uma dica · Investigação' }).click();
-    await expect(player.getByText('Você conseguiu.').or(player.getByText('Não deu desta vez.'))).toBeVisible({ timeout: 30_000 });
+    await expect(
+      player.getByText('Você conseguiu.').or(player.getByText('Não deu desta vez.')),
+    ).toBeVisible({ timeout: 30_000 });
     await stepPasses(player, `A dica por perícia, rolada no app ${where}`);
     // Out of attempts: a dashed box with the reason.
     await moveRPC(player, campaignId, riddle, { riddle: { answer: 'luz' } });
     await moveRPC(player, campaignId, riddle, { riddle: { answer: 'sol' } });
-    await expect(player.getByText('Você não tem mais tentativas.')).toBeVisible({ timeout: 30_000 });
+    await expect(player.getByText('Você não tem mais tentativas.')).toBeVisible({
+      timeout: 30_000,
+    });
     await stepPasses(player, `O enigma, sem tentativas ${where}`);
 
     // The sequence (state 7): not played, playing, repeating, a wrong step with the trap (state 10).
     await playTo(sequence, 'Os sinos do Salão do trono');
     await stepPasses(player, `A sequência ${where}`);
     await playSequenceRPC(master, campaignId, sequence);
-    await expect(player.getByText('O mestre está tocando os sinos.')).toBeVisible({ timeout: 15_000 });
+    await expect(player.getByText('O mestre está tocando os sinos.')).toBeVisible({
+      timeout: 15_000,
+    });
     await stepPasses(player, `A sequência tocando ${where}`);
     await expect(player.getByText('Agora é com vocês.')).toBeVisible({ timeout: 30_000 });
     await stepPasses(player, `A sequência, para repetir ${where}`);
     await moveRPC(player, campaignId, sequence, { sequence: { bell: 2 } });
-    await expect(player.locator('.board-card').getByRole('alert').filter({ hasText: 'Errou o passo 1.' })).toBeVisible();
+    await expect(
+      player.locator('.board-card').getByRole('alert').filter({ hasText: 'Errou o passo 1.' }),
+    ).toBeVisible();
     await expect(player.getByText('A armadilha disparou:')).toBeVisible();
     await stepPasses(player, `A sequência, passo errado e a armadilha ${where}`);
     void SEQUENCE;
@@ -4489,7 +6465,9 @@ async function scanMorePuzzleScreens(browser: Browser, colorScheme: 'light' | 'd
     }
     await moveRPC(player, campaignId, cipher, { cipher: { text: 'o tesouro esta sob o altar' } });
     await playTo(sequence, 'Os sinos do Salão do trono');
-    await expect(player.getByText('Os sinos tocaram na ordem certa.')).toBeVisible({ timeout: 30_000 });
+    await expect(player.getByText('Os sinos tocaram na ordem certa.')).toBeVisible({
+      timeout: 30_000,
+    });
     await stepPasses(player, `A sequência resolvida ${where}`);
     await playTo(cipher, 'A carta do Capitão');
     await expect(player.getByText('A mensagem foi decifrada.')).toBeVisible({ timeout: 30_000 });
@@ -4522,33 +6500,62 @@ async function scanMorePuzzleScreens(browser: Browser, colorScheme: 'light' | 'd
   }
 }
 
-test('os quebra-cabeças novos passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-038'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanMorePuzzleScreens(browser, 'light', 1280);
-});
+test(
+  'os quebra-cabeças novos passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-038'] },
+  async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanMorePuzzleScreens(browser, 'light', 1280);
+  },
+);
 
-test('os quebra-cabeças novos passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-038'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanMorePuzzleScreens(browser, 'dark', 390);
-});
+test(
+  'os quebra-cabeças novos passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-038'] },
+  async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanMorePuzzleScreens(browser, 'dark', 390);
+  },
+);
 
-test('os quebra-cabeças novos passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-038'] }, async ({ browser }) => {
-  test.setTimeout(500_000);
-  await scanMorePuzzleScreens(browser, 'light', 320, false);
-});
+test(
+  'os quebra-cabeças novos passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-038'] },
+  async ({ browser }) => {
+    test.setTimeout(500_000);
+    await scanMorePuzzleScreens(browser, 'light', 320, false);
+  },
+);
 
-test('os quebra-cabeças novos passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-038'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanMorePuzzleScreens(browser, 'dark', 1024);
-});
+test(
+  'os quebra-cabeças novos passam no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-038'] },
+  async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanMorePuzzleScreens(browser, 'dark', 1024);
+  },
+);
 
 /**
  * "Magias" (MR-045, E10-11): the list with the filters on, a spell open (a table spell and an SRD one), a search with no
  * result, the phone's "Filtros" sheet, the failed list and a basic sheet with "Só as que posso aprender".
  */
-async function scanSpellsScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number, height = 900): Promise<void> {
-  const masterContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height } });
-  const context = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height } });
+async function scanSpellsScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+  height = 900,
+): Promise<void> {
+  const masterContext = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height },
+  });
+  const context = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport: { width, height },
+  });
   const master = await masterContext.newPage();
   const page = await context.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -4608,17 +6615,27 @@ async function scanSpellsScreens(browser: Browser, colorScheme: 'light' | 'dark'
     // A basic sheet with the filter on.
     await page.route('**/meurpg.rules.v1.ContentService/ListSpells', (route) =>
       (route.request().postData() ?? '').includes('characterId')
-        ? route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: 'failed_precondition', message: 'x' }) })
+        ? route.fulfill({
+            status: 400,
+            contentType: 'application/json',
+            body: JSON.stringify({ code: 'failed_precondition', message: 'x' }),
+          })
         : route.continue(),
     );
     await page.goto(`${url}?mine=1`);
-    await expect(page.getByText('Essa ficha é básica e não tem classes que conjuram', { exact: false })).toBeVisible();
+    await expect(
+      page.getByText('Essa ficha é básica e não tem classes que conjuram', { exact: false }),
+    ).toBeVisible();
     await expectScreenPasses(page, `Magias, ficha básica ${where}`);
     await page.unroute('**/meurpg.rules.v1.ContentService/ListSpells');
 
     // Failing: the server does not answer.
     await page.route('**/meurpg.rules.v1.ContentService/ListSpells', (route) =>
-      route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ code: 'unavailable', message: 'down' }) }),
+      route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ code: 'unavailable', message: 'down' }),
+      }),
     );
     await page.goto(url);
     await expect(page.getByRole('alert')).toContainText('o servidor não respondeu');
@@ -4639,35 +6656,60 @@ async function scanSpellsScreens(browser: Browser, colorScheme: 'light' | 'dark'
   }
 }
 
-test('as Magias passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-045'] }, async ({ browser }) => {
-  test.setTimeout(180_000);
-  await scanSpellsScreens(browser, 'light', 1280);
-});
+test(
+  'as Magias passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-045'] },
+  async ({ browser }) => {
+    test.setTimeout(180_000);
+    await scanSpellsScreens(browser, 'light', 1280);
+  },
+);
 
-test('as Magias passam no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@MR-045'] }, async ({ browser }) => {
-  test.setTimeout(180_000);
-  await scanSpellsScreens(browser, 'dark', 1280);
-});
+test(
+  'as Magias passam no axe e nas conferências de layout no tema escuro, no desktop',
+  { tag: ['@a11y', '@MR-045'] },
+  async ({ browser }) => {
+    test.setTimeout(180_000);
+    await scanSpellsScreens(browser, 'dark', 1280);
+  },
+);
 
-test('as Magias passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-045'] }, async ({ browser }) => {
-  test.setTimeout(180_000);
-  await scanSpellsScreens(browser, 'dark', 390);
-});
+test(
+  'as Magias passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-045'] },
+  async ({ browser }) => {
+    test.setTimeout(180_000);
+    await scanSpellsScreens(browser, 'dark', 390);
+  },
+);
 
-test('as Magias passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-045'] }, async ({ browser }) => {
-  test.setTimeout(180_000);
-  await scanSpellsScreens(browser, 'light', 320, 568);
-});
+test(
+  'as Magias passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-045'] },
+  async ({ browser }) => {
+    test.setTimeout(180_000);
+    await scanSpellsScreens(browser, 'light', 320, 568);
+  },
+);
 
-test('as Magias passam no axe e nas conferências de layout no tema claro, no tablet de 1024 (o diálogo de filtros)', { tag: ['@a11y', '@MR-045'] }, async ({ browser }) => {
-  test.setTimeout(180_000);
-  await scanSpellsScreens(browser, 'light', 1024, 768);
-});
+test(
+  'as Magias passam no axe e nas conferências de layout no tema claro, no tablet de 1024 (o diálogo de filtros)',
+  { tag: ['@a11y', '@MR-045'] },
+  async ({ browser }) => {
+    test.setTimeout(180_000);
+    await scanSpellsScreens(browser, 'light', 1024, 768);
+  },
+);
 
 /** The combat without a map (Etapa 10, slice 10.13b; E10-04): the start dialog in both modes, the master's screen with the movement, the offer and
  * the cover, the player's turn, the "Gastar movimento" sheet, the target list, the opportunity question, the player out of turn, and Brisa down with the
  * death saves the table hides (her phone, the master's order). Both pages are at `width`. */
-async function scanTheatreScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number, height = 900): Promise<void> {
+async function scanTheatreScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+  height = 900,
+): Promise<void> {
   const viewport = { width, height };
   const master = await newSignedInContext(browser, 'Mestre Teste', { colorScheme, viewport });
   const player = await newSignedInContext(browser, 'Jogador Teste', { colorScheme, viewport });
@@ -4679,12 +6721,18 @@ async function scanTheatreScreens(browser: Browser, colorScheme: 'light' | 'dark
   try {
     await m.goto('/');
     await p.goto('/');
-    const table = await tableForCombat(m, p, `Acessibilidade teatro ${Date.now()}`, true, false, { build: toren, sheet: torenSheet });
+    const table = await tableForCombat(m, p, `Acessibilidade teatro ${Date.now()}`, true, false, {
+      build: toren,
+      sheet: torenSheet,
+    });
     campaignId = table.campaignId;
     lia = await secondPlayer(browser, m, campaignId, brisa, brisaSheet);
     await lia.page.setViewportSize(viewport);
     await lia.page.emulateMedia({ colorScheme });
-    await setTableRulesRPC(m, campaignId, { combatStartsWithMap: false, deathSaves: 'DEATH_SAVE_VISIBILITY_OWNER_AND_MASTER' });
+    await setTableRulesRPC(m, campaignId, {
+      combatStartsWithMap: false,
+      deathSaves: 'DEATH_SAVE_VISIBILITY_OWNER_AND_MASTER',
+    });
 
     // The dialog: "Sem mapa" with its one line, and "Com mapa" with the map.
     await openSessionPage(m, campaignId);
@@ -4702,11 +6750,21 @@ async function scanTheatreScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expect(m.getByText('Os NPCs rolaram sozinhos.')).toBeVisible();
     let enc = await getEncounterRPC(m, campaignId);
     for (const c of enc.combatants.filter((x) => x.kind === 'COMBATANT_KIND_NPC')) {
-      enc = await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: enc.id, combatantId: c.id, hidden: false });
+      enc = await combatRPC(m, 'SetCombatantHidden', {
+        campaignId,
+        encounterId: enc.id,
+        combatantId: c.id,
+        hidden: false,
+      });
     }
     await openSessionPage(p, campaignId);
     await openSessionPage(lia.page, campaignId);
-    await beginTheatreRPC(m, table, enc, { Toren: 20, Brisa: 18, Goblin: 12, 'Capitão Goblin': 10 });
+    await beginTheatreRPC(m, table, enc, {
+      Toren: 20,
+      Brisa: 18,
+      Goblin: 12,
+      'Capitão Goblin': 10,
+    });
 
     // The master's screen, Toren on turn, and the cover's four rows.
     await expect(m.getByRole('heading', { name: /^(Ações do|Vez do) Toren$/ })).toBeVisible();
@@ -4727,7 +6785,7 @@ async function scanTheatreScreens(browser: Browser, colorScheme: 'light' | 'dark
     }
     await p.getByRole('button', { name: /^Gastar 6,0/ }).click();
     // The number is said once, in the movement tile ("3,0 m de 9,0 m"); the group below has no pill of its own.
-      await expect(p.locator('.tile--move').first()).toContainText('3,0 m');
+    await expect(p.locator('.tile--move').first()).toContainText('3,0 m');
     await expectScreenPasses(p, `Depois de gastar o movimento ${where}`);
     await p.getByRole('button', { name: 'Atacar com Espada longa' }).click();
     await expect(p.getByText('O mestre decide quem está ao alcance.')).toBeVisible();
@@ -4745,7 +6803,12 @@ async function scanTheatreScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `Sem movimento ${where}`);
 
     // The master's turn for the Goblin: the offer's form, the wait and the player's question.
-    enc = await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: (await getEncounterRPC(m, campaignId)).currentCombatantId, discardPendingDamage: true });
+    enc = await combatRPC(m, 'EndTurn', {
+      campaignId,
+      encounterId: enc.id,
+      expectedCombatantId: (await getEncounterRPC(m, campaignId)).currentCombatantId,
+      discardPendingDamage: true,
+    });
     await passTurnsTo(m, campaignId, 'Goblin');
     await expect(m.getByRole('heading', { name: /^(Ações do|Vez do) Goblin$/ })).toBeVisible();
     await expectScreenPasses(m, `Combate sem mapa, mestre, vez de um NPC ${where}`);
@@ -4757,7 +6820,9 @@ async function scanTheatreScreens(browser: Browser, colorScheme: 'light' | 'dark
     const prompt = p.getByRole('alertdialog', { name: 'Ataque de oportunidade' });
     await expect(prompt).toBeVisible();
     await expectScreenPasses(p, `Pergunta do ataque de oportunidade ${where}`);
-    await expect(m.getByRole('status').filter({ hasText: 'Esperando a resposta do' })).toBeVisible();
+    await expect(
+      m.getByRole('status').filter({ hasText: 'Esperando a resposta do' }),
+    ).toBeVisible();
     await expectScreenPasses(m, `Esperando a resposta do jogador ${where}`);
     await prompt.getByRole('button', { name: 'Não atacar' }).click();
     await expect(prompt).toHaveCount(0);
@@ -4793,24 +6858,37 @@ for (const [scheme, width, label] of [
   ['light', 390, 'claro, no celular'],
   ['dark', 390, 'escuro, no celular'],
 ] as const) {
-  test(`o combate sem mapa passa no axe e nas conferências de layout no tema ${label}`, { tag: ['@a11y', '@MR-025', '@RN-25'] }, async ({ browser }) => {
-    test.setTimeout(300_000);
-    await scanTheatreScreens(browser, scheme, width);
-  });
+  test(
+    `o combate sem mapa passa no axe e nas conferências de layout no tema ${label}`,
+    { tag: ['@a11y', '@MR-025', '@RN-25'] },
+    async ({ browser }) => {
+      test.setTimeout(300_000);
+      await scanTheatreScreens(browser, scheme, width);
+    },
+  );
 }
 
 for (const [scheme, label] of [
   ['light', 'claro'],
   ['dark', 'escuro'],
 ] as const) {
-  test(`o combate sem mapa a 320 × 568 passa no axe e nas conferências de layout no tema ${label}`, { tag: ['@a11y', '@MR-025', '@RN-25'] }, async ({ browser }) => {
-    test.setTimeout(300_000);
-    await scanTheatreScreens(browser, scheme, 320, 568);
-  });
+  test(
+    `o combate sem mapa a 320 × 568 passa no axe e nas conferências de layout no tema ${label}`,
+    { tag: ['@a11y', '@MR-025', '@RN-25'] },
+    async ({ browser }) => {
+      test.setTimeout(300_000);
+      await scanTheatreScreens(browser, scheme, 320, 568);
+    },
+  );
 }
 
 /** The critical's line and the live total with physical dice, under "o máximo mais uma rolagem" (RN-24): the damage step on a phone. */
-async function scanTheatreCritical(browser: Browser, colorScheme: 'light' | 'dark', width: number, height: number): Promise<void> {
+async function scanTheatreCritical(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+  height: number,
+): Promise<void> {
   const viewport = { width, height };
   const master = await newSignedInContext(browser, 'Mestre Teste', { colorScheme, viewport });
   const player = await newSignedInContext(browser, 'Jogador Teste', { colorScheme, viewport });
@@ -4821,11 +6899,20 @@ async function scanTheatreCritical(browser: Browser, colorScheme: 'light' | 'dar
   try {
     await m.goto('/');
     await p.goto('/');
-    const table = await tableForCombat(m, p, `Acessibilidade crítico ${Date.now()}`, true, false, { build: toren, sheet: torenSheet });
+    const table = await tableForCombat(m, p, `Acessibilidade crítico ${Date.now()}`, true, false, {
+      build: toren,
+      sheet: torenSheet,
+    });
     campaignId = table.campaignId;
-    await setTableRulesRPC(m, campaignId, { combatStartsWithMap: false, diceMode: 'DICE_MODE_PHYSICAL', critical: 'CRITICAL_RULE_MAX_PLUS_ROLL' });
+    await setTableRulesRPC(m, campaignId, {
+      combatStartsWithMap: false,
+      diceMode: 'DICE_MODE_PHYSICAL',
+      critical: 'CRITICAL_RULE_MAX_PLUS_ROLL',
+    });
     const { startTheatreRPC } = await import('./theatre-support');
-    const enc0 = await startTheatreRPC(m, table, [{ characterId: table.captainId, count: 1, hidden: false }]);
+    const enc0 = await startTheatreRPC(m, table, [
+      { characterId: table.captainId, count: 1, hidden: false },
+    ]);
     await beginTheatreRPC(m, table, enc0, { Toren: 20, 'Capitão Goblin': 5 });
     await openSessionPage(p, campaignId);
     await p.getByRole('button', { name: 'Atacar com Espada longa' }).click();
@@ -4853,10 +6940,14 @@ for (const [scheme, label] of [
   ['light', 'claro'],
   ['dark', 'escuro'],
 ] as const) {
-  test(`o dano do crítico com dado físico passa no axe e nas conferências de layout no tema ${label}, a 320 × 568`, { tag: ['@a11y', '@RN-24', '@MR-025'] }, async ({ browser }) => {
-    test.setTimeout(240_000);
-    await scanTheatreCritical(browser, scheme, 320, 568);
-  });
+  test(
+    `o dano do crítico com dado físico passa no axe e nas conferências de layout no tema ${label}, a 320 × 568`,
+    { tag: ['@a11y', '@RN-24', '@MR-025'] },
+    async ({ browser }) => {
+      test.setTimeout(240_000);
+      await scanTheatreCritical(browser, scheme, 320, 568);
+    },
+  );
 }
 
 /**
@@ -4864,10 +6955,22 @@ for (const [scheme, label] of [
  * archive, a refusal on its field; the same list on a phone with the sheet that asks to archive; and what a player reads. The
  * entries come through the API, with one archived so its state shows.
  */
-async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanTableContent(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   test.setTimeout(180_000);
-  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
-  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  const mContext = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
+  const pContext = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
   try {
     const m = await mContext.newPage();
     const p = await pContext.newPage();
@@ -4875,21 +6978,39 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
     const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade conteúdo ${Date.now()}`);
     const where = `(${colorScheme}, ${width}px)`;
     const spell = await createEntryRPC(m, campaignId, 'tableSpell', spellBody('Lâmina de Nanquim'));
-    await createEntryRPC(m, campaignId, 'tableSpell', spellBody('Sopro de Nanquim', {
-      range: { kind: 'SPELL_RANGE_KIND_SELF' },
-      target: { kind: 'TABLE_SPELL_TARGET_KIND_AREA', shape: 'TABLE_AREA_SHAPE_CONE', sizeFt: 15 },
-      attack: '',
-      save: { ability: 'ABILITY_DEXTERITY', onSuccess: 'SPELL_SAVE_SUCCESS_HALF' },
-      damage: [{ damageTypeKey: 'damage-type:necrotic', dice: '3d6', perSlotLevel: '1d6' }],
-    }));
-    const archived = await createEntryRPC(m, campaignId, 'tableSpell', spellBody('Rascunho de Tinta'));
+    await createEntryRPC(
+      m,
+      campaignId,
+      'tableSpell',
+      spellBody('Sopro de Nanquim', {
+        range: { kind: 'SPELL_RANGE_KIND_SELF' },
+        target: {
+          kind: 'TABLE_SPELL_TARGET_KIND_AREA',
+          shape: 'TABLE_AREA_SHAPE_CONE',
+          sizeFt: 15,
+        },
+        attack: '',
+        save: { ability: 'ABILITY_DEXTERITY', onSuccess: 'SPELL_SAVE_SUCCESS_HALF' },
+        damage: [{ damageTypeKey: 'damage-type:necrotic', dice: '3d6', perSlotLevel: '1d6' }],
+      }),
+    );
+    const archived = await createEntryRPC(
+      m,
+      campaignId,
+      'tableSpell',
+      spellBody('Rascunho de Tinta'),
+    );
     const race = await createEntryRPC(m, campaignId, 'tableRace', raceBody());
     const background = await createEntryRPC(m, campaignId, 'tableBackground', {
       namePt: 'Cartógrafo do Vale',
       skills: ['skill:investigation', 'skill:survival'],
       tools: ['proficiency:thieves-tools'],
       equipmentPt: 'Um estojo de mapas, tinta e 10 PO',
-      feature: { namePt: 'Mapas na memória', descPt: ['Você lembra o desenho de qualquer lugar que já mapeou.'], effects: [{ type: 'note', textPt: 'Lembra qualquer lugar mapeado.' }] },
+      feature: {
+        namePt: 'Mapas na memória',
+        descPt: ['Você lembra o desenho de qualquer lugar que já mapeou.'],
+        effects: [{ type: 'note', textPt: 'Lembra qualquer lugar mapeado.' }],
+      },
     });
     await archiveEntryRPC(m, campaignId, archived);
 
@@ -4925,14 +7046,24 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await m.getByLabel('Nome', { exact: true }).fill('Lâmina de Nanquim');
       await m.getByLabel('Distância').fill('18');
       await m.getByRole('button', { name: 'Salvar magia' }).click();
-      await expect(m.getByText('Já existe uma magia da mesa com este nome. Escolha outro.')).toBeVisible();
+      await expect(
+        m.getByText('Já existe uma magia da mesa com este nome. Escolha outro.'),
+      ).toBeVisible();
       await expectScreenPasses(m, `Editor de magia, a recusa no campo ${where}`);
       // Another tab saves first: the stale alert, with "Recarregar".
       await open(m, entryRoute(campaignId, spell));
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Lâmina de Nanquim');
-      await updateEntryRPC(m, campaignId, spell, 'tableSpell', spellBody('Lâmina de Nanquim', { descPt: ['Outro texto.'] }));
+      await updateEntryRPC(
+        m,
+        campaignId,
+        spell,
+        'tableSpell',
+        spellBody('Lâmina de Nanquim', { descPt: ['Outro texto.'] }),
+      );
       await m.getByRole('button', { name: 'Salvar magia' }).click();
-      await expect(m.getByRole('alert').filter({ hasText: 'Esta entrada mudou enquanto você editava.' })).toBeVisible();
+      await expect(
+        m.getByRole('alert').filter({ hasText: 'Esta entrada mudou enquanto você editava.' }),
+      ).toBeVisible();
       await expectScreenPasses(m, `Editor de magia, a entrada mudou enquanto se editava ${where}`);
     } else {
       await m.getByRole('button', { name: 'Arquivar Lâmina de Nanquim' }).click();
@@ -4959,29 +7090,56 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
   }
 }
 
-test('o conteúdo da mesa passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
-  await scanTableContent(browser, 'light', 1280);
-});
+test(
+  'o conteúdo da mesa passa no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-025', '@RN-23'] },
+  async ({ browser }) => {
+    await scanTableContent(browser, 'light', 1280);
+  },
+);
 
-test('o conteúdo da mesa passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
-  await scanTableContent(browser, 'dark', 1024);
-});
+test(
+  'o conteúdo da mesa passa no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-025'] },
+  async ({ browser }) => {
+    await scanTableContent(browser, 'dark', 1024);
+  },
+);
 
-test('o conteúdo da mesa passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
-  await scanTableContent(browser, 'dark', 390);
-});
+test(
+  'o conteúdo da mesa passa no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-025', '@RN-23'] },
+  async ({ browser }) => {
+    await scanTableContent(browser, 'dark', 390);
+  },
+);
 
-test('o conteúdo da mesa passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
-  await scanTableContent(browser, 'light', 320);
-});
+test(
+  'o conteúdo da mesa passa no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-025'] },
+  async ({ browser }) => {
+    await scanTableContent(browser, 'light', 320);
+  },
+);
 
 // Generated images (slice 10.16, MR-039, RN-28, RN-10; E10-07): the "Gerar imagem" dialog from a map (the top and the end of its body, the
 // textured map, the wait, the result with its adjustment, "Usar como imagem do mapa" asked in place, a refusal in words) and from the gallery
 // (with the chain of an adjustment), and on a phone the same as a sheet with a fixed footer. The fake generator makes the pictures.
-async function scanImageScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanImageScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const players = [await newSignedInContext(browser, 'Jogador Teste'), await newSignedInContext(browser, 'E-mail Não Verificado')];
-  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const players = [
+    await newSignedInContext(browser, 'Jogador Teste'),
+    await newSignedInContext(browser, 'E-mail Não Verificado'),
+  ];
+  const context = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await context.newPage();
   const where = `(${colorScheme}, ${width}px)`;
   const d = m.getByRole('dialog');
@@ -5015,7 +7173,9 @@ async function scanImageScreens(browser: Browser, colorScheme: 'light' | 'dark',
       await gate;
       await route.continue();
     });
-    await d.getByRole('textbox', { name: 'Descreva o lugar' }).fill('Uma sala de guarda com tochas');
+    await d
+      .getByRole('textbox', { name: 'Descreva o lugar' })
+      .fill('Uma sala de guarda com tochas');
     await d.getByRole('button', { name: 'Gerar imagem' }).click();
     await expect(d.getByText('Gerando a imagem…')).toBeVisible({ timeout: 20_000 });
     await expectScreenPasses(m, `Gerar imagem, gerando ${where}`);
@@ -5041,7 +7201,9 @@ async function scanImageScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await d.getByRole('radio', { name: /Textura|O mapa com textura/ }).click();
     await d.getByRole('textbox', { name: 'Descreva o lugar' }).fill('Uma caverna de pedra clara');
     await d.getByRole('button', { name: 'Gerar imagem' }).click();
-    await expect(d.getByRole('button', { name: 'Usar como imagem do mapa' })).toBeVisible({ timeout: 60_000 });
+    await expect(d.getByRole('button', { name: 'Usar como imagem do mapa' })).toBeVisible({
+      timeout: 60_000,
+    });
     await expectScreenPasses(m, `Gerar imagem, o mapa com textura pronto ${where}`);
     await d.getByRole('button', { name: 'Usar como imagem do mapa' }).click();
     await expect(d.getByText('Usar como imagem do mapa?')).toBeVisible();
@@ -5063,7 +7225,12 @@ async function scanImageScreens(browser: Browser, colorScheme: 'light' | 'dark',
 
     // Generation off: the button stays, dashed, with the reason.
     await m.route('**/meurpg.maps.v1.ImageGenerationService/GetImageGenerationStatus', (r) =>
-      r.fulfill({ contentType: 'application/json', body: JSON.stringify({ status: { enabled: false, monthlyLimit: 20, remaining: 20, month: '2026-10' } }) }),
+      r.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: { enabled: false, monthlyLimit: 20, remaining: 20, month: '2026-10' },
+        }),
+      }),
     );
     await open(m, `/campaigns/${table.campaignId}/gallery`);
     await expect(m.getByText('A geração de imagens não está ligada neste servidor.')).toBeVisible();
@@ -5083,10 +7250,14 @@ for (const [scheme, width, label] of [
   ['dark', 320, 'tema escuro, no celular de 320'],
   ['light', 320, 'tema claro, no celular de 320'],
 ] as const) {
-  test(`as imagens geradas passam no axe e nas conferências de layout no ${label}`, { tag: ['@a11y', '@MR-039'] }, async ({ browser }) => {
-    test.setTimeout(600_000);
-    await scanImageScreens(browser, scheme, width);
-  });
+  test(
+    `as imagens geradas passam no axe e nas conferências de layout no ${label}`,
+    { tag: ['@a11y', '@MR-039'] },
+    async ({ browser }) => {
+      test.setTimeout(600_000);
+      await scanImageScreens(browser, scheme, width);
+    },
+  );
 }
 
 /**
@@ -5096,10 +7267,22 @@ for (const [scheme, width, label] of [
  * failed measure), "Pôr um NPC no grupo", "Gerar encontro" with "Trocar", "Guardar no ponto de batalha" (and the question in place),
  * and "Começar este combate" on the session with "Iniciar combate" filled. The sheets are drawn at 320 x 568 on the narrowest phone.
  */
-async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanMonsterScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const height = width === 320 ? 568 : 900;
-  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height } });
-  const playerContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height } });
+  const context = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height },
+  });
+  const playerContext = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport: { width, height },
+  });
   const m = await context.newPage();
   const p = await playerContext.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -5108,12 +7291,33 @@ async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark
     await p.goto('/');
     const table = await tableForCombat(m, p, `Acessibilidade monstros ${Date.now()}`);
     const campaignId = table.campaignId;
-    const battle = await createPointRPC(m, campaignId, table.mapId, { kind: 'BATTLE', name: 'Emboscada na ponte', xBp: 3000, yBp: 3000, revealed: true });
-    await createPointRPC(m, campaignId, table.mapId, { kind: 'BATTLE', name: 'Ruínas do forte', xBp: 7000, yBp: 3000, revealed: true });
+    const battle = await createPointRPC(m, campaignId, table.mapId, {
+      kind: 'BATTLE',
+      name: 'Emboscada na ponte',
+      xBp: 3000,
+      yBp: 3000,
+      revealed: true,
+    });
+    await createPointRPC(m, campaignId, table.mapId, {
+      kind: 'BATTLE',
+      name: 'Ruínas do forte',
+      xBp: 7000,
+      yBp: 3000,
+      revealed: true,
+    });
     const orin = await createCharacterRPC(m, campaignId, {
       kind: 'CHARACTER_KIND_STORY',
       name: 'Orin, o guia',
-      sheet: { basic: { hitPointsMax: 9, armorClass: 10, speedFt: 25, attackBonus: 0, damage: '1d4', description: '' } },
+      sheet: {
+        basic: {
+          hitPointsMax: 9,
+          armorClass: 10,
+          speedFt: 25,
+          attackBonus: 0,
+          damage: '1d4',
+          description: '',
+        },
+      },
     });
     expect(orin.ok(), await orin.text()).toBeTruthy();
 
@@ -5132,7 +7336,9 @@ async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark
     await sheet.getByRole('button', { name: 'Cancelar' }).click();
 
     // A combat in preparation: the sheet reads it.
-    let enc = await startEncounterRPC(m, table, [{ characterId: table.goblinId, count: 1, hidden: false }]);
+    let enc = await startEncounterRPC(m, table, [
+      { characterId: table.goblinId, count: 1, hidden: false },
+    ]);
     await m.getByRole('button', { name: 'Pôr no combate: Bandido' }).click();
     await expect(sheet.locator('.readonly')).toHaveText('Emboscada na estrada · em preparação');
     await sheet.getByRole('button', { name: 'Mais um Bandido' }).click();
@@ -5140,7 +7346,14 @@ async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(m, `Pôr no combate, em preparação ${where}`);
     // A refusal says it in words.
     await m.route('**/meurpg.play.v1.CombatService/AddMonsters', (route) =>
-      route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: 'invalid_argument', message: 'a combat has at most 40 combatants' }) }),
+      route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 'invalid_argument',
+          message: 'a combat has at most 40 combatants',
+        }),
+      }),
     );
     await sheet.getByRole('button', { name: 'Pôr 3 no combate' }).click();
     await expect(sheet.getByRole('alert')).toContainText('40 combatentes');
@@ -5152,13 +7365,27 @@ async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark
 
     // The combat under way: the master's order with the monsters, the player's with the word of the state.
     for (const c of (await getEncounterRPC(m, campaignId)).combatants) {
-      enc = await combatRPC(m, 'SubmitInitiative', { campaignId, encounterId: enc.id, combatantId: c.id, d20Face: 10 });
+      enc = await combatRPC(m, 'SubmitInitiative', {
+        campaignId,
+        encounterId: enc.id,
+        combatantId: c.id,
+        d20Face: 10,
+      });
     }
     enc = await combatRPC(m, 'BeginCombat', { campaignId, encounterId: enc.id });
     const second = enc.combatants.find((c) => c.label === 'Bandido 2')!;
-    await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: enc.id, combatantId: second.id, hidden: false });
+    await combatRPC(m, 'SetCombatantHidden', {
+      campaignId,
+      encounterId: enc.id,
+      combatantId: second.id,
+      hidden: false,
+    });
     await openSessionPage(m, campaignId);
-    await expect(m.getByRole('region', { name: 'Ordem de iniciativa' }).locator('.row', { hasText: 'Bandido 3' })).toContainText('ND 1/8');
+    await expect(
+      m
+        .getByRole('region', { name: 'Ordem de iniciativa' })
+        .locator('.row', { hasText: 'Bandido 3' }),
+    ).toContainText('ND 1/8');
     await expectScreenPasses(m, `Combate com monstros, a ordem do mestre ${where}`);
     await openSessionPage(p, campaignId);
     await expect(p.getByText('Bandido 2').first()).toBeVisible();
@@ -5167,11 +7394,18 @@ async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark
     // They fall and the combat ends: the XP by each ND.
     const now = await getEncounterRPC(m, campaignId);
     for (const c of now.combatants.filter((x) => x.kind !== 'COMBATANT_KIND_PLAYER')) {
-      await combatRPC(m, 'AdjustCombatantHitPoints', { campaignId, encounterId: enc.id, combatantId: c.id, damage: 999 });
+      await combatRPC(m, 'AdjustCombatantHitPoints', {
+        campaignId,
+        encounterId: enc.id,
+        combatantId: c.id,
+        damage: 999,
+      });
     }
     await combatRPC(m, 'EndEncounter', { campaignId, encounterId: enc.id });
     await m.goto(`/campaigns/${campaignId}/session`);
-    await expect(m.getByRole('region', { name: 'Experiência do combate' }).locator('.kind').first()).toContainText('ND 1/8');
+    await expect(
+      m.getByRole('region', { name: 'Experiência do combate' }).locator('.kind').first(),
+    ).toContainText('ND 1/8');
     await expectScreenPasses(m, `Fim do combate, o XP por ND ${where}`);
 
     // The builder: empty, then filled, above high, with an NPC, and a failed measure.
@@ -5182,7 +7416,11 @@ async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark
       await m.getByRole('combobox', { name: 'Adicionar criatura' }).fill(search);
       await expect(m.getByRole('option').first()).toBeVisible();
       await expectScreenPasses(m, `Encontros, a busca de "${search}" ${where}`);
-      await m.getByRole('option').filter({ has: m.locator('.pick__pt', { hasText: new RegExp(`^${namePt}$`) }) }).first().click();
+      await m
+        .getByRole('option')
+        .filter({ has: m.locator('.pick__pt', { hasText: new RegExp(`^${namePt}$`) }) })
+        .first()
+        .click();
     };
     await add('goblin', 'Goblin');
     await add('ogre', 'Ogro');
@@ -5212,7 +7450,11 @@ async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark
     const gen = m.getByRole('dialog', { name: 'Gerar encontro' });
     await expect(gen.locator('.res__seed')).toContainText('Semente');
     await expectScreenPasses(m, `Gerar encontro ${where}`);
-    await gen.locator('.line').first().getByRole('button', { name: /^Trocar criatura/ }).click();
+    await gen
+      .locator('.line')
+      .first()
+      .getByRole('button', { name: /^Trocar criatura/ })
+      .click();
     await expect(gen.locator('.swap__opt').first()).toBeVisible();
     await gen.locator('.swap__opt').first().click();
     await expectScreenPasses(m, `Trocar criatura ${where}`);
@@ -5226,7 +7468,9 @@ async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(m, `Guardar no ponto de batalha ${where}`);
     await save.locator('.pt', { hasText: 'Emboscada na ponte' }).click();
     await save.getByRole('button', { name: 'Guardar no ponto de batalha' }).click();
-    await expect(m.locator('.mr-notice--success')).toContainText('Encontro guardado em “Emboscada na ponte”.');
+    await expect(m.locator('.mr-notice--success')).toContainText(
+      'Encontro guardado em “Emboscada na ponte”.',
+    );
     await expectScreenPasses(m, `Encontros, guardado ${where}`);
     await m.getByRole('button', { name: 'Guardar no ponto de batalha' }).click();
     await save.locator('.pt', { hasText: 'Emboscada na ponte' }).click();
@@ -5238,7 +7482,11 @@ async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark
 
     // A failed measure.
     await m.route('**/meurpg.play.v1.EncounterService/EvaluateEncounter', (route) =>
-      route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ code: 'unavailable', message: 'down' }) }),
+      route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ code: 'unavailable', message: 'down' }),
+      }),
     );
     await m.locator('app-count-stepper button[aria-label^="Mais um"]').first().click();
     await expect(m.getByRole('alert').first()).toContainText('o servidor não respondeu');
@@ -5269,41 +7517,72 @@ async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark
   }
 }
 
-test('os monstros e os encontros passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-042', '@MR-043'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanMonsterScreens(browser, 'light', 1280);
-});
+test(
+  'os monstros e os encontros passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-042', '@MR-043'] },
+  async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanMonsterScreens(browser, 'light', 1280);
+  },
+);
 
-test('os monstros e os encontros passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-042', '@MR-043'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanMonsterScreens(browser, 'dark', 390);
-});
+test(
+  'os monstros e os encontros passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-042', '@MR-043'] },
+  async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanMonsterScreens(browser, 'dark', 390);
+  },
+);
 
-test('os monstros e os encontros passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-042', '@MR-043'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanMonsterScreens(browser, 'dark', 1024);
-});
+test(
+  'os monstros e os encontros passam no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-042', '@MR-043'] },
+  async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanMonsterScreens(browser, 'dark', 1024);
+  },
+);
 
-test('os monstros e os encontros passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-042', '@MR-043'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanMonsterScreens(browser, 'light', 320);
-});
+test(
+  'os monstros e os encontros passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-042', '@MR-043'] },
+  async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanMonsterScreens(browser, 'light', 320);
+  },
+);
 
-test('os monstros e os encontros passam no axe e nas conferências de layout no tema escuro, no celular de 320', { tag: ['@a11y', '@MR-042', '@MR-043'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanMonsterScreens(browser, 'dark', 320);
-});
-
+test(
+  'os monstros e os encontros passam no axe e nas conferências de layout no tema escuro, no celular de 320',
+  { tag: ['@a11y', '@MR-042', '@MR-043'] },
+  async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanMonsterScreens(browser, 'dark', 320);
+  },
+);
 
 /**
  * The treasure generator (Etapa 10, slice 10.17c: MR-044, MR-041, RN-09, RN-10; E10-10 states 1 to 6): nothing generated, a hoard, an
  * individual treasure, a failing and a busy generator, an item's description, "Pôr no mapa" (on a map with rooms, and on a map without a
  * grid), the confirmation, a gold campaign's line and the player's notice. On a phone the item and "Pôr no mapa" are sheets.
  */
-async function scanTreasureScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanTreasureScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const playerContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const context = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const playerContext = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await context.newPage();
   const p = await playerContext.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -5312,7 +7591,12 @@ async function scanTreasureScreens(browser: Browser, colorScheme: 'light' | 'dar
     await p.goto('/');
     const table = await tableForMaps(m, p, `Acessibilidade tesouro ${Date.now()}`);
     const campaignId = table.campaignId;
-    const made = await callRPC(m, 'meurpg.maps.v1.DungeonService/CreateDungeonMap', { campaignId, name: 'A masmorra do teste', seed: '48213', options: { width: 31, height: 21, roomSideMin: 3, roomSideMax: 9 } });
+    const made = await callRPC(m, 'meurpg.maps.v1.DungeonService/CreateDungeonMap', {
+      campaignId,
+      name: 'A masmorra do teste',
+      seed: '48213',
+      options: { width: 31, height: 21, roomSideMin: 3, roomSideMax: 9 },
+    });
     expect(made.ok(), await made.text()).toBeTruthy();
     const route = treasureRoute(campaignId);
     const generate = m.getByRole('button', { name: 'Gerar tesouro' });
@@ -5334,7 +7618,13 @@ async function scanTreasureScreens(browser: Browser, colorScheme: 'light' | 'dar
     await m.unroute('**/*TreasureService/GenerateTreasure');
 
     // Failing.
-    await m.route('**/*TreasureService/GenerateTreasure', (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"unavailable","message":"x"}' }));
+    await m.route('**/*TreasureService/GenerateTreasure', (r) =>
+      r.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: '{"code":"unavailable","message":"x"}',
+      }),
+    );
     await open(m, route);
     await m.getByRole('button', { name: 'Gerar tesouro' }).click();
     await expect(m.getByRole('alert')).toContainText('o servidor não respondeu');
@@ -5357,16 +7647,28 @@ async function scanTreasureScreens(browser: Browser, colorScheme: 'light' | 'dar
     await createMapRPC(m, campaignId, 'Mapa sem grade', imageId);
     await m.getByRole('button', { name: 'Pôr no mapa' }).click();
     await expect(dialogOrSheet.getByRole('heading', { name: 'Pôr no mapa' })).toBeVisible();
-    await expect(dialogOrSheet.getByText(width < 768 ? 'Em que sala?' : /Onde\s+Na Sala/)).toBeVisible();
+    await expect(
+      dialogOrSheet.getByText(width < 768 ? 'Em que sala?' : /Onde\s+Na Sala/),
+    ).toBeVisible();
     if (width >= 768) {
       await expect(dialogOrSheet.locator('.mv__img')).toBeVisible();
-      await expect.poll(() => dialogOrSheet.locator('.mv__img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+      await expect
+        .poll(() =>
+          dialogOrSheet
+            .locator('.mv__img')
+            .evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0),
+        )
+        .toBe(true);
     }
     await expectScreenPasses(m, `Tesouro, "Pôr no mapa" ${where}`);
-    await dialogOrSheet.locator('select[data-field=map]').selectOption({ label: 'Mapa sem grade · sem grade' });
+    await dialogOrSheet
+      .locator('select[data-field=map]')
+      .selectOption({ label: 'Mapa sem grade · sem grade' });
     await expect(dialogOrSheet.getByTestId('no-grid')).toBeVisible();
     await expectScreenPasses(m, `Tesouro, "Pôr no mapa" num mapa sem grade ${where}`);
-    await dialogOrSheet.locator('select[data-field=map]').selectOption({ label: 'A masmorra do teste' });
+    await dialogOrSheet
+      .locator('select[data-field=map]')
+      .selectOption({ label: 'A masmorra do teste' });
     await expect(dialogOrSheet.getByTestId('no-grid')).toHaveCount(0);
     await dialogOrSheet.getByRole('button', { name: 'Pôr no mapa' }).click();
     await expect(m.getByTestId('treasure-placed')).toBeVisible();
@@ -5378,7 +7680,10 @@ async function scanTreasureScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expectScreenPasses(m, `Tesouro, o individual ${where}`);
 
     // A gold campaign: the line says the gold is converted in "Voltar à cidade".
-    const gold = await callRPC(m, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', { name: `Estrada de Ouro ${Date.now()}`, xpMode: 'XP_MODE_GOLD' });
+    const gold = await callRPC(m, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', {
+      name: `Estrada de Ouro ${Date.now()}`,
+      xpMode: 'XP_MODE_GOLD',
+    });
     expect(gold.ok()).toBeTruthy();
     await open(m, treasureRoute((await gold.json()).campaign.id as string));
     await m.getByRole('button', { name: 'Gerar tesouro' }).click();
@@ -5401,10 +7706,14 @@ for (const [scheme, width, label] of [
   ['dark', 390, 'tema escuro, no celular'],
   ['light', 320, 'tema claro, no celular de 320'],
 ] as const) {
-  test(`o gerador de tesouro passa no axe e nas conferências de layout no ${label}`, { tag: ['@a11y', '@MR-044'] }, async ({ browser }) => {
-    test.setTimeout(600_000);
-    await scanTreasureScreens(browser, scheme, width);
-  });
+  test(
+    `o gerador de tesouro passa no axe e nas conferências de layout no ${label}`,
+    { tag: ['@a11y', '@MR-044'] },
+    async ({ browser }) => {
+      test.setTimeout(600_000);
+      await scanTreasureScreens(browser, scheme, width);
+    },
+  );
 }
 
 /**
@@ -5412,10 +7721,22 @@ for (const [scheme, width, label] of [
  * feature open, the question before the table is replaced, a refused cell, the subclass of a third caster and the always-prepared
  * spells; on a phone the master only reads (the table as a list of levels). The entries come through the API.
  */
-async function scanTableClasses(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanTableClasses(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   test.setTimeout(240_000);
-  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
-  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  const mContext = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
+  const pContext = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
   try {
     const m = await mContext.newPage();
     const p = await pContext.newPage();
@@ -5424,15 +7745,30 @@ async function scanTableClasses(browser: Browser, colorScheme: 'light' | 'dark',
     const where = `(${colorScheme}, ${width}px)`;
     const half = halfCasterBody();
     (half.levels as Record<string, unknown>[])[0].features = [
-      { namePt: 'Vigília', descPt: ['Você marca um lugar e o vigia.'], effects: [{ type: 'resource', resource: 'vigilia', max: '3', recharge: 'long_rest' }] },
+      {
+        namePt: 'Vigília',
+        descPt: ['Você marca um lugar e o vigia.'],
+        effects: [{ type: 'resource', resource: 'vigilia', max: '3', recharge: 'long_rest' }],
+      },
     ];
     const guardiao = await createClassRPC(m, campaignId, half);
     await createClassRPC(m, campaignId, classBody('Bardo das Cinzas'));
     const tinta = await createSubclassRPC(m, campaignId, {
       namePt: 'Tradição da Tinta',
       classKey: 'class:fighter',
-      casting: { kind: 'third', ability: 'ABILITY_INTELLIGENCE', preparation: 'known', listFrom: 'class:wizard', startLevel: 3 },
-      levels: Array.from({ length: 18 }, (_, i) => ({ level: i + 3, cantripsKnown: 2, spellsKnown: 3, slots: [i < 4 ? 2 : 3, 0, 0, 0, 0, 0, 0, 0, 0] })),
+      casting: {
+        kind: 'third',
+        ability: 'ABILITY_INTELLIGENCE',
+        preparation: 'known',
+        listFrom: 'class:wizard',
+        startLevel: 3,
+      },
+      levels: Array.from({ length: 18 }, (_, i) => ({
+        level: i + 3,
+        cantripsKnown: 2,
+        spellsKnown: 3,
+        slots: [i < 4 ? 2 : 3, 0, 0, 0, 0, 0, 0, 0, 0],
+      })),
       alwaysPrepared: [{ classLevel: 3, spellKey: 'spell:detect-magic' }],
     });
 
@@ -5454,8 +7790,13 @@ async function scanTableClasses(browser: Browser, colorScheme: 'light' | 'dark',
       // The question before an edited table is replaced.
       await m.getByLabel('Nível 5, espaços de magia de 1º nível').fill('9');
       await m.locator('label', { hasText: 'Completa' }).first().click();
-      await expect(m.getByRole('alertdialog', { name: 'Refazer a tabela dos 20 níveis?' })).toBeVisible();
-      await expectScreenPasses(m, `Editor de classe, a pergunta antes de refazer a tabela ${where}`);
+      await expect(
+        m.getByRole('alertdialog', { name: 'Refazer a tabela dos 20 níveis?' }),
+      ).toBeVisible();
+      await expectScreenPasses(
+        m,
+        `Editor de classe, a pergunta antes de refazer a tabela ${where}`,
+      );
       await m.getByRole('button', { name: 'Manter a minha tabela' }).click();
       await open(m, `/campaigns/${campaignId}/content/new/class`);
       await expectScreenPasses(m, `Editor de classe, uma classe nova ${where}`);
@@ -5466,7 +7807,9 @@ async function scanTableClasses(browser: Browser, colorScheme: 'light' | 'dark',
       await expectScreenPasses(m, `Editor de subclasse, uma nova ${where}`);
     } else {
       await open(m, entryRoute(campaignId, guardiao));
-      await expect(m.getByText('Para criar ou editar, abra o conteúdo da mesa no notebook.')).toBeVisible();
+      await expect(
+        m.getByText('Para criar ou editar, abra o conteúdo da mesa no notebook.'),
+      ).toBeVisible();
       await expectScreenPasses(m, `Classe lida pelo mestre no celular ${where}`);
       await open(m, entryRoute(campaignId, tinta));
       await expectScreenPasses(m, `Subclasse lida pelo mestre no celular ${where}`);
@@ -5482,28 +7825,53 @@ async function scanTableClasses(browser: Browser, colorScheme: 'light' | 'dark',
   }
 }
 
-test('as classes da mesa passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
-  await scanTableClasses(browser, 'light', 1280);
-});
+test(
+  'as classes da mesa passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-025', '@RN-23'] },
+  async ({ browser }) => {
+    await scanTableClasses(browser, 'light', 1280);
+  },
+);
 
-test('as classes da mesa passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
-  await scanTableClasses(browser, 'dark', 1024);
-});
+test(
+  'as classes da mesa passam no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-025'] },
+  async ({ browser }) => {
+    await scanTableClasses(browser, 'dark', 1024);
+  },
+);
 
-test('as classes da mesa passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
-  await scanTableClasses(browser, 'dark', 390);
-});
+test(
+  'as classes da mesa passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-025', '@RN-23'] },
+  async ({ browser }) => {
+    await scanTableClasses(browser, 'dark', 390);
+  },
+);
 
-test('as classes da mesa passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
-  await scanTableClasses(browser, 'light', 320);
-});
+test(
+  'as classes da mesa passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-025'] },
+  async ({ browser }) => {
+    await scanTableClasses(browser, 'light', 320);
+  },
+);
 
 // MR-025, RN-23, MR-040 (slice 10.12b): the character editor with the table's content (the "Da mesa" tags, the
 // "Outro" background, a sheet of several classes and its spell step per class), the level-up with a table class
 // and "A classe mudou" on the sheet, with its sheet "O que mudou".
-async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number, height = 900): Promise<void> {
+async function scanTableSheetScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+  height = 900,
+): Promise<void> {
   const masterContext = await newSignedInContext(browser, 'Mestre Teste');
-  const context = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height } });
+  const context = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport: { width, height },
+  });
   const m = await masterContext.newPage();
   const page = await context.newPage();
   // A click on something that is not there fails in 20 s with its name, not at the end of the test.
@@ -5532,7 +7900,9 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
     await page.getByLabel('Nome do personagem', { exact: true }).fill('Davi');
     await pick('Raça', /^Corujeiro/);
     await pick('Classe', /^Guardião do Vale/);
-    await expect(page.getByText('O Guardião do Vale escolhe a subclasse no nível 3.')).toBeVisible();
+    await expect(
+      page.getByText('O Guardião do Vale escolhe a subclasse no nível 3.'),
+    ).toBeVisible();
     await expectScreenPasses(page, `Editor com a classe e a raça da mesa ${where}`);
     // The open list, with the tag on the table's entries.
     const classSelect = page.getByRole('combobox', { name: 'Classe', exact: true });
@@ -5567,11 +7937,15 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
     const secondSub = second.getByRole('combobox', { name: 'Subclasse', exact: true });
     await secondSub.focus();
     await secondSub.press('Enter');
-    await expect(page.getByRole('option', { name: /^Domínio do Caminho/ })).toContainText('Da mesa');
+    await expect(page.getByRole('option', { name: /^Domínio do Caminho/ })).toContainText(
+      'Da mesa',
+    );
     await expectScreenPasses(page, `Editor, a subclasse da mesa aberta ${where}`);
     await page.keyboard.press('Escape');
     await page.getByRole('tab', { name: 'Magias' }).click();
-    await expect(page.getByRole('heading', { name: 'Clérigo · até o 1º nível de magia' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Clérigo · até o 1º nível de magia' }),
+    ).toBeVisible();
     await page.locator('.spell-section').nth(1).getByPlaceholder('Buscar magia').fill('amizade');
     await expect(page.locator('.picker__out')).toBeVisible();
     await expectScreenPasses(page, `Editor, as magias de cada classe e uma fora da lista ${where}`);
@@ -5595,17 +7969,26 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
     await expect(prepare).toBeVisible();
     await showAllPicks(prepare);
     const reason = (await page.locator('#foot-reason').textContent()) ?? '';
-    for (const name of ['Amizade Animal', 'Bom Fruto', 'Criar ou Destruir Água', 'Curar Ferimentos'].slice(0, Number(/(\d+)/.exec(reason)?.[1] ?? '1'))) {
+    for (const name of [
+      'Amizade Animal',
+      'Bom Fruto',
+      'Criar ou Destruir Água',
+      'Curar Ferimentos',
+    ].slice(0, Number(/(\d+)/.exec(reason)?.[1] ?? '1'))) {
       await prepare.getByRole('checkbox', { name: new RegExp(`^${name}`) }).check();
     }
     await expectScreenPasses(page, `Subir de nível, as magias ${where}`);
     await page.getByRole('button', { name: 'Próximo' }).click();
-    const slots = page.getByRole('region', { name: 'O que muda', exact: true }).locator('li').filter({ hasText: 'Espaços de 1º nível' });
+    const slots = page
+      .getByRole('region', { name: 'O que muda', exact: true })
+      .locator('li')
+      .filter({ hasText: 'Espaços de 1º nível' });
     await expect(slots).toContainText('Da mesa');
     await expectScreenPasses(page, `Subir de nível, o resumo com "Da mesa" ${where}`);
 
     // The third caster's Magias step at level 3 (the master's subclass casts from the wizard's list).
-    const campaignD = (await emptyTable(m, page, `Acessibilidade do conjurador ${Date.now()}`)).campaignId;
+    const campaignD = (await emptyTable(m, page, `Acessibilidade do conjurador ${Date.now()}`))
+      .campaignId;
     await createInkBladeSubclassRPC(m, campaignD);
     const fighter = icaroSheetBody('class:fighter');
     fighter.name = 'Rúnico';
@@ -5616,25 +7999,46 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
     await lockAndMilestone(m, campaignD, runico);
     await openLive(`/campaigns/${campaignD}/characters/${runico}/level-up`);
     await page.getByRole('button', { name: 'Próximo' }).click();
-    await page.locator('#pick-subclass').getByRole('radio', { name: /Lâmina de Tinta/ }).click();
+    await page
+      .locator('#pick-subclass')
+      .getByRole('radio', { name: /Lâmina de Tinta/ })
+      .click();
     await page.getByRole('button', { name: 'Próximo' }).click();
     await expect(page.getByText(/truques de Mago/)).toBeVisible();
     await expectScreenPasses(page, `Subir de nível, as magias do conjurador de um terço ${where}`);
 
     // The edit of a sheet whose domain always prepares a spell: "Sempre preparadas", in the class's section.
-    const campaignB = (await emptyTable(m, page, `Acessibilidade das sempre preparadas ${Date.now()}`)).campaignId;
-    const domain = await createPlainSubclassRPC(m, campaignB, 'class:cleric', 'Domínio do Caminho', 1, [{ classLevel: 1, spellKey: 'spell:detect-magic' }]);
+    const campaignB = (
+      await emptyTable(m, page, `Acessibilidade das sempre preparadas ${Date.now()}`)
+    ).campaignId;
+    const domain = await createPlainSubclassRPC(
+      m,
+      campaignB,
+      'class:cleric',
+      'Domínio do Caminho',
+      1,
+      [{ classLevel: 1, spellKey: 'spell:detect-magic' }],
+    );
     const cleric = await createSheetRPC(page, campaignB, {
       kind: 'CHARACTER_KIND_PLAYER',
       name: 'Clara',
-      sheet: { full: {
-        baseScores: { strength: 10, dexterity: 12, constitution: 14, intelligence: 10, wisdom: 15, charisma: 8 },
-        raceKey: 'race:gnome',
-        classes: [{ classKey: 'class:cleric', level: 3, subclassKey: domain }],
-        backgroundKey: 'background:acolyte',
-        hitPoints: { method: 'HIT_POINTS_METHOD_AVERAGE' },
-        preparedSpellKeys: ['spell:bless'],
-      } },
+      sheet: {
+        full: {
+          baseScores: {
+            strength: 10,
+            dexterity: 12,
+            constitution: 14,
+            intelligence: 10,
+            wisdom: 15,
+            charisma: 8,
+          },
+          raceKey: 'race:gnome',
+          classes: [{ classKey: 'class:cleric', level: 3, subclassKey: domain }],
+          backgroundKey: 'background:acolyte',
+          hitPoints: { method: 'HIT_POINTS_METHOD_AVERAGE' },
+          preparedSpellKeys: ['spell:bless'],
+        },
+      },
     });
     await openLive(`/campaigns/${campaignB}/characters/${cleric}/edit`);
     await page.getByRole('tab', { name: 'Magias' }).click();
@@ -5648,7 +8052,9 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
     await expect(page.getByText('A classe mudou.')).toBeVisible();
     await expectScreenPasses(page, `Ficha com "A classe mudou" ${where}`);
     await page.getByRole('button', { name: 'Ver o que mudou' }).click();
-    await expect(page.getByRole('heading', { name: 'O que mudou: Guardião do Vale' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'O que mudou: Guardião do Vale' }),
+    ).toBeVisible();
     await expectScreenPasses(page, `"O que mudou", a folha ${where}`);
   } finally {
     if (campaignId) await endOpenSessionRPC(m, campaignId);
@@ -5657,40 +8063,72 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
   }
 }
 
-test('o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(360_000);
-  await scanTableSheetScreens(browser, 'light', 1280);
-});
+test(
+  'o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-025', '@MR-040'] },
+  async ({ browser }) => {
+    test.setTimeout(360_000);
+    await scanTableSheetScreens(browser, 'light', 1280);
+  },
+);
 
-test('o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(360_000);
-  await scanTableSheetScreens(browser, 'dark', 390);
-});
+test(
+  'o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-025', '@MR-040'] },
+  async ({ browser }) => {
+    test.setTimeout(360_000);
+    await scanTableSheetScreens(browser, 'dark', 390);
+  },
+);
 
-test('o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(360_000);
-  await scanTableSheetScreens(browser, 'light', 320, 568);
-});
+test(
+  'o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-025', '@MR-040'] },
+  async ({ browser }) => {
+    test.setTimeout(360_000);
+    await scanTableSheetScreens(browser, 'light', 320, 568);
+  },
+);
 
-test('o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema escuro, no celular de 320', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanTableSheetScreens(browser, 'dark', 320, 568);
-});
+test(
+  'o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema escuro, no celular de 320',
+  { tag: ['@a11y', '@MR-025', '@MR-040'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanTableSheetScreens(browser, 'dark', 320, 568);
+  },
+);
 
-test('o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
-  test.setTimeout(360_000);
-  await scanTableSheetScreens(browser, 'dark', 1024, 768);
-});
+test(
+  'o editor com a mesa, a subida de nível e "A classe mudou" passam no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-025', '@MR-040'] },
+  async ({ browser }) => {
+    test.setTimeout(360_000);
+    await scanTableSheetScreens(browser, 'dark', 1024, 768);
+  },
+);
 
 /**
  * "Opções para os jogadores" (MR-025, RN-23; E10-01 state 3): the master's switches by kind (the races with one off and one
  * used by a sheet, the subclasses of an off class, the search with nothing found, the bulk buttons), the entry's own switch in
  * the spell editor, and what a player reads when the master turned something off (the race list on a phone).
  */
-async function scanOptions(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanOptions(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   test.setTimeout(180_000);
-  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
-  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  const mContext = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
+  const pContext = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
   try {
     const m = await mContext.newPage();
     const p = await pContext.newPage();
@@ -5707,14 +8145,25 @@ async function scanOptions(browser: Browser, colorScheme: 'light' | 'dark', widt
     ]);
 
     await open(m, `/campaigns/${campaignId}/content/options?kind=races`);
-    await expect(m.getByRole('switch', { name: 'Tiefling' })).toHaveAttribute('aria-checked', 'false');
+    await expect(m.getByRole('switch', { name: 'Tiefling' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
     await expectScreenPasses(m, `Opções para os jogadores, as raças ${where}`);
     await m.getByRole('switch', { name: 'Gnomo', exact: true }).click();
     await expect(m.getByText('Tudo salvo')).toBeVisible();
-    await expectScreenPasses(m, `Opções para os jogadores, uma ficha usa a raça desligada ${where}`);
+    await expectScreenPasses(
+      m,
+      `Opções para os jogadores, uma ficha usa a raça desligada ${where}`,
+    );
     await open(m, `/campaigns/${campaignId}/content/options?kind=subclasses`);
-    await expect(m.getByText('Some para os jogadores: a classe Clérigo está desligada.').first()).toBeVisible();
-    await expectScreenPasses(m, `Opções para os jogadores, as subclasses de uma classe desligada ${where}`);
+    await expect(
+      m.getByText('Some para os jogadores: a classe Clérigo está desligada.').first(),
+    ).toBeVisible();
+    await expectScreenPasses(
+      m,
+      `Opções para os jogadores, as subclasses de uma classe desligada ${where}`,
+    );
     await open(m, `/campaigns/${campaignId}/content/options?kind=spells`);
     if (colorScheme === 'light' && width === 1280) {
       // Once, the whole list: the 320 spells of the SRD and the table's own, as the master reads it.
@@ -5728,8 +8177,14 @@ async function scanOptions(browser: Browser, colorScheme: 'light' | 'dark', widt
     await expectScreenPasses(m, `Conteúdo da mesa, com o caminho para as opções ${where}`);
     if (width >= 768) {
       await open(m, entryRoute(campaignId, spell));
-      await expect(m.getByRole('switch', { name: 'Disponível para os jogadores' })).toHaveAttribute('aria-checked', 'false');
-      await expectScreenPasses(m, `Editor de magia, "Disponível para os jogadores" desligado ${where}`);
+      await expect(m.getByRole('switch', { name: 'Disponível para os jogadores' })).toHaveAttribute(
+        'aria-checked',
+        'false',
+      );
+      await expectScreenPasses(
+        m,
+        `Editor de magia, "Disponível para os jogadores" desligado ${where}`,
+      );
     }
 
     // What a player reads: the race list without the Tiefling, on the screen where the master's phone is small.
@@ -5746,31 +8201,208 @@ async function scanOptions(browser: Browser, colorScheme: 'light' | 'dark', widt
   }
 }
 
-test('as opções para os jogadores passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
-  await scanOptions(browser, 'light', 1280);
-});
+test(
+  'as opções para os jogadores passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-025', '@RN-23'] },
+  async ({ browser }) => {
+    await scanOptions(browser, 'light', 1280);
+  },
+);
 
-test('as opções para os jogadores passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
-  await scanOptions(browser, 'dark', 1024);
-});
+test(
+  'as opções para os jogadores passam no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-025', '@RN-23'] },
+  async ({ browser }) => {
+    await scanOptions(browser, 'dark', 1024);
+  },
+);
 
-test('as opções para os jogadores passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
-  await scanOptions(browser, 'dark', 390);
-});
+test(
+  'as opções para os jogadores passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-025', '@RN-23'] },
+  async ({ browser }) => {
+    await scanOptions(browser, 'dark', 390);
+  },
+);
 
-test('as opções para os jogadores passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
-  await scanOptions(browser, 'light', 320);
-});
+test(
+  'as opções para os jogadores passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-025', '@RN-23'] },
+  async ({ browser }) => {
+    await scanOptions(browser, 'light', 320);
+  },
+);
+
+/**
+ * The reserved characters and their claim links (MR-049, PM-09): the master's list with a row in each state of the link, a
+ * question asked in place, the dialog that makes the link (before and after), the editor of a reserved character, and the page
+ * a player opens with the link: signed out (the same for every link), the card, the page of a link that cannot be used and the
+ * master's own link.
+ */
+async function scanClaims(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
+  test.setTimeout(150_000);
+  const view = { colorScheme, viewport: { width, height: 900 } } as const;
+  // The master's "Copiar link" writes to the clipboard, which a headless browser allows only when it is granted.
+  const mContext = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    permissions: ['clipboard-read', 'clipboard-write'],
+    ...view,
+  });
+  const pContext = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    ...view,
+  });
+  const gContext = await browser.newContext({
+    storageState: { cookies: [], origins: [] },
+    ...view,
+  });
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    const g = await gContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const created = await callRPC(m, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', {
+      name: `Acessibilidade reservados ${Date.now()}`,
+      xpMode: 'XP_MODE_ENEMIES',
+    });
+    expect(created.ok()).toBeTruthy();
+    const campaignId = (await created.json()).campaign.id as string;
+    const kai = await reservedRPC(m, campaignId, 'Kai');
+    const salvia = await reservedRPC(m, campaignId, 'Sálvia');
+    const ragna = await reservedRPC(m, campaignId, 'Ragna');
+    const brisa = await reservedRPC(m, campaignId, 'Brisa');
+    const salviaToken = await linkRPC(m, campaignId, salvia);
+    await linkRPC(m, campaignId, ragna);
+    await revokeLinkRPC(m, campaignId, ragna);
+    const kaiToken = await linkRPC(m, campaignId, kai);
+    const brisaToken = await linkRPC(m, campaignId, brisa);
+    // The player takes Brisa, so the list has "Assumido por".
+    await p.goto(claimRoute(brisaToken));
+    await p.getByRole('button', { name: 'Assumir este personagem' }).click();
+    await expect(p.getByRole('heading', { level: 1 })).toHaveText('Pronto: Brisa é seu');
+
+    // The master's list: no link, sent, revoked and claimed, one row each.
+    await open(m, `/campaigns/${campaignId}`);
+    await expect(rowOf(m, 'Sálvia')).toContainText('Link enviado');
+    await expect(rowOf(m, 'Ragna')).toContainText('Link revogado');
+    await expect(rowOf(m, 'Brisa')).toContainText('Assumido por');
+    await expectScreenPasses(m, `Personagens reservados ${where}`);
+    await rowOf(m, 'Sálvia')
+      .getByRole('button', { name: /Revogar o link de Sálvia/ })
+      .click();
+    await expect(
+      rowOf(m, 'Sálvia').getByRole('group', { name: 'Revogar o link de Sálvia?' }),
+    ).toBeVisible();
+    await expectScreenPasses(m, `Personagens reservados, revogar o link ${where}`);
+    await rowOf(m, 'Sálvia').getByRole('button', { name: 'Cancelar' }).click();
+    await rowOf(m, 'Brisa')
+      .getByRole('button', { name: /Devolver Brisa à reserva/ })
+      .click();
+    await expect(
+      rowOf(m, 'Brisa').getByRole('group', { name: 'Devolver Brisa à reserva?' }),
+    ).toBeVisible();
+    await expectScreenPasses(m, `Personagens reservados, devolver à reserva ${where}`);
+    await rowOf(m, 'Brisa').getByRole('button', { name: 'Cancelar' }).click();
+    await rowOf(m, 'Ragna').getByRole('button', { name: 'Excluir Ragna' }).click();
+    await expect(rowOf(m, 'Ragna').getByRole('group', { name: 'Excluir Ragna?' })).toBeVisible();
+    await expectScreenPasses(m, `Personagens reservados, excluir ${where}`);
+    await rowOf(m, 'Ragna').getByRole('button', { name: 'Cancelar' }).click();
+
+    // The dialog: the validity, then the link shown once.
+    await rowOf(m, 'Ragna')
+      .getByRole('button', { name: /Gerar novo link/ })
+      .click();
+    const dialog = m.getByRole('dialog', { name: 'Gerar link para o jogador' });
+    await expect(dialog.getByRole('radio', { name: '7 dias' })).toBeChecked();
+    await expectScreenPasses(m, `Gerar link para o jogador ${where}`);
+    await dialog.getByRole('button', { name: 'Gerar link' }).click();
+    await expect(dialog.locator('.claim-link__field')).toBeVisible();
+    await expectScreenPasses(m, `Gerar link para o jogador, o link ${where}`);
+    await dialog.getByRole('button', { name: 'Copiar link' }).click();
+    await expect(dialog.getByText('Link copiado.')).toBeVisible();
+    await expectScreenPasses(m, `Gerar link para o jogador, link copiado ${where}`);
+
+    await open(m, `/campaigns/${campaignId}/reserved/new`);
+    await expect(m.getByText('Personagem reservado.')).toBeVisible();
+    await expectScreenPasses(m, `Criar personagem para um jogador ${where}`);
+
+    // The player's pages: the card, the page of a link that cannot be used, the master's own link and the signed-out page.
+    await p.goto(claimRoute(kaiToken));
+    await expect(p.getByRole('heading', { level: 1 })).toHaveText('Este personagem é seu?');
+    await expectScreenPasses(p, `Link do personagem, o cartão ${where}`);
+    await p.goto(claimRoute('x'));
+    await expect(p.getByRole('heading', { level: 1 })).toHaveText('Este link não pode ser usado');
+    await expectScreenPasses(p, `Link do personagem, o link que não vale ${where}`);
+    await m.goto(claimRoute(salviaToken));
+    await expect(m.getByRole('heading', { level: 1 })).toHaveText('Este link é para um jogador');
+    await expectScreenPasses(m, `Link do personagem, o link do próprio mestre ${where}`);
+    await g.goto(claimRoute(salviaToken));
+    await expect(g.getByRole('heading', { level: 1 })).toHaveText('Assumir um personagem');
+    await expect(g.getByRole('button', { name: 'Entrar com Google' })).toBeVisible();
+    await expectScreenPasses(g, `Link do personagem, sem entrar ${where}`);
+  } finally {
+    await Promise.all([mContext.close(), pContext.close(), gContext.close()]);
+  }
+}
+
+test(
+  'os reservados e os links passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-049'] },
+  async ({ browser }) => {
+    await scanClaims(browser, 'light', 1280);
+  },
+);
+
+test(
+  'os reservados e os links passam no axe e nas conferências de layout no tema escuro, no desktop de 1024',
+  { tag: ['@a11y', '@MR-049'] },
+  async ({ browser }) => {
+    await scanClaims(browser, 'dark', 1024);
+  },
+);
+
+test(
+  'os reservados e os links passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-049'] },
+  async ({ browser }) => {
+    await scanClaims(browser, 'dark', 390);
+  },
+);
+
+test(
+  'os reservados e os links passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-049'] },
+  async ({ browser }) => {
+    await scanClaims(browser, 'light', 320);
+  },
+);
 
 /**
  * "Sessões anteriores" (PM-01): the campaign page's panel with a long list (the master's, the player's, and a
  * player's before any session ended, where it does not exist), the summary page of the master (with a combat's
  * table, without it) and of a player, the neighbours' links, a number that does not exist, and the generic page.
  */
-async function scanPastSessions(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanPastSessions(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = { width, height: width <= 390 ? 700 : 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -5784,7 +8416,9 @@ async function scanPastSessions(browser: Browser, colorScheme: 'light' | 'dark',
 
     // Nothing ended yet: the master's empty box, and no panel for the player.
     await open(m, route);
-    await expect(m.getByRole('region', { name: 'Sessões anteriores' })).toContainText('Nenhuma sessão encerrada ainda');
+    await expect(m.getByRole('region', { name: 'Sessões anteriores' })).toContainText(
+      'Nenhuma sessão encerrada ainda',
+    );
     await expectScreenPasses(m, `Sessões anteriores, vazio do mestre ${where}`);
     await open(p, route);
     await expect(p.getByRole('region', { name: 'Sessões anteriores' })).toHaveCount(0);
@@ -5811,7 +8445,10 @@ async function scanPastSessions(browser: Browser, colorScheme: 'light' | 'dark',
     await expect(m.getByRole('heading', { name: 'Em números' })).toBeVisible();
     await expect(m.getByRole('navigation', { name: 'Outras sessões' })).toContainText('Sessão 4');
     await expectScreenPasses(m, `O resumo da sessão, mestre ${where}`);
-    await m.getByRole('navigation', { name: 'Outras sessões' }).getByRole('link', { name: 'Sessão 4' }).focus();
+    await m
+      .getByRole('navigation', { name: 'Outras sessões' })
+      .getByRole('link', { name: 'Sessão 4' })
+      .focus();
     await expectScreenPasses(m, `O resumo da sessão, foco na sessão vizinha ${where}`);
     await open(p, `${route}/sessions/3`);
     await expect(p.getByRole('heading', { name: 'A sessão acabou' })).toBeVisible();
@@ -5833,31 +8470,58 @@ async function scanPastSessions(browser: Browser, colorScheme: 'light' | 'dark',
   }
 }
 
-test('as sessões anteriores e o resumo passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-032'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanPastSessions(browser, 'light', 1280);
-});
+test(
+  'as sessões anteriores e o resumo passam no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-032'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanPastSessions(browser, 'light', 1280);
+  },
+);
 
-test('as sessões anteriores e o resumo passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-032'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanPastSessions(browser, 'dark', 390);
-});
+test(
+  'as sessões anteriores e o resumo passam no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-032'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanPastSessions(browser, 'dark', 390);
+  },
+);
 
-test('as sessões anteriores e o resumo passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-032'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanPastSessions(browser, 'light', 320);
-});
+test(
+  'as sessões anteriores e o resumo passam no axe e nas conferências de layout no tema claro, no celular de 320',
+  { tag: ['@a11y', '@MR-032'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanPastSessions(browser, 'light', 320);
+  },
+);
 
 // ---- Ajuda, Crítico Brutal, Talento Confiável and the jump that leaves a reach (PM-03a, PM-03b, PM-03c) ----
 
-const sizeOf = (width: number) => ({ width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 });
+const sizeOf = (width: number) => ({
+  width,
+  height: width >= 768 ? 900 : width <= 320 ? 568 : 844,
+});
 
 // Ajuda on a character at 0 hit points: the player's two pills, the awake one with the tag and the banner, the sheet page,
 // and the master's row with its menu and the question that ends the spell.
-async function scanAidScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanAidScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = sizeOf(width);
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -5868,17 +8532,33 @@ async function scanAidScreens(browser: Browser, colorScheme: 'light' | 'dark', w
     await p.goto('/');
     const table = await tableForCombat(m, p, `Acessibilidade Ajuda ${Date.now()}`, true, true);
     campaignId = table.campaignId;
-    const third = await thirdPlayer(browser, { m, p, table, campaignId, done: async () => undefined } satisfies TrapTable, brisa, brisaAidSheet);
+    const third = await thirdPlayer(
+      browser,
+      { m, p, table, campaignId, done: async () => undefined } satisfies TrapTable,
+      brisa,
+      brisaAidSheet,
+    );
     close = third.close;
     const square = sq20(4, 7);
     await placeTokenRPC(m, campaignId, table.mapId, third.characterId, square.xBp, square.yBp);
-    await beginAttackCombatRPC(m, table, { Brisa: 20, Pensantus: 15, 'Capitão Goblin': 10, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await beginAttackCombatRPC(m, table, {
+      Brisa: 20,
+      Pensantus: 15,
+      'Capitão Goblin': 10,
+      'Goblin 1': 5,
+      'Goblin 2': 4,
+    });
     await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 0 });
     await openSessionPage(p, campaignId);
     await openSessionPage(m, campaignId);
 
-    await expect(p.getByRole('status').getByText('Testes contra a morte: 0 sucessos, 0 falhas')).toBeVisible();
-    await expectScreenPasses(p, `A 0 PV, as etiquetas Inconsciente e testes contra a morte ${where}`);
+    await expect(
+      p.getByRole('status').getByText('Testes contra a morte: 0 sucessos, 0 falhas'),
+    ).toBeVisible();
+    await expectScreenPasses(
+      p,
+      `A 0 PV, as etiquetas Inconsciente e testes contra a morte ${where}`,
+    );
 
     const enc = await getEncounterRPC(m, campaignId);
     const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
@@ -5892,7 +8572,9 @@ async function scanAidScreens(browser: Browser, colorScheme: 'light' | 'dark', w
       idempotencyKey: crypto.randomUUID(),
     });
     expect(cast.ok(), await cast.text()).toBeTruthy();
-    await expect(p.getByRole('status').getByText('Acordado · testes contra a morte zerados')).toBeVisible();
+    await expect(
+      p.getByRole('status').getByText('Acordado · testes contra a morte zerados'),
+    ).toBeVisible();
     await expectScreenPasses(p, `Ajuda sobre quem estava a 0 PV, acordou ${where}`);
 
     const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
@@ -5908,7 +8590,9 @@ async function scanAidScreens(browser: Browser, colorScheme: 'light' | 'dark', w
     await ask.getByRole('button', { name: 'Cancelar' }).click();
 
     await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
-    await expect(p.locator('app-combat-stats').getByText('5 de 28')).toBeVisible({ timeout: 30_000 });
+    await expect(p.locator('app-combat-stats').getByText('5 de 28')).toBeVisible({
+      timeout: 30_000,
+    });
     await expectLoaded(p);
     await expectScreenPasses(p, `A ficha com Ajuda ${where}`);
   } finally {
@@ -5921,21 +8605,41 @@ async function scanAidScreens(browser: Browser, colorScheme: 'light' | 'dark', w
   }
 }
 
-test('a Ajuda a 0 PV, no jogador, na ficha e na ordem do mestre, passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanAidScreens(browser, 'light', 1280);
-});
+test(
+  'a Ajuda a 0 PV, no jogador, na ficha e na ordem do mestre, passa no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-014', '@RN-02'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanAidScreens(browser, 'light', 1280);
+  },
+);
 
-test('a Ajuda a 0 PV, no jogador, na ficha e na ordem do mestre, passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@RN-02'] }, async ({ browser }) => {
-  test.setTimeout(420_000);
-  await scanAidScreens(browser, 'dark', 390);
-});
+test(
+  'a Ajuda a 0 PV, no jogador, na ficha e na ordem do mestre, passa no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-014', '@RN-02'] },
+  async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanAidScreens(browser, 'dark', 390);
+  },
+);
 
 // Crítico Brutal: the critical's sum before the roll, the typed sheet with its total on the button, and the log line.
-async function scanBrutalScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanBrutalScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = sizeOf(width);
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -5943,9 +8647,17 @@ async function scanBrutalScreens(browser: Browser, colorScheme: 'light' | 'dark'
   try {
     await m.goto('/');
     await p.goto('/');
-    const table = await tableForCombat(m, p, `Acessibilidade Brutal ${Date.now()}`, true, true, { build: ragna, sheet: ragnaSheet });
+    const table = await tableForCombat(m, p, `Acessibilidade Brutal ${Date.now()}`, true, true, {
+      build: ragna,
+      sheet: ragnaSheet,
+    });
     campaignId = table.campaignId;
-    await beginAttackCombatRPC(m, table, { Ragna: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, { 'Capitão Goblin': [11, 5], 'Goblin 1': [6, 7], 'Goblin 2': [14, 10] });
+    await beginAttackCombatRPC(
+      m,
+      table,
+      { Ragna: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 },
+      { 'Capitão Goblin': [11, 5], 'Goblin 1': [6, 7], 'Goblin 2': [14, 10] },
+    );
     await openSessionPage(p, campaignId);
     await p.getByRole('button', { name: 'Atacar com Machado grande' }).click();
     // The dialog's name follows its heading, which changes with each step: the one dialog on the page.
@@ -5978,21 +8690,41 @@ async function scanBrutalScreens(browser: Browser, colorScheme: 'light' | 'dark'
   }
 }
 
-test('o Crítico Brutal, antes de rolar, com dados físicos e no registro, passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-012', '@MR-014'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanBrutalScreens(browser, 'light', 1280);
-});
+test(
+  'o Crítico Brutal, antes de rolar, com dados físicos e no registro, passa no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-012', '@MR-014'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanBrutalScreens(browser, 'light', 1280);
+  },
+);
 
-test('o Crítico Brutal, antes de rolar, com dados físicos e no registro, passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-012', '@MR-014'] }, async ({ browser }) => {
-  test.setTimeout(300_000);
-  await scanBrutalScreens(browser, 'dark', 390);
-});
+test(
+  'o Crítico Brutal, antes de rolar, com dados físicos e no registro, passa no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-012', '@MR-014'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanBrutalScreens(browser, 'dark', 390);
+  },
+);
 
 // Talento Confiável on a trap search: the preview and the result, with the rule said.
-async function scanReliableTalentScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanReliableTalentScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = sizeOf(width);
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -6000,7 +8732,10 @@ async function scanReliableTalentScreens(browser: Browser, colorScheme: 'light' 
   try {
     await m.goto('/');
     await p.goto('/');
-    const table = await tableForCombat(m, p, `Acessibilidade Talento ${Date.now()}`, true, true, { build: dalila, sheet: dalilaSheet });
+    const table = await tableForCombat(m, p, `Acessibilidade Talento ${Date.now()}`, true, true, {
+      build: dalila,
+      sheet: dalilaSheet,
+    });
     campaignId = table.campaignId;
     await trapRPC(m, table, 'Fosso escondido', 6, 7, { findDc: 18 });
     await openSessionPage(p, campaignId);
@@ -6023,20 +8758,40 @@ async function scanReliableTalentScreens(browser: Browser, colorScheme: 'light' 
   }
 }
 
-test('o Talento Confiável na busca por armadilhas passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-035'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanReliableTalentScreens(browser, 'light', 1280);
-});
+test(
+  'o Talento Confiável na busca por armadilhas passa no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-035'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanReliableTalentScreens(browser, 'light', 1280);
+  },
+);
 
-test('o Talento Confiável na busca por armadilhas passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-035'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanReliableTalentScreens(browser, 'dark', 390);
-});
+test(
+  'o Talento Confiável na busca por armadilhas passa no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-035'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanReliableTalentScreens(browser, 'dark', 390);
+  },
+);
 
-async function scanJumpWarningScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+async function scanJumpWarningScreens(
+  browser: Browser,
+  colorScheme: 'light' | 'dark',
+  width: number,
+): Promise<void> {
   const viewport = sizeOf(width);
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+  });
   const m = await master.newPage();
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
@@ -6044,15 +8799,27 @@ async function scanJumpWarningScreens(browser: Browser, colorScheme: 'light' | '
   try {
     await m.goto('/');
     await p.goto('/');
-    const table = await tableForCombat(m, p, `Acessibilidade Salto ${Date.now()}`, true, true, { build: toren, sheet: torenSheet });
+    const table = await tableForCombat(m, p, `Acessibilidade Salto ${Date.now()}`, true, true, {
+      build: toren,
+      sheet: torenSheet,
+    });
     campaignId = table.campaignId;
-    await beginAttackCombatRPC(m, table, { Toren: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, { 'Capitão Goblin': [15, 3], 'Goblin 1': [4, 6], 'Goblin 2': [15, 11] });
+    await beginAttackCombatRPC(
+      m,
+      table,
+      { Toren: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 },
+      { 'Capitão Goblin': [15, 3], 'Goblin 1': [4, 6], 'Goblin 2': [15, 11] },
+    );
     await openSessionPage(p, campaignId);
     await p.getByRole('button', { name: 'Mover', exact: true }).click();
     await pickRadio(p, 'Saltar');
     await expect(p.getByRole('heading', { name: 'Saltar Toren' })).toBeVisible();
     await tapSquare(p, 6, 7);
-    await expect(p.getByText('Esse salto sai do alcance do Goblin 1. Ele pode atacar você de graça (ataque de oportunidade).')).toBeVisible();
+    await expect(
+      p.getByText(
+        'Esse salto sai do alcance do Goblin 1. Ele pode atacar você de graça (ataque de oportunidade).',
+      ),
+    ).toBeVisible();
     await expectScreenPasses(p, `Saltar, o aviso de que sai do alcance ${where}`);
   } finally {
     if (campaignId) {
@@ -6063,12 +8830,20 @@ async function scanJumpWarningScreens(browser: Browser, colorScheme: 'light' | '
   }
 }
 
-test('o salto que sai do alcance de um inimigo passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-034', '@RN-21'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanJumpWarningScreens(browser, 'light', 1280);
-});
+test(
+  'o salto que sai do alcance de um inimigo passa no axe e nas conferências de layout no tema claro, no desktop',
+  { tag: ['@a11y', '@MR-034', '@RN-21'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanJumpWarningScreens(browser, 'light', 1280);
+  },
+);
 
-test('o salto que sai do alcance de um inimigo passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-034', '@RN-21'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
-  await scanJumpWarningScreens(browser, 'dark', 390);
-});
+test(
+  'o salto que sai do alcance de um inimigo passa no axe e nas conferências de layout no tema escuro, no celular',
+  { tag: ['@a11y', '@MR-034', '@RN-21'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanJumpWarningScreens(browser, 'dark', 390);
+  },
+);

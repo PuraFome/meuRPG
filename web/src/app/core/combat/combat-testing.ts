@@ -6,6 +6,9 @@ import {
   CoverDegree,
   type Encounter,
   EncounterStatus,
+  ReactionKind,
+  type ReactionWindow,
+  ReactionWindowStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 
 /** A combatant for specs: an NPC unless `kind` says otherwise. */
@@ -63,10 +66,29 @@ export function encounter(over: Partial<Encounter> = {}): Encounter {
     masterTurn: false,
     combatants: [],
     reactionPrompts: [],
+    reactionWindows: [],
     turnGroupIds: [],
     npcOnlyGroups: [],
     opportunityOffers: [],
     revision: 1,
     ...over,
   } as unknown as Encounter;
+}
+
+/** A reaction window for specs: open, the first of its group, for the master, with no prompt unless `prompt` says. */
+export function reactionWindow(over: Partial<ReactionWindow> & { id: string }): ReactionWindow {
+  return {
+    kind: ReactionKind.SHIELD,
+    status: ReactionWindowStatus.OPEN,
+    closedReason: 0,
+    groupId: `group-${over.id}`,
+    reactorId: '',
+    reactorLabel: '',
+    reactorIsPlayer: false,
+    forYou: true,
+    answerNow: true,
+    secondStep: false,
+    prompt: { case: undefined, value: undefined },
+    ...over,
+  } as unknown as ReactionWindow;
 }

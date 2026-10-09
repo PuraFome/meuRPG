@@ -1,79 +1,91 @@
-<section class="np mr-panel" aria-labelledby="np-title">
-  <div class="np__head">
-    <h2 class="np__title" id="np-title">Anotações</h2>
-    @if (state.loaded()) {
-      <span class="np__count">{{ count() }}</span>
-    }
-  </div>
-  <p class="np__lock"><mat-icon aria-hidden="true">lock</mat-icon>Só você lê as suas anotações. O mestre não vê.</p>
-
-  @if (editing.stage() === 'form') {
-    <div class="np__form" role="group" [attr.aria-label]="editing.editing() ? 'Editar anotação' : 'Nova anotação'">
-      <h3 class="np__form-t">{{ editing.editing() ? 'Editar anotação' : 'Nova anotação' }}</h3>
-      <app-note-fields [editing]="editing" [scenes]="state.scenes()" (removed)="backToList()" />
-      @if (editing.confirmingDiscard()) {
-        <div class="np__ask" role="alertdialog" aria-labelledby="np-discard">
-          <p class="np__ask-t" id="np-discard">Descartar o que você escreveu?</p>
-          <div class="np__pair">
-            <button #keep matButton="outlined" type="button" (click)="editing.keepWriting()">Continuar</button>
-            <button matButton="outlined" type="button" class="np__danger" (click)="discard()">Descartar</button>
-          </div>
-        </div>
-      } @else {
-        <div class="np__pair">
-          <button matButton="filled" type="button" [attr.aria-disabled]="editing.busy()" (click)="save()">
-            Salvar anotação
-          </button>
-          <button matButton="outlined" type="button" (click)="cancel()">Cancelar</button>
-        </div>
+<section class="np mr-panel" [class.np--shut]="!shown()" aria-labelledby="np-title">
+  @if (collapsible()) {
+    <!-- On a phone and a tablet the notes are one row under the game numbers; a tap opens them. -->
+    <h2 class="np__title np__title--row" id="np-title">
+      <button type="button" class="np__toggle" [attr.aria-expanded]="shown()" aria-controls="np-body" (click)="toggle()">
+        <span>Anotações@if (state.loaded()) { ({{ state.notes().length }}) }</span>
+        <mat-icon aria-hidden="true">{{ shown() ? 'expand_less' : 'expand_more' }}</mat-icon>
+      </button>
+    </h2>
+  } @else {
+    <div class="np__head">
+      <h2 class="np__title" id="np-title">Anotações</h2>
+      @if (state.loaded()) {
+        <span class="np__count">{{ count() }}</span>
       }
     </div>
-  } @else {
-    @if (!state.loaded()) {
-      <p class="np__wait" role="status">{{ state.failed() ? 'Não deu para carregar as anotações. Recarregue a página.' : 'Carregando as anotações...' }}</p>
-    } @else if (state.notes().length === 0) {
-      <div class="np__empty">
-        <h3 class="np__empty-t">Nenhuma anotação ainda</h3>
-        <p>Anote nomes, dívidas e o que o mestre disser. As pistas que ele revelar para você aparecem aqui também.</p>
+  }
+  <div class="np__body" id="np-body" [hidden]="!shown()">
+    <p class="np__lock"><mat-icon aria-hidden="true">lock</mat-icon>Só você lê as suas anotações. O mestre não vê.</p>
+
+    @if (editing.stage() === 'form') {
+      <div class="np__form" role="group" [attr.aria-label]="editing.editing() ? 'Editar anotação' : 'Nova anotação'">
+        <h3 class="np__form-t">{{ editing.editing() ? 'Editar anotação' : 'Nova anotação' }}</h3>
+        <app-note-fields [editing]="editing" [scenes]="state.scenes()" (removed)="backToList()" />
+        @if (editing.confirmingDiscard()) {
+          <div class="np__ask" role="alertdialog" aria-labelledby="np-discard">
+            <p class="np__ask-t" id="np-discard">Descartar o que você escreveu?</p>
+            <div class="np__pair">
+              <button #keep matButton="outlined" type="button" (click)="editing.keepWriting()">Continuar</button>
+              <button matButton="outlined" type="button" class="np__danger" (click)="discard()">Descartar</button>
+            </div>
+          </div>
+        } @else {
+          <div class="np__pair">
+            <button matButton="filled" type="button" [attr.aria-disabled]="editing.busy()" (click)="save()">
+              Salvar anotação
+            </button>
+            <button matButton="outlined" type="button" (click)="cancel()">Cancelar</button>
+          </div>
+        }
       </div>
     } @else {
-      <app-notes-select label="Cena" [options]="options()" [value]="filter()" (valueChange)="setFilter($event)" />
-      @if (visible().length === 0) {
+      @if (!state.loaded()) {
+        <p class="np__wait" role="status">{{ state.failed() ? 'Não deu para carregar as anotações. Recarregue a página.' : 'Carregando as anotações...' }}</p>
+      } @else if (state.notes().length === 0) {
         <div class="np__empty">
-          <h3 class="np__empty-t">{{ filter() === 'none' ? 'Nada sem cena' : 'Nada nesta cena ainda' }}</h3>
-          <p>
-            @if (filter() === 'none') {
-              Todas as suas anotações têm uma cena.
-            } @else {
-              Você ainda não anotou nada sobre “{{ chosen()?.label }}”.
-            }
-          </p>
+          <h3 class="np__empty-t">Nenhuma anotação ainda</h3>
+          <p>Anote nomes, dívidas e o que o mestre disser. As pistas que ele revelar para você aparecem aqui também.</p>
         </div>
       } @else {
-        <app-note-list [notes]="visible()" (edit)="editNote($event)" />
+        <app-notes-select label="Cena" [options]="options()" [value]="filter()" (valueChange)="setFilter($event)" />
+        @if (visible().length === 0) {
+          <div class="np__empty">
+            <h3 class="np__empty-t">{{ filter() === 'none' ? 'Nada sem cena' : 'Nada nesta cena ainda' }}</h3>
+            <p>
+              @if (filter() === 'none') {
+                Todas as suas anotações têm uma cena.
+              } @else {
+                Você ainda não anotou nada sobre “{{ chosen()?.label }}”.
+              }
+            </p>
+          </div>
+        } @else {
+          <app-note-list [notes]="visible()" (edit)="editNote($event)" />
+        }
       }
-    }
-    <p class="mr-visually-hidden" role="status" aria-live="polite">{{ announce() }}</p>
+      <p class="mr-visually-hidden" role="status" aria-live="polite">{{ announce() }}</p>
 
-    @if (state.loaded()) {
-      @if (state.atLimit()) {
-        <p class="np__limit" id="np-limit">Limite de 300 anotações. Apague uma para escrever outra.</p>
-        <button
-          #newButton
-          matButton="outlined"
-          type="button"
-          class="np__new np__new--off"
-          disabled
-          disabledInteractive
-          aria-describedby="np-limit"
-        >
-          <mat-icon aria-hidden="true">block</mat-icon>Nova anotação
-        </button>
-      } @else {
-        <button #newButton matButton="outlined" type="button" class="np__new" (click)="newNote()">
-          <mat-icon aria-hidden="true">add</mat-icon>Nova anotação
-        </button>
+      @if (state.loaded()) {
+        @if (state.atLimit()) {
+          <p class="np__limit" id="np-limit">Limite de 300 anotações. Apague uma para escrever outra.</p>
+          <button
+            #newButton
+            matButton="outlined"
+            type="button"
+            class="np__new np__new--off"
+            disabled
+            disabledInteractive
+            aria-describedby="np-limit"
+          >
+            <mat-icon aria-hidden="true">block</mat-icon>Nova anotação
+          </button>
+        } @else {
+          <button #newButton matButton="outlined" type="button" class="np__new" (click)="newNote()">
+            <mat-icon aria-hidden="true">add</mat-icon>Nova anotação
+          </button>
+        }
       }
     }
-  }
+  </div>
 </section>

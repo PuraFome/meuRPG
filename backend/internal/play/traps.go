@@ -49,6 +49,9 @@ type TrapBook interface {
 	// KnownTraps returns the armed traps the character knows, with their squares
 	// and names and without their data.
 	KnownTraps(ctx context.Context, campaignID, mapID, characterID string) ([]maplink.Trap, error)
+	// FallFt is how deep the pit of a trap preset is, in feet: 0 for a trap that is
+	// not a pit or a spec with no preset. A Feather Fall can slow the fall.
+	FallFt(presetKey string) int
 	// Notice is the passive notice of observers that ended a move (see
 	// maps.Service.Notice): it reveals the traps they notice to their characters
 	// and tells only their players.

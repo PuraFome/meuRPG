@@ -84,6 +84,10 @@ type CreatureHost interface {
 	// CreatureInCombat says whether the creature is a combatant of the
 	// campaign's combat that is not ended, inside tx.
 	CreatureInCombat(ctx context.Context, tx pgx.Tx, campaignID, creatureID string) (bool, error)
+	// CharacterInCombat says whether the character is a combatant of the
+	// campaign's combat that is not ended, inside tx (a character in one does
+	// not go back to the reserve, MR-049).
+	CharacterInCombat(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (bool, error)
 	// AppendEvent appends an event to the history of the campaign's open
 	// session inside tx; false when no session is open.
 	AppendEvent(ctx context.Context, tx pgx.Tx, campaignID, kind, actorUserID string, payload []byte, at time.Time) (bool, error)

@@ -3,7 +3,7 @@
 }
 
 .order {
-  --cols: 30px minmax(0, 1fr) 54px 84px 154px;
+  --cols: 30px minmax(9rem, 1fr) 54px 84px 154px;
 }
 
 .order__head {
@@ -141,7 +141,14 @@
   line-height: 21px;
   font-weight: 700;
   color: var(--mr-ink);
-  overflow-wrap: anywhere;
+}
+
+// The name is one item that wraps between words, never inside one: the chips
+// ("Vez", "Concentração") go to the next line when there is no room.
+.row__label {
+  min-width: 0;
+  overflow-wrap: break-word;
+  text-wrap: balance;
 }
 
 .row__name--out {

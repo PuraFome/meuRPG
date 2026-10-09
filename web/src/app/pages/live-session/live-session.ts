@@ -653,6 +653,18 @@ export class LiveSession {
             void this.trapBoard.refreshDamages();
           }
         },
+        // A window opened for this person: its prompt comes with the combat, read again like `encounter_changed`.
+        onReactionWindowOpened: (opened) => {
+          this.combat.noteReactionOpened(opened.windowId);
+          void this.loadCombat(generation);
+        },
+        onReactionWindowClosed: (closed) => {
+          // Closed by itself: the reason, in a status line, written for this person; the combat is read again.
+          if (closed.closedByItself) {
+            this.combat.noteReactionClosed(closed.windowId, closed.text);
+          }
+          void this.loadCombat(generation);
+        },
         onTurnChanged: (turn) => {
           if (!this.combat.applyTurn(turn)) {
             void this.loadCombat(generation);

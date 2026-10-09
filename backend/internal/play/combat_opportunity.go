@@ -220,6 +220,14 @@ func (s *Service) publishOffersMade(campaignID string, d *encounterData, mover p
 // character, RN-21: "o jogador não age"). The master is never stopped: he can
 // skip the offer, or act anyway.
 func (s *Service) mustNotWait(ctx context.Context, c *combatTx, who playdb.Combatant) error {
+	if err := s.reactionGate(ctx, c); err != nil { // a reaction window holds the whole turn (PM-04)
+		return err
+	}
+	return s.mustNotWaitForOffers(ctx, c, who)
+}
+
+// mustNotWaitForOffers is mustNotWait for the opportunity offers alone.
+func (s *Service) mustNotWaitForOffers(ctx context.Context, c *combatTx, who playdb.Combatant) error {
 	if c.master {
 		return nil
 	}

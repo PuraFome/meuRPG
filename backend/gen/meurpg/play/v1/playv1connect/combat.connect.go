@@ -153,6 +153,12 @@ const (
 	// CombatServiceEndCombatEffectProcedure is the fully-qualified name of the CombatService's
 	// EndCombatEffect RPC.
 	CombatServiceEndCombatEffectProcedure = "/meurpg.play.v1.CombatService/EndCombatEffect"
+	// CombatServiceAnswerReactionProcedure is the fully-qualified name of the CombatService's
+	// AnswerReaction RPC.
+	CombatServiceAnswerReactionProcedure = "/meurpg.play.v1.CombatService/AnswerReaction"
+	// CombatServiceResolveConcentrationSaveProcedure is the fully-qualified name of the CombatService's
+	// ResolveConcentrationSave RPC.
+	CombatServiceResolveConcentrationSaveProcedure = "/meurpg.play.v1.CombatService/ResolveConcentrationSave"
 	// CombatServiceListCombatLogProcedure is the fully-qualified name of the CombatService's
 	// ListCombatLog RPC.
 	CombatServiceListCombatLogProcedure = "/meurpg.play.v1.CombatService/ListCombatLog"
@@ -1190,6 +1196,40 @@ type CombatServiceClient interface {
 	//   - `invalid_argument`: the effect is not AID.
 	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
 	EndCombatEffect(context.Context, *connect.Request[v1.EndCombatEffectRequest]) (*connect.Response[v1.EndCombatEffectResponse], error)
+	// AnswerReaction answers a reaction window (PM-04): "Usar ..." or "Deixar
+	// passar". One window serves the seven reactions (Shield, Uncanny Dodge, Hellish
+	// Rebuke, Counterspell, Cutting Words, Deflect Missiles, Feather Fall), and the
+	// master's "Sem reação" check of the table rule "Reações dos inimigos". The
+	// action that opened the window (an attack, a spell, a fall) stays waiting
+	// (AWAITING_REACTION) until every window of it is answered, and goes on by
+	// itself then. The reactor's player answers theirs; the master answers any
+	// (`by_master` in the log). A window is answered in the order of
+	// `Encounter.reaction_windows`.
+	//
+	// Every stream gets `encounter_changed`; the reactor and the master also get
+	// `reaction_window_opened` and `reaction_window_closed`.
+	//
+	// Errors:
+	//   - `not_found`: the combat is not in the open session, or the window is not
+	//     in it.
+	//   - `permission_denied`: the caller is a player and the window is not theirs
+	//     to answer: the same answer for a real and for an invented window_id (RN-10).
+	//   - `invalid_argument`: the slot, the creatures or the roll do not fit what the
+	//     window offers.
+	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED,
+	//     NOT_YOUR_TURN_TO_ANSWER (out of order, or already answered or closed),
+	//     NO_SLOT (with min_level), REACTION_USED, REACTION_NEEDS_ROLL,
+	//     WRONG_DICE_MODE.
+	AnswerReaction(context.Context, *connect.Request[v1.AnswerReactionRequest]) (*connect.Response[v1.AnswerReactionResponse], error)
+	// ResolveConcentrationSave settles a concentration window (SRD, Duration): the
+	// owner's Constitution saving throw against the DC the window carries, rolled in
+	// the app or typed from a physical d20, or handed to the master ("Deixar o
+	// mestre rolar por mim"). The master rolls or keeps the concentration for an
+	// NPC, and for a player who does not answer. On a failure the concentration ends,
+	// and the spell with it. The action that dealt the damage goes on after it.
+	//
+	// Errors: as AnswerReaction.
+	ResolveConcentrationSave(context.Context, *connect.Request[v1.ResolveConcentrationSaveRequest]) (*connect.Response[v1.ResolveConcentrationSaveResponse], error)
 	// ListCombatLog returns the combat log ("Registro do combate"), latest
 	// first, grouped by round. Every entry is structured: the app writes the
 	// sentence. A player only gets the entries about what they see: nothing
@@ -1480,6 +1520,18 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(combatServiceMethods.ByName("EndCombatEffect")),
 			connect.WithClientOptions(opts...),
 		),
+		answerReaction: connect.NewClient[v1.AnswerReactionRequest, v1.AnswerReactionResponse](
+			httpClient,
+			baseURL+CombatServiceAnswerReactionProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("AnswerReaction")),
+			connect.WithClientOptions(opts...),
+		),
+		resolveConcentrationSave: connect.NewClient[v1.ResolveConcentrationSaveRequest, v1.ResolveConcentrationSaveResponse](
+			httpClient,
+			baseURL+CombatServiceResolveConcentrationSaveProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("ResolveConcentrationSave")),
+			connect.WithClientOptions(opts...),
+		),
 		listCombatLog: connect.NewClient[v1.ListCombatLogRequest, v1.ListCombatLogResponse](
 			httpClient,
 			baseURL+CombatServiceListCombatLogProcedure,
@@ -1537,6 +1589,8 @@ type combatServiceClient struct {
 	setCombatantConditions   *connect.Client[v1.SetCombatantConditionsRequest, v1.SetCombatantConditionsResponse]
 	endConcentration         *connect.Client[v1.EndConcentrationRequest, v1.EndConcentrationResponse]
 	endCombatEffect          *connect.Client[v1.EndCombatEffectRequest, v1.EndCombatEffectResponse]
+	answerReaction           *connect.Client[v1.AnswerReactionRequest, v1.AnswerReactionResponse]
+	resolveConcentrationSave *connect.Client[v1.ResolveConcentrationSaveRequest, v1.ResolveConcentrationSaveResponse]
 	listCombatLog            *connect.Client[v1.ListCombatLogRequest, v1.ListCombatLogResponse]
 	getCombatHighlights      *connect.Client[v1.GetCombatHighlightsRequest, v1.GetCombatHighlightsResponse]
 }
@@ -1729,6 +1783,16 @@ func (c *combatServiceClient) EndConcentration(ctx context.Context, req *connect
 // EndCombatEffect calls meurpg.play.v1.CombatService.EndCombatEffect.
 func (c *combatServiceClient) EndCombatEffect(ctx context.Context, req *connect.Request[v1.EndCombatEffectRequest]) (*connect.Response[v1.EndCombatEffectResponse], error) {
 	return c.endCombatEffect.CallUnary(ctx, req)
+}
+
+// AnswerReaction calls meurpg.play.v1.CombatService.AnswerReaction.
+func (c *combatServiceClient) AnswerReaction(ctx context.Context, req *connect.Request[v1.AnswerReactionRequest]) (*connect.Response[v1.AnswerReactionResponse], error) {
+	return c.answerReaction.CallUnary(ctx, req)
+}
+
+// ResolveConcentrationSave calls meurpg.play.v1.CombatService.ResolveConcentrationSave.
+func (c *combatServiceClient) ResolveConcentrationSave(ctx context.Context, req *connect.Request[v1.ResolveConcentrationSaveRequest]) (*connect.Response[v1.ResolveConcentrationSaveResponse], error) {
+	return c.resolveConcentrationSave.CallUnary(ctx, req)
 }
 
 // ListCombatLog calls meurpg.play.v1.CombatService.ListCombatLog.
@@ -2770,6 +2834,40 @@ type CombatServiceHandler interface {
 	//   - `invalid_argument`: the effect is not AID.
 	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
 	EndCombatEffect(context.Context, *connect.Request[v1.EndCombatEffectRequest]) (*connect.Response[v1.EndCombatEffectResponse], error)
+	// AnswerReaction answers a reaction window (PM-04): "Usar ..." or "Deixar
+	// passar". One window serves the seven reactions (Shield, Uncanny Dodge, Hellish
+	// Rebuke, Counterspell, Cutting Words, Deflect Missiles, Feather Fall), and the
+	// master's "Sem reação" check of the table rule "Reações dos inimigos". The
+	// action that opened the window (an attack, a spell, a fall) stays waiting
+	// (AWAITING_REACTION) until every window of it is answered, and goes on by
+	// itself then. The reactor's player answers theirs; the master answers any
+	// (`by_master` in the log). A window is answered in the order of
+	// `Encounter.reaction_windows`.
+	//
+	// Every stream gets `encounter_changed`; the reactor and the master also get
+	// `reaction_window_opened` and `reaction_window_closed`.
+	//
+	// Errors:
+	//   - `not_found`: the combat is not in the open session, or the window is not
+	//     in it.
+	//   - `permission_denied`: the caller is a player and the window is not theirs
+	//     to answer: the same answer for a real and for an invented window_id (RN-10).
+	//   - `invalid_argument`: the slot, the creatures or the roll do not fit what the
+	//     window offers.
+	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED,
+	//     NOT_YOUR_TURN_TO_ANSWER (out of order, or already answered or closed),
+	//     NO_SLOT (with min_level), REACTION_USED, REACTION_NEEDS_ROLL,
+	//     WRONG_DICE_MODE.
+	AnswerReaction(context.Context, *connect.Request[v1.AnswerReactionRequest]) (*connect.Response[v1.AnswerReactionResponse], error)
+	// ResolveConcentrationSave settles a concentration window (SRD, Duration): the
+	// owner's Constitution saving throw against the DC the window carries, rolled in
+	// the app or typed from a physical d20, or handed to the master ("Deixar o
+	// mestre rolar por mim"). The master rolls or keeps the concentration for an
+	// NPC, and for a player who does not answer. On a failure the concentration ends,
+	// and the spell with it. The action that dealt the damage goes on after it.
+	//
+	// Errors: as AnswerReaction.
+	ResolveConcentrationSave(context.Context, *connect.Request[v1.ResolveConcentrationSaveRequest]) (*connect.Response[v1.ResolveConcentrationSaveResponse], error)
 	// ListCombatLog returns the combat log ("Registro do combate"), latest
 	// first, grouped by round. Every entry is structured: the app writes the
 	// sentence. A player only gets the entries about what they see: nothing
@@ -3056,6 +3154,18 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(combatServiceMethods.ByName("EndCombatEffect")),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceAnswerReactionHandler := connect.NewUnaryHandler(
+		CombatServiceAnswerReactionProcedure,
+		svc.AnswerReaction,
+		connect.WithSchema(combatServiceMethods.ByName("AnswerReaction")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceResolveConcentrationSaveHandler := connect.NewUnaryHandler(
+		CombatServiceResolveConcentrationSaveProcedure,
+		svc.ResolveConcentrationSave,
+		connect.WithSchema(combatServiceMethods.ByName("ResolveConcentrationSave")),
+		connect.WithHandlerOptions(opts...),
+	)
 	combatServiceListCombatLogHandler := connect.NewUnaryHandler(
 		CombatServiceListCombatLogProcedure,
 		svc.ListCombatLog,
@@ -3148,6 +3258,10 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceEndConcentrationHandler.ServeHTTP(w, r)
 		case CombatServiceEndCombatEffectProcedure:
 			combatServiceEndCombatEffectHandler.ServeHTTP(w, r)
+		case CombatServiceAnswerReactionProcedure:
+			combatServiceAnswerReactionHandler.ServeHTTP(w, r)
+		case CombatServiceResolveConcentrationSaveProcedure:
+			combatServiceResolveConcentrationSaveHandler.ServeHTTP(w, r)
 		case CombatServiceListCombatLogProcedure:
 			combatServiceListCombatLogHandler.ServeHTTP(w, r)
 		case CombatServiceGetCombatHighlightsProcedure:
@@ -3311,6 +3425,14 @@ func (UnimplementedCombatServiceHandler) EndConcentration(context.Context, *conn
 
 func (UnimplementedCombatServiceHandler) EndCombatEffect(context.Context, *connect.Request[v1.EndCombatEffectRequest]) (*connect.Response[v1.EndCombatEffectResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.EndCombatEffect is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) AnswerReaction(context.Context, *connect.Request[v1.AnswerReactionRequest]) (*connect.Response[v1.AnswerReactionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.AnswerReaction is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) ResolveConcentrationSave(context.Context, *connect.Request[v1.ResolveConcentrationSaveRequest]) (*connect.Response[v1.ResolveConcentrationSaveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.ResolveConcentrationSave is not implemented"))
 }
 
 func (UnimplementedCombatServiceHandler) ListCombatLog(context.Context, *connect.Request[v1.ListCombatLogRequest]) (*connect.Response[v1.ListCombatLogResponse], error) {

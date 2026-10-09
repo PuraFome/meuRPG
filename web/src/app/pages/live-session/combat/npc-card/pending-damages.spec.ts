@@ -4,96 +4,74 @@ import {
   CombatantKind,
   CriticalDamageRule,
   PendingDamageStatus,
-  ReactionOutcome,
+  ReactionKind,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { CombatState } from '../../../../core/combat/combat-state';
-import { combatant, encounter } from '../../../../core/combat/combat-testing';
+import { combatant, encounter, reactionWindow } from '../../../../core/combat/combat-testing';
 import { PendingDamages } from './pending-damages';
 
-describe('PendingDamages, a hit that waits for Escudo (E6-28b)', () => {
-  const pending = {
-    id: 'p1',
-    attackerId: 'cap',
-    targetId: 'pen',
-    status: PendingDamageStatus.AWAITING_REACTION,
-    diceCount: 1,
-    diceSides: 6,
-    bonus: 2,
-  } as never;
-  const enc = encounter({
-    combatants: [
-      combatant({ id: 'cap', label: 'Capitão Goblin' }),
-      combatant({ id: 'pen', label: 'Pensantus', kind: CombatantKind.PLAYER }),
-    ],
-    reactionPrompts: [
-      {
-        pendingDamageId: 'p1',
-        targetId: 'pen',
-        spellKey: 'spell:shield',
-        spellNamePt: 'Escudo Arcano',
-        slots: [
-          { level: 2, pact: false, free: 1 },
-          { level: 1, pact: false, free: 2 },
-          { level: 3, pact: false, free: 0 },
-        ],
-      },
-    ],
-  } as never);
-  const api = { useReaction: vi.fn(), declineReaction: vi.fn() };
+describe('PendingDamages, a hit that waits for a reaction (PM-04)', () => {
+  const pending = (status: PendingDamageStatus) =>
+    ({
+      id: 'p1',
+      attackerId: 'cap',
+      targetId: 'pen',
+      status,
+      diceCount: 1,
+      diceSides: 6,
+      bonus: 2,
+    }) as never;
+  const combatants = [
+    combatant({ id: 'cap', label: 'Capitão Goblin' }),
+    combatant({ id: 'pen', label: 'Pensantus', kind: CombatantKind.PLAYER }),
+    combatant({ id: 'm1', label: 'Mago 1' }),
+  ];
 
-  function setup() {
-    TestBed.configureTestingModule({ providers: [{ provide: CombatClient, useValue: api }] });
+  function setup(status: PendingDamageStatus, windows: ReturnType<typeof reactionWindow>[]) {
+    TestBed.configureTestingModule({ providers: [{ provide: CombatClient, useValue: {} }] });
     const fixture = TestBed.createComponent(PendingDamages);
-    fixture.componentRef.setInput('pendings', [pending]);
-    fixture.componentRef.setInput('encounter', enc);
+    fixture.componentRef.setInput('pendings', [pending(status)]);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants, reactionWindows: windows } as never),
+    );
     fixture.componentRef.setInput('campaignId', 'camp');
     fixture.componentRef.setInput('state', new CombatState());
-    const reacted: string[] = [];
-    fixture.componentInstance.reacted.subscribe((r) => reacted.push(r));
     fixture.detectChanges();
-    return { el: fixture.nativeElement as HTMLElement, reacted, fixture };
+    return fixture.nativeElement as HTMLElement;
   }
-  const button = (el: HTMLElement, name: string) =>
-    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes(name))!;
+  const buttons = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll('button')).map((b) => b.textContent?.trim());
 
-  it('explains the wait, offers two same-size answers and disables "Rolar dano" with its reason', () => {
-    const { el } = setup();
-    expect(el.textContent).toContain('Esperando a reação do Pensantus.');
-    expect(el.textContent).toContain(
-      'Ele pode conjurar Escudo Arcano (+5 na CA). O jogador decide sem ver o total; você pode responder por ele.',
-    );
-    expect(button(el, 'Usar Escudo Arcano por ele').classList).toContain('dmg__skip');
-    expect(button(el, 'Seguir sem Escudo Arcano').classList).toContain('dmg__skip');
-    const off = button(el, 'Rolar dano');
+  it('turns "Rolar dano" grey and dashed with the reason written, and has no answer of its own', () => {
+    const el = setup(PendingDamageStatus.AWAITING_REACTION, [
+      reactionWindow({ id: 'w1', reactorId: 'm1', reactorLabel: 'Mago 1' }),
+    ]);
+    const off = Array.from(el.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Rolar dano'),
+    )!;
     expect(off.getAttribute('aria-disabled')).toBe('true');
-    expect(el.querySelector(`#${off.getAttribute('aria-describedby')}`)?.textContent).toContain(
-      'Espere a reação do Pensantus.',
-    );
+    expect(
+      el
+        .querySelector(`#${off.getAttribute('aria-describedby')}`)
+        ?.textContent?.replace(/\u00a0/g, ' '),
+    ).toContain('Espere a reação do Mago 1.');
+    // The answer is the master's card (the queue), not this box.
+    expect(buttons(el).some((b) => b?.includes('Usar'))).toBe(false);
   });
 
-  it('casts Escudo for the target with the lowest free slot, and says what it did', async () => {
-    api.useReaction.mockResolvedValue({ encounter: enc, outcome: ReactionOutcome.STOPPED });
-    const { el, reacted, fixture } = setup();
-    button(el, 'Usar Escudo Arcano por ele').click();
-    await fixture.whenStable();
-    expect(api.useReaction).toHaveBeenCalledWith(
-      'camp',
-      'enc',
-      'p1',
-      { level: 1, pact: false },
-      expect.any(String),
-    );
-    expect(reacted).toEqual(['stopped']);
+  it('holds a damage still to roll while any window is open, and says to answer the request above for the check', () => {
+    const el = setup(PendingDamageStatus.AWAITING_ROLL, [
+      reactionWindow({ id: 'w1', kind: ReactionKind.MASTER_CHECK }),
+    ]);
+    expect(el.textContent).toContain('Responda ao pedido acima.');
+    expect(el.querySelector('app-roll-picker')).toBeNull();
   });
 
-  it('lets the hit go with "Seguir sem Escudo"', async () => {
-    api.declineReaction.mockResolvedValue(enc);
-    const { el, reacted, fixture } = setup();
-    button(el, 'Seguir sem Escudo Arcano').click();
-    await fixture.whenStable();
-    expect(api.declineReaction).toHaveBeenCalled();
-    expect(reacted).toEqual(['declined']);
+  it('offers the roll again once no window is open', () => {
+    const el = setup(PendingDamageStatus.AWAITING_ROLL, []);
+    expect(el.querySelector('app-roll-picker')).not.toBeNull();
   });
 });
 

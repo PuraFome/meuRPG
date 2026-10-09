@@ -39,6 +39,7 @@ import { CombatColumn } from './combat-column/combat-column';
 import { CreaturesPanel } from './creatures-panel/creatures-panel';
 import { FeaturesPanel } from './features-panel/features-panel';
 import { MasterNotes } from './master-notes/master-notes';
+import { mediaQuery } from '../../shared/map-view/media-query';
 import { NotesPanel } from '../../shared/notes/notes-panel';
 import { ProficiencyColumn } from './proficiency-column/proficiency-column';
 import { SheetHeader } from './sheet-header/sheet-header';
@@ -120,6 +121,8 @@ export class CharacterSheetPage {
   private readonly openSessions = inject(OpenSessions);
   private readonly xpWatcher = inject(XpWatcher);
 
+  /** Under 1200px the player's notes are a row that opens; the four-column sheet shows them. */
+  protected readonly narrow = mediaQuery('(max-width: 1199.98px)');
   protected readonly state = signal<PageState>({ status: 'loading' });
   /** The campaign from the route, for "Voltar para a campanha" in every
    * state, including the error one. */

@@ -14,7 +14,7 @@
 // Authorization Code flow for one confidential client, PKCE with S256
 // required (RFC 7636), state and nonce required, and RS256 ID tokens signed
 // with a key generated at startup and published in the JWKS. max_age and
-// prompt=login|none work against a browser session kept in a cookie, and
+// prompt=login|select_account|none work against a browser session kept in a cookie, and
 // every ID token carries auth_time (OpenID Connect Core 1.0, section 2).
 package oidctest
 
@@ -308,7 +308,7 @@ func (p *Provider) handleDiscovery(w http.ResponseWriter, _ *http.Request) {
 		"claims_supported":                      []string{"iss", "sub", "aud", "exp", "iat", "auth_time", "nonce", "name", "email", "email_verified"},
 		"code_challenge_methods_supported":      []string{"S256"},
 		"token_endpoint_auth_methods_supported": []string{"client_secret_basic", "client_secret_post"},
-		"prompt_values_supported":               []string{"none", "login"},
+		"prompt_values_supported":               []string{"none", "login", "select_account"},
 	}
 	p.mu.Lock()
 	for k, v := range p.knobs.Metadata {
@@ -352,6 +352,8 @@ func (p *Provider) handleAuthorize(w http.ResponseWriter, r *http.Request) {
 	}
 	if user, authTime, ok := p.currentSession(r); ok &&
 		!slices.Contains(req.prompt, "login") &&
+		// select_account asks for the choice of account even with one signed in (OpenID Connect Core 1.0, section 3.1.2.1).
+		!slices.Contains(req.prompt, "select_account") &&
 		(req.maxAge < 0 || now.Sub(authTime) <= req.maxAge) {
 		p.issueCode(w, r, req, user, authTime)
 		return

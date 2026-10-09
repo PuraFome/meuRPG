@@ -93,11 +93,14 @@ describe('StagePlayer', () => {
     },
   );
 
-  it('draws the hint, in a quiet line', () => {
+  it('draws the hint, in a quiet line, when there are portraits to choose among', () => {
     const { el } = setup();
-    expect(flat(el.querySelector('.stage__hint'))).toContain(
-      'Escolha um personagem para ver maior',
-    );
+    expect(flat(el.querySelector('.stage__hint'))).toContain('Toque num retrato para ver maior');
+  });
+
+  it('has no hint for a single portrait', () => {
+    const { el } = setup([mira]);
+    expect(el.querySelector('.stage__hint')).toBeNull();
   });
 
   it('puts the speaker in front: the base line, the bold name and "Fala agora" in words', () => {

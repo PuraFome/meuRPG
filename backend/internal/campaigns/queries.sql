@@ -193,12 +193,12 @@ SELECT * FROM campaign_table_rules WHERE campaign_id = $1;
 -- The master saved "Regras da mesa": every setting is written.
 INSERT INTO campaign_table_rules (
     campaign_id, hit_points_rule, ability_standard_array, ability_point_buy, ability_roll_4d6, ability_typed,
-    critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, feats_allowed, hidden_area_hits, updated_at
+    critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, feats_allowed, hidden_area_hits, enemy_reactions, updated_at
 )
 VALUES (
     sqlc.arg(campaign_id), sqlc.arg(hit_points_rule), sqlc.arg(ability_standard_array), sqlc.arg(ability_point_buy),
     sqlc.arg(ability_roll_4d6), sqlc.arg(ability_typed), sqlc.arg(critical_rule), sqlc.arg(death_saves),
-    sqlc.arg(combat_starts_with_map), sqlc.arg(fog_on_new_maps), sqlc.arg(house_rules)::TEXT[], sqlc.arg(feats_allowed), sqlc.arg(hidden_area_hits), sqlc.arg(now)
+    sqlc.arg(combat_starts_with_map), sqlc.arg(fog_on_new_maps), sqlc.arg(house_rules)::TEXT[], sqlc.arg(feats_allowed), sqlc.arg(hidden_area_hits), sqlc.arg(enemy_reactions), sqlc.arg(now)
 )
 ON CONFLICT (campaign_id) DO UPDATE SET
     hit_points_rule = excluded.hit_points_rule,
@@ -213,6 +213,7 @@ ON CONFLICT (campaign_id) DO UPDATE SET
     house_rules = excluded.house_rules,
     feats_allowed = excluded.feats_allowed,
     hidden_area_hits = excluded.hidden_area_hits,
+    enemy_reactions = excluded.enemy_reactions,
     updated_at = excluded.updated_at
 RETURNING *;
 

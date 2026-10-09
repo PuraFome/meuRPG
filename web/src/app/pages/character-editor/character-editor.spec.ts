@@ -293,8 +293,8 @@ function catalog(): RulesCatalogVm {
   };
 }
 
-function routeParams(params: Record<string, string>) {
-  return { paramMap: of(convertToParamMap(params)) };
+function routeParams(params: Record<string, string>, data: Record<string, unknown> = {}) {
+  return { paramMap: of(convertToParamMap(params)), snapshot: { data } };
 }
 
 function flush(): Promise<void> {
@@ -319,13 +319,13 @@ async function openStep(fixture: ComponentFixture<CharacterEditor>, label: strin
 describe('CharacterEditor', () => {
   let fake: FakeCharacterEditorSource;
 
-  function configure(params: Record<string, string>): void {
+  function configure(params: Record<string, string>, data: Record<string, unknown> = {}): void {
     TestBed.configureTestingModule({
       imports: [CharacterEditor],
       providers: [
         provideRouter([]),
         { provide: CharacterEditorSource, useClass: FakeCharacterEditorSource },
-        { provide: ActivatedRoute, useValue: routeParams(params) },
+        { provide: ActivatedRoute, useValue: routeParams(params, data) },
       ],
     });
     fake = TestBed.inject(CharacterEditorSource) as unknown as FakeCharacterEditorSource;
@@ -1003,6 +1003,7 @@ describe('CharacterEditor', () => {
           size: 0,
           alignment: '',
           customFeaturesText: '',
+          cuttingWordsAsk: 'only-attacks',
         },
         basic: null,
       });
@@ -1801,6 +1802,106 @@ describe('CharacterEditor', () => {
       expect(fake.loadSpellDetailsCalls.length).toBe(1);
     });
   });
+
+  describe('a character made for a player to claim (MR-049)', () => {
+    function fill(cmp: {
+      fullForm: { patchValue(v: object): void };
+      selectedSkills: { set(v: Set<string>): void };
+    }): void {
+      cmp.fullForm.patchValue({
+        name: 'Kai',
+        race: 'race:gnome',
+        className: 'class:wizard',
+        level: 1,
+        background: 'background:acolyte',
+      });
+      cmp.selectedSkills.set(new Set(['skill:arcana', 'skill:history']));
+    }
+
+    it("opens the editor in the master's mode, titled and labelled for the reserve, with the banner", async () => {
+      configure({ id: 'camp-1' }, { reserved: true });
+      const { el } = await render();
+
+      expect(el.querySelector('h1')?.textContent).toContain('Criar personagem para um jogador');
+      expect(el.querySelector('.editor__reserved')?.textContent).toContain('Personagem reservado.');
+      expect(el.querySelector('.editor__reserved')?.textContent).toContain('Ninguém é dono ainda');
+      expect(el.querySelector('.editor__primary')?.textContent).toContain('Salvar como reservado');
+      // The master's scores are free: the table's ways of making them are for a player.
+      expect(fake.loadAbilityTableCalls).toEqual([]);
+    });
+
+    it('saves it as reserved, with a key of its own, and goes back to the list where its link is made', async () => {
+      configure({ id: 'camp-1' }, { reserved: true });
+      const { fixture } = await render();
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+      fill(cmp);
+
+      await cmp.submit();
+
+      expect(fake.createCharacterCalls.length).toBe(1);
+      expect(fake.createCharacterCalls[0]).toMatchObject({
+        campaignId: 'camp-1',
+        kind: 'player',
+        forPlayer: true,
+      });
+      expect(fake.createCharacterCalls[0].idempotencyKey).toMatch(/^[0-9a-f-]{36}$/);
+      expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1']);
+    });
+
+    it("previews the draft as a reserved one, which the master's rules allow", async () => {
+      configure({ id: 'camp-1' }, { reserved: true });
+      fake.previewCharacterFn = () =>
+        Promise.resolve({ hitPointsMax: 20, hitPointsFromEffects: 1, spellcasting: [] });
+      const { fixture } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+      vi.useFakeTimers();
+      try {
+        cmp.fullForm.patchValue({
+          race: 'race:gnome',
+          className: 'class:wizard',
+          level: 3,
+          hitPointsMethod: 'rolled',
+          abilities: { con: 14 },
+        });
+        cmp.hitPointsRolls.set([4, 3]);
+        fixture.detectChanges();
+        await openStep(fixture, 'Habilidades');
+        await vi.advanceTimersByTimeAsync(300);
+      } finally {
+        vi.useRealTimers();
+      }
+
+      expect(fake.previewCharacterCalls.length).toBe(1);
+      expect(fake.previewCharacterCalls[0]).toMatchObject({ kind: 'player', forPlayer: true });
+    });
+
+    it('an ordinary player character carries no flag and no banner', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture, el } = await render();
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+      fill(cmp);
+
+      await cmp.submit();
+
+      expect(el.querySelector('.editor__reserved')).toBeNull();
+      expect(fake.createCharacterCalls[0].forPlayer).toBeUndefined();
+    });
+
+    it('editing a reserved character shows the banner too, and saves as any edit', async () => {
+      configure({ id: 'camp-1', characterId: 'kai' });
+      fake.loadCharacterForEditFn = () =>
+        Promise.resolve({ ...fullSheetFor({ name: 'Kai' }), reserved: true });
+      const { el } = await render();
+
+      expect(el.querySelector('.editor__reserved')?.textContent).toContain('Personagem reservado.');
+      expect(el.querySelector('.editor__primary')?.textContent).toContain('Salvar ficha');
+    });
+  });
 });
 
 describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () => {
@@ -1876,6 +1977,7 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
       portraitImageId: '',
       alignment: '',
       customFeaturesText: '',
+      cuttingWordsAsk: 'only-attacks',
       ...over,
     },
   });
@@ -2212,6 +2314,7 @@ describe('CharacterEditor, the NPC portrait', () => {
           portraitImageId,
           alignment: '',
           customFeaturesText: '',
+          cuttingWordsAsk: 'only-attacks',
         },
       };
     };
@@ -2736,6 +2839,7 @@ function fullSheetFor(over: object = {}): CharacterForEdit {
       size: 0,
       alignment: '',
       customFeaturesText: '',
+      cuttingWordsAsk: 'only-attacks',
       ...over,
     },
   } as CharacterForEdit;
@@ -2887,5 +2991,74 @@ describe('CharacterEditor, leaving the route while a read or a save is in flight
     expect(cmp.selectedSkills().size).toBe(0);
     expect(cmp.selectedCantrips().size).toBe(0);
     expect(cmp.hitPointsRolls()).toEqual([]);
+  });
+});
+
+/** What the "Perguntar" specs read of the editor. */
+interface EditorProbe {
+  fullForm: {
+    getRawValue(): { cuttingWordsAsk: string };
+    patchValue(value: { cuttingWordsAsk: string }): void;
+  };
+  cuttingWordsOptions: readonly { label: string }[];
+  submit(): Promise<void>;
+}
+
+describe('CharacterEditor, the bard\'s "Perguntar" setting for Palavras de Interrupção', () => {
+  let fake: FakeCharacterEditorSource;
+
+  function configure(): void {
+    TestBed.configureTestingModule({
+      imports: [CharacterEditor],
+      providers: [
+        provideRouter([]),
+        { provide: CharacterEditorSource, useClass: FakeCharacterEditorSource },
+        {
+          provide: ActivatedRoute,
+          useValue: { paramMap: of(convertToParamMap({ id: 'camp-1', characterId: 'char-1' })) },
+        },
+      ],
+    });
+    fake = TestBed.inject(CharacterEditorSource) as unknown as FakeCharacterEditorSource;
+  }
+
+  async function render(featureKeys: readonly string[], over: object = {}) {
+    configure();
+    fake.loadCharacterForEditFn = () => Promise.resolve({ ...fullSheetFor(over), featureKeys });
+    const fixture = TestBed.createComponent(CharacterEditor);
+    fixture.detectChanges();
+    await flush();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return {
+      fixture,
+      el: fixture.nativeElement as HTMLElement,
+      cmp: fixture.componentInstance as unknown as EditorProbe,
+    };
+  }
+
+  it('shows the setting, "só em ataques" by default, for a bard that has the feature', async () => {
+    const { el, cmp } = await render(['feature:cutting-words']);
+    expect(el.textContent).toContain('Palavras de Interrupção');
+    expect(el.querySelector('mat-select[formcontrolname="cuttingWordsAsk"]')).not.toBeNull();
+    expect(cmp.fullForm.getRawValue().cuttingWordsAsk).toBe('only-attacks');
+    expect(cmp.cuttingWordsOptions.map((o) => o.label)).toEqual([
+      'Em todos os testes do inimigo',
+      'Só em ataques',
+      'Nunca',
+    ]);
+  });
+
+  it('leaves the setting out for a character without the feature', async () => {
+    const { el } = await render(['feature:spellcasting']);
+    expect(el.querySelector('mat-select[formcontrolname="cuttingWordsAsk"]')).toBeNull();
+  });
+
+  it('sends the chosen setting when the editor saves the sheet', async () => {
+    const { cmp } = await render(['feature:cutting-words'], { cuttingWordsAsk: 'all' });
+    expect(cmp.fullForm.getRawValue().cuttingWordsAsk).toBe('all');
+    cmp.fullForm.patchValue({ cuttingWordsAsk: 'never' });
+    await cmp.submit();
+    expect(fake.updateCharacterCalls[0].full?.cuttingWordsAsk).toBe('never');
   });
 });

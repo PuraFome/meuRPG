@@ -19,6 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // Reactions (MR-014, timeline decision 5, Etapa 6, slice 6.4b). Escudo is the
@@ -30,51 +31,61 @@ import (
 // shield is the reaction spell the combat knows.
 const shield = "spell:shield"
 
-// shieldFor says whether a player's character can cast Escudo right now: it is
-// prepared, there is a free slot, the reaction is unused and the character is
-// not down. It returns the slots it can be cast with. The options come from the
-// character's sheet and its vitals as they were committed.
-func (s *Service) shieldFor(ctx context.Context, tx pgx.Tx, campaignID string, target playdb.Combatant) ([]*rulesv1.SlotChoice, error) {
-	if target.Kind != kindPlayer || target.ReactionUsed || target.Defeated {
-		return nil, nil
+// playerAgainstEnemy says an action of a player's character is aimed at an enemy
+// NPC: the actions the table rule "Reações dos inimigos: Sempre" makes the master
+// answer with a tap, so that a pause says nothing about who can react (RN-10).
+func playerAgainstEnemy(actor, target playdb.Combatant) bool {
+	return actor.Kind == kindPlayer && target.Kind == kindNPC && target.Side != actor.Side
+}
+
+// hitWindows lists the windows a hit opens before its damage: the target's Shield
+// when it can cast it (the table keeps the prompt for the hits it can stop, so not
+// for a critical hit, which hits whatever the armor class), and, when the table
+// plays "Sempre", the master's check of a player's hit on an enemy that nobody
+// answers otherwise. total and ac are the attack's, for the master's card.
+func (s *Service) hitWindows(ctx context.Context, c *combatTx, attacker, target playdb.Combatant, key string, critical, magic bool, total, ac int32) ([]windowSpec, error) {
+	trigger := windowTrigger{Actor: attacker.ID, Target: target.ID, Key: key, Total: total, AC: ac, Crit: critical, Magic: magic}
+	if d, ok := distanceFt(attacker, target); ok {
+		trigger.Distance = d
 	}
-	opts, err := s.roster.CombatTurnOptions(ctx, tx, campaignID, target.CharacterID, turnOf(target))
-	if err != nil {
-		return nil, err
-	}
-	var slots []*rulesv1.SlotChoice
-	for _, sp := range opts.GetSpells() {
-		if sp.GetSpell().GetKey() == shield {
-			slots = sp.GetSlots()
+	if !critical || magic {
+		k, ok, err := s.kitOf(ctx, c.tx, c.session.CampaignID, target)
+		if err != nil {
+			return nil, err
+		}
+		if ok && k.canReact() && len(k.slotsFor(spellShield)) > 0 {
+			return []windowSpec{{kind: reaction.Shield, reactor: &target, trigger: trigger}}, nil
 		}
 	}
-	if len(slots) == 0 {
-		return nil, nil
+	if c.rules.EnemyReactionsAlways && playerAgainstEnemy(attacker, target) {
+		return []windowSpec{{kind: reaction.MasterCheck, trigger: trigger}}, nil
 	}
-	down, err := s.isDown(ctx, tx, campaignID, target)
-	if err != nil || down {
-		return nil, err
+	return nil, nil
+}
+
+// openPendingWindows opens the windows of a hit on the pending damage it holds.
+func (s *Service) openPendingWindows(ctx context.Context, c *combatTx, p playdb.PendingDamage, specs []windowSpec) error {
+	for i := range specs {
+		specs[i].pending = p.ID
+		specs[i].trigger.Pending = p.ID
 	}
-	return slots, nil
+	_, err := s.openWindows(ctx, c, newGroup(), nil, specs)
+	return err
 }
 
 // openHit opens the pending damage of a hit, an attack's or a spell attack's:
-// to be rolled, or, for a hit on a player's character that can cast Escudo and
-// is not a critical hit (the SRD's Escudo still works against one, but the
-// table keeps the prompt for the hits it can stop), to wait for the reaction
-// first. attackTotal is kept for the new comparison.
+// to be rolled, or, when a reaction window waits on it (Escudo, or the master's
+// check), to wait for the answers first. attackTotal is kept for the new comparison.
 func (s *Service) openHit(ctx context.Context, c *combatTx, campaignID string, attacker, target playdb.Combatant, key string, dmg link.Dice, critical bool, extraDice, attackTotal, attackAC int) (playdb.PendingDamage, error) {
-	status := pendingAwaitingRoll
-	if !critical {
-		slots, err := s.shieldFor(ctx, c.tx, campaignID, target)
-		if err != nil {
-			return playdb.PendingDamage{}, err
-		}
-		if len(slots) > 0 {
-			status = pendingAwaitingReaction
-		}
-	}
 	total := clamp32(attackTotal, math.MinInt32, math.MaxInt32)
+	specs, err := s.hitWindows(ctx, c, attacker, target, key, critical, false, total, clamp32(attackAC, 0, math.MaxInt32))
+	if err != nil {
+		return playdb.PendingDamage{}, err
+	}
+	status := pendingAwaitingRoll
+	if len(specs) > 0 {
+		status = pendingAwaitingReaction
+	}
 	// The table's critical rule (RN-24), read in this transaction: the dice to
 	// roll, doubled or not, and the maximum that comes without rolling. A hit that
 	// is not a critical one rolls its dice as they are.
@@ -89,44 +100,51 @@ func (s *Service) openHit(ctx context.Context, c *combatTx, campaignID string, a
 	if err != nil {
 		return playdb.PendingDamage{}, fmt.Errorf("open the pending damage: %w", err)
 	}
+	if err := s.openPendingWindows(ctx, c, p, specs); err != nil {
+		return playdb.PendingDamage{}, err
+	}
 	return p, nil
 }
 
-// reactionPrompts lists the hits that wait for a reaction as the caller may
-// see them: the master all, a player only those on their own character. A
-// player never gets the attack's total or an armor class, nor who attacked
-// when the attacker is hidden from them.
+// reactionPrompts lists the hits that wait for a Shield as the caller may see them
+// (the prompts of Encounter.reaction_prompts, kept beside the windows): the master
+// all, a player only those on their own character. A player never gets the attack's
+// total or an armor class, nor who attacked when the attacker is hidden from them.
 func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, names func(key string) string) ([]*playv1.ReactionPrompt, error) {
 	if d.enc.Status != statusActive {
 		return nil, nil
 	}
-	open, err := s.queries.ListOpenPendingDamages(ctx, d.enc.ID)
+	open, err := s.queries.ListOpenReactionWindows(ctx, d.enc.ID)
 	if err != nil {
-		return nil, s.dbError(ctx, "list the pending damage", err)
+		return nil, s.dbError(ctx, "list the reaction windows", err)
 	}
 	var out []*playv1.ReactionPrompt
-	for _, p := range open {
-		if p.Status != pendingAwaitingReaction {
+	for _, w := range open {
+		if w.Kind != string(reaction.Shield) || w.PendingDamageID == nil || w.ReactorID == nil {
 			continue
 		}
-		i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID })
+		i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == *w.ReactorID })
 		if i < 0 || (!v.master && !v.owns(d.cs[i])) {
 			continue
 		}
-		slots, err := s.shieldFor(ctx, nil, m.CampaignID, d.cs[i])
+		k, ok, err := s.kitOf(ctx, nil, m.CampaignID, d.cs[i])
 		if err != nil {
 			return nil, s.dbError(ctx, "work out the reaction", err)
 		}
-		prompt := &playv1.ReactionPrompt{PendingDamageId: p.ID, TargetId: p.TargetID, SpellKey: shield, Slots: slots, SpellNamePt: names(shield)}
+		if !ok {
+			continue
+		}
+		t := windowTriggerOf(w)
+		prompt := &playv1.ReactionPrompt{PendingDamageId: *w.PendingDamageID, TargetId: *w.ReactorID, SpellKey: shield, Slots: k.slotsFor(spellShield), SpellNamePt: names(shield)}
 		if v.master {
-			prompt.AttackerId = deref(p.AttackerID)
+			prompt.AttackerId = t.Actor
 		}
 		// Who attacked, and with what, only when the viewer sees the attacker (RN-20):
 		// the screen says "Capitão Goblin · Cimitarra", and a hidden attacker stays hidden.
-		if j := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == deref(p.AttackerID) }); j >= 0 && v.sees(d.cs[j]) {
+		if j := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == t.Actor }); j >= 0 && v.sees(d.cs[j]) {
 			prompt.AttackerLabel = d.cs[j].Label
 			if sheet, err := s.sheetOf(ctx, nil, m.CampaignID, d.cs[j]); err == nil {
-				if k := slices.IndexFunc(sheet.Attacks, func(a link.Attack) bool { return a.Key == p.AttackKey }); k >= 0 {
+				if k := slices.IndexFunc(sheet.Attacks, func(a link.Attack) bool { return a.Key == t.Key }); k >= 0 {
 					prompt.AttackNamePt = sheet.Attacks[k].Name
 				}
 			}
@@ -136,34 +154,132 @@ func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *en
 	return out, nil
 }
 
-// reactionTarget finds the pending damage that waits for a reaction and the
-// combatant it hit, inside the change's transaction, for the caller to answer:
-// not_found for a pending damage the caller may not see, permission_denied for
-// another player's character, NOT_AWAITING_REACTION for one that does not wait.
-func (s *Service) reactionTarget(ctx context.Context, c *combatTx, v combatViewer, pendingID string) (p playdb.PendingDamage, attacker, target playdb.Combatant, err error) {
+// reactionTarget finds the Shield window of a hit that waits for a reaction, the
+// pending damage and the combatant it hit, inside the change's transaction, for the
+// caller to answer: not_found for a pending damage the caller may not see,
+// permission_denied for another player's character, NOT_AWAITING_REACTION for one
+// that does not wait.
+func (s *Service) reactionTarget(ctx context.Context, c *combatTx, v combatViewer, pendingID string) (w playdb.ReactionWindow, p playdb.PendingDamage, attacker, target playdb.Combatant, err error) {
 	if err = notEnded(c.enc); err != nil {
-		return p, attacker, target, err
+		return w, p, attacker, target, err
 	}
 	if p, err = c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: c.enc.ID, ID: pendingID}); errors.Is(err, pgx.ErrNoRows) {
-		return p, attacker, target, connect.NewError(connect.CodeNotFound, errors.New("pending damage not found"))
+		return w, p, attacker, target, connect.NewError(connect.CodeNotFound, errors.New("pending damage not found"))
 	} else if err != nil {
-		return p, attacker, target, fmt.Errorf("find the pending damage: %w", err)
+		return w, p, attacker, target, fmt.Errorf("find the pending damage: %w", err)
 	}
 	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 	if err != nil {
-		return p, attacker, target, fmt.Errorf("list the combatants: %w", err)
+		return w, p, attacker, target, fmt.Errorf("list the combatants: %w", err)
 	}
 	if target, err = findCombatant(cs, p.TargetID, v); err != nil {
-		return p, attacker, target, err
+		return w, p, attacker, target, err
 	}
 	if err = v.mayAct(target); err != nil {
-		return p, attacker, target, err
+		return w, p, attacker, target, err
 	}
 	attacker, _ = findCombatant(cs, deref(p.AttackerID), combatViewer{master: true})
-	if p.Status != pendingAwaitingReaction {
-		return p, attacker, target, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_AWAITING_REACTION, "the hit does not wait for a reaction")
+	open, err := openWindowsOf(ctx, c)
+	if err != nil {
+		return w, p, attacker, target, err
 	}
-	return p, attacker, target, nil
+	i := slices.IndexFunc(open, func(o playdb.ReactionWindow) bool {
+		return o.Kind == string(reaction.Shield) && deref(o.PendingDamageID) == pendingID
+	})
+	if p.Status != pendingAwaitingReaction || i < 0 {
+		return w, p, attacker, target, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_AWAITING_REACTION, "the hit does not wait for a reaction")
+	}
+	return open[i], p, attacker, target, nil
+}
+
+// useShield casts Escudo for the window's reactor, the target of the hit: the slot
+// and the reaction are spent, the armor class goes up by 5 until its next turn and
+// the hit is compared again, with the total that never leaves the server (the player
+// decided without it, as at a table). A Magic Missile has no comparison: Shield takes
+// all its damage away. It closes the window.
+func (s *Service) useShield(ctx context.Context, c *combatTx, w playdb.ReactionWindow, p playdb.PendingDamage, attacker, target playdb.Combatant, slotIn *playv1.SpellSlot) (actionEvent, *playv1.CharacterVitals, error) {
+	var none actionEvent
+	if target.ReactionUsed {
+		return none, nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is already used")
+	}
+	k, ok, err := s.kitOf(ctx, c.tx, c.session.CampaignID, target)
+	if err != nil {
+		return none, nil, err
+	}
+	var slots []*rulesv1.SlotChoice
+	if ok && !k.down && !target.Defeated {
+		slots = k.slotsFor(spellShield)
+	}
+	if len(slots) == 0 {
+		return none, nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_SLOT, "there is no free spell slot for Escudo",
+			func(b *playv1.EncounterBlocked) { b.MinLevel = 1 })
+	}
+	slot, err := slotOf(slotIn, castable{level: 1, slots: slots})
+	if err != nil {
+		return none, nil, err
+	}
+	vitals, err := s.spendReactionSlot(ctx, c, target, *slot)
+	if err != nil {
+		return none, nil, err
+	}
+	if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
+		ID: target.ID, ActionUsed: target.ActionUsed, BonusActionUsed: target.BonusActionUsed, ReactionUsed: true, Dashed: target.Dashed,
+	}); err != nil {
+		return none, nil, fmt.Errorf("spend the reaction: %w", err)
+	}
+	if err := c.q.SetCombatantAcBonus(ctx, playdb.SetCombatantAcBonusParams{ID: target.ID, AcBonus: combat.ShieldACBonus}); err != nil {
+		return none, nil, fmt.Errorf("give the armor class bonus: %w", err)
+	}
+
+	sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, target)
+	if err != nil {
+		return none, nil, err
+	}
+	// Escudo replaces the bonus the target had: the hit is compared again with the
+	// armor class it was compared with (cover included), plus the Escudo's 5. A
+	// damage opened before the column existed falls back to the sheet's.
+	base := sheet.ArmorClass
+	if p.AttackArmorClass != nil {
+		base = int(*p.AttackArmorClass) - int(target.AcBonus)
+	}
+	stopped := windowTriggerOf(w).Magic || int(num(p.AttackTotal)) < base+combat.ShieldACBonus
+	next := pendingAwaitingRoll
+	if stopped {
+		next = pendingDiscarded
+	}
+	if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: p.ID, Status: next, ResolvedAt: resolvedWhen(next, c)}); err != nil {
+		return none, nil, fmt.Errorf("answer the pending damage: %w", err)
+	}
+	// The bonus holds for every attack on the target until its next turn, so the
+	// other hits already made, still waiting for the reaction or for their damage,
+	// are compared again too.
+	also, err := s.stopOtherHits(ctx, c, p, target)
+	if err != nil {
+		return none, nil, err
+	}
+	if _, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, windowOutcome{Used: true, Slot: slot, Stopped: stopped, ByMaster: c.master}, ""); err != nil {
+		return none, nil, err
+	}
+	c.lastAnswered = reaction.Shield
+	c.characterID = &target.CharacterID
+	return actionEvent{
+		Round: c.enc.Round, Secret: target.Hidden, AttackerHidden: attacker.Hidden, Actor: target.ID, Target: attacker.ID, Pending: p.ID, Key: shield, Slot: slot,
+		Stopped: stopped, AlsoStopped: also, ReactionBefore: target.ReactionUsed, ACBonusBefore: target.AcBonus, PrevStatus: p.Status,
+		Reaction: &reactionEvent{Kind: string(reaction.Shield), Window: w.ID, Used: true, Slot: slot, Stopped: stopped, ByMaster: c.master, Magic: windowTriggerOf(w).Magic},
+	}, vitals, nil
+}
+
+// passShield lets the hit go on ("Não usar"): the window is answered and, when it was
+// the last one of the hit, the damage goes on to its roll.
+func (s *Service) passShield(ctx context.Context, c *combatTx, w playdb.ReactionWindow, p playdb.PendingDamage, target playdb.Combatant) (actionEvent, error) {
+	if _, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: c.master}, ""); err != nil {
+		return actionEvent{}, err
+	}
+	c.characterID = &target.CharacterID
+	return actionEvent{
+		Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, Pending: p.ID, Key: shield, PrevStatus: p.Status,
+		Reaction: &reactionEvent{Kind: string(reaction.Shield), Window: w.ID, ByMaster: c.master},
+	}, nil
 }
 
 // UseReaction implements playv1connect.CombatServiceHandler.
@@ -193,73 +309,20 @@ func (s *Service) UseReaction(
 	var vitals *playv1.CharacterVitals
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventReactionUsed, encounterID: encID}, func(c *combatTx) (any, error) {
 		vitals = nil
-		p, attacker, target, err := s.reactionTarget(ctx, c, v, pendingID)
+		w, p, attacker, target, err := s.reactionTarget(ctx, c, v, pendingID)
 		if err != nil {
 			return nil, err
 		}
-		if target.ReactionUsed {
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is already used")
-		}
-		slots, err := s.shieldFor(ctx, c.tx, m.CampaignID, target)
-		if err != nil {
+		if err := s.mustBeFirstOfGroup(ctx, c, w); err != nil {
 			return nil, err
 		}
-		if len(slots) == 0 {
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_SLOT, "there is no free spell slot for Escudo",
-				func(b *playv1.EncounterBlocked) { b.MinLevel = 1 })
-		}
-		slot, err := slotOf(req.Msg.GetSlot(), castable{level: 1, slots: slots})
-		if err != nil {
-			return nil, err
-		}
-		if vitals, err = s.spendSlot(ctx, c, target.CharacterID, *slot, 1); err != nil {
-			return nil, err
-		}
-		if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
-			ID: target.ID, ActionUsed: target.ActionUsed, BonusActionUsed: target.BonusActionUsed, ReactionUsed: true, Dashed: target.Dashed,
-		}); err != nil {
-			return nil, fmt.Errorf("spend the reaction: %w", err)
-		}
-		if err := c.q.SetCombatantAcBonus(ctx, playdb.SetCombatantAcBonusParams{ID: target.ID, AcBonus: combat.ShieldACBonus}); err != nil {
-			return nil, fmt.Errorf("give the armor class bonus: %w", err)
-		}
-
-		// The attack is compared again with the new armor class, and it never
-		// leaves the server: the player decided without the total (as at a table).
-		sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, target)
-		if err != nil {
-			return nil, err
-		}
-		// Escudo replaces the bonus the target had: the hit is compared again with the
-		// armor class it was compared with (cover included), plus the Escudo's 5. A
-		// damage opened before the column existed falls back to the sheet's.
-		base := sheet.ArmorClass
-		if p.AttackArmorClass != nil {
-			base = int(*p.AttackArmorClass) - int(target.AcBonus)
-		}
-		stopped := int(num(p.AttackTotal)) < base+combat.ShieldACBonus
-		next := pendingAwaitingRoll
-		if stopped {
-			next = pendingDiscarded
-		}
-		if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: p.ID, Status: next, ResolvedAt: resolvedWhen(next, c)}); err != nil {
-			return nil, fmt.Errorf("answer the pending damage: %w", err)
-		}
-		// The bonus holds for every attack on the target until its next turn, so the
-		// other hits already made, still waiting for the reaction or for their damage,
-		// are compared again too.
-		also, err := s.stopOtherHits(ctx, c, p, target)
-		if err != nil {
+		if made, vitals, err = s.useShield(ctx, c, w, p, attacker, target, req.Msg.GetSlot()); err != nil {
 			return nil, err
 		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
-		c.characterID = &target.CharacterID
-		made = actionEvent{
-			Round: c.enc.Round, Secret: target.Hidden, AttackerHidden: attacker.Hidden, Actor: target.ID, Target: attacker.ID, Pending: p.ID, Key: shield, Slot: slot,
-			Stopped: stopped, AlsoStopped: also, ReactionBefore: target.ReactionUsed, ACBonusBefore: target.AcBonus, PrevStatus: p.Status,
-		}
+		made.Round = c.enc.Round
 		return made, nil
 	})
 	if err != nil {
@@ -348,18 +411,22 @@ func (s *Service) DeclineReaction(
 	v := viewerOf(m)
 
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventReactionDeclined, encounterID: encID}, func(c *combatTx) (any, error) {
-		p, _, target, err := s.reactionTarget(ctx, c, v, pendingID)
+		w, p, _, target, err := s.reactionTarget(ctx, c, v, pendingID)
 		if err != nil {
 			return nil, err
 		}
-		if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: p.ID, Status: pendingAwaitingRoll}); err != nil {
-			return nil, fmt.Errorf("let the hit go on: %w", err)
+		if err := s.mustBeFirstOfGroup(ctx, c, w); err != nil {
+			return nil, err
+		}
+		ev, err := s.passShield(ctx, c, w, p, target)
+		if err != nil {
+			return nil, err
 		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
-		c.characterID = &target.CharacterID
-		return actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, Pending: p.ID, Key: shield, PrevStatus: p.Status}, nil
+		ev.Round = c.enc.Round
+		return ev, nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "decline a reaction", err)

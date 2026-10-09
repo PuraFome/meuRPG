@@ -2,9 +2,8 @@
 //
 // Store is the whole interface: Put, Open and Delete. The filesystem
 // implementation (NewFS) keeps each file under a directory, for the local
-// stack and the tests. Production will use a private Cloud Storage bucket
-// behind the same interface (docs/operations.md#open-items-before-the-first-deploy); nothing
-// outside this package needs to change for that.
+// stack and the tests. The Cloud Storage one (NewGCS) keeps them in a
+// private bucket, for Cloud Run (docs/operations.md#images).
 //
 // A key is a path made of lowercase letters, digits, dots, dashes and
 // underscores, such as "campaigns/<id>/images/<id>.thumb" (ValidKey). The
