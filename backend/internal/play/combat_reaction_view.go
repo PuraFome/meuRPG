@@ -98,44 +98,10 @@ func (s *Service) reactionView(ctx context.Context, m authz.Membership, d *encou
 			holds, holdsSet = h, true
 		}
 	}
-	// The opportunity attacks are windows too (RN-21): the offer's own calls answer them.
-	for _, o := range offers {
-		mover, ok1 := wv.byID[o.MoverID]
-		reactor, ok2 := wv.byID[o.ReactorID]
-		if !ok1 || !ok2 || !v.seesAtOffer(mover, o) {
-			continue
-		}
-		answers := v.master || v.owns(reactor)
-		if !answers && !v.owns(mover) {
-			continue
-		}
-		if answers {
-			windows = append(windows, wv.opportunityWindow(o, mover, reactor))
-		}
-		wv.waitOf(playdb.ReactionWindow{Kind: "opportunity"}, &reactor, answers, &wait)
-		if !holdsSet && !answers {
-			holds, holdsSet = reaction.HoldsTurn, true
-		}
-	}
+	windows = wv.offerWindows(offers, windows, &wait, &holds, &holdsSet)
 	// The master's question about a hidden creature an area hit (PM-02c) is a window too: the
 	// master answers it with ResolveHiddenReveal, and every player reads the same wait.
-	for _, q := range reveals {
-		if v.master {
-			windows = append(windows, &playv1.ReactionWindow{
-				Id: q.ID, Kind: playv1.ReactionKind_REACTION_KIND_HIDDEN_REVEAL, Status: playv1.ReactionWindowStatus_REACTION_WINDOW_STATUS_OPEN,
-				GroupId: q.ID, ForYou: true, AnswerNow: true,
-				Trigger: &playv1.ReactionTrigger{ActorId: q.CasterID},
-			})
-		}
-		if v.master {
-			wait.Self = true
-		} else {
-			wait.Master = true
-		}
-		if !holdsSet {
-			holds, holdsSet = reaction.HoldsTurn, true
-		}
-	}
+	windows = wv.revealWindows(reveals, windows, &wait, &holds, &holdsSet)
 	var out *playv1.ReactionWait
 	if title := wait.Title(); title != "" {
 		out = &playv1.ReactionWait{TitlePt: title}
@@ -144,6 +110,53 @@ func (s *Service) reactionView(ctx context.Context, m authz.Membership, d *encou
 		}
 	}
 	return windows, out, nil
+}
+
+// offerWindows adds the opportunity-attack offers the reader may see, as windows (RN-21): the offer's
+// own calls answer them.
+func (wv *windowView) offerWindows(offers []playdb.OpportunityOffer, windows []*playv1.ReactionWindow, wait *reaction.Wait, holds *reaction.Holds, holdsSet *bool) []*playv1.ReactionWindow {
+	// The opportunity attacks are windows too (RN-21): the offer's own calls answer them.
+	for _, o := range offers {
+		mover, ok1 := wv.byID[o.MoverID]
+		reactor, ok2 := wv.byID[o.ReactorID]
+		if !ok1 || !ok2 || !wv.v.seesAtOffer(mover, o) {
+			continue
+		}
+		answers := wv.v.master || wv.v.owns(reactor)
+		if !answers && !wv.v.owns(mover) {
+			continue
+		}
+		if answers {
+			windows = append(windows, wv.opportunityWindow(o, mover, reactor))
+		}
+		wv.waitOf(playdb.ReactionWindow{Kind: "opportunity"}, &reactor, answers, wait)
+		if !*holdsSet && !answers {
+			*holds, *holdsSet = reaction.HoldsTurn, true
+		}
+	}
+	return windows
+}
+
+// revealWindows adds the master's questions about hidden creatures an area hit: the master reads each
+// as a window, and every reader's wait counts them (the master as his own reaction, a player as "o mestre").
+func (wv *windowView) revealWindows(reveals []playdb.HiddenReveal, windows []*playv1.ReactionWindow, wait *reaction.Wait, holds *reaction.Holds, holdsSet *bool) []*playv1.ReactionWindow {
+	for _, q := range reveals {
+		switch {
+		case wv.v.master:
+			windows = append(windows, &playv1.ReactionWindow{
+				Id: q.ID, Kind: playv1.ReactionKind_REACTION_KIND_HIDDEN_REVEAL, Status: playv1.ReactionWindowStatus_REACTION_WINDOW_STATUS_OPEN,
+				GroupId: q.ID, ForYou: true, AnswerNow: true,
+				Trigger: &playv1.ReactionTrigger{ActorId: q.CasterID},
+			})
+			wait.Self = true
+		default:
+			wait.Master = true
+		}
+		if !*holdsSet {
+			*holds, *holdsSet = reaction.HoldsTurn, true
+		}
+	}
+	return windows
 }
 
 // opportunityWindow is the window of an opportunity-attack offer for someone who answers it:
