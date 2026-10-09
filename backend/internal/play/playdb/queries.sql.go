@@ -581,6 +581,16 @@ func (q *Queries) DeleteCharacterEffect(ctx context.Context, id string) error {
 	return err
 }
 
+const deleteCharacterEffectsOfCharacter = `-- name: DeleteCharacterEffectsOfCharacter :exec
+DELETE FROM character_effects WHERE character_id = $1
+`
+
+// A character that died keeps no old effect when it lives again.
+func (q *Queries) DeleteCharacterEffectsOfCharacter(ctx context.Context, characterID string) error {
+	_, err := q.db.Exec(ctx, deleteCharacterEffectsOfCharacter, characterID)
+	return err
+}
+
 const deleteCharacterEffectsOfGroup = `-- name: DeleteCharacterEffectsOfGroup :many
 DELETE FROM character_effects WHERE campaign_id = $1 AND group_id = $2 RETURNING id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at
 `

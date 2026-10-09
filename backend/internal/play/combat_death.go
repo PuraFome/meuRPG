@@ -248,6 +248,11 @@ func (s *Service) ConfirmDeath(
 		}); err != nil {
 			return nil, fmt.Errorf("take the character out of the order: %w", err)
 		}
+		// Death ends what is on the character and the concentration it held (SRD 5.1, Dropping
+		// to 0 Hit Points; Duration): the effects go, and living again brings back none of them.
+		if err := s.endEffectsOfTheDead(ctx, c, cs, who); err != nil {
+			return nil, err
+		}
 		// Out of the order: it leaves the turn first, and the turn passes when
 		// nobody who acts is left in its group.
 		if c.enc.Status == statusActive {

@@ -1525,3 +1525,7 @@ UPDATE character_effects SET seconds_left = $2 WHERE id = $1;
 UPDATE character_effects SET seconds_left = GREATEST(seconds_left - $2::INT4, 0)
 WHERE campaign_id = $1 AND seconds_left IS NOT NULL
 RETURNING *;
+
+-- name: DeleteCharacterEffectsOfCharacter :exec
+-- A character that died keeps no old effect when it lives again.
+DELETE FROM character_effects WHERE character_id = $1;

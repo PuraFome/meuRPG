@@ -5,6 +5,8 @@ import (
 
 	"connectrpc.com/connect"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
@@ -76,5 +78,34 @@ func TestExhaustionLevelsHalveTheMaximumAndLevelSixAsksForConfirmation(t *testin
 	}
 	if got := byLabel(t, a.get(t, a.master), "Toren"); got.GetDeathFailures() < 3 {
 		t.Errorf("Toren at level 6 = %d death failures, want the death confirmation", got.GetDeathFailures())
+	}
+}
+
+// Death ends the effects on a character and the concentration it held; living again brings back
+// none of them (SRD 5.1, Dropping to 0 Hit Points; RN-03).
+func TestDeathEndsTheEffectsAndReviveBringsNoneBack(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.closeFight(t)
+	a.mustAddEffect(t, e, "spell:bless", []string{"Toren"}, a.rounds(t, 10, "Toren"))
+	if _, err := a.setExhaustion(t, e, "Toren", 6, 0, true); err != nil {
+		t.Fatalf("SetExhaustion(6) error = %v", err)
+	}
+	if _, err := a.master.combat.ConfirmDeath(t.Context(), connect.NewRequest(&playv1.ConfirmDeathRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Toren"), IdempotencyKey: newKey(),
+	})); err != nil {
+		t.Fatalf("ConfirmDeath() error = %v", err)
+	}
+	if got := byLabel(t, a.get(t, a.master), "Toren").GetEffects(); len(got) != 0 {
+		t.Errorf("the dead Toren still has %v", got)
+	}
+	a.execSQL(t, `INSERT INTO character_effects (campaign_id, character_id, group_id, source_key, source_kind, duration_kind)
+		VALUES ($1, $2, gen_random_uuid(), 'spell:bless', 'spell', 'until_dismissed')`, a.campaignID, a.toren.GetId())
+	if _, err := a.master.characters.ReviveCharacter(t.Context(), connect.NewRequest(&charactersv1.ReviveCharacterRequest{CampaignId: a.campaignID, CharacterId: a.toren.GetId(), IdempotencyKey: newKey()})); err != nil {
+		t.Fatalf("ReviveCharacter() error = %v", err)
+	}
+	var n int
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM character_effects WHERE character_id = $1`, a.toren.GetId()).Scan(&n); err != nil || n != 0 {
+		t.Errorf("the revived Toren has %d old effects (%v), want none", n, err)
 	}
 }

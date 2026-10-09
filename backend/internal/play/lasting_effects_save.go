@@ -307,7 +307,7 @@ func (s *Service) RollEffectSave( //nolint:gocognit // the steps of one transact
 				if nerr != nil {
 					return nil, nerr
 				}
-				result.ExtraDice = extraDiceProto(extra, true, nm)
+				result.ExtraDice = extraDiceProto(extra, master, nm)
 				le.D20, le.Total = result.D20, result.Total
 				ev.D20, ev.Modifier, ev.Total, ev.Physical = result.D20, result.Modifier, result.Total, d20.Physical
 			}

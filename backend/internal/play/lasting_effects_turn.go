@@ -285,3 +285,25 @@ func (s *Service) restoreEffects(ctx context.Context, c *combatTx, rows []playdb
 
 // conditionParalyzed is the SRD condition Paralyzed.
 const conditionParalyzed = "condition:paralyzed"
+
+// endEffectsOfTheDead ends every effect on a combatant that died and those its concentration
+// held, and the character's own outside a combat.
+func (s *Service) endEffectsOfTheDead(ctx context.Context, c *combatTx, cs []playdb.Combatant, who playdb.Combatant) error {
+	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the effects: %w", err)
+	}
+	rows = slices.DeleteFunc(rows, func(st playdb.CombatantState) bool {
+		return st.CombatantID != who.ID && (!st.Concentration || deref(st.SourceID) != who.ID)
+	})
+	if err := s.endEffectRows(ctx, c, cs, rows, endLeft); err != nil {
+		return err
+	}
+	if who.CharacterID == "" {
+		return nil
+	}
+	if err := c.q.DeleteCharacterEffectsOfCharacter(ctx, who.CharacterID); err != nil {
+		return fmt.Errorf("end the effects of the dead: %w", err)
+	}
+	return nil
+}
