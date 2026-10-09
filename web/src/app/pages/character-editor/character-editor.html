@@ -542,12 +542,13 @@
                           {{ sectionHeading(view.section) }}
                         </h3>
                         <p class="group-hint">
-                          {{ view.section.namePt }} {{ view.section.level }}@if (view.preparedCount) {
-                            · {{ view.preparedCount }}
+                          {{ view.section.namePt }} {{ view.section.level }}@if (view.preparedCount.text) {
+                            ·
+                            <span [class.group-hint--over]="view.preparedCount.over">{{ view.preparedCount.text }}</span>
                           }
                         </p>
-                      } @else if (view.preparedCount) {
-                        <p class="group-hint">{{ view.preparedCount }}</p>
+                      } @else if (view.preparedCount.text) {
+                        <p class="group-hint" [class.group-hint--over]="view.preparedCount.over">{{ view.preparedCount.text }}</p>
                       }
                       @if (view.always.length > 0) {
                         <app-granted-spells

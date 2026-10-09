@@ -86,13 +86,26 @@ export class SpellPicker {
     const n = this.chosen().length;
     const limit = this.limit();
     if (limit !== null) {
+      const many = n > 1 || limit > 1;
       return this.noun() === 'truque'
-        ? `${n} de ${limit} ${limit === 1 ? 'truque escolhido' : 'truques escolhidos'}`
-        : `${n} de ${limit} ${limit === 1 ? 'magia escolhida' : 'magias escolhidas'}`;
+        ? `${n} de ${limit} ${many ? 'truques escolhidos' : 'truque escolhido'}`
+        : `${n} de ${limit} ${many ? 'magias escolhidas' : 'magia escolhida'}`;
     }
     return this.noun() === 'truque'
       ? countLabel(n, 'truque escolhido', 'truques escolhidos', 'Nenhum truque escolhido')
       : countLabel(n, 'magia escolhida', 'magias escolhidas', 'Nenhuma magia escolhida');
+  });
+
+  /** The count is past the limit: the server refuses the save, so the picker says why in the error style. */
+  protected readonly overLimit = computed(() => {
+    const limit = this.limit();
+    return limit !== null && this.chosen().length > limit;
+  });
+  protected readonly overLimitReason = computed(() => {
+    const limit = this.limit();
+    const extra = limit === null ? 0 : this.chosen().length - limit;
+    const what = this.noun() === 'truque' ? ['truque', 'truques'] : ['magia', 'magias'];
+    return `Passou do limite de ${limit}: desmarque ${extra} ${extra === 1 ? what[0] : what[1]}.`;
   });
 
   /** "Prepare até 4": fewer are chosen than the class prepares. */

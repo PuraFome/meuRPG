@@ -890,6 +890,10 @@ message Attack {
   // reads the caster's row here instead of choosing one. Empty for a weapon and
   // for a creature's attack.
   string spell_dice = 19;
+  // A bonus the damage already includes only under a condition the sheet cannot
+  // check, with the condition, in Portuguese: "Inclui +2 de Estilo de
+  // Luta: Duelismo (sem outra arma na mão)". Empty when the damage holds no such bonus.
+  string damage_note_pt = 20;
 }
 
 // AttackKind says whether an attack is a weapon or a spell.

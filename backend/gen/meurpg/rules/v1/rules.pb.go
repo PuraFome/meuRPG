@@ -4449,7 +4449,11 @@ type Attack struct {
 	// spell's details carry the whole table by level for any caster, so the app
 	// reads the caster's row here instead of choosing one. Empty for a weapon and
 	// for a creature's attack.
-	SpellDice     string `protobuf:"bytes,19,opt,name=spell_dice,json=spellDice,proto3" json:"spell_dice,omitempty"`
+	SpellDice string `protobuf:"bytes,19,opt,name=spell_dice,json=spellDice,proto3" json:"spell_dice,omitempty"`
+	// A bonus the damage already includes only under a condition the sheet cannot
+	// check, with the condition, in Portuguese: "Inclui +2 de Estilo de
+	// Luta: Duelismo (sem outra arma na mão)". Empty when the damage holds no such bonus.
+	DamageNotePt  string `protobuf:"bytes,20,opt,name=damage_note_pt,json=damageNotePt,proto3" json:"damage_note_pt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4613,6 +4617,13 @@ func (x *Attack) GetBeams() int32 {
 func (x *Attack) GetSpellDice() string {
 	if x != nil {
 		return x.SpellDice
+	}
+	return ""
+}
+
+func (x *Attack) GetDamageNotePt() string {
+	if x != nil {
+		return x.DamageNotePt
 	}
 	return ""
 }
@@ -10200,7 +10211,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x05count\x18\x02 \x01(\x05R\x05count\"Z\n" +
 	"\x0eCharacterSpell\x12,\n" +
 	"\x05spell\x18\x01 \x01(\v2\x16.meurpg.rules.v1.SpellR\x05spell\x12\x1a\n" +
-	"\bprepared\x18\x02 \x01(\bR\bprepared\"\xb3\x05\n" +
+	"\bprepared\x18\x02 \x01(\bR\bprepared\"\xd9\x05\n" +
 	"\x06Attack\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -10223,7 +10234,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x05notes\x18\x11 \x01(\tR\x05notes\x12\x14\n" +
 	"\x05beams\x18\x12 \x01(\x05R\x05beams\x12\x1d\n" +
 	"\n" +
-	"spell_dice\x18\x13 \x01(\tR\tspellDice\"\x87\x01\n" +
+	"spell_dice\x18\x13 \x01(\tR\tspellDice\x12$\n" +
+	"\x0edamage_note_pt\x18\x14 \x01(\tR\fdamageNotePt\"\x87\x01\n" +
 	"\aFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +

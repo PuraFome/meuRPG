@@ -23,7 +23,7 @@
       <input
         type="search"
         autocomplete="off"
-        [placeholder]="'Nome da ' + noun()"
+        [placeholder]="(masculine() ? 'Nome do ' : 'Nome da ') + noun()"
         [value]="query()"
         (input)="onSearch($event)"
       />
@@ -78,7 +78,7 @@
 
   @if (hidden() > 0) {
     <button type="button" class="list__more" (click)="expanded.set(true)">
-      Ver os outros {{ hidden() }} {{ hidden() === 1 ? noun() : nounMany() }}
+      Ver {{ masculine() ? 'os outros' : 'as outras' }} {{ hidden() }} {{ hidden() === 1 ? noun() : nounMany() }}
     </button>
   }
   @if (footnote()) {
