@@ -586,6 +586,18 @@ describe('the log of spells, reactions, the fallen and conditions (slice 6.5c)',
     expect(logLine(sleep)?.text).toBe(' conjura Sono (1º\u00a0nível) no Goblin 1 e no Goblin 2');
   });
 
+  it('writes a reaction window as the one line the server wrote for whoever reads it', () => {
+    const line = logLine(
+      entry({
+        kind: CombatLogKind.REACTION_WINDOW,
+        actorLabel: 'Brisa',
+        reactionTextPt: 'Brisa usou Esquiva Sobrenatural: o dano caiu pela metade.',
+      }),
+    );
+    expect(line?.actor).toBe('');
+    expect(line?.text).toBe('Brisa usou Esquiva Sobrenatural: o dano caiu pela metade.');
+  });
+
   it('writes the reaction and an opportunity attack', () => {
     expect(
       logLine(

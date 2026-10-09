@@ -1153,6 +1153,42 @@ service CombatService {
   //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
   rpc EndConcentration(EndConcentrationRequest) returns (EndConcentrationResponse);
 
+  // AnswerReaction answers a reaction window (PM-04): "Usar ..." or "Deixar
+  // passar". One window serves the seven reactions (Shield, Uncanny Dodge, Hellish
+  // Rebuke, Counterspell, Cutting Words, Deflect Missiles, Feather Fall), and the
+  // master's "Sem reação" check of the table rule "Reações dos inimigos". The
+  // action that opened the window (an attack, a spell, a fall) stays waiting
+  // (AWAITING_REACTION) until every window of it is answered, and goes on by
+  // itself then. The reactor's player answers theirs; the master answers any
+  // (`by_master` in the log). A window is answered in the order of
+  // `Encounter.reaction_windows`.
+  //
+  // Every stream gets `encounter_changed`; the reactor and the master also get
+  // `reaction_window_opened` and `reaction_window_closed`.
+  //
+  // Errors:
+  //   - `not_found`: the combat is not in the open session, or the window is not
+  //     in it.
+  //   - `permission_denied`: the caller is a player and the window is not theirs
+  //     to answer: the same answer for a real and for an invented window_id (RN-10).
+  //   - `invalid_argument`: the slot, the creatures or the roll do not fit what the
+  //     window offers.
+  //   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED,
+  //     NOT_YOUR_TURN_TO_ANSWER (out of order, or already answered or closed),
+  //     NO_SLOT (with min_level), REACTION_USED, REACTION_NEEDS_ROLL,
+  //     WRONG_DICE_MODE.
+  rpc AnswerReaction(AnswerReactionRequest) returns (AnswerReactionResponse);
+
+  // ResolveConcentrationSave settles a concentration window (SRD, Duration): the
+  // owner's Constitution saving throw against the DC the window carries, rolled in
+  // the app or typed from a physical d20, or handed to the master ("Deixar o
+  // mestre rolar por mim"). The master rolls or keeps the concentration for an
+  // NPC, and for a player who does not answer. On a failure the concentration ends,
+  // and the spell with it. The action that dealt the damage goes on after it.
+  //
+  // Errors: as AnswerReaction.
+  rpc ResolveConcentrationSave(ResolveConcentrationSaveRequest) returns (ResolveConcentrationSaveResponse);
+
   // ListCombatLog returns the combat log ("Registro do combate"), latest
   // first, grouped by round. Every entry is structured: the app writes the
   // sentence. A player only gets the entries about what they see: nothing
@@ -1569,6 +1605,18 @@ enum EncounterBlockedReason {
   // MoveCombatant with `place`: the map has no free square a creature can stand
   // on, so the server found none to place the combatant on.
   ENCOUNTER_BLOCKED_REASON_NO_FREE_SQUARE = 70;
+  // MoveCombatant, RollAttack, CastSpell, TakeAction, EndTurn: a damage to a
+  // concentrating combatant waits for its Constitution save (a reaction window of
+  // kind CONCENTRATION_SAVE is open). The screen reads Encounter.reaction_wait.
+  // (REACTION_PENDING, 24, is the same wait for any other reaction window.)
+  ENCOUNTER_BLOCKED_REASON_CONCENTRATION_SAVE_PENDING = 71;
+  // AnswerReaction, ResolveConcentrationSave: the window is not the first one
+  // open for its reactor in the order (a window waits for the ones before it), or
+  // it was answered or closed already.
+  ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN_TO_ANSWER = 72;
+  // AnswerReaction: the answer needs a roll (Counterspell's check, Cutting Words'
+  // die, Deflect Missiles' die, a saving throw) and none came.
+  ENCOUNTER_BLOCKED_REASON_REACTION_NEEDS_ROLL = 73;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -1704,6 +1752,18 @@ message Encounter {
   // it never changes, so a screen can trust it for the whole combat. Never
   // UNSPECIFIED.
   EncounterMode mode = 19;
+  // The reaction windows that are open, in the order they are answered (the
+  // reactors' initiative order), as the caller may see them: the master all; a
+  // player only the ones they answer (`for_you`). Nobody gets a window they do not
+  // answer: what the others read is `reaction_wait`. Empty when nothing waits. The
+  // app opens its prompt from this after each `encounter_changed`. The window
+  // lives on the server: a reload gives it back.
+  repeated ReactionWindow reaction_windows = 22;
+  // What the combat waits for, as the caller may read it (PM-04a): unset when
+  // nothing waits. It says "Esperando o mestre" for a reactor that is an NPC or
+  // that the caller does not see, and "Esperando a reação de Sálvia" only for a
+  // player's character the caller sees; never which NPC, and never why.
+  ReactionWait reaction_wait = 23;
   // True when the turn waits for the master to answer something the caller is not
   // told (the master reads `pending_hidden_reveals`): the app says "Esperando o
   // mestre" and offers no move, attack, action, spell or end of turn. A player
@@ -2720,6 +2780,10 @@ message RollAttackRequest {
   // is `failed_precondition` (REACTION_USED). The cover is measured with the
   // mover on the square it left the reach at, not where it stands now.
   string opportunity_offer_id = 10;
+  // Deflect Missiles' throw back: the reaction window (kind DEFLECT_MISSILES, at its
+  // throw-back step) that caught the missile. It implies `as_reaction`, spends the
+  // monk's ki (1 point) and is part of the same reaction, so it opens no window.
+  string catch_window_id = 11;
 }
 
 // AttackRoll is the attack roll and what it did.
@@ -2741,6 +2805,11 @@ message AttackRoll {
   // CRITICAL_HIT ("role os dados duas vezes" or "o máximo mais uma rolagem"). Set
   // on every roll: the damage itself is PendingDamage (critical_rule).
   CriticalDamageRule critical_rule = 9;
+  // True when a reaction window holds the roll (Cutting Words): the d20 is rolled
+  // and the action spent, but the result is not told yet, so `outcome` is
+  // UNSPECIFIED. The result comes with the next `encounter_changed`, when the
+  // window is answered.
+  bool held_for_reaction = 10;
 }
 
 // RollAttackResponse returns the roll and the combat after it.
@@ -3526,6 +3595,10 @@ enum CombatLogKind {
   // (2d8 + 2: 3, 4)"). Only the master gets the line, and it also comes from
   // before the combat begins (round 0).
   COMBAT_LOG_KIND_MONSTERS_ADDED = 24;
+  // A reaction window was answered or closed (PM-04): `reaction_text_pt` is the
+  // line, written on the server for who reads it (the master's has the NPC
+  // numbers, the players' has none and never names a reactor they do not see).
+  COMBAT_LOG_KIND_REACTION_WINDOW = 25;
 }
 
 // WildShapeEndReason says why a druid's beast form ended.
@@ -3639,6 +3712,8 @@ message CombatLogEntry {
   CombatLogDoor door = 42;
   // MONSTERS_ADDED: the new monsters, in the order of their names.
   repeated CombatLogMonster monsters = 43;
+  // REACTION_WINDOW: the line, already filtered for the caller.
+  string reaction_text_pt = 44;
 }
 
 // CombatLogMonster is a monster of a MONSTERS_ADDED line, only the master's.
@@ -3926,4 +4001,458 @@ message TrapDamageDone {
   bool critical = 8;
   // APPLIED to an NPC that reached 0: defeated.
   bool target_defeated = 9;
+}
+
+// ---- The reaction window (PM-04) ----
+
+// ReactionKind is what a reaction window asks.
+enum ReactionKind {
+  REACTION_KIND_UNSPECIFIED = 0;
+  // Escudo Arcano: +5 on the armor class until the start of the caster's next
+  // turn, against an attack that hit it or a Magic Missile that targets it (SRD,
+  // Shield).
+  REACTION_KIND_SHIELD = 1;
+  // Esquiva Sobrenatural: half the damage of an attack that hit and whose
+  // attacker the rogue sees (SRD, Rogue 5).
+  REACTION_KIND_UNCANNY_DODGE = 2;
+  // Repreensão Infernal: the creature that damaged the caster, within 60 ft and
+  // seen, makes a Dexterity saving throw (SRD, Hellish Rebuke).
+  REACTION_KIND_HELLISH_REBUKE = 3;
+  // Contramágica: a creature within 60 ft that the caster sees casts a spell (SRD,
+  // Counterspell).
+  REACTION_KIND_COUNTERSPELL = 4;
+  // Palavras de Interrupção: a creature within 60 ft that the bard sees makes an
+  // attack roll, an ability check or a damage roll (SRD, College of Lore).
+  REACTION_KIND_CUTTING_WORDS = 5;
+  // Defletir Projéteis: a ranged weapon attack hit the monk (SRD, Monk 3).
+  REACTION_KIND_DEFLECT_MISSILES = 6;
+  // Queda Suave: the caster or a creature within 60 ft falls (SRD, Feather Fall).
+  REACTION_KIND_FEATHER_FALL = 7;
+  // The opportunity attack (RN-21): the same offer as Encounter.opportunity_offers,
+  // answered with RollAttack, DeclineOpportunity or SkipOpportunity. AnswerReaction
+  // may only pass it.
+  REACTION_KIND_OPPORTUNITY = 8;
+  // Reserved: the hidden creatures an area spell hits (the question joins the
+  // window when it lands).
+  REACTION_KIND_HIDDEN_REVEAL = 9;
+  // The Constitution saving throw of a concentrating combatant that took damage
+  // (SRD, Duration).
+  REACTION_KIND_CONCENTRATION_SAVE = 10;
+  // The master's one-tap check of the table rule "Reações dos inimigos: Sempre":
+  // an action of a player against an enemy waits for "Sem reação" so that the
+  // pause says nothing to the players.
+  REACTION_KIND_MASTER_CHECK = 11;
+}
+
+enum ReactionWindowStatus {
+  REACTION_WINDOW_STATUS_UNSPECIFIED = 0;
+  REACTION_WINDOW_STATUS_OPEN = 1;
+  REACTION_WINDOW_STATUS_ANSWERED = 2;
+  REACTION_WINDOW_STATUS_CLOSED_BY_ITSELF = 3;
+}
+
+// ReactionClosedReason says why a window closed by itself: the server looks at
+// the open windows again at every change of hit points, conditions or order.
+enum ReactionClosedReason {
+  REACTION_CLOSED_REASON_UNSPECIFIED = 0;
+  // The same reactor already used its reaction (one a round, SRD, Reactions).
+  REACTION_CLOSED_REASON_REACTION_SPENT = 1;
+  // The reactor is incapacitated, unconscious or dead (SRD, Incapacitated).
+  REACTION_CLOSED_REASON_REACTOR_INCAPACITATED = 2;
+  // What triggered it is gone (the spell was countered, the attacker died, the
+  // creature left the 60 ft, the concentration ended).
+  REACTION_CLOSED_REASON_TRIGGER_GONE = 3;
+}
+
+enum ReactionChoice {
+  REACTION_CHOICE_UNSPECIFIED = 0;
+  REACTION_CHOICE_USE = 1;
+  REACTION_CHOICE_PASS = 2;
+}
+
+// What the table decides with "Reações dos inimigos" is TableRules.enemy_reactions.
+
+// ReactionWait is the line "Esperando ..." the combat shows while a window is
+// open, written for the caller (PM-04a).
+message ReactionWait {
+  // "Esperando o mestre", "Esperando a reação de Sálvia" or both ("Esperando o
+  // mestre e a reação de Sálvia"); for a concentration save of a visible player,
+  // "Esperando o teste de Constituição de Sálvia".
+  string title_pt = 1;
+  // What waits, without a number and without an NPC: "O resultado do seu ataque
+  // sai quando ele responder.", "A queda no Fosso só é resolvida quando ele
+  // responder.", "A sua conjuração se resolve quando ele responder." or "O turno
+  // continua quando ele responder.".
+  string detail_pt = 2;
+}
+
+// ReactionWindow is a question to a reactor: may it react? Its fields follow
+// who asks: the master reads all of it; the reactor's player reads only what the
+// reactor sees (RN-10, RN-20: no total, no armor class, no NPC, no spell name for
+// a Counterspell); nobody else gets the window at all.
+message ReactionWindow {
+  // Stable id (a UUID): what AnswerReaction names.
+  string id = 1;
+  ReactionKind kind = 2;
+  ReactionWindowStatus status = 3;
+  ReactionClosedReason closed_reason = 4;
+  // The trigger the window belongs to: windows of one action share it (the master
+  // reads "Reações a uma magia" and "Reações a um ataque" as two queues).
+  string group_id = 5;
+  // The reactor (a combatant UUID) and its label; empty for MASTER_CHECK.
+  string reactor_id = 6;
+  string reactor_label = 7;
+  // The reactor is a player's character (the master's "Respondendo no celular").
+  bool reactor_is_player = 8;
+  // True when the caller may answer it now: the reactor's player, and the master.
+  bool for_you = 9;
+  // Only the master: this is the window to answer now (the first of the order);
+  // the others read "Depois do Mago 1".
+  bool answer_now = 10;
+  // Only the master: what happened, with the numbers that are the master's.
+  ReactionTrigger trigger = 11;
+  // The step of the window: false the first question; true the second one, after
+  // an answer that asks one more thing (Hellish Rebuke's saving throw, the
+  // monk's throw back). A second step is answered like the first.
+  bool second_step = 12;
+  // Only whoever answers: the question, by kind.
+  oneof prompt {
+    ShieldPrompt shield = 20;
+    UncannyDodgePrompt uncanny_dodge = 21;
+    HellishRebukePrompt hellish_rebuke = 22;
+    CounterspellPrompt counterspell = 23;
+    CuttingWordsPrompt cutting_words = 24;
+    DeflectMissilesPrompt deflect_missiles = 25;
+    FeatherFallPrompt feather_fall = 26;
+    ConcentrationSavePrompt concentration_save = 27;
+    MasterCheckPrompt master_check = 28;
+    HellishRebukeSavePrompt hellish_rebuke_save = 29;
+    DeflectMissilesThrowPrompt deflect_throw = 30;
+  }
+}
+
+// ReactionTrigger is what happened, for the master (RN-20: the numbers of NPCs
+// are the master's).
+message ReactionTrigger {
+  string actor_id = 1;
+  string actor_label = 2;
+  string target_id = 3;
+  string target_label = 4;
+  // The attack or the spell: its key and Portuguese name.
+  string action_key = 5;
+  string action_name_pt = 6;
+  // The distance between the reactor and the actor (or the fall), when on a map.
+  optional int32 distance_ft = 7;
+  // An attack that hit: the total and the armor class it was compared with.
+  optional int32 attack_total = 8;
+  optional int32 target_armor_class = 9;
+  // A damage that waits: the amount rolled.
+  optional int32 damage = 10;
+  // A spell (Counterspell): its key and level. Never sent to a player.
+  string spell_key = 11;
+  int32 spell_level = 12;
+  // Shield: the armor class after it, to read "17 contra 15 viraria erro".
+  optional int32 armor_class_with_shield = 13;
+  // Concentration: the spell and the damage that threatens it.
+  string concentration_spell_key = 14;
+  int32 damage_taken = 15;
+  // Cutting Words: what is rolled.
+  ReactionRollKind roll_kind = 16;
+  // The slot the master may use for an NPC reactor, and what each slot does
+  // (Counterspell: "anula sem teste" or "teste de Inteligência CD 13").
+  repeated SlotEffect slot_effects = 17;
+  // The saving throw of a Hellish Rebuke's aggressor (the master's roll) and its bonus.
+  optional int32 save_dc = 18;
+  optional int32 save_bonus = 19;
+}
+
+// SlotEffect is what a slot does to a Counterspell, read by the master.
+message SlotEffect {
+  meurpg.rules.v1.SlotChoice slot = 1;
+  // True: the spell fails with no check.
+  bool no_check = 2;
+  // The DC of the check when there is one (10 + the spell's level).
+  int32 check_dc = 3;
+  // The reactor's bonus on the check.
+  int32 check_bonus = 4;
+}
+
+enum ReactionRollKind {
+  REACTION_ROLL_KIND_UNSPECIFIED = 0;
+  REACTION_ROLL_KIND_ATTACK = 1;
+  REACTION_ROLL_KIND_TEST = 2;
+  REACTION_ROLL_KIND_DAMAGE = 3;
+}
+
+// ShieldPrompt: "Você foi atingido: usar Escudo Arcano?" (no total, no armor class).
+message ShieldPrompt {
+  // The pending damage the hit opened (the old Shield calls name it).
+  string pending_damage_id = 1;
+  // Who attacked and with what, only when the reactor sees the attacker.
+  string attacker_label = 2;
+  string attack_name_pt = 3;
+  // True for a Magic Missile that targets the reactor ("você é alvo de Mísseis
+  // Mágicos"): Shield then takes all the damage away.
+  bool magic_missile = 4;
+  repeated meurpg.rules.v1.SlotChoice slots = 5;
+  string spell_name_pt = 6;
+}
+
+message UncannyDodgePrompt {
+  string attacker_label = 1;
+  string attack_name_pt = 2;
+  // The damage the attack would do to the reactor, and what is left halved
+  // (rounded down).
+  int32 damage = 3;
+  int32 halved = 4;
+}
+
+message HellishRebukePrompt {
+  string aggressor_label = 1;
+  string attack_name_pt = 2;
+  optional int32 distance_ft = 3;
+  // The saving throw DC: the caster's (8 + proficiency + Charisma).
+  int32 save_dc = 4;
+  // The ways to pay, in the order the sheet offers them.
+  repeated HellishRebukeOption options = 5;
+}
+
+message HellishRebukeOption {
+  // The tiefling's Infernal Legacy: once per long rest, as a 2nd-level spell, no
+  // slot spent.
+  bool racial = 1;
+  // The slot (when not racial).
+  meurpg.rules.v1.SlotChoice slot = 2;
+  // The level it is cast at, and the damage dice: 2d10 plus 1d10 for each level
+  // above the 1st.
+  int32 level = 3;
+  int32 dice_count = 4;
+  // Uses left of the Infernal Legacy.
+  int32 uses_left = 5;
+}
+
+// HellishRebukeSavePrompt is the second step, for the master: the aggressor's
+// saving throw when it is an NPC.
+message HellishRebukeSavePrompt {
+  string aggressor_label = 1;
+  int32 save_dc = 2;
+  int32 save_bonus = 3;
+  bool bonus_known = 4;
+  int32 dice_count = 5;
+}
+
+message CounterspellPrompt {
+  // The caster the reactor sees, and how far: never the spell or its level.
+  string caster_label = 1;
+  optional int32 distance_ft = 2;
+  // The slots of the 3rd level or above.
+  repeated meurpg.rules.v1.SlotChoice slot_options = 3;
+}
+
+message CuttingWordsPrompt {
+  ReactionRollKind roll_kind = 1;
+  string roller_label = 2;
+  // Who the roll is against, when the reactor sees it (an attack).
+  string target_label = 3;
+  optional int32 distance_ft = 4;
+  int32 die_sides = 5;
+  int32 uses_left = 6;
+}
+
+message DeflectMissilesPrompt {
+  string attacker_label = 1;
+  string attack_name_pt = 2;
+  // The damage the attack would do to the reactor.
+  int32 damage = 3;
+  // 1d10 + flat_bonus (Dexterity modifier + monk level) is what comes off.
+  int32 die_sides = 4;
+  int32 flat_bonus = 5;
+  int32 dex_mod = 6;
+  int32 monk_level = 7;
+}
+
+// DeflectMissilesThrowPrompt: the damage fell to 0 and the monk caught the missile;
+// throw it back for 1 ki, as part of the same reaction (RollAttack with
+// catch_window_id), or keep it (AnswerReaction PASS).
+message DeflectMissilesThrowPrompt {
+  int32 ki_left = 1;
+  int32 normal_range_ft = 2;
+  int32 long_range_ft = 3;
+}
+
+message FallingCreature {
+  string combatant_id = 1;
+  string label = 2;
+  bool ally = 3;
+  optional int32 distance_ft = 4;
+}
+
+message FeatherFallPrompt {
+  // Only the creatures that fall and the reactor sees.
+  repeated FallingCreature falling = 1;
+  int32 max_targets = 2;
+  int32 fall_ft = 3;
+  repeated meurpg.rules.v1.SlotChoice slot_options = 4;
+}
+
+message ConcentrationSavePrompt {
+  string spell_key = 1;
+  string spell_name_pt = 2;
+  // The damage that threatens it, from the source the window is for.
+  int32 damage_taken = 3;
+  // 10 or half the damage, whichever is higher (SRD).
+  int32 dc = 4;
+  // What threatens it ("Bola de Fogo do Mago 1"), when the reactor sees the source.
+  string source_label = 5;
+  // The owner's Constitution saving throw bonus. Unknown for a basic sheet.
+  int32 save_bonus = 6;
+  bool bonus_known = 7;
+  // True once the player left the roll to the master.
+  bool handed_to_master = 8;
+}
+
+message MasterCheckPrompt {
+  // What the check is about, for the master's card: "Ataque de Toren contra o
+  // Goblin 2 · acertou".
+  string summary_pt = 1;
+  // True when an enemy has a reaction for it (the card then offers the reaction
+  // next to "Sem reação"); false: "Nenhum inimigo tem uma reação para isto".
+  bool enemy_can_react = 2;
+}
+
+// AnswerReactionRequest answers a window.
+message AnswerReactionRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string window_id = 3;
+  ReactionChoice answer = 4;
+  // The slot of a spell reaction: one of the prompt's (the pact slot is `pact`).
+  SpellSlot slot = 5;
+  // Hellish Rebuke paid with the Infernal Legacy.
+  bool use_racial = 6;
+  // Feather Fall: the falling creatures to save, at most the prompt's max_targets.
+  repeated string creature_ids = 7;
+  // The die the answer needs, when it needs one (Counterspell's check, Cutting
+  // Words' die, Deflect Missiles' die, the saving throw of Hellish Rebuke): exactly
+  // one of them. `typed` is the face of the physical die.
+  oneof roll {
+    bool roll_in_app = 8;
+    int32 typed = 9;
+  }
+  string idempotency_key = 10;
+}
+
+message AnswerReactionResponse {
+  Encounter encounter = 1;
+  // What the answer did, for the answerer (the master's `by_master` answer too).
+  ReactionResult result = 2;
+}
+
+// ReactionResult is what an answered window did, read by the reactor and the
+// master. Never sent to anybody else.
+message ReactionResult {
+  ReactionKind kind = 1;
+  // True when the master answered.
+  bool by_master = 2;
+  // False for PASS.
+  bool used = 3;
+  oneof result {
+    ShieldResult shield = 20;
+    UncannyDodgeResult uncanny_dodge = 21;
+    HellishRebukeResult hellish_rebuke = 22;
+    CounterspellResult counterspell = 23;
+    CuttingWordsResult cutting_words = 24;
+    DeflectMissilesResult deflect_missiles = 25;
+    FeatherFallResult feather_fall = 26;
+  }
+  // The window the answer asked one more thing of (a second step), if any.
+  string next_window_id = 30;
+}
+
+message ShieldResult {
+  // The new armor class stopped the attack (or took the Magic Missile away).
+  bool stopped = 1;
+}
+
+message UncannyDodgeResult {
+  int32 damage_before = 1;
+  int32 damage_after = 2;
+}
+
+message HellishRebukeResult {
+  // The aggressor's save: only the reactor and the master.
+  DiceRoll save = 1;
+  int32 save_dc = 2;
+  bool saved = 3;
+  int32 damage = 4;
+  int32 level = 5;
+  bool racial = 6;
+}
+
+message CounterspellResult {
+  bool countered = 1;
+  // What was cast, revealed now that it happened (SRD): to the reactor and the master.
+  string spell_key = 2;
+  string spell_name_pt = 3;
+  int32 spell_level = 4;
+  // The ability check, when the spell was above the slot.
+  DiceRoll check = 5;
+  int32 check_dc = 6;
+}
+
+message CuttingWordsResult {
+  // The die subtracted.
+  DiceRoll die = 1;
+  // False for a creature that cannot hear the bard or is immune to charm: "sem
+  // efeito", the same words as when the master chooses not to apply it.
+  bool effective = 2;
+  // What the roll became: only "acertou" / "errou" for a player (no total, no AC);
+  // the master reads the numbers in the log.
+  AttackOutcome outcome = 3;
+  ReactionRollKind roll_kind = 4;
+}
+
+message DeflectMissilesResult {
+  DiceRoll reduction = 1;
+  int32 damage_before = 2;
+  int32 damage_after = 3;
+  bool caught = 4;
+  bool throw_back_available = 5;
+}
+
+message FeatherFallResult {
+  // The creatures that take no fall damage.
+  repeated string saved_ids = 1;
+}
+
+message ResolveConcentrationSaveRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string window_id = 3;
+  oneof roll {
+    // The app rolls the d20 (with the owner's Constitution saving throw bonus).
+    bool roll_in_app = 4;
+    // The face of a physical d20, 1 to 20.
+    int32 d20_face = 5;
+    // The owner leaves the roll to the master (a player only).
+    bool hand_to_master = 6;
+    // The master keeps the concentration without a roll (an NPC's, or a player who
+    // does not answer; the master only).
+    bool keep = 7;
+  }
+  string idempotency_key = 8;
+}
+
+message ResolveConcentrationSaveResponse {
+  Encounter encounter = 1;
+  // Unset for `hand_to_master` and `keep`.
+  ConcentrationSaveResult result = 2;
+}
+
+message ConcentrationSaveResult {
+  DiceRoll save = 1;
+  int32 dc = 2;
+  bool kept = 3;
+  string spell_key = 4;
+  string spell_name_pt = 5;
 }

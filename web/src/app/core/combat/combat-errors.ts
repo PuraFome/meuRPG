@@ -126,7 +126,13 @@ export function blockedMessage(blocked: EncounterBlocked): string {
     case EncounterBlockedReason.COMBATANT_DOWN:
       return 'Quem está caído não age.';
     case EncounterBlockedReason.REACTION_PENDING:
-      return 'Esse acerto espera a reação do alvo (Escudo). Espere o jogador ou responda por ele.';
+      return 'Uma reação ainda espera resposta. Espere a resposta ou responda no lugar de quem reage.';
+    case EncounterBlockedReason.CONCENTRATION_SAVE_PENDING:
+      return 'Um teste de concentração ainda espera resposta.';
+    case EncounterBlockedReason.NOT_YOUR_TURN_TO_ANSWER:
+      return 'Essa reação não espera a sua resposta agora. A tela foi atualizada.';
+    case EncounterBlockedReason.REACTION_NEEDS_ROLL:
+      return 'Falta o dado: role no app ou digite o resultado do dado.';
     case EncounterBlockedReason.NOT_AWAITING_REACTION:
       return 'Esse acerto não espera mais uma reação. A tela foi atualizada.';
     case EncounterBlockedReason.REACTION_USED:

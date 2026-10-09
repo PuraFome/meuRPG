@@ -16,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // The combat log, "Registro do combate" (D10, MR-012; the history screen
@@ -213,6 +214,9 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 		if ev.Round == 0 && (e.Kind != eventCombatantsAdded || ev.Monsters == nil) {
 			continue
 		}
+		if ev.Reaction != nil && ev.Reaction.Hold {
+			continue // the event of a held action stands for nothing yet: its replay is the line
+		}
 		entry := &logEntry{id: e.ID, at: e.CreatedAt, ev: ev, hosts: []string{e.ID}}
 		switch e.Kind {
 		case eventCombatBegun:
@@ -345,6 +349,13 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			// (decline, skip, withdraw) belongs to it, so the answer can be undone.
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_OPPORTUNITY_OFFERED
 			byMove[ev.MoveID] = entry
+		case eventReactionAnswered, eventConcentrationSaveRolled:
+			// One line for each reaction used (PM-04c, 10); a "Deixar passar" and the
+			// master's one-tap check are no line.
+			if ev.Reaction == nil || ev.Reaction.Kind == string(reaction.MasterCheck) || (!ev.Reaction.Used && e.Kind == eventReactionAnswered) {
+				continue
+			}
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW
 		case eventReactionDeclined:
 			if host, ok := byPending[ev.Pending]; ok {
 				host.hosts = append(host.hosts, e.ID) // a decline is the entry's last action to undo
@@ -421,6 +432,9 @@ func (e *logEntry) land(kind string, ev actionEvent) {
 
 // view builds the entry the viewer gets, and false when they do not get it.
 func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]playdb.Combatant, names *keyNames, lastID string) (*playv1.CombatLogEntry, bool) {
+	if e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW {
+		return e.reactionEntry(ctx, v, byID, names)
+	}
 	actor, target := byID[e.ev.Actor], byID[e.ev.Target]
 	switch e.kind {
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED:

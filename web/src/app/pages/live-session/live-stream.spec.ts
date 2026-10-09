@@ -113,6 +113,8 @@ describe('LiveStream (ADR-0005 client rules)', () => {
       onCombatLogChanged: vi.fn(),
       onXpChanged: vi.fn(),
       onPuzzleChanged: vi.fn(),
+      onReactionWindowOpened: vi.fn(),
+      onReactionWindowClosed: vi.fn(),
       onContentChanged: vi.fn(),
       onSceneChanged: vi.fn(),
       onNotesChanged: vi.fn(),
@@ -164,6 +166,30 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     last().push({ kind: 'puzzleChanged', puzzleId: 'p-1' });
     await flush();
     expect(handlers.onPuzzleChanged).toHaveBeenCalledWith('p-1');
+  });
+
+  it('hands the page the id of a reaction window that opened, and the reason of one that closed by itself (PM-04)', async () => {
+    stream.start();
+    last().push({ kind: 'ready' });
+    last().push({ kind: 'reactionWindowOpened', encounterId: 'e1', windowId: 'w1' });
+    last().push({
+      kind: 'reactionWindowClosed',
+      encounterId: 'e1',
+      windowId: 'w1',
+      closedByItself: true,
+      text: 'Queda Suave fechou. Você já usou a sua reação.',
+    });
+    await flush();
+    expect(handlers.onReactionWindowOpened).toHaveBeenCalledWith(
+      expect.objectContaining({ encounterId: 'e1', windowId: 'w1' }),
+    );
+    expect(handlers.onReactionWindowClosed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        windowId: 'w1',
+        closedByItself: true,
+        text: 'Queda Suave fechou. Você já usou a sua reação.',
+      }),
+    );
   });
 
   it("tells the page the table's content changed (RN-23, content_changed), with nothing in it", async () => {
