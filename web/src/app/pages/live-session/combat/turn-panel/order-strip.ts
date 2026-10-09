@@ -68,7 +68,7 @@ import { FormTag } from '../combatant-tags/form-tag';
         @if (c.wildShapeBeastKey) {
           <app-form-tag [beast]="c.wildShapeBeastNamePt" />
         }
-        <app-combatant-tags [names]="tags(c)" [label]="c.label" [compact]="true" />
+        <app-combatant-tags [names]="tags(c)" [label]="c.label" [states]="c.states" [sources]="c.conditionSources" [people]="encounter().combatants" [compact]="true" />
       </li>
   </ng-template>
   `,

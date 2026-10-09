@@ -193,7 +193,7 @@ func (s *Service) rangedWeaponAttack(ctx context.Context, c *combatTx, attacker 
 // already (roll, total): the roll is kept with the hold and the windows are opened with
 // the damage they would take; the replay lands that roll. It returns the event that
 // stands for the held roll, or false when nothing waits.
-func (s *Service) holdDamage(ctx context.Context, c *combatTx, m authz.Membership, req *playv1.RollDamageRequest, cs []playdb.Combatant, p playdb.PendingDamage, attacker, target playdb.Combatant, roll dice.Result) (actionEvent, bool, error) {
+func (s *Service) holdDamage(ctx context.Context, c *combatTx, m authz.Membership, req *playv1.RollDamageRequest, cs []playdb.Combatant, p playdb.PendingDamage, attacker, target playdb.Combatant, roll dice.Result, pr *partsRoll) (actionEvent, bool, error) {
 	if c.replay != nil {
 		return actionEvent{}, false, nil
 	}
@@ -204,7 +204,7 @@ func (s *Service) holdDamage(ctx context.Context, c *combatTx, m authz.Membershi
 	}
 	faces := faces32(roll.Faces)
 	ev := actionEvent{Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Pending: p.ID, Key: p.AttackKey}
-	ev, err = s.holdAction(ctx, c, m, "damage", attacker, req, holdData{Rolled: &heldRoll{Faces: faces, Total: clamp32(roll.Total, math.MinInt32, math.MaxInt32), Physical: roll.Physical}}, specs, ev)
+	ev, err = s.holdAction(ctx, c, m, "damage", attacker, req, holdDataOf(roll, faces, pr), specs, ev)
 	if err != nil {
 		return ev, false, err
 	}
@@ -271,4 +271,14 @@ func (s *Service) hellishWindow(ctx context.Context, c *combatTx, target playdb.
 		trigger: windowTrigger{Actor: d.attacker, Target: target.ID, Key: d.key, Damage: d.hit.Amount, Distance: dist, Pending: d.pending.ID},
 	}})
 	return err
+}
+
+// holdDataOf is what a held damage keeps: the roll, and for a damage with extras every part
+// as it rolled (the replay lands those very dice and spends the slot only then).
+func holdDataOf(roll dice.Result, faces []int32, pr *partsRoll) holdData {
+	data := holdData{Rolled: &heldRoll{Faces: faces, Total: clamp32(roll.Total, math.MinInt32, math.MaxInt32), Physical: roll.Physical}}
+	if pr != nil {
+		data.Parts, data.PartRolls = pr.parts, pr.rolls
+	}
+	return data
 }

@@ -1,0 +1,91 @@
+<section class="mode" [attr.aria-labelledby]="id + '-t'">
+  <h3 class="mode__title" [id]="id + '-t'">Como rolar o d20</h3>
+
+  @if (sources().length) {
+    <ul class="sources" [attr.aria-label]="'Por que o app sugere ' + word(suggested())">
+      @for (s of sources(); track $index) {
+        <li class="source">
+          <span class="tag" [class.tag--adv]="s.effect === Mode.ADVANTAGE" [class.tag--dis]="s.effect === Mode.DISADVANTAGE">
+            <mat-icon aria-hidden="true">{{ s.effect === Mode.ADVANTAGE ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>{{ sourceWord(s) }}
+          </span>
+          <span class="source__text">{{ s.textPt }}</span>
+        </li>
+      }
+    </ul>
+  } @else if (suggestedMode() !== Mode.NORMAL) {
+    <p class="note">O app sugere {{ word(suggested()) }}.</p>
+  }
+
+  <div class="radios" role="radiogroup" [attr.aria-labelledby]="id + '-t'">
+    @for (m of modes; track m) {
+      <label class="radio" [class.radio--on]="checked(m)" [class.radio--off]="isOff(m)">
+        <input
+          type="radio"
+          class="mr-visually-hidden"
+          [name]="id"
+          [value]="m"
+          [checked]="checked(m)"
+          [disabled]="isOff(m)"
+          (change)="pick(m)"
+        />
+        <mat-icon class="radio__mark" aria-hidden="true">{{ checked(m) ? 'radio_button_checked' : 'radio_button_unchecked' }}</mat-icon>
+        <span class="radio__word">{{ word(m) }}</span>
+        @if (!mixed() && m === suggestedMode()) {
+          <span class="radio__sug">sugerido</span>
+        }
+      </label>
+    }
+  </div>
+
+  @if (answered(); as a) {
+    <p class="notice notice--ok" role="status">
+      <mat-icon aria-hidden="true">check_circle</mat-icon>
+      <span>O mestre decidiu: <b>{{ word(a.decidedMode) }}</b>.</span>
+    </p>
+  } @else if (pending()) {
+    <div class="notice notice--wait">
+      <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
+      <span role="status" aria-live="polite">Aguardando o mestre…</span>
+      <button mat-stroked-button type="button" class="notice__cancel" [disabled]="busy()" (click)="cancelAsk.emit()">
+        Cancelar pedido
+      </button>
+    </div>
+  } @else {
+    @if (needsReason()) {
+      <div class="reason">
+        <label class="reason__label" [for]="id + '-r'">Motivo</label>
+        <input
+          [id]="id + '-r'"
+          class="reason__field"
+          type="text"
+          maxlength="120"
+          autocomplete="off"
+          [value]="reason()"
+          [attr.aria-describedby]="id + '-rh'"
+          (input)="onReason($event)"
+        />
+        <span class="reason__hint" [id]="id + '-rh'">
+          {{ reasonLength() }}/120 · É ficção; não escreva dados reais de pessoas.
+        </span>
+      </div>
+    }
+    @if (status() === 'blocked') {
+      <p class="notice notice--warn">
+        <mat-icon aria-hidden="true">block</mat-icon>
+        <span>Só o mestre dá {{ word(mode()) }} aqui.</span>
+      </p>
+    } @else if (better() && approval() === 'request') {
+      <button
+        mat-stroked-button
+        type="button"
+        class="ask"
+        [disabled]="busy() || status() !== 'needs-request'"
+        disabledInteractive
+        (click)="ask.emit()"
+      >
+        <mat-icon aria-hidden="true">front_hand</mat-icon>Pedir ao mestre
+      </button>
+      <p class="note">Este modo é melhor do que o sugerido: o mestre precisa aprovar antes de você rolar.</p>
+    }
+  }
+</section>

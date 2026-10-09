@@ -67,3 +67,74 @@ describe('CastResult for a spell that reads hit points (E8-03, state 3)', () => 
     expect(render('').querySelector('.pool')).toBeNull();
   });
 });
+
+const plain = (t: string | null | undefined) => (t ?? '').replace(/\s+/g, ' ').trim();
+
+describe('CastResult for the d20 of an attack and of a save', () => {
+  const faces = (extra: Record<string, unknown>) => ({
+    diceCount: 2,
+    diceSides: 20,
+    faces: [15, 4],
+    modifier: 6,
+    total: 21,
+    countedIndex: 0,
+    ...extra,
+  });
+  const cast = create(SpellCastSchema, {
+    spellKey: 'spell:fire-bolt',
+    targets: [
+      {
+        combatantId: 'g1',
+        outcome: 2,
+        attackRoll: faces({}),
+        attackMode: 2,
+        attackSources: [{ effect: 2, textPt: 'Alvo Derrubado a 1,5 m: vantagem' }],
+      },
+      {
+        combatantId: 'g2',
+        save: {
+          outcome: 2,
+          dc: 14,
+          mode: 3,
+          autoFailed: false,
+          roll: faces({ countedIndex: 1, total: 10 }),
+        },
+      },
+      { combatantId: 'g3', save: { outcome: 1, dc: 14, autoFailed: true } },
+    ],
+  } as never);
+  const labels = new Map([
+    ['g1', { label: 'Goblin 1', state: CombatantState.UNHURT }],
+    ['g2', { label: 'Goblin 2', state: CombatantState.UNHURT }],
+    ['g3', { label: 'Goblin 3', state: CombatantState.UNHURT }],
+  ]);
+
+  function render() {
+    const fixture = TestBed.createComponent(CastResult);
+    fixture.componentRef.setInput('rows', castRows(cast, new Map(), labels));
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('shows both d20 of the attack with the counted one in words, and the source', () => {
+    const el = render();
+    const first = el.querySelectorAll('section')[0];
+    expect(plain(first.textContent)).toContain('Ataque: Vantagem');
+    expect(plain(first.textContent)).toContain('15vale');
+    expect(plain(first.textContent)).toContain('4descartado');
+    expect(plain(first.textContent)).toContain('Vantagem: Alvo Derrubado a 1,5 m: vantagem');
+    expect(plain(first.textContent)).toContain('15 + 6 = 21');
+  });
+
+  it('shows the pair of a save with disadvantage, the lower one counted', () => {
+    const el = render();
+    const second = el.querySelectorAll('section')[1];
+    expect(plain(second.textContent)).toContain('Resistência: Desvantagem');
+    expect(second.querySelector('.face--counted')!.textContent).toContain('4');
+  });
+
+  it('says "Falha automática" for a save that was not rolled', () => {
+    const el = render();
+    expect(plain(el.querySelectorAll('section')[2].textContent)).toContain('Falha automática');
+  });
+});

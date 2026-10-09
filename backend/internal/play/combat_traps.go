@@ -15,6 +15,7 @@ import (
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -79,7 +80,9 @@ type trapCaughtEvent struct {
 	Hidden  bool              `json:"hidden,omitempty"`
 	Attacks []trapAttackEvent `json:"attacks,omitempty"`
 	Saves   []saveRoll        `json:"saves,omitempty"` // one, or one for each hit of a trap that asks it of the creatures it hit
-	Damages []trapDamageEvent `json:"damages,omitempty"`
+	// SaveSources are the circumstances of the creature's saving throws (the same for each of them).
+	SaveSources []sourceRec       `json:"save_sources,omitempty"`
+	Damages     []trapDamageEvent `json:"damages,omitempty"`
 	// Conditions are the keys the trap gave; in a combat CondBefore are the
 	// combatant's conditions before, which the undo puts back (CondSet).
 	Conditions []string `json:"conditions,omitempty"`
@@ -99,6 +102,37 @@ type trapAttackEvent struct {
 	Total    int32  `json:"total"`
 	Outcome  string `json:"outcome"`
 	TargetAC int32  `json:"target_ac,omitempty"` // the master's alone
+	// The attack rolled with advantage or disadvantage: the other d20, which of the two
+	// came first (D20 is the die that counts) and the circumstances.
+	D20B    int32       `json:"d20_b,omitempty"`
+	Counted int32       `json:"counted,omitempty"`
+	Mode    string      `json:"mode,omitempty"`
+	Sources []sourceRec `json:"sources,omitempty"`
+}
+
+// sourceRec is a circumstance of a roll as an event keeps it: the kind, the side
+// it favors and the condition it comes from.
+type sourceRec struct {
+	Kind      string `json:"k"`
+	Effect    int    `json:"e"`
+	Condition string `json:"c,omitempty"`
+}
+
+func sourceRecs(sources []combat.Source) []sourceRec {
+	var out []sourceRec
+	for _, s := range sources {
+		out = append(out, sourceRec{Kind: s.Kind, Effect: int(s.Effect), Condition: s.Condition})
+	}
+	return out
+}
+
+// shownRecs writes the circumstances for the viewer who may read them.
+func shownRecs(recs []sourceRec, names func(string) string) []*playv1.AdvantageSource {
+	var sources []combat.Source
+	for _, r := range recs {
+		sources = append(sources, combat.Source{Kind: r.Kind, Effect: combat.RollMode(r.Effect), Condition: r.Condition})
+	}
+	return shownSources(sources, names)
 }
 
 // trapDamageEvent is one damage part rolled for a creature: the roll, and what it
@@ -135,11 +169,14 @@ func (s *Service) trapDice(e dice.Expr) (dice.Result, error) {
 
 // trapTargetsOf works out what the arithmetic needs of each combatant caught: its
 // armor class when the trap attacks, and its saving throw bonus when it asks one.
-func (s *Service) trapTargetsOf(ctx context.Context, tx pgx.Tx, campaignID string, effect *rulesv1.TrapEffect, caught []playdb.Combatant) ([]trapTarget, error) {
+func (s *Service) trapTargetsOf(ctx context.Context, tx pgx.Tx, campaignID string, trap maplink.Trap, effect *rulesv1.TrapEffect, caught []playdb.Combatant, states map[string][]playdb.CombatantState) ([]trapTarget, error) {
 	ability := trapSaveAbility(effect)
 	out := make([]trapTarget, len(caught))
 	for i, c := range caught {
 		out[i].id = c.ID
+		if err := s.trapModesOf(ctx, tx, campaignID, trap, c, states, ability, &out[i]); err != nil {
+			return nil, err
+		}
 		if trapNeedsAC(effect) {
 			sheet, err := s.sheetOf(ctx, tx, campaignID, c)
 			if err != nil {
@@ -178,7 +215,11 @@ func (s *Service) fireInCombat(ctx context.Context, c *combatTx, trap maplink.Tr
 		ev.PrevState, ev.PrevTriggeredAt = prev.State, prev.TriggeredAt
 	}
 	effect := prev.Spec.GetEffect()
-	targets, err := s.trapTargetsOf(ctx, c.tx, campaignID, effect, caught)
+	states, err := s.readStates(ctx, c.tx, c.enc.ID)
+	if err != nil {
+		return nil, err
+	}
+	targets, err := s.trapTargetsOf(ctx, c.tx, campaignID, trap, effect, caught, states)
 	if err != nil {
 		return nil, err
 	}
@@ -210,9 +251,13 @@ func (s *Service) fireInCombat(ctx context.Context, c *combatTx, trap maplink.Tr
 			case a.hit:
 				outcome = outcomeHit
 			}
-			cc.Attacks = append(cc.Attacks, trapAttackEvent{D20: clampInt32(a.d20), Modifier: clampInt32(a.bonus), Total: clampInt32(a.total), Outcome: outcome, TargetAC: clampInt32(a.armorClass)})
+			cc.Attacks = append(cc.Attacks, trapAttackEvent{
+				D20: clampInt32(a.d20), Modifier: clampInt32(a.bonus), Total: clampInt32(a.total), Outcome: outcome, TargetAC: clampInt32(a.armorClass),
+				D20B: clampInt32(a.other), Counted: clampInt32(a.counted), Mode: modeKey(a.mode), Sources: sourceRecs(o.target.attackSources),
+			})
 		}
 		cc.Saves = savesEventOf(o.saves)
+		cc.SaveSources = sourceRecs(o.target.saveSources)
 		if len(o.conditions) > 0 {
 			merged := slices.Clone(who.Conditions)
 			for _, k := range o.conditions {
@@ -260,7 +305,10 @@ func (s *Service) fallDepth(t maplink.Trap) int32 {
 func savesEventOf(rs []trapSaveRoll) []saveRoll {
 	var out []saveRoll
 	for _, r := range rs {
-		out = append(out, saveRoll{D20: clampInt32(r.d20), Bonus: clampInt32(r.bonus), Total: clampInt32(r.total), DC: clampInt32(r.dc), Saved: r.saved, Unknown: !r.known})
+		out = append(out, saveRoll{
+			D20: clampInt32(r.d20), Bonus: clampInt32(r.bonus), Total: clampInt32(r.total), DC: clampInt32(r.dc), Saved: r.saved, Unknown: !r.known,
+			D20B: clampInt32(r.other), Counted: clampInt32(r.counted), RollMode: modeKey(r.mode), Auto: r.auto,
+		})
 	}
 	return out
 }
@@ -555,6 +603,8 @@ type trapView struct {
 	// owns says the viewer plays the target; hidden says a player does not get it.
 	owns, hidden func(targetID string) bool
 	label        func(targetID string) string
+	// names writes a content key in Portuguese, for the sentences of the sources.
+	names func(key string) string
 	// status says where a damage is now (a master's apply moves it on); the
 	// fallback is what the event knew.
 	status func(pendingID string) (playv1.PendingDamageStatus, bool)
@@ -581,6 +631,11 @@ func firingProto(ev *trapFireEvent, id, name string, v trapView) *playv1.TrapFir
 			r := &playv1.TrapAttackRoll{Outcome: outcomeToProto[a.Outcome]}
 			if mine {
 				r.Roll = diceRoll(1, 20, []int32{a.D20}, a.Modifier, a.Total, false)
+				if a.D20B != 0 {
+					r.Roll = diceRoll(2, 20, pairOf(a.D20, a.D20B, a.Counted), a.Modifier, a.Total, false)
+					r.Roll.CountedIndex = a.Counted
+				}
+				r.Mode, r.Sources = modeToProto[modeOfKey(a.Mode)], shownRecs(a.Sources, v.names)
 			}
 			if v.master {
 				r.TargetArmorClass = a.TargetAC
@@ -593,7 +648,14 @@ func firingProto(ev *trapFireEvent, id, name string, v trapView) *playv1.TrapFir
 				r.Outcome = playv1.SaveOutcome_SAVE_OUTCOME_SAVED
 			}
 			if mine {
-				r.Roll = diceRoll(1, 20, []int32{sv.D20}, sv.Bonus, sv.Total, false)
+				if !sv.Auto {
+					r.Roll = diceRoll(1, 20, []int32{sv.D20}, sv.Bonus, sv.Total, false)
+					if sv.D20B != 0 {
+						r.Roll = diceRoll(2, 20, pairOf(sv.D20, sv.D20B, sv.Counted), sv.Bonus, sv.Total, false)
+						r.Roll.CountedIndex = sv.Counted
+					}
+				}
+				r.Mode, r.AutoFailed, r.Sources = modeToProto[modeOfKey(sv.RollMode)], sv.Auto, shownRecs(cc.SaveSources, v.names)
 			}
 			if v.master {
 				r.Dc, r.BonusKnown = sv.DC, !sv.Unknown
@@ -637,4 +699,25 @@ func (v trapView) statusOf(pendingID string) (playv1.PendingDamageStatus, bool) 
 		return 0, false
 	}
 	return v.status(pendingID)
+}
+
+// trapModesOf works out the modes of a trap's attack at a combatant and of its saving
+// throw (SRD 5.1): the combatant's conditions and states count, and so does Danger
+// Sense, but only against a trap the character knew before it fired: a hidden trap
+// is no effect it sees, and the source is not even named (RN-10).
+func (s *Service) trapModesOf(ctx context.Context, tx pgx.Tx, campaignID string, trap maplink.Trap, c playdb.Combatant, states map[string][]playdb.CombatantState, ability string, out *trapTarget) error {
+	sheet, err := s.sheetOf(ctx, tx, campaignID, c)
+	if err != nil {
+		return err
+	}
+	creature := creatureFacts(c, states, sheet.Traits)
+	attack := combat.AttackMode(combat.AttackScene{Target: creature, Ranged: true})
+	out.attackSources = attack.Sources
+	out.attackMode = combat.Resolve(attack.Sources)
+	if ability != "" {
+		sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: trap.Knows(c.CharacterID)})
+		out.saveSources, out.saveMode = sources, combat.Resolve(sources)
+		out.saveAuto = combat.AutoFailsSave(creature, ability)
+	}
+	return nil
 }

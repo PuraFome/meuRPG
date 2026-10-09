@@ -99,6 +99,7 @@ describe('CombatClient area spells', () => {
       'k',
       undefined,
       '',
+      undefined,
       [],
       { area: { origin: { col: 3, row: 2 } }, revealHidden: false },
     );
@@ -121,6 +122,7 @@ describe('CombatClient area spells', () => {
       'k',
       undefined,
       '',
+      undefined,
       [],
       { area: { direction: { dx: 1, dy: -1 } } },
     );
@@ -290,7 +292,19 @@ describe('CombatClient, the reaction windows (PM-04)', () => {
 
   it("names the window that caught the missile on the monk's throw back", async () => {
     const { client, calls } = fake();
-    await client.rollAttack('c', 'e', 'a', 'attack:bow', 't', { inApp: true }, 'k', true, '', 'w2');
+    await client.rollAttack(
+      'c',
+      'e',
+      'a',
+      'attack:bow',
+      't',
+      { inApp: true },
+      'k',
+      true,
+      '',
+      undefined,
+      'w2',
+    );
     expect(calls.attack[0]).toMatchObject({ asReaction: true, catchWindowId: 'w2' });
   });
 });

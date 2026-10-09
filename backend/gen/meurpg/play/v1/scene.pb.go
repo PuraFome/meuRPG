@@ -851,7 +851,14 @@ type SceneRoll struct {
 	// here to offer "Dar mais uma tentativa" (GrantSceneAttempt) on the roll
 	// card of a character with none left. Only the master gets it: a player's
 	// count is in their actions. Unset for an unlimited action.
-	AttemptsLeft  *int32 `protobuf:"varint,8,opt,name=attempts_left,json=attemptsLeft,proto3,oneof" json:"attempts_left,omitempty"`
+	AttemptsLeft *int32 `protobuf:"varint,8,opt,name=attempts_left,json=attemptsLeft,proto3,oneof" json:"attempts_left,omitempty"`
+	// The mode the d20 rolled with (the character's conditions: Poisoned and Frightened
+	// are disadvantage on ability checks, a rage is advantage on Strength) and the
+	// circumstances, for the master and the character's own player; `roll.faces` holds
+	// both dice and `roll.counted_index` the one that counts. NORMAL when nothing
+	// applies.
+	Mode          RollMode           `protobuf:"varint,9,opt,name=mode,proto3,enum=meurpg.play.v1.RollMode" json:"mode,omitempty"`
+	Sources       []*AdvantageSource `protobuf:"bytes,10,rep,name=sources,proto3" json:"sources,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -940,6 +947,20 @@ func (x *SceneRoll) GetAttemptsLeft() int32 {
 		return *x.AttemptsLeft
 	}
 	return 0
+}
+
+func (x *SceneRoll) GetMode() RollMode {
+	if x != nil {
+		return x.Mode
+	}
+	return RollMode_ROLL_MODE_UNSPECIFIED
+}
+
+func (x *SceneRoll) GetSources() []*AdvantageSource {
+	if x != nil {
+		return x.Sources
+	}
+	return nil
 }
 
 // OpenSceneRequest names the campaign and the point.
@@ -1235,8 +1256,12 @@ type RollSceneCheckRequest struct {
 	// A UUID the app makes for each roll. Repeating a roll with the same key
 	// returns the first roll's answer and changes nothing.
 	IdempotencyKey string `protobuf:"bytes,5,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Physical dice: the faces of the d20 pair (1 or 2 faces, 1 to 20 each, as many as
+	// the mode the server resolves needs), instead of `roll`. A wrong number is
+	// `invalid_argument`.
+	D20Faces      []int32 `protobuf:"varint,6,rep,packed,name=d20_faces,json=d20Faces,proto3" json:"d20_faces,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RollSceneCheckRequest) Reset() {
@@ -1313,6 +1338,13 @@ func (x *RollSceneCheckRequest) GetIdempotencyKey() string {
 		return x.IdempotencyKey
 	}
 	return ""
+}
+
+func (x *RollSceneCheckRequest) GetD20Faces() []int32 {
+	if x != nil {
+		return x.D20Faces
+	}
+	return nil
 }
 
 type isRollSceneCheckRequest_Roll interface {
@@ -1503,7 +1535,7 @@ var File_meurpg_play_v1_scene_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\n" +
-	"\x1ameurpg/play/v1/scene.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x19meurpg/maps/v1/maps.proto\x1a\x1bmeurpg/play/v1/combat.proto\"J\n" +
+	"\x1ameurpg/play/v1/scene.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x19meurpg/maps/v1/maps.proto\x1a\x1bmeurpg/play/v1/combat.proto\x1a!meurpg/play/v1/combat_rolls.proto\"J\n" +
 	"\fSceneBlocked\x12:\n" +
 	"\x06reason\x18\x01 \x01(\x0e2\".meurpg.play.v1.SceneBlockedReasonR\x06reason\"\x95\x03\n" +
 	"\rOpenSceneInfo\x12\x19\n" +
@@ -1556,7 +1588,7 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\x06_bonusB\n" +
 	"\n" +
 	"\b_passiveB\x10\n" +
-	"\x0e_attempts_left\"\xcd\x02\n" +
+	"\x0e_attempts_left\"\xb6\x03\n" +
 	"\tSceneRoll\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\taction_id\x18\x02 \x01(\tR\bactionId\x12!\n" +
@@ -1565,7 +1597,10 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\x04roll\x18\x05 \x01(\v2\x18.meurpg.play.v1.DiceRollR\x04roll\x12\x1b\n" +
 	"\x06passed\x18\x06 \x01(\bH\x00R\x06passed\x88\x01\x01\x127\n" +
 	"\trolled_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\brolledAt\x12(\n" +
-	"\rattempts_left\x18\b \x01(\x05H\x01R\fattemptsLeft\x88\x01\x01B\t\n" +
+	"\rattempts_left\x18\b \x01(\x05H\x01R\fattemptsLeft\x88\x01\x01\x12,\n" +
+	"\x04mode\x18\t \x01(\x0e2\x18.meurpg.play.v1.RollModeR\x04mode\x129\n" +
+	"\asources\x18\n" +
+	" \x03(\v2\x1f.meurpg.play.v1.AdvantageSourceR\asourcesB\t\n" +
 	"\a_passedB\x10\n" +
 	"\x0e_attempts_left\"N\n" +
 	"\x10OpenSceneRequest\x12\x1f\n" +
@@ -1582,14 +1617,15 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\"K\n" +
 	"\x14GetOpenSceneResponse\x123\n" +
-	"\x05scene\x18\x01 \x01(\v2\x1d.meurpg.play.v1.OpenSceneInfoR\x05scene\"\xc5\x01\n" +
+	"\x05scene\x18\x01 \x01(\v2\x1d.meurpg.play.v1.OpenSceneInfoR\x05scene\"\xe2\x01\n" +
 	"\x15RollSceneCheckRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x1b\n" +
 	"\taction_id\x18\x02 \x01(\tR\bactionId\x12 \n" +
 	"\vroll_in_app\x18\x03 \x01(\bH\x00R\trollInApp\x12\x1b\n" +
 	"\bd20_face\x18\x04 \x01(\x05H\x00R\ad20Face\x12'\n" +
-	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKeyB\x06\n" +
+	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\x12\x1b\n" +
+	"\td20_faces\x18\x06 \x03(\x05R\bd20FacesB\x06\n" +
 	"\x04roll\"G\n" +
 	"\x16RollSceneCheckResponse\x12-\n" +
 	"\x04roll\x18\x01 \x01(\v2\x19.meurpg.play.v1.SceneRollR\x04roll\"\xa4\x01\n" +
@@ -1652,6 +1688,8 @@ var file_meurpg_play_v1_scene_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil),     // 22: google.protobuf.Timestamp
 	(*v1.SceneClue)(nil),              // 23: meurpg.maps.v1.SceneClue
 	(*DiceRoll)(nil),                  // 24: meurpg.play.v1.DiceRoll
+	(RollMode)(0),                     // 25: meurpg.play.v1.RollMode
+	(*AdvantageSource)(nil),           // 26: meurpg.play.v1.AdvantageSource
 }
 var file_meurpg_play_v1_scene_proto_depIdxs = []int32{
 	0,  // 0: meurpg.play.v1.SceneBlocked.reason:type_name -> meurpg.play.v1.SceneBlockedReason
@@ -1665,15 +1703,17 @@ var file_meurpg_play_v1_scene_proto_depIdxs = []int32{
 	3,  // 8: meurpg.play.v1.SetSpeakerResponse.stage:type_name -> meurpg.play.v1.StageNpc
 	24, // 9: meurpg.play.v1.SceneRoll.roll:type_name -> meurpg.play.v1.DiceRoll
 	22, // 10: meurpg.play.v1.SceneRoll.rolled_at:type_name -> google.protobuf.Timestamp
-	2,  // 11: meurpg.play.v1.OpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	2,  // 12: meurpg.play.v1.GetOpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	11, // 13: meurpg.play.v1.RollSceneCheckResponse.roll:type_name -> meurpg.play.v1.SceneRoll
-	2,  // 14: meurpg.play.v1.GrantSceneAttemptResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	25, // 11: meurpg.play.v1.SceneRoll.mode:type_name -> meurpg.play.v1.RollMode
+	26, // 12: meurpg.play.v1.SceneRoll.sources:type_name -> meurpg.play.v1.AdvantageSource
+	2,  // 13: meurpg.play.v1.OpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	2,  // 14: meurpg.play.v1.GetOpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	11, // 15: meurpg.play.v1.RollSceneCheckResponse.roll:type_name -> meurpg.play.v1.SceneRoll
+	2,  // 16: meurpg.play.v1.GrantSceneAttemptResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_scene_proto_init() }
@@ -1682,6 +1722,7 @@ func file_meurpg_play_v1_scene_proto_init() {
 		return
 	}
 	file_meurpg_play_v1_combat_proto_init()
+	file_meurpg_play_v1_combat_rolls_proto_init()
 	file_meurpg_play_v1_scene_proto_msgTypes[9].OneofWrappers = []any{}
 	file_meurpg_play_v1_scene_proto_msgTypes[10].OneofWrappers = []any{}
 	file_meurpg_play_v1_scene_proto_msgTypes[17].OneofWrappers = []any{

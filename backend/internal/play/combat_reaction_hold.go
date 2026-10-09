@@ -42,6 +42,10 @@ type replayState struct {
 	// reactor decided with the number it would take (Uncanny Dodge, Deflect
 	// Missiles) and the replay lands that very roll.
 	rolled *heldRoll
+	// parts and partRolls are the parts of a damage with extras as they were rolled when
+	// the hold was written: the replay lands those dice, not new ones.
+	parts     []partRecord
+	partRolls []partRoll
 }
 
 // answeredRef is an answer's event, kept to be completed once the replay it released
@@ -60,7 +64,9 @@ type heldRoll struct {
 
 // holdData is what a hold keeps besides the request.
 type holdData struct {
-	Rolled *heldRoll `json:"rolled,omitempty"`
+	Rolled    *heldRoll    `json:"rolled,omitempty"`
+	Parts     []partRecord `json:"parts,omitempty"`
+	PartRolls []partRoll   `json:"part_rolls,omitempty"`
 }
 
 // The ambient write: a replay runs the action's own handler inside the
@@ -156,6 +162,7 @@ func (s *Service) releaseHold(ctx context.Context, c *combatTx, h playdb.Reactio
 	var data holdData
 	_ = json.Unmarshal(h.Data, &data)
 	st.rolled = data.Rolled
+	st.parts, st.partRolls = data.Parts, data.PartRolls
 	for _, w := range windows {
 		if w.Status != windowAnswered {
 			continue

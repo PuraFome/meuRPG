@@ -779,8 +779,10 @@ func TestMonsterTakesDoubleDamageOfATypeItIsVulnerableTo(t *testing.T) {
 	if hp, _, _ := a.hp(t, skel); hp != 1 {
 		t.Errorf("Skeleton has %d hit points after the hit, want 1 (13 minus 12)", hp)
 	}
-	if dmg.GetAmount() != 12 { // the mace's 3 on the die plus 3 from Strength, doubled
-		t.Errorf("damage that lands = %d, want 12 (6 doubled)", dmg.GetAmount())
+	// The player reads the damage as rolled (the mace's 3 on the die plus 3 from Strength): what
+	// the target is vulnerable to is the master's alone (RN-20), and the hit points above say it.
+	if dmg.GetAmount() != 6 {
+		t.Errorf("damage the player reads = %d, want 6 as rolled", dmg.GetAmount())
 	}
 }
 
@@ -800,8 +802,8 @@ func TestMonsterTakesNoDamageOfATypeItIsImmuneTo(t *testing.T) {
 		t.Fatalf("cast = %v, want one pending poison damage", res.GetCast())
 	}
 	dmg := a.mustDamage(t, a.ana, e, res.GetCast().GetPendingDamages()[0].GetId(), typedDamage(6)).GetPendingDamage()
-	if dmg.GetAmount() != 0 {
-		t.Errorf("poison damage that lands = %d, want 0", dmg.GetAmount())
+	if dmg.GetAmount() != 6 { // as rolled: that the target is immune is the master's alone (RN-20)
+		t.Errorf("poison damage the player reads = %d, want 6 as rolled", dmg.GetAmount())
 	}
 	if hp, _, _ := a.hp(t, skel); hp != 13 {
 		t.Errorf("Skeleton has %d hit points after Poison Spray, want 13", hp)

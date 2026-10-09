@@ -108,6 +108,10 @@ func (v combatViewer) owns(c playdb.Combatant) bool {
 type encounterData struct {
 	enc playdb.Encounter
 	cs  []playdb.Combatant
+	// states are the states the combatants are in (a rage, a dodge...) and requests the
+	// roll mode requests that wait or have an answer to use.
+	states   []playdb.CombatantState
+	requests []playdb.RollModeRequest
 	// holds are the attack rolls that wait for the answer about a Bardic Inspiration die.
 	holds []playdb.RollHold
 }
@@ -118,11 +122,19 @@ func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter)
 	if err != nil {
 		return nil, fmt.Errorf("list the combatants: %w", err)
 	}
+	states, err := q.ListCombatantStates(ctx, enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the states: %w", err)
+	}
+	requests, err := q.ListRollModeRequests(ctx, enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the roll mode requests: %w", err)
+	}
 	holds, err := q.ListOpenRollHolds(ctx, enc.ID) // the rolls that wait for the answer about a die
 	if err != nil {
 		return nil, fmt.Errorf("list the held rolls: %w", err)
 	}
-	return &encounterData{enc: enc, cs: cs, holds: holds}, nil
+	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds}, nil
 }
 
 // turnView is the turn as one viewer sees it (RN-20, joint turns): who acts,
@@ -256,6 +268,7 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 	// Players in the same joint turn read each other's economy: they act
 	// together and say what each still has. A player outside the group does not.
 	shared := !v.master && slices.ContainsFunc(d.cs, func(c playdb.Combatant) bool { return v.owns(c) && inTurn(e, c) })
+	byCombatant := statesOf(d.states)
 	for _, c := range d.cs {
 		if v.sees(c) {
 			var vit *playv1.CharacterVitals
@@ -272,6 +285,14 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 			p.InspirationDie = inspirationDieView(d.cs, c, e.Round, v)
 			p.InspirationOffer = inspirationOfferView(d, c, v)
 			p.TurnPartEnded = turn.flags && e.Status == statusActive && c.TurnState == turnEnded
+			p.States = statesFor(byCombatant[c.ID], d.cs, v)
+			p.ConditionSources = conditionSourcesFor(c, d.cs, v, names)
+			if v.master || v.owns(c) { // the two things that decide whether a rage ends
+				p.AttackedHostileSinceLastTurn, p.TookDamageSinceLastTurn = c.AttackedHostile, c.TookDamage
+			}
+			if c.RageEndPending {
+				out.RagePendingCombatantId = c.ID
+			}
 			out.Combatants = append(out.Combatants, p)
 		}
 	}
@@ -491,6 +512,7 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 	if out.OpportunityOffers, err = s.opportunityOffers(ctx, m, d, v); err != nil {
 		return nil, err
 	}
+	out.RollModeRequests = s.rollModeRequestsFor(ctx, m, d, v)
 	if out.ReactionWindows, out.ReactionWait, err = s.reactionView(ctx, m, d, v, names); err != nil {
 		return nil, err
 	}

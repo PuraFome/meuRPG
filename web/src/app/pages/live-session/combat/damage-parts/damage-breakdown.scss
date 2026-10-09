@@ -1,0 +1,167 @@
+:host {
+  display: block;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+
+  th,
+  td {
+    padding: 6px 8px 6px 0;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--mr-rule);
+  }
+
+  thead th {
+    font-size: 13px;
+    color: var(--mr-ink-muted);
+  }
+
+  tbody th {
+    font-weight: 700;
+  }
+}
+
+.num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.act {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.take {
+  min-height: 44px;
+}
+
+.list,
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row--off {
+  color: var(--mr-ink-muted);
+}
+
+.off,
+.re {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 13px;
+  color: var(--mr-ink-muted);
+}
+
+.off {
+  padding: 0 8px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+}
+
+.steps {
+  margin-top: 8px;
+}
+
+.step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.step--ignored .step__text {
+  text-decoration: line-through;
+}
+
+.step__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-left: auto;
+  font-weight: 700;
+  cursor: pointer;
+
+  input {
+    width: 22px;
+    height: 22px;
+    accent-color: var(--mr-accent);
+  }
+}
+
+.after {
+  margin: 6px 0 0;
+}
+
+.ask {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--mr-warning-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+}
+
+.ask__q {
+  margin: 0;
+  font-weight: 700;
+}
+
+.ask__label {
+  font-weight: 700;
+}
+
+.ask__field {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+
+  &:focus,
+  &:focus-visible {
+    outline: none;
+    border: 2px solid var(--mr-accent);
+  }
+}
+
+.ask__hint {
+  font-size: 14px;
+}
+
+.ask__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  button {
+    min-height: 44px;
+  }
+}
+
+.ask__danger {
+  color: var(--mr-danger-ink);
+}

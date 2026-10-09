@@ -806,7 +806,8 @@ func TestMR034_CoverRaisesTheArmorClassOfTheTarget(t *testing.T) {
 	// The Capitão (AC 18) behind the column: three-quarters, 23. A total of 21 hits
 	// a bare Capitão and misses this one.
 	c.aim(t, map[string][2]int32{"Pensantus": {18, 4}, "Capitão Goblin": {21, 4}})
-	hit, err = bolt("Capitão Goblin", 21-toHit)
+	// (A goblin stands next to Pensantus: the bolt has disadvantage, and the second die never counts.)
+	hit, err = c.attack(t, c.ana, c.get(t, c.ana), "Pensantus", fireBolt, "Capitão Goblin", disadvantage(21-toHit))
 	if err != nil || hit.GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_MISS || hit.GetRoll().GetCover() != playv1.CoverDegree_COVER_DEGREE_THREE_QUARTERS {
 		t.Errorf("the attack at 21 against three-quarters cover = %v, %v; want a miss", hit.GetRoll(), err)
 	}
@@ -1096,7 +1097,7 @@ func TestRN20_AHiddenCreatureOnTheLineIsNoCoverForAPlayer(t *testing.T) {
 	if tg.GetCover() != playv1.CoverDegree_COVER_DEGREE_NONE || tg.GetCoverSource() != playv1.CoverSource_COVER_SOURCE_UNSPECIFIED {
 		t.Errorf("a target behind a hidden creature = %v, want no cover for the player", tg)
 	}
-	hit, err := c.attack(t, c.ana, c.get(t, c.ana), "Pensantus", fireBolt, "Goblin 3", d20(10))
+	hit, err := c.attack(t, c.ana, c.get(t, c.ana), "Pensantus", fireBolt, "Goblin 3", disadvantage(10))
 	if err != nil {
 		t.Fatalf("RollAttack() error = %v", err)
 	}

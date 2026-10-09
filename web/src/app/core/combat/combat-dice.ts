@@ -56,6 +56,11 @@ function treatedFace(roll: DiceRoll): number | null {
   if (counted === undefined || roll.faces.length === 0) {
     return null;
   }
+  // Two dice (advantage or disadvantage): the one that counted, when it is the one that was raised.
+  const picked = roll.faces.length === 2 ? roll.faces[roll.countedIndex] : undefined;
+  if (picked !== undefined && picked < counted) {
+    return picked;
+  }
   const raised = roll.faces.filter((f) => f < counted);
   return raised.length > 0 ? Math.min(...raised) : roll.faces[0];
 }

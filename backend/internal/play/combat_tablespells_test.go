@@ -134,7 +134,7 @@ func TestMR025_ATableSpellAttackInCombat(t *testing.T) {
 	}
 
 	// +6 to hit (Intelligence +3, proficiency +3) against the Capitão's 18: a 15 hits.
-	hit := a.mustCast(t, a.ana, e, "Pensantus", tableBolt, slotOfLevel(1), a.at(t, "Capitão Goblin"), castD20(15))
+	hit := a.mustCast(t, a.ana, e, "Pensantus", tableBolt, slotOfLevel(1), a.at(t, "Capitão Goblin"), castDisadvantage(15))
 	tg := hit.GetCast().GetTargets()[0]
 	if tg.GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_HIT || tg.GetPendingDamageId() == "" {
 		t.Fatalf("the attack = %v, want a hit with damage to roll", tg)
@@ -159,11 +159,11 @@ func TestMR025_ATableSpellAttackInCombat(t *testing.T) {
 	}
 
 	// Upcast at the 2nd circle (the master casts again for him): 3d8. A 2 misses: no damage.
-	up := a.mustCast(t, a.master, e, "Pensantus", tableBolt, slotOfLevel(2), a.at(t, "Goblin"), castD20(15))
+	up := a.mustCast(t, a.master, e, "Pensantus", tableBolt, slotOfLevel(2), a.at(t, "Goblin"), castDisadvantage(15))
 	if p := up.GetCast().GetPendingDamages()[0]; p.GetDiceCount() != 3 || p.GetDiceSides() != 8 {
 		t.Errorf("at the 2nd circle: pending damage = %v, want 3d8", p)
 	}
-	miss := a.mustCast(t, a.master, e, "Pensantus", tableBolt, slotOfLevel(1), a.at(t, "Capitão Goblin"), castD20(2))
+	miss := a.mustCast(t, a.master, e, "Pensantus", tableBolt, slotOfLevel(1), a.at(t, "Capitão Goblin"), castDisadvantage(2))
 	if tg := miss.GetCast().GetTargets()[0]; tg.GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_MISS || len(miss.GetCast().GetPendingDamages()) != 0 {
 		t.Errorf("a 2 = %v, want a miss with no damage", miss.GetCast())
 	}
@@ -185,7 +185,7 @@ func TestMR025_ATableSpellAttackInCombat(t *testing.T) {
 	if o := spellOption(a.mustOptions(t, a.ana, e, "Pensantus"), tableBolt); o == nil {
 		t.Error("the retired spell is gone from the sheet that has it")
 	}
-	a.mustCast(t, a.master, e, "Pensantus", tableBolt, slotOfLevel(1), a.at(t, "Capitão Goblin"), castD20(15))
+	a.mustCast(t, a.master, e, "Pensantus", tableBolt, slotOfLevel(1), a.at(t, "Capitão Goblin"), castDisadvantage(15))
 }
 
 // TestMR025_ATableAreaSpellWithASaveAgainstThreeTargets: a cone from the caster
@@ -376,7 +376,7 @@ func TestMR025_ATableCantripGrowsByTheCharactersLevel(t *testing.T) {
 	_, err := a.cast(t, a.ana, e, "Pensantus", tableSpark, nil, a.at(t, "Capitão Goblin"), castD20(15))
 	wantCode(t, "CastSpell for an attack cantrip", err, connect.CodeInvalidArgument)
 
-	res := a.mustAttack(t, a.ana, e, "Pensantus", tableSpark, "Capitão Goblin", d20(15))
+	res := a.mustAttack(t, a.ana, e, "Pensantus", tableSpark, "Capitão Goblin", disadvantage(15))
 	if p := res.GetPendingDamage(); p == nil || p.GetDiceCount() != 2 || p.GetDiceSides() != 8 || p.GetDamageTypeKey() != "damage-type:necrotic" {
 		t.Errorf("the cantrip's damage = %v, want 2d8 necrotic for a character of level 5", p)
 	}

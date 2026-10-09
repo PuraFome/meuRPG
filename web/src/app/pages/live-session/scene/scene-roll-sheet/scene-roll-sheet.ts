@@ -8,7 +8,8 @@ import type { Observable } from 'rxjs';
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { SceneActionView, SceneRoll } from '../../../../../gen/meurpg/play/v1/scene_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
-import { newKey } from '../../../../core/combat/combat-client';
+import { ActionKey } from '../../../../core/connect/idempotency';
+import { checkFaces, hasModeInfo, needsTwoD20 } from '../../../../core/play/check-roll';
 import { SceneClient, type SceneDie } from '../../../../core/play/scene-client';
 import { sceneBlocked, sceneErrorMessage } from '../../../../core/play/scene-errors';
 import type { SceneState } from '../../../../core/play/scene-state';
@@ -23,9 +24,11 @@ import {
 import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions';
 import { joinDots } from '../../../../core/format/text';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
+import { MultiRoll, type RollField } from '../../combat/multi-roll/multi-roll';
 import { RollPicker } from '../../combat/roll-picker/roll-picker';
 import { SheetFrame } from '../../combat/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../combat/sheet-host';
+import { CheckMode } from '../check-mode/check-mode';
 
 /** What the player's block hands the roll sheet. */
 export interface SceneRollSheetData {
@@ -69,7 +72,7 @@ export function openSceneRollSheet(
  */
 @Component({
   selector: 'app-scene-roll-sheet',
-  imports: [MatButtonModule, MatIconModule, RollPicker, SheetFrame],
+  imports: [CheckMode, MatButtonModule, MatIconModule, MultiRoll, RollPicker, SheetFrame],
   templateUrl: './scene-roll-sheet.html',
   styleUrl: './scene-roll-sheet.scss',
 })
@@ -89,8 +92,19 @@ export class SceneRollSheet {
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
   protected readonly roll = signal<SceneRoll | null>(null);
+  /** The server said the roll takes two d20 (advantage or disadvantage with a real die): the form shows two fields. */
+  protected readonly pair = signal(false);
+  protected readonly pairFields: readonly RollField[] = [
+    { key: 'first', label: 'Primeiro d20', min: 1, max: 20 },
+    { key: 'second', label: 'Segundo d20', min: 1, max: 20 },
+  ];
+  protected readonly faces = computed(() => checkFaces(this.roll()?.roll));
+  protected readonly modeInfo = computed(() => {
+    const r = this.roll();
+    return !!r && hasModeInfo(r.mode, r.sources, this.faces());
+  });
 
-  private readonly key = newKey();
+  private readonly key = new ActionKey();
   private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
   private readonly frame = viewChild(SheetFrame);
 
@@ -162,12 +176,23 @@ export class SceneRollSheet {
     this.busy.set(true);
     this.error.set('');
     try {
-      const made = await this.api.roll(this.data.campaignId, this.action.id, die, this.key);
+      const made = await this.api.roll(
+        this.data.campaignId,
+        this.action.id,
+        die,
+        this.key.keyFor({ action: this.action.id, die }),
+      );
       this.roll.set(made);
       this.typing.set(false);
       // The row under the sheet turns into "Rolada" as soon as the read comes back.
       void this.data.state.refresh();
     } catch (err) {
+      if (needsTwoD20(err) && 'face' in die) {
+        // Not an error: this roll has advantage or disadvantage, and the form asks for both dice.
+        this.pair.set(true);
+        this.typing.set(true);
+        return;
+      }
       this.error.set(sceneErrorMessage(err, 'rolar a ação'));
       if (sceneBlocked(err)) {
         // The scene is not what the sheet's row shows (closed, no attempts left): read it again.

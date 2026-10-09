@@ -28,6 +28,7 @@ import {
 } from '../../../../core/combat/combat-dice';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import type { MapState } from '../../../../core/maps/map-state';
+import { hasModeInfo, needsTwoD20, searchFaces } from '../../../../core/play/check-roll';
 import { needsTwoDice, trapErrorMessage } from '../../../../core/traps/trap-errors';
 import {
   type OtherSkill,
@@ -43,6 +44,7 @@ import {
 import { type SearchDie, type SearchSkill, TrapsClient } from '../../../../core/traps/traps-client';
 import { SheetFrame } from '../../combat/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../combat/sheet-host';
+import { CheckMode } from '../../scene/check-mode/check-mode';
 
 /** What the page hands "Procurar armadilhas". */
 export interface TrapSearchData {
@@ -87,7 +89,7 @@ export function openTrapSearch(
  */
 @Component({
   selector: 'app-trap-search-sheet',
-  imports: [MatButtonModule, MatIconModule, SheetFrame],
+  imports: [CheckMode, MatButtonModule, MatIconModule, SheetFrame],
   templateUrl: './trap-search-sheet.html',
   styleUrl: './trap-search-sheet.scss',
 })
@@ -162,6 +164,15 @@ export class TrapSearchSheet {
           .map((x) => this.formula(x, r.skillLabel))
       : [];
   });
+  /** Both dice of a search with advantage or disadvantage, the one that counts marked. */
+  protected readonly faces = computed(() => {
+    const res = this.result()?.res;
+    return res ? searchFaces(res.mode, res.roll, res.secondRoll) : [];
+  });
+  protected readonly modeInfo = computed(() => {
+    const res = this.result()?.res;
+    return !!res && hasModeInfo(res.mode, res.sources, this.faces());
+  });
   protected readonly total = computed(() => {
     const r = this.result()?.res;
     return [r?.roll, r?.secondRoll]
@@ -179,7 +190,7 @@ export class TrapSearchSheet {
   );
   protected readonly hint = computed(() =>
     this.firstFace() !== null
-      ? 'Há penumbra por perto: a procura tem desvantagem. Role de novo e digite o segundo dado (1 a 20); vale o menor onde está escuro.'
+      ? 'Esta procura leva dois d20: há penumbra por perto, ou o seu personagem tem vantagem ou desvantagem. Role de novo e digite o segundo dado (1 a 20); o app diz qual vale.'
       : 'Role o seu dado e digite o número que saiu (1 a 20).',
   );
   /** What is typed in the field, and the face it makes (1 to 20) or `null`. */
@@ -339,7 +350,7 @@ export class TrapSearchSheet {
       });
       this.typing.set(false);
     } catch (err) {
-      if (needsTwoDice(err) && 'face' in die && this.firstFace() === null) {
+      if ((needsTwoDice(err) || needsTwoD20(err)) && 'face' in die && this.firstFace() === null) {
         this.firstFace.set(die.face);
         // Not an error: the step's own heading and text ask for the second die and say why.
         this.error.set('');

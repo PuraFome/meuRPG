@@ -13,6 +13,7 @@ import {
   SpellEffectGain,
   SpellEffectKind,
 } from '../../../gen/meurpg/play/v1/combat_pb';
+import type { AdvantageSource, RollMode } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 import {
   Ability,
   ActionEconomy,
@@ -24,6 +25,7 @@ import {
   SpellSaveSuccess,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { rollFormula } from './combat-dice';
+import { d20Formula } from './roll-mode';
 import { metersFixed, metersText } from '../units';
 import { joinDots, tight } from '../format/text';
 import { circleLabel } from './combat-options';
@@ -475,6 +477,16 @@ export interface CastRow {
   readonly summary: string;
   /** The damage of this target still waits to be rolled. */
   readonly owed: boolean;
+  /** The d20 of the attack and of the save, with the mode each rolled in and why: two faces are drawn for advantage and disadvantage. */
+  readonly d20s?: readonly CastD20[];
+}
+
+/** A d20 of a cast result: "Ataque" or "Resistência", the roll and the circumstances behind its mode. */
+export interface CastD20 {
+  readonly caption: string;
+  readonly roll: DiceRoll;
+  readonly mode: RollMode;
+  readonly sources: readonly AdvantageSource[];
 }
 
 /** The darts of a rolled damage, one line each: "Dardo 1: 1d4 (3) + 1 = 4". A
@@ -578,8 +590,15 @@ function castRow(
       lines.push(change);
     }
   }
+  const d20s: CastD20[] = [];
   if (t.attackRoll) {
-    lines.push(rollFormula(t.attackRoll));
+    lines.push(d20Formula(t.attackRoll));
+    d20s.push({
+      caption: 'Ataque',
+      roll: t.attackRoll,
+      mode: t.attackMode,
+      sources: t.attackSources,
+    });
   }
   if (t.outcome !== AttackOutcome.UNSPECIFIED) {
     const hit = t.outcome !== AttackOutcome.MISS;
@@ -592,8 +611,16 @@ function castRow(
     tone = saved ? 'plain' : 'good';
     if (t.save.roll) {
       lines.push(
-        `${tight(`Resistência: ${rollFormula(t.save.roll)}`)}${t.save.dc > 0 ? `, CD ${t.save.dc}` : ''}`,
+        `${tight(`Resistência: ${d20Formula(t.save.roll)}`)}${t.save.dc > 0 ? `, CD ${t.save.dc}` : ''}`,
       );
+      d20s.push({
+        caption: 'Resistência',
+        roll: t.save.roll,
+        mode: t.save.mode,
+        sources: t.save.sources,
+      });
+    } else if (t.save.autoFailed) {
+      lines.push(`Resistência: Falha automática${t.save.dc > 0 ? `, CD ${t.save.dc}` : ''}`);
     } else if (t.save.dc > 0) {
       lines.push(`CD ${t.save.dc}`);
     }
@@ -625,6 +652,7 @@ function castRow(
     lines,
     summary,
     owed,
+    ...(d20s.length ? { d20s } : {}),
   };
 }
 
