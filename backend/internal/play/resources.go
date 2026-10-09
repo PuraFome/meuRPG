@@ -78,7 +78,7 @@ func resourceError(err error) error {
 	}
 	points := func(b *playv1.ResourceBlocked) {
 		if pe, ok := errors.AsType[*link.PointsError](err); ok {
-			b.Needed, b.Available = clamp32(pe.Needed, 0, 1<<20), clamp32(pe.Available, 0, 1<<20) //nolint:mnd // a bound far above any pool
+			b.Needed, b.Available = clamp32(pe.Needed, 0, 1<<20), clamp32(pe.Available, 0, 1<<20)
 		}
 	}
 	switch {
@@ -309,6 +309,30 @@ func (s *Service) TakeRest(
 	return connect.NewResponse(&playv1.TakeRestResponse{Vitals: after}), nil
 }
 
+// hitDieRequest reads the size of the die to spend and how its face is given: rolled in the
+// app or typed from a real die.
+func hitDieRequest(req *playv1.SpendHitDiceRequest) (faces int, in rollInput, err error) {
+	faces = int(req.GetFaces())
+	if faces < 1 || faces > maxHitDie {
+		return 0, in, connect.NewError(connect.CodeInvalidArgument, errors.New("faces must be the size of one of the character's hit dice"))
+	}
+	switch roll := req.GetRoll().(type) {
+	case *playv1.SpendHitDiceRequest_RollInApp:
+		if !roll.RollInApp {
+			return 0, in, connect.NewError(connect.CodeInvalidArgument, errors.New("roll_in_app must be true"))
+		}
+		in.inApp = true
+	case *playv1.SpendHitDiceRequest_TypedFace:
+		in.typed = int(roll.TypedFace)
+		if in.typed < 1 || in.typed > faces {
+			return 0, in, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_face must be a face of the die"))
+		}
+	default:
+		return 0, in, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or typed_face"))
+	}
+	return faces, in, nil
+}
+
 // SpendHitDice implements playv1connect.ResourceServiceHandler: a player spends one
 // hit die on a short rest.
 func (s *Service) SpendHitDice(
@@ -327,24 +351,9 @@ func (s *Service) SpendHitDice(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key must be a UUID"))
 	}
-	faces := int(req.Msg.GetFaces())
-	if faces < 1 || faces > maxHitDie {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("faces must be the size of one of the character's hit dice"))
-	}
-	var in rollInput
-	switch roll := req.Msg.GetRoll().(type) {
-	case *playv1.SpendHitDiceRequest_RollInApp:
-		if !roll.RollInApp {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("roll_in_app must be true"))
-		}
-		in.inApp = true
-	case *playv1.SpendHitDiceRequest_TypedFace:
-		in.typed = int(roll.TypedFace)
-		if in.typed < 1 || in.typed > faces {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_face must be a face of the die"))
-		}
-	default:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or typed_face"))
+	faces, in, err := hitDieRequest(req.Msg)
+	if err != nil {
+		return nil, err
 	}
 	keyText, charText := key.String(), characterID.String()
 	hash := idem.Hash(req.Msg)
@@ -403,7 +412,7 @@ func (s *Service) SpendHitDice(
 			return resourceError(err)
 		}
 		after = afterVitals
-		ev = hitDieEvent{Faces: clamp32(faces, 1, maxHitDie), Face: clamp32(face, 1, maxHitDie), Modifier: clamp32(conMod, -maxHitDie, maxHitDie), Healed: clamp32(healed, 0, 1<<20), Physical: !in.inApp} //nolint:mnd // a bound far above any hit points
+		ev = hitDieEvent{Faces: clamp32(faces, 1, maxHitDie), Face: clamp32(face, 1, maxHitDie), Modifier: clamp32(conMod, -maxHitDie, maxHitDie), Healed: clamp32(healed, 0, 1<<20), Physical: !in.inApp}
 		payload, err := json.Marshal(ev)
 		if err != nil {
 			return fmt.Errorf("encode the event payload: %w", err)

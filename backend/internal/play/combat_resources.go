@@ -263,22 +263,9 @@ func (s *Service) UseLayOnHands(
 	if fr.targetID == "" {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("combatant not found"))
 	}
-	var amount int32
-	var cure string
-	switch e := req.Msg.GetEffect().(type) {
-	case *playv1.UseLayOnHandsRequest_Amount:
-		amount = e.Amount
-	case *playv1.UseLayOnHandsRequest_Cure:
-		switch e.Cure {
-		case playv1.LayOnHandsCure_LAY_ON_HANDS_CURE_DISEASE:
-			cure = cureDisease
-		case playv1.LayOnHandsCure_LAY_ON_HANDS_CURE_POISON:
-			cure = curePoison
-		default:
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("cure must be a disease or a poison"))
-		}
-	default:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set amount or cure"))
+	amount, cure, err := layOnHandsEffect(req.Msg)
+	if err != nil {
+		return nil, err
 	}
 	m, v := fr.m, viewerOf(fr.m)
 
@@ -322,41 +309,11 @@ func (s *Service) UseLayOnHands(
 		made.Target, made.Secret = target.ID, f.made.Secret || target.Hidden
 		res := &resourceEvent{Kind: resLayOnHands, Spent: spent, Cure: cure}
 		made.Res = res
-		typ, err := s.creatureTypeOf(ctx, c, target)
+		more, err := s.layOnHandsEffect(ctx, c, target, res, amount, cure)
 		if err != nil {
 			return nil, err
 		}
-		switch {
-		case rules.LayOnHandsNoEffect(typ):
-			// "This feature has no effect on undead and constructs": the action and the points
-			// are spent, and nothing is said of why.
-			res.Nothing, res.Why = true, typ
-		case cure == curePoison:
-			if !slices.Contains(target.Conditions, conditionPoisoned) {
-				res.Nothing, res.Why = true, "no_poison"
-				break
-			}
-			res.CondSet, res.CondBefore = true, slices.Clone(target.Conditions)
-			if err := c.q.SetCombatantConditions(ctx, playdb.SetCombatantConditionsParams{
-				ID: target.ID, Conditions: nonNil(slices.DeleteFunc(slices.Clone(target.Conditions), func(k string) bool { return k == conditionPoisoned })),
-			}); err != nil {
-				return nil, fmt.Errorf("neutralize the poison: %w", err)
-			}
-		case cure == cureDisease:
-			// The app tracks no disease: the master gives the effect. The line says it.
-		default:
-			hit, vit, err := s.healCombatant(ctx, c, target, amount)
-			if err != nil {
-				return nil, err
-			}
-			res.Healed, res.HPBefore, res.DeathBefore = hit.Amount, hit.Before, hit.DeathBefore
-			if hit.Before != nil && !holdsHP(target) {
-				res.DeathBefore = deathOf(target)
-			}
-			if vit != nil {
-				told = append(told, vit)
-			}
-		}
+		told = append(told, more...)
 		made.Heal = false
 		return s.finishFlow(ctx, c, &resourceFlow{made: made})
 	})
@@ -393,6 +350,67 @@ func (s *Service) UseLayOnHands(
 		resp.PoolLeft, _ = poolLeft(cur, rules.LayOnHandsKey)
 	}
 	return connect.NewResponse(resp), nil
+}
+
+// layOnHandsEffect reads what the request asks of the touch: an amount of points to heal, or
+// the cure of a disease or a poison (which costs a fixed number of points).
+func layOnHandsEffect(req *playv1.UseLayOnHandsRequest) (amount int32, cure string, err error) {
+	switch e := req.GetEffect().(type) {
+	case *playv1.UseLayOnHandsRequest_Amount:
+		return e.Amount, "", nil
+	case *playv1.UseLayOnHandsRequest_Cure:
+		switch e.Cure {
+		case playv1.LayOnHandsCure_LAY_ON_HANDS_CURE_DISEASE:
+			return 0, cureDisease, nil
+		case playv1.LayOnHandsCure_LAY_ON_HANDS_CURE_POISON:
+			return 0, curePoison, nil
+		default:
+			return 0, "", connect.NewError(connect.CodeInvalidArgument, errors.New("cure must be a disease or a poison"))
+		}
+	default:
+		return 0, "", connect.NewError(connect.CodeInvalidArgument, errors.New("set amount or cure"))
+	}
+}
+
+// layOnHandsEffect does what the touch does to the target and fills the event; it returns
+// the vitals that changed, to tell the stream after the commit.
+func (s *Service) layOnHandsEffect(ctx context.Context, c *combatTx, target playdb.Combatant, res *resourceEvent, amount int32, cure string) ([]*playv1.CharacterVitals, error) {
+	typ, err := s.creatureTypeOf(ctx, c, target)
+	if err != nil {
+		return nil, err
+	}
+	switch {
+	case rules.LayOnHandsNoEffect(typ):
+		// "This feature has no effect on undead and constructs": the action and the points
+		// are spent, and nothing is said of why.
+		res.Nothing, res.Why = true, typ
+	case cure == curePoison:
+		if !slices.Contains(target.Conditions, conditionPoisoned) {
+			res.Nothing, res.Why = true, "no_poison"
+			break
+		}
+		res.CondSet, res.CondBefore = true, slices.Clone(target.Conditions)
+		if err := c.q.SetCombatantConditions(ctx, playdb.SetCombatantConditionsParams{
+			ID: target.ID, Conditions: nonNil(slices.DeleteFunc(slices.Clone(target.Conditions), func(k string) bool { return k == conditionPoisoned })),
+		}); err != nil {
+			return nil, fmt.Errorf("neutralize the poison: %w", err)
+		}
+	case cure == cureDisease:
+		// The app tracks no disease: the master gives the effect. The line says it.
+	default:
+		hit, vit, err := s.healCombatant(ctx, c, target, amount)
+		if err != nil {
+			return nil, err
+		}
+		res.Healed, res.HPBefore, res.DeathBefore = hit.Amount, hit.Before, hit.DeathBefore
+		if hit.Before != nil && !holdsHP(target) {
+			res.DeathBefore = deathOf(target)
+		}
+		if vit != nil {
+			return []*playv1.CharacterVitals{vit}, nil
+		}
+	}
+	return nil, nil
 }
 
 // The cures of Lay on Hands, as an event keeps them, and the condition a poison is.
@@ -622,7 +640,7 @@ func (s *Service) inspirationRefusal(c *combatTx, f *resourceFlow, target playdb
 	if t.OnMap {
 		t.Distance = int(distanceOf(f.who, target))
 	}
-	if !f.v.master && !isTheatre(c.enc) && !(placed(f.who) && placed(target)) {
+	if !f.v.master && !isTheatre(c.enc) && (!placed(f.who) || !placed(target)) {
 		return "Sem posição no mapa"
 	}
 	return rules.BardicInspirationRefusal(t)
@@ -753,7 +771,7 @@ func resourceLogView(ev actionEvent, v combatViewer, actor, target playdb.Combat
 // may read it: the master and the holder's player only (the others see the bard spend
 // a use, not who holds the die). A die that has run out is no die.
 func inspirationDieView(cs []playdb.Combatant, c playdb.Combatant, round int32, v combatViewer) *playv1.InspirationDie {
-	if !holdsDie(c, round) || !(v.master || v.owns(c)) {
+	if !holdsDie(c, round) || (!v.master && !v.owns(c)) {
 		return nil
 	}
 	out := &playv1.InspirationDie{Sides: *c.InspirationSides, ExpiresAtRound: *c.InspirationExpiresRound, FromCombatantId: deref(c.InspirationFrom)}

@@ -136,7 +136,7 @@ func TestBardicInspirationDieFollowsTheBardLevel(t *testing.T) {
 
 func TestBardicInspirationLastsTenMinutes(t *testing.T) {
 	t.Parallel()
-	if BardicInspirationRounds*6 != 10*60 { //nolint:mnd // 6 seconds a round, 10 minutes of 60 seconds
+	if BardicInspirationRounds*6 != 10*60 {
 		t.Errorf("%d rounds are not 10 minutes", BardicInspirationRounds)
 	}
 	if BardicInspirationExpiry(3) != 103 {

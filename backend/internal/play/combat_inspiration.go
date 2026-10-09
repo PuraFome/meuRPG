@@ -82,7 +82,7 @@ func (s *Service) rollOrHold(ctx context.Context, c *combatTx, attacker playdb.C
 		if f.bonus != nil {
 			total += int(f.bonus.Face)
 		}
-		return f.face, dice.Result{Expr: dice.Expr{Count: 1, Sides: 20, Modifier: toHit}, Faces: []int{f.face}, Modifier: toHit, Total: total, Physical: f.physical}, f.bonus, nil, nil
+		return f.face, dice.Result{Expr: dice.Expr{Count: 1, Sides: d20Sides, Modifier: toHit}, Faces: []int{f.face}, Modifier: toHit, Total: total, Physical: f.physical}, f.bonus, nil, nil
 	}
 	if !holdsDie(attacker, c.enc.Round) {
 		face, roll, err = s.d20(in, toHit)
@@ -90,7 +90,7 @@ func (s *Service) rollOrHold(ctx context.Context, c *combatTx, attacker playdb.C
 	}
 	// The same request again: the hold it made, with the d20 it rolled.
 	if hold, err := c.q.GetRollHoldByKey(ctx, playdb.GetRollHoldByKeyParams{EncounterID: c.enc.ID, IdempotencyKey: key}); err == nil {
-		return 0, dice.Result{}, nil, s.heldOf(c, attacker, hold, toHit, in), nil
+		return 0, dice.Result{}, nil, s.heldOf(attacker, hold, toHit, in), nil
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return 0, dice.Result{}, nil, nil, fmt.Errorf("find the held roll: %w", err)
 	}
@@ -125,11 +125,14 @@ func (s *Service) rollOrHold(ctx context.Context, c *combatTx, attacker playdb.C
 	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 		return 0, dice.Result{}, nil, nil, fmt.Errorf("touch the encounter: %w", err)
 	}
-	return face, roll, nil, s.heldOf(c, attacker, hold, toHit, in), nil
+	return face, roll, nil, s.heldOf(attacker, hold, toHit, in), nil
 }
 
+// d20Sides is the d20 the held roll was made with.
+const d20Sides = 20
+
 // heldOf describes a hold for the answer to the roll: the die the attacker holds and the d20.
-func (s *Service) heldOf(c *combatTx, attacker playdb.Combatant, hold playdb.RollHold, toHit int, in rollInput) *heldRoll {
+func (s *Service) heldOf(attacker playdb.Combatant, hold playdb.RollHold, toHit int, in rollInput) *heldRoll {
 	die := &playv1.InspirationDie{Sides: *attacker.InspirationSides, ExpiresAtRound: *attacker.InspirationExpiresRound, FromCombatantId: deref(attacker.InspirationFrom)}
 	return &heldRoll{hold: hold, die: die, face: int(hold.Face), toHit: toHit, physical: !in.inApp}
 }
@@ -161,7 +164,7 @@ func heldResponse(enc *playv1.Encounter, h *heldRoll, attackerID, targetID, atta
 
 // inspirationOfferView is the held roll of a combatant, for its player and the master.
 func inspirationOfferView(d *encounterData, c playdb.Combatant, v combatViewer) *playv1.InspirationOffer {
-	if !(v.master || v.owns(c)) || !holdsDie(c, d.enc.Round) {
+	if (!v.master && !v.owns(c)) || !holdsDie(c, d.enc.Round) {
 		return nil
 	}
 	for _, h := range d.holds {

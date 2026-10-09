@@ -34,13 +34,19 @@ var metamagicOrder = []string{
 // metamagicFlatCost is the sorcery points of an option that costs the same for
 // every spell (the SRD's text of each option); Twinned Spell is not here: it costs
 // the spell's level.
-var metamagicFlatCost = map[string]int{ //nolint:mnd // the sorcery points each option's SRD text names
+// The costs the SRD names: Heightened Spell 3 points, Quickened Spell 2, the rest 1.
+const (
+	heightenedCost = 3
+	quickenedCost  = 2
+)
+
+var metamagicFlatCost = map[string]int{
 	MetamagicCareful:    1,
 	MetamagicDistant:    1,
 	MetamagicEmpowered:  1,
 	MetamagicExtended:   1,
-	MetamagicHeightened: 3,
-	MetamagicQuickened:  2,
+	MetamagicHeightened: heightenedCost,
+	MetamagicQuickened:  quickenedCost,
 	MetamagicSubtle:     1,
 }
 
@@ -52,7 +58,7 @@ var metamagicSummaryPT = map[string]string{
 	MetamagicExtended:   "Dobra a duração, até 24 horas.",
 	MetamagicHeightened: "Um alvo tem desvantagem no primeiro teste de resistência contra a magia.",
 	MetamagicQuickened:  "Uma magia de 1 ação passa a ser conjurada com uma ação bônus.",
-	MetamagicSubtle:     "Conjura sem componentes verbais nem somáticos.",
+	MetamagicSubtle:     "Conjura sem palavras nem gestos.",
 	MetamagicTwinned:    "Um segundo alvo no alcance. Custa o nível da magia: 1 para um truque.",
 }
 
@@ -137,7 +143,7 @@ func metamagicReason(key string, d *SpellDetails, slotLevel int) string {
 			return fmt.Sprintf("%s não pede teste de resistência.", name)
 		}
 	case MetamagicDistant:
-		if !(d.Range.Kind == RangeTouch || (d.Range.Kind == RangeRanged && d.Range.DistanceFt >= distantMinRangeFt)) {
+		if d.Range.Kind != RangeTouch && (d.Range.Kind != RangeRanged || d.Range.DistanceFt < distantMinRangeFt) {
 			return fmt.Sprintf("O alcance de %s não pode ser dobrado.", name)
 		}
 	case MetamagicEmpowered:

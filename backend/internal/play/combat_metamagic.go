@@ -109,7 +109,7 @@ func (s *Service) prepareMetamagic(
 			return nil, metaRefusal("the spell does not take this Metamagic option")
 		}
 		meta.cost += o.Cost
-		if err := meta.take(ch, sheet.ChaMod, v, caster, targs, cs); err != nil {
+		if err := meta.take(ch, sheet.ChaMod, v, targs, cs); err != nil {
 			return nil, err
 		}
 	}
@@ -130,14 +130,14 @@ func (s *Service) prepareMetamagic(
 	}
 	if left, _ := poolLeft(vitals, rules.SorceryPointsKey); int(left) < meta.cost {
 		return nil, resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NOT_ENOUGH_POINTS, "there are not enough sorcery points",
-			func(b *playv1.ResourceBlocked) { b.Needed, b.Available = clamp32(meta.cost, 0, 1<<20), left }) //nolint:mnd // a bound far above any pool
+			func(b *playv1.ResourceBlocked) { b.Needed, b.Available = clamp32(meta.cost, 0, 1<<20), left })
 	}
 	return meta, nil
 }
 
 // take reads the parameters of one option: Twinned Spell's second target, the creatures
 // Careful Spell protects and the target of Heightened Spell.
-func (meta *castMeta) take(ch *playv1.MetamagicChoice, chaMod int, v combatViewer, caster playdb.Combatant, targs, cs []playdb.Combatant) error {
+func (m *castMeta) take(ch *playv1.MetamagicChoice, chaMod int, v combatViewer, targs, cs []playdb.Combatant) error {
 	listed := func(id string) bool {
 		return slices.ContainsFunc(targs, func(t playdb.Combatant) bool { return t.ID == id })
 	}
@@ -160,7 +160,7 @@ func (meta *castMeta) take(ch *playv1.MetamagicChoice, chaMod int, v combatViewe
 		if second.Defeated {
 			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED, "a target is defeated")
 		}
-		meta.second = second
+		m.second = second
 	case rules.MetamagicCareful:
 		ids := ch.GetCarefulIds()
 		if len(ids) < 1 || len(ids) > rules.CarefulCreatures(chaMod) {
@@ -174,9 +174,9 @@ func (meta *castMeta) take(ch *playv1.MetamagicChoice, chaMod int, v combatViewe
 			if !listed(id) {
 				return metaRefusal("a protected creature must be one of the spell's targets")
 			}
-			meta.careful[id] = true
+			m.careful[id] = true
 		}
-		if len(meta.careful) != len(ids) {
+		if len(m.careful) != len(ids) {
 			return metaRefusal("a creature is protected twice")
 		}
 	case rules.MetamagicHeightened:
@@ -187,11 +187,11 @@ func (meta *castMeta) take(ch *playv1.MetamagicChoice, chaMod int, v combatViewe
 		if !listed(id) {
 			return metaRefusal("the creature with disadvantage must be one of the spell's targets")
 		}
-		meta.heightened = id
+		m.heightened = id
 	case rules.MetamagicQuickened:
-		meta.quickened = true
+		m.quickened = true
 	case rules.MetamagicDistant:
-		meta.distant = true
+		m.distant = true
 	}
 	return nil
 }
@@ -232,7 +232,7 @@ func (s *Service) attachMetamagic(ctx context.Context, tx pgx.Tx, campaignID str
 	for _, sp := range opts.GetSpells() {
 		for _, o := range content.MetamagicOptions(sheet.Metamagic, sp.GetSpell().GetKey(), int(sp.GetSpell().GetLevel())) {
 			sp.MetamagicOptions = append(sp.MetamagicOptions, &rulesv1.MetamagicOption{
-				Key: o.Key, NamePt: o.NamePT, Cost: clamp32(o.Cost, 0, 100), SummaryPt: o.SummaryPT, Allowed: o.Allowed, DisabledReasonPt: o.ReasonPT, //nolint:mnd // a bound far above any cost
+				Key: o.Key, NamePt: o.NamePT, Cost: clamp32(o.Cost, 0, 100), SummaryPt: o.SummaryPT, Allowed: o.Allowed, DisabledReasonPt: o.ReasonPT,
 			})
 		}
 	}

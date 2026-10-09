@@ -154,8 +154,8 @@ func TestLayOnHandsHealsTheTargetAndSpendsFromThePool(t *testing.T) {
 func TestLayOnHandsSpendsWhatWasDrawnEvenIfTheTargetWasNearlyWhole(t *testing.T) {
 	t.Parallel()
 	a := newResourceTable(t)
-	max := a.vitalsOfCharacter(t, a.pens).GetHitPointsMax()
-	a.correct(t, a.pens, func(r *playv1.AdjustCharacterVitalsRequest) { r.HitPointsCurrent = proto.Int32(max - 2) })
+	full := a.vitalsOfCharacter(t, a.pens).GetHitPointsMax()
+	a.correct(t, a.pens, func(r *playv1.AdjustCharacterVitalsRequest) { r.HitPointsCurrent = proto.Int32(full - 2) })
 	e := a.resourceFight(t)
 	res, err := a.layOnHands(t, a.master, e, "Tavo", "Nael", healAmount(8))
 	if err != nil {
@@ -167,8 +167,8 @@ func TestLayOnHandsSpendsWhatWasDrawnEvenIfTheTargetWasNearlyWhole(t *testing.T)
 	if res.Healed == nil || res.GetHealed() != 2 {
 		t.Errorf("healed = %v, want the master told 2 (the target's maximum)", res.Healed)
 	}
-	if v := a.vitalsOfCharacter(t, a.pens); v.GetHitPointsCurrent() != max {
-		t.Errorf("Nael has %d of %d hit points, want the maximum", v.GetHitPointsCurrent(), max)
+	if v := a.vitalsOfCharacter(t, a.pens); v.GetHitPointsCurrent() != full {
+		t.Errorf("Nael has %d of %d hit points, want the maximum", v.GetHitPointsCurrent(), full)
 	}
 }
 
@@ -181,7 +181,7 @@ func TestLayOnHandsTellsTheHealedAmountToTheTargetsPlayerAndTheMaster(t *testing
 	if _, err := a.layOnHands(t, a.caio, e, "Tavo", "Nael", healAmount(6)); err != nil {
 		t.Fatalf("UseLayOnHands() error = %v", err)
 	}
-	var seen = map[string]*playv1.CombatLogResource{}
+	seen := map[string]*playv1.CombatLogResource{}
 	for name, u := range map[string]*user{"master": a.master, "Ana": a.ana, "Caio": a.caio, "Bia": a.bia} {
 		for _, l := range logEntries(a.log(t, u, e)) {
 			if l.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE {
@@ -1058,15 +1058,15 @@ func TestMetamagicRefusals(t *testing.T) {
 	t.Parallel()
 	a := newResourceTable(t)
 	e := a.sorcererFight(t, nil)
-	goblin, cap := a.id(t, "Goblin"), a.id(t, "Capitão Goblin")
+	goblin, captain := a.id(t, "Goblin"), a.id(t, "Capitão Goblin")
 	for name, meta := range map[string][]*playv1.MetamagicChoice{
 		"an option the sorcerer does not know":         {choice(rules.MetamagicSubtle)},
 		"an option that is not one":                    {choice("feature:metamagic-nothing")},
-		"two options that do not join":                 {{Key: rules.MetamagicCareful, CarefulIds: []string{goblin}}, {Key: rules.MetamagicTwinned, TargetIds: []string{cap}}},
+		"two options that do not join":                 {{Key: rules.MetamagicCareful, CarefulIds: []string{goblin}}, {Key: rules.MetamagicTwinned, TargetIds: []string{captain}}},
 		"the same option twice":                        {{Key: rules.MetamagicCareful, CarefulIds: []string{goblin}}, {Key: rules.MetamagicCareful, CarefulIds: []string{goblin}}},
 		"Careful Spell with nobody":                    {choice(rules.MetamagicCareful)},
 		"Careful Spell for a creature not hit":         {{Key: rules.MetamagicCareful, CarefulIds: []string{a.id(t, "Tavo")}}},
-		"Careful Spell for more than Charisma":         {{Key: rules.MetamagicCareful, CarefulIds: []string{goblin, cap, a.id(t, "Tavo"), a.id(t, "Orla")}}},
+		"Careful Spell for more than Charisma":         {{Key: rules.MetamagicCareful, CarefulIds: []string{goblin, captain, a.id(t, "Tavo"), a.id(t, "Orla")}}},
 		"Careful Spell for a creature protected twice": {{Key: rules.MetamagicCareful, CarefulIds: []string{goblin, goblin}}},
 	} {
 		if _, err := a.castWith(t, a.ana, e, "Nael", fireballSpell, slotOfLevel(3), a.at(t, "Goblin", "Capitão Goblin"), meta...); connect.CodeOf(err) != connect.CodeInvalidArgument {
