@@ -61,7 +61,9 @@ import {
   ExtraClassValue,
   HitPointsMethod,
   RulesCatalogVm,
+  SpellLimitsVm,
   SpellOptionVm,
+  SpellPreparation,
 } from './character-editor.types';
 import { ClassBlockFields } from './class-block/class-block';
 import { GrantedSpells } from './granted-spells/granted-spells';
@@ -152,6 +154,22 @@ function titleFor(mode: CharacterEditorMode, kind: CharacterKind): string {
     return 'Editar ficha';
   }
   return kind === 'player' ? 'Criar personagem' : 'Criar NPC';
+}
+
+/** What each spell list of a section takes at most: `null` where there is no number to show. `preparedMax` is the
+ * number of prepared spells whether or not the class prepares, for the "Preparadas N de M" line. */
+function spellListLimits(
+  server: SpellLimitsVm | undefined,
+  preparation: SpellPreparation | null,
+  saved: number | undefined,
+) {
+  const preparedMax = server && server.preparedMax > 0 ? server.preparedMax : saved;
+  return {
+    cantrips: server?.cantripsKnown ? server.cantripsKnown : null,
+    known: preparation === 'known' && server?.spellsKnown ? server.spellsKnown : null,
+    prepared: preparation !== 'known' && preparedMax ? preparedMax : null,
+    preparedMax,
+  };
 }
 
 type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
@@ -672,12 +690,13 @@ export class CharacterEditor {
       // The subclass's always-prepared spells, shown in this class's section, checked and locked, never in the count.
       const byKey = new Map(s.catalog.spells.map((sp) => [sp.key, sp]));
       const always = section.alwaysPrepared.flatMap((k) => (byKey.has(k) ? [byKey.get(k)!] : []));
-      const limits = this.spellLimits().get(section.classKey);
-      // The draft's own number when the server has answered; else the saved sheet's (an edit).
-      const max =
-        limits !== undefined && limits.preparedMax > 0
-          ? limits.preparedMax
-          : this.preparedMaxByClass()[section.classKey];
+      // The draft's own numbers when the server has answered; else the saved sheet's prepared number (an edit).
+      const limits = spellListLimits(
+        this.spellLimits().get(section.classKey),
+        section.preparation,
+        this.preparedMaxByClass()[section.classKey],
+      );
+      const max = limits.preparedMax;
       const picked = prepared.filter(
         (sp) => this.selectedSpellsPrepared().has(sp.key) && !alwaysKeys.has(sp.key),
       ).length;
@@ -715,9 +734,9 @@ export class CharacterEditor {
         },
         always,
         // The most each list takes (0 or none: no limit to show).
-        cantripsLimit: limits?.cantripsKnown ? limits.cantripsKnown : null,
-        knownLimit: preparation === 'known' && limits?.spellsKnown ? limits.spellsKnown : null,
-        preparedLimit: preparation !== 'known' && max ? max : null,
+        cantripsLimit: limits.cantrips,
+        knownLimit: limits.known,
+        preparedLimit: limits.prepared,
         alwaysSourcePt: section.alwaysSourcePt,
         // On an edit the server says how many the class prepares (its own number, from the saved sheet).
         preparedCount:

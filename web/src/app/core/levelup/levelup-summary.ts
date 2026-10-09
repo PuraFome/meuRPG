@@ -136,7 +136,9 @@ function skillsChanged(before: DerivedSheet, after: DerivedSheet): ChangeRow[] {
 function attacksChanged(before: DerivedSheet, after: DerivedSheet): ChangeRow[] {
   const was = new Map<string, Attack>(before.attacks.map((a) => [a.key, a]));
   const text = (a: Attack) =>
-    [a.saveDc > 0 ? '' : formatModifier(a.attackBonus), a.damage].filter((p) => p !== '').join(' · ');
+    [a.saveDc > 0 ? '' : formatModifier(a.attackBonus), a.damage]
+      .filter((p) => p !== '')
+      .join(' · ');
   return after.attacks.flatMap((a) => {
     const b = was.get(a.key);
     const r = b ? row(`attack-${a.key}`, a.namePt, text(b), text(a), a.damageTypePt) : null;
