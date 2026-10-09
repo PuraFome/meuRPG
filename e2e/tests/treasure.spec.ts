@@ -14,7 +14,7 @@ const xpOf = async (page: Page, campaignId: string, characterId: string) =>
   (await getExperienceRPC(page, campaignId)).characters.find((c) => c.characterId === characterId)?.experiencePoints ?? 0;
 
 test(
-  'o mestre gera um tesouro de covil do nível 4; a mesma semente dá o mesmo tesouro, e "Ver descrição" abre o item com o texto do SRD em inglês',
+  'o mestre gera um tesouro de covil do nível 4; a mesma semente dá o mesmo tesouro, e "Ver descrição" abre o item com o texto do SRD em português, e "Ver em inglês" mostra o original',
   { tag: ['@MR-044', '@RN-10'] },
   async ({ browser }) => {
     test.setTimeout(300_000);
@@ -58,7 +58,7 @@ test(
       await master.getByRole('button', { name: 'Gerar outro' }).click();
       await expect(master.getByTestId('treasure-seed')).not.toHaveText(seed);
 
-      // A hoard of level 4 has magic items (the table always gives some): each has a description, with the SRD's text in English.
+      // A hoard of level 4 has magic items (the table always gives some): each has a description, with the SRD's text in Portuguese (and in English on request).
       // The same item can come twice in a hoard (two rows of "Poção de cura"), so everything is read inside the first row.
       const firstRow = master.locator('app-treasure-item-row').first();
       const name = (await firstRow.locator('.item__name').textContent())!.replace(/^\d+ × /, '').trim();
@@ -67,8 +67,12 @@ test(
       const dialog = master.getByRole('dialog', { name });
       await expect(dialog).toContainText('Valores do SRD 5.2.1 (regras de 2024)');
       await expect(dialog.getByRole('link', { name: 'Créditos' })).toBeVisible();
-      await expect(dialog.getByText('Texto do SRD 5.1, em inglês')).toBeVisible();
-      await expect(dialog.locator('.text__body[lang=en]')).toBeVisible();
+      await expect(dialog.getByText('Texto do SRD 5.1 (tradução nossa)')).toBeVisible();
+      await expect(dialog.locator('.text__body .srd[lang=en]')).toHaveCount(0);
+      await dialog.getByRole('button', { name: 'Ver em inglês' }).click();
+      await expect(dialog.getByText('Texto do SRD 5.1 (em inglês)')).toBeVisible();
+      await expect(dialog.locator('.text__body .srd[lang=en]')).toBeVisible();
+      await dialog.getByRole('button', { name: 'Ver em português' }).click();
       await expect(dialog.locator('button[data-initial-focus]')).toBeFocused();
       await master.keyboard.press('Escape');
       await expect(dialog).toHaveCount(0);

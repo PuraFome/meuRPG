@@ -157,7 +157,7 @@ As regras vêm do System Reference Document 5.1 (SRD 5.1), sob a licença Creati
 
 - O conteúdo fica embutido no binário, em `backend/internal/rules/srd51`, gerado a partir do 5e-database (MIT) num commit fixado. Nada é buscado em runtime.
 - Três tabelas vêm do SRD 5.2.1 (as regras de 2024, também CC BY 4.0): os jeitos de fazer habilidades, o orçamento de XP dos encontros e os valores dos itens mágicos. O app rotula cada uma "SRD 5.2.1 (regras de 2024)", e o NOTICE traz a atribuição delas.
-- Os nomes em português e os efeitos estruturados são nossos. As descrições do SRD ficam em inglês por enquanto.
+- Os nomes em português e os efeitos estruturados são nossos. Os textos em português das magias e dos itens mágicos são tradução nossa do inglês do SRD 5.1, que continua a um botão de distância (“Ver em inglês”).
 - Nenhum texto de livro fora do SRD entra no repositório: o que a mesa usar de outros livros ela cadastra com as próprias palavras.
 - Como o motor funciona: [Architecture → rules module](docs/architecture.md#rules-module-rules-as-data). Como atualizar o SRD: [CONTRIBUTING.md](CONTRIBUTING.md#rules-content-srd).
 

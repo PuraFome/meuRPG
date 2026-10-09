@@ -76,14 +76,22 @@
   color: var(--mr-accent-text);
 }
 
+.text__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-2);
+  margin-bottom: 4px;
+}
+
 .text__src {
-  margin: 0 0 4px;
+  margin: 0;
   font-size: 14px;
   color: var(--mr-ink-muted);
 }
 
-.text__body p {
-  margin: 0 0 var(--mr-space-2);
+.text__body {
   font-size: 16px;
   line-height: 23px;
   overflow-wrap: anywhere;

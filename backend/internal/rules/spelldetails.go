@@ -56,8 +56,11 @@ type SpellRange struct {
 // SpellComponents are the V, S and M components.
 type SpellComponents struct {
 	Verbal, Somatic, Material bool
-	// MaterialText is the SRD's English description of the material.
-	MaterialText string
+	// MaterialText is the SRD's English description of the material, and
+	// MaterialTextPT ours in Portuguese ("" when the spell has none, or its
+	// Portuguese text is missing, see SpellDetails.TextPTMissing).
+	MaterialText   string
+	MaterialTextPT string
 }
 
 // Duration kinds.
@@ -210,6 +213,18 @@ type SpellDetails struct {
 	// table's, in Portuguese, for a table spell).
 	Description []string
 	HigherLevel []string
+	// DescriptionPT and HigherLevelPT are our Portuguese translation of the SRD's
+	// paragraphs (effects/spells_pt.json), one per English paragraph. For a table
+	// spell they are the table's own text, the same as Description and HigherLevel
+	// (TextPTOnly). Both are empty while TextPTMissing.
+	DescriptionPT []string
+	HigherLevelPT []string
+	// TextPTMissing says an SRD spell has no Portuguese text yet: the English is
+	// all there is, and the app shows it with a note.
+	TextPTMissing bool
+	// TextPTOnly says the text exists only in Portuguese (a table spell): there is
+	// no English to offer.
+	TextPTOnly bool
 	// Target is whom the spell reaches (see SpellTarget).
 	Target SpellTarget
 }
@@ -364,6 +379,15 @@ func (c *content) buildSpellDetails(s *srd51.Spell, entry SpellEntry) *SpellDeta
 		DamageChoice: s.DamageChoice,
 		Description:  s.Desc,
 		HigherLevel:  s.HigherLevel,
+	}
+	switch pt, ok := c.spellTextsPT[s.Key]; {
+	case ok:
+		d.DescriptionPT, d.HigherLevelPT, d.Components.MaterialTextPT = pt.Description, pt.HigherLevel, pt.Material
+	case strings.HasSuffix(s.Key, "@mesa"):
+		d.DescriptionPT, d.HigherLevelPT, d.Components.MaterialTextPT = s.Desc, s.HigherLevel, s.Material
+		d.TextPTOnly = true
+	default:
+		d.TextPTMissing = true
 	}
 	for _, comp := range s.Components {
 		switch comp {

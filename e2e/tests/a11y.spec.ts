@@ -833,8 +833,12 @@ async function scanEditorRolls(browser: Browser, colorScheme: 'light' | 'dark', 
     await page.getByRole('tab', { name: 'Magias' }).click();
     await expectScreenPasses(page, `Magias ${where}`);
     await page.getByRole('group', { name: 'Magias conhecidas', exact: true }).getByRole('button', { name: 'Descrição de Mísseis Mágicos' }).click();
-    await expect(page.getByText('Texto do SRD 5.1 (em inglês)')).toBeVisible();
+    // Portuguese first, then the English the button flips to (the choice holds for the whole app until reload).
+    await expect(page.getByText('Texto do SRD 5.1', { exact: true })).toBeVisible();
     await expectScreenPasses(page, `Descrição da magia ${where}`);
+    await page.getByRole('button', { name: 'Ver em inglês' }).click();
+    await expect(page.getByText('Texto do SRD 5.1 (em inglês)')).toBeVisible();
+    await expectScreenPasses(page, `Descrição da magia, em inglês ${where}`);
   } finally {
     await context.close();
   }
@@ -2456,8 +2460,11 @@ async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' |
     await expectScreenPasses(p, `Magias com o "?" e os espaços ${where}`);
     await p.getByRole('button', { name: 'Detalhes de Sono' }).click();
     const details = p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true });
-    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
+    await expect(details.getByRole('button', { name: 'Ver em inglês' })).toBeVisible();
     await expectScreenPasses(p, `Detalhes de Sono na sessão ${where}`);
+    await details.getByRole('button', { name: 'Ver em inglês' }).click();
+    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
+    await expectScreenPasses(p, `Detalhes de Sono na sessão, em inglês ${where}`);
     await details.getByRole('button', { name: 'Fechar' }).last().click();
 
     await p.getByRole('button', { name: 'Conjurar Sono' }).click();
@@ -5735,8 +5742,11 @@ async function scanTreasureScreens(browser: Browser, colorScheme: 'light' | 'dar
 
     // An item's description.
     await m.locator('.item__desc').first().click();
-    await expect(m.getByText('Texto do SRD 5.1, em inglês')).toBeVisible();
+    await expect(m.getByText('Texto do SRD 5.1 (tradução nossa)')).toBeVisible();
     await expectScreenPasses(m, `Tesouro, a descrição de um item ${where}`);
+    await m.getByRole('button', { name: 'Ver em inglês' }).click();
+    await expect(m.getByText('Texto do SRD 5.1 (em inglês)')).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, a descrição de um item, em inglês ${where}`);
     await m.keyboard.press('Escape');
 
     // "Pôr no mapa", on the dungeon (rooms), then on a map without a grid.

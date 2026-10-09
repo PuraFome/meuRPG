@@ -326,6 +326,13 @@ message GetMagicItemResponse {
   repeated string variants = 16;
   // The family a variant belongs to; "" for any other item.
   string variant_of = 17;
+  // The same text in Portuguese, one paragraph per entry of `description`: our
+  // translation of the SRD 5.1 English (effects/magic_items_pt.json), markdown kept.
+  // Empty while `description_pt_missing`.
+  repeated string description_pt = 18;
+  // True for an item with no Portuguese text yet: only the English `description`
+  // exists, and the app shows it with a note.
+  bool description_pt_missing = 19;
 }
 
 message PlaceTreasureRequest {

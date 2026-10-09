@@ -48,11 +48,21 @@
 
         <section class="text" aria-labelledby="item-text-h">
           <h3 class="cap" id="item-text-h">Descrição</h3>
-          <p class="text__src">Texto do SRD 5.1, em inglês</p>
-          <div lang="en" class="text__body">
-            @for (p of i.description; track $index) {
-              <p>{{ p }}</p>
+          <div class="text__head">
+            <p class="text__src">
+              Texto do SRD 5.1
+              @if (text().lang === 'en') {
+                <span data-testid="lang-note">(em inglês)</span>
+              } @else {
+                <span>(tradução nossa)</span>
+              }
+            </p>
+            @if (text().canToggle) {
+              <app-description-lang-button />
             }
+          </div>
+          <div class="text__body">
+            <app-srd-text [paragraphs]="text().paragraphs" [lang]="text().lang" />
           </div>
         </section>
       </div>
