@@ -29,6 +29,7 @@ func newWorld(t *testing.T) *world {
 		}
 	}()
 	w.buildPeople()
+	w.buildReview()
 	w.buildCharacters()
 	w.buildGallery()
 	w.buildFogMap()
@@ -55,7 +56,11 @@ func (w *world) buildPeople() {
 	w.join(true, w.pending)
 	// A pending member may create the one character that waits for the master's approval.
 	w.pendingHero = w.pc(w.pending, "Bia, a recém-chegada", "race:human")
-	// The master sent it back with a reason: the master's and Bia's to read, nobody else's (RN-10).
+}
+
+// buildReview has the master send the pending character back with a reason: the master's and
+// Bia's to read, nobody else's (RN-10).
+func (w *world) buildReview() {
 	w.reviewReason = w.secrets.marker("review-reason", w.pending)
 	must(w.master.characters.RequestCharacterChanges(w.t.Context(), rq(&charactersv1.RequestCharacterChangesRequest{
 		CampaignId: w.campaign, CharacterId: w.pendingHero.GetId(), Reason: w.reviewReason, IdempotencyKey: newKey(),
