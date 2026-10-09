@@ -343,6 +343,30 @@ test('as telas de quem não entrou passam no axe, nos dois temas', { tag: '@a11y
   }
 });
 
+// docs/design.md#legal-pages and #footer: the two legal pages and the footer under them, signed out, in both
+// themes at desktop and phone widths. The contents list is open beside the text on a desktop and closed on a phone.
+test('os termos, a privacidade e o rodapé passam no axe nos dois temas, no desktop e no celular', { tag: ['@a11y', '@legal'] }, async ({ browser }) => {
+  for (const [scheme, width] of [['light', 1280], ['dark', 1280], ['light', 390], ['dark', 390]] as const) {
+    const context = await browser.newContext({ colorScheme: scheme, viewport: { width, height: 900 } });
+    try {
+      const page = await context.newPage();
+      for (const [screen, route] of [
+        ['Termos de uso', '/terms'],
+        ['Política de privacidade', '/privacy'],
+        ['Início', '/'],
+      ]) {
+        await open(page, route);
+        const footer = page.getByRole('navigation', { name: 'Rodapé' });
+        await expect(footer.getByRole('link')).toHaveCount(3);
+        await footer.scrollIntoViewIfNeeded();
+        await expectScreenPasses(page, `${screen} com rodapé (${scheme}, ${width}px)`);
+      }
+    } finally {
+      await context.close();
+    }
+  }
+});
+
 // docs/design.md#cor: every control that takes focus shows the same 2px
 // ring. Material's buttons remove their outline in their own styles, so
 // this checks them explicitly (axe does not check that a focus ring shows).
@@ -834,8 +858,12 @@ async function scanEditorRolls(browser: Browser, colorScheme: 'light' | 'dark', 
     await page.getByRole('tab', { name: 'Magias' }).click();
     await expectScreenPasses(page, `Magias ${where}`);
     await page.getByRole('group', { name: 'Magias conhecidas', exact: true }).getByRole('button', { name: 'Descrição de Mísseis Mágicos' }).click();
-    await expect(page.getByText('Texto do SRD 5.1 (em inglês)')).toBeVisible();
+    // Portuguese first, then the English the button flips to (the choice holds for the whole app until reload).
+    await expect(page.getByText('Texto do SRD 5.1', { exact: true })).toBeVisible();
     await expectScreenPasses(page, `Descrição da magia ${where}`);
+    await page.getByRole('button', { name: 'Ver em inglês' }).click();
+    await expect(page.getByText('Texto do SRD 5.1 (em inglês)')).toBeVisible();
+    await expectScreenPasses(page, `Descrição da magia, em inglês ${where}`);
   } finally {
     await context.close();
   }
@@ -2457,8 +2485,11 @@ async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' |
     await expectScreenPasses(p, `Magias com o "?" e os espaços ${where}`);
     await p.getByRole('button', { name: 'Detalhes de Sono' }).click();
     const details = p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true });
-    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
+    await expect(details.getByRole('button', { name: 'Ver em inglês' })).toBeVisible();
     await expectScreenPasses(p, `Detalhes de Sono na sessão ${where}`);
+    await details.getByRole('button', { name: 'Ver em inglês' }).click();
+    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
+    await expectScreenPasses(p, `Detalhes de Sono na sessão, em inglês ${where}`);
     await details.getByRole('button', { name: 'Fechar' }).last().click();
 
     await p.getByRole('button', { name: 'Conjurar Sono' }).click();
@@ -5736,8 +5767,11 @@ async function scanTreasureScreens(browser: Browser, colorScheme: 'light' | 'dar
 
     // An item's description.
     await m.locator('.item__desc').first().click();
-    await expect(m.getByText('Texto do SRD 5.1, em inglês')).toBeVisible();
+    await expect(m.getByText('Texto do SRD 5.1 (tradução nossa)')).toBeVisible();
     await expectScreenPasses(m, `Tesouro, a descrição de um item ${where}`);
+    await m.getByRole('button', { name: 'Ver em inglês' }).click();
+    await expect(m.getByText('Texto do SRD 5.1 (em inglês)')).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, a descrição de um item, em inglês ${where}`);
     await m.keyboard.press('Escape');
 
     // "Pôr no mapa", on the dungeon (rooms), then on a map without a grid.

@@ -200,6 +200,8 @@ export class MapEditor {
   protected readonly message = signal('');
   protected readonly justCreated = signal(false);
   protected readonly everyone = signal<readonly RosterEntry[]>([]);
+  /** The roster came back: before that (or if it failed), "nobody plays yet" would be a guess. */
+  protected readonly rosterLoaded = signal(false);
   protected readonly lightReach = signal<LightReach | null>(null);
   protected readonly lightNames = signal<ReadonlyMap<string, string>>(new Map());
 
@@ -317,7 +319,10 @@ export class MapEditor {
   constructor() {
     afterNextRender(() => {
       this.roster.list(this.campaignId()).then(
-        (list) => this.everyone.set(list),
+        (list) => {
+          this.everyone.set(list);
+          this.rosterLoaded.set(true);
+        },
         () => undefined,
       );
       this.lightPresets.list(this.campaignId()).then(

@@ -137,7 +137,7 @@ func spellDetailsToProto(d *rules.SpellDetails) *rulesv1.SpellDetails {
 		Range: &rulesv1.SpellRange{Kind: rangeKindToProto[d.Range.Kind], DistanceFt: i32(d.Range.DistanceFt), Raw: d.Range.Raw},
 		Components: &rulesv1.SpellComponents{
 			Verbal: d.Components.Verbal, Somatic: d.Components.Somatic, Material: d.Components.Material,
-			MaterialText: d.Components.MaterialText,
+			MaterialText: d.Components.MaterialText, MaterialTextPt: d.Components.MaterialTextPT,
 		},
 		Duration: &rulesv1.SpellDuration{
 			Kind: durationKindToProto[d.Duration.Kind], Amount: i32(d.Duration.Amount), Unit: durationUnitToProto[d.Duration.Unit],
@@ -147,6 +147,10 @@ func spellDetailsToProto(d *rules.SpellDetails) *rulesv1.SpellDetails {
 		HealBySlotLevel: levelsToProto(d.HealBySlotLevel),
 		Description:     d.Description,
 		HigherLevel:     d.HigherLevel,
+		DescriptionPt:   d.DescriptionPT,
+		HigherLevelPt:   d.HigherLevelPT,
+		TextPtMissing:   d.TextPTMissing,
+		TextPtOnly:      d.TextPTOnly,
 		Target:          spellTargetToProto(d.Target),
 		DamageChoice:    damageChoiceToProto[d.DamageChoice],
 	}

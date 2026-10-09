@@ -41,8 +41,10 @@ export interface SpellDetailsVm {
     readonly verbal: boolean;
     readonly somatic: boolean;
     readonly material: boolean;
-    /** In English. */
+    /** In English (a table spell's own is in Portuguese). */
     readonly materialText: string;
+    /** Our Portuguese translation of `materialText`; empty or unset while the spell has none. */
+    readonly materialTextPt?: string;
   };
   readonly duration: {
     readonly kind: DurationKindKey;
@@ -56,6 +58,14 @@ export interface SpellDetailsVm {
   readonly description: readonly string[];
   /** "At Higher Levels", in English. Empty when the spell has none. */
   readonly higherLevel: readonly string[];
+  /** Our Portuguese translation of `description`, one paragraph each; empty while `textPtMissing`. */
+  readonly descriptionPt?: readonly string[];
+  /** Our Portuguese translation of `higherLevel`; empty while `textPtMissing`. */
+  readonly higherLevelPt?: readonly string[];
+  /** An SRD spell with no Portuguese text yet: only the English exists. */
+  readonly textPtMissing?: boolean;
+  /** The text exists only in Portuguese (a table spell): no English to offer. */
+  readonly textPtOnly?: boolean;
   /** A spell of the table's own ("Da mesa"): the master wrote its texts, in Portuguese. */
   readonly table?: boolean;
   /** "Uma criatura", "Cone de 4,5 m"... (`target.label_pt`); empty or unset for none. */

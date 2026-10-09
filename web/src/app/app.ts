@@ -18,6 +18,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 
+import { AppFooter } from './shell/app-footer/app-footer';
 import { LivePill } from './shared/live-pill/live-pill';
 import { LiveNotice } from './shell/live-notice/live-notice';
 import { SessionNotes } from './shell/session-notes/session-notes';
@@ -52,6 +53,7 @@ import { UserMenu } from './shell/user-menu/user-menu';
     RouterLink,
     RouterLinkActive,
     MatIconModule,
+    AppFooter,
     LivePill,
     LiveNotice,
     UserMenu,

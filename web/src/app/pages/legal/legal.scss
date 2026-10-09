@@ -1,0 +1,161 @@
+// The reading layout of the legal pages (docs/design.md#legal-pages): a title, the date and the
+// "no legal review" line, a summary box, then the contents beside a ~65 character column of text.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-6);
+  max-width: 1028px;
+  padding-top: var(--mr-space-4);
+}
+
+.legal__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.legal__title {
+  margin: 0;
+  font-size: clamp(34px, calc(25px + 2.5vw), 38px);
+  line-height: 1.05;
+}
+
+.legal__updated,
+.legal__review {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.legal__summary {
+  box-sizing: border-box;
+  padding: var(--mr-space-5) var(--mr-space-6);
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+
+  h2 {
+    margin: 0 0 10px;
+    font-family: var(--mr-font-display);
+    font-weight: 700;
+    font-size: 21px;
+    line-height: 26px;
+  }
+
+  ul {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding-left: var(--mr-space-5);
+    font-size: 16px;
+    line-height: 24px;
+  }
+}
+
+.legal__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--mr-space-6) var(--mr-space-8);
+}
+
+.legal__article {
+  flex: 999 1 560px;
+  min-width: 0;
+  max-width: 760px;
+  box-sizing: border-box;
+  padding: clamp(20px, 4vw, 48px);
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  font-size: 16px;
+  line-height: 26px;
+  overflow-wrap: break-word;
+
+  section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mr-space-3);
+  }
+
+  h2 {
+    margin: 0;
+    font-family: var(--mr-font-display);
+    font-weight: 700;
+    font-size: 21px;
+    line-height: 26px;
+    // The sticky app bar is 64px tall.
+    scroll-margin-top: 80px;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  ul {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding-left: var(--mr-space-5);
+  }
+
+  // A list of items that each start with a bold name: rows with a rule between them.
+  ul.legal-rows {
+    gap: 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+      padding: var(--mr-space-3) 0;
+      border-top: 1px solid var(--mr-rule);
+    }
+  }
+
+  a {
+    color: var(--mr-accent-text);
+  }
+
+  code {
+    font-size: 14px;
+    overflow-wrap: anywhere;
+  }
+}
+
+.legal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  line-height: 22px;
+
+  th,
+  td {
+    padding: 10px 0;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--mr-rule);
+  }
+
+  th[scope='row'] {
+    padding-right: var(--mr-space-3);
+    font-weight: 700;
+  }
+
+  thead th {
+    padding: var(--mr-space-2) 0;
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 500;
+    color: var(--mr-ink-muted);
+    border-bottom-color: var(--mr-line);
+  }
+
+  thead th:first-child {
+    padding-right: var(--mr-space-3);
+  }
+}

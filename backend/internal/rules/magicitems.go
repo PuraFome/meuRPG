@@ -71,7 +71,13 @@ type MagicItem struct {
 	MagicItemEntry
 	// Desc is the SRD's text in English, one paragraph per line.
 	Desc []string
+	// DescPT is our Portuguese translation (effects/magic_items_pt.json), one
+	// paragraph per English one; empty while the item has none (DescPTMissing).
+	DescPT []string
 }
+
+// DescPTMissing says the item has no Portuguese text yet: the English is all there is.
+func (m MagicItem) DescPTMissing() bool { return len(m.DescPT) == 0 }
 
 func (c *content) checkMagicItems() error {
 	if len(c.magicItems) != magicItemsTotal {
@@ -259,7 +265,7 @@ func (c *Content) MagicItem(key string) (MagicItem, bool) {
 	if !ok {
 		return MagicItem{}, false
 	}
-	return MagicItem{MagicItemEntry: c.c.magicItemEntry(m), Desc: slices.Clone(m.Desc)}, true
+	return MagicItem{MagicItemEntry: c.c.magicItemEntry(m), Desc: slices.Clone(m.Desc), DescPT: slices.Clone(c.c.itemTextsPT[key])}, true
 }
 
 // MagicItemUnits returns the units a treasure rolls at a rarity, sorted by the

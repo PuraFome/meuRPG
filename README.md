@@ -158,7 +158,7 @@ The rules come from the System Reference Document 5.1 (SRD 5.1), under the Creat
 
 - The content is embedded in the binary, in `backend/internal/rules/srd51`, generated from the 5e-database (MIT) at a pinned commit. Nothing is fetched at runtime.
 - Three tables come from the SRD 5.2.1 (the 2024 rules, also CC BY 4.0): the ability score methods, the encounter XP budget and the magic item values. The app labels each one "SRD 5.2.1 (regras de 2024)", and the NOTICE carries their attribution.
-- The Portuguese names and the structured effects are ours. SRD descriptions stay in English for now.
+- The Portuguese names and the structured effects are ours. The Portuguese texts of the spells and magic items are our own translation of the SRD 5.1 English, which stays one button away ("Ver em inglês").
 - No text from books outside the SRD enters the repository: what a table uses from other books, it registers in its own words.
 - How the engine works: [Architecture → rules module](docs/architecture.md#rules-module-rules-as-data). How to update the SRD: [CONTRIBUTING.md](CONTRIBUTING.md#rules-content-srd).
 

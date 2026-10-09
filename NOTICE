@@ -19,7 +19,12 @@ page.
 This work includes material taken from the System Reference Document 5.1 ("SRD 5.1") by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.
 
 Changes: the SRD 5.1 material was converted to structured JSON, and we added
-Portuguese names and structured rule effects written by us.
+Portuguese names and structured rule effects written by us. The Portuguese
+texts of the spells (description, "At Higher Levels" and material component)
+and of the magic items are our own translation of the SRD 5.1 English text,
+an adaptation of it (units converted to metric, as the app shows them); they
+were written from the SRD 5.1 alone, not from any published Portuguese
+edition. The original English text is kept next to them.
 
 
 System Reference Document 5.2.1

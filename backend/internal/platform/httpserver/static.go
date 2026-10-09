@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"fmt"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -13,6 +14,19 @@ import (
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/slowclient"
 )
+
+// init teaches the standard library the types of two files the app copies as they are. Go's
+// built-in table has neither, and without a system mime.types (the production image has none)
+// http.ServeFile would sniff the manifest as text/plain, which browsers refuse as a manifest.
+func init() {
+	for ext, typ := range map[string]string{
+		".webmanifest": "application/manifest+json",
+		".ico":         "image/x-icon",
+	} {
+		// An error only means the extension or type is malformed: these are constants.
+		_ = mime.AddExtensionType(ext, typ)
+	}
+}
 
 // staticWriteTimeout is how long a client has to take one of the app's files,
 // which are a few megabytes at most; a client that stops reading is dropped.

@@ -1127,7 +1127,7 @@ test('as magias vêm na ordem do servidor, cada uma com o "?", e o Escudo na sua
     const details = p.getByRole('dialog', { name: 'Descrição de Sono' });
     await expect(details.getByRole('heading', { name: 'Sono' })).toBeVisible();
     await expect(details.getByText('Tempo de conjuração')).toBeVisible();
-    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
+    await expect(details.getByText('Esta magia coloca criaturas em um sono mágico.')).toBeVisible();
     await expect(details.getByRole('button', { name: 'Fechar' }).last()).toBeInViewport({ ratio: 1 });
     await details.getByRole('button', { name: 'Fechar' }).last().click();
     await expect(details).toHaveCount(0);
@@ -1172,7 +1172,7 @@ test('Sono em dois goblins e no Capitão: o mestre vê o total e os PV, o jogado
     // The "?" in the header opens the description over the sheet; "Fechar" comes back to the choices.
     await sheet.getByRole('button', { name: 'Detalhes de Sono' }).click();
     const details = p.getByRole('dialog', { name: 'Descrição de Sono' });
-    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
+    await expect(details.getByText('Esta magia coloca criaturas em um sono mágico.')).toBeVisible();
     await details.getByRole('button', { name: 'Fechar' }).last().click();
     await expect(details).toHaveCount(0);
     await expect(sheet.locator('app-area-list li')).toHaveCount(3);
