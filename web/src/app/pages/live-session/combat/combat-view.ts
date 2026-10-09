@@ -142,6 +142,8 @@ import { InitiativeSide } from './initiative-side/initiative-side';
 import { type JumpRequest, MovePage } from './move-page/move-page';
 import { OpportunityCard, type MasterAnswer } from './opportunity/opportunity-card';
 import { HiddenRevealCard, type RevealAnswer } from './hidden-reveal/hidden-reveal-card';
+import { MasterAreaCast, type MasterAreaCastData } from './area-cast/master-area-cast';
+import { defaultSlot, slotRows } from '../../../core/combat/cast-flow';
 import { heldWait, questions, revealBarText, revealWhy } from '../../../core/combat/hidden-reveal';
 import {
   OpportunitySheet,
@@ -1664,6 +1666,62 @@ export class CombatView {
       layers: this.layers(),
       fog: this.fogVision(),
     };
+  }
+
+  /** A spell of the options with its targets, its level and its Portuguese name; `null` when the options lack it. */
+  private areaSpell(key: string) {
+    const opts = this.options();
+    const spell = opts?.options?.spells.find((s) => s.spell?.key === key);
+    const targets = opts?.spellTargets.find((t) => t.spellKey === key);
+    if (!spell?.spell || !targets) {
+      return null;
+    }
+    return {
+      spell,
+      targets,
+      level: spell.spell.level,
+      name: spell.spell.namePt || spell.spell.name,
+    };
+  }
+
+  /** "Conjurar" on an NPC's area spell: the master's picker in a dialog (PM-02d state 11), the same steps as the player's. */
+  protected openMasterArea(key: string): void {
+    const e = this.encounter();
+    const who = e ? currentCombatant(e) : null;
+    const found = this.areaSpell(key);
+    const map = this.castMap();
+    if (!e || !who || !found || !map) {
+      return;
+    }
+    const { spell, targets, level, name } = found;
+    // The NPC's slots are not counted: the lowest the options offer, or the spell's own level.
+    const row = defaultSlot(slotRows(level, spell.slots, [], null));
+    const data: MasterAreaCastData = {
+      campaignId: this.campaignId(),
+      encounterId: e.id,
+      caster: who,
+      spellKey: key,
+      name,
+      level,
+      slot: level > 0 ? { level: row?.level ?? level, pact: row?.pact ?? false } : null,
+      economy: spell.economy,
+      targets,
+      map,
+      state: this.state(),
+    };
+    openSheet<MasterAreaCast, MasterAreaCastData, boolean>(
+      this.dialog,
+      this.bottomSheet,
+      MasterAreaCast,
+      {
+        data,
+        ariaLabel: `${who.label} conjura ${name}`,
+        labelledBy: 'sheet-t',
+        width: '1100px',
+        tall: true,
+        ...(targets.placement === AreaPlacement.CASTER ? {} : { focus: '[role="application"]' }),
+      },
+    ).subscribe();
   }
 
   /** The spell attack bonus, for a typed d20: the one of a spell attack in the

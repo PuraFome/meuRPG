@@ -463,6 +463,7 @@
         [offering]="offering()"
         [offerWhy]="offerWhy()"
         [waitWhy]="waitWhy()"
+        (castArea)="openMasterArea($event)"
         (offer)="toggleOffer()"
         (next)="nextTurn($event)"
         (settledNote)="settled()"

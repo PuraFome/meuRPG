@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
+import { AreaPlacement } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { CombatState } from '../../../../core/combat/combat-state';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
@@ -71,5 +72,59 @@ describe('NpcCard: the idempotency key follows the target', () => {
     expect(first[4]).toBe('t1');
     expect(second[4]).toBe('t2');
     expect(second[6]).not.toBe(first[6]);
+  });
+});
+
+describe("NpcCard: an NPC's area spell", () => {
+  function setup(theatre: boolean) {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: CombatClient, useValue: {} }] });
+    const fixture = TestBed.createComponent(NpcCard);
+    const zuk = combatant({ id: 'z', label: 'Zuk' });
+    fixture.componentRef.setInput('campaignId', 'c');
+    fixture.componentRef.setInput('encounter', encounter({ combatants: [zuk] }));
+    fixture.componentRef.setInput('subject', zuk);
+    fixture.componentRef.setInput('state', {
+      apply: vi.fn(),
+      encounter: () => encounter({ combatants: [zuk] }),
+    } as unknown as CombatState);
+    fixture.componentRef.setInput('theatre', theatre);
+    fixture.componentRef.setInput('options', {
+      options: {
+        attacks: [],
+        spells: [
+          {
+            spell: { key: 'spell:fireball', namePt: 'Bola de Fogo', level: 3 },
+            enabled: true,
+            slots: [],
+          },
+          { spell: { key: 'spell:bless', namePt: 'Bênção', level: 1 }, enabled: true, slots: [] },
+        ],
+      },
+      attackTargets: [],
+      spellTargets: [
+        { spellKey: 'spell:fireball', placement: AreaPlacement.POINT, targets: [] },
+        { spellKey: 'spell:bless', placement: AreaPlacement.UNSPECIFIED, targets: [] },
+      ],
+      pendingDamages: [],
+    } as never);
+    const cast: string[] = [];
+    fixture.componentInstance.castArea.subscribe((k) => cast.push(k));
+    fixture.detectChanges();
+    return { el: fixture.nativeElement as HTMLElement, cast };
+  }
+
+  it('offers "Conjurar" for a spell placed on the map only, and hands its key to the page', () => {
+    const { el, cast } = setup(false);
+    const buttons = Array.from(el.querySelectorAll<HTMLButtonElement>('.area-spell'));
+    expect(buttons.map((b) => b.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+      'auto_awesomeConjurar Bola de Fogo',
+    ]);
+    buttons[0].click();
+    expect(cast).toEqual(['spell:fireball']);
+  });
+
+  it('offers none without a map', () => {
+    expect(setup(true).el.querySelector('.area-spell')).toBeNull();
   });
 });
