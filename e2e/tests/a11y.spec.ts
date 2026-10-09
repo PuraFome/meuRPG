@@ -998,8 +998,7 @@ test('agir no combate passa no axe e nas conferências de layout no tema escuro,
   await scanActionScreens(browser, 'dark', 390);
 });
 
-test('no celular de 390 x 844 as ações da vez ficam acima da dobra, logo sob o título, e a ordem vem depois', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
+async function checkTurnAboveTheFold(browser: Browser): Promise<void> {
   const viewport = { width: 390, height: 844 };
   const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), viewport });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), viewport });
@@ -1034,6 +1033,11 @@ test('no celular de 390 x 844 as ações da vez ficam acima da dobra, logo sob o
     await master.close();
     await player.close();
   }
+}
+
+test('no celular de 390 x 844 as ações da vez ficam acima da dobra, logo sob o título, e a ordem vem depois', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await checkTurnAboveTheFold(browser);
 });
 
 /** Moving by the circle, jumping, cover and the opportunity attacks (Etapa 9,
@@ -1943,11 +1947,10 @@ async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark',
     // Not `open()`: with a session open the sheet follows its stream, so the network is never idle.
     await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
     const panel = p.getByRole('region', { name: 'Anotações' });
-    if (width < 1200) {
-      // Under 1200px the notes are one "Anotações (N)" row that opens on a tap.
-      await expect(panel.getByText('Brisa me deve 5 PO')).toBeHidden();
-      await expectScreenPasses(p, `Ficha com as anotações fechadas ${where}`);
-      await panel.getByRole('button', { name: /^Anotações \(\d+\)/ }).click();
+    // Under 1200px the notes are one "Anotações (N)" row that opens on a tap (no such button on the four-column sheet).
+    await expectScreenPasses(p, `Ficha com as anotações, primeira vista ${where}`);
+    for (const toggle of await panel.getByRole('button', { name: /^Anotações \(\d+\)/ }).all()) {
+      await toggle.click();
     }
     await expect(panel.getByText('Brisa me deve 5 PO')).toBeVisible();
     await expectScreenPasses(p, `Ficha com as anotações ${where}`);
