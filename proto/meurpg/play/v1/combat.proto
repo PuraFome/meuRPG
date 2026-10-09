@@ -3010,11 +3010,14 @@ message PreviewSpellAreaResponse {
 message AreaTarget {
   string combatant_id = 1;
   string label = 2;
-  // How hurt it is, as a word: never hit points (RN-20).
+  // How hurt it is, as a word: never hit points (RN-20). Unset for a player's
+  // character, as in the order: its hit points are on the table and the app reads
+  // them from the combatant.
   CombatantState state = 3;
   // The cover it has against the point of origin (D4), where it comes from, and
-  // only when the save is Dexterity (see `cover_counts`); never TOTAL: a creature
-  // with total cover is not inside.
+  // only when the save is Dexterity (see `cover_counts`), NONE when it has none
+  // and unset when the save gets none; never TOTAL: a creature with total cover is not
+  // inside.
   CoverDegree cover = 4;
   CoverSource cover_source = 5;
   // True for a creature on the caster's side: a player's character or creature
@@ -3689,6 +3692,9 @@ message CombatLogSpellTarget {
   // The damage of the cast's other damage types, once rolled, in the spell's
   // order after `damage`.
   repeated CombatLogDamage more_damages = 13;
+  // Only the master: the creature was hidden from the players when the spell hit
+  // it. A player's entry never has such a target (RN-10).
+  bool hidden = 14;
 }
 
 // CombatLogDeathSave is a death save in the log. When the table hides the death
