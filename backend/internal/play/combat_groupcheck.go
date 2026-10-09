@@ -343,7 +343,7 @@ func (s *Service) CloseGroupCheck(
 	if err != nil {
 		return nil, err
 	}
-	_, repeated, err := s.groupWrite(ctx, m, key, idem.Hash(req.Msg), eventGroupCheckClosed, func(q *playdb.Queries, tx pgx.Tx, session playdb.GameSession) (groupCheckEvent, string, error) {
+	_, repeated, err := s.groupWrite(ctx, m, key, idem.Hash(req.Msg), eventGroupCheckClosed, func(q *playdb.Queries, _ pgx.Tx, session playdb.GameSession) (groupCheckEvent, string, error) {
 		check, err := q.GetGroupCheck(ctx, playdb.GetGroupCheckParams{GameSessionID: session.ID, ID: checkID})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return groupCheckEvent{}, "", connect.NewError(connect.CodeNotFound, errors.New("group check not found"))
@@ -470,6 +470,8 @@ func (s *Service) groupCheckView(ctx context.Context, m authz.Membership, checkI
 
 // buildGroupCheckView is a group check as the caller may read it: the master everything;
 // a player their own roll, and passed or failed only when the master shows the DC.
+//
+//nolint:gocyclo // one view for each audience, with the facts each may read in one place
 func (s *Service) buildGroupCheckView(ctx context.Context, m authz.Membership, check playdb.GroupCheck, members []playdb.GroupCheckMember) (*playv1.GroupCheckView, error) {
 	master := m.Role == authz.RoleMaster
 	out := &playv1.GroupCheckView{

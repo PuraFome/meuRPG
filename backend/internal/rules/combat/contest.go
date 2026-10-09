@@ -130,8 +130,11 @@ func (m CheckMode) Dice() int {
 	if m == CheckNormal {
 		return 1
 	}
-	return 2
+	return pairOfDice
 }
+
+// half is what a group check divides the group by.
+const half = 2
 
 // PickD20 is the d20 that counts among the faces rolled: the higher for advantage, the
 // lower for disadvantage, the only one for a normal roll.
@@ -176,7 +179,7 @@ func NoticesHider(stealthTotal, passivePerception int) bool {
 // half of the group (SRD 5.1, "Group Checks"), so the half rounded up. A group of none
 // needs none.
 func GroupCheckNeeded(asked int) int {
-	return (asked + 1) / 2
+	return (asked + 1) / half
 }
 
 // GroupCheckPasses says whether a group passes: at least half of the characters asked

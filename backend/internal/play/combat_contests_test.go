@@ -1,6 +1,7 @@
 package play
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -192,7 +193,11 @@ func wantContestBlocked(t *testing.T, call string, err error, want playv1.Contes
 		t.Fatalf("%s: code = %v (%v), want failed_precondition", call, connect.CodeOf(err), err)
 	}
 	var got *playv1.ContestBlocked
-	for _, d := range err.(*connect.Error).Details() {
+	var ce *connect.Error
+	if !errors.As(err, &ce) {
+		t.Fatalf("%s: error = %v, want a connect error", call, err)
+	}
+	for _, d := range ce.Details() {
 		v, derr := d.Value()
 		if derr != nil {
 			continue

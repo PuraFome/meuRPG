@@ -136,6 +136,8 @@ func (r *contestReader) optionOf(ctx context.Context, who playdb.Combatant, skil
 
 // contestView is a contest as the caller reads it; nil when it is not theirs to read: the
 // master reads all, a player the contests of their own characters.
+//
+//nolint:gocyclo // one view for each audience, with the facts each may read in one place
 func (r *contestReader) contestView(ctx context.Context, row playdb.CombatContest) (*playv1.ContestView, error) {
 	initiator, okI := combatantByID(r.d.cs, row.InitiatorID)
 	defender, okD := combatantByID(r.d.cs, row.DefenderID)

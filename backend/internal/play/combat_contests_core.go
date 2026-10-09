@@ -260,7 +260,7 @@ func (s *Service) rollCheck(in checkInput, mode combat.CheckMode, modifier int, 
 	faces := in.faces
 	physical := !in.inApp
 	if in.inApp {
-		res, err := dice.Roll(s.roller, dice.Expr{Count: mode.Dice(), Sides: 20})
+		res, err := dice.Roll(s.roller, dice.Expr{Count: mode.Dice(), Sides: d20Sides})
 		if err != nil {
 			return contestRoll{}, fmt.Errorf("roll the d20: %w", err)
 		}
@@ -354,9 +354,10 @@ func (s *Service) checkSources(ctx context.Context, c *combatTx, who playdb.Comb
 		return nil, fmt.Errorf("list the states: %w", err)
 	}
 	ability := "dex"
-	if skill == skillAthletics {
+	switch skill {
+	case skillAthletics:
 		ability = "str"
-	} else if skill == skillPercept {
+	case skillPercept:
 		ability = "wis"
 	}
 	for _, src := range combat.SaveMode(combat.SaveScene{Creature: creatureFacts(who, statesOf(states), link.Traits{}), Ability: ability, Check: true}) {
@@ -403,19 +404,6 @@ func labelOfCharacter(cs []playdb.Combatant, characterID string) string {
 		}
 	}
 	return ""
-}
-
-// checkOptionOf is what a combatant's check would roll, for the screens.
-func (s *Service) checkOptionOf(ctx context.Context, c *combatTx, who playdb.Combatant, skill string, cs []playdb.Combatant) (*playv1.CheckOption, []rollNote, error) {
-	n, err := s.numbersOf(ctx, c.tx, c.session.CampaignID, who, skill)
-	if err != nil {
-		return nil, nil, err
-	}
-	notes, err := s.checkSources(ctx, c, who, skill, cs)
-	if err != nil {
-		return nil, nil, err
-	}
-	return &playv1.CheckOption{Modifier: clamp32(n.Bonus, math.MinInt32, math.MaxInt32), Known: n.Known, Mode: checkModeProto(notesMode(notes)), Notes: notesProto(notes)}, notes, nil
 }
 
 // consumeCheckHelp uses the Help that gave the combatant advantage on a check of the
@@ -529,16 +517,6 @@ func setConditionsOf(ctx context.Context, c *combatTx, who playdb.Combatant, con
 		return fmt.Errorf("set the conditions: %w", err)
 	}
 	return nil
-}
-
-// sideLabel is the label of a combatant by id, "" when it is gone.
-func labelOf(cs []playdb.Combatant, id string) string {
-	for _, c := range cs {
-		if c.ID == id {
-			return c.Label
-		}
-	}
-	return ""
 }
 
 func combatantByID(cs []playdb.Combatant, id string) (playdb.Combatant, bool) {

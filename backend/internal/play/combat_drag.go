@@ -41,7 +41,7 @@ func (s *Service) draggedBy(ctx context.Context, q *playdb.Queries, cs []playdb.
 // one before the last square the line enters, or the origin for a one-square move.
 func dragSquare(terrain grid.Terrain, origin, to grid.Square, mover grid.Mover) grid.Square {
 	entered := terrain.Move(origin, to, grid.OccupantMap{}, mover).Entered
-	if len(entered) >= 2 {
+	if len(entered) > 1 {
 		return entered[len(entered)-2]
 	}
 	return origin

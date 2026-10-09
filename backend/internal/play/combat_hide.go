@@ -229,6 +229,8 @@ func (s *Service) spendHide(ctx context.Context, c *combatTx, m authz.Membership
 }
 
 // ResolveHide implements playv1connect.ContestServiceHandler.
+//
+//nolint:gocognit // the steps of one change in one closure, as RollAttack's are; a helper would only pass the transaction around
 func (s *Service) ResolveHide(
 	ctx context.Context,
 	req *connect.Request[playv1.ResolveHideRequest],

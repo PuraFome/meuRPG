@@ -50,6 +50,8 @@ func contestTargets(enc playdb.Encounter, cs []playdb.Combatant, who playdb.Comb
 // contestOptionsFor works out the contest side of GetTurnOptions for a combatant: the
 // special attacks that replace one attack of the Attack action, and the state of its turn. gate
 // is why the combatant cannot act now (UNSPECIFIED when it can).
+//
+//nolint:gocyclo // one flat list of the reasons a special attack is off, as the turn options list the others
 func (s *Service) contestOptionsFor(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, who playdb.Combatant, opts *rulesv1.TurnOptions, gate rulesv1.DisabledReasonCode) ([]*playv1.ContestAttackOption, *playv1.ContestTurnState, error) {
 	cd, err := s.loadContestData(ctx, s.queries, d.enc, d.cs)
 	if err != nil {
@@ -110,7 +112,7 @@ func (s *Service) contestOptionsFor(ctx context.Context, m authz.Membership, d *
 
 	// The special attacks: they replace one attack of the Attack action.
 	if mayAttack(who, false) != nil {
-		return nil, state, nil
+		return nil, state, nil //nolint:nilerr // a combatant that cannot attack has no special attack to list; that is no failure
 	}
 	sheet, err := s.sheetOf(ctx, nil, m.CampaignID, who)
 	if err != nil {

@@ -168,6 +168,8 @@ func settleContest(ctx context.Context, c *combatTx, row playdb.CombatContest, w
 }
 
 // StartContest implements playv1connect.ContestServiceHandler.
+//
+//nolint:gocognit // the steps of one change in one closure, as RollAttack's are; a helper would only pass the transaction around
 func (s *Service) StartContest(
 	ctx context.Context,
 	req *connect.Request[playv1.StartContestRequest],
@@ -265,8 +267,8 @@ func (s *Service) StartContest(
 			EncounterID: c.enc.ID, InitiatorID: initiator.ID, Round: c.enc.Round, CreatedAt: c.now, Purpose: purposeKey, Kind: contestKindContest,
 		}
 		var roll *contestRoll
-		switch {
-		case purpose == playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE:
+		switch purpose {
+		case playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE:
 			hold, ok := holdOn(holdsOf(holds), initiator)
 			if !ok {
 				return nil, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_GRAPPLED, "the combatant is not grappled")
@@ -416,6 +418,8 @@ func (s *Service) mustBeInReach(c *combatTx, v combatViewer, who, target playdb.
 }
 
 // RespondContest implements playv1connect.ContestServiceHandler.
+//
+//nolint:gocognit // the steps of one change in one closure, as RollAttack's are; a helper would only pass the transaction around
 func (s *Service) RespondContest(
 	ctx context.Context,
 	req *connect.Request[playv1.RespondContestRequest],
@@ -432,19 +436,19 @@ func (s *Service) RespondContest(
 	if skill == playv1.ContestSkill_CONTEST_SKILL_UNSPECIFIED {
 		skill = playv1.ContestSkill_CONTEST_SKILL_ATHLETICS
 	}
-	defer_ := req.Msg.GetDeferToMaster()
+	leave := req.Msg.GetDeferToMaster()
 	var in checkInput
-	if !defer_ {
+	if !leave {
 		if in, err = parseCheckInput(req.Msg.GetRoll()); err != nil {
 			return nil, err
 		}
 	} else if m.Role == authz.RoleMaster {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the master rolls himself: defer_to_master is the player's"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the master rolls himself: leaveto_master is the player's"))
 	}
 
 	var made actionEvent
 	kind := eventContestResolved
-	if defer_ {
+	if leave {
 		kind = eventContestDeferred
 	}
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: kind, encounterID: encID}, func(c *combatTx) (any, error) {
@@ -493,7 +497,7 @@ func (s *Service) RespondContest(
 			skillKey = previous.Skill // the player's choice
 		}
 
-		if defer_ {
+		if leave {
 			stored, err := encodeRoll(contestRoll{Skill: skillKey, Deferred: true})
 			if err != nil {
 				return nil, err
@@ -622,6 +626,8 @@ func (s *Service) pushPlanOf(terrain, plan grid.Terrain, enc playdb.Encounter, c
 }
 
 // ResolveShove implements playv1connect.ContestServiceHandler.
+//
+//nolint:gocognit // the steps of one change in one closure, as RollAttack's are; a helper would only pass the transaction around
 func (s *Service) ResolveShove(
 	ctx context.Context,
 	req *connect.Request[playv1.ResolveShoveRequest],

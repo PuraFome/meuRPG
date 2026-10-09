@@ -543,7 +543,7 @@ func (s *Service) CreatureCheck(ctx context.Context, tx pgx.Tx, campaignID, mons
 	}
 	opts, err := rules.SceneOptions(d, []rules.SceneAction{{Key: key}})
 	if err != nil {
-		return link.SceneOption{}, nil
+		return link.SceneOption{}, nil //nolint:nilerr // a skill the scene rules do not list for the creature has no number: the caller reads the zero option as unknown
 	}
 	o := opts[0]
 	return link.SceneOption{Known: true, CheckName: o.NamePT, Bonus: o.Bonus, Passive: o.Passive, HasPassive: o.HasPassive}, nil
