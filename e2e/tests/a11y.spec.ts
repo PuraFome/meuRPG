@@ -6069,7 +6069,7 @@ async function scanRollModeScreens(browser: Browser, colorScheme: 'light' | 'dar
     await p.getByRole('button', { name: /^Atacar com Rapieira/ }).click();
     await p.locator('label', { hasText: 'Goblin 1' }).click();
     await expectScreenPasses(p, `Atacar, o modo normal e o pedido ${where}`);
-    await p.locator('label.radio', { hasText: 'Vantagem' }).click();
+    await p.locator('.radio__word', { hasText: /^Vantagem$/ }).click();
     await p.getByLabel(/Motivo/).fill('Ele está distraído');
     await expectScreenPasses(p, `Atacar, pedir vantagem ao mestre ${where}`);
     await p.getByRole('button', { name: /Pedir ao mestre/ }).click();
