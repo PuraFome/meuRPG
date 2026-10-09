@@ -1482,3 +1482,93 @@ func TestAnAttackWithoutADieIsResolvedAtOnce(t *testing.T) {
 		t.Errorf("the attack = offer %v, outcome %v; want it resolved at once as a miss", res.GetInspirationOffer(), res.GetRoll().GetOutcome())
 	}
 }
+
+// RN-10: a creature the master did not reveal is not found by the resource flows, in the very words of a
+// creature that does not exist: nothing says there is one.
+func TestAHiddenCreatureIsNotFoundByTheResourceFlows(t *testing.T) {
+	t.Parallel()
+	a := newResourceTable(t)
+	// The goblin stays hidden (not in the reveal list), next to everyone.
+	e := a.start(t, plan{
+		npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId()}}, npcRolls: []int{3},
+		players: map[string]int32{"Tavo": 20, "Nael": 14, "Orla": 10},
+		at:      map[string][2]int32{"Tavo": {3, 3}, "Nael": {4, 3}, "Orla": {5, 3}, "Goblin": {4, 4}},
+	})
+	hidden := byLabel(t, a.get(t, a.master), "Goblin").GetId()
+	stranger := newKey() // a combatant that never existed
+	touch := func(target string) error {
+		_, err := a.caio.resource.UseLayOnHands(t.Context(), connect.NewRequest(&playv1.UseLayOnHandsRequest{
+			CampaignId: a.campaignID, EncounterId: e.GetId(), ActorId: a.id(t, "Tavo"), TargetId: target, IdempotencyKey: newKey(),
+			Effect: &playv1.UseLayOnHandsRequest_Amount{Amount: 5},
+		}))
+		return err
+	}
+	errHidden, errNone := touch(hidden), touch(stranger)
+	if connect.CodeOf(errHidden) != connect.CodeNotFound || errHidden == nil || errNone == nil || errHidden.Error() != errNone.Error() {
+		t.Errorf("Lay on Hands on a hidden creature = %v, on a stranger = %v; want the same not_found", errHidden, errNone)
+	}
+	if left, _ := poolOf(a.vitalsOfCharacter(t, a.toren), rules.LayOnHandsKey); left != 25 {
+		t.Errorf("the pool is %d after the refusals, want 25", left)
+	}
+	// The touch list and the voice list never carry it.
+	opts, err := a.caio.combat.GetTurnOptions(t.Context(), connect.NewRequest(&playv1.GetTurnOptionsRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Tavo")}))
+	if err != nil {
+		t.Fatalf("GetTurnOptions() error = %v", err)
+	}
+	for _, rt := range opts.Msg.GetResourceTargets() {
+		for _, tgt := range rt.GetTargets() {
+			if tgt.GetTarget().GetCombatantId() == hidden {
+				t.Errorf("the targets of %s list a hidden creature", rt.GetActionKey())
+			}
+		}
+	}
+	// Twinned Spell's second target, and Bardic Inspiration.
+	e = a.turnOf(t, "Nael")
+	_, errHidden = a.castWith(t, a.ana, e, "Nael", holdPerson, slotOfLevel(2), a.at(t, "Tavo"),
+		&playv1.MetamagicChoice{Key: rules.MetamagicTwinned, TargetIds: []string{hidden}})
+	_, errNone = a.castWith(t, a.ana, e, "Nael", holdPerson, slotOfLevel(2), a.at(t, "Tavo"),
+		&playv1.MetamagicChoice{Key: rules.MetamagicTwinned, TargetIds: []string{stranger}})
+	if connect.CodeOf(errHidden) != connect.CodeNotFound || errHidden == nil || errNone == nil || errHidden.Error() != errNone.Error() {
+		t.Errorf("Twinned Spell on a hidden creature = %v, on a stranger = %v; want the same not_found", errHidden, errNone)
+	}
+	e = a.turnOf(t, "Orla")
+	give := func(target string) error {
+		_, err := a.bia.resource.GiveBardicInspiration(t.Context(), connect.NewRequest(&playv1.GiveBardicInspirationRequest{
+			CampaignId: a.campaignID, EncounterId: e.GetId(), ActorId: a.id(t, "Orla"), TargetId: target, IdempotencyKey: newKey(),
+		}))
+		return err
+	}
+	errHidden, errNone = give(hidden), give(stranger)
+	if connect.CodeOf(errHidden) != connect.CodeNotFound || errHidden == nil || errNone == nil || errHidden.Error() != errNone.Error() {
+		t.Errorf("Bardic Inspiration on a hidden creature = %v, on a stranger = %v; want the same not_found", errHidden, errNone)
+	}
+}
+
+// The line of a touch that heals a creature the master hid again is the master's alone.
+func TestALayOnHandsLineWithAHiddenCombatantNeverReachesAPlayer(t *testing.T) {
+	t.Parallel()
+	a := newResourceTable(t)
+	e := a.resourceFight(t)
+	if _, err := a.layOnHands(t, a.master, e, "Tavo", "Goblin", healAmount(3)); err != nil {
+		t.Fatalf("UseLayOnHands() error = %v", err)
+	}
+	if _, err := a.master.combat.SetCombatantHidden(t.Context(), connect.NewRequest(&playv1.SetCombatantHiddenRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Goblin"), IdempotencyKey: newKey(), Hidden: true,
+	})); err != nil {
+		t.Fatalf("SetCombatantHidden() error = %v", err)
+	}
+	for name, u := range map[string]*user{"Caio": a.caio, "Ana": a.ana, "Bia": a.bia} {
+		for _, l := range logEntries(a.log(t, u, e)) {
+			if l.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE {
+				t.Errorf("%s reads a line of a touch on a creature the master hid", name)
+			}
+		}
+	}
+	found := false
+	for _, l := range logEntries(a.log(t, a.master, e)) {
+		found = found || l.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE
+	}
+	if !found {
+		t.Error("the master does not read the line either")
+	}
+}
