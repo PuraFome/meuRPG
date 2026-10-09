@@ -97,6 +97,12 @@ func TestLoadSpellEffectsRefuses(t *testing.T) {
 		"a max_hp of nothing":         `{"spells":{"spell:sleep":{"kind":"max_hp","amount_per_level":5}}}`,
 		"a max_hp with dice":          `{"spells":{"spell:sleep":{"kind":"max_hp","amount":5,"dice":"1d4"}}}`,
 		"a zero target with dice":     `{"spells":{"spell:sleep":{"kind":"zero_hp_target","dice":"1d4"}}}`,
+		"a revive with no source":     `{"spells":{"spell:sleep":{"kind":"revive","hit_points":1,"window_rounds":10}}}`,
+		"a revive of 0 hit points":    `{"spells":{"spell:sleep":{"kind":"revive","window_rounds":10,"source":"SRD"}}}`,
+		"a revive with no window":     `{"spells":{"spell:sleep":{"kind":"revive","hit_points":1,"source":"SRD"}}}`,
+		"a revive with dice":          `{"spells":{"spell:sleep":{"kind":"revive","hit_points":1,"window_rounds":10,"source":"SRD","dice":"1d4"}}}`,
+		"a window on another kind":    `{"spells":{"spell:sleep":{"kind":"zero_hp_target","window_rounds":10}}}`,
+		"hit points on a summon":      `{"spells":{"spell:sleep":{"kind":"summon","hit_points":1}}}`,
 	}
 	for name, body := range bad {
 		if err := load(body); err == nil {
@@ -118,5 +124,45 @@ func TestSacredFlameIgnoresCover(t *testing.T) {
 	}
 	if _, ok := c.SpellEffect("spell:sacred-flame", 0); ok {
 		t.Errorf("Sacred Flame reads no hit points")
+	}
+}
+
+// SRD 5.1, Revivify: 3rd level, a creature that died in the last minute returns with 1 hit point.
+// A minute is 10 rounds (SRD 5.1, "The Order of Combat": a round is about 6 seconds). The cleric
+// and the paladin have it in their lists (SRD 5.1, the class spell lists), and the Life domain
+// always has it prepared from level 5.
+func TestRevivifyIsTheSRDsAndOnTheClericAndPaladinLists(t *testing.T) {
+	t.Parallel()
+	c, err := LoadSRD()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, ok := c.Revive("spell:revivify")
+	if !ok || r.HitPoints != 1 || r.WindowRounds != 10 {
+		t.Fatalf("Revive(revivify) = %+v, %v; want 1 hit point and a window of 10 rounds", r, ok)
+	}
+	if _, ok := c.Revive("spell:raise-dead"); ok {
+		t.Errorf("Revive(raise-dead) = true: only Revivify is the app's revival")
+	}
+	if _, ok := c.SpellEffect("spell:revivify", 3); ok {
+		t.Errorf("SpellEffect(revivify) = true: it reads no hit points")
+	}
+	d, ok := c.SpellDetails("spell:revivify")
+	if !ok || d.Spell.Level != 3 || d.CastingTime.Unit != CastAction || d.CastingTime.Amount != 1 || d.Range.Kind != RangeTouch || !d.Components.Material {
+		t.Fatalf("the spell = %+v, %v; want 3rd level, 1 action, touch, with a material", d, ok)
+	}
+	for _, class := range []string{"class:cleric", "class:paladin"} {
+		got := c.ListSpells(SpellFilter{Class: class, Levels: []int{3}, Query: "revivificar"})
+		if len(got) != 1 || got[0].Key != "spell:revivify" {
+			t.Errorf("the %s list at the 3rd level for \"revivificar\" = %v, want Revivificar", class, spellKeys(got))
+		}
+	}
+	for _, class := range []string{"class:wizard", "class:bard", "class:druid", "class:sorcerer", "class:warlock", "class:ranger"} {
+		if got := c.ListSpells(SpellFilter{Class: class, Query: "revivificar"}); len(got) != 0 {
+			t.Errorf("the %s list has Revivificar: %v; the SRD gives it to the cleric and the paladin only", class, spellKeys(got))
+		}
+	}
+	if name := c.NamePT("spell:revivify"); name != "Revivificar" {
+		t.Errorf("NamePT(revivify) = %q, want Revivificar", name)
 	}
 }

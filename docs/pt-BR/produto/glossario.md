@@ -8,6 +8,9 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | --- | --- | --- |
 | Campanha | A história contínua de uma mesa. Sessões, personagens do jogador, mapas e documentos pertencem a ela. | `campaign` |
 | Membro | Um usuário numa campanha, com papel de mestre ou jogador. O papel vale só para aquela campanha. | `campaign_member`, `role` |
+| Pedir ajustes | A terceira resposta do mestre a um personagem pendente, além de aprovar e recusar: ele o devolve com um motivo (de 1 a 500 caracteres); o personagem continua pendente e o jogador o edita e toca em "Enviar de novo". Só o mestre e o dono leem o motivo, e ele é apagado quando o personagem é decidido (RN-15). | `RequestCharacterChanges`, `ResubmitCharacter`, `Character.review` |
+| Reviver | O poder do mestre de trazer de volta um personagem de jogador morto, com 1 PV, sem teste contra a morte contado, no lugar dele na ordem de iniciativa; recusado enquanto o jogador tem outro personagem vivo (RN-03). Não é magia. | `ReviveCharacter`, `revived_at` |
+| Revivificar | A magia do SRD 5.1 (3º nível, 1 ação, toque, diamantes de 300 PO) que traz de volta uma criatura que morreu no último minuto, com 1 PV. Em combate um minuto são 10 rodadas; fora dele o mestre confirma o tempo. | `spell:revivify`, `RevivifyService` |
 | Membro pendente | Quem aceitou um convite com aprovação e espera o mestre aprovar o personagem que criou (RN-15). Ainda não é membro: vê só o nome da campanha e o próprio personagem. Vira jogador quando o mestre aprova; sai da campanha quando o mestre recusa. | `status = 'pending'`, `awaiting_approval` |
 | Mestre | O papel de quem conduz a campanha: cria convites e, depois, as sessões. Quem cria a campanha vira mestre dela. Uma campanha pode ter mais de um mestre, e um mestre pode passar a campanha para outro (RN-13). | `master` |
 | Jogador | O papel de quem joga na campanha. Entra por um convite. | `player` |

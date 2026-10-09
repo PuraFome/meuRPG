@@ -1,6 +1,6 @@
 import { spellLevelLabel } from '../../core/characters/character-labels';
 import { AbilityKey, CharacterState } from '../../core/characters/characters.types';
-import { CoinsVm, IssueVm, PactSlotsVm, SpellcastingVm } from './character-sheet.types';
+import { CoinsVm, IssueVm, PactSlotsVm, ReviewVm, SpellcastingVm } from './character-sheet.types';
 
 /**
  * Display helpers of the sheet page only (the "Ficha de papel" layout,
@@ -30,6 +30,27 @@ export function keepUnitsTogether(text: string): string {
 export function formatDate(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+}
+
+const SHORT_MONTHS = [
+  'jan.',
+  'fev.',
+  'mar.',
+  'abr.',
+  'mai.',
+  'jun.',
+  'jul.',
+  'ago.',
+  'set.',
+  'out.',
+  'nov.',
+  'dez.',
+];
+
+/** "8 de out., 21h10", local time: when the master asked for changes, or the player sent the sheet again. */
+export function formatWhen(date: Date): string {
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${date.getDate()} de ${SHORT_MONTHS[date.getMonth()]}, ${date.getHours()}h${minutes}`;
 }
 
 /** The one-word state tag (docs/design.md, StatusTag): "Pendente", not the
@@ -166,4 +187,16 @@ export function coinEntries(coins: CoinsVm): CoinEntry[] {
     { amount: coins.cp, abbreviation: 'PC', name: 'peças de cobre' },
   ];
   return all.filter((c) => c.amount > 0);
+}
+
+/** The tag of a pending character's header, with the master's review in it: text and icon, never only colour. */
+export function pendingTag(review: ReviewVm | null): { label: string; icon: string } {
+  switch (review?.status) {
+    case 'changes_requested':
+      return { label: 'Pendente · ajustes pedidos', icon: 'edit' };
+    case 'resubmitted':
+      return { label: 'Pendente · reenviado', icon: 'task_alt' };
+    default:
+      return { label: 'Pendente', icon: 'schedule' };
+  }
 }

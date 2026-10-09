@@ -130,11 +130,46 @@ RETURNING *;
 
 -- name: MarkCharacterDead :one
 -- Marking a dead character again keeps the first died_at, so the call is
--- idempotent. It changes neither the revision nor updated_at.
+-- idempotent. A character that lived again (died_at stays as the history, status
+-- 'active') gets a new death: died_at is set again and the switch of Revivify
+-- starts off, since it belongs to one death. death_round and death_encounter_id are the
+-- combat the master confirmed it in, NULL for a death marked outside a combat. It
+-- changes neither the revision nor updated_at.
 UPDATE characters
-SET status = 'dead', died_at = COALESCE(died_at, sqlc.arg(now)::TIMESTAMPTZ)
+SET status = 'dead',
+    died_at = CASE WHEN status = 'dead' THEN died_at ELSE sqlc.arg(now)::TIMESTAMPTZ END,
+    death_round = CASE WHEN status = 'dead' THEN death_round ELSE sqlc.narg(death_round)::INT4 END,
+    death_encounter_id = CASE WHEN status = 'dead' THEN death_encounter_id ELSE sqlc.narg(death_encounter_id)::UUID END,
+    revivify_blocked = CASE WHEN status = 'dead' THEN revivify_blocked ELSE false END
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)
 RETURNING *;
+
+-- name: ReviveCharacter :one
+-- The master's Reviver, or Revivify: a dead character lives again (RN-03). It goes back to
+-- 'active' and keeps the sheet's lock as it was, since a death never touched it. died_at
+-- stays as the history. revive_key and revive_hash are the idempotency key of the call and
+-- the hash of its request (NULL for the spell, which has its own). It changes neither the
+-- revision nor updated_at.
+UPDATE characters
+SET status = 'active', revived_at = sqlc.arg(now)::TIMESTAMPTZ, death_round = NULL, death_encounter_id = NULL,
+    revivify_blocked = false, revive_key = sqlc.narg(revive_key), revive_hash = sqlc.narg(revive_hash)
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id) AND status = 'dead'
+RETURNING *;
+
+-- name: SetCharacterRevivifyBlocked :one
+-- The master's switch "Revivificar não funciona nesta morte", for a dead character.
+UPDATE characters
+SET revivify_blocked = sqlc.arg(blocked)
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id) AND kind = 'player' AND status = 'dead'
+RETURNING *;
+
+-- name: ListDeadPlayerCharacters :many
+-- The dead player characters of the campaign, newest death first: the targets Revivify
+-- offers outside a combat, and the master's "Reviver". The master's switch comes along.
+SELECT id, name, player_user_id, died_at, revivify_blocked
+FROM characters
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND kind = 'player' AND status = 'dead'
+ORDER BY died_at DESC, id;
 
 -- name: ApproveCharacter :one
 -- The master approved a pending character (RN-15, MR-024): it becomes an
@@ -144,6 +179,50 @@ UPDATE characters
 SET status = 'active'
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id) AND status = 'pending'
 RETURNING *;
+
+-- name: GetCharacterReview :one
+-- The master's request for changes on a pending character, if there is one.
+SELECT * FROM character_reviews WHERE character_id = sqlc.arg(character_id)::UUID;
+
+-- name: UpsertCharacterReviewRequest :one
+-- RequestCharacterChanges: the first request makes the row; asking again replaces the
+-- reason and the time and starts over (CHANGES_REQUESTED, not resubmitted). request_key
+-- and request_hash are the call's idempotency key (scoped) and request hash.
+INSERT INTO character_reviews
+    (character_id, campaign_id, player_user_id, status, reason, requested_at, request_key, request_hash)
+VALUES (
+    sqlc.arg(character_id)::UUID, sqlc.arg(campaign_id)::UUID, sqlc.arg(player_user_id)::UUID,
+    'changes_requested', sqlc.arg(reason), sqlc.arg(now), sqlc.narg(request_key), sqlc.narg(request_hash)
+)
+ON CONFLICT (character_id) DO UPDATE SET
+    status = 'changes_requested', reason = excluded.reason, requested_at = excluded.requested_at,
+    resubmitted_at = NULL, request_key = excluded.request_key, request_hash = excluded.request_hash,
+    resubmit_key = NULL, resubmit_hash = NULL
+RETURNING *;
+
+-- name: MarkCharacterReviewResubmitted :one
+-- ResubmitCharacter: only an open request can be answered. No row means there is none.
+UPDATE character_reviews
+SET status = 'resubmitted', resubmitted_at = sqlc.arg(now), resubmit_key = sqlc.narg(resubmit_key), resubmit_hash = sqlc.narg(resubmit_hash)
+WHERE character_id = sqlc.arg(character_id)::UUID AND status = 'changes_requested'
+RETURNING *;
+
+-- name: DeleteCharacterReview :exec
+-- The reason is deleted as soon as the master settles the character (approval, rejection).
+-- Deleting the character, the campaign or the player's account deletes it by itself
+-- (ON DELETE CASCADE).
+DELETE FROM character_reviews WHERE character_id = sqlc.arg(character_id)::UUID;
+
+-- name: DeleteCharacterReviewsOfPlayer :exec
+-- An ordinary invite promotes a pending member and counts as the master's approval
+-- (ApprovePendingCharacterOfPlayer): the reason goes with the pending state.
+DELETE FROM character_reviews
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND player_user_id = sqlc.arg(player_user_id)::UUID;
+
+-- name: ListCharacterReviewStatuses :many
+-- The status of each open review of the campaign, for the master's list ("Ajustes pedidos")
+-- and the owner's own pending character. No reason leaves the table here.
+SELECT character_id, status FROM character_reviews WHERE campaign_id = sqlc.arg(campaign_id)::UUID;
 
 -- name: ApprovePendingCharacterOfPlayer :execrows
 -- An ordinary invite promotes a pending member (RN-15, Q25): that counts as

@@ -307,6 +307,10 @@ func (s *Service) ListCharacters(
 	if err != nil {
 		return nil, s.dbError(ctx, "read rules content", err)
 	}
+	reviews, err := s.reviewStatuses(ctx, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list characters", err)
+	}
 	// Only the master lists the claim links: the reserved characters are theirs alone.
 	var links map[string]charactersdb.ListLatestClaimLinksRow
 	if isMaster(m) {
@@ -337,6 +341,11 @@ func (s *Service) ListCharacters(
 			if id := portraitOf(sheet); id != "" {
 				summary.PortraitUrl = "/images/" + id
 			}
+		}
+		// The list holds the master's characters or the caller's own, so whoever reads a
+		// pending one may read its review's status (never the reason).
+		if row.Kind == kindPlayer && row.Status == statusPending {
+			summary.ReviewStatus = reviewStatusToProto(reviews[row.ID])
 		}
 		if full := sheet.GetFull(); full != nil {
 			labels := content.Summary(buildOf(full))
@@ -866,6 +875,9 @@ func (s *Service) character(ctx context.Context, content *rules.Content, row cha
 		return nil, err
 	}
 	if err := s.fillLevelUp(ctx, c, row, m); err != nil {
+		return nil, err
+	}
+	if err := s.fillReview(ctx, c, row, m); err != nil {
 		return nil, err
 	}
 	return c, nil

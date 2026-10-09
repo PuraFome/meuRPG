@@ -43,6 +43,12 @@ type Character struct {
 	CreateHash          *string
 	Reserved            bool
 	ClaimedAt           *time.Time
+	RevivedAt           *time.Time
+	DeathRound          *int32
+	DeathEncounterID    *string
+	RevivifyBlocked     bool
+	ReviveKey           *string
+	ReviveHash          *string
 }
 
 type CharacterCreature struct {
@@ -75,6 +81,20 @@ type CharacterLevelUp struct {
 	HpValue     int32
 	Choices     []byte
 	CreatedAt   time.Time
+}
+
+type CharacterReview struct {
+	CharacterID   string
+	CampaignID    string
+	PlayerUserID  string
+	Status        string
+	Reason        string
+	RequestedAt   time.Time
+	ResubmittedAt *time.Time
+	RequestKey    *string
+	RequestHash   *string
+	ResubmitKey   *string
+	ResubmitHash  *string
 }
 
 type ClaimLink struct {

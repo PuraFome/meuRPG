@@ -108,6 +108,13 @@ var reads = []read{
 		},
 	},
 	{
+		procedure: charactersv1connect.CharacterServiceGetCharacterProcedure, label: "the pending character, sent back by the master", allow: func(w *world) []*person { return []*person{w.pending} },
+		why: "the master's reason belongs to the master and the pending member who owns the character (RN-15)",
+		req: func(w *world) proto.Message {
+			return &charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.pendingHero.GetId()}
+		},
+	},
+	{
 		procedure: charactersv1connect.CharacterServiceGetCharacterProcedure, label: "Caio's character", allow: onlyCaio,
 		req: func(w *world) proto.Message {
 			return &charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId()}
@@ -409,6 +416,14 @@ var reads = []read{
 		procedure: playv1connect.CastingServiceGetCastOptionsProcedure, label: "the hidden NPC", allow: masterOnlyRead, why: "an NPC is cast for by the master alone, and a player never learns it exists",
 		req: func(w *world) proto.Message {
 			return &playv1.GetCastOptionsRequest{CampaignId: w.campaign, CharacterId: w.casterNPC.GetId()}
+		},
+	},
+
+	// ===== RevivifyService
+	{
+		procedure: playv1connect.RevivifyServiceListRevivifyRequestsProcedure, allow: members, why: "a player reads the casts of their own characters; the fixture has none",
+		req: func(w *world) proto.Message {
+			return &playv1.ListRevivifyRequestsRequest{CampaignId: w.campaign}
 		},
 	},
 

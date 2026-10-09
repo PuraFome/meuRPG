@@ -50,13 +50,13 @@ type classified struct {
 const masterOnlyWhy = "only the master may call it (see the .proto comment)"
 
 var notReads = map[string]classified{
-	campaignsv1connect.CampaignDocumentServiceUpdateCampaignDocumentProcedure:        {masterWrite, masterOnlyWhy},
 	campaignpackagev1connect.CampaignPackageServiceBeginCampaignImportProcedure:      {notACampaignCall, "starts the caller's own upload; it names no campaign"},
 	campaignpackagev1connect.CampaignPackageServiceCancelCampaignExportProcedure:     {masterWrite, masterOnlyWhy},
 	campaignpackagev1connect.CampaignPackageServiceCancelCampaignImportProcedure:     {notACampaignCall, "the caller's own upload; it names no campaign"},
 	campaignpackagev1connect.CampaignPackageServiceCreateCampaignFromImportProcedure: {notACampaignCall, "makes a campaign whose master is the caller"},
 	campaignpackagev1connect.CampaignPackageServiceGetCampaignImportProcedure:        {notACampaignCall, "the caller's own upload; it names no campaign"},
 	campaignpackagev1connect.CampaignPackageServicePreviewCampaignImportProcedure:    {notACampaignCall, "reads the caller's own upload; it names no campaign"},
+	campaignsv1connect.CampaignDocumentServiceUpdateCampaignDocumentProcedure:        {masterWrite, masterOnlyWhy},
 	// The campaign package: exporting is the master's; importing makes a campaign of the caller's own.
 	campaignpackagev1connect.CampaignPackageServiceStartCampaignExportProcedure: {masterWrite, masterOnlyWhy},
 	campaignsv1connect.CampaignServiceAcceptInviteProcedure:                     {playerAction, "anyone with an invite token may accept it; the answer is the campaign's id and name"},
@@ -84,7 +84,10 @@ var notReads = map[string]classified{
 	charactersv1connect.CharacterServicePreviewLevelUpProcedure:                 {playerAction, "a player previews their own level-up"},
 	charactersv1connect.CharacterServiceRejectCharacterProcedure:                {masterWrite, masterOnlyWhy},
 	charactersv1connect.CharacterServiceRenameCreatureProcedure:                 {playerAction, "a player renames their own creature"},
+	charactersv1connect.CharacterServiceRequestCharacterChangesProcedure:        {masterWrite, masterOnlyWhy},
+	charactersv1connect.CharacterServiceResubmitCharacterProcedure:              {playerAction, "a pending member sends their own pending character again; anyone else gets not_found"},
 	charactersv1connect.CharacterServiceReturnCharacterToReserveProcedure:       {masterWrite, masterOnlyWhy},
+	charactersv1connect.CharacterServiceReviveCharacterProcedure:                {masterWrite, masterOnlyWhy},
 	charactersv1connect.CharacterServiceRevokeClaimLinkProcedure:                {masterWrite, masterOnlyWhy},
 	charactersv1connect.CharacterServiceRollAbilityScoresProcedure:              {playerAction, "a player rolls the scores of their next character"},
 	charactersv1connect.CharacterServiceRollLevelUpHitPointsProcedure:           {playerAction, "a player rolls their own level-up hit die"},
@@ -228,6 +231,10 @@ var notReads = map[string]classified{
 	playv1connect.ResourceServiceSpendHitDiceProcedure:                          {playerAction, "a player spends a hit die of their own character"},
 	playv1connect.ResourceServiceTakeRestProcedure:                              {masterWrite, masterOnlyWhy},
 	playv1connect.ResourceServiceUseLayOnHandsProcedure:                         {playerAction, "a paladin's player touches a creature with their own combatant"},
+	playv1connect.RevivifyServiceConfirmRevivifyTimeProcedure:                   {masterWrite, masterOnlyWhy},
+	playv1connect.RevivifyServicePreviewRevivifyProcedure:                       {playerAction, "a player previews who their own caster could revive; the lists it holds are the revivify tests' (RN-10)"},
+	playv1connect.RevivifyServiceRequestRevivifyProcedure:                       {playerAction, "a player casts Revivify outside a combat with their own character"},
+	playv1connect.RevivifyServiceSetRevivifyBlockedProcedure:                    {masterWrite, masterOnlyWhy},
 	progressionv1connect.ProgressionServiceAddMilestoneProcedure:                {masterWrite, masterOnlyWhy},
 	progressionv1connect.ProgressionServiceAwardXPProcedure:                     {masterWrite, masterOnlyWhy},
 	progressionv1connect.ProgressionServiceGiveMilestoneToProcedure:             {masterWrite, masterOnlyWhy},

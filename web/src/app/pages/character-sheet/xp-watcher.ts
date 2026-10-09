@@ -29,7 +29,9 @@ export class XpWatcher {
    * `onForm` when a character's hit points or the combat changed (a Wild Shape form ends that way), with the
    * character of a vitals event, or `null` when it is the combat that changed. `onVitals`, when given, gets the live
    * numbers of the session's characters (the counters on the sheet): the snapshot on every `ready` (the master's has them
-   * all, a player's only their own character) and each `vitals_changed` after it. */
+   * all, a player's only their own character) and each `vitals_changed` after it. `onCharacter` runs when the master asked for changes, its
+   * player sent it again or it was revived (`character_changes_requested`, `character_resubmitted`,
+   * `character_revived`), with that character. */
   follow(
     campaignId: string | null,
     onChange: () => void,
@@ -37,6 +39,7 @@ export class XpWatcher {
     onContent?: () => void,
     onForm?: (characterId: string | null) => void,
     onVitals?: (vitals: VitalsVm) => void,
+    onCharacter?: (characterId: string) => void,
   ): void {
     if (campaignId === this.campaignId) {
       // The same session, asked again (the page moved to another character of it, or read its sheet again): the live
@@ -80,6 +83,7 @@ export class XpWatcher {
         onXpChanged: onChange,
         onCreaturesChanged: onCreatures,
         onContentChanged: onContent,
+        onCharacterChanged: onCharacter,
         onEnded: () => this.stop(stream),
         onFatal: () => this.stop(stream),
       },

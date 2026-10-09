@@ -28,6 +28,9 @@ import { PoolCardView } from './pool-card';
                 <span class="line__icon" aria-hidden="true"><mat-icon>{{ l.icon }}</mat-icon></span>
                 <div class="line__text">
                   @if (l.actor) {<b>{{ l.actor }}</b>}{{ l.text }}
+                  @if (l.note; as note) {
+                    <span class="line__note">{{ note }}</span>
+                  }
                   @if (l.hidden) {
                     <span class="line__secret"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só o mestre vê</span>
                   }

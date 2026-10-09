@@ -12,6 +12,7 @@ import {
   contentRef,
   describeCharacterError,
   invalidFieldPath,
+  livingRefusal,
   switchedOffKey,
 } from './character-errors';
 
@@ -29,6 +30,8 @@ describe('characterBlockedMessage', () => {
     expect(characterBlockedMessage('story_locked')).toContain('Permitir editar a história');
     expect(characterBlockedMessage('not_pending')).toContain('já foi aprovado');
     expect(characterBlockedMessage('awaiting_approval')).toContain('Aprove ou recuse');
+    expect(characterBlockedMessage('no_changes_requested')).toContain('pedido de ajustes aberto');
+    expect(characterBlockedMessage('not_dead')).toContain('não está morto');
     expect(characterBlockedMessage('not_reserved')).toContain('já tem dono');
     expect(characterBlockedMessage('claim_link_used')).toContain('já foi usado');
     expect(characterBlockedMessage('not_claimed')).toContain('não veio de um link');
@@ -74,6 +77,16 @@ describe('describeCharacterError', () => {
     expect(
       describeCharacterError(blockedError(CharacterBlockedReason.AWAITING_APPROVAL)),
     ).toContain('Aprove ou recuse');
+  });
+
+  it('reads NO_CHANGES_REQUESTED, and says a reason that is not 1 to 500 characters (the field "reason")', () => {
+    expect(
+      describeCharacterError(blockedError(CharacterBlockedReason.NO_CHANGES_REQUESTED)),
+    ).toContain('pedido de ajustes aberto');
+    const badReason = new ConnectError('bad', Code.InvalidArgument, undefined, [
+      { desc: InvalidFieldSchema, value: { field: 'reason' } },
+    ]);
+    expect(describeCharacterError(badReason)).toBe('O motivo precisa ter de 1 a 500 caracteres.');
   });
 
   it('falls back to a generic message for failed_precondition with no detail', () => {
@@ -224,5 +237,33 @@ describe('the content the master retired (RN-23, 10.1d)', () => {
     expect(invalidFieldPath(err)).toBe('full.classes[1].class_key');
     expect(describeCharacterError(err)).toContain('Classe 2: essa classe se repete ou não existe');
     expect(invalidFieldPath(new ConnectError('x', Code.NotFound))).toBeNull();
+  });
+});
+
+describe('livingRefusal', () => {
+  it('reads the living character that stops a revival: its id and name', () => {
+    const err = new ConnectError('blocked', Code.FailedPrecondition, undefined, [
+      {
+        desc: CharacterBlockedSchema,
+        value: {
+          reason: CharacterBlockedReason.LIVING_CHARACTER_EXISTS,
+          characterId: 'nuvem-1',
+          livingCharacterName: 'Nuvem',
+        },
+      },
+    ]);
+    expect(livingRefusal(err)).toEqual({ characterId: 'nuvem-1', name: 'Nuvem' });
+  });
+
+  it('is null for any other refusal and for any other error', () => {
+    expect(livingRefusal(blockedError(CharacterBlockedReason.NOT_DEAD))).toBeNull();
+    expect(livingRefusal(new ConnectError('x', Code.NotFound))).toBeNull();
+    expect(livingRefusal(new Error('network'))).toBeNull();
+  });
+
+  it('says NOT_DEAD in words through describeCharacterError', () => {
+    expect(describeCharacterError(blockedError(CharacterBlockedReason.NOT_DEAD))).toContain(
+      'não está morto',
+    );
   });
 });

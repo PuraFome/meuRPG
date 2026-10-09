@@ -92,6 +92,15 @@ const (
 	// CharacterServiceRejectCharacterProcedure is the fully-qualified name of the CharacterService's
 	// RejectCharacter RPC.
 	CharacterServiceRejectCharacterProcedure = "/meurpg.characters.v1.CharacterService/RejectCharacter"
+	// CharacterServiceRequestCharacterChangesProcedure is the fully-qualified name of the
+	// CharacterService's RequestCharacterChanges RPC.
+	CharacterServiceRequestCharacterChangesProcedure = "/meurpg.characters.v1.CharacterService/RequestCharacterChanges"
+	// CharacterServiceResubmitCharacterProcedure is the fully-qualified name of the CharacterService's
+	// ResubmitCharacter RPC.
+	CharacterServiceResubmitCharacterProcedure = "/meurpg.characters.v1.CharacterService/ResubmitCharacter"
+	// CharacterServiceReviveCharacterProcedure is the fully-qualified name of the CharacterService's
+	// ReviveCharacter RPC.
+	CharacterServiceReviveCharacterProcedure = "/meurpg.characters.v1.CharacterService/ReviveCharacter"
 	// CharacterServiceCreateClaimLinkProcedure is the fully-qualified name of the CharacterService's
 	// CreateClaimLink RPC.
 	CharacterServiceCreateClaimLinkProcedure = "/meurpg.characters.v1.CharacterService/CreateClaimLink"
@@ -479,6 +488,85 @@ type CharacterServiceClient interface {
 	//     character stays in the campaign. The error carries a CharacterBlocked
 	//     detail with reason NOT_PENDING.
 	RejectCharacter(context.Context, *connect.Request[v1.RejectCharacterRequest]) (*connect.Response[v1.RejectCharacterResponse], error)
+	// RequestCharacterChanges is the master's "Pedir ajustes" on a character that
+	// waits for approval (RN-15, MR-024): it stays PENDING and the player sees the
+	// master's reason, edits the sheet and sends it again (ResubmitCharacter). Only
+	// the campaign's master may call it. Nothing is deleted: the invite and the
+	// pending membership stay as they are, and the master may still approve or
+	// reject at any time.
+	//
+	// The reason is 1 to 500 characters after trimming, one block of text. It is
+	// personal data of the player kept by the master: only the master and the
+	// owner read it (Character.review), and the server deletes it when the
+	// character is approved or rejected, when the character, the campaign or the
+	// player's account is deleted (docs/privacy.md). Asking again replaces the reason
+	// and the time, and the review is CHANGES_REQUESTED again.
+	//
+	// It carries an idempotency_key (1 to 64 characters, scoped to the caller): the
+	// same key with the same request returns the first answer and tells the stream
+	// nothing; the same key with another request is `invalid_argument`.
+	//
+	// It sends `character_changes_requested` to the master and the owner.
+	//
+	// Errors:
+	//   - `invalid_argument`: the reason is empty or has only spaces (field
+	//     "reason", InvalidField), it passes 500 characters (field "reason"), the
+	//     key is not valid or was used for another request, or the character is an
+	//     NPC.
+	//   - `not_found`: the character is not in this campaign, the campaign does
+	//     not exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: the character is not PENDING (NOT_PENDING).
+	RequestCharacterChanges(context.Context, *connect.Request[v1.RequestCharacterChangesRequest]) (*connect.Response[v1.RequestCharacterChangesResponse], error)
+	// ResubmitCharacter is the owner's "Enviar de novo": the sheet is ready for
+	// the master to look at again. The character stays PENDING and its review
+	// becomes RESUBMITTED; the reason stays for the master's history until the
+	// character is approved, rejected or deleted. Only the owning player may call it,
+	// and only while a request for changes is open. Editing the sheet does not send
+	// it: the player decides when they are done.
+	//
+	// It carries an idempotency_key like RequestCharacterChanges. It sends
+	// `character_resubmitted` to the master and the owner.
+	//
+	// Errors:
+	//   - `invalid_argument`: the key is not valid or was used for another request.
+	//   - `not_found`: the character is not in this campaign, the campaign does not
+	//     exist, or the caller is not its owner or a member: the same answer for
+	//     both, so nobody probes a character_id.
+	//   - `failed_precondition`: NOT_PENDING (the character was approved), or
+	//     NO_CHANGES_REQUESTED (there is no open request: nothing was asked, or
+	//     it was already sent again).
+	ResubmitCharacter(context.Context, *connect.Request[v1.ResubmitCharacterRequest]) (*connect.Response[v1.ResubmitCharacterResponse], error)
+	// ReviveCharacter is the master's "Reviver" (RN-03, SRD 5.1, "Dropping to 0 Hit
+	// Points"): a dead player character lives again with 1 hit point, with no death
+	// save counted, and goes back to the state it had before it died (a draft or
+	// locked). Spell slots, class uses and hit dice stay as they were. It is not a
+	// spell: it spends nothing and has no time limit. Only the campaign's master may
+	// call it.
+	//
+	// In a combat that is not ended where the character was a combatant, it goes back
+	// to the order where it was and acts on its next turn: the SRD has no "no turn
+	// this round" rule. The log says "O mestre reviveu <name>". The character's
+	// `revived_at` is set; `died_at` stays as the history of the master, and a new
+	// death sets it again.
+	//
+	// RN-03: a player has at most one living character in a campaign. If the player
+	// made another one after this death, reviving is refused until the master
+	// archives it or marks it dead.
+	//
+	// It carries an idempotency_key; the same key with the same request after a
+	// success returns the character as it is.
+	//
+	// Errors:
+	//   - `invalid_argument`: the character is an NPC, or the key is not valid or was
+	//     used for another request.
+	//   - `not_found`: the character is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: the character is not dead (NOT_DEAD), or its player
+	//     already has another living character in the campaign
+	//     (LIVING_CHARACTER_EXISTS: the error's CharacterBlocked names it).
+	ReviveCharacter(context.Context, *connect.Request[v1.ReviveCharacterRequest]) (*connect.Response[v1.ReviveCharacterResponse], error)
 	// CreateClaimLink makes the link a player uses to take a reserved character
 	// (the character the master made with CreateCharacter.for_player). Only the
 	// campaign's master may call it. The app builds the link as
@@ -973,6 +1061,24 @@ func NewCharacterServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(characterServiceMethods.ByName("RejectCharacter")),
 			connect.WithClientOptions(opts...),
 		),
+		requestCharacterChanges: connect.NewClient[v1.RequestCharacterChangesRequest, v1.RequestCharacterChangesResponse](
+			httpClient,
+			baseURL+CharacterServiceRequestCharacterChangesProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("RequestCharacterChanges")),
+			connect.WithClientOptions(opts...),
+		),
+		resubmitCharacter: connect.NewClient[v1.ResubmitCharacterRequest, v1.ResubmitCharacterResponse](
+			httpClient,
+			baseURL+CharacterServiceResubmitCharacterProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("ResubmitCharacter")),
+			connect.WithClientOptions(opts...),
+		),
+		reviveCharacter: connect.NewClient[v1.ReviveCharacterRequest, v1.ReviveCharacterResponse](
+			httpClient,
+			baseURL+CharacterServiceReviveCharacterProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("ReviveCharacter")),
+			connect.WithClientOptions(opts...),
+		),
 		createClaimLink: connect.NewClient[v1.CreateClaimLinkRequest, v1.CreateClaimLinkResponse](
 			httpClient,
 			baseURL+CharacterServiceCreateClaimLinkProcedure,
@@ -1134,6 +1240,9 @@ type characterServiceClient struct {
 	updateMasterNotes        *connect.Client[v1.UpdateMasterNotesRequest, v1.UpdateMasterNotesResponse]
 	approveCharacter         *connect.Client[v1.ApproveCharacterRequest, v1.ApproveCharacterResponse]
 	rejectCharacter          *connect.Client[v1.RejectCharacterRequest, v1.RejectCharacterResponse]
+	requestCharacterChanges  *connect.Client[v1.RequestCharacterChangesRequest, v1.RequestCharacterChangesResponse]
+	resubmitCharacter        *connect.Client[v1.ResubmitCharacterRequest, v1.ResubmitCharacterResponse]
+	reviveCharacter          *connect.Client[v1.ReviveCharacterRequest, v1.ReviveCharacterResponse]
 	createClaimLink          *connect.Client[v1.CreateClaimLinkRequest, v1.CreateClaimLinkResponse]
 	revokeClaimLink          *connect.Client[v1.RevokeClaimLinkRequest, v1.RevokeClaimLinkResponse]
 	returnCharacterToReserve *connect.Client[v1.ReturnCharacterToReserveRequest, v1.ReturnCharacterToReserveResponse]
@@ -1226,6 +1335,21 @@ func (c *characterServiceClient) ApproveCharacter(ctx context.Context, req *conn
 // RejectCharacter calls meurpg.characters.v1.CharacterService.RejectCharacter.
 func (c *characterServiceClient) RejectCharacter(ctx context.Context, req *connect.Request[v1.RejectCharacterRequest]) (*connect.Response[v1.RejectCharacterResponse], error) {
 	return c.rejectCharacter.CallUnary(ctx, req)
+}
+
+// RequestCharacterChanges calls meurpg.characters.v1.CharacterService.RequestCharacterChanges.
+func (c *characterServiceClient) RequestCharacterChanges(ctx context.Context, req *connect.Request[v1.RequestCharacterChangesRequest]) (*connect.Response[v1.RequestCharacterChangesResponse], error) {
+	return c.requestCharacterChanges.CallUnary(ctx, req)
+}
+
+// ResubmitCharacter calls meurpg.characters.v1.CharacterService.ResubmitCharacter.
+func (c *characterServiceClient) ResubmitCharacter(ctx context.Context, req *connect.Request[v1.ResubmitCharacterRequest]) (*connect.Response[v1.ResubmitCharacterResponse], error) {
+	return c.resubmitCharacter.CallUnary(ctx, req)
+}
+
+// ReviveCharacter calls meurpg.characters.v1.CharacterService.ReviveCharacter.
+func (c *characterServiceClient) ReviveCharacter(ctx context.Context, req *connect.Request[v1.ReviveCharacterRequest]) (*connect.Response[v1.ReviveCharacterResponse], error) {
+	return c.reviveCharacter.CallUnary(ctx, req)
 }
 
 // CreateClaimLink calls meurpg.characters.v1.CharacterService.CreateClaimLink.
@@ -1658,6 +1782,85 @@ type CharacterServiceHandler interface {
 	//     character stays in the campaign. The error carries a CharacterBlocked
 	//     detail with reason NOT_PENDING.
 	RejectCharacter(context.Context, *connect.Request[v1.RejectCharacterRequest]) (*connect.Response[v1.RejectCharacterResponse], error)
+	// RequestCharacterChanges is the master's "Pedir ajustes" on a character that
+	// waits for approval (RN-15, MR-024): it stays PENDING and the player sees the
+	// master's reason, edits the sheet and sends it again (ResubmitCharacter). Only
+	// the campaign's master may call it. Nothing is deleted: the invite and the
+	// pending membership stay as they are, and the master may still approve or
+	// reject at any time.
+	//
+	// The reason is 1 to 500 characters after trimming, one block of text. It is
+	// personal data of the player kept by the master: only the master and the
+	// owner read it (Character.review), and the server deletes it when the
+	// character is approved or rejected, when the character, the campaign or the
+	// player's account is deleted (docs/privacy.md). Asking again replaces the reason
+	// and the time, and the review is CHANGES_REQUESTED again.
+	//
+	// It carries an idempotency_key (1 to 64 characters, scoped to the caller): the
+	// same key with the same request returns the first answer and tells the stream
+	// nothing; the same key with another request is `invalid_argument`.
+	//
+	// It sends `character_changes_requested` to the master and the owner.
+	//
+	// Errors:
+	//   - `invalid_argument`: the reason is empty or has only spaces (field
+	//     "reason", InvalidField), it passes 500 characters (field "reason"), the
+	//     key is not valid or was used for another request, or the character is an
+	//     NPC.
+	//   - `not_found`: the character is not in this campaign, the campaign does
+	//     not exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: the character is not PENDING (NOT_PENDING).
+	RequestCharacterChanges(context.Context, *connect.Request[v1.RequestCharacterChangesRequest]) (*connect.Response[v1.RequestCharacterChangesResponse], error)
+	// ResubmitCharacter is the owner's "Enviar de novo": the sheet is ready for
+	// the master to look at again. The character stays PENDING and its review
+	// becomes RESUBMITTED; the reason stays for the master's history until the
+	// character is approved, rejected or deleted. Only the owning player may call it,
+	// and only while a request for changes is open. Editing the sheet does not send
+	// it: the player decides when they are done.
+	//
+	// It carries an idempotency_key like RequestCharacterChanges. It sends
+	// `character_resubmitted` to the master and the owner.
+	//
+	// Errors:
+	//   - `invalid_argument`: the key is not valid or was used for another request.
+	//   - `not_found`: the character is not in this campaign, the campaign does not
+	//     exist, or the caller is not its owner or a member: the same answer for
+	//     both, so nobody probes a character_id.
+	//   - `failed_precondition`: NOT_PENDING (the character was approved), or
+	//     NO_CHANGES_REQUESTED (there is no open request: nothing was asked, or
+	//     it was already sent again).
+	ResubmitCharacter(context.Context, *connect.Request[v1.ResubmitCharacterRequest]) (*connect.Response[v1.ResubmitCharacterResponse], error)
+	// ReviveCharacter is the master's "Reviver" (RN-03, SRD 5.1, "Dropping to 0 Hit
+	// Points"): a dead player character lives again with 1 hit point, with no death
+	// save counted, and goes back to the state it had before it died (a draft or
+	// locked). Spell slots, class uses and hit dice stay as they were. It is not a
+	// spell: it spends nothing and has no time limit. Only the campaign's master may
+	// call it.
+	//
+	// In a combat that is not ended where the character was a combatant, it goes back
+	// to the order where it was and acts on its next turn: the SRD has no "no turn
+	// this round" rule. The log says "O mestre reviveu <name>". The character's
+	// `revived_at` is set; `died_at` stays as the history of the master, and a new
+	// death sets it again.
+	//
+	// RN-03: a player has at most one living character in a campaign. If the player
+	// made another one after this death, reviving is refused until the master
+	// archives it or marks it dead.
+	//
+	// It carries an idempotency_key; the same key with the same request after a
+	// success returns the character as it is.
+	//
+	// Errors:
+	//   - `invalid_argument`: the character is an NPC, or the key is not valid or was
+	//     used for another request.
+	//   - `not_found`: the character is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: the character is not dead (NOT_DEAD), or its player
+	//     already has another living character in the campaign
+	//     (LIVING_CHARACTER_EXISTS: the error's CharacterBlocked names it).
+	ReviveCharacter(context.Context, *connect.Request[v1.ReviveCharacterRequest]) (*connect.Response[v1.ReviveCharacterResponse], error)
 	// CreateClaimLink makes the link a player uses to take a reserved character
 	// (the character the master made with CreateCharacter.for_player). Only the
 	// campaign's master may call it. The app builds the link as
@@ -2148,6 +2351,24 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 		connect.WithSchema(characterServiceMethods.ByName("RejectCharacter")),
 		connect.WithHandlerOptions(opts...),
 	)
+	characterServiceRequestCharacterChangesHandler := connect.NewUnaryHandler(
+		CharacterServiceRequestCharacterChangesProcedure,
+		svc.RequestCharacterChanges,
+		connect.WithSchema(characterServiceMethods.ByName("RequestCharacterChanges")),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceResubmitCharacterHandler := connect.NewUnaryHandler(
+		CharacterServiceResubmitCharacterProcedure,
+		svc.ResubmitCharacter,
+		connect.WithSchema(characterServiceMethods.ByName("ResubmitCharacter")),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceReviveCharacterHandler := connect.NewUnaryHandler(
+		CharacterServiceReviveCharacterProcedure,
+		svc.ReviveCharacter,
+		connect.WithSchema(characterServiceMethods.ByName("ReviveCharacter")),
+		connect.WithHandlerOptions(opts...),
+	)
 	characterServiceCreateClaimLinkHandler := connect.NewUnaryHandler(
 		CharacterServiceCreateClaimLinkProcedure,
 		svc.CreateClaimLink,
@@ -2320,6 +2541,12 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 			characterServiceApproveCharacterHandler.ServeHTTP(w, r)
 		case CharacterServiceRejectCharacterProcedure:
 			characterServiceRejectCharacterHandler.ServeHTTP(w, r)
+		case CharacterServiceRequestCharacterChangesProcedure:
+			characterServiceRequestCharacterChangesHandler.ServeHTTP(w, r)
+		case CharacterServiceResubmitCharacterProcedure:
+			characterServiceResubmitCharacterHandler.ServeHTTP(w, r)
+		case CharacterServiceReviveCharacterProcedure:
+			characterServiceReviveCharacterHandler.ServeHTTP(w, r)
 		case CharacterServiceCreateClaimLinkProcedure:
 			characterServiceCreateClaimLinkHandler.ServeHTTP(w, r)
 		case CharacterServiceRevokeClaimLinkProcedure:
@@ -2427,6 +2654,18 @@ func (UnimplementedCharacterServiceHandler) ApproveCharacter(context.Context, *c
 
 func (UnimplementedCharacterServiceHandler) RejectCharacter(context.Context, *connect.Request[v1.RejectCharacterRequest]) (*connect.Response[v1.RejectCharacterResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.RejectCharacter is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) RequestCharacterChanges(context.Context, *connect.Request[v1.RequestCharacterChangesRequest]) (*connect.Response[v1.RequestCharacterChangesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.RequestCharacterChanges is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) ResubmitCharacter(context.Context, *connect.Request[v1.ResubmitCharacterRequest]) (*connect.Response[v1.ResubmitCharacterResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.ResubmitCharacter is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) ReviveCharacter(context.Context, *connect.Request[v1.ReviveCharacterRequest]) (*connect.Response[v1.ReviveCharacterResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.ReviveCharacter is not implemented"))
 }
 
 func (UnimplementedCharacterServiceHandler) CreateClaimLink(context.Context, *connect.Request[v1.CreateClaimLinkRequest]) (*connect.Response[v1.CreateClaimLinkResponse], error) {

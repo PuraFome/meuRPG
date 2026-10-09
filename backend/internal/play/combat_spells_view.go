@@ -82,6 +82,7 @@ var effectKindToProto = map[string]playv1.SpellEffectKind{
 	rules.SpellKindFlatHeal:    playv1.SpellEffectKind_SPELL_EFFECT_KIND_FLAT_HEAL,
 	rules.SpellKindTempHP:      playv1.SpellEffectKind_SPELL_EFFECT_KIND_TEMP_HP,
 	rules.SpellKindMaxHP:       playv1.SpellEffectKind_SPELL_EFFECT_KIND_MAX_HP,
+	rules.SpellKindRevive:      playv1.SpellEffectKind_SPELL_EFFECT_KIND_REVIVE,
 }
 
 var effectReasonToProto = map[string]playv1.SpellEffectReason{
@@ -119,6 +120,12 @@ func effectView(h castHit, v combatViewer, target playdb.Combatant) *playv1.Spel
 		}
 	}
 	out.Gain = effectGainToProto[h.Gain]
+	if h.Revived != "" || h.RevivedAfter > 0 { // Revivify: the creature lives again
+		out.RevivedCharacterId = h.Revived
+		if v.master || v.owns(target) {
+			out.HitPointsAfter = &h.RevivedAfter
+		}
+	}
 	if h.Healed != nil && (v.master || v.owns(target)) {
 		out.Healed = h.Healed
 		out.HitPointsAfter, out.HitPointsMaxAfter = h.HPAfter, h.MaxAfter

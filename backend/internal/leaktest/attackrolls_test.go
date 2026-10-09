@@ -88,17 +88,17 @@ func newRollsTable(t *testing.T) *rollsTable {
 	must(m.play.SetCurrentMap(ctx, rq(&playv1.SetCurrentMapRequest{CampaignId: w.campaign, MapId: w.fogMap})))
 
 	scores := &rulesv1.AbilityScores{Strength: 16, Dexterity: 14, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 14}
-	hero := func(owner *person, name string, classes []*charactersv1.ClassLevel, weapons ...string) *charactersv1.Character {
+	hero := func(owner *person, name string, classes []*charactersv1.ClassLevel, choices []string, weapons ...string) *charactersv1.Character {
 		return must(owner.characters.CreateCharacter(ctx, rq(&charactersv1.CreateCharacterRequest{
 			CampaignId: w.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: name,
 			Sheet: &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
-				BaseScores: scores, RaceKey: "race:human", Classes: classes, WeaponKeys: weapons,
+				BaseScores: scores, RaceKey: "race:human", Classes: classes, WeaponKeys: weapons, FeatureChoiceKeys: choices,
 			}}},
 		}))).GetCharacter()
 	}
 	// A paladin who is also a rogue: Divine Smite, and Sneak Attack, the extra the master may take out.
-	w.toren = hero(w.caio, labelToren, []*charactersv1.ClassLevel{{ClassKey: "class:paladin", Level: 2}, {ClassKey: "class:rogue", Level: 2}}, dagger, shortbow)
-	w.pens = hero(w.ana, labelPens, []*charactersv1.ClassLevel{{ClassKey: "class:barbarian", Level: 3}}, dagger, shortbow)
+	w.toren = hero(w.caio, labelToren, []*charactersv1.ClassLevel{{ClassKey: "class:paladin", Level: 2}, {ClassKey: "class:rogue", Level: 2}}, []string{"feature:fighting-style-dueling"}, dagger, shortbow)
+	w.pens = hero(w.ana, labelPens, []*charactersv1.ClassLevel{{ClassKey: "class:barbarian", Level: 3}}, nil, dagger, shortbow)
 	w.place(w.fogMap, w.toren.GetId(), 3, 5)
 	w.place(w.fogMap, w.pens.GetId(), 10, 10)
 

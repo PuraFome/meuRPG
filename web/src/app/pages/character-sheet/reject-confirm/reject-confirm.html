@@ -1,0 +1,24 @@
+<div class="reject" role="group" aria-labelledby="reject-title">
+  <mat-icon aria-hidden="true">warning</mat-icon>
+  <div>
+    <h2 class="reject__title" id="reject-title">Recusar {{ characterName() }}?</h2>
+    <p class="reject__text">
+      O personagem é apagado e isto não se desfaz. {{ playerName() }} precisa de um convite novo para
+      tentar de novo. Se a ficha só precisa de ajustes, use “Pedir ajustes”.
+    </p>
+    <div class="reject__actions">
+      <button
+        matButton="outlined"
+        type="button"
+        class="danger-outline"
+        [disabled]="busy()"
+        (click)="confirmed.emit()"
+      >
+        Confirmar recusa
+      </button>
+      <button matButton="outlined" type="button" class="js-cancel-reject" (click)="cancelled.emit()">
+        Cancelar
+      </button>
+    </div>
+  </div>
+</div>

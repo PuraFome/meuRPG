@@ -91,7 +91,9 @@ func eventCase(ev *playv1.WatchGameSessionResponse) string {
 // triggered nor here fails TestLeakMatrix/stream: a new kind of event must be exercised or
 // explained.
 var notTriggered = map[string]string{
-	"hidden_hit_pending": "needs a player's area spell that hits a hidden creature, which has a world of its own: TestAnAreaSpellThatHitsAHiddenCreatureNamesItToNoPlayerBeforeTheReveal (the master hears it, no player does)",
+	"character_revived":      "the fixture kills no character: the revive tests of package play check who hears it (the master and the owner)",
+	"revivify_changed":       "the fixture has no caster of Revivify: the revivify tests of package play check who hears it (the master and the caster's player)",
+	"hidden_hit_pending":     "needs a player's area spell that hits a hidden creature, which has a world of its own: TestAnAreaSpellThatHitsAHiddenCreatureNamesItToNoPlayerBeforeTheReveal (the master hears it, no player does)",
 	"reaction_window_opened": "TestAnNPCsReactionWindowIsHeardByTheMasterAlone needs its own combat state and checks the events of both kinds",
 	"reaction_window_closed": "same test",
 }
@@ -187,6 +189,13 @@ func checkStream(t *testing.T, w *world, got *answers) {
 func (w *world) streamScript() {
 	ctx := w.t.Context()
 	m := w.master
+
+	// -- the pending member sends her character again and the master asks again: the master hears
+	// of both, as a hint with no reason; no player and no stream of anyone else does.
+	must(w.pending.characters.ResubmitCharacter(ctx, rq(&charactersv1.ResubmitCharacterRequest{CampaignId: w.campaign, CharacterId: w.pendingHero.GetId(), IdempotencyKey: newKey()})))
+	must(m.characters.RequestCharacterChanges(ctx, rq(&charactersv1.RequestCharacterChangesRequest{
+		CampaignId: w.campaign, CharacterId: w.pendingHero.GetId(), Reason: w.reviewReason, IdempotencyKey: newKey(),
+	})))
 
 	// -- hidden changes: the players hear nothing, or only a hint with no content.
 	x, y := at(7, 8)

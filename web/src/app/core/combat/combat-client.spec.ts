@@ -308,3 +308,31 @@ describe('CombatClient, the reaction windows (PM-04)', () => {
     expect(calls.attack[0]).toMatchObject({ asReaction: true, catchWindowId: 'w2' });
   });
 });
+
+describe('CombatClient Revivify', () => {
+  it('casts on a dead target with the diamonds confirmed and no combatant target', async () => {
+    TestBed.configureTestingModule({
+      providers: [CombatClient, { provide: CONNECT_TRANSPORT, useValue: {} }],
+    });
+    const client = TestBed.inject(CombatClient);
+    let sent: unknown;
+    (client as unknown as { client: unknown }).client = {
+      castSpell: (req: unknown) => {
+        sent = req;
+        return Promise.resolve({
+          encounter: { id: 'enc' },
+          cast: { effectKind: 7 },
+          summonedCombatantIds: [],
+        });
+      },
+    };
+    await client.castRevivify('c', 'e', 'i', { level: 3, pact: false }, 'toren', 'k');
+    expect(sent).toMatchObject({
+      spellKey: 'spell:revivify',
+      slot: { level: 3, pact: false },
+      targets: [{ deadTargetId: 'toren' }],
+      materialConfirmed: true,
+      idempotencyKey: 'k',
+    });
+  });
+});

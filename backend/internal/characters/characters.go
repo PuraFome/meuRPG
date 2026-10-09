@@ -180,6 +180,9 @@ type Service struct {
 	// that holds a character's creatures and the history they are written to
 	// (MR-037). Nil until then.
 	creatureHost CreatureHost
+	// reviewHost is package play, connected by SetReviewHost: the streams a review or a
+	// revival is told on, and the combat a revived character goes back to. Nil until then.
+	reviewHost ReviewHost
 	// maxCharacters is the cap on a campaign's characters (RN-30).
 	maxCharacters int
 	// claims limits PreviewClaim and ClaimCharacter (claims.go), and
@@ -301,5 +304,6 @@ func (s *Service) CheckWired() error {
 		wiring.Dep{Setter: "SetGallery", Missing: s.gallery == nil},
 		wiring.Dep{Setter: "SetLive", Missing: s.live == nil},
 		wiring.Dep{Setter: "SetCreatureHost", Missing: s.creatureHost == nil},
+		wiring.Dep{Setter: "SetReviewHost", Missing: s.reviewHost == nil},
 		wiring.Dep{Setter: "SetLevelUps", Missing: s.levelUps == nil})
 }
