@@ -61,7 +61,11 @@ func (s *Service) reactionView(ctx context.Context, m authz.Membership, d *encou
 	if err != nil {
 		return nil, nil, s.dbError(ctx, "list the reaction windows", err)
 	}
-	if len(open) == 0 {
+	offers, err := s.queries.ListPendingOpportunityOffers(ctx, d.enc.ID)
+	if err != nil {
+		return nil, nil, s.dbError(ctx, "list the opportunity offers", err)
+	}
+	if len(open) == 0 && len(offers) == 0 {
 		return nil, nil, nil
 	}
 	wv := &windowView{s: s, ctx: ctx, m: m, v: v, d: d, names: names, byID: make(map[string]playdb.Combatant, len(d.cs))}
@@ -98,6 +102,32 @@ func (s *Service) reactionView(ctx context.Context, m authz.Membership, d *encou
 				return nil, nil, err
 			}
 			holds, holdsSet = h, true
+		}
+	}
+	// The opportunity attacks are windows too (RN-21): the offer's own calls answer them.
+	for _, o := range offers {
+		mover, ok1 := wv.byID[o.MoverID]
+		reactor, ok2 := wv.byID[o.ReactorID]
+		if !ok1 || !ok2 || !v.seesAtOffer(mover, o) {
+			continue
+		}
+		answers := v.master || v.owns(reactor)
+		if !answers && !v.owns(mover) {
+			continue
+		}
+		if answers {
+			pw := &playv1.ReactionWindow{
+				Id: o.ID, Kind: playv1.ReactionKind_REACTION_KIND_OPPORTUNITY, Status: playv1.ReactionWindowStatus_REACTION_WINDOW_STATUS_OPEN,
+				GroupId: o.MoveID, ReactorId: reactor.ID, ReactorLabel: reactor.Label, ReactorIsPlayer: reactor.Kind == kindPlayer, ForYou: true, AnswerNow: v.master,
+			}
+			if v.master {
+				pw.Trigger = &playv1.ReactionTrigger{ActorId: mover.ID, ActorLabel: mover.Label, TargetId: reactor.ID, TargetLabel: reactor.Label}
+			}
+			windows = append(windows, pw)
+		}
+		wv.waitOf(playdb.ReactionWindow{Kind: "opportunity"}, &reactor, answers, &wait)
+		if !holdsSet && !answers {
+			holds, holdsSet = reaction.HoldsTurn, true
 		}
 	}
 	var out *playv1.ReactionWait

@@ -1646,6 +1646,10 @@ func TestCombatUndoTakesBackEveryNewAction(t *testing.T) {
 			t.Fatalf("DeclineReaction() error = %v", err)
 		}
 	})
+	// The turn waits for the answer (PM-04): Pensantus lets the hit go before the next attack.
+	if _, err := b.declineReaction(t, b.ana, eb, hit.GetPendingDamage().GetId()); err != nil {
+		t.Fatalf("DeclineReaction() error = %v", err)
+	}
 	// And a damage at 0 hit points: a failure that the undo takes away.
 	b.correct(t, b.toren, hpIs(0))
 	b.h.roller.queue(3)

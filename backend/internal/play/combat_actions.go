@@ -23,6 +23,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // What a turn can do (MR-012, MR-014, Etapa 6, slice 6.4a): the options of a
@@ -578,11 +579,13 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		}
 	}
 	// An opportunity attack is a reaction attack (MR-034).
-	asReaction := req.Msg.GetAsReaction() || offerID != ""
+	catchID := req.Msg.GetCatchWindowId() // a Deflect Missiles throw back (PM-04)
+	asReaction := req.Msg.GetAsReaction() || offerID != "" || catchID != ""
 	v := viewerOf(m)
 
 	var made actionEvent
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventAttackRolled, encounterID: encID}, func(c *combatTx) (any, error) {
+		attackKey := attackKey // a throw back is the caught missile, under its own key
 		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
@@ -628,7 +631,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 			}
 		}
 		if asReaction {
-			err = s.mustReactNow(ctx, c, attacker, offerID != "")
+			err = s.mustReactNow(ctx, c, attacker, offerID != "" || catchID != "")
 		} else {
 			err = s.mustActNow(ctx, c, attacker)
 		}
@@ -650,6 +653,16 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		attackerSheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, attacker)
 		if err != nil {
 			return nil, err
+		}
+		var caught playdb.ReactionWindow
+		if catchID != "" {
+			thrown, w, err := s.deflectThrow(ctx, c, catchID, attacker, cs)
+			if err != nil {
+				return nil, err
+			}
+			caught = w
+			attackerSheet.Attacks = append(slices.Clone(attackerSheet.Attacks), thrown)
+			attackKey = thrown.Key
 		}
 		i := slices.IndexFunc(attackerSheet.Attacks, func(a link.Attack) bool { return a.Key == attackKey })
 		if i < 0 {
@@ -678,7 +691,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		bonusKind := combat.BonusNone
 		if !v.master {
 			switch {
-			case asReaction && attacker.ReactionUsed:
+			case asReaction && attacker.ReactionUsed && catchID == "": // the throw is the reaction already spent
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is used")
 			case !asReaction:
 				if bonusKind, err = attackEconomy(attacker, attackerSheet, attack); err != nil {
@@ -798,6 +811,15 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 			ID: attacker.ID, ActionUsed: after.ActionUsed, BonusActionUsed: after.BonusActionUsed, ReactionUsed: after.ReactionUsed, Dashed: after.Dashed,
 		}); err != nil {
 			return nil, fmt.Errorf("spend the action: %w", err)
+		}
+		if catchID != "" { // the ki is spent and the window done with the throw
+			if _, err := s.spendReactionResource(ctx, c, attacker, resKi); err != nil {
+				return nil, err
+			}
+			ct := windowTriggerOf(caught)
+			if _, err := s.closeWindow(ctx, c, caught, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: c.master, Used: true, Reduction: ct.Reduced, Before: ct.Damage, After: 0}, ""); err != nil {
+				return nil, err
+			}
 		}
 		if result.Hit {
 			made.Outcome = outcomeHit

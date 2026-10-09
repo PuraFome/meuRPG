@@ -53,6 +53,19 @@ func (s *Service) AnswerReaction(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("answer must be USE or PASS"))
 	}
 
+	// An opportunity attack's offer is a window too: "Deixar passar" turns it down; the
+	// attack itself is RollAttack's (opportunity_offer_id).
+	if _, err := s.queries.GetOpportunityOffer(ctx, playdb.GetOpportunityOfferParams{EncounterID: encID, ID: winID}); err == nil {
+		if choice == playv1.ReactionChoice_REACTION_CHOICE_USE {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an opportunity attack is made with RollAttack and opportunity_offer_id"))
+		}
+		out, err := s.answerOffer(ctx, m, req.Msg.GetEncounterId(), winID, req.Msg.GetIdempotencyKey(), offerDeclined)
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&playv1.AnswerReactionResponse{Encounter: out, Result: &playv1.ReactionResult{Kind: playv1.ReactionKind_REACTION_KIND_OPPORTUNITY, ByMaster: m.Role == authz.RoleMaster}}), nil
+	}
+
 	var got answered
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventReactionAnswered, altKind: eventReactionUsed, encounterID: encID}, func(c *combatTx) (any, error) {
 		got = answered{}

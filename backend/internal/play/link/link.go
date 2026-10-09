@@ -335,6 +335,8 @@ type ReactionStats struct {
 	// Deflect says it has Deflect Missiles; MonkLevel and DexMod are its numbers.
 	Deflect           bool
 	MonkLevel, DexMod int
+	// Proficiency is the proficiency bonus (the Deflect Missiles throw back adds it).
+	Proficiency int
 	// CuttingWords says it has the bard's feature, with its bard level (the die)
 	// and the bard's "Perguntar" setting: "all", "attacks" (the default) or "never".
 	CuttingWords bool

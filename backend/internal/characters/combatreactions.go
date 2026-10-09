@@ -98,6 +98,7 @@ func fullReactionStats(d rules.Derived, full *charactersv1.FullSheet) link.React
 		}
 	}
 	out.DexMod = abilityMod(d, rules.DEX)
+	out.Proficiency = d.ProficiencyBonus
 	// Charisma is the spellcasting ability of the Infernal Legacy.
 	out.LegacyDC = 8 + d.ProficiencyBonus + abilityMod(d, rules.CHA)
 	return out

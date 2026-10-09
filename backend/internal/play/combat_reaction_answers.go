@@ -13,6 +13,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
@@ -447,4 +448,47 @@ func (s *Service) landRolled(ctx context.Context, c *combatTx, p playdb.PendingD
 		return hit, nil, fmt.Errorf("save the damage roll: %w", err)
 	}
 	return hit, vit, s.afterDamage(ctx, c, target, damageLanded{attacker: deref(p.AttackerID), key: p.AttackKey, pending: p, hit: hit})
+}
+
+// deflectThrow is the attack a monk makes with the missile it caught (SRD, Monk 3,
+// Deflect Missiles): a ranged attack with proficiency, range 20/60 and the missile's
+// own damage dice, as part of the reaction already spent. It returns the attack to
+// roll, and the window that the throw closes.
+func (s *Service) deflectThrow(ctx context.Context, c *combatTx, raw string, thrower playdb.Combatant, cs []playdb.Combatant) (link.Attack, playdb.ReactionWindow, error) {
+	var none link.Attack
+	id, err := parseCombatID(raw, "window")
+	if err != nil {
+		return none, playdb.ReactionWindow{}, err
+	}
+	w, err := c.q.GetReactionWindowForUpdate(ctx, playdb.GetReactionWindowForUpdateParams{EncounterID: c.enc.ID, ID: id})
+	if err != nil || w.Status != windowOpen || w.Kind != string(reaction.DeflectKind) || w.Step != 2 || w.ReactorID == nil || *w.ReactorID != thrower.ID {
+		return none, w, errNotYourTurnToAnswer()
+	}
+	t := windowTriggerOf(w)
+	i := slices.IndexFunc(cs, func(x playdb.Combatant) bool { return x.ID == t.Actor })
+	if i < 0 {
+		return none, w, errNotYourTurnToAnswer()
+	}
+	sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, cs[i])
+	if err != nil {
+		return none, w, err
+	}
+	j := slices.IndexFunc(sheet.Attacks, func(a link.Attack) bool { return a.Key == t.Key })
+	if j < 0 {
+		return none, w, errNotYourTurnToAnswer()
+	}
+	k, err := s.reactorKit(ctx, c, thrower)
+	if err != nil {
+		return none, w, err
+	}
+	if k.resourceLeft(resKi) < 1 {
+		return none, w, connect.NewError(connect.CodeFailedPrecondition, errors.New("no ki left to throw the missile back"))
+	}
+	a := sheet.Attacks[j]
+	a.Key, a.Spell, a.Save, a.Melee, a.Beams = t.Key, false, false, false, 0
+	a.ToHit = k.st.Proficiency + k.st.DexMod
+	a.DiceBonus = k.st.DexMod
+	a.AbilityMod = k.st.DexMod
+	a.RangeFt, a.LongRangeFt = 20, 60
+	return a, w, nil
 }
