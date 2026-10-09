@@ -838,7 +838,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 				// it is negative, or the character fights with two weapons).
 				bonus = combat.OffHandBonus(bonus, attack.AbilityMod, attackerSheet.TwoWeaponFighting)
 			}
-			p, err := s.openHit(ctx, c, m.CampaignID, attacker, target, attackKey,
+			p, err := s.openHit(ctx, c, attacker, target, attackKey,
 				link.Dice{Count: attack.DiceCount, Sides: attack.DiceSides, Bonus: bonus, DamageType: attack.DamageType}, result.Critical,
 				brutalCriticalDice(attacker, attack, attackerSheet, result.Critical), result.Total, targetAC)
 			if err != nil {

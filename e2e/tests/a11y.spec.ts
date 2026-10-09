@@ -183,14 +183,18 @@ const wcag = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 async function expectScreenPasses(page: Page, screen: string): Promise<void> {
   // A dialog still fading in has colours between two states: axe would judge
   // the contrast of a frame nobody stops on (it failed that way once, in the
-  // spell dialog). Wait for the transitions that end; a looping one never
-  // does.
+  // spell dialog, and again in the Escudo prompt on a slow runner). Wait for
+  // the transitions that end, the ones that have not started yet ("pending",
+  // the dialog's first frame) included; a looping one never does.
   await page.waitForFunction(
     () =>
       document
         .getAnimations()
         .every(
-          (a) => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity,
+          (a) =>
+            a.playState === 'finished' ||
+            a.playState === 'idle' ||
+            a.effect?.getComputedTiming().iterations === Infinity,
         ),
     undefined,
     { timeout: 5_000 },
