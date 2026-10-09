@@ -162,7 +162,7 @@ func stateName(st playdb.CombatantState) string {
 // Paralyzed, Petrified, Restrained, Stunned and Unconscious: speed 0 or no movement).
 func cannotMove(k string) bool {
 	switch k {
-	case "condition:paralyzed", "condition:petrified", "condition:stunned", "condition:unconscious",
+	case conditionParalyzed, "condition:petrified", "condition:stunned", "condition:unconscious",
 		"condition:grappled", "condition:restrained":
 		return true
 	}
@@ -181,7 +181,7 @@ func (s *Service) endEffectsOfLeaver(ctx context.Context, c *combatTx, cs []play
 		return fmt.Errorf("list the effects: %w", err)
 	}
 	rows = slices.DeleteFunc(rows, func(st playdb.CombatantState) bool {
-		return st.CombatantID != who.ID && !(st.Concentration && deref(st.SourceID) == who.ID)
+		return st.CombatantID != who.ID && (!st.Concentration || deref(st.SourceID) != who.ID)
 	})
 	return s.endEffectRows(ctx, c, cs, rows, endLeft)
 }
@@ -282,3 +282,6 @@ func (s *Service) restoreEffects(ctx context.Context, c *combatTx, rows []playdb
 	slices.Sort(touched)
 	return s.refreshCombatants(ctx, c, slices.Compact(touched)...)
 }
+
+// conditionParalyzed is the SRD condition Paralyzed.
+const conditionParalyzed = "condition:paralyzed"

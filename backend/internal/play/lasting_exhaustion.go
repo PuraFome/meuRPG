@@ -31,6 +31,9 @@ type exhaustionTarget struct {
 	combatant   *playdb.Combatant
 }
 
+// deathFailuresToDie are the failed death saves that bring a character to the confirmation of its death (SRD 5.1).
+const deathFailuresToDie = 3
+
 // SetExhaustion implements playv1connect.LastingEffectServiceHandler.
 func (s *Service) SetExhaustion(
 	ctx context.Context,
@@ -107,7 +110,7 @@ func (s *Service) exhaustionCall(ctx context.Context, campaignID, rawKey, rawEnc
 // changeExhaustion sets the level (a negative number takes that many levels off the one it is
 // now) of a character or a combatant in one transaction: the vitals or the combatant's row, the
 // state the effects leave, the death confirmation of level 6 and the line of the log.
-func (s *Service) changeExhaustion(ctx context.Context, m authz.Membership, key string, hash *string, subject exhaustionTarget, level, expected int32, confirmDeath bool, kind string) (int32, int32, *playv1.Encounter, error) {
+func (s *Service) changeExhaustion(ctx context.Context, m authz.Membership, key string, hash *string, subject exhaustionTarget, level, expected int32, confirmDeath bool, kind string) (int32, int32, *playv1.Encounter, error) { //nolint:gocognit // the steps of one transaction in one closure, like the other writes of the combat
 	var final, hpMax int32
 	var vitals *playv1.CharacterVitals
 	var secret bool
@@ -201,7 +204,7 @@ func (s *Service) changeExhaustion(ctx context.Context, m authz.Membership, key 
 			if who != nil && target == combat.MaxExhaustion {
 				// Level 6 is death: the character goes to the confirmation as the third failed death
 				// save does; only the master's ConfirmDeath says it died (RN-03).
-				if err := c.q.SetCombatantDeathSaves(ctx, playdb.SetCombatantDeathSavesParams{ID: who.ID, DeathSuccesses: 0, DeathFailures: 3, DeathSaveRolled: who.DeathSaveRolled, Defeated: who.Defeated}); err != nil {
+				if err := c.q.SetCombatantDeathSaves(ctx, playdb.SetCombatantDeathSavesParams{ID: who.ID, DeathSuccesses: 0, DeathFailures: deathFailuresToDie, DeathSaveRolled: who.DeathSaveRolled, Defeated: who.Defeated}); err != nil {
 					return nil, fmt.Errorf("take the character to the death confirmation: %w", err)
 				}
 			}
@@ -256,7 +259,7 @@ func (s *Service) setNPCExhaustion(ctx context.Context, c *combatTx, who playdb.
 	newMax := clamp32(combat.ExhaustedMaxHP(int(base), int(level)), 0, 1<<30)
 	current := num(who.HpCurrent)
 	var baseKept *int32
-	if level >= 4 {
+	if combat.ExhaustionAt(int(level)).MaxHPHalved {
 		baseKept = &base
 		current = min(current, newMax)
 	}

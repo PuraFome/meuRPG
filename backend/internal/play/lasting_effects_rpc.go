@@ -260,7 +260,7 @@ func lastingDurationOf(ch *playv1.EffectDurationChoice, fallback durationSpec) (
 }
 
 // AddLastingEffect implements playv1connect.LastingEffectServiceHandler.
-func (s *Service) AddLastingEffect(
+func (s *Service) AddLastingEffect( //nolint:gocognit // the steps of one transaction in one closure, like the other writes of the combat
 	ctx context.Context,
 	req *connect.Request[playv1.AddLastingEffectRequest],
 ) (*connect.Response[playv1.AddLastingEffectResponse], error) {
@@ -649,8 +649,10 @@ func (s *Service) SetLastingEffectVisibility(
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
 		// A line for the master alone: a switch is nothing the table reads.
-		return actionEvent{Round: c.enc.Round, Secret: true, Actor: deref(rows[0].SourceID), Target: rows[0].CombatantID,
-			Lasting: &lastingEvent{Key: deref(rows[0].SourceKey), Change: "visibility", Effects: []string{rows[0].ID}}}, nil
+		return actionEvent{
+			Round: c.enc.Round, Secret: true, Actor: deref(rows[0].SourceID), Target: rows[0].CombatantID,
+			Lasting: &lastingEvent{Key: deref(rows[0].SourceKey), Change: "visibility", Effects: []string{rows[0].ID}},
+		}, nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "set an effect's visibility", err)
@@ -738,8 +740,10 @@ func (s *Service) EndLastingEffect(
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
-		return actionEvent{Round: c.enc.Round, Secret: s.effectHiddenFrom(first, targetsOf(cs, []string{first.CombatantID})), Actor: deref(first.SourceID), Target: first.CombatantID,
-			Lasting: &lastingEvent{Key: deref(first.SourceKey), Change: "ended", Reason: reason, Effects: []string{first.ID}}}, nil
+		return actionEvent{
+			Round: c.enc.Round, Secret: s.effectHiddenFrom(first, targetsOf(cs, []string{first.CombatantID})), Actor: deref(first.SourceID), Target: first.CombatantID,
+			Lasting: &lastingEvent{Key: deref(first.SourceKey), Change: "ended", Reason: reason, Effects: []string{first.ID}},
+		}, nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "end an effect", err)
@@ -755,10 +759,13 @@ func (s *Service) EndLastingEffect(
 	return connect.NewResponse(&playv1.EndLastingEffectResponse{Encounter: out, Ended: ended, CreatedEffectIds: made}), nil
 }
 
+// looseConditionParts are the two parts of a loose condition's id: the combatant and the condition.
+const looseConditionParts = 2
+
 // endLooseCondition takes a condition the master marked by hand off a combatant: the id names it.
 func (s *Service) endLooseCondition(ctx context.Context, c *combatTx, cs []playdb.Combatant, id string, ended *int32) (any, error) {
 	parts := strings.SplitN(strings.TrimPrefix(id, looseConditionPrefix), ":", 2)
-	if len(parts) != 2 {
+	if len(parts) != looseConditionParts {
 		return nil, errEffectNotFound()
 	}
 	who, err := findCombatant(cs, parts[0], combatViewer{master: true})
@@ -835,8 +842,10 @@ func (s *Service) RemoveEffectTarget(
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
-		return actionEvent{Round: c.enc.Round, Secret: s.effectHiddenFrom(row, targetsOf(cs, []string{combID})), Actor: deref(row.SourceID), Target: combID,
-			Lasting: &lastingEvent{Key: deref(row.SourceKey), Change: "ended", Reason: endByMaster, Targets: []string{combID}, Effects: []string{row.ID}}}, nil
+		return actionEvent{
+			Round: c.enc.Round, Secret: s.effectHiddenFrom(row, targetsOf(cs, []string{combID})), Actor: deref(row.SourceID), Target: combID,
+			Lasting: &lastingEvent{Key: deref(row.SourceKey), Change: "ended", Reason: endByMaster, Targets: []string{combID}, Effects: []string{row.ID}},
+		}, nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "take a target off an effect", err)

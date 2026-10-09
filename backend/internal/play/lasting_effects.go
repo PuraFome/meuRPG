@@ -307,7 +307,7 @@ func (s *Service) dropSameSpell(ctx context.Context, c *combatTx, cs []playdb.Co
 // conditions (the ones set by hand stay, the effects' come and go), the armor class, the
 // speed, and whether it can act and move; and the exhaustion it carries (a character's is
 // its vitals').
-func (s *Service) refreshCombatants(ctx context.Context, c *combatTx, ids ...string) error {
+func (s *Service) refreshCombatants(ctx context.Context, c *combatTx, ids ...string) error { //nolint:gocognit // the steps of one transaction in one closure, like the other writes of the combat
 	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 	if err != nil {
 		return fmt.Errorf("list the combatants: %w", err)
@@ -361,8 +361,7 @@ func (s *Service) refreshCombatants(ctx context.Context, c *combatTx, ids ...str
 			}
 		}
 		pct := combat.SpeedPercent(mods)
-		switch ex := combat.ExhaustionAt(level); {
-		case ex.SpeedHalved:
+		if combat.ExhaustionAt(level).SpeedHalved {
 			pct /= 2
 		}
 		ac := combat.ArmorClassBonus(mods)

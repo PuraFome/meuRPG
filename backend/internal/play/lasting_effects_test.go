@@ -52,16 +52,6 @@ func (a *armed) rounds(t *testing.T, n int32, anchor string) func(*playv1.AddLas
 	}
 }
 
-// listEffects is the master's list of the effects in play.
-func (a *armed) listEffects(t *testing.T, e *playv1.Encounter) *playv1.ListLastingEffectsResponse {
-	t.Helper()
-	res, err := a.master.lasting.ListLastingEffects(t.Context(), connect.NewRequest(&playv1.ListLastingEffectsRequest{CampaignId: a.campaignID, EncounterId: e.GetId()}))
-	if err != nil {
-		t.Fatalf("ListLastingEffects() error = %v", err)
-	}
-	return res.Msg
-}
-
 func cardOf(t *testing.T, c *playv1.Combatant, key string) *playv1.LastingEffect {
 	t.Helper()
 	for _, f := range c.GetEffects() {
@@ -88,7 +78,7 @@ func TestAnEffectWithARoundsDurationCountsDownAndEndsAtTheStartOfTheNamedTurn(t 
 		t.Fatalf("the card = %v, want 2 rounds left", f)
 	}
 	// Round 2, Toren's turn: one round is left.
-	e = a.turnOf(t, "Toren")
+	a.turnOf(t, "Toren")
 	if f := cardOf(t, byLabel(t, a.get(t, a.master), "Toren"), "spell:bless"); f == nil || f.GetRoundsLeft() != 1 {
 		t.Fatalf("round 2: the card = %v, want 1 round left", f)
 	}

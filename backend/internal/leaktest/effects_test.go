@@ -35,11 +35,11 @@ func TestAnEffectTheMasterHidesReachesNoPlayer(t *testing.T) {
 
 	reads := func(p *person) []reply {
 		out := w.reads(p)
-		out = append(out, p.call(playv1connect.LastingEffectServiceListCharacterEffectsProcedure, &playv1.ListCharacterEffectsRequest{CampaignId: w.campaign}))
-		out = append(out, p.call(playv1connect.CombatServiceGetTurnOptionsProcedure, &playv1.GetTurnOptionsRequest{
-			CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: w.combatant(w.toren).GetId(),
-		}))
-		return out
+		return append(out,
+			p.call(playv1connect.LastingEffectServiceListCharacterEffectsProcedure, &playv1.ListCharacterEffectsRequest{CampaignId: w.campaign}),
+			p.call(playv1connect.CombatServiceGetTurnOptionsProcedure, &playv1.GetTurnOptionsRequest{
+				CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: w.combatant(w.toren).GetId(),
+			}))
 	}
 	for _, p := range []*person{w.ana, w.caio} {
 		for _, r := range reads(p) {

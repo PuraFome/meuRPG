@@ -65,7 +65,7 @@ func (s *Service) applyLastingSpell(ctx context.Context, c *combatTx, cs []playd
 		if key == "" {
 			key = kinds[t.CharacterID]
 		}
-		if why := s.noEffectWhy(content, def, t, key); why != "" {
+		if why := s.noEffectWhy(content, def, key); why != "" {
 			hit.Lasting, hit.NoEffectWhy = lastingNoEffect, why
 			continue
 		}
@@ -110,7 +110,7 @@ func (s *Service) applyLastingSpell(ctx context.Context, c *combatTx, cs []playd
 // noEffectWhy says why a spell takes no hold of a target, "" when it may: a spell that picks a
 // humanoid (Imobilizar Pessoa), a condition the creature is immune to, a creature too simple for
 // Riso Histérico (SRD 5.1: an Intelligence score of 4 or less).
-func (s *Service) noEffectWhy(content *rules.Content, def *rules.EffectDef, t playdb.Combatant, monsterKey string) string {
+func (s *Service) noEffectWhy(content *rules.Content, def *rules.EffectDef, monsterKey string) string {
 	var creature rules.Creature
 	known := false
 	if monsterKey != "" {

@@ -34,17 +34,27 @@ type Exhaustion struct {
 	Dead bool
 }
 
+// The level of exhaustion at which each effect begins (SRD 5.1, Conditions: the table of
+// exhaustion).
+const (
+	levelChecks          = 1
+	levelSpeedHalved     = 2
+	levelAttacksAndSaves = 3
+	levelMaxHPHalved     = 4
+	levelSpeedZero       = 5
+)
+
 // ExhaustionAt returns the effects of a level, 0 to 6 (anything else is
 // clamped into it).
 func ExhaustionAt(level int) Exhaustion {
 	level = min(max(level, 0), MaxExhaustion)
 	return Exhaustion{
-		DisadvantageOnChecks:          level >= 1,
-		SpeedHalved:                   level >= 2,
-		DisadvantageOnAttacksAndSaves: level >= 3,
-		MaxHPHalved:                   level >= 4,
-		SpeedZero:                     level >= 5,
-		Dead:                          level >= 6,
+		DisadvantageOnChecks:          level >= levelChecks,
+		SpeedHalved:                   level >= levelSpeedHalved,
+		DisadvantageOnAttacksAndSaves: level >= levelAttacksAndSaves,
+		MaxHPHalved:                   level >= levelMaxHPHalved,
+		SpeedZero:                     level >= levelSpeedZero,
+		Dead:                          level >= MaxExhaustion,
 	}
 }
 
@@ -54,8 +64,11 @@ func ExhaustedMaxHP(maximum, level int) int {
 	if !ExhaustionAt(level).MaxHPHalved || maximum <= 1 {
 		return maximum
 	}
-	return max(maximum/2, 1)
+	return max(maximum/halved, 1)
 }
+
+// halved is the divisor of a speed or a maximum that is halved.
+const halved = 2
 
 // ExhaustedSpeedFt is the speed under a level of exhaustion: halved at level 2
 // (rounded down), 0 at level 5.
@@ -64,7 +77,7 @@ func ExhaustedSpeedFt(speedFt, level int) int {
 	case e.SpeedZero:
 		return 0
 	case e.SpeedHalved:
-		return speedFt / 2
+		return speedFt / halved
 	}
 	return speedFt
 }

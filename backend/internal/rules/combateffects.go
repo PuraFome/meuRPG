@@ -203,8 +203,10 @@ type combatEffects struct {
 var (
 	effectKinds     = []string{"spell", "feature", "master"}
 	effectApplies   = []string{"all", "failed_save"}
-	effectDurations = []string{EffectDurationRounds, EffectDurationUntilStartOfTurnOf, EffectDurationUntilEndOfTurnOf,
-		EffectDurationConcentration, EffectDurationUntilDismissed, EffectDurationLongRest}
+	effectDurations = []string{
+		EffectDurationRounds, EffectDurationUntilStartOfTurnOf, EffectDurationUntilEndOfTurnOf,
+		EffectDurationConcentration, EffectDurationUntilDismissed, EffectDurationLongRest,
+	}
 	modifierKinds = []string{ModifierRollDie, ModifierACBonus, ModifierSpeedMultiplier, ModifierSaveAdvantage, ModifierExtraAction, ModifierNoMove, ModifierNoAction, ModifierCheckBonus, ModifierSpeedAdd}
 	saveAbilities = []string{"str", "dex", "con", "int", "wis", "cha"}
 	// extraActions are the standard actions an extra action may be: the keys of
@@ -303,7 +305,7 @@ func allDefs(f *combatEffects) []*EffectDef {
 }
 
 // checkEffectDef refuses what an effect of the file may not say.
-func (c *content) checkEffectDef(file string, d *EffectDef, all *combatEffects) error {
+func (c *content) checkEffectDef(file string, d *EffectDef, all *combatEffects) error { //nolint:gocyclo // one check for each field of the closed definition
 	bad := func(format string, a ...any) error {
 		return fmt.Errorf("%s: %s: %s", file, d.Key, fmt.Sprintf(format, a...))
 	}

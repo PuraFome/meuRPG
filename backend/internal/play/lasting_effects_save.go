@@ -175,7 +175,7 @@ func effectSaveRollOf(msg *playv1.RollEffectSaveRequest) (in rollInput, delegate
 }
 
 // RollEffectSave implements playv1connect.LastingEffectServiceHandler.
-func (s *Service) RollEffectSave(
+func (s *Service) RollEffectSave( //nolint:gocognit // the steps of one transaction in one closure, like the other writes of the combat
 	ctx context.Context,
 	req *connect.Request[playv1.RollEffectSaveRequest],
 ) (*connect.Response[playv1.RollEffectSaveResponse], error) {
@@ -326,7 +326,7 @@ func (s *Service) RollEffectSave(
 		if _, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, out, ""); err != nil {
 			return nil, err
 		}
-		if err := s.resolveEffectSave(ctx, c, cs, content, def, st, reactor, t.Phase, saved, skip, &result, le); err != nil {
+		if err := s.resolveEffectSave(ctx, c, cs, content, def, st, reactor, t.Phase, saved, skip, &result); err != nil {
 			return nil, err
 		}
 		ev.Lasting = le
@@ -356,7 +356,7 @@ func (s *Service) RollEffectSave(
 // resolveEffectSave does what an answered saving throw does to its effect: a pass ends it on
 // the target (Imobilizar Pessoa, Riso Histérico), a failed save at the start of the turn adds
 // what the effect says (the Teia that restrains). A skipped save does nothing.
-func (s *Service) resolveEffectSave(ctx context.Context, c *combatTx, cs []playdb.Combatant, content *rules.Content, def *rules.EffectDef, st playdb.CombatantState, target playdb.Combatant, phase string, saved, skipped bool, result **playv1.EffectSaveResult, le *lastingEvent) error {
+func (s *Service) resolveEffectSave(ctx context.Context, c *combatTx, cs []playdb.Combatant, content *rules.Content, def *rules.EffectDef, st playdb.CombatantState, target playdb.Combatant, phase string, saved, skipped bool, result **playv1.EffectSaveResult) error {
 	if skipped || def == nil {
 		return nil
 	}

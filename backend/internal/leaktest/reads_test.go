@@ -1,9 +1,10 @@
 package leaktest
 
 import (
+	"google.golang.org/protobuf/proto"
+
 	campaignpackagev1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaignpackage/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/campaignpackage/v1/campaignpackagev1connect"
-	"google.golang.org/protobuf/proto"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1/campaignsv1connect"
