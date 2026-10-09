@@ -1195,6 +1195,12 @@ message WatchGameSessionResponse {
     // the id and the sentence the app shows ("Queda Suave fechou. Você já usou a
     // sua reação."), written for each of the two.
     ReactionWindowClosed reaction_window_closed = 26;
+    // A spell cast outside a combat changed (CastingService): it started, finished, ended
+    // or failed. Read it again (CastingService.ListSpellCasts). A hint with no content
+    // (RN-10): it names no caster, spell or target. The master gets every one; a
+    // player gets it only for a cast they may see, and a cast by an NPC that is not on
+    // the stage reaches the master alone.
+    SpellCastsChanged spell_casts_changed = 27;
   }
 
   // HiddenHitPending says a question waits for the master in a combat. It names
@@ -1222,6 +1228,9 @@ message WatchGameSessionResponse {
     bool closed_by_itself = 3;
     string text_pt = 4;
   }
+
+  // SpellCastsChanged is the content-free hint that the casts outside a combat changed.
+  message SpellCastsChanged {}
 
   // ContentChanged is the content-free hint that the table's content changed.
   message ContentChanged {}
@@ -1488,6 +1497,14 @@ message SpellSlotsUsed {
 // correction (or, for a repeated idempotency_key, as they are now).
 message AdjustCharacterVitalsResponse {
   CharacterVitals vitals = 1;
+  // Set when the correction took hit points from a character that concentrates on a spell
+  // it cast outside a combat (CastingService): the Constitution saving throw DC to keep
+  // concentrating, 10 or half the damage, whichever is higher (SRD 5.1, "Duration"). The
+  // app only reminds; the table rolls, and the master ends the spell with
+  // CastingService.EndActiveSpell when it fails. Only the master calls the correction.
+  int32 concentration_dc = 2;
+  // The cast being concentrated on, with `concentration_dc`.
+  string concentration_cast_id = 3;
 }
 
 // SetCurrentMapRequest names the map the session shows.
