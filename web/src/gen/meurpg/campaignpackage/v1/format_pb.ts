@@ -24,9 +24,11 @@
 //     actions, clues and battle encounters.
 //   - `npcs/<n>.json`: one PackageNpc each.
 //   - `characters/<n>.json`: one PackageCharacter each.
+//   - `encounters.json`: one PackageEncounters, the encounters saved on the
+//     maps' battle points.
 //   - `puzzles/<n>.json`: one PackagePuzzle each.
 //   - `content/<n>.json`: one PackageContent each (an entry of the table
-//     content).
+//     content), and `content/options.json`: one PackageContentOptions.
 //
 // The names inside the zip are only keys: the reader never extracts an entry
 // to a path, so a name with `..` or a slash cannot reach a file; it is
@@ -51,7 +53,7 @@ import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { TableRules, XpMode } from "../../campaigns/v1/campaigns_pb";
 import { file_meurpg_campaigns_v1_campaigns } from "../../campaigns/v1/campaigns_pb";
-import type { CharacterSheet, CharacterStory } from "../../characters/v1/characters_pb";
+import type { CharacterKind, CharacterSheet, CharacterStory } from "../../characters/v1/characters_pb";
 import { file_meurpg_characters_v1_characters } from "../../characters/v1/characters_pb";
 import type { LightSpec, MapPointKind, TrapSpec } from "../../maps/v1/maps_pb";
 import { file_meurpg_maps_v1_maps } from "../../maps/v1/maps_pb";
@@ -67,7 +69,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/campaignpackage/v1/format.proto.
  */
 export const file_meurpg_campaignpackage_v1_format: GenFile = /*@__PURE__*/
-  fileDesc("CiZtZXVycGcvY2FtcGFpZ25wYWNrYWdlL3YxL2Zvcm1hdC5wcm90bxIZbWV1cnBnLmNhbXBhaWducGFja2FnZS52MSLEAQoPUGFja2FnZU1hbmlmZXN0EhYKDmZvcm1hdF92ZXJzaW9uGAEgASgFEhcKD2NvbnRlbnRfdmVyc2lvbhgCIAEoCRIvCgtleHBvcnRlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFQoNY2FtcGFpZ25fbmFtZRgEIAEoCRI4CgdlbnRyaWVzGAUgAygLMicubWV1cnBnLmNhbXBhaWducGFja2FnZS52MS5QYWNrYWdlRW50cnkidQoMUGFja2FnZUVudHJ5EgwKBHBhdGgYASABKAkSOQoEa2luZBgCIAEoDjIrLm1ldXJwZy5jYW1wYWlnbnBhY2thZ2UudjEuUGFja2FnZUVudHJ5S2luZBIOCgZzaGEyNTYYAyABKAkSDAoEc2l6ZRgEIAEoAyKvAQoPUGFja2FnZUNhbXBhaWduEgwKBG5hbWUYASABKAkSLAoHeHBfbW9kZRgCIAEoDjIbLm1ldXJwZy5jYW1wYWlnbnMudjEuWHBNb2RlEjQKC3RhYmxlX3J1bGVzGAMgASgLMh8ubWV1cnBnLmNhbXBhaWducy52MS5UYWJsZVJ1bGVzEhAKCGRvY3VtZW50GAQgASgJEhgKEGRpc2FibGVkX29wdGlvbnMYBSADKAkiSAoNUGFja2FnZUltYWdlcxI3CgZpbWFnZXMYASADKAsyJy5tZXVycGcuY2FtcGFpZ25wYWNrYWdlLnYxLlBhY2thZ2VJbWFnZSKUAQoMUGFja2FnZUltYWdlEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEZmlsZRgDIAEoCRIRCglnZW5lcmF0ZWQYBCABKAgSFgoOZ2VuZXJhdGVkX2tpbmQYBSABKAkSFwoPcGFyZW50X2ltYWdlX2lkGAYgASgJEhgKEGNvcHlfb2ZfaW1hZ2VfaWQYByABKAkiwgIKClBhY2thZ2VNYXASCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIQCghpbWFnZV9pZBgDIAEoCRIUCgxncmlkX2NvbHVtbnMYBCABKAUSEwoLZ3JpZF9mYWN0b3IYBSABKAUSEAoIcmV2ZWFsZWQYBiABKAgSEwoLZm9nX2VuYWJsZWQYByABKAgSGQoRZm9nX29uX2ZpcnN0X2dyaWQYCCABKAgSFAoMZ3JvdXBfdmlzaW9uGAkgASgIEhIKCmJhc2VfbGlnaHQYCiABKAkSOAoGbGF5ZXJzGAsgASgLMigubWV1cnBnLmNhbXBhaWducGFja2FnZS52MS5QYWNrYWdlTGF5ZXJzEjcKBnBvaW50cxgMIAMoCzInLm1ldXJwZy5jYW1wYWlnbnBhY2thZ2UudjEuUGFja2FnZVBvaW50ImYKDVBhY2thZ2VMYXllcnMSGQoRZGlmZmljdWx0X3RlcnJhaW4YASABKAwSDQoFd2FsbHMYAiABKAwSDQoFY292ZXIYAyABKAwSDQoFbGlnaHQYBCABKAwSDQoFZG9vcnMYBSABKAwijAQKDFBhY2thZ2VQb2ludBIKCgJpZBgBIAEoCRIqCgRraW5kGAIgASgOMhwubWV1cnBnLm1hcHMudjEuTWFwUG9pbnRLaW5kEgwKBG5hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSDAoEeF9icBgFIAEoBRIMCgR5X2JwGAYgASgFEhUKDXRhcmdldF9tYXBfaWQYByABKAkSEAoIcmV2ZWFsZWQYCCABKAgSDQoFaG9va3MYCSABKAkSDwoHc2hvd19kYxgKIAEoCBImCgR0cmFwGAsgASgLMhgubWV1cnBnLm1hcHMudjEuVHJhcFNwZWMSHgoRdHJlYXN1cmVfdmFsdWVfcG8YDCABKAVIAIgBARIoCgVsaWdodBgNIAEoCzIZLm1ldXJwZy5tYXBzLnYxLkxpZ2h0U3BlYxIOCgZzdGFpcnMYDiABKAkSOQoHYWN0aW9ucxgPIAMoCzIoLm1ldXJwZy5jYW1wYWlnbnBhY2thZ2UudjEuUGFja2FnZUFjdGlvbhI1CgVjbHVlcxgQIAMoCzImLm1ldXJwZy5jYW1wYWlnbnBhY2thZ2UudjEuUGFja2FnZUNsdWUSMgoJZW5jb3VudGVyGBEgASgLMh8ubWV1cnBnLnBsYXkudjEuQmF0dGxlRW5jb3VudGVyQhQKEl90cmVhc3VyZV92YWx1ZV9wbyJMCg1QYWNrYWdlQWN0aW9uEgsKA2tleRgBIAEoCRIMCgRuYW1lGAIgASgJEgoKAmRjGAMgASgFEhQKDG1heF9hdHRlbXB0cxgEIAEoBSInCgtQYWNrYWdlQ2x1ZRIKCgJpZBgBIAEoCRIMCgR0ZXh0GAIgASgJIqYBCgpQYWNrYWdlTnBjEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSMwoFc2hlZXQYAyABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTaGVldBIzCgVzdG9yeRgEIAEoCzIkLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlclN0b3J5EhQKDG1hc3Rlcl9ub3RlcxgFIAEoCSKsAQoQUGFja2FnZUNoYXJhY3RlchIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEjMKBXNoZWV0GAMgASgLMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyU2hlZXQSMwoFc3RvcnkYBCABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTdG9yeRIUCgxtYXN0ZXJfbm90ZXMYBSABKAkitAMKDVBhY2thZ2VQdXp6bGUSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIsCgZjb25maWcYAyABKAsyHC5tZXVycGcucGxheS52MS5QdXp6bGVDb25maWcSMAoIc29sdXRpb24YBCABKAsyHi5tZXVycGcucGxheS52MS5QdXp6bGVTb2x1dGlvbhIqCgVzdGFydBgFIAEoCzIbLm1ldXJwZy5wbGF5LnYxLlB1enpsZVN0YXRlEgwKBHNlZWQYBiABKAMSDAoEY2x1ZRgHIAEoCRINCgVoaW50cxgIIAMoCRIvCghvbl9zb2x2ZRgJIAEoCzIdLm1ldXJwZy5wbGF5LnYxLlB1enpsZU9uU29sdmUSMwoKaGludF9jaGVjaxgKIAEoCzIfLm1ldXJwZy5wbGF5LnYxLlB1enpsZUhpbnRDaGVjaxIpCgVwYXJ0cxgLIAMoCzIaLm1ldXJwZy5wbGF5LnYxLlB1enpsZVBhcnQSLwoIb25fd3JvbmcYDCABKAsyHS5tZXVycGcucGxheS52MS5QdXp6bGVPbldyb25nEhAKCGFyY2hpdmVkGA0gASgIIjwKDlBhY2thZ2VDb250ZW50EioKBWVudHJ5GAEgASgLMhsubWV1cnBnLnJ1bGVzLnYxLlRhYmxlRW50cnkqsgIKEFBhY2thZ2VFbnRyeUtpbmQSIgoeUEFDS0FHRV9FTlRSWV9LSU5EX1VOU1BFQ0lGSUVEEAASHwobUEFDS0FHRV9FTlRSWV9LSU5EX0NBTVBBSUdOEAESHQoZUEFDS0FHRV9FTlRSWV9LSU5EX0lNQUdFUxACEiEKHVBBQ0tBR0VfRU5UUllfS0lORF9JTUFHRV9GSUxFEAMSGgoWUEFDS0FHRV9FTlRSWV9LSU5EX01BUBAEEhoKFlBBQ0tBR0VfRU5UUllfS0lORF9OUEMQBRIgChxQQUNLQUdFX0VOVFJZX0tJTkRfQ0hBUkFDVEVSEAYSHQoZUEFDS0FHRV9FTlRSWV9LSU5EX1BVWlpMRRAHEh4KGlBBQ0tBR0VfRU5UUllfS0lORF9DT05URU5UEAhChgIKHWNvbS5tZXVycGcuY2FtcGFpZ25wYWNrYWdlLnYxQgtGb3JtYXRQcm90b1ABWlJnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvY2FtcGFpZ25wYWNrYWdlL3YxO2NhbXBhaWducGFja2FnZXYxogIDTUNYqgIZTWV1cnBnLkNhbXBhaWducGFja2FnZS5WMcoCGU1ldXJwZ1xDYW1wYWlnbnBhY2thZ2VcVjHiAiVNZXVycGdcQ2FtcGFpZ25wYWNrYWdlXFYxXEdQQk1ldGFkYXRh6gIbTWV1cnBnOjpDYW1wYWlnbnBhY2thZ2U6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_meurpg_campaigns_v1_campaigns, file_meurpg_characters_v1_characters, file_meurpg_maps_v1_maps, file_meurpg_play_v1_encounters, file_meurpg_play_v1_puzzles, file_meurpg_rules_v1_table_content]);
+  fileDesc("CiZtZXVycGcvY2FtcGFpZ25wYWNrYWdlL3YxL2Zvcm1hdC5wcm90bxIZbWV1cnBnLmNhbXBhaWducGFja2FnZS52MSLEAQoPUGFja2FnZU1hbmlmZXN0EhYKDmZvcm1hdF92ZXJzaW9uGAEgASgFEhcKD2NvbnRlbnRfdmVyc2lvbhgCIAEoCRIvCgtleHBvcnRlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFQoNY2FtcGFpZ25fbmFtZRgEIAEoCRI4CgdlbnRyaWVzGAUgAygLMicubWV1cnBnLmNhbXBhaWducGFja2FnZS52MS5QYWNrYWdlRW50cnkidQoMUGFja2FnZUVudHJ5EgwKBHBhdGgYASABKAkSOQoEa2luZBgCIAEoDjIrLm1ldXJwZy5jYW1wYWlnbnBhY2thZ2UudjEuUGFja2FnZUVudHJ5S2luZBIOCgZzaGEyNTYYAyABKAkSDAoEc2l6ZRgEIAEoAyKVAQoPUGFja2FnZUNhbXBhaWduEgwKBG5hbWUYASABKAkSLAoHeHBfbW9kZRgCIAEoDjIbLm1ldXJwZy5jYW1wYWlnbnMudjEuWHBNb2RlEjQKC3RhYmxlX3J1bGVzGAMgASgLMh8ubWV1cnBnLmNhbXBhaWducy52MS5UYWJsZVJ1bGVzEhAKCGRvY3VtZW50GAQgASgJIkgKDVBhY2thZ2VJbWFnZXMSNwoGaW1hZ2VzGAEgAygLMicubWV1cnBnLmNhbXBhaWducGFja2FnZS52MS5QYWNrYWdlSW1hZ2UilAEKDFBhY2thZ2VJbWFnZRIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBGZpbGUYAyABKAkSEQoJZ2VuZXJhdGVkGAQgASgIEhYKDmdlbmVyYXRlZF9raW5kGAUgASgJEhcKD3BhcmVudF9pbWFnZV9pZBgGIAEoCRIYChBjb3B5X29mX2ltYWdlX2lkGAcgASgJIsICCgpQYWNrYWdlTWFwEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEAoIaW1hZ2VfaWQYAyABKAkSFAoMZ3JpZF9jb2x1bW5zGAQgASgFEhMKC2dyaWRfZmFjdG9yGAUgASgFEhAKCHJldmVhbGVkGAYgASgIEhMKC2ZvZ19lbmFibGVkGAcgASgIEhkKEWZvZ19vbl9maXJzdF9ncmlkGAggASgIEhQKDGdyb3VwX3Zpc2lvbhgJIAEoCBISCgpiYXNlX2xpZ2h0GAogASgJEjgKBmxheWVycxgLIAEoCzIoLm1ldXJwZy5jYW1wYWlnbnBhY2thZ2UudjEuUGFja2FnZUxheWVycxI3CgZwb2ludHMYDCADKAsyJy5tZXVycGcuY2FtcGFpZ25wYWNrYWdlLnYxLlBhY2thZ2VQb2ludCJmCg1QYWNrYWdlTGF5ZXJzEhkKEWRpZmZpY3VsdF90ZXJyYWluGAEgASgMEg0KBXdhbGxzGAIgASgMEg0KBWNvdmVyGAMgASgMEg0KBWxpZ2h0GAQgASgMEg0KBWRvb3JzGAUgASgMItgDCgxQYWNrYWdlUG9pbnQSCgoCaWQYASABKAkSKgoEa2luZBgCIAEoDjIcLm1ldXJwZy5tYXBzLnYxLk1hcFBvaW50S2luZBIMCgRuYW1lGAMgASgJEhMKC2Rlc2NyaXB0aW9uGAQgASgJEgwKBHhfYnAYBSABKAUSDAoEeV9icBgGIAEoBRIVCg10YXJnZXRfbWFwX2lkGAcgASgJEhAKCHJldmVhbGVkGAggASgIEg0KBWhvb2tzGAkgASgJEg8KB3Nob3dfZGMYCiABKAgSJgoEdHJhcBgLIAEoCzIYLm1ldXJwZy5tYXBzLnYxLlRyYXBTcGVjEh4KEXRyZWFzdXJlX3ZhbHVlX3BvGAwgASgFSACIAQESKAoFbGlnaHQYDSABKAsyGS5tZXVycGcubWFwcy52MS5MaWdodFNwZWMSDgoGc3RhaXJzGA4gASgJEjkKB2FjdGlvbnMYDyADKAsyKC5tZXVycGcuY2FtcGFpZ25wYWNrYWdlLnYxLlBhY2thZ2VBY3Rpb24SNQoFY2x1ZXMYECADKAsyJi5tZXVycGcuY2FtcGFpZ25wYWNrYWdlLnYxLlBhY2thZ2VDbHVlQhQKEl90cmVhc3VyZV92YWx1ZV9wbyJMCg1QYWNrYWdlQWN0aW9uEgsKA2tleRgBIAEoCRIMCgRuYW1lGAIgASgJEgoKAmRjGAMgASgFEhQKDG1heF9hdHRlbXB0cxgEIAEoBSInCgtQYWNrYWdlQ2x1ZRIKCgJpZBgBIAEoCRIMCgR0ZXh0GAIgASgJItkBCgpQYWNrYWdlTnBjEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSMwoFc2hlZXQYAyABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTaGVldBIzCgVzdG9yeRgEIAEoCzIkLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlclN0b3J5EhQKDG1hc3Rlcl9ub3RlcxgFIAEoCRIxCgRraW5kGAYgASgOMiMubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyS2luZCKsAQoQUGFja2FnZUNoYXJhY3RlchIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEjMKBXNoZWV0GAMgASgLMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyU2hlZXQSMwoFc3RvcnkYBCABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTdG9yeRIUCgxtYXN0ZXJfbm90ZXMYBSABKAkitAMKDVBhY2thZ2VQdXp6bGUSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIsCgZjb25maWcYAyABKAsyHC5tZXVycGcucGxheS52MS5QdXp6bGVDb25maWcSMAoIc29sdXRpb24YBCABKAsyHi5tZXVycGcucGxheS52MS5QdXp6bGVTb2x1dGlvbhIqCgVzdGFydBgFIAEoCzIbLm1ldXJwZy5wbGF5LnYxLlB1enpsZVN0YXRlEgwKBHNlZWQYBiABKAMSDAoEY2x1ZRgHIAEoCRINCgVoaW50cxgIIAMoCRIvCghvbl9zb2x2ZRgJIAEoCzIdLm1ldXJwZy5wbGF5LnYxLlB1enpsZU9uU29sdmUSMwoKaGludF9jaGVjaxgKIAEoCzIfLm1ldXJwZy5wbGF5LnYxLlB1enpsZUhpbnRDaGVjaxIpCgVwYXJ0cxgLIAMoCzIaLm1ldXJwZy5wbGF5LnYxLlB1enpsZVBhcnQSLwoIb25fd3JvbmcYDCABKAsyHS5tZXVycGcucGxheS52MS5QdXp6bGVPbldyb25nEhAKCGFyY2hpdmVkGA0gASgIIjwKDlBhY2thZ2VDb250ZW50EioKBWVudHJ5GAEgASgLMhsubWV1cnBnLnJ1bGVzLnYxLlRhYmxlRW50cnkiKQoVUGFja2FnZUNvbnRlbnRPcHRpb25zEhAKCGRpc2FibGVkGAEgAygJIlQKEVBhY2thZ2VFbmNvdW50ZXJzEj8KCmVuY291bnRlcnMYASADKAsyKy5tZXVycGcuY2FtcGFpZ25wYWNrYWdlLnYxLlBhY2thZ2VFbmNvdW50ZXIiWAoQUGFja2FnZUVuY291bnRlchIQCghwb2ludF9pZBgBIAEoCRIyCgllbmNvdW50ZXIYAiABKAsyHy5tZXVycGcucGxheS52MS5CYXR0bGVFbmNvdW50ZXIq/QIKEFBhY2thZ2VFbnRyeUtpbmQSIgoeUEFDS0FHRV9FTlRSWV9LSU5EX1VOU1BFQ0lGSUVEEAASHwobUEFDS0FHRV9FTlRSWV9LSU5EX0NBTVBBSUdOEAESHQoZUEFDS0FHRV9FTlRSWV9LSU5EX0lNQUdFUxACEiEKHVBBQ0tBR0VfRU5UUllfS0lORF9JTUFHRV9GSUxFEAMSGgoWUEFDS0FHRV9FTlRSWV9LSU5EX01BUBAEEhoKFlBBQ0tBR0VfRU5UUllfS0lORF9OUEMQBRIgChxQQUNLQUdFX0VOVFJZX0tJTkRfQ0hBUkFDVEVSEAYSHQoZUEFDS0FHRV9FTlRSWV9LSU5EX1BVWlpMRRAHEh4KGlBBQ0tBR0VfRU5UUllfS0lORF9DT05URU5UEAgSJgoiUEFDS0FHRV9FTlRSWV9LSU5EX0NPTlRFTlRfT1BUSU9OUxAJEiEKHVBBQ0tBR0VfRU5UUllfS0lORF9FTkNPVU5URVJTEApChgIKHWNvbS5tZXVycGcuY2FtcGFpZ25wYWNrYWdlLnYxQgtGb3JtYXRQcm90b1ABWlJnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvY2FtcGFpZ25wYWNrYWdlL3YxO2NhbXBhaWducGFja2FnZXYxogIDTUNYqgIZTWV1cnBnLkNhbXBhaWducGFja2FnZS5WMcoCGU1ldXJwZ1xDYW1wYWlnbnBhY2thZ2VcVjHiAiVNZXVycGdcQ2FtcGFpZ25wYWNrYWdlXFYxXEdQQk1ldGFkYXRh6gIbTWV1cnBnOjpDYW1wYWlnbnBhY2thZ2U6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_meurpg_campaigns_v1_campaigns, file_meurpg_characters_v1_characters, file_meurpg_maps_v1_maps, file_meurpg_play_v1_encounters, file_meurpg_play_v1_puzzles, file_meurpg_rules_v1_table_content]);
 
 /**
  * The format version this server writes and the newest it reads is 1.
@@ -194,14 +196,6 @@ export type PackageCampaign = Message<"meurpg.campaignpackage.v1.PackageCampaign
    * @generated from field: string document = 4;
    */
   document: string;
-
-  /**
-   * The options of the table content the master switched off for the players
-   * ("Opções para os jogadores"): content keys.
-   *
-   * @generated from field: repeated string disabled_options = 5;
-   */
-  disabledOptions: string[];
 };
 
 /**
@@ -502,13 +496,6 @@ export type PackagePoint = Message<"meurpg.campaignpackage.v1.PackagePoint"> & {
    * @generated from field: repeated meurpg.campaignpackage.v1.PackageClue clues = 16;
    */
   clues: PackageClue[];
-
-  /**
-   * A battle point's encounter; unset when it has none.
-   *
-   * @generated from field: meurpg.play.v1.BattleEncounter encounter = 17;
-   */
-  encounter?: BattleEncounter | undefined;
 };
 
 /**
@@ -610,6 +597,13 @@ export type PackageNpc = Message<"meurpg.campaignpackage.v1.PackageNpc"> & {
    * @generated from field: string master_notes = 5;
    */
   masterNotes: string;
+
+  /**
+   * ENEMY, BOSS, MINION or STORY.
+   *
+   * @generated from field: meurpg.characters.v1.CharacterKind kind = 6;
+   */
+  kind: CharacterKind;
 };
 
 /**
@@ -764,6 +758,73 @@ export const PackageContentSchema: GenMessage<PackageContent> = /*@__PURE__*/
   messageDesc(file_meurpg_campaignpackage_v1_format, 13);
 
 /**
+ * PackageContentOptions is `content/options.json`: the options of the rules the
+ * master switched off for the players ("Opções para os jogadores"), as content
+ * keys such as `class:wizard` or `race:anao@mesa`.
+ *
+ * @generated from message meurpg.campaignpackage.v1.PackageContentOptions
+ */
+export type PackageContentOptions = Message<"meurpg.campaignpackage.v1.PackageContentOptions"> & {
+  /**
+   * @generated from field: repeated string disabled = 1;
+   */
+  disabled: string[];
+};
+
+/**
+ * Describes the message meurpg.campaignpackage.v1.PackageContentOptions.
+ * Use `create(PackageContentOptionsSchema)` to create a new message.
+ */
+export const PackageContentOptionsSchema: GenMessage<PackageContentOptions> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaignpackage_v1_format, 14);
+
+/**
+ * PackageEncounters is `encounters.json`: the encounter saved on each battle
+ * point that has one.
+ *
+ * @generated from message meurpg.campaignpackage.v1.PackageEncounters
+ */
+export type PackageEncounters = Message<"meurpg.campaignpackage.v1.PackageEncounters"> & {
+  /**
+   * @generated from field: repeated meurpg.campaignpackage.v1.PackageEncounter encounters = 1;
+   */
+  encounters: PackageEncounter[];
+};
+
+/**
+ * Describes the message meurpg.campaignpackage.v1.PackageEncounters.
+ * Use `create(PackageEncountersSchema)` to create a new message.
+ */
+export const PackageEncountersSchema: GenMessage<PackageEncounters> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaignpackage_v1_format, 15);
+
+/**
+ * PackageEncounter is the encounter of one battle point.
+ *
+ * @generated from message meurpg.campaignpackage.v1.PackageEncounter
+ */
+export type PackageEncounter = Message<"meurpg.campaignpackage.v1.PackageEncounter"> & {
+  /**
+   * The PackagePoint id of the battle point.
+   *
+   * @generated from field: string point_id = 1;
+   */
+  pointId: string;
+
+  /**
+   * @generated from field: meurpg.play.v1.BattleEncounter encounter = 2;
+   */
+  encounter?: BattleEncounter | undefined;
+};
+
+/**
+ * Describes the message meurpg.campaignpackage.v1.PackageEncounter.
+ * Use `create(PackageEncounterSchema)` to create a new message.
+ */
+export const PackageEncounterSchema: GenMessage<PackageEncounter> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaignpackage_v1_format, 16);
+
+/**
  * PackageEntryKind says what an entry of the zip is.
  *
  * @generated from enum meurpg.campaignpackage.v1.PackageEntryKind
@@ -817,6 +878,20 @@ export enum PackageEntryKind {
    * @generated from enum value: PACKAGE_ENTRY_KIND_CONTENT = 8;
    */
   CONTENT = 8,
+
+  /**
+   * content/options.json, the options switched off for the players.
+   *
+   * @generated from enum value: PACKAGE_ENTRY_KIND_CONTENT_OPTIONS = 9;
+   */
+  CONTENT_OPTIONS = 9,
+
+  /**
+   * encounters.json, the encounters saved on battle points.
+   *
+   * @generated from enum value: PACKAGE_ENTRY_KIND_ENCOUNTERS = 10;
+   */
+  ENCOUNTERS = 10,
 }
 
 /**

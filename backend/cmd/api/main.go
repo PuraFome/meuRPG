@@ -241,6 +241,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			MaxCampaignsPerUser: cfg.Limits.MaxCampaignsPerUser,
 			CampaignCreators:    cfg.Limits.CampaignCreators,
 			Policy:              policy,
+			BehindCloudRun:      cfg.CloudRun,
 		})
 		if err != nil {
 			return err
@@ -258,6 +259,8 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			// (POST /auth/login): today, accepting a campaign invite.
 			Intents: map[string]identity.IntentHandler{
 				campaigns.InviteIntentKind: m.campaigns.InviteIntent(),
+				// A claim link only brings the person back to its card; signing in never claims.
+				characters.ClaimIntentKind: m.characters.ClaimIntent(),
 			},
 		})
 		if err != nil {
@@ -404,6 +407,9 @@ type wireOptions struct {
 	// Policy holds the limiters some modules apply themselves (the image
 	// routes' per-user limits); the zero value limits nothing.
 	Policy ratelimit.Policy
+	// BehindCloudRun says where the client's address is: the claim links' limit
+	// per address reads it.
+	BehindCloudRun bool
 }
 
 // wireModules builds the five modules that need each other, connects them in
@@ -452,6 +458,8 @@ func wireModules(
 		SRD:     rulesContent,
 		Dice:    levelUpDice{campaignsService}, // how a player rolls the hit die of a level-up (RN-18)
 		Logger:  logger,
+		// The claim links' limit per address (MR-049).
+		BehindCloudRun: opts.BehindCloudRun,
 	})
 	if err != nil {
 		return nil, err

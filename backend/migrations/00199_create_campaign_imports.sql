@@ -3,7 +3,7 @@
 -- account that began it. The parts themselves are blobs
 -- (imports/<id>/parts/<n>); campaign_import_parts says which arrived.
 --
--- A person has one upload at a time (a unique index on user_id, in 00199):
+-- A person has one upload at a time (a unique index on user_id, in 00200):
 -- beginning another discards the first. The parts are kept 1 hour after the
 -- last one and are then deleted by the cleanup, file first and row after.
 -- user_id is a plain UUID without a foreign key, for the reason given on

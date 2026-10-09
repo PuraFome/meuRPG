@@ -109,6 +109,15 @@
             </div>
           </section>
           @if (isMaster) { <app-document-panel [campaignId]="s.campaign.id" [campaignName]="s.campaign.name" /> }
+          @if (isMaster) {
+            <section class="mr-panel" aria-labelledby="export-heading">
+              <h2 class="mr-panel__title" id="export-heading">Pacote da campanha</h2>
+              <p class="rules-lead">Um arquivo com tudo o que é da mesa, para criar a mesma campanha em outro servidor.</p>
+              <div>
+                <a matButton="outlined" [routerLink]="['/campaigns', s.campaign.id, 'export']">Exportar campanha</a>
+              </div>
+            </section>
+          }
           <section class="mr-panel" aria-labelledby="members-heading">
             <h2 class="mr-panel__title" id="members-heading">Membros</h2>
             <ul class="mr-list">
