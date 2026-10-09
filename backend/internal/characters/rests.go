@@ -217,6 +217,23 @@ func (s *Service) TakeRest(ctx context.Context, tx pgx.Tx, campaignID string, re
 		plan.after.UpdatedAt = timestamppb.New(saved.UpdatedAt)
 		before, after = append(before, r.view), append(after, plan.after)
 	}
+	if k == rules.RestLong && !req.GetWithoutFoodOrDrink() {
+		// A long rest with food and drink takes one level of exhaustion off (SRD 5.1).
+		for _, r := range rows {
+			if r.view.GetExhaustionLevel() < 1 {
+				continue
+			}
+			was, now, err := s.SetExhaustion(ctx, tx, campaignID, r.row.ID, r.view.GetExhaustionLevel()-1)
+			if err != nil {
+				return nil, nil, err
+			}
+			if i := slices.IndexFunc(after, func(v *playv1.CharacterVitals) bool { return v.GetCharacterId() == r.row.ID }); i >= 0 {
+				after[i] = now
+			} else {
+				before, after = append(before, was), append(after, now)
+			}
+		}
+	}
 	return before, after, nil
 }
 

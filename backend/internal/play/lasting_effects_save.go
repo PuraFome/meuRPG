@@ -303,7 +303,11 @@ func (s *Service) RollEffectSave(
 					result.D20Faces = append(result.D20Faces, clamp32(f, 1, 20))
 				}
 				result.D20, result.Total, result.Physical, result.Saved = clamp32(d20.Face(), 1, 20), clamp32(total, math.MinInt32, math.MaxInt32), d20.Physical, saved
-				result.ExtraDice = extraDiceProto(extra, true, s.namesFor(ctx, c.session.CampaignID))
+				nm, nerr := s.namerFor(ctx, c.tx, c.session.CampaignID)
+				if nerr != nil {
+					return nil, nerr
+				}
+				result.ExtraDice = extraDiceProto(extra, true, nm)
 				le.D20, le.Total = result.D20, result.Total
 				ev.D20, ev.Modifier, ev.Total, ev.Physical = result.D20, result.Modifier, result.Total, d20.Physical
 			}
@@ -318,10 +322,11 @@ func (s *Service) RollEffectSave(
 		if master {
 			result.Dc = &dc
 		}
-		if err := s.resolveEffectSave(ctx, c, cs, content, def, st, reactor, t.Phase, saved, skip, &result, le); err != nil {
+		// The window closes first: a pass ends the effect, which closes the effect's other windows.
+		if _, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, out, ""); err != nil {
 			return nil, err
 		}
-		if _, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, out, ""); err != nil {
+		if err := s.resolveEffectSave(ctx, c, cs, content, def, st, reactor, t.Phase, saved, skip, &result, le); err != nil {
 			return nil, err
 		}
 		ev.Lasting = le

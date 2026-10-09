@@ -440,6 +440,9 @@ func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Gr
 		}
 		added = append(added, joined...)
 	}
+	if err := s.carryLastingEffects(ctx, c, all, added); err != nil {
+		return nil, nil, err
+	}
 	order, err = saveOrder(ctx, c.q, all, orderCombatants(all))
 	if err != nil {
 		return nil, nil, err
@@ -1286,6 +1289,10 @@ func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Com
 	}
 	// A familiar's sight begun in the fight ends with it (MR-036).
 	if err := s.endCombatSights(ctx, c, cs); err != nil {
+		return err
+	}
+	// The rounds the effects of an outside cast have left go back to game time.
+	if err := s.carryEffectsOut(ctx, c); err != nil {
 		return err
 	}
 	// The concentration the combatants carried goes back to the casts (casting_combat.go).

@@ -225,3 +225,129 @@ func (s *Service) concentrationAfter(ctx context.Context, tx pgx.Tx, q *playdb.Q
 	}
 	return out, false, nil
 }
+
+// carryLastingEffects runs when characters join a combat: a spell cast outside it that lasts and
+// has an effect in combat (Bênção, Velocidade...) puts its effect on the joined characters it
+// was cast on, with the duration of the spell, the caster's concentration holding it when the
+// caster is in the fight (RN-22, W7-C).
+func (s *Service) carryLastingEffects(ctx context.Context, c *combatTx, all, added []playdb.Combatant) error {
+	if len(added) == 0 {
+		return nil
+	}
+	live, err := c.q.ListLiveSpellCasts(ctx, c.session.CampaignID)
+	if err != nil {
+		return fmt.Errorf("list the casts: %w", err)
+	}
+	content, err := s.contentOf(ctx, c)
+	if err != nil {
+		return err
+	}
+	for _, r := range live {
+		def, ok := content.CombatSpellEffect(r.SpellKey)
+		if !ok || r.Status != castActive || !r.Lasts {
+			continue
+		}
+		var targets []playdb.Combatant
+		for _, t := range castTargetsOf(r) {
+			if i := slices.IndexFunc(added, func(a playdb.Combatant) bool { return a.CharacterID == t.ID && a.Kind == kindPlayer }); i >= 0 {
+				targets = append(targets, added[i])
+			}
+		}
+		if len(targets) == 0 {
+			continue
+		}
+		spec := effectSpec{
+			key: r.SpellKey, sourceKind: "spell", def: def, group: r.ID, targets: targets,
+			dur: durationSpec{Kind: rules.EffectDurationUntilDismissed}, concentration: def.Concentration && r.Concentrating,
+		}
+		if i := slices.IndexFunc(all, func(a playdb.Combatant) bool { return a.CharacterID == r.CasterID && !isCreature(a) }); i >= 0 {
+			spec.caster = &all[i]
+		}
+		if r.DurationSeconds != nil && *r.DurationSeconds > 0 {
+			spec.dur = durationSpec{Kind: rules.EffectDurationRounds, Rounds: roundsOfSeconds(*r.DurationSeconds)}
+		}
+		rows, err := s.addEffects(ctx, c, all, spec)
+		if err != nil {
+			return err
+		}
+		if err := s.addedEvent(ctx, c, all, rows, r.SpellKey); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// carryEffectsOut runs when a combat ends: the effects a cast outside the combat left on the
+// characters give their rounds back to game time (6 seconds each), and the cast keeps running
+// outside; a cast whose effects all ended in the fight ends too (RN-22, W7-C).
+func (s *Service) carryEffectsOut(ctx context.Context, c *combatTx) error {
+	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the effects: %w", err)
+	}
+	content, err := s.contentOf(ctx, c)
+	if err != nil {
+		return err
+	}
+	live, err := c.q.ListLiveSpellCasts(ctx, c.session.CampaignID)
+	if err != nil {
+		return fmt.Errorf("list the casts: %w", err)
+	}
+	for _, r := range live {
+		if r.Status != castActive || !r.Lasts {
+			continue
+		}
+		if _, ok := content.CombatSpellEffect(r.SpellKey); !ok {
+			continue
+		}
+		var left int32 = -1
+		var mine int
+		for _, st := range rows {
+			if deref(st.GroupID) != r.ID {
+				continue
+			}
+			mine++
+			if st.EndsRound != nil {
+				if n := max(*st.EndsRound-c.enc.Round, 0); left < 0 || n < left {
+					left = n
+				}
+			}
+		}
+		switch {
+		case mine == 0:
+			if r.CarriedEncounterID == nil && !s.castReachedCombat(ctx, c, r) {
+				continue
+			}
+			if _, _, _, err := s.closeCast(ctx, c, r, castEnded, endDismissed); err != nil {
+				return err
+			}
+			c.castsTold(r.Secret)
+		case left >= 0:
+			seconds := left * rules.SecondsPerRound
+			if err := c.q.SetSpellCastDuration(ctx, playdb.SetSpellCastDurationParams{ID: r.ID, DurationSeconds: &seconds}); err != nil {
+				return fmt.Errorf("give the rounds back to game time: %w", err)
+			}
+			c.castsTold(r.Secret)
+		}
+	}
+	return nil
+}
+
+// castReachedCombat says an outside cast put effects in this combat: one of its targets is a
+// combatant of it.
+func (s *Service) castReachedCombat(ctx context.Context, c *combatTx, r playdb.SpellCast) bool {
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return false
+	}
+	for _, t := range castTargetsOf(r) {
+		if slices.ContainsFunc(cs, func(a playdb.Combatant) bool { return a.CharacterID == t.ID && a.Kind == kindPlayer }) {
+			return true
+		}
+	}
+	return false
+}
+
+// roundsOfSeconds is the game time in rounds an effect enters a combat with: a partial round
+// does not count as a full one, so 59 seconds are 9 rounds.
+func roundsOfSeconds(seconds int32) int32 { return seconds / rules.SecondsPerRound }

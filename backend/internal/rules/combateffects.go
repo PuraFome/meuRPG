@@ -37,7 +37,7 @@ const (
 
 // RoundsPerMinute is the SRD's length of a minute in rounds: a round is about
 // 6 seconds ("Combat"), so a minute is 10 rounds.
-const RoundsPerMinute = 10
+const RoundsPerMinute = secondsPerMinute / SecondsPerRound
 
 // The kinds of modifier an effect gives.
 const (
@@ -469,10 +469,14 @@ func (c *Content) ConditionInfo(key string) (ConditionInfo, bool) {
 // duration.
 func (c *Content) SpellEffectRounds(spellKey string) int {
 	d, ok := c.c.spellDetails[spellKey]
-	if !ok || d.Duration.Kind != DurationTimed || d.Duration.Unit != DurationMinute {
+	if !ok {
 		return 0
 	}
-	return d.Duration.Amount * RoundsPerMinute
+	seconds, timed := d.Duration.Seconds()
+	if !timed {
+		return 0
+	}
+	return seconds / SecondsPerRound
 }
 
 // ConditionKeys lists the keys of the conditions the file describes (the SRD's 15), sorted.
