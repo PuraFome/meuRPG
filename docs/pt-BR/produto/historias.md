@@ -48,6 +48,7 @@ Como ler uma história: a frase da história, a prioridade (MVP, MVP pré-requis
 | [MR-044](#mr-044-gerar-tesouro) | Mapa | MVP |
 | [MR-045](#mr-045-consultar-as-magias) | Regras | MVP |
 | [MR-048](#mr-048-conjurar-magias-fora-do-combate) | Combate | MVP |
+| [MR-050](#mr-050-pacote-da-campanha-exportar-e-importar) | Campanha | MVP |
 | [MR-049](#mr-049-personagens-reservados-e-links-para-assumir) | Personagem | MVP |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
@@ -1047,6 +1048,9 @@ A história cobre classes **e** subclasses próprias, raças e sub-raças, antec
 - **Dado** a edição guiada, **quando** o jogador tenta mudar qualquer outra coisa da ficha, **então** o servidor recusa: o resto continua travado.
 - **Dado** uma edição que as regras do D&D 5e não permitem, **quando** o jogador a envia, **então** o motor de regras a recusa.
 - **Dado** o dado de vida de um nível, **quando** o jogador rola no app, **então** o servidor rola e guarda o resultado, e rolar de novo devolve o mesmo; numa campanha que força dado físico, o app não rola e o jogador digita o resultado (RN-18).
+- **Dado** um personagem que pode subir de nível, **quando** o jogador abre a subida guiada, **então** o primeiro passo é "Subir em qual classe?": as classes que o personagem tem ("Guerreiro, nível 5 → 6") e "Uma classe nova", que abre as outras classes com o que cada uma exige e o que o personagem tem; a classe que ele não cumpre fica na lista, pontilhada, com "Falta: Carisma 13 (você tem 9)." (SRD 5.1, "Multiclassing").
+- **Dado** uma classe nova, **quando** o jogador confirma o resumo, **então** o rodapé pergunta antes "Subir em Mago 1? Isso acrescenta uma classe nova à ficha…", com "Voltar" em foco; a classe entra no nível 1 com os PV médios do dado dela, só as proficiências da tabela de multiclasse (uma perícia e, no Bardo, um instrumento são escolhidos) e nenhum equipamento, e o resumo diz o porquê de cada número (nível total, bônus de proficiência, dados de vida separados, espaços de magia pelo nível de conjurador).
+- **Dado** uma classe cuja habilidade principal o personagem não tem, ou um personagem cuja classe atual não cumpre o próprio pré-requisito, **quando** o jogador a pede, **então** o servidor recusa com a classe, a habilidade, o mínimo e o valor; o editor do mestre pode passar por cima, e a criação de uma ficha assim pelo jogador também é recusada.
 - **Dado** um personagem com os PV atuais definidos, **quando** a subida de nível aumenta o máximo, **então** o atual sobe o mesmo tanto: um ferimento continua um ferimento e quem estava no máximo continua no máximo; quem nunca teve os PV definidos continua cheio (RN-12).
 - **Dado** que o jogador subiu de nível, **quando** o mestre abre a lista de personagens, **então** é avisado e vê "O que mudou": as escolhas do jogador naquele nível (habilidade, PV e como, truques, magias, preparadas), com a hora. Não há aprovação nem veto: o mestre continua editando a ficha como sempre (RN-02).
 - **Dado** que o jogador confirmou a subida, **quando** a ficha é gravada, **então** "Pode subir de nível" some sozinho.
@@ -1233,6 +1237,30 @@ A história cobre classes **e** subclasses próprias, raças e sub-raças, antec
 
 #### Relacionadas
 - [RN-32](regras.md#rn-32-conjurar-fora-do-combate). No combate as magias são conjuradas lá. O máximo de pontos de vida de Ajuda ainda não sobe.
+
+### MR-050: Pacote da campanha, exportar e importar
+
+**Como** mestre, **quero** exportar minha campanha em um arquivo e criá-la de novo a partir dele, neste servidor ou em outro, **para** a campanha da mesa mudar de lugar sem ser digitada outra vez.
+
+- Prioridade: MVP
+- Regras: RN-10, RN-30
+- Módulos: campaignpackage, campaigns, characters, maps, play
+
+**Exportar** (a página da campanha, "Exportar campanha"):
+- Só o mestre. O servidor lê a campanha em uma só transação e grava `<campanha>.meurpg.zip` no armazenamento de arquivos; a página mostra o progresso e pode ser fechada. O arquivo fica 24 horas ("Baixar de novo") e depois é apagado; também é apagado junto com a campanha ou a conta.
+- Leva o documento da campanha, as regras da mesa, a galeria (os arquivos das imagens), os mapas (imagem, grade, camadas, portas, luzes, armadilhas e pontos), os NPCs e criaturas com as anotações do mestre, as cenas com ações, pistas e ganchos, os quebra-cabeças, os pontos de batalha com seus encontros, os pontos de tesouro, o conteúdo da mesa e as opções desligadas, e os personagens dos jogadores (como reservados, sem dono).
+- Nunca leva as anotações privadas dos jogadores, o histórico das sessões e os registros, as contas (ids, e-mails, nomes), donos e membros, convites e links de personagem, nem o que cada jogador lembra da névoa. O mapa volta como foi preparado: armadilhas armadas, tesouros por achar.
+- O download confere de novo, a cada pedido, que quem baixa é o mestre da campanha.
+
+**Importar** (a lista de campanhas, "Importar campanha"):
+- O arquivo sobe em partes de 5 MiB, então uma conexão que cai continua de onde parou; o envio pertence à conta do mestre, cada pessoa tem um por vez e as partes são apagadas uma hora depois da última.
+- A prévia conta o que o pacote tem e lista cada problema em palavras do jogo. Qualquer problema bloqueia "Criar campanha": tudo ou nada, e uma falha no meio não deixa linha nem arquivo.
+- Um pacote de um MeuRPG mais novo é recusado ("Este pacote é de uma versão mais nova do MeuRPG, e este servidor ainda não sabe abri-lo."). Também são recusados um arquivo alterado (SHA-256 de cada entrada), um campo que este servidor não conhece, uma entrada acima de 10 MiB, um pacote acima de 200 MiB ou de 2.000 entradas, uma razão de compressão acima de 100, um nome que sai da pasta e uma referência a algo que o pacote não tem.
+- Toda regra do app vale como se o mestre tivesse digitado os dados: nomes, tamanhos, CDs, ações de cena, armadilhas, quebra-cabeças, fichas (com o conteúdo da mesa do próprio pacote), os limites de uma campanha (300 imagens, 200 mapas, 200 pontos por mapa, 300 entradas da mesa, o limite de personagens e NPCs), o limite de campanhas da conta ("Você já tem 10 campanhas.") e a lista de quem pode criar. As imagens passam pelo mesmo processamento do envio (reencodadas, sem metadados).
+- Os ids nunca são reaproveitados: tudo ganha um id novo e toda referência, inclusive os links do documento, acompanha.
+- Os personagens dos jogadores chegam reservados (MR-049): invisíveis aos jogadores até um deles assumir com o link do mestre.
+
+**Testes.** `TestExportThenImportMakesTheSameCampaign` (cada tipo, campo a campo), `TestEveryRefusalOfAPackageNamesItsReason`, `TestAPackageWithAnyProblemIsNotCreated`, `TestEveryProblemOfAPackageIsListedNotJustTheFirst`, `TestAFailureInTheLastKindLeavesNoRowAndNoFile`, `TestAnUploadResumesFromTheParts`, `TestAnUploadBelongsToTheAccountThatBeganIt`, `TestThePartsOfAnUploadExpireAnHourAfterTheLastOne`, `TestAnExportIsDownloadedByTheMasterOnly`, `TestAnExportIsKeptTwentyFourHoursThenDeleted`, `TestTheCampaignCapIsEnforcedBeforeTheUploadAndAtTheEnd`, `TestACreateRetriedWithTheSameKeyMakesOneCampaign`, `TestAPackageNeverCarriesWhatBelongsToPlayersSessionsOrAccounts`, `TestImportedPlayerCharactersAreReservedAndInvisibleToPlayers` (todos em `backend/internal/campaignpackage`), as linhas da matriz de vazamento do `CampaignPackageService`, os specs Vitest de `core/campaign-package`, `campaign-export` e `campaign-import`, e o Playwright `campaign-package.spec.ts` (`@MR-050 @RN-10`) com as telas no `a11y.spec.ts`.
 
 ### MR-049: Personagens reservados e links para assumir
 

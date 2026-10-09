@@ -11,6 +11,7 @@ import (
 
 	// Every service's generated descriptors register themselves on import: the guard
 	// walks the registry, so a service whose package is not imported is not seen.
+	_ "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaignpackage/v1"
 	_ "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	_ "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	_ "github.com/PuraFome/meuRPG/backend/gen/meurpg/identity/v1"

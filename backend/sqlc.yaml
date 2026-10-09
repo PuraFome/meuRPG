@@ -113,3 +113,12 @@ sql:
         <<: *go-options
         package: notesdb
         out: internal/notes/notesdb
+
+  - engine: postgresql
+    schema: migrations
+    queries: internal/campaignpackage/queries.sql
+    gen:
+      go:
+        <<: *go-options
+        package: packagedb
+        out: internal/campaignpackage/packagedb

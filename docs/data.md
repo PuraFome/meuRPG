@@ -83,7 +83,22 @@ flowchart TD
     subgraph notes_mod["notes module"]
         t_player_notes["player_notes"]
     end
+
+    subgraph package_mod["campaignpackage module"]
+        t_exports["campaign_exports"]
+        t_imports["campaign_imports, campaign_import_parts"]
+    end
 ```
+
+### Campaign package (MR-050)
+
+Three tables belong to the `campaignpackage` module. The files themselves are blobs (see [Architecture](architecture.md#campaign-package-mr-050)).
+
+- **`campaign_exports`**: one row per export. `id` is 32 random hex digits (128 bits) and is the download address. `state` is `running`, `done`, `failed` or `canceled`; `percent` is the progress; `failure` is `too_big` or `interrupted`; `file_name` is the name the download suggests (ASCII, from the campaign's name); `blob_key`, `byte_size` and `entry_count` describe the file; `create_key` and `create_hash` are the idempotency key of `StartCampaignExport` (scoped to the campaign and the caller). `expires_at` is 24 hours after the file was done (an hour after a failure or a cancel). **`campaign_id` and `requested_by` have no foreign key, on purpose:** a cascade would delete the row and leave the file where nothing names it. The cleanup deletes the file and then the row, and the code that deletes a campaign or an account calls it too.
+- **`campaign_imports`**: an upload in progress, bound to `user_id` (no foreign key either, for the same reason). A unique index on `user_id` keeps one per person. `fingerprint` is what the app makes from the file so that choosing it again resumes; `total_bytes` is at most 200 MiB; `part_size` and `part_count` are fixed when it begins. `expires_at` is an hour after the last part.
+- **`campaign_import_parts`**: which parts arrived (`part_number` from 1, `byte_size`); the rows go with the upload (`ON DELETE CASCADE`). The part is the blob `imports/<id>/parts/<n>`.
+
+The rows are deleted by the application's cleanup, not by a row TTL, because the file has to go first.
 
 ## Conventions
 

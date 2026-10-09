@@ -108,7 +108,7 @@ describe('a Bard at level 3: the college, and Expertise', () => {
 
   it('has Vida, Escolhas (the college and Expertise), Magias and Resumo', () => {
     const d = draft();
-    expect(d.steps()).toEqual(['hp', 'picks', 'spells', 'summary']);
+    expect(d.steps()).toEqual(['class', 'hp', 'picks', 'spells', 'summary']);
     expect(d.missing().map((m) => m.id)).toEqual(['subclass', 'expertise', 'spells']);
   });
 
@@ -169,9 +169,9 @@ describe('a wizard whose subclass gives a cantrip and a skill', () => {
       ],
     });
     const d = new LevelUpDraft(o, WIZARD_KEYS, { spells: SPELLS, skills: SKILLS });
-    expect(d.steps()).toEqual(['hp', 'picks', 'summary']);
+    expect(d.steps()).toEqual(['class', 'hp', 'picks', 'summary']);
     d.setSubclass('sub:land');
-    expect(d.steps()).toEqual(['hp', 'picks', 'spells', 'summary']);
+    expect(d.steps()).toEqual(['class', 'hp', 'picks', 'spells', 'summary']);
     expect(d.missing().map((m) => m.id)).toEqual(['skills', 'cantrips']);
     d.toggleSkill('skill:stealth');
     d.toggleCantrip('spell:prestidigitation');
@@ -206,7 +206,7 @@ describe('a cleric: it prepares from the class list, with no book', () => {
 
   it('offers every spell of the class list that is not prepared yet, circle by circle', () => {
     const d = new LevelUpDraft(cleric(4), have, { spells: clericSpells, skills: SKILLS });
-    expect(d.steps()).toEqual(['hp', 'spells', 'summary']);
+    expect(d.steps()).toEqual(['class', 'hp', 'spells', 'summary']);
     expect(d.preparedItems().map((i) => i.name)).toEqual([
       'Curar Ferimentos',
       'Onda Trovejante',
@@ -232,7 +232,7 @@ describe('a cleric: it prepares from the class list, with no book', () => {
 
   it('has no Magias step when the maximum did not move', () => {
     const d = new LevelUpDraft(cleric(2), have, { spells: clericSpells, skills: SKILLS });
-    expect(d.steps()).toEqual(['hp', 'summary']);
+    expect(d.steps()).toEqual(['class', 'hp', 'summary']);
   });
 });
 
@@ -282,7 +282,7 @@ describe("a Bard's Magical Secrets (level 10)", () => {
 
   it('has the steps and the totals of the level', () => {
     const o = bard10();
-    expect(stepsFor(o, totalsFor(o, ''), 0)).toEqual(['hp', 'spells', 'summary']);
+    expect(stepsFor(o, totalsFor(o, ''), 0)).toEqual(['class', 'hp', 'spells', 'summary']);
   });
 });
 
@@ -354,11 +354,11 @@ describe("a third caster's subclass picked at its level (slice 10.3's LevelUpSub
 
   it('has no spells step until the subclass that casts is picked', () => {
     const d = draft();
-    expect(d.steps()).toEqual(['hp', 'picks', 'summary']);
+    expect(d.steps()).toEqual(['class', 'hp', 'picks', 'summary']);
     d.setSubclass('subclass:champion');
-    expect(d.steps()).toEqual(['hp', 'picks', 'summary']);
+    expect(d.steps()).toEqual(['class', 'hp', 'picks', 'summary']);
     d.setSubclass('subclass:ink@mesa');
-    expect(d.steps()).toEqual(['hp', 'picks', 'spells', 'summary']);
+    expect(d.steps()).toEqual(['class', 'hp', 'picks', 'spells', 'summary']);
   });
 
   it("asks for the subclass's cantrips and spells, from the list it casts from, up to its highest circle", () => {
@@ -413,7 +413,7 @@ describe("a third caster's subclass picked at its level (slice 10.3's LevelUpSub
     d.toggleCantrip('spell:light');
     d.toggleSpell('spell:magic-missile');
     d.setSubclass('subclass:champion');
-    expect(d.steps()).toEqual(['hp', 'picks', 'summary']);
+    expect(d.steps()).toEqual(['class', 'hp', 'picks', 'summary']);
     expect(d.cantripsAsked()).toBe(0);
     expect(d.cantrips().size).toBe(0);
     expect(d.spells().size).toBe(0);
@@ -439,11 +439,11 @@ describe("a third caster's subclass picked at its level (slice 10.3's LevelUpSub
     });
     const o = fighterOptions({ subclassDue: true, subclasses: [preparing] });
     const d = new LevelUpDraft(o, have, { spells: SPELLS, skills: SKILLS });
-    expect(d.steps()).toEqual(['hp', 'picks', 'summary']);
+    expect(d.steps()).toEqual(['class', 'hp', 'picks', 'summary']);
     d.setSubclass('subclass:prep@mesa');
     expect(d.preparedMaxAfter()).toBe(3);
     expect(d.more()).toBe(3);
-    expect(d.steps()).toEqual(['hp', 'picks', 'spells', 'summary']);
+    expect(d.steps()).toEqual(['class', 'hp', 'picks', 'spells', 'summary']);
     expect(
       d
         .preparedItems()

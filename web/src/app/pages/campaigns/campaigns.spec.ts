@@ -96,6 +96,14 @@ describe('Campaigns', () => {
     expect(first?.textContent).toContain('XP por inimigos derrotados');
   });
 
+  it('links "Importar campanha" to the import page, next to the create form (MR-050)', async () => {
+    const el = await render();
+    const link = Array.from(el.querySelectorAll('a[href]')).find(
+      (a) => a.getAttribute('href') === '/campaigns/import',
+    );
+    expect(link?.textContent?.trim()).toBe('Importar campanha');
+  });
+
   it('tags a campaign with an open session "Sessão ao vivo", next to the role (RN-06, E5-01)', async () => {
     fake.listMyCampaignsResult = Promise.resolve({
       campaigns: [

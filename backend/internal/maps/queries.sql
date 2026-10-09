@@ -983,3 +983,43 @@ WHERE m.campaign_id = $1 AND d.map_id = $2;
 UPDATE image_requests
 SET used_map_image_id = sqlc.arg(used_map_image_id)
 WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id);
+
+-- The campaign package (MR-050). A campaign made from a package is built with
+-- the ids chosen before (the files of the images are stored under them), and
+-- with the dates in the package's order.
+
+-- name: ListMapsOfCampaign :many
+-- Every map of the campaign in the order the lists show them, for an export.
+SELECT * FROM maps
+WHERE campaign_id = $1
+ORDER BY created_at, id;
+
+-- name: InsertImportedMap :exec
+INSERT INTO maps (id, campaign_id, name, image_id, revealed_at, grid_columns, grid_factor, fog_enabled, fog_on_first_grid, group_vision, base_light, created_at, updated_at)
+VALUES (sqlc.arg(id), sqlc.arg(campaign_id), sqlc.arg(name), sqlc.arg(image_id), sqlc.narg(revealed_at), sqlc.narg(grid_columns), sqlc.arg(grid_factor),
+        sqlc.arg(fog_enabled), sqlc.arg(fog_on_first_grid), sqlc.arg(group_vision), sqlc.arg(base_light), sqlc.arg(now), sqlc.arg(now));
+
+-- name: InsertImportedMapPoint :exec
+INSERT INTO map_points (
+    id, map_id, kind, name, description, hooks, show_dc, x_bp, y_bp, target_map_id,
+    trap, trap_state, treasure_value_po, light_preset, light_bright_ft, light_dim_ft, revealed_at, stairs, created_at, updated_at
+)
+VALUES (
+    sqlc.arg(id), sqlc.arg(map_id), sqlc.arg(kind), sqlc.arg(name), sqlc.arg(description), sqlc.arg(hooks), sqlc.arg(show_dc), sqlc.arg(x_bp), sqlc.arg(y_bp),
+    sqlc.narg(target_map_id), sqlc.narg(trap), sqlc.narg(trap_state), sqlc.narg(treasure_value_po), sqlc.narg(light_preset), sqlc.narg(light_bright_ft),
+    sqlc.narg(light_dim_ft), sqlc.narg(revealed_at), sqlc.narg(stairs), sqlc.arg(now), sqlc.arg(now)
+);
+
+-- name: InsertImportedSceneClue :exec
+INSERT INTO scene_clues (id, point_id, position, text, created_at, updated_at)
+VALUES (sqlc.arg(id), sqlc.arg(point_id), sqlc.arg(position), sqlc.arg(text), sqlc.arg(now), sqlc.arg(now));
+
+-- name: InsertImportedGalleryImage :exec
+-- The parent and the copy are set after every image of the package is in
+-- (SetImportedImageRefs), so the order of the images does not matter.
+INSERT INTO gallery_images (id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at, generated, generated_kind)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
+
+-- name: SetImportedImageRefs :exec
+UPDATE gallery_images SET parent_image_id = sqlc.narg(parent_image_id), copy_of_image_id = sqlc.narg(copy_of_image_id)
+WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id);
