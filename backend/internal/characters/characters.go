@@ -141,10 +141,12 @@ type Config struct {
 	Logger *slog.Logger
 	// Now returns the current time. Nil means time.Now.
 	Now func() time.Time
-	// BehindCloudRun says the server runs on Cloud Run, where the client's
-	// address is in X-Forwarded-For (ratelimit.ClientKey): the claim links'
-	// limit per address reads it. False reads the connection's address.
-	BehindCloudRun bool
+	// TrustedProxyHops is how many proxies of ours sit in front of the
+	// server (ratelimit.ClientKey): the claim links' limit per address
+	// reads the client IP accordingly. 0 reads the connection's address
+	// and ignores X-Forwarded-For; 1 is Cloud Run alone; 2 is Cloud Run
+	// behind an external Application Load Balancer.
+	TrustedProxyHops int
 }
 
 // Service implements the CharacterService and ContentService Connect APIs,
@@ -186,9 +188,9 @@ type Service struct {
 	// maxCharacters is the cap on a campaign's characters (RN-30).
 	maxCharacters int
 	// claims limits PreviewClaim and ClaimCharacter (claims.go), and
-	// behindCloudRun tells where the caller's address is.
-	claims         claimLimits
-	behindCloudRun bool
+	// trustedProxyHops tells where the caller's address is.
+	claims           claimLimits
+	trustedProxyHops int
 }
 
 // The compiler checks that Service implements both handlers.
@@ -223,9 +225,9 @@ func New(cfg Config) (*Service, error) {
 		dice:     cfg.Dice,
 		roller:   cfg.Roller,
 
-		maxCharacters:  cfg.MaxCharactersPerCampaign,
-		claims:         newClaimLimits(),
-		behindCloudRun: cfg.BehindCloudRun,
+		maxCharacters:    cfg.MaxCharactersPerCampaign,
+		claims:           newClaimLimits(),
+		trustedProxyHops: cfg.TrustedProxyHops,
 	}
 	if s.maxCharacters == 0 {
 		s.maxCharacters = DefaultMaxCharactersPerCampaign
