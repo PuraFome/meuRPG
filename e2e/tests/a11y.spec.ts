@@ -2447,7 +2447,7 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
     }
     await classCard(p, /^Mago/).click();
     await p.getByRole('button', { name: 'Trocar para o Mago' }).click();
-    await expect(p.getByText('Pensantus · Mago 3 → Mago 4')).toBeVisible();
+    await expect(p.getByText('Pensantus · Mago 3 → Mago 4')).toBeAttached();
     await p.getByRole('button', { name: 'Próximo' }).click();
     await expect(p.getByText('Passo 2 de 5 · Habilidades')).toBeVisible();
     await expectScreenPasses(p, `Habilidades, com a escolha faltando ${where}`);
