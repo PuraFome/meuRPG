@@ -117,6 +117,11 @@ service LastingEffectService {
   // Only the master may call it. Moves game time on outside a combat: the effects on the
   // characters lose the seconds, and the ones whose time runs out end (a round is 6 seconds).
   rpc AdvanceGameTime(AdvanceGameTimeRequest) returns (AdvanceGameTimeResponse);
+  // Only the master may call it. Puts an effect of the catalog on player characters outside a
+  // combat (a potion, a blessing given between fights), with the duration in game time and the
+  // same visibility rules as AddLastingEffect. A character that is a combatant of an open combat
+  // is refused with `failed_precondition`: the effect is added there.
+  rpc AddCharacterEffect(AddCharacterEffectRequest) returns (AddCharacterEffectResponse);
 
   // LowerExhaustion takes `by` levels off (a long rest with food and drink takes
   // one). Only the master.
@@ -173,6 +178,8 @@ message AddLastingEffectRequest {
   // Whether the effect holds the caster's concentration (ends the caster's other
   // one). Only for a spell that concentrates; the default is the spell's.
   optional bool concentration = 12;
+  // Enhance Ability only: the ability it is cast for ("str" to "cha").
+  string ability_key = 13;
 }
 
 message AddLastingEffectResponse {
@@ -333,6 +340,32 @@ message AdvanceGameTimeRequest {
 message AdvanceGameTimeResponse {
   // How many effects ended because their time ran out.
   int32 effects_ended = 1;
+}
+
+message AddCharacterEffectRequest {
+  string campaign_id = 1;
+  string idempotency_key = 2;
+  // 1 to 10 player characters (a UUID each).
+  repeated string character_ids = 3;
+  // The catalog key (ListLastingEffectsResponse.catalog).
+  string catalog_key = 4;
+  // ROUNDS: lasts `seconds` of game time; UNTIL_DISMISSED; LONG_REST. Unset takes the catalog's
+  // default. The others (until the turn of someone) have no meaning outside a combat.
+  EffectDurationKind duration_kind = 5;
+  // ROUNDS: 1 second to 24 hours.
+  int32 seconds = 6;
+  // Whether the players read the effect, to whom, and a label (at most 30 characters). Left
+  // alone, the catalog's default.
+  optional bool player_visible = 7;
+  EffectAudience audience = 8;
+  string player_label = 9;
+  // Enhance Ability only: the ability it is cast for ("str" to "cha").
+  string ability_key = 10;
+}
+
+message AddCharacterEffectResponse {
+  // The effects the call made, one for each character.
+  repeated string effect_ids = 1;
 }
 
 message ListCharacterEffectsRequest {

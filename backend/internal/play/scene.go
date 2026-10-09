@@ -599,6 +599,7 @@ func (s *Service) RollSceneCheck(
 		return nil, errSceneActionNotFound()
 	}
 	var in rollInput
+	in.extraFaces = req.Msg.GetExtraDieFaces()
 	switch roll := req.Msg.GetRoll().(type) {
 	case *playv1.RollSceneCheckRequest_RollInApp:
 		if !roll.RollInApp {
@@ -734,7 +735,7 @@ func (s *Service) RollSceneCheck(
 			return err
 		}
 		// Bênção and Perdição add their die to a saving throw (SRD 5.1).
-		if bonus, err = s.withEffectDice(&cm, bonus); err != nil {
+		if bonus, err = s.withEffectDice(in, in.extraFaces, &cm, bonus); err != nil {
 			return err
 		}
 		shown = cm.shownCheck(names)
@@ -756,6 +757,9 @@ func (s *Service) RollSceneCheck(
 			return err
 		}
 		at = c.now
+		if err := s.spendOnceEffects(ctx, c, cm.Rolled); err != nil {
+			return err
+		}
 		rollID, err = insertSceneEvent(ctx, c, eventSceneCheckRolled, &m.UserID, &key, ev)
 		return err
 	})

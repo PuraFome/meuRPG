@@ -59,6 +59,7 @@ const (
 	SourceExhaustionCheck  = "exhaustion_check"
 	SourceOutlinedTarget   = "outlined_target"
 	SourceEffectSave       = "effect_save"
+	SourceEffectCheck      = "effect_check"
 	// Saving throws and ability checks.
 	SourceDodgingSave     = "dodging_save"
 	SourceDangerSense     = "danger_sense"
@@ -195,6 +196,9 @@ type Creature struct {
 	// SaveAdvantage are the abilities an effect that lasts gives it advantage on the
 	// saving throws of (Haste: Dexterity).
 	SaveAdvantage []string
+	// CheckAdvantage are the abilities an effect that lasts gives it advantage on the ability
+	// checks of (Enhance Ability).
+	CheckAdvantage []string
 }
 
 // Has says whether it carries a condition.
@@ -440,6 +444,9 @@ func SaveMode(s SaveScene) []Source {
 	}
 	if !s.Check && c.Exhaustion >= exhaustionAttackLevel {
 		add(SourceExhaustionSave, ModeDisadvantage, "")
+	}
+	if s.Check && slices.Contains(c.CheckAdvantage, s.Ability) {
+		add(SourceEffectCheck, ModeAdvantage, "")
 	}
 	if s.Check && c.Exhaustion >= 1 {
 		add(SourceExhaustionCheck, ModeDisadvantage, "")

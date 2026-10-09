@@ -16,7 +16,6 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
-	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // The effects on the characters outside a running combat: how they are read, and how the
@@ -80,11 +79,14 @@ func (s *Service) ListCharacterEffects(
 		for _, k := range r.ConditionKeys {
 			e.ConditionNamesPt = append(e.ConditionNamesPt, names(k))
 		}
+		mods := modifiersOf(r.Modifiers)
 		if d, ok := content.CombatEffect(r.SourceKey); ok {
 			e.TagsPt = d.TagsPT
 		} else if d, ok := content.CombatSpellEffect(r.SourceKey); ok {
 			e.TagsPt = d.TagsPT
 		}
+		e.TagsPt = append(append([]string{}, e.TagsPt...), modifierTagsPT(mods)...)
+		e.TagsPt = append(e.TagsPt, narratedNotesPT(mods)...)
 		if master {
 			e.PlayerVisible, e.Audience = r.PlayerVisible, audienceProto(r.Audience)
 		}
@@ -125,7 +127,9 @@ func gameTimeText(seconds *int32, concentration bool) string {
 
 // endCharacterEffect is EndLastingEffect for an effect on a character outside a combat: the
 // effect goes, or the whole casting does with the cast that held it.
-func (s *Service) endCharacterEffect(ctx context.Context, m authz.Membership, msg *playv1.EndLastingEffectRequest, key string) (*connect.Response[playv1.EndLastingEffectResponse], error) {
+func (s *Service) endCharacterEffect( //nolint:gocognit // the steps of one transaction in one closure, like the other writes of the master
+	ctx context.Context, m authz.Membership, msg *playv1.EndLastingEffectRequest, key string,
+) (*connect.Response[playv1.EndLastingEffectResponse], error) {
 	id, ok := parseID(msg.GetEffectId())
 	if !ok {
 		return nil, errEffectNotFound()
@@ -170,6 +174,9 @@ func (s *Service) endCharacterEffect(ctx context.Context, m authz.Membership, ms
 				return fmt.Errorf("end the casting: %w", err)
 			}
 			ended = int32(len(gone)) //nolint:gosec // a handful of effects
+			if err := s.afterCharacterEffectsGone(ctx, c, gone); err != nil {
+				return err
+			}
 			var touched []string
 			for _, g := range gone {
 				touched = append(touched, g.CharacterID)
@@ -187,6 +194,9 @@ func (s *Service) endCharacterEffect(ctx context.Context, m authz.Membership, ms
 				return fmt.Errorf("end the effect: %w", err)
 			}
 			ended = 1
+			if err := s.afterCharacterEffectsGone(ctx, c, []playdb.CharacterEffect{row}); err != nil {
+				return err
+			}
 			if err := s.syncArmorBase(ctx, c, row.CharacterID); err != nil {
 				return err
 			}
@@ -215,5 +225,3 @@ func (s *Service) endCharacterEffect(ctx context.Context, m authz.Membership, ms
 	s.publishVitalsOf(m.CampaignID, told)
 	return connect.NewResponse(&playv1.EndLastingEffectResponse{Ended: ended}), nil
 }
-
-var _ = rules.RoundsPerMinute

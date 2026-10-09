@@ -1,5 +1,5 @@
 {
-  "source": "SRD 5.1 (CC BY 4.0): \"Conditions\" (the 15 conditions and exhaustion), \"Duration\", \"Concentration\", \"Combat\" (the Dodge action), and the spells Bless, Bane, Haste, Hold Person and Web. The texts shown to the table are ours.",
+  "source": "SRD 5.1 (CC BY 4.0): \"Conditions\" (the 15 conditions and exhaustion), \"Duration\", \"Concentration\", \"Combat\" (the Dodge action), and the spells Bless, Bane, Haste, Hold Person, Web, Mage Armor, Pass without Trace, Longstrider, Guidance, Resistance, Enhance Ability and Heroism. The texts shown to the table are ours.",
   "conditions": {
     "condition:blinded": {
       "visibility": "public",
@@ -104,6 +104,32 @@
       "visibility": "owner",
       "modifiers": [{"kind": "speed_add", "value": 10}],
       "tags_pt": ["Deslocamento +3 m"]
+    },
+    "spell:guidance": {
+      "applies": "all",
+      "visibility": "owner",
+      "modifiers": [{"kind": "roll_die", "die": 4, "sign": 1, "applies_to": ["check"], "once": true}],
+      "tags_pt": ["+1d4 em um teste de habilidade, uma vez"]
+    },
+    "spell:resistance": {
+      "applies": "all",
+      "visibility": "owner",
+      "modifiers": [{"kind": "roll_die", "die": 4, "sign": 1, "applies_to": ["save"], "once": true}],
+      "tags_pt": ["+1d4 em um teste de resistência, uma vez"]
+    },
+    "spell:enhance-ability": {
+      "applies": "all",
+      "visibility": "owner",
+      "modifiers": [{"kind": "check_advantage", "choose": true}]
+    },
+    "spell:heroism": {
+      "applies": "all",
+      "visibility": "owner",
+      "modifiers": [
+        {"kind": "condition_immunity", "conditions": ["condition:frightened"]},
+        {"kind": "turn_temp_hp", "from_caster": true}
+      ],
+      "tags_pt": ["Imune a Amedrontado", "PV temporários a cada turno seu"]
     },
     "spell:hold-person": {
       "applies": "failed_save",

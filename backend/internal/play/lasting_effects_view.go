@@ -21,7 +21,7 @@ import (
 
 // ownerOnlyConditions are the conditions with no sign on the outside, which only the creature's
 // player and the master read (effects/combat_effects.json says it; a test keeps the two equal).
-var ownerOnlyConditions = []string{"condition:charmed", "condition:deafened", "condition:exhaustion", "condition:frightened", "condition:invisible", "condition:poisoned"}
+var ownerOnlyConditions = []string{"condition:charmed", "condition:deafened", conditionExhaustion, "condition:frightened", "condition:invisible", "condition:poisoned"}
 
 // The line a player reads for what they may not read.
 const (
@@ -252,7 +252,7 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 		}
 	}
 	if def != nil {
-		out.TagsPt, out.BreakFreeAbility = def.TagsPT, def.BreakFree
+		out.TagsPt, out.BreakFreeAbility = append(append([]string{}, def.TagsPT...), modifierTagsPT(effectModifiers(f))...), def.BreakFree
 		if def.BreakFree != "" {
 			out.BreakFreeAbility = def.BreakFree
 		}
@@ -262,6 +262,7 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 			out.ChangesPt = append(out.ChangesPt, info.ChangesPT...)
 		}
 	}
+	out.ChangesPt = append(out.ChangesPt, narratedNotesPT(effectModifiers(f))...)
 	if ev.v.master {
 		out.PlayerVisible, out.Audience, out.PlayerLabel = f.PlayerVisible, audienceProto(f.Audience), deref(f.PlayerLabel)
 		out.EndTextPt = ev.endText(f, caster)
@@ -303,7 +304,7 @@ func (ev *effectViewer) clockText(f playdb.CombatantState, caster playdb.Combata
 	}
 	switch deref(f.DurationKind) {
 	case rules.EffectDurationRounds:
-		if !casterSeen && !ev.v.master {
+		if !casterSeen && !ev.v.master && f.SourceID != nil && deref(f.SourceKind) != "master" {
 			return fmt.Sprintf("Resta o tempo da magia: acaba no turno de quem a conjurou, na rodada %d.", e.Round)
 		}
 		left := e.RoundsLeft(round)
@@ -452,4 +453,46 @@ func (s *Service) decorateEffects(ctx context.Context, m authz.Membership, d *en
 		ev.decorate(p, c)
 	}
 	return nil
+}
+
+// abilityPT are the abilities in Portuguese, for the tags an effect chosen for one reads.
+var abilityPT = map[string]string{"str": "Força", "dex": "Destreza", "con": "Constituição", "int": "Inteligência", "wis": "Sabedoria", "cha": "Carisma"}
+
+// modifierTagsPT are the tags the modifiers of an effect add to the file's: the ability an
+// Aprimorar Habilidade was cast for.
+func modifierTagsPT(mods []rules.EffectModifier) []string {
+	var out []string
+	for _, m := range mods {
+		if m.Kind != rules.ModifierCheckAdvantage {
+			continue
+		}
+		for _, a := range m.Abilities {
+			out = append(out, "Vantagem em testes de "+abilityPT[a])
+		}
+	}
+	return out
+}
+
+// enhanceNotesPT are what an Aprimorar Habilidade gives besides the advantage, which the app does
+// not count and the master narrates (SRD 5.1, Enhance Ability).
+var enhanceNotesPT = map[string]string{
+	"con": "Resistência do Urso: 2d6 PV temporários, perdidos quando a magia acaba (o mestre concede).",
+	"str": "Força do Touro: a capacidade de carga dobra.",
+	"dex": "Graça do Gato: não sofre dano de queda de até 6 m se não estiver incapacitado.",
+}
+
+// narratedNotesPT are the lines of what the effect gives that the table plays by narration.
+func narratedNotesPT(mods []rules.EffectModifier) []string {
+	var out []string
+	for _, m := range mods {
+		if m.Kind != rules.ModifierCheckAdvantage {
+			continue
+		}
+		for _, a := range m.Abilities {
+			if note := enhanceNotesPT[a]; note != "" {
+				out = append(out, note)
+			}
+		}
+	}
+	return out
 }

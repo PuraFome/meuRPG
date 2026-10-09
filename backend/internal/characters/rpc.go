@@ -506,6 +506,11 @@ func (s *Service) UpdateCharacter(
 			afterArmor, err = s.reviewHost.ArmorWorn(ctx, tx, m.CampaignID, id)
 			return err
 		}
+		// A shield (or armor taken off) changes what Mage Armor gives.
+		if s.reviewHost != nil && (storedSheet.GetFull().GetArmorKey() != sheet.GetFull().GetArmorKey() || storedSheet.GetFull().GetShield() != sheet.GetFull().GetShield()) {
+			afterArmor, err = s.reviewHost.GearChanged(ctx, tx, m.CampaignID, id)
+			return err
+		}
 		return nil
 	})
 	if afterArmor != nil && err == nil {

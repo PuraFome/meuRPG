@@ -930,6 +930,57 @@ func (q *Queries) DeleteLastingEffect(ctx context.Context, id string) error {
 	return err
 }
 
+const deleteLongRestEffectsOfCampaign = `-- name: DeleteLongRestEffectsOfCampaign :many
+DELETE FROM character_effects WHERE campaign_id = $1 AND duration_kind = 'long_rest' RETURNING id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at
+`
+
+// A long rest ends what lasts until one (SRD 5.1, "Resting"): every character of the table rests.
+func (q *Queries) DeleteLongRestEffectsOfCampaign(ctx context.Context, campaignID string) ([]CharacterEffect, error) {
+	rows, err := q.db.Query(ctx, deleteLongRestEffectsOfCampaign, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CharacterEffect
+	for rows.Next() {
+		var i CharacterEffect
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.SourceCharacterID,
+			&i.GroupID,
+			&i.SourceKey,
+			&i.SourceKind,
+			&i.Concentration,
+			&i.ConditionKeys,
+			&i.Modifiers,
+			&i.DurationKind,
+			&i.SecondsLeft,
+			&i.EndSaveAbility,
+			&i.StartSaveAbility,
+			&i.SaveDc,
+			&i.OnFailEffect,
+			&i.FollowsKey,
+			&i.TriggerDice,
+			&i.TriggerDamageType,
+			&i.TriggerMaxTriggers,
+			&i.TriggersFired,
+			&i.PlayerVisible,
+			&i.Audience,
+			&i.PlayerLabel,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteOpportunityOffersOfMove = `-- name: DeleteOpportunityOffersOfMove :exec
 DELETE FROM opportunity_offers
 WHERE move_id = $1
@@ -6927,6 +6978,20 @@ func (q *Queries) SavePuzzleRun(ctx context.Context, arg SavePuzzleRunParams) (P
 	return i, err
 }
 
+const setCharacterEffectModifiers = `-- name: SetCharacterEffectModifiers :exec
+UPDATE character_effects SET modifiers = $2 WHERE id = $1
+`
+
+type SetCharacterEffectModifiersParams struct {
+	ID        string
+	Modifiers []byte
+}
+
+func (q *Queries) SetCharacterEffectModifiers(ctx context.Context, arg SetCharacterEffectModifiersParams) error {
+	_, err := q.db.Exec(ctx, setCharacterEffectModifiers, arg.ID, arg.Modifiers)
+	return err
+}
+
 const setCharacterEffectSeconds = `-- name: SetCharacterEffectSeconds :exec
 UPDATE character_effects SET seconds_left = $2 WHERE id = $1
 `
@@ -7856,6 +7921,20 @@ func (q *Queries) SetLastingEffectEnds(ctx context.Context, arg SetLastingEffect
 		&i.PlayerLabel,
 	)
 	return i, err
+}
+
+const setLastingEffectModifiers = `-- name: SetLastingEffectModifiers :exec
+UPDATE combatant_states SET modifiers = $2 WHERE id = $1 AND kind = 'effect'
+`
+
+type SetLastingEffectModifiersParams struct {
+	ID        string
+	Modifiers []byte
+}
+
+func (q *Queries) SetLastingEffectModifiers(ctx context.Context, arg SetLastingEffectModifiersParams) error {
+	_, err := q.db.Exec(ctx, setLastingEffectModifiers, arg.ID, arg.Modifiers)
+	return err
 }
 
 const setLastingEffectVisibility = `-- name: SetLastingEffectVisibility :one

@@ -2,7 +2,10 @@ package play
 
 import (
 	"context"
+	"errors"
 	"slices"
+
+	"connectrpc.com/connect"
 
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -32,7 +35,9 @@ const (
 
 // applyLastingSpell puts the effect of a spell on the targets it took hold of. targs and
 // made.Hits are in the same order. A spell without an effect that lasts does nothing here.
-func (s *Service) applyLastingSpell(ctx context.Context, c *combatTx, cs []playdb.Combatant, sp link.Spell, caster playdb.Combatant, targs []playdb.Combatant, made *actionEvent) error {
+func (s *Service) applyLastingSpell( //nolint:gocyclo // the steps of putting a spell's effect on its targets
+	ctx context.Context, c *combatTx, cs []playdb.Combatant, sp link.Spell, caster playdb.Combatant, targs []playdb.Combatant, ability string, made *actionEvent,
+) error {
 	content, err := s.contentOf(ctx, c)
 	if err != nil {
 		return err
@@ -58,6 +63,10 @@ func (s *Service) applyLastingSpell(ctx context.Context, c *combatTx, cs []playd
 			kinds[ch.ID] = ch.MonsterKey
 		}
 	}
+	states, err := s.readStates(ctx, c.tx, c.enc.ID)
+	if err != nil {
+		return err
+	}
 	var taken []playdb.Combatant
 	for i, t := range targs {
 		hit := &made.Hits[i]
@@ -67,6 +76,10 @@ func (s *Service) applyLastingSpell(ctx context.Context, c *combatTx, cs []playd
 		}
 		if why := s.noEffectWhy(content, def, key); why != "" {
 			hit.Lasting, hit.NoEffectWhy = lastingNoEffect, why
+			continue
+		}
+		if slices.ContainsFunc(def.Conditions, func(k string) bool { return combat.ImmuneTo(effectModsOf(states, t.ID), k) }) {
+			hit.Lasting, hit.NoEffectWhy = lastingNoEffect, whyImmune
 			continue
 		}
 		if def.Applies == "failed_save" {
@@ -95,12 +108,20 @@ func (s *Service) applyLastingSpell(ctx context.Context, c *combatTx, cs []playd
 	made.Lasting = &lastingEvent{Key: sp.Key, Change: "added"}
 	// An effect that sets a base armor class (Mage Armor) is worked out for each target, and does
 	// not take hold of a creature that wears armor.
+	opts, err := s.castOptsOf(ctx, c, def, ability, caster.CharacterID)
+	if err != nil {
+		return err
+	}
 	groups := [][]playdb.Combatant{taken}
-	mods := [][]rules.EffectModifier{nil}
+	common, _, err := s.modifiersFor(ctx, c, def, "", opts)
+	if err != nil {
+		return err
+	}
+	mods := [][]rules.EffectModifier{common}
 	if slices.ContainsFunc(def.Modifiers, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierBaseAC }) {
 		groups, mods = nil, nil
 		for _, t := range taken {
-			m, ok, err := s.modifiersFor(ctx, c, def, t.CharacterID)
+			m, ok, err := s.modifiersFor(ctx, c, def, t.CharacterID, opts)
 			if err != nil {
 				return err
 			}
@@ -155,3 +176,24 @@ func (s *Service) noEffectWhy(content *rules.Content, def *rules.EffectDef, mons
 	}
 	return ""
 }
+
+// abilityChoiceOf checks the ability a spell is cast for: Enhance Ability needs one of the six
+// (SRD 5.1: Bull's Strength, Cat's Grace, Bear's Endurance, Fox's Cunning, Owl's Wisdom, Eagle's
+// Splendor); any other spell takes none and ignores it.
+func (s *Service) abilityChoiceOf(ctx context.Context, c *combatTx, spellKey, ability string) (string, error) {
+	content, err := s.contentOf(ctx, c)
+	if err != nil {
+		return "", err
+	}
+	def, ok := content.CombatSpellEffect(spellKey)
+	if !ok || !slices.ContainsFunc(def.Modifiers, func(m rules.EffectModifier) bool { return m.Choose }) {
+		return "", nil
+	}
+	if !slices.Contains(effectAbilities, ability) {
+		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("ability_key must be one of str, dex, con, int, wis or cha for this spell"))
+	}
+	return ability, nil
+}
+
+// effectAbilities are the abilities an effect may be chosen for.
+var effectAbilities = []string{"str", "dex", "con", "int", "wis", "cha"}

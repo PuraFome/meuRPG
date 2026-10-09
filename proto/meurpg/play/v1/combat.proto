@@ -3456,6 +3456,11 @@ message CastSpellRequest {
   // spell consumes). The app keeps no inventory, so this is a reminder, and the log says
   // it was spent. Required for Revivify and refused for any other spell.
   bool material_confirmed = 19;
+  // Enhance Ability only: the ability the target is enhanced in ("str", "dex", "con", "int",
+  // "wis" or "cha"; SRD 5.1: Bull's Strength, Cat's Grace, Bear's Endurance, Fox's Cunning,
+  // Owl's Wisdom, Eagle's Splendor). Required for that spell, `invalid_argument` otherwise
+  // missing or unknown; ignored by every other spell.
+  string ability_key = 20;
 }
 
 // MetamagicChoice is one Metamagic option on a casting.
@@ -4374,6 +4379,8 @@ enum CombatLogEffectChange {
   COMBAT_LOG_EFFECT_CHANGE_SAVE_FAILED = 5;
   COMBAT_LOG_EFFECT_CHANGE_DAMAGE = 6;
   COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED = 7;
+  // The effect gave the target temporary hit points (Heroísmo, at the start of its turn); `amount`.
+  COMBAT_LOG_EFFECT_CHANGE_TEMP_HP = 8;
 }
 
 // CombatLogMonster is a monster of a MONSTERS_ADDED line, only the master's.
@@ -5143,6 +5150,10 @@ message ResolveConcentrationSaveRequest {
     bool keep = 7;
   }
   string idempotency_key = 8;
+  // The faces of the dice an effect adds to the saving throw (Bênção, Perdição), in the order
+  // of the effects, when the roll is a physical d20 (`d20_face`): one for each, 1 to the die's
+  // faces. With the app's dice the server rolls them.
+  repeated int32 extra_die_faces = 100;
 }
 
 message ResolveConcentrationSaveResponse {

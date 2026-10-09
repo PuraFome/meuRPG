@@ -2267,6 +2267,8 @@ const (
 	CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVE_FAILED      CombatLogEffectChange = 5
 	CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_DAMAGE           CombatLogEffectChange = 6
 	CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED     CombatLogEffectChange = 7
+	// The effect gave the target temporary hit points (Heroísmo, at the start of its turn); `amount`.
+	CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_TEMP_HP CombatLogEffectChange = 8
 )
 
 // Enum value maps for CombatLogEffectChange.
@@ -2280,6 +2282,7 @@ var (
 		5: "COMBAT_LOG_EFFECT_CHANGE_SAVE_FAILED",
 		6: "COMBAT_LOG_EFFECT_CHANGE_DAMAGE",
 		7: "COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED",
+		8: "COMBAT_LOG_EFFECT_CHANGE_TEMP_HP",
 	}
 	CombatLogEffectChange_value = map[string]int32{
 		"COMBAT_LOG_EFFECT_CHANGE_UNSPECIFIED":      0,
@@ -2290,6 +2293,7 @@ var (
 		"COMBAT_LOG_EFFECT_CHANGE_SAVE_FAILED":      5,
 		"COMBAT_LOG_EFFECT_CHANGE_DAMAGE":           6,
 		"COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED":     7,
+		"COMBAT_LOG_EFFECT_CHANGE_TEMP_HP":          8,
 	}
 )
 
@@ -10324,8 +10328,13 @@ type CastSpellRequest struct {
 	// spell consumes). The app keeps no inventory, so this is a reminder, and the log says
 	// it was spent. Required for Revivify and refused for any other spell.
 	MaterialConfirmed bool `protobuf:"varint,19,opt,name=material_confirmed,json=materialConfirmed,proto3" json:"material_confirmed,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Enhance Ability only: the ability the target is enhanced in ("str", "dex", "con", "int",
+	// "wis" or "cha"; SRD 5.1: Bull's Strength, Cat's Grace, Bear's Endurance, Fox's Cunning,
+	// Owl's Wisdom, Eagle's Splendor). Required for that spell, `invalid_argument` otherwise
+	// missing or unknown; ignored by every other spell.
+	AbilityKey    string `protobuf:"bytes,20,opt,name=ability_key,json=abilityKey,proto3" json:"ability_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CastSpellRequest) Reset() {
@@ -10520,6 +10529,13 @@ func (x *CastSpellRequest) GetMaterialConfirmed() bool {
 		return x.MaterialConfirmed
 	}
 	return false
+}
+
+func (x *CastSpellRequest) GetAbilityKey() string {
+	if x != nil {
+		return x.AbilityKey
+	}
+	return ""
 }
 
 type isCastSpellRequest_Roll interface {
@@ -18693,8 +18709,12 @@ type ResolveConcentrationSaveRequest struct {
 	//	*ResolveConcentrationSaveRequest_Keep
 	Roll           isResolveConcentrationSaveRequest_Roll `protobuf_oneof:"roll"`
 	IdempotencyKey string                                 `protobuf:"bytes,8,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The faces of the dice an effect adds to the saving throw (Bênção, Perdição), in the order
+	// of the effects, when the roll is a physical d20 (`d20_face`): one for each, 1 to the die's
+	// faces. With the app's dice the server rolls them.
+	ExtraDieFaces []int32 `protobuf:"varint,100,rep,packed,name=extra_die_faces,json=extraDieFaces,proto3" json:"extra_die_faces,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ResolveConcentrationSaveRequest) Reset() {
@@ -18796,6 +18816,13 @@ func (x *ResolveConcentrationSaveRequest) GetIdempotencyKey() string {
 		return x.IdempotencyKey
 	}
 	return ""
+}
+
+func (x *ResolveConcentrationSaveRequest) GetExtraDieFaces() []int32 {
+	if x != nil {
+		return x.ExtraDieFaces
+	}
+	return nil
 }
 
 type isResolveConcentrationSaveRequest_Roll interface {
@@ -20403,7 +20430,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\vSpellTarget\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x14\n" +
 	"\x05darts\x18\x02 \x01(\x05R\x05darts\x12$\n" +
-	"\x0edead_target_id\x18\x03 \x01(\tR\fdeadTargetId\"\xff\x06\n" +
+	"\x0edead_target_id\x18\x03 \x01(\tR\fdeadTargetId\"\xa0\a\n" +
 	"\x10CastSpellRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -20427,7 +20454,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\vmode_reason\x18\x11 \x01(\tR\n" +
 	"modeReason\x12\x1b\n" +
 	"\td20_faces\x18\x12 \x03(\x05R\bd20Faces\x12-\n" +
-	"\x12material_confirmed\x18\x13 \x01(\bR\x11materialConfirmedB\x06\n" +
+	"\x12material_confirmed\x18\x13 \x01(\bR\x11materialConfirmed\x12\x1f\n" +
+	"\vability_key\x18\x14 \x01(\tR\n" +
+	"abilityKeyB\x06\n" +
 	"\x04rollB\x06\n" +
 	"\x04areaB\x10\n" +
 	"\x0e_reveal_hidden\"\x88\x01\n" +
@@ -21171,7 +21200,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x06caught\x18\x04 \x01(\bR\x06caught\x120\n" +
 	"\x14throw_back_available\x18\x05 \x01(\bR\x12throwBackAvailable\"0\n" +
 	"\x11FeatherFallResult\x12\x1b\n" +
-	"\tsaved_ids\x18\x01 \x03(\tR\bsavedIds\"\xb0\x02\n" +
+	"\tsaved_ids\x18\x01 \x03(\tR\bsavedIds\"\xd8\x02\n" +
 	"\x1fResolveConcentrationSaveRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -21181,7 +21210,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\bd20_face\x18\x05 \x01(\x05H\x00R\ad20Face\x12&\n" +
 	"\x0ehand_to_master\x18\x06 \x01(\bH\x00R\fhandToMaster\x12\x14\n" +
 	"\x04keep\x18\a \x01(\bH\x00R\x04keep\x12'\n" +
-	"\x0fidempotency_key\x18\b \x01(\tR\x0eidempotencyKeyB\x06\n" +
+	"\x0fidempotency_key\x18\b \x01(\tR\x0eidempotencyKey\x12&\n" +
+	"\x0fextra_die_faces\x18d \x03(\x05R\rextraDieFacesB\x06\n" +
 	"\x04roll\"\x9c\x01\n" +
 	" ResolveConcentrationSaveResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x12?\n" +
@@ -21507,7 +21537,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x12LayOnHandsCureKind\x12&\n" +
 	"\"LAY_ON_HANDS_CURE_KIND_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eLAY_ON_HANDS_CURE_KIND_DISEASE\x10\x01\x12!\n" +
-	"\x1dLAY_ON_HANDS_CURE_KIND_POISON\x10\x02*\xd6\x02\n" +
+	"\x1dLAY_ON_HANDS_CURE_KIND_POISON\x10\x02*\xfc\x02\n" +
 	"\x15CombatLogEffectChange\x12(\n" +
 	"$COMBAT_LOG_EFFECT_CHANGE_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eCOMBAT_LOG_EFFECT_CHANGE_ADDED\x10\x01\x12\"\n" +
@@ -21516,7 +21546,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1eCOMBAT_LOG_EFFECT_CHANGE_SAVED\x10\x04\x12(\n" +
 	"$COMBAT_LOG_EFFECT_CHANGE_SAVE_FAILED\x10\x05\x12#\n" +
 	"\x1fCOMBAT_LOG_EFFECT_CHANGE_DAMAGE\x10\x06\x12)\n" +
-	"%COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED\x10\a*\x8f\x02\n" +
+	"%COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED\x10\a\x12$\n" +
+	" COMBAT_LOG_EFFECT_CHANGE_TEMP_HP\x10\b*\x8f\x02\n" +
 	"\rHighlightKind\x12\x1e\n" +
 	"\x1aHIGHLIGHT_KIND_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aHIGHLIGHT_KIND_MOST_DAMAGE\x10\x01\x12\x1f\n" +

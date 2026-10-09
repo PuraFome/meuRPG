@@ -54,6 +54,7 @@ const (
 	endBurned        = "burned"          // the web burned away
 	endLeft          = "left"            // its target or its caster left the combat
 	endIncapacitated = "incapacitated"   // the caster was incapacitated: no concentration
+	endUsed          = "used"            // a roll spent it (Guidance, Resistance)
 )
 
 // lastingEvent is the payload of an effect's event: keys, ids and numbers, never a name
@@ -515,6 +516,14 @@ func (s *Service) afterEffectEnded(ctx context.Context, c *combatTx, cs []playdb
 				}
 			}
 		}
+		// The temporary hit points the spell gave go with it (SRD 5.1, Heroism).
+		if slices.ContainsFunc(def.Modifiers, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierTurnTempHP }) {
+			if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == st.CombatantID }); i >= 0 {
+				if err := s.clearTempHP(ctx, c, cs[i]); err != nil {
+					return err
+				}
+			}
+		}
 		if len(def.EndsEffectsOf) > 0 {
 			all, err := c.q.ListLastingEffects(ctx, c.enc.ID)
 			if err != nil {
@@ -620,5 +629,28 @@ func effectSaveAdvantage(states map[string][]playdb.CombatantState, id string) [
 	return out
 }
 
+// effectCheckAdvantage are the abilities the effects on a combatant give advantage on the ability
+// checks of (Aprimorar Habilidade).
+func effectCheckAdvantage(states map[string][]playdb.CombatantState, id string) []string {
+	var out []string
+	for _, st := range effectsOn(states, id) {
+		for _, m := range effectModifiers(st) {
+			if m.Kind == rules.ModifierCheckAdvantage {
+				out = append(out, m.Abilities...)
+			}
+		}
+	}
+	return out
+}
+
 // ex0 says the level of exhaustion takes the speed to 0 (SRD 5.1, Conditions: level 5).
 func ex0(level int) bool { return combat.ExhaustionAt(level).SpeedZero }
+
+// effectModsOf are the modifiers of every effect on a combatant.
+func effectModsOf(states map[string][]playdb.CombatantState, id string) []rules.EffectModifier {
+	var out []rules.EffectModifier
+	for _, st := range effectsOn(states, id) {
+		out = append(out, effectModifiers(st)...)
+	}
+	return out
+}

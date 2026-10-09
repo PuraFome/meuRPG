@@ -215,6 +215,13 @@ func (s *Service) reconcileConditions(ctx context.Context, c *combatTx, target p
 	if slices.Contains(target.Conditions, conditionExhaustion) {
 		conditions = append(conditions, conditionExhaustion)
 	}
+	// An effect that makes the creature immune to a condition (Heroism: frightened) keeps the
+	// master from setting it by hand.
+	if immune, err := s.immuneTo(ctx, c, target.ID); err != nil {
+		return nil, target, err
+	} else if len(immune) > 0 {
+		conditions = slices.DeleteFunc(conditions, func(k string) bool { return slices.Contains(immune, k) && !slices.Contains(target.Conditions, k) })
+	}
 	var gone []string
 	for _, k := range target.EffectConditions {
 		if !slices.Contains(conditions, k) {
@@ -299,4 +306,24 @@ func (s *Service) endEffectsOfTheDead(ctx context.Context, c *combatTx, cs []pla
 		return fmt.Errorf("end the effects of the dead: %w", err)
 	}
 	return s.syncArmorBase(ctx, c, who.CharacterID)
+}
+
+// immuneTo are the conditions the effects on a combatant make it immune to.
+func (s *Service) immuneTo(ctx context.Context, c *combatTx, combatantID string) ([]string, error) {
+	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the effects: %w", err)
+	}
+	var out []string
+	for _, st := range rows {
+		if st.CombatantID != combatantID {
+			continue
+		}
+		for _, m := range effectModifiers(st) {
+			if m.Kind == rules.ModifierConditionImmunity {
+				out = append(out, m.Conditions...)
+			}
+		}
+	}
+	return out, nil
 }

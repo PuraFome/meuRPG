@@ -303,6 +303,11 @@ type ReviewHost interface {
 	// that need none (Mage Armor, SRD 5.1: "the spell ends if the target dons armor") end. It
 	// returns what to call after the commit (the streams are told), or nil.
 	ArmorWorn(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (afterCommit func(ctx context.Context), err error)
+	// GearChanged tells play that the character's armor or shield changed without donning
+	// armor, inside tx: the base armor class an effect gives (Mage Armor, 13 + Dexterity, with
+	// the shield) is worked out again from the gear it wears now. It returns what to call after
+	// the commit, or nil.
+	GearChanged(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (afterCommit func(ctx context.Context), err error)
 	// PublishEncounterChanged tells every stream that the combat changed. Call it after the
 	// commit.
 	PublishEncounterChanged(ctx context.Context, campaignID, encounterID string)

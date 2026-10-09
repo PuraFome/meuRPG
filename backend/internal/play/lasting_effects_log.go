@@ -34,6 +34,7 @@ var effectChangeToProto = map[string]playv1.CombatLogEffectChange{
 	"failed":   playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVE_FAILED,
 	"damage":   playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_DAMAGE,
 	"skipped":  playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED,
+	"temp_hp":  playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_TEMP_HP,
 }
 
 // kindKeyOf is the event kind that makes a line of the kind, "" for a kind that is no effect's.

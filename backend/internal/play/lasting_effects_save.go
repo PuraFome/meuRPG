@@ -77,6 +77,11 @@ type effectDie struct {
 	Face  int    `json:"face,omitempty"`
 	// Hidden says the master keeps the effect from the players (RN-10).
 	Hidden bool `json:"hidden,omitempty"`
+	// Once, EffectID and CharacterID say the die is spent by the roll (Guidance, Resistance), and
+	// which effect of which character goes with it; they are not kept in the events.
+	Once        bool   `json:"-"`
+	EffectID    string `json:"-"`
+	CharacterID string `json:"-"`
 }
 
 // effectDiceFor lists the dice the effects on a combatant add to a roll of the kind
@@ -85,7 +90,7 @@ func effectDiceFor(states map[string][]playdb.CombatantState, id, applies string
 	var out []effectDie
 	for _, st := range effectsOn(states, id) {
 		for _, d := range combat.EffectDice(deref(st.SourceKey), effectModifiers(st), applies) {
-			out = append(out, effectDie{Key: d.Source, Faces: d.Faces, Sign: d.Sign, Hidden: !st.PlayerVisible})
+			out = append(out, effectDie{Key: d.Source, Faces: d.Faces, Sign: d.Sign, Hidden: !st.PlayerVisible, Once: d.Once, EffectID: st.ID})
 		}
 	}
 	return out
@@ -295,6 +300,9 @@ func (s *Service) RollEffectSave( //nolint:gocognit,gocyclo // the steps of one 
 				}
 				extra, delta, err := s.rollEffectDice(in, effectDiceFor(states, reactor.ID, rules.RollAppliesSave), typedExtra)
 				if err != nil {
+					return nil, err
+				}
+				if err := s.spendOnceEffects(ctx, c, extra); err != nil {
 					return nil, err
 				}
 				total := d20.Total + delta

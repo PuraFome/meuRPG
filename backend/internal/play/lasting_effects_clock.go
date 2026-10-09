@@ -7,6 +7,7 @@ import (
 	"slices"
 	"time"
 
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -60,7 +61,9 @@ func (s *Service) effectsBeforeTurn(ctx context.Context, c *combatTx) error {
 }
 
 // effectsAfterTurnStart does what the start of the turn of ids does to the effects.
-func (s *Service) effectsAfterTurnStart(ctx context.Context, c *combatTx, ids []string, round int32) error {
+func (s *Service) effectsAfterTurnStart( //nolint:gocyclo // the steps of the start of a turn, in the order the SRD and the board give
+	ctx context.Context, c *combatTx, ids []string, round int32,
+) error {
 	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 	if err != nil {
 		return fmt.Errorf("list the combatants: %w", err)
@@ -90,6 +93,27 @@ func (s *Service) effectsAfterTurnStart(ctx context.Context, c *combatTx, ids []
 	}
 	if cs, err = c.q.ListCombatants(ctx, c.enc.ID); err != nil {
 		return fmt.Errorf("list the combatants: %w", err)
+	}
+	// (1b) The temporary hit points an effect gives at the start of each turn (Heroísmo).
+	for _, id := range ids {
+		i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == id })
+		if i < 0 || cs[i].Defeated {
+			continue
+		}
+		var mods []rules.EffectModifier
+		var from *playdb.CombatantState
+		for k := range rows {
+			if rows[k].CombatantID == id {
+				if m := effectModifiers(rows[k]); combat.TurnTempHP(m) > 0 {
+					mods, from = append(mods, m...), &rows[k]
+				}
+			}
+		}
+		if amount := combat.TurnTempHP(mods); amount > 0 {
+			if err := s.turnTempHP(ctx, c, cs[i], *from, amount, round); err != nil {
+				return err
+			}
+		}
 	}
 	// (2) and (3) The damage of an effect, then (4) the saving throws of the start.
 	group := newGroup()
@@ -251,4 +275,56 @@ func (s *Service) releaseHeldTurn(ctx context.Context, c *combatTx) error {
 		return err
 	}
 	return insertEvent(ctx, c, eventTurnEnded, &c.actorUserID, nil, map[string]any{"from": members[0].ID, "to": next[0], "round": round, "after_save": true})
+}
+
+// turnTempHP gives the temporary hit points an effect gives at the start of a turn: they do not
+// stack, so the creature keeps the larger of what it had and what the effect gives (SRD 5.1,
+// "Temporary Hit Points").
+func (s *Service) turnTempHP(ctx context.Context, c *combatTx, who playdb.Combatant, st playdb.CombatantState, amount int, round int32) error {
+	t, err := s.readFxTarget(ctx, c, who)
+	if err != nil {
+		return err
+	}
+	if t.temp >= amount {
+		return nil
+	}
+	var hit castHit
+	v, err := s.giveTempHP(ctx, c, t, amount, &hit)
+	if err != nil {
+		return err
+	}
+	if v != nil {
+		c.told = append(c.told, v)
+	}
+	return insertEvent(ctx, c, eventLastingTriggered, &c.actorUserID, nil, actionEvent{
+		Round: round, Secret: s.effectHiddenFrom(st, []playdb.Combatant{who}), Actor: who.ID, Target: who.ID, Key: deref(st.SourceKey),
+		Lasting: &lastingEvent{Key: deref(st.SourceKey), Change: "temp_hp", Targets: []string{who.ID}, Amount: clamp32(amount, 0, 100), Effects: []string{st.ID}},
+	})
+}
+
+// clearTempHP takes the temporary hit points off a combatant: what an effect gave goes when it ends.
+func (s *Service) clearTempHP(ctx context.Context, c *combatTx, who playdb.Combatant) error {
+	t, err := s.readFxTarget(ctx, c, who)
+	if err != nil {
+		return err
+	}
+	if t.temp == 0 {
+		return nil
+	}
+	none := int32(0)
+	if holdsHP(who) {
+		before := hpOf(who)
+		if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: who.ID, HpCurrent: &before.HP, HpTemp: &none, Defeated: before.Defeated}); err != nil {
+			return fmt.Errorf("take the temporary hit points off: %w", err)
+		}
+		return nil
+	}
+	_, after, err := s.vitalsOf(ctx, c, who.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsTemporary: &none})
+	if err != nil {
+		return err
+	}
+	if after != nil {
+		c.told = append(c.told, after)
+	}
+	return nil
 }

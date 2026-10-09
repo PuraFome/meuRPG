@@ -71,7 +71,7 @@ func (s *Service) checkModeOf(ctx context.Context, tx pgx.Tx, campaignID, sessio
 	var who playdb.Combatant
 	found := false
 	for _, c := range cs {
-		if c.CharacterID == characterID && c.Kind == kindPlayer && !c.Defeated {
+		if c.CharacterID == characterID && c.Kind == kindPlayer {
 			who, found = c, true
 		}
 	}
@@ -97,8 +97,12 @@ func (s *Service) checkModeOf(ctx context.Context, tx pgx.Tx, campaignID, sessio
 			bonuses = append(bonuses, effectBonus{Key: deref(st.SourceKey), Value: n, Hidden: !st.PlayerVisible})
 		}
 	}
+	diceOf := effectDiceFor(states, who.ID, applies)
+	for i := range diceOf {
+		diceOf[i].CharacterID = characterID
+	}
 	return checkMode{
-		Mode: combat.Resolve(sources), Sources: sources, Dice: effectDiceFor(states, who.ID, applies), Bonuses: bonuses,
+		Mode: combat.Resolve(sources), Sources: sources, Dice: diceOf, Bonuses: bonuses,
 		hide: hideFor(hiddenConditionsOf(states, who), hasHiddenEffect(states, who.ID)),
 	}, nil
 }

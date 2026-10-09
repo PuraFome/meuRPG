@@ -1,6 +1,7 @@
 package play
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -50,6 +51,8 @@ type trapTarget struct {
 	attackMode, saveMode       combat.RollMode
 	attackSources, saveSources []combat.Source
 	saveAuto                   bool
+	// saveDice are the dice the target's effects add to its saving throw (Bênção, Perdição).
+	saveDice []effectDie
 }
 
 // trapDamageRoll is one damage part rolled for one creature.
@@ -88,6 +91,8 @@ type trapSaveRoll struct {
 	other, counted int
 	mode           combat.RollMode
 	auto           bool
+	// extra are the dice the target's effects added to the roll, already in total and bonus.
+	extra []effectDie
 }
 
 // trapOutcome is what the trap did to one creature.
@@ -132,7 +137,9 @@ func parseTrapDice(s string) (dice.Expr, error) {
 // order given. rule is the table's critical rule (RN-24), which a trap's critical
 // hit follows like any other. d20 rolls one d20 and says its face; rollDice rolls
 // damage dice.
-func resolveTrap(e *rulesv1.TrapEffect, targets []trapTarget, rule combat.CriticalRule, d20 func() (int, error), rollDice func(dice.Expr) (dice.Result, error)) ([]trapOutcome, error) {
+func resolveTrap( //nolint:gocognit,gocyclo // the attacks, the saves and the damages of one trap, rolled in order
+	e *rulesv1.TrapEffect, targets []trapTarget, rule combat.CriticalRule, d20 func() (int, error), rollDice func(dice.Expr) (dice.Result, error), rollExtra func([]effectDie) ([]effectDie, int, error),
+) ([]trapOutcome, error) {
 	out := make([]trapOutcome, len(targets))
 	for i, t := range targets {
 		out[i].target = t
@@ -220,7 +227,14 @@ func resolveTrap(e *rulesv1.TrapEffect, targets []trapTarget, rule combat.Critic
 					if err != nil {
 						return nil, err
 					}
-					roll = trapSaveRoll{d20: face, bonus: t.save, total: face + t.save, dc: int(sv.GetDc()), known: t.saveKnown, other: other, counted: counted, mode: t.saveMode}
+					var extra []effectDie
+					delta := 0
+					if rollExtra != nil && len(t.saveDice) > 0 {
+						if extra, delta, err = rollExtra(t.saveDice); err != nil {
+							return nil, err
+						}
+					}
+					roll = trapSaveRoll{d20: face, bonus: t.save + delta, total: face + t.save + delta, dc: int(sv.GetDc()), known: t.saveKnown, other: other, counted: counted, mode: t.saveMode, extra: extra}
 					roll.saved = combat.SaveSucceeded(roll.total, roll.dc)
 				}
 				out[i].saves = append(out[i].saves, roll)
@@ -277,4 +291,22 @@ func rollModed(d20 func() (int, error), mode combat.RollMode) (face, other, coun
 		other = faces[1-counted]
 	}
 	return face, other, counted, nil
+}
+
+// trapExtraDice rolls the dice an effect adds to a creature's saving throw against a trap: the app
+// rolls them for everyone, as it rolls the trap's d20.
+func (s *Service) trapExtraDice(dd []effectDie) ([]effectDie, int, error) {
+	return s.rollEffectDice(rollInput{inApp: true}, dd, nil)
+}
+
+// spendTrapDice ends the effects whose die a creature's saving throw against the trap used.
+func (s *Service) spendTrapDice(ctx context.Context, c *combatTx, outcomes []trapOutcome) error {
+	for _, o := range outcomes {
+		for _, sv := range o.saves {
+			if err := s.spendOnceEffects(ctx, c, sv.extra); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

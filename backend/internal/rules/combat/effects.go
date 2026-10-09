@@ -90,6 +90,8 @@ type EffectDie struct {
 	Source string
 	Faces  int
 	Sign   int
+	// Once says the die is spent by the roll it is added to (Guidance, Resistance).
+	Once bool
 }
 
 // Signed is the die's face with its sign: the number added to the roll.
@@ -103,7 +105,7 @@ func EffectDice(source string, modifiers []rules.EffectModifier, appliesTo strin
 	var out []EffectDie
 	for _, m := range modifiers {
 		if m.Kind == rules.ModifierRollDie && slices.Contains(m.AppliesTo, appliesTo) {
-			out = append(out, EffectDie{Source: source, Faces: m.Die, Sign: m.Sign})
+			out = append(out, EffectDie{Source: source, Faces: m.Die, Sign: m.Sign, Once: m.Once})
 		}
 	}
 	return out
@@ -235,6 +237,32 @@ func BaseAC(modifiers []rules.EffectModifier) int {
 	n := 0
 	for _, m := range modifiers {
 		if m.Kind == rules.ModifierBaseAC {
+			n = max(n, m.Value)
+		}
+	}
+	return n
+}
+
+// CheckAdvantage says the modifiers give advantage on an ability check of the ability (Enhance Ability).
+func CheckAdvantage(modifiers []rules.EffectModifier, ability string) bool {
+	return slices.ContainsFunc(modifiers, func(m rules.EffectModifier) bool {
+		return m.Kind == rules.ModifierCheckAdvantage && slices.Contains(m.Abilities, ability)
+	})
+}
+
+// ImmuneTo says the modifiers make the creature immune to the condition (Heroism: frightened).
+func ImmuneTo(modifiers []rules.EffectModifier, condition string) bool {
+	return slices.ContainsFunc(modifiers, func(m rules.EffectModifier) bool {
+		return m.Kind == rules.ModifierConditionImmunity && slices.Contains(m.Conditions, condition)
+	})
+}
+
+// TurnTempHP is the temporary hit points the modifiers give at the start of a turn: the
+// highest, since they do not stack (SRD 5.1, "Temporary Hit Points").
+func TurnTempHP(modifiers []rules.EffectModifier) int {
+	n := 0
+	for _, m := range modifiers {
+		if m.Kind == rules.ModifierTurnTempHP {
 			n = max(n, m.Value)
 		}
 	}

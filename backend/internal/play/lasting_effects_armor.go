@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -10,6 +11,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -25,10 +27,17 @@ import (
 // modifiersFor are the modifiers an effect of the catalog gives a character: the ones the file
 // lists, with the armor class worked out for the target when the effect sets one. false means the
 // effect does not take hold (Mage Armor on a creature that wears armor, or on a basic sheet).
-func (s *Service) modifiersFor(ctx context.Context, c *combatTx, def *rules.EffectDef, characterID string) ([]rules.EffectModifier, bool, error) {
+func (s *Service) modifiersFor(ctx context.Context, c *combatTx, def *rules.EffectDef, characterID string, opts castOpts) ([]rules.EffectModifier, bool, error) {
 	mods := slices.Clone(def.Modifiers)
 	for i, m := range mods {
-		if m.Kind != rules.ModifierBaseAC {
+		switch {
+		case m.Kind == rules.ModifierCheckAdvantage && m.Choose:
+			mods[i].Abilities, mods[i].Choose = []string{opts.ability}, false
+			continue
+		case m.Kind == rules.ModifierTurnTempHP && m.FromCaster:
+			mods[i].Value, mods[i].FromCaster = opts.casterMod, false
+			continue
+		case m.Kind != rules.ModifierBaseAC:
 			continue
 		}
 		mage, err := s.roster.MageArmorAC(ctx, c.tx, c.session.CampaignID, characterID)
@@ -41,6 +50,31 @@ func (s *Service) modifiersFor(ctx context.Context, c *combatTx, def *rules.Effe
 		mods[i].Value = int(clamp32(mage.AC, 1, 60))
 	}
 	return mods, true, nil
+}
+
+// castOpts are what the cast decides about the modifiers of an effect: the ability the caster
+// picked (Enhance Ability) and the caster's spellcasting modifier (Heroism's temporary hit points).
+type castOpts struct {
+	ability   string
+	casterMod int
+}
+
+// castOptsOf reads the cast's options for an effect: the spellcasting modifier of the caster's
+// character, when the effect needs it.
+func (s *Service) castOptsOf(ctx context.Context, c *combatTx, def *rules.EffectDef, ability, casterCharacterID string) (castOpts, error) {
+	opts := castOpts{ability: ability}
+	if casterCharacterID == "" || !slices.ContainsFunc(def.Modifiers, func(m rules.EffectModifier) bool { return m.FromCaster }) {
+		return opts, nil
+	}
+	st, err := s.roster.ReactionStats(ctx, c.tx, c.session.CampaignID, casterCharacterID)
+	if err != nil {
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			return opts, nil
+		}
+		return opts, err
+	}
+	opts.casterMod = int(clamp32(max(st.CastingMod, 0), 0, 20))
+	return opts, nil
 }
 
 // armorBaseOf is the base armor class the effects on a character give, in a combat or out of
@@ -89,6 +123,113 @@ func (s *Service) syncArmorBase(ctx context.Context, c *combatTx, characterIDs .
 		}
 	}
 	return nil
+}
+
+// GearChanged implements characters.ReviewHost: the armor class Mage Armor gives is 13 + Dexterity
+// with the shield the character carries now (SRD 5.1, Armor Class), so it is worked out again
+// from the gear whenever the sheet's armor or shield changes, in a combat or out of it.
+func (s *Service) GearChanged(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (func(context.Context), error) {
+	q := s.queries.WithTx(tx)
+	out, err := q.ListCharacterEffects(ctx, []string{characterID})
+	if err != nil {
+		return nil, fmt.Errorf("list the character's effects: %w", err)
+	}
+	in, err := q.ListCombatEffectsOfCharacter(ctx, characterID)
+	if err != nil {
+		return nil, fmt.Errorf("list the effects in the combats: %w", err)
+	}
+	var mage *link.MageArmor
+	worked := func() (link.MageArmor, error) {
+		if mage == nil {
+			m, err := s.roster.MageArmorAC(ctx, tx, campaignID, characterID)
+			if err != nil {
+				return m, err
+			}
+			mage = &m
+		}
+		return *mage, nil
+	}
+	// refit works the base out again in the modifiers of one record; it says whether it changed.
+	refit := func(body []byte) ([]byte, bool, error) {
+		mods := modifiersOf(body)
+		changed := false
+		for i, m := range mods {
+			if m.Kind != rules.ModifierBaseAC {
+				continue
+			}
+			now, err := worked()
+			if err != nil {
+				return nil, false, err
+			}
+			if now.AC < 1 || now.Wears || int(clamp32(now.AC, 1, 60)) == m.Value {
+				continue
+			}
+			mods[i].Value, changed = int(clamp32(now.AC, 1, 60)), true
+		}
+		if !changed {
+			return body, false, nil
+		}
+		enc, err := json.Marshal(mods)
+		if err != nil {
+			return nil, false, fmt.Errorf("encode the modifiers: %w", err)
+		}
+		return enc, true, nil
+	}
+	touched := false
+	for _, r := range out {
+		body, changed, err := refit(r.Modifiers)
+		if err != nil {
+			return nil, err
+		}
+		if changed {
+			if err := q.SetCharacterEffectModifiers(ctx, playdb.SetCharacterEffectModifiersParams{ID: r.ID, Modifiers: body}); err != nil {
+				return nil, fmt.Errorf("work out the base armor class again: %w", err)
+			}
+			touched = true
+		}
+	}
+	for _, st := range in {
+		body, changed, err := refit(st.Modifiers)
+		if err != nil {
+			return nil, err
+		}
+		if changed {
+			if err := q.SetLastingEffectModifiers(ctx, playdb.SetLastingEffectModifiersParams{ID: st.ID, Modifiers: body}); err != nil {
+				return nil, fmt.Errorf("work out the base armor class again: %w", err)
+			}
+			touched = true
+		}
+	}
+	if !touched {
+		return nil, nil
+	}
+	now, err := worked()
+	if err != nil {
+		return nil, err
+	}
+	if err := q.SetMageArmorACOfCharacter(ctx, playdb.SetMageArmorACOfCharacterParams{CharacterID: characterID, MageArmorAc: new(clamp32(now.AC, 1, 60))}); err != nil {
+		return nil, fmt.Errorf("work out the base armor class of the combatants again: %w", err)
+	}
+	session, err := q.GetOpenGameSessionForUpdate(ctx, campaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		session = playdb.GameSession{CampaignID: campaignID}
+	} else if err != nil {
+		return nil, fmt.Errorf("lock the open session: %w", err)
+	}
+	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), svc: s, master: true})
+	if err != nil {
+		return nil, err
+	}
+	if err := s.syncArmorBase(ctx, c, characterID); err != nil {
+		return nil, err
+	}
+	told := c.told
+	return func(ctx context.Context) {
+		s.publishVitalsOf(campaignID, told)
+		if c.enc.ID != "" {
+			s.publishEncounterChanged(ctx, campaignID, c.enc)
+		}
+	}, nil
 }
 
 // ArmorWorn implements characters.ReviewHost: a character that dons armor loses what needs none

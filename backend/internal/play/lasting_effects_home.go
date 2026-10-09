@@ -3,9 +3,13 @@ package play
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 
+	"github.com/jackc/pgx/v5"
+
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -44,12 +48,16 @@ func (s *Service) castCharacterEffects(ctx context.Context, c *combatTx, plan ca
 		kind = rules.EffectDurationConcentration
 	}
 	caster := plan.g.caster.ID
+	opts, err := s.castOptsOf(ctx, c, def, plan.ability, caster)
+	if err != nil {
+		return err
+	}
 	var touched []string
 	for _, t := range s.effectTargetsAll(plan) {
 		if !t.Player {
 			continue // an NPC has no vitals and no combat outside a fight: the master narrates
 		}
-		mods, ok, err := s.modifiersFor(ctx, c, def, t.ID)
+		mods, ok, err := s.modifiersFor(ctx, c, def, t.ID, opts)
 		if err != nil {
 			return err
 		}
@@ -91,6 +99,9 @@ func (s *Service) endCharacterEffectsOfCast(ctx context.Context, c *combatTx, ca
 	for _, r := range gone {
 		touched = append(touched, r.CharacterID)
 	}
+	if err := s.afterCharacterEffectsGone(ctx, c, gone); err != nil {
+		return err
+	}
 	// The cast ended while a fight ran: what it left in the combat goes too.
 	inFight, err := c.q.ListCombatEffectsOfGroup(ctx, &castID)
 	if err != nil {
@@ -121,6 +132,7 @@ func (s *Service) advanceGameTime(ctx context.Context, c *combatTx, seconds int3
 		return fmt.Errorf("move game time on: %w", err)
 	}
 	var touched []string
+	var ended []playdb.CharacterEffect
 	for _, r := range rows {
 		if r.SecondsLeft == nil || *r.SecondsLeft > 0 {
 			continue
@@ -129,6 +141,43 @@ func (s *Service) advanceGameTime(ctx context.Context, c *combatTx, seconds int3
 			return fmt.Errorf("end an effect whose time ran out: %w", err)
 		}
 		touched = append(touched, r.CharacterID)
+		ended = append(ended, r)
+	}
+	if err := s.afterCharacterEffectsGone(ctx, c, ended); err != nil {
+		return err
+	}
+	return s.syncArmorBase(ctx, c, touched...)
+}
+
+// endLongRestEffects ends what lasts until a long rest on the characters of the table: the
+// effects out of a combat and the ones a combat in setup already holds.
+func (s *Service) endLongRestEffects(ctx context.Context, c *combatTx) error {
+	gone, err := c.q.DeleteLongRestEffectsOfCampaign(ctx, c.session.CampaignID)
+	if err != nil {
+		return fmt.Errorf("end the effects that last until a long rest: %w", err)
+	}
+	var touched []string
+	for _, r := range gone {
+		touched = append(touched, r.CharacterID)
+	}
+	if err := s.afterCharacterEffectsGone(ctx, c, gone); err != nil {
+		return err
+	}
+	if enc, err := c.q.GetOpenEncounter(ctx, c.session.ID); err == nil {
+		rows, err := c.q.ListLastingEffects(ctx, enc.ID)
+		if err != nil {
+			return fmt.Errorf("list the effects in the combat: %w", err)
+		}
+		for _, st := range rows {
+			if deref(st.DurationKind) != rules.EffectDurationLongRest {
+				continue
+			}
+			if err := c.q.DeleteLastingEffect(ctx, st.ID); err != nil {
+				return fmt.Errorf("end an effect in the combat: %w", err)
+			}
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("find the open encounter: %w", err)
 	}
 	return s.syncArmorBase(ctx, c, touched...)
 }
@@ -252,6 +301,27 @@ func (s *Service) effectsToCharacters(ctx context.Context, c *combatTx, cs, only
 		}
 		if err := c.q.DeleteLastingEffect(ctx, st.ID); err != nil {
 			return fmt.Errorf("take the effect off the combatant: %w", err)
+		}
+	}
+	return nil
+}
+
+// afterCharacterEffectsGone does what follows effects that ended on characters out of a combat:
+// the temporary hit points a spell gave go with it (SRD 5.1, Heroism).
+func (s *Service) afterCharacterEffectsGone(ctx context.Context, c *combatTx, rows []playdb.CharacterEffect) error {
+	none := int32(0)
+	for _, r := range rows {
+		if !slices.ContainsFunc(modifiersOf(r.Modifiers), func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierTurnTempHP }) {
+			continue
+		}
+		v, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, r.CharacterID)
+		if err != nil || v.GetHitPointsTemporary() == 0 {
+			continue
+		}
+		if _, got, err := s.vitalsOf(ctx, c, r.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsTemporary: &none}); err != nil {
+			return err
+		} else if got != nil {
+			c.told = append(c.told, got)
 		}
 	}
 	return nil

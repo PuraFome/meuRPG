@@ -1031,7 +1031,10 @@ type CastSpellOutsideCombatRequest struct {
 	Roll isCastSpellOutsideCombatRequest_Roll `protobuf_oneof:"roll"`
 	// What a summoning spell brings (as CastSummon). Required for such a spell and
 	// refused for any other. A spell that takes minutes or hours takes it in ConfirmCastTimePassed.
-	Summon        *SummonChoice `protobuf:"bytes,10,opt,name=summon,proto3" json:"summon,omitempty"`
+	Summon *SummonChoice `protobuf:"bytes,10,opt,name=summon,proto3" json:"summon,omitempty"`
+	// Enhance Ability only: the ability the target is enhanced in ("str", "dex", "con", "int",
+	// "wis" or "cha"). Required for that spell, ignored by every other.
+	AbilityKey    string `protobuf:"bytes,11,opt,name=ability_key,json=abilityKey,proto3" json:"ability_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1145,6 +1148,13 @@ func (x *CastSpellOutsideCombatRequest) GetSummon() *SummonChoice {
 		return x.Summon
 	}
 	return nil
+}
+
+func (x *CastSpellOutsideCombatRequest) GetAbilityKey() string {
+	if x != nil {
+		return x.AbilityKey
+	}
+	return ""
 }
 
 type isCastSpellOutsideCombatRequest_Roll interface {
@@ -2240,7 +2250,7 @@ const file_meurpg_play_v1_casting_proto_rawDesc = "" +
 	"\n" +
 	"wild_shape\x18\x04 \x01(\bR\twildShape\x125\n" +
 	"\acasting\x18\x05 \x01(\v2\x1b.meurpg.play.v1.OutsideCastR\acasting\x12A\n" +
-	"\rconcentrating\x18\x06 \x01(\v2\x1b.meurpg.play.v1.OutsideCastR\rconcentrating\"\xa0\x03\n" +
+	"\rconcentrating\x18\x06 \x01(\v2\x1b.meurpg.play.v1.OutsideCastR\rconcentrating\"\xc1\x03\n" +
 	"\x1dCastSpellOutsideCombatRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12.\n" +
@@ -2254,7 +2264,9 @@ const file_meurpg_play_v1_casting_proto_rawDesc = "" +
 	"\vroll_in_app\x18\b \x01(\bH\x00R\trollInApp\x12\x1d\n" +
 	"\ttyped_sum\x18\t \x01(\x05H\x00R\btypedSum\x124\n" +
 	"\x06summon\x18\n" +
-	" \x01(\v2\x1c.meurpg.play.v1.SummonChoiceR\x06summonB\x06\n" +
+	" \x01(\v2\x1c.meurpg.play.v1.SummonChoiceR\x06summon\x12\x1f\n" +
+	"\vability_key\x18\v \x01(\tR\n" +
+	"abilityKeyB\x06\n" +
 	"\x04roll\"\x80\x02\n" +
 	"\x1cConfirmCastTimePassedRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +

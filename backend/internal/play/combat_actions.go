@@ -496,6 +496,9 @@ type rollInput struct {
 	// pool says typed is the sum of the physical dice of a spell's pool (not a
 	// d20 face): CastSpell's pool_sum.
 	pool bool
+	// extraFaces are the faces of the physical dice an effect adds to the roll
+	// (extra_die_faces: Bênção, Orientação).
+	extraFaces []int32
 }
 
 // mustRollThisWay checks a player's way of rolling against the campaign's dice

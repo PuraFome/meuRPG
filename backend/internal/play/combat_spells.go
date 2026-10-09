@@ -359,6 +359,10 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 		if err != nil {
 			return nil, err
 		}
+		abilityKey, err := s.abilityChoiceOf(ctx, c, spellKey, req.Msg.GetAbilityKey())
+		if err != nil {
+			return nil, err
+		}
 		if pick := req.Msg.GetDamageTypeKey(); pick != "" && !slices.Contains(sp.DamageTypes, pick) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("damage_type_key must be one of the damage types of a spell that lets the caster choose"))
 		}
@@ -604,7 +608,7 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 				hidden = hidden || t.Hidden
 			}
 			// What a spell that lasts leaves on the targets it took hold of (RN-22).
-			if err := s.applyLastingSpell(ctx, c, cs, sp, caster, targs, &made); err != nil {
+			if err := s.applyLastingSpell(ctx, c, cs, sp, caster, targs, abilityKey, &made); err != nil {
 				return nil, err
 			}
 		}
@@ -870,6 +874,9 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 		// Bênção and Perdição: a d4 on the target's saving throw.
 		extra, extraTotal, err := s.rollEffectDice(rollInput{inApp: true}, effectDiceFor(modes.in.states, target.ID, rules.RollAppliesSave), nil)
 		if err != nil {
+			return err
+		}
+		if err := s.spendOnceEffects(ctx, c, extra); err != nil {
 			return err
 		}
 		saved = combat.SaveSucceeded(d20.Total+extraTotal, sp.SaveDC) || c.meta.passes(target.ID) // Careful Spell: it passes on its own

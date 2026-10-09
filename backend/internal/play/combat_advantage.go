@@ -113,6 +113,7 @@ var sourceKindToProto = map[string]playv1.AdvantageSourceKind{
 	combat.SourceExhaustionCheck:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EXHAUSTION_CHECK,
 	combat.SourceOutlinedTarget:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET,
 	combat.SourceEffectSave:         playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_SAVE,
+	combat.SourceEffectCheck:        playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_CHECK,
 	combat.SourceRestrainedSave:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_RESTRAINED_SAVE,
 	combat.SourcePoisonedCheck:      playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_POISONED_CHECK,
 	combat.SourceFrightenedCheck:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK,
@@ -146,7 +147,7 @@ func creatureFacts(c playdb.Combatant, states map[string][]playdb.CombatantState
 		Raging:      hasState(states, c.ID, stateRage) && !traits.HeavyArmor,
 		// The effects that last (RN-22): exhaustion, Faerie Fire's outline and the advantage on
 		// saving throws an effect gives.
-		Exhaustion: int(c.ExhaustionLevel), Outlined: hasEffect(states, c.ID, "spell:faerie-fire"), SaveAdvantage: effectSaveAdvantage(states, c.ID),
+		Exhaustion: int(c.ExhaustionLevel), Outlined: hasEffect(states, c.ID, "spell:faerie-fire"), SaveAdvantage: effectSaveAdvantage(states, c.ID), CheckAdvantage: effectCheckAdvantage(states, c.ID),
 	}
 }
 
@@ -417,6 +418,8 @@ func (c textContext) sentence(src combat.Source) string {
 		return "Alvo delineado: vantagem se o atacante o vê"
 	case combat.SourceEffectSave:
 		return "Efeito ativo: vantagem no teste de resistência"
+	case combat.SourceEffectCheck:
+		return "Efeito ativo: vantagem em testes de habilidade"
 	}
 	return ""
 }

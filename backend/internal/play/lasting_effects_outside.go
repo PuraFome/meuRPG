@@ -2,7 +2,6 @@ package play
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 
@@ -52,12 +51,15 @@ func (s *Service) outsideModeOf(ctx context.Context, tx pgx.Tx, campaignID, char
 		}
 		creature.Conditions = append(creature.Conditions, r.ConditionKeys...)
 		for _, m := range mods {
-			if m.Kind == rules.ModifierSaveAdvantage {
+			switch m.Kind {
+			case rules.ModifierSaveAdvantage:
 				creature.SaveAdvantage = append(creature.SaveAdvantage, m.Abilities...)
+			case rules.ModifierCheckAdvantage:
+				creature.CheckAdvantage = append(creature.CheckAdvantage, m.Abilities...)
 			}
 		}
 		for _, d := range combat.EffectDice(r.SourceKey, mods, applies) {
-			diceOf = append(diceOf, effectDie{Key: d.Source, Faces: d.Faces, Sign: d.Sign, Hidden: !r.PlayerVisible})
+			diceOf = append(diceOf, effectDie{Key: d.Source, Faces: d.Faces, Sign: d.Sign, Hidden: !r.PlayerVisible, Once: d.Once, EffectID: r.ID, CharacterID: r.CharacterID})
 		}
 		if !r.PlayerVisible {
 			hiddenAny = true
@@ -75,7 +77,7 @@ func hideFor(conds []string, anyHidden bool) func(combat.Source) bool {
 	}
 	return func(src combat.Source) bool {
 		switch src.Kind {
-		case combat.SourceOutlinedTarget, combat.SourceEffectSave:
+		case combat.SourceOutlinedTarget, combat.SourceEffectSave, combat.SourceEffectCheck:
 			return anyHidden
 		}
 		return src.Condition != "" && slices.Contains(conds, src.Condition)
@@ -91,14 +93,14 @@ func modifiersOf(body []byte) []rules.EffectModifier {
 // withEffectDice rolls the dice the effects add to the roll (the app rolls them) and returns the
 // bonus with them: Bênção's d4 on a saving throw. The dice and where they came from are kept for
 // the sources of the roll.
-func (s *Service) withEffectDice(cm *checkMode, bonus int) (int, error) {
+func (s *Service) withEffectDice(in rollInput, typed []int32, cm *checkMode, bonus int) (int, error) {
 	for _, b := range cm.Bonuses {
 		bonus += b.Value
 	}
 	if len(cm.Dice) == 0 {
 		return bonus, nil
 	}
-	rolled, delta, err := s.rollEffectDice(rollInput{inApp: true}, cm.Dice, nil)
+	rolled, delta, err := s.rollEffectDice(in, cm.Dice, typed)
 	if err != nil {
 		return bonus, err
 	}
@@ -119,12 +121,19 @@ func (cm checkMode) shownCheck(names func(string) string) []*playv1.AdvantageSou
 			Kind: playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_DIE, TextPt: fmt.Sprintf("%s %+d", name, b.Value),
 		})
 	}
-	for _, d := range cm.Rolled {
+	return append(out, effectDieSources(cm.Rolled, names, false)...)
+}
+
+// effectDieSources writes the dice an effect added to a roll as sources ("Bênção +1d4: 3"). What an
+// effect the master hides gives reads "Outra fonte" to a player; the master reads the name.
+func effectDieSources(dd []effectDie, names func(string) string, master bool) []*playv1.AdvantageSource {
+	var out []*playv1.AdvantageSource
+	for _, d := range dd {
 		name, sign := names(d.Key), "+"
 		if d.Sign < 0 {
 			sign = "-"
 		}
-		if d.Hidden {
+		if d.Hidden && !master {
 			name = "Outra fonte"
 		}
 		out = append(out, &playv1.AdvantageSource{
@@ -134,11 +143,25 @@ func (cm checkMode) shownCheck(names func(string) string) []*playv1.AdvantageSou
 	return out
 }
 
-var _ = errors.New
-
 // effectBonus is a fixed bonus an effect adds to a check.
 type effectBonus struct {
 	Key    string
 	Value  int
 	Hidden bool
+}
+
+// outsideSaveDice are the dice the effects on a character out of a combat add to its saving
+// throws (Bênção, Perdição), for a trap that fires on it.
+func (s *Service) outsideSaveDice(ctx context.Context, tx pgx.Tx, characterID string) ([]effectDie, error) {
+	rows, err := s.queriesIn(tx).ListCharacterEffects(ctx, []string{characterID})
+	if err != nil {
+		return nil, fmt.Errorf("list the character's effects: %w", err)
+	}
+	var out []effectDie
+	for _, r := range rows {
+		for _, d := range combat.EffectDice(r.SourceKey, modifiersOf(r.Modifiers), rules.RollAppliesSave) {
+			out = append(out, effectDie{Key: d.Source, Faces: d.Faces, Sign: d.Sign, Hidden: !r.PlayerVisible, Once: d.Once, EffectID: r.ID, CharacterID: r.CharacterID})
+		}
+	}
+	return out, nil
 }

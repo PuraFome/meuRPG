@@ -191,3 +191,37 @@ func TestSpeedAddAndCheckBonus(t *testing.T) {
 		t.Error("the bonus goes to Stealth alone")
 	}
 }
+
+func TestCheckAdvantageImmunityAndTurnTempHPOfTheModifiers(t *testing.T) {
+	t.Parallel()
+	mods := []rules.EffectModifier{
+		{Kind: rules.ModifierCheckAdvantage, Abilities: []string{"str"}},
+		{Kind: rules.ModifierConditionImmunity, Conditions: []string{"condition:frightened"}},
+		{Kind: rules.ModifierTurnTempHP, Value: 3},
+		{Kind: rules.ModifierTurnTempHP, Value: 2},
+		{Kind: rules.ModifierRollDie, Die: 4, Sign: 1, AppliesTo: []string{rules.RollAppliesCheck}, Once: true},
+	}
+	if !CheckAdvantage(mods, "str") || CheckAdvantage(mods, "dex") {
+		t.Error("CheckAdvantage should hold for Strength only")
+	}
+	if !ImmuneTo(mods, "condition:frightened") || ImmuneTo(mods, "condition:charmed") {
+		t.Error("ImmuneTo should hold for Frightened only")
+	}
+	if got := TurnTempHP(mods); got != 3 {
+		t.Errorf("TurnTempHP() = %d, want the highest (3): temporary hit points do not stack", got)
+	}
+	dice := EffectDice("spell:guidance", mods, rules.RollAppliesCheck)
+	if len(dice) != 1 || !dice[0].Once {
+		t.Errorf("EffectDice() = %v, want a d4 that is spent by the roll", dice)
+	}
+	if got := EffectDice("spell:guidance", mods, rules.RollAppliesSave); len(got) != 0 {
+		t.Errorf("a die of checks was added to a save: %v", got)
+	}
+	sources := SaveMode(SaveScene{Creature: Creature{CheckAdvantage: []string{"str"}}, Ability: "str", Check: true})
+	if Resolve(sources) != ModeAdvantage {
+		t.Errorf("a Strength check with Enhance Ability = %v, want advantage", Resolve(sources))
+	}
+	if got := Resolve(SaveMode(SaveScene{Creature: Creature{CheckAdvantage: []string{"str"}}, Ability: "str"})); got != ModeNormal {
+		t.Errorf("a Strength save with Enhance Ability = %v, want a normal roll", got)
+	}
+}

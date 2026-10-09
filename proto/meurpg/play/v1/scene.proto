@@ -279,6 +279,10 @@ message RollSceneCheckRequest {
   // the mode the server resolves needs), instead of `roll`. A wrong number is
   // `invalid_argument`.
   repeated int32 d20_faces = 6;
+  // Physical dice: the faces of the dice an effect adds to the roll (Bênção, Orientação), in
+  // the order the roll's sources list them, one for each, 1 to the die's faces. With the app's
+  // dice the server rolls them; a wrong number is `invalid_argument`.
+  repeated int32 extra_die_faces = 7;
 }
 
 // RollSceneCheckResponse is the roll that was made.

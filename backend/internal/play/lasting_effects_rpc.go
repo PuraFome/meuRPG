@@ -73,7 +73,7 @@ func (ev *effectViewer) looseConditions() []*playv1.LastingEffect {
 	var out []*playv1.LastingEffect
 	for _, c := range ev.d.cs {
 		for _, k := range c.Conditions {
-			if slices.Contains(c.EffectConditions, k) || k == "condition:exhaustion" {
+			if slices.Contains(c.EffectConditions, k) || k == conditionExhaustion {
 				continue
 			}
 			info, _ := ev.content.ConditionInfo(k)
@@ -353,6 +353,21 @@ func (s *Service) AddLastingEffect( //nolint:gocognit,gocyclo // the steps of on
 				return nil, bad("catalog_key is not an effect the master may add")
 			}
 			spec.sourceKind, spec.def, spec.concentration = "spell", def, def.Concentration && caster != nil
+			ability, err := s.abilityChoiceOf(ctx, c, catalogKey, req.Msg.GetAbilityKey())
+			if err != nil {
+				return nil, err
+			}
+			casterCharacter := ""
+			if caster != nil {
+				casterCharacter = caster.CharacterID
+			}
+			opts, err := s.castOptsOf(ctx, c, def, ability, casterCharacter)
+			if err != nil {
+				return nil, err
+			}
+			if spec.modifiers, _, err = s.modifiersFor(ctx, c, def, "", opts); err != nil {
+				return nil, err
+			}
 			if r := content.SpellEffectRounds(catalogKey); r > 0 {
 				fallback = durationSpec{Kind: rules.EffectDurationRounds, Rounds: int32(r)} //nolint:gosec // 10 rounds a minute
 			} else if def.Concentration {

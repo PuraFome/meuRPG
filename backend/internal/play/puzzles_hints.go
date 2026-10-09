@@ -49,6 +49,7 @@ func (s *Service) TryPuzzleHint(
 		return nil, err
 	}
 	var in rollInput
+	in.extraFaces = req.Msg.GetExtraDieFaces()
 	switch roll := req.Msg.GetRoll().(type) {
 	case *playv1.TryPuzzleHintRequest_RollInApp:
 		if !roll.RollInApp {
@@ -192,8 +193,15 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	if err != nil {
 		return nil, err
 	}
-	bonus, err := s.withEffectDice(&cm, options[0].Bonus)
+	bonus, err := s.withEffectDice(in, in.extraFaces, &cm, options[0].Bonus)
 	if err != nil {
+		return nil, err
+	}
+	spendTx, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), svc: s, master: true})
+	if err != nil {
+		return nil, err
+	}
+	if err := s.spendOnceEffects(ctx, spendTx, cm.Rolled); err != nil {
 		return nil, err
 	}
 	d20, err := s.d20With(in, bonus, cm.Mode)

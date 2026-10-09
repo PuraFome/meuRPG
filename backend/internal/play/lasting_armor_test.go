@@ -1,6 +1,7 @@
 package play
 
 import (
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -174,5 +175,59 @@ func TestMageArmorOnAnArmoredTargetMakesNoEffect(t *testing.T) {
 		if _, ok := a.armorEffectSeconds(t, a.bri.GetId()); ok {
 			t.Error("Mage Armor took hold of a creature that wears armor")
 		}
+	}
+}
+
+// Mage Armor is 13 + Dexterity (SRD 5.1) and a shield still adds its 2: the base is worked out
+// again from the gear the character carries when the sheet changes, not fixed at the cast.
+func TestMageArmorFollowsAShieldPickedUpAfterTheCast(t *testing.T) {
+	t.Parallel()
+	a := newCastingParty(t)
+	a.mageArmorOnPensantus(t)
+	if got := a.vitals(t, a.pens).GetArmorClassBase(); got != 15 {
+		t.Fatalf("the base armor class after the cast = %d, want 15", got)
+	}
+	c := a.ana.character(t, a.pens)
+	sheet := c.GetSheet()
+	sheet.GetFull().Shield = true
+	if _, err := a.master.characters.UpdateCharacter(t.Context(), connect.NewRequest(&charactersv1.UpdateCharacterRequest{
+		CampaignId: a.campaignID, CharacterId: c.GetId(), Revision: c.GetRevision(), Name: c.GetName(), Sheet: sheet,
+	})); err != nil {
+		t.Fatalf("UpdateCharacter() error = %v", err)
+	}
+	if got := a.vitals(t, a.pens).GetArmorClassBase(); got != 17 {
+		t.Errorf("the base armor class with a shield = %d, want 17 (13 + Dex 2 + shield 2)", got)
+	}
+	// The combat reads the same number.
+	e := a.closeFight(t)
+	var ac int32
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT mage_armor_ac FROM combatants WHERE id = $1`, byLabel(t, e, "Pensantus").GetId()).Scan(&ac); err != nil || ac != 17 {
+		t.Errorf("the combat's base armor class = %d (%v), want 17", ac, err)
+	}
+	// And the shield put away takes it back down.
+	c = a.ana.character(t, a.pens)
+	sheet = c.GetSheet()
+	sheet.GetFull().Shield = false
+	if _, err := a.master.characters.UpdateCharacter(t.Context(), connect.NewRequest(&charactersv1.UpdateCharacterRequest{
+		CampaignId: a.campaignID, CharacterId: c.GetId(), Revision: c.GetRevision(), Name: c.GetName(), Sheet: sheet,
+	})); err != nil {
+		t.Fatalf("UpdateCharacter() error = %v", err)
+	}
+	if got := a.vitals(t, a.pens).GetArmorClassBase(); got != 15 {
+		t.Errorf("the base armor class without the shield = %d, want 15", got)
+	}
+}
+
+// A player reads the rounds left of an effect the master added: the count is hidden only for a
+// caster the player does not see.
+func TestAMasterAddedEffectShowsItsRoundsLeftToThePlayer(t *testing.T) {
+	t.Parallel()
+	a := newCastingParty(t)
+	e := a.closeFight(t)
+	a.mustAddEffect(t, e, blessKey, []string{"Toren"}, a.rounds(t, 10, "Toren"))
+	c := byLabel(t, a.get(t, a.caio), "Toren")
+	f := cardOf(t, c, blessKey)
+	if f == nil || !strings.Contains(f.GetClockTextPt(), "Restam 10 rodadas") {
+		t.Fatalf("Toren's Bless as the player reads it = %v, want the rounds left", f)
 	}
 }

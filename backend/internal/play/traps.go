@@ -155,6 +155,7 @@ func (s *Service) SearchForTraps(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("other_skill_key is only for a search with OTHER"))
 	}
 	var in rollInput
+	in.extraFaces = req.Msg.GetExtraDieFaces()
 	switch roll := req.Msg.GetRoll().(type) {
 	case *playv1.SearchForTrapsRequest_RollInApp:
 		if !roll.RollInApp {
@@ -266,8 +267,11 @@ func (s *Service) SearchForTraps(
 			roll        dice.Result
 			counted     int
 		)
-		bonus, err := s.withEffectDice(&cm, options[0].Bonus)
+		bonus, err := s.withEffectDice(in, in.extraFaces, &cm, options[0].Bonus)
 		if err != nil {
+			return err
+		}
+		if err := s.spendOnceEffects(ctx, c, cm.Rolled); err != nil {
 			return err
 		}
 		shown = cm.shownCheck(names)

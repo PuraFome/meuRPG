@@ -79,6 +79,8 @@ enum AdvantageSourceKind {
   ADVANTAGE_SOURCE_KIND_OTHER_SOURCE = 105;
   // A die an effect added to the roll ("Bênção +1d4"), outside combat too.
   ADVANTAGE_SOURCE_KIND_EFFECT_DIE = 106;
+  // The advantage an effect gives on ability checks (Aprimorar Habilidade).
+  ADVANTAGE_SOURCE_KIND_EFFECT_CHECK = 107;
 }
 
 // AdvantageSource is one circumstance of a roll, as the caller may read it. A

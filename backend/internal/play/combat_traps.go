@@ -15,6 +15,7 @@ import (
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
@@ -223,8 +224,11 @@ func (s *Service) fireInCombat(ctx context.Context, c *combatTx, trap maplink.Tr
 	if err != nil {
 		return nil, err
 	}
-	outcomes, err := resolveTrap(effect, targets, criticalRuleOf(c.rules), s.trapD20, s.trapDice)
+	outcomes, err := resolveTrap(effect, targets, criticalRuleOf(c.rules), s.trapD20, s.trapDice, s.trapExtraDice)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.spendTrapDice(ctx, c, outcomes); err != nil {
 		return nil, err
 	}
 	// A pit's fall can be slowed by a Feather Fall (PM-04): its damage waits for the
@@ -306,7 +310,7 @@ func savesEventOf(rs []trapSaveRoll) []saveRoll {
 	var out []saveRoll
 	for _, r := range rs {
 		out = append(out, saveRoll{
-			D20: clampInt32(r.d20), Bonus: clampInt32(r.bonus), Total: clampInt32(r.total), DC: clampInt32(r.dc), Saved: r.saved, Unknown: !r.known,
+			D20: clampInt32(r.d20), Bonus: clampInt32(r.bonus), Total: clampInt32(r.total), DC: clampInt32(r.dc), Saved: r.saved, Unknown: !r.known, Extra: r.extra,
 			D20B: clampInt32(r.other), Counted: clampInt32(r.counted), RollMode: modeKey(r.mode), Auto: r.auto,
 		})
 	}
@@ -656,6 +660,7 @@ func firingProto(ev *trapFireEvent, id, name string, v trapView) *playv1.TrapFir
 					}
 				}
 				r.Mode, r.AutoFailed, r.Sources = modeToProto[modeOfKey(sv.RollMode)], sv.Auto, shownRecs(cc.SaveSources, v.names)
+				r.Sources = append(r.Sources, effectDieSources(sv.Extra, v.names, v.master)...)
 			}
 			if v.master {
 				r.Dc, r.BonusKnown = sv.DC, !sv.Unknown
@@ -718,6 +723,10 @@ func (s *Service) trapModesOf(ctx context.Context, tx pgx.Tx, campaignID string,
 		sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: trap.Knows(c.CharacterID)})
 		out.saveSources, out.saveMode = sources, combat.Resolve(sources)
 		out.saveAuto = combat.AutoFailsSave(creature, ability)
+		out.saveDice = effectDiceFor(states, c.ID, rules.RollAppliesSave)
+		for i := range out.saveDice {
+			out.saveDice[i].CharacterID = c.CharacterID
+		}
 	}
 	return nil
 }

@@ -301,6 +301,8 @@ type AddLastingEffectRequest struct {
 	// Whether the effect holds the caster's concentration (ends the caster's other
 	// one). Only for a spell that concentrates; the default is the spell's.
 	Concentration *bool `protobuf:"varint,12,opt,name=concentration,proto3,oneof" json:"concentration,omitempty"`
+	// Enhance Ability only: the ability it is cast for ("str" to "cha").
+	AbilityKey    string `protobuf:"bytes,13,opt,name=ability_key,json=abilityKey,proto3" json:"ability_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -417,6 +419,13 @@ func (x *AddLastingEffectRequest) GetConcentration() bool {
 		return *x.Concentration
 	}
 	return false
+}
+
+func (x *AddLastingEffectRequest) GetAbilityKey() string {
+	if x != nil {
+		return x.AbilityKey
+	}
+	return ""
 }
 
 type AddLastingEffectResponse struct {
@@ -1724,6 +1733,175 @@ func (x *AdvanceGameTimeResponse) GetEffectsEnded() int32 {
 	return 0
 }
 
+type AddCharacterEffectRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId     string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,2,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	// 1 to 10 player characters (a UUID each).
+	CharacterIds []string `protobuf:"bytes,3,rep,name=character_ids,json=characterIds,proto3" json:"character_ids,omitempty"`
+	// The catalog key (ListLastingEffectsResponse.catalog).
+	CatalogKey string `protobuf:"bytes,4,opt,name=catalog_key,json=catalogKey,proto3" json:"catalog_key,omitempty"`
+	// ROUNDS: lasts `seconds` of game time; UNTIL_DISMISSED; LONG_REST. Unset takes the catalog's
+	// default. The others (until the turn of someone) have no meaning outside a combat.
+	DurationKind EffectDurationKind `protobuf:"varint,5,opt,name=duration_kind,json=durationKind,proto3,enum=meurpg.play.v1.EffectDurationKind" json:"duration_kind,omitempty"`
+	// ROUNDS: 1 second to 24 hours.
+	Seconds int32 `protobuf:"varint,6,opt,name=seconds,proto3" json:"seconds,omitempty"`
+	// Whether the players read the effect, to whom, and a label (at most 30 characters). Left
+	// alone, the catalog's default.
+	PlayerVisible *bool          `protobuf:"varint,7,opt,name=player_visible,json=playerVisible,proto3,oneof" json:"player_visible,omitempty"`
+	Audience      EffectAudience `protobuf:"varint,8,opt,name=audience,proto3,enum=meurpg.play.v1.EffectAudience" json:"audience,omitempty"`
+	PlayerLabel   string         `protobuf:"bytes,9,opt,name=player_label,json=playerLabel,proto3" json:"player_label,omitempty"`
+	// Enhance Ability only: the ability it is cast for ("str" to "cha").
+	AbilityKey    string `protobuf:"bytes,10,opt,name=ability_key,json=abilityKey,proto3" json:"ability_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddCharacterEffectRequest) Reset() {
+	*x = AddCharacterEffectRequest{}
+	mi := &file_meurpg_play_v1_lasting_effects_service_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddCharacterEffectRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddCharacterEffectRequest) ProtoMessage() {}
+
+func (x *AddCharacterEffectRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_lasting_effects_service_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddCharacterEffectRequest.ProtoReflect.Descriptor instead.
+func (*AddCharacterEffectRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_lasting_effects_service_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *AddCharacterEffectRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *AddCharacterEffectRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+func (x *AddCharacterEffectRequest) GetCharacterIds() []string {
+	if x != nil {
+		return x.CharacterIds
+	}
+	return nil
+}
+
+func (x *AddCharacterEffectRequest) GetCatalogKey() string {
+	if x != nil {
+		return x.CatalogKey
+	}
+	return ""
+}
+
+func (x *AddCharacterEffectRequest) GetDurationKind() EffectDurationKind {
+	if x != nil {
+		return x.DurationKind
+	}
+	return EffectDurationKind_EFFECT_DURATION_KIND_UNSPECIFIED
+}
+
+func (x *AddCharacterEffectRequest) GetSeconds() int32 {
+	if x != nil {
+		return x.Seconds
+	}
+	return 0
+}
+
+func (x *AddCharacterEffectRequest) GetPlayerVisible() bool {
+	if x != nil && x.PlayerVisible != nil {
+		return *x.PlayerVisible
+	}
+	return false
+}
+
+func (x *AddCharacterEffectRequest) GetAudience() EffectAudience {
+	if x != nil {
+		return x.Audience
+	}
+	return EffectAudience_EFFECT_AUDIENCE_UNSPECIFIED
+}
+
+func (x *AddCharacterEffectRequest) GetPlayerLabel() string {
+	if x != nil {
+		return x.PlayerLabel
+	}
+	return ""
+}
+
+func (x *AddCharacterEffectRequest) GetAbilityKey() string {
+	if x != nil {
+		return x.AbilityKey
+	}
+	return ""
+}
+
+type AddCharacterEffectResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The effects the call made, one for each character.
+	EffectIds     []string `protobuf:"bytes,1,rep,name=effect_ids,json=effectIds,proto3" json:"effect_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddCharacterEffectResponse) Reset() {
+	*x = AddCharacterEffectResponse{}
+	mi := &file_meurpg_play_v1_lasting_effects_service_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddCharacterEffectResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddCharacterEffectResponse) ProtoMessage() {}
+
+func (x *AddCharacterEffectResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_lasting_effects_service_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddCharacterEffectResponse.ProtoReflect.Descriptor instead.
+func (*AddCharacterEffectResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_lasting_effects_service_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *AddCharacterEffectResponse) GetEffectIds() []string {
+	if x != nil {
+		return x.EffectIds
+	}
+	return nil
+}
+
 type ListCharacterEffectsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
@@ -1733,7 +1911,7 @@ type ListCharacterEffectsRequest struct {
 
 func (x *ListCharacterEffectsRequest) Reset() {
 	*x = ListCharacterEffectsRequest{}
-	mi := &file_meurpg_play_v1_lasting_effects_service_proto_msgTypes[21]
+	mi := &file_meurpg_play_v1_lasting_effects_service_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1745,7 +1923,7 @@ func (x *ListCharacterEffectsRequest) String() string {
 func (*ListCharacterEffectsRequest) ProtoMessage() {}
 
 func (x *ListCharacterEffectsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_lasting_effects_service_proto_msgTypes[21]
+	mi := &file_meurpg_play_v1_lasting_effects_service_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1758,7 +1936,7 @@ func (x *ListCharacterEffectsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCharacterEffectsRequest.ProtoReflect.Descriptor instead.
 func (*ListCharacterEffectsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_lasting_effects_service_proto_rawDescGZIP(), []int{21}
+	return file_meurpg_play_v1_lasting_effects_service_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ListCharacterEffectsRequest) GetCampaignId() string {
@@ -1777,7 +1955,7 @@ type ListCharacterEffectsResponse struct {
 
 func (x *ListCharacterEffectsResponse) Reset() {
 	*x = ListCharacterEffectsResponse{}
-	mi := &file_meurpg_play_v1_lasting_effects_service_proto_msgTypes[22]
+	mi := &file_meurpg_play_v1_lasting_effects_service_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1789,7 +1967,7 @@ func (x *ListCharacterEffectsResponse) String() string {
 func (*ListCharacterEffectsResponse) ProtoMessage() {}
 
 func (x *ListCharacterEffectsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_lasting_effects_service_proto_msgTypes[22]
+	mi := &file_meurpg_play_v1_lasting_effects_service_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1802,7 +1980,7 @@ func (x *ListCharacterEffectsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCharacterEffectsResponse.ProtoReflect.Descriptor instead.
 func (*ListCharacterEffectsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_lasting_effects_service_proto_rawDescGZIP(), []int{22}
+	return file_meurpg_play_v1_lasting_effects_service_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ListCharacterEffectsResponse) GetEffects() []*CharacterEffect {
@@ -1832,7 +2010,7 @@ const file_meurpg_play_v1_lasting_effects_service_proto_rawDesc = "" +
 	"\x14EffectDurationChoice\x126\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\".meurpg.play.v1.EffectDurationKindR\x04kind\x12\x16\n" +
 	"\x06rounds\x18\x02 \x01(\x05R\x06rounds\x12.\n" +
-	"\x13anchor_combatant_id\x18\x03 \x01(\tR\x11anchorCombatantId\"\xaa\x04\n" +
+	"\x13anchor_combatant_id\x18\x03 \x01(\tR\x11anchorCombatantId\"\xcb\x04\n" +
 	"\x17AddLastingEffectRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -1849,7 +2027,9 @@ const file_meurpg_play_v1_lasting_effects_service_proto_rawDesc = "" +
 	"\baudience\x18\n" +
 	" \x01(\x0e2\x1e.meurpg.play.v1.EffectAudienceR\baudience\x12!\n" +
 	"\fplayer_label\x18\v \x01(\tR\vplayerLabel\x12)\n" +
-	"\rconcentration\x18\f \x01(\bH\x02R\rconcentration\x88\x01\x01B\n" +
+	"\rconcentration\x18\f \x01(\bH\x02R\rconcentration\x88\x01\x01\x12\x1f\n" +
+	"\vability_key\x18\r \x01(\tR\n" +
+	"abilityKeyB\n" +
 	"\n" +
 	"\b_save_dcB\x11\n" +
 	"\x0f_player_visibleB\x10\n" +
@@ -1953,7 +2133,26 @@ const file_meurpg_play_v1_lasting_effects_service_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\x02 \x01(\tR\x0eidempotencyKey\x12\x18\n" +
 	"\aseconds\x18\x03 \x01(\x05R\aseconds\">\n" +
 	"\x17AdvanceGameTimeResponse\x12#\n" +
-	"\reffects_ended\x18\x01 \x01(\x05R\feffectsEnded\">\n" +
+	"\reffects_ended\x18\x01 \x01(\x05R\feffectsEnded\"\xcd\x03\n" +
+	"\x19AddCharacterEffectRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12'\n" +
+	"\x0fidempotency_key\x18\x02 \x01(\tR\x0eidempotencyKey\x12#\n" +
+	"\rcharacter_ids\x18\x03 \x03(\tR\fcharacterIds\x12\x1f\n" +
+	"\vcatalog_key\x18\x04 \x01(\tR\n" +
+	"catalogKey\x12G\n" +
+	"\rduration_kind\x18\x05 \x01(\x0e2\".meurpg.play.v1.EffectDurationKindR\fdurationKind\x12\x18\n" +
+	"\aseconds\x18\x06 \x01(\x05R\aseconds\x12*\n" +
+	"\x0eplayer_visible\x18\a \x01(\bH\x00R\rplayerVisible\x88\x01\x01\x12:\n" +
+	"\baudience\x18\b \x01(\x0e2\x1e.meurpg.play.v1.EffectAudienceR\baudience\x12!\n" +
+	"\fplayer_label\x18\t \x01(\tR\vplayerLabel\x12\x1f\n" +
+	"\vability_key\x18\n" +
+	" \x01(\tR\n" +
+	"abilityKeyB\x11\n" +
+	"\x0f_player_visible\";\n" +
+	"\x1aAddCharacterEffectResponse\x12\x1d\n" +
+	"\n" +
+	"effect_ids\x18\x01 \x03(\tR\teffectIds\">\n" +
 	"\x1bListCharacterEffectsRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\"Y\n" +
@@ -1962,7 +2161,8 @@ const file_meurpg_play_v1_lasting_effects_service_proto_rawDesc = "" +
 	"\x15ExhaustionLowerReason\x12'\n" +
 	"#EXHAUSTION_LOWER_REASON_UNSPECIFIED\x10\x00\x12%\n" +
 	"!EXHAUSTION_LOWER_REASON_LONG_REST\x10\x01\x12\"\n" +
-	"\x1eEXHAUSTION_LOWER_REASON_MASTER\x10\x022\xcc\t\n" +
+	"\x1eEXHAUSTION_LOWER_REASON_MASTER\x10\x022\xb9\n" +
+	"\n" +
 	"\x14LastingEffectService\x12p\n" +
 	"\x12ListLastingEffects\x12).meurpg.play.v1.ListLastingEffectsRequest\x1a*.meurpg.play.v1.ListLastingEffectsResponse\"\x03\x90\x02\x02\x12e\n" +
 	"\x10AddLastingEffect\x12'.meurpg.play.v1.AddLastingEffectRequest\x1a(.meurpg.play.v1.AddLastingEffectResponse\x12\x86\x01\n" +
@@ -1973,7 +2173,8 @@ const file_meurpg_play_v1_lasting_effects_service_proto_rawDesc = "" +
 	"\x0eRollEffectSave\x12%.meurpg.play.v1.RollEffectSaveRequest\x1a&.meurpg.play.v1.RollEffectSaveResponse\x12\\\n" +
 	"\rSetExhaustion\x12$.meurpg.play.v1.SetExhaustionRequest\x1a%.meurpg.play.v1.SetExhaustionResponse\x12q\n" +
 	"\x14ListCharacterEffects\x12+.meurpg.play.v1.ListCharacterEffectsRequest\x1a,.meurpg.play.v1.ListCharacterEffectsResponse\x12b\n" +
-	"\x0fAdvanceGameTime\x12&.meurpg.play.v1.AdvanceGameTimeRequest\x1a'.meurpg.play.v1.AdvanceGameTimeResponse\x12b\n" +
+	"\x0fAdvanceGameTime\x12&.meurpg.play.v1.AdvanceGameTimeRequest\x1a'.meurpg.play.v1.AdvanceGameTimeResponse\x12k\n" +
+	"\x12AddCharacterEffect\x12).meurpg.play.v1.AddCharacterEffectRequest\x1a*.meurpg.play.v1.AddCharacterEffectResponse\x12b\n" +
 	"\x0fLowerExhaustion\x12&.meurpg.play.v1.LowerExhaustionRequest\x1a'.meurpg.play.v1.LowerExhaustionResponseB\xc8\x01\n" +
 	"\x12com.meurpg.play.v1B\x1aLastingEffectsServiceProtoP\x01Z<github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1;playv1\xa2\x02\x03MPX\xaa\x02\x0eMeurpg.Play.V1\xca\x02\x0eMeurpg\\Play\\V1\xe2\x02\x1aMeurpg\\Play\\V1\\GPBMetadata\xea\x02\x10Meurpg::Play::V1b\x06proto3"
 
@@ -1990,7 +2191,7 @@ func file_meurpg_play_v1_lasting_effects_service_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_play_v1_lasting_effects_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_meurpg_play_v1_lasting_effects_service_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_meurpg_play_v1_lasting_effects_service_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_meurpg_play_v1_lasting_effects_service_proto_goTypes = []any{
 	(ExhaustionLowerReason)(0),                  // 0: meurpg.play.v1.ExhaustionLowerReason
 	(*ListLastingEffectsRequest)(nil),           // 1: meurpg.play.v1.ListLastingEffectsRequest
@@ -2014,71 +2215,77 @@ var file_meurpg_play_v1_lasting_effects_service_proto_goTypes = []any{
 	(*LowerExhaustionResponse)(nil),             // 19: meurpg.play.v1.LowerExhaustionResponse
 	(*AdvanceGameTimeRequest)(nil),              // 20: meurpg.play.v1.AdvanceGameTimeRequest
 	(*AdvanceGameTimeResponse)(nil),             // 21: meurpg.play.v1.AdvanceGameTimeResponse
-	(*ListCharacterEffectsRequest)(nil),         // 22: meurpg.play.v1.ListCharacterEffectsRequest
-	(*ListCharacterEffectsResponse)(nil),        // 23: meurpg.play.v1.ListCharacterEffectsResponse
-	(*LastingEffect)(nil),                       // 24: meurpg.play.v1.LastingEffect
-	(*TurnClockEntry)(nil),                      // 25: meurpg.play.v1.TurnClockEntry
-	(*ConcentrationEntry)(nil),                  // 26: meurpg.play.v1.ConcentrationEntry
-	(*CatalogEffect)(nil),                       // 27: meurpg.play.v1.CatalogEffect
-	(EffectDurationKind)(0),                     // 28: meurpg.play.v1.EffectDurationKind
-	(EffectAudience)(0),                         // 29: meurpg.play.v1.EffectAudience
-	(*Encounter)(nil),                           // 30: meurpg.play.v1.Encounter
-	(EffectEndScope)(0),                         // 31: meurpg.play.v1.EffectEndScope
-	(*EffectSaveResult)(nil),                    // 32: meurpg.play.v1.EffectSaveResult
-	(*CharacterEffect)(nil),                     // 33: meurpg.play.v1.CharacterEffect
+	(*AddCharacterEffectRequest)(nil),           // 22: meurpg.play.v1.AddCharacterEffectRequest
+	(*AddCharacterEffectResponse)(nil),          // 23: meurpg.play.v1.AddCharacterEffectResponse
+	(*ListCharacterEffectsRequest)(nil),         // 24: meurpg.play.v1.ListCharacterEffectsRequest
+	(*ListCharacterEffectsResponse)(nil),        // 25: meurpg.play.v1.ListCharacterEffectsResponse
+	(*LastingEffect)(nil),                       // 26: meurpg.play.v1.LastingEffect
+	(*TurnClockEntry)(nil),                      // 27: meurpg.play.v1.TurnClockEntry
+	(*ConcentrationEntry)(nil),                  // 28: meurpg.play.v1.ConcentrationEntry
+	(*CatalogEffect)(nil),                       // 29: meurpg.play.v1.CatalogEffect
+	(EffectDurationKind)(0),                     // 30: meurpg.play.v1.EffectDurationKind
+	(EffectAudience)(0),                         // 31: meurpg.play.v1.EffectAudience
+	(*Encounter)(nil),                           // 32: meurpg.play.v1.Encounter
+	(EffectEndScope)(0),                         // 33: meurpg.play.v1.EffectEndScope
+	(*EffectSaveResult)(nil),                    // 34: meurpg.play.v1.EffectSaveResult
+	(*CharacterEffect)(nil),                     // 35: meurpg.play.v1.CharacterEffect
 }
 var file_meurpg_play_v1_lasting_effects_service_proto_depIdxs = []int32{
-	24, // 0: meurpg.play.v1.ListLastingEffectsResponse.effects:type_name -> meurpg.play.v1.LastingEffect
-	25, // 1: meurpg.play.v1.ListLastingEffectsResponse.turn_clock:type_name -> meurpg.play.v1.TurnClockEntry
-	26, // 2: meurpg.play.v1.ListLastingEffectsResponse.concentrations:type_name -> meurpg.play.v1.ConcentrationEntry
-	27, // 3: meurpg.play.v1.ListLastingEffectsResponse.catalog:type_name -> meurpg.play.v1.CatalogEffect
-	28, // 4: meurpg.play.v1.EffectDurationChoice.kind:type_name -> meurpg.play.v1.EffectDurationKind
+	26, // 0: meurpg.play.v1.ListLastingEffectsResponse.effects:type_name -> meurpg.play.v1.LastingEffect
+	27, // 1: meurpg.play.v1.ListLastingEffectsResponse.turn_clock:type_name -> meurpg.play.v1.TurnClockEntry
+	28, // 2: meurpg.play.v1.ListLastingEffectsResponse.concentrations:type_name -> meurpg.play.v1.ConcentrationEntry
+	29, // 3: meurpg.play.v1.ListLastingEffectsResponse.catalog:type_name -> meurpg.play.v1.CatalogEffect
+	30, // 4: meurpg.play.v1.EffectDurationChoice.kind:type_name -> meurpg.play.v1.EffectDurationKind
 	3,  // 5: meurpg.play.v1.AddLastingEffectRequest.duration:type_name -> meurpg.play.v1.EffectDurationChoice
-	29, // 6: meurpg.play.v1.AddLastingEffectRequest.audience:type_name -> meurpg.play.v1.EffectAudience
-	30, // 7: meurpg.play.v1.AddLastingEffectResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	24, // 8: meurpg.play.v1.AddLastingEffectResponse.effects:type_name -> meurpg.play.v1.LastingEffect
+	31, // 6: meurpg.play.v1.AddLastingEffectRequest.audience:type_name -> meurpg.play.v1.EffectAudience
+	32, // 7: meurpg.play.v1.AddLastingEffectResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	26, // 8: meurpg.play.v1.AddLastingEffectResponse.effects:type_name -> meurpg.play.v1.LastingEffect
 	3,  // 9: meurpg.play.v1.ChangeLastingEffectDurationRequest.duration:type_name -> meurpg.play.v1.EffectDurationChoice
-	30, // 10: meurpg.play.v1.ChangeLastingEffectDurationResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	24, // 11: meurpg.play.v1.ChangeLastingEffectDurationResponse.effect:type_name -> meurpg.play.v1.LastingEffect
-	29, // 12: meurpg.play.v1.SetLastingEffectVisibilityRequest.audience:type_name -> meurpg.play.v1.EffectAudience
-	30, // 13: meurpg.play.v1.SetLastingEffectVisibilityResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	24, // 14: meurpg.play.v1.SetLastingEffectVisibilityResponse.effect:type_name -> meurpg.play.v1.LastingEffect
-	31, // 15: meurpg.play.v1.EndLastingEffectRequest.scope:type_name -> meurpg.play.v1.EffectEndScope
-	30, // 16: meurpg.play.v1.EndLastingEffectResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	30, // 17: meurpg.play.v1.RemoveEffectTargetResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	30, // 18: meurpg.play.v1.RollEffectSaveResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	32, // 19: meurpg.play.v1.RollEffectSaveResponse.result:type_name -> meurpg.play.v1.EffectSaveResult
-	30, // 20: meurpg.play.v1.SetExhaustionResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	32, // 10: meurpg.play.v1.ChangeLastingEffectDurationResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	26, // 11: meurpg.play.v1.ChangeLastingEffectDurationResponse.effect:type_name -> meurpg.play.v1.LastingEffect
+	31, // 12: meurpg.play.v1.SetLastingEffectVisibilityRequest.audience:type_name -> meurpg.play.v1.EffectAudience
+	32, // 13: meurpg.play.v1.SetLastingEffectVisibilityResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	26, // 14: meurpg.play.v1.SetLastingEffectVisibilityResponse.effect:type_name -> meurpg.play.v1.LastingEffect
+	33, // 15: meurpg.play.v1.EndLastingEffectRequest.scope:type_name -> meurpg.play.v1.EffectEndScope
+	32, // 16: meurpg.play.v1.EndLastingEffectResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	32, // 17: meurpg.play.v1.RemoveEffectTargetResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	32, // 18: meurpg.play.v1.RollEffectSaveResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	34, // 19: meurpg.play.v1.RollEffectSaveResponse.result:type_name -> meurpg.play.v1.EffectSaveResult
+	32, // 20: meurpg.play.v1.SetExhaustionResponse.encounter:type_name -> meurpg.play.v1.Encounter
 	0,  // 21: meurpg.play.v1.LowerExhaustionRequest.reason:type_name -> meurpg.play.v1.ExhaustionLowerReason
-	30, // 22: meurpg.play.v1.LowerExhaustionResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	33, // 23: meurpg.play.v1.ListCharacterEffectsResponse.effects:type_name -> meurpg.play.v1.CharacterEffect
-	1,  // 24: meurpg.play.v1.LastingEffectService.ListLastingEffects:input_type -> meurpg.play.v1.ListLastingEffectsRequest
-	4,  // 25: meurpg.play.v1.LastingEffectService.AddLastingEffect:input_type -> meurpg.play.v1.AddLastingEffectRequest
-	6,  // 26: meurpg.play.v1.LastingEffectService.ChangeLastingEffectDuration:input_type -> meurpg.play.v1.ChangeLastingEffectDurationRequest
-	8,  // 27: meurpg.play.v1.LastingEffectService.SetLastingEffectVisibility:input_type -> meurpg.play.v1.SetLastingEffectVisibilityRequest
-	10, // 28: meurpg.play.v1.LastingEffectService.EndLastingEffect:input_type -> meurpg.play.v1.EndLastingEffectRequest
-	12, // 29: meurpg.play.v1.LastingEffectService.RemoveEffectTarget:input_type -> meurpg.play.v1.RemoveEffectTargetRequest
-	14, // 30: meurpg.play.v1.LastingEffectService.RollEffectSave:input_type -> meurpg.play.v1.RollEffectSaveRequest
-	16, // 31: meurpg.play.v1.LastingEffectService.SetExhaustion:input_type -> meurpg.play.v1.SetExhaustionRequest
-	22, // 32: meurpg.play.v1.LastingEffectService.ListCharacterEffects:input_type -> meurpg.play.v1.ListCharacterEffectsRequest
-	20, // 33: meurpg.play.v1.LastingEffectService.AdvanceGameTime:input_type -> meurpg.play.v1.AdvanceGameTimeRequest
-	18, // 34: meurpg.play.v1.LastingEffectService.LowerExhaustion:input_type -> meurpg.play.v1.LowerExhaustionRequest
-	2,  // 35: meurpg.play.v1.LastingEffectService.ListLastingEffects:output_type -> meurpg.play.v1.ListLastingEffectsResponse
-	5,  // 36: meurpg.play.v1.LastingEffectService.AddLastingEffect:output_type -> meurpg.play.v1.AddLastingEffectResponse
-	7,  // 37: meurpg.play.v1.LastingEffectService.ChangeLastingEffectDuration:output_type -> meurpg.play.v1.ChangeLastingEffectDurationResponse
-	9,  // 38: meurpg.play.v1.LastingEffectService.SetLastingEffectVisibility:output_type -> meurpg.play.v1.SetLastingEffectVisibilityResponse
-	11, // 39: meurpg.play.v1.LastingEffectService.EndLastingEffect:output_type -> meurpg.play.v1.EndLastingEffectResponse
-	13, // 40: meurpg.play.v1.LastingEffectService.RemoveEffectTarget:output_type -> meurpg.play.v1.RemoveEffectTargetResponse
-	15, // 41: meurpg.play.v1.LastingEffectService.RollEffectSave:output_type -> meurpg.play.v1.RollEffectSaveResponse
-	17, // 42: meurpg.play.v1.LastingEffectService.SetExhaustion:output_type -> meurpg.play.v1.SetExhaustionResponse
-	23, // 43: meurpg.play.v1.LastingEffectService.ListCharacterEffects:output_type -> meurpg.play.v1.ListCharacterEffectsResponse
-	21, // 44: meurpg.play.v1.LastingEffectService.AdvanceGameTime:output_type -> meurpg.play.v1.AdvanceGameTimeResponse
-	19, // 45: meurpg.play.v1.LastingEffectService.LowerExhaustion:output_type -> meurpg.play.v1.LowerExhaustionResponse
-	35, // [35:46] is the sub-list for method output_type
-	24, // [24:35] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	32, // 22: meurpg.play.v1.LowerExhaustionResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	30, // 23: meurpg.play.v1.AddCharacterEffectRequest.duration_kind:type_name -> meurpg.play.v1.EffectDurationKind
+	31, // 24: meurpg.play.v1.AddCharacterEffectRequest.audience:type_name -> meurpg.play.v1.EffectAudience
+	35, // 25: meurpg.play.v1.ListCharacterEffectsResponse.effects:type_name -> meurpg.play.v1.CharacterEffect
+	1,  // 26: meurpg.play.v1.LastingEffectService.ListLastingEffects:input_type -> meurpg.play.v1.ListLastingEffectsRequest
+	4,  // 27: meurpg.play.v1.LastingEffectService.AddLastingEffect:input_type -> meurpg.play.v1.AddLastingEffectRequest
+	6,  // 28: meurpg.play.v1.LastingEffectService.ChangeLastingEffectDuration:input_type -> meurpg.play.v1.ChangeLastingEffectDurationRequest
+	8,  // 29: meurpg.play.v1.LastingEffectService.SetLastingEffectVisibility:input_type -> meurpg.play.v1.SetLastingEffectVisibilityRequest
+	10, // 30: meurpg.play.v1.LastingEffectService.EndLastingEffect:input_type -> meurpg.play.v1.EndLastingEffectRequest
+	12, // 31: meurpg.play.v1.LastingEffectService.RemoveEffectTarget:input_type -> meurpg.play.v1.RemoveEffectTargetRequest
+	14, // 32: meurpg.play.v1.LastingEffectService.RollEffectSave:input_type -> meurpg.play.v1.RollEffectSaveRequest
+	16, // 33: meurpg.play.v1.LastingEffectService.SetExhaustion:input_type -> meurpg.play.v1.SetExhaustionRequest
+	24, // 34: meurpg.play.v1.LastingEffectService.ListCharacterEffects:input_type -> meurpg.play.v1.ListCharacterEffectsRequest
+	20, // 35: meurpg.play.v1.LastingEffectService.AdvanceGameTime:input_type -> meurpg.play.v1.AdvanceGameTimeRequest
+	22, // 36: meurpg.play.v1.LastingEffectService.AddCharacterEffect:input_type -> meurpg.play.v1.AddCharacterEffectRequest
+	18, // 37: meurpg.play.v1.LastingEffectService.LowerExhaustion:input_type -> meurpg.play.v1.LowerExhaustionRequest
+	2,  // 38: meurpg.play.v1.LastingEffectService.ListLastingEffects:output_type -> meurpg.play.v1.ListLastingEffectsResponse
+	5,  // 39: meurpg.play.v1.LastingEffectService.AddLastingEffect:output_type -> meurpg.play.v1.AddLastingEffectResponse
+	7,  // 40: meurpg.play.v1.LastingEffectService.ChangeLastingEffectDuration:output_type -> meurpg.play.v1.ChangeLastingEffectDurationResponse
+	9,  // 41: meurpg.play.v1.LastingEffectService.SetLastingEffectVisibility:output_type -> meurpg.play.v1.SetLastingEffectVisibilityResponse
+	11, // 42: meurpg.play.v1.LastingEffectService.EndLastingEffect:output_type -> meurpg.play.v1.EndLastingEffectResponse
+	13, // 43: meurpg.play.v1.LastingEffectService.RemoveEffectTarget:output_type -> meurpg.play.v1.RemoveEffectTargetResponse
+	15, // 44: meurpg.play.v1.LastingEffectService.RollEffectSave:output_type -> meurpg.play.v1.RollEffectSaveResponse
+	17, // 45: meurpg.play.v1.LastingEffectService.SetExhaustion:output_type -> meurpg.play.v1.SetExhaustionResponse
+	25, // 46: meurpg.play.v1.LastingEffectService.ListCharacterEffects:output_type -> meurpg.play.v1.ListCharacterEffectsResponse
+	21, // 47: meurpg.play.v1.LastingEffectService.AdvanceGameTime:output_type -> meurpg.play.v1.AdvanceGameTimeResponse
+	23, // 48: meurpg.play.v1.LastingEffectService.AddCharacterEffect:output_type -> meurpg.play.v1.AddCharacterEffectResponse
+	19, // 49: meurpg.play.v1.LastingEffectService.LowerExhaustion:output_type -> meurpg.play.v1.LowerExhaustionResponse
+	38, // [38:50] is the sub-list for method output_type
+	26, // [26:38] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_lasting_effects_service_proto_init() }
@@ -2103,13 +2310,14 @@ func file_meurpg_play_v1_lasting_effects_service_proto_init() {
 		(*LowerExhaustionRequest_CharacterId)(nil),
 		(*LowerExhaustionRequest_CombatantId)(nil),
 	}
+	file_meurpg_play_v1_lasting_effects_service_proto_msgTypes[21].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_lasting_effects_service_proto_rawDesc), len(file_meurpg_play_v1_lasting_effects_service_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   23,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

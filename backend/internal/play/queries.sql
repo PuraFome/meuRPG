@@ -1530,6 +1530,16 @@ RETURNING *;
 -- A character that died keeps no old effect when it lives again.
 DELETE FROM character_effects WHERE character_id = $1;
 
+-- name: SetCharacterEffectModifiers :exec
+UPDATE character_effects SET modifiers = $2 WHERE id = $1;
+
+-- name: SetLastingEffectModifiers :exec
+UPDATE combatant_states SET modifiers = $2 WHERE id = $1 AND kind = 'effect';
+
+-- name: DeleteLongRestEffectsOfCampaign :many
+-- A long rest ends what lasts until one (SRD 5.1, "Resting"): every character of the table rests.
+DELETE FROM character_effects WHERE campaign_id = $1 AND duration_kind = 'long_rest' RETURNING *;
+
 -- name: ListCombatEffectsOfCharacter :many
 -- The effects on a character's combatants in the combats that are not ended.
 SELECT cs.* FROM combatant_states cs

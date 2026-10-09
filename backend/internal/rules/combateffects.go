@@ -63,6 +63,14 @@ const (
 	ModifierBaseAC = "base_ac"
 	// ModifierSpeedAdd adds feet to the walking speed (Longstrider: +10 ft).
 	ModifierSpeedAdd = "speed_add"
+	// ModifierCheckAdvantage gives advantage on the ability checks of Abilities (Enhance Ability:
+	// the caster picks the ability when casting, Choose says so).
+	ModifierCheckAdvantage = "check_advantage"
+	// ModifierConditionImmunity makes the creature immune to the Conditions (Heroism: frightened).
+	ModifierConditionImmunity = "condition_immunity"
+	// ModifierTurnTempHP gives temporary hit points at the start of each of the creature's turns
+	// (Heroism: the caster's spellcasting modifier, worked out when it is cast: FromCaster).
+	ModifierTurnTempHP = "turn_temp_hp"
 )
 
 // The rolls a ModifierRollDie applies to.
@@ -96,8 +104,17 @@ type EffectModifier struct {
 	Value int `json:"value,omitempty"`
 	// Skill is the skill key of ModifierCheckBonus ("skill:stealth").
 	Skill string `json:"skill,omitempty"`
-	// Abilities are the ability keys of ModifierSaveAdvantage.
+	// Abilities are the ability keys of ModifierSaveAdvantage and ModifierCheckAdvantage.
 	Abilities []string `json:"abilities,omitempty"`
+	// Once says the die is spent on the first roll it is added to, and the effect ends with it
+	// (Guidance, Resistance).
+	Once bool `json:"once,omitempty"`
+	// Choose says the caster picks the ability when casting (Enhance Ability).
+	Choose bool `json:"choose,omitempty"`
+	// Conditions are the condition keys of ModifierConditionImmunity.
+	Conditions []string `json:"conditions,omitempty"`
+	// FromCaster says Value is the caster's spellcasting modifier, set when the spell is cast.
+	FromCaster bool `json:"from_caster,omitempty"`
 	// Allowed are the standard actions an extra action may be ("attack",
 	// "dash"...), and MaxWeaponAttacks how many weapon attacks that action makes.
 	Allowed          []string `json:"allowed,omitempty"`
@@ -210,7 +227,7 @@ var (
 		EffectDurationRounds, EffectDurationUntilStartOfTurnOf, EffectDurationUntilEndOfTurnOf,
 		EffectDurationConcentration, EffectDurationUntilDismissed, EffectDurationLongRest,
 	}
-	modifierKinds = []string{ModifierRollDie, ModifierACBonus, ModifierSpeedMultiplier, ModifierSaveAdvantage, ModifierExtraAction, ModifierNoMove, ModifierNoAction, ModifierCheckBonus, ModifierSpeedAdd, ModifierBaseAC}
+	modifierKinds = []string{ModifierRollDie, ModifierACBonus, ModifierSpeedMultiplier, ModifierSaveAdvantage, ModifierExtraAction, ModifierNoMove, ModifierNoAction, ModifierCheckBonus, ModifierSpeedAdd, ModifierBaseAC, ModifierCheckAdvantage, ModifierConditionImmunity, ModifierTurnTempHP}
 	saveAbilities = []string{"str", "dex", "con", "int", "wis", "cha"}
 	// extraActions are the standard actions an extra action may be: the keys of
 	// effects/standard_actions.json.
@@ -388,7 +405,7 @@ func (c *content) checkEffectDef(file string, d *EffectDef, all *combatEffects) 
 }
 
 // checkModifier checks one modifier's fields against its kind.
-func checkModifier(m EffectModifier) error { //nolint:gocyclo // one case for each kind of modifier
+func checkModifier(m EffectModifier) error { //nolint:gocyclo,gocognit // one case for each kind of modifier
 	if !slices.Contains(modifierKinds, m.Kind) {
 		return fmt.Errorf("unknown kind %q", m.Kind)
 	}
@@ -430,6 +447,23 @@ func checkModifier(m EffectModifier) error { //nolint:gocyclo // one case for ea
 			if !slices.Contains(saveAbilities, a) {
 				return fmt.Errorf("unknown ability %q", a)
 			}
+		}
+	case ModifierCheckAdvantage:
+		if len(m.Abilities) == 0 && !m.Choose {
+			return fmt.Errorf("check_advantage needs abilities, or choose")
+		}
+		for _, a := range m.Abilities {
+			if !slices.Contains(saveAbilities, a) {
+				return fmt.Errorf("unknown ability %q", a)
+			}
+		}
+	case ModifierConditionImmunity:
+		if len(m.Conditions) == 0 {
+			return fmt.Errorf("condition_immunity needs conditions")
+		}
+	case ModifierTurnTempHP:
+		if !m.FromCaster && m.Value < 1 {
+			return fmt.Errorf("turn_temp_hp needs a value, or from_caster")
 		}
 	case ModifierExtraAction:
 		if len(m.Allowed) == 0 || m.MaxWeaponAttacks < 1 {
@@ -502,6 +536,17 @@ func (c *Content) SpellEffectRounds(spellKey string) int {
 		return 0
 	}
 	return seconds / SecondsPerRound
+}
+
+// SpellEffectSeconds is the game time a spell's effect lasts, in seconds: the spell's own
+// duration, for the effect given to a character outside a combat. false for a spell with no
+// timed duration.
+func (c *Content) SpellEffectSeconds(spellKey string) (int, bool) {
+	d, ok := c.c.spellDetails[spellKey]
+	if !ok {
+		return 0, false
+	}
+	return d.Duration.Seconds()
 }
 
 // ConditionKeys lists the keys of the conditions the file describes (the SRD's 15), sorted.
