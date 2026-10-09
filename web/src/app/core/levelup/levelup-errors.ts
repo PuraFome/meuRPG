@@ -25,6 +25,9 @@ export function refusalStep(reason: LevelUpRefusalReason, field = ''): StepKey |
           : null;
     case LevelUpRefusalReason.ABILITY_NOT_DUE:
     case LevelUpRefusalReason.ABILITY_SHAPE:
+    case LevelUpRefusalReason.FEAT:
+    case LevelUpRefusalReason.FEAT_PREREQUISITE:
+    case LevelUpRefusalReason.FEATS_NOT_ALLOWED:
     case LevelUpRefusalReason.ABILITY_ABOVE_20:
       return 'abilities';
     case LevelUpRefusalReason.HIT_POINTS:
@@ -65,6 +68,12 @@ export function refusalMessage(refusal: Pick<LevelUpRefusal, 'reason'>): string 
       return 'O aumento é de +2 em uma habilidade, ou de +1 em duas.';
     case LevelUpRefusalReason.ABILITY_ABOVE_20:
       return 'Nenhuma habilidade passa de 20. Escolha outra.';
+    case LevelUpRefusalReason.FEAT:
+      return 'O talento escolhido não vale neste nível: ele não existe mais, saiu da lista ou este nível não o permite. Escolha outro.';
+    case LevelUpRefusalReason.FEAT_PREREQUISITE:
+      return 'A ficha não atende ao pré-requisito do talento. Escolha outro talento ou aumente habilidades.';
+    case LevelUpRefusalReason.FEATS_NOT_ALLOWED:
+      return 'O mestre não usa talentos nesta mesa. Aumente habilidades.';
     case LevelUpRefusalReason.HIT_POINTS:
       return 'O resultado do dado de vida está fora do que o dado permite.';
     case LevelUpRefusalReason.HIT_POINTS_RULE:

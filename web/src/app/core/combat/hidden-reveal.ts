@@ -35,15 +35,36 @@ export function questions(e: Encounter): readonly HiddenRevealQuestion[] {
   return e.pendingHiddenReveals ?? [];
 }
 
+/**
+ * "Área da última magia" (PM-02c 9): the squares and the origin of the oldest question that waits, drawn on the master's map.
+ * Nothing for a player (his list is empty) or with no question.
+ */
+export function lastArea(e: Encounter): {
+  readonly origin: { col: number; row: number } | null;
+  readonly squares: readonly { col: number; row: number }[];
+} | null {
+  const area = questions(e)[0]?.area;
+  if (!area?.squares.length) {
+    return null;
+  }
+  return {
+    origin: area.origin ? { col: area.origin.col, row: area.origin.row } : null,
+    squares: area.squares.map((s) => ({ col: s.col, row: s.row })),
+  };
+}
+
 /** The master's bar: "Esperando a sua resposta: escondidas atingidas", or how many questions wait. */
 export function revealBarText(e: Encounter): string {
   const n = questions(e).length;
   if (n === 0) {
     return '';
   }
-  return n === 1
-    ? 'Esperando a sua resposta: escondidas atingidas'
-    : `Esperando a sua resposta: ${n} perguntas de escondidas`;
+  if (n === 1) {
+    return questions(e)[0].combatantIds.length === 0
+      ? 'Esperando a sua resposta: magia de área'
+      : 'Esperando a sua resposta: escondidas atingidas';
+  }
+  return `Esperando a sua resposta: ${n} perguntas de escondidas`;
 }
 
 /** Why "Próximo turno" cannot be pressed while questions wait. */
@@ -59,6 +80,10 @@ export function revealWhy(e: Encounter): string {
 
 /** "Bola de Fogo atingiu 2 criaturas escondidas". */
 export function questionTitle(spell: string, hits: number): string {
+  if (hits === 0) {
+    // "Perguntar a cada vez" holds every area spell a player casts, so that the wait never says a hidden creature was there.
+    return tieNumbers(`${spell}: nenhuma criatura escondida na área`);
+  }
   return tieNumbers(
     `${spell} atingiu ${hits} ${hits === 1 ? 'criatura escondida' : 'criaturas escondidas'}`,
   );

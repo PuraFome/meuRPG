@@ -144,7 +144,7 @@ export class EditorPainting {
   /** The squares the next stroke would cover, for the outline on the map. */
   readonly cursor = computed(() => {
     const at = this.hover();
-    if (!at || !this.painting()) {
+    if (!at || !this.painting() || this.settings().tool === null) {
       return null;
     }
     const s = this.settings();
@@ -247,7 +247,11 @@ export class EditorPainting {
       this.doorStroke(stroke.centers, s.erase ? 0 : s.door, mapId);
       return;
     }
-    const { layer, value } = strokeOf(s);
+    const mark = strokeOf(s);
+    if (!mark) {
+      return; // no tool in hand: the brush paints nothing
+    }
+    const { layer, value } = mark;
     const squares = stroke.centers.flatMap((c) => brushSquares(c, s.brush, cols, rows));
     const changed = this.painted.paint(layer, value, squares);
     if (changed.length > 0) {

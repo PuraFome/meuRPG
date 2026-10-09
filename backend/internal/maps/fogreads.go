@@ -56,7 +56,7 @@ func (s *Service) readerOf(ctx context.Context, m authz.Membership, asCharacterI
 		return viewer{}, s.dbError(ctx, "read the party", err)
 	}
 	for _, member := range party {
-		if member.CharacterID != id {
+		if member.CharacterID != id || member.Dead { // a dead character is no one to look as
 			continue
 		}
 		as := viewer{userID: member.UserID, currentMap: v.currentMap, preview: true}

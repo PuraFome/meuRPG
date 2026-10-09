@@ -57,6 +57,7 @@ const base: RulesDraft = {
   critical: CriticalRule.DOUBLED_DICE,
   deathSaves: DeathSaveVisibility.VISIBLE_TO_ALL,
   hiddenAreaHits: HiddenAreaHitRule.REVEAL,
+  featsAllowed: false,
   houseRules: [],
 };
 
@@ -152,5 +153,11 @@ describe('table rules', () => {
     const res = await client.set('c', { ...base, hiddenAreaHits: HiddenAreaHitRule.ASK });
     expect(sent[0].rules['hiddenAreaHits']).toBe(HiddenAreaHitRule.ASK);
     expect(res.saved.hiddenAreaHits).toBe(HiddenAreaHitRule.ASK);
+  });
+
+  it('counts the rule "Talentos" as a choice, off by default', () => {
+    expect(draftFromRules(undefined).featsAllowed).toBe(false);
+    expect(draftFromRules({ featsAllowed: true } as never).featsAllowed).toBe(true);
+    expect(changeCount({ ...base, featsAllowed: true }, base)).toBe(1);
   });
 });

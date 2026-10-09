@@ -133,3 +133,29 @@ describe('HiddenRevealCard', () => {
     expect(setup([]).el.querySelectorAll('section')).toHaveLength(0);
   });
 });
+
+describe('HiddenRevealCard: an area spell with no hidden creature in it', () => {
+  const nobody = create(HiddenRevealQuestionSchema, {
+    id: 'q0',
+    casterId: 'p',
+    spellKey: 'spell:fireball',
+    combatantIds: [],
+  });
+
+  it('holds the turn like any question, says nobody hidden was hit, and answers with one tap, "Sem escondidas"', () => {
+    const { el, answers, buttons } = setup([nobody]);
+    const card = el.querySelector('section[role="group"]')!;
+    expect(plain(card.querySelector('h2')?.textContent)).toBe(
+      'Bola de Fogo: nenhuma criatura escondida na área',
+    );
+    expect(plain(card.querySelector('.hr__text')?.textContent)).toContain(
+      'Nenhuma criatura escondida foi atingida',
+    );
+    expect(plain(card.querySelector('.hr__text')?.textContent)).toContain(
+      'O turno do Pensantus espera por você.',
+    );
+    expect(buttons(card).map((b) => plain(b.textContent))).toEqual(['checkSem escondidas']);
+    buttons(card)[0].click();
+    expect(answers).toEqual([{ id: 'q0', reveal: false }]);
+  });
+});

@@ -1,6 +1,7 @@
 import { Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { ReactionOutcome, type ReactionPrompt } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
@@ -42,6 +43,9 @@ export interface ShieldSheetData {
   readonly armorClass: number | null;
 }
 
+/** How long "O mestre respondeu por você" stays on screen after the sheet closes by itself. */
+const ANSWERED_NOTICE_MS = 6000;
+
 /**
  * "Você foi atingido: usar Escudo?" (MR-014, E6-28): a hit on the player's
  * character that is not critical waits for their reaction, and the combat page
@@ -53,7 +57,8 @@ export interface ShieldSheetData {
  * lets the hit go) and "Conjurar Escudo". The player decides without the total or
  * the armor class, as at a table; the answer says only whether it stopped the
  * hit. The master may answer for the player (their card): then the prompt is
- * gone and this says so. It cannot be closed without an answer. The keys are
+ * gone, and the sheet closes by itself with a short notice, so a prompt nobody
+ * awaits never stays on top of the next one. It cannot be closed without an answer. The keys are
  * made once, so a repeated tap never casts twice.
  */
 @Component({
@@ -135,6 +140,7 @@ export interface ShieldSheetData {
 export class ShieldSheet {
   private readonly api = inject(CombatClient);
   private readonly sheet = injectSheet<ShieldSheetData, boolean>();
+  private readonly snackBar = inject(MatSnackBar);
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
 
@@ -197,10 +203,26 @@ export class ShieldSheet {
   });
   /** One key per answer ("Conjurar" with its slot, or "Não usar"): a repeated tap is a retry, the other answer is a new request. */
   private readonly keys = new ActionKey();
+  /** The sheet is already closing (an answer, or "Fechar"): the effect below must not close it again. */
+  private closing = false;
   private readonly focus = viewChild('close', { read: ElementRef<HTMLButtonElement> });
 
   constructor() {
     effect(() => this.focus()?.nativeElement.focus());
+    // The master answered for the player: nothing awaits this sheet any more.
+    effect(() => {
+      if (this.stage() === 'gone' && !this.closing) {
+        this.closing = true;
+        this.snackBar.open(
+          'O mestre respondeu por você: o ataque já não espera a sua reação.',
+          undefined,
+          {
+            duration: ANSWERED_NOTICE_MS,
+          },
+        );
+        this.sheet.close(false);
+      }
+    });
   }
 
   protected async use(): Promise<void> {
@@ -242,6 +264,7 @@ export class ShieldSheet {
           this.keys.keyFor('decline'),
         ),
       );
+      this.closing = true;
       this.sheet.close(false);
     } catch (err) {
       this.error.set(combatErrorMessage(err, 'deixar o ataque passar'));
@@ -251,6 +274,7 @@ export class ShieldSheet {
   }
 
   protected done(): void {
+    this.closing = true;
     this.sheet.close(this.outcome() !== null);
   }
 }

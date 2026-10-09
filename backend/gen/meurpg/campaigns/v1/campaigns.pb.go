@@ -670,8 +670,9 @@ type Campaign struct {
 	MyRole Role `protobuf:"varint,5,opt,name=my_role,json=myRole,proto3,enum=meurpg.campaigns.v1.Role" json:"my_role,omitempty"`
 	// True when the caller is a pending member (RN-15, MR-024): they accepted
 	// an invite that requires approval, and the master has not approved their
-	// character yet. Then only id, name and my_role (ROLE_PLAYER) are set:
-	// xp_mode is unspecified and created_at is unset.
+	// character yet. Then only id, name, my_role (ROLE_PLAYER) and xp_mode are
+	// set (the XP mode is no secret, and the editor needs it); created_at is
+	// unset.
 	AwaitingApproval bool `protobuf:"varint,6,opt,name=awaiting_approval,json=awaitingApproval,proto3" json:"awaiting_approval,omitempty"`
 	// How the campaign's players roll dice (RN-18). Set for every member;
 	// unspecified for a pending member.
@@ -2434,13 +2435,19 @@ type TableRules struct {
 	// example "Beber uma poção é uma ação bônus". At most 20, each 1 to 200
 	// characters on one line, in the order the master wrote them.
 	HouseRules []string `protobuf:"bytes,8,rep,name=house_rules,json=houseRules,proto3" json:"house_rules,omitempty"`
+	// "Talentos": whether the table plays with feats, an optional rule of the
+	// game. When true, the guided level-up's Ability Score Improvement step offers
+	// a feat in place of the ability increase (the feats the character qualifies
+	// for; CharacterService.GetLevelUpOptions). Default false: feats are not used
+	// and the level-up is as the SRD's. Read as sent by SetTableRules.
+	FeatsAllowed bool `protobuf:"varint,9,opt,name=feats_allowed,json=featsAllowed,proto3" json:"feats_allowed,omitempty"`
 	// What a spell of an area does to the hiding of a hidden creature it hits
 	// (RN-24, RN-10): the spell always affects the creature, and this decides only
 	// whether the players learn of it. Required in SetTableRules (UNSPECIFIED is
 	// `invalid_argument`); a campaign that never saved its rules has REVEAL. The
 	// combat reads it when each spell is cast, so a change applies from the next
 	// spell on.
-	HiddenAreaHits HiddenAreaHitRule `protobuf:"varint,9,opt,name=hidden_area_hits,json=hiddenAreaHits,proto3,enum=meurpg.campaigns.v1.HiddenAreaHitRule" json:"hidden_area_hits,omitempty"`
+	HiddenAreaHits HiddenAreaHitRule `protobuf:"varint,10,opt,name=hidden_area_hits,json=hiddenAreaHits,proto3,enum=meurpg.campaigns.v1.HiddenAreaHitRule" json:"hidden_area_hits,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -2529,6 +2536,13 @@ func (x *TableRules) GetHouseRules() []string {
 		return x.HouseRules
 	}
 	return nil
+}
+
+func (x *TableRules) GetFeatsAllowed() bool {
+	if x != nil {
+		return x.FeatsAllowed
+	}
+	return false
 }
 
 func (x *TableRules) GetHiddenAreaHits() HiddenAreaHitRule {
@@ -3179,7 +3193,7 @@ const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"\tpoint_buy\x18\x02 \x01(\bR\bpointBuy\x12\x1d\n" +
 	"\n" +
 	"rolled_4d6\x18\x03 \x01(\bR\trolled4d6\x12\x14\n" +
-	"\x05typed\x18\x04 \x01(\bR\x05typed\"\xb2\x04\n" +
+	"\x05typed\x18\x04 \x01(\bR\x05typed\"\xd7\x04\n" +
 	"\n" +
 	"TableRules\x12:\n" +
 	"\tdice_mode\x18\x01 \x01(\x0e2\x1d.meurpg.campaigns.v1.DiceModeR\bdiceMode\x123\n" +
@@ -3192,8 +3206,10 @@ const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"\vdeath_saves\x18\a \x01(\x0e2(.meurpg.campaigns.v1.DeathSaveVisibilityR\n" +
 	"deathSaves\x12\x1f\n" +
 	"\vhouse_rules\x18\b \x03(\tR\n" +
-	"houseRules\x12P\n" +
-	"\x10hidden_area_hits\x18\t \x01(\x0e2&.meurpg.campaigns.v1.HiddenAreaHitRuleR\x0ehiddenAreaHits\"\xe1\x01\n" +
+	"houseRules\x12#\n" +
+	"\rfeats_allowed\x18\t \x01(\bR\ffeatsAllowed\x12P\n" +
+	"\x10hidden_area_hits\x18\n" +
+	" \x01(\x0e2&.meurpg.campaigns.v1.HiddenAreaHitRuleR\x0ehiddenAreaHits\"\xe1\x01\n" +
 	"\x10TableStylePreset\x125\n" +
 	"\x05style\x18\x01 \x01(\x0e2\x1f.meurpg.campaigns.v1.TableStyleR\x05style\x12:\n" +
 	"\tdice_mode\x18\x02 \x01(\x0e2\x1d.meurpg.campaigns.v1.DiceModeR\bdiceMode\x123\n" +

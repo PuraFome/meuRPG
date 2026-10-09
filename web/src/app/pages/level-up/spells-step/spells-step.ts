@@ -16,7 +16,7 @@ function circles(max: number): string {
 
 /**
  * Step "Magias" of the guided level-up (MR-040, E8-15): the new cantrips, the spells for the
- * spellbook or the spells known (with a search and "Ver os outros N"), the spells to prepare
+ * spellbook or the spells known (with a search and "Ver os outros N" for cantrips), the spells to prepare
  * in the new slots (up to the new maximum), and the slots that arrive by themselves. Each
  * spell has the "?" with its description. The lists and the counts come from the server's
  * options and the campaign's content; the maximum of prepared spells follows the preview, since
@@ -68,10 +68,12 @@ export class SpellsStep {
     );
     const book = d.effective().spellsKind === LevelUpSpellsKind.SPELLBOOK;
     const n = d.preparedAsked();
+    // The line follows the picks: it counts what is left to prepare, and goes once none is.
+    const left = Math.max(0, n - d.prepared().size);
     return {
       n,
       base: d.have.prepared.length,
-      strong: `Prepare mais ${n}.`,
+      strong: left > 0 ? `Prepare mais ${left}.` : '',
       note:
         `Você prepara até ${d.preparedMaxAfter()} magias${book ? ' do livro' : ''} (eram ${s.options.preparedMax}).` +
         (names.length > 0 ? ` Já preparadas: ${LIST.format(names)}.` : ''),

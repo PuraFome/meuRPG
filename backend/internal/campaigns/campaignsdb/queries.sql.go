@@ -317,7 +317,7 @@ func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (G
 }
 
 const getTableRules = `-- name: GetTableRules :one
-SELECT campaign_id, hit_points_rule, ability_standard_array, ability_point_buy, ability_roll_4d6, ability_typed, critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, updated_at, hidden_area_hits FROM campaign_table_rules WHERE campaign_id = $1
+SELECT campaign_id, hit_points_rule, ability_standard_array, ability_point_buy, ability_roll_4d6, ability_typed, critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, updated_at, feats_allowed, hidden_area_hits FROM campaign_table_rules WHERE campaign_id = $1
 `
 
 // The table's rules (RN-24). No row means the defaults.
@@ -337,6 +337,7 @@ func (q *Queries) GetTableRules(ctx context.Context, campaignID string) (Campaig
 		&i.FogOnNewMaps,
 		&i.HouseRules,
 		&i.UpdatedAt,
+		&i.FeatsAllowed,
 		&i.HiddenAreaHits,
 	)
 	return i, err
@@ -818,12 +819,12 @@ func (q *Queries) UpdateCampaignDocument(ctx context.Context, arg UpdateCampaign
 const upsertTableRules = `-- name: UpsertTableRules :one
 INSERT INTO campaign_table_rules (
     campaign_id, hit_points_rule, ability_standard_array, ability_point_buy, ability_roll_4d6, ability_typed,
-    critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, hidden_area_hits, updated_at
+    critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, feats_allowed, hidden_area_hits, updated_at
 )
 VALUES (
     $1, $2, $3, $4,
     $5, $6, $7, $8,
-    $9, $10, $11::TEXT[], $12, $13
+    $9, $10, $11::TEXT[], $12, $13, $14
 )
 ON CONFLICT (campaign_id) DO UPDATE SET
     hit_points_rule = excluded.hit_points_rule,
@@ -836,9 +837,10 @@ ON CONFLICT (campaign_id) DO UPDATE SET
     combat_starts_with_map = excluded.combat_starts_with_map,
     fog_on_new_maps = excluded.fog_on_new_maps,
     house_rules = excluded.house_rules,
+    feats_allowed = excluded.feats_allowed,
     hidden_area_hits = excluded.hidden_area_hits,
     updated_at = excluded.updated_at
-RETURNING campaign_id, hit_points_rule, ability_standard_array, ability_point_buy, ability_roll_4d6, ability_typed, critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, updated_at, hidden_area_hits
+RETURNING campaign_id, hit_points_rule, ability_standard_array, ability_point_buy, ability_roll_4d6, ability_typed, critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, updated_at, feats_allowed, hidden_area_hits
 `
 
 type UpsertTableRulesParams struct {
@@ -853,6 +855,7 @@ type UpsertTableRulesParams struct {
 	CombatStartsWithMap  bool
 	FogOnNewMaps         bool
 	HouseRules           []string
+	FeatsAllowed         bool
 	HiddenAreaHits       string
 	Now                  time.Time
 }
@@ -871,6 +874,7 @@ func (q *Queries) UpsertTableRules(ctx context.Context, arg UpsertTableRulesPara
 		arg.CombatStartsWithMap,
 		arg.FogOnNewMaps,
 		arg.HouseRules,
+		arg.FeatsAllowed,
 		arg.HiddenAreaHits,
 		arg.Now,
 	)
@@ -888,6 +892,7 @@ func (q *Queries) UpsertTableRules(ctx context.Context, arg UpsertTableRulesPara
 		&i.FogOnNewMaps,
 		&i.HouseRules,
 		&i.UpdatedAt,
+		&i.FeatsAllowed,
 		&i.HiddenAreaHits,
 	)
 	return i, err

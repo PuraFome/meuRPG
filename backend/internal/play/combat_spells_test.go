@@ -712,6 +712,41 @@ func TestHealingSpellRevivesAndResetsDeathSaves(t *testing.T) {
 	}
 }
 
+// TestAHealingSpellRefusesADeadTargetBeforeSpendingAnything: a creature with three
+// failed death saves is dead and regains no hit points (SRD 5.1), so Curar
+// Ferimentos on Toren is refused with the slot and the action untouched; once the
+// master confirms the death the refusal is the same.
+func TestAHealingSpellRefusesADeadTargetBeforeSpendingAnything(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.castersFight(t, 1)
+	a.correct(t, a.toren, hpIs(0))
+	if _, err := a.h.pool.Exec(t.Context(), `UPDATE combatants SET death_failures = 3 WHERE id = $1`, a.id(t, "Toren")); err != nil {
+		t.Fatalf("set the failed saves: %v", err)
+	}
+	a.passTo(t, e, "Brisa")
+	slotsBefore := usedSlots(a.vitals(t, a.bri), 1)
+	for _, step := range []string{"three failures", "confirmed"} {
+		if step == "confirmed" {
+			if _, err := a.master.combat.ConfirmDeath(t.Context(), connect.NewRequest(&playv1.ConfirmDeathRequest{
+				CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Toren"), IdempotencyKey: newKey(),
+			})); err != nil {
+				t.Fatalf("ConfirmDeath() error = %v", err)
+			}
+		}
+		_, err := a.cast(t, a.bia, e, "Brisa", cureWounds, slotOfLevel(1), a.at(t, "Toren"), noCastRoll)
+		wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEAD)
+		if got := usedSlots(a.vitals(t, a.bri), 1); got != slotsBefore {
+			t.Errorf("%s: Brisa's level 1 slots used = %d, want the %d it had", step, got, slotsBefore)
+		}
+		if brisa := byLabel(t, a.get(t, a.bia), "Brisa"); brisa.GetActionUsed() {
+			t.Errorf("%s: the refused healing spent Brisa's action", step)
+		}
+	}
+	// Positive control: a living target is healed by the same cast.
+	a.mustCast(t, a.bia, e, "Brisa", cureWounds, slotOfLevel(1), a.at(t, "Pensantus"), noCastRoll)
+}
+
 var rollApp = func(r *playv1.RollDeathSaveRequest) { r.Roll = &playv1.RollDeathSaveRequest_RollInApp{RollInApp: true} }
 
 func deathFace(face int32) func(*playv1.RollDeathSaveRequest) {

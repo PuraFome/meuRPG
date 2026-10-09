@@ -157,7 +157,7 @@ function setup(opts: { master: boolean; me?: 'p' | 's'; held: boolean; questions
   fixture.componentRef.setInput('diceMode', DiceMode.PLAYERS_CHOOSE);
   fixture.componentRef.setInput('dicePreference', DicePreference.APP);
   fixture.detectChanges();
-  return { fixture, el: fixture.nativeElement as HTMLElement, resolved };
+  return { fixture, el: fixture.nativeElement as HTMLElement, resolved, state };
 }
 
 async function settle(fixture: { detectChanges: () => void; whenStable: () => Promise<unknown> }) {
@@ -224,5 +224,40 @@ describe('CombatView: a turn held by a question about hidden creatures', () => {
     expect(plain(el.querySelector('app-combat-bar .why')?.textContent)).toContain(
       'Responda aos pedidos abaixo para seguir.',
     );
+  });
+});
+
+describe('CombatView: "Combate atualizado agora." after a reload (PM-02c 9c)', () => {
+  const line = (el: HTMLElement) => el.querySelector('p.refreshed[role="status"]');
+
+  it('says the screen was rebuilt when the page comes up with the turn held, to the master and to the player', async () => {
+    for (const opts of [
+      { master: true, held: true },
+      { master: false, me: 'p' as const, held: true },
+    ]) {
+      const { fixture, el } = setup(opts);
+      await settle(fixture);
+      expect(plain(line(el)?.textContent)).toBe('Combate atualizado agora.');
+    }
+  });
+
+  it('says nothing when the turn is not held, and the line goes when the wait is over', async () => {
+    const quiet = setup({ master: false, me: 'p', held: false });
+    await settle(quiet.fixture);
+    expect(line(quiet.el)).toBeNull();
+
+    const { fixture, el, state } = setup({ master: false, me: 'p', held: true });
+    await settle(fixture);
+    expect(line(el)).not.toBeNull();
+    state.apply(
+      encounter({
+        mode: EncounterMode.GRID,
+        currentCombatantId: 'p',
+        combatants: [pensantus(true), salvia(false)],
+        turnHeld: false,
+      }),
+    );
+    await settle(fixture);
+    expect(line(el)).toBeNull();
   });
 });

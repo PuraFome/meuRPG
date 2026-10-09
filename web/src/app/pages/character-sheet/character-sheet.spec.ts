@@ -962,6 +962,7 @@ describe('CharacterSheetPage', () => {
                 damage: '1d4',
                 damageTypePt: 'perfurante',
                 versatileDamage: '',
+                damageNotePt: 'Inclui +2 de Estilo de Luta: Duelismo (sem outra arma na mão)',
                 saveDc: 0,
                 saveAbility: null,
                 beams: 1,
@@ -974,6 +975,8 @@ describe('CharacterSheetPage', () => {
     const rows = Array.from(sectionTitled(el, 'Ataques').querySelectorAll('tbody tr'));
     expect(rows[0].textContent).toContain('Com duas mãos: 1d8');
     expect(rows[1].textContent).not.toContain('duas mãos');
+    expect(rows[1].textContent).toContain('(sem outra arma na mão)');
+    expect(rows[0].textContent).not.toContain('sem outra arma');
   });
 
   it('lists only the coins carried', async () => {
@@ -1074,6 +1077,32 @@ describe('CharacterSheetPage', () => {
     expect(features.textContent).toContain(
       'Vantagem em testes de resistência de INT, SAB e CAR contra magia.',
     );
+  });
+
+  it('shows a feat taken at a level-up with its source, "Talento · Mago 4", and no replaced Incremento', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({
+            features: [
+              {
+                name: 'Atleta',
+                sourcePt: 'Talento · Mago 4',
+                description: 'Você corre e escala melhor.',
+              },
+            ],
+          }),
+        }),
+      );
+    const el = await render();
+    const rows = Array.from(el.querySelectorAll('details summary')).map((s) =>
+      s.textContent?.replace(/\s+/g, ' ').trim(),
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toContain('Atleta');
+    expect(rows[0]).toContain('Talento · Mago 4');
+    expect(el.textContent).not.toContain('Incremento no Valor de Habilidade');
   });
 
   it('"A classe mudou": the changed entry\'s sentences above the sheet, and the same issue never listed twice (RN-23)', async () => {
@@ -1303,6 +1332,28 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
     expect(button(el, 'Recusar personagem')).toBeUndefined();
     // Still editable while waiting.
     expect(el.textContent).toContain('Editar ficha');
+  });
+
+  it('a pending character shows no notes and no creatures panel, and one line under a heading that says when they will appear', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(vm({ state: 'pending', canApprove: false }));
+    const el = (await render()).nativeElement as HTMLElement;
+
+    expect(el.querySelector('app-notes-panel')).toBeNull();
+    expect(el.querySelector('app-creatures-panel')).toBeNull();
+    const notes = Array.from(el.querySelectorAll('.sheet__pending-note')).map((n) =>
+      n.textContent?.trim(),
+    );
+    expect(notes).toEqual(['Aparece quando o mestre aprovar o personagem.']);
+    expect(el.querySelector('#pending-panels-title')?.textContent).toBe('Anotações e criaturas');
+  });
+
+  it('an approved character shows the notes and the creatures panels', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(vm({ state: 'draft', canApprove: false }));
+    const el = (await render()).nativeElement as HTMLElement;
+
+    expect(el.querySelector('app-notes-panel')).not.toBeNull();
+    expect(el.querySelector('app-creatures-panel')).not.toBeNull();
+    expect(el.querySelector('.sheet__pending-note')).toBeNull();
   });
 
   it('"Aprovar personagem" approves and shows the character as a draft', async () => {

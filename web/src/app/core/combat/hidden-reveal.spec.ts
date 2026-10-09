@@ -5,6 +5,7 @@ import { combatant, encounter } from './combat-testing';
 import {
   heldWait,
   hitNames,
+  lastArea,
   namesText,
   questionKicker,
   questionTitle,
@@ -71,5 +72,40 @@ describe('the turn held by a question about hidden creatures', () => {
     expect(questionKicker(0, 1)).toBe('');
     expect(questionKicker(0, 2)).toBe('Pergunta 1 de 2 · responda esta primeiro');
     expect(questionKicker(1, 2)).toBe('Pergunta 2 de 2 · depois da primeira');
+  });
+});
+
+describe('a question with no hidden creature, and the area of the last spell', () => {
+  it('names the bar and the title without claiming a hidden creature was hit', () => {
+    const none = encounter({ pendingHiddenReveals: [question('q1', [])] });
+    expect(revealBarText(none)).toBe('Esperando a sua resposta: magia de área');
+    expect(plain(questionTitle('Bola de Fogo', 0))).toBe(
+      'Bola de Fogo: nenhuma criatura escondida na área',
+    );
+  });
+
+  it("draws the oldest question's area for the master, and nothing for a player or without squares", () => {
+    const withArea = create(HiddenRevealQuestionSchema, {
+      id: 'q1',
+      casterId: 'p',
+      spellKey: 'spell:fireball',
+      combatantIds: ['g3'],
+      area: {
+        origin: { col: 4, row: 3 },
+        squares: [
+          { col: 4, row: 3 },
+          { col: 5, row: 3 },
+        ],
+      },
+    });
+    expect(lastArea(encounter({ pendingHiddenReveals: [withArea] }))).toEqual({
+      origin: { col: 4, row: 3 },
+      squares: [
+        { col: 4, row: 3 },
+        { col: 5, row: 3 },
+      ],
+    });
+    expect(lastArea(encounter({ pendingHiddenReveals: [] }))).toBeNull();
+    expect(lastArea(encounter({ pendingHiddenReveals: [question('q2', [])] }))).toBeNull();
   });
 });

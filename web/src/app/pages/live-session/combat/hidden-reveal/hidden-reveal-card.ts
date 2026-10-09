@@ -55,15 +55,36 @@ export interface RevealAnswer {
           }
           <h2 class="hr__title" [id]="'hr-t-' + q.id">{{ q.title }}</h2>
           <p class="hr__text">
-            {{ q.caster }} conjurou no ponto marcado. O efeito já valeu para
-            @for (n of q.names; track $index) {<b>{{ n.name }}</b>{{ n.sep }}}.
-            @if (cards().length === 1) {
-              Os jogadores ainda não sabem delas.
+            @if (q.none) {
+              {{ q.caster }} conjurou no ponto marcado. Nenhuma criatura escondida foi atingida; o turno só espera a sua resposta.
+            } @else {
+              {{ q.caster }} conjurou no ponto marcado. O efeito já valeu para
+              @for (n of q.names; track $index) {<b>{{ n.name }}</b>{{ n.sep }}}.
+              @if (cards().length === 1) {
+                Os jogadores ainda não sabem delas.
+              }
             }
             @if (i === 0) {
               <b>{{ q.waits }}</b>
             }
           </p>
+          @if (q.none) {
+            <div class="hr__pair">
+              <button
+                mat-flat-button
+                type="button"
+                class="hr__btn"
+                data-reveal
+                [class.hr__btn--off]="i > 0"
+                [disabled]="busy() || i > 0"
+                disabledInteractive
+                [attr.aria-describedby]="i > 0 ? 'hr-k-' + q.id : null"
+                (click)="i === 0 && !busy() && answer.emit({ id: q.id, reveal: false })"
+              >
+                <mat-icon aria-hidden="true">check</mat-icon>Sem escondidas
+              </button>
+            </div>
+          } @else {
           <div class="hr__pair">
             <button
               mat-flat-button
@@ -91,6 +112,7 @@ export interface RevealAnswer {
               <mat-icon aria-hidden="true">visibility_off</mat-icon>Manter escondidas
             </button>
           </div>
+          }
           @if (i === 0) {
             <p class="hr__rule">A regra da mesa é “Perguntar a cada vez”.</p>
           }
@@ -132,6 +154,7 @@ export class HiddenRevealCard {
           name: tieNumbers(name),
           sep: k === names.length - 1 ? '' : k === names.length - 2 ? ' e ' : ', ',
         })),
+        none: names.length === 0,
         waits: `O turno ${ofThe([caster])} espera por você.`,
       };
     });

@@ -100,9 +100,11 @@ func fogMemoOf(ctx context.Context) *fogMemo {
 // fogSightOf reads what the players see of the encounter's map: nil when there is
 // no fog on it (nothing to filter), and an error when it cannot be told, which
 // fails the request rather than showing a player what they may not see. Inside a
-// request that shares a memo (after a change) it is read once.
+// request that shares a memo (after a change) it is read once. A combat that ended
+// has no fog: its summary is the same for every member, and what the master hides
+// stays hidden by the combatant's own flag.
 func (s *Service) fogSightOf(ctx context.Context, campaignID string, enc playdb.Encounter) (*fogSight, error) {
-	if s.fog == nil || enc.MapID == nil {
+	if s.fog == nil || enc.MapID == nil || enc.Status == statusEnded {
 		return nil, nil
 	}
 	if memo := fogMemoOf(ctx); memo != nil {
@@ -344,6 +346,9 @@ func (c *combatTx) stamp(ctx context.Context, kind string, ev actionEvent) (acti
 		ev.Fogged, ev.SeenBy = true, nil
 		return ev, nil
 	}
+	if kind == eventSpellCast && ev.Placed {
+		return c.stampPlacedCast(ev, cs), nil
+	}
 	if len(npcSquares) == 0 {
 		return ev, nil
 	}
@@ -364,6 +369,49 @@ func (c *combatTx) stamp(ctx context.Context, kind string, ev actionEvent) (acti
 	return ev, nil
 }
 
+// stampPlacedCast is stamp for an area spell the server placed. Its line is the caster's
+// player's always, with the targets they cannot see left out of it (RN-10): each NPC target
+// keeps who saw it when it was hit (Fogged, SeenMask), and any other player has the line only
+// if they saw at least one of the NPCs it hit, listing the ones they saw. A cast that hit no
+// NPC is every player's, as any line with no NPC in it.
+func (c *combatTx) stampPlacedCast(ev actionEvent, cs []playdb.Combatant) actionEvent {
+	users := c.sight.sight.Users()
+	anySeen := false
+	var seenSome []string
+	for i := range ev.Hits {
+		h := &ev.Hits[i]
+		j := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == h.Target })
+		if h.HiddenAtCast || j < 0 || cs[j].Kind != kindNPC || !placed(cs[j]) {
+			continue
+		}
+		anySeen, h.Fogged, h.SeenMask = true, true, 0
+		for _, u := range users {
+			if !c.sight.sight.Sees(u, squareOfCombatant(cs[j])) {
+				continue
+			}
+			k := slices.Index(ev.CoverUsers, u)
+			if k < 0 && len(ev.CoverUsers) < maxCoverUsers {
+				ev.CoverUsers = append(ev.CoverUsers, u)
+				k = len(ev.CoverUsers) - 1
+			}
+			if k >= 0 {
+				h.SeenMask |= 1 << k
+			}
+			if !slices.Contains(seenSome, u) {
+				seenSome = append(seenSome, u)
+			}
+		}
+	}
+	if !anySeen {
+		return ev
+	}
+	ev.Fogged, ev.SeenBy = true, seenSome
+	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == ev.Actor }); i >= 0 && cs[i].UserID != nil && !slices.Contains(ev.SeenBy, *cs[i].UserID) {
+		ev.SeenBy = append(ev.SeenBy, *cs[i].UserID) // the caster's player always has the line of their own spell
+	}
+	return ev
+}
+
 // stampDoor writes into a door_opened event who may have the line, on a fog map,
 // whoever opened the door (a player's character or an NPC): the players whose
 // character saw or remembered the door's square when it happened, from the sight
@@ -375,12 +423,31 @@ func (c *combatTx) stampDoor(ctx context.Context, ev actionEvent, cs []playdb.Co
 	door := grid.Square{Col: int(ev.Col), Row: int(ev.Row)}
 	ev.Fogged, ev.SeenBy = true, nil
 	own := ""
-	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == ev.Actor }); i >= 0 && cs[i].UserID != nil {
-		own = *cs[i].UserID
+	// An NPC that opened the door is named in the line, so a player who only knows the
+	// door must also have seen the NPC, on the square it came from or the one it stands
+	// on, like any other line with an NPC in it.
+	var npcSquares []grid.Square
+	npcMover := false
+	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == ev.Actor }); i >= 0 {
+		if cs[i].UserID != nil {
+			own = *cs[i].UserID
+		}
+		if cs[i].Kind == kindNPC {
+			npcMover = true
+			if placed(cs[i]) {
+				npcSquares = append(npcSquares, squareOfCombatant(cs[i]))
+			}
+			if ev.From != nil && ev.From.Placed {
+				npcSquares = append(npcSquares, grid.Square{Col: int(ev.From.Col), Row: int(ev.From.Row)})
+			}
+		}
 	}
 	for _, u := range c.sight.sight.Users() {
 		if u == own {
 			ev.SeenBy = append(ev.SeenBy, u)
+			continue
+		}
+		if npcMover && !slices.ContainsFunc(npcSquares, func(sq grid.Square) bool { return c.sight.sight.Sees(u, sq) }) {
 			continue
 		}
 		known, err := c.sight.knownTerrain(ctx, c.tx, combatViewer{userID: u})
@@ -434,10 +501,13 @@ func encounterChangedMessage(e playdb.Encounter) *playv1.WatchGameSessionRespons
 	}}
 }
 
-func turnChangedMessage(e playdb.Encounter, turn turnView) *playv1.WatchGameSessionResponse {
+// turnChangedMessage carries the combat's revision for the master, whose screen holds
+// the same number. A player's read counts what they can see (a different scale), so
+// their copy says 0, "no number to compare".
+func turnChangedMessage(e playdb.Encounter, turn turnView, revision int32) *playv1.WatchGameSessionResponse {
 	return &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_TurnChanged_{
 		TurnChanged: &playv1.WatchGameSessionResponse_TurnChanged{
-			EncounterId: e.ID, Round: e.Round, CurrentCombatantId: turn.currentID, MasterTurn: turn.masterTurn,
+			EncounterId: e.ID, Round: e.Round, CurrentCombatantId: turn.currentID, MasterTurn: turn.masterTurn, Revision: revision,
 		},
 	}}
 }
@@ -461,11 +531,11 @@ func (s *Service) publishTurnChangedToPlayers(ctx context.Context, campaignID st
 	case err != nil:
 		s.logger.ErrorContext(ctx, "play: cannot work out what the players see in a combat", "error", err)
 	case f == nil:
-		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: turnChangedMessage(d.enc, d.turnFor(combatViewer{}))})
+		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: turnChangedMessage(d.enc, d.turnFor(combatViewer{}), 0)})
 	default:
 		for _, u := range f.sight.Users() {
 			turn := d.turnFor(combatViewer{userID: u, unseen: f.unseenFor(u, d.cs)})
-			s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: turnChangedMessage(d.enc, turn)})
+			s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: turnChangedMessage(d.enc, turn, 0)})
 		}
 	}
 }

@@ -589,7 +589,7 @@ func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *
 		// The players' line never lists a creature that was hidden when an area hit it
 		// (not even after the master reveals it: the line would say the spell hit it),
 		// nor one that is hidden now or that a combatant that left no longer names.
-		if !v.master && (h.HiddenAtCast || target.Hidden || target.ID == "") {
+		if !v.master && (h.HiddenAtCast || target.Hidden || target.ID == "" || h.unseenBy(e.ev.CoverUsers, v.userID)) {
 			continue
 		}
 		t := &playv1.CombatLogSpellTarget{
