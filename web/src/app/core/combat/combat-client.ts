@@ -827,6 +827,32 @@ export class CombatClient {
     };
   }
 
+  /** Revivify in a combat: the dead creature is a `deadTargetId` (never a combatant target), the diamonds are ticked, the key is the caller's. */
+  async castRevivify(
+    campaignId: string,
+    encounterId: string,
+    casterId: string,
+    slot: SlotRef,
+    deadTargetId: string,
+    key: string,
+  ): Promise<CastResult> {
+    const res = await this.client.castSpell({
+      campaignId,
+      encounterId,
+      casterId,
+      spellKey: 'spell:revivify',
+      slot,
+      targets: [{ deadTargetId }],
+      materialConfirmed: true,
+      idempotencyKey: key,
+    });
+    return {
+      encounter: need(res.encounter, 'CastSpell'),
+      cast: need(res.cast, 'CastSpell'),
+      summoned: res.summonedCombatantIds,
+    };
+  }
+
   async rollDeathSave(
     campaignId: string,
     encounterId: string,

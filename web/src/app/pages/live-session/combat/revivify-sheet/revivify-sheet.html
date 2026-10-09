@@ -1,0 +1,137 @@
+<app-sheet-frame [title]="title()" [subtitle]="subtitle()" [phone]="inSheet" (closed)="close()">
+  <div class="body">
+    <ol class="steps" aria-label="Passos">
+      @for (m of marks(); track m.n) {
+        <li class="steps__item" [class.steps__item--done]="m.state === 'done'" [class.steps__item--now]="m.state === 'current'" [attr.aria-current]="m.state === 'current' ? 'step' : null">
+          <span class="steps__dot" aria-hidden="true">
+            @if (m.state === 'done') {
+              <mat-icon>check</mat-icon>
+            } @else {
+              {{ m.n }}
+            }
+          </span>
+          <span class="steps__label">{{ m.label }}</span>
+        </li>
+      }
+    </ol>
+
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+
+    @if (step() === 'target') {
+      @if (loading()) {
+        <p class="plain" role="status">Procurando quem morreu por perto…</p>
+      } @else if (rows().length === 0) {
+        @if (!error()) {
+          <p class="plain" role="status">{{ nobody }}</p>
+        }
+      } @else {
+        <span class="cap" id="revivify-who">Quem morreu por perto</span>
+        <div class="rows" role="radiogroup" aria-labelledby="revivify-who">
+          @for (r of rows(); track r.id) {
+            <label class="row">
+              <input type="radio" class="mr-visually-hidden" name="revivify-target" [checked]="chosen() === r.id" (change)="pick(r.id)" />
+              <span class="row__text">
+                <b class="row__title">{{ r.name }}</b>
+                <span class="row__detail">{{ r.detail }}</span>
+              </span>
+              @if (r.tag) {
+                <span class="tag"><mat-icon aria-hidden="true">check</mat-icon>{{ r.tag }}</span>
+              }
+            </label>
+          }
+        </div>
+        @if (waitsMaster()) {
+          <div class="mr-notice mr-notice--warning">
+            <mat-icon aria-hidden="true">schedule</mat-icon>
+            <p>
+              <strong>O mestre confirma que faz menos de 1 minuto.</strong>
+              Fora de combate o app não conta o tempo: ao conjurar, o mestre responde.
+            </p>
+          </div>
+        } @else {
+          <p class="small">Só aparece quem a magia pode alcançar agora.</p>
+        }
+      }
+    }
+
+    @if (step() === 'confirm') {
+      @if (slot()) {
+        <div class="mr-notice mr-notice--neutral">
+          <mat-icon aria-hidden="true">info</mat-icon>
+          <p>{{ cost() }}</p>
+        </div>
+      } @else {
+        <div class="mr-notice mr-notice--warning" role="status">
+          <mat-icon aria-hidden="true">block</mat-icon>
+          <p>{{ noSlot }}</p>
+        </div>
+      }
+      <label class="diamonds">
+        <input type="checkbox" class="mr-visually-hidden" [checked]="diamonds()" (change)="diamonds.set(!diamonds())" />
+        <span class="diamonds__box" aria-hidden="true"><mat-icon>check</mat-icon></span>
+        <span class="diamonds__text">
+          <b>Tenho os diamantes</b>
+          <span>{{ note }}</span>
+        </span>
+      </label>
+    }
+
+    <div class="live" role="status" aria-live="polite">
+      @if (step() === 'result') {
+        @if (waiting()) {
+          <p class="plain"><mat-icon aria-hidden="true">hourglass_top</mat-icon><b>Esperando o mestre</b></p>
+          <p class="small">Nada foi gasto até o mestre responder.</p>
+        } @else if (denied()) {
+          <div class="mr-notice mr-notice--warning">
+            <mat-icon aria-hidden="true">block</mat-icon>
+            <p>{{ deniedText }}</p>
+          </div>
+        } @else if (lines(); as l) {
+          <div class="mr-notice mr-notice--success">
+            <mat-icon aria-hidden="true">check_circle</mat-icon>
+            <p><strong>{{ l.lead }}</strong> {{ l.rest }}</p>
+          </div>
+          <p class="plain">{{ l.spent }}</p>
+          <p class="plain">{{ l.diamonds }}</p>
+        }
+      }
+    </div>
+  </div>
+
+  <div foot>
+    @if (step() === 'target') {
+      <div class="actions">
+        <button mat-stroked-button type="button" class="back" (click)="close()">Voltar</button>
+        <button mat-flat-button type="button" class="go" [class.go--off]="!hasTarget()" [disabled]="!hasTarget()" disabledInteractive (click)="next()">Próximo</button>
+      </div>
+    } @else if (step() === 'confirm') {
+      @if (!diamonds()) {
+        <p class="hint" id="revivify-hint"><mat-icon aria-hidden="true">block</mat-icon>{{ hint }}</p>
+      }
+      <div class="actions">
+        <button mat-stroked-button type="button" class="back" [disabled]="busy()" (click)="previous()">Voltar</button>
+        <button
+          mat-flat-button
+          type="button"
+          class="go"
+          [class.go--off]="!ready()"
+          [disabled]="!ready() || busy()"
+          disabledInteractive
+          [attr.aria-describedby]="diamonds() ? null : 'revivify-hint'"
+          (click)="cast()"
+        >
+          Conjurar Revivificar
+        </button>
+      </div>
+    } @else if (inCombat && lines()) {
+      <button mat-flat-button type="button" class="go go--one" [disabled]="busy()" (click)="endTurn()">Encerrar turno</button>
+    } @else {
+      <button mat-stroked-button type="button" class="back back--one" (click)="close()">Voltar à sessão</button>
+    }
+  </div>
+</app-sheet-frame>

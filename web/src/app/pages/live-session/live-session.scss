@@ -154,6 +154,16 @@
   min-width: 0;
 }
 
+.revived {
+  margin-top: var(--mr-space-4);
+}
+
+// "Revivificar" under the vitals: a 44px outlined button.
+.revivify {
+  margin-top: var(--mr-space-4);
+  min-height: 44px;
+}
+
 // The combat takes the board's place (MR-013); the launch strip sits above
 // the board, with the same step under the header.
 .combat,

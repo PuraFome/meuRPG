@@ -2,7 +2,11 @@ import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 
 import { CharacterService } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { type RevivifyRequest, RevivifyService } from '../../../gen/meurpg/play/v1/revivify_pb';
+import {
+  type PreviewRevivifyResponse,
+  type RevivifyRequest,
+  RevivifyService,
+} from '../../../gen/meurpg/play/v1/revivify_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
 /**
@@ -20,6 +24,35 @@ export class RevivifyClient {
   async list(campaignId: string): Promise<readonly RevivifyRequest[]> {
     const res = await this.revivify.listRevivifyRequests({ campaignId });
     return res.requests;
+  }
+
+  /** Who the caster can reach now: in a combat by the combatant, outside one by the character. Read-only. */
+  async preview(
+    campaignId: string,
+    caster:
+      | { readonly encounterId: string; readonly casterId: string }
+      | { readonly casterCharacterId: string },
+  ): Promise<PreviewRevivifyResponse> {
+    return this.revivify.previewRevivify({ campaignId, ...caster });
+  }
+
+  /** The cast outside a combat: a request that waits for the master, with nothing spent. The key is the caller's, kept across its retries. */
+  async request(
+    campaignId: string,
+    casterCharacterId: string,
+    targetCharacterId: string,
+    slot: { readonly level: number; readonly pact: boolean },
+    idempotencyKey: string,
+  ): Promise<RevivifyRequest | undefined> {
+    const res = await this.revivify.requestRevivify({
+      campaignId,
+      casterCharacterId,
+      targetCharacterId,
+      slot,
+      materialConfirmed: true,
+      idempotencyKey,
+    });
+    return res.request;
   }
 
   /** The master's answer to a cast outside a combat; the key is made once per answer and sent again on a retry. */

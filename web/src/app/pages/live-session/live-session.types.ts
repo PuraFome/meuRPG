@@ -208,6 +208,10 @@ export interface PlayerSheetVm {
   readonly skills?: { readonly perception: number | null; readonly investigation: number | null };
   /** "Mago 3, Gnomo das Rochas". */
   readonly summary: string;
+  /** The classes alone, "Clérigo 5" (or "Clérigo 3 / Mago 2"); empty without them. */
+  readonly classes?: string;
+  /** Revivificar is on the sheet and ready today (prepared, or always prepared by the domain). */
+  readonly revivify?: boolean;
   /** The character's senses, as the sheet says them in meters: "Visão no escuro: 18 m" (MR-036). */
   readonly senses: readonly string[];
 }

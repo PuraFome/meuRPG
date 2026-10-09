@@ -19,6 +19,7 @@ import {
 } from '../../../gen/meurpg/play/v1/play_pb';
 import { ContentService, Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
+import { REVIVIFY_KEY } from '../../core/revivify/revivify-flow';
 import { metersText } from '../../core/units';
 import {
   CampaignInfoVm,
@@ -333,6 +334,8 @@ export class LiveSessionSourceLive implements LiveSessionSource {
     return {
       armorClass: derived ? derived.armorClass : null,
       summary: [classes, race].filter(Boolean).join(', '),
+      classes,
+      revivify: derived?.spells.some((s) => s.spell?.key === REVIVIFY_KEY && s.prepared) ?? false,
       skills: derived
         ? { perception: skill('skill:perception'), investigation: skill('skill:investigation') }
         : undefined,

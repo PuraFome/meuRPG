@@ -199,3 +199,52 @@ describe('LiveSessionSourceLive.watch', () => {
     expect(await events([create(WatchGameSessionResponseSchema, {})])).toEqual(['heartbeat']);
   });
 });
+
+describe('LiveSessionSourceLive.getPlayerSheet', () => {
+  function sheetWith(spells: { key: string; prepared: boolean }[]) {
+    const characters = {
+      getCharacter: async () => ({
+        character: {
+          derived: {
+            classes: [{ namePt: 'Clérigo', level: 5 }],
+            subraceNamePt: '',
+            raceNamePt: 'Humano',
+            skills: [],
+            senses: [],
+            spells: spells.map((s) => ({ spell: { key: s.key }, prepared: s.prepared })),
+          },
+        },
+      }),
+    };
+    TestBed.configureTestingModule({
+      providers: [LiveSessionSourceLive, { provide: CONNECT_TRANSPORT, useValue: {} }],
+    });
+    const source = TestBed.inject(LiveSessionSourceLive);
+    (source as unknown as { characters: unknown }).characters = characters;
+    return source;
+  }
+
+  it('says the character has Revivificar only when it is ready today, and gives the class line', async () => {
+    const ready = await sheetWith([{ key: 'spell:revivify', prepared: true }]).getPlayerSheet(
+      'c',
+      'x',
+    );
+    expect(ready.revivify).toBe(true);
+    expect(ready.classes).toBe('Clérigo 5');
+    expect(ready.summary).toBe('Clérigo 5, Humano');
+  });
+
+  it('does not offer Revivificar for a spell on the sheet that is not prepared, nor for other spells', async () => {
+    const notReady = await sheetWith([{ key: 'spell:revivify', prepared: false }]).getPlayerSheet(
+      'c',
+      'x',
+    );
+    expect(notReady.revivify).toBe(false);
+    TestBed.resetTestingModule();
+    const other = await sheetWith([{ key: 'spell:bless', prepared: true }]).getPlayerSheet(
+      'c',
+      'x',
+    );
+    expect(other.revivify).toBe(false);
+  });
+});

@@ -1,7 +1,8 @@
 import { ApplicationRef, Injectable, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { LightPresets } from '../../core/maps/light-presets';
@@ -1479,6 +1480,76 @@ describe('LiveSession', () => {
       await new Promise((r) => setTimeout(r));
 
       expect(reads).toHaveBeenCalled();
+    });
+
+    it('shows a player "Você voltou à vida" without moving the focus, and the master nothing', async () => {
+      const el = await render();
+      const notice = el.querySelector('app-revived-notice [role="status"]');
+      expect(notice?.getAttribute('aria-live')).toBe('polite');
+      expect(notice?.textContent?.trim()).toBe('');
+      const focused = document.activeElement;
+
+      source.push({ kind: 'characterRevived', characterId: 'pensantus' });
+      await new Promise((r) => setTimeout(r));
+      await new Promise((r) => setTimeout(r));
+      TestBed.inject(ApplicationRef).tick();
+
+      const said = (el.querySelector('app-revived-notice [role="status"]')?.textContent ?? '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      expect(said).toContain('Você voltou à vida. Está com 1 PV.');
+      expect(said).not.toContain('iniciativa');
+      expect(document.activeElement).toBe(focused);
+    });
+
+    it('shows the master no notice when a character lives again', async () => {
+      asMaster();
+      const el = await render();
+      source.push({ kind: 'characterRevived', characterId: 'brisa' });
+      await new Promise((r) => setTimeout(r));
+      await new Promise((r) => setTimeout(r));
+      expect(el.querySelector('app-revived-notice')).toBeNull();
+    });
+  });
+
+  describe('the Revivificar button outside a combat', () => {
+    it('is on the page of the player whose sheet has the spell ready, and opens the sheet for that character', async () => {
+      source.sheet = { ...source.sheet, classes: 'Clérigo 5', revivify: true };
+      const dialog = TestBed.inject(MatDialog);
+      const open = vi
+        .spyOn(dialog, 'open')
+        .mockReturnValue({ afterClosed: () => of(undefined) } as never);
+      const el = await render();
+
+      button(el, 'Revivificar').click();
+
+      expect(open).toHaveBeenCalledTimes(1);
+      const config = open.mock.calls[0][1] as { data: Record<string, unknown> };
+      expect(config.data).toMatchObject({
+        campaignId: 'mirathel',
+        casterName: 'Pensantus',
+        classes: 'Clérigo 5',
+        combat: null,
+        casterCharacterId: 'pensantus',
+      });
+    });
+
+    it('is not there for a character without the spell', async () => {
+      const el = await render();
+      expect(button(el, 'Revivificar')).toBeUndefined();
+    });
+
+    it('is not there for the master, even when the sheet has the spell', async () => {
+      source.sheet = { ...source.sheet, revivify: true };
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: true,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
+      const el = await render();
+      expect(button(el, 'Revivificar')).toBeUndefined();
     });
   });
 });

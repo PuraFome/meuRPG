@@ -29,6 +29,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { CombatClient } from '../../core/combat/combat-client';
 import { CombatState } from '../../core/combat/combat-state';
 import { mineTabs } from '../../core/combat/mine';
+import { casterOfRevival, returnPlace } from '../../core/revivify/revivify-flow';
 import { isTheatre } from '../../core/combat/theatre';
 import type { ViewAsPerson } from '../../shared/fog-map/view-as-list';
 import { FogMasterPanel } from './fog-tools/fog-master-panel';
@@ -79,6 +80,8 @@ import { LiveStream } from './live-stream';
 import { PartyPanel } from './party-panel/party-panel';
 import { PlayerVitals } from './player-vitals/player-vitals';
 import { RevivifyAsk } from './revivify-ask/revivify-ask';
+import { RevivedNotice } from './revived-notice/revived-notice';
+import { openRevivifySheet } from './combat/revivify-sheet/revivify-sheet';
 import { MasterLive } from './puzzles/master-live/master-live';
 import { MasterPuzzles } from './puzzles/master-puzzles/master-puzzles';
 import { PuzzleNotice } from './puzzles/puzzle-notice/puzzle-notice';
@@ -146,6 +149,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     PuzzlePlayPage,
     PlayerVitals,
     RevivifyAsk,
+    RevivedNotice,
     SessionBlocked,
     SessionEnded,
     SessionHeader,
@@ -242,6 +246,14 @@ export class LiveSession {
   protected readonly creaturesTick = signal(0);
   /** Bumped when the casts of Revivify outside a combat may have changed: the master's question reads them again. */
   protected readonly revivifyTick = signal(0);
+  /** This player's character lives again (`character_revived`): its id while "Você voltou à vida" is on the page. */
+  protected readonly revivedId = signal('');
+  /** Who cast Revivificar on it, when the table's log says; empty otherwise. */
+  protected readonly revivedCaster = signal('');
+  /** Where it returns in the order and when it next acts, from the combat on screen. */
+  protected readonly revivedPlace = computed(() =>
+    returnPlace(this.combat.encounter(), this.revivedId()),
+  );
   protected readonly familiarNameNow = signal<string | null>(null);
   protected readonly seeingFamiliar = computed(() => !!this.vitals().at(0)?.familiarSight);
   private readonly familiarEyes = inject(FamiliarEyesClient);
@@ -591,7 +603,10 @@ export class LiveSession {
         onCreaturesChanged: () => this.creaturesTick.update((n) => n + 1),
         onRevivifyChanged: () => this.revivifyTick.update((n) => n + 1),
         // A dead character lives again: its vitals are back (the character's page reads itself, on its own stream).
-        onCharacterRevived: () => void this.readVitals(campaignId, generation),
+        onCharacterRevived: (characterId) => {
+          void this.readVitals(campaignId, generation);
+          void this.characterRevived(campaignId, generation, characterId);
+        },
         onPuzzleChanged: (id) => void this.puzzles.changed(id),
         onTokenMoved: (move) => {
           this.scheduleVision();
@@ -731,6 +746,47 @@ export class LiveSession {
       }
       this.snapshotFailed(err);
     }
+  }
+
+  /** The player's own character lives again: the notice, with who cast it when the combat's log says (the master's "Reviver" has no caster). */
+  private async characterRevived(
+    campaignId: string,
+    generation: number,
+    characterId: string,
+  ): Promise<void> {
+    if (this.isMaster()) {
+      return;
+    }
+    this.revivedCaster.set('');
+    this.revivedId.set(characterId);
+    const e = this.combat.encounter();
+    if (!e) {
+      return;
+    }
+    try {
+      const log = await this.combatApi.log(campaignId, e.id);
+      if (generation === this.generation) {
+        this.revivedCaster.set(casterOfRevival(log.rounds, characterId));
+      }
+    } catch {
+      // The notice stands without the caster's name.
+    }
+  }
+
+  /** "Revivificar" outside a combat: the sheet, for the character that has the spell ready. */
+  protected openRevivify(): void {
+    const own = this.ownVitals();
+    if (!own) {
+      return;
+    }
+    openRevivifySheet(this.dialog, this.bottomSheet, {
+      campaignId: this.campaignId(),
+      casterName: own.name,
+      classes: this.playerSheet()?.classes ?? '',
+      combat: null,
+      casterCharacterId: own.characterId,
+      reload: this.revivifyTick,
+    }).subscribe();
   }
 
   /** The vitals again, from the snapshot, without reading the rest of the page. */
