@@ -71,6 +71,19 @@ func testSpell(name string, classes ...string) *rulesv1.TableSpell {
 	}
 }
 
+// testFeat is a feat with a prerequisite (Strength 13 and level 4 or Dexterity 13), a text,
+// an effect and a half feat's ability increase.
+func testFeat(name string) *rulesv1.TableFeat {
+	return &rulesv1.TableFeat{
+		NamePt: name, DescPt: []string{"Um talento de teste."},
+		Prerequisite: &rulesv1.FeatPrerequisite{Minimums: &rulesv1.AbilityScores{Strength: 13}, Level: 4},
+		Effects: []*rulesv1.TableEffect{
+			{Type: "modifier", Target: "initiative", Mode: "add", Value: "2"},
+			{Type: "ability_increase", Count: 1, From: []string{"str", "dex"}, Value: "1"},
+		},
+	}
+}
+
 func testClass(name string) *rulesv1.TableClass {
 	c := &rulesv1.TableClass{
 		NamePt: name, HitDie: 8,
@@ -121,6 +134,8 @@ func createReq(campaign string, body proto.Message) *rulesv1.CreateTableEntryReq
 		r.Body = &rulesv1.CreateTableEntryRequest_TableBackground{TableBackground: b}
 	case *rulesv1.TableSpell:
 		r.Body = &rulesv1.CreateTableEntryRequest_TableSpell{TableSpell: b}
+	case *rulesv1.TableFeat:
+		r.Body = &rulesv1.CreateTableEntryRequest_TableFeat{TableFeat: b}
 	}
 	return r
 }
@@ -140,6 +155,8 @@ func updateReq(campaign, key string, revision int32, body proto.Message) *rulesv
 		r.Body = &rulesv1.UpdateTableEntryRequest_TableBackground{TableBackground: b}
 	case *rulesv1.TableSpell:
 		r.Body = &rulesv1.UpdateTableEntryRequest_TableSpell{TableSpell: b}
+	case *rulesv1.TableFeat:
+		r.Body = &rulesv1.UpdateTableEntryRequest_TableFeat{TableFeat: b}
 	}
 	return r
 }
@@ -159,6 +176,8 @@ func bodyMessage(e *rulesv1.TableEntry) proto.Message {
 		return b.TableBackground
 	case *rulesv1.TableEntry_TableSpell:
 		return b.TableSpell
+	case *rulesv1.TableEntry_TableFeat:
+		return b.TableFeat
 	}
 	return nil
 }
@@ -253,7 +272,7 @@ func charBlocked(t *testing.T, err error) *charactersv1.CharacterBlocked {
 }
 
 // TestTableContentEveryKindIsCreatedUpdatedArchivedAndBroughtBack walks the four
-// writes for each of the six kinds, and checks that the key and the feature keys
+// writes for each of the seven kinds, and checks that the key and the feature keys
 // stay through a rename.
 func TestTableContentEveryKindIsCreatedUpdatedArchivedAndBroughtBack(t *testing.T) {
 	t.Parallel()
@@ -276,6 +295,7 @@ func TestTableContentEveryKindIsCreatedUpdatedArchivedAndBroughtBack(t *testing.
 		{"subrace", testSubrace("Da Colina", race.GetKey()), testSubrace("Da Colina Renomeada", race.GetKey()), "subrace:da-colina@mesa"},
 		{"background", testBackground("Guarda de farol"), testBackground("Guarda Renomeado"), "background:guarda-de-farol@mesa"},
 		{"spell", testSpell("Raio de teste", "class:wizard"), testSpell("Raio Renomeado", "class:wizard"), "spell:raio-de-teste@mesa"},
+		{"feat", testFeat("Punho de ferro"), testFeat("Punho Renomeado"), "feat:punho-de-ferro@mesa"},
 	}
 	if class.GetKey() != "class:guardiao-do-vale@mesa" {
 		t.Fatalf("the class key = %q, want one made from the name", class.GetKey())
@@ -1522,7 +1542,7 @@ func TestTableContentAnIssueIsBlamedOnItsOwnEntry(t *testing.T) {
 // TestIssuesAreToldApartByTheirWholeIdentity: the code, the field and the sentence.
 func TestIssuesAreToldApartByTheirWholeIdentity(t *testing.T) {
 	t.Parallel()
-	a := rules.Issue{Code: "skill_count", Field: "full.skill_proficiency_keys", Message: "Faltam 1 perícias para escolher."}
+	a := rules.Issue{Code: "skill_count", Field: "full.skill_proficiency_keys", Message: "Falta 1 perícia para escolher."}
 	b := rules.Issue{Code: "skill_count", Field: "full.skill_proficiency_keys", Message: "Há 3 perícias escolhidas; o personagem escolhe 2."}
 	f1 := rules.Issue{Code: "formula", Message: "Um efeito de A foi ignorado."}
 	f2 := rules.Issue{Code: "formula", Message: "Um efeito de B foi ignorado."}

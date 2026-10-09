@@ -1,0 +1,278 @@
+syntax = "proto3";
+
+// Package meurpg.campaignpackage.v1 is the campaign package (MR-050): one
+// `<campanha>.meurpg.zip` file that carries everything the master prepared,
+// so the same campaign can be created on another server.
+//
+// This file is the FORMAT: the messages written inside the zip, as protobuf
+// JSON with the field names of the .proto (so the package follows the API
+// messages it embeds). The calls that make and read packages are in
+// campaignpackage.proto.
+//
+// # The zip
+//
+//   - `manifest.json`: a PackageManifest, written last. It lists every other
+//     entry with its kind, size and SHA-256. A field the reader does not know
+//     is refused, in the manifest and in every entry: a package never carries
+//     something the server ignores.
+//   - `campaign.json`: one PackageCampaign.
+//   - `images.json`: one PackageImages, and `images/<n>`: the stored image
+//     files it names.
+//   - `maps/<n>.json`: one PackageMap each, with its layers, points, scene
+//     actions, clues and battle encounters.
+//   - `npcs/<n>.json`: one PackageNpc each.
+//   - `characters/<n>.json`: one PackageCharacter each.
+//   - `encounters.json`: one PackageEncounters, the encounters saved on the
+//     maps' battle points.
+//   - `puzzles/<n>.json`: one PackagePuzzle each.
+//   - `content/<n>.json`: one PackageContent each (an entry of the table
+//     content), and `content/options.json`: one PackageContentOptions.
+//
+// The names inside the zip are only keys: the reader never extracts an entry
+// to a path, so a name with `..` or a slash cannot reach a file; it is
+// refused anyway.
+//
+// # Ids
+//
+// Every `id` in these messages is a handle inside the package. The importer
+// gives each thing a new id and rewrites every reference (a map's image, a
+// point's target map, a clue in a puzzle, a link in the campaign document),
+// so an id in a package is never an id on a server.
+//
+// # What a package never carries
+//
+// The players' private notes, the session history and logs, accounts (ids,
+// e-mails, names), owners and members, invites and claim links, and each
+// player's fog memory. Nothing in these messages can hold any of them.
+package meurpg.campaignpackage.v1;
+
+import "google/protobuf/timestamp.proto";
+import "meurpg/campaigns/v1/campaigns.proto";
+import "meurpg/characters/v1/characters.proto";
+import "meurpg/maps/v1/maps.proto";
+import "meurpg/play/v1/encounters.proto";
+import "meurpg/play/v1/puzzles.proto";
+import "meurpg/rules/v1/table_content.proto";
+
+// PackageEntryKind says what an entry of the zip is.
+enum PackageEntryKind {
+  PACKAGE_ENTRY_KIND_UNSPECIFIED = 0;
+  PACKAGE_ENTRY_KIND_CAMPAIGN = 1;
+  // images.json, the list of the gallery images.
+  PACKAGE_ENTRY_KIND_IMAGES = 2;
+  // The bytes of one image.
+  PACKAGE_ENTRY_KIND_IMAGE_FILE = 3;
+  PACKAGE_ENTRY_KIND_MAP = 4;
+  PACKAGE_ENTRY_KIND_NPC = 5;
+  PACKAGE_ENTRY_KIND_CHARACTER = 6;
+  PACKAGE_ENTRY_KIND_PUZZLE = 7;
+  PACKAGE_ENTRY_KIND_CONTENT = 8;
+  // content/options.json, the options switched off for the players.
+  PACKAGE_ENTRY_KIND_CONTENT_OPTIONS = 9;
+  // encounters.json, the encounters saved on battle points.
+  PACKAGE_ENTRY_KIND_ENCOUNTERS = 10;
+}
+
+// The format version this server writes and the newest it reads is 1.
+//
+// PackageManifest is `manifest.json`: what the package is and, for each entry,
+// the SHA-256 that proves it arrived whole.
+message PackageManifest {
+  // The format of the package: 1 today. A package of a newer format is
+  // refused with PACKAGE_PROBLEM_REASON_NEWER_VERSION.
+  int32 format_version = 1;
+  // The version of the rules content of the server that wrote the package
+  // (its revision and hash). The importer reads it to say what it cannot
+  // load; it never refuses a package for it alone.
+  string content_version = 2;
+  google.protobuf.Timestamp exported_at = 3;
+  // The campaign's name when it was exported.
+  string campaign_name = 4;
+  // Every entry of the zip but the manifest itself, each exactly once.
+  repeated PackageEntry entries = 5;
+}
+
+// PackageEntry is one entry of the zip as the manifest describes it.
+message PackageEntry {
+  // The name in the zip: lowercase letters, digits, `.`, `-`, `_` and `/`,
+  // never starting with `/` or containing `..`.
+  string path = 1;
+  PackageEntryKind kind = 2;
+  // The SHA-256 of the entry's uncompressed bytes, as 64 lowercase hex digits.
+  string sha256 = 3;
+  // The entry's uncompressed length in bytes.
+  int64 size = 4;
+}
+
+// PackageCampaign is `campaign.json`: the campaign itself, its table rules and
+// its document.
+message PackageCampaign {
+  string name = 1;
+  meurpg.campaigns.v1.XpMode xp_mode = 2;
+  // The table's rules, with the way the dice are rolled (dice_mode).
+  meurpg.campaigns.v1.TableRules table_rules = 3;
+  // The campaign document (Markdown), with its links to maps, characters and
+  // images as ids of this package.
+  string document = 4;
+}
+
+// PackageImages is `images.json`: the gallery.
+message PackageImages {
+  repeated PackageImage images = 1;
+}
+
+// PackageImage is one gallery image. The file is the entry `file` (an
+// IMAGE_FILE of the manifest); the thumbnail is made again on import.
+message PackageImage {
+  string id = 1;
+  string name = 2;
+  // The entry of the file, such as `images/3`.
+  string file = 3;
+  // Made by the image generator (MR-039), and how.
+  bool generated = 4;
+  string generated_kind = 5;
+  // The image this one was edited from, and the image this is the players'
+  // copy of; ids of this package, or empty.
+  string parent_image_id = 6;
+  string copy_of_image_id = 7;
+}
+
+// PackageMap is `maps/<n>.json`: a map with everything on it.
+message PackageMap {
+  string id = 1;
+  string name = 2;
+  // A PackageImage id.
+  string image_id = 3;
+  // The grid as the server keeps it: the rules' columns (the drawn columns
+  // times the factor), and the factor; 0 columns is a map without a grid.
+  int32 grid_columns = 4;
+  int32 grid_factor = 5;
+  bool revealed = 6;
+  bool fog_enabled = 7;
+  bool fog_on_first_grid = 8;
+  bool group_vision = 9;
+  // "dark", "dim" or "bright".
+  string base_light = 10;
+  PackageLayers layers = 11;
+  repeated PackagePoint points = 12;
+}
+
+// PackageLayers are a map's painted layers, in the server's own encoding.
+// A layer with nothing painted is empty.
+message PackageLayers {
+  bytes difficult_terrain = 1;
+  bytes walls = 2;
+  bytes cover = 3;
+  bytes light = 4;
+  bytes doors = 5;
+}
+
+// PackagePoint is a point of interest of a map: a battle point, a submap, a
+// scene, a trap, a treasure or a light.
+message PackagePoint {
+  string id = 1;
+  meurpg.maps.v1.MapPointKind kind = 2;
+  string name = 3;
+  string description = 4;
+  int32 x_bp = 5;
+  int32 y_bp = 6;
+  // A PackageMap id, for a submap or a battle point that names its map.
+  string target_map_id = 7;
+  bool revealed = 8;
+  // A scene's hooks and whether players see its DCs.
+  string hooks = 9;
+  bool show_dc = 10;
+  // A trap's spec, with the state it was prepared in (always armed on import).
+  meurpg.maps.v1.TrapSpec trap = 11;
+  optional int32 treasure_value_po = 12;
+  meurpg.maps.v1.LightSpec light = 13;
+  // A generated dungeon's stairs: "up" or "down"; empty for other points.
+  string stairs = 14;
+  repeated PackageAction actions = 15;
+  repeated PackageClue clues = 16;
+}
+
+// PackageAction is a scene's action ("ação de teste"), in its order.
+message PackageAction {
+  string key = 1;
+  string name = 2;
+  // 0: no DC.
+  int32 dc = 3;
+  int32 max_attempts = 4;
+}
+
+// PackageClue is a scene's clue, in its order.
+message PackageClue {
+  string id = 1;
+  string text = 2;
+}
+
+// PackageNpc is `npcs/<n>.json`: an NPC or creature of the campaign, with the
+// master's notes about it. Its portrait is a PackageImage id inside the sheet
+// (`portrait_image_id`).
+message PackageNpc {
+  string id = 1;
+  string name = 2;
+  meurpg.characters.v1.CharacterSheet sheet = 3;
+  meurpg.characters.v1.CharacterStory story = 4;
+  string master_notes = 5;
+  // ENEMY, BOSS, MINION or STORY.
+  meurpg.characters.v1.CharacterKind kind = 6;
+}
+
+// PackageCharacter is `characters/<n>.json`: a player's character, which is
+// created reserved (no owner) on the new server. Its portrait is a
+// PackageImage id inside the sheet.
+message PackageCharacter {
+  string id = 1;
+  string name = 2;
+  meurpg.characters.v1.CharacterSheet sheet = 3;
+  meurpg.characters.v1.CharacterStory story = 4;
+  string master_notes = 5;
+}
+
+// PackagePuzzle is `puzzles/<n>.json`: a puzzle as the master made it, with
+// the same fields as CreatePuzzleRequest. The ids inside (a door's map, a
+// point, a clue, the character of a part) are ids of this package.
+message PackagePuzzle {
+  string id = 1;
+  string name = 2;
+  meurpg.play.v1.PuzzleConfig config = 3;
+  meurpg.play.v1.PuzzleSolution solution = 4;
+  meurpg.play.v1.PuzzleState start = 5;
+  // The seed the start was drawn with; keeps the start the same.
+  int64 seed = 6;
+  string clue = 7;
+  repeated string hints = 8;
+  meurpg.play.v1.PuzzleOnSolve on_solve = 9;
+  meurpg.play.v1.PuzzleHintCheck hint_check = 10;
+  repeated meurpg.play.v1.PuzzlePart parts = 11;
+  meurpg.play.v1.PuzzleOnWrong on_wrong = 12;
+  bool archived = 13;
+}
+
+// PackageContent is `content/<n>.json`: one entry of the table content. The
+// key (`class:guardiao@mesa`) is kept.
+message PackageContent {
+  meurpg.rules.v1.TableEntry entry = 1;
+}
+
+// PackageContentOptions is `content/options.json`: the options of the rules the
+// master switched off for the players ("Opções para os jogadores"), as content
+// keys such as `class:wizard` or `race:anao@mesa`.
+message PackageContentOptions {
+  repeated string disabled = 1;
+}
+
+// PackageEncounters is `encounters.json`: the encounter saved on each battle
+// point that has one.
+message PackageEncounters {
+  repeated PackageEncounter encounters = 1;
+}
+
+// PackageEncounter is the encounter of one battle point.
+message PackageEncounter {
+  // The PackagePoint id of the battle point.
+  string point_id = 1;
+  meurpg.play.v1.BattleEncounter encounter = 2;
+}

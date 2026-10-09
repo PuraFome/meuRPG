@@ -1,12 +1,15 @@
 import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
+  DestroyRef,
   ElementRef,
   computed,
   effect,
+  inject,
   input,
   output,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,6 +25,15 @@ import {
   type Encounter,
   EncounterStatus,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  SHIELD_ENDED_MS,
+  aidBar,
+  aidRowLabel,
+  aidTagForMaster,
+  endAidText,
+  shieldEndedForMaster,
+  shieldLabelForMaster,
+} from '../../../../core/combat/combat-effects';
 import { tieNumbers } from '../../../../core/format/text';
 import { joinDots } from '../../../../core/format/text';
 import { conditionTags } from '../../../../core/combat/conditions';
@@ -45,6 +57,7 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
 import type { CombatantInfo } from '../combat-info';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
 import { BeastPool, FormTag } from '../combatant-tags/form-tag';
+import { EndAidQuestion } from './end-aid-question';
 import { ConcPill, LoseQuestion } from './lose-question';
 import { OrderLegend } from './order-legend';
 import { RowCover } from './row-cover';
@@ -73,6 +86,7 @@ function concentrationOf(c: Combatant): string {
   imports: [
     BeastPool,
     ConcPill,
+    EndAidQuestion,
     FormTag,
     LoseQuestion,
     CombatantTags,
@@ -104,6 +118,8 @@ export class OrderList {
   readonly remove = output<string>();
   /** "Perdeu a concentração": ends the spell the combatant holds (the creatures it kept go with it). */
   readonly endConcentration = output<string>();
+  /** "Encerrar Ajuda em Sálvia": the combatant whose Ajuda the master ended. */
+  readonly endAid = output<string>();
   readonly add = output<void>();
   /** "Condições…": the combatant's ID. */
   readonly conditions = output<string>();
@@ -134,6 +150,13 @@ export class OrderList {
   protected readonly removing = signal<string | null>(null);
   /** The combatant whose "Perdeu a concentração" question is open. */
   protected readonly losing = signal<string | null>(null);
+  /** The combatant whose "Encerrar Ajuda" question is open. */
+  protected readonly endingAid = signal<string | null>(null);
+  /** "O Escudo Arcano de Pensantus acabou", said in the list for a few seconds after the stream took the bonus away. */
+  protected readonly shieldEnded = signal('');
+  private endedTimer: ReturnType<typeof setTimeout> | undefined;
+  private shieldSeen = new Map<string, number>();
+  private encounterSeen = '';
   /** The combatant whose cover mark is open. */
   protected readonly marking = signal<string | null>(null);
   protected readonly Party = CombatantSide.PARTY;
@@ -147,6 +170,30 @@ export class OrderList {
   protected readonly live = computed(() => this.encounter().status !== EncounterStatus.ENDED);
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => clearTimeout(this.endedTimer));
+    // A shield that goes from above 0 to 0 on a combatant that is still there ended (it ends by itself when the caster's turn
+    // begins); a combatant that left the combat, or another combat, is not that.
+    effect(() => {
+      const e = this.encounter();
+      untracked(() => {
+        const ended: string[] = [];
+        const seen = new Map<string, number>();
+        for (const c of e.combatants) {
+          const before = this.shieldSeen.get(c.id) ?? 0;
+          if (e.id === this.encounterSeen && before > 0 && c.armorClassBonus === 0) {
+            ended.push(shieldEndedForMaster(c.label));
+          }
+          seen.set(c.id, c.armorClassBonus);
+        }
+        this.shieldSeen = seen;
+        this.encounterSeen = e.id;
+        if (ended.length > 0) {
+          this.shieldEnded.set(ended.join('. '));
+          clearTimeout(this.endedTimer);
+          this.endedTimer = setTimeout(() => this.shieldEnded.set(''), SHIELD_ENDED_MS);
+        }
+      });
+    });
     // Opening the confirmation puts the focus on the safe button.
     effect(() => this.back()?.nativeElement.focus({ focusVisible: true } as FocusOptions));
   }
@@ -219,9 +266,47 @@ export class OrderList {
     return `${groupName(item.members)}${owner ? ` ${owner}` : ''}`;
   }
 
+  /** The Escudo Arcano's bonus on the combatant: the row says "CA 13 + 5" and the label under the name. */
+  protected shield(c: Combatant): number {
+    return c.armorClass === undefined ? 0 : Math.max(0, c.armorClassBonus);
+  }
+
+  protected readonly shieldLabel = shieldLabelForMaster;
+
+  /** Ajuda's bonus on the combatant's maximum (0 without it). */
+  protected aid(c: Combatant): number {
+    return Math.max(0, c.hitPointsMax === undefined ? 0 : c.hitPointsMaxBonus);
+  }
+
+  protected readonly aidTag = aidTagForMaster;
+  protected readonly aidRowLabel = aidRowLabel;
+
+  /** The bar's solid and striped pieces for a combatant under Ajuda. */
+  protected aidBar(c: Combatant): { solid: number; striped: number } {
+    return aidBar(c.hitPointsCurrent ?? 0, c.hitPointsMax ?? 0, this.aid(c));
+  }
+
+  /** "Encerrar a Ajuda de Sálvia?". */
+  protected endAidQuestion(c: Combatant): string {
+    return `Encerrar a Ajuda ${article(c.label) === 'a' ? 'da' : 'do'} ${c.label}?`;
+  }
+
+  protected endAidText(c: Combatant): string {
+    return endAidText(c.hitPointsCurrent ?? 0, c.hitPointsMax ?? 0, this.aid(c));
+  }
+
+  protected confirmEndAid(id: string): void {
+    if (this.busy()) {
+      return;
+    }
+    this.endingAid.set(null);
+    this.endAid.emit(id);
+  }
+
   protected sub(c: Combatant): string {
     const info = this.info().get(c.characterId);
-    const ac = c.armorClass === undefined ? '' : `CA ${c.armorClass}`;
+    // Under the shield the row says the sum in bold after the line ("CA 13 + 5"), so the plain "CA 13" waits out.
+    const ac = c.armorClass === undefined || this.shield(c) > 0 ? '' : `CA ${c.armorClass}`;
     if (isCreature(c)) {
       // "CA 14 · da Sálvia": its armor class and whose it is (the round dashed token and the legend say it is a creature); the
       // book's name only when the table gave it another ("Lobo atroz 1" needs none, "Nanquim" is a "Corvo").

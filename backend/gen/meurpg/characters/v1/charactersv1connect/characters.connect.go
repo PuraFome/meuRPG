@@ -92,6 +92,24 @@ const (
 	// CharacterServiceRejectCharacterProcedure is the fully-qualified name of the CharacterService's
 	// RejectCharacter RPC.
 	CharacterServiceRejectCharacterProcedure = "/meurpg.characters.v1.CharacterService/RejectCharacter"
+	// CharacterServiceCreateClaimLinkProcedure is the fully-qualified name of the CharacterService's
+	// CreateClaimLink RPC.
+	CharacterServiceCreateClaimLinkProcedure = "/meurpg.characters.v1.CharacterService/CreateClaimLink"
+	// CharacterServiceRevokeClaimLinkProcedure is the fully-qualified name of the CharacterService's
+	// RevokeClaimLink RPC.
+	CharacterServiceRevokeClaimLinkProcedure = "/meurpg.characters.v1.CharacterService/RevokeClaimLink"
+	// CharacterServiceReturnCharacterToReserveProcedure is the fully-qualified name of the
+	// CharacterService's ReturnCharacterToReserve RPC.
+	CharacterServiceReturnCharacterToReserveProcedure = "/meurpg.characters.v1.CharacterService/ReturnCharacterToReserve"
+	// CharacterServiceDeleteReservedCharacterProcedure is the fully-qualified name of the
+	// CharacterService's DeleteReservedCharacter RPC.
+	CharacterServiceDeleteReservedCharacterProcedure = "/meurpg.characters.v1.CharacterService/DeleteReservedCharacter"
+	// CharacterServicePreviewClaimProcedure is the fully-qualified name of the CharacterService's
+	// PreviewClaim RPC.
+	CharacterServicePreviewClaimProcedure = "/meurpg.characters.v1.CharacterService/PreviewClaim"
+	// CharacterServiceClaimCharacterProcedure is the fully-qualified name of the CharacterService's
+	// ClaimCharacter RPC.
+	CharacterServiceClaimCharacterProcedure = "/meurpg.characters.v1.CharacterService/ClaimCharacter"
 	// CharacterServiceGetLevelUpOptionsProcedure is the fully-qualified name of the CharacterService's
 	// GetLevelUpOptions RPC.
 	CharacterServiceGetLevelUpOptionsProcedure = "/meurpg.characters.v1.CharacterService/GetLevelUpOptions"
@@ -452,6 +470,89 @@ type CharacterServiceClient interface {
 	//     character stays in the campaign. The error carries a CharacterBlocked
 	//     detail with reason NOT_PENDING.
 	RejectCharacter(context.Context, *connect.Request[v1.RejectCharacterRequest]) (*connect.Response[v1.RejectCharacterResponse], error)
+	// CreateClaimLink makes the link a player uses to take a reserved character
+	// (the character the master made with CreateCharacter.for_player). Only the
+	// campaign's master may call it. The app builds the link as
+	// `https://<app>/claim#t=<token>`: the token is a random secret that comes back
+	// once, here, and the server keeps only its SHA-256 (as for an invite). A
+	// character has one live link: making another revokes the previous one, in the
+	// same transaction. The link works for `validity_days` (1, 7 or 30; 0 means 7)
+	// and once.
+	//
+	// Errors:
+	//   - `invalid_argument`: `validity_days` is not 0, 1, 7 or 30, or the
+	//     character is not a player character.
+	//   - `not_found`: the character is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: the character is not reserved (a CharacterBlocked
+	//     detail with reason NOT_RESERVED).
+	CreateClaimLink(context.Context, *connect.Request[v1.CreateClaimLinkRequest]) (*connect.Response[v1.CreateClaimLinkResponse], error)
+	// RevokeClaimLink ends the character's live link, if it has one: whoever opens
+	// it sees the generic "this link cannot be used" page. Revoking when there is no
+	// live link, or twice, is not an error. Only the campaign's master may call it.
+	//
+	// Errors:
+	//   - `not_found`, `permission_denied`: as CreateClaimLink.
+	//   - `failed_precondition`: a player used the link first (a CharacterBlocked
+	//     detail with reason CLAIM_LINK_USED and the player's display name), or the
+	//     character is not reserved (NOT_RESERVED).
+	RevokeClaimLink(context.Context, *connect.Request[v1.RevokeClaimLinkRequest]) (*connect.Response[v1.RevokeClaimLinkResponse], error)
+	// ReturnCharacterToReserve takes a character a player claimed through a link
+	// back: it has no owner again and is reserved (invisible to the players), and
+	// its link is gone. The player stays a member of the campaign. Only the
+	// campaign's master may call it. Safe to repeat: a character that is reserved
+	// already is answered with `failed_precondition` NOT_CLAIMED, which the app
+	// reads as done.
+	//
+	// Errors:
+	//   - `not_found`, `permission_denied`: as CreateClaimLink.
+	//   - `failed_precondition`: NOT_CLAIMED (the character did not come from a link,
+	//     is reserved already, or is dead) or CHARACTER_IN_COMBAT.
+	ReturnCharacterToReserve(context.Context, *connect.Request[v1.ReturnCharacterToReserveRequest]) (*connect.Response[v1.ReturnCharacterToReserveResponse], error)
+	// DeleteReservedCharacter deletes a reserved character, with its story and its
+	// notes, and its live link (the same transaction). Only the campaign's master
+	// may call it, and only for a reserved character: a character with an owner
+	// never goes this way (RN-03). Deleting twice is `not_found`.
+	//
+	// Errors:
+	//   - `not_found`, `permission_denied`: as CreateClaimLink.
+	//   - `failed_precondition`: the character is not reserved (NOT_RESERVED).
+	DeleteReservedCharacter(context.Context, *connect.Request[v1.DeleteReservedCharacterRequest]) (*connect.Response[v1.DeleteReservedCharacterResponse], error)
+	// PreviewClaim says which character a claim link is for, to the signed-in person
+	// who opened it, so they can decide before ClaimCharacter. It shows only what
+	// the public card shows: the name, race, class and level, who sent the link and
+	// from which campaign. It changes nothing, and it is never called before sign-in:
+	// the page asks only after the person has a session.
+	//
+	// `token` is the link's secret, in the request body only. Empty, it means the
+	// link the person signed in with (the sign-in intent `character_claim` keeps it
+	// for 10 minutes; signing in never claims).
+	//
+	// Errors:
+	//   - `unauthenticated`: no session.
+	//   - `not_found`: the link is invalid, expired, used or revoked, or its character
+	//     is gone. One fixed message for all of them (the same code, the same
+	//     sentence): nobody learns which.
+	//   - `resource_exhausted`: too many tries by this person or from this address.
+	PreviewClaim(context.Context, *connect.Request[v1.PreviewClaimRequest]) (*connect.Response[v1.PreviewClaimResponse], error)
+	// ClaimCharacter makes the signed-in person the owner of the reserved character
+	// the link is for, and a member of its campaign (no approval step; a pending
+	// join request is closed). The link is spent. Only this call claims: signing in
+	// with a link never does.
+	//
+	// `token` as in PreviewClaim. Claiming again with the link the same person
+	// used is `not_found`, like any used link.
+	//
+	// Errors:
+	//   - `unauthenticated`, `not_found`, `resource_exhausted`: as PreviewClaim. A
+	//     claim that loses a race with a revoke or with another claim is the same
+	//     `not_found`.
+	//   - `failed_precondition`: a CharacterBlocked detail with reason
+	//     LIVING_CHARACTER_EXISTS (RN-03: the person already has a living character
+	//     in the campaign; the detail names it), or CLAIM_OWN_LINK (the caller is the
+	//     campaign's master).
+	ClaimCharacter(context.Context, *connect.Request[v1.ClaimCharacterRequest]) (*connect.Response[v1.ClaimCharacterResponse], error)
 	// GetLevelUpOptions says what the next level of one of the character's
 	// classes gives, so the app can draw the guided level-up (MR-040, RN-12):
 	// the ability increase, the hit die, the new cantrips and spells, the
@@ -469,7 +570,11 @@ type CharacterServiceClient interface {
 	//     carries a CharacterBlocked detail with reason CANNOT_LEVEL_UP (it is
 	//     not marked for a milestone and has too little XP, it is at level 20,
 	//     or it is an NPC), CHARACTER_DEAD or AWAITING_APPROVAL.
-	//   - `invalid_argument`: class_key is not a class of the character.
+	//   - `invalid_argument`: class_key is not a class of the content.
+	//   - `failed_precondition` with a LevelUpRefusal: class_key is a class the
+	//     character does not have and the character may not take it (the
+	//     MULTICLASS_PREREQUISITE reasons, MAX_LEVEL, ARCHIVED_CHOICE or
+	//     SWITCHED_OFF_CHOICE).
 	GetLevelUpOptions(context.Context, *connect.Request[v1.GetLevelUpOptionsRequest]) (*connect.Response[v1.GetLevelUpOptionsResponse], error)
 	// PreviewLevelUp tells what the sheet would be like with these choices,
 	// without saving anything: the Summary step of the guided level-up
@@ -548,7 +653,9 @@ type CharacterServiceClient interface {
 	// Secrets, favored enemies and terrains); swapping a spell known for
 	// another, which the SRD lets Bards, Rangers, Sorcerers and Warlocks do when
 	// they level up (a level-up only adds spells, never removes one); and
-	// multiclassing and custom subclasses.
+	// custom subclasses. A class the character does not have is multiclassing
+	// (SRD 5.1, "Multiclassing"): LevelUpChoices.class_key names it, and it joins the
+	// sheet at level 1 if the character meets the prerequisites.
 	//
 	// Who may call it: only the owning player, and only while
 	// Character.can_level_up is true. The master keeps the sheet editor
@@ -807,6 +914,43 @@ func NewCharacterServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(characterServiceMethods.ByName("RejectCharacter")),
 			connect.WithClientOptions(opts...),
 		),
+		createClaimLink: connect.NewClient[v1.CreateClaimLinkRequest, v1.CreateClaimLinkResponse](
+			httpClient,
+			baseURL+CharacterServiceCreateClaimLinkProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("CreateClaimLink")),
+			connect.WithClientOptions(opts...),
+		),
+		revokeClaimLink: connect.NewClient[v1.RevokeClaimLinkRequest, v1.RevokeClaimLinkResponse](
+			httpClient,
+			baseURL+CharacterServiceRevokeClaimLinkProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("RevokeClaimLink")),
+			connect.WithClientOptions(opts...),
+		),
+		returnCharacterToReserve: connect.NewClient[v1.ReturnCharacterToReserveRequest, v1.ReturnCharacterToReserveResponse](
+			httpClient,
+			baseURL+CharacterServiceReturnCharacterToReserveProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("ReturnCharacterToReserve")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteReservedCharacter: connect.NewClient[v1.DeleteReservedCharacterRequest, v1.DeleteReservedCharacterResponse](
+			httpClient,
+			baseURL+CharacterServiceDeleteReservedCharacterProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("DeleteReservedCharacter")),
+			connect.WithClientOptions(opts...),
+		),
+		previewClaim: connect.NewClient[v1.PreviewClaimRequest, v1.PreviewClaimResponse](
+			httpClient,
+			baseURL+CharacterServicePreviewClaimProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("PreviewClaim")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		claimCharacter: connect.NewClient[v1.ClaimCharacterRequest, v1.ClaimCharacterResponse](
+			httpClient,
+			baseURL+CharacterServiceClaimCharacterProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("ClaimCharacter")),
+			connect.WithClientOptions(opts...),
+		),
 		getLevelUpOptions: connect.NewClient[v1.GetLevelUpOptionsRequest, v1.GetLevelUpOptionsResponse](
 			httpClient,
 			baseURL+CharacterServiceGetLevelUpOptionsProcedure,
@@ -897,33 +1041,39 @@ func NewCharacterServiceClient(httpClient connect.HTTPClient, baseURL string, op
 
 // characterServiceClient implements CharacterServiceClient.
 type characterServiceClient struct {
-	createCharacter         *connect.Client[v1.CreateCharacterRequest, v1.CreateCharacterResponse]
-	getAbilityRolls         *connect.Client[v1.GetAbilityRollsRequest, v1.GetAbilityRollsResponse]
-	rollAbilityScores       *connect.Client[v1.RollAbilityScoresRequest, v1.RollAbilityScoresResponse]
-	createNpcFromCreature   *connect.Client[v1.CreateNpcFromCreatureRequest, v1.CreateNpcFromCreatureResponse]
-	getCharacter            *connect.Client[v1.GetCharacterRequest, v1.GetCharacterResponse]
-	listCharacters          *connect.Client[v1.ListCharactersRequest, v1.ListCharactersResponse]
-	updateCharacter         *connect.Client[v1.UpdateCharacterRequest, v1.UpdateCharacterResponse]
-	updateCharacterStory    *connect.Client[v1.UpdateCharacterStoryRequest, v1.UpdateCharacterStoryResponse]
-	setStoryEditing         *connect.Client[v1.SetStoryEditingRequest, v1.SetStoryEditingResponse]
-	markCharacterDead       *connect.Client[v1.MarkCharacterDeadRequest, v1.MarkCharacterDeadResponse]
-	getMasterNotes          *connect.Client[v1.GetMasterNotesRequest, v1.GetMasterNotesResponse]
-	updateMasterNotes       *connect.Client[v1.UpdateMasterNotesRequest, v1.UpdateMasterNotesResponse]
-	approveCharacter        *connect.Client[v1.ApproveCharacterRequest, v1.ApproveCharacterResponse]
-	rejectCharacter         *connect.Client[v1.RejectCharacterRequest, v1.RejectCharacterResponse]
-	getLevelUpOptions       *connect.Client[v1.GetLevelUpOptionsRequest, v1.GetLevelUpOptionsResponse]
-	previewLevelUp          *connect.Client[v1.PreviewLevelUpRequest, v1.PreviewLevelUpResponse]
-	previewCharacter        *connect.Client[v1.PreviewCharacterRequest, v1.PreviewCharacterResponse]
-	rollLevelUpHitPoints    *connect.Client[v1.RollLevelUpHitPointsRequest, v1.RollLevelUpHitPointsResponse]
-	levelUpCharacter        *connect.Client[v1.LevelUpCharacterRequest, v1.LevelUpCharacterResponse]
-	listLevelUps            *connect.Client[v1.ListLevelUpsRequest, v1.ListLevelUpsResponse]
-	listCharacterCreatures  *connect.Client[v1.ListCharacterCreaturesRequest, v1.ListCharacterCreaturesResponse]
-	listWildShapeForms      *connect.Client[v1.ListWildShapeFormsRequest, v1.ListWildShapeFormsResponse]
-	giveCreature            *connect.Client[v1.GiveCreatureRequest, v1.GiveCreatureResponse]
-	renameCreature          *connect.Client[v1.RenameCreatureRequest, v1.RenameCreatureResponse]
-	dismissCreature         *connect.Client[v1.DismissCreatureRequest, v1.DismissCreatureResponse]
-	adjustCreatureHitPoints *connect.Client[v1.AdjustCreatureHitPointsRequest, v1.AdjustCreatureHitPointsResponse]
-	getSummonOptions        *connect.Client[v1.GetSummonOptionsRequest, v1.GetSummonOptionsResponse]
+	createCharacter          *connect.Client[v1.CreateCharacterRequest, v1.CreateCharacterResponse]
+	getAbilityRolls          *connect.Client[v1.GetAbilityRollsRequest, v1.GetAbilityRollsResponse]
+	rollAbilityScores        *connect.Client[v1.RollAbilityScoresRequest, v1.RollAbilityScoresResponse]
+	createNpcFromCreature    *connect.Client[v1.CreateNpcFromCreatureRequest, v1.CreateNpcFromCreatureResponse]
+	getCharacter             *connect.Client[v1.GetCharacterRequest, v1.GetCharacterResponse]
+	listCharacters           *connect.Client[v1.ListCharactersRequest, v1.ListCharactersResponse]
+	updateCharacter          *connect.Client[v1.UpdateCharacterRequest, v1.UpdateCharacterResponse]
+	updateCharacterStory     *connect.Client[v1.UpdateCharacterStoryRequest, v1.UpdateCharacterStoryResponse]
+	setStoryEditing          *connect.Client[v1.SetStoryEditingRequest, v1.SetStoryEditingResponse]
+	markCharacterDead        *connect.Client[v1.MarkCharacterDeadRequest, v1.MarkCharacterDeadResponse]
+	getMasterNotes           *connect.Client[v1.GetMasterNotesRequest, v1.GetMasterNotesResponse]
+	updateMasterNotes        *connect.Client[v1.UpdateMasterNotesRequest, v1.UpdateMasterNotesResponse]
+	approveCharacter         *connect.Client[v1.ApproveCharacterRequest, v1.ApproveCharacterResponse]
+	rejectCharacter          *connect.Client[v1.RejectCharacterRequest, v1.RejectCharacterResponse]
+	createClaimLink          *connect.Client[v1.CreateClaimLinkRequest, v1.CreateClaimLinkResponse]
+	revokeClaimLink          *connect.Client[v1.RevokeClaimLinkRequest, v1.RevokeClaimLinkResponse]
+	returnCharacterToReserve *connect.Client[v1.ReturnCharacterToReserveRequest, v1.ReturnCharacterToReserveResponse]
+	deleteReservedCharacter  *connect.Client[v1.DeleteReservedCharacterRequest, v1.DeleteReservedCharacterResponse]
+	previewClaim             *connect.Client[v1.PreviewClaimRequest, v1.PreviewClaimResponse]
+	claimCharacter           *connect.Client[v1.ClaimCharacterRequest, v1.ClaimCharacterResponse]
+	getLevelUpOptions        *connect.Client[v1.GetLevelUpOptionsRequest, v1.GetLevelUpOptionsResponse]
+	previewLevelUp           *connect.Client[v1.PreviewLevelUpRequest, v1.PreviewLevelUpResponse]
+	previewCharacter         *connect.Client[v1.PreviewCharacterRequest, v1.PreviewCharacterResponse]
+	rollLevelUpHitPoints     *connect.Client[v1.RollLevelUpHitPointsRequest, v1.RollLevelUpHitPointsResponse]
+	levelUpCharacter         *connect.Client[v1.LevelUpCharacterRequest, v1.LevelUpCharacterResponse]
+	listLevelUps             *connect.Client[v1.ListLevelUpsRequest, v1.ListLevelUpsResponse]
+	listCharacterCreatures   *connect.Client[v1.ListCharacterCreaturesRequest, v1.ListCharacterCreaturesResponse]
+	listWildShapeForms       *connect.Client[v1.ListWildShapeFormsRequest, v1.ListWildShapeFormsResponse]
+	giveCreature             *connect.Client[v1.GiveCreatureRequest, v1.GiveCreatureResponse]
+	renameCreature           *connect.Client[v1.RenameCreatureRequest, v1.RenameCreatureResponse]
+	dismissCreature          *connect.Client[v1.DismissCreatureRequest, v1.DismissCreatureResponse]
+	adjustCreatureHitPoints  *connect.Client[v1.AdjustCreatureHitPointsRequest, v1.AdjustCreatureHitPointsResponse]
+	getSummonOptions         *connect.Client[v1.GetSummonOptionsRequest, v1.GetSummonOptionsResponse]
 }
 
 // CreateCharacter calls meurpg.characters.v1.CharacterService.CreateCharacter.
@@ -994,6 +1144,36 @@ func (c *characterServiceClient) ApproveCharacter(ctx context.Context, req *conn
 // RejectCharacter calls meurpg.characters.v1.CharacterService.RejectCharacter.
 func (c *characterServiceClient) RejectCharacter(ctx context.Context, req *connect.Request[v1.RejectCharacterRequest]) (*connect.Response[v1.RejectCharacterResponse], error) {
 	return c.rejectCharacter.CallUnary(ctx, req)
+}
+
+// CreateClaimLink calls meurpg.characters.v1.CharacterService.CreateClaimLink.
+func (c *characterServiceClient) CreateClaimLink(ctx context.Context, req *connect.Request[v1.CreateClaimLinkRequest]) (*connect.Response[v1.CreateClaimLinkResponse], error) {
+	return c.createClaimLink.CallUnary(ctx, req)
+}
+
+// RevokeClaimLink calls meurpg.characters.v1.CharacterService.RevokeClaimLink.
+func (c *characterServiceClient) RevokeClaimLink(ctx context.Context, req *connect.Request[v1.RevokeClaimLinkRequest]) (*connect.Response[v1.RevokeClaimLinkResponse], error) {
+	return c.revokeClaimLink.CallUnary(ctx, req)
+}
+
+// ReturnCharacterToReserve calls meurpg.characters.v1.CharacterService.ReturnCharacterToReserve.
+func (c *characterServiceClient) ReturnCharacterToReserve(ctx context.Context, req *connect.Request[v1.ReturnCharacterToReserveRequest]) (*connect.Response[v1.ReturnCharacterToReserveResponse], error) {
+	return c.returnCharacterToReserve.CallUnary(ctx, req)
+}
+
+// DeleteReservedCharacter calls meurpg.characters.v1.CharacterService.DeleteReservedCharacter.
+func (c *characterServiceClient) DeleteReservedCharacter(ctx context.Context, req *connect.Request[v1.DeleteReservedCharacterRequest]) (*connect.Response[v1.DeleteReservedCharacterResponse], error) {
+	return c.deleteReservedCharacter.CallUnary(ctx, req)
+}
+
+// PreviewClaim calls meurpg.characters.v1.CharacterService.PreviewClaim.
+func (c *characterServiceClient) PreviewClaim(ctx context.Context, req *connect.Request[v1.PreviewClaimRequest]) (*connect.Response[v1.PreviewClaimResponse], error) {
+	return c.previewClaim.CallUnary(ctx, req)
+}
+
+// ClaimCharacter calls meurpg.characters.v1.CharacterService.ClaimCharacter.
+func (c *characterServiceClient) ClaimCharacter(ctx context.Context, req *connect.Request[v1.ClaimCharacterRequest]) (*connect.Response[v1.ClaimCharacterResponse], error) {
+	return c.claimCharacter.CallUnary(ctx, req)
 }
 
 // GetLevelUpOptions calls meurpg.characters.v1.CharacterService.GetLevelUpOptions.
@@ -1381,6 +1561,89 @@ type CharacterServiceHandler interface {
 	//     character stays in the campaign. The error carries a CharacterBlocked
 	//     detail with reason NOT_PENDING.
 	RejectCharacter(context.Context, *connect.Request[v1.RejectCharacterRequest]) (*connect.Response[v1.RejectCharacterResponse], error)
+	// CreateClaimLink makes the link a player uses to take a reserved character
+	// (the character the master made with CreateCharacter.for_player). Only the
+	// campaign's master may call it. The app builds the link as
+	// `https://<app>/claim#t=<token>`: the token is a random secret that comes back
+	// once, here, and the server keeps only its SHA-256 (as for an invite). A
+	// character has one live link: making another revokes the previous one, in the
+	// same transaction. The link works for `validity_days` (1, 7 or 30; 0 means 7)
+	// and once.
+	//
+	// Errors:
+	//   - `invalid_argument`: `validity_days` is not 0, 1, 7 or 30, or the
+	//     character is not a player character.
+	//   - `not_found`: the character is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: the character is not reserved (a CharacterBlocked
+	//     detail with reason NOT_RESERVED).
+	CreateClaimLink(context.Context, *connect.Request[v1.CreateClaimLinkRequest]) (*connect.Response[v1.CreateClaimLinkResponse], error)
+	// RevokeClaimLink ends the character's live link, if it has one: whoever opens
+	// it sees the generic "this link cannot be used" page. Revoking when there is no
+	// live link, or twice, is not an error. Only the campaign's master may call it.
+	//
+	// Errors:
+	//   - `not_found`, `permission_denied`: as CreateClaimLink.
+	//   - `failed_precondition`: a player used the link first (a CharacterBlocked
+	//     detail with reason CLAIM_LINK_USED and the player's display name), or the
+	//     character is not reserved (NOT_RESERVED).
+	RevokeClaimLink(context.Context, *connect.Request[v1.RevokeClaimLinkRequest]) (*connect.Response[v1.RevokeClaimLinkResponse], error)
+	// ReturnCharacterToReserve takes a character a player claimed through a link
+	// back: it has no owner again and is reserved (invisible to the players), and
+	// its link is gone. The player stays a member of the campaign. Only the
+	// campaign's master may call it. Safe to repeat: a character that is reserved
+	// already is answered with `failed_precondition` NOT_CLAIMED, which the app
+	// reads as done.
+	//
+	// Errors:
+	//   - `not_found`, `permission_denied`: as CreateClaimLink.
+	//   - `failed_precondition`: NOT_CLAIMED (the character did not come from a link,
+	//     is reserved already, or is dead) or CHARACTER_IN_COMBAT.
+	ReturnCharacterToReserve(context.Context, *connect.Request[v1.ReturnCharacterToReserveRequest]) (*connect.Response[v1.ReturnCharacterToReserveResponse], error)
+	// DeleteReservedCharacter deletes a reserved character, with its story and its
+	// notes, and its live link (the same transaction). Only the campaign's master
+	// may call it, and only for a reserved character: a character with an owner
+	// never goes this way (RN-03). Deleting twice is `not_found`.
+	//
+	// Errors:
+	//   - `not_found`, `permission_denied`: as CreateClaimLink.
+	//   - `failed_precondition`: the character is not reserved (NOT_RESERVED).
+	DeleteReservedCharacter(context.Context, *connect.Request[v1.DeleteReservedCharacterRequest]) (*connect.Response[v1.DeleteReservedCharacterResponse], error)
+	// PreviewClaim says which character a claim link is for, to the signed-in person
+	// who opened it, so they can decide before ClaimCharacter. It shows only what
+	// the public card shows: the name, race, class and level, who sent the link and
+	// from which campaign. It changes nothing, and it is never called before sign-in:
+	// the page asks only after the person has a session.
+	//
+	// `token` is the link's secret, in the request body only. Empty, it means the
+	// link the person signed in with (the sign-in intent `character_claim` keeps it
+	// for 10 minutes; signing in never claims).
+	//
+	// Errors:
+	//   - `unauthenticated`: no session.
+	//   - `not_found`: the link is invalid, expired, used or revoked, or its character
+	//     is gone. One fixed message for all of them (the same code, the same
+	//     sentence): nobody learns which.
+	//   - `resource_exhausted`: too many tries by this person or from this address.
+	PreviewClaim(context.Context, *connect.Request[v1.PreviewClaimRequest]) (*connect.Response[v1.PreviewClaimResponse], error)
+	// ClaimCharacter makes the signed-in person the owner of the reserved character
+	// the link is for, and a member of its campaign (no approval step; a pending
+	// join request is closed). The link is spent. Only this call claims: signing in
+	// with a link never does.
+	//
+	// `token` as in PreviewClaim. Claiming again with the link the same person
+	// used is `not_found`, like any used link.
+	//
+	// Errors:
+	//   - `unauthenticated`, `not_found`, `resource_exhausted`: as PreviewClaim. A
+	//     claim that loses a race with a revoke or with another claim is the same
+	//     `not_found`.
+	//   - `failed_precondition`: a CharacterBlocked detail with reason
+	//     LIVING_CHARACTER_EXISTS (RN-03: the person already has a living character
+	//     in the campaign; the detail names it), or CLAIM_OWN_LINK (the caller is the
+	//     campaign's master).
+	ClaimCharacter(context.Context, *connect.Request[v1.ClaimCharacterRequest]) (*connect.Response[v1.ClaimCharacterResponse], error)
 	// GetLevelUpOptions says what the next level of one of the character's
 	// classes gives, so the app can draw the guided level-up (MR-040, RN-12):
 	// the ability increase, the hit die, the new cantrips and spells, the
@@ -1398,7 +1661,11 @@ type CharacterServiceHandler interface {
 	//     carries a CharacterBlocked detail with reason CANNOT_LEVEL_UP (it is
 	//     not marked for a milestone and has too little XP, it is at level 20,
 	//     or it is an NPC), CHARACTER_DEAD or AWAITING_APPROVAL.
-	//   - `invalid_argument`: class_key is not a class of the character.
+	//   - `invalid_argument`: class_key is not a class of the content.
+	//   - `failed_precondition` with a LevelUpRefusal: class_key is a class the
+	//     character does not have and the character may not take it (the
+	//     MULTICLASS_PREREQUISITE reasons, MAX_LEVEL, ARCHIVED_CHOICE or
+	//     SWITCHED_OFF_CHOICE).
 	GetLevelUpOptions(context.Context, *connect.Request[v1.GetLevelUpOptionsRequest]) (*connect.Response[v1.GetLevelUpOptionsResponse], error)
 	// PreviewLevelUp tells what the sheet would be like with these choices,
 	// without saving anything: the Summary step of the guided level-up
@@ -1477,7 +1744,9 @@ type CharacterServiceHandler interface {
 	// Secrets, favored enemies and terrains); swapping a spell known for
 	// another, which the SRD lets Bards, Rangers, Sorcerers and Warlocks do when
 	// they level up (a level-up only adds spells, never removes one); and
-	// multiclassing and custom subclasses.
+	// custom subclasses. A class the character does not have is multiclassing
+	// (SRD 5.1, "Multiclassing"): LevelUpChoices.class_key names it, and it joins the
+	// sheet at level 1 if the character meets the prerequisites.
 	//
 	// Who may call it: only the owning player, and only while
 	// Character.can_level_up is true. The master keeps the sheet editor
@@ -1732,6 +2001,43 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 		connect.WithSchema(characterServiceMethods.ByName("RejectCharacter")),
 		connect.WithHandlerOptions(opts...),
 	)
+	characterServiceCreateClaimLinkHandler := connect.NewUnaryHandler(
+		CharacterServiceCreateClaimLinkProcedure,
+		svc.CreateClaimLink,
+		connect.WithSchema(characterServiceMethods.ByName("CreateClaimLink")),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceRevokeClaimLinkHandler := connect.NewUnaryHandler(
+		CharacterServiceRevokeClaimLinkProcedure,
+		svc.RevokeClaimLink,
+		connect.WithSchema(characterServiceMethods.ByName("RevokeClaimLink")),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceReturnCharacterToReserveHandler := connect.NewUnaryHandler(
+		CharacterServiceReturnCharacterToReserveProcedure,
+		svc.ReturnCharacterToReserve,
+		connect.WithSchema(characterServiceMethods.ByName("ReturnCharacterToReserve")),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceDeleteReservedCharacterHandler := connect.NewUnaryHandler(
+		CharacterServiceDeleteReservedCharacterProcedure,
+		svc.DeleteReservedCharacter,
+		connect.WithSchema(characterServiceMethods.ByName("DeleteReservedCharacter")),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServicePreviewClaimHandler := connect.NewUnaryHandler(
+		CharacterServicePreviewClaimProcedure,
+		svc.PreviewClaim,
+		connect.WithSchema(characterServiceMethods.ByName("PreviewClaim")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceClaimCharacterHandler := connect.NewUnaryHandler(
+		CharacterServiceClaimCharacterProcedure,
+		svc.ClaimCharacter,
+		connect.WithSchema(characterServiceMethods.ByName("ClaimCharacter")),
+		connect.WithHandlerOptions(opts...),
+	)
 	characterServiceGetLevelUpOptionsHandler := connect.NewUnaryHandler(
 		CharacterServiceGetLevelUpOptionsProcedure,
 		svc.GetLevelUpOptions,
@@ -1847,6 +2153,18 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 			characterServiceApproveCharacterHandler.ServeHTTP(w, r)
 		case CharacterServiceRejectCharacterProcedure:
 			characterServiceRejectCharacterHandler.ServeHTTP(w, r)
+		case CharacterServiceCreateClaimLinkProcedure:
+			characterServiceCreateClaimLinkHandler.ServeHTTP(w, r)
+		case CharacterServiceRevokeClaimLinkProcedure:
+			characterServiceRevokeClaimLinkHandler.ServeHTTP(w, r)
+		case CharacterServiceReturnCharacterToReserveProcedure:
+			characterServiceReturnCharacterToReserveHandler.ServeHTTP(w, r)
+		case CharacterServiceDeleteReservedCharacterProcedure:
+			characterServiceDeleteReservedCharacterHandler.ServeHTTP(w, r)
+		case CharacterServicePreviewClaimProcedure:
+			characterServicePreviewClaimHandler.ServeHTTP(w, r)
+		case CharacterServiceClaimCharacterProcedure:
+			characterServiceClaimCharacterHandler.ServeHTTP(w, r)
 		case CharacterServiceGetLevelUpOptionsProcedure:
 			characterServiceGetLevelUpOptionsHandler.ServeHTTP(w, r)
 		case CharacterServicePreviewLevelUpProcedure:
@@ -1936,6 +2254,30 @@ func (UnimplementedCharacterServiceHandler) ApproveCharacter(context.Context, *c
 
 func (UnimplementedCharacterServiceHandler) RejectCharacter(context.Context, *connect.Request[v1.RejectCharacterRequest]) (*connect.Response[v1.RejectCharacterResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.RejectCharacter is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) CreateClaimLink(context.Context, *connect.Request[v1.CreateClaimLinkRequest]) (*connect.Response[v1.CreateClaimLinkResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.CreateClaimLink is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) RevokeClaimLink(context.Context, *connect.Request[v1.RevokeClaimLinkRequest]) (*connect.Response[v1.RevokeClaimLinkResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.RevokeClaimLink is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) ReturnCharacterToReserve(context.Context, *connect.Request[v1.ReturnCharacterToReserveRequest]) (*connect.Response[v1.ReturnCharacterToReserveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.ReturnCharacterToReserve is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) DeleteReservedCharacter(context.Context, *connect.Request[v1.DeleteReservedCharacterRequest]) (*connect.Response[v1.DeleteReservedCharacterResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.DeleteReservedCharacter is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) PreviewClaim(context.Context, *connect.Request[v1.PreviewClaimRequest]) (*connect.Response[v1.PreviewClaimResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.PreviewClaim is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) ClaimCharacter(context.Context, *connect.Request[v1.ClaimCharacterRequest]) (*connect.Response[v1.ClaimCharacterResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.ClaimCharacter is not implemented"))
 }
 
 func (UnimplementedCharacterServiceHandler) GetLevelUpOptions(context.Context, *connect.Request[v1.GetLevelUpOptionsRequest]) (*connect.Response[v1.GetLevelUpOptionsResponse], error) {

@@ -20,6 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // Casting a spell (MR-014, RN-02, RN-18, RN-22, Etapa 6, slice 6.4b). The cast
@@ -197,6 +198,19 @@ func (s *Service) CastSpell(
 	if err != nil {
 		return nil, err
 	}
+	// Whether a spell reveals the hidden creatures it hits is the master's to say.
+	// A player who sends the choice is refused first, whatever else is wrong with the
+	// request: another order would tell them what the rest of it holds (RN-10).
+	if req.Msg.RevealHidden != nil && m.Role != authz.RoleMaster {
+		return nil, errOnlyMasterReveals()
+	}
+	return s.castSpell(ctx, m, req)
+}
+
+// castSpell is CastSpell for a member already authorized: the replay of a held action calls it
+// with the member who made the request (combat_reaction_hold.go).
+func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connect.Request[playv1.CastSpellRequest]) (*connect.Response[playv1.CastSpellResponse], error) { //nolint:gocognit,gocyclo // the cast's steps in one closure, as CastSpell always was; the reaction window only split the handler from its replay
+	var err error
 	key, err := parseKey(req.Msg.GetIdempotencyKey())
 	if err != nil {
 		return nil, err
@@ -256,6 +270,7 @@ func (s *Service) CastSpell(
 	var vitals []*playv1.CharacterVitals // the slot spent, if it was a player's, and the characters a hit point spell changed
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventSpellCast, encounterID: encID}, func(c *combatTx) (any, error) {
 		vitals = nil
+		targets := slices.Clone(targets) // an area replaces the list, and a retry starts from the request's
 		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
@@ -274,13 +289,18 @@ func (s *Service) CastSpell(
 		if err := s.refuseInShape(ctx, c, caster); err != nil { // no spells in a beast form (MR-037)
 			return nil, err
 		}
-		targs := make([]playdb.Combatant, len(targets))
-		for i, t := range targets {
-			if targs[i], err = findCombatant(cs, t.id, v); err != nil {
-				return nil, err
-			}
-			if targs[i].Defeated {
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED, "a target is defeated")
+		// An area placed on the map says who it touches itself: the list is not read.
+		var targs []playdb.Combatant
+		if req.Msg.GetArea() == nil {
+			targs = make([]playdb.Combatant, len(targets))
+			for i, t := range targets {
+				if targs[i], err = findCombatant(cs, t.id, v); err != nil {
+					return nil, err
+				}
+				// A dead player's character waits for the spell: a healing says it is dead.
+				if targs[i].Defeated && targs[i].Kind != kindPlayer {
+					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED, "a target is defeated")
+				}
 			}
 		}
 
@@ -293,6 +313,12 @@ func (s *Service) CastSpell(
 		cast, err := castableOf(opts, spellKey)
 		if err != nil {
 			return nil, err
+		}
+		// Quickened Spell makes the casting a bonus action: the action being spent
+		// does not stop it (the Metamagic checks the bonus action).
+		if quick := slices.ContainsFunc(req.Msg.GetMetamagic(), func(mc *playv1.MetamagicChoice) bool { return mc.GetKey() == rules.MetamagicQuickened }); quick &&
+			!cast.enabled && cast.reason.GetCode() == rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ACTION_USED {
+			cast.enabled = true
 		}
 		if !cast.enabled {
 			// A summoning spell that takes too long is refused with a reason the screen
@@ -323,15 +349,31 @@ func (s *Service) CastSpell(
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("damage_type_key must be one of the damage types of a spell that lets the caster choose"))
 		}
 
+		// A dead creature regains no hit points (SRD 5.1), so a healing aimed at one is
+		// refused before the slot or the action is spent.
+		if healsHitPoints(sp) {
+			if err := s.refuseTheDead(ctx, c, targs); err != nil {
+				return nil, err
+			}
+		}
+		for _, t := range targs {
+			if t.Defeated {
+				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED, "a target is defeated")
+			}
+		}
+
+		// The Metamagic: checked against the spell and the points, it changes the range
+		// and the casting time, and Twinned Spell adds its second target.
+		meta, err := s.prepareMetamagic(ctx, c, m, v, caster, req.Msg.GetMetamagic(), spellKey, slotLevel, sp, targs, cs)
+		if err != nil {
+			return nil, err
+		}
+		sp, c.meta = meta.apply(sp), meta
+		if meta != nil && meta.second.ID != "" {
+			targs, targets = append(targs, meta.second), append(targets, target{id: meta.second.ID})
+		}
+
 		// Who it touches.
-		darts := dartsOf(sp, slotLevel)
-		dartList := make([]int, len(targets))
-		for i, t := range targets {
-			dartList[i] = t.darts
-		}
-		if sp.Summon != (req.Msg.GetSummon() != nil) {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("summon is for a summoning spell, and a summoning spell needs it"))
-		}
 		known, err := c.sight.knownTerrain(ctx, c.tx, v) // what the player knows of the map, for the cover they are told
 		if err != nil {
 			return nil, err
@@ -340,12 +382,50 @@ func (s *Service) CastSpell(
 		if err != nil {
 			return nil, err
 		}
+		// An area spell on a map is placed by the caster and the server says who is
+		// inside (planArea); without a map the caster lists them and the master judges.
+		placedArea := placementOf(sp) != playv1.AreaPlacement_AREA_PLACEMENT_UNSPECIFIED && !isTheatre(c.enc)
+		var plan areaPlan
+		switch {
+		case placedArea:
+			choice, err := areaChoiceOf(req.Msg.GetOrigin(), req.Msg.GetDirection(), grid.Grid{Columns: int(c.enc.GridColumns), Rows: int(c.enc.GridRows)})
+			if err != nil {
+				return nil, err
+			}
+			if plan, err = planArea(areaInput{
+				v: v, terrain: terrain, cs: cs, caster: caster, sp: sp, choice: choice,
+				cover: func(origin, target playdb.Combatant) (coverPair, error) {
+					return c.coverOf(ctx, v, terrain, known, origin, target, cs)
+				},
+			}); err != nil {
+				return nil, err
+			}
+			targs, targets = make([]playdb.Combatant, len(plan.targets)), make([]target, len(plan.targets))
+			for i, t := range plan.targets {
+				targs[i], targets[i] = t.who, target{id: t.who.ID}
+			}
+		case req.Msg.GetArea() != nil:
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this spell has no area to place on this map: list its targets"))
+		}
+		if err := meta.membersIn(targs); err != nil {
+			return nil, err
+		}
+		darts := dartsOf(sp, slotLevel)
+		dartList := make([]int, len(targets))
+		for i, t := range targets {
+			dartList[i] = t.darts
+		}
+		if sp.Summon != (req.Msg.GetSummon() != nil) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("summon is for a summoning spell, and a summoning spell needs it"))
+		}
 		if sp.Summon {
 			if len(targs) > 0 {
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a summoning spell takes no targets: the creatures appear next to the caster"))
 			}
-		} else if err := s.checkTargets(v, planOn(v, terrain, known), cs, sp, caster, targs, dartList, darts, slotLevel, isTheatre(c.enc)); err != nil {
-			return nil, err
+		} else if !placedArea {
+			if err := s.checkMetaTargets(meta, v, planOn(v, terrain, known), cs, sp, caster, targs, dartList, darts, slotLevel, isTheatre(c.enc)); err != nil {
+				return nil, err
+			}
 		}
 		var summon *summoning
 		if sp.Summon {
@@ -378,6 +458,16 @@ func (s *Service) CastSpell(
 			}
 		}
 
+		// A Counterspell, or the master's check of the table rule "Reações dos inimigos",
+		// can change the cast: it waits for the windows and happens when they are
+		// answered (PM-04, combat_reaction_hold.go).
+		if held, ok, err := s.holdCast(ctx, c, m, req.Msg, cs, caster, spellKey, int32(slotLevel), targs); err != nil { //nolint:gosec // a slot level, 0 to 9
+			return nil, err
+		} else if ok {
+			made = held
+			return made, nil
+		}
+
 		// The cast spends the slot and the economy at once (MR-014).
 		run, err := breakRun(ctx, c, caster)
 		if err != nil {
@@ -394,6 +484,15 @@ func (s *Service) CastSpell(
 				return nil, err
 			}
 			vitals = append(vitals, slotVitals)
+		}
+		if meta != nil {
+			// The Metamagic costs sorcery points, spent with the slot.
+			pointsVitals, err := s.spendResource(ctx, c, caster.CharacterID, rules.SorceryPointsKey, clamp32(meta.cost, 0, math.MaxInt32))
+			if err != nil {
+				return nil, err
+			}
+			vitals = append(vitals, pointsVitals)
+			made.Res = &resourceEvent{Kind: resMetamagic, Spent: clamp32(meta.cost, 0, math.MaxInt32), Keys: meta.keys}
 		}
 		after := caster
 		switch sp.Economy {
@@ -414,6 +513,17 @@ func (s *Service) CastSpell(
 			if err := c.q.SetCombatantSpellsCast(ctx, playdb.SetCombatantSpellsCastParams{ID: caster.ID, SpellCast: spellCast, BonusSpellCast: bonusSpellCast}); err != nil {
 				return nil, fmt.Errorf("note the spell cast: %w", err)
 			}
+		}
+		if c.replay != nil && c.replay.countered {
+			// A Counterspell failed the spell: the slot and the action are spent, as
+			// casting it expended them, and nothing else happens (SRD, Counterspell).
+			made.Secret = caster.Hidden
+			made.Reaction = &reactionEvent{Kind: string(reaction.CounterspellKind), Countered: true, Spell: spellKey, Level: int32(slotLevel)} //nolint:gosec // a slot level, 0 to 9
+			if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+				return nil, fmt.Errorf("touch the encounter: %w", err)
+			}
+			c.characterID = &caster.CharacterID
+			return made, nil
 		}
 		if sp.Concentration {
 			made.Concentrate, made.ConcBefore = true, deref(caster.ConcentrationSpell)
@@ -449,8 +559,10 @@ func (s *Service) CastSpell(
 		} else {
 			for i, t := range targs {
 				hit := castHit{Target: t.ID, Darts: clamp32(targets[i].darts, 0, 100)}
-				cp, err := c.coverOf(ctx, v, terrain, known, caster, t, cs)
-				if err != nil {
+				var cp coverPair
+				if placedArea {
+					cp = plan.targets[i].cp // measured from the point of origin
+				} else if cp, err = c.coverOf(ctx, v, terrain, known, caster, t, cs); err != nil {
 					return nil, err
 				}
 				if err := s.resolveOnTarget(ctx, c, m, sp, caster, t, slotLevel, in, cp, &hit); err != nil {
@@ -462,6 +574,20 @@ func (s *Service) CastSpell(
 		}
 		packCoverSeen(&made)
 		made.Secret = hidden
+		if placedArea {
+			// The line is the players', without the hidden creatures the area hit; only a
+			// hidden caster makes it the master's alone.
+			made.Secret, made.Placed = caster.Hidden, true
+			if choice := req.Msg.GetOrigin(); choice != nil {
+				made.AreaCol, made.AreaRow = choice.GetCol(), choice.GetRow()
+			}
+			if dir := req.Msg.GetDirection(); dir != nil {
+				made.Dx, made.Dy = dir.GetDx(), dir.GetDy()
+			}
+			if err := s.settleHidden(ctx, c, m, v, plan, spellKey, req.Msg.RevealHidden, &made); err != nil {
+				return nil, err
+			}
+		}
 		// Casting gives a hidden caster's position away (combat_hide.go).
 		if made.HidBefore, err = s.endHiding(ctx, c, caster); err != nil {
 			return nil, err
@@ -488,15 +614,36 @@ func (s *Service) CastSpell(
 		for _, vit := range vitals {
 			s.publishVitals(m.CampaignID, vit)
 		}
+		if ev.PendingReveal != "" { // the master alone is told a question waits
+			s.publishHiddenHitPending(m.CampaignID, d.enc.ID, ev.PendingReveal)
+		}
+		if anyInTurn(d, ev.Revealed) { // a creature of the turn that appeared changes the players' copy of it
+			s.publishTurnChanged(ctx, m.CampaignID, d)
+		}
 	})
 	if err != nil {
 		return nil, err
+	}
+	if ev.Reaction != nil && ev.Reaction.Hold { // a reaction window holds the cast: nothing of it happened yet
+		return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out}), nil
 	}
 	spell, err := s.castProto(ctx, res, ev, v)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out, Cast: spell, SummonedCombatantIds: s.combatantsOfCreatures(ctx, res, ev.Created)}), nil
+	resp := &playv1.CastSpellResponse{Encounter: out, Cast: spell, SummonedCombatantIds: s.combatantsOfCreatures(ctx, res, ev.Created)}
+	if resp.Area, err = s.areaProto(ctx, res, ev, v); err != nil {
+		return nil, err
+	}
+	if v.master { // what the hidden creatures the cast hit are is the master's alone (RN-10)
+		for _, h := range ev.Hits {
+			if h.HiddenAtCast {
+				resp.HiddenHits = append(resp.HiddenHits, h.Target)
+			}
+		}
+		resp.PendingRevealId = ev.PendingReveal
+	}
+	return connect.NewResponse(resp), nil
 }
 
 // checkTargets checks, for a player, who a spell may touch: how many targets
@@ -625,7 +772,7 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	}
 	// A spell attack deals its first damage type: no spell of the SRD that rolls an
 	// attack lists a second one.
-	p, err := s.openHit(ctx, c, m.CampaignID, caster, target, sp.Key, sp.Damages[0], result.Critical, result.Total, targetAC)
+	p, err := s.openHit(ctx, c, caster, target, sp.Key, sp.Damages[0], result.Critical, 0, result.Total, targetAC)
 	if err != nil {
 		return err
 	}
@@ -651,7 +798,14 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 	if err != nil {
 		return err
 	}
-	saved := combat.SaveSucceeded(roll.Total, sp.SaveDC)
+	if c.meta.disadvantaged(target.ID) { // Heightened Spell: the lower of two d20s on its first save
+		if face2, roll2, err := s.d20(rollInput{inApp: true}, save.Bonus); err == nil && roll2.Total < roll.Total {
+			face, roll = face2, roll2
+		} else if err != nil {
+			return err
+		}
+	}
+	saved := combat.SaveSucceeded(roll.Total, sp.SaveDC) || c.meta.passes(target.ID) // Careful Spell: it passes on its own
 	hit.Save = &saveRoll{
 		D20: clamp32(face, 1, 20), Bonus: clamp32(save.Bonus, math.MinInt32, math.MaxInt32), Total: clamp32(roll.Total, math.MinInt32, math.MaxInt32),
 		DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Saved: saved, Unknown: !save.Known,
@@ -684,13 +838,26 @@ func (s *Service) openDarts(ctx context.Context, c *combatTx, sp link.Spell, cas
 	// A dart is its own roll: n darts are n dice and n times the bonus. The cast
 	// has no cast id for them: each target's damage is its own roll.
 	dmg := link.Dice{Count: perDart.Count * n, Sides: perDart.Sides, Bonus: perDart.Bonus * n, DamageType: perDart.DamageType}
+	// The darts hit by themselves: a target that can cast Escudo may stop all of them
+	// (SRD, Shield), and the master's check of "Sempre" waits for each target too.
+	specs, err := s.hitWindows(ctx, c, caster, target, sp.Key, false, true, 0, 0)
+	if err != nil {
+		return err
+	}
+	status := pendingAwaitingRoll
+	if len(specs) > 0 {
+		status = pendingAwaitingReaction
+	}
 	p, err := c.q.InsertPendingDamage(ctx, playdb.InsertPendingDamageParams{
-		EncounterID: c.enc.ID, AttackerID: &caster.ID, TargetID: target.ID, AttackKey: sp.Key, Status: pendingAwaitingRoll,
+		EncounterID: c.enc.ID, AttackerID: &caster.ID, TargetID: target.ID, AttackKey: sp.Key, Status: status,
 		DiceCount: clamp32(dmg.Count, 0, 100), DiceSides: clamp32(dmg.Sides, 0, 100), DiceBonus: clamp32(dmg.Bonus, -1000, 1000), DamageType: dmg.DamageType,
 		CreatedAt: c.now,
 	})
 	if err != nil {
 		return fmt.Errorf("open the pending damage: %w", err)
+	}
+	if err := s.openPendingWindows(ctx, c, p, specs); err != nil {
+		return err
 	}
 	hit.Pending = p.ID
 	return nil

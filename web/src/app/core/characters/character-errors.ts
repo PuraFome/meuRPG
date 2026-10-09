@@ -55,6 +55,18 @@ export function characterBlockedMessage(
       return 'Esse personagem já foi aprovado e faz parte da campanha: não dá mais para recusá-lo.';
     case 'awaiting_approval':
       return 'Esse personagem ainda espera a sua aprovação. Aprove ou recuse antes.';
+    case 'not_reserved':
+      return 'Esse personagem já tem dono. Devolva-o à reserva antes de gerar um link.';
+    case 'claim_link_used':
+      return 'Esse link já foi usado: um jogador assumiu o personagem.';
+    case 'not_claimed':
+      return 'Esse personagem não veio de um link, ou já está na reserva: não dá para devolvê-lo.';
+    case 'character_in_combat':
+      return 'Esse personagem está em um combate. Encerre o combate antes de devolvê-lo à reserva.';
+    case 'claim_own_link':
+      return 'Este link é para um jogador. Copie e envie para ele.';
+    case 'reserved':
+      return 'Esse personagem está reservado: ainda não tem jogador.';
     default:
       return 'Não foi possível concluir a ação agora.';
   }
@@ -130,6 +142,18 @@ function mapBlockedReason(
       return 'archived_content';
     case GenCharacterBlockedReason.SWITCHED_OFF_CONTENT:
       return 'switched_off_content';
+    case GenCharacterBlockedReason.NOT_RESERVED:
+      return 'not_reserved';
+    case GenCharacterBlockedReason.CLAIM_LINK_USED:
+      return 'claim_link_used';
+    case GenCharacterBlockedReason.NOT_CLAIMED:
+      return 'not_claimed';
+    case GenCharacterBlockedReason.CHARACTER_IN_COMBAT:
+      return 'character_in_combat';
+    case GenCharacterBlockedReason.CLAIM_OWN_LINK:
+      return 'claim_own_link';
+    case GenCharacterBlockedReason.RESERVED:
+      return 'reserved';
     default:
       return undefined;
   }

@@ -409,6 +409,97 @@ service CharacterService {
   //     detail with reason NOT_PENDING.
   rpc RejectCharacter(RejectCharacterRequest) returns (RejectCharacterResponse);
 
+  // CreateClaimLink makes the link a player uses to take a reserved character
+  // (the character the master made with CreateCharacter.for_player). Only the
+  // campaign's master may call it. The app builds the link as
+  // `https://<app>/claim#t=<token>`: the token is a random secret that comes back
+  // once, here, and the server keeps only its SHA-256 (as for an invite). A
+  // character has one live link: making another revokes the previous one, in the
+  // same transaction. The link works for `validity_days` (1, 7 or 30; 0 means 7)
+  // and once.
+  //
+  // Errors:
+  //   - `invalid_argument`: `validity_days` is not 0, 1, 7 or 30, or the
+  //     character is not a player character.
+  //   - `not_found`: the character is not in this campaign, the campaign does not
+  //     exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: the character is not reserved (a CharacterBlocked
+  //     detail with reason NOT_RESERVED).
+  rpc CreateClaimLink(CreateClaimLinkRequest) returns (CreateClaimLinkResponse);
+
+  // RevokeClaimLink ends the character's live link, if it has one: whoever opens
+  // it sees the generic "this link cannot be used" page. Revoking when there is no
+  // live link, or twice, is not an error. Only the campaign's master may call it.
+  //
+  // Errors:
+  //   - `not_found`, `permission_denied`: as CreateClaimLink.
+  //   - `failed_precondition`: a player used the link first (a CharacterBlocked
+  //     detail with reason CLAIM_LINK_USED and the player's display name), or the
+  //     character is not reserved (NOT_RESERVED).
+  rpc RevokeClaimLink(RevokeClaimLinkRequest) returns (RevokeClaimLinkResponse);
+
+  // ReturnCharacterToReserve takes a character a player claimed through a link
+  // back: it has no owner again and is reserved (invisible to the players), and
+  // its link is gone. The player stays a member of the campaign. Only the
+  // campaign's master may call it. Safe to repeat: a character that is reserved
+  // already is answered with `failed_precondition` NOT_CLAIMED, which the app
+  // reads as done.
+  //
+  // Errors:
+  //   - `not_found`, `permission_denied`: as CreateClaimLink.
+  //   - `failed_precondition`: NOT_CLAIMED (the character did not come from a link,
+  //     is reserved already, or is dead) or CHARACTER_IN_COMBAT.
+  rpc ReturnCharacterToReserve(ReturnCharacterToReserveRequest) returns (ReturnCharacterToReserveResponse);
+
+  // DeleteReservedCharacter deletes a reserved character, with its story and its
+  // notes, and its live link (the same transaction). Only the campaign's master
+  // may call it, and only for a reserved character: a character with an owner
+  // never goes this way (RN-03). Deleting twice is `not_found`.
+  //
+  // Errors:
+  //   - `not_found`, `permission_denied`: as CreateClaimLink.
+  //   - `failed_precondition`: the character is not reserved (NOT_RESERVED).
+  rpc DeleteReservedCharacter(DeleteReservedCharacterRequest) returns (DeleteReservedCharacterResponse);
+
+  // PreviewClaim says which character a claim link is for, to the signed-in person
+  // who opened it, so they can decide before ClaimCharacter. It shows only what
+  // the public card shows: the name, race, class and level, who sent the link and
+  // from which campaign. It changes nothing, and it is never called before sign-in:
+  // the page asks only after the person has a session.
+  //
+  // `token` is the link's secret, in the request body only. Empty, it means the
+  // link the person signed in with (the sign-in intent `character_claim` keeps it
+  // for 10 minutes; signing in never claims).
+  //
+  // Errors:
+  //   - `unauthenticated`: no session.
+  //   - `not_found`: the link is invalid, expired, used or revoked, or its character
+  //     is gone. One fixed message for all of them (the same code, the same
+  //     sentence): nobody learns which.
+  //   - `resource_exhausted`: too many tries by this person or from this address.
+  rpc PreviewClaim(PreviewClaimRequest) returns (PreviewClaimResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // ClaimCharacter makes the signed-in person the owner of the reserved character
+  // the link is for, and a member of its campaign (no approval step; a pending
+  // join request is closed). The link is spent. Only this call claims: signing in
+  // with a link never does.
+  //
+  // `token` as in PreviewClaim. Claiming again with the link the same person
+  // used is `not_found`, like any used link.
+  //
+  // Errors:
+  //   - `unauthenticated`, `not_found`, `resource_exhausted`: as PreviewClaim. A
+  //     claim that loses a race with a revoke or with another claim is the same
+  //     `not_found`.
+  //   - `failed_precondition`: a CharacterBlocked detail with reason
+  //     LIVING_CHARACTER_EXISTS (RN-03: the person already has a living character
+  //     in the campaign; the detail names it), or CLAIM_OWN_LINK (the caller is the
+  //     campaign's master).
+  rpc ClaimCharacter(ClaimCharacterRequest) returns (ClaimCharacterResponse);
+
   // GetLevelUpOptions says what the next level of one of the character's
   // classes gives, so the app can draw the guided level-up (MR-040, RN-12):
   // the ability increase, the hit die, the new cantrips and spells, the
@@ -426,7 +517,11 @@ service CharacterService {
   //     carries a CharacterBlocked detail with reason CANNOT_LEVEL_UP (it is
   //     not marked for a milestone and has too little XP, it is at level 20,
   //     or it is an NPC), CHARACTER_DEAD or AWAITING_APPROVAL.
-  //   - `invalid_argument`: class_key is not a class of the character.
+  //   - `invalid_argument`: class_key is not a class of the content.
+  //   - `failed_precondition` with a LevelUpRefusal: class_key is a class the
+  //     character does not have and the character may not take it (the
+  //     MULTICLASS_PREREQUISITE reasons, MAX_LEVEL, ARCHIVED_CHOICE or
+  //     SWITCHED_OFF_CHOICE).
   rpc GetLevelUpOptions(GetLevelUpOptionsRequest) returns (GetLevelUpOptionsResponse) {
     option idempotency_level = IDEMPOTENT;
   }
@@ -515,7 +610,9 @@ service CharacterService {
   // Secrets, favored enemies and terrains); swapping a spell known for
   // another, which the SRD lets Bards, Rangers, Sorcerers and Warlocks do when
   // they level up (a level-up only adds spells, never removes one); and
-  // multiclassing and custom subclasses.
+  // custom subclasses. A class the character does not have is multiclassing
+  // (SRD 5.1, "Multiclassing"): LevelUpChoices.class_key names it, and it joins the
+  // sheet at level 1 if the character meets the prerequisites.
   //
   // Who may call it: only the owning player, and only while
   // Character.can_level_up is true. The master keeps the sheet editor
@@ -803,6 +900,12 @@ message Character {
   // Why can_level_up is true: XP, or a MILESTONE. Unspecified when it is
   // false.
   LevelUpReason level_up_reason = 24;
+  // Whether the character is reserved: a player character the master made for a
+  // player to claim (ClaimCharacter), with no owner yet. A reserved character is
+  // invisible to every player, in every read and every stream event, until it is
+  // claimed (RN-10); only the master reads it. `player_user_id` is empty while it
+  // is reserved.
+  bool reserved = 25;
 }
 
 // LevelUpReason is why a character can go up a level.
@@ -844,6 +947,18 @@ message CharacterSummary {
   // one that starting a game session locks (RN-01); empty otherwise, and for a
   // complete sheet.
   repeated OpenChoice open_choices = 11;
+  // Whether the character is reserved (Character.reserved). Only the master's
+  // list holds a reserved character, so only the master reads true.
+  bool reserved = 12;
+  // The state of the character's claim link, for the master's list of reserved
+  // characters. UNSPECIFIED for everyone else, for an NPC and for a character
+  // that was never reserved.
+  ClaimState claim_state = 13;
+  // When the link stops working: set for SENT and EXPIRED.
+  google.protobuf.Timestamp claim_expires_at = 14;
+  // For USED: the display name of the player who claimed the character (empty if
+  // they have none, or deleted the account).
+  string claimed_by_display_name = 15;
 }
 
 // OpenChoiceKind is what a sheet has not picked yet.
@@ -864,6 +979,23 @@ message OpenChoice {
   OpenChoiceKind kind = 1;
   // How many picks are left, at least 1.
   int32 missing = 2;
+}
+
+// ClaimState is where a reserved character's claim link stands (the master's
+// list). A character the player claimed keeps USED while the player owns it; a
+// character the master gave back to the reserve starts with NONE again.
+enum ClaimState {
+  CLAIM_STATE_UNSPECIFIED = 0;
+  // No link was made, or the character went back to the reserve.
+  CLAIM_STATE_NONE = 1;
+  // A link works until `claim_expires_at`.
+  CLAIM_STATE_SENT = 2;
+  // The link ran out before anyone used it.
+  CLAIM_STATE_EXPIRED = 3;
+  // The master revoked the link.
+  CLAIM_STATE_REVOKED = 4;
+  // A player claimed the character through the link.
+  CLAIM_STATE_USED = 5;
 }
 
 // CharacterBlockedReason says why a character cannot be changed now.
@@ -923,6 +1055,25 @@ enum CharacterBlockedReason {
   // the switch hides an option from the players, not from any sheet the master
   // edits (an NPC, or a player's sheet, which then keeps the option).
   CHARACTER_BLOCKED_REASON_SWITCHED_OFF_CONTENT = 15;
+  // CreateClaimLink, RevokeClaimLink or DeleteReservedCharacter on a character
+  // that is not reserved (it has an owner): the master gives a claimed character
+  // back to the reserve first (ReturnCharacterToReserve).
+  CHARACTER_BLOCKED_REASON_NOT_RESERVED = 16;
+  // RevokeClaimLink on a link a player used already, maybe a moment before (the
+  // two race for the same row, and one wins): `player_display_name` says who.
+  CHARACTER_BLOCKED_REASON_CLAIM_LINK_USED = 17;
+  // ReturnCharacterToReserve on a character no link brought to its player (one
+  // the player made, or one that is reserved already), or one that is dead.
+  CHARACTER_BLOCKED_REASON_NOT_CLAIMED = 18;
+  // ReturnCharacterToReserve on a character that is a combatant of the open
+  // combat: the master ends the combat first.
+  CHARACTER_BLOCKED_REASON_CHARACTER_IN_COMBAT = 19;
+  // ClaimCharacter by the master of the campaign, who owns the link: it is
+  // for a player.
+  CHARACTER_BLOCKED_REASON_CLAIM_OWN_LINK = 20;
+  // MarkCharacterDead or SetStoryEditing on a reserved character: it has no
+  // player yet, so there is nothing of a player's to change.
+  CHARACTER_BLOCKED_REASON_RESERVED = 21;
 }
 
 // CharacterBlocked is the error detail of CharacterService's
@@ -936,6 +1087,14 @@ message CharacterBlocked {
   // For ARCHIVED_CONTENT, SWITCHED_OFF_CONTENT and TABLE_CONTENT_STAYS, the content key that
   // blocks the call; empty otherwise.
   string content_key = 3;
+  // For CLAIM_LINK_USED, the display name of the player who used the link.
+  string player_display_name = 4;
+  // For LIVING_CHARACTER_EXISTS on ClaimCharacter, the name of the player's living
+  // character (character_id is its ID), so the app can name it.
+  string character_name = 5;
+  // For LIVING_CHARACTER_EXISTS on ClaimCharacter, the campaign the claim is for (the
+  // living character's too), so the app can link to that character's sheet.
+  string campaign_id = 6;
 }
 
 // InvalidField is the error detail of CharacterService's `invalid_argument` for a
@@ -1094,6 +1253,34 @@ message FullSheet {
   // fit it at. Set by the server and ignored from the client; an entry not here
   // uses `content_revision`.
   map<string, int32> content_baselines = 31;
+  // The feats the character took (MR-025), as content keys: "feat:grappler" or a
+  // table's "feat:<slug>@mesa". Feats are an optional rule of the game (the
+  // table's rule "Talentos"): a feat is taken in place of an Ability Score
+  // Improvement by the guided level-up, or by the master in the sheet editor. A feat
+  // applies like a feature: its effects reach the derived sheet and the sheet lists
+  // it with the features. The abilities a feat raises are in extra_ability_bonuses.
+  // At most 100.
+  repeated string feat_keys = 32;
+  // For a feat taken in the guided level-up, the key of the Ability Score Improvement
+  // feature it replaced (feat key to feature key). Set by the level-up; an entry for a feat
+  // the sheet does not have is dropped on save. The sheet then lists the feat at that level and not the improvement. A feat the
+  // master added has none.
+  map<string, string> feat_slots = 33;
+  // A College of Lore bard's "Perguntar" setting for Cutting Words: on which rolls
+  // of an enemy the combat asks whether to use it. Unspecified is ONLY_ATTACKS.
+  CuttingWordsAsk cutting_words_ask = 40;
+}
+
+// CuttingWordsAsk is when the combat asks a bard to use Cutting Words.
+enum CuttingWordsAsk {
+  CUTTING_WORDS_ASK_UNSPECIFIED = 0;
+  // On every roll of an enemy the bard sees within 60 ft: attacks, checks and
+  // damage ("em todos os testes do inimigo").
+  CUTTING_WORDS_ASK_ALL = 1;
+  // Only on attack rolls ("só em ataques"). The default.
+  CUTTING_WORDS_ASK_ONLY_ATTACKS = 2;
+  // Never ("nunca").
+  CUTTING_WORDS_ASK_NEVER = 3;
 }
 
 // AbilityOrigin is the way a player made a sheet's base scores, as the server
@@ -1390,6 +1577,12 @@ message CreateCharacterRequest {
   // The key is unique in the campaign; the same key with another request is `invalid_argument`.
   // Empty: the call is not deduplicated. It must be a UUID.
   string idempotency_key = 7;
+  // Only the master may send it, with kind PLAYER: the character is made for a
+  // player to claim (ClaimCharacter), saved as reserved, with no owner and no
+  // approval step. The sheet's rules are the master's (the table's ability-score
+  // method and hit-point rule are not checked, as for any sheet the master edits).
+  // From a player, or with another kind, it is `invalid_argument`.
+  bool for_player = 8;
 }
 
 // PreviewCharacterRequest is a sheet to derive without saving it.
@@ -1402,6 +1595,9 @@ message PreviewCharacterRequest {
   CharacterKind kind = 3;
   // Required: full for PLAYER, ENEMY and BOSS; basic for MINION and STORY.
   CharacterSheet sheet = 4;
+  // As CreateCharacterRequest.for_player: the master previews the sheet of a
+  // reserved character, which the master's rules allow.
+  bool for_player = 5;
 }
 
 // PreviewCharacterResponse is what the sheet would be once saved.
@@ -1685,13 +1881,109 @@ message RejectCharacterRequest {
 // RejectCharacterResponse is empty: the character is gone.
 message RejectCharacterResponse {}
 
+// CreateClaimLinkRequest names the reserved character to make a link for.
+message CreateClaimLinkRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // How long the link works: 1, 7 or 30 days. 0 means 7. It cannot change after
+  // the link is made.
+  int32 validity_days = 3;
+}
+
+// CreateClaimLinkResponse carries the link's secret, once.
+message CreateClaimLinkResponse {
+  // The secret of the link, 43 URL-safe characters. The app builds
+  // `<origin>/claim#t=<token>`. The server never shows it again.
+  string token = 1;
+  // When the link stops working.
+  google.protobuf.Timestamp expires_at = 2;
+}
+
+// RevokeClaimLinkRequest names the character whose live link ends.
+message RevokeClaimLinkRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+}
+
+// RevokeClaimLinkResponse is empty: the character has no live link.
+message RevokeClaimLinkResponse {}
+
+// ReturnCharacterToReserveRequest names the claimed character to take back.
+message ReturnCharacterToReserveRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+}
+
+// ReturnCharacterToReserveResponse returns the character as it is now.
+message ReturnCharacterToReserveResponse {
+  // The character, reserved and with no owner.
+  Character character = 1;
+}
+
+// DeleteReservedCharacterRequest names the reserved character to delete.
+message DeleteReservedCharacterRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+}
+
+// DeleteReservedCharacterResponse is empty: the character is gone.
+message DeleteReservedCharacterResponse {}
+
+// PreviewClaimRequest carries the link's secret.
+message PreviewClaimRequest {
+  // The secret from the link's fragment, in the body only. Empty means the link
+  // the person signed in with.
+  string token = 1;
+}
+
+// ClaimCard is what the public card of a reserved character shows to someone who
+// holds its link.
+message ClaimCard {
+  // The character's name.
+  string character_name = 1;
+  // The race's Portuguese name (the subrace's if the sheet has one), such as
+  // "Humano". Empty for a sheet without one.
+  string race_name_pt = 2;
+  // Classes and levels in Portuguese, such as "Monge 5".
+  string class_summary = 3;
+  // The campaign's name.
+  string campaign_name = 4;
+  // The display name of whoever made the link (the master); empty if they have none.
+  string sent_by_display_name = 5;
+}
+
+// PreviewClaimResponse is the card of the character the link is for.
+message PreviewClaimResponse {
+  ClaimCard card = 1;
+  // True when the caller is the campaign's master, who owns the link: the app
+  // says the link is for a player, and the card is left empty.
+  bool own_link = 2;
+}
+
+// ClaimCharacterRequest carries the link's secret.
+message ClaimCharacterRequest {
+  // As PreviewClaimRequest.token.
+  string token = 1;
+}
+
+// ClaimCharacterResponse says what the person took.
+message ClaimCharacterResponse {
+  string campaign_id = 1;
+  string campaign_name = 2;
+  string character_id = 3;
+  string character_name = 4;
+}
+
 // GetLevelUpOptionsRequest names the character to level up.
 message GetLevelUpOptionsRequest {
   string campaign_id = 1;
   string character_id = 2;
-  // The class that gains the level, one the character already has (a new
-  // class is multiclassing, which stays in the sheet editor). Empty means the
-  // character's first class.
+  // The class that gains the level: one the character has, or one it does not
+  // have yet (multiclassing: the options are those of the class's level 1, and
+  // is_new_class is true; LevelUpOptions.class_choices lists them all). Empty
+  // means the character's first class. A class of the content that the character
+  // may not take is `failed_precondition` with the reason in LevelUpRefusal; one
+  // the content does not have is `invalid_argument`.
   string class_key = 3;
 }
 
@@ -1846,6 +2138,111 @@ message LevelUpOptions {
   // HIT_POINTS_AVERAGE_ONLY, and ROLLED_IN_APP and ROLLED_PHYSICAL answer
   // HIT_POINTS_RULE). Independent of dice_rule, which says where a roll happens.
   LevelUpHitPointsRule hit_points_rule = 35;
+  // At a level with an Ability Score Improvement, when the table uses feats (its
+  // rule "Talentos"): the feats the player may take in place of the increase, each
+  // with whether the character qualifies at the new level and what it lacks when
+  // not (meurpg.rules.v1.FeatOption). Retired feats are left out, and so are the
+  // ones the master switched off for a player. Empty at the other levels and where
+  // the table does not use feats. A feat taken is LevelUpChoices.feat_key; the
+  // abilities it raises, LevelUpChoices.ability_increase.
+  repeated meurpg.rules.v1.FeatOption feats = 36;
+
+  // Multiclassing (SRD 5.1, "Multiclassing"). is_new_class says the character
+  // does not have class_key: the level is the class's first (from_level 0), the hit
+  // die gives its average and never the maximum, and everything above is the
+  // class's level 1 (cantrips, spells and prepared spells are the class's own
+  // numbers, not the total level's).
+  bool is_new_class = 37;
+  // The ways the level can go, always set: the classes the character has (their
+  // next level), then the other classes of the content sorted by name, each with
+  // its prerequisite and whether it is open. A class the master archived or
+  // switched off is not listed to a player.
+  repeated LevelUpClassChoice class_choices = 38;
+  // For a new class: the armor, weapon and tool proficiencies its multiclass table
+  // gives, each marked when the character already has it; and the picks the table
+  // asks for (a skill; the Bard's instrument). The skill goes in
+  // LevelUpChoices.skill_proficiency_keys, the instrument in instrument_key.
+  repeated LevelUpProficiencyGain proficiency_gains = 39;
+  repeated LevelUpProficiencyChoice proficiency_choices = 40;
+}
+
+// LevelUpPrerequisite is one ability a class asks for to be taken as one of
+// several classes, with the character's final score.
+message LevelUpPrerequisite {
+  meurpg.rules.v1.Ability ability = 1;
+  int32 minimum = 2;
+  int32 have = 3;
+  bool met = 4;
+}
+
+// LevelUpClassUnavailable says why a class is not open as the next level.
+enum LevelUpClassUnavailable {
+  LEVEL_UP_CLASS_UNAVAILABLE_UNSPECIFIED = 0;
+  // The character, or the class, is at level 20.
+  LEVEL_UP_CLASS_UNAVAILABLE_MAX_LEVEL = 1;
+  // The new class asks for an ability the character does not have at 13.
+  LEVEL_UP_CLASS_UNAVAILABLE_PREREQUISITE = 2;
+  // A class the character already has asks for an ability the character does not
+  // have at 13, which closes every new class.
+  LEVEL_UP_CLASS_UNAVAILABLE_PREREQUISITE_CURRENT = 3;
+}
+
+// LevelUpClassChoice is a class the next level can go to: one the character has or
+// a new one (SRD 5.1, "Multiclassing").
+message LevelUpClassChoice {
+  string class_key = 1;
+  string name_pt = 2;
+  // True for a class the character does not have.
+  bool is_new = 3;
+  // The class's level before and after the level: 5 and 6, or 0 and 1 for a new
+  // class.
+  int32 from_level = 4;
+  int32 to_level = 5;
+  // The Portuguese name of the subclass the character has in the class, and
+  // whether the class picks its subclass at to_level.
+  string subclass_name_pt = 6;
+  bool subclass_due = 7;
+  // What the class asks for as one of several classes: every ability here, or
+  // just one of them when prerequisite_any_of (the Fighter's Strength or
+  // Dexterity). For a class the character has, what a new class asks of it.
+  repeated LevelUpPrerequisite prerequisites = 8;
+  bool prerequisite_any_of = 9;
+  bool prerequisite_met = 10;
+  // True when the level can go to this class now; otherwise unavailable says why.
+  bool available = 11;
+  LevelUpClassUnavailable unavailable = 12;
+}
+
+// LevelUpProficiencyGain is a proficiency a new class gives (the multiclass table).
+message LevelUpProficiencyGain {
+  string key = 1;
+  string name_pt = 2;
+  // "armor", "weapon", "tool" or "other".
+  string kind = 3;
+  bool already_have = 4;
+}
+
+// LevelUpProficiencyKind is what a pick of the multiclass table is.
+enum LevelUpProficiencyKind {
+  LEVEL_UP_PROFICIENCY_KIND_UNSPECIFIED = 0;
+  LEVEL_UP_PROFICIENCY_KIND_SKILL = 1;
+  LEVEL_UP_PROFICIENCY_KIND_INSTRUMENT = 2;
+}
+
+// LevelUpProficiencyChoice is "choose `count` of `from`" among the proficiencies of a
+// new class: a skill from its list, or the Bard's musical instrument.
+message LevelUpProficiencyChoice {
+  LevelUpProficiencyKind kind = 1;
+  int32 count = 2;
+  repeated LevelUpProficiencyOption from = 3;
+}
+
+// LevelUpProficiencyOption is an option of a pick, marked when the character
+// already has it (the server refuses it: PROFICIENCY_CHOICE or INSTRUMENT_CHOICE).
+message LevelUpProficiencyOption {
+  string key = 1;
+  string name_pt = 2;
+  bool already_have = 3;
 }
 
 // LevelUpHitPointsRule is which methods of deciding a level's hit points the
@@ -1941,7 +2338,8 @@ message LevelUpHitPoints {
 // only what is new, never the sheet's whole lists: the server adds them to the
 // stored sheet. The same message is what ListLevelUps shows the master.
 message LevelUpChoices {
-  // The class that gains the level: one the character has.
+  // The class that gains the level: one the character has, or a new one
+  // (multiclassing), which joins the sheet at level 1 as its last class.
   string class_key = 1;
   // The ability increase at an Ability Score Improvement level: +2 in one
   // ability, or +1 in two, as AbilityScores fields; the others 0 or unset.
@@ -1961,6 +2359,18 @@ message LevelUpChoices {
   repeated string expertise_skill_keys = 9;
   // The hit points of the level. Required.
   LevelUpHitPoints hit_points = 10;
+  // The feat taken in place of the Ability Score Improvement, when the table uses
+  // feats (its rule "Talentos") and the character meets its prerequisite. With a
+  // feat, `ability_increase` is the increase the feat gives (its `increase`:
+  // `count` different abilities of its list, `value` each, none above 20) and is
+  // unset when the feat gives none. A feat that raises every ability it lists needs no
+  // `ability_increase`: the server applies it, stopping at 20 (one that is not exactly that
+  // is refused). Empty for none.
+  string feat_key = 11;
+  // The musical instrument (a proficiency key, such as "proficiency:lute") that a
+  // Bard taken as a new class lets the player pick; the sheet lists its name among
+  // tool_proficiencies. Empty for a class that asks for none.
+  string instrument_key = 12;
 }
 
 // LevelUpRefusalReason says why the rules refuse a set of choices, so the app
@@ -2028,6 +2438,29 @@ enum LevelUpRefusalReason {
   // sheet field. The master is not refused. PreviewLevelUp answers this and
   // ARCHIVED_CHOICE with no `after`.
   LEVEL_UP_REFUSAL_REASON_SWITCHED_OFF_CHOICE = 21;
+  // A feat at a level without an Ability Score Improvement, a feat the content does
+  // not have, more than one, or one removed. `field` is "full.feat_keys".
+  LEVEL_UP_REFUSAL_REASON_FEAT = 22;
+  // The character does not meet the feat's prerequisite.
+  LEVEL_UP_REFUSAL_REASON_FEAT_PREREQUISITE = 23;
+  // A feat, but the table does not use feats (its rule "Talentos"). `field` is
+  // "choices.feat_key".
+  LEVEL_UP_REFUSAL_REASON_FEATS_NOT_ALLOWED = 24;
+  // The new class asks for an ability the character does not have at 13
+  // (SRD 5.1, "Multiclassing", "Prerequisites"): class_key, ability, minimum and
+  // have say which. A player only; the master's editor may go past it, with the
+  // sheet's multiclass_prerequisite issue.
+  LEVEL_UP_REFUSAL_REASON_MULTICLASS_PREREQUISITE = 25;
+  // A class the character already has asks for an ability the character does not
+  // have at 13, so it takes no new class: class_key is the class it has, and
+  // ability, minimum and have the missing score.
+  LEVEL_UP_REFUSAL_REASON_MULTICLASS_PREREQUISITE_CURRENT = 26;
+  // The skill a new class's multiclass table asks for is missing, repeated, one
+  // the character already has, or not on the class's list.
+  LEVEL_UP_REFUSAL_REASON_PROFICIENCY_CHOICE = 27;
+  // The Bard's instrument is missing, unknown, or one the character already has;
+  // or an instrument was sent for a class that asks for none.
+  LEVEL_UP_REFUSAL_REASON_INSTRUMENT_CHOICE = 28;
 }
 
 // LevelUpRefusal is the first rule the choices break: the sheet field and a
@@ -2040,6 +2473,13 @@ message LevelUpRefusal {
   LevelUpRefusalReason reason = 2;
   // With SHEET_ISSUE: the Issue code, such as "spell_count" or "spell_level".
   string issue_code = 3;
+  // With the MULTICLASS_PREREQUISITE reasons: the class, the ability the
+  // character lacks, the score the class asks for and the one the character has.
+  // For an "or" prerequisite (the Fighter's), the ability closest to the minimum.
+  string class_key = 4;
+  meurpg.rules.v1.Ability ability = 5;
+  int32 minimum = 6;
+  int32 have = 7;
 }
 
 // PreviewLevelUpRequest asks for the sheet with the choices applied.
@@ -2065,6 +2505,49 @@ message PreviewLevelUpResponse {
   // accept them. An incomplete step shows here (for example CANTRIPS while
   // the new cantrip is not picked).
   LevelUpRefusal refusal = 2;
+  // Set when the sheet has more than one class after the level (a new class, or a
+  // level of the second): what the summary says about multiclassing. Unset with
+  // `after`.
+  LevelUpMulticlassSummary multiclass_summary = 3;
+}
+
+// LevelUpMulticlassException is one of the exceptions of SRD 5.1, "Multiclassing",
+// "Class Features", that the level meets.
+enum LevelUpMulticlassException {
+  LEVEL_UP_MULTICLASS_EXCEPTION_UNSPECIFIED = 0;
+  // The level's Extra Attack does not add to the attacks the character already makes.
+  LEVEL_UP_MULTICLASS_EXCEPTION_EXTRA_ATTACK = 1;
+  // The level's Channel Divinity gives effects, not uses.
+  LEVEL_UP_MULTICLASS_EXCEPTION_CHANNEL_DIVINITY = 2;
+  // The level's Unarmored Defense is the second one: the character does not gain it.
+  LEVEL_UP_MULTICLASS_EXCEPTION_UNARMORED_DEFENSE = 3;
+}
+
+// LevelUpMulticlassSummary is what the summary of a level up on a multiclass sheet
+// says beyond the derived numbers: the caster level of the multiclass spellcaster
+// table, the proficiencies the level gives, and the exceptions it meets.
+message LevelUpMulticlassSummary {
+  // The class the level adds to the sheet; empty when the level goes to a class the
+  // character already has.
+  string new_class_key = 1;
+  // The levels in the multiclass spellcaster table (SRD 5.1, "Multiclassing",
+  // "Spell Slots") before and after: all the levels of Bard, Cleric, Druid,
+  // Sorcerer and Wizard, half (rounded down) of Paladin and Ranger, a third of the
+  // Fighter's and Rogue's casting subclasses. Pact Magic does not count.
+  int32 caster_level_before = 2;
+  int32 caster_level_after = 3;
+  // True when more than one class has the Spellcasting feature, so that table gives
+  // slots_after; otherwise the slots are those of the one casting class.
+  bool slots_by_table = 4;
+  // The spell slots per circle after the level (9 entries, the 1st circle first),
+  // and the hit dice after it, by die.
+  repeated int32 slots_after = 5;
+  repeated meurpg.rules.v1.HitDice hit_dice_after = 6;
+  // The armor, weapon and tool proficiencies the sheet has after the level and not
+  // before, then the skills picked and the instrument (key empty, the name as the
+  // sheet lists it).
+  repeated LevelUpNamedKey proficiencies_gained = 7;
+  repeated LevelUpMulticlassException exceptions = 8;
 }
 
 // RollLevelUpHitPointsRequest names the character, and the class if it has

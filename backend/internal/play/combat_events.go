@@ -123,6 +123,15 @@ type castHit struct {
 	CoverRestricted bool     `json:"cover_restricted,omitempty"`
 	CoverSeenBy     []string `json:"cover_seen_by,omitempty"`
 	CoverSeenMask   uint64   `json:"cover_seen_mask,omitempty"`
+	// HiddenAtCast says the target was a hidden creature when an area spell hit it:
+	// the players' view of the cast never lists it, even after it is revealed, and
+	// the master's marks it.
+	HiddenAtCast bool `json:"hidden_at_cast,omitempty"`
+	// Fogged says the target is an NPC that a map with the fog of war made visible to some
+	// players only, and SeenMask (bits of the event's CoverUsers) says to which, as they stood
+	// when the spell hit: the players' line lists the target only to them.
+	Fogged   bool   `json:"fogged,omitempty"`
+	SeenMask uint64 `json:"seen_mask,omitempty"`
 
 	// A spell that reads hit points (combat_spells_hp.go): whether it reached the
 	// target (the fx* values below), why not, the target's hit points when it did,
@@ -134,9 +143,14 @@ type castHit struct {
 	Order    int32  `json:"order,omitempty"`
 	Left     int32  `json:"left,omitempty"`
 	Healed   *int32 `json:"healed,omitempty"`
-	// Gain is what Aid gave the target (the gain* values): its maximum, temporary
-	// hit points or current hit points.
+	// Gain is what Aid gave the target (the gain* values): its maximum, or, for a
+	// target that was at 0 hit points, the current hit points that woke it up.
 	Gain string `json:"gain,omitempty"`
+	// HPAfter and MaxAfter are the target's hit points and maximum after Aid, and
+	// BonusBefore the bonus it had before (an undo puts it back).
+	HPAfter     *int32 `json:"hp_after,omitempty"`
+	MaxAfter    *int32 `json:"max_after,omitempty"`
+	BonusBefore *int32 `json:"bonus_before,omitempty"`
 	// What an undo puts back: the hit points and death saves when the spell
 	// changed them (a heal, a death, Estabilizar), the conditions when it
 	// changed them.
@@ -147,6 +161,15 @@ type castHit struct {
 	DeathBefore *deathState `json:"death_before,omitempty"`
 	CondSet     bool        `json:"cond_set,omitempty"`
 	CondBefore  []string    `json:"cond_before,omitempty"`
+}
+
+// unseenBy says the target was an NPC in the fog that this player did not see when it was hit.
+func (h castHit) unseenBy(users []string, userID string) bool {
+	if !h.Fogged {
+		return false
+	}
+	j := slices.Index(users, userID)
+	return j < 0 || h.SeenMask&(1<<j) == 0
 }
 
 // What a spell that reads hit points did to a target, as a cast event stores it.
@@ -219,9 +242,17 @@ type actionEvent struct {
 	// master's answer carries it (RN-20), and a retry reads it back from here.
 	TargetAC int32 `json:"target_ac,omitempty"`
 
+	// ReliableTalent says the roll of an ability check was made by a character with
+	// Reliable Talent that applied to the check (a skill it is proficient in): each d20
+	// of 9 or lower counted as 10.
+	ReliableTalent bool `json:"reliable_talent,omitempty"`
+
 	// The damage roll: the dice, their faces, the total and the type. Applied
 	// says an NPC took it at once.
+	// DiceCount counts every die rolled, ExtraDice among them: the last ExtraDice
+	// faces are the ones a feature added to a critical hit (Brutal Critical).
 	DiceCount  int32   `json:"dice_count,omitempty"`
+	ExtraDice  int32   `json:"extra_dice,omitempty"`
 	DiceSides  int32   `json:"dice_sides,omitempty"`
 	Faces      []int32 `json:"faces,omitempty"`
 	Amount     int32   `json:"amount,omitempty"`
@@ -238,18 +269,39 @@ type actionEvent struct {
 	Before *hpState `json:"before,omitempty"`
 	After  *hpState `json:"after,omitempty"`
 
+	// EffectEnd is the effect a combat_effect_ended event is about.
+	EffectEnd *effectEnd `json:"effect_end,omitempty"`
+
 	// A spell cast (spell_cast) and a reaction: the cast, the slot spent, what it
 	// did to each target and the concentration it set or ended; a feature action:
 	// the resource a use of which was spent. For a damage roll of a cast, Settled
 	// is every pending damage the one roll settled.
-	CastID      string      `json:"cast_id,omitempty"`
-	Slot        *slotRef    `json:"slot,omitempty"`
-	Resource    string      `json:"resource,omitempty"`
-	Hits        []castHit   `json:"hits,omitempty"`
-	CoverUsers  []string    `json:"cover_users,omitempty"` // the players the hits' CoverSeenMask counts, bit by bit
-	Settled     []damageHit `json:"settled,omitempty"`
-	Heal        bool        `json:"heal,omitempty"`
-	Concentrate bool        `json:"concentrate,omitempty"`
+	CastID     string      `json:"cast_id,omitempty"`
+	Slot       *slotRef    `json:"slot,omitempty"`
+	Resource   string      `json:"resource,omitempty"`
+	Hits       []castHit   `json:"hits,omitempty"`
+	CoverUsers []string    `json:"cover_users,omitempty"` // the players the hits' CoverSeenMask counts, bit by bit
+	Settled    []damageHit `json:"settled,omitempty"`
+	// Placed says the server worked out who an area spell hit, from the point or the
+	// direction the caster chose (AreaCol and AreaRow, Dx and Dy): the line of the
+	// cast is the players', with the hits on the hidden left out, instead of being
+	// the master's alone because a hidden creature is in it. The answer of a retry
+	// draws the area again from them.
+	Placed  bool  `json:"placed,omitempty"`
+	AreaCol int32 `json:"area_col,omitempty"`
+	AreaRow int32 `json:"area_row,omitempty"`
+	Dx      int32 `json:"dx,omitempty"`
+	Dy      int32 `json:"dy,omitempty"`
+	// Revealed are the hidden creatures the cast made appear, and PendingReveal the
+	// question it opened for the master: what an undo of the cast puts back.
+	Revealed      []string `json:"revealed,omitempty"`
+	PendingReveal string   `json:"pending_reveal,omitempty"`
+	// ByArea says a combatant_hidden_set event revealed the creature because of an
+	// area spell (the table's rule, the master's choice or his answer): the players
+	// get its line, "foi revelado".
+	ByArea      bool `json:"by_area,omitempty"`
+	Heal        bool `json:"heal,omitempty"`
+	Concentrate bool `json:"concentrate,omitempty"`
 	// ConcBefore is the spell the caster concentrated on before (empty: none),
 	// and ConcEnded the one the cast stopped (the same, when it replaced it).
 	ConcBefore string `json:"conc_before,omitempty"`
@@ -329,6 +381,7 @@ type actionEvent struct {
 	Jump             string     `json:"jump,omitempty"`
 	HeightDFt        int32      `json:"height_dft,omitempty"`
 	LandingDifficult bool       `json:"landing_difficult,omitempty"`
+	JumpRunning      bool       `json:"jump_running,omitempty"`
 	From             *moveState `json:"from,omitempty"`
 	// StoppedEarly says a creature the mover did not see cut the move short.
 	StoppedEarly bool `json:"stopped_early,omitempty"`
@@ -435,11 +488,8 @@ type actionEvent struct {
 	// rolled with advantage or disadvantage (D20 is the one that counts).
 	D20B  int32    `json:"d20_b,omitempty"`
 	Found []string `json:"found,omitempty"`
-	// Mode and Notes are how an attack's d20 was rolled and why ("advantage", the hider's
-	// "Atacante não visto", an ally's Help); HidBefore is the hiding the attack ended, which
-	// its undo gives back (combat_hide.go).
-	RollMode  string     `json:"roll_mode,omitempty"`
-	Notes     []rollNote `json:"notes,omitempty"`
+	// HidBefore is the hiding an attack or a cast ended, which its undo gives back
+	// (combat_hide.go).
 	HidBefore []hideSnap `json:"hid_before,omitempty"`
 	HelpUsed  []string   `json:"help_used,omitempty"`
 	// Dragged is the creature a grappler dragged along in a move, and where it stood (the
@@ -449,6 +499,12 @@ type actionEvent struct {
 	// Contest is what a contest or a special action says of the event: grapple, shove,
 	// escape, Hide, Help, surprise (combat_contests_core.go).
 	Contest *contestEvent `json:"contest,omitempty"`
+	// Res is what a class resource flow did (Lay on Hands, Flexible Casting,
+	// Bardic Inspiration): see combat_resources.go.
+	Res *resourceEvent `json:"res,omitempty"`
+	// Reaction is what a reaction window did (PM-04), or marks the event that
+	// stands for a held action (combat_reaction_hold.go).
+	Reaction *reactionEvent `json:"reaction,omitempty"`
 }
 
 // readEvent decodes an event's payload. A payload of this module never fails

@@ -59,6 +59,11 @@
         <div class="campaign-layout__column">
           <!-- For a player, only while a session is open (it's empty otherwise). -->
           <app-game-session-card [campaignId]="s.campaign.id" [isMaster]="isMaster" />
+          <!-- A player came for their characters: they come right after the session card. -->
+          @if (!isMaster) {
+            <app-campaign-characters [campaignId]="s.campaign.id" [isMaster]="false" />
+          }
+          <app-past-sessions-panel [campaignId]="s.campaign.id" [isMaster]="isMaster" />
           <app-experience-panel [campaignId]="s.campaign.id" [campaignName]="s.campaign.name" [isMaster]="isMaster" />
           @if (isMaster) {
             <app-dice-panel [campaignId]="s.campaign.id" [savedMode]="s.campaign.diceMode" [members]="members()" />
@@ -75,7 +80,9 @@
           @if (isMaster) { <app-bestiary-panel [campaignId]="s.campaign.id" /> }
           @if (isMaster) { <app-encounters-panel [campaignId]="s.campaign.id" /> }
           @if (isMaster) { <app-puzzles-panel [campaignId]="s.campaign.id" /> }
-          <app-campaign-characters [campaignId]="s.campaign.id" [isMaster]="isMaster" />
+          @if (isMaster) {
+            <app-campaign-characters [campaignId]="s.campaign.id" [isMaster]="true" />
+          }
         </div>
 
         <div class="campaign-layout__column">
@@ -109,13 +116,22 @@
             </div>
           </section>
           @if (isMaster) { <app-document-panel [campaignId]="s.campaign.id" [campaignName]="s.campaign.name" /> }
+          @if (isMaster) {
+            <section class="mr-panel" aria-labelledby="export-heading">
+              <h2 class="mr-panel__title" id="export-heading">Pacote da campanha</h2>
+              <p class="rules-lead">Um arquivo com tudo o que é da mesa, para criar a mesma campanha em outro servidor.</p>
+              <div>
+                <a matButton="outlined" [routerLink]="['/campaigns', s.campaign.id, 'export']">Exportar campanha</a>
+              </div>
+            </section>
+          }
           <section class="mr-panel" aria-labelledby="members-heading">
             <h2 class="mr-panel__title" id="members-heading">Membros</h2>
             <ul class="mr-list">
               @for (m of members(); track m.userId) {
                 <li class="member">
                   <span class="member__text">
-                    <span class="member__name">
+                    <span class="member__name" [class.mr-muted]="!m.hasName">
                       {{ m.name }}
                       @if (m.isViewer) {
                         <span class="mr-muted member__you">(você)</span>

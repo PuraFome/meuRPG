@@ -124,7 +124,10 @@
       >
         <mat-icon>{{ f.refused ? 'block' : 'check' }}</mat-icon>
         @if (f.label) {
-          <span class="cm__cost" [class.cm__cost--above]="costAbove(f.square)">{{ f.label }}</span>
+          <span class="cm__cost" [class.cm__cost--above]="!!f.note || costAbove(f.square)">{{ f.label }}</span>
+        }
+        @if (f.note) {
+          <span class="cm__note">{{ f.note }}</span>
         }
       </span>
     }
@@ -156,6 +159,8 @@
         />
       </span>
     }
+    <!-- A picker's own marks over the map, in its squares (the area picker): placed by z-index among the map's. -->
+    <ng-content />
   </div>
 
   <ul class="mr-visually-hidden">

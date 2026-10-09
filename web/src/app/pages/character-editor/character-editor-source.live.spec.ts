@@ -1,6 +1,7 @@
 import {
   Alignment,
   BasicSheet,
+  CuttingWordsAsk,
   DamageType,
   FullSheet,
   HitPointsMethod,
@@ -16,7 +17,7 @@ import {
 import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { Role } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { Role, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import { CreatureSize } from '../../../gen/meurpg/rules/v1/rules_pb';
@@ -104,6 +105,9 @@ function fullyPopulatedFullSheet(): FullSheet {
     customFeaturesText: 'Sabe um truque de cartas que sempre erra.',
     // No UI collects this either — the plan §4 gap this test also protects.
     featureChoiceKeys: ['feature:fighter-fighting-style-defense'],
+    // Nor the feats the character took: an edit by the master must not wipe them.
+    featKeys: ['feat:grappler'],
+    featSlots: { 'feat:grappler': 'feature:wizard-ability-score-improvement-1' },
     // Nor this: the NPC's challenge rating and the XP it gives (Etapa 7); the
     // editor must not drop them when it saves.
     challengeRating: '2',
@@ -112,6 +116,7 @@ function fullyPopulatedFullSheet(): FullSheet {
     contentRevision: 0,
     knownIssues: [],
     contentBaselines: {},
+    cuttingWordsAsk: CuttingWordsAsk.NEVER,
   };
 }
 
@@ -171,13 +176,35 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
       // as loaded, not wiped to a zero/empty default.
       coins: loaded.coins,
       featureChoiceKeys: loaded.featureChoiceKeys,
+      featKeys: loaded.featKeys,
+      featSlots: loaded.featSlots,
       challengeRating: loaded.challengeRating,
       xpValue: loaded.xpValue,
       portraitImageId: loaded.portraitImageId,
       contentRevision: loaded.contentRevision,
       knownIssues: loaded.knownIssues,
       contentBaselines: loaded.contentBaselines,
+      cuttingWordsAsk: loaded.cuttingWordsAsk,
     });
+  });
+
+  it('the bard\'s "Perguntar" setting survives the round trip, and an unset one stays unset', () => {
+    for (const ask of [CuttingWordsAsk.ALL, CuttingWordsAsk.NEVER, CuttingWordsAsk.ONLY_ATTACKS]) {
+      const loaded: FullSheet = { ...fullyPopulatedFullSheet(), cuttingWordsAsk: ask };
+      const merged = mergeFullSheetInit(loaded, toFormFullSheet('Orla', loaded));
+      expect(merged.cuttingWordsAsk).toBe(ask);
+    }
+    const unset: FullSheet = {
+      ...fullyPopulatedFullSheet(),
+      cuttingWordsAsk: CuttingWordsAsk.UNSPECIFIED,
+    };
+    const form = toFormFullSheet('Orla', unset);
+    expect(form.cuttingWordsAsk).toBe('only-attacks');
+    expect(mergeFullSheetInit(unset, form).cuttingWordsAsk).toBe(CuttingWordsAsk.UNSPECIFIED);
+    // Changing it on the form is what the save carries.
+    expect(mergeFullSheetInit(unset, { ...form, cuttingWordsAsk: 'all' }).cuttingWordsAsk).toBe(
+      CuttingWordsAsk.ALL,
+    );
   });
 
   it('a custom background with exactly two granted skills round-trips too', () => {
@@ -505,6 +532,17 @@ describe('the catalog the editor reads (slice 10.12b)', () => {
     it('fails the load when the role cannot be read, instead of showing a master the player view', async () => {
       const source = sourceWith(() => Promise.reject(new Error('transient')));
       await expect(source.loadCatalog('camp-1')).rejects.toThrow('transient');
+    });
+
+    it("reads the campaign's XP mode, also for a member waiting for approval", async () => {
+      const source = sourceWith(() =>
+        Promise.resolve({
+          campaign: { myRole: Role.PLAYER, awaitingApproval: true, xpMode: XpMode.ENEMIES },
+        }),
+      );
+      const catalog = await source.loadCatalog('camp-1');
+      expect(catalog.xpMode).toBe('enemies');
+      expect(catalog.viewerIsMaster).toBe(false);
     });
 
     it('takes a refusal of the campaign as "not the master"', async () => {

@@ -111,3 +111,44 @@ describe('CastSheet: ending another concentration', () => {
     expect(text).toContain('Os 2 Lobos atrozes somem.');
   });
 });
+
+/** A cantrip uses no slot: the sheet has no slot picker to show, not an empty one. */
+describe('CastSheet: a cantrip', () => {
+  it('shows no slot picker, with or without slots to list', () => {
+    TestBed.resetTestingModule();
+    const data = {
+      campaignId: 'c',
+      encounterId: 'enc',
+      casterId: 's',
+      round: 2,
+      spellKey: 'spell:fire-bolt',
+      name: 'Raio de Fogo',
+      level: 0,
+      concentration: false,
+      economy: ActionEconomy.ACTION,
+      slots: [],
+      usage: [{ level: 1, total: 2, used: 2 }],
+      pact: null,
+      targets: undefined,
+      shieldFree: null,
+      shieldName: '',
+      attackBonus: 0,
+      diceMode: DiceMode.PLAYERS_CHOOSE,
+      preference: DicePreference.APP,
+      state: { encounter: signal(encounter({ combatants: [] })) },
+    } as unknown as CastSheetData;
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: CombatClient, useValue: {} },
+        { provide: SpellCatalog, useValue: { details: () => Promise.resolve(null) } },
+        { provide: MAT_DIALOG_DATA, useValue: data },
+        { provide: MatDialogRef, useValue: { close: vi.fn() } },
+      ],
+    });
+    const fixture = TestBed.createComponent(CastSheet);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('app-slot-picker')).toBeNull();
+    expect(el.textContent).not.toContain('Sem espaço livre');
+  });
+});

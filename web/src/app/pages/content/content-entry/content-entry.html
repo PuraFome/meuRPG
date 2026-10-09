@@ -169,6 +169,9 @@
             @case (Kind.SUBCLASS) {
               <app-subclass-editor (switched)="replace($event)" [campaignId]="campaignId()" [entry]="entry()" [parentKey]="parentClass()" [menu]="menu()!" [catalog]="catalog()!" [defaults]="defaults()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (reload)="load()" (cancelled)="goBack()" />
             }
+            @case (Kind.FEAT) {
+              <app-feat-editor [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />
+            }
             @case (Kind.BACKGROUND) {
               <app-background-editor [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />
             }

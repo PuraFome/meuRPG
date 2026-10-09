@@ -273,6 +273,20 @@ describe('the combat log sentences (timeline.md, Rodadas 1 and 2)', () => {
           entry({
             kind: CombatLogKind.MOVED,
             actorLabel: 'Toren',
+            distanceFt: 15,
+            distanceDft: 150,
+            jump: JumpKind.LONG,
+            jumpRunningStart: true,
+          }),
+        )?.text,
+      ),
+    ).toBe(' saltou 4,5 m, com corrida');
+    expect(
+      plain(
+        logLine(
+          entry({
+            kind: CombatLogKind.MOVED,
+            actorLabel: 'Toren',
             distanceDft: 0,
             jump: JumpKind.HIGH,
             jumpHeightDft: 60,
@@ -586,6 +600,18 @@ describe('the log of spells, reactions, the fallen and conditions (slice 6.5c)',
     expect(logLine(sleep)?.text).toBe(' conjura Sono (1º\u00a0nível) no Goblin 1 e no Goblin 2');
   });
 
+  it('writes a reaction window as the one line the server wrote for whoever reads it', () => {
+    const line = logLine(
+      entry({
+        kind: CombatLogKind.REACTION_WINDOW,
+        actorLabel: 'Brisa',
+        reactionTextPt: 'Brisa usou Esquiva Sobrenatural: o dano caiu pela metade.',
+      }),
+    );
+    expect(line?.actor).toBe('');
+    expect(line?.text).toBe('Brisa usou Esquiva Sobrenatural: o dano caiu pela metade.');
+  });
+
   it('writes the reaction and an opportunity attack', () => {
     expect(
       logLine(
@@ -609,6 +635,60 @@ describe('the log of spells, reactions, the fallen and conditions (slice 6.5c)',
         }),
       )?.text,
     ).toBe(' ataca o Goblin 1 com a Adaga (ataque de oportunidade): acertou, 4 de dano');
+  });
+
+  it('says that an opportunity attack sent the mover back to the reach, or could not', () => {
+    const opportunity = {
+      actorLabel: 'Pensantus',
+      targetLabel: 'Goblin 1',
+      key: 'equipment:dagger',
+      keyNamePt: 'Adaga',
+      asReaction: true,
+      damage: { status: PendingDamageStatus.APPLIED, amount: 9, defeated: true },
+    };
+    expect(logLine(attack({ ...opportunity, returnedToReach: true }))?.text).toBe(
+      ' ataca o Goblin 1 com a Adaga (ataque de oportunidade): acertou, 9 de dano. Goblin 1 derrotado. Goblin 1 voltou ao último quadrado dentro do alcance',
+    );
+    expect(logLine(attack({ ...opportunity, returnBlocked: true }))?.text).toBe(
+      ' ataca o Goblin 1 com a Adaga (ataque de oportunidade): acertou, 9 de dano. Goblin 1 derrotado. Goblin 1 não pôde voltar ao último quadrado dentro do alcance: ele estava ocupado',
+    );
+    expect(logLine(attack(opportunity))?.text).not.toContain('voltou');
+  });
+
+  it('tells every damage type of a spell on a target, and the master the armor class of its attack', () => {
+    const storm = (target: object) =>
+      entry({
+        kind: CombatLogKind.SPELL_CAST,
+        actorLabel: 'Pensantus',
+        keyNamePt: 'Tempestade de Gelo',
+        spell: { slot: { level: 4, pact: false }, targets: [target] },
+      } as never);
+    const damages = {
+      damage: { status: PendingDamageStatus.APPLIED, amount: 12, damageTypePt: 'contundente' },
+      moreDamages: [{ status: PendingDamageStatus.APPLIED, amount: 8, damageTypePt: 'gélido' }],
+    };
+    expect(
+      logLine(
+        storm({ targetId: 'g', targetLabel: 'Goblin 1', save: { outcome: 2, dc: 15 }, ...damages }),
+      )?.text,
+    ).toBe(
+      ' conjura Tempestade de Gelo (4º\u00a0nível): o Goblin 1 falhou (CD 15), 12 de dano, 8 de dano',
+    );
+    const bolt = {
+      targetId: 'g',
+      targetLabel: 'Goblin 1',
+      outcome: AttackOutcome.HIT,
+      damage: { status: PendingDamageStatus.APPLIED, amount: 6 },
+      cover: CoverDegree.HALF,
+      coverSource: CoverSource.MAP,
+    };
+    // Only the master's entry carries the armor class and the cover bonus; the player's line is as before.
+    expect(logLine(storm({ ...bolt, targetArmorClass: 17, coverBonus: 2 }))?.text).toBe(
+      ' conjura Tempestade de Gelo (4º\u00a0nível): no Goblin 1: acertou (CA 17: 15 + 2 de meia cobertura, do mapa), 6 de dano',
+    );
+    expect(logLine(storm(bolt))?.text).toBe(
+      ' conjura Tempestade de Gelo (4º\u00a0nível): no Goblin 1: acertou, 6 de dano',
+    );
   });
 
   it('writes a damage the master changed, the death save failures and the concentration reminder', () => {
@@ -937,6 +1017,64 @@ describe('the log of a combat without a map (RN-25) and of hidden death saves (R
     } as never);
     expect(logLine(stable)?.text).toBe(
       ' faz um teste contra a morte: sucesso (3 sucessos, 1 falha). Estável: não rola mais',
+    );
+  });
+});
+
+describe('the log line of a critical with the extra dice of Crítico Brutal (PM-03b)', () => {
+  const crit = (roll: object | undefined, extra = 1) =>
+    create(CombatLogEntrySchema, {
+      id: 'ragna',
+      kind: CombatLogKind.ATTACK,
+      outcome: AttackOutcome.CRITICAL_HIT,
+      actorLabel: 'Ragna',
+      targetLabel: 'Hobgoblin',
+      key: 'equipment:greataxe',
+      keyNamePt: 'Machado grande',
+      damage: {
+        status: PendingDamageStatus.APPLIED,
+        amount: 25,
+        damageTypePt: 'cortante',
+        extraDiceCount: extra,
+        extraDiceNamePt: extra > 0 ? 'Crítico Brutal' : '',
+        roll,
+      },
+    } as never);
+  const faces = {
+    diceCount: 3,
+    diceSides: 12,
+    faces: [7, 11, 4],
+    modifier: 3,
+    total: 25,
+    physical: false,
+  };
+
+  it("splits the groups of dice, with the feature's name, for whoever gets the dice", () => {
+    expect(logLine(crit(faces))?.text).toBe(
+      ' ataca o Hobgoblin com o Machado grande: crítico, dano 2d12 (7, 11) + 1d12 Crítico Brutal (4) + 3 = 25 de cortante',
+    );
+  });
+
+  it('names the feature and the groups when the dice were physical: only the sum is known', () => {
+    const typed = {
+      diceCount: 3,
+      diceSides: 12,
+      faces: [],
+      modifier: 3,
+      total: 25,
+      physical: true,
+    };
+    expect(logLine(crit(typed))?.text).toBe(
+      ' ataca o Hobgoblin com o Machado grande: crítico, dano 3d12 (2d12 + 1d12 Crítico Brutal) = 22 + 3 = 25 de cortante, dados físicos',
+    );
+  });
+
+  it('says only the amount to whoever does not get the dice, and for a hit without the feature', () => {
+    expect(logLine(crit(undefined))?.text).toBe(
+      ' ataca o Hobgoblin com o Machado grande: crítico, 25 de dano',
+    );
+    expect(logLine(crit(faces, 0))?.text).toBe(
+      ' ataca o Hobgoblin com o Machado grande: crítico, 25 de dano',
     );
   });
 });

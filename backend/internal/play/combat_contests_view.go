@@ -280,7 +280,7 @@ func (r *contestReader) hideAttemptView(ctx context.Context, a playdb.CombatHide
 
 // observers are the creatures that could see a hider, with what the app compares: the
 // stored states of an applied attempt, the suggestion for a pending one. Only the master.
-func (r *contestReader) observers(ctx context.Context, a playdb.CombatHideAttempt, hider playdb.Combatant, roll *checkRoll) ([]*playv1.HideObserver, error) {
+func (r *contestReader) observers(ctx context.Context, a playdb.CombatHideAttempt, hider playdb.Combatant, roll *contestRoll) ([]*playv1.HideObserver, error) {
 	stored := map[string]playdb.CombatHiding{}
 	for _, h := range r.d.hiding {
 		if h.HiderID == hider.ID {

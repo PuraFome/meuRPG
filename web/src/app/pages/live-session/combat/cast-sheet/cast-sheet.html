@@ -28,7 +28,83 @@
           (pick)="pickDamageType($event)"
         />
       }
-      @if (rule().kind !== 'none') {
+      @if (flow; as f) {
+        <!-- An area placed on the map (PM-02a, PM-02b): step 1 places it, step 2 says who is inside. -->
+        @if (f.step() === 'place' && placement !== Placement.CASTER) {
+          <app-area-step [n]="1" [title]="stepOne" />
+          @if (data.map; as m) {
+            <app-area-map
+              [image]="m.image"
+              [mapName]="m.mapName"
+              [columns]="m.columns"
+              [rows]="m.rows"
+              [layers]="m.layers"
+              [fog]="m.fog"
+              [combatants]="combatants()"
+              [casterId]="data.casterId"
+              [spell]="data.name"
+              [placement]="placement"
+              [area]="areaShape"
+              [rangeFt]="data.targets?.rangeFt ?? 0"
+              [placed]="f.placed()"
+              [preview]="f.preview()"
+              [seen]="data.targets?.targets ?? []"
+              [autofocus]="true"
+              (place)="f.place($event)"
+              (confirm)="confirmArea()"
+              (dismiss)="close()"
+            />
+          }
+          @if (f.preview()?.moved) {
+            <div class="mr-notice mr-notice--neutral" role="status">
+              <mat-icon aria-hidden="true">visibility</mat-icon>
+              <p><strong>Você não vê esse ponto: há uma parede no caminho.</strong> O ponto de origem fica do lado de cá dela.</p>
+            </div>
+          }
+          @if (areaWarning(); as w) {
+            <div class="mr-notice mr-notice--warning" role="alert">
+              <mat-icon aria-hidden="true">warning</mat-icon>
+              <p><strong>{{ w.strong }}</strong> {{ w.rest }}</p>
+            </div>
+          }
+        } @else if (f.step() === 'list') {
+          <app-area-step #listTitle [n]="2" title="Quem está na área" />
+          @if (data.map; as m) {
+            <app-area-map
+              [image]="m.image"
+              [mapName]="m.mapName"
+              [columns]="m.columns"
+              [rows]="m.rows"
+              [layers]="m.layers"
+              [fog]="m.fog"
+              [combatants]="combatants()"
+              [casterId]="data.casterId"
+              [spell]="data.name"
+              [placement]="placement"
+              [area]="areaShape"
+              [rangeFt]="0"
+              [placed]="f.placed()"
+              [preview]="f.preview()"
+              [readOnly]="true"
+            />
+          }
+          <app-area-list
+            [rows]="areaRows()"
+            [count]="areaCount()"
+            [warning]="areaWarning()"
+            [nobody]="areaAsks() ? nobodyLine() : null"
+            [note]="coverNote()"
+            [npcs]="npcs()"
+            [creatures]="creatures()"
+          />
+        }
+        @if (f.error()) {
+          <div class="mr-notice mr-notice--danger" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ f.error() }}</p>
+          </div>
+        }
+      } @else if (rule().kind !== 'none') {
         <app-cast-targets
           [rows]="targetRows()"
           [rule]="rule()"
@@ -41,9 +117,34 @@
           (toggle)="toggle($event)"
           (deal)="deal($event)"
         />
+        @if (listAsking()) {
+          <!-- Nobody ticked on a list that may hit nobody (PM-02d state 13): asked in place, nothing spent yet. -->
+          <div class="mr-notice mr-notice--warning" role="alert">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            <p><strong>{{ nobodyLine().strong }}</strong> {{ nobodyLine().rest }}</p>
+          </div>
+        }
+      }
+      @if (metaRows().length) {
+        <app-metamagic-picker
+          [rows]="metaRows()"
+          [points]="sorceryPoints"
+          [picks]="picks()"
+          [candidates]="metaCandidates()"
+          [firstTarget]="chosen()[0]"
+          [targetIds]="chosen()"
+          [line]="metaLine()"
+          (flip)="toggleMeta($event)"
+          (picked)="setPicks($event)"
+        />
+        @if (metaCost() > 0) {
+          <button matButton="text" type="button" class="nometa" [disabled]="busy()" (click)="noMetamagic()">
+            Sem Metamagia
+          </button>
+        }
       }
       @if (pool(); as p) {
-        @if (usesPicker()) {
+        @if (usesPicker() && (!flow || (flow.step() === 'list' && !areaAsks()))) {
           <app-roll-picker
             [compact]="true"
             [canApp]="canApp"
@@ -56,7 +157,7 @@
             [max]="p.count * p.sides"
             [modifier]="0"
             [busy]="busy() || !ready()"
-            [appLabel]="'Conjurar e rolar no app'"
+            [appLabel]="metaCost() > 0 ? castText() : 'Conjurar e rolar no app'"
             [sticky]="true"
             [(typing)]="typing"
             (app)="castPooled({ inApp: true })"
@@ -75,7 +176,7 @@
           totalNote="Total do ataque"
           [modifier]="data.attackBonus"
           [busy]="busy() || !ready()"
-          [appLabel]="'Conjurar e rolar no app'"
+          [appLabel]="metaCost() > 0 ? castText() : 'Conjurar e rolar no app'"
           [sticky]="true"
           [(typing)]="typing"
           (app)="castRolled({ inApp: true })"
@@ -117,7 +218,62 @@
     }
   </div>
 
-  @if (!done() && kind() !== 'attack' && !(kind() === 'pool' && usesPicker())) {
+  @if (!done() && flow; as f) {
+    <div foot>
+      @if (f.step() === 'place') {
+        @if (missing()) {
+          <p class="missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ missing() }}</p>
+        } @else if (!f.ready()) {
+          <p class="missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ notPlaced }}</p>
+        }
+        <div class="actions actions--stack">
+          <button
+            mat-flat-button
+            type="button"
+            class="cast"
+            [class.cast--off]="!f.ready() || !!missing()"
+            [disabled]="f.busy() || !f.ready() || !!missing()"
+            disabledInteractive
+            (click)="confirmArea()"
+          >
+            {{ confirmText }}
+          </button>
+          <button mat-button type="button" class="quiet" [disabled]="f.busy()" (click)="close()">Cancelar</button>
+        </div>
+      } @else {
+        @if (endsConcentration(); as ends) {
+          <p class="ends" role="status"><mat-icon aria-hidden="true">hourglass_empty</mat-icon><span><b>{{ ends.ends }}</b>@if (ends.goes) { {{ ends.goes }}}</span></p>
+        }
+        <div class="actions actions--stack">
+          @if (areaAsks()) {
+            <button mat-flat-button type="button" class="cast" [disabled]="busy()" (click)="castAnyway()">
+              <mat-icon aria-hidden="true">auto_awesome</mat-icon>Conjurar mesmo assim
+            </button>
+          } @else if (!usesPicker()) {
+            <button
+              mat-flat-button
+              type="button"
+              class="cast"
+              [class.cast--off]="!ready()"
+              [disabled]="busy() || !ready()"
+              disabledInteractive
+              (click)="castNow()"
+            >
+              <mat-icon aria-hidden="true">auto_awesome</mat-icon>Conjurar {{ data.name }}
+            </button>
+          }
+          @if (placement === Placement.CASTER) {
+            <button #changePlace mat-stroked-button type="button" class="cancel" [disabled]="busy()" (click)="close()">Cancelar</button>
+          } @else {
+            <button #changePlace mat-stroked-button type="button" class="cancel" [disabled]="busy()" (click)="changeArea()">
+              <mat-icon aria-hidden="true">arrow_back</mat-icon>Mudar o local
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
+  @if (!done() && !flow && kind() !== 'attack' && !(kind() === 'pool' && usesPicker())) {
     <div foot>
       @if (endsConcentration(); as ends) {
         <!-- A concentration spell cast over another one: what it ends, and what goes with it (the combat's own data). -->
@@ -128,7 +284,15 @@
       } @else if (dartsLine()) {
         <p class="missing" role="status"><mat-icon aria-hidden="true">check_circle</mat-icon>{{ dartsLine() }}</p>
       }
-      <!-- Two real buttons of the same width side by side; stacked at 320px, "Conjurar" on top. -->
+      @if (listAsking()) {
+        <div class="actions actions--stack">
+          <button mat-flat-button type="button" class="cast" [disabled]="busy()" (click)="castAnyway()">
+            <mat-icon aria-hidden="true">auto_awesome</mat-icon>Conjurar mesmo assim
+          </button>
+          <button #backToList mat-stroked-button type="button" class="cancel" [disabled]="busy()" (click)="listAsking.set(false)">Voltar à lista</button>
+        </div>
+      } @else {
+      <!-- Two real buttons of the same width side by side; stacked under 480px, "Conjurar" on top. -->
       <div class="actions">
         <button
           mat-flat-button
@@ -139,10 +303,11 @@
           disabledInteractive
           (click)="castNow()"
         >
-          <mat-icon aria-hidden="true">auto_awesome</mat-icon>Conjurar {{ data.name }}
+          <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ castText() }}
         </button>
         <button mat-stroked-button type="button" class="cancel" [disabled]="busy()" (click)="close()">Cancelar</button>
       </div>
+      }
     </div>
   }
   @if (done() && !owed()) {

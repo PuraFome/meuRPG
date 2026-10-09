@@ -55,7 +55,7 @@ describe('formatModifier', () => {
   it('always shows a sign, even for zero, and never recomputes it', () => {
     expect(formatModifier(3)).toBe('+3');
     expect(formatModifier(0)).toBe('+0');
-    expect(formatModifier(-1)).toBe('-1');
+    expect(formatModifier(-1)).toBe('\u22121');
     // The plan's own example: a score of 18 paired with an inconsistent
     // +9 modifier must still render "+9" — the browser trusts the server.
     expect(formatModifier(9)).toBe('+9');

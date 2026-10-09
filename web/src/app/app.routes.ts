@@ -9,10 +9,26 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/home/home').then((m) => m.Home),
   },
   {
+    // A reserved character's claim link (MR-049): `/claim#t=<token>`. Public, like the invite: signed out it asks for
+    // sign-in and tells nothing about the link; signed in it shows the card. The secret is in the fragment only.
+    path: 'claim',
+    title: 'Assumir um personagem',
+    loadComponent: () => import('./pages/claim/claim-page').then((m) => m.ClaimPage),
+  },
+  {
     path: 'campaigns',
     title: 'Minhas campanhas',
     canActivate: [authGuard],
     loadComponent: () => import('./pages/campaigns/campaigns').then((m) => m.Campaigns),
+  },
+  {
+    // Make a campaign from a package file (MR-050). Before `campaigns/:id`, so "import" is not read as a campaign's
+    // ID. A plain `loadComponent`: its clients are root services that only lazy code imports.
+    path: 'campaigns/import',
+    title: 'Importar campanha',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/campaigns/campaign-import/campaign-import').then((m) => m.CampaignImportPage),
   },
   {
     // `loadChildren`, not `loadComponent`: CampaignDetail's route needs its
@@ -41,12 +57,36 @@ export const routes: Routes = [
       import('./pages/live-session/live-session.routes').then((m) => m.LIVE_SESSION_ROUTES),
   },
   {
+    // An ended session's summary (PM-01), kept for anyone in the campaign to reopen. The
+    // number is the session's number in the campaign, not its id. `loadChildren` for the
+    // same reason as `campaigns/:id` above — see session-summary.routes.ts.
+    path: 'campaigns/:id/sessions/:number',
+    title: 'Resumo da sessão',
+    canActivate: [authGuard],
+    loadChildren: () =>
+      import('./pages/session-summary/session-summary.routes').then(
+        (m) => m.SESSION_SUMMARY_ROUTES,
+      ),
+  },
+  {
     // The player creates their own character (MR-003, character half).
     // `loadChildren` for the same reason as `campaigns/:id` above — see
     // character-editor.routes.ts.
     path: 'campaigns/:id/characters/new',
     title: 'Novo personagem',
     canActivate: [authGuard],
+    loadChildren: () =>
+      import('./pages/character-editor/character-editor.routes').then(
+        (m) => m.CHARACTER_EDITOR_ROUTES,
+      ),
+  },
+  {
+    // The master makes a player character for a player to claim (MR-049): the same editor, in the master's mode, that
+    // saves the character as reserved. Before `characters/:characterId`'s family, so "reserved" is no character's ID.
+    path: 'campaigns/:id/reserved/new',
+    title: 'Novo personagem reservado',
+    canActivate: [authGuard],
+    data: { reserved: true },
     loadChildren: () =>
       import('./pages/character-editor/character-editor.routes').then(
         (m) => m.CHARACTER_EDITOR_ROUTES,
@@ -105,6 +145,15 @@ export const routes: Routes = [
     title: 'Galeria',
     canActivate: [authGuard],
     loadComponent: () => import('./pages/gallery/gallery').then((m) => m.GalleryPage),
+  },
+  {
+    // "Exportar campanha" (MR-050), master only: what goes into the package, the progress and "Baixar de novo". The
+    // page tells a player so, like the gallery's.
+    path: 'campaigns/:id/export',
+    title: 'Exportar campanha',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/campaign-export/campaign-export').then((m) => m.CampaignExportPage),
   },
   {
     // The master's puzzles (MR-038, E10-06): make one, edit one. The list is a panel on the campaign page; showing a puzzle

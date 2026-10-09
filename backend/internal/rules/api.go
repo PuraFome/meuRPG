@@ -136,6 +136,12 @@ type Build struct {
 	// is carried.
 	Armor  string
 	Shield bool
+	// MageArmor says Mage Armor is on the character right now (SRD 5.1, Mage
+	// Armor): while it wears no armor, its base AC is 13 + its Dexterity modifier
+	// when that is better than the other bases. It is a spell that lasts a while,
+	// not a part of the sheet, so the caller sets it from the game session and
+	// the sheet never stores it.
+	MageArmor bool
 	// Weapons are the weapons carried, for the sheet's attacks.
 	Weapons []string
 	// Cantrips are level-0 spells. SpellsKnown is the list of spells the
@@ -151,6 +157,20 @@ type Build struct {
 	// invocation. Derive applies an option only while the build has the
 	// feature or trait it belongs to.
 	FeatureChoices []string
+	// ToolProficiencies are the tool proficiencies the sheet lists as free text.
+	// Derive does not read them; the guided level-up adds the musical instrument
+	// that taking a Bard level as a later class gives.
+	ToolProficiencies []string
+	// Feats are the feats the character took (an optional rule of the game, MR-025):
+	// "feat:grappler" or a table's "feat:<slug>@mesa". Derive treats each like a
+	// feature: its effects apply and the sheet lists it. The abilities a feat
+	// raises are in ExtraAbilityBonuses, like an Ability Score Improvement's.
+	Feats []string
+	// FeatSlots says, for a feat taken in place of an Ability Score Improvement, the
+	// feature of that improvement it replaced ("feature:fighter-ability-score-improvement-1"):
+	// the sheet lists the feat at that level and not the improvement. A feat the master added
+	// has none.
+	FeatSlots map[string]string
 }
 
 // ClassLevel is one class of a Build and its level in that class.
@@ -226,6 +246,13 @@ func (c *Content) Catalog() Catalog {
 // "Mago"), falling back to the SRD's English name, or "" for an unknown key.
 func (c *Content) NamePT(key string) string {
 	return c.c.namePT(key)
+}
+
+// ProficiencyNamePT returns the Portuguese name of a proficiency key
+// ("proficiency:lute" is "Alaúde"; an armor or a weapon category is named as the
+// sheet names it), or the SRD's English name when there is none.
+func (c *Content) ProficiencyNamePT(key string) string {
+	return c.c.proficiencyNamePT(key)
 }
 
 // Conditions returns the SRD's conditions ("condition:poisoned", "Envenenado"),
@@ -635,6 +662,13 @@ type Derived struct {
 	// weapon attack: 20, or 19 with Improved Critical and 18 with Superior
 	// Critical.
 	CriticalRange int
+	// BrutalCriticalDice is how many extra weapon damage dice a melee critical
+	// hit rolls (the barbarian's Brutal Critical: 1, 2 or 3), 0 without it.
+	BrutalCriticalDice int
+	// ReliableTalent says the character has the rogue's Reliable Talent: on an
+	// ability check that adds the proficiency bonus, a d20 of 9 or lower counts
+	// as 10.
+	ReliableTalent bool
 	// TwoWeaponFighting says the character has the fighting style: the damage
 	// of the bonus action attack keeps the ability modifier.
 	TwoWeaponFighting bool
@@ -787,6 +821,10 @@ type Attack struct {
 	DamageType       string
 	DamageTypeNamePT string
 	VersatileDamage  string
+	// DamageNotePT says the damage includes a bonus that holds only under a
+	// condition the sheet cannot check (Dueling: no other weapon in hand), with
+	// the condition; empty otherwise.
+	DamageNotePT string
 	// DamageDice and VersatileDice are Damage and VersatileDamage as
 	// numbers, for the combat functions. Both are zero when the weapon has
 	// no damage dice.
@@ -958,6 +996,9 @@ const (
 	IssueMulticlass = "multiclass_prerequisite"
 	// IssueHitPointRolls: fewer or more hit point rolls than levels.
 	IssueHitPointRolls = "hit_point_rolls"
+	// IssueFeatPrerequisite: a feat the character took whose prerequisite it no longer
+	// meets; the feat does not apply until it does again (SRD 5.1, Feats).
+	IssueFeatPrerequisite = "feat_prerequisite"
 	// IssueArmorProficiency: armor or a shield without the proficiency.
 	IssueArmorProficiency = "armor_proficiency"
 	// IssueScoreAbove20: a score above 20 without a manual bonus.

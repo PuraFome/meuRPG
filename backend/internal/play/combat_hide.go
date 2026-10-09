@@ -490,26 +490,3 @@ func restoreContestState(ctx context.Context, c *combatTx, ev actionEvent) error
 	}
 	return nil
 }
-
-// d20Mode rolls an attack's d20, or the pair the circumstances ask for, or checks the faces
-// typed from physical dice. With a normal roll it is d20; the pair is the roll modes of the
-// attack rolls (the seam: when they land, this is their roll).
-func (s *Service) d20Mode(in rollInput, mode combat.CheckMode, modifier int) (face int, faces []int, err error) {
-	if mode == combat.CheckNormal {
-		// A hidden attacker types two dice without knowing which creature noticed it; the
-		// second face counts only when the roll has advantage.
-		if len(in.faces) >= 1 {
-			in.typed = in.faces[0]
-		}
-		f, _, err := s.d20(in, modifier)
-		return f, []int{f}, err
-	}
-	roll, err := s.rollCheck(checkInput{inApp: in.inApp, faces: in.faces}, mode, modifier, "", nil, false)
-	if err != nil {
-		return 0, nil, err
-	}
-	for _, f := range roll.Faces {
-		faces = append(faces, int(f))
-	}
-	return mode.PickD20(faces), faces, nil
-}

@@ -15,8 +15,9 @@ import (
 //     (10 + DEX + CON while wearing no armor), and the best one wins;
 //   - a shield adds its +2, and "ac" effects add on top (Defense style).
 //
-// Spells such as Mage Armor or Shield are not counted: they last a while and
-// belong to the game session (Etapa 6).
+// Shield is not counted: it lasts a moment and belongs to the combat. Mage Armor
+// is, when the caller says the character has it (Build.MageArmor): it lasts
+// hours and belongs to the game session.
 func (x *deriver) armorClass() {
 	c := x.c
 	name := "Sem armadura"
@@ -52,10 +53,25 @@ func (x *deriver) armorClass() {
 	}
 
 	// Other bases from effects: the best one wins, and the description
-	// names the feature that gave it.
+	// names the feature that gave it. Unarmored Defense is the exception: a
+	// character that has it from one class never gains it again from another
+	// (SRD 5.1, "Multiclassing", "Unarmored Defense"), so only the first of the
+	// features that read "Unarmored Defense" counts.
+	unarmored := ""
 	for _, a := range x.active {
 		e := a.effect
-		if e.Type != "modifier" || e.Target != "ac.base" || len(e.Tags) > 0 || !x.applies(a) {
+		if e.Type != "modifier" || e.Target != "ac.base" || len(e.Tags) > 0 {
+			continue
+		}
+		if unarmoredDefenseFeatures[a.owner] {
+			if unarmored == "" {
+				unarmored = a.owner
+			}
+			if a.owner != unarmored {
+				continue
+			}
+		}
+		if !x.applies(a) {
 			continue
 		}
 		v, ok := x.value(a)
@@ -71,6 +87,15 @@ func (x *deriver) armorClass() {
 		}
 	}
 
+	// Mage Armor (SRD 5.1): a creature that wears no armor has a base AC of 13 +
+	// its Dexterity modifier, the best base winning like any other.
+	if x.b.MageArmor && x.armor == nil {
+		if v := mageArmorBase + x.mods[DEX]; v > base {
+			base = v
+			name = c.namePT(MageArmorSpell)
+		}
+	}
+
 	ac := base
 	if x.b.Shield {
 		ac += 2
@@ -81,6 +106,13 @@ func (x *deriver) armorClass() {
 	}
 	x.d.ArmorClass = x.modifiers("ac", ac)
 	x.d.ArmorClassDescription = name
+}
+
+// unarmoredDefenseFeatures are the class features called Unarmored Defense: the
+// barbarian's and the monk's. A character has at most one of them.
+var unarmoredDefenseFeatures = map[string]bool{
+	"feature:barbarian-unarmored-defense": true,
+	"feature:monk-unarmored-defense":      true,
 }
 
 // resolveArmor finds the worn armor. It runs before any effect, because

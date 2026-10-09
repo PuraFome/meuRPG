@@ -42,6 +42,10 @@ const (
 	TrapSearchSkill_TRAP_SEARCH_SKILL_PERCEPTION TrapSearchSkill = 1
 	// Intelligence (Investigation), against the trap's DC to find it.
 	TrapSearchSkill_TRAP_SEARCH_SKILL_INVESTIGATION TrapSearchSkill = 2
+	// Any other skill of the SRD, named in `other_skill_key`. It finds only the traps
+	// whose master allowed it (TrapSpec.also_find_skill_keys), against the DC to find
+	// them. A skill no trap nearby allows answers exactly as a search that failed.
+	TrapSearchSkill_TRAP_SEARCH_SKILL_OTHER TrapSearchSkill = 3
 )
 
 // Enum value maps for TrapSearchSkill.
@@ -50,11 +54,13 @@ var (
 		0: "TRAP_SEARCH_SKILL_UNSPECIFIED",
 		1: "TRAP_SEARCH_SKILL_PERCEPTION",
 		2: "TRAP_SEARCH_SKILL_INVESTIGATION",
+		3: "TRAP_SEARCH_SKILL_OTHER",
 	}
 	TrapSearchSkill_value = map[string]int32{
 		"TRAP_SEARCH_SKILL_UNSPECIFIED":   0,
 		"TRAP_SEARCH_SKILL_PERCEPTION":    1,
 		"TRAP_SEARCH_SKILL_INVESTIGATION": 2,
+		"TRAP_SEARCH_SKILL_OTHER":         3,
 	}
 )
 
@@ -108,7 +114,12 @@ type SearchForTrapsRequest struct {
 	// the lower of the two rolls counts for those traps and the first for the rest. It
 	// is required (SEARCH_NEEDS_TWO_DICE) when any square the character sees within 3 m
 	// is lightly obscured. In the app the server rolls both. Investigation ignores it.
-	D20Face_2     *int32 `protobuf:"varint,6,opt,name=d20_face_2,json=d20Face2,proto3,oneof" json:"d20_face_2,omitempty"`
+	D20Face_2 *int32 `protobuf:"varint,6,opt,name=d20_face_2,json=d20Face2,proto3,oneof" json:"d20_face_2,omitempty"`
+	// Required with OTHER, and only then: the skill's key ("skill:arcana"), one of
+	// the SRD's 18 that is neither Perception nor Investigation; else `invalid_argument`.
+	// The menu the player sees is the same for every trap, so this tells nothing about
+	// which traps are near.
+	OtherSkillKey string `protobuf:"bytes,7,opt,name=other_skill_key,json=otherSkillKey,proto3" json:"other_skill_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -194,6 +205,13 @@ func (x *SearchForTrapsRequest) GetD20Face_2() int32 {
 		return *x.D20Face_2
 	}
 	return 0
+}
+
+func (x *SearchForTrapsRequest) GetOtherSkillKey() string {
+	if x != nil {
+		return x.OtherSkillKey
+	}
+	return ""
 }
 
 type isSearchForTrapsRequest_Roll interface {
@@ -1207,6 +1225,8 @@ type TrapSearchResult struct {
 	// The traps it revealed to the character (map point IDs), with their names.
 	FoundPointIds []string `protobuf:"bytes,6,rep,name=found_point_ids,json=foundPointIds,proto3" json:"found_point_ids,omitempty"`
 	FoundNames    []string `protobuf:"bytes,7,rep,name=found_names,json=foundNames,proto3" json:"found_names,omitempty"`
+	// The skill of a search made with OTHER ("skill:arcana"); empty otherwise.
+	OtherSkillKey string `protobuf:"bytes,8,opt,name=other_skill_key,json=otherSkillKey,proto3" json:"other_skill_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1290,11 +1310,18 @@ func (x *TrapSearchResult) GetFoundNames() []string {
 	return nil
 }
 
+func (x *TrapSearchResult) GetOtherSkillKey() string {
+	if x != nil {
+		return x.OtherSkillKey
+	}
+	return ""
+}
+
 var File_meurpg_play_v1_traps_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_traps_proto_rawDesc = "" +
 	"\n" +
-	"\x1ameurpg/play/v1/traps.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/play/v1/combat.proto\"\x91\x02\n" +
+	"\x1ameurpg/play/v1/traps.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/play/v1/combat.proto\"\xb9\x02\n" +
 	"\x15SearchForTrapsRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x125\n" +
@@ -1303,7 +1330,8 @@ const file_meurpg_play_v1_traps_proto_rawDesc = "" +
 	"\bd20_face\x18\x04 \x01(\x05H\x00R\ad20Face\x12'\n" +
 	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\x12!\n" +
 	"\n" +
-	"d20_face_2\x18\x06 \x01(\x05H\x01R\bd20Face2\x88\x01\x01B\x06\n" +
+	"d20_face_2\x18\x06 \x01(\x05H\x01R\bd20Face2\x88\x01\x01\x12&\n" +
+	"\x0fother_skill_key\x18\a \x01(\tR\rotherSkillKeyB\x06\n" +
 	"\x04rollB\r\n" +
 	"\v_d20_face_2\"\xcc\x01\n" +
 	"\x16SearchForTrapsResponse\x12,\n" +
@@ -1383,7 +1411,7 @@ const file_meurpg_play_v1_traps_proto_rawDesc = "" +
 	"\rcharacter_ids\x18\x01 \x03(\tR\fcharacterIds\x12'\n" +
 	"\x0fcharacter_names\x18\x02 \x03(\tR\x0echaracterNames\x12\x19\n" +
 	"\bpoint_id\x18\x03 \x01(\tR\apointId\x12\x1b\n" +
-	"\ttrap_name\x18\x04 \x01(\tR\btrapName\"\xc5\x02\n" +
+	"\ttrap_name\x18\x04 \x01(\tR\btrapName\"\xed\x02\n" +
 	"\x10TrapSearchResult\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12%\n" +
 	"\x0echaracter_name\x18\x02 \x01(\tR\rcharacterName\x125\n" +
@@ -1393,11 +1421,13 @@ const file_meurpg_play_v1_traps_proto_rawDesc = "" +
 	"secondRoll\x12&\n" +
 	"\x0ffound_point_ids\x18\x06 \x03(\tR\rfoundPointIds\x12\x1f\n" +
 	"\vfound_names\x18\a \x03(\tR\n" +
-	"foundNames*{\n" +
+	"foundNames\x12&\n" +
+	"\x0fother_skill_key\x18\b \x01(\tR\rotherSkillKey*\x98\x01\n" +
 	"\x0fTrapSearchSkill\x12!\n" +
 	"\x1dTRAP_SEARCH_SKILL_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cTRAP_SEARCH_SKILL_PERCEPTION\x10\x01\x12#\n" +
-	"\x1fTRAP_SEARCH_SKILL_INVESTIGATION\x10\x02B\xb8\x01\n" +
+	"\x1fTRAP_SEARCH_SKILL_INVESTIGATION\x10\x02\x12\x1b\n" +
+	"\x17TRAP_SEARCH_SKILL_OTHER\x10\x03B\xb8\x01\n" +
 	"\x12com.meurpg.play.v1B\n" +
 	"TrapsProtoP\x01Z<github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1;playv1\xa2\x02\x03MPX\xaa\x02\x0eMeurpg.Play.V1\xca\x02\x0eMeurpg\\Play\\V1\xe2\x02\x1aMeurpg\\Play\\V1\\GPBMetadata\xea\x02\x10Meurpg::Play::V1b\x06proto3"
 

@@ -9,6 +9,8 @@ export interface TurnChange {
   readonly round: number;
   readonly currentCombatantId: string;
   readonly masterTurn: boolean;
+  /** The combat's revision with this turn; 0 (or absent) when the server gives no number to compare (a player on a fog map). */
+  readonly revision?: number;
 }
 
 /** What `combatant_moved` carries (play.proto). */
@@ -17,6 +19,12 @@ export interface CombatantMove {
   readonly combatantId: string;
   readonly col: number;
   readonly row: number;
+}
+
+/** The sentence of a window that closed by itself ("Queda Suave fechou. Você já usou a sua reação."). */
+export interface ReactionNotice {
+  readonly windowId: string;
+  readonly text: string;
 }
 
 /** What `CombatState.beginRead` hands out. */
@@ -48,6 +56,9 @@ export class CombatState {
   /** Goes up on every `combat_log_changed` and every (re)connection: the log
    * panel reads the log again whenever it changes. */
   readonly logTick = signal(0);
+  /** What a reaction window that closed by itself said (`reaction_window_closed`), kept in a status line until it is
+   * dismissed, and gone with the combat. Nothing of it is stored in the browser. */
+  readonly reactionNotice = signal<ReactionNotice | null>(null);
   /** The ended combat the person already left ("Voltar à sessão"). */
   private readonly dismissedId = signal<string | null>(null);
 
@@ -117,8 +128,30 @@ export class CombatState {
     this.logTick.update((n) => n + 1);
   }
 
+  /** The windows the stream announced (`reaction_window_opened`) in this page's life: one that was not announced came
+   * with a read, after a reload, and its prompt says "Combate atualizado agora.". */
+  private readonly announced = new Set<string>();
+
+  noteReactionOpened(windowId: string): void {
+    this.announced.add(windowId);
+  }
+
+  wasAnnounced(windowId: string): boolean {
+    return this.announced.has(windowId);
+  }
+
+  /** `reaction_window_closed`: a window closed by itself; the sentence stays until `dismissReactionNotice`. */
+  noteReactionClosed(windowId: string, text: string): void {
+    this.reactionNotice.set(text ? { windowId, text } : null);
+  }
+
+  dismissReactionNotice(): void {
+    this.reactionNotice.set(null);
+  }
+
   clear(): void {
     this.applied++;
+    this.reactionNotice.set(null);
     this.encounter.set(null);
     this.dismissedId.set(null);
     this.moving.set(false);
@@ -142,10 +175,16 @@ export class CombatState {
     }
     // A part that ended inside a joint turn moves "current" to another member of the same group, in the same
     // round: the group and who already ended their part stay. Only a turn that moves on starts over.
+    const revision = turn.revision ?? 0;
+    if (revision > 0 && revision < e.revision) {
+      return true; // an event older than the combat on screen: nothing to patch, nothing to read again
+    }
     this.patched++;
     const sameGroup = turn.round === e.round && e.turnGroupIds.includes(turn.currentCombatantId);
     this.encounter.set({
       ...e,
+      // The patched turn is as new as the event: an older answer arriving now is dropped by `apply`.
+      revision: Math.max(e.revision, revision),
       round: turn.round,
       currentCombatantId: turn.currentCombatantId,
       masterTurn: turn.masterTurn,

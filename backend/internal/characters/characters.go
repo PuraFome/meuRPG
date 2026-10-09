@@ -91,6 +91,22 @@ type PendingMembers interface {
 	// pending member who has no character: once there is one, the master
 	// decides on it.
 	ClearPendingExpiry(ctx context.Context, tx pgx.Tx, campaignID, userID string) error
+	// CampaignForClaim returns the campaign's name and whether userID is its
+	// master, inside tx, for the card of a claim link (MR-049). It changes
+	// nothing.
+	CampaignForClaim(ctx context.Context, tx pgx.Tx, campaignID, userID string) (name string, master bool, err error)
+	// JoinAsPlayer makes userID an active player of campaignID, inside tx,
+	// with no step of approval (a pending member's join request is closed),
+	// and returns the campaign's name. It is the membership of a claim.
+	JoinAsPlayer(ctx context.Context, tx pgx.Tx, campaignID, userID string) (name string, err error)
+}
+
+// CampaignNames tells a campaign's name, for the label of an exported content pack
+// (ExportTableContent). The campaigns module implements it (campaigns.Service), because
+// campaigns is its table; cmd/api connects the two with SetCampaignNames.
+type CampaignNames interface {
+	// CampaignName returns the campaign's name, read inside tx (nil: the pool).
+	CampaignName(ctx context.Context, tx pgx.Tx, campaignID string) (string, error)
 }
 
 // Config holds what the characters service needs.
@@ -125,6 +141,10 @@ type Config struct {
 	Logger *slog.Logger
 	// Now returns the current time. Nil means time.Now.
 	Now func() time.Time
+	// BehindCloudRun says the server runs on Cloud Run, where the client's
+	// address is in X-Forwarded-For (ratelimit.ClientKey): the claim links'
+	// limit per address reads it. False reads the connection's address.
+	BehindCloudRun bool
 }
 
 // Service implements the CharacterService and ContentService Connect APIs,
@@ -153,12 +173,19 @@ type Service struct {
 	dice   DiceRules
 	roller dice.Roller
 	live   Live
+	// campaignNames is the campaigns module, connected by SetCampaignNames; nil
+	// leaves an exported pack without a name.
+	campaignNames CampaignNames
 	// creatureHost is package play, connected by SetCreatureHost: the combat
 	// that holds a character's creatures and the history they are written to
 	// (MR-037). Nil until then.
 	creatureHost CreatureHost
 	// maxCharacters is the cap on a campaign's characters (RN-30).
 	maxCharacters int
+	// claims limits PreviewClaim and ClaimCharacter (claims.go), and
+	// behindCloudRun tells where the caller's address is.
+	claims         claimLimits
+	behindCloudRun bool
 }
 
 // The compiler checks that Service implements both handlers.
@@ -193,7 +220,9 @@ func New(cfg Config) (*Service, error) {
 		dice:     cfg.Dice,
 		roller:   cfg.Roller,
 
-		maxCharacters: cfg.MaxCharactersPerCampaign,
+		maxCharacters:  cfg.MaxCharactersPerCampaign,
+		claims:         newClaimLimits(),
+		behindCloudRun: cfg.BehindCloudRun,
 	}
 	if s.maxCharacters == 0 {
 		s.maxCharacters = DefaultMaxCharactersPerCampaign
@@ -209,6 +238,10 @@ func New(cfg Config) (*Service, error) {
 	}
 	return s, nil
 }
+
+// SetCampaignNames says who tells a campaign's name. Call it once, before any call; without
+// it an exported content pack has no name.
+func (s *Service) SetCampaignNames(n CampaignNames) { s.campaignNames = n }
 
 // Sessions is what this package needs to know who is calling: an
 // interceptor that finds the caller's session, and the authz.Caller that

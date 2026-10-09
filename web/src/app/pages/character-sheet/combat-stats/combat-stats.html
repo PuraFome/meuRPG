@@ -22,11 +22,21 @@
     <dd class="box__value box__value--speed">{{ speed().meters }}<span class="speed__rest">&nbsp;· {{ speed().rest }}</span></dd>
   </div>
 
-  <div class="hp" [class.hp--wide]="dice === null">
-    <dt class="hp__label">Pontos de vida máximos</dt>
-    <dd class="hp__value">{{ hitPointsMax() }}</dd>
-    <dd class="hp__note">Os atuais aparecem na sessão</dd>
-  </div>
+  @if (aid() > 0 && hitPointsCurrent() !== null) {
+    <!-- Ajuda (PM-03a): the live session's own numbers, with the sheet's maximum kept small under them. -->
+    <div class="hp hp--aid" [class.hp--wide]="dice === null">
+      <dt class="hp__label">Pontos de vida</dt>
+      <dd class="hp__value">{{ hitPointsCurrent() }} <span class="hp__of">de {{ effectiveMax() }}</span></dd>
+      <dd class="hp__note">máximo {{ hitPointsMax() }} da ficha</dd>
+      <dd class="hp__tag"><app-effect-pill tone="accent">{{ aidTag(aid()) }}</app-effect-pill></dd>
+    </div>
+  } @else {
+    <div class="hp" [class.hp--wide]="dice === null">
+      <dt class="hp__label">Pontos de vida máximos</dt>
+      <dd class="hp__value">{{ hitPointsMax() }}</dd>
+      <dd class="hp__note">Os atuais aparecem na sessão</dd>
+    </div>
+  }
   @if (dice !== null) {
     <div class="box box--dice">
       <dt class="stat__label">Dados de vida</dt>
@@ -34,3 +44,6 @@
     </div>
   }
 </dl>
+@if (aid() > 0 && hitPointsCurrent() !== null) {
+  <app-effect-pill class="aid-banner" tone="aid" icon="favorite_border" role="status">{{ aidLabel(aid()) }}</app-effect-pill>
+}

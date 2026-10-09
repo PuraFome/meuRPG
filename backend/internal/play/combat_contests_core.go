@@ -119,10 +119,10 @@ func notesProto(notes []rollNote) []*playv1.RollNote {
 	return out
 }
 
-// checkRoll is a d20 check as the tables keep it (JSON): the skill, the faces rolled (the
+// contestRoll is a d20 check as the tables keep it (JSON): the skill, the faces rolled (the
 // pair for advantage or disadvantage), what it added, the total, the circumstances behind
 // its mode and who rolled. A deferred answer has no faces: the master rolls it later.
-type checkRoll struct {
+type contestRoll struct {
 	Skill    string     `json:"skill,omitempty"`
 	Faces    []int32    `json:"faces,omitempty"`
 	Modifier int32      `json:"modifier"`
@@ -171,7 +171,7 @@ func modeOfKey(key string) combat.CheckMode {
 }
 
 // proto is the roll as a view reads it, with the skill's enum for a contest roll.
-func (r checkRoll) proto() *playv1.CheckRoll {
+func (r contestRoll) proto() *playv1.CheckRoll {
 	out := &playv1.CheckRoll{
 		Skill: skillEnum(r.Skill), SkillKey: r.Skill, Faces: slices.Clone(r.Faces), Modifier: r.Modifier, Total: r.Total, Physical: r.Physical,
 		Mode: checkModeProto(modeOfKey(r.Mode)), Notes: notesProto(r.Notes), BonusKnown: !r.Unknown, RolledByMaster: r.ByMaster,
@@ -256,20 +256,20 @@ func (in checkInput) rollInput() rollInput { return rollInput{inApp: in.inApp} }
 // rollCheck rolls a check's d20 (or the pair the mode asks for), or checks the faces typed
 // from physical dice: the dice must match the mode the server worked out, so a stale screen
 // is told to read the options again (aborted).
-func (s *Service) rollCheck(in checkInput, mode combat.CheckMode, modifier int, skill string, notes []rollNote, unknown bool) (checkRoll, error) {
+func (s *Service) rollCheck(in checkInput, mode combat.CheckMode, modifier int, skill string, notes []rollNote, unknown bool) (contestRoll, error) {
 	faces := in.faces
 	physical := !in.inApp
 	if in.inApp {
 		res, err := dice.Roll(s.roller, dice.Expr{Count: mode.Dice(), Sides: 20})
 		if err != nil {
-			return checkRoll{}, fmt.Errorf("roll the d20: %w", err)
+			return contestRoll{}, fmt.Errorf("roll the d20: %w", err)
 		}
 		faces = res.Faces
 	} else if len(faces) != mode.Dice() {
-		return checkRoll{}, connect.NewError(connect.CodeAborted, errors.New("the roll's mode changed: read the options again"))
+		return contestRoll{}, connect.NewError(connect.CodeAborted, errors.New("the roll's mode changed: read the options again"))
 	}
 	kept := mode.PickD20(faces)
-	out := checkRoll{
+	out := contestRoll{
 		Skill: skill, Modifier: clamp32(modifier, math.MinInt32, math.MaxInt32), Total: clamp32(kept+modifier, math.MinInt32, math.MaxInt32),
 		Physical: physical, Mode: modeKey(mode), Notes: notes, Unknown: unknown,
 	}
@@ -279,7 +279,7 @@ func (s *Service) rollCheck(in checkInput, mode combat.CheckMode, modifier int, 
 	return out, nil
 }
 
-func encodeRoll(r checkRoll) ([]byte, error) {
+func encodeRoll(r contestRoll) ([]byte, error) {
 	b, err := json.Marshal(r)
 	if err != nil {
 		return nil, fmt.Errorf("encode a roll: %w", err)
@@ -287,11 +287,11 @@ func encodeRoll(r checkRoll) ([]byte, error) {
 	return b, nil
 }
 
-func decodeRoll(b []byte) (*checkRoll, error) {
+func decodeRoll(b []byte) (*contestRoll, error) {
 	if len(b) == 0 {
 		return nil, nil
 	}
-	var r checkRoll
+	var r contestRoll
 	if err := json.Unmarshal(b, &r); err != nil {
 		return nil, fmt.Errorf("read a roll: %w", err)
 	}
@@ -420,21 +420,21 @@ func (s *Service) consumeCheckHelp(ctx context.Context, c *combatTx, who playdb.
 
 // rollFor rolls a combatant's check of a skill: its number, the circumstances behind the
 // mode, the d20 or the pair; and uses the Help that covered it.
-func (s *Service) rollFor(ctx context.Context, c *combatTx, who playdb.Combatant, skill string, in checkInput, cs []playdb.Combatant) (checkRoll, error) {
+func (s *Service) rollFor(ctx context.Context, c *combatTx, who playdb.Combatant, skill string, in checkInput, cs []playdb.Combatant) (contestRoll, error) {
 	n, err := s.numbersOf(ctx, c.tx, c.session.CampaignID, who, skill)
 	if err != nil {
-		return checkRoll{}, err
+		return contestRoll{}, err
 	}
 	notes, err := s.checkSources(ctx, c, who, skill, cs)
 	if err != nil {
-		return checkRoll{}, err
+		return contestRoll{}, err
 	}
 	roll, err := s.rollCheck(in, notesMode(notes), n.Bonus, skill, notes, !n.Known)
 	if err != nil {
-		return checkRoll{}, err
+		return contestRoll{}, err
 	}
 	if err := s.consumeCheckHelp(ctx, c, who, skill, cs); err != nil {
-		return checkRoll{}, err
+		return contestRoll{}, err
 	}
 	return roll, nil
 }

@@ -54,6 +54,39 @@
       </div>
     </div>
 
+    <div class="pk__group tp__also">
+      <h3 class="pk__h" id="tf-also">Também acham com</h3>
+      <div class="tp__chips">
+        <button #alsoButton type="button" class="tp__add" aria-haspopup="listbox" aria-controls="tf-also-list" [attr.aria-expanded]="alsoOpen()" (click)="openAlso()">
+          <mat-icon aria-hidden="true">add</mat-icon>Acrescentar perícia
+        </button>
+        @for (key of draft().alsoFind; track key) {
+          <span class="tp__chip">
+            <b>{{ alsoName(key) }}</b>
+            <button type="button" class="tp__chip-x" [attr.aria-label]="'Tirar ' + alsoName(key)" (click)="removeSkill(key)"><mat-icon aria-hidden="true">close</mat-icon></button>
+          </span>
+        } @empty {
+          <span class="tp__none">Nenhuma perícia a mais</span>
+        }
+      </div>
+      @if (alsoOpen()) {
+        <div class="tp__list">
+          <ul #alsoList id="tf-also-list" class="tp__options" role="listbox" aria-multiselectable="true" aria-labelledby="tf-also" tabindex="0" [attr.aria-activedescendant]="'tf-also-' + alsoCursor()" (keydown)="onAlsoKey($event)" (click)="onAlsoClick($event)">
+            @for (s of skills(); track s.key; let i = $index) {
+              <li role="option" class="tp__option" [id]="'tf-also-' + i" [class.tp__option--on]="draft().alsoFind.includes(s.key)" [class.tp__option--cursor]="alsoCursor() === i" [attr.data-index]="i" [attr.aria-selected]="draft().alsoFind.includes(s.key)">
+                <span class="tp__box" aria-hidden="true"><mat-icon>check</mat-icon></span>{{ s.label }}
+              </li>
+            }
+          </ul>
+          <p class="tp__list-note">Percepção e Investigação já valem</p>
+        </div>
+      }
+      <p class="pk__hint">Usam a CD para achar. O jogador procura com qualquer perícia; só as daqui (e Percepção e Investigação) acham esta armadilha. Você decide: o app não presume nada.</p>
+      @if (arcanaReminder()) {
+        <p class="pk__hint tp__arcana">O SRD diz que qualquer personagem pode tentar um teste de Inteligência (Arcanismo) para achar ou desarmar uma armadilha mágica. Aqui nada é marcado por você: a decisão é sua.</p>
+      }
+    </div>
+
     <div class="mr-notice mr-notice--warning">
       <mat-icon aria-hidden="true">visibility</mat-icon>
       <p>Não desenhe a armadilha na imagem: os jogadores veem a imagem.</p>

@@ -293,10 +293,11 @@ SET hp_current = $2, hp_temp = $3, defeated = $4
 WHERE id = $1;
 
 -- name: SetCombatantHitPointsMax :exec
--- An NPC's maximum hit points, when a spell raises them (Ajuda) or its undo
--- puts them back.
+-- An NPC's or a creature's maximum hit points and the part of them Aid (Ajuda)
+-- added (hp_max includes it), when the spell raises them, the master ends it, or
+-- an undo puts them back.
 UPDATE combatants
-SET hp_max = $2
+SET hp_max = $2, hp_max_bonus = $3
 WHERE id = $1;
 
 -- name: SetCombatantEconomy :exec
@@ -343,6 +344,14 @@ UPDATE combatants
 SET conditions = $2
 WHERE id = $1;
 
+-- name: SetCombatantInspirationDie :exec
+-- The Bardic Inspiration die a combatant holds: its size, the bard's combatant and
+-- the round it runs out in; all NULL for no die (the die was used, ran out or the
+-- giving was undone).
+UPDATE combatants
+SET inspiration_sides = sqlc.narg(sides), inspiration_from = sqlc.narg(from_id), inspiration_expires_round = sqlc.narg(expires_round)
+WHERE id = sqlc.arg(id);
+
 -- name: SetCombatantDeathSaves :exec
 -- The death save counts, whether the turn's save was rolled, and whether the
 -- combatant is out of the fight (a death the master confirmed), or their undo.
@@ -383,12 +392,13 @@ WHERE character_id = sqlc.arg(character_id)
 -- may cast Escudo, for the target's reaction (attack_total is then kept for the
 -- new comparison). A spell's damages carry their cast_id, and may be a heal or
 -- a half damage. critical_max is what a critical hit adds without rolling (the
--- table's rule "máximo mais uma rolagem", RN-24).
+-- table's rule "máximo mais uma rolagem", RN-24). extra_dice are the weapon
+-- dice a feature adds to a critical hit (Brutal Critical), always rolled.
 INSERT INTO pending_damages (
     encounter_id, attacker_id, target_id, attack_key, status, critical,
     dice_count, dice_sides, dice_bonus, damage_type, created_at,
-    cast_id, healing, half, attack_total, attack_armor_class, critical_max, critical_max_rule
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+    cast_id, healing, half, attack_total, attack_armor_class, critical_max, critical_max_rule, extra_dice
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 RETURNING *;
 
 -- name: GetPendingDamage :one
@@ -776,8 +786,8 @@ SELECT * FROM trap_damages WHERE settle_key = $1;
 -- left a reactor's reach.
 
 -- name: InsertOpportunityOffer :one
-INSERT INTO opportunity_offers (encounter_id, move_id, mover_id, reactor_id, left_col, left_row, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO opportunity_offers (encounter_id, move_id, mover_id, reactor_id, left_col, left_row, created_at, jumped)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: ListPendingOpportunityOffers :many
@@ -1011,3 +1021,158 @@ SELECT e.* FROM battle_encounters AS e
 JOIN map_points AS p ON p.id = e.map_point_id
 WHERE e.campaign_id = $1 AND e.map_id = $2 AND p.kind = 'battle'
 ORDER BY e.created_at, e.map_point_id;
+
+-- name: HasLongRestInSession :one
+-- Whether the master already took a long rest in the session: the SRD allows one
+-- in 24 hours and the app does not count hours, so the master is warned.
+SELECT EXISTS (
+    SELECT 1 FROM session_events
+    WHERE game_session_id = $1 AND kind = 'rest_taken' AND payload ->> 'kind' = 'long'
+) AS taken;
+
+-- name: InsertRollHold :one
+-- An attack roll that waits for the answer about a Bardic Inspiration die.
+INSERT INTO roll_holds (encounter_id, combatant_id, idempotency_key, request, face, modifier, round, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING *;
+
+-- name: GetRollHold :one
+SELECT * FROM roll_holds WHERE encounter_id = $1 AND id = $2;
+
+-- name: GetRollHoldByKey :one
+-- The hold the request with this key made, if any.
+SELECT * FROM roll_holds WHERE encounter_id = $1 AND idempotency_key = $2;
+
+-- name: GetOpenRollHoldOf :one
+-- The hold of the combatant that was not answered yet, if any.
+SELECT * FROM roll_holds WHERE encounter_id = $1 AND combatant_id = $2 AND answer_key IS NULL;
+
+-- name: AnswerRollHold :exec
+UPDATE roll_holds SET answer_key = $2 WHERE id = $1;
+
+-- name: DeleteRollHold :exec
+DELETE FROM roll_holds WHERE id = $1;
+
+-- name: ListOpenRollHolds :many
+-- The rolls of the combat that wait for an answer, for the combatants' views.
+SELECT * FROM roll_holds WHERE encounter_id = $1 AND answer_key IS NULL;
+
+-- The campaign package (MR-050).
+
+-- name: ListBattleEncountersOfCampaign :many
+-- Every encounter kept on a battle point of the campaign, oldest first, for an export.
+SELECT e.* FROM battle_encounters AS e
+JOIN map_points AS p ON p.id = e.map_point_id
+WHERE e.campaign_id = $1 AND p.kind = 'battle'
+ORDER BY e.created_at, e.map_point_id;
+
+-- name: NextHiddenRevealSeq :one
+-- The place of the next question of the combat in the order they are answered.
+SELECT (COALESCE(MAX(seq), 0) + 1)::INT4 FROM hidden_reveals WHERE encounter_id = $1;
+
+-- name: InsertHiddenReveal :one
+-- A player's area spell hit hidden creatures and the table asks the master: the
+-- question, with where the area landed.
+INSERT INTO hidden_reveals (encounter_id, caster_id, spell_key, combatant_ids, origin_col, origin_row, squares, seq, created_at)
+VALUES (
+    sqlc.arg(encounter_id), sqlc.arg(caster_id), sqlc.arg(spell_key), sqlc.arg(combatant_ids)::TEXT[],
+    sqlc.arg(origin_col), sqlc.arg(origin_row), sqlc.arg(squares)::INT4[], sqlc.arg(seq), sqlc.arg(created_at)
+)
+RETURNING *;
+
+-- name: ListPendingHiddenReveals :many
+-- The questions the master has still to answer, oldest first. They hold the turn.
+SELECT * FROM hidden_reveals WHERE encounter_id = $1 AND state = 'pending' ORDER BY seq;
+
+-- name: GetHiddenReveal :one
+SELECT * FROM hidden_reveals WHERE encounter_id = $1 AND id = $2;
+
+-- name: AnswerHiddenReveal :one
+-- The master's answer; only a question that waits can be answered.
+UPDATE hidden_reveals SET state = sqlc.arg(state), answered_at = sqlc.arg(answered_at)
+WHERE encounter_id = sqlc.arg(encounter_id) AND id = sqlc.arg(id) AND state = 'pending'
+RETURNING *;
+
+-- name: DeleteHiddenReveal :exec
+-- An undo of the cast that opened the question takes it away.
+DELETE FROM hidden_reveals WHERE id = $1;
+
+-- name: DeleteHiddenRevealsOfEncounter :exec
+-- Ending the combat drops what was still to answer.
+DELETE FROM hidden_reveals WHERE encounter_id = $1;
+
+-- name: InsertReactionHold :one
+-- A held action (PM-04): the request of a cast, an attack or a damage roll that
+-- waits for the reaction windows of its group, to be replayed when they are all
+-- answered.
+INSERT INTO reaction_holds (encounter_id, group_id, kind, actor_id, actor_user_id, actor_is_master, request, data, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING *;
+
+-- name: GetReactionHold :one
+SELECT * FROM reaction_holds WHERE encounter_id = $1 AND id = $2;
+
+-- name: GetReactionHoldOfGroup :one
+SELECT * FROM reaction_holds WHERE encounter_id = $1 AND group_id = $2;
+
+-- name: SetReactionHoldState :exec
+UPDATE reaction_holds SET state = $2 WHERE id = $1;
+
+-- name: ListHeldReactionHolds :many
+SELECT * FROM reaction_holds WHERE encounter_id = $1 AND state = 'held';
+
+-- name: InsertReactionWindow :one
+-- A question to a reactor. The windows of one trigger share group_id; seq (the
+-- table's own counter) is the order they are answered in.
+INSERT INTO reaction_windows (encounter_id, group_id, kind, reactor_id, pending_damage_id, hold_id, step, trigger, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING *;
+
+-- name: ListOpenReactionWindows :many
+SELECT * FROM reaction_windows WHERE encounter_id = $1 AND status = 'open' ORDER BY seq;
+
+-- name: ListReactionWindowsOfGroup :many
+SELECT * FROM reaction_windows WHERE encounter_id = $1 AND group_id = $2 ORDER BY seq;
+
+-- name: GetReactionWindow :one
+SELECT * FROM reaction_windows WHERE encounter_id = $1 AND id = $2;
+
+-- name: GetReactionWindowForUpdate :one
+SELECT * FROM reaction_windows WHERE encounter_id = $1 AND id = $2 FOR UPDATE;
+
+-- name: CloseReactionWindow :one
+-- A window answered, or closed by itself. Only an open one changes: a second
+-- answer finds none.
+UPDATE reaction_windows
+SET status = $2, closed_reason = $3, outcome = $4, answered_at = $5
+WHERE id = $1 AND status = 'open'
+RETURNING *;
+
+-- name: SetReactionWindowStep :one
+-- The answer asks one more thing: the window stays open at its second step, with
+-- the new trigger.
+UPDATE reaction_windows SET step = $2, trigger = $3 WHERE id = $1 AND status = 'open'
+RETURNING *;
+
+-- name: DeleteReactionWindowsOfEncounter :exec
+DELETE FROM reaction_windows WHERE encounter_id = $1;
+
+-- name: DeleteReactionHoldsOfEncounter :exec
+DELETE FROM reaction_holds WHERE encounter_id = $1;
+
+-- name: SetCombatantSlotsUsed :exec
+-- The slots (and resource uses) a stat block spent in this combat.
+UPDATE combatants SET slots_used = $2 WHERE id = $1;
+
+-- name: ReopenReactionWindow :exec
+-- The undo of a reaction's answer: the window waits again.
+UPDATE reaction_windows
+SET status = 'open', closed_reason = NULL, outcome = NULL, answered_at = NULL
+WHERE id = $1;
+
+-- name: CloseOpenReactionWindowsOfPending :exec
+-- The undo of a damage takes back the windows it opened (a concentration save, a
+-- Hellish Rebuke): they were about that damage, which is not there any more.
+UPDATE reaction_windows
+SET status = 'closed', closed_reason = 'trigger_gone', answered_at = sqlc.arg(answered_at)::TIMESTAMPTZ
+WHERE encounter_id = $1 AND status = 'open' AND trigger->>'pending' = sqlc.arg(pending)::TEXT;

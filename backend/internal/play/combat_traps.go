@@ -59,6 +59,9 @@ type trapFireEvent struct {
 	// event (the payload is capped): it extends the firing, and an undo takes it
 	// back together with the events of the same firing.
 	Part bool `json:"part,omitempty"`
+	// Held says the fall damage waited for a Feather Fall: the firing cannot be
+	// undone any more once the damage lands.
+	Held bool `json:"held,omitempty"`
 	// Caught is what happened to each creature the trap caught, in order. In a
 	// combat the target is a combatant; outside one, a character.
 	Caught []trapCaughtEvent `json:"caught,omitempty"`
@@ -183,6 +186,19 @@ func (s *Service) fireInCombat(ctx context.Context, c *combatTx, trap maplink.Tr
 	if err != nil {
 		return nil, err
 	}
+	// A pit's fall can be slowed by a Feather Fall (PM-04): its damage waits for the
+	// windows when somebody can cast it.
+	var fallWins []windowSpec
+	if fall := s.fallDepth(prev); fall > 0 && len(caught) > 0 {
+		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+		if err != nil {
+			return nil, fmt.Errorf("list the combatants: %w", err)
+		}
+		if fallWins, err = s.fallWindows(ctx, c, cs, caught, ev.PointID, fall); err != nil {
+			return nil, err
+		}
+	}
+	holdFall := len(fallWins) > 0
 	for i, o := range outcomes {
 		who := caught[i]
 		cc := trapCaughtEvent{Target: who.ID, Character: who.CharacterID, Player: who.Kind == kindPlayer, Hidden: who.Hidden}
@@ -215,7 +231,7 @@ func (s *Service) fireInCombat(ctx context.Context, c *combatTx, trap maplink.Tr
 			if d.amount <= 0 && !d.half {
 				continue // a roll of 0 has nothing to apply
 			}
-			de, err := s.trapDamageInCombat(ctx, c, ev.PointID, &who, d)
+			de, err := s.trapDamageInCombat(ctx, c, ev.PointID, &who, d, holdFall)
 			if err != nil {
 				return nil, err
 			}
@@ -223,7 +239,21 @@ func (s *Service) fireInCombat(ctx context.Context, c *combatTx, trap maplink.Tr
 		}
 		ev.Caught = append(ev.Caught, cc)
 	}
+	if holdFall {
+		ev.Held = true
+		if _, err := s.openWindows(ctx, c, newGroup(), nil, fallWins); err != nil {
+			return nil, err
+		}
+	}
 	return ev, nil
+}
+
+// fallDepth is the depth in feet of the pit a trap is, 0 for any other trap.
+func (s *Service) fallDepth(t maplink.Trap) int32 {
+	if s.traps == nil || t.Spec.GetPresetKey() == "" {
+		return 0
+	}
+	return clamp32(s.traps.FallFt(t.Spec.GetPresetKey()), 0, 200)
 }
 
 // savesEventOf are the rolled saving throws as the event keeps them.
@@ -239,10 +269,12 @@ func savesEventOf(rs []trapSaveRoll) []saveRoll {
 // character's waits for the master as a ROLLED pending damage; an NPC's or a
 // creature's is APPLIED at once (who is updated with its new hit points, so the next
 // part lands on them).
-func (s *Service) trapDamageInCombat(ctx context.Context, c *combatTx, pointID string, who *playdb.Combatant, d trapDamageRoll) (trapDamageEvent, error) {
+func (s *Service) trapDamageInCombat(ctx context.Context, c *combatTx, pointID string, who *playdb.Combatant, d trapDamageRoll, hold bool) (trapDamageEvent, error) {
 	status := pendingRolled
 	var resolved *time.Time
-	if holdsHP(*who) {
+	if hold { // a Feather Fall may take it away
+		status = pendingAwaitingReaction
+	} else if holdsHP(*who) {
 		status, resolved = pendingApplied, &c.now
 	}
 	amount, err := s.afterResistance(ctx, c, *who, d.damageType, clampInt32(d.amount))
@@ -258,8 +290,10 @@ func (s *Service) trapDamageInCombat(ctx context.Context, c *combatTx, pointID s
 	if err != nil {
 		return trapDamageEvent{}, fmt.Errorf("open the trap's damage: %w", err)
 	}
-	hit, _, err := s.landDamage(ctx, c, p, *who, amount) // only an NPC or a creature takes it now
-	if err != nil {
+	var hit damageHit
+	if hold {
+		hit = damageHit{Pending: p.ID, Target: who.ID, Amount: amount, Half: p.Half}
+	} else if hit, _, err = s.landDamage(ctx, c, p, *who, amount); err != nil { // only an NPC or a creature takes it now
 		return trapDamageEvent{}, err
 	}
 	if hit.Applied && hit.After != nil {
@@ -475,8 +509,9 @@ func (s *Service) noticeAfterMove(ctx context.Context, campaignID string, enc pl
 // markKnownTraps marks, on the squares a player's character can reach, the ones a
 // move to would run into an armed trap the character knows: the app asks "Isso entra
 // no Fosso escondido. Mover assim mesmo?" first. The master is not warned, and a
-// trap the character does not know is never marked (RN-10).
-func (s *Service) markKnownTraps(ctx context.Context, campaignID string, enc playdb.Encounter, who playdb.Combatant, out *playv1.GetMoveOptionsResponse) {
+// trap the character does not know is never marked (RN-10). For a long jump only the
+// landing square counts: the jumper clears the squares in between.
+func (s *Service) markKnownTraps(ctx context.Context, campaignID string, enc playdb.Encounter, who playdb.Combatant, out *playv1.GetMoveOptionsResponse, jump bool) {
 	if s.traps == nil || enc.MapID == nil || who.Kind == kindNPC || len(out.GetReachable()) == 0 {
 		return
 	}
@@ -497,7 +532,11 @@ func (s *Service) markKnownTraps(ctx context.Context, campaignID string, enc pla
 	}
 	for _, r := range out.Reachable {
 		to := grid.Square{Col: int(r.GetCol()), Row: int(r.GetRow())}
-		for _, step := range grid.Line(from, to) {
+		steps := grid.Line(from, to)
+		if jump {
+			steps = steps[len(steps)-1:] // a jump fires a trap only where it lands
+		}
+		for _, step := range steps {
 			if i := slices.IndexFunc(ahead, func(t maplink.Trap) bool { return t.Covers(step.Square) }); i >= 0 {
 				r.KnownTrapPointId, r.KnownTrapName = ahead[i].PointID, ahead[i].Name
 				break

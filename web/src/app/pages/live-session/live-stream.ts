@@ -35,6 +35,15 @@ export interface LiveStreamHandlers {
   /** `encounter_changed`: the combat changed; the page reads it again when
    * `revision` is newer than its copy. */
   onEncounterChanged?(change: { encounterId: string; revision: number; mode?: number }): void;
+  /** `reaction_window_opened`: a window waits for this player (or the master); the page reads the combat again. */
+  onReactionWindowOpened?(opened: { encounterId: string; windowId: string }): void;
+  /** `reaction_window_closed`: a window is no longer open; `text` says why when it closed by itself. */
+  onReactionWindowClosed?(closed: {
+    encounterId: string;
+    windowId: string;
+    closedByItself: boolean;
+    text: string;
+  }): void;
   /** `turn_changed`: applied in place, per audience. */
   onTurnChanged?(turn: TurnChange): void;
   /** `combatant_moved`: applied in place. */
@@ -54,6 +63,8 @@ export interface LiveStreamHandlers {
   onTrapNoticed?(notice: { mapId: string; pointId: string }): void;
   /** `creatures_changed` (MR-037): a character's creatures changed outside a combat, read them again. */
   onCreaturesChanged?(): void;
+  /** `spell_casts_changed` (MR-048): a cast outside a combat changed; the casts panel reads them again. */
+  onSpellCastsChanged?(): void;
   /** `content_changed` (10.1d): the table's content changed; a screen that shows the catalog reads it again. */
   onContentChanged?(): void;
   /** `puzzle_changed` (MR-038): a puzzle changed; the page reads it again (the server already throttles the hint). */
@@ -209,6 +220,12 @@ export class LiveStream {
           case 'encounterChanged':
             this.options.handlers.onEncounterChanged?.(event);
             break;
+          case 'reactionWindowOpened':
+            this.options.handlers.onReactionWindowOpened?.(event);
+            break;
+          case 'reactionWindowClosed':
+            this.options.handlers.onReactionWindowClosed?.(event);
+            break;
           case 'turnChanged':
             this.options.handlers.onTurnChanged?.(event);
             break;
@@ -236,6 +253,9 @@ export class LiveStream {
             break;
           case 'creaturesChanged':
             this.options.handlers.onCreaturesChanged?.();
+            break;
+          case 'spellCastsChanged':
+            this.options.handlers.onSpellCastsChanged?.();
             break;
           case 'contentChanged':
             this.options.handlers.onContentChanged?.();

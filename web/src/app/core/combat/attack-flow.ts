@@ -15,9 +15,9 @@ import { stateWord } from './combat-view';
  * messages and the result lines are tested without a DOM.
  */
 
-/** Where the attack is: choosing a target, rolling the d20, rolling the
- * damage, or finished (a miss, or the damage rolled). */
-export type AttackStage = 'target' | 'roll' | 'damage' | 'done';
+/** Where the attack is: choosing a target, rolling the d20, answering the Bardic Inspiration question of a held roll,
+ * rolling the damage, or finished (a miss, or the damage rolled). */
+export type AttackStage = 'target' | 'roll' | 'inspire' | 'damage' | 'done';
 
 export interface Step {
   readonly name: 'Alvo' | 'Rolar' | 'Dano';
@@ -25,7 +25,7 @@ export interface Step {
 }
 
 const ORDER: readonly Step['name'][] = ['Alvo', 'Rolar', 'Dano'];
-const AT: Record<AttackStage, number> = { target: 0, roll: 1, damage: 2, done: 3 };
+const AT: Record<AttackStage, number> = { target: 0, roll: 1, inspire: 1, damage: 2, done: 3 };
 
 /** The stepper: the steps before the stage are done (a check), the stage's
  * own is current (`aria-current="step"`), the rest wait. */
@@ -155,7 +155,7 @@ export function pendingNote(pendings: readonly PendingDamage[]): string | null {
     return `Falta aplicar ${sum} de dano`;
   }
   if (pendings.some((p) => p.status === PendingDamageStatus.AWAITING_REACTION)) {
-    return 'Falta a reação do alvo (Escudo)';
+    return 'Falta a reação do alvo';
   }
   return pendings.some((p) => p.status === PendingDamageStatus.AWAITING_ROLL)
     ? 'Falta rolar o dano'

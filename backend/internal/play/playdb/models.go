@@ -88,59 +88,65 @@ type CombatSurprised struct {
 }
 
 type Combatant struct {
-	ID                 string
-	EncounterID        string
-	CharacterID        string
-	UserID             *string
-	Label              string
-	Kind               string
-	Hidden             bool
-	Initiative         *int32
-	InitiativeBonus    int32
-	InitiativeFace     *int32
-	TieOrdered         bool
-	OrderIndex         int32
-	GridCol            *int32
-	GridRow            *int32
-	SpeedFt            int32
-	MovementUsedFt     int32
-	Dashed             bool
-	ActionUsed         bool
-	BonusActionUsed    bool
-	ReactionUsed       bool
-	HpCurrent          *int32
-	HpMax              *int32
-	HpTemp             *int32
-	Defeated           bool
-	DeathSuccesses     int32
-	DeathFailures      int32
-	Conditions         []string
-	ConcentrationSpell *string
-	CreatedAt          time.Time
-	AttacksMade        int32
-	AcBonus            int32
-	DeathSaveRolled    bool
-	XpValue            int32
-	TurnState          string
-	MovementUsedDft    int32
-	LastMoveDft        int32
-	Side               string
-	Size               string
-	SpeedFlyFt         int32
-	JumpLongDft        int32
-	JumpHighDft        int32
-	CoverMark          string
-	Disengaged         bool
-	CreatureID         *string
-	MonsterKey         *string
-	SummonAttack       *string
-	SummonGroupID      *string
-	Dismissed          bool
-	ActionSurged       bool
-	SpellCast          bool
-	BonusSpellCast     bool
-	ActionAttackKey    *string
-	BonusAttacksLeft   int32
+	ID                      string
+	EncounterID             string
+	CharacterID             string
+	UserID                  *string
+	Label                   string
+	Kind                    string
+	Hidden                  bool
+	Initiative              *int32
+	InitiativeBonus         int32
+	InitiativeFace          *int32
+	TieOrdered              bool
+	OrderIndex              int32
+	GridCol                 *int32
+	GridRow                 *int32
+	SpeedFt                 int32
+	MovementUsedFt          int32
+	Dashed                  bool
+	ActionUsed              bool
+	BonusActionUsed         bool
+	ReactionUsed            bool
+	HpCurrent               *int32
+	HpMax                   *int32
+	HpTemp                  *int32
+	Defeated                bool
+	DeathSuccesses          int32
+	DeathFailures           int32
+	Conditions              []string
+	ConcentrationSpell      *string
+	CreatedAt               time.Time
+	AttacksMade             int32
+	AcBonus                 int32
+	DeathSaveRolled         bool
+	XpValue                 int32
+	TurnState               string
+	MovementUsedDft         int32
+	LastMoveDft             int32
+	Side                    string
+	Size                    string
+	SpeedFlyFt              int32
+	JumpLongDft             int32
+	JumpHighDft             int32
+	CoverMark               string
+	Disengaged              bool
+	CreatureID              *string
+	MonsterKey              *string
+	SummonAttack            *string
+	SummonGroupID           *string
+	Dismissed               bool
+	ActionSurged            bool
+	SpellCast               bool
+	BonusSpellCast          bool
+	ActionAttackKey         *string
+	BonusAttacksLeft        int32
+	HpMaxBonus              int32
+	MageArmorAc             *int32
+	InspirationSides        *int32
+	InspirationFrom         *string
+	InspirationExpiresRound *int32
+	SlotsUsed               []byte
 }
 
 type Encounter struct {
@@ -195,6 +201,21 @@ type GroupCheckMember struct {
 	RolledAt       *time.Time
 }
 
+type HiddenReveal struct {
+	ID           string
+	EncounterID  string
+	CasterID     string
+	SpellKey     string
+	CombatantIds []string
+	OriginCol    int32
+	OriginRow    int32
+	Squares      []int32
+	Seq          int32
+	State        string
+	CreatedAt    time.Time
+	AnsweredAt   *time.Time
+}
+
 type OpportunityOffer struct {
 	ID              string
 	EncounterID     string
@@ -207,6 +228,7 @@ type OpportunityOffer struct {
 	AttackPendingID *string
 	CreatedAt       time.Time
 	AnsweredAt      *time.Time
+	Jumped          bool
 }
 
 type PendingDamage struct {
@@ -237,6 +259,7 @@ type PendingDamage struct {
 	CriticalMax      int32
 	CriticalMaxRule  bool
 	Taken            *int32
+	ExtraDice        int32
 }
 
 type Puzzle struct {
@@ -319,6 +342,81 @@ type PuzzleRun struct {
 	PlayStartedAt        *time.Time
 	RoundStartSeq        int32
 	RoundStartedAt       *time.Time
+}
+
+type ReactionHold struct {
+	ID            string
+	EncounterID   string
+	GroupID       string
+	Kind          string
+	ActorID       string
+	ActorUserID   string
+	ActorIsMaster bool
+	Request       []byte
+	Data          []byte
+	State         string
+	CreatedAt     time.Time
+}
+
+type ReactionWindow struct {
+	ID              string
+	EncounterID     string
+	Seq             int64
+	GroupID         string
+	Kind            string
+	Status          string
+	ClosedReason    *string
+	ReactorID       *string
+	PendingDamageID *string
+	HoldID          *string
+	Step            int32
+	Trigger         []byte
+	Outcome         []byte
+	CreatedAt       time.Time
+	AnsweredAt      *time.Time
+}
+
+type RollHold struct {
+	ID             string
+	EncounterID    string
+	CombatantID    string
+	IdempotencyKey string
+	Request        []byte
+	Face           int32
+	Modifier       int32
+	Round          int32
+	AnswerKey      *string
+	CreatedAt      time.Time
+}
+
+type SpellCast struct {
+	ID                 string
+	CampaignID         string
+	GameSessionID      string
+	CasterID           string
+	SpellKey           string
+	Ritual             bool
+	SlotLevel          int32
+	SlotPact           bool
+	Status             string
+	EndReason          *string
+	Concentrating      bool
+	CastingMinutes     int32
+	Lasts              bool
+	DurationSeconds    *int32
+	RestEnds           *string
+	Secret             bool
+	Targets            []byte
+	DiceCount          int32
+	DiceSides          int32
+	RollFaces          []int32
+	RollTotal          int32
+	Physical           bool
+	CreatureIds        []string
+	CarriedEncounterID *string
+	StartedAt          time.Time
+	CastAt             *time.Time
+	EndedAt            *time.Time
 }
 
 type StageNpc struct {

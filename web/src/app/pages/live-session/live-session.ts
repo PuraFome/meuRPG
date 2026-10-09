@@ -1,3 +1,4 @@
+import { CastingPanel } from './casting/casting-panel';
 import {
   Component,
   DOCUMENT,
@@ -23,6 +24,7 @@ import type { Map as MapMessage } from '../../../gen/meurpg/maps/v1/maps_pb';
 import {
   type Encounter,
   EncounterMode,
+  CombatantKind,
   EncounterStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { AuthService } from '../../core/auth/auth.service';
@@ -77,6 +79,7 @@ import { CombatView } from './combat/combat-view';
 import { HighlightsCard } from './combat/combat-highlights/highlights-card';
 import { LiveStream } from './live-stream';
 import { PartyPanel } from './party-panel/party-panel';
+import { RestCard } from './rest-card/rest-card';
 import { PlayerVitals } from './player-vitals/player-vitals';
 import { MasterLive } from './puzzles/master-live/master-live';
 import { MasterPuzzles } from './puzzles/master-puzzles/master-puzzles';
@@ -133,6 +136,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     FamiliarBand,
     BattleEncounters,
     CombatLaunch,
+    CastingPanel,
     CombatView,
     FoundTreasures,
     HighlightsCard,
@@ -141,6 +145,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     RouterLink,
     MasterPuzzles,
     PartyPanel,
+    RestCard,
     PuzzleNotice,
     PuzzlePlayPage,
     PlayerVitals,
@@ -238,6 +243,8 @@ export class LiveSession {
   protected readonly viewGone = signal('');
   /** Bumped when the stream says a character's creatures changed. */
   protected readonly creaturesTick = signal(0);
+  /** Counts the `spell_casts_changed` hints (and each `ready`): the casts panel reads again when it moves. */
+  protected readonly castsTick = signal(0);
   protected readonly familiarNameNow = signal<string | null>(null);
   protected readonly seeingFamiliar = computed(() => !!this.vitals().at(0)?.familiarSight);
   private readonly familiarEyes = inject(FamiliarEyesClient);
@@ -311,7 +318,18 @@ export class LiveSession {
   );
 
   protected readonly ownCharacterId = computed(() => this.vitals().at(0)?.characterId ?? '');
-  protected readonly ownCharacterName = computed(() => this.vitals().at(0)?.name ?? '');
+  /** The player's own combatant in the combat, which a character that died keeps (it has no vitals). */
+  private readonly ownCombatant = computed(() =>
+    this.combat.encounter()?.combatants.find((c) => c.mine && c.kind === CombatantKind.PLAYER),
+  );
+  /** The player's character: from the vitals, or, for one that died, from its combatant. */
+  protected readonly ownCharacterName = computed(
+    () => this.vitals().at(0)?.name || this.ownCombatant()?.label || '',
+  );
+  /** Whose numbers the "O combate acabou" card marks as the reader's: a dead character's too. */
+  protected readonly highlightsCharacterId = computed(
+    () => this.ownCharacterId() || this.ownCombatant()?.characterId || '',
+  );
   /** The ended combat whose "Destaques" card this player closed (MR-032). */
   private readonly highlightsClosed = signal<string | null>(null);
   /** The players' "O combate acabou" card: the combat that ended, until they close it. */
@@ -335,6 +353,24 @@ export class LiveSession {
   protected readonly isMaster = computed(() => this.campaign()?.isMaster ?? false);
   /** The player's own character: the only one the server sends them. */
   protected readonly ownVitals = computed(() => this.vitals()[0] ?? null);
+  /** The Escudo Arcano's bonus on the player's own combatant while a combat is on; `null` outside one, so a combat that
+   * ends is not read as the shield ending. */
+  protected readonly ownArmorBonus = computed(() => {
+    const e = this.combat.encounter();
+    if (this.isMaster() || e?.status !== EncounterStatus.ACTIVE) {
+      return null;
+    }
+    return e.combatants.find((c) => c.mine)?.armorClassBonus ?? null;
+  });
+  /** The death saves of the player's own combatant while a combat is on; `null` outside one. */
+  protected readonly ownDeathSaves = computed(() => {
+    const e = this.combat.encounter();
+    if (this.isMaster() || e?.status !== EncounterStatus.ACTIVE) {
+      return null;
+    }
+    const own = e.combatants.find((c) => c.mine);
+    return own ? { successes: own.deathSuccesses, failures: own.deathFailures } : null;
+  });
   /** The master's "Ver como" list: the living player characters, with their players. */
   protected readonly viewAsPeople = computed<readonly ViewAsPerson[]>(() =>
     this.vitals().map((v) => ({
@@ -564,7 +600,11 @@ export class LiveSession {
           void this.trapBoard.refresh();
           void this.readSnapshot(campaignId, generation);
         },
-        onContentChanged: () => this.spellCatalog.forget(campaignId),
+        onContentChanged: () => {
+          this.spellCatalog.forget(campaignId);
+          // The sheet the trap skills come from may have changed with the table's content.
+          this.loadPlayerSheet(campaignId, generation);
+        },
         onVitals: (v) => {
           // Looking through a familiar's eyes, or coming back, changes what the player sees.
           const before =
@@ -585,6 +625,7 @@ export class LiveSession {
           }
         },
         onCreaturesChanged: () => this.creaturesTick.update((n) => n + 1),
+        onSpellCastsChanged: () => this.castsTick.update((n) => n + 1),
         onPuzzleChanged: (id) => void this.puzzles.changed(id),
         onTokenMoved: (move) => {
           this.scheduleVision();
@@ -618,6 +659,18 @@ export class LiveSession {
           if (!noMap) {
             void this.trapBoard.refreshDamages();
           }
+        },
+        // A window opened for this person: its prompt comes with the combat, read again like `encounter_changed`.
+        onReactionWindowOpened: (opened) => {
+          this.combat.noteReactionOpened(opened.windowId);
+          void this.loadCombat(generation);
+        },
+        onReactionWindowClosed: (closed) => {
+          // Closed by itself: the reason, in a status line, written for this person; the combat is read again.
+          if (closed.closedByItself) {
+            this.combat.noteReactionClosed(closed.windowId, closed.text);
+          }
+          void this.loadCombat(generation);
         },
         onTurnChanged: (turn) => {
           if (!this.combat.applyTurn(turn)) {
@@ -709,6 +762,7 @@ export class LiveSession {
       // What a player sees on a fog map, and the creatures, follow the server's current state too.
       this.scheduleVision();
       this.creaturesTick.update((n) => n + 1);
+      this.castsTick.update((n) => n + 1);
       if (this.isMaster()) {
         void this.reloadMaps();
       }
@@ -769,11 +823,12 @@ export class LiveSession {
     }
   }
 
-  /** "Fechar" on the players' "Destaques" card. */
+  /** "Fechar" on the players' "Destaques" card: it closes the summary under it too, which has no button of its own while the card is up. */
   protected closeHighlights(): void {
     const e = this.highlightsFor();
     if (e) {
       this.highlightsClosed.set(e.id);
+      this.combat.dismissEnded();
     }
   }
 
@@ -838,6 +893,15 @@ export class LiveSession {
       return;
     }
     this.loadedSheetFor = own.characterId;
+    this.loadPlayerSheet(campaignId, generation);
+  }
+
+  /** Reads the player's own sheet again; best effort, the page keeps the one it has when this fails. */
+  private loadPlayerSheet(campaignId: string, generation: number): void {
+    const own = this.ownVitals();
+    if (this.isMaster() || !own) {
+      return;
+    }
     this.source.getPlayerSheet(campaignId, own.characterId).then(
       (sheet) => generation === this.generation && this.playerSheet.set(sheet),
       () => undefined,
@@ -1037,6 +1101,11 @@ export class LiveSession {
         const bars = Array.from(this.document.querySelectorAll<HTMLElement>('.notes-bar'));
         bars.find((b) => b.offsetParent !== null)?.focus();
       });
+  }
+
+  /** A rest or a spent hit die changed these characters: their new numbers, as the server answered (the stream says the same to the other screens). */
+  protected takeVitals(taken: readonly VitalsVm[]): void {
+    this.vitals.update((list) => taken.reduce((all, v) => applyVitals(all, v), list));
   }
 
   /** "Ajustar": a bottom sheet on a phone, a dialog from a tablet up, with

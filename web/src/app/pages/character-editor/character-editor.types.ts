@@ -167,7 +167,12 @@ export interface CharacterFormValue {
   alignment: AlignmentKey;
   /** Locks with the rest of the sheet, unlike the story fields (A3). */
   customFeaturesText: string;
+  /** A College of Lore bard's "Perguntar" setting for Palavras de Interrupção: on which rolls of an enemy the combat asks. */
+  cuttingWordsAsk: CuttingWordsAskKey;
 }
+
+/** `CuttingWordsAsk`: every roll of the enemy, attacks only (the default) or never. */
+export type CuttingWordsAskKey = 'all' | 'only-attacks' | 'never';
 
 /** One attack of a minion or story NPC (`BasicAttack`). */
 export interface BasicAttackFormValue {
@@ -424,6 +429,8 @@ export interface CreateCharacterInput {
   readonly basic: BasicCharacterFormValue | null;
   /** How a player's base scores were made; the server checks them against it (RN-24). */
   readonly abilityMethod?: AbilityMethodKey;
+  /** The master makes a player character for a player to claim: saved as reserved, with no owner (MR-049). */
+  readonly forPlayer?: boolean;
   /** One per create, sent again on a retry: the server makes the character once (a UUID; see `ActionKey`). */
   readonly idempotencyKey: string;
 }
@@ -444,6 +451,8 @@ export interface PreviewCharacterInput {
   readonly characterId: string | null;
   readonly kind: CharacterKind;
   readonly full: CharacterFormValue;
+  /** As `CreateCharacterInput.forPlayer`: the master previews a reserved character's sheet. */
+  readonly forPlayer?: boolean;
 }
 
 /** What the server derives for a draft: the numbers the editor's "Pontos de vida" box shows. */
@@ -479,6 +488,8 @@ export interface CharacterForEdit {
    * character is dead. The master may still edit it; the XP is then read-only
    * here, because only awards change it (MR-016). */
   readonly sheetLocked: boolean;
+  /** The character is reserved (MR-049): made by the master for a player to claim, with no owner. */
+  readonly reserved?: boolean;
   /** How the base scores were made, as the server recorded it at creation (RN-24); `null` for NPCs and sheets made before the rules. */
   readonly abilityOrigin?: {
     readonly method: AbilityMethodKey;
@@ -490,6 +501,8 @@ export interface CharacterForEdit {
   readonly grantedSpellKeys?: readonly string[];
   /** How many spells each casting class prepares (the saved sheet's `spellcasting[].prepared_max`), by class key. */
   readonly preparedMax?: Readonly<Record<string, number>>;
+  /** The keys of the features the server's derived sheet has (`feature:cutting-words` shows the bard's "Perguntar" setting). An edit only. */
+  readonly featureKeys?: readonly string[];
 }
 
 /**

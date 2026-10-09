@@ -1,28 +1,36 @@
 import { Injectable, inject } from '@angular/core';
-import type { MessageInitShape } from '@bufbuild/protobuf';
+import { type MessageInitShape, create } from '@bufbuild/protobuf';
 import { createClient } from '@connectrpc/connect';
 
 import {
   type AttackRoll,
   CombatService,
+  type ConcentrationSaveResult,
+  ReactionChoice,
+  type ReactionResult as GenReactionResult,
   type DeathSave,
   type CoverDegree,
   type CombatantSide,
+  type CombatEffect,
   type DiceRoll,
   type Encounter,
   EncounterMode,
   type GetCombatHighlightsResponse,
   type GetMoveOptionsResponse,
   type GetTurnOptionsResponse,
+  type InspirationOffer,
   type ListCombatLogResponse,
   JumpKind,
   MonsterHitPoints,
   type ParticipantSchema,
   type PendingDamage,
-  type ReactionOutcome,
+  type PreviewSpellAreaResponse,
+  type RollAttackResponse,
+  AttackRollSchema,
   type SpellCast,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { newKey } from '../connect/idempotency';
+import type { Square } from './combat-grid';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
 // The key maker moved to `core/connect`; the combat screens still import it from here.
@@ -83,6 +91,9 @@ export interface AttackResult {
   readonly encounter: Encounter;
   readonly roll: AttackRoll;
   readonly pending: PendingDamage | undefined;
+  /** The attacker holds a Bardic Inspiration die: the d20 is rolled and the result is held until the player answers
+   * (`AnswerBardicInspiration`). `roll` then carries only the d20, with no outcome. */
+  readonly offer?: InspirationOffer;
 }
 
 /** What a move answers: the combat, and whether it stopped short or provoked. */
@@ -115,6 +126,15 @@ export interface SlotRef {
   readonly pact: boolean;
 }
 
+/** One Metamagic option of a cast (`MetamagicChoice`): the creatures it needs (Twinned: the second target, Careful: who
+ * passes on its own, Heightened: who has disadvantage). */
+export interface MetamagicSpec {
+  readonly key: string;
+  readonly targetIds: readonly string[];
+  readonly carefulIds: readonly string[];
+  readonly heightenedId: string;
+}
+
 /** One target of a cast; `darts` is Magic Missile's, 0 for any other spell. */
 export interface CastTarget {
   readonly combatantId: string;
@@ -127,6 +147,33 @@ export interface CastResult {
   readonly cast: SpellCast;
   /** A summoning spell: the combatants that joined the combat, in the order of the creatures chosen. */
   readonly summoned: readonly string[];
+  /** An area placed on the map: where it landed and the squares it covers, as the caller knows the map. */
+  readonly area: { readonly origin: Square | null; readonly squares: readonly Square[] } | null;
+  /** The hidden creatures the area hit: the master's only (empty for a player). */
+  readonly hiddenHits: readonly string[];
+  /** The question the cast opened for the master ("Perguntar a cada vez"): the master's only. */
+  readonly pendingRevealId: string;
+}
+
+/** Where an area spell is placed: a point for a sphere or a cylinder, a direction for a cone, a line or a cube. */
+export type AreaChoice =
+  | { readonly origin: Square }
+  | { readonly direction: { readonly dx: number; readonly dy: number } };
+
+/** What else a cast may carry: the placed area, and the master's choice on the hidden creatures it hits. */
+export interface CastExtras {
+  readonly area?: AreaChoice | null;
+  /** The master only: whether the hidden creatures the area hits appear to the players. */
+  readonly revealHidden?: boolean;
+}
+
+function areaOneof(area: AreaChoice | null | undefined) {
+  if (!area) {
+    return { case: undefined };
+  }
+  return 'origin' in area
+    ? { case: 'origin' as const, value: { col: area.origin.col, row: area.origin.row } }
+    : { case: 'direction' as const, value: { dx: area.direction.dx, dy: area.direction.dy } };
 }
 
 /** What a summoning spell brings (`SummonChoice`): the option, a content key per creature and, optionally, a name each. */
@@ -157,10 +204,37 @@ export interface ConditionChange {
   readonly endConcentration?: boolean;
 }
 
-/** What Escudo did to a hit (`UseReaction`). */
-export interface ReactionResult {
+/** How a window is answered (`AnswerReaction`): "Usar ..." with what it needs, or "Deixar passar". */
+export interface ReactionAnswer {
+  readonly use: boolean;
+  /** The slot of a spell reaction (`pact` for the pact slot). */
+  readonly slot?: SlotRef;
+  /** Hellish Rebuke paid with the Infernal Legacy. */
+  readonly useRacial?: boolean;
+  /** Feather Fall: the falling creatures to save. */
+  readonly creatureIds?: readonly string[];
+  /** The die the answer needs, when it needs one: the app rolls it, or the face typed from a physical die. */
+  readonly die?: { readonly inApp: true } | { readonly typed: number };
+}
+
+/** What `AnswerReaction` answers: the combat and what the answer did. */
+export interface AnswerResult {
   readonly encounter: Encounter;
-  readonly outcome: ReactionOutcome;
+  readonly result: GenReactionResult | undefined;
+}
+
+/** How a concentration window is settled: the d20 in the app, a typed face, "Deixar o mestre rolar por mim", or the
+ * master keeping the concentration. */
+export type ConcentrationAnswer =
+  | { readonly kind: 'app' }
+  | { readonly kind: 'typed'; readonly face: number }
+  | { readonly kind: 'hand' }
+  | { readonly kind: 'keep' };
+
+/** What `ResolveConcentrationSave` answers: the combat and the save (unset when handed to the master or kept). */
+export interface ConcentrationOutcome {
+  readonly encounter: Encounter;
+  readonly result: ConcentrationSaveResult | undefined;
 }
 
 /** One adjustment of an NPC's hit points ("Dano/Cura"): at most one of the
@@ -403,14 +477,37 @@ export class CombatClient {
     };
   }
 
+  /** "Colocar no mapa": the server picks the square of a combatant that has none
+   * (free floor, away from the players), so the screen never guesses one. */
+  async place(campaignId: string, encounterId: string, combatantId: string): Promise<Encounter> {
+    const res = await this.keyed(['placeCombatant', campaignId, encounterId, combatantId], (sent) =>
+      this.client.moveCombatant({
+        campaignId,
+        encounterId,
+        combatantId,
+        idempotencyKey: sent,
+        place: true,
+      }),
+    );
+    return need(res.encounter, 'MoveCombatant');
+  }
+
   /** `GetMoveOptions`: where the combatant can go in one straight move, the
    * cost of each square and why the others inside the circle are refused. */
   moveOptions(
     campaignId: string,
     encounterId: string,
     combatantId: string,
+    jump?: { readonly runningStart: boolean },
   ): Promise<GetMoveOptionsResponse> {
-    return this.client.getMoveOptions({ campaignId, encounterId, combatantId });
+    // With a jump the squares are the long jump's, and `provokes_reactor_ids` warns about its opportunity attacks as a walk's does.
+    return this.client.getMoveOptions({
+      campaignId,
+      encounterId,
+      combatantId,
+      jump: jump ? JumpKind.LONG : JumpKind.UNSPECIFIED,
+      jumpRunningStart: jump?.runningStart ?? false,
+    });
   }
 
   /** The master's "Aliado" (PARTY) or back to enemy (ENEMY). */
@@ -623,6 +720,7 @@ export class CombatClient {
     key: string,
     asReaction = false,
     opportunityOfferId = '',
+    catchWindowId = '',
   ): Promise<AttackResult> {
     const res = await this.client.rollAttack({
       campaignId,
@@ -635,12 +733,9 @@ export class CombatClient {
         'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
       asReaction,
       opportunityOfferId,
+      catchWindowId,
     });
-    return {
-      encounter: need(res.encounter, 'RollAttack'),
-      roll: need(res.roll, 'RollAttack'),
-      pending: res.pendingDamage,
-    };
+    return attackResult(res);
   }
 
   async rollDamage(
@@ -716,38 +811,55 @@ export class CombatClient {
     };
   }
 
-  /** The master answers for the target: cast Escudo with `slot`. */
-  async useReaction(
+  /** `AnswerReaction`: "Usar ..." or "Deixar passar" on a reaction window. The caller makes the key from the request. */
+  async answerReaction(
     campaignId: string,
     encounterId: string,
-    pendingDamageId: string,
-    slot: { level: number; pact: boolean },
+    windowId: string,
+    answer: ReactionAnswer,
     key: string,
-  ): Promise<ReactionResult> {
-    const res = await this.client.useReaction({
+  ): Promise<AnswerResult> {
+    const res = await this.client.answerReaction({
       campaignId,
       encounterId,
-      pendingDamageId,
-      slot,
+      windowId,
+      answer: answer.use ? ReactionChoice.USE : ReactionChoice.PASS,
+      slot: answer.slot ? { level: answer.slot.level, pact: answer.slot.pact } : undefined,
+      useRacial: answer.useRacial ?? false,
+      creatureIds: [...(answer.creatureIds ?? [])],
+      roll: !answer.die
+        ? { case: undefined }
+        : 'inApp' in answer.die
+          ? { case: 'rollInApp', value: true }
+          : { case: 'typed', value: answer.die.typed },
       idempotencyKey: key,
     });
-    return { encounter: need(res.encounter, 'UseReaction'), outcome: res.outcome };
+    return { encounter: need(res.encounter, 'AnswerReaction'), result: res.result };
   }
 
-  /** The master lets the hit go ("Seguir sem Escudo"). */
-  async declineReaction(
+  /** `ResolveConcentrationSave`: the Constitution saving throw of a concentration window. */
+  async resolveConcentrationSave(
     campaignId: string,
     encounterId: string,
-    pendingDamageId: string,
+    windowId: string,
+    how: ConcentrationAnswer,
     key: string,
-  ): Promise<Encounter> {
-    const res = await this.client.declineReaction({
+  ): Promise<ConcentrationOutcome> {
+    const res = await this.client.resolveConcentrationSave({
       campaignId,
       encounterId,
-      pendingDamageId,
+      windowId,
+      roll:
+        how.kind === 'app'
+          ? { case: 'rollInApp', value: true }
+          : how.kind === 'typed'
+            ? { case: 'd20Face', value: how.face }
+            : how.kind === 'hand'
+              ? { case: 'handToMaster', value: true }
+              : { case: 'keep', value: true },
       idempotencyKey: key,
     });
-    return need(res.encounter, 'DeclineReaction');
+    return { encounter: need(res.encounter, 'ResolveConcentrationSave'), result: res.result };
   }
 
   /** A standard action ("standard:dash") or a feature's ("feature:second-wind").
@@ -795,6 +907,8 @@ export class CombatClient {
     key: string,
     summon?: SummonRequest,
     damageTypeKey = '',
+    metamagic: readonly MetamagicSpec[] = [],
+    extras: CastExtras = {},
   ): Promise<CastResult> {
     const res = await this.client.castSpell({
       campaignId,
@@ -805,6 +919,12 @@ export class CombatClient {
       targets: targets.map((t) => ({ combatantId: t.combatantId, darts: t.darts })),
       idempotencyKey: key,
       damageTypeKey,
+      metamagic: metamagic.map((m) => ({
+        key: m.key,
+        targetIds: [...m.targetIds],
+        carefulIds: [...m.carefulIds],
+        heightenedId: m.heightenedId,
+      })),
       roll: !die
         ? { case: undefined }
         : 'inApp' in die
@@ -819,12 +939,64 @@ export class CombatClient {
             names: [...(summon.names ?? [])],
           }
         : undefined,
+      area: areaOneof(extras.area),
+      // Left out unless the master chose: the table rule decides then.
+      ...(extras.revealHidden === undefined ? {} : { revealHidden: extras.revealHidden }),
     });
     return {
       encounter: need(res.encounter, 'CastSpell'),
       cast: need(res.cast, 'CastSpell'),
       summoned: res.summonedCombatantIds,
+      area: res.area
+        ? {
+            origin: res.area.origin ? { col: res.area.origin.col, row: res.area.origin.row } : null,
+            squares: res.area.squares.map((q) => ({ col: q.col, row: q.row })),
+          }
+        : null,
+      hiddenHits: res.hiddenHits,
+      pendingRevealId: res.pendingRevealId,
     };
+  }
+
+  /** `PreviewSpellArea`: who an area spell placed here reaches and each one's cover, spending nothing. `area` is `null` for a
+   * sphere centered on the caster, which has nothing to choose. */
+  async previewSpellArea(
+    campaignId: string,
+    encounterId: string,
+    casterId: string,
+    spellKey: string,
+    slot: SlotRef | null,
+    area: AreaChoice | null,
+  ): Promise<PreviewSpellAreaResponse> {
+    return this.client.previewSpellArea({
+      campaignId,
+      encounterId,
+      casterId,
+      spellKey,
+      slot: slot ?? undefined,
+      area: areaOneof(area),
+    });
+  }
+
+  /** The master's answer to a question of `Encounter.pending_hidden_reveals`: reveal the hidden creatures the area hit, or keep them hidden. */
+  async resolveHiddenReveal(
+    campaignId: string,
+    encounterId: string,
+    pendingRevealId: string,
+    reveal: boolean,
+  ): Promise<Encounter> {
+    const res = await this.keyed(
+      ['resolveHiddenReveal', campaignId, encounterId, pendingRevealId, reveal],
+      (sent) =>
+        this.client.resolveHiddenReveal({
+          campaignId,
+          encounterId,
+          pendingRevealId,
+          reveal,
+          idempotencyKey: sent,
+        }),
+    );
+    return need(res.encounter, 'ResolveHiddenReveal');
   }
 
   async rollDeathSave(
@@ -887,6 +1059,27 @@ export class CombatClient {
       key,
     );
     return need(res.encounter, 'SetCombatantConditions');
+  }
+
+  /** The master's "Encerrar Ajuda": ends a lasting effect on a combatant (only Ajuda has an action; the Escudo Arcano ends by itself). */
+  async endCombatEffect(
+    campaignId: string,
+    encounterId: string,
+    combatantId: string,
+    effect: CombatEffect,
+  ): Promise<Encounter> {
+    const res = await this.keyed(
+      ['endCombatEffect', campaignId, encounterId, combatantId, effect],
+      (sent) =>
+        this.client.endCombatEffect({
+          campaignId,
+          encounterId,
+          combatantId,
+          effect,
+          idempotencyKey: sent,
+        }),
+    );
+    return need(res.encounter, 'EndCombatEffect');
   }
 
   /** The master's "Dano/Cura" on an NPC. */
@@ -959,6 +1152,17 @@ function toHitPoints(hp: MonsterHp | undefined): MonsterHitPoints {
 
 function toParticipant(spec: JoinSpec): MessageInitShape<typeof ParticipantSchema> {
   return { characterId: spec.characterId, count: spec.count ?? 1, hidden: spec.hidden };
+}
+
+/** The answer of `RollAttack` and of `AnswerBardicInspiration`: a held roll has the d20 in the offer and no outcome yet. */
+export function attackResult(res: RollAttackResponse): AttackResult {
+  const offer = res.inspirationOffer;
+  return {
+    encounter: need(res.encounter, 'RollAttack'),
+    roll: res.roll ?? create(AttackRollSchema, { d20: need(offer?.d20, 'RollAttack') }),
+    pending: res.pendingDamage,
+    offer,
+  };
 }
 
 function need<T>(value: T | undefined, call: string): T {

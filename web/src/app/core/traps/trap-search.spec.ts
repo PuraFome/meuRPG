@@ -1,4 +1,13 @@
-import { resultMessage, searchRoute, searchStep, skillOptions } from './trap-search';
+import {
+  SPECIFIC_SKILL_NOTE,
+  otherTitle,
+  resultMessage,
+  searchRoute,
+  searchStep,
+  skillKeyName,
+  skillName,
+  skillOptions,
+} from './trap-search';
 
 describe('trap search', () => {
   it('lists the two skills with the character bonus', () => {
@@ -6,6 +15,33 @@ describe('trap search', () => {
     expect(p.title).toBe('Percepção +4');
     expect(i.title).toBe('Investigação −1');
     expect(skillOptions(null)[0].title).toBe('Percepção');
+  });
+
+  it('always offers Percepção, Investigação and "Outra perícia…", whatever is near (RN-10)', () => {
+    const menu = skillOptions({ perception: 1, investigation: 8 });
+    expect(menu.map((o) => o.skill)).toEqual(['perception', 'investigation', 'other']);
+    expect(menu[2]).toMatchObject({
+      title: 'Outra perícia…',
+      detail: 'Qualquer outra perícia da sua ficha',
+    });
+    // The same three with no sheet read yet.
+    expect(skillOptions(null).map((o) => o.title)).toEqual([
+      'Percepção',
+      'Investigação',
+      'Outra perícia…',
+    ]);
+    expect(SPECIFIC_SKILL_NOTE).toBe('Algumas armadilhas só se acham com uma perícia específica.');
+  });
+
+  it('writes the other skill as the list does, and names a skill by its key', () => {
+    expect(otherTitle({ key: 'skill:arcana', name: 'Arcanismo', bonus: 8 })).toBe('Arcanismo +8');
+    expect(otherTitle({ key: 'skill:athletics', name: 'Atletismo', bonus: -1 })).toBe(
+      'Atletismo −1',
+    );
+    expect(skillName('other', 'Arcanismo')).toBe('Arcanismo');
+    expect(skillName('perception')).toBe('Percepção');
+    expect(skillKeyName('skill:sleight-of-hand')).toBe('Prestidigitação');
+    expect(skillKeyName('skill:unknown')).toBe('skill:unknown');
   });
 
   it('follows the steps', () => {

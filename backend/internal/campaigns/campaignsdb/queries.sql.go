@@ -317,7 +317,7 @@ func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (G
 }
 
 const getTableRules = `-- name: GetTableRules :one
-SELECT campaign_id, hit_points_rule, ability_standard_array, ability_point_buy, ability_roll_4d6, ability_typed, critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, updated_at FROM campaign_table_rules WHERE campaign_id = $1
+SELECT campaign_id, hit_points_rule, ability_standard_array, ability_point_buy, ability_roll_4d6, ability_typed, critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, updated_at, feats_allowed, hidden_area_hits, enemy_reactions FROM campaign_table_rules WHERE campaign_id = $1
 `
 
 // The table's rules (RN-24). No row means the defaults.
@@ -337,6 +337,9 @@ func (q *Queries) GetTableRules(ctx context.Context, campaignID string) (Campaig
 		&i.FogOnNewMaps,
 		&i.HouseRules,
 		&i.UpdatedAt,
+		&i.FeatsAllowed,
+		&i.HiddenAreaHits,
+		&i.EnemyReactions,
 	)
 	return i, err
 }
@@ -435,6 +438,52 @@ func (q *Queries) InsertCampaignDocument(ctx context.Context, arg InsertCampaign
 		&i.Revision,
 		&i.UpdatedAt,
 		&i.UpdatedBy,
+	)
+	return i, err
+}
+
+const insertImportedCampaign = `-- name: InsertImportedCampaign :one
+INSERT INTO campaigns (id, name, xp_mode, dice_mode, created_by, create_key, create_hash)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
+RETURNING id, name, xp_mode, created_by, created_at, dice_mode, xp_mode_changed_at, create_key, create_hash
+`
+
+type InsertImportedCampaignParams struct {
+	ID         string
+	Name       string
+	XpMode     string
+	DiceMode   string
+	CreatedBy  string
+	CreateKey  *string
+	CreateHash *string
+}
+
+// A campaign made from a package (MR-050): the id is chosen before, because the
+// files of its images are stored under it. create_key and create_hash are the
+// idempotency key of CreateCampaignFromImport; a second call with the key makes
+// no row, and the caller reads the first one (GetCampaignByCreateKey).
+func (q *Queries) InsertImportedCampaign(ctx context.Context, arg InsertImportedCampaignParams) (Campaign, error) {
+	row := q.db.QueryRow(ctx, insertImportedCampaign,
+		arg.ID,
+		arg.Name,
+		arg.XpMode,
+		arg.DiceMode,
+		arg.CreatedBy,
+		arg.CreateKey,
+		arg.CreateHash,
+	)
+	var i Campaign
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.XpMode,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.DiceMode,
+		&i.XpModeChangedAt,
+		&i.CreateKey,
+		&i.CreateHash,
 	)
 	return i, err
 }
@@ -817,12 +866,12 @@ func (q *Queries) UpdateCampaignDocument(ctx context.Context, arg UpdateCampaign
 const upsertTableRules = `-- name: UpsertTableRules :one
 INSERT INTO campaign_table_rules (
     campaign_id, hit_points_rule, ability_standard_array, ability_point_buy, ability_roll_4d6, ability_typed,
-    critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, updated_at
+    critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, feats_allowed, hidden_area_hits, enemy_reactions, updated_at
 )
 VALUES (
     $1, $2, $3, $4,
     $5, $6, $7, $8,
-    $9, $10, $11::TEXT[], $12
+    $9, $10, $11::TEXT[], $12, $13, $14, $15
 )
 ON CONFLICT (campaign_id) DO UPDATE SET
     hit_points_rule = excluded.hit_points_rule,
@@ -835,8 +884,11 @@ ON CONFLICT (campaign_id) DO UPDATE SET
     combat_starts_with_map = excluded.combat_starts_with_map,
     fog_on_new_maps = excluded.fog_on_new_maps,
     house_rules = excluded.house_rules,
+    feats_allowed = excluded.feats_allowed,
+    hidden_area_hits = excluded.hidden_area_hits,
+    enemy_reactions = excluded.enemy_reactions,
     updated_at = excluded.updated_at
-RETURNING campaign_id, hit_points_rule, ability_standard_array, ability_point_buy, ability_roll_4d6, ability_typed, critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, updated_at
+RETURNING campaign_id, hit_points_rule, ability_standard_array, ability_point_buy, ability_roll_4d6, ability_typed, critical_rule, death_saves, combat_starts_with_map, fog_on_new_maps, house_rules, updated_at, feats_allowed, hidden_area_hits, enemy_reactions
 `
 
 type UpsertTableRulesParams struct {
@@ -851,6 +903,9 @@ type UpsertTableRulesParams struct {
 	CombatStartsWithMap  bool
 	FogOnNewMaps         bool
 	HouseRules           []string
+	FeatsAllowed         bool
+	HiddenAreaHits       string
+	EnemyReactions       string
 	Now                  time.Time
 }
 
@@ -868,6 +923,9 @@ func (q *Queries) UpsertTableRules(ctx context.Context, arg UpsertTableRulesPara
 		arg.CombatStartsWithMap,
 		arg.FogOnNewMaps,
 		arg.HouseRules,
+		arg.FeatsAllowed,
+		arg.HiddenAreaHits,
+		arg.EnemyReactions,
 		arg.Now,
 	)
 	var i CampaignTableRule
@@ -884,6 +942,9 @@ func (q *Queries) UpsertTableRules(ctx context.Context, arg UpsertTableRulesPara
 		&i.FogOnNewMaps,
 		&i.HouseRules,
 		&i.UpdatedAt,
+		&i.FeatsAllowed,
+		&i.HiddenAreaHits,
+		&i.EnemyReactions,
 	)
 	return i, err
 }

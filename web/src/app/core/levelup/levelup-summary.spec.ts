@@ -1,12 +1,18 @@
 import { create } from '@bufbuild/protobuf';
 
 import {
+  LevelUpMulticlassException,
+  LevelUpMulticlassSummarySchema,
+} from '../../../gen/meurpg/characters/v1/characters_pb';
+import {
   Ability,
   AttackSchema,
   CharacterSpellSchema,
   DerivedClassSchema,
+  DerivedSheetSchema,
   HitDiceSchema,
   SpellSchema,
+  SpellSlotsSchema,
   SpellcastingSchema,
   type DerivedSheet,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
@@ -163,7 +169,7 @@ describe('changeRows: a class that starts casting, and how it learns its spells 
     expect(rows.find((r) => r.key === 'prepared')).toMatchObject({ before: '—', after: '9' });
   });
 
-  it('writes the hit dice of every class, joined by a plus', () => {
+  it('writes the hit dice by size, joined by a "+"', () => {
     const after = pensantus(true);
     after.hitDice = [...after.hitDice, create(HitDiceSchema, { faces: 10, count: 1 })];
     const rows = changeRows(pensantus(false), after, ctx);
@@ -197,9 +203,47 @@ describe('changeRows: a class that starts casting, and how it learns its spells 
     const rows = changeRows(
       subclassCaster(pensantus(false), 2),
       subclassCaster(pensantus(true), 3),
-      { ...ctx, classKey: 'class:fighter', spellListClassKey: 'class:wizard' },
+      { ...ctx, spells: [], classKey: 'class:fighter', spellListClassKey: 'class:wizard' },
     );
     expect(rows.find((r) => r.key === 'spells')).toMatchObject({ before: '2', after: '3' });
+  });
+
+  it('reads the same book count whether the preview already has the picks or still lacks them', () => {
+    const six = [
+      'Armadura Arcana',
+      'Mísseis Mágicos',
+      'Escudo',
+      'Sono',
+      'Detectar Magia',
+      'Identificação',
+    ];
+    const inBook = (names: string[]) =>
+      names.map((n) =>
+        create(CharacterSpellSchema, {
+          spell: create(SpellSchema, {
+            key: `spell:${n}`,
+            name: n,
+            level: 1,
+            classKeys: ['class:wizard'],
+          }),
+        }),
+      );
+    const caster = (spells: string[]) => {
+      const sheet = nonCasterBefore();
+      sheet.spellcasting = pensantus(true).spellcasting;
+      sheet.spellcasting.forEach((c) => (c.spellsKnown = 0));
+      sheet.spells = inBook(spells);
+      return sheet;
+    };
+    const withCtx = { ...ctx, spellbook: true, spells: six };
+    const stale = changeRows(nonCasterBefore(), caster([]), withCtx).find(
+      (r) => r.key === 'spells',
+    );
+    const fresh = changeRows(nonCasterBefore(), caster(six), withCtx).find(
+      (r) => r.key === 'spells',
+    );
+    expect(stale).toMatchObject({ before: '—', after: '6' });
+    expect(fresh).toMatchObject({ before: '—', after: '6' });
   });
 
   it('a class that prepares from its list shows "Magias preparadas" and no "Magias conhecidas"', () => {
@@ -376,6 +420,7 @@ describe('changeRows: the spells a class knows count the ones taken from another
       ...bardCtx,
       classKey: 'class:wizard',
       spellbook: true,
+      spells: [],
     });
     expect(rows.find((r) => r.key === 'spells')).toMatchObject({ before: '1', after: '2' });
   });
@@ -435,5 +480,139 @@ describe('changeRows: the attacks a level moves', () => {
     const after = pensantus(true, { attacks: [sword(5, '1d8+3'), bolt('1d10')] });
 
     expect(changeRows(before, after, ctx).some((r) => r.key.startsWith('attack-'))).toBe(false);
+  });
+});
+
+describe('changeRows: a class new to the sheet (SRD 5.1, "Multiclassing")', () => {
+  const fighter = (level: number, hp: number, dice: [number, number][]) =>
+    create(DerivedSheetSchema, {
+      classes: [
+        create(DerivedClassSchema, { classKey: 'class:fighter', namePt: 'Guerreiro', level }),
+      ],
+      totalLevel: level,
+      nextLevelXp: 14000,
+      proficiencyBonus: 3,
+      hitPointsMax: hp,
+      hitDice: dice.map(([faces, count]) => create(HitDiceSchema, { faces, count })),
+    });
+  const before = fighter(5, 44, [[10, 5]]);
+  const after = create(DerivedSheetSchema, {
+    ...fighter(5, 50, [
+      [10, 5],
+      [6, 1],
+    ]),
+    totalLevel: 6,
+    classes: [
+      create(DerivedClassSchema, { classKey: 'class:fighter', namePt: 'Guerreiro', level: 5 }),
+      create(DerivedClassSchema, { classKey: 'class:wizard', namePt: 'Mago', level: 1 }),
+    ],
+    spellcasting: [
+      create(SpellcastingSchema, {
+        classKey: 'class:wizard',
+        classNamePt: 'Mago',
+        saveDc: 12,
+        attackBonus: 4,
+        cantripsKnown: 3,
+      }),
+    ],
+    spellSlots: [create(SpellSlotsSchema, { level: 1, count: 2 })],
+  });
+  const summary = create(LevelUpMulticlassSummarySchema, {
+    newClassKey: 'class:wizard',
+    casterLevelBefore: 0,
+    casterLevelAfter: 1,
+    slotsByTable: false,
+    exceptions: [LevelUpMulticlassException.UNARMORED_DEFENSE],
+  });
+  const rows = changeRows(before, after, {
+    ...ctx,
+    hpSub: 'Média 4 + Constituição +2',
+    cantrips: [],
+    spells: [],
+    prepared: [],
+    multiclass: {
+      newClassName: 'Mago',
+      summary,
+      newFeatures: ['Conjuração: Mago', 'Recuperação Arcana'],
+    },
+  });
+  const row = (key: string) => rows.find((r) => r.key === key);
+
+  it('says the total level and the XP of the total level, then the classes', () => {
+    expect(row('total-level')).toMatchObject({
+      label: 'Nível total',
+      before: '5',
+      after: '6',
+      sub: expect.stringContaining('14.000'),
+    });
+    expect(row('level')).toMatchObject({
+      label: 'Classes',
+      before: 'Guerreiro 5',
+      after: 'Guerreiro 5 · Mago 1',
+    });
+  });
+
+  it('says why each number moved: the die of the new class apart, the bonus by the total level, the slots by the caster level', () => {
+    expect(row('hit-dice')).toMatchObject({
+      before: '5d10',
+      after: '5d10 + 1d6',
+      sub: 'Ficam separados por tipo.',
+    });
+    expect(row('proficiency')).toMatchObject({
+      before: '+3',
+      after: '+3',
+      sub: 'Pelo nível total (6): não muda.',
+    });
+    expect(row('slots-1')).toMatchObject({
+      before: '0',
+      after: '2',
+      sub: 'Nível de conjurador 1: só o Mago conta.',
+    });
+    expect(row('hp')).toMatchObject({
+      before: '44',
+      after: '50',
+      sub: 'Média 4 + Constituição +2',
+    });
+  });
+
+  it('lists the proficiencies and features of the class, the equipment it does not give, and the exceptions in words', () => {
+    expect(row('proficiencies')).toMatchObject({
+      after: 'nenhuma',
+      sub: 'A tabela de multiclasse do Mago não dá nenhuma.',
+    });
+    expect(plain(row('new-class-features')!.after)).toBe('Conjuração: Mago · Recuperação Arcana');
+    expect(row('new-class-features')).toMatchObject({
+      sub: expect.stringContaining('Defesa sem Armadura não se soma'),
+    });
+    expect(row('equipment')).toMatchObject({
+      after: 'nenhum',
+      sub: 'Só a primeira classe dá equipamento.',
+    });
+  });
+
+  it('names the caster level of the table when more than one class casts', () => {
+    const table = changeRows(before, after, {
+      ...ctx,
+      cantrips: [],
+      spells: [],
+      prepared: [],
+      multiclass: {
+        newClassName: 'Mago',
+        summary: create(LevelUpMulticlassSummarySchema, {
+          casterLevelAfter: 4,
+          slotsByTable: true,
+        }),
+        newFeatures: [],
+      },
+    });
+    expect(table.find((r) => r.key === 'slots-1')?.sub).toBe(
+      'Nível de conjurador 4, pela tabela de multiclasse.',
+    );
+  });
+
+  it('adds none of this to a level of a class the sheet has', () => {
+    const plain = changeRows(pensantus(false), pensantus(true), ctx);
+    expect(plain.map((r) => r.key)).not.toContain('total-level');
+    expect(plain.map((r) => r.key)).not.toContain('equipment');
   });
 });

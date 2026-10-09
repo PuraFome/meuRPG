@@ -126,6 +126,26 @@ func TestEffectMenuIsWhatTheValidatorAccepts(t *testing.T) {
 		}
 	}
 
+	// The ability list and the amounts of an ability_increase, hosted by a feat.
+	var increases []Effect
+	for _, a := range menuList(t, m, ListAbilities) {
+		for _, amount := range menuList(t, m, ListIncreaseAmounts) {
+			increases = append(increases, Effect{Type: "ability_increase", Count: 1, From: []string{a.Key}, Value: amount.Key})
+		}
+	}
+	if got := len(menuList(t, m, ListAbilities)); got != 6 {
+		t.Errorf("the abilities list has %d values, want 6", got)
+	}
+	if _, err := srd.With(Overlay{Revision: 1, Feats: []TableFeat{{TableEntry: TableEntry{Key: "feat:aumentos" + tableSuffix, NamePT: "Aumentos"}, Effects: increases[:1]}}}); err != nil {
+		t.Fatalf("a feat with an ability_increase is refused: %v", err)
+	}
+	for i, e := range increases {
+		key := "feat:aumento-" + strconv.Itoa(i) + tableSuffix
+		if _, err := srd.With(Overlay{Revision: 1, Feats: []TableFeat{{TableEntry: TableEntry{Key: key, NamePT: "Aumento " + strconv.Itoa(i)}, Effects: []Effect{e}}}}); err != nil {
+			t.Errorf("the menu offers an ability_increase %+v that With refuses: %v", e, err)
+		}
+	}
+
 	// Every value of every list is accepted, in the field it goes in.
 	var effects []Effect
 	for _, v := range menuList(t, m, ListModifierTargets) {
@@ -224,6 +244,8 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 		"extra_attack": {Type: "extra_attack", Count: 2},
 		"choice":       {Type: "choice", Choice: "skill", Count: 1},
 		"note":         {Type: "note"},
+		// Only a feat has it, so it is hosted by a feat below.
+		"ability_increase": {Type: "ability_increase", Count: 1, From: []string{"str", "dex"}, Value: "1"},
 	}
 	clearField := func(e *Effect, field string) {
 		switch field {
@@ -255,11 +277,17 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 			e.Count = 0
 		case "choice":
 			e.Choice = ""
+		case "from":
+			e.From = nil
 		default:
 			t.Fatalf("no way to clear %q", field)
 		}
 	}
 	with := func(e Effect) error {
+		if e.Type == "ability_increase" {
+			_, err := srd.With(Overlay{Revision: 1, Feats: []TableFeat{{TableEntry: TableEntry{Key: "feat:cardapio" + tableSuffix, NamePT: "Cardápio"}, Effects: []Effect{e}}}})
+			return err
+		}
 		_, err := srd.With(Overlay{Revision: 1, Classes: []TableClass{classWithEffects([]Effect{e})}})
 		return err
 	}

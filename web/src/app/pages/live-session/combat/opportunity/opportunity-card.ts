@@ -13,7 +13,11 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { Encounter, OpportunityOffer } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type Encounter,
+  JumpKind,
+  type OpportunityOffer,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { metersFixed } from '../../../../core/units';
 import {
   type ReactorAttack,
@@ -222,8 +226,10 @@ export class OpportunityCard {
 
   /** "O Goblin 1 saiu do alcance dele.": the master's offer, with the name of the one whose reach it was. */
   protected leavingBy(o: OpportunityOffer): string {
+    const of = article(o.reactorLabel) === 'a' ? 'dela' : 'dele';
+    const left = o.jump === JumpKind.LONG ? 'saltou para fora do' : 'saiu do';
     return tieNumbers(
-      `${capitalize(`${article(o.moverLabel)} ${o.moverLabel}`)} saiu do alcance ${article(o.reactorLabel) === 'a' ? 'dela' : 'dele'}.`,
+      `${capitalize(`${article(o.moverLabel)} ${o.moverLabel}`)} ${left} alcance ${of}.`,
     );
   }
 
@@ -231,6 +237,10 @@ export class OpportunityCard {
   protected walked(o: OpportunityOffer): string {
     const mover = this.encounter().combatants.find((c) => c.id === o.moverId);
     const used = mover?.movementUsedDft ?? 0;
+    // A jump is said as one: "Já saltou 4,5 m: o salto valeu."
+    if (o.jump === JumpKind.LONG) {
+      return used > 0 ? `Já saltou ${metersFixed(used / 10)}: o salto valeu.` : 'O salto valeu.';
+    }
     return used > 0
       ? `Já andou ${metersFixed(used / 10)}: o movimento valeu.`
       : 'O movimento valeu.';

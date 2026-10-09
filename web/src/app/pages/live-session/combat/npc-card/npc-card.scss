@@ -196,6 +196,12 @@
   color: var(--mr-danger-ink);
 }
 
+// The roll is held by a reaction: neither a hit nor a miss yet.
+.pill--held {
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+}
+
 // The master's way to the creature's stat block (a monster of the bestiary, RN-29): "Ficha da criatura", an accent link.
 .card__sheet {
   align-self: flex-start;
@@ -236,4 +242,17 @@
   margin: -4px 0 0;
   font-size: 14px;
   color: var(--mr-ink-muted);
+}
+
+// An NPC's area spells: one outlined "Conjurar" each, 44 px (the screen's filled button stays "Próximo turno").
+.area-spells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+}
+
+.area-spell {
+  --mat-button-outlined-container-height: 44px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
 }

@@ -14,7 +14,7 @@ const approveCharacter = `-- name: ApproveCharacter :one
 UPDATE characters
 SET status = 'active'
 WHERE campaign_id = $1::UUID AND id = $2 AND status = 'pending'
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at
 `
 
 type ApproveCharacterParams struct {
@@ -47,6 +47,8 @@ func (q *Queries) ApproveCharacter(ctx context.Context, arg ApproveCharacterPara
 		&i.UpdatedAt,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.Reserved,
+		&i.ClaimedAt,
 	)
 	return i, err
 }
@@ -102,12 +104,12 @@ func (q *Queries) BumpContentRevision(ctx context.Context, arg BumpContentRevisi
 
 const carryHitPoints = `-- name: CarryHitPoints :exec
 UPDATE character_vitals
-SET hit_points_current = LEAST(LEAST(hit_points_current, $1::INT4) + $2::INT4, $3::INT4),
+SET hit_points_current = LEAST(LEAST(hit_points_current, $1::INT4 + hit_points_max_bonus) + $2::INT4, $3::INT4 + hit_points_max_bonus),
     revision = revision + 1,
     updated_at = $4
 WHERE character_id = $5
   AND hit_points_current IS NOT NULL
-  AND hit_points_current <> LEAST(LEAST(hit_points_current, $1::INT4) + $2::INT4, $3::INT4)
+  AND hit_points_current <> LEAST(LEAST(hit_points_current, $1::INT4 + hit_points_max_bonus) + $2::INT4, $3::INT4 + hit_points_max_bonus)
 `
 
 type CarryHitPointsParams struct {
@@ -121,7 +123,8 @@ type CarryHitPointsParams struct {
 // The sheet's maximum hit points changed from old_max to new_max (a level-up,
 // an edit): a character whose current hit points are set gains what the maximum
 // gained (gain, zero when it fell), so a wound stays a wound, and never ends
-// above the new maximum. NULL is "full" and stays so. The revision moves only
+// above the new maximum. Both maximums are the sheet's, and Aid's bonus (the
+// character's hit_points_max_bonus) rides on top of each. NULL is "full" and stays so. The revision moves only
 // when the number does.
 func (q *Queries) CarryHitPoints(ctx context.Context, arg CarryHitPointsParams) error {
 	_, err := q.db.Exec(ctx, carryHitPoints,
@@ -465,8 +468,32 @@ func (q *Queries) GetCampaignContentByCreateKey(ctx context.Context, createKey *
 	return i, err
 }
 
+const getCampaignContentImport = `-- name: GetCampaignContentImport :one
+SELECT create_hash, response FROM campaign_content_imports
+WHERE campaign_id = $1::UUID AND create_key = $2
+`
+
+type GetCampaignContentImportParams struct {
+	CampaignID string
+	CreateKey  string
+}
+
+type GetCampaignContentImportRow struct {
+	CreateHash string
+	Response   []byte
+}
+
+// The answer of the ImportTableContent that carried this idempotency key (the campaign's ID and
+// the key), with the hash of its request.
+func (q *Queries) GetCampaignContentImport(ctx context.Context, arg GetCampaignContentImportParams) (GetCampaignContentImportRow, error) {
+	row := q.db.QueryRow(ctx, getCampaignContentImport, arg.CampaignID, arg.CreateKey)
+	var i GetCampaignContentImportRow
+	err := row.Scan(&i.CreateHash, &i.Response)
+	return i, err
+}
+
 const getCharacter = `-- name: GetCharacter :one
-SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash FROM characters
+SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at FROM characters
 WHERE campaign_id = $1::UUID AND id = $2
 `
 
@@ -497,12 +524,14 @@ func (q *Queries) GetCharacter(ctx context.Context, arg GetCharacterParams) (Cha
 		&i.UpdatedAt,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.Reserved,
+		&i.ClaimedAt,
 	)
 	return i, err
 }
 
 const getCharacterByCreateKey = `-- name: GetCharacterByCreateKey :one
-SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash FROM characters
+SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at FROM characters
 WHERE campaign_id = $1::UUID AND create_key = $2::UUID
 `
 
@@ -533,6 +562,8 @@ func (q *Queries) GetCharacterByCreateKey(ctx context.Context, arg GetCharacterB
 		&i.UpdatedAt,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.Reserved,
+		&i.ClaimedAt,
 	)
 	return i, err
 }
@@ -654,7 +685,7 @@ func (q *Queries) GetCharacterCreatureForUpdate(ctx context.Context, arg GetChar
 }
 
 const getCharacterForUpdate = `-- name: GetCharacterForUpdate :one
-SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash FROM characters
+SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at FROM characters
 WHERE campaign_id = $1::UUID AND id = $2
 FOR UPDATE
 `
@@ -689,6 +720,8 @@ func (q *Queries) GetCharacterForUpdate(ctx context.Context, arg GetCharacterFor
 		&i.UpdatedAt,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.Reserved,
+		&i.ClaimedAt,
 	)
 	return i, err
 }
@@ -784,14 +817,14 @@ func (q *Queries) GetMasterNotes(ctx context.Context, arg GetMasterNotesParams) 
 const getVitals = `-- name: GetVitals :one
 SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
-       v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
+       v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions
+       v.familiar_sight_conditions, v.hit_points_max_bonus
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = $1::UUID AND c.id = $2
-  AND c.kind = 'player' AND c.status = 'active'
+  AND c.kind = 'player' AND c.status = 'active' AND NOT c.reserved
 `
 
 type GetVitalsParams struct {
@@ -809,6 +842,8 @@ type GetVitalsRow struct {
 	SpellSlotsUsed          []int32
 	PactSlotsUsed           *int32
 	HitDiceUsed             *int32
+	HitDiceUsedByDie        []byte
+	SpellSlotsCreated       []int32
 	ResourcesUsed           []byte
 	Revision                *int32
 	UpdatedAt               *time.Time
@@ -817,6 +852,7 @@ type GetVitalsRow struct {
 	FamiliarSightCreatureID *string
 	FamiliarSightInCombat   *bool
 	FamiliarSightConditions []string
+	HitPointsMaxBonus       *int32
 }
 
 // ListVitals for one character. No row means the character is not a
@@ -834,6 +870,8 @@ func (q *Queries) GetVitals(ctx context.Context, arg GetVitalsParams) (GetVitals
 		&i.SpellSlotsUsed,
 		&i.PactSlotsUsed,
 		&i.HitDiceUsed,
+		&i.HitDiceUsedByDie,
+		&i.SpellSlotsCreated,
 		&i.ResourcesUsed,
 		&i.Revision,
 		&i.UpdatedAt,
@@ -842,6 +880,79 @@ func (q *Queries) GetVitals(ctx context.Context, arg GetVitalsParams) (GetVitals
 		&i.FamiliarSightCreatureID,
 		&i.FamiliarSightInCombat,
 		&i.FamiliarSightConditions,
+		&i.HitPointsMaxBonus,
+	)
+	return i, err
+}
+
+const getVitalsWithDead = `-- name: GetVitalsWithDead :one
+SELECT c.id, c.name, c.player_user_id, c.sheet,
+       v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
+       v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
+       ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
+       v.familiar_sight_conditions, v.hit_points_max_bonus
+FROM characters AS c
+LEFT JOIN character_vitals AS v ON v.character_id = c.id
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
+WHERE c.campaign_id = $1::UUID AND c.id = $2
+  AND c.kind = 'player' AND c.status IN ('active', 'dead') AND NOT c.reserved
+`
+
+type GetVitalsWithDeadParams struct {
+	CampaignID string
+	ID         string
+}
+
+type GetVitalsWithDeadRow struct {
+	ID                      string
+	Name                    string
+	PlayerUserID            *string
+	Sheet                   []byte
+	HitPointsCurrent        *int32
+	HitPointsTemporary      *int32
+	SpellSlotsUsed          []int32
+	PactSlotsUsed           *int32
+	HitDiceUsed             *int32
+	HitDiceUsedByDie        []byte
+	SpellSlotsCreated       []int32
+	ResourcesUsed           []byte
+	Revision                *int32
+	UpdatedAt               *time.Time
+	WildShapeBeast          *string
+	WildShapeHp             *int32
+	FamiliarSightCreatureID *string
+	FamiliarSightInCombat   *bool
+	FamiliarSightConditions []string
+	HitPointsMaxBonus       *int32
+}
+
+// GetVitals that also answers for a player character that died: the page of a
+// dead character's player still reads its turn options and its log (a combat
+// that ran keeps them), and nothing here lets the character act again.
+func (q *Queries) GetVitalsWithDead(ctx context.Context, arg GetVitalsWithDeadParams) (GetVitalsWithDeadRow, error) {
+	row := q.db.QueryRow(ctx, getVitalsWithDead, arg.CampaignID, arg.ID)
+	var i GetVitalsWithDeadRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.PlayerUserID,
+		&i.Sheet,
+		&i.HitPointsCurrent,
+		&i.HitPointsTemporary,
+		&i.SpellSlotsUsed,
+		&i.PactSlotsUsed,
+		&i.HitDiceUsed,
+		&i.HitDiceUsedByDie,
+		&i.SpellSlotsCreated,
+		&i.ResourcesUsed,
+		&i.Revision,
+		&i.UpdatedAt,
+		&i.WildShapeBeast,
+		&i.WildShapeHp,
+		&i.FamiliarSightCreatureID,
+		&i.FamiliarSightInCombat,
+		&i.FamiliarSightConditions,
+		&i.HitPointsMaxBonus,
 	)
 	return i, err
 }
@@ -923,6 +1034,34 @@ func (q *Queries) InsertCampaignContent(ctx context.Context, arg InsertCampaignC
 	return i, err
 }
 
+const insertCampaignContentImport = `-- name: InsertCampaignContentImport :exec
+INSERT INTO campaign_content_imports (campaign_id, create_key, create_hash, response, created_at)
+VALUES ($1::UUID, $2, $3, $4, $5)
+ON CONFLICT (campaign_id, create_key) DO NOTHING
+`
+
+type InsertCampaignContentImportParams struct {
+	CampaignID string
+	CreateKey  string
+	CreateHash string
+	Response   []byte
+	Now        time.Time
+}
+
+// Keeps the key, the request hash and the answer of an applied import. The content revision is held
+// by the transaction (BumpContentRevision), so two imports with one key take turns; ON CONFLICT is
+// the net under that.
+func (q *Queries) InsertCampaignContentImport(ctx context.Context, arg InsertCampaignContentImportParams) error {
+	_, err := q.db.Exec(ctx, insertCampaignContentImport,
+		arg.CampaignID,
+		arg.CreateKey,
+		arg.CreateHash,
+		arg.Response,
+		arg.Now,
+	)
+	return err
+}
+
 const insertCampaignContentWithKey = `-- name: InsertCampaignContentWithKey :one
 INSERT INTO campaign_content
     (campaign_id, content_key, kind, name_pt, data, revision, create_key, create_hash, created_at, updated_at)
@@ -980,14 +1119,14 @@ func (q *Queries) InsertCampaignContentWithKey(ctx context.Context, arg InsertCa
 
 const insertCharacter = `-- name: InsertCharacter :one
 INSERT INTO characters
-    (campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, create_key, create_hash, created_at, updated_at)
+    (campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, create_key, create_hash, reserved, created_at, updated_at)
 VALUES (
     $1::UUID, $2, $3, $4,
     $5, $6, $7, $8, $9::UUID, $10,
-    $11, $11
+    $11::BOOL, $12, $12
 )
 ON CONFLICT (campaign_id, create_key) WHERE create_key IS NOT NULL DO NOTHING
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at
 `
 
 type InsertCharacterParams struct {
@@ -1001,11 +1140,13 @@ type InsertCharacterParams struct {
 	Story        []byte
 	CreateKey    *string
 	CreateHash   *string
+	Reserved     bool
 	Now          time.Time
 }
 
 // status is 'active', or 'pending' for a character created by a pending
-// member (RN-15, MR-024).
+// member (RN-15, MR-024). reserved is true for the character the master makes for a
+// player to claim (MR-049): no owner.
 // create_key (a UUID, unique in the campaign: characters_campaign_id_create_key_idx) and create_hash
 // are the idempotency key of CreateCharacter and the hash of its request; NULL when the call sent
 // no key. A retry reads the first character with GetCharacterByCreateKey.
@@ -1021,6 +1162,7 @@ func (q *Queries) InsertCharacter(ctx context.Context, arg InsertCharacterParams
 		arg.Story,
 		arg.CreateKey,
 		arg.CreateHash,
+		arg.Reserved,
 		arg.Now,
 	)
 	var i Character
@@ -1043,6 +1185,8 @@ func (q *Queries) InsertCharacter(ctx context.Context, arg InsertCharacterParams
 		&i.UpdatedAt,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.Reserved,
+		&i.ClaimedAt,
 	)
 	return i, err
 }
@@ -1132,6 +1276,97 @@ type InsertContentOffParams struct {
 // Switches the options off (the ones already off stay as they are).
 func (q *Queries) InsertContentOff(ctx context.Context, arg InsertContentOffParams) error {
 	_, err := q.db.Exec(ctx, insertContentOff, arg.CampaignID, arg.Now, arg.ContentKeys)
+	return err
+}
+
+const insertImportedCampaignContent = `-- name: InsertImportedCampaignContent :exec
+INSERT INTO campaign_content (campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at)
+VALUES ($1::UUID, $2, $3, $4, $5, $6,
+        $7, $8, $8)
+`
+
+type InsertImportedCampaignContentParams struct {
+	CampaignID string
+	ContentKey string
+	Kind       string
+	NamePt     string
+	Data       []byte
+	Revision   int32
+	ArchivedAt *time.Time
+	Now        time.Time
+}
+
+func (q *Queries) InsertImportedCampaignContent(ctx context.Context, arg InsertImportedCampaignContentParams) error {
+	_, err := q.db.Exec(ctx, insertImportedCampaignContent,
+		arg.CampaignID,
+		arg.ContentKey,
+		arg.Kind,
+		arg.NamePt,
+		arg.Data,
+		arg.Revision,
+		arg.ArchivedAt,
+		arg.Now,
+	)
+	return err
+}
+
+const insertImportedNpc = `-- name: InsertImportedNpc :exec
+INSERT INTO characters (id, campaign_id, kind, master_user_id, status, name, sheet, story, created_at, updated_at)
+VALUES ($1, $2::UUID, $3, $4, 'active', $5, $6,
+        $7, $8, $8)
+`
+
+type InsertImportedNpcParams struct {
+	ID           string
+	CampaignID   string
+	Kind         string
+	MasterUserID *string
+	Name         string
+	Sheet        []byte
+	Story        []byte
+	Now          time.Time
+}
+
+// An NPC made from a package: the id is chosen before, and the master owns it.
+func (q *Queries) InsertImportedNpc(ctx context.Context, arg InsertImportedNpcParams) error {
+	_, err := q.db.Exec(ctx, insertImportedNpc,
+		arg.ID,
+		arg.CampaignID,
+		arg.Kind,
+		arg.MasterUserID,
+		arg.Name,
+		arg.Sheet,
+		arg.Story,
+		arg.Now,
+	)
+	return err
+}
+
+const insertImportedReservedCharacter = `-- name: InsertImportedReservedCharacter :exec
+INSERT INTO characters (id, campaign_id, kind, status, name, sheet, story, reserved, created_at, updated_at)
+VALUES ($1, $2::UUID, 'player', 'active', $3, $4, $5, true, $6, $6)
+`
+
+type InsertImportedReservedCharacterParams struct {
+	ID         string
+	CampaignID string
+	Name       string
+	Sheet      []byte
+	Story      []byte
+	Now        time.Time
+}
+
+// A player's character made from a package (MR-050): reserved (no owner, invisible to the
+// players until one claims it, MR-049), with the id chosen before.
+func (q *Queries) InsertImportedReservedCharacter(ctx context.Context, arg InsertImportedReservedCharacterParams) error {
+	_, err := q.db.Exec(ctx, insertImportedReservedCharacter,
+		arg.ID,
+		arg.CampaignID,
+		arg.Name,
+		arg.Sheet,
+		arg.Story,
+		arg.Now,
+	)
 	return err
 }
 
@@ -1227,7 +1462,7 @@ VALUES (
     $6, $7::UUID, $8, $8
 )
 ON CONFLICT (campaign_id, create_key) WHERE create_key IS NOT NULL DO NOTHING
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at
 `
 
 type InsertNpcFromCreatureParams struct {
@@ -1276,6 +1511,8 @@ func (q *Queries) InsertNpcFromCreature(ctx context.Context, arg InsertNpcFromCr
 		&i.UpdatedAt,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.Reserved,
+		&i.ClaimedAt,
 	)
 	return i, err
 }
@@ -1402,12 +1639,12 @@ func (q *Queries) ListCharacterNames(ctx context.Context, arg ListCharacterNames
 }
 
 const listCharacters = `-- name: ListCharacters :many
-SELECT id, kind, status, name, player_user_id, sheet, sheet_locked_at, created_at
+SELECT id, kind, status, name, player_user_id, sheet, sheet_locked_at, created_at, reserved, claimed_at
 FROM characters
 WHERE campaign_id = $1::UUID
   AND (
       $2::UUID IS NULL
-      OR (kind = 'player' AND player_user_id = $2::UUID)
+      OR (kind = 'player' AND player_user_id = $2::UUID AND NOT reserved)
   )
   AND ($3::TEXT IS NULL OR status = $3::TEXT)
   -- The NPCs the app makes for the monsters of a combat (RN-29) are not the
@@ -1431,6 +1668,8 @@ type ListCharactersRow struct {
 	Sheet         []byte
 	SheetLockedAt *time.Time
 	CreatedAt     time.Time
+	Reserved      bool
+	ClaimedAt     *time.Time
 }
 
 // Without player_user_id, every character of the campaign (the master's
@@ -1456,6 +1695,53 @@ func (q *Queries) ListCharacters(ctx context.Context, arg ListCharactersParams) 
 			&i.Sheet,
 			&i.SheetLockedAt,
 			&i.CreatedAt,
+			&i.Reserved,
+			&i.ClaimedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCharactersForPackage = `-- name: ListCharactersForPackage :many
+
+SELECT id, kind, status, name, sheet, story FROM characters
+WHERE campaign_id = $1::UUID
+ORDER BY created_at, id
+`
+
+type ListCharactersForPackageRow struct {
+	ID     string
+	Kind   string
+	Status string
+	Name   string
+	Sheet  []byte
+	Story  []byte
+}
+
+// The campaign package (MR-050).
+// Every character of the campaign with its sheet and story, oldest first, for an export.
+func (q *Queries) ListCharactersForPackage(ctx context.Context, campaignID string) ([]ListCharactersForPackageRow, error) {
+	rows, err := q.db.Query(ctx, listCharactersForPackage, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCharactersForPackageRow
+	for rows.Next() {
+		var i ListCharactersForPackageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.Status,
+			&i.Name,
+			&i.Sheet,
+			&i.Story,
 		); err != nil {
 			return nil, err
 		}
@@ -1473,7 +1759,7 @@ FROM characters AS c
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = $1::UUID
   AND c.id = ANY($2::UUID[])
-  AND c.status = 'active'
+  AND c.status = 'active' AND NOT c.reserved
 ORDER BY c.created_at, c.id
 `
 
@@ -1521,12 +1807,67 @@ func (q *Queries) ListCombatCharacters(ctx context.Context, arg ListCombatCharac
 	return items, nil
 }
 
+const listCombatCharactersWithDead = `-- name: ListCombatCharactersWithDead :many
+SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast
+FROM characters AS c
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
+WHERE c.campaign_id = $1::UUID
+  AND c.id = ANY($2::UUID[])
+  AND c.status IN ('active', 'dead') AND NOT c.reserved
+ORDER BY c.created_at, c.id
+`
+
+type ListCombatCharactersWithDeadParams struct {
+	CampaignID string
+	Ids        []string
+}
+
+type ListCombatCharactersWithDeadRow struct {
+	ID             string
+	Kind           string
+	Name           string
+	PlayerUserID   *string
+	Sheet          []byte
+	WildShapeBeast *string
+}
+
+// ListCombatCharacters that also returns a character that died, for the reads
+// of a combat that ran (a dead character's sheet names the attacks in the log,
+// and its player's page reads the turn options). Nothing that starts a combat
+// or lets a character act uses it.
+func (q *Queries) ListCombatCharactersWithDead(ctx context.Context, arg ListCombatCharactersWithDeadParams) ([]ListCombatCharactersWithDeadRow, error) {
+	rows, err := q.db.Query(ctx, listCombatCharactersWithDead, arg.CampaignID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCombatCharactersWithDeadRow
+	for rows.Next() {
+		var i ListCombatCharactersWithDeadRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.Name,
+			&i.PlayerUserID,
+			&i.Sheet,
+			&i.WildShapeBeast,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCombatParty = `-- name: ListCombatParty :many
 SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast
 FROM characters AS c
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = $1::UUID
-  AND c.kind = 'player' AND c.status = 'active'
+  AND c.kind = 'player' AND c.status = 'active' AND NOT c.reserved
 ORDER BY c.created_at, c.id
 `
 
@@ -1912,7 +2253,7 @@ const listMapCharacters = `-- name: ListMapCharacters :many
 SELECT id, kind, name, player_user_id FROM characters
 WHERE campaign_id = $1::UUID
   AND id = ANY($2::UUID[])
-  AND status = 'active'
+  AND status = 'active' AND NOT reserved
 ORDER BY kind <> 'player', created_at, id
 `
 
@@ -2010,6 +2351,36 @@ func (q *Queries) ListMapCreatures(ctx context.Context, arg ListMapCreaturesPara
 	return items, nil
 }
 
+const listMasterNotesOfCampaign = `-- name: ListMasterNotesOfCampaign :many
+SELECT character_id, notes FROM character_master_notes
+WHERE campaign_id = $1::UUID
+`
+
+type ListMasterNotesOfCampaignRow struct {
+	CharacterID string
+	Notes       string
+}
+
+func (q *Queries) ListMasterNotesOfCampaign(ctx context.Context, campaignID string) ([]ListMasterNotesOfCampaignRow, error) {
+	rows, err := q.db.Query(ctx, listMasterNotesOfCampaign, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMasterNotesOfCampaignRow
+	for rows.Next() {
+		var i ListMasterNotesOfCampaignRow
+		if err := rows.Scan(&i.CharacterID, &i.Notes); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listNpcPortraits = `-- name: ListNpcPortraits :many
 SELECT id, COALESCE(NULLIF(sheet -> 'full' ->> 'portrait_image_id', ''), NULLIF(sheet -> 'basic' ->> 'portrait_image_id', ''), '')::TEXT AS portrait_image_id
 FROM characters
@@ -2055,13 +2426,14 @@ func (q *Queries) ListNpcPortraits(ctx context.Context, arg ListNpcPortraitsPara
 
 const listPartyVision = `-- name: ListPartyVision :many
 SELECT c.id, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast,
-       cc.id AS familiar_id, cc.monster_key AS familiar_monster_key
+       cc.id AS familiar_id, cc.monster_key AS familiar_monster_key,
+       (c.status = 'dead')::BOOL AS is_dead
 FROM characters AS c
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_creatures AS cc ON cc.id = v.familiar_sight_creature_id AND cc.dismissed_at IS NULL
 WHERE c.campaign_id = $1::UUID
-  AND c.kind = 'player' AND c.status = 'active'
+  AND c.kind = 'player' AND c.status IN ('active', 'dead') AND NOT c.reserved
 ORDER BY c.created_at, c.id
 `
 
@@ -2072,12 +2444,14 @@ type ListPartyVisionRow struct {
 	WildShapeBeast     *string
 	FamiliarID         *string
 	FamiliarMonsterKey *string
+	IsDead             bool
 }
 
-// The campaign's living, active player characters, oldest first, with what the
+// The campaign's active and dead player characters, oldest first, with what the
 // fog needs to know of how each one sees (package maps): the sheet, the beast of
 // a Wild Shape form, and the familiar the player looks through, if it is still with
-// the character (MR-036, MR-037).
+// the character (MR-036, MR-037). A dead character is listed (is_dead): its
+// player keeps seeing what the living party sees.
 func (q *Queries) ListPartyVision(ctx context.Context, campaignID string) ([]ListPartyVisionRow, error) {
 	rows, err := q.db.Query(ctx, listPartyVision, campaignID)
 	if err != nil {
@@ -2094,6 +2468,7 @@ func (q *Queries) ListPartyVision(ctx context.Context, campaignID string) ([]Lis
 			&i.WildShapeBeast,
 			&i.FamiliarID,
 			&i.FamiliarMonsterKey,
+			&i.IsDead,
 		); err != nil {
 			return nil, err
 		}
@@ -2106,7 +2481,7 @@ func (q *Queries) ListPartyVision(ctx context.Context, campaignID string) ([]Lis
 }
 
 const listSessionCharacters = `-- name: ListSessionCharacters :many
-SELECT id, kind, name, player_user_id FROM characters
+SELECT id, kind, name, player_user_id, reserved FROM characters
 WHERE campaign_id = $1::UUID
   AND id = ANY($2::UUID[])
 `
@@ -2121,11 +2496,13 @@ type ListSessionCharactersRow struct {
 	Kind         string
 	Name         string
 	PlayerUserID *string
+	Reserved     bool
 }
 
 // Those of the given characters of the campaign, whatever their status: the
 // session summary names a character that died or left during the session
-// (package play).
+// (package play). reserved says the master gave the character back to the reserve
+// since: a player's reads leave it out (RN-10).
 func (q *Queries) ListSessionCharacters(ctx context.Context, arg ListSessionCharactersParams) ([]ListSessionCharactersRow, error) {
 	rows, err := q.db.Query(ctx, listSessionCharacters, arg.CampaignID, arg.Ids)
 	if err != nil {
@@ -2140,6 +2517,7 @@ func (q *Queries) ListSessionCharacters(ctx context.Context, arg ListSessionChar
 			&i.Kind,
 			&i.Name,
 			&i.PlayerUserID,
+			&i.Reserved,
 		); err != nil {
 			return nil, err
 		}
@@ -2154,14 +2532,14 @@ func (q *Queries) ListSessionCharacters(ctx context.Context, arg ListSessionChar
 const listVitals = `-- name: ListVitals :many
 SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
-       v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
+       v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions
+       v.familiar_sight_conditions, v.hit_points_max_bonus
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = $1::UUID
-  AND c.kind = 'player' AND c.status = 'active'
+  AND c.kind = 'player' AND c.status = 'active' AND NOT c.reserved
 ORDER BY c.created_at, c.id
 `
 
@@ -2175,6 +2553,8 @@ type ListVitalsRow struct {
 	SpellSlotsUsed          []int32
 	PactSlotsUsed           *int32
 	HitDiceUsed             *int32
+	HitDiceUsedByDie        []byte
+	SpellSlotsCreated       []int32
 	ResourcesUsed           []byte
 	Revision                *int32
 	UpdatedAt               *time.Time
@@ -2183,6 +2563,7 @@ type ListVitalsRow struct {
 	FamiliarSightCreatureID *string
 	FamiliarSightInCombat   *bool
 	FamiliarSightConditions []string
+	HitPointsMaxBonus       *int32
 }
 
 // The vitals of the campaign's living, active player characters (RN-02),
@@ -2209,6 +2590,8 @@ func (q *Queries) ListVitals(ctx context.Context, campaignID string) ([]ListVita
 			&i.SpellSlotsUsed,
 			&i.PactSlotsUsed,
 			&i.HitDiceUsed,
+			&i.HitDiceUsedByDie,
+			&i.SpellSlotsCreated,
 			&i.ResourcesUsed,
 			&i.Revision,
 			&i.UpdatedAt,
@@ -2217,6 +2600,7 @@ func (q *Queries) ListVitals(ctx context.Context, campaignID string) ([]ListVita
 			&i.FamiliarSightCreatureID,
 			&i.FamiliarSightInCombat,
 			&i.FamiliarSightConditions,
+			&i.HitPointsMaxBonus,
 		); err != nil {
 			return nil, err
 		}
@@ -2233,6 +2617,7 @@ UPDATE characters
 SET sheet_locked_at = $1::TIMESTAMPTZ
 WHERE campaign_id = $2::UUID
   AND kind = 'player' AND status = 'active' AND sheet_locked_at IS NULL
+  AND NOT reserved
 `
 
 type LockSheetsParams struct {
@@ -2242,7 +2627,9 @@ type LockSheetsParams struct {
 
 // RN-01: when a game session starts, the sheets of the campaign's living
 // player characters that are still drafts lock. A character waiting for
-// approval (MR-024) does not lock yet, and NPCs never lock.
+// approval (MR-024) does not lock yet, and NPCs never lock. A reserved character
+// (MR-049) has no player to lock out: it locks with the sessions that start after
+// its player claims it.
 func (q *Queries) LockSheets(ctx context.Context, arg LockSheetsParams) (int64, error) {
 	result, err := q.db.Exec(ctx, lockSheets, arg.Now, arg.CampaignID)
 	if err != nil {
@@ -2255,7 +2642,7 @@ const markCharacterDead = `-- name: MarkCharacterDead :one
 UPDATE characters
 SET status = 'dead', died_at = COALESCE(died_at, $1::TIMESTAMPTZ)
 WHERE campaign_id = $2::UUID AND id = $3
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at
 `
 
 type MarkCharacterDeadParams struct {
@@ -2288,6 +2675,8 @@ func (q *Queries) MarkCharacterDead(ctx context.Context, arg MarkCharacterDeadPa
 		&i.UpdatedAt,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.Reserved,
+		&i.ClaimedAt,
 	)
 	return i, err
 }
@@ -2501,7 +2890,7 @@ const setStoryEditing = `-- name: SetStoryEditing :one
 UPDATE characters
 SET story_editing_allowed = $1
 WHERE campaign_id = $2::UUID AND id = $3
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at
 `
 
 type SetStoryEditingParams struct {
@@ -2534,7 +2923,49 @@ func (q *Queries) SetStoryEditing(ctx context.Context, arg SetStoryEditingParams
 		&i.UpdatedAt,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.Reserved,
+		&i.ClaimedAt,
 	)
+	return i, err
+}
+
+const setVitalsMaxBonus = `-- name: SetVitalsMaxBonus :one
+INSERT INTO character_vitals (character_id, hit_points_current, hit_points_max_bonus, revision, updated_at)
+VALUES ($1, $2, $3, 1, $4)
+ON CONFLICT (character_id) DO UPDATE SET
+    hit_points_max_bonus = excluded.hit_points_max_bonus,
+    hit_points_current = COALESCE(excluded.hit_points_current, character_vitals.hit_points_current),
+    revision = character_vitals.revision + 1,
+    updated_at = excluded.updated_at
+RETURNING revision, updated_at
+`
+
+type SetVitalsMaxBonusParams struct {
+	CharacterID       string
+	HitPointsCurrent  *int32
+	HitPointsMaxBonus int32
+	Now               time.Time
+}
+
+type SetVitalsMaxBonusRow struct {
+	Revision  int32
+	UpdatedAt time.Time
+}
+
+// Aid's bonus to a character's maximum hit points (hit_points_max_bonus) and the
+// current hit points that go with it: the first write creates the vitals row, as
+// TouchVitals does (hit_points_current is only for that insert, and a NULL "full"
+// stays full of the new maximum). A NULL hit_points_current argument leaves the
+// stored current hit points alone.
+func (q *Queries) SetVitalsMaxBonus(ctx context.Context, arg SetVitalsMaxBonusParams) (SetVitalsMaxBonusRow, error) {
+	row := q.db.QueryRow(ctx, setVitalsMaxBonus,
+		arg.CharacterID,
+		arg.HitPointsCurrent,
+		arg.HitPointsMaxBonus,
+		arg.Now,
+	)
+	var i SetVitalsMaxBonusRow
+	err := row.Scan(&i.Revision, &i.UpdatedAt)
 	return i, err
 }
 
@@ -2640,7 +3071,7 @@ const updateCharacterSheet = `-- name: UpdateCharacterSheet :one
 UPDATE characters
 SET name = $1, sheet = $2, revision = revision + 1, updated_at = $3
 WHERE campaign_id = $4::UUID AND id = $5 AND revision = $6
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at
 `
 
 type UpdateCharacterSheetParams struct {
@@ -2683,6 +3114,8 @@ func (q *Queries) UpdateCharacterSheet(ctx context.Context, arg UpdateCharacterS
 		&i.UpdatedAt,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.Reserved,
+		&i.ClaimedAt,
 	)
 	return i, err
 }
@@ -2691,7 +3124,7 @@ const updateCharacterStory = `-- name: UpdateCharacterStory :one
 UPDATE characters
 SET story = $1, revision = revision + 1, updated_at = $2
 WHERE campaign_id = $3::UUID AND id = $4 AND revision = $5
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at
 `
 
 type UpdateCharacterStoryParams struct {
@@ -2731,6 +3164,8 @@ func (q *Queries) UpdateCharacterStory(ctx context.Context, arg UpdateCharacterS
 		&i.UpdatedAt,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.Reserved,
+		&i.ClaimedAt,
 	)
 	return i, err
 }
@@ -2770,11 +3205,12 @@ func (q *Queries) UpsertMasterNotes(ctx context.Context, arg UpsertMasterNotesPa
 const upsertVitals = `-- name: UpsertVitals :one
 INSERT INTO character_vitals
     (character_id, hit_points_current, hit_points_temporary, spell_slots_used,
-     pact_slots_used, hit_dice_used, resources_used, revision, updated_at)
+     pact_slots_used, hit_dice_used, hit_dice_used_by_die, spell_slots_created, resources_used, revision, updated_at)
 VALUES (
     $1, $2, $3,
     $4::INT4[], $5, $6,
-    $7::JSONB, 1, $8
+    $7::JSONB, $8::INT4[],
+    $9::JSONB, 1, $10
 )
 ON CONFLICT (character_id) DO UPDATE SET
     hit_points_current = excluded.hit_points_current,
@@ -2782,6 +3218,8 @@ ON CONFLICT (character_id) DO UPDATE SET
     spell_slots_used = excluded.spell_slots_used,
     pact_slots_used = excluded.pact_slots_used,
     hit_dice_used = excluded.hit_dice_used,
+    hit_dice_used_by_die = excluded.hit_dice_used_by_die,
+    spell_slots_created = excluded.spell_slots_created,
     resources_used = excluded.resources_used,
     revision = character_vitals.revision + 1,
     updated_at = excluded.updated_at
@@ -2795,6 +3233,8 @@ type UpsertVitalsParams struct {
 	SpellSlotsUsed     []int32
 	PactSlotsUsed      int32
 	HitDiceUsed        int32
+	HitDiceUsedByDie   []byte
+	SpellSlotsCreated  []int32
 	ResourcesUsed      []byte
 	Now                time.Time
 }
@@ -2815,6 +3255,8 @@ func (q *Queries) UpsertVitals(ctx context.Context, arg UpsertVitalsParams) (Ups
 		arg.SpellSlotsUsed,
 		arg.PactSlotsUsed,
 		arg.HitDiceUsed,
+		arg.HitDiceUsedByDie,
+		arg.SpellSlotsCreated,
 		arg.ResourcesUsed,
 		arg.Now,
 	)

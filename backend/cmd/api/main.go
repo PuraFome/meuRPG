@@ -14,7 +14,8 @@
 //	OIDC_REDIRECT_URL   https://<this server>/auth/callback
 //	OIDC_CA_FILE        extra CA certificates (PEM) to trust, for a local provider (optional)
 //	OIDC_MAX_AGE        max_age sent to the provider, e.g. 1h (optional)
-//	BLOB_DIR            directory for uploaded images (optional)
+//	BLOB_DIR            directory for uploaded images (optional; never with BLOB_BUCKET, never on Cloud Run)
+//	BLOB_BUCKET         Cloud Storage bucket for uploaded images (optional; the store on Cloud Run)
 //	GEMINI_API_KEY      key of the Gemini API: turns image generation on (optional, secret)
 //	GEMINI_IMAGE_MODEL  the image model (default gemini-3.1-flash-image)
 //	IMAGE_GENERATOR     "fake" uses the deterministic fake generator, never on Cloud Run (optional)
@@ -83,6 +84,7 @@ import (
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/system/v1/systemv1connect"
+	"github.com/PuraFome/meuRPG/backend/internal/campaignpackage"
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns"
 	"github.com/PuraFome/meuRPG/backend/internal/characters"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
@@ -187,12 +189,29 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	}
 
 	// Images need somewhere to live. blobs stays a nil interface without
-	// BLOB_DIR (never a nil *blob.FS, for the reason given for database
-	// above), and the maps module then answers 503 for images.
+	// BLOB_DIR or BLOB_BUCKET (never a nil *blob.FS, for the reason given for
+	// database above), and the maps module then answers 503 for images.
 	var blobs blob.Store
-	if cfg.BlobDir == "" {
-		logger.Warn("BLOB_DIR is not set; images are off: uploads, image downloads and the gallery answer 503")
-	} else {
+	switch {
+	case cfg.BlobBucket != "":
+		gcs, err := blob.NewGCS(cfg.BlobBucket)
+		if err != nil {
+			return err
+		}
+		// The check only reports: a metadata server or network hiccup at
+		// boot must not take images away for the whole revision. The store
+		// stays on, and each call succeeds or fails on its own (the image
+		// routes answer an error when one fails).
+		if err := gcs.Check(ctx); err != nil {
+			logger.Warn("the images bucket could not be reached at start; images stay on and each call is tried on its own: check BLOB_BUCKET, the service account's role and the metadata server if uploads fail", "error", err)
+		} else {
+			logger.Info("the images bucket is reachable")
+		}
+		blobs = gcs
+		logger.Info("images are stored in Cloud Storage")
+	case cfg.BlobDir == "":
+		logger.Warn("BLOB_DIR and BLOB_BUCKET are not set; images are off: uploads, image downloads and the gallery answer 503")
+	default:
 		fs, err := blob.NewFS(cfg.BlobDir)
 		if err != nil {
 			return err
@@ -240,6 +259,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			MaxCampaignsPerUser: cfg.Limits.MaxCampaignsPerUser,
 			CampaignCreators:    cfg.Limits.CampaignCreators,
 			Policy:              policy,
+			BehindCloudRun:      cfg.CloudRun,
 		})
 		if err != nil {
 			return err
@@ -257,6 +277,8 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			// (POST /auth/login): today, accepting a campaign invite.
 			Intents: map[string]identity.IntentHandler{
 				campaigns.InviteIntentKind: m.campaigns.InviteIntent(),
+				// A claim link only brings the person back to its card; signing in never claims.
+				characters.ClaimIntentKind: m.characters.ClaimIntent(),
 			},
 		})
 		if err != nil {
@@ -288,6 +310,10 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// call slot gives its slot back, the long polls answer, and a call already
 		// sent is cut off (its slot stays spent). Cloud Run gives 10 s in all.
 		srv.OnShutdown(m.maps.CancelGenerations)
+		// An export in flight stops with the server; the next read marks it
+		// interrupted. The sweeper deletes what expired while it runs.
+		srv.OnShutdown(m.packages.Cancel)
+		m.packages.RunSweeper(ctx)
 	} else {
 		identity.MountDisabled(srv.Handle, connectOpts...)
 		logger.Warn("campaigns, characters, game sessions, images and maps are disabled: they need sign-in")
@@ -357,6 +383,8 @@ func mountModules(handle func(string, http.Handler), m *modules, identityService
 	// GalleryService and MapService, plus the upload and download routes,
 	// which find the session with identityService.AuthenticateRequest.
 	m.maps.Mount(handle, sessions, m.campaigns, opts...)
+	// CampaignPackageService, the part uploads and the export download (MR-050).
+	m.packages.Mount(handle, sessions, m.campaigns, opts...)
 }
 
 // limitedSessions is the identity service as the modules see it, with the
@@ -386,6 +414,7 @@ type modules struct {
 	maps        *maps.Service
 	progression *progression.Service
 	notes       *notes.Service
+	packages    *campaignpackage.Service
 }
 
 // wireOptions are the limits the modules get: zero means each module's own default.
@@ -396,6 +425,9 @@ type wireOptions struct {
 	// Policy holds the limiters some modules apply themselves (the image
 	// routes' per-user limits); the zero value limits nothing.
 	Policy ratelimit.Policy
+	// BehindCloudRun says where the client's address is: the claim links' limit
+	// per address reads it.
+	BehindCloudRun bool
 }
 
 // wireModules builds the five modules that need each other, connects them in
@@ -444,6 +476,8 @@ func wireModules(
 		SRD:     rulesContent,
 		Dice:    levelUpDice{campaignsService}, // how a player rolls the hit die of a level-up (RN-18)
 		Logger:  logger,
+		// The claim links' limit per address (MR-049).
+		BehindCloudRun: opts.BehindCloudRun,
 	})
 	if err != nil {
 		return nil, err
@@ -452,6 +486,7 @@ func wireModules(
 	// characters now that it exists: an invite without approval accepted
 	// by a pending member approves their character (RN-15).
 	campaignsService.SetCharacters(charactersService)
+	charactersService.SetCampaignNames(campaignsService) // the label of an exported content pack
 	// maps.SessionMaps needs nothing but the database, so characters gets
 	// it now too: an NPC's portrait must be an image of the campaign's
 	// gallery (MR-031).
@@ -548,10 +583,30 @@ func wireModules(
 	if err != nil {
 		return nil, err
 	}
+	// The campaign package (MR-050) asks every module for its share, in the order
+	// the parts refer to each other: the campaign first, then the gallery, the
+	// table content and characters, the maps, and the puzzles and encounters
+	// that name them.
+	packageService, err := campaignpackage.New(campaignpackage.Config{
+		Pool:  pool,
+		Blobs: blobs, // nil: packages are off, as images are
+		Parts: []campaignpackage.Part{
+			campaignsService.PackagePart(), mapsService.PackageImagesPart(), charactersService.PackagePart(),
+			mapsService.PackageMapsPart(), playService.PackagePart(rulesContent),
+		},
+		Creation:       campaignsService, // who may create a campaign, and a retried create
+		Logger:         logger,
+		ContentVersion: rulesContent.Version(),
+		Heavy:          opts.Policy.Package,
+		PartsLimit:     opts.Policy.PackageParts,
+	})
+	if err != nil {
+		return nil, err
+	}
 	// Every Set... call above must have happened: see the function's comment.
 	for _, check := range []func() error{
 		campaignsService.CheckWired, charactersService.CheckWired, playService.CheckWired,
-		mapsService.CheckWired, sessionMaps.CheckWired,
+		mapsService.CheckWired, sessionMaps.CheckWired, packageService.CheckWired,
 	} {
 		if err := check(); err != nil {
 			return nil, fmt.Errorf("wiring the modules: %w", err)
@@ -559,7 +614,7 @@ func wireModules(
 	}
 	return &modules{
 		users: users, campaigns: campaignsService, characters: charactersService, play: playService,
-		maps: mapsService, progression: progressionService, notes: notesService,
+		maps: mapsService, progression: progressionService, notes: notesService, packages: packageService,
 	}, nil
 }
 

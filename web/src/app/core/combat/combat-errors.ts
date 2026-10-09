@@ -9,6 +9,10 @@ import {
   type EncounterBlocked,
   EncounterBlockedSchema,
 } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  ResourceBlockedReason,
+  ResourceBlockedSchema,
+} from '../../../gen/meurpg/play/v1/resources_pb';
 import { describeConnectError } from '../connect/connect-errors';
 import { Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { circleLabel } from './combat-grid';
@@ -28,6 +32,19 @@ export function encounterBlocked(err: unknown): EncounterBlocked | null {
     return null;
   }
   return connectErr.findDetails(EncounterBlockedSchema)[0] ?? null;
+}
+
+/** What any action says while a roll of the character waits for the answer about a Bardic Inspiration die: the
+ * combatant does nothing else until it is answered (`ResourceBlocked` INSPIRATION_PENDING, from any call). */
+export const INSPIRATION_PENDING_TEXT = 'Responda primeiro à pergunta da Inspiração de Bardo.';
+
+function inspirationPending(err: unknown): boolean {
+  const connectErr = ConnectError.from(err, Code.Unavailable);
+  return (
+    connectErr.code === Code.FailedPrecondition &&
+    connectErr.findDetails(ResourceBlockedSchema)[0]?.reason ===
+      ResourceBlockedReason.INSPIRATION_PENDING
+  );
 }
 
 /** Whether the campaign has no open session (`GameSessionBlocked`). */
@@ -89,6 +106,12 @@ export function blockedMessage(blocked: EncounterBlocked): string {
     }
     case EncounterBlockedReason.MOVE_BLOCKED:
       return 'Não dá para passar por aí: há uma parede ou outra criatura no caminho.';
+    case EncounterBlockedReason.WALL_ON_SQUARE:
+      return 'Esse quadrado é uma parede: ninguém fica dentro dele.';
+    case EncounterBlockedReason.NO_FREE_SQUARE:
+      return 'Não há quadrado livre longe dos jogadores neste mapa.';
+    case EncounterBlockedReason.TARGET_DEAD:
+      return 'Não dá para curar quem já morreu.';
     case EncounterBlockedReason.ENEMY_IN_THE_WAY:
       return 'Um inimigo está no caminho.';
     case EncounterBlockedReason.TARGET_COVER_TOTAL:
@@ -120,7 +143,13 @@ export function blockedMessage(blocked: EncounterBlocked): string {
     case EncounterBlockedReason.COMBATANT_DOWN:
       return 'Quem está caído não age.';
     case EncounterBlockedReason.REACTION_PENDING:
-      return 'Esse acerto espera a reação do alvo (Escudo). Espere o jogador ou responda por ele.';
+      return 'Uma reação ainda espera resposta. Espere a resposta ou responda no lugar de quem reage.';
+    case EncounterBlockedReason.CONCENTRATION_SAVE_PENDING:
+      return 'Um teste de concentração ainda espera resposta.';
+    case EncounterBlockedReason.NOT_YOUR_TURN_TO_ANSWER:
+      return 'Essa reação não espera a sua resposta agora. A tela foi atualizada.';
+    case EncounterBlockedReason.REACTION_NEEDS_ROLL:
+      return 'Falta o dado: role no app ou digite o resultado do dado.';
     case EncounterBlockedReason.NOT_AWAITING_REACTION:
       return 'Esse acerto não espera mais uma reação. A tela foi atualizada.';
     case EncounterBlockedReason.REACTION_USED:
@@ -145,6 +174,10 @@ export function blockedMessage(blocked: EncounterBlocked): string {
       return 'Esse personagem não falhou três testes contra a morte. A tela foi atualizada.';
     case EncounterBlockedReason.OPPORTUNITY_PENDING:
       return 'Esperando a reação do mestre: um ataque de oportunidade ainda não foi respondido.';
+    case EncounterBlockedReason.HIDDEN_REVEAL_PENDING:
+      // The turn waits for the master's answer about hidden creatures an area hit: a player reads the same words as any wait
+      // for the master, never why (RN-10). The master's own screen says what it waits for, so this refusal is never news to him.
+      return 'Esperando o mestre.';
     case EncounterBlockedReason.NOT_ENDED:
       return 'O combate ainda não terminou. Os destaques aparecem quando ele acabar.';
     // The creatures and Wild Shape (MR-037): what the server refused, in words.
@@ -191,6 +224,9 @@ export function combatErrorMessage(err: unknown, what = 'fazer isso'): string {
   const blocked = encounterBlocked(err);
   if (blocked) {
     return blockedMessage(blocked);
+  }
+  if (inspirationPending(err)) {
+    return INSPIRATION_PENDING_TEXT;
   }
   if (sessionClosed(err)) {
     return 'A sessão acabou: o combate só muda durante a sessão.';

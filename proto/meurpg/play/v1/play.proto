@@ -1010,7 +1010,8 @@ message CharacterVitals {
   // How many hit dice the character has in all: the sum of hit_dice's
   // counts, the character's level.
   int32 hit_dice_total = 10;
-  // How many of them are used, 0 to hit_dice_total.
+  // How many of them are used, 0 to hit_dice_total: the sum of
+  // hit_dice_used_by_die.
   int32 hit_dice_used = 11;
   // Goes up by one on every correction; 0 while nobody has adjusted the
   // character. Of two copies of the same character's vitals, the one with
@@ -1033,6 +1034,17 @@ message CharacterVitals {
   // familiar's eyes (MR-036); unset otherwise. While it is set the character
   // counts as blind and deaf.
   FamiliarSightState familiar_sight = 16;
+  // The hit points Ajuda adds to the maximum (5 at the 2nd spell level, 5 more for each level
+  // above), kept until the master ends the spell (CombatService.EndCombatEffect) or a long
+  // rest; 0 without it. `hit_points_max` already counts them, and the sheet's own
+  // maximum is `hit_points_max - hit_points_max_bonus`. Two Ajudas keep the stronger.
+  // Healing goes up to the effective maximum.
+  int32 hit_points_max_bonus = 17;
+  // How many hit dice of each size are used (die size to count, such as 10 to 2
+  // for two d10 spent), only the sizes with something spent. Hit dice of different
+  // sizes are kept apart (SRD 5.1, "Multiclassing"): a short rest spends them by
+  // size and a long rest gives them back by size.
+  map<int32, int32> hit_dice_used_by_die = 30;
 }
 
 // WildShapeState is a druid's Wild Shape form (MR-037). Like the character's
@@ -1083,10 +1095,14 @@ message ResourceUsage {
 message SpellSlotUsage {
   // The spell level, 1 to 9.
   int32 level = 1;
-  // How many slots of this level the character has (from the sheet).
+  // How many slots of this level the character has: the sheet's, plus the ones
+  // Flexible Casting created.
   int32 total = 2;
   // How many of them are used, 0 to total.
   int32 used = 3;
+  // How many of the slots in `total` Flexible Casting created (SRD 5.1, Sorcerer):
+  // they vanish on a long rest. 0 for a character that created none.
+  int32 created = 10;
 }
 
 // PactSlotUsage is a warlock's pact magic slots: all of one level.
@@ -1183,11 +1199,58 @@ message WatchGameSessionResponse {
     // queue is not queued twice; at most one goes out per campaign every 250 ms, and
     // the last change is never left unannounced.
     ContentChanged content_changed = 23;
+    // A player's area spell hit hidden creatures and the table asks the master
+    // whether they appear (CombatService.ResolveHiddenReveal). Only the master
+    // gets it; no player's stream ever carries it (RN-10).
+    HiddenHitPending hidden_hit_pending = 24;
+    // A reaction window opened for the one who answers it, and for the master (PM-04):
+    // a hint with the window's id; the app reads the combat again for the prompt.
+    // No other player gets it (RN-10): they read the change of `reaction_wait`.
+    ReactionWindowOpened reaction_window_opened = 25;
+    // A window was answered or closed by itself, for the reactor and the master:
+    // the id and the sentence the app shows ("Queda Suave fechou. Você já usou a
+    // sua reação."), written for each of the two.
+    ReactionWindowClosed reaction_window_closed = 26;
+    // A spell cast outside a combat changed (CastingService): it started, finished, ended
+    // or failed. Read it again (CastingService.ListSpellCasts). A hint with no content
+    // (RN-10): it names no caster, spell or target. The master gets every one; a
+    // player gets it only for a cast they may see, and a cast by an NPC that is not on
+    // the stage reaches the master alone.
+    SpellCastsChanged spell_casts_changed = 27;
     // A group check was asked, answered or closed (ContestService): read it again
     // (GetGroupCheck), each as your own role. A hint with no content (RN-10): the skill,
     // the DC and the rolls never travel on the stream.
     GroupCheckChanged group_check_changed = 40;
   }
+
+  // HiddenHitPending says a question waits for the master in a combat. It names
+  // no creature: the master reads Encounter.pending_hidden_reveals.
+  message HiddenHitPending {
+    // The combat (a UUID).
+    string encounter_id = 1;
+    // The question (a UUID).
+    string pending_reveal_id = 2;
+  }
+
+  // ReactionWindowOpened is the hint that a reaction window waits for its reactor.
+  message ReactionWindowOpened {
+    string encounter_id = 1;
+    string window_id = 2;
+  }
+
+  // ReactionWindowClosed says a window is no longer open.
+  message ReactionWindowClosed {
+    string encounter_id = 1;
+    string window_id = 2;
+    // True when it closed by itself, with `text_pt` as the reason (only the
+    // reactor's own reason, never that another reactor acted); false when it was
+    // answered, and then `text_pt` is empty.
+    bool closed_by_itself = 3;
+    string text_pt = 4;
+  }
+
+  // SpellCastsChanged is the content-free hint that the casts outside a combat changed.
+  message SpellCastsChanged {}
 
   // GroupCheckChanged is the content-free hint that the group check changed.
   message GroupCheckChanged {}
@@ -1346,6 +1409,11 @@ message WatchGameSessionResponse {
     // True when the one on turn is a combatant the member may not see: the
     // app shows "Vez do mestre". Always false for the master.
     bool master_turn = 4;
+    // The combat's revision (Encounter.revision) with the turn changed, for the
+    // master only: a screen that already holds a newer combat ignores this event
+    // instead of going back. A player's copy says 0 ("no number to compare"): what
+    // their reads count is not the master's number.
+    int32 revision = 5;
   }
 
   // CombatantMoved is a combatant's new square. A player's stream only gets
@@ -1420,7 +1488,9 @@ message AdjustCharacterVitalsRequest {
   // New used count of the pact magic slots, 0 to their total. Only for a
   // character with pact slots.
   optional int32 pact_slots_used = 7;
-  // New used count of hit dice, 0 to the character's total.
+  // New used count of hit dice, 0 to the character's total. It takes the
+  // largest dice first (the way a count with no sizes is read); prefer
+  // hit_dice_used_by_die. Not together with it.
   optional int32 hit_dice_used = 8;
   // New used counts of some resources; the others stay as they are. Each
   // resource at most once, and only resources the sheet has.
@@ -1430,6 +1500,10 @@ message AdjustCharacterVitalsRequest {
   // they are: the master carries any leftover damage with hit_points_current).
   // `invalid_argument` when the character is not in a beast form.
   optional int32 wild_shape_hit_points_current = 10;
+  // New used counts of the hit dice of some sizes (die size to count, 0 to the
+  // dice of that size the character has); the other sizes stay as they are.
+  // `invalid_argument` for a size the character does not have.
+  map<int32, int32> hit_dice_used_by_die = 30;
 }
 
 // ResourceUsed sets how many uses of one resource are spent.
@@ -1452,6 +1526,14 @@ message SpellSlotsUsed {
 // correction (or, for a repeated idempotency_key, as they are now).
 message AdjustCharacterVitalsResponse {
   CharacterVitals vitals = 1;
+  // Set when the correction took hit points from a character that concentrates on a spell
+  // it cast outside a combat (CastingService): the Constitution saving throw DC to keep
+  // concentrating, 10 or half the damage, whichever is higher (SRD 5.1, "Duration"). The
+  // app only reminds; the table rolls, and the master ends the spell with
+  // CastingService.EndActiveSpell when it fails. Only the master calls the correction.
+  int32 concentration_dc = 2;
+  // The cast being concentrated on, with `concentration_dc`.
+  string concentration_cast_id = 3;
 }
 
 // SetCurrentMapRequest names the map the session shows.

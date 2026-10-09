@@ -71,9 +71,8 @@ var effectReasonToProto = map[string]playv1.SpellEffectReason{
 }
 
 var effectGainToProto = map[string]playv1.SpellEffectGain{
-	gainMaximum:   playv1.SpellEffectGain_SPELL_EFFECT_GAIN_MAXIMUM,
-	gainTemporary: playv1.SpellEffectGain_SPELL_EFFECT_GAIN_TEMPORARY,
-	gainCurrent:   playv1.SpellEffectGain_SPELL_EFFECT_GAIN_CURRENT,
+	gainMaximum: playv1.SpellEffectGain_SPELL_EFFECT_GAIN_MAXIMUM,
+	gainCurrent: playv1.SpellEffectGain_SPELL_EFFECT_GAIN_CURRENT,
 }
 
 // effectView is what a spell that reads hit points did to a target, as the
@@ -101,6 +100,7 @@ func effectView(h castHit, v combatViewer, target playdb.Combatant) *playv1.Spel
 	out.Gain = effectGainToProto[h.Gain]
 	if h.Healed != nil && (v.master || v.owns(target)) {
 		out.Healed = h.Healed
+		out.HitPointsAfter, out.HitPointsMaxAfter = h.HPAfter, h.MaxAfter
 	}
 	return out
 }
@@ -141,9 +141,12 @@ func (s *Service) castProto(ctx context.Context, res combatResult, ev actionEven
 		ConcentrationEndedSpellKey: ev.ConcEnded,
 	}
 	out.EffectKind, out.PoolRoll, out.EffectConditionKey, out.EffectThreshold = effectHeader(ev, v, caster)
+	if ev.Res != nil && ev.Res.Kind == resMetamagic {
+		out.MetamagicKeys, out.SorceryPointsSpent = ev.Res.Keys, ev.Res.Spent
+	}
 	for _, h := range ev.Hits {
 		target := byID[h.Target]
-		if !v.sees(target) { // a retry is built from the combat as it stands: a target hidden since is not told
+		if !v.sees(target) || (!v.master && h.HiddenAtCast) { // a retry is built from the combat as it stands: a target hidden since is not told, and one that was hidden when the area hit it never is
 			continue
 		}
 		r := &playv1.SpellTargetResult{

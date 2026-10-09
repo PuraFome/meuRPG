@@ -15,8 +15,16 @@ import {
   type TokenDrop,
 } from '../../../../shared/combat-map/combat-map';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
+import { AreaOverlay } from '../../../../shared/area-picker/area-overlay';
+import { lastArea } from '../../../../core/combat/hidden-reveal';
 import { MapLayersLegend } from '../../../../shared/map-layers/map-layers-legend';
-import { type Vision, tileProgress, tileRects, visionLegend } from '../../../../core/maps/vision';
+import {
+  type Vision,
+  knownWindow,
+  tileProgress,
+  tileRects,
+  visionLegend,
+} from '../../../../core/maps/vision';
 
 /**
  * The map panel of a running combat or of its setup (E6-04, E6-05, E6-11):
@@ -30,9 +38,20 @@ import { type Vision, tileProgress, tileRects, visionLegend } from '../../../../
  * answer, drawn as it comes. "Movimento forçado" (a teleport, a push or a pull)
  * is a box under it that makes the next drag skip the opportunity attacks.
  */
+/** The squares kept around what the player knows when the card crops the map, and the share of the grid above which it does not. */
+const CROP_MARGIN = 2;
+const CROP_MAX_SHARE = 0.6;
+
 @Component({
   selector: 'app-combat-map-card',
-  imports: [CombatMap, CombatantToken, MapLayersLegend, MatButtonModule, MatIconModule],
+  imports: [
+    AreaOverlay,
+    CombatMap,
+    CombatantToken,
+    MapLayersLegend,
+    MatButtonModule,
+    MatIconModule,
+  ],
   templateUrl: './combat-map-card.html',
   styleUrl: './combat-map-card.scss',
 })
@@ -98,6 +117,38 @@ export class CombatMapCard {
   protected onFogSettled(set: ReadonlySet<string>): void {
     this.settled.set(set);
   }
+  /** With the fog on, the map card shows the part of the grid the player knows (two squares around it), so the tokens are
+   * readable when the explored area is a small part of the grid; "Ver mapa" has the whole map. */
+  protected readonly crop = computed(() => {
+    const vision = this.fog();
+    if (!vision || this.isMaster()) {
+      return null;
+    }
+    const e = this.encounter();
+    const known = knownWindow(
+      vision,
+      e.combatants.filter((c) => c.placed),
+      CROP_MARGIN,
+    );
+    if (!known || known.cols * known.rows >= CROP_MAX_SHARE * vision.columns * vision.rows) {
+      return null;
+    }
+    const { width, height } = this.image();
+    // The window is as wide as it is tall at least (a tall strip of corridor would be a tall card), and never wider than the grid.
+    const cols = Math.min(vision.columns, Math.max(known.cols, known.rows));
+    const col = Math.min(
+      Math.max(0, known.col - Math.floor((cols - known.cols) / 2)),
+      vision.columns - cols,
+    );
+    const rows = known.rows;
+    return {
+      // The inner map is `columns / cols` times the card's width; the shift is a share of the inner map.
+      width: (vision.columns / cols) * 100,
+      shift: `translate(${(-col / vision.columns) * 100}%, ${(-known.row / vision.rows) * 100}%)`,
+      ratio: `${(cols * width) / vision.columns} / ${(rows * height) / vision.rows}`,
+    };
+  });
+
   protected readonly preview = computed(
     () => this.cropOnPhone() && this.isMaster() && this.phone(),
   );
@@ -125,6 +176,10 @@ export class CombatMapCard {
     const e = this.encounter();
     return `${e.gridColumns} × ${e.gridRows} quadrados de 1,5 m`;
   });
+  /** "Área da última magia": the area a player's spell reached, while its question waits (the master's map only). */
+  protected readonly lastArea = computed(() =>
+    this.isMaster() ? lastArea(this.encounter()) : null,
+  );
   protected readonly emptyLayers = NO_LAYERS;
   protected readonly reachMeters = computed(() => metersFixed((this.reach()?.leftDft ?? 0) / 10));
   protected readonly hasHidden = computed(() => this.encounter().combatants.some((c) => c.hidden));

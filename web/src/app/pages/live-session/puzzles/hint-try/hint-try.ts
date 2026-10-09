@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
+import { treatedSentence } from '../../../../core/combat/combat-dice';
 import type { HintTry } from '../../../../core/puzzles/puzzle-play';
 import type { HintDie } from '../../../../core/puzzles/puzzles-client';
 import { RollPicker } from '../../combat/roll-picker/roll-picker';
@@ -25,12 +26,12 @@ import { RollPicker } from '../../combat/roll-picker/roll-picker';
       @if (r.passed) {
         <div class="mr-notice mr-notice--success" role="status">
           <mat-icon aria-hidden="true">check</mat-icon>
-          <p><strong>Você conseguiu.</strong> Esta dica é só sua; se quiser, conte aos outros.@if (total(r)) { <span class="roll"> Seu total: {{ total(r) }}.</span> }</p>
+          <p><strong>Você conseguiu.</strong> Esta dica é só sua; se quiser, conte aos outros.@if (total(r)) { <span class="roll"> Seu total: {{ total(r) }}.</span> }@if (note(r)) { <span class="roll"> {{ note(r) }}</span> }</p>
         </div>
       } @else {
         <div class="mr-notice mr-notice--neutral" role="status">
           <mat-icon aria-hidden="true">close</mat-icon>
-          <p>@if (total(r)) {<span class="roll">Você tirou {{ total(r) }}. </span>}<strong>Não deu desta vez.</strong> Outro jogador pode tentar, ou o mestre solta uma dica.</p>
+          <p>@if (total(r)) {<span class="roll">Você tirou {{ total(r) }}. </span>}<strong>Não deu desta vez.</strong> Outro jogador pode tentar, ou o mestre solta uma dica.@if (note(r)) { <span class="roll"> {{ note(r) }}</span> }</p>
         </div>
       }
     }
@@ -153,5 +154,10 @@ export class HintTryControl {
 
   protected total(r: HintTry): number {
     return r.roll?.total ?? 0;
+  }
+
+  /** "O d20 de 6 contou como 10: perícia com proficiência.", when a feature raised the die (Talento Confiável). */
+  protected note(r: HintTry): string {
+    return r.roll ? (treatedSentence(r.roll) ?? '') : '';
   }
 }

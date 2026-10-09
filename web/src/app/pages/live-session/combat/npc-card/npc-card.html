@@ -117,21 +117,34 @@
           totalNote="Total do ataque"
           [modifier]="attack()?.attackBonus ?? 0"
           appLabel="Rolar ataque"
-          [busy]="busy() || !targetId()"
+          [busy]="busy() || !targetId() || !!rollWhy()"
           (app)="rollApp()"
           (typed)="rollTyped($event)"
         />
       </div>
+      @if (rollWhy()) {
+        <p class="offer__why" id="roll-why">{{ rollWhy() }}</p>
+      }
     } @else {
       <p class="card__cap">Este combatente não tem ataques na ficha. Use "Dano/Cura" na ordem para ajustar os PV.</p>
+    }
+    @if (isNpc() && areaSpells().length) {
+      <p class="card__cap">Magias de área</p>
+      <div class="area-spells">
+        @for (sp of areaSpells(); track sp.key) {
+          <button mat-stroked-button type="button" class="area-spell" (click)="castArea.emit(sp.key)">
+            <mat-icon aria-hidden="true">auto_awesome</mat-icon>Conjurar {{ sp.name }}
+          </button>
+        }
+      </div>
     }
 
     @if (result(); as r) {
       <div class="res" role="status" aria-live="polite">
         <div class="res__d20">
           <span class="res__formula">{{ r.formula }}{{ r.physical ? ' · dado físico' : '' }}</span>
-          <span class="pill" [class.pill--miss]="!r.hit">
-            <mat-icon aria-hidden="true">{{ r.hit ? 'check' : 'close' }}</mat-icon>{{ r.word }}
+          <span class="pill" [class.pill--miss]="!r.hit && !r.held" [class.pill--held]="r.held">
+            <mat-icon aria-hidden="true">{{ r.held ? 'hourglass_top' : r.hit ? 'check' : 'close' }}</mat-icon>{{ r.word }}
           </span>
           @if (r.against) {
             <span class="res__against">{{ r.against }}</span>
@@ -140,7 +153,7 @@
         @if (last()?.pending) {
           <app-pending-damages
             [flat]="true"
-            (reacted)="onReacted($event)" (settledNote)="settledNote.emit()"
+            (settledNote)="settledNote.emit()"
             [pendings]="inBox()"
             [encounter]="encounter()"
             [campaignId]="campaignId()"
@@ -152,7 +165,7 @@
   }
 
   <app-pending-damages
-    (reacted)="onReacted($event)" (settledNote)="settledNote.emit()"
+    (settledNote)="settledNote.emit()"
     [pendings]="isNpc() ? others() : pendings()"
     [encounter]="encounter()"
     [campaignId]="campaignId()"
@@ -174,7 +187,7 @@
       </div>
     }
     @if (!joint()) {
-      <app-next-turn [turn]="turnKey()" [pendingNote]="pendingNote()" [busy]="busy() || turnBusy()" (next)="next.emit($event)" />
+      <app-next-turn [turn]="turnKey()" [pendingNote]="pendingNote()" [busy]="busy() || turnBusy()" [waiting]="!!waitWhy()" [why]="waitWhy()" (next)="next.emit($event)" />
     }
   }
 </section>

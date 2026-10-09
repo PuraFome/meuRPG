@@ -172,4 +172,66 @@ describe('CombatSummary and the XP (E7-06)', () => {
     expect(el.querySelector('app-combat-highlights')).toBeNull();
     expect(highlights).not.toHaveBeenCalled();
   });
+
+  it('does not say a dead character needs healing, and still says it of one who is only down', async () => {
+    const down = (id: string, label: string, state: CombatantState) =>
+      combatant({ id, label, kind: CombatantKind.PLAYER, characterId: `c-${id}`, state });
+    const fixture = TestBed.createComponent(CombatSummary);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        id: 'enc',
+        status: EncounterStatus.ENDED,
+        combatants: [
+          down('a', 'Brisa', CombatantState.DEAD),
+          down('b', 'Toren', CombatantState.DOWN),
+        ],
+      }),
+    );
+    fixture.componentRef.setInput('isMaster', true);
+    const zero = (characterId: string) =>
+      ({
+        characterId,
+        hitPointsCurrent: 0,
+        hitPointsMax: 10,
+        spellSlots: [],
+      }) as never;
+    fixture.componentRef.setInput('vitals', [zero('c-a'), zero('c-b')]);
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Toren está caída');
+    expect(text).not.toContain('Brisa está caída');
+  });
+
+  it('counts the dead out of the players standing, and lists them among those who fell', async () => {
+    const fixture = TestBed.createComponent(CombatSummary);
+    const player = (id: string, label: string, state: CombatantState, extra = {}) =>
+      combatant({ id, label, kind: CombatantKind.PLAYER, characterId: `c-${id}`, state, ...extra });
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        id: 'enc',
+        status: EncounterStatus.ENDED,
+        combatants: [
+          player('a', 'Brisa', CombatantState.DEAD, { defeated: true }),
+          player('b', 'Toren', CombatantState.UNHURT, { hitPointsCurrent: 12 }),
+        ],
+      }),
+    );
+    fixture.componentRef.setInput('isMaster', true);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const text = (el.textContent ?? '').replace(/\s+/g, ' ');
+    expect(text).toMatch(/Jogadores em pé\s*1 de 2/);
+    expect(text).not.toContain('Ninguém caiu neste combate');
+    expect(text).toContain('Brisa');
+    expect(text).toContain('Morta');
+  });
+
+  it('has no "Voltar à sessão" of its own while the highlights card above it has the one "Fechar"', async () => {
+    const { fixture, el } = setup(false);
+    fixture.componentRef.setInput('quietTitle', true);
+    fixture.detectChanges();
+    expect(el.querySelector('.end__leave')).toBeNull();
+  });
 });

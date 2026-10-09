@@ -23,6 +23,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // What a turn can do (MR-012, MR-014, Etapa 6, slice 6.4a): the options of a
@@ -160,6 +161,9 @@ func (s *Service) mustActNow(ctx context.Context, c *combatTx, who playdb.Combat
 	if code != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED {
 		return gateError(code)
 	}
+	if err := s.mustNotHold(ctx, c); err != nil { // a question waits for the master: nobody's turn goes on
+		return err
+	}
 	return s.mustNotWait(ctx, c, who)
 }
 
@@ -250,6 +254,9 @@ func (s *Service) GetTurnOptions(
 	if err != nil {
 		return nil, s.dbError(ctx, "work out the turn options", err)
 	}
+	if err := s.attachMetamagic(ctx, nil, m.CampaignID, who, opts); err != nil {
+		return nil, s.dbError(ctx, "work out the Metamagic", err)
+	}
 	code, err := s.gate(ctx, nil, m.CampaignID, enc, who)
 	if err != nil {
 		return nil, s.dbError(ctx, "check the combatant's turn", err)
@@ -284,6 +291,7 @@ func (s *Service) GetTurnOptions(
 	if res.SpellTargets, err = s.spellTargetsFor(ctx, m.CampaignID, terrain, who, d.cs, v, opts, isTheatre(enc)); err != nil {
 		return nil, s.dbError(ctx, "work out the spell targets", err)
 	}
+	res.ResourceTargets = resourceTargetsFor(terrain, d.cs, who, v, opts, enc)
 	open, err := s.queries.ListOpenPendingDamages(ctx, enc.ID)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the pending damage", err)
@@ -329,6 +337,8 @@ func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrai
 		}
 		st := &playv1.SpellTargets{
 			SpellKey: e.key, Targets: spellTargetList(terrain, cs, who, v, sp, theatre),
+			Placement: placementFor(sp, theatre), AreaShape: areaShapeProto(sp, theatre), AreaSizeFt: areaSizeFor(sp, theatre),
+			AreaWidthFt: areaWidthFor(sp, theatre), RangeFt: placedRangeFor(sp, theatre),
 			MaxTargets: clamp32(maxTargetsOf(sp, e.level), 0, maxCombatants), ExtraTargetPerLevel: sp.ExtraTargetPerLevel || sp.Key == magicMissile,
 			TargetsPerLevel: clamp32(sp.TargetPerLevel, 0, maxCombatants),
 		}
@@ -445,6 +455,7 @@ func pendingProto(p playdb.PendingDamage, cs []playdb.Combatant) *playv1.Pending
 		Status: pendingStatusToProto[p.Status], Critical: p.Critical,
 		CriticalRule: pendingCriticalRule(p.Critical, p.CriticalMaxRule), CriticalMax: p.CriticalMax,
 		DiceCount: p.DiceCount, DiceSides: p.DiceSides, Bonus: p.DiceBonus,
+		ExtraDiceCount: p.ExtraDice, ExtraDiceNamePt: extraDiceName(p.ExtraDice),
 		DamageTypeKey: p.DamageType, DamageTypePt: damageTypePT[p.DamageType],
 		CastId: deref(p.CastID), Healing: p.Healing, Half: p.Half, AppliedAmount: p.AppliedAmount,
 		TrapPointId: deref(p.TrapPointID), // a trap's damage has no attacker (MR-035)
@@ -455,7 +466,7 @@ func pendingProto(p playdb.PendingDamage, cs []playdb.Combatant) *playv1.Pending
 		if p.RollTotal != nil { // a half damage's roll is the whole one
 			total = *p.RollTotal
 		}
-		out.Roll = diceRoll(p.DiceCount, p.DiceSides, p.Faces, p.DiceBonus+p.CriticalMax, total, p.Physical)
+		out.Roll = diceRoll(p.DiceCount+p.ExtraDice, p.DiceSides, p.Faces, p.DiceBonus+p.CriticalMax, total, p.Physical)
 	}
 	if p.Status == pendingApplied {
 		out.TargetDefeated = slices.ContainsFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID && holdsHP(c) && c.Defeated })
@@ -485,9 +496,6 @@ type rollInput struct {
 	// pool says typed is the sum of the physical dice of a spell's pool (not a
 	// d20 face): CastSpell's pool_sum.
 	pool bool
-	// faces are the faces of the physical d20 pair (RollAttack's d20_faces): one for a
-	// normal roll, two for advantage or disadvantage.
-	faces []int
 }
 
 // mustRollThisWay checks a player's way of rolling against the campaign's dice
@@ -545,6 +553,13 @@ func (s *Service) RollAttack(
 	if err != nil {
 		return nil, err
 	}
+	return s.rollAttack(ctx, m, req)
+}
+
+// rollAttack is RollAttack for a member already authorized: the replay of a held action calls it
+// with the member who made the request (combat_reaction_hold.go).
+func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *connect.Request[playv1.RollAttackRequest]) (*connect.Response[playv1.RollAttackResponse], error) { //nolint:gocognit,gocyclo // the attack's steps in one closure, as RollAttack always was; the reaction window only split the handler from its replay
+	var err error
 	key, err := parseKey(req.Msg.GetIdempotencyKey())
 	if err != nil {
 		return nil, err
@@ -578,21 +593,7 @@ func (s *Service) RollAttack(
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face must be 1 to 20"))
 		}
 	default:
-		if len(req.Msg.GetD20Faces()) == 0 {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face"))
-		}
-	}
-	if faces := req.Msg.GetD20Faces(); len(faces) > 0 {
-		// The physical d20 pair of a roll with advantage or disadvantage (one face for a normal one).
-		if req.Msg.GetRoll() != nil || len(faces) > 2 {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_faces takes the place of roll: one or two faces"))
-		}
-		for _, f := range faces {
-			if f < 1 || f > 20 {
-				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_faces must be 1 to 20"))
-			}
-			in.faces = append(in.faces, int(f))
-		}
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face"))
 	}
 	offerID := ""
 	if raw := req.Msg.GetOpportunityOfferId(); raw != "" {
@@ -601,11 +602,15 @@ func (s *Service) RollAttack(
 		}
 	}
 	// An opportunity attack is a reaction attack (MR-034).
-	asReaction := req.Msg.GetAsReaction() || offerID != ""
+	catchID := req.Msg.GetCatchWindowId() // a Deflect Missiles throw back (PM-04)
+	asReaction := req.Msg.GetAsReaction() || offerID != "" || catchID != ""
 	v := viewerOf(m)
 
 	var made actionEvent
+	var held *inspirationHold // the roll waits for the player's answer about a Bardic Inspiration die
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventAttackRolled, encounterID: encID}, func(c *combatTx) (any, error) {
+		held = nil
+		attackKey := attackKey // a throw back is the caught missile, under its own key
 		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
@@ -651,7 +656,7 @@ func (s *Service) RollAttack(
 			}
 		}
 		if asReaction {
-			err = s.mustReactNow(ctx, c, attacker, offerID != "")
+			err = s.mustReactNow(ctx, c, attacker, offerID != "" || catchID != "")
 		} else {
 			err = s.mustActNow(ctx, c, attacker)
 		}
@@ -674,11 +679,27 @@ func (s *Service) RollAttack(
 		if err != nil {
 			return nil, err
 		}
+		var caught playdb.ReactionWindow
+		if catchID != "" {
+			thrown, w, err := s.deflectThrow(ctx, c, catchID, attacker, cs)
+			if err != nil {
+				return nil, err
+			}
+			caught = w
+			attackerSheet.Attacks = append(slices.Clone(attackerSheet.Attacks), thrown)
+			attackKey = thrown.Key
+		}
 		i := slices.IndexFunc(attackerSheet.Attacks, func(a link.Attack) bool { return a.Key == attackKey })
 		if i < 0 {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("attack_key is not one of the attacker's attacks"))
 		}
 		attack := attackerSheet.Attacks[i]
+		if c.replay != nil { // Cutting Words took a die off the roll (PM-04)
+			attack.ToHit -= int(c.replay.reduction)
+		}
+		if f := forcedOf(ctx); f != nil { // the answer to a held roll: its bonus is the one the roll was made with, Cutting Words included
+			attack.ToHit = f.toHit
+		}
 		terrain, err := s.terrainOf(ctx, c.tx, m.CampaignID, c.enc)
 		if err != nil {
 			return nil, err
@@ -688,7 +709,7 @@ func (s *Service) RollAttack(
 		}
 		// An opportunity attack is a melee attack (SRD): a melee weapon, thrown or
 		// not (a dagger counts), not a bow or a spell. It reaches 5 ft.
-		if asReaction && !attack.Melee {
+		if asReaction && catchID == "" && !attack.Melee {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an opportunity attack is a melee attack"))
 		}
 		// RN-18, then the economy: a player has one action a turn (the Attack
@@ -698,7 +719,7 @@ func (s *Service) RollAttack(
 		bonusKind := combat.BonusNone
 		if !v.master {
 			switch {
-			case asReaction && attacker.ReactionUsed:
+			case asReaction && attacker.ReactionUsed && catchID == "": // the throw is the reaction already spent
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is used")
 			case !asReaction:
 				if bonusKind, err = attackEconomy(attacker, attackerSheet, attack); err != nil {
@@ -714,7 +735,7 @@ func (s *Service) RollAttack(
 				// An opportunity attack comes right before the mover leaves the reach, so
 				// it asks no reach check (the mover has moved already).
 				dist, _ := distanceFt(attacker, target)
-				if reach := attackReach(attack, asReaction); offerID == "" && dist > reach {
+				if reach := attackReach(attack, asReaction && catchID == ""); offerID == "" && dist > reach {
 					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH, "the target is beyond the attack's range",
 						func(b *playv1.EncounterBlocked) { b.MissingFt = dist - reach })
 				}
@@ -745,18 +766,36 @@ func (s *Service) RollAttack(
 			return nil, errCoverTotal()
 		}
 
+		// A Cutting Words can change the roll: it waits for the windows, and is rolled
+		// when they are answered (PM-04, combat_reaction_hold.go).
+		// A roll that waits for a Bardic Inspiration answer comes first: nothing else rolls or
+		// opens a window until it is answered, and the answer does not open the windows again
+		// (they were answered before the d20 was kept, combat_inspiration.go).
+		if err := s.refuseWhileAsking(ctx, c, attacker, key); err != nil {
+			return nil, err
+		}
+		if forcedOf(ctx) == nil {
+			if held, ok, err := s.holdAttackRoll(ctx, c, m, req.Msg, cs, attacker, target, attackKey); err != nil {
+				return nil, err
+			} else if ok {
+				made = held
+				return made, nil
+			}
+		}
+
 		// The roll, and what it did against the target's armor class (with the
 		// +5 of an active Escudo and the cover). The class stays on the server (RN-20).
-		// How the d20 is rolled: a hidden attacker has advantage on the creatures that have not
-		// noticed it, an ally's Help gives the first attack on its target advantage (combat_hide.go).
-		notes, err := s.attackNotes(ctx, c, attacker, target, cs)
+		face, roll, bonus, h, err := s.rollOrHold(ctx, c, attacker, req.Msg, key, in, attack.ToHit)
 		if err != nil {
 			return nil, err
 		}
-		mode := notesMode(notes)
-		face, faces, err := s.d20Mode(in, mode, attack.ToHit)
-		if err != nil {
-			return nil, err
+		if h != nil {
+			held = h // nothing is resolved, spent or written until the answer
+			return nil, nil
+		}
+		bonusFace := 0
+		if bonus != nil {
+			bonusFace = int(bonus.Face) // the die the player added after rolling
 		}
 		targetSheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, target)
 		if err != nil {
@@ -768,7 +807,7 @@ func (s *Service) RollAttack(
 		if attack.Spell {
 			criticalFrom = 0
 		}
-		result := combat.ResolveAttackFrom(attack.ToHit, targetAC, face, criticalFrom)
+		result := combat.ResolveAttackFrom(attack.ToHit+bonusFace, targetAC, face, criticalFrom)
 
 		after := attacker
 		var run int32
@@ -779,9 +818,8 @@ func (s *Service) RollAttack(
 		}
 		made = actionEvent{
 			RunBefore: run, Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: attackKey,
-			RollMode: modeKey(mode), Notes: notes, D20B: otherFace(faces, face),
-			D20: clamp32(face, 1, 20), Modifier: clamp32(attack.ToHit, math.MinInt32, math.MaxInt32), Total: clamp32(result.Total, math.MinInt32, math.MaxInt32),
-			Physical: !in.inApp, Outcome: outcomeMiss, AsReaction: asReaction, CriticalMaxRule: c.rules.CriticalMaxPlusRoll,
+			D20: clamp32(face, 1, 20), Modifier: clamp32(attack.ToHit+bonusFace, math.MinInt32, math.MaxInt32), Total: clamp32(result.Total, math.MinInt32, math.MaxInt32),
+			Physical: roll.Physical, Outcome: outcomeMiss, AsReaction: asReaction, CriticalMaxRule: c.rules.CriticalMaxPlusRoll,
 			ActionBefore: attacker.ActionUsed, BonusBefore: attacker.BonusActionUsed, ReactionBefore: attacker.ReactionUsed, AttacksBefore: attacker.AttacksMade,
 			AsBonus: bonusKind != combat.BonusNone, AttackKeyBefore: deref(attacker.ActionAttackKey), FlurryBefore: attacker.BonusAttacksLeft,
 			// The armor class the roll was compared with (an active Escudo's +5
@@ -789,6 +827,9 @@ func (s *Service) RollAttack(
 			TargetAC: clamp32(targetAC, 0, math.MaxInt32),
 			Cover:    cover.key(), CoverSource: cover.sourceKey(), CoverBonus: clamp32(cover.bonus(), 0, 5),
 			CoverRestricted: cp.restricted, CoverSeenBy: cp.seenBy,
+		}
+		if bonus != nil {
+			made.Res = &resourceEvent{Kind: resBardicUse, Sides: bonus.Sides, Face: bonus.Face, FromID: bonus.From, ExpiresRound: bonus.ExpiresRound}
 		}
 		switch {
 		case asReaction:
@@ -818,6 +859,15 @@ func (s *Service) RollAttack(
 		}); err != nil {
 			return nil, fmt.Errorf("spend the action: %w", err)
 		}
+		if catchID != "" { // the ki is spent and the window done with the throw
+			if _, err := s.spendReactionResource(ctx, c, attacker, resKi); err != nil {
+				return nil, err
+			}
+			ct := windowTriggerOf(caught)
+			if _, err := s.closeWindow(ctx, c, caught, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: c.master, Used: true, Reduction: ct.Reduced, Before: ct.Damage, After: 0}, ""); err != nil {
+				return nil, err
+			}
+		}
 		if result.Hit {
 			made.Outcome = outcomeHit
 			if result.Critical {
@@ -829,17 +879,13 @@ func (s *Service) RollAttack(
 				// it is negative, or the character fights with two weapons).
 				bonus = combat.OffHandBonus(bonus, attack.AbilityMod, attackerSheet.TwoWeaponFighting)
 			}
-			p, err := s.openHit(ctx, c, m.CampaignID, attacker, target, attackKey,
-				link.Dice{Count: attack.DiceCount, Sides: attack.DiceSides, Bonus: bonus, DamageType: attack.DamageType}, result.Critical, result.Total, targetAC)
+			p, err := s.openHit(ctx, c, attacker, target, attackKey,
+				link.Dice{Count: attack.DiceCount, Sides: attack.DiceSides, Bonus: bonus, DamageType: attack.DamageType}, result.Critical,
+				brutalCriticalDice(attacker, attack, attackerSheet, result.Critical), result.Total, targetAC)
 			if err != nil {
 				return nil, err
 			}
 			made.Pending = p.ID
-		}
-		// The attack gives a hidden attacker's position away, hit or miss, and uses the Help aimed
-		// at its target (combat_hide.go).
-		if err := s.afterAttack(ctx, c, attacker, target, cs, &made); err != nil {
-			return nil, err
 		}
 		if offerID != "" {
 			var damage *string // the damage the attack opened: the 0 hit points rule finds the offer by it
@@ -866,6 +912,9 @@ func (s *Service) RollAttack(
 	if v, err = s.viewerAfter(ctx, m, res, v); err != nil { // a replay never ran the closure: the fog filter still holds
 		return nil, s.dbError(ctx, "work out what the player sees", err)
 	}
+	if held != nil {
+		return s.heldAnswer(ctx, m, res, held, req.Msg)
+	}
 	ev, err := resultEvent(res, made)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the attack", err)
@@ -877,6 +926,11 @@ func (s *Service) RollAttack(
 	if err != nil {
 		return nil, err
 	}
+	if ev.Reaction != nil && ev.Reaction.Hold { // a reaction window holds the roll: nothing was rolled yet
+		return connect.NewResponse(&playv1.RollAttackResponse{Encounter: out, Roll: &playv1.AttackRoll{
+			AttackerId: ev.Actor, TargetId: ev.Target, AttackKey: ev.Key, HeldForReaction: true,
+		}}), nil
+	}
 	pending, err := s.pendingFor(ctx, res, ev.Pending, v)
 	if err != nil {
 		return nil, err
@@ -885,9 +939,7 @@ func (s *Service) RollAttack(
 		AttackerId: ev.Actor, TargetId: ev.Target, AttackKey: ev.Key,
 		D20: diceRoll(1, 20, faceList(ev), ev.Modifier, ev.Total, ev.Physical), Outcome: outcomeToProto[ev.Outcome],
 		CriticalRule: criticalRuleProto(tablerules.Rules{CriticalMaxPlusRoll: ev.CriticalMaxRule}),
-	}
-	if ev.RollMode != "" || len(ev.Notes) > 0 { // the caller owns the attacker or is the master
-		roll.Mode, roll.Notes = checkModeProto(modeOfKey(ev.RollMode)), notesProto(ev.Notes)
+		BonusDice:    bonusDiceOf(ev),
 	}
 	coverKey, coverSource := ev.coverFor(v)
 	roll.Cover, roll.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
@@ -900,23 +952,7 @@ func (s *Service) RollAttack(
 // faceList is the face of the d20 of an attack roll; none for a physical one,
 // whose d20 was typed (the typed face is still in D20: the master and the
 // player know it, so it is sent as the face too).
-func faceList(ev actionEvent) []int32 {
-	if ev.D20B != 0 {
-		return []int32{ev.D20, ev.D20B} // the pair of a roll with advantage or disadvantage: the one that counts first
-	}
-	return []int32{ev.D20}
-}
-
-// otherFace is the face of a d20 pair that did not count, 0 for a single die.
-func otherFace(faces []int, kept int) int32 {
-	if len(faces) < 2 {
-		return 0
-	}
-	if faces[0] == kept {
-		return clamp32(faces[1], 1, 20)
-	}
-	return clamp32(faces[0], 1, 20)
-}
+func faceList(ev actionEvent) []int32 { return []int32{ev.D20} }
 
 // resultEvent is the event a write made: the one the closure made, or, for a
 // retry the closure never ran for, the one stored the first time.
@@ -968,6 +1004,13 @@ func (s *Service) RollDamage(
 	if err != nil {
 		return nil, err
 	}
+	return s.rollDamage(ctx, m, req)
+}
+
+// rollDamage is RollDamage for a member already authorized: the replay of a held action calls it
+// with the member who made the request (combat_reaction_hold.go).
+func (s *Service) rollDamage(ctx context.Context, m authz.Membership, req *connect.Request[playv1.RollDamageRequest]) (*connect.Response[playv1.RollDamageResponse], error) { //nolint:gocognit,gocyclo // the damage's steps in one closure, as RollDamage always was; the reaction window only split the handler from its replay
+	var err error
 	key, err := parseKey(req.Msg.GetIdempotencyKey())
 	if err != nil {
 		return nil, err
@@ -999,6 +1042,9 @@ func (s *Service) RollDamage(
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventDamageRolled, encounterID: encID}, func(c *combatTx) (any, error) {
 		vitals = nil
 		if err := notEnded(c.enc); err != nil {
+			return nil, err
+		}
+		if err := s.reactionGate(ctx, c); err != nil { // a reaction window holds the damage too (PM-04)
 			return nil, err
 		}
 		p, err := c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: c.enc.ID, ID: pendingID})
@@ -1053,9 +1099,11 @@ func (s *Service) RollDamage(
 		// critical rule adds without rolling (the dice's maximum, in "máximo mais uma
 		// rolagem"; typed_sum never includes it). A flat damage needs no dice (and so
 		// no way of rolling).
-		expr := dice.Expr{Count: int(p.DiceCount), Sides: int(p.DiceSides), Modifier: int(p.DiceBonus) + int(p.CriticalMax)}
+		// The extra dice of a feature (Brutal Critical) are always rolled, after the
+		// critical's own, and typed_sum counts them.
+		expr := dice.Expr{Count: int(p.DiceCount) + int(p.ExtraDice), Sides: int(p.DiceSides), Modifier: int(p.DiceBonus) + int(p.CriticalMax)}
 		var roll dice.Result
-		if p.DiceCount == 0 {
+		if expr.Count == 0 {
 			roll = dice.Result{Expr: expr, Modifier: expr.Modifier, Total: expr.Modifier}
 		} else {
 			if !v.master {
@@ -1072,18 +1120,35 @@ func (s *Service) RollDamage(
 					fmt.Errorf("typed_sum must be %d to %d", expr.Count, expr.Count*expr.Sides))
 			}
 		}
+		if c.replay != nil && c.replay.rolled != nil { // the roll made when a reaction window held the damage
+			roll = replayedRoll(expr, c.replay.rolled)
+		}
+		// A reaction can change the damage (Uncanny Dodge, Deflect Missiles, Cutting
+		// Words): it waits for the windows, and lands when they are answered (PM-04).
+		if held, ok, err := s.holdDamage(ctx, c, m, req.Msg, cs, p, attacker, target, roll); err != nil {
+			return nil, err
+		} else if ok {
+			made = held
+			return made, nil
+		}
+		if c.replay != nil {
+			roll.Total = adjustedDamage(c.replay, roll.Total)
+		}
 		total := max(roll.Total, 0) // damage is never below 0
 		faces := faces32(roll.Faces)
 		rolledTotal := clamp32(total, 0, math.MaxInt32)
 
 		made = actionEvent{
 			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: p.TargetID, Pending: p.ID, Key: p.AttackKey,
-			DiceCount: p.DiceCount, DiceSides: p.DiceSides, Modifier: clamp32(int(p.DiceBonus)+int(p.CriticalMax), math.MinInt32, math.MaxInt32), CriticalMax: p.CriticalMax, CriticalMaxRule: p.CriticalMaxRule, Faces: faces,
+			DiceCount: p.DiceCount + p.ExtraDice, ExtraDice: p.ExtraDice, DiceSides: p.DiceSides, Modifier: clamp32(int(p.DiceBonus)+int(p.CriticalMax), math.MinInt32, math.MaxInt32), CriticalMax: p.CriticalMax, CriticalMaxRule: p.CriticalMaxRule, Faces: faces,
 			DamageType: p.DamageType, Critical: p.Critical, Physical: roll.Physical, Heal: p.Healing, Total: rolledTotal,
 		}
 		for _, g := range group {
 			tgt, _ := findCombatant(cs, g.TargetID, combatViewer{master: true})
-			made.Secret = made.Secret || tgt.Hidden
+			// A hidden creature in the one roll of a cast that settles several makes the
+			// roll the master's alone, unless the cast lists its targets for each viewer:
+			// an area's line leaves out the hidden ones itself (spellView).
+			made.Secret = made.Secret || (tgt.Hidden && p.CastID == nil)
 			amount := clamp32(total, 0, math.MaxInt32)
 			if g.Half {
 				amount = clamp32(combat.HalfDamage(total), 0, math.MaxInt32)
@@ -1115,6 +1180,9 @@ func (s *Service) RollDamage(
 				if hit.ConcentrationDC, err = s.castConcentrationDC(ctx, c, g, tgt, takenBy(hit.Amount, hit.Before, hit.After)); err != nil {
 					return nil, err
 				}
+			}
+			if err := s.afterDamage(ctx, c, tgt, damageLanded{attacker: attacker.ID, key: g.AttackKey, pending: g, hit: hit}); err != nil {
+				return nil, err
 			}
 			if g.ID == p.ID {
 				made.Amount, made.Applied, made.Before, made.After, made.ConcentrationDC = hit.Amount, hit.Applied, hit.Before, hit.After, hit.ConcentrationDC
@@ -1159,6 +1227,9 @@ func (s *Service) RollDamage(
 		return nil, err
 	}
 	resp := &playv1.RollDamageResponse{Encounter: out}
+	if ev.Reaction != nil && ev.Reaction.Hold { // a reaction window holds the damage: it is not rolled yet
+		return connect.NewResponse(resp), nil
+	}
 	if resp.PendingDamage, err = s.pendingFor(ctx, res, ev.Pending, v); err != nil {
 		return nil, err
 	}
@@ -1400,6 +1471,9 @@ func (s *Service) ApplyPendingDamage(
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
+		if err := s.reactionGate(ctx, c); err != nil { // a reaction window holds the damage too (PM-04)
+			return nil, err
+		}
 		p, attacker, target, err := s.settling(ctx, c, pendingID)
 		if err != nil {
 			return nil, err
@@ -1495,6 +1569,11 @@ func (s *Service) ApplyPendingDamage(
 			if made.ConcentrationDC, err = s.castConcentrationDC(ctx, c, p, target, taken); err != nil {
 				return nil, err
 			}
+		}
+		if err := s.afterDamage(ctx, c, target, damageLanded{attacker: attacker.ID, key: p.AttackKey, pending: p, hit: damageHit{
+			Pending: p.ID, Target: target.ID, Amount: amount, Applied: true, Before: made.Before, After: made.After, ConcentrationDC: made.ConcentrationDC,
+		}}); err != nil {
+			return nil, err
 		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
@@ -1742,6 +1821,11 @@ func (s *Service) TakeAction(
 		if wildShapeFeature(actionKey) {
 			// It needs the beast: AssumeWildShape takes it (MR-037).
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the Wild Shape action is taken with AssumeWildShape"))
+		}
+		if slices.Contains(resourceFlowActions, actionKey) {
+			// They need a target or a number of points: UseLayOnHands, CreateSpellSlot,
+			// ConvertSpellSlot and GiveBardicInspiration take them.
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this action is taken with the resource service"))
 		}
 		feature := strings.HasPrefix(actionKey, "feature:")
 		list := opts.GetStandardActions()

@@ -10,16 +10,17 @@ SELECT count(*)::INT4 FROM characters WHERE campaign_id = sqlc.arg(campaign_id):
 
 -- name: InsertCharacter :one
 -- status is 'active', or 'pending' for a character created by a pending
--- member (RN-15, MR-024).
+-- member (RN-15, MR-024). reserved is true for the character the master makes for a
+-- player to claim (MR-049): no owner.
 -- create_key (a UUID, unique in the campaign: characters_campaign_id_create_key_idx) and create_hash
 -- are the idempotency key of CreateCharacter and the hash of its request; NULL when the call sent
 -- no key. A retry reads the first character with GetCharacterByCreateKey.
 INSERT INTO characters
-    (campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, create_key, create_hash, created_at, updated_at)
+    (campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, create_key, create_hash, reserved, created_at, updated_at)
 VALUES (
     sqlc.arg(campaign_id)::UUID, sqlc.arg(kind), sqlc.narg(player_user_id), sqlc.narg(master_user_id),
     sqlc.arg(status), sqlc.arg(name), sqlc.arg(sheet), sqlc.arg(story), sqlc.narg(create_key)::UUID, sqlc.narg(create_hash),
-    sqlc.arg(now), sqlc.arg(now)
+    sqlc.arg(reserved)::BOOL, sqlc.arg(now), sqlc.arg(now)
 )
 ON CONFLICT (campaign_id, create_key) WHERE create_key IS NOT NULL DO NOTHING
 RETURNING *;
@@ -70,12 +71,12 @@ LIMIT 1;
 -- characters in that status (a pending member sees only their pending
 -- character, RN-15). Players' characters come first, then NPCs, each group
 -- oldest first. The story is left out: a list does not show it.
-SELECT id, kind, status, name, player_user_id, sheet, sheet_locked_at, created_at
+SELECT id, kind, status, name, player_user_id, sheet, sheet_locked_at, created_at, reserved, claimed_at
 FROM characters
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID
   AND (
       sqlc.narg(player_user_id)::UUID IS NULL
-      OR (kind = 'player' AND player_user_id = sqlc.narg(player_user_id)::UUID)
+      OR (kind = 'player' AND player_user_id = sqlc.narg(player_user_id)::UUID AND NOT reserved)
   )
   AND (sqlc.narg(status)::TEXT IS NULL OR status = sqlc.narg(status)::TEXT)
   -- The NPCs the app makes for the monsters of a combat (RN-29) are not the
@@ -168,11 +169,14 @@ WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id) AND status
 -- name: LockSheets :execrows
 -- RN-01: when a game session starts, the sheets of the campaign's living
 -- player characters that are still drafts lock. A character waiting for
--- approval (MR-024) does not lock yet, and NPCs never lock.
+-- approval (MR-024) does not lock yet, and NPCs never lock. A reserved character
+-- (MR-049) has no player to lock out: it locks with the sessions that start after
+-- its player claims it.
 UPDATE characters
 SET sheet_locked_at = sqlc.arg(now)::TIMESTAMPTZ
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID
-  AND kind = 'player' AND status = 'active' AND sheet_locked_at IS NULL;
+  AND kind = 'player' AND status = 'active' AND sheet_locked_at IS NULL
+  AND NOT reserved;
 
 -- name: EndStoryEditing :execrows
 -- When a game session starts, every permission to edit a story ends.
@@ -210,14 +214,14 @@ WHERE campaign_id = $1 AND character_id = $2;
 -- form and the familiar's sight come along too (MR-037, MR-036).
 SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
-       v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
+       v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions
+       v.familiar_sight_conditions, v.hit_points_max_bonus
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
-  AND c.kind = 'player' AND c.status = 'active'
+  AND c.kind = 'player' AND c.status = 'active' AND NOT c.reserved
 ORDER BY c.created_at, c.id;
 
 -- name: GetVitals :one
@@ -225,14 +229,29 @@ ORDER BY c.created_at, c.id;
 -- living, active player character of the campaign.
 SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
-       v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
+       v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions
+       v.familiar_sight_conditions, v.hit_points_max_bonus
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID AND c.id = sqlc.arg(id)
-  AND c.kind = 'player' AND c.status = 'active';
+  AND c.kind = 'player' AND c.status = 'active' AND NOT c.reserved;
+
+-- name: GetVitalsWithDead :one
+-- GetVitals that also answers for a player character that died: the page of a
+-- dead character's player still reads its turn options and its log (a combat
+-- that ran keeps them), and nothing here lets the character act again.
+SELECT c.id, c.name, c.player_user_id, c.sheet,
+       v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
+       v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
+       ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
+       v.familiar_sight_conditions, v.hit_points_max_bonus
+FROM characters AS c
+LEFT JOIN character_vitals AS v ON v.character_id = c.id
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
+WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID AND c.id = sqlc.arg(id)
+  AND c.kind = 'player' AND c.status IN ('active', 'dead') AND NOT c.reserved;
 
 -- name: UpsertVitals :one
 -- Saves a character's vitals: the first save creates the row with revision
@@ -240,10 +259,11 @@ WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID AND c.id = sqlc.arg(id)
 -- full hit points, whatever the maximum is.
 INSERT INTO character_vitals
     (character_id, hit_points_current, hit_points_temporary, spell_slots_used,
-     pact_slots_used, hit_dice_used, resources_used, revision, updated_at)
+     pact_slots_used, hit_dice_used, hit_dice_used_by_die, spell_slots_created, resources_used, revision, updated_at)
 VALUES (
     sqlc.arg(character_id), sqlc.narg(hit_points_current), sqlc.arg(hit_points_temporary),
     sqlc.arg(spell_slots_used)::INT4[], sqlc.arg(pact_slots_used), sqlc.arg(hit_dice_used),
+    sqlc.arg(hit_dice_used_by_die)::JSONB, sqlc.arg(spell_slots_created)::INT4[],
     sqlc.arg(resources_used)::JSONB, 1, sqlc.arg(now)
 )
 ON CONFLICT (character_id) DO UPDATE SET
@@ -252,6 +272,8 @@ ON CONFLICT (character_id) DO UPDATE SET
     spell_slots_used = excluded.spell_slots_used,
     pact_slots_used = excluded.pact_slots_used,
     hit_dice_used = excluded.hit_dice_used,
+    hit_dice_used_by_die = excluded.hit_dice_used_by_die,
+    spell_slots_created = excluded.spell_slots_created,
     resources_used = excluded.resources_used,
     revision = character_vitals.revision + 1,
     updated_at = excluded.updated_at
@@ -265,7 +287,7 @@ RETURNING revision, updated_at;
 SELECT id, kind, name, player_user_id FROM characters
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID
   AND id = ANY(sqlc.arg(ids)::UUID[])
-  AND status = 'active'
+  AND status = 'active' AND NOT reserved
 ORDER BY kind <> 'player', created_at, id;
 
 -- name: ListNpcPortraits :many
@@ -290,7 +312,7 @@ SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_b
 FROM characters AS c
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
-  AND c.kind = 'player' AND c.status = 'active'
+  AND c.kind = 'player' AND c.status = 'active' AND NOT c.reserved
 ORDER BY c.created_at, c.id;
 
 -- name: ListCombatCharacters :many
@@ -302,14 +324,28 @@ FROM characters AS c
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
   AND c.id = ANY(sqlc.arg(ids)::UUID[])
-  AND c.status = 'active'
+  AND c.status = 'active' AND NOT c.reserved
+ORDER BY c.created_at, c.id;
+
+-- name: ListCombatCharactersWithDead :many
+-- ListCombatCharacters that also returns a character that died, for the reads
+-- of a combat that ran (a dead character's sheet names the attacks in the log,
+-- and its player's page reads the turn options). Nothing that starts a combat
+-- or lets a character act uses it.
+SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast
+FROM characters AS c
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
+WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
+  AND c.id = ANY(sqlc.arg(ids)::UUID[])
+  AND c.status IN ('active', 'dead') AND NOT c.reserved
 ORDER BY c.created_at, c.id;
 
 -- name: ListSessionCharacters :many
 -- Those of the given characters of the campaign, whatever their status: the
 -- session summary names a character that died or left during the session
--- (package play).
-SELECT id, kind, name, player_user_id FROM characters
+-- (package play). reserved says the master gave the character back to the reserve
+-- since: a player's reads leave it out (RN-10).
+SELECT id, kind, name, player_user_id, reserved FROM characters
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID
   AND id = ANY(sqlc.arg(ids)::UUID[]);
 
@@ -506,15 +542,31 @@ DELETE FROM character_wild_shapes WHERE character_id = $1;
 -- The sheet's maximum hit points changed from old_max to new_max (a level-up,
 -- an edit): a character whose current hit points are set gains what the maximum
 -- gained (gain, zero when it fell), so a wound stays a wound, and never ends
--- above the new maximum. NULL is "full" and stays so. The revision moves only
+-- above the new maximum. Both maximums are the sheet's, and Aid's bonus (the
+-- character's hit_points_max_bonus) rides on top of each. NULL is "full" and stays so. The revision moves only
 -- when the number does.
 UPDATE character_vitals
-SET hit_points_current = LEAST(LEAST(hit_points_current, sqlc.arg(old_max)::INT4) + sqlc.arg(gain)::INT4, sqlc.arg(new_max)::INT4),
+SET hit_points_current = LEAST(LEAST(hit_points_current, sqlc.arg(old_max)::INT4 + hit_points_max_bonus) + sqlc.arg(gain)::INT4, sqlc.arg(new_max)::INT4 + hit_points_max_bonus),
     revision = revision + 1,
     updated_at = sqlc.arg(now)
 WHERE character_id = sqlc.arg(character_id)
   AND hit_points_current IS NOT NULL
-  AND hit_points_current <> LEAST(LEAST(hit_points_current, sqlc.arg(old_max)::INT4) + sqlc.arg(gain)::INT4, sqlc.arg(new_max)::INT4);
+  AND hit_points_current <> LEAST(LEAST(hit_points_current, sqlc.arg(old_max)::INT4 + hit_points_max_bonus) + sqlc.arg(gain)::INT4, sqlc.arg(new_max)::INT4 + hit_points_max_bonus);
+
+-- name: SetVitalsMaxBonus :one
+-- Aid's bonus to a character's maximum hit points (hit_points_max_bonus) and the
+-- current hit points that go with it: the first write creates the vitals row, as
+-- TouchVitals does (hit_points_current is only for that insert, and a NULL "full"
+-- stays full of the new maximum). A NULL hit_points_current argument leaves the
+-- stored current hit points alone.
+INSERT INTO character_vitals (character_id, hit_points_current, hit_points_max_bonus, revision, updated_at)
+VALUES (sqlc.arg(character_id), sqlc.narg(hit_points_current), sqlc.arg(hit_points_max_bonus), 1, sqlc.arg(now))
+ON CONFLICT (character_id) DO UPDATE SET
+    hit_points_max_bonus = excluded.hit_points_max_bonus,
+    hit_points_current = COALESCE(excluded.hit_points_current, character_vitals.hit_points_current),
+    revision = character_vitals.revision + 1,
+    updated_at = excluded.updated_at
+RETURNING revision, updated_at;
 
 -- name: TouchVitals :one
 -- Bumps a character's vitals revision for a change made on a table of its own (the
@@ -542,18 +594,20 @@ ON CONFLICT (character_id) DO UPDATE SET
 RETURNING revision, updated_at;
 
 -- name: ListPartyVision :many
--- The campaign's living, active player characters, oldest first, with what the
+-- The campaign's active and dead player characters, oldest first, with what the
 -- fog needs to know of how each one sees (package maps): the sheet, the beast of
 -- a Wild Shape form, and the familiar the player looks through, if it is still with
--- the character (MR-036, MR-037).
+-- the character (MR-036, MR-037). A dead character is listed (is_dead): its
+-- player keeps seeing what the living party sees.
 SELECT c.id, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast,
-       cc.id AS familiar_id, cc.monster_key AS familiar_monster_key
+       cc.id AS familiar_id, cc.monster_key AS familiar_monster_key,
+       (c.status = 'dead')::BOOL AS is_dead
 FROM characters AS c
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_creatures AS cc ON cc.id = v.familiar_sight_creature_id AND cc.dismissed_at IS NULL
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
-  AND c.kind = 'player' AND c.status = 'active'
+  AND c.kind = 'player' AND c.status IN ('active', 'dead') AND NOT c.reserved
 ORDER BY c.created_at, c.id;
 
 -- name: ListMapCreatures :many
@@ -642,6 +696,20 @@ RETURNING *;
 -- The entry a CreateTableEntry with this idempotency key made, if any (the key carries the campaign's ID).
 SELECT * FROM campaign_content WHERE create_key = $1;
 
+-- name: GetCampaignContentImport :one
+-- The answer of the ImportTableContent that carried this idempotency key (the campaign's ID and
+-- the key), with the hash of its request.
+SELECT create_hash, response FROM campaign_content_imports
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND create_key = sqlc.arg(create_key);
+
+-- name: InsertCampaignContentImport :exec
+-- Keeps the key, the request hash and the answer of an applied import. The content revision is held
+-- by the transaction (BumpContentRevision), so two imports with one key take turns; ON CONFLICT is
+-- the net under that.
+INSERT INTO campaign_content_imports (campaign_id, create_key, create_hash, response, created_at)
+VALUES (sqlc.arg(campaign_id)::UUID, sqlc.arg(create_key), sqlc.arg(create_hash), sqlc.arg(response), sqlc.arg(now))
+ON CONFLICT (campaign_id, create_key) DO NOTHING;
+
 -- name: UpdateCampaignContent :one
 -- The body and the name; the key, the kind and the archive mark stay.
 UPDATE campaign_content
@@ -684,3 +752,32 @@ SELECT id, kind, name, player_user_id, sheet
 FROM characters
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID
 ORDER BY kind <> 'player', created_at, id;
+
+-- The campaign package (MR-050).
+
+-- name: ListCharactersForPackage :many
+-- Every character of the campaign with its sheet and story, oldest first, for an export.
+SELECT id, kind, status, name, sheet, story FROM characters
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID
+ORDER BY created_at, id;
+
+-- name: ListMasterNotesOfCampaign :many
+SELECT character_id, notes FROM character_master_notes
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID;
+
+-- name: InsertImportedNpc :exec
+-- An NPC made from a package: the id is chosen before, and the master owns it.
+INSERT INTO characters (id, campaign_id, kind, master_user_id, status, name, sheet, story, created_at, updated_at)
+VALUES (sqlc.arg(id), sqlc.arg(campaign_id)::UUID, sqlc.arg(kind), sqlc.arg(master_user_id), 'active', sqlc.arg(name), sqlc.arg(sheet),
+        sqlc.arg(story), sqlc.arg(now), sqlc.arg(now));
+
+-- name: InsertImportedCampaignContent :exec
+INSERT INTO campaign_content (campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at)
+VALUES (sqlc.arg(campaign_id)::UUID, sqlc.arg(content_key), sqlc.arg(kind), sqlc.arg(name_pt), sqlc.arg(data), sqlc.arg(revision),
+        sqlc.narg(archived_at), sqlc.arg(now), sqlc.arg(now));
+
+-- name: InsertImportedReservedCharacter :exec
+-- A player's character made from a package (MR-050): reserved (no owner, invisible to the
+-- players until one claims it, MR-049), with the id chosen before.
+INSERT INTO characters (id, campaign_id, kind, status, name, sheet, story, reserved, created_at, updated_at)
+VALUES (sqlc.arg(id), sqlc.arg(campaign_id)::UUID, 'player', 'active', sqlc.arg(name), sqlc.arg(sheet), sqlc.arg(story), true, sqlc.arg(now), sqlc.arg(now));

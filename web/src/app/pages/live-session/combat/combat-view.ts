@@ -1,6 +1,9 @@
 import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -18,7 +21,10 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import type { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import {
+  AreaPlacement,
   type Combatant,
+  CombatEffect,
+  type InspirationOffer,
   CombatLogKind,
   CombatantState,
   DeathSaveOutcome,
@@ -30,7 +36,7 @@ import {
   type OpportunityOffer,
   type PendingDamage,
   PendingDamageStatus,
-  type ReactionPrompt,
+  type ReactionWindow,
   type GetTurnOptionsResponse,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import {
@@ -83,6 +89,7 @@ import {
   offersHolding,
   offersToAnswer,
   reactorAttacks,
+  reachingAttacks,
   reactorIsMasters,
   waitingText,
 } from '../../../core/combat/opportunity';
@@ -102,6 +109,7 @@ import { TurnOptionsState } from '../../../core/combat/turn-options-state';
 import { saveAnnouncement } from '../../../core/combat/death-saves';
 import {
   currentCombatant,
+  isDead,
   isDown,
   isPlayer,
   ownCombatant,
@@ -121,12 +129,23 @@ import type { PartyMemberInfoVm, VitalsVm } from '../live-session.types';
 import { ActionGroups } from './action-groups/action-groups';
 import { AdjustNpc, type AdjustNpcData } from './adjust-npc/adjust-npc';
 import { AttackSheet, type AttackSheetData } from './attack-sheet/attack-sheet';
-import { CastSheet, type CastSheetData } from './cast-sheet/cast-sheet';
+import { CastSheet, type CastMapData, type CastSheetData } from './cast-sheet/cast-sheet';
 import { ConditionsDialog, type ConditionsData } from './conditions-dialog/conditions-dialog';
 import { DeathQuestion } from './death-question/death-question';
 import { DeathSaves } from './death-saves/death-saves';
 import { FeatureSheet, type FeatureSheetData } from './feature-sheet/feature-sheet';
-import { ShieldSheet, type ShieldSheetData } from './shield-sheet/shield-sheet';
+import { InspirationCard } from './inspiration-card/inspiration-card';
+import { openBardicInspiration, openFlexibleCasting, openLayOnHands } from './resource-sheets';
+import { resourceFlow } from '../../../core/resources/resource-actions';
+import { SORCERY_POINTS_RESOURCE, poolOf } from '../../../core/resources/pools';
+import {
+  ReactionSheet,
+  type ReactionSheetData,
+  type ReactionSheetResult,
+} from './reaction-sheet/reaction-sheet';
+import { windowsBarText } from '../../../core/combat/reaction-master';
+import { promptView, reactionWait, sheetWindow } from '../../../core/combat/reactions';
+import { ReactionQueue } from './reaction-queue/reaction-queue';
 import { CombatLogPanel } from './combat-log/combat-log-panel';
 import type { CombatantInfo } from './combat-info';
 import { CombatBar } from './combat-bar/combat-bar';
@@ -137,6 +156,10 @@ import { InitiativeSetup } from './initiative-setup/initiative-setup';
 import { InitiativeSide } from './initiative-side/initiative-side';
 import { type JumpRequest, MovePage } from './move-page/move-page';
 import { OpportunityCard, type MasterAnswer } from './opportunity/opportunity-card';
+import { HiddenRevealCard, type RevealAnswer } from './hidden-reveal/hidden-reveal-card';
+import { MasterAreaCast, type MasterAreaCastData } from './area-cast/master-area-cast';
+import { defaultSlot, slotRows } from '../../../core/combat/cast-flow';
+import { heldWait, questions, revealBarText, revealWhy } from '../../../core/combat/hidden-reveal';
 import {
   OpportunitySheet,
   type OpportunityAnswer,
@@ -167,6 +190,7 @@ import { type StartCombatData, StartCombatDialog } from './start-combat/start-co
 import { TrapDamages } from '../traps/trap-damages/trap-damages';
 import { openTrapSearch } from '../traps/trap-search-sheet/trap-search-sheet';
 import { OrderColumn } from './turn-panel/order-column';
+import { OrderStrip } from './turn-panel/order-strip';
 import { TurnBar } from './turn-panel/turn-bar';
 import { TurnPanel } from './turn-panel/turn-panel';
 import { CoverPanel } from './theatre/cover-panel';
@@ -199,7 +223,9 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
     CreatureHero,
     DeathQuestion,
     DeathSaves,
+    InspirationCard,
     CombatBar,
+    HiddenRevealCard,
     CombatLogPanel,
     CombatMapCard,
     CombatSummary,
@@ -217,9 +243,11 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
     OfferPanel,
     OpportunityCard,
     OrderColumn,
+    OrderStrip,
     OrderList,
     PlayerInitiative,
     TheatreReaction,
+    ReactionQueue,
     TurnBar,
     TrapDamages,
     TurnPanel,
@@ -236,6 +264,8 @@ export class CombatView {
   private readonly creaturesApi = inject(CreaturesClient);
   private readonly tableRules = inject(TableRulesClient);
   private readonly bottomSheet = inject(MatBottomSheet);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
   protected readonly phone = mediaQuery(PHONE_QUERY);
   /** From 1024px the master has the combat bar (E6-11); below it the turn card does it all (E6-12). */
   protected readonly laptop = mediaQuery('(min-width: 1024px)');
@@ -293,9 +323,16 @@ export class CombatView {
   private readonly deathKey = new ActionKey();
   private readonly confirmDeathKey = new ActionKey();
   private readonly leaveFormKey = new ActionKey();
-  private readonly shieldHandled = new Set<string>();
+  /** The reaction windows whose sheet already opened by itself: it opens once for each, never again after it closed. */
+  private readonly reactionHandled = new Set<string>();
+  /** The reaction sheet is on screen: no second one opens over it. */
+  private readonly reactionOpen = signal(false);
 
   protected readonly encounter = computed(() => this.state().shown());
+  /** "Combate atualizado agora." (PM-02c 9c): said once when the page comes up with the turn on hold, that is, after a reload;
+   * it goes when the wait is over. Nothing here is kept in the browser: the combat says what waits. */
+  protected readonly refreshed = signal('');
+  private refreshChecked = false;
   protected readonly image = computed(() => {
     const e = this.encounter();
     const map = this.mapState().map();
@@ -481,6 +518,10 @@ export class CombatView {
     const own = this.own();
     return !!e && !!own && acts(e, own);
   });
+  /** On a phone, on the player's own turn, the order strip goes under the actions instead of between the title and them. */
+  protected readonly orderBelow = computed(
+    () => !this.laptop() && this.myTurn() && !this.ownDown() && !this.creatureTab(),
+  );
   // ---- what the player plays: the character and its creatures (MR-037, E9-12) ----
 
   /** The tabs of the turn bar: the character, then each group of creatures (a casting's, in a joint turn, or one alone). */
@@ -561,6 +602,8 @@ export class CombatView {
   );
   /** Where the combatant of the move page can go (`GetMoveOptions`): the player's own, or whoever the master's reach is on for. */
   protected readonly moveOptions = new MoveOptionsState();
+  /** The "Saltar" page's "Distância" is on: the options are the long jump's (and its warning), not the walk's. */
+  protected readonly moveJump = signal<{ readonly runningStart: boolean } | null>(null);
   /** The master's "Mostrar o alcance": the reach of whoever is on turn, drawn on the map. */
   protected readonly reachOn = signal(false);
   /** The master's "Movimento forçado" box: it is for one drag, and goes off when the drag is taken. */
@@ -597,19 +640,39 @@ export class CombatView {
     const e = this.encounter();
     return e ? offersToAnswer(e) : [];
   });
-  /** What the waiting mover reads: their move landed, and each offer waits for its answer. */
+  /** What the waiting mover reads: their move landed, and each offer waits for its answer. Any other wait for the master
+   * (`turn_held`: a question about hidden creatures) is only "Esperando o mestre", on the player's turn and on another's,
+   * never why (RN-10). */
   protected readonly waiting = computed(() => {
     const e = this.encounter();
     const own = this.own();
-    return e && own && !this.isMaster() ? waitingText(e, offersHolding(e, own.id)) : null;
+    if (!e || !own || this.isMaster()) {
+      return null;
+    }
+    // What the server says the combat waits for (a reaction, a concentration save), written for this player.
+    return (
+      reactionWait(e) ?? waitingText(e, offersHolding(e, own.id)) ?? heldWait(e, this.myTurn())
+    );
   });
-  /** The master's bar: "Esperando a sua reação: Goblin 2". */
+  /** The master's bar: "Esperando a sua resposta: escondidas atingidas", or "Esperando a sua reação: Goblin 2". */
   protected readonly waitNote = computed(() => {
     const e = this.encounter();
-    return e && this.isMaster()
-      ? barText(e, (characterId) => this.info().get(characterId)?.playerName ?? '')
-      : '';
+    if (!e || !this.isMaster()) {
+      return '';
+    }
+    return (
+      revealBarText(e) ||
+      barText(e, (characterId) => this.info().get(characterId)?.playerName ?? '') ||
+      windowsBarText(e)
+    );
   });
+  /** Why "Próximo turno" waits while questions about hidden creatures are open ("Responda ao pedido abaixo para seguir."). */
+  protected readonly waitWhy = computed(() => {
+    const e = this.encounter();
+    return e && this.isMaster() ? revealWhy(e) : '';
+  });
+  /** The Portuguese name of each spell a question is about, read through the catalog. */
+  protected readonly revealSpellNames = signal<ReadonlyMap<string, string>>(new Map());
   /** The NPC reactors' attacks with their numbers, by offer (read from the reactor's own options). */
   protected readonly reactorOptions = signal<ReadonlyMap<string, GetTurnOptionsResponse>>(
     new Map(),
@@ -730,22 +793,12 @@ export class CombatView {
       !this.active() ||
       own.reactionUsed ||
       isDown(own) ||
+      isDead(own) ||
       !opts?.options
     ) {
       return [];
     }
-    return opts.options.attacks.flatMap((a) => {
-      const atk = a.attack;
-      // The melee reach is 5 ft, whatever range the weapon has when thrown.
-      const reach = atk
-        ? opts.attackTargets
-            .find((t) => t.attackKey === atk.key)
-            ?.targets.some((t) => t.distanceFt !== undefined && t.distanceFt <= 5)
-        : false;
-      return atk && atk.kind === AttackKind.WEAPON && atk.saveDc === 0 && atk.melee && reach
-        ? [{ key: atk.key, name: atk.namePt || atk.name }]
-        : [];
-    });
+    return reachingAttacks(opts);
   });
   /** The characters at three failures: the master is asked to confirm each death (E6-30). */
   protected readonly dying = computed(() =>
@@ -825,6 +878,19 @@ export class CombatView {
   }
 
   constructor() {
+    effect(() => {
+      const e = this.encounter();
+      untracked(() => {
+        const held =
+          !!e && e.status === EncounterStatus.ACTIVE && (e.turnHeld || questions(e).length > 0);
+        if (e && !this.refreshChecked) {
+          this.refreshChecked = true;
+          this.refreshed.set(held ? 'Combate atualizado agora.' : '');
+        } else if (!held) {
+          this.refreshed.set('');
+        }
+      });
+    });
     effect(() => {
       const e = this.encounter();
       const campaignId = this.campaignId();
@@ -944,17 +1010,49 @@ export class CombatView {
         });
       }
     });
-    // A hit on the player's character that waits for their reaction opens Escudo (E6-28).
+    // A reaction window the player answers (Escudo, Esquiva, Contramágica, the concentration save...) opens its sheet
+    // by itself, once; a reload brings it back, as the window lives on the server.
     effect(() => {
       const e = this.encounter();
       const own = this.own();
-      if (this.isMaster() || !e || !own || e.status !== EncounterStatus.ACTIVE) {
+      if (
+        this.isMaster() ||
+        !e ||
+        !own ||
+        e.status !== EncounterStatus.ACTIVE ||
+        this.reactionOpen()
+      ) {
         return;
       }
-      const prompt = e.reactionPrompts.find((p) => p.targetId === own.id);
-      if (prompt && !this.shieldHandled.has(prompt.pendingDamageId)) {
-        this.shieldHandled.add(prompt.pendingDamageId);
-        untracked(() => this.openShield(prompt));
+      const window = sheetWindow(e);
+      if (window && !this.reactionHandled.has(window.id)) {
+        this.reactionHandled.add(window.id);
+        untracked(() => this.openReaction(window));
+      }
+    });
+    // A roll held for Bardic Inspiration (the player read the screen again, or left the sheet): the question opens by itself, once.
+    effect(() => {
+      const e = this.encounter();
+      const offer = this.ownOffer();
+      // The turn options arrive after the combat: the question opens when its attack is in them.
+      const ready = this.options() !== null;
+      // While an attack sheet is open it is the one that gets the answer of its own roll.
+      if (
+        this.isMaster() ||
+        !e ||
+        !offer ||
+        !ready ||
+        this.attackSheetOpen() ||
+        e.status !== EncounterStatus.ACTIVE
+      ) {
+        return;
+      }
+      if (!this.inspirationHandled.has(offer.holdId)) {
+        untracked(() => {
+          if (this.openHeldRoll()) {
+            this.inspirationHandled.add(offer.holdId);
+          }
+        });
       }
     });
     // "Mover" belongs to the player's turn: when it ends, the page closes.
@@ -992,7 +1090,11 @@ export class CombatView {
         return;
       }
       void e.revision;
-      untracked(() => void this.moveOptions.load(this.api, campaignId, e.id, who));
+      // Only while the "Saltar" page is the one open: the master's reach and a closed page read the walk's.
+      const jump = this.state().moving() ? this.moveJump() : null;
+      untracked(
+        () => void this.moveOptions.load(this.api, campaignId, e.id, who, jump ?? undefined),
+      );
     });
     // An offer the player answers opens its prompt by itself, once (E9-13).
     effect(() => {
@@ -1094,6 +1196,25 @@ export class CombatView {
         );
         if (out !== undefined) {
           this.lostConcentration.set(out);
+        }
+      });
+    });
+    // The questions about hidden creatures name their spell: read once per spell through the catalog.
+    effect(() => {
+      const e = this.encounter();
+      const campaignId = this.campaignId();
+      const keys = e && this.isMaster() ? questions(e).map((q) => q.spellKey) : [];
+      untracked(() => {
+        for (const key of new Set(keys)) {
+          if (this.revealSpellNames().has(key)) {
+            continue;
+          }
+          void this.catalog.details(campaignId, key).then((d) => {
+            const name = d?.spell?.namePt || d?.spell?.name;
+            if (name) {
+              this.revealSpellNames.update((m) => new Map(m).set(key, name));
+            }
+          });
         }
       });
     });
@@ -1227,6 +1348,24 @@ export class CombatView {
     });
   }
 
+  /** "Revelar" or "Manter escondidas" on a question about hidden creatures (PM-02c state 9). */
+  protected answerReveal(a: RevealAnswer): Promise<boolean> {
+    return this.run((e) => this.api.resolveHiddenReveal(this.campaignId(), e.id, a.id, a.reveal));
+  }
+
+  /** The last question answered: the focus goes on to the order, the next stop of the column. */
+  protected focusOrder(): void {
+    afterNextRender(
+      () =>
+        this.host.nativeElement
+          .querySelector<HTMLElement>(
+            'app-order-list button:not([disabled]), app-order-list [tabindex="0"]',
+          )
+          ?.focus(),
+      { injector: this.injector },
+    );
+  }
+
   /** "Encerrar a parte da Brisa": the master ends one member's part. */
   protected endPart(id: string): Promise<boolean> {
     return this.run((e) => this.api.endTurn(this.campaignId(), e.id, id, false, e.round));
@@ -1321,6 +1460,11 @@ export class CombatView {
       return;
     }
     const name = option.action.namePt;
+    const flow = resourceFlow(key);
+    if (flow) {
+      this.openResourceFlow(flow, key, own.id, e.id);
+      return;
+    }
     if (key === 'feature:second-wind') {
       const data: FeatureSheetData = {
         campaignId: this.campaignId(),
@@ -1359,6 +1503,57 @@ export class CombatView {
     ) {
       this.actionNote.set(note);
     }
+  }
+
+  /** The dialog of a class resource (Cura pelas Mãos, Conjuração Flexível, Inspiração de Bardo): `TakeAction` refuses
+   * these actions, `ResourceService` runs them. */
+  private openResourceFlow(
+    flow: NonNullable<ReturnType<typeof resourceFlow>>,
+    key: string,
+    actorId: string,
+    encounterId: string,
+  ): void {
+    const base = {
+      campaignId: this.campaignId(),
+      encounterId,
+      actorId,
+      vitals: this.ownVitals,
+      state: this.state(),
+    };
+    const targets = this.options()?.resourceTargets.find((t) => t.actionKey === key)?.targets ?? [];
+    switch (flow) {
+      case 'lay-on-hands':
+        openLayOnHands(this.dialog, this.bottomSheet, { ...base, targets }).subscribe();
+        break;
+      case 'bardic-give':
+        openBardicInspiration(this.dialog, this.bottomSheet, { ...base, targets }).subscribe();
+        break;
+      default:
+        openFlexibleCasting(this.dialog, this.bottomSheet, {
+          ...base,
+          direction: flow === 'flexible-create' ? 'create' : 'convert',
+        }).subscribe();
+    }
+  }
+
+  /** The Bardic Inspiration die the player's character holds (the server sends it to the holder and the master only). */
+  protected readonly ownDie = computed(() => this.own()?.inspirationDie ?? null);
+  /** The attack roll of the player's character that waits for the answer about the die. */
+  protected readonly ownOffer = computed(() => this.own()?.inspirationOffer ?? null);
+  /** The held rolls the page already opened its question for: a roll's own sheet registers its hold, so the reading
+   * of the screen does not open the question a second time. */
+  private readonly inspirationHandled = new Set<string>();
+  private readonly attackSheetOpen = signal(false);
+
+  /** "Responder": the question of a held roll, at the d20 that was rolled. `false` while the attack is not in the options. */
+  protected openHeldRoll(): boolean {
+    const offer = this.ownOffer();
+    const attack = this.options()?.options?.attacks.find((a) => a.attack?.key === offer?.attackKey);
+    if (!offer || !attack) {
+      return false;
+    }
+    this.attackSheet(offer.attackKey, undefined, false, undefined, undefined, offer);
+    return true;
   }
 
   /** "Atacar": the attack sheet (Alvo, Rolar, Dano). `asReaction` is the
@@ -1432,6 +1627,8 @@ export class CombatView {
     asReaction = false,
     who?: Combatant,
     creatureOpts?: GetTurnOptionsResponse | null,
+    held?: InspirationOffer,
+    catchWindowId = '',
   ): void {
     const e = this.encounter();
     const own = who ?? this.own();
@@ -1452,6 +1649,7 @@ export class CombatView {
       preference: this.dicePreference(),
       state: this.state(),
       asReaction,
+      ...(catchWindowId ? { catchWindowId } : {}),
       bonusRule: option?.bonusRule,
       bonusAttacksLeft: option?.bonusAttacksLeft,
       beamsLeft: option?.beamsLeft || attack.beams,
@@ -1465,14 +1663,25 @@ export class CombatView {
             targetLabel: e.combatants.find((c) => c.id === resume.targetId)?.label ?? '',
           }
         : undefined,
+      inspiration: held
+        ? {
+            offer: held,
+            targetLabel: e.combatants.find((c) => c.id === held.targetId)?.label ?? '',
+          }
+        : undefined,
+      onHeld: (holdId) => this.inspirationHandled.add(holdId),
     };
+    this.attackSheetOpen.set(true);
     openSheet<AttackSheet, AttackSheetData, boolean>(this.dialog, this.bottomSheet, AttackSheet, {
       data,
       ariaLabel: asReaction
         ? `Ataque de oportunidade com ${attack.namePt || attack.name}`
         : `Atacar com ${attack.namePt || attack.name}${who ? `: ${who.label}` : ''}`,
       labelledBy: 'sheet-t',
-    }).subscribe();
+    }).subscribe({
+      complete: () => this.attackSheetOpen.set(false),
+      error: () => this.attackSheetOpen.set(false),
+    });
   }
 
   /** The master taps a door of the map: its sheet opens (open, close, lock, or reveal a secret door). The map reads itself again on the stream. */
@@ -1564,17 +1773,102 @@ export class CombatView {
       targets: opts.spellTargets.find((t) => t.spellKey === key),
       shieldFree: shield ? shield.slots.reduce((n, s) => n + s.free, 0) : null,
       shieldName: shield?.spell?.namePt || 'Escudo Arcano',
+      metamagic: spell?.metamagicOptions ?? [],
+      sorceryPoints: poolOf(vitals?.resources, SORCERY_POINTS_RESOURCE),
       attackBonus,
       diceMode: this.diceMode(),
       preference: this.dicePreference(),
       state: this.state(),
       resume,
+      map: this.castMap(),
     };
+    // A spell placed on the map opens on the map, its first step (PM-02a); any other on the title.
+    const placed =
+      !resume &&
+      !!data.map &&
+      !!data.targets &&
+      data.targets.placement !== AreaPlacement.UNSPECIFIED &&
+      data.targets.placement !== AreaPlacement.CASTER;
     openSheet<CastSheet, CastSheetData, boolean>(this.dialog, this.bottomSheet, CastSheet, {
       data,
       ariaLabel: resume ? `Rolar o dano de ${name}` : `Conjurar ${name}`,
       labelledBy: 'sheet-t',
+      ...(placed ? { focus: '[role="application"]' } : {}),
     }).subscribe();
+  }
+
+  /** The battle map an area spell is placed on: the picture, the grid, the layers and, for a player, what the fog lets them
+   * see. `null` without a map (theatre of the mind), where every area spell keeps its list. */
+  private castMap(): CastMapData | null {
+    const e = this.encounter();
+    const img = this.image();
+    if (!e || !img || this.theatre()) {
+      return null;
+    }
+    return {
+      image: img,
+      mapName: this.mapName(),
+      columns: e.gridColumns,
+      rows: e.gridRows,
+      layers: this.layers(),
+      fog: this.fogVision(),
+    };
+  }
+
+  /** A spell of the options with its targets, its level and its Portuguese name; `null` when the options lack it. */
+  private areaSpell(key: string) {
+    const opts = this.options();
+    const spell = opts?.options?.spells.find((s) => s.spell?.key === key);
+    const targets = opts?.spellTargets.find((t) => t.spellKey === key);
+    if (!spell?.spell || !targets) {
+      return null;
+    }
+    return {
+      spell,
+      targets,
+      level: spell.spell.level,
+      name: spell.spell.namePt || spell.spell.name,
+    };
+  }
+
+  /** "Conjurar" on an NPC's area spell: the master's picker in a dialog (PM-02d state 11), the same steps as the player's. */
+  protected openMasterArea(key: string): void {
+    const e = this.encounter();
+    const who = e ? currentCombatant(e) : null;
+    const found = this.areaSpell(key);
+    const map = this.castMap();
+    if (!e || !who || !found || !map) {
+      return;
+    }
+    const { spell, targets, level, name } = found;
+    // The NPC's slots are not counted: the lowest the options offer, or the spell's own level.
+    const row = defaultSlot(slotRows(level, spell.slots, [], null));
+    const data: MasterAreaCastData = {
+      campaignId: this.campaignId(),
+      encounterId: e.id,
+      caster: who,
+      spellKey: key,
+      name,
+      level,
+      slot: level > 0 ? { level: row?.level ?? level, pact: row?.pact ?? false } : null,
+      economy: spell.economy,
+      targets,
+      map,
+      state: this.state(),
+    };
+    openSheet<MasterAreaCast, MasterAreaCastData, boolean>(
+      this.dialog,
+      this.bottomSheet,
+      MasterAreaCast,
+      {
+        data,
+        ariaLabel: `${who.label} conjura ${name}`,
+        labelledBy: 'sheet-t',
+        width: '1100px',
+        tall: true,
+        ...(targets.placement === AreaPlacement.CASTER ? {} : { focus: '[role="application"]' }),
+      },
+    ).subscribe();
   }
 
   /** The spell attack bonus, for a typed d20: the one of a spell attack in the
@@ -1743,29 +2037,57 @@ export class CombatView {
     ).subscribe();
   }
 
-  /** "Você foi atingido: usar Escudo?": opens by itself, and has to be answered. */
-  private openShield(prompt: ReactionPrompt): void {
+  /** "Você foi atingido: usar Escudo?" and the other reactions: opens by itself, and has to be answered. */
+  private openReaction(window: ReactionWindow): void {
     const e = this.encounter();
     const own = this.own();
     const vitals = this.vitals().find((v) => v.characterId === own?.characterId);
     if (!e) {
       return;
     }
-    const data: ShieldSheetData = {
+    const data: ReactionSheetData = {
       campaignId: this.campaignId(),
       encounterId: e.id,
-      prompt,
+      window,
       round: e.round,
       usage: vitals?.spellSlots ?? [],
       pact: vitals?.pactSlots ?? null,
       state: this.state(),
       armorClass: this.armorClass(),
+      diceMode: this.diceMode(),
+      preference: this.dicePreference(),
     };
-    openSheet<ShieldSheet, ShieldSheetData, boolean>(this.dialog, this.bottomSheet, ShieldSheet, {
-      data,
-      ariaLabel: 'Você foi atingido: usar Escudo Arcano?',
-      alert: true,
-    }).subscribe();
+    this.reactionOpen.set(true);
+    openSheet<ReactionSheet, ReactionSheetData, ReactionSheetResult>(
+      this.dialog,
+      this.bottomSheet,
+      ReactionSheet,
+      {
+        data,
+        ariaLabel: promptView(window, e.round)?.ariaLabel ?? 'Reação',
+        alert: true,
+      },
+    ).subscribe({
+      next: (result) => {
+        if (result?.throwWindowId) {
+          this.reactionHandled.add(result.throwWindowId);
+          this.openThrowBack(result.throwWindowId);
+        }
+      },
+      complete: () => this.reactionOpen.set(false),
+    });
+  }
+
+  /** "Devolver (1 de chi)": the attack with the missile the monk caught, part of the same reaction. */
+  private openThrowBack(windowId: string): void {
+    const attacks = this.options()?.options?.attacks ?? [];
+    const pick =
+      attacks.find(
+        (a) => a.attack?.kind === AttackKind.WEAPON && a.attack.saveDc === 0 && !a.attack.melee,
+      ) ?? attacks.find((a) => a.attack?.kind === AttackKind.WEAPON && a.attack.saveDc === 0);
+    if (pick?.attack) {
+      this.attackSheet(pick.attack.key, undefined, true, undefined, undefined, undefined, windowId);
+    }
   }
 
   /** A damage was settled: the master's card stays for its note. */
@@ -1817,6 +2139,11 @@ export class CombatView {
     return this.run((e) =>
       this.api.setConditions(this.campaignId(), e.id, id, { endConcentration: true }),
     );
+  }
+
+  /** The master: "Encerrar Ajuda": the bonus goes, and the hit points lose only what passes the new maximum. */
+  protected endAid(id: string): Promise<boolean> {
+    return this.run((e) => this.api.endCombatEffect(this.campaignId(), e.id, id, CombatEffect.AID));
   }
 
   protected remove(id: string): Promise<boolean> {
@@ -2122,6 +2449,10 @@ export class CombatView {
     }
     const before = own.movementUsedDft;
     this.moveError.set('');
+    // "Saltar e desengajar": the action is spent first, so the jump leaves the reach with no opportunity attack.
+    if (req.kind === 'long' && req.disengage && !(await this.disengage())) {
+      return;
+    }
     const ok = await this.runMove((e) => {
       // The same jump again (a lost answer) is a retry: it keeps its key and is not charged twice.
       const key = this.jumpKey.keyFor([e.id, own.id, req]);
@@ -2263,34 +2594,10 @@ export class CombatView {
     this.state().moving.set(true);
   }
 
-  /** The first free square nearest the middle of the map: where "Colocar no
-   * mapa" puts a combatant that came without a token. */
+  /** "Colocar no mapa": the server picks the square, by the rule that places the
+   * NPCs when the combat begins (free floor, away from the players). */
   protected async place(id: string): Promise<void> {
-    const e = this.encounter();
-    if (!e) {
-      return;
-    }
-    const taken = new Set(e.combatants.filter((c) => c.placed).map((c) => `${c.col},${c.row}`));
-    const middle: Square = { col: Math.floor(e.gridColumns / 2), row: Math.floor(e.gridRows / 2) };
-    let best: Square | null = null;
-    for (let row = 0; row < e.gridRows; row++) {
-      for (let col = 0; col < e.gridColumns; col++) {
-        const d = Math.max(Math.abs(col - middle.col), Math.abs(row - middle.row));
-        const dBest = best
-          ? Math.max(Math.abs(best.col - middle.col), Math.abs(best.row - middle.row))
-          : Infinity;
-        if (!taken.has(`${col},${row}`) && d < dBest) {
-          best = { col, row };
-        }
-      }
-    }
-    if (best) {
-      const spot = best;
-      await this.run(
-        async (current) =>
-          (await this.api.move(this.campaignId(), current.id, id, spot.col, spot.row)).encounter,
-      );
-    }
+    await this.run((current) => this.api.place(this.campaignId(), current.id, id));
   }
 
   protected leave(): void {

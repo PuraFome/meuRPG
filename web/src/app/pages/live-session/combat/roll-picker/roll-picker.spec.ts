@@ -50,6 +50,20 @@ describe('RollPicker', () => {
     expect(typeOnly.textContent).not.toContain('Rolar no app');
   });
 
+  it('reads the total on the button, not the typed sum, when it confirms a damage ("Confirmar 25")', () => {
+    const { type, button, rolled } = setup({
+      min: 3,
+      max: 36,
+      modifier: 3,
+      confirmTotal: true,
+      canApp: false,
+    });
+    type('22');
+    expect(button('Confirmar 25')).toBeTruthy();
+    button('Confirmar 25')!.click();
+    expect(rolled).toEqual(['typed 22']);
+  });
+
   it('rolls in the app on one tap', () => {
     const { button, rolled } = setup();
     button('Rolar no app')!.click();
@@ -91,6 +105,23 @@ describe('RollPicker', () => {
     expect(el.querySelector('[role="status"]')?.textContent).toContain('9 + 2 = 11');
     button('Confirmar 9')!.click();
     expect(rolled).toEqual(['typed 9']);
+  });
+
+  it('writes the live total with the groups of dice when the page gives the formula (Crítico Brutal)', () => {
+    const { fixture, el, type, button } = setup({
+      min: 3,
+      max: 36,
+      modifier: 3,
+      totalNote: 'de cortante',
+      typedFormula: (sum: number) => ({ text: `${sum} (3d12) + 3 = ${sum + 3}`, total: sum + 3 }),
+    });
+    button('Digitar o resultado')!.click();
+    fixture.detectChanges();
+    type('22');
+    const status = el.querySelector('[role="status"]')!;
+    expect(status.querySelector('.type__num')?.textContent).toBe('25');
+    expect(status.textContent?.replace(/\s+/g, ' ')).toContain('22 (3d12) + 3 = 25');
+    expect(status.querySelector('.type__cap')?.textContent).toBe('dado físico · de cortante');
   });
 
   it('shows only a dash in the well until the number is valid, and keeps "1 a 20" together for a screen reader', () => {

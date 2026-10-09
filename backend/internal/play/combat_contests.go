@@ -267,7 +267,7 @@ func (s *Service) StartContest(
 		row := playdb.InsertContestParams{
 			EncounterID: c.enc.ID, InitiatorID: initiator.ID, Round: c.enc.Round, CreatedAt: c.now, Purpose: purposeKey, Kind: contestKindContest,
 		}
-		var roll *checkRoll
+		var roll *contestRoll
 		switch {
 		case purpose == playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE:
 			hold, ok := holdOn(holdsOf(holds), initiator)
@@ -497,7 +497,7 @@ func (s *Service) RespondContest(
 		}
 
 		if defer_ {
-			stored, err := encodeRoll(checkRoll{Skill: skillKey, Deferred: true})
+			stored, err := encodeRoll(contestRoll{Skill: skillKey, Deferred: true})
 			if err != nil {
 				return nil, err
 			}
@@ -869,12 +869,6 @@ func (s *Service) ReleaseGrapple(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.ReleaseGrappleResponse{Encounter: out}), nil
-}
-
-// incapacitating are the conditions that make a creature incapacitated (SRD 5.1,
-// Conditions): the Incapacitated condition itself and the ones that include it.
-var incapacitating = []string{
-	"condition:incapacitated", "condition:paralyzed", "condition:petrified", "condition:stunned", "condition:unconscious",
 }
 
 // pruneHolds ends the grapples that no longer hold, after any change of a combat (SRD 5.1,

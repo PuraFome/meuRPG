@@ -51,6 +51,18 @@ describe('combat errors', () => {
     );
   });
 
+  it('says a wall is no place to stand and that the dead cannot be healed', () => {
+    expect(blockedMessage({ reason: EncounterBlockedReason.WALL_ON_SQUARE } as never)).toMatch(
+      'Esse quadrado é uma parede: ninguém fica dentro dele.',
+    );
+    expect(blockedMessage({ reason: EncounterBlockedReason.NO_FREE_SQUARE } as never)).toBe(
+      'Não há quadrado livre longe dos jogadores neste mapa.',
+    );
+    expect(blockedMessage({ reason: EncounterBlockedReason.TARGET_DEAD } as never)).toBe(
+      'Não dá para curar quem já morreu.',
+    );
+  });
+
   it('says a locked door stopped the very first step: nothing moved, and only the master unlocks it (RN-26)', () => {
     expect(blockedMessage({ reason: EncounterBlockedReason.DOOR_LOCKED } as never)).toBe(
       'A porta está trancada: você não saiu do lugar. Só o mestre a destranca.',
@@ -61,6 +73,14 @@ describe('combat errors', () => {
     expect(blockedMessage({ reason: EncounterBlockedReason.OPPORTUNITY_PENDING } as never)).toMatch(
       /Esperando a reação do mestre/,
     );
+  });
+
+  it('says only that the turn waits for the master when a question about hidden creatures holds it (RN-10)', () => {
+    const text = blockedMessage({
+      reason: EncounterBlockedReason.HIDDEN_REVEAL_PENDING,
+    } as never);
+    expect(text).toBe('Esperando o mestre.');
+    expect(text).not.toMatch(/escond|criatura|magia|área/i);
   });
 
   it('speaks by code when there is no typed detail', () => {
