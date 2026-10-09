@@ -1,0 +1,57 @@
+:host {
+  display: block;
+}
+
+// The map on the left and who is inside on the right from a laptop up; one column (map on top) below.
+.cols {
+  display: grid;
+  gap: var(--mr-space-5);
+
+  @media (min-width: 1024px) {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  }
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  min-width: 0;
+}
+
+.wait {
+  margin: 0;
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+}
+
+.switch {
+  padding-top: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+}
+
+// "Cancelar", "Mudar o local" and the cast, at the right on a laptop; stacked, the cast on top, on a phone.
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--mr-space-2);
+
+  @media (max-width: 767.98px) {
+    flex-direction: column-reverse;
+  }
+}
+
+.btn,
+.quiet {
+  --mat-button-filled-container-height: 48px;
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-text-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+}
+
+.quiet {
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  font-weight: 700;
+}

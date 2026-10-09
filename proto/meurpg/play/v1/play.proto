@@ -1183,12 +1183,25 @@ message WatchGameSessionResponse {
     // queue is not queued twice; at most one goes out per campaign every 250 ms, and
     // the last change is never left unannounced.
     ContentChanged content_changed = 23;
+    // A player's area spell hit hidden creatures and the table asks the master
+    // whether they appear (CombatService.ResolveHiddenReveal). Only the master
+    // gets it; no player's stream ever carries it (RN-10).
+    HiddenHitPending hidden_hit_pending = 24;
     // A spell cast outside a combat changed (CastingService): it started, finished, ended
     // or failed. Read it again (CastingService.ListSpellCasts). A hint with no content
     // (RN-10): it names no caster, spell or target. The master gets every one; a
     // player gets it only for a cast they may see, and a cast by an NPC that is not on
     // the stage reaches the master alone.
-    SpellCastsChanged spell_casts_changed = 24;
+    SpellCastsChanged spell_casts_changed = 25;
+  }
+
+  // HiddenHitPending says a question waits for the master in a combat. It names
+  // no creature: the master reads Encounter.pending_hidden_reveals.
+  message HiddenHitPending {
+    // The combat (a UUID).
+    string encounter_id = 1;
+    // The question (a UUID).
+    string pending_reveal_id = 2;
   }
 
   // SpellCastsChanged is the content-free hint that the casts outside a combat changed.

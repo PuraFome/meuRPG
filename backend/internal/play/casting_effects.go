@@ -101,7 +101,7 @@ func (s *Service) takeEffect(ctx context.Context, c *combatTx, m authz.Membershi
 		Concentrating: lasts && osp.Spell.Concentration, Targets: targets,
 		DiceCount: rolled.count, DiceSides: rolled.sides, RollFaces: nonNilFaces(rolled.faces), RollTotal: rolled.total,
 		Physical: rolled.physical, CreatureIds: nonNil(out.created), CastAt: &now,
-		SlotLevel: slotLevelOf(plan.slot), SlotPact: plan.slot != nil && plan.slot.Pact,
+		SlotLevel: castSlotLevel(plan.slot), SlotPact: plan.slot != nil && plan.slot.Pact,
 	})
 	if err != nil {
 		return out, fmt.Errorf("finish the cast: %w", err)

@@ -90,7 +90,9 @@ func eventCase(ev *playv1.WatchGameSessionResponse) string {
 // notTriggered lists the events the script does not make, and why. An event that is neither
 // triggered nor here fails TestLeakMatrix/stream: a new kind of event must be exercised or
 // explained.
-var notTriggered = map[string]string{}
+var notTriggered = map[string]string{
+	"hidden_hit_pending": "needs a player's area spell that hits a hidden creature, which has a world of its own: TestAnAreaSpellThatHitsAHiddenCreatureNamesItToNoPlayerBeforeTheReveal (the master hears it, no player does)",
+}
 
 func checkStream(t *testing.T, w *world, got *answers) {
 	t.Helper()

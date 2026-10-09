@@ -310,7 +310,7 @@ func (s *Service) CastSpellOutsideCombat(
 		now := c.now
 		row, err := c.q.InsertSpellCast(ctx, playdb.InsertSpellCastParams{
 			CampaignID: m.CampaignID, GameSessionID: c.session.ID, CasterID: g.caster.ID, SpellKey: spellKey, Ritual: ritual,
-			SlotLevel: slotLevelOf(plan.slot), SlotPact: plan.slot != nil && plan.slot.Pact, Status: castCasting, Concentrating: long,
+			SlotLevel: castSlotLevel(plan.slot), SlotPact: plan.slot != nil && plan.slot.Pact, Status: castCasting, Concentrating: long,
 			CastingMinutes: clamp32(plan.minutes, 0, 1_000_000), Lasts: plan.osp.Lasts,
 			DurationSeconds: durationOf(plan.osp), RestEnds: restOf(plan.osp), Secret: g.secret, StartedAt: now,
 		})
@@ -364,8 +364,8 @@ func (s *Service) CastSpellOutsideCombat(
 	})
 }
 
-// slotLevelOf is the slot level a cast records: 0 without a slot.
-func slotLevelOf(slot *slotRef) int32 {
+// castSlotLevel is the slot level a cast records: 0 without a slot.
+func castSlotLevel(slot *slotRef) int32 {
 	if slot == nil {
 		return 0
 	}
@@ -510,7 +510,7 @@ func (s *Service) planCast(ctx context.Context, c *combatTx, m authz.Membership,
 // number; a spell that reaches only the caster takes the caster by itself.
 func (s *Service) checkCastTargets(_ context.Context, _ *combatTx, m authz.Membership, plan castPlan) error {
 	sp := plan.osp.Spell
-	level := int(slotLevelOf(plan.slot))
+	level := int(castSlotLevel(plan.slot))
 	if level == 0 {
 		level = sp.Level
 	}
