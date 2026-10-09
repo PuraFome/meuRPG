@@ -3,15 +3,29 @@ import { createClient } from '@connectrpc/connect';
 
 import type { CharacterVitals } from '../../../gen/meurpg/play/v1/play_pb';
 import {
+  type ConvertSpellSlotResponse,
+  type CreateSpellSlotResponse,
+  type GiveBardicInspirationResponse,
+  LayOnHandsCure,
+  type UseLayOnHandsResponse,
   type GetRestPreviewResponse,
   type RestKind,
   ResourceService,
   type SpendHitDiceResponse,
 } from '../../../gen/meurpg/play/v1/resources_pb';
+import { type AttackResult, attackResult } from '../combat/combat-client';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
 /** How the die of a spent hit die comes (RN-18): the app rolls it, or the player typed the face of a real die. */
 export type HitDieRoll = { readonly inApp: true } | { readonly face: number };
+
+/** What a Lay on Hands touch does: restore `amount` hit points (1 to what the pool has left), or cure one disease or
+ * neutralize one poison (5 points). */
+export type LayOnHandsEffect =
+  { readonly amount: number } | { readonly cure: 'disease' | 'poison' };
+
+/** How the die of a Bardic Inspiration comes when the player uses it: the app rolls it, or the typed face. */
+export type InspirationRoll = HitDieRoll;
 
 /** How many dice of each size come back to one character on a long rest (`HitDiceChoice`). */
 export interface HitDiceChoiceSpec {
@@ -71,5 +85,110 @@ export class ResourceClient {
           ? { case: 'rollInApp', value: true }
           : { case: 'typedFace', value: roll.face },
     });
+  }
+
+  /** Lay on Hands: the touch, as an action of the paladin's turn. The answer never says why a touch did nothing. */
+  useLayOnHands(
+    campaignId: string,
+    encounterId: string,
+    actorId: string,
+    targetId: string,
+    effect: LayOnHandsEffect,
+    idempotencyKey: string,
+  ): Promise<UseLayOnHandsResponse> {
+    return this.client.useLayOnHands({
+      campaignId,
+      encounterId,
+      actorId,
+      targetId,
+      idempotencyKey,
+      effect:
+        'amount' in effect
+          ? { case: 'amount', value: effect.amount }
+          : {
+              case: 'cure',
+              value: effect.cure === 'poison' ? LayOnHandsCure.POISON : LayOnHandsCure.DISEASE,
+            },
+    });
+  }
+
+  /** Flexible Casting, points to slot: a slot of level 1 to 5 as a bonus action. */
+  createSpellSlot(
+    campaignId: string,
+    encounterId: string,
+    actorId: string,
+    slotLevel: number,
+    idempotencyKey: string,
+  ): Promise<CreateSpellSlotResponse> {
+    return this.client.createSpellSlot({
+      campaignId,
+      encounterId,
+      actorId,
+      slotLevel,
+      idempotencyKey,
+    });
+  }
+
+  /** Flexible Casting, slot to points: a free slot is expended for as many points as its level. */
+  convertSpellSlot(
+    campaignId: string,
+    encounterId: string,
+    actorId: string,
+    slotLevel: number,
+    idempotencyKey: string,
+  ): Promise<ConvertSpellSlotResponse> {
+    return this.client.convertSpellSlot({
+      campaignId,
+      encounterId,
+      actorId,
+      slotLevel,
+      idempotencyKey,
+    });
+  }
+
+  /** Bardic Inspiration: the die to a creature, as a bonus action. */
+  giveBardicInspiration(
+    campaignId: string,
+    encounterId: string,
+    actorId: string,
+    targetId: string,
+    idempotencyKey: string,
+  ): Promise<GiveBardicInspirationResponse> {
+    return this.client.giveBardicInspiration({
+      campaignId,
+      encounterId,
+      actorId,
+      targetId,
+      idempotencyKey,
+    });
+  }
+
+  /** The answer to a held attack roll: use the die (rolled in the app, or its typed face) or keep it. Resolves the
+   * attack as `RollAttack` would have. `roll` is only for `use`. */
+  async answerBardicInspiration(
+    campaignId: string,
+    encounterId: string,
+    holdId: string,
+    use: boolean,
+    roll: InspirationRoll | null,
+    idempotencyKey: string,
+  ): Promise<AttackResult> {
+    const res = await this.client.answerBardicInspiration({
+      campaignId,
+      encounterId,
+      holdId,
+      use,
+      idempotencyKey,
+      roll:
+        use && roll
+          ? 'inApp' in roll
+            ? { case: 'rollInApp', value: true }
+            : { case: 'typedFace', value: roll.face }
+          : { case: undefined },
+    });
+    if (!res.attack) {
+      throw new Error('AnswerBardicInspiration answered without its attack');
+    }
+    return attackResult(res.attack);
   }
 }
