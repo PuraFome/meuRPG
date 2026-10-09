@@ -1,0 +1,79 @@
+<app-sheet-frame
+  title="Gastar dados de vida"
+  titleId="hit-dice-t"
+  [subtitle]="subtitle()"
+  [phone]="inSheet"
+  (closed)="close()"
+>
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  @if (rolls().length > 0) {
+    <ol class="rolls" aria-label="Dados gastos agora">
+      @for (line of rolls(); track $index) {
+        <li class="rolls__line">
+          <mat-icon aria-hidden="true">casino</mat-icon>{{ line }}
+        </li>
+      }
+    </ol>
+  }
+
+  <p class="mr-visually-hidden" role="status" aria-live="polite">{{ latest() }}</p>
+
+  @if (anyLeft()) {
+    <fieldset class="which">
+      <legend class="which__legend">Qual dado</legend>
+      @for (size of sizes(); track size.faces) {
+        <label class="opt" [class.opt--on]="faces() === size.faces" [class.opt--none]="size.left === 0">
+          <input
+            type="radio"
+            class="mr-visually-hidden"
+            name="hit-die"
+            [checked]="faces() === size.faces"
+            [disabled]="size.left === 0"
+            (change)="pick(size.faces)"
+          />
+          <span class="opt__radio" aria-hidden="true"></span>
+          <span class="opt__text">
+            <b>{{ dieName(size.faces) }}</b>
+            <span class="opt__sub">{{ leftWords(size) }}</span>
+          </span>
+        </label>
+      }
+    </fieldset>
+    <p class="note">
+      <mat-icon aria-hidden="true">info</mat-icon>Cada dado cura o número rolado mais o seu modificador de
+      Constituição. Você decide, depois de cada dado, se gasta outro.
+    </p>
+    <app-roll-picker
+      [canApp]="canApp"
+      [canType]="canType"
+      [preferApp]="preferApp"
+      [label]="'Role 1' + chosenName() + ' para o dado de vida'"
+      [hint]="'Role o seu ' + chosenName() + ' e digite o número que saiu (1 a ' + (faces() ?? 1) + ').'"
+      [min]="1"
+      [max]="faces() ?? 1"
+      [appLabel]="'Rolar ' + chosenName() + ' no app'"
+      [hideTotal]="true"
+      [busy]="busy()"
+      [(typing)]="typing"
+      (app)="rollInApp()"
+      (typed)="rollTyped($event)"
+    />
+  } @else {
+    <div class="mr-notice mr-notice--neutral" role="status">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <p><strong>Não há dados de vida para gastar.</strong> Eles voltam num descanso longo.</p>
+    </div>
+  }
+
+  <div foot>
+    <button matButton="outlined" type="button" [attr.aria-disabled]="busy()" (click)="close()">
+      Fechar
+    </button>
+  </div>
+</app-sheet-frame>

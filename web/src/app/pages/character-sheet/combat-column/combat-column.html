@@ -10,6 +10,9 @@
   />
 </section>
 
+<!-- The live counters (Recursos, Espaços de magia) of an open session, from the page (PM-07b 7). -->
+<ng-content select="[resources]" />
+
 @if (s.attacks.length > 0) {
   <section class="mr-panel" aria-labelledby="ataques-heading">
     <h2 id="ataques-heading" class="mr-panel__title">Ataques</h2>
@@ -81,7 +84,7 @@
       }
     }
 
-    @if (slotRows().length > 0) {
+    @if (slotRows().length > 0 && !liveSlots()) {
       <ul class="slots" aria-label="Espaços de magia">
         @for (row of slotRows(); track row.level) {
           <li class="slots__row">
@@ -96,7 +99,7 @@
       </ul>
     }
 
-    @if (pactRow(); as pact) {
+    @if (liveSlots() ? null : pactRow(); as pact) {
       <ul class="slots" aria-label="Espaços do pacto">
         <li class="slots__row">
           <span class="slots__level">Pacto · {{ pact.label }}</span>

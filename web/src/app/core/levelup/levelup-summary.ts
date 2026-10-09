@@ -13,6 +13,7 @@ import {
 } from '../characters/character-labels';
 import type { AbilityKey } from '../characters/characters.types';
 import { joinDots } from '../format/text';
+import { hitDiceWords } from '../resources/hit-dice-text';
 
 /** One line of "O que muda": a label, the value before and after, and a small line under it. */
 export interface ChangeRow {
@@ -60,9 +61,9 @@ const ABILITY_KEY: Record<number, AbilityKey> = {
   [GenAbility.CHARISMA]: 'cha',
 };
 
-/** "3d6", or "3d6 + 1d8" for a multiclass. */
+/** "3d6", or "3d6 e 1d8" for a multiclass (kept apart by size). */
 function hitDice(sheet: DerivedSheet): string {
-  return sheet.hitDice.map((d) => `${d.count}d${d.faces}`).join(' + ');
+  return hitDiceWords(sheet.hitDice);
 }
 
 /** "Novo: A" / "Novas: A e B". */

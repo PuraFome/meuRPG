@@ -70,6 +70,7 @@ function vitals(revision: number): VitalsVm {
     spellSlots: [],
     pactSlots: null,
     hitDice: '3d6',
+    hitDiceSizes: [{ faces: 6, total: 3, used: 1 }],
     hitDiceTotal: 3,
     hitDiceUsed: 1,
     revision,
