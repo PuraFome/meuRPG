@@ -269,8 +269,9 @@ func (s *Service) ConfirmRevivifyTime(
 	var replayed bool
 	var vitals []*playv1.CharacterVitals
 	var slotsLeft int32
+	var encounterID string // the combat that had the dead character, if one did
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		replayed, vitals, slotsLeft = false, nil, 0
+		replayed, vitals, slotsLeft, encounterID = false, nil, 0, ""
 		q := s.queries.WithTx(tx)
 		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -299,7 +300,7 @@ func (s *Service) ConfirmRevivifyTime(
 		status := revivifyDenied
 		if req.Msg.GetWithinMinute() {
 			status = revivifyConfirmed
-			if vitals, slotsLeft, err = s.reviveOutside(ctx, tx, q, session, m, row); err != nil {
+			if vitals, slotsLeft, encounterID, err = s.reviveOutside(ctx, tx, q, session, m, row); err != nil {
 				return err
 			}
 		}
@@ -321,6 +322,9 @@ func (s *Service) ConfirmRevivifyTime(
 		}
 		if row.Status == revivifyConfirmed {
 			s.PublishCharacterEvent(ctx, m.CampaignID, s.ownerOf(ctx, m.CampaignID, row.TargetCharacterID), row.TargetCharacterID, characterRevived)
+			if encounterID != "" {
+				s.PublishEncounterChanged(ctx, m.CampaignID, encounterID)
+			}
 		}
 	}
 	left := map[string]int32{row.ID: slotsLeft}
@@ -332,29 +336,38 @@ func (s *Service) ConfirmRevivifyTime(
 }
 
 // reviveOutside is the master's "less than a minute": the slot is spent, the diamonds are noted,
-// and the target lives again with 1 hit point. RN-03 may refuse, and nothing is spent then.
-func (s *Service) reviveOutside(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, m authz.Membership, row playdb.RevivifyRequest) ([]*playv1.CharacterVitals, int32, error) {
+// and the target lives again with 1 hit point. RN-03 may refuse, and nothing is spent then. If a
+// combat that is not ended still holds the character as defeated, its combatant lives again too,
+// as after the master's Reviver (it returns that combat's ID, "" for none).
+func (s *Service) reviveOutside(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, m authz.Membership, row playdb.RevivifyRequest) ([]*playv1.CharacterVitals, int32, string, error) {
 	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, svc: s})
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, "", err
 	}
 	slot := slotRef{Level: row.SlotLevel, Pact: row.SlotPact}
 	spent, err := s.spendSlot(ctx, c, row.CasterCharacterID, slot, 1)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, "", err
 	}
-	if _, err := s.roster.ReviveDead(ctx, tx, m.CampaignID, row.TargetCharacterID, s.now()); err != nil {
-		return nil, 0, err
+	now := s.now()
+	if _, err := s.roster.ReviveDead(ctx, tx, m.CampaignID, row.TargetCharacterID, now); err != nil {
+		return nil, 0, "", err
+	}
+	encounterID, err := s.ReviveInCombat(ctx, tx, m.CampaignID, row.TargetCharacterID, m.UserID, now)
+	if err != nil {
+		return nil, 0, "", err
 	}
 	after, err := s.vitals.GetVitalsTx(ctx, tx, m.CampaignID, row.TargetCharacterID)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, "", err
 	}
-	body := fmt.Sprintf(`{"character_id":%q,"caster_character_id":%q,"spell":"revivify","material":true}`, row.TargetCharacterID, row.CasterCharacterID)
-	if _, err := s.AppendEvent(ctx, tx, m.CampaignID, eventCharacterRevived, m.UserID, []byte(body), s.now()); err != nil {
-		return nil, 0, err
+	if encounterID == "" { // no combat has it: the line goes to the session
+		body := fmt.Sprintf(`{"character_id":%q,"caster_character_id":%q,"spell":"revivify","material":true}`, row.TargetCharacterID, row.CasterCharacterID)
+		if _, err := s.AppendEvent(ctx, tx, m.CampaignID, eventCharacterRevived, m.UserID, []byte(body), now); err != nil {
+			return nil, 0, "", err
+		}
 	}
-	return []*playv1.CharacterVitals{spent, after}, slotsLeftOf(spent, slot), nil
+	return []*playv1.CharacterVitals{spent, after}, slotsLeftOf(spent, slot), encounterID, nil
 }
 
 // slotsLeftOf is how many slots of the level are free in the vitals.

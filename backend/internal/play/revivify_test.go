@@ -821,3 +821,60 @@ func TestRevivify_AnEnemyWizardsCounterspellCountersItOrLetsItThrough(t *testing
 		})
 	}
 }
+
+// The master's "faz menos de 1 minuto" while a combat is open: Ilaria asked before the combat, with
+// Toren dead; the master brought him back, the combat began and he fell and was confirmed dead
+// in it. The answer comes now. He lives again in the order too, not only on his sheet, and the
+// combat's log says so.
+func TestRevivify_OutsideACombatTheCombatantLivesAgainInAnOpenCombat(t *testing.T) {
+	t.Parallel()
+	a := newVigil(t)
+	req, err := a.ask(a.ana, a.pens, a.toren, newKey())
+	if err != nil {
+		t.Fatalf("RequestRevivify() error = %v", err)
+	}
+	if _, err := a.master.characters.ReviveCharacter(t.Context(), connect.NewRequest(&charactersv1.ReviveCharacterRequest{
+		CampaignId: a.campaignID, CharacterId: a.toren.GetId(), IdempotencyKey: newKey(),
+	})); err != nil {
+		t.Fatalf("ReviveCharacter() error = %v", err)
+	}
+	e := a.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId()}},
+		npcRolls: []int{3},
+		players:  map[string]int32{"Toren": 18, "Ilaria": 12, "Brisa": 1},
+		reveal:   []string{"Goblin"},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Ilaria": {3, 4}, "Goblin": {4, 3}, "Brisa": {8, 8}},
+	})
+	a.dies(t, e, "Toren", a.toren)
+	if c := byLabel(t, a.get(t, a.master), "Toren"); !c.GetDefeated() {
+		t.Fatalf("Toren after his death = defeated %v, want true", c.GetDefeated())
+	}
+
+	done, err := a.answer(t, a.master, req.GetId(), true, newKey())
+	if err != nil || done.GetStatus() != playv1.RevivifyRequestStatus_REVIVIFY_REQUEST_STATUS_CONFIRMED {
+		t.Fatalf("ConfirmRevivifyTime(true) = %v, %v; want confirmed", done, err)
+	}
+
+	now := a.get(t, a.master)
+	if c := byLabel(t, now, "Toren"); c.GetDefeated() || c.GetDeathFailures() != 0 {
+		t.Errorf("Toren in the order after the spell = defeated %v, failures %d; want alive and clean", c.GetDefeated(), c.GetDeathFailures())
+	}
+	if len(now.GetDeaths()) != 0 {
+		t.Errorf("deaths after the spell = %v, want none", now.GetDeaths())
+	}
+	if v := a.vitals(t, a.toren); v.GetHitPointsCurrent() != 1 {
+		t.Errorf("Toren's hit points = %d, want 1", v.GetHitPointsCurrent())
+	}
+	var line bool
+	for _, r := range a.log(t, a.master, now).GetRounds() {
+		for _, en := range r.GetEntries() {
+			line = line || en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_CHARACTER_REVIVED
+		}
+	}
+	if !line {
+		t.Error("the combat's log has no \"reviveu\" line")
+	}
+	if err := a.undo(t, a.master, now, newKey()); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Errorf("UndoLastAction after the revival = %v, want nothing to undo", err)
+	}
+}
